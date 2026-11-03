@@ -17,7 +17,7 @@
 * *Borrow* authorization; never build a policy engine.
 * *Decide* the open questions listed at the end; nothing here decides them for you.
 
-*Reading path:* xref:architecture/soa/build-vs-reuse.adoc[build versus reuse] →
+*Reading path:* new here? Start with the xref:architecture/soa/walkthrough.adoc[walkthrough]. Then xref:architecture/soa/build-vs-reuse.adoc[build versus reuse] →
 xref:architecture/soa/risks.adoc[risks and licences] →
 xref:architecture/soa/variants.adoc[architecture variants] →
 xref:architecture/soa/design-implications.adoc[design implications]. For depth:

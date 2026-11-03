@@ -2,6 +2,7 @@
 
 * Architecture
 ** State of the art
+*** xref:architecture/soa/walkthrough.adoc[Walkthrough]
 *** xref:architecture/soa/index.adoc[Integrated findings]
 *** xref:architecture/soa/build-vs-reuse.adoc[Build versus reuse]
 *** xref:architecture/soa/building-blocks.adoc[Building-block map]

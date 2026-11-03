@@ -1,0 +1,17 @@
+@startuml walkthrough-commit
+title One order, one request
+participant "Your code" as You
+participant "Aggregate session" as S
+database "SPARQL store" as DB
+You -> S : get order 42
+S -> DB : fetch order 42 with its lines
+You -> S : add a line, change a quantity
+You -> S : commit
+S -> DB : one update: version check, new values,\ncommit record, events
+S -> DB : is my commit record there?
+alt yes
+  S --> You : committed
+else no
+  S --> You : conflict: order 42 changed since you loaded it
+end
+@enduml
