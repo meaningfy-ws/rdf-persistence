@@ -218,3 +218,51 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- Meaningfy scaffold additions ---
+# Renders to .gitignore at the repo root.
+
+# Byte-compiled / optimized / DLL files
+
+# C extensions
+
+# Distribution / packaging
+
+# Virtual environments
+
+# Environments / secrets — never commit real secrets.
+# Keep the committed *.example templates; ignore everything else.
+.env.*
+!.env.example
+.secrets
+*.secrets
+!*.secrets.example
+infra/.env
+infra/.secrets
+
+# Test / coverage / report artifacts
+test-results.xml
+reports/
+data/
+
+# Type / lint / import caches
+.import_linter_cache
+
+# Tooling
+
+# Docs build output + Antora toolchain
+docs/build/
+node_modules/
+docs/node_modules/
+
+# GitNexus index
+.gitnexus
+
+# IDE / editor / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Local agent overrides
+settings.local.json
+.claude/worktrees/

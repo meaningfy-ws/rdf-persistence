@@ -1,2 +1,90 @@
-# rdf-persistence
-serialisaton and triple store persistence (incl transactions)
+# RDF Persistence
+
+> Serialisation and triple store persistence for RDF data (incl. transactions).
+
+<!-- Badges: replace the placeholders once CI and coverage are wired. -->
+[![CI](https://img.shields.io/github/actions/workflow/status/meaningfy-ws/rdf-persistence/ci.yaml?branch=develop)](https://github.com/meaningfy-ws/rdf-persistence/actions)
+[![Coverage](https://img.shields.io/badge/coverage-pending-lightgrey)](#testing)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
+## Overview
+
+A short paragraph: the problem RDF Persistence solves, the approach it takes, and where it sits in
+the wider system. Link to the [documentation site](#documentation) for depth.
+
+## System model
+
+This repository follows the Meaningfy standard layout:
+
+- **Top-level package** `rdf_persistence/` (no `src/`) — the deployable unit.
+- **Cosmic-python layers** inside each component: `entrypoints → services → domain`, and
+  `adapters → domain`. The `domain` layer imports nothing upward. Enforced by `import-linter`.
+- **All tool config in dedicated root files** (`ruff.toml`, `mypy.ini`, `pytest.ini`,
+  `.coveragerc`, `.importlinter`). `pyproject.toml` stays minimal.
+- **Tests** live in a sibling `tests/` tree (`unit/`, `feature/`, `e2e/`, `integration/`).
+
+## Installation
+
+Requires Python >= 3.12, [uv](https://docs.astral.sh/uv/), and `make`.
+
+```bash
+git clone https://github.com/meaningfy-ws/rdf-persistence.git
+cd rdf-persistence
+make install        # uv sync (all dependency groups)
+```
+
+See [INSTALL.md](INSTALL.md) for the full development environment setup (pre-commit, Docker).
+
+## Running
+
+```bash
+make run            # or: uv run python -m rdf_persistence
+```
+
+## Development
+
+Common `make` targets (run `make help` for the full list):
+
+| Target | Purpose |
+|--------|---------|
+| `make install` | Install all dependency groups |
+| `make format` | Auto-format with Ruff |
+| `make lint` | Lint with Ruff |
+| `make typecheck` | Type-check with mypy |
+| `make check-architecture` | Enforce layer boundaries with import-linter |
+| `make test` | Run the test suite with coverage |
+| `make check-all` | Everything CI runs |
+
+## Testing
+
+```bash
+make test           # full suite with coverage (gate: ≥80%)
+make test-unit      # fast unit layer only
+```
+
+Tests are split by directory and stamped with markers automatically (`unit`, `feature`, `e2e`,
+`integration`). See [CONTRIBUTING.md](CONTRIBUTING.md) for the testing expectations.
+
+## Documentation
+
+Documentation is built with [Antora](https://antora.org) from AsciiDoc under `docs/`.
+
+```bash
+make install-antora # first time only
+make preview-docs   # build + serve at http://localhost:8080
+```
+
+The published site is the source of truth for API reference, architecture, and user guides.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow, architecture constraints, and commit/PR
+conventions, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations.
+
+> **Note on agent-instruction files:** `AGENTS.md` is the **single, canonical** agent-instruction
+> file; `CLAUDE.md` is a thin pointer that imports it (`@AGENTS.md`) for Claude Code. Both are
+> regular files — never replace either with a symlink or a copy of the other.
+
+## License
+
+Distributed under the Apache 2.0 License. See [LICENSE](LICENSE).
