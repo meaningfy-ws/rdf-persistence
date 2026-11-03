@@ -1,5 +1,5 @@
 /*
- * Supplemental brand tweaks layered on top of the Antora default UI bundle.
+ * Brand tweaks loaded after the default UI bundle's site.css (via partials/head-meta.hbs).
  * Keep this small: only override what you need; the bundle ships the rest.
  */
 
