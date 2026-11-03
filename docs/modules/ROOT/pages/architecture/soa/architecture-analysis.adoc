@@ -346,26 +346,27 @@ engine, test framework or JavaScript data layer is built.
 
 == Decisions left to the developer
 
-Candidate ADRs, grouped by C4 level. All are open unless a key decision already settles them.
+Candidate ADRs, grouped by C4 level. Status after the developer's answers of 2026-11-03; details in
+xref:architecture/soa/decisions.adoc[developer decisions].
 
 [cols="1,1,6,2",options="header"]
 |===
 |Id |C4 level |Decision |Status
 
-|ADR-01 |Context |Scope: library only, or library plus generator and service kit |Open
-|ADR-02 |Context |Where authorization is enforced (store-native, proxy, in-process port) |Partly decided by DEC-8
-|ADR-03 |Context |Master of the domain model (UML, curated LinkML, UML plus overlay) |Open
-|ADR-16 |Context |Migrations in the first EPIC (runner only, runner plus diff compiler, defer, upstream) |Open
-|ADR-04 |Container |Contract between service and UI (JSON-LD + OpenAPI, JSON:API, both, graph-direct reads) |Open
-|ADR-05 |Container |Store and transaction strategy (portable single operation, vendor transactions, Fluree) |Open, constrained by DEC-2 and DEC-4
-|ADR-06 |Container |Source and format of external change events |Open
+|ADR-01 |Context |Scope: library only, or library plus generator and service kit |Decided: library + generator + service kit (DEC-32)
+|ADR-02 |Context |Where authorization is enforced (store-native, proxy, in-process port) |Decided: in-process port; triple level by GraphDB FGAC and our evaluator (DEC-15, DEC-17, DEC-26)
+|ADR-03 |Context |Master of the domain model (UML, curated LinkML, UML plus overlay) |Decided for now: LinkML (DEC-19)
+|ADR-16 |Context |Migrations in the first EPIC (runner only, runner plus diff compiler, defer, upstream) |Partly decided: none generated in the first EPIC; keep it possible (DEC-25)
+|ADR-04 |Container |Contract between service and UI (JSON-LD + OpenAPI, JSON:API, both, graph-direct reads) |Decided: REST with JSON-LD first, GraphQL second (DEC-17, DEC-18, DEC-27)
+|ADR-05 |Container |Store and transaction strategy (portable single operation, vendor transactions, Fluree) |Partly decided: classic W3C triple stores, Fluree dropped (DEC-16)
+|ADR-06 |Container |Source and format of external change events |Decided: outbox relayed to a broker (DEC-23)
 |ADR-07 |Component |Persistence pattern (aggregate session, full unit of work, Active Record, explicit change sets, event sourcing) |Open, constrained by DEC-4 and DEC-13
-|ADR-08 |Component |Mapping at runtime or generated (approaches A–D) |Open
-|ADR-09 |Component |Storage of an aggregate (root + owned closure, graph per aggregate, both) |Open
-|ADR-10 |Component |Behaviour on stores without atomic commits (refuse, degrade, configurable) |Open
-|ADR-11 |Component |Declaring aggregate boundaries (annotations, convention, both, from UML) |Open
-|ADR-12 |Component |Aggregates per commit (strict, warn, allow) |Open
-|ADR-13 |Component |Where the version lives; optimistic concurrency by default |Open
-|ADR-14 |Component |Dispatch of domain events (in-process bus, outbox relay, both) |Open
-|ADR-15 |Code |Multi-valued slots and language-tagged strings |Open
+|ADR-08 |Component |Mapping at runtime or generated (approaches A–D) |Open; recommended: A now, B later
+|ADR-09 |Component |Storage of an aggregate (root + owned closure, graph per aggregate, both) |Decided: graph per aggregate, IRI derived from the root (DEC-20, DEC-29)
+|ADR-10 |Component |Behaviour on stores without atomic commits (refuse, degrade, configurable) |Open; recommended: refuse unless opted in
+|ADR-11 |Component |Declaring aggregate boundaries (annotations, convention, both, from UML) |Decided: `AggregateRoot` mixin + `owned` annotations (DEC-34)
+|ADR-12 |Component |Aggregates per commit (strict, warn, allow) |Decided: `strict` by default, configurable (DEC-21)
+|ADR-13 |Component |Where the version lives; optimistic concurrency by default |Decided: mapper metadata, on by default (DEC-22)
+|ADR-14 |Component |Dispatch of domain events (in-process bus, outbox relay, both) |Decided: both (DEC-23)
+|ADR-15 |Code |Multi-valued slots and language-tagged strings |Decided: `list[T]`, `LangString` as a language map (DEC-35)
 |===

@@ -96,6 +96,98 @@ Publish the review as Antora developer-docs pages.
   how hard it would be to support property graphs behind the same ports; focus stays on triple
   stores (developer, 2026-11-03).
 
+### Decisions from the developer's answers to the open questions
+
+Source: `inputs/developer-answers-2026-11-03.md`. Consequences:
+`docs/.../architecture/soa/decisions.adoc`; ADR status in `architecture/candidate-adrs.md`.
+
+- **DEC-15**: **Triple-level access control stays a requirement**, alongside graph-level
+  control. Fluree-style policies (data-centric, SHACL-like targeting) are the wanted style.
+  Whether the triple-level evaluator may be built in-house (it is a small decision engine, which
+  DEC-8 forbids) is **open** (developer, 2026-11-03).
+- **DEC-16**: **Open W3C standards and classic triple stores** (GraphDB, Oxigraph, Fuseki,
+  RDF4J and similar). No custom or non-standard databases; a commercial product only for very
+  large value. **Fluree is not adopted** (variant V3 dropped) (developer, 2026-11-03).
+- **DEC-17**: **The UI never accesses the triple store.** It talks only to the middleware,
+  through REST or GraphQL APIs. Graph-direct reads from the UI (variant V5, ADR-04 option 4)
+  are rejected (developer, 2026-11-03).
+- **DEC-18**: **No compatibility with semantic.works** (variant V2 dropped). Its good features
+  are reused as ideas or re-implemented (developer, 2026-11-03).
+- **DEC-19**: **LinkML is the model master for now**; UML stays liked and may return as an
+  upstream source later (ADR-03 option 2) (developer, 2026-11-03).
+- **DEC-20**: **One named graph per aggregate**, named with the IRI of the aggregate root
+  (ADR-09 option 2). Graph-level access control then works per aggregate (developer, 2026-11-03).
+- **DEC-21**: **Commit policy `strict` by default** (one aggregate per commit); `warn` and
+  `allow` stay available as configuration (ADR-12) (developer, 2026-11-03).
+- **DEC-22**: **The aggregate version is mapper metadata**, not a domain field (ADR-13
+  option 1). Version, like logging, provenance and annotations, is an orthogonal concern kept
+  out of the domain classes. **New requirement:** several sets of annotations (discussions,
+  comments, provenance, …) can be attached to any domain object (developer, 2026-11-03).
+- **DEC-23**: **Events through both paths**: an in-process bus after commit and an outbox
+  relayed to a message broker, ideally Redis-like (ADR-14 option 3, ADR-06 option 1)
+  (developer, 2026-11-03).
+- **DEC-24**: **No property-graph need and no run-time reasoning today** (DEC-14 closed; the
+  seams stay because they cost nothing) (developer, 2026-11-03).
+- **DEC-25**: **No migration generation in the first EPIC**, but it is a likely goal for
+  maintainability; the design must keep it possible (ADR-16) (developer, 2026-11-03).
+
+Round 2 (source: `inputs/developer-answers-2026-11-03-round2.md`):
+
+- **DEC-26** (amends DEC-8): **Triple-level access control by both routes**, behind one
+  `PolicyEnforcementPort`: GraphDB FGAC in pass-through where GraphDB is licensed (Meaningfy is
+  a GraphDB partner), and a **thin in-house evaluator** over the change set and the generated
+  queries for the open stores. Graph-level decisions stay borrowed (OpenFGA, pycasbin); only
+  the triple-level evaluator is built (developer, 2026-11-03).
+- **DEC-27**: **Both API styles**: REST first, GraphQL second. REST responses are **compacted
+  JSON-LD** (plain JSON with an `@context`), so the UI gets JSON-LD; content negotiation also
+  serves Turtle and N-Triples (ADR-04 option 1, then GraphQL) (developer, 2026-11-03).
+- **DEC-28**: **Annotation sets are their own small aggregates** targeting the object; they do
+  not count towards the `strict` policy of the annotated aggregate (developer, 2026-11-03).
+- **DEC-29**: **The graph IRI is derived deterministically from the root's IRI** (one function,
+  for example `<root>/graph`), not the root's IRI itself: it is as easy to manage and keeps
+  statements about the graph apart from statements about the entity. The developer accepted the
+  review's recommendation (developer, 2026-11-03).
+- **DEC-30**: **Zitadel's AGPL and rdfproxy's GPL are acceptable** (developer, 2026-11-03).
+- **DEC-31**: **No reasoning for now**, not even a build-time Owlready2 check (developer,
+  2026-11-03).
+- **DEC-32**: **Scope is library + generator + service kit** (ADR-01 option 2): rdf-persistence
+  is the foundation on which MWBv2 is implemented (developer, 2026-11-03).
+- **DEC-33**: **The access-rule vocabulary is built on SHACL** (targeting, SPARQL `ASK`
+  conditions), with ODRL terms for actions and effects, validated by SHACL shapes and enforced
+  by the thin evaluator of DEC-26. The ideas to carry into the design (Fluree, mu sparql-parser,
+  Solid, OpenFGA) are listed in `decisions.adoc` (developer, 2026-11-03).
+
+Round 3 (source: `inputs/developer-answers-2026-11-03-round3.md`):
+
+- **DEC-34**: **Aggregate boundaries are declared in LinkML** with an `AggregateRoot` mixin from
+  a shared rdf-persistence schema on root classes and an `owned` annotation on owned slots;
+  a slot whose range is another root is a reference. The build fails on two owners, owned
+  cycles and owned children without IRIs (ADR-11) (developer, 2026-11-03).
+- **DEC-35**: **Multi-valued slots are `list[T]` with set semantics**; `LangString` is a
+  language map (ADR-15 option 1) (developer, 2026-11-03).
+- **DEC-36**: **Shape-driven UI forms are wanted**: edit and view forms generated from the SHACL
+  that LinkML emits (feature U4). LGPL and GPL front-end components are acceptable because the
+  project will be open source. Candidates are shacl-form and RDForms; none is chosen yet
+  (developer, 2026-11-03).
+
+Round 4 (source: `inputs/developer-answers-2026-11-03-round4.md`):
+
+- **DEC-37**: **Typed metamodel: a generated companion (`Person_`) per model class**, built on
+  one runtime `Field` object. **Domain classes are never written by hand**: the domain package
+  of a project built on rdf-persistence is generator output only, and a check forbids any
+  other class there. Attaching fields at run time to hand-written classes is therefore not
+  needed (developer, 2026-11-03).
+- **DEC-38**: **Async only, for now.** One async API; no generated sync copy and no `run_sync`.
+  Scripts, migrations and imports call it through `asyncio.run`; adapters for sync stores
+  (rdflib, pyoxigraph) run each store call on a worker thread so the event loop is not blocked.
+  A sync API can be added later if users need it (developer, 2026-11-03).
+
+Left open by the developer, with the review's recommendation recorded in `decisions.adoc`:
+the design of the core (ADR-07), runtime or generated mapping (ADR-08), how aggregate
+boundaries are declared in LinkML (ADR-11), the typed metamodel, list or set for multi-valued
+slots (ADR-15; either is acceptable), repository or session, the reuse threshold for services
+and UI components, and stores without atomic commits (ADR-10).
+
 ## Rabbit-holes
 
 - Scoring every abandoned toy project — keep a short list with an inclusion rule.

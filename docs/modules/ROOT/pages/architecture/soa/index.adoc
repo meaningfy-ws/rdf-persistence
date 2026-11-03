@@ -15,7 +15,7 @@
 * *Build* one thin core — mapper, aggregate session, change-set compiler, repositories, store
   port, policy port, outbox, test kit — and the companions that make the chain work.
 * *Borrow* authorization; never build a policy engine.
-* *Decide* the open questions listed at the end; nothing here decides them for you.
+* *Decide* the open questions listed at the end. The developer answered most of them on 2026-11-03: see xref:architecture/soa/decisions.adoc[developer decisions].
 
 *Reading path:* new here? Start with the xref:architecture/soa/walkthrough.adoc[walkthrough]. Then xref:architecture/soa/build-vs-reuse.adoc[build versus reuse] →
 xref:architecture/soa/risks.adoc[risks and licences] →
@@ -231,30 +231,22 @@ hooks; typed generics; a short, complete CRUD example on page one.
 
 == Open questions for the developer
 
-. *Licences:* is Fluree's BUSL-1.1 acceptable for MWBv2? Is Zitadel's AGPL acceptable (Keycloak
-  is the fallback)? Is rdfproxy's GPL a blocker for borrowing code (ideas are fine)?
-. *Granularity:* graph-level authorization enough, or is triple-level required?
-. *UI access:* will the UI ever send free SPARQL? If yes, only store-native or proxy enforcement
-  is safe.
-. *Contract:* strict compatibility with semantic.works' JSON:API? UUID or IRI as JSON:API id?
-  API Platform Admin compatibility as a goal? GraphQL needed at all?
-. *Model source:* after UML, is the master the curated LinkML or model2owl's SHACL? Fix LinkML
-  upstream or keep custom templates?
-. *Generation:* runtime mapper (approach A) or generated mapper and routes (approach B)?
-. *Unit of work:* refuse stores that break single-request atomicity, or degrade with
-  compensations and a warning? Version triple per aggregate or named graph per aggregate?
-. *Events:* own outbox, or the store's or proxy's change capture? RDF Patch or semantic.works
-  changeSets?
-. *Reuse threshold:* does it also apply to services used over HTTP (e.g. `sparql-parser`), and
-  can it be relaxed for replaceable leaf UI components (shacl-form)?
+*Answered on 2026-11-03* — see xref:architecture/soa/decisions.adoc[developer decisions]
+(DEC-15 to DEC-38). In short: triple-level access control stays required, by GraphDB FGAC where
+licensed and a thin in-house evaluator elsewhere; classic W3C triple stores only (Fluree,
+semantic.works compatibility and graph-direct UI reads are dropped); the UI reaches data only
+through the middleware, over REST with compacted JSON-LD first and GraphQL second; LinkML is the
+model master; one named graph per aggregate, its IRI derived from the root's; `strict` commit
+policy by default, with annotation sets as their own aggregates; version as mapper metadata;
+events through both an in-process bus and a broker; no property graphs, reasoning or migration
+generation for now; Zitadel and rdfproxy licences acceptable. The scope is library, generator
+and service kit: the foundation MWBv2 is built on.
 
-. *Design of the core:* aggregate-boundary declaration, default commit policy, version
-  placement, event dispatch, typed metamodel, multi-valued representation, `LangString` form —
-  listed in xref:architecture/soa/design-implications.adoc#open-questions[design implications].
-. *Property graphs:* is there a real project need, or is Neptune enough? Must LPG data round-trip
-  losslessly to RDF? Does the domain need edge properties?
-. *Owlready2 as a build-time reasoner check:* needs an explicit exception to the reuse threshold
-  and Java in CI (ROBOT is an unanalysed alternative).
+Still open: the design of the core (ADR-07), and the questions the developer delegated to the
+review's recommendation (runtime or generated mapping, repository or session, reuse
+threshold, stores without atomic commits). Decided in later rounds: boundaries by an
+`AggregateRoot` mixin, `list[T]` for multi-valued slots, shape-driven UI forms, a generated
+typed metamodel with no hand-written domain classes, and an async-only API.
 
 == Rounds
 

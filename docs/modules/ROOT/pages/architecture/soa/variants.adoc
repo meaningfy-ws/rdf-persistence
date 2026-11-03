@@ -6,6 +6,12 @@ blocks]. They share one core: rdf-persistence as the domain and persistence laye
 coming from LinkML (approaches A–C) or from hand-written classes (approach D) — ADR-03 is open. They differ in where authorization is enforced, which store
 carries the data, and which contract the UI speaks. This page lists options; it does not decide.
 
+NOTE: After the developer's answers of 2026-11-03 (xref:architecture/soa/decisions.adoc[developer
+decisions]), *V1 is the base*, *V4 GraphDB* the upgrade when licensed, and *V2, V3 and V5 are not
+pursued*: no semantic.works compatibility (DEC-18), classic W3C triple stores only (DEC-16), and
+the UI never queries the store (DEC-17). For the development approach, A now and B later is
+recommended (ADR-08 is still open). The rows below are kept as the review's evidence.
+
 == System variants
 
 [cols="2,5,4,4",options="header"]
@@ -93,6 +99,8 @@ generated back from the classes; drifts from the ontology.
 |===
 
 == Choosing
+
+As reviewed, before the developer's answers (see the note at the top):
 
 * Vendor neutrality and long-term maintenance first → V1 with approach A, growing to B.
 * Reuse of an existing semantic.works deployment → V2.
