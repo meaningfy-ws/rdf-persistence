@@ -1,0 +1,323 @@
+= JavaScript client and UI
+:description: Which JavaScript and TypeScript libraries can consume the data-management service on the client, and which combination gives a coherent, maintainable frontend per architecture variant.
+
+== Purpose of the angle
+
+The MWBv2 UI is a TypeScript app, tested with Cypress and Gherkin. It consumes data from a generated Python data-management service (layer L5).
+The question: which client libraries handle a JSON-LD (or other RDF-backed) contract, and which stack is easiest to keep alive?
+
+Method: a desk scan of 45 candidates (GitHub and npm, 2026-11-03).
+Four deep dives with clone, GitNexus index and code reading: jsonld.js, @api-platform/admin, shacl-form, LDO.
+Round 4 re-read the same commits against taxonomy v3 and the system variants (nothing was executed).
+xref:architecture/soa/libraries/ldkit.adoc[LDkit] was analysed earlier and is only compared here.
+
+*Main finding.* Every RDF-native JS client is below DEC-5 (LDkit, LDO, LDflex, Alcaeus, shacl-form, shaperone, Soukai) or tied to Solid.
+The DEC-5-passing RDF pieces are the interop layer only: jsonld.js, N3.js, RDF/JS types, Comunica, rdflib.js.
+Every mature data layer, form generator and code generator is RDF-agnostic. It speaks REST/OpenAPI, JSON:API, GraphQL or Hydra.
+Weekly downloads differ by four orders of magnitude: tens of millions for TanStack Query and openapi-typescript, hundreds for LDO and Alcaeus.
+
+*Round-4 finding.* Most v3 additions are server-side, so the clients score mostly n.a.
+LDO covers the most v3 features (client unit of work, generated context, push); @api-platform/admin covers the UI features.
+No client sends preconditions (X19), idempotency keys (T9) or atomic batches (X18): the service must offer them and the generated client must wrap them.
+V1, V3 and V4 share one L5 stack; no mature L5 tool blocks any of V1–V5 (see <<variant-fit>>).
+
+== Landscape summary
+
+DEC-5: more than 200 stars and a commit after 2025-11-03; packages of a qualifying org inherit.
+Stars and last push as measured on 2026-11-03.
+
+[cols="3,4,3,1,1",options="header"]
+|===
+|Candidate |Built for |DEC-5 (stars, last push) |Layers |Fit
+
+5+|*JSON-LD and RDF processing*
+|jsonld.js |Reference JSON-LD 1.1 processor: compact, expand, frame, to/from RDF |pass (1,817, 2026-03) |L5 |dependency
+|N3.js |Turtle/TriG parsing and writing; in-memory RDF/JS store |pass (797, 2026-11) |L5 |dependency
+|@rdfjs/types |RDF/JS interfaces only |pass (rdfjs org) |L5 |compatible
+|Comunica |SPARQL and link-traversal query engine, federation |pass (620, 2026-11) |L5 |integrate
+|rdflib.js |LDP/Solid documents, SPARQL Update PATCH |pass (598, 2026-10) |L5 |none
+|jsonld-streaming-parser, jsonld-context-parser, rdf-ext |Streaming JSON-LD, context parsing, RDF/JS helpers |fail (91, 29, 126) |L5 |none
+|rdf-validate-shacl |Client-side SHACL validation |fail (126, 2026-04) |L5 |ideas
+
+5+|*Typed RDF object mappers and clients*
+|xref:architecture/soa/libraries/ldkit.adoc[LDkit] |Typed objects over a raw SPARQL 1.1 endpoint |fail (83, 2026-10) |L5, L0 |integrate (behind a seam, V5; DEC-5 exception needed)
+|LDO |Typed proxy objects over RDF/JS datasets; Solid and NextGraph sync |fail (73, 2026-10) |L5, L0 |ideas
+|LDflex |Path expressions compiled to SPARQL |fail (196, 2026-10) |L5 |ideas
+|@inrupt/solid-client (+ authn-browser) |Solid pods, ACP/WAC, Solid-OIDC |pass (244, 2026-11), but Solid-only |L5, L3 |none (unless Solid)
+|Alcaeus |Hydra API client |fail (65, 2026-03) |L5 |ideas
+|Soukai, fdr, rdf-object, fluree-client |Active Record ODM on Solid; SPARQL client; untyped object view; FlureeQL client |fail (≤31; fluree-client 6 stars, last push 2026-03) |L5 |none
+|kopflos |Hydra/SHACL-driven API server in Node |fail (16) |L4 |ideas
+
+5+|*Generic data layers (backend-agnostic)*
+|TanStack Query |Server-state cache, invalidation, optimistic updates |pass (50,520, 2026-11) |L5 |dependency
+|SWR |Same, lighter |pass (32,492, 2026-10) |L5 |integrate
+|react-admin |Admin UI on a `dataProvider` (REST, JSON:API, GraphQL, Hydra) |pass (26,981, 2026-11) |L5 |integrate
+|@api-platform/admin |Zero-code admin guessed from Hydra or OpenAPI docs |pass (515, 2026-09) |L5 |integrate
+|refine |Headless admin framework |pass (35,983, 2026-09) |L5 |integrate
+|ember-data / WarpDrive |JSON:API store; semantic.works frontend |pass (3,160, 2026-11) |L5 |compatible
+|Orbit.js, kitsu, jsona |JSON:API clients and (de)serialisers |pass (2,340 / 294 / 214) |L5 |compatible
+|Apollo Client |GraphQL client |pass (19,782, 2026-11) |L5 |compatible
+|AdminJS |Admin on Node ORM adapters, not HTTP |fail (last push 2025-07) |L4, L5 |none
+
+5+|*Contract to TS types and clients*
+|openapi-typescript (+ openapi-fetch) |OpenAPI → TS types and fetch client |pass (8,425, 2026-09) |L0→L5 |build-time
+|orval |OpenAPI → client, TanStack Query hooks, zod, MSW mocks |pass (6,585, 2026-11) |L0→L5 |build-time
+|@hey-api/openapi-ts |OpenAPI → SDK, zod, TanStack Query plugins |pass (5,551, 2026-10) |L0→L5 |build-time
+|json-schema-to-typescript |JSON Schema → TS |pass (3,349, 2026-09) |L0→L5 |build-time
+|zod |Runtime payload validation |pass (44,247, 2026-10) |L5 |dependency
+|LinkML generators |`typescriptgen`, `jsonschemagen`, `jsonldcontextgen`, `shaclgen`, `openapigen`, `graphqlgen` (present in the tree; output quality not checked) |pass (680, 2026-11) |L0 |build-time
+|linkml-runtime.js |LinkML runtime for JS |fail (dead, 2023) |L0, L5 |none
+
+5+|*Forms from shapes or schemas*
+|shacl-form |Web component: edit, view and query forms from SHACL |fail (93, 2026-10) |L5 |ideas (vendor-in)
+|shaperone, RDForms |SHACL forms; EntryScape templates |fail (55; 8) |L5 |none
+|react-jsonschema-form |Forms from JSON Schema |pass (15,932, 2026-11) |L5 |integrate
+|JSON Forms |Forms from JSON Schema (React, Angular, Vue) |pass (2,751, 2026-10) |L5 |integrate
+
+5+|*Auth and end-to-end tests*
+|oidc-client-ts (react-oidc-context, @zitadel/react) |OIDC code + PKCE in the browser, token refresh |pass (1,968, 2026-09) |L3, L5 |dependency
+|Cypress + cypress-cucumber-preprocessor |E2E tests in Gherkin |pass (51,018; 1,360) |test |dependency
+|===
+
+== Purpose and origin
+
+[cols="2,3,3,3",options="header"]
+|===
+|Candidate |Built for |Who and context |Fit in L0–L6 and V1–V5
+|jsonld.js |Reference implementation of the W3C JSON-LD API, Framing and canonicalisation |Digital Bazaar (Manu Sporny, Dave Longley), editors of the JSON-LD specs; built for Verifiable Credentials. Spec-first: correctness and security over ergonomics |L5 dependency wherever JSON-LD is on the wire (V1, V3, V4, V5); in V2 only at the edges
+|@api-platform/admin |A free admin for API Platform (PHP/Symfony) users, read from the Hydra or OpenAPI docs API Platform emits |Les-Tilleuls.coop (Kévin Dunglas), API Platform core team, on Marmelab's react-admin. Assumes API Platform conventions (query parameters, schema.org, Mercure) |L5 back office in V1, V3, V4 *only if* the service copies the API Platform dialect; not V2 (JSON:API) or V5 (SPARQL)
+|shacl-form |Forms to enter and view research metadata described in SHACL |ULB Darmstadt (university library), research data management (NFDI). Shape-first, framework-neutral, store-agnostic |L5 forms in every variant; query mode serves V5. Below DEC-5: keep it behind a seam
+|LDO |Solid app development with plain-looking JS objects |Jackson Morgan (`jaxoncreed`, ~523 of ~600 commits) and o-development; Solid community, also used by NextGraph |L0/L5 ideas only. Plugs into none of V1–V5 without a new remote plugin for our API
+|===
+
+Desk-scan origins, checked against repository owners and top contributors:
+N3.js (Ruben Verborgh); LDflex (originated by Ruben Verborgh, now maintained mainly by Jesse Wright, `jeswr`); Comunica (IDLab Ghent); rdf-object and `jsonld-*-parser` (Ruben Taelman);
+rdf-ext (its own GitHub org, led by Thomas Bergwinkl `bergos`; close to Zazuko but not a Zazuko repo); rdf-validate-shacl (Zazuko); Alcaeus and shaperone (hypermedia-app, Tomasz Pluskiewicz);
+Soukai (Noel De Martin); fdr (Kobrix, Borislav Iordanov); fluree-client (Fluree PBC; low activity, 79 npm downloads a week, last push 2026-03; fails DEC-5 on stars);
+@inrupt/solid-client (Inrupt; passes DEC-5 but is Solid-only); TanStack Query (Tanner Linsley); SWR (Vercel); react-admin (Marmelab); refine (refinedev); WarpDrive (Ember community); Orbit (Cerebris, Dan Gebhardt);
+openapi-typescript (Drew Powers); json-schema-to-typescript (Boris Cherny); zod (Colin McDonnell); RJSF (Mozilla origin); JSON Forms (EclipseSource);
+oidc-client-ts (authts, fork of Brock Allen's oidc-client-js; `@zitadel/react` wraps it); Cypress (Cypress.io);
+cypress-cucumber-preprocessor (started by TheBrainFamily, Lukasz Gandecki; transferred to Jonas Amundsen, `badeball`, one maintainer today).
+
+== Deep-dive findings
+
+=== jsonld.js
+
+*How it works.* A facade (`lib/jsonld.js`) over one module per algorithm: `compact`, `expand`, `flatten`, `frame`, `toRDF`/`fromRDF`, `canonize` (`lib/jsonld.js:131-770`).
+Resolved contexts are reused across calls only when the document loader marks them `static` (`lib/ContextResolver.js:84-100`); the bundled loaders set no tag, so each call refetches a remote `@context`. Serve the generated context from the bundle with a custom loader (X22).
+Framing supports `@embed`, `@explicit`, `@requireAll`, `@omitDefault` and named-graph framing (`lib/frame.js:112-284`); this turns a flat CONSTRUCT result into a nested view model.
+The document loader is pluggable and accepts custom headers, e.g. a bearer token (`lib/documentLoaders/xhr.js:19-30`).
+`safe: true` fails on lossy constructs (`lib/jsonld.js:122-126`).
+W3C conformance suites are wired in the test harness (`tests/test.js:1386-1387`); not run here. No first-party TS types (`@types/jsonld`).
+
+*Scores* (reinterpreted for an interop library): C1 4 · C2 4 · C3 3 · C4 4 · C5 5 · C6 4 · C7 n.a. · C8 4 · C9 5 · C10 4.
+
+*Verdict: adopt* as the client JSON-LD processor wherever the server emits JSON-LD. Generate contexts and frames from LinkML.
+Risks: framing is heavy on large graphs (paginate); remote `@context` fetches are a network and security surface (bundle the context).
+
+=== @api-platform/admin
+
+*How it works.* `<HydraAdmin entrypoint=…>` reads Hydra docs (or OpenAPI through `<OpenApiAdmin>`) and guesses list, show, edit and create screens. It runs on react-admin, TanStack Query and jsonld.js.
+
+* *Contract: compacted JSON-LD + Hydra.* `fetchHydra.ts` rejects bodies without `@id`; collections need `member`, `totalItems`, `view` (`dataProvider.ts:577-620`). Success bodies are used as-is; only error bodies are expanded.
+* *Query string is the API Platform dialect, not pure Hydra:* `order[field]`, `page`, `itemsPerPage`, `field[]` (`dataProvider.ts:410-440`; `introspection/schemaAnalyzer.ts:19-43`). A Python backend must imitate it. The OpenAPI path (`<OpenApiAdmin>`) shares the same filter analyser, so it depends on the dialect too.
+* *Field typing is tied to schema.org:* `identifier`, `email`, `url`, then the `xsd:` range; labels come from `schema.org/name` (`hydra/schemaAnalyzer.ts:18-66`). With `dct:title` or `skos:prefLabel` labels fall back to the id.
+* Embedded objects with `@id` are cached by IRI, a client identity map (`dataProvider.ts:75-105`).
+* Auth: `Authorization` header from a react-admin `authProvider`, set verbatim (`fetchHydra.ts`), so store the token with its `Bearer ` prefix; no built-in OIDC.
+* Live updates: Mercure SSE patches the query cache (`dataProvider/useUpdateCache.ts:7-54`).
+* ConstraintViolation lists become per-field form errors (`hydra/schemaAnalyzer.ts:70-95`).
+* "Client-side validation of required fields" was not traced (lives in api-doc-parser, not read).
+
+*Scores:* C1 4 · C2 4 · C3 4 · C4 3 · C5 4 · C6 3 · C7 n.a. · C8 4 · C9 4 · C10 3.
+
+*Verdict: integrate* for the back office *if* the service emits Hydra in the API Platform dialect; otherwise borrow ideas.
+The cheaper path is react-admin with `<OpenApiAdmin>` over the FastAPI OpenAPI document.
+
+=== shacl-form
+
+*How it works.* A framework-neutral web component `<shacl-form>` (`src/form.ts:35, 716`).
+It takes shapes and values by attribute or URL, plus subject, namespace (IRI minting), named graph, language and mode `edit|view|query` (README:84-104).
+The root shape is resolved from `dcterms:conformsTo`, then `rdf:type` / `sh:targetClass`, then the first node shape.
+`validate()` runs shacl-engine on the root node (`src/form.ts:458-502`); `submit` fires only on valid data.
+Extension points: `setRdfUrlResolver` (auth or backend hook), `setClassInstanceProvider`, `ResourceLinkProvider`, `registerPlugin` (`src/plugin.ts:65-75`).
+Query mode builds SPARQL SELECT from the shape, with ordering, paging and facets (`src/query/sparql.ts`).
+
+*JSON-LD output is per triple:* the hand-rolled `serializeJsonld` emits one node object per triple, with no `@context` and no named graph (`src/serialize.ts:23-46`). Valid, but not compacted; add a `jsonld.compact` step if the server expects compacted JSON-LD.
+No test CI workflow was found.
+
+*Scores:* C1 4 · C2 4 · C3 4 · C4 4 · C5 5 · C6 5 · C7 4 · C8 3 · C9 5 · C10 3.
+
+*Verdict: borrow ideas or vendor-in* (fails DEC-5 on stars). The strongest shape-driven form component. Whether it renders all SHACL that LinkML `shaclgen` emits was not tested.
+
+=== LDO (Linked Data Objects)
+
+*How it works.* ES Proxies give typed, JSON-LD-shaped, mutable objects over an RDF/JS dataset (`packages/jsonld-dataset-proxy/src/ProxyContext.ts:54`).
+A CLI generates TS types *and* a JSON-LD context from ShEx, and from SHACL via shacl2shex (`packages/cli/src/util/forAllShapes.ts:3-57`).
+`startTransaction` / `commitTransaction` record a diff; `toSparqlUpdate` emits `DELETE DATA {…} INSERT DATA {…}` (`packages/ldo/src/methods.ts:233-358`, `rdf-utils/src/datasetChanges.ts:18-35`).
+`commitToRemote` sends one update per resource in parallel; a failure leaves the other resources committed (`AggregateError`, `connected/src/ConnectedLdoTransactionDataset.ts:205-233`), so a commit is atomic per resource only.
+Remotes are plugins (`connected/src/types/ConnectedPlugin.ts:10-35`); only Solid and NextGraph exist. There is no SPARQL-endpoint, REST or Hydra plugin.
+`toJsonLd()` throws "Not Implemented" (`methods.ts:413-415`): JSON-LD output is *claimed by the API surface, not found in code*.
+
+*Scores:* C1 3 · C2 5 · C3 4 · C4 2 · C5 4 · C6 5 · C7 2 · C8 3 · C9 3 · C10 2.
+
+*Verdict: borrow ideas* (alpha 1.0.0-alpha.51, fails DEC-5): client unit of work by graph diff, types and context generated from one shape, one plugin per backend.
+Risk: `DELETE DATA`/`INSERT DATA` patches carry no precondition, so lost updates are possible.
+
+=== Comparison
+
+[cols="2,2,2,2,2,2",options="header"]
+|===
+|Concern |LDkit |LDO |api-platform/admin |shacl-form |TanStack Query + OpenAPI codegen
+|Server contract |Raw SPARQL 1.1 Q+U |Solid / NextGraph |JSON-LD + Hydra (or OpenAPI) |Any RDF via URL resolver; SPARQL in query mode |REST / OpenAPI
+|Types from |Schema literal or SHACL/ShEx codegen |ShEx/SHACL codegen |Runtime introspection |Runtime from SHACL |OpenAPI → TS + zod
+|Write model |Per-property DELETE/INSERT/WHERE |Diff → DELETE DATA/INSERT DATA |JSON-LD POST/PUT/PATCH |Caller sends the serialised graph |As the API defines
+|Cache |none |in-memory dataset |TanStack + Mercure push |none |TanStack: cache, invalidation, optimistic
+|Server-side ACL compatible |No (open endpoint) |Yes (Solid WAC/ACP) |Yes |Yes |Yes
+|DEC-5 |fail |fail |pass |fail |pass
+|===
+
+=== Feature coverage (taxonomy v3)
+
+Counts over the 102 v3 features; grouped rows count once per id.
+A feature is n.a. when only a server, store or policy engine can have it (most AZ, Python-side G, T3/T8/T11, S15–S19).
+Absences were confirmed by grep over the source trees (`If-Match|ETag`, `idempot`, `cursor`, `graphql`: 0 hits in all four, tests excluded).
+
+[cols="2,1,1,1,1,4",options="header"]
+|===
+|Candidate |present |partial |absent |n.a. |Notable present/partial v3 features
+|jsonld.js |1 |4 |23 |74 |G6; partial AZ19 (static loader headers), G7 (consumer only), X22 (custom `documentLoader`), D11
+|@api-platform/admin |7 |13 |27 |55 |AZ19, U2, U3, U5, U6, E9 (Mercure), D11; partial G9/G11/G13 (consumer), U4, U9, U10, X17, X20, X21, RAD3, RAD4
+|shacl-form |3 |6 |27 |66 |G6, U4, U10; partial AZ19, G14, G16, G23 (`dcterms:conformsTo`), G24 (`sh:in`), U6 (client report only)
+|LDO |13 |12 |23 |54 |T1 (per resource), T5, T10, G8, G16, G17, E3, E9, U3, U7, X21, X22, AZ19; partial AZ10 (WAC docs), G4, G6, G7, G25, G27, T4, U1, U2, AZ24
+|===
+
+Code claims confirmed in round 4: @api-platform/admin `updateMany`/`deleteMany` are N parallel calls (`hydra/dataProvider.ts:793-804`); it follows `hydra:view` links but requests by `page` number (`:617-626`); `mutationMode` is pessimistic by default (`useOnSubmit.ts:24`).
+LDO `rollback()` discards the overlay (`subscribable-dataset/src/TransactionDataset.ts:271`); NextGraph reverts the local dataset only, not the remote (`connected-nextgraph/src/resources/NextGraphResource.ts:186-190`); `@id` is typed as plain `string` (`ShexJTypingTransformer.ts:108-113`).
+
+== Patterns catalogue
+
+[cols="3,3,4",options="header"]
+|===
+|Pattern |Seen in |Note for MWBv2
+|Contract-first typed client from OpenAPI (types, client, hooks, zod, mocks) |orval, hey-api, openapi-typescript |FastAPI already emits OpenAPI from LinkML-generated Pydantic; no new generator
+|Server-state cache with invalidation and optimistic updates |TanStack Query, react-admin `useUpdateCache.ts` |Needs stable IRIs as cache keys
+|JSON-LD reshape on the client (compact, frame) |jsonld.js |Generate context and frames from LinkML; bundle the context
+|Schema-introspected UI (guessers) |api-platform/admin |Fastest back office; dialect coupling
+|Shape-driven form + client validation |shacl-form, shaperone |SHACL from LinkML; server re-validates with pySHACL
+|JSON-Schema-driven forms |RJSF, JSON Forms |DEC-5-passing; loses IRIs and language strings unless encoded
+|Proxy object view + client unit of work by diff |LDO |Only for a near-direct-to-graph UI
+|Schema-as-value with inferred types, SPARQL directly |LDkit |Read-heavy UIs on a read-only endpoint
+|Server push patches the cache |api-platform/admin Mercure, LDO Solid notifications |Bridges L6 events to L5
+|Auth via one injected fetch |`fetchHydra`, LDO `fetch`, jsonld.js loader headers |One `authFetch` from oidc-client-ts for every library
+|Server validation errors → form fields |api-platform/admin |Return SHACL reports or RFC 9457 problems with a property path
+|JSON:API resource store |WarpDrive, Orbit, kitsu |Only for a semantic.works-style contract
+|Cypress + Gherkin over generated mocks |orval MSW, cypress-cucumber-preprocessor |Fixtures stay in sync with the contract
+|===
+
+Features from this angle (v3 ids): U1 generated typed SDK, U2 server-state cache, U3 push-to-cache bridge, U4 shape-driven forms, U5 schema-introspected admin, U6 validation report to field errors, U7 client unit of work by diff, U8 generated mocks, U9 capability hints for the UI (per-user filtering *not found* in api-platform/admin code), U10 shape-driven search UI, X22 bundled generated context, G7 model-generated context and frames, X19 optimistic-concurrency preconditions on writes, G11 Hydra documentation generation (LinkML has no such generator; verified).
+
+Round-4 proposals, merged into v4:
+
+* X23 strict JSON-LD processing: client and server fail when a context drops or cannot map a term, instead of losing data silently (jsonld.js safe mode, `lib/jsonld.js:122-126`);
+* U11 framework-neutral UI components (Web Components), so one widget serves React, Vue and Ember front ends (shacl-form, `src/form.ts:35`);
+* G34 conformance link: data carries `dcterms:conformsTo` to its shape, which selects the form, validation and type for that instance (shacl-form README:86-89);
+* U13 bulk operations sent as one batch with per-item results, not N parallel requests (a gap in @api-platform/admin, `dataProvider.ts:793-804`).
+
+=== Feature coverage (taxonomy v4)
+
+Counts over the 77 features added in v4 (round 5); grouped rows count once per id. Absences confirmed by grep (`aggregate`, `mcp`, `opentelemetry`, `If-Match|ETag`, tests excluded).
+
+[cols="2,1,1,1,1,4",options="header"]
+|===
+|Candidate |present |partial |absent |n.a. |Notable v4 features
+|jsonld.js |2 |2 |11 |62 |X23 (`safe: true`)
+|@api-platform/admin |0 |4 |26 |47 |partial B3, B4, B5, B12
+|shacl-form |3 |5 |20 |49 |G34 (`dcterms:conformsTo`), U11 (custom element)
+|LDO |3 |9 |24 |41 |B8 (change-set value), T14 (one dataset over several plugins, no cross-resource atomicity); partial U11, U13
+|===
+
+No client handles versions or ETags (B11 absent in all four), so B11, X19 and T2 belong in the service, wrapped once in the generated client.
+
+[[variant-fit]]
+== Variant fit
+
+Fit of each candidate to the system variants V1–V5 and development approaches A (runtime mapper), B (generated mapper and routes), C (generic service) of xref:architecture/soa/variants.adoc[variants].
+S = supports, E = enables, B = blocks, — = not relevant.
+
+[cols="3,1,1,1,1,1,1,1,1,4",options="header"]
+|===
+|Candidate |V1 |V2 |V3 |V4 |V5 |A |B |C |Note
+|jsonld.js |E |S |E |E |S |S |E |S |Needed wherever JSON-LD is on the wire; in B it applies the generated context and frames
+|@api-platform/admin |S* |B |S* |S* |— |S |S |E |*Only with the API Platform Hydra dialect; runtime introspection suits C
+|shacl-form |S |S |S |S |E |S |S |E |Framework-neutral (works in V2's Ember); query mode enables V5
+|LDO |B |B |B |B |B |— |S |— |Needs a new remote plugin for any variant; its codegen parallels B
+|LDkit |S |— |S |S |E |S |E |S |Graph-direct reads (V5)
+|N3.js, @rdfjs/types |S |S |S |S |E |S |S |S |Interop under jsonld.js, LDkit, shacl-form
+|Comunica |— |— |S |S |E |S |S |S |Client-side SPARQL and federation for V5
+|TanStack Query |E |S |E |E |E |S |E |S |One cache for every variant
+|react-admin, refine |S |S |S |S |— |S |S |E |Data-provider port: Hydra, OpenAPI, JSON:API
+|WarpDrive, Orbit, kitsu |— |E |— |— |— |— |S |S |The V2 (JSON:API) frontend
+|Apollo Client |S† |— |S† |S† |— |— |S† |— |†Only with a GraphQL view (G12)
+|orval, hey-api, openapi-typescript |E |S |E |E |S |S |E |S |B generates the OpenAPI that feeds them; C gives weaker generic types
+|zod |S |S |S |S |S |S |E |S |Generated by orval or hey-api
+|RJSF, JSON Forms |S |S |S |S |— |S |E |S |IRIs and language strings need custom widgets
+|@inrupt/solid-client, Soukai |B |B |B |B |B |— |— |— |Solid only
+|fluree-client |— |— |S (B for portability) |— |— |— |— |— |FlureeQL lock-in; plain fetch + TanStack Query is enough
+|oidc-client-ts, @zitadel/react |E |S‡ |E |E |E |S |S |S |‡V2 uses mu-identifier session cookies; OIDC only via a login service
+|Cypress + cucumber preprocessor |S |S |S |S |S |S |S |S |MWBv2 E2E
+|===
+
+V1, V3 and V4 share one L5 stack: TanStack Query, an OpenAPI-generated client, zod, jsonld.js, oidc-client-ts, RJSF or JSON Forms (or shacl-form).
+V2 swaps the data layer for WarpDrive or Orbit; V5 adds LDkit or Comunica for reads.
+Approach B gets the most from L5 (typed end to end); approach C is best served by runtime-introspecting UIs (react-admin, @api-platform/admin, shacl-form).
+
+== Recommended options per architecture variant
+
+The letters A–F here are the client-side contract options of this angle (round 3); they are neither the system variants V1–V5 nor the development approaches A–C of xref:architecture/soa/variants.adoc[variants], nor the store variants of xref:architecture/soa/angles/stores.adoc[Stores and change events].
+
+[cols="2,3,3,3",options="header"]
+|===
+|Variant (server contract) |Client stack |ACL fit (DEC-8) |Cost and risk
+|*A. Typed REST over JSON-LD* (recommended default): FastAPI, compacted JSON-LD with a generated context, OpenAPI |orval or hey-api + TanStack Query + zod; jsonld.js where expansion or framing is needed; RJSF / JSON Forms, or shacl-form; oidc-client-ts; Cypress + Gherkin |Clean: the API is the enforcement point; rdf-persistence stays ACL-agnostic |Lowest maintenance; all DEC-5 except shacl-form; TS types see compact terms only
+|*B. A + generated admin* (Hydra in the API Platform dialect) |@api-platform/admin for the back office, A for the product UI |Clean |Needs a new Hydra-doc generator (G11), and the server must copy the API Platform query parameters (`order[]`, `page`, `itemsPerPage`) and schema.org label and type hints. Cheaper: react-admin `<OpenApiAdmin>` (same filter dialect)
+|*C. semantic.works-compatible* (JSON:API, mu-cl-resources dialect) |WarpDrive / ember-data, or Orbit / kitsu, + TanStack Query |Clean |Needs a JSON:API generator; no JSON-LD on the wire. See xref:architecture/soa/libraries/semantic-works.adoc[semantic.works]
+|*D. Graph-direct reads* (read-only SPARQL endpoint + API for writes) |LDkit or Comunica for reads, shacl-form query mode; A for writes |Needs an authorising SPARQL proxy or store-native graph ACLs; see xref:architecture/soa/angles/authz.adoc[Authorization] |Flexible reads; the read ACL must live in the proxy
+|*E. Solid / LDP* |LDO or @inrupt/solid-client + solid-client-authn |Solid WAC/ACP |Only if pods are a product requirement
+|*F. Fluree* (FlureeQL JSON-LD, JWT policies) |Custom fetch + TanStack Query (fluree-client has low activity and fails DEC-5) |Fluree policies |Vendor lock-in; see xref:architecture/soa/angles/stores.adoc[Stores]
+|===
+
+In every variant:
+
+* Frontend auth is the same: an OIDC client obtains a token and one `authFetch` adds `Authorization: Bearer` for every library. L5 holds no policy; it only hides what the API reports as forbidden (U9).
+* rdf-persistence must expose stable IRIs and ETags or version predicates, so optimistic writes fail cleanly. LDkit, LDO and shacl-form send no preconditions.
+* orval and hey-api generate MSW handlers from the same OpenAPI for component and E2E tests.
+
+The service side of these contracts is covered in xref:architecture/soa/angles/service.adoc[Data-management service]; TS type generation in xref:architecture/soa/angles/codegen.adoc[Code generation].
+
+== Final verdict
+
+*jsonld.js: adopt* (dependency wherever JSON-LD is on the wire). *@api-platform/admin: integrate* (optional back office, only if the service speaks the API Platform Hydra dialect; otherwise react-admin `<OpenApiAdmin>`). *shacl-form, LDO: ideas*.
+
+. *The L5 stack is mainstream and RDF-agnostic; the RDF knowledge lives in the contract.* Generate OpenAPI, the JSON-LD context and frames, and SHACL from LinkML; use TanStack Query, orval or hey-api, zod, jsonld.js and oidc-client-ts. Every RDF-native JS client fails DEC-5 or is Solid-only.
+. *Concurrency and atomicity are server duties.* No client library sends ETags, idempotency keys or atomic batches, and LDO commits are atomic per resource only. Design B11, X19, T9 and U13 into the service and wrap them once in the generated client.
+. *Bundle the generated `@context` and process strictly.* jsonld.js refetches remote contexts unless the loader marks them static, and drops unmapped terms silently unless `safe: true` is set. A custom loader plus safe mode (X22, X23) prevents network coupling and silent data loss.
+
+== Open questions
+
+. Is the wire format compacted JSON-LD with a generated context, or must the UI see expanded IRIs? This decides whether jsonld.js is in the hot path.
+. Will DEC-5 be relaxed for leaf UI components behind a replaceable seam (shacl-form, LDkit)? If not, forms come from JSON Schema and IRIs, language strings and `sh:class` pickers need custom widgets.
+. Is a read-only, ACL-filtered SPARQL endpoint for the UI wanted (variant D)? If yes, the authorization angle must name the proxy.
+. Is a generated back office in MWBv2 scope? Hydra adds a generator (G11) and dialect coupling.
+. React or framework-neutral? semantic.works uses Ember; most mature options are React-first; shacl-form is neutral.
+. Is FastAPI's OpenAPI a better source of TS types than LinkML `gen-typescript`? Recommended, not tested.
+. Who provides preconditions, idempotency keys and atomic batches (X19, T9, X18)? No client library sends them, so the service must offer them and the generated client must wrap them.
+. Does react-admin clear its query cache on logout? Its cache is not partitioned by user (AZ22); not verified.
+
+== Sources
+
+* jsonld.js: https://github.com/digitalbazaar/jsonld.js (commit `7a93609`)
+* @api-platform/admin: https://github.com/api-platform/admin (commit `ab9239c`); https://api-platform.com/docs/admin/
+* shacl-form: https://github.com/ULB-Darmstadt/shacl-form (commit `5f430f5`); demo https://ulb-darmstadt.github.io/shacl-form/ (not fetched)
+* LDO: https://github.com/o-development/ldo (commit `80fb5ce`); https://ldo.js.org/latest/
+* LDkit: xref:architecture/soa/libraries/ldkit.adoc[LDkit page]
+* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/angle-jsclient.md`

@@ -1,0 +1,27 @@
+@startuml l2-containers-v1
+title C4 Container - V1 Portable Python core (ArchiMate semantics)
+left to right direction
+archimate #Application "Web UI" as UI <<application-component>>
+archimate #Application "Data-Management Service\n(embeds rdf-persistence)" as DMS <<application-component>>
+archimate #Application "Identity Provider" as IDP <<application-component>>
+archimate #Application "Authorization Engine" as PDP <<application-component>>
+archimate #Application "Triple Store" as TS <<application-component>>
+archimate #Application "Event Relay" as REL <<application-component>>
+archimate #Application "Event Channel" as CH <<application-component>>
+archimate #Application "Migration Runner\n(job, embeds rdf-persistence)" as MIG <<application-component>>
+archimate #Application "Data-Management API" as API <<application-service>>
+archimate #Application "Change Notification" as NOTIF <<application-service>>
+DMS .|> API : realizes
+REL .|> NOTIF : realizes
+API --> UI : serves
+NOTIF --> UI : serves
+UI --> IDP : sync
+DMS --> IDP : sync
+DMS --> PDP : sync
+DMS --> TS : sync
+REL --> TS : sync
+REL ..> CH : async
+CH ..> UI : async
+MIG --> TS : sync
+MIG --> IDP : sync
+@enduml

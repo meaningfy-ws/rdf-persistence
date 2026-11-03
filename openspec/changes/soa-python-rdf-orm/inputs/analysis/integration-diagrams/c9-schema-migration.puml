@@ -1,0 +1,20 @@
+@startuml
+title C9 LinkML schema diff -> migration -> SPARQL Update -> SHACL gate
+participant "LinkML v1 / v2" as LML
+participant "Schema differ (missing)" as DIFF
+participant "Migration compiler (missing)" as COMP
+participant "Migration runner (missing)" as RUN
+participant "SPARQL store" as ST
+participant "pySHACL" as PS
+LML -> DIFF : two SchemaViews + deprecated_element_has_exact_replacement hints
+DIFF -> COMP : rename / add / remove / range change / cardinality change
+COMP -> RUN : timestamped .sparql files (DELETE/INSERT/WHERE per change)
+RUN -> ST : take lock, check checksum, apply, write log triples (admin graph)
+RUN -> PS : validate migrated data with v2 shapes
+alt conforms
+  RUN -> ST : commit log entry
+else violations
+  RUN -> ST : run down migration or restore snapshot
+end
+note over DIFF, RUN : Nothing exists today: no LinkML diff command, linkml-map has no SPARQL compiler, mu-migrations-service has no lock/checksum/down
+@enduml

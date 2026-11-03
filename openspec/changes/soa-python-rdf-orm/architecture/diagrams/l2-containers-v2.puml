@@ -1,0 +1,25 @@
+@startuml l2-containers-v2
+title C4 Container - V2 semantic.works-compatible (ArchiMate semantics)
+left to right direction
+archimate #Application "Web UI\n(JSON:API client)" as UI <<application-component>>
+archimate #Application "Session Identifier" as IDN <<application-component>>
+archimate #Application "Request Dispatcher" as DSP <<application-component>>
+archimate #Application "Data-Management Service\n(JSON:API dialect, embeds rdf-persistence)" as DMS <<application-component>>
+archimate #Application "Authorizing SPARQL Proxy" as AZP <<application-component>>
+archimate #Application "Triple Store" as TS <<application-component>>
+archimate #Application "Delta Notifier" as DN <<application-component>>
+archimate #Application "Migration Runner" as MIG <<application-component>>
+archimate #Application "Data-Management API" as API <<application-service>>
+archimate #Application "Change Notification" as NOTIF <<application-service>>
+DMS .|> API : realizes
+DN .|> NOTIF : realizes
+API --> UI : serves
+UI --> IDN : sync
+IDN --> DSP : sync
+DSP --> DMS : sync
+DMS --> AZP : sync
+MIG --> AZP : sync
+AZP --> TS : sync
+AZP ..> DN : async
+DN ..> DMS : async
+@enduml

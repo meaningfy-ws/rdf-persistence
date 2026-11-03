@@ -1,0 +1,20 @@
+@startuml
+title C2 LinkML -> gen-pydantic (metadata_mode) -> runtime mapper
+participant "LinkML schema" as LML
+participant "gen-pydantic" as GP
+participant "Generated classes" as PY
+participant "rdf-persistence mapper" as MAP
+participant "Build check" as CHK
+LML -> GP : --meta auto (default) | full
+GP -> PY : class linkml_meta: class_uri (AUTO keeps it)
+GP -> PY : field json_schema_extra linkml_meta: slot_uri, domain_of
+GP -> PY : AUTO drops range, inlined, multivalued, identifier (expressed only as types)
+PY -> MAP : reference slot typed str (non-inlined class range) - target class unknown in AUTO
+PY -> MAP : inlined multivalued slot typed dict[str, X] (key = identifier)
+MAP -> CHK : require class_uri, slot_uri, range, identifier per field
+alt metadata_mode=full
+  CHK --> MAP : complete metadata
+else auto
+  CHK --> MAP : fail build or read metadata from SchemaView at runtime
+end
+@enduml

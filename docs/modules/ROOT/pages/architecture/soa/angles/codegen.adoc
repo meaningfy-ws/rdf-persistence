@@ -1,0 +1,278 @@
+= Modelling and code generation (L0)
+:description: What can be generated today along the UML → model2owl → LinkML chain, where the gaps are, and how generated code meets rdf-persistence.
+
+== Purpose of the angle
+
+The MWBv2 approach generates the backend from a model.
+The chain under study: UML (Enterprise Architect, SEMIC conventions) → model2owl → OWL, SHACL and JSON-LD context → LinkML → generated Python domain, persistence, JSON-LD context, SHACL, TypeScript types and JSON Schema / OpenAPI.
+
+This page answers: which generators exist, how good each output is, which known MWB gaps still hold, and what must be generated for rdf-persistence.
+
+Deep dives: LinkML (monorepo, now including `linkml_runtime`), model2owl (OP-TED upstream and the meaningfy-ws `feature/linkml` branch), schema-automator, shacl2code.
+
+== Key findings
+
+* *LinkML is the only mature schema source that fans out to every target we need.* Its generated Pydantic classes are free of persistence code and already carry the RDF mapping (`class_uri`, `slot_uri`) as metadata. That is what a separate mapper needs.
+* *No generator emits an RDF mapper, repositories or API routes from a LinkML or SHACL model*; the only mapper generator, LinkML `gen-sqla`, targets SQL. GitHub search found only 0-star personal repos.
+* *Language-tagged strings are lost along the whole chain*: model2owl's LinkML export, schema-automator and LinkML's own RDF loader and dumper all drop the tag. model2owl's SHACL still declares `rdf:langString`; the loss starts at the LinkML step.
+* *IRIs are typed as `str`*: `grep AnyUrl` over the LinkML monorepo returns 0 hits.
+* *TypeScript output is still weak*: enums are declared, but enum-typed fields are emitted as `string`; dates map to `date`, which is not a valid TS type.
+* *FastAPI's runtime OpenAPI is not clean when routes use LinkML Pydantic models*: every schema carries a non-standard `linkml_meta` object and IRIs are typed as plain `string`. LinkML's `gen-openapi` strips it (`openapigen.py:336-347`). Publish `gen-openapi` output, or strip it in a FastAPI `openapi()` hook (inferred from code, not observed at runtime).
+* *model2owl has no LinkML output upstream.* The export lives on a fork branch 365 commits behind. The SHACL → LinkML route via schema-automator is now the better path.
+
+== Landscape summary
+
+Stars and last push from `gh api`, downloads from pypistats or npm, all 2026-11-03.
+
+[cols="3,4,2,1,2",options="header"]
+|===
+|Candidate |Built for |DEC-5 |Layers |Fit
+
+|linkml/linkml (generators) |Built at Lawrence Berkeley National Laboratory (NCATS funds via Biolink/Translator). One schema → Pydantic, SHACL, OWL, JSON-LD context and frame, JSON Schema, OpenAPI components, TypeScript, GraphQL SDL, SQLAlchemy |pass (680★, 2026-11-02, 477 k/month) |L0 |dependency
+|linkml-runtime |RDF ↔ object round-trip, SchemaView; repo archived, code moved into the monorepo |pass (inherits monorepo; 550 k/month) |L0 L1 |dependency (ideas for the mapper)
+|schema-automator |OWL, RDFS, SHACL, JSON Schema, SQL → LinkML import |pass (inherits org; 68★, 2026-10-27) |L0 |build-time
+|linkml-store |Generic LinkML collections over DuckDB, Mongo, Neo4j, Solr; generic FastAPI |pass (inherits org; 27★); API unstable |L1 L4 |ideas
+|linkml-map |Schema-to-schema transforms |pass (inherits org; 50★) |L0 |build-time
+|linkml-dataops, linkml-project-cookiecutter |Patch operations; project scaffold |fail (stale, archived) |L0 L1 |none
+|model2owl (OP-TED; meaningfy-ws fork) |UML/XMI → OWL, SHACL, JSON-LD context, glossary, conventions report |fail (49★) but in-house asset |L0 |build-time (in-house; DEC-5 exception needed)
+|shacl2code |SHACL → standalone bindings in Python, C++, Go, Rust (SPDX 3) |fail (8★) |L0 L1 |ideas
+|LDO (`@ldo/cli`) |ShEx (and SHACL, converted with `@jeswr/shacl2shex`) → TS types and JSON-LD context; dataset proxy objects |fail (73★) |L0 L5 |ideas
+|LDkit |TS schema → SPARQL mapper |fail (83★) |L5 |ideas; see xref:architecture/soa/libraries/ldkit.adoc[LDkit]
+|shaclmate, on2ts, shex-codegen |SHACL/OWL/ShEx → TS |fail (9★; two archived) |L0 |none
+|SeMPyRO |Hand-written Pydantic for DCAT-AP v3 with RDF serialisation |fail (19★) |L1 |ideas
+|pydantic-rdf |Pydantic ↔ rdflib codec |fail (23★) |L1 |ideas; see xref:architecture/soa/libraries/pydantic-rdf.adoc[pydantic-rdf]
+|pydantic_jsonld, rdfs_pydantic, onto2py |Toy Pydantic/JSON-LD bridges and ontology → Pydantic |fail (0–3★) |L0 L1 |none
+|datamodel-code-generator |OpenAPI / JSON Schema → Pydantic v2; now in its own GitHub organisation (founded by koxudaxi) |pass (4,047★; 13.6 M/month) |L0 |build-time (limited, see below)
+|fastapi-code-generator |OpenAPI → FastAPI route skeletons |pass (1,408★) |L0 L4 |build-time (limited)
+|shacl-form |SHACL → HTML form web component |fail (93★) |L5 |ideas
+|Sparnatural |SHACL-configured visual SPARQL query builder |pass (315★; LGPL-3.0) |L5 |integrate
+|EMMOntoPy |Owlready2-based ontology tooling |fail (71★) |L0 |none
+|rdflib, pySHACL, pyld |Runtime targets of generated code |pass |L1 |dependency
+|===
+
+== Deep-dive findings
+
+=== LinkML
+
+*How it works.* Each generator subclasses `Generator`, reads a `SchemaView` and renders Jinja2 (`linkml/utils/generator.py`).
+
+* *Pydantic.* Templates can be overridden with `template_dir` (`pydanticgen/pydanticgen.py:233`); classes and fields can be injected (`:243-252`); output can be split per module (`:327, :379`).
+* *RDF metadata in generated classes (verified).* `linkml_meta: ClassVar[LinkMLMeta]` holds `class_uri`; field `json_schema_extra` holds `slot_uri` (`class.py.jinja`, `attribute.py.jinja:18`). LinkML (1.10–1.12) emits `class_uri` and `slot_uri` by default; `range`, `inlined`, `multivalued`, `required` and `identifier` appear only with `metadata_mode=full` or `except_children` (`pydanticgen.py:975-1016`; `pydanticgen/template.py:191`). A runtime mapper either infers them from the type annotations or the build uses `metadata_mode=full`. Generated classes import only pydantic.
+* *IRI typing.* `uri` and `uriorcurie` have `repr: str` (`types.yaml:125-148`), so fields are `str`. MWB gap still true.
+* *TypeScript.* Enums are declared as `export enum` (`:49-62`), but `range()` never checks enums, so enum-typed fields are emitted as `string` (`:188-231`). `xsd:date` maps to `date`, an invalid TS type (`typescriptgen.py:25-31`). MWB gaps still true.
+* *JSON-LD context and frame.* `jsonldcontextgen.py:83-86, 204-236` can emit a `.frame.jsonld` rooted at the tree-root class. New since the MWB evaluation; useful for an API returning framed JSON-LD.
+* *SHACL.* `shaclgen.py` (971 LOC) emits closed shapes, class/datatype/nodeKind, cardinality, pattern, `sh:in`, SPARQL constraints. `--default-language` tags schema labels, not instance data.
+* *OpenAPI.* `openapigen.py` fills `components/schemas` into a *user-supplied* template with `paths` (`:147-165, :537-600`). It does not generate operations. It strips generator bookkeeping (`linkml_meta`, `x-linkml-*`) from the published schemas (`:92, :336-347`); FastAPI's own OpenAPI does not (see Key findings).
+* *GraphQL.* `graphqlgen.py` (121 LOC) emits types, scalars, enums; no `Query` or `Mutation`.
+* *SQLAlchemy, the precedent for a separate mapper.* The default imperative template generates `Table(...)` objects and `map_imperatively(DomainClass, ...)` over the imported domain classes (`sqlalchemygen.py:68`). That is cosmic-python classical mapping. Relationship mappings are commented out. *No RDF analogue exists.*
+* *RDF round-trip in `linkml_runtime`.* The dumper writes IRIs for identifier slots and blank nodes otherwise (`rdflib_dumper.py:129`), enum `meaning` as IRIs (`:91-104`), ordered multivalued as `rdf:List` (`:150-162`), and `rdf:type` automatically (`:163-172`). *It never writes a language tag.* The loader finds roots by `rdf:type` (`rdflib_loader.py:95`), resolves polymorphism via a type designator (`:115-122`), raises on unmapped predicates unless told not to (`:134-137`) and returns `o.value`, losing the tag (`:263-270`). It is an in-memory converter: no session, identity map, diff, SPARQL, named graphs or store port.
+* *Instance typing.* JSON dumps carry only a top-level `@type` (`json_dumper.py:34-66`); nested types need a `designates_type` slot.
+
+[cols="2,1,6",options="header"]
+|===
+|Criterion |Score |Reason
+|C1 |3 |Every schema and contract target; no persistence, repository or API targets; no language tags.
+|C2 |4 |Persistence-free domain plus an imperative-mapping precedent; the RDF converter is not a mapper.
+|C3 |4 |CLI per generator, typed Pydantic v2 output, good docs; TypeScript weak.
+|C4 |3 |Heavy generator-side dependency tree; light runtime (pydantic).
+|C5 |5 |rdflib, pydantic, jinja2, openapi-spec-validator.
+|C6 |5 |Model-first by construction; domain classes free of persistence.
+|C7 |n.a. |No store access.
+|C8 |5 |Large test suite, CI, 477 k downloads/month, many contributors.
+|C9 |5 |Emits SHACL, OWL, JSON-LD context and frame, JSON Schema, OpenAPI, ShEx, GraphQL SDL.
+|C10 |3 |Active, but the monorepo merge and generator output churn need pinning and CI regeneration.
+|===
+
+*Verdict: adopt* as the L0 source of truth and generator host.
+*Extend* with custom Pydantic templates (IRI type, language-string type) and a new rdf-persistence generator that reads `linkml_meta` / SchemaView.
+*Borrow* from the loader and dumper (type designator, pointer resolution, unmapped-predicate policy) but do not use them as the persistence layer.
+
+=== model2owl
+
+*How it works.* XSLT 3.0 on Saxon, driven by Make. Turns an EA XMI export into OWL core, OWL restrictions, SHACL, a JSON-LD context, an HTML glossary, a ReSpec config and an SVRL conventions report.
+Upstream has no LinkML output. The fork branch `feature/linkml` (last commit 2025-02-25; 5 ahead, 365 behind) adds `src/linkML.xsl` and helpers.
+GitNexus indexes XSLT poorly, so evidence comes from reading files.
+
+Status of the MWB gaps on the fork branch:
+
+[cols="2,1,4",options="header"]
+|===
+|Gap |Status |Evidence
+|No `uri` type |fixed |`xsd:anyURI → uri`, `linkML-helpers.xsl:23`
+|Use `linkml:types` |fixed |`linkML.xsl` emits the import and `default_range: string`
+|`String` vs `string` |still present |untyped attributes fall back to `String`, `elements-linkml.xsl:187`
+|Enums |worse |enum URIs commented out; no `meaning` IRI, so SKOS concept IRIs are lost (`elements-linkml.xsl:343-375`)
+|NCName |workaround |names from `substring-after(@name, ':')`; dots replaced by `_` (`:72, :365`)
+|Language strings |lost |`rdf:langString` → `string`, `linkML-helpers.xsl:56-57`
+|===
+
+Upstream SHACL (`src/shacl-shape-lib/`) emits explicit shapes, including `rdf:langString` (`elements-shacl-shape.xsl:282`), which schema-automator can import.
+
+Scores: C1 3 · C2 3 · C3 2 · C4 3 · C5 3 · C6 5 · C7 n.a. · C8 3 · C9 4 · C10 3.
+
+*Verdict: integrate (in-house).* Keep model2owl for UML → OWL and SHACL.
+Do not invest in the XSLT LinkML exporter; go SHACL → LinkML via schema-automator instead.
+If the exporter stays, it must emit `meaning:` for enum values and a language-string type.
+
+=== schema-automator
+
+*How it works.* One importer engine per format in `schema_automator/importers/`.
+
+* The new SHACL importer (`shacl_import_engine.py`, 986 LOC) handles explicit, implicit and split shapes across files (`merge_classes`, `:571`), maps `sh:class`, `sh:node`, `sh:datatype`, `sh:in` (`:515`), `sh:or`, `sh:xone`, qualified shapes and cardinality (`:554`). It drops `sh:sparql` (documented, `:40-60`). CLI `import-shacl` (`cli.py:553-580`).
+* `rdf:langString` falls back to `string` (`:501`); the RDFS importer does the same (`rdfs_import_engine.py:362`).
+* The OWL importer requires OWL functional syntax (`owl_import_engine.py:37-40`).
+
+Scores: C1 3 · C2 3 · C3 3 · C4 3 · C5 5 · C6 4 · C8 3 · C9 4 · C10 3.
+
+*Verdict: integrate at build time*: model2owl SHACL → `schemauto import-shacl` → curated LinkML overlay, with a check that LinkML `gen-shacl` stays equivalent to the model2owl SHACL.
+
+=== shacl2code
+
+*How it works.* Reads a SHACL+OWL model (JSON-LD) and generates bindings from templates (`src/shacl2code/model.py`, `lang/templates/`).
+Generated Python is standalone (stdlib only): a `SHACLObject` base with typed property descriptors including `AnyURIProp` (`model.pyi.j2:68-330`), validation on assignment, an object set with identity by IRI and link resolution (`:512`), and pluggable JSON-LD encoder and decoder (`:394-590`).
+It reads path, datatype, class, nodeKind, cardinality, pattern and hasValue (`model.py:337-409`). No `rdf:langString` support. No store, no SPARQL.
+
+Scores: C1 2 · C2 3 · C3 3 · C4 4 · C5 1 · C6 3 · C8 3 · C9 3 · C10 3.
+
+*Verdict: borrow ideas* (fails DEC-5): IRI-typed descriptors, object-set identity, encoder/decoder port, multi-language generation from one shape model.
+
+=== Desk notes
+
+* *linkml-store* has no RDF or SPARQL backend; its FastAPI is generic, not per model. See xref:architecture/soa/angles/service.adoc[the service angle].
+* *datamodel-code-generator* (now in its own GitHub organisation) *+ fastapi-code-generator* (koxudaxi) would regenerate Pydantic from JSON Schema and *lose `linkml_meta`*. Use them only for route skeletons that import LinkML classes, or not at all (from docs, not code-checked).
+* *LDO* (o-development, Jackson Morgan; Solid community) is the best TS-side idea (shape → typed proxy objects over an RDF/JS dataset). It is ShEx-based, but its CLI also accepts SHACL by converting it with `@jeswr/shacl2shex` (`packages/cli/src/util/forAllShapes.ts:3`). It fails DEC-5.
+* *shacl-form, Sparnatural* are L5 consumers of generated SHACL. See xref:architecture/soa/angles/jsclient.adoc[the JS client angle].
+* *SeMPyRO* shows demand for SEMIC application-profile Pydantic classes; generating them from model2owl SHACL would replace hand-writing.
+
+=== Purpose and origin
+
+[cols="2,3,3,3",options="header"]
+|===
+|Tool |Built for |Origin and design angle |Where it fits
+|LinkML |A modelling language for data standards that generates schemas and code for many targets |Built at Lawrence Berkeley National Laboratory (Mungall group) for biomedical standards (Biolink / NCATS Translator, Monarch, NMDC); NCATS funds, it did not build it. Data-exchange-first: it validates and converts documents, it does not persist object graphs. This fits with its RDF round-trip being a converter that drops language tags |L0 in every variant; its Pydantic output is L1's domain layer; the runtime converter is not a persistence layer
+|model2owl |EA UML models following SEMIC conventions → OWL, SHACL, JSON-LD context, glossary, conventions report, for the eProcurement Ontology |OP-TED (Publications Office of the EU), built by Meaningfy. Publication-first; the LinkML exporter was a later Meaningfy experiment |L0 front end, upstream of LinkML; variant-independent
+|schema-automator |Bootstrapping a LinkML schema from OWL, RDFS, SHACL, JSON Schema, SQL or data |LinkML organisation. Reverse-engineering-first: import is lossy by construction, drops are logged (`shacl_import_engine.py:35-60`) |L0 build step between model2owl SHACL and LinkML
+|shacl2code |Typed bindings for the SPDX 3 SBOM model in several languages |Joshua Watt (SPDX / Yocto community). Exchange-format-first: the binding is the serialiser for one fixed JSON-LD context |Ideas for L0/L1 only
+|===
+
+=== Feature coverage (taxonomy v3)
+
+Counts over the 27 generation features G1–G27. Every non-G v3 feature is n.a. for these build-time tools, except X22 and U1 (partial for LinkML). Absences were confirmed by grep over the clones.
+
+[cols="2,1,1,1,1,4",options="header"]
+|===
+|Tool |Present |Partial |Absent |n.a. |Notable
+|LinkML |10 |4 |11 |2 |G1, G3, G4, G7, G9, G21–G24, G26 present; G2 (SQL only), G8, G12, G16 partial. Absent: G5, G6, G10, G11, G13–G15
+|model2owl |1 |7 |13 |6 |G18 present (conventions report)
+|schema-automator |4 |1 |11 |11 |G4, G17, G24, G26 present
+|shacl2code |5 |3 |18 |1 |G3, G5, G24, G25, G26 present
+|===
+
+No tool generates routes (G10), Hydra (G11), filter grammars (G13), SPARQL projections (G14) or authorization configuration (AZ29).
+
+=== Feature coverage (taxonomy v4 additions)
+
+Counts over the 21 L0-relevant v4 ids (B1, B2, B14, PG2, PG3, EV3, EV6, EV7, G28–G36, I7, D21, D25, U12). Every other v4 feature is n.a. (runtime, store, service or client).
+
+[cols="2,1,1,1,1,4",options="header"]
+|===
+|Tool |Present |Partial |Absent |n.a. |Notable
+|LinkML |3 |7 |10 |1 |G28 `gen-openapi`, I7 id ↔ IRI both ways, D21 executed tutorials (its own docs) present; partial B1, B14, PG3, EV6, EV7, G33, D25. No schema-diff (EV3), no `TypedDict` (G36)
+|model2owl |0 |4 |14 |3 |Partial B14, EV6, EV7 (`owl:versionIRI` on shapes), G31. Ignores UML aggregation and composition (B1 absent)
+|schema-automator |1 |0 |12 |8 |G29 importer drop report present
+|shacl2code |0 |1 |17 |3 |I7 partial
+|===
+
+No tool checks two SHACL outputs for equivalence (G30), emits `dct:conformsTo` (G34) or a Cypher projection (PG2).
+
+=== Variant fit
+
+S = supports, E = enables, B = blocks or conflicts, – = neutral.
+Approaches: A runtime mapper, B generated mapper and routes, C generic service (xref:architecture/soa/variants.adoc[variants]).
+
+[cols="3,1,1,1,1,1,1,1,1,4",options="header"]
+|===
+|Tool |V1 |V2 |V3 |V4 |V5 |A |B |C |Why
+|LinkML |S |S |S |S |S |E |S |E |`linkml_meta` / SchemaView drive A and C today; B needs a mapper and route generator we build. V2 needs a JSON:API generator
+|model2owl |S |S |S |S |S |S |S |S |Variant-neutral L0 front end
+|schema-automator |S |S |S |S |S |S |S |S |Variant-neutral build step
+|shacl2code |– |– |– |– |– |– |– |– |Ideas for B (codec, IRI properties)
+|linkml-store |– |– |– |– |– |– |– |– |Ideas for C (generic API shape; no RDF backend)
+|datamodel-code-generator |S |– |– |– |– |– |B |– |Client side only; regenerating server models drops `linkml_meta`
+|fastapi-code-generator |S |– |– |– |– |– |S |– |Skeletons, only if they import the LinkML models
+|LDO |– |– |S |– |E |– |S |– |TS objects over RDF/JS for the V5 read side
+|shacl-form |S |S |S |S |S |S |S |E |Forms from shapes
+|Sparnatural |– |– |S |S |E |– |– |S |SHACL-configured query builder
+|===
+
+*L0 is variant-neutral: V1–V5 all start from the same LinkML model; the generation choice is the A/B/C axis.*
+
+== Patterns catalogue
+
+[cols="3,3,4",options="header"]
+|===
+|Pattern |Exemplar |Use in MWBv2
+|Single schema, many generators |LinkML |Source of truth for Python, TS, SHACL, context
+|Metadata-carrying anemic domain |LinkML Pydantic `linkml_meta` |Domain stays pure; the mapper reads metadata
+|Classical (imperative) mapping |LinkML gen-sqla imperative; SQLAlchemy |Template for a generated RDF mapper registry
+|Runtime schema-driven mapper |`linkml_runtime` loader/dumper; mu-cl-resources |Mapper driven by SchemaView at runtime
+|Contract template + generated components |LinkML gen-openapi |API contract with hand-written paths
+|Shape → schema import |schema-automator `import-shacl` |model2owl SHACL → LinkML
+|Standalone binding + codec |shacl2code |Idea for a TS/JSON-LD codec
+|Shape → proxy objects over a dataset |LDO `jsonld-dataset-proxy` |TS client over JSON-LD responses
+|Conventions gate before generation |model2owl SVRL report |Quality gate in CI
+|Overridable templates + injected bases |LinkML `template_dir`, `injected_*` |Custom IRI and language-string types
+|===
+
+== Recommended options per architecture variant
+
+*Recommended chain:* UML → model2owl → OWL + SHACL + context → `schemauto import-shacl` (or curated LinkML) → LinkML → `gen-pydantic` with custom templates as the *domain layer*; the rdf-persistence mapper reads `linkml_meta` / SchemaView as the *adapters layer*; `gen-shacl` for write-time validation; `gen-jsonld-context --emit-frame` for the API; `gen-typescript` with a custom template (or LDO-style codegen) for the UI.
+
+Generated code is built at build or test time and never edited. Pin the LinkML version and diff generated output in CI.
+
+Nothing in L0 touches authorization. L0 may generate *policy inputs* (class and predicate lists per aggregate) for an external PEP, never policies (DEC-8). See xref:architecture/soa/angles/authz.adoc[the authorization angle].
+
+[cols="2,3,3,3,3",options="header"]
+|===
+|Variant |L0 chain |Mapper |API |Trade-off
+|Approach A: generated domain + runtime mapper |model2owl → LinkML → gen-pydantic |rdf-persistence reads `linkml_meta` at runtime |FastAPI hand-written or generated; JSON-LD via context and frame |Least generator code to own
+|Approach B: generated domain + generated mapper and repositories |same |New Jinja generator per aggregate, like gen-sqla imperative |Generated FastAPI routes |Most MWBv2-like; we own a generator
+|Shapes-first (not an approach in variants) |model2owl SHACL as source → shacl2code-style generator |Generated bindings |— |Skips LinkML and its ecosystem
+|OpenAPI-first (a contract route for approach B) |LinkML → gen-openapi → fastapi-code-generator |Separate |Generated skeleton |Loses `linkml_meta` unless models are imported
+|Approach C: generic service |LinkML SchemaView at runtime |Generic |Generic CRUD (linkml-store or mu-cl-resources style) |Zero code per model; weak typing for domain logic
+|===
+
+Features from this angle in xref:architecture/soa/feature-taxonomy.adoc[taxonomy v3]: G1 persistence-free classes carrying RDF metadata, G2 generated mapper/repository layer, G3 overridable templates, G4 split generation, G5 IRI-typed fields, G6 language-string type, G7 JSON-LD context and frame, G9 OpenAPI from schema plus operations template, G10 route generation per aggregate, G17 shape import with multi-file merge, G18 conventions gate, G21 generated data-quality SPARQL, G22 generated RML/YARRRML, G23 type-designator slot, G24 enum values bound to concept IRIs, G25 standalone bindings with object-set identity, U4 and U10 shape-driven UI, G27 build-time regeneration with version pin and golden-file diff.
+
+Round-4 proposals, now v4 ids:
+
+* G28: strip generator bookkeeping (`linkml_meta`, `x-linkml-*`) from published contracts (LinkML `openapigen.py:92, 336-347`);
+* G29: an importer drop report: constructs dropped or degraded on import (e.g. `sh:sparql`, dangling ranges → `uriorcurie`) are listed (schema-automator `shacl_import_engine.py:35-60, 756-790`);
+* G30: a SHACL equivalence check in CI: shapes from two generation paths (model2owl SHACL and LinkML `gen-shacl`) are checked as equivalent (found nowhere).
+
+== Open questions
+
+. After UML, is curated LinkML or model2owl SHACL the master? This decides whether `import-shacl` runs once or on every build.
+. Which language-string representation do we standardise: `dict[lang, str]`, `list[LangString]` or rdflib `Literal`? It needs a LinkML type, a template and mapper support.
+. Contribute fixes upstream (TS enum typing, `date` → `Date`, `uri` → `AnyUrl` option) or keep custom templates?
+. Generated mapper (approach B) or runtime mapper (approach A)? Does "generated, never-edited" extend to repositories and routes?
+. Retire the meaningfy-ws `feature/linkml` XSLT exporter in favour of `import-shacl`?
+. Publish the `gen-openapi` contract, or strip `linkml_meta` in a FastAPI `openapi()` hook? And generate Pydantic with `metadata_mode=full`, or let the runtime mapper infer `range`/`multivalued` from annotations?
+
+*Not checked:* no generator was run; the FastAPI `linkml_meta` leak is inferred from Pydantic's `json_schema_extra` merge and LinkML's own stripping code; fastapi-code-generator, datamodel-code-generator, LDO, shacl-form and linkml-store claims come from READMEs and listings only.
+
+== Final verdict
+
+*LinkML (with linkml_runtime): adopt* as an L0 dependency; its generated Pydantic is the L1 domain layer, its runtime converter only ideas. *model2owl: build-time* (in-house UML → OWL/SHACL front end; DEC-5 exception needed; drop the fork's LinkML exporter). *schema-automator: build-time* (SHACL → LinkML import). *shacl2code: ideas.*
+
+. *LinkML gives you the model and the metadata, not the persistence.* Generated Pydantic carries `class_uri`/`slot_uri`, but `range`/`multivalued`/`inlined`/`required`/`identifier` reach `linkml_meta` only with `metadata_mode=full` (or the mapper infers them from annotations). The RDF mapper, repositories and routes are ours to build (approach A or B).
+. *Three gaps must be closed by us, in templates and the mapper, before the chain is lossless:* language-tagged strings (lost from the LinkML step on), IRI typing (`str`, not `AnyUrl`) and enum concept IRIs (`meaning`), plus the weak TS generator if TS types come from LinkML.
+. *Pin and gate the chain.* Generator output changes between LinkML minors and two paths emit SHACL (model2owl, `gen-shacl`): pin versions, regenerate in CI, diff generated code (G27), check the two SHACL outputs stay equivalent (G30), and publish `gen-openapi` output or strip `linkml_meta` (G28). Decide early whether model2owl SHACL or curated LinkML is the master.
+
+== Sources
+
+* LinkML: https://github.com/linkml/linkml (commit `d48b197`); https://linkml.io/linkml/generators/openapi.html; in-repo `docs/generators/*.rst`
+* model2owl: https://github.com/OP-TED/model2owl (commit `351ee02`); fork https://github.com/meaningfy-ws/model2owl branch `feature/linkml`
+* schema-automator: https://github.com/linkml/schema-automator (commit `0cf0e88`)
+* shacl2code: https://github.com/JPEWdev/shacl2code (commit `ba438c3`)
+* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/angle-codegen.md`

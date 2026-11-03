@@ -1,0 +1,27 @@
+@startuml bc-actors-goals
+title Actors and their goals with the rdf-persistence ecosystem
+left to right direction
+actor "Business User" as BU
+actor "Model Custodian" as MC
+actor "Software Builder" as SB
+actor "UI Developer" as UID
+actor "End User" as EU
+actor "External Consumer" as EC
+actor "Operator" as OP
+rectangle "rdf-persistence ecosystem" {
+  usecase "Model to code" as G1
+  usecase "Persist and query domain objects" as G2
+  usecase "Data-management API" as G3
+  usecase "Change notifications" as G4
+  usecase "Store and schema operations" as G5
+}
+BU --> G3
+MC --> G1
+SB --> G1
+SB --> G2
+UID --> G3
+EU --> G3
+EC --> G3
+EC --> G4
+OP --> G5
+@enduml

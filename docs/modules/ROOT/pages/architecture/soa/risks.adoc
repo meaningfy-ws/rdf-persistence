@@ -1,0 +1,47 @@
+= Risks and licences
+:description: The top ecosystem risks and the licence findings for the recommended components. Not legal advice.
+
+== Licence findings
+
+- The *only licences that can block a product* are BUSL-1.1 (Fluree: customer-defined schemas
+  are named in the prohibition) and the commercial stores (GraphDB EE, Stardog). AGPL (Zitadel,
+  Mercure) and GPL-2.0 (Virtuoso) are safe *as unmodified separate services* but trigger
+  client procurement objections; keep an Apache-licensed alternative for each (Keycloak, plain
+  SSE, Fuseki/RDF4J).
+- rdf-persistence itself can stay permissive (Apache-2.0 or MIT): all runtime *dependencies* are
+  permissive; GPL/LGPL items are services, build-time tools or idea sources.
+
+The full register (licence, governance and bus factor per component) is in the raw report
+`openspec/changes/soa-python-rdf-orm/inputs/analysis/angle-integration.md`, Part 2. This is not
+legal advice; items marked for a legal check need one before commitment.
+
+== Risk register
+
+Likelihood and impact: L low, M medium, H high. Variants: V1 portable, V2 semantic.works, V3
+Fluree, V4 GraphDB, V5 graph-direct reads.
+
+[cols="1,4,1,1,1,2,3,4",options="header"]
+|===
+|# |Risk |Kind |Lik. |Imp. |Variants |Early signal |Mitigation
+|R1 |*Fluree BUSL-1.1 may forbid our product shape* (customers define schemas; legal reading needed) |licence |M |H |V3 |product brief mentions customer-defined models or multi-tenant ledgers |legal reading before any V3 commitment; commercial licence quote; keep Fluree behind the store port so V1 remains the fallback
+|R2 |*Authorization leak through an unscoped query shape* (count, get-by-IRI, GROUP BY, include, export, SPARQL escape hatch) |security |H |H |V1, V2, V5 |a repository method or endpoint added without a scoped-user contract test; totals differ between users with different scopes |scope injected at the port, not per repository; contract suite runs every repository method as a restricted user (AZ30); 404 instead of 403 (AZ33)
+|R3 |*Trusted identity headers / credentials abused* (sparql-parser groups, Fluree `Request` credential, `fluree-default-allow`) |security |M |H |V2, V3, V5 |identity headers reachable from outside the service network; service credential reused by other services |strip `mu-auth-*`/`fluree-*` at the edge; one credential per service, short-lived, rotated; network policy; prefer `Fixed` Fluree credentials
+|R4 |*Silent data loss in the model chain* (lang tags, constraints, enum meanings dropped on import/generation) |technical |H |M |all |round-trip SHACL diff grows; multilingual labels stored without tags; enums stored as literals |overlay convention + generation profile; CI equivalence gate model2owl SHACL vs LinkML SHACL (G30); importer drop report (G29)
+|R5 |*Mapper writes references as literals* because `--meta auto` drops `range`/`identifier` |technical |H |H |all |`"ex:p1"^^xsd:string` objects in the store; SHACL `sh:nodeKind sh:IRI` violations |`--meta full` + build-time metadata completeness check; mapper refuses classes without complete metadata
+|R6 |*SHACL commit gate rejects valid commits* (closed shapes vs bookkeeping; `sh:class` vs aggregate-only data graph) |technical |H |M |all |validation failures on version/commit-token predicates in the first integration test |`--non-closed` or generated `ignoredProperties`; bookkeeping off the root subject; commit-time shape profile + nightly full validation
+|R7 |*Single-maintainer foundations* (share of commits by the top contributor: pySHACL 79 %, Oxigraph 90 %, Jena 75 %, Authlib 75 %, LDkit 95 %, shacl-form 97 %, Mercure 77 %) |maintenance |M |M |all (LDkit/shacl-form: V5, C-approach UIs) |release cadence drops; issues unanswered > 3 months; maintainer job change |keep each behind a port with a second implementation reachable (Fuseki ↔ Oxigraph ↔ RDF4J; PyJWT ↔ Authlib); vendor-in the small JS libraries; sponsor or contribute upstream
+|R8 |*LinkML upstream churn or funding change* (grant-funded; frequent generator changes) |maintenance |M |H |all |breaking changes in minor releases; generator output diffs on upgrade; funding announcements |pin LinkML; golden-file tests of generated code; own the custom templates; contribute fixes upstream (URI types, lang strings)
+|R9 |*No portable multi-request transaction; partial writes* where a proxy chunks updates or a commit is split |technical |M |H |V2 (chunking proxy), V1 if a commit outgrows one request |commits exceeding a size threshold; store-specific request size errors |one request per commit by design; store port reports capability; refuse degraded mode unless opted in (design-implications)
+|R10 |*Lost or duplicated events* (no outbox; post-commit in-process publish as in API Platform) |technical |M |M |all |UI caches stale after restarts; consumers see the same delta twice |outbox triples in the same update; relay with at-least-once + dedupe by event IRI; ids-only payloads
+|R11 |*OpenFGA ListObjects truncation* (1 000 cap, 3 s deadline, no partial flag) |technical |M |M |V1, V5 |users report missing records; ListObjects latency near 3 s |StreamedListObjects; group graphs to keep lists short; alert on result size ≥ 900 and on latency; never derive totals from a truncated scope
+|R12 |*AGPL / GPL procurement rejection* (Zitadel, Mercure, Virtuoso) |licence |M |M |V1–V5 (Zitadel); V2 (Virtuoso); L6 (Mercure) |client security/legal questionnaire lists AGPL as forbidden |Keycloak, plain SSE, Fuseki/RDF4J as tested alternatives; OIDC-only coupling to the IdP
+|R13 |*Schema evolution without migrations* (no LinkML diff, no SPARQL migration runner) |technical |H |M |all |first model change after go-live needs hand-written SPARQL; data drifts from shapes |migration runner (lock, checksum, log triples, up/down) + SHACL gate in the first EPIC that ships data; Fluree branches for rehearsal in V3
+|R14 |*Polyglot operations burden* (Common Lisp proxy, Elixir dispatcher, Rust/Java stores, XSLT/Saxon toolchain, Node UI) |skills |M |M |V2 strongest; V1 lightest |on-call cannot debug a component; upgrades postponed |V1 as default; limit integrate-level services per deployment; runbooks and testcontainers fixtures per store; model2owl kept as a build container
+|R15 |*Drift between parallel contracts* (JSON:API, JSON-LD + Hydra, OpenAPI, SHACL, TS types) generated from one model by different generators |technical |M |M |V1, V3, V4 (B approach most) |a field present in one rendering and absent in another; schemathesis failures |one resource registry feeding all renderers; schemathesis + JSON-LD round-trip tests in CI; one generation Make target with pinned flags
+|R16 |*Lost update: the guarded commit is atomic but not isolated on some stores, and the design is unverified* (on-disk Oxigraph checks the guard on a snapshot and writes without a lock; RDF4J/GraphDB isolation untested; Virtuoso autocommit unsafe) |technical |M |H |all |a concurrency test in the store conformance suite fails; two writers both succeed on the same version |store capability "serialises guarded updates"; adapter write lock where it does not; a concurrency spike on Fuseki, Oxigraph, GraphDB before the first EPIC commits to the change-set compiler (BL-3)
+|===
+
+*Top five by likelihood × impact:* R2 authorization leak by query shape · R5 references written
+as literals · R1 Fluree BUSL for customer-defined schemas · R4 silent loss in the model chain ·
+R13 schema evolution without migrations. R16 (lost updates on non-serialising stores) and R6
+(the SHACL commit gate) follow closely.

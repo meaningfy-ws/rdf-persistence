@@ -1,0 +1,269 @@
+= State of the art: integrated findings
+:description: Distilled findings of the state-of-the-art review of RDF persistence, ORM and rapid-application-development building blocks, for system architects.
+:toc: macro
+
+[NOTE]
+====
+*Status:* final, after round 5 of 5 (2026-11-03). Raw evidence:
+`openspec/changes/soa-python-rdf-orm/inputs/analysis/`.
+====
+
+== Decision in brief
+
+* *Reuse* the mature foundations at every layer: rdflib, Oxigraph, LinkML, pydantic, pySHACL,
+  FastAPI, Zitadel, OpenFGA, jsonld.js, TanStack Query.
+* *Build* one thin core — mapper, aggregate session, change-set compiler, repositories, store
+  port, policy port, outbox, test kit — and the companions that make the chain work.
+* *Borrow* authorization; never build a policy engine.
+* *Decide* the open questions listed at the end; nothing here decides them for you.
+
+*Reading path:* xref:architecture/soa/build-vs-reuse.adoc[build versus reuse] →
+xref:architecture/soa/risks.adoc[risks and licences] →
+xref:architecture/soa/variants.adoc[architecture variants] →
+xref:architecture/soa/design-implications.adoc[design implications]. For depth:
+xref:architecture/soa/integration.adoc[integration paths],
+xref:architecture/soa/architecture-analysis.adoc[architecture analysis],
+xref:architecture/soa/building-blocks.adoc[building-block map],
+xref:architecture/soa/catalogue.adoc[tool catalogue],
+xref:architecture/soa/feature-taxonomy.adoc[feature taxonomy], and the library and angle pages.
+
+toc::[]
+
+== Bottom line
+
+. *Reuse the foundations, build one thin core.* No Python object–RDF mapper is mature; every one
+  fails the reuse threshold. The core to build is well-defined (see
+  xref:architecture/soa/build-vs-reuse.adoc[build versus reuse] for items and rough sizes).
+. *LinkML is the strongest candidate model source (ADR-03 open).* Its generated Pydantic classes
+  are persistence-free and carry the RDF IRIs a mapper needs. Nothing generates RDF repositories,
+  mappers or API routes. URIs are typed as `str`. The TypeScript generator and language-tagged
+  strings remain weak.
+. *Atomicity shapes the persistence design.* On the portable path, one SPARQL Update request is
+  the only atomic unit, so a commit becomes one request. The request carries a version check
+  for optimistic concurrency. All checks must sit in a single operation, because a failed check
+  skips only its own operation. Atomic is not isolated: some stores (on-disk Oxigraph) need a
+  write lock. Vendor transactions (RDF4J, GraphDB, embedded Fluree) are the alternative
+  (ADR-05, ADR-10 open).
+. *Authorization is borrowed, never built.* Zitadel for identity; OpenFGA, SpiceDB or pycasbin
+  for decisions; Fluree or GraphDB when triple-level policies inside the store are needed;
+  `sparql-parser` for the semantic.works route. Graph-level is the only granularity every store
+  supports. No general-purpose policy engine has a SPARQL adapter. rdf-persistence needs only a
+  thin enforcement port.
+. *The service contract is the integration point.* Serve one LinkML-derived resource model as
+  JSON:API (semantic.works dialect, plus Atomic Operations), JSON-LD with Hydra, and OpenAPI —
+  the API Platform design. Then the JavaScript side is mature, RDF-agnostic tooling.
+. *A thin unit of work, aggregate-shaped.* The model to copy is Spring Data JDBC: one
+  repository per aggregate root, whole-aggregate load and save, version on the root, references
+  by IRI. A commit is a plain value — a change set compiled to one guarded update with its
+  outbox triples (as Ecto's `Multi`). "One aggregate per transaction" becomes a policy.
+. *Developers can love a Data Mapper.* ODMantic (Data Mapper) does CRUD plus a query in 9
+  lines; Django (Active Record) in 11. RDF forces six deliberate differences, each with a
+  mainstream precedent.
+. *Fluree changed.* v4 has SPARQL, a Python package, OIDC and triple-level policies stored as
+  RDF — closest to the wanted policy language. Its BUSL-1.1 licence may forbid a product where
+  customers define schemas; a legal reading is needed.
+. *The seams are where the work is.* Of nine hand-offs followed through code, seven need a fix
+  we own and three parts do not exist yet: the policy port, the outbox and relay, schema-diff
+  migrations. See xref:architecture/soa/integration.adoc[integration paths].
+. *Day-2 is the quiet gap.* No migrations from schema changes, no testcontainers module for RDF
+  stores, no OpenTelemetry conventions for SPARQL.
+. *Property graphs: not now, door open.* Four seams the RDF design needs anyway keep a Neo4j
+  adapter possible; Amazon Neptune serves both models today.
+. *Top risks:* authorization leaks through unscoped query shapes; references written as literals;
+  Fluree's licence; silent data loss along the model chain; schema change without migrations;
+  lost updates on stores that do not serialise writes. See
+  xref:architecture/soa/risks.adoc[risks].
+
+== Glossary
+
+[cols="1,5",options="header"]
+|===
+|Term |Meaning
+|MWBv2 |Mapping Workbench v2: Meaningfy's model-driven development approach (UML → LinkML → generated backend → data service → JS UI)
+|Aggregate |A cluster of objects saved together in one transaction, reached through one root (DDD)
+|Unit of work |The object that tracks changes during a session and writes them together on commit
+|Guarded update |A SPARQL `DELETE … INSERT … WHERE` whose WHERE clause checks the expected version
+|Outbox |Event records written in the same update as the data, then delivered by a relay
+|PEP / PDP |Policy enforcement point (where access is checked) / policy decision point (the engine that decides)
+|ReBAC |Relationship-based access control (OpenFGA, SpiceDB)
+|CQRS |Separate models for writes and for reads
+|GSP |SPARQL 1.1 Graph Store Protocol: HTTP access to whole named graphs
+|BUSL-1.1 |Business Source License: source-available, with restrictions on commercial use
+|DEC-5 |The reuse threshold: more than 200 GitHub stars and a commit in the last 12 months
+|L0–L6 |Building-block layers (modelling, domain, stores, authorization, service, client, events)
+|V1–V5, A–D |System variants and development approaches, see xref:architecture/soa/variants.adoc[variants]
+|===
+
+== Landscape at a glance
+
+Scores 0–5 rate *design quality, not suitability as a dependency* — that is the DEC-5 column.
+C1 features, C2 patterns, C3 friendliness, C4 ease of adoption, C5 reuse of foundations, C6
+data-centric/DDD fit, C7 SPARQL portability, C8 health, C9 composability, C10 maintainability,
+DX developer experience. See xref:architecture/soa/method.adoc#scoring[Method].
+
+[cols="3,2,1,1,1,1,1,1,1,1,1,1,1,4",options="header"]
+|===
+|Library |DEC-5 |C1 |C2 |C3 |C4 |C5 |C6 |C7 |C8 |C9 |C10 |DX |Verdict
+
+|xref:architecture/soa/libraries/sparqlmodel.adoc[sparqlmodel] |fail (0★) |3 |3 |4 |3 |3 |2 |3 |3 |2 |2 |4 |Ideas: session ergonomics, depth loading
+|xref:architecture/soa/libraries/triplemodel.adoc[triplemodel] |fail (0★) |2 |3 |4 |4 |3 |3 |1 |3 |2 |2 |3 |Ideas: owned-predicate writes, write modes
+|xref:architecture/soa/libraries/rdfmapper.adoc[rdfmapper] |fail (0★) |1 |2 |2 |3 |3 |2 |1 |2 |2 |2 |2 |Ideas: derived finders, SHACL from model
+|xref:architecture/soa/libraries/pydantic-rdf.adoc[pydantic-rdf] |fail (23★, dormant) |1 |2 |4 |4 |4 |3 |0 |2 |3 |3 |3 |Ideas: best fit for a LinkML Pydantic template
+|xref:architecture/soa/libraries/rdfproxy.adoc[rdfproxy] |fail (7★) |1 |4 |3 |3 |3 |2 |4 |4 |3 |3 |3 |Ideas: read models, multi-store tests (GPL)
+|xref:architecture/soa/libraries/surf.adoc[SuRF] |fail (dead) |2 |2 |2 |1 |3 |1 |1 |1 |1 |1 |2 |Ideas: reader/writer split, eager loading
+|xref:architecture/soa/libraries/oldman.adoc[OldMan] |fail (archived) |3 |3 |2 |1 |4 |3 |4 |1 |3 |1 |2 |Ideas: JSON-LD context mapping, snapshot diff
+|xref:architecture/soa/libraries/owlready2.adoc[Owlready2] |fail (stale GitHub mirror) |3 |2 |4 |3 |0 |2 |1 |3 |1 |2 |3 |Build-time reasoner check only (needs DEC-5 exception and Java in CI)
+|xref:architecture/soa/libraries/semantic-works.adoc[semantic.works] |fail (each repo < 20★) |3 |3 |3 |2 |2 |2 |3 |3 |3 |2 |3 |Compatible: JSON:API, deltas; optional proxy
+|xref:architecture/soa/libraries/prez.adoc[Prez] |fail (40★) |1 |3 |2 |2 |4 |2 |4 |4 |4 |3 |2 |Ideas: repository port, typed SPARQL AST
+|xref:architecture/soa/libraries/ldkit.adoc[LDkit] |fail (83★, one maintainer) |3 |4 |5 |5 |4 |4 |5 |4 |5 |4 |4 |Integrate for graph-direct reads only (DEC-5 exception); mirror its API
+|xref:architecture/soa/libraries/neomodel.adoc[neomodel] |pass (Neo4j only) |4 |4 |5 |4 |4 |2 |1 |5 |1 |4 |5 |The developer-experience benchmark
+|===
+
+The nine angles have their own pages: xref:architecture/soa/angles/codegen.adoc[modelling and code
+generation], xref:architecture/soa/angles/stores.adoc[stores and transactions],
+xref:architecture/soa/angles/authz.adoc[identity and authorization],
+xref:architecture/soa/angles/service.adoc[data-management service],
+xref:architecture/soa/angles/jsclient.adoc[JavaScript client and UI],
+xref:architecture/soa/angles/ddd.adoc[DDD boundaries], xref:architecture/soa/angles/dx.adoc[developer
+experience], xref:architecture/soa/angles/evolution.adoc[evolution, testing, operations],
+xref:architecture/soa/angles/lpg.adoc[property graphs].
+
+[#patterns]
+== Patterns worth borrowing
+
+[cols="2,5,2",options="header"]
+|===
+|Concern |Pattern |Seen in
+
+|Mapping
+|Mapping read from metadata, not written in domain classes: LinkML `class_uri`/`slot_uri`
+(LinkML), `Annotated` field markers (pydantic-rdf), a JSON-LD context as the mapping (OldMan,
+though OldMan itself is Active Record), one schema value (LDkit). Target: persistence-free domain
+classes (Data Mapper).
+|LinkML, pydantic-rdf, OldMan, LDkit
+
+|Identity
+|Identity map keyed by (class, IRI) per session (sparqlmodel); pluggable IRI minting —
+namespace + id (triplemodel, reversible), counters or UUIDs (OldMan), `mu:uuid`
+(semantic.works); skolem IRIs for blank nodes (OldMan, triplemodel); equality by persistent id
+(neomodel).
+|sparqlmodel, triplemodel, OldMan, semantic.works, neomodel
+
+|Writes
+|Owned-predicate semantics — replace only mapped predicates (triplemodel, sparqlmodel);
+per-attribute snapshots diffed into one `DELETE DATA ; INSERT DATA` request (OldMan); one
+request per commit guarded by a version check, with outbox triples in the same request
+(recommended by the stores angle; implemented nowhere yet).
+|triplemodel, sparqlmodel, OldMan, angle: stores
+
+|Transactions
+|Store port that reports its real capability: single-request atomic (portable), vendor
+transaction API (RDF4J, GraphDB, Fluree), or degraded (chunking proxy) with compensations and a
+warning.
+|angle: stores, rdflib
+
+|Aggregates
+|Composition vs reference decides cascade on save and delete; orphan clean-up protects shared
+references. LinkML has no composition construct (`inlined` is serialisation-only), so aggregate
+boundaries need annotations or an `inlined` + shared convention, checked at generation time.
+|sparqlmodel, OldMan
+
+|Reads
+|Explicit depth (sparqlmodel); one-query eager loading — VALUES + UNION (OldMan, semantic.works
+includes), sub-select with UNION (SuRF), CONSTRUCT around a paginated SELECT (LDkit); read models
+separate from the write model (rdfproxy); totals and facets (Prez, semantic.works).
+|SuRF, semantic.works, LDkit, rdfproxy, Prez
+
+|Queries
+|Typed SPARQL syntax tree (Prez); safe parameter binding (Owlready2, LDkit, neomodel);
+Django-style lazy query sets (`filter(field__op)`, `Q` objects), per-model `DoesNotExist`, errors
+that name model and property (neomodel).
+|Prez, neomodel, Owlready2, LDkit
+
+|Authorization
+|One enforcement port with three modes: pass-through (behind a proxy or store-native policies),
+graph-scope filter injected into every generated query, including counts and single-item reads
+(API Platform's query-extension hook; Prez's typed query tree as the injection point), identity
+forwarded to the store (neomodel impersonation, LDkit token forwarding). Decisions from an
+external engine.
+|angle: authz, API Platform, Prez, neomodel, LDkit
+
+|Service contract
+|One resource model rendered as JSON:API, JSON-LD + Hydra and OpenAPI, persistence behind two
+ports (provider, processor), a query-extension hook where the application adds row filters before
+pagination (API Platform; it emits ETags but checks no `If-Match`); conditional writes with
+ETag/If-Match (Community Solid Server).
+|API Platform, semantic.works, Community Solid Server
+
+|Developer experience
+|`with session:` and transaction decorators; async-first with generated sync API; lifecycle
+hooks; typed generics; a short, complete CRUD example on page one.
+|neomodel, sparqlmodel, LDkit
+|===
+
+== Anti-patterns observed
+
+* *SPARQL built by string concatenation* — injection risk in rdfmapper, triplemodel (ASK path),
+  OldMan, sparqlmodel, semantic.works.
+* *Several requests for one logical write* — partial writes in sparqlmodel, SuRF and behind
+  semantic.works' chunking proxy.
+* *No lost-update protection* — no version, ETag or guarded update in any Python mapper.
+* *Shared client-side caches behind an authorizing proxy* — sparqlmodel's mirror can serve one
+  user's data to another.
+* *Filters that skip counts or single-item reads* — rdfproxy's policy hook would leak totals, single-item lookups and the rows inside grouped results.
+* *Trusting identity headers inside the network* — `sparql-parser` accepts group and sudo headers from any internal caller; only the edge (`mu-identifier`) strips them from browsers.
+* *Active Record coupling* and *untyped dynamic attributes* — conflict with generated,
+  persistence-free LinkML classes and lose IDE help.
+* *Re-implementing the RDF stack* — Owlready2, triplemodel, semantic.works.
+
+== Gaps nobody fills
+
+. A *unit of work over any SPARQL 1.1 store* — one atomic request per commit, optimistic
+  concurrency, honest capability reporting.
+. A *Data Mapper driven by LinkML metadata*, so generated Pydantic classes stay
+  persistence-free.
+. A *generator from LinkML to repositories, FastAPI routes and service contracts* (JSON:API,
+  JSON-LD + Hydra, OpenAPI).
+. A *policy-enforcement port* that turns authorization-engine decisions into SPARQL graph
+  scopes.
+. *LinkML template fixes*: IRI types (`AnyUrl`), language-tagged strings, TypeScript enums and
+  dates.
+
+== Open questions for the developer
+
+. *Licences:* is Fluree's BUSL-1.1 acceptable for MWBv2? Is Zitadel's AGPL acceptable (Keycloak
+  is the fallback)? Is rdfproxy's GPL a blocker for borrowing code (ideas are fine)?
+. *Granularity:* graph-level authorization enough, or is triple-level required?
+. *UI access:* will the UI ever send free SPARQL? If yes, only store-native or proxy enforcement
+  is safe.
+. *Contract:* strict compatibility with semantic.works' JSON:API? UUID or IRI as JSON:API id?
+  API Platform Admin compatibility as a goal? GraphQL needed at all?
+. *Model source:* after UML, is the master the curated LinkML or model2owl's SHACL? Fix LinkML
+  upstream or keep custom templates?
+. *Generation:* runtime mapper (approach A) or generated mapper and routes (approach B)?
+. *Unit of work:* refuse stores that break single-request atomicity, or degrade with
+  compensations and a warning? Version triple per aggregate or named graph per aggregate?
+. *Events:* own outbox, or the store's or proxy's change capture? RDF Patch or semantic.works
+  changeSets?
+. *Reuse threshold:* does it also apply to services used over HTTP (e.g. `sparql-parser`), and
+  can it be relaxed for replaceable leaf UI components (shacl-form)?
+
+. *Design of the core:* aggregate-boundary declaration, default commit policy, version
+  placement, event dispatch, typed metamodel, multi-valued representation, `LangString` form —
+  listed in xref:architecture/soa/design-implications.adoc#open-questions[design implications].
+. *Property graphs:* is there a real project need, or is Neptune enough? Must LPG data round-trip
+  losslessly to RDF? Does the domain need edge properties?
+. *Owlready2 as a build-time reasoner check:* needs an explicit exception to the reuse threshold
+  and Java in CI (ROBOT is an unanalysed alternative).
+
+== Rounds
+
+[cols="1,6",options="header"]
+|===
+|Round |Scope
+|1 |Twelve libraries and platforms, analysed with GitNexus and documentation against taxonomy v0 (43 features).
+|2 |Every library cross-checked against the 63 features found in round 1 (taxonomy v1); 19 more found (v2).
+|3 |Five new angles (identity and authorization, modelling and code generation, data-management service, JavaScript client and UI, stores, transactions and events), about 150 more candidates, 18 more deep dives; developer experience, authorization seams, code-generation fit, C9 and C10 for every library; v2 cross-check. Taxonomy v3: 227 features (102 new, in new areas authorization, generation, transactions, events and UI). Catalogue: 169 tools.
+|4 |Four new angles (DDD boundaries and transactions, developer-experience benchmarks, property graphs, evolution/testing/operations); every library and angle re-checked against the 102 v3 features, with purpose and origin and fit per architecture variant; about 40 corrections applied (security of semantic.works headers settled; API Platform, Fluree, Oxigraph, OldMan claims corrected against code). Taxonomy v4.
+|5 |Final cross-check of the 77 v4 features; every polished page reviewed by its analyst (about 120 corrections, including a flaw in our own commit design: confirm against an append-only commit record, and lock on-disk Oxigraph); new angle: integration paths, licences and risks; architecture analysis refreshed; build-versus-reuse matrix. Taxonomy v5: 305 features.
+|===

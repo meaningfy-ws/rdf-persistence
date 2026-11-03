@@ -1,0 +1,286 @@
+= Stores and change events
+:description: Which RDF stores and Python clients give us atomic writes, transactions and change events, and how a store-agnostic unit of work should sit on top of them.
+
+== Purpose of the angle
+
+This angle covers layer L2 (stores and transactions) and layer L6 (change events).
+It asks three things: what atomicity can rdf-persistence rely on portably, where real transactions exist, and how changes can be published.
+It also re-checks the 2024 Fluree evaluation, an open action in the MWBv2 brief.
+
+Deep dives with clone, GitNexus index and code reading: Fluree DB v4, Oxigraph, rdflib stores and clients, RDF Delta.
+Jena/Fuseki, RDF4J, GraphDB, Stardog, Virtuoso, QLever, AllegroGraph and Neptune are desk-only (docs and the RDF4J OpenAPI spec).
+
+*Headline findings.*
+
+. *Fluree v4 closed most 2024 gaps and opened a new one.* It is a Rust rewrite with SPARQL 1.1 Query, Update and GSP, an official embedded Python package, optimistic transactions, file load, OIDC bearer tokens and fail-closed policies. General cascade delete is still missing; v4 cascades only edge annotations (`docs/transactions/retractions.md:198-208, 385`). The licence is now *BUSL-1.1*, which forbids offering Fluree as a "Database Service" where third parties define their own schemas (`LICENSE:15-27`).
+. *One SPARQL Update request = one atomic transaction* is the only portable guarantee. Fuseki/TDB2, Oxigraph, Fluree, RDF4J and GraphDB honour it. Atomic is not isolated: whether the guard read and the write are serialised against concurrent requests differs per store (yes: TDB2, in-memory Oxigraph, Fluree; no: on-disk Oxigraph; untested: RDF4J/GraphDB). Virtuoso does only outside row-autocommit mode. semantic.works' sparql-parser breaks it on purpose by re-chunking into ≤100-quad batches. rdflib already joins buffered edits into one request (`rdflib/plugins/stores/sparqlstore.py:722-739`).
+. *Multi-request transactions exist only through vendor APIs:* RDF4J REST (also GraphDB), Stardog, and Fluree in-process only. rdflib ≥ 7.5 ships an RDF4J client with a `Transaction` context manager (`rdflib/contrib/rdf4j/client.py:741-860`); 7.6 adds a GraphDB client with ACL management (`rdflib/contrib/graphdb/client.py:78-378`).
+. *Embedded isolation is weaker than it looks.* Oxigraph's on-disk (RocksDB) transactions are snapshot read plus write batch with no conflict detection (`lib/oxigraph/src/storage/rocksdb_wrapper.rs:474-493, 1047-1056`); the in-memory store serialises writers. In Python each call is atomic; transactions exist in Rust only. Optimistic concurrency must live in the persistence layer.
+. *Change events have no single standard.* RDF Patch (now in Jena as `jena-rdfpatch`) is the closest. Fluree publishes ledger-head SSE events only; semantic.works emits rich `changeSets` from its proxy.
+
+== Landscape summary
+
+DEC-5: more than 200 stars and a commit after 2025-11-03; packages of a qualifying org inherit. Measured 2026-11-03.
+
+[cols="3,4,3,1,1",options="header"]
+|===
+|Candidate |Built for |DEC-5 (stars, last push) |Layers |Fit
+
+5+|*Stores*
+|Apache Jena Fuseki + TDB2 |SPARQL 1.1 server; serializable, multiple readers and one writer per request |pass (1,494, 2026-11) |L2, L6 |integrate
+|Oxigraph server / pyoxigraph / oxrdflib |Embedded and server SPARQL 1.1 store; JSON-LD 1.1 in/out; atomic per-call updates in Python (multi-operation transactions in the Rust API only) |pass (2,021, 2026-11; pyoxigraph 267k dl/month) |L2 |dependency
+|Eclipse RDF4J server |SPARQL 1.1 server with REST transactions |pass (423, 2026-11) |L2 |integrate
+|Ontotext GraphDB |Commercial store on the RDF4J protocol; RBAC and graph ACLs |n.a. (closed product) |L2, L3, L6 |integrate
+|Virtuoso Open Source |SPARQL store; weak update atomicity |pass (977, 2026-10) |L2 |compatible
+|Stardog |Commercial store with explicit transactions |n.a. (closed; pystardog 42) |L2, L3 |compatible
+|QLever |Very large read-mostly SPARQL index; updates as a delta layer |pass (935, 2026-11) |L2 |integrate (read model)
+|Blazegraph |SPARQL store |fail (archived 2023) |— |none
+|Fluree DB v4 |Ledger store: JSON-LD, SPARQL, time travel, data-centric policies |pass on numbers (477, 2026-11); *licence BUSL-1.1, not OSI* |L2, L3, L6 |integrate (optional)
+|TerminusDB |Git-like document store; WOQL/GraphQL, no SPARQL |pass (3,469, 2026-11) |L2 |none
+|AllegroGraph |Commercial store with sessions |n.a. (closed) |L2 |compatible
+|rdflib Memory / BerkeleyDB |In-process stores for tests |pass (2,545; 13M dl/month) |L2 |dependency
+|Amazon Neptune |Managed store; Neptune Streams CDC |n.a. (service) |L2, L6 |compatible
+
+5+|*Python clients*
+|rdflib `SPARQLUpdateStore` |Buffered edits, one joined Update on `commit()` |pass (rdflib) |L2 |dependency
+|rdflib `contrib.rdf4j` + `RDF4JStore` |RDF4J REST transactions over httpx (7.5.0); contributed by Edmond Chuc |pass (rdflib) |L2 |dependency
+|rdflib `contrib.graphdb` |GraphDB client with ACL, cluster, import (7.6.0) |pass (rdflib) |L2, L3 |dependency
+|SPARQLWrapper |Raw SPARQL requests |pass (570, push 2026-04; last release 2022) |L2 |dependency
+|`fluree` (PyPI) |Embedded Fluree engine; first release 2026-10-08 |pass (monorepo); BUSL; very young |L2 |integrate (optional)
+|pystardog, agraph-python |Vendor SDKs |fail (42, 49) |L2 |none (unless chosen)
+|terminusdb-client |TerminusDB client |pass (org); stale (2023-11) |L2 |none
+|aioflureedb, sparqlx, rdf4j-python, graphdb-client |Old Fluree client; async SPARQL client; small RDF4J/GraphDB clients |fail (≤10) |L2 |ideas (sparqlx) / none
+
+5+|*Change events and deltas*
+|RDF Patch (`jena-rdfpatch`) |Line-based delta format with `id`/`prev` headers and transaction brackets |pass (Jena) |L6 |compatible
+|RDF Delta |Patch-log server, HA Fuseki |fail (92; "going to be archived") |L6 |ideas
+|semantic.works delta-notifier |`changeSets` fan-out over HTTP with rules |fail (0) |L6 |ideas (format)
+|Fluree events + commit log |SSE head events, then pull commits |pass / BUSL |L6 |integrate (optional)
+|Solid Notifications |AS2 JSON-LD notifications over WebSocket/webhook/SSE |spec (CSS 610) |L6 |ideas
+|GraphDB Kafka sink |Inbound Kafka into GraphDB |fail (7) |L6 |none
+|App-level outbox → broker |Pattern |— |L6 |ideas
+|===
+
+== Deep-dive findings
+
+=== Fluree DB v4
+
+*What changed since 2024.*
+
+[cols="2,2,3",options="header"]
+|===
+|2024 finding |2026-11 status |Evidence
+|No SPARQL 1.1 endpoint |Closed. Query "in progress toward full" (700+ W3C tests in CI); Update except remote LOAD; GSP indirect only |`docs/reference/compatibility.md:86-200`
+|No Python client |Closed, very young: embedded, typed wheel; first release 2026-10-08 |`fluree-db-python/README.md`
+|No bulk file load |Closed: Turtle/TriG/JSON-LD `insert(path)`, DataFrames, `/import` |README; `docs/api/endpoints.md:787`
+|Closed-mode policy docs missing |Closed: `default-allow: false` is fail-closed; policies in SPARQL or JSON-LD WHERE with `$identity` |`docs/security/policy-model.md:5-38, 233-248`
+|JWT identity policies |did:key-signed requests and OIDC/JWKS bearer tokens |`docs/security/authentication.md:27-74`
+|No cascade delete |Still open for entities; v4 cascades only edge annotations |`docs/transactions/retractions.md:198-216, 385`
+|No ORM |Still none for Python |—
+|Licence open source |Now BUSL-1.1; Apache-2.0 four years after each version |`LICENSE:1-51`
+|===
+
+*Transactions* (confirmed on the finished GitNexus index, repo `db`). `Transaction` holds a base head, a stager, staged operations and a `read` flag (`fluree-db-api/src/transaction.rs:155-169`).
+Each `stage()` checks policy, SHACL and uniqueness. `commit()` writes one commit.
+If another commit landed and the transaction did not read, the engine re-bases and re-stages it, up to 16 times under the ledger write lock (`MAX_RETRIES`, l.419-431); policy is re-evaluated against the new head. If it did read, it raises `CommitConflict` (module doc l.14-28; check l.418-431).
+Python maps this to `fluree.ConflictError` (HTTP 409, `fluree-db-python/src/error.rs:42-82`); `ledger.transact(fn)` is the caller-level retry for transactions that read.
+Savepoints (`savepoint` l.276, `rollback_to` l.291) are Rust-only: Python uses them internally for Cypher scripts and does not expose them.
+Multi-operation transactions are embedded-only: `begin_transaction` has one caller, `fluree-db-python/src/transaction.rs:47`.
+Limits: only on local-commit hosts, "A Raft or peer host must not offer transactions to its clients" (`transaction.rs:36-40`). Over HTTP each request is one commit; the only compare-and-swap is a guarded WHERE. No `If-Match` header on `/update` was found.
+
+*Per-graph configuration.* A policy cannot target a named graph (only `f:onProperty/onClass/onSubject`). Ledger config can still set per-graph policy defaults and policy sources through `f:graphOverrides` / `f:targetGraph`, for example `defaultAllow false` for one sensitive graph (`docs/ledger-config/README.md:51, 152-182`).
+
+*Events.* `GET /v1/fluree/events` streams ledger-head records over SSE, on transaction servers only (`docs/api/endpoints.md:2996-3017`). Fact-level changes are pulled from `/commits`, `/show` (policy-filtered) or `ledger.changes(commit)` (`_connection.py:800-851`).
+
+*Scores:* C1 4 · C2 4 · C3 4 · C4 4 · C5 3 · C7 4 · C8 4 · C9 3 · C10 3. Performance claims ("2M facts/s") are the vendor's, not verified.
+
+*Verdict: integrate behind the store port as an optional backend.* Not the default until BUSL is checked against the MWBv2 product model and the Python package matures. Enter through SPARQL over HTTP; use the embedded package as an in-process adapter. Borrow the optimistic model (re-base if unread, conflict if read) and `transact(fn)` retry.
+
+=== Oxigraph, pyoxigraph, oxrdflib
+
+*How it works.* One engine ships as server, CLI, Python, JS/WASM and an rdflib plugin. JSON-LD 1.1 is in/out by default (`lib/oxjsonld`).
+
+* `Store` promises "repeatable read … no partial writes" (`lib/oxigraph/src/store.rs:70-72, 372-378`).
+* `start_transaction()` (Rust API only, `lib/oxigraph/src/store.rs:406`) is a RocksDB snapshot plus write batch; `commit()` is a plain batch write with no conflict check (`rocksdb_wrapper.rs:474-493, 1047-1056`). On disk, concurrent read-modify-write is last-writer-wins.
+* The in-memory backend serialises writers with a lock (`storage/memory.rs:29, 73-77`).
+* Python: `update`, `load`, `extend` are atomic (`python/src/store.rs:116, 317, 382`); `bulk_load` is not (l.502). No Python-level `start_transaction`: multi-statement atomicity means one `update()` with `;`-joined operations.
+* Server: `/query`, `/update`, `/store` (GSP); no auth, the README puts nginx in front (`server/README.md:73-85, 123-150`).
+
+*Scores:* C1 3 · C2 4 · C3 4 · C4 5 · C5 4 · C7 5 · C8 5 · C9 5 · C10 4.
+
+*Verdict: adopt* as the default embedded and test store and a light server option. Concurrent writers on the on-disk store need a write lock in the adapter: the guard runs on a snapshot and the commit is an unconditional batch write, so a guarded update alone can lose an update (`update.rs:106-117`, `rocksdb_wrapper.rs:1047-1056`). The in-memory store serialises transactions (`storage/memory.rs:73-84`).
+
+=== rdflib stores and clients
+
+* *`SPARQLUpdateStore`:* `autocommit=False` buffers SPARQL strings; `commit()` sends them as one `;`-joined request; `rollback()` drops them (`plugins/stores/sparqlstore.py:722-739`). No conflict detection. Footgun: `dirty_reads=False` forces a commit before every read (l.675-696), so reading inside the unit of work silently flushes.
+* *`AuditableStore`:* wraps any store with a reverse-operation log replayed on `rollback()` — "A and I out of ACID", no durability (`plugins/stores/auditable.py:1-12`). The canonical compensation pattern.
+* *`contrib.rdf4j` (7.5.0) and `contrib.graphdb` (7.6.0):* httpx clients; `Transaction` maps to `POST …/transactions`, `PUT ?action=COMMIT`, `DELETE` (`contrib/rdf4j/client.py:810-856`), with query, update and upload inside (l.899-1044). The GraphDB client adds ACL management (l.78-376). `RDF4JStore` itself is not transaction-aware (`plugins/stores/rdf4j.py:73`).
+
+*Scores:* C1 3 · C2 3 · C3 3 · C4 5 · C5 5 · C7 4 · C8 5 · C9 5 · C10 4.
+
+*Verdict: adopt.* Use the buffer-then-join idea under our own unit of work, which must not flush on read. Wrap `contrib.rdf4j.Transaction` as the RDF4J/GraphDB transactional adapter.
+
+=== RDF Delta and RDF Patch
+
+* RDF Patch: a line format with `TX/TC/TA` brackets, `A/D` rows and `H id` / `H prev` headers. Maintained inside Jena.
+* RDF Delta: a patch-log server with memory, file, RocksDB, S3 and Zookeeper stores, plus HA Fuseki.
+* `PatchLogBase.append` (l.150-187), under a log-wide lock: a re-sent head patch is idempotent; `prev` must equal the current head (compare-and-swap); if the index save fails, the stored patch is deleted (compensation).
+* README line 3: "This project is going to be archived"; 92 stars.
+
+*Verdict: borrow ideas:* RDF Patch as delta wire format, `prev` CAS, idempotent replay, the patch log as outbox. A Python RDF Patch writer is small.
+
+=== Purpose and origin
+
+[cols="2,3,3,3",options="header"]
+|===
+|Candidate |Built for / by |Design angle |Therefore fits
+|Fluree DB v4 |Temporal, verifiable, git-like ledgers with policy enforcement; Fluree PBC. v1–v3 in Clojure, v4 a Rust rewrite (2026-04-22) |Ledger-first, policy as data; many query surfaces over one engine |L2 + L3 + L6 in one box; home of V3; plain SPARQL store in V1/V5. Not where BUSL or single-vendor lock-in is unacceptable
+|Oxigraph / pyoxigraph / oxrdflib |Small, fast, standards-strict SPARQL 1.1 database as a library (Rust, Python, JS) or server; Thomas Pellissier Tanon (`CITATION.cff`), community project |Store-first, conformance-first: no auth, no history, no vendor extensions |L2 only: the embedded/test store in every variant, a light V1 store, a V5 replica. Never the policy point
+|rdflib stores + contrib clients |The Python RDF toolkit (RDFLib community since 2002); `contrib.rdf4j` / `contrib.graphdb` contributed by Edmond Chuc (`CHANGELOG.md:17-39`), a bus-factor note for T3 |Library-first, store-agnostic: graph API over a pluggable `Store` with capability flags |L1/L2 base for all variants; T1 baseline, T3 adapter for V4, T4 fallback for V2
+|RDF Delta / RDF Patch |Change recording for replication, backup and HA Fuseki; Andy Seaborne. RDF Patch now in Jena; RDF Delta to be archived |Replication-log-first: ordered patch log with `prev` CAS, consumers pull |L6 format and ideas (E2, E5, T9); runtime only in Jena deployments
+|===
+
+=== Feature coverage (taxonomy v3)
+
+102 v3 features per candidate. Absences were confirmed by grep over the clones. Generation and UI ranges (G1–G11, G13–G27, U1–U10) are n.a. for all.
+
+[cols="3,1,1,1,1,4",options="header"]
+|===
+|Candidate |Present |Partial |Absent |n.a. |Notable
+|Fluree v4 (+ `fluree` PyPI) |27 |11 |17 |47 |AZ1, AZ2, AZ5, AZ8–AZ11, AZ17–AZ19, AZ26; G12; T1, T2, T5, T6, T9; E3–E5; S15–S19; RAD4; D11. Partial: T3 (embedded only), T7, T8 (Rust only)
+|Oxigraph / pyoxigraph / oxrdflib |3 |5 |46 |48 |T1, S18, D11 present; T2, T5 (Rust only), S17, X18, X21 partial. Its value is in v0–v2 (S1–S3, X1–X2)
+|rdflib stores + contrib clients |4 |12 |39 |47 |T1, T3, T4, D11 present; T7 partial (`Store` flags)
+|RDF Delta / RDF Patch |4 |6 |39 |53 |E2, E5, T9, X21 present
+|===
+
+=== Feature coverage (taxonomy v4)
+
+77 v4 features per candidate. Boundary, mapper, migration, generation, UI and DX ranges (B1–B6, B11–B12, PG1–PG3, EV1–EV7, G28–G36, I7–I8, U11–U13, D14–D19, D21–D28) are n.a. for a store. Absences confirmed by grep (`cascade`, `opentelemetry`, `testcontainers`).
+
+[cols="3,1,1,1,1",options="header"]
+|===
+|Candidate |Present |Partial |Absent |n.a.
+|Fluree v4 (+ `fluree` PyPI) |13 |5 |5 |54
+|Oxigraph / pyoxigraph / oxrdflib |3 |3 |11 |60
+|rdflib stores + contrib clients |1 |6 |11 |59
+|===
+
+=== Variant fit
+
+S = supports, E = enables (the variant depends on it), B = blocks or conflicts, – = neutral.
+Approaches: A runtime mapper, B generated mapper and routes, C generic service (xref:architecture/soa/variants.adoc[variants]).
+
+[cols="3,1,1,1,1,1,1,1,1,4",options="header"]
+|===
+|Candidate |V1 |V2 |V3 |V4 |V5 |A |B |C |Why
+|Fluree v4 |S |– |E |– |S |S |S |E |Policy-filtered SPARQL endpoint for V5; GraphQL schema inferred from SHACL helps C (`docs/query/graphql.md:17-30`)
+|`fluree` PyPI |S |– |E |– |– |S |S |– |Embedded adapter; T3/T6 in-process
+|Oxigraph / pyoxigraph |E |– |S |S |S |E |E |S |Dev/test default; fast test loop; V5 replica
+|oxrdflib |S |– |– |– |– |S |S |– |rdflib API on Oxigraph
+|rdflib `SPARQLUpdateStore` |E |S |S |S |– |E |E |S |T1 baseline; in V2 atomicity is lost behind the proxy
+|rdflib `AuditableStore` |S |E |– |– |– |S |S |– |Compensations behind a chunking proxy (V2)
+|rdflib `contrib.rdf4j` / `contrib.graphdb` |S |– |– |E |– |S |S |– |T3 transactions and ACL admin for V4
+|RDF Patch (Jena) |S |B |– |S |E |– |– |– |Outbox format feeding replicas; V2 uses `changeSets` (translate)
+|Fuseki / TDB2 |E |S |– |– |S |– |– |– |Production store; with sparql-parser untested
+|GraphDB |S |– |– |E |S |– |– |– |V4's store
+|Virtuoso |S |E |– |– |S |– |– |– |V2 default; weak atomicity
+|QLever |– |– |– |– |E |– |– |– |Read model only
+|TerminusDB, Blazegraph |B |B |B |B |B |– |– |– |No SPARQL / archived
+|===
+
+Store choice is almost orthogonal to approaches A–C; Fluree is the exception, because its GraphQL schema derives from SHACL and makes C cheaper.
+V1 rests on Oxigraph (dev), Fuseki or GraphDB (prod) and rdflib `SPARQLUpdateStore` with our guarded updates; V3 is the only variant with transactions, history and triple-level policy in one engine.
+
+== Patterns catalogue
+
+[cols="3,2,2,3",options="header"]
+|===
+|Pattern |Atomicity |Concurrency |Where seen / portability
+|*P-a Single-request flush:* the unit of work diffs new, dirty and removed objects into one multi-operation Update |Per request, store-guaranteed (not Virtuoso autocommit, not behind sparql-parser) |none alone |rdflib `SPARQLUpdateStore`; Fluree. Any SPARQL 1.1 endpoint
+|*P-b Guarded update:* a version triple per aggregate root checked in the same WHERE; no match means conflict |Per request |Optimistic per aggregate |Fluree conditional updates. Any endpoint; Update returns no row count, so confirm with an `ASK` on an append-only commit record unique to the commit (a fresh IRI written inside the same guarded operation, e.g. the outbox record; never an overwritable triple on the root). The ASK must hit the primary, not a replica; it cannot catch a race the store did not serialise. Fluree's commit receipt (`t`, flake counts) makes the ASK unnecessary. Changes, new children and outbox triples all go in the same guarded operation: a separate `INSERT DATA` still runs when the guard fails
+|*P-c Vendor multi-request transaction* |Real ACID |Store isolation |rdflib `contrib.rdf4j`, pystardog, Fluree embedded. Behind an adapter
+|*P-d Embedded optimistic transaction with retry* |ACID, one process |Optimistic + retry |Fluree `transaction.rs`, `transact(fn)`. Idea portable to our unit of work
+|*P-e Compensation / undo log* |Best effort |none |rdflib `AuditableStore`; RDF Delta. Fallback for degrading stacks
+|*P-f Named-graph swap* (stage, then `MOVE`/`COPY` or GSP `PUT`) |Atomic graph replace |Last writer wins per graph |Any GSP endpoint; suits one graph per aggregate
+|*P-g ETag / If-Match on a graph* |Per request |Optimistic per graph |Not found as conditional writes in Fuseki, Oxigraph or Fluree GSP; borrow for our own service
+|*P-h Patch log with `prev` CAS* |Log append atomic |Optimistic on the log head |RDF Delta
+|*P-i Transactional outbox:* the same flush writes a change record into an outbox graph; a relay publishes it |Atomic with the data |Ordered by sequence |Idea; none found in RDF libraries
+|*P-j Proxy-emitted deltas* |Depends on the proxy |— |semantic.works sparql-parser → delta-notifier
+|*P-k Ledger history as audit trail* |n.a. |n.a. |Fluree `at(t)`, `history()`
+|*P-l Head-moved notification + pull* |n.a. |n.a. |Fluree SSE + `/commits`
+|===
+
+*Recommended unit-of-work layering (ACL-agnostic).*
+
+----
+UnitOfWork (domain-facing)  ── identity map, new/dirty/removed sets
+   │ flush(): diff → ChangeSet (inserts, deletes, guards, outbox record)
+   ▼
+TransactionalStore port  (capabilities: single_request_atomic, multi_request_tx, history)
+   ├─ SparqlHttpAdapter      → P-a + P-b (+ P-i)   Fuseki, Oxigraph server, Fluree HTTP, RDF4J/GraphDB, QLever
+   ├─ Rdf4jTxAdapter         → P-c (rdflib.contrib.rdf4j)   RDF4J, GraphDB
+   ├─ PyOxigraphAdapter      → P-a in-process (+ lock or P-b)
+   ├─ FlureeEmbeddedAdapter  → P-c / P-d
+   └─ RdflibMemoryAdapter    → P-e (AuditableStore) for tests
+----
+
+* The port carries an opaque request context (bearer token, headers). The persistence layer then works behind any authorizing proxy and holds no ACL logic (DEC-8; see xref:architecture/soa/angles/authz.adoc[Authorization]).
+* Capability flags pick P-c, else P-a, else P-e, and warn when atomicity degrades.
+
+Features from this angle in xref:architecture/soa/feature-taxonomy.adoc[taxonomy v3]: T1 single-request atomic flush, T2 guarded update, T3 vendor transaction adapter, T4 compensating rollback, T5 read-your-writes inside a transaction, T6 retry on conflict, T7 store capability descriptor (partial precedents only: rdflib `Store` flags `transaction_aware`/`context_aware`/`graph_aware`, `rdflib/store.py:147-150`, and Fluree `/.well-known/fluree.json` plus SPARQL Service Description; none reports isolation or atomicity), T8 savepoints (Fluree: Rust API only), T9 idempotent writes; S15 time travel, S16 branch and merge, S17 diff-load, S18 separate bulk-load path, S19 commit metadata; E1 transactional outbox, E2 RDF Patch wire format, E3 head-moved notification + pull, X12 effective vs requested changes and subscription rules, E4 policy-filtered change feeds, E5 ordered, gap-detectable sequence.
+
+Round-4 proposals, merged into v4:
+
+* T12 read-tracked optimistic commit: blind-write transactions re-base automatically on a moved head, transactions that read fail with a conflict (refines T2/T6; Fluree `transaction.rs:14-28, 418-431`);
+* AZ34 lagging policy configuration: policy and config changes apply from the next transaction, so a write cannot authorise itself (Fluree `docs/ledger-config/README.md:57-59`);
+* S20 per-named-graph store configuration: policy defaults, SHACL, reasoning and override control per graph (Fluree `f:graphOverrides`);
+* S22 store-side SHACL and uniqueness checks on write: a write is refused on a shape or unique-property violation, including shapes sent with the request (Fluree `opts.shapes`, `opts.uniqueProperties`, `docs/reference/compatibility.md:376`).
+
+== Recommended options per architecture variant
+
+The variant letters here are store variants; they are not the client variants of xref:architecture/soa/angles/jsclient.adoc[JavaScript client and UI], nor the development approaches A–C of xref:architecture/soa/variants.adoc[variants] (see Variant fit above).
+
+[cols="2,3,2,2,3",options="header"]
+|===
+|Variant |Store |Atomicity / concurrency |Events |Notes
+|*A. Portable SPARQL* (default) |Any SPARQL 1.1 endpoint; Oxigraph for dev and test; Fuseki or GraphDB in production |P-a + P-b |P-i outbox graph → relay (SSE, webhook, Kafka) |Maximum portability; ACL through an OIDC-aware SPARQL proxy
+|*B. Vendor-transactional* |RDF4J / GraphDB |P-c via `rdflib.contrib.rdf4j` |Outbox or GraphDB connector |Real multi-request transactions; GraphDB ACLs managed from Python; licensed cluster
+|*C. Ledger-native* |Fluree v4 server (+ optional embedded) |Per request + guarded WHERE; P-d embedded |SSE + commit pull; history as audit log |Best fit for data-centric policies, JSON-LD UI and time travel. BUSL and maturity risk; no cascade delete
+|*D. semantic.works-compatible* |Virtuoso behind sparql-parser |Degraded: proxy chunks updates → P-e + P-b |delta-notifier `changeSets` |Reuses the mu ecosystem; weakest atomicity. See xref:architecture/soa/libraries/semantic-works.adoc[semantic.works]
+|*E. Embedded single node* |pyoxigraph (RocksDB) in the service process |P-a + process write lock (P-b alone is not enough on disk) |In-process outbox → SSE |One container; no horizontal write scaling
+|*F. CQRS read model* |Writes as above; reads on a QLever or Oxigraph replica |As chosen |Outbox drives the projection |For large read workloads
+|===
+
+How each store plugs into MWBv2: Oxigraph, Fuseki and RDF4J/GraphDB sit behind S2/S3 adapters and the service serialises JSON-LD. GraphDB offers native graph ACLs manageable from Python. Fluree offers native JSON-LD and policies, close to the DEC-8 preference. QLever only fits as a read model. TerminusDB would need its own non-SPARQL adapter.
+
+== Final verdict
+
+*Oxigraph / pyoxigraph / oxrdflib: adopt* (embedded, test and light server store). *rdflib `SPARQLUpdateStore`, `AuditableStore`, `contrib.rdf4j` / `contrib.graphdb`: adopt* (foundation, T1 baseline, T3 adapter, T4 fallback). *Fluree v4: integrate* (optional backend behind the store port; legal check first).
+
+. *One request is atomic everywhere that matters, but not always isolated.* A guarded update gives optimistic concurrency on Fuseki/TDB2, in-memory Oxigraph and Fluree; not on on-disk Oxigraph without an adapter write lock; untested on RDF4J/GraphDB. The store capability descriptor (T7) must declare "serialises guarded updates" and the unit of work must act on it.
+. *Everything conditional goes in one guarded operation*: changes, new children and outbox triples. Detect a conflict with an ASK on an append-only commit record, sent to the primary, or better from the store's own receipt or transaction (Fluree `t` and flake counts, RDF4J/GraphDB transactions).
+. *Fluree is the only store with transactions, history, change feed and triple-level policy in one engine*, but under BUSL-1.1 with a one-month-old Python package. Keep it behind the same SPARQL port as the others, so choosing it stays reversible.
+
+== Open questions
+
+. Does an MWBv2 product where customers define schemas fall under the BUSL "Database Service" exclusion (`LICENSE:15-27`)? Needs a legal or commercial answer before variant C.
+. Should the unit of work require single-request atomicity and refuse degrading stacks, or fall back to compensations with a warning?
+. Optimistic concurrency per aggregate: a version triple (P-b), or one named graph per aggregate with GSP/ETag (P-f/P-g)? This interacts with graph-level ACLs.
+. SPARQL Update returns no match count. Is a follow-up `ASK` acceptable for conflict detection, or should vendor transactions be used where available?
+. Should rdf-persistence emit deltas itself (outbox) or rely on store or proxy CDC? RDF Patch or mu-compatible `changeSets`?
+. Embedded Fluree transactions are refused on Raft or peer hosts. Is a single-writer Fluree process acceptable?
+. Embedded Fluree retries blind writes up to 16 times on its own. Should our unit of work rely on that, or always read-track (fail on conflict)?
+. No store has general cascade delete (Fluree v4 cascades only edge annotations). Should aggregate-boundary deletion live in rdf-persistence's mapper, driven by LinkML composition?
+
+*Not checked.* The Fluree GitNexus index (repo `db`) has no full-text index, so `query` returns nothing; transaction claims were confirmed with `cypher` and direct reading. Jena/Fuseki, RDF4J, GraphDB, Stardog, Virtuoso, QLever, AllegroGraph and Neptune are desk-only; the RDF4J HTTP isolation parameter, GraphDB change tracking and outbound Kafka, Stardog CDC and QLever update atomicity are unverified. Oxigraph isolation is from code reading, not a concurrency test.
+
+== Sources
+
+* Fluree DB: https://github.com/fluree/db (commit `807902b`)
+* Oxigraph: https://github.com/oxigraph/oxigraph (commit `5b0ef09`); oxrdflib: https://github.com/oxigraph/oxrdflib
+* rdflib: https://github.com/RDFLib/rdflib (commit `114dd59`, `main` = 8.0.0a0)
+* RDF Delta: https://github.com/afs/rdf-delta (commit `0a44c60`); RDF Patch: https://jena.apache.org/documentation/rdf-patch/
+* Jena TDB transactions: https://jena.apache.org/documentation/tdb/tdb_transactions.html
+* Virtuoso `log_enable`: https://docs.openlinksw.com/virtuoso/fn_log_enable
+* QLever updates: https://docs.qlever.dev/update/
+* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/angle-stores.md`

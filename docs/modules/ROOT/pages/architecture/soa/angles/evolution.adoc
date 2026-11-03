@@ -1,0 +1,333 @@
+= Evolution, testing and operations
+:description: Day-2 concerns for rdf-persistence: schema evolution and data migration, testing against real RDF stores, and operations (backup, observability, upgrades, licences).
+
+== Purpose of the angle
+
+This angle covers day 2: what happens after the first release.
+It asks three things: how the schema and the data evolve together, how we test against real RDF stores, and what operating each variant costs.
+It is cross-cutting: L0 (schema versions), L1 (data transformation), L2 (migration runner, store administration) and L4 (contract tests).
+
+Deep dives with clone and GitNexus index: semantic.works' `mu-migrations-service`, `linkml-map`, Alembic (the mainstream benchmark) and `testcontainers-python`.
+Existing clones read without re-indexing: LinkML, rdflib, Oxigraph, Fluree (docs only).
+
+*Headline findings.*
+
+. *Day 2 is the weakest part of the RDF ecosystem.* The only RDF-native migration runner is `mu-migrations-service` (2 stars, stale, fails DEC-5): a ~220-line loop that runs ordered `.sparql` and `.ttl` files once and records them as triples.
+. *Nothing turns a LinkML schema diff into SPARQL Update migrations.* (KGCL with kgcl-rdflib edits ontology terms, not instance data, and fails DEC-5.) LinkML has no schema-diff command. `linkml-map` transforms objects and tables between schema versions; its advertised SPARQL CONSTRUCT compilation is *claimed, not found in code*.
+. *Alembic shows the shape to copy:* a version record in the store, ordered revision scripts with up and down, and an autogenerate step that diffs and is then reviewed by a human. For RDF the diff must be model against model (old LinkML against new), because the store has no explicit schema.
+. *Testing tools are mature and pass DEC-5* (testcontainers, pytest-bdd, schemathesis, pytest-cov, pySHACL), but *no testcontainers module exists for any RDF store*. Every RDF project hand-writes its fixtures.
+. *Operations:* OpenTelemetry has no SPARQL semantic conventions, so SPARQL calls appear only as plain HTTP spans. Backups are store-specific. Two licences bite at operation time: Fluree BUSL-1.1 and Zitadel AGPL-3.0.
+
+== Purpose and origin
+
+[cols="2,3,2,3",options="header"]
+|===
+|Tool |Built for, by |Design angle |Fit (layer, variants)
+|mu-migrations-service |semantic.works (Aad Versteden, redpencil.io) to seed and patch the shared triplestore of mu-project stacks |store-first, file-based, runs on container boot |L2 ops; idea source for all variants; native to V2 only
+|linkml-map (formerly linkml-transformer) |LinkML core team (Mungall et al., biomedical knowledge graphs) to map data between two LinkML schemas |schema to schema, object and tabular |L0/L1 offline transformation; V1–V5 for small or complex migrations
+|Alembic |Mike Bayer (SQLAlchemy) for relational schema migrations |model diff and revision graph |pattern benchmark only (not RDF)
+|testcontainers-python |Testcontainers community (AtomicJar/Docker): throwaway real dependencies in tests |container-first test infrastructure |dev and CI for every variant
+|pytest-bdd, behave, Cypress cucumber |pytest community; behave community; badeball |Gherkin execution |service E2E (pytest-bdd), UI E2E (Cypress)
+|schemathesis |Dmitry Dygalo et al.: property-based testing of OpenAPI and GraphQL |contract-first fuzzing |L4 contract tests (V1, V3, V4, V5)
+|pySHACL |RDFLib org: SHACL validation in Python |standards-first validator |post-migration and write-path gate, all variants
+|OpenTelemetry Python contrib |CNCF |vendor-neutral telemetry |operations, all variants
+|===
+
+== Landscape summary
+
+DEC-5: more than 200 stars and a commit after 2025-11-03; packages of a qualifying org inherit. Measured 2026-11-03.
+
+[cols="3,2,2,2,2",options="header"]
+|===
+|Candidate |Topic |DEC-5 (stars, last push) |Licence |Layers
+
+5+|*Schema evolution and data migration*
+|mu-migrations-service (Ruby) |Migration runner |*fail* (2, 2024-09; org fails too) |MIT |L2
+|linkml-map |Schema-to-schema data mapping; 5.5k dl/month |pass via LinkML org (50, 2026-11) |Apache-2.0 |L0, L1
+|LinkML core |Evolution metadata (version, deprecation slots) |pass (680, 2026-11) |Apache-2.0 |L0
+|linkml-dataops |Object differ and patcher |fail (6, 2024-02; dormant) |none |L1
+|KGCL + kgcl-rdflib |Change vocabulary (rename, obsolete, move) applied to RDF |fail (23 / 20); INCATools org inheritance arguable |MIT |L0, L2
+|kgdiff |Semantic RDF diff |fail (26) |MIT |L0
+|ROBOT (`robot diff`) |Ontology diff and QC in CI |pass (329, 2026-11) |BSD-3 |L0
+|Ontology Development Kit |Ontology release pipeline (`owl:versionIRI`, release artefacts) |pass (389, 2026-11) |BSD-3 |L0
+|RDF Delta |Patch log, Fuseki HA, point-in-time replay |fail (92) |Apache-2.0 |L2, L6
+|Fluree DB |History, branches, `.flpack` archive |pass on numbers (477); *BUSL-1.1, not OSI* |BUSL-1.1 |L2
+|Alembic, Django migrations |Benchmarks |pass |MIT, BSD-3 |—
+
+5+|*Testing*
+|testcontainers-python |Real-store tests; 31M dl/month |pass (2,319, 2026-10) |Apache-2.0 |dev
+|rdflib Memory, pyoxigraph |In-memory fakes with real SPARQL |pass |BSD-3; Apache-2.0/MIT |L2
+|W3C rdf-tests |SPARQL 1.1/1.2 conformance suites |n.a. (standard test data) |W3C |L2
+|schemathesis |OpenAPI contract fuzzing |pass (3,737, 2026-11) |MIT |L4
+|pytest-bdd / behave |Gherkin runners |pass (1,472 / 3,539) |MIT / BSD-2 |dev
+|cypress-cucumber-preprocessor |Gherkin on Cypress (UI E2E) |pass (1,360) |MIT |L5
+|pytest-cov |Coverage gate (≥90 %) |pass (2,074) |MIT |dev
+|pySHACL |Post-migration validation |pass (367, 2026-10) |Apache-2.0 |L1
+
+5+|*Operations*
+|OpenTelemetry Python (+ contrib: FastAPI, httpx, requests) |Tracing |pass (2,701 / 1,122) |Apache-2.0 |ops
+|Apache Jena Fuseki admin |Backup, compact, stats for the default production store |pass (1,494) |Apache-2.0 |L2
+|Virtuoso Open Source |V2 store |pass (977) |*GPL-2.0 only* |L2
+|Zitadel |Identity provider |pass (15,500) |*AGPL-3.0* |L3
+|graphdb-docker |V4 deployment |n.a. (product) |proprietary product |L2
+|===
+
+== Deep-dive findings
+
+=== mu-migrations-service (semantic.works)
+
+One Ruby file (`web.rb`, ~220 lines). All four GitNexus flows start at `boot` (`web.rb:214-219`): wait for the database, then run migrations. Commit `44cdbdf`.
+
+* *Discovery and order:* globs `/data/migrations/**/*.sparql` and `*.ttl` (`web.rb:139-140`), sorted by the first integer in the filename (`web.rb:27-32, 143-146`). Identity is the filename only.
+* *Version record in the store:* each run writes `muMigr:Migration`, filename and `executedAt` triples into the application graph (`web.rb:89-97`). "Already run" is an `ASK` or paged `SELECT` (`web.rb:42-59, 163-188`).
+* *Execution:* `.sparql` is sent verbatim as one update (`web.rb:65-67`). `.ttl` is inserted in batches into a temporary graph, then `ADD <tmp> TO <target>` and `DROP SILENT` (`web.rb:105-133`). The target never holds half-loaded data, provided the store executes `ADD` as one atomic operation. Batch size halves on error (`web.rb:117-123`). A sibling `.graph` file names the target graph (`web.rb:71-76`).
+* *Authorization:* runs as sudo (`mu-auth-sudo` header, `web.rb:3,12`), so migrations bypass the PEP by design (AZ16).
+* *Gaps (confirmed in code):* no checksum (an edited migration is silently skipped); no down migration; the record is written in a separate request after the migration, so a crash in between re-runs a non-idempotent `.sparql`; no lock against two instances; no dry-run; no post-migration validation; no tests.
+
+*Scores:* C3 3 · C4 4 · C5 3 · C7 4 · C8 1 · C9 4 · C10 2 (C1 n.a.).
+
+*Verdict: borrow ideas* (fails DEC-5). Borrow file-per-migration with timestamp ids, the migration log as triples in an admin graph, staging graph plus `ADD` for Turtle loads, adaptive batch size. Fix in ours: checksum, lock, record in the same request, dry-run, SHACL gate.
+
+=== linkml-map
+
+CLI `linkml-map` with `map-data`, `compile`, `derive-schema`, `invert`, `validate-spec` (`src/linkml_map/cli/cli.py:72-694`). Commit `09667a6`.
+The core is `ObjectTransformer.map_object` (`transformer/object_transformer.py:378`) and `Session.transform` / `reverse_transform` / `invert` (`session.py:125-150`).
+GitNexus confirms the inversion path through `inference/inverter.py`, which raises `NonInvertibleSpecificationError` when a spec cannot be inverted.
+
+* A declarative transformation specification of class, slot and enum derivations, with expressions, unit conversion and pivots (`datamodel/transformer_model.py:168, 296, 397, 477`).
+* Compilers: Python, SQL/DuckDB, Markdown, Graphviz. Inputs and outputs: dicts, YAML, JSON, CSV, Parquet, DuckDB. *No RDF loader or writer.*
+* The model promises "translation of the specification into SPARQL CONSTRUCTs" (`transformer_model.py:84`). *Claimed, not found in code:* no SPARQL compiler in `compiler/`.
+
+*Scores:* C3 3 · C4 4 · C5 5 · C6 5 · C7 1 · C8 3 · C9 3 · C10 3 (0.5.x, deprecations in flight).
+
+*Verdict: integrate (offline, optional)* for migrations that reshape aggregates (split or merge classes, unit conversion, enum remaps): read old aggregates through rdf-persistence with the old generated model, `Session.transform`, write with the new model.
+`invert` gives a down migration for free when the spec is invertible. Not for bulk data (one object at a time).
+A SPARQL compiler for linkml-map is a plausible upstream contribution.
+
+=== Alembic (benchmark)
+
+* *Version table in the target database:* `alembic_version` (`runtime/migration.py:182-202`); `stamp` marks a revision without running it (`:548-561`).
+* *Revision graph with up and down,* heads and branches (`migration.py:701, 994, 1220`).
+* *Optional transaction per migration* (`migration.py:140-141`).
+* *Autogenerate:* `compare_metadata` / `produce_migrations` (`autogenerate/api.py:45, 171`) run per-object comparator plugins (`compare/tables.py:82, 232`), then render a Python script for review. Renames are not detected; they show as drop plus add.
+* *Offline mode* renders a migration as SQL without running it (`migration.py:138-161`), and `alembic check` fails CI when the model has changes no migration covers (`command.py:320`). Both matter for EV2 (dry run) and the proposed EV10.
+
+LinkML already carries the rename hint Alembic lacks: `deprecated_element_has_exact_replacement` (IAO:0100001 "term replaced by", `linkml_runtime/linkml_model/mappings.py:102-106`).
+
+*Verdict: borrow ideas:* version record, revision ids, up and down, stamp, autogenerate-then-review, comparator plugins.
+
+=== testcontainers-python
+
+46 community modules, including `neo4j`, `arangodb`, `keycloak`, `openfga`, `vault` and `toxiproxy`. *No module for Fuseki, GraphDB, Oxigraph, Virtuoso, Fluree or Zitadel* (no hits in `src/` or `docs/`). Commit `6146aa1` (v4.15.0).
+The generic blocks are enough: `DockerContainer` with HTTP or log wait strategies (`core/wait_strategies.py:56, 155`) and `DockerCompose` for a whole semantic.works-style stack (`compose/compose.py:197, 318, 569, 577`).
+xref:architecture/soa/libraries/rdfproxy.adoc[rdfproxy] already uses this pattern for Oxigraph and Fuseki (`rdfproxy/tests/conftest.py:59-112`).
+
+*Scores:* C3 4 · C4 4 · C8 5 · C9 5 · C10 4.
+
+*Verdict: adopt* as the integration-test substrate. We ship our own thin fixtures for RDF stores. `toxiproxy` injects network faults, so degradation under T1 and T4 can be tested honestly.
+
+== Schema evolution and data migration
+
+*What exists.* No Python RDF migration runner (the .NET `Sparql.Migrator` is dead). No LinkML diff among its ~50 CLI scripts (`linkml/packages/linkml/pyproject.toml:157-207`). `robot diff` works on the `gen-owl` output; KGCL offers a change vocabulary.
+LinkML carries `version`, `deprecated` and replacement hints. `gen-owl` emits no `owl:versionIRI`; the ODK/ROBOT pipeline usually stamps it.
+Post-migration checks: SHACL from `gen-shacl` with pySHACL, or store-native SHACL (Fluree, GraphDB, Jena).
+Rehearsal: Fluree history and branches (S16) let a migration run on a branch, be validated, then merged; RDF Delta gives a patch log for point-in-time replay on Fuseki.
+
+*Can a LinkML diff generate SPARQL Update migrations?* Not today, but most changes are mechanical because the mapping is declarative.
+
+[cols="3,4,1",options="header"]
+|===
+|LinkML change |Generated SPARQL Update (sketch) |Automatic?
+|`slot_uri` changed (rename with `deprecated_element_has_exact_replacement`) |`DELETE +{?s old: ?o}+ INSERT +{?s new: ?o}+ WHERE +{?s a C; old: ?o}+` |yes
+|`class_uri` changed |The same on `rdf:type` |yes
+|Enum value `meaning` changed |`DELETE`/`INSERT` on the IRI object |yes
+|New required slot with `ifabsent` |`INSERT +{?s p default}+ WHERE +{?s a C FILTER NOT EXISTS {?s p ?x}}+` |yes
+|Slot removed |`DELETE WHERE +{?s a C; p ?o}+`: destructive, needs explicit confirmation |gated
+|Multivalued → single-valued, range or datatype change |Needs a cast or selection rule |scaffold + human edit
+|Class split or merge, reshaped aggregate |linkml-map spec (object level) |human-authored
+|`required` tightened, pattern added |No data change; the SHACL report lists violators |check only
+|===
+
+Every generated script runs per named graph (or `GRAPH ?g`) and is validated afterwards with the new schema's SHACL shapes.
+
+*How it plugs into MWBv2 and an ACL-agnostic rdf-persistence.*
+
+----
+LinkML vN-1 ─┐                ┌─> migrations/NNNN-<slug>.sparql (+ .down.sparql, reviewed)
+LinkML vN  ──┴─ schema-diff ──┤
+                              └─> SHACL(vN) gate ──> rdf-persistence migrate (runner)
+                                                       │ uses the store port (SPARQL Update)
+                                                       │ runs as a privileged service identity
+                                                       ▼ log: triples in an admin graph
+----
+
+* The runner is an entrypoint (`make migrate`) calling a service over the same store port as the app. It works with any SPARQL 1.1 store and stays ACL-agnostic: it authenticates as a dedicated service principal that the PEP, proxy or store policy allows. No bypass inside the library.
+* Approach B adds generated pieces: SHACL per version, migration skeletons, golden fixtures (see xref:architecture/soa/angles/codegen.adoc[code generation]). Approach A still needs the runner and the diff. Approach C needs the runner most, since nothing typed catches drift.
+
+*Gaps.* No Python RDF migration runner; no LinkML diff; no LinkML → SPARQL migration compiler; no lock or checksum discipline anywhere in RDF; nobody versions data graphs against the schema version.
+
+== Testing
+
+Oxigraph, rdflib and Fluree run the W3C suites in their own CI (Fluree reports 700+ W3C tests; not verified for GraphDB, Virtuoso or Fuseki), so we need only a small conformance suite of our own for the SPARQL subset the mapper emits.
+
+[cols="2,3,2,4",options="header"]
+|===
+|Level |Tool |Store |Notes
+|Unit (domain, mapper, query builder) |pytest |pyoxigraph in memory (real SPARQL) or a fake repository |Fast; most coverage comes from here
+|Adapter contract (one suite × N stores) |pytest + testcontainers |Oxigraph, Fuseki, GraphDB Free, Fluree, Virtuoso |The rdfproxy matrix (D8); marks per store capability (T7)
+|Fault injection |testcontainers `toxiproxy` |any |Proves T1/T4 behaviour on dropped connections
+|API contract |schemathesis on the generated OpenAPI |Oxigraph container |Property-based; catches 500s and schema drift
+|Service BDD |pytest-bdd (same runner, coverage counted) |container |Gherkin by QA
+|UI E2E |Cypress + cucumber preprocessor |compose stack |The runbook's "Cypress + Gherkin"
+|Authorization |testcontainers `openfga` / `keycloak`; Zitadel via a generic container or a stub JWKS |— |DEC-8 policies tested, not reimplemented
+|Migration |Apply a migration to a fixture dataset; assert SHACL conformance and golden counts |Oxigraph |The post-migration gate, tested
+|===
+
+Prefer *pytest-bdd over behave*: one runner, fixtures shared with unit tests, and pytest-cov counts it.
+
+== Operations
+
+[cols="2,3,3,3,2",options="header"]
+|===
+|Variant |Containers (minimum) |Backup and restore |Observability |Licence at operation time
+|V1 |service, Fuseki, Zitadel (+DB), OpenFGA (+DB) |Fuseki `POST /$/backup/+{name}+` (gzip N-Quads), `/$/compact` (TDB2 datasets only), `/$/stats`; Oxigraph `Store.backup` (S11) |OTel FastAPI + httpx spans; Fuseki stats |Zitadel *AGPL-3.0* (fine unmodified; patches must be published)
+|V2 |identifier, dispatcher, resources, sparql-parser, delta-notifier, migrations, Virtuoso |Virtuoso checkpoint and backup (not verified) |Container logs only |Virtuoso *GPL-2.0 only* (service use fine; care when embedding or distributing)
+|V3 |service, Fluree (single binary or Raft cluster; S3/DynamoDB) |`.flpack` archive and restore, content-addressed (`docs/operations/pack-archive-restore.md`), plus history |*Native OTel; accepts W3C `traceparent`* (`docs/operations/distributed-tracing.md:14, 170-177`) |*BUSL-1.1*: legal check before a product where customers define schemas
+|V4 |service, GraphDB (JVM, licensed cluster) |GraphDB recovery and backup REST (not verified) |JMX monitoring (not verified) |commercial
+|V5 |V1 + read replica or policy-filtered endpoint |Replica rebuilt from the outbox |Trace the outbox lag |as V1
+|===
+
+*Observability.* OpenTelemetry semantic conventions have no SPARQL entry (GitHub code search over open-telemetry/semantic-conventions, 0 hits, 2026-11-03). httpx instrumentation gives one HTTP span per SPARQL call, but no query kind, graph or row count.
+Add a thin decorator on the store port: `db.system=sparql` (proposed value), `db.operation` (SELECT, CONSTRUCT, UPDATE), query fingerprint (S14), named graph, result size, and `traceparent` propagation (Fluree joins the trace natively).
+
+*Performance pitfalls.*
+
+* N+1 on relationship traversal: batch with `VALUES` (Q9).
+* Unbounded `CONSTRUCT` for aggregates: stream (S13), page by subject.
+* `COUNT` / `len()` on remote datasets: rdflib 8 makes `len(dataset)` count quads and may send one remote request per graph (`rdflib/docs/upgrade7to8.md:14-32`).
+* `OFFSET` paging degrades on large graphs.
+* Batch-size limits on Virtuoso (T11); the mu-migrations halving loop exists for this.
+
+*Upgrade paths (2026-11-03).*
+
+[cols="1,3,3",options="header"]
+|===
+|Component |State |Day-2 impact
+|rdflib |7.6.0 released; `main` is 8.0.0a0 |Python ≥3.11; `len(Dataset)` semantics change
+|LinkML |1.12.1; `linkml-runtime` folded into the `linkml` monorepo (old repo archived) |Pin both from one release; regenerate code on every upgrade (golden tests, G27)
+|linkml-map |0.5.4, deprecations in flight |Keep optional
+|Oxigraph |0.5.13; `main` 0.6.0-dev. 0.5 dropped RDF-star for RDF 1.2, migrates existing stores on first open so that _most_ SPARQL queries keep working (downgrade not checked), changed serialisation (`CHANGELOG.md:170-185`) |Dev-only store in V1, low risk; pin in tests
+|Fluree |v4 (Rust rewrite, 2026-04) → 4.2.5; v5 alpha already |Fast churn plus BUSL
+|Zitadel |AGPL-3.0 |Upgrade via container; no code embedding
+|===
+
+== Patterns catalogue
+
+[cols="4,4",options="header"]
+|===
+|Pattern |Where seen
+|Ordered, immutable migration files with timestamp ids |mu-migrations (`scripts/new/run.sh`), Alembic, Django
+|Migration log stored in the store as RDF |mu-migrations (`web.rb:89-97`)
+|Staging graph + `ADD`/`MOVE` for an atomic bulk load |mu-migrations (`web.rb:105-133`)
+|Autogenerate from a model diff, then human review |Alembic (`autogenerate/api.py:45, 171`)
+|Rename hint in the model |LinkML `deprecated_element_has_exact_replacement`
+|Up and down; down derived by inversion |Alembic; linkml-map `invert`
+|Validate after migrate (SHACL gate) |idea (pySHACL, store SHACL)
+|Fail CI when the model changed and no migration covers it |Alembic `check` (`command.py:320`, since 1.9)
+|Rehearse on a branch or snapshot, then merge or promote |Fluree branches; Fuseki backup + restore
+|Privileged migration identity (AZ16) |mu-migrations sudo header
+|Schema version stamped in data (`owl:versionIRI`, a version triple per graph) |ODK/ROBOT; idea for data graphs
+|===
+
+*Features from this angle* (v4 ids):
+
+* Evolution:
+** EV1 a migration runner: ordered, immutable `.sparql` and `.ttl` files; the log of applied migrations as RDF in an admin graph.
+** EV2 migration integrity: checksum per applied file, run lock, log written in the same request as the change, dry-run.
+** EV3 a schema diff of two LinkML versions that generates SPARQL Update skeletons (renames, class and slot IRI changes, enum meanings, defaults).
+** EV4 down migrations, written by hand or derived by inverting a mapping spec.
+** EV5 object-level data transformation between schema versions (split, merge, reshape aggregates).
+** EV6 a post-migration validation gate: the new version's SHACL must conform; golden counts.
+** EV7 the schema version stamped in data or graphs and checked at startup, refusing to run on a stale store.
+** EV8 a staged bulk load: temporary graph plus `ADD`/`MOVE`, adaptive batch size.
+** EV9 migration rehearsal on a branch or snapshot before promotion (builds on S16).
+** *EV10* (taxonomy v5): a pending-migration check in CI. The build fails when the LinkML schema changed and no migration (or an explicit "no data change" stamp) covers the diff. It is the cheapest guard against a schema release that silently strands existing data, and it needs only the diff of EV3, not the compiler, so it can ship in the first EPIC. Precedent: Alembic `check`.
+* Developer experience and operations:
+** D20 shipped test fixtures for RDF stores: testcontainers wrappers for Oxigraph, Fuseki, GraphDB and Fluree (refines D5 and D8).
+** D27 fault-injection tests for store failures, such as a dropped connection mid unit of work.
+** D28 API contract fuzzing from the generated OpenAPI.
+** D29 store-port observability: OTel spans with query kind, fingerprint, graph and row count; `traceparent` propagation (refines S14).
+** S23 an operations admin port: backup, restore, compact and stats per store adapter (extends S11 to remote stores).
+
+== Recommended options per architecture variant
+
+Variants and approaches as in xref:architecture/soa/variants.adoc[architecture variants]; store details in xref:architecture/soa/angles/stores.adoc[stores and change events].
+
+[cols="1,3,3,3",options="header"]
+|===
+|Variant |Evolution |Testing |Operations
+|*V1* |Build the migration runner (with integrity checks) and the LinkML diff compiler; SHACL gate with pySHACL; linkml-map for reshapes |testcontainers matrix Oxigraph + Fuseki; schemathesis; pytest-bdd; `openfga` module |Fuseki backup cron + OTel decorator; Zitadel unmodified
+|*V2* |Reuse the mu-migrations file format (`.sparql`, `.ttl`, `.graph`) so files run in both runners; ours adds checksum and lock |`DockerCompose` fixture over mu-project |Weakest observability; add OTel only in our service
+|*V3* |Rehearse migrations on a Fluree branch, validate with native SHACL, merge; history gives audit and rollback |Fluree container in the matrix (SPARQL path) |`.flpack` backups; native OTel + `traceparent`; BUSL legal check
+|*V4* |Same runner; run each migration inside an RDF4J transaction (T3) for real atomic up and down |GraphDB Free container in the matrix |Vendor backup; licence
+|*V5* |Migrations must also rebuild or replay the read side (outbox replay or replica re-sync) |Consistency tests for read-after-write lag |Monitor replica lag
+|===
+
+[cols="1,6",options="header"]
+|===
+|Approach |Day-2 recommendation
+|*A Runtime mapper* |Still needs the runner and the schema diff; no generated SHACL per version unless the build adds it
+|*B Generated mapper and routes* |Generate SHACL per version, migration skeletons and golden fixtures alongside the code; regeneration discipline (G27) doubles as a migration trigger
+|*C Generic service* |Needs the runner most: nothing typed catches drift between the schema and the data
+|===
+
+*Per deep-dived candidate.* Nothing here blocks a variant; the licence concerns belong to the stores, not to these tools.
+
+[cols="2,1,1,1,1,1,1,1,1",options="header"]
+|===
+|Candidate |V1 |V2 |V3 |V4 |V5 |A |B |C
+|mu-migrations-service |ideas |*supports* (in mu-project stacks; sudo) |ideas |ideas |ideas |ideas |ideas |ideas (C needs a runner most)
+|linkml-map |supports (offline) |supports |supports |supports |supports; replay the read side |supports |*enables* (spec and inverse kept with the schema version) |supports
+|Alembic |pattern |— |— |pattern (up/down maps onto T3) |— |pattern |*pattern for EV3* |pattern
+|testcontainers-python |*enables* (Oxigraph, Fuseki, OpenFGA, Keycloak) |enables (`DockerCompose`) |enables (Fluree) |enables (GraphDB Free; CI licence to check) |enables (writer + replica) |supports |supports |supports
+|===
+
+== Open questions
+
+. Is migration authoring generated-then-reviewed (Alembic style) or hand-written only? This decides whether the LinkML diff compiler is in scope for the first EPIC.
+. Do data graphs carry the schema version, and per graph or per dataset?
+. Should our runner stay file-compatible with mu-migrations (V2 reuse): `.graph` sidecar, filename-number ordering?
+. Which principal runs migrations under DEC-8 (a Zitadel service account with a dedicated policy)? To be decided with the xref:architecture/soa/angles/authz.adoc[authorization angle].
+. Is a SPARQL compiler for linkml-map worth contributing upstream rather than building the diff compiler alone?
+. Does DEC-5 apply to test-only dependencies? (All recommended ones pass anyway.)
+
+*Not checked.* GraphDB and Virtuoso backup and monitoring APIs (vendor docs not fetched); Fluree branch-merge behaviour on conflicting migrations (docs only); linkml-map performance on large datasets. No candidate code was run.
+
+== Final verdict
+
+*Verdict:* mu-migrations-service *ideas* · linkml-map *integrate* (optional, offline) · Alembic *ideas* (benchmark) · testcontainers-python *adopt* (test-only).
+
+. *A migration is safe only when it is recorded in the same request as it runs.* Put the change and its log triple in one SPARQL Update request (inside an RDF4J transaction on V4). The runner refuses edited files by checksum and refuses to run twice at once.
+. *The diff is model against model, and LinkML already holds the rename hint.* Generate SPARQL Update skeletons from vN-1 against vN (`deprecated_element_has_exact_replacement`, IRI changes, enum meanings). A human reviews every skeleton, the new version's SHACL is the gate, and linkml-map only reshapes aggregates.
+. *We own the RDF test and ops glue.* Nothing upstream gives store fixtures, SPARQL spans or one backup interface across stores. Keep them thin, behind the store port: about one fixture and one admin method per adapter.
+
+== Feature coverage
+
+Round 5, v4 taxonomy: 77 v4 ids × 4 candidates = 308 cells, of which 263 are n.a. (these are migration and test tools, not mappers; 56 ids are n.a. for all four).
+
+[cols="1,1,1,1,1",options="header"]
+|===
+|Present |Partial |Absent |Not checked |n.a.
+|11 |12 |20 |2 |263
+|===
+
+Between them the four tools cover EV1, EV3, EV4, EV5, EV7 and EV8. Nobody covers EV2 in full, EV6, EV9, D20 or D29: those are ours to build.
+
+== Sources
+
+* mu-migrations-service: https://github.com/mu-semtech/mu-migrations-service (commit `44cdbdf`)
+* linkml-map: https://github.com/linkml/linkml-map (commit `09667a6`)
+* Alembic: https://github.com/sqlalchemy/alembic (commit `1bcba93`)
+* testcontainers-python: https://github.com/testcontainers/testcontainers-python (commit `6146aa1`)
+* Fuseki server protocol: https://jena.apache.org/documentation/fuseki2/fuseki-server-protocol.html
+* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/angle-evolution.md`

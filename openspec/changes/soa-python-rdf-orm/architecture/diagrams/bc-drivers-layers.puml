@@ -1,0 +1,29 @@
+@startuml bc-drivers-layers
+title Architectural drivers and the layers they shape
+left to right direction
+package "Drivers" {
+  rectangle "AD-1..AD-6\nfunctional and domain" as F
+  rectangle "AD-7..AD-10\nintegration" as I
+  rectangle "AD-11, AD-12\nsecurity" as S
+  rectangle "AD-13..AD-22\nquality, DX, day 2" as Q
+}
+package "Layers" {
+  rectangle "L0 Modelling and codegen" as L0
+  rectangle "L1 Domain and persistence" as L1
+  rectangle "L2 Stores and transactions" as L2
+  rectangle "L3 Identity and authorization" as L3
+  rectangle "L4 Data-management service" as L4
+  rectangle "L5 JS client and UI" as L5
+  rectangle "L6 Change events" as L6
+}
+F --> L0
+F --> L1
+F --> L2
+I --> L2
+I --> L4
+I --> L5
+I --> L6
+S --> L3
+Q --> L0
+Q --> L1
+@enduml

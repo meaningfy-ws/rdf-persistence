@@ -1,0 +1,15 @@
+@startuml
+title C4 LinkML -> OpenAPI -> orval / hey-api -> TS types + zod
+participant "LinkML schema" as LML
+participant "gen-openapi (template paths)" as GO
+participant "FastAPI /openapi.json" as FA
+participant "orval / hey-api" as GEN
+participant "TS client + zod" as TS
+LML -> GO : components only; paths come from a hand-written template
+GO -> GEN : 3.0.3 via JSON Schema gen: uri -> format uri, date -> format date, enums as enum
+GO -> GEN : 3.1.0 via Pydantic: linkml_meta stripped (openapigen.py:336)
+LML -> FA : generated Pydantic classes used in routes
+FA -> GEN : linkml_meta leaks in schemas; IRIs plain string; Optional -> anyOf null
+GEN -> TS : enums -> string unions; date -> z.iso.date or Date (useDates); uri -> z.url()
+note over GEN, TS : uriorcurie has no format; decimal -> number (precision loss); references are plain strings
+@enduml

@@ -1,0 +1,184 @@
+= Design implications for rdf-persistence
+:description: What the state-of-the-art review implies for the design of rdf-persistence: the core patterns, the developer-facing API shape, and the seams to keep open. Options, not decisions.
+
+This page turns the findings into design input. It states what the evidence supports and what
+remains open. Nothing here is decided; decisions are recorded as ADRs once the developer takes
+them. Sources: xref:architecture/soa/angles/ddd.adoc[DDD boundaries],
+xref:architecture/soa/angles/dx.adoc[developer experience],
+xref:architecture/soa/angles/stores.adoc[stores and transactions],
+xref:architecture/soa/angles/lpg.adoc[property graphs],
+xref:architecture/soa/angles/evolution.adoc[evolution, testing, operations].
+
+== Do we need a Unit of Work?
+
+The evidence points to yes (ADR-07 open): a thin one shaped around aggregates — an *aggregate session*. It borrows from three
+places:
+
+* *Spring Data JDBC* — boundaries: one repository per aggregate root, the whole aggregate loaded
+  and saved together, version on the root only, other aggregates referenced by IRI.
+* *SQLAlchemy* — convenience: identity map and automatic change detection on the aggregates you
+  loaded.
+* *Ecto* — the commit as a plain value: a change set you can print, test without a store, and
+  send as one request.
+
+Most of SQLAlchemy's flush machinery has no job in RDF. Its dependency ordering exists to copy
+generated primary keys into foreign keys; RDF mints IRIs on the client and has no foreign keys.
+Over plain SPARQL every request is its own transaction, so flush and commit are the same step and
+an implicit autoflush has little to do; only on stores with vendor transactions (RDF4J, GraphDB)
+can a flush precede the commit.
+
+[source,python]
+----
+with uow:                                   # new identity map; nothing sent yet
+    order = uow.orders.get(order_iri)       # one query: root + owned children; snapshot kept
+    order.add_line(sku, qty)                # domain method; records an OrderLineAdded event
+    print(uow.preview())                    # the change set: triples out/in, guards, events
+    uow.commit()                            # one SPARQL Update, version-guarded, with outbox
+# leaving without commit discards the change set
+----
+
+[mermaid]
+....
+sequenceDiagram
+  participant App as Application code
+  participant UoW as Aggregate session
+  participant Map as Mapper
+  participant Store as SPARQL 1.1 store
+  App->>UoW: repository.get(iri)
+  UoW->>Store: CONSTRUCT root + owned children
+  Store-->>UoW: triples
+  UoW->>Map: hydrate + snapshot
+  App->>UoW: domain methods
+  App->>UoW: commit()
+  UoW->>Map: diff against snapshot (owned predicates only)
+  UoW->>Store: one DELETE … INSERT … WHERE {all version guards} + outbox triples
+  UoW->>Store: ASK for this commit's own record
+  alt commit record present
+    UoW-->>App: committed; after-commit hooks; events dispatched
+  else commit record absent
+    UoW-->>App: ConcurrencyConflict (reload and re-apply)
+  end
+....
+
+== What the evidence fixes
+
+[cols="2,5,3",options="header"]
+|===
+|Concern |Implication |Evidence
+
+|Atomicity
+|One commit compiles to one SPARQL Update. All version guards sit in a single
+`DELETE … INSERT … WHERE` operation, because a failed guard skips only its own operation — and
+the outbox triples and new owned children belong inside that same operation, since a separate
+`INSERT DATA` still runs when the guard fails. Owned children need IRIs (blank nodes are not
+allowed in delete templates).
+|xref:architecture/soa/angles/ddd.adoc[DDD], xref:architecture/soa/angles/stores.adoc[stores]
+
+|Conflict detection
+|SPARQL Update returns no match count. Write an append-only commit record (unique per commit) in
+the same update and confirm with an ASK on that record — not on a "last transaction" marker,
+which another writer may overwrite just after us and so report a false conflict. New aggregates
+need a `FILTER NOT EXISTS` creation guard. Optimistic concurrency on by default (Pony: on by
+default; Rails: on once a `lock_version` column exists). Not yet tested on real stores.
+|DDD, DX, SQLAlchemy's own blind spot (`persistence.py:971`)
+
+|Store capability
+|The store port reports what it can do: single-request atomic (portable), vendor transactions
+(RDF4J, GraphDB, embedded Fluree), or degraded (chunking proxy) — degraded only on explicit
+opt-in, with compensations and a warning. It also reports whether the store serialises guarded
+updates against concurrent writers: Fuseki/TDB2, in-memory Oxigraph and Fluree's HTTP update do;
+on-disk Oxigraph does not (guard checked on a snapshot, batch written without a lock), so its
+adapter needs a write lock; RDF4J/GraphDB untested. The confirming ASK goes to the primary, never
+a replica; Fluree's commit receipt and RDF4J/GraphDB transactions make it unnecessary.
+|Stores
+
+|Boundaries
+|"One aggregate per transaction" is a policy (strict, warn, allow), not a hard limit — one
+request can commit several aggregates atomically. Cross-aggregate reactions run in new sessions
+after commit (eventual consistency).
+|DDD
+
+|Declaring aggregates
+|LinkML has no composition construct (`inlined` is about serialisation; `tree_root` is a
+document container), and model2owl ignores UML composition, so it never reaches LinkML.
+Boundaries need annotations or an `inlined` + shared convention, checked at generation time.
+|DDD, code generation
+
+|Events
+|Domain events go through an outbox written in the same update, then an in-process bus and an
+external relay. In-memory-only dispatch (cosmic-python) loses events on a crash.
+|DDD, stores
+
+|Mapping metadata
+|LinkML's generated Pydantic classes carry `class_uri` and `slot_uri`. The default metadata mode
+(LinkML 1.12) drops range, inlining, multi-valued, required and identifier flags; they come back
+with `metadata_mode=full` (or `except_children`), else the mapper infers them from type hints.
+A build check should confirm the metadata is complete.
+|Code generation, pydantic-rdf round 4
+|===
+
+== Developer-facing API shape
+
+Conventions Python developers now expect, and the RDF-specific choices that follow:
+
+* Pydantic models; `select(Model).where(Model.field == value)`; `async with session.begin()`;
+  FastAPI `Depends(get_session)` with no global state; an in-memory store for tests.
+* A Data Mapper costs no lines: ODMantic (Data Mapper) does CRUD plus a query in 9 lines, Django
+  (Active Record) in 11.
+* Field expressions on classes the ORM does not own are unsolved everywhere. Option: a generated typed field
+  metamodel (`Person_.name`), as JPA's static metamodel.
+* Errors name the model, the IRI and the fix, with a stable code — illustrative example: "Person <ex:person/7f3c>
+  changed since it was loaded (version 3, store has 4). Reload it with session.refresh(obj) and
+  re-apply. [RP-409]".
+
+[cols="2,3,4",options="header"]
+|===
+|RDF trait |Mainstream default |Option for rdf-persistence (precedent)
+
+|Open world |`None` means NULL |`None` = no value in loaded data; a `NotLoaded` sentinel for unloaded slots (Ecto)
+|Multi-valued by default |Scalar columns |Set semantics with a stable order on load; `.add` / `.remove` operators (Prisma, Mongo `$addToSet`)
+|IRIs as ids |Database-generated integers |Client-minted IRIs; CURIEs accepted everywhere (Mongo ObjectId)
+|Language tags |One string |`LangString` as a language map (JSON-LD `@container: @language`)
+|Named graphs |Database or schema |`using(graph=…)` scope (Django `using()`); policy-driven placement when configured
+|No schema DDL |Migrations alter tables |Data migrations plus SHACL installation
+|===
+
+== Seams to keep open
+
+Shaped now because the RDF design needs them anyway; they also keep property graphs possible
+later without breaking the API:
+
+. The unit of work emits an abstract change set; each store adapter renders it.
+. The query builder is a syntax tree with a SPARQL renderer — never string concatenation.
+. Raw SPARQL lives on its own port, not on `Repository[T]`.
+. Named graph is a scope concept in the API; the store port declares its capabilities.
+. A policy-enforcement port: pass-through (behind a proxy or store-native policies), graph-scope
+  filter injected into every generated query including counts and single-item reads, or identity
+  forwarded to the store.
+
+== Day-2 concerns
+
+* *Migrations are a gap.* Nothing turns a LinkML schema change into SPARQL Update migrations
+  (KGCL edits ontology terms, not instance data, and fails the reuse threshold).
+  LinkML's `deprecated_element_has_exact_replacement` gives rename hints Alembic lacks. The only
+  RDF runner (semantic.works `mu-migrations-service`) has no checksum, lock or down migrations, and records a migration only after it has run, in a
+  separate request;
+  its file format and its migration log as triples are worth keeping. Migrations run as a
+  dedicated service principal that the policy enforcement point allows; the library never bypasses
+  it (mu-migrations uses a sudo header).
+* *Testing tools are mature* (testcontainers, pytest-bdd, schemathesis, pySHACL), but no
+  testcontainers module exists for any RDF store: ship store fixtures and a test kit.
+* *Operations:* OpenTelemetry has no SPARQL conventions; instrument the store port. rdflib 8
+  changes `len(Dataset)` to count quads.
+
+== Open questions
+
+. Where are aggregate boundaries declared — LinkML annotations or a naming convention?
+. Default aggregates-per-commit policy: strict, warn or allow?
+. Graph-per-aggregate opt-in, given it competes with graph-level access control?
+. Version as mapper metadata or as a domain field? Optimistic concurrency on by default?
+. Events through an in-process bus, an outbox relay, or both?
+. Typed metamodel companion (`Person_`) or attributes attached at runtime?
+. Multi-valued slots as `list` or `set`? Form of `LangString`?
+. Repository required, or is the session enough? Generated sync API or `run_sync`?
+. Does migration generation from schema diffs belong in the first EPIC?

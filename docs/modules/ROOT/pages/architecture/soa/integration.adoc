@@ -1,0 +1,52 @@
+= Integration paths
+:description: Whether the hand-offs between building blocks work today, need a fix we own, or are missing — nine chains verified against code.
+
+The ecosystem is only as good as its seams. Nine chains from the Mapping Workbench v2 (MWBv2) approach were followed end to end through
+the cloned code, with the Zitadel steps from documentation. *None works on configuration alone:*
+seven need a fix we own (C1–C7), and three parts do not exist yet: the policy port in C6, the
+outbox and relay (C8), and schema-diff migrations (C9).
+
+[cols="1,4,2,6",options="header"]
+|===
+|# |Chain |Verdict |What breaks, in one line
+|C1 |UML → model2owl → SHACL → schema-automator → LinkML |*fix* |Lossy import: `sh:sparql`, ranges, patterns, paths, lang tags dropped; `identifier` only on opt-in; no aggregate info
+|C2 |LinkML → gen-pydantic → runtime mapper |*fix* |Default `--meta auto` drops `range`, `inlined`, `multivalued`, `identifier`; reference slots become bare `str`
+|C3 |LinkML → JSON-LD context + frame → jsonld.js |*fix* |No `@language` container; `@index` (not `@id`) for inlined dicts; frame only for one root
+|C4 |LinkML → OpenAPI → orval / hey-api → TS + zod |*fix* |`paths` are hand-written; FastAPI's own OpenAPI leaks `linkml_meta`; `uriorcurie`/references are plain strings
+|C5 |LinkML → gen-shacl → LDkit / shacl-form / pySHACL gate |*fix* |`sh:closed true` rejects persistence bookkeeping; `sh:class` on references fails on an aggregate-only data graph; no lang strings for LDkit
+|C6 |Zitadel → FastAPI → OpenFGA ListObjects → SPARQL graph scope |*fix* (port *missing*) |ListObjects truncates at 1 000 and on a 3 s deadline without a flag; the scope-injecting port does not exist
+|C7 |Zitadel → Fluree identity / policy class |*fix* |Fluree needs `fluree.*` custom claims and JWT access tokens; trusted-app mode lets the credential holder impersonate anyone
+|C8 |UoW + outbox → relay → SSE/Mercure → TanStack Query; → semantic.works deltas |*missing* (relay and outbox), formats *works* |No outbox or relay exists; deltas carry quads only (no aggregate, tx or version)
+|C9 |LinkML schema diff → migration → SPARQL Update → SHACL gate |*missing* |No LinkML schema diff, no SPARQL migration compiler, no safe RDF migration runner; only the last step (pySHACL) exists
+|===
+
+Each chain has a diagram as a PlantUML file and as Mermaid:
+`openspec/changes/soa-python-rdf-orm/inputs/analysis/integration-diagrams/c1-uml-to-linkml.puml`
+… `c9-schema-migration.puml`, and the Mermaid versions in `angle-integration.md` next to them.
+
+[mermaid]
+....
+flowchart LR
+  UML[UML / model2owl] -->|C1 fix| LML[LinkML]
+  LML -->|C2 fix| PY[Pydantic + mapper]
+  LML -->|C3 fix| CTX[JSON-LD context] --> JS[jsonld.js]
+  LML -->|C4 fix| OAS[OpenAPI] --> TS[orval / zod]
+  LML -->|C5 fix| SH[SHACL] --> UI[LDkit / shacl-form / pySHACL]
+  Z[Zitadel] -->|C6 fix + missing port| FGA[OpenFGA] --> SC[SPARQL graph scope]
+  Z -->|C7 fix| FL[Fluree policies]
+  PY -->|C8 missing| OB[Outbox → relay → SSE] --> TQ[TanStack Query]
+  LML -->|C9 missing| MIG[Migration → SPARQL Update]
+....
+
+== What to fix, in short
+
+* *Generate with pinned flags:* `gen-pydantic --meta full`, explicit `identifier` on import, a
+  context profile with `@language` containers, SHACL with bookkeeping predicates allowed
+  (non-closed or `ignoredProperties`), and LinkML's own OpenAPI (FastAPI's leaks `linkml_meta`).
+* *Authorization:* never derive totals from a truncated OpenFGA result (1 000 cap, 3 s deadline,
+  no flag); Fluree needs custom `fluree.*` claims through a Zitadel Action.
+* *Build:* the outbox and relay, the scope-injecting policy port, and the migration chain.
+
+Sources: xref:architecture/soa/angles/codegen.adoc[code generation],
+xref:architecture/soa/angles/authz.adoc[authorization], xref:architecture/soa/angles/stores.adoc[stores],
+raw report `angle-integration.md`.

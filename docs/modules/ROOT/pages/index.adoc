@@ -1,0 +1,8 @@
+= RDF Persistence
+:description: Developer-friendly persistence, CRUD and transactions over RDF triple stores.
+
+RDF Persistence is a Python library for developer-friendly persistence over triple stores:
+model-first object mapping or a LinkML-generated domain with a repository layer, built on
+rdflib, Oxigraph and SPARQL 1.1.
+
+* xref:architecture/soa/index.adoc[State of the art] — what exists today and what we build on.

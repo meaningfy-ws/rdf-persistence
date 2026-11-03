@@ -1,0 +1,30 @@
+@startuml seq-change-event
+title Change-event propagation (UC-B7.1)
+autonumber
+participant "Aggregate Session" as AS
+database "Triple Store" as TS
+participant "Event Bus" as Bus
+participant "Handler\n(other aggregate)" as H
+participant "Event Relay" as REL
+queue "Event Channel" as CH
+participant "Subscriber\n(UI or service)" as SUB
+AS -> TS : commit: data + outbox record seq=k (one operation)
+TS --> AS : confirmed (commit record present)
+AS -> Bus : dispatch event k
+Bus -> H : handle(event k)
+H -> H : open a new session, change own aggregate, commit
+loop every poll interval
+  REL -> TS : read pending outbox records after last published seq
+  TS --> REL : records k..m
+  alt channel available
+    REL ->> CH : publish event k (id, seq, aggregate, patch)
+    CH ->> SUB : deliver event k
+    SUB -> SUB : skip if id already processed, else apply
+    REL -> TS : mark k published
+  else channel down
+    REL ->x CH : publish fails
+    REL -> REL : back off, keep k pending
+  end
+end
+note over SUB : a gap in seq means missed events:\nreplay from the last seq
+@enduml

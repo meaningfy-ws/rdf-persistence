@@ -1,0 +1,24 @@
+@startuml layers-v4
+title Layer composition - V4 GraphDB enterprise-transactional
+skinparam rectangle {
+  BackgroundColor<<exists>> #C8E6C9
+  BackgroundColor<<partial>> #FFE0B2
+  BackgroundColor<<missing>> #FFCDD2
+}
+legend right
+  green = exists (reuse)
+  amber = partial (gap to close)
+  red = missing (build)
+endlegend
+rectangle "L4 generated service" as d4 <<missing>>
+rectangle "L1 rdf-persistence core" as d1 <<missing>>
+rectangle "L2 transactional adapter over\nrdflib RDF4J/GraphDB clients" as d2 <<partial>>
+rectangle "L2 GraphDB (commercial)" as d2s <<exists>>
+rectangle "L3 GraphDB fine-grained access,\nroles from IdP claim" as d3 <<exists>>
+rectangle "L6 outbox + relay" as d6 <<missing>>
+d4 --> d1
+d1 --> d2
+d2 --> d2s
+d3 -- d2s
+d1 --> d6
+@enduml

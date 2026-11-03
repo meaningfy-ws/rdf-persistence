@@ -1,0 +1,28 @@
+@startuml layers-v2
+title Layer composition - V2 semantic.works-compatible
+skinparam rectangle {
+  BackgroundColor<<exists>> #C8E6C9
+  BackgroundColor<<partial>> #FFE0B2
+  BackgroundColor<<missing>> #FFCDD2
+}
+legend right
+  green = exists (reuse)
+  amber = partial (gap to close)
+  red = missing (build)
+endlegend
+rectangle "L5 JSON:API client" as b5 <<exists>>
+rectangle "L3 identifier + dispatcher" as b3i <<exists>>
+rectangle "L4 service in JSON:API dialect,\natomic operations" as b4 <<missing>>
+rectangle "L1 rdf-persistence core" as b1 <<missing>>
+rectangle "L2 store port, opt-in degraded mode + compensation\n(single guarded op blocked)" as b2 <<partial>>
+rectangle "L3 authorizing SPARQL proxy" as b3p <<exists>>
+rectangle "L2 Virtuoso" as b2s <<exists>>
+rectangle "L6 delta notifier change sets" as b6 <<exists>>
+b5 --> b3i
+b3i --> b4
+b4 --> b1
+b1 --> b2
+b2 --> b3p
+b3p --> b2s
+b3p --> b6
+@enduml

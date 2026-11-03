@@ -1,0 +1,145 @@
+= Build versus reuse
+:description: Per layer, what to adopt, integrate, stay compatible with, or build — the decision support for the next EPIC. The decision is the developer's.
+
+This matrix is the end product of the review: per building-block layer, what already exists and
+what has to be built. It is decision support, not a decision. Verdict vocabulary as in the
+xref:architecture/soa/catalogue.adoc[tool catalogue]: *adopt* (dependency), *integrate* (run
+next to our code through a standard contract), *compatible* (honour its contract without its
+code), *build-time* (toolchain only), *ideas* (design only). Build items `BL-n` match the
+xref:architecture/soa/architecture-analysis.adoc[architecture analysis]. V1–V5 are the system
+variants and A–D the development approaches defined on
+xref:architecture/soa/variants.adoc[architecture variants]. Components below the reuse
+threshold (DEC-5) are marked *(DEC-5 exception)*: using them needs an explicit decision.
+
+[mermaid]
+....
+flowchart TB
+  subgraph Reuse["Reuse — mature, above the threshold"]
+    R0["L0 LinkML · pySHACL · schema-automator (build-time) · model2owl (in-house)"]
+    R1["L1 rdflib · pydantic"]
+    R2["L2 Oxigraph/pyoxigraph · oxrdflib · rdflib stores and clients · Fuseki/GraphDB"]
+    R3["L3 Zitadel (or Keycloak) · OpenFGA · pycasbin · Jena access · Fluree policies (V3)"]
+    R4["L4 FastAPI · API Platform as contract model"]
+    R5["L5 jsonld.js · TanStack Query · orval/hey-api + zod · oidc-client-ts · RJSF / JSON Forms"]
+    R6["L6 SSE / Mercure · RDF Patch · semantic.works deltas (compatible)"]
+    RX["Test/ops: testcontainers · pytest-bdd · schemathesis · OpenTelemetry"]
+  end
+  subgraph Build["Build — the thin core and its companions"]
+    B1["Core: BL-1 mapper · BL-2 aggregate session · BL-3 change-set compiler · BL-4 repository + query AST · BL-5 store port · BL-6 policy port · BL-7 outbox · BL-8 test kit"]
+    B2["Companions: BL-9 LinkML template fixes · BL-10 generator · BL-11 service kit · BL-12 scope translator · BL-13 event relay · BL-14 migration runner · BL-15 schema-diff migrations"]
+    B3["Optional: BL-16 read models · BL-17 generic service · BL-18 property-graph adapter"]
+  end
+  Reuse --> Build
+....
+
+== Matrix per layer
+
+[cols="2,3,3,2,4",options="header"]
+|===
+|Layer |Adopt |Integrate |Compatible / ideas |Build
+
+|L0 Modelling and code generation
+|LinkML (pinned, `--meta full`), pySHACL
+|model2owl (in-house, build-time), schema-automator (build-time), linkml-map (optional, offline), Owlready2 reasoner check (only with a threshold exception and Java in CI)
+|shacl2code, LDO, gen-sqla separate-mapping template (ideas)
+|BL-9 template fixes (IRI types, language strings, TS enums and dates, `linkml_meta` stripping); BL-10 generator (boundary derivation and checks, repositories, typed metamodel, routes, OpenAPI, JSON-LD context and frame, SHACL profile, TS client); CI equivalence check model2owl SHACL ↔ LinkML SHACL
+
+|L1 Domain and persistence
+|rdflib, pydantic
+|—
+|Ideas from every Python mapper reviewed (sparqlmodel, triplemodel, pydantic-rdf, rdfproxy, OldMan, SuRF, rdfmapper), neomodel, Spring Data JDBC, Ecto, SQLAlchemy, ODMantic, cosmic-python
+|BL-1 mapper; BL-2 aggregate session; BL-3 change-set compiler (single guarded operation, commit record, creation guard, outbox inside); BL-4 repositories and query syntax tree; BL-7 outbox and bus
+
+|L2 Stores and transactions
+|Oxigraph/pyoxigraph and oxrdflib (dev, test, single node); rdflib `SPARQLUpdateStore`, `contrib.rdf4j`, `contrib.graphdb`
+|Jena Fuseki/TDB2, GraphDB, RDF4J (production); Fluree v4 (V3 only, legal check first)
+|RDF Patch (compatible); RDF Delta, Fluree transaction model (ideas)
+|BL-5 store port with capability descriptor (atomicity, transactions, serialises guarded updates, confirmation mode) and adapters, including a write lock for on-disk Oxigraph
+
+|L3 Identity and authorization
+|pycasbin (in-process minimum); OIDC validation in FastAPI
+|Zitadel (or Keycloak if AGPL is unwanted); OpenFGA (V1, V5); Jena data access control (V5 read path); Fluree policies (V3); GraphDB fine-grained access (V4); `sparql-parser` (V2, DEC-5 exception)
+|Solid WAC/ACP vocabularies, LinkedDataHub rules-as-data, API Platform check points (ideas)
+|BL-6 policy port (pass-through, scope incl. counts and single reads, change check; identity per session); BL-12 scope translator (decision → graph restriction, flags truncated results)
+
+|L4 Data-management service
+|FastAPI
+|API Platform Admin and create-client (optional, by emitting Hydra/OpenAPI)
+|semantic.works JSON:API dialect and `domain.json` (compatible); API Platform contract design, Community Solid Server conditional writes and notifications (ideas)
+|BL-11 service kit (content negotiation, ETag/If-Match, problem responses, JSON:API Atomic Operations → one session); BL-17 generic service (optional, approach C)
+
+|L5 JavaScript client and UI
+|jsonld.js, TanStack Query, orval or hey-api + zod, oidc-client-ts, RJSF or JSON Forms, Cypress + Cucumber
+|react-admin / `@api-platform/admin` (optional back office); LDkit (V5 graph-direct reads, DEC-5 exception)
+|shacl-form (ideas; vendor in if the threshold is relaxed), LDO (ideas)
+|Thin client glue only: cached JSON-LD document loader, token handling, ETag on writes
+
+|L6 Change events
+|—
+|SSE or Mercure (AGPL: keep plain SSE as alternative)
+|semantic.works `changeSets` (compatible); RDF Patch (compatible)
+|BL-13 event relay (ordered, retrying, gap-detectable) and SSE bridge; BL-16 read models (optional, V5)
+
+|Cross-cutting: evolution, testing, operations
+|testcontainers-python, pytest-bdd, schemathesis, pytest-cov, OpenTelemetry instrumentations
+|—
+|Alembic, `mu-migrations-service` file format (ideas / compatible)
+|BL-8 test kit and store conformance suite; BL-14 migration runner; BL-15 schema diff → migration compiler; schema-changed-without-migration CI check; instrumented store port
+|===
+
+== Build items, rough size and first EPIC
+
+Sizes are the leader's rough estimates (S ≈ days, M ≈ one to two weeks, L ≈ several weeks of
+one developer), for ordering only — not commitments. They are not yet mapped to an EPIC appetite.
+
+[cols="1,5,1,2",options="header"]
+|===
+|Item |What |Size |First EPIC?
+|BL-1 |Mapper driven by IRI metadata (owned predicates, set semantics, `LangString`, not-loaded sentinel) |M |yes
+|BL-2 |Aggregate session (identity map, snapshots, commit policy, preview, hooks, model-aware errors) |M |yes
+|BL-3 |Change-set compiler (single guarded operation, commit record, creation guard, outbox inside) — needs a concurrency spike first (R16) |L |yes
+|BL-4 |Repository per aggregate root, query syntax tree with SPARQL renderer, raw-SPARQL port |L |yes
+|BL-5 |Store port with capability descriptor; Oxigraph, Fuseki, rdflib adapters (lock on on-disk Oxigraph) |M |yes
+|BL-6 |Policy-enforcement port (pass-through, scope incl. counts and single reads, change check) |M |second
+|BL-7 |Outbox records and in-process event bus |S |second
+|BL-8 |Test kit and store conformance suite (incl. concurrency and scoped-user tests) |M |yes
+|BL-9 |LinkML template fixes (IRI types, language strings, TS enums and dates, full metadata) |S |yes
+|BL-10 |Generator (boundary checks, repositories, typed metamodel, routes, OpenAPI, context, SHACL profile, TS client) |L |later
+|BL-11 |Service kit (content negotiation, ETag/If-Match, problem responses, Atomic Operations) |M |later
+|BL-12 |Scope translator (decision → graph restriction; flags truncation) |S |second
+|BL-13 |Event relay and SSE bridge |M |second
+|BL-14 |Migration runner (checksum, lock, log as triples, up/down) |S |before first go-live
+|BL-15 |Schema diff → migration compiler |L |later (ADR-16)
+|BL-16 |Read-model projection (V5) |M |optional
+|BL-17 |Generic schema-driven service (approach C) |L |optional
+|BL-18 |Property-graph adapter |L |only on project need
+|===
+
+== Build items per variant and approach
+
+Every variant needs the core BL-1 to BL-5, BL-8 and BL-9.
+
+[cols="1,5",options="header"]
+|===
+|Choice |Adds
+|V1 Portable Python core |BL-6 (scope mode) and BL-12 with OpenFGA or pycasbin; BL-7 and BL-13; BL-11; BL-14, BL-15
+|V2 semantic.works-compatible |BL-6 pass-through (proxy enforces); BL-11 in the semantic.works JSON:API dialect; degraded-commit compensations in BL-5 (proxy splits updates); BL-13 producing `changeSets`; BL-14 file-compatible with mu-migrations
+|V3 Fluree |BL-5 Fluree adapter (HTTP or embedded); BL-6 pass-through with identity forwarding; BL-7, BL-13; BL-14 (rehearse on Fluree branches)
+|V4 GraphDB |BL-5 transactional adapter (rdflib `contrib.rdf4j` / `contrib.graphdb`); BL-6 pass-through with identity forwarding; BL-14
+|V5 Graph-direct reads |V1 plus BL-16 and a policy-aware read endpoint (Jena access, integrate)
+|Approach A runtime mapper |no generator beyond BL-9
+|Approach B generated code |BL-10 (and BL-11 routes)
+|Approach C generic service |BL-17
+|Approach D code-first classes |no BL-9/BL-10; mapper metadata from `Annotated` markers
+|===
+
+== What this says
+
+* *The core to build is specific.* Eight core items, mostly at the L1–L3 seams (plus the outbox
+  at L6 and the cross-cutting test kit) where nothing mature exists, plus companions that make the MWBv2 chain work end to end.
+* *Nothing is built at the RDF, store, identity, policy-engine or JavaScript data-layer level.*
+* *The riskiest builds* are the change-set compiler (atomicity and concurrency per store), the
+  policy port (leaks through counts and single reads), and the migration chain — see
+  xref:architecture/soa/risks.adoc[risks].
+* *Optional items wait for a project need:* read models (V5), the generic service (approach C),
+  the property-graph adapter.

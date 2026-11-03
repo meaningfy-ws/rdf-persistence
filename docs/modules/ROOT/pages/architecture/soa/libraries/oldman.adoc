@@ -1,0 +1,198 @@
+= OldMan
+:description: An Object Linked Data Mapper that builds models from an RDF/Hydra schema plus a JSON-LD context; dead since early 2016 (master frozen 2015), but the closest prior art to a JSON-LD middleware.
+
+== At a glance
+
+[cols="1,3"]
+|===
+|What it is for |Declaring models with RDF triples and JSON-LD contexts instead of Python classes, persisting them with minimal SPARQL 1.1 diffs, and serving them over a Hydra-aware HTTP controller.
+|Origin and angle |Benjamin Cogrel (sole contributor; `oldm` is the GitHub organisation), 2014–2016, alpha. Schema-first and JSON-LD-first: Hydra vocabulary for constraints, context for names and types.
+|Language |Python 2.7 only (rdflib, rdflib-jsonld, SPARQLWrapper, dogpile.cache, requests, negotiator, validate_email)
+|Licence |BSD
+|Activity |Master commit `5661e5a` (2015-03-21), version 0.2. Unmerged branches `session` (2015-10 to 2015-12) and `proxy` (last push 2016-01-05). The PyPI name `oldman` now belongs to an unrelated 2026 package. GitHub: 15 stars, archived (desk scan 2026-11-03).
+|Size |5,365 LOC in 40 files; 3,224 test LOC, 132 test functions
+|Layers |L0 partial (declarative model input, interpreted at runtime) · L1 · L2 partial (SPARQL and HTTP stores, cache, no transactions) · L3 partial (field access modes, trust flag, unwired 401/403) · L4 partial (`HTTPController`) · L5 indirect (JSON-LD keys, Hydra). No L6.
+|Verdict |*Borrow ideas; no code.* The strongest idea source for the JSON-LD middleware.
+|===
+
+== Purpose and origin
+
+*Built for* exposing and consuming RDF resources on the Web as JSON-LD objects.
+The README calls it an "Object Linked Data Mapper", deliberately not an ORM: resources live on the Web, in stores you may not control.
+Benjamin Cogrel wrote it alone (246 commits) in 2014–2016. Master froze at v0.2 (2015-03).
+An unreleased `session` branch (late 2015) split the code into `core` / `client` / `storage` and added a Session; a `proxy` branch followed (2016-01). The repo is archived.
+
+*Design angle.* Declarative models from W3C standards: a JSON-LD context gives names and types, a Hydra/RDFS schema gives constraints and operations.
+Hypermedia-API first (HTTP controller, content negotiation, Hydra operations), with Python methods bolted onto RDF classes.
+
+*Where it fits.* Idea source for L0 (JSON-LD context as mapping, which LinkML can generate), L1 (snapshot diff, skolem aggregates, IRI strategies), L3 (field access modes, trust flag) and L4 (Hydra/JSON-LD controller).
+Not a dependency in any variant (Python 2, archived, fails DEC-5); nothing for L6.
+
+== How it works
+
+*Model from schema plus context.* `data_store.create_model("LocalPerson", ctx_iri, iri_prefix=…, incremental_iri=True)` (`store/datastore.py:241`, `model/manager.py:98`).
+`HydraPropertyExtractor` reads `hydra:supportedProperty`, `required`, `readonly`, `writeonly` from the schema graph (`parsing/schema/property.py:27-80`).
+`JsonLdContextAttributeMdExtractor` maps each property IRI to context terms (`parsing/schema/context.py:22-66`).
+One property can have several attributes: `bio:olb` becomes `short_bio_en` and `short_bio_fr` through `@language` terms.
+Inheritance comes from `rdfs:subClassOf`.
+
+*Behaviour without classes.* `declare_method(fn, name, class_iri)` attaches functions per RDF class (`resource/manager.py:31-50`).
+`Resource.__getattr__` resolves attribute, then method, then Hydra operation across ordered models (`resource.py:265-294`).
+
+*Identity.* Every resource has an IRI. Blank nodes are skolemised to `/.well-known/genid/` and re-hidden on export (`resource.py:898-907`).
+Four `IriGenerator` strategies exist: UUID, prefix plus counter, blank node, hash fragment (`iri.py`).
+The counter lives in the graph (`oldman:nextNumber`) under a process-local `Lock` (`store/sparql.py:16-34`).
+On master there is no identity map and no `+__eq__+`/`+__hash__+` (no equality by IRI): references are re-fetched on each access (`attribute.py:409-424`); an optional dogpile cache stands in.
+
+*Dirty tracking.* Each attribute keeps former and current values per resource (`Entry`, `attribute.py:459-497`); `receive_storage_ack()` promotes current to former after a save.
+`_save_resource_attributes` serialises only changed attributes and sends *one* `DELETE DATA {…} ; INSERT DATA {…}` request per resource via rdflib `Graph.update` (`store/sparql.py:337-371`). Saving several resources, including cascaded skolem children, sends several requests with no atomicity across them (`resource/resource.py:743-748`).
+This is valid SPARQL 1.1 and atomic on stores that execute a request atomically. Stale former values are not detected.
+
+*Cascade.* Replaced or removed skolem-bnode objects are deleted recursively, without checking other references (TODO at `resource.py:915`).
+
+*Validation.* On set (datatype, `ValueFormat`, container) and on save (`hydra:required`; `readonly` enforced when `is_end_user=True`) (`attribute.py:125-160`).
+`allow_new_type` / `allow_type_removal` guard against type injection from client JSON (`resource.py:479`).
+
+*Querying.* `get(id=…)`, `filter(types, limit, eager, **equals)` → `SELECT DISTINCT ?s … LIMIT n` (`store/sparql.py:209-253`).
+`_get_by_id` fetches one resource's outgoing and incoming triples with `VALUES` + `UNION` (`store/sparql.py:154-175`); eager `_filter_eagerly` loads all matched subjects in one query and adds `VALUES` + `UNION` only for `pre_cache_properties` (`:255-290`). This, not SuRF's sub-select, is the VALUES + UNION precedent. No order, offset or comparison operators.
+
+*Client/store split.* `ClientResource.save()` converts to a `StoreResource` through a `ModelConverter` (direct or equivalent mapping), so API vocabulary can differ from storage vocabulary (`resource.py:834-858`, `model/converter.py`).
+
+*HTTP.* `HTTPController` negotiates `application/ld+json` by default (`rest/controller.py:38-53`). GET, PUT (replace) and DELETE work; POST dispatches to a Hydra `supportedOperation`; PATCH is a TODO.
+
+*Graphs.* Writes go to one `data_graph`, reads to a `union_graph` (`store/sparql.py:35-40`).
+
+*The unmerged `session` branch.* Rounds 1–3 analysed master only. The `session` branch (2015-10 to 2015-12, never released) adds a `Session` with `get/delete/flush/close` and a `ResourceTracker` with change tracking:
+
+* *Partial identity map:* `find(iri)` returns tracked, modified objects before `flush()` but is a linear scan ("TODO: use an index", `core/session/tracker.py:79-85@session`).
+* *Flush ordered by reference dependencies* (`storage/session.py:57-76@session`).
+* *Temporary IRIs* replaced by permanent ones at flush (`storage/store/sparql.py:351-357@session`).
+* *Cross-store sessions* (`CrossStoreSession`), flushed per store cluster, with no atomicity across stores.
+* Still *one request per resource* at flush ("TODO: implement it more efficient by grouping the queries", `storage/store/sparql.py:336-349@session`), so no atomic unit-of-work commit.
+
+Evidence (read through the GitHub API as data): https://github.com/oldm/OldMan/tree/session and https://github.com/oldm/OldMan/tree/proxy.
+
+== Scores
+
+[cols="2,1,6",options="header"]
+|===
+|Criterion |Score |Reason
+
+|C1 Feature coverage |3 |CRUD, diff updates, validation, JSON-LD in/out, language maps, lists, IRI minting, inverse; no UoW, identity map, transactions, paging or per-resource graphs.
+|C2 Approach and patterns |3 |Strong metadata mapping and snapshot diff, client/store anti-corruption layer; still Active Record, no session on master (partial on the unreleased `session` branch), TODO-heavy.
+|C3 Developer friendliness |2 |Short JSON-like API and good typed errors; dynamic attributes, outdated docs, alpha API.
+|C4 Ease of adoption |1 |Python 2 only, seven dependencies, some abandoned; PyPI name taken by an unrelated project.
+|C5 Reuse of foundations |4 |rdflib for graphs, SPARQL, parsing and skolemisation; `rdflib_jsonld.Context` for terms; dogpile; requests.
+|C6 Data-centric and DDD fit |3 |Model-first from schema graph and context; domain objects still carry `save()`; the client/store split helps a repository.
+|C7 SPARQL 1.1 portability |4 |`DELETE DATA ; INSERT DATA` and standard SELECT/ASK through rdflib `SPARQLUpdateStore`; no GSP.
+|C8 Health |1 |132 tests, dead coveralls, one author, master last commit 2015 (branches to 2016-01), alpha, Python 2.
+|C9 Composability |3 |JSON-LD contexts, Hydra, SPARQL 1.1 Update, content negotiation, LD dereferencing, GRAPH-free SPARQL; no SHACL, LinkML, GSP or OIDC; own store port.
+|C10 Maintainability and operability |1 |Small code base, but Python 2, alpha, dead upstream, 142 TODOs, abandoned dependencies; debug logging only.
+|DX |2 |Best errors and validation of the prior art and a standards-aligned JSON vocabulary; heavy setup (three artefacts, two managers), no typing.
+|===
+
+== What to borrow
+
+* *JSON-LD context as the projection layer.* LinkML `gen-jsonld-context` can _partly_ generate it (needs `--fix-multivalue-containers`; no `@language`, `@reverse` or `@list`; see Code-generation fit), giving context-driven names without hand-written contexts.
+* *Per-attribute former/current snapshots plus storage ack*, producing one minimal `DELETE DATA ; INSERT DATA` request per resource. Use it inside a session-scoped Unit of Work (absent on master; only partial on the `session` branch).
+* *Skolem IRIs for blank nodes* with cascade deletion of owned skolem nodes: an implicit boundary, inferred from the IRI shape (`resource.py:898-907`); declare ownership in the model instead (B1, B13).
+* *Pluggable IRI minting strategies*; keep any counter inside the transaction.
+* *`required` / `readonly` / `writeonly` field semantics* and the `allow_new_type` guard for HTTP payloads.
+* *Client/store vocabulary split* as an anti-corruption layer and PEP site.
+* *Hydra and JSON-LD content negotiation* for the HTTP tier; *document-centric grouping* of hash IRIs under a hash-less document IRI.
+* *Typed errors*, e.g. `OMRequiredPropertyError: emails`, `OMAttributeTypeCheckError: you_wont_email_me is not a valid email (bad format)`.
+
+== What to avoid
+
+* *Lost updates:* `DELETE DATA` with stale former values leaves other writers' triples behind; no version or ETag check.
+* *N+1 on references* unless the dogpile cache is configured; no identity map and no `+__eq__+`, so two `get()` calls return unequal objects.
+* *Process-local lock* for the IRI counter (`store/sparql.py:16`); unsafe across processes.
+* *Unsafe cascade:* skolem children deleted without a shared-reference check.
+* *Unescaped `hashless_iri`* in `REGEX(...)` (`store/sparql.py:229-231`).
+* *Runtime models with `__getattr__`* (no typing), Active Record `save()`, abandoned `rdflib-jsonld` (merged into rdflib 6+).
+* *Silent cardinality traps:* omitting `@container: @set` makes a property single-valued.
+* *Claims vs code.* "Extensibility to various sorts of data stores" is partial: only SPARQL is writable and `DataStoreSelector` raises `NotImplementedError` for more than one store. The "Core concepts" docs page is marked OUT-DATED.
+
+== Authorization seams
+
+* *Field-level enforcement exists:* `hydra:readonly` / `writeonly` are checked when `is_end_user=True` (`model/attribute.py:149-153`); writeonly attributes are dropped from JSON output. The principal model is binary.
+* *Type-change guard:* `allow_new_type` / `allow_type_removal` (`resource.py:479, 574-602`).
+* *Planned but unwired:* `OMForbiddenOperationException` (403) and `OMRequiredAuthenticationException` (401) are declared but never raised (`exception.py:62-74`).
+* *Three PEP sites:* `HTTPController` methods (coarse operation checks); `ClientResourceManager` plus the converter (resource and field checks on the client vocabulary); `DataStore.get/filter/save/delete` (store level). Raw `sparql_filter` bypasses the first two.
+* *Behind an authorizing SPARQL proxy:* good fit. Writes are GRAPH-free `DELETE DATA ; INSERT DATA`; reads are plain SELECT/ASK. Caveats: an ACL that hides triples can make `exists()` report a taken IRI as free, and the counter needs write access to a shared bookkeeping triple.
+* *Verdict:* borrow declarative field access modes (A3) and the client/store split as the PEP placement; keep emitting GRAPH-free SPARQL 1.1.
+
+== Code-generation fit
+
+*Partial.* LinkML `gen-jsonld-context` emits prefixes, `@id`, `@type: @id`, `@type: xsd:*` and `@type: @vocab`.
+It emits `@container: @set` only with `--fix-multivalue-containers`.
+
+Gaps:
+
+* It emits `@container: @index` for inlined dicts, which OldMan rejects (`model/attribute.py:449-453`).
+* No per-term `@language`, `@reverse` or `@list`.
+* The Hydra schema graph has *no LinkML generator*; a custom generator of roughly 100 lines would be needed (`required` → `hydra:required`, readonly via annotation, or from SHACL `sh:minCount`).
+
+The better use for us: generate Pydantic classes (typing) and the JSON-LD context (wire format) from one LinkML schema, as twin projections.
+
+== Variant fit
+
+Ideas only; see xref:architecture/soa/variants.adoc[variants].
+
+[cols="2,1,5",options="header"]
+|===
+|Variant / approach |Fit |Why
+
+|V1 Portable Python core |supports (ideas) |JSON-LD + Hydra contract, minimal `DELETE DATA ; INSERT DATA` diff, field access modes.
+|V2 semantic.works-compatible |supports (ideas) |GRAPH-free SPARQL 1.1 writes let `sparql-parser` own graph placement; its JSON-LD/Hydra contract differs from mu's JSON:API.
+|V3 Fluree |supports (ideas) |JSON-LD context as mapping matches Fluree's JSON-LD-native I/O.
+|V4 GraphDB |neutral |Nothing specific.
+|V5 Graph-direct reads |supports (ideas) |`HttpDataStore` (S10) shows read-only dereferencing; the client/store split separates API and store vocabularies.
+|A Runtime mapper |enables |Mapping read from metadata (context + schema) at runtime, as A does with LinkML `class_uri`/`slot_uri`.
+|B Generated mapper and routes |neutral (ideas) |G8 twin projections and G11 Hydra generation are ideas OldMan itself lacks.
+|C Generic service |enables (closest prior art) |Generic `HTTPController` interpreting the schema at runtime; no typing, PATCH unfinished.
+|===
+
+== Final verdict
+
+*Ideas.* The strongest idea source for the JSON-LD/Hydra middleware; no code to reuse (Python 2, archived, fails DEC-5).
+
+. *The JSON-LD context can serve as the object↔RDF mapping*, but LinkML `gen-jsonld-context` covers it only partly: generate Pydantic classes and the context as twin projections (G8), plus a Hydra generator (G11), rather than hand-writing contexts.
+. *Per-attribute snapshot diffs give minimal SPARQL 1.1 writes*, but only inside a real unit of work that sends *one request for the whole change set with a version guard* (B7, T1, T2). OldMan's per-resource requests without guards lose updates.
+. *Authorization seams belong at three explicit points*: the API controller, the client/store mapping and the store port. Field access modes and a type-change guard should be declarative in the model; GRAPH-free SPARQL keeps it proxy-compatible.
+
+== Feature coverage
+
+[cols="2,1,1,1,1",options="header"]
+|===
+|Round (taxonomy) |Present |Partial |Absent |n.a.
+|Round 1 (v0, 43 features; counted from the table) |18 |10 |15 |0
+|Round 2 (v1 additions, 63) |15 |14 |33 |1
+|Round 3 (v2 additions, 19) |3 |3 |13 |0
+|Round 4 (v3 additions, 102) |2 |12 |88 |0
+|Round 5 (v4 additions, 77) |0 |9 |68 |0
+|===
+
+Round-5 v4 partials: B4, B10, B13, EV5, T14, I8, P20, D17, D18 (T14, I8 and P20 only on the `session` branch).
+
+Notable present features:
+M2 schema language (Hydra plus context), M4 inheritance, M5 validation, I1 IRI minting, I2 blank nodes, P2 diff updates, X1 JSON-LD,
+M6 runtime models, M8 JSON-LD context as mapping, M9 attribute ≠ property, M10 behaviour per RDF class, I4 skolemisation, L3 literal registry,
+P8 owned predicates, P9 minimal diff, Q9 eager loading, S6 cache with invalidation, X7 content negotiation, X8 Hydra hypermedia,
+X9 API ↔ storage vocabulary mapping, A2 GRAPH-free writes, A3 field access modes, M16 multi-typed instances, S10 LD dereferencing store, X15 document-centric grouping.
+
+Notable present/partial v3 features:
+AZ21 principal threaded into field checks, G26 inheritance-safe mapping (present);
+AZ16 trusted-caller bypass, AZ19 injected HTTP session (per store), AZ24 declared 401/403, G6 language terms at runtime, G8 runtime half of twin projections, T1 one request per resource, T7 capability flags, RAD4 opt-in POST, S17 per-resource diff on PUT, D11/D13 errors (partial); T5 read-your-writes on the `session` branch only.
+
+Notable absences (master): I3 identity map and P3 unit of work (partial on the unreleased `session` branch), P4/P13 transactions, P12 graph placement, Q15 counts, D1 typing.
+
+Proposed by this report and now in the taxonomy: AZ21 principal threaded into field checks, AZ24 authz error contract mapped to HTTP, G11 Hydra docs generated from the model, G8 twin projections from one schema.
+Round-4 proposals from the `session` branch, now in v4: I8 deferred IRI minting, P20 reference-aware flush ordering, T14 cross-store unit of work.
+
+== Sources
+
+* Repository: https://github.com/oldm/OldMan (master commit `5661e5a`; branches https://github.com/oldm/OldMan/tree/session[`session`] and https://github.com/oldm/OldMan/tree/proxy[`proxy`])
+* Documentation: https://oldman.readthedocs.io/en/latest/
+* In-repo docs read: `README.rst`, `docs/foreword.rst`, `docs/core_concepts.rst`, `examples/quickstart*`
+* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/oldman.md`

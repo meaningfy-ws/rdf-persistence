@@ -1,0 +1,19 @@
+@startuml
+title C6 Zitadel token -> FastAPI -> OpenFGA ListObjects -> SPARQL graph scope
+actor User
+participant "Zitadel" as Z
+participant "FastAPI Depends" as API
+participant "OpenFGA" as FGA
+participant "Policy port (rdf-persistence)" as PEP
+participant "SPARQL store" as ST
+User -> Z : OIDC login (PKCE)
+Z --> User : access token (JWT only if configured; roles claim on request)
+User -> API : request + Bearer
+API -> API : verify via JWKS (Authlib/PyJWT) or introspection (opaque)
+API -> FGA : ListObjects(user, can_read, type graph)
+FGA --> API : graph ids (capped at 1000, partial on 3s deadline, no flag)
+API -> PEP : scope = set of graph IRIs
+PEP -> ST : SELECT/CONSTRUCT ... FROM NAMED / VALUES ?g, also for COUNT and get-by-IRI
+ST --> API : rows only from permitted graphs
+note over PEP, ST : Leak trap: counts, single-item lookups and GROUP BY rows must carry the same scope
+@enduml

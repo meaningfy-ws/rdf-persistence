@@ -1,0 +1,17 @@
+@startuml
+title C7 Zitadel roles -> Fluree identity / policy class -> policy-filtered SPARQL
+participant "Zitadel" as Z
+participant "FastAPI service" as API
+participant "Fluree server" as FL
+participant "Ledger (policies as RDF)" as LG
+Z -> API : user token (sub, project roles claim)
+API -> API : map roles -> policy-class IRIs, sub -> identity IRI
+Z -> API : service-account JWT with custom claims via Zitadel Action
+note right of API : needs fluree.ledger.read/write.* and fluree.policy = "request"
+API -> FL : SPARQL + Bearer(service) + fluree-identity + fluree-policy-class headers
+FL -> FL : verify JWT via JWKS; CredentialPolicy::Request trusts headers
+FL -> LG : resolve identity -> f:policyClass, load policies
+LG --> FL : filtered flakes (reads), checked staged flakes (writes)
+FL --> API : policy-filtered results
+note over API, FL : Anyone holding the service credential can impersonate any identity: protect it like a DB password
+@enduml
