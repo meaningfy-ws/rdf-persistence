@@ -2,7 +2,8 @@
 :description: What the state-of-the-art review implies for the design of rdf-persistence: the core patterns, the developer-facing API shape, and the seams to keep open. Options, not decisions.
 
 This page turns the findings into design input. It states what the evidence supports and what
-remains open. Nothing here is decided; decisions are recorded as ADRs once the developer takes
+remains open. The body is the review's evidence; the developer's answers of 2026-11-03 are in
+xref:architecture/soa/decisions.adoc[developer decisions] and summarised at the end. Decisions are recorded as ADRs once the developer takes
 them. Sources: xref:architecture/soa/angles/ddd.adoc[DDD boundaries],
 xref:architecture/soa/angles/dx.adoc[developer experience],
 xref:architecture/soa/angles/stores.adoc[stores and transactions],
@@ -173,12 +174,37 @@ later without breaking the API:
 
 == Open questions
 
-. Where are aggregate boundaries declared — LinkML annotations or a naming convention?
-. Default aggregates-per-commit policy: strict, warn or allow?
-. Graph-per-aggregate opt-in, given it competes with graph-level access control?
-. Version as mapper metadata or as a domain field? Optimistic concurrency on by default?
-. Events through an in-process bus, an outbox relay, or both?
-. Typed metamodel companion (`Person_`) or attributes attached at runtime?
-. Multi-valued slots as `list` or `set`? Form of `LangString`?
-. Repository required, or is the session enough? Generated sync API or `run_sync`?
-. Does migration generation from schema diffs belong in the first EPIC?
+Answered or given a recommendation on 2026-11-03; details in
+xref:architecture/soa/decisions.adoc[developer decisions].
+
+[cols="4,4",options="header"]
+|===
+|Question |Status
+
+|Where are aggregate boundaries declared — LinkML annotations or a naming convention?
+|*Decided:* an `AggregateRoot` mixin plus `owned` slot annotations, checked at build time (DEC-34, ADR-11).
+
+|Default aggregates-per-commit policy: strict, warn or allow?
+|*Decided:* `strict` by default, configurable (DEC-21).
+
+|Graph-per-aggregate opt-in, given it competes with graph-level access control?
+|*Decided:* one named graph per aggregate, its IRI derived from the root's IRI; graph level becomes aggregate level, triple level on top (DEC-20, DEC-29, DEC-15, DEC-26).
+
+|Version as mapper metadata or as a domain field? Optimistic concurrency on by default?
+|*Decided:* mapper metadata, on by default (DEC-22).
+
+|Events through an in-process bus, an outbox relay, or both?
+|*Decided:* both; the relay feeds a Redis-protocol broker (DEC-23).
+
+|Typed metamodel companion (`Person_`) or attributes attached at runtime?
+|*Decided:* a generated typed companion on one runtime `Field` object; no hand-written domain classes (DEC-37).
+
+|Multi-valued slots as `list` or `set`? Form of `LangString`?
+|*Decided:* `list[T]` with set semantics, `LangString` as a language map (DEC-35, ADR-15).
+
+|Repository required, or is the session enough? Generated sync API or `run_sync`?
+|Open; recommended: both, with repositories as thin typed accessors on the session. API is async only, for now (DEC-38).
+
+|Does migration generation from schema diffs belong in the first EPIC?
+|*Decided:* not in the first EPIC; keep it possible (DEC-25).
+|===

@@ -78,16 +78,37 @@ implements (DEC-n in `proposal.md`). Raw inputs: `inputs/`. Status: [x] done · 
 - [x] 6.5 Candidate ADRs per C4 level (options and trade-offs; decisions left to the developer).
 - [x] 6.6 Diagrams as individual PlantUML `.puml` files and as Mermaid in `.md` documents.
 
-## 7. Delivery
+## 7. Developer decisions on the open questions
 
-- [x] 7.1 `make build-docs` passes; all xrefs resolve.
-- [x] 7.2 Build-versus-reuse decision support handed to the developer (decision is theirs).
-- [x] 7.3 Commit on explicit consent (no AI attribution) — a756cde; PR #2, stacked on #1, retargets to `develop` once #1 merges.
+- [x] 7.1 Preserve the developer's answers verbatim in `inputs/developer-answers-2026-11-03.md`.
+- [x] 7.2 Record them as DEC-15…DEC-25 in `proposal.md`.
+- [x] 7.3 Update the candidate ADRs' status and outcomes; record the review's recommendation
+      where the developer left a question open (ADR-08, 10, 11, 15).
+- [x] 7.4 Project the consequences in the docs: new `decisions.adoc` (triple-level access
+      control, graph per aggregate, `strict` policy, annotation sets, events and broker licence,
+      LinkML boundary options); status in `index.adoc`, `design-implications.adoc`, `variants.adoc`.
+- [x] 7.5 Developer decides what remains open: triple-level evaluator vs DEC-8, REST or
+      GraphQL, Zitadel licence, graph IRI = root IRI, annotation sets and `strict`, ADR-01 —
+      round 2, `inputs/developer-answers-2026-11-03-round2.md`, DEC-26…DEC-32.
+- [x] 7.6 Project round 2 into `candidate-adrs.md` (ADR-01, 02, 04, 09 decided),
+      `decisions.adoc`, `index.adoc` and `design-implications.adoc`.
+- [x] 7.7 Record the access-rule vocabulary (DEC-33) and the access-control ideas to borrow
+      in `decisions.adoc`.
+- [x] 7.8 Round 3: boundaries, multi-valued slots and UI forms decided (DEC-34…DEC-36,
+      `inputs/developer-answers-2026-11-03-round3.md`); ADR-11 and ADR-15 decided.
+- [x] 7.9 Typed metamodel decided (DEC-37, `inputs/developer-answers-2026-11-03-round4.md`).
+- [x] 7.10 Sync API style decided: async only, for now (DEC-38).
 
-## 8. Follow-ups found during the review
+## 8. Delivery
 
-- [x] 8.1 Refresh the architecture analysis (`architecture/`) with the round-4 findings (DDD
+- [x] 8.1 `make build-docs` passes; all xrefs resolve.
+- [x] 8.2 Build-versus-reuse decision support handed to the developer (decision is theirs).
+- [x] 8.3 Commit on explicit consent (no AI attribution) — a756cde; PR #2, stacked on #1, retargets to `develop` once #1 merges.
+
+## 9. Follow-ups found during the review
+
+- [x] 9.1 Refresh the architecture analysis (`architecture/`) with the round-4 findings (DDD
       aggregate session, migrations, DX API shape) — round 5.
-- [x] 8.2 Publish the architecture analysis in the Antora docs (summary page linking the `.md`
+- [x] 9.2 Publish the architecture analysis in the Antora docs (summary page linking the `.md`
       and `.puml` sources).
-- [x] 8.3 Design-implications page kept as the bridge from findings to the next EPIC's ADRs.
+- [x] 9.3 Design-implications page kept as the bridge from findings to the next EPIC's ADRs.

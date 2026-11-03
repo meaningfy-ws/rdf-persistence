@@ -4,26 +4,27 @@ Change: `soa-python-rdf-orm` · task 6.5. Template: Meaningfy `ADR_TEMPLATE.md`.
 level. Each ADR traces to drivers (AD-*n*, K-*n* in [`business-context.md`](business-context.md))
 and to the diagrams in [`c4-views.md`](c4-views.md). **Decision Outcome is "Open — for the
 developer"** unless a DEC-*n* in `proposal.md` already decides it; options are presented, not
-chosen.
+chosen. The developer's answers of 2026-11-03 (DEC-15…DEC-38) decide or narrow most of them; see
+`docs/modules/ROOT/pages/architecture/soa/decisions.adoc`.
 
 | Id | C4 level | Title | Status |
 |---|---|---|---|
-| ADR-01 | Context | Scope of the system: library only, or library + generator + service kit | Open |
-| ADR-02 | Context | Where authorization is enforced | Partly decided (DEC-8) |
-| ADR-03 | Context | Master of the domain model | Open |
-| ADR-04 | Container | Contract between the service and the UI | Open |
-| ADR-05 | Container | Store and transaction strategy | Open (constrained by DEC-2, DEC-4) |
-| ADR-06 | Container | Source and format of external change events | Open |
+| ADR-01 | Context | Scope of the system: library only, or library + generator + service kit | Decided (DEC-32) |
+| ADR-02 | Context | Where authorization is enforced | Decided (DEC-15, DEC-17, DEC-26) |
+| ADR-03 | Context | Master of the domain model | Decided for now (DEC-19) |
+| ADR-04 | Container | Contract between the service and the UI | Decided (DEC-17, DEC-18, DEC-27) |
+| ADR-05 | Container | Store and transaction strategy | Partly decided (DEC-16) |
+| ADR-06 | Container | Source and format of external change events | Decided (DEC-23) |
 | ADR-07 | Component | Persistence pattern of the core | Open (constrained by DEC-4, DEC-13) |
-| ADR-08 | Component | Mapping at runtime or generated | Open |
-| ADR-09 | Component | Storage strategy of an aggregate (root + owned closure, or graph per aggregate) | Open |
-| ADR-10 | Component | Behaviour on stores without atomic commits | Open |
-| ADR-11 | Component | Declaring aggregate boundaries in the model | Open |
-| ADR-12 | Component | Commit policy — aggregates per commit | Open |
-| ADR-13 | Component | Where the version lives; optimistic concurrency by default | Open |
-| ADR-14 | Component | Dispatch of domain events | Open |
-| ADR-15 | Code | Multi-valued slots and language-tagged strings | Open |
-| ADR-16 | Context | Migrations in the scope of the first EPIC | Open |
+| ADR-08 | Component | Mapping at runtime or generated | Open — recommendation recorded |
+| ADR-09 | Component | Storage strategy of an aggregate (root + owned closure, or graph per aggregate) | Decided (DEC-20, DEC-29) |
+| ADR-10 | Component | Behaviour on stores without atomic commits | Open — recommendation recorded |
+| ADR-11 | Component | Declaring aggregate boundaries in the model | Decided (DEC-34) |
+| ADR-12 | Component | Commit policy — aggregates per commit | Decided (DEC-21) |
+| ADR-13 | Component | Where the version lives; optimistic concurrency by default | Decided (DEC-22) |
+| ADR-14 | Component | Dispatch of domain events | Decided (DEC-23) |
+| ADR-15 | Code | Multi-valued slots and language-tagged strings | Decided (DEC-35) |
+| ADR-16 | Context | Migrations in the scope of the first EPIC | Partly decided (DEC-25) |
 
 **Count.** Sixteen ADRs exceed the skill's 6–10 guideline. ADR-11 to ADR-16 were added for the
 round-4 open questions (SoA:design-implications, angles ddd, dx, evolution); ADR-12 and ADR-13 could
@@ -61,10 +62,11 @@ One deployable that serves any LinkML model at runtime, like mu-cl-resources.
 - Bad, because weak typing for domain logic; competes with semantic.works rather than composing.
 
 #### Decision Outcome
-Open — for the developer.
+**Decided (DEC-32):** option 2. rdf-persistence is the library plus a generator and a service
+kit, versioned as companion packages; it is the foundation MWBv2 is implemented on.
 
 #### Consequences
-- Option 2 makes BL-9…BL-14 part of the roadmap; Option 1 defers them to projects.
+- BL-9…BL-14 are part of the roadmap; the core stays framework-free and the companions depend on it, never the reverse.
 
 #### Confirmation
 Package layout and import-linter contracts: the core must not import the service kit.
@@ -95,9 +97,7 @@ triple level needs Fluree or GraphDB. Drivers: AD-11, AD-12. Diagrams: §5.2, L2
 - Bad, because graph level only; a scope translator must be built (BL-12); unsafe for free client SPARQL.
 
 #### Decision Outcome
-**Partly decided by DEC-8:** borrow, never build an engine; the library exposes a port and stays
-ACL-agnostic. **Which mode(s) to ship first — open, for the developer.** All three can coexist
-behind `PolicyEnforcementPort`.
+**Partly decided.** DEC-8: borrow, never build an engine; the library exposes a port and stays ACL-agnostic. DEC-17: the UI never sends SPARQL, so the in-process port (option 3) is safe and is the base mode; with DEC-20, graph scopes are aggregate scopes. DEC-15: triple level stays required. Option 2 (proxy) is dropped. DEC-26 (amends DEC-8): triple level by both routes behind one port — GraphDB FGAC in pass-through where GraphDB is licensed, and a thin in-house evaluator over the change set and the generated queries for the open stores. Graph-level decisions stay borrowed.
 
 #### Consequences
 - The library never stores policy; the port has three modes (pass-through, scope, change check).
@@ -130,7 +130,7 @@ edited by the Model Custodian decides round-trips and regeneration. Drivers: AD-
 - Bad, because a merge step to build and maintain.
 
 #### Decision Outcome
-Open — for the developer.
+**Decided for now (DEC-19):** option 2, curated LinkML is the master. UML may return upstream later (then option 3, an overlay that keeps the mapper's annotations).
 
 #### Consequences
 - Option 1 or 3 keeps model2owl as a quality gate; Option 2 makes LinkML lint the gate.
@@ -168,7 +168,7 @@ binding; graph-direct SPARQL pushes RDF into the browser. Diagrams: L2 V1, V2; U
 - Bad, because domain rules bypassed on reads; needs store-native or proxy authorization.
 
 #### Decision Outcome
-Open — for the developer.
+**Partly decided.** Option 4 is rejected (DEC-17: the UI never reaches the store). Option 2 is rejected (DEC-18: no semantic.works compatibility; its good features are re-implemented). DEC-27: both — REST with compacted JSON-LD + OpenAPI first (option 1, Turtle and N-Triples by content negotiation), GraphQL second (LinkML `gen-graphql` gives the schema; resolvers over the aggregate session are new work).
 
 #### Consequences
 - Every option requires stable IRIs and versions exposed as ETags (BL-11).
@@ -201,8 +201,7 @@ L23). Drivers: AD-2, AD-3, AD-9.
 - Bad, because BUSL-1.1 (legal check), young v4, no cascade delete.
 
 #### Decision Outcome
-Open — for the developer. Constrained by DEC-2 and DEC-4: any option must sit behind the same
-Store Port and keep Option 1 working.
+**Partly decided (DEC-16):** classic W3C triple stores only; option 3 (Fluree) is dropped. Option 1 is the portable default; option 2 (RDF4J / GraphDB transactions) is a store capability used when present. Conformance targets: Oxigraph, Fuseki, RDF4J, GraphDB.
 
 #### Consequences
 - The Store Port must declare capabilities so the unit of work picks the strongest one (BL-5).
@@ -233,7 +232,7 @@ events only. Diagram: §5.3.
 Format (independent): RDF Patch vs semantic.works change sets vs domain events (typed, per aggregate).
 
 #### Decision Outcome
-Open — for the developer.
+**Decided (DEC-23):** option 1, a library outbox relayed to a message broker (Redis-protocol; Valkey recommended for its BSD licence). Event format: typed domain events; RDF Patch not chosen.
 
 #### Consequences
 - Option 1 adds BL-7 and BL-13; Option 2 ties L6 to the variant.
@@ -326,7 +325,7 @@ runbook wants generated, never-edited code (mwb2 L31). Drivers: AD-1, AD-5, AD-1
   open (ADR-03).
 
 #### Decision Outcome
-Open — for the developer.
+Open — for the developer, who asked for the more reliable and maintainable path. **Recommended: option 3** (runtime mapper now, generated repositories, routes and clients later, all calling it): one generic mapper is tested once; generated mapping repeats template bugs and tracks LinkML template changes.
 
 #### Consequences
 - Any option needs BL-9 (IRI types, language strings) in the generated classes.
@@ -360,7 +359,7 @@ AD-2, AD-4, AD-12.
 - Bad, because two code paths to test.
 
 #### Decision Outcome
-Open — for the developer.
+**Decided (DEC-20):** option 2, one named graph per aggregate. DEC-29: the graph IRI is derived deterministically from the root's IRI by one function (for example `<root>/graph`), so graph metadata and entity data do not share a subject. Graph-level authorization becomes aggregate-level; tenancy moves to dataset/repository or IRI namespace.
 
 #### Consequences
 - Option 2 makes ADR-02 Option 3 natural (graph scopes = aggregates) but removes graphs as tenancy unit.
@@ -393,7 +392,7 @@ Drivers: AD-2, AD-9.
 - Bad, because both paths must be maintained.
 
 #### Decision Outcome
-Open — for the developer.
+Open — for the developer. **Recommended: option 3** (refuse by default, degrade on explicit opt-in), consistent with the `strict` commit policy (DEC-21).
 
 #### Consequences
 - Option 2 or 3 adds the compensation log (rdflib `AuditableStore` idea) to BL-5.
@@ -430,7 +429,7 @@ AD-5, AD-20.
 - Bad, because not verified that the chain carries it; may need model2owl changes.
 
 #### Decision Outcome
-Open — for the developer.
+**Decided (DEC-34):** an `AggregateRoot` mixin from a shared rdf-persistence LinkML schema marks roots, an `owned` annotation marks owned slots, references are slots ranging over another root; build-time checks as in option 3. Option 4 only if UML returns upstream (DEC-19).
 
 #### Consequences
 - The chosen rule is implemented once in the Boundary Checker (BL-10) and read at runtime by the session (approach A).
@@ -462,7 +461,7 @@ AD-2, AD-4, AD-19.
 - Bad, because larger guards raise contention; DDD rule left to discipline.
 
 #### Decision Outcome
-Open — for the developer (the default value; all three can be configurable).
+**Decided (DEC-21):** `strict` by default; `warn` and `allow` stay as session configuration. Scripts and migrations opt out explicitly.
 
 #### Consequences
 - The policy lives in the Aggregate Session (BL-2); the service kit may set `strict` for API routes.
@@ -495,7 +494,7 @@ No Python RDF mapper protects against lost updates (K-2). The version can be a d
 - Bad, because the safe behaviour is not the default.
 
 #### Decision Outcome
-Open — for the developer.
+**Decided (DEC-22):** option 1, mapper metadata, on by default. Version, provenance and annotation sets are orthogonal concerns kept out of the domain classes; annotation sets (Web Annotation, PROV-O) are a new requirement, each in its own graph per aggregate.
 
 #### Consequences
 - Confirmation by an ASK on an append-only commit record (K-7), sent to the primary, is needed whatever the option on stores without transactions or commit receipts; a "last transaction" marker would report false conflicts. New aggregates need a `FILTER NOT EXISTS` creation guard.
@@ -528,7 +527,7 @@ covers in-process vs relayed dispatch. Drivers: AD-4, AD-10, AD-20.
 - Bad, because handlers must be idempotent (may see an event twice).
 
 #### Decision Outcome
-Open — for the developer.
+**Decided (DEC-23):** option 3, both — bus after commit for in-process handlers, outbox relay for durable and external delivery. Handlers must be idempotent.
 
 #### Consequences
 - Option 2 or 3 adds BL-13; Option 3 makes idempotent handlers a documented rule.
@@ -562,7 +561,7 @@ deterministic order on load, and `LangString` as a language map. Drivers: AD-13,
 - Bad, because heavier triples and queries; only for slots marked ordered (combine with 1 or 2).
 
 #### Decision Outcome
-Open — for the developer.
+**Decided (DEC-35): option 1** (`list[T]` with set semantics, `LangString` as a language map), because it matches LinkML output with no template change.
 
 #### Consequences
 - The choice fixes BL-1 behaviour, BL-9 template work and the JSON-LD context generated for the UI.
@@ -600,7 +599,7 @@ AD-17, AD-22.
 - Bad, because upstream pace and acceptance are outside our control.
 
 #### Decision Outcome
-Open — for the developer.
+**Partly decided (DEC-25):** no migration generation in the first EPIC (option 3 for now), but option 2 is a likely goal: keep the schema version in the store, LinkML rename hints and a migration principal in the policy port.
 
 #### Consequences
 - Option 1 needs BL-14; Option 2 adds BL-15. Which principal runs migrations under DEC-8 must be decided with ADR-02.
