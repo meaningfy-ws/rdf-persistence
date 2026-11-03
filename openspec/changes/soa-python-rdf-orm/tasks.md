@@ -82,7 +82,7 @@ implements (DEC-n in `proposal.md`). Raw inputs: `inputs/`. Status: [x] done · 
 
 - [x] 7.1 `make build-docs` passes; all xrefs resolve.
 - [x] 7.2 Build-versus-reuse decision support handed to the developer (decision is theirs).
-- [~] 7.3 Commit on explicit consent (no AI attribution) — committed a756cde; push and PR to `develop` pending consent.
+- [x] 7.3 Commit on explicit consent (no AI attribution) — a756cde; PR #2, stacked on #1, retargets to `develop` once #1 merges.
 
 ## 8. Follow-ups found during the review
 
