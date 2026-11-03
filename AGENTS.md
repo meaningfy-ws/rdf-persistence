@@ -78,6 +78,49 @@ Divergence). Commit only on explicit developer consent.
 - **Subagents** — before spawning one, follow *Subagent dispatch* in the `guardrails` skill: spawn
   only when it pays, brief it fresh, take the base report back, and have finished work checked by a
   second subagent.
+- **Subagents share this checkout and branch.** Implementers run one after another; the leader
+  commits after each task. Run writers in parallel only on tasks with disjoint files, and they
+  never stage or commit. Read-only agents (reviewers, Explore) may run in parallel freely. Use a
+  separate worktree (`isolation: "worktree"`) only for overlapping parallel work or when another
+  session holds this checkout.
+- **Run checks through make** (`make test`, `make check-all`); don't hand-roll pytest pipelines.
+- **Temporary files** go in `temp/` (git-ignored), not `/tmp` or the session scratchpad.
+- **Commits and PRs carry no AI attribution** (no `Co-Authored-By`, no "Generated with" line).
+  Enforced for Claude Code by `.claude/settings.json` (`attribution` empty); other agents follow
+  this rule by hand.
+- **Commit messages are descriptive and give the why and the what.** Subject: Conventional
+  Commit, imperative, no trailing period (`feat(store): add named-graph upsert`). Body,
+  after one blank line, wrapped at ~72 columns:
+  1. **Why** — the problem, motivation or constraint; the diff cannot show it, so it comes first.
+  2. **What** — the changes in plain words, one bullet per concern, naming the main files or
+     modules, so a reviewer knows what to look for without reading the diff first.
+  3. **Trace** — the change id and decisions it implements (`Refs: <change-id> DEC-3`),
+     and any BREAKING change on its own `BREAKING CHANGE:` line.
+  A one-line body is fine only for trivial changes (typo, formatting). No AI attribution.
+
+## Team leader — the main agent orchestrates (developer, 2026-11-03)
+
+The main agent is the **team leader**: it owns the conversation with the developer, the plan, the
+decisions and the integration; team members (subagents) do the bounded work. Dispatch rules are in
+*Subagent dispatch* (`guardrails` skill) — this section only names the roles and what the leader
+keeps.
+
+- **The team** (catalogue agents first):
+  - planning an EPIC/PLAN → `meaningfy-building:epic-planner` (returns question rounds; the leader
+    asks the developer and relays answers);
+  - one ready task in `tasks.md` → `meaningfy-building:implementer` (test-first, one task per brief);
+  - pre-PR review → `meaningfy-building:code-reviewer`, one per lens (L1–L5), in parallel;
+  - wide code search → `Explore`; anything else → `general-purpose`.
+- **The leader keeps:** talking to the developer, every decision, gitnexus impact before a task
+  is handed out, running `make` checks after each member returns, commits (on consent), and
+  updates to the spine. Members never ask the developer directly and never commit.
+- **Precise briefs.** Each brief names the change id and task number, the files in scope as paths,
+  decisions already made (cite `DEC-n` / the spec scenario), what is out of scope, and the report
+  expected. If the leader cannot write that brief, the task is not ready — fix the PLAN first.
+- **Trust, then verify.** A member's report is a claim: the leader re-runs the checks and reads the
+  diff before marking a task done, and has finished work checked by a second member.
+- **Do it inline** when it is a few tool calls or the next step depends on it — delegation is for
+  bounded, independent work, not for every step.
 - Default branch is **`develop`** (the PR target). Branch off it; never commit to it
   directly.
 
