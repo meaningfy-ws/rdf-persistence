@@ -1,0 +1,18 @@
+@startuml walkthrough-chain
+title The MWBv2 chain: what we buy and what we build
+left to right direction
+rectangle "Model\nUML -> LinkML" as M
+rectangle "Generated Python\ndomain classes" as G
+rectangle "Persistence\n(the joinery we build)" as P #LightYellow
+database "Triple store" as S
+rectangle "Service API\nJSON-LD, JSON:API" as A
+rectangle "JavaScript UI" as U
+rectangle "Lock\nidentity and authorization" as L
+M --> G
+G --> P
+P --> S
+P --> A
+A --> U
+L ..> A
+L ..> S
+@enduml

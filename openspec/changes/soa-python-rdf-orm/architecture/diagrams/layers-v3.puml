@@ -1,0 +1,24 @@
+@startuml layers-v3
+title Layer composition - V3 Fluree data-centric
+skinparam rectangle {
+  BackgroundColor<<exists>> #C8E6C9
+  BackgroundColor<<partial>> #FFE0B2
+  BackgroundColor<<missing>> #FFCDD2
+}
+legend right
+  green = exists (reuse)
+  amber = partial (gap to close)
+  red = missing (build)
+endlegend
+rectangle "L4 generated service" as c4 <<missing>>
+rectangle "L1 rdf-persistence core,\nport in pass-through" as c1 <<missing>>
+rectangle "L2 Fluree adapter:\nHTTP SPARQL or embedded" as c2 <<partial>>
+rectangle "L2 Fluree v4 ledger (BUSL-1.1)" as c2s <<exists>>
+rectangle "L3 Fluree policies, triple level,\nOIDC identity" as c3 <<exists>>
+rectangle "L6 Fluree head events + commit pull" as c6 <<exists>>
+c4 --> c1
+c1 --> c2
+c2 --> c2s
+c3 -- c2s
+c2s --> c6
+@enduml

@@ -1,0 +1,41 @@
+@startuml seq-migrate
+title Run schema migrations (UC-B8.1)
+autonumber
+actor "Operator" as OP
+participant "Migration Runner" as MR
+participant "Identity Provider" as IDP
+participant "Store Port" as SP
+database "Triple Store" as TS
+participant "Shape Validator" as SV
+OP -> MR : migrate
+MR -> IDP : token for migration service principal
+IDP --> MR : token
+MR -> SP : acquire lock (guarded insert in admin graph)
+SP -> TS : one update + ASK lock token
+alt lock acquired
+  TS --> SP : true
+  MR -> SP : read run log (applied ids and checksums)
+  SP --> MR : applied up to 0041
+  alt checksum of an applied script changed
+    MR --> OP : refuse, name the script
+  else scripts consistent
+    loop each pending script 0042..0045
+      MR -> SP : execute script and log entry (one update)
+      alt step succeeds
+        SP --> MR : ok
+      else step fails
+        SP --> MR : store error
+        MR -> SP : release lock
+        MR --> OP : stopped at script, log shows last applied
+      end
+    end
+    MR -> SV : validate data against new shapes
+    SV --> MR : conformance report
+    MR -> SP : release lock
+    MR --> OP : applied 0042..0045, report
+  end
+else lock held by another runner
+  TS --> SP : false
+  MR --> OP : another migration is running
+end
+@enduml

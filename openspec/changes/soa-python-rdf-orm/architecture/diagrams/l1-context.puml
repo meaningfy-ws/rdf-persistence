@@ -1,0 +1,42 @@
+@startuml l1-context
+title C4 Context - System context (ArchiMate semantics)
+left to right direction
+archimate #Business "Model Custodian" as MC <<business-actor>>
+archimate #Business "Software Builder" as SB <<business-actor>>
+archimate #Business "UI Developer" as UID <<business-actor>>
+archimate #Business "End User" as EU <<business-actor>>
+archimate #Business "External Consumer" as EC <<business-actor>>
+archimate #Business "Operator" as OP <<business-actor>>
+rectangle "System of interest" {
+  archimate #Application "rdf-persistence ecosystem" as SYS <<application-component>>
+  archimate #Application "Model-to-Code Generation" as S1 <<application-service>>
+  archimate #Application "Domain Persistence" as S2 <<application-service>>
+  archimate #Application "Data-Management API" as S3 <<application-service>>
+  archimate #Application "Change Notification" as S4 <<application-service>>
+  archimate #Application "Store and Schema Administration" as S5 <<application-service>>
+}
+archimate #Application "Triple Store" as TS <<application-component>>
+archimate #Application "Identity Provider" as IDP <<application-component>>
+archimate #Application "Authorization Engine" as PDP <<application-component>>
+archimate #Application "Event Channel" as CH <<application-component>>
+archimate #Application "Modelling Toolchain" as MT <<application-component>>
+archimate #Application "Property-Graph Store (side)" as PG <<application-component>>
+SYS .|> S1 : realizes
+SYS .|> S2 : realizes
+SYS .|> S3 : realizes
+SYS .|> S4 : realizes
+SYS .|> S5 : realizes
+S1 --> MC : serves
+S2 --> SB : serves
+S3 --> UID : serves
+S3 --> EU : serves
+S3 --> EC : serves
+S4 --> EC : serves
+S5 --> OP : serves
+MT --> SYS : serves
+TS --> SYS : serves
+IDP --> SYS : serves
+PDP --> SYS : serves
+CH --> SYS : serves
+PG ..> SYS : serves
+@enduml

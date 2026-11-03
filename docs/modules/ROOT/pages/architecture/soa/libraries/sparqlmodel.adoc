@@ -1,0 +1,171 @@
+= sparqlmodel
+:description: A SQLModel-style Python ORM for SPARQL with a session, an identity map and a query builder; strong developer experience, fragile write semantics.
+
+== At a glance
+
+[cols="1,3"]
+|===
+|What it is for |Giving Python developers a SQLModel-like ORM over RDF: Pydantic entities, a session with `put/get/delete/query`, a fluent query builder and FastAPI helpers.
+|Origin and angle |One author (GitHub `eddiethedean`, commits signed "Odo/Odos Matthews"), 2026; no institutional context. Developer-experience-first. Built on xref:architecture/soa/libraries/triplemodel.adoc[triplemodel] by the same author.
+|Language |Python (Pydantic v2, pyoxigraph, httpx)
+|Licence |MIT
+|Activity |Commit `90183cd`, release 0.13.1 (2026-06-01). About 25 releases in 16 days (2026-05-16 → 06-01), then silent to 2026-11-03. GitHub: 0 stars, 1 contributor; ~61 PyPI downloads a month (desk scan 2026-11-03).
+|Size |6,526 LOC in 33 source files; 685 tests
+|Layers |L1 full · L2 partial (memory and HTTP stores, no transactions) · L4 partial (FastAPI dependencies, content negotiation). No L0, L3, L5, L6.
+|Verdict |*Borrow ideas, avoid as a dependency.* Copy the session and query ergonomics; do not copy the write path.
+|===
+
+== Purpose and origin
+
+* *Built for:* giving Python application developers a SQLModel-like ORM over RDF: Pydantic entities, a `with Session()` workflow, a fluent query builder and FastAPI helpers. README tagline: "The SQLModel of SPARQL"; targets: "knowledge-graph and metadata apps".
+* *Who and when:* one author (GitHub `eddiethedean`; pyproject author "SparqlModel Contributors"). Released 2026-05-16 → 06-01 in a roadmap-driven burst (milestones in `docs/ROADMAP.md`, a "1.3 GA gate" checklist in `SPECS.md`). Built on the same author's triplemodel with opt-in Fuseki integration tests (`tests/conftest_fuseki.py`, not run in CI).
+* *Design angle:* developer-experience-first and app-centric. The model lives in Python code. It is a single-process, single-writer design whose client-side mirror stands in for transactions and server round-trips. Not model-driven (no LinkML or ontology input) and not standards-driven (no SHACL, no named graphs).
+* *Where it fits:* L1, L2 (partial) and L4 (partial). As a dependency it fits nowhere: it fails DEC-5 (0 stars, dormant), the mirror conflicts with DEC-8, and it does not build on rdflib (DEC-4). As an idea source it fits our L1 API surface (session, query DSL, depth loading, composition versus reference) and our L4 FastAPI glue.
+
+== How it works
+
+*Mapping.* Entities subclass `SPARQLModel`, a Pydantic model that subclasses triplemodel's `TripleModel`.
+`Field("schema:name")` stores the predicate in Pydantic field metadata (`fields.py:26–33, 80–116`).
+`Relationship(cascade=True)` means composition; `cascade=False` means a by-IRI reference (`fields.py:119–175`).
+Triples are produced and parsed by triplemodel (`rdf_bridge.py`). One predicate per field is enforced (`model.py:79–96`).
+
+*Identity.* `id: IRI | None`; a missing id is minted as `urn:uuid:<uuid4>` (`model.py:144–149`).
+The identity map is keyed by `(class, IRI)` (`session_state.py:13–29`).
+
+*Session.* `put()` writes immediately by default; only `put(flush=False)` queues (`session.py:250–263`).
+`flush()` replays the queue; writes already sent stay in place on failure (`session.py:136–150`).
+The class docstring says so: "Already-flushed writes are not rolled back" (`session.py:39–41`).
+
+*Update strategy.* `put` deletes the "owned triples" (`rdf:type` plus mapped predicates) of the root and of each cascaded or orphaned child, then inserts the new graph (`session_core.py:196–210`, `graph.py:249–287`).
+Triples on unmapped predicates survive.
+
+*Querying.* A metaclass `__getattr__` returns `FieldRef` objects, so `Person.name == "x"` builds an AST (`model.py:25–38`, `expressions.py:44–110`).
+`compile_where` turns it into `SELECT DISTINCT ?root` by string concatenation, with `OPTIONAL`, `NOT EXISTS`, `VALUES`, polymorphic types, ordering and paging (`compiler.py:773–898`).
+Hydration is N+1: one `get_impl` per row, each possibly one CONSTRUCT over HTTP (`session_core.py:309–324`).
+
+*Stores.* `MemoryStore` runs on pyoxigraph. `HttpStore` and `AsyncHttpStore` send `INSERT DATA` / `DELETE DATA` over httpx with retries on 502/503/504 (`http_common.py:59–71, 135–165`).
+They keep a *local pyoxigraph mirror* that serves `get`, cascade and orphan detection (`http.py:24–47`).
+Writes never carry a `GRAPH` clause (`http_common.py:290–301`).
+DELETE and INSERT chunks go as separate POSTs, so a remote `put` is not atomic (`http.py:287–298`).
+
+*Async.* Sync and async facades share one core (`session_core.py:478–595`).
+
+== Scores
+
+[cols="2,1,6",options="header"]
+|===
+|Criterion |Score |Reason
+
+|C1 Feature coverage |3 |CRUD, cascade, identity map, query builder, language strings; no transactions, named graphs or SHACL.
+|C2 Approach and patterns |3 |Clear Data Mapper, Session, Identity Map, Query Object; the unit of work is degenerate and the mirror mixes cache with truth.
+|C3 Developer friendliness |4 |SQLModel-like happy path in about 10 lines, typed package, guides and API reference.
+|C4 Ease of adoption |3 |Small dependency set, in-memory by default; remote use needs the mirror and a single-writer assumption.
+|C5 Reuse of foundations |3 |Reuses Pydantic, pyoxigraph, triplemodel; hand-rolls the SPARQL HTTP client and string-built SPARQL; no rdflib interop.
+|C6 Data-centric and DDD fit |2 |No LinkML or ontology path; entities must inherit a persistence base class; no repository.
+|C7 SPARQL 1.1 portability |3 |Standard Query, Update and GSP GET only; Fuseki integration tests exist but are opt-in (not run in CI); default graph only; reads depend on the mirror.
+|C8 Health |3 |CI on Python 3.10–3.13, 100% coverage gate, 685 tests; one author, release burst then silence.
+|C9 Composability |2 |SPARQL 1.1 and prefix-only JSON-LD; custom 3-method store port; tied to triplemodel and pyoxigraph; no SHACL or LinkML.
+|C10 Maintainability and operability |2 |Small surface (28 exports) but subtle semantics, no logging, dormant single maintainer.
+|DX |4 |Developers love the SQLModel feel; they hate the transaction and mirror semantics once remote.
+|===
+
+== What to borrow
+
+* The SQLModel-style surface: `with Session() as s`, `put/get/delete`, `Model.field == x` through metaclass `FieldRef`, and `.where().order_by().limit().all(depth=n)`.
+* Owned-predicate updates: replace only mapped predicates and `rdf:type`; leave foreign triples alone (`graph.py:265–287`).
+* Composition (`cascade=True`) versus reference (`cascade=False`) as the aggregate boundary, with orphan cleanup that protects shared references (`graph.py:153–208`; computed from the local graph, so incomplete under `HttpStore`, where an external referrer can be missed).
+* Explicit `depth` eager loading instead of lazy proxies; predictable over HTTP.
+* Sync and async facades over one shared core.
+* Explicit open-world query switches (`use_not_exists_for_ne` and friends, `query_common.py:31–42`).
+* FastAPI `SessionDep` and Accept-based Turtle/JSON-LD negotiation (`fastapi/__init__.py:72–149`).
+* Actionable errors, e.g. `ConfigurationError: Person maps multiple fields to the same predicate` (`model.py:91–96`).
+
+== What to avoid
+
+* *Non-atomic remote writes.* Separate POSTs per chunk; a failure in the middle leaves the store half-updated and the mirror diverged (`http.py:287–298`).
+* *A cache treated as truth.* `get`, cascade and orphan detection read the mirror; other writers are invisible; `sync_mirror()` reloads the whole default graph (`http.py:165–186`).
+* *N+1 hydration* and an *O(N) full-graph scan* per orphan candidate (`graph.py:153–167`).
+* *String-built SPARQL* (about 900 LOC compiler, custom escaping): a correctness surface. Literals are escaped and IRIs validated (`sparql_escape.py`); the real injection exposure is raw `execute()`, which has no parameter binding.
+* *Stores that disagree:* `MemoryStore` returns `str(term.value)` (`memory.py:100`), `HttpStore` returns `term.value` (`sparql_json.py:53`).
+* *Identity keyed by class:* one IRI under a parent and a subclass gives two objects (`session_state.py:22`).
+* *A session that looks transactional* but is not.
+* *Docs drift.* `docs/SPECS.md:349` describes a possible one-request DELETE+INSERT that the code never does (it always sends separate POSTs). SHACL via `triplemodel[shacl]` is *claimed, not found in code*: triplemodel removed that extra in 0.11.
+
+== Authorization seams
+
+* *Proxy-friendly SPARQL.* Plain `INSERT DATA` / `DELETE DATA` and `SELECT` / `CONSTRUCT`, with no `GRAPH` clauses. A graph-dispatching proxy (semantic.works style) breaks nothing; `rdf:type` travels with creates.
+* *Identity propagation* is possible through `HttpStore(headers=, bearer_token=, client=)` (`stores/http.py:57–61, 88–104`), but only per store instance, not per request.
+* *Blockers.* The FastAPI lifespan shares one store and one mirror across all requests (`fastapi/deps.py:85–92`), so data fetched for user A can be served to user B. A partial, ACL-filtered view also makes the owned-triples delete set wrong. A proxy that denies one chunk leaves a partial write.
+* *Where a PEP would go.* Wrap `StoreProtocol.query/update_graph` (`stores/base.py:10–21`), or inject a filter into `QueryState.expressions` (`query_common.py:31`). Mirror reads bypass both; `mirror_mode="remote_authoritative"` with one store per request is the minimum.
+* *Verdict.* The GRAPH-free statement style is borrowable; the mirror design is incompatible with DEC-8.
+
+== Code-generation fit
+
+*Feasible with a custom LinkML template.* The mapping is static and declarative:
+`rdf_type` ← `class_uri`, `Field("pred")` ← `slot_uri`, `Relationship(model=, cascade=)` ← range plus `inlined`, `__prefixes__` ← `prefixes`, `X | None` ← `required`, `set[...]` ← `multivalued`, subclassing ← `is_a`.
+
+Gaps for a generator:
+
+* Entities must subclass `SPARQLModel`, so stock LinkML Pydantic output cannot be reused.
+* `list[...]` means `rdf:List`; multivalued slots must become `set[...]`.
+* `list[SPARQLModel]` (inlined multivalued objects) is unsupported.
+* No hook for LinkML identifier patterns (`id_prefixes`, `structured_pattern`).
+* No mapping for enums with `meaning:`, language-tagged slots or mixins; no SHACL hook.
+
+== Variant fit
+
+[cols="2,1,5",options="header"]
+|===
+|Variant / approach |Fit |Why
+
+|V1 Portable Python core |neutral (ideas) |The API ergonomics are exactly the V1 developer experience; the non-atomic write path, the mirror and DEC-5 block it as a dependency.
+|V2 semantic.works-compatible |blocks as-is |GRAPH-free statements suit `sparql-parser`, but per-instance identity headers and the shared mirror leak across users behind the proxy.
+|V3 Fluree |blocks |No per-request policy identity; plain SPARQL Update only, no Fluree transaction or commit semantics.
+|V4 GraphDB |neutral (no transaction benefit) |Runs as plain SPARQL 1.1 but cannot use GraphDB transactions (no T3 adapter).
+|V5 Graph-direct reads (CQRS) |blocks |Hydration reads the local mirror, not the read endpoint, so it is not a read-model layer.
+|A Runtime mapper |neutral (ideas) |A runtime mapper, but over its own base class, not LinkML-generated Pydantic classes.
+|B Generated mapper and routes |enables (template target) |Static, declarative mapping (G1 partial) a LinkML template could emit; no routes generated.
+|C Generic service |blocks |Classes must exist in code; no runtime model materialisation (M6 absent).
+|===
+
+== Final verdict
+
+*Ideas.* Borrow the session/query developer experience and the composition-versus-reference cascade; never depend on it.
+
+. Its `with SPARQLSession()` *is not a transaction*: `put` writes immediately, and remote writes are several non-atomic POSTs.
+. `HttpStore`'s *shared local mirror is treated as truth*: it leaks data across users behind an authorizing proxy and makes cascade and orphan logic wrong under other writers.
+. Its best idea is the *API shape*: `Model.field == x` expressions, explicit `depth`, owned-predicate `put`, and `cascade=True/False` as the aggregate boundary. Re-implement that shape over a persistence-free LinkML model and a single-request atomic store port.
+
+== Feature coverage
+
+[cols="2,1,1,1,1",options="header"]
+|===
+|Round (taxonomy) |Present |Partial |Absent |n.a.
+|Round 1 (v0, 43 features) |21 |14 |8 |0
+|Round 2 (v1 additions, 63) |10 |7 |45 |1
+|Round 3 (v2 additions, 19) |1 |2 |16 |0
+|Round 4 (v3 check, 102) |2 |6 |83 |11
+|Round 5 (v4 additions, 77) |1 |11 |50 |15
+|===
+
+Rounds 4 and 5 are the report's own counts over every v3 and v4 feature.
+
+Notable present features:
+M1 Pydantic classes, I3 identity map, R4 composition cascade, L2 language strings,
+P8 owned-predicate writes, P11 orphan cleanup, Q2 query DSL, Q5 multi-hop paths,
+Q16 open-world switches, Q17 polymorphic queries, S1 in-memory store, S2 remote SPARQL store,
+S5 split read/write endpoints, S6 client mirror, S7 retries and chunked updates,
+X1 JSON-LD in/out, X7 content negotiation, D2 async, D3 FastAPI, M17 class-definition-time mapping validation.
+
+Notable present/partial v3 features: T11 chunked updates, DELETEs before INSERTs, no atomicity across chunks (present, `http_common.py:92–110`); D13 model-aware errors (present, `model.py:91–96`); partial: G1 static mapping on a non-persistence-free base class, G5 `IRI` type without `format: uri`, G6 runtime language strings without schema side, G23 polymorphism by `rdf:type` without a designator slot, G26 inherited `__prefixes__` and `rdf_type`, S18 file bulk-load into `MemoryStore` only.
+
+Notable absences: P4/P13 transactions, P6/P12 named graphs, M2 schema input (LinkML, SHACL), S14 logging, I8 deferred IRI minting, X23 strict JSON-LD processing (JSON-LD input silently drops unknown keys and context term definitions, `serializers.py:165–215`, which conflicts with what V1 and V5 need).
+
+Proposed by this report: per-request identity propagation, principal-partitioned caches and generator-friendly declarative mapping (round 3, merged as AZ19, AZ22 and G1). Round 4 proposed D14 append-only duplicate warning (seen as `StaleTripleWarning`, `session_core.py:213–236`).
+
+== Sources
+
+* Repository: https://github.com/eddiethedean/sparqlmodel (commit `90183cd`)
+* Documentation: https://sparqlmodel.readthedocs.io/en/latest/
+* In-repo docs read: `README.md`, `CHANGELOG.md`, `docs/SPECS.md`, `docs/ROADMAP.md`, `docs/ECOSYSTEM.md`
+* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/sparqlmodel.md`

@@ -1,0 +1,18 @@
+@startuml
+title C8 UoW commit with outbox -> relay -> SSE/Mercure -> TanStack Query; -> semantic.works deltas
+participant "Aggregate session" as UOW
+participant "SPARQL store" as ST
+participant "Outbox relay" as R
+participant "SSE endpoint / Mercure hub" as HUB
+participant "Browser TanStack Query" as TQ
+participant "delta-notifier" as DN
+UOW -> ST : one DELETE/INSERT/WHERE {guards} + outbox event triples (admin graph)
+UOW -> ST : ASK commit token
+R -> ST : SELECT unpublished events ORDER BY seq LIMIT n
+R -> HUB : publish {topic: aggregate IRI, type, version} (no data payload)
+HUB -> TQ : SSE message (private topics need subscriber JWT)
+TQ -> TQ : invalidateQueries(queryKey from IRI) -> refetch through API (authz applies)
+R -> DN : POST {changeSets:[{insert,delete,effectiveInsert,effectiveDelete}]} quads + graph
+R -> ST : mark events published (at-least-once; consumers dedupe by event IRI)
+note over R, DN : delta format is quad-level: no aggregate id, no tx id, no version
+@enduml

@@ -1,0 +1,58 @@
+@startuml l3-rdf-persistence
+title C4 Component - Components of rdf-persistence (inside the Data-Management Service)
+component "Service routes / domain code" as APP
+package "rdf-persistence (in-process library)" {
+  package "Session" {
+    component "Repository\n(per aggregate root)" as REPO
+    component "Aggregate Session\n(identity map, snapshots, commit policy)" as AS
+  }
+  component "Mapper\n(owned predicates)" as MAP
+  component "Change Set Compiler\n(single guarded operation)" as CSC
+  component "Query Builder\n(query tree)" as QB
+  package "Ports" {
+    component "Store Port" as SP
+    interface "StorePort" as ISP
+    component "Capability Descriptor" as CAP
+    component "Policy Enforcement Port\n(pass-through / scope / change check)" as PEP
+    interface "PolicyEnforcementPort" as IPEP
+    interface "SparqlPort (raw)" as IRAW
+    component "Outbox + Event Bus" as OB
+  }
+  package "Store adapters" {
+    component "SPARQL-HTTP Adapter" as AH
+    component "Transactional Adapter" as AT
+    component "Embedded Adapter" as AE
+  }
+}
+package "rdf-persistence-codegen (build time)" {
+  component "Metamodel Generator\n(Person_, TypedDicts, errors)" as MMG
+  component "Boundary Checker" as BC
+  component "Templates\n(repositories, routes, contract)" as TPL
+}
+node "Triple Store (container)" as STORE
+node "Authorization Engine (container)" as ENG
+SP - ISP
+PEP - IPEP
+APP ..> REPO : in-process
+APP ..> AS : in-process
+REPO ..> AS : in-process
+REPO ..> QB : in-process
+AS ..> MAP : in-process
+AS ..> CSC : in-process
+AS ..> IPEP : in-process
+AS ..> OB : in-process
+CSC ..> ISP : in-process
+QB ..> IPEP : in-process
+QB ..> ISP : in-process
+SP ..> CAP : in-process
+AH ..|> ISP
+AT ..|> ISP
+AE ..|> ISP
+AH ..|> IRAW
+AH ..> STORE : SPARQL protocol (sync)
+AT ..> STORE : vendor transaction API (sync)
+PEP ..> ENG : decision request (sync)
+MMG ..> APP : generates
+TPL ..> APP : generates
+BC ..> TPL : checks
+@enduml

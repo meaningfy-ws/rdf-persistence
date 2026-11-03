@@ -1,0 +1,33 @@
+@startuml uc-overview
+title Use-case catalogue overview (White level)
+left to right direction
+actor "Model Custodian" as MC
+actor "Software Builder" as SB
+actor "End User" as EU
+actor "External Consumer" as EC
+actor "UI Developer" as UID
+actor "Operator" as OP
+rectangle "rdf-persistence ecosystem" {
+  usecase "UC-W1 Model the domain\nand generate code" as W1
+  usecase "UC-W2 Persist an aggregate\nin one transaction" as W2
+  usecase "UC-W3 Query and navigate\ndomain objects" as W3
+  usecase "UC-W4 Restrict data to\nwhat the user is permitted" as W4
+  usecase "UC-W5 Serve a\ndata-management API" as W5
+  usecase "UC-W6 Build a JS UI\non the API" as W6
+  usecase "UC-W7 React to changes" as W7
+  usecase "UC-W8 Evolve the schema\nand migrate data" as W8
+  usecase "UC-W9 Switch or add a store" as W9
+  usecase "UC-W10 Test against\nreal stores" as W10
+}
+MC --> W1
+MC --> W8
+SB --> W2
+SB --> W3
+SB --> W10
+EU --> W4
+EC --> W5
+EC --> W7
+UID --> W6
+OP --> W9
+OP --> W8
+@enduml

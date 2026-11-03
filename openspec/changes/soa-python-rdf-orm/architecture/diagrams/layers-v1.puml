@@ -1,0 +1,32 @@
+@startuml layers-v1
+title Layer composition - V1 Portable Python core
+skinparam rectangle {
+  BackgroundColor<<exists>> #C8E6C9
+  BackgroundColor<<partial>> #FFE0B2
+  BackgroundColor<<missing>> #FFCDD2
+}
+legend right
+  green = exists (reuse)
+  amber = partial (gap to close)
+  red = missing (build)
+endlegend
+rectangle "L0 LinkML + templates" as a0 <<partial>>
+rectangle "L5 generated TS client, TanStack Query, jsonld.js" as a5 <<exists>>
+rectangle "L4 generated service: JSON-LD, OpenAPI, ETag" as a4 <<missing>>
+rectangle "L3 IdP + decision engine" as a3 <<exists>>
+rectangle "L3 enforcement port + scope translator" as a3p <<missing>>
+rectangle "L1 aggregate session, change set compiler,\nmapper, repository, query tree" as a1 <<missing>>
+rectangle "L2 store port + SPARQL adapters" as a2 <<partial>>
+rectangle "L2 any SPARQL 1.1 store" as a2s <<exists>>
+rectangle "L6 outbox + relay" as a6 <<missing>>
+rectangle "L6 SSE" as a6s <<exists>>
+a0 ..> a1 : generates
+a5 --> a4
+a4 --> a3
+a4 --> a1
+a1 --> a3p
+a1 --> a2
+a2 --> a2s
+a1 --> a6
+a6 --> a6s
+@enduml

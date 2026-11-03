@@ -1,0 +1,163 @@
+= rdfmapper
+:description: A small decorator-based Python mapper with Spring-Data-style finders and SHACL generation over one rdflib Graph; no persistence, injection-prone queries.
+
+== At a glance
+
+[cols="1,3"]
+|===
+|What it is for |Converting decorated Python classes to and from an in-memory rdflib `Graph`, querying it with derived finder methods (`find_by_x_and_y`), and generating SHACL shapes from the class metadata.
+|Origin and angle |Felipe dos Santos Goiabeira's 2025 bachelor's thesis at UFMA, advised by Sergio Souza Costa (LambdaGeo group); packaged successor of `simpot` (2022). Java/JPA-inspired; one-way ETL serialiser.
+|Language |Python (rdflib, pySHACL)
+|Licence |MIT in `pyproject.toml`; the `LICENSE` file linked from the README is missing
+|Activity |Commit `890a114` (2026-09-20), version 0.2.2 (`__version__` says 0.1.0). GitHub: 0 stars, 1 contributor (two named authors; one committer); ~232 PyPI downloads a month (desk scan 2026-11-03).
+|Size |736 library LOC in 6 files; 46 tests
+|Layers |L0 partial (SHACL from the code model) · L1 partial (Data Mapper plus read-only finder repository) · L2 minimal (one rdflib Graph). No L3–L6.
+|Verdict |*Borrow ideas.* Derived finders and model-to-SHACL; nothing worth depending on.
+|===
+
+== Purpose and origin
+
+* *Built for:* getting a Python object model into RDF for research ETL pipelines without writing triples. It is the packaged successor of LambdaGeo's `simpot` (2022), used in `dbacademic-etl` to turn Brazilian academic open data into knowledge graphs (`docs/background.md`).
+* *Who and when:* Felipe dos Santos Goiabeira's bachelor's thesis at UFMA (2025), advised by Sergio Souza Costa (LambdaGeo group). A JOSS-style paper is in the repository (`paper.md`); the 2026-09 date is only the latest commit.
+* *Design angle:* JPA / Spring Data familiarity for non-Semantic-Web developers: annotations, derived finders, SHACL as a bonus. It *serialises* objects into a graph for one-way ETL rather than *persisting* them. That is why update, delete, identity and stores are missing: the use case never needed them.
+* *Where it fits:* nowhere as a component. In L1 it would collide with our LinkML/Pydantic chain, because it needs hand-written decorated classes. It is an idea donor for L1 query convenience (Q8 derived finders) and L0 SHACL emission (which LinkML `gen-shacl` already covers). It fits no variant V1–V5 as a dependency and fails DEC-5 (0 stars).
+
+== How it works
+
+*Mapping.* Decorators (`@rdf_entity`, `@rdf_property`, `@rdf_one_to_one`, `@rdf_one_to_many`) turn getter stubs into `property` objects carrying ad-hoc attributes (`_rdf_predicate`, `_min_count` …) (`mapper.py:57–142`).
+The decorated body is discarded. Getters read `self._<name>`, so users hand-write an `__init__` that sets backing fields.
+Discovery scans `dir(obj)` for properties (`mapper.py:217–223, 292–298`). The class registry `_entities` is written but never read (`mapper.py:53`).
+
+*Identity.* Objects must carry a `uri` (`mapper.py:207`); no minting, no blank nodes.
+`from_rdf` bypasses `__init__` and uses a per-call `visited` dict as identity map and cycle breaker (`mapper.py:280–290`).
+
+*Relationships.* 1-1 via `graph.value`, 1-n via `graph.objects` into an unordered list (`mapper.py:300–311`). No inverse.
+Loading is eager over the whole reachable graph; `to_rdf` cascades every related object (`mapper.py:226–233`).
+
+*Literals.* A hard-coded chain for bool, int, float, datetime, date and str (`mapper.py:148–179`). No language tags, no custom datatypes, no `Decimal`.
+
+*Writing.* `to_rdf` always builds a new `Graph` (`mapper.py:206`). Storing means `graph += mapper.to_rdf(obj)`: additive only, no update or delete.
+
+*Querying.* `RDFRepository.__getattr__` parses finder names (`repository.py:42–90`) and builds SPARQL by f-string interpolation of user values (`repository.py:146–152, 206`).
+It runs on `rdflib.Graph.query`, then calls `from_rdf` per row: N+1 (`repository.py:167–170`).
+`limit` / `offset` come without `ORDER BY` (`repository.py:162–165`).
+
+*Validation.* `to_shacl` emits one NodeShape per class with path, datatype and min/max count (`mapper.py:322–383`).
+The shape namespace is hard-coded to `http://example.org/shape/` (`mapper.py:340`); relationship properties get a wrong `sh:datatype xsd:string` (`mapper.py:367–379`).
+`validate` calls pySHACL with `inference="rdfs"` (`mapper.py:385–422`), only when asked.
+
+== Scores
+
+[cols="2,1,6",options="header"]
+|===
+|Criterion |Score |Reason
+
+|C1 Feature coverage |1 |Read and to-graph only; no update, delete, transactions, named graphs, language tags or JSON-LD; 1-1 and 1-n only.
+|C2 Approach and patterns |2 |Clean Data Mapper and derived-query idea; metadata hidden on getters, no metamodel, no session, per-call identity only.
+|C3 Developer friendliness |2 |Short happy path; `_name` boilerplate, finders invisible to IDEs and mypy, untyped `mapper` parameter.
+|C4 Ease of adoption |3 |Two dependencies, works in memory at once; no remote store.
+|C5 Reuse of foundations |3 |Uses rdflib and pySHACL properly; hand-rolls SPARQL strings and literal conversion instead of `Literal.toPython`.
+|C6 Data-centric and DDD fit |2 |Plain classes, but `uri` and `_attr` conventions and mapper-bound decorators; code-first only.
+|C7 SPARQL 1.1 portability |1 |Only `rdflib.Graph.query`; no endpoint, Update or GSP.
+|C8 Health |2 |CI (pytest 3.10–3.12, mypy), mkdocs site, 46 tests, active 2026-09; LICENSE missing, academic, 1–2 maintainers.
+|C9 Composability |2 |rdflib Graph (so rdflib Store plugins) and SHACL output; no protocol client, Update, GSP, JSON-LD API, LinkML input or port.
+|C10 Maintainability and operability |2 |Tiny and easy to fork; untypeable dynamic API, version mismatch, no CHANGELOG, no logging.
+|DX |2 |JPA familiarity and a quick start; magic backing fields, untyped finders, no save, update or delete.
+|===
+
+== What to borrow
+
+* *Derived query methods* (Spring Data style: `find_by_*`, `count_by_*`, `_and_`, `_like`), as an optional convenience on top of a typed query builder (`repository.py:42–90`).
+* *SHACL from model metadata* (`mapper.py:322`). For us it should come from LinkML `gen-shacl`, which already does this job better.
+* The per-call visited dict for cycle-safe hydration.
+* Clear errors where they exist: `ValueError: 'city' is not a valid rdf_property` (`repository.py:261`).
+
+== What to avoid
+
+* *SPARQL injection.* User values are interpolated into queries (`repository.py:149–152, 206`).
+* *Type-unsafe filtering.* Typed values compare as plain strings; `find_by_age(age=25)` presumably matches nothing, and no test covers it (`repository.py:152`).
+* *N+1 hydration* after every finder, plus `dir()` scans on every conversion.
+* *Unstable pagination:* LIMIT/OFFSET without ORDER BY.
+* *Metadata stashed on getter functions*, `_attr` backing-field conventions, and `__getattr__` magic as the only query API.
+* *Raw errors leak:* a finder typo gives `AttributeError: type object 'Person' has no attribute 'nme'` (`repository.py:138`).
+* *Hard-coded shape namespace* and wrong datatype on relationship shapes.
+* *Claimed, likely broken in code:* compound filters with non-string values (README, `docs/guide/querying.md`). The LICENSE file the README links is not in the repository.
+
+== Authorization seams
+
+* *ACL-agnostic only by accident.* Reads go through `rdflib.Graph.query`, `graph.value` and `graph.objects` (`repository.py:169`, `mapper.py:303–313`). A `Graph` backed by rdflib's `SPARQLStore` pointed at an authorizing proxy would be filtered transparently, at the cost of one remote request per property per object (`mapper.py:300–313`).
+* Credentials are then fixed per Graph; there is no request context (X13 absent). Writes never reach a store.
+* *PEP sites if one were added:* query level in `_find_by` / `_count_by` (`repository.py:96, 172`), fragile because of string building; field level in the `from_rdf` property loop (`mapper.py:292–314`).
+* *Verdict:* no designed seam; do not borrow the approach.
+
+== Code-generation fit
+
+*Poor.* LinkML `gen-pydantic` output cannot be used, because rdfmapper needs plain classes with decorated property stubs and `_name` backing fields.
+A custom `gen-python` Jinja template could emit `class_uri` → `@rdf_entity`, `slot_uri` → `@rdf_property`, range class → `rdf_one_to_*`, cardinalities → `minCount` / `maxCount`.
+
+Still missing:
+
+* inheritance (`is_a` → `rdf:type` / `subClassOf`);
+* an `identifier` slot named `uri`;
+* enums, language strings and multivalued literal slots;
+* ordered lists.
+
+== Variant fit
+
+[cols="2,1,5",options="header"]
+|===
+|Variant / approach |Fit |Why
+
+|V1 Portable Python core |neutral (ideas) |Derived finders could become optional sugar over rdf-persistence's typed query API.
+|V2 semantic.works-compatible |neutral |No HTTP layer or JSON:API.
+|V3 Fluree |neutral |No endpoint, Update or identity propagation.
+|V4 GraphDB |neutral |No transactions.
+|V5 Graph-direct reads |neutral |Nothing on the read endpoint side.
+|A Runtime mapper |neutral (idea donor) |It *is* a runtime Data Mapper reading class metadata (`mapper.py:217–225`), the same shape as A, but with hand-written metadata.
+|B Generated mapper and routes |blocks if used |Decorated property stubs and `_attr` backing fields are not what `gen-pydantic` emits; a custom template would be needed.
+|C Generic service |n.a. |A mapping library, not a service.
+|===
+
+== Final verdict
+
+*Ideas.*
+
+Three things to remember:
+
+. *It is an ETL serialiser, not a persistence layer:* no update, delete, identity, transaction or store access, so nothing in it can carry rdf-persistence's L1/L2.
+. *Derived finders (`find_by_x_and_y`) are the one idea worth keeping*, only as optional sugar over a typed, parameter-bound query builder; its own implementation is injection-prone and string-typed (`repository.py:146-152`).
+. *SHACL-from-model belongs to LinkML `gen-shacl`* in the MWBv2 chain, not to a mapper; rdfmapper confirms the idea but adds nothing LinkML lacks.
+
+== Feature coverage
+
+[cols="2,1,1,1,1",options="header"]
+|===
+|Round (taxonomy) |Present |Partial |Absent |n.a.
+|Round 1 (v0, 43 features) |4 |16 |23 |0
+|Round 2 (v1 additions, 63) |2 |6 |54 |1
+|Round 3 (v2 additions, 19) |1 |0 |18 |0
+|Round 4 (v3 check, 102) |0 |4 |96 |2
+|Round 5 (v4 additions, 77) |0 |1 |76 |0
+|===
+
+Rounds 1–3 are tallied from the inventory tables; round 4 is the report's own count over every v3 feature.
+Round 2 re-marked X4 from partial to absent (SHACL output moved to M13).
+
+Notable present features: M1 host-language classes, Q1 fetch by IRI, S1 in-memory store, D4 docs, M13 SHACL emission, Q8 derived query methods, Q19 regex filters.
+
+Notable partial features: I3 per-call identity map, Q2 finder-based query, Q12 regex "search", Q15 counts and `group_by_count`, S8 any rdflib Graph underneath, O2 RDFS inference inside SHACL validation.
+
+Notable present/partial v3 features: none present. Partial: G1 mapping carried on the classes (on property getters, read by an external `RDFMapper`; not generated), G2 mapper separate from domain classes (hand-written), G26 inherited mapped properties through `dir(cls)` (no per-class merge), D13 errors that name the field but not the model (`repository.py:136, 261`).
+
+Notable absences: P1 update and delete, P4 transactions, P6 named graphs, L2 language tags, S2 remote store, Q6 injection-safe binding, S14 logging.
+
+Proposed by this report: Q19 regex/substring filters (round 2, merged). Rounds 3–5 proposed none.
+
+v4: only B3 whole-aggregate load is partial (eager load of the reachable in-memory graph, no boundary); everything else is absent.
+
+== Sources
+
+* Repository: https://github.com/lambdageo/rdfmapper (commit `890a114`)
+* Documentation: https://lambdageo.github.io/rdfmapper
+* In-repo docs read: `README.md`, `docs/{index,getting-started,background}.md`, `docs/guide/{mapping,relationships,querying,shacl}.md`, `paper.md`
+* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/rdfmapper.md`

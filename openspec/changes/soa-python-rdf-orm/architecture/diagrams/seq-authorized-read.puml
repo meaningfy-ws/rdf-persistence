@@ -1,0 +1,39 @@
+@startuml seq-authorized-read
+title Authorized list read (UC-B3.2, UC-B4.2, variant V1)
+autonumber
+participant "Web UI" as UI
+participant "Service route" as API
+participant "Identity Provider" as IDP
+participant "Policy Enforcement Port" as PEP
+participant "Authorization Engine" as ENG
+participant "Query Builder" as QB
+participant "Store Port" as SP
+database "Triple Store" as TS
+UI -> API : GET /resources?filter&page (bearer token)
+API -> IDP : verify token (cached signing keys)
+alt token invalid
+  IDP --> API : invalid
+  API --> UI : 401 problem
+else token valid
+  IDP --> API : subject, roles
+  API -> PEP : scope(subject, resource type, read)
+  PEP -> ENG : list permitted graphs
+  alt engine answers
+    ENG --> PEP : graph set G
+    PEP --> API : scope(G)
+    API -> QB : list(filter, page, scope G)
+    QB -> SP : select ids in G with page and count in G
+    SP -> TS : query (dataset restricted to G)
+    TS --> SP : ids, total
+    QB -> SP : construct objects for ids in G
+    SP -> TS : query
+    TS --> SP : triples
+    QB --> API : objects, total
+    API --> UI : 200 JSON-LD page
+  else engine timeout or error
+    ENG -->x PEP : timeout
+    PEP --> API : deny (fail closed)
+    API --> UI : 503 problem
+  end
+end
+@enduml

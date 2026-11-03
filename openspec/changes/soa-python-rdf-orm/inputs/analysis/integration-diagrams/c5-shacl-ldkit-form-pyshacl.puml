@@ -1,0 +1,20 @@
+@startuml
+title C5 LinkML -> gen-shacl -> LDkit / shacl-form / pySHACL commit gate
+participant "gen-shacl" as GS
+participant "LDkit shacl_to_schema" as LDK
+participant "shacl-form" as SF
+participant "UoW commit" as UOW
+participant "pySHACL" as PS
+participant "SPARQL store" as ST
+GS -> LDK : NodeShape per class, sh:class + sh:nodeKind IRI, sh:in, counts
+LDK -> LDK : sh:class -> @id, rdf:langString -> @multilang (never emitted by LinkML)
+GS -> SF : same shapes; sh:name/sh:order from title/rank; sh:class needs instances for pickers
+UOW -> PS : aggregate subgraph + bookkeeping triples
+PS -> PS : sh:closed true rejects version/commit-token predicates on the root
+PS -> PS : sh:class on references needs rdf:type of referenced IRIs in the data graph
+alt conforms
+  UOW -> ST : one guarded SPARQL Update
+else violations
+  PS --> UOW : ValidationReport (abort, map to field errors)
+end
+@enduml

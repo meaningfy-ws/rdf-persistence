@@ -1,0 +1,26 @@
+@startuml layers-v5
+title Layer composition - V5 graph-direct reads on top of V1
+skinparam rectangle {
+  BackgroundColor<<exists>> #C8E6C9
+  BackgroundColor<<partial>> #FFE0B2
+  BackgroundColor<<missing>> #FFCDD2
+}
+legend right
+  green = exists (reuse)
+  amber = partial (gap to close)
+  red = missing (build)
+endlegend
+rectangle "L5 LDkit / Comunica reads" as e5 <<exists>>
+rectangle "L5 typed client for writes" as e5w <<exists>>
+rectangle "L3 policy-aware read endpoint\nor store-native graph ACL" as e3 <<partial>>
+rectangle "L4 generated service (writes)" as e4 <<missing>>
+rectangle "L1 core + outbox" as e1 <<missing>>
+rectangle "L2 read replica (QLever / Oxigraph)\nfed by events" as e2r <<partial>>
+rectangle "L2 write store" as e2w <<exists>>
+e5 --> e3
+e3 --> e2r
+e5w --> e4
+e4 --> e1
+e1 --> e2w
+e1 ..> e2r : events
+@enduml

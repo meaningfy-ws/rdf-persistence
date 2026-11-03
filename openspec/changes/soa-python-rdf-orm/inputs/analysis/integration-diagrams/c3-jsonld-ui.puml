@@ -1,0 +1,15 @@
+@startuml
+title C3 LinkML -> JSON-LD context + frame -> wire -> jsonld.js in the UI
+participant "gen-jsonld-context" as GC
+participant "FastAPI service (PyLD)" as SVC
+participant "Browser (jsonld.js)" as UI
+participant "Component tree" as CMP
+GC -> SVC : context (@type @id for class ranges, @vocab for enums with meaning)
+GC -> SVC : --emit-frame: @type root + @embed @always/@never per inlined slot
+SVC -> SVC : rdflib graph -> JSON-LD -> PyLD frame
+SVC -> UI : application/ld+json (context by URL)
+UI -> UI : jsonld.frame / compact with same context
+UI -> CMP : plain objects
+note over GC, CMP : No @language container is generated: lang-tagged values arrive as {@value,@language} objects
+note over GC, CMP : --fix-multivalue-containers emits @index (not @id) for inlined dicts: key is not the IRI
+@enduml

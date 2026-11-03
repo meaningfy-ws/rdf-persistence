@@ -1,0 +1,361 @@
+= Data-management service and API (L4)
+:description: Which API styles a data-management service over RDF can expose, what can be generated from LinkML today, and which contract an rdf-persistence service should speak.
+
+== Purpose of the angle
+
+A UI needs a data-management service over RDF and JSON-LD data: the role mu-cl-resources plays in semantic.works.
+This page answers:
+which API styles exist and what each costs the JavaScript developer;
+what can be generated from a LinkML or SHACL model;
+how pagination, filters, includes and framing work;
+where the PEP sits;
+how changes are notified;
+and which styles our service should expose to stay coherent with semantic.works (JSON:API) and with JSON-LD clients.
+
+Deep dives: API Platform core, Community Solid Server, LinkedDataHub, linkml-store.
+Round 4 re-checked the round-3 code claims against the finished GitNexus indexes (API Platform's repo is named `core`), scored the four against taxonomy v3 and placed them on the system variants. Nothing was executed.
+mu-cl-resources, Prez and OldMan are covered on their own pages:
+xref:architecture/soa/libraries/semantic-works.adoc[semantic.works],
+xref:architecture/soa/libraries/prez.adoc[Prez],
+xref:architecture/soa/libraries/oldman.adoc[OldMan].
+
+== Key findings
+
+* *JSON:API is cheapest for the JS developer*, and it is what semantic.works speaks. IDs are opaque; no RDF knowledge is needed.
+* *JSON-LD + Hydra is nearly as cheap* and is the only style with mature generic UIs generated from an RDF-aware contract (API Platform Admin, create-client).
+* *LDP, GSP and SPARQL push RDF work into the browser.*
+* *GraphQL has the best TS tooling but no portable RDF binding.* The DASH `graphql:` vocabulary is the closest thing; Fluree v4 says it is "shared with TopBraid EDG and GraphDB" (`fluree-db-graphql/src/lib.rs:14-15`).
+* *The missing link in MWBv2 is a LinkML → service generator.* LinkML emits OpenAPI components only and GraphQL types only; nothing emits routes, a JSON:API configuration or Hydra API docs.
+* *API Platform is a contract reference, not a security or transaction reference.* It ships only the row-filter *hook* (the application writes the filter), emits ETags but checks no `If-Match`, and has no JSON:API Atomic Operations. Conditional writes come from Community Solid Server and LinkedDataHub.
+* *Nothing in this angle blocks V1–V4.* V1 with approach B gets the most help; V5 has only vendor or dormant read APIs; approach C has references (linkml-store, LinkedDataHub, mu-cl-resources) but no RDF-capable reusable implementation (see <<variant-fit>>).
+
+== Landscape summary
+
+Stars and last push from `gh api`, downloads per month from pypistats or npm, all 2026-11-03.
+
+[cols="3,4,2,1,2",options="header"]
+|===
+|Candidate |Built for |DEC-5 |Layers |Fit
+
+5+|*Generic model-to-API platforms (reference designs, not RDF)*
+|API Platform core |PHP framework: one resource model → JSON-LD/Hydra, JSON:API, HAL, GraphQL, OpenAPI, MCP, Mercure |pass (2,580★; 9.2k distribution) |L0 L3 L4 L6 |ideas (the contract)
+|API Platform Admin |react-admin back office built from Hydra or OpenAPI docs |pass (515★) |L5 |integrate
+|API Platform create-client |Front-end scaffolds for 7 frameworks from Hydra/OpenAPI |pass (376★) |L5 |integrate
+|API Platform schema-generator |RDF vocabulary or OpenAPI → PHP classes |pass (474★) |L0 |ideas (vocabulary → classes precedent)
+|PostgREST, Hasura |Zero-code REST/GraphQL over a database; row-level rules as filters |pass (pattern only) |L3 L4 L6 |ideas
+|Neo4j GraphQL Library |SDL type definitions → CRUD GraphQL with `@authorization` |pass (549★; graph, not RDF) |L4 |ideas
+|react-admin |Admin UI with a data-provider port (REST, JSON:API, GraphQL, Hydra) |pass (27.0k★) |L5 |integrate
+|JSON:API spec + Atomic ext |Standard JSON resource API; multi-operation transactions with `lid` |n.a. (standard) |L4 |compatible
+|WarpDrive (ember-data) |JSON:API client cache |pass (3.2k★) |L5 |compatible
+
+5+|*Python API generators*
+|FastAPI |OpenAPI from Pydantic (already in MWBv2) |pass (104k★) |L4 |dependency
+|FastCRUD |`crud_router` CRUD endpoints over SQLAlchemy |pass (1,599★) |L4 |ideas
+|fastapi-crudrouter, FastAPI-JSONAPI |Generic CRUD routers; JSON:API on SQLAlchemy |fail (stale; 138★) |L4 |ideas
+|Strawberry, Ariadne |Code-first / schema-first GraphQL |pass (4,725★; 2,344★) |L4 |integrate (if GraphQL is needed)
+|Graphene |Code-first GraphQL |borderline (last push 14 months ago) |L4 |none
+|linkml-store |Generic LinkML collections API over DuckDB, Mongo, Solr, Neo4j |inherits pass (27★) |L1 L4 |ideas
+|LinkML generators |`gen-openapi` (components), `gen-graphql` (types), context, TS, SHACL |pass (680★) |L0 |dependency; see xref:architecture/soa/angles/codegen.adoc[code generation]
+|rdflib-endpoint |SPARQL endpoint for rdflib/Oxigraph in FastAPI; no auth |fail (100★) |L4 |ideas (dev fixture)
+|Prez |Read-only Linked Data API with profiles and CQL2 |see Prez page (40★) |L4 |ideas
+|pyLDAPI, grlc, RAMOSE, hydrus, hydra-python-core |Profile negotiation; SPARQL in git → OpenAPI; config → REST; Hydra server and docs |fail |L0 L4 |ideas
+
+5+|*LDP and Solid*
+|Community Solid Server |LDP + Solid Protocol, WAC/ACP, Solid-OIDC, Solid Notifications |pass (610★; 27k npm) |L2 L3 L4 L6 |ideas (integrate only for pods)
+|Trellis LDP, ldp4j |LDP servers |fail (stale) |L4 |none
+|Inrupt solid-client |Solid/LDP client |pass (244★) |L5 |none
+|Solid Notifications spec |AS2 JSON-LD notifications over WebSocket, Webhook, streaming HTTP |n.a. (standard) |L6 |compatible
+|LDO |ShEx → TS typings over Solid/RDF |fail (73★) |L5 |ideas
+
+5+|*Low-code knowledge-graph apps*
+|LinkedDataHub |GSP document graphs + SPARQL, ontology-driven forms, WAC ACL evaluated as a SPARQL query |pass (636★) |L3 L4 L5 |ideas
+|AtomGraph Processor |LDT ontology-driven read-write server |fail (archived) |L4 |none
+|Sparnatural |SHACL-configured visual SPARQL query builder |pass (315★) |L5 |integrate
+
+5+|*GraphQL over RDF*
+|HyperGraphQL, UltraGraphQL, OBG-gen |GraphQL config or ontology → SPARQL |fail (dormant, not found, 17★) |L4 |none
+|GraphQL-LD.js, graphql-to-sparql.js |Client-side GraphQL + JSON-LD context → SPARQL |fail (121★, 116★) |L5 |ideas
+|Stardog GraphQL, GraphDB GraphQL |Store-native GraphQL from OWL/SHACL; GraphDB RBAC on reads and mutations |n.a. (commercial) |L3 L4 |none (not portable)
+|TopQuadrant SHACL / DASH `graphql:` |Shared SHACL → GraphQL curation vocabulary |pass (247★) |L0 |compatible
+
+5+|*DB-native JSON-LD APIs*
+|Fluree v4 |FlureeQL JSON-LD, SPARQL Query/Update, SHACL-tiered GraphQL, Cypher, MCP; identity and policy headers |pass on stars (477★); *BUSL-1.1 is a new reservation* (`Cargo.toml:65`) |L2 L3 L4 L6 |integrate (V3 only)
+|Fluree server v3 (Clojure) |Legacy HTTP server |fail (21★) |L4 |none
+
+5+|*JSON-LD and Hydra clients*
+|jsonld.js |JSON-LD processing |pass (1,817★; 1.2M npm) |L5 |dependency
+|Comunica |SPARQL and Linked Data query engine |pass (620★) |L5 |integrate
+|Alcaeus, LDflex |Hydra client; Linked Data path queries |fail (65★; 196★) |L5 |ideas
+|===
+
+== API styles and their cost to the JS developer
+
+[cols="2,3,3,3,2,2",options="header"]
+|===
+|Style |JS developer uses |Filter / page / include |Writes |PEP seen |Cost
+
+|JSON:API (mu-cl-resources, API Platform) |Plain JSON `type/id/attributes/relationships`; normalised `included` |`filter[...]` (server grammar), `sort`, `include`, `fields`, `page` |Per resource; relationship endpoints; the *Atomic ext* for multi-op transactions is in the spec but not in API Platform |Proxy (mu) or per operation |Lowest
+|JSON-LD + Hydra (API Platform, OldMan) |JSON with `@id/@type/@context`; `hydra:member`, `totalItems`, `view`, `search` |Filters advertised via `hydra:search`; page or cursor views |POST/PUT/PATCH (merge-patch)/DELETE |Per operation |Low
+|LDP / Solid (CSS, Trellis) |Documents and containers with RDF bodies |Containment only; no server-side filter, sort or page |PUT/POST/PATCH (N3 Patch, SPARQL Update)/DELETE with ETags |HTTP handler; WAC/ACP as data |High
+|GSP + SPARQL (LinkedDataHub, Fuseki) |Graph documents for writes, SPARQL for lists |SPARQL written by the client |GSP with ETag/If-Match |SPARQL ACL query in a request filter |High
+|SPARQL-direct |SPARQL strings or a JS query builder |In the query |SPARQL Update |Rewriting proxy or store-native |Highest; hardest to secure
+|GraphQL (Neo4j, Hasura; Stardog, GraphDB, Fluree) |GraphQL documents with generated TS hooks |Vendor-specific `where`, `orderBy`, `limit` |Mutations (GraphDB, Fluree curated tier only) |Store RBAC, field directives, DB policy |Low–medium; no portable RDF schema
+|FlureeQL JSON-LD |JSON-LD query and transaction documents |In the query JSON |`insert/upsert/update` |In-DB policy via headers |Low–medium; vendor lock-in
+|===
+
+== Purpose and origin
+
+[cols="2,3,3,3",options="header"]
+|===
+|Candidate |Built for |Who and context |Fit in L0–L6 and V1–V5
+|API Platform core |PHP developers who want a hypermedia/REST and GraphQL API from their classes in minutes |Les-Tilleuls.coop (Lille), started by Kévin Dunglas in 2015; today maintained mainly by Antoine Bluchet (`soyuka`). API-first and standards-first: JSON-LD/Hydra was the founding format |The reference *contract* for L4; Admin and create-client integrate at L5. Not L1/L2: PHP, no RDF store
+|Community Solid Server |Modular reference implementation of the Solid Protocol, to test the spec and host pods |imec / IDLab, Ghent University (Joachim Van Herwegen, Ruben Verborgh), with Inrupt funding. Every behaviour a swappable Components.js component |L3 and L6 patterns (PEP pipeline, notifications) and conditional writes; deployable only for pod products
+|LinkedDataHub |Low-code platform to build and publish knowledge-graph apps without programming |AtomGraph (Copenhagen), essentially Martynas Jusevičius; descends from AtomGraph Processor and Linked Data Templates. RDF all the way, with formal models of the HTTP/ACL contract |L3 policy-as-data and L4 GSP semantics; could run as a side back office next to V1/V2 over the same store
+|linkml-store |One Python API for LinkML users over DuckDB, MongoDB, Solr, Neo4j and vector stores |The LinkML organisation, main author Chris Mungall (LBNL / Monarch) |Reference for approach C (generic service) and a place for an rdf-persistence store adapter; not the UI service
+|===
+
+Desk-scan origins worth recording:
+HyperGraphQL (Semantic Integration Ltd., now developed and maintained by Epeirogenic AB, per its README);
+UltraGraphQL (RWTH Aachen, Databases and Information Systems i5; archived, last commit 2020-10);
+ldp4j (Center for Open Middleware, per `pom.xml`); Trellis LDP (Aaron Coburn, then Amherst College, later Inrupt);
+OBG-gen (Linköping University); grlc and RAMOSE (CLARIAH and OpenCitations research infrastructures);
+hydrus and hydra-python-core (GSoC student projects, HTTP-APIs org); rdflib-endpoint (Vincent Emonet); FastCRUD (Benav Labs);
+PostgREST (Joe Nelson, now community); JSON:API (ember-data community, Klabnik and Katz).
+
+== Deep-dive findings
+
+=== API Platform core — the contract reference
+
+*How it works.* PHP attributes (`ApiResource`, `ApiProperty`, operations) build one resource metadata collection. Every format is a projection of it:
+`@context` (`JsonLd/ContextBuilder.php:53-82`), Hydra docs (`Hydra/Serializer/DocumentationNormalizer.php`), OpenAPI and JSON Schema, JSON:API schemas, GraphQL types, MCP tools.
+Properties can carry `jsonldContext` and `genId` to map to predicate IRIs (`Metadata/ApiProperty.php:115, 211`).
+
+* *Two state ports.* `ProviderInterface::provide(...)` and `ProcessorInterface::process(...)` (`State/`). Doctrine, Elasticsearch and Eloquent are adapters. The pipeline is a decorator chain: `ContentNegotiation → Read → Deserialize → Parameter → SecurityParameter` providers; `Write → Serialize → AddLinkHeader → Respond` processors. An RDF backend would be one provider and one processor delegating to an rdf-persistence repository. None exists in core.
+* *Persistence adapters:* GitNexus lists `ProviderInterface` implementers for Doctrine ORM and ODM, Elasticsearch and Laravel Eloquent only; no RDF or SPARQL provider. A custom backend is a documented extension point.
+* *PEP at four stages* (`Symfony/Security/State/AccessCheckerProvider.php`): `security` (before or after read), `securityPostDenormalize` (with `object` and `previous_object`), `securityPostValidation`, `securityAfterResolver` (GraphQL).
+* *Property-level security exists:* `canAccessAttribute` evaluates `ApiProperty::security` with the object (`Serializer/AbstractItemNormalizer.php:527-540`) and disables normaliser caching for secured properties (`isCacheKeySafe`, `:548-551`).
+* *Row-level filtering: core ships only the hook.* `QueryCollectionExtensionInterface::applyToCollection` lets an extension add WHERE clauses before pagination and count (`QueryCollectionExtensionInterface.php:26-33`). Core's five implementers are filter, order, eager-loading, filter-eager-loading and parameter extensions; none is a security filter. The application writes the policy filter itself (the documented `CurrentUserExtension` pattern).
+* *No write preconditions:* `HttpCache/State/AddHeadersProcessor.php:34,66` only *emits* a response ETag (opt-in); nothing in `src/` checks `If-Match` or returns 412.
+* *No JSON:API Atomic Operations:* grep `atomic` in `src/` finds nothing; JSON:API covers include, fields, page and filter only.
+* *Pagination:* page or cursor per operation (`State/Pagination/Pagination.php:199`); Hydra `PartialCollectionView` links (`PartialCollectionViewNormalizer.php:53-93`); JSON:API `page`, `include`, sparse `fields` (`JsonApi/State/JsonApiProvider.php:110-130`).
+* *Filters* are advertised as a `hydra:search` IriTemplate (`CollectionFiltersNormalizer.php:115-147`), so generated UIs discover them at runtime.
+* *Notifications:* `PublishMercureUpdatesListener` publishes after Doctrine flush (`:101, :131`); private updates use the hub's JWT (`:50-53, :322-324`). GraphQL subscriptions ride the same hub.
+* *JS side:* `api-doc-parser` feeds Admin (list, create, show, edit, filters, live updates) and create-client.
+
+[cols="2,1,6",options="header"]
+|===
+|Criterion |Score |Reason
+|C1 |5 |CRUD, relations, filters, page and cursor pagination, JSON-LD, validation, GraphQL, subscriptions.
+|C2 |5 |Clean ports, decorator pipeline, metadata as single source.
+|C3 |4 |Attributes and docs; heavy framework.
+|C4 |1 |PHP/Symfony; cannot be embedded in a Python stack.
+|C5 |3 |Symfony Serializer, Doctrine, JSON Schema libraries; no RDF library.
+|C6 |4 |Resource and entity can differ (DTOs, `ObjectMapperProvider`).
+|C7 |0 |No SPARQL or RDF-store adapter.
+|C8 |5 |326 test files under `src/` plus 387 under `tests/`, daily commits.
+|C9 |5 |JSON-LD, Hydra, JSON:API, HAL, OpenAPI 3.1, GraphQL, Mercure, MCP, Problem+JSON.
+|C10 |4 |Semver, split packages; large surface (183k LOC).
+|===
+
+*Verdict: borrow the contract and integrate its JS tooling.* If our service emits Hydra docs, Hydra collections and an OpenAPI document shaped like API Platform's, Admin and create-client should work unchanged. *Not tested*; the claim rests on api-doc-parser's documented inputs.
+
+=== Community Solid Server — the LDP and Solid reference
+
+*How it works.*
+
+* `ResourceStore` port with optional `Conditions` on every call, so ETag/If-Match is built in (`storage/ResourceStore.ts:28-68`, `storage/conditions/BasicETagHandler.ts`). A missing resource shows as 404 only to agents with Read; others get 401/403, so a denial hides existence (AZ33, `PermissionBasedAuthorizer.ts:56-72`), as in LinkedDataHub.
+* A decorator chain of stores (converting, read-only, patching, monitoring, routing) over five `DataAccessor`s, wired by Components.js.
+* SPARQL backend: one named graph per document (`SparqlDataAccessor.ts:70-76`, metadata in `meta:` graphs at `:181`); writes built with the sparqljs `Generator` AST, not strings (`:15`); quads outside the default graph rejected (`:131-134`). Works against a SPARQL 1.1 endpoint that supports Update with `GRAPH`; because of the one-graph-per-document layout, data stored in other layouts is not visible.
+* PEP pipeline: credentials → required modes → permission readers → authorizer (`AuthorizingHttpHandler.ts:70-86`). The cleanest PEP/PIP/PDP split in this survey.
+* PATCH: N3 Patch and SPARQL Update (`storage/patch/`).
+* Notifications: store change maps → AS2 activities → WebSocket, Webhook and streaming-HTTP channels (`server/notifications/`). Spec fields confirmed from the file listing only.
+* Gaps for a CRUD UI: no typed resources, no class-level query, filter, sort or page, no schema.
+
+Scores: C1 3 · C2 5 · C3 2 · C4 2 · C5 5 · C6 1 · C7 3 · C8 5 · C9 5 · C10 3.
+
+*Verdict: borrow ideas; integrate only when a Solid pod is itself required.* Borrow the PEP pipeline, ETag/If-Match on every write, Solid Notifications as an open L6 contract and N3 Patch as a standard patch body.
+See also xref:architecture/soa/angles/authz.adoc[the authorization angle].
+
+=== LinkedDataHub — low-code knowledge-graph platform
+
+*How it works.*
+
+* Writes are GSP on document graphs (`DocumentHierarchyGraphStoreImpl.java:347-948`); queries via `SPARQLEndpointImpl.java`.
+* ETag and `If-Match` per RFC 9110 (`:409, :456, :586`, `evaluatePreconditions` at `:1810`). The README claims "A write guarded by `If-Match` loses no update", with formal models in `formal/http/` and `formal/acl/`; *the models exist but were not checked*.
+* Validation with SPIN constraints (`ValidatingModelProvider.java:50-54, 210-244`); jena-shacl is a dependency.
+* *The PEP is a request filter whose policy is a SPARQL query over WAC data*: `AuthorizationFilter.java:85-194` runs a configurable `DESCRIBE ?auth` over `acl:Authorization` triples (including `acl:accessToClass` with `rdfs:subClassOf*`), with a fail-closed default `VALUES` row (`WEB-INF/web.xml:61-104`).
+* Identity: WebID client certificates and OIDC. UI: ontology-driven forms in XSLT on SaxonJS (80 files; form derivation not traced).
+
+Scores: C1 4 · C2 4 · C3 2 · C4 2 · C5 4 · C6 3 · C7 4 (portability claimed; only `GraphStoreClient` seen) · C8 4 · C9 4 · C10 3.
+
+*Verdict: borrow ideas.* The strongest DEC-8-shaped idea in this angle: ACL as RDF data plus a declarative, configurable, fail-closed SPARQL policy query. Also borrow GSP document CRUD, ETag semantics and formal models of the contract. Do not adopt the XSLT UI.
+
+=== linkml-store — the LinkML-native API
+
+*How it works.*
+
+* Port `Client → Database → Collection` with `insert`, `upsert`, `delete`, `delete_where`, `update`, `query`, `query_facets`, `find` (`api/collection.py:197-506`).
+* Backends in `api/stores/`; *no RDF or SPARQL backend* (grep over `src/`).
+* The web API is generic, not per class (`webapi/main.py`): GET objects with a `where` JSON, `limit` and `offset` (`:321-390`), search, facets, schema, POST insert (`:709-725`). *No PUT, PATCH or DELETE routes and no auth dependency* (`:120-144`).
+* Listing totals use a full `collection.find({})` (`:351`): costly on large stores.
+
+Scores: C1 2 · C2 3 · C3 4 · C4 4 · C5 4 · C6 4 · C7 0 · C8 3 · C9 2 · C10 3.
+
+*Verdict: borrow ideas; optional integration later.* An rdf-persistence store adapter for linkml-store would give LinkML users a uniform Python API over RDF. Its HTTP API is not a model for the UI service.
+
+== What LinkML can generate today
+
+[cols="3,2,4",options="header"]
+|===
+|Artifact |Generator |State
+|Pydantic domain classes |`gen-pydantic` |mature
+|JSON-LD `@context` |`gen-jsonld-context` |mature
+|OpenAPI |`gen-openapi` |components only; paths come from a user template (`openapigen.py:96-120`). It strips the non-standard `linkml_meta` field (`openapigen.py:336`) that FastAPI's own OpenAPI from LinkML Pydantic classes carries; FastAPI also types IRIs as plain `string`
+|GraphQL SDL |`gen-graphql` |types only; no queries, mutations, filters or pagination
+|TypeScript interfaces |`gen-typescript` |weak
+|SHACL shapes |`gen-shacl` |mature
+|CRUD routes, JSON:API config, Hydra API docs |none |*gap*
+|GraphQL from SHACL |Stardog, GraphDB, Fluree v4 |vendor only
+|Admin UI from API docs |API Platform Admin, react-admin |mature
+|TS client from OpenAPI |hey-api/openapi-ts, openapi-generator |mature
+|===
+
+The missing generator should emit routes (JSON:API and JSON-LD/Hydra profiles), the per-class filter, sort and include grammar, relationship endpoints, and API docs (OpenAPI with paths, Hydra `ApiDocumentation`, optionally mu `domain.json`), driven by LinkML annotations (exposed classes, read-only and filterable slots).
+
+== Patterns catalogue
+
+[cols="3,3,4",options="header"]
+|===
+|Pattern |Seen in |Use for rdf-persistence
+|Model metadata → many projections |API Platform |One resource registry from LinkML rendered as several profiles
+|Provider/Processor ports |API Platform `State/` |The service calls repositories through two ports; easy to fake
+|Decorator store chain |CSS `storage/` |Wrap the repository with monitoring (deltas), read-only and auth-filter decorators
+|PEP at the HTTP edge |CSS `AuthorizingHttpHandler`; LDH `AuthorizationFilter` |FastAPI dependency asking a pluggable PDP
+|Policy as data + declarative query |LDH `aclQuery`; Fluree; GraphDB |Strongest DEC-8 fit
+|Policy as pre-pagination query filter |API Platform extension hook (app-written filter); PostgREST; Hasura; sparql-parser |A listing-query filter hook; post-filtering breaks counts and pages
+|PEP as SPARQL-rewriting proxy |sparql-parser |ACL-agnostic mode: forward request context (X13)
+|Self-describing API → generic UI |Hydra docs + `hydra:search` → Admin |Emit Hydra docs
+|Conditional writes |CSS `conditions/`; LDH GSP |Optimistic concurrency (P5)
+|Atomic multi-operation request with local ids |JSON:API Atomic ext |Maps one-to-one onto a unit-of-work commit
+|Publish after flush |API Platform Mercure listener |Emit notifications from the commit (outbox)
+|Standard notification envelope |Solid Notifications; Mercure; mu deltas |One internal delta (X12), several channels
+|Tiered schema exposure |Fluree v4 GraphQL |Read-only unless the model opts in
+|===
+
+=== Feature coverage (taxonomy v3)
+
+Counts over the 102 v3 features. Absences were confirmed with grep or GitNexus.
+
+[cols="2,1,1,1,1,4",options="header"]
+|===
+|Candidate |present |partial |absent |n.a. |Notable present/partial v3 features
+|API Platform core |18 |32 |34 |18 |AZ6, AZ21, AZ24, G9, G10, G11, G13, G16, E4, E9, U1, U3, U5, U6, RAD3, X17, X20, D13; partial AZ2 (hook only), AZ5, AZ8, AZ22, G7, G12, E1, E5, X19 (ETag emitted, not checked), X21
+|Community Solid Server |9 |15 |53 |25 |AZ7, AZ10, AZ11, AZ24, E4, E9, U9 (WAC-Allow), X19, X21; partial AZ5, AZ15, T1, T2, E1, E3, E8
+|LinkedDataHub |8 |17 |55 |22 |AZ10, AZ23, AZ24, U5, U9 (`Link rel=acl:mode`), X19, S15 (Memento), S18; partial AZ5, AZ8, T1, T2, U6, S19
+|linkml-store |1 |4 |81 |16 |S18; partial G9, U5, X18 (list insert, no local ids), S17
+|===
+
+Round-4 proposals, merged into v4:
+
+* AZ33 existence-hiding denial: withhold validators and headers (ETag, Last-Modified, existence, counts) from callers who may not read (LinkedDataHub `ResponseHeadersFilter.java:99-108`);
+* X24 MCP projection of the registry: the resource registry as MCP tools and resources for AI agents, under the same security (API Platform `src/Mcp/`);
+* E10 subscription channel options: rate limit, state on connect, validity window, accepted media type (CSS `NotificationChannel.ts:22-37`);
+* S21 named graphs mirrored to version control, one best-effort commit per change (LinkedDataHub `GraphVersioningService.java`);
+* D16 formal HTTP and access model, checked in CI against the running server (LinkedDataHub `formal/`).
+
+=== Feature coverage (taxonomy v4)
+
+Counts over the 77 features added in v4 (round 5).
+
+[cols="2,1,1,1,1",options="header"]
+|===
+|Candidate |present |partial |absent |n.a.
+|API Platform core |3 |8 |43 |23
+|Community Solid Server |3 |12 |41 |21
+|LinkedDataHub |4 |9 |45 |19
+|linkml-store |1 |4 |67 |5
+|===
+
+Notable v4 hits: API Platform X24 (MCP), I7 (reversible IRIs), D21 (tested guides); CSS AZ31 (ACL inheritance), T13 (read-only store), E10; LinkedDataHub AZ31, AZ33, S21, D16; linkml-store PG1 (query AST with per-store execution).
+
+[[variant-fit]]
+== Variant fit
+
+System variants V1–V5 and development approaches A (runtime mapper), B (generated mapper and routes), C (generic service) as in xref:architecture/soa/variants.adoc[variants].
+
+[cols="3,1,1,1,1,1,1,1,1",options="header"]
+|===
+|Tool |V1 |V2 |V3 |V4 |V5 |A |B |C
+|API Platform core (design) |enables (contract blueprint) |supports (JSON:API) |— |— |— |— |enables (metadata → routes: G10, G11, G13) |enables (runtime metadata)
+|API Platform Admin, create-client |supports (if Hydra/OpenAPI emitted) |— |— |supports |— |— |supports (U1, RAD3) |supports (U5)
+|Community Solid Server |— (ideas: AZ7, X19, E9) |— |— |— |blocks (no class-level query) |— |— |—
+|LinkedDataHub |supports as a side back office (graph per document) |— |— |supports (Jena/GSP) |supports (SPARQL endpoint + ACL) |— |— |enables (low-code)
+|linkml-store |— (no RDF backend) |— |— |— |— |— |— |enables (reference)
+|FastAPI |supports |supports |supports |supports |supports (read endpoint) |supports |supports |supports
+|FastCRUD |— |— |— |— |— |— |enables (router pattern) |—
+|Strawberry, Ariadne |supports (optional GraphQL) |— |supports |supports |— |— |supports (G12) |supports
+|JSON:API spec + Atomic ext |supports |required |supports |supports |— |— |supports |supports
+|WarpDrive, react-admin |supports |supports (WarpDrive) |supports |supports |— |— |— |—
+|rdflib-endpoint |dev fixture |— |— |— |idea |— |— |—
+|grlc, RAMOSE |— |— |— |— |idea (named queries) |— |— |supports (config only)
+|Stardog, GraphDB GraphQL |— |— |— |supports (GraphDB) |supports (vendor read API) |— |— |supports
+|Fluree v4 GraphQL / FlureeQL |— |— |supports |— |supports |— |— |supports
+|Solid Notifications, Mercure |supports (E9) |— (mu deltas) |— |supports |supports |— |— |—
+|HyperGraphQL, UltraGraphQL, OBG-gen, hydrus, Trellis, ldp4j |— (dormant) |— |— |— |— |— |— |—
+|===
+
+== Recommended options per architecture variant
+
+The V-S1 to V-S5 options below are this angle's round-3 service shapes, not the system variants. They map roughly to V2, V1, V3, V5 and a Solid-only case.
+
+[cols="2,5,3",options="header"]
+|===
+|Variant |Shape |Trade-off
+|V-S1 semantic.works-compatible Python resources |Browser → gateway → generated Python resource service (JSON:API, mu dialect) → rdf-persistence → sparql-parser (PEP and deltas) → triplestore |Ember/WarpDrive or react-admin work unchanged; authorization entirely in the proxy
+|V-S2 API-Platform-shaped standalone service |Browser → gateway (Zitadel) → generated FastAPI service with JSON-LD/Hydra (default) and JSON:API (profile), in-process PEP and query-filter hook → rdf-persistence → any SPARQL 1.1 store; deltas → Mercure/SSE or Solid Notifications |Zero-code back office via API Platform Admin; we own the PEP seams
+|V-S3 DB-native JSON-LD |TS UI → thin proxy → Fluree (FlureeQL or GraphQL) |Fastest start; lock-in, BUSL, rdf-persistence bypassed on the UI path
+|V-S4 SPARQL-direct + JS ORM |UI uses LDkit or Comunica against SPARQL behind a rewriting PEP |Least server code, most JS/RDF skill; backend domain rules bypassed. See xref:architecture/soa/angles/jsclient.adoc[JS client angle]
+|V-S5 Solid pod |CSS with a SPARQL backend |Personal-data scenarios only
+|===
+
+Recommended contract for our service:
+
+. *Primary: JSON:API in the mu-cl-resources dialect* (`filter[...]` with `:exact:/:gt:/:id:/:uri:/:has:`, `sort`, `include`, `fields`, `page[number|size]`, `meta.count`), plus the *Atomic Operations* extension mapped to one unit of work. The extension goes beyond the mu dialect: mu-cl-resources does not implement it, nor does API Platform, so existing Ember front ends will not send it.
+. *Second representation: JSON-LD on the same routes*, by content negotiation: compact form with the LinkML context, IRIs as `@id`, optional framing per view, Hydra collections, a Hydra `ApiDocumentation` and a full OpenAPI.
+. *SPARQL 1.1 protocol* as a read escape hatch behind the same PEP, or proxy-rewritten. No generated write API over SPARQL.
+. *GraphQL: defer.* If needed, generate it from the same registry following the DASH `graphql:` vocabulary; Strawberry or Ariadne.
+. *LDP/Solid: do not expose.* Borrow ETag/If-Match and the Solid Notifications envelope.
+. *Notifications:* emit deltas from the commit (X12) and render them as mu delta POSTs and as SSE/Mercure or Solid channels; authorise subscriptions with the same PEP.
+. *PEP placement:* three seams, no policy logic of our own: (a) request-context pass-through for proxy mode, (b) an endpoint-level hook (pre-read, post-denormalize, post-validate) calling an external PDP, (c) a listing-query filter hook applied before pagination and count.
+
+Features from this angle (v3 ids): RAD1 zero-code resource service, U5 admin UI from API docs, RAD3 front-end scaffolds, RAD4 tiered exposure; G10 service routes, G11 Hydra docs, G12 GraphQL with mutations, G13 per-class filter grammar, U1 TS client from the contract; X17 multi-profile rendering, X18 atomic multi-operation write, X19 conditional requests, E9 standard notification channels, E1 publish after commit, X20 cursor pagination, X21 RDF patch bodies; AZ6 staged PEP hooks, AZ2 listing-query policy filter, AZ10 ACL as RDF with a SPARQL policy query, AZ7 separated PEP/PIP/PDP pipeline; E4 authorised subscriptions.
+
+== Final verdict
+
+*API Platform core, Community Solid Server, LinkedDataHub, linkml-store: ideas.* API Platform's JS tooling (Admin, create-client) is *integrate*; CSS is deployable only for pod products; linkml-store may later get an rdf-persistence store adapter.
+
+. *Copy API Platform's shape, not its guarantees.* One resource registry projected to JSON:API, JSON-LD+Hydra, OpenAPI (and MCP), persistence behind two ports, security at fixed pipeline stages. It ships no row-level policy filter, no `If-Match` check and no Atomic Operations: we build AZ2, X19 and X18 ourselves.
+. *The listing-query filter decides whether authorization is correct.* Per-document enforcement (CSS, LinkedDataHub) is fine for documents and unusable for class-level lists; API Platform leaves the row filter to the application. Only a policy injected before pagination and count gives correct totals: pick a PDP that returns a filter, or stay graph-level.
+. *Documents are not resources.* LDP/GSP servers model one named graph per document: clean ETags, ACL inheritance and whole-graph PUT, but no server-side query, filter or page. A UI-facing service needs class-level resources (JSON:API/Hydra) over rdf-persistence. Borrow the document servers' concurrency and ACL ideas, not their storage layout.
+
+== Open questions
+
+. JSON:API ids: UUIDs (mu dialect, `mu:uuid`) or IRIs? IRIs align with JSON-LD but break existing semantic.works front-ends.
+. Is API Platform Admin compatibility a goal, and how far should our Hydra follow its quirks?
+. Fluree v4 (BUSL-1.1, new SPARQL Update, SHACL-tiered GraphQL): does it change the MWBv2 "accepted with reservations" verdict? Needs a separate check.
+. Does the chosen PDP return a *filter* or only allow/deny? Only a filter gives correct paginated listings.
+. Browser notifications: Mercure (simple hub, JWT) or Solid Notifications (standard, heavier)? Keep mu delta POSTs for back-end services?
+. Is GraphQL needed at all, or do JSON:API `include` and `fields` cover the "GraphQL-like freedom" asked for?
+. Who writes the row-level policy filter? API Platform shows the seam but ships no filter; ours must call the PDP from the listing-query hook.
+
+*Not checked:* no code was run; LDH form generation not read; CSS notification fields from the file list only; GraphDB/Stardog mutation docs not read; Fluree claims in this page from crate names, `lib.rs` and HTTP docs only (the Fluree index belongs to the stores and authorization angles). The API Platform claims were re-checked in round 4 against the finished GitNexus `core` index.
+
+== Sources
+
+* API Platform: https://github.com/api-platform/core (commit `2f4ca71`); https://api-platform.com/docs/admin/, https://api-platform.com/docs/create-client/
+* Community Solid Server: https://github.com/CommunitySolidServer/CommunitySolidServer (commit `628cc42`); https://solidproject.org/TR/notifications-protocol
+* LinkedDataHub: https://github.com/AtomGraph/LinkedDataHub (commit `a0687e4`)
+* linkml-store: https://github.com/linkml/linkml-store (commit `f19c1d9`)
+* Specs and vendor docs: https://jsonapi.org/ext/atomic/, https://www.hydra-cg.com/spec/latest/core/, https://graphdb.ontotext.com/documentation/11.0/graphql.html, https://docs.stardog.com/query-stardog/graphql, https://next.developers.flur.ee/docs/reference/http-api/
+* Others: https://github.com/vemonet/rdflib-endpoint, https://github.com/benavlabs/fastcrud
+* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/angle-service.md`

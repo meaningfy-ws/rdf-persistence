@@ -1,0 +1,56 @@
+@startuml seq-commit-aggregate
+title Commit an aggregate (UC-B2.1, UC-B4.3, UC-B7.1)
+autonumber
+participant "Application code" as App
+participant "Repository" as Repo
+participant "Aggregate Session" as AS
+participant "Mapper" as Map
+participant "Change Set Compiler" as CSC
+participant "Policy Enforcement Port" as PEP
+participant "Store Port\n(SPARQL-HTTP)" as SP
+database "Triple Store" as TS
+participant "Event Bus" as Bus
+App -> Repo : get(order IRI)
+Repo -> SP : construct root + owned closure
+SP -> TS : one query
+TS --> SP : triples
+Repo -> AS : hydrate via Mapper and keep snapshot
+App -> App : domain methods (record OrderLineAdded)
+App -> AS : commit()
+AS -> Map : diff touched aggregates against snapshots
+Map --> AS : removed and added triples (owned predicates)
+AS -> AS : apply aggregates-per-commit policy
+AS -> CSC : compile(diff, versions, events)
+CSC --> AS : change set: guards v=n and creation guards,\nnew children, outbox, commit record T
+AS -> PEP : check(change set, identity)
+alt permitted
+  PEP --> AS : allow
+  AS -> SP : execute(change set)
+  opt store does not serialise guarded updates (on-disk Oxigraph)
+    SP -> SP : take adapter write lock
+  end
+  SP -> TS : DELETE INSERT WHERE all guards (one operation)
+  alt store answered
+    TS --> SP : 204
+    SP -> TS : ASK commit record T on the primary
+    alt commit record present
+      TS --> SP : true
+      SP --> AS : committed v=n+1
+      AS -> Bus : dispatch domain events (after commit)
+      AS --> App : ok, versions n+1
+    else commit record absent (a guard failed, nothing written)
+      TS --> SP : false
+      SP --> AS : ConcurrencyConflict
+      AS --> App : ConcurrencyConflict(IRI, expected n) [RP-409]
+    end
+  else timeout (outcome unknown)
+    TS -->x SP : timeout
+    SP --> AS : StoreTimeout
+    AS --> App : StoreTimeout, retry asks commit record T first
+  end
+else denied
+  PEP --> AS : deny
+  AS --> App : PermissionDenied (no store call)
+end
+note over SP, TS : transactional stores and Fluree's commit receipt\nmake the confirming ASK unnecessary
+@enduml

@@ -1,0 +1,20 @@
+@startuml
+title C1 UML -> model2owl -> SHACL -> schema-automator -> LinkML (round trip)
+participant "EA UML (XMI)" as UML
+participant "model2owl (XSLT)" as M2O
+participant "schemauto import-shacl" as SA
+participant "Curated LinkML overlay" as LML
+participant "gen-shacl" as GS
+participant "Equivalence check (CI)" as EQ
+UML -> M2O : XMI export (SEMIC conventions)
+M2O -> M2O : conventions report (SVRL) gate
+M2O -> SA : OWL + SHACL shapes (sh:targetClass, sh:class, sh:datatype, sh:in, sh:sparql)
+SA -> SA : drop sh:sparql, sh:minInclusive, sh:pattern, paths; rdf:langString -> string
+SA -> LML : classes with class_uri, slots with slot_uri (identifier only if --identifier)
+LML -> LML : add identifier, aggregate annotations, lang-string convention, enum meaning
+LML -> GS : regenerate shapes
+GS -> EQ : LinkML SHACL (sh:closed true by default)
+M2O -> EQ : model2owl SHACL
+EQ --> LML : report drift (dropped constraints listed)
+note over SA, LML : Lossy by construction (shacl_import_engine.py:35-110); validation stays on model2owl SHACL
+@enduml
