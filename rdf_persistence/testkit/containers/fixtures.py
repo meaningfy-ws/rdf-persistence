@@ -1,53 +1,62 @@
 """pytest plugin: starts the containers a test's markers need (PD-16).
 
-Enable it with ``pytest_plugins = ["rdf_persistence.testkit.containers.fixtures"]``. A test marked
-``store``, ``files`` or ``identity`` gets Fuseki, Garage or Zitadel started once per session; a test
-without those markers starts nothing. Tests may also ask for the ``fuseki``, ``garage`` or
-``zitadel`` fixture directly. Needs Docker and the extra ``rdf-persistence[testkit]``.
+Enable it from a conftest's ``pytest_configure`` with
+``config.pluginmanager.import_plugin("rdf_persistence.testkit.containers.fixtures")`` (pytest allows
+``pytest_plugins`` only in the rootdir conftest), or with ``-p``. A test marked ``store``,
+``files`` or ``identity`` gets Fuseki, Garage or Zitadel started once per session; a test without
+those markers starts nothing. Tests may also ask for the ``fuseki``, ``garage`` or ``zitadel``
+fixture directly. Needs Docker and the extra ``rdf-persistence[testkit]``.
 """
 
-import os
 import socket
-import stat
-import tempfile
-import time
+import subprocess
 import uuid
-from collections.abc import Callable, Iterable, Iterator
-from dataclasses import dataclass
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import NamedTuple
 
 import httpx
 import pytest
 from testcontainers.compose import DockerCompose
 
+from rdf_persistence.testkit.bootstrap import (
+    environment,
+    redact_secrets,
+    value_after,
+    wait_until,
+)
+from rdf_persistence.testkit.markers import (
+    FUSEKI,
+    GARAGE,
+    ZITADEL,
+    containers_for,
+    register_markers,
+)
+
 COMPOSE_DIR = Path(__file__).parent
 COMPOSE_FILE = "compose.yaml"
+POSTGRES = "postgres"
+ZITADEL_FILES = "zitadel-files"  # holds the volume the first-instance setup writes the PAT to
 
-STORE, FILES, IDENTITY = "store", "files", "identity"
-FUSEKI, GARAGE, ZITADEL, POSTGRES = "fuseki", "garage", "zitadel", "postgres"
-CONTAINER_BY_MARKER = {STORE: FUSEKI, FILES: GARAGE, IDENTITY: ZITADEL}
-MARKER_HELP = {
-    STORE: "needs the Fuseki container",
-    FILES: "needs the Garage container",
-    IDENTITY: "needs the Zitadel container",
-}
-
+# The user admitted by fuseki/shiro.ini; change both together.
 FUSEKI_USER = ("rp-test", "rp-test")
 GARAGE_REGION = "garage"
 GARAGE_KEY_NAME = "rp-test"
-START_TIMEOUT_SECONDS = 180
-
-
-def containers_for(markers: Iterable[str]) -> list[str]:
-    """Return the containers the given markers need, in a stable order."""
-    wanted = {CONTAINER_BY_MARKER[m] for m in markers if m in CONTAINER_BY_MARKER}
-    return [c for c in CONTAINER_BY_MARKER.values() if c in wanted]
+GARAGE_BINARY = "/garage"
+GARAGE_ZONE = "dc1"
+GARAGE_CAPACITY = "1G"
+GARAGE_LAYOUT_VERSION = "1"
+GARAGE_KEY_ID_LABEL = "key id"
+GARAGE_SECRET_LABEL = "secret key"
+ZITADEL_PAT_PATH = "/bootstrap/admin.pat"
+HTTP_ERRORS = (httpx.HTTPError, OSError)
 
 
 def pytest_configure(config: pytest.Config) -> None:
     """Register the container markers, for consumers that do not list them in ``pytest.ini``."""
-    for marker, help_text in MARKER_HELP.items():
-        config.addinivalue_line("markers", f"{marker}: {help_text}")
+    register_markers(config)
 
 
 @pytest.fixture(autouse=True)
@@ -69,34 +78,51 @@ def _free_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def _wait_until(probe: Callable[[], bool], what: str) -> None:
-    deadline = time.monotonic() + START_TIMEOUT_SECONDS
-    while time.monotonic() < deadline:
-        try:
-            if probe():
-                return
-        except (httpx.HTTPError, OSError):
-            pass
-        time.sleep(1)
-    raise TimeoutError(f"{what} did not answer within {START_TIMEOUT_SECONDS}s")
-
-
 @pytest.fixture(scope="session")
 def _compose_project() -> Iterator[None]:
     """Give this session its own compose project, so parallel runs never share containers."""
-    os.environ["COMPOSE_PROJECT_NAME"] = f"rp-test-{uuid.uuid4().hex[:8]}"
-    yield
-    del os.environ["COMPOSE_PROJECT_NAME"]
+    with environment(COMPOSE_PROJECT_NAME=f"rp-test-{uuid.uuid4().hex[:8]}"):
+        yield
 
 
-def _compose(*services: str, build: bool = False) -> DockerCompose:
-    return DockerCompose(
-        COMPOSE_DIR,
-        compose_file_name=COMPOSE_FILE,
-        services=list(services),
-        build=build,
-        quiet_build=True,
-    )
+@contextmanager
+def _running(
+    *services: str, port_var: str, build: bool = False
+) -> Iterator[tuple[DockerCompose, int]]:
+    """Start the services on a free host port, and tear down and restore the environment after.
+
+    The port reaches ``compose.yaml`` through the ``port_var`` variable.
+    """
+    port = _free_port()
+    with (
+        environment(**{port_var: str(port)}),
+        DockerCompose(
+            COMPOSE_DIR,
+            compose_file_name=COMPOSE_FILE,
+            services=list(services),
+            build=build,
+            quiet_build=True,
+        ) as compose,
+    ):
+        yield compose, port
+
+
+class ExecResult(NamedTuple):
+    """What a command run inside a container printed, and how it ended."""
+
+    out: str
+    err: str
+    code: int
+
+
+def _exec(compose: DockerCompose, service: str, command: list[str]) -> ExecResult:
+    """Run a command in a container and report its outcome; a failing command does not raise."""
+    try:
+        return ExecResult(*compose.exec_in_container(command, service_name=service))
+    except subprocess.CalledProcessError as error:
+        return ExecResult(
+            (error.stdout or b"").decode(), (error.stderr or b"").decode(), error.returncode
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -115,12 +141,12 @@ class FusekiServer:
 @pytest.fixture(scope="session")
 def fuseki(_compose_project: None) -> Iterator[FusekiServer]:
     """Fuseki, answering ``/$/ping`` for the test user."""
-    port = _free_port()
-    os.environ["RP_FUSEKI_PORT"] = str(port)
-    server = FusekiServer(url=f"http://localhost:{port}", auth=FUSEKI_USER)
-    with _compose(FUSEKI, build=True):
-        _wait_until(
-            lambda: httpx.get(f"{server.url}/$/ping", auth=server.auth).is_success, "Fuseki"
+    with _running(FUSEKI, port_var="RP_FUSEKI_PORT", build=True) as (_, port):
+        server = FusekiServer(url=f"http://localhost:{port}", auth=FUSEKI_USER)
+        wait_until(
+            lambda: httpx.get(f"{server.url}/$/ping", auth=server.auth).is_success,
+            "Fuseki",
+            retry_on=HTTP_ERRORS,
         )
         yield server
 
@@ -136,41 +162,45 @@ class GarageServer:
 
     endpoint: str
     key_id: str
-    secret: str
+    secret: str = field(repr=False)
     region: str = GARAGE_REGION
 
 
-def _value_after(label: str, output: str) -> str:
-    for line in output.splitlines():
-        if line.strip().lower().startswith(label):
-            return line.split(":", 1)[1].strip()
-    raise ValueError(f"no '{label}' in garage output:\n{output}")
+def _garage_cli(compose: DockerCompose, *args: str) -> ExecResult:
+    return _exec(compose, GARAGE, [GARAGE_BINARY, *args])
+
+
+def _garage_node_id(compose: DockerCompose) -> str:
+    """The node id, or ``""`` while Garage's RPC is not up yet."""
+    result = _garage_cli(compose, "node", "id", "-q")
+    return result.out.strip().split("@")[0] if result.code == 0 else ""
+
+
+def _garage_require(compose: DockerCompose, *args: str) -> str:
+    """Run a Garage command that must succeed; the error never carries its output's secrets."""
+    result = _garage_cli(compose, *args)
+    if result.code:
+        raise RuntimeError(
+            f"garage {' '.join(args[:2])} failed with exit code {result.code}: "
+            f"{redact_secrets(result.err)}"
+        )
+    return result.out
 
 
 def _bootstrap_garage(compose: DockerCompose) -> tuple[str, str]:
     """Assign and apply a one-node layout, then create a key; return its id and secret."""
-
-    def garage(*args: str) -> str:
-        out, err, code = compose.exec_in_container(["/garage", *args], service_name=GARAGE)
-        if code:
-            raise RuntimeError(f"garage {' '.join(args)} failed: {err or out}")
-        return str(out)
-
-    _wait_until(lambda: bool(garage("node", "id", "-q")), "Garage RPC")
-    node = garage("node", "id", "-q").strip().split("@")[0]
-    garage("layout", "assign", "-z", "dc1", "-c", "1G", node)
-    garage("layout", "apply", "--version", "1")
-    created = garage("key", "create", GARAGE_KEY_NAME)
-    garage("key", "allow", "--create-bucket", GARAGE_KEY_NAME)
-    return _value_after("key id", created), _value_after("secret key", created)
+    node = wait_until(lambda: _garage_node_id(compose), "Garage RPC")
+    _garage_require(compose, "layout", "assign", "-z", GARAGE_ZONE, "-c", GARAGE_CAPACITY, node)
+    _garage_require(compose, "layout", "apply", "--version", GARAGE_LAYOUT_VERSION)
+    created = _garage_require(compose, "key", "create", GARAGE_KEY_NAME)
+    _garage_require(compose, "key", "allow", "--create-bucket", GARAGE_KEY_NAME)
+    return value_after(GARAGE_KEY_ID_LABEL, created), value_after(GARAGE_SECRET_LABEL, created)
 
 
 @pytest.fixture(scope="session")
 def garage(_compose_project: None) -> Iterator[GarageServer]:
     """Garage with a one-node layout and one key allowed to create buckets."""
-    port = _free_port()
-    os.environ["RP_GARAGE_PORT"] = str(port)
-    with _compose(GARAGE) as compose:
+    with _running(GARAGE, port_var="RP_GARAGE_PORT") as (compose, port):
         key_id, secret = _bootstrap_garage(compose)
         yield GarageServer(endpoint=f"http://localhost:{port}", key_id=key_id, secret=secret)
 
@@ -184,12 +214,12 @@ def garage(_compose_project: None) -> Iterator[GarageServer]:
 class ZitadelServer:
     """Where the test Zitadel answers, and the admin machine user's personal access token.
 
-    Task 3.3 adds the provisioning (project, JWT application, machine users and their keys)
-    on top of this fixture, through the management API with ``admin_pat``.
+    ``admin_pat`` authenticates the management API, for provisioning a project, an application
+    and machine users in the test instance.
     """
 
     url: str
-    admin_pat: str
+    admin_pat: str = field(repr=False)
 
 
 def _management_answers(server: ZitadelServer) -> bool:
@@ -200,23 +230,23 @@ def _management_answers(server: ZitadelServer) -> bool:
     return response.is_success
 
 
+def _read_pat(compose: DockerCompose) -> str:
+    """The PAT that first-instance setup wrote, or ``""`` until it exists.
+
+    Zitadel's image has no shell, so a helper container that shares the volume reads it.
+    """
+    result = _exec(compose, ZITADEL_FILES, ["cat", ZITADEL_PAT_PATH])
+    return result.out.strip() if result.code == 0 else ""
+
+
 @pytest.fixture(scope="session")
 def zitadel(_compose_project: None) -> Iterator[ZitadelServer]:
-    """Zitadel with Postgres, and the PAT that first-instance setup wrote to the mounted file."""
-    port = _free_port()
-    os.environ["RP_ZITADEL_PORT"] = str(port)
-    with tempfile.TemporaryDirectory(prefix="rp-zitadel-") as bootstrap_dir:
-        # The Zitadel user is not ours; it must be able to write the token here.
-        os.chmod(bootstrap_dir, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-        os.environ["RP_ZITADEL_BOOTSTRAP_DIR"] = bootstrap_dir
-        pat_file = Path(bootstrap_dir) / "admin.pat"
-        with _compose(ZITADEL, POSTGRES):
-            _wait_until(
-                lambda: pat_file.exists() and pat_file.stat().st_size > 0, "Zitadel's token file"
-            )
-            server = ZitadelServer(
-                url=f"http://localhost:{port}", admin_pat=pat_file.read_text().strip()
-            )
-            # The health check passes before the management API can reach Zitadel's own gRPC port.
-            _wait_until(lambda: _management_answers(server), "Zitadel's management API")
-            yield server
+    """Zitadel with Postgres, and the PAT that first-instance setup wrote to its volume."""
+    with _running(ZITADEL, POSTGRES, ZITADEL_FILES, port_var="RP_ZITADEL_PORT") as (compose, port):
+        pat = wait_until(lambda: _read_pat(compose), "Zitadel's token file")
+        server = ZitadelServer(url=f"http://localhost:{port}", admin_pat=pat)
+        # The health check passes before the management API can reach Zitadel's own gRPC port.
+        wait_until(
+            lambda: _management_answers(server), "Zitadel's management API", retry_on=HTTP_ERRORS
+        )
+        yield server

@@ -26,6 +26,9 @@ COV_FLAGS = --cov=$(PACKAGE_NAME) \
             --cov-report=xml:$(REPO_ROOT)/coverage.xml \
             --cov-fail-under=80
 
+# The unit lane never collects the container tests, so it runs without testcontainers (PD-16).
+UNIT_LANE = --ignore=$(TEST_PATH)/integration --ignore=$(TEST_PATH)/e2e
+
 .DEFAULT_GOAL := help
 
 #-----------------------------------------------------------------------------
@@ -117,22 +120,22 @@ check-spec: ## Validate the OpenSpec spine (pinned CLI, strict)
 
 test: ## Run the unit and feature tests, with the coverage floor
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit and feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) -m "unit or feature" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -m "unit or feature" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Unit and feature tests passed$(END_BUILD_PRINT)"
 
 test-containers: ## Run the integration and e2e tests against Docker containers (no coverage floor)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running container tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) -m "integration or e2e" $(COV_FLAGS) --cov-fail-under=0 --junitxml=$(REPO_ROOT)/test-results-containers.xml
+	@ uv run pytest $(TEST_PATH) -m "integration or e2e" $(COV_FLAGS) --cov-report=xml:$(REPO_ROOT)/coverage-containers.xml --cov-fail-under=0 --junitxml=$(REPO_ROOT)/test-results-containers.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Container tests passed$(END_BUILD_PRINT)"
 
 test-unit: ## Run unit tests only
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) -m "unit"
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -m "unit"
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Unit tests passed$(END_BUILD_PRINT)"
 
 test-feature: ## Run BDD feature tests only
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) -m "feature"
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -m "feature"
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Feature tests passed$(END_BUILD_PRINT)"
 
 test-e2e: ## Run end-to-end tests only
@@ -165,7 +168,7 @@ ci-full: check-all clean-code ## CI full: quality + unit and feature tests + cle
 coverage-report: ## Generate HTML coverage report in reports/
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating coverage report$(END_BUILD_PRINT)"
 	@ mkdir -p $(REPO_ROOT)/reports
-	@ uv run pytest $(TEST_PATH) $(COV_FLAGS) --cov-report=html:$(REPO_ROOT)/reports/htmlcov -m "unit or feature"
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) $(COV_FLAGS) --cov-report=html:$(REPO_ROOT)/reports/htmlcov -m "unit or feature"
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Coverage report at reports/htmlcov/index.html$(END_BUILD_PRINT)"
 
 quality-report: ## Generate Radon quality report in reports/
@@ -256,7 +259,7 @@ clean: ## Remove build artifacts and caches
 	@ rm -rf $(BUILD_PATH) $(REPO_ROOT)/reports
 	@ rm -rf $(REPO_ROOT)/.pytest_cache $(REPO_ROOT)/.mypy_cache $(REPO_ROOT)/.ruff_cache
 	@ rm -rf $(REPO_ROOT)/.import_linter_cache
-	@ rm -rf $(REPO_ROOT)/coverage.xml $(REPO_ROOT)/test-results.xml $(REPO_ROOT)/test-results-containers.xml $(REPO_ROOT)/.coverage
+	@ rm -rf $(REPO_ROOT)/coverage.xml $(REPO_ROOT)/coverage-containers.xml $(REPO_ROOT)/test-results.xml $(REPO_ROOT)/test-results-containers.xml $(REPO_ROOT)/.coverage
 	@ rm -rf $(REPO_ROOT)/*.egg-info
 	@ uv run ruff clean 2>/dev/null || true
 	@ find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

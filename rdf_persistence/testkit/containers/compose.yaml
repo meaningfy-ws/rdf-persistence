@@ -9,12 +9,23 @@
 # Garage and Zitadel are pinned by digest; the tags in the comments are what the digests were
 # taken from.
 
+# Every published port binds 127.0.0.1 only: the services carry test credentials.
+
+volumes:
+  # Holds the admin token Zitadel writes at first start. It lives in Docker, never on the host.
+  zitadel-bootstrap:
+
 services:
   fuseki:
+    # A fixed tag, so every session reuses one built image instead of leaving one per project.
+    image: rdf-persistence-test/fuseki:5.6.0
     build:
       context: ./fuseki
       args:
         JENA_VERSION: "5.6.0"
+        # alpine:3.21.2 (the Dockerfile's own default tag), pinned by digest. The Dockerfile builds
+        # eclipse-temurin:${JAVA_VERSION}-alpine, so a digest cannot be passed for that image.
+        ALPINE_VERSION: "3.21.2@sha256:56fa17d2a7e7f168a043a2712e63aed1f8543aeafdcee47c58dcffe38ed51099"
     environment:
       # The jar reads $FUSEKI_BASE/shiro.ini and needs the base writable. Of the directories the
       # unmodified image creates for the fuseki user, /fuseki/databases is the one to use.
@@ -23,7 +34,7 @@ services:
     volumes:
       - ./fuseki/shiro.ini:/fuseki/databases/shiro.ini:ro
     ports:
-      - "${RP_FUSEKI_PORT:-3030}:3030"
+      - "127.0.0.1:${RP_FUSEKI_PORT:-3030}:3030"
 
   garage:
     # dxflrs/garage:v2.5.0
@@ -31,11 +42,11 @@ services:
     volumes:
       - ./garage.toml:/etc/garage.toml:ro
     ports:
-      - "${RP_GARAGE_PORT:-3900}:3900"
+      - "127.0.0.1:${RP_GARAGE_PORT:-3900}:3900"
 
   postgres:
     # postgres:17-alpine
-    image: postgres@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b
+    image: &postgres_image postgres@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -46,12 +57,28 @@ services:
       timeout: 5s
       retries: 30
 
+  # Zitadel's image has no shell and its user cannot create /bootstrap's files in a fresh volume.
+  # This helper opens the volume to it, and stays up so the fixture can read the token (as root).
+  zitadel-files:
+    image: *postgres_image
+    user: "0"
+    entrypoint: ["sh", "-c", "chmod 0777 /bootstrap && exec sleep infinity"]
+    volumes:
+      - zitadel-bootstrap:/bootstrap
+    healthcheck:
+      test: ["CMD-SHELL", "[ \"$$(stat -c %a /bootstrap)\" = 777 ]"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+
   zitadel:
     # ghcr.io/zitadel/zitadel:v4.20.1
     image: ghcr.io/zitadel/zitadel@sha256:4817dbd8896306867f28bba63e7dc3526b2d2646ac7111db9524eb3ab6e82301
     command: start-from-init --masterkeyFromEnv --tlsMode disabled
     depends_on:
       postgres:
+        condition: service_healthy
+      zitadel-files:
         condition: service_healthy
     environment:
       ZITADEL_MASTERKEY: "MasterkeyNeedsToHave32Characters"
@@ -71,13 +98,13 @@ services:
       ZITADEL_EXTERNALSECURE: "false"
       ZITADEL_EXTERNALDOMAIN: localhost
       ZITADEL_EXTERNALPORT: "${RP_ZITADEL_PORT:-8085}"
-      # An admin machine user, with a personal access token written to the mounted file.
+      # An admin machine user, with a personal access token written to the mounted volume.
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: rp-admin
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: rp-admin
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE: "2099-01-01T00:00:00Z"
       ZITADEL_FIRSTINSTANCE_PATPATH: /bootstrap/admin.pat
     volumes:
-      - "${RP_ZITADEL_BOOTSTRAP_DIR:-./zitadel-bootstrap}:/bootstrap"
+      - zitadel-bootstrap:/bootstrap
     healthcheck:
       test: ["CMD", "/app/zitadel", "ready"]
       interval: 3s
@@ -85,4 +112,4 @@ services:
       retries: 60
       start_period: 10s
     ports:
-      - "${RP_ZITADEL_PORT:-8085}:${RP_ZITADEL_PORT:-8085}"
+      - "127.0.0.1:${RP_ZITADEL_PORT:-8085}:${RP_ZITADEL_PORT:-8085}"

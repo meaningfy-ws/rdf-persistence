@@ -96,17 +96,8 @@ jobs:
       - name: Install dependencies
         run: make install
 
-      - name: Lint (Ruff)
-        run: make lint
-
-      - name: Type check (mypy)
-        run: make typecheck
-
-      - name: Architecture check (import-linter)
-        run: make check-architecture
-
-      - name: OpenSpec validation
-        run: make check-spec
+      - name: Quality gate (lint, types, architecture, spec, docs)
+        run: make check-quality
 
       - name: Run tests with coverage
         run: make test
@@ -163,4 +154,6 @@ jobs:
         with:
           name: container-test-results
           retention-days: 14
-          path: test-results-containers.xml
+          path: |
+            coverage-containers.xml
+            test-results-containers.xml

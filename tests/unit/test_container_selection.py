@@ -2,7 +2,7 @@
 
 import pytest
 
-from rdf_persistence.testkit.containers.fixtures import containers_for
+from rdf_persistence.testkit.markers import containers_for
 
 
 @pytest.mark.parametrize(

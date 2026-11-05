@@ -3,7 +3,7 @@
 WHY THIS HOOK EXISTS
 --------------------
 Test-type markers (``unit``, ``feature``, ``e2e``, ``integration``) and the
-container markers (``store``, ``files``, ``identity``) are stamped
+container markers (``store``, ``files``, ``identity``; named in ``rdf_persistence.testkit.markers``) are stamped
 onto every collected test **by file path**, not by per-file ``pytestmark``.
 
 The natural-looking shortcut — putting ``pytestmark = pytest.mark.unit`` in a
@@ -14,37 +14,64 @@ collection hook below. It is the single source of truth for marker assignment,
 so no test file needs to decorate itself and the ``-m`` filters in the Makefile
 (``test-unit`` -> ``pytest -m unit`` etc.) stay correct as new tests are added.
 
-Markers must also be registered in ``pytest.ini`` under ``[pytest] markers``
-(with ``--strict-markers`` on) or pytest will error on an unknown marker.
+The test-type markers are registered in ``pytest.ini``; the container markers are registered by
+the fixtures plugin (``--strict-markers`` is on, so an unregistered marker is an error).
 """
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+
+from rdf_persistence.testkit.markers import FILES, IDENTITY, STORE, register_markers
 
 # Path constants — single source of truth for the test directory structure.
 TESTS_ROOT_DIR = Path(__file__).parent
 TEST_DATA_DIR = TESTS_ROOT_DIR / "test_data"
 
-# The container fixtures (PD-16): they start only the containers a test's markers need.
-pytest_plugins = ["rdf_persistence.testkit.containers.fixtures"]
+# The container fixtures plugin (PD-16). Only tests/integration/ and tests/e2e/ load it, so the
+# unit lane runs without testcontainers. pytest allows `pytest_plugins` only in the rootdir
+# conftest, so those two conftests call `load_container_plugin` from `pytest_configure`.
+CONTAINER_PLUGIN = "rdf_persistence.testkit.containers.fixtures"
 
-# Map a directory to every marker it implies (PD-16). The first row whose
-# directory occurs in the test path wins, so a row never needs to exclude another.
-_MARKERS_BY_DIR = {
-    "/unit/": ("unit",),
-    "/feature/": ("feature",),
-    "/integration/store/": ("integration", "store"),
-    "/integration/api/": ("integration", "store"),
-    "/integration/tenancy/": ("integration", "store", "files"),
-    "/integration/files/": ("integration", "files"),
-    "/integration/identity/": ("integration", "identity"),
-    "/e2e/": ("e2e", "store", "files", "identity"),
-}
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Register the container markers for every lane, including the unit lane."""
+    register_markers(config)
+
+
+def load_container_plugin(config: pytest.Config) -> None:
+    """Register the container fixtures plugin once, however many conftests ask for it."""
+    config.pluginmanager.import_plugin(CONTAINER_PLUGIN)
+
+
+@dataclass(frozen=True)
+class DirectoryMarkers:
+    """A directory below tests/ and every marker it implies."""
+
+    directory: str
+    markers: tuple[str, ...]
+
+
+# The first row whose directory starts the relative path wins (PD-16), so a row never needs
+# to exclude another.
+_MARKERS_BY_DIR = (
+    DirectoryMarkers("unit/", ("unit",)),
+    DirectoryMarkers("feature/", ("feature",)),
+    DirectoryMarkers("integration/store/", ("integration", STORE)),
+    DirectoryMarkers("integration/api/", ("integration", STORE)),
+    DirectoryMarkers("integration/tenancy/", ("integration", STORE, FILES)),
+    DirectoryMarkers("integration/files/", ("integration", FILES)),
+    DirectoryMarkers("integration/identity/", ("integration", IDENTITY)),
+    DirectoryMarkers("e2e/", ("e2e", STORE, FILES, IDENTITY)),
+)
 
 
 def markers_for_path(path: str) -> tuple[str, ...]:
     """Return every marker implied by the directory a test file lives in.
+
+    Only the part of the path below ``tests/`` is matched, so a checkout under a directory
+    that happens to be called ``unit`` does not change the result.
 
     Args:
         path: The test file's path.
@@ -52,10 +79,13 @@ def markers_for_path(path: str) -> tuple[str, ...]:
     Returns:
         The markers of the matching row of the path table, or ``()`` if none matches.
     """
-    posix = Path(path).as_posix()
-    for directory, markers in _MARKERS_BY_DIR.items():
-        if directory in posix:
-            return markers
+    try:
+        relative = Path(path).relative_to(TESTS_ROOT_DIR).as_posix()
+    except ValueError:
+        return ()
+    for row in _MARKERS_BY_DIR:
+        if relative.startswith(row.directory):
+            return row.markers
     return ()
 
 
