@@ -377,6 +377,69 @@ classes:
       help:
         required: true
 
+  ExecResult:
+    title: Exec result
+    description: What a command run inside a container printed, and how it ended.
+    class_uri: rp:ExecResult
+    slots:
+      - stdout
+      - stderr
+      - exit_code
+    slot_usage:
+      stdout:
+        required: true
+      stderr:
+        required: true
+      exit_code:
+        required: true
+  FusekiServer:
+    title: Fuseki server
+    description: Where the test Fuseki answers, and the one user it admits.
+    class_uri: rp:FusekiServer
+    slots:
+      - url
+      - user
+      - password
+    slot_usage:
+      url:
+        required: true
+      user:
+        required: true
+      password:
+        required: true
+  GarageServer:
+    title: Garage server
+    description: The S3 endpoint of the test Garage and the key bootstrapped on it.
+    class_uri: rp:GarageServer
+    slots:
+      - endpoint
+      - key_id
+      - secret
+      - region
+    slot_usage:
+      endpoint:
+        required: true
+      key_id:
+        required: true
+      secret:
+        required: true
+      region:
+        required: true
+  ZitadelServer:
+    title: Zitadel server
+    description: >-
+      Where the test Zitadel answers, and the admin machine user's personal access token, which
+      authenticates the management API for provisioning a project, an application and machine users.
+    class_uri: rp:ZitadelServer
+    slots:
+      - url
+      - admin_pat
+    slot_usage:
+      url:
+        required: true
+      admin_pat:
+        required: true
+
 slots:
   relative_path:
     title: Relative path
@@ -385,7 +448,7 @@ slots:
       backslash, no empty segment and no `.` or `..` segment, so it cannot leave the project.
     slot_uri: rp:relativePath
     abstract: true
-    pattern: '^(?:[^/:\\.][^/:\\]*|\.[^/:\\.][^/:\\]*|\.\.[^/:\\]+)(?:/(?:[^/:\\.][^/:\\]*|\.[^/:\\.][^/:\\]*|\.\.[^/:\\]+))*$'
+    pattern: '^(?:[^/:\\.\x00-\x1f\x7f][^/:\\\x00-\x1f\x7f]*|\.[^/:\\.\x00-\x1f\x7f][^/:\\\x00-\x1f\x7f]*|\.\.[^/:\\\x00-\x1f\x7f]+)(?:/(?:[^/:\\.\x00-\x1f\x7f][^/:\\\x00-\x1f\x7f]*|\.[^/:\\.\x00-\x1f\x7f][^/:\\\x00-\x1f\x7f]*|\.\.[^/:\\\x00-\x1f\x7f]+))*$'
   schema_file:
     is_a: relative_path
     title: Schema file
@@ -694,6 +757,57 @@ slots:
     title: What
     description: What is wrong at that place.
     slot_uri: rp:what
+  stdout:
+    title: Standard output
+    description: What the command wrote to its standard output.
+    slot_uri: rp:stdout
+  stderr:
+    title: Standard error
+    description: What the command wrote to its standard error.
+    slot_uri: rp:stderr
+  url:
+    title: URL
+    description: The base URL a server answers on.
+    slot_uri: rp:url
+  user:
+    title: User
+    description: The user name the server admits.
+    slot_uri: rp:user
+  password:
+    title: Password
+    description: The password of the user.
+    slot_uri: rp:password
+    annotations:
+      secret: 'true'
+  endpoint:
+    title: Endpoint
+    description: The URL of the S3 endpoint.
+    slot_uri: rp:endpoint
+  key_id:
+    title: Key id
+    description: The id of the access key.
+    slot_uri: rp:keyId
+  secret:
+    title: Secret
+    description: The secret of the access key.
+    slot_uri: rp:secret
+    annotations:
+      secret: 'true'
+  region:
+    title: Region
+    description: The region name the S3 client signs for.
+    slot_uri: rp:region
+  admin_pat:
+    title: Admin PAT
+    description: The personal access token of the admin machine user.
+    slot_uri: rp:adminPat
+    annotations:
+      secret: 'true'
+  exit_code:
+    title: Exit code
+    description: The exit code the command ended with.
+    slot_uri: rp:exitCode
+    range: integer
 
 enums:
   HardRule:
@@ -805,3 +919,7 @@ enums:
         title: Cli flag
         description: On a GenerationTarget slot, the command-line flag that overrides it.
         meaning: rp:GenerationAnnotationCliFlag
+      secret:
+        title: Secret
+        description: On a slot, `true` when its value must stay out of the repr of the generated class.
+        meaning: rp:GenerationAnnotationSecret

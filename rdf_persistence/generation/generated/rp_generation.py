@@ -116,6 +116,8 @@ class GenerationAnnotation(str, Enum):
     "The annotations this module\u0027s schema carries for the toolchain itself."
     CLI_FLAG = "cli_flag"
     "On a GenerationTarget slot, the command-line flag that overrides it."
+    SECRET = "secret"
+    "On a slot, `true` when its value must stay out of the repr of the generated class."
 
 
 
@@ -129,7 +131,7 @@ class GenerationTarget(ConfiguredBaseModel):
 
     @field_validator("schema_file")
     def pattern_schema_file(cls, v):
-        pattern=re.compile("^(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+)(?:/(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+))*$")
+        pattern=re.compile("^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.fullmatch(element):
@@ -155,7 +157,7 @@ class GenerationTarget(ConfiguredBaseModel):
 
     @field_validator("python")
     def pattern_python(cls, v):
-        pattern=re.compile("^(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+)(?:/(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+))*$")
+        pattern=re.compile("^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.fullmatch(element):
@@ -168,7 +170,7 @@ class GenerationTarget(ConfiguredBaseModel):
 
     @field_validator("typescript")
     def pattern_typescript(cls, v):
-        pattern=re.compile("^(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+)(?:/(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+))*$")
+        pattern=re.compile("^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.fullmatch(element):
@@ -181,7 +183,7 @@ class GenerationTarget(ConfiguredBaseModel):
 
     @field_validator("diagrams")
     def pattern_diagrams(cls, v):
-        pattern=re.compile("^(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+)(?:/(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+))*$")
+        pattern=re.compile("^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.fullmatch(element):
@@ -200,7 +202,7 @@ class ManifestEntry(ConfiguredBaseModel):
 
     @field_validator("path")
     def pattern_path(cls, v):
-        pattern=re.compile("^(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+)(?:/(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+))*$")
+        pattern=re.compile("^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.fullmatch(element):
@@ -277,7 +279,7 @@ class CheckProblem(ConfiguredBaseModel):
 
     @field_validator("schema_file")
     def pattern_schema_file(cls, v):
-        pattern=re.compile("^(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+)(?:/(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+))*$")
+        pattern=re.compile("^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.fullmatch(element):
@@ -399,6 +401,34 @@ class ContainerMarker(ConfiguredBaseModel):
     help: str = Field(default=..., title="Help", description="A line of help text.")
 
 
+class ExecResult(ConfiguredBaseModel):
+    "What a command run inside a container printed, and how it ended."
+    stdout: str = Field(default=..., title="Standard output", description="What the command wrote to its standard output.")
+    stderr: str = Field(default=..., title="Standard error", description="What the command wrote to its standard error.")
+    exit_code: int = Field(default=..., title="Exit code", description="The exit code the command ended with.")
+
+
+class FusekiServer(ConfiguredBaseModel):
+    "Where the test Fuseki answers, and the one user it admits."
+    url: str = Field(default=..., title="URL", description="The base URL a server answers on.")
+    user: str = Field(default=..., title="User", description="The user name the server admits.")
+    password: str = Field(default=..., title="Password", description="The password of the user.", repr=False)
+
+
+class GarageServer(ConfiguredBaseModel):
+    "The S3 endpoint of the test Garage and the key bootstrapped on it."
+    endpoint: str = Field(default=..., title="Endpoint", description="The URL of the S3 endpoint.")
+    key_id: str = Field(default=..., title="Key id", description="The id of the access key.")
+    secret: str = Field(default=..., title="Secret", description="The secret of the access key.", repr=False)
+    region: str = Field(default=..., title="Region", description="The region name the S3 client signs for.")
+
+
+class ZitadelServer(ConfiguredBaseModel):
+    "Where the test Zitadel answers, and the admin machine user\u0027s personal access token, which authenticates the management API for provisioning a project, an application and machine users."
+    url: str = Field(default=..., title="URL", description="The base URL a server answers on.")
+    admin_pat: str = Field(default=..., title="Admin PAT", description="The personal access token of the admin machine user.", repr=False)
+
+
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 GenerationTarget.model_rebuild()
@@ -426,3 +456,7 @@ MmdClass.model_rebuild()
 MmdModule.model_rebuild()
 Violation.model_rebuild()
 ContainerMarker.model_rebuild()
+ExecResult.model_rebuild()
+FusekiServer.model_rebuild()
+GarageServer.model_rebuild()
+ZitadelServer.model_rebuild()

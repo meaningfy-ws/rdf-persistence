@@ -367,6 +367,10 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
   - Both are `testkit.assert_models_generated(package, *, roots, allow=())`, so consumers get them
     too. In this repo the model guard also scans `generation` and `testkit`, with the allow-list of
     PD-24's foreign-object types.
+  - Patterns are fully anchored on both sides (stage 1 review): the classes use `fullmatch`, and
+    the shapes wrap each pattern as `^(?:P)(?![\s\S])`, because `$` in pyshacl's and Java's regex
+    accepts a final newline. The look-ahead is outside the XPath regex syntax SHACL names, but both
+    validators the toolkit targets (pyshacl, Jena) accept it.
   - `rp-generate` validates its own inputs (stage 1 review): manifest paths are relative POSIX paths
     without `..` and hashes are 64 hex digits; a run removes a listed file only if it lies under the
     project and still has its recorded hash; configured folders are relative, without `..`; the

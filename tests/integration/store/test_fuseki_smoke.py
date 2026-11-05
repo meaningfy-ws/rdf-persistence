@@ -4,7 +4,7 @@ import httpx
 
 
 def test_fuseki_answers_ping(fuseki) -> None:
-    response = httpx.get(f"{fuseki.url}/$/ping", auth=fuseki.auth)
+    response = httpx.get(f"{fuseki.url}/$/ping", auth=(fuseki.user, fuseki.password))
     assert response.status_code == 200
 
 
@@ -16,8 +16,8 @@ def test_fuseki_admin_creates_and_drops_a_dataset(fuseki) -> None:
     created = httpx.post(
         f"{fuseki.url}/$/datasets",
         data={"dbName": "smoke", "dbType": "tdb2"},
-        auth=fuseki.auth,
+        auth=(fuseki.user, fuseki.password),
     )
     assert created.status_code == 200
-    dropped = httpx.delete(f"{fuseki.url}/$/datasets/smoke", auth=fuseki.auth)
+    dropped = httpx.delete(f"{fuseki.url}/$/datasets/smoke", auth=(fuseki.user, fuseki.password))
     assert dropped.status_code == 200

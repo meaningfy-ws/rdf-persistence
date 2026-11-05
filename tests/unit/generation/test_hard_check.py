@@ -186,3 +186,16 @@ def test_a_run_with_a_missing_description_exits_1_and_writes_nothing(
     assert main(["--project", str(root.parent / "pyproject.toml")]) == 1, "wrong exit code"
     assert "isbn" in capsys.readouterr().err, "the slot is not named"
     assert sorted(p.name for p in root.parent.iterdir()) == before, "outputs were touched"
+
+
+def test_the_rp_path_pattern_is_checked_when_the_schema_does_not_import_the_metamodel(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "bare.yaml"
+    root.write_text(
+        "id: https://example.org/bare\nname: bare\nprefixes:\n  linkml: https://w3id.org/linkml/\n"
+        "imports:\n  - linkml:types\nclasses:\n  Thing:\n    annotations:\n      rp_path: Not A Path\n",
+        encoding="utf-8",
+    )
+    problems = problems_of(root)
+    assert any(f"[{HardRule.ANNOTATION.value}] Thing:" in p for p in problems), problems

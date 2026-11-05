@@ -2,6 +2,7 @@
 
 import re
 from collections.abc import Iterator
+from functools import cache
 from pathlib import Path
 
 from linkml_runtime.linkml_model.meta import (
@@ -20,6 +21,7 @@ from rdf_persistence.domain.generated.rp_core import (
 )
 from rdf_persistence.generation.generated.rp_generation import CheckProblem, HardRule
 from rdf_persistence.generation.problems import rule_problem
+from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 from rdf_persistence.services.schema_structure import (
     aggregate_roots,
     annotation,
@@ -36,6 +38,7 @@ from rdf_persistence.services.schema_structure import (
 ELEMENT_METASLOTS = ((HardRule.TITLE, "title"), (HardRule.DESCRIPTION, "description"))
 VALUE_METASLOTS = (*ELEMENT_METASLOTS, (HardRule.MEANING, "meaning"))
 DESCRIBED = "Described"
+CORE_MODEL = PACKAGE_DIR / "model" / "rp_core.yaml"
 URL_SEGMENT = "url_segment"  # the slot of rp_core whose pattern every route segment follows
 BOOLEAN = ("true", "false")
 # Every annotation the toolkit reads, and the values it accepts (the enums of rp_core). rp_path takes
@@ -107,15 +110,13 @@ def _annotated_elements(schema: SchemaDefinition) -> Iterator[Element]:
     yield from schema.enums.values()
 
 
-def _path_pattern(view: SchemaView) -> str | None:
-    """The pattern an ``rp_path`` value must match: the one of the ``url_segment`` slot, if the closure has it."""
-    slot = view.get_slot(URL_SEGMENT, strict=False)
-    return slot.pattern if slot else None
+@cache
+def _path_pattern() -> str:
+    """The pattern an ``rp_path`` value must match: the one of the metamodel's ``url_segment`` slot."""
+    return str(load_schema(CORE_MODEL).get_slot(URL_SEGMENT).pattern)
 
 
-def _annotation_problems(
-    schema: SchemaDefinition, path_pattern: str | None
-) -> Iterator[CheckProblem]:
+def _annotation_problems(schema: SchemaDefinition, path_pattern: str) -> Iterator[CheckProblem]:
     for element in _annotated_elements(schema):
         name = str(element.name)
         for tag, allowed in ALLOWED_ANNOTATIONS.items():
@@ -125,7 +126,7 @@ def _annotation_problems(
                     HardRule.ANNOTATION, name, f"{tag.value}: {value!r} is not one of {allowed}"
                 )
         path = annotation_text(element, RpAnnotation.RP_PATH)
-        if path is not None and path_pattern and not re.fullmatch(path_pattern, path):
+        if path is not None and not re.fullmatch(path_pattern, path):
             yield rule_problem(
                 HardRule.ANNOTATION,
                 name,
@@ -177,6 +178,6 @@ def hard_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
     )  # PD-23: its roots are its own
     return [
         *(p for schema in schemas for p in _schema_problems(schema)),
-        *(p for schema in schemas for p in _annotation_problems(schema, _path_pattern(view))),
+        *(p for schema in schemas for p in _annotation_problems(schema, _path_pattern())),
         *_class_problems(view, classes),
     ]

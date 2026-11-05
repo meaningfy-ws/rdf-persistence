@@ -9,6 +9,9 @@
       "shex": "http://www.w3.org/ns/shex#",
       "skos": "http://www.w3.org/2004/02/skos/core#",
       "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "admin_pat": {
+         "@id": "adminPat"
+      },
       "alias": {
          "@id": "alias"
       },
@@ -40,10 +43,16 @@
       "element": {
          "@id": "element"
       },
+      "endpoint": {
+         "@id": "endpoint"
+      },
       "enums": {
          "@type": "@id",
          "@container": "@set",
          "@id": "tsEnums"
+      },
+      "exit_code": {
+         "@id": "exitCode"
       },
       "externals": {
          "@container": "@set",
@@ -85,6 +94,9 @@
       "invalid": {
          "@container": "@set",
          "@id": "invalidInstances"
+      },
+      "key_id": {
+         "@id": "keyId"
       },
       "key_iris": {
          "@container": "@set",
@@ -161,6 +173,9 @@
          "@container": "@set",
          "@id": "frameParts"
       },
+      "password": {
+         "@id": "password"
+      },
       "path": {
          "@id": "path"
       },
@@ -177,6 +192,9 @@
       "refused": {
          "@id": "refused"
       },
+      "region": {
+         "@id": "region"
+      },
       "relative_path": {
          "@id": "relativePath"
       },
@@ -189,6 +207,9 @@
       "schema_file": {
          "@id": "schemaFile"
       },
+      "secret": {
+         "@id": "secret"
+      },
       "sha256": {
          "@id": "sha256"
       },
@@ -199,6 +220,12 @@
          "@type": "@id",
          "@container": "@set",
          "@id": "slotShapes"
+      },
+      "stderr": {
+         "@id": "stderr"
+      },
+      "stdout": {
+         "@id": "stdout"
       },
       "step": {
          "@id": "step"
@@ -216,6 +243,12 @@
       },
       "typescript": {
          "@id": "typescriptFolder"
+      },
+      "url": {
+         "@id": "url"
+      },
+      "user": {
+         "@id": "user"
       },
       "valid": {
          "@container": "@set",
@@ -248,11 +281,20 @@
       "ContainerMarker": {
          "@id": "ContainerMarker"
       },
+      "ExecResult": {
+         "@id": "ExecResult"
+      },
       "Frame": {
          "@id": "Frame"
       },
       "FramePart": {
          "@id": "FramePart"
+      },
+      "FusekiServer": {
+         "@id": "FusekiServer"
+      },
+      "GarageServer": {
+         "@id": "GarageServer"
       },
       "GeneratedFile": {
          "@id": "GeneratedFile"
@@ -307,6 +349,9 @@
       },
       "Violation": {
          "@id": "Violation"
+      },
+      "ZitadelServer": {
+         "@id": "ZitadelServer"
       }
    }
 }

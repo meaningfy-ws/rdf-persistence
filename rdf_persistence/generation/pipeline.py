@@ -25,10 +25,13 @@ STAGING_PREFIX = ".rp-generate-"
 
 @contextmanager
 def schema_faults() -> Iterator[None]:
-    """Report a schema fault raised inside the block as a ``StepError``; any other exception is a bug and passes."""
+    """Report a ``SchemaGenerationError`` raised inside the block as a ``StepError``; any other exception is a bug and passes.
+
+    Load errors are reported only where the schema is loaded (``_run_target``), never around a step.
+    """
     try:
         yield
-    except (SchemaGenerationError, *LOAD_ERRORS) as error:
+    except SchemaGenerationError as error:
         raise StepError([CheckProblem(message=str(error))]) from error
 
 

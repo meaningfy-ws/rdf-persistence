@@ -47,7 +47,7 @@ def test_a_hand_written_record_in_a_widened_layer_is_caught_only_when_the_layer_
 
 
 # Every plain data record of generation and testkit is generated (PD-24); what stays hand-written
-# holds a foreign runtime object that LinkML cannot express, or is an infrastructure endpoint.
+# holds a foreign runtime object that LinkML cannot express.
 # A type that subclasses a LinkML generator or template class is not flagged by the guard, so it
 # needs no entry here.
 HAND_WRITTEN = (
@@ -61,12 +61,6 @@ HAND_WRITTEN = (
     "rdf_persistence/generation/extensions/shacl.py:RpShaclGenerator",
     # holds a SchemaView, the generated classes and an rdflib Graph of the shapes
     "rdf_persistence/testkit/conformance.py:Conformance",
-    # infrastructure: what a command run in a container printed
-    "rdf_persistence/testkit/containers/fixtures.py:ExecResult",
-    # infrastructure: the endpoints and credentials of the test containers
-    "rdf_persistence/testkit/containers/fixtures.py:FusekiServer",
-    "rdf_persistence/testkit/containers/fixtures.py:GarageServer",
-    "rdf_persistence/testkit/containers/fixtures.py:ZitadelServer",
 )
 
 

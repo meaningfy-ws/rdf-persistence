@@ -1,6 +1,6 @@
 """gen-pydantic in split mode: one module per schema module, metadata off, the toolkit's templates (PD-24).
 
-The stock generator lacks four things the toolkit needs, and this module adds them:
+The stock generator lacks five things the toolkit needs, and this module adds them:
 
 * the metamodel's classes are imported from the toolkit's package, never regenerated: from
   ``rdf_persistence.domain.generated.<module>`` inside the toolkit's own runs and from the public
@@ -9,7 +9,9 @@ The stock generator lacks four things the toolkit needs, and this module adds th
 * ``exactly_one_of``, ``any_of`` and ``unique_keys`` become model validators (``pydantic_validators``);
 * a slot annotated ``internal: true`` carries ``json_schema_extra={"rp_internal": True}`` (the
   ``attribute.py.jinja`` template), which the API layer reads; the slot is still dumped, because the
-  mapper must persist it.
+  mapper must persist it;
+* a slot annotated ``secret: true`` (``GenerationAnnotation``) is declared ``repr=False``, so its value
+  stays out of the repr of the class.
 """
 
 import copy
@@ -32,9 +34,13 @@ from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation.exceptions import SchemaGenerationError
 from rdf_persistence.generation.extensions.pydantic_validators import with_validators
-from rdf_persistence.generation.generated.rp_generation import GeneratedFile
+from rdf_persistence.generation.generated.rp_generation import (
+    GeneratedFile,
+    GenerationAnnotation,
+)
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema, metamodel_importmap
 from rdf_persistence.services.schema_structure import (
+    annotation_text,
     apply_defaults,
     is_internal,
     is_toolkit_schema,
@@ -53,6 +59,7 @@ class InternalAttribute(PydanticAttribute):
 
     internal: bool = False
     loosens: bool = False
+    secret: bool = False
 
 
 def metamodel_module(name: str, *, toolkit: bool) -> str:
@@ -120,8 +127,12 @@ class SplitPydanticGenerator(PydanticGenerator):
         fields = {name: getattr(slot.attribute, name) for name in PydanticAttribute.model_fields}
         fields["description"] = slot.source.description  # the raw text, as for classes
         internal = is_internal(slot.source)
+        secret = annotation_text(slot.source, GenerationAnnotation.SECRET) == "true"
         slot.attribute = InternalAttribute(
-            **fields, internal=internal, loosens=_loosens_a_base_slot(slot.source, sv)
+            **fields,
+            internal=internal,
+            loosens=_loosens_a_base_slot(slot.source, sv),
+            secret=secret,
         )
         return slot
 

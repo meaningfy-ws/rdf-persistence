@@ -16,6 +16,7 @@ TESTS = Path(__file__).parent
 GOLDENS = ROOT / "tests" / "fixtures" / "library" / "golden"
 EXTENSIONS_PREFIX = "rdf_persistence/generation/extensions/"
 TOY_TREE_CHECK = "assert_matches_toy("
+GOLDEN_CHECK = "assert_matches_golden("
 
 ROW = re.compile(r"^\|`([^`]+)`")
 TEMPLATE_DIR = re.compile(r"`(rdf_persistence/generation/templates/[^`]+)`")
@@ -50,6 +51,14 @@ def test_every_extension_module_has_a_row(module: str) -> None:
 def test_every_extension_module_has_a_golden_test(module: str) -> None:
     assert (TESTS / f"test_ext_{module}.py").is_file(), (
         f"tests/unit/generation/test_ext_{module}.py is missing"
+    )
+
+
+@pytest.mark.parametrize("module", extension_modules())
+def test_every_extension_golden_test_asserts_against_a_golden(module: str) -> None:
+    text = (TESTS / f"test_ext_{module}.py").read_text(encoding="utf-8")
+    assert TOY_TREE_CHECK in text or GOLDEN_CHECK in text, (
+        f"test_ext_{module}.py exists but never calls {TOY_TREE_CHECK} or {GOLDEN_CHECK}"
     )
 
 

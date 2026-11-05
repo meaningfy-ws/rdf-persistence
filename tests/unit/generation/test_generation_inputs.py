@@ -24,6 +24,7 @@ from .test_generate_cli import project
 
 VALID_PATHS = ["a.py", "a/b/c.py", ".hidden/x", "rdf_persistence/model/rp.yaml", "a..b/c", "..x"]
 INVALID_PATHS = ["", "/a", "../a", "a/../b", "a/..", "C:/a", "a\\b", "a//b", "./a", "a/", "."]
+INVALID_PATHS += ["s.yaml\n", "a\x00b", "a\tb", "a\x1fb", "a\x7fb", "\ra"]  # control characters
 VALID_PACKAGES = ["app", "app.generated", "a_b.c1", "_p"]
 INVALID_PACKAGES = ["", "a b", "a..b", "1a", "a-b", ".a", "a.", "a/b", 'a"; import os #']
 FOLDER_FIELDS = ["schema_file", "python", "typescript", "diagrams"]
@@ -203,7 +204,16 @@ def test_a_schema_fault_raised_by_an_extension_is_reported_not_raised(
     assert "asks for the impossible" in capsys.readouterr().err, "the fault was not reported"
 
 
-@pytest.mark.parametrize("bug", [KeyError("boom"), AttributeError("boom"), RuntimeError("boom")])
+@pytest.mark.parametrize(
+    "bug",
+    [
+        KeyError("boom"),
+        AttributeError("boom"),
+        RuntimeError("boom"),
+        TypeError("boom"),
+        ValueError("boom"),
+    ],
+)
 def test_a_bug_in_an_extension_is_not_reported_as_a_schema_problem(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bug: Exception
 ) -> None:
