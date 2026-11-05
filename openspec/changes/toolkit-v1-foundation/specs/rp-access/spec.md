@@ -20,8 +20,8 @@ not permitted SHALL be denied.
 
 ### Requirement: Tenants without a grant stay hidden
 
-A caller with no grant in a tenant, and no global role the rules allow, or any caller of a tenant
-that is not `active`, SHALL get 404.
+The check SHALL answer 404 to a caller with no grant in the tenant and no global role the rules
+allow, and to any caller of a tenant that is not `active`.
 
 #### Scenario: an outsider
 - **WHEN** a principal with no grant in a library reads one of its books
