@@ -8,6 +8,8 @@ from pathlib import Path
 
 from linkml_runtime.utils.schemaview import SchemaView
 
+from rdf_persistence.generation import manifest
+from rdf_persistence.generation.config import python_folder
 from rdf_persistence.generation.generated.rp_generation import GenerationTarget
 from rdf_persistence.services.schema import load_schema
 
@@ -38,7 +40,7 @@ class Run:
     @property
     def python_dir(self) -> Path:
         """The Python output folder, relative to ``base``."""
-        return Path(self.target.python or self.target.package.replace(".", "/"))
+        return python_folder(self.target)
 
     def staged(self, relative: Path) -> Path:
         """The staging path of the output file ``relative`` to ``base``; its folder exists."""
@@ -73,17 +75,35 @@ def _run_target(
     return []
 
 
-def _move_into_place(staging: Path, base: Path) -> None:
+def _move_into_place(staging: Path, base: Path) -> list[Path]:
+    """Move every staged file to its place under ``base``; return the places."""
+    moved = []
     for staged in sorted(p for p in staging.rglob("*") if p.is_file()):
         destination = base / staged.relative_to(staging)
         destination.parent.mkdir(parents=True, exist_ok=True)
         os.replace(staged, destination)
+        moved.append(destination)
+    return moved
+
+
+def _publish(target: GenerationTarget, base: Path, staging: Path) -> None:
+    """Move ``target``'s output into place, delete what its previous run wrote and no longer does, write the manifest."""
+    previous = manifest.read_manifest(target, base)
+    written = _move_into_place(staging, base)
+    kept = {manifest.recorded_path(f, base) for f in written}
+    for entry in (previous.outputs or []) if previous else []:
+        if entry.path not in kept:
+            (base / entry.path).unlink(missing_ok=True)
+    manifest.write_manifest(target, base, manifest.build_manifest(target, base, written))
 
 
 def generate(
     targets: Sequence[GenerationTarget], base: Path, steps: Sequence[Step], *, check: bool
 ) -> list[str]:
     """Run ``steps`` over every target; move all output into place only if nothing failed.
+
+    A run writes one manifest per target and deletes only the files the target's previous manifest
+    listed (PD-26).
 
     Args:
         targets: The targets, in order; paths are relative to ``base``.
@@ -96,8 +116,13 @@ def generate(
     """
     selected = [step for step in steps if not (check and step.writes)]
     with tempfile.TemporaryDirectory(dir=base, prefix=STAGING_PREFIX) as folder:
-        staging = Path(folder)
-        problems = [p for target in targets for p in _run_target(target, base, staging, selected)]
+        stagings = [Path(folder) / str(index) for index, _ in enumerate(targets)]
+        problems = [
+            p
+            for target, staging in zip(targets, stagings, strict=True)
+            for p in _run_target(target, base, staging, selected)
+        ]
         if not problems and not check:
-            _move_into_place(staging, base)
+            for target, staging in zip(targets, stagings, strict=True):
+                _publish(target, base, staging)
     return problems

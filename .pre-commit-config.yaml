@@ -1,6 +1,7 @@
 # pre-commit hooks — renders to .pre-commit-config.yaml at the repo root.
-# Ruff only (decision: hooks run the fast linter/formatter; mypy + import-linter
-# run in CI and via `make check-quality`, not on every commit).
+# Ruff on every commit (fast linter/formatter), plus `rp-generate --check` when a schema, the
+# generator or generated output is staged (PD-26). mypy and import-linter run in CI and via
+# `make check-quality`, not on every commit.
 # Install once with: uv run pre-commit install
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -12,3 +13,12 @@ repos:
         args: [--fix]
       # Format.
       - id: ruff-format
+  # Generated code must match its sources: stale input, hand edit, missing output (PD-26).
+  - repo: local
+    hooks:
+      - id: rp-generate-check
+        name: rp-generate --check
+        entry: make check-freshness
+        language: system
+        pass_filenames: false
+        files: ^(rdf_persistence/(model|generation)/|tests/fixtures/library/|.*/generated/)

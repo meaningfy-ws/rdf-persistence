@@ -2,8 +2,8 @@ id: https://meaningfy.ws/ns/rdf-persistence/generation
 name: rp_generation
 title: RDF persistence generation module
 description: >-
-  The data of the generation toolchain: the configuration of one `rp-generate` run. Later tasks add
-  the manifest and the conformance cases to this module.
+  The data of the generation toolchain: the configuration of one `rp-generate` run, the manifest it
+  writes, the conformance cases and the reviewed shape of a class.
 prefixes:
   rp: https://meaningfy.ws/ns/rdf-persistence#
   linkml: https://w3id.org/linkml/
@@ -33,6 +33,76 @@ classes:
       package:
         required: true
 
+  ManifestEntry:
+    title: Manifest entry
+    description: A file and the SHA-256 of its bytes, as recorded by a generation run.
+    class_uri: rp:ManifestEntry
+    slots:
+      - path
+      - sha256
+    slot_usage:
+      path:
+        required: true
+      sha256:
+        required: true
+  GenerationManifest:
+    title: Generation manifest
+    description: >-
+      What one generation run read and wrote: the installed `linkml` version, the files it read and
+      the files it wrote. Written as `rp-manifest.json` in the target's Python folder.
+    class_uri: rp:GenerationManifest
+    slots:
+      - linkml
+      - inputs
+      - outputs
+    slot_usage:
+      linkml:
+        required: true
+  ConstraintCase:
+    title: Constraint case
+    description: >-
+      One row of the conformance table: a constraint kind, a class that declares it, and the instance
+      files the generated class and shape must accept and refuse.
+    class_uri: rp:ConstraintCase
+    slots:
+      - kind
+      - class_name
+      - valid
+      - invalid
+    slot_usage:
+      kind:
+        required: true
+      class_name:
+        required: true
+  SlotShape:
+    title: Slot shape
+    description: The shape of one slot of a class, as the schema induces it.
+    class_uri: rp:SlotShape
+    slots:
+      - name
+      - required
+      - multivalued
+      - range
+    slot_usage:
+      name:
+        required: true
+      required:
+        required: true
+      multivalued:
+        required: true
+      range:
+        required: true
+  ClassShape:
+    title: Class shape
+    description: The reviewed shape of one class, its name and the shape of each of its slots.
+    class_uri: rp:ClassShape
+    slots:
+      - class_name
+      - slots
+    slot_usage:
+      class_name:
+        required: true
+
 slots:
   schema_file:
     title: Schema file
@@ -58,6 +128,76 @@ slots:
     title: Diagrams folder
     description: The folder that receives one Mermaid file per module; none are written when absent.
     slot_uri: rp:diagramsFolder
+  path:
+    title: Path
+    description: A file path, POSIX, relative to the folder of the `pyproject.toml`.
+    slot_uri: rp:path
+  sha256:
+    title: SHA-256
+    description: The SHA-256 of a file's bytes, in lowercase hexadecimal.
+    slot_uri: rp:sha256
+  linkml:
+    title: LinkML version
+    description: The version of the `linkml` package that ran the generation.
+    slot_uri: rp:linkmlVersion
+  inputs:
+    title: Inputs
+    description: The files a generation run read, sorted by path.
+    slot_uri: rp:manifestInputs
+    range: ManifestEntry
+    multivalued: true
+    inlined_as_list: true
+  outputs:
+    title: Outputs
+    description: The files a generation run wrote, sorted by path; not the manifest itself.
+    slot_uri: rp:manifestOutputs
+    range: ManifestEntry
+    multivalued: true
+    inlined_as_list: true
+  kind:
+    title: Constraint kind
+    description: The kind of constraint a case exercises.
+    slot_uri: rp:constraintKind
+    range: ConstraintKind
+  class_name:
+    title: Class name
+    description: The name of a class of the schema.
+    slot_uri: rp:className
+  valid:
+    title: Valid instances
+    description: Paths of instance files, beside the cases file, that the class and the shape must accept.
+    slot_uri: rp:validInstances
+    multivalued: true
+  invalid:
+    title: Invalid instances
+    description: Paths of instance files, beside the cases file, that the class and the shape must refuse.
+    slot_uri: rp:invalidInstances
+    multivalued: true
+  name:
+    title: Name
+    description: The name of a slot.
+    slot_uri: rp:slotName
+  required:
+    title: Required
+    description: Whether a value is required.
+    slot_uri: rp:required
+    range: boolean
+  multivalued:
+    title: Multivalued
+    description: Whether the slot takes several values.
+    slot_uri: rp:multivalued
+    range: boolean
+  range:
+    title: Range
+    description: The name of the type, enum or class the slot's values belong to.
+    slot_uri: rp:range
+  slots:
+    title: Slots
+    description: The shapes of a class's slots, in schema order.
+    slot_uri: rp:slotShapes
+    range: SlotShape
+    multivalued: true
+    inlined_as_list: true
 
 enums:
   HardRule:
@@ -108,3 +248,51 @@ enums:
         title: Module kind
         description: A domain module does not import a technical or an access module.
         meaning: rp:BoundaryRuleModuleKind
+  ConstraintKind:
+    title: Constraint kind
+    description: The constraint kinds of v1 that the generated classes and shapes must agree on.
+    permissible_values:
+      required:
+        title: Required
+        description: A required slot refuses a missing value.
+        meaning: rp:ConstraintKindRequired
+      cardinality:
+        title: Cardinality
+        description: A slot's minimum and maximum cardinality bound the number of values.
+        meaning: rp:ConstraintKindCardinality
+      range_type:
+        title: Range type
+        description: A slot's range type refuses a value of another type.
+        meaning: rp:ConstraintKindRangeType
+      range_enum:
+        title: Range enum
+        description: An enum range refuses a value outside its permissible values.
+        meaning: rp:ConstraintKindRangeEnum
+      pattern:
+        title: Pattern
+        description: A pattern refuses a value that does not match.
+        meaning: rp:ConstraintKindPattern
+      value_bounds:
+        title: Value bounds
+        description: A minimum or maximum value refuses a value outside the bounds.
+        meaning: rp:ConstraintKindValueBounds
+      identifier:
+        title: Identifier
+        description: An identifier slot takes one IRI that names the instance.
+        meaning: rp:ConstraintKindIdentifier
+      closed:
+        title: Closed
+        description: A class refuses an unknown field or predicate.
+        meaning: rp:ConstraintKindClosed
+      exactly_one_of:
+        title: Exactly one of
+        description: Exactly one of several alternatives is present.
+        meaning: rp:ConstraintKindExactlyOneOf
+      any_of:
+        title: Any of
+        description: At least one of several alternatives is present.
+        meaning: rp:ConstraintKindAnyOf
+      unique_keys:
+        title: Unique keys
+        description: No two items of a multivalued slot have equal key values.
+        meaning: rp:ConstraintKindUniqueKeys

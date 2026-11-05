@@ -43,7 +43,7 @@ help: ## Display available targets
 #-----------------------------------------------------------------------------
 # Install / build (mutating)
 #-----------------------------------------------------------------------------
-.PHONY: install-uv install lock generate generate-metamodel check-generated refresh-golden build
+.PHONY: install-uv install lock generate check-freshness generate-metamodel check-generated refresh-golden build
 
 install-uv: ## Install uv if not present
 	@ command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -67,6 +67,11 @@ generate: ## Regenerate everything from LinkML: the toolkit's schemas and the to
 	@ uv run rp-generate --project $(TOY_PROJECT)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated$(END_BUILD_PRINT)"
 
+check-freshness: ## rp-generate --check on both projects: lint, checks, and the manifest comparison (PD-26)
+	@ uv run rp-generate --check
+	@ uv run rp-generate --check --project $(TOY_PROJECT)
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated code matches its sources$(END_BUILD_PRINT)"
+
 check-generated: generate ## Regenerate and fail if the result differs from what is committed (PD-19)
 	@ git diff --exit-code --stat -- $(GENERATED_GLOBS)
 	@ git ls-files --others --exclude-standard -- $(GENERATED_GLOBS) | grep . && exit 1 || true
@@ -80,7 +85,7 @@ generate-metamodel: ## Regenerate the metamodel's and the generation module's Py
 	@ uv run rp-generate
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Metamodel classes generated$(END_BUILD_PRINT)"
 
-build: ## Build the package distribution
+build: generate ## Build the package distribution (generates first)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Building package$(END_BUILD_PRINT)"
 	@ uv build
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Package built successfully$(END_BUILD_PRINT)"
@@ -161,7 +166,7 @@ test-e2e: ## Run end-to-end tests only
 #-----------------------------------------------------------------------------
 .PHONY: check-spec check-quality check-all ci-quick ci-full
 
-check-quality: lint typecheck check-architecture check-spec check-docs ## Static checks: lint + typecheck + architecture + spec + docs and code terms
+check-quality: lint typecheck check-architecture check-spec check-docs check-freshness ## Static checks: lint + typecheck + architecture + spec + docs and code terms + generated code is fresh
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) All quality checks passed$(END_BUILD_PRINT)"
 
 check-all: check-quality test ## Full suite: quality + unit and feature tests (containers: make test-containers)

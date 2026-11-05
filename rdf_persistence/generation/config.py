@@ -35,6 +35,11 @@ FLAGS = (
 )
 
 
+def python_folder(target: GenerationTarget) -> Path:
+    """The Python output folder of ``target``, relative to the folder of the ``pyproject.toml``."""
+    return Path(target.python or target.package.replace(".", "/"))
+
+
 def _toml_entries(project: Path) -> list[dict]:
     if not project.is_file():
         return []
@@ -49,7 +54,9 @@ def _toml_entries(project: Path) -> list[dict]:
 
 
 def _given_flags(flags: Namespace) -> dict[str, str]:
-    return {f.field: getattr(flags, f.field) for f in FLAGS if getattr(flags, f.field) is not None}
+    return {
+        f.field: getattr(flags, f.field) for f in FLAGS if getattr(flags, f.field, None) is not None
+    }
 
 
 def _target(entry: dict, project: Path) -> GenerationTarget:
@@ -63,7 +70,7 @@ def _target(entry: dict, project: Path) -> GenerationTarget:
         raise ConfigError(f"{project}: invalid entry: {problems}") from error
 
 
-def read_targets(project: Path, flags: Namespace) -> list[GenerationTarget]:
+def read_targets(project: Path, flags: Namespace | None = None) -> list[GenerationTarget]:
     """Return the targets of ``project``'s ``[tool.rp-generate]``, with the flags applied.
 
     Flags override the keys of the only entry; with no entry they make the target; with several
@@ -72,7 +79,7 @@ def read_targets(project: Path, flags: Namespace) -> list[GenerationTarget]:
     Raises:
         ConfigError: When no target can be made, a key is unknown or missing, or a flag conflicts.
     """
-    entries, given = _toml_entries(project), _given_flags(flags)
+    entries, given = _toml_entries(project), _given_flags(flags or Namespace())
     if len(entries) > 1 and given:
         names = ", ".join(f.option for f in FLAGS if f.field in given)
         raise ConfigError(

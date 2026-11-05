@@ -176,10 +176,11 @@ def test_a_successful_pipeline_moves_every_staged_file(tmp_path: Path) -> None:
 
 def test_check_writes_nothing(tmp_path: Path) -> None:
     pyproject = project(tmp_path)
+    assert main(["--project", str(pyproject)]) == 0, "the project must generate"
     before = tree(tmp_path)
-    assert main(["--project", str(pyproject), "--check"]) == 0, "a clean schema failed --check"
+    assert main(["--project", str(pyproject), "--check"]) == 0, "a fresh project failed --check"
     assert tree(tmp_path) == before, "--check wrote files"
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["m.yaml", "pyproject.toml"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["app", "m.yaml", "pyproject.toml"]
 
 
 def test_check_fails_on_a_lint_problem(tmp_path: Path) -> None:

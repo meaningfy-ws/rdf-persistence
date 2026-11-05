@@ -3,37 +3,137 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
+rp:ClassShape a sh:NodeShape ;
+	rdfs:comment "The reviewed shape of one class, its name and the shape of each of its slots." ;
+	rdfs:label "Class shape" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n20 ;
+	sh:property _:c14n14 , _:c14n21 ;
+	sh:targetClass rp:ClassShape .
+rp:ConstraintCase a sh:NodeShape ;
+	rdfs:comment "One row of the conformance table: a constraint kind, a class that declares it, and the instance files the generated class and shape must accept and refuse." ;
+	rdfs:label "Constraint case" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n28 ;
+	sh:property _:c14n10 , _:c14n18 , _:c14n2 , _:c14n36 ;
+	sh:targetClass rp:ConstraintCase .
+rp:GenerationManifest a sh:NodeShape ;
+	rdfs:comment "What one generation run read and wrote: the installed `linkml` version, the files it read and the files it wrote. Written as `rp-manifest.json` in the target's Python folder." ;
+	rdfs:label "Generation manifest" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n27 ;
+	sh:property _:c14n13 , _:c14n15 , _:c14n16 ;
+	sh:targetClass rp:GenerationManifest .
 rp:GenerationTarget a sh:NodeShape ;
 	rdfs:comment "One entry of the `[tool.rp-generate]` table of a `pyproject.toml`: a schema and the folders its generated artefacts are written to. Paths are relative to the folder of the `pyproject.toml`." ;
 	rdfs:label "Generation target" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n2 ;
-	sh:property _:c14n0 , _:c14n1 , _:c14n3 , _:c14n4 , _:c14n5 ;
+	sh:ignoredProperties _:c14n12 ;
+	sh:property _:c14n1 , _:c14n17 , _:c14n23 , _:c14n26 , _:c14n3 ;
 	sh:targetClass rp:GenerationTarget .
-_:c14n0 sh:datatype xsd:string ;
+rp:ManifestEntry a sh:NodeShape ;
+	rdfs:comment "A file and the SHA-256 of its bytes, as recorded by a generation run." ;
+	rdfs:label "Manifest entry" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n33 ;
+	sh:property _:c14n11 , _:c14n9 ;
+	sh:targetClass rp:ManifestEntry .
+rp:SlotShape a sh:NodeShape ;
+	rdfs:comment "The shape of one slot of a class, as the schema induces it." ;
+	rdfs:label "Slot shape" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n22 ;
+	sh:property _:c14n0 , _:c14n25 , _:c14n30 , _:c14n4 ;
+	sh:targetClass rp:SlotShape .
+_:c14n0 sh:datatype xsd:boolean ;
+	sh:description "Whether a value is required." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Required" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:required .
+_:c14n1 sh:datatype xsd:string ;
 	sh:description "The folder that receives one Mermaid file per module; none are written when absent." ;
 	sh:maxCount 1 ;
 	sh:name "Diagrams folder" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 4 ;
 	sh:path rp:diagramsFolder .
-_:c14n1 sh:datatype xsd:string ;
-	sh:description "The folder that receives the TypeScript types; none are written when absent." ;
-	sh:maxCount 1 ;
-	sh:name "TypeScript folder" ;
+_:c14n10 sh:datatype xsd:string ;
+	sh:description "Paths of instance files, beside the cases file, that the class and the shape must accept." ;
+	sh:name "Valid instances" ;
 	sh:nodeKind sh:Literal ;
-	sh:order 3 ;
-	sh:path rp:typescriptFolder .
-_:c14n2 rdf:first rdf:type ;
+	sh:order 2 ;
+	sh:path rp:validInstances .
+_:c14n11 sh:datatype xsd:string ;
+	sh:description "A file path, POSIX, relative to the folder of the `pyproject.toml`." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Path" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:path .
+_:c14n12 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n3 sh:datatype xsd:string ;
+_:c14n13 sh:description "The files a generation run read, sorted by path." ;
+	sh:name "Inputs" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 1 ;
+	sh:path rp:manifestInputs .
+_:c14n14 sh:datatype xsd:string ;
+	sh:description "The name of a class of the schema." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Class name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:className .
+_:c14n15 sh:datatype xsd:string ;
+	sh:description "The version of the `linkml` package that ran the generation." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "LinkML version" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:linkmlVersion .
+_:c14n16 sh:description "The files a generation run wrote, sorted by path; not the manifest itself." ;
+	sh:name "Outputs" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 2 ;
+	sh:path rp:manifestOutputs .
+_:c14n17 sh:datatype xsd:string ;
 	sh:description "The folder that receives the classes, shapes, context, frames and the schema copy; the folder of `package` when absent." ;
 	sh:maxCount 1 ;
 	sh:name "Python folder" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 2 ;
 	sh:path rp:pythonFolder .
-_:c14n4 sh:datatype xsd:string ;
+_:c14n18 sh:description "The kind of constraint a case exercises." ;
+	sh:in _:c14n34 ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Constraint kind" ;
+	sh:order 0 ;
+	sh:path rp:constraintKind .
+_:c14n19 rdf:first rp:ConstraintKindUniqueKeys ;
+	rdf:rest rdf:nil .
+_:c14n2 sh:datatype xsd:string ;
+	sh:description "Paths of instance files, beside the cases file, that the class and the shape must refuse." ;
+	sh:name "Invalid instances" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:invalidInstances .
+_:c14n20 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n21 sh:description "The shapes of a class's slots, in schema order." ;
+	sh:name "Slots" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 1 ;
+	sh:path rp:slotShapes .
+_:c14n22 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n23 sh:datatype xsd:string ;
 	sh:description "The root LinkML schema file; the TOML key and the flag are `schema`, which the field name avoids because it would shadow a pydantic method." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -41,7 +141,17 @@ _:c14n4 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:schemaFile .
-_:c14n5 sh:datatype xsd:string ;
+_:c14n24 rdf:first rp:ConstraintKindPattern ;
+	rdf:rest _:c14n7 .
+_:c14n25 sh:datatype xsd:boolean ;
+	sh:description "Whether the slot takes several values." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Multivalued" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:multivalued .
+_:c14n26 sh:datatype xsd:string ;
 	sh:description "The Python import path of the generated package." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -49,3 +159,66 @@ _:c14n5 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:package .
+_:c14n27 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n28 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n29 rdf:first rp:ConstraintKindClosed ;
+	rdf:rest _:c14n31 .
+_:c14n3 sh:datatype xsd:string ;
+	sh:description "The folder that receives the TypeScript types; none are written when absent." ;
+	sh:maxCount 1 ;
+	sh:name "TypeScript folder" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:typescriptFolder .
+_:c14n30 sh:datatype xsd:string ;
+	sh:description "The name of the type, enum or class the slot's values belong to." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Range" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:range .
+_:c14n31 rdf:first rp:ConstraintKindExactlyOneOf ;
+	rdf:rest _:c14n35 .
+_:c14n32 rdf:first rp:ConstraintKindRangeEnum ;
+	rdf:rest _:c14n24 .
+_:c14n33 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n34 rdf:first rp:ConstraintKindRequired ;
+	rdf:rest _:c14n5 .
+_:c14n35 rdf:first rp:ConstraintKindAnyOf ;
+	rdf:rest _:c14n19 .
+_:c14n36 sh:datatype xsd:string ;
+	sh:description "The name of a class of the schema." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Class name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:className .
+_:c14n4 sh:datatype xsd:string ;
+	sh:description "The name of a slot." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:slotName .
+_:c14n5 rdf:first rp:ConstraintKindCardinality ;
+	rdf:rest _:c14n8 .
+_:c14n6 rdf:first rp:ConstraintKindIdentifier ;
+	rdf:rest _:c14n29 .
+_:c14n7 rdf:first rp:ConstraintKindValueBounds ;
+	rdf:rest _:c14n6 .
+_:c14n8 rdf:first rp:ConstraintKindRangeType ;
+	rdf:rest _:c14n32 .
+_:c14n9 sh:datatype xsd:string ;
+	sh:description "The SHA-256 of a file's bytes, in lowercase hexadecimal." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "SHA-256" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:sha256 .

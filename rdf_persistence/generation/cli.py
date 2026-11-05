@@ -5,7 +5,9 @@ import sys
 from pathlib import Path
 
 from rdf_persistence.generation.config import FLAGS, ConfigError, read_targets
-from rdf_persistence.generation.pipeline import generate
+from rdf_persistence.generation.generated.rp_generation import GenerationTarget
+from rdf_persistence.generation.manifest import FIX_HINT, freshness_problems
+from rdf_persistence.generation.pipeline import Step, generate
 
 EXIT_OK, EXIT_FAILED, EXIT_USAGE = 0, 1, 2
 EXTRA_HINT = "rp-generate needs LinkML's generators: install rdf-persistence[generate]"
@@ -24,14 +26,28 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
-    """Run ``rp-generate``; return the exit code: 0 done, 1 problems found, 2 unusable setup."""
-    args = build_parser().parse_args(argv)
+def _pipeline_steps() -> tuple[Step, ...] | None:
+    """The pipeline, or ``None`` without the ``generate`` extra (a check then only compares the manifest)."""
     try:
         from rdf_persistence.generation import steps  # lazy: needs the `generate` extra
     except ModuleNotFoundError as error:
         if (error.name or "").split(".")[0] != "linkml":
             raise
+        return None
+    return steps.STEPS
+
+
+def _freshness(targets: list[GenerationTarget], base: Path) -> list[str]:
+    """The manifest comparison of a check (PD-26), with the command that fixes what it finds."""
+    found = freshness_problems(targets, base)
+    return [*found, FIX_HINT] if found else []
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run ``rp-generate``; return the exit code: 0 done, 1 problems found, 2 unusable setup."""
+    args = build_parser().parse_args(argv)
+    pipeline_steps = _pipeline_steps()
+    if pipeline_steps is None and not args.check:
         print(EXTRA_HINT, file=sys.stderr)
         return EXIT_USAGE
     try:
@@ -39,7 +55,10 @@ def main(argv: list[str] | None = None) -> int:
     except ConfigError as error:
         print(f"rp-generate: {error}", file=sys.stderr)
         return EXIT_USAGE
-    problems = generate(targets, args.project.resolve().parent, steps.STEPS, check=args.check)
+    base = args.project.resolve().parent
+    problems = generate(targets, base, pipeline_steps or (), check=args.check)
+    if args.check:
+        problems += _freshness(targets, base)
     for problem in problems:
         print(problem, file=sys.stderr)
     if problems:

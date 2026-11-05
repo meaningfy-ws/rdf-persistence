@@ -1,29 +1,99 @@
 {
    "@context": {
       "xsd": "http://www.w3.org/2001/XMLSchema#",
-      "linkml": "https://w3id.org/linkml/",
+      "linkml": {
+         "@id": "linkmlVersion"
+      },
       "rp": "https://meaningfy.ws/ns/rdf-persistence#",
       "schema": "http://schema.org/",
       "shex": "http://www.w3.org/ns/shex#",
+      "skos": "http://www.w3.org/2004/02/skos/core#",
       "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "class_name": {
+         "@id": "className"
+      },
       "diagrams": {
          "@id": "diagramsFolder"
+      },
+      "inputs": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "manifestInputs"
+      },
+      "invalid": {
+         "@container": "@set",
+         "@id": "invalidInstances"
+      },
+      "kind": {
+         "@context": {
+            "text": "skos:notation",
+            "description": "skos:prefLabel",
+            "meaning": "@id"
+         },
+         "@id": "constraintKind"
+      },
+      "multivalued": {
+         "@id": "multivalued"
+      },
+      "name": {
+         "@id": "slotName"
+      },
+      "outputs": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "manifestOutputs"
       },
       "package": {
          "@id": "package"
       },
+      "path": {
+         "@id": "path"
+      },
       "python": {
          "@id": "pythonFolder"
+      },
+      "range": {
+         "@id": "range"
+      },
+      "required": {
+         "@id": "required"
       },
       "schema_file": {
          "@id": "schemaFile"
       },
+      "sha256": {
+         "@id": "sha256"
+      },
+      "slots": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "slotShapes"
+      },
       "typescript": {
          "@id": "typescriptFolder"
       },
+      "valid": {
+         "@container": "@set",
+         "@id": "validInstances"
+      },
       "type": "@type",
+      "ClassShape": {
+         "@id": "ClassShape"
+      },
+      "ConstraintCase": {
+         "@id": "ConstraintCase"
+      },
+      "GenerationManifest": {
+         "@id": "GenerationManifest"
+      },
       "GenerationTarget": {
          "@id": "GenerationTarget"
+      },
+      "ManifestEntry": {
+         "@id": "ManifestEntry"
+      },
+      "SlotShape": {
+         "@id": "SlotShape"
       }
    }
 }
