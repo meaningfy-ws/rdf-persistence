@@ -195,3 +195,19 @@ def test_an_enum_declared_in_another_module_is_imported_not_repeated(tmp_path: P
     assert enum_members(ast.parse(files["colours.py"]), "Colour") == ["LIGHT_RED"], (
         "the member comes from the key, not the title"
     )
+
+
+@pytest.mark.parametrize(
+    ("slot", "ignored"),
+    [("label", True), ("description", False), ("id", False)],
+)
+def test_a_field_an_unlabelled_class_relaxes_carries_a_type_ignore(
+    generated_toy: Path, slot: str, ignored: bool
+) -> None:
+    """Chapter makes the label of ``Described`` optional (PD-11); mypy needs the override marked."""
+    lines = (generated_toy / "books.py").read_text(encoding="utf-8").splitlines()
+    chapter = lines[lines.index("class Chapter(Described):") :]
+    line = next(line for line in chapter if line.startswith(f"    {slot}:"))
+    assert line.endswith("# type: ignore[assignment]") is ignored, (
+        f"Chapter.{slot}: the ignore belongs on a field that loosens its base class's, and only there"
+    )

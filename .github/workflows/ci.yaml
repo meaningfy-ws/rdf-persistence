@@ -99,6 +99,14 @@ jobs:
       - name: Quality gate (lint, types, architecture, spec, docs)
         run: make check-quality
 
+      - name: Set up Node 20 (TypeScript check)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Type-check the generated TypeScript (tsc --noEmit --strict)
+        run: make typecheck-ts
+
       - name: Check the generated code is fresh
         run: make check-generated
 

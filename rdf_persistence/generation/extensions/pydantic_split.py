@@ -50,9 +50,10 @@ INIT = "__init__.py"
 
 
 class InternalAttribute(PydanticAttribute):
-    """A pydantic attribute that also knows whether its slot is ``internal`` (see the template)."""
+    """A pydantic attribute that also knows whether its slot is ``internal`` or ``loosens`` its base class's (see the template)."""
 
     internal: bool = False
+    loosens: bool = False
 
 
 def metamodel_module(name: str, *, toolkit: bool) -> str:
@@ -117,8 +118,25 @@ class SplitPydanticGenerator(PydanticGenerator):
     def after_generate_slot(self, slot: SlotResult, sv: SchemaView) -> SlotResult:
         fields = {name: getattr(slot.attribute, name) for name in PydanticAttribute.model_fields}
         internal = annotation(slot.source, "internal") == TRUE
-        slot.attribute = InternalAttribute(**fields, internal=internal)
+        slot.attribute = InternalAttribute(
+            **fields, internal=internal, loosens=_loosens_a_base_slot(slot.source, sv)
+        )
         return slot
+
+
+def _loosens_a_base_slot(slot: SlotDefinition, sv: SchemaView) -> bool:
+    """Whether the slot, as its class declares it, is optional where an ancestor's is required (PD-11).
+
+    The generated subclass then redeclares the field with a wider type, which mypy reports as an
+    incompatible override; the template marks that line.
+    """
+    if slot.required or slot.identifier or slot.key or slot.owner is None:
+        return False
+    return any(
+        sv.induced_slot(slot.name, ancestor).required
+        for ancestor in sv.class_ancestors(slot.owner, reflexive=False)
+        if slot.name in sv.class_slots(ancestor)
+    )
 
 
 def _generator(path: Path, folder: Path, mode: SplitMode) -> SplitPydanticGenerator:

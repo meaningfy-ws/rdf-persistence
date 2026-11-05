@@ -119,7 +119,7 @@ pre-commit: ## Run pre-commit hooks on all files
 #-----------------------------------------------------------------------------
 # Validation — non-mutating targets
 #-----------------------------------------------------------------------------
-.PHONY: lint typecheck check-architecture test test-unit test-feature test-containers test-e2e
+.PHONY: lint typecheck typecheck-generated typecheck-ts check-architecture test test-unit test-feature test-containers test-e2e
 
 lint: ## Run Ruff linting checks
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running Ruff checks$(END_BUILD_PRINT)"
@@ -130,6 +130,19 @@ typecheck: ## Run mypy type checks
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running mypy$(END_BUILD_PRINT)"
 	@ uv run mypy $(PACKAGE_NAME)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Type checks passed$(END_BUILD_PRINT)"
+
+GENERATED_PY = rdf_persistence/domain/generated rdf_persistence/generation/generated tests/fixtures/library/generated
+TOY_TS = $(wildcard tests/fixtures/library/web/src/domain/generated/*.ts)
+
+typecheck-generated: ## Run mypy on the generated Python only, with mypy-generated.ini (PD-27)
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running mypy on generated code$(END_BUILD_PRINT)"
+	@ uv run mypy --config-file mypy-generated.ini $(GENERATED_PY)
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated code type checks passed$(END_BUILD_PRINT)"
+
+typecheck-ts: ## Run tsc --noEmit --strict (typescript 5.9.3) on the generated TypeScript (needs Node)
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running tsc on generated TypeScript$(END_BUILD_PRINT)"
+	@ npx -y -p typescript@5.9.3 tsc --noEmit --strict $(TOY_TS)
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated TypeScript type checks passed$(END_BUILD_PRINT)"
 
 check-architecture: ## Check architecture constraints with import-linter
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking architecture constraints$(END_BUILD_PRINT)"
@@ -169,7 +182,7 @@ test-e2e: ## Run end-to-end tests only
 #-----------------------------------------------------------------------------
 .PHONY: check-spec check-quality check-all ci-quick ci-full
 
-check-quality: lint typecheck check-architecture check-spec check-docs check-freshness ## Static checks: lint + typecheck + architecture + spec + docs and code terms + generated code is fresh
+check-quality: lint typecheck typecheck-generated check-architecture check-spec check-docs check-freshness ## Static checks: lint + typecheck + architecture + spec + docs and code terms + generated code is fresh
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) All quality checks passed$(END_BUILD_PRINT)"
 
 check-all: check-quality test ## Full suite: quality + unit and feature tests (containers: make test-containers)

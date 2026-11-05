@@ -17,3 +17,4 @@
 {%- if internal -%}
     , json_schema_extra = { "rp_internal": True }
 {%- endif -%})
+{%- if loosens %}  # type: ignore[assignment]{% endif -%}

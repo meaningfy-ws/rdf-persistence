@@ -106,7 +106,7 @@ class Chapter(Described):
     number: Optional[int] = Field(default=None, title="Chapter number", description="""The position of a chapter in its book.""")
     notes: Optional[list[Note]] = Field(default=None, title="Notes", description="""The notes on a chapter; they live in the book's graph.""")
     id: str = Field(default=..., title="Identifier", description="""The IRI that identifies the object.""")
-    label: Optional[str] = Field(default=None, title="Label", description="""The preferred label of the object.""")
+    label: Optional[str] = Field(default=None, title="Label", description="""The preferred label of the object.""")  # type: ignore[assignment]
     description: Optional[str] = Field(default=None, title="Description", description="""A free-text description of the object.""")
 
 
