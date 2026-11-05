@@ -243,14 +243,15 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
   generator lacks, what the extension adds) and a golden test on the toy schema. A test fails if an
   extension module has no row or no test.
 - **PD-26 Freshness and drift.**
-  - `rp-generate` writes one manifest per `[tool.rp-generate]` table, `rp-manifest.json` in the
+  - `rp-generate` writes one manifest per `[tool.rp-generate]` entry, `rp-manifest.json` in the
     table's `python` folder. Its model is `GenerationManifest` (PD-24): `linkml` (the version
     string), `inputs` and `outputs`, each a list of entries with `path` and `sha256`.
     - Paths are POSIX, relative to the folder of the `pyproject.toml`; hashes are over the raw
       bytes; entries are sorted by path.
     - Inputs: every file of `load_schema(schema)`'s import closure (the metamodel resolved through
       PD-22; `linkml:types` is covered by the `linkml` version instead), every file of the template
-      directories, and every `.py` module under `rdf_persistence/generation/`.
+      directories, and every `.py` module under `rdf_persistence/generation/` except those under
+      `rdf_persistence/generation/generated/`.
     - Outputs: every file the run wrote, in every target folder (Python, TypeScript, diagrams),
       except the manifest itself. A run deletes only the files its previous manifest lists; it never
       clears a folder, so nested output folders (`domain/generated/service/`) are safe.
@@ -271,7 +272,7 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
       stale or edited. A consumer enables it with `pytest_plugins =
       ["rdf_persistence.testkit.freshness"]` in its root conftest. It reads the `pyproject.toml`
       files listed in the ini option `rp_generate_projects` (default: the rootdir's); this repo lists
-      its own `pyproject.toml` (whose `[tool.rp-generate]` table generates the toolkit's schemas)
+      its own `pyproject.toml` (whose three `[[tool.rp-generate]]` entries generate the toolkit's schemas)
       and `tests/fixtures/library/pyproject.toml`;
     - a local pre-commit hook, `rp-generate-check`, with `files:
       ^(rdf_persistence/(model|generation)/|tests/fixtures/library/|.*/generated/)`; it replaces the
@@ -406,7 +407,9 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
   - Bodies and construction. The tenant-route bodies, `Page` and `Problem` are classes of
     `rp_service.yaml`, generated (PD-24); the router validates them and builds them through these
     classes, never through bare dicts. Aggregate bodies stay JSON-LD, handled as in PD-14.
-    `Page.items` has range `linkml:Any` and holds framed aggregates:
+    `Page.items` has range `linkml:Any` and holds framed aggregates (or `TenantSummary` objects, for
+    `GET /{tenant_segment}`). `TenantCreate.root` has range `linkml:Any`; it and the body of
+    `GET`/`PUT /{tenant_segment}/{t}` are the tenant root, handled as in PD-14:
 
     | Route | Request body | Response |
     |---|---|---|
