@@ -1,0 +1,115 @@
+= Architecture variants
+:description: System architecture variants and development approaches that can be composed from the reviewed building blocks, with their trade-offs.
+
+[IMPORTANT]
+.Background, not a commitment
+====
+This page is part of the state-of-the-art study moved from the rdf-persistence repository (commit `43dc152`). It records options and leanings, not decisions. What rdf-persistence commits to is in xref:architecture/index.adoc[rdf-persistence architecture v1].
+====
+
+Each variant is a coherent combination of the xref:background/soa/building-blocks.adoc[building
+blocks]. They share one core: rdf-persistence as the domain and persistence layer, with the model
+coming from LinkML (approaches A–C) or from hand-written classes (approach D) — ADR-03 is open. They differ in where authorization is enforced, which store
+carries the data, and which contract the UI speaks. This page lists options; it does not decide.
+
+NOTE: After the developer's answers of 2026-11-03 (xref:background/soa/decisions.adoc[developer
+decisions]), *V1 is the base*, *V4 GraphDB* the upgrade when licensed, and *V2, V3 and V5 are not
+pursued*: no semantic.works compatibility (DEC-18), classic W3C triple stores only (DEC-16), and
+the UI never queries the store (DEC-17). For the development approach, A now and B later is
+recommended (ADR-08 is still open). The rows below are kept as the review's evidence.
+
+== System variants
+
+[cols="2,5,4,4",options="header"]
+|===
+|Variant |Shape |Strengths |Costs and risks
+
+|*V1 Portable Python core*
+|Zitadel → FastAPI service generated from LinkML (JSON-LD + Hydra, JSON:API, OpenAPI) with an
+policy check in the service (OpenFGA as a separate server, or pycasbin in-process) → rdf-persistence → any SPARQL 1.1 store
+(Oxigraph in development, Fuseki or GraphDB in production). UI: typed REST client generated
+from OpenAPI, TanStack Query, jsonld.js. Events: outbox → SSE.
+|Vendor-neutral; every dependency passes the reuse threshold; standard contracts; domain rules
+stay in the backend.
+|Graph-level authorization only (unless the store adds more); we build the service generator
+and the policy port.
+
+|*V2 semantic.works-compatible*
+|Same core, but the service speaks semantic.works' JSON:API dialect and runs behind
+identifier, dispatcher and `sparql-parser` (authorization and change deltas) in front of any
+SPARQL 1.1 store (Virtuoso by default). Ember/WarpDrive frontends work unchanged only if the
+service reproduces the dialect exactly (UUID ids via `mu:uuid`, 0-based pages, filter modifiers).
+No OIDC: Zitadel needs a login bridge that writes session triples.
+|Production-proven reference architecture; authorization and deltas already exist; reuse of an
+existing frontend ecosystem.
+|Weakest atomicity (the proxy splits updates); polyglot configuration (Lisp, Elixir); proxy
+deltas can be lost (in-memory queue, no retry by default); proxy trusts group headers from any *internal* caller (browsers cannot inject them — the identifier strips them at the edge); `sparql-parser` fails the reuse threshold.
+
+|*V3 Data-centric database (Fluree)*
+|Same core with a Fluree adapter (HTTP SPARQL or the embedded Python package). Authorization is
+store-native: triple-level policies stored as RDF, with SPARQL-like conditions, driven by Zitadel
+identities. Optionally the UI queries Fluree through a thin proxy (the MWBv2 runbook model).
+|Strongest fit for a data-centric, SPARQL-like policy language; time travel; JSON-LD in and out;
+conflict-detecting transactions (embedded Python package; over HTTP a guarded update).
+|BUSL-1.1 licence (legal check needed for a product where customers define schemas); young v4
+engine; no cascade delete; named-graph policies only as per-graph defaults (`f:graphOverrides`); lock-in if the UI talks
+FlureeQL.
+
+|*V4 Enterprise transactional (GraphDB)*
+|Same core with GraphDB: real multi-request transactions through rdflib's RDF4J/GraphDB
+clients, triple-level fine-grained access control, roles taken from Zitadel's token claim.
+|Real transactions and triple-level security with a standard SPARQL protocol.
+|Commercial licence; access rules live in vendor configuration.
+
+|*V5 Graph-direct reads (CQRS)*
+|V1 for writes, plus a read-only, policy-filtered SPARQL endpoint (or a read replica fed from
+the outbox) that the UI queries with LDkit or Comunica.
+|Closest to the runbook's "frontend talks almost directly to the database"; flexible queries
+without new endpoints.
+|Needs a policy-aware read endpoint (Jena Fuseki data access control, read-only and graph-level; or `sparql-parser`); backend domain rules are bypassed on the read path; LDkit
+fails the reuse threshold.
+|===
+
+Solid pods (Community Solid Server, LDO) were reviewed and fit only personal-data products.
+
+== Development approaches
+
+Orthogonal to the system variant: how much is generated from the LinkML model.
+
+[cols="2,5,4,4",options="header"]
+|===
+|Approach |What is generated |Strengths |Costs
+
+|*A Runtime mapper*
+|Only the Pydantic domain classes. rdf-persistence reads `class_uri` / `slot_uri` at runtime.
+|Least generator code to own; one generic, well-tested mapper.
+|API routes written by hand or by a generic service.
+
+|*B Generated mapper and routes*
+|Domain classes, repositories per aggregate, FastAPI routes, JSON-LD context and frame, OpenAPI,
+TypeScript client.
+|Closest to the MWBv2 runbook (generated, never edited code); typed end to end.
+|We own a generator (templates); regeneration discipline.
+
+|*C Generic service (zero code)*
+|Nothing per model: a generic service interprets the schema at runtime, like `mu-cl-resources`.
+|Fastest start; rapid application development.
+|Weak typing for domain logic; behaviour has to live elsewhere.
+
+|*D Hand-written classes (code-first)*
+|Nothing: the developer writes Python classes (SQLAlchemy-like) and declares the mapping with
+`Annotated` markers or class attributes instead of generated metadata.
+|Fastest start; familiar to ORM users; no generator to own.
+|No schema source of truth; no generated SHACL, JSON-LD context, OpenAPI or TypeScript unless
+generated back from the classes; drifts from the ontology.
+|===
+
+== Choosing
+
+As reviewed, before the developer's answers (see the note at the top):
+
+* Vendor neutrality and long-term maintenance first → V1 with approach A, growing to B.
+* Reuse of an existing semantic.works deployment → V2.
+* Triple-level, data-centric policies matter most and the licence is acceptable → V3.
+* A client already licenses GraphDB → V4.
+* Heavy, flexible read workloads → add V5 to V1.

@@ -1,0 +1,130 @@
+= Building-block map
+:description: The layers of a model-driven Linked Data application and, per layer, what exists to reuse and what is missing.
+
+[IMPORTANT]
+.Background, not a commitment
+====
+This page is part of the state-of-the-art study moved from the rdf-persistence repository (commit `43dc152`). It records options and leanings, not decisions. What rdf-persistence commits to is in xref:architecture/index.adoc[rdf-persistence architecture v1].
+====
+
+A model-driven Linked Data application, in the Mapping Workbench v2 style, is built from seven
+layers. For each layer this page shows what exists, what passes the reuse threshold (more than
+200 stars and a commit within 12 months), and the gap a new component would fill.
+What each tool was built for is in the xref:background/soa/catalogue.adoc[tool catalogue].
+
+[mermaid]
+....
+flowchart TB
+  L0["L0 Modelling and code generation<br/>UML → model2owl → OWL/SHACL → LinkML → generated code"]
+  L5["L5 JavaScript client and UI"]
+  L4["L4 Data-management service / API"]
+  L3["L3 Identity and authorization"]
+  L1["L1 Domain and persistence"]
+  L2["L2 Stores and transactions"]
+  L6["L6 Change events"]
+  L0 -. generates .-> L1
+  L0 -. generates .-> L4
+  L0 -. generates .-> L5
+  L5 -->|HTTP: JSON-LD / JSON:API / OpenAPI| L4
+  L4 -->|repository, unit of work| L1
+  L1 -->|SPARQL 1.1 protocol| L2
+  L3 -. policy enforcement .- L4
+  L3 -. policy enforcement .- L2
+  L2 --> L6
+  L1 --> L6
+  L6 --> L5
+....
+
+== L0 — Modelling and code generation
+
+* *Reuse:* LinkML (schema source of truth; Pydantic, JSON Schema, JSON-LD context and frame,
+  SHACL, OWL, TypeScript, OpenAPI components), schema-automator (SHACL → LinkML importer),
+  model2owl (in-house, UML → OWL/SHACL), pySHACL. Owlready2 as an optional reasoner check of
+  generated OWL at build time.
+* *Works today:* LinkML's generated Pydantic classes are persistence-free and already carry
+  `class_uri` and `slot_uri`, so a separate mapper can read them.
+* *Gaps:* nothing generates RDF repositories, mappers or API routes from a model (`gen-sqla` does it for SQL only). `gen-openapi`
+  fills only `components`; `gen-graphql` emits types only. URIs are typed as `str`. The
+  TypeScript generator mistypes enums and dates. Language-tagged strings are not supported in
+  instance data. model2owl's LinkML export lives on an unmerged branch.
+
+== L1 — Domain and persistence
+
+* *Reuse:* rdflib (model, parsers, JSON-LD), pydantic, oxrdflib.
+* *Ideas only:* every Python object–RDF mapper fails the threshold. See the
+  xref:background/soa/index.adoc#patterns[patterns worth borrowing].
+* *Gap:* the core of rdf-persistence — a Data Mapper driven by LinkML metadata, identity map,
+  unit of work with one atomic update per commit and optimistic concurrency, repositories, a
+  typed query builder (read models are optional, BL-16).
+
+== L2 — Stores and transactions
+
+* *Reuse:* pyoxigraph/Oxigraph (embedded, test, single-node), any SPARQL 1.1 server (Jena
+  Fuseki, GraphDB, Virtuoso, RDF4J), rdflib's `SPARQLUpdateStore` buffering and its new
+  `contrib.rdf4j` and `contrib.graphdb` clients (real multi-request transactions).
+  Fluree v4 as an optional backend (now speaks SPARQL; BUSL-1.1 licence).
+* *Facts that shape the design:* one SPARQL Update request is the only portable atomic unit.
+  Oxigraph's on-disk store does not detect write conflicts (last writer wins; the in-memory store serialises writers), and Python gets only atomic per-call updates. semantic.works' proxy splits updates into
+  chunks (about 100 quads by heuristic, not a hard limit).
+* *Gap:* a store port that reports its real transaction capability, plus optimistic
+  concurrency (version checked in the update's WHERE clause) — enough only on stores that
+  serialise updates; others need an adapter lock or vendor transactions.
+
+== L3 — Identity and authorization
+
+* *Reuse:* Zitadel (identity, roles in OIDC claims; Keycloak as fallback), OpenFGA or SpiceDB
+  (relationship-based authorization, lists of what a user may access), pycasbin (in-process
+  minimum), Fluree policies (triple-level, stored as RDF, SPARQL-like conditions), GraphDB
+  fine-grained access control (commercial, triple-level), Jena Fuseki data access control
+  (graph-level), semantic.works `sparql-parser` (proxy that rewrites queries by graph).
+* *Facts:* no standard covers triple-level access control; graph-level is the only granularity
+  every store supports. No general authorization engine has a SPARQL adapter.
+* *Gap:* a thin policy-enforcement port in rdf-persistence (pass-through, graph-scope filter,
+  store-native) and a translator from engine decisions to SPARQL graph scopes. No new policy
+  engine.
+
+== L4 — Data-management service / API
+
+* *Reuse:* FastAPI; API Platform as the reference contract design (one resource model served as
+  JSON-LD + Hydra, JSON:API, OpenAPI; persistence behind Provider and Processor ports;
+  a hook where the application adds row-level filters before pagination; no SPARQL adapter, no
+  `If-Match` checks, no JSON:API Atomic Operations); semantic.works' JSON:API dialect; Community
+  Solid Server's authorization pipeline, conditional writes and notifications.
+* *Gap:* a service generated from the LinkML model: JSON:API (with Atomic Operations mapped to
+  one unit of work), JSON-LD with the generated `@context` and Hydra by content negotiation,
+  full OpenAPI, and an optional read-only SPARQL escape hatch behind the same policy check.
+
+== L5 — JavaScript client and UI
+
+* *Reuse:* jsonld.js, TanStack Query, orval or hey-api (from the service's OpenAPI) with zod,
+  oidc-client-ts (Zitadel wraps it), react-jsonschema-form or JSON Forms, Cypress with the
+  Cucumber preprocessor. Optional back office: react-admin or `@api-platform/admin`.
+* *Facts:* every RDF-native JavaScript client except the Solid-only `@inrupt/solid-client` fails the threshold (LDkit, LDO, LDflex, Alcaeus,
+  shacl-form, shaperone). The mature data layers are RDF-agnostic and speak OpenAPI or JSON:API.
+* *Gap:* only thin client glue: a configured JSON-LD document loader that caches the generated `@context` (jsonld.js refetches remote contexts unless marked static), token handling, ETag/`If-Match` on writes (no client does it), and generated types. LDkit stays the option for graph-direct reads.
+
+== L6 — Change events
+
+* *Reuse:* Server-Sent Events or Mercure to browsers; semantic.works delta format
+  (`changeSets`) for compatibility; RDF Patch (now inside Jena) as a standard patch format.
+* *Facts:* several standards and no common one: Solid Notifications, Mercure, RDF Patch, semantic.works deltas. Fluree emits only "head moved" events; semantic.works deltas can be lost (in-memory queue).
+* *Gap:* an outbox written in the same atomic update as the change, and a relay.
+
+== Cross-cutting — evolution, testing and operations
+
+* *Reuse:* testcontainers-python, pytest-bdd, schemathesis, pySHACL, pytest-cov, OpenTelemetry
+  instrumentations for FastAPI and httpx; linkml-map as an optional offline tool for reshaping
+  data between schema versions; Alembic and `mu-migrations-service` as design references.
+* *Facts:* no testcontainers module for any RDF store; no SPARQL conventions in OpenTelemetry;
+  nothing generates SPARQL Update migrations from a LinkML schema change.
+* *Gap:* a migration runner (checksum, lock, log as triples, up and down), a schema-diff to
+  SPARQL Update compiler using LinkML rename hints, store fixtures and a test kit, and an
+  instrumented store port. See xref:background/soa/angles/evolution.adoc[evolution, testing,
+  operations].
+
+== Side question — property graphs
+
+Supporting Neo4j behind the same ports is medium effort for a basic adapter and high for full RDF
+fidelity; no Python mapper targets both models. Shaping four seams now keeps it possible later;
+see xref:background/soa/design-implications.adoc#seams-to-keep-open[design implications] and
+xref:background/soa/angles/lpg.adoc[property graphs].

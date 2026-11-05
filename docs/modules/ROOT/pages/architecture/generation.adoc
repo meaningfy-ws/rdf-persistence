@@ -1,0 +1,216 @@
+= Model to code: the generation workflow
+:description: How an application's own LinkML model becomes typed, persistable code with rdf-persistence.
+
+Status: *draft*, Proposed (2026-11-05). Settles open decision O-1 of
+xref:architecture/index.adoc[architecture v1] with its smallest option. Every step below was run in a
+throwaway spike (LinkML 1.12.1, Fuseki 5.1.0); its findings are marked _(spike)_.
+
+An application using rdf-persistence writes its domain once, in LinkML. A deterministic, build-time
+toolchain turns it into domain classes and shapes; at run time the toolkit reads the same schema to
+map objects to RDF. No generated file is edited by hand, and no LLM sits in the generation path.
+
+The running example is a toy library application: each library is a tenant holding `Book`
+aggregates, each book with owned chapters and a reference to a scan file; librarians hold the tenant
+role `librarian`.
+
+== The decision (O-1)
+
+*Generated domain classes, runtime mapper.* Only LinkML's standard generators run, through the
+toolkit's templates. The mapper, the repositories and the routes are not generated: they are generic
+code that reads the schema at run time. A per-aggregate generator (repositories, routes) is built only
+if hand-written routes start repeating themselves across applications.
+
+Rejected for v1: generating mappers, repositories and routes per aggregate (the background study's
+"approach B"), because it means owning a code generator before a second application exists; and a
+fully generic service without typed classes ("approach C"), because domain logic then has no types.
+
+[#metamodel]
+== The metamodel
+
+A small LinkML schema shipped inside the package (`rdf_persistence/model/rp.yaml`, namespace
+`https://meaningfy.ws/ns/rdf-persistence#`). Its classes are generated once, into the toolkit's own
+package; an application's generated code imports them rather than regenerating them.
+
+[cols="2,5",options="header"]
+|===
+|Element |Meaning
+|`AggregateRoot` (mixin) |Instances are aggregate roots: each is one named graph (graph IRI = root IRI), versioned, loaded and saved as a whole.
+|`owned` (slot annotation) |The slot's values are part of this aggregate and live in its graph (as blank nodes; a commit replaces the whole graph). Any other slot whose range is a class refers to another aggregate root, by IRI.
+|`database` (class annotation) |`tenant` (default) or `system`: which database the aggregate lives in.
+|`graph: meta` (class annotation) |The tenant's root object lives in the tenant database's designated `meta` graph instead of a graph of its own.
+|`internal` (slot annotation) |The slot never appears in the API contract (e.g. file keys).
+|`Principal` |A reference to a user account in the identity provider, by IRI only.
+|`StoredFile` (mixin) |The current content of a kept file: `file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key` (internal).
+|`loaded_graph` (slot) |A graph whose lifecycle belongs to the aggregate (e.g. the triples of a loaded RDF file).
+|`TenantAccess`, `Grant` |The tenancy records of the system database (N-11): label, state (`TenantState`: `active`, `deleting`), database name, owned grants (principal, role). An application binds them to its own roles by subclassing (`is_a` with `slot_usage` on `grants` and `role`).
+|`RegistryEntry` |An entry of a tenant's `registry` graph: the graph's IRI, its kind (`aggregate`, `loaded_graph`) and the aggregate that owns it. Written by the session, never by the application.
+|`version` (slot) |The version token on every aggregate root, written by the session; not part of any domain class.
+|===
+
+Slots of the metamodel (IRIs in the `rp:` namespace unless shown):
+
+[cols="2,2,3",options="header"]
+|===
+|Slot |IRI |Range, cardinality
+|`id` |— (identifier) |uri, required on every aggregate root
+|`label` |`dcterms:title` |string, required on `TenantAccess`, 1–200 characters
+|`state` |`rp:state` |`TenantState`, required
+|`database_name` |`rp:databaseName` |string, required
+|`grants` |`rp:grant` |`Grant`, multivalued, owned (blank nodes; one per principal by `unique_keys`)
+|`principal` |`rp:principal` |`Principal` (IRI), required
+|`role` |`rp:role` |uriorcurie; an application narrows it to its role enum by `slot_usage`
+|`file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key` |`rp:fileName`, `rp:mediaType`, `rp:byteSize`, `rp:sha256`, `dcterms:modified`, `rp:uploadedBy`, `rp:fileKey` |as in the consumer model's slot table; `file_key` internal
+|`loaded_graph` |`rp:loadedGraph` |uri
+|`version` |`rp:version` |string, written by the session only
+|===
+
+Annotations are resolved over the *induced* class: a class inherits `AggregateRoot`, `database` and
+`graph` from its ancestors and mixins, so an abstract root's annotations reach its subclasses. LinkML
+itself does not inherit class annotations; the boundary check and the mapper do.
+
+== What the application writes
+
+[source,yaml]
+----
+# models/library.yaml — the application's schema (toy example)
+id: https://example.org/ns/library
+name: library
+prefixes:
+  lib: https://example.org/ns/library#
+  dcterms: http://purl.org/dc/terms/
+  linkml: https://w3id.org/linkml/
+default_prefix: lib
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp         # resolved through the toolkit's import map
+classes:
+  Book:
+    description: A book held by a library.
+    mixins: [AggregateRoot]
+    slots: [id, title, author, chapters, scan]
+  Chapter:
+    description: A chapter of a book; part of the book's aggregate.
+    slots: [title, number]
+  Scan:
+    description: A scanned copy of a book.
+    mixins: [AggregateRoot, StoredFile]
+  LibraryAccess:
+    is_a: TenantAccess
+    slot_usage: {grants: {range: LibraryGrant}}
+  LibraryGrant:
+    is_a: Grant
+    slot_usage: {role: {range: LibraryRole}}
+slots:
+  title: {slot_uri: dcterms:title, range: string, required: true, description: The title.}
+  author: {range: string, description: The author's name.}
+  number: {range: integer, description: Position of a chapter in its book.}
+  chapters:
+    description: The book's chapters.
+    range: Chapter
+    multivalued: true
+    inlined_as_list: true
+    annotations: {owned: true}       # chapters live inside the book's graph
+  scan:
+    description: The book's scan, another aggregate, stored as its IRI.
+    range: Scan
+enums:
+  LibraryRole:
+    description: Tenant roles of the library application.
+    permissible_values:
+      librarian: {meaning: lib:Librarian}
+----
+
+== The toolchain
+
+One command, run from the application's `make generate-models`, regenerates everything:
+
+[source,shell]
+----
+rp-generate --schema models/library.yaml --package library.domain.generated \
+            --ts-out web/src/domain/generated --diagrams-out docs/images/model
+----
+
+`rp-generate` is a thin Python wrapper around LinkML's generator API, not a shell script, because
+split generation (importing the metamodel's classes from the toolkit instead of regenerating them) is
+available only through the Python API _(spike)_.
+
+[mermaid]
+....
+flowchart LR
+    S[application schema<br/>+ rp metamodel] --> L[1 lint]
+    L --> B[2 boundary check]
+    B --> P[3 domain classes]
+    B --> H[4 shapes]
+    B --> C[5 JSON-LD context]
+    B --> T[6 TypeScript types]
+    B --> D[7 diagrams]
+    P --> O[package: domain/generated/<br/>classes, shapes, context, schema copy]
+    H --> O
+    C --> O
+    T --> TS[client package: generated types]
+    D --> DOC[docs: one diagram per module]
+....
+
+[cols="1,4,3",options="header"]
+|===
+|Step |What it does |Fails when
+|1 Lint |`linkml-lint` with the toolkit's lint configuration: canonical prefixes (`dcterms`, not `dct`), descriptions on every element, snake_case enum values _(spike)_ |the schema has lint errors
+|2 Boundary check |Over LinkML's `SchemaView` (about 40 lines in the spike): roots are the classes whose induced ancestors include `AggregateRoot`; every other non-mixin class is reachable only through `owned` slots (it may be owned by several root classes, e.g. a reusable value class); a non-owned slot whose range is a class must point to a root |a class is reachable through a non-owned slot without being a root, or is owned by nothing, or a module annotated `module_kind: domain` imports one annotated `module_kind: technical`
+|3 Domain classes |`gen-pydantic` in split mode with the toolkit's template directory: a one-line `base_model.py.jinja` makes every class inherit the toolkit's strict base (no extra fields, validation on assignment); metadata mode off; metamodel classes imported from the top-level `rdf_persistence` _(spike: split generation works; the spike pointed it at a submodule)_ |generation fails
+|4 Shapes |`gen-shacl`. Shapes are closed (`sh:closed true`) _(spike)_, so the service validates the domain triples *before* the session adds its own (version token) |generation fails
+|5 JSON-LD context |`gen-jsonld-context`, with `id` and `type` aliased to `@id` and `@type`; served by the service kit (O-2). Known gaps (no `@language` containers, inlined collections keyed by `@index`) need template fixes before a schema uses those features _(not yet run)_ |generation fails
+|6 TypeScript types |`gen-typescript` with the toolkit's template, which fixes enums and dates (the stock output is weak on both); interfaces only, into the client package the application names _(not yet run)_ |generation fails
+|7 Diagrams |`gen-plantuml`, once per schema module, so each diagram shows one module's classes and their links to other modules _(per-module output not yet run)_ |generation fails
+|===
+
+Each step writes to a temporary file and moves it into place only on success, so a failed run leaves
+the previous output intact. The package also receives a copy of the schema: the mapper reads it at run
+time, so code and mapping always come from the same schema version.
+
+*Modules.* An application splits its schema into one file per module: a *domain module* per
+aggregate (its root and the classes it owns) and *technical modules* for concerns such as paging or
+API envelopes, written as mixins. A root schema imports the modules. Domain modules never import
+technical ones (step 2). The metamodel's mixins (`AggregateRoot`, `StoredFile`) are usable in domain
+modules: they say how a class is persisted, not what it means.
+
+*Not generated:* mappers, repositories, routes and API clients (O-1); the client calls the API with
+the generated types.
+
+== At run time
+
+[source,python]
+----
+from rdf_persistence import open_session            # public API only
+from library.domain.generated import Book, SCHEMA
+
+async with open_session(store, schema=SCHEMA, tenant=library_iri, caller=caller) as session:
+    book = await session.get(Book, book_iri)        # loads the book's graph, maps it to Book
+    book.title = "New title"
+    await session.commit()                           # one guarded update; conflict if the version moved
+----
+
+* *Mapping* _(spike: about 70 lines, round trip equal)_: class and slot IRIs come from the schema
+  (`class_uri`, `slot_uri`, or the default prefix); owned parts become blank nodes in the root's graph;
+  references to other aggregates are IRIs; multi-valued slots are sets, so order is not kept (model an
+  order slot when order matters).
+* *Commit* _(spike, Fuseki 5.1.0)_: one update deletes the graph's triples and inserts the new ones
+  with a fresh version token, guarded by the old token; Fuseki answers 204 even when the guard
+  matches nothing, so an `ASK` for the new token tells committed from conflict.
+* *Kinds*: an abstract root with a `designates_type` slot (`rdf:type`) lets `session.get` return the
+  concrete subclass.
+
+== Guarding the generated code
+
+* `linkml` and `linkml-runtime` are pinned together (mismatched versions fail at import _(spike)_).
+  Bumping them is a deliberate change: bump, regenerate, review the diff, accept.
+* CI regenerates and fails if the result differs from what is committed.
+* Generated code sits in the domain layer and imports nothing from services, adapters or entrypoints.
+* The schema and the regenerated code are committed together.
+
+== How an application adopts it
+
+. Write `models/<app>.yaml` and one file per module, importing the metamodel; mark aggregate roots, owned slots, databases;
+  bind tenancy to the application's roles by subclassing `TenantAccess` and `Grant`.
+. Add `make generate-models` calling `rp-generate`, and the freshness check to CI.
+. Write use-case services against `open_session` and the generated classes.
+. Write routes with the service kit; publish the OpenAPI contract and the JSON-LD context; use the generated TypeScript types in the client, checked against the contract.

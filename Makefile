@@ -188,7 +188,7 @@ clean-code: ## Xenon threshold checks
 #-----------------------------------------------------------------------------
 # Docs (Antora) — see references/antora-docs.md. Remove this block if --no-docs.
 #-----------------------------------------------------------------------------
-.PHONY: install-antora build-docs preview-docs clean-docs
+.PHONY: install-antora build-docs preview-docs clean-docs check-docs
 
 DOCS_DIR  = $(REPO_ROOT)/docs
 DOCS_SITE = $(DOCS_DIR)/build/site
@@ -204,6 +204,9 @@ build-docs: ## Build the documentation site to docs/build/site/
 
 preview-docs: build-docs ## Build then serve docs at http://localhost:8080
 	@ python3 -m http.server --directory $(DOCS_SITE) 8080
+
+check-docs: ## Check the docs: no consumer terms in architecture pages, every page in the nav
+	@ python3 -I docs/tools/check_docs.py
 
 clean-docs: ## Remove built docs + node_modules
 	@ rm -rf $(DOCS_DIR)/build $(DOCS_DIR)/node_modules

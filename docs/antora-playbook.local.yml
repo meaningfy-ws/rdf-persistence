@@ -25,6 +25,8 @@ output:
 
 asciidoc:
   attributes:
+    # IRI templates such as {base} are written literally
+    attribute-missing: skip
     experimental: ''
     idprefix: ''
     idseparator: '-'

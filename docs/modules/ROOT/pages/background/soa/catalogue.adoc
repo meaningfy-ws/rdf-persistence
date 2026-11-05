@@ -1,0 +1,1568 @@
+= Tool catalogue: purpose, origin and fit
+:description: What each reviewed tool is for, who built it from which angle, and where it could fit in our architecture, if at all.
+
+[IMPORTANT]
+.Background, not a commitment
+====
+This page is part of the state-of-the-art study moved from the rdf-persistence repository (commit `43dc152`). It records options and leanings, not decisions. What rdf-persistence commits to is in xref:architecture/index.adoc[rdf-persistence architecture v1].
+====
+
+This page is the single register of every tool the review touched. A tool built from one angle
+rarely fits another. Knowing *why* it exists is the fastest way to know where it can serve us.
+
+*Layers:* L0 modelling and code generation · L1 domain and persistence · L2 stores and
+transactions · L3 identity and authorization · L4 data-management service and API ·
+L5 JavaScript client and UI · L6 change events.
+
+*Fit:* *adopt* or *dependency* — build on it (*adopt* marks a final round-5 verdict) · *integrate* — run it next to our components through a
+standard contract · *compatible* — honour its contract without its code · *ideas* — borrow
+design only · *build-time* — a toolchain step, not a runtime part · *none* — no fit. Where a
+round-5 report gave a final verdict, the Fit cell carries it.
+
+*Variants:* the "Where it fits" cell ends with the system variants (V1–V5) and development
+approaches (A–C) of xref:background/soa/variants.adoc[Variants] that the tool supports or
+blocks.
+
+*DEC-5:* a dependency needs more than 200 GitHub stars and a commit in the last 12 months
+(packages of a qualifying organisation or monorepo inherit). It is recorded in the Fit cell where
+it decides the fit; a licence is recorded where it is a constraint (BUSL, GPL, LGPL, AGPL).
+
+Version: final (after round 5, 2026-11-03). Covers the twelve libraries of rounds 1–4, the candidates
+of the five round-3 angle reports (authorization, code generation, data-management service,
+JavaScript client and UI, stores and events) and of the four round-4 angle reports (DDD
+boundaries, developer experience, property graphs, evolution and operations), with the round-5
+corrections and final verdicts. Stars and dates are as of 2026-11-03;
+details are in the raw reports under `openspec/changes/soa-python-rdf-orm/inputs/analysis/`.
+
+== Foundations
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|rdflib
+|The general-purpose RDF toolkit for Python: graphs, parsers, serialisers (JSON-LD included), a SPARQL engine, remote SPARQL stores.
+|RDFLib community, since 2002. Library-first, standards-complete.
+|L1, L2
+|adopt
+|The RDF model under everything we write in Python. `SPARQLUpdateStore` already buffers edits and commits them as one request (T1); 7.5 adds an RDF4J client with transactions, 7.6 a GraphDB client with ACL management. `SPARQLUpdateStore` autoflushes before reads unless `dirty_reads=True`. Variants: V1–V5 (T1 in V1, T4 fallback in V2, T3 in V4); approaches A–C.
+
+|pyoxigraph / oxrdflib
+|A fast embedded SPARQL 1.1 store with atomic updates (multi-operation transactions in the Rust API only); oxrdflib puts it behind rdflib's store API.
+|Thomas Pellissier Tanon (`CITATION.cff`), community project (Rust). Store-first, standards-strict.
+|L2
+|adopt
+|Embedded and test store; rdflib API on Oxigraph's engine. Each Python update call is atomic. The in-memory store serialises writers; on disk (RocksDB) the guard read is not serialised with the write, so two concurrent guarded commits can both pass: the adapter must hold a write lock (T7). Variants: dev and test default in V1–V5; V5 replica.
+
+|SPARQLWrapper
+|Sending SPARQL 1.1 queries and updates to remote endpoints.
+|RDFLib community. Protocol client.
+|L2
+|dependency
+|Default remote client. Last release 2022; the rdflib httpx clients are the alternative. Variants: V1–V5 read path.
+
+|LinkML
+|One YAML schema as the source of truth, generated into Pydantic, JSON Schema, SHACL, OWL, TypeScript, JSON-LD context (and frames), OpenAPI components, GraphQL types.
+|Started at Lawrence Berkeley National Laboratory (Chris Mungall's group) for biomedical standards (Biolink / NCATS Translator, Monarch); NCATS funds it. Data-exchange-first, many targets. `linkml_runtime` now lives in the same monorepo.
+|L0 (L1 via runtime)
+|adopt
+|Model source and code generator of the MWBv2 chain. Generated Pydantic classes are persistence-free and carry `class_uri` / `slot_uri` metadata for our mapper (G1); the default `metadata_mode=auto` (LinkML 1.10–1.12) drops range, inlined, multivalued, required and identifier (G33). The only mapper generator (`gen-sqla`) targets SQL; the RDF mapper is ours. Language tags are lost from the LinkML step on. FastAPI's runtime OpenAPI from these classes carries `linkml_meta` and types IRIs as plain string: publish `gen-openapi` output or strip it (G28). No composition construct (aggregates need a convention, B1). Weak TS generator; no route, Hydra or lang-string support. Variants: V1–V5; enables approaches A and C, B needs our generator.
+
+|pySHACL
+|Validating RDF graphs against SHACL shapes.
+|RDFLib community. Validation-first.
+|L0, L1
+|dependency
+|Validation of generated shapes, of data before commit and after a migration (EV6). Variants: V1–V5.
+
+|pydantic
+|Typed, validated Python data classes.
+|Pydantic project. General Python.
+|L1
+|dependency
+|The shape of generated domain classes. Variants: V1–V5.
+
+|PyLD
+|JSON-LD 1.1 processing (expand, compact, frame) in Python.
+|Digital Bazaar. Spec-reference implementation.
+|L1, L4
+|dependency
+|Framing generated JSON-LD responses on the server. Variants: V1, V3, V4 (JSON-LD on the wire).
+|===
+
+== Python object–RDF mappers
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|sparqlmodel
+|A SQLModel-like ORM for SPARQL: sessions, query builder, FastAPI.
+|One author, 2026, built on triplemodel. Developer-experience-first.
+|L1, L2 (partial), L4
+|ideas
+|Session and query API ergonomics (DX 4/5); not its write path. Shared mirror cache leaks across users behind a proxy. Dormant, single maintainer. Variants: V1 ideas; blocks V2–V4 as-is; template target for approach B.
+
+|triplemodel
+|Stateless mapping between Pydantic models and RDF triples on pyoxigraph.
+|Same author, 2026. Mapping-first.
+|L0 (partial), L1, L2 (partial)
+|ideas
+|Owned-predicate writes, write modes, literal registry. DX 3/5; rollback is a silent no-op. Variants: V1 ideas, V5 read hydration; closest to approach A.
+
+|rdfmapper
+|Getting a Python object model into RDF for research ETL, with decorators, JPA-style finders and SHACL generation.
+|Felipe dos Santos Goiabeira's 2025 bachelor's thesis at UFMA (LambdaGeo group), successor of `simpot` (2022). Java/JPA-inspired, one-way ETL.
+|L1
+|ideas
+|Derived finder methods; SHACL from the model. DX 2/5; dynamic API not statically checkable. Variants: none as a dependency; idea donor for approach A.
+
+|pydantic-rdf
+|Converting Pydantic v2 models to and from rdflib graphs.
+|One author, 2025. Codec-first.
+|L1
+|ideas
+|`Annotated` markers and URI type for generated models. DX 3/5. Domain classes must subclass `BaseRdfModel` (Active Record coupling). Silent loss of language tags, of extra values on single-valued fields, and of `WithDataType`. Variants: codec pattern for V1, V3, V4; approach B through a custom template; approach A only by reading `linkml_meta`.
+
+|rdfproxy
+|Serving SPARQL query results as typed REST resources (FastAPI) for digital-humanities data.
+|ACDH-OEAW (Austrian Academy of Sciences), principal author Lukas Plank. Read-API-first.
+|L1, L4
+|ideas
+|Read models / projections; multi-store test matrix. GPL-3.0. No single policy-injection point over its generated queries: totals, single-item lookups and nested group rows would leak. Variants: V5 (its pattern), V1 read side; approach B with G14.
+
+|SuRF
+|Object access to RDF on several triple stores, after Ruby's ActiveRDF.
+|Academic (DERI Galway; Cosmin Basca, Peteris Caune), 2009–2017 (last release 2016). Active Record, store-plugin-first.
+|L1, L2
+|ideas
+|Reader/writer store split; eager loading; store facade as a PEP seam. Python 2, dead. Variants: V1, V5 ideas; its SPARUL 1.0 writes block V2.
+
+|OldMan
+|Exposing RDF resources as JSON-LD objects on the Web, models declared as JSON-LD contexts and Hydra.
+|Benjamin Cogrel (GitHub organisation `oldm`), 2014–2016. Web-API- and JSON-LD-first.
+|L0 (partial), L1, L2, L3 (partial), L4
+|ideas
+|JSON-LD context as mapping; snapshot diff updates; typed 401/403 errors. Active Record. The unmerged `session` branch adds a session with flush (one request per resource). Python 2, dead. Variants: V1, V2, V3, V5 ideas; enables approach A; closest prior art for C.
+
+|Owlready2
+|Ontology-oriented programming: OWL classes as Python classes, reasoning, an embedded quadstore.
+|Jean-Baptiste Lamy (LIMICS research lab, per `README.rst`; biomedical informatics). Ontology-first; canonical repository on Bitbucket.
+|L0
+|build-time
+|Reasoner check of generated OWL (G19); inferred triples as a build artefact (G20). Not a runtime store. LGPL-3.0. No qualifying GitHub repository: the mirror pwin/owlready2 has 218 stars but is stale since 2023; Bitbucket active (2026-08); PyPI 0.51, about 102k downloads a month. Build-time use needs an explicit DEC-5 exception and Java in CI; ROBOT is an unanalysed alternative. Variants: V1–V5 as an offline L0 step only; approach B CI gate.
+
+|SeMPyRO
+|Hand-written Pydantic classes for DCAT-AP 3 with RDF serialisation.
+|Health-RI (Dutch health data infrastructure). Application-profile-first.
+|L1
+|ideas
+|Precedent for Pydantic plus IRI metadata on a SEMIC profile. Fails DEC-5.
+
+|pydantic_jsonld (LA3D, Moritz72)
+|Small Pydantic ↔ JSON-LD bridges.
+|Single authors. Toys.
+|L1
+|none
+|Nothing beyond pydantic-rdf. Fail DEC-5.
+
+|sparqlx
+|A sync and async httpx SPARQL client (Query and Update) with streaming and batched queries; it also targets rdflib Graphs.
+|Lukas Plank; dependency of rdfproxy. Client-first.
+|L2
+|ideas
+|Streaming and batching ideas (S12, S13). GPL-3.0; fails DEC-5.
+|===
+
+== L0 Modelling and code generation
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|model2owl
+|Turning UML models (Enterprise Architect, SEMIC conventions) into OWL, SHACL, a JSON-LD context, a glossary and a conventions report.
+|OP-TED (Publications Office of the EU) with Meaningfy. Model-first, XSLT.
+|L0
+|build-time
+|First step of the MWBv2 chain (in-house UML → OWL / SHACL front end; drop the fork's LinkML exporter); the conventions report is a quality gate (G18). Drops UML composition today (B1 needs a change or an annotation). In-house asset, so DEC-5 does not apply. EUPL-1.2. Variants: V1–V5 (variant-neutral).
+
+|schema-automator
+|Importing OWL, RDFS, SHACL, JSON Schema or SQL into a LinkML schema.
+|LinkML organisation. Reverse-engineering-first.
+|L0
+|build-time
+|SHACL from model2owl → LinkML (`import-shacl`), replacing the fork's XSLT exporter. Inherits DEC-5 from the LinkML org. The import is lossy by construction (G29). Variants: V1–V5.
+
+|linkml-map
+|Schema-to-schema transformations.
+|LinkML organisation (Mungall et al.). Model-mapping-first.
+|L0, L1
+|integrate (optional, offline)
+|Model-to-model mapping; object-level data migration between schema versions (EV5), invertible for down migrations (EV4). Use only to reshape aggregates; no schema diff (EV3). Inherits DEC-5. Variants: V1–V5; enables approach B (spec and inverse kept with the schema version).
+
+|linkml-dataops
+|Change and patch operations over LinkML data.
+|LinkML organisation. Stale since 2024-02.
+|L1
+|ideas
+|Patch-operation ideas only. Fails DEC-5 (stale).
+
+|linkml-project-cookiecutter
+|Scaffolding a LinkML project.
+|LinkML organisation. Archived.
+|L0
+|none
+|Archived; our own project setup replaces it.
+
+|shacl2code
+|Generating standalone bindings (Python, C++, Go, Rust, JSON Schema) from SHACL, built for SPDX 3.
+|Joshua Watt (SPDX community). Shapes-first.
+|L0, L1
+|ideas
+|IRI-typed properties, object-set identity, pluggable codecs (G5, G25). Fails DEC-5. Variants: none directly; ideas for approach B.
+
+|shaclmate
+|Generating TypeScript and Python code from SHACL.
+|One author (minorg). Shapes-first.
+|L0
+|ideas
+|Fails DEC-5.
+
+|on2ts
+|Generating TypeScript from OWL.
+|One author (jeswr). Archived.
+|L0
+|none
+|Dead.
+
+|shex-codegen
+|Generating TypeScript from ShEx.
+|One author. Archived.
+|L0
+|none
+|Dead.
+
+|rdfs_pydantic / onto2py
+|Generating Pydantic classes from an ontology.
+|Single authors. Toys.
+|L0
+|none
+|No mature OWL → Pydantic generator exists.
+
+|EMMOntoPy
+|Ontology tooling on top of Owlready2.
+|EMMO (European Materials Modelling Ontology) community. Ontology-first.
+|L0
+|none
+|Domain-specific; fails DEC-5.
+
+|datamodel-code-generator
+|Generating Pydantic v2 models from OpenAPI or JSON Schema.
+|Founded by koxudaxi; now its own GitHub organisation. Contract-first.
+|L0
+|build-time
+|Client-side models from an OpenAPI contract (V1); it drops LinkML metadata, so it blocks approach B if used to regenerate server models. Passes DEC-5.
+
+|fastapi-code-generator
+|Generating a FastAPI app skeleton from OpenAPI.
+|Same maintainer (koxudaxi). Contract-first.
+|L0, L4
+|build-time
+|Route skeletons from an OpenAPI contract (contract-first, outside approaches A–C); useful in approach B only if it imports the LinkML models. Passes DEC-5.
+
+|TopQuadrant SHACL / DASH GraphQL vocabulary
+|The SHACL reference engine in Java, and the `datashapes.org/graphql#` vocabulary for SHACL → GraphQL.
+|TopQuadrant. Shapes-first.
+|L0
+|compatible
+|Vocabulary to annotate shapes if a GraphQL API is generated (G12). Passes DEC-5.
+
+|API Platform schema-generator
+|Generating PHP classes from an RDF vocabulary (schema.org) or OpenAPI.
+|API Platform (Les-Tilleuls.coop). Vocabulary-first.
+|L0
+|ideas
+|Precedent for vocabulary → classes; PHP only.
+
+|hydra-python-core
+|Writing and parsing Hydra API documentation in Python.
+|HTTP-APIs (Hydra community, student projects). API-doc-first.
+|L0
+|ideas
+|Hydra doc model, if G11 is built. Fails DEC-5.
+|===
+
+== L2 Stores
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|Apache Jena Fuseki + TDB2
+|A full SPARQL 1.1 server (query, update, GSP) on a transactional file store.
+|Apache Software Foundation (from HP Labs). Standards-first.
+|L2, L6 (RDF Patch)
+|integrate
+|Reference remote store: one request = one serializable transaction. Apache-2.0. Variants: V1 production store, V5 read endpoint.
+
+|Oxigraph server
+|A single-binary SPARQL 1.1 server with GSP and native JSON-LD 1.1.
+|Oxigraph project (Thomas Pellissier Tanon). Store-first, standards-strict.
+|L2
+|integrate
+|Light remote store; no built-in auth (put a proxy in front); the on-disk store detects no write conflicts. Variants: V1 light store, V5 replica.
+
+|Eclipse RDF4J server
+|A Java RDF framework and server with REST transactions spanning several requests.
+|Eclipse Foundation (ex Sesame). Framework-first.
+|L2
+|integrate
+|Store with multi-request transactions (T3) through the rdflib RDF4J client. BSD-3. Variants: V1; V4 protocol.
+
+|Ontotext GraphDB
+|A commercial RDF database with clustering, RBAC and quad-level access control.
+|Ontotext. Enterprise-product-first.
+|L2, L3, L6
+|integrate
+|Store-native ACL (V4); RDF4J protocol transactions; guarded-update isolation untested (T7). Proprietary. Variants: V4; V1 as a plain store.
+
+|Virtuoso Open Source
+|A multi-model SQL/RDF server for large Linked Data sites.
+|OpenLink Software. Database-product-first.
+|L2, L3
+|integrate
+|Possible remote store; update atomicity is weak in autocommit mode. GPL-2.0. Variants: V2 (semantic.works default).
+
+|Stardog
+|A commercial knowledge-graph platform with explicit transactions and named-graph security.
+|Stardog Union. Enterprise-product-first.
+|L2, L3
+|integrate
+|Only if a client chooses it; HTTP transactions via pystardog. Proprietary. Variants: like V4, only if client-mandated.
+
+|QLever
+|Fast SPARQL over very large, mostly static datasets.
+|University of Freiburg (Hannah Bast's group). Search-engine-first.
+|L2
+|integrate
+|Read model for huge datasets; update atomicity not documented. Variants: V5 read model.
+
+|Blazegraph
+|A Java graph database for RDF.
+|Systap; development stopped after Amazon acquired the team. Archived 2023.
+|L2
+|none
+|Dead; avoid. GPL-2.0.
+
+|Fluree DB v4
+|A ledger-based graph database: SPARQL 1.1 query and update, native JSON-LD, time travel, branching, policies as data, OIDC tokens, an embedded Python package.
+|Fluree PBC. Rust rewrite (2026). Ledger- and policy-first.
+|L2, L3, L4, L6
+|integrate (V3, legal check first)
+|Optional backend behind the store port, with triple-level policies and history. Passes DEC-5 on numbers. BUSL-1.1: internal use and a client's own deployment appear permitted; a commercial offering where third parties define their own schemas is a "Database Service" (`LICENSE:12-30`), so each product needs a legal reading. A lost race re-stages the WHERE, so guarded updates are isolated. Over HTTP each request is one commit; the engine retries blind-write commits up to 16 times. No general cascade delete (v4 cascades only edge annotations). Variants: V3; plain SPARQL store in V1 and V5; makes approach C cheaper (GraphQL from SHACL).
+
+|fluree/server (v3)
+|The legacy Clojure HTTP server for Fluree v3.
+|Fluree PBC. Legacy.
+|L4
+|none
+|Superseded by v4. Fails DEC-5.
+
+|TerminusDB
+|A document graph database with git-like commits, branches and diffs; no SPARQL.
+|TerminusDB company (Dublin). Version-control-first.
+|L2
+|ideas
+|Branching and history ideas (S15, S16); off-standard (WOQL, GraphQL). Variants: blocks V1–V5 (no SPARQL).
+
+|AllegroGraph
+|A commercial RDF database with sessions and triple-level security filters.
+|Franz Inc. Enterprise-product-first.
+|L2, L3
+|ideas
+|Triple filter ideas; proprietary.
+
+|Amazon Neptune
+|A managed graph database (SPARQL, Gremlin, openCypher) with a change stream; Neptune Analytics runs openCypher over RDF.
+|AWS. Cloud-service-first.
+|L2, L6
+|compatible
+|Reachable through SPARQL 1.1; Neptune Streams as CDC. No GSP. The only product serving RDF and property-graph queries on the same data. Variants: V1 store (AWS lock-in).
+|===
+
+== L2 Python store clients
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|rdflib RDF4J client (`contrib.rdf4j`)
+|An httpx client for RDF4J servers with a `Transaction` context manager and GSP.
+|Contributed to RDFLib by Edmond Chuc (rdflib 7.5). Protocol client.
+|L2
+|adopt
+|Multi-request transaction adapter (T3) for RDF4J and GraphDB. Variants: V4.
+
+|rdflib GraphDB client (`contrib.graphdb`)
+|GraphDB administration from Python: transactions, ACLs, cluster, import, monitoring.
+|Contributed to RDFLib by Edmond Chuc (rdflib 7.6). Vendor client.
+|L2, L3
+|adopt
+|Store-native ACL management when GraphDB is chosen. Variants: V4.
+
+|`fluree` (PyPI)
+|Embedding the Fluree v4 engine in Python, with transactions and caller-level retry on conflict (`transact(fn)`).
+|Fluree PBC. Embedded-first. Young (first release 2026-10).
+|L2, L3
+|integrate
+|Embedded only; a remote Fluree is reached with any SPARQL client. Savepoints are Rust-only. BUSL-1.1. Variants: V3 (in-process transactions); V1 embedded adapter.
+
+|aioflureedb
+|An async client for Fluree v1/v2 FlureeQL.
+|One author. Obsolete.
+|L2
+|none
+|Obsolete with v4. Fails DEC-5.
+
+|pystardog
+|The Stardog Python SDK with begin / commit / rollback.
+|Stardog Union. Vendor SDK.
+|L2
+|integrate
+|Only if Stardog is chosen. Fails DEC-5 on stars (vendor SDK).
+
+|agraph-python
+|The AllegroGraph Python client with sessions.
+|Franz Inc. Vendor SDK.
+|L2
+|none
+|Only if AllegroGraph is chosen.
+
+|terminusdb-client
+|The TerminusDB Python client.
+|TerminusDB company. Vendor SDK; last release 2023.
+|L2
+|none
+|Not SPARQL.
+
+|rdf4j-python / graphdb-client
+|Small community clients for RDF4J and GraphDB.
+|Single authors.
+|L2
+|none
+|Superseded by the rdflib contrib clients. Fail DEC-5.
+|===
+
+== L3 Store-native security
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|Fluree policies
+|Triple-level read and write policies stored as RDF in the ledger, with SPARQL ASK conditions and OIDC identities.
+|Fluree PBC. Policy-as-data-first.
+|L2, L3
+|integrate (V3 only); ideas
+|Closest match to DEC-8's "SPARQL-like data-centric policy language". Counts and aggregates see filtered data (tested). Policies target properties, classes and subjects, not named graphs; per-graph defaults through `f:graphOverrides` (they change defaults and the policy source, not what a rule matches). BUSL-1.1. Variants: V3; store-native PEP for V5.
+
+|GraphDB FGAC
+|Quad-level allow / deny rules per role, with OpenID roles from a token claim.
+|Ontotext. Enterprise feature.
+|L2, L3
+|integrate
+|Store-native access control for V4; first match wins, default allow. Proprietary. Variants: V4.
+
+|Stardog security
+|Named-graph read / write grants and masking of sensitive properties.
+|Stardog Union. Enterprise feature.
+|L2, L3
+|ideas
+|Masking idea (AZ25). Proprietary.
+
+|AllegroGraph security filters
+|Triple filters on s/p/o/g per user or role.
+|Franz Inc. Enterprise feature.
+|L2, L3
+|ideas
+|Proprietary.
+
+|Virtuoso graph permissions
+|Named-graph permission bitmasks per SQL user.
+|OpenLink Software. Database feature.
+|L2, L3
+|ideas
+|Configured by SQL procedures; GPL-2.0.
+
+|Jena `jena-fuseki-access`
+|Read-only datasets filtered by named graph per user.
+|Andy Seaborne, Apache Jena. Publishing-first.
+|L2, L3
+|integrate (V5 read path)
+|Graph-level read-only publishing; reference design for the dataset-scope adapter; updates are refused on access-controlled datasets; denials answer HTTP 400 "Not supported", not 403. Variants: V5 read path.
+|===
+
+== L3 Proxies, web-standard policies and policy vocabularies
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|sparql-parser (semantic.works)
+|An authorizing SPARQL proxy: groups from SPARQL queries, graph-per-token, quad → graph dispatch, delta emission.
+|redpencil.io, for semantic.works. Proxy-first, Common Lisp.
+|L3, L6
+|ideas; integrate
+|Idea source; optional external PEP. Works with any SPARQL 1.1 store (Virtuoso by default). Fails DEC-5 (5 stars); whether DEC-5 applies to Docker services is open. Variants: V2 (required); V5 existing graph-level read proxy; blocks V3, V4.
+
+|Solid WAC / ACP
+|Document-level access control as RDF (`.acl` / `.acr`).
+|W3C Solid Community Group (WAC from Tim Berners-Lee's MIT group; ACP from Inrupt). Web-standard-first.
+|L3
+|compatible
+|Graph-level policy-as-data vocabulary (AZ10). Variants: vocabulary candidate for V1.
+
+|ODRL-Evaluator
+|Evaluating ODRL usage-control policies over RDF requests.
+|`odrl-force` organisation (2024; main contributors woutslabbinck and jvherweg, IDLab Ghent / SolidLab researchers, affiliation inferred). Usage-control-first.
+|L3
+|ideas
+|Fails DEC-5.
+
+|SolidLab UMA server
+|UMA authorization with ODRL policies for Solid.
+|SolidLab Flanders (research). Usage-control-first.
+|L3
+|ideas
+|Fails DEC-5.
+
+|Small SPARQL authorization proxies
+|Graph or subgraph rewriting proxies (sparql-guard, sparql-authorization-wrapper-service, secured-sparql-endpoint-subgraph, mu-authorization, mu-query-rewriter, rdf-abac).
+|Single authors and small public-sector teams.
+|L3
+|ideas
+|All fail DEC-5; never a dependency.
+|===
+
+== L3 Authorization engines (PDPs)
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|OpenFGA
+|Zanzibar-style relationship-based authorization with CEL conditions and reverse lookup (ListObjects).
+|Auth0 / Okta, now a CNCF project. ReBAC-first.
+|L3
+|integrate (V1, V5)
+|PDP (a separate service) for graph- or resource-level access behind our in-process enforcement port; ListObjects → FROM-graph injection. Tuples must be synced from domain events (AZ28). Python SDK. Variants: V1, V5; approach B can generate its model (AZ29).
+
+|SpiceDB
+|Zanzibar-style authorization with caveats and LookupResources.
+|AuthZed (founded by ex-CoreOS / Red Hat engineers). ReBAC-first.
+|L3
+|integrate
+|Alternative to OpenFGA. Python SDK. Variants: V1, V5.
+
+|Ory Keto
+|Zanzibar-style permissions in the Ory stack.
+|Ory. ReBAC-first.
+|L3
+|ideas
+|No ListObjects-like reverse lookup found in the docs.
+
+|Permify
+|Zanzibar-style authorization with ABAC rules.
+|Permify. ReBAC-first.
+|L3
+|ideas
+|AGPL-3.0.
+
+|Cerbos
+|Stateless RBAC / ABAC policies in YAML + CEL; PlanResources returns a filter AST.
+|Cerbos. Policy-as-code-first.
+|L3
+|integrate
+|Plan AST → SPARQL translator is the one piece we would build (AZ4). Adapters exist only for SQL / ORMs. Variants: V1, V5.
+
+|OPA / Rego
+|General policy-as-code; partial evaluation compiles policies to filters.
+|Styra, now CNCF graduated. Policy-as-code-first.
+|L3
+|ideas
+|UCAST → SPARQL translation idea. No official Python SDK.
+
+|Topaz
+|OPA plus a built-in Zanzibar directory.
+|Aserto. Hybrid.
+|L3
+|none
+|Weak Python SDK.
+
+|Apache Casbin / pycasbin
+|In-process ACL / RBAC / ABAC from a PERM model, IRI pattern matching.
+|Created by Yang Luo (2017); now Apache Casbin under the ASF (`apache/casbin`, `apache/casbin-pycasbin`). Library-first.
+|L3
+|dependency
+|Minimal in-process PDP (an in-process library, V1 lite); no query plan. Variants: V1.
+
+|Oso
+|Authorization library with the Polar language; now a SaaS.
+|Oso. Archived open source.
+|L3
+|none
+|Archived; SaaS only. Fails DEC-5.
+|===
+
+== L3 Identity providers and token libraries
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|Zitadel
+|An OIDC / OAuth2 identity provider with organisations, projects, project roles and grants.
+|ZITADEL (Swiss company). Multi-tenant-IdP-first.
+|L3
+|integrate
+|Preferred IdP; roles in a token claim feed the PDP (AZ18). Server AGPL-3.0 (run as a service); Python client Apache-2.0. Variants: V1–V5.
+
+|Keycloak
+|An OIDC / SAML identity provider with realms, roles, groups, organisations and Authorization Services (UMA).
+|Red Hat, now CNCF. Enterprise-IdP-first.
+|L3
+|integrate
+|Fallback IdP when AGPL is unwanted. Apache-2.0. Variants: V1–V5.
+
+|Ory Kratos + Hydra
+|Identity management (Kratos) and an OAuth2 / OIDC server (Hydra).
+|Ory. Headless-IdP-first.
+|L3
+|integrate
+|Alternative IdP stack; roles live in Keto.
+
+|Authentik
+|A Python-based identity provider with property mappings to claims.
+|Authentik Security. Self-hosted-IdP-first.
+|L3
+|integrate
+|Alternative IdP; app-access policies only.
+
+|Authlib / PyJWT
+|OIDC and JWT validation in Python.
+|Python community (Authlib by Hsiaoming Yang; PyJWT community).
+|L3
+|dependency
+|Token validation in the FastAPI service.
+|===
+
+== L4 Platforms and services
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|semantic.works (mu.semte.ch)
+|Building Linked Data applications from microservices around one triplestore, with Ember frontends.
+|Aad Versteden and colleagues, at TenForce and then redpencil.io, for Flemish government applications. App-platform-first, polyglot.
+|L3, L4, L6 (L0–L2, L5 partly)
+|compatible
+|Reference architecture. Honour JSON:API, `domain.json` and deltas; `sparql-parser` optionally as an external enforcement proxy. DX 3/5: 7+ containers, five configuration languages. sparql-parser trusts any internal caller's sudo and group headers, so network isolation is the authorization boundary; no OIDC (Zitadel needs a login bridge). Single named author in the package metadata. Variants: V2 (runtime); its contracts serve every variant and approach C.
+
+|Prez
+|Publishing vocabularies and spatial or catalogue data as a read-only Linked Data API driven by profiles.
+|RDFLib team with Kurrawong AI (Nicholas Car, David Habgood, Lawson Lewis), for government data publishing. Deployed for geological surveys and agencies (Australian ones such as GSQ, GSWA and ICSM, and the British Geological Survey) and the OGC/AGLDWG ecosystem, judging by Kurrawong's public Prez UI themes. Publishing-first.
+|L2 (read adapters), L4 (read side)
+|ideas
+|Repository port with three adapters; typed SPARQL AST (a PEP seam); content negotiation by profile. Forwards no identity (one service account). DX 2/5 for application CRUD. Variants: closest fit for a V5 publication API (blocked by DEC-5); ideas for V1.
+
+|API Platform
+|Generating REST and GraphQL APIs (JSON-LD + Hydra, JSON:API, HAL, OpenAPI) from PHP resource classes, with security hooks and Mercure push.
+|Les-Tilleuls.coop, France; founded by Kévin Dunglas (2015), maintained today mainly by Antoine Bluchet (soyuka). API-first, PHP.
+|L0, L3, L4, L6
+|ideas
+|Reference design for multi-profile rendering, staged PEP hooks, listing filters, publish-after-commit. Ships only the row-filter hook (the application writes the filter), emits ETags but checks no `If-Match`, has no JSON:API Atomic Operations. MIT. Variants: blueprint for V1 and approach B.
+
+|JSON:API specification
+|A JSON API standard with includes, sparse fields, filters and the Atomic Operations extension.
+|Ember community (Steve Klabnik, Yehuda Katz). Specification.
+|L4
+|compatible
+|The semantic.works contract; Atomic extension for multi-operation writes (X18). Variants: required by V2; one profile in V1.
+
+|PostgREST
+|A zero-code REST API over a PostgreSQL schema; row-level security as PEP.
+|Started by Joe Nelson, now community. Database-first.
+|L3, L4
+|ideas
+|Pattern: the database enforces policy, the API is generated.
+
+|Hasura
+|Zero-code GraphQL over databases, permissions as row filters, subscriptions.
+|Hasura Inc. API-platform-first.
+|L3, L4, L6
+|ideas
+|Pattern: permission rules as query filters.
+
+|Neo4j GraphQL Library
+|Full CRUD GraphQL from SDL type definitions with `@authorization` directives.
+|Neo4j Inc. Graph-API-first.
+|L4
+|ideas
+|Pattern for schema → GraphQL with authorization; property graph, not RDF.
+
+|Community Solid Server
+|A modular Solid / LDP server: WAC / ACP, Solid-OIDC, Solid Notifications, SPARQL backend.
+|Solid project (imec – Ghent University: Joachim Van Herwegen, Ruben Verborgh), with Inrupt funding. Web-standard-first.
+|L2, L3, L4, L6
+|ideas
+|PEP / PIP / PDP pipeline (AZ7), conditional requests, N3 Patch, notification channels, existence-hiding 404 only for readers (AZ33). SPARQL backend: one named graph per document, default-graph data invisible. Variants: pods only; blocks V5 (no class-level query).
+
+|LinkedDataHub
+|A low-code knowledge-graph app: GSP document graphs, ontology-driven forms, WAC ACL evaluated as a SPARQL query.
+|AtomGraph (Copenhagen), Martynas Jusevičius. App-platform-first, Java / XSLT.
+|L3, L4, L5
+|ideas
+|ACL-as-SPARQL-query idea (AZ10). Apache-2.0. Variants: side back office for V1, V4, V5; approach C reference.
+
+|AtomGraph Processor
+|An ontology-driven read-write Linked Data server (LinkedDataHub's predecessor).
+|AtomGraph. Archived.
+|L4
+|none
+|Dead.
+
+|linkml-store
+|A generic LinkML collections API over DuckDB, MongoDB, Solr, Neo4j and others, with a FastAPI web API.
+|LinkML organisation; main author Chris Mungall. Schema-driven-store-first.
+|L1, L4
+|ideas
+|Approach C (generic service) reference; no RDF store; insert-only HTTP, no auth; API unstable. Inherits DEC-5.
+
+|Trellis LDP
+|An LDP server with Memento and WebAC.
+|Aaron Coburn (Amherst College, later Inrupt). Standard-first. Stale.
+|L4
+|none
+|Fails DEC-5.
+
+|ldp4j
+|A Java LDP framework.
+|Center for Open Middleware (per `pom.xml`). Stale since 2020.
+|L4
+|none
+|Fails DEC-5.
+
+|Ontop
+|A virtual knowledge graph: SPARQL over relational databases.
+|Free University of Bozen-Bolzano / Ontopic. OBDA-first.
+|L2
+|none
+|No API generation; outside our scope.
+
+|Trifid / kopflos
+|Linked Data publishing (Trifid) and a Hydra / SHACL-driven API server in Node (kopflos).
+|Zazuko (Switzerland). Publishing-first.
+|L4
+|ideas
+|Hydra-driven server ideas. Fail DEC-5.
+
+|Stardog GraphQL
+|GraphQL generated from RDFS / OWL or SHACL inside Stardog.
+|Stardog Union. Vendor feature.
+|L3, L4
+|ideas
+|Proprietary.
+
+|GraphDB GraphQL
+|GraphQL from OWL + SHACL with role-based read and mutation control.
+|Ontotext. Vendor feature.
+|L3, L4
+|ideas
+|Proprietary; separate licence.
+|===
+
+== L4 Python API frameworks and generators
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|FastAPI
+|Python web APIs with OpenAPI generated from Pydantic.
+|Sebastián Ramírez and community. API-first.
+|L4
+|dependency
+|The service framework of MWBv2. Variants: V1–V5; approaches A–C.
+
+|FastCRUD
+|Generating CRUD endpoints (`crud_router`) with offset and cursor pagination and filters, over SQLAlchemy.
+|Benav Labs. RAD-first.
+|L4
+|ideas
+|Router-generation pattern; SQL only.
+
+|fastapi-crudrouter
+|Generic CRUD routers per backend for FastAPI.
+|One author (awtkns). Stale since 2023.
+|L4
+|ideas
+|Fails DEC-5.
+
+|FastAPI-JSONAPI
+|JSON:API on FastAPI and SQLAlchemy.
+|MTS AI. API-first.
+|L4
+|ideas
+|JSON:API dialect reference. Fails DEC-5.
+
+|Strawberry
+|Code-first GraphQL with a Pydantic integration.
+|Strawberry community. API-first.
+|L4
+|integrate
+|If a GraphQL view is wanted. Passes DEC-5.
+
+|Ariadne
+|Schema-first GraphQL.
+|Mirumee Software. API-first.
+|L4
+|integrate
+|Could serve LinkML `gen-graphql` SDL. Passes DEC-5.
+
+|Graphene
+|Code-first GraphQL.
+|graphql-python community.
+|L4
+|none
+|Borderline DEC-5 (last push 14 months ago).
+
+|rdflib-endpoint
+|A SPARQL endpoint for rdflib / Oxigraph in FastAPI.
+|One author (Vincent Emonet), academic. Endpoint-first.
+|L4
+|ideas
+|No auth. Fails DEC-5.
+
+|pyLDAPI
+|Content negotiation by profile for Linked Data APIs (Prez's predecessor).
+|RDFLib organisation. Publishing-first. Stale.
+|L4
+|none
+|Superseded by Prez.
+
+|grlc
+|Turning SPARQL queries stored in git into OpenAPI endpoints.
+|CLARIAH (Dutch research infrastructure). Query-first.
+|L4
+|ideas
+|Fails DEC-5.
+
+|RAMOSE
+|SPARQL → REST from a configuration file.
+|OpenCitations. Query-first.
+|L4
+|ideas
+|Fails DEC-5.
+
+|hydrus
+|A Hydra server generated from an API documentation, on SQLAlchemy.
+|HTTP-APIs (Hydra community, student projects). Dormant.
+|L4
+|none
+|Fails DEC-5.
+|===
+
+== L4 GraphQL over RDF
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|HyperGraphQL
+|A read-only GraphQL interface configured over SPARQL endpoints.
+|Semantic Integration Ltd.; now maintained by Epeirogenic AB. Dormant since 2022.
+|L4
+|none
+|Fails DEC-5.
+
+|UltraGraphQL
+|A HyperGraphQL fork with mutations.
+|RWTH Aachen, Databases and Information Systems (i5). Archived; last commit 2020-10.
+|L4
+|none
+|Dormant.
+
+|OBG-gen
+|Generating a GraphQL server from an ontology (OBDA).
+|Linköping University Semantic Web group. Research.
+|L4
+|ideas
+|Fails DEC-5.
+|===
+
+== L5 JSON-LD and RDF processing in JavaScript
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|jsonld.js
+|The reference JSON-LD 1.1 processor for JavaScript: compact, expand, frame, to / from RDF, canonicalise.
+|Digital Bazaar. Spec-reference-first.
+|L5
+|adopt
+|Reshaping server JSON-LD into component trees by framing. With the bundled loaders it refetches a remote `@context` on every call unless the loader marks it `static`: serve the generated context from the bundle (X22) and use `safe: true` (X23). The only DEC-5-passing JSON-LD library in JS. Variants: V1, V3, V4; V2 at the edges.
+
+|N3.js
+|Turtle / TriG / N-Triples parsing and an in-memory RDF/JS store.
+|RDF/JS community (Ruben Verborgh). Library-first.
+|L5
+|dependency
+|RDF text and quads in the browser when needed.
+
+|@rdfjs/types
+|The RDF/JS data model, stream, dataset and queryable interfaces.
+|W3C RDF/JS Community Group. Interface-first.
+|L5
+|compatible
+|The standard port for JS RDF libraries.
+
+|jsonld-streaming-parser / jsonld-context-parser
+|Streaming JSON-LD → RDF/JS quads; context parsing.
+|Ruben Taelman (Comunica). Library-first.
+|L5
+|none
+|Transitive dependencies only. Fail DEC-5.
+
+|Comunica
+|A modular SPARQL engine for the browser and Node, with federation over endpoints, files, Solid and Hydra sources.
+|Ghent University (IDLab). Query-engine-first.
+|L5 (L2 client side)
+|integrate
+|Client-side query for SPARQL-direct variants; LDkit's drop-in engine. Variants: V5.
+
+|rdflib.js
+|RDF handling for Solid / LDP documents in JS, with SPARQL Update PATCH.
+|Linked Data community (Tim Berners-Lee's Solid circle). Solid-first.
+|L5
+|none
+|Solid-oriented; not needed for a JSON-LD API.
+
+|rdf-ext
+|RDF/JS factory and dataset extensions.
+|Thomas Bergwinkl (own GitHub organisation), close to Zazuko. Library-first.
+|L5
+|none
+|Fails DEC-5.
+
+|rdf-validate-shacl
+|SHACL validation in JS over RDF/JS data.
+|Zazuko. Validation-first.
+|L5
+|ideas
+|Client-side SHACL. Fails DEC-5.
+|===
+
+== L5 Typed RDF clients in JavaScript
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|LDkit
+|Typed Linked Data objects in TypeScript over any SPARQL endpoint.
+|Karel Klíma, with Martin Nečaský and Ruben Taelman (Comunica's lead developer, not stated in the repo) (ISWC 2023). Client-first, schema-inferred types.
+|L5
+|integrate (V5 only, DEC-5 exception); ideas
+|Integrate only for V5 graph-direct reads, behind a replaceable seam and with an explicit DEC-5 exception (83 stars). Its engine always POSTs queries to one endpoint, so the read proxy must police POST bodies; ideas otherwise (mirror its API in Python). DX 4/5. Variants: V5; approach B (schema generated from LinkML, G16).
+
+|LDO
+|ShEx / SHACL → TypeScript typings and proxy objects over RDF/JS datasets, for Solid and NextGraph.
+|Jackson Morgan (jaxoncreed) and o-development; 8 contributors. Solid community. Shape-first.
+|L0, L5
+|ideas
+|Client-side unit of work by graph diff (U7). `commitToRemote` is atomic per resource only: one update per resource in parallel, no rollback of the ones that succeeded. Fails DEC-5. Variants: none without a new plugin for our API.
+
+|LDflex
+|Path expressions in JS compiled to SPARQL.
+|Ruben Verborgh (originator); maintained mainly by Jesse Wright today. Solid community. Client-first.
+|L5
+|ideas
+|Fails DEC-5 (196 stars).
+
+|rdf-object
+|An untyped object view over RDF/JS quads.
+|Ruben Taelman (Comunica). Library-first.
+|L5
+|none
+|Fails DEC-5.
+
+|@inrupt/solid-client / solid-client-authn
+|Reading and writing Solid resources with ACP / WAC helpers; Solid-OIDC login in the browser.
+|Inrupt. Solid-first.
+|L3, L5
+|none
+|Tied to Solid servers (passes DEC-5). Variants: none.
+
+|Soukai / soukai-solid
+|An Active Record ODM for JS with a Solid engine.
+|One author (Noel De Martin). Solid-first.
+|L5
+|none
+|Fails DEC-5.
+
+|fdr
+|A JS client over SPARQL endpoints.
+|Kobrix Software. Client-first.
+|L5
+|none
+|Fails DEC-5.
+
+|fluree-client
+|FlureeQL JSON-LD over HTTP with signed requests.
+|Fluree PBC. Low activity (last push 2026-03).
+|L3, L5
+|none
+|Fails DEC-5 on stars (6); FlureeQL lock-in. Variants: V3 only.
+
+|Alcaeus
+|A Hydra client that follows the API documentation and operations.
+|hypermedia-app (Tomasz Pluskiewicz). Hypermedia-first.
+|L5
+|ideas
+|Hydra-client idea. Fails DEC-5.
+
+|shaperone
+|SHACL-driven forms over RDF/JS.
+|hypermedia-app (Tomasz Pluskiewicz). Shape-first.
+|L5
+|ideas
+|Fails DEC-5.
+|===
+
+== L5 Data layers and admin UIs
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|TanStack Query
+|Server-state cache with invalidation and optimistic updates, fetcher-agnostic.
+|TanStack (Tanner Linsley). Client-first.
+|L5
+|dependency
+|Client cache for any of our API styles (U2). Variants: V1–V5.
+
+|SWR
+|Server-state fetching and caching for React.
+|Vercel. Client-first.
+|L5
+|integrate
+|Lighter alternative to TanStack Query.
+
+|react-admin
+|Admin UIs over any backend through a data-provider port (REST, JSON:API, GraphQL, Hydra).
+|Marmelab. Admin-UI-first.
+|L5
+|integrate
+|Back-office UI over the generated service.
+
+|@api-platform/admin
+|react-admin screens built from Hydra or OpenAPI documentation.
+|API Platform (Les-Tilleuls.coop). API-doc-first.
+|L5
+|integrate (optional back office)
+|Generated back office if we emit Hydra (G11) or OpenAPI and copy API Platform's query parameters (`order[]`, `page`, `itemsPerPage`) and schema.org label hints; maps validation reports onto fields (U6). Sends the stored token verbatim as `Authorization` (store `Bearer …`); no built-in OIDC. Variants: V1, V3, V4 with that dialect; blocks V2; suits approach C.
+
+|API Platform create-client
+|Front-end scaffolds (Next, Nuxt, React, Vue …) from Hydra / OpenAPI.
+|API Platform. Scaffold-first.
+|L5
+|build-time
+|Front-end scaffold idea (RAD3).
+
+|refine
+|A headless React framework for CRUD apps over data providers.
+|Refine (refinedev). Admin-UI-first.
+|L5
+|integrate
+|Alternative to react-admin.
+
+|WarpDrive (ember-data)
+|A JSON:API cache and client.
+|Ember.js community. JSON:API-first.
+|L5
+|compatible
+|What semantic.works front ends use; honour JSON:API for them. Variants: V2.
+
+|Orbit.js
+|JSON:API sources with offline and optimistic updates.
+|Cerebris (Dan Gebhardt). Client-first.
+|L5
+|integrate
+|JSON:API client alternative.
+
+|kitsu / jsona
+|Small JSON:API clients and (de)serialisers.
+|Single authors. Library-first.
+|L5
+|integrate
+|Minimal JSON:API clients.
+
+|spraypaint
+|A JSON:API client for Graphiti.
+|Graphiti project. Client-first.
+|L5
+|none
+|Fails DEC-5.
+
+|Apollo Client
+|A GraphQL client with a normalised cache.
+|Apollo GraphQL. Client-first.
+|L5
+|integrate
+|Only if a GraphQL view is chosen.
+
+|AdminJS
+|Admin panels over Node ORMs.
+|SoftwareBrothers. Admin-UI-first.
+|L4, L5
+|none
+|Fails DEC-5; ORM adapters, not HTTP.
+
+|zustand
+|Client-side state for React.
+|pmndrs community. Client-first.
+|L5
+|integrate
+|Local UI state only.
+|===
+
+== L5 Contract → TypeScript generators
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|openapi-typescript (+ openapi-fetch)
+|TypeScript types and a fetch client from OpenAPI 3.
+|openapi-ts community (Drew Powers). Contract-first.
+|L0 → L5
+|build-time
+|TS types from the FastAPI OpenAPI (U1).
+
+|orval
+|Typed clients, TanStack Query hooks, zod schemas and MSW mocks from OpenAPI.
+|orval-labs. Contract-first.
+|L0 → L5
+|build-time
+|Client SDK plus generated mocks (U1, U8).
+
+|@hey-api/openapi-ts
+|SDKs, zod and TanStack Query plugins from OpenAPI.
+|Hey API. Contract-first.
+|L0 → L5
+|build-time
+|Alternative to orval.
+
+|json-schema-to-typescript
+|TypeScript types from JSON Schema.
+|One author (Boris Cherny), community. Contract-first.
+|L0 → L5
+|build-time
+|TS types from LinkML JSON Schema.
+
+|graphql-code-generator
+|TypeScript from GraphQL schemas and operations.
+|The Guild. Contract-first.
+|L0 → L5
+|build-time
+|Only with a GraphQL view.
+
+|zod
+|Runtime validation of payloads in TypeScript.
+|Colin McDonnell, community. Validation-first.
+|L5
+|dependency
+|Validates responses; generated by orval / hey-api.
+
+|linkml-runtime.js
+|A LinkML runtime for JavaScript.
+|LinkML organisation. Dead since 2023.
+|L0, L5
+|none
+|Fails DEC-5.
+|===
+
+== L5 Forms and query UIs from shapes or schemas
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|shacl-form
+|An HTML web component that renders edit, view and search forms from SHACL.
+|ULB Darmstadt (university library). Shape-first.
+|L5
+|ideas
+|Shape-driven forms (U4, U10). Fails DEC-5 (93 stars): vendor in or keep behind a seam. Variants: V1–V5; query mode enables V5; suits approach C.
+
+|RDForms
+|Forms from RDForms templates (EntryScape).
+|MetaSolutions AB. Template-first.
+|L5
+|none
+|Fails DEC-5; LGPL-3.0.
+
+|react-jsonschema-form (RJSF)
+|Forms from JSON Schema plus a UI schema.
+|rjsf-team (originally Mozilla). Schema-first.
+|L5
+|integrate
+|Forms from LinkML JSON Schema; IRIs and lang-strings need custom widgets.
+
+|JSON Forms
+|Forms from JSON Schema plus a UI schema for React, Angular, Vue.
+|EclipseSource. Schema-first.
+|L5
+|integrate
+|Alternative to RJSF.
+
+|Sparnatural
+|A visual SPARQL query builder configured by SHACL.
+|Sparna (Thomas Francart, France). Query-UI-first.
+|L5
+|integrate
+|Shape-driven search UI (U10). LGPL-3.0.
+
+|GraphQL-LD.js / graphql-to-sparql.js
+|GraphQL queries plus a JSON-LD context translated to SPARQL in the client.
+|Ruben Taelman (Comunica). Client-first.
+|L5
+|ideas
+|Fail DEC-5 (personal repositories).
+|===
+
+== L5 Browser auth and end-to-end tests
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|oidc-client-ts
+|OIDC code flow with PKCE and token refresh in the browser.
+|authts community. Protocol-client-first.
+|L3, L5
+|dependency
+|Browser login against Zitadel or Keycloak.
+
+|@zitadel/react
+|A thin React wrapper over oidc-client-ts for Zitadel.
+|ZITADEL. Vendor SDK.
+|L3, L5
+|integrate
+|Only with Zitadel. Inherits DEC-5 from the org.
+
+|Cypress
+|Browser end-to-end tests.
+|Cypress.io. Test-first.
+|L5
+|build-time
+|MWBv2 E2E tests.
+
+|cypress-cucumber-preprocessor
+|Gherkin scenarios in Cypress.
+|Started at TheBrainFamily (Lukasz Gandecki); transferred to Jonas Amundsen (badeball), its one maintainer. Test-first.
+|L5
+|build-time
+|Gherkin E2E from the MWBv2 runbook.
+|===
+
+== L6 Change events
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|RDF Patch
+|A text / binary change format with `id` / `prev` headers and transaction markers.
+|Andy Seaborne, now in Apache Jena (`jena-rdfpatch`). Replication-first.
+|L6
+|compatible
+|Candidate delta wire format (E2). Variants: V1 outbox format; feeds V5 replicas.
+
+|RDF Delta
+|A patch-log server for replicated Fuseki, with compare-and-swap on the log head.
+|Andy Seaborne. Announced "going to be archived".
+|L6
+|ideas
+|CAS and idempotent replay ideas (T9). Fails DEC-5.
+
+|delta-notifier (semantic.works)
+|Fanning out insert / delete / effective change sets from the proxy to subscribed services by rules.
+|redpencil.io. Event-first.
+|L6
+|compatible
+|Honour its `changeSets` format for semantic.works compatibility. Fails DEC-5 (0 stars). Variants: V2.
+
+|Fluree events and commit log
+|SSE "ledger head moved" events plus commit pull.
+|Fluree PBC. Ledger-first.
+|L6
+|integrate
+|Only with Fluree (E3). BUSL-1.1.
+
+|Solid Notifications Protocol
+|AS2 JSON-LD notifications over WebSocket, Webhook or SSE channels.
+|W3C Solid Community Group. Web-standard-first.
+|L6
+|compatible
+|Standard notification channel (E9).
+
+|GraphDB Kafka sink
+|Loading Kafka messages into GraphDB.
+|Ontotext. Inbound integration.
+|L6
+|none
+|Inbound only. Fails DEC-5.
+
+|Neptune Streams
+|A change-data-capture log for Neptune.
+|AWS. Cloud-service-first.
+|L6
+|none
+|Only with Neptune.
+
+|Application-level outbox
+|Writing events in the same transaction as the data and relaying them to a broker (Kafka, NATS).
+|Pattern, no RDF implementation found.
+|L6
+|ideas
+|Store-agnostic event emission from our unit of work (E1).
+|===
+
+== Benchmarks outside RDF — ORMs/ODMs
+
+None of these speaks RDF. They shape the API and tooling of rdf-persistence (L1) and of the
+generated service (L4); they are idea sources, not dependency candidates.
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|neomodel
+|A Django-like object-graph mapper for Neo4j.
+|neo4j-contrib community organisation, started by Robin Edwards (2013); 15 contributors listed in `AUTHORS.txt` (GitHub shows more); not a Neo4j product. Developer-experience-first, Active Record.
+|L1, L2 (L0 partial, L6 weak)
+|ideas
+|The benchmark for a pleasant Python API (DX 5/5): typed properties, query sets, transactions, per-model exceptions. Variants: API model for V1–V4 and approach A; adopting it blocks every variant (no RDF).
+
+|SQLModel
+|Making SQL feel like FastAPI for FastAPI users: one class is both the Pydantic model and the table.
+|Sebastián Ramírez (FastAPI organisation), 2021, on SQLAlchemy + Pydantic. API-first, Pydantic-first.
+|L1, L4
+|ideas
+|Benchmark for the L1 API surface, FastAPI integration and tested docs (D21: 150 doc sources, 119 tutorial tests). Optimistic locking only through SQLAlchemy's undocumented `version_id_col`. MIT. Variants: supports V1–V4; enables approach B (generated typed models plus routes).
+
+|SQLAlchemy 2.x ORM
+|A Pythonic SQL toolkit plus Data Mapper ORM, mapping objects onto relational schemas without hiding SQL: session, unit of work, identity map, expression language.
+|Mike Bayer, since 2005; community project, sponsored. Database-first Data Mapper with implicit unit of work.
+|L1, L2
+|ideas
+|L1 benchmark for identity map, cascade vocabulary, events (`after_commit`, B12), stable error codes (D24) and DX. Its flush sort exists for foreign-key order and generated keys, which RDF lacks: our unit of work needs far less (no dependency sort, no autoflush, no savepoints). Variants: supports V1–V5 (V4 vendor transactions even allow autoflush); approaches A, B.
+
+|Beanie
+|An async MongoDB ODM for Pydantic applications.
+|Roman Right, BeanieODM organisation. Active Record over Pydantic documents.
+|L1
+|ideas
+|Document mapping closest to JSON-LD; revision locking (one document only); typed `Link[T]` references (B5); projections; data migrations with a log, down and object-level steps (EV1, EV4, EV5); typing regression tests (D26). `save_changes()` sends only the diff when `use_state_management` is on (off by default). Variants: supports V1–V4 and approaches A, B.
+
+|ODMantic
+|Type-safe async and sync MongoDB access with Pydantic, through an engine.
+|Arthur Pastel (single maintainer). Data Mapper engine over Pydantic.
+|L1
+|ideas
+|The closest shape for the L1 `Session`: CRUD plus a query in 9 lines with persistence-free models. Passes DEC-5 barely. Variants: enables V1; supports V2–V4 and approaches A, B.
+
+|Piccolo
+|Async Postgres / SQLite applications with batteries: query builder, ORM, migrations, admin, scaffolding.
+|Daniel Townsend. Query-builder-first, batteries included.
+|L1, L4
+|ideas
+|Awaitable queries with `run_sync` (D7) and ContextVar transactions; test kit with `ModelBuilder` (D19); migrations with schema diff and down steps (EV1, EV3, EV4); admin from schema (U5). Variants: supports V1–V4 and approaches A–C.
+
+|Django ORM
+|The ORM of the Django web framework, with migrations and admin.
+|Django Software Foundation. Active Record, conventions.
+|L0, L1, L4
+|ideas
+|Query-set ergonomics; `transaction.on_commit` (B12); migrations (EV1). Variants: V1 API ideas.
+
+|Prisma
+|A TypeScript ORM with a schema language and a generated typed client.
+|Prisma Data Inc.; repository `prisma/prisma`, renamed `prisma/orm` (old URL redirects). Schema-first, generated client.
+|L0, L1, L5
+|ideas
+|Generated input types (G36); nested writes as the aggregate write shape; stable error codes (D24). The Python client is archived. Variants: approach B.
+
+|Drizzle
+|A SQL-shaped TypeScript ORM.
+|Drizzle Team. Code-first, SQL-transparent.
+|L1
+|ideas
+|Inspectable compiled query, `.toSQL()` (D17); tests on an embedded engine. Variants: V1 API ideas.
+
+|Ecto
+|Data mapping and validation for Elixir, with explicit, functional change tracking (changesets, explicit preloads).
+|Created at Plataformatec in 2013, now Dashbit; maintainers Eric Meadows-Jönsson, José Valim, Felipe Stival, Greg Rychlewski (`mix.exs:44`). Change-as-data.
+|L1, L6
+|ideas
+|Inspectable change-set `Ecto.Multi` (B8), validated before commit; `on_replace` semantics; not-loaded sentinel (D18); test sandbox. The change set doubles as the event delta (L6). Variants: enables V1; supports V2–V5 (emitted as mu changeSets in V2, inside vendor transactions in V3, V4); approaches A–C.
+
+|Spring Data JDBC
+|A DDD-friendly alternative to JPA: aggregate-oriented persistence over relational databases through repository interfaces; "simple, limited, opinionated" (`README.adoc:6-7`), with no lazy loading, dirty tracking or session.
+|Spring team (Jens Schauder), VMware, now Broadcom. Aggregate-first: one repository per aggregate root.
+|L1
+|ideas
+|The L1 design model: whole-aggregate load and save (B3, B4); version on the root; by-id references (B5); "did you mean" errors (D23). Domain events are published inside the repository call; after-commit needs `@TransactionalEventListener` (docs). Variants: enables V1; blocked in V2 (chunking proxy breaks atomicity); supports V3, V4, V5 write side; best fit for approach B.
+
+|cosmic-python
+|The code companion of _Architecture Patterns with Python_ (O'Reilly, 2020), teaching DDD, ports and adapters and event-driven architecture in Python.
+|Harry Percival and Bob Gregory (MADE.com). Pattern teaching; Meaningfy's house style.
+|L1, L6
+|ideas
+|Service layer of the generated backend: repository per aggregate, unit of work, message bus, events collected from touched aggregates; add the outbox it lacks (B9). Code fails DEC-5 on recency. Variants: enables V1; partial in V2 (bus redundant with delta-notifier); supports V3–V5; best fit for approach B, weak for C.
+
+|Event-sourcing frameworks (Axon, Marten, Eventuous, pyeventsourcing)
+|Event-sourced aggregates with expected-version appends and sagas.
+|AxonIQ, JasperFx and communities. Event-first.
+|L1, L6
+|ideas
+|Sagas and process managers (B16). Event sourcing as the primary store is rejected: the RDF graph is the truth.
+|===
+
+== Property graphs
+
+Side question (DEC-14): can the same ports serve a labelled property graph? No Python mapper
+targets both RDF and LPG today; the recommendation is to shape the seams (B8, PG1–PG4), not to
+build an LPG adapter now.
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|neosemantics (n10s)
+|Moving RDF in and out of Neo4j: import, export, vocabulary mapping, SHACL validation, light inference.
+|Neo4j Labs, Jesús Barrasa. Store-side bridge (Cypher procedures).
+|L2
+|ideas
+|Its RDF → LPG conventions are the reference for an LPG projection (PG2); lossy by default. Writes commit in independent batches of `commitSize` triples (default 25,000), so delete + import is not atomic: fit for an optional one-way export or rebuildable V5 replica for analysts, never a unit-of-work flush. Apache-2.0.
+
+|rdflib-neo4j
+|An rdflib store that streams triples into Neo4j with the n10s conventions.
+|Neo4j Labs, Jesús Barrasa. Bulk loader.
+|L2
+|ideas
+|Append-only bulk loader (cannot delete; full rebuilds only). Passes DEC-5 through the neo4j-labs organisation.
+
+|linkml-store Neo4j adapter
+|Storing LinkML collections in Neo4j as nodes and edges, behind linkml-store's generic collection API.
+|LinkML organisation; main author Chris Mungall. Schema-at-runtime collection API; node / edge projection.
+|L1, L2
+|ideas
+|Node / edge projection config and a backend-neutral `Query` object rendered per store (PG1, PG2). No unit of work, auto-commit per object; `apply_patches` reloads and replaces the whole collection. No RDF backend (Turtle export only). Variants: none for V1–V5; idea for approach C.
+
+|Amazon Neptune Analytics
+|openCypher queries over RDF and property-graph data in one managed service.
+|AWS ("OneGraph" research line). Cloud-service-first.
+|L2
+|compatible
+|The only "both models" product: our SPARQL adapter works as is, analysts use openCypher on the same data. AWS lock-in.
+
+|Kùzu
+|An embedded Cypher property-graph database.
+|kuzudb. Archived 2025-10.
+|L2
+|none
+|Dead; the community fork LadybugDB is young but could be an embedded test fake.
+
+|Memgraph / GQLAlchemy
+|An in-memory Cypher graph database; GQLAlchemy is its Pydantic object-graph mapper.
+|Memgraph Ltd. Store-first.
+|L1, L2
+|ideas
+|A possible target of a native LPG adapter (openCypher). Licence caveat (BSL per vendor, not verified).
+
+|GQL (ISO/IEC 39075:2024)
+|The standard property-graph query language.
+|ISO/IEC JTC 1. Specification.
+|L2
+|compatible
+|Standardises the query language, not an RDF ↔ LPG mapping; a target for a query renderer (PG1).
+
+|RDF 1.2 triple terms
+|Statements about statements in RDF (edge properties).
+|W3C RDF & SPARQL Working Group (Candidate Recommendation, 2026-04; later status not confirmed). Specification.
+|L1, L2
+|compatible
+|RDF side of edge-property mapping (PG3, R7).
+|===
+
+== Evolution, testing and operations
+
+[cols="2,4,3,2,1,3",options="header"]
+|===
+|Tool |Built for |Origin and angle |Layers |Fit |Where it fits
+
+|mu-migrations-service
+|Seeding and patching the shared triplestore of a semantic.works stack from ordered `.sparql` / `.ttl` files at boot.
+|Aad Versteden, redpencil.io (semantic.works). Store-first, file-based.
+|L2
+|ideas
+|Migration runner model (EV1, EV8); no checksum or lock, and it records a migration only after it has run, in a separate request (a crash re-runs it). Runs with a sudo header. Fails DEC-5 (2 stars, stale since 2024). Variants: supports V2 (already in mu-project stacks; reuse its file format); ideas for V1, V3–V5.
+
+|Alembic
+|Relational schema migrations for SQLAlchemy.
+|Mike Bayer, SQLAlchemy project. Model diff plus revision graph.
+|L0
+|ideas (benchmark)
+|Benchmark for versioned migrations, autogenerate (EV3, then human review), down migrations (EV4) and the current-version check (EV7). Offline mode renders a migration as SQL without running it; `alembic check` fails CI when the model has changes no migration covers (EV10). No checksum. Variants: pattern only (V4 transactional up / down maps onto T3); pattern for approach B.
+
+|ROBOT
+|An ontology build tool: reasoning, diff, quality checks.
+|ontodev (OBO community). Ontology-release-first, Java.
+|L0
+|build-time
+|Unanalysed alternative to Owlready2 for the reasoner gate (`robot reason`); `robot diff` for schema evolution. Passes DEC-5. Needs Java in CI.
+
+|testcontainers-python
+|Throwaway real dependencies (databases, services) in tests.
+|Testcontainers community (AtomicJar, now Docker). Container-first.
+|dev
+|adopt (test-only)
+|Real-store test matrix (Oxigraph, Fuseki, GraphDB, Fluree, plus OpenFGA and Keycloak modules); 46 community modules, none for an RDF store (D20); `toxiproxy` for fault injection (D27). Passes DEC-5. Variants: V1–V5.
+
+|pytest-bdd / behave
+|Running Gherkin scenarios in Python (pytest-bdd inside pytest).
+|pytest-dev / behave community. BDD-first.
+|dev
+|build-time
+|Service-level BDD tests; UI E2E stays with Cypress. Pass DEC-5. Variants: V1–V5.
+
+|schemathesis
+|Property-based testing of OpenAPI and GraphQL APIs.
+|Dmitry Dygalo and contributors. Contract-first fuzzing.
+|L4
+|build-time
+|Fuzzing of the generated OpenAPI (D28). Passes DEC-5. Variants: V1, V3, V4, V5.
+
+|OpenTelemetry Python instrumentations
+|Vendor-neutral traces and metrics (FastAPI, httpx, requests instrumentation).
+|OpenTelemetry project (CNCF). Vendor-neutral telemetry.
+|L1–L4 (ops)
+|dependency
+|Store-port spans and `traceparent` propagation (D29); Fluree accepts `traceparent`. Variants: V1–V5.
+|===

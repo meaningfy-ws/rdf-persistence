@@ -1,0 +1,204 @@
+= rdf-persistence architecture v1
+:description: The modest first commitments of the rdf-persistence toolkit.
+
+Status: *draft*, Proposed (2026-11-05).
+
+This version commits only to what the toolkit's first consumer needs in its first iteration. The
+xref:background/soa/index.adoc[background study] is not a commitment: a block is built only when a
+need below requires it. Each block is *v1* (built now) or *deferred* (not built until a need forces
+it).
+
+== Consumer needs
+
+What the first consumer requires, in generic terms. The consumer's own architecture maps its decisions
+and use cases to these ids; this toolkit does not know the consumer.
+
+[cols="1,6",options="header"]
+|===
+|Id |Need
+|N-1 |Store domain objects as RDF, one aggregate per named graph, and read them back as typed objects.
+|N-2 |Refuse a change made on stale data with a conflict, never a silent overwrite.
+|N-3 |Keep each tenant's data in its own database: create it when the tenant is created, drop it when the tenant is deleted, never read across tenants.
+|N-4 |Keep designated graphs in each tenant database: a metadata graph for the tenant's own details and a registry of the other graphs.
+|N-5 |Load an RDF file into a named graph of its own, replace it and drop it.
+|N-6 |Keep uploaded files byte for byte, per tenant, next to the RDF metadata that describes them.
+|N-7 |Authenticate every request with an OpenID Connect access token, and administer accounts through the identity provider.
+|N-8 |Allow or refuse each action from the caller's roles, global or per tenant, with the rules supplied by the consumer as data.
+|N-9 |Serve all of this over an HTTP API with a published contract, explicit error responses and version-checked writes.
+|N-10 |Test all of the above quickly without servers, and against the real store in CI.
+|N-11 |Keep a catalogue of tenants with their lifecycle state and the role grants of each user in each tenant, in a system database, so that listing a user's tenants and checking access never open a tenant database.
+|===
+
+== Components (C4 level 3)
+
+[mermaid]
+....
+graph TB
+    subgraph rp["rdf_persistence"]
+        KIT["Service kit<br/>token check, access check,<br/>problems, ETags"]
+        TEN["Tenancy<br/>catalogue, lifecycle, grants"]
+        SES["Aggregate session<br/>and repositories"]
+        MAP["Mapper"]
+        LOAD["Graph loading"]
+        POL["Access rules<br/>(consumer data)"]
+        SP(["Store port"])
+        FP(["File store port"])
+        IP(["Identity port"])
+    end
+    FUS["Fuseki adapter"]
+    VOL["Volume adapter"]
+    ZIT["Zitadel adapter"]
+    KIT -->|in-process| POL
+    KIT -->|in-process| TEN
+    TEN -->|in-process| SES
+    SES -->|in-process| MAP
+    SES -->|in-process| SP
+    LOAD -->|in-process| SP
+    TEN -->|in-process| SP
+    FUS -. implements .-> SP
+    VOL -. implements .-> FP
+    ZIT -. implements .-> IP
+....
+
+Ports are interfaces owned by the toolkit; adapters implement them and are chosen by the consumer's
+composition root. The consumer calls only the public API: `open_session`, the tenancy and loading
+functions, the file store, the identity port and the service kit.
+
+== Building blocks
+
+[cols="2,1,6,1",options="header"]
+|===
+|Block |State |v1 commitment |Needs
+
+|Store port
+|v1
+|One asynchronous interface: SPARQL 1.1 query and update, Graph Store Protocol (get, put, drop a graph), and database administration (create, drop, list).
+|N-1, N-3, N-5
+
+|Fuseki adapter
+|v1
+|One Fuseki dataset (TDB2) per database, administered through the Fuseki administration API; maps Fuseki's answers (`409` exists, `404` missing, `405` for a request to a dropped dataset) to the port's errors; the conformance suite checks that a dropped dataset leaves no files.
+|N-3
+
+|Mapper
+|v1
+|Domain object to triples and back, IRIs taken from the LinkML schema at run time (spike: about 70 lines). Owned parts are blank nodes in the root's graph; references to other aggregates are IRIs; multi-valued slots are sets; the concrete class of an abstract root comes from its `designates_type` slot.
+|N-1
+
+|Aggregate session and repositories
+|v1
+|Unit of work over one aggregate per commit; the aggregate's graph IRI is its root's IRI. The commit is one SPARQL update that replaces the graph's triples with the new ones and a fresh *version token*, guarded by the old token, and adds or removes the aggregate's registry entries; an `ASK` for the token then tells committed from conflict (Fuseki does not fail an update whose `WHERE` matched nothing). Repositories: get, add, update, remove; list by class with equality filters and paging.
+|N-1, N-2
+
+|Tenancy
+|v1
+|A system database (one per deployment) holding one *tenant access record* per tenant (`{tenant}/access`): label, database name, state (`active`, `deleting`) and owned *grants* (principal, role; at most one per principal). The tenant's root object lives in the designated `meta` graph (`graph: meta`); the `registry` graph comes into being with its first entry. *Create* writes the access record last, directly `active`; *delete* marks it `deleting` first and removes it last. A *start-up sweep*, run by the consumer's single instance before it serves, finishes `deleting` tenants and drops tenant databases and buckets that no record names; it never touches anything inside a live tenant.
+|N-3, N-4, N-11
+
+|Graph loading
+|v1
+|Parse an RDF file (Turtle, RDF/XML, N-Triples, JSON-LD) in a worker thread; refuse it with the parser's message if it does not parse; otherwise `PUT` it into a new named graph. The caller's commit registers it; an unregistered graph is dropped by the failing call or by the start-up sweep.
+|N-5
+
+|File store port and S3 adapter
+|v1
+|Put, get and delete a blob by a random key in a bucket per tenant, over the S3 protocol (any S3-compatible store); a put never creates a missing bucket (it is created with the tenant); dropping a tenant empties and deletes its bucket.
+|N-6
+
+|Token validation, identity port and Zitadel adapter
+|v1
+|Validate JWT access tokens (signature, issuer, audience, expiry) against the provider's cached published keys; read global roles from claims. Identity port: find an account by exact email, list accounts, disable and re-enable, grant and remove a global role.
+|N-7
+
+|Access check
+|v1
+|A route dependency in the service kit: each route declares its action; the check resolves the caller's global roles (token) and tenant roles (tenancy grants), applies the consumer's rules (action to allowed roles) and refuses with 403, or with 404 when the caller has no grant (and no global role the rules allow) or the tenant is not `active`. Tenant isolation comes from N-3, so queries are not rewritten.
+|N-8
+
+|Service kit
+|v1
+|FastAPI helpers: RFC 9457 problem responses, the aggregate version as `ETag` with `If-Match` required on updates and deletes (428 when missing, 409 on conflict), token validation and access check as dependencies, an OpenAPI contract with LinkML bookkeeping stripped. Plain JSON with an `id` holding the IRI, which is also JSON-LD through a generated context served at a fixed path and linked from every response (O-2).
+|N-9
+
+|Test kit
+|v1
+|A fake session and fake file and identity ports (pure Python) for consumers' unit tests; a test token signer; integration tests and a store conformance suite against Fuseki in a container, with in-memory datasets. The toolkit's own tests use a toy domain.
+|N-10
+
+|Model to code
+|v1
+|The xref:architecture/generation.adoc#metamodel[metamodel] and the `rp-generate` toolchain: xref:architecture/generation.adoc[generation workflow] (O-1); proven in a spike.
+|N-1
+
+|Typed query builder
+|deferred
+|v1 lists by class with equality filters, from templates with escaped terms, never by concatenating input.
+|
+
+|Unique keys across aggregates (e.g. a name unique within a kind)
+|deferred
+|v1 checks before the commit; two simultaneous writes can both pass.
+|
+
+|Sweep of orphans inside a live tenant (blobs, loaded graphs no aggregate names)
+|deferred
+|Orphans are invisible and erased with their tenant.
+|
+
+|Second store (Oxigraph, Virtuoso) and a capability descriptor
+|deferred
+|Needs an adapter mapping a database to a set of graphs; the descriptor arrives with it.
+|
+
+|Outbox, event bus and relay
+|deferred
+|No v1 need reacts to a change in another aggregate.
+|
+
+|Fine-grained access (graph or triple level), OpenFGA
+|deferred
+|Isolation is physical (N-3); in-tenant rules are role checks (N-8).
+|
+
+|GraphQL, JSON-LD framing and `application/ld+json` bodies, annotation sets, forms from shapes, schema migrations, server-sent events
+|deferred
+|No v1 need.
+|
+|===
+
+== Decisions taken
+
+[cols="1,4",options="header"]
+|===
+|Id |Decision
+|O-1 |Generated domain classes, runtime mapper: only the standard LinkML generators run, through the toolkit's templates; no generated mappers, repositories or routes. See xref:architecture/generation.adoc[generation workflow].
+|O-2 |Plain JSON with an `id` field holding the IRI, described by OpenAPI, and JSON-LD through a context generated from the schema: the body stays `application/json`, and a `Link` header (`rel="http://www.w3.org/ns/json-ld#context"`) points to the context. Plain clients are unaffected; JSON-LD processors read the body as RDF.
+|===
+
+[#public-api]
+== Public API and layer map
+
+Everything a consumer uses is exported from the top-level package `rdf_persistence`; nothing else
+may be imported (capability `rp-package-boundaries`). Generated consumer code imports the metamodel classes from the
+top level too: `rp-generate`'s split pattern points at `rdf_persistence`.
+
+[cols="2,2,4",options="header"]
+|===
+|Layer (module) |Blocks |Exported at top level
+|`rdf_persistence.domain` |metamodel classes (generated from `model/rp.yaml`), strict base model |`AggregateRoot`, `StoredFile`, `Principal`, `TenantAccess`, `Grant`, `TenantState`, `RegistryEntry`, `RpModel`
+|`rdf_persistence.services` |aggregate session and repositories, mapper, tenancy, graph loading, access check; the ports (`StorePort`, `FileStorePort`, `IdentityPort`) |`open_session`, `Tenancy`, `load_graph`, `AccessRules`, the three ports, the errors (`Conflict`, `NotFound`, `DatabaseGone`, …)
+|`rdf_persistence.adapters` |Fuseki, S3 and Zitadel adapters; token validation |`FusekiStore`, `S3FileStore`, `ZitadelIdentity`, `TokenValidator`
+|`rdf_persistence.entrypoints` |service kit (FastAPI dependencies, problem responses, ETags, OpenAPI hook) |`service_kit`
+|`rdf_persistence.testkit` |fake session and ports, token signer, Fuseki fixtures, conformance suite |`rdf_persistence.testkit` (a second public module, for tests only)
+|`rdf_persistence.generation` |`rp-generate` (build time; lint config, boundary check, templates) |the `rp-generate` command
+|`rdf_persistence/model/rp.yaml` |the metamodel schema, shipped as package data |resolved through the import map
+|===
+
+Layers import downward only: entrypoints → services → domain; adapters → services' ports and
+domain; `testkit` and `generation` may import any layer. The consumer's composition root imports the
+adapters from the top level.
+
+== Layering and boundaries
+
+Normative: capability `rp-package-boundaries` (layers import downward; no
+consumer imports or terms; consumers use the public API only).

@@ -1,0 +1,197 @@
+= semantic.works
+:description: A stack of Docker microservices around one shared triplestore: zero-code JSON:API from a domain file, an authorizing SPARQL proxy and change deltas. Our reference architecture.
+
+[IMPORTANT]
+.Background, not a commitment
+====
+This page is part of the state-of-the-art study moved from the rdf-persistence repository (commit `43dc152`). It records options and leanings, not decisions. What rdf-persistence commits to is in xref:architecture/index.adoc[rdf-persistence architecture v1].
+====
+
+== At a glance
+
+[cols="1,3"]
+|===
+|What it is for |Building linked-data web applications fast: services never call each other; they read and write the same triples. A declarative domain file becomes a full JSON:API for Ember; authorization and change events live in proxies around the store.
+|Origin and angle |mu-semtech (formerly mu.semte.ch): Aad Versteden and colleagues, first at TenForce, later at redpencil.io; used in Flemish government applications. App-platform and API-first. Core components carry a single named author in the package metadata (commit history not analysed; shallow clones).
+|Language |Common Lisp (mu-cl-resources, sparql-parser), JavaScript (delta-notifier, JS template), Python (Flask template), Elixir (identifier, dispatcher)
+|Licence |MIT per the code (`.asd`, `package.json`, `LICENSE`); GitHub detects no licence for several repos
+|Activity |Stars: sparql-parser 5, mu-cl-resources 18, mu-project 16, delta-notifier 0, templates 5 each. Last pushes 2026-06 to 2026-10. Every repo fails the DEC-5 star threshold.
+|Size |mu-cl-resources ~5.4k LOC Lisp; sparql-parser ~10.1k LOC Lisp; delta-notifier ~470 LOC JS; templates ~380–490 LOC
+|Layers |L0 partial (domain file, no codegen) · L1 partial (generic resource service, no domain objects) · L2 partial (any SPARQL 1.1 store, Virtuoso by default; multi-backend; no transactions) · L3 present (sessions, graph ACL; no OIDC) · L4 present (JSON:API) · L5 partial (Ember via JSON:API) · L6 present (deltas)
+|Verdict |*Borrow ideas and aim for compatibility; do not adopt the code.* The reuse value is in the contracts: JSON:API dialect, `domain.json`, delta format, header protocol. sparql-parser may be *integrated* as an optional external PEP (DEC-5 exception needed).
+|===
+
+== Purpose and origin
+
+*Built for* building user-facing linked-data web applications fast: microservices that never call each other and integrate through one shared triplestore, with Ember single-page front ends.
+Published as "An Ecosystem of User-facing Microservices supported by Semantic Models" (USEWOD 2015). In production in Flemish government applications (lblod "lokaal mandatenbeheer", Kanselarij Kaleidos, rollvolet).
+
+*Who and in which context.* Aad Versteden (author in every `.asd` and `package.json`) and colleagues, first at TenForce, later at redpencil.io.
+
+*Design angle.* Declarative configuration; cross-cutting concerns (identity, authorization, change events) live in proxies around the store.
+
+*Where each component fits.*
+
+[cols="2,4,2",options="header"]
+|===
+|Component |Built for |Layer
+
+|mu-cl-resources |Removing "repetitive and boring" CRUD back-end work through declarative configuration: a generic JSON:API for ember-data. No domain objects (not L1). |L4, L0 format
+|sparql-parser |A Common Lisp rewrite of mu-authorization: authorization moved "into a layer on top of the SPARQL endpoint", plus delta generation. It breaks request atomicity. |L3 PEP, L6, L2 replication
+|delta-notifier |Fan-out of raw deltas to subscribers; no persistence, ordering guarantee or policy filter. |L6
+|mu-identifier |Session identification at the edge and caching of access groups; no OIDC. |L3 edge
+|mu-dispatcher |Request routing (Elixir DSL); any reverse proxy covers it. |L4 gateway
+|Templates (Python, JS) |Quick-starting a service: framework, SPARQL client, header forwarding; no persistence layer, the gap rdf-persistence fills. |L1 seam
+|===
+
+As a library for a Python stack it fits nowhere: it is a runtime platform. Its contracts are the reuse value.
+
+== How it works
+
+*Request path.* Browser → identifier (session cookie → `MU-SESSION-ID`) → dispatcher (Elixir routing DSL) → mu-cl-resources (JSON:API ↔ SPARQL) → sparql-parser (authorizing proxy, served as `database`) → Virtuoso by default; sparql-parser talks to any SPARQL 1.1 endpoint, or several (`connection/client.lisp:9-53`).
+sparql-parser also sends deltas to delta-notifier, which calls subscribers such as `resource/.mu/delta`.
+The blueprint is `mu-project/docker-compose.yml`. Applications talk to `database`, so the proxy is transparent to them.
+
+*Domain → API.* Resources are declared in `domain.json` or Lisp `define-resource` (`domain-parsing.lisp:54-147`, `resource-model.lisp:605`): `class`, attributes `{type, predicate}`, relationships `{predicate, target, cardinality, inverse}`.
+On create, all supertypes are written; listings match `VALUES ?class { <subclasses> }` (`call-implementation.lisp:117-118, 318-320`).
+Routes are fixed `defcall`s for list, item, create, patch, delete and relationship links (`call-specification.lisp:14-504`).
+
+*Reads.* SPARQL is assembled with `format` strings (no AST).
+Lists page over `DISTINCT ?uuid` with a separate, cacheable `COUNT` (`response-generation.lisp:15-108`).
+JSON:API `filter[...]` paths compile to property paths (`:exact:`, `:gt:`, `:has-no:`, …; `response-generation.lisp:196-328`). `filter[:or:]` is *claimed, not found in code* (that part of the pipeline was not fully read).
+`include=a.b` builds one VALUES+UNION query, avoiding N+1 (`included-items.lisp:371-395`).
+
+*Writes.* Every resource carries a `mu:uuid` literal; the IRI is `new-resource-base` + UUID, and the client cannot choose it (`call-implementation.lisp:95-98`).
+PATCH deletes and reinserts only the properties sent (`:157-176`). Delete removes declared properties and links, incoming declared links too; undeclared triples stay (`:847-929`).
+`with-update-group` joins updates with `;` into one request (`query-execution.lisp:18-30`), but sparql-parser re-splits it into batches of roughly 100 quads or 8000 characters (heuristics, not hard limits; `handle-update-unit.lisp:3-7, 704-718`). No transactions, no optimistic locking.
+
+*Authorization (sparql-parser).* Group membership is a SPARQL SELECT over session data; each row becomes an access token whose parameters extend a graph IRI (`acl.lisp:66-95, 243-247`).
+Reads are *graph-level*: the proxy strips `GRAPH` and dataset clauses and adds `FROM` for each readable graph (`acl.lisp:249-263`).
+Writes are *triple-level by pattern*: each quad goes to the graphs whose type/predicate spec it matches (`acl.lisp:301-439`). Quads matching no spec make the operation fail with an error before it is written (default `+*unwritten-data-actions* '(:log :error)+`, `handle-update-unit.lisp:697-700, 740-766`); earlier operations in the same request may already be stored.
+
+*Deltas.* sparql-parser emits `changeSets` with `insert`, `delete`, `effectiveInsert`, `effectiveDelete`, `sequenceId`, `origin`, `allowedGroups` in SPARQL-JSON term encoding (`delta/messenger.lisp:36-116`).
+delta-notifier matches pattern rules, batches, folds and retries (`app.js:19-86`, `folding.js:8-53`). mu-cl-resources consumes deltas to clear its caches (`call-implementation.lisp:1180-1300`).
+
+*Templates.* Python (Flask + SPARQLWrapper) and JS (Express) give a raw SPARQL client that forwards the `mu-*` headers (`helpers.py:115-164`, `sparql.js:13-120`). There is no ORM; that gap is where rdf-persistence fits.
+
+== Scores
+
+[cols="2,1,6",options="header"]
+|===
+|Criterion |Score |Reason
+
+|C1 Feature coverage |3 |CRUD over HTTP, relationships with inverse, rich filters, include, pagination, typed and language literals, deltas; no transactions, identity map, JSON-LD or SHACL.
+|C2 Approach and patterns |3 |Clean metadata mapping and proxy patterns at stack level; no domain objects; string-built SPARQL.
+|C3 Developer friendliness |3 |Very short happy path; Lisp-only settings and hooks, terse errors, no static types, docs site not machine-readable.
+|C4 Ease of adoption |2 |Adoption means running 7 containers; no in-memory store, no library mode.
+|C5 Reuse of foundations |2 |Re-implements the SPARQL parser, JSON and client in Lisp; templates use SPARQLWrapper and rdflib.
+|C6 Data-centric and DDD fit |2 |Declarative, but an API mapping, not a domain model; services share the whole store; no LinkML or OWL source.
+|C7 SPARQL 1.1 portability |3 |Plain SPARQL 1.1 Query/Update; Virtuoso-oriented defaults and workarounds; no Graph Store Protocol.
+|C8 Health |3 |MIT, active, in production; no unit tests in core components, CI builds images only, a single named author in package metadata (commit history not analysed).
+|C9 Composability |3 |Every service swappable behind HTTP and SPARQL 1.1; JSON:API and SPARQL-JSON deltas; no JSON-LD, SHACL, LinkML, GSP, RDF/JS or OIDC; `mu:uuid` and a custom boolean type leak into data.
+|C10 Maintainability and operability |2 |Small, versioned images with tag-bump upgrades; but 5+ configuration languages, 7+ containers, Common Lisp core, sparql-parser at 0.0.x, logs only.
+|DX |3 |Excellent prototyping (2 files, no code) and a first-class front end; polyglot config, opaque 500s and restarts to change the model.
+|===
+
+== What to borrow
+
+* *The JSON:API dialect* of mu-cl-resources: URL shapes, `filter[...]` grammar, `sort`, `include`, `fields`, 0-based `page[number]`, `meta.count`. Speaking it lets existing Ember/JS front ends work unchanged. semantic.works has no JSON:API Atomic Operations; if we offer them, they are our extension of the dialect.
+* *`domain.json` v0.1 as an import format.* It maps cleanly to LinkML (resource → class, attribute → slot, `super` → `is_a`); a converter is cheap.
+* *`mu:uuid` + base-IRI identity* as an optional minting strategy, for data visible to both stacks.
+* *The delta format* (`changeSets`, effective inserts/deletes, sequence ids) as the change-event schema, plus a Python delta consumer for cache invalidation.
+* *Header propagation* (`mu-session-id`, `mu-call-id`, `mu-auth-allowed-groups`, `mu-auth-sudo`, `mu-auth-scope`) as a pluggable request context on the SPARQL adapter.
+* *Per-property delete/insert* as the default flush strategy; *batched include* via VALUES+UNION.
+* *Policy ideas from sparql-parser:* SPARQL-defined groups, parameterised graph templates, type/predicate write dispatch, caller scopes, delta-only virtual graphs (`:sparql nil :delta t`).
+* *Authorization outside the persistence layer*, behind a SPARQL-protocol proxy.
+* *Edge sanitisation of internal security headers:* mu-identifier deletes client-sent `mu-auth-*`, session and call-id headers from requests and responses and reissues the ones it owns from a signed, encrypted session cookie (`mu-identifier/lib/proxy.ex:23-34`, `lib/manipulators/clear_mu_internal_keys.ex:5-15`, `add_custom_request_headers.ex:7-47`). We would use an allow-list instead of its deny-list.
+
+== What to avoid
+
+* *No transactions.* The proxy re-batches writes; a partial write is possible (`handle-update-unit.lisp:704-718`).
+* *Trusted headers from internal callers.* sparql-parser takes `mu-auth-allowed-groups` from the request without recomputing it, and `mu-auth-sudo` bypasses the ACL (`acl.lisp:175-212, 253`).
+Browsers cannot inject these: mu-identifier strips browser-sent `mu-auth-*` headers at the edge and reissues the ones it owns (`clear_mu_internal_keys.ex:5-15`, `add_custom_request_headers.ex:7-47`).
+The risk is *internal* callers: any container on the Docker network, or any service port published past the identifier, can send `mu-auth-sudo` or forged groups straight to sparql-parser. The JS template's sudo opt-in is a client-side courtesy, not enforcement (`helpers/mu/sparql.js:17-23`).
+The strip list is a deny-list, so a future `mu-*` header would pass through; mu-dispatcher strips nothing security-related.
+* *World-writable default:* the default config grants `(read write)` on the public graph to group `"public"`.
+* *String-assembled SPARQL* throughout mu-cl-resources.
+* *Whole-store integration* couples services through the vocabulary, against aggregate boundaries.
+* *Virtuoso bias in the defaults:* custom boolean datatype, `virtuoso-p` binding expansion, long-string-to-file workaround. Other SPARQL 1.1 stores are not excluded.
+* *Silent cache staleness* when a writer bypasses sparql-parser.
+* *Python template flaws:* module-global SPARQLWrapper clients mutated per request; no sudo or scope.
+* *Lossy deltas.* sparql-parser queues deltas in an in-memory bus, lost on restart (`delta/message-bus.lisp`, `messenger.lisp:63-90`); delta-notifier answers 204 before delivering (`app.js:39-40`) and retries 0 times by default (`send-request.js:95`). No replay, so caches and reactive services go stale. Not suitable as an outbox.
+* *Docs drift.* `POST /people/<uuid>` is a doc error (code posts to the collection, `call-specification.lisp:87`). delta-notifier still points to the Elixir mu-authorization. `mu-auth-used-groups` is *claimed (for mu-authorization), not found in sparql-parser* (`connection/server.lisp`). mu-dispatcher's `RemoveAcceptEncodingHeader` matches `"accept_encoding"` with an underscore, so it never fires (`remove_accept_encoding_header.ex:8`): *claimed, not working in code*.
+
+== Authorization seams
+
+* *The seam is a SPARQL-protocol proxy*, invisible to services except through headers. It is the closest existing match to DEC-8's "ACL-agnostic persistence behind an authorizing proxy".
+* *Granularity:* graph-level reads, triple-pattern writes. Triple-level read confidentiality must be modelled by splitting data into graphs at write time.
+* *How a Python service on rdf-persistence plugs in:* point the SPARQL adapter at `database`; forward `mu-session-id`, `mu-call-id`, `mu-auth-allowed-groups` per request and copy the latter back to the response; support `mu-auth-sudo` (gated) and `mu-auth-scope`; never rely on `GRAPH`/`FROM` (they are stripped); expect HTTP 500, not 403, for denied writes; make write batching idempotent.
+* *Generating the config:* `define-prefixes` and `define-graph` type specs can come from LinkML `prefixes`, `class_uri` and `slot_uri` plus an annotation per class or slot. Group queries and grants are policy, not structure, and must be authored separately.
+* *Verdict:* integrate sparql-parser as an *optional* external PEP (DEC-5 exception needed); do not make it the default for MWBv2 (fails DEC-5, Common Lisp, trusts headers from internal callers, no OIDC/JWT, graph-level reads only). For V5 it is the existing graph-level read proxy.
+
+== Code-generation fit
+
+* The domain file is an API mapping read at boot, not generated code. An external OpenAPI generator exists (`cl-resources-openapi-generator`, *claimed, not analysed*).
+* *LinkML → `domain.json`* is straightforward: class → resource with `class`, slot with `slot_uri` + range → attribute, object slot with `multivalued` and `inverse` → relationship, `is_a` → `super`, id prefix → `new-resource-base`.
+* *LinkML → sparql-parser `define-graph`* is feasible for the structural part (see above).
+* *Front-end models* (ember-data, TS types) are written by hand; generating them from the model is a gap (G16).
+
+== Variant fit
+
+See xref:background/soa/variants.adoc[variants]. The contracts (JSON:API dialect, `domain.json`, delta format, `mu-*` header protocol) support every variant; the runtime components are needed only for V2.
+
+[cols="2,1,5",options="header"]
+|===
+|Variant / approach |Fit |Why
+
+|V1 Portable Python core |supports |Contracts as one service profile, import format and outbox format; sparql-parser optional as a graph-level PEP; mu-cl-resources and the identifier block (Lisp, no domain rules, no OIDC).
+|V2 semantic.works-compatible |enables |Requires the dialect, sparql-parser, identifier and dispatcher; rdf-persistence replaces the Python template.
+|V3 Fluree |partly: contracts support; sparql-parser blocks |sparql-parser would duplicate Fluree's native policies; contracts still usable (deltas adapted from Fluree commits).
+|V4 GraphDB |partly: contracts support; sparql-parser blocks |sparql-parser splits GraphDB transactions and duplicates its access control; contracts still usable.
+|V5 Graph-direct reads |enables |sparql-parser is an existing policy-aware read proxy (graph-level only; fails DEC-5); deltas can feed a read replica.
+|A Runtime mapper |supports |ACL-agnostic behind the header protocol; LinkML ↔ `domain.json` converter.
+|B Generated mapper and routes |supports |Generated routes can speak the dialect.
+|C Generic service |enables |mu-cl-resources is the archetype: a generic service read from a domain file at boot.
+|===
+
+== Final verdict
+
+*Compatible.* Honour the contracts (JSON:API dialect, `domain.json`, `changeSets`, `mu-*` headers); run the runtime only for V2 (sparql-parser optionally as a graph-level PEP; DEC-5 exception needed); adopt no code.
+
+. *Security sits at two perimeters.* The identifier sanitises the browser edge, but sparql-parser trusts any internal caller's `mu-auth-sudo` and group headers: in a semantic.works deployment, network isolation _is_ the authorization boundary.
+. *There is no atomicity and no durable change log.* The proxy re-splits updates into batches and deltas are best-effort (in-memory, retry 0). All-or-nothing writes or reliable events need our own unit of work and outbox, or another variant.
+. *The value is the contract, not the code.* Zero-code JSON:API from a model, policy-driven graph placement and proxy-emitted deltas are the patterns to reproduce in Python/LinkML; reproducing the mu dialect exactly (UUID ids via `mu:uuid`) is the price of Ember compatibility.
+
+== Feature coverage
+
+[cols="2,1,1,1,1",options="header"]
+|===
+|Round (taxonomy) |Present |Partial |Absent |n.a.
+|Round 1 (v0, 43 features) |17 |12 |14 |0
+|Round 2 (v1 additions, 63) |20 |16 |27 |0
+|Round 3 (v2 additions, 19) |3 |8 |8 |0
+|Round 4 (v3 additions, 102) |17 |26 |56 |3
+|Round 5 (v4 additions, 77) |1 |20 |50 |6
+|===
+
+Notable present features:
+M2 schema language (`domain.json`), M4 inheritance, M15 external model file, R2 references with inverse, R3 include depth, L2 language strings, L3 literal-type registry, P2/P8 per-property owned updates, P12 policy-driven graph placement, P17 large-literal offloading, P18 quad-transformation hooks,
+Q2 filter DSL, Q5 multi-hop, Q9 batched include, Q10 grouped results, Q14 standard filter language, Q17 polymorphic queries,
+S5 read/write split, S6 cache with delta invalidation, S7 retries and chunking, S9 multi-backend replication,
+X3/X6 generated JSON:API, X5/X12 delta change-sets, X9 API ↔ storage vocabulary, X13 request-context propagation,
+D3 framework templates, D6 lifecycle hooks, D9 service scaffold, RAD1 zero-code CRUD, RAD2 declarative routing, A1/A2 auth-proxy design.
+
+Notable absences: P4/P13 transactions, X1 JSON-LD, M13 SHACL, S1 in-memory store, S3 GSP, D5/D8 test support, S13 streaming.
+
+Notable present/partial v3 features: present AZ1 PEP at the store boundary (proxy form), AZ2 policy injection before pagination, AZ3 rewriting PEP on a SPARQL AST, AZ5 write authorization on the changeset, AZ12–AZ15, AZ19 per-request identity propagation, AZ20 token caching across hops, AZ22 caches partitioned by principal, G6 language strings, G26 inheritance-safe mapping config, T11 write-batch limits, E6 delta-only graphs, E7 call-id trail, D13 model-aware errors; partial AZ6–AZ11, AZ16 sudo (honoured from any caller), AZ17, AZ24 (denied writes surface as 500), AZ27, G5, G9 (external), G10, G13, G14, G23, T1 (re-split by the proxy), E1 (in-memory, lost on crash), E3, E4, E5, E8, S18, S19.
+Absent: AZ23 trusted-proxy gate (network trust only), X18 Atomic Operations, X19 conditional requests, T2–T10.
+Its round-3 proposals are now v3 ids AZ12–AZ16, AZ20, AZ29, E6, E7, E5, G16 and T11.
+
+Proposed in round 4: AZ36 edge sanitisation of internal security headers (see What to borrow).
+
+== Sources
+
+* Repositories (mu-semtech): https://github.com/mu-semtech/mu-cl-resources (`d083c3e`), https://github.com/mu-semtech/sparql-parser (`4059dcd`), https://github.com/mu-semtech/delta-notifier (`2fac0f5`), https://github.com/mu-semtech/mu-python-template (`1fc512b`), https://github.com/mu-semtech/mu-javascript-template (`e7a2705`), https://github.com/mu-semtech/mu-project (`684f626`), https://github.com/mu-semtech/mu-identifier (`4d8978b`), https://github.com/mu-semtech/mu-dispatcher (`f85e83b`)
+* Documentation: https://semantic.works/ (SPA, content not retrievable), https://mu.semte.ch/about/, https://mu.semte.ch/getting-started/, https://mu.semte.ch/2019/01/02/on-sharing-authorization/
+* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/semantic-works.md`
+* See also: xref:background/soa/angles/authz.adoc[Authorization angle], xref:background/soa/angles/service.adoc[Service angle]

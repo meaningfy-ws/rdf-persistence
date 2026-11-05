@@ -1,0 +1,378 @@
+= Architecture analysis
+:description: The state-of-the-art review read as architecture: drivers, use cases, how each use case is realised across layers and variants, what to build and what to reuse, and the decisions left to the developer.
+:toc: macro
+
+[IMPORTANT]
+.Background, not a commitment
+====
+This page is part of the state-of-the-art study moved from the rdf-persistence repository (commit `43dc152`). It records options and leanings, not decisions. What rdf-persistence commits to is in xref:architecture/index.adoc[rdf-persistence architecture v1].
+====
+
+[NOTE]
+====
+*Status:* summary of the architecture analysis (change `soa-python-rdf-orm`, task 6), refreshed
+with the round-5 findings. It presents options; it decides nothing.
+The full sources are in `openspec/changes/soa-python-rdf-orm/architecture/`:
+`business-context.md`, `use-cases.md` (Cockburn White and Blue use cases),
+`realisation-matrix.md`, `c4-views.md`, `candidate-adrs.md`, and every diagram as PlantUML in
+`diagrams/*.puml`.
+Related pages: xref:background/soa/design-implications.adoc[design implications],
+xref:background/soa/building-blocks.adoc[building blocks],
+xref:background/soa/variants.adoc[architecture variants],
+xref:background/soa/catalogue.adoc[tool catalogue].
+====
+
+toc::[]
+
+== System of interest
+
+The *rdf-persistence ecosystem*: the rdf-persistence library plus the companions it implies —
+code-generation templates, a generated data-management service and a generated client contract
+for the JavaScript UI. Triple stores, identity providers, authorization engines and UI frameworks
+are external.
+
+[mermaid]
+....
+flowchart TB
+  subgraph Business["Business layer"]
+    MC["Model Custodian"]
+    SB["Software Builder"]
+    UID["UI Developer"]
+    EU["End User"]
+    EC["External Consumer"]
+    OP["Operator"]
+  end
+  subgraph SOI["rdf-persistence ecosystem"]
+    S1(["Model-to-Code Generation"])
+    S2(["Domain Persistence"])
+    S3(["Data-Management API"])
+    S4(["Change Notification"])
+    S5(["Store and Schema Administration"])
+  end
+  subgraph Ext["External systems"]
+    TS["Triple Store"]
+    IDP["Identity Provider"]
+    PDP["Authorization Engine"]
+    CH["Event Channel"]
+    MT["Modelling Toolchain"]
+  end
+  S1 -->|serves| MC
+  S2 -->|serves| SB
+  S3 -->|serves| UID
+  S3 -->|serves| EU
+  S3 -->|serves| EC
+  S4 -->|serves| EC
+  S5 -->|serves| OP
+  MT -->|serves| SOI
+  TS -->|serves| SOI
+  IDP -->|serves| SOI
+  PDP -->|serves| SOI
+  CH -->|serves| SOI
+....
+
+== Architectural drivers
+
+Each driver cites the ask it comes from (brief = developer's seed brief; mwb2 = the scope
+extension with the Confluence digests; DEC-n = key decisions of the EPIC).
+
+[cols="1,6,3",options="header"]
+|===
+|Id |Driver |Source
+
+|AD-1 |Two entry modes: classes declared in code, or domain and repositories generated from LinkML |brief; approaches A–D
+|AD-2 |Full CRUD with transaction management handled by the library |brief
+|AD-3 |rdflib by default; portable over SPARQL 1.1 |brief; DEC-2
+|AD-4 |DDD consistency boundaries: aggregates in one transaction, others through events |mwb2 follow-up; DEC-13
+|AD-5 |Model-driven chain UML → model2owl → LinkML → generated, never-edited code |mwb2 runbook; DEC-7
+|AD-6 |A JSON-LD backend: a middleware layer over the store for the UI |brief; mwb2
+|AD-7 |Friendly to the JavaScript ecosystem; rapid application development like semantic.works |mwb2; Confluence SOTA RAD; DEC-3
+|AD-8 |Several architecture variants and development approaches from one core |DEC-10
+|AD-9 |Store switching, including Fluree; property graphs as a side question |mwb2; DEC-10, DEC-14
+|AD-10 |Change events for UI refresh and decoupled aggregates |DEC-10
+|AD-11 |ACL-agnostic persistence |mwb2; DEC-8
+|AD-12 |Authorization borrowed, never built; graph level, triple level preferred; declarative policies |brief; mwb2; DEC-8
+|AD-13 |Developer experience developers love: CRUD plus a query in about 10 lines; errors that name model, IRI and fix |brief; DEC-12
+|AD-14 |Reuse mature foundations; dependency only above the reuse threshold |DEC-4, DEC-5
+|AD-15 |Coherent, composable, maintainable ecosystem |DEC-11
+|AD-16 |Testability: TDD, Gherkin, end-to-end tests, coverage ≥ 90 % |mwb2 runbook
+|AD-17 |Day-2 evolution: schema changes become reviewed, recorded data migrations gated by SHACL |tasks 4.10; round 4
+|AD-18 |Learnability through mainstream Python conventions (Pydantic, `select`, `with session.begin()`, FastAPI dependencies) |DEC-12; round 4
+|AD-19 |Transparent persistence: printable change sets and queries; no hidden flushes or lazy loads |DEC-12, DEC-13; round 4
+|AD-20 |Bounded contexts as schema modules; only IRIs and events cross them |DEC-13; round 4
+|AD-21 |Keep property graphs possible: abstract change set, query tree, raw SPARQL on its own port, graph as scope |DEC-14; round 4
+|AD-22 |Observability and operations: store-port tracing, backup, upgrade paths |tasks 4.10; round 4
+|===
+
+*Constraints found by the review.* One SPARQL Update request is the only portable atomic unit,
+and a failed guard skips only its own operation, so a commit must be *one* operation joining
+every guard and carrying the outbox and new owned children, confirmed by an ASK (on the primary) for an append-only commit record unique to this commit — not a "last transaction" marker, which a later writer would overwrite. New aggregates need a creation guard. On-disk Oxigraph does not serialise guarded updates, so its adapter needs a write lock. Blank nodes cannot be deleted by template,
+so owned children need IRIs. LinkML has no composition construct. Graph level is the only
+portable authorization granularity. No Python object–RDF mapper, RDF migration runner or LinkML
+schema diff passes the reuse threshold or exists at all. Licences to check: Fluree BUSL-1.1,
+Zitadel AGPL-3.0.
+
+*Unknowns that would normally be drivers:* scale, latency budget, availability target, whether
+graph-level authorization is enough, and whether the UI will ever send free SPARQL.
+
+== Use cases
+
+White use cases state the contract at the system boundary; Blue use cases realise one White use
+case over one surface and state only the deltas.
+
+[cols="1,4,2,5",options="header"]
+|===
+|Id |Use case |Primary actor |Blue realisations
+
+|UC-W1 |Model the domain and generate the application code |Model Custodian |B1.1 runtime mapper · B1.2 generated mapper, field metamodel, routes and client, with boundary checks · B1.3 classes declared in code (approach D) · B1.4 generic service
+|UC-W2 |Persist an aggregate in one transaction |Software Builder |B2.1 aggregate session, single guarded operation confirmed by an ASK on an append-only commit record · B2.2 native transaction · B2.3 capability-driven degradation
+|UC-W3 |Query and navigate domain objects |Software Builder |B3.1 load an aggregate by identity · B3.2 filtered, paged list · B3.3 read model
+|UC-W4 |Restrict data to what the user is permitted |End User |B4.1 pass-through · B4.2 scope from a decision engine · B4.3 change check before commit
+|UC-W5 |Serve the domain as a data-management API |External Consumer |B5.1 JSON-LD resource API · B5.2 JSON:API with atomic operations
+|UC-W6 |Build a JavaScript UI on the API |UI Developer |B6.1 generated typed client · B6.2 graph-direct reads
+|UC-W7 |React to changes |External Consumer |B7.1 outbox, in-process bus and relay · B7.2 store or proxy change capture
+|UC-W8 |Evolve the schema and migrate data |Model Custodian |B8.1 migration runner · B8.2 migrations from a schema diff · B8.3 rehearsal
+|UC-W9 |Switch or add a store |Operator |B9.1 SPARQL store adapter · B9.2 property-graph adapter (side)
+|UC-W10 |Test the application against real stores |Software Builder |B10.1 conformance matrix and test kit · B10.2 service, contract and UI tests
+|===
+
+== Realisation matrix (condensed)
+
+Layers L0–L6 and variants V1–V5 as in xref:background/soa/building-blocks.adoc[building
+blocks] and xref:background/soa/variants.adoc[variants]. *Reuse* = exists and is taken as a
+dependency, integrated or honoured; *partial* = exists with a gap to close; *build* = missing.
+Approaches A–C as in xref:background/soa/variants.adoc[variants]; approach *D* is
+hand-written classes (code-first, the EPIC's SQLAlchemy-like entry mode): the same mapper
+metadata comes from `Annotated` markers and class attributes instead of generated `linkml_meta`.
+D gives the fastest start but no schema single source of truth, and no generated SHACL, TS or
+OpenAPI unless reverse-generated from the classes; ADR-03 stays open.
+
+[cols="1,1,2,4,4",options="header"]
+|===
+|Use case |Layers |Variants |Reuse / partial |Build
+
+|UC-W1 |L0 (→ L1, L4, L5) |all; A, B, C, D
+|LinkML generators, schema-automator, model2owl, pySHACL / partial: IRI types, language strings, TS output, full mapping metadata
+|Mapper, boundary derivation and checks, templates (repositories, field metamodel, routes, contract)
+
+|UC-W2 |L1, L2 (+L3, L6) |V1, V3, V4, V5; V2 degraded only
+|rdflib stores, RDF4J/GraphDB clients, pyoxigraph, Fluree / partial: one joined update without guard, compensation log
+|Aggregate session, change set compiler (single guarded operation + append-only commit record), store port with capability descriptor, outbox
+
+|UC-W3 |L1, L2 |all; V5 adds read side
+|SPARQL clients, read replicas
+|Query tree with SPARQL renderer and `to_sparql()`, explicit loading, typed projections, raw SPARQL port
+
+|UC-W4 |L3 (+L1 port) |V1 scope; V2 proxy; V3, V4 store-native; V5 both
+|Zitadel or Keycloak, OpenFGA / SpiceDB / pycasbin, Fluree policies, GraphDB access control, sparql-parser
+|Policy-enforcement port (three modes), scope translator
+
+|UC-W5 |L4 |V1, V3–V5 JSON-LD; V2 JSON:API
+|FastAPI, PyLD, semantic.works JSON:API dialect / partial: SHACL report to problem responses
+|Route and contract generator, conditional writes from versions, atomic operations → one session
+
+|UC-W6 |L5 |all; V5 graph-direct
+|OpenAPI client generators, TanStack Query, jsonld.js, form and admin libraries, LDkit / partial: frames, push-to-cache glue
+|—
+
+|UC-W7 |L6 (+L1) |V1, V4, V5 outbox; V2, V3 store or proxy capture
+|SSE, RDF Patch, semantic.works change sets, Fluree events
+|Outbox records, in-process bus, event relay
+
+|UC-W8 |L0, L2 |all; V3 branch rehearsal; V4 transactional steps
+|LinkML regeneration and deprecation hints, pySHACL, linkml-map, mu-migrations file format
+|Migration runner (checksum, lock, log), schema diff and migration compiler
+
+|UC-W9 |L2 |all
+|rdflib, pyoxigraph, RDF4J clients, OpenTelemetry / partial: adapters wrapping them
+|Store port and capability descriptor; property-graph adapter only if needed
+
+|UC-W10 |all |all
+|testcontainers, pytest-bdd, schemathesis, Cypress, in-memory stores
+|Store fixtures, conformance suite, test kit
+|===
+
+=== Layer composition of the default variant (V1)
+
+Green = reuse, amber = partial, red = build.
+
+[mermaid]
+....
+flowchart TB
+  classDef ex fill:#c8e6c9,stroke:#2e7d32
+  classDef pa fill:#ffe0b2,stroke:#ef6c00
+  classDef mi fill:#ffcdd2,stroke:#c62828
+  a0["L0 LinkML + templates"]:::pa
+  a5["L5 generated TS client, TanStack Query, jsonld.js"]:::ex
+  a4["L4 generated service: JSON-LD, OpenAPI, ETag"]:::mi
+  a3["L3 IdP + decision engine"]:::ex
+  a3p["L3 enforcement port + scope translator"]:::mi
+  a1["L1 aggregate session, change set compiler, mapper, repository, query tree"]:::mi
+  a2["L2 store port + SPARQL adapters"]:::pa
+  a2s["L2 any SPARQL 1.1 store"]:::ex
+  a6["L6 outbox + relay"]:::mi
+  a6s["L6 SSE"]:::ex
+  a0 -.-> a1
+  a5 --> a4
+  a4 --> a3
+  a4 --> a1
+  a1 --> a3p
+  a1 --> a2
+  a2 --> a2s
+  a1 --> a6
+  a6 --> a6s
+....
+
+== Components of rdf-persistence (C4 level 3)
+
+[mermaid]
+....
+flowchart TB
+  APP["Service routes / domain code"]
+  subgraph RP["rdf-persistence (in-process library)"]
+    REPO["Repository (per aggregate root)"]
+    AS["Aggregate Session<br/>identity map, snapshots, commit policy"]
+    MAP["Mapper<br/>owned predicates"]
+    CSC["Change Set Compiler<br/>single guarded operation"]
+    QB["Query Builder<br/>query tree"]
+    SP["Store Port + Capability Descriptor"]
+    PEP["Policy Enforcement Port<br/>pass-through / scope / change check"]
+    RAW["Raw SPARQL Port"]
+    OB["Outbox + Event Bus"]
+    AD["Store adapters<br/>SPARQL-HTTP / transactional / embedded"]
+  end
+  subgraph BT["codegen (build time)"]
+    MMG["Metamodel Generator + Boundary Checker + Templates"]
+  end
+  STORE["Triple Store"]
+  ENG["Authorization Engine"]
+  APP -->|in-process| REPO
+  APP -->|in-process| AS
+  REPO -->|in-process| AS
+  REPO -->|in-process| QB
+  AS -->|in-process| MAP
+  AS -->|in-process| CSC
+  AS -->|in-process| PEP
+  AS -->|in-process| OB
+  CSC -->|in-process| SP
+  QB -->|in-process| SP
+  QB -->|in-process| PEP
+  AD -. implements .-> SP
+  AD -. implements .-> RAW
+  AD -->|SPARQL protocol| STORE
+  PEP -->|decision request| ENG
+  MMG -. generates .-> APP
+....
+
+=== Commit an aggregate
+
+One update operation carries every version guard, the data, the outbox
+records, the new owned children and an append-only commit record; an ASK for that record on the primary tells *committed* from *conflict*. Transactional stores and Fluree's commit receipt make the ASK unnecessary.
+
+[mermaid]
+....
+sequenceDiagram
+  autonumber
+  participant App as Application code
+  participant AS as Aggregate Session
+  participant CSC as Change Set Compiler
+  participant PEP as Policy Enforcement Port
+  participant SP as Store Port
+  participant TS as Triple Store
+  App->>AS: commit()
+  AS->>CSC: compile(diff, versions, events)
+  CSC-->>AS: change set: guards v=n and creation guards, children, outbox, commit record T
+  AS->>PEP: check(change set, identity)
+  alt permitted
+    AS->>SP: execute(change set)
+    opt store does not serialise guarded updates
+      SP->>SP: take adapter write lock
+    end
+    SP->>TS: DELETE INSERT WHERE all guards (one operation)
+    SP->>TS: ASK commit record T on the primary
+    alt commit record present
+      SP-->>AS: committed v=n+1
+      AS-->>App: ok, events dispatched after commit
+    else commit record absent
+      SP-->>AS: ConcurrencyConflict
+      AS-->>App: ConcurrencyConflict, reload and re-apply
+    end
+  else denied
+    AS-->>App: PermissionDenied, no store call
+  end
+....
+
+== Build list and reuse list
+
+[cols="1,1",options="header"]
+|===
+|Build (rdf-persistence and companions) |Reuse
+
+a|
+*Core library*
+
+* BL-1 Mapper from IRI metadata (owned predicates, multi-valued, language strings, not-loaded sentinel)
+* BL-2 Aggregate session (identity map, snapshots, commit policy, preview, hooks, error codes)
+* BL-3 Change set compiler (single guarded operation with creation guards, outbox and children inside; append-only commit record confirmed on the primary; version as metadata)
+* BL-4 Repository and query tree (SPARQL renderer, projections, raw SPARQL port)
+* BL-5 Store port, capability descriptor (incl. whether guarded updates are serialised), adapters (write lock for on-disk Oxigraph), opt-in degradation, tracing
+* BL-6 Policy-enforcement port (pass-through, scope, change check)
+* BL-7 Outbox and in-process event bus
+* BL-8 Test kit and conformance suite
+
+*Companions*
+
+* BL-9 LinkML template fixes
+* BL-10 Generator: boundaries, repositories, field metamodel, routes, contract
+* BL-11 Service kit: negotiation, ETags, problem responses, atomic operations
+* BL-12 Scope translator
+* BL-13 Event relay and SSE bridge
+* BL-14 Migration runner
+* BL-15 Schema diff and migration compiler (scope open)
+
+*Optional:* BL-16 read model (V5), BL-17 generic service (approach C), BL-18 property-graph adapter.
+
+a|
+* *L0:* LinkML, pydantic, pySHACL; model2owl (in-house; DEC-5 exception needed), schema-automator, linkml-map (build time)
+* *L1:* rdflib, pydantic, pySHACL, PyLD
+* *L2:* rdflib stores and RDF4J/GraphDB clients, pyoxigraph, SPARQLWrapper, OpenTelemetry; Fuseki, Oxigraph, RDF4J, GraphDB, Fluree, QLever, Virtuoso
+* *L3:* Authlib / PyJWT; Zitadel or Keycloak; OpenFGA, SpiceDB, pycasbin, Cerbos; Fluree policies, GraphDB access control, jena-fuseki-access, sparql-parser (DEC-5 exception needed)
+* *L4:* FastAPI; semantic.works JSON:API dialect (contract only; its code would need a DEC-5 exception); Strawberry or Ariadne (optional)
+* *L5:* jsonld.js, TanStack Query, zod, openapi-typescript / orval / hey-api, react-admin, RJSF / JSON Forms, LDkit (DEC-5 exception needed), Comunica
+* *L6:* SSE / Mercure, RDF Patch, semantic.works change sets (format only; its code would need a DEC-5 exception), Fluree events
+* *Testing:* testcontainers, pytest-bdd, schemathesis, Cypress
+|===
+
+The reuse list is wider than xref:background/soa/build-vs-reuse.adoc[build versus reuse]: it
+also names alternatives (Cerbos, SpiceDB, QLever, Virtuoso, SPARQLWrapper, Strawberry or
+Ariadne), not only the recommended pick per layer. Reuse threshold (DEC-5): more than 200 GitHub
+stars and a commit within 12 months; components below it are marked.
+
+Nothing at the level of the RDF model, parser, store, SPARQL client, identity provider, policy
+engine, test framework or JavaScript data layer is built.
+
+== Decisions left to the developer
+
+Candidate ADRs, grouped by C4 level. Status after the developer's answers of 2026-11-03; details in
+xref:background/soa/decisions.adoc[developer decisions].
+
+[cols="1,1,6,2",options="header"]
+|===
+|Id |C4 level |Decision |Status
+
+|ADR-01 |Context |Scope: library only, or library plus generator and service kit |Decided: library + generator + service kit (DEC-32)
+|ADR-02 |Context |Where authorization is enforced (store-native, proxy, in-process port) |Decided: in-process port; triple level by GraphDB FGAC and our evaluator (DEC-15, DEC-17, DEC-26)
+|ADR-03 |Context |Master of the domain model (UML, curated LinkML, UML plus overlay) |Decided for now: LinkML (DEC-19)
+|ADR-16 |Context |Migrations in the first EPIC (runner only, runner plus diff compiler, defer, upstream) |Partly decided: none generated in the first EPIC; keep it possible (DEC-25)
+|ADR-04 |Container |Contract between service and UI (JSON-LD + OpenAPI, JSON:API, both, graph-direct reads) |Decided: REST with JSON-LD first, GraphQL second (DEC-17, DEC-18, DEC-27)
+|ADR-05 |Container |Store and transaction strategy (portable single operation, vendor transactions, Fluree) |Partly decided: classic W3C triple stores, Fluree dropped (DEC-16)
+|ADR-06 |Container |Source and format of external change events |Decided: outbox relayed to a broker (DEC-23)
+|ADR-07 |Component |Persistence pattern (aggregate session, full unit of work, Active Record, explicit change sets, event sourcing) |Open, constrained by DEC-4 and DEC-13
+|ADR-08 |Component |Mapping at runtime or generated (approaches A–D) |Open; recommended: A now, B later
+|ADR-09 |Component |Storage of an aggregate (root + owned closure, graph per aggregate, both) |Decided: graph per aggregate, IRI derived from the root (DEC-20, DEC-29)
+|ADR-10 |Component |Behaviour on stores without atomic commits (refuse, degrade, configurable) |Open; recommended: refuse unless opted in
+|ADR-11 |Component |Declaring aggregate boundaries (annotations, convention, both, from UML) |Decided: `AggregateRoot` mixin + `owned` annotations (DEC-34)
+|ADR-12 |Component |Aggregates per commit (strict, warn, allow) |Decided: `strict` by default, configurable (DEC-21)
+|ADR-13 |Component |Where the version lives; optimistic concurrency by default |Decided: mapper metadata, on by default (DEC-22)
+|ADR-14 |Component |Dispatch of domain events (in-process bus, outbox relay, both) |Decided: both (DEC-23)
+|ADR-15 |Code |Multi-valued slots and language-tagged strings |Decided: `list[T]`, `LangString` as a language map (DEC-35)
+|===

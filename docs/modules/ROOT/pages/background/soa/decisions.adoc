@@ -1,0 +1,571 @@
+= Developer decisions and their consequences
+:description: The developer's answers to the open questions of the state-of-the-art review, what they decide, what they rule out, and what they change in the design of rdf-persistence.
+
+[IMPORTANT]
+.Background, not a commitment
+====
+This page is part of the state-of-the-art study moved from the rdf-persistence repository (commit `43dc152`). It records the decisions taken for the earlier blueprint, which architecture v1 supersedes. What rdf-persistence commits to is in xref:architecture/index.adoc[rdf-persistence architecture v1].
+====
+
+On 2026-11-03 the developer answered the open questions listed in
+xref:background/soa/index.adoc#open-questions-for-the-developer[integrated findings] and
+xref:background/soa/design-implications.adoc#open-questions[design implications]. This page
+records the answers (DEC-15 to DEC-38 in the EPIC), the consequences for the variants and the
+candidate ADRs, and the review's recommendation where the developer left a question open.
+The answers are preserved verbatim in
+`openspec/changes/soa-python-rdf-orm/inputs/developer-answers-2026-11-03.md` and, for the
+second and third rounds, `developer-answers-2026-11-03-round2.md` and `-round3.md`.
+
+== Summary
+
+[cols="3,4,2",options="header"]
+|===
+|Question |Answer |Record
+
+|Access-control granularity
+|Triple level stays required, next to graph level. Fluree-style, SHACL-like policies are the wanted style. Triple level by both routes: GraphDB FGAC where licensed, and a thin in-house evaluator (amends DEC-8).
+|DEC-15, DEC-26, ADR-02
+
+|Stores
+|Open W3C standards and classic triple stores: GraphDB, Oxigraph, Fuseki, RDF4J and similar. Commercial only for very large value. Fluree is not adopted.
+|DEC-16, ADR-05
+
+|UI access
+|Never to the store; only through the middleware. Both API styles: REST with compacted JSON-LD first, GraphQL second.
+|DEC-17, DEC-27, ADR-04
+
+|Contract
+|No semantic.works compatibility; reuse its good features.
+|DEC-18, ADR-04
+
+|Model source
+|LinkML is the master for now; UML may come back upstream later.
+|DEC-19, ADR-03
+
+|Aggregate storage
+|One named graph per aggregate; the graph IRI is derived from the root's IRI by one function.
+|DEC-20, DEC-29, ADR-09
+
+|Commit policy
+|`strict` by default; `warn` and `allow` as configuration.
+|DEC-21, ADR-12
+
+|Version
+|Mapper metadata. Orthogonal concerns (version, provenance, annotations, discussions) stay out of domain classes; annotation sets on any object are a new requirement, each its own small aggregate.
+|DEC-22, DEC-28, ADR-13
+
+|Events
+|Both: in-process bus and an outbox relayed to a broker, ideally Redis-like.
+|DEC-23, ADR-06, ADR-14
+
+|Property graphs, reasoning
+|Not needed today; no build-time reasoner check either.
+|DEC-24, DEC-31
+
+|Licences
+|Zitadel's AGPL and rdfproxy's GPL are acceptable.
+|DEC-30
+
+|Scope of the system
+|Library + generator + service kit: the foundation MWBv2 is implemented on.
+|DEC-32, ADR-01
+
+|Migrations
+|No generation in the first EPIC, but a likely goal; keep it possible.
+|DEC-25, ADR-16
+
+|Aggregate boundaries in LinkML
+|`AggregateRoot` mixin plus `owned` slot annotations, checked at build time.
+|DEC-34, ADR-11
+
+|Multi-valued slots
+|`list[T]` with set semantics; `LangString` as a language map.
+|DEC-35, ADR-15
+
+|UI forms
+|Shape-driven forms from the generated SHACL; LGPL and GPL components acceptable; no component chosen.
+|DEC-36
+
+|Sync or async API
+|Async only, for now; sync stores run on a worker thread inside their adapter.
+|DEC-38
+
+|Design of the core, generation, repository or session, reuse threshold
+|Left open. Recommendations below.
+|ADR-07, 08, 10
+|===
+
+== What the answers rule out
+
+* *V2 semantic.works-compatible* — no dialect compatibility (DEC-18), and the authorizing proxy
+  is no longer needed because no client sends SPARQL (DEC-17).
+* *V3 Fluree* — not a classic, standard triple store (DEC-16). Its policy model survives as the
+  reference for the policy style (DEC-15).
+* *V5 graph-direct reads* — the UI never queries the store (DEC-17). A read replica fed by the
+  outbox stays possible behind the middleware, as a performance measure only.
+* *Property-graph adapters* — no need (DEC-24). The seams that would allow them (abstract change
+  set, query syntax tree, store capabilities) stay, because the RDF design needs them anyway.
+
+What remains is *V1 Portable Python core* as the base, with *V4 GraphDB* as the upgrade when a
+project licenses GraphDB Enterprise for its transactions and fine-grained access control.
+
+[mermaid]
+....
+flowchart LR
+  UI[JS / TS UI] -->|REST JSON-LD, then GraphQL| MW[Data-management service]
+  IdP[Zitadel / Keycloak] -->|OIDC token| MW
+  MW --> PEP[Policy enforcement port]
+  PEP --> RP[rdf-persistence: aggregate session]
+  RP -->|SPARQL 1.1| Store[(Oxigraph / Fuseki / RDF4J / GraphDB)]
+  RP -->|outbox| Relay[Outbox relay] --> MQ[(Message broker)]
+  RP -->|after commit| Bus[In-process bus]
+....
+
+== Consequences for each area
+
+=== Access control: graph level per aggregate, triple level on top (DEC-15, DEC-17, DEC-20)
+
+Because the UI never sends SPARQL, every query the store sees is generated by rdf-persistence.
+That makes the *in-process enforcement port* (ADR-02 option 3) safe, which it was not while free
+client SPARQL was possible. Because every aggregate has its own graph (DEC-20), *graph-level
+access control becomes aggregate-level access control*: a policy engine such as OpenFGA answers
+"which aggregates may this user read", and the port turns the answer into graph scopes.
+
+Triple level is a second layer, for rules inside an aggregate ("only HR reads `salary`", "only
+the owner changes `status` while it is `draft`").
+
+==== Does triple-level control already exist?
+
+Not as an open standard, and not on the open classic stores:
+
+[cols="2,3,3",options="header"]
+|===
+|Option |What it gives |Fit with the answers
+
+|Fluree v4 policies
+|Policies as RDF data, class/property/subject targeting, SPARQL-like conditions — the wanted style.
+|Ruled out as a store (DEC-16); keep it as the model for our policy vocabulary.
+
+|GraphDB FGAC (Enterprise)
+|Ordered quad-pattern rules, roles from the OIDC token claim; store-native, behind standard SPARQL.
+|Fits DEC-16 (classic store) but commercial. The candidate for "very large value". Default allow; admins bypass.
+
+|AllegroGraph, Stardog
+|s/p/o/g filters (AllegroGraph); graph grants and property masking (Stardog).
+|Commercial; not liked; no.
+
+|Apache Jena Permissions
+|A hook that asks a pluggable evaluator about each triple; works under Fuseki.
+|Open source, but the evaluator is Java code you write. *Not analysed in this review* — check before relying on it.
+
+|SHACL-based access control
+|—
+|No maintained implementation found.
+
+|Oxigraph, RDF4J, Fuseki core, Virtuoso
+|None, or graph level only.
+|—
+|===
+
+==== How hard is it to build on our side?
+
+The work splits by where the rule applies. It is moderate because rdf-persistence generates all
+the queries and already holds every write as a change set:
+
+[cols="2,4,1",options="header"]
+|===
+|Part |How |Effort
+
+|Writes
+|Check every triple added or removed in the commit's change set against the policies before the
+update is sent (taxonomy AZ5). The change set is already a value (the Ecto-style commit), so this
+is a pure function over it plus SPARQL ASK conditions.
+|Small
+
+|Reads, by property or class
+|The mapper drops slots the role may not read before loading (projection), and the generated
+`CONSTRUCT` leaves those predicates out (AZ8, AZ25).
+|Medium
+
+|Reads, by condition
+|Inject `FILTER` / `FILTER EXISTS` conditions into the generated queries, including counts and
+single-item reads (AZ9).
+|Medium
+
+|Free SPARQL from clients
+|Not needed (DEC-17). This is the hard part that only store-native engines solve.
+|—
+
+|Policy language
+|A small RDF vocabulary in the SHACL style: `sh:targetClass`, `sh:path`, a condition as SPARQL
+ASK, the allowed actions, default deny. Policies are data, validated with SHACL itself.
+|Small to medium
+|===
+
+*Decided: both routes, behind the same `PolicyEnforcementPort` (DEC-26, amending DEC-8).*
+
+* *GraphDB FGAC in pass-through* where a project runs GraphDB Enterprise (Meaningfy is a
+  GraphDB partner). The port forwards the user's roles; the store filters.
+* *A thin in-house evaluator* for Oxigraph, Fuseki and RDF4J: the write check, the projection
+  and the injected filters from the table above, driven by the SHACL-style policy vocabulary.
+* Graph-level decisions stay borrowed (OpenFGA or pycasbin); DEC-8 now allows building only the
+  triple-level evaluator.
+* One policy vocabulary for both routes would need a compiler from our policies to GraphDB FGAC
+  rules. Not decided; until then, projects on GraphDB write FGAC rules directly.
+
+==== Policy vocabulary: SHACL-based (DEC-33)
+
+No library offers SHACL-style access rules (see the table above), so rdf-persistence defines a
+small vocabulary on top of SHACL:
+
+* *Targeting from SHACL:* `sh:targetClass`, `sh:targetNode`, `sh:path`, and conditions as
+  SPARQL `ASK` with `$this` and `$identity` pre-bound.
+* *Actions and effects from ODRL* (a W3C recommendation) where its terms fit: read, modify,
+  permission, prohibition. Our own terms only for what neither standard has (the role a rule
+  applies to, default deny).
+* *The rules are validated with SHACL shapes*, so a malformed rule fails at load time.
+* pySHACL cannot enforce the rules: SHACL validates data, it does not decide access. The thin
+  evaluator (DEC-26) turns each rule into a change-set check, a read projection or injected
+  `FILTER` conditions.
+
+==== Ideas to carry into the design
+
+Collected from the review (xref:background/soa/angles/authz.adoc[authorization angle],
+xref:background/soa/libraries/semantic-works.adoc[semantic.works]). Feature ids are from the
+taxonomy.
+
+[cols="3,2,4",options="header"]
+|===
+|Idea |Seen in |How we use it
+
+|Rules are RDF data, versioned and queryable next to the domain data (AZ10)
+|Fluree, Solid WAC/ACP, ODRL
+|The DEC-33 vocabulary; LinkML annotations can generate rule skeletons.
+
+|Target by class, property or subject (AZ8)
+|Fluree `f:onClass`, `f:onProperty`, `f:onSubject`
+|`sh:targetClass`, `sh:path`, `sh:targetNode`.
+
+|Conditions as SPARQL `ASK` with `$this`, `$identity` pre-bound (AZ9)
+|Fluree `f:query`
+|Same, evaluated against the aggregate graph and the principal.
+
+|Groups and roles defined by a SPARQL query over data
+|mu sparql-parser
+|Relationship-based roles ("member of this project") as conditions, not hand-kept lists.
+
+|Graph IRI templates filled per user or organisation
+|mu sparql-parser
+|Graph scopes computed from `graph_iri(root)` (DEC-29) and the principal.
+
+|Check every written triple; an unmatched triple fails the commit (AZ5)
+|mu sparql-parser, Fluree
+|Check the change set before the single guarded update, so a denied write stores nothing.
+
+|Combining algorithm: required gates, deny overrides, *default deny* (AZ11)
+|Fluree
+|Our default. GraphDB FGAC defaults to allow, so its rules must end with a deny-all.
+
+|Filter before results return, so counts and pages are correct
+|Fluree (in the scan); rewriting proxies
+|Rewrite the generated queries; never post-filter results (it breaks counts and paging).
+
+|Skip the check for predicates no rule covers (AZ32)
+|Fluree `classify_view_predicate`
+|Precompute covered predicates per role; the rest goes through untouched.
+
+|A governed session that cannot widen its own scope (AZ17)
+|Fluree `with_policy`
+|The session is opened for a principal; a query cannot name another policy.
+
+|Class resolution in the triple's own graph (AZ30)
+|Fluree
+|A class-targeted rule reads the type triples of the aggregate's graph, not a union.
+
+|Inherit from the nearest ancestor (AZ31)
+|Solid WAC effective ACL
+|Owned children inherit the root's rules; annotation sets inherit their target's read rule.
+
+|A chain of permission readers behind one port
+|Community Solid Server
+|`PolicyEnforcementPort` composes graph-level (OpenFGA or pycasbin) and triple-level evaluators.
+
+|Map token claims to roles in one small function (AZ18)
+|GraphDB `roles_claim`, Fluree `f:policyClass`
+|Zitadel roles become the principal's roles at the API edge.
+
+|Pre-filter with a list call; sync tuples from domain events (AZ4, AZ28)
+|OpenFGA ListObjects, SpiceDB LookupResources
+|Graph-level read scopes; the outbox keeps OpenFGA tuples current.
+
+|Generate the authorization model from LinkML (AZ29)
+|approach B
+|FGA model and rule skeletons from aggregate and slot annotations.
+
+|Answer 404, not 403, outside the scope (AZ33)
+|Fluree
+|A denial does not reveal that the data exists.
+
+|Tell the client what it may do
+|Solid `WAC-Allow` header
+|The REST API returns the allowed actions per resource, so the UI can hide buttons.
+
+|Strip security headers at the edge
+|mu-identifier
+|An allow-list, not mu's deny-list.
+
+|Policy-filter equivalence test (AZ35)
+|gap seen in rdfproxy
+|For each generated query family, a restricted caller gets the same rows and totals as on the restricted dataset.
+
+|Decision audit trail and explain (AZ26, AZ27)
+|Fluree, OPA
+|Log which rule allowed or denied; an explain call for support.
+|===
+
+What to avoid, from the same sources: trusting security headers from internal callers or a
+`sudo` header (mu), world-writable defaults (mu's `public` group), default allow (GraphDB FGAC),
+updates split into batches that can half-apply (mu), HTTP 500 for a denial (mu), and scope
+spliced into query strings instead of applied to the query's structure.
+
+=== Stores (DEC-16)
+
+* The portable default stays one guarded SPARQL Update per commit (ADR-05 option 1), proven on
+  Oxigraph and Fuseki; GraphDB and RDF4J add vendor transactions as a store capability.
+* The conformance suite targets Oxigraph, Fuseki, RDF4J and GraphDB. On-disk Oxigraph still
+  needs the adapter's write lock (see xref:background/soa/angles/stores.adoc[stores]).
+* The Fluree adapter and the Fluree licence question disappear.
+
+=== Contract and UI (DEC-17, DEC-18)
+
+* The middleware owns every read and write. Domain rules and access control apply to reads too.
+* *Both API styles (DEC-27).* REST first: compacted JSON-LD + OpenAPI (ADR-04 option 1). GraphQL
+  second: LinkML already generates the schema (`gen-graphql`); the resolvers over the aggregate
+  session are new work.
+* *Yes, the UI gets JSON-LD.* Compacted JSON-LD is plain JSON with an `@context` link, so a JS
+  client reads it as ordinary JSON and a JSON-LD consumer reads it as RDF. The same REST resources
+  serve Turtle and N-Triples by content negotiation (`Accept`). GraphQL answers are plain JSON;
+  JSON-LD over GraphQL has no standard, so the REST API is the JSON-LD service.
+* semantic.works features worth re-implementing, without its dialect: the declarative resource
+  configuration (one file describes the API resources), JSON:API-style `include`, filter and sort
+  conventions, change deltas pushed to clients, and the migration file format and migration log
+  kept as triples (see xref:background/soa/libraries/semantic-works.adoc[semantic.works]).
+
+=== Model source (DEC-19)
+
+* Curated LinkML is the master; LinkML lint is the model quality gate (ADR-03 option 2).
+* Every annotation the mapper needs (aggregate roots, owned slots) lives in LinkML, so it is not
+  lost in a UML round-trip. If UML returns upstream later, those annotations must survive it
+  (ADR-03 option 3, an overlay).
+
+=== One named graph per aggregate (DEC-20)
+
+*Is it a burden to manage that many graphs?* Mostly not, because the graph's name is derived
+from the root's IRI by one function, `graph_iri(root)` (DEC-29). Nothing needs a graph registry.
+Below, `<g>` is `graph_iri(root)`:
+
+[cols="2,4",options="header"]
+|===
+|Operation |What it becomes
+
+|Create |`INSERT DATA { GRAPH <g> { … } }` with a creation guard on the graph.
+|Load |`CONSTRUCT { ?s ?p ?o } WHERE { GRAPH <g> { ?s ?p ?o } }` — no closure walk.
+|Save |Replace the changed triples inside `GRAPH <g>`, version-guarded, in one update.
+|Delete |`DROP SILENT GRAPH <g>` removes the whole aggregate; no cascade logic.
+|Access control |One graph = one aggregate = one authorization object.
+|===
+
+What it does cost:
+
+* *Queries across aggregates* (lists, search) must span graphs: `GRAPH ?g` patterns, or a store
+  configured with the union of named graphs as default graph (Fuseki, Oxigraph and GraphDB can do
+  this; to confirm per store in the conformance suite).
+* *Graphs are no longer free for tenancy.* Tenants are separated by dataset or repository per
+  tenant, or by IRI namespace plus policy.
+* *Shared, non-aggregate data* (reference lists, ontology, SHACL shapes) lives in its own graphs.
+* *Existing datasets* that are not stored this way need a one-off migration into the graph layout.
+* *Derived graph IRI, not the root's IRI (DEC-29).* Reusing the root's IRI is no easier: either
+  way one function computes the graph name. But with one IRI, statements about the graph (when
+  it was written, by whom, its version) and statements about the entity share one subject, and
+  a reader cannot tell which is meant. A derived IRI (for example `<root>/graph`) keeps them
+  apart. The function can still change before data exists; after that, changing it is a
+  migration.
+
+Triple-level control (above) still works inside an aggregate graph; graph level and triple
+level combine.
+
+=== Commit policy `strict` (DEC-21)
+
+What `strict` implies in practice:
+
+* A commit that changes two aggregates fails with a clear error naming both. Cross-aggregate
+  reactions go through events (DEC-23), so they are eventually consistent.
+* Scripts, imports and migrations open their session with an explicit `policy="allow"`; the
+  override is visible in the code and the logs.
+* Creating an aggregate and referencing it from another in the same commit touches two graphs,
+  so `strict` rejects it. The usual shape is two steps: create, then reference (directly or from
+  an event handler). This is the main friction of `strict` for UI flows such as "add a new
+  customer to this order".
+* The policy is session configuration with a library default, so a service can be stricter than
+  a script.
+
+=== Version and orthogonal concerns (DEC-22)
+
+* The version is a triple the mapper writes on the root, inside the aggregate graph; the domain
+  class never sees it. `version_of(obj)` gives the ETag for `If-Match` (ADR-13 option 1, on by
+  default).
+* *Annotation sets are a new building block.* Discussions, comments, provenance and other
+  annotations attach to any domain object without changing its class. The W3C standards fit:
+  Web Annotation (`oa:Annotation`, `oa:hasTarget`) for comments and discussions, PROV-O for
+  provenance. Each set lives in its own named graph per aggregate (for example
+  `<root>/annotations/comments`), so it can have its own access rules and lifecycle, and the
+  aggregate's version does not change when someone comments.
+* The mapper exposes them as a side API (`annotations(obj, "comments")`), not as slots on the
+  domain class.
+* *Annotation sets are their own small aggregates (DEC-28)*, targeting the object. Adding a
+  comment touches only the annotation set, not the object's graph or version, so it is a
+  one-aggregate commit under `strict`.
+
+=== Events (DEC-23)
+
+* After commit, the in-process bus runs local handlers; the outbox, written in the same update,
+  is relayed to the broker for durable and external delivery (ADR-14 option 3, ADR-06 option 1).
+  Handlers must be idempotent, because a handler may see an event twice.
+* *Broker licence:* Redis 7.4 and later are no longer BSD (Redis 8 is offered under RSAL, SSPL or
+  AGPL). Valkey, the Linux Foundation fork, is BSD and wire-compatible. Recommendation: Redis
+  Streams protocol, Valkey as the default server, behind a relay port so RabbitMQ or Kafka can
+  replace it.
+
+=== Migrations (DEC-25)
+
+* First EPIC: none generated. Keep the seams that make generation possible later: the schema
+  version is recorded in the store, renames use LinkML's `deprecated_element_has_exact_replacement`,
+  and the store-wide principal that runs migrations is foreseen in the policy port.
+* Later: runner first (ADR-16 option 1), then schema diff and migration compiler (option 2).
+
+=== Licences (DEC-30)
+
+* Zitadel (AGPL) is acceptable as the identity provider; it runs as a separate service, so the
+  AGPL does not reach our code. Keycloak stays the fallback.
+* rdfproxy (GPL) is acceptable. *Caveat:* rdf-persistence is Apache-2.0. Copying rdfproxy code
+  into it would make the combined package GPL. Ideas, and rdfproxy as a separate tool, do not.
+  Before copying code, decide whether that relicensing is wanted.
+
+=== Scope: library, generator and service kit (DEC-32)
+
+* rdf-persistence is the foundation MWBv2 is implemented on: the library (aggregate session,
+  mapper, ports), the generator (repositories, routes, OpenAPI, TypeScript client) and the
+  service kit (REST JSON-LD, then GraphQL; conditional writes; the policy port).
+* They ship as companion packages over a framework-free core (ADR-01 option 2). Import-linter
+  checks that the core imports neither companion.
+* This makes BL-9 to BL-14 roadmap items, not project work.
+
+=== UI forms from shapes (DEC-36)
+
+* The generator already emits SHACL from LinkML. The same shapes drive edit and view forms in
+  the UI and are re-checked on the server with pySHACL, so one model gives the classes, the API
+  contract, the validation and the forms.
+* Candidates, none chosen: *shacl-form* (web component from ULB Darmstadt; edit, view and query
+  modes; the strongest in the review, but 97 % of commits from one maintainer and no test CI)
+  and *RDForms* (EntryScape templates, not deep-dived). Their licences were not checked; LGPL
+  and GPL are acceptable (DEC-36).
+* Both fail the star threshold (DEC-5), so the chosen one sits behind a seam (a thin wrapper
+  component) and may be vendored in.
+* Known gaps to fix on our side (integration chain C5): `sh:closed true` rejects the mapper's
+  bookkeeping triples, `sh:class` on references fails when only one aggregate's graph is sent,
+  and shacl-form's JSON-LD output is one node per triple, not compacted.
+* The form posts through the REST API like any other client (DEC-17); it never writes to the
+  store.
+
+== Recommendations where the developer left the question open
+
+These are the review's recommendations, not decisions.
+
+[cols="2,4",options="header"]
+|===
+|Question |Recommendation and why
+
+|Runtime or generated mapping (ADR-08)
+|*A now, B as an additive layer* (option 3). One generic runtime mapper is tested once and is the
+more reliable path; generated mapping repeats any template bug in every class and must track
+LinkML template changes. Generate what typing really needs: repositories, routes, OpenAPI and the
+TypeScript client, all calling the runtime mapper.
+
+|Reuse threshold for services and UI components
+|Keep DEC-5 for libraries we import. For services used over a standard protocol (a store, an
+IdP, a broker), judge on standard conformance, licence and maintenance, not stars — they are
+replaceable at the protocol. Allow leaf UI components below the threshold only behind a seam
+that lets them be swapped.
+
+|Declaring aggregate boundaries in LinkML (ADR-11)
+|*Decided (DEC-34).* See the options below. Chosen: an `AggregateRoot` mixin from a shared rdf-persistence
+LinkML schema marks roots; an `owned` annotation marks owned slots; references are slots whose
+range is another root. The generator and the session read the same rule, and the build fails on
+two owners, owned cycles and children without IRIs.
+
+|Typed metamodel (`Person_.name`) or runtime attributes
+|*Decided (DEC-37):* the generator emits a typed companion (`Person_`) per class, built on one
+runtime `Field` object. There are no hand-written domain classes: the domain package is
+generator output only, and CI regenerates it and fails on any difference or extra file.
+
+|Multi-valued slots (ADR-15)
+|*Decided (DEC-35):* *`list[T]` with set semantics* (option 1),
+because it is what LinkML generates and needs no template change; `LangString` as a language map.
+
+|Repository required, or session enough
+|*Both, thin.* The session is the unit of work; a repository per aggregate root is a typed
+accessor on it (`uow.orders.get(iri)`), generated in approach B and available as
+`uow.repository(Order)` otherwise. Scripts may call the session directly.
+
+|Stores without atomic commits (ADR-10)
+|*Refuse by default, degrade only on explicit opt-in* (option 3). It matches the `strict` commit
+policy: the safe behaviour is the default and the exception is visible.
+
+|Design of the core (ADR-07)
+|Kept open, as the developer asked. The evidence still favours the thin aggregate session.
+|===
+
+=== Options for declaring aggregate boundaries in LinkML
+
+LinkML has no composition construct: `inlined` is a serialisation hint and `tree_root` marks a
+document container (see xref:background/soa/angles/ddd.adoc[DDD boundaries]). The options:
+
+. *Annotations* — `annotations: {aggregate_root: true}` on classes, `owned: true` on slots.
+  Explicit; the modeller must add them.
+. *Convention* — owned means `inlined: true` and a range without its own identifier. No extra
+  markup, but changing a serialisation hint silently moves a transaction boundary.
+. *Convention with annotations as override*, checked at build time.
+. *Mixin* — roots inherit `AggregateRoot` from an imported rdf-persistence schema; owned slots
+  carry an annotation. The root marker is typed and shows in the generated Python classes.
+. *UML composition carried through* — only if UML returns upstream (DEC-19), and not yet checked
+  that model2owl carries it.
+
+[source,yaml]
+----
+imports:
+  - rdf_persistence:core          # provides the AggregateRoot mixin
+classes:
+  Order:
+    mixins: [AggregateRoot]       # root: one named graph per Order
+    slots: [lines, customer]
+    slot_usage:
+      lines:
+        range: OrderLine
+        multivalued: true
+        annotations:
+          owned: true             # stored in the Order's graph, deleted with it
+      customer:
+        range: Customer           # another root: a reference by IRI
+  OrderLine:
+    slots: [sku, quantity]        # owned only; gets an IRI derived from the Order
+----
+
+== Still open
+
+* The design of the core (ADR-07), kept open by the developer.
+* The questions delegated to the review's recommendation above (ADR-08, ADR-10, typed
+  repository or session, reuse threshold). They become decisions when the next
+  EPIC adopts them.
+* A compiler from our policy vocabulary to GraphDB FGAC rules, if one vocabulary for both
+  triple-level routes is wanted.
+* Whether to relicense if rdfproxy code is copied (see Licences).

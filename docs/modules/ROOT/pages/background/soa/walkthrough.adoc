@@ -1,0 +1,245 @@
+= A walk through the state of the art
+:description: A guided explanation of the state-of-the-art review: what exists for RDF persistence and the model-driven Linked Data chain, what we would build, and why.
+
+[IMPORTANT]
+.Background, not a commitment
+====
+This page is part of the state-of-the-art study moved from the rdf-persistence repository (commit `43dc152`). It records options and leanings, not decisions. What rdf-persistence commits to is in xref:architecture/index.adoc[rdf-persistence architecture v1].
+====
+
+This page tells the story of the review from start to finish. The other pages are for looking
+things up. This one is for understanding. Read it once, then use the
+xref:background/soa/index.adoc[integrated findings] and the
+xref:background/soa/build-vs-reuse.adoc[build-versus-reuse matrix] as your reference.
+
+== The answer first
+
+We do not need to invent a new RDF stack. We need to fit one out.
+
+Think of it as fitting out a kitchen. You buy the oven, the fridge and the hob from makers who
+have built thousands of them. You do not forge your own oven. What you do build is the joinery:
+the cabinets, worktops and fixings that make those appliances work together in *your* room.
+Then you fit a good lock on the door, and you check the plumbing, because that is where leaks
+happen.
+
+The review found exactly that shape:
+
+* *The appliances exist and are good.* rdflib, Oxigraph, LinkML, pydantic, pySHACL, FastAPI,
+  Zitadel, OpenFGA, jsonld.js, TanStack Query. All mature, all maintained.
+* *The joinery does not exist.* No Python library maps domain objects onto a SPARQL store with
+  real transactions and is mature enough to depend on. That joinery is what rdf-persistence
+  would be.
+* *The lock is bought, not made.* Authorization comes from existing engines and stores.
+* *The plumbing needs work.* Every hand-off between the appliances needs a fix or a missing part.
+
+The rest of this page walks through each of those, with one running example.
+
+== The running example
+
+We will follow a small order system throughout. An *Order* has *order lines* (product,
+quantity) and belongs to a *Customer*. In RDF, the order is a resource with an IRI such as
+`ex:order/42`. Its lines are resources too. The customer is a separate resource the order points
+to.
+
+Keep this order in mind. Every abstract idea below lands on it.
+
+== What we set out to find
+
+The question was wider than "is there an ORM for RDF?". Meaningfy builds applications the
+Mapping Workbench v2 (MWBv2) way: a domain model drawn in UML, turned into LinkML, from which
+code is generated for a Python backend. That backend serves a data-management service, and a
+JavaScript user interface consumes it as JSON-LD.
+
+So the real question was: for each step of that chain, what can we buy, and what must we build?
+
+[mermaid]
+....
+flowchart LR
+  M["Model<br/>UML → LinkML"] --> G["Generated Python<br/>domain classes"]
+  G --> P["Persistence<br/>the joinery"]
+  P --> S["Triple store"]
+  P --> A["Service API<br/>JSON-LD, JSON:API"]
+  A --> U["JavaScript UI"]
+  L["Lock<br/>identity and authorization"] -.-> A
+  L -.-> S
+....
+
+The same picture is available as PlantUML:
+`openspec/changes/soa-python-rdf-orm/architecture/diagrams/walkthrough-chain.puml`.
+
+== How we looked
+
+We did not trust READMEs. We cloned about 46 repositories, indexed each one with GitNexus to map
+its code, read the code that mattered, and read each project's published documentation beside
+it. Where the documentation promised something the code did not do, we wrote that down.
+
+The work ran in five rounds. Each round added a new angle across every candidate: first the
+libraries themselves, then each layer of the chain, then developer experience, transaction
+boundaries, schema evolution and property graphs, and finally the seams between the pieces.
+Twenty-odd analysts worked in parallel. An independent reviewer checked the result.
+
+Why five rounds? Because each round surfaced features the previous one had missed. By round five,
+almost nothing new appeared. That is how we knew the map was complete enough to use.
+
+== The appliances: what we buy
+
+Start with the shop floor. For every layer, a mature option exists:
+
+* *The RDF model itself:* rdflib, the general-purpose RDF toolkit for Python. It parses,
+  serialises (JSON-LD included) and talks to remote SPARQL stores.
+* *A store:* Oxigraph, fast and embeddable, for development and tests; Jena Fuseki or GraphDB in
+  production.
+* *The model source:* LinkML. One YAML schema generates Pydantic classes, SHACL shapes, a JSON-LD
+  context, JSON Schema and TypeScript types.
+* *Identity and decisions:* Zitadel for logging people in; OpenFGA for deciding who may see
+  which graph.
+* *The browser side:* jsonld.js for JSON-LD, TanStack Query for data fetching, and generated
+  TypeScript clients from the service's OpenAPI description.
+
+We set one rule for what counts as an appliance: more than 200 GitHub stars and a commit in the
+last twelve months. It is a blunt rule. It keeps us off projects that one person built in a
+fortnight and then left.
+
+== The joinery: what we build
+
+Now the gap. We looked at every Python library that maps objects to RDF: sparqlmodel,
+triplemodel, rdfmapper, pydantic-rdf, rdfproxy, SuRF, OldMan, Owlready2 and others. Each one solved
+a piece well. None passed the rule. Most are the work of a single author; several are dead.
+
+So we would build the joinery ourselves. It is thin, and every piece of it has a precedent we can
+copy:
+
+* A *mapper* that reads the RDF names LinkML already puts on each generated class, so the
+  classes themselves stay free of persistence code.
+* An *aggregate session*, our name for a slim unit of work. It loads an order with its lines,
+  tracks what you change, and saves it back.
+* A *change-set compiler* that turns those changes into one SPARQL update.
+* *Repositories* and a typed query builder, so you write `Order_.customer == c` rather than
+  SPARQL strings.
+* A *store port* that knows what each store can and cannot do.
+* A *policy port* for the lock, and an *outbox* for events.
+
+Where did the design ideas come from? Mostly from outside RDF. Spring Data JDBC showed how to
+save a whole aggregate at once. Ecto, from the Elixir world, showed that a commit can be a plain
+value you can print and test. SQLAlchemy showed what developers expect a session to feel like.
+
+== The hard part: one order, one request
+
+Here is the problem that shapes everything else. You load order 42, add a line, change a
+quantity, and commit. How do we make sure all of that is saved, or none of it?
+
+In a relational database you open a transaction. Over plain SPARQL there is no such thing across
+requests. Each request stands alone. So the whole commit has to fit into *one* request.
+
+That request does three jobs at once:
+
+. It removes the old values and inserts the new ones for order 42 and its lines.
+. It checks a version number on the order, so that if someone else changed it since you loaded
+  it, nothing is written.
+. It writes a small *commit record*, unique to this commit, plus the events for the outbox.
+
+Afterwards we ask the store one question: is my commit record there? If yes, the commit
+happened. If no, someone got there first, and you get a clear conflict error.
+
+[mermaid]
+....
+sequenceDiagram
+  participant You as Your code
+  participant S as Aggregate session
+  participant DB as SPARQL store
+  You->>S: get order 42
+  S->>DB: fetch order 42 with its lines
+  You->>S: add a line, change a quantity
+  You->>S: commit
+  S->>DB: one update: version check, new values, commit record, events
+  S->>DB: is my commit record there?
+  alt yes
+    S-->>You: committed
+  else no
+    S-->>You: conflict: order 42 changed since you loaded it
+  end
+....
+
+PlantUML version:
+`openspec/changes/soa-python-rdf-orm/architecture/diagrams/walkthrough-commit.puml`.
+
+The review found two traps in this design, and both are now in the docs. First, the check must
+look for a record unique to *this* commit, not a "last changed" marker that another writer may
+overwrite a moment later. Second, atomic is not the same as isolated. Oxigraph's on-disk store
+checks the version on a snapshot and then writes without a lock, so two writers can both pass.
+Its adapter needs a lock. Fuseki does not.
+
+We have reasoned this through from the SPARQL rules and the stores' code. We have not yet run it
+against real stores under load. That test comes first, before anyone builds the compiler.
+
+== The lock: authorization we borrow
+
+Who may see order 42? The answer is never "whatever the library decides". We borrow it.
+
+Three options came out of the review, and they differ in where the lock sits:
+
+* *In the service:* Zitadel says who you are, OpenFGA says which graphs you may read, and the
+  policy port narrows every query to those graphs.
+* *In front of the store:* semantic.works' `sparql-parser` rewrites each query before it reaches
+  the store.
+* *Inside the store:* Fluree and GraphDB enforce rules down to single triples.
+
+The trap here is quieter than a broken door. If the lock checks the list of orders but not the
+*count* of orders, a page that says "37 results" tells a user that orders exist which they cannot
+see. The policy port must narrow every query, counts and single lookups included.
+
+== The service hatch and the plumbing
+
+The user interface does not talk to the store. It talks to a service, through a hatch with a
+fixed shape. The best example of that shape is API Platform: one resource model served as JSON:API,
+JSON-LD and OpenAPI. Do that, and the whole JavaScript side can use ordinary, mature tooling that
+knows nothing about RDF.
+
+Then comes the plumbing: each hand-off between appliances. We followed nine of them through the
+code. None worked on configuration alone.
+
+Take the first hand-off, from LinkML to our mapper. By default, LinkML's Pydantic generator leaves
+out what a mapper needs most: which property points to another object. The result is quiet and
+nasty. The order's customer gets saved as the text `"ex:customer/7"` instead of a link to the
+customer. One generator flag fixes it, and a build check keeps it fixed.
+
+Seven hand-offs need a fix like that. Three need parts that do not exist yet: the policy port,
+the outbox relay, and migrations when the model changes.
+
+== Built for developers
+
+A persistence library succeeds when developers enjoy using it. So we compared the mainstream
+ones: SQLModel, SQLAlchemy, Django, Prisma, Beanie, ODMantic, Piccolo.
+
+The result was encouraging. A clean separation between your classes and the database costs
+nothing in convenience: ODMantic does a full create, read, update, delete and query in nine lines.
+Python developers now expect Pydantic models, `select(Order).where(...)`, `async with` sessions and
+an in-memory store for tests. We can give them all of that.
+
+RDF does force a few honest differences. A property can hold several values, so a list behaves
+like a set. Text can carry a language tag, so a name is a small map of `en`, `fr` and so on. Ids
+are IRIs that your code creates. Each difference has a mainstream precedent, so none of it is
+strange.
+
+== The choices still yours
+
+The review maps the options. It does not choose. A few decisions shape everything after them:
+
+* Where the model lives: LinkML, the SHACL from UML, or hand-written classes.
+* Where the lock sits, and whether graph-level access is enough.
+* Which store, which may also depend on licences: Fluree's licence may not allow a product where
+  customers define their own schemas, so it needs a legal reading.
+
+The xref:background/soa/variants.adoc[architecture variants] page sets out five coherent
+combinations, from a portable Python core to a semantic.works-compatible stack.
+
+== Where to go next
+
+* For the decision: xref:background/soa/build-vs-reuse.adoc[build versus reuse], then
+  xref:background/soa/risks.adoc[risks and licences].
+* For the design: xref:background/soa/design-implications.adoc[design implications].
+* For the evidence: the library and angle pages, and the
+  xref:background/soa/catalogue.adoc[tool catalogue], which says what each tool was built for.
+
+The appliances are on the shop floor. The joinery is drawn. What remains is to cut it, starting
+with the one piece that has to be right first: a commit that saves order 42 whole, or not at all.
