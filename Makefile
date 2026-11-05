@@ -44,9 +44,9 @@ help: ## Display available targets
 install-uv: ## Install uv if not present
 	@ command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 
-install: install-uv ## Install project dependencies (all groups; does NOT lock)
+install: install-uv ## Install project dependencies (all groups and extras; does NOT lock)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Installing dependencies$(END_BUILD_PRINT)"
-	@ uv sync
+	@ uv sync --all-extras
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Dependencies installed$(END_BUILD_PRINT)"
 
 lock: ## Update uv.lock
