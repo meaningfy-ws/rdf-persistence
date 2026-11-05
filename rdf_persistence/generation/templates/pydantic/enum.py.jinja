@@ -1,0 +1,14 @@
+class {{ name }}(str{% if values %}, Enum{% endif %}):
+{% if description %}
+    {{ description | tojson }}
+{% endif %}
+{% if values %}
+    {% for pv in values.values() %}
+    {{pv.label}} = {{ pv.value | replace('\\"', '"') | tojson }}
+        {% if pv.description %}
+    {{ pv.description | tojson }}
+        {% endif %}
+    {% endfor %}
+{% else %}
+    pass
+{% endif %}

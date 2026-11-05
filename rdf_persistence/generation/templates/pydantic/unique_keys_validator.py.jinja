@@ -1,0 +1,15 @@
+@model_validator(mode="after")
+    def {{ method }}(self) -> "{{ class_name }}":
+        seen: set[str] = set()
+        repeated: list[tuple] = []
+        for item in self.{{ slot }} or []:
+            key = ({% for key_slot in key_slots %}item.{{ key_slot }},{{ " " if not loop.last }}{% endfor %})
+            if repr(key) in seen:
+                repeated.append(key)
+            seen.add(repr(key))
+        if repeated:
+            raise ValueError(
+                {{ (class_name ~ "." ~ slot ~ ": unique_keys " ~ key_name ~ " (" ~ (key_slots | join(", ")) ~ ") repeated by ") | tojson }}
+                + str(repeated)
+            )
+        return self

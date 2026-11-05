@@ -1,0 +1,357 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "linkml": {
+         "@id": "linkmlVersion"
+      },
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "skos": "http://www.w3.org/2004/02/skos/core#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "admin_pat": {
+         "@id": "adminPat"
+      },
+      "alias": {
+         "@id": "alias"
+      },
+      "attributes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "mmdAttributes"
+      },
+      "class_name": {
+         "@id": "className"
+      },
+      "classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "mmdClasses"
+      },
+      "container": {
+         "@id": "container"
+      },
+      "description": {
+         "@id": "descriptionText"
+      },
+      "diagrams": {
+         "@id": "diagramsFolder"
+      },
+      "doc": {
+         "@id": "doc"
+      },
+      "element": {
+         "@id": "element"
+      },
+      "endpoint": {
+         "@id": "endpoint"
+      },
+      "enums": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "tsEnums"
+      },
+      "exit_code": {
+         "@id": "exitCode"
+      },
+      "externals": {
+         "@container": "@set",
+         "@id": "mmdExternals"
+      },
+      "field": {
+         "@id": "targetField"
+      },
+      "fields": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "tsFields"
+      },
+      "frame": {
+         "@type": "@id",
+         "@id": "partFrame"
+      },
+      "help": {
+         "@id": "help"
+      },
+      "holds": {
+         "@id": "holds"
+      },
+      "imports": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "tsImports"
+      },
+      "inputs": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "manifestInputs"
+      },
+      "interfaces": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "tsInterfaces"
+      },
+      "invalid": {
+         "@container": "@set",
+         "@id": "invalidInstances"
+      },
+      "key_id": {
+         "@id": "keyId"
+      },
+      "key_iris": {
+         "@container": "@set",
+         "@id": "keyIris"
+      },
+      "key_name": {
+         "@id": "keyName"
+      },
+      "kind": {
+         "@id": "constraintKind",
+         "@type": "@vocab",
+         "@context": {
+            "required": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindRequired",
+            "cardinality": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindCardinality",
+            "range_type": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindRangeType",
+            "range_enum": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindRangeEnum",
+            "pattern": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindPattern",
+            "value_bounds": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindValueBounds",
+            "identifier": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindIdentifier",
+            "closed": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindClosed",
+            "exactly_one_of": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindExactlyOneOf",
+            "any_of": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindAnyOf",
+            "unique_keys": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindUniqueKeys"
+         }
+      },
+      "label": {
+         "@id": "label"
+      },
+      "links": {
+         "@container": "@set",
+         "@id": "mmdLinks"
+      },
+      "literal": {
+         "@id": "literal"
+      },
+      "marker": {
+         "@id": "marker"
+      },
+      "message": {
+         "@id": "message"
+      },
+      "module": {
+         "@id": "moduleName"
+      },
+      "multivalued": {
+         "@id": "multivalued"
+      },
+      "name": {
+         "@id": "slotName"
+      },
+      "names": {
+         "@container": "@set",
+         "@id": "importedNames"
+      },
+      "need": {
+         "@id": "need"
+      },
+      "option": {
+         "@id": "option"
+      },
+      "optional": {
+         "@id": "optional"
+      },
+      "outputs": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "manifestOutputs"
+      },
+      "package": {
+         "@id": "package"
+      },
+      "parts": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "frameParts"
+      },
+      "password": {
+         "@id": "password"
+      },
+      "path": {
+         "@id": "path"
+      },
+      "python": {
+         "@id": "pythonFolder"
+      },
+      "range": {
+         "@id": "range"
+      },
+      "references": {
+         "@container": "@set",
+         "@id": "frameReferences"
+      },
+      "refused": {
+         "@id": "refused"
+      },
+      "region": {
+         "@id": "region"
+      },
+      "relative_path": {
+         "@id": "relativePath"
+      },
+      "required": {
+         "@id": "required"
+      },
+      "rule": {
+         "@id": "rule"
+      },
+      "schema_file": {
+         "@id": "schemaFile"
+      },
+      "secret": {
+         "@id": "secret"
+      },
+      "sha256": {
+         "@id": "sha256"
+      },
+      "slot_iri": {
+         "@id": "slotIri"
+      },
+      "slots": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "slotShapes"
+      },
+      "stderr": {
+         "@id": "stderr"
+      },
+      "stdout": {
+         "@id": "stdout"
+      },
+      "step": {
+         "@id": "step"
+      },
+      "stereotype": {
+         "@id": "stereotype"
+      },
+      "text": {
+         "@id": "text"
+      },
+      "type": "@type",
+      "type_terms": {
+         "@container": "@set",
+         "@id": "typeTerms"
+      },
+      "typescript": {
+         "@id": "typescriptFolder"
+      },
+      "url": {
+         "@id": "url"
+      },
+      "user": {
+         "@id": "user"
+      },
+      "valid": {
+         "@container": "@set",
+         "@id": "validInstances"
+      },
+      "values": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "tsValues"
+      },
+      "what": {
+         "@id": "what"
+      },
+      "where": {
+         "@id": "where"
+      },
+      "@version": 1.1,
+      "CheckProblem": {
+         "@id": "CheckProblem"
+      },
+      "ClassShape": {
+         "@id": "ClassShape"
+      },
+      "CliFlag": {
+         "@id": "CliFlag"
+      },
+      "ConstraintCase": {
+         "@id": "ConstraintCase"
+      },
+      "ContainerMarker": {
+         "@id": "ContainerMarker"
+      },
+      "ExecResult": {
+         "@id": "ExecResult"
+      },
+      "Frame": {
+         "@id": "Frame"
+      },
+      "FramePart": {
+         "@id": "FramePart"
+      },
+      "FusekiServer": {
+         "@id": "FusekiServer"
+      },
+      "GarageServer": {
+         "@id": "GarageServer"
+      },
+      "GeneratedFile": {
+         "@id": "GeneratedFile"
+      },
+      "GenerationManifest": {
+         "@id": "GenerationManifest"
+      },
+      "GenerationTarget": {
+         "@id": "GenerationTarget"
+      },
+      "ManifestEntry": {
+         "@id": "ManifestEntry"
+      },
+      "MmdAttribute": {
+         "@id": "MmdAttribute"
+      },
+      "MmdClass": {
+         "@id": "MmdClass"
+      },
+      "MmdModule": {
+         "@id": "MmdModule"
+      },
+      "PresenceRule": {
+         "@id": "PresenceRule"
+      },
+      "RuleAlternative": {
+         "@id": "RuleAlternative"
+      },
+      "SlotShape": {
+         "@id": "SlotShape"
+      },
+      "TsEnum": {
+         "@id": "TsEnum"
+      },
+      "TsEnumValue": {
+         "@id": "TsEnumValue"
+      },
+      "TsField": {
+         "@id": "TsField"
+      },
+      "TsImport": {
+         "@id": "TsImport"
+      },
+      "TsInterface": {
+         "@id": "TsInterface"
+      },
+      "TsModule": {
+         "@id": "TsModule"
+      },
+      "UniqueKeyOn": {
+         "@id": "UniqueKeyOn"
+      },
+      "Violation": {
+         "@id": "Violation"
+      },
+      "ZitadelServer": {
+         "@id": "ZitadelServer"
+      }
+   }
+}

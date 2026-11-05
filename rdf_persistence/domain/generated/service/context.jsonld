@@ -1,0 +1,243 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "ODRL": "http://www.w3.org/ns/odrl/2/",
+      "dcterms": "http://purl.org/dc/terms/",
+      "linkml": "https://w3id.org/linkml/",
+      "prov": "http://www.w3.org/ns/prov#",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "skos": "http://www.w3.org/2004/02/skos/core#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "action": {
+         "@id": "ODRL:action",
+         "@type": "@vocab",
+         "@context": {
+            "read": "http://www.w3.org/ns/odrl/2/read",
+            "modify": "http://www.w3.org/ns/odrl/2/modify",
+            "delete": "http://www.w3.org/ns/odrl/2/delete",
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer"
+         }
+      },
+      "actions": {
+         "@container": "@set",
+         "@id": "permits",
+         "@type": "@vocab",
+         "@context": {
+            "read": "http://www.w3.org/ns/odrl/2/read",
+            "modify": "http://www.w3.org/ns/odrl/2/modify",
+            "delete": "http://www.w3.org/ns/odrl/2/delete",
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer"
+         }
+      },
+      "assignee": {
+         "@type": "@id",
+         "@id": "ODRL:assignee"
+      },
+      "base": {
+         "@type": "@id",
+         "@id": "base"
+      },
+      "contributor": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "dcterms:contributor"
+      },
+      "created": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:created"
+      },
+      "creator": {
+         "@type": "@id",
+         "@id": "dcterms:creator"
+      },
+      "creator_role": {
+         "@id": "creatorRole"
+      },
+      "description": {
+         "@id": "dcterms:description"
+      },
+      "global_roles": {
+         "@container": "@set",
+         "@id": "globalRole"
+      },
+      "grants": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "grant"
+      },
+      "graph": {
+         "@type": "@id",
+         "@id": "graph"
+      },
+      "id": "@id",
+      "items": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "items"
+      },
+      "kind": {
+         "@id": "kind",
+         "@type": "@vocab",
+         "@context": {
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#Aggregate",
+            "loaded_graph": "https://meaningfy.ws/ns/rdf-persistence#LoadedGraph"
+         }
+      },
+      "label": {
+         "@id": "skos:prefLabel"
+      },
+      "level": {
+         "@id": "level",
+         "@type": "@vocab",
+         "@context": {
+            "system": "https://meaningfy.ws/ns/rdf-persistence#SystemLevel",
+            "tenant": "https://meaningfy.ws/ns/rdf-persistence#TenantLevel",
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#AggregateLevel"
+         }
+      },
+      "limit": {
+         "@id": "limit"
+      },
+      "loaded_graph": {
+         "@type": "@id",
+         "@id": "loadedGraph"
+      },
+      "modified": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:modified"
+      },
+      "offset": {
+         "@id": "offset"
+      },
+      "owned_by": {
+         "@type": "@id",
+         "@id": "ownedBy"
+      },
+      "prefix": {
+         "@id": "prefix"
+      },
+      "principal": {
+         "@type": "@id",
+         "@id": "principal"
+      },
+      "detail": {
+         "@id": "problemDetail"
+      },
+      "instance": {
+         "@type": "@id",
+         "@id": "problemInstance"
+      },
+      "status": {
+         "@id": "problemStatus"
+      },
+      "title": {
+         "@id": "problemTitle"
+      },
+      "type": "@type",
+      "prohibitions": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "prohibition"
+      },
+      "role": {
+         "@id": "role"
+      },
+      "roles_claim": {
+         "@id": "rolesClaim"
+      },
+      "root": {
+         "@type": "@id",
+         "@id": "root"
+      },
+      "state": {
+         "@id": "state",
+         "@type": "@vocab",
+         "@context": {
+            "active": "https://meaningfy.ws/ns/rdf-persistence#Active",
+            "deleting": "https://meaningfy.ws/ns/rdf-persistence#Deleting"
+         }
+      },
+      "target": {
+         "@type": "@id",
+         "@id": "ODRL:target"
+      },
+      "tenant_segment": {
+         "@id": "tenantSegment"
+      },
+      "total": {
+         "@id": "total"
+      },
+      "url_segment": {
+         "@id": "urlSegment"
+      },
+      "version": {
+         "@id": "version"
+      },
+      "@version": 1.1,
+      "AggregateRoot": {
+         "@id": "AggregateRoot"
+      },
+      "Any": {
+         "@id": "linkml:Any"
+      },
+      "Described": {
+         "@id": "Described"
+      },
+      "Grant": {
+         "@id": "ODRL:Permission"
+      },
+      "GrantSet": {
+         "@id": "GrantSet"
+      },
+      "LabelUpdate": {
+         "@id": "LabelUpdate"
+      },
+      "Page": {
+         "@id": "Page"
+      },
+      "Policy": {
+         "@id": "ODRL:Set"
+      },
+      "Principal": {
+         "@id": "prov:Agent"
+      },
+      "Problem": {
+         "@id": "Problem"
+      },
+      "Prohibition": {
+         "@id": "ODRL:Prohibition"
+      },
+      "RegistryEntry": {
+         "@id": "RegistryEntry"
+      },
+      "RoleDefinition": {
+         "@id": "RoleDefinition"
+      },
+      "Rule": {
+         "@id": "ODRL:Rule"
+      },
+      "ServiceSettings": {
+         "@id": "ServiceSettings"
+      },
+      "TenantAccess": {
+         "@id": "TenantAccess"
+      },
+      "TenantCreate": {
+         "@id": "TenantCreate"
+      },
+      "TenantLabelled": {
+         "@id": "TenantLabelled"
+      },
+      "TenantSummary": {
+         "@id": "TenantSummary"
+      },
+      "Tracked": {
+         "@id": "Tracked"
+      },
+      "VerifiedCaller": {
+         "@id": "VerifiedCaller"
+      }
+   }
+}

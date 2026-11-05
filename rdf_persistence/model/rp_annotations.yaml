@@ -56,20 +56,28 @@ slots:
     title: Created
     description: The time the graph was first committed.
     slot_uri: dcterms:created
+    annotations:
+      bookkeeping: true
     range: datetime
   modified:
     title: Modified
     description: The time the graph was last committed.
     slot_uri: dcterms:modified
+    annotations:
+      bookkeeping: true
     range: datetime
   creator:
     title: Creator
     description: The principal that first committed the graph.
     slot_uri: dcterms:creator
+    annotations:
+      bookkeeping: true
     range: Principal
   contributor:
     title: Contributor
     description: A principal that committed a later version of the graph.
     slot_uri: dcterms:contributor
+    annotations:
+      bookkeeping: true
     range: Principal
     multivalued: true

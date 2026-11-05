@@ -1,0 +1,212 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "ODRL": "http://www.w3.org/ns/odrl/2/",
+      "dcterms": "http://purl.org/dc/terms/",
+      "linkml": "https://w3id.org/linkml/",
+      "prov": "http://www.w3.org/ns/prov#",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "skos": "http://www.w3.org/2004/02/skos/core#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "action": {
+         "@id": "ODRL:action",
+         "@type": "@vocab",
+         "@context": {
+            "read": "http://www.w3.org/ns/odrl/2/read",
+            "modify": "http://www.w3.org/ns/odrl/2/modify",
+            "delete": "http://www.w3.org/ns/odrl/2/delete",
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer"
+         }
+      },
+      "actions": {
+         "@container": "@set",
+         "@id": "permits",
+         "@type": "@vocab",
+         "@context": {
+            "read": "http://www.w3.org/ns/odrl/2/read",
+            "modify": "http://www.w3.org/ns/odrl/2/modify",
+            "delete": "http://www.w3.org/ns/odrl/2/delete",
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer"
+         }
+      },
+      "assignee": {
+         "@type": "@id",
+         "@id": "ODRL:assignee"
+      },
+      "byte_size": {
+         "@id": "byteSize"
+      },
+      "contributor": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "dcterms:contributor"
+      },
+      "created": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:created"
+      },
+      "creator": {
+         "@type": "@id",
+         "@id": "dcterms:creator"
+      },
+      "description": {
+         "@id": "dcterms:description"
+      },
+      "file_name": {
+         "@id": "fileName"
+      },
+      "generated_at_time": {
+         "@type": "xsd:dateTime",
+         "@id": "prov:generatedAtTime"
+      },
+      "grants": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "grant"
+      },
+      "graph": {
+         "@type": "@id",
+         "@id": "graph"
+      },
+      "id": "@id",
+      "kind": {
+         "@id": "kind",
+         "@type": "@vocab",
+         "@context": {
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#Aggregate",
+            "loaded_graph": "https://meaningfy.ws/ns/rdf-persistence#LoadedGraph"
+         }
+      },
+      "label": {
+         "@id": "skos:prefLabel"
+      },
+      "level": {
+         "@id": "level",
+         "@type": "@vocab",
+         "@context": {
+            "system": "https://meaningfy.ws/ns/rdf-persistence#SystemLevel",
+            "tenant": "https://meaningfy.ws/ns/rdf-persistence#TenantLevel",
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#AggregateLevel"
+         }
+      },
+      "loaded_graph": {
+         "@type": "@id",
+         "@id": "loadedGraph"
+      },
+      "media_type": {
+         "@id": "mediaType"
+      },
+      "modified": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:modified"
+      },
+      "owned_by": {
+         "@type": "@id",
+         "@id": "ownedBy"
+      },
+      "prohibitions": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "prohibition"
+      },
+      "role": {
+         "@id": "role"
+      },
+      "sha256": {
+         "@id": "sha256"
+      },
+      "state": {
+         "@id": "state",
+         "@type": "@vocab",
+         "@context": {
+            "active": "https://meaningfy.ws/ns/rdf-persistence#Active",
+            "deleting": "https://meaningfy.ws/ns/rdf-persistence#Deleting"
+         }
+      },
+      "target": {
+         "@type": "@id",
+         "@id": "ODRL:target"
+      },
+      "uploaded": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:dateSubmitted"
+      },
+      "uploaded_by": {
+         "@type": "@id",
+         "@id": "uploadedBy"
+      },
+      "url_segment": {
+         "@id": "urlSegment"
+      },
+      "version": {
+         "@id": "version"
+      },
+      "was_associated_with": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "prov:wasAssociatedWith"
+      },
+      "was_attributed_to": {
+         "@type": "@id",
+         "@id": "prov:wasAttributedTo"
+      },
+      "was_derived_from": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "prov:wasDerivedFrom"
+      },
+      "was_generated_by": {
+         "@type": "@id",
+         "@id": "prov:wasGeneratedBy"
+      },
+      "@version": 1.1,
+      "type": "@type",
+      "Activity": {
+         "@id": "prov:Activity"
+      },
+      "AggregateRoot": {
+         "@id": "AggregateRoot"
+      },
+      "Described": {
+         "@id": "Described"
+      },
+      "Grant": {
+         "@id": "ODRL:Permission"
+      },
+      "Policy": {
+         "@id": "ODRL:Set"
+      },
+      "Principal": {
+         "@id": "prov:Agent"
+      },
+      "Prohibition": {
+         "@id": "ODRL:Prohibition"
+      },
+      "Provenanced": {
+         "@id": "Provenanced"
+      },
+      "RegistryEntry": {
+         "@id": "RegistryEntry"
+      },
+      "RoleDefinition": {
+         "@id": "RoleDefinition"
+      },
+      "Rule": {
+         "@id": "ODRL:Rule"
+      },
+      "StoredFile": {
+         "@id": "StoredFile"
+      },
+      "TenantAccess": {
+         "@id": "TenantAccess"
+      },
+      "TenantLabelled": {
+         "@id": "TenantLabelled"
+      },
+      "Tracked": {
+         "@id": "Tracked"
+      }
+   }
+}

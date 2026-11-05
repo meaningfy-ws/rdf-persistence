@@ -42,6 +42,13 @@ classes:
     class_uri: lib:Note
     mixins: [Described]
     slots: [text]
+    attributes:
+      shade:
+        title: Shade
+        description: The colour of the note's paper.
+        range: string
+        annotations:
+          owned: false
 
 slots:
   isbn:

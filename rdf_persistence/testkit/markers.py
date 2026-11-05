@@ -1,30 +1,22 @@
 """The pytest marker names of the container tests, and the containers they start (PD-16).
 
-The single source for both ``tests/conftest.py`` and the fixtures plugin. Imports nothing third-party,
-so a lane without the extra ``rdf-persistence[testkit]`` can still use it.
+The single source for both ``tests/conftest.py`` and the fixtures plugin. Needs no extra, so a lane
+without ``rdf-persistence[testkit]`` can still use it.
 """
 
 from collections.abc import Iterable
-from dataclasses import dataclass
 from typing import Protocol
+
+from rdf_persistence.generation.generated.rp_generation import ContainerMarker
 
 STORE, FILES, IDENTITY = "store", "files", "identity"
 FUSEKI, GARAGE, ZITADEL = "fuseki", "garage", "zitadel"
 
 
-@dataclass(frozen=True)
-class ContainerMarker:
-    """A pytest marker, the container it starts, and its help text."""
-
-    marker: str
-    container: str
-    help: str
-
-
 CONTAINER_MARKERS = (
-    ContainerMarker(STORE, FUSEKI, "needs the Fuseki container"),
-    ContainerMarker(FILES, GARAGE, "needs the Garage container"),
-    ContainerMarker(IDENTITY, ZITADEL, "needs the Zitadel container"),
+    ContainerMarker(marker=STORE, container=FUSEKI, help="needs the Fuseki container"),
+    ContainerMarker(marker=FILES, container=GARAGE, help="needs the Garage container"),
+    ContainerMarker(marker=IDENTITY, container=ZITADEL, help="needs the Zitadel container"),
 )
 
 

@@ -1,0 +1,51 @@
+@prefix odrl: <http://www.w3.org/ns/odrl/2/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://example.org/ns/library#LibraryAccess> sh:sparql [ a sh:SPARQLConstraint ;
+            sh:message "LibraryAccess.grants: One grant per assignee, target and role or action." ;
+            sh:select """SELECT DISTINCT $this
+WHERE {
+  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?first .
+  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?second .
+  FILTER (!sameTerm(?first, ?second))
+  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/assignee> ?first_0 . }
+  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/assignee> ?second_0 . }
+  FILTER ((!bound(?first_0) && !bound(?second_0)) || sameTerm(?first_0, ?second_0))
+  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/target> ?first_1 . }
+  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/target> ?second_1 . }
+  FILTER ((!bound(?first_1) && !bound(?second_1)) || sameTerm(?first_1, ?second_1))
+  OPTIONAL { ?first <https://meaningfy.ws/ns/rdf-persistence#role> ?first_2 . }
+  OPTIONAL { ?second <https://meaningfy.ws/ns/rdf-persistence#role> ?second_2 . }
+  FILTER ((!bound(?first_2) && !bound(?second_2)) || sameTerm(?first_2, ?second_2))
+  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/action> ?first_3 . }
+  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/action> ?second_3 . }
+  FILTER ((!bound(?first_3) && !bound(?second_3)) || sameTerm(?first_3, ?second_3))
+}""" ] .
+
+<https://meaningfy.ws/ns/rdf-persistence#Grant> sh:xone ( [ sh:property [ sh:minCount 1 ;
+                        sh:path <https://meaningfy.ws/ns/rdf-persistence#role> ] ] [ sh:property [ sh:minCount 1 ;
+                        sh:path odrl:action ] ] ) .
+
+<https://meaningfy.ws/ns/rdf-persistence#TenantAccess> sh:sparql [ a sh:SPARQLConstraint ;
+            sh:message "TenantAccess.grants: One grant per assignee, target and role or action." ;
+            sh:select """SELECT DISTINCT $this
+WHERE {
+  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?first .
+  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?second .
+  FILTER (!sameTerm(?first, ?second))
+  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/assignee> ?first_0 . }
+  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/assignee> ?second_0 . }
+  FILTER ((!bound(?first_0) && !bound(?second_0)) || sameTerm(?first_0, ?second_0))
+  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/target> ?first_1 . }
+  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/target> ?second_1 . }
+  FILTER ((!bound(?first_1) && !bound(?second_1)) || sameTerm(?first_1, ?second_1))
+  OPTIONAL { ?first <https://meaningfy.ws/ns/rdf-persistence#role> ?first_2 . }
+  OPTIONAL { ?second <https://meaningfy.ws/ns/rdf-persistence#role> ?second_2 . }
+  FILTER ((!bound(?first_2) && !bound(?second_2)) || sameTerm(?first_2, ?second_2))
+  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/action> ?first_3 . }
+  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/action> ?second_3 . }
+  FILTER ((!bound(?first_3) && !bound(?second_3)) || sameTerm(?first_3, ?second_3))
+}""" ] .
+

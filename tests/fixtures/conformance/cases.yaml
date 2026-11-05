@@ -1,0 +1,68 @@
+# The constraint cases of PD-27 item 3: per kind and class, the instance files (beside this file) that
+# the generated class and the generated shape must both accept (valid) and both refuse (invalid).
+# Rows of the metamodel (rdf_persistence/model/rp.yaml) first, then rows of the toy library.
+
+# --- metamodel ---
+# Internal slots (database_name) are not tested here: the shapes make them optional (PD-24).
+- kind: required
+  class_name: Prohibition
+  valid: [instances/prohibition-ok.yaml]
+  invalid: [instances/prohibition-no-action.yaml]
+- kind: range_type
+  class_name: StoredFile
+  valid: [instances/file-size-ok.yaml]
+  invalid: [instances/file-size-text.yaml]
+- kind: range_enum
+  class_name: RoleDefinition
+  valid: [instances/role-def-system.yaml]
+  invalid: [instances/role-def-unknown-level.yaml]
+- kind: pattern
+  class_name: TenantAccess
+  valid: [instances/tenant-distinct-grants.yaml]
+  invalid: [instances/tenant-label-too-long.yaml, instances/tenant-label-trailing-newline.yaml]
+- kind: identifier
+  class_name: Principal
+  valid: [instances/principal-ok.yaml]
+  invalid: [instances/principal-no-id.yaml]
+- kind: closed
+  class_name: Prohibition
+  valid: [instances/prohibition-ok.yaml]
+  invalid: [instances/prohibition-unknown-field.yaml]
+- kind: exactly_one_of
+  class_name: Grant
+  valid: [instances/grant-role.yaml, instances/grant-action.yaml]
+  invalid: [instances/grant-role-and-action.yaml, instances/grant-neither.yaml]
+- kind: unique_keys
+  class_name: TenantAccess
+  valid: [instances/tenant-distinct-grants.yaml]
+  invalid: [instances/tenant-repeated-grant.yaml]
+
+# --- toy library ---
+- kind: required
+  class_name: Book
+  valid: [instances/book-minimal.yaml]
+  invalid: [instances/book-no-label.yaml]
+- kind: range_type
+  class_name: Book
+  valid: [instances/book-with-chapters.yaml]
+  invalid: [instances/book-chapter-number-text.yaml, instances/book-published-not-a-date.yaml]
+- kind: range_enum
+  class_name: Book
+  valid: [instances/book-genre-poetry.yaml]
+  invalid: [instances/book-genre-unknown.yaml]
+- kind: pattern
+  class_name: Scan
+  valid: [instances/scan-sha-ok.yaml]
+  invalid: [instances/scan-sha-bad.yaml, instances/scan-sha-trailing-newline.yaml]
+- kind: identifier
+  class_name: Book
+  valid: [instances/book-minimal.yaml]
+  invalid: [instances/book-no-id.yaml]
+- kind: closed
+  class_name: Book
+  valid: [instances/book-minimal.yaml]
+  invalid: [instances/book-unknown-field.yaml]
+- kind: unique_keys
+  class_name: LibraryAccess
+  valid: [instances/access-distinct-grants.yaml]
+  invalid: [instances/access-repeated-grant.yaml]

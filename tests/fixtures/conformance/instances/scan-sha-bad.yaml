@@ -1,0 +1,5 @@
+id: https://example.org/library/s1
+label: Scan of Dune
+description: A scan
+scan_of: https://example.org/library/b1
+sha256: not-a-digest

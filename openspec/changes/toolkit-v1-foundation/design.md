@@ -14,7 +14,7 @@ The architecture it implements, all under `docs/modules/ROOT/pages/architecture/
 | `generation.adoc` | metamodel (`#metamodel`), its revision (`#revision`), the toolchain |
 | `api.adoc` | the generic router (`#mapper` for the classes question) |
 | `access-control.adoc` | the ODRL check, identity (`#identity`) |
-| `open-decisions.adoc` | the decisions of 2026-11-05, D-1..D-12 |
+| `open-decisions.adoc` | the decisions of 2026-11-05, D-1..D-12, and D-13 once task 1.11 records it |
 
 Generation steps 1–4 and Fuseki's behaviour were proven in a spike (LinkML 1.12.1, Fuseki 5.1.0),
 marked _(spike)_ in `generation.adoc`.
@@ -30,12 +30,12 @@ marked _(spike)_ in `generation.adoc`.
 - the EPIC's no-gos;
 - performance work beyond the toy library;
 - any command-line tool other than `rp-generate`;
-- documentation changes beyond those that tasks 6.1 and 6.2 name.
+- documentation changes beyond those that tasks 1.11, 6.1 and 6.2 name.
 
 ## Decisions
 
 New choices made while planning, grouped by topic; the numbers are stable ids, not an order. Settled
-decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12, O-1 and O-2.
+decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-13, O-1 and O-2.
 
 ### Layers and dependencies
 
@@ -58,7 +58,8 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
 - **PD-2 Dependencies (DEC-5).**
   - Runtime pins (`==`): `linkml-runtime`, `rdflib`, `pyld`, `pyshacl`, `pydantic`, `httpx`,
     `fastapi`, `pyjwt[crypto]`, `boto3`, `anyio`. Each is pinned to its latest release on the day
-    task 0.2 runs, recorded in `uv.lock`; `linkml` is the exception (below).
+    task 0.2 runs, recorded in `uv.lock`; `linkml` is the exception (below). Test-group additions
+    follow the same rule: `hypothesis` is pinned to its latest release on the day task 1.14 adds it.
   - An optional extra, `rdf-persistence[generate]`, brings `linkml==1.12.1`, so consumers' running
     services do not install the generators. `linkml-runtime` is pinned to the version that `linkml`
     1.12.1 resolves to in `uv.lock`.
@@ -184,7 +185,7 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
     level follows from which it is;
   - `role` (`rp:role`) for a role grant, or `action` (`odrl:action`) for a direct permission;
     exactly one of the two. `role` is a string matched against `RoleDefinition.role` (PD-9); no
-    subclassing is needed, and an application may narrow it to an enum by `slot_usage`.
+    subclassing is needed, and an application does not narrow it to an enum: an enum value is stored as its meaning IRI, which a string-valued `role` cannot hold (task 1.8).
 
   The access record owns two collections: `grants` (`rp:grant`, role or direct-action grants) and
   `prohibitions` (`rp:prohibition`), both owned and multivalued. Grant targets are tenant or
@@ -194,10 +195,199 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
   role-or-action, declared as `unique_keys: {grant_key: [assignee, target, role, action]}` (task 1.3);
   `generation.adoc#metamodel` (slot table) and `index.adoc#building-blocks` (Tenancy row) say the same.
 
+### Single source of specification (developer, 2026-11-05)
+
+The developer's rule, from the model-driven method of the
+[MWBv2 Developer Runbook](https://meaningfy.atlassian.net/wiki/spaces/MR/pages/2107342856): the
+domain is specified once, in LinkML, and every artefact that restates it is generated. Nothing that
+restates the model is written or edited by hand. The rule is recorded as D-13 (task 1.11).
+
+- **PD-24 What is generated, and what may be hand-written.**
+  - Generated from LinkML: domain classes, SHACL shapes, the JSON-LD context and frames, TypeScript
+    types, the OpenAPI component schemas (through `gen-json-schema`, inside the OpenAPI hook of task
+    5.5) and the diagrams. A standalone JSON Schema file is not a v1 artefact.
+  - The toolkit's own data types are declared in LinkML and generated too. `rp.yaml` imports
+    neither of these schemas, so consumers' models do not carry them; each is its own
+    `[[tool.rp-generate]]` entry (PD-18) and, like the metamodel, is exempt from the checks of PD-23:
+    - `rdf_persistence/model/service/rp_service.yaml` (`module_kind: technical`; in its own folder, so the metamodel modules it imports are not treated as its own and regenerated with it): `ServiceSettings` (the
+      `settings` of `install_service`: `base`, `prefix`, `tenant_segment`, `creator_role`,
+      `roles_claim`), `VerifiedCaller` (what `TokenVerifier` returns: `principal`,
+      `global_roles`), and the toolkit's own request and response bodies (PD-13: `TenantCreate`,
+      `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`, `Problem`), generated into
+      `rdf_persistence/domain/generated/service/`. `rp_service.yaml` imports `rp_core`,
+      `rp_access` and `rp_tenancy` (for `TenantState`); `linkml:Any` is declared as a class `Any`
+      with `class_uri: linkml:Any`, which gen-pydantic renders as `typing.Any`; `Problem`'s slots are
+      `problem_type`, `problem_title`, ... with aliases `type`, `title`, ... (task 1.13); `GrantSet.grants` has range `Grant`; its run emits only its own classes and
+      imports the others from `rdf_persistence.domain.generated`;
+    - `rdf_persistence/generation/model/rp_generation.yaml`: `GenerationManifest`, `ConstraintCase`
+      and `ClassShape` (PD-26, PD-27), generated into `rdf_persistence/generation/generated/`.
+  - Stage 1 review (2026-11-05): every plain data record of `generation` and `testkit` (a file to
+    write, a check problem, a flag, a presence alternative, a template view-model, a guard
+    violation) is declared in `rp_generation.yaml` and generated. Hand-written types remain only
+    where a field holds a foreign runtime object LinkML cannot express (a `SchemaView`, a callable,
+    an rdflib graph) or where the type subclasses a LinkML generator or template class; each is
+    named in the model guard's allow-list (PD-28). The annotation vocabulary (`owned`, `internal`,
+    `graph`, `database`, `module_kind`, `rp_path`, `rp_unlabelled`, and `bookkeeping` for the
+    slots the shapes ignore) and its value sets are generated enums, never free strings.
+  - Hand-written, because it restates nothing: generic code that reads the schema through
+    `SchemaView` at run time (the mapper, the router), the strict base `RpModel`
+    (`domain/base.py`), the generator extensions and templates, exception classes, and
+    infrastructure types in `testkit` and `adapters` (such as a container's endpoint), which are
+    not domain data.
+  - A rule the schema declares is enforced by both the generated classes and the generated shapes.
+    Stock `gen-pydantic` enforces neither `exactly_one_of` nor `unique_keys`, and stock `gen-shacl`
+    translates neither, so the toolkit extends both:
+    - classes (task 1.13): `exactly_one_of` and `any_of` become a model validator on the class that
+      declares them; `unique_keys` becomes a model validator on every class with a multivalued slot
+      whose range declares them (for example `TenantAccess`, over `grants`), refusing two items with
+      equal key values. An absent slot counts as a key value, and two absent values are equal (the
+      grant key spans `role` and `action`, one of which is always absent); the SPARQL constraint of
+      the shapes treats absent values the same way;
+    - shapes (task 1.8): `exactly_one_of` becomes `sh:xone`, `any_of` becomes `sh:or`, and
+      `unique_keys` becomes a SPARQL constraint on the owning class.
+    - shapes are named by the class's native IRI (two classes may share a `class_uri`, such as
+      `odrl:Permission`), and a non-owned slot that refers to another aggregate is checked as an
+      IRI only (no `sh:node` or `sh:class`), so an aggregate's graph validates without the
+      aggregates it refers to (task 1.8);
+    - The context and the shapes agree on what a value is (found by the conformance suite, task
+      1.14): a class with an identifier slot gets `sh:nodeKind sh:IRI` on its node shape, so an
+      instance without an IRI is refused; `uri` and `uriorcurie` slots get `"@type": "@id"`; an
+      enum-ranged slot gets `"@type": "@vocab"` and a property-scoped context mapping each value to
+      its `meaning`, so values are stored as their meaning IRIs and compact back to their keys
+      (the context declares `"@version": 1.1`); an enum gives every value a `meaning` or none, and a
+      mixed enum is a generation error. Slots annotated `internal` are optional in the
+      shapes: the public context leaves them out (PD-12), the toolkit writes them, and the mapper's
+      tests check they are present.
+    - `unique_keys` is enforced on multivalued slots holding objects (inlined, or a range without
+      an identifier); a slot of references by IRI carries no key slots to compare (task 1.13).
+    - `rules` (LinkML's pre- and postconditions), `all_of` and `none_of` are not supported in v1:
+      the generated code would ignore them, so `rp-generate` exits 1,
+      naming the class, if a schema uses it.
+- **PD-25 Extending the generators.** Every gap in a stock LinkML generator is closed by an
+  extension in `rdf_persistence/generation/`: a subclass or a template, never a patch to generated
+  output. Each extension has a row in the extension table of `generation.adoc` (what the stock
+  generator lacks, what the extension adds) and a golden test on the toy schema. A test fails if an
+  extension module has no row or no test.
+- **PD-26 Freshness and drift.**
+  - `rp-generate` writes one manifest per `[tool.rp-generate]` entry, `rp-manifest.json` in the
+    table's `python` folder. Its model is `GenerationManifest` (PD-24): `linkml` (the version
+    string), `inputs` and `outputs`, each a list of entries with `path` and `sha256`.
+    - Paths are POSIX, relative to the folder of the `pyproject.toml`; hashes are over the raw
+      bytes; entries are sorted by path.
+    - Inputs also include every `services/schema*.py` module, since they decide how a schema is
+      read (stage 1 review).
+    - Inputs: every file of `load_schema(schema)`'s import closure (the metamodel resolved through
+      PD-22; `linkml:types` is covered by the `linkml` version instead), every file of the template
+      directories, and every `.py` module under `rdf_persistence/generation/` except those under
+      `rdf_persistence/generation/generated/`.
+    - Outputs: every file the run wrote, in every target folder (Python, TypeScript, diagrams),
+      except the manifest itself. A run deletes only the files its previous manifest lists; it never
+      clears a folder, so nested output folders (`domain/generated/service/`) are safe.
+    - An input inside the installed `rdf_persistence` package is recorded as
+      `rdf_persistence/<path within the package>`, so a consumer's manifest does not depend on
+      where the package is installed.
+    - A manifest whose `linkml` differs from the installed version means *stale*.
+    - Without the `generate` extra, `--check` and the pytest plugin do only the manifest
+      comparison: lint and the checks are skipped and the `linkml` version is not compared (hashing
+      needs only `linkml-runtime`); a regeneration needs the extra (PD-2). The plugin always does
+      only the manifest comparison; the full `--check` runs in `make check-quality`.
+  - `rp-generate --check` recomputes both. A changed input means *stale*; a changed output means
+    *edited by hand*. Either exits 1, naming the files and the command that fixes them.
+  - The check runs in four places:
+    - `make check-quality`, so before every PR and in CI;
+    - the start of every pytest session: the plugin `rdf_persistence/testkit/freshness.py` checks in
+      `pytest_sessionstart` and stops the run with `pytest.exit(..., returncode=1)` when anything is
+      stale or edited. A consumer enables it with `pytest_plugins =
+      ["rdf_persistence.testkit.freshness"]` in its root conftest. It reads the `pyproject.toml`
+      files listed in the ini option `rp_generate_projects` (default: the rootdir's); this repo lists
+      its own `pyproject.toml` (whose three `[[tool.rp-generate]]` entries generate the toolkit's schemas)
+      and `tests/fixtures/library/pyproject.toml`;
+    - a local pre-commit hook, `rp-generate-check`, with `files:
+      ^(rdf_persistence/(model|generation)/|tests/fixtures/library/|.*/generated/)`; it replaces the
+      "Ruff only" note in `.pre-commit-config.yaml`;
+    - `make check-generated` in CI, which regenerates from scratch and diffs, catching what a hash
+      cannot (a generator that is not deterministic).
+  - Generation is part of the build: `make generate` regenerates everything, and `make build` runs
+    it first.
+- **PD-27 Correctness of the generated code.**
+  1. *Schema gates first*: `linkml-lint` with the raised rules, then the hard and boundary checks;
+     nothing is generated from a schema that fails them.
+  2. *Golden tests per extension*: RDF output compared by graph isomorphism, other output as exact
+     text, and the set of files compared exactly. For the toy library the golden is the committed
+     generated tree itself; separate goldens exist only for schemas that are not the toy.
+  3. *Cross-artefact conformance*:
+     - The cases live in `tests/fixtures/conformance/cases.yaml`, as `ConstraintCase` rows: `kind`,
+       `class_name`, `valid` and `invalid` (paths of instance files beside it, in YAML).
+     - The constraint kinds of v1: `required`, `cardinality` (`minimum_cardinality`,
+       `maximum_cardinality`), `range_type`, `range_enum`, `pattern`, `value_bounds`
+       (`minimum_value`, `maximum_value`), `identifier`, `closed` (an unknown field or predicate),
+       `exactly_one_of`, `any_of` and `unique_keys`.
+     - For every case, the generated class and the generated shape must accept `valid` and refuse
+       `invalid`.
+     - Coverage: the kinds used by a schema (read from `SchemaView`: the metaslots set on its
+       induced slots and its classes) minus the kinds that have at least one row must be empty;
+       otherwise the test fails, naming the missing kinds.
+     - A consumer runs it on its own schema with `testkit.conformance.run(schema, cases)`.
+  4. *Round trips* (strategies in `testkit`, run on the toy library's aggregates and the
+     metamodel's `TenantAccess`; equality is on the public projection, since internal slots never
+     cross the context): an instance goes to JSON, is expanded with the generated context to RDF, then
+     framed and compacted back. Equal means the generated objects compare equal and the two RDF
+     graphs are isomorphic. Hypothesis (pinned in the test group, PD-2) draws the instances with
+     strategies built from `SchemaView`: required slots always, optional ones by draw; values by
+     range (text, integers, dates, enum values, IRIs under a fixed base); owned parts to depth 2.
+  5. *Model shape*: for every generated class, the pydantic fields match `SchemaView`'s induced
+     slots (name, required and multivalued; the range is held by the snapshot of item 6, since
+     LinkML ranges and pydantic types do not map one to one). Both read the schema *after* PD-11's
+     defaults, as the generators do. This compares the generated code with the *current* schema, so it catches stale or edited code even without the manifest.
+  6. *A model change fails the tests until acknowledged* (runbook): `tests/fixtures/model-shape.yaml`
+     holds the reviewed shape of every class of the metamodel and the toy library, as `ClassShape`
+     rows (`class_name`, then `slots`, each with `name`, `required`, `multivalued`, `range`). The
+     test compares the current schema with this *last reviewed* shape, so any model change, intended
+     or not, fails it until `make refresh-snapshot` rewrites the file and the diff is reviewed in the
+     PR.
+  7. *Generated code compiles*: every generated Python module imports cleanly and passes
+     `uv run mypy --config-file mypy-generated.ini` (since PD-19 excludes generated folders from the
+     main run). The profile sets `plugins = pydantic.mypy`, `check_untyped_defs = True`,
+     `ignore_missing_imports = True`, `warn_unused_ignores = False` and `disallow_untyped_defs =
+     False`, and checks only the generated folders; the TypeScript output
+     passes `npx -y typescript@5.9.3 tsc --noEmit --strict` in CI.
+- **PD-28 Guards against hand-written models.**
+  - The model guard parses every module of `domain`, `services` and `entrypoints` with `ast`,
+    skipping any path with a `generated` segment. It fails, naming the class, on a class deriving
+    from `pydantic.BaseModel`, `rdf_persistence.domain.base.RpModel`, `enum.Enum`, `enum.StrEnum`,
+    `enum.IntEnum`, `typing.TypedDict` or `typing.NamedTuple`, or decorated with
+    `dataclasses.dataclass`. Names are resolved through each module's imports, aliases included
+    (`import pydantic as p`, `from enum import Enum as E`). The only default exception is `RpModel`
+    in `rdf_persistence/domain/base.py`; a consumer passes its own with `allow=`.
+  - The file guard fails on `*.shacl.ttl`, `*shapes*.ttl`, `*.context.jsonld`, `*.frame.jsonld`,
+    `*.schema.json`, `openapi*.json`, `openapi*.yaml` and `*.ts` (except `*.test.ts` and
+    `*.spec.ts`) anywhere in the scanned roots outside a folder named `generated`. This repo scans
+    `rdf_persistence/` and `tests/`, with `tests/fixtures/` exempt (instance data and request
+    bodies).
+  - Both are `testkit.assert_models_generated(package, *, roots, allow=())`, so consumers get them
+    too. In this repo the model guard also scans `generation` and `testkit`, with the allow-list of
+    PD-24's foreign-object types.
+  - Patterns are fully anchored on both sides (stage 1 review): the classes use `fullmatch`, and
+    the shapes wrap each pattern as `^(?:P)(?![\s\S])`, because `$` in pyshacl's and Java's regex
+    accepts a final newline. The look-ahead is outside the XPath regex syntax SHACL names, but both
+    validators the toolkit targets (pyshacl, Jena) accept it.
+  - `rp-generate` validates its own inputs (stage 1 review): manifest paths are relative POSIX paths
+    without `..` and hashes are 64 hex digits; a run removes a listed file only if it lies under the
+    project and still has its recorded hash; configured folders are relative, without `..`; the
+    package is a dotted identifier; every staged file must stay inside the staging folder.
+
 ### Generation
 
 - **PD-18 The `[tool.rp-generate]` table.** Paths are relative to the directory of the
-  `pyproject.toml`. Each key has a command-line flag that overrides it.
+  `pyproject.toml`. Each key has a command-line flag that overrides it. The key holds one table,
+  or an array of tables `[[tool.rp-generate]]`; each entry is one run with its own manifest
+  (PD-26). This repo's `pyproject.toml` has three entries: `rp.yaml` into `domain/generated/`,
+  `rp_service.yaml` into `domain/generated/service/`, and `rp_generation.yaml` into
+  `generation/generated/`.
+  The `schema` key is the field `schema_file` of `GenerationTarget` (a slot named `schema` would
+  shadow a pydantic method); the TOML key and the `--schema` flag stay `schema`. Radon cannot read a
+  `pyproject.toml` holding a `[[tool.*]]` array, so the Radon and Xenon targets run from inside the
+  package folder (task 1.5).
 
   | Key | Flag | Default | Meaning |
   |---|---|---|---|
@@ -206,12 +396,13 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
   | `python` | `--python-out` | the folder of `package` | classes, shapes, context, frames, schema copy |
   | `typescript` | `--typescript-out` | not written | TypeScript types |
   | `diagrams` | `--diagrams-out` | not written | one Mermaid file per module |
-  | — | `--check` | off | run lint and the checks only; write nothing |
+  | — | `--check` | off | write nothing: run lint, the hard and boundary checks, then the manifest comparison of PD-26; exit 1 on a failed check, a stale input or an edited output |
 - **PD-19 Reproducible output.** Generator metadata that changes between runs (generation dates,
   generator versions) is switched off in every generator call. Generated folders (`**/generated/**`)
   are excluded from Ruff and mypy in their config files, and from Xenon by an `--exclude` flag on
   the `clean-code` target in the `Makefile` (Xenon has no config file). `make check-generated` regenerates
-  the toy library and the metamodel classes and fails on any difference; CI runs it.
+  every entry (the toy library and the three toolkit schemas) and fails on any difference; CI runs
+  it.
 - **PD-20 Boundary checks on code.** `docs/tools/check_docs.py` also scans `rdf_persistence/` and
   `tests/` for consumer terms, and `make check-quality` runs it. The end-to-end test uses
   `testkit.assert_public_imports(path)`, which parses a test file's imports with `ast` and fails on
@@ -221,7 +412,11 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
   `odrl:Party` as an exact mapping. `TenantAccess` includes `Described`, so the tenant's label is
   the one `label` slot (`skos:prefLabel`); there is no `dcterms:title` slot in the metamodel.
 - **PD-22 Importing the metamodel.** Application modules import metamodel modules as
-  `rdf_persistence/model/<module>`. `generation/schema.py` has `load_schema(path)`, which opens a
+  `rdf_persistence/model/<module>`. `rdf_persistence/services/schema.py` has `load_schema(path)`
+  (in `services`, so the mapper may use it under PD-1; `generation` imports it from there). The
+  rules that read a schema's aggregate structure (roots, the tenant root, owned and internal
+  slots, PD-11's defaults, the presence alternatives and keyed slots of a class) live beside it in
+  `services`, once, and `generation`, `testkit` and the mapper all use them. It opens a
   schema with `SchemaView` and an import map from that prefix to the installed package's `model/`
   folder. `rp-generate`, the mapper and the tests load schemas only through it; a unit test loads
   every toy library schema with it.
@@ -230,8 +425,12 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
   tests cover them), and so are an application class's slots and rules inherited from them; for
   example, `LibraryGrant` (`is_a: Grant`) needs no `Described`. Grants and prohibitions stay blank
   nodes. A class reached only by IRI (`Principal`, `Activity`) is a reference, not a part.
+  The checks recognise the toolkit's own schemas by location: a schema file inside the installed
+  `rdf_persistence` package. The reference classes are exactly `Principal` and `Activity` (and their
+  subclasses); a non-owned slot ranging over any other metamodel class fails. The module-kind rule
+  looks at a module's direct imports only (task 1.7).
 - **PD-11 Unlabelled classes.** Before running the generators, `rp-generate` gives every class
-  annotated `rp_unlabelled: true` a `slot_usage` of `{label: {required: false}}`. The generated
+  annotated `rp_unlabelled: true` a `slot_usage` of `{label: {required: false}}`. `rp_unlabelled` relaxes only the label: the class still includes `Described`, so it keeps `id` and `description`. The generated
   classes and shapes then agree, with no separate change to the shapes generator. In the same
   step it gives every aggregate root a `slot_usage` of `{description: {required: true}}`, as the
   rp-metamodel requirement asks (tests in tasks 1.6 and 1.8).
@@ -257,7 +456,12 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
       use;
     - `PUT /{tenant_segment}/{t}/label`: the tenant's label in the access record, `If-Match` on the
       access record, action `modify`.
-  - Bodies and construction:
+  - Bodies and construction. The tenant-route bodies, `Page` and `Problem` are classes of
+    `rp_service.yaml`, generated (PD-24); the router validates them and builds them through these
+    classes, never through bare dicts. Aggregate bodies stay JSON-LD, handled as in PD-14.
+    `Page.items` has range `linkml:Any` and holds framed aggregates (or `TenantSummary` objects, for
+    `GET /{tenant_segment}`). `TenantCreate.root` has range `linkml:Any`; it and the body of
+    `GET`/`PUT /{tenant_segment}/{t}` are the tenant root, handled as in PD-14:
 
     | Route | Request body | Response |
     |---|---|---|
@@ -276,7 +480,9 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
     3. adds a lifespan step that runs, before the app serves: create the system database if
        missing, then load and validate the role definitions, then the sweep.
 
-    `settings` holds `base`, `prefix`, `tenant_segment`, `creator_role` and `roles_claim`. The
+    `settings` is a `ServiceSettings` (generated from `rp_service.yaml`, PD-24) holding `base`,
+    `prefix`, `tenant_segment`, `creator_role` and `roles_claim`; the verifier returns a
+    `VerifiedCaller`, generated from the same module. The
     JSON-LD context is served at `/context.jsonld` under the mount. Upload, graph loading and account
     administration are library calls for the consumer's own routes, not routes of the toolkit.
 
@@ -447,10 +653,11 @@ practically impossible.
 | Use a counter as the version | A fresh UUID per commit (PD-5) | A counter gives false successes |
 | Accept client-sent IRIs on create | Mint them (PD-6) | IRIs stay in the toolkit's namespace |
 | Generate routes or repositories | The generic router reads `SchemaView` at run time | O-1, D-1 |
-| Use generated classes in the router | Context, frame and shapes (PD-14) | D-2 |
+| Use generated *domain* classes for aggregate bodies in the router | Context, frame and shapes (PD-14) | D-2 |
 | Import an adapter in `services`, `domain` or `entrypoints` | Depend on the port; the consumer wires the adapter | PD-1 |
 | Mock Fuseki, Garage or Zitadel in integration tests | Containers (PD-16) | DEC-4 |
-| Edit generated files | Change the schema or template; regenerate | Freshness check |
+| Edit generated files | Change the schema or template; regenerate | Freshness check (PD-26) |
+| Hand-write a model, shape, context or API schema | Declare it in LinkML; extend a generator if needed | PD-24, PD-28 guards |
 | Put a consumer term in code, tests or architecture pages | Toy library terms | `rp-package-boundaries` |
 | Add a login endpoint | The provider's flows | D-10 |
 
@@ -479,7 +686,9 @@ practically impossible.
 | The identity provider's management API is unreachable or answers 5xx | httpx error in the Zitadel adapter | `IdentityUnavailable` → 503 `unavailable` |
 | No account for an email | Zitadel adapter | `NotFound` → 404 `not-found` |
 | Schema fails the hard or boundary check | `rp-generate` | Exit 1, naming each element; outputs untouched |
-| Generated output stale | CI regenerates and diffs | CI fails |
+| Generated output stale | `rp-generate --check` (manifest), at session start, in `check-quality`, pre-commit; CI regenerates and diffs | Exit 1 naming the stale files and `make generate` |
+| Generated output edited by hand | Output hash differs from the manifest | Exit 1 naming the edited files |
+| Generated classes and shapes disagree on a constraint | Conformance suite (PD-27) | Test fails naming the constraint case |
 | A LinkML bump breaks an extension | Extension tests on the toy schema | Fix the extension, or hold the pin |
 
 ## Risks / Trade-offs

@@ -29,6 +29,10 @@ from rdf_persistence.testkit.markers import FILES, IDENTITY, STORE, register_mar
 TESTS_ROOT_DIR = Path(__file__).parent
 TEST_DATA_DIR = TESTS_ROOT_DIR / "test_data"
 
+# Freshness of the generated code (PD-26) is checked at the start of every session; pytester runs
+# the plugin's own tests.
+pytest_plugins = ["pytester", "rdf_persistence.testkit.freshness"]
+
 # The container fixtures plugin (PD-16). Only tests/integration/ and tests/e2e/ load it, so the
 # unit lane runs without testcontainers. pytest allows `pytest_plugins` only in the rootdir
 # conftest, so those two conftests call `load_container_plugin` from `pytest_configure`.

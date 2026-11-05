@@ -1,0 +1,18 @@
+@model_validator(mode="after")
+    def {{ method }}(self) -> "{{ class_name }}":
+        held = [
+            label
+            for label, present in (
+        {% for alternative in alternatives %}
+                ({{ alternative.label | tojson }}, {{ alternative.holds }}),
+        {% endfor %}
+            )
+            if present
+        ]
+        if {{ refused }}:
+            raise ValueError(
+                {{ (class_name ~ ": " ~ rule ~ " needs " ~ need ~ " of [" ~ labels ~ "], but ") | tojson }}
+                + str(held or "none")
+                + " hold"
+            )
+        return self

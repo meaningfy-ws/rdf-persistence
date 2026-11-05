@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation.schema import load_schema
+from rdf_persistence.services.schema import load_schema
 
 LIBRARY = Path(__file__).parents[2] / "fixtures" / "library"
 MODEL = Path(__file__).parents[3] / "rdf_persistence" / "model"
@@ -24,7 +24,7 @@ class ToySchema:
 TOY_SCHEMAS = (
     ToySchema(
         "library",
-        frozenset({"Library", "Book", "Chapter", "Note", "Scan", "LibraryAccess", "LibraryGrant"}),
+        frozenset({"Library", "Book", "Chapter", "Note", "Scan", "LibraryAccess"}),
         frozenset({"TenantAccess"}),
     ),
     ToySchema("partial", frozenset({"Shelf"}), frozenset({"AggregateRoot", "Described"})),
@@ -33,7 +33,7 @@ TOY_SCHEMAS = (
     ToySchema("scans", frozenset({"Scan", "Book"}), frozenset({"StoredFile"})),
     ToySchema(
         "library_access",
-        frozenset({"LibraryAccess", "LibraryGrant"}),
+        frozenset({"LibraryAccess"}),
         frozenset({"Grant", "TenantAccess", "Principal"}),
     ),
 )

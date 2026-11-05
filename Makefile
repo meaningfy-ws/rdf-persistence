@@ -13,7 +13,6 @@ REPO_ROOT    = $(shell pwd)
 PACKAGE_NAME = rdf_persistence
 TEST_PATH    = $(REPO_ROOT)/tests
 BUILD_PATH   = $(REPO_ROOT)/dist
-GENERATED_DIR = $(PACKAGE_NAME)/domain/generated
 
 # Docker / infra (activate the Docker section below once infra/ exists).
 COMPOSE_FILE = $(REPO_ROOT)/infra/compose.yaml
@@ -44,7 +43,7 @@ help: ## Display available targets
 #-----------------------------------------------------------------------------
 # Install / build (mutating)
 #-----------------------------------------------------------------------------
-.PHONY: install-uv install lock generate-metamodel build
+.PHONY: install-uv install lock generate check-freshness check-generated refresh-snapshot refresh-golden build
 
 install-uv: ## Install uv if not present
 	@ command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -59,15 +58,32 @@ lock: ## Update uv.lock
 	@ uv lock
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Lock file updated$(END_BUILD_PRINT)"
 
-generate-metamodel: ## Regenerate the metamodel's Python classes (task 1.10 replaces this with rp-generate)
-	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating the metamodel classes$(END_BUILD_PRINT)"
-	@ mkdir -p $(GENERATED_DIR)
-	@ uv run gen-pydantic --meta None --no-metadata --no-generation-date \
-		--template-dir $(PACKAGE_NAME)/generation/templates/pydantic \
-		$(PACKAGE_NAME)/model/rp.yaml > $(GENERATED_DIR)/rp.py
-	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Metamodel classes written to $(GENERATED_DIR)/rp.py$(END_BUILD_PRINT)"
+TOY_PROJECT = tests/fixtures/library/pyproject.toml
+GENERATED_GLOBS = ':(glob)**/generated/**'
 
-build: ## Build the package distribution
+generate: ## Regenerate everything from LinkML: the toolkit's own schemas (metamodel, service, generation) and the toy library
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating from LinkML$(END_BUILD_PRINT)"
+	@ uv run rp-generate
+	@ uv run rp-generate --project $(TOY_PROJECT)
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated$(END_BUILD_PRINT)"
+
+check-freshness: ## rp-generate --check on both projects: lint, checks, and the manifest comparison (PD-26)
+	@ uv run rp-generate --check
+	@ uv run rp-generate --check --project $(TOY_PROJECT)
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated code matches its sources$(END_BUILD_PRINT)"
+
+check-generated: generate ## Regenerate and fail if the result differs from what is committed (PD-19)
+	@ git diff --exit-code --stat -- $(GENERATED_GLOBS)
+	@ git ls-files --others --exclude-standard -- $(GENERATED_GLOBS) | grep . && exit 1 || true
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated output is fresh$(END_BUILD_PRINT)"
+
+refresh-snapshot: ## Rewrite the reviewed model-shape snapshot after a deliberate model change (review the diff)
+	@ RP_REFRESH_SNAPSHOT=1 uv run pytest tests/unit/generation/test_shape_snapshot.py -q
+
+refresh-golden: ## Rewrite the golden files of schemas that are not the toy (the toy's golden is the committed tree: make generate)
+	@ RP_REFRESH_GOLDEN=1 uv run pytest tests/unit/generation -k "ext_" -q
+
+build: generate ## Build the package distribution (generates first)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Building package$(END_BUILD_PRINT)"
 	@ uv build
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Package built successfully$(END_BUILD_PRINT)"
@@ -98,7 +114,7 @@ pre-commit: ## Run pre-commit hooks on all files
 #-----------------------------------------------------------------------------
 # Validation — non-mutating targets
 #-----------------------------------------------------------------------------
-.PHONY: lint typecheck check-architecture test test-unit test-feature test-containers test-e2e
+.PHONY: lint typecheck typecheck-generated typecheck-ts check-architecture test test-unit test-feature test-containers test-e2e
 
 lint: ## Run Ruff linting checks
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running Ruff checks$(END_BUILD_PRINT)"
@@ -109,6 +125,21 @@ typecheck: ## Run mypy type checks
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running mypy$(END_BUILD_PRINT)"
 	@ uv run mypy $(PACKAGE_NAME)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Type checks passed$(END_BUILD_PRINT)"
+
+# The Python folders of every [[tool.rp-generate]] entry, so a new entry is checked without an edit here.
+# A folder inside another listed folder (the service module's) is checked with its parent.
+GENERATED_PY = $(shell { uv run rp-generate --list-python-folders; uv run rp-generate --list-python-folders --project $(TOY_PROJECT); } | sort | awk '{ for (i in kept) if (index($$0, kept[i] "/") == 1) next; kept[NR] = $$0; print }')
+TOY_TS = $(wildcard tests/fixtures/library/web/src/domain/generated/*.ts)
+
+typecheck-generated: ## Run mypy on the generated Python only, with mypy-generated.ini (PD-27)
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running mypy on generated code$(END_BUILD_PRINT)"
+	@ uv run mypy --config-file mypy-generated.ini $(GENERATED_PY)
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated code type checks passed$(END_BUILD_PRINT)"
+
+typecheck-ts: ## Run tsc --noEmit --strict (typescript 5.9.3) on the generated TypeScript (needs Node)
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running tsc on generated TypeScript$(END_BUILD_PRINT)"
+	@ npx -y -p typescript@5.9.3 tsc --noEmit --strict $(TOY_TS)
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated TypeScript type checks passed$(END_BUILD_PRINT)"
 
 check-architecture: ## Check architecture constraints with import-linter
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking architecture constraints$(END_BUILD_PRINT)"
@@ -148,7 +179,7 @@ test-e2e: ## Run end-to-end tests only
 #-----------------------------------------------------------------------------
 .PHONY: check-spec check-quality check-all ci-quick ci-full
 
-check-quality: lint typecheck check-architecture check-spec check-docs ## Static checks: lint + typecheck + architecture + spec + docs and code terms
+check-quality: lint typecheck typecheck-generated check-architecture check-spec check-docs check-freshness ## Static checks: lint + typecheck + architecture + spec + docs and code terms + generated code is fresh
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) All quality checks passed$(END_BUILD_PRINT)"
 
 check-all: check-quality test ## Full suite: quality + unit and feature tests (containers: make test-containers)
@@ -162,6 +193,8 @@ ci-full: check-all clean-code ## CI full: quality + unit and feature tests + cle
 
 #-----------------------------------------------------------------------------
 # Reports (opt-in)
+# Note: radon (and xenon, which uses it) cannot read a pyproject.toml whose [[tool.*]] is an array of
+# tables (the rp-generate entries), so they run from inside the package, away from it.
 #-----------------------------------------------------------------------------
 .PHONY: coverage-report quality-report
 
@@ -174,8 +207,8 @@ coverage-report: ## Generate HTML coverage report in reports/
 quality-report: ## Generate Radon quality report in reports/
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating quality report$(END_BUILD_PRINT)"
 	@ mkdir -p $(REPO_ROOT)/reports
-	@ uv run radon cc $(PACKAGE_NAME) -s -a -j > $(REPO_ROOT)/reports/complexity.json
-	@ uv run radon mi $(PACKAGE_NAME) -s -j > $(REPO_ROOT)/reports/maintainability.json
+	@ uv run --directory $(PACKAGE_NAME) radon cc . -s -a -j > $(REPO_ROOT)/reports/complexity.json
+	@ uv run --directory $(PACKAGE_NAME) radon mi . -s -j > $(REPO_ROOT)/reports/maintainability.json
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Quality reports at reports/$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------
@@ -185,17 +218,17 @@ quality-report: ## Generate Radon quality report in reports/
 
 complexity: ## Radon cyclomatic complexity analysis
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking cyclomatic complexity$(END_BUILD_PRINT)"
-	@ uv run radon cc $(PACKAGE_NAME) -s -a
+	@ uv run --directory $(PACKAGE_NAME) radon cc . -s -a
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Complexity analysis complete$(END_BUILD_PRINT)"
 
 maintainability: ## Radon maintainability index
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking maintainability index$(END_BUILD_PRINT)"
-	@ uv run radon mi $(PACKAGE_NAME) -s
+	@ uv run --directory $(PACKAGE_NAME) radon mi . -s
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Maintainability analysis complete$(END_BUILD_PRINT)"
 
 clean-code: ## Xenon threshold checks
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running Xenon threshold checks$(END_BUILD_PRINT)"
-	@ uv run xenon $(PACKAGE_NAME) --exclude '*/generated/*' --max-absolute B --max-modules A --max-average A
+	@ uv run --directory $(PACKAGE_NAME) xenon . --exclude '*/generated/*' --max-absolute B --max-modules A --max-average A
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Clean code checks passed$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------

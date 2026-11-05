@@ -1,0 +1,12 @@
+@field_validator({{ name | tojson }})
+    def pattern_{{name}}(cls, v):
+        pattern=re.compile({{ pattern | tojson }})
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = {{ ("Invalid " ~ name ~ " format: ") | tojson }} + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = {{ ("Invalid " ~ name ~ " format: ") | tojson }} + str(v)
+            raise ValueError(err_msg)
+        return v

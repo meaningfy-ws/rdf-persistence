@@ -1,0 +1,21 @@
+{{name}}: {{ range }} = Field(default={{ field }}
+{%- if alias %}, alias={{ alias | tojson }}{% endif -%}
+{%- if title != None %}, title={{ title | tojson }}{% endif -%}
+{%- if description %}, description={{ description | tojson }}{% endif -%}
+{%- if equals_number != None %}
+    , le={{equals_number}}, ge={{equals_number}}
+{%- else -%}
+    {%- if minimum_value != None %}, ge={{minimum_value}}{% endif -%}
+    {%- if maximum_value != None %}, le={{maximum_value}}{% endif -%}
+{%- endif -%}
+{%- if multivalued and exact_cardinality != None -%}
+    , min_length={{exact_cardinality}}, max_length={{exact_cardinality}}
+{%- elif multivalued -%}
+    {%- if minimum_cardinality != None %}, min_length={{minimum_cardinality}}{% endif -%}
+    {%- if maximum_cardinality != None %}, max_length={{maximum_cardinality}}{% endif -%}
+{%- endif -%}
+{%- if secret %}, repr=False{% endif -%}
+{%- if internal -%}
+    , json_schema_extra = { "rp_internal": True }
+{%- endif -%})
+{%- if loosens %}  # type: ignore[assignment]{% endif -%}

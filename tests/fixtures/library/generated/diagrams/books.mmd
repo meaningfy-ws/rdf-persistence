@@ -1,0 +1,19 @@
+classDiagram
+    class Book {
+        <<root>>
+        +string isbn
+        +List~string~ authors
+        +date published
+        +Genre genre
+    }
+    class Chapter {
+        <<owned>>
+        +integer number
+    }
+    class Note {
+        <<owned>>
+        +string text
+        +string shade
+    }
+    Book "1" *-- "*" Chapter : chapters
+    Chapter "1" *-- "*" Note : notes

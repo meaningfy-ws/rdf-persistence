@@ -43,3 +43,38 @@ byte-identical output.
 #### Scenario: regeneration in CI
 - **WHEN** CI regenerates the toy library
 - **THEN** the result equals the committed output
+
+### Requirement: LinkML is the single source of every model artefact
+
+Every model artefact SHALL be generated from the LinkML schema: domain classes, shapes, the JSON-LD
+context and frames, TypeScript types, OpenAPI component schemas and diagrams.
+No such artefact SHALL be written or edited by hand. A gap in a stock generator SHALL be closed by
+a toolkit extension with its own test, and a rule the schema declares SHALL be enforced by the
+generated classes as well as by the shapes.
+
+#### Scenario: a hand-written domain class
+- **WHEN** a module of `rdf_persistence.domain` outside `generated/` defines a pydantic class
+- **THEN** the model guard fails and names the class
+
+#### Scenario: classes and shapes agree on a declared rule
+- **WHEN** a `Grant` instance has both a role and an action, which `exactly_one_of` forbids
+- **THEN** both the generated class and the generated shape refuse it
+
+### Requirement: Stale or edited generated output is detected
+
+`rp-generate --check` SHALL fail, naming the files, when an input of the last generation (the
+schema closure, a template or an extension) has changed since, or when a generated file differs
+from what was generated. The check SHALL run in `make check-quality`, at the start of every test
+session and in CI.
+
+#### Scenario: a schema changed without regenerating
+- **WHEN** a slot is added to the toy schema and `rp-generate` is not run
+- **THEN** the test session stops before any test runs, naming the schema and `make generate`
+
+#### Scenario: a generated file edited by hand
+- **WHEN** a line of a generated class file is changed by hand
+- **THEN** `make check-quality` fails and names that file
+
+#### Scenario: a model change is acknowledged
+- **WHEN** a slot is added to the toy schema and the code is regenerated
+- **THEN** the model-shape snapshot test fails until `make refresh-snapshot` is run

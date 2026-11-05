@@ -1,0 +1,14 @@
+id: https://example.org/library/b1
+label: Dune
+description: A desert planet novel
+genre: fiction
+published: '1965-08-01'
+chapters:
+  - id: https://example.org/library/b1/c1
+    description: The first chapter
+    number: 1
+    notes:
+      - id: https://example.org/library/b1/c1/n1
+        label: A note
+        description: On the first chapter
+        text: Mind the worms

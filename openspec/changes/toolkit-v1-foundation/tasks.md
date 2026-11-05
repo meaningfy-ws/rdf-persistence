@@ -37,26 +37,41 @@ Notation:
 
   Also `rp_tenancy.yaml` (`TenantAccess` owning `grants` — role or direct-action — and `prohibitions`, plus `TenantState`), `rp_files.yaml` (`StoredFile`) and `rp.yaml`.
 - [x] 1.4 Generate the metamodel's own Python classes into `rdf_persistence/domain/generated/` with plain `gen-pydantic` (task 1.10 regenerates them through `rp-generate`). Exports: the metamodel classes and `RpModel`.
-- [ ] 1.5 `rp-generate` skeleton:
+- [x] 1.5 `rp-generate` skeleton:
   - reads `[tool.rp-generate]` with the keys and flags of PD-18;
   - writes to temporary files and moves them into place on success;
   - runs lint with the raised rules.
 
   Exports: the `rp-generate` command, always installed; it exits with code 2 and a clear message when the `generate` extra is missing (PD-2).
-- [ ] 1.6 The hard check:
+- [x] 1.6 The hard check:
   - IRIs, titles, descriptions and meanings;
   - `rp_path` on every aggregate root;
   - `Described` on roots and owned classes;
   - `rp_unlabelled` applied as in PD-11.
-- [ ] 1.7 The boundary check: aggregate reachability, ownership, and `module_kind` imports.
-- [ ] 1.8 Steps 3 and 4:
+- [x] 1.7 The boundary check: aggregate reachability, ownership, and `module_kind` imports.
+- [x] 1.8 Steps 3 and 4:
   - split `gen-pydantic` with the toolkit's base template;
-  - a `gen-shacl` subclass that ignores the toolkit's bookkeeping predicates (`rp:version`, `dcterms:created`, `dcterms:modified`, `dcterms:creator`, `dcterms:contributor`).
-- [ ] 1.9 Steps 5 to 7:
+  - a `gen-shacl` subclass that ignores the toolkit's bookkeeping predicates (`rp:version`, `dcterms:created`, `dcterms:modified`, `dcterms:creator`, `dcterms:contributor`), and translates `exactly_one_of` to `sh:xone`, `any_of` to `sh:or` and `unique_keys` to a SPARQL constraint on the owning class (PD-24).
+- [x] 1.9 Steps 5 to 7:
   - `gen-jsonld-context`: `id`/`type` aliases, `internal` slots left out, and one frame per aggregate type (PD-12);
   - the `gen-typescript` subclass and its template: enums, dates, `internal` skipped;
   - `gen-mermaid-class-diagram` per module, with the template that marks roots and owned parts.
-- [ ] 1.10 Generate the toy library and regenerate the metamodel classes through `rp-generate`, with generator metadata switched off and `**/generated/**` excluded from Ruff, mypy and Xenon (PD-19); commit the output; add `make check-generated` and run it in CI.
+- [x] 1.10 Generate the toy library and regenerate the metamodel classes through `rp-generate`, with generator metadata switched off and `**/generated/**` excluded from Ruff, mypy and Xenon (PD-19); commit the output; add `make check-generated` and run it in CI.
+
+### 1b. Single source of specification (PD-24 to PD-28; developer, 2026-11-05)
+
+Order: 1.11 at any time; 1.12 and 1.16 after 1.10; 1.13 after 1.8 and 1.12; 1.14 after 1.9, 1.12 and 1.13; 1.15 after 1.12;
+1.17 after 1.9; 1.18 after 1.9 and 1.11. Tasks 1.12 and 1.13 regenerate and recommit the output of
+1.10. Hypothesis is added to the test group, pinned, in task 1.14.
+
+- [x] 1.11 Embed the rule: `AGENTS.md` states it (done with the plan); `open-decisions.adoc` records it as D-13, with a link to the MWBv2 Developer Runbook; `generation.adoc` gets anchors on its sections (`#extensions`, `#guarding`), rewrites "Guarding the generated code" to PD-26 to PD-28, and its extension table gains a first column with each extension's module path and rows for the validators and shape constraints of PD-24. `make check-docs` passes.
+- [x] 1.12 The manifest and `rp-generate --check` (PD-26): `rp_generation.yaml` with `GenerationManifest` (also `ConstraintCase` and `ClassShape`, used by 1.14 and 1.15), generated; stale input, edited output, a changed `linkml` version and a fresh run each tested; `rdf_persistence/testkit/freshness.py` with the ini option `rp_generate_projects`; the repo's `[[tool.rp-generate]]` entries for `rp.yaml` and `rp_generation.yaml` in `pyproject.toml` (1.13 adds `rp_service.yaml`); `make check-quality` runs the check; the pre-commit hook; `make generate`, run first by `make build`.
+- [x] 1.13 The gen-pydantic template extension that generates model validators for `exactly_one_of`, `any_of` and `unique_keys`, placed as PD-24 says; a schema using `rules` makes `rp-generate` exit 1. The three strict xfails of task 1.4 pass and lose their marks. Also `rp_service.yaml` (`ServiceSettings`, `VerifiedCaller` and the bodies of PD-13), as its own `[[tool.rp-generate]]` entry into `domain/generated/service/`.
+- [x] 1.14 The conformance suite (PD-27 items 3 to 5): the constraint-case table with the classes-versus-shapes verdict test and the coverage test; the JSON-LD round trip with Hypothesis; the model-shape test. In `testkit`, run on the metamodel and the toy library.
+- [x] 1.15 The model-shape snapshot under `tests/fixtures/`, its test and `make refresh-snapshot` (PD-27 item 6).
+- [x] 1.16 The model guard and the file guard (PD-28) as `testkit.assert_models_generated`, run on this package.
+- [x] 1.17 Generated code compiles (PD-27 item 7): an import test of every generated module; `mypy-generated.ini` and its run in `make check-quality`; `tsc --noEmit --strict` (typescript 5.9.3) on the TypeScript output in CI.
+- [x] 1.18 The extension register test (PD-25): every extension module under `rdf_persistence/generation/` has a row in `generation.adoc#extensions` whose first column is its module path, and a golden test `tests/unit/generation/test_ext_<module>.py` with goldens in `tests/fixtures/library/golden/<module>/`.
 
 ## 2. Store, session and tenancy (stage 2)
 
@@ -99,7 +114,7 @@ Notation:
 
 ## 4. Access (stage 4)
 
-- [ ] 4.1 Loading the role definitions (PD-9), with an invalid file refused. Validating a grant set against `rp_access`, including the `grant_key` uniqueness that stock validation does not enforce (422 on a duplicate). Also loading a caller's grants (role or direct action) and prohibitions for one tenant in one query.
+- [ ] 4.1 Loading the role definitions (PD-9), with an invalid file refused. Validating a grant set against `rp_access`, including the `grant_key` uniqueness enforced by the 1.13 validator on `GrantSet` (422 on a duplicate). Also loading a caller's grants (role or direct action) and prohibitions for one tenant in one query.
 - [ ] 4.2 The check: global roles, prohibitions, permissions at tenant and aggregate scope, and role definitions; it answers 403 or 404. Exports: `AccessRules`.
 - [ ] 4.3 PD-9's matrix as one table-driven test, every cell including the `deleting` tenant row.
 
@@ -116,7 +131,7 @@ Notation:
   - bodies handled as in PD-14, including the refused replace with a different `id`.
 - [ ] 5.3 Content negotiation: JSON with the `Link` header, JSON-LD and Turtle; 406 and 415; the context served at a fixed path.
 - [ ] 5.4 Listings: `?<slot>=<value>` filters, `limit`, `offset`, `sort` (PD-15), the page object, 400 on a bad query, and an injection attempt through a filter that leaves the store unchanged.
-- [ ] 5.5 The OpenAPI hook over the schema, with bookkeeping stripped.
+- [ ] 5.5 The OpenAPI hook over the schema, with bookkeeping stripped; its component schemas are generated from the LinkML schema, never written by hand (PD-24).
 - [ ] 5.6 Spike linkml-openapi on the toy library; record in `api.adoc` whether it can replace 5.5.
 - [ ] 5.7 The end-to-end test: the toy library served over the API against Fuseki, Garage and Zitadel, with JWT access tokens of the machine users obtained by the JWT-profile grant (PD-16).
 
@@ -163,6 +178,11 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 | rp-service-api: the document lists the routes | 5.5 | `tests/unit/entrypoints/test_openapi.py` |
 | rp-testkit: a unit test of a domain service | 2.8, 3.4 | `tests/unit/testkit/test_fakes.py` (with `testkit.no_network`) |
 | rp-testkit: the end-to-end proof | 5.7 | `tests/e2e/test_library.py` |
+| rp-generation: a hand-written domain class | 1.16 | `tests/unit/generation/test_model_guard.py` |
+| rp-generation: classes and shapes agree on a declared rule | 1.13, 1.14 | `tests/unit/generation/test_conformance.py` |
+| rp-generation: a schema changed without regenerating | 1.12 | `tests/unit/generation/test_freshness_plugin.py` |
+| rp-generation: a generated file edited by hand | 1.12 | `tests/unit/generation/test_freshness.py` |
+| rp-generation: a model change is acknowledged | 1.15 | `tests/unit/generation/test_shape_snapshot.py` |
 | rp-package-boundaries: a consumer term in code | 0.5 | `make check-quality` (`check_docs.py`) |
 | rp-package-boundaries: a consumer term in an architecture page | 0.5 | `make check-docs` in the docs CI workflow |
 | rp-package-boundaries: tested alone | 0.2 | CI (no consumer installed) |
@@ -172,7 +192,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 ## Roadmap
 
 - [x] 0.1 · [x] 0.2 · [x] 0.3 · [x] 0.4 · [x] 0.5
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 1.11 · [x] 1.12 · [x] 1.13 · [x] 1.14 · [x] 1.15 · [x] 1.16 · [x] 1.17 · [x] 1.18
 - [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8
 - [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4
 - [ ] 4.1 · [ ] 4.2 · [ ] 4.3
