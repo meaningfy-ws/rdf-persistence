@@ -50,8 +50,11 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
   - `generation` and `testkit` sit outside the contract. The scaffold's empty `commons/` package is
     deleted (task 0.1): nothing needs a shared tier. The top-level `__init__.py` re-exports the
     public names.
-  - A second contract forbids `domain` from importing `httpx`, `boto3`, `fastapi`, `jwt` and
-    `pyshacl`. It sets `include_external_packages = True`.
+  - A second contract forbids `domain` from importing `httpx`, `boto3`, `fastapi`, `jwt`,
+    `pyshacl` and `anyio`. It sets `include_external_packages = True`.
+  - A third contract forbids the four layers from importing `rdf_persistence.testkit`,
+    `rdf_persistence.generation`, `pytest`, `testcontainers` and `linkml`: those come only with the
+    extras, so a consumer's running service does not have them (stage 0 review).
 - **PD-2 Dependencies (DEC-5).**
   - Runtime pins (`==`): `linkml-runtime`, `rdflib`, `pyld`, `pyshacl`, `pydantic`, `httpx`,
     `fastapi`, `pyjwt[crypto]`, `boto3`, `anyio`. Each is pinned to its latest release on the day
@@ -107,7 +110,9 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
   commit and kept. Every later commit replaces `dcterms:modified` and adds the committer to
   `dcterms:contributor`. All of these are statements about the graph IRI (D-7). Because a commit
   replaces the whole graph, the session reads the existing tracking statements with the aggregate and
-  writes back `created`, `creator` and every earlier contributor.
+  writes back `created`, `creator` and every earlier contributor. `Tracked` is a class mixin, so the
+  generated classes carry these slots, but the mapper (task 2.5) reads and writes them as statements
+  about the graph IRI, never the root, and the shapes ignore them (task 1.8).
 - **PD-7a The session's two levels.** Graph level, for the router (task 2.3): `get_graph(iri)` →
   triples and version; `add_graph(iri, triples)`; `replace_graph(iri, triples, if_version)`;
   `remove(iri, if_version)`. Object level, for domain services, on the mapper (task 2.5):
@@ -215,9 +220,21 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
   `rp_provenance`, `rp_tenancy` and `rp_files` can all use it; its `class_uri` is `prov:Agent`, with
   `odrl:Party` as an exact mapping. `TenantAccess` includes `Described`, so the tenant's label is
   the one `label` slot (`skos:prefLabel`); there is no `dcterms:title` slot in the metamodel.
+- **PD-22 Importing the metamodel.** Application modules import metamodel modules as
+  `rdf_persistence/model/<module>`. `generation/schema.py` has `load_schema(path)`, which opens a
+  schema with `SchemaView` and an import map from that prefix to the installed package's `model/`
+  folder. `rp-generate`, the mapper and the tests load schemas only through it; a unit test loads
+  every toy library schema with it.
+- **PD-23 What the hard and boundary checks cover.** The checks of tasks 1.6 and 1.7 apply to the
+  classes the application's modules define. The metamodel's own classes are exempt (the toolkit's
+  tests cover them), and so are an application class's slots and rules inherited from them; for
+  example, `LibraryGrant` (`is_a: Grant`) needs no `Described`. Grants and prohibitions stay blank
+  nodes. A class reached only by IRI (`Principal`, `Activity`) is a reference, not a part.
 - **PD-11 Unlabelled classes.** Before running the generators, `rp-generate` gives every class
   annotated `rp_unlabelled: true` a `slot_usage` of `{label: {required: false}}`. The generated
-  classes and shapes then agree, with no separate change to the shapes generator.
+  classes and shapes then agree, with no separate change to the shapes generator. In the same
+  step it gives every aggregate root a `slot_usage` of `{description: {required: true}}`, as the
+  rp-metamodel requirement asks (tests in tasks 1.6 and 1.8).
 - **PD-12 Frames.** One JSON-LD frame per aggregate type nests owned parts under their root. It is
   generated in step 5 and placed beside the context.
 
@@ -333,7 +350,9 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
   folder ships as package data with the compose file and the vendored Fuseki Dockerfile, so
   consumers get the same fixtures. It is imported lazily and needs the extra
   `rdf-persistence[testkit]` (`testcontainers`); without it, importing the fixtures raises an
-  error that names the extra. The markers are registered in `pytest.ini`.
+  error that names the extra. The marker names live in `rdf_persistence/testkit/markers.py`, which
+  needs no extra; the fixtures plugin registers them, and only `tests/integration/` and `tests/e2e/`
+  load the plugin, so the unit lane runs without `testcontainers`.
   - `make test` runs `unit or feature` with the 80% coverage floor. `.coveragerc` omits
     `rdf_persistence/adapters/*` and `rdf_persistence/testkit/containers/*` from that floor.
   - `make test-containers` runs `integration or e2e` with `--cov-fail-under=0`, reporting coverage

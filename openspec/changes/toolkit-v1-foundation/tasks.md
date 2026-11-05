@@ -19,7 +19,7 @@ Notation:
 - [x] 0.4 Test containers (PD-16):
   - `rdf_persistence/testkit/containers/compose.yaml`, with the Fuseki Dockerfile vendored at a pinned Jena 5.x release, and Garage and Zitadel pinned by digest.
   - The bootstrap for each container.
-  - `rdf_persistence/testkit/containers/` as package data behind the extra `rdf-persistence[testkit]`, imported lazily; the markers `store`, `files` and `identity` added to `tests/conftest.py`'s path table and registered in `pytest.ini` (PD-16).
+  - `rdf_persistence/testkit/containers/` as package data behind the extra `rdf-persistence[testkit]`, imported lazily; the markers `store`, `files` and `identity` added to `tests/conftest.py`'s path table and registered by the fixtures plugin (PD-16).
   - `make test` runs `unit or feature` with the coverage floor, `.coveragerc` omitting `rdf_persistence/adapters/*` and `rdf_persistence/testkit/containers/*`; a new `make test-containers` runs `integration or e2e` with `--cov-fail-under=0`; the `conftest.py` hook applies every marker of a row; the CI container job.
   - One smoke test per container: it starts and answers.
 
@@ -99,7 +99,7 @@ Notation:
 
 ## 4. Access (stage 4)
 
-- [ ] 4.1 Loading the role definitions (PD-9), with an invalid file refused. Also loading a caller's grants (role or direct action) and prohibitions for one tenant in one query.
+- [ ] 4.1 Loading the role definitions (PD-9), with an invalid file refused. Validating a grant set against `rp_access`, including the `grant_key` uniqueness that stock validation does not enforce (422 on a duplicate). Also loading a caller's grants (role or direct action) and prohibitions for one tenant in one query.
 - [ ] 4.2 The check: global roles, prohibitions, permissions at tenant and aggregate scope, and role definitions; it answers 403 or 404. Exports: `AccessRules`.
 - [ ] 4.3 PD-9's matrix as one table-driven test, every cell including the `deleting` tenant row.
 
