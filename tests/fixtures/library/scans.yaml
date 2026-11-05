@@ -1,0 +1,37 @@
+id: https://example.org/ns/library/scans
+name: scans
+title: Scans module
+description: Scanned copies of books; a scan is an aggregate root that keeps a stored file.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+  schema: http://schema.org/
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+  - rdf_persistence/model/rp_files
+  - books
+annotations:
+  module_kind: domain
+
+classes:
+  Scan:
+    title: Scan
+    description: A scanned copy of a book; an aggregate root whose current content is a stored file.
+    class_uri: lib:Scan
+    mixins: [AggregateRoot, Described, Tracked, StoredFile]
+    slots: [scan_of]
+    annotations:
+      rp_path: scans
+      database: tenant
+
+slots:
+  scan_of:
+    title: Scan of
+    description: The book this is a scan of, another aggregate, stored as its IRI.
+    slot_uri: schema:exampleOfWork
+    range: Book
