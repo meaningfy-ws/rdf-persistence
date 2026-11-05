@@ -1,5 +1,6 @@
 """Graph loading against a real Fuseki: scenario 'a broken file', and the commit that registers a load."""
 
+import json
 import uuid
 from collections.abc import AsyncIterator
 
@@ -62,7 +63,21 @@ async def test_a_broken_file_fails_with_the_parsers_message_and_creates_no_graph
 ):
     with pytest.raises(InvalidGraph) as raised:
         await session.load_graph(BOOK, BROKEN_TURTLE, format=RdfFormat.TURTLE)
-    assert str(raised.value), "the parser's message"
+    with pytest.raises(Exception) as rdflib_raised:
+        Graph().parse(data=BROKEN_TURTLE, format="turtle")
+    assert str(raised.value) == str(rdflib_raised.value), "the parser's own message"
+    assert await graphs_in(store, database) == set(), "no graph was created"
+
+
+@pytest.mark.parametrize(
+    "context", ["file:///etc/hostname", "/etc/hostname", "http://127.0.0.1:9/c"]
+)
+async def test_a_jsonld_file_with_a_context_that_is_not_inline_creates_no_graph(
+    store, database, session, context
+):
+    data = json.dumps({"@context": context, "@id": "https://example.org/b"}).encode()
+    with pytest.raises(InvalidGraph, match="inline"):
+        await session.load_graph(BOOK, data, format=RdfFormat.JSONLD)
     assert await graphs_in(store, database) == set(), "no graph was created"
 
 

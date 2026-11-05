@@ -46,10 +46,14 @@ async def tenant_databases(store: FakeStore) -> list[str]:
     return [name for name in await store.list_datasets() if name.startswith(PREFIX)]
 
 
-async def test_the_system_database_is_created_once(store, files):
+async def test_the_system_database_is_created_once_and_the_call_says_whether_it_made_it(
+    store, files
+):
     made = Tenancy(store, files, SETTINGS, mapper=toy_mapper(), access_class=LibraryAccess)
-    await made.ensure_system_database()
-    await made.ensure_system_database()
+    assert (await made.ensure_system_database(), await made.ensure_system_database()) == (
+        True,
+        False,
+    )
     assert await store.list_datasets() == [SYSTEM]
 
 
@@ -151,6 +155,8 @@ async def test_delete_drops_the_database_the_bucket_and_the_record(tenancy, stor
     assert await tenant_databases(store) == [], "database"
     assert await files.list_buckets(PREFIX) == [], "bucket"
     assert await tenancy.tenants() == [], "record"
+    with pytest.raises(NotFound):
+        await tenancy.get(summary.id)
 
 
 async def test_delete_marks_the_record_deleting_before_it_drops_anything(tenancy, store):
@@ -201,3 +207,68 @@ async def test_delete_with_a_stale_version_conflicts_and_changes_nothing(tenancy
 async def test_delete_of_an_unknown_tenant_is_not_found(tenancy):
     with pytest.raises(NotFound):
         await tenancy.delete(f"{SETTINGS.base}libraries/00000000-0000-4000-8000-000000000000", "v")
+
+
+async def test_a_label_the_record_refuses_creates_nothing(tenancy, store, files):
+    with pytest.raises(ValueError, match="label"):
+        await tenancy.create("x" * 201, library(), CREATOR)
+    assert store.sent("create_dataset") == [SYSTEM], "no tenant database was asked for"
+    assert files.sent("create_bucket") == [], "no bucket was asked for"
+    assert await tenancy.tenants() == []
+
+
+async def test_finish_deletion_refuses_a_tenant_that_is_not_deleting_and_drops_nothing(
+    tenancy, store, files
+):
+    summary = await tenancy.create("Ghent", library(), CREATOR)
+    with pytest.raises(Conflict, match="deleting"):
+        await tenancy.finish_deletion(summary.id)
+    assert len(await tenant_databases(store)) == 1, "database"
+    assert len(await files.list_buckets(PREFIX)) == 1, "bucket"
+    assert [t.id for t in await tenancy.tenants()] == [summary.id], "record"
+    assert store.sent("drop_dataset") == [], "nothing was dropped"
+
+
+async def test_finish_deletion_of_an_unknown_tenant_is_not_found_and_drops_nothing(tenancy, store):
+    with pytest.raises(NotFound):
+        await tenancy.finish_deletion(
+            f"{SETTINGS.base}libraries/00000000-0000-4000-8000-000000000000"
+        )
+    assert store.sent("drop_dataset") == []
+
+
+STORED = "lib-t-" + "d" * 32
+
+
+async def rename_database(tenancy, store, files, tenant: str) -> str:
+    """Make the record name ``STORED`` as its database, as if the prefix had been another one."""
+    await store.create_dataset(STORED)
+    await files.create_bucket(STORED)
+    async with tenancy._system_session(tenant, CREATOR) as session:
+        work = UnitOfWork(session, toy_mapper())
+        record = await work.get(LibraryAccess, f"{tenant}/access")
+        record.database_name = STORED
+        work.add(record)
+        await work.commit()
+    return tenant_resource_name(SETTINGS.prefix, tenant)
+
+
+async def test_delete_drops_the_database_and_bucket_the_record_names_and_not_a_derived_name(
+    tenancy, store, files
+):
+    summary = await tenancy.create("Ghent", library(), CREATOR)
+    derived = await rename_database(tenancy, store, files, summary.id)
+    _, version = await tenancy.get(summary.id)
+    await tenancy.delete(summary.id, version)
+    assert STORED not in await store.list_datasets(), "the recorded database is dropped"
+    assert STORED not in await files.list_buckets(PREFIX), "and its bucket"
+    assert derived in await store.list_datasets(), "the derived name is not the record's business"
+    assert derived in await files.list_buckets(PREFIX)
+
+
+async def test_a_root_the_model_refuses_creates_nothing(tenancy, store, files):
+    broken = library().model_copy(update={"city": 5})  # model_copy does not validate
+    with pytest.raises(ValueError, match="city"):
+        await tenancy.create("Ghent", broken, CREATOR)
+    assert store.sent("create_dataset") == [SYSTEM], "no tenant database was asked for"
+    assert files.sent("create_bucket") == [], "no bucket was asked for"

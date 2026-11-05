@@ -9,6 +9,8 @@ from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.domain.errors import Conflict
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.domain.generated.rp_files import RdfFormat
+from rdf_persistence.domain.iris import registry_graph_iri
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import Session, open_session
 from tests.fixtures.library.generated.books import Book, Genre
@@ -92,3 +94,28 @@ async def test_the_part_iris_survive_an_edit_and_a_second_editor_conflicts(sessi
     with pytest.raises(Conflict):
         await two.commit()
     assert sorted(c.id for c in (await unit(session).get(Book, iri)).chapters) == before
+
+
+async def test_editing_the_root_keeps_the_loaded_graphs_and_their_entries(fuseki):
+    iri = book_iri(3)
+    ttl = b'<https://example.org/b> <http://purl.org/dc/terms/title> "Dune" .\n'
+    async with FusekiStore(fuseki.url, fuseki.user, fuseki.password) as store:
+        name = f"t-{uuid.uuid4().hex}"
+        await store.create_dataset(name)
+        try:
+            async with open_session(
+                store, database=name, tenant_iri=TENANT, principal=Principal(id=ADA)
+            ) as session:
+                loaded = await session.load_graph(iri, ttl, format=RdfFormat.TURTLE)
+                await session.add_graph(iri, list(toy_mapper().to_graph(dune(iri))), [loaded])
+                work = unit(session)
+                book = await work.get(Book, iri)
+                book.label = "Renamed"
+                work.add(book)
+                await work.commit()
+            held = f"ASK {{ GRAPH <{loaded}> {{ ?s ?p ?o }} }}"
+            entry = f"ASK {{ GRAPH <{registry_graph_iri(TENANT)}> {{ <{loaded}> ?p ?o }} }}"
+            assert (await store.query(name, held)).askAnswer, "the loaded graph keeps its triples"
+            assert (await store.query(name, entry)).askAnswer, "and its registry entry"
+        finally:
+            await store.drop_dataset(name)

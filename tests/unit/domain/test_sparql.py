@@ -80,7 +80,7 @@ def test_a_datatype_iri_that_could_break_out_is_refused():
         term(Literal("x", datatype=URIRef(f"{EX}a>b")))
 
 
-@pytest.mark.parametrize("label", ["a b", "a;DROP", "", "a}", "a\n"])
+@pytest.mark.parametrize("label", ["a b", "a;DROP", "", "a}", "a\n", "a.", "b1.."])
 def test_a_blank_node_label_that_is_not_a_label_is_refused(label):
     with pytest.raises(SparqlError, match="blank node"):
         term(BNode(label))

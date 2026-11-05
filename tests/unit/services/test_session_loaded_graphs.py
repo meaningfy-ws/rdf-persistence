@@ -1,5 +1,6 @@
 """The session's commit with loaded graphs and blank nodes, over the in-memory FakeStore."""
 
+import asyncio
 from datetime import UTC, datetime
 
 import pytest
@@ -8,7 +9,7 @@ from rdflib import BNode, Graph, Literal, URIRef
 from rdf_persistence.domain import vocabulary as v
 from rdf_persistence.domain.errors import Conflict
 from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.iris import registry_graph_iri
+from rdf_persistence.domain.iris import graph_iri, registry_graph_iri
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import FakeStore
@@ -66,10 +67,69 @@ async def test_replace_rewrites_the_loaded_graph_entries_to_the_given_ones(sessi
     assert await registered_loaded(store) == set(LOADED[:1]), "the dropped graph is unregistered"
 
 
-async def test_replace_without_loaded_graphs_unregisters_them(session, store):
+async def test_replace_with_an_empty_list_unregisters_them(session, store):
+    version = await session.add_graph(ROOT, [], loaded_graphs=LOADED)
+    await session.replace_graph(ROOT, [], version, loaded_graphs=[])
+    assert await registered_loaded(store) == set(), "an explicit empty list drops them all"
+
+
+async def test_replace_without_a_list_keeps_the_registered_loaded_graphs(session, store):
+    for graph in LOADED:
+        await store.put_graph("db", graph, Graph().parse(data=LOADED_TTL, format="turtle"))
+    version = await session.add_graph(ROOT, [], loaded_graphs=LOADED)
+    await session.replace_graph(ROOT, [(URIRef(ROOT), TITLE, Literal("edited"))], version)
+    assert await registered_loaded(store) == set(LOADED), "their entries stay"
+    assert [g for g in LOADED if await has_triples(store, g)] == LOADED, "their triples stay"
+
+
+async def test_replace_without_a_list_leaves_the_loaded_graphs_of_another_aggregate_alone(
+    session, store
+):
+    other = f"{TENANT}/books/2"
+    other_loaded = URIRef(f"{other}/content/z")
+    await session.add_graph(other, [], loaded_graphs=[other_loaded])
     version = await session.add_graph(ROOT, [], loaded_graphs=LOADED)
     await session.replace_graph(ROOT, [], version)
-    assert await registered_loaded(store) == set(), "the default is no loaded graphs"
+    assert await registered_loaded(store) == {*LOADED, other_loaded}
+
+
+OUTSIDE_THE_CONTENT = [
+    pytest.param(URIRef(f"{TENANT}/books/2/graph"), id="another aggregate's graph"),
+    pytest.param(registry_graph_iri(TENANT), id="the registry graph"),
+    pytest.param(URIRef(f"{TENANT}/books/2/content/z"), id="another aggregate's loaded graph"),
+    pytest.param(URIRef(f"{ROOT}/content"), id="the content segment without a graph"),
+    pytest.param(URIRef(f"{ROOT}0/content/a"), id="a sibling that shares the prefix text"),
+]
+
+
+@pytest.mark.parametrize("bad", OUTSIDE_THE_CONTENT)
+async def test_add_refuses_a_loaded_graph_outside_the_aggregate_before_any_request(
+    session, store, bad
+):
+    with pytest.raises(ValueError, match="content"):
+        await session.add_graph(ROOT, [], loaded_graphs=[LOADED[0], bad])
+    assert (store.sent("query"), store.sent("update")) == ([], []), "the store was not touched"
+
+
+@pytest.mark.parametrize("bad", OUTSIDE_THE_CONTENT)
+async def test_replace_refuses_a_loaded_graph_outside_the_aggregate_before_any_request(
+    session, store, bad
+):
+    version = await session.add_graph(ROOT, [], loaded_graphs=LOADED)
+    requests = (len(store.sent("query")), len(store.sent("update")))
+    with pytest.raises(ValueError, match="content"):
+        await session.replace_graph(ROOT, [], version, loaded_graphs=[bad])
+    assert (len(store.sent("query")), len(store.sent("update"))) == requests, "nothing was sent"
+    assert await registered_loaded(store) == set(LOADED), "and nothing changed"
+
+
+async def test_removing_an_aggregate_cannot_empty_the_graph_of_another(session, store):
+    victim = f"{TENANT}/books/2"
+    await session.add_graph(victim, [(URIRef(victim), TITLE, Literal("victim"))])
+    with pytest.raises(ValueError, match="content"):
+        await session.add_graph(ROOT, [], loaded_graphs=[graph_iri(victim)])
+    stored, _ = await session.get_graph(victim)
+    assert (URIRef(victim), TITLE, Literal("victim")) in stored, "the victim is intact"
 
 
 async def test_remove_unregisters_the_loaded_graphs_with_the_aggregate(session, store):
@@ -116,11 +176,11 @@ async def test_replace_drops_the_triples_of_unlisted_loaded_graphs_and_keeps_lis
     assert not await has_triples(store, LOADED[1]), "the unlisted graph is emptied"
 
 
-async def test_replace_with_no_loaded_graphs_empties_all_of_them(session, store):
+async def test_replace_with_an_empty_list_empties_all_of_them(session, store):
     for graph in LOADED:
         await store.put_graph("db", graph, Graph().parse(data=LOADED_TTL, format="turtle"))
     version = await session.add_graph(ROOT, [], loaded_graphs=LOADED)
-    await session.replace_graph(ROOT, [], version)
+    await session.replace_graph(ROOT, [], version, loaded_graphs=[])
     assert [g for g in LOADED if await has_triples(store, g)] == [], "none is left"
 
 
@@ -130,3 +190,26 @@ async def test_a_stale_replace_leaves_the_loaded_graphs_alone(session, store):
     with pytest.raises(Conflict):
         await session.replace_graph(ROOT, [], "stale")
     assert await has_triples(store, LOADED[0]), "the guard protects the loaded graph too"
+
+
+async def test_two_concurrent_adds_of_one_iri_give_one_success_and_one_conflict(store):
+    gate = asyncio.Barrier(2)
+    original = store.update
+
+    async def held(dataset: str, sparql: str) -> None:
+        await gate.wait()  # both have passed any pre-check by now
+        await original(dataset, sparql)
+
+    store.update = held
+    first, second = (
+        Session(
+            store, database="db", tenant_iri=TENANT, principal=Principal(id=who), clock=lambda: None
+        )
+        for who in ("https://example.org/people/ada", "https://example.org/people/ben")
+    )
+    outcomes = await asyncio.gather(
+        first.add_graph(ROOT, []), second.add_graph(ROOT, []), return_exceptions=True
+    )
+    stored, _ = await first.get_graph(ROOT)
+    assert sorted(type(o).__name__ for o in outcomes) == ["Conflict", "str"], "one wins"
+    assert len(list(stored.objects(None, v.VERSION))) == 1, "one version token was written"

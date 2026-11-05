@@ -156,7 +156,8 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-13,
     acts only on a record in state `deleting`; tenant IRIs carry a canonical UUID.
   - The sweep never drops a resource when the system database had to be created at start-up or holds
     no access record while tenant resources exist: it logs and stops, since that means the records
-    are missing, not that the tenants are orphans.
+    are missing, not that the tenants are orphans. The cost is accepted: a crash during the very first tenant's
+    creation leaves its resources for an operator to remove.
   - The vocabulary (predicate IRIs, enum meanings) is read from the schema in `services`, keyed by the
     generated enums; nothing in `domain` restates it. The session returns the graph IRI it read, so the
     mapper never re-derives where tracking lives.

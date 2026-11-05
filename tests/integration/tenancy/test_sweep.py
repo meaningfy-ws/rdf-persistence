@@ -1,10 +1,11 @@
 """The start-up sweep against a real Fuseki and the parametrised file store: a crash during creation."""
 
 import pytest
+from rdflib.compare import isomorphic
 
 from rdf_persistence.domain.errors import StoreUnavailable
 from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.iris import tenant_resource_name
+from rdf_persistence.domain.iris import system_database_name, tenant_resource_name
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
 from tests.fixtures.library.generated.library_access import LibraryAccess
@@ -67,6 +68,7 @@ async def test_a_crash_during_creation_leaves_orphans_that_the_next_start_up_dro
 async def test_a_database_and_bucket_of_another_service_are_left_alone(
     tenancy, store, files, settings
 ):
+    await tenancy.create("Ghent", library(), CREATOR)  # with a record on file the sweep runs
     await store.create_dataset(FOREIGN)
     await files.create_bucket(FOREIGN)
     try:
@@ -91,3 +93,33 @@ async def test_the_sweep_finishes_a_deletion_the_process_did_not(tenancy, store,
     assert name not in await store.list_datasets(), "database"
     assert await files.list_buckets(name) == [], "bucket"
     assert await tenancy.tenants() == [], "record"
+
+
+async def test_a_lost_system_database_does_not_make_the_tenants_orphans(
+    tenancy, store, files, settings
+):
+    kept = await tenancy.create("Ghent", library(), CREATOR)
+    name = tenant_resource_name(settings.prefix, kept.id)
+    await store.drop_dataset(system_database_name(settings.prefix))  # the records are gone
+    await sweep(tenancy, store, files, settings)
+    assert name in await store.list_datasets(), "the tenant's database is still there"
+    assert await files.list_buckets(name) == [name], "and its bucket"
+
+
+async def test_an_active_tenant_keeps_its_root_graph_record_version_and_blob(
+    tenancy, store, files, settings
+):
+    kept = await tenancy.create("Ghent", library(), CREATOR)
+    name = tenant_resource_name(settings.prefix, kept.id)
+    await files.put(name, "scan.pdf", b"%PDF")
+    query = f"CONSTRUCT {{ ?s ?p ?o }} WHERE {{ GRAPH <{kept.id}/meta> {{ ?s ?p ?o }} }}"
+    root_before = (await store.query(name, query)).graph
+    _, version_before = await tenancy.get(kept.id)
+    await store.create_dataset(f"{settings.prefix}-t-{'e' * 32}")  # an orphan to drop
+    await sweep(tenancy, store, files, settings)
+    root_after = (await store.query(name, query)).graph
+    _, version_after = await tenancy.get(kept.id)
+    assert len(root_before) > 0, "there was a root object to compare"
+    assert isomorphic(root_after, root_before), "the root graph is the same"
+    assert version_after == version_before, "the access record is at the same version"
+    assert await files.get(name, "scan.pdf") == b"%PDF", "the blob is the same"

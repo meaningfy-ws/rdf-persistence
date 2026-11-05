@@ -1,5 +1,6 @@
 """The Apache Jena Fuseki implementation of the ``Store`` port."""
 
+import logging
 from io import BytesIO
 from types import TracebackType
 from typing import Self
@@ -26,6 +27,10 @@ ADMIN_DATASETS = "/$/datasets"
 DATASET_TYPE = "tdb2"
 HTTP_BAD_REQUEST, HTTP_NOT_FOUND, HTTP_METHOD_NOT_ALLOWED, HTTP_CONFLICT = 400, 404, 405, 409
 HTTP_SERVER_ERROR = 500
+BAD_QUERY_MESSAGE = "Fuseki refused the SPARQL text as malformed"
+UNREADABLE = "Fuseki answered with something unreadable"
+
+log = logging.getLogger(__name__)
 
 
 def _dataset_path(name: str, endpoint: str) -> str:
@@ -42,8 +47,18 @@ def _raise_for_status(response: httpx.Response, *, on_missing: type[PersistenceE
     if status == HTTP_CONFLICT:
         raise Conflict(f"Fuseki answered {status} for {response.request.url.path}")
     if status == HTTP_BAD_REQUEST:
-        raise BadQuery(response.text)
-    response.raise_for_status()
+        log.debug("Fuseki refused a request with 400: %s", response.text)
+        raise BadQuery(BAD_QUERY_MESSAGE)
+    if not response.is_success:  # 401, 403, 415, a redirect...: not the caller's to tell apart
+        raise StoreUnavailable(f"Fuseki answered {status}")
+
+
+def _read_result(response: httpx.Response) -> Result:
+    if response.headers.get("content-type", "").startswith(RESULTS_JSON):
+        return Result.parse(BytesIO(response.content), format="json")
+    result = Result("CONSTRUCT")
+    result.graph = Graph().parse(data=response.content, format="turtle")
+    return result
 
 
 class FusekiStore:
@@ -93,11 +108,10 @@ class FusekiStore:
             content=sparql.encode(),
             headers={"Content-Type": SPARQL_QUERY, "Accept": f"{RESULTS_JSON}, {TURTLE};q=0.9"},
         )
-        if response.headers.get("content-type", "").startswith(RESULTS_JSON):
-            return Result.parse(BytesIO(response.content), format="json")
-        result = Result("CONSTRUCT")
-        result.graph = Graph().parse(data=response.content, format="turtle")
-        return result
+        try:
+            return _read_result(response)
+        except Exception as error:  # rdflib's parsers raise many types; none is the caller's
+            raise StoreUnavailable(f"{UNREADABLE}: {type(error).__name__}") from error
 
     async def update(self, dataset: str, sparql: str) -> None:
         await self._send(
@@ -129,4 +143,7 @@ class FusekiStore:
 
     async def list_datasets(self) -> list[str]:
         response = await self._send("GET", ADMIN_DATASETS, on_missing=NotFound)
-        return [entry["ds.name"].lstrip("/") for entry in response.json()["datasets"]]
+        try:
+            return [entry["ds.name"].lstrip("/") for entry in response.json()["datasets"]]
+        except (ValueError, KeyError, TypeError) as error:
+            raise StoreUnavailable(f"{UNREADABLE}: {type(error).__name__}") from error

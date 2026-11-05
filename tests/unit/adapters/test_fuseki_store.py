@@ -1,6 +1,7 @@
 """FusekiStore request building and error mapping, with no network (httpx.MockTransport)."""
 
 import base64
+import logging
 import urllib.parse
 from collections.abc import Callable
 
@@ -200,3 +201,54 @@ async def test_the_store_closes_its_client():
         pass
     with pytest.raises(RuntimeError):
         await store.update("d", "CLEAR ALL")
+
+
+ADMIN_PLANE = {
+    "create_dataset": lambda s: s.create_dataset("d"),
+    "drop_dataset": lambda s: s.drop_dataset("d"),
+    "list_datasets": lambda s: s.list_datasets(),
+}
+
+
+@pytest.mark.parametrize("operation", [*DATA_PLANE, *ADMIN_PLANE])
+@pytest.mark.parametrize("status", [301, 401, 403, 415, 422])
+async def test_any_other_unsuccessful_status_is_unavailable(operation, status):
+    store, _ = store_answering(reply(status, b"nope"))
+    call = {**DATA_PLANE, **ADMIN_PLANE}[operation]
+    with pytest.raises(StoreUnavailable, match=str(status)):
+        await call(store)
+
+
+async def test_a_refused_query_carries_a_fixed_message_and_the_body_only_in_the_log(caplog):
+    body = b"Parse error: SELECT secret-token-in-the-query"
+    store, _ = store_answering(reply(400, body))
+    with (
+        caplog.at_level(logging.DEBUG, logger="rdf_persistence.adapters.fuseki"),
+        pytest.raises(BadQuery) as raised,
+    ):
+        await store.query("d", "SELECT broken")
+    assert "secret-token-in-the-query" not in str(raised.value), "the body is not in the error"
+    assert str(raised.value), "but the error says something"
+    assert "secret-token-in-the-query" in caplog.text, "the body is in the log"
+
+
+BAD_ANSWERS = {
+    "json results that are not json": (b"<html>proxy</html>", RESULTS_JSON),
+    "json results of no known shape": (b'{"head":{}}', RESULTS_JSON),
+    "turtle that is not turtle": (b"<html>proxy</html>", "text/turtle"),
+    "an answer of no known type": (b"<html>proxy</html>", "text/html"),
+}
+
+
+@pytest.mark.parametrize(("body", "content_type"), BAD_ANSWERS.values(), ids=BAD_ANSWERS.keys())
+async def test_an_unreadable_query_answer_is_unavailable(body, content_type):
+    store, _ = store_answering(reply(200, body, content_type))
+    with pytest.raises(StoreUnavailable, match="unreadable"):
+        await store.query("d", "SELECT * WHERE { ?s ?p ?o }")
+
+
+@pytest.mark.parametrize("body", [b"not json", b'{"nodatasets":[]}', b'{"datasets":[{"x":1}]}'])
+async def test_an_unreadable_dataset_list_is_unavailable(body):
+    store, _ = store_answering(reply(200, body, "application/json"))
+    with pytest.raises(StoreUnavailable, match="unreadable"):
+        await store.list_datasets()

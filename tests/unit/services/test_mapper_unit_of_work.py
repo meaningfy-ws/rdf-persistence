@@ -9,6 +9,8 @@ from rdflib import URIRef
 from rdf_persistence.domain.errors import Conflict, NotFound
 from rdf_persistence.domain.generated.rp_access import Grant
 from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.domain.generated.rp_files import RdfFormat
+from rdf_persistence.domain.iris import registry_graph_iri
 from rdf_persistence.services.mapper import UnitOfWork, new_part
 from rdf_persistence.services.session import Session, open_session
 from rdf_persistence.testkit.fakes import FakeStore
@@ -19,6 +21,7 @@ from tests.toy import ADA, TENANT, access, book_iri, dune, toy_mapper
 DATABASE = "toy"
 BEN = "https://example.org/people/ben"
 NOW = datetime(2026, 11, 5, 9, 0, tzinfo=UTC)
+TTL = b'<https://example.org/b> <http://purl.org/dc/terms/title> "Dune" .'
 
 
 @pytest.fixture
@@ -200,3 +203,28 @@ async def test_a_chapter_added_to_a_read_book_gets_a_part_iri_that_is_kept(sessi
     stored = await unit(session).get(Book, iri)
     assert sorted(part_ids(stored)) == sorted(part_ids(book))
     assert URIRef(stored.chapters[1].id).startswith(f"{iri}/parts/")
+
+
+async def test_getting_a_root_as_the_wrong_class_is_a_type_error(session):
+    seed = unit(session)
+    seed.add(dune(book_iri(12)))
+    await seed.commit()
+    work = unit(session)
+    await work.get(Book, book_iri(12))
+    with pytest.raises(TypeError, match="Book"):
+        await work.get(Chapter, book_iri(12))
+
+
+async def test_editing_a_book_through_the_unit_of_work_keeps_its_loaded_graphs(store, session):
+    iri = book_iri(13)
+    loaded = await session.load_graph(iri, TTL, format=RdfFormat.TURTLE)
+    await session.add_graph(iri, list(toy_mapper().to_graph(dune(iri))), [loaded])
+    work = unit(session)
+    book = await work.get(Book, iri)
+    book.label = "Renamed"
+    work.add(book)
+    await work.commit()
+    kept = f"ASK {{ GRAPH <{loaded}> {{ ?s ?p ?o }} }}"
+    entry = f"ASK {{ GRAPH <{registry_graph_iri(TENANT)}> {{ <{loaded}> ?p ?o }} }}"
+    assert (await store.query(DATABASE, kept)).askAnswer, "the loaded graph keeps its triples"
+    assert (await store.query(DATABASE, entry)).askAnswer, "and its registry entry"

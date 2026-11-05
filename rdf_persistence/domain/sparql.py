@@ -12,7 +12,7 @@ from string import Template
 from rdflib import BNode, Literal, URIRef
 
 _FORBIDDEN_IRI_CHARS = re.compile(r'[\x00-\x20<>"{}|\\^`\x7f]')
-_BLANK_LABEL = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.-]*")
+_BLANK_LABEL = re.compile(r"[A-Za-z0-9_]([A-Za-z0-9_.-]*[A-Za-z0-9_-])?")  # may not end in "."
 _LANGUAGE_TAG = re.compile(r"[A-Za-z]+(-[A-Za-z0-9]+)*")
 _STRING_ESCAPES = {"\\": "\\\\", '"': '\\"', "\n": "\\n", "\r": "\\r", "\t": "\\t"}
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")

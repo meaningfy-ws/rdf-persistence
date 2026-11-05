@@ -5,8 +5,9 @@ from uuid import UUID, uuid4
 
 from rdflib import URIRef
 
-_SEGMENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._~-]*")
-_PREFIX = re.compile(r"[a-z0-9][a-z0-9-]{0,19}")
+# The patterns of the schema's ``url_segment`` and ``ServiceSettings.prefix`` slots; a test pins them.
+_SEGMENT = re.compile(r"[a-z][a-z0-9-]*")
+_PREFIX = re.compile(r"[a-z][a-z0-9]{0,19}")
 SYSTEM_SUFFIX = "-system"
 TENANT_INFIX = "-t-"
 ACCESS_SEGMENT = "access"
@@ -21,7 +22,7 @@ def _segment(value: str) -> str:
 def _prefix(value: str) -> str:
     if not _PREFIX.fullmatch(value):
         raise ValueError(
-            f"prefix must be lower case letters, digits or hyphens, 1-20 long: {value!r}"
+            f"prefix must be a lower case letter then up to 19 lower case letters or digits: {value!r}"
         )
     return value
 
@@ -87,7 +88,10 @@ def tenant_name_prefix(prefix: str) -> str:
 def tenant_resource_name(prefix: str, tenant_iri: str) -> str:
     """The tenant's database and bucket name ``{prefix}-t-{uuid hex}``."""
     try:
-        tenant_id = UUID(tenant_iri.rsplit("/", 1)[1])
+        last = tenant_iri.rsplit("/", 1)[1]
+        tenant_id = UUID(last)
     except (IndexError, ValueError) as error:
         raise ValueError(f"tenant IRI must end in a UUID: {tenant_iri!r}") from error
+    if str(tenant_id) != last:
+        raise ValueError(f"tenant IRI must end in a canonical UUID: {tenant_iri!r}")
     return f"{tenant_name_prefix(prefix)}{tenant_id.hex}"

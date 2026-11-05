@@ -129,20 +129,23 @@ class Mapper:
         ``Session.get_graph`` returns with the aggregate.
 
         Raises:
-            ValueError: ``graph`` has no statement about ``iri``.
+            ValueError: ``graph`` has no statement about ``iri``, or its owned parts form a cycle.
         """
         root = URIRef(iri)
         if (root, None, None) not in graph:
             raise ValueError(f"the graph has no statements about {iri}")
-        return self._read(cls, root, graph, self._tracked_by(cls, iri))
+        return self._read(cls, root, graph, self._tracked_by(cls, iri), frozenset())
 
     def _tracked_by(self, cls: type[BaseModel], iri: str) -> URIRef:
         meta = is_tenant_root(self.view.get_class(self._schema_names[cls.__name__]))
         return meta_graph_iri(iri) if meta else graph_iri(iri)
 
     def _read[M: BaseModel](
-        self, cls: type[M], node: Node, graph: Graph, tracked_by: URIRef | None
+        self, cls: type[M], node: Node, graph: Graph, tracked_by: URIRef | None, path: frozenset
     ) -> M:
+        if node in path:
+            raise ValueError(f"the owned parts of the graph form a cycle at {node}")
+        path = path | {node}
         name = self._schema_names[cls.__name__]
         data: dict[str, Any] = {}
         if identifier := self._identifier(name):
@@ -154,16 +157,16 @@ class Mapper:
             if subject is None:
                 continue
             found = [
-                self._value(slot, o, graph)
+                self._value(slot, o, graph, path)
                 for o in sorted(graph.objects(subject, predicate), key=str)
             ]
             if found:
                 data[underscore(slot.name)] = found if slot.multivalued else found[0]
         return cls.model_validate(data)
 
-    def _value(self, slot: SlotDefinition, term: Node, graph: Graph) -> Any:
+    def _value(self, slot: SlotDefinition, term: Node, graph: Graph, path: frozenset) -> Any:
         if self._is_part(slot):
-            return self._read(self._model(slot.range), term, graph, None)
+            return self._read(self._model(slot.range), term, graph, None, path)
         if self._is_enum(slot):
             return self._enum_text(slot.range, term)
         if isinstance(term, Literal) and not self._is_iri(slot):
@@ -244,13 +247,15 @@ class UnitOfWork:
 
         Raises:
             NotFound: The aggregate has no graph.
+            TypeError: The root was already read as another class.
         """
         if iri not in self._objects:
             graph, version = await self._session.get_graph(iri)
             self._objects[iri] = self._mapper.from_graph(cls, iri, graph)
             self._versions[iri] = version
         obj = self._objects[iri]
-        assert isinstance(obj, cls), f"{iri} was read as {type(obj).__name__}, not {cls.__name__}"
+        if not isinstance(obj, cls):
+            raise TypeError(f"{iri} was read as {type(obj).__name__}, not {cls.__name__}")
         return obj
 
     def add(self, obj: BaseModel) -> None:

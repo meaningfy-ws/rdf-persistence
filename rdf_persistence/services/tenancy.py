@@ -70,29 +70,26 @@ class Tenancy:
             clock=self._clock,
         )
 
-    async def ensure_system_database(self) -> None:
-        """Create the system database unless it exists (start-up)."""
+    async def ensure_system_database(self) -> bool:
+        """Create the system database unless it exists (start-up); True if this call created it."""
         if self._system in await self._store.list_datasets():
-            return
+            return False
         with suppress(Conflict):  # another worker created it first
             await self._store.create_dataset(self._system)
+        return True
 
     async def create[M: BaseModel](self, label: str, root: M, creator: Principal) -> TenantSummary:
         """Create a tenant: its database and bucket, its root object, and last its access record.
 
         ``root`` is the tenant's root object; its ``id`` is replaced by the tenant IRI minted here.
-        The record gives ``creator`` the settings' ``creator_role`` on the tenant.
+        The record gives ``creator`` the settings' ``creator_role`` on the tenant. Both objects are
+        built and validated before anything is created, so a refused request leaves nothing (PD-8c).
+
+        Raises:
+            ValueError: ``label`` or ``root`` is not valid (pydantic's ``ValidationError``).
         """
         tenant = str(mint_tenant_iri(self._settings.base, self._settings.tenant_segment))
         name = tenant_resource_name(self._settings.prefix, tenant)
-        await self._store.create_dataset(name)
-        await self._files.create_bucket(name)
-        async with open_session(
-            self._store, database=name, tenant_iri=tenant, principal=creator, clock=self._clock
-        ) as session:
-            work = UnitOfWork(session, self._mapper)
-            work.add(root.model_copy(update={"id": tenant}))
-            await work.commit()
         record = self._access_class(
             id=str(access_iri(tenant)),
             label=label,
@@ -101,6 +98,15 @@ class Tenancy:
             database_name=name,
             grants=[Grant(assignee=creator.id, target=tenant, role=self._settings.creator_role)],
         )
+        tenant_root = type(root).model_validate(root.model_copy(update={"id": tenant}).model_dump())
+        await self._store.create_dataset(name)
+        await self._files.create_bucket(name)
+        async with open_session(
+            self._store, database=name, tenant_iri=tenant, principal=creator, clock=self._clock
+        ) as session:
+            work = UnitOfWork(session, self._mapper)
+            work.add(tenant_root)
+            await work.commit()
         async with self._system_session(tenant, creator) as session:
             work = UnitOfWork(session, self._mapper)
             work.add(record)
@@ -158,11 +164,21 @@ class Tenancy:
         await self.finish_deletion(tenant)
 
     async def finish_deletion(self, tenant: str) -> None:
-        """Drop the database and the bucket of a ``deleting`` tenant, then remove its record."""
-        name = tenant_resource_name(self._settings.prefix, tenant)
-        for drop in (self._store.drop_dataset, self._files.delete_bucket):
-            with suppress(NotFound):  # an interrupted attempt already dropped it
-                await drop(name)
+        """Drop the database and the bucket the record names, then remove the record.
+
+        Raises:
+            NotFound: The tenant has no access record.
+            Conflict: The record is not ``deleting``; nothing is dropped.
+        """
         async with self._system_session(tenant, self._toolkit) as session:
-            _, version = await self._read(session, tenant)
-            await session.remove(str(access_iri(tenant)), version)
+            record, version = await self._read(session, tenant)
+            if record.state != TenantState.DELETING.value:
+                raise Conflict(f"{tenant} is not deleting: it is {record.state}")
+            for drop in (self._store.drop_dataset, self._files.delete_bucket):
+                with suppress(NotFound):  # an interrupted attempt already dropped it
+                    await drop(record.database_name)
+            await session.remove(record.id, version)
+
+    async def database_names(self) -> set[str]:
+        """The database (and bucket) names the access records store, for every tenant."""
+        return {(await self.get(t.id))[0].database_name for t in await self.tenants()}

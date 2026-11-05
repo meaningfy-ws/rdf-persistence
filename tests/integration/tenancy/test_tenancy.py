@@ -1,8 +1,10 @@
 """Tenancy against a real Fuseki and the parametrised file store: create then delete, a grant is ODRL."""
 
+import pytest
 from rdflib import RDF, Literal, URIRef
 from rdflib.namespace import Namespace
 
+from rdf_persistence.domain.errors import Conflict, NotFound
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.iris import access_iri, tenant_resource_name
 from rdf_persistence.services.session import open_session
@@ -34,6 +36,27 @@ async def test_create_then_delete_leaves_no_database_no_bucket_and_no_record(
     assert name not in await store.list_datasets(), "database"
     assert await files.list_buckets(name) == [], "bucket"
     assert await tenancy.tenants() == [], "access record"
+    with pytest.raises(NotFound):
+        await tenancy.get(summary.id)
+
+
+async def test_a_label_the_record_refuses_creates_no_database_and_no_bucket(
+    tenancy, store, files, settings
+):
+    with pytest.raises(ValueError, match="label"):
+        await tenancy.create("x" * 201, library(), CREATOR)
+    prefix = f"{settings.prefix}-t-"
+    assert [n for n in await store.list_datasets() if n.startswith(prefix)] == [], "databases"
+    assert await files.list_buckets(prefix) == [], "buckets"
+
+
+async def test_finish_deletion_leaves_an_active_tenant_whole(tenancy, store, files, settings):
+    summary = await tenancy.create("Ghent", library(), CREATOR)
+    name = tenant_resource_name(settings.prefix, summary.id)
+    with pytest.raises(Conflict):
+        await tenancy.finish_deletion(summary.id)
+    assert name in await store.list_datasets(), "database"
+    assert await files.list_buckets(name) == [name], "bucket"
 
 
 async def test_a_grant_is_an_odrl_permission_of_the_creator_on_the_tenant(tenancy, store, settings):

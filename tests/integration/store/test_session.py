@@ -220,6 +220,40 @@ async def test_two_editors_who_read_the_same_version_get_one_commit_and_one_conf
     assert len(await registry(store, database)) == 3, "one registry entry, nothing half-written"
 
 
+async def test_two_adds_of_one_iri_give_one_success_and_one_conflict(store, database):
+    store.barrier = asyncio.Barrier(2)
+    ada, ben = session_for(store, database, ADA), session_for(store, database, BEN)
+    outcomes = await asyncio.gather(
+        ada.add_graph(book(1), title(book(1), "by ada")),
+        ben.add_graph(book(1), title(book(1), "by ben")),
+        return_exceptions=True,
+    )
+    store.barrier = None
+    winners = [o for o in outcomes if isinstance(o, str)]
+    assert (len(winners), sum(isinstance(o, Conflict) for o in outcomes)) == (1, 1), outcomes
+    graph, stored = await session_for(store, database).get_graph(book(1))
+    assert stored == winners[0], "the stored token is the winner's"
+    assert len(list(graph.objects(None, v.VERSION))) == 1, "one version token, nothing doubled"
+    assert len(list(graph.objects(URIRef(book(1)), TITLE))) == 1, "one title, the winner's"
+    assert len(await registry(store, database)) == 3, "one registry entry"
+
+
+@pytest.mark.parametrize(
+    "bad", [graph_iri(book(2)), registry_graph_iri(TENANT)], ids=["aggregate", "registry"]
+)
+async def test_a_loaded_graph_outside_the_aggregate_is_refused_and_nothing_changes(
+    store, database, bad
+):
+    session = session_for(store, database)
+    await session.add_graph(book(2), title(book(2), "victim"))
+    before = await graphs_in(store, database)
+    with pytest.raises(ValueError, match="content"):
+        await session.add_graph(book(1), [], [bad])
+    assert await graphs_in(store, database) == before, "no graph was touched"
+    graph, _ = await session.get_graph(book(2))
+    assert (URIRef(book(2)), TITLE, Literal("victim")) in graph, "the other aggregate is intact"
+
+
 async def test_a_commit_records_who_and_when_about_the_graph_iri_and_not_the_root(store, database):
     clock = Ticker()
     graph = graph_iri(book(1))

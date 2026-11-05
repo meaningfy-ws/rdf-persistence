@@ -107,3 +107,18 @@ def test_the_tenant_of_an_access_record_is_the_iri_it_hangs_under():
 def test_an_iri_that_is_not_an_access_record_has_no_tenant():
     with pytest.raises(ValueError, match="access record"):
         tenant_iri_of_access(f"{TENANT}/books/1")
+
+
+@pytest.mark.parametrize(
+    "last",
+    [
+        "12345678123442348234123456789ABC",  # no hyphens
+        "12345678-1234-4234-8234-123456789ABC",  # upper case
+        "{12345678-1234-4234-8234-123456789abc}",
+        "urn:uuid:12345678-1234-4234-8234-123456789abc",
+        "12345678123442348234123456789abc",
+    ],
+)
+def test_tenant_name_needs_a_canonical_uuid(last):
+    with pytest.raises(ValueError, match="tenant IRI"):
+        tenant_resource_name("lib", f"{BASE}libraries/{last}")

@@ -240,3 +240,24 @@ def test_new_part_mints_an_iri_under_the_root_and_keeps_the_fields():
 def test_a_part_that_arrives_without_an_identifier_cannot_be_built_so_the_helper_is_the_way():
     with pytest.raises(ValueError, match="id"):
         Chapter(number=1)
+
+
+CHAPTER = URIRef("https://example.org/ns/library#chapter")
+NOTE = URIRef("https://example.org/ns/library#note")
+
+
+@pytest.mark.parametrize(
+    ("owner", "predicate"),
+    [("root", CHAPTER), ("chapter", NOTE)],
+    ids=["on the root", "on a chapter"],
+)
+def test_a_stored_graph_whose_owned_parts_loop_is_refused_and_not_a_recursion_error(
+    owner, predicate
+):
+    iri = book_iri(7)
+    graph = toy_mapper().to_graph(dune(iri))
+    first_chapter = next(graph.objects(URIRef(iri), CHAPTER))
+    node = URIRef(iri) if owner == "root" else first_chapter
+    graph.add((node, predicate, node))
+    with pytest.raises(ValueError, match="cycle"):
+        toy_mapper().from_graph(Book, iri, graph)

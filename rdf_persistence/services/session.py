@@ -43,7 +43,13 @@ SELECT ?version ?created ?creator ?contributor WHERE {
 READ_GRAPH = "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH $graph { ?s ?p ?o } }"
 ASK_ANY = "ASK { GRAPH $graph { ?s ?p ?o } }"
 ASK_TOKEN = "ASK { GRAPH $graph { $graph $p_version $token } }"
-ADD = "INSERT DATA { GRAPH $graph { $triples } GRAPH $registry { $entries } }"
+# One conditional insert: when the graph already holds a triple nothing is written, so two adds of
+# one IRI cannot both succeed (PD-8c); the caller confirms with an ASK for its token.
+ADD = """
+INSERT { GRAPH $graph { $triples } GRAPH $registry { $entries } }
+WHERE { FILTER NOT EXISTS { GRAPH $graph { ?s ?p ?o } } }
+"""
+READ_LOADED = "SELECT ?lg WHERE { GRAPH $registry { ?lg $p_owned_by $root ; $p_kind $loaded } }"
 # The guard, the delete of the old graph, of every entry the root owns and of the loaded graphs
 # not listed in $kept, and the insert of the new ones, in one update.
 REPLACE = """
@@ -217,6 +223,28 @@ class Session:
             ),
         ]
 
+    def _check_loaded(self, iri: str, loaded_graphs: Sequence[URIRef]) -> None:
+        """Refuse a loaded graph that is not under ``{iri}/content/``: it would take over another graph."""
+        content = f"{iri}/content/"
+        outside = [str(g) for g in loaded_graphs if not str(g).startswith(content)]
+        if outside:
+            raise ValueError(f"loaded graphs must be under {content!r}: {outside}")
+
+    async def _registered_loaded(self, iri: str) -> list[URIRef]:
+        """The loaded graphs the aggregate ``iri`` has registered."""
+        text = fill(
+            READ_LOADED,
+            registry=term(self._registry),
+            p_owned_by=term(v.REGISTRY_OWNED_BY),
+            p_kind=term(v.REGISTRY_KIND),
+            loaded=term(v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH.value]),
+            root=term(URIRef(iri)),
+        )
+        rows = [
+            r for r in await self._store.query(self._database, text) if isinstance(r, ResultRow)
+        ]
+        return sorted(URIRef(r.lg) for r in rows)
+
     async def _ask(self, template: str, **terms) -> bool:
         result = await self._store.query(self._database, fill(template, **terms))
         return bool(result.askAnswer)
@@ -264,18 +292,21 @@ class Session:
         """Store a new aggregate and register its ``loaded_graphs``; returns its first version.
 
         Raises:
+            ValueError: ``iri`` is not inside the tenant, or a loaded graph is not under
+                ``{iri}/content/``; nothing is sent.
             Conflict: The aggregate already has a graph.
         """
         graph = self._graph(iri)
-        if await self._ask(ASK_ANY, graph=term(graph)):
-            raise Conflict(f"{graph} already exists")
+        self._check_loaded(iri, loaded_graphs)
         version = str(uuid.uuid4())
         tracking = Tracked(created=self._clock(), creator=self._principal.id)
         payload = payload_triples(graph, version, tracking, triples)
-        await self._store.update(
-            self._database,
-            add_text(graph, self._registry, payload, self._entries(iri, graph, loaded_graphs)),
-        )
+        entries = self._entries(iri, graph, loaded_graphs)
+        await self._store.update(self._database, add_text(graph, self._registry, payload, entries))
+        if not await self._ask(
+            ASK_TOKEN, graph=term(graph), p_version=term(v.VERSION), token=term(Literal(version))
+        ):
+            raise Conflict(f"{graph} already exists")
         return version
 
     async def replace_graph(
@@ -283,18 +314,24 @@ class Session:
         iri: str,
         triples: Iterable[Triple],
         if_version: str,
-        loaded_graphs: Sequence[URIRef] = (),
+        loaded_graphs: Sequence[URIRef] | None = None,
     ) -> str:
-        """Replace the aggregate and its registered ``loaded_graphs`` if it still has ``if_version``.
+        """Replace the aggregate if it still has ``if_version``; returns the new version token.
 
-        Returns the new version token.
+        ``loaded_graphs`` is the aggregate's loaded graphs afterwards: ``None`` keeps those already
+        registered, a list replaces them (an empty one drops them all).
 
         Raises:
+            ValueError: A loaded graph is not under ``{iri}/content/``; nothing is sent.
             NotFound: The aggregate has no graph.
             Conflict: Its version is not ``if_version``; nothing changed.
         """
         graph = self._graph(iri)
+        if loaded_graphs is not None:
+            self._check_loaded(iri, loaded_graphs)
         _, stored = await self._stored(graph)
+        if loaded_graphs is None:
+            loaded_graphs = await self._registered_loaded(iri)
         tracking = Tracked(
             created=stored.created,
             creator=stored.creator,
