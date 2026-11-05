@@ -1,0 +1,420 @@
+- class_name: Activity
+  slots:
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: was_associated_with
+    required: false
+    multivalued: true
+    range: Principal
+- class_name: AggregateRoot
+  slots: []
+- class_name: Book
+  slots:
+  - name: authors
+    required: false
+    multivalued: true
+    range: string
+  - name: chapters
+    required: false
+    multivalued: true
+    range: Chapter
+  - name: contributor
+    required: false
+    multivalued: true
+    range: Principal
+  - name: created
+    required: false
+    multivalued: false
+    range: datetime
+  - name: creator
+    required: false
+    multivalued: false
+    range: Principal
+  - name: description
+    required: true
+    multivalued: false
+    range: string
+  - name: genre
+    required: false
+    multivalued: false
+    range: Genre
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: isbn
+    required: false
+    multivalued: false
+    range: string
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: modified
+    required: false
+    multivalued: false
+    range: datetime
+  - name: published
+    required: false
+    multivalued: false
+    range: date
+- class_name: Chapter
+  slots:
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: false
+    multivalued: false
+    range: string
+  - name: notes
+    required: false
+    multivalued: true
+    range: Note
+  - name: number
+    required: false
+    multivalued: false
+    range: integer
+- class_name: Described
+  slots:
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+- class_name: Grant
+  slots:
+  - name: action
+    required: false
+    multivalued: false
+    range: Action
+  - name: assignee
+    required: true
+    multivalued: false
+    range: Principal
+  - name: role
+    required: false
+    multivalued: false
+    range: string
+  - name: target
+    required: true
+    multivalued: false
+    range: uri
+- class_name: Library
+  slots:
+  - name: city
+    required: false
+    multivalued: false
+    range: string
+  - name: contributor
+    required: false
+    multivalued: true
+    range: Principal
+  - name: created
+    required: false
+    multivalued: false
+    range: datetime
+  - name: creator
+    required: false
+    multivalued: false
+    range: Principal
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: modified
+    required: false
+    multivalued: false
+    range: datetime
+- class_name: LibraryAccess
+  slots:
+  - name: database_name
+    required: true
+    multivalued: false
+    range: string
+  - name: description
+    required: true
+    multivalued: false
+    range: string
+  - name: grants
+    required: false
+    multivalued: true
+    range: Grant
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: prohibitions
+    required: false
+    multivalued: true
+    range: Prohibition
+  - name: state
+    required: true
+    multivalued: false
+    range: TenantState
+- class_name: Note
+  slots:
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: text
+    required: false
+    multivalued: false
+    range: string
+- class_name: Policy
+  slots: []
+- class_name: Principal
+  slots:
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+- class_name: Prohibition
+  slots:
+  - name: action
+    required: true
+    multivalued: false
+    range: Action
+  - name: assignee
+    required: true
+    multivalued: false
+    range: Principal
+  - name: target
+    required: true
+    multivalued: false
+    range: uri
+- class_name: Provenanced
+  slots:
+  - name: generated_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: was_attributed_to
+    required: false
+    multivalued: false
+    range: Principal
+  - name: was_derived_from
+    required: false
+    multivalued: true
+    range: uri
+  - name: was_generated_by
+    required: false
+    multivalued: false
+    range: Activity
+- class_name: RegistryEntry
+  slots:
+  - name: graph
+    required: true
+    multivalued: false
+    range: uri
+  - name: kind
+    required: true
+    multivalued: false
+    range: RegistryKind
+  - name: owned_by
+    required: true
+    multivalued: false
+    range: uri
+- class_name: RoleDefinition
+  slots:
+  - name: actions
+    required: true
+    multivalued: true
+    range: Action
+  - name: level
+    required: true
+    multivalued: false
+    range: RoleLevel
+  - name: role
+    required: true
+    multivalued: false
+    range: string
+- class_name: Rule
+  slots:
+  - name: action
+    required: false
+    multivalued: false
+    range: Action
+  - name: assignee
+    required: true
+    multivalued: false
+    range: Principal
+  - name: target
+    required: true
+    multivalued: false
+    range: uri
+- class_name: Scan
+  slots:
+  - name: byte_size
+    required: false
+    multivalued: false
+    range: integer
+  - name: contributor
+    required: false
+    multivalued: true
+    range: Principal
+  - name: created
+    required: false
+    multivalued: false
+    range: datetime
+  - name: creator
+    required: false
+    multivalued: false
+    range: Principal
+  - name: description
+    required: true
+    multivalued: false
+    range: string
+  - name: file_key
+    required: false
+    multivalued: false
+    range: string
+  - name: file_name
+    required: false
+    multivalued: false
+    range: string
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: media_type
+    required: false
+    multivalued: false
+    range: string
+  - name: modified
+    required: false
+    multivalued: false
+    range: datetime
+  - name: scan_of
+    required: false
+    multivalued: false
+    range: Book
+  - name: sha256
+    required: false
+    multivalued: false
+    range: string
+  - name: uploaded
+    required: false
+    multivalued: false
+    range: datetime
+  - name: uploaded_by
+    required: false
+    multivalued: false
+    range: Principal
+- class_name: StoredFile
+  slots:
+  - name: byte_size
+    required: false
+    multivalued: false
+    range: integer
+  - name: file_key
+    required: false
+    multivalued: false
+    range: string
+  - name: file_name
+    required: false
+    multivalued: false
+    range: string
+  - name: media_type
+    required: false
+    multivalued: false
+    range: string
+  - name: sha256
+    required: false
+    multivalued: false
+    range: string
+  - name: uploaded
+    required: false
+    multivalued: false
+    range: datetime
+  - name: uploaded_by
+    required: false
+    multivalued: false
+    range: Principal
+- class_name: TenantAccess
+  slots:
+  - name: database_name
+    required: true
+    multivalued: false
+    range: string
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: grants
+    required: false
+    multivalued: true
+    range: Grant
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: prohibitions
+    required: false
+    multivalued: true
+    range: Prohibition
+  - name: state
+    required: true
+    multivalued: false
+    range: TenantState
+- class_name: Tracked
+  slots:
+  - name: contributor
+    required: false
+    multivalued: true
+    range: Principal
+  - name: created
+    required: false
+    multivalued: false
+    range: datetime
+  - name: creator
+    required: false
+    multivalued: false
+    range: Principal
+  - name: modified
+    required: false
+    multivalued: false
+    range: datetime

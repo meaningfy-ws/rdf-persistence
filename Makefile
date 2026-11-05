@@ -43,7 +43,7 @@ help: ## Display available targets
 #-----------------------------------------------------------------------------
 # Install / build (mutating)
 #-----------------------------------------------------------------------------
-.PHONY: install-uv install lock generate check-freshness generate-metamodel check-generated refresh-golden build
+.PHONY: install-uv install lock generate check-freshness generate-metamodel check-generated refresh-snapshot refresh-golden build
 
 install-uv: ## Install uv if not present
 	@ command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -76,6 +76,9 @@ check-generated: generate ## Regenerate and fail if the result differs from what
 	@ git diff --exit-code --stat -- $(GENERATED_GLOBS)
 	@ git ls-files --others --exclude-standard -- $(GENERATED_GLOBS) | grep . && exit 1 || true
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated output is fresh$(END_BUILD_PRINT)"
+
+refresh-snapshot: ## Rewrite the reviewed model-shape snapshot after a deliberate model change (review the diff)
+	@ RP_REFRESH_SNAPSHOT=1 uv run pytest tests/unit/generation/test_shape_snapshot.py -q
 
 refresh-golden: ## Rewrite the generator extensions' golden files (review the diff before committing)
 	@ RP_REFRESH_GOLDEN=1 uv run pytest tests/unit/generation -k "ext_" -q
