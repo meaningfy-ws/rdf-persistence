@@ -22,10 +22,10 @@ classes:
     description: A set of permissions and prohibitions.
     class_uri: ODRL:Set
     abstract: true
-  Permission:
-    title: Permission
-    description: The ODRL permission that lets an assignee act on a target.
-    class_uri: ODRL:Permission
+  Rule:
+    title: Rule
+    description: An ODRL rule that gives an assignee a ruling on an action over a target.
+    class_uri: ODRL:Rule
     abstract: true
     slots:
       - assignee
@@ -41,8 +41,8 @@ classes:
     description: >-
       A permission given to a principal on a tenant or on one aggregate, either by role or as a direct
       action; exactly one of role and action is given.
-    class_uri: rp:Grant
-    is_a: Permission
+    class_uri: ODRL:Permission
+    is_a: Rule
     slots:
       - role
     exactly_one_of:
@@ -66,15 +66,8 @@ classes:
     title: Prohibition
     description: The ODRL prohibition that forbids an assignee an action on a target; it wins over any permission.
     class_uri: ODRL:Prohibition
-    slots:
-      - assignee
-      - target
-      - action
+    is_a: Rule
     slot_usage:
-      assignee:
-        required: true
-      target:
-        required: true
       action:
         required: true
   RoleDefinition:

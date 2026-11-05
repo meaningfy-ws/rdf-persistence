@@ -53,7 +53,7 @@ slots:
   uploaded:
     title: Uploaded
     description: The time the file was uploaded.
-    slot_uri: dcterms:modified
+    slot_uri: dcterms:dateSubmitted
     range: datetime
   uploaded_by:
     title: Uploaded by

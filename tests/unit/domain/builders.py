@@ -1,27 +1,38 @@
 """Small builders for metamodel objects, so each test states only what it varies."""
 
-from typing import Any
-
-from rdf_persistence import Grant, TenantAccess
+from rdf_persistence import Action, Grant, Prohibition, TenantAccess, TenantState
 
 TENANT = "https://example.org/tenant/acme"
 ALICE = "https://example.org/user/alice"
+DATABASE = "acme-t-" + "0" * 32
+ACTIVE = TenantState("active")
 
 
-def grant(**overrides: Any) -> Grant:
-    """A role grant for Alice on the tenant; override or add any field."""
-    fields: dict[str, Any] = {"assignee": ALICE, "target": TENANT, "role": "editor"}
-    fields.update(overrides)
-    return Grant(**fields)
+def grant(
+    *,
+    assignee: str = ALICE,
+    target: str = TENANT,
+    role: str | None = "editor",
+    action: Action | None = None,
+) -> Grant:
+    """A role grant for Alice on the tenant; pass ``role=None, action=...`` for a direct grant."""
+    return Grant(assignee=assignee, target=target, role=role, action=action)
 
 
-def tenant_access(**overrides: Any) -> TenantAccess:
-    """An active tenant access record; override or add any field."""
-    fields: dict[str, Any] = {
-        "id": TENANT,
-        "label": "Acme",
-        "state": "active",
-        "database_name": "acme",
-    }
-    fields.update(overrides)
-    return TenantAccess(**fields)
+def tenant_access(
+    *,
+    label: str = "Acme",
+    state: TenantState = ACTIVE,
+    database_name: str = DATABASE,
+    grants: list[Grant] | None = None,
+    prohibitions: list[Prohibition] | None = None,
+) -> TenantAccess:
+    """An active tenant access record."""
+    return TenantAccess(
+        id=TENANT,
+        label=label,
+        state=state,
+        database_name=database_name,
+        grants=grants,
+        prohibitions=prohibitions,
+    )

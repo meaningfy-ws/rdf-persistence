@@ -66,7 +66,7 @@ Slots of the metamodel (IRIs in the `rp:` namespace unless shown):
 |`target` |`odrl:target` |uri: the tenant IRI, or an aggregate's graph IRI; required
 |`role` |`rp:role` |string, matched against the consumer's role definitions; an application may narrow it to an enum by `slot_usage`; exactly one of `role` and `action`
 |`action` |`odrl:action` |`Action`, for a direct permission
-|`file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key` |`rp:fileName`, `rp:mediaType`, `rp:byteSize`, `rp:sha256`, `dcterms:modified`, `rp:uploadedBy`, `rp:fileKey` |as in the consumer model's slot table; `file_key` internal
+|`file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key` |`rp:fileName`, `rp:mediaType`, `rp:byteSize`, `rp:sha256`, `dcterms:dateSubmitted`, `rp:uploadedBy`, `rp:fileKey` |as in the consumer model's slot table; `file_key` internal
 |`loaded_graph` |`rp:loadedGraph` |uri
 |`version` |`rp:version` |string, written by the session only
 |===

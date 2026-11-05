@@ -51,9 +51,14 @@ slots:
     range: TenantState
   database_name:
     title: Database name
-    description: The name of the tenant's database.
+    description: >-
+      The name of the tenant's database, the prefix, "-t-" and the tenant's UUID in hexadecimal; the prefix is
+      lower case, at most 20 characters.
     slot_uri: rp:databaseName
     range: string
+    pattern: "^[a-z][a-z0-9]{0,19}-t-[0-9a-f]{32}$"
+    annotations:
+      internal: true
   grants:
     title: Grants
     description: The permissions given in the tenant, by role or as direct actions; they live in the access record's graph.

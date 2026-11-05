@@ -192,16 +192,16 @@ class Policy(ConfiguredBaseModel):
     pass
 
 
-class Permission(ConfiguredBaseModel):
+class Rule(ConfiguredBaseModel):
     """
-    The ODRL permission that lets an assignee act on a target.
+    An ODRL rule that gives an assignee a ruling on an action over a target.
     """
     assignee: str = Field(default=..., title="Assignee", description="""The principal the rule applies to.""")
     target: str = Field(default=..., title="Target", description="""The IRI of the tenant, or of an aggregate's graph, the rule applies to.""")
     action: Optional[Action] = Field(default=None, title="Action", description="""The action a direct permission allows, or a prohibition forbids.""")
 
 
-class Grant(Permission):
+class Grant(Rule):
     """
     A permission given to a principal on a tenant or on one aggregate, either by role or as a direct action; exactly one of role and action is given.
     """
@@ -211,7 +211,7 @@ class Grant(Permission):
     action: Optional[Action] = Field(default=None, title="Action", description="""The action a direct permission allows, or a prohibition forbids.""")
 
 
-class Prohibition(ConfiguredBaseModel):
+class Prohibition(Rule):
     """
     The ODRL prohibition that forbids an assignee an action on a target; it wins over any permission.
     """
@@ -234,12 +234,25 @@ class TenantAccess(Policy, Described, AggregateRoot):
     The access record of a tenant: its label, state and database name, with the grants and prohibitions that say who may do what in it.
     """
     state: TenantState = Field(default=..., title="State", description="""Where the tenant is in its life.""")
-    database_name: str = Field(default=..., title="Database name", description="""The name of the tenant's database.""")
+    database_name: str = Field(default=..., title="Database name", description="""The name of the tenant's database, the prefix, \"-t-\" and the tenant's UUID in hexadecimal; the prefix is lower case, at most 20 characters.""")
     grants: Optional[list[Grant]] = Field(default=None, title="Grants", description="""The permissions given in the tenant, by role or as direct actions; they live in the access record's graph.""")
     prohibitions: Optional[list[Prohibition]] = Field(default=None, title="Prohibitions", description="""The actions forbidden in the tenant; they live in the access record's graph.""")
     id: str = Field(default=..., title="Identifier", description="""The IRI that identifies the object.""")
     label: str = Field(default=..., title="Label", description="""The preferred label of the object.""")
     description: Optional[str] = Field(default=None, title="Description", description="""A free-text description of the object.""")
+
+    @field_validator('database_name')
+    def pattern_database_name(cls, v):
+        pattern=re.compile(r"^[a-z][a-z0-9]{0,19}-t-[0-9a-f]{32}$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.search(element):
+                    err_msg = f"Invalid database_name format: {element}"
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.search(v):
+            err_msg = f"Invalid database_name format: {v}"
+            raise ValueError(err_msg)
+        return v
 
     @field_validator('label')
     def pattern_label(cls, v):
@@ -291,7 +304,7 @@ Tracked.model_rebuild()
 Provenanced.model_rebuild()
 Activity.model_rebuild()
 Policy.model_rebuild()
-Permission.model_rebuild()
+Rule.model_rebuild()
 Grant.model_rebuild()
 Prohibition.model_rebuild()
 RoleDefinition.model_rebuild()

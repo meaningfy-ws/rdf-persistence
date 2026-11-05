@@ -7,8 +7,8 @@ check (task 1.6) and the shape generator (task 1.8). Each is strict: when the ga
 import pytest
 from pydantic import ValidationError
 
-from rdf_persistence import Action, RoleLevel, StoredFile, TenantState
-from tests.unit.domain.builders import ALICE, TENANT, grant, tenant_access
+from rdf_persistence import Action, Grant, RoleLevel, StoredFile, TenantState
+from tests.unit.domain.builders import grant, tenant_access
 
 SCHEMA_ONLY = "gen-pydantic does not render this schema constraint (see tasks 1.6 and 1.8)"
 
@@ -47,10 +47,8 @@ def test_grant_by_action_is_accepted() -> None:
 
 @pytest.mark.parametrize("missing", ["assignee", "target"])
 def test_grant_requires_assignee_and_target(missing: str) -> None:
-    fields = {"assignee": ALICE, "target": TENANT, "role": "editor"}
-    del fields[missing]
     with pytest.raises(ValidationError, match=missing):
-        type(grant())(**fields)
+        Grant.model_validate(grant().model_dump(exclude={missing}))
 
 
 @pytest.mark.xfail(strict=True, reason=SCHEMA_ONLY + ": exactly_one_of role and action")
@@ -63,6 +61,31 @@ def test_grant_with_both_role_and_action_is_refused() -> None:
 def test_grant_with_neither_role_nor_action_is_refused() -> None:
     with pytest.raises(ValidationError):
         grant(role=None)
+
+
+@pytest.mark.parametrize(
+    "name", ["lib-t-" + "a" * 32, "a" * 20 + "-t-" + "0123456789abcdef" * 2, "a1-t-" + "f" * 32]
+)
+def test_database_name_of_the_tenant_naming_rule_is_accepted(name: str) -> None:
+    assert tenant_access(database_name=name).database_name == name, "the name was not kept"
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "acme",
+        "lib-t-" + "a" * 31,
+        "lib-t-" + "a" * 33,
+        "lib-t-" + "A" * 32,
+        "Lib-t-" + "a" * 32,
+        "a" * 21 + "-t-" + "a" * 32,
+        "-t-" + "a" * 32,
+        "lib-system",
+    ],
+)
+def test_database_name_outside_the_tenant_naming_rule_is_refused(name: str) -> None:
+    with pytest.raises(ValidationError, match="Invalid database_name format"):
+        tenant_access(database_name=name)
 
 
 @pytest.mark.parametrize("label", ["", "x" * 201, "two\nlines"])

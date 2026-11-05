@@ -6,6 +6,7 @@ prefixes:
   lib: https://example.org/ns/library#
   linkml: https://w3id.org/linkml/
   rp: https://meaningfy.ws/ns/rdf-persistence#
+  ODRL: http://www.w3.org/ns/odrl/2/
 default_prefix: lib
 default_range: string
 imports:
@@ -28,7 +29,7 @@ classes:
   LibraryGrant:
     title: Library grant
     description: A grant of a library role, or of a direct action, to a user.
-    class_uri: lib:LibraryGrant
+    class_uri: ODRL:Permission
     is_a: Grant
     slot_usage:
       role:
