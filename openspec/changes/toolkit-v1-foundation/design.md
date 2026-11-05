@@ -214,7 +214,9 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
       `roles_claim`), `VerifiedCaller` (what `TokenVerifier` returns: `principal`,
       `global_roles`), and the toolkit's own request and response bodies (PD-13: `TenantCreate`,
       `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`, `Problem`), generated into
-      `rdf_persistence/domain/generated/service/`;
+      `rdf_persistence/domain/generated/service/`. `rp_service.yaml` imports `rp_core` and
+      `rp_access`; `GrantSet.grants` has range `Grant`; its run emits only its own classes and
+      imports the others from `rdf_persistence.domain.generated`;
     - `rdf_persistence/generation/model/rp_generation.yaml`: `GenerationManifest`, `ConstraintCase`
       and `ClassShape` (PD-26, PD-27), generated into `rdf_persistence/generation/generated/`.
   - Hand-written, because it restates nothing: generic code that reads the schema through
@@ -229,7 +231,8 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
       declares them; `unique_keys` becomes a model validator on every class with a multivalued slot
       whose range declares them (for example `TenantAccess`, over `grants`), refusing two items with
       equal key values. An absent slot counts as a key value, and two absent values are equal (the
-      grant key spans `role` and `action`, one of which is always absent);
+      grant key spans `role` and `action`, one of which is always absent); the SPARQL constraint of
+      the shapes treats absent values the same way;
     - shapes (task 1.8): `exactly_one_of` becomes `sh:xone`, `any_of` becomes `sh:or`, and
       `unique_keys` becomes a SPARQL constraint on the owning class.
     - `rules` (LinkML's pre- and postconditions) is not supported in v1: `rp-generate` exits 1,
@@ -249,7 +252,11 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
       PD-22; `linkml:types` is covered by the `linkml` version instead), every file of the template
       directories, and every `.py` module under `rdf_persistence/generation/`.
     - Outputs: every file the run wrote, in every target folder (Python, TypeScript, diagrams),
-      except the manifest itself.
+      except the manifest itself. A run deletes only the files its previous manifest lists; it never
+      clears a folder, so nested output folders (`domain/generated/service/`) are safe.
+    - An input inside the installed `rdf_persistence` package is recorded as
+      `rdf_persistence/<path within the package>`, so a consumer's manifest does not depend on
+      where the package is installed.
     - A manifest whose `linkml` differs from the installed version means *stale*.
     - Without the `generate` extra, `--check` and the pytest plugin do only the manifest
       comparison: lint and the checks are skipped and the `linkml` version is not compared (hashing
@@ -396,8 +403,10 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
       use;
     - `PUT /{tenant_segment}/{t}/label`: the tenant's label in the access record, `If-Match` on the
       access record, action `modify`.
-  - Bodies and construction. Every body below is a class of `rp_service.yaml`, generated (PD-24);
-    the router validates requests and builds responses through them, never through bare dicts:
+  - Bodies and construction. The tenant-route bodies, `Page` and `Problem` are classes of
+    `rp_service.yaml`, generated (PD-24); the router validates them and builds them through these
+    classes, never through bare dicts. Aggregate bodies stay JSON-LD, handled as in PD-14.
+    `Page.items` has range `linkml:Any` and holds framed aggregates:
 
     | Route | Request body | Response |
     |---|---|---|
@@ -589,7 +598,7 @@ practically impossible.
 | Use a counter as the version | A fresh UUID per commit (PD-5) | A counter gives false successes |
 | Accept client-sent IRIs on create | Mint them (PD-6) | IRIs stay in the toolkit's namespace |
 | Generate routes or repositories | The generic router reads `SchemaView` at run time | O-1, D-1 |
-| Use generated classes in the router | Context, frame and shapes (PD-14) | D-2 |
+| Use generated *domain* classes for aggregate bodies in the router | Context, frame and shapes (PD-14) | D-2 |
 | Import an adapter in `services`, `domain` or `entrypoints` | Depend on the port; the consumer wires the adapter | PD-1 |
 | Mock Fuseki, Garage or Zitadel in integration tests | Containers (PD-16) | DEC-4 |
 | Edit generated files | Change the schema or template; regenerate | Freshness check (PD-26) |

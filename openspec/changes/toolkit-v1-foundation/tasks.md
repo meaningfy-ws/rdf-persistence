@@ -65,7 +65,7 @@ Order: 1.11 at any time; 1.12 and 1.16 after 1.10; 1.13 after 1.8; 1.14 after 1.
 1.10. Hypothesis is added to the test group, pinned, in task 1.14.
 
 - [ ] 1.11 Embed the rule: `AGENTS.md` states it (done with the plan); `open-decisions.adoc` records it as D-13, with a link to the MWBv2 Developer Runbook; `generation.adoc` gets anchors on its sections (`#extensions`, `#guarding`), rewrites "Guarding the generated code" to PD-26 to PD-28, and its extension table gains a first column with each extension's module path and rows for the validators and shape constraints of PD-24. `make check-docs` passes.
-- [ ] 1.12 The manifest and `rp-generate --check` (PD-26): `rp_generation.yaml` with `GenerationManifest` (also `ConstraintCase` and `ClassShape`, used by 1.14 and 1.15), generated; stale input, edited output, a changed `linkml` version and a fresh run each tested; `rdf_persistence/testkit/freshness.py` with the ini option `rp_generate_projects`; the repo's own `[tool.rp-generate]` table in `pyproject.toml`; `make check-quality` runs the check; the pre-commit hook; `make generate`, run first by `make build`.
+- [ ] 1.12 The manifest and `rp-generate --check` (PD-26): `rp_generation.yaml` with `GenerationManifest` (also `ConstraintCase` and `ClassShape`, used by 1.14 and 1.15), generated; stale input, edited output, a changed `linkml` version and a fresh run each tested; `rdf_persistence/testkit/freshness.py` with the ini option `rp_generate_projects`; the repo's `[[tool.rp-generate]]` entries for `rp.yaml` and `rp_generation.yaml` in `pyproject.toml` (1.13 adds `rp_service.yaml`); `make check-quality` runs the check; the pre-commit hook; `make generate`, run first by `make build`.
 - [ ] 1.13 The gen-pydantic template extension that generates model validators for `exactly_one_of`, `any_of` and `unique_keys`, placed as PD-24 says; a schema using `rules` makes `rp-generate` exit 1. The three strict xfails of task 1.4 pass and lose their marks. Also `rp_service.yaml` (`ServiceSettings`, `VerifiedCaller` and the bodies of PD-13), as its own `[[tool.rp-generate]]` entry into `domain/generated/service/`.
 - [ ] 1.14 The conformance suite (PD-27 items 3 to 5): the constraint-case table with the classes-versus-shapes verdict test and the coverage test; the JSON-LD round trip with Hypothesis; the model-shape test. In `testkit`, run on the metamodel and the toy library.
 - [ ] 1.15 The model-shape snapshot under `tests/fixtures/`, its test and `make refresh-snapshot` (PD-27 item 6).
@@ -114,7 +114,7 @@ Order: 1.11 at any time; 1.12 and 1.16 after 1.10; 1.13 after 1.8; 1.14 after 1.
 
 ## 4. Access (stage 4)
 
-- [ ] 4.1 Loading the role definitions (PD-9), with an invalid file refused. Validating a grant set against `rp_access`, including the `grant_key` uniqueness that stock validation does not enforce (422 on a duplicate). Also loading a caller's grants (role or direct action) and prohibitions for one tenant in one query.
+- [ ] 4.1 Loading the role definitions (PD-9), with an invalid file refused. Validating a grant set against `rp_access`, including the `grant_key` uniqueness enforced by the 1.13 validator on `GrantSet` (422 on a duplicate). Also loading a caller's grants (role or direct action) and prohibitions for one tenant in one query.
 - [ ] 4.2 The check: global roles, prohibitions, permissions at tenant and aggregate scope, and role definitions; it answers 403 or 404. Exports: `AccessRules`.
 - [ ] 4.3 PD-9's matrix as one table-driven test, every cell including the `deleting` tenant row.
 
