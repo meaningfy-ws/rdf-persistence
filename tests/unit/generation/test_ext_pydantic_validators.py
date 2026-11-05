@@ -13,8 +13,11 @@ from types import ModuleType
 import pytest
 from pydantic import ValidationError
 
+from rdf_persistence.generation.checks.rules import rules_problems
 from rdf_persistence.generation.cli import main
+from rdf_persistence.generation.exceptions import SchemaGenerationError
 from rdf_persistence.generation.extensions.pydantic_split import render_modules
+from rdf_persistence.services.schema import load_schema
 
 from .conftest import Breaker
 from .golden import assert_matches_golden
@@ -261,7 +264,7 @@ UNSUPPORTED = [
 def test_a_condition_the_validators_cannot_express_is_a_generation_error(
     tmp_path: Path, rule: str, message: str
 ) -> None:
-    with pytest.raises(ValueError, match=message):
+    with pytest.raises(SchemaGenerationError, match=message):
         render(tmp_path, bad_schema(rule))
 
 
@@ -305,5 +308,65 @@ def test_a_schema_using_an_unsupported_rule_makes_rp_generate_exit_1_naming_the_
 
 def test_a_unique_key_over_a_slot_the_items_lack_is_a_generation_error(tmp_path: Path) -> None:
     schema = SCHEMA.replace("unique_key_slots: [name, tag]", "unique_key_slots: [name, nothing]")
-    with pytest.raises(ValueError, match=r"Ledger.*entry_key.*nothing"):
+    with pytest.raises(SchemaGenerationError, match=r"Ledger.*entry_key.*nothing"):
         render(tmp_path, schema)
+
+
+def test_a_unique_key_name_that_is_not_an_identifier_is_refused(tmp_path: Path) -> None:
+    (tmp_path / "validators.yaml").write_text(
+        SCHEMA.replace("entry_key:", "entry-key:"), encoding="utf-8"
+    )
+    with pytest.raises(SchemaGenerationError, match="not an identifier"):
+        render_modules(tmp_path / "validators.yaml")
+
+
+# --- the same rules on a slot, an attribute or a slot_usage (stage 1 review) ---
+
+SLOT_TEXT = "    slot_uri: schema:text\n    range: string\n"
+ATTRIBUTE_END = "        range: string\n        annotations:\n          owned: false\n"
+USAGE = "    slots: [text]\n    attributes:\n"
+SLOT_RULES = {
+    "all_of": "all_of:\n  - range: integer\n",
+    "none_of": "none_of:\n  - range: integer\n",
+    "exactly_one_of": "exactly_one_of:\n  - range: string\n  - range: integer\n",
+    "any_of": "any_of:\n  - pattern: '^a$'\n  - pattern: '^b$'\n",
+    "any_of-with-a-range-and-more": "any_of:\n  - range: string\n    minimum_value: 3\n  - range: integer\n",
+}
+
+
+def indented(snippet: str, spaces: int) -> str:
+    return "".join(f"{' ' * spaces}{line}\n" for line in snippet.splitlines())
+
+
+def planted(where: str, snippet: str) -> tuple[str, str]:
+    """``(old, new)`` that put ``snippet`` on the slot ``text``, on Note's attribute ``shade`` or in Note's slot_usage."""
+    if where == "slot":
+        return SLOT_TEXT, SLOT_TEXT + indented(snippet, 4)
+    if where == "attribute":
+        return ATTRIBUTE_END, indented(snippet, 8) + ATTRIBUTE_END
+    return USAGE, "    slots: [text]\n    slot_usage:\n      text:\n" + indented(
+        snippet, 8
+    ) + "    attributes:\n"
+
+
+@pytest.mark.parametrize("where", ["slot", "attribute", "slot_usage"])
+@pytest.mark.parametrize("rule", SLOT_RULES)
+def test_an_unsupported_rule_on_a_slot_fails_the_run_naming_the_slot_and_the_rule(
+    break_toy: Breaker, capsys: pytest.CaptureFixture[str], where: str, rule: str
+) -> None:
+    old, new = planted(where, SLOT_RULES[rule])
+    root = break_toy("books.yaml", old, new)
+    assert main(["--project", str(root.parent / "pyproject.toml")]) == 1, f"{rule} on a {where}"
+    error = capsys.readouterr().err
+    assert rule.split("-")[0] in error, f"the rule is not named: {error}"
+    assert {"slot": "text", "attribute": "shade", "slot_usage": "Note"}[where] in error, (
+        f"the element is not named: {error}"
+    )
+
+
+def test_a_union_of_ranges_on_a_slot_is_supported_because_classes_and_shapes_render_it(
+    break_toy: Breaker,
+) -> None:
+    old, new = planted("slot", "any_of:\n  - range: string\n  - range: integer\n")
+    root = break_toy("books.yaml", old, new)
+    assert rules_problems(load_schema(root)) == [], "a plain union of ranges must pass"

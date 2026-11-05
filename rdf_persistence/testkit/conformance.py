@@ -30,7 +30,8 @@ from pyshacl import validate
 from rdflib import Graph
 
 from rdf_persistence.generation.checks.scope import TRUE, annotation
-from rdf_persistence.generation.config import ConfigError, python_folder, read_targets
+from rdf_persistence.generation.config import python_folder, read_targets
+from rdf_persistence.generation.exceptions import ConfigError
 from rdf_persistence.generation.generated.rp_generation import ConstraintCase, ConstraintKind
 from rdf_persistence.generation.transform import apply_defaults
 from rdf_persistence.services.schema import load_schema

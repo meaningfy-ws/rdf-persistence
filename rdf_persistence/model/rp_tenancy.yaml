@@ -17,6 +17,19 @@ annotations:
   module_kind: access
 
 classes:
+  TenantLabelled:
+    title: Tenant labelled
+    description: >-
+      A mixin for what carries a tenant's label, one line of 1 to 200 characters; the access record
+      and the service's request bodies share it, so the label is checked the same everywhere.
+    class_uri: rp:TenantLabelled
+    mixin: true
+    slots:
+      - label
+    slot_usage:
+      label:
+        required: true
+        pattern: "^.{1,200}$"
   TenantAccess:
     title: Tenant access
     description: >-
@@ -27,6 +40,7 @@ classes:
     mixins:
       - AggregateRoot
       - Described
+      - TenantLabelled
     slots:
       - state
       - database_name
@@ -37,8 +51,6 @@ classes:
         required: true
       database_name:
         required: true
-      label:
-        pattern: "^.{1,200}$"
     annotations:
       rp_path: access
       database: system

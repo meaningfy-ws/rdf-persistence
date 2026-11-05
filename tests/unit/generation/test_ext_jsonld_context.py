@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from pyld import jsonld
 
+from rdf_persistence.generation.exceptions import SchemaGenerationError
 from rdf_persistence.generation.extensions.jsonld_context import CONTEXT_STEP, render_context
 
 from .step_runner import assert_json_golden, run_toy
@@ -160,5 +161,5 @@ def test_an_enum_without_meanings_keeps_its_plain_values(tmp_path: Path) -> None
 
 
 def test_an_enum_with_some_meanings_only_is_refused(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="every value a meaning"):
+    with pytest.raises(SchemaGenerationError, match="every value a meaning"):
         render_enums(tmp_path, "meaning: s:Red", "")

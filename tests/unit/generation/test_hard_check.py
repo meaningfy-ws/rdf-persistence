@@ -86,6 +86,34 @@ FAULTS = (
     Fault(
         HardRule.ANNOTATION, "books.yaml", "rp_unlabelled: true", "rp_unlabelled: sure", "Chapter"
     ),
+    Fault(HardRule.ANNOTATION, "books.yaml", "rp_path: books", "rp_path: Books", "Book"),
+    Fault(HardRule.ANNOTATION, "books.yaml", "rp_path: books", "rp_path: books/all", "Book"),
+    Fault(HardRule.ANNOTATION, "books.yaml", "rp_path: books", "rp_path: ''", "Book"),
+    # an attribute of a class (Note.shade) gets the rules of a slot
+    Fault(
+        HardRule.DESCRIPTION,
+        "books.yaml",
+        "        description: The colour of the note's paper.\n",
+        "",
+        "shade",
+    ),
+    Fault(HardRule.TITLE, "books.yaml", "        title: Shade\n", "", "shade"),
+    Fault(HardRule.IRI, "books.yaml", "default_prefix: lib\n", "", "shade"),
+    Fault(HardRule.ANNOTATION, "books.yaml", "owned: false", "owned: maybe", "shade"),
+    Fault(
+        HardRule.UNIQUE_KEY,
+        "books.yaml",
+        "    slots: [text]\n",
+        "    slots: [text]\n    unique_keys:\n      bad key:\n        unique_key_slots: [text]\n",
+        "Note",
+    ),
+    Fault(
+        HardRule.UNIQUE_KEY,
+        "books.yaml",
+        "    slots: [text]\n",
+        "    slots: [text]\n    unique_keys:\n      a-b:\n        unique_key_slots: [text]\n",
+        "Note",
+    ),
 )
 
 
@@ -133,7 +161,7 @@ def test_a_missing_default_prefix_names_only_elements_without_an_explicit_uri(
     break_toy: Breaker,
 ) -> None:
     problems = problems_of(break_toy("books.yaml", "default_prefix: lib\n", ""))
-    assert len(problems) == 1, f"only the enum has no explicit URI: {problems}"
+    assert len(problems) == 2, f"only the enum and the attribute have no explicit URI: {problems}"
 
 
 ISBN_DESCRIPTION = "    description: The International Standard Book Number of the book.\n"

@@ -64,40 +64,38 @@ linkml_meta = None
 
 
 class LibraryAccess(TenantAccess):
-    """
-    The access record of a library tenant; its grants are the metamodel's.
-    """
-    state: TenantState = Field(default=..., title="State", description="""Where the tenant is in its life.""")
-    database_name: str = Field(default=..., title="Database name", description="""The name of the tenant's database, the prefix, \"-t-\" and the tenant's UUID in hexadecimal; the prefix is lower case, at most 20 characters.""", json_schema_extra = { "rp_internal": True })
-    grants: Optional[list[Grant]] = Field(default=None, title="Grants", description="""The permissions given in the tenant, by role or as direct actions; they live in the access record's graph.""")
-    prohibitions: Optional[list[Prohibition]] = Field(default=None, title="Prohibitions", description="""The actions forbidden in the tenant; they live in the access record's graph.""")
-    id: str = Field(default=..., title="Identifier", description="""The IRI that identifies the object.""")
-    label: str = Field(default=..., title="Label", description="""The preferred label of the object.""")
-    description: str = Field(default=..., title="Description", description="""A free-text description of the object.""")
+    "The access record of a library tenant; its grants are the metamodel\u0027s."
+    state: TenantState = Field(default=..., title="State", description="Where the tenant is in its life.")
+    database_name: str = Field(default=..., title="Database name", description="The name of the tenant\u0027s database, the prefix, \"-t-\" and the tenant\u0027s UUID in hexadecimal; the prefix is lower case, at most 20 characters.", json_schema_extra = { "rp_internal": True })
+    grants: Optional[list[Grant]] = Field(default=None, title="Grants", description="The permissions given in the tenant, by role or as direct actions; they live in the access record\u0027s graph.")
+    prohibitions: Optional[list[Prohibition]] = Field(default=None, title="Prohibitions", description="The actions forbidden in the tenant; they live in the access record\u0027s graph.")
+    id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    label: str = Field(default=..., title="Label", description="The preferred label of the object.")
+    description: str = Field(default=..., title="Description", description="A free-text description of the object.")
 
-    @field_validator('database_name')
+    @field_validator("database_name")
     def pattern_database_name(cls, v):
-        pattern=re.compile(r"^[a-z][a-z0-9]{0,19}-t-[0-9a-f]{32}$")
+        pattern=re.compile("^[a-z][a-z0-9]{0,19}-t-[0-9a-f]{32}$")
         if isinstance(v, list):
             for element in v:
-                if isinstance(element, str) and not pattern.search(element):
-                    err_msg = f"Invalid database_name format: {element}"
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid database_name format: " + str(element)
                     raise ValueError(err_msg)
-        elif isinstance(v, str) and not pattern.search(v):
-            err_msg = f"Invalid database_name format: {v}"
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid database_name format: " + str(v)
             raise ValueError(err_msg)
         return v
 
-    @field_validator('label')
+    @field_validator("label")
     def pattern_label(cls, v):
-        pattern=re.compile(r"^.{1,200}$")
+        pattern=re.compile("^.{1,200}$")
         if isinstance(v, list):
             for element in v:
-                if isinstance(element, str) and not pattern.search(element):
-                    err_msg = f"Invalid label format: {element}"
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid label format: " + str(element)
                     raise ValueError(err_msg)
-        elif isinstance(v, str) and not pattern.search(v):
-            err_msg = f"Invalid label format: {v}"
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid label format: " + str(v)
             raise ValueError(err_msg)
         return v
 

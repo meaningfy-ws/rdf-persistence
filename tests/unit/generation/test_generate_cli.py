@@ -9,7 +9,8 @@ from rdf_persistence import generation
 from rdf_persistence.generation import steps
 from rdf_persistence.generation.cli import build_parser, main
 from rdf_persistence.generation.config import read_targets
-from rdf_persistence.generation.pipeline import Run, Step, StepError, generate
+from rdf_persistence.generation.exceptions import StepError
+from rdf_persistence.generation.pipeline import Run, Step, generate
 
 PYPROJECT = """
 [tool.rp-generate]

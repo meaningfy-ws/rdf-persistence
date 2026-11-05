@@ -124,6 +124,9 @@
          "@type": "xsd:dateTime",
          "@id": "dcterms:modified"
       },
+      "shade": {
+         "@id": "shade"
+      },
       "notes": {
          "@type": "@id",
          "@container": "@set",
@@ -177,6 +180,9 @@
       "uploaded_by": {
          "@type": "@id",
          "@id": "rp:uploadedBy"
+      },
+      "url_segment": {
+         "@id": "rp:urlSegment"
       },
       "version": {
          "@id": "rp:version"
@@ -233,6 +239,9 @@
       },
       "TenantAccess": {
          "@id": "rp:TenantAccess"
+      },
+      "TenantLabelled": {
+         "@id": "rp:TenantLabelled"
       },
       "Tracked": {
          "@id": "rp:Tracked"

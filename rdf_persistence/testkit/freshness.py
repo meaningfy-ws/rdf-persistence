@@ -10,7 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation.config import ConfigError, read_targets
+from rdf_persistence.generation.config import read_targets
+from rdf_persistence.generation.exceptions import ConfigError
 from rdf_persistence.generation.manifest import FIX_HINT, freshness_problems
 
 PROJECTS_OPTION = "rp_generate_projects"

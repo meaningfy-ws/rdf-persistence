@@ -54,6 +54,7 @@ from .rp_provenance import (
 )
 from .rp_tenancy import (
     TenantAccess,
+    TenantLabelled,
     TenantState
 )
 

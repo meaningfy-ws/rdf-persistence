@@ -11,6 +11,8 @@
         ]
         if {{ refused }}:
             raise ValueError(
-                f"{{ class_name }}: {{ rule }} needs {{ need }} of [{{ labels }}], but {held or 'none'} hold"
+                {{ (class_name ~ ": " ~ rule ~ " needs " ~ need ~ " of [" ~ labels ~ "], but ") | tojson }}
+                + str(held or "none")
+                + " hold"
             )
         return self

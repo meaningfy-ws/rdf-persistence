@@ -12,13 +12,14 @@ from linkml_runtime.utils.schemaview import SchemaView
 from rdf_persistence.generation.checks.boundary import boundary_problems
 from rdf_persistence.generation.checks.hard import hard_problems
 from rdf_persistence.generation.checks.rules import rules_problems
+from rdf_persistence.generation.exceptions import StepError
 from rdf_persistence.generation.extensions.jsonld_context import CONTEXT_STEP
 from rdf_persistence.generation.extensions.mermaid import DIAGRAMS_STEP
 from rdf_persistence.generation.extensions.pydantic_split import render_modules
 from rdf_persistence.generation.extensions.shacl import render_shapes
 from rdf_persistence.generation.extensions.typescript import TYPESCRIPT_STEP
 from rdf_persistence.generation.outputs import stage
-from rdf_persistence.generation.pipeline import Run, Step, StepError
+from rdf_persistence.generation.pipeline import Run, Step, schema_faults
 from rdf_persistence.services.schema import metamodel_importmap
 
 LINT_CONFIG = Path(__file__).with_name("lint.yaml")
@@ -87,19 +88,15 @@ def rules_check(run: Run) -> None:
 
 def python_classes(run: Run) -> None:
     """Generate one Python module per schema module with the split gen-pydantic (PD-19, PD-24)."""
-    try:
+    with schema_faults():
         modules = render_modules(run.schema_path)
-    except Exception as error:  # the generator raises whatever the schema makes it raise
-        raise StepError([str(error)]) from error
     stage(run, run.python_dir, modules)
 
 
 def shapes(run: Run) -> None:
     """Generate the closed SHACL shapes next to the Python output (PD-24)."""
-    try:
+    with schema_faults():
         shapes_file = render_shapes(run.schema_path)
-    except Exception as error:  # the generator raises whatever the schema makes it raise
-        raise StepError([str(error)]) from error
     stage(run, run.python_dir, [shapes_file])
 
 

@@ -169,6 +169,9 @@
       "total": {
          "@id": "total"
       },
+      "url_segment": {
+         "@id": "urlSegment"
+      },
       "version": {
          "@id": "version"
       },
@@ -223,6 +226,9 @@
       },
       "TenantCreate": {
          "@id": "TenantCreate"
+      },
+      "TenantLabelled": {
+         "@id": "TenantLabelled"
       },
       "TenantSummary": {
          "@id": "TenantSummary"

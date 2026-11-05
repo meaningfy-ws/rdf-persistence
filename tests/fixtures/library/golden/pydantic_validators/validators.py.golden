@@ -59,11 +59,9 @@ linkml_meta = None
 
 
 class Contact(ConfiguredBaseModel):
-    """
-    A contact reachable by exactly one of mail and phone.
-    """
-    mail: Optional[str] = Field(default=None, title="Mail", description="""The mail address.""")
-    phone: Optional[str] = Field(default=None, title="Phone", description="""The phone number.""")
+    "A contact reachable by exactly one of mail and phone."
+    mail: Optional[str] = Field(default=None, title="Mail", description="The mail address.")
+    phone: Optional[str] = Field(default=None, title="Phone", description="The phone number.")
 
     @model_validator(mode="after")
     def exactly_one_of_Contact(self) -> "Contact":
@@ -77,26 +75,24 @@ class Contact(ConfiguredBaseModel):
         ]
         if len(held) != 1:
             raise ValueError(
-                f"Contact: exactly_one_of needs exactly one of [mail present, phone present], but {held or 'none'} hold"
+                "Contact: exactly_one_of needs exactly one of [mail present, phone present], but "
+                + str(held or "none")
+                + " hold"
             )
         return self
 
 
 class Customer(Contact):
-    """
-    A contact that is also a customer.
-    """
-    account: Optional[str] = Field(default=None, title="Account", description="""The account number.""")
-    mail: Optional[str] = Field(default=None, title="Mail", description="""The mail address.""")
-    phone: Optional[str] = Field(default=None, title="Phone", description="""The phone number.""")
+    "A contact that is also a customer."
+    account: Optional[str] = Field(default=None, title="Account", description="The account number.")
+    mail: Optional[str] = Field(default=None, title="Mail", description="The mail address.")
+    phone: Optional[str] = Field(default=None, title="Phone", description="The phone number.")
 
 
 class Reach(ConfiguredBaseModel):
-    """
-    A way to reach somebody by at least one of mail and phone.
-    """
-    mail: Optional[str] = Field(default=None, title="Mail", description="""The mail address.""")
-    phone: Optional[str] = Field(default=None, title="Phone", description="""The phone number.""")
+    "A way to reach somebody by at least one of mail and phone."
+    mail: Optional[str] = Field(default=None, title="Mail", description="The mail address.")
+    phone: Optional[str] = Field(default=None, title="Phone", description="The phone number.")
 
     @model_validator(mode="after")
     def any_of_Reach(self) -> "Reach":
@@ -110,25 +106,23 @@ class Reach(ConfiguredBaseModel):
         ]
         if not held:
             raise ValueError(
-                f"Reach: any_of needs at least one of [mail present, phone present], but {held or 'none'} hold"
+                "Reach: any_of needs at least one of [mail present, phone present], but "
+                + str(held or "none")
+                + " hold"
             )
         return self
 
 
 class Entry(ConfiguredBaseModel):
-    """
-    A ledger entry, one per name and tag.
-    """
-    name: Optional[str] = Field(default=None, title="Name", description="""The name of the entry.""")
-    tag: Optional[str] = Field(default=None, title="Tag", description="""The tag of the entry.""")
+    "A ledger entry, one per name and tag."
+    name: Optional[str] = Field(default=None, title="Name", description="The name of the entry.")
+    tag: Optional[str] = Field(default=None, title="Tag", description="The tag of the entry.")
 
 
 class Ledger(ConfiguredBaseModel):
-    """
-    Entries and the people who care about them.
-    """
-    entries: Optional[list[Entry]] = Field(default=None, title="Entries", description="""The entries.""")
-    watchers: Optional[list[str]] = Field(default=None, title="Watchers", description="""The names of those who watch.""")
+    "Entries and the people who care about them."
+    entries: Optional[list[Entry]] = Field(default=None, title="Entries", description="The entries.")
+    watchers: Optional[list[str]] = Field(default=None, title="Watchers", description="The names of those who watch.")
 
     @model_validator(mode="after")
     def unique_keys_entries_entry_key(self) -> "Ledger":
@@ -141,17 +135,16 @@ class Ledger(ConfiguredBaseModel):
             seen.add(repr(key))
         if repeated:
             raise ValueError(
-                f"Ledger.entries: unique_keys entry_key (name, tag) repeated by {repeated}"
+                "Ledger.entries: unique_keys entry_key (name, tag) repeated by "
+                + str(repeated)
             )
         return self
 
 
 class Archive(Ledger):
-    """
-    A ledger that is kept.
-    """
-    entries: Optional[list[Entry]] = Field(default=None, title="Entries", description="""The entries.""")
-    watchers: Optional[list[str]] = Field(default=None, title="Watchers", description="""The names of those who watch.""")
+    "A ledger that is kept."
+    entries: Optional[list[Entry]] = Field(default=None, title="Entries", description="The entries.")
+    watchers: Optional[list[str]] = Field(default=None, title="Watchers", description="The names of those who watch.")
 
 
 # Model rebuild

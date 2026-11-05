@@ -8,6 +8,7 @@ from rdflib import Graph, URIRef
 from rdflib.compare import to_canonical_graph
 from rdflib.namespace import RDF, SH
 
+from rdf_persistence.generation.exceptions import SchemaGenerationError
 from rdf_persistence.generation.extensions.shacl import render_shapes
 from rdf_persistence.generation.extensions.shacl_constraints import (
     UniqueKeyOn,
@@ -78,6 +79,15 @@ def test_the_unique_key_query_treats_absent_values_as_equal() -> None:
     assert "(!bound(?first_0) && !bound(?second_0))" in query, "two absent values must be equal"
 
 
+@pytest.mark.parametrize(
+    "hostile", ["http://e/a> } . FILTER(true) #", "http://e/a b", 'http://e/"a"']
+)
+def test_an_iri_that_would_break_out_of_the_query_is_refused(hostile: str) -> None:
+    on = UniqueKeyOn("grants", URIRef("http://e/grant"), "k", None, (URIRef(hostile),))
+    with pytest.raises(SchemaGenerationError, match="not an IRI"):
+        unique_key_query(on)
+
+
 def test_the_unique_key_query_is_the_same_on_every_call() -> None:
     graph = constraints_graph(load_schema(TOY / ROOT_SCHEMA))
     again = constraints_graph(load_schema(TOY / ROOT_SCHEMA))
@@ -115,7 +125,7 @@ def test_any_of_becomes_or_and_one_alternative_is_enough(
 
 def test_a_condition_other_than_presence_is_refused_not_dropped(tmp_path: Path) -> None:
     schema = CONTACT.replace("{email: {required: true}}", "{email: {equals_string: x}}")
-    with pytest.raises(ValueError, match="email"):
+    with pytest.raises(SchemaGenerationError, match="email"):
         contact_shapes(tmp_path, schema)
 
 

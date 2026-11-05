@@ -18,8 +18,9 @@ from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation.aggregates import root_classes
 from rdf_persistence.generation.checks.scope import TRUE, annotation
+from rdf_persistence.generation.exceptions import SchemaGenerationError
 from rdf_persistence.generation.outputs import GeneratedFile, stage
-from rdf_persistence.generation.pipeline import Run, Step, StepError
+from rdf_persistence.generation.pipeline import Run, Step, schema_faults
 from rdf_persistence.services.schema import load_schema
 
 CONTEXT_FILE = "context.jsonld"
@@ -55,7 +56,7 @@ class ToolkitContextGenerator(ContextGenerator):
         if not any(meanings.values()):
             return  # no meanings: the shapes list the plain values
         if not all(meanings.values()):
-            raise ValueError(f"enum {enum.name}: give every value a meaning, or none")
+            raise SchemaGenerationError(f"enum {enum.name}: give every value a meaning, or none")
         definition["@type"] = "@vocab"
         definition["@context"] = {
             str(text): str(self.namespaces.uri_for(str(meaning)))
@@ -135,10 +136,8 @@ def context_files(view: SchemaView, schema_path: Path) -> list[GeneratedFile]:
 
 def write_context(run: Run) -> None:
     """Write the context and the frames into the Python output folder."""
-    try:
+    with schema_faults():
         files = context_files(run.view, run.schema_path)
-    except Exception as error:  # the generator raises whatever the schema makes it raise
-        raise StepError([str(error)]) from error
     stage(run, run.python_dir, files)
 
 

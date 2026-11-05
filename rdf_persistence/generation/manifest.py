@@ -15,7 +15,7 @@ from rdf_persistence.generation.generated.rp_generation import (
     GenerationTarget,
     ManifestEntry,
 )
-from rdf_persistence.services.schema import load_schema
+from rdf_persistence.services.schema import LOAD_ERRORS, load_schema
 
 MANIFEST_NAME = "rp-manifest.json"
 FIX_HINT = "run `make generate` to regenerate, then commit the result"
@@ -104,12 +104,27 @@ def read_manifest(target: GenerationTarget, base: Path) -> GenerationManifest | 
         return None
 
 
+def unreadable_manifest(target: GenerationTarget, base: Path) -> str | None:
+    """Why the manifest of ``target``'s previous run cannot be trusted; ``None`` when absent or valid."""
+    path = manifest_path(target, base)
+    if not path.is_file():
+        return None
+    try:
+        GenerationManifest.model_validate_json(path.read_text(encoding="utf-8"))
+    except OSError as error:
+        return f"{recorded_path(path, base)}: cannot be read ({error}); fix it or delete it"
+    except ValidationError as error:
+        fields = sorted({".".join(str(part) for part in e["loc"]) for e in error.errors()})
+        return f"{recorded_path(path, base)}: invalid {', '.join(fields)}; delete it and run again"
+    return None
+
+
 def _input_problems(
     target: GenerationTarget, base: Path, recorded: GenerationManifest
 ) -> Iterator[str]:
     try:
         now = {e.path: e.sha256 for e in current_inputs(target, base)}
-    except Exception as error:  # the loader raises whatever the YAML or an import raises
+    except LOAD_ERRORS as error:
         yield f"stale input: {target.schema_file} cannot be read: {error}"
         return
     before = {e.path: e.sha256 for e in recorded.inputs or []}

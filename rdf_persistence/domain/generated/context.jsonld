@@ -137,6 +137,9 @@
          "@type": "@id",
          "@id": "uploadedBy"
       },
+      "url_segment": {
+         "@id": "urlSegment"
+      },
       "version": {
          "@id": "version"
       },
@@ -198,6 +201,9 @@
       },
       "TenantAccess": {
          "@id": "TenantAccess"
+      },
+      "TenantLabelled": {
+         "@id": "TenantLabelled"
       },
       "Tracked": {
          "@id": "Tracked"

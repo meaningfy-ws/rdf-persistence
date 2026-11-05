@@ -19,7 +19,7 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition, 
 
 from rdf_persistence.generation.checks.scope import TRUE, annotation
 from rdf_persistence.generation.outputs import GeneratedFile, stage
-from rdf_persistence.generation.pipeline import Run, Step, StepError
+from rdf_persistence.generation.pipeline import Run, Step, schema_faults
 from rdf_persistence.generation.transform import apply_defaults
 from rdf_persistence.services.schema import metamodel_importmap
 
@@ -197,10 +197,8 @@ def write_typescript(run: Run) -> None:
     """Write the types into the target's TypeScript folder; nothing when none is configured."""
     if not run.target.typescript:
         return
-    try:
+    with schema_faults():
         files = typescript_files(run.schema_path)
-    except Exception as error:  # the generator raises whatever the schema makes it raise
-        raise StepError([str(error)]) from error
     stage(run, Path(run.target.typescript), files)
 
 

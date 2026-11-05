@@ -9,6 +9,7 @@
             seen.add(repr(key))
         if repeated:
             raise ValueError(
-                f"{{ class_name }}.{{ slot }}: unique_keys {{ key_name }} ({{ key_slots | join(', ') }}) repeated by {repeated}"
+                {{ (class_name ~ "." ~ slot ~ ": unique_keys " ~ key_name ~ " (" ~ (key_slots | join(", ")) ~ ") repeated by ") | tojson }}
+                + str(repeated)
             )
         return self

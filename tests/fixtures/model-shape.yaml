@@ -192,6 +192,10 @@
     required: true
     multivalued: false
     range: string
+  - name: shade
+    required: false
+    multivalued: false
+    range: string
   - name: text
     required: false
     multivalued: false
@@ -400,6 +404,12 @@
     required: true
     multivalued: false
     range: TenantState
+- class_name: TenantLabelled
+  slots:
+  - name: label
+    required: true
+    multivalued: false
+    range: string
 - class_name: Tracked
   slots:
   - name: contributor

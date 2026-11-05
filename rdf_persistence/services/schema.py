@@ -3,9 +3,13 @@
 from importlib import resources
 from pathlib import Path
 
+import yaml
 from linkml_runtime.utils.schemaview import SchemaView
 
 MODEL_PREFIX = "rdf_persistence/model"
+# What opening a schema raises when the file or an import is missing, is not YAML, or is not a LinkML
+# schema (an unknown field is a TypeError, a missing name a ValueError); any other error is a bug.
+LOAD_ERRORS = (OSError, yaml.YAMLError, ValueError, TypeError)
 
 
 def metamodel_importmap() -> dict[str, str]:

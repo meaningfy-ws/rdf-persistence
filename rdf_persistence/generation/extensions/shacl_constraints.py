@@ -26,6 +26,8 @@ from rdflib.collection import Collection
 from rdflib.namespace import RDF, SH
 from rdflib.term import Node
 
+from rdf_persistence.generation.exceptions import SchemaGenerationError
+
 PRESENT = PresenceEnum(PresenceEnum.PRESENT)
 ABSENT = PresenceEnum(PresenceEnum.ABSENT)
 
@@ -80,7 +82,9 @@ def _alternative(
         elif condition.required or condition.value_presence == PRESENT:
             g.add((prop, SH.minCount, Literal(1)))
         else:
-            raise ValueError(f"{cls.name}: the condition on {name} is not required or present")
+            raise SchemaGenerationError(
+                f"{cls.name}: the condition on {name} is not required or present"
+            )
     return node, g
 
 
@@ -116,19 +120,30 @@ def keys_on(sv: SchemaView, cls: ClassDefinition) -> Iterator[UniqueKeyOn]:
             yield UniqueKeyOn(slot.name, _path(sv, slot), key_name, key.description, key_paths)
 
 
+def _iri(iri: URIRef) -> str:
+    """``iri`` as ``<...>`` for a query; refused when it holds a character that could end the IRI early."""
+    try:
+        return str(iri.n3())
+    except Exception as error:  # rdflib raises a bare Exception for an IRI it cannot serialize
+        raise SchemaGenerationError(f"{iri}: not an IRI that can go into a query") from error
+
+
 def unique_key_query(on: UniqueKeyOn) -> str:
-    """A SELECT that returns the focus node when two values of the slot have equal key values."""
+    """A SELECT that returns the focus node when two values of the slot have equal key values.
+
+    The IRIs go through ``URIRef.n3()``, which refuses one that could break out of ``<...>``.
+    """
     lines = [
         "SELECT DISTINCT $this",
         "WHERE {",
-        f"  $this <{on.path}> ?first .",
-        f"  $this <{on.path}> ?second .",
+        f"  $this {_iri(on.path)} ?first .",
+        f"  $this {_iri(on.path)} ?second .",
         "  FILTER (!sameTerm(?first, ?second))",
     ]
     for index, path in enumerate(on.key_paths):
         lines += [
-            f"  OPTIONAL {{ ?first <{path}> ?first_{index} . }}",
-            f"  OPTIONAL {{ ?second <{path}> ?second_{index} . }}",
+            f"  OPTIONAL {{ ?first {_iri(path)} ?first_{index} . }}",
+            f"  OPTIONAL {{ ?second {_iri(path)} ?second_{index} . }}",
             f"  FILTER ((!bound(?first_{index}) && !bound(?second_{index}))"
             f" || sameTerm(?first_{index}, ?second_{index}))",
         ]

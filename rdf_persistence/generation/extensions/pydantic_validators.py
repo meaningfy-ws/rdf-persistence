@@ -29,11 +29,12 @@ from linkml_runtime.linkml_model.meta import (
     SlotDefinition,
     UniqueKey,
 )
-from linkml_runtime.utils.formatutils import underscore
+from linkml_runtime.utils.formatutils import camelcase, underscore
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel
 
 from rdf_persistence.generation.checks.scope import declared_slots
+from rdf_persistence.generation.exceptions import SchemaGenerationError
 
 VALIDATOR_IMPORT = Import(module="pydantic", objects=[ObjectImport(name="model_validator")])
 PRESENT, ABSENT = "PRESENT", "ABSENT"
@@ -99,7 +100,7 @@ def _attribute(rule: str, name: str, cls: ClassDefinition, attributes: set[str])
     """The Python name of the slot ``name`` of ``cls``; a generation error when ``cls`` has no such slot."""
     python: str = underscore(name)
     if python not in attributes:
-        raise ValueError(f"{cls.name}: {rule}: slot {name} is not a slot of the class")
+        raise SchemaGenerationError(f"{cls.name}: {rule}: slot {name} is not a slot of the class")
     return python
 
 
@@ -112,16 +113,18 @@ def _presence(
         k for k, v in vars(condition).items() if v not in (None, [], {})
     } - SUPPORTED_CONDITION_FIELDS
     if others:
-        raise ValueError(
+        raise SchemaGenerationError(
             f"{where} uses {sorted(others)}; only required and value_presence are supported"
         )
     if condition.required is False:
-        raise ValueError(f"{where} has required: false; use value_presence: ABSENT")
+        raise SchemaGenerationError(f"{where} has required: false; use value_presence: ABSENT")
     states = {True} if condition.required else set()
     if condition.value_presence is not None:
         states.add(str(condition.value_presence) == PRESENT)
     if len(states) != 1:
-        raise ValueError(f"{where} must state exactly one of required: true and value_presence")
+        raise SchemaGenerationError(
+            f"{where} must state exactly one of required: true and value_presence"
+        )
     present = states.pop()
     return f"{slot} {'present' if present else 'absent'}", present
 
@@ -133,7 +136,7 @@ def _alternative(
         "slot_conditions"
     }
     if extra or not expression.slot_conditions:
-        raise ValueError(
+        raise SchemaGenerationError(
             f"{cls.name}: {rule}: an alternative must hold slot_conditions only, found {sorted(extra) or 'none'}"
         )
     labels, tests = [], []
@@ -153,10 +156,10 @@ def _presence_validators(
         if not expressions:
             continue
         alternatives = [_alternative(rule.name, cls, e, attributes) for e in expressions]
-        method = f"{rule.name}_{cls.name}"
+        method = f"{rule.name}_{camelcase(cls.name)}"
         found[method] = PresenceValidator(
             method=method,
-            class_name=cls.name,
+            class_name=camelcase(cls.name),
             rule=rule.name,
             need=rule.need,
             refused=rule.refused,
@@ -200,15 +203,19 @@ def _unique_key_validator(
     key: UniqueKey,
     attributes: set[str],
 ) -> UniqueKeysValidator:
+    if not (key.unique_key_name.isidentifier() and key.unique_key_name.isascii()):
+        raise SchemaGenerationError(
+            f"{cls.name}: unique key {key.unique_key_name!r} is not an identifier"
+        )
     item_slots = {s.name for s in view.class_induced_slots(slot.range)}
     missing = [s for s in key.unique_key_slots if s not in item_slots]
     if missing:
-        raise ValueError(
+        raise SchemaGenerationError(
             f"{cls.name}: unique key {key.unique_key_name} names {missing}, not slots of {slot.range}"
         )
     return UniqueKeysValidator(
         method=f"unique_keys_{underscore(slot.name)}_{key.unique_key_name}",
-        class_name=cls.name,
+        class_name=camelcase(cls.name),
         slot=_attribute("unique_keys", slot.name, cls, attributes),
         key_name=key.unique_key_name,
         key_slots=[underscore(s) for s in key.unique_key_slots],

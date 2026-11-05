@@ -60,6 +60,15 @@ classes:
         required: true
 
 slots:
+  url_segment:
+    title: URL segment
+    description: >-
+      A path segment of the service's routes: lower case, starting with a letter, with digits and
+      hyphens. The `rp_path` annotation and the tenant segment of the service settings share it.
+    slot_uri: rp:urlSegment
+    abstract: true
+    range: string
+    pattern: "^[a-z][a-z0-9-]*$"
   id:
     title: Identifier
     description: The IRI that identifies the object.

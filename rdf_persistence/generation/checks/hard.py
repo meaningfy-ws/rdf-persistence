@@ -1,14 +1,21 @@
 """The hard check (task 1.6): IRIs, titles, descriptions, meanings, paths and mixins of the schema."""
 
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
-from linkml_runtime.linkml_model.meta import ClassDefinition, PermissibleValue, SchemaDefinition
+from linkml_runtime.linkml_model.meta import (
+    ClassDefinition,
+    Element,
+    PermissibleValue,
+    SchemaDefinition,
+)
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation.checks.scope import (
     aggregate_roots,
     annotation,
+    annotation_text,
     inherits_from_metamodel,
     is_tenant_root,
     is_toolkit_schema,
@@ -19,6 +26,8 @@ from rdf_persistence.generation.checks.scope import (
 from rdf_persistence.generation.generated.rp_generation import HardRule
 
 DESCRIBED = "Described"
+URL_SEGMENT = "url_segment"  # the slot of rp_core whose pattern every route segment follows
+RP_PATH = "rp_path"
 BOOLEAN = ("true", "false")
 # Every annotation the toolkit reads, and the values it accepts (rp_core's comments list them).
 ALLOWED_ANNOTATIONS = {
@@ -51,9 +60,22 @@ def _element_problems(
             yield _problem(field, name, f"no {field.value}")
 
 
+def _unique_key_problems(cls: ClassDefinition) -> Iterator[str]:
+    """A key name ends up in the names of generated validators, so it must be an identifier."""
+    for key in cls.unique_keys.values():
+        name = str(key.unique_key_name)
+        if not (name.isidentifier() and name.isascii()):
+            yield _problem(
+                HardRule.UNIQUE_KEY, cls.name, f"unique key {name!r} is not an identifier"
+            )
+
+
 def _schema_problems(schema: SchemaDefinition) -> Iterator[str]:
     for cls in schema.classes.values():
         yield from _element_problems(cls, cls.name, cls.class_uri, schema)
+        for attribute in cls.attributes.values():
+            yield from _element_problems(attribute, attribute.name, attribute.slot_uri, schema)
+        yield from _unique_key_problems(cls)
     for slot in schema.slots.values():
         yield from _element_problems(slot, slot.name, slot.slot_uri, schema)
     for enum in schema.enums.values():
@@ -69,15 +91,35 @@ def _value_problems(enum: str, value: PermissibleValue) -> Iterator[str]:
             yield _problem(field, name, f"permissible value of {enum} has no {field.value}")
 
 
-def _annotation_problems(schema: SchemaDefinition) -> Iterator[str]:
-    elements = [schema, *schema.classes.values(), *schema.slots.values(), *schema.enums.values()]
-    for element in elements:
+def _annotated_elements(schema: SchemaDefinition) -> Iterator[Element]:
+    yield schema
+    for cls in schema.classes.values():
+        yield cls
+        yield from cls.attributes.values()
+    yield from schema.slots.values()
+    yield from schema.enums.values()
+
+
+def _path_pattern(view: SchemaView) -> str | None:
+    """The pattern an ``rp_path`` value must match: the one of the ``url_segment`` slot, if the closure has it."""
+    slot = view.get_slot(URL_SEGMENT, strict=False)
+    return slot.pattern if slot else None
+
+
+def _annotation_problems(schema: SchemaDefinition, path_pattern: str | None) -> Iterator[str]:
+    for element in _annotated_elements(schema):
+        name = str(element.name)
         for tag, allowed in ALLOWED_ANNOTATIONS.items():
             value = annotation(element, tag)
             if value is not None and value not in allowed:
                 yield _problem(
-                    HardRule.ANNOTATION, element.name, f"{tag}: {value!r} is not one of {allowed}"
+                    HardRule.ANNOTATION, name, f"{tag}: {value!r} is not one of {allowed}"
                 )
+        path = annotation_text(element, RP_PATH)
+        if path is not None and path_pattern and not re.fullmatch(path_pattern, path):
+            yield _problem(
+                HardRule.ANNOTATION, name, f"{RP_PATH}: {path!r} does not match {path_pattern}"
+            )
 
 
 def _inherited_path(view: SchemaView, cls: ClassDefinition) -> bool:
@@ -122,6 +164,6 @@ def hard_problems(view: SchemaView, folder: Path) -> list[str]:
     )  # PD-23: its roots are its own
     return [
         *(p for schema in schemas for p in _schema_problems(schema)),
-        *(p for schema in schemas for p in _annotation_problems(schema)),
+        *(p for schema in schemas for p in _annotation_problems(schema, _path_pattern(view))),
         *_class_problems(view, classes),
     ]

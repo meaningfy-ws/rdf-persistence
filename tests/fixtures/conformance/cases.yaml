@@ -19,7 +19,7 @@
 - kind: pattern
   class_name: TenantAccess
   valid: [instances/tenant-distinct-grants.yaml]
-  invalid: [instances/tenant-label-too-long.yaml]
+  invalid: [instances/tenant-label-too-long.yaml, instances/tenant-label-trailing-newline.yaml]
 - kind: identifier
   class_name: Principal
   valid: [instances/principal-ok.yaml]
@@ -53,7 +53,7 @@
 - kind: pattern
   class_name: Scan
   valid: [instances/scan-sha-ok.yaml]
-  invalid: [instances/scan-sha-bad.yaml]
+  invalid: [instances/scan-sha-bad.yaml, instances/scan-sha-trailing-newline.yaml]
 - kind: identifier
   class_name: Book
   valid: [instances/book-minimal.yaml]

@@ -55,6 +55,8 @@ export interface Chapter {
 export interface Note {
   /** The text of a note. */
   text?: string;
+  /** The colour of the note's paper. */
+  shade?: string;
   /** The IRI that identifies the object. */
   id: string;
   /** The preferred label of the object. */

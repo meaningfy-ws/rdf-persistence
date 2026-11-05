@@ -5,7 +5,8 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence.generation.cli import build_parser
-from rdf_persistence.generation.config import FLAGS, ConfigError, read_targets
+from rdf_persistence.generation.config import FLAGS, read_targets
+from rdf_persistence.generation.exceptions import ConfigError
 from rdf_persistence.generation.generated.rp_generation import GenerationTarget
 
 SINGLE = """

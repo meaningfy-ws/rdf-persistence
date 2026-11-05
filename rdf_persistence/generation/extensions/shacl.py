@@ -1,6 +1,6 @@
 """gen-shacl with the toolkit's bookkeeping, its reference rule and the declared rules (PD-24, PD-7).
 
-The stock generator lacks six things:
+The stock generator lacks seven things:
 
 * the predicates the session writes (``rp:version``, ``dcterms:created``, ``dcterms:modified``,
   ``dcterms:creator``, ``dcterms:contributor``) are added to the ignored properties of closed shapes,
@@ -13,7 +13,12 @@ The stock generator lacks six things:
   say, since the IRI is the subject; a class without one (a grant) may be a blank node;
 * an ``internal`` slot is optional: the toolkit writes it, never the client, so a body without it must
   validate, while the generated class keeps the slot as declared (PD-24);
-* ``exactly_one_of``, ``any_of`` and ``unique_keys`` are translated (``shacl_constraints``).
+* ``exactly_one_of``, ``any_of`` and ``unique_keys`` are translated (``shacl_constraints``);
+* a ``pattern`` must match the whole value, as the generated classes require (``re.fullmatch``): a
+  ``$`` also matches before a final newline in Python and in Java, so each pattern is wrapped as
+  ``^(?:pattern)`` followed by a look-ahead for any further character (``NO_MORE_INPUT``), which no
+  engine reads loosely. XPath regular expressions lack the
+  look-ahead; the shape consumers of the toolkit, pyshacl and Jena, are not XPath engines.
 """
 
 from dataclasses import dataclass
@@ -21,7 +26,7 @@ from pathlib import Path
 
 from linkml.generators.shaclgen import ShaclGenerator
 from linkml_runtime.linkml_model.meta import ClassDefinition
-from rdflib import BNode, Graph, URIRef
+from rdflib import BNode, Graph, Literal, URIRef
 from rdflib.collection import Collection
 from rdflib.namespace import SH
 
@@ -33,6 +38,12 @@ from rdf_persistence.services.schema import metamodel_importmap
 
 SHAPES_FILE = "shapes.ttl"
 BOOKKEEPING_SLOTS = ("version", "created", "modified", "creator", "contributor")
+NO_MORE_INPUT = r"(?![\s\S])"
+
+
+def whole_value(pattern: str) -> str:
+    """``pattern`` rewritten to match only a whole value: anchored at both ends, a final newline refused."""
+    return f"^(?:{pattern}){NO_MORE_INPUT}"
 
 
 @dataclass
@@ -95,8 +106,15 @@ class RpShaclGenerator(ShaclGenerator):
                     if (prop, SH.path, path) in g:
                         g.remove((prop, SH.minCount, None))
 
+    def _match_whole_values(self, g: Graph) -> None:
+        """Rewrite every ``sh:pattern`` so that it matches the whole value."""
+        for shape, pattern in list(g.subject_objects(SH.pattern)):
+            g.remove((shape, SH.pattern, pattern))
+            g.add((shape, SH.pattern, Literal(whole_value(str(pattern)))))
+
     def as_graph(self) -> Graph:
         g: Graph = super().as_graph()
+        self._match_whole_values(g)
         self._refer_by_iri(g)
         self._require_iri_nodes(g)
         self._relax_internal_slots(g)

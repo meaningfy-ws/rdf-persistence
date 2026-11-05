@@ -63,17 +63,15 @@ linkml_meta = None
 
 
 class Library(Tracked, Described):
-    """
-    A library; the tenant root. Its IRI is the tenant IRI and it lives in the tenant's meta graph.
-    """
-    city: Optional[str] = Field(default=None, title="City", description="""The city where the library is located.""")
-    id: str = Field(default=..., title="Identifier", description="""The IRI that identifies the object.""")
-    label: str = Field(default=..., title="Label", description="""The preferred label of the object.""")
-    description: Optional[str] = Field(default=None, title="Description", description="""A free-text description of the object.""")
-    created: Optional[datetime ] = Field(default=None, title="Created", description="""The time the graph was first committed.""")
-    modified: Optional[datetime ] = Field(default=None, title="Modified", description="""The time the graph was last committed.""")
-    creator: Optional[str] = Field(default=None, title="Creator", description="""The principal that first committed the graph.""")
-    contributor: Optional[list[str]] = Field(default=None, title="Contributor", description="""A principal that committed a later version of the graph.""")
+    "A library; the tenant root. Its IRI is the tenant IRI and it lives in the tenant\u0027s meta graph."
+    city: Optional[str] = Field(default=None, title="City", description="The city where the library is located.")
+    id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    label: str = Field(default=..., title="Label", description="The preferred label of the object.")
+    description: Optional[str] = Field(default=None, title="Description", description="A free-text description of the object.")
+    created: Optional[datetime ] = Field(default=None, title="Created", description="The time the graph was first committed.")
+    modified: Optional[datetime ] = Field(default=None, title="Modified", description="The time the graph was last committed.")
+    creator: Optional[str] = Field(default=None, title="Creator", description="The principal that first committed the graph.")
+    contributor: Optional[list[str]] = Field(default=None, title="Contributor", description="A principal that committed a later version of the graph.")
 
 
 # Model rebuild

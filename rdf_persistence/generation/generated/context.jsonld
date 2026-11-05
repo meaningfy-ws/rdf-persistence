@@ -64,6 +64,9 @@
       "range": {
          "@id": "range"
       },
+      "relative_path": {
+         "@id": "relativePath"
+      },
       "required": {
          "@id": "required"
       },

@@ -18,7 +18,7 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition, 
 from rdf_persistence.generation.aggregates import owned_class_names, root_classes
 from rdf_persistence.generation.checks.scope import TRUE, annotation, own_schemas
 from rdf_persistence.generation.outputs import GeneratedFile, stage
-from rdf_persistence.generation.pipeline import Run, Step, StepError
+from rdf_persistence.generation.pipeline import Run, Step, schema_faults
 from rdf_persistence.services.schema import load_schema, metamodel_importmap
 
 TEMPLATE_DIR = Path(__file__).parents[1] / "templates" / "mermaid"
@@ -134,10 +134,8 @@ def write_diagrams(run: Run) -> None:
     """Write the diagrams into the target's diagrams folder; nothing when none is configured."""
     if not run.target.diagrams:
         return
-    try:
+    with schema_faults():
         files = diagram_files(run.schema_path)
-    except Exception as error:  # the generator raises whatever the schema makes it raise
-        raise StepError([str(error)]) from error
     stage(run, Path(run.target.diagrams), files)
 
 

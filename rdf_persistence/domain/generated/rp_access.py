@@ -60,70 +60,46 @@ class LinkMLMeta(RootModel):
 linkml_meta = None
 
 class Action(str, Enum):
-    """
-    The actions a rule can name.
-    """
+    "The actions a rule can name."
     READ = "read"
-    """
-    Read an object.
-    """
+    "Read an object."
     MODIFY = "modify"
-    """
-    Change an object; at tenant scope, also create one.
-    """
+    "Change an object; at tenant scope, also create one."
     DELETE = "delete"
-    """
-    Delete an object.
-    """
+    "Delete an object."
     ADMINISTER = "administer"
-    """
-    Change the grants of a tenant.
-    """
+    "Change the grants of a tenant."
 
 
 class RoleLevel(str, Enum):
-    """
-    The levels at which a role applies.
-    """
+    "The levels at which a role applies."
     SYSTEM = "system"
-    """
-    The whole system; only for global roles from the token.
-    """
+    "The whole system; only for global roles from the token."
     TENANT = "tenant"
-    """
-    One tenant.
-    """
+    "One tenant."
     AGGREGATE = "aggregate"
-    """
-    One aggregate.
-    """
+    "One aggregate."
 
 
 
 class Policy(ConfiguredBaseModel):
-    """
-    A set of permissions and prohibitions.
-    """
+    "A set of permissions and prohibitions."
     pass
 
 
 class Rule(ConfiguredBaseModel):
-    """
-    An ODRL rule that gives an assignee a ruling on an action over a target.
-    """
-    assignee: str = Field(default=..., title="Assignee", description="""The principal the rule applies to.""")
-    target: str = Field(default=..., title="Target", description="""The IRI of the tenant, or of an aggregate's graph, the rule applies to.""")
-    action: Optional[Action] = Field(default=None, title="Action", description="""The action a direct permission allows, or a prohibition forbids.""")
+    "An ODRL rule that gives an assignee a ruling on an action over a target."
+    assignee: str = Field(default=..., title="Assignee", description="The principal the rule applies to.")
+    target: str = Field(default=..., title="Target", description="The IRI of the tenant, or of an aggregate\u0027s graph, the rule applies to.")
+    action: Optional[Action] = Field(default=None, title="Action", description="The action a direct permission allows, or a prohibition forbids.")
 
 
 class Grant(Rule):
-    """
-    A permission given to a principal on a tenant or on one aggregate, either by role or as a direct action; exactly one of role and action is given.
-    """
-    role: Optional[str] = Field(default=None, title="Role", description="""The name of a role, matched against the application's role definitions. An application may narrow it to an enum.""")
-    assignee: str = Field(default=..., title="Assignee", description="""The principal the rule applies to.""")
-    target: str = Field(default=..., title="Target", description="""The IRI of the tenant, or of an aggregate's graph, the rule applies to.""")
-    action: Optional[Action] = Field(default=None, title="Action", description="""The action a direct permission allows, or a prohibition forbids.""")
+    "A permission given to a principal on a tenant or on one aggregate, either by role or as a direct action; exactly one of role and action is given."
+    role: Optional[str] = Field(default=None, title="Role", description="The name of a role, matched against the application\u0027s role definitions. An application may narrow it to an enum.")
+    assignee: str = Field(default=..., title="Assignee", description="The principal the rule applies to.")
+    target: str = Field(default=..., title="Target", description="The IRI of the tenant, or of an aggregate\u0027s graph, the rule applies to.")
+    action: Optional[Action] = Field(default=None, title="Action", description="The action a direct permission allows, or a prohibition forbids.")
 
     @model_validator(mode="after")
     def exactly_one_of_Grant(self) -> "Grant":
@@ -137,27 +113,25 @@ class Grant(Rule):
         ]
         if len(held) != 1:
             raise ValueError(
-                f"Grant: exactly_one_of needs exactly one of [role present, action present], but {held or 'none'} hold"
+                "Grant: exactly_one_of needs exactly one of [role present, action present], but "
+                + str(held or "none")
+                + " hold"
             )
         return self
 
 
 class Prohibition(Rule):
-    """
-    The ODRL prohibition that forbids an assignee an action on a target; it wins over any permission.
-    """
-    assignee: str = Field(default=..., title="Assignee", description="""The principal the rule applies to.""")
-    target: str = Field(default=..., title="Target", description="""The IRI of the tenant, or of an aggregate's graph, the rule applies to.""")
-    action: Action = Field(default=..., title="Action", description="""The action a direct permission allows, or a prohibition forbids.""")
+    "The ODRL prohibition that forbids an assignee an action on a target; it wins over any permission."
+    assignee: str = Field(default=..., title="Assignee", description="The principal the rule applies to.")
+    target: str = Field(default=..., title="Target", description="The IRI of the tenant, or of an aggregate\u0027s graph, the rule applies to.")
+    action: Action = Field(default=..., title="Action", description="The action a direct permission allows, or a prohibition forbids.")
 
 
 class RoleDefinition(ConfiguredBaseModel):
-    """
-    What a role may do and where it applies. An application supplies its role definitions as data; they are not stored.
-    """
-    role: str = Field(default=..., title="Role", description="""The name of a role, matched against the application's role definitions. An application may narrow it to an enum.""")
-    level: RoleLevel = Field(default=..., title="Level", description="""Where the role applies.""")
-    actions: list[Action] = Field(default=..., title="Actions", description="""The actions the role permits.""")
+    "What a role may do and where it applies. An application supplies its role definitions as data; they are not stored."
+    role: str = Field(default=..., title="Role", description="The name of a role, matched against the application\u0027s role definitions. An application may narrow it to an enum.")
+    level: RoleLevel = Field(default=..., title="Level", description="Where the role applies.")
+    actions: list[Action] = Field(default=..., title="Actions", description="The actions the role permits.")
 
 
 # Model rebuild

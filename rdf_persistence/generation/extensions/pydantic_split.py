@@ -37,6 +37,7 @@ from rdf_persistence.generation.checks.scope import (
     is_toolkit_schema,
     own_schemas,
 )
+from rdf_persistence.generation.exceptions import SchemaGenerationError
 from rdf_persistence.generation.extensions.pydantic_validators import with_validators
 from rdf_persistence.generation.outputs import GeneratedFile
 from rdf_persistence.generation.transform import apply_defaults
@@ -74,7 +75,7 @@ class SplitPydanticGenerator(PydanticGenerator):
         if source.parent == self.folder:
             return module
         if source.parent != METAMODEL_DIR:
-            raise ValueError(
+            raise SchemaGenerationError(
                 f"{schema.name} is neither beside the root schema nor in the metamodel"
             )
         return metamodel_module(module.lstrip("."), toolkit=self.toolkit)
@@ -113,10 +114,13 @@ class SplitPydanticGenerator(PydanticGenerator):
         return label.upper()
 
     def after_generate_class(self, cls: ClassResult, sv: SchemaView) -> ClassResult:
+        # the stock generator escapes quotes for its triple-quoted template; ours quotes the text itself
+        cls.cls.description = cls.source.description
         return with_validators(cls, sv)
 
     def after_generate_slot(self, slot: SlotResult, sv: SchemaView) -> SlotResult:
         fields = {name: getattr(slot.attribute, name) for name in PydanticAttribute.model_fields}
+        fields["description"] = slot.source.description  # the raw text, as for classes
         internal = annotation(slot.source, "internal") == TRUE
         slot.attribute = InternalAttribute(
             **fields, internal=internal, loosens=_loosens_a_base_slot(slot.source, sv)

@@ -13,14 +13,20 @@ TOOLKIT_DIR = Path(rdf_persistence.__file__).resolve().parent
 TRUE = "true"
 
 
-def annotation(element: object, tag: str) -> str | None:
-    """The lower-cased value of the element's annotation ``tag``; None when it has none."""
+def annotation_text(element: object, tag: str) -> str | None:
+    """The value of the element's annotation ``tag`` as written; None when it has none."""
     annotations = getattr(element, "annotations", None) or {}
     # a class read from the schema holds a dict, an induced slot a JsonObj
     found = (
         annotations.get(tag) if isinstance(annotations, dict) else getattr(annotations, tag, None)
     )
-    return None if found is None else str(found.value).lower()
+    return None if found is None else str(found.value)
+
+
+def annotation(element: object, tag: str) -> str | None:
+    """The lower-cased value of the element's annotation ``tag``; None when it has none."""
+    text = annotation_text(element, tag)
+    return None if text is None else text.lower()
 
 
 def is_toolkit_schema(folder: Path) -> bool:

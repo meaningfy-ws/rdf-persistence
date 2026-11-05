@@ -29,6 +29,7 @@ from rdf_persistence.domain.generated.rp_provenance import (
 )
 from rdf_persistence.domain.generated.rp_tenancy import (
     TenantAccess,
+    TenantLabelled,
     TenantState,
 )
 from rdf_persistence.domain.generated.service.rp_service import (
@@ -68,6 +69,7 @@ __all__ = [
     "StoredFile",
     "TenantAccess",
     "TenantCreate",
+    "TenantLabelled",
     "TenantState",
     "TenantSummary",
     "Tracked",

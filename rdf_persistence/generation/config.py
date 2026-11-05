@@ -7,15 +7,12 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from rdf_persistence.generation.exceptions import ConfigError
 from rdf_persistence.generation.generated.rp_generation import GenerationTarget
 
 TOML_SCHEMA_KEY = (
     "schema"  # the model's field is schema_file: `schema` would shadow a pydantic method
 )
-
-
-class ConfigError(Exception):
-    """The configuration is unusable: a usage error, exit code 2."""
 
 
 @dataclass(frozen=True)

@@ -57,41 +57,29 @@ class LinkMLMeta(RootModel):
 linkml_meta = None
 
 class RegistryKind(str, Enum):
-    """
-    The kinds of graph a registry entry can name.
-    """
+    "The kinds of graph a registry entry can name."
     AGGREGATE = "aggregate"
-    """
-    The graph of an aggregate root.
-    """
+    "The graph of an aggregate root."
     LOADED_GRAPH = "loaded_graph"
-    """
-    A graph loaded for an aggregate, whose lifecycle belongs to it.
-    """
+    "A graph loaded for an aggregate, whose lifecycle belongs to it."
 
 
 
 class AggregateRoot(ConfiguredBaseModel):
-    """
-    A mixin for classes whose instances are aggregate roots. Each instance is one named graph, whose IRI is derived from the root's IRI; it is versioned, loaded and saved as a whole.
-    """
+    "A mixin for classes whose instances are aggregate roots. Each instance is one named graph, whose IRI is derived from the root\u0027s IRI; it is versioned, loaded and saved as a whole."
     pass
 
 
 class Principal(ConfiguredBaseModel):
-    """
-    A reference to a user account in the identity provider, by IRI only.
-    """
-    id: str = Field(default=..., title="Identifier", description="""The IRI that identifies the object.""")
+    "A reference to a user account in the identity provider, by IRI only."
+    id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
 
 
 class RegistryEntry(ConfiguredBaseModel):
-    """
-    An entry of a tenant's registry graph, naming a graph that belongs to an aggregate. It is written by the session, never by the application.
-    """
-    graph: str = Field(default=..., title="Graph", description="""The IRI of a named graph.""")
-    kind: RegistryKind = Field(default=..., title="Kind", description="""The kind of graph a registry entry names.""")
-    owned_by: str = Field(default=..., title="Owned by", description="""The IRI of the aggregate root that owns the graph.""")
+    "An entry of a tenant\u0027s registry graph, naming a graph that belongs to an aggregate. It is written by the session, never by the application."
+    graph: str = Field(default=..., title="Graph", description="The IRI of a named graph.")
+    kind: RegistryKind = Field(default=..., title="Kind", description="The kind of graph a registry entry names.")
+    owned_by: str = Field(default=..., title="Owned by", description="The IRI of the aggregate root that owns the graph.")
 
 
 # Model rebuild

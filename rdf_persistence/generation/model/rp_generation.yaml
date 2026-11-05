@@ -104,7 +104,16 @@ classes:
         required: true
 
 slots:
+  relative_path:
+    title: Relative path
+    description: >-
+      A POSIX path below the folder of the `pyproject.toml`: not absolute, with no drive letter, no
+      backslash, no empty segment and no `.` or `..` segment, so it cannot leave the project.
+    slot_uri: rp:relativePath
+    abstract: true
+    pattern: '^(?:[^/:\\.][^/:\\]*|\.[^/:\\.][^/:\\]*|\.\.[^/:\\]+)(?:/(?:[^/:\\.][^/:\\]*|\.[^/:\\.][^/:\\]*|\.\.[^/:\\]+))*$'
   schema_file:
+    is_a: relative_path
     title: Schema file
     description: >-
       The root LinkML schema file; the TOML key and the flag are `schema`, which the field name avoids
@@ -112,23 +121,28 @@ slots:
     slot_uri: rp:schemaFile
   package:
     title: Package
-    description: The Python import path of the generated package.
+    description: The Python import path of the generated package, a dotted identifier.
     slot_uri: rp:package
+    pattern: '^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$'
   python:
+    is_a: relative_path
     title: Python folder
     description: >-
       The folder that receives the classes, shapes, context, frames and the schema copy; the folder of
       `package` when absent.
     slot_uri: rp:pythonFolder
   typescript:
+    is_a: relative_path
     title: TypeScript folder
     description: The folder that receives the TypeScript types; none are written when absent.
     slot_uri: rp:typescriptFolder
   diagrams:
+    is_a: relative_path
     title: Diagrams folder
     description: The folder that receives one Mermaid file per module; none are written when absent.
     slot_uri: rp:diagramsFolder
   path:
+    is_a: relative_path
     title: Path
     description: A file path, POSIX, relative to the folder of the `pyproject.toml`.
     slot_uri: rp:path
@@ -136,6 +150,7 @@ slots:
     title: SHA-256
     description: The SHA-256 of a file's bytes, in lowercase hexadecimal.
     slot_uri: rp:sha256
+    pattern: '^[0-9a-f]{64}$'
   linkml:
     title: LinkML version
     description: The version of the `linkml` package that ran the generation.
@@ -230,8 +245,13 @@ enums:
         meaning: rp:HardRuleDescribed
       annotation:
         title: Annotation
-        description: An annotation value is one of its allowed values.
+        description: >-
+          An annotation value is one of its allowed values; the `rp_path` value is a URL segment.
         meaning: rp:HardRuleAnnotation
+      unique_key:
+        title: Unique key
+        description: A unique key is named by an identifier, since generated code carries the name.
+        meaning: rp:HardRuleUniqueKey
   BoundaryRule:
     title: Boundary rule
     description: The rules of the boundary check; a problem line starts with its rule.

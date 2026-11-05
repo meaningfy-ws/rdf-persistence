@@ -59,12 +59,11 @@ classes:
     title: Tenant create
     description: The body that creates a tenant, its label and the slots of the tenant's root object.
     class_uri: rp:TenantCreate
+    mixins:
+      - TenantLabelled
     slots:
-      - label
       - root
     slot_usage:
-      label:
-        required: true
       root:
         required: true
   TenantSummary:
@@ -86,11 +85,8 @@ classes:
     title: Label update
     description: The body that replaces the label of a tenant.
     class_uri: rp:LabelUpdate
-    slots:
-      - label
-    slot_usage:
-      label:
-        required: true
+    mixins:
+      - TenantLabelled
   GrantSet:
     title: Grant set
     description: >-
@@ -142,6 +138,7 @@ slots:
     description: The IRI under which the service mints identifiers and problem types, ending in a slash.
     slot_uri: rp:base
     range: uri
+    pattern: "^https?://.+/$"
   prefix:
     title: Prefix
     description: >-
@@ -150,6 +147,7 @@ slots:
     range: string
     pattern: "^[a-z][a-z0-9]{0,19}$"
   tenant_segment:
+    is_a: url_segment
     title: Tenant segment
     description: The path segment that names the tenant collection in the service's routes.
     slot_uri: rp:tenantSegment
@@ -159,6 +157,7 @@ slots:
     description: The role a caller is given on the tenant it creates.
     slot_uri: rp:creatorRole
     range: string
+    pattern: "^.+$"
   roles_claim:
     title: Roles claim
     description: The claim of the token that holds the caller's global roles; Zitadel's by default.

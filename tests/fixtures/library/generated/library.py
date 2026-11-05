@@ -42,6 +42,7 @@ from rdf_persistence import (
     Rule,
     StoredFile,
     TenantAccess,
+    TenantLabelled,
     TenantState,
     Tracked
 )

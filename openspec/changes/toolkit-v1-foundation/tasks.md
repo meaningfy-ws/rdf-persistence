@@ -180,7 +180,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 | rp-testkit: the end-to-end proof | 5.7 | `tests/e2e/test_library.py` |
 | rp-generation: a hand-written domain class | 1.16 | `tests/unit/generation/test_model_guard.py` |
 | rp-generation: classes and shapes agree on a declared rule | 1.13, 1.14 | `tests/unit/generation/test_conformance.py` |
-| rp-generation: a schema changed without regenerating | 1.12 | `tests/unit/generation/test_freshness.py` |
+| rp-generation: a schema changed without regenerating | 1.12 | `tests/unit/generation/test_freshness_plugin.py` |
 | rp-generation: a generated file edited by hand | 1.12 | `tests/unit/generation/test_freshness.py` |
 | rp-generation: a model change is acknowledged | 1.15 | `tests/unit/generation/test_shape_snapshot.py` |
 | rp-package-boundaries: a consumer term in code | 0.5 | `make check-quality` (`check_docs.py`) |

@@ -49,3 +49,23 @@ forbidden_modules =
     pytest
     testcontainers
     linkml
+
+[importlinter:contract:works-without-the-generate-extra]
+name = what runs without the generate extra imports no linkml (only linkml_runtime)
+; The freshness plugin, the manifest comparison, the configuration and the schema helpers are
+; installed with the base package; the generators (the `generate` extra) are reached only through
+; the lazy import in cli.py, which is ignored here so every other chain is checked.
+type = forbidden
+source_modules =
+    rdf_persistence.testkit.freshness
+    rdf_persistence.generation.cli
+    rdf_persistence.generation.config
+    rdf_persistence.generation.manifest
+    rdf_persistence.generation.pipeline
+    rdf_persistence.generation.exceptions
+    rdf_persistence.generation.generated
+    rdf_persistence.services.schema
+forbidden_modules =
+    linkml
+ignore_imports =
+    rdf_persistence.generation.cli -> rdf_persistence.generation.steps

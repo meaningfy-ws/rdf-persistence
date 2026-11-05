@@ -4,7 +4,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from rdf_persistence.generation.config import FLAGS, ConfigError, read_targets
+from rdf_persistence.generation.config import FLAGS, read_targets
+from rdf_persistence.generation.exceptions import ConfigError
 from rdf_persistence.generation.generated.rp_generation import GenerationTarget
 from rdf_persistence.generation.manifest import FIX_HINT, freshness_problems
 from rdf_persistence.generation.pipeline import Step, generate
