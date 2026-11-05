@@ -23,7 +23,7 @@ Notation:
   - `make test` runs `unit or feature` with the coverage floor, `.coveragerc` omitting `rdf_persistence/adapters/*` and `rdf_persistence/testkit/containers/*`; a new `make test-containers` runs `integration or e2e` with `--cov-fail-under=0`; the `conftest.py` hook applies every marker of a row; the CI container job.
   - One smoke test per container: it starts and answers.
 
-- [ ] 0.5 A CI workflow for changes under `docs/**`: `make check-docs` and the Antora build. `check_docs.py` also scans `rdf_persistence/` and `tests/` for consumer terms, run by `make check-quality` (PD-20).
+- [x] 0.5 A CI workflow for changes under `docs/**`: `make check-docs` and the Antora build. `check_docs.py` also scans `rdf_persistence/` and `tests/` for consumer terms, run by `make check-quality` (PD-20).
 
 ## 1. Metamodel and generation (stage 1)
 
@@ -171,7 +171,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 
 ## Roadmap
 
-- [x] 0.1 · [x] 0.2 · [x] 0.3 · [x] 0.4 · [ ] 0.5
+- [x] 0.1 · [x] 0.2 · [x] 0.3 · [x] 0.4 · [x] 0.5
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10
 - [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8
 - [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4

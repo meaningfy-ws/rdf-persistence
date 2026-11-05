@@ -136,7 +136,7 @@ test-e2e: ## Run end-to-end tests only
 #-----------------------------------------------------------------------------
 .PHONY: check-spec check-quality check-all ci-quick ci-full
 
-check-quality: lint typecheck check-architecture check-spec ## Static checks: lint + typecheck + architecture
+check-quality: lint typecheck check-architecture check-spec check-docs ## Static checks: lint + typecheck + architecture + spec + docs and code terms
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) All quality checks passed$(END_BUILD_PRINT)"
 
 check-all: check-quality test ## Full suite: quality + unit and feature tests (containers: make test-containers)
@@ -207,7 +207,7 @@ build-docs: ## Build the documentation site to docs/build/site/
 preview-docs: build-docs ## Build then serve docs at http://localhost:$(DOCS_PORT) (8081, beside MWB2's 8080)
 	@ python3 -m http.server --directory $(DOCS_SITE) $(DOCS_PORT)
 
-check-docs: ## Check the docs: no consumer terms in architecture pages, every page in the nav
+check-docs: ## No consumer terms in architecture pages, the package or the tests; every page in the nav
 	@ python3 -I docs/tools/check_docs.py
 
 clean-docs: ## Remove built docs + node_modules

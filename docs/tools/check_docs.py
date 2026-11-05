@@ -1,7 +1,7 @@
 """Consistency checks for the rdf-persistence docs (run by `make check-docs`).
 
-1. The architecture pages use no consumer terms (capability rp-package-boundaries); the
-   background study is exempt.
+1. The architecture pages, the package and the tests use no consumer terms (capability
+   rp-package-boundaries, PD-20); the background study is exempt.
 2. Every page is reachable from the navigation.
 """
 import re
@@ -10,6 +10,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE = ROOT / "docs/modules/ROOT"
+CODE_DIRS = ["rdf_persistence", "tests"]
+CODE_SUFFIXES = {".py", ".yaml", ".yml", ".toml", ".feature", ".ttl", ".jsonld", ".json", ".ini", ".md"}
 FORBIDDEN = ["MWB", "Mapping Workbench", "mapping project", "conceptual mapping", "technical mapping"]
 
 
@@ -21,15 +23,23 @@ def rel(page: Path) -> str:
     return page.relative_to(MODULE / "pages").as_posix()
 
 
-def check_forbidden_terms() -> list[str]:
+def code_files() -> list[Path]:
+    return sorted(f for d in CODE_DIRS for f in (ROOT / d).rglob("*")
+                  if f.suffix in CODE_SUFFIXES and "__pycache__" not in f.parts)
+
+
+def forbidden_in(files: list[Path]) -> list[str]:
     errors = []
-    for page in pages():
-        if not rel(page).startswith("architecture/"):
-            continue
-        text = page.read_text()
-        errors += [f"{page.relative_to(ROOT)}: uses '{t}'" for t in FORBIDDEN
+    for f in files:
+        text = f.read_text(errors="replace")
+        errors += [f"{f.relative_to(ROOT)}: uses '{t}'" for t in FORBIDDEN
                    if re.search(rf"\b{re.escape(t)}\b", text)]
     return errors
+
+
+def check_forbidden_terms() -> list[str]:
+    architecture = [p for p in pages() if rel(p).startswith("architecture/")]
+    return forbidden_in(architecture) + forbidden_in(code_files())
 
 
 def check_nav() -> list[str]:
