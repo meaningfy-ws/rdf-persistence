@@ -101,7 +101,6 @@ def _running(
             compose_file_name=COMPOSE_FILE,
             services=list(services),
             build=build,
-            quiet_build=True,
         ) as compose,
     ):
         yield compose, port
