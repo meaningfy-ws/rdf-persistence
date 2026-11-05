@@ -71,7 +71,7 @@ Documentation is built with [Antora](https://antora.org) from AsciiDoc under `do
 
 ```bash
 make install-antora # first time only
-make preview-docs   # build + serve at http://localhost:8080
+make preview-docs   # build + serve at http://localhost:8081
 ```
 
 The published site is the source of truth for API reference, architecture, and user guides.

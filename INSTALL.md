@@ -60,7 +60,7 @@ make down                               # stop the stack
 
 ```bash
 make install-antora # first time only
-make preview-docs   # serve at http://localhost:8080
+make preview-docs   # serve at http://localhost:8081
 ```
 
 ## Troubleshooting
