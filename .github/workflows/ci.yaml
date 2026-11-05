@@ -6,7 +6,12 @@
 #
 # Runs on push to develop and on PRs targeting develop.
 #
-# No SonarCloud: Meaningfy is on the free plan (developer, 2026-11-05).
+# SonarCloud on the free plan (developer, 2026-11-05). The free plan analyses
+# public projects, but only the SonarCloud main branch and PRs that target it.
+# So the SonarCloud project's main branch must be named `develop`. The scan runs
+# only when the repo variable SONAR_ENABLED is 'true' and SONAR_TOKEN is set;
+# until an org admin has created the public project and renamed its main branch
+# to `develop`, CI stays green without it.
 
 name: CI
 
@@ -121,3 +126,9 @@ jobs:
           path: |
             coverage.xml
             test-results.xml
+
+      - name: SonarCloud scan
+        if: always() && vars.SONAR_ENABLED == 'true'
+        uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
