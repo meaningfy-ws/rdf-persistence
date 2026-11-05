@@ -289,4 +289,4 @@ How each store plugs into MWBv2: Oxigraph, Fuseki and RDF4J/GraphDB sit behind S
 * Jena TDB transactions: https://jena.apache.org/documentation/tdb/tdb_transactions.html
 * Virtuoso `log_enable`: https://docs.openlinksw.com/virtuoso/fn_log_enable
 * QLever updates: https://docs.qlever.dev/update/
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/angle-stores.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/angle-stores.md`

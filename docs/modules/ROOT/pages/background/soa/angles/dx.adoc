@@ -390,4 +390,4 @@ The benchmarks cover the DX ids and, for Beanie and Piccolo, the migration ids (
 * ODMantic: https://github.com/art049/odmantic (commit `26e4504`)
 * Piccolo: https://github.com/piccolo-orm/piccolo (commit `fc1fc86`)
 * SQLAlchemy: https://github.com/sqlalchemy/sqlalchemy; Django: https://github.com/django/django; Prisma: https://github.com/prisma/prisma (renamed, redirects to `prisma/orm`); Drizzle: https://github.com/drizzle-team/drizzle-orm; Spring Data Commons: https://github.com/spring-projects/spring-data-commons; Ecto: https://github.com/elixir-ecto/ecto
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/angle-dx.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/angle-dx.md`

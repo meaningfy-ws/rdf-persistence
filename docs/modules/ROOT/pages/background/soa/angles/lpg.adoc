@@ -247,4 +247,4 @@ n10s is present on PG2 (projection config) and PG3 (edge properties); linkml-sto
 * RDF 1.2 Concepts (CR): https://www.w3.org/TR/2026/CR-rdf12-concepts-20260407/
 * RDF 1.2 Interoperability (draft note): https://www.w3.org/TR/2026/DNOTE-rdf12-interop-20260723/
 * Kùzu archived: https://www.theregister.com/2025/10/14/kuzudb_abandoned/
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/angle-lpg.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/angle-lpg.md`

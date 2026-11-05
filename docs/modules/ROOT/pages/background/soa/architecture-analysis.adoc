@@ -12,7 +12,7 @@ This page is part of the state-of-the-art study moved from the rdf-persistence r
 ====
 *Status:* summary of the architecture analysis (change `soa-python-rdf-orm`, task 6), refreshed
 with the round-5 findings. It presents options; it decides nothing.
-The full sources are in `openspec/changes/soa-python-rdf-orm/architecture/`:
+The full sources are in `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/architecture/`:
 `business-context.md`, `use-cases.md` (Cockburn White and Blue use cases),
 `realisation-matrix.md`, `c4-views.md`, `candidate-adrs.md`, and every diagram as PlantUML in
 `diagrams/*.puml`.

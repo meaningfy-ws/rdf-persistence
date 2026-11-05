@@ -173,4 +173,4 @@ Round-5 v4 partials: B10 named graph per resource, PG1 query AST with translator
 * Repository: https://github.com/cosminbasca/surfrdf (commit `91fb072`)
 * Documentation: https://surf-rdf.readthedocs.io/en/latest/
 * In-repo docs read: `README.rst`, `CHANGELOG.rst`, `docs/source/*.rst`
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/surf.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/surf.md`

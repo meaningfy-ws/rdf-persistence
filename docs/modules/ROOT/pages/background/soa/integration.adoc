@@ -27,7 +27,7 @@ outbox and relay (C8), and schema-diff migrations (C9).
 |===
 
 Each chain has a diagram as a PlantUML file and as Mermaid:
-`openspec/changes/soa-python-rdf-orm/inputs/analysis/integration-diagrams/c1-uml-to-linkml.puml`
+`openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/integration-diagrams/c1-uml-to-linkml.puml`
 … `c9-schema-migration.puml`, and the Mermaid versions in `angle-integration.md` next to them.
 
 [mermaid]

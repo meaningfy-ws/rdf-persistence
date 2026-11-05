@@ -194,4 +194,4 @@ Notable v4 features: T13 read-only guard, I7 reversible IRIs, U12 instance edito
 * PyPI: https://pypi.org/project/owlready2/ (0.51)
 * Documentation: https://owlready2.readthedocs.io/en/latest/ (pages `world.html`, `mixing_python_owl.html`)
 * In-repo docs read: `doc/sparql.rst`, `doc/sync.rst`, `doc/world.rst`, `doc/observe.rst`, `README.rst`
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/owlready2.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/owlready2.md`

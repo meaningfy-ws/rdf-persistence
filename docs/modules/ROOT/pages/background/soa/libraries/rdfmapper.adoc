@@ -166,4 +166,4 @@ v4: only B3 whole-aggregate load is partial (eager load of the reachable in-memo
 * Repository: https://github.com/lambdageo/rdfmapper (commit `890a114`)
 * Documentation: https://lambdageo.github.io/rdfmapper
 * In-repo docs read: `README.md`, `docs/{index,getting-started,background}.md`, `docs/guide/{mapping,relationships,querying,shacl}.md`, `paper.md`
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/rdfmapper.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/rdfmapper.md`

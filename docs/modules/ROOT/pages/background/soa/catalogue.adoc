@@ -32,7 +32,7 @@ of the five round-3 angle reports (authorization, code generation, data-manageme
 JavaScript client and UI, stores and events) and of the four round-4 angle reports (DDD
 boundaries, developer experience, property graphs, evolution and operations), with the round-5
 corrections and final verdicts. Stars and dates are as of 2026-11-03;
-details are in the raw reports under `openspec/changes/soa-python-rdf-orm/inputs/analysis/`.
+details are in the raw reports under `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/`.
 
 == Foundations
 

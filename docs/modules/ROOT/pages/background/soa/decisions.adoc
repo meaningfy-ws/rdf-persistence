@@ -13,7 +13,7 @@ xref:background/soa/design-implications.adoc#open-questions[design implications]
 records the answers (DEC-15 to DEC-38 in the EPIC), the consequences for the variants and the
 candidate ADRs, and the review's recommendation where the developer left a question open.
 The answers are preserved verbatim in
-`openspec/changes/soa-python-rdf-orm/inputs/developer-answers-2026-11-03.md` and, for the
+`openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/developer-answers-2026-11-03.md` and, for the
 second and third rounds, `developer-answers-2026-11-03-round2.md` and `-round3.md`.
 
 == Summary

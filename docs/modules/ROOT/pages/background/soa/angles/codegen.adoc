@@ -281,4 +281,4 @@ Round-4 proposals, now v4 ids:
 * model2owl: https://github.com/OP-TED/model2owl (commit `351ee02`); fork https://github.com/meaningfy-ws/model2owl branch `feature/linkml`
 * schema-automator: https://github.com/linkml/schema-automator (commit `0cf0e88`)
 * shacl2code: https://github.com/JPEWdev/shacl2code (commit `ba438c3`)
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/angle-codegen.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/angle-codegen.md`

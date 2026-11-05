@@ -18,7 +18,7 @@ This page is part of the state-of-the-art study moved from the rdf-persistence r
   permissive; GPL/LGPL items are services, build-time tools or idea sources.
 
 The full register (licence, governance and bus factor per component) is in the raw report
-`openspec/changes/soa-python-rdf-orm/inputs/analysis/angle-integration.md`, Part 2. This is not
+`openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/angle-integration.md`, Part 2. This is not
 legal advice; items marked for a legal check need one before commitment.
 
 == Risk register

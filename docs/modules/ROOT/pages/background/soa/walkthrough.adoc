@@ -65,7 +65,7 @@ flowchart LR
 ....
 
 The same picture is available as PlantUML:
-`openspec/changes/soa-python-rdf-orm/architecture/diagrams/walkthrough-chain.puml`.
+`openspec/changes/archive/2026-11-05-soa-python-rdf-orm/architecture/diagrams/walkthrough-chain.puml`.
 
 == How we looked
 
@@ -161,7 +161,7 @@ sequenceDiagram
 ....
 
 PlantUML version:
-`openspec/changes/soa-python-rdf-orm/architecture/diagrams/walkthrough-commit.puml`.
+`openspec/changes/archive/2026-11-05-soa-python-rdf-orm/architecture/diagrams/walkthrough-commit.puml`.
 
 The review found two traps in this design, and both are now in the docs. First, the check must
 look for a record unique to *this* commit, not a "last changed" marker that another writer may

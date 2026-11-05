@@ -193,5 +193,5 @@ Proposed in round 4: AZ36 edge sanitisation of internal security headers (see Wh
 
 * Repositories (mu-semtech): https://github.com/mu-semtech/mu-cl-resources (`d083c3e`), https://github.com/mu-semtech/sparql-parser (`4059dcd`), https://github.com/mu-semtech/delta-notifier (`2fac0f5`), https://github.com/mu-semtech/mu-python-template (`1fc512b`), https://github.com/mu-semtech/mu-javascript-template (`e7a2705`), https://github.com/mu-semtech/mu-project (`684f626`), https://github.com/mu-semtech/mu-identifier (`4d8978b`), https://github.com/mu-semtech/mu-dispatcher (`f85e83b`)
 * Documentation: https://semantic.works/ (SPA, content not retrievable), https://mu.semte.ch/about/, https://mu.semte.ch/getting-started/, https://mu.semte.ch/2019/01/02/on-sharing-authorization/
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/semantic-works.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/semantic-works.md`
 * See also: xref:background/soa/angles/authz.adoc[Authorization angle], xref:background/soa/angles/service.adoc[Service angle]

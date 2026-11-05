@@ -164,5 +164,5 @@ Notable v4 features: G36 typed filter and partial-update types and D26 type-leve
 * Repository: https://github.com/karelklima/ldkit (commit `09fc801`)
 * Documentation: https://ldkit.io/, https://ldkit.io/docs/components/lens, https://ldkit.io/docs/features/query-with-comunica
 * Paper: Klíma, Taelman, Nečaský, "LDkit: Linked Data Object Graph Mapping Toolkit for Web Applications", ISWC 2023
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/ldkit.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/ldkit.md`
 * See also: xref:background/soa/angles/jsclient.adoc[JavaScript client angle], xref:background/soa/libraries/prez.adoc[Prez]

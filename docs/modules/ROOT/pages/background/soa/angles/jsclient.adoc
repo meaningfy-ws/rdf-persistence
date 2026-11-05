@@ -326,4 +326,4 @@ The service side of these contracts is covered in xref:background/soa/angles/ser
 * shacl-form: https://github.com/ULB-Darmstadt/shacl-form (commit `5f430f5`); demo https://ulb-darmstadt.github.io/shacl-form/ (not fetched)
 * LDO: https://github.com/o-development/ldo (commit `80fb5ce`); https://ldo.js.org/latest/
 * LDkit: xref:background/soa/libraries/ldkit.adoc[LDkit page]
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/angle-jsclient.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/angle-jsclient.md`

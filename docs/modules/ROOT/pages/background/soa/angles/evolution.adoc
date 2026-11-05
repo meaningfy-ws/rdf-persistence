@@ -336,4 +336,4 @@ Between them the four tools cover EV1, EV3, EV4, EV5, EV7 and EV8. Nobody covers
 * Alembic: https://github.com/sqlalchemy/alembic (commit `1bcba93`)
 * testcontainers-python: https://github.com/testcontainers/testcontainers-python (commit `6146aa1`)
 * Fuseki server protocol: https://jena.apache.org/documentation/fuseki2/fuseki-server-protocol.html
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/angle-evolution.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/angle-evolution.md`

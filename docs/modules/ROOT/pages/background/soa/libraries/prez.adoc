@@ -157,5 +157,5 @@ Its round-4 proposal, a read-only guard at the protocol boundary that rejects up
 
 * Repository: https://github.com/RDFLib/prez (commit `0366b22`)
 * Documentation: `README.md` and `docs/` design notes (no published docs site)
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/prez.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/prez.md`
 * See also: xref:background/soa/libraries/ldkit.adoc[LDkit] (same listing query pattern), xref:background/soa/angles/service.adoc[Service angle]

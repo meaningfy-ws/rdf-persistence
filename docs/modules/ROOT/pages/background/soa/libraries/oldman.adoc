@@ -201,4 +201,4 @@ Round-4 proposals from the `session` branch, now in v4: I8 deferred IRI minting,
 * Repository: https://github.com/oldm/OldMan (master commit `5661e5a`; branches https://github.com/oldm/OldMan/tree/session[`session`] and https://github.com/oldm/OldMan/tree/proxy[`proxy`])
 * Documentation: https://oldman.readthedocs.io/en/latest/
 * In-repo docs read: `README.rst`, `docs/foreword.rst`, `docs/core_concepts.rst`, `examples/quickstart*`
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/oldman.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/oldman.md`

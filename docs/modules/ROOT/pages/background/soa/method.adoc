@@ -96,4 +96,4 @@ The iteration (DEC-9) stopped after round 5, when no analyst proposed a new feat
 CI check. See the rounds table on the xref:background/soa/index.adoc[integrated findings].
 
 The raw per-library reports are kept, unedited, in the change
-`openspec/changes/soa-python-rdf-orm/inputs/analysis/`.
+`openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/`.

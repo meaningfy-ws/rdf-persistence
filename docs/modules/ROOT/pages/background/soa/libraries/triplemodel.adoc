@@ -186,4 +186,4 @@ Proposed in round 4: I7 reversible IRI minting (the id can be recovered from the
 * Repository: https://github.com/eddiethedean/triplemodel (commit `bd981af`)
 * Documentation: https://triplemodel.readthedocs.io/ (landing page stale)
 * In-repo docs read: `README.md`, `CHANGELOG.md`, `docs/MIGRATION_0.10.md`, `docs/MIGRATION_0.11.md`, `docs/ROADMAP.md`, `docs/guides/13-sparql-and-endpoints.md`
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/triplemodel.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/triplemodel.md`

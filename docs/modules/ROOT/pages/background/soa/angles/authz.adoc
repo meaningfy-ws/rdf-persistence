@@ -323,4 +323,4 @@ Round-4 proposals, now v4 ids:
 * Apache Jena: https://github.com/apache/jena (commit `c9b6b49`); https://jena.apache.org/documentation/fuseki2/fuseki-data-access-control.html
 * OpenFGA: https://github.com/openfga/openfga (commit `2dfa5d3`); https://openfga.dev/docs/interacting/relationship-queries
 * Related: xref:background/soa/libraries/semantic-works.adoc[semantic.works], xref:background/soa/angles/stores.adoc[stores angle], xref:background/soa/angles/service.adoc[service angle]
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/angle-authz.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/angle-authz.md`

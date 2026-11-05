@@ -366,4 +366,4 @@ No benchmark has an outbox (B9), an aggregates-per-commit policy (B6), build-tim
 * LinkML: https://github.com/linkml/linkml; https://linkml.io/linkml/schemas/inlining.html
 * Vernon, _Effective Aggregate Design_ Part III: https://www.dddcommunity.org/library/vernon_2011/
 * Hibernate: https://docs.jboss.org/hibernate/orm/current/userguide/html_single/Hibernate_User_Guide.html; Django: https://docs.djangoproject.com/en/stable/topics/db/transactions/; Prisma: https://www.prisma.io/docs/orm/prisma-client/queries/transactions; Marten: https://martendb.io/
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/angle-ddd.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/angle-ddd.md`

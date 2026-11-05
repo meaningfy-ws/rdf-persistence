@@ -177,4 +177,4 @@ v4: T13 read-only guard present (`check_query` rejects every non-SELECT query at
 * Documentation: https://acdh-oeaw.github.io/rdfproxy/
 * sparqlx: https://github.com/lu-pl/sparqlx
 * In-repo docs read: `README.md`, `CHANGELOG.md`, `docs/{index,concept,tutorial,reference}.md`
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/rdfproxy.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/rdfproxy.md`

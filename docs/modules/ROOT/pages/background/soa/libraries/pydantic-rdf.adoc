@@ -170,4 +170,4 @@ v4: B3 whole-aggregate load (eager, no boundary) and B5 typed references (bare I
 * Repository: https://github.com/Omegaice/pydantic-rdf (commit `8f14595`)
 * Documentation: https://omegaice.github.io/pydantic-rdf
 * In-repo docs read: `README.md`, `CHANGELOG.md`, `docs/index.md`, `docs/quickstart.md`
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/pydantic-rdf.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/pydantic-rdf.md`

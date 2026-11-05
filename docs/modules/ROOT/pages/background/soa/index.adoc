@@ -11,7 +11,7 @@ This page is part of the state-of-the-art study moved from the rdf-persistence r
 [NOTE]
 ====
 *Status:* final, after round 5 of 5 (2026-11-03). Raw evidence:
-`openspec/changes/soa-python-rdf-orm/inputs/analysis/`.
+`openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/`.
 ====
 
 == Decision in brief

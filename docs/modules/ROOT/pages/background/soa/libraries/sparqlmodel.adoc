@@ -174,4 +174,4 @@ Proposed by this report: per-request identity propagation, principal-partitioned
 * Repository: https://github.com/eddiethedean/sparqlmodel (commit `90183cd`)
 * Documentation: https://sparqlmodel.readthedocs.io/en/latest/
 * In-repo docs read: `README.md`, `CHANGELOG.md`, `docs/SPECS.md`, `docs/ROADMAP.md`, `docs/ECOSYSTEM.md`
-* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/sparqlmodel.md`
+* Raw report: `openspec/changes/archive/2026-11-05-soa-python-rdf-orm/inputs/analysis/sparqlmodel.md`
