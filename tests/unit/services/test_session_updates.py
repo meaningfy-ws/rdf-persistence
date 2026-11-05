@@ -78,7 +78,7 @@ def test_replace_runs_only_when_the_guard_matches(guard, replaced):
     before = contents(dataset, GRAPH)
     dataset.update(
         replace_text(
-            GRAPH, REGISTRY, guard, payload(GRAPH, ROOT, "new", "v2"), [entry(GRAPH, ROOT)]
+            GRAPH, REGISTRY, ROOT, guard, payload(GRAPH, ROOT, "new", "v2"), [entry(GRAPH, ROOT)]
         )
     )
     after = contents(dataset, GRAPH)
@@ -95,7 +95,9 @@ def test_replace_keeps_one_registry_entry_and_leaves_other_aggregates_alone():
     dataset = seeded()
     other_before = (contents(dataset, OTHER), contents(dataset, REGISTRY))
     dataset.update(
-        replace_text(GRAPH, REGISTRY, "v1", payload(GRAPH, ROOT, "new", "v2"), [entry(GRAPH, ROOT)])
+        replace_text(
+            GRAPH, REGISTRY, ROOT, "v1", payload(GRAPH, ROOT, "new", "v2"), [entry(GRAPH, ROOT)]
+        )
     )
     assert_same(contents(dataset, OTHER), other_before[0], "other aggregate")
     assert_same(contents(dataset, REGISTRY), other_before[1], "registry: replaced entry is equal")
@@ -105,7 +107,9 @@ def test_replace_of_a_graph_without_registry_entry_writes_none():
     dataset = Dataset()
     meta = URIRef(f"{EX}meta")
     dataset.update(add_text(meta, REGISTRY, payload(meta, URIRef(EX), "a", "m1"), []))
-    dataset.update(replace_text(meta, REGISTRY, "m1", payload(meta, URIRef(EX), "b", "m2"), []))
+    dataset.update(
+        replace_text(meta, REGISTRY, URIRef(EX), "m1", payload(meta, URIRef(EX), "b", "m2"), [])
+    )
     assert len(contents(dataset, REGISTRY)) == 0, "the tenant root has no registry entry"
     assert (URIRef(EX), TITLE, Literal("b")) in contents(dataset, meta), "meta graph replaced"
 
@@ -173,9 +177,67 @@ def test_payload_keeps_other_statements_about_the_graph_iri():
     assert own in payload_triples(GRAPH, "v1", Tracked(created=NOW, creator=ME), [own])
 
 
-@pytest.mark.parametrize("position", ["subject", "object"])
-def test_payload_refuses_blank_nodes(position):
-    node = BNode("b1")
-    triple = (node, TITLE, Literal("x")) if position == "subject" else (ROOT, TITLE, node)
-    with pytest.raises(ValueError, match="blank nodes"):
-        payload_triples(GRAPH, "v1", Tracked(created=NOW, creator=ME), [triple])
+def skolem_prefix(graph: URIRef) -> str:
+    return f"{graph}/.well-known/genid/"
+
+
+def with_blank_nodes(root: URIRef) -> list:
+    """Two blank nodes: one used twice (as object and as subject), one only as an object."""
+    shared, lone = BNode("shared"), BNode("lone")
+    return [
+        (root, TITLE, shared),
+        (shared, TITLE, Literal("part")),
+        (shared, TITLE, lone),
+        (root, TITLE, Literal("plain")),
+    ]
+
+
+def test_payload_replaces_each_blank_node_by_one_skolem_iri_under_the_graph_iri():
+    triples = payload_triples(GRAPH, "v1", Tracked(created=NOW, creator=ME), with_blank_nodes(ROOT))
+    nodes = {n for t in triples for n in t}
+    assert not any(isinstance(n, BNode) for n in nodes), "no blank node is written"
+    skolems = {n for n in nodes if str(n).startswith(skolem_prefix(GRAPH))}
+    assert len(skolems) == 2, "one skolem IRI per blank node, the same node mapping to the same IRI"
+    assert all(isinstance(n, URIRef) for n in skolems), "skolem nodes are IRIs"
+    assert len(triples) == 4 + 3, "four statements, version, created and creator"
+
+
+def test_payload_gives_a_blank_node_a_fresh_skolem_on_every_write():
+    first = payload_triples(GRAPH, "v1", Tracked(created=NOW, creator=ME), with_blank_nodes(ROOT))
+    second = payload_triples(GRAPH, "v2", Tracked(created=NOW, creator=ME), with_blank_nodes(ROOT))
+    mint = lambda ts: {n for t in ts for n in t if str(n).startswith(skolem_prefix(GRAPH))}  # noqa: E731
+    assert not mint(first) & mint(second), "never reused between writes"
+
+
+def test_replace_stores_blank_node_statements_once_though_the_guard_matches_many_rows():
+    dataset = seeded()  # the old graph has several rows, so the template is inserted per row
+    tracking = Tracked(created=NOW, creator=ME, modified=NOW)
+    new = payload_triples(GRAPH, "v2", tracking, with_blank_nodes(ROOT))
+    dataset.update(replace_text(GRAPH, REGISTRY, ROOT, "v1", new, [entry(GRAPH, ROOT)]))
+    stored = contents(dataset, GRAPH)
+    assert set(stored) == set(new), "exactly the statements written, none copied per matched row"
+    assert len(stored) == len(new), "a duplicate would show as a longer graph"
+
+
+def test_registry_entry_of_a_loaded_graph_is_written_replaced_and_removed_with_the_aggregate():
+    loaded = [URIRef(f"{ROOT}/content/1"), URIRef(f"{ROOT}/content/2")]
+    entries = [
+        entry(GRAPH, ROOT),
+        *(
+            RegistryEntry(graph=str(g), kind=RegistryKind.LOADED_GRAPH, owned_by=str(ROOT))
+            for g in loaded
+        ),
+    ]
+    dataset = Dataset()
+    dataset.update(add_text(GRAPH, REGISTRY, payload(GRAPH, ROOT, "a", "v1"), entries))
+    kind = v.REGISTRY_KIND_IRIS["loaded_graph"]
+    held = contents(dataset, REGISTRY)
+    assert {g for g in loaded if (g, v.REGISTRY_KIND, kind) in held} == set(loaded), "written"
+    dataset.update(
+        replace_text(GRAPH, REGISTRY, ROOT, "v1", payload(GRAPH, ROOT, "b", "v2"), entries[:2])
+    )
+    held = contents(dataset, REGISTRY)
+    assert (loaded[0], v.REGISTRY_KIND, kind) in held, "the kept loaded graph stays registered"
+    assert (loaded[1], v.REGISTRY_KIND, kind) not in held, "the dropped one is unregistered"
+    dataset.update(remove_text(GRAPH, REGISTRY, ROOT, "v2"))
+    assert len(contents(dataset, REGISTRY)) == 0, "removing the aggregate removes every entry"

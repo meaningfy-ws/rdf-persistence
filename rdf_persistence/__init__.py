@@ -6,6 +6,7 @@ from rdf_persistence.domain.errors import (
     BadQuery,
     Conflict,
     DatabaseGone,
+    InvalidGraph,
     NotFound,
     PersistenceError,
     StoreUnavailable,
@@ -34,6 +35,7 @@ from rdf_persistence.domain.generated.rp_core import (
     RpAnnotation,
 )
 from rdf_persistence.domain.generated.rp_files import (
+    RdfFormat,
     StoredFile,
 )
 from rdf_persistence.domain.generated.rp_provenance import (
@@ -55,6 +57,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     TenantSummary,
     VerifiedCaller,
 )
+from rdf_persistence.services.loading import load_graph
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.store import Store
 
@@ -73,6 +76,7 @@ __all__ = [
     "Grant",
     "GrantSet",
     "GraphKind",
+    "InvalidGraph",
     "LabelUpdate",
     "ModuleKind",
     "NotFound",
@@ -83,6 +87,7 @@ __all__ = [
     "Problem",
     "Prohibition",
     "Provenanced",
+    "RdfFormat",
     "RegistryEntry",
     "RegistryKind",
     "RoleDefinition",
@@ -101,5 +106,6 @@ __all__ = [
     "TenantSummary",
     "Tracked",
     "VerifiedCaller",
+    "load_graph",
     "open_session",
 ]

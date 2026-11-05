@@ -51,7 +51,10 @@ from .rp_core import (
     RegistryKind,
     RpAnnotation
 )
-from .rp_files import StoredFile
+from .rp_files import (
+    RdfFormat,
+    StoredFile
+)
 from .rp_provenance import (
     Activity,
     Provenanced

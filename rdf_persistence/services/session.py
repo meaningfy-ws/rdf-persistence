@@ -6,7 +6,7 @@ no registry entry. Every commit writes a fresh version token and is confirmed by
 """
 
 import uuid
-from collections.abc import AsyncIterator, Callable, Iterable
+from collections.abc import AsyncIterator, Callable, Iterable, Sequence
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
@@ -37,13 +37,14 @@ READ_GRAPH = "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH $graph { ?s ?p ?o } }"
 ASK_ANY = "ASK { GRAPH $graph { ?s ?p ?o } }"
 ASK_TOKEN = "ASK { GRAPH $graph { $graph $p_version $token } }"
 ADD = "INSERT DATA { GRAPH $graph { $triples } GRAPH $registry { $entries } }"
-# The guard, the delete of the old graph and entry, and the insert of the new ones, in one update.
+# The guard, the delete of the old graph and of every entry the root owns, and the insert of the
+# new ones, in one update.
 REPLACE = """
-DELETE { GRAPH $graph { ?s ?p ?o } GRAPH $registry { $graph ?ep ?eo } }
+DELETE { GRAPH $graph { ?s ?p ?o } GRAPH $registry { ?e ?ep ?eo } }
 INSERT { GRAPH $graph { $triples } GRAPH $registry { $entries } }
 WHERE {
   GRAPH $graph { $graph $p_version $old . ?s ?p ?o }
-  OPTIONAL { GRAPH $registry { $graph ?ep ?eo } }
+  OPTIONAL { GRAPH $registry { ?e $p_owned_by $root ; ?ep ?eo } }
 }
 """
 REMOVE = """
@@ -79,22 +80,31 @@ def _tracking_triples(graph: URIRef, version: str, tracking: Tracked) -> list[Tr
     ]
 
 
+def _skolemised(graph: URIRef, triples: Iterable[Triple]) -> list[Triple]:
+    """The triples with each blank node replaced by a fresh skolem IRI under ``graph`` (PD-8a)."""
+    minted: dict[BNode, URIRef] = {}
+
+    def named(node):
+        if isinstance(node, BNode):
+            minted.setdefault(node, URIRef(f"{graph}/.well-known/genid/{uuid.uuid4()}"))
+            return minted[node]
+        return node
+
+    return [(named(s), p, named(o)) for s, p, o in triples]
+
+
 def payload_triples(
     graph: URIRef, version: str, tracking: Tracked, triples: Iterable[Triple]
 ) -> list[Triple]:
     """The caller's triples plus the version and tracking statements about ``graph`` (PD-7).
 
     Bookkeeping statements the caller sent about the graph IRI are dropped: only the session
-    writes them, so a graph read from the store can be written back as it is.
-
-    Raises:
-        ValueError: A triple has a blank node. The replace update inserts its template once per
-            matched row, which would copy every blank node.
+    writes them, so a graph read from the store can be written back as it is. Blank nodes become
+    skolem IRIs, since the replace update inserts its template once per matched row and would
+    copy each blank node (PD-8a).
     """
     kept = [t for t in triples if not (t[0] == graph and t[1] in v.BOOKKEEPING_PREDICATES)]
-    if any(isinstance(node, BNode) for triple in kept for node in triple):
-        raise ValueError("an aggregate graph holds no blank nodes; give each node an IRI")
-    return [*kept, *_tracking_triples(graph, version, tracking)]
+    return [*_skolemised(graph, kept), *_tracking_triples(graph, version, tracking)]
 
 
 def _entries_block(entries: Iterable[RegistryEntry]):
@@ -117,16 +127,19 @@ def add_text(
 def replace_text(
     graph: URIRef,
     registry: URIRef,
+    root: URIRef,
     old_version: str,
     triples: Iterable[Triple],
     entries: Iterable[RegistryEntry],
 ) -> str:
-    """The guarded update that replaces a graph and its registry entries (the worked example)."""
+    """The guarded update that replaces a graph and the registry entries its root owns."""
     return fill(
         REPLACE,
         graph=term(graph),
         registry=term(registry),
+        root=term(root),
         p_version=term(v.VERSION),
+        p_owned_by=term(v.REGISTRY_OWNED_BY),
         old=term(Literal(old_version)),
         triples=triples_block(triples),
         entries=_entries_block(entries),
@@ -167,10 +180,18 @@ class Session:
             raise ValueError(f"{iri!r} is not inside the tenant {self._tenant!r}")
         return graph_iri(iri)
 
-    def _entries(self, iri: str, graph: URIRef) -> list[RegistryEntry]:
+    def _entries(
+        self, iri: str, graph: URIRef, loaded_graphs: Sequence[URIRef]
+    ) -> list[RegistryEntry]:
         if iri == self._tenant:
             return []
-        return [RegistryEntry(graph=str(graph), kind=RegistryKind.AGGREGATE, owned_by=iri)]
+        return [
+            RegistryEntry(graph=str(graph), kind=RegistryKind.AGGREGATE, owned_by=iri),
+            *(
+                RegistryEntry(graph=str(g), kind=RegistryKind.LOADED_GRAPH, owned_by=iri)
+                for g in loaded_graphs
+            ),
+        ]
 
     async def _ask(self, template: str, **terms) -> bool:
         result = await self._store.query(self._database, fill(template, **terms))
@@ -213,8 +234,10 @@ class Session:
             raise NotFound(f"no graph {graph}")
         return stored, str(version)
 
-    async def add_graph(self, iri: str, triples: Iterable[Triple]) -> str:
-        """Store a new aggregate; returns its first version token.
+    async def add_graph(
+        self, iri: str, triples: Iterable[Triple], loaded_graphs: Sequence[URIRef] = ()
+    ) -> str:
+        """Store a new aggregate and register its ``loaded_graphs``; returns its first version.
 
         Raises:
             Conflict: The aggregate already has a graph.
@@ -226,12 +249,21 @@ class Session:
         tracking = Tracked(created=self._clock(), creator=self._principal.id)
         payload = payload_triples(graph, version, tracking, triples)
         await self._store.update(
-            self._database, add_text(graph, self._registry, payload, self._entries(iri, graph))
+            self._database,
+            add_text(graph, self._registry, payload, self._entries(iri, graph, loaded_graphs)),
         )
         return version
 
-    async def replace_graph(self, iri: str, triples: Iterable[Triple], if_version: str) -> str:
-        """Replace the aggregate if it still has ``if_version``; returns the new version token.
+    async def replace_graph(
+        self,
+        iri: str,
+        triples: Iterable[Triple],
+        if_version: str,
+        loaded_graphs: Sequence[URIRef] = (),
+    ) -> str:
+        """Replace the aggregate and its registered ``loaded_graphs`` if it still has ``if_version``.
+
+        Returns the new version token.
 
         Raises:
             NotFound: The aggregate has no graph.
@@ -247,7 +279,8 @@ class Session:
         )
         version = str(uuid.uuid4())
         payload = payload_triples(graph, version, tracking, triples)
-        text = replace_text(graph, self._registry, if_version, payload, self._entries(iri, graph))
+        entries = self._entries(iri, graph, loaded_graphs)
+        text = replace_text(graph, self._registry, URIRef(iri), if_version, payload, entries)
         await self._store.update(self._database, text)
         if not await self._ask(
             ASK_TOKEN, graph=term(graph), p_version=term(v.VERSION), token=term(Literal(version))

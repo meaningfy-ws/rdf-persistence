@@ -4,5 +4,6 @@ export * from "./library_access";
 export * from "./library_tenant";
 export * from "./rp_access";
 export * from "./rp_core";
+export * from "./rp_files";
 export * from "./rp_tenancy";
 export * from "./scans";

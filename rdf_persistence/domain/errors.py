@@ -25,3 +25,7 @@ class Conflict(PersistenceError):
 
 class BadQuery(PersistenceError):
     """The store refused the SPARQL text as malformed."""
+
+
+class InvalidGraph(PersistenceError):
+    """A file of RDF does not parse; the message is the parser's."""
