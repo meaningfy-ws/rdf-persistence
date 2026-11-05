@@ -87,7 +87,7 @@ functions, the file store, the identity port and the service kit.
 
 |Aggregate session and repositories
 |v1
-|Unit of work over one aggregate per commit; the aggregate's graph IRI is its root's IRI. The commit is one SPARQL update that replaces the graph's triples with the new ones and a fresh *version token*, guarded by the old token, and adds or removes the aggregate's registry entries; an `ASK` for the token then tells committed from conflict (Fuseki does not fail an update whose `WHERE` matched nothing). Repositories: get, add, update, remove; list by class with equality filters and paging.
+|Unit of work over one aggregate per commit. The aggregate's graph IRI is derived from its root's IRI by one function, `graph_iri(root)` (for example `<root>/graph`; background DEC-29), so statements about the graph and about the entity never share a subject. The commit is one SPARQL update that replaces the graph's triples with the new ones and a fresh *version token* stated about the graph IRI, guarded by the old token, and adds or removes the aggregate's registry entries; an `ASK` for the token then tells committed from conflict (Fuseki does not fail an update whose `WHERE` matched nothing). Repositories: get, add, update, remove; list by class with equality filters and paging.
 |N-1, N-2
 
 |Tenancy
