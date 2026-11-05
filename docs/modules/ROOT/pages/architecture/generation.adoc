@@ -47,7 +47,7 @@ package; an application's generated code imports them rather than regenerating t
 |===
 |Element |Meaning
 |`AggregateRoot` (mixin) |Instances are aggregate roots: each is one named graph, whose IRI `graph_iri(root)` is derived from the root's IRI (for example `<root>/graph`; background DEC-29), versioned, loaded and saved as a whole.
-|`owned` (slot annotation) |The slot's values are part of this aggregate and live in its graph (as blank nodes; a commit replaces the whole graph). Any other slot whose range is a class refers to another aggregate root, by IRI.
+|`owned` (slot annotation) |The slot's values are part of this aggregate and live in its graph (a commit replaces the whole graph). A part whose class includes `Described` has an IRI, `{root_iri}/parts/{uuid4}`, minted by the toolkit when it has none and kept across commits; a part without an identifier slot (a grant, a prohibition) is a blank node, skolemised on write (PD-6, PD-8a). Any other slot whose range is a class refers to another aggregate root, by IRI.
 |`database` (class annotation) |`tenant` (default) or `system`: which database the aggregate lives in.
 |`graph: meta` (class annotation) |The tenant's root object lives in the tenant database's designated `meta` graph instead of a graph of its own.
 |`internal` (slot annotation) |The slot never appears in the API contract (e.g. file keys).
@@ -79,7 +79,7 @@ Slots of the metamodel (IRIs in the `rp:` namespace unless shown):
 |`label` |`skos:prefLabel` |string, from `Described`; required on `TenantAccess` (1–200 characters) and on described roots
 |`state` |`rp:state` |`TenantState`, required
 |`database_name` |`rp:databaseName` |string, required
-|`grants` |`rp:grant` |`Grant`, multivalued, owned (blank nodes; one per assignee, target and role-or-action by `unique_keys`)
+|`grants` |`rp:grant` |`Grant`, multivalued, owned (blank nodes, skolemised to `{graph_iri}/.well-known/genid/{uuid4}` on write; one per assignee, target and role-or-action by `unique_keys`)
 |`assignee` |`odrl:assignee` |`Principal` (IRI), required (a grant is an `odrl:Permission`, D-5)
 |`target` |`odrl:target` |uri: the tenant IRI, or an aggregate's graph IRI; required
 |`role` |`rp:role` |string, matched against the consumer's role definitions; an application may narrow it to an enum by `slot_usage`; exactly one of `role` and `action`
@@ -386,7 +386,8 @@ async with open_session(store, schema=SCHEMA, tenant=library_iri, caller=caller)
 ----
 
 * *Mapping* _(spike: about 70 lines, round trip equal)_: class and slot IRIs come from the schema
-  (`class_uri`, `slot_uri`, or the default prefix); owned parts become blank nodes in the root's graph;
+  (`class_uri`, `slot_uri`, or the default prefix); owned parts live in the root's graph, by IRI when their class includes `Described` and as
+  skolemised blank nodes otherwise (PD-6, PD-8a);
   references to other aggregates are IRIs; multi-valued slots are sets, so order is not kept (model an
   order slot when order matters).
 * *Commit* _(spike, Fuseki 5.1.0)_: one update deletes the graph's triples and inserts the new ones

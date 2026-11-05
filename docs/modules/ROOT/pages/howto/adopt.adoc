@@ -209,7 +209,8 @@ Book(id="https://example.org/library/books/3", label="L", description="D", isbn=
 Every generated class derives from the toolkit's strict base, `RpModel`. It refuses unknown
 fields, validates on assignment, and enforces the rules declared in the schema: `required`,
 ranges, patterns, `exactly_one_of`, `any_of` and `unique_keys`. Each object, owned parts included,
-has an `id`. The metamodel's classes (`AggregateRoot`, `Described`, `Grant`, …) are imported from
+has an `id`. Once the session is available (stage 2), the toolkit mints a part's IRI,
+`{root_iri}/parts/{uuid4}`, when you leave it out, and keeps it across commits. The metamodel's classes (`AggregateRoot`, `Described`, `Grant`, …) are imported from
 `rdf_persistence`, never generated into your package.
 
 Use the generated classes in your domain services. Do not declare models of your own: no
