@@ -1,7 +1,11 @@
 = rdf-persistence architecture v1
 :description: The modest first commitments of the rdf-persistence toolkit.
 
-Status: *draft*, Proposed (2026-11-05).
+Status: *draft*, Proposed (2026-11-05). *Under revision*: the developer's comments of 2026-11-05 are
+worked out in xref:architecture/api.adoc[a lightweight API],
+xref:architecture/access-control.adoc[access control and identity] and the
+xref:architecture/generation.adoc#revision[model-to-code revision]; what is left to decide is in
+xref:architecture/open-decisions.adoc[Open decisions].
 
 This version commits only to what the toolkit's first consumer needs in its first iteration. The
 xref:background/soa/index.adoc[background study] is not a commitment: a block is built only when a
@@ -156,11 +160,16 @@ functions, the file store, the identity port and the service kit.
 |
 
 |Fine-grained access (graph or triple level), OpenFGA
-|deferred
+|under revision: per aggregate in this iteration (xref:architecture/access-control.adoc[access control], D-4)
 |Isolation is physical (N-3); in-tenant rules are role checks (N-8).
 |
 
-|GraphQL, JSON-LD framing and `application/ld+json` bodies, annotation sets, forms from shapes, schema migrations, server-sent events
+|JSON-LD and Turtle by content negotiation, GraphQL (read-only)
+|under revision: considered now (xref:architecture/api.adoc[API], D-1)
+|Plain JSON stays the default; the same routes serve JSON-LD and Turtle.
+|N-9
+
+|Annotation sets, forms from shapes, schema migrations, server-sent events
 |deferred
 |No v1 need.
 |

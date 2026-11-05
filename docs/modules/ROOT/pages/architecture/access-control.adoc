@@ -1,0 +1,206 @@
+= Access control and identity
+:description: How the toolkit decides who may do what, at which granularity, with which policy model, and how users and API clients sign in.
+
+Status: *Proposed* (2026-11-05), waiting for the decisions in
+xref:architecture/open-decisions.adoc[Open decisions] (D-4 to D-6, D-10). Research behind this page:
+the xref:background/soa/angles/authz.adoc[identity and authorization angle] of the background study,
+updated on 2026-11-05. Fine-grained access is wanted in this iteration (developer, 2026-11-05), which
+reopens the earlier deferral.
+
+== The access model is its own module
+
+The access model is a LinkML module the toolkit ships, `rp_access.yaml`. An application writes its
+own roles and rules in a separate file, `models/<app>_access.yaml`, which imports `rp_access` and the
+domain modules. A domain module never imports an access module; the boundary check of
+xref:architecture/generation.adoc[`rp-generate`] refuses it.
+
+[mermaid]
+....
+flowchart BT
+    D["models/<app>/*.yaml<br/>domain modules"]
+    AA["models/<app>_access.yaml<br/>the app's roles and rules"]
+    RA["rp_access.yaml<br/>Principal, Role, Policy, Permission, Prohibition, Action, Scope"]
+    RC["rp_core.yaml, rp_annotations.yaml, ..."]
+    D --> RC
+    AA --> RA
+    AA --> D
+    RA --> RC
+    D -.->|refused by the boundary check| AA
+....
+
+== Lessons from Fluree and semantic.works
+
+[cols="1,3,3",options="header"]
+|===
+| |How it works |What we take
+|*Fluree v4* |Policies are RDF (`f:AccessPolicy`): an action (`f:view`, `f:modify`), a static `f:allow` or a condition query with `?$this` and `?$identity` bound, targets `f:onClass`, `f:onProperty`, `f:onSubject` that intersect, and `f:required` for policies that must allow. A JWT claim names the identity, which points to its policy classes. Enforcement is triple-level, inside the database. BUSL-1.1 licence. |Identity → policy class → policies; intersecting targets; a choice of seeing the state before or after a write.
+|*semantic.works mu-authorization* |Group specs: a group is granted when a SPARQL query over the session succeeds (`AccessByQuery`); each group reads or writes a set of graphs, whose IRIs are built from the query's variables (one graph per tenant), constrained by types and predicates. Enforced by a SPARQL-rewriting proxy. |Roles derived from data by a query over the grants; graph IRIs built from parameters, which fits `graph_iri(root)` (DEC-29).
+|===
+
+Neither is a library we can embed: Fluree is a database, mu-authorization a Lisp proxy (5★).
+
+== ODRL as the policy vocabulary
+
+ODRL 2.2 (W3C Recommendation, 2018) is the standard RDF vocabulary for policies. The toolkit uses a
+minimal subset, so its access data is readable by any ODRL tool and can later be compiled to another
+engine:
+
+[mermaid]
+....
+classDiagram
+    direction LR
+    class Policy {
+      <<odrl:Set>>
+      uid
+      conflict = prohibit
+    }
+    class Rule {
+      <<abstract>>
+      action
+    }
+    class Permission {
+      <<odrl:Permission>>
+    }
+    class Prohibition {
+      <<odrl:Prohibition>>
+    }
+    class Principal {
+      <<odrl:Party, prov:Agent>>
+      subject
+      kind
+    }
+    class Role {
+      <<odrl:PartyCollection>>
+    }
+    class Scope {
+      <<odrl:AssetCollection>>
+      level
+      target
+    }
+    class Action {
+      <<enumeration>>
+      odrl:read
+      odrl:modify
+      odrl:delete
+    }
+    class Constraint {
+      <<odrl:Constraint, later>>
+    }
+    Policy *-- Permission
+    Policy *-- Prohibition
+    Rule <|-- Permission
+    Rule <|-- Prohibition
+    Rule --> Principal : assignee
+    Rule --> Role : assignee
+    Rule --> Scope : target
+    Rule --> Action
+    Rule *-- Constraint
+....
+
+* *Scope levels*: `system`, `tenant`, `aggregate` (an aggregate's graph, `graph_iri(root)`).
+* *Grant* (from v1) becomes a Permission: assignee = a principal, target = a tenant or an
+  aggregate, through a role.
+* *RoleDefinition*: which actions a role permits at which scope level. This is the application's
+  permission matrix as data (need N-8).
+* *Denial wins* (`conflict` fixed to `prohibit`); default deny.
+* *Left out for now*: Duty, Offer and Agreement, logical constraints, assigner.
+
+No LinkML ODRL schema exists to reuse, and no ODRL evaluator is mature enough to depend on
+(FORCE/SolidLab odrl-evaluator, ODRE, ODRL-PAP to Rego: all small or research-grade). The toolkit
+writes the subset and evaluates it itself.
+
+== How OpenFGA and ODRL fit together
+
+They do different jobs: *ODRL is the record* (what is allowed, stored as RDF with the data), *OpenFGA
+is an engine* (it answers "may this user do this to that object?" fast, including through
+relationships). Prior work compiles one to the other (Plaza-Ortiz et al., 2025, ODRL to OpenFGA; no
+code published).
+
+[mermaid]
+....
+flowchart LR
+    O["ODRL policies and grants<br/>(RDF, in the system database)"]
+    T["role → action table<br/>(from the access module)"]
+    O -->|"compile, one way:<br/>permission → tuple"| FGA["OpenFGA<br/>(optional engine)"]
+    T -->|"→ authorization model"| FGA
+    O -->|"read directly"| CHK["Toolkit's own check"]
+    REQ["request: caller, action, target"] --> CHK
+    REQ -.->|"if OpenFGA is used"| FGA
+....
+
+* A Permission (assignee, action, target) becomes a tuple; the role table becomes the OpenFGA model.
+* Constraints map only partly (to CEL conditions); prohibitions have no direct counterpart (only
+  `but not`).
+* OpenFGA earns its cost when access flows through relationships: nested folders, groups of groups,
+  sharing one object with an outsider, or listing everything a user can reach among very many
+  objects. Roles per tenant and per aggregate do not need it.
+
+== Options for fine-grained access in this iteration
+
+[cols="1,2,2,2,2,1,1",options="header"]
+|===
+|Option |Granularity |Decision engine |Where policies live |Generated from LinkML |Maturity |Effort
+|*A. Own check over ODRL-shaped grants* |tenant, aggregate (graph), action |the toolkit |RDF, system database |role table and grant classes |own code, low risk |S
+|*B. A with OpenFGA* |plus inheritance through relationships |OpenFGA 1.22 |RDF, copied into OpenFGA |model and tuples |engine mature; the compiler is ours |M–L
+|*C. A plus property-level rules* |plus property / triple |the toolkit |RDF (SHACL-style targets + ODRL) |partly |needs design (DEC-33) |M
+|*D. Fluree with native policies* |triple |Fluree |the database |partly |young v4; BUSL-1.1 |L, and a store switch
+|===
+
+*Recommendation: A*, with the policy data shaped as ODRL from the start, so that B or C can be
+compiled from the same RDF later without migrating it. Per aggregate is finer than v1 (which checked
+per tenant) and needs no new engine: the check looks up the caller's permissions for the tenant and
+for `graph_iri(root)`.
+
+[mermaid]
+....
+flowchart TB
+    Q["caller, action, target aggregate"] --> G{"global role allows?<br/>(token claim)"}
+    G -- yes --> OK["allow"]
+    G -- no --> P{"Prohibition matches?"}
+    P -- yes --> NO["deny 403"]
+    P -- no --> T{"tenant active and<br/>caller has a grant?"}
+    T -- no --> NF["deny 404 (do not reveal)"]
+    T -- yes --> R{"role permits the action at<br/>tenant or aggregate scope?"}
+    R -- yes --> OK
+    R -- no --> NO
+....
+
+[#identity]
+== Identity: signing in from the browser and from the API
+
+Both are needed: people use the web app, programs and scripts call the API. Zitadel (v4) supports
+every flow below (authorization code with PKCE, client credentials, JWT profile, device
+authorization, refresh, token exchange); it has no password grant.
+
+[mermaid]
+....
+flowchart LR
+    U["Person in a browser"] -->|"code + PKCE"| BFF["Web app's server<br/>(confidential client)"]
+    BFF -->|"Bearer token"| API["API (toolkit service kit)"]
+    CLI["Person at a command line"] -->|"device flow"| API
+    SVC["Program / service account"] -->|"private-key JWT or client credentials"| API
+    SCR["Script"] -->|"personal access token<br/>(service accounts only)"| API
+    Z["Zitadel"] -.->|"issues tokens"| BFF
+    Z -.-> CLI
+    Z -.-> SVC
+    API -.->|"checks against published keys"| Z
+....
+
+* *The browser* talks to the web app's server, which signs in with code and PKCE as a confidential
+  client and keeps the tokens in an HTTP-only session cookie (the backend-for-frontend pattern that
+  the IETF's guidance for browser apps ranks first). It calls the API with the user's access token.
+* *The API* accepts any valid access token from the provider, whatever flow obtained it: it checks
+  signature, issuer, audience and expiry against the published keys. So signing in "through the API"
+  means obtaining a token with one of the flows above, not a login endpoint of our own.
+* *Token exchange* (acting on behalf of another user) is not used: Zitadel's support is a first
+  iteration.
+
+== What the toolkit implements next
+
+These do not depend on the open decisions, and can start as soon as the developer agrees (D-11):
+
+* *Store adapter*: Fuseki, with database administration and guarded commits (spiked already).
+* *File store adapter*: S3 protocol, tested against Garage (and MinIO's API, which is the same).
+* *Identity*: token validation against the provider's published keys; the identity port (find,
+  disable, grant global roles) on Zitadel's API; test helpers that sign tokens.
+* *Access check*: option A over the `rp_access` module.

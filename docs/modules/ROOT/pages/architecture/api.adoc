@@ -1,0 +1,142 @@
+= A lightweight API over a triple store
+:description: How the toolkit serves CRUD and access control over a generic triple store with as little generated code as possible: options, the recommendation and what it means for the mapper.
+
+Status: *Proposed* (2026-11-05), waiting for the decisions in
+xref:architecture/open-decisions.adoc[Open decisions] (D-1 to D-3). Research behind this page: the
+xref:background/soa/angles/service.adoc[service angle] of the background study, updated on 2026-11-05.
+
+== The question
+
+An application on this toolkit controls three things: its *model* (LinkML), how the model is
+*served* (an HTTP API), and *who may do what* (access control). Everything else should be generic.
+So: how light can the API be, which contract should it speak (plain JSON, JSON-LD, GraphQL), and
+does the API need generated Python classes and a mapper at all?
+
+== What is generic and what is not
+
+[mermaid]
+....
+flowchart LR
+    subgraph app["The application"]
+        M["LinkML model<br/>(domain modules)"]
+        A["Access module<br/>(roles, rules)"]
+        S["Domain services<br/>(only where rules are more than CRUD)"]
+    end
+    subgraph rp["rdf-persistence"]
+        R["Generic router<br/>/{type}/{id}"]
+        V["Validation<br/>SHACL from the model"]
+        C["Access check"]
+        P["Aggregate session<br/>one named graph per aggregate"]
+    end
+    ST[("Triple store")]
+    M -->|SchemaView at run time| R
+    M -->|generated shapes| V
+    A -->|rules as data| C
+    R --> C --> V --> P --> ST
+    S -->|calls| P
+....
+
+The router reads the model at run time, so adding a class to the model adds its endpoints. Code is
+written only where an application has rules that are more than CRUD, and that code calls the same
+session.
+
+== Options
+
+[cols="1,4",options="header"]
+|===
+|Option |How it works
+|*A. JSON-LD documents* |One generic router over aggregates. `GET` returns the aggregate's graph as compacted JSON-LD (or Turtle); `PUT` replaces it under `If-Match`; a listing per type with equality filters and paging. Bodies are validated with SHACL. No Python classes on the API path.
+|*B. Plain JSON resources* |The same routes, typed by generated Pydantic classes; the JSON-LD context is linked by a `Link` header, so the plain JSON is also JSON-LD (current O-2). OpenAPI describes it.
+|*C. GraphQL with the JSON-LD context* |A GraphQL schema built at run time from LinkML (Ariadne, schema-first); queries compiled to SPARQL `CONSTRUCT`; mutations replace an aggregate and carry a `version` argument. Field names follow the JSON-LD context, as GraphQL-LD does.
+|*D. JSON:API from configuration* |A resource configuration derived from LinkML, in the semantic.works mu-cl-resources style; filtering, `include` and paging.
+|===
+
+[cols="1,2,2,2,1,2,2",options="header"]
+|===
+|Option |Generated artefacts |Maturity of the parts |Access check seam |JSON-LD native |Client ergonomics |Main risk
+|A |context, shapes |high (RDFLib, PyLD, FastAPI) |one dependency per route |yes |medium: JSON-LD aware clients |the listing and filter grammar is ours; nested parts need framing
+|B |classes, context, TypeScript types, shapes |high |one dependency per route |by `Link` |best: OpenAPI → typed client |two shapes to keep aligned (class and graph)
+|C |context; schema built at run time |parts mature, the RDF binding is ours |per resolver, per field |context reused; wire format is not JSON-LD |good |no HTTP ETags or status codes; the SPARQL compiler and its N+1 queries are ours
+|D |resource configuration |low (18★, Common Lisp, no releases) |a proxy |no |good for JSON:API clients |opaque ids instead of IRIs; dialect lock-in
+|===
+
+=== What already exists, and why none of it is the whole answer
+
+* *SPARQL Graph Store Protocol* is aggregate CRUD on its own (`GET`/`PUT`/`DELETE` a named graph),
+  but Fuseki sends no `ETag` and does not check `If-Match`
+  (https://github.com/apache/jena/issues/2305[Jena issue #2305], open), it has no listing, paging or
+  problem responses, and it authenticates only with its own users. A thin layer must hold the version
+  token, which the aggregate session already does.
+* *LinkedDataHub* (Java, Apache-2.0, active) shows the whole pattern done right: the Graph Store
+  Protocol with `If-Match` and SPARQL-based access control. It is an application, not a library.
+* *Prez* (Python, FastAPI, profile-driven) is read-only.
+* *Community Solid Server* has `ETag`/`If-Match` and document-level access rules, but no listing by
+  class, and Solid-OIDC instead of a plain OIDC provider.
+* *HyperGraphQL* is dormant; *GraphQL-LD* (Comunica) is query-only and runs in the client against an
+  open SPARQL endpoint.
+* *linkml-store* has no write routes, no authentication and no RDF backend. *linkml-openapi* emits a
+  complete OpenAPI 3.1 document from LinkML, with CRUD paths, paging, problem responses and
+  `application/ld+json`, but it is a few months old with one author and no runtime.
+
+No maintained Python library serves read-write CRUD with access control over a triple store from
+configuration. The parts to build it are mature.
+
+== Recommendation
+
+*A and B together: one generic router, driven by the schema, serving plain JSON by default and JSON-LD
+or Turtle by content negotiation.* No generated routes.
+
+[mermaid]
+....
+sequenceDiagram
+    participant Cl as Client
+    participant R as Generic router
+    participant C as Access check
+    participant Se as Session
+    participant St as Store
+    Cl->>R: PUT /books/{id}, If-Match: v7, body (JSON or JSON-LD)
+    R->>C: may this caller "modify" this aggregate?
+    C-->>R: yes
+    R->>R: JSON → triples with the context; validate with the shapes
+    R->>Se: replace the graph, guarded by v7
+    Se->>St: one guarded update + ASK
+    St-->>Se: committed
+    Se-->>R: new version v8
+    R-->>Cl: 200, ETag: v8, body in the requested format
+....
+
+* *The wire stays simple.* Plain JSON with `id` as the IRI is also JSON-LD with the generated context,
+  so a JSON-LD client reads it as RDF. `Accept: text/turtle` returns the graph itself.
+* *The fewest generated artefacts.* Context and shapes are generated already. OpenAPI comes from a
+  small hook over the schema (or from linkml-openapi, after a spike).
+* *Access control stays in one place*: one dependency per route action
+  (xref:architecture/access-control.adoc[access control]).
+* *GraphQL later, read-only*: when a client needs deep nested reads, a second endpoint over the same
+  schema and context (option C) without its mutations.
+
+[#mapper]
+== Do we need a mapper and Python classes?
+
+*Not on the API path.* With the recommendation, the router turns JSON into triples with the JSON-LD
+context and validates them with the shapes; reading returns the graph. Nothing there needs a class.
+
+*Yes for domain services.* Where an application writes rules that are more than CRUD (a check across
+two objects, a computed value), typed classes make that code safe and testable without a store. The
+generated Pydantic classes and the mapper (O-1) stay for that, and they are optional: an application
+with only CRUD needs none.
+
+[cols="2,1,1",options="header"]
+|===
+|Path |Classes needed |Mapper needed
+|Generic CRUD over the API |no |no (context + shapes)
+|Domain service in the backend |yes (Pydantic) |yes
+|Client code |TypeScript types (generated) |no
+|===
+
+== Consequences if the recommendation is taken
+
+* Decision O-1 narrows: the mapper serves domain services, not the API.
+* Decision O-2 widens: JSON-LD and Turtle by content negotiation, not only the `Link` header.
+* The listing and filter grammar is ours to define: equality filters, paging, sort, as in v1.
+* "JSON-LD representation" and "GraphQL" leave the deferred list: the first is in, the second is a
+  planned read-only endpoint.
