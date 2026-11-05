@@ -25,6 +25,10 @@ INDEXED_NAMES = [
     "Conflict",
     "BadQuery",
     "open_session",
+    "Tenancy",
+    "sweep",
+    "FileStore",
+    "TenantGone",
 ]
 
 

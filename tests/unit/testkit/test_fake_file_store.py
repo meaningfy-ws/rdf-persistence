@@ -1,0 +1,76 @@
+"""FakeFileStore: the behaviour of the file store port that the services rely on, and its failure injection."""
+
+import pytest
+
+from rdf_persistence.domain.errors import Conflict, NotFound, StoreUnavailable, TenantGone
+from rdf_persistence.testkit import FakeFileStore, no_network  # noqa: F401  (fixture)
+
+
+@pytest.fixture
+async def files(no_network) -> FakeFileStore:  # noqa: F811
+    fake = FakeFileStore()
+    await fake.create_bucket("b")
+    return fake
+
+
+async def test_a_blob_comes_back_byte_for_byte(files):
+    await files.put("b", "k", b"\x00\xffbytes")
+    assert await files.get("b", "k") == b"\x00\xffbytes"
+
+
+async def test_a_deleted_blob_is_gone_and_deleting_it_again_is_harmless(files):
+    await files.put("b", "k", b"x")
+    await files.delete("b", "k")
+    await files.delete("b", "k")
+    with pytest.raises(NotFound):
+        await files.get("b", "k")
+
+
+async def test_a_bucket_is_created_once(files):
+    with pytest.raises(Conflict):
+        await files.create_bucket("b")
+
+
+async def test_buckets_are_listed_by_prefix_in_name_order(files):
+    for name in ("lib-t-2", "lib-t-1", "other-1"):
+        await files.create_bucket(name)
+    assert await files.list_buckets("lib-t-") == ["lib-t-1", "lib-t-2"]
+
+
+async def test_deleting_a_bucket_removes_its_blobs_and_the_bucket(files):
+    await files.put("b", "k", b"x")
+    await files.delete_bucket("b")
+    assert await files.list_buckets("") == [], "the bucket is gone"
+    with pytest.raises(TenantGone):
+        await files.get("b", "k")
+
+
+async def test_deleting_a_missing_bucket_is_not_found(files):
+    with pytest.raises(NotFound):
+        await files.delete_bucket("missing")
+
+
+@pytest.mark.parametrize("operation", ["put", "get", "delete"])
+async def test_an_object_operation_on_a_missing_bucket_is_tenant_gone_and_creates_nothing(
+    files, operation
+):
+    arguments = {"put": ("missing", "k", b"x"), "get": ("missing", "k"), "delete": ("missing", "k")}
+    with pytest.raises(TenantGone):
+        await getattr(files, operation)(*arguments[operation])
+    assert await files.list_buckets("missing") == [], "no bucket was created"
+
+
+async def test_an_injected_error_is_raised_once_and_sent_records_the_failed_call(files):
+    files.on("create_bucket", StoreUnavailable("down"))
+    with pytest.raises(StoreUnavailable):
+        await files.create_bucket("c")
+    await files.create_bucket("c")
+    assert files.sent("create_bucket") == ["b", "c", "c"]
+
+
+async def test_an_injected_error_can_wait_for_later_calls(files):
+    files.on("create_bucket", StoreUnavailable("down"), after=1)
+    await files.create_bucket("c")
+    with pytest.raises(StoreUnavailable):
+        await files.create_bucket("d")
+    assert await files.list_buckets("") == ["b", "c"]

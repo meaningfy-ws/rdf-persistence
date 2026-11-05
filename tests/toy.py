@@ -6,6 +6,7 @@ from pathlib import Path
 from rdf_persistence.domain.generated import rp_access, rp_core
 from rdf_persistence.domain.generated.rp_access import Grant, Prohibition
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
+from rdf_persistence.domain.generated.service.rp_service import ServiceSettings
 from rdf_persistence.services.mapper import Mapper, generated_models, new_part
 from rdf_persistence.services.schema import load_schema
 from tests.fixtures.library.generated import (
@@ -16,6 +17,7 @@ from tests.fixtures.library.generated import (
     scans,
 )
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note
+from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 
 TOY_SCHEMA = Path(__file__).parent / "fixtures" / "library" / "library.yaml"
@@ -68,3 +70,16 @@ def access(
         grants=grants,
         prohibitions=prohibitions,
     )
+
+
+SETTINGS = ServiceSettings(
+    base="https://example.org/library/",
+    prefix="lib",
+    tenant_segment="libraries",
+    creator_role="librarian",
+)
+
+
+def library(city: str = "Ghent", iri: str = TENANT) -> Library:
+    """A tenant root; ``Tenancy.create`` gives it the tenant IRI it mints."""
+    return Library(id=iri, label="City library", description="Books for all.", city=city)

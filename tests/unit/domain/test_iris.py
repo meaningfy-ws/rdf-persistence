@@ -16,6 +16,7 @@ from rdf_persistence.domain.iris import (
     mint_tenant_iri,
     registry_graph_iri,
     system_database_name,
+    tenant_iri_of_access,
     tenant_name_prefix,
     tenant_resource_name,
 )
@@ -97,3 +98,12 @@ def test_mint_part_iri_sits_under_the_root_and_is_fresh():
     iri = mint_part_iri(root)
     assert re.fullmatch(f"{re.escape(root)}/parts/{UUID_RE}", iri), iri
     assert mint_part_iri(root) != iri, "each mint is fresh"
+
+
+def test_the_tenant_of_an_access_record_is_the_iri_it_hangs_under():
+    assert tenant_iri_of_access(access_iri(TENANT)) == TENANT
+
+
+def test_an_iri_that_is_not_an_access_record_has_no_tenant():
+    with pytest.raises(ValueError, match="access record"):
+        tenant_iri_of_access(f"{TENANT}/books/1")

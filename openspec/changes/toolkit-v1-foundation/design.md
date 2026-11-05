@@ -142,6 +142,14 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-13,
   `rp_path`, and the generic aggregate routes skip it: it is read and replaced through
   `GET`/`PUT /{tenant_segment}/{t}`, with action `modify` at tenant scope for the replace.
 
+- **PD-8b Tenancy details** (tasks 2.6, 2.7). `Tenancy(store, files, settings, *, mapper,
+  access_class, clock)`: it needs the mapper and the consumer's access class (the toy's
+  `LibraryAccess`), which `install_service` derives from the schema. `create(label, root, creator)`
+  mints the tenant IRI and replaces the root's `id` with it, so the caller's `id` is a placeholder;
+  the access record's required `description` is derived from the label. Deletion and the sweep run as
+  the principal `{base}toolkit`. The sweep is safe only before the service serves (the lifespan step
+  of PD-13): a tenant another worker is creating at that moment would look orphaned.
+
 ### Access
 
 - **PD-9 Where access data lives.**

@@ -10,6 +10,7 @@ from rdf_persistence.domain.errors import (
     NotFound,
     PersistenceError,
     StoreUnavailable,
+    TenantGone,
 )
 from rdf_persistence.domain.generated.rp_access import (
     Action,
@@ -57,8 +58,11 @@ from rdf_persistence.domain.generated.service.rp_service import (
     TenantSummary,
     VerifiedCaller,
 )
+from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.store import Store
+from rdf_persistence.services.sweep import sweep
+from rdf_persistence.services.tenancy import Tenancy
 
 __version__ = "0.1.0"
 
@@ -71,6 +75,7 @@ __all__ = [
     "DatabaseGone",
     "DatabaseKind",
     "Described",
+    "FileStore",
     "FusekiStore",
     "Grant",
     "GrantSet",
@@ -99,11 +104,14 @@ __all__ = [
     "StoreUnavailable",
     "StoredFile",
     "TenantAccess",
+    "Tenancy",
     "TenantCreate",
+    "TenantGone",
     "TenantLabelled",
     "TenantState",
     "TenantSummary",
     "Tracked",
     "VerifiedCaller",
     "open_session",
+    "sweep",
 ]

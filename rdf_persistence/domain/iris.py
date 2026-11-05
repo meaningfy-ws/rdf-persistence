@@ -9,6 +9,7 @@ _SEGMENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._~-]*")
 _PREFIX = re.compile(r"[a-z0-9][a-z0-9-]{0,19}")
 SYSTEM_SUFFIX = "-system"
 TENANT_INFIX = "-t-"
+ACCESS_SEGMENT = "access"
 
 
 def _segment(value: str) -> str:
@@ -62,7 +63,15 @@ def registry_graph_iri(tenant_iri: str) -> URIRef:
 
 def access_iri(tenant_iri: str) -> URIRef:
     """The IRI of the tenant's access record; its graph is ``graph_iri`` of it."""
-    return URIRef(f"{tenant_iri}/access")
+    return URIRef(f"{tenant_iri}/{ACCESS_SEGMENT}")
+
+
+def tenant_iri_of_access(access_record_iri: str) -> URIRef:
+    """The tenant an access record belongs to; the inverse of ``access_iri``."""
+    tenant, _, last = access_record_iri.rpartition("/")
+    if last != ACCESS_SEGMENT or not tenant:
+        raise ValueError(f"not an access record IRI: {access_record_iri!r}")
+    return URIRef(tenant)
 
 
 def system_database_name(prefix: str) -> str:

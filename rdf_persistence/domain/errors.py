@@ -8,11 +8,15 @@ class PersistenceError(Exception):
 
 
 class StoreUnavailable(PersistenceError):
-    """The triple store cannot be reached or answered with a server error."""
+    """The triple store or the file store cannot be reached, or answered with a server error."""
 
 
 class DatabaseGone(PersistenceError):
     """The dataset a request names does not exist (it was dropped, or never created)."""
+
+
+class TenantGone(PersistenceError):
+    """The bucket a file operation names does not exist: the tenant was deleted, or never created."""
 
 
 class NotFound(PersistenceError):

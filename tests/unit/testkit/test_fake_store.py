@@ -40,3 +40,12 @@ async def test_sent_records_each_call_payload_including_failed_ones():
     await store.update("d", "CLEAR DEFAULT")
     assert store.sent("update") == ["CLEAR ALL", "CLEAR DEFAULT"]
     assert store.sent("query") == []
+
+
+async def test_an_injected_error_can_wait_for_later_calls():
+    store = FakeStore()
+    store.on("create_dataset", StoreUnavailable("down"), after=1)
+    await store.create_dataset("first")
+    with pytest.raises(StoreUnavailable):
+        await store.create_dataset("second")
+    assert await store.list_datasets() == ["first"]

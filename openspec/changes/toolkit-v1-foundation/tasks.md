@@ -88,14 +88,14 @@ Order: 1.11 at any time; 1.12 and 1.16 after 1.10; 1.13 after 1.8 and 1.12; 1.14
   Exports: `open_session`, the store port, `FusekiStore`, `Conflict`, `NotFound`, `DatabaseGone`.
 - [x] 2.4 Graph loading, with the parser in a worker thread and the loaded graph registered by the caller's commit. `Session.load_graph` (a method, so nothing extra is exported); exports: `InvalidGraph`, `RdfFormat`.
 - [x] 2.5 The mapper over `SchemaView`, for domain services, with the object-level methods of PD-7a: graph to generated classes and back, with a round trip on the toy library. Known trap: linkml's `rdflib_dumper` fails on a slot whose range is a class but whose value is an IRI string (`Grant.assignee`, range `Principal`); the mapper must handle IRI references, with a test.
-- [ ] 2.6 Tenancy:
+- [x] 2.6 Tenancy:
   - the system database, created at start-up if missing, and access records, named as in PD-6a;
   - create, which writes the record last and grants the creator `creator_role`, and delete, which marks `deleting` first;
   - the file store port and the testkit's fake file store, defined here; buckets through the port (the S3 adapter comes in 3.1).
 
   Exports: `Tenancy`.
-- [ ] 2.7 The start-up sweep, over databases and buckets named `{prefix}-t-…` only (PD-6a).
-- [ ] 2.8 Testkit:
+- [x] 2.7 The start-up sweep, over databases and buckets named `{prefix}-t-…` only (PD-6a).
+- [x] 2.8 Testkit:
   - the fake store and fake session;
   - the store conformance suite, run against both the fake and Fuseki;
   - `testkit.no_network`, a fixture that makes any socket connection fail, used by the fake-based tests.
@@ -104,7 +104,7 @@ Order: 1.11 at any time; 1.12 and 1.16 after 1.10; 1.13 after 1.8 and 1.12; 1.14
 
 ## 3. Files and identity (stage 3)
 
-- [ ] 3.1 The S3 adapter of the file store port (`boto3` in a worker thread), including bucket create, delete and list by prefix for tenancy and the sweep; the tenancy tests of 2.6 and 2.7 re-run against Garage. Exports: the file store port, `S3FileStore`, `TenantGone`.
+- [ ] 3.1 The S3 adapter of the file store port (`boto3` in a worker thread), including bucket create, delete and list by prefix for tenancy and the sweep; the tenancy tests of 2.6 and 2.7 re-run against Garage. Exports: `S3FileStore` (the file store port and `TenantGone` are exported since 2.6).
 - [ ] 3.2 The `TokenVerifier` port and `JwksTokenVerifier` (PD-1): JWT access tokens only, cached JWKS, one refresh on an unknown `kid`, and the configurable roles claim (PD-9). Also the testkit token signer and an in-memory JWKS. Exports: `TokenVerifier`, `JwksTokenVerifier`; testkit `TokenSigner`.
 - [ ] 3.3 The identity port and the Zitadel adapter:
   - find by email, list, disable, re-enable, and grant or remove a global role;

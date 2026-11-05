@@ -11,6 +11,7 @@ from rdflib.namespace import Namespace
 
 RP = Namespace("https://meaningfy.ws/ns/rdf-persistence#")
 DCTERMS = Namespace("http://purl.org/dc/terms/")
+SKOS = Namespace("http://www.w3.org/2004/02/skos/core#")
 
 VERSION = RP["version"]
 CREATED = DCTERMS["created"]
@@ -26,4 +27,11 @@ REGISTRY_OWNED_BY = RP["ownedBy"]
 REGISTRY_KIND_IRIS: Mapping[str, URIRef] = {
     "aggregate": RP["Aggregate"],
     "loaded_graph": RP["LoadedGraph"],
+}
+
+LABEL = SKOS["prefLabel"]
+STATE = RP["state"]
+TENANT_STATE_IRIS: Mapping[str, URIRef] = {
+    "active": RP["Active"],
+    "deleting": RP["Deleting"],
 }
