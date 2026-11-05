@@ -97,7 +97,7 @@ sequenceDiagram
     Cl->>R: PUT /books/{id}, If-Match: v7, body (JSON or JSON-LD)
     R->>C: may this caller "modify" this aggregate?
     C-->>R: yes
-    R->>R: JSON → triples with the context; validate with the shapes
+    R->>R: JSON → triples with the context, then validate with the shapes
     R->>Se: replace the graph, guarded by v7
     Se->>St: one guarded update + ASK
     St-->>Se: committed
