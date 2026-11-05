@@ -27,7 +27,7 @@ Notation:
 
 ## 1. Metamodel and generation (stage 1)
 
-- [ ] 1.1 `rdf_persistence/model/rp_core.yaml`: `AggregateRoot`, `Principal` (PD-21), `version`, `RegistryEntry` (`graph`, `kind`, `owned_by`: PD-8), `loaded_graph`, and the annotations `owned`, `internal`, `database`, `graph`, `module_kind`, `rp_path`, `rp_unlabelled`.
+- [x] 1.1 `rdf_persistence/model/rp_core.yaml`: `AggregateRoot`, `Principal` (PD-21), `version`, `RegistryEntry` (`graph`, `kind`, `owned_by`: PD-8), `loaded_graph`, and the annotations `owned`, `internal`, `database`, `graph`, `module_kind`, `rp_path`, `rp_unlabelled`.
 - [ ] 1.2 `rp_annotations.yaml` (`Described`, `Tracked`) and `rp_provenance.yaml` (`Provenanced`, `Activity`; it uses `rp_core`'s `Principal` as its agent).
 - [ ] 1.3 `rp_access.yaml`:
   - the ODRL subset and `RoleDefinition`;
@@ -172,7 +172,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 ## Roadmap
 
 - [x] 0.1 · [x] 0.2 · [x] 0.3 · [ ] 0.4 · [ ] 0.5
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10
+- [x] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10
 - [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8
 - [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4
 - [ ] 4.1 · [ ] 4.2 · [ ] 4.3

@@ -1,0 +1,109 @@
+id: https://meaningfy.ws/ns/rdf-persistence/core
+name: rp_core
+title: RDF persistence core module
+description: >-
+  The core of the RDF persistence metamodel: the aggregate root mixin, the principal, the version and
+  loaded-graph slots, and the registry entry. Every other module of the metamodel builds on it.
+comments:
+  - "Class annotation database: tenant (default) or system, the database an aggregate lives in."
+  - "Class annotation graph: meta, for the tenant root object, which lives in the tenant's meta graph instead of a graph of its own."
+  - "Class annotation rp_path: required on every aggregate root; its path segment in the API and in its IRIs."
+  - "Class annotation rp_unlabelled: true, on an owned value class whose instances need no label of their own."
+  - "Slot annotation owned: true, when the slot's values are part of the aggregate and live in its graph; any other slot ranging over a class refers to another aggregate root, by IRI."
+  - "Slot annotation internal: true, when the slot never appears in the API contract."
+  - "Schema annotation module_kind: domain, technical or access, the kind of the module; a domain module may not import a technical or an access one."
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+  dcterms: http://purl.org/dc/terms/
+  prov: http://www.w3.org/ns/prov#
+  ODRL: http://www.w3.org/ns/odrl/2/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+
+classes:
+  AggregateRoot:
+    title: Aggregate root
+    description: >-
+      A mixin for classes whose instances are aggregate roots. Each instance is one named graph, whose
+      IRI is derived from the root's IRI; it is versioned, loaded and saved as a whole.
+    class_uri: rp:AggregateRoot
+    mixin: true
+    broad_mappings:
+      - prov:Entity
+  Principal:
+    title: Principal
+    description: A reference to a user account in the identity provider, by IRI only.
+    class_uri: prov:Agent
+    exact_mappings:
+      - ODRL:Party
+    slots:
+      - id
+  RegistryEntry:
+    title: Registry entry
+    description: >-
+      An entry of a tenant's registry graph, naming a graph that belongs to an aggregate. It is written
+      by the session, never by the application.
+    class_uri: rp:RegistryEntry
+    slots:
+      - graph
+      - kind
+      - owned_by
+    slot_usage:
+      graph:
+        required: true
+      kind:
+        required: true
+      owned_by:
+        required: true
+
+slots:
+  id:
+    title: Identifier
+    description: The IRI that identifies the object.
+    slot_uri: dcterms:identifier
+    range: uri
+    identifier: true
+  version:
+    title: Version
+    description: >-
+      The version token of an aggregate, stated about its graph IRI. The session writes it; no domain
+      class carries it.
+    slot_uri: rp:version
+    range: string
+  loaded_graph:
+    title: Loaded graph
+    description: A graph whose lifecycle belongs to the aggregate, such as the triples of a loaded RDF file.
+    slot_uri: rp:loadedGraph
+    range: uri
+  graph:
+    title: Graph
+    description: The IRI of a named graph.
+    slot_uri: rp:graph
+    range: uri
+  kind:
+    title: Kind
+    description: The kind of graph a registry entry names.
+    slot_uri: rp:kind
+    range: RegistryKind
+  owned_by:
+    title: Owned by
+    description: The IRI of the aggregate root that owns the graph.
+    slot_uri: rp:ownedBy
+    range: uri
+
+enums:
+  RegistryKind:
+    title: Registry kind
+    description: The kinds of graph a registry entry can name.
+    permissible_values:
+      aggregate:
+        title: Aggregate
+        description: The graph of an aggregate root.
+        meaning: rp:Aggregate
+      loaded_graph:
+        title: Loaded graph
+        description: A graph loaded for an aggregate, whose lifecycle belongs to it.
+        meaning: rp:LoadedGraph
