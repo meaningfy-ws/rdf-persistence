@@ -241,6 +241,15 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
       `odrl:Permission`), and a non-owned slot that refers to another aggregate is checked as an
       IRI only (no `sh:node` or `sh:class`), so an aggregate's graph validates without the
       aggregates it refers to (task 1.8);
+    - The context and the shapes agree on what a value is (found by the conformance suite, task
+      1.14): a class with an identifier slot gets `sh:nodeKind sh:IRI` on its node shape, so an
+      instance without an IRI is refused; `uri` and `uriorcurie` slots get `"@type": "@id"`; an
+      enum-ranged slot gets `"@type": "@vocab"` and a property-scoped context mapping each value to
+      its `meaning`, so values are stored as their meaning IRIs and compact back to their keys
+      (the context declares `"@version": 1.1`); an enum gives every value a `meaning` or none, and a
+      mixed enum is a generation error. Slots annotated `internal` are optional in the
+      shapes: the public context leaves them out (PD-12), the toolkit writes them, and the mapper's
+      tests check they are present.
     - `unique_keys` is enforced on multivalued slots holding objects (inlined, or a range without
       an identifier); a slot of references by IRI carries no key slots to compare (task 1.13).
     - `rules` (LinkML's pre- and postconditions), `all_of` and `none_of` are not supported in v1:

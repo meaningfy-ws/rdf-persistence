@@ -1,6 +1,6 @@
 """gen-shacl with the toolkit's bookkeeping, its reference rule and the declared rules (PD-24, PD-7).
 
-The stock generator lacks four things:
+The stock generator lacks six things:
 
 * the predicates the session writes (``rp:version``, ``dcterms:created``, ``dcterms:modified``,
   ``dcterms:creator``, ``dcterms:contributor``) are added to the ignored properties of closed shapes,
@@ -9,6 +9,10 @@ The stock generator lacks four things:
   ``class_uri`` (a narrowed ``Grant``);
 * a slot that refers to another aggregate (not ``owned``) is checked as an IRI only, so an
   aggregate's graph validates on its own, without the referenced aggregate in it;
+* a class whose instances have an identifier is a node that must be an IRI, which no property shape can
+  say, since the IRI is the subject; a class without one (a grant) may be a blank node;
+* an ``internal`` slot is optional: the toolkit writes it, never the client, so a body without it must
+  validate, while the generated class keeps the slot as declared (PD-24);
 * ``exactly_one_of``, ``any_of`` and ``unique_keys`` are translated (``shacl_constraints``).
 """
 
@@ -71,9 +75,31 @@ class RpShaclGenerator(ShaclGenerator):
                         g.remove((prop, SH.node, None))
                         g.remove((prop, SH["class"], None))
 
+    def _require_iri_nodes(self, g: Graph) -> None:
+        """Add ``sh:nodeKind sh:IRI`` to the shape of every class with an identifier slot."""
+        sv = self.schemaview
+        for cls in sv.all_classes().values():
+            if sv.get_identifier_slot(cls.name) is not None:
+                g.add((shape_uri(sv, cls), SH.nodeKind, SH.IRI))
+
+    def _relax_internal_slots(self, g: Graph) -> None:
+        """Drop ``sh:minCount`` from the properties of ``internal`` slots."""
+        sv = self.schemaview
+        for cls in sv.all_classes().values():
+            shape = shape_uri(sv, cls)
+            for slot in sv.class_induced_slots(cls.name):
+                if annotation(slot, "internal") != TRUE:
+                    continue
+                path = URIRef(sv.get_uri(slot, expand=True))
+                for prop in g.objects(shape, SH.property):
+                    if (prop, SH.path, path) in g:
+                        g.remove((prop, SH.minCount, None))
+
     def as_graph(self) -> Graph:
         g: Graph = super().as_graph()
         self._refer_by_iri(g)
+        self._require_iri_nodes(g)
+        self._relax_internal_slots(g)
         g += constraints_graph(self.schemaview)
         return g
 

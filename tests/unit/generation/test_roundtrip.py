@@ -8,7 +8,7 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from pydantic import BaseModel
-from pyld import jsonld  # type: ignore[import-untyped]
+from pyld import jsonld
 from rdflib import XSD, BNode, Graph, Literal, URIRef
 from rdflib.compare import graph_diff, isomorphic
 from rdflib.term import Node
@@ -37,7 +37,7 @@ settings.load_profile(
 def rdf_of(toy: Conformance, model: BaseModel, class_name: str) -> str:
     """The N-Quads of ``model``, its JSON expanded with the generated context."""
     body = model.model_dump(mode="json", by_alias=True, exclude_none=True)
-    node = toy.jsonld_node(class_name, body, as_shapes_expect=False)
+    node = toy.jsonld_node(class_name, body)
     nquads: str = jsonld.to_rdf({"@context": toy.context, **node}, NQUADS)
     return nquads
 

@@ -3,6 +3,7 @@
 # Rows of the metamodel (rdf_persistence/model/rp.yaml) first, then rows of the toy library.
 
 # --- metamodel ---
+# Internal slots (database_name) are not tested here: the shapes make them optional (PD-24).
 - kind: required
   class_name: Prohibition
   valid: [instances/prohibition-ok.yaml]
@@ -18,7 +19,7 @@
 - kind: pattern
   class_name: TenantAccess
   valid: [instances/tenant-distinct-grants.yaml]
-  invalid: [instances/tenant-bad-database-name.yaml]
+  invalid: [instances/tenant-label-too-long.yaml]
 - kind: identifier
   class_name: Principal
   valid: [instances/principal-ok.yaml]
@@ -53,11 +54,10 @@
   class_name: Scan
   valid: [instances/scan-sha-ok.yaml]
   invalid: [instances/scan-sha-bad.yaml]
-# No invalid instance yet: the shapes accept a Book without an id (instances/book-no-id.yaml, which
-# test_conformance.py keeps as a strict xfail) while the class refuses it.
 - kind: identifier
   class_name: Book
   valid: [instances/book-minimal.yaml]
+  invalid: [instances/book-no-id.yaml]
 - kind: closed
   class_name: Book
   valid: [instances/book-minimal.yaml]

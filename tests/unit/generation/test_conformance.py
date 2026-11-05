@@ -4,6 +4,8 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from linkml_runtime.utils.schemaview import SchemaView
+from pydantic import BaseModel
 from rdflib import Graph
 
 from rdf_persistence.generation.generated.rp_generation import ConstraintCase, ConstraintKind
@@ -161,14 +163,33 @@ def test_a_schema_that_no_rp_generate_entry_generates_is_refused(tmp_path: Path)
         run(lonely, CASES)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="the shapes accept an object with no id (its IRI is the subject, which no property shape "
-    "can require) while the class refuses it: reported to the leader, to be fixed in the generators",
-)
 def test_a_book_without_an_id_is_refused_by_class_and_shape_alike() -> None:
     no_id = INSTANCES / "book-no-id.yaml"
     row = ConstraintCase(kind=K.IDENTIFIER, class_name="Book", invalid=[str(no_id)])
     assert verdict_problems(Conformance.of(TOY), [row]) == [], (
         "classes and shapes must agree on a missing id"
     )
+
+
+INTERNAL_ONLY = """
+id: https://example.org/ns/internal
+name: internal
+default_prefix: s
+prefixes: {s: "https://example.org/ns/s#", linkml: "https://w3id.org/linkml/"}
+default_range: string
+imports: [linkml:types]
+classes:
+  Thing:
+    slots: [hidden]
+slots:
+  hidden:
+    required: true
+    annotations: {internal: true}
+"""
+
+
+def test_an_internal_slot_adds_no_constraint_kind() -> None:
+    # The shapes make an internal slot optional, so a required case on it has no verdict to agree on.
+    view = SchemaView(INTERNAL_ONLY)
+    thing = replace(Conformance.of(TOY), view=view, models={"Thing": BaseModel})
+    assert K.REQUIRED not in thing.used_kinds(), "an internal slot is no public requirement"

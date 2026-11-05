@@ -25,12 +25,21 @@
          "@id": "invalidInstances"
       },
       "kind": {
+         "@id": "constraintKind",
+         "@type": "@vocab",
          "@context": {
-            "text": "skos:notation",
-            "description": "skos:prefLabel",
-            "meaning": "@id"
-         },
-         "@id": "constraintKind"
+            "required": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindRequired",
+            "cardinality": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindCardinality",
+            "range_type": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindRangeType",
+            "range_enum": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindRangeEnum",
+            "pattern": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindPattern",
+            "value_bounds": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindValueBounds",
+            "identifier": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindIdentifier",
+            "closed": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindClosed",
+            "exactly_one_of": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindExactlyOneOf",
+            "any_of": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindAnyOf",
+            "unique_keys": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindUniqueKeys"
+         }
       },
       "multivalued": {
          "@id": "multivalued"
@@ -76,6 +85,7 @@
          "@container": "@set",
          "@id": "validInstances"
       },
+      "@version": 1.1,
       "type": "@type",
       "ClassShape": {
          "@id": "ClassShape"

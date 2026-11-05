@@ -59,7 +59,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/jsonld_context.py",
-      "sha256": "4f9a1350fc67d0df62444efbeb7e67945f22891f6a270fc2e57fb8539549e29d"
+      "sha256": "70cf9c33c74e9945df2aaaf94b96dacda68b168ffcee73f48eaa18a77d0b2ffb"
     },
     {
       "path": "rdf_persistence/generation/extensions/mermaid.py",
@@ -75,7 +75,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/shacl.py",
-      "sha256": "118a467f194a220e8cc5abf9342454cff57869e7e3a428be1e72bab428112825"
+      "sha256": "a0929e5e60cb30159be580533b0aad7ab3cf3db0a14857d6f407163a0ece168b"
     },
     {
       "path": "rdf_persistence/generation/extensions/shacl_constraints.py",
@@ -185,7 +185,7 @@
     },
     {
       "path": "generated/context.jsonld",
-      "sha256": "f3699cc4d92cb00db1cd27cd029e9a6e6b53fe852e94b1de5a3809bcfb3191ee"
+      "sha256": "25adf25c04cca57469d428e8110de1cec07c2ded637d2765617d68ed602b558c"
     },
     {
       "path": "generated/diagrams/books.mmd",
@@ -221,7 +221,7 @@
     },
     {
       "path": "generated/shapes.ttl",
-      "sha256": "e35d23586522fca21d658095a80add1bda68b7f69a62b1f926f5afd28910c518"
+      "sha256": "a80fec5e1b6a33128b864f0dd39ff71474448642f2a842b6a793ca4d2a4bbc21"
     },
     {
       "path": "web/src/domain/generated/books.ts",

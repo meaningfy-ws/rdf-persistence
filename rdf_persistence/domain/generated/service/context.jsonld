@@ -11,28 +11,32 @@
       "skos": "http://www.w3.org/2004/02/skos/core#",
       "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
       "action": {
+         "@id": "ODRL:action",
+         "@type": "@vocab",
          "@context": {
-            "text": "skos:notation",
-            "description": "skos:prefLabel",
-            "meaning": "@id"
-         },
-         "@id": "ODRL:action"
+            "read": "http://www.w3.org/ns/odrl/2/read",
+            "modify": "http://www.w3.org/ns/odrl/2/modify",
+            "delete": "http://www.w3.org/ns/odrl/2/delete",
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer"
+         }
       },
       "actions": {
-         "@context": {
-            "text": "skos:notation",
-            "description": "skos:prefLabel",
-            "meaning": "@id"
-         },
          "@container": "@set",
-         "@id": "permits"
+         "@id": "permits",
+         "@type": "@vocab",
+         "@context": {
+            "read": "http://www.w3.org/ns/odrl/2/read",
+            "modify": "http://www.w3.org/ns/odrl/2/modify",
+            "delete": "http://www.w3.org/ns/odrl/2/delete",
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer"
+         }
       },
       "assignee": {
          "@type": "@id",
          "@id": "ODRL:assignee"
       },
       "base": {
-         "@type": "xsd:anyURI",
+         "@type": "@id",
          "@id": "base"
       },
       "contributor": {
@@ -64,7 +68,7 @@
          "@id": "grant"
       },
       "graph": {
-         "@type": "xsd:anyURI",
+         "@type": "@id",
          "@id": "graph"
       },
       "id": "@id",
@@ -74,29 +78,30 @@
          "@id": "items"
       },
       "kind": {
+         "@id": "kind",
+         "@type": "@vocab",
          "@context": {
-            "text": "skos:notation",
-            "description": "skos:prefLabel",
-            "meaning": "@id"
-         },
-         "@id": "kind"
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#Aggregate",
+            "loaded_graph": "https://meaningfy.ws/ns/rdf-persistence#LoadedGraph"
+         }
       },
       "label": {
          "@id": "skos:prefLabel"
       },
       "level": {
+         "@id": "level",
+         "@type": "@vocab",
          "@context": {
-            "text": "skos:notation",
-            "description": "skos:prefLabel",
-            "meaning": "@id"
-         },
-         "@id": "level"
+            "system": "https://meaningfy.ws/ns/rdf-persistence#SystemLevel",
+            "tenant": "https://meaningfy.ws/ns/rdf-persistence#TenantLevel",
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#AggregateLevel"
+         }
       },
       "limit": {
          "@id": "limit"
       },
       "loaded_graph": {
-         "@type": "xsd:anyURI",
+         "@type": "@id",
          "@id": "loadedGraph"
       },
       "modified": {
@@ -107,7 +112,7 @@
          "@id": "offset"
       },
       "owned_by": {
-         "@type": "xsd:anyURI",
+         "@type": "@id",
          "@id": "ownedBy"
       },
       "prefix": {
@@ -121,7 +126,7 @@
          "@id": "problemDetail"
       },
       "instance": {
-         "@type": "xsd:anyURI",
+         "@type": "@id",
          "@id": "problemInstance"
       },
       "status": {
@@ -147,15 +152,15 @@
          "@id": "root"
       },
       "state": {
+         "@id": "state",
+         "@type": "@vocab",
          "@context": {
-            "text": "skos:notation",
-            "description": "skos:prefLabel",
-            "meaning": "@id"
-         },
-         "@id": "state"
+            "active": "https://meaningfy.ws/ns/rdf-persistence#Active",
+            "deleting": "https://meaningfy.ws/ns/rdf-persistence#Deleting"
+         }
       },
       "target": {
-         "@type": "xsd:anyURI",
+         "@type": "@id",
          "@id": "ODRL:target"
       },
       "tenant_segment": {
@@ -167,6 +172,7 @@
       "version": {
          "@id": "version"
       },
+      "@version": 1.1,
       "AggregateRoot": {
          "@id": "AggregateRoot"
       },

@@ -9,7 +9,8 @@ generate is left to the schema that does, so one cases file can serve several sc
 An instance file is the YAML of one object, keyed by slot name, as the generated class takes it.
 Dates and date-times are quoted, so that YAML keeps them as text. The shape side reads the same
 object as RDF: the instance is made a JSON-LD node (``jsonld_node``) and expanded with the
-generated context.
+generated context, which alone decides how values read (an IRI, an enum's meaning). Internal slots are
+no public requirement: the shapes make them optional, so no constraint kind is counted from them.
 """
 
 import functools
@@ -24,7 +25,7 @@ from linkml_runtime.linkml_model.meta import SlotDefinition
 from linkml_runtime.utils.formatutils import camelcase, underscore
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel, ValidationError
-from pyld import jsonld  # type: ignore[import-untyped]
+from pyld import jsonld
 from pyshacl import validate
 from rdflib import Graph
 
@@ -37,7 +38,6 @@ from rdf_persistence.services.schema import load_schema
 SHAPES_FILE = "shapes.ttl"
 CONTEXT_FILE = "context.jsonld"
 K = ConstraintKind
-URI_TYPES = {"uri", "uriorcurie"}
 
 
 def load_cases(path: Path) -> list[ConstraintCase]:
@@ -138,45 +138,28 @@ class Conformance:
         conforms, _, _ = validate(graph, shacl_graph=self.shapes, inference="none")
         return bool(conforms)
 
-    def jsonld_node(self, class_name: str, data: dict, *, as_shapes_expect: bool = True) -> dict:
-        """``data`` as a JSON-LD node of ``class_name``, typed, owned parts too (frames need the types).
+    def jsonld_node(self, class_name: str, data: dict) -> dict:
+        """``data`` as a JSON-LD node of ``class_name``, typed, owned parts too (a frame selects by type).
 
-        With ``as_shapes_expect`` the gaps between the generated context and the shapes are closed
-        here, guided by the schema: the context drops internal slots, leaves an enum value a plain
-        string and makes a ``uri`` value a typed literal, while the shapes expect the slot's
-        predicate, the meaning IRI and an IRI. Without it the context is used as generated.
+        Only the types are added: the values are read by the generated context as they are. Internal
+        slots are left out, as the public context leaves them out: an API body never carries them.
         """
         slots = {underscore(s.name): s for s in self.view.class_induced_slots(class_name)}
         node: dict = {"@type": camelcase(class_name)}
         for key, value in data.items():
             slot = slots.get(key)
-            if slot is None or slot.identifier:
+            if slot is None:
                 node[key] = value
-            elif as_shapes_expect and annotation(slot, "internal") == TRUE:
-                node[self.view.get_uri(slot, expand=False)] = value
-            else:
-                node[key] = self._slot_value(slot, value, as_shapes_expect)
+            elif annotation(slot, "internal") != TRUE:
+                node[key] = self._typed_parts(slot, value)
         return node
 
-    def _slot_value(self, slot: SlotDefinition, value: object, as_shapes_expect: bool) -> object:
+    def _typed_parts(self, slot: SlotDefinition, value: object) -> object:
         if isinstance(value, list):
-            return [self._slot_value(slot, item, as_shapes_expect) for item in value]
+            return [self._typed_parts(slot, item) for item in value]
         if isinstance(value, dict) and annotation(slot, "owned") == TRUE:
-            return self.jsonld_node(slot.range, value, as_shapes_expect=as_shapes_expect)
-        if not as_shapes_expect:
-            return value
-        if self._is_uri(slot):
-            return {"@id": value}
-        if slot.range in self.view.all_enums():
-            values = self.view.get_enum(slot.range).permissible_values
-            meaning = values[value].meaning if value in values else None
-            return {"@id": meaning} if meaning else value
+            return self.jsonld_node(slot.range, value)
         return value
-
-    def _is_uri(self, slot: SlotDefinition) -> bool:
-        return slot.range in self.view.all_types() and bool(
-            URI_TYPES & set(self.view.type_ancestors(slot.range))
-        )
 
     def used_kinds(self) -> set[ConstraintKind]:
         """The constraint kinds the generated classes of the schema use, read from ``SchemaView``."""
@@ -184,7 +167,8 @@ class Conformance:
         for name in self.class_names():
             kinds |= self._class_kinds(name)
             for slot in self.view.class_induced_slots(name):
-                kinds |= self._slot_kinds(slot)
+                if annotation(slot, "internal") != TRUE:  # the shapes make it optional (PD-24)
+                    kinds |= self._slot_kinds(slot)
         return kinds
 
     def _class_kinds(self, name: str) -> set[ConstraintKind]:

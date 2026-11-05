@@ -13,21 +13,25 @@
       "skos": "http://www.w3.org/2004/02/skos/core#",
       "@vocab": "https://example.org/ns/library#",
       "action": {
+         "@id": "ODRL:action",
+         "@type": "@vocab",
          "@context": {
-            "text": "skos:notation",
-            "description": "skos:prefLabel",
-            "meaning": "@id"
-         },
-         "@id": "ODRL:action"
+            "read": "http://www.w3.org/ns/odrl/2/read",
+            "modify": "http://www.w3.org/ns/odrl/2/modify",
+            "delete": "http://www.w3.org/ns/odrl/2/delete",
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer"
+         }
       },
       "actions": {
-         "@context": {
-            "text": "skos:notation",
-            "description": "skos:prefLabel",
-            "meaning": "@id"
-         },
          "@container": "@set",
-         "@id": "rp:permits"
+         "@id": "rp:permits",
+         "@type": "@vocab",
+         "@context": {
+            "read": "http://www.w3.org/ns/odrl/2/read",
+            "modify": "http://www.w3.org/ns/odrl/2/modify",
+            "delete": "http://www.w3.org/ns/odrl/2/delete",
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer"
+         }
       },
       "assignee": {
          "@type": "@id",
@@ -68,12 +72,13 @@
          "@id": "rp:fileName"
       },
       "genre": {
+         "@id": "schema:genre",
+         "@type": "@vocab",
          "@context": {
-            "text": "skos:notation",
-            "description": "skos:prefLabel",
-            "meaning": "@id"
-         },
-         "@id": "schema:genre"
+            "fiction": "http://schema.org/Fiction",
+            "nonfiction": "http://schema.org/NonFiction",
+            "poetry": "http://schema.org/Poetry"
+         }
       },
       "grants": {
          "@type": "@id",
@@ -81,7 +86,7 @@
          "@id": "rp:grant"
       },
       "graph": {
-         "@type": "xsd:anyURI",
+         "@type": "@id",
          "@id": "rp:graph"
       },
       "id": "@id",
@@ -89,26 +94,27 @@
          "@id": "bibo:isbn"
       },
       "kind": {
+         "@id": "rp:kind",
+         "@type": "@vocab",
          "@context": {
-            "text": "skos:notation",
-            "description": "skos:prefLabel",
-            "meaning": "@id"
-         },
-         "@id": "rp:kind"
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#Aggregate",
+            "loaded_graph": "https://meaningfy.ws/ns/rdf-persistence#LoadedGraph"
+         }
       },
       "label": {
          "@id": "skos:prefLabel"
       },
       "level": {
+         "@id": "rp:level",
+         "@type": "@vocab",
          "@context": {
-            "text": "skos:notation",
-            "description": "skos:prefLabel",
-            "meaning": "@id"
-         },
-         "@id": "rp:level"
+            "system": "https://meaningfy.ws/ns/rdf-persistence#SystemLevel",
+            "tenant": "https://meaningfy.ws/ns/rdf-persistence#TenantLevel",
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#AggregateLevel"
+         }
       },
       "loaded_graph": {
-         "@type": "xsd:anyURI",
+         "@type": "@id",
          "@id": "rp:loadedGraph"
       },
       "media_type": {
@@ -127,7 +133,7 @@
          "@id": "bibo:chapter"
       },
       "owned_by": {
-         "@type": "xsd:anyURI",
+         "@type": "@id",
          "@id": "rp:ownedBy"
       },
       "prohibitions": {
@@ -150,15 +156,15 @@
          "@id": "rp:sha256"
       },
       "state": {
+         "@id": "rp:state",
+         "@type": "@vocab",
          "@context": {
-            "text": "skos:notation",
-            "description": "skos:prefLabel",
-            "meaning": "@id"
-         },
-         "@id": "rp:state"
+            "active": "https://meaningfy.ws/ns/rdf-persistence#Active",
+            "deleting": "https://meaningfy.ws/ns/rdf-persistence#Deleting"
+         }
       },
       "target": {
-         "@type": "xsd:anyURI",
+         "@type": "@id",
          "@id": "ODRL:target"
       },
       "text": {
@@ -175,6 +181,7 @@
       "version": {
          "@id": "rp:version"
       },
+      "@version": 1.1,
       "type": "@type",
       "AggregateRoot": {
          "@id": "rp:AggregateRoot"

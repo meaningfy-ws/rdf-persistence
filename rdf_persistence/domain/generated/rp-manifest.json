@@ -43,7 +43,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/jsonld_context.py",
-      "sha256": "4f9a1350fc67d0df62444efbeb7e67945f22891f6a270fc2e57fb8539549e29d"
+      "sha256": "70cf9c33c74e9945df2aaaf94b96dacda68b168ffcee73f48eaa18a77d0b2ffb"
     },
     {
       "path": "rdf_persistence/generation/extensions/mermaid.py",
@@ -59,7 +59,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/shacl.py",
-      "sha256": "118a467f194a220e8cc5abf9342454cff57869e7e3a428be1e72bab428112825"
+      "sha256": "a0929e5e60cb30159be580533b0aad7ab3cf3db0a14857d6f407163a0ece168b"
     },
     {
       "path": "rdf_persistence/generation/extensions/shacl_constraints.py",
@@ -157,7 +157,7 @@
     },
     {
       "path": "rdf_persistence/domain/generated/context.jsonld",
-      "sha256": "be3d931df7bbab73a666164495073517340f0b639e0732eacfa4d1c2db312eb6"
+      "sha256": "b718f6363e11f3beb7f2458668187fa11a77379a6084224658d0c023fe8ce2d3"
     },
     {
       "path": "rdf_persistence/domain/generated/rp.py",
@@ -189,7 +189,7 @@
     },
     {
       "path": "rdf_persistence/domain/generated/shapes.ttl",
-      "sha256": "8ec50ed500529a44aa995ae7024d6aaf47272fdc2e1e610dbbc2b4a4a441d430"
+      "sha256": "96862261d58c19d792ff24ceee9dbed87714cb688ec6d0022de97b418181db8f"
     }
   ]
 }

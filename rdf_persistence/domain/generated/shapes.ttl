@@ -12,40 +12,43 @@ rp:Activity a sh:NodeShape ;
 	rdfs:label "Activity" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n18 ;
-	sh:property _:c14n29 , _:c14n71 ;
+	sh:nodeKind sh:IRI ;
+	sh:property _:c14n29 , _:c14n72 ;
 	sh:targetClass prov:Activity .
 rp:AggregateRoot a sh:NodeShape ;
 	rdfs:comment "A mixin for classes whose instances are aggregate roots. Each instance is one named graph, whose IRI is derived from the root's IRI; it is versioned, loaded and saved as a whole." ;
 	rdfs:label "Aggregate root" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n59 ;
+	sh:ignoredProperties _:c14n60 ;
 	sh:targetClass rp:AggregateRoot .
 rp:Described a sh:NodeShape ;
 	rdfs:comment "A mixin giving an object an IRI, a label and a description. The application writes them." ;
 	rdfs:label "Described" ;
 	sh:closed false ;
 	sh:ignoredProperties _:c14n20 ;
-	sh:property _:c14n0 , _:c14n28 , _:c14n58 ;
+	sh:nodeKind sh:IRI ;
+	sh:property _:c14n0 , _:c14n28 , _:c14n59 ;
 	sh:targetClass rp:Described .
 rp:Grant a sh:NodeShape ;
 	rdfs:comment "A permission given to a principal on a tenant or on one aggregate, either by role or as a direct action; exactly one of role and action is given." ;
 	rdfs:label "Grant" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n48 ;
-	sh:property _:c14n10 , _:c14n42 , _:c14n49 , _:c14n66 ;
+	sh:ignoredProperties _:c14n49 ;
+	sh:property _:c14n10 , _:c14n42 , _:c14n50 , _:c14n67 ;
 	sh:targetClass odrl:Permission ;
 	sh:xone _:c14n15 .
 rp:Policy a sh:NodeShape ;
 	rdfs:comment "A set of permissions and prohibitions." ;
 	rdfs:label "Policy" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n61 ;
+	sh:ignoredProperties _:c14n62 ;
 	sh:targetClass odrl:Set .
 rp:Principal a sh:NodeShape ;
 	rdfs:comment "A reference to a user account in the identity provider, by IRI only." ;
 	rdfs:label "Principal" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n75 ;
+	sh:nodeKind sh:IRI ;
 	sh:property _:c14n35 ;
 	sh:targetClass prov:Agent .
 rp:Prohibition a sh:NodeShape ;
@@ -53,28 +56,28 @@ rp:Prohibition a sh:NodeShape ;
 	rdfs:label "Prohibition" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n47 ;
-	sh:property _:c14n54 , _:c14n73 , _:c14n8 ;
+	sh:property _:c14n55 , _:c14n73 , _:c14n8 ;
 	sh:targetClass odrl:Prohibition .
 rp:Provenanced a sh:NodeShape ;
 	rdfs:comment "A mixin for entities whose derivation, generating activity and attribution are recorded." ;
 	rdfs:label "Provenanced" ;
 	sh:closed false ;
 	sh:ignoredProperties _:c14n36 ;
-	sh:property _:c14n19 , _:c14n40 , _:c14n43 , _:c14n50 ;
+	sh:property _:c14n19 , _:c14n40 , _:c14n43 , _:c14n51 ;
 	sh:targetClass rp:Provenanced .
 rp:RegistryEntry a sh:NodeShape ;
 	rdfs:comment "An entry of a tenant's registry graph, naming a graph that belongs to an aggregate. It is written by the session, never by the application." ;
 	rdfs:label "Registry entry" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n17 ;
-	sh:property _:c14n25 , _:c14n69 , _:c14n9 ;
+	sh:property _:c14n25 , _:c14n70 , _:c14n9 ;
 	sh:targetClass rp:RegistryEntry .
 rp:RoleDefinition a sh:NodeShape ;
 	rdfs:comment "What a role may do and where it applies. An application supplies its role definitions as data; they are not stored." ;
 	rdfs:label "Role definition" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n53 ;
-	sh:property _:c14n23 , _:c14n33 , _:c14n62 ;
+	sh:ignoredProperties _:c14n54 ;
+	sh:property _:c14n23 , _:c14n33 , _:c14n63 ;
 	sh:targetClass rp:RoleDefinition .
 rp:Rule a sh:NodeShape ;
 	rdfs:comment "An ODRL rule that gives an assignee a ruling on an action over a target." ;
@@ -87,15 +90,16 @@ rp:StoredFile a sh:NodeShape ;
 	rdfs:comment "A mixin for the current content of a kept file; the bytes live in the tenant's bucket under the file key." ;
 	rdfs:label "Stored file" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n57 ;
+	sh:ignoredProperties _:c14n58 ;
 	sh:property _:c14n1 , _:c14n3 , _:c14n34 , _:c14n38 , _:c14n4 , _:c14n41 , _:c14n45 ;
 	sh:targetClass rp:StoredFile .
 rp:TenantAccess a sh:NodeShape ;
 	rdfs:comment "The access record of a tenant: its label, state and database name, with the grants and prohibitions that say who may do what in it." ;
 	rdfs:label "Tenant access" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n60 ;
-	sh:property _:c14n11 , _:c14n56 , _:c14n65 , _:c14n67 , _:c14n70 , _:c14n72 , _:c14n74 ;
+	sh:ignoredProperties _:c14n61 ;
+	sh:nodeKind sh:IRI ;
+	sh:property _:c14n11 , _:c14n48 , _:c14n57 , _:c14n66 , _:c14n68 , _:c14n71 , _:c14n74 ;
 	sh:sparql _:c14n5 ;
 	sh:targetClass rp:TenantAccess .
 rp:Tracked a sh:NodeShape ;
@@ -103,7 +107,7 @@ rp:Tracked a sh:NodeShape ;
 	rdfs:label "Tracked" ;
 	sh:closed false ;
 	sh:ignoredProperties _:c14n12 ;
-	sh:property _:c14n24 , _:c14n52 , _:c14n63 , _:c14n64 ;
+	sh:property _:c14n24 , _:c14n53 , _:c14n64 , _:c14n65 ;
 	sh:targetClass rp:Tracked .
 _:c14n0 sh:datatype xsd:string ;
 	sh:description "A free-text description of the object." ;
@@ -190,7 +194,7 @@ _:c14n126 rdf:first odrl:delete ;
 	rdf:rest _:c14n127 .
 _:c14n127 rdf:first rp:administer ;
 	rdf:rest rdf:nil .
-_:c14n128 sh:property _:c14n68 .
+_:c14n128 sh:property _:c14n69 .
 _:c14n129 sh:property _:c14n26 .
 _:c14n13 rdf:first rp:prohibition ;
 	rdf:rest _:c14n7 .
@@ -199,13 +203,13 @@ _:c14n130 rdf:first rdf:type ;
 _:c14n14 rdf:first rdf:type ;
 	rdf:rest _:c14n39 .
 _:c14n15 rdf:first _:c14n129 ;
-	rdf:rest _:c14n51 .
+	rdf:rest _:c14n52 .
 _:c14n16 rdf:first rp:Active ;
 	rdf:rest _:c14n22 .
 _:c14n17 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n101 .
+	rdf:rest _:c14n96 .
 _:c14n18 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n86 .
+	rdf:rest _:c14n81 .
 _:c14n19 sh:description "The activity that generated this entity." ;
 	sh:maxCount 1 ;
 	sh:name "Was generated by" ;
@@ -217,7 +221,7 @@ _:c14n2 rdf:first rp:SystemLevel ;
 _:c14n20 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
 _:c14n21 rdf:first rp:databaseName ;
-	rdf:rest _:c14n55 .
+	rdf:rest _:c14n56 .
 _:c14n22 rdf:first rp:Deleting ;
 	rdf:rest rdf:nil .
 _:c14n23 sh:description "The actions the role permits." ;
@@ -363,85 +367,93 @@ _:c14n46 rdf:first skos:prefLabel ;
 	rdf:rest _:c14n21 .
 _:c14n47 rdf:first dcterms:contributor ;
 	rdf:rest _:c14n106 .
-_:c14n48 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n91 .
-_:c14n49 sh:description "The action a direct permission allows, or a prohibition forbids." ;
+_:c14n48 sh:datatype xsd:string ;
+	sh:description "The name of the tenant's database, the prefix, \"-t-\" and the tenant's UUID in hexadecimal; the prefix is lower case, at most 20 characters." ;
+	sh:maxCount 1 ;
+	sh:name "Database name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:databaseName ;
+	sh:pattern "^[a-z][a-z0-9]{0,19}-t-[0-9a-f]{32}$" .
+_:c14n49 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n101 .
+_:c14n5 a sh:SPARQLConstraint ;
+	sh:message "TenantAccess.grants: One grant per assignee, target and role or action." ;
+	sh:select "SELECT DISTINCT $this\nWHERE {\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?first .\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?second .\n  FILTER (!sameTerm(?first, ?second))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/assignee> ?first_0 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/assignee> ?second_0 . }\n  FILTER ((!bound(?first_0) && !bound(?second_0)) || sameTerm(?first_0, ?second_0))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/target> ?first_1 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/target> ?second_1 . }\n  FILTER ((!bound(?first_1) && !bound(?second_1)) || sameTerm(?first_1, ?second_1))\n  OPTIONAL { ?first <https://meaningfy.ws/ns/rdf-persistence#role> ?first_2 . }\n  OPTIONAL { ?second <https://meaningfy.ws/ns/rdf-persistence#role> ?second_2 . }\n  FILTER ((!bound(?first_2) && !bound(?second_2)) || sameTerm(?first_2, ?second_2))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/action> ?first_3 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/action> ?second_3 . }\n  FILTER ((!bound(?first_3) && !bound(?second_3)) || sameTerm(?first_3, ?second_3))\n}" .
+_:c14n50 sh:description "The action a direct permission allows, or a prohibition forbids." ;
 	sh:in _:c14n116 ;
 	sh:maxCount 1 ;
 	sh:name "Action" ;
 	sh:order 3 ;
 	sh:path odrl:action .
-_:c14n5 a sh:SPARQLConstraint ;
-	sh:message "TenantAccess.grants: One grant per assignee, target and role or action." ;
-	sh:select "SELECT DISTINCT $this\nWHERE {\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?first .\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?second .\n  FILTER (!sameTerm(?first, ?second))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/assignee> ?first_0 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/assignee> ?second_0 . }\n  FILTER ((!bound(?first_0) && !bound(?second_0)) || sameTerm(?first_0, ?second_0))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/target> ?first_1 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/target> ?second_1 . }\n  FILTER ((!bound(?first_1) && !bound(?second_1)) || sameTerm(?first_1, ?second_1))\n  OPTIONAL { ?first <https://meaningfy.ws/ns/rdf-persistence#role> ?first_2 . }\n  OPTIONAL { ?second <https://meaningfy.ws/ns/rdf-persistence#role> ?second_2 . }\n  FILTER ((!bound(?first_2) && !bound(?second_2)) || sameTerm(?first_2, ?second_2))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/action> ?first_3 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/action> ?second_3 . }\n  FILTER ((!bound(?first_3) && !bound(?second_3)) || sameTerm(?first_3, ?second_3))\n}" .
-_:c14n50 sh:description "The principal this entity is attributed to." ;
+_:c14n51 sh:description "The principal this entity is attributed to." ;
 	sh:maxCount 1 ;
 	sh:name "Was attributed to" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 2 ;
 	sh:path prov:wasAttributedTo .
-_:c14n51 rdf:first _:c14n128 ;
+_:c14n52 rdf:first _:c14n128 ;
 	rdf:rest rdf:nil .
-_:c14n52 sh:description "A principal that committed a later version of the graph." ;
+_:c14n53 sh:description "A principal that committed a later version of the graph." ;
 	sh:name "Contributor" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 3 ;
 	sh:path dcterms:contributor .
-_:c14n53 rdf:first dcterms:contributor ;
+_:c14n54 rdf:first dcterms:contributor ;
 	rdf:rest _:c14n111 .
-_:c14n54 sh:description "The IRI of the tenant, or of an aggregate's graph, the rule applies to." ;
+_:c14n55 sh:description "The IRI of the tenant, or of an aggregate's graph, the rule applies to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Target" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 1 ;
 	sh:path odrl:target .
-_:c14n55 rdf:first rp:grant ;
+_:c14n56 rdf:first rp:grant ;
 	rdf:rest _:c14n13 .
-_:c14n56 sh:description "The permissions given in the tenant, by role or as direct actions; they live in the access record's graph." ;
+_:c14n57 sh:description "The permissions given in the tenant, by role or as direct actions; they live in the access record's graph." ;
 	sh:name "Grants" ;
 	sh:node rp:Grant ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 2 ;
 	sh:path rp:grant .
-_:c14n57 rdf:first rdf:type ;
+_:c14n58 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n58 sh:description "The IRI that identifies the object." ;
+_:c14n59 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n59 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
 _:c14n6 rdf:first rp:Aggregate ;
 	rdf:rest _:c14n31 .
-_:c14n60 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n81 .
-_:c14n61 rdf:first dcterms:description ;
+_:c14n60 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n61 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n86 .
+_:c14n62 rdf:first dcterms:description ;
 	rdf:rest _:c14n37 .
-_:c14n62 sh:description "Where the role applies." ;
+_:c14n63 sh:description "Where the role applies." ;
 	sh:in _:c14n2 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Level" ;
 	sh:order 1 ;
 	sh:path rp:level .
-_:c14n63 sh:datatype xsd:dateTime ;
+_:c14n64 sh:datatype xsd:dateTime ;
 	sh:description "The time the graph was last committed." ;
 	sh:maxCount 1 ;
 	sh:name "Modified" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path dcterms:modified .
-_:c14n64 sh:datatype xsd:dateTime ;
+_:c14n65 sh:datatype xsd:dateTime ;
 	sh:description "The time the graph was first committed." ;
 	sh:maxCount 1 ;
 	sh:name "Created" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path dcterms:created .
-_:c14n65 sh:datatype xsd:string ;
+_:c14n66 sh:datatype xsd:string ;
 	sh:description "The preferred label of the object." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -450,53 +462,44 @@ _:c14n65 sh:datatype xsd:string ;
 	sh:order 5 ;
 	sh:path skos:prefLabel ;
 	sh:pattern "^.{1,200}$" .
-_:c14n66 sh:description "The IRI of the tenant, or of an aggregate's graph, the rule applies to." ;
+_:c14n67 sh:description "The IRI of the tenant, or of an aggregate's graph, the rule applies to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Target" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 2 ;
 	sh:path odrl:target .
-_:c14n67 sh:description "Where the tenant is in its life." ;
+_:c14n68 sh:description "Where the tenant is in its life." ;
 	sh:in _:c14n16 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "State" ;
 	sh:order 0 ;
 	sh:path rp:state .
-_:c14n68 sh:minCount 1 ;
+_:c14n69 sh:minCount 1 ;
 	sh:path odrl:action .
-_:c14n69 sh:description "The kind of graph a registry entry names." ;
+_:c14n7 rdf:first rp:state ;
+	rdf:rest rdf:nil .
+_:c14n70 sh:description "The kind of graph a registry entry names." ;
 	sh:in _:c14n6 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Kind" ;
 	sh:order 1 ;
 	sh:path rp:kind .
-_:c14n7 rdf:first rp:state ;
-	rdf:rest rdf:nil .
-_:c14n70 sh:datatype xsd:string ;
+_:c14n71 sh:datatype xsd:string ;
 	sh:description "A free-text description of the object." ;
 	sh:maxCount 1 ;
 	sh:name "Description" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 6 ;
 	sh:path dcterms:description .
-_:c14n71 sh:description "The IRI that identifies the object." ;
+_:c14n72 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n72 sh:datatype xsd:string ;
-	sh:description "The name of the tenant's database, the prefix, \"-t-\" and the tenant's UUID in hexadecimal; the prefix is lower case, at most 20 characters." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Database name" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 1 ;
-	sh:path rp:databaseName ;
-	sh:pattern "^[a-z][a-z0-9]{0,19}-t-[0-9a-f]{32}$" .
 _:c14n73 sh:description "The action a direct permission allows, or a prohibition forbids." ;
 	sh:in _:c14n120 ;
 	sh:maxCount 1 ;
@@ -511,7 +514,7 @@ _:c14n74 sh:description "The IRI that identifies the object." ;
 	sh:order 4 ;
 	sh:path dcterms:identifier .
 _:c14n75 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n96 .
+	rdf:rest _:c14n91 .
 _:c14n76 rdf:first rp:AggregateLevel ;
 	rdf:rest rdf:nil .
 _:c14n77 rdf:first dcterms:creator ;

@@ -4,9 +4,9 @@ import json
 from pathlib import Path
 
 import pytest
-from pyld import jsonld  # type: ignore[import-untyped]
+from pyld import jsonld
 
-from rdf_persistence.generation.extensions.jsonld_context import CONTEXT_STEP
+from rdf_persistence.generation.extensions.jsonld_context import CONTEXT_STEP, render_context
 
 from .step_runner import assert_json_golden, run_toy
 
@@ -91,3 +91,74 @@ def test_framing_the_triples_of_a_book_returns_the_body(staged: Path) -> None:
     assert jsonld.frame(flat, frame) == {"@context": context, **BOOK_BODY}, (
         "the framed book differs"
     )
+
+
+def test_the_context_is_json_ld_1_1(staged: Path) -> None:
+    context = read(staged, "context.jsonld")["@context"]
+    assert context["@version"] == 1.1, "property-scoped contexts need JSON-LD 1.1"
+
+
+@pytest.mark.parametrize("term", ["target", "graph", "loaded_graph", "owned_by"])
+def test_a_uri_ranged_slot_is_an_iri(staged: Path, term: str) -> None:
+    context = read(staged, "context.jsonld")["@context"]
+    assert context[term]["@type"] == "@id", f"{term} has range uri, which the shapes read as an IRI"
+
+
+def test_an_enum_slot_maps_each_value_to_its_meaning_iri(staged: Path) -> None:
+    action = read(staged, "context.jsonld")["@context"]["action"]
+    assert action["@type"] == "@vocab", "the values of an enum are terms, read as IRIs"
+    assert action["@context"] == {
+        "read": "http://www.w3.org/ns/odrl/2/read",
+        "modify": "http://www.w3.org/ns/odrl/2/modify",
+        "delete": "http://www.w3.org/ns/odrl/2/delete",
+        "administer": "https://meaningfy.ws/ns/rdf-persistence#administer",
+    }, "one term per permissible value, its meaning expanded"
+
+
+def test_an_enum_value_is_stored_as_its_meaning_and_compacted_back(staged: Path) -> None:
+    context = read(staged, "context.jsonld")["@context"]
+    node = {"@context": context, "id": "https://example.org/g", "action": "read"}
+    (expanded,) = jsonld.expand(node)
+    assert expanded["http://www.w3.org/ns/odrl/2/action"] == [
+        {"@id": "http://www.w3.org/ns/odrl/2/read"}
+    ], "the value expands to the IRI that the shapes list"
+    assert jsonld.compact(expanded, context)["action"] == "read", "and compacts back to the term"
+
+
+ENUMS = """
+id: https://example.org/ns/enums
+name: enums
+prefixes: {s: "https://example.org/ns/s#", linkml: "https://w3id.org/linkml/"}
+default_prefix: s
+default_range: string
+imports: [linkml:types]
+classes:
+  Thing:
+    slots: [color]
+slots:
+  color:
+    range: Color
+enums:
+  Color:
+    permissible_values:
+      red: {%s}
+      blue: {%s}
+"""
+
+
+def render_enums(tmp_path: Path, red: str, blue: str) -> dict:
+    path = tmp_path / "enums.yaml"
+    path.write_text(ENUMS % (red, blue), encoding="utf-8")
+    context: dict = json.loads(render_context(path))["@context"]
+    return context
+
+
+def test_an_enum_without_meanings_keeps_its_plain_values(tmp_path: Path) -> None:
+    color = render_enums(tmp_path, "", "")["color"]
+    assert "@context" not in color, "no meaning, no term to map"
+    assert "@type" not in color, "the values stay literals, as the shapes list them"
+
+
+def test_an_enum_with_some_meanings_only_is_refused(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="every value a meaning"):
+        render_enums(tmp_path, "meaning: s:Red", "")

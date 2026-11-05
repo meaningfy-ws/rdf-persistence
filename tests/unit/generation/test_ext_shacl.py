@@ -107,3 +107,73 @@ def test_an_owned_part_is_checked_against_its_own_shape(shapes: Graph) -> None:
     assert (prop, SH.node, URIRef(f"{LIB}Chapter")) in shapes, (
         "an owned part must conform to its shape"
     )
+
+
+IDENTIFIED = """
+id: https://example.org/ns/identified
+name: identified
+title: Identified
+description: One class with an identifier and one without.
+prefixes: {s: "https://example.org/ns/s#", linkml: "https://w3id.org/linkml/"}
+default_prefix: s
+default_range: string
+imports: [linkml:types]
+classes:
+  Named:
+    title: Named
+    description: An object identified by its IRI.
+    slots: [id, note, hidden]
+  Anonymous:
+    title: Anonymous
+    description: An object that has no identifier, a blank node.
+    slots: [note]
+slots:
+  id:
+    title: Identifier
+    description: The IRI.
+    range: uri
+    identifier: true
+  note:
+    title: Note
+    description: A note.
+  hidden:
+    title: Hidden
+    description: Written by the toolkit, never by a client.
+    required: true
+    annotations: {internal: true}
+"""
+
+
+@pytest.fixture(scope="module")
+def identified_shapes(tmp_path_factory: pytest.TempPathFactory) -> Graph:
+    path = tmp_path_factory.mktemp("identified") / "identified.yaml"
+    path.write_text(IDENTIFIED, encoding="utf-8")
+    return Graph().parse(data=render_shapes(path).text, format="turtle")
+
+
+def test_the_shape_of_an_identified_class_requires_an_iri_node(identified_shapes: Graph) -> None:
+    shape = URIRef("https://example.org/ns/s#Named")
+    assert (shape, SH.nodeKind, SH.IRI) in identified_shapes, "a node with an identifier is an IRI"
+
+
+def test_the_shape_of_a_class_without_an_identifier_has_no_node_kind(
+    identified_shapes: Graph,
+) -> None:
+    shape = URIRef("https://example.org/ns/s#Anonymous")
+    assert (shape, SH.nodeKind, None) not in identified_shapes, "a blank node is allowed"
+
+
+def test_an_internal_slot_is_optional_in_the_shape_though_the_class_requires_it(
+    identified_shapes: Graph,
+) -> None:
+    path = URIRef("https://example.org/ns/s#hidden")
+    shape = URIRef("https://example.org/ns/s#Named")
+    (prop,) = [
+        p
+        for p in identified_shapes.objects(shape, SH.property)
+        if (p, SH.path, path) in identified_shapes
+    ]
+    assert (prop, SH.minCount, None) not in identified_shapes, (
+        "the toolkit writes it, not the client"
+    )
+    assert (prop, SH.maxCount, None) in identified_shapes, "the rest of the property stays"

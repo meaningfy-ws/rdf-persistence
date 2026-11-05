@@ -1,8 +1,10 @@
 """Step 5: the JSON-LD context and one frame per aggregate type (PD-12, PD-25).
 
 ``gen-jsonld-context`` has no ``@type`` alias, keeps ``internal`` slots, tags integers and booleans
-with a datatype (so a native JSON number comes back as a string after framing) and has no frames per
-aggregate. This module closes those gaps in a subclass and a frame builder; the stock output is not edited.
+with a datatype (so a native JSON number comes back as a string after framing), reads a ``uri`` as a
+typed literal where the shapes expect an IRI, maps an enum to SKOS notation terms where the shapes list
+the meaning IRIs, and has no frames per aggregate. This module closes those gaps in a subclass and a
+frame builder; the stock output is not edited.
 """
 
 import json
@@ -10,8 +12,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from linkml.generators.jsonldcontextgen import ContextGenerator
-from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
-from linkml_runtime.utils.formatutils import camelcase
+from linkml_runtime.linkml_model.meta import ClassDefinition, EnumDefinition, SlotDefinition
+from linkml_runtime.utils.formatutils import camelcase, underscore
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation.aggregates import root_classes
@@ -24,22 +26,44 @@ CONTEXT_FILE = "context.jsonld"
 FRAME_SUFFIX = ".frame.jsonld"
 # JSON carries these natively: a datatype tag would turn them into strings when framed back.
 NATIVE_JSON_DATATYPES = ("xsd:integer", "xsd:boolean")
+JSON_LD_VERSION = 1.1  # property-scoped contexts are a JSON-LD 1.1 feature
 ALWAYS = "@always"
 NEVER = "@never"
 
 
 class ToolkitContextGenerator(ContextGenerator):
-    """``gen-jsonld-context`` with ``id``/``type`` aliases, no ``internal`` slots and native JSON scalars."""
+    """``gen-jsonld-context`` with ``id``/``type`` aliases, no ``internal`` slots, native JSON scalars,
+    ``uri`` values as IRIs and enum values as their meaning IRIs (PD-10)."""
 
     def visit_slot(self, aliased_slot_name: str, slot: SlotDefinition) -> None:
         if annotation(slot, "internal") == TRUE:
             return
         super().visit_slot(aliased_slot_name, slot)
-        for definition in self.context_body.values():
-            if isinstance(definition, dict) and definition.get("@type") in NATIVE_JSON_DATATYPES:
-                del definition["@type"]
+        definition = self.context_body.get(underscore(aliased_slot_name))
+        if not isinstance(definition, dict):
+            return
+        if definition.get("@type") in NATIVE_JSON_DATATYPES:
+            del definition["@type"]
+        if slot.range in self.schema.enums:
+            self._map_enum_to_meanings(definition, self.schema.enums[slot.range])
+
+    def _map_enum_to_meanings(self, definition: dict, enum: EnumDefinition) -> None:
+        """Replace the stock SKOS terms by one term per value, its meaning IRI; the shapes list those IRIs."""
+        definition.pop("@context", None)
+        definition.pop("@type", None)
+        meanings = {text: value.meaning for text, value in enum.permissible_values.items()}
+        if not any(meanings.values()):
+            return  # no meanings: the shapes list the plain values
+        if not all(meanings.values()):
+            raise ValueError(f"enum {enum.name}: give every value a meaning, or none")
+        definition["@type"] = "@vocab"
+        definition["@context"] = {
+            str(text): str(self.namespaces.uri_for(str(meaning)))
+            for text, meaning in meanings.items()
+        }
 
     def end_schema(self, *args, **kwargs) -> str:
+        self.context_body["@version"] = JSON_LD_VERSION
         self.context_body["type"] = "@type"
         return str(super().end_schema(*args, **kwargs))
 
@@ -50,7 +74,9 @@ def render_context(schema_path: Path) -> str:
     # given the merged schema; upgrade when gen-jsonld-context takes a SchemaView.
     view = load_schema(schema_path)
     view.merge_imports()
-    generator = ToolkitContextGenerator(view.schema, fix_multivalue_containers=True, metadata=False)
+    generator = ToolkitContextGenerator(
+        view.schema, fix_multivalue_containers=True, metadata=False, xsd_anyuri_as_iri=True
+    )
     return str(generator.serialize())
 
 
