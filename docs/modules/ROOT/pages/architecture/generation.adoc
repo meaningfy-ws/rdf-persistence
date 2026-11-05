@@ -393,8 +393,9 @@ async with open_session(store, schema=SCHEMA, tenant=library_iri, caller=caller)
 * *Commit* _(spike, Fuseki 5.1.0)_: one update deletes the graph's triples and inserts the new ones
   with a fresh version token, guarded by the old token; Fuseki answers 204 even when the guard
   matches nothing, so an `ASK` for the new token tells committed from conflict.
-* *Kinds*: an abstract root with a `designates_type` slot (`rdf:type`) lets `session.get` return the
-  concrete subclass.
+* *Kinds*: the mapper reads the class the caller asks for; it does not use `designates_type`. An owned
+  part is read as its slot's range class, so a subclass in an owned slot comes back as its parent (a
+  known limit of `rdf_persistence/services/mapper.py`, lifted when a schema owns a class hierarchy).
 
 [#guarding]
 == Guarding the generated code
