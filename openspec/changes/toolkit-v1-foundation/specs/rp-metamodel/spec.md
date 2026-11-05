@@ -43,7 +43,8 @@ about the aggregate's graph IRI, never about the root entity. PROV-O derivation 
 `rp_access` SHALL model `Policy` (`odrl:Set`), `Permission`, `Prohibition`, `Principal`
 (`odrl:Party`, `prov:Agent`), the `Action` enum (meanings `odrl:read`, `odrl:modify`, `odrl:delete`
 and `rp:administer`, extensible) and `RoleDefinition`. A grant SHALL be a `Permission` whose target
-is an IRI at one of three levels (system, tenant, aggregate graph).
+is a tenant IRI or an aggregate's graph IRI; the system level SHALL come only from global roles in
+the token.
 
 #### Scenario: a grant is ODRL
 - **WHEN** a grant of the role `librarian` in a library tenant is stored

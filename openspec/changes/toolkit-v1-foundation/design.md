@@ -86,7 +86,7 @@ architecture D-1..D-12, O-1 and O-2.
     example `rp_path: books`. There is no automatic plural.
   - The toolkit mints IRIs; clients never send them on create.
 - **PD-6a Names.** `prefix` is the consumer's short name (lower case, at most 20 characters; the toy
-  library uses `lib`).
+  library uses `lib`, with `base` = `https://example.org/library/`).
 
   | Thing | Name |
   |---|---|
@@ -130,6 +130,10 @@ architecture D-1..D-12, O-1 and O-2.
     `creator_role` (toy: `librarian`).
   - Listing a tenant's aggregates needs `read` at tenant scope. A permission on one aggregate
     allows that aggregate only.
+  - `modify`, `delete` and `administer` each imply `read` at the same scope.
+  - A *tenant grant* is a grant whose target is the tenant IRI. A caller with neither a tenant grant
+    nor a permission on the requested aggregate gets 404. A caller with one of them, but without the
+    action, gets 403. A matching Prohibition gets 403 before anything else.
 
   The toy library's matrix, which task 4.3 tests (`allow`, or the status returned):
 
@@ -138,7 +142,9 @@ architecture D-1..D-12, O-1 and O-2.
   | `admin` (global, `read` at system level) | allow | 403 | 403 | 403 | 403 | allow |
   | `librarian` | allow | allow | allow | allow | allow | allow |
   | `reader` | allow | 403 | 403 | 403 | 403 | allow |
-  | direct `modify` permission on book B only | B: allow; others: 404 | B: allow; others: 404 | 404 | 404 | 404 | 404 |
+  | direct `modify` permission on book B only | B: allow; others: 404 | B: allow; others: 404 | B: 403; others: 404 | 404 | 404 | 404 |
+  | `reader` + direct `modify` permission on book B | allow | B: allow; others: 403 | 403 | 403 | 403 | allow |
+  | `librarian` + Prohibition of `modify` on book B | allow | B: 403; others: allow | allow | allow | allow | allow |
   | no grant (outsider) | 404 | 404 | 404 | 404 | 404 | 404 |
   | anyone, tenant `deleting` | 404 | 404 | 404 | 404 | 404 | 404 |
 - **PD-10 One grant model.** A `Grant` is an `odrl:Permission` with:
@@ -148,7 +154,9 @@ architecture D-1..D-12, O-1 and O-2.
   - `role` (`rp:role`) for a role grant, or `action` (`odrl:action`) for a direct permission;
     exactly one of the two.
 
-  A `Prohibition` has the same `assignee` and `target`, and an `action`. Uniqueness: one grant per
+  Grant targets are tenant or aggregate-graph IRIs only. The system level exists only through
+  global roles in the token claim (PD-9): no system grants are stored. A `Prohibition` has the same
+  `assignee` and `target`, and an `action`. Uniqueness: one grant per
   assignee, target and role-or-action. `generation.adoc`'s slot table and `index.adoc`'s tenancy row
   already say this.
 
@@ -167,7 +175,12 @@ architecture D-1..D-12, O-1 and O-2.
   | — | `--check` | off | run lint and the checks only; write nothing |
 - **PD-19 Reproducible output.** Generator metadata that changes between runs (generation dates,
   generator versions) is switched off in every generator call. Generated folders (`**/generated/**`)
-  are excluded from Ruff, mypy and Xenon in their config files.
+  are excluded from Ruff, mypy and Xenon in their config files. `make check-generated` regenerates
+  the toy library and the metamodel classes and fails on any difference; CI runs it.
+- **PD-20 Boundary checks on code.** `docs/tools/check_docs.py` also scans `rdf_persistence/` and
+  `tests/` for consumer terms, and `make check-quality` runs it. The end-to-end test uses
+  `testkit.assert_public_imports(path)`, which parses a test file's imports with `ast` and fails on
+  any `rdf_persistence.<sub>` import other than `rdf_persistence.testkit`.
 - **PD-11 Unlabelled classes.** Before running the generators, `rp-generate` gives every class
   annotated `rp_unlabelled: true` a `slot_usage` of `{label: {required: false}}`. The generated
   classes and shapes then agree, with no separate change to the shapes generator.
@@ -189,7 +202,9 @@ architecture D-1..D-12, O-1 and O-2.
     - `GET` and `PUT /{tenant_segment}/{t}`: the tenant's root object (PD-8), with its `ETag`;
     - `DELETE /{tenant_segment}/{t}`: `If-Match` on the access record, action `delete`;
     - `GET` and `PUT /{tenant_segment}/{t}/grants`: the grant set, `If-Match` on the access record,
-      action `administer`.
+      action `administer`;
+    - `PUT /{tenant_segment}/{t}/label`: the tenant's label in the access record, `If-Match` on the
+      access record, action `modify`.
 - **PD-14 Body handling.**
   1. A JSON body is expanded with the generated context; a JSON-LD body is used as is. Either way it
      becomes triples whose root is the IRI from the path (on create, the minted IRI).
@@ -208,12 +223,18 @@ architecture D-1..D-12, O-1 and O-2.
     conflict", "Precondition required", "Invalid body", "Not acceptable", "Unsupported media
     type", "Bad query", "Service unavailable".
   - Listings sort by IRI ascending unless `sort=<slot>` or `sort=-<slot>` is given.
+  - Filters are query parameters `?<slot>=<value>`; repeated parameters on different slots combine
+    with AND. `limit` defaults to 50 and is at most 200. `GET /{tenant_segment}` is paged the same
+    way.
+  - Cached JWKS keys are kept for 10 minutes; an unknown `kid` triggers one refresh.
 
 ### Tests
 
-- **PD-16 Test containers.** `tests/containers/compose.yaml` defines three containers:
+- **PD-16 Test containers.** `rdf_persistence/testkit/containers/compose.yaml` defines three
+  containers:
   - **Fuseki**: built from Apache Jena's `jena-fuseki-docker` Dockerfile at the latest Jena 5.x
-    release, pinned in task 0.4. Apache publishes the Dockerfile, not an image, so it is vendored in `tests/containers/fuseki/`. A
+    release, pinned in task 0.4. Apache publishes the Dockerfile, not an image, so it is vendored in
+    `rdf_persistence/testkit/containers/fuseki/`. A
     `shiro.ini` admits one test user, on every endpoint.
   - **Garage**, pinned by digest. The fixture bootstraps it with `garage layout assign`,
     `garage layout apply` and `garage key create`, through `docker exec`.
@@ -241,10 +262,13 @@ architecture D-1..D-12, O-1 and O-2.
   | `tests/integration/identity/` | `integration`, `identity` |
   | `tests/e2e/` | `e2e`, `store`, `files`, `identity` |
 
-  The fixtures in `testkit/containers.py` start the containers a marker needs. The markers are
-  registered in `pytest.ini`.
+  The fixtures in `rdf_persistence/testkit/containers/` start the containers a marker needs. That
+  folder ships as package data with the compose file and the vendored Fuseki Dockerfile, so
+  consumers get the same fixtures. It is imported lazily and needs the extra
+  `rdf-persistence[testkit]` (`testcontainers`); without it, importing the fixtures raises an
+  error that names the extra. The markers are registered in `pytest.ini`.
   - `make test` runs `unit or feature` with the 80% coverage floor. `.coveragerc` omits
-    `rdf_persistence/adapters/*` and `testkit/containers.py` from that floor.
+    `rdf_persistence/adapters/*` and `rdf_persistence/testkit/containers/*` from that floor.
   - `make test-containers` runs `integration or e2e` and reports coverage without a floor, in a
     separate CI job.
   - The router's unit tests use the fake session, so the router counts toward the floor.
@@ -300,12 +324,13 @@ practically impossible.
 ### Worked example: `PUT /libraries/{t}/books/{id}` with `If-Match: "7f3a…"`
 
 1. The `TokenVerifier` gives principal `<p>` and global roles `[]`. The route declares `modify`.
-2. The access check loads, in one query, the permissions and prohibitions of `<p>` in tenant `<t>`'s
-   access record:
+2. The access check loads, in one query, the grants and prohibitions of `<p>` in tenant `<t>`'s
+   access record, then applies PD-9's rules in order:
    - a Prohibition on `modify` for the tenant or for `graph_iri(<book>)` means 403;
-   - no grant in the tenant, and no permission on the book, means 404;
-   - otherwise, if a role definition of one of `<p>`'s roles permits `modify` at the matching
-     level, or a direct permission does, the request is allowed; if not, 403.
+   - neither a tenant grant nor a permission on the book means 404;
+   - a role definition of one of `<p>`'s tenant roles, or a direct permission on the book, that
+     permits `modify` (or an action implying it) means allow;
+   - otherwise 403.
 3. The body is expanded and validated (PD-14), then the session commits under `"7f3a…"`.
 4. The response is 200 with `ETag: "c91e…"`.
 

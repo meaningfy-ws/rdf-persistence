@@ -17,13 +17,13 @@ Notation:
   - Includes `library_roles.yaml` (the role definitions of PD-9's matrix) and `partial.yaml` (imports only `rp_core` and `rp_annotations`).
   - `linkml-lint` passes.
 - [ ] 0.4 Test containers (PD-16):
-  - `tests/containers/compose.yaml`, with the Fuseki Dockerfile vendored at a pinned Jena 5.x release, and Garage and Zitadel pinned by digest.
+  - `rdf_persistence/testkit/containers/compose.yaml`, with the Fuseki Dockerfile vendored at a pinned Jena 5.x release, and Garage and Zitadel pinned by digest.
   - The bootstrap for each container.
-  - `testkit/containers.py`; the markers `store`, `files` and `identity` added to `tests/conftest.py`'s path table and registered in `pytest.ini` (PD-16).
-  - `make test` runs `unit or feature` with the coverage floor, `.coveragerc` omitting `adapters/*` and `testkit/containers.py`; a new `make test-containers` runs `integration or e2e`; the CI container job.
+  - `rdf_persistence/testkit/containers/` as package data behind the extra `rdf-persistence[testkit]`, imported lazily; the markers `store`, `files` and `identity` added to `tests/conftest.py`'s path table and registered in `pytest.ini` (PD-16).
+  - `make test` runs `unit or feature` with the coverage floor, `.coveragerc` omitting `rdf_persistence/adapters/*` and `rdf_persistence/testkit/containers/*`; a new `make test-containers` runs `integration or e2e`; the CI container job.
   - One smoke test per container: it starts and answers.
 
-- [ ] 0.5 A CI workflow for changes under `docs/**`: `make check-docs` and the Antora build (rp-package-boundaries: a consumer term in an architecture page).
+- [ ] 0.5 A CI workflow for changes under `docs/**`: `make check-docs` and the Antora build. `check_docs.py` also scans `rdf_persistence/` and `tests/` for consumer terms, run by `make check-quality` (PD-20).
 
 ## 1. Metamodel and generation (stage 1)
 
@@ -34,7 +34,7 @@ Notation:
   - `Grant` with the slots of PD-10.
 
   Also `rp_tenancy.yaml` (`TenantAccess` owning grants, permissions and prohibitions, plus `TenantState`), `rp_files.yaml` (`StoredFile`) and `rp.yaml`.
-- [ ] 1.4 Generate the metamodel's own Python classes into `rdf_persistence/domain/generated/`. Exports: the metamodel classes and `RpModel`.
+- [ ] 1.4 Generate the metamodel's own Python classes into `rdf_persistence/domain/generated/` with plain `gen-pydantic` (task 1.10 regenerates them through `rp-generate`). Exports: the metamodel classes and `RpModel`.
 - [ ] 1.5 `rp-generate` skeleton:
   - reads `[tool.rp-generate]` with the keys and flags of PD-18;
   - writes to temporary files and moves them into place on success;
@@ -54,7 +54,7 @@ Notation:
   - `gen-jsonld-context`: `id`/`type` aliases, `internal` slots left out, and one frame per aggregate type (PD-12);
   - the `gen-typescript` subclass and its template: enums, dates, `internal` skipped;
   - `gen-mermaid-class-diagram` per module, with the template that marks roots and owned parts.
-- [ ] 1.10 Generate the toy library with generator metadata switched off and `**/generated/**` excluded from Ruff, mypy and Xenon (PD-19); commit its output; add the freshness check to CI.
+- [ ] 1.10 Generate the toy library and regenerate the metamodel classes through `rp-generate`, with generator metadata switched off and `**/generated/**` excluded from Ruff, mypy and Xenon (PD-19); commit the output; add `make check-generated` and run it in CI.
 
 ## 2. Store, session and tenancy (stage 2)
 
@@ -108,11 +108,11 @@ Notation:
 
   Exports: `service_kit`.
 - [ ] 5.2 The generic router (PD-13):
-  - the tenant routes of PD-13, including grants, and aggregate routes over `SchemaView`;
+  - the tenant routes of PD-13, including grants and label, and aggregate routes over `SchemaView`;
   - IRIs minted on create (PD-6);
   - bodies handled as in PD-14, including the refused replace with a different `id`.
 - [ ] 5.3 Content negotiation: JSON with the `Link` header, JSON-LD and Turtle; 406 and 415; the context served at a fixed path.
-- [ ] 5.4 Listings: equality filters, `limit`, `offset`, `sort` (PD-15), the page object, and 400 on a bad query.
+- [ ] 5.4 Listings: `?<slot>=<value>` filters, `limit`, `offset`, `sort` (PD-15), the page object, 400 on a bad query, and an injection attempt through a filter that leaves the store unchanged.
 - [ ] 5.5 The OpenAPI hook over the schema, with bookkeeping stripped.
 - [ ] 5.6 Spike linkml-openapi on the toy library; record in `api.adoc` whether it can replace 5.5.
 - [ ] 5.7 The end-to-end test: the toy library served over the API against Fuseki, Garage and Zitadel, with JWT access tokens of the machine users obtained by the JWT-profile grant (PD-16).
@@ -136,11 +136,11 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 | rp-metamodel: a grant is ODRL | 2.6 | `tests/integration/store/test_tenancy.py` |
 | rp-generation: a slot without a description | 1.6 | `tests/unit/generation/test_hard_check.py` |
 | rp-generation: a domain module imports the access module | 1.7 | `tests/unit/generation/test_boundary_check.py` |
-| rp-generation: placement from the table | 1.5 | `tests/unit/generation/test_placement.py` |
-| rp-generation: regeneration in CI | 1.10 | CI freshness job |
+| rp-generation: placement from the table | 1.10 | `tests/unit/generation/test_placement.py` |
+| rp-generation: regeneration in CI | 1.10 | `make check-generated` in CI |
 | rp-aggregate-store: graph name | 2.3 | `tests/integration/store/test_session.py` |
 | rp-aggregate-store: two editors | 2.3 | `tests/integration/store/test_session.py` |
-| rp-aggregate-store: an injection attempt | 2.1 | `tests/unit/domain/test_sparql.py` |
+| rp-aggregate-store: an injection attempt | 2.1, 5.4 | `tests/unit/domain/test_sparql.py`; `tests/integration/api/test_listing.py` |
 | rp-aggregate-store: a broken file | 2.4 | `tests/integration/store/test_loading.py` |
 | rp-tenancy: create then delete | 2.6, 3.1 | `tests/integration/store/test_tenancy.py` |
 | rp-tenancy: a crash during creation | 2.7 | `tests/integration/store/test_sweep.py` |
@@ -160,10 +160,11 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 | rp-service-api: the document lists the routes | 5.5 | `tests/unit/entrypoints/test_openapi.py` |
 | rp-testkit: a unit test of a domain service | 2.8, 3.4 | `tests/unit/testkit/test_fakes.py` |
 | rp-testkit: the end-to-end proof | 5.7 | `tests/e2e/test_library.py` |
+| rp-package-boundaries: a consumer term in code | 0.5 | `make check-quality` (`check_docs.py`) |
 | rp-package-boundaries: a consumer term in an architecture page | 0.5 | `make check-docs` in the docs CI workflow |
 | rp-package-boundaries: tested alone | 0.2 | CI (no consumer installed) |
 | rp-package-boundaries: a service imports an adapter | 0.1 | `make check-architecture` |
-| rp-package-boundaries: a name used by the toy library | 5.7 | `tests/e2e/test_library.py` (imports checked by a test helper) |
+| rp-package-boundaries: a name used by the toy library | 5.7 | `tests/e2e/test_library.py` with `testkit.assert_public_imports` (PD-20) |
 
 ## Roadmap
 

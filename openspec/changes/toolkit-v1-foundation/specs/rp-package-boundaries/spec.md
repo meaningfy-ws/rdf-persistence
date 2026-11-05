@@ -9,6 +9,10 @@ architecture change, where it was drafted, by decision D-12.
 The `rdf_persistence` package SHALL NOT import any consumer package, and its code, tests and
 architecture pages SHALL NOT use consumer terms; the background study is exempt.
 
+#### Scenario: a consumer term in code
+- **WHEN** a module under `rdf_persistence/` contains "Mapping Workbench"
+- **THEN** `make check-quality` fails and names the file
+
 #### Scenario: a consumer term in an architecture page
 - **WHEN** a page under `docs/modules/ROOT/pages/architecture/` contains "Mapping Workbench"
 - **THEN** `make check-docs` fails and names the page
@@ -34,4 +38,4 @@ Every name a consumer needs SHALL be exported from the top-level `rdf_persistenc
 
 #### Scenario: a name used by the toy library
 - **WHEN** the toy library's end-to-end test imports anything from `rdf_persistence`
-- **THEN** it imports only top-level names or `rdf_persistence.testkit`
+- **THEN** `testkit.assert_public_imports` finds only top-level names or `rdf_persistence.testkit`
