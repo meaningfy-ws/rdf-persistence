@@ -87,6 +87,7 @@ or Turtle by content negotiation.* No generated routes.
 
 [mermaid]
 ....
+%%{init: {"sequence": {"actorMargin": 25, "width": 110}}}%%
 sequenceDiagram
     participant Cl as Client
     participant R as Router
