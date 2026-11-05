@@ -1,0 +1,14 @@
+# The toolkit's linkml-lint configuration (task 1.5). `recommended` already makes the structural
+# rules errors (undeclared slots and ranges, one identifier or key per class, bad slot usage); the
+# three below are raised because their output reaches the generated code and the API:
+#   recommended        a missing description becomes a missing docstring and API description
+#   standard_naming    class, slot and enum names become Python, TypeScript and IRI names
+#   canonical_prefixes a non-canonical prefix (dct for dcterms) forks the vocabulary the IRIs use
+extends: recommended
+rules:
+  recommended:
+    level: error
+  standard_naming:
+    level: error
+  canonical_prefixes:
+    level: error

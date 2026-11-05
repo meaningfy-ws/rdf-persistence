@@ -1,5 +1,5 @@
 # Minimal pyproject.toml — Meaningfy standard (no-src, config-in-root).
-# Only [project], [dependency-groups], [tool.uv*], [build-system] live here.
+# Only [project], [dependency-groups], [tool.uv*], [tool.rp-generate], [build-system] live here.
 # Every TOOL is configured in its own dedicated root file:
 #   ruff.toml · mypy.ini · pytest.ini · .coveragerc · .importlinter
 #   .pre-commit-config.yaml · sonar-project.properties
@@ -41,6 +41,10 @@ dependencies = [
     "anyio==4.16.0",
 ]
 
+[project.scripts]
+# Always installed; without the `generate` extra it exits 2 and says so (PD-2).
+rp-generate = "rdf_persistence.generation.cli:main"
+
 [project.optional-dependencies]
 # The generators, kept out of consumers' running services (PD-2).
 generate = [
@@ -70,6 +74,15 @@ lint = [
     "radon==6.0.1",
     "xenon==0.9.3",
 ]
+
+# This repo's own generation targets (PD-18): the metamodel and the generation module's data.
+[[tool.rp-generate]]
+schema = "rdf_persistence/model/rp.yaml"
+package = "rdf_persistence.domain.generated"
+
+[[tool.rp-generate]]
+schema = "rdf_persistence/generation/model/rp_generation.yaml"
+package = "rdf_persistence.generation.generated"
 
 [tool.uv]
 default-groups = ["dev", "test", "lint"]

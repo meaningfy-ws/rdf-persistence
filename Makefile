@@ -13,7 +13,6 @@ REPO_ROOT    = $(shell pwd)
 PACKAGE_NAME = rdf_persistence
 TEST_PATH    = $(REPO_ROOT)/tests
 BUILD_PATH   = $(REPO_ROOT)/dist
-GENERATED_DIR = $(PACKAGE_NAME)/domain/generated
 
 # Docker / infra (activate the Docker section below once infra/ exists).
 COMPOSE_FILE = $(REPO_ROOT)/infra/compose.yaml
@@ -59,13 +58,10 @@ lock: ## Update uv.lock
 	@ uv lock
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Lock file updated$(END_BUILD_PRINT)"
 
-generate-metamodel: ## Regenerate the metamodel's Python classes (task 1.10 replaces this with rp-generate)
+generate-metamodel: ## Regenerate the metamodel's and the generation module's Python classes with rp-generate
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating the metamodel classes$(END_BUILD_PRINT)"
-	@ mkdir -p $(GENERATED_DIR)
-	@ uv run gen-pydantic --meta None --no-metadata --no-generation-date \
-		--template-dir $(PACKAGE_NAME)/generation/templates/pydantic \
-		$(PACKAGE_NAME)/model/rp.yaml > $(GENERATED_DIR)/rp.py
-	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Metamodel classes written to $(GENERATED_DIR)/rp.py$(END_BUILD_PRINT)"
+	@ uv run rp-generate
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Metamodel classes generated$(END_BUILD_PRINT)"
 
 build: ## Build the package distribution
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Building package$(END_BUILD_PRINT)"
@@ -162,6 +158,8 @@ ci-full: check-all clean-code ## CI full: quality + unit and feature tests + cle
 
 #-----------------------------------------------------------------------------
 # Reports (opt-in)
+# Note: radon (and xenon, which uses it) cannot read a pyproject.toml whose [[tool.*]] is an array of
+# tables (the rp-generate entries), so they run from inside the package, away from it.
 #-----------------------------------------------------------------------------
 .PHONY: coverage-report quality-report
 
@@ -174,8 +172,8 @@ coverage-report: ## Generate HTML coverage report in reports/
 quality-report: ## Generate Radon quality report in reports/
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating quality report$(END_BUILD_PRINT)"
 	@ mkdir -p $(REPO_ROOT)/reports
-	@ uv run radon cc $(PACKAGE_NAME) -s -a -j > $(REPO_ROOT)/reports/complexity.json
-	@ uv run radon mi $(PACKAGE_NAME) -s -j > $(REPO_ROOT)/reports/maintainability.json
+	@ uv run --directory $(PACKAGE_NAME) radon cc . -s -a -j > $(REPO_ROOT)/reports/complexity.json
+	@ uv run --directory $(PACKAGE_NAME) radon mi . -s -j > $(REPO_ROOT)/reports/maintainability.json
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Quality reports at reports/$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------
@@ -185,17 +183,17 @@ quality-report: ## Generate Radon quality report in reports/
 
 complexity: ## Radon cyclomatic complexity analysis
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking cyclomatic complexity$(END_BUILD_PRINT)"
-	@ uv run radon cc $(PACKAGE_NAME) -s -a
+	@ uv run --directory $(PACKAGE_NAME) radon cc . -s -a
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Complexity analysis complete$(END_BUILD_PRINT)"
 
 maintainability: ## Radon maintainability index
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking maintainability index$(END_BUILD_PRINT)"
-	@ uv run radon mi $(PACKAGE_NAME) -s
+	@ uv run --directory $(PACKAGE_NAME) radon mi . -s
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Maintainability analysis complete$(END_BUILD_PRINT)"
 
 clean-code: ## Xenon threshold checks
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running Xenon threshold checks$(END_BUILD_PRINT)"
-	@ uv run xenon $(PACKAGE_NAME) --exclude '*/generated/*' --max-absolute B --max-modules A --max-average A
+	@ uv run --directory $(PACKAGE_NAME) xenon . --exclude '*/generated/*' --max-absolute B --max-modules A --max-average A
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Clean code checks passed$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------

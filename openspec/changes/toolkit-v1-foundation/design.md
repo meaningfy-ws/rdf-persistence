@@ -343,6 +343,10 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
   (PD-26). This repo's `pyproject.toml` has three entries: `rp.yaml` into `domain/generated/`,
   `rp_service.yaml` into `domain/generated/service/`, and `rp_generation.yaml` into
   `generation/generated/`.
+  The `schema` key is the field `schema_file` of `GenerationTarget` (a slot named `schema` would
+  shadow a pydantic method); the TOML key and the `--schema` flag stay `schema`. Radon cannot read a
+  `pyproject.toml` holding a `[[tool.*]]` array, so the Radon and Xenon targets run from inside the
+  package folder (task 1.5).
 
   | Key | Flag | Default | Meaning |
   |---|---|---|---|

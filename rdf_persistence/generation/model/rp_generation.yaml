@@ -1,0 +1,60 @@
+id: https://meaningfy.ws/ns/rdf-persistence/generation
+name: rp_generation
+title: RDF persistence generation module
+description: >-
+  The data of the generation toolchain: the configuration of one `rp-generate` run. Later tasks add
+  the manifest and the conformance cases to this module.
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+annotations:
+  module_kind: technical
+
+classes:
+  GenerationTarget:
+    title: Generation target
+    description: >-
+      One entry of the `[tool.rp-generate]` table of a `pyproject.toml`: a schema and the folders its
+      generated artefacts are written to. Paths are relative to the folder of the `pyproject.toml`.
+    class_uri: rp:GenerationTarget
+    slots:
+      - schema_file
+      - package
+      - python
+      - typescript
+      - diagrams
+    slot_usage:
+      schema_file:
+        required: true
+      package:
+        required: true
+
+slots:
+  schema_file:
+    title: Schema file
+    description: >-
+      The root LinkML schema file; the TOML key and the flag are `schema`, which the field name avoids
+      because it would shadow a pydantic method.
+    slot_uri: rp:schemaFile
+  package:
+    title: Package
+    description: The Python import path of the generated package.
+    slot_uri: rp:package
+  python:
+    title: Python folder
+    description: >-
+      The folder that receives the classes, shapes, context, frames and the schema copy; the folder of
+      `package` when absent.
+    slot_uri: rp:pythonFolder
+  typescript:
+    title: TypeScript folder
+    description: The folder that receives the TypeScript types; none are written when absent.
+    slot_uri: rp:typescriptFolder
+  diagrams:
+    title: Diagrams folder
+    description: The folder that receives one Mermaid file per module; none are written when absent.
+    slot_uri: rp:diagramsFolder
