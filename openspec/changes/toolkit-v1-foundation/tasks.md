@@ -69,7 +69,7 @@ Order: 1.11 at any time; 1.12 and 1.16 after 1.10; 1.13 after 1.8 and 1.12; 1.14
 - [ ] 1.13 The gen-pydantic template extension that generates model validators for `exactly_one_of`, `any_of` and `unique_keys`, placed as PD-24 says; a schema using `rules` makes `rp-generate` exit 1. The three strict xfails of task 1.4 pass and lose their marks. Also `rp_service.yaml` (`ServiceSettings`, `VerifiedCaller` and the bodies of PD-13), as its own `[[tool.rp-generate]]` entry into `domain/generated/service/`.
 - [ ] 1.14 The conformance suite (PD-27 items 3 to 5): the constraint-case table with the classes-versus-shapes verdict test and the coverage test; the JSON-LD round trip with Hypothesis; the model-shape test. In `testkit`, run on the metamodel and the toy library.
 - [ ] 1.15 The model-shape snapshot under `tests/fixtures/`, its test and `make refresh-snapshot` (PD-27 item 6).
-- [ ] 1.16 The model guard and the file guard (PD-28) as `testkit.assert_models_generated`, run on this package.
+- [x] 1.16 The model guard and the file guard (PD-28) as `testkit.assert_models_generated`, run on this package.
 - [ ] 1.17 Generated code compiles (PD-27 item 7): an import test of every generated module; `mypy-generated.ini` and its run in `make check-quality`; `tsc --noEmit --strict` (typescript 5.9.3) on the TypeScript output in CI.
 - [ ] 1.18 The extension register test (PD-25): every extension module under `rdf_persistence/generation/` has a row in `generation.adoc#extensions` whose first column is its module path, and a golden test `tests/unit/generation/test_ext_<module>.py` with goldens in `tests/fixtures/library/golden/<module>/`.
 
@@ -192,7 +192,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 ## Roadmap
 
 - [x] 0.1 · [x] 0.2 · [x] 0.3 · [x] 0.4 · [x] 0.5
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 1.11 · [ ] 1.12 · [ ] 1.13 · [ ] 1.14 · [ ] 1.15 · [ ] 1.16 · [ ] 1.17 · [ ] 1.18
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 1.11 · [ ] 1.12 · [ ] 1.13 · [ ] 1.14 · [ ] 1.15 · [x] 1.16 · [ ] 1.17 · [ ] 1.18
 - [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8
 - [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4
 - [ ] 4.1 · [ ] 4.2 · [ ] 4.3
