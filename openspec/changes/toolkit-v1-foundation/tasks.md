@@ -11,7 +11,7 @@ Notation:
 
 ## 0. Ground
 
-- [ ] 0.1 Delete the empty `rdf_persistence/commons/` and rewrite `.importlinter` (PD-1): the layers contract `entrypoints | adapters > services > domain`, and the forbidden contract for `domain` with `include_external_packages = True`. `make check-architecture` passes (rp-package-boundaries: Layers import downward only).
+- [x] 0.1 Delete the empty `rdf_persistence/commons/` and rewrite `.importlinter` (PD-1): the layers contract `entrypoints | adapters > services > domain`, and the forbidden contract for `domain` with `include_external_packages = True`. `make check-architecture` passes (rp-package-boundaries: Layers import downward only).
 - [ ] 0.2 Dependencies (PD-2): runtime pins, the `generate` extra with `linkml==1.12.1`, and `linkml==1.10.0` removed from dev. `make install` becomes `uv sync --all-extras`. Run `uv lock`; `make install` and the smoke test pass.
 - [ ] 0.3 The toy library schema in `tests/fixtures/library/` (PD-17), as hand-written YAML.
   - Includes `library_roles.yaml` (the role definitions of PD-9's matrix) and `partial.yaml` (imports only `rp_core` and `rp_annotations`).
@@ -171,7 +171,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 
 ## Roadmap
 
-- [ ] 0.1 · [ ] 0.2 · [ ] 0.3 · [ ] 0.4 · [ ] 0.5
+- [x] 0.1 · [ ] 0.2 · [ ] 0.3 · [ ] 0.4 · [ ] 0.5
 - [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10
 - [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8
 - [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4
