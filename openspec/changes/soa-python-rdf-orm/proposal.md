@@ -182,6 +182,13 @@ Round 4 (source: `inputs/developer-answers-2026-11-03-round4.md`):
   (rdflib, pyoxigraph) run each store call on a worker thread so the event loop is not blocked.
   A sync API can be added later if users need it (developer, 2026-11-03).
 
+Clarification (source: `inputs/developer-clarification-2026-11-04-mwbv2.md`):
+
+- **DEC-39**: **MWBv2 is the Mapping Workbench v2**, Meaningfy's application for XML-to-RDF
+  mappings. **rdf-persistence is the technology stack for developing it rapidly**: library,
+  generator and service kit (DEC-32). MWBv2 lives in its own repo and depends on this one;
+  generic capabilities belong here, mapping-specific ones in MWBv2 (developer, 2026-11-04).
+
 Left open by the developer, with the review's recommendation recorded in `decisions.adoc`:
 the design of the core (ADR-07), runtime or generated mapping (ADR-08), how aggregate
 boundaries are declared in LinkML (ADR-11), the typed metamodel, list or set for multi-valued
