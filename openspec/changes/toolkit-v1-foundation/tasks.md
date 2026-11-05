@@ -20,7 +20,7 @@ Notation:
   - `rdf_persistence/testkit/containers/compose.yaml`, with the Fuseki Dockerfile vendored at a pinned Jena 5.x release, and Garage and Zitadel pinned by digest.
   - The bootstrap for each container.
   - `rdf_persistence/testkit/containers/` as package data behind the extra `rdf-persistence[testkit]`, imported lazily; the markers `store`, `files` and `identity` added to `tests/conftest.py`'s path table and registered in `pytest.ini` (PD-16).
-  - `make test` runs `unit or feature` with the coverage floor, `.coveragerc` omitting `rdf_persistence/adapters/*` and `rdf_persistence/testkit/containers/*`; a new `make test-containers` runs `integration or e2e`; the CI container job.
+  - `make test` runs `unit or feature` with the coverage floor, `.coveragerc` omitting `rdf_persistence/adapters/*` and `rdf_persistence/testkit/containers/*`; a new `make test-containers` runs `integration or e2e` with `--cov-fail-under=0`; the `conftest.py` hook applies every marker of a row; the CI container job.
   - One smoke test per container: it starts and answers.
 
 - [ ] 0.5 A CI workflow for changes under `docs/**`: `make check-docs` and the Antora build. `check_docs.py` also scans `rdf_persistence/` and `tests/` for consumer terms, run by `make check-quality` (PD-20).
@@ -31,10 +31,11 @@ Notation:
 - [ ] 1.2 `rp_annotations.yaml` (`Described`, `Tracked`) and `rp_provenance.yaml` (`Provenanced`, `Activity`; it uses `rp_core`'s `Principal` as its agent).
 - [ ] 1.3 `rp_access.yaml`:
   - the ODRL subset and `RoleDefinition`;
+  - `RoleDefinition` with the slots of PD-9;
   - `Grant` with the slots of PD-10 and `unique_keys: {grant_key: [assignee, target, role, action]}`;
   - `TenantAccess` includes `Described` (PD-21).
 
-  Also `rp_tenancy.yaml` (`TenantAccess` owning grants, permissions and prohibitions, plus `TenantState`), `rp_files.yaml` (`StoredFile`) and `rp.yaml`.
+  Also `rp_tenancy.yaml` (`TenantAccess` owning `grants` — role or direct-action — and `prohibitions`, plus `TenantState`), `rp_files.yaml` (`StoredFile`) and `rp.yaml`.
 - [ ] 1.4 Generate the metamodel's own Python classes into `rdf_persistence/domain/generated/` with plain `gen-pydantic` (task 1.10 regenerates them through `rp-generate`). Exports: the metamodel classes and `RpModel`.
 - [ ] 1.5 `rp-generate` skeleton:
   - reads `[tool.rp-generate]` with the keys and flags of PD-18;
@@ -68,7 +69,7 @@ Notation:
   - the tenant root in `{tenant_iri}/meta`, versioned the same way (PD-8).
 
   Exports: `open_session`, the store port, `FusekiStore`, `Conflict`, `NotFound`, `DatabaseGone`.
-- [ ] 2.4 Graph loading, with the parser in a worker thread and the loaded graph registered by the caller's commit. Exports: `load_graph`.
+- [ ] 2.4 Graph loading, with the parser in a worker thread and the loaded graph registered by the caller's commit. Exports: `load_graph`, `InvalidGraph`.
 - [ ] 2.5 The mapper over `SchemaView`, for domain services: graph to generated classes and back, with a round trip on the toy library.
 - [ ] 2.6 Tenancy:
   - the system database, created at start-up if missing, and access records, named as in PD-6a;
@@ -93,22 +94,22 @@ Notation:
   - fixture provisioning of the project, the JWT application and the machine users (PD-16);
   - a test that a disabled service account's token request is refused.
 
-  Exports: the identity port, `ZitadelIdentity`.
+  Exports: the identity port, `ZitadelIdentity`, `IdentityUnavailable`.
 - [ ] 3.4 Testkit fakes of the file store and identity ports.
 
 ## 4. Access (stage 4)
 
-- [ ] 4.1 Loading the role definitions at start-up (PD-9), with an invalid file refused. Also loading a caller's grants, permissions and prohibitions for one tenant in one query.
+- [ ] 4.1 Loading the role definitions (PD-9), with an invalid file refused. Also loading a caller's grants (role or direct action) and prohibitions for one tenant in one query.
 - [ ] 4.2 The check: global roles, prohibitions, permissions at tenant and aggregate scope, and role definitions; it answers 403 or 404. Exports: `AccessRules`.
 - [ ] 4.3 PD-9's matrix as one table-driven test, every cell including the `deleting` tenant row.
 
 ## 5. Service kit and generic router (stage 5)
 
 - [ ] 5.1 The service kit:
-  - `service_kit(…)` as in PD-13; problem responses (PD-15) and `ETag`/`If-Match` (428, 409);
+  - `install_service(app, …)` as in PD-13: router, problem handlers for every toolkit error (a test checks a 401 carries `application/problem+json`), and the lifespan start-up order; `ETag`/`If-Match` (428, 409);
   - the token dependency (on the `TokenVerifier` port) and the access dependency.
 
-  Exports: `service_kit`.
+  Exports: `install_service`.
 - [ ] 5.2 The generic router (PD-13):
   - the tenant routes of PD-13, including grants and label, and aggregate routes over `SchemaView`;
   - IRIs minted on create (PD-6);
@@ -122,7 +123,7 @@ Notation:
 ## 6. Close
 
 - [ ] 6.1 `docs/modules/ROOT/pages/howto/adopt.adoc`: how an application adopts the toolkit (schema, `rp-generate`, composition root, router), using the toy library; add it to the nav.
-- [ ] 6.2 Update the architecture pages with what implementation taught: replace _(spike)_ marks with "implemented" and update the public API table. `make check-docs` passes.
+- [ ] 6.2 Update the architecture pages with what implementation taught: replace _(spike)_ marks with "implemented", and update the public API table and the metamodel slot table (`prohibitions`, `RoleDefinition`). `make check-docs` passes.
 - [ ] 6.3 Run `openspec validate --all --strict`, then archive the change into `openspec/specs/`.
 
 ## Scenario map

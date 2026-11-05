@@ -189,7 +189,7 @@ top level too: `rp-generate`'s split pattern points at `rdf_persistence`.
 |`rdf_persistence.domain` |metamodel classes (generated from `model/rp.yaml`), strict base model |`AggregateRoot`, `StoredFile`, `Principal`, `TenantAccess`, `Grant`, `TenantState`, `RegistryEntry`, `RpModel`
 |`rdf_persistence.services` |aggregate session and repositories, mapper, tenancy, graph loading, access check; the ports (`StorePort`, `FileStorePort`, `IdentityPort`, `TokenVerifier`) |`open_session`, `Tenancy`, `load_graph`, `AccessRules`, the four ports, the errors (`Conflict`, `NotFound`, `DatabaseGone`, …)
 |`rdf_persistence.adapters` |Fuseki, S3 and Zitadel adapters; JWKS token verification |`FusekiStore`, `S3FileStore`, `ZitadelIdentity`, `JwksTokenVerifier`
-|`rdf_persistence.entrypoints` |service kit (FastAPI dependencies, problem responses, ETags, OpenAPI hook) |`service_kit`
+|`rdf_persistence.entrypoints` |service kit (generic router, FastAPI dependencies, problem handlers, ETags, OpenAPI hook, start-up) |`install_service`
 |`rdf_persistence.testkit` |fake session and ports, token signer, Fuseki fixtures, conformance suite |`rdf_persistence.testkit` (a second public module, for tests only)
 |`rdf_persistence.generation` |`rp-generate` (build time; lint config, boundary check, templates) |the `rp-generate` command
 |`rdf_persistence/model/` |the metamodel modules (`rp_core`, `rp_annotations`, `rp_provenance`, `rp_access`, `rp_tenancy`, `rp_files`) and `rp.yaml`, shipped as package data |resolved through the import map

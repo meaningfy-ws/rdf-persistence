@@ -80,7 +80,7 @@ classDiagram
 |`Prohibition` |`odrl:Prohibition` |An assignee may not perform an action on a target.
 |`Principal` |`odrl:Party`, `prov:Agent` |A user or service account of the identity provider, by IRI.
 |`Role` |`rp:role` on a grant |A role a principal holds in a tenant. In v1 the assignee is always a principal; roles as ODRL party collections are later.
-|Target |`odrl:target` |An IRI at a level: the system, a tenant, or an aggregate's graph (`graph_iri(root)`). The level follows from the IRI.
+|Target |`odrl:target` |An IRI: a tenant, or an aggregate's graph (`graph_iri(root)`). The level follows from the IRI. The system level comes only from global roles in the token.
 |`Action` (enum) |`odrl:read`, `odrl:modify`, `odrl:delete`, and `rp:administer` (change a tenant's grants), extended by the application |What is done.
 |`RoleDefinition` |— (toolkit) |Which actions a role permits at which scope level: the application's permission matrix as data (need N-8).
 |===

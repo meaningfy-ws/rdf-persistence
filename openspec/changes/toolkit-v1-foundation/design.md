@@ -34,8 +34,8 @@ marked _(spike)_ in `generation.adoc`.
 
 ## Decisions
 
-New choices made while planning, numbered in the order they were added. Settled decisions are cited,
-not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12, O-1 and O-2.
+New choices made while planning, grouped by topic; the numbers are stable ids, not an order. Settled
+decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12, O-1 and O-2.
 
 ### Layers and dependencies
 
@@ -122,7 +122,21 @@ not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12, O-1 and O-2.
     and changed by one guarded commit.
   - **Role definitions** are the consumer's data, not stored data. They are instances of
     `RoleDefinition` in a YAML file beside the consumer's access module, validated against
-    `rp_access` at start-up and held in memory.
+    `rp_access` at start-up and held in memory. A `RoleDefinition` has three slots:
+
+    | Slot | IRI | Range |
+    |---|---|---|
+    | `role` | `rp:role` | string, required: a tenant role name, or a global role name from the token |
+    | `level` | `rp:level` | enum `system`, `tenant`, `aggregate`, required: where the role applies (`system` only for global roles) |
+    | `actions` | `rp:permits` | `Action`, multivalued, required |
+
+    The toy library's `library_roles.yaml`:
+
+    ```yaml
+    - {role: admin, level: system, actions: [read]}
+    - {role: librarian, level: tenant, actions: [read, modify, delete, administer]}
+    - {role: reader, level: tenant, actions: [read]}
+    ```
   - **Global roles** come from a configurable token claim. The default is Zitadel's
     `urn:zitadel:iam:org:project:roles`, an object keyed by role name.
   - The toy library's roles are `librarian` and `reader` per library, plus the global role `admin`.
@@ -157,7 +171,9 @@ not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12, O-1 and O-2.
   - `role` (`rp:role`) for a role grant, or `action` (`odrl:action`) for a direct permission;
     exactly one of the two.
 
-  Grant targets are tenant or aggregate-graph IRIs only. The system level exists only through
+  The access record owns two collections: `grants` (`rp:grant`, role or direct-action grants) and
+  `prohibitions` (`rp:prohibition`), both owned and multivalued. Grant targets are tenant or
+  aggregate-graph IRIs only. The system level exists only through
   global roles in the token claim (PD-9): no system grants are stored. A `Prohibition` has the same
   `assignee` and `target`, and an `action`. Uniqueness: one grant per assignee, target and
   role-or-action, declared as `unique_keys: {grant_key: [assignee, target, role, action]}` (task 1.3);
@@ -223,9 +239,23 @@ not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12, O-1 and O-2.
     | aggregate routes | the aggregate (PD-14) | the aggregate |
 
     The consumer's composition root calls
-    `service_kit(schema, store, files, identity, verifier, rules, settings) -> fastapi.APIRouter`
-    and mounts the router. `settings` holds `base`, `prefix`, `tenant_segment`, `creator_role` and
-    `roles_claim`. The JSON-LD context is served at `/context.jsonld` under the mount.
+    `install_service(app, *, schema, store, files, identity, verifier, rules, settings, prefix="")`
+    on its FastAPI app. It does three things:
+    1. mounts the router;
+    2. registers exception handlers that turn every toolkit error into a problem response
+       (`application/problem+json`), so routes the consumer writes itself get the same answers
+       (for example `InvalidGraph` → 422, `TenantGone` → 404, `IdentityUnavailable` → 503);
+    3. adds a lifespan step that runs, before the app serves: create the system database if
+       missing, then load and validate the role definitions, then the sweep.
+
+    `settings` holds `base`, `prefix`, `tenant_segment`, `creator_role` and `roles_claim`. The
+    JSON-LD context is served at `/context.jsonld` under the mount. Upload, graph loading and account
+    administration are library calls for the consumer's own routes, not routes of the toolkit.
+
+    Adapter constructors: `FusekiStore(url, user, password)`,
+    `S3FileStore(endpoint, access_key_id, secret_access_key, region)`,
+    `ZitadelIdentity(issuer, service_token, organisation_id)`,
+    `JwksTokenVerifier(issuer, audience, roles_claim)`.
 - **PD-14 Body handling.**
   1. A JSON body is expanded with the generated context; a JSON-LD body is used as is. Either way it
      becomes triples whose root is the IRI from the path (on create, the minted IRI).
@@ -273,7 +303,8 @@ not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12, O-1 and O-2.
     No human user is needed: Zitadel has no password grant. Personal access tokens are opaque, so
     they are not supported in v1 (`access-control.adoc#identity`).
 
-  Markers stay assigned by path in `tests/conftest.py`, which gains one row per container need:
+  Markers stay assigned by path in `tests/conftest.py`. Its hook is rewritten to apply every marker
+  of a directory's row, not only the first:
 
   | Directory | Markers |
   |---|---|
@@ -291,8 +322,10 @@ not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12, O-1 and O-2.
   error that names the extra. The markers are registered in `pytest.ini`.
   - `make test` runs `unit or feature` with the 80% coverage floor. `.coveragerc` omits
     `rdf_persistence/adapters/*` and `rdf_persistence/testkit/containers/*` from that floor.
-  - `make test-containers` runs `integration or e2e` and reports coverage without a floor, in a
-    separate CI job.
+  - `make test-containers` runs `integration or e2e` with `--cov-fail-under=0`, reporting coverage
+    without a floor, in a separate CI job.
+  - The tenancy tests take the file store from a parametrised fixture: the fake in stage 2, and
+    Garage added as a second parameter in task 3.1.
   - The router's unit tests use the fake session, so the router counts toward the floor.
   - A new CI workflow runs on changes under `docs/**` (which the main workflow ignores): it runs
     `make check-docs` and the Antora build.
