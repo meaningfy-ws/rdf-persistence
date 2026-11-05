@@ -12,20 +12,22 @@ Notation:
 ## 0. Ground
 
 - [ ] 0.1 Rewrite `.importlinter` (PD-1): the layers contract `entrypoints | adapters > services > domain`, and the forbidden contract for `domain` with `include_external_packages = True`. `make check-architecture` passes (rp-package-boundaries: Layers import downward only).
-- [ ] 0.2 Dependencies (PD-2): runtime pins, the `generate` extra with `linkml==1.12.1`, and `linkml==1.10.0` removed from dev. Run `uv lock`; `make install` and the smoke test pass.
+- [ ] 0.2 Dependencies (PD-2): runtime pins, the `generate` extra with `linkml==1.12.1`, and `linkml==1.10.0` removed from dev. `make install` becomes `uv sync --all-extras`. Run `uv lock`; `make install` and the smoke test pass.
 - [ ] 0.3 The toy library schema in `tests/fixtures/library/` (PD-17), as hand-written YAML.
-  - Includes `library_roles.yaml`, with `librarian` and `reader` per library and the global role `admin`.
+  - Includes `library_roles.yaml` (the role definitions of PD-9's matrix) and `partial.yaml` (imports only `rp_core` and `rp_annotations`).
   - `linkml-lint` passes.
 - [ ] 0.4 Test containers (PD-16):
   - `tests/containers/compose.yaml`, with the Fuseki Dockerfile vendored at a pinned Jena 5.x release, and Garage and Zitadel pinned by digest.
   - The bootstrap for each container.
-  - `testkit/containers.py`, with the markers `store`, `files`, `identity` and `e2e` registered in `pytest.ini`.
-  - `make test` excludes the markers; a new `make test-containers` target runs them; the CI container job.
+  - `testkit/containers.py`; the markers `store`, `files` and `identity` added to `tests/conftest.py`'s path table and registered in `pytest.ini` (PD-16).
+  - `make test` runs `unit or feature` with the coverage floor, `.coveragerc` omitting `adapters/*` and `testkit/containers.py`; a new `make test-containers` runs `integration or e2e`; the CI container job.
   - One smoke test per container: it starts and answers.
+
+- [ ] 0.5 A CI workflow for changes under `docs/**`: `make check-docs` and the Antora build (rp-package-boundaries: a consumer term in an architecture page).
 
 ## 1. Metamodel and generation (stage 1)
 
-- [ ] 1.1 `rdf_persistence/model/rp_core.yaml`: `AggregateRoot`, `version`, `RegistryEntry`, `loaded_graph`, and the annotations `owned`, `internal`, `database`, `graph`, `module_kind`, `rp_path`, `rp_unlabelled`.
+- [ ] 1.1 `rdf_persistence/model/rp_core.yaml`: `AggregateRoot`, `version`, `RegistryEntry` (`graph`, `kind`, `owned_by`: PD-8), `loaded_graph`, and the annotations `owned`, `internal`, `database`, `graph`, `module_kind`, `rp_path`, `rp_unlabelled`.
 - [ ] 1.2 `rp_annotations.yaml` (`Described`, `Tracked`) and `rp_provenance.yaml` (`Provenanced`, `Activity`, with `Principal` as `prov:Agent`).
 - [ ] 1.3 `rp_access.yaml`:
   - the ODRL subset and `RoleDefinition`;
@@ -34,11 +36,11 @@ Notation:
   Also `rp_tenancy.yaml` (`TenantAccess` owning grants, permissions and prohibitions, plus `TenantState`), `rp_files.yaml` (`StoredFile`) and `rp.yaml`.
 - [ ] 1.4 Generate the metamodel's own Python classes into `rdf_persistence/domain/generated/`. Exports: the metamodel classes and `RpModel`.
 - [ ] 1.5 `rp-generate` skeleton:
-  - reads `[tool.rp-generate]`, and flags override it;
+  - reads `[tool.rp-generate]` with the keys and flags of PD-18;
   - writes to temporary files and moves them into place on success;
   - runs lint with the raised rules.
 
-  Exports: the `rp-generate` command (a `[project.scripts]` entry in the `generate` extra).
+  Exports: the `rp-generate` command, always installed; it exits with code 2 and a clear message when the `generate` extra is missing (PD-2).
 - [ ] 1.6 The hard check:
   - IRIs, titles, descriptions and meanings;
   - `rp_path` on every aggregate root;
@@ -52,7 +54,7 @@ Notation:
   - `gen-jsonld-context`: `id`/`type` aliases, `internal` slots left out, and one frame per aggregate type (PD-12);
   - the `gen-typescript` subclass and its template: enums, dates, `internal` skipped;
   - `gen-mermaid-class-diagram` per module, with the template that marks roots and owned parts.
-- [ ] 1.10 Generate the toy library, commit its output, and add the freshness check to CI.
+- [ ] 1.10 Generate the toy library with generator metadata switched off and `**/generated/**` excluded from Ruff, mypy and Xenon (PD-19); commit its output; add the freshness check to CI.
 
 ## 2. Store, session and tenancy (stage 2)
 
@@ -61,18 +63,19 @@ Notation:
 - [ ] 2.3 The session:
   - get, add, replace and remove an aggregate;
   - the guarded commit with UUID tokens and `ASK` (PD-5), with a test of the two-editor race;
-  - tracking (PD-7) and registry entries in the same update (PD-8);
-  - the tenant root in the `meta` graph.
+  - tracking carried across commits (PD-7) and registry entries in the same update (PD-8);
+  - the tenant root in `{tenant_iri}/meta`, versioned the same way (PD-8).
 
   Exports: `open_session`, the store port, `FusekiStore`, `Conflict`, `NotFound`, `DatabaseGone`.
 - [ ] 2.4 Graph loading, with the parser in a worker thread and the loaded graph registered by the caller's commit. Exports: `load_graph`.
 - [ ] 2.5 The mapper over `SchemaView`, for domain services: graph to generated classes and back, with a round trip on the toy library.
 - [ ] 2.6 Tenancy:
-  - the system database and access records;
-  - create, which writes the record last, and delete, which marks `deleting` first.
+  - the system database and access records, named as in PD-6a;
+  - create, which writes the record last and grants the creator `creator_role`, and delete, which marks `deleting` first;
+  - buckets through the file store port, tested here with the testkit's fake file store (the S3 adapter comes in 3.1).
 
   Exports: `Tenancy`.
-- [ ] 2.7 The start-up sweep.
+- [ ] 2.7 The start-up sweep, over databases and buckets named `{prefix}-t-…` only (PD-6a).
 - [ ] 2.8 Testkit:
   - the fake store and fake session;
   - the store conformance suite, run against both the fake and Fuseki.
@@ -81,10 +84,11 @@ Notation:
 
 ## 3. Files and identity (stage 3)
 
-- [ ] 3.1 The file store port and the S3 adapter (`boto3` in a worker thread), including bucket create and delete for tenancy. Exports: the file store port, `S3FileStore`, `TenantGone`.
-- [ ] 3.2 The `TokenVerifier` port and `JwksTokenVerifier` (PD-1): cached JWKS, one refresh on an unknown `kid`, and the configurable roles claim (PD-9). Also the testkit token signer and an in-memory JWKS. Exports: `TokenVerifier`, `JwksTokenVerifier`; testkit `TokenSigner`.
+- [ ] 3.1 The file store port and the S3 adapter (`boto3` in a worker thread), including bucket create, delete and list by prefix for tenancy and the sweep; the tenancy tests of 2.6 and 2.7 re-run against Garage. Exports: the file store port, `S3FileStore`, `TenantGone`.
+- [ ] 3.2 The `TokenVerifier` port and `JwksTokenVerifier` (PD-1): JWT access tokens only, cached JWKS, one refresh on an unknown `kid`, and the configurable roles claim (PD-9). Also the testkit token signer and an in-memory JWKS. Exports: `TokenVerifier`, `JwksTokenVerifier`; testkit `TokenSigner`.
 - [ ] 3.3 The identity port and the Zitadel adapter:
   - find by email, list, disable, re-enable, and grant or remove a global role;
+  - fixture provisioning of the project, the JWT application and the machine users (PD-16);
   - a test that a disabled service account's token request is refused.
 
   Exports: the identity port, `ZitadelIdentity`.
@@ -94,7 +98,7 @@ Notation:
 
 - [ ] 4.1 Loading the role definitions at start-up (PD-9), with an invalid file refused. Also loading a caller's grants, permissions and prohibitions for one tenant in one query.
 - [ ] 4.2 The check: global roles, prohibitions, permissions at tenant and aggregate scope, and role definitions; it answers 403 or 404. Exports: `AccessRules`.
-- [ ] 4.3 The toy library's role matrix as one table-driven test: `admin`, `librarian`, `reader`, an outsider, and a principal with a direct permission on one book, each crossed with read, modify and delete at tenant and aggregate scope.
+- [ ] 4.3 PD-9's matrix as one table-driven test, every cell including the `deleting` tenant row.
 
 ## 5. Service kit and generic router (stage 5)
 
@@ -104,14 +108,14 @@ Notation:
 
   Exports: `service_kit`.
 - [ ] 5.2 The generic router (PD-13):
-  - tenant routes, and aggregate routes over `SchemaView`;
+  - the tenant routes of PD-13, including grants, and aggregate routes over `SchemaView`;
   - IRIs minted on create (PD-6);
-  - bodies handled as in PD-14.
+  - bodies handled as in PD-14, including the refused replace with a different `id`.
 - [ ] 5.3 Content negotiation: JSON with the `Link` header, JSON-LD and Turtle; 406 and 415; the context served at a fixed path.
 - [ ] 5.4 Listings: equality filters, `limit`, `offset`, `sort` (PD-15), the page object, and 400 on a bad query.
 - [ ] 5.5 The OpenAPI hook over the schema, with bookkeeping stripped.
 - [ ] 5.6 Spike linkml-openapi on the toy library; record in `api.adoc` whether it can replace 5.5.
-- [ ] 5.7 The end-to-end test: the toy library served over the API against Fuseki, Garage and Zitadel-issued tokens.
+- [ ] 5.7 The end-to-end test: the toy library served over the API against Fuseki, Garage and Zitadel, with JWT access tokens of the machine users obtained by the JWT-profile grant (PD-16).
 
 ## 6. Close
 
@@ -125,7 +129,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 
 | Capability: scenario | Task | Test |
 |---|---|---|
-| rp-metamodel: an application imports only what it uses | 1.10 | `tests/unit/generation/test_partial_import.py` |
+| rp-metamodel: an application imports only what it uses | 1.10 | `tests/unit/generation/test_partial_import.py` (fixture `partial.yaml`) |
 | rp-metamodel: an instance without a label is refused | 1.8 | `tests/unit/generation/test_shapes.py` |
 | rp-metamodel: an owned value class opts out | 1.6, 1.8 | `tests/unit/generation/test_shapes.py` |
 | rp-metamodel: a commit records who and when | 2.3 | `tests/integration/store/test_session.py` |
@@ -148,6 +152,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 | rp-access: a reader may not modify | 4.3 | `tests/unit/services/test_access_matrix.py` |
 | rp-access: a permission on one aggregate only | 4.3 | `tests/unit/services/test_access_matrix.py` |
 | rp-access: an outsider | 4.3 | `tests/unit/services/test_access_matrix.py` |
+| rp-access: a tenant being deleted | 4.3 | `tests/unit/services/test_access_matrix.py` |
 | rp-service-api: a new class in the model | 5.2 | `tests/integration/api/test_router.py` |
 | rp-service-api: the same book three ways | 5.3 | `tests/integration/api/test_negotiation.py` |
 | rp-service-api: a stale replace | 5.1 | `tests/integration/api/test_router.py` |
@@ -155,14 +160,14 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 | rp-service-api: the document lists the routes | 5.5 | `tests/unit/entrypoints/test_openapi.py` |
 | rp-testkit: a unit test of a domain service | 2.8, 3.4 | `tests/unit/testkit/test_fakes.py` |
 | rp-testkit: the end-to-end proof | 5.7 | `tests/e2e/test_library.py` |
-| rp-package-boundaries: a consumer term in an architecture page | — (already met) | `make check-docs` (`docs/tools/check_docs.py`) |
+| rp-package-boundaries: a consumer term in an architecture page | 0.5 | `make check-docs` in the docs CI workflow |
 | rp-package-boundaries: tested alone | 0.2 | CI (no consumer installed) |
 | rp-package-boundaries: a service imports an adapter | 0.1 | `make check-architecture` |
 | rp-package-boundaries: a name used by the toy library | 5.7 | `tests/e2e/test_library.py` (imports checked by a test helper) |
 
 ## Roadmap
 
-- [ ] 0.1 · [ ] 0.2 · [ ] 0.3 · [ ] 0.4
+- [ ] 0.1 · [ ] 0.2 · [ ] 0.3 · [ ] 0.4 · [ ] 0.5
 - [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10
 - [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8
 - [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4

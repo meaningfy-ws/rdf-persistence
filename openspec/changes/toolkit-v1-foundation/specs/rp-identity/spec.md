@@ -14,7 +14,7 @@ SHALL answer 401 with a problem response otherwise. The toolkit SHALL offer no l
 - **THEN** the answer is 401 and no handler runs
 
 #### Scenario: a service account
-- **WHEN** a program sends a token obtained with a private-key JWT
+- **WHEN** a program sends a JWT access token obtained with the private-key JWT flow
 - **THEN** the request is accepted like any other valid token
 
 ### Requirement: Accounts are administered through the identity port

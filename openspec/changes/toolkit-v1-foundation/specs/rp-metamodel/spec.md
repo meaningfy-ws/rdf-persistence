@@ -41,11 +41,11 @@ about the aggregate's graph IRI, never about the root entity. PROV-O derivation 
 ### Requirement: Access is modelled with an ODRL subset
 
 `rp_access` SHALL model `Policy` (`odrl:Set`), `Permission`, `Prohibition`, `Principal`
-(`odrl:Party`, `prov:Agent`), `Role`, `Scope` (levels `system`, `tenant`, `aggregate`), the `Action`
-enum (meanings `odrl:read`, `odrl:modify`, `odrl:delete`, extensible) and `RoleDefinition`. A grant
-SHALL be a `Permission`.
+(`odrl:Party`, `prov:Agent`), the `Action` enum (meanings `odrl:read`, `odrl:modify`, `odrl:delete`
+and `rp:administer`, extensible) and `RoleDefinition`. A grant SHALL be a `Permission` whose target
+is an IRI at one of three levels (system, tenant, aggregate graph).
 
 #### Scenario: a grant is ODRL
 - **WHEN** a grant of the role `librarian` in a library tenant is stored
-- **THEN** the store holds an `odrl:Permission` with the principal as assignee and the tenant's
-  scope as target
+- **THEN** the store holds an `odrl:Permission` with the principal as assignee, the tenant's IRI as
+  target and `rp:role` `librarian`

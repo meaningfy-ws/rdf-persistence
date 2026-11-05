@@ -60,22 +60,16 @@ classDiagram
     }
     class Permission {
       assignee
-      action
       target
+      role or action
     }
     class Prohibition {
       assignee
-      action
       target
-    }
-    class Scope {
-      level
-      target_iri
+      action
     }
     Policy *-- Permission
     Policy *-- Prohibition
-    Permission --> Scope : target
-    Prohibition --> Scope : target
 ....
 
 [cols="1,2,3",options="header"]
@@ -85,9 +79,9 @@ classDiagram
 |`Permission` |`odrl:Permission` |An assignee may perform an action on a target. A grant is a Permission (D-5).
 |`Prohibition` |`odrl:Prohibition` |An assignee may not perform an action on a target.
 |`Principal` |`odrl:Party`, `prov:Agent` |A user or service account of the identity provider, by IRI.
-|`Role` |`odrl:PartyCollection` |A named set of principals; an assignee may be a role.
-|`Scope` |`odrl:AssetCollection` |A target at a level: `system`, `tenant` or `aggregate` (the aggregate's graph, `graph_iri(root)`).
-|`Action` (enum) |`odrl:read`, `odrl:modify`, `odrl:delete`, extended by the application |What is done.
+|`Role` |`rp:role` on a grant |A role a principal holds in a tenant. In v1 the assignee is always a principal; roles as ODRL party collections are later.
+|Target |`odrl:target` |An IRI at a level: the system, a tenant, or an aggregate's graph (`graph_iri(root)`). The level follows from the IRI.
+|`Action` (enum) |`odrl:read`, `odrl:modify`, `odrl:delete`, and `rp:administer` (change a tenant's grants), extended by the application |What is done.
 |`RoleDefinition` |— (toolkit) |Which actions a role permits at which scope level: the application's permission matrix as data (need N-8).
 |===
 
@@ -131,7 +125,7 @@ flowchart LR
 * A *global role* from the token (an administrator) that the rules allow passes without a grant.
 * A caller without a grant, or a tenant that is not `active`, gets 404, so the tenant's existence is
   not revealed.
-* *Per aggregate*: a Permission whose target is an aggregate's scope applies to that aggregate only;
+* *Per aggregate*: a Permission whose target is an aggregate's graph IRI applies to that aggregate only;
   the check looks up the caller's permissions for the tenant and for `graph_iri(root)`.
 
 [#identity]
@@ -146,7 +140,7 @@ flow below; it has no password grant.
 |A person in a browser |Authorization code with PKCE, by the web app's *server* (a confidential client; the backend-for-frontend pattern the IETF's guidance for browser apps ranks first). Tokens stay on the server; the browser holds an HTTP-only session cookie. |Bearer token, sent by the web app's server
 |A person at a command line |Device authorization flow |Bearer token
 |A program (service account) |Private-key JWT, or client credentials |Bearer token
-|A script |Personal access token (service accounts only) |Bearer token
+|A script |Not in v1: Zitadel's personal access tokens are opaque, and checking them needs token introspection; a script uses a service account's private-key JWT |—
 |===
 
 [mermaid]
@@ -158,5 +152,7 @@ flowchart LR
 ....
 
 The API checks signature, issuer, audience and expiry against the provider's published keys (cached).
+This needs *JWT* access tokens: Zitadel issues opaque ones by default, so each application is set to
+the JWT access-token type, and clients request the project audience and roles scopes.
 Signing in "through the API" therefore means obtaining a token with one of these flows. Token exchange
 (acting on behalf of another user) is not used: Zitadel's support is a first iteration.

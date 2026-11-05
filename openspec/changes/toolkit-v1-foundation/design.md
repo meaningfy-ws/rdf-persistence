@@ -46,18 +46,23 @@ architecture D-1..D-12, O-1 and O-2.
     are independent siblings: neither imports the other.
   - The service kit needs token verification. It depends on the `TokenVerifier` port, which lives in
     `services`. The JWKS-based implementation, `JwksTokenVerifier`, is an adapter, and the consumer's
-    composition root wires it in. The public API table in `index.adoc` is updated to match.
+    composition root wires it in. The public API table in `index.adoc` already lists both.
   - `generation` and `testkit` sit outside the contract. The top-level `__init__.py` re-exports the
     public names.
   - A second contract forbids `domain` from importing `httpx`, `boto3`, `fastapi`, `jwt` and
     `pyshacl`. It sets `include_external_packages = True`.
 - **PD-2 Dependencies (DEC-5).**
   - Runtime pins (`==`): `linkml-runtime`, `rdflib`, `pyld`, `pyshacl`, `pydantic`, `httpx`,
-    `fastapi`, `pyjwt[crypto]`, `boto3`, `anyio`.
+    `fastapi`, `pyjwt[crypto]`, `boto3`, `anyio`. Each is pinned to its latest release on the day
+    task 0.2 runs, recorded in `uv.lock`; `linkml` is the exception (below).
   - An optional extra, `rdf-persistence[generate]`, brings `linkml==1.12.1`, so consumers' running
     services do not install the generators. `linkml-runtime` is pinned to the version that `linkml`
     1.12.1 resolves to in `uv.lock`.
-  - `linkml==1.10.0` leaves the dev group.
+  - `linkml==1.10.0` leaves the dev group. `make install` becomes `uv sync --all-extras`, so
+    development and CI always have the generators.
+  - The `rp-generate` script is always installed (a `[project.scripts]` entry cannot be limited to
+    an extra). Without the extra, it exits with code 2 and the message
+    "install rdf-persistence[generate]".
   - `boto3` calls run in a worker thread (`anyio.to_thread.run_sync`). Rejected: `aioboto3`, a second
     S3 stack to track.
 
@@ -80,12 +85,32 @@ architecture D-1..D-12, O-1 and O-2.
   - `rp_path` is a required annotation on every aggregate root (the hard check enforces it), for
     example `rp_path: books`. There is no automatic plural.
   - The toolkit mints IRIs; clients never send them on create.
+- **PD-6a Names.** `prefix` is the consumer's short name (lower case, at most 20 characters; the toy
+  library uses `lib`).
+
+  | Thing | Name |
+  |---|---|
+  | System database | `{prefix}-system` |
+  | Tenant database and bucket | `{prefix}-t-{uuid hex}` (the tenant UUID without hyphens; a valid S3 bucket name) |
+  | Tenant's metadata graph | `{tenant_iri}/meta` |
+  | Tenant's registry graph | `{tenant_iri}/registry` |
+  | Aggregate's graph | `graph_iri(root)` = `{root_iri}/graph` |
+  | Loaded graph | `{aggregate_iri}/content/{uuid4}` |
+
+  The sweep considers only databases and buckets whose names start with `{prefix}-t-`.
 - **PD-7 Tracking on update.** `dcterms:created` and `dcterms:creator` are written by the first
   commit and kept. Every later commit replaces `dcterms:modified` and adds the committer to
-  `dcterms:contributor`. All of these are statements about the graph IRI (D-7).
-- **PD-8 The registry in the commit.** The commit's update also deletes and inserts the aggregate's
-  registry entries: its own graph and its loaded graphs. A tenant's root object lives in the
-  designated `meta` graph and has no registry entry.
+  `dcterms:contributor`. All of these are statements about the graph IRI (D-7). Because a commit
+  replaces the whole graph, the session reads the existing tracking statements with the aggregate and
+  writes back `created`, `creator` and every earlier contributor.
+- **PD-8 The registry and the tenant root.** The commit's update also deletes and inserts the
+  aggregate's registry entries, one per graph it owns: its own graph and its loaded graphs. A
+  `RegistryEntry` has `graph` (`rp:graph`), `kind` (`rp:kind`: `aggregate`, `loaded_graph`) and
+  `owned_by` (`rp:ownedBy`: the root IRI).
+
+  A tenant's root object (the toy `Library`) lives in `{tenant_iri}/meta`, which is its graph
+  instead of `graph_iri(root)`. It is versioned and tracked the same way, with the statements made
+  about `{tenant_iri}/meta`. It has no registry entry.
 
 ### Access
 
@@ -99,16 +124,50 @@ architecture D-1..D-12, O-1 and O-2.
   - **Global roles** come from a configurable token claim. The default is Zitadel's
     `urn:zitadel:iam:org:project:roles`, an object keyed by role name.
   - The toy library's roles are `librarian` and `reader` per library, plus the global role `admin`.
-- **PD-10 Grant slots.** A `Grant` is an `odrl:Permission` with:
-  - `assignee` (`odrl:assignee`): a `Principal`;
-  - `target` (`odrl:target`): the tenant IRI, or an aggregate's graph IRI;
+  - Actions are `read`, `modify` and `delete` (ODRL), and `administer` (the toolkit's
+    `rp:administer`: change the tenant's grants). Creating an aggregate is `modify` at tenant scope.
+    Creating a tenant needs only a valid token; the creator gets the role named by the consumer's
+    `creator_role` (toy: `librarian`).
+  - Listing a tenant's aggregates needs `read` at tenant scope. A permission on one aggregate
+    allows that aggregate only.
+
+  The toy library's matrix, which task 4.3 tests (`allow`, or the status returned):
+
+  | Caller | read book | modify/create book | delete book | administer grants | delete tenant | list books |
+  |---|---|---|---|---|---|---|
+  | `admin` (global, `read` at system level) | allow | 403 | 403 | 403 | 403 | allow |
+  | `librarian` | allow | allow | allow | allow | allow | allow |
+  | `reader` | allow | 403 | 403 | 403 | 403 | allow |
+  | direct `modify` permission on book B only | B: allow; others: 404 | B: allow; others: 404 | 404 | 404 | 404 | 404 |
+  | no grant (outsider) | 404 | 404 | 404 | 404 | 404 | 404 |
+  | anyone, tenant `deleting` | 404 | 404 | 404 | 404 | 404 | 404 |
+- **PD-10 One grant model.** A `Grant` is an `odrl:Permission` with:
+  - `assignee` (`odrl:assignee`): always a `Principal` in v1 (no party collections);
+  - `target` (`odrl:target`): an IRI, either the tenant's or an aggregate's graph IRI. The scope
+    level follows from which it is;
   - `role` (`rp:role`) for a role grant, or `action` (`odrl:action`) for a direct permission;
     exactly one of the two.
 
-  `generation.adoc`'s slot table is updated: `rp:principal` becomes `odrl:assignee`.
+  A `Prohibition` has the same `assignee` and `target`, and an `action`. Uniqueness: one grant per
+  assignee, target and role-or-action. `generation.adoc`'s slot table and `index.adoc`'s tenancy row
+  already say this.
 
 ### Generation
 
+- **PD-18 The `[tool.rp-generate]` table.** Paths are relative to the directory of the
+  `pyproject.toml`. Each key has a command-line flag that overrides it.
+
+  | Key | Flag | Default | Meaning |
+  |---|---|---|---|
+  | `schema` | `--schema` | required | root schema file |
+  | `package` | `--package` | required | Python import path of the generated package |
+  | `python` | `--python-out` | the folder of `package` | classes, shapes, context, frames, schema copy |
+  | `typescript` | `--typescript-out` | not written | TypeScript types |
+  | `diagrams` | `--diagrams-out` | not written | one Mermaid file per module |
+  | — | `--check` | off | run lint and the checks only; write nothing |
+- **PD-19 Reproducible output.** Generator metadata that changes between runs (generation dates,
+  generator versions) is switched off in every generator call. Generated folders (`**/generated/**`)
+  are excluded from Ruff, mypy and Xenon in their config files.
 - **PD-11 Unlabelled classes.** Before running the generators, `rp-generate` gives every class
   annotated `rp_unlabelled: true` a `slot_usage` of `{label: {required: false}}`. The generated
   classes and shapes then agree, with no separate change to the shapes generator.
@@ -124,6 +183,13 @@ architecture D-1..D-12, O-1 and O-2.
     `/{tenant_segment}/{t}/{rp_path}/{id}` (read, replace, delete).
   - The consumer mounts the router under its own prefix. For the toy library this gives
     `/libraries/{t}/books/{id}`.
+  - Tenant routes in detail:
+    - `GET /{tenant_segment}`: the tenants where the caller has a grant (all, for a global `read`);
+    - `POST /{tenant_segment}`: create a tenant, as in PD-9;
+    - `GET` and `PUT /{tenant_segment}/{t}`: the tenant's root object (PD-8), with its `ETag`;
+    - `DELETE /{tenant_segment}/{t}`: `If-Match` on the access record, action `delete`;
+    - `GET` and `PUT /{tenant_segment}/{t}/grants`: the grant set, `If-Match` on the access record,
+      action `administer`.
 - **PD-14 Body handling.**
   1. A JSON body is expanded with the generated context; a JSON-LD body is used as is. Either way it
      becomes triples whose root is the IRI from the path (on create, the minted IRI).
@@ -132,11 +198,15 @@ architecture D-1..D-12, O-1 and O-2.
   4. The response is built from the stored graph: framed and compacted with the context for JSON
      and JSON-LD, serialised for Turtle.
 
-  The generated classes are not used on this path (D-2).
+  The generated classes are not used on this path (D-2). A replace whose body `id` differs from the
+  path is refused (422 `invalid-body`).
 - **PD-15 Problems and sorting.**
   - Problem `type` IRIs are `{base}problems/{slug}`, with these slugs: `invalid-token`, `forbidden`,
     `not-found`, `conflict`, `precondition-required`, `invalid-body`, `not-acceptable`,
     `unsupported-media-type`, `bad-query`, `unavailable`.
+  - Each slug has a fixed `title`: "Invalid token", "Forbidden", "Not found", "Version
+    conflict", "Precondition required", "Invalid body", "Not acceptable", "Unsupported media
+    type", "Bad query", "Service unavailable".
   - Listings sort by IRI ascending unless `sort=<slot>` or `sort=-<slot>` is given.
 
 ### Tests
@@ -149,19 +219,45 @@ architecture D-1..D-12, O-1 and O-2.
     `garage layout apply` and `garage key create`, through `docker exec`.
   - **Zitadel with Postgres**, pinned by digest. It starts with `ZITADEL_FIRSTINSTANCE_*`
     variables that create an admin machine user and write its personal access token to a mounted
-    file. The fixture provisions a project, roles, one service account and two human users through
-    the API.
+    file. The fixture uses that token only to provision, through the management API:
+    - a project with the roles `admin`, and an API application whose access-token type is *JWT*
+      (Zitadel issues opaque tokens by default, which a JWKS check cannot verify);
+    - one machine user per test principal (librarian, reader, outsider, admin), each with a key for
+      the private-key JWT flow.
 
-  The fixtures in `testkit/containers.py` start only the containers a test's marker needs (`store`,
-  `files`, `identity`, `e2e`). The markers are registered in `pytest.ini`. `make test` excludes
-  them; `make test-containers` runs them, in a separate CI job.
+    Tests get tokens with the JWT-profile grant, requesting the scopes `openid`,
+    `urn:zitadel:iam:org:project:id:{project}:aud` and
+    `urn:zitadel:iam:org:projects:roles`, so the token carries the audience and the roles claim.
+    No human user is needed: Zitadel has no password grant. Personal access tokens are opaque, so
+    they are not supported in v1 (`access-control.adoc#identity`).
+
+  Markers stay assigned by path in `tests/conftest.py`, which gains one row per container need:
+
+  | Directory | Markers |
+  |---|---|
+  | `tests/unit/`, `tests/feature/` | `unit` / `feature` |
+  | `tests/integration/store/`, `tests/integration/api/` | `integration`, `store` |
+  | `tests/integration/files/` | `integration`, `files` |
+  | `tests/integration/identity/` | `integration`, `identity` |
+  | `tests/e2e/` | `e2e`, `store`, `files`, `identity` |
+
+  The fixtures in `testkit/containers.py` start the containers a marker needs. The markers are
+  registered in `pytest.ini`.
+  - `make test` runs `unit or feature` with the 80% coverage floor. `.coveragerc` omits
+    `rdf_persistence/adapters/*` and `testkit/containers.py` from that floor.
+  - `make test-containers` runs `integration or e2e` and reports coverage without a floor, in a
+    separate CI job.
+  - The router's unit tests use the fake session, so the router counts toward the floor.
+  - A new CI workflow runs on changes under `docs/**` (which the main workflow ignores): it runs
+    `make check-docs` and the Antora build.
 - **PD-17 The toy library.** `tests/fixtures/library/` holds:
   - `library.yaml`, the root schema;
   - three domain modules: `library_tenant` (`Library`, the tenant root), `books` (`Book` with owned
     `Chapter`, which owns `Note` and is marked `rp_unlabelled`) and `scans` (`Scan`, with
     `StoredFile`);
   - `library_access.yaml` (`module_kind: access`), with `library_roles.yaml` holding the role
-    definitions;
+    definitions of PD-9's matrix;
+  - `partial.yaml`, a schema importing only `rp_core` and `rp_annotations`;
   - a `pyproject.toml` fragment with the `[tool.rp-generate]` table.
 
   Its generated output is committed under `tests/fixtures/library/generated/`, and CI checks it is
@@ -182,14 +278,15 @@ architecture D-1..D-12, O-1 and O-2.
 
 ### Worked example: a guarded commit
 
-The session holds `<g>` = `graph_iri(<b>)` and the version `"7f3a…"` it read. The new token is
+The session holds `<g>` = `graph_iri(<b>)`, the version `"7f3a…"` it read, and the tracking
+statements read with it (`created`, `creator <p0>`, contributors). The new token is
 `"c91e…"`, a fresh UUID. It sends one update:
 
 ```sparql
 DELETE { GRAPH <g> { ?s ?p ?o } . GRAPH <registry> { ?e ?ep ?eo } }
 INSERT { GRAPH <g> { …new triples…
                      <g> rp:version "c91e…" ; dcterms:modified "…"^^xsd:dateTime ;
-                         dcterms:created "…" ; dcterms:creator <p0> ; dcterms:contributor <p> }
+                         dcterms:created "…" ; dcterms:creator <p0> ; dcterms:contributor <p1>, <p> }
          GRAPH <registry> { …entries for <g> and its loaded graphs… } }
 WHERE  { GRAPH <g> { <g> rp:version "7f3a…" . ?s ?p ?o }
          OPTIONAL { GRAPH <registry> { ?e rp:ownedBy <b> ; ?ep ?eo } } }

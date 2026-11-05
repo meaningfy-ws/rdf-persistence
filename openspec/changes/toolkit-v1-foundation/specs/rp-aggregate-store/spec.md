@@ -21,8 +21,8 @@ for the new token. A guard that does not match SHALL raise a conflict and change
 
 #### Scenario: two editors
 - **WHEN** two sessions read version v7 of a book and both commit
-- **THEN** the first commit stores v8 and the second raises a conflict, and the stored book is the
-  first one's
+- **THEN** the first commit stores a new version token and the second raises a conflict, and the
+  stored book is the first one's
 
 ### Requirement: SPARQL is never built by concatenating input
 
