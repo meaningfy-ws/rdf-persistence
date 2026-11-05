@@ -1,0 +1,97 @@
+= Decisions of 2026-11-05
+:description: The developer's decisions on the API, access control, the metamodel and the generators, taken on 2026-11-05, with the options that were weighed.
+
+The developer reviewed the metamodel on 2026-11-05 and asked for:
+
+* a richer metamodel;
+* mandatory IRIs, labels and definitions;
+* an access model of its own;
+* fine-grained access in this iteration;
+* generated artefacts placed in the right packages;
+* a lighter API.
+
+Three research passes produced the pages linked below. The developer took every decision on the same
+day. Status of each: *Accepted* (developer, 2026-11-05).
+
+Decided with the request itself:
+
+* The access model lives in rdf-persistence as its own module; applications import it and keep their
+  access rules in a module apart from the domain.
+* Models must carry IRIs, labels and definitions, checked at generation.
+* SKOS, DCTerms, PROV-O and ODRL are the default annotation vocabularies.
+* The generator produces Python and TypeScript classes, diagrams, shapes and the JSON-LD context,
+  each in the package that uses it; LinkML generators are extended where needed.
+* JSON-LD and GraphQL are considered now, not deferred.
+
+[cols="1,3,4,3",options="header"]
+|===
+|Id |Question |Options weighed |Decision
+
+|D-1
+|Which API contract? (xref:architecture/api.adoc[API])
+|A. JSON-LD documents from a generic router. B. Plain JSON, typed by classes, with the context by `Link` header. C. GraphQL with the JSON-LD context. D. JSON:API from configuration.
+|*A and B together*: one generic router driven by the schema, plain JSON by default, JSON-LD and Turtle by content negotiation. *C is the backup* for a later implementation.
+
+|D-2
+|Do we need generated Python classes and the mapper? (xref:architecture/api.adoc#mapper[API])
+|Always. Only for domain services. Never.
+|*Only for domain services*; the API path uses the context and the shapes.
+
+|D-3
+|Where does the OpenAPI document come from?
+|A small hook of our own over the schema. linkml-openapi.
+|*Our own hook*, and a short spike of linkml-openapi.
+
+|D-4
+|Which engine decides fine-grained access? (xref:architecture/access-control.adoc[access control])
+|A. Our own check over ODRL-shaped grants. B. A with OpenFGA. C. A plus property-level rules. D. Fluree's native policies.
+|*A*: our own ODRL specification in RDF and our own evaluation. *OpenFGA deferred*, unless a cheap opportunity to reuse it appears.
+
+|D-5
+|How do grants and ODRL relate?
+|One model (a grant is an ODRL Permission). Two models side by side.
+|*One model.*
+
+|D-6
+|Which instance annotations are required? (xref:architecture/generation.adoc#revision[model to code])
+|On every class. On aggregate roots and owned classes, with an opt-out. Recommended only.
+|*On aggregate roots and owned classes*, with the opt-out `rp_unlabelled: true`.
+
+|D-7
+|Who writes created, modified and creator?
+|The session, about the graph IRI. The application, about the entity.
+|*The session, about the graph IRI*; PROV-O derivation stays the application's.
+
+|D-8
+|Which diagram format?
+|PlantUML rendered locally. Mermaid.
+|*Mermaid*, with small diagrams (one module each) to keep them readable.
+
+|D-9
+|How is output placement configured?
+|A `[tool.rp-generate]` table in the application's `pyproject.toml`. Command-line flags only.
+|*The table*, with flags as overrides.
+
+|D-10
+|How do people and programs sign in? (xref:architecture/access-control.adoc#identity[identity])
+|The identity provider's flows. A login endpoint of our own.
+|*The provider's flows*; the API accepts any valid token.
+
+|D-11
+|When are the adapters implemented?
+|Now. After the decisions.
+|*In a separate implementation epic*, after the architecture.
+
+|D-12
+|Where is the implementation planned?
+|In the consumer's spine. In this repository's spine.
+|*In this repository*: a new epic in `openspec/changes/`, shaped once the architecture is ready.
+|===
+
+== What changed in architecture v1
+
+* Decision O-1 narrows to domain services (D-2); O-2 widens to content negotiation (D-1).
+* JSON-LD and Turtle by content negotiation and per-aggregate access are v1; GraphQL and OpenFGA are
+  deferred, as backups.
+* The metamodel splits into modules (xref:architecture/generation.adoc#revision[model to code]).
+* Epics for this toolkit are planned in this repository (D-12), not in the consumer's.

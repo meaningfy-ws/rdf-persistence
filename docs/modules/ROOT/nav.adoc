@@ -1,7 +1,10 @@
 * xref:index.adoc[Introduction]
 
 * xref:architecture/index.adoc[Architecture v1]
+** xref:architecture/open-decisions.adoc[Open decisions (2026-11-05)]
 ** xref:architecture/generation.adoc[Model to code]
+** xref:architecture/api.adoc[A lightweight API]
+** xref:architecture/access-control.adoc[Access control and identity]
 
 * Background
 ** State of the art (not commitments)

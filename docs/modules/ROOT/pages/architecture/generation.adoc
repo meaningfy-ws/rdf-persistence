@@ -3,7 +3,9 @@
 
 Status: *draft*, Proposed (2026-11-05). Settles open decision O-1 of
 xref:architecture/index.adoc[architecture v1] with its smallest option. Every step below was run in a
-throwaway spike (LinkML 1.12.1, Fuseki 5.1.0); its findings are marked _(spike)_.
+throwaway spike (LinkML 1.12.1, Fuseki 5.1.0); its findings are marked _(spike)_. It is revised
+in <<revision>> (developer, 2026-11-05: decisions D-2 and D-6 to D-9 of
+xref:architecture/open-decisions.adoc[the decisions of 2026-11-05]).
 
 An application using rdf-persistence writes its domain once, in LinkML. A deterministic, build-time
 toolchain turns it into domain classes and shapes; at run time the toolkit reads the same schema to
@@ -16,7 +18,8 @@ role `librarian`.
 == The decision (O-1)
 
 *Generated domain classes, runtime mapper.* Only LinkML's standard generators run, through the
-toolkit's templates. The mapper, the repositories and the routes are not generated: they are generic
+toolkit's templates. Since 2026-11-05 (D-2) the classes and the mapper serve *domain services* only;
+the API path needs neither (xref:architecture/api.adoc[API]). The mapper, the repositories and the routes are not generated: they are generic
 code that reads the schema at run time. A per-aggregate generator (repositories, routes) is built only
 if hand-written routes start repeating themselves across applications.
 
@@ -67,6 +70,97 @@ Slots of the metamodel (IRIs in the `rp:` namespace unless shown):
 Annotations are resolved over the *induced* class: a class inherits `AggregateRoot`, `database` and
 `graph` from its ancestors and mixins, so an abstract root's annotations reach its subclasses. LinkML
 itself does not inherit class annotations; the boundary check and the mapper do.
+
+[#revision]
+== Revision of 2026-11-05 (accepted)
+
+The developer asked for four things on top of the metamodel above: a default set of annotation
+vocabularies everywhere (SKOS, DCTerms, PROV-O, and ODRL for access), models that always carry IRIs,
+labels and definitions (a hard check), the access model in a module of its own, and every generated
+artefact in the package that uses it.
+
+=== Modules of the metamodel
+
+[mermaid]
+....
+flowchart BT
+    CORE["rp_core"]
+    ANN["rp_annotations<br/>SKOS, DCTerms"]
+    PROV["rp_provenance<br/>PROV-O"]
+    ACC["rp_access<br/>ODRL"]
+    TEN["rp_tenancy"]
+    FIL["rp_files"]
+    ANN --> CORE
+    PROV --> ANN
+    ACC --> CORE
+    TEN --> ACC
+    FIL --> ANN
+....
+
+`rp.yaml` imports all six modules; an application imports `rp.yaml`, or only the modules it uses.
+
+=== Annotations: two layers that are easy to confuse
+
+[cols="1,2,3",options="header"]
+|===
+|Layer |About |How
+|*Schema metadata* |the model's own classes and slots ("what is a Book?") |LinkML's own fields already map to the standard vocabularies: `title` → `dcterms:title`, `description` → `skos:definition`, `aliases` → `skos:altLabel`, `comments` → `skos:note`, `exact_mappings` → `skos:exactMatch`, `source` → `dcterms:source`, `contributors` → `dcterms:contributor`. The OWL and SHACL generators emit them. Nothing to add: *require* them (hard check below).
+|*Instance data* |the data ("what is this book called, who wrote it into the store, when?") |Not covered by LinkML: the toolkit ships mixins with ordinary slots.
+|===
+
+Instance mixins:
+
+[cols="1,3,2",options="header"]
+|===
+|Mixin |Slots (IRIs) |Written by
+|`Described` |`id` (required), `label` (`skos:prefLabel`, required), `description` (`dcterms:description`, required on roots), `alt_label` (`skos:altLabel`), `definition` (`skos:definition`, for concept-like classes), `exact_match` (`skos:exactMatch`) |the application
+|`Tracked` |`created`, `modified` (`dcterms:`), `creator`, `contributor` (`dcterms:`, range `Principal`) |the session, *about the graph IRI* (DEC-29: statements about the graph are kept apart from the entity)
+|`Provenanced` |`was_derived_from`, `was_generated_by` (range `Activity`), `was_attributed_to` (range `prov:Agent`), `generated_at_time` (`prov:`) |the application, about the entity
+|===
+
+`Principal` is a `prov:Agent` and `AggregateRoot` a `prov:Entity`, so the provenance of a write
+(who, when, which graph) is PROV-O without extra classes.
+
+=== The hard check: IRIs, labels and definitions
+
+`linkml-lint` cannot load extra rules, so the check is `linkml-lint` with its relevant rules raised to
+errors (`no_empty_title`, `recommended`, `canonical_prefixes`, `standard_naming`) plus about 100
+lines in `rp-generate` over `SchemaView`. It fails generation when:
+
+. an element has no IRI: no `default_prefix` declared in `prefixes`, and no explicit `class_uri` or
+  `slot_uri`;
+. a class, slot, enum or permissible value has no `title` or no `description`;
+. a permissible value has no `meaning` (an IRI);
+. an aggregate root or owned class does not include `Described`, so instances without IRI, label and
+  description are refused by the generated classes and shapes; an owned value class without a label
+  of its own (a chapter's number) opts out explicitly with `rp_unlabelled: true`;
+. a module annotated `module_kind: domain` imports one annotated `technical` or `access`.
+
+=== Generated artefacts, extensions and where they go
+
+[cols="2,2,3,2,1",options="header"]
+|===
+|Artefact |Generator |Extension needed |Placed in (default) |Effort
+|Python classes |`gen-pydantic`, split mode |templates and a hook (`internal` fields excluded from the API) |the backend package, `<pkg>/domain/generated/` |S
+|TypeScript types |`gen-typescript` |a subclass with our own template: the stock template is fixed, has no split mode and handles enums and dates poorly |the frontend package, `src/domain/generated/` |M
+|SHACL shapes |`gen-shacl` |a subclass that adds the toolkit's bookkeeping predicates to the ignored list of closed shapes |the backend package |S
+|JSON-LD context |`gen-jsonld-context` |small: `id`/`type` aliases, `internal` slots left out |the backend package; copied to the frontend when needed |S
+|Diagrams, one per module |`gen-mermaid-class-diagram` (D-8) |a template marking aggregate roots and owned parts, and keeping each diagram small (one module, its links to other modules shown as names only) |the docs, next to the model pages |S
+|Hard check |`linkml-lint` + `rp-generate` |new, about 100 lines |— |S
+|===
+
+*Placement is declared, not guessed*: the application's `pyproject.toml` gets a
+`[tool.rp-generate]` table mapping each target to a path; command-line flags override it. LinkML's
+`gen-project` writes everything under one directory, so `rp-generate` does the placing.
+
+*Diagrams are Mermaid* (D-8): no rendering service is needed and the docs already draw Mermaid
+(`gen-plantuml` would call the public kroki.io service). A diagram that grows past about a dozen
+classes is split by module. In AsciiDoc pages, escape `<` as an HTML entity inside a diagram: the
+page delivers the source as HTML, and a raw `<<stereotype>>` breaks it.
+
+*Extending the generators* means subclassing LinkML internals (`serialize`, the ignored-properties
+method), which can change in a minor release. The pin on `linkml` and the CI regeneration diff
+already guard this; each extension gets a test on the toy schema.
 
 == What the application writes
 
@@ -136,19 +230,13 @@ available only through the Python API _(spike)_.
 
 [mermaid]
 ....
-flowchart LR
-    S[application schema<br/>+ rp metamodel] --> L[1 lint]
-    L --> B[2 boundary check]
-    B --> P[3 domain classes]
-    B --> H[4 shapes]
-    B --> C[5 JSON-LD context]
-    B --> T[6 TypeScript types]
-    B --> D[7 diagrams]
-    P --> O[package: domain/generated/<br/>classes, shapes, context, schema copy]
-    H --> O
-    C --> O
-    T --> TS[client package: generated types]
-    D --> DOC[docs: one diagram per module]
+flowchart TB
+    S["schema + metamodel"] --> L["1 lint"] --> B["2 boundary and hard check"]
+    B --> P["3 Python"]
+    B --> H["4 shapes"]
+    B --> C["5 context"]
+    B --> T["6 TypeScript"]
+    B --> D["7 diagrams"]
 ....
 
 [cols="1,4,3",options="header"]
@@ -160,7 +248,7 @@ flowchart LR
 |4 Shapes |`gen-shacl`. Shapes are closed (`sh:closed true`) _(spike)_, and the version token sits on the graph IRI, not the root, so the domain triples validate on their own |generation fails
 |5 JSON-LD context |`gen-jsonld-context`, with `id` and `type` aliased to `@id` and `@type`; served by the service kit (O-2). Known gaps (no `@language` containers, inlined collections keyed by `@index`) need template fixes before a schema uses those features _(not yet run)_ |generation fails
 |6 TypeScript types |`gen-typescript` with the toolkit's template, which fixes enums and dates (the stock output is weak on both); interfaces only, into the client package the application names _(not yet run)_ |generation fails
-|7 Diagrams |`gen-plantuml`, once per schema module, so each diagram shows one module's classes and their links to other modules _(per-module output not yet run)_ |generation fails
+|7 Diagrams |`gen-mermaid-class-diagram`, once per schema module, so each diagram shows one module's classes and their links to other modules _(per-module output not yet run)_ |generation fails
 |===
 
 Each step writes to a temporary file and moves it into place only on success, so a failed run leaves
