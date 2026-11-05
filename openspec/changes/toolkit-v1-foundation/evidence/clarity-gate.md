@@ -17,6 +17,7 @@ Each round was scored by a fresh reviewer with the full `clarity-gate` procedure
 | 8 | 8.5 | three toolkit schemas need `[[tool.rp-generate]]` entries, `rp_service.yaml` placement, `--check` without the extra, request bodies as generated classes, `load_schema` moved to `services` |
 | 9 | 8.7 | aggregate bodies stay JSON-LD, `rp_service.yaml` imports, nested output folders, installed-package paths in manifests |
 | 10 | 8.9 | a run hashed its own generated output as an input; tenant-root bodies; manifest wording |
+| 11 | **9.1 (pass)** | all 13 items pass; H1 to H3 closed; one minor gap left (task 1.13 must follow 1.12) |
 
 The PLAN was ready for implementation from task 0.1 after round 6; rounds 7 onward re-gate the
 amendments made during stage 0.

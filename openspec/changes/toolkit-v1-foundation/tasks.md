@@ -60,7 +60,7 @@ Notation:
 
 ### 1b. Single source of specification (PD-24 to PD-28; developer, 2026-11-05)
 
-Order: 1.11 at any time; 1.12 and 1.16 after 1.10; 1.13 after 1.8; 1.14 after 1.9, 1.12 and 1.13; 1.15 after 1.12;
+Order: 1.11 at any time; 1.12 and 1.16 after 1.10; 1.13 after 1.8 and 1.12; 1.14 after 1.9, 1.12 and 1.13; 1.15 after 1.12;
 1.17 after 1.9; 1.18 after 1.9 and 1.11. Tasks 1.12 and 1.13 regenerate and recommit the output of
 1.10. Hypothesis is added to the test group, pinned, in task 1.14.
 
