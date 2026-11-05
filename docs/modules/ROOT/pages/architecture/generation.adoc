@@ -450,8 +450,7 @@ first.
   are `required`, `cardinality`, `range_type`, `range_enum`, `pattern`, `value_bounds`, `identifier`,
   `closed`, `exactly_one_of`, `any_of` and `unique_keys`; the test fails, naming the kind, when a
   schema uses a kind with no row. A consumer runs it on its own schema with
-  `Conformance.of(schema)`, `load_cases(path)`, `verdict_problems(...)` and `coverage_problems(...)`
-  from `rdf_persistence.testkit.conformance`; each returns the problems found, empty when all pass.
+  `testkit.conformance.run(schema, cases)`, which returns the problems found, empty when all pass.
 . *Round trips*: an instance drawn by Hypothesis from the schema (strategies in
   `rdf_persistence.testkit.strategies`) goes to JSON, is expanded with the generated context to RDF,
   then framed and compacted back; the objects compare equal on their public projection (internal
@@ -494,8 +493,11 @@ Both guards are `testkit.assert_models_generated(package, *, roots, allow=(), ex
 [#adoption]
 == How an application adopts it
 
+The steps, with examples that run, are in xref:howto/adopt.adoc[Build an application with
+rdf-persistence]. In short:
+
 . Write `models/<app>.yaml` and one file per module, importing the metamodel; mark aggregate roots, owned slots, databases;
   write the application's role definitions (and, optionally, narrow `role` by subclassing `Grant`).
-. Add `make generate-models` calling `rp-generate`, and the freshness check to CI.
+. Add `make generate` calling `rp-generate`, and the freshness check to CI.
 . Write use-case services against `open_session` and the generated classes.
 . Write routes with the service kit; publish the OpenAPI contract and the JSON-LD context; use the generated TypeScript types in the client, checked against the contract.

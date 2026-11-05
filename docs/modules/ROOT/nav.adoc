@@ -6,6 +6,8 @@
 ** xref:architecture/api.adoc[A lightweight API]
 ** xref:architecture/access-control.adoc[Access control and identity]
 
+* xref:howto/adopt.adoc[Build an application]
+
 * xref:develop/index.adoc[Working on the toolkit]
 
 * Background
