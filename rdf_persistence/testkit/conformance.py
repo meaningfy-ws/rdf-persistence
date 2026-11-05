@@ -29,12 +29,15 @@ from pyld import jsonld
 from pyshacl import validate
 from rdflib import Graph
 
-from rdf_persistence.generation.checks.scope import TRUE, annotation
 from rdf_persistence.generation.config import python_folder, read_targets
 from rdf_persistence.generation.exceptions import ConfigError
 from rdf_persistence.generation.generated.rp_generation import ConstraintCase, ConstraintKind
-from rdf_persistence.generation.transform import apply_defaults
-from rdf_persistence.services.schema import load_schema
+from rdf_persistence.services.schema_structure import (
+    generation_view,
+    is_internal,
+    is_owned,
+    keyed_slots,
+)
 
 SHAPES_FILE = "shapes.ttl"
 CONTEXT_FILE = "context.jsonld"
@@ -99,10 +102,8 @@ class Conformance:
         """Open ``schema`` and the generated artefacts of the ``[[tool.rp-generate]]`` entry for it."""
         _, package, folder = _generating_target(schema)
         context = json.loads((folder / CONTEXT_FILE).read_text(encoding="utf-8"))["@context"]
-        view = load_schema(schema)
-        apply_defaults(view, schema.parent)  # the schema the generators saw (PD-11)
         return Conformance(
-            view=view,
+            view=generation_view(schema),
             models=_generated_models(package, folder),
             context=context,
             shapes=Graph().parse(folder / SHAPES_FILE),
@@ -151,14 +152,14 @@ class Conformance:
             slot = slots.get(key)
             if slot is None:
                 node[key] = value
-            elif annotation(slot, "internal") != TRUE:
+            elif not is_internal(slot):
                 node[key] = self._typed_parts(slot, value)
         return node
 
     def _typed_parts(self, slot: SlotDefinition, value: object) -> object:
         if isinstance(value, list):
             return [self._typed_parts(slot, item) for item in value]
-        if isinstance(value, dict) and annotation(slot, "owned") == TRUE:
+        if isinstance(value, dict) and is_owned(slot):
             return self.jsonld_node(slot.range, value)
         return value
 
@@ -166,20 +167,17 @@ class Conformance:
         """The constraint kinds the generated classes of the schema use, read from ``SchemaView``."""
         kinds = {K.CLOSED} if self.models else set()
         for name in self.class_names():
-            kinds |= self._class_kinds(name)
+            kinds |= self.class_kinds(name)
             for slot in self.view.class_induced_slots(name):
-                if annotation(slot, "internal") != TRUE:  # the shapes make it optional (PD-24)
+                if not is_internal(slot):  # the shapes make it optional (PD-24)
                     kinds |= self._slot_kinds(slot)
         return kinds
 
-    def _class_kinds(self, name: str) -> set[ConstraintKind]:
+    def class_kinds(self, name: str) -> set[ConstraintKind]:
+        """The kinds of the rules ``name`` declares or holds through a keyed slot."""
         cls = self.view.get_class(name)
         kinds = {kind for kind, found in _CLASS_KINDS if getattr(cls, found)}
-        for slot in self.view.class_induced_slots(name):
-            part = self.view.get_class(slot.range) if slot.multivalued else None
-            if part is not None and part.unique_keys:
-                kinds.add(K.UNIQUE_KEYS)
-        return kinds
+        return kinds | ({K.UNIQUE_KEYS} if keyed_slots(self.view, cls) else set())
 
     def _slot_kinds(self, slot: SlotDefinition) -> set[ConstraintKind]:
         kinds = {kind for kind, found in _SLOT_KINDS if getattr(slot, found) is not None}

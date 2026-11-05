@@ -1,6 +1,9 @@
-"""The errors of the generation toolchain. Imports nothing from LinkML, so any module may raise or catch them."""
+"""The errors of the generation toolchain. Imports nothing from the LinkML generators, so any module may raise or catch them."""
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
+
+from rdf_persistence.services.schema_structure import UnsupportedRuleError
 
 
 class ConfigError(Exception):
@@ -21,3 +24,12 @@ class SchemaGenerationError(Exception):
     Extensions raise it for a schema fault. Any other exception from a generator is a bug in the
     toolchain and surfaces with its traceback.
     """
+
+
+@contextmanager
+def refusing_unsupported_rules() -> Iterator[None]:
+    """Within it, a rule the schema declares in an unsupported form is a ``SchemaGenerationError``."""
+    try:
+        yield
+    except UnsupportedRuleError as error:
+        raise SchemaGenerationError(str(error)) from error

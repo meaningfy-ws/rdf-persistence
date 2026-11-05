@@ -30,14 +30,17 @@ from rdflib import BNode, Graph, Literal, URIRef
 from rdflib.collection import Collection
 from rdflib.namespace import SH
 
-from rdf_persistence.generation.checks.scope import TRUE, annotation
 from rdf_persistence.generation.extensions.shacl_constraints import constraints_graph, shape_uri
 from rdf_persistence.generation.outputs import GeneratedFile
-from rdf_persistence.generation.transform import apply_defaults
 from rdf_persistence.services.schema import metamodel_importmap
+from rdf_persistence.services.schema_structure import (
+    apply_defaults,
+    is_bookkeeping,
+    is_internal,
+    is_owned,
+)
 
 SHAPES_FILE = "shapes.ttl"
-BOOKKEEPING_SLOTS = ("version", "created", "modified", "creator", "contributor")
 NO_MORE_INPUT = r"(?![\s\S])"
 
 
@@ -54,11 +57,10 @@ class RpShaclGenerator(ShaclGenerator):
 
     def _bookkeeping(self) -> set[URIRef]:
         sv = self.schemaview
-        slots = sv.all_slots()
         return {
-            URIRef(sv.get_uri(slots[name], expand=True))
-            for name in BOOKKEEPING_SLOTS
-            if name in slots
+            URIRef(sv.get_uri(slot, expand=True))
+            for slot in sv.all_slots().values()
+            if is_bookkeeping(slot)
         }
 
     def _build_ignored_properties(self, g: Graph, c: ClassDefinition) -> BNode:
@@ -78,7 +80,7 @@ class RpShaclGenerator(ShaclGenerator):
         for cls in classes.values():
             shape = shape_uri(sv, cls)
             for slot in sv.class_induced_slots(cls.name):
-                if slot.range not in classes or annotation(slot, "owned") == TRUE:
+                if slot.range not in classes or is_owned(slot):
                     continue
                 path = URIRef(sv.get_uri(slot, expand=True))
                 for prop in g.objects(shape, SH.property):
@@ -99,7 +101,7 @@ class RpShaclGenerator(ShaclGenerator):
         for cls in sv.all_classes().values():
             shape = shape_uri(sv, cls)
             for slot in sv.class_induced_slots(cls.name):
-                if annotation(slot, "internal") != TRUE:
+                if not is_internal(slot):
                     continue
                 path = URIRef(sv.get_uri(slot, expand=True))
                 for prop in g.objects(shape, SH.property):

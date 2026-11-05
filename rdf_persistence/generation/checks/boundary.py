@@ -6,24 +6,24 @@ from pathlib import Path
 from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.generation.checks.scope import (
+from rdf_persistence.domain.generated.rp_core import ModuleKind, RpAnnotation
+from rdf_persistence.generation.generated.rp_generation import BoundaryRule
+from rdf_persistence.services.schema_structure import (
     AGGREGATE_ROOT,
-    TRUE,
     aggregate_roots,
     annotation,
     declared_slots,
+    is_owned,
     is_tenant_root,
     is_toolkit_schema,
     own_classes,
     own_schemas,
     owned_classes,
 )
-from rdf_persistence.generation.generated.rp_generation import BoundaryRule
 
 # Classes reached by IRI, never owned (PD-23).
 REFERENCE_CLASSES = ("Principal", "Activity")
-DOMAIN = "domain"
-FORBIDDEN_FOR_DOMAIN = ("technical", "access")
+FORBIDDEN_FOR_DOMAIN = (ModuleKind.TECHNICAL.value, ModuleKind.ACCESS.value)
 
 
 def _problem(rule: BoundaryRule, element: str, message: str) -> str:
@@ -52,11 +52,7 @@ def _reference_problems(view: SchemaView, classes: list[ClassDefinition]) -> Ite
         for name in sorted(declared_slots(cls) & induced.keys()):
             slot = induced[name]
             is_class_range = slot.range in view.all_classes()
-            if (
-                is_class_range
-                and annotation(slot, "owned") != TRUE
-                and not _may_be_referred_to(view, slot.range)
-            ):
+            if is_class_range and not is_owned(slot) and not _may_be_referred_to(view, slot.range):
                 yield _problem(
                     BoundaryRule.REFERENCE,
                     name,
@@ -74,10 +70,10 @@ def _imported(view: SchemaView, schema: SchemaDefinition) -> Iterator[SchemaDefi
 
 def _module_problems(view: SchemaView, schemas: list[SchemaDefinition]) -> Iterator[str]:
     for schema in schemas:
-        if annotation(schema, "module_kind") != DOMAIN:
+        if annotation(schema, RpAnnotation.MODULE_KIND) != ModuleKind.DOMAIN.value:
             continue
         for imported in _imported(view, schema):
-            kind = annotation(imported, "module_kind")
+            kind = annotation(imported, RpAnnotation.MODULE_KIND)
             if kind in FORBIDDEN_FOR_DOMAIN:
                 yield _problem(
                     BoundaryRule.MODULE_KIND,

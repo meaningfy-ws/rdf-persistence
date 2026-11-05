@@ -23,22 +23,28 @@ from linkml.generators.pydanticgen.template import (
     PydanticClass,
     PydanticTemplateModel,
 )
-from linkml_runtime.linkml_model.meta import (
-    AnonymousClassExpression,
-    ClassDefinition,
-    SlotDefinition,
-    UniqueKey,
-)
+from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition, UniqueKey
 from linkml_runtime.utils.formatutils import camelcase, underscore
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel
 
-from rdf_persistence.generation.checks.scope import declared_slots
-from rdf_persistence.generation.exceptions import SchemaGenerationError
+from rdf_persistence.generation.exceptions import (
+    SchemaGenerationError,
+    refusing_unsupported_rules,
+)
+from rdf_persistence.services.schema_structure import (
+    ABSENT,
+    ANY_OF,
+    EXACTLY_ONE_OF,
+    declared_slots,
+    keyed_slots,
+    presence_alternatives,
+)
+from rdf_persistence.services.schema_structure import (
+    Alternative as Presences,
+)
 
 VALIDATOR_IMPORT = Import(module="pydantic", objects=[ObjectImport(name="model_validator")])
-PRESENT, ABSENT = "PRESENT", "ABSENT"
-SUPPORTED_CONDITION_FIELDS = {"name", "required", "value_presence"}
 
 
 @dataclass(frozen=True)
@@ -50,8 +56,10 @@ class PresenceRule:
     refused: str
 
 
-EXACTLY_ONE_OF = PresenceRule("exactly_one_of", "exactly one", "len(held) != 1")
-ANY_OF = PresenceRule("any_of", "at least one", "not held")
+RULES = (
+    PresenceRule(EXACTLY_ONE_OF, "exactly one", "len(held) != 1"),
+    PresenceRule(ANY_OF, "at least one", "not held"),
+)
 
 
 class Alternative(BaseModel):
@@ -104,58 +112,29 @@ def _attribute(rule: str, name: str, cls: ClassDefinition, attributes: set[str])
     return python
 
 
-def _presence(
-    rule: str, cls: ClassDefinition, slot: str, condition: SlotDefinition
-) -> tuple[str, bool]:
-    """``(label, holds)`` of one slot condition: the slot present (True) or absent (False)."""
-    where = f"{cls.name}: {rule}: slot condition on {slot}"
-    others = {
-        k for k, v in vars(condition).items() if v not in (None, [], {})
-    } - SUPPORTED_CONDITION_FIELDS
-    if others:
-        raise SchemaGenerationError(
-            f"{where} uses {sorted(others)}; only required and value_presence are supported"
-        )
-    if condition.required is False:
-        raise SchemaGenerationError(f"{where} has required: false; use value_presence: ABSENT")
-    states = {True} if condition.required else set()
-    if condition.value_presence is not None:
-        states.add(str(condition.value_presence) == PRESENT)
-    if len(states) != 1:
-        raise SchemaGenerationError(
-            f"{where} must state exactly one of required: true and value_presence"
-        )
-    present = states.pop()
-    return f"{slot} {'present' if present else 'absent'}", present
-
-
 def _alternative(
-    rule: str, cls: ClassDefinition, expression: AnonymousClassExpression, attributes: set[str]
+    rule: str, presences: Presences, attributes: set[str], cls: ClassDefinition
 ) -> Alternative:
-    extra = {k for k, v in vars(expression).items() if v not in (None, [], {})} - {
-        "slot_conditions"
-    }
-    if extra or not expression.slot_conditions:
-        raise SchemaGenerationError(
-            f"{cls.name}: {rule}: an alternative must hold slot_conditions only, found {sorted(extra) or 'none'}"
-        )
     labels, tests = [], []
-    for slot, condition in expression.slot_conditions.items():
-        python = _attribute(rule, slot, cls, attributes)
-        label, present = _presence(rule, cls, slot, condition)
-        labels.append(label)
-        tests.append(f"self.{python} {'not in' if present else 'in'} (None, [])")
+    for slot, state in presences:
+        present = state != ABSENT
+        labels.append(f"{slot} {'present' if present else 'absent'}")
+        tests.append(
+            f"self.{_attribute(rule, slot, cls, attributes)} {'not in' if present else 'in'} (None, [])"
+        )
     return Alternative(label=" and ".join(labels), holds=" and ".join(tests))
 
 
 def _presence_validators(
-    cls: ClassDefinition, attributes: set[str]
+    view: SchemaView, cls: ClassDefinition, attributes: set[str]
 ) -> dict[str, PresenceValidator]:
     found = {}
-    for rule, expressions in ((EXACTLY_ONE_OF, cls.exactly_one_of), (ANY_OF, cls.any_of)):
-        if not expressions:
+    for rule in RULES:
+        with refusing_unsupported_rules():
+            declared = presence_alternatives(view, cls, rule.name)
+        if not declared:
             continue
-        alternatives = [_alternative(rule.name, cls, e, attributes) for e in expressions]
+        alternatives = [_alternative(rule.name, p, attributes, cls) for p in declared]
         method = f"{rule.name}_{camelcase(cls.name)}"
         found[method] = PresenceValidator(
             method=method,
@@ -167,33 +146,6 @@ def _presence_validators(
             labels=", ".join(a.label for a in alternatives),
         )
     return found
-
-
-def _holds_objects(view: SchemaView, slot: SlotDefinition) -> bool:
-    """True when the values of a slot ranging over a class are objects, not references by identifier."""
-    return bool(
-        slot.inlined or slot.inlined_as_list or view.get_identifier_slot(slot.range) is None
-    )
-
-
-def _keys_of(view: SchemaView, range_: str) -> dict[str, UniqueKey]:
-    """The unique keys of a class and its ancestors by name; the nearest declaration of a name wins."""
-    keys: dict[str, UniqueKey] = {}
-    for name in view.class_ancestors(range_):
-        for key_name, key in (view.get_class(name).unique_keys or {}).items():
-            keys.setdefault(key_name, key)
-    return keys
-
-
-def _keyed_slots(view: SchemaView, cls: ClassDefinition) -> list[SlotDefinition]:
-    """The slots ``cls`` declares that hold several objects of a class, which the validators check."""
-    induced = {slot.name: slot for slot in view.class_induced_slots(cls.name)}
-    slots = (induced[name] for name in sorted(declared_slots(cls) & induced.keys()))
-    return [
-        slot
-        for slot in slots
-        if slot.multivalued and slot.range in view.all_classes() and _holds_objects(view, slot)
-    ]
 
 
 def _unique_key_validator(
@@ -225,10 +177,11 @@ def _unique_key_validator(
 def _unique_keys_validators(
     view: SchemaView, cls: ClassDefinition, attributes: set[str]
 ) -> dict[str, UniqueKeysValidator]:
+    declared = declared_slots(cls)
     validators = (
         _unique_key_validator(view, cls, slot, key, attributes)
-        for slot in _keyed_slots(view, cls)
-        for key in _keys_of(view, slot.range).values()
+        for slot, key in keyed_slots(view, cls)
+        if slot.name in declared
     )
     return {validator.method: validator for validator in validators}
 
@@ -238,7 +191,7 @@ def with_validators(result: ClassResult, view: SchemaView) -> ClassResult:
     cls = result.source
     attributes = set(result.cls.attributes or {})
     validators = {
-        **_presence_validators(cls, attributes),
+        **_presence_validators(view, cls, attributes),
         **_unique_keys_validators(view, cls, attributes),
     }
     if not validators:

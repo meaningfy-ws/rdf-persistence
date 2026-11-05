@@ -7,8 +7,7 @@ import yaml
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation.generated.rp_generation import ClassShape, SlotShape
-from rdf_persistence.generation.transform import apply_defaults
-from rdf_persistence.services.schema import load_schema
+from rdf_persistence.services.schema_structure import generation_view
 
 _FLAGS = ("required", "multivalued", "range")
 
@@ -23,8 +22,7 @@ def class_shapes(schema_paths: Iterable[str | Path]) -> list[ClassShape]:
     """
     found: dict[str, ClassShape] = {}
     for path in schema_paths:
-        view = load_schema(path)
-        apply_defaults(view, Path(path).parent)  # the schema as the generators see it (PD-11)
+        view = generation_view(path)
         for name in view.all_classes():
             found.setdefault(name, _shape_of(view, name))
     return [found[name] for name in sorted(found)]

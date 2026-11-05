@@ -16,9 +16,13 @@ from rdf_persistence.domain.generated.rp_annotations import (
 )
 from rdf_persistence.domain.generated.rp_core import (
     AggregateRoot,
+    DatabaseKind,
+    GraphKind,
+    ModuleKind,
     Principal,
     RegistryEntry,
     RegistryKind,
+    RpAnnotation,
 )
 from rdf_persistence.domain.generated.rp_files import (
     StoredFile,
@@ -49,10 +53,13 @@ __all__ = [
     "Action",
     "Activity",
     "AggregateRoot",
+    "DatabaseKind",
     "Described",
     "Grant",
     "GrantSet",
+    "GraphKind",
     "LabelUpdate",
+    "ModuleKind",
     "Page",
     "Policy",
     "Principal",
@@ -64,6 +71,7 @@ __all__ = [
     "RoleDefinition",
     "RoleLevel",
     "Rule",
+    "RpAnnotation",
     "RpModel",
     "ServiceSettings",
     "StoredFile",

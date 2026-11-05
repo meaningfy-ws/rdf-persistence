@@ -7,6 +7,46 @@ export type RegistryKind =
   /** A graph loaded for an aggregate, whose lifecycle belongs to it. */
   | "loaded_graph";
 
+/** The annotations the toolkit reads from a schema, one entry per tag; any other tag is left alone. Each description says which element carries the tag and which values it accepts. */
+export type RpAnnotation =
+  /** Slot annotation, `true` when the slot's values are part of the aggregate and live in its graph; any other slot ranging over a class refers to another aggregate root, by IRI. */
+  | "owned"
+  /** Slot annotation, `true` when the slot never appears in the API contract; the toolkit writes it. */
+  | "internal"
+  /** Class annotation, `meta` (see GraphKind) for the tenant root object, which lives in the tenant's meta graph instead of a graph of its own. */
+  | "graph"
+  /** Class annotation, `tenant` (the default) or `system` (see DatabaseKind): the database an aggregate lives in. */
+  | "database"
+  /** Schema annotation, `domain`, `technical` or `access` (see ModuleKind): the kind of the module; a domain module may not import a technical or an access one. */
+  | "module_kind"
+  /** Class annotation, required on every aggregate root: its path segment in the API and in its IRIs. It follows the pattern of the url_segment slot. */
+  | "rp_path"
+  /** Class annotation, `true` on an owned value class whose instances need no label of their own. */
+  | "rp_unlabelled"
+  /** Slot annotation, `true` when the session writes the slot about a graph (its version, who created or contributed to it, when); closed shapes ignore the statement. */
+  | "bookkeeping";
+
+/** The kinds of schema module, the values of the module_kind annotation. */
+export type ModuleKind =
+  /** A module of the application's domain; it imports no technical or access module. */
+  | "domain"
+  /** A module of technical concerns, such as files or provenance. */
+  | "technical"
+  /** A module of access control, such as grants and tenancy. */
+  | "access";
+
+/** The databases an aggregate can live in, the values of the database annotation. */
+export type DatabaseKind =
+  /** The tenant's own database, the default. */
+  | "tenant"
+  /** The system database, shared by all tenants. */
+  | "system";
+
+/** The special graphs a class can live in, the values of the graph annotation. */
+export type GraphKind =
+  /** The tenant's meta graph, which holds the tenant root object. */
+  | "meta";
+
 /** A reference to a user account in the identity provider, by IRI only. */
 export interface Principal {
   /** The IRI that identifies the object. */

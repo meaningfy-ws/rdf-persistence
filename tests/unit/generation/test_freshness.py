@@ -73,6 +73,19 @@ def test_package_inputs_are_recorded_under_the_package_name(generated: Path) -> 
     )
 
 
+def test_every_module_that_decides_how_a_schema_is_read_is_an_input(generated: Path) -> None:
+    paths = {entry.path for entry in read_manifest(generated).inputs}
+    readers = {
+        f"rdf_persistence/services/{module.name}"
+        for module in manifest_module.SERVICES_DIR.glob("schema*.py")
+    }
+    assert {
+        "rdf_persistence/services/schema.py",
+        "rdf_persistence/services/schema_structure.py",
+    } <= readers, "the scan found no schema reader"
+    assert readers <= paths, f"not inputs: {sorted(readers - paths)}"
+
+
 def test_linkml_types_and_the_generated_folder_are_not_inputs(generated: Path) -> None:
     paths = [entry.path for entry in read_manifest(generated).inputs]
     assert not [p for p in paths if "types.yaml" in p], "linkml:types is an input"

@@ -3,7 +3,6 @@
 import hashlib
 import os
 from collections.abc import Iterable, Iterator
-from importlib import resources
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
@@ -15,15 +14,15 @@ from rdf_persistence.generation.generated.rp_generation import (
     GenerationTarget,
     ManifestEntry,
 )
-from rdf_persistence.services.schema import LOAD_ERRORS, load_schema
+from rdf_persistence.services.schema import LOAD_ERRORS, PACKAGE, PACKAGE_DIR, load_schema
 
 MANIFEST_NAME = "rp-manifest.json"
 FIX_HINT = "run `make generate` to regenerate, then commit the result"
-PACKAGE = "rdf_persistence"
-PACKAGE_DIR = Path(str(resources.files(PACKAGE))).resolve()
 GENERATION_DIR = PACKAGE_DIR / "generation"
 GENERATED_DIR = GENERATION_DIR / "generated"
 TEMPLATES_DIR = GENERATION_DIR / "templates"
+SERVICES_DIR = PACKAGE_DIR / "services"
+SCHEMA_READERS = "schema*.py"  # the modules that decide how a schema is read (PD-26)
 LINKML_TYPES_PREFIX = "linkml:"
 
 
@@ -54,6 +53,7 @@ def recorded_path(file: Path, base: Path) -> str:
 
 
 def _toolkit_files() -> Iterator[Path]:
+    yield from SERVICES_DIR.glob(SCHEMA_READERS)
     for module in GENERATION_DIR.rglob("*.py"):
         if not module.is_relative_to(GENERATED_DIR):
             yield module

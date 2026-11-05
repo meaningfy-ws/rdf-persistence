@@ -13,23 +13,25 @@ absent (``value_presence: ABSENT``) is supported; anything else raises rather th
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 
-from linkml_runtime.linkml_model.meta import (
-    AnonymousClassExpression,
-    ClassDefinition,
-    PresenceEnum,
-    SlotDefinition,
-    UniqueKey,
-)
+from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import BNode, Graph, Literal, URIRef
 from rdflib.collection import Collection
 from rdflib.namespace import RDF, SH
 from rdflib.term import Node
 
-from rdf_persistence.generation.exceptions import SchemaGenerationError
-
-PRESENT = PresenceEnum(PresenceEnum.PRESENT)
-ABSENT = PresenceEnum(PresenceEnum.ABSENT)
+from rdf_persistence.generation.exceptions import (
+    SchemaGenerationError,
+    refusing_unsupported_rules,
+)
+from rdf_persistence.services.schema_structure import (
+    ABSENT,
+    ANY_OF,
+    EXACTLY_ONE_OF,
+    Alternative,
+    keyed_slots,
+    presence_alternatives,
+)
 
 
 @dataclass(frozen=True)
@@ -56,45 +58,42 @@ def _concrete(sv: SchemaView) -> Iterator[ClassDefinition]:
     return (c for c in sv.all_classes().values() if not (c.mixin or c.abstract))
 
 
-def _expressions(
-    sv: SchemaView, cls: ClassDefinition, rule: str
-) -> Iterator[list[AnonymousClassExpression]]:
-    """The alternatives of every ``rule`` (``exactly_one_of`` or ``any_of``) of ``cls`` and its ancestors."""
+def _declared(sv: SchemaView, cls: ClassDefinition, rule: str) -> Iterator[list[Alternative]]:
+    """The alternatives of every ``rule`` of ``cls`` and its ancestors."""
     for name in sv.class_ancestors(cls.name):
-        alternatives = getattr(sv.get_class(name), rule)
+        with refusing_unsupported_rules():
+            alternatives = presence_alternatives(sv, sv.get_class(name), rule)
         if alternatives:
-            yield list(alternatives)
+            yield alternatives
 
 
 def _alternative(
-    sv: SchemaView, cls: ClassDefinition, expression: AnonymousClassExpression
+    sv: SchemaView, cls: ClassDefinition, alternative: Alternative
 ) -> tuple[BNode, Graph]:
-    """A node shape that holds when the expression's slot conditions hold."""
+    """A node shape that holds when the alternative's slots are present or absent as it says."""
     node = BNode()
     g = Graph()
-    for name, condition in expression.slot_conditions.items():
-        slot = sv.induced_slot(name, cls.name)
+    for name, presence in alternative:
         prop = BNode()
         g.add((node, SH.property, prop))
-        g.add((prop, SH.path, _path(sv, slot)))
-        if condition.value_presence == ABSENT:
-            g.add((prop, SH.maxCount, Literal(0)))
-        elif condition.required or condition.value_presence == PRESENT:
-            g.add((prop, SH.minCount, Literal(1)))
-        else:
-            raise SchemaGenerationError(
-                f"{cls.name}: the condition on {name} is not required or present"
+        g.add((prop, SH.path, _path(sv, sv.induced_slot(name, cls.name))))
+        g.add(
+            (
+                prop,
+                SH.maxCount if presence == ABSENT else SH.minCount,
+                Literal(0 if presence == ABSENT else 1),
             )
+        )
     return node, g
 
 
 def _choice(
     g: Graph, sv: SchemaView, cls: ClassDefinition, shape: URIRef, rule: str, kind: URIRef
 ) -> None:
-    for alternatives in _expressions(sv, cls, rule):
+    for alternatives in _declared(sv, cls, rule):
         nodes: list[Node] = []
-        for expression in alternatives:
-            node, part = _alternative(sv, cls, expression)
+        for alternative in alternatives:
+            node, part = _alternative(sv, cls, alternative)
             g += part
             nodes.append(node)
         head = BNode()
@@ -102,22 +101,13 @@ def _choice(
         g.add((shape, kind, head))
 
 
-def _unique_keys(sv: SchemaView, range_: str) -> Iterator[tuple[str, UniqueKey]]:
-    for name in sv.class_ancestors(range_):
-        yield from sv.get_class(name).unique_keys.items()
-
-
 def keys_on(sv: SchemaView, cls: ClassDefinition) -> Iterator[UniqueKeyOn]:
     """The unique keys the multivalued class-ranged slots of ``cls`` are subject to."""
-    classes = sv.all_classes()
-    for slot in sv.class_induced_slots(cls.name):
-        if not (slot.multivalued and slot.range in classes):
-            continue
-        for key_name, key in _unique_keys(sv, slot.range):
-            key_paths = tuple(
-                _path(sv, sv.induced_slot(k, slot.range)) for k in key.unique_key_slots
-            )
-            yield UniqueKeyOn(slot.name, _path(sv, slot), key_name, key.description, key_paths)
+    for slot, key in keyed_slots(sv, cls):
+        key_paths = tuple(_path(sv, sv.induced_slot(k, slot.range)) for k in key.unique_key_slots)
+        yield UniqueKeyOn(
+            slot.name, _path(sv, slot), key.unique_key_name, key.description, key_paths
+        )
 
 
 def _iri(iri: URIRef) -> str:
@@ -165,7 +155,7 @@ def constraints_graph(sv: SchemaView, classes: Iterable[ClassDefinition] | None 
     g = Graph()
     for cls in classes if classes is not None else _concrete(sv):
         shape = shape_uri(sv, cls)
-        _choice(g, sv, cls, shape, "exactly_one_of", SH.xone)
-        _choice(g, sv, cls, shape, "any_of", SH["or"])
+        _choice(g, sv, cls, shape, EXACTLY_ONE_OF, SH.xone)
+        _choice(g, sv, cls, shape, ANY_OF, SH["or"])
         _unique(g, sv, cls, shape)
     return g

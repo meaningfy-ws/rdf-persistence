@@ -6,7 +6,9 @@ from pathlib import Path
 import yaml
 from linkml_runtime.utils.schemaview import SchemaView
 
-MODEL_PREFIX = "rdf_persistence/model"
+PACKAGE = "rdf_persistence"
+PACKAGE_DIR = Path(str(resources.files(PACKAGE))).resolve()
+MODEL_PREFIX = f"{PACKAGE}/model"
 # What opening a schema raises when the file or an import is missing, is not YAML, or is not a LinkML
 # schema (an unknown field is a TypeError, a missing name a ValueError); any other error is a bug.
 LOAD_ERRORS = (OSError, yaml.YAMLError, ValueError, TypeError)
@@ -14,7 +16,7 @@ LOAD_ERRORS = (OSError, yaml.YAMLError, ValueError, TypeError)
 
 def metamodel_importmap() -> dict[str, str]:
     """Map each ``rdf_persistence/model/<module>`` import to the installed package's module file."""
-    model_dir = Path(str(resources.files("rdf_persistence") / "model"))
+    model_dir = PACKAGE_DIR / "model"
     return {
         f"{MODEL_PREFIX}/{module.stem}": str(module.with_suffix(""))
         for module in model_dir.glob("*.yaml")

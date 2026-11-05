@@ -43,9 +43,13 @@ from .rp_annotations import (
 )
 from .rp_core import (
     AggregateRoot,
+    DatabaseKind,
+    GraphKind,
+    ModuleKind,
     Principal,
     RegistryEntry,
-    RegistryKind
+    RegistryKind,
+    RpAnnotation
 )
 from .rp_files import StoredFile
 from .rp_provenance import (

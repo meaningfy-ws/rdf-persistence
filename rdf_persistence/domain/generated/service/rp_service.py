@@ -43,9 +43,13 @@ from rdf_persistence.domain.generated.rp_annotations import (
 )
 from rdf_persistence.domain.generated.rp_core import (
     AggregateRoot,
+    DatabaseKind,
+    GraphKind,
+    ModuleKind,
     Principal,
     RegistryEntry,
-    RegistryKind
+    RegistryKind,
+    RpAnnotation
 )
 from rdf_persistence.domain.generated.rp_tenancy import (
     TenantAccess,

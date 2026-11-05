@@ -65,6 +65,7 @@ source_modules =
     rdf_persistence.generation.exceptions
     rdf_persistence.generation.generated
     rdf_persistence.services.schema
+    rdf_persistence.services.schema_structure
 forbidden_modules =
     linkml
 ignore_imports =

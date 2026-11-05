@@ -16,12 +16,11 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, EnumDefinition, Sl
 from linkml_runtime.utils.formatutils import camelcase, underscore
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.generation.aggregates import root_classes
-from rdf_persistence.generation.checks.scope import TRUE, annotation
 from rdf_persistence.generation.exceptions import SchemaGenerationError
 from rdf_persistence.generation.outputs import GeneratedFile, stage
 from rdf_persistence.generation.pipeline import Run, Step, schema_faults
 from rdf_persistence.services.schema import load_schema
+from rdf_persistence.services.schema_structure import is_internal, is_owned, root_classes
 
 CONTEXT_FILE = "context.jsonld"
 FRAME_SUFFIX = ".frame.jsonld"
@@ -37,7 +36,7 @@ class ToolkitContextGenerator(ContextGenerator):
     ``uri`` values as IRIs and enum values as their meaning IRIs (PD-10)."""
 
     def visit_slot(self, aliased_slot_name: str, slot: SlotDefinition) -> None:
-        if annotation(slot, "internal") == TRUE:
+        if is_internal(slot):
             return
         super().visit_slot(aliased_slot_name, slot)
         definition = self.context_body.get(underscore(aliased_slot_name))
@@ -107,9 +106,9 @@ def build_frame(view: SchemaView, cls: str, seen: tuple[str, ...] = ()) -> Frame
     """The frame of ``cls``: its owned parts nested, recursively; its references left as IRIs."""
     frame = Frame(_term(view, cls))
     for slot in view.class_induced_slots(cls):
-        if annotation(slot, "internal") == TRUE or slot.range not in view.all_classes():
+        if is_internal(slot) or slot.range not in view.all_classes():
             continue
-        if annotation(slot, "owned") != TRUE:
+        if not is_owned(slot):
             frame.references.append(slot.name)
         elif slot.range in seen or slot.range == cls:  # a cycle of ownership: stop nesting
             frame.parts[slot.name] = Frame(_term(view, slot.range))

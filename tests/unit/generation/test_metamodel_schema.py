@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence.services.schema import load_schema
+from rdf_persistence.services.schema_structure import is_internal
 
 MODEL = Path(__file__).parents[3] / "rdf_persistence" / "model"
 LIBRARY = Path(__file__).parents[2] / "fixtures" / "library"
@@ -31,4 +32,4 @@ def test_rules_share_one_abstract_rule_class(name: str) -> None:
 
 def test_database_name_is_internal() -> None:
     slot = load_schema(MODEL / "rp.yaml").get_slot("database_name")
-    assert slot.annotations["internal"].value is True, "database_name must be marked internal"
+    assert is_internal(slot), "database_name must be marked internal"

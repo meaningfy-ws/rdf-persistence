@@ -15,11 +15,16 @@ from jinja2 import Environment, FileSystemLoader
 from linkml.generators.mermaidclassdiagramgen import MermaidClassDiagramGenerator
 from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition, SlotDefinition
 
-from rdf_persistence.generation.aggregates import owned_class_names, root_classes
-from rdf_persistence.generation.checks.scope import TRUE, annotation, own_schemas
 from rdf_persistence.generation.outputs import GeneratedFile, stage
 from rdf_persistence.generation.pipeline import Run, Step, schema_faults
 from rdf_persistence.services.schema import load_schema, metamodel_importmap
+from rdf_persistence.services.schema_structure import (
+    is_internal,
+    is_owned,
+    own_schemas,
+    owned_class_names,
+    root_classes,
+)
 
 TEMPLATE_DIR = Path(__file__).parents[1] / "templates" / "mermaid"
 TEMPLATE = "module.mmd.jinja"
@@ -66,14 +71,14 @@ class ToolkitMermaidGenerator(MermaidClassDiagramGenerator):
         """The slots the class declares or narrows, without the ``internal`` ones."""
         names = dict.fromkeys([*cls.slots, *cls.attributes, *cls.slot_usage])
         slots = (self.schemaview.induced_slot(name, cls.name) for name in names)
-        return [slot for slot in slots if annotation(slot, "internal") != TRUE]
+        return [slot for slot in slots if not is_internal(slot)]
 
     def _attribute(self, slot: SlotDefinition) -> MmdAttribute:
         type_name = f"List~{slot.range}~" if slot.multivalued else str(slot.range)
         return MmdAttribute(type_name, self.name(slot))
 
     def _link(self, cls: ClassDefinition, slot: SlotDefinition) -> str:
-        arrow = "*--" if annotation(slot, "owned") == TRUE else "-->"
+        arrow = "*--" if is_owned(slot) else "-->"
         target = self.name(self.schemaview.get_class(slot.range))
         return (
             f'{self.name(cls)} "1" {arrow} "{self.cardinality(slot)}" {target} : {self.name(slot)}'

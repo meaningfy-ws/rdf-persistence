@@ -12,7 +12,14 @@ from linkml_runtime.linkml_model.meta import (
 )
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.generation.checks.scope import (
+from rdf_persistence.domain.generated.rp_core import (
+    DatabaseKind,
+    GraphKind,
+    ModuleKind,
+    RpAnnotation,
+)
+from rdf_persistence.generation.generated.rp_generation import HardRule
+from rdf_persistence.services.schema_structure import (
     aggregate_roots,
     annotation,
     annotation_text,
@@ -23,20 +30,20 @@ from rdf_persistence.generation.checks.scope import (
     own_schemas,
     owned_classes,
 )
-from rdf_persistence.generation.generated.rp_generation import HardRule
 
 DESCRIBED = "Described"
 URL_SEGMENT = "url_segment"  # the slot of rp_core whose pattern every route segment follows
-RP_PATH = "rp_path"
 BOOLEAN = ("true", "false")
-# Every annotation the toolkit reads, and the values it accepts (rp_core's comments list them).
+# Every annotation the toolkit reads, and the values it accepts (the enums of rp_core). rp_path takes
+# a pattern instead, checked on its own.
 ALLOWED_ANNOTATIONS = {
-    "database": ("tenant", "system"),
-    "graph": ("meta",),
-    "module_kind": ("domain", "technical", "access"),
-    "owned": BOOLEAN,
-    "internal": BOOLEAN,
-    "rp_unlabelled": BOOLEAN,
+    RpAnnotation.DATABASE: tuple(kind.value for kind in DatabaseKind),
+    RpAnnotation.GRAPH: tuple(kind.value for kind in GraphKind),
+    RpAnnotation.MODULE_KIND: tuple(kind.value for kind in ModuleKind),
+    RpAnnotation.OWNED: BOOLEAN,
+    RpAnnotation.INTERNAL: BOOLEAN,
+    RpAnnotation.RP_UNLABELLED: BOOLEAN,
+    RpAnnotation.BOOKKEEPING: BOOLEAN,
 }
 
 
@@ -113,18 +120,20 @@ def _annotation_problems(schema: SchemaDefinition, path_pattern: str | None) -> 
             value = annotation(element, tag)
             if value is not None and value not in allowed:
                 yield _problem(
-                    HardRule.ANNOTATION, name, f"{tag}: {value!r} is not one of {allowed}"
+                    HardRule.ANNOTATION, name, f"{tag.value}: {value!r} is not one of {allowed}"
                 )
-        path = annotation_text(element, RP_PATH)
+        path = annotation_text(element, RpAnnotation.RP_PATH)
         if path is not None and path_pattern and not re.fullmatch(path_pattern, path):
             yield _problem(
-                HardRule.ANNOTATION, name, f"{RP_PATH}: {path!r} does not match {path_pattern}"
+                HardRule.ANNOTATION,
+                name,
+                f"{RpAnnotation.RP_PATH.value}: {path!r} does not match {path_pattern}",
             )
 
 
 def _inherited_path(view: SchemaView, cls: ClassDefinition) -> bool:
     ancestry = view.class_ancestors(cls.name, mixins=False)
-    return any(annotation(view.get_class(name), "rp_path") for name in ancestry)
+    return any(annotation(view.get_class(name), RpAnnotation.RP_PATH) for name in ancestry)
 
 
 def _path_problems(view: SchemaView, roots: list[ClassDefinition]) -> Iterator[str]:

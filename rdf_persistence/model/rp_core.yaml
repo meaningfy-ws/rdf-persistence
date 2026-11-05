@@ -4,14 +4,6 @@ title: RDF persistence core module
 description: >-
   The core of the RDF persistence metamodel: the aggregate root mixin, the principal, the version and
   loaded-graph slots, and the registry entry. Every other module of the metamodel builds on it.
-comments:
-  - "Class annotation database: tenant (default) or system, the database an aggregate lives in."
-  - "Class annotation graph: meta, for the tenant root object, which lives in the tenant's meta graph instead of a graph of its own."
-  - "Class annotation rp_path: required on every aggregate root; its path segment in the API and in its IRIs."
-  - "Class annotation rp_unlabelled: true, on an owned value class whose instances need no label of their own."
-  - "Slot annotation owned: true, when the slot's values are part of the aggregate and live in its graph; any other slot ranging over a class refers to another aggregate root, by IRI."
-  - "Slot annotation internal: true, when the slot never appears in the API contract."
-  - "Schema annotation module_kind: domain, technical or access, the kind of the module; a domain module may not import a technical or an access one."
 prefixes:
   rp: https://meaningfy.ws/ns/rdf-persistence#
   linkml: https://w3id.org/linkml/
@@ -82,6 +74,8 @@ slots:
       class carries it.
     slot_uri: rp:version
     range: string
+    annotations:
+      bookkeeping: true
   loaded_graph:
     title: Loaded graph
     description: A graph whose lifecycle belongs to the aggregate, such as the triples of a loaded RDF file.
@@ -116,3 +110,92 @@ enums:
         title: Loaded graph
         description: A graph loaded for an aggregate, whose lifecycle belongs to it.
         meaning: rp:LoadedGraph
+
+  RpAnnotation:
+    title: Annotation tag
+    description: >-
+      The annotations the toolkit reads from a schema, one entry per tag; any other tag is left alone.
+      Each description says which element carries the tag and which values it accepts.
+    permissible_values:
+      owned:
+        title: Owned
+        description: >-
+          Slot annotation, `true` when the slot's values are part of the aggregate and live in its
+          graph; any other slot ranging over a class refers to another aggregate root, by IRI.
+        meaning: rp:AnnotationOwned
+      internal:
+        title: Internal
+        description: >-
+          Slot annotation, `true` when the slot never appears in the API contract; the toolkit writes it.
+        meaning: rp:AnnotationInternal
+      graph:
+        title: Graph
+        description: >-
+          Class annotation, `meta` (see GraphKind) for the tenant root object, which lives in the
+          tenant's meta graph instead of a graph of its own.
+        meaning: rp:AnnotationGraph
+      database:
+        title: Database
+        description: >-
+          Class annotation, `tenant` (the default) or `system` (see DatabaseKind): the database an
+          aggregate lives in.
+        meaning: rp:AnnotationDatabase
+      module_kind:
+        title: Module kind
+        description: >-
+          Schema annotation, `domain`, `technical` or `access` (see ModuleKind): the kind of the module;
+          a domain module may not import a technical or an access one.
+        meaning: rp:AnnotationModuleKind
+      rp_path:
+        title: Path
+        description: >-
+          Class annotation, required on every aggregate root: its path segment in the API and in its
+          IRIs. It follows the pattern of the url_segment slot.
+        meaning: rp:AnnotationPath
+      rp_unlabelled:
+        title: Unlabelled
+        description: >-
+          Class annotation, `true` on an owned value class whose instances need no label of their own.
+        meaning: rp:AnnotationUnlabelled
+      bookkeeping:
+        title: Bookkeeping
+        description: >-
+          Slot annotation, `true` when the session writes the slot about a graph (its version, who
+          created or contributed to it, when); closed shapes ignore the statement.
+        meaning: rp:AnnotationBookkeeping
+  ModuleKind:
+    title: Module kind
+    description: The kinds of schema module, the values of the module_kind annotation.
+    permissible_values:
+      domain:
+        title: Domain
+        description: A module of the application's domain; it imports no technical or access module.
+        meaning: rp:ModuleDomain
+      technical:
+        title: Technical
+        description: A module of technical concerns, such as files or provenance.
+        meaning: rp:ModuleTechnical
+      access:
+        title: Access
+        description: A module of access control, such as grants and tenancy.
+        meaning: rp:ModuleAccess
+  DatabaseKind:
+    title: Database kind
+    description: The databases an aggregate can live in, the values of the database annotation.
+    permissible_values:
+      tenant:
+        title: Tenant
+        description: The tenant's own database, the default.
+        meaning: rp:DatabaseTenant
+      system:
+        title: System
+        description: The system database, shared by all tenants.
+        meaning: rp:DatabaseSystem
+  GraphKind:
+    title: Graph kind
+    description: The special graphs a class can live in, the values of the graph annotation.
+    permissible_values:
+      meta:
+        title: Meta
+        description: The tenant's meta graph, which holds the tenant root object.
+        meaning: rp:GraphMeta

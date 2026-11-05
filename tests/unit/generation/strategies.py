@@ -5,7 +5,7 @@ from linkml_runtime.linkml_model.meta import SlotDefinition
 from linkml_runtime.utils.formatutils import underscore
 from pydantic import BaseModel
 
-from rdf_persistence.generation.checks.scope import TRUE, annotation
+from rdf_persistence.services.schema_structure import is_internal, is_owned
 from rdf_persistence.testkit.conformance import Conformance
 
 IRI_BASE = "https://example.org/library/"
@@ -45,7 +45,7 @@ def _scalar(conformance: Conformance, slot: SlotDefinition) -> st.SearchStrategy
 
 
 def _slot_values(conformance: Conformance, slot: SlotDefinition, depth: int) -> st.SearchStrategy:
-    owned = annotation(slot, "owned") == TRUE
+    owned = is_owned(slot)
     one = _fields(conformance, slot.range, depth - 1) if owned else _scalar(conformance, slot)
     if not slot.multivalued:
         return one
@@ -54,16 +54,12 @@ def _slot_values(conformance: Conformance, slot: SlotDefinition, depth: int) -> 
 
 def _fields(conformance: Conformance, class_name: str, depth: int) -> st.SearchStrategy[dict]:
     """The JSON of an instance of ``class_name``: required slots always, optional ones by draw."""
-    slots = [
-        s
-        for s in conformance.view.class_induced_slots(class_name)
-        if annotation(s, "internal") != TRUE
-    ]
+    slots = [s for s in conformance.view.class_induced_slots(class_name) if not is_internal(s)]
     in_scope = [s for s in slots if depth >= 0 or s.required or s.identifier]
     values = {
         underscore(s.name): _slot_values(conformance, s, depth)
         for s in in_scope
-        if annotation(s, "owned") != TRUE or depth > 0 or s.required
+        if not is_owned(s) or depth > 0 or s.required
     }
     required = {underscore(s.name) for s in in_scope if s.required or s.identifier}
     return st.fixed_dictionaries(

@@ -64,6 +64,50 @@ class RegistryKind(str, Enum):
     "A graph loaded for an aggregate, whose lifecycle belongs to it."
 
 
+class RpAnnotation(str, Enum):
+    "The annotations the toolkit reads from a schema, one entry per tag; any other tag is left alone. Each description says which element carries the tag and which values it accepts."
+    OWNED = "owned"
+    "Slot annotation, `true` when the slot\u0027s values are part of the aggregate and live in its graph; any other slot ranging over a class refers to another aggregate root, by IRI."
+    INTERNAL = "internal"
+    "Slot annotation, `true` when the slot never appears in the API contract; the toolkit writes it."
+    GRAPH = "graph"
+    "Class annotation, `meta` (see GraphKind) for the tenant root object, which lives in the tenant\u0027s meta graph instead of a graph of its own."
+    DATABASE = "database"
+    "Class annotation, `tenant` (the default) or `system` (see DatabaseKind): the database an aggregate lives in."
+    MODULE_KIND = "module_kind"
+    "Schema annotation, `domain`, `technical` or `access` (see ModuleKind): the kind of the module; a domain module may not import a technical or an access one."
+    RP_PATH = "rp_path"
+    "Class annotation, required on every aggregate root: its path segment in the API and in its IRIs. It follows the pattern of the url_segment slot."
+    RP_UNLABELLED = "rp_unlabelled"
+    "Class annotation, `true` on an owned value class whose instances need no label of their own."
+    BOOKKEEPING = "bookkeeping"
+    "Slot annotation, `true` when the session writes the slot about a graph (its version, who created or contributed to it, when); closed shapes ignore the statement."
+
+
+class ModuleKind(str, Enum):
+    "The kinds of schema module, the values of the module_kind annotation."
+    DOMAIN = "domain"
+    "A module of the application\u0027s domain; it imports no technical or access module."
+    TECHNICAL = "technical"
+    "A module of technical concerns, such as files or provenance."
+    ACCESS = "access"
+    "A module of access control, such as grants and tenancy."
+
+
+class DatabaseKind(str, Enum):
+    "The databases an aggregate can live in, the values of the database annotation."
+    TENANT = "tenant"
+    "The tenant\u0027s own database, the default."
+    SYSTEM = "system"
+    "The system database, shared by all tenants."
+
+
+class GraphKind(str, Enum):
+    "The special graphs a class can live in, the values of the graph annotation."
+    META = "meta"
+    "The tenant\u0027s meta graph, which holds the tenant root object."
+
+
 
 class AggregateRoot(ConfiguredBaseModel):
     "A mixin for classes whose instances are aggregate roots. Each instance is one named graph, whose IRI is derived from the root\u0027s IRI; it is versioned, loaded and saved as a whole."

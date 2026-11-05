@@ -17,11 +17,10 @@ from jinja2 import Environment, FileSystemLoader
 from linkml.generators.typescriptgen import TypescriptGenerator
 from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition, SlotDefinition
 
-from rdf_persistence.generation.checks.scope import TRUE, annotation
 from rdf_persistence.generation.outputs import GeneratedFile, stage
 from rdf_persistence.generation.pipeline import Run, Step, schema_faults
-from rdf_persistence.generation.transform import apply_defaults
 from rdf_persistence.services.schema import metamodel_importmap
+from rdf_persistence.services.schema_structure import apply_defaults, is_internal, is_owned
 
 TEMPLATE_DIR = Path(__file__).parents[1] / "templates" / "typescript"
 MODULE_TEMPLATE = "module.ts.jinja"
@@ -95,11 +94,7 @@ class ToolkitTypescriptGenerator(TypescriptGenerator):
         """The TypeScript type of the slot's values (without ``[]``)."""
         view = self.schemaview
         if slot.range in view.all_classes():
-            return (
-                self.name(view.get_class(slot.range))
-                if annotation(slot, "owned") == TRUE
-                else "string"
-            )
+            return self.name(view.get_class(slot.range)) if is_owned(slot) else "string"
         if slot.range in view.all_enums():
             return str(self.name(view.get_enum(slot.range)))
         return self._scalar(slot.range)
@@ -125,9 +120,7 @@ class ToolkitTypescriptGenerator(TypescriptGenerator):
 
     def _interface(self, cls: ClassDefinition) -> TsInterface:
         slots = [
-            slot
-            for slot in self.schemaview.class_induced_slots(cls.name)
-            if annotation(slot, "internal") != TRUE
+            slot for slot in self.schemaview.class_induced_slots(cls.name) if not is_internal(slot)
         ]
         return TsInterface(self.name(cls), doc(cls.description), [self._field(s) for s in slots])
 
