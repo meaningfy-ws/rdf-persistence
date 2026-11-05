@@ -1,0 +1,75 @@
+id: https://meaningfy.ws/ns/rdf-persistence/annotations
+name: rp_annotations
+title: RDF persistence annotations module
+description: >-
+  The instance-data mixins of the metamodel, on SKOS and DCTerms: the label and description an
+  application writes, and the tracking the session writes about a graph.
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+  skos: http://www.w3.org/2004/02/skos/core#
+  dcterms: http://purl.org/dc/terms/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+  - rp_core
+
+classes:
+  Described:
+    title: Described
+    description: A mixin giving an object an IRI, a label and a description. The application writes them.
+    class_uri: rp:Described
+    mixin: true
+    slots:
+      - id
+      - label
+      - description
+    slot_usage:
+      label:
+        required: true
+  Tracked:
+    title: Tracked
+    description: >-
+      A mixin for the tracking statements of a commit. The session writes them about the aggregate's
+      graph IRI, never about the root entity.
+    class_uri: rp:Tracked
+    mixin: true
+    slots:
+      - created
+      - modified
+      - creator
+      - contributor
+
+slots:
+  label:
+    title: Label
+    description: The preferred label of the object.
+    slot_uri: skos:prefLabel
+    range: string
+  description:
+    title: Description
+    description: A free-text description of the object.
+    slot_uri: dcterms:description
+    range: string
+  created:
+    title: Created
+    description: The time the graph was first committed.
+    slot_uri: dcterms:created
+    range: datetime
+  modified:
+    title: Modified
+    description: The time the graph was last committed.
+    slot_uri: dcterms:modified
+    range: datetime
+  creator:
+    title: Creator
+    description: The principal that first committed the graph.
+    slot_uri: dcterms:creator
+    range: Principal
+  contributor:
+    title: Contributor
+    description: A principal that committed a later version of the graph.
+    slot_uri: dcterms:contributor
+    range: Principal
+    multivalued: true

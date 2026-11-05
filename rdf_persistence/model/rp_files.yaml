@@ -1,0 +1,69 @@
+id: https://meaningfy.ws/ns/rdf-persistence/files
+name: rp_files
+title: RDF persistence files module
+description: >-
+  The file mixin of the metamodel, with the metadata of a file kept in the tenant's bucket.
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+  dcterms: http://purl.org/dc/terms/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+  - rp_core
+
+classes:
+  StoredFile:
+    title: Stored file
+    description: A mixin for the current content of a kept file; the bytes live in the tenant's bucket under the file key.
+    class_uri: rp:StoredFile
+    mixin: true
+    slots:
+      - file_name
+      - media_type
+      - byte_size
+      - sha256
+      - uploaded
+      - uploaded_by
+      - file_key
+
+slots:
+  file_name:
+    title: File name
+    description: The name of the file as uploaded.
+    slot_uri: rp:fileName
+    range: string
+  media_type:
+    title: Media type
+    description: The media type of the file.
+    slot_uri: rp:mediaType
+    range: string
+  byte_size:
+    title: Byte size
+    description: The size of the file in bytes.
+    slot_uri: rp:byteSize
+    range: integer
+  sha256:
+    title: SHA-256
+    description: The SHA-256 digest of the file, in lowercase hexadecimal.
+    slot_uri: rp:sha256
+    range: string
+    pattern: "^[0-9a-f]{64}$"
+  uploaded:
+    title: Uploaded
+    description: The time the file was uploaded.
+    slot_uri: dcterms:dateSubmitted
+    range: datetime
+  uploaded_by:
+    title: Uploaded by
+    description: The principal that uploaded the file.
+    slot_uri: rp:uploadedBy
+    range: Principal
+  file_key:
+    title: File key
+    description: The random key of the file in the tenant's bucket.
+    slot_uri: rp:fileKey
+    range: string
+    annotations:
+      internal: true

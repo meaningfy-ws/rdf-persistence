@@ -1,0 +1,52 @@
+# Docs workflow for RDF Persistence
+# ============================================================================
+# The main CI workflow ignores docs/**, so changes there are checked here
+# (PD-20): the consumer-term and nav check, then the Antora build. Thin
+# workflow: every step calls a `make` target.
+
+name: Docs
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "docs/**"
+  pull_request:
+    branches: [develop]
+    paths:
+      - "docs/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    name: Check and build the docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Check the docs
+        run: make check-docs
+
+      - name: Install Antora
+        run: make install-antora
+
+      - name: Build the docs
+        run: make build-docs

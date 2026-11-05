@@ -3,6 +3,10 @@
 [run]
 branch = True
 source = rdf_persistence
+# Exercised only by `make test-containers` (PD-16), so outside the unit/feature floor.
+omit =
+    rdf_persistence/adapters/*
+    rdf_persistence/testkit/containers/*
 
 [report]
 fail_under = 80

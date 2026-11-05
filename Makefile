@@ -13,16 +13,21 @@ REPO_ROOT    = $(shell pwd)
 PACKAGE_NAME = rdf_persistence
 TEST_PATH    = $(REPO_ROOT)/tests
 BUILD_PATH   = $(REPO_ROOT)/dist
+GENERATED_DIR = $(PACKAGE_NAME)/domain/generated
 
 # Docker / infra (activate the Docker section below once infra/ exists).
 COMPOSE_FILE = $(REPO_ROOT)/infra/compose.yaml
 ENV_FILE     = $(REPO_ROOT)/infra/.env
 
 # Coverage flags — appended only in coverage-aware targets, never in pytest.ini.
+# `make test-containers` overrides the floor with --cov-fail-under=0 (PD-16).
 COV_FLAGS = --cov=$(PACKAGE_NAME) \
             --cov-report=term-missing \
             --cov-report=xml:$(REPO_ROOT)/coverage.xml \
             --cov-fail-under=80
+
+# The unit lane never collects the container tests, so it runs without testcontainers (PD-16).
+UNIT_LANE = --ignore=$(TEST_PATH)/integration --ignore=$(TEST_PATH)/e2e
 
 .DEFAULT_GOAL := help
 
@@ -39,20 +44,28 @@ help: ## Display available targets
 #-----------------------------------------------------------------------------
 # Install / build (mutating)
 #-----------------------------------------------------------------------------
-.PHONY: install-uv install lock build
+.PHONY: install-uv install lock generate-metamodel build
 
 install-uv: ## Install uv if not present
 	@ command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 
-install: install-uv ## Install project dependencies (all groups; does NOT lock)
+install: install-uv ## Install project dependencies (all groups and extras; does NOT lock)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Installing dependencies$(END_BUILD_PRINT)"
-	@ uv sync
+	@ uv sync --all-extras
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Dependencies installed$(END_BUILD_PRINT)"
 
 lock: ## Update uv.lock
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Locking dependencies$(END_BUILD_PRINT)"
 	@ uv lock
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Lock file updated$(END_BUILD_PRINT)"
+
+generate-metamodel: ## Regenerate the metamodel's Python classes (task 1.10 replaces this with rp-generate)
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating the metamodel classes$(END_BUILD_PRINT)"
+	@ mkdir -p $(GENERATED_DIR)
+	@ uv run gen-pydantic --meta None --no-metadata --no-generation-date \
+		--template-dir $(PACKAGE_NAME)/generation/templates/pydantic \
+		$(PACKAGE_NAME)/model/rp.yaml > $(GENERATED_DIR)/rp.py
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Metamodel classes written to $(GENERATED_DIR)/rp.py$(END_BUILD_PRINT)"
 
 build: ## Build the package distribution
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Building package$(END_BUILD_PRINT)"
@@ -85,7 +98,7 @@ pre-commit: ## Run pre-commit hooks on all files
 #-----------------------------------------------------------------------------
 # Validation — non-mutating targets
 #-----------------------------------------------------------------------------
-.PHONY: lint typecheck check-architecture test test-unit test-feature test-e2e test-integration
+.PHONY: lint typecheck check-architecture test test-unit test-feature test-containers test-e2e
 
 lint: ## Run Ruff linting checks
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running Ruff checks$(END_BUILD_PRINT)"
@@ -105,19 +118,24 @@ check-architecture: ## Check architecture constraints with import-linter
 check-spec: ## Validate the OpenSpec spine (pinned CLI, strict)
 	@ npx -y @fission-ai/openspec@1.4.1 validate --all --strict
 
-test: ## Run all tests (with coverage)
-	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running all tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
-	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) All tests passed$(END_BUILD_PRINT)"
+test: ## Run the unit and feature tests, with the coverage floor
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit and feature tests$(END_BUILD_PRINT)"
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -m "unit or feature" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Unit and feature tests passed$(END_BUILD_PRINT)"
+
+test-containers: ## Run the integration and e2e tests against Docker containers (no coverage floor)
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running container tests$(END_BUILD_PRINT)"
+	@ uv run pytest $(TEST_PATH) -m "integration or e2e" $(COV_FLAGS) --cov-report=xml:$(REPO_ROOT)/coverage-containers.xml --cov-fail-under=0 --junitxml=$(REPO_ROOT)/test-results-containers.xml
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Container tests passed$(END_BUILD_PRINT)"
 
 test-unit: ## Run unit tests only
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) -m "unit"
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -m "unit"
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Unit tests passed$(END_BUILD_PRINT)"
 
 test-feature: ## Run BDD feature tests only
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) -m "feature"
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -m "feature"
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Feature tests passed$(END_BUILD_PRINT)"
 
 test-e2e: ## Run end-to-end tests only
@@ -125,26 +143,21 @@ test-e2e: ## Run end-to-end tests only
 	@ uv run pytest $(TEST_PATH) -m "e2e"
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) E2e tests passed$(END_BUILD_PRINT)"
 
-test-integration: ## Run integration tests only (needs a running datastore)
-	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running integration tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) -m "integration"
-	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Integration tests passed$(END_BUILD_PRINT)"
-
 #-----------------------------------------------------------------------------
 # Aggregates
 #-----------------------------------------------------------------------------
 .PHONY: check-spec check-quality check-all ci-quick ci-full
 
-check-quality: lint typecheck check-architecture check-spec ## Static checks: lint + typecheck + architecture
+check-quality: lint typecheck check-architecture check-spec check-docs ## Static checks: lint + typecheck + architecture + spec + docs and code terms
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) All quality checks passed$(END_BUILD_PRINT)"
 
-check-all: check-quality test ## Full suite: quality + all tests
+check-all: check-quality test ## Full suite: quality + unit and feature tests (containers: make test-containers)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Full verification suite passed$(END_BUILD_PRINT)"
 
 ci-quick: check-quality test-unit ## CI fast: quality + unit tests
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) CI quick checks passed$(END_BUILD_PRINT)"
 
-ci-full: check-all clean-code ## CI full: quality + all tests + clean-code
+ci-full: check-all clean-code ## CI full: quality + unit and feature tests + clean-code
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) CI full checks passed$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------
@@ -155,7 +168,7 @@ ci-full: check-all clean-code ## CI full: quality + all tests + clean-code
 coverage-report: ## Generate HTML coverage report in reports/
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating coverage report$(END_BUILD_PRINT)"
 	@ mkdir -p $(REPO_ROOT)/reports
-	@ uv run pytest $(TEST_PATH) $(COV_FLAGS) --cov-report=html:$(REPO_ROOT)/reports/htmlcov -m "unit or feature"
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) $(COV_FLAGS) --cov-report=html:$(REPO_ROOT)/reports/htmlcov -m "unit or feature"
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Coverage report at reports/htmlcov/index.html$(END_BUILD_PRINT)"
 
 quality-report: ## Generate Radon quality report in reports/
@@ -182,7 +195,7 @@ maintainability: ## Radon maintainability index
 
 clean-code: ## Xenon threshold checks
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running Xenon threshold checks$(END_BUILD_PRINT)"
-	@ uv run xenon $(PACKAGE_NAME) --max-absolute B --max-modules A --max-average A
+	@ uv run xenon $(PACKAGE_NAME) --exclude '*/generated/*' --max-absolute B --max-modules A --max-average A
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Clean code checks passed$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------
@@ -206,7 +219,7 @@ build-docs: ## Build the documentation site to docs/build/site/
 preview-docs: build-docs ## Build then serve docs at http://localhost:$(DOCS_PORT) (8081, beside MWB2's 8080)
 	@ python3 -m http.server --directory $(DOCS_SITE) $(DOCS_PORT)
 
-check-docs: ## Check the docs: no consumer terms in architecture pages, every page in the nav
+check-docs: ## No consumer terms in architecture pages, the package or the tests; every page in the nav
 	@ python3 -I docs/tools/check_docs.py
 
 clean-docs: ## Remove built docs + node_modules
@@ -246,7 +259,7 @@ clean: ## Remove build artifacts and caches
 	@ rm -rf $(BUILD_PATH) $(REPO_ROOT)/reports
 	@ rm -rf $(REPO_ROOT)/.pytest_cache $(REPO_ROOT)/.mypy_cache $(REPO_ROOT)/.ruff_cache
 	@ rm -rf $(REPO_ROOT)/.import_linter_cache
-	@ rm -rf $(REPO_ROOT)/coverage.xml $(REPO_ROOT)/test-results.xml $(REPO_ROOT)/.coverage
+	@ rm -rf $(REPO_ROOT)/coverage.xml $(REPO_ROOT)/coverage-containers.xml $(REPO_ROOT)/test-results.xml $(REPO_ROOT)/test-results-containers.xml $(REPO_ROOT)/.coverage
 	@ rm -rf $(REPO_ROOT)/*.egg-info
 	@ uv run ruff clean 2>/dev/null || true
 	@ find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

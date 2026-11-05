@@ -1,0 +1,160 @@
+id: https://meaningfy.ws/ns/rdf-persistence/access
+name: rp_access
+title: RDF persistence access module
+description: >-
+  The access model of the metamodel, an ODRL subset: policies, permissions (grants), prohibitions, the
+  actions they name, and the role definitions an application supplies.
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+  ODRL: http://www.w3.org/ns/odrl/2/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+  - rp_core
+annotations:
+  module_kind: access
+
+classes:
+  Policy:
+    title: Policy
+    description: A set of permissions and prohibitions.
+    class_uri: ODRL:Set
+    abstract: true
+  Rule:
+    title: Rule
+    description: An ODRL rule that gives an assignee a ruling on an action over a target.
+    class_uri: ODRL:Rule
+    abstract: true
+    slots:
+      - assignee
+      - target
+      - action
+    slot_usage:
+      assignee:
+        required: true
+      target:
+        required: true
+  Grant:
+    title: Grant
+    description: >-
+      A permission given to a principal on a tenant or on one aggregate, either by role or as a direct
+      action; exactly one of role and action is given.
+    class_uri: ODRL:Permission
+    is_a: Rule
+    slots:
+      - role
+    exactly_one_of:
+      - slot_conditions:
+          role:
+            name: role
+            required: true
+      - slot_conditions:
+          action:
+            name: action
+            required: true
+    unique_keys:
+      grant_key:
+        description: One grant per assignee, target and role or action.
+        unique_key_slots:
+          - assignee
+          - target
+          - role
+          - action
+  Prohibition:
+    title: Prohibition
+    description: The ODRL prohibition that forbids an assignee an action on a target; it wins over any permission.
+    class_uri: ODRL:Prohibition
+    is_a: Rule
+    slot_usage:
+      action:
+        required: true
+  RoleDefinition:
+    title: Role definition
+    description: >-
+      What a role may do and where it applies. An application supplies its role definitions as data; they
+      are not stored.
+    class_uri: rp:RoleDefinition
+    slots:
+      - role
+      - level
+      - actions
+    slot_usage:
+      role:
+        required: true
+
+slots:
+  assignee:
+    title: Assignee
+    description: The principal the rule applies to.
+    slot_uri: ODRL:assignee
+    range: Principal
+  target:
+    title: Target
+    description: The IRI of the tenant, or of an aggregate's graph, the rule applies to.
+    slot_uri: ODRL:target
+    range: uri
+  action:
+    title: Action
+    description: The action a direct permission allows, or a prohibition forbids.
+    slot_uri: ODRL:action
+    range: Action
+  role:
+    title: Role
+    description: >-
+      The name of a role, matched against the application's role definitions. An application may narrow
+      it to an enum.
+    slot_uri: rp:role
+    range: string
+  level:
+    title: Level
+    description: Where the role applies.
+    slot_uri: rp:level
+    range: RoleLevel
+    required: true
+  actions:
+    title: Actions
+    description: The actions the role permits.
+    slot_uri: rp:permits
+    range: Action
+    multivalued: true
+    required: true
+
+enums:
+  Action:
+    title: Action
+    description: The actions a rule can name.
+    permissible_values:
+      read:
+        title: Read
+        description: Read an object.
+        meaning: ODRL:read
+      modify:
+        title: Modify
+        description: Change an object; at tenant scope, also create one.
+        meaning: ODRL:modify
+      delete:
+        title: Delete
+        description: Delete an object.
+        meaning: ODRL:delete
+      administer:
+        title: Administer
+        description: Change the grants of a tenant.
+        meaning: rp:administer
+  RoleLevel:
+    title: Role level
+    description: The levels at which a role applies.
+    permissible_values:
+      system:
+        title: System
+        description: The whole system; only for global roles from the token.
+        meaning: rp:SystemLevel
+      tenant:
+        title: Tenant
+        description: One tenant.
+        meaning: rp:TenantLevel
+      aggregate:
+        title: Aggregate
+        description: One aggregate.
+        meaning: rp:AggregateLevel

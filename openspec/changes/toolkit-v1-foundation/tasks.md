@@ -11,32 +11,32 @@ Notation:
 
 ## 0. Ground
 
-- [ ] 0.1 Delete the empty `rdf_persistence/commons/` and rewrite `.importlinter` (PD-1): the layers contract `entrypoints | adapters > services > domain`, and the forbidden contract for `domain` with `include_external_packages = True`. `make check-architecture` passes (rp-package-boundaries: Layers import downward only).
-- [ ] 0.2 Dependencies (PD-2): runtime pins, the `generate` extra with `linkml==1.12.1`, and `linkml==1.10.0` removed from dev. `make install` becomes `uv sync --all-extras`. Run `uv lock`; `make install` and the smoke test pass.
-- [ ] 0.3 The toy library schema in `tests/fixtures/library/` (PD-17), as hand-written YAML.
+- [x] 0.1 Delete the empty `rdf_persistence/commons/` and rewrite `.importlinter` (PD-1): the layers contract `entrypoints | adapters > services > domain`, and the forbidden contract for `domain` with `include_external_packages = True`. `make check-architecture` passes (rp-package-boundaries: Layers import downward only).
+- [x] 0.2 Dependencies (PD-2): runtime pins, the `generate` extra with `linkml==1.12.1`, and `linkml==1.10.0` removed from dev. `make install` becomes `uv sync --all-extras`. Run `uv lock`; `make install` and the smoke test pass.
+- [x] 0.3 The toy library schema in `tests/fixtures/library/` (PD-17), as hand-written YAML.
   - Includes `library_roles.yaml` (the role definitions of PD-9's matrix) and `partial.yaml` (imports only `rp_core` and `rp_annotations`).
   - `linkml-lint` passes.
-- [ ] 0.4 Test containers (PD-16):
+- [x] 0.4 Test containers (PD-16):
   - `rdf_persistence/testkit/containers/compose.yaml`, with the Fuseki Dockerfile vendored at a pinned Jena 5.x release, and Garage and Zitadel pinned by digest.
   - The bootstrap for each container.
-  - `rdf_persistence/testkit/containers/` as package data behind the extra `rdf-persistence[testkit]`, imported lazily; the markers `store`, `files` and `identity` added to `tests/conftest.py`'s path table and registered in `pytest.ini` (PD-16).
+  - `rdf_persistence/testkit/containers/` as package data behind the extra `rdf-persistence[testkit]`, imported lazily; the markers `store`, `files` and `identity` added to `tests/conftest.py`'s path table and registered by the fixtures plugin (PD-16).
   - `make test` runs `unit or feature` with the coverage floor, `.coveragerc` omitting `rdf_persistence/adapters/*` and `rdf_persistence/testkit/containers/*`; a new `make test-containers` runs `integration or e2e` with `--cov-fail-under=0`; the `conftest.py` hook applies every marker of a row; the CI container job.
   - One smoke test per container: it starts and answers.
 
-- [ ] 0.5 A CI workflow for changes under `docs/**`: `make check-docs` and the Antora build. `check_docs.py` also scans `rdf_persistence/` and `tests/` for consumer terms, run by `make check-quality` (PD-20).
+- [x] 0.5 A CI workflow for changes under `docs/**`: `make check-docs` and the Antora build. `check_docs.py` also scans `rdf_persistence/` and `tests/` for consumer terms, run by `make check-quality` (PD-20).
 
 ## 1. Metamodel and generation (stage 1)
 
-- [ ] 1.1 `rdf_persistence/model/rp_core.yaml`: `AggregateRoot`, `Principal` (PD-21), `version`, `RegistryEntry` (`graph`, `kind`, `owned_by`: PD-8), `loaded_graph`, and the annotations `owned`, `internal`, `database`, `graph`, `module_kind`, `rp_path`, `rp_unlabelled`.
-- [ ] 1.2 `rp_annotations.yaml` (`Described`, `Tracked`) and `rp_provenance.yaml` (`Provenanced`, `Activity`; it uses `rp_core`'s `Principal` as its agent).
-- [ ] 1.3 `rp_access.yaml`:
+- [x] 1.1 `rdf_persistence/model/rp_core.yaml`: `AggregateRoot`, `Principal` (PD-21), `version`, `RegistryEntry` (`graph`, `kind`, `owned_by`: PD-8), `loaded_graph`, and the annotations `owned`, `internal`, `database`, `graph`, `module_kind`, `rp_path`, `rp_unlabelled`.
+- [x] 1.2 `rp_annotations.yaml` (`Described`, `Tracked`) and `rp_provenance.yaml` (`Provenanced`, `Activity`; it uses `rp_core`'s `Principal` as its agent).
+- [x] 1.3 `rp_access.yaml`:
   - the ODRL subset and `RoleDefinition`;
   - `RoleDefinition` with the slots of PD-9;
   - `Grant` with the slots of PD-10 and `unique_keys: {grant_key: [assignee, target, role, action]}`;
   - `TenantAccess` includes `Described` (PD-21).
 
   Also `rp_tenancy.yaml` (`TenantAccess` owning `grants` — role or direct-action — and `prohibitions`, plus `TenantState`), `rp_files.yaml` (`StoredFile`) and `rp.yaml`.
-- [ ] 1.4 Generate the metamodel's own Python classes into `rdf_persistence/domain/generated/` with plain `gen-pydantic` (task 1.10 regenerates them through `rp-generate`). Exports: the metamodel classes and `RpModel`.
+- [x] 1.4 Generate the metamodel's own Python classes into `rdf_persistence/domain/generated/` with plain `gen-pydantic` (task 1.10 regenerates them through `rp-generate`). Exports: the metamodel classes and `RpModel`.
 - [ ] 1.5 `rp-generate` skeleton:
   - reads `[tool.rp-generate]` with the keys and flags of PD-18;
   - writes to temporary files and moves them into place on success;
@@ -70,7 +70,7 @@ Notation:
 
   Exports: `open_session`, the store port, `FusekiStore`, `Conflict`, `NotFound`, `DatabaseGone`.
 - [ ] 2.4 Graph loading, with the parser in a worker thread and the loaded graph registered by the caller's commit. Exports: `load_graph`, `InvalidGraph`.
-- [ ] 2.5 The mapper over `SchemaView`, for domain services, with the object-level methods of PD-7a: graph to generated classes and back, with a round trip on the toy library.
+- [ ] 2.5 The mapper over `SchemaView`, for domain services, with the object-level methods of PD-7a: graph to generated classes and back, with a round trip on the toy library. Known trap: linkml's `rdflib_dumper` fails on a slot whose range is a class but whose value is an IRI string (`Grant.assignee`, range `Principal`); the mapper must handle IRI references, with a test.
 - [ ] 2.6 Tenancy:
   - the system database, created at start-up if missing, and access records, named as in PD-6a;
   - create, which writes the record last and grants the creator `creator_role`, and delete, which marks `deleting` first;
@@ -99,7 +99,7 @@ Notation:
 
 ## 4. Access (stage 4)
 
-- [ ] 4.1 Loading the role definitions (PD-9), with an invalid file refused. Also loading a caller's grants (role or direct action) and prohibitions for one tenant in one query.
+- [ ] 4.1 Loading the role definitions (PD-9), with an invalid file refused. Validating a grant set against `rp_access`, including the `grant_key` uniqueness that stock validation does not enforce (422 on a duplicate). Also loading a caller's grants (role or direct action) and prohibitions for one tenant in one query.
 - [ ] 4.2 The check: global roles, prohibitions, permissions at tenant and aggregate scope, and role definitions; it answers 403 or 404. Exports: `AccessRules`.
 - [ ] 4.3 PD-9's matrix as one table-driven test, every cell including the `deleting` tenant row.
 
@@ -171,8 +171,8 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 
 ## Roadmap
 
-- [ ] 0.1 · [ ] 0.2 · [ ] 0.3 · [ ] 0.4 · [ ] 0.5
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10
+- [x] 0.1 · [x] 0.2 · [x] 0.3 · [x] 0.4 · [x] 0.5
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10
 - [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8
 - [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4
 - [ ] 4.1 · [ ] 4.2 · [ ] 4.3

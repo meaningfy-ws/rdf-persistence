@@ -1,0 +1,26 @@
+id: https://example.org/ns/library/partial
+name: partial
+title: Partial library schema
+description: A schema that imports only the core and annotation modules of the metamodel.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+annotations:
+  module_kind: domain
+
+classes:
+  Shelf:
+    title: Shelf
+    description: A shelf of a library; an aggregate root that uses only the core and annotation modules.
+    class_uri: lib:Shelf
+    mixins: [AggregateRoot, Described]
+    annotations:
+      rp_path: shelves
+      database: tenant

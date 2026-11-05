@@ -1,0 +1,113 @@
+id: https://example.org/ns/library/books
+name: books
+title: Books module
+description: Books, their chapters and the notes on chapters; the book is the aggregate root.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+  schema: http://schema.org/
+  dcterms: http://purl.org/dc/terms/
+  bibo: http://purl.org/ontology/bibo/
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+annotations:
+  module_kind: domain
+
+classes:
+  Book:
+    title: Book
+    description: A book held by a library; an aggregate root that owns its chapters.
+    class_uri: bibo:Book
+    mixins: [AggregateRoot, Described, Tracked]
+    slots: [isbn, authors, published, genre, chapters]
+    annotations:
+      rp_path: books
+      database: tenant
+  Chapter:
+    title: Chapter
+    description: A chapter of a book, known by its number rather than a label; part of the book's aggregate. It owns its notes.
+    class_uri: bibo:Chapter
+    mixins: [Described]
+    slots: [number, notes]
+    annotations:
+      rp_unlabelled: true
+  Note:
+    title: Note
+    description: A short note on a chapter, with a label of its own.
+    class_uri: lib:Note
+    mixins: [Described]
+    slots: [text]
+
+slots:
+  isbn:
+    title: ISBN
+    description: The International Standard Book Number of the book.
+    slot_uri: bibo:isbn
+    range: string
+  authors:
+    title: Authors
+    description: The names of the book's authors.
+    slot_uri: schema:author
+    range: string
+    multivalued: true
+  published:
+    title: Publication date
+    description: The date the book was published.
+    slot_uri: dcterms:issued
+    range: date
+  genre:
+    title: Genre
+    description: The literary genre of the book.
+    slot_uri: schema:genre
+    range: Genre
+  chapters:
+    title: Chapters
+    description: The chapters of the book; they live in the book's graph.
+    slot_uri: lib:chapter
+    range: Chapter
+    multivalued: true
+    inlined_as_list: true
+    annotations:
+      owned: true
+  number:
+    title: Chapter number
+    description: The position of a chapter in its book.
+    slot_uri: bibo:chapter
+    range: integer
+  notes:
+    title: Notes
+    description: The notes on a chapter; they live in the book's graph.
+    slot_uri: lib:note
+    range: Note
+    multivalued: true
+    inlined_as_list: true
+    annotations:
+      owned: true
+  text:
+    title: Text
+    description: The text of a note.
+    slot_uri: schema:text
+    range: string
+
+enums:
+  Genre:
+    title: Genre
+    description: The literary genres a book can belong to.
+    permissible_values:
+      fiction:
+        title: Fiction
+        description: Invented narrative.
+        meaning: schema:Fiction
+      nonfiction:
+        title: Non-fiction
+        description: Factual writing.
+        meaning: schema:NonFiction
+      poetry:
+        title: Poetry
+        description: Verse.
+        meaning: schema:Poetry

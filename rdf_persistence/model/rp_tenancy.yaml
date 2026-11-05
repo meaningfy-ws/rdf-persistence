@@ -1,0 +1,93 @@
+id: https://meaningfy.ws/ns/rdf-persistence/tenancy
+name: rp_tenancy
+title: RDF persistence tenancy module
+description: >-
+  The tenancy record of the metamodel, the access record of a tenant, kept in the system database.
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+  - rp_core
+  - rp_annotations
+  - rp_access
+annotations:
+  module_kind: access
+
+classes:
+  TenantAccess:
+    title: Tenant access
+    description: >-
+      The access record of a tenant: its label, state and database name, with the grants and
+      prohibitions that say who may do what in it.
+    class_uri: rp:TenantAccess
+    is_a: Policy
+    mixins:
+      - AggregateRoot
+      - Described
+    slots:
+      - state
+      - database_name
+      - grants
+      - prohibitions
+    slot_usage:
+      state:
+        required: true
+      database_name:
+        required: true
+      label:
+        pattern: "^.{1,200}$"
+    annotations:
+      rp_path: access
+      database: system
+
+slots:
+  state:
+    title: State
+    description: Where the tenant is in its life.
+    slot_uri: rp:state
+    range: TenantState
+  database_name:
+    title: Database name
+    description: >-
+      The name of the tenant's database, the prefix, "-t-" and the tenant's UUID in hexadecimal; the prefix is
+      lower case, at most 20 characters.
+    slot_uri: rp:databaseName
+    range: string
+    pattern: "^[a-z][a-z0-9]{0,19}-t-[0-9a-f]{32}$"
+    annotations:
+      internal: true
+  grants:
+    title: Grants
+    description: The permissions given in the tenant, by role or as direct actions; they live in the access record's graph.
+    slot_uri: rp:grant
+    range: Grant
+    multivalued: true
+    inlined_as_list: true
+    annotations:
+      owned: true
+  prohibitions:
+    title: Prohibitions
+    description: The actions forbidden in the tenant; they live in the access record's graph.
+    slot_uri: rp:prohibition
+    range: Prohibition
+    multivalued: true
+    inlined_as_list: true
+    annotations:
+      owned: true
+
+enums:
+  TenantState:
+    title: Tenant state
+    description: The states of a tenant.
+    permissible_values:
+      active:
+        title: Active
+        description: The tenant is in use.
+        meaning: rp:Active
+      deleting:
+        title: Deleting
+        description: The tenant is being deleted and answers as if it did not exist.
+        meaning: rp:Deleting

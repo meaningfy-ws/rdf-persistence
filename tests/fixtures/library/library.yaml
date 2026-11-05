@@ -1,0 +1,16 @@
+id: https://example.org/ns/library
+name: library
+title: Toy library schema
+description: The root schema of the toy library application used to test the toolkit.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - library_tenant
+  - books
+  - scans
+  - library_access

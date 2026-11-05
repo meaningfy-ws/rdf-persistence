@@ -242,6 +242,8 @@ infra/.secrets
 
 # Test / coverage / report artifacts
 test-results.xml
+test-results-containers.xml
+coverage-containers.xml
 reports/
 data/
 

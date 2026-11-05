@@ -28,26 +28,40 @@ classifiers = [
     "Intended Audience :: Developers",
 ]
 dependencies = [
-    # Runtime dependencies go here, pinned with `==`. Examples (uncomment as needed):
-    # "pydantic[email]==2.13.3",
-    # "fastapi==0.128.8",
-    # "uvicorn==0.41.0",
+    # Pinned to the latest release on 2026-11-05 (PD-2); linkml-runtime matches linkml 1.12.1.
+    "linkml-runtime==1.12.1",
+    "rdflib==7.6.0",
+    "pyld==3.3.0",
+    "pyshacl==0.40.2",
+    "pydantic==2.14.2",
+    "httpx==0.28.1",
+    "fastapi==0.162.0",
+    "pyjwt[crypto]==2.15.1",
+    "boto3==1.43.124",
+    "anyio==4.16.0",
+]
+
+[project.optional-dependencies]
+# The generators, kept out of consumers' running services (PD-2).
+generate = [
+    "linkml==1.12.1",
+]
+# The container fixtures of `rdf_persistence.testkit.containers` (PD-16).
+testkit = [
+    "testcontainers==4.14.2",
 ]
 
 [dependency-groups]
 # PEP 735 dependency groups, installed via `uv sync` (all groups are default-groups).
 dev = [
     "pre-commit==4.6.0",
-    "linkml==1.10.0",
 ]
 test = [
     "pytest==9.0.3",
     "pytest-bdd==8.1.0",
     "pytest-cov==7.1.0",
     "pytest-asyncio==1.3.0",
-    "testcontainers==4.14.2",
     "polyfactory==3.3.0",
-    "httpx==0.28.1",
 ]
 lint = [
     "ruff==0.15.11",
