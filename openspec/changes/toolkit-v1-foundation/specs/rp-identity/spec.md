@@ -14,7 +14,7 @@ SHALL answer 401 with a problem response otherwise. The toolkit SHALL offer no l
 - **THEN** the answer is 401 and no handler runs
 
 #### Scenario: a service account
-- **WHEN** a program sends a token obtained with a private-key JWT
+- **WHEN** a program sends a JWT access token obtained with the private-key JWT flow
 - **THEN** the request is accepted like any other valid token
 
 ### Requirement: Accounts are administered through the identity port
@@ -23,5 +23,5 @@ The identity port SHALL find an account by exact email, list accounts, disable a
 account, and grant and remove a global role; the Zitadel adapter SHALL implement exactly these.
 
 #### Scenario: disable an account
-- **WHEN** an account is disabled through the port
-- **THEN** the provider refuses its next sign-in
+- **WHEN** a service account is disabled through the port
+- **THEN** the provider refuses its next token request

@@ -6,8 +6,8 @@ DEC-4 of the EPIC.
 ### Requirement: Consumers test without servers
 
 `rdf_persistence.testkit` SHALL provide in-memory fakes of the store, file store and identity
-ports, a fake session, and a token signer whose tokens the service kit accepts in test mode, so a
-consumer's unit tests need no running server.
+ports, a fake session, and a token signer whose tokens a `JwksTokenVerifier` given the testkit's in-memory
+JWKS accepts, so a consumer's unit tests need no running server.
 
 #### Scenario: a unit test of a domain service
 - **WHEN** a consumer's domain service is tested with the fakes
@@ -15,7 +15,8 @@ consumer's unit tests need no running server.
 
 ### Requirement: Adapters are tested against real containers
 
-The toolkit SHALL ship container fixtures (Fuseki, Garage, Zitadel) and run each adapter's
+The toolkit SHALL ship container fixtures (Fuseki, Garage, Zitadel) in `rdf_persistence.testkit`,
+behind the extra `rdf-persistence[testkit]`, and run each adapter's
 integration tests against them, and one end-to-end test that serves the toy library over the API.
 
 #### Scenario: the end-to-end proof

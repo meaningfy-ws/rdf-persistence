@@ -26,3 +26,7 @@ allow, and to any caller of a tenant that is not `active`.
 #### Scenario: an outsider
 - **WHEN** a principal with no grant in a library reads one of its books
 - **THEN** the answer is 404
+
+#### Scenario: a tenant being deleted
+- **WHEN** a librarian reads a book of a library whose access record is `deleting`
+- **THEN** the answer is 404

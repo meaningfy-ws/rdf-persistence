@@ -88,7 +88,7 @@ functions, the file store, the identity port and the service kit.
 
 |Tenancy
 |v1
-|A system database (one per deployment) holding one *tenant access record* per tenant (`{tenant}/access`): label, database name, state (`active`, `deleting`) and owned *grants* (principal, role; at most one per principal). The tenant's root object lives in the designated `meta` graph (`graph: meta`); the `registry` graph comes into being with its first entry. *Create* writes the access record last, directly `active`; *delete* marks it `deleting` first and removes it last. A *start-up sweep*, run by the consumer's single instance before it serves, finishes `deleting` tenants and drops tenant databases and buckets that no record names; it never touches anything inside a live tenant.
+|A system database (one per deployment) holding one *tenant access record* per tenant (`{tenant}/access`): label, database name, state (`active`, `deleting`) and owned *grants* (ODRL Permissions: assignee, target, role or action; one per assignee, target and role-or-action), and prohibitions. The tenant's root object lives in the designated `meta` graph (`graph: meta`); the `registry` graph comes into being with its first entry. *Create* writes the access record last, directly `active`; *delete* marks it `deleting` first and removes it last. A *start-up sweep*, run by the consumer's single instance before it serves, finishes `deleting` tenants and drops tenant databases and buckets that no record names; it never touches anything inside a live tenant.
 |N-3, N-4, N-11
 
 |Graph loading
@@ -113,7 +113,7 @@ functions, the file store, the identity port and the service kit.
 
 |Service kit
 |v1
-|FastAPI helpers and one *generic router* driven by the schema at run time (`/{type}`, `/{type}/{id}`): RFC 9457 problem responses, the aggregate version as `ETag` with `If-Match` required on updates and deletes (428 when missing, 409 on conflict), token validation and access check as dependencies, bodies validated with the generated shapes, listings with equality filters and paging, an OpenAPI document from a hook over the schema. Plain JSON with an `id` holding the IRI by default, JSON-LD and Turtle by content negotiation (O-2). See xref:architecture/api.adoc[API].
+|FastAPI helpers and one *generic router* driven by the schema at run time (tenant-scoped: `/{tenant_segment}/{t}/{rp_path}` and `…/{id}`; IRIs minted on create): RFC 9457 problem responses, the aggregate version as `ETag` with `If-Match` required on updates and deletes (428 when missing, 409 on conflict), token validation and access check as dependencies, bodies validated with the generated shapes, listings with equality filters and paging, an OpenAPI document from a hook over the schema. Plain JSON with an `id` holding the IRI by default, JSON-LD and Turtle by content negotiation (O-2). See xref:architecture/api.adoc[API].
 |N-9
 
 |Test kit
@@ -187,12 +187,12 @@ top level too: `rp-generate`'s split pattern points at `rdf_persistence`.
 |===
 |Layer (module) |Blocks |Exported at top level
 |`rdf_persistence.domain` |metamodel classes (generated from `model/rp.yaml`), strict base model |`AggregateRoot`, `StoredFile`, `Principal`, `TenantAccess`, `Grant`, `TenantState`, `RegistryEntry`, `RpModel`
-|`rdf_persistence.services` |aggregate session and repositories, mapper, tenancy, graph loading, access check; the ports (`StorePort`, `FileStorePort`, `IdentityPort`) |`open_session`, `Tenancy`, `load_graph`, `AccessRules`, the three ports, the errors (`Conflict`, `NotFound`, `DatabaseGone`, …)
-|`rdf_persistence.adapters` |Fuseki, S3 and Zitadel adapters; token validation |`FusekiStore`, `S3FileStore`, `ZitadelIdentity`, `TokenValidator`
-|`rdf_persistence.entrypoints` |service kit (FastAPI dependencies, problem responses, ETags, OpenAPI hook) |`service_kit`
+|`rdf_persistence.services` |aggregate session and repositories, mapper, tenancy, graph loading, access check; the ports (`StorePort`, `FileStorePort`, `IdentityPort`, `TokenVerifier`) |`open_session`, `Tenancy`, `load_graph`, `AccessRules`, the four ports, the errors (`Conflict`, `NotFound`, `DatabaseGone`, …)
+|`rdf_persistence.adapters` |Fuseki, S3 and Zitadel adapters; JWKS token verification |`FusekiStore`, `S3FileStore`, `ZitadelIdentity`, `JwksTokenVerifier`
+|`rdf_persistence.entrypoints` |service kit (generic router, FastAPI dependencies, problem handlers, ETags, OpenAPI hook, start-up) |`install_service`
 |`rdf_persistence.testkit` |fake session and ports, token signer, Fuseki fixtures, conformance suite |`rdf_persistence.testkit` (a second public module, for tests only)
 |`rdf_persistence.generation` |`rp-generate` (build time; lint config, boundary check, templates) |the `rp-generate` command
-|`rdf_persistence/model/rp.yaml` |the metamodel schema, shipped as package data |resolved through the import map
+|`rdf_persistence/model/` |the metamodel modules (`rp_core`, `rp_annotations`, `rp_provenance`, `rp_access`, `rp_tenancy`, `rp_files`) and `rp.yaml`, shipped as package data |resolved through the import map
 |===
 
 Layers import downward only: entrypoints → services → domain; adapters → services' ports and

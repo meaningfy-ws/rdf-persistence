@@ -30,8 +30,8 @@ fully generic service without typed classes ("approach C"), because domain logic
 [#metamodel]
 == The metamodel
 
-A small LinkML schema shipped inside the package (`rdf_persistence/model/rp.yaml`, namespace
-`https://meaningfy.ws/ns/rdf-persistence#`). Its classes are generated once, into the toolkit's own
+A small LinkML schema shipped inside the package (`rdf_persistence/model/`, split into modules
+since the <<revision,revision of 2026-11-05>>; namespace `https://meaningfy.ws/ns/rdf-persistence#`). Its classes are generated once, into the toolkit's own
 package; an application's generated code imports them rather than regenerating them.
 
 [cols="2,5",options="header"]
@@ -42,10 +42,12 @@ package; an application's generated code imports them rather than regenerating t
 |`database` (class annotation) |`tenant` (default) or `system`: which database the aggregate lives in.
 |`graph: meta` (class annotation) |The tenant's root object lives in the tenant database's designated `meta` graph instead of a graph of its own.
 |`internal` (slot annotation) |The slot never appears in the API contract (e.g. file keys).
+|`rp_path` (class annotation) |Required on every aggregate root: its path segment in the API and in its IRIs (`{tenant}/{rp_path}/{uuid}`).
+|`rp_unlabelled` (class annotation) |An owned value class whose instances need no label of their own.
 |`Principal` |A reference to a user account in the identity provider, by IRI only.
 |`StoredFile` (mixin) |The current content of a kept file: `file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key` (internal).
 |`loaded_graph` (slot) |A graph whose lifecycle belongs to the aggregate (e.g. the triples of a loaded RDF file).
-|`TenantAccess`, `Grant` |The tenancy records of the system database (N-11): label, state (`TenantState`: `active`, `deleting`), database name, owned grants (principal, role). An application binds them to its own roles by subclassing (`is_a` with `slot_usage` on `grants` and `role`).
+|`TenantAccess`, `Grant` |The tenancy records of the system database (N-11): label, state (`TenantState`: `active`, `deleting`), database name, owned grants and prohibitions (ODRL). Role names come from the consumer's role definitions; an application may narrow `role` to an enum by subclassing (`is_a` with `slot_usage`), but need not.
 |`RegistryEntry` |An entry of a tenant's `registry` graph: the graph's IRI, its kind (`aggregate`, `loaded_graph`) and the aggregate that owns it. Written by the session, never by the application.
 |`version` (slot) |The version token of every aggregate, stated about its graph IRI (not the root), written by the session; not part of any domain class.
 |===
@@ -56,12 +58,14 @@ Slots of the metamodel (IRIs in the `rp:` namespace unless shown):
 |===
 |Slot |IRI |Range, cardinality
 |`id` |— (identifier) |uri, required on every aggregate root
-|`label` |`dcterms:title` |string, required on `TenantAccess`, 1–200 characters
+|`label` |`skos:prefLabel` |string, from `Described`; required on `TenantAccess` (1–200 characters) and on described roots
 |`state` |`rp:state` |`TenantState`, required
 |`database_name` |`rp:databaseName` |string, required
-|`grants` |`rp:grant` |`Grant`, multivalued, owned (blank nodes; one per principal by `unique_keys`)
-|`principal` |`rp:principal` |`Principal` (IRI), required
-|`role` |`rp:role` |uriorcurie; an application narrows it to its role enum by `slot_usage`
+|`grants` |`rp:grant` |`Grant`, multivalued, owned (blank nodes; one per assignee, target and role-or-action by `unique_keys`)
+|`assignee` |`odrl:assignee` |`Principal` (IRI), required (a grant is an `odrl:Permission`, D-5)
+|`target` |`odrl:target` |uri: the tenant IRI, or an aggregate's graph IRI; required
+|`role` |`rp:role` |string, matched against the consumer's role definitions; an application may narrow it to an enum by `slot_usage`; exactly one of `role` and `action`
+|`action` |`odrl:action` |`Action`, for a direct permission
 |`file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key` |`rp:fileName`, `rp:mediaType`, `rp:byteSize`, `rp:sha256`, `dcterms:modified`, `rp:uploadedBy`, `rp:fileKey` |as in the consumer model's slot table; `file_key` internal
 |`loaded_graph` |`rp:loadedGraph` |uri
 |`version` |`rp:version` |string, written by the session only
@@ -221,7 +225,7 @@ One command, run from the application's `make generate-models`, regenerates ever
 [source,shell]
 ----
 rp-generate --schema models/library.yaml --package library.domain.generated \
-            --ts-out web/src/domain/generated --diagrams-out docs/images/model
+            --typescript-out web/src/domain/generated --diagrams-out docs/images/model
 ----
 
 `rp-generate` is a thin Python wrapper around LinkML's generator API, not a shell script, because
@@ -243,7 +247,7 @@ flowchart TB
 |===
 |Step |What it does |Fails when
 |1 Lint |`linkml-lint` with the toolkit's lint configuration: canonical prefixes (`dcterms`, not `dct`), descriptions on every element, snake_case enum values _(spike)_ |the schema has lint errors
-|2 Boundary check |Over LinkML's `SchemaView` (about 40 lines in the spike): roots are the classes whose induced ancestors include `AggregateRoot`; every other non-mixin class is reachable only through `owned` slots (it may be owned by several root classes, e.g. a reusable value class); a non-owned slot whose range is a class must point to a root |a class is reachable through a non-owned slot without being a root, or is owned by nothing, or a module annotated `module_kind: domain` imports one annotated `module_kind: technical`
+|2 Boundary check |Over LinkML's `SchemaView` (about 40 lines in the spike): roots are the classes whose induced ancestors include `AggregateRoot`; every other non-mixin class is reachable only through `owned` slots (it may be owned by several root classes, e.g. a reusable value class); a non-owned slot whose range is a class must point to a root |a class is reachable through a non-owned slot without being a root, or is owned by nothing, or a module annotated `module_kind: domain` imports one annotated `module_kind: technical` or `access`
 |3 Domain classes |`gen-pydantic` in split mode with the toolkit's template directory: a one-line `base_model.py.jinja` makes every class inherit the toolkit's strict base (no extra fields, validation on assignment); metadata mode off; metamodel classes imported from the top-level `rdf_persistence` _(spike: split generation works; the spike pointed it at a submodule)_ |generation fails
 |4 Shapes |`gen-shacl`. Shapes are closed (`sh:closed true`) _(spike)_, and the version token sits on the graph IRI, not the root, so the domain triples validate on their own |generation fails
 |5 JSON-LD context |`gen-jsonld-context`, with `id` and `type` aliased to `@id` and `@type`; served by the service kit (O-2). Known gaps (no `@language` containers, inlined collections keyed by `@index`) need template fixes before a schema uses those features _(not yet run)_ |generation fails
@@ -298,7 +302,7 @@ async with open_session(store, schema=SCHEMA, tenant=library_iri, caller=caller)
 == How an application adopts it
 
 . Write `models/<app>.yaml` and one file per module, importing the metamodel; mark aggregate roots, owned slots, databases;
-  bind tenancy to the application's roles by subclassing `TenantAccess` and `Grant`.
+  write the application's role definitions (and, optionally, narrow `role` by subclassing `Grant`).
 . Add `make generate-models` calling `rp-generate`, and the freshness check to CI.
 . Write use-case services against `open_session` and the generated classes.
 . Write routes with the service kit; publish the OpenAPI contract and the JSON-LD context; use the generated TypeScript types in the client, checked against the contract.
