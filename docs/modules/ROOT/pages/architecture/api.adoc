@@ -90,16 +90,12 @@ or Turtle by content negotiation.* No generated routes.
 sequenceDiagram
     participant Cl as Client
     participant R as Router
-    participant C as Check
     participant Se as Session
     participant St as Store
     Cl->>R: PUT /books/1 (If-Match v7)
-    R->>C: may modify?
-    C-->>R: yes
-    R->>R: to triples, validate
+    R->>R: check access, validate
     R->>Se: replace if v7
     Se->>St: update + ASK
-    St-->>Se: done
     Se-->>R: v8
     R-->>Cl: 200, ETag v8
 ....

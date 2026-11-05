@@ -118,10 +118,10 @@ Each route declares its action; the check runs before the handler.
 
 [mermaid]
 ....
-flowchart TB
-    Q["caller, action, aggregate"] --> P{"prohibited?"}
+flowchart LR
+    Q["request"] --> P{"prohibited?"}
     P -- yes --> D403["403"]
-    P -- no --> T{"grant in tenant?"}
+    P -- no --> T{"grant?"}
     T -- no --> D404["404"]
     T -- yes --> R{"role permits?"}
     R -- yes --> OK["allow"]

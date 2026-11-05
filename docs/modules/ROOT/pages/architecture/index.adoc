@@ -37,33 +37,27 @@ and use cases to these ids; this toolkit does not know the consumer.
 [mermaid]
 ....
 graph TB
-    subgraph rp["rdf_persistence"]
-        KIT["Service kit,<br/>router"]
-        POL["Access<br/>rules"]
-        TEN["Tenancy"]
-        LOAD["Graph<br/>loading"]
-        SES["Session"]
-        MAP["Mapper"]
-        SP(["Store port"])
-        FP(["File port"])
-        IP(["Identity port"])
-    end
-    FUS["Fuseki"]
-    S3["S3"]
-    ZIT["Zitadel"]
+    KIT["Service kit,<br/>router"]
+    LOAD["Graph loading"]
+    POL["Access rules"]
+    TEN["Tenancy"]
+    IP(["Identity port:<br/>Zitadel"])
+    SES["Session"]
+    FP(["File port:<br/>S3"])
+    MAP["Mapper"]
+    SP(["Store port:<br/>Fuseki"])
     KIT --> POL
     KIT --> TEN
+    KIT --> IP
     TEN --> SES
+    TEN --> FP
     SES --> MAP
     SES --> SP
     LOAD --> SP
-    FUS -. implements .-> SP
-    S3 -. implements .-> FP
-    ZIT -. implements .-> IP
 ....
 
-Ports are interfaces owned by the toolkit; adapters implement them and are chosen by the consumer's
-composition root. The consumer calls only the public API: `open_session`, the tenancy and loading
+Ports (rounded) are interfaces owned by the toolkit; each names its v1 adapter, chosen by the
+consumer's composition root. The consumer calls only the public API: `open_session`, the tenancy and loading
 functions, the file store, the identity port and the service kit.
 
 == Building blocks
