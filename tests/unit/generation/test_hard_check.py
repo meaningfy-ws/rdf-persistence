@@ -9,7 +9,8 @@ from rdf_persistence.generation import steps
 from rdf_persistence.generation.checks.hard import hard_problems
 from rdf_persistence.generation.cli import main
 from rdf_persistence.generation.generated.rp_generation import GenerationTarget, HardRule
-from rdf_persistence.generation.pipeline import Step, generate
+from rdf_persistence.generation.pipeline import generate
+from rdf_persistence.generation.problems import format_problem
 from rdf_persistence.services.schema import load_schema
 
 from .conftest import ROOT_SCHEMA, Breaker
@@ -21,7 +22,7 @@ GENERATION_MODEL = (
 
 
 def problems_of(root: Path) -> list[str]:
-    return hard_problems(load_schema(root), root.parent)
+    return [format_problem(p) for p in hard_problems(load_schema(root), root.parent)]
 
 
 @dataclass(frozen=True)
@@ -170,10 +171,11 @@ ISBN_DESCRIPTION = "    description: The International Standard Book Number of t
 def test_the_step_reports_a_slot_without_a_description_by_name(break_toy: Breaker) -> None:
     root = break_toy("books.yaml", ISBN_DESCRIPTION, "")
     target = GenerationTarget(schema_file=ROOT_SCHEMA, package="app.generated")
-    found = generate([target], root.parent, (Step("hard check", steps.hard_check),), check=True)
+    found = generate([target], root.parent, (steps.HARD_STEP,), check=True)
     assert len(found) == 1, f"one broken slot, one line: {found}"
-    assert "hard check" in found[0], "the line names the step"
-    assert "isbn" in found[0], "the line names the slot"
+    line = format_problem(found[0])
+    assert "hard check" in line, "the line names the step"
+    assert "isbn" in line, "the line names the slot"
 
 
 def test_a_run_with_a_missing_description_exits_1_and_writes_nothing(

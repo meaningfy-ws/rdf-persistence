@@ -8,7 +8,6 @@ frame builder; the stock output is not edited.
 """
 
 import json
-from dataclasses import dataclass, field
 from pathlib import Path
 
 from linkml.generators.jsonldcontextgen import ContextGenerator
@@ -17,13 +16,11 @@ from linkml_runtime.utils.formatutils import camelcase, underscore
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation.exceptions import SchemaGenerationError
-from rdf_persistence.generation.outputs import GeneratedFile, stage
-from rdf_persistence.generation.pipeline import Run, Step, schema_faults
+from rdf_persistence.generation.generated.rp_generation import Frame, FramePart, GeneratedFile
+from rdf_persistence.generation.outputs import CONTEXT_FILE, FRAME_SUFFIX
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import is_internal, is_owned, root_classes
 
-CONTEXT_FILE = "context.jsonld"
-FRAME_SUFFIX = ".frame.jsonld"
 # JSON carries these natively: a datatype tag would turn them into strings when framed back.
 NATIVE_JSON_DATATYPES = ("xsd:integer", "xsd:boolean")
 JSON_LD_VERSION = 1.1  # property-scoped contexts are a JSON-LD 1.1 feature
@@ -80,21 +77,14 @@ def render_context(schema_path: Path) -> str:
     return str(generator.serialize())
 
 
-@dataclass
-class Frame:
-    """A JSON-LD frame: the type it selects and, per owned slot, the frame of the parts nested in it."""
-
-    type_terms: list[str]
-    references: list[str] = field(default_factory=list)
-    parts: dict[str, "Frame"] = field(default_factory=dict)
-
-    def to_json(self) -> dict:
-        body: dict = {"@embed": ALWAYS, "@omitDefault": True}
-        if self.type_terms:
-            body["@type"] = self.type_terms[0] if len(self.type_terms) == 1 else self.type_terms
-        body.update({slot: {"@embed": NEVER, "@omitDefault": True} for slot in self.references})
-        body.update({slot: part.to_json() for slot, part in self.parts.items()})
-        return body
+def frame_json(frame: Frame) -> dict:
+    """The JSON-LD of a frame: its types and references, and its parts nested."""
+    body: dict = {"@embed": ALWAYS, "@omitDefault": True}
+    if frame.type_terms:
+        body["@type"] = frame.type_terms[0] if len(frame.type_terms) == 1 else frame.type_terms
+    body.update({slot: {"@embed": NEVER, "@omitDefault": True} for slot in frame.references})
+    body.update({part.name: frame_json(part.frame) for part in frame.parts})
+    return body
 
 
 def _term(view: SchemaView, name: str) -> list[str]:
@@ -104,40 +94,33 @@ def _term(view: SchemaView, name: str) -> list[str]:
 
 def build_frame(view: SchemaView, cls: str, seen: tuple[str, ...] = ()) -> Frame:
     """The frame of ``cls``: its owned parts nested, recursively; its references left as IRIs."""
-    frame = Frame(_term(view, cls))
+    frame = Frame(type_terms=_term(view, cls), references=[], parts=[])
     for slot in view.class_induced_slots(cls):
         if is_internal(slot) or slot.range not in view.all_classes():
             continue
         if not is_owned(slot):
             frame.references.append(slot.name)
         elif slot.range in seen or slot.range == cls:  # a cycle of ownership: stop nesting
-            frame.parts[slot.name] = Frame(_term(view, slot.range))
+            nested = Frame(type_terms=_term(view, slot.range), references=[], parts=[])
+            frame.parts.append(FramePart(name=slot.name, frame=nested))
         else:
-            frame.parts[slot.name] = build_frame(view, slot.range, (*seen, cls))
+            nested = build_frame(view, slot.range, (*seen, cls))
+            frame.parts.append(FramePart(name=slot.name, frame=nested))
     return frame
 
 
 def render_frame(view: SchemaView, cls: ClassDefinition) -> str:
-    body = {"@context": CONTEXT_FILE, "@omitGraph": True, **build_frame(view, cls.name).to_json()}
+    body = {"@context": CONTEXT_FILE, "@omitGraph": True, **frame_json(build_frame(view, cls.name))}
     return json.dumps(body, indent=2, ensure_ascii=False) + "\n"
 
 
-def context_files(view: SchemaView, schema_path: Path) -> list[GeneratedFile]:
+def render(schema_path: Path) -> list[GeneratedFile]:
     """``context.jsonld`` and ``<Class>.frame.jsonld`` for every aggregate type."""
+    view = load_schema(schema_path)
     return [
-        GeneratedFile(CONTEXT_FILE, render_context(schema_path)),
+        GeneratedFile(name=CONTEXT_FILE, text=render_context(schema_path)),
         *(
-            GeneratedFile(f"{cls.name}{FRAME_SUFFIX}", render_frame(view, cls))
+            GeneratedFile(name=f"{cls.name}{FRAME_SUFFIX}", text=render_frame(view, cls))
             for cls in root_classes(view, schema_path.parent)
         ),
     ]
-
-
-def write_context(run: Run) -> None:
-    """Write the context and the frames into the Python output folder."""
-    with schema_faults():
-        files = context_files(run.view, run.schema_path)
-    stage(run, run.python_dir, files)
-
-
-CONTEXT_STEP = Step("context", write_context, writes=True)

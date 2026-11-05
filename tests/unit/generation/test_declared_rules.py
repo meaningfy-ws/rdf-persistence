@@ -8,8 +8,8 @@ from rdflib import Graph, URIRef
 from rdflib.namespace import SH
 
 from rdf_persistence.generation.exceptions import SchemaGenerationError
-from rdf_persistence.generation.extensions.pydantic_split import render_modules
-from rdf_persistence.generation.extensions.shacl import render_shapes
+from rdf_persistence.generation.extensions.pydantic_split import render as render_modules
+from rdf_persistence.generation.extensions.shacl import render as render_shapes
 from rdf_persistence.generation.generated.rp_generation import ConstraintKind
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.testkit.conformance import Conformance
@@ -79,7 +79,7 @@ def class_source(path: Path) -> str:
 
 
 def shapes(path: Path) -> Graph:
-    return Graph().parse(data=render_shapes(path).text, format="turtle")
+    return Graph().parse(data=render_shapes(path)[0].text, format="turtle")
 
 
 def constraints_on(graph: Graph, cls: str) -> list[str]:
@@ -144,6 +144,7 @@ def test_a_narrowed_slot_counts_the_unique_keys_of_the_ancestors_of_its_new_rang
         models={},
         context={},
         shapes=Graph(),
+        folder=tmp_path,
     )
     assert ConstraintKind.UNIQUE_KEYS in conformance.class_kinds("Cellar"), (
         "the keys of the ancestors of the narrowed range govern the slot"

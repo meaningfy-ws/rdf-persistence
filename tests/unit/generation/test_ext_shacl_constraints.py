@@ -4,12 +4,12 @@ from pathlib import Path
 
 import pytest
 from pyshacl import validate
-from rdflib import Graph, URIRef
+from rdflib import Graph
 from rdflib.compare import to_canonical_graph
 from rdflib.namespace import RDF, SH
 
 from rdf_persistence.generation.exceptions import SchemaGenerationError
-from rdf_persistence.generation.extensions.shacl import render_shapes
+from rdf_persistence.generation.extensions.shacl import render
 from rdf_persistence.generation.extensions.shacl_constraints import (
     UniqueKeyOn,
     constraints_graph,
@@ -74,7 +74,9 @@ def test_a_subclass_of_the_owner_gets_the_unique_key_too() -> None:
 
 
 def test_the_unique_key_query_treats_absent_values_as_equal() -> None:
-    on = UniqueKeyOn("grants", URIRef("http://e/grant"), "k", None, (URIRef("http://e/a"),))
+    on = UniqueKeyOn(
+        name="grants", slot_iri="http://e/grant", key_name="k", key_iris=["http://e/a"]
+    )
     query = unique_key_query(on)
     assert "(!bound(?first_0) && !bound(?second_0))" in query, "two absent values must be equal"
 
@@ -83,7 +85,7 @@ def test_the_unique_key_query_treats_absent_values_as_equal() -> None:
     "hostile", ["http://e/a> } . FILTER(true) #", "http://e/a b", 'http://e/"a"']
 )
 def test_an_iri_that_would_break_out_of_the_query_is_refused(hostile: str) -> None:
-    on = UniqueKeyOn("grants", URIRef("http://e/grant"), "k", None, (URIRef(hostile),))
+    on = UniqueKeyOn(name="grants", slot_iri="http://e/grant", key_name="k", key_iris=[hostile])
     with pytest.raises(SchemaGenerationError, match="not an IRI"):
         unique_key_query(on)
 
@@ -99,7 +101,7 @@ def test_the_unique_key_query_is_the_same_on_every_call() -> None:
 def contact_shapes(tmp_path: Path, schema: str = CONTACT) -> Graph:
     path = tmp_path / "contact.yaml"
     path.write_text(schema, encoding="utf-8")
-    return Graph().parse(data=render_shapes(path).text, format="turtle")
+    return Graph().parse(data=render(path)[0].text, format="turtle")
 
 
 @pytest.mark.parametrize(

@@ -18,7 +18,8 @@ from rdf_persistence.domain.generated.rp_core import (
     ModuleKind,
     RpAnnotation,
 )
-from rdf_persistence.generation.generated.rp_generation import HardRule
+from rdf_persistence.generation.generated.rp_generation import CheckProblem, HardRule
+from rdf_persistence.generation.problems import rule_problem
 from rdf_persistence.services.schema_structure import (
     aggregate_roots,
     annotation,
@@ -31,6 +32,9 @@ from rdf_persistence.services.schema_structure import (
     owned_classes,
 )
 
+# The metaslot each element rule requires: a rule id is not an attribute name.
+ELEMENT_METASLOTS = ((HardRule.TITLE, "title"), (HardRule.DESCRIPTION, "description"))
+VALUE_METASLOTS = (*ELEMENT_METASLOTS, (HardRule.MEANING, "meaning"))
 DESCRIBED = "Described"
 URL_SEGMENT = "url_segment"  # the slot of rp_core whose pattern every route segment follows
 BOOLEAN = ("true", "false")
@@ -47,37 +51,33 @@ ALLOWED_ANNOTATIONS = {
 }
 
 
-def _problem(rule: HardRule, element: str, message: str) -> str:
-    return f"[{rule.value}] {element}: {message}"
-
-
 def _has_default_prefix(schema: SchemaDefinition) -> bool:
     return bool(schema.default_prefix) and schema.default_prefix in (schema.prefixes or {})
 
 
 def _element_problems(
     element: object, name: str, explicit_iri: str | None, schema: SchemaDefinition
-) -> Iterator[str]:
+) -> Iterator[CheckProblem]:
     if not explicit_iri and not _has_default_prefix(schema):
-        yield _problem(
+        yield rule_problem(
             HardRule.IRI, name, "no IRI: no explicit URI and no default_prefix in prefixes"
         )
-    for field in (HardRule.TITLE, HardRule.DESCRIPTION):
-        if not getattr(element, field.value, None):
-            yield _problem(field, name, f"no {field.value}")
+    for rule, metaslot in ELEMENT_METASLOTS:
+        if not getattr(element, metaslot, None):
+            yield rule_problem(rule, name, f"no {metaslot}")
 
 
-def _unique_key_problems(cls: ClassDefinition) -> Iterator[str]:
+def _unique_key_problems(cls: ClassDefinition) -> Iterator[CheckProblem]:
     """A key name ends up in the names of generated validators, so it must be an identifier."""
     for key in cls.unique_keys.values():
         name = str(key.unique_key_name)
         if not (name.isidentifier() and name.isascii()):
-            yield _problem(
+            yield rule_problem(
                 HardRule.UNIQUE_KEY, cls.name, f"unique key {name!r} is not an identifier"
             )
 
 
-def _schema_problems(schema: SchemaDefinition) -> Iterator[str]:
+def _schema_problems(schema: SchemaDefinition) -> Iterator[CheckProblem]:
     for cls in schema.classes.values():
         yield from _element_problems(cls, cls.name, cls.class_uri, schema)
         for attribute in cls.attributes.values():
@@ -91,11 +91,11 @@ def _schema_problems(schema: SchemaDefinition) -> Iterator[str]:
             yield from _value_problems(enum.name, value)
 
 
-def _value_problems(enum: str, value: PermissibleValue) -> Iterator[str]:
+def _value_problems(enum: str, value: PermissibleValue) -> Iterator[CheckProblem]:
     name = value.text
-    for field in (HardRule.TITLE, HardRule.DESCRIPTION, HardRule.MEANING):
-        if not getattr(value, field.value, None):
-            yield _problem(field, name, f"permissible value of {enum} has no {field.value}")
+    for rule, metaslot in VALUE_METASLOTS:
+        if not getattr(value, metaslot, None):
+            yield rule_problem(rule, name, f"permissible value of {enum} has no {metaslot}")
 
 
 def _annotated_elements(schema: SchemaDefinition) -> Iterator[Element]:
@@ -113,18 +113,20 @@ def _path_pattern(view: SchemaView) -> str | None:
     return slot.pattern if slot else None
 
 
-def _annotation_problems(schema: SchemaDefinition, path_pattern: str | None) -> Iterator[str]:
+def _annotation_problems(
+    schema: SchemaDefinition, path_pattern: str | None
+) -> Iterator[CheckProblem]:
     for element in _annotated_elements(schema):
         name = str(element.name)
         for tag, allowed in ALLOWED_ANNOTATIONS.items():
             value = annotation(element, tag)
             if value is not None and value not in allowed:
-                yield _problem(
+                yield rule_problem(
                     HardRule.ANNOTATION, name, f"{tag.value}: {value!r} is not one of {allowed}"
                 )
         path = annotation_text(element, RpAnnotation.RP_PATH)
         if path is not None and path_pattern and not re.fullmatch(path_pattern, path):
-            yield _problem(
+            yield rule_problem(
                 HardRule.ANNOTATION,
                 name,
                 f"{RpAnnotation.RP_PATH.value}: {path!r} does not match {path_pattern}",
@@ -136,34 +138,36 @@ def _inherited_path(view: SchemaView, cls: ClassDefinition) -> bool:
     return any(annotation(view.get_class(name), RpAnnotation.RP_PATH) for name in ancestry)
 
 
-def _path_problems(view: SchemaView, roots: list[ClassDefinition]) -> Iterator[str]:
+def _path_problems(view: SchemaView, roots: list[ClassDefinition]) -> Iterator[CheckProblem]:
     for root in roots:
         if not is_tenant_root(root) and not _inherited_path(view, root):
-            yield _problem(
+            yield rule_problem(
                 HardRule.RP_PATH, root.name, "an aggregate root needs the rp_path annotation"
             )
 
 
 def _described_problems(
     view: SchemaView, classes: list[ClassDefinition], roots: list[ClassDefinition]
-) -> Iterator[str]:
+) -> Iterator[CheckProblem]:
     own = {cls.name for cls in classes}
     owned = owned_classes(view, classes)
     for cls in roots + [c for c in classes if c.name in owned and c not in roots]:
         if inherits_from_metamodel(view, cls, own):
             continue
         if DESCRIBED not in view.class_ancestors(cls.name):
-            yield _problem(HardRule.DESCRIBED, cls.name, "a root or owned class includes Described")
+            yield rule_problem(
+                HardRule.DESCRIBED, cls.name, "a root or owned class includes Described"
+            )
 
 
-def _class_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[str]:
+def _class_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[CheckProblem]:
     roots = aggregate_roots(view, classes)
     yield from _path_problems(view, roots)
     yield from _described_problems(view, classes, roots)
 
 
-def hard_problems(view: SchemaView, folder: Path) -> list[str]:
-    """Every problem of the schemas kept in ``folder``, one line each, in a stable order.
+def hard_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
+    """Every problem of the schemas kept in ``folder``, in a stable order.
 
     The toolkit's own schemas get the element rules but not the root and owned-class rules (PD-23).
     """

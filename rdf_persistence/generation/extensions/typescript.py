@@ -10,19 +10,25 @@ other class is an IRI string, and each interface lists every slot of its class.
 """
 
 import json
-from dataclasses import dataclass, field
 from pathlib import Path
 
-from jinja2 import Environment, FileSystemLoader
 from linkml.generators.typescriptgen import TypescriptGenerator
 from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition, SlotDefinition
 
-from rdf_persistence.generation.outputs import GeneratedFile, stage
-from rdf_persistence.generation.pipeline import Run, Step, schema_faults
+from rdf_persistence.generation.generated.rp_generation import (
+    GeneratedFile,
+    TsEnum,
+    TsEnumValue,
+    TsField,
+    TsImport,
+    TsInterface,
+    TsModule,
+)
+from rdf_persistence.generation.templating import environment
 from rdf_persistence.services.schema import metamodel_importmap
 from rdf_persistence.services.schema_structure import apply_defaults, is_internal, is_owned
 
-TEMPLATE_DIR = Path(__file__).parents[1] / "templates" / "typescript"
+TEMPLATES = "typescript"
 MODULE_TEMPLATE = "module.ts.jinja"
 INDEX_TEMPLATE = "index.ts.jinja"
 INDEX_NAME = "index.ts"
@@ -35,48 +41,6 @@ def doc(text: str | None) -> str:
     if not text:
         return ""
     return f"/** {' '.join(text.split()).replace('*/', '*\\/')} */"
-
-
-@dataclass(frozen=True)
-class TsField:
-    name: str
-    type: str
-    optional: bool
-    doc: str
-
-
-@dataclass(frozen=True)
-class TsInterface:
-    name: str
-    doc: str
-    fields: list[TsField]
-
-
-@dataclass(frozen=True)
-class TsEnumValue:
-    literal: str
-    doc: str
-
-
-@dataclass(frozen=True)
-class TsEnum:
-    name: str
-    doc: str
-    values: list[TsEnumValue]
-
-
-@dataclass(frozen=True)
-class TsImport:
-    module: str
-    names: list[str]
-
-
-@dataclass
-class TsModule:
-    name: str
-    enums: list[TsEnum] = field(default_factory=list)
-    interfaces: list[TsInterface] = field(default_factory=list)
-    imports: list[TsImport] = field(default_factory=list)
 
 
 class ToolkitTypescriptGenerator(TypescriptGenerator):
@@ -115,22 +79,27 @@ class ToolkitTypescriptGenerator(TypescriptGenerator):
         suffix = "[]" if slot.multivalued else ""
         optional = not (slot.required or slot.identifier)
         return TsField(
-            self.name(slot), f"{self.range(slot)}{suffix}", optional, doc(slot.description)
+            name=self.name(slot),
+            type=f"{self.range(slot)}{suffix}",
+            optional=optional,
+            doc=doc(slot.description),
         )
 
     def _interface(self, cls: ClassDefinition) -> TsInterface:
         slots = [
             slot for slot in self.schemaview.class_induced_slots(cls.name) if not is_internal(slot)
         ]
-        return TsInterface(self.name(cls), doc(cls.description), [self._field(s) for s in slots])
+        return TsInterface(
+            name=self.name(cls), doc=doc(cls.description), fields=[self._field(s) for s in slots]
+        )
 
     def _enum(self, name: str) -> TsEnum:
         enum = self.schemaview.get_enum(name)
         values = [
-            TsEnumValue(json.dumps(text), doc(value.description))
+            TsEnumValue(literal=json.dumps(text), doc=doc(value.description))
             for text, value in enum.permissible_values.items()
         ]
-        return TsEnum(self.name(enum), doc(enum.description), values)
+        return TsEnum(name=self.name(enum), doc=doc(enum.description), values=values)
 
     def _imports(self, module: str, interfaces: list[TsInterface]) -> list[TsImport]:
         """The classes and enums the module's fields name that another module defines."""
@@ -142,26 +111,23 @@ class ToolkitTypescriptGenerator(TypescriptGenerator):
                 source = defined_in.get(name)
                 if source and source != module:
                     wanted.setdefault(source, set()).add(name)
-        return [TsImport(source, sorted(names)) for source, names in sorted(wanted.items())]
+        return [
+            TsImport(module=source, names=sorted(names)) for source, names in sorted(wanted.items())
+        ]
 
     def module(self, schema: SchemaDefinition) -> TsModule:
         classes = [cls for cls in schema.classes.values() if not cls.mixin]
         interfaces = [self._interface(self.schemaview.get_class(cls.name)) for cls in classes]
         return TsModule(
-            schema.name,
-            [self._enum(name) for name in schema.enums],
-            interfaces,
-            self._imports(schema.name, interfaces),
+            name=schema.name,
+            enums=[self._enum(name) for name in schema.enums],
+            interfaces=interfaces,
+            imports=self._imports(schema.name, interfaces),
         )
 
     def files(self) -> list[GeneratedFile]:
         """One file per module that defines classes or enums, and ``index.ts`` exporting them."""
-        env = Environment(
-            loader=FileSystemLoader(TEMPLATE_DIR),
-            keep_trailing_newline=True,
-            trim_blocks=True,
-            lstrip_blocks=True,
-        )
+        env = environment(TEMPLATES)
         self.schemaview.imports_closure()
         modules = [
             self.module(schema)
@@ -171,28 +137,17 @@ class ToolkitTypescriptGenerator(TypescriptGenerator):
         modules.sort(key=lambda module: module.name)
         files = [
             GeneratedFile(
-                f"{module.name}.ts", env.get_template(MODULE_TEMPLATE).render(module=module)
+                name=f"{module.name}.ts",
+                text=env.get_template(MODULE_TEMPLATE).render(module=module),
             )
             for module in modules
         ]
         index = env.get_template(INDEX_TEMPLATE).render(modules=[module.name for module in modules])
-        return [*files, GeneratedFile(INDEX_NAME, index)]
+        return [*files, GeneratedFile(name=INDEX_NAME, text=index)]
 
 
-def typescript_files(schema_path: Path) -> list[GeneratedFile]:
+def render(schema_path: Path) -> list[GeneratedFile]:
     """The TypeScript files of the schema at ``schema_path``."""
     generator = ToolkitTypescriptGenerator(str(schema_path), importmap=metamodel_importmap())
     apply_defaults(generator.schemaview, schema_path.parent)
     return generator.files()
-
-
-def write_typescript(run: Run) -> None:
-    """Write the types into the target's TypeScript folder; nothing when none is configured."""
-    if not run.target.typescript:
-        return
-    with schema_faults():
-        files = typescript_files(run.schema_path)
-    stage(run, Path(run.target.typescript), files)
-
-
-TYPESCRIPT_STEP = Step("typescript", write_typescript, writes=True)

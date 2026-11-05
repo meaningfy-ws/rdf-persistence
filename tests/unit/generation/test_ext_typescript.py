@@ -4,23 +4,27 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation.extensions.typescript import TYPESCRIPT_STEP
+from rdf_persistence.generation.steps import TYPESCRIPT_STEP
 
-from .golden import assert_matches_golden
-from .step_runner import TARGET, run_toy
+from .golden import TOY_TARGET, assert_matches_toy, run_toy
 
 
 @pytest.fixture(scope="module")
-def staged(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    return run_toy(TYPESCRIPT_STEP, tmp_path_factory.mktemp("typescript")) / "typescript"
+def rendered(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return run_toy(TYPESCRIPT_STEP, tmp_path_factory.mktemp("typescript"))
+
+
+@pytest.fixture(scope="module")
+def staged(rendered: Path) -> Path:
+    return rendered / str(TOY_TARGET.typescript)
 
 
 def text(staged: Path, module: str) -> str:
     return (staged / f"{module}.ts").read_text(encoding="utf-8")
 
 
-def test_the_output_equals_the_golden(staged: Path) -> None:
-    assert_matches_golden("typescript", staged)
+def test_the_output_equals_the_committed_tree(rendered: Path) -> None:
+    assert_matches_toy(rendered, "web/src/domain/generated/*.ts")
 
 
 def test_every_module_has_a_file_and_the_index_exports_them(staged: Path) -> None:
@@ -76,11 +80,11 @@ def test_an_internal_slot_is_skipped(staged: Path) -> None:
 
 
 def test_an_unconfigured_target_writes_nothing(tmp_path: Path) -> None:
-    run_toy(TYPESCRIPT_STEP, tmp_path, TARGET.model_copy(update={"typescript": None}))
+    run_toy(TYPESCRIPT_STEP, tmp_path, TOY_TARGET.model_copy(update={"typescript": None}))
     assert not list(tmp_path.iterdir()), "no TypeScript folder, no output"
 
 
 def test_the_output_is_reproducible(staged: Path, tmp_path: Path) -> None:
-    again = run_toy(TYPESCRIPT_STEP, tmp_path) / "typescript"
+    again = run_toy(TYPESCRIPT_STEP, tmp_path) / str(TOY_TARGET.typescript)
     first = {p.name: p.read_bytes() for p in staged.iterdir()}
     assert first == {p.name: p.read_bytes() for p in again.iterdir()}, "two runs differ"

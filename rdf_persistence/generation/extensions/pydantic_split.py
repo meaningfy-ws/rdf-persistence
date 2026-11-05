@@ -32,7 +32,7 @@ from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation.exceptions import SchemaGenerationError
 from rdf_persistence.generation.extensions.pydantic_validators import with_validators
-from rdf_persistence.generation.outputs import GeneratedFile
+from rdf_persistence.generation.generated.rp_generation import GeneratedFile
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema, metamodel_importmap
 from rdf_persistence.services.schema_structure import (
     apply_defaults,
@@ -157,18 +157,18 @@ def _generator(path: Path, folder: Path, mode: SplitMode) -> SplitPydanticGenera
     return generator
 
 
-def render_modules(schema_path: Path) -> list[GeneratedFile]:
+def render(schema_path: Path) -> list[GeneratedFile]:
     """Generate one module per schema module beside ``schema_path``, and an empty package marker.
 
     The root schema's module imports every class of the closure, so it is the one place a consumer
     can import any class from; every other module imports only what its classes use.
     """
     folder = schema_path.parent
-    modules = [GeneratedFile(INIT, "")]
+    modules = [GeneratedFile(name=INIT, text="")]
     for schema in own_schemas(load_schema(schema_path), folder):
         path = Path(str(schema.source_file))
         mode = SplitMode.FULL if path.resolve() == schema_path.resolve() else SplitMode.AUTO
         generator = _generator(path, folder, mode)
         name = generator.generate_module_import(generator.schema).lstrip(".")
-        modules.append(GeneratedFile(f"{name}.py", generator.serialize()))
+        modules.append(GeneratedFile(name=f"{name}.py", text=generator.serialize()))
     return sorted(modules, key=lambda module: module.name)

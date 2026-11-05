@@ -2,7 +2,7 @@
 
 Models are declared in LinkML and generated. ``assert_models_generated`` fails when a hand-written
 model sits in ``domain``, ``services`` or ``entrypoints``, or when a generated artefact sits outside
-a ``generated`` folder. Standard library only.
+a ``generated`` folder. Standard library and the toolkit's own generated ``Violation`` only.
 """
 
 import ast
@@ -10,7 +10,8 @@ import importlib.util
 from collections.abc import Iterable, Iterator
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import NamedTuple
+
+from rdf_persistence.generation.generated.rp_generation import Violation
 
 GENERATED = "generated"
 SCANNED_LAYERS = ("domain", "services", "entrypoints")
@@ -47,20 +48,13 @@ FORBIDDEN_FILE_PATTERNS = (
 ALLOWED_FILE_PATTERNS = ("*.test.ts", "*.spec.ts")
 
 
-class Violation(NamedTuple):
-    where: str
-    what: str
-
-    def __str__(self) -> str:
-        return f"{self.where}: {self.what}"
-
-
 def assert_models_generated(
     package: str | Path,
     *,
     roots: Iterable[Path],
     allow: Iterable[str] = (),
     exempt: Iterable[Path] = (),
+    layers: Iterable[str] = SCANNED_LAYERS,
 ) -> None:
     """Raise one ``AssertionError`` listing every violation, or return None.
 
@@ -69,13 +63,19 @@ def assert_models_generated(
     ``allow``: ``"<posix path relative to the package's parent>:<ClassName>"`` entries added to the
     default exception (``rdf_persistence/domain/base.py:RpModel``).
     ``exempt``: folders the file guard skips (instance data, request bodies).
+    ``layers``: the subpackages the model guard scans; a consumer keeps the default, the toolkit
+    adds ``generation`` and ``testkit`` for itself.
     """
     package_dir = _package_dir(package)
     allowed = frozenset((*DEFAULT_ALLOW, *allow))
-    violations = [*_model_violations(package_dir, allowed), *_file_violations(roots, tuple(exempt))]
+    violations = [
+        *_model_violations(package_dir, allowed, tuple(layers)),
+        *_file_violations(roots, tuple(exempt)),
+    ]
     if violations:
+        lines = (f"{v.where}: {v.what}" for v in violations)
         raise AssertionError(
-            "Hand-written models or generated artefacts found:\n" + "\n".join(map(str, violations))
+            "Hand-written models or generated artefacts found:\n" + "\n".join(lines)
         )
 
 
@@ -91,9 +91,11 @@ def _package_dir(package: str | Path) -> Path:
 # --- model guard -------------------------------------------------------------------------------
 
 
-def _model_violations(package_dir: Path, allowed: frozenset[str]) -> Iterator[Violation]:
+def _model_violations(
+    package_dir: Path, allowed: frozenset[str], layers: tuple[str, ...]
+) -> Iterator[Violation]:
     exports = _top_level_exports(package_dir)
-    for layer in SCANNED_LAYERS:
+    for layer in layers:
         for path in sorted((package_dir / layer).rglob("*.py")):
             relative = path.relative_to(package_dir.parent)
             if GENERATED in relative.parts:
@@ -123,7 +125,9 @@ def _module_violations(
             continue
         reason = _reason(node, names, exports)
         if reason:
-            yield Violation(f"{relative.as_posix()}:{node.lineno}", f"class {node.name} {reason}")
+            yield Violation(
+                where=f"{relative.as_posix()}:{node.lineno}", what=f"class {node.name} {reason}"
+            )
 
 
 def _reason(node: ast.ClassDef, names: dict[str, str], exports: dict[str, str]) -> str | None:
@@ -152,19 +156,28 @@ def _import_names(tree: ast.Module, module: str, *, is_package: bool) -> dict[st
     package = module if is_package else module.rpartition(".")[0]
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.asname:
-                    names[alias.asname] = alias.name
-                else:
-                    top = alias.name.split(".")[0]
-                    names[top] = top
+            names |= _plain_import(node)
         elif isinstance(node, ast.ImportFrom):
-            source = _from_source(node, package)
-            for alias in node.names:
-                names[alias.asname or alias.name] = (
-                    f"{source}.{alias.name}" if source else alias.name
-                )
+            names |= _from_import(node, package)
     return names
+
+
+def _plain_import(node: ast.Import) -> dict[str, str]:
+    """``import a.b`` binds ``a``; ``import a.b as c`` binds ``c`` to ``a.b``."""
+    return {
+        alias.asname or alias.name.split(".")[0]: alias.name
+        if alias.asname
+        else alias.name.split(".")[0]
+        for alias in node.names
+    }
+
+
+def _from_import(node: ast.ImportFrom, package: str) -> dict[str, str]:
+    source = _from_source(node, package)
+    return {
+        alias.asname or alias.name: f"{source}.{alias.name}" if source else alias.name
+        for alias in node.names
+    }
 
 
 def _from_source(node: ast.ImportFrom, package: str) -> str:
@@ -199,7 +212,9 @@ def _file_violations(roots: Iterable[Path], exempt: tuple[Path, ...]) -> Iterato
             ):
                 continue
             if _is_forbidden_file(path.name):
-                yield Violation(path.as_posix(), "generated artefact outside a generated/ folder")
+                yield Violation(
+                    where=path.as_posix(), what="generated artefact outside a generated/ folder"
+                )
 
 
 def _is_forbidden_file(name: str) -> bool:

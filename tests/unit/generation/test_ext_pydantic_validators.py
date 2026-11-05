@@ -16,7 +16,7 @@ from pydantic import ValidationError
 from rdf_persistence.generation.checks.rules import rules_problems
 from rdf_persistence.generation.cli import main
 from rdf_persistence.generation.exceptions import SchemaGenerationError
-from rdf_persistence.generation.extensions.pydantic_split import render_modules
+from rdf_persistence.generation.extensions.pydantic_split import render as render_modules
 from rdf_persistence.services.schema import load_schema
 
 from .conftest import Breaker

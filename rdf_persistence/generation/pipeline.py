@@ -2,7 +2,7 @@
 
 import os
 import tempfile
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,7 +12,12 @@ from linkml_runtime.utils.schemaview import SchemaView
 from rdf_persistence.generation import manifest
 from rdf_persistence.generation.config import python_folder
 from rdf_persistence.generation.exceptions import SchemaGenerationError, StepError
-from rdf_persistence.generation.generated.rp_generation import GenerationTarget, ManifestEntry
+from rdf_persistence.generation.generated.rp_generation import (
+    CheckProblem,
+    GeneratedFile,
+    GenerationTarget,
+    ManifestEntry,
+)
 from rdf_persistence.services.schema import LOAD_ERRORS, load_schema
 
 STAGING_PREFIX = ".rp-generate-"
@@ -24,7 +29,7 @@ def schema_faults() -> Iterator[None]:
     try:
         yield
     except (SchemaGenerationError, *LOAD_ERRORS) as error:
-        raise StepError([str(error)]) from error
+        raise StepError([CheckProblem(message=str(error))]) from error
 
 
 @dataclass
@@ -53,7 +58,9 @@ class Run:
         """
         path = self.staging / relative
         if not path.resolve().is_relative_to(self.staging.resolve()):
-            raise StepError([f"{relative}: outside the staging folder"])
+            raise StepError(
+                [CheckProblem(element=str(relative), message="outside the staging folder")]
+            )
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
@@ -67,20 +74,70 @@ class Step:
     writes: bool = False
 
 
+def stage(run: Run, folder: Path, files: Iterable[GeneratedFile]) -> None:
+    """Write ``files`` into ``folder`` (relative to the run's ``base``) in the staging area.
+
+    Raises:
+        StepError: When a name, which may come from the schema, is not a plain file name.
+    """
+    for file in files:
+        if file.name in ("", ".", "..") or "/" in file.name or "\\" in file.name:
+            problem = CheckProblem(
+                element=repr(file.name), message="an output name must be a plain file name"
+            )
+            raise StepError([problem])
+        run.staged(folder / file.name).write_text(file.text, encoding="utf-8")
+
+
+def check_step(name: str, find: Callable[[Run], list[CheckProblem]]) -> Step:
+    """A step that writes nothing and fails with whatever ``find`` returns."""
+
+    def check(run: Run) -> None:
+        if problems := find(run):
+            raise StepError(problems)
+
+    return Step(name, check)
+
+
+def render_step(
+    name: str,
+    render: Callable[[Path], list[GeneratedFile]],
+    folder_of: Callable[[Run], Path | None],
+) -> Step:
+    """A step that stages what ``render`` makes from the target's schema into ``folder_of(run)``.
+
+    A schema fault in ``render`` is a step failure; ``folder_of`` returning ``None`` means the
+    target asks for none of this step's output.
+    """
+
+    def write(run: Run) -> None:
+        folder = folder_of(run)
+        if folder is None:
+            return
+        with schema_faults():
+            files = render(run.schema_path)
+        stage(run, folder, files)
+
+    return Step(name, write, writes=True)
+
+
 def _run_target(
     target: GenerationTarget, base: Path, staging: Path, steps: Sequence[Step]
-) -> list[str]:
+) -> list[CheckProblem]:
     try:
         view = load_schema(base / target.schema_file)
         view.imports_closure()
     except LOAD_ERRORS as error:
-        return [f"{target.schema_file}: load: {error}"]
+        return [CheckProblem(schema_file=target.schema_file, step="load", message=str(error))]
     run = Run(target, base, staging, view)
     for step in steps:
         try:
             step.run(run)
         except StepError as failed:
-            return [f"{target.schema_file}: {step.name}: {problem}" for problem in failed.problems]
+            return [
+                problem.model_copy(update={"schema_file": target.schema_file, "step": step.name})
+                for problem in failed.problems
+            ]
     return []
 
 
@@ -95,7 +152,7 @@ def _move_into_place(staging: Path, base: Path) -> list[Path]:
     return moved
 
 
-def _remove_stale(entry: ManifestEntry, base: Path) -> str | None:
+def _remove_stale(entry: ManifestEntry, base: Path) -> CheckProblem | None:
     """Delete the file a previous run wrote and this one does not; return why it was kept, if it was.
 
     The manifest is data on disk, so nothing in it is trusted: a file goes only if it lies under
@@ -103,16 +160,18 @@ def _remove_stale(entry: ManifestEntry, base: Path) -> str | None:
     """
     file = base / entry.path
     if not file.resolve().is_relative_to(base.resolve()):
-        return f"kept {entry.path}: it resolves outside the project"
+        return CheckProblem(message=f"kept {entry.path}: it resolves outside the project")
     if not file.is_file():
         return None
     if manifest.sha256_of(file) != entry.sha256:
-        return f"kept {entry.path}: it changed since it was generated; delete it if it is stale"
+        return CheckProblem(
+            message=f"kept {entry.path}: it changed since it was generated; delete it if it is stale"
+        )
     file.unlink()
     return None
 
 
-def _publish(target: GenerationTarget, base: Path, staging: Path) -> list[str]:
+def _publish(target: GenerationTarget, base: Path, staging: Path) -> list[CheckProblem]:
     """Move ``target``'s output into place, delete what its previous run wrote and no longer does, write the manifest.
 
     Returns:
@@ -129,7 +188,7 @@ def _publish(target: GenerationTarget, base: Path, staging: Path) -> list[str]:
 
 def _run_targets(
     targets: Sequence[GenerationTarget], base: Path, stagings: Sequence[Path], steps: Sequence[Step]
-) -> list[str]:
+) -> list[CheckProblem]:
     results = (
         _run_target(target, base, staging, steps)
         for target, staging in zip(targets, stagings, strict=True)
@@ -139,20 +198,20 @@ def _run_targets(
 
 def _publish_all(
     targets: Sequence[GenerationTarget], base: Path, stagings: Sequence[Path]
-) -> list[str]:
+) -> list[CheckProblem]:
     kept = (
         _publish(target, base, staging) for target, staging in zip(targets, stagings, strict=True)
     )
     return [problem for result in kept for problem in result]
 
 
-def _unusable_manifests(targets: Sequence[GenerationTarget], base: Path) -> list[str]:
+def _unusable_manifests(targets: Sequence[GenerationTarget], base: Path) -> list[CheckProblem]:
     return [p for t in targets if (p := manifest.unreadable_manifest(t, base))]
 
 
 def generate(
     targets: Sequence[GenerationTarget], base: Path, steps: Sequence[Step], *, check: bool
-) -> list[str]:
+) -> list[CheckProblem]:
     """Run ``steps`` over every target; move all output into place only if nothing failed.
 
     A run writes one manifest per target and deletes only the files the target's previous manifest

@@ -8,7 +8,7 @@ from pyshacl import validate
 from rdflib import Graph, URIRef
 from rdflib.namespace import RDF, SH
 
-from rdf_persistence.generation.extensions.shacl import render_shapes
+from rdf_persistence.generation.extensions.shacl import render
 
 METAMODEL = Path(__file__).parents[3] / "rdf_persistence" / "model" / "rp.yaml"
 
@@ -100,7 +100,7 @@ def toy_shapes(generated_toy: Path) -> Graph:
 @pytest.fixture(scope="session")
 def metamodel_shapes(tmp_path_factory: pytest.TempPathFactory) -> Graph:
     folder = tmp_path_factory.mktemp("metamodel")
-    shapes = render_shapes(METAMODEL)
+    (shapes,) = render(METAMODEL)
     (folder / shapes.name).write_text(shapes.text, encoding="utf-8")
     return Graph().parse(folder / shapes.name)
 

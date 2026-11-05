@@ -1,16 +1,21 @@
 """rp-generate: exit codes, the lint gate, atomic output and --check (PD-2, PD-18)."""
 
+import importlib
 import sys
 from pathlib import Path
 
+import linkml.linter.linter as linkml_linter
 import pytest
+from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence import generation
 from rdf_persistence.generation import steps
 from rdf_persistence.generation.cli import build_parser, main
 from rdf_persistence.generation.config import read_targets
 from rdf_persistence.generation.exceptions import StepError
+from rdf_persistence.generation.generated.rp_generation import CheckProblem
 from rdf_persistence.generation.pipeline import Run, Step, generate
+from rdf_persistence.services.schema import metamodel_importmap
 
 PYPROJECT = """
 [tool.rp-generate]
@@ -154,11 +159,13 @@ def test_a_failure_after_a_write_moves_nothing_into_place(tmp_path: Path) -> Non
     old.write_text("old", encoding="utf-8")
 
     def fail(run: Run) -> None:
-        raise StepError(["boom"])
+        raise StepError([CheckProblem(message="boom")])
 
     targets = read_targets(pyproject, build_parser().parse_args([]))
     problems = generate(targets, tmp_path, write_then(Step("fail", fail)), check=False)
-    assert problems == ["m.yaml: fail: boom"], "the failure was not reported"
+    assert problems == [CheckProblem(schema_file="m.yaml", step="fail", message="boom")], (
+        "the failure was not reported"
+    )
     assert tree(tmp_path / "app") == {Path("generated/old.py"): b"old"}, (
         "output moved before success"
     )
@@ -187,3 +194,21 @@ def test_check_writes_nothing(tmp_path: Path) -> None:
 def test_check_fails_on_a_lint_problem(tmp_path: Path) -> None:
     pyproject = project(tmp_path, SCHEMA.replace("Thing:", "thing_one:"))
     assert main(["--project", str(pyproject), "--check"]) == 1, "--check ignored the lint"
+
+
+def test_the_linter_patch_targets_a_name_linkml_still_has() -> None:
+    """The lint step patches the SchemaView ``Linter`` looks up in its module (PD-22); if a linkml
+    upgrade moves it, this fails by name instead of the lint silently losing the metamodel map."""
+    module_name, _, attribute = steps.LINTER_SCHEMA_VIEW.rpartition(".")
+    assert module_name == "linkml.linter.linter", "the patched module changed"
+    assert attribute == "SchemaView", "the patched name changed"
+    assert getattr(importlib.import_module(module_name), attribute) is SchemaView, (
+        "linkml's Linter no longer builds its own SchemaView by that name"
+    )
+
+
+def test_inside_the_patch_the_linter_opens_schemas_through_the_metamodel_map() -> None:
+    with steps.metamodel_aware_linter():
+        view = linkml_linter.SchemaView("rdf_persistence/model/rp.yaml")
+    assert view.importmap == metamodel_importmap(), "the linter would not find the metamodel"
+    assert linkml_linter.SchemaView is SchemaView, "the patch was not undone"

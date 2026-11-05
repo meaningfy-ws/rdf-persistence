@@ -26,7 +26,7 @@ def model_shape_diff(shapes: list[ClassShape], models: Iterable[type[BaseModel]]
 
 def _field_lines(shape: ClassShape, model: type[BaseModel]) -> list[str]:
     fields = model.model_fields
-    slots = {underscore(s.name): s for s in shape.slots or []}
+    slots = {underscore(s.alias or s.name): s for s in shape.slots or []}
     lines = [f"field without a slot: {shape.class_name}.{n}" for n in fields if n not in slots]
     for key, slot in slots.items():
         if key in fields:

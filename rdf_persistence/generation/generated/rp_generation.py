@@ -112,6 +112,12 @@ class ConstraintKind(str, Enum):
     "No two items of a multivalued slot have equal key values."
 
 
+class GenerationAnnotation(str, Enum):
+    "The annotations this module\u0027s schema carries for the toolchain itself."
+    CLI_FLAG = "cli_flag"
+    "On a GenerationTarget slot, the command-line flag that overrides it."
+
+
 
 class GenerationTarget(ConfiguredBaseModel):
     "One entry of the `[tool.rp-generate]` table of a `pyproject.toml`: a schema and the folders its generated artefacts are written to. Paths are relative to the folder of the `pyproject.toml`."
@@ -236,16 +242,161 @@ class ConstraintCase(ConfiguredBaseModel):
 
 class SlotShape(ConfiguredBaseModel):
     "The shape of one slot of a class, as the schema induces it."
-    name: str = Field(default=..., title="Name", description="The name of a slot.")
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
     required: bool = Field(default=..., title="Required", description="Whether a value is required.")
     multivalued: bool = Field(default=..., title="Multivalued", description="Whether the slot takes several values.")
     range: str = Field(default=..., title="Range", description="The name of the type, enum or class the slot\u0027s values belong to.")
+    alias: Optional[str] = Field(default=None, title="Alias", description="The name the slot\u0027s field carries in code and JSON when it differs from the slot\u0027s name; absent otherwise.")
 
 
 class ClassShape(ConfiguredBaseModel):
     "The reviewed shape of one class, its name and the shape of each of its slots."
     class_name: str = Field(default=..., title="Class name", description="The name of a class of the schema.")
     slots: Optional[list[SlotShape]] = Field(default=None, title="Slots", description="The shapes of a class\u0027s slots, in schema order.")
+
+
+class CliFlag(ConfiguredBaseModel):
+    "A command-line flag of `rp-generate` and the GenerationTarget field it overrides."
+    option: str = Field(default=..., title="Option", description="The command-line option, with its leading dashes.")
+    field: str = Field(default=..., title="Field", description="The name of the GenerationTarget field the option overrides.")
+
+
+class GeneratedFile(ConfiguredBaseModel):
+    "One file a generator renders, its name inside the target folder and its text."
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    text: str = Field(default=..., title="Text", description="The text of a file.")
+
+
+class CheckProblem(ConfiguredBaseModel):
+    "One problem a check, a pipeline step or the freshness comparison found, with where and by which rule. Only the command line formats it for the developer."
+    rule: Optional[str] = Field(default=None, title="Rule", description="The id of the rule a problem breaks, a `HardRule` or `BoundaryRule` value or a lint rule name.")
+    element: Optional[str] = Field(default=None, title="Element", description="The element of the schema, or the file, a problem is about.")
+    message: str = Field(default=..., title="Message", description="What is wrong, in a line.")
+    schema_file: Optional[str] = Field(default=None, title="Schema file", description="The root LinkML schema file; the TOML key and the flag are `schema`, which the field name avoids because it would shadow a pydantic method.")
+    step: Optional[str] = Field(default=None, title="Step", description="The name of the pipeline step that found a problem.")
+
+    @field_validator("schema_file")
+    def pattern_schema_file(cls, v):
+        pattern=re.compile("^(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+)(?:/(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+))*$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid schema_file format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid schema_file format: " + str(v)
+            raise ValueError(err_msg)
+        return v
+
+
+class PresenceRule(ConfiguredBaseModel):
+    "A class-level rule over alternatives, and when its validator refuses."
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    need: str = Field(default=..., title="Need", description="What a rule needs of its alternatives, in words.")
+    refused: str = Field(default=..., title="Refused", description="The Python condition under which a rule\u0027s validator refuses.")
+
+
+class RuleAlternative(ConfiguredBaseModel):
+    "One alternative of a rule, its readable label and the Python expression that tells it holds."
+    label: str = Field(default=..., title="Label", description="A readable label.")
+    holds: str = Field(default=..., title="Holds", description="The Python expression that tells an alternative holds.")
+
+
+class UniqueKeyOn(ConfiguredBaseModel):
+    "A unique key that a class\u0027s multivalued slot is subject to, with the IRIs the constraint query needs."
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    slot_iri: str = Field(default=..., title="Slot IRI", description="The expanded IRI of a slot.")
+    key_name: str = Field(default=..., title="Key name", description="The name of a unique key.")
+    description: Optional[str] = Field(default=None, title="Description", description="A description in words.")
+    key_iris: list[str] = Field(default=..., title="Key IRIs", description="The expanded IRIs of the slots that make up a unique key.")
+
+
+class Frame(ConfiguredBaseModel):
+    "A JSON-LD frame, the types it selects, its references and the frames of its owned parts."
+    type_terms: list[str] = Field(default=..., title="Type terms", description="The context terms of the types a frame selects.")
+    references: list[str] = Field(default=..., title="References", description="The slots of a frame that hold references, left as IRIs.")
+    parts: list[FramePart] = Field(default=..., title="Parts", description="The frames of the owned parts nested in a frame, one per owned slot.")
+
+
+class FramePart(ConfiguredBaseModel):
+    "The frame of the parts nested in one owned slot of a frame."
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    frame: Frame = Field(default=..., title="Frame", description="The frame of the parts held by a slot.")
+
+
+class TsField(ConfiguredBaseModel):
+    "A field of a TypeScript interface."
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    type: str = Field(default=..., title="Type", description="The type of a value, as the target language names it.")
+    optional: bool = Field(default=..., title="Optional", description="Whether a field may be left out.")
+    doc: str = Field(default=..., title="Doc", description="A one-line doc comment, empty when there is none.")
+
+
+class TsInterface(ConfiguredBaseModel):
+    "A TypeScript interface and its fields."
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    doc: str = Field(default=..., title="Doc", description="A one-line doc comment, empty when there is none.")
+    fields: list[TsField] = Field(default=..., title="Fields", description="The fields of an interface.")
+
+
+class TsEnumValue(ConfiguredBaseModel):
+    "A string literal of a TypeScript union type."
+    literal: str = Field(default=..., title="Literal", description="A string literal, quoted.")
+    doc: str = Field(default=..., title="Doc", description="A one-line doc comment, empty when there is none.")
+
+
+class TsEnum(ConfiguredBaseModel):
+    "A union of string literals that stands for an enum of the schema."
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    doc: str = Field(default=..., title="Doc", description="A one-line doc comment, empty when there is none.")
+    values: list[TsEnumValue] = Field(default=..., title="Values", description="The values of a union type.")
+
+
+class TsImport(ConfiguredBaseModel):
+    "The names a TypeScript module imports from another module."
+    module: str = Field(default=..., title="Module", description="The name of a schema module.")
+    names: list[str] = Field(default=..., title="Names", description="The names imported from a module.")
+
+
+class TsModule(ConfiguredBaseModel):
+    "One TypeScript file, for one module of the schema."
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    enums: list[TsEnum] = Field(default=..., title="Enums", description="The enums a TypeScript module declares.")
+    interfaces: list[TsInterface] = Field(default=..., title="Interfaces", description="The interfaces a TypeScript module declares.")
+    imports: list[TsImport] = Field(default=..., title="Imports", description="The imports of a TypeScript module.")
+
+
+class MmdAttribute(ConfiguredBaseModel):
+    "An attribute line of a Mermaid class box."
+    type: str = Field(default=..., title="Type", description="The type of a value, as the target language names it.")
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+
+
+class MmdClass(ConfiguredBaseModel):
+    "One class box of a Mermaid diagram."
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    stereotype: Optional[str] = Field(default=None, title="Stereotype", description="The stereotype of a class box, `root` or `owned`, absent for a plain class.")
+    attributes: list[MmdAttribute] = Field(default=..., title="Attributes", description="The attribute lines of a class box.")
+
+
+class MmdModule(ConfiguredBaseModel):
+    "One Mermaid class diagram, for one module of the schema."
+    classes: list[MmdClass] = Field(default=..., title="Classes", description="The class boxes of a diagram.")
+    links: list[str] = Field(default=..., title="Links", description="The relationship lines of a diagram.")
+    externals: list[str] = Field(default=..., title="Externals", description="The names of the classes a diagram draws as a name only.")
+
+
+class Violation(ConfiguredBaseModel):
+    "A hand-written model or a generated artefact that a guard found out of place."
+    where: str = Field(default=..., title="Where", description="The place of a violation, a file and a line or a path.")
+    what: str = Field(default=..., title="What", description="What is wrong at that place.")
+
+
+class ContainerMarker(ConfiguredBaseModel):
+    "A pytest marker of the container tests, the container it starts and its help text."
+    marker: str = Field(default=..., title="Marker", description="The name of a pytest marker.")
+    container: str = Field(default=..., title="Container", description="The name of a container the testkit starts.")
+    help: str = Field(default=..., title="Help", description="A line of help text.")
 
 
 # Model rebuild
@@ -256,3 +407,22 @@ GenerationManifest.model_rebuild()
 ConstraintCase.model_rebuild()
 SlotShape.model_rebuild()
 ClassShape.model_rebuild()
+CliFlag.model_rebuild()
+GeneratedFile.model_rebuild()
+CheckProblem.model_rebuild()
+PresenceRule.model_rebuild()
+RuleAlternative.model_rebuild()
+UniqueKeyOn.model_rebuild()
+Frame.model_rebuild()
+FramePart.model_rebuild()
+TsField.model_rebuild()
+TsInterface.model_rebuild()
+TsEnumValue.model_rebuild()
+TsEnum.model_rebuild()
+TsImport.model_rebuild()
+TsModule.model_rebuild()
+MmdAttribute.model_rebuild()
+MmdClass.model_rebuild()
+MmdModule.model_rebuild()
+Violation.model_rebuild()
+ContainerMarker.model_rebuild()

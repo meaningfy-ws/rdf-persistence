@@ -11,12 +11,12 @@ from rdf_persistence.generation.cli import build_parser, main
 from rdf_persistence.generation.config import read_targets
 from rdf_persistence.generation.exceptions import ConfigError, SchemaGenerationError, StepError
 from rdf_persistence.generation.generated.rp_generation import (
+    GeneratedFile,
     GenerationManifest,
     GenerationTarget,
     ManifestEntry,
 )
-from rdf_persistence.generation.outputs import GeneratedFile, stage
-from rdf_persistence.generation.pipeline import Run
+from rdf_persistence.generation.pipeline import Run, render_step, stage
 from rdf_persistence.services.schema import load_schema
 
 from .test_freshness import MANIFEST, read_manifest
@@ -183,7 +183,7 @@ def test_a_staged_path_outside_the_staging_folder_is_a_step_error(run: Run, rela
 @pytest.mark.parametrize("name", ["../evil.py", "a/b.py", "..", "", "a\\b.py", "."])
 def test_an_output_name_that_is_not_a_plain_file_name_is_a_step_error(run: Run, name: str) -> None:
     with pytest.raises(StepError, match="file name"):
-        stage(run, Path("pkg"), [GeneratedFile(name, "x")])
+        stage(run, Path("pkg"), [GeneratedFile(name=name, text="x")])
     assert not (run.base / "evil.py").exists(), "a file was written outside the staging folder"
 
 
@@ -196,7 +196,9 @@ def test_a_schema_fault_raised_by_an_extension_is_reported_not_raised(
     def refuse(_path: Path) -> list[GeneratedFile]:
         raise SchemaGenerationError("Thing: this schema asks for the impossible")
 
-    monkeypatch.setattr(steps, "render_modules", refuse)
+    monkeypatch.setattr(
+        steps, "STEPS", (render_step("python", refuse, lambda run: run.python_dir),)
+    )
     assert main(["--project", str(project(tmp_path))]) == 1, "a schema fault did not fail the run"
     assert "asks for the impossible" in capsys.readouterr().err, "the fault was not reported"
 
@@ -208,7 +210,7 @@ def test_a_bug_in_an_extension_is_not_reported_as_a_schema_problem(
     def crash(_path: Path) -> list[GeneratedFile]:
         raise bug
 
-    monkeypatch.setattr(steps, "render_modules", crash)
+    monkeypatch.setattr(steps, "STEPS", (render_step("python", crash, lambda run: run.python_dir),))
     with pytest.raises(type(bug)):
         main(["--project", str(project(tmp_path))])
 

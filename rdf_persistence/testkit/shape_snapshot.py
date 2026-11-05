@@ -9,7 +9,8 @@ from linkml_runtime.utils.schemaview import SchemaView
 from rdf_persistence.generation.generated.rp_generation import ClassShape, SlotShape
 from rdf_persistence.services.schema_structure import generation_view
 
-_FLAGS = ("required", "multivalued", "range")
+_FLAGS = ("required", "multivalued", "range", "alias")
+ANY_URI = "linkml:Any"  # a class for it is typing.Any in code: no class, no shape
 
 
 def class_shapes(schema_paths: Iterable[str | Path]) -> list[ClassShape]:
@@ -23,8 +24,9 @@ def class_shapes(schema_paths: Iterable[str | Path]) -> list[ClassShape]:
     found: dict[str, ClassShape] = {}
     for path in schema_paths:
         view = generation_view(path)
-        for name in view.all_classes():
-            found.setdefault(name, _shape_of(view, name))
+        for name, cls in view.all_classes().items():
+            if cls.class_uri != ANY_URI:
+                found.setdefault(name, _shape_of(view, name))
     return [found[name] for name in sorted(found)]
 
 
@@ -35,6 +37,7 @@ def _shape_of(view: SchemaView, class_name: str) -> ClassShape:
             required=bool(s.required),
             multivalued=bool(s.multivalued),
             range=s.range or view.schema.default_range or "string",
+            alias=s.alias,
         )
         for s in view.class_induced_slots(class_name)
     ]
@@ -43,7 +46,7 @@ def _shape_of(view: SchemaView, class_name: str) -> ClassShape:
 
 def write_snapshot(path: str | Path, shapes: list[ClassShape]) -> None:
     """Write the shapes as YAML rows."""
-    rows = [shape.model_dump() for shape in shapes]
+    rows = [shape.model_dump(exclude_none=True) for shape in shapes]
     Path(path).write_text(yaml.safe_dump(rows, sort_keys=False), encoding="utf-8")
 
 

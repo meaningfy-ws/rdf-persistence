@@ -1,4 +1,8 @@
-"""PD-25: every extension module has a row in generation.adoc#extensions, a golden test and goldens."""
+"""PD-25: every extension module has a row in generation.adoc#extensions and a golden test (PD-27 item 2).
+
+The golden is the committed toy tree, compared by the test, or a golden folder for a schema that is not
+the toy.
+"""
 
 import re
 from pathlib import Path
@@ -11,6 +15,7 @@ PAGE = ROOT / "docs" / "modules" / "ROOT" / "pages" / "architecture" / "generati
 TESTS = Path(__file__).parent
 GOLDENS = ROOT / "tests" / "fixtures" / "library" / "golden"
 EXTENSIONS_PREFIX = "rdf_persistence/generation/extensions/"
+TOY_TREE_CHECK = "assert_matches_toy("
 
 ROW = re.compile(r"^\|`([^`]+)`")
 TEMPLATE_DIR = re.compile(r"`(rdf_persistence/generation/templates/[^`]+)`")
@@ -49,10 +54,18 @@ def test_every_extension_module_has_a_golden_test(module: str) -> None:
 
 
 @pytest.mark.parametrize("module", extension_modules())
-def test_every_extension_module_has_a_golden_folder(module: str) -> None:
+def test_every_extension_module_has_a_golden_folder_or_the_committed_toy_tree(module: str) -> None:
     folder = GOLDENS / module
-    assert folder.is_dir() and any(folder.iterdir()), (
-        f"tests/fixtures/library/golden/{module}/ is missing or empty"
+    compares_toy_tree = TOY_TREE_CHECK in (TESTS / f"test_ext_{module}.py").read_text(
+        encoding="utf-8"
+    )
+    has_folder = folder.is_dir() and any(folder.iterdir())
+    assert has_folder or compares_toy_tree, (
+        f"{module}: no tests/fixtures/library/golden/{module}/ and its test does not call "
+        f"{TOY_TREE_CHECK}"
+    )
+    assert not (has_folder and compares_toy_tree), (
+        f"{module}: the toy has one golden, the committed tree; delete golden/{module}/"
     )
 
 

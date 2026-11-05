@@ -12,7 +12,6 @@ The validators are rendered by the templates ``presence_validator.py.jinja`` and
 ``unique_keys_validator.py.jinja``.
 """
 
-from dataclasses import dataclass
 from typing import ClassVar
 
 from linkml.generators.common.build import ClassResult
@@ -26,12 +25,12 @@ from linkml.generators.pydanticgen.template import (
 from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition, UniqueKey
 from linkml_runtime.utils.formatutils import camelcase, underscore
 from linkml_runtime.utils.schemaview import SchemaView
-from pydantic import BaseModel
 
 from rdf_persistence.generation.exceptions import (
     SchemaGenerationError,
     refusing_unsupported_rules,
 )
+from rdf_persistence.generation.generated.rp_generation import PresenceRule, RuleAlternative
 from rdf_persistence.services.schema_structure import (
     ABSENT,
     ANY_OF,
@@ -47,26 +46,10 @@ from rdf_persistence.services.schema_structure import (
 VALIDATOR_IMPORT = Import(module="pydantic", objects=[ObjectImport(name="model_validator")])
 
 
-@dataclass(frozen=True)
-class PresenceRule:
-    """A class-level rule over alternatives, and when its validator refuses."""
-
-    name: str
-    need: str
-    refused: str
-
-
 RULES = (
-    PresenceRule(EXACTLY_ONE_OF, "exactly one", "len(held) != 1"),
-    PresenceRule(ANY_OF, "at least one", "not held"),
+    PresenceRule(name=EXACTLY_ONE_OF, need="exactly one", refused="len(held) != 1"),
+    PresenceRule(name=ANY_OF, need="at least one", refused="not held"),
 )
-
-
-class Alternative(BaseModel):
-    """One alternative of a rule: its readable label and the Python expression that tells it holds."""
-
-    label: str
-    holds: str
 
 
 class PresenceValidator(PydanticTemplateModel):
@@ -79,7 +62,7 @@ class PresenceValidator(PydanticTemplateModel):
     rule: str
     need: str
     refused: str
-    alternatives: list[Alternative]
+    alternatives: list[RuleAlternative]
     labels: str
 
 
@@ -114,7 +97,7 @@ def _attribute(rule: str, name: str, cls: ClassDefinition, attributes: set[str])
 
 def _alternative(
     rule: str, presences: Presences, attributes: set[str], cls: ClassDefinition
-) -> Alternative:
+) -> RuleAlternative:
     labels, tests = [], []
     for slot, state in presences:
         present = state != ABSENT
@@ -122,7 +105,7 @@ def _alternative(
         tests.append(
             f"self.{_attribute(rule, slot, cls, attributes)} {'not in' if present else 'in'} (None, [])"
         )
-    return Alternative(label=" and ".join(labels), holds=" and ".join(tests))
+    return RuleAlternative(label=" and ".join(labels), holds=" and ".join(tests))
 
 
 def _presence_validators(

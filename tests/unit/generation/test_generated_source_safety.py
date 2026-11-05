@@ -10,7 +10,7 @@ from types import ModuleType
 import pytest
 from pydantic import ValidationError
 
-from rdf_persistence.generation.extensions.pydantic_split import render_modules
+from rdf_persistence.generation.extensions.pydantic_split import render as render_modules
 
 PACKAGE = "rp_hostile_generated"
 TITLE = "Say \"hi\" \\ {x} 'q'"

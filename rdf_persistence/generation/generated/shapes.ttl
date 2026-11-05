@@ -3,49 +3,190 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
+rp:CheckProblem a sh:NodeShape ;
+	rdfs:comment "One problem a check, a pipeline step or the freshness comparison found, with where and by which rule. Only the command line formats it for the developer." ;
+	rdfs:label "Check problem" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n46 ;
+	sh:property _:c14n36 , _:c14n61 , _:c14n63 , _:c14n79 , _:c14n91 ;
+	sh:targetClass rp:CheckProblem .
 rp:ClassShape a sh:NodeShape ;
 	rdfs:comment "The reviewed shape of one class, its name and the shape of each of its slots." ;
 	rdfs:label "Class shape" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n19 ;
-	sh:property _:c14n13 , _:c14n20 ;
+	sh:ignoredProperties _:c14n54 ;
+	sh:property _:c14n41 , _:c14n56 ;
 	sh:targetClass rp:ClassShape .
+rp:CliFlag a sh:NodeShape ;
+	rdfs:comment "A command-line flag of `rp-generate` and the GenerationTarget field it overrides." ;
+	rdfs:label "Command-line flag" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n104 ;
+	sh:property _:c14n33 , _:c14n66 ;
+	sh:targetClass rp:CliFlag .
 rp:ConstraintCase a sh:NodeShape ;
 	rdfs:comment "One row of the conformance table: a constraint kind, a class that declares it, and the instance files the generated class and shape must accept and refuse." ;
 	rdfs:label "Constraint case" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n26 ;
-	sh:property _:c14n10 , _:c14n17 , _:c14n3 , _:c14n36 ;
+	sh:ignoredProperties _:c14n82 ;
+	sh:property _:c14n10 , _:c14n111 , _:c14n31 , _:c14n51 ;
 	sh:targetClass rp:ConstraintCase .
+rp:ContainerMarker a sh:NodeShape ;
+	rdfs:comment "A pytest marker of the container tests, the container it starts and its help text." ;
+	rdfs:label "Container marker" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n109 ;
+	sh:property _:c14n12 , _:c14n6 , _:c14n9 ;
+	sh:targetClass rp:ContainerMarker .
+rp:Frame a sh:NodeShape ;
+	rdfs:comment "A JSON-LD frame, the types it selects, its references and the frames of its owned parts." ;
+	rdfs:label "Frame" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n14 ;
+	sh:property _:c14n27 , _:c14n68 , _:c14n75 ;
+	sh:targetClass rp:Frame .
+rp:FramePart a sh:NodeShape ;
+	rdfs:comment "The frame of the parts nested in one owned slot of a frame." ;
+	rdfs:label "Frame part" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n105 ;
+	sh:property _:c14n45 , _:c14n92 ;
+	sh:targetClass rp:FramePart .
+rp:GeneratedFile a sh:NodeShape ;
+	rdfs:comment "One file a generator renders, its name inside the target folder and its text." ;
+	rdfs:label "Generated file" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n34 ;
+	sh:property _:c14n3 , _:c14n83 ;
+	sh:targetClass rp:GeneratedFile .
 rp:GenerationManifest a sh:NodeShape ;
 	rdfs:comment "What one generation run read and wrote: the installed `linkml` version, the files it read and the files it wrote. Written as `rp-manifest.json` in the target's Python folder." ;
 	rdfs:label "Generation manifest" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n25 ;
-	sh:property _:c14n12 , _:c14n15 , _:c14n16 ;
+	sh:ignoredProperties _:c14n81 ;
+	sh:property _:c14n39 , _:c14n44 , _:c14n47 ;
 	sh:targetClass rp:GenerationManifest .
 rp:GenerationTarget a sh:NodeShape ;
 	rdfs:comment "One entry of the `[tool.rp-generate]` table of a `pyproject.toml`: a schema and the folders its generated artefacts are written to. Paths are relative to the folder of the `pyproject.toml`." ;
 	rdfs:label "Generation target" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n11 ;
-	sh:property _:c14n1 , _:c14n14 , _:c14n33 , _:c14n34 , _:c14n9 ;
+	sh:ignoredProperties _:c14n38 ;
+	sh:property _:c14n103 , _:c14n107 , _:c14n26 , _:c14n42 , _:c14n5 ;
 	sh:targetClass rp:GenerationTarget .
 rp:ManifestEntry a sh:NodeShape ;
 	rdfs:comment "A file and the SHA-256 of its bytes, as recorded by a generation run." ;
 	rdfs:label "Manifest entry" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n31 ;
-	sh:property _:c14n0 , _:c14n21 ;
+	sh:ignoredProperties _:c14n101 ;
+	sh:property _:c14n1 , _:c14n57 ;
 	sh:targetClass rp:ManifestEntry .
+rp:MmdAttribute a sh:NodeShape ;
+	rdfs:comment "An attribute line of a Mermaid class box." ;
+	rdfs:label "Mermaid attribute" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n16 ;
+	sh:property _:c14n73 , _:c14n90 ;
+	sh:targetClass rp:MmdAttribute .
+rp:MmdClass a sh:NodeShape ;
+	rdfs:comment "One class box of a Mermaid diagram." ;
+	rdfs:label "Mermaid class" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n58 ;
+	sh:property _:c14n37 , _:c14n70 , _:c14n94 ;
+	sh:targetClass rp:MmdClass .
+rp:MmdModule a sh:NodeShape ;
+	rdfs:comment "One Mermaid class diagram, for one module of the schema." ;
+	rdfs:label "Mermaid module" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n15 ;
+	sh:property _:c14n11 , _:c14n80 , _:c14n96 ;
+	sh:targetClass rp:MmdModule .
+rp:PresenceRule a sh:NodeShape ;
+	rdfs:comment "A class-level rule over alternatives, and when its validator refuses." ;
+	rdfs:label "Presence rule" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n88 ;
+	sh:property _:c14n110 , _:c14n52 , _:c14n85 ;
+	sh:targetClass rp:PresenceRule .
+rp:RuleAlternative a sh:NodeShape ;
+	rdfs:comment "One alternative of a rule, its readable label and the Python expression that tells it holds." ;
+	rdfs:label "Rule alternative" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n89 ;
+	sh:property _:c14n22 , _:c14n93 ;
+	sh:targetClass rp:RuleAlternative .
 rp:SlotShape a sh:NodeShape ;
 	rdfs:comment "The shape of one slot of a class, as the schema induces it." ;
 	rdfs:label "Slot shape" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n22 ;
-	sh:property _:c14n2 , _:c14n24 , _:c14n28 , _:c14n4 ;
+	sh:ignoredProperties _:c14n60 ;
+	sh:property _:c14n50 , _:c14n77 , _:c14n8 , _:c14n84 , _:c14n97 ;
 	sh:targetClass rp:SlotShape .
+rp:TsEnum a sh:NodeShape ;
+	rdfs:comment "A union of string literals that stands for an enum of the schema." ;
+	rdfs:label "TypeScript enum" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n23 ;
+	sh:property _:c14n32 , _:c14n95 , _:c14n99 ;
+	sh:targetClass rp:TsEnum .
+rp:TsEnumValue a sh:NodeShape ;
+	rdfs:comment "A string literal of a TypeScript union type." ;
+	rdfs:label "TypeScript enum value" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n4 ;
+	sh:property _:c14n48 , _:c14n62 ;
+	sh:targetClass rp:TsEnumValue .
+rp:TsField a sh:NodeShape ;
+	rdfs:comment "A field of a TypeScript interface." ;
+	rdfs:label "TypeScript field" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n76 ;
+	sh:property _:c14n21 , _:c14n28 , _:c14n29 , _:c14n65 ;
+	sh:targetClass rp:TsField .
+rp:TsImport a sh:NodeShape ;
+	rdfs:comment "The names a TypeScript module imports from another module." ;
+	rdfs:label "TypeScript import" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n24 ;
+	sh:property _:c14n2 , _:c14n64 ;
+	sh:targetClass rp:TsImport .
+rp:TsInterface a sh:NodeShape ;
+	rdfs:comment "A TypeScript interface and its fields." ;
+	rdfs:label "TypeScript interface" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n59 ;
+	sh:property _:c14n35 , _:c14n71 , _:c14n72 ;
+	sh:targetClass rp:TsInterface .
+rp:TsModule a sh:NodeShape ;
+	rdfs:comment "One TypeScript file, for one module of the schema." ;
+	rdfs:label "TypeScript module" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n25 ;
+	sh:property _:c14n43 , _:c14n55 , _:c14n69 , _:c14n78 ;
+	sh:targetClass rp:TsModule .
+rp:UniqueKeyOn a sh:NodeShape ;
+	rdfs:comment "A unique key that a class's multivalued slot is subject to, with the IRIs the constraint query needs." ;
+	rdfs:label "Unique key on a slot" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n7 ;
+	sh:property _:c14n0 , _:c14n18 , _:c14n40 , _:c14n67 , _:c14n86 ;
+	sh:targetClass rp:UniqueKeyOn .
+rp:Violation a sh:NodeShape ;
+	rdfs:comment "A hand-written model or a generated artefact that a guard found out of place." ;
+	rdfs:label "Violation" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n30 ;
+	sh:property _:c14n106 , _:c14n49 ;
+	sh:targetClass rp:Violation .
 _:c14n0 sh:datatype xsd:string ;
+	sh:description "The name of a unique key." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Key name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:keyName .
+_:c14n1 sh:datatype xsd:string ;
 	sh:description "A file path, POSIX, relative to the folder of the `pyproject.toml`." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -54,130 +195,19 @@ _:c14n0 sh:datatype xsd:string ;
 	sh:order 0 ;
 	sh:path rp:path ;
 	sh:pattern "^(?:^(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+)(?:/(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+))*$)(?![\\s\\S])" .
-_:c14n1 sh:datatype xsd:string ;
-	sh:description "The folder that receives one Mermaid file per module; none are written when absent." ;
-	sh:maxCount 1 ;
-	sh:name "Diagrams folder" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 4 ;
-	sh:path rp:diagramsFolder ;
-	sh:pattern "^(?:^(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+)(?:/(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+))*$)(?![\\s\\S])" .
 _:c14n10 sh:datatype xsd:string ;
-	sh:description "Paths of instance files, beside the cases file, that the class and the shape must accept." ;
-	sh:name "Valid instances" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 2 ;
-	sh:path rp:validInstances .
-_:c14n11 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
-_:c14n12 sh:description "The files a generation run read, sorted by path." ;
-	sh:name "Inputs" ;
-	sh:nodeKind sh:BlankNodeOrIRI ;
-	sh:order 1 ;
-	sh:path rp:manifestInputs .
-_:c14n13 sh:datatype xsd:string ;
-	sh:description "The name of a class of the schema." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Class name" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 0 ;
-	sh:path rp:className .
-_:c14n14 sh:datatype xsd:string ;
-	sh:description "The folder that receives the TypeScript types; none are written when absent." ;
-	sh:maxCount 1 ;
-	sh:name "TypeScript folder" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 3 ;
-	sh:path rp:typescriptFolder ;
-	sh:pattern "^(?:^(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+)(?:/(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+))*$)(?![\\s\\S])" .
-_:c14n15 sh:datatype xsd:string ;
-	sh:description "The version of the `linkml` package that ran the generation." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "LinkML version" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 0 ;
-	sh:path rp:linkmlVersion .
-_:c14n16 sh:description "The files a generation run wrote, sorted by path; not the manifest itself." ;
-	sh:name "Outputs" ;
-	sh:nodeKind sh:BlankNodeOrIRI ;
-	sh:order 2 ;
-	sh:path rp:manifestOutputs .
-_:c14n17 sh:description "The kind of constraint a case exercises." ;
-	sh:in _:c14n32 ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Constraint kind" ;
-	sh:order 0 ;
-	sh:path rp:constraintKind .
-_:c14n18 rdf:first rp:ConstraintKindUniqueKeys ;
-	rdf:rest rdf:nil .
-_:c14n19 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
-_:c14n2 sh:datatype xsd:boolean ;
-	sh:description "Whether a value is required." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Required" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 1 ;
-	sh:path rp:required .
-_:c14n20 sh:description "The shapes of a class's slots, in schema order." ;
-	sh:name "Slots" ;
-	sh:nodeKind sh:BlankNodeOrIRI ;
-	sh:order 1 ;
-	sh:path rp:slotShapes .
-_:c14n21 sh:datatype xsd:string ;
-	sh:description "The SHA-256 of a file's bytes, in lowercase hexadecimal." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "SHA-256" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 1 ;
-	sh:path rp:sha256 ;
-	sh:pattern "^(?:^[0-9a-f]{64}$)(?![\\s\\S])" .
-_:c14n22 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
-_:c14n23 rdf:first rp:ConstraintKindPattern ;
-	rdf:rest _:c14n7 .
-_:c14n24 sh:datatype xsd:boolean ;
-	sh:description "Whether the slot takes several values." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Multivalued" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 2 ;
-	sh:path rp:multivalued .
-_:c14n25 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
-_:c14n26 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
-_:c14n27 rdf:first rp:ConstraintKindClosed ;
-	rdf:rest _:c14n29 .
-_:c14n28 sh:datatype xsd:string ;
-	sh:description "The name of the type, enum or class the slot's values belong to." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Range" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 3 ;
-	sh:path rp:range .
-_:c14n29 rdf:first rp:ConstraintKindExactlyOneOf ;
-	rdf:rest _:c14n35 .
-_:c14n3 sh:datatype xsd:string ;
 	sh:description "Paths of instance files, beside the cases file, that the class and the shape must refuse." ;
 	sh:name "Invalid instances" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path rp:invalidInstances .
-_:c14n30 rdf:first rp:ConstraintKindRangeEnum ;
-	rdf:rest _:c14n23 .
-_:c14n31 rdf:first rdf:type ;
+_:c14n100 rdf:first rp:ConstraintKindRangeEnum ;
+	rdf:rest _:c14n74 .
+_:c14n101 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n32 rdf:first rp:ConstraintKindRequired ;
-	rdf:rest _:c14n5 .
-_:c14n33 sh:datatype xsd:string ;
+_:c14n102 rdf:first rp:ConstraintKindRequired ;
+	rdf:rest _:c14n13 .
+_:c14n103 sh:datatype xsd:string ;
 	sh:description "The root LinkML schema file; the TOML key and the flag are `schema`, which the field name avoids because it would shadow a pydantic method." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -186,7 +216,19 @@ _:c14n33 sh:datatype xsd:string ;
 	sh:order 0 ;
 	sh:path rp:schemaFile ;
 	sh:pattern "^(?:^(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+)(?:/(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+))*$)(?![\\s\\S])" .
-_:c14n34 sh:datatype xsd:string ;
+_:c14n104 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n105 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n106 sh:datatype xsd:string ;
+	sh:description "The place of a violation, a file and a line or a path." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Where" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:where .
+_:c14n107 sh:datatype xsd:string ;
 	sh:description "The Python import path of the generated package, a dotted identifier." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -195,9 +237,25 @@ _:c14n34 sh:datatype xsd:string ;
 	sh:order 1 ;
 	sh:path rp:package ;
 	sh:pattern "^(?:^[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$)(?![\\s\\S])" .
-_:c14n35 rdf:first rp:ConstraintKindAnyOf ;
-	rdf:rest _:c14n18 .
-_:c14n36 sh:datatype xsd:string ;
+_:c14n108 rdf:first rp:ConstraintKindAnyOf ;
+	rdf:rest _:c14n53 .
+_:c14n109 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n11 sh:description "The class boxes of a diagram." ;
+	sh:minCount 1 ;
+	sh:name "Classes" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 0 ;
+	sh:path rp:mmdClasses .
+_:c14n110 sh:datatype xsd:string ;
+	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:slotName .
+_:c14n111 sh:datatype xsd:string ;
 	sh:description "The name of a class of the schema." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -205,23 +263,66 @@ _:c14n36 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:className .
-_:c14n4 sh:datatype xsd:string ;
-	sh:description "The name of a slot." ;
+_:c14n12 sh:datatype xsd:string ;
+	sh:description "The name of a container the testkit starts." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
-	sh:name "Name" ;
+	sh:name "Container" ;
 	sh:nodeKind sh:Literal ;
-	sh:order 0 ;
-	sh:path rp:slotName .
-_:c14n5 rdf:first rp:ConstraintKindCardinality ;
-	rdf:rest _:c14n8 .
-_:c14n6 rdf:first rp:ConstraintKindIdentifier ;
-	rdf:rest _:c14n27 .
-_:c14n7 rdf:first rp:ConstraintKindValueBounds ;
-	rdf:rest _:c14n6 .
-_:c14n8 rdf:first rp:ConstraintKindRangeType ;
-	rdf:rest _:c14n30 .
-_:c14n9 sh:datatype xsd:string ;
+	sh:order 1 ;
+	sh:path rp:container .
+_:c14n13 rdf:first rp:ConstraintKindCardinality ;
+	rdf:rest _:c14n20 .
+_:c14n14 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n15 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n16 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n17 rdf:first rp:ConstraintKindIdentifier ;
+	rdf:rest _:c14n87 .
+_:c14n18 sh:datatype xsd:string ;
+	sh:description "The expanded IRI of a slot." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Slot IRI" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:slotIri .
+_:c14n19 rdf:first rp:ConstraintKindValueBounds ;
+	rdf:rest _:c14n17 .
+_:c14n2 sh:datatype xsd:string ;
+	sh:description "The names imported from a module." ;
+	sh:minCount 1 ;
+	sh:name "Names" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:importedNames .
+_:c14n20 rdf:first rp:ConstraintKindRangeType ;
+	rdf:rest _:c14n100 .
+_:c14n21 sh:datatype xsd:string ;
+	sh:description "A one-line doc comment, empty when there is none." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Doc" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:doc .
+_:c14n22 sh:datatype xsd:string ;
+	sh:description "The Python expression that tells an alternative holds." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Holds" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:holds .
+_:c14n23 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n24 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n25 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n26 sh:datatype xsd:string ;
 	sh:description "The folder that receives the classes, shapes, context, frames and the schema copy; the folder of `package` when absent." ;
 	sh:maxCount 1 ;
 	sh:name "Python folder" ;
@@ -229,3 +330,492 @@ _:c14n9 sh:datatype xsd:string ;
 	sh:order 2 ;
 	sh:path rp:pythonFolder ;
 	sh:pattern "^(?:^(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+)(?:/(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+))*$)(?![\\s\\S])" .
+_:c14n27 sh:datatype xsd:string ;
+	sh:description "The slots of a frame that hold references, left as IRIs." ;
+	sh:minCount 1 ;
+	sh:name "References" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:frameReferences .
+_:c14n28 sh:datatype xsd:string ;
+	sh:description "The type of a value, as the target language names it." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Type" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:typeName .
+_:c14n29 sh:datatype xsd:boolean ;
+	sh:description "Whether a field may be left out." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Optional" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:optional .
+_:c14n3 sh:datatype xsd:string ;
+	sh:description "The text of a file." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Text" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:text .
+_:c14n30 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n31 sh:datatype xsd:string ;
+	sh:description "Paths of instance files, beside the cases file, that the class and the shape must accept." ;
+	sh:name "Valid instances" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:validInstances .
+_:c14n32 sh:datatype xsd:string ;
+	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:slotName .
+_:c14n33 sh:datatype xsd:string ;
+	sh:description "The name of the GenerationTarget field the option overrides." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Field" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:targetField .
+_:c14n34 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n35 sh:datatype xsd:string ;
+	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:slotName .
+_:c14n36 sh:datatype xsd:string ;
+	sh:description "The name of the pipeline step that found a problem." ;
+	sh:maxCount 1 ;
+	sh:name "Step" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:step .
+_:c14n37 sh:description "The attribute lines of a class box." ;
+	sh:minCount 1 ;
+	sh:name "Attributes" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 2 ;
+	sh:path rp:mmdAttributes .
+_:c14n38 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n39 sh:description "The files a generation run read, sorted by path." ;
+	sh:name "Inputs" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 1 ;
+	sh:path rp:manifestInputs .
+_:c14n4 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n40 sh:datatype xsd:string ;
+	sh:description "A description in words." ;
+	sh:maxCount 1 ;
+	sh:name "Description" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:descriptionText .
+_:c14n41 sh:datatype xsd:string ;
+	sh:description "The name of a class of the schema." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Class name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:className .
+_:c14n42 sh:datatype xsd:string ;
+	sh:description "The folder that receives the TypeScript types; none are written when absent." ;
+	sh:maxCount 1 ;
+	sh:name "TypeScript folder" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:typescriptFolder ;
+	sh:pattern "^(?:^(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+)(?:/(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+))*$)(?![\\s\\S])" .
+_:c14n43 sh:datatype xsd:string ;
+	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:slotName .
+_:c14n44 sh:datatype xsd:string ;
+	sh:description "The version of the `linkml` package that ran the generation." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "LinkML version" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:linkmlVersion .
+_:c14n45 sh:datatype xsd:string ;
+	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:slotName .
+_:c14n46 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n47 sh:description "The files a generation run wrote, sorted by path; not the manifest itself." ;
+	sh:name "Outputs" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 2 ;
+	sh:path rp:manifestOutputs .
+_:c14n48 sh:datatype xsd:string ;
+	sh:description "A one-line doc comment, empty when there is none." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Doc" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:doc .
+_:c14n49 sh:datatype xsd:string ;
+	sh:description "What is wrong at that place." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "What" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:what .
+_:c14n5 sh:datatype xsd:string ;
+	sh:description "The folder that receives one Mermaid file per module; none are written when absent." ;
+	sh:maxCount 1 ;
+	sh:name "Diagrams folder" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:diagramsFolder ;
+	sh:pattern "^(?:^(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+)(?:/(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+))*$)(?![\\s\\S])" .
+_:c14n50 sh:datatype xsd:string ;
+	sh:description "The name the slot's field carries in code and JSON when it differs from the slot's name; absent otherwise." ;
+	sh:maxCount 1 ;
+	sh:name "Alias" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:alias .
+_:c14n51 sh:description "The kind of constraint a case exercises." ;
+	sh:in _:c14n102 ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Constraint kind" ;
+	sh:order 0 ;
+	sh:path rp:constraintKind .
+_:c14n52 sh:datatype xsd:string ;
+	sh:description "The Python condition under which a rule's validator refuses." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Refused" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:refused .
+_:c14n53 rdf:first rp:ConstraintKindUniqueKeys ;
+	rdf:rest rdf:nil .
+_:c14n54 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n55 sh:description "The imports of a TypeScript module." ;
+	sh:minCount 1 ;
+	sh:name "Imports" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 3 ;
+	sh:path rp:tsImports .
+_:c14n56 sh:description "The shapes of a class's slots, in schema order." ;
+	sh:name "Slots" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 1 ;
+	sh:path rp:slotShapes .
+_:c14n57 sh:datatype xsd:string ;
+	sh:description "The SHA-256 of a file's bytes, in lowercase hexadecimal." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "SHA-256" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:sha256 ;
+	sh:pattern "^(?:^[0-9a-f]{64}$)(?![\\s\\S])" .
+_:c14n58 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n59 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n6 sh:datatype xsd:string ;
+	sh:description "The name of a pytest marker." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Marker" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:marker .
+_:c14n60 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n61 sh:datatype xsd:string ;
+	sh:description "The element of the schema, or the file, a problem is about." ;
+	sh:maxCount 1 ;
+	sh:name "Element" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:element .
+_:c14n62 sh:datatype xsd:string ;
+	sh:description "A string literal, quoted." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Literal" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:literal .
+_:c14n63 sh:datatype xsd:string ;
+	sh:description "What is wrong, in a line." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Message" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:message .
+_:c14n64 sh:datatype xsd:string ;
+	sh:description "The name of a schema module." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Module" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:moduleName .
+_:c14n65 sh:datatype xsd:string ;
+	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:slotName .
+_:c14n66 sh:datatype xsd:string ;
+	sh:description "The command-line option, with its leading dashes." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Option" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:option .
+_:c14n67 sh:datatype xsd:string ;
+	sh:description "The expanded IRIs of the slots that make up a unique key." ;
+	sh:minCount 1 ;
+	sh:name "Key IRIs" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:keyIris .
+_:c14n68 sh:description "The frames of the owned parts nested in a frame, one per owned slot." ;
+	sh:minCount 1 ;
+	sh:name "Parts" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 2 ;
+	sh:path rp:frameParts .
+_:c14n69 sh:description "The interfaces a TypeScript module declares." ;
+	sh:minCount 1 ;
+	sh:name "Interfaces" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 2 ;
+	sh:path rp:tsInterfaces .
+_:c14n7 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n70 sh:datatype xsd:string ;
+	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:slotName .
+_:c14n71 sh:description "The fields of an interface." ;
+	sh:minCount 1 ;
+	sh:name "Fields" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 2 ;
+	sh:path rp:tsFields .
+_:c14n72 sh:datatype xsd:string ;
+	sh:description "A one-line doc comment, empty when there is none." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Doc" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:doc .
+_:c14n73 sh:datatype xsd:string ;
+	sh:description "The type of a value, as the target language names it." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Type" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:typeName .
+_:c14n74 rdf:first rp:ConstraintKindPattern ;
+	rdf:rest _:c14n19 .
+_:c14n75 sh:datatype xsd:string ;
+	sh:description "The context terms of the types a frame selects." ;
+	sh:minCount 1 ;
+	sh:name "Type terms" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:typeTerms .
+_:c14n76 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n77 sh:datatype xsd:boolean ;
+	sh:description "Whether the slot takes several values." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Multivalued" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:multivalued .
+_:c14n78 sh:description "The enums a TypeScript module declares." ;
+	sh:minCount 1 ;
+	sh:name "Enums" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 1 ;
+	sh:path rp:tsEnums .
+_:c14n79 sh:datatype xsd:string ;
+	sh:description "The root LinkML schema file; the TOML key and the flag are `schema`, which the field name avoids because it would shadow a pydantic method." ;
+	sh:maxCount 1 ;
+	sh:name "Schema file" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:schemaFile ;
+	sh:pattern "^(?:^(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+)(?:/(?:[^/:\\\\.][^/:\\\\]*|\\.[^/:\\\\.][^/:\\\\]*|\\.\\.[^/:\\\\]+))*$)(?![\\s\\S])" .
+_:c14n8 sh:datatype xsd:boolean ;
+	sh:description "Whether a value is required." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Required" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:required .
+_:c14n80 sh:datatype xsd:string ;
+	sh:description "The names of the classes a diagram draws as a name only." ;
+	sh:minCount 1 ;
+	sh:name "Externals" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:mmdExternals .
+_:c14n81 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n82 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n83 sh:datatype xsd:string ;
+	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:slotName .
+_:c14n84 sh:datatype xsd:string ;
+	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:slotName .
+_:c14n85 sh:datatype xsd:string ;
+	sh:description "What a rule needs of its alternatives, in words." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Need" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:need .
+_:c14n86 sh:datatype xsd:string ;
+	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:slotName .
+_:c14n87 rdf:first rp:ConstraintKindClosed ;
+	rdf:rest _:c14n98 .
+_:c14n88 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n89 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n9 sh:datatype xsd:string ;
+	sh:description "A line of help text." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Help" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:help .
+_:c14n90 sh:datatype xsd:string ;
+	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:slotName .
+_:c14n91 sh:datatype xsd:string ;
+	sh:description "The id of the rule a problem breaks, a `HardRule` or `BoundaryRule` value or a lint rule name." ;
+	sh:maxCount 1 ;
+	sh:name "Rule" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:rule .
+_:c14n92 sh:description "The frame of the parts held by a slot." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Frame" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 1 ;
+	sh:path rp:partFrame .
+_:c14n93 sh:datatype xsd:string ;
+	sh:description "A readable label." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Label" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:label .
+_:c14n94 sh:datatype xsd:string ;
+	sh:description "The stereotype of a class box, `root` or `owned`, absent for a plain class." ;
+	sh:maxCount 1 ;
+	sh:name "Stereotype" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:stereotype .
+_:c14n95 sh:datatype xsd:string ;
+	sh:description "A one-line doc comment, empty when there is none." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Doc" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:doc .
+_:c14n96 sh:datatype xsd:string ;
+	sh:description "The relationship lines of a diagram." ;
+	sh:minCount 1 ;
+	sh:name "Links" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:mmdLinks .
+_:c14n97 sh:datatype xsd:string ;
+	sh:description "The name of the type, enum or class the slot's values belong to." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Range" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:range .
+_:c14n98 rdf:first rp:ConstraintKindExactlyOneOf ;
+	rdf:rest _:c14n108 .
+_:c14n99 sh:description "The values of a union type." ;
+	sh:minCount 1 ;
+	sh:name "Values" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 2 ;
+	sh:path rp:tsValues .

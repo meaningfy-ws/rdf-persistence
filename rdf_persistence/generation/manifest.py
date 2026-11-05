@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from rdf_persistence.generation.config import python_folder
 from rdf_persistence.generation.generated.rp_generation import (
+    CheckProblem,
     GenerationManifest,
     GenerationTarget,
     ManifestEntry,
@@ -104,7 +105,7 @@ def read_manifest(target: GenerationTarget, base: Path) -> GenerationManifest | 
         return None
 
 
-def unreadable_manifest(target: GenerationTarget, base: Path) -> str | None:
+def unreadable_manifest(target: GenerationTarget, base: Path) -> CheckProblem | None:
     """Why the manifest of ``target``'s previous run cannot be trusted; ``None`` when absent or valid."""
     path = manifest_path(target, base)
     if not path.is_file():
@@ -112,49 +113,59 @@ def unreadable_manifest(target: GenerationTarget, base: Path) -> str | None:
     try:
         GenerationManifest.model_validate_json(path.read_text(encoding="utf-8"))
     except OSError as error:
-        return f"{recorded_path(path, base)}: cannot be read ({error}); fix it or delete it"
+        return CheckProblem(
+            element=recorded_path(path, base),
+            message=f"cannot be read ({error}); fix it or delete it",
+        )
     except ValidationError as error:
         fields = sorted({".".join(str(part) for part in e["loc"]) for e in error.errors()})
-        return f"{recorded_path(path, base)}: invalid {', '.join(fields)}; delete it and run again"
+        return CheckProblem(
+            element=recorded_path(path, base),
+            message=f"invalid {', '.join(fields)}; delete it and run again",
+        )
     return None
 
 
 def _input_problems(
     target: GenerationTarget, base: Path, recorded: GenerationManifest
-) -> Iterator[str]:
+) -> Iterator[CheckProblem]:
     try:
         now = {e.path: e.sha256 for e in current_inputs(target, base)}
     except LOAD_ERRORS as error:
-        yield f"stale input: {target.schema_file} cannot be read: {error}"
+        yield CheckProblem(message=f"stale input: {target.schema_file} cannot be read: {error}")
         return
     before = {e.path: e.sha256 for e in recorded.inputs or []}
     for path in sorted(before.keys() | now.keys()):
         if before.get(path) != now.get(path):
             state = "removed" if path not in now else "new" if path not in before else "changed"
-            yield f"stale input: {path} ({state})"
+            yield CheckProblem(message=f"stale input: {path} ({state})")
 
 
-def _output_problems(base: Path, recorded: GenerationManifest) -> Iterator[str]:
+def _output_problems(base: Path, recorded: GenerationManifest) -> Iterator[CheckProblem]:
     for entry in recorded.outputs or []:
         file = base / entry.path
         if not file.is_file():
-            yield f"missing output: {entry.path}"
+            yield CheckProblem(message=f"missing output: {entry.path}")
         elif sha256_of(file) != entry.sha256:
-            yield f"edited by hand: {entry.path}"
+            yield CheckProblem(message=f"edited by hand: {entry.path}")
 
 
-def _target_problems(target: GenerationTarget, base: Path) -> Iterator[str]:
+def _target_problems(target: GenerationTarget, base: Path) -> Iterator[CheckProblem]:
     recorded = read_manifest(target, base)
     if recorded is None:
-        yield f"no readable manifest: {recorded_path(manifest_path(target, base), base)}"
+        yield CheckProblem(
+            message=f"no readable manifest: {recorded_path(manifest_path(target, base), base)}"
+        )
         return
     installed = linkml_version()
     if installed is not None and installed != recorded.linkml:
-        yield f"stale: generated with linkml {recorded.linkml}, installed is {installed}"
+        yield CheckProblem(
+            message=f"stale: generated with linkml {recorded.linkml}, installed is {installed}"
+        )
     yield from _input_problems(target, base, recorded)
     yield from _output_problems(base, recorded)
 
 
-def freshness_problems(targets: Iterable[GenerationTarget], base: Path) -> list[str]:
+def freshness_problems(targets: Iterable[GenerationTarget], base: Path) -> list[CheckProblem]:
     """Compare every target's manifest with the files now; one line per stale, edited or missing file."""
     return [problem for target in targets for problem in _target_problems(target, base)]

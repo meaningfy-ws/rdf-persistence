@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence.generation.cli import build_parser
-from rdf_persistence.generation.config import FLAGS, read_targets
+from rdf_persistence.generation.config import cli_flags, read_targets
 from rdf_persistence.generation.exceptions import ConfigError
 from rdf_persistence.generation.generated.rp_generation import GenerationTarget
 
@@ -63,7 +63,7 @@ def test_flags_alone_make_a_target_when_there_is_no_table(tmp_path: Path) -> Non
     )
 
 
-@pytest.mark.parametrize("flag", [flag.option for flag in FLAGS])
+@pytest.mark.parametrize("flag", [flag.option for flag in cli_flags()])
 def test_a_flag_with_several_entries_is_an_error_naming_it(tmp_path: Path, flag: str) -> None:
     with pytest.raises(ConfigError, match=flag):
         read(tmp_path, SEVERAL, flag, "x")

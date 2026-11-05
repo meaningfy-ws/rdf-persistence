@@ -154,8 +154,11 @@ lines in `rp-generate` over `SchemaView`. It fails generation when:
 
 Each gap in a stock LinkML generator is closed by an extension in `rdf_persistence/generation/`: a
 subclass or a template, never a patch to generated output. Each extension has a row here and a
-golden test on the toy schema; a test fails if an extension module has neither. Modules not yet
-written are listed at their planned paths.
+golden test; a test fails if an extension module has neither. For the toy schema the golden is the
+committed generated tree itself (a test renders afresh and compares: Turtle by meaning, everything
+else by exact text, the file set exactly), so `make generate` is what refreshes it. A schema that is
+not the toy keeps a golden folder, rewritten by `make refresh-golden`. Each extension exposes one
+`render(schema_path)` that returns the files it makes; `steps.py` composes the steps from them.
 
 [cols="3,2,2,4,2,1",options="header"]
 |===
@@ -181,7 +184,7 @@ are exempt from the hard check. They are schemas, not extensions, so they have n
 |===
 |Schema |Classes |Generated into
 |`rdf_persistence/model/service/rp_service.yaml` |`ServiceSettings` (the settings of `install_service`), `VerifiedCaller` (what the token verifier returns), and the toolkit's request and response bodies: `TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`, `Problem` |`rdf_persistence/domain/generated/service/`
-|`rdf_persistence/generation/model/rp_generation.yaml` |`GenerationManifest`, `ConstraintCase`, `ClassShape` (see <<guarding>>) |`rdf_persistence/generation/generated/`
+|`rdf_persistence/generation/model/rp_generation.yaml` |The data of the toolchain and the testkit: `GenerationTarget`, `GenerationManifest`, `ConstraintCase`, `ClassShape` (see <<guarding>>); `GeneratedFile`, `CheckProblem`, `CliFlag`, the rule, frame, TypeScript and Mermaid view-models, `ContainerMarker` and the guard's `Violation` |`rdf_persistence/generation/generated/`
 |===
 
 *Placement is declared, not guessed*: the application's `pyproject.toml` gets a
@@ -195,7 +198,7 @@ page delivers the source as HTML, and a raw `+<<stereotype>>+` breaks it.
 
 *Extending the generators* means subclassing LinkML internals (`serialize`, the ignored-properties
 method), which can change in a minor release. The pin on `linkml` and the checks of <<guarding>>
-guard this; each extension gets a golden test on the toy schema.
+guard this; each extension gets a golden test.
 
 [#application-schema]
 == What the application writes

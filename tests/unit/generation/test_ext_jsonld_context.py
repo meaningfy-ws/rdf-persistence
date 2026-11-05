@@ -7,9 +7,10 @@ import pytest
 from pyld import jsonld
 
 from rdf_persistence.generation.exceptions import SchemaGenerationError
-from rdf_persistence.generation.extensions.jsonld_context import CONTEXT_STEP, render_context
+from rdf_persistence.generation.extensions.jsonld_context import render_context
+from rdf_persistence.generation.steps import CONTEXT_STEP
 
-from .step_runner import assert_json_golden, run_toy
+from .golden import TOY_TARGET, assert_matches_toy, run_toy
 
 BOOK = "https://example.org/books/1"
 BOOK_BODY = {
@@ -35,8 +36,13 @@ BOOK_BODY = {
 
 
 @pytest.fixture(scope="module")
-def staged(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    return run_toy(CONTEXT_STEP, tmp_path_factory.mktemp("context")) / "python"
+def rendered(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return run_toy(CONTEXT_STEP, tmp_path_factory.mktemp("context"))
+
+
+@pytest.fixture(scope="module")
+def staged(rendered: Path) -> Path:
+    return rendered / str(TOY_TARGET.python)
 
 
 def read(staged: Path, name: str) -> dict:
@@ -44,8 +50,8 @@ def read(staged: Path, name: str) -> dict:
     return document
 
 
-def test_the_output_equals_the_golden(staged: Path) -> None:
-    assert_json_golden("jsonld_context", staged)
+def test_the_output_equals_the_committed_tree(rendered: Path) -> None:
+    assert_matches_toy(rendered, "generated/context.jsonld", "generated/*.frame.jsonld")
 
 
 def test_one_frame_per_aggregate_type_and_the_tenant_root(staged: Path) -> None:
@@ -78,7 +84,7 @@ def test_the_book_frame_nests_chapters_and_their_notes(staged: Path) -> None:
 
 
 def test_the_output_is_reproducible(staged: Path, tmp_path: Path) -> None:
-    again = run_toy(CONTEXT_STEP, tmp_path) / "python"
+    again = run_toy(CONTEXT_STEP, tmp_path) / str(TOY_TARGET.python)
     first = {p.name: p.read_bytes() for p in staged.iterdir()}
     assert first == {p.name: p.read_bytes() for p in again.iterdir()}, "two runs differ"
 

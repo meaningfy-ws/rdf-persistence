@@ -2,8 +2,9 @@ id: https://meaningfy.ws/ns/rdf-persistence/generation
 name: rp_generation
 title: RDF persistence generation module
 description: >-
-  The data of the generation toolchain: the configuration of one `rp-generate` run, the manifest it
-  writes, the conformance cases and the reviewed shape of a class.
+  The data of the generation toolchain and of the testkit: the configuration of one `rp-generate`
+  run, the manifest it writes, the files and problems it produces, the view-models its templates
+  render, the conformance cases, the reviewed shape of a class and a guard violation.
 prefixes:
   rp: https://meaningfy.ws/ns/rdf-persistence#
   linkml: https://w3id.org/linkml/
@@ -83,6 +84,7 @@ classes:
       - required
       - multivalued
       - range
+      - alias
     slot_usage:
       name:
         required: true
@@ -103,6 +105,278 @@ classes:
       class_name:
         required: true
 
+  CliFlag:
+    title: Command-line flag
+    description: A command-line flag of `rp-generate` and the GenerationTarget field it overrides.
+    class_uri: rp:CliFlag
+    slots:
+      - option
+      - field
+    slot_usage:
+      option:
+        required: true
+      field:
+        required: true
+  GeneratedFile:
+    title: Generated file
+    description: One file a generator renders, its name inside the target folder and its text.
+    class_uri: rp:GeneratedFile
+    slots:
+      - name
+      - text
+    slot_usage:
+      name:
+        required: true
+      text:
+        required: true
+  CheckProblem:
+    title: Check problem
+    description: >-
+      One problem a check, a pipeline step or the freshness comparison found, with where and by which
+      rule. Only the command line formats it for the developer.
+    class_uri: rp:CheckProblem
+    slots:
+      - rule
+      - element
+      - message
+      - schema_file
+      - step
+    slot_usage:
+      message:
+        required: true
+  PresenceRule:
+    title: Presence rule
+    description: A class-level rule over alternatives, and when its validator refuses.
+    class_uri: rp:PresenceRule
+    slots:
+      - name
+      - need
+      - refused
+    slot_usage:
+      name:
+        required: true
+      need:
+        required: true
+      refused:
+        required: true
+  RuleAlternative:
+    title: Rule alternative
+    description: One alternative of a rule, its readable label and the Python expression that tells it holds.
+    class_uri: rp:RuleAlternative
+    slots:
+      - label
+      - holds
+    slot_usage:
+      label:
+        required: true
+      holds:
+        required: true
+  UniqueKeyOn:
+    title: Unique key on a slot
+    description: >-
+      A unique key that a class's multivalued slot is subject to, with the IRIs the constraint query
+      needs.
+    class_uri: rp:UniqueKeyOn
+    slots:
+      - name
+      - slot_iri
+      - key_name
+      - description
+      - key_iris
+    slot_usage:
+      name:
+        required: true
+      slot_iri:
+        required: true
+      key_name:
+        required: true
+      key_iris:
+        required: true
+  Frame:
+    title: Frame
+    description: A JSON-LD frame, the types it selects, its references and the frames of its owned parts.
+    class_uri: rp:Frame
+    slots:
+      - type_terms
+      - references
+      - parts
+    slot_usage:
+      type_terms:
+        required: true
+      references:
+        required: true
+      parts:
+        required: true
+  FramePart:
+    title: Frame part
+    description: The frame of the parts nested in one owned slot of a frame.
+    class_uri: rp:FramePart
+    slots:
+      - name
+      - frame
+    slot_usage:
+      name:
+        required: true
+      frame:
+        required: true
+  TsField:
+    title: TypeScript field
+    description: A field of a TypeScript interface.
+    class_uri: rp:TsField
+    slots:
+      - name
+      - type
+      - optional
+      - doc
+    slot_usage:
+      name:
+        required: true
+      type:
+        required: true
+      optional:
+        required: true
+      doc:
+        required: true
+  TsInterface:
+    title: TypeScript interface
+    description: A TypeScript interface and its fields.
+    class_uri: rp:TsInterface
+    slots:
+      - name
+      - doc
+      - fields
+    slot_usage:
+      name:
+        required: true
+      doc:
+        required: true
+      fields:
+        required: true
+  TsEnumValue:
+    title: TypeScript enum value
+    description: A string literal of a TypeScript union type.
+    class_uri: rp:TsEnumValue
+    slots:
+      - literal
+      - doc
+    slot_usage:
+      literal:
+        required: true
+      doc:
+        required: true
+  TsEnum:
+    title: TypeScript enum
+    description: A union of string literals that stands for an enum of the schema.
+    class_uri: rp:TsEnum
+    slots:
+      - name
+      - doc
+      - values
+    slot_usage:
+      name:
+        required: true
+      doc:
+        required: true
+      values:
+        required: true
+  TsImport:
+    title: TypeScript import
+    description: The names a TypeScript module imports from another module.
+    class_uri: rp:TsImport
+    slots:
+      - module
+      - names
+    slot_usage:
+      module:
+        required: true
+      names:
+        required: true
+  TsModule:
+    title: TypeScript module
+    description: One TypeScript file, for one module of the schema.
+    class_uri: rp:TsModule
+    slots:
+      - name
+      - enums
+      - interfaces
+      - imports
+    slot_usage:
+      name:
+        required: true
+      enums:
+        required: true
+      interfaces:
+        required: true
+      imports:
+        required: true
+  MmdAttribute:
+    title: Mermaid attribute
+    description: An attribute line of a Mermaid class box.
+    class_uri: rp:MmdAttribute
+    slots:
+      - type
+      - name
+    slot_usage:
+      type:
+        required: true
+      name:
+        required: true
+  MmdClass:
+    title: Mermaid class
+    description: One class box of a Mermaid diagram.
+    class_uri: rp:MmdClass
+    slots:
+      - name
+      - stereotype
+      - attributes
+    slot_usage:
+      name:
+        required: true
+      attributes:
+        required: true
+  MmdModule:
+    title: Mermaid module
+    description: One Mermaid class diagram, for one module of the schema.
+    class_uri: rp:MmdModule
+    slots:
+      - classes
+      - links
+      - externals
+    slot_usage:
+      classes:
+        required: true
+      links:
+        required: true
+      externals:
+        required: true
+  Violation:
+    title: Violation
+    description: A hand-written model or a generated artefact that a guard found out of place.
+    class_uri: rp:Violation
+    slots:
+      - where
+      - what
+    slot_usage:
+      where:
+        required: true
+      what:
+        required: true
+  ContainerMarker:
+    title: Container marker
+    description: A pytest marker of the container tests, the container it starts and its help text.
+    class_uri: rp:ContainerMarker
+    slots:
+      - marker
+      - container
+      - help
+    slot_usage:
+      marker:
+        required: true
+      container:
+        required: true
+      help:
+        required: true
+
 slots:
   relative_path:
     title: Relative path
@@ -119,10 +393,14 @@ slots:
       The root LinkML schema file; the TOML key and the flag are `schema`, which the field name avoids
       because it would shadow a pydantic method.
     slot_uri: rp:schemaFile
+    annotations:
+      cli_flag: --schema
   package:
     title: Package
     description: The Python import path of the generated package, a dotted identifier.
     slot_uri: rp:package
+    annotations:
+      cli_flag: --package
     pattern: '^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$'
   python:
     is_a: relative_path
@@ -131,16 +409,22 @@ slots:
       The folder that receives the classes, shapes, context, frames and the schema copy; the folder of
       `package` when absent.
     slot_uri: rp:pythonFolder
+    annotations:
+      cli_flag: --python-out
   typescript:
     is_a: relative_path
     title: TypeScript folder
     description: The folder that receives the TypeScript types; none are written when absent.
     slot_uri: rp:typescriptFolder
+    annotations:
+      cli_flag: --typescript-out
   diagrams:
     is_a: relative_path
     title: Diagrams folder
     description: The folder that receives one Mermaid file per module; none are written when absent.
     slot_uri: rp:diagramsFolder
+    annotations:
+      cli_flag: --diagrams-out
   path:
     is_a: relative_path
     title: Path
@@ -190,7 +474,7 @@ slots:
     multivalued: true
   name:
     title: Name
-    description: The name of a slot.
+    description: The name of the thing a record describes (a slot, a file, a class, a rule).
     slot_uri: rp:slotName
   required:
     title: Required
@@ -206,6 +490,10 @@ slots:
     title: Range
     description: The name of the type, enum or class the slot's values belong to.
     slot_uri: rp:range
+  alias:
+    title: Alias
+    description: The name the slot's field carries in code and JSON when it differs from the slot's name; absent otherwise.
+    slot_uri: rp:alias
   slots:
     title: Slots
     description: The shapes of a class's slots, in schema order.
@@ -213,6 +501,199 @@ slots:
     range: SlotShape
     multivalued: true
     inlined_as_list: true
+
+  text:
+    title: Text
+    description: The text of a file.
+    slot_uri: rp:text
+  rule:
+    title: Rule
+    description: The id of the rule a problem breaks, a `HardRule` or `BoundaryRule` value or a lint rule name.
+    slot_uri: rp:rule
+  element:
+    title: Element
+    description: The element of the schema, or the file, a problem is about.
+    slot_uri: rp:element
+  message:
+    title: Message
+    description: What is wrong, in a line.
+    slot_uri: rp:message
+  step:
+    title: Step
+    description: The name of the pipeline step that found a problem.
+    slot_uri: rp:step
+  option:
+    title: Option
+    description: The command-line option, with its leading dashes.
+    slot_uri: rp:option
+  field:
+    title: Field
+    description: The name of the GenerationTarget field the option overrides.
+    slot_uri: rp:targetField
+  need:
+    title: Need
+    description: What a rule needs of its alternatives, in words.
+    slot_uri: rp:need
+  refused:
+    title: Refused
+    description: The Python condition under which a rule's validator refuses.
+    slot_uri: rp:refused
+  label:
+    title: Label
+    description: A readable label.
+    slot_uri: rp:label
+  holds:
+    title: Holds
+    description: The Python expression that tells an alternative holds.
+    slot_uri: rp:holds
+  slot_iri:
+    title: Slot IRI
+    description: The expanded IRI of a slot.
+    slot_uri: rp:slotIri
+  key_name:
+    title: Key name
+    description: The name of a unique key.
+    slot_uri: rp:keyName
+  description:
+    title: Description
+    description: A description in words.
+    slot_uri: rp:descriptionText
+  key_iris:
+    title: Key IRIs
+    description: The expanded IRIs of the slots that make up a unique key.
+    slot_uri: rp:keyIris
+    multivalued: true
+  type_terms:
+    title: Type terms
+    description: The context terms of the types a frame selects.
+    slot_uri: rp:typeTerms
+    multivalued: true
+  references:
+    title: References
+    description: The slots of a frame that hold references, left as IRIs.
+    slot_uri: rp:frameReferences
+    multivalued: true
+  parts:
+    title: Parts
+    description: The frames of the owned parts nested in a frame, one per owned slot.
+    slot_uri: rp:frameParts
+    range: FramePart
+    multivalued: true
+    inlined_as_list: true
+  frame:
+    title: Frame
+    description: The frame of the parts held by a slot.
+    slot_uri: rp:partFrame
+    range: Frame
+  type:
+    title: Type
+    description: The type of a value, as the target language names it.
+    slot_uri: rp:typeName
+  optional:
+    title: Optional
+    description: Whether a field may be left out.
+    slot_uri: rp:optional
+    range: boolean
+  doc:
+    title: Doc
+    description: A one-line doc comment, empty when there is none.
+    slot_uri: rp:doc
+  fields:
+    title: Fields
+    description: The fields of an interface.
+    slot_uri: rp:tsFields
+    range: TsField
+    multivalued: true
+    inlined_as_list: true
+  literal:
+    title: Literal
+    description: A string literal, quoted.
+    slot_uri: rp:literal
+  values:
+    title: Values
+    description: The values of a union type.
+    slot_uri: rp:tsValues
+    range: TsEnumValue
+    multivalued: true
+    inlined_as_list: true
+  module:
+    title: Module
+    description: The name of a schema module.
+    slot_uri: rp:moduleName
+  names:
+    title: Names
+    description: The names imported from a module.
+    slot_uri: rp:importedNames
+    multivalued: true
+  enums:
+    title: Enums
+    description: The enums a TypeScript module declares.
+    slot_uri: rp:tsEnums
+    range: TsEnum
+    multivalued: true
+    inlined_as_list: true
+  interfaces:
+    title: Interfaces
+    description: The interfaces a TypeScript module declares.
+    slot_uri: rp:tsInterfaces
+    range: TsInterface
+    multivalued: true
+    inlined_as_list: true
+  imports:
+    title: Imports
+    description: The imports of a TypeScript module.
+    slot_uri: rp:tsImports
+    range: TsImport
+    multivalued: true
+    inlined_as_list: true
+  stereotype:
+    title: Stereotype
+    description: The stereotype of a class box, `root` or `owned`, absent for a plain class.
+    slot_uri: rp:stereotype
+  attributes:
+    title: Attributes
+    description: The attribute lines of a class box.
+    slot_uri: rp:mmdAttributes
+    range: MmdAttribute
+    multivalued: true
+    inlined_as_list: true
+  classes:
+    title: Classes
+    description: The class boxes of a diagram.
+    slot_uri: rp:mmdClasses
+    range: MmdClass
+    multivalued: true
+    inlined_as_list: true
+  links:
+    title: Links
+    description: The relationship lines of a diagram.
+    slot_uri: rp:mmdLinks
+    multivalued: true
+  externals:
+    title: Externals
+    description: The names of the classes a diagram draws as a name only.
+    slot_uri: rp:mmdExternals
+    multivalued: true
+  marker:
+    title: Marker
+    description: The name of a pytest marker.
+    slot_uri: rp:marker
+  container:
+    title: Container
+    description: The name of a container the testkit starts.
+    slot_uri: rp:container
+  help:
+    title: Help
+    description: A line of help text.
+    slot_uri: rp:help
+  where:
+    title: Where
+    description: The place of a violation, a file and a line or a path.
+    slot_uri: rp:where
+  what:
+    title: What
+    description: What is wrong at that place.
+    slot_uri: rp:what
 
 enums:
   HardRule:
@@ -316,3 +797,11 @@ enums:
         title: Unique keys
         description: No two items of a multivalued slot have equal key values.
         meaning: rp:ConstraintKindUniqueKeys
+  GenerationAnnotation:
+    title: Generation annotation
+    description: The annotations this module's schema carries for the toolchain itself.
+    permissible_values:
+      cli_flag:
+        title: Cli flag
+        description: On a GenerationTarget slot, the command-line flag that overrides it.
+        meaning: rp:GenerationAnnotationCliFlag

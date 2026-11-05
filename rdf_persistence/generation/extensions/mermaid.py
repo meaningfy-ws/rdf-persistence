@@ -8,17 +8,21 @@ file per module from the toolkit's template: aggregate roots carry ``<<root>>``,
 module is drawn as its name only. Mixins are not drawn: the stereotype says what they would.
 """
 
-from dataclasses import dataclass, field
 from pathlib import Path
 
-from jinja2 import Environment, FileSystemLoader
 from linkml.generators.mermaidclassdiagramgen import MermaidClassDiagramGenerator
 from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition, SlotDefinition
 
-from rdf_persistence.generation.outputs import GeneratedFile, stage
-from rdf_persistence.generation.pipeline import Run, Step, schema_faults
-from rdf_persistence.services.schema import load_schema, metamodel_importmap
+from rdf_persistence.generation.generated.rp_generation import (
+    GeneratedFile,
+    MmdAttribute,
+    MmdClass,
+    MmdModule,
+)
+from rdf_persistence.generation.templating import environment
+from rdf_persistence.services.schema import metamodel_importmap
 from rdf_persistence.services.schema_structure import (
+    declared_slot_names,
     is_internal,
     is_owned,
     own_schemas,
@@ -26,30 +30,10 @@ from rdf_persistence.services.schema_structure import (
     root_classes,
 )
 
-TEMPLATE_DIR = Path(__file__).parents[1] / "templates" / "mermaid"
+TEMPLATES = "mermaid"
 TEMPLATE = "module.mmd.jinja"
 ROOT = "root"
 OWNED = "owned"
-
-
-@dataclass(frozen=True)
-class MmdAttribute:
-    type: str
-    name: str
-
-
-@dataclass(frozen=True)
-class MmdClass:
-    name: str
-    stereotype: str | None
-    attributes: list[MmdAttribute]
-
-
-@dataclass
-class MmdModule:
-    classes: list[MmdClass] = field(default_factory=list)
-    links: list[str] = field(default_factory=list)
-    externals: list[str] = field(default_factory=list)
 
 
 class ToolkitMermaidGenerator(MermaidClassDiagramGenerator):
@@ -57,8 +41,9 @@ class ToolkitMermaidGenerator(MermaidClassDiagramGenerator):
 
     def __post_init__(self) -> None:
         super().__post_init__()
+        # the stock generator rebuilt its view without the import map; nothing has read an import yet
+        self.schemaview.importmap = metamodel_importmap()
         source = Path(self.schema.source_file)
-        self.schemaview = load_schema(source)
         self.roots = {cls.name for cls in root_classes(self.schemaview, source.parent)}
         self.owned = owned_class_names(self.schemaview, source.parent)
 
@@ -69,13 +54,12 @@ class ToolkitMermaidGenerator(MermaidClassDiagramGenerator):
 
     def _induced(self, cls: ClassDefinition) -> list[SlotDefinition]:
         """The slots the class declares or narrows, without the ``internal`` ones."""
-        names = dict.fromkeys([*cls.slots, *cls.attributes, *cls.slot_usage])
-        slots = (self.schemaview.induced_slot(name, cls.name) for name in names)
+        slots = (self.schemaview.induced_slot(name, cls.name) for name in declared_slot_names(cls))
         return [slot for slot in slots if not is_internal(slot)]
 
     def _attribute(self, slot: SlotDefinition) -> MmdAttribute:
         type_name = f"List~{slot.range}~" if slot.multivalued else str(slot.range)
-        return MmdAttribute(type_name, self.name(slot))
+        return MmdAttribute(type=type_name, name=self.name(slot))
 
     def _link(self, cls: ClassDefinition, slot: SlotDefinition) -> str:
         arrow = "*--" if is_owned(slot) else "-->"
@@ -95,12 +79,13 @@ class ToolkitMermaidGenerator(MermaidClassDiagramGenerator):
             parent = self.name(self.schemaview.get_class(cls.is_a))
             links.append(f"{parent} <|-- {self.name(cls)}")
             named.add(cls.is_a)
-        return MmdClass(self.name(cls), self._stereotype(cls), attributes), links, named
+        box = MmdClass(name=self.name(cls), stereotype=self._stereotype(cls), attributes=attributes)
+        return box, links, named
 
     def module(self, schema: SchemaDefinition) -> MmdModule:
         """The diagram of the classes ``schema`` defines."""
         classes = [cls for cls in schema.classes.values() if not cls.mixin]
-        diagram = MmdModule()
+        diagram = MmdModule(classes=[], links=[], externals=[])
         named: set[str] = set()
         for cls in classes:
             box, links, reached = self._class_parts(cls)
@@ -112,36 +97,20 @@ class ToolkitMermaidGenerator(MermaidClassDiagramGenerator):
         return diagram
 
     def files(self, schemas: list[SchemaDefinition]) -> list[GeneratedFile]:
-        env = Environment(
-            loader=FileSystemLoader(TEMPLATE_DIR),
-            keep_trailing_newline=True,
-            trim_blocks=True,
-            lstrip_blocks=True,
-        )
-        template = env.get_template(TEMPLATE)
+        template = environment(TEMPLATES).get_template(TEMPLATE)
         return [
-            GeneratedFile(f"{schema.name}.mmd", template.render(module=self.module(schema)))
+            GeneratedFile(
+                name=f"{schema.name}.mmd", text=template.render(module=self.module(schema))
+            )
             for schema in schemas
             if any(not cls.mixin for cls in schema.classes.values())
         ]
 
 
-def diagram_files(schema_path: Path) -> list[GeneratedFile]:
+def render(schema_path: Path) -> list[GeneratedFile]:
     """One ``<module>.mmd`` per module, kept beside the schema, that defines classes."""
     generator = ToolkitMermaidGenerator(
         str(schema_path), directory="", importmap=metamodel_importmap(), mergeimports=False
     )
     schemas = own_schemas(generator.schemaview, schema_path.parent)
     return generator.files(sorted(schemas, key=lambda schema: schema.name))
-
-
-def write_diagrams(run: Run) -> None:
-    """Write the diagrams into the target's diagrams folder; nothing when none is configured."""
-    if not run.target.diagrams:
-        return
-    with schema_faults():
-        files = diagram_files(run.schema_path)
-    stage(run, Path(run.target.diagrams), files)
-
-
-DIAGRAMS_STEP = Step("diagrams", write_diagrams, writes=True)

@@ -13,6 +13,7 @@ import pytest
 from rdf_persistence.generation.config import read_targets
 from rdf_persistence.generation.exceptions import ConfigError
 from rdf_persistence.generation.manifest import FIX_HINT, freshness_problems
+from rdf_persistence.generation.problems import format_problem
 
 PROJECTS_OPTION = "rp_generate_projects"
 DEFAULT_PROJECT = "pyproject.toml"
@@ -29,9 +30,10 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 def _project_problems(project: Path) -> list[str]:
     try:
-        return freshness_problems(read_targets(project), project.parent)
+        found = freshness_problems(read_targets(project), project.parent)
     except ConfigError as error:
         return [str(error)]
+    return [format_problem(problem) for problem in found]
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:

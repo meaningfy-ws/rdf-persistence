@@ -3,6 +3,7 @@
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 
+from rdf_persistence.generation.generated.rp_generation import CheckProblem
 from rdf_persistence.services.schema_structure import UnsupportedRuleError
 
 
@@ -11,10 +12,10 @@ class ConfigError(Exception):
 
 
 class StepError(Exception):
-    """A step found problems; each is one line to show the developer."""
+    """A step found problems."""
 
-    def __init__(self, problems: Sequence[str]) -> None:
-        super().__init__("; ".join(problems))
+    def __init__(self, problems: Sequence[CheckProblem]) -> None:
+        super().__init__("; ".join(problem.message for problem in problems))
         self.problems = list(problems)
 
 

@@ -22,8 +22,12 @@ FIXTURES = ROOT / "tests" / "fixtures"
 SNAPSHOT = FIXTURES / "model-shape.yaml"
 METAMODEL = ROOT / "rdf_persistence" / "model" / "rp.yaml"
 TOY = FIXTURES / "library" / "library.yaml"
+SERVICE = ROOT / "rdf_persistence" / "model" / "service" / "rp_service.yaml"
+GENERATION = ROOT / "rdf_persistence" / "generation" / "model" / "rp_generation.yaml"
 TOY_PACKAGE = "tests.fixtures.library.generated"
 METAMODEL_PACKAGE = "rdf_persistence.domain.generated"
+SERVICE_PACKAGE = "rdf_persistence.domain.generated.service"
+GENERATION_PACKAGE = "rdf_persistence.generation.generated"
 REFRESH = "RP_REFRESH_SNAPSHOT"
 
 
@@ -187,6 +191,8 @@ def test_snapshot_diff_describes_each_kind_of_change(
     [
         pytest.param(METAMODEL, METAMODEL_PACKAGE, id="metamodel"),
         pytest.param(TOY, TOY_PACKAGE, id="toy"),
+        pytest.param(SERVICE, SERVICE_PACKAGE, id="service"),
+        pytest.param(GENERATION, GENERATION_PACKAGE, id="generation"),
     ],
 )
 def test_generated_classes_match_the_induced_slots(schema: Path, package: str) -> None:

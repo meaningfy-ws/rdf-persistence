@@ -7,9 +7,10 @@ from rdflib import Graph, URIRef
 from rdflib.collection import Collection
 from rdflib.namespace import DCTERMS, RDF, SH
 
-from rdf_persistence.generation.extensions.shacl import render_shapes
+from rdf_persistence.generation.extensions.shacl import render
+from rdf_persistence.generation.steps import SHAPES_STEP
 
-from .golden import assert_matches_golden
+from .golden import assert_matches_toy, run_toy
 
 RP = "https://meaningfy.ws/ns/rdf-persistence#"
 BOOKKEEPING = {
@@ -32,9 +33,8 @@ def ignored(shapes: Graph, shape: str) -> set[URIRef]:
     return set(Collection(shapes, node))  # type: ignore[arg-type]
 
 
-def test_the_toy_shapes_match_the_golden_file(generated_toy: Path, tmp_path: Path) -> None:
-    (tmp_path / "shapes.ttl").write_bytes((generated_toy / "shapes.ttl").read_bytes())
-    assert_matches_golden("shacl", tmp_path)
+def test_the_toy_shapes_equal_the_committed_tree(tmp_path: Path) -> None:
+    assert_matches_toy(run_toy(SHAPES_STEP, tmp_path), "generated/shapes.ttl")
 
 
 def test_shapes_are_written_next_to_the_python_output(generated_toy: Path) -> None:
@@ -81,7 +81,7 @@ classes:
 def test_two_classes_sharing_a_class_uri_get_two_shapes(tmp_path: Path) -> None:
     path = tmp_path / "shared.yaml"
     path.write_text(SHARED, encoding="utf-8")
-    graph = Graph().parse(data=render_shapes(path).text, format="turtle")
+    graph = Graph().parse(data=render(path)[0].text, format="turtle")
     thing = URIRef("https://example.org/ns/s#Thing")
     expected = {URIRef("https://example.org/ns/s#Base"), URIRef("https://example.org/ns/s#Narrow")}
     assert set(graph.subjects(SH.targetClass, thing)) == expected, (
@@ -148,7 +148,7 @@ slots:
 def identified_shapes(tmp_path_factory: pytest.TempPathFactory) -> Graph:
     path = tmp_path_factory.mktemp("identified") / "identified.yaml"
     path.write_text(IDENTIFIED, encoding="utf-8")
-    return Graph().parse(data=render_shapes(path).text, format="turtle")
+    return Graph().parse(data=render(path)[0].text, format="turtle")
 
 
 def test_the_shape_of_an_identified_class_requires_an_iri_node(identified_shapes: Graph) -> None:

@@ -11,7 +11,6 @@ absent (``value_presence: ABSENT``) is supported; anything else raises rather th
 """
 
 from collections.abc import Iterable, Iterator
-from dataclasses import dataclass
 
 from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
@@ -24,6 +23,7 @@ from rdf_persistence.generation.exceptions import (
     SchemaGenerationError,
     refusing_unsupported_rules,
 )
+from rdf_persistence.generation.generated.rp_generation import UniqueKeyOn
 from rdf_persistence.services.schema_structure import (
     ABSENT,
     ANY_OF,
@@ -32,17 +32,6 @@ from rdf_persistence.services.schema_structure import (
     keyed_slots,
     presence_alternatives,
 )
-
-
-@dataclass(frozen=True)
-class UniqueKeyOn:
-    """A unique key that a class's multivalued slot is subject to, with the URIs the query needs."""
-
-    slot: str
-    path: URIRef
-    key: str
-    description: str | None
-    key_paths: tuple[URIRef, ...]
 
 
 def shape_uri(sv: SchemaView, cls: ClassDefinition) -> URIRef:
@@ -104,16 +93,20 @@ def _choice(
 def keys_on(sv: SchemaView, cls: ClassDefinition) -> Iterator[UniqueKeyOn]:
     """The unique keys the multivalued class-ranged slots of ``cls`` are subject to."""
     for slot, key in keyed_slots(sv, cls):
-        key_paths = tuple(_path(sv, sv.induced_slot(k, slot.range)) for k in key.unique_key_slots)
+        key_paths = [_path(sv, sv.induced_slot(k, slot.range)) for k in key.unique_key_slots]
         yield UniqueKeyOn(
-            slot.name, _path(sv, slot), key.unique_key_name, key.description, key_paths
+            name=slot.name,
+            slot_iri=str(_path(sv, slot)),
+            key_name=key.unique_key_name,
+            description=key.description,
+            key_iris=[str(path) for path in key_paths],
         )
 
 
-def _iri(iri: URIRef) -> str:
+def _iri(iri: str) -> str:
     """``iri`` as ``<...>`` for a query; refused when it holds a character that could end the IRI early."""
     try:
-        return str(iri.n3())
+        return str(URIRef(iri).n3())
     except Exception as error:  # rdflib raises a bare Exception for an IRI it cannot serialize
         raise SchemaGenerationError(f"{iri}: not an IRI that can go into a query") from error
 
@@ -126,11 +119,11 @@ def unique_key_query(on: UniqueKeyOn) -> str:
     lines = [
         "SELECT DISTINCT $this",
         "WHERE {",
-        f"  $this {_iri(on.path)} ?first .",
-        f"  $this {_iri(on.path)} ?second .",
+        f"  $this {_iri(on.slot_iri)} ?first .",
+        f"  $this {_iri(on.slot_iri)} ?second .",
         "  FILTER (!sameTerm(?first, ?second))",
     ]
-    for index, path in enumerate(on.key_paths):
+    for index, path in enumerate(on.key_iris):
         lines += [
             f"  OPTIONAL {{ ?first {_iri(path)} ?first_{index} . }}",
             f"  OPTIONAL {{ ?second {_iri(path)} ?second_{index} . }}",
@@ -143,10 +136,10 @@ def unique_key_query(on: UniqueKeyOn) -> str:
 def _unique(g: Graph, sv: SchemaView, cls: ClassDefinition, shape: URIRef) -> None:
     for on in keys_on(sv, cls):
         constraint = BNode()
-        message = on.description or f"two values of {on.slot} share the key {on.key}"
+        message = on.description or f"two values of {on.name} share the key {on.key_name}"
         g.add((shape, SH.sparql, constraint))
         g.add((constraint, RDF.type, SH.SPARQLConstraint))
-        g.add((constraint, SH.message, Literal(f"{cls.name}.{on.slot}: {message}")))
+        g.add((constraint, SH.message, Literal(f"{cls.name}.{on.name}: {message}")))
         g.add((constraint, SH.select, Literal(unique_key_query(on))))
 
 

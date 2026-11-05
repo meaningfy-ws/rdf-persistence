@@ -1,14 +1,16 @@
 """The ``rp-generate`` command (PD-2, PD-18): regenerate everything a schema makes."""
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
-from rdf_persistence.generation.config import FLAGS, read_targets
+from rdf_persistence.generation.config import cli_flags, python_folder, read_targets
 from rdf_persistence.generation.exceptions import ConfigError
-from rdf_persistence.generation.generated.rp_generation import GenerationTarget
+from rdf_persistence.generation.generated.rp_generation import CheckProblem, GenerationTarget
 from rdf_persistence.generation.manifest import FIX_HINT, freshness_problems
 from rdf_persistence.generation.pipeline import Step, generate
+from rdf_persistence.generation.problems import format_problem
 
 EXIT_OK, EXIT_FAILED, EXIT_USAGE = 0, 1, 2
 EXTRA_HINT = "rp-generate needs LinkML's generators: install rdf-persistence[generate]"
@@ -21,9 +23,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--project", type=Path, default=Path("pyproject.toml"), help="the pyproject.toml to read"
     )
-    for flag in FLAGS:
+    for flag in cli_flags():
         parser.add_argument(flag.option, dest=flag.field, help=f"overrides the `{flag.field}` key")
     parser.add_argument("--check", action="store_true", help="lint and check; write nothing")
+    parser.add_argument(
+        "--list-python-folders",
+        action="store_true",
+        help="print the Python output folder of each target, relative to the working folder, and exit",
+    )
     return parser
 
 
@@ -38,10 +45,17 @@ def _pipeline_steps() -> tuple[Step, ...] | None:
     return steps.STEPS
 
 
-def _freshness(targets: list[GenerationTarget], base: Path) -> list[str]:
+def _freshness(targets: list[GenerationTarget], base: Path) -> list[CheckProblem]:
     """The manifest comparison of a check (PD-26), with the command that fixes what it finds."""
     found = freshness_problems(targets, base)
-    return [*found, FIX_HINT] if found else []
+    return [*found, CheckProblem(message=FIX_HINT)] if found else []
+
+
+def _list_python_folders(targets: list[GenerationTarget], base: Path) -> int:
+    """Print each target's Python folder, relative to the working folder; a make target reads them."""
+    for target in targets:
+        print(os.path.relpath(base / python_folder(target)))
+    return EXIT_OK
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -57,11 +71,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"rp-generate: {error}", file=sys.stderr)
         return EXIT_USAGE
     base = args.project.resolve().parent
+    if args.list_python_folders:
+        return _list_python_folders(targets, base)
     problems = generate(targets, base, pipeline_steps or (), check=args.check)
     if args.check:
         problems += _freshness(targets, base)
     for problem in problems:
-        print(problem, file=sys.stderr)
+        print(format_problem(problem), file=sys.stderr)
     if problems:
         return EXIT_FAILED
     print(

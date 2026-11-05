@@ -9,7 +9,8 @@ from rdf_persistence.generation import steps
 from rdf_persistence.generation.checks.boundary import boundary_problems
 from rdf_persistence.generation.cli import main
 from rdf_persistence.generation.generated.rp_generation import BoundaryRule, GenerationTarget
-from rdf_persistence.generation.pipeline import Step, generate
+from rdf_persistence.generation.pipeline import generate
+from rdf_persistence.generation.problems import format_problem
 from rdf_persistence.services.schema import load_schema
 
 from .conftest import ROOT_SCHEMA, Breaker
@@ -27,7 +28,7 @@ TENANCY_IMPORT = "  - rdf_persistence/model/rp_annotations\n  - rdf_persistence/
 
 
 def problems_of(root: Path) -> list[str]:
-    return boundary_problems(load_schema(root), root.parent)
+    return [format_problem(p) for p in boundary_problems(load_schema(root), root.parent)]
 
 
 @dataclass(frozen=True)
@@ -147,12 +148,11 @@ def test_a_domain_module_importing_the_access_module_names_both_modules(
 ) -> None:
     root = break_toy("books.yaml", BOOK_IMPORTS, ACCESS_IMPORT)
     target = GenerationTarget(schema_file=ROOT_SCHEMA, package="app.generated")
-    found = generate(
-        [target], root.parent, (Step("boundary check", steps.boundary_check),), check=True
-    )
+    found = generate([target], root.parent, (steps.BOUNDARY_STEP,), check=True)
     assert len(found) == 1, f"one bad import, one line: {found}"
-    assert "books" in found[0], "the importing module is not named"
-    assert "library_access" in found[0], "the imported module is not named"
+    line = format_problem(found[0])
+    assert "books" in line, "the importing module is not named"
+    assert "library_access" in line, "the imported module is not named"
     before = sorted(p.name for p in root.parent.iterdir())
     assert main(["--project", str(root.parent / "pyproject.toml")]) == 1, "wrong exit code"
     assert "library_access" in capsys.readouterr().err, "the CLI does not name the imported module"

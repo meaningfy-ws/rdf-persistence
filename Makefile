@@ -43,7 +43,7 @@ help: ## Display available targets
 #-----------------------------------------------------------------------------
 # Install / build (mutating)
 #-----------------------------------------------------------------------------
-.PHONY: install-uv install lock generate check-freshness generate-metamodel check-generated refresh-snapshot refresh-golden build
+.PHONY: install-uv install lock generate check-freshness check-generated refresh-snapshot refresh-golden build
 
 install-uv: ## Install uv if not present
 	@ command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -61,7 +61,7 @@ lock: ## Update uv.lock
 TOY_PROJECT = tests/fixtures/library/pyproject.toml
 GENERATED_GLOBS = ':(glob)**/generated/**'
 
-generate: ## Regenerate everything from LinkML: the toolkit's schemas and the toy library
+generate: ## Regenerate everything from LinkML: the toolkit's own schemas (metamodel, service, generation) and the toy library
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating from LinkML$(END_BUILD_PRINT)"
 	@ uv run rp-generate
 	@ uv run rp-generate --project $(TOY_PROJECT)
@@ -80,13 +80,8 @@ check-generated: generate ## Regenerate and fail if the result differs from what
 refresh-snapshot: ## Rewrite the reviewed model-shape snapshot after a deliberate model change (review the diff)
 	@ RP_REFRESH_SNAPSHOT=1 uv run pytest tests/unit/generation/test_shape_snapshot.py -q
 
-refresh-golden: ## Rewrite the generator extensions' golden files (review the diff before committing)
+refresh-golden: ## Rewrite the golden files of schemas that are not the toy (the toy's golden is the committed tree: make generate)
 	@ RP_REFRESH_GOLDEN=1 uv run pytest tests/unit/generation -k "ext_" -q
-
-generate-metamodel: ## Regenerate the metamodel's and the generation module's Python classes with rp-generate
-	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating the metamodel classes$(END_BUILD_PRINT)"
-	@ uv run rp-generate
-	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Metamodel classes generated$(END_BUILD_PRINT)"
 
 build: generate ## Build the package distribution (generates first)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Building package$(END_BUILD_PRINT)"
@@ -131,7 +126,9 @@ typecheck: ## Run mypy type checks
 	@ uv run mypy $(PACKAGE_NAME)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Type checks passed$(END_BUILD_PRINT)"
 
-GENERATED_PY = rdf_persistence/domain/generated rdf_persistence/generation/generated tests/fixtures/library/generated
+# The Python folders of every [[tool.rp-generate]] entry, so a new entry is checked without an edit here.
+# A folder inside another listed folder (the service module's) is checked with its parent.
+GENERATED_PY = $(shell { uv run rp-generate --list-python-folders; uv run rp-generate --list-python-folders --project $(TOY_PROJECT); } | sort | awk '{ for (i in kept) if (index($$0, kept[i] "/") == 1) next; kept[NR] = $$0; print }')
 TOY_TS = $(wildcard tests/fixtures/library/web/src/domain/generated/*.ts)
 
 typecheck-generated: ## Run mypy on the generated Python only, with mypy-generated.ini (PD-27)

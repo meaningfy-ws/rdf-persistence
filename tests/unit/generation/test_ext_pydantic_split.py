@@ -2,7 +2,6 @@
 
 import ast
 import importlib
-import shutil
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -14,10 +13,11 @@ from rdf_persistence.domain.generated.rp_files import StoredFile
 from rdf_persistence.generation.extensions.pydantic_split import (
     TOOLKIT_PACKAGE,
     metamodel_module,
-    render_modules,
 )
+from rdf_persistence.generation.extensions.pydantic_split import render as render_modules
+from rdf_persistence.generation.steps import PYTHON_STEP
 
-from .golden import assert_matches_golden
+from .golden import assert_matches_toy, run_toy
 
 TOY_MODULES = [
     "__init__.py",
@@ -47,12 +47,8 @@ def enum_members(tree: ast.Module, enum: str) -> list[str]:
     return [t.id for n in cls.body if isinstance(n, ast.Assign) for t in n.targets]  # type: ignore[union-attr]
 
 
-def test_the_toy_python_output_matches_the_golden_files(
-    generated_toy: Path, tmp_path: Path
-) -> None:
-    for module in sorted(generated_toy.glob("*.py")):
-        shutil.copy(module, tmp_path / module.name)
-    assert_matches_golden("pydantic_split", tmp_path)
+def test_the_toy_python_output_equals_the_committed_tree(tmp_path: Path) -> None:
+    assert_matches_toy(run_toy(PYTHON_STEP, tmp_path), "generated/*.py")
 
 
 def test_one_module_is_written_per_schema_module(generated_toy: Path) -> None:

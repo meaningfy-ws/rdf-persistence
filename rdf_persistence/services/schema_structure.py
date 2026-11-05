@@ -8,6 +8,7 @@ so the mapper and the freshness check can use it without the ``generate`` extra.
 """
 
 from collections.abc import Iterator
+from enum import Enum
 from pathlib import Path
 
 from linkml_runtime.linkml_model.meta import (
@@ -41,8 +42,8 @@ class UnsupportedRuleError(ValueError):
     """A rule the schema declares in a form that the generated classes and shapes cannot enforce."""
 
 
-def annotation_text(element: object, tag: RpAnnotation) -> str | None:
-    """The value of the element's annotation ``tag`` as written; None when it has none."""
+def annotation_text(element: object, tag: Enum) -> str | None:
+    """The value of the element's annotation ``tag`` (a member of a generated annotation enum) as written; None when it has none."""
     annotations = getattr(element, "annotations", None) or {}
     # a class read from the schema holds a dict, an induced slot a JsonObj
     found = (
@@ -105,9 +106,14 @@ def own_classes(schemas: list[SchemaDefinition]) -> list[ClassDefinition]:
     return [cls for schema in schemas for cls in schema.classes.values()]
 
 
+def declared_slot_names(cls: ClassDefinition) -> list[str]:
+    """The slots a class declares or narrows itself, in declaration order, as opposed to inherited ones."""
+    return list(dict.fromkeys([*cls.slots, *cls.attributes, *cls.slot_usage]))
+
+
 def declared_slots(cls: ClassDefinition) -> set[str]:
     """The slots a class declares or narrows itself, as opposed to the ones it inherits."""
-    return {*cls.slots, *cls.attributes, *cls.slot_usage}
+    return set(declared_slot_names(cls))
 
 
 def aggregate_roots(view: SchemaView, classes: list[ClassDefinition]) -> list[ClassDefinition]:

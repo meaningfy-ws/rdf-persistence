@@ -13,7 +13,6 @@ generated context, which alone decides how values read (an IRI, an enum's meanin
 no public requirement: the shapes make them optional, so no constraint kind is counted from them.
 """
 
-import functools
 import importlib
 import json
 import pkgutil
@@ -32,16 +31,13 @@ from rdflib import Graph
 from rdf_persistence.generation.config import python_folder, read_targets
 from rdf_persistence.generation.exceptions import ConfigError
 from rdf_persistence.generation.generated.rp_generation import ConstraintCase, ConstraintKind
+from rdf_persistence.generation.outputs import CONTEXT_FILE, SHAPES_FILE
 from rdf_persistence.services.schema_structure import (
     generation_view,
     is_internal,
     is_owned,
     keyed_slots,
 )
-
-SHAPES_FILE = "shapes.ttl"
-CONTEXT_FILE = "context.jsonld"
-K = ConstraintKind
 
 
 def load_cases(path: Path) -> list[ConstraintCase]:
@@ -89,17 +85,23 @@ def _generated_models(package: str, folder: Path) -> dict[str, type[BaseModel]]:
 
 @dataclass(frozen=True)
 class Conformance:
-    """A schema with its generated classes, JSON-LD context and shapes, ready to give verdicts."""
+    """A schema with its generated classes, JSON-LD context and shapes, ready to give verdicts.
+
+    ``folder`` is the Python folder of the entry that generated them, where the frames are too.
+    """
 
     view: SchemaView
     models: dict[str, type[BaseModel]]
     context: dict
     shapes: Graph
+    folder: Path
 
     @staticmethod
-    @functools.cache
     def of(schema: Path) -> "Conformance":
-        """Open ``schema`` and the generated artefacts of the ``[[tool.rp-generate]]`` entry for it."""
+        """Open ``schema`` and the generated artefacts of the ``[[tool.rp-generate]]`` entry for it.
+
+        Every call reads the files again, so a regeneration between two calls is seen.
+        """
         _, package, folder = _generating_target(schema)
         context = json.loads((folder / CONTEXT_FILE).read_text(encoding="utf-8"))["@context"]
         return Conformance(
@@ -107,6 +109,7 @@ class Conformance:
             models=_generated_models(package, folder),
             context=context,
             shapes=Graph().parse(folder / SHAPES_FILE),
+            folder=folder,
         )
 
     def class_names(self) -> set[str]:
@@ -165,7 +168,7 @@ class Conformance:
 
     def used_kinds(self) -> set[ConstraintKind]:
         """The constraint kinds the generated classes of the schema use, read from ``SchemaView``."""
-        kinds = {K.CLOSED} if self.models else set()
+        kinds = {ConstraintKind.CLOSED} if self.models else set()
         for name in self.class_names():
             kinds |= self.class_kinds(name)
             for slot in self.view.class_induced_slots(name):
@@ -177,29 +180,29 @@ class Conformance:
         """The kinds of the rules ``name`` declares or holds through a keyed slot."""
         cls = self.view.get_class(name)
         kinds = {kind for kind, found in _CLASS_KINDS if getattr(cls, found)}
-        return kinds | ({K.UNIQUE_KEYS} if keyed_slots(self.view, cls) else set())
+        return kinds | ({ConstraintKind.UNIQUE_KEYS} if keyed_slots(self.view, cls) else set())
 
     def _slot_kinds(self, slot: SlotDefinition) -> set[ConstraintKind]:
         kinds = {kind for kind, found in _SLOT_KINDS if getattr(slot, found) is not None}
         if slot.range in self.view.all_types():
-            kinds.add(K.RANGE_TYPE)
+            kinds.add(ConstraintKind.RANGE_TYPE)
         if slot.range in self.view.all_enums():
-            kinds.add(K.RANGE_ENUM)
-        return kinds | ({K.IDENTIFIER} if slot.identifier else set())
+            kinds.add(ConstraintKind.RANGE_ENUM)
+        return kinds | ({ConstraintKind.IDENTIFIER} if slot.identifier else set())
 
 
 _CLASS_KINDS = (
-    (K.EXACTLY_ONE_OF, "exactly_one_of"),
-    (K.ANY_OF, "any_of"),
-    (K.UNIQUE_KEYS, "unique_keys"),
+    (ConstraintKind.EXACTLY_ONE_OF, "exactly_one_of"),
+    (ConstraintKind.ANY_OF, "any_of"),
+    (ConstraintKind.UNIQUE_KEYS, "unique_keys"),
 )
 _SLOT_KINDS = (
-    (K.REQUIRED, "required"),
-    (K.CARDINALITY, "minimum_cardinality"),
-    (K.CARDINALITY, "maximum_cardinality"),
-    (K.PATTERN, "pattern"),
-    (K.VALUE_BOUNDS, "minimum_value"),
-    (K.VALUE_BOUNDS, "maximum_value"),
+    (ConstraintKind.REQUIRED, "required"),
+    (ConstraintKind.CARDINALITY, "minimum_cardinality"),
+    (ConstraintKind.CARDINALITY, "maximum_cardinality"),
+    (ConstraintKind.PATTERN, "pattern"),
+    (ConstraintKind.VALUE_BOUNDS, "minimum_value"),
+    (ConstraintKind.VALUE_BOUNDS, "maximum_value"),
 )
 
 

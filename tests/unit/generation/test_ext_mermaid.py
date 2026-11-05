@@ -4,15 +4,19 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation.extensions.mermaid import DIAGRAMS_STEP
+from rdf_persistence.generation.steps import DIAGRAMS_STEP
 
-from .golden import assert_matches_golden
-from .step_runner import TARGET, run_toy
+from .golden import TOY_TARGET, assert_matches_toy, run_toy
 
 
 @pytest.fixture(scope="module")
-def staged(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    return run_toy(DIAGRAMS_STEP, tmp_path_factory.mktemp("diagrams")) / "diagrams"
+def rendered(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return run_toy(DIAGRAMS_STEP, tmp_path_factory.mktemp("diagrams"))
+
+
+@pytest.fixture(scope="module")
+def staged(rendered: Path) -> Path:
+    return rendered / str(TOY_TARGET.diagrams)
 
 
 def block(staged: Path, module: str, name: str) -> str:
@@ -22,8 +26,8 @@ def block(staged: Path, module: str, name: str) -> str:
     return "\n".join(lines[start : lines.index("    }", start) + 1])
 
 
-def test_the_output_equals_the_golden(staged: Path) -> None:
-    assert_matches_golden("mermaid", staged)
+def test_the_output_equals_the_committed_tree(rendered: Path) -> None:
+    assert_matches_toy(rendered, "generated/diagrams/*.mmd")
 
 
 def test_one_diagram_per_module_of_the_application(staged: Path) -> None:
@@ -70,11 +74,11 @@ def test_an_internal_slot_is_not_drawn(staged: Path) -> None:
 
 
 def test_an_unconfigured_target_writes_nothing(tmp_path: Path) -> None:
-    run_toy(DIAGRAMS_STEP, tmp_path, TARGET.model_copy(update={"diagrams": None}))
+    run_toy(DIAGRAMS_STEP, tmp_path, TOY_TARGET.model_copy(update={"diagrams": None}))
     assert not list(tmp_path.iterdir()), "no diagrams folder, no output"
 
 
 def test_the_output_is_reproducible(staged: Path, tmp_path: Path) -> None:
-    again = run_toy(DIAGRAMS_STEP, tmp_path) / "diagrams"
+    again = run_toy(DIAGRAMS_STEP, tmp_path) / str(TOY_TARGET.diagrams)
     first = {p.name: p.read_bytes() for p in staged.iterdir()}
     assert first == {p.name: p.read_bytes() for p in again.iterdir()}, "two runs differ"
