@@ -13,6 +13,7 @@ REPO_ROOT    = $(shell pwd)
 PACKAGE_NAME = rdf_persistence
 TEST_PATH    = $(REPO_ROOT)/tests
 BUILD_PATH   = $(REPO_ROOT)/dist
+GENERATED_DIR = $(PACKAGE_NAME)/domain/generated
 
 # Docker / infra (activate the Docker section below once infra/ exists).
 COMPOSE_FILE = $(REPO_ROOT)/infra/compose.yaml
@@ -40,7 +41,7 @@ help: ## Display available targets
 #-----------------------------------------------------------------------------
 # Install / build (mutating)
 #-----------------------------------------------------------------------------
-.PHONY: install-uv install lock build
+.PHONY: install-uv install lock generate-metamodel build
 
 install-uv: ## Install uv if not present
 	@ command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -54,6 +55,14 @@ lock: ## Update uv.lock
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Locking dependencies$(END_BUILD_PRINT)"
 	@ uv lock
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Lock file updated$(END_BUILD_PRINT)"
+
+generate-metamodel: ## Regenerate the metamodel's Python classes (task 1.10 replaces this with rp-generate)
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating the metamodel classes$(END_BUILD_PRINT)"
+	@ mkdir -p $(GENERATED_DIR)
+	@ uv run gen-pydantic --meta None --no-metadata --no-generation-date \
+		--template-dir $(PACKAGE_NAME)/generation/templates/pydantic \
+		$(PACKAGE_NAME)/model/rp.yaml > $(GENERATED_DIR)/rp.py
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Metamodel classes written to $(GENERATED_DIR)/rp.py$(END_BUILD_PRINT)"
 
 build: ## Build the package distribution
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Building package$(END_BUILD_PRINT)"
@@ -183,7 +192,7 @@ maintainability: ## Radon maintainability index
 
 clean-code: ## Xenon threshold checks
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running Xenon threshold checks$(END_BUILD_PRINT)"
-	@ uv run xenon $(PACKAGE_NAME) --max-absolute B --max-modules A --max-average A
+	@ uv run xenon $(PACKAGE_NAME) --exclude '*/generated/*' --max-absolute B --max-modules A --max-average A
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Clean code checks passed$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------

@@ -5,6 +5,9 @@ line-length = 100
 # Matches the project's Python version (rendered from --python at scaffold time).
 target-version = "py312"
 
+# Generated code is reproduced by the generators, not edited (PD-19).
+extend-exclude = ["**/generated/**"]
+
 [lint]
 # Selection set from decision D4.
 select = [
