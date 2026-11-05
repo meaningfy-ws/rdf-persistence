@@ -30,8 +30,8 @@ fully generic service without typed classes ("approach C"), because domain logic
 [#metamodel]
 == The metamodel
 
-A small LinkML schema shipped inside the package (`rdf_persistence/model/rp.yaml`, namespace
-`https://meaningfy.ws/ns/rdf-persistence#`). Its classes are generated once, into the toolkit's own
+A small LinkML schema shipped inside the package (`rdf_persistence/model/`, split into modules
+since the <<revision,revision of 2026-11-05>>; namespace `https://meaningfy.ws/ns/rdf-persistence#`). Its classes are generated once, into the toolkit's own
 package; an application's generated code imports them rather than regenerating them.
 
 [cols="2,5",options="header"]

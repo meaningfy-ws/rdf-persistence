@@ -192,7 +192,7 @@ top level too: `rp-generate`'s split pattern points at `rdf_persistence`.
 |`rdf_persistence.entrypoints` |service kit (FastAPI dependencies, problem responses, ETags, OpenAPI hook) |`service_kit`
 |`rdf_persistence.testkit` |fake session and ports, token signer, Fuseki fixtures, conformance suite |`rdf_persistence.testkit` (a second public module, for tests only)
 |`rdf_persistence.generation` |`rp-generate` (build time; lint config, boundary check, templates) |the `rp-generate` command
-|`rdf_persistence/model/rp.yaml` |the metamodel schema, shipped as package data |resolved through the import map
+|`rdf_persistence/model/` |the metamodel modules (`rp_core`, `rp_annotations`, `rp_provenance`, `rp_access`, `rp_tenancy`, `rp_files`) and `rp.yaml`, shipped as package data |resolved through the import map
 |===
 
 Layers import downward only: entrypoints → services → domain; adapters → services' ports and

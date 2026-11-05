@@ -148,6 +148,7 @@ Decisions of the architecture, D-1 to D-12 and O-1, O-2, are binding here and no
 - `rp-access`: the ODRL subset and the access check.
 - `rp-service-api`: the service kit, the generic router, content negotiation and the OpenAPI hook.
 - `rp-testkit`: fakes, the token signer and container fixtures for consumers' tests.
+- `rp-package-boundaries`: no consumer dependency or terms, layers import downward, consumers use the public API only. Added while deriving the PLAN: it was drafted in the first consumer's architecture change and moves here by D-12.
 
 ### Modified Capabilities
 
