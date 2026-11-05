@@ -40,9 +40,9 @@ about the aggregate's graph IRI, never about the root entity. PROV-O derivation 
 
 ### Requirement: Access is modelled with an ODRL subset
 
-`rp_access` SHALL model `Policy` (`odrl:Set`), `Permission`, `Prohibition`, `Principal`
-(`odrl:Party`, `prov:Agent`), the `Action` enum (meanings `odrl:read`, `odrl:modify`, `odrl:delete`
-and `rp:administer`, extensible) and `RoleDefinition`. A grant SHALL be a `Permission` whose target
+`rp_access` SHALL model `Policy` (`odrl:Set`), `Permission`, `Prohibition`, the `Action` enum (meanings `odrl:read`, `odrl:modify`, `odrl:delete`
+and `rp:administer`, extensible) and `RoleDefinition`, using `rp_core`'s `Principal` (`prov:Agent`, `odrl:Party`) as assignee. A
+grant SHALL be a `Permission` whose target
 is a tenant IRI or an aggregate's graph IRI; the system level SHALL come only from global roles in
 the token.
 

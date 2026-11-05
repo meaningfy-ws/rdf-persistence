@@ -11,7 +11,7 @@ Notation:
 
 ## 0. Ground
 
-- [ ] 0.1 Rewrite `.importlinter` (PD-1): the layers contract `entrypoints | adapters > services > domain`, and the forbidden contract for `domain` with `include_external_packages = True`. `make check-architecture` passes (rp-package-boundaries: Layers import downward only).
+- [ ] 0.1 Delete the empty `rdf_persistence/commons/` and rewrite `.importlinter` (PD-1): the layers contract `entrypoints | adapters > services > domain`, and the forbidden contract for `domain` with `include_external_packages = True`. `make check-architecture` passes (rp-package-boundaries: Layers import downward only).
 - [ ] 0.2 Dependencies (PD-2): runtime pins, the `generate` extra with `linkml==1.12.1`, and `linkml==1.10.0` removed from dev. `make install` becomes `uv sync --all-extras`. Run `uv lock`; `make install` and the smoke test pass.
 - [ ] 0.3 The toy library schema in `tests/fixtures/library/` (PD-17), as hand-written YAML.
   - Includes `library_roles.yaml` (the role definitions of PD-9's matrix) and `partial.yaml` (imports only `rp_core` and `rp_annotations`).
@@ -27,11 +27,12 @@ Notation:
 
 ## 1. Metamodel and generation (stage 1)
 
-- [ ] 1.1 `rdf_persistence/model/rp_core.yaml`: `AggregateRoot`, `version`, `RegistryEntry` (`graph`, `kind`, `owned_by`: PD-8), `loaded_graph`, and the annotations `owned`, `internal`, `database`, `graph`, `module_kind`, `rp_path`, `rp_unlabelled`.
-- [ ] 1.2 `rp_annotations.yaml` (`Described`, `Tracked`) and `rp_provenance.yaml` (`Provenanced`, `Activity`, with `Principal` as `prov:Agent`).
+- [ ] 1.1 `rdf_persistence/model/rp_core.yaml`: `AggregateRoot`, `Principal` (PD-21), `version`, `RegistryEntry` (`graph`, `kind`, `owned_by`: PD-8), `loaded_graph`, and the annotations `owned`, `internal`, `database`, `graph`, `module_kind`, `rp_path`, `rp_unlabelled`.
+- [ ] 1.2 `rp_annotations.yaml` (`Described`, `Tracked`) and `rp_provenance.yaml` (`Provenanced`, `Activity`; it uses `rp_core`'s `Principal` as its agent).
 - [ ] 1.3 `rp_access.yaml`:
   - the ODRL subset and `RoleDefinition`;
-  - `Grant` with the slots of PD-10.
+  - `Grant` with the slots of PD-10 and `unique_keys: {grant_key: [assignee, target, role, action]}`;
+  - `TenantAccess` includes `Described` (PD-21).
 
   Also `rp_tenancy.yaml` (`TenantAccess` owning grants, permissions and prohibitions, plus `TenantState`), `rp_files.yaml` (`StoredFile`) and `rp.yaml`.
 - [ ] 1.4 Generate the metamodel's own Python classes into `rdf_persistence/domain/generated/` with plain `gen-pydantic` (task 1.10 regenerates them through `rp-generate`). Exports: the metamodel classes and `RpModel`.
@@ -70,7 +71,7 @@ Notation:
 - [ ] 2.4 Graph loading, with the parser in a worker thread and the loaded graph registered by the caller's commit. Exports: `load_graph`.
 - [ ] 2.5 The mapper over `SchemaView`, for domain services: graph to generated classes and back, with a round trip on the toy library.
 - [ ] 2.6 Tenancy:
-  - the system database and access records, named as in PD-6a;
+  - the system database, created at start-up if missing, and access records, named as in PD-6a;
   - create, which writes the record last and grants the creator `creator_role`, and delete, which marks `deleting` first;
   - buckets through the file store port, tested here with the testkit's fake file store (the S3 adapter comes in 3.1).
 
@@ -78,7 +79,8 @@ Notation:
 - [ ] 2.7 The start-up sweep, over databases and buckets named `{prefix}-t-…` only (PD-6a).
 - [ ] 2.8 Testkit:
   - the fake store and fake session;
-  - the store conformance suite, run against both the fake and Fuseki.
+  - the store conformance suite, run against both the fake and Fuseki;
+  - `testkit.no_network`, a fixture that makes any socket connection fail, used by the fake-based tests.
 
   Exports: the fakes, in `rdf_persistence.testkit`.
 
@@ -103,7 +105,7 @@ Notation:
 ## 5. Service kit and generic router (stage 5)
 
 - [ ] 5.1 The service kit:
-  - problem responses (PD-15) and `ETag`/`If-Match` (428, 409);
+  - `service_kit(…)` as in PD-13; problem responses (PD-15) and `ETag`/`If-Match` (428, 409);
   - the token dependency (on the `TokenVerifier` port) and the access dependency.
 
   Exports: `service_kit`.
@@ -133,7 +135,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 | rp-metamodel: an instance without a label is refused | 1.8 | `tests/unit/generation/test_shapes.py` |
 | rp-metamodel: an owned value class opts out | 1.6, 1.8 | `tests/unit/generation/test_shapes.py` |
 | rp-metamodel: a commit records who and when | 2.3 | `tests/integration/store/test_session.py` |
-| rp-metamodel: a grant is ODRL | 2.6 | `tests/integration/store/test_tenancy.py` |
+| rp-metamodel: a grant is ODRL | 2.6 | `tests/integration/tenancy/test_tenancy.py` |
 | rp-generation: a slot without a description | 1.6 | `tests/unit/generation/test_hard_check.py` |
 | rp-generation: a domain module imports the access module | 1.7 | `tests/unit/generation/test_boundary_check.py` |
 | rp-generation: placement from the table | 1.10 | `tests/unit/generation/test_placement.py` |
@@ -142,11 +144,11 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 | rp-aggregate-store: two editors | 2.3 | `tests/integration/store/test_session.py` |
 | rp-aggregate-store: an injection attempt | 2.1, 5.4 | `tests/unit/domain/test_sparql.py`; `tests/integration/api/test_listing.py` |
 | rp-aggregate-store: a broken file | 2.4 | `tests/integration/store/test_loading.py` |
-| rp-tenancy: create then delete | 2.6, 3.1 | `tests/integration/store/test_tenancy.py` |
-| rp-tenancy: a crash during creation | 2.7 | `tests/integration/store/test_sweep.py` |
+| rp-tenancy: create then delete | 2.6, 3.1 | `tests/integration/tenancy/test_tenancy.py` |
+| rp-tenancy: a crash during creation | 2.7, 3.1 | `tests/integration/tenancy/test_sweep.py` |
 | rp-file-store: round trip | 3.1 | `tests/integration/files/test_s3.py` |
 | rp-file-store: a put after the tenant is gone | 3.1 | `tests/integration/files/test_s3.py` |
-| rp-identity: an expired token | 3.2 | `tests/unit/services/test_token_verifier.py` |
+| rp-identity: an expired token | 3.2, 5.1 | `tests/unit/services/test_token_verifier.py`; `tests/unit/entrypoints/test_service_kit.py` (401, no handler runs) |
 | rp-identity: a service account | 3.2, 5.7 | `tests/e2e/test_library.py` |
 | rp-identity: disable an account | 3.3 | `tests/integration/identity/test_zitadel.py` |
 | rp-access: a reader may not modify | 4.3 | `tests/unit/services/test_access_matrix.py` |
@@ -158,7 +160,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 | rp-service-api: a stale replace | 5.1 | `tests/integration/api/test_router.py` |
 | rp-service-api: a page of books | 5.4 | `tests/integration/api/test_listing.py` |
 | rp-service-api: the document lists the routes | 5.5 | `tests/unit/entrypoints/test_openapi.py` |
-| rp-testkit: a unit test of a domain service | 2.8, 3.4 | `tests/unit/testkit/test_fakes.py` |
+| rp-testkit: a unit test of a domain service | 2.8, 3.4 | `tests/unit/testkit/test_fakes.py` (with `testkit.no_network`) |
 | rp-testkit: the end-to-end proof | 5.7 | `tests/e2e/test_library.py` |
 | rp-package-boundaries: a consumer term in code | 0.5 | `make check-quality` (`check_docs.py`) |
 | rp-package-boundaries: a consumer term in an architecture page | 0.5 | `make check-docs` in the docs CI workflow |

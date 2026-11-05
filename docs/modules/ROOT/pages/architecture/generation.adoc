@@ -58,10 +58,10 @@ Slots of the metamodel (IRIs in the `rp:` namespace unless shown):
 |===
 |Slot |IRI |Range, cardinality
 |`id` |— (identifier) |uri, required on every aggregate root
-|`label` |`dcterms:title` |string, required on `TenantAccess`, 1–200 characters
+|`label` |`skos:prefLabel` |string, from `Described`; required on `TenantAccess` (1–200 characters) and on described roots
 |`state` |`rp:state` |`TenantState`, required
 |`database_name` |`rp:databaseName` |string, required
-|`grants` |`rp:grant` |`Grant`, multivalued, owned (blank nodes; one per principal and target by `unique_keys`)
+|`grants` |`rp:grant` |`Grant`, multivalued, owned (blank nodes; one per assignee, target and role-or-action by `unique_keys`)
 |`assignee` |`odrl:assignee` |`Principal` (IRI), required (a grant is an `odrl:Permission`, D-5)
 |`target` |`odrl:target` |uri: the tenant IRI, or an aggregate's graph IRI; required
 |`role` |`rp:role` |uriorcurie; an application narrows it to its role enum by `slot_usage`; exactly one of `role` and `action`

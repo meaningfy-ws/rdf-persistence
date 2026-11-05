@@ -34,8 +34,8 @@ marked _(spike)_ in `generation.adoc`.
 
 ## Decisions
 
-New choices made while planning. Settled decisions are cited, not restated: EPIC DEC-1..DEC-6 and
-architecture D-1..D-12, O-1 and O-2.
+New choices made while planning, numbered in the order they were added. Settled decisions are cited,
+not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12, O-1 and O-2.
 
 ### Layers and dependencies
 
@@ -47,7 +47,8 @@ architecture D-1..D-12, O-1 and O-2.
   - The service kit needs token verification. It depends on the `TokenVerifier` port, which lives in
     `services`. The JWKS-based implementation, `JwksTokenVerifier`, is an adapter, and the consumer's
     composition root wires it in. The public API table in `index.adoc` already lists both.
-  - `generation` and `testkit` sit outside the contract. The top-level `__init__.py` re-exports the
+  - `generation` and `testkit` sit outside the contract. The scaffold's empty `commons/` package is
+    deleted (task 0.1): nothing needs a shared tier. The top-level `__init__.py` re-exports the
     public names.
   - A second contract forbids `domain` from importing `httpx`, `boto3`, `fastapi`, `jwt` and
     `pyshacl`. It sets `include_external_packages = True`.
@@ -96,6 +97,7 @@ architecture D-1..D-12, O-1 and O-2.
   | Tenant's registry graph | `{tenant_iri}/registry` |
   | Aggregate's graph | `graph_iri(root)` = `{root_iri}/graph` |
   | Loaded graph | `{aggregate_iri}/content/{uuid4}` |
+  | Tenant access record (an aggregate of the system database) | IRI `{tenant_iri}/access`; graph `graph_iri` of it, `{tenant_iri}/access/graph` |
 
   The sweep considers only databases and buckets whose names start with `{prefix}-t-`.
 - **PD-7 Tracking on update.** `dcterms:created` and `dcterms:creator` are written by the first
@@ -131,8 +133,9 @@ architecture D-1..D-12, O-1 and O-2.
   - Listing a tenant's aggregates needs `read` at tenant scope. A permission on one aggregate
     allows that aggregate only.
   - `modify`, `delete` and `administer` each imply `read` at the same scope.
-  - A *tenant grant* is a grant whose target is the tenant IRI. A caller with neither a tenant grant
-    nor a permission on the requested aggregate gets 404. A caller with one of them, but without the
+  - A *tenant grant* is a grant whose target is the tenant IRI. A caller with no tenant grant, no
+    permission on the requested aggregate and no global role that a role definition allows gets
+    404. A caller with one of them, but without the
     action, gets 403. A matching Prohibition gets 403 before anything else.
 
   The toy library's matrix, which task 4.3 tests (`allow`, or the status returned):
@@ -156,9 +159,9 @@ architecture D-1..D-12, O-1 and O-2.
 
   Grant targets are tenant or aggregate-graph IRIs only. The system level exists only through
   global roles in the token claim (PD-9): no system grants are stored. A `Prohibition` has the same
-  `assignee` and `target`, and an `action`. Uniqueness: one grant per
-  assignee, target and role-or-action. `generation.adoc`'s slot table and `index.adoc`'s tenancy row
-  already say this.
+  `assignee` and `target`, and an `action`. Uniqueness: one grant per assignee, target and
+  role-or-action, declared as `unique_keys: {grant_key: [assignee, target, role, action]}` (task 1.3);
+  `generation.adoc`'s slot table and `index.adoc`'s tenancy row say the same.
 
 ### Generation
 
@@ -175,12 +178,17 @@ architecture D-1..D-12, O-1 and O-2.
   | — | `--check` | off | run lint and the checks only; write nothing |
 - **PD-19 Reproducible output.** Generator metadata that changes between runs (generation dates,
   generator versions) is switched off in every generator call. Generated folders (`**/generated/**`)
-  are excluded from Ruff, mypy and Xenon in their config files. `make check-generated` regenerates
+  are excluded from Ruff and mypy in their config files, and from Xenon by an `--exclude` flag on
+  the `clean-code` target in the `Makefile` (Xenon has no config file). `make check-generated` regenerates
   the toy library and the metamodel classes and fails on any difference; CI runs it.
 - **PD-20 Boundary checks on code.** `docs/tools/check_docs.py` also scans `rdf_persistence/` and
   `tests/` for consumer terms, and `make check-quality` runs it. The end-to-end test uses
   `testkit.assert_public_imports(path)`, which parses a test file's imports with `ast` and fails on
   any `rdf_persistence.<sub>` import other than `rdf_persistence.testkit`.
+- **PD-21 Shared metamodel classes.** `Principal` lives in `rp_core`, so `rp_access`,
+  `rp_provenance`, `rp_tenancy` and `rp_files` can all use it; its `class_uri` is `prov:Agent`, with
+  `odrl:Party` as an exact mapping. `TenantAccess` includes `Described`, so the tenant's label is
+  the one `label` slot (`skos:prefLabel`); there is no `dcterms:title` slot in the metamodel.
 - **PD-11 Unlabelled classes.** Before running the generators, `rp-generate` gives every class
   annotated `rp_unlabelled: true` a `slot_usage` of `{label: {required: false}}`. The generated
   classes and shapes then agree, with no separate change to the shapes generator.
@@ -205,6 +213,19 @@ architecture D-1..D-12, O-1 and O-2.
       action `administer`;
     - `PUT /{tenant_segment}/{t}/label`: the tenant's label in the access record, `If-Match` on the
       access record, action `modify`.
+  - Bodies and construction:
+
+    | Route | Request body | Response |
+    |---|---|---|
+    | `POST /{tenant_segment}` | `{"label": "…", "root": {…the tenant root's slots…}}` | 201, `Location`, `{"id", "label", "state"}` |
+    | `PUT …/{t}/label` | `{"label": "…"}` | 200, new `ETag` |
+    | `PUT …/{t}/grants` | `{"grants": [{"assignee", "target", "role" or "action"}], "prohibitions": [{"assignee", "target", "action"}]}` | 200, new `ETag`; 422 `invalid-body` on an unknown role or a duplicate key |
+    | aggregate routes | the aggregate (PD-14) | the aggregate |
+
+    The consumer's composition root calls
+    `service_kit(schema, store, files, identity, verifier, rules, settings) -> fastapi.APIRouter`
+    and mounts the router. `settings` holds `base`, `prefix`, `tenant_segment`, `creator_role` and
+    `roles_claim`. The JSON-LD context is served at `/context.jsonld` under the mount.
 - **PD-14 Body handling.**
   1. A JSON body is expanded with the generated context; a JSON-LD body is used as is. Either way it
      becomes triples whose root is the IRI from the path (on create, the minted IRI).
@@ -258,6 +279,7 @@ architecture D-1..D-12, O-1 and O-2.
   |---|---|
   | `tests/unit/`, `tests/feature/` | `unit` / `feature` |
   | `tests/integration/store/`, `tests/integration/api/` | `integration`, `store` |
+  | `tests/integration/tenancy/` | `integration`, `store`, `files` |
   | `tests/integration/files/` | `integration`, `files` |
   | `tests/integration/identity/` | `integration`, `identity` |
   | `tests/e2e/` | `e2e`, `store`, `files`, `identity` |
@@ -327,7 +349,8 @@ practically impossible.
 2. The access check loads, in one query, the grants and prohibitions of `<p>` in tenant `<t>`'s
    access record, then applies PD-9's rules in order:
    - a Prohibition on `modify` for the tenant or for `graph_iri(<book>)` means 403;
-   - neither a tenant grant nor a permission on the book means 404;
+   - no tenant grant, no permission on the book and no global role a role definition allows means
+     404;
    - a role definition of one of `<p>`'s tenant roles, or a direct permission on the book, that
      permits `modify` (or an action implying it) means allow;
    - otherwise 403.
@@ -384,6 +407,9 @@ practically impossible.
 | Put into a missing bucket | `NoSuchBucket` | `TenantGone` → 404; no bucket created |
 | Crash between tenant steps | Start-up sweep | Finish `deleting`; drop unnamed databases and buckets |
 | Role definitions file invalid | Validation at start-up | The service refuses to start, naming the entry |
+| `PUT …/grants` with an unknown role or a duplicate key | Validation against `rp_access` | 422 `invalid-body`; the access record is unchanged |
+| The identity provider's management API is unreachable or answers 5xx | httpx error in the Zitadel adapter | `IdentityUnavailable` → 503 `unavailable` |
+| No account for an email | Zitadel adapter | `NotFound` → 404 `not-found` |
 | Schema fails the hard or boundary check | `rp-generate` | Exit 1, naming each element; outputs untouched |
 | Generated output stale | CI regenerates and diffs | CI fails |
 | A LinkML bump breaks an extension | Extension tests on the toy schema | Fix the extension, or hold the pin |
