@@ -47,7 +47,7 @@ package; an application's generated code imports them rather than regenerating t
 |`Principal` |A reference to a user account in the identity provider, by IRI only.
 |`StoredFile` (mixin) |The current content of a kept file: `file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key` (internal).
 |`loaded_graph` (slot) |A graph whose lifecycle belongs to the aggregate (e.g. the triples of a loaded RDF file).
-|`TenantAccess`, `Grant` |The tenancy records of the system database (N-11): label, state (`TenantState`: `active`, `deleting`), database name, owned grants (principal, role). An application binds them to its own roles by subclassing (`is_a` with `slot_usage` on `grants` and `role`).
+|`TenantAccess`, `Grant` |The tenancy records of the system database (N-11): label, state (`TenantState`: `active`, `deleting`), database name, owned grants and prohibitions (ODRL). Role names come from the consumer's role definitions; an application may narrow `role` to an enum by subclassing (`is_a` with `slot_usage`), but need not.
 |`RegistryEntry` |An entry of a tenant's `registry` graph: the graph's IRI, its kind (`aggregate`, `loaded_graph`) and the aggregate that owns it. Written by the session, never by the application.
 |`version` (slot) |The version token of every aggregate, stated about its graph IRI (not the root), written by the session; not part of any domain class.
 |===
@@ -64,7 +64,7 @@ Slots of the metamodel (IRIs in the `rp:` namespace unless shown):
 |`grants` |`rp:grant` |`Grant`, multivalued, owned (blank nodes; one per assignee, target and role-or-action by `unique_keys`)
 |`assignee` |`odrl:assignee` |`Principal` (IRI), required (a grant is an `odrl:Permission`, D-5)
 |`target` |`odrl:target` |uri: the tenant IRI, or an aggregate's graph IRI; required
-|`role` |`rp:role` |uriorcurie; an application narrows it to its role enum by `slot_usage`; exactly one of `role` and `action`
+|`role` |`rp:role` |string, matched against the consumer's role definitions; an application may narrow it to an enum by `slot_usage`; exactly one of `role` and `action`
 |`action` |`odrl:action` |`Action`, for a direct permission
 |`file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key` |`rp:fileName`, `rp:mediaType`, `rp:byteSize`, `rp:sha256`, `dcterms:modified`, `rp:uploadedBy`, `rp:fileKey` |as in the consumer model's slot table; `file_key` internal
 |`loaded_graph` |`rp:loadedGraph` |uri
@@ -225,7 +225,7 @@ One command, run from the application's `make generate-models`, regenerates ever
 [source,shell]
 ----
 rp-generate --schema models/library.yaml --package library.domain.generated \
-            --ts-out web/src/domain/generated --diagrams-out docs/images/model
+            --typescript-out web/src/domain/generated --diagrams-out docs/images/model
 ----
 
 `rp-generate` is a thin Python wrapper around LinkML's generator API, not a shell script, because
@@ -302,7 +302,7 @@ async with open_session(store, schema=SCHEMA, tenant=library_iri, caller=caller)
 == How an application adopts it
 
 . Write `models/<app>.yaml` and one file per module, importing the metamodel; mark aggregate roots, owned slots, databases;
-  bind tenancy to the application's roles by subclassing `TenantAccess` and `Grant`.
+  write the application's role definitions (and, optionally, narrow `role` by subclassing `Grant`).
 . Add `make generate-models` calling `rp-generate`, and the freshness check to CI.
 . Write use-case services against `open_session` and the generated classes.
 . Write routes with the service kit; publish the OpenAPI contract and the JSON-LD context; use the generated TypeScript types in the client, checked against the contract.

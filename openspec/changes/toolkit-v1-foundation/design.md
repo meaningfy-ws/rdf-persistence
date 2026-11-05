@@ -105,6 +105,10 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
   `dcterms:contributor`. All of these are statements about the graph IRI (D-7). Because a commit
   replaces the whole graph, the session reads the existing tracking statements with the aggregate and
   writes back `created`, `creator` and every earlier contributor.
+- **PD-7a The session's two levels.** Graph level, for the router (task 2.3): `get_graph(iri)` →
+  triples and version; `add_graph(iri, triples)`; `replace_graph(iri, triples, if_version)`;
+  `remove(iri, if_version)`. Object level, for domain services, on the mapper (task 2.5):
+  `get(cls, iri)`, `add(obj)`, then `commit()`, which calls the graph-level methods.
 - **PD-8 The registry and the tenant root.** The commit's update also deletes and inserts the
   aggregate's registry entries, one per graph it owns: its own graph and its loaded graphs. A
   `RegistryEntry` has `graph` (`rp:graph`), `kind` (`rp:kind`: `aggregate`, `loaded_graph`) and
@@ -112,7 +116,9 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
 
   A tenant's root object (the toy `Library`) lives in `{tenant_iri}/meta`, which is its graph
   instead of `graph_iri(root)`. It is versioned and tracked the same way, with the statements made
-  about `{tenant_iri}/meta`. It has no registry entry.
+  about `{tenant_iri}/meta`. It has no registry entry. Its IRI is the tenant IRI itself, it needs no
+  `rp_path`, and the generic aggregate routes skip it: it is read and replaced through
+  `GET`/`PUT /{tenant_segment}/{t}`, with action `modify` at tenant scope for the replace.
 
 ### Access
 
@@ -169,7 +175,8 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
   - `target` (`odrl:target`): an IRI, either the tenant's or an aggregate's graph IRI. The scope
     level follows from which it is;
   - `role` (`rp:role`) for a role grant, or `action` (`odrl:action`) for a direct permission;
-    exactly one of the two.
+    exactly one of the two. `role` is a string matched against `RoleDefinition.role` (PD-9); no
+    subclassing is needed, and an application may narrow it to an enum by `slot_usage`.
 
   The access record owns two collections: `grants` (`rp:grant`, role or direct-action grants) and
   `prohibitions` (`rp:prohibition`), both owned and multivalued. Grant targets are tenant or
@@ -177,7 +184,7 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
   global roles in the token claim (PD-9): no system grants are stored. A `Prohibition` has the same
   `assignee` and `target`, and an `action`. Uniqueness: one grant per assignee, target and
   role-or-action, declared as `unique_keys: {grant_key: [assignee, target, role, action]}` (task 1.3);
-  `generation.adoc`'s slot table and `index.adoc`'s tenancy row say the same.
+  `generation.adoc#metamodel` (slot table) and `index.adoc#building-blocks` (Tenancy row) say the same.
 
 ### Generation
 
@@ -226,7 +233,8 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
     - `GET` and `PUT /{tenant_segment}/{t}`: the tenant's root object (PD-8), with its `ETag`;
     - `DELETE /{tenant_segment}/{t}`: `If-Match` on the access record, action `delete`;
     - `GET` and `PUT /{tenant_segment}/{t}/grants`: the grant set, `If-Match` on the access record,
-      action `administer`;
+      action `administer`; `GET` returns the access record's `ETag`, which `DELETE` and `PUT …/label`
+      use;
     - `PUT /{tenant_segment}/{t}/label`: the tenant's label in the access record, `If-Match` on the
       access record, action `modify`.
   - Bodies and construction:
@@ -254,8 +262,11 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
 
     Adapter constructors: `FusekiStore(url, user, password)`,
     `S3FileStore(endpoint, access_key_id, secret_access_key, region)`,
-    `ZitadelIdentity(issuer, service_token, organisation_id)`,
-    `JwksTokenVerifier(issuer, audience, roles_claim)`.
+    `ZitadelIdentity(issuer, service_token, organisation_id, project_id)` (global roles are project-role
+    grants),
+    `JwksTokenVerifier(issuer, audience, roles_claim, *, jwks_uri=None, http_client=None)`: keys come
+    from the issuer's OIDC discovery unless `jwks_uri` is given; the testkit passes an `http_client`
+    that serves its in-memory JWKS.
 - **PD-14 Body handling.**
   1. A JSON body is expanded with the generated context; a JSON-LD body is used as is. Either way it
      becomes triples whose root is the IRI from the path (on create, the minted IRI).
@@ -326,7 +337,8 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
     without a floor, in a separate CI job.
   - The tenancy tests take the file store from a parametrised fixture: the fake in stage 2, and
     Garage added as a second parameter in task 3.1.
-  - The router's unit tests use the fake session, so the router counts toward the floor.
+  - The router's unit tests use the fake session, and the session and tenancy logic also get unit
+    tests on the fake store, so they count toward the floor.
   - A new CI workflow runs on changes under `docs/**` (which the main workflow ignores): it runs
     `make check-docs` and the Antora build.
 - **PD-17 The toy library.** `tests/fixtures/library/` holds:
@@ -381,6 +393,7 @@ practically impossible.
 1. The `TokenVerifier` gives principal `<p>` and global roles `[]`. The route declares `modify`.
 2. The access check loads, in one query, the grants and prohibitions of `<p>` in tenant `<t>`'s
    access record, then applies PD-9's rules in order:
+   - a tenant that is not `active` means 404;
    - a Prohibition on `modify` for the tenant or for `graph_iri(<book>)` means 403;
    - no tenant grant, no permission on the book and no global role a role definition allows means
      404;
