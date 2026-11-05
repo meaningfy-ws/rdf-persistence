@@ -1,0 +1,17 @@
+id: https://meaningfy.ws/ns/rdf-persistence
+name: rp
+title: RDF persistence metamodel
+description: The whole RDF persistence metamodel. An application imports this schema, or only the modules it uses.
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+  - rp_core
+  - rp_annotations
+  - rp_provenance
+  - rp_access
+  - rp_tenancy
+  - rp_files

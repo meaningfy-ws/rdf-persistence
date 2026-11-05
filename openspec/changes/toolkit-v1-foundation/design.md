@@ -100,6 +100,9 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
   | Tenant access record (an aggregate of the system database) | IRI `{tenant_iri}/access`; graph `graph_iri` of it, `{tenant_iri}/access/graph` |
 
   The sweep considers only databases and buckets whose names start with `{prefix}-t-`.
+
+  `TenantAccess` is an aggregate root, so it carries `rp_path: access` to satisfy the hard check.
+  Its IRI is the one in this table, never minted from `rp_path` (task 1.3).
 - **PD-7 Tracking on update.** `dcterms:created` and `dcterms:creator` are written by the first
   commit and kept. Every later commit replaces `dcterms:modified` and adds the committer to
   `dcterms:contributor`. All of these are statements about the graph IRI (D-7). Because a commit
