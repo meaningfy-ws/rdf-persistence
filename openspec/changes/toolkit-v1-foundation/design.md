@@ -381,8 +381,12 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
   tests cover them), and so are an application class's slots and rules inherited from them; for
   example, `LibraryGrant` (`is_a: Grant`) needs no `Described`. Grants and prohibitions stay blank
   nodes. A class reached only by IRI (`Principal`, `Activity`) is a reference, not a part.
+  The checks recognise the toolkit's own schemas by location: a schema file inside the installed
+  `rdf_persistence` package. The reference classes are exactly `Principal` and `Activity` (and their
+  subclasses); a non-owned slot ranging over any other metamodel class fails. The module-kind rule
+  looks at a module's direct imports only (task 1.7).
 - **PD-11 Unlabelled classes.** Before running the generators, `rp-generate` gives every class
-  annotated `rp_unlabelled: true` a `slot_usage` of `{label: {required: false}}`. The generated
+  annotated `rp_unlabelled: true` a `slot_usage` of `{label: {required: false}}`. `rp_unlabelled` relaxes only the label: the class still includes `Described`, so it keeps `id` and `description`. The generated
   classes and shapes then agree, with no separate change to the shapes generator. In the same
   step it gives every aggregate root a `slot_usage` of `{description: {required: true}}`, as the
   rp-metamodel requirement asks (tests in tasks 1.6 and 1.8).

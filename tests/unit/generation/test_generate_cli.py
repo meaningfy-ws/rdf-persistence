@@ -29,13 +29,15 @@ default_prefix: tst
 default_range: string
 imports:
   - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
 classes:
   Thing:
     title: Thing
     description: A thing.
-    attributes:
-      label:
-        description: Its label.
+    mixins: [AggregateRoot, Described]
+    annotations:
+      rp_path: things
 """
 
 OUTPUT = Path("app/generated/m.py")
@@ -53,7 +55,9 @@ def tree(root: Path) -> dict[Path, bytes]:
 
 def test_a_run_writes_the_classes_to_the_package_folder(tmp_path: Path) -> None:
     assert main(["--project", str(project(tmp_path))]) == 0, "the run failed"
-    assert "class Thing(ConfiguredBaseModel)" in (tmp_path / OUTPUT).read_text(), "no class written"
+    assert "class Thing(Described, AggregateRoot)" in (tmp_path / OUTPUT).read_text(), (
+        "no class written"
+    )
 
 
 def test_a_run_leaves_no_staging_folder_behind(tmp_path: Path) -> None:

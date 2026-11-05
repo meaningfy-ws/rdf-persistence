@@ -56,6 +56,58 @@ class LinkMLMeta(RootModel):
 
 linkml_meta = None
 
+class HardRule(str, Enum):
+    """
+    The rules of the hard check; a problem line starts with its rule.
+    """
+    Iri = "iri"
+    """
+    An element needs an IRI, explicit or from a declared default prefix.
+    """
+    Title = "title"
+    """
+    An element needs a title.
+    """
+    Description = "description"
+    """
+    An element needs a description.
+    """
+    Meaning = "meaning"
+    """
+    A permissible value needs a meaning, an IRI.
+    """
+    Rp_path = "rp_path"
+    """
+    An aggregate root needs the rp_path annotation.
+    """
+    Described = "described"
+    """
+    A root or an owned class includes Described.
+    """
+    Annotation = "annotation"
+    """
+    An annotation value is one of its allowed values.
+    """
+
+
+class BoundaryRule(str, Enum):
+    """
+    The rules of the boundary check; a problem line starts with its rule.
+    """
+    Ownership = "ownership"
+    """
+    A class is an aggregate root or is owned by a root.
+    """
+    Reference = "reference"
+    """
+    A slot that is not owned points to a root or to a reference class.
+    """
+    Module_kind = "module_kind"
+    """
+    A domain module does not import a technical or an access module.
+    """
+
+
 
 class GenerationTarget(ConfiguredBaseModel):
     """

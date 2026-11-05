@@ -58,3 +58,53 @@ slots:
     title: Diagrams folder
     description: The folder that receives one Mermaid file per module; none are written when absent.
     slot_uri: rp:diagramsFolder
+
+enums:
+  HardRule:
+    title: Hard rule
+    description: The rules of the hard check; a problem line starts with its rule.
+    permissible_values:
+      iri:
+        title: Iri
+        description: An element needs an IRI, explicit or from a declared default prefix.
+        meaning: rp:HardRuleIri
+      title:
+        title: Title
+        description: An element needs a title.
+        meaning: rp:HardRuleTitle
+      description:
+        title: Description
+        description: An element needs a description.
+        meaning: rp:HardRuleDescription
+      meaning:
+        title: Meaning
+        description: A permissible value needs a meaning, an IRI.
+        meaning: rp:HardRuleMeaning
+      rp_path:
+        title: Rp path
+        description: An aggregate root needs the rp_path annotation.
+        meaning: rp:HardRulePath
+      described:
+        title: Described
+        description: A root or an owned class includes Described.
+        meaning: rp:HardRuleDescribed
+      annotation:
+        title: Annotation
+        description: An annotation value is one of its allowed values.
+        meaning: rp:HardRuleAnnotation
+  BoundaryRule:
+    title: Boundary rule
+    description: The rules of the boundary check; a problem line starts with its rule.
+    permissible_values:
+      ownership:
+        title: Ownership
+        description: A class is an aggregate root or is owned by a root.
+        meaning: rp:BoundaryRuleOwnership
+      reference:
+        title: Reference
+        description: A slot that is not owned points to a root or to a reference class.
+        meaning: rp:BoundaryRuleReference
+      module_kind:
+        title: Module kind
+        description: A domain module does not import a technical or an access module.
+        meaning: rp:BoundaryRuleModuleKind

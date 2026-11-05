@@ -11,7 +11,10 @@ from linkml.generators.pydanticgen.pydanticgen import MetadataMode
 from linkml.linter.linter import Linter
 from linkml_runtime.utils.schemaview import SchemaView
 
+from rdf_persistence.generation.checks.boundary import boundary_problems
+from rdf_persistence.generation.checks.hard import hard_problems
 from rdf_persistence.generation.pipeline import Run, Step, StepError
+from rdf_persistence.generation.transform import apply_defaults
 from rdf_persistence.services.schema import metamodel_importmap
 
 LINT_CONFIG = Path(__file__).with_name("lint.yaml")
@@ -58,6 +61,20 @@ def lint(run: Run) -> None:
         raise StepError(list(problems))
 
 
+def boundary_check(run: Run) -> None:
+    """Fail on a part no root owns, a reference to a non-root, or a domain module importing another kind."""
+    problems = boundary_problems(run.view, run.schema_path.parent)
+    if problems:
+        raise StepError(problems)
+
+
+def hard_check(run: Run) -> None:
+    """Fail on a missing IRI, title, description or meaning, a missing path or mixin, a bad annotation."""
+    problems = hard_problems(run.view, run.schema_path.parent)
+    if problems:
+        raise StepError(problems)
+
+
 def python_classes(run: Run) -> None:
     """Generate the schema's classes with gen-pydantic and the toolkit's base template (PD-19, PD-24)."""
     try:
@@ -68,6 +85,7 @@ def python_classes(run: Run) -> None:
             metadata_mode=MetadataMode.NONE,
             emit_metadata=False,
         )
+        apply_defaults(generator.schemaview, run.schema_path.parent)
         source = generator.serialize()
     except Exception as error:  # the generator raises whatever the schema makes it raise
         raise StepError([str(error)]) from error
@@ -77,5 +95,7 @@ def python_classes(run: Run) -> None:
 # One line per step; a later task adds its step here.
 STEPS = (
     Step("lint", lint),
+    Step("boundary check", boundary_check),
+    Step("hard check", hard_check),
     Step("python", python_classes, writes=True),
 )

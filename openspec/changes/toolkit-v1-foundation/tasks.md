@@ -43,12 +43,12 @@ Notation:
   - runs lint with the raised rules.
 
   Exports: the `rp-generate` command, always installed; it exits with code 2 and a clear message when the `generate` extra is missing (PD-2).
-- [ ] 1.6 The hard check:
+- [x] 1.6 The hard check:
   - IRIs, titles, descriptions and meanings;
   - `rp_path` on every aggregate root;
   - `Described` on roots and owned classes;
   - `rp_unlabelled` applied as in PD-11.
-- [ ] 1.7 The boundary check: aggregate reachability, ownership, and `module_kind` imports.
+- [x] 1.7 The boundary check: aggregate reachability, ownership, and `module_kind` imports.
 - [ ] 1.8 Steps 3 and 4:
   - split `gen-pydantic` with the toolkit's base template;
   - a `gen-shacl` subclass that ignores the toolkit's bookkeeping predicates (`rp:version`, `dcterms:created`, `dcterms:modified`, `dcterms:creator`, `dcterms:contributor`), and translates `exactly_one_of` to `sh:xone`, `any_of` to `sh:or` and `unique_keys` to a SPARQL constraint on the owning class (PD-24).
@@ -192,7 +192,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 ## Roadmap
 
 - [x] 0.1 · [x] 0.2 · [x] 0.3 · [x] 0.4 · [x] 0.5
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10 · [x] 1.11 · [ ] 1.12 · [ ] 1.13 · [ ] 1.14 · [ ] 1.15 · [ ] 1.16 · [ ] 1.17 · [ ] 1.18
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10 · [x] 1.11 · [ ] 1.12 · [ ] 1.13 · [ ] 1.14 · [ ] 1.15 · [ ] 1.16 · [ ] 1.17 · [ ] 1.18
 - [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8
 - [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4
 - [ ] 4.1 · [ ] 4.2 · [ ] 4.3
