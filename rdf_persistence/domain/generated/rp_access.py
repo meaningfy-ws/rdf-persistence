@@ -25,7 +25,8 @@ from pydantic import (
     SerializationInfo,
     SerializerFunctionWrapHandler,
     field_validator,
-    model_serializer
+    model_serializer,
+    model_validator
 )
 
 from .rp_core import Principal
@@ -123,6 +124,22 @@ class Grant(Rule):
     assignee: str = Field(default=..., title="Assignee", description="""The principal the rule applies to.""")
     target: str = Field(default=..., title="Target", description="""The IRI of the tenant, or of an aggregate's graph, the rule applies to.""")
     action: Optional[Action] = Field(default=None, title="Action", description="""The action a direct permission allows, or a prohibition forbids.""")
+
+    @model_validator(mode="after")
+    def exactly_one_of_Grant(self) -> "Grant":
+        held = [
+            label
+            for label, present in (
+                ("role present", self.role not in (None, [])),
+                ("action present", self.action not in (None, [])),
+            )
+            if present
+        ]
+        if len(held) != 1:
+            raise ValueError(
+                f"Grant: exactly_one_of needs exactly one of [role present, action present], but {held or 'none'} hold"
+            )
+        return self
 
 
 class Prohibition(Rule):

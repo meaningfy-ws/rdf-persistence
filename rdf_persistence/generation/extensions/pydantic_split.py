@@ -1,11 +1,12 @@
 """gen-pydantic in split mode: one module per schema module, metadata off, the toolkit's templates (PD-24).
 
-The stock generator lacks three things the toolkit needs, and this module adds them:
+The stock generator lacks four things the toolkit needs, and this module adds them:
 
 * the metamodel's classes are imported from the toolkit's package, never regenerated: from
   ``rdf_persistence.domain.generated.<module>`` inside the toolkit's own runs and from the public
   top-level package (DEC-6) in an application's run;
 * enum members are named after the permissible-value keys in UPPER_SNAKE case, not after the titles;
+* ``exactly_one_of``, ``any_of`` and ``unique_keys`` become model validators (``pydantic_validators``);
 * a slot annotated ``internal: true`` carries ``json_schema_extra={"rp_internal": True}`` (the
   ``attribute.py.jinja`` template), which the API layer reads; the slot is still dumped, because the
   mapper must persist it.
@@ -16,6 +17,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
+from linkml.generators.common.build import ClassResult
 from linkml.generators.pydanticgen import PydanticGenerator
 from linkml.generators.pydanticgen.build import SlotResult
 from linkml.generators.pydanticgen.pydanticgen import MetadataMode, SplitMode
@@ -35,6 +37,7 @@ from rdf_persistence.generation.checks.scope import (
     is_toolkit_schema,
     own_schemas,
 )
+from rdf_persistence.generation.extensions.pydantic_validators import with_validators
 from rdf_persistence.generation.outputs import GeneratedFile
 from rdf_persistence.generation.transform import apply_defaults
 from rdf_persistence.services.schema import load_schema, metamodel_importmap
@@ -107,6 +110,9 @@ class SplitPydanticGenerator(PydanticGenerator):
     def generate_enum_label(self, value: str) -> str:
         label: str = super().generate_enum_label(value)
         return label.upper()
+
+    def after_generate_class(self, cls: ClassResult, sv: SchemaView) -> ClassResult:
+        return with_validators(cls, sv)
 
     def after_generate_slot(self, slot: SlotResult, sv: SchemaView) -> SlotResult:
         fields = {name: getattr(slot.attribute, name) for name in PydanticAttribute.model_fields}

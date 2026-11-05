@@ -1,0 +1,237 @@
+id: https://meaningfy.ws/ns/rdf-persistence/service
+name: rp_service
+title: RDF persistence service module
+description: >-
+  The toolkit's own data types for the HTTP service: the settings of `install_service`, the caller a
+  token verifier returns, and the request and response bodies of the tenant routes. They are generated
+  into their own package, so an application's models do not carry them.
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_access
+  - rdf_persistence/model/rp_tenancy
+annotations:
+  module_kind: technical
+
+classes:
+  Any:
+    title: Any
+    description: Any value; the slots that range over it hold data the toolkit does not model.
+    class_uri: linkml:Any
+  ServiceSettings:
+    title: Service settings
+    description: >-
+      The settings of `install_service`: where the service is mounted, how it names tenants and which
+      role its callers get on a tenant they create.
+    class_uri: rp:ServiceSettings
+    slots:
+      - base
+      - prefix
+      - tenant_segment
+      - creator_role
+      - roles_claim
+    slot_usage:
+      base:
+        required: true
+      prefix:
+        required: true
+      tenant_segment:
+        required: true
+      creator_role:
+        required: true
+  VerifiedCaller:
+    title: Verified caller
+    description: >-
+      What a token verifier returns for a valid token, the principal and its global roles.
+    class_uri: rp:VerifiedCaller
+    slots:
+      - principal
+      - global_roles
+    slot_usage:
+      principal:
+        required: true
+  TenantCreate:
+    title: Tenant create
+    description: The body that creates a tenant, its label and the slots of the tenant's root object.
+    class_uri: rp:TenantCreate
+    slots:
+      - label
+      - root
+    slot_usage:
+      label:
+        required: true
+      root:
+        required: true
+  TenantSummary:
+    title: Tenant summary
+    description: What the service answers about one tenant, in a listing or after creating it.
+    class_uri: rp:TenantSummary
+    slots:
+      - id
+      - label
+      - state
+    slot_usage:
+      id:
+        required: true
+      label:
+        required: true
+      state:
+        required: true
+  LabelUpdate:
+    title: Label update
+    description: The body that replaces the label of a tenant.
+    class_uri: rp:LabelUpdate
+    slots:
+      - label
+    slot_usage:
+      label:
+        required: true
+  GrantSet:
+    title: Grant set
+    description: >-
+      The body that replaces the grants and prohibitions of a tenant; two grants with the same
+      assignee, target and role or action are refused.
+    class_uri: rp:GrantSet
+    slots:
+      - grants
+      - prohibitions
+  Page:
+    title: Page
+    description: One page of a listing, with the position of the page in the whole listing.
+    class_uri: rp:Page
+    slots:
+      - items
+      - total
+      - limit
+      - offset
+    slot_usage:
+      items:
+        required: true
+      total:
+        required: true
+      limit:
+        required: true
+      offset:
+        required: true
+  Problem:
+    title: Problem
+    description: An RFC 9457 problem detail, the body of every error answer of the service.
+    class_uri: rp:Problem
+    slots:
+      - problem_type
+      - problem_title
+      - problem_status
+      - problem_detail
+      - problem_instance
+    slot_usage:
+      problem_type:
+        required: true
+      problem_title:
+        required: true
+      problem_status:
+        required: true
+
+slots:
+  base:
+    title: Base
+    description: The IRI under which the service mints identifiers and problem types, ending in a slash.
+    slot_uri: rp:base
+    range: uri
+  prefix:
+    title: Prefix
+    description: >-
+      The prefix of the database names of the service's tenants; lower case, at most 20 characters.
+    slot_uri: rp:prefix
+    range: string
+    pattern: "^[a-z][a-z0-9]{0,19}$"
+  tenant_segment:
+    title: Tenant segment
+    description: The path segment that names the tenant collection in the service's routes.
+    slot_uri: rp:tenantSegment
+    range: string
+  creator_role:
+    title: Creator role
+    description: The role a caller is given on the tenant it creates.
+    slot_uri: rp:creatorRole
+    range: string
+  roles_claim:
+    title: Roles claim
+    description: The claim of the token that holds the caller's global roles; Zitadel's by default.
+    slot_uri: rp:rolesClaim
+    range: string
+    ifabsent: string(urn:zitadel:iam:org:project:roles)
+  principal:
+    title: Principal
+    description: The user account the token identifies.
+    slot_uri: rp:principal
+    range: Principal
+  global_roles:
+    title: Global roles
+    description: The system-level roles the token grants the principal.
+    slot_uri: rp:globalRole
+    range: string
+    multivalued: true
+  root:
+    title: Root
+    description: The slots of the tenant's root object, as the application's schema defines them.
+    slot_uri: rp:root
+    range: Any
+  items:
+    title: Items
+    description: The objects of the page; framed aggregates, or tenant summaries.
+    slot_uri: rp:items
+    range: Any
+    multivalued: true
+  total:
+    title: Total
+    description: The number of objects in the whole listing.
+    slot_uri: rp:total
+    range: integer
+    minimum_value: 0
+  limit:
+    title: Limit
+    description: The most objects the page can hold.
+    slot_uri: rp:limit
+    range: integer
+    minimum_value: 1
+  offset:
+    title: Offset
+    description: The position of the page's first object in the whole listing.
+    slot_uri: rp:offset
+    range: integer
+    minimum_value: 0
+  problem_type:
+    title: Problem type
+    description: The IRI that identifies the kind of problem.
+    slot_uri: rp:problemType
+    alias: type
+    range: uri
+  problem_title:
+    title: Problem title
+    description: A short, fixed summary of the kind of problem.
+    slot_uri: rp:problemTitle
+    alias: title
+    range: string
+  problem_status:
+    title: Problem status
+    description: The HTTP status code of the answer.
+    slot_uri: rp:problemStatus
+    alias: status
+    range: integer
+  problem_detail:
+    title: Problem detail
+    description: An explanation of this occurrence of the problem.
+    slot_uri: rp:problemDetail
+    alias: detail
+    range: string
+  problem_instance:
+    title: Problem instance
+    description: The IRI that identifies this occurrence of the problem.
+    slot_uri: rp:problemInstance
+    alias: instance
+    range: uri

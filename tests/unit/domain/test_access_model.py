@@ -1,7 +1,7 @@
 """The access classes of the metamodel as gen-pydantic renders them.
 
-Tests marked xfail document what gen-pydantic does not enforce from the schema (patterns it does); they feed the hard
-check (task 1.6) and the shape generator (task 1.8). Each is strict: when the gap closes, it fails.
+The schema's own rules (exactly_one_of, unique_keys) are enforced by the model validators of the toolkit's
+gen-pydantic extension (task 1.13).
 """
 
 import pytest
@@ -9,8 +9,6 @@ from pydantic import ValidationError
 
 from rdf_persistence import Action, Grant, RoleLevel, StoredFile, TenantState
 from tests.unit.domain.builders import grant, tenant_access
-
-SCHEMA_ONLY = "gen-pydantic does not render this schema constraint (see tasks 1.6 and 1.8)"
 
 
 @pytest.mark.parametrize(
@@ -51,13 +49,11 @@ def test_grant_requires_assignee_and_target(missing: str) -> None:
         Grant.model_validate(grant().model_dump(exclude={missing}))
 
 
-@pytest.mark.xfail(strict=True, reason=SCHEMA_ONLY + ": exactly_one_of role and action")
 def test_grant_with_both_role_and_action_is_refused() -> None:
     with pytest.raises(ValidationError):
         grant(action="read")
 
 
-@pytest.mark.xfail(strict=True, reason=SCHEMA_ONLY + ": exactly_one_of role and action")
 def test_grant_with_neither_role_nor_action_is_refused() -> None:
     with pytest.raises(ValidationError):
         grant(role=None)
@@ -109,7 +105,24 @@ def test_stored_file_accepts_a_lowercase_hex_sha256() -> None:
     assert StoredFile(sha256="a" * 64).sha256 == "a" * 64, "the digest was not kept"
 
 
-@pytest.mark.xfail(strict=True, reason=SCHEMA_ONLY + ": unique_keys grant_key")
 def test_duplicate_grants_in_a_tenant_are_refused() -> None:
     with pytest.raises(ValidationError):
         tenant_access(grants=[grant(), grant()])
+
+
+def test_duplicate_direct_grants_with_no_role_are_refused() -> None:
+    direct = grant(role=None, action="read")
+    with pytest.raises(ValidationError, match="grant_key"):
+        tenant_access(grants=[direct, grant(role=None, action="read")])
+
+
+def test_grants_that_differ_in_one_key_slot_are_accepted() -> None:
+    grants = [
+        grant(),
+        grant(role="viewer"),
+        grant(assignee="https://example.org/user/bob"),
+        grant(role=None, action="read"),
+    ]
+    assert len(tenant_access(grants=grants).grants or []) == len(grants), (
+        "distinct grants were refused"
+    )

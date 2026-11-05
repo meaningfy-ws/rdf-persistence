@@ -214,8 +214,10 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
       `roles_claim`), `VerifiedCaller` (what `TokenVerifier` returns: `principal`,
       `global_roles`), and the toolkit's own request and response bodies (PD-13: `TenantCreate`,
       `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`, `Problem`), generated into
-      `rdf_persistence/domain/generated/service/`. `rp_service.yaml` imports `rp_core` and
-      `rp_access`; `GrantSet.grants` has range `Grant`; its run emits only its own classes and
+      `rdf_persistence/domain/generated/service/`. `rp_service.yaml` imports `rp_core`,
+      `rp_access` and `rp_tenancy` (for `TenantState`); `linkml:Any` is declared as a class `Any`
+      with `class_uri: linkml:Any`, which gen-pydantic renders as `typing.Any`; `Problem`'s slots are
+      `problem_type`, `problem_title`, ... with aliases `type`, `title`, ... (task 1.13); `GrantSet.grants` has range `Grant`; its run emits only its own classes and
       imports the others from `rdf_persistence.domain.generated`;
     - `rdf_persistence/generation/model/rp_generation.yaml`: `GenerationManifest`, `ConstraintCase`
       and `ClassShape` (PD-26, PD-27), generated into `rdf_persistence/generation/generated/`.
@@ -239,7 +241,10 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
       `odrl:Permission`), and a non-owned slot that refers to another aggregate is checked as an
       IRI only (no `sh:node` or `sh:class`), so an aggregate's graph validates without the
       aggregates it refers to (task 1.8);
-    - `rules` (LinkML's pre- and postconditions) is not supported in v1: `rp-generate` exits 1,
+    - `unique_keys` is enforced on multivalued slots holding objects (inlined, or a range without
+      an identifier); a slot of references by IRI carries no key slots to compare (task 1.13).
+    - `rules` (LinkML's pre- and postconditions), `all_of` and `none_of` are not supported in v1:
+      the generated code would ignore them, so `rp-generate` exits 1,
       naming the class, if a schema uses it.
 - **PD-25 Extending the generators.** Every gap in a stock LinkML generator is closed by an
   extension in `rdf_persistence/generation/`: a subclass or a template, never a patch to generated
@@ -309,8 +314,9 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
      strategies built from `SchemaView`: required slots always, optional ones by draw; values by
      range (text, integers, dates, enum values, IRIs under a fixed base); owned parts to depth 2.
   5. *Model shape*: for every generated class, the pydantic fields match `SchemaView`'s induced
-     slots (name, required, multivalued, range). This compares the generated code with the
-     *current* schema, so it catches stale or edited code even without the manifest.
+     slots (name, required and multivalued; the range is held by the snapshot of item 6, since
+     LinkML ranges and pydantic types do not map one to one). Both read the schema *after* PD-11's
+     defaults, as the generators do. This compares the generated code with the *current* schema, so it catches stale or edited code even without the manifest.
   6. *A model change fails the tests until acknowledged* (runbook): `tests/fixtures/model-shape.yaml`
      holds the reviewed shape of every class of the metamodel and the toy library, as `ClassShape`
      rows (`class_name`, then `slots`, each with `name`, `required`, `multivalued`, `range`). The

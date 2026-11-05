@@ -11,6 +11,7 @@ from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation.checks.boundary import boundary_problems
 from rdf_persistence.generation.checks.hard import hard_problems
+from rdf_persistence.generation.checks.rules import rules_problems
 from rdf_persistence.generation.extensions.jsonld_context import CONTEXT_STEP
 from rdf_persistence.generation.extensions.mermaid import DIAGRAMS_STEP
 from rdf_persistence.generation.extensions.pydantic_split import render_modules
@@ -77,6 +78,13 @@ def hard_check(run: Run) -> None:
         raise StepError(problems)
 
 
+def rules_check(run: Run) -> None:
+    """Fail on a class that declares ``rules``, which v1 does not support (PD-24)."""
+    problems = rules_problems(run.view)
+    if problems:
+        raise StepError(problems)
+
+
 def python_classes(run: Run) -> None:
     """Generate one Python module per schema module with the split gen-pydantic (PD-19, PD-24)."""
     try:
@@ -100,6 +108,7 @@ STEPS = (
     Step("lint", lint),
     Step("boundary check", boundary_check),
     Step("hard check", hard_check),
+    Step("rules check", rules_check),
     Step("python", python_classes, writes=True),
     Step("shapes", shapes, writes=True),
     CONTEXT_STEP,

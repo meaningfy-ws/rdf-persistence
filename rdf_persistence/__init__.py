@@ -31,6 +31,16 @@ from rdf_persistence.domain.generated.rp_tenancy import (
     TenantAccess,
     TenantState,
 )
+from rdf_persistence.domain.generated.service.rp_service import (
+    GrantSet,
+    LabelUpdate,
+    Page,
+    Problem,
+    ServiceSettings,
+    TenantCreate,
+    TenantSummary,
+    VerifiedCaller,
+)
 
 __version__ = "0.1.0"
 
@@ -40,8 +50,12 @@ __all__ = [
     "AggregateRoot",
     "Described",
     "Grant",
+    "GrantSet",
+    "LabelUpdate",
+    "Page",
     "Policy",
     "Principal",
+    "Problem",
     "Prohibition",
     "Provenanced",
     "RegistryEntry",
@@ -50,8 +64,12 @@ __all__ = [
     "RoleLevel",
     "Rule",
     "RpModel",
+    "ServiceSettings",
     "StoredFile",
     "TenantAccess",
+    "TenantCreate",
     "TenantState",
+    "TenantSummary",
     "Tracked",
+    "VerifiedCaller",
 ]

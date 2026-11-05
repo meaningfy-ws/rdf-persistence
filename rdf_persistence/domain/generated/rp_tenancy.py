@@ -25,7 +25,8 @@ from pydantic import (
     SerializationInfo,
     SerializerFunctionWrapHandler,
     field_validator,
-    model_serializer
+    model_serializer,
+    model_validator
 )
 
 from .rp_access import (
@@ -116,6 +117,21 @@ class TenantAccess(Described, AggregateRoot, Policy):
             err_msg = f"Invalid label format: {v}"
             raise ValueError(err_msg)
         return v
+
+    @model_validator(mode="after")
+    def unique_keys_grants_grant_key(self) -> "TenantAccess":
+        seen: set[str] = set()
+        repeated: list[tuple] = []
+        for item in self.grants or []:
+            key = (item.assignee, item.target, item.role, item.action,)
+            if repr(key) in seen:
+                repeated.append(key)
+            seen.add(repr(key))
+        if repeated:
+            raise ValueError(
+                f"TenantAccess.grants: unique_keys grant_key (assignee, target, role, action) repeated by {repeated}"
+            )
+        return self
 
 
 # Model rebuild

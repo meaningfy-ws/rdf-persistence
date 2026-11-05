@@ -1,0 +1,231 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "ODRL": "http://www.w3.org/ns/odrl/2/",
+      "dcterms": "http://purl.org/dc/terms/",
+      "linkml": "https://w3id.org/linkml/",
+      "prov": "http://www.w3.org/ns/prov#",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "skos": "http://www.w3.org/2004/02/skos/core#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "action": {
+         "@context": {
+            "text": "skos:notation",
+            "description": "skos:prefLabel",
+            "meaning": "@id"
+         },
+         "@id": "ODRL:action"
+      },
+      "actions": {
+         "@context": {
+            "text": "skos:notation",
+            "description": "skos:prefLabel",
+            "meaning": "@id"
+         },
+         "@container": "@set",
+         "@id": "permits"
+      },
+      "assignee": {
+         "@type": "@id",
+         "@id": "ODRL:assignee"
+      },
+      "base": {
+         "@type": "xsd:anyURI",
+         "@id": "base"
+      },
+      "contributor": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "dcterms:contributor"
+      },
+      "created": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:created"
+      },
+      "creator": {
+         "@type": "@id",
+         "@id": "dcterms:creator"
+      },
+      "creator_role": {
+         "@id": "creatorRole"
+      },
+      "description": {
+         "@id": "dcterms:description"
+      },
+      "global_roles": {
+         "@container": "@set",
+         "@id": "globalRole"
+      },
+      "grants": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "grant"
+      },
+      "graph": {
+         "@type": "xsd:anyURI",
+         "@id": "graph"
+      },
+      "id": "@id",
+      "items": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "items"
+      },
+      "kind": {
+         "@context": {
+            "text": "skos:notation",
+            "description": "skos:prefLabel",
+            "meaning": "@id"
+         },
+         "@id": "kind"
+      },
+      "label": {
+         "@id": "skos:prefLabel"
+      },
+      "level": {
+         "@context": {
+            "text": "skos:notation",
+            "description": "skos:prefLabel",
+            "meaning": "@id"
+         },
+         "@id": "level"
+      },
+      "limit": {
+         "@id": "limit"
+      },
+      "loaded_graph": {
+         "@type": "xsd:anyURI",
+         "@id": "loadedGraph"
+      },
+      "modified": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:modified"
+      },
+      "offset": {
+         "@id": "offset"
+      },
+      "owned_by": {
+         "@type": "xsd:anyURI",
+         "@id": "ownedBy"
+      },
+      "prefix": {
+         "@id": "prefix"
+      },
+      "principal": {
+         "@type": "@id",
+         "@id": "principal"
+      },
+      "detail": {
+         "@id": "problemDetail"
+      },
+      "instance": {
+         "@type": "xsd:anyURI",
+         "@id": "problemInstance"
+      },
+      "status": {
+         "@id": "problemStatus"
+      },
+      "title": {
+         "@id": "problemTitle"
+      },
+      "type": "@type",
+      "prohibitions": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "prohibition"
+      },
+      "role": {
+         "@id": "role"
+      },
+      "roles_claim": {
+         "@id": "rolesClaim"
+      },
+      "root": {
+         "@type": "@id",
+         "@id": "root"
+      },
+      "state": {
+         "@context": {
+            "text": "skos:notation",
+            "description": "skos:prefLabel",
+            "meaning": "@id"
+         },
+         "@id": "state"
+      },
+      "target": {
+         "@type": "xsd:anyURI",
+         "@id": "ODRL:target"
+      },
+      "tenant_segment": {
+         "@id": "tenantSegment"
+      },
+      "total": {
+         "@id": "total"
+      },
+      "version": {
+         "@id": "version"
+      },
+      "AggregateRoot": {
+         "@id": "AggregateRoot"
+      },
+      "Any": {
+         "@id": "linkml:Any"
+      },
+      "Described": {
+         "@id": "Described"
+      },
+      "Grant": {
+         "@id": "ODRL:Permission"
+      },
+      "GrantSet": {
+         "@id": "GrantSet"
+      },
+      "LabelUpdate": {
+         "@id": "LabelUpdate"
+      },
+      "Page": {
+         "@id": "Page"
+      },
+      "Policy": {
+         "@id": "ODRL:Set"
+      },
+      "Principal": {
+         "@id": "prov:Agent"
+      },
+      "Problem": {
+         "@id": "Problem"
+      },
+      "Prohibition": {
+         "@id": "ODRL:Prohibition"
+      },
+      "RegistryEntry": {
+         "@id": "RegistryEntry"
+      },
+      "RoleDefinition": {
+         "@id": "RoleDefinition"
+      },
+      "Rule": {
+         "@id": "ODRL:Rule"
+      },
+      "ServiceSettings": {
+         "@id": "ServiceSettings"
+      },
+      "TenantAccess": {
+         "@id": "TenantAccess"
+      },
+      "TenantCreate": {
+         "@id": "TenantCreate"
+      },
+      "TenantSummary": {
+         "@id": "TenantSummary"
+      },
+      "Tracked": {
+         "@id": "Tracked"
+      },
+      "VerifiedCaller": {
+         "@id": "VerifiedCaller"
+      }
+   }
+}
