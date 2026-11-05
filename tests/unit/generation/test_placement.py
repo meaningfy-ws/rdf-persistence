@@ -26,16 +26,16 @@ def test_typescript_goes_to_the_declared_folder_and_nowhere_else(tmp_path: Path)
     assert any(f.startswith("generated/diagrams/") for f in _files(project)), (
         "no diagram in the declared folder"
     )
-    assert (project / "generated" / "books.py").is_file(), "the classes are not in the python folder"
+    assert (project / "generated" / "books.py").is_file(), (
+        "the classes are not in the python folder"
+    )
 
 
 def test_a_flag_overrides_the_table(tmp_path: Path) -> None:
     project = tmp_path / "library"
     shutil.copytree(TOY, project, ignore=shutil.ignore_patterns("generated", "golden", "web"))
 
-    code = main(
-        ["--project", str(project / "pyproject.toml"), "--typescript-out", "client/types"]
-    )
+    code = main(["--project", str(project / "pyproject.toml"), "--typescript-out", "client/types"])
 
     assert code == 0, "the run failed"
     assert (project / "client" / "types" / "index.ts").is_file(), "the flag was not used"

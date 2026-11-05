@@ -292,7 +292,9 @@ def test_a_schema_using_an_unsupported_rule_makes_rp_generate_exit_1_naming_the_
     rule: str,
     snippet: str,
 ) -> None:
-    root = break_toy("books.yaml", "    class_uri: lib:Note\n", "    class_uri: lib:Note\n" + snippet)
+    root = break_toy(
+        "books.yaml", "    class_uri: lib:Note\n", "    class_uri: lib:Note\n" + snippet
+    )
     code = main(["--project", str(root.parent / "pyproject.toml"), *check])
     assert code == 1, f"a schema using {rule} must fail"
     error = capsys.readouterr().err

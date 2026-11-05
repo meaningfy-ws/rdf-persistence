@@ -1,0 +1,12 @@
+id: https://example.org/library/t1
+label: The city library
+description: Its access record
+state: active
+database_name: acme-t-00000000000000000000000000000000
+grants:
+  - assignee: https://example.org/u/1
+    target: https://example.org/t/1
+    action: read
+  - assignee: https://example.org/u/1
+    target: https://example.org/t/1
+    action: read

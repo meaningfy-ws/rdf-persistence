@@ -1,0 +1,283 @@
+"""Cross-artefact conformance (PD-27 item 3): generated classes and generated shapes must agree.
+
+A consumer runs it on its own schema: ``assert testkit.conformance.run(schema, cases) == []``.
+``schema`` is the root LinkML file of a ``[[tool.rp-generate]]`` entry; the generated package, the
+shapes and the JSON-LD context are found from that entry. ``cases`` is a YAML list of
+``ConstraintCase`` rows whose instance files sit beside it. A row whose class this schema does not
+generate is left to the schema that does, so one cases file can serve several schemas.
+
+An instance file is the YAML of one object, keyed by slot name, as the generated class takes it.
+Dates and date-times are quoted, so that YAML keeps them as text. The shape side reads the same
+object as RDF: the instance is made a JSON-LD node (``jsonld_node``) and expanded with the
+generated context.
+"""
+
+import functools
+import importlib
+import json
+import pkgutil
+from dataclasses import dataclass
+from pathlib import Path
+
+import yaml
+from linkml_runtime.linkml_model.meta import SlotDefinition
+from linkml_runtime.utils.formatutils import camelcase, underscore
+from linkml_runtime.utils.schemaview import SchemaView
+from pydantic import BaseModel, ValidationError
+from pyld import jsonld  # type: ignore[import-untyped]
+from pyshacl import validate
+from rdflib import Graph
+
+from rdf_persistence.generation.checks.scope import TRUE, annotation
+from rdf_persistence.generation.config import ConfigError, python_folder, read_targets
+from rdf_persistence.generation.generated.rp_generation import ConstraintCase, ConstraintKind
+from rdf_persistence.generation.transform import apply_defaults
+from rdf_persistence.services.schema import load_schema
+
+SHAPES_FILE = "shapes.ttl"
+CONTEXT_FILE = "context.jsonld"
+K = ConstraintKind
+URI_TYPES = {"uri", "uriorcurie"}
+
+
+def load_cases(path: Path) -> list[ConstraintCase]:
+    """The rows of the cases file at ``path``, their instance paths made absolute."""
+    rows = yaml.safe_load(path.read_text(encoding="utf-8")) or []
+    cases = [ConstraintCase.model_validate(row) for row in rows]
+    return [
+        case.model_copy(
+            update={
+                "valid": [str(path.parent / p) for p in case.valid or []],
+                "invalid": [str(path.parent / p) for p in case.invalid or []],
+            }
+        )
+        for case in cases
+    ]
+
+
+def _generating_target(schema: Path) -> tuple[Path, str, Path]:
+    """The folder of the pyproject, the package and the Python folder of the entry generating ``schema``."""
+    wanted = schema.resolve()
+    for folder in wanted.parents:
+        try:
+            targets = read_targets(folder / "pyproject.toml")
+        except ConfigError:
+            continue
+        for target in targets:
+            if (folder / target.schema_file).resolve() == wanted:
+                return folder, target.package, folder / python_folder(target)
+    raise LookupError(f"no [[tool.rp-generate]] entry of a pyproject.toml generates {schema}")
+
+
+def _generated_models(package: str, folder: Path) -> dict[str, type[BaseModel]]:
+    models: dict[str, type[BaseModel]] = {}
+    for info in pkgutil.iter_modules([str(folder)]):
+        module = importlib.import_module(f"{package}.{info.name}")
+        models |= {
+            name: member
+            for name, member in vars(module).items()
+            if isinstance(member, type)
+            and issubclass(member, BaseModel)
+            and member.__module__ == module.__name__
+        }
+    return models
+
+
+@dataclass(frozen=True)
+class Conformance:
+    """A schema with its generated classes, JSON-LD context and shapes, ready to give verdicts."""
+
+    view: SchemaView
+    models: dict[str, type[BaseModel]]
+    context: dict
+    shapes: Graph
+
+    @staticmethod
+    @functools.cache
+    def of(schema: Path) -> "Conformance":
+        """Open ``schema`` and the generated artefacts of the ``[[tool.rp-generate]]`` entry for it."""
+        _, package, folder = _generating_target(schema)
+        context = json.loads((folder / CONTEXT_FILE).read_text(encoding="utf-8"))["@context"]
+        view = load_schema(schema)
+        apply_defaults(view, schema.parent)  # the schema the generators saw (PD-11)
+        return Conformance(
+            view=view,
+            models=_generated_models(package, folder),
+            context=context,
+            shapes=Graph().parse(folder / SHAPES_FILE),
+        )
+
+    def class_names(self) -> set[str]:
+        """The schema classes this entry generates."""
+        return {name for name in self.view.all_classes() if camelcase(name) in self.models}
+
+    def class_accepts(self, class_name: str, data: dict) -> bool:
+        """Whether the generated class builds an object from ``data``."""
+        try:
+            self.models[camelcase(class_name)].model_validate(data)
+        except ValidationError:
+            return False
+        return True
+
+    def shapes_accept(self, class_name: str, data: dict) -> bool:
+        """Whether the generated shapes accept the RDF of ``data``, an instance of ``class_name``.
+
+        An object the class builds is read back through its JSON (what the API would send); one it
+        refuses is read from ``data`` as it is, since it cannot be built.
+        """
+        try:
+            built = self.models[camelcase(class_name)].model_validate(data)
+            data = built.model_dump(mode="json", by_alias=True, exclude_none=True)
+        except ValidationError:
+            pass
+        nquads = jsonld.to_rdf(
+            {"@context": self.context, **self.jsonld_node(class_name, data)},
+            {"format": "application/n-quads"},
+        )
+        graph = Graph().parse(data=nquads, format="nt")
+        conforms, _, _ = validate(graph, shacl_graph=self.shapes, inference="none")
+        return bool(conforms)
+
+    def jsonld_node(self, class_name: str, data: dict, *, as_shapes_expect: bool = True) -> dict:
+        """``data`` as a JSON-LD node of ``class_name``, typed, owned parts too (frames need the types).
+
+        With ``as_shapes_expect`` the gaps between the generated context and the shapes are closed
+        here, guided by the schema: the context drops internal slots, leaves an enum value a plain
+        string and makes a ``uri`` value a typed literal, while the shapes expect the slot's
+        predicate, the meaning IRI and an IRI. Without it the context is used as generated.
+        """
+        slots = {underscore(s.name): s for s in self.view.class_induced_slots(class_name)}
+        node: dict = {"@type": camelcase(class_name)}
+        for key, value in data.items():
+            slot = slots.get(key)
+            if slot is None or slot.identifier:
+                node[key] = value
+            elif as_shapes_expect and annotation(slot, "internal") == TRUE:
+                node[self.view.get_uri(slot, expand=False)] = value
+            else:
+                node[key] = self._slot_value(slot, value, as_shapes_expect)
+        return node
+
+    def _slot_value(self, slot: SlotDefinition, value: object, as_shapes_expect: bool) -> object:
+        if isinstance(value, list):
+            return [self._slot_value(slot, item, as_shapes_expect) for item in value]
+        if isinstance(value, dict) and annotation(slot, "owned") == TRUE:
+            return self.jsonld_node(slot.range, value, as_shapes_expect=as_shapes_expect)
+        if not as_shapes_expect:
+            return value
+        if self._is_uri(slot):
+            return {"@id": value}
+        if slot.range in self.view.all_enums():
+            values = self.view.get_enum(slot.range).permissible_values
+            meaning = values[value].meaning if value in values else None
+            return {"@id": meaning} if meaning else value
+        return value
+
+    def _is_uri(self, slot: SlotDefinition) -> bool:
+        return slot.range in self.view.all_types() and bool(
+            URI_TYPES & set(self.view.type_ancestors(slot.range))
+        )
+
+    def used_kinds(self) -> set[ConstraintKind]:
+        """The constraint kinds the generated classes of the schema use, read from ``SchemaView``."""
+        kinds = {K.CLOSED} if self.models else set()
+        for name in self.class_names():
+            kinds |= self._class_kinds(name)
+            for slot in self.view.class_induced_slots(name):
+                kinds |= self._slot_kinds(slot)
+        return kinds
+
+    def _class_kinds(self, name: str) -> set[ConstraintKind]:
+        cls = self.view.get_class(name)
+        kinds = {kind for kind, found in _CLASS_KINDS if getattr(cls, found)}
+        for slot in self.view.class_induced_slots(name):
+            part = self.view.get_class(slot.range) if slot.multivalued else None
+            if part is not None and part.unique_keys:
+                kinds.add(K.UNIQUE_KEYS)
+        return kinds
+
+    def _slot_kinds(self, slot: SlotDefinition) -> set[ConstraintKind]:
+        kinds = {kind for kind, found in _SLOT_KINDS if getattr(slot, found) is not None}
+        if slot.range in self.view.all_types():
+            kinds.add(K.RANGE_TYPE)
+        if slot.range in self.view.all_enums():
+            kinds.add(K.RANGE_ENUM)
+        return kinds | ({K.IDENTIFIER} if slot.identifier else set())
+
+
+_CLASS_KINDS = (
+    (K.EXACTLY_ONE_OF, "exactly_one_of"),
+    (K.ANY_OF, "any_of"),
+    (K.UNIQUE_KEYS, "unique_keys"),
+)
+_SLOT_KINDS = (
+    (K.REQUIRED, "required"),
+    (K.CARDINALITY, "minimum_cardinality"),
+    (K.CARDINALITY, "maximum_cardinality"),
+    (K.PATTERN, "pattern"),
+    (K.VALUE_BOUNDS, "minimum_value"),
+    (K.VALUE_BOUNDS, "maximum_value"),
+)
+
+
+def used_kinds(schema: Path) -> set[ConstraintKind]:
+    """The constraint kinds the classes generated for ``schema`` use."""
+    return Conformance.of(schema).used_kinds()
+
+
+def generated_classes(schema: Path) -> set[str]:
+    """The names of the schema classes generated for ``schema``'s entry."""
+    return Conformance.of(schema).class_names()
+
+
+def _word(accepted: bool) -> str:
+    return "accept" if accepted else "refuse"
+
+
+def _instance(path: str) -> dict:
+    instance: dict = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    return instance
+
+
+def verdict_problems(conformance: Conformance, cases: list[ConstraintCase]) -> list[str]:
+    """Every instance on which class and shape disagree, or both contradict the row; empty when none."""
+    problems: list[str] = []
+    for case in cases:
+        if camelcase(case.class_name) not in conformance.models:
+            continue
+        for expected, files in ((True, case.valid), (False, case.invalid)):
+            for file in files or []:
+                data = _instance(file)
+                by_class = conformance.class_accepts(case.class_name, data)
+                by_shape = conformance.shapes_accept(case.class_name, data)
+                label = f"{case.kind} {case.class_name} {Path(file).name}"
+                if by_class != by_shape:
+                    problems.append(
+                        f"{label}: classes and shapes disagree "
+                        f"(class {_word(by_class)}s, shapes {_word(by_shape)}s)"
+                    )
+                elif by_class != expected:
+                    problems.append(
+                        f"{label}: class and shapes both {_word(by_class)}, "
+                        f"the row expects them to {_word(expected)}"
+                    )
+    return problems
+
+
+def coverage_problems(conformance: Conformance, cases: list[ConstraintCase]) -> list[str]:
+    """The kinds the schema uses that no row covers, as one problem naming them; empty when covered."""
+    covered = {
+        ConstraintKind(case.kind)
+        for case in cases
+        if camelcase(case.class_name) in conformance.models
+    }
+    missing = sorted(k.value for k in conformance.used_kinds() - covered)
+    if not missing:
+        return []
+    return [f"no case for the constraint kinds the schema uses: {', '.join(missing)}"]
+
+
+def run(schema: Path, cases: Path) -> list[str]:
+    """All problems of the conformance suite for ``schema`` and the cases file; empty when it passes."""
+    rows, conformance = load_cases(cases), Conformance.of(schema)
+    return verdict_problems(conformance, rows) + coverage_problems(conformance, rows)

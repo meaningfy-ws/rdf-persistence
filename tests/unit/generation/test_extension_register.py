@@ -36,18 +36,24 @@ def test_the_register_is_parsed() -> None:
 
 @pytest.mark.parametrize("module", extension_modules())
 def test_every_extension_module_has_a_row(module: str) -> None:
-    assert f"{EXTENSIONS_PREFIX}{module}.py" in first_cells(), f"{module} has no row in generation.adoc#extensions"
+    assert f"{EXTENSIONS_PREFIX}{module}.py" in first_cells(), (
+        f"{module} has no row in generation.adoc#extensions"
+    )
 
 
 @pytest.mark.parametrize("module", extension_modules())
 def test_every_extension_module_has_a_golden_test(module: str) -> None:
-    assert (TESTS / f"test_ext_{module}.py").is_file(), f"tests/unit/generation/test_ext_{module}.py is missing"
+    assert (TESTS / f"test_ext_{module}.py").is_file(), (
+        f"tests/unit/generation/test_ext_{module}.py is missing"
+    )
 
 
 @pytest.mark.parametrize("module", extension_modules())
 def test_every_extension_module_has_a_golden_folder(module: str) -> None:
     folder = GOLDENS / module
-    assert folder.is_dir() and any(folder.iterdir()), f"tests/fixtures/library/golden/{module}/ is missing or empty"
+    assert folder.is_dir() and any(folder.iterdir()), (
+        f"tests/fixtures/library/golden/{module}/ is missing or empty"
+    )
 
 
 @pytest.mark.parametrize("path", [c for c in first_cells() if c.startswith(EXTENSIONS_PREFIX)])
@@ -55,6 +61,8 @@ def test_every_extension_row_names_an_existing_module(path: str) -> None:
     assert (ROOT / path).is_file(), f"{path} is listed in the register but does not exist"
 
 
-@pytest.mark.parametrize("folder", sorted({m for row in register_rows() for m in TEMPLATE_DIR.findall(row)}))
+@pytest.mark.parametrize(
+    "folder", sorted({m for row in register_rows() for m in TEMPLATE_DIR.findall(row)})
+)
 def test_every_template_folder_in_the_register_exists(folder: str) -> None:
     assert (ROOT / folder).is_dir(), f"{folder} is referenced in the register but does not exist"

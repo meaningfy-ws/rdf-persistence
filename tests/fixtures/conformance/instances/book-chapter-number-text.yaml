@@ -1,0 +1,7 @@
+id: https://example.org/library/b1
+label: Dune
+description: A desert planet novel
+chapters:
+  - id: https://example.org/library/b1/c1
+    description: The first chapter
+    number: five
