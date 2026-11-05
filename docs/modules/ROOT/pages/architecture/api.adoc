@@ -44,7 +44,7 @@ session.
 [cols="1,4",options="header"]
 |===
 |Option |How it works
-|*A. JSON-LD documents* |One generic router over aggregates. `GET` returns the aggregate's graph as compacted JSON-LD (or Turtle); `PUT` replaces it under `If-Match`; a listing per type with equality filters and paging. Bodies are validated with SHACL. No Python classes on the API path.
+|*A. JSON-LD documents* |One generic router over aggregates, scoped by tenant (`/{tenant_segment}/{t}/{rp_path}/{id}`; the path segment of each type is the annotation `rp_path`). `GET` returns the aggregate's graph as compacted JSON-LD (or Turtle); `PUT` replaces it under `If-Match`; a listing per type with equality filters and paging. Bodies are validated with SHACL. No Python classes on the API path.
 |*B. Plain JSON resources* |The same routes, typed by generated Pydantic classes; the JSON-LD context is linked by a `Link` header, so the plain JSON is also JSON-LD (current O-2). OpenAPI describes it.
 |*C. GraphQL with the JSON-LD context* |A GraphQL schema built at run time from LinkML (Ariadne, schema-first); queries compiled to SPARQL `CONSTRUCT`; mutations replace an aggregate and carry a `version` argument. Field names follow the JSON-LD context, as GraphQL-LD does.
 |*D. JSON:API from configuration* |A resource configuration derived from LinkML, in the semantic.works mu-cl-resources style; filtering, `include` and paging.

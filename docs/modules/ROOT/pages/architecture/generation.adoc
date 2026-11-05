@@ -42,6 +42,8 @@ package; an application's generated code imports them rather than regenerating t
 |`database` (class annotation) |`tenant` (default) or `system`: which database the aggregate lives in.
 |`graph: meta` (class annotation) |The tenant's root object lives in the tenant database's designated `meta` graph instead of a graph of its own.
 |`internal` (slot annotation) |The slot never appears in the API contract (e.g. file keys).
+|`rp_path` (class annotation) |Required on every aggregate root: its path segment in the API and in its IRIs (`{tenant}/{rp_path}/{uuid}`).
+|`rp_unlabelled` (class annotation) |An owned value class whose instances need no label of their own.
 |`Principal` |A reference to a user account in the identity provider, by IRI only.
 |`StoredFile` (mixin) |The current content of a kept file: `file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key` (internal).
 |`loaded_graph` (slot) |A graph whose lifecycle belongs to the aggregate (e.g. the triples of a loaded RDF file).
@@ -59,9 +61,11 @@ Slots of the metamodel (IRIs in the `rp:` namespace unless shown):
 |`label` |`dcterms:title` |string, required on `TenantAccess`, 1–200 characters
 |`state` |`rp:state` |`TenantState`, required
 |`database_name` |`rp:databaseName` |string, required
-|`grants` |`rp:grant` |`Grant`, multivalued, owned (blank nodes; one per principal by `unique_keys`)
-|`principal` |`rp:principal` |`Principal` (IRI), required
-|`role` |`rp:role` |uriorcurie; an application narrows it to its role enum by `slot_usage`
+|`grants` |`rp:grant` |`Grant`, multivalued, owned (blank nodes; one per principal and target by `unique_keys`)
+|`assignee` |`odrl:assignee` |`Principal` (IRI), required (a grant is an `odrl:Permission`, D-5)
+|`target` |`odrl:target` |uri: the tenant IRI, or an aggregate's graph IRI; required
+|`role` |`rp:role` |uriorcurie; an application narrows it to its role enum by `slot_usage`; exactly one of `role` and `action`
+|`action` |`odrl:action` |`Action`, for a direct permission
 |`file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key` |`rp:fileName`, `rp:mediaType`, `rp:byteSize`, `rp:sha256`, `dcterms:modified`, `rp:uploadedBy`, `rp:fileKey` |as in the consumer model's slot table; `file_key` internal
 |`loaded_graph` |`rp:loadedGraph` |uri
 |`version` |`rp:version` |string, written by the session only

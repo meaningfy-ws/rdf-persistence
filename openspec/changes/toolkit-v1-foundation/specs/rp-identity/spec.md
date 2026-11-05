@@ -23,5 +23,5 @@ The identity port SHALL find an account by exact email, list accounts, disable a
 account, and grant and remove a global role; the Zitadel adapter SHALL implement exactly these.
 
 #### Scenario: disable an account
-- **WHEN** an account is disabled through the port
-- **THEN** the provider refuses its next sign-in
+- **WHEN** a service account is disabled through the port
+- **THEN** the provider refuses its next token request

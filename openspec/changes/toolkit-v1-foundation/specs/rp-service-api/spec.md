@@ -5,13 +5,16 @@ D-2, D-3).
 
 ### Requirement: One generic router serves every aggregate type
 
-The router SHALL serve `/{type}` (list, create) and `/{type}/{id}` (read, replace, delete) for every
-aggregate root of the application schema, read at run time, with no generated routes and no
-generated Python classes on this path. Bodies SHALL be validated with the generated shapes.
+The router SHALL serve `/{tenant_segment}/{t}/{rp_path}` (list, create) and
+`/{tenant_segment}/{t}/{rp_path}/{id}` (read, replace, delete) for every aggregate root of the
+application schema, read at run time, with no generated routes and no generated Python classes on
+this path; it SHALL mint the IRI on create and refuse a client-sent one. Bodies SHALL be validated
+with the generated shapes.
 
 #### Scenario: a new class in the model
-- **WHEN** the toy schema gains an aggregate root `Shelf` and the application restarts
-- **THEN** `/shelves` serves it with no code added
+- **WHEN** the toy schema gains an aggregate root `Shelf` with `rp_path: shelves` and the
+  application restarts
+- **THEN** `/libraries/{t}/shelves` serves it with no code added
 
 ### Requirement: Plain JSON by default, JSON-LD and Turtle on request
 
@@ -40,8 +43,8 @@ A listing SHALL accept equality filters on the type's slots, `limit` and `offset
 and SHALL return a page with `items`, `total`, `limit` and `offset`.
 
 #### Scenario: a page of books
-- **WHEN** books are listed with `limit=2&offset=2`
-- **THEN** the page holds the third and fourth books and the total count
+- **WHEN** books are listed with `limit=2&offset=2` and no sort key
+- **THEN** the page holds the third and fourth books by IRI order, and the total count
 
 ### Requirement: The contract is published
 
