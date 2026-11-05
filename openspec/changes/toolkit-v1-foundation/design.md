@@ -30,7 +30,7 @@ marked _(spike)_ in `generation.adoc`.
 - the EPIC's no-gos;
 - performance work beyond the toy library;
 - any command-line tool other than `rp-generate`;
-- documentation changes beyond those that tasks 6.1 and 6.2 name.
+- documentation changes beyond those that tasks 1.11, 6.1 and 6.2 name.
 
 ## Decisions
 
@@ -193,6 +193,69 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-12,
   `assignee` and `target`, and an `action`. Uniqueness: one grant per assignee, target and
   role-or-action, declared as `unique_keys: {grant_key: [assignee, target, role, action]}` (task 1.3);
   `generation.adoc#metamodel` (slot table) and `index.adoc#building-blocks` (Tenancy row) say the same.
+
+### Single source of specification (developer, 2026-11-05)
+
+The developer's rule, from the model-driven method of the MWBv2 Developer Runbook: the domain is
+specified once, in LinkML, and every artefact that restates it is generated. Nothing that restates
+the model is written or edited by hand.
+
+- **PD-24 What is generated, and what may be hand-written.**
+  - Generated from LinkML: domain classes, SHACL shapes, the JSON-LD context and frames, TypeScript
+    types, the OpenAPI component schemas, JSON Schema (if a consumer needs it) and the diagrams.
+  - Hand-written, because it restates nothing: generic code that reads the schema through
+    `SchemaView` at run time (the mapper, the router), the strict base `RpModel`, the generator
+    extensions and templates, and infrastructure settings in `testkit` and `adapters` (such as a
+    container's endpoint), which are not domain data.
+  - A rule the schema declares (`exactly_one_of`, `unique_keys`, `rules`, patterns, cardinality) is
+    enforced by the generated code too, not only by the shapes. Where a stock generator cannot do
+    this, the toolkit extends it.
+- **PD-25 Extending the generators.** Every gap in a stock LinkML generator is closed by an
+  extension in `rdf_persistence/generation/`: a subclass or a template, never a patch to generated
+  output. Each extension has a row in the extension table of `generation.adoc` (what the stock
+  generator lacks, what the extension adds) and a golden test on the toy schema. A test fails if an
+  extension module has no row or no test.
+- **PD-26 Freshness and drift.**
+  - `rp-generate` writes `generated/rp-manifest.json` beside its output: the pinned `linkml`
+    version and the SHA-256 of every input (the schema and its whole import closure, the templates,
+    the extension modules) and of every output.
+  - `rp-generate --check` recomputes both. A changed input means *stale*; a changed output means
+    *edited by hand*. Either exits 1, naming the files and the command that fixes them.
+  - The check runs in four places: `make check-quality` (so before every PR and in CI); at the start
+    of every pytest session, through a testkit plugin that consumers load too; a pre-commit hook on
+    changes to schemas, templates, extensions or generated folders; and `make check-generated` in
+    CI, which regenerates from scratch and diffs, catching what a hash cannot (a generator that is
+    not deterministic).
+  - Generation is part of the build: `make generate` regenerates everything, and `make build` runs
+    it first.
+- **PD-27 Correctness of the generated code.**
+  1. *Schema gates first*: `linkml-lint` with the raised rules, then the hard and boundary checks;
+     nothing is generated from a schema that fails them.
+  2. *Golden tests per extension*: RDF output compared by graph isomorphism, other output as exact
+     text, and the set of files compared exactly.
+  3. *Cross-artefact conformance*: one table of constraint cases, each with a valid and an invalid
+     instance. For every case the generated classes and the generated shapes must give the same
+     verdict. A test fails if a constraint kind used by the metamodel or the toy schema has no row.
+     The suite ships in `testkit`, so a consumer runs it on its own schema.
+  4. *Round trips*: an instance goes to JSON, is expanded with the generated context to RDF, then
+     framed and compacted back, and must come back equal; Hypothesis draws the instances from the
+     toy schema.
+  5. *Model shape*: for every generated class, the pydantic fields match `SchemaView`'s induced
+     slots (name, required, multivalued, range). This catches stale or edited code even without the
+     manifest.
+  6. *A model change fails the tests until acknowledged* (runbook): a reviewed snapshot of the
+     public shape of every class lives under `tests/fixtures/`. After a schema change and
+     regeneration, the snapshot test fails until `make refresh-snapshot` is run and the diff is
+     reviewed in the PR.
+  7. *Generated code compiles*: the generated Python imports cleanly and passes mypy with a profile
+     for generated code; the TypeScript passes `tsc --noEmit` in CI.
+- **PD-28 Guards against hand-written models.**
+  - An AST guard fails if a module of `domain`, `services` or `entrypoints` outside `generated/`
+    defines a class deriving from `BaseModel`, `RpModel`, `Enum` or `TypedDict`, or a dataclass.
+    `RpModel` is the only allowed exception.
+  - A file guard fails if a shape, JSON-LD context, JSON Schema, OpenAPI or TypeScript model file
+    exists outside a generated folder.
+  - Both guards are in `testkit` (`assert_models_generated(package)`), so consumers get them too.
 
 ### Generation
 
@@ -450,7 +513,8 @@ practically impossible.
 | Use generated classes in the router | Context, frame and shapes (PD-14) | D-2 |
 | Import an adapter in `services`, `domain` or `entrypoints` | Depend on the port; the consumer wires the adapter | PD-1 |
 | Mock Fuseki, Garage or Zitadel in integration tests | Containers (PD-16) | DEC-4 |
-| Edit generated files | Change the schema or template; regenerate | Freshness check |
+| Edit generated files | Change the schema or template; regenerate | Freshness check (PD-26) |
+| Hand-write a model, shape, context or API schema | Declare it in LinkML; extend a generator if needed | PD-24, PD-28 guards |
 | Put a consumer term in code, tests or architecture pages | Toy library terms | `rp-package-boundaries` |
 | Add a login endpoint | The provider's flows | D-10 |
 
@@ -479,7 +543,9 @@ practically impossible.
 | The identity provider's management API is unreachable or answers 5xx | httpx error in the Zitadel adapter | `IdentityUnavailable` → 503 `unavailable` |
 | No account for an email | Zitadel adapter | `NotFound` → 404 `not-found` |
 | Schema fails the hard or boundary check | `rp-generate` | Exit 1, naming each element; outputs untouched |
-| Generated output stale | CI regenerates and diffs | CI fails |
+| Generated output stale | `rp-generate --check` (manifest), at session start, in `check-quality`, pre-commit; CI regenerates and diffs | Exit 1 naming the stale files and `make generate` |
+| Generated output edited by hand | Output hash differs from the manifest | Exit 1 naming the edited files |
+| Generated classes and shapes disagree on a constraint | Conformance suite (PD-27) | Test fails naming the constraint case |
 | A LinkML bump breaks an extension | Extension tests on the toy schema | Fix the extension, or hold the pin |
 
 ## Risks / Trade-offs

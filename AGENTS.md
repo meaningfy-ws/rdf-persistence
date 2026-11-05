@@ -138,6 +138,14 @@ artifacts above; do not reintroduce parallel epic files under `.claude/`.
   change that depends on toolkit work names the toolkit change id, and the toolkit change names the
   consumer need it serves. Commits cite the change id (`Refs: <change-id> ...`); PRs target
   `develop`, which consumers install.
+- **LinkML is the single source of specification (developer, 2026-11-05).** Model-driven, DDD:
+  every model artefact (domain and data classes, shapes, JSON-LD context and frames, TypeScript
+  types, API and JSON schemas, diagrams) is generated from the LinkML schemas. Never write or edit
+  one by hand. To change a model, change the schema and regenerate (`make generate`). Where a stock
+  LinkML generator falls short, extend it here, in `rdf_persistence/generation/` (subclass or
+  template), with its own test. Data is handled through these generated models, not bare dicts.
+  The freshness check, the conformance suite and the model guards enforce this (design.md PD-24
+  to PD-28).
 - **Docs check:** `make check-docs` (no consumer terms in `docs/modules/ROOT/pages/architecture/`;
   every page in the nav).
 
