@@ -1,12 +1,19 @@
-= Open decisions (2026-11-05)
-:description: What the developer's comments of 2026-11-05 leave to decide, with the options and a recommendation for each.
+= Decisions of 2026-11-05
+:description: The developer's decisions on the API, access control, the metamodel and the generators, taken on 2026-11-05, with the options that were weighed.
 
-The developer reviewed the metamodel and asked for a richer metamodel, mandatory IRIs, labels and
-definitions, an access model of its own, fine-grained access in this iteration, generated artefacts
-in the right packages, and a lighter API. Three research passes (API styles, access control,
-metamodel and generators) produced the pages linked below. These are the decisions they leave.
+The developer reviewed the metamodel on 2026-11-05 and asked for:
 
-Already decided by the developer, so not asked again:
+* a richer metamodel;
+* mandatory IRIs, labels and definitions;
+* an access model of its own;
+* fine-grained access in this iteration;
+* generated artefacts placed in the right packages;
+* a lighter API.
+
+Three research passes produced the pages linked below. The developer took every decision on the same
+day. Status of each: *Accepted* (developer, 2026-11-05).
+
+Decided with the request itself:
 
 * The access model lives in rdf-persistence as its own module; applications import it and keep their
   access rules in a module apart from the domain.
@@ -16,68 +23,49 @@ Already decided by the developer, so not asked again:
   each in the package that uses it; LinkML generators are extended where needed.
 * JSON-LD and GraphQL are considered now, not deferred.
 
-== How the decisions depend on each other
-
-[mermaid]
-....
-flowchart LR
-    D1["D-1 API contract"] --> D2["D-2 classes and mapper"]
-    D1 --> D3["D-3 OpenAPI source"]
-    D4["D-4 access engine"] --> D5["D-5 grants as ODRL"]
-    D6["D-6 required instance labels"] --> D7["D-7 who writes tracking"]
-    D8["D-8 diagram format"]
-    D9["D-9 output placement"]
-    D10["D-10 sign-in flows"]
-    D11["D-11 start the adapters"]
-    D12["D-12 where to plan the work"]
-    D11 --> D12
-....
-
-== The decisions
-
 [cols="1,3,4,3",options="header"]
 |===
-|Id |Question |Options |Recommendation
+|Id |Question |Options weighed |Decision
 
 |D-1
 |Which API contract? (xref:architecture/api.adoc[API])
 |A. JSON-LD documents from a generic router. B. Plain JSON, typed by classes, with the context by `Link` header. C. GraphQL with the JSON-LD context. D. JSON:API from configuration.
-|*A and B together*: one generic router driven by the schema, plain JSON by default, JSON-LD and Turtle by content negotiation; GraphQL later as a read-only endpoint over the same schema.
+|*A and B together*: one generic router driven by the schema, plain JSON by default, JSON-LD and Turtle by content negotiation. *C is the backup* for a later implementation.
 
 |D-2
 |Do we need generated Python classes and the mapper? (xref:architecture/api.adoc#mapper[API])
-|Always (current O-1). Only for domain services. Never.
-|*Only for domain services*: the API path uses the context and the shapes; classes and mapper stay, optional, for rules that are more than CRUD.
+|Always. Only for domain services. Never.
+|*Only for domain services*; the API path uses the context and the shapes.
 
 |D-3
 |Where does the OpenAPI document come from?
-|A small hook of our own over the schema. linkml-openapi (complete, but months old, one author).
-|*Our own hook now*, and a short spike of linkml-openapi to see whether it can replace it.
+|A small hook of our own over the schema. linkml-openapi.
+|*Our own hook*, and a short spike of linkml-openapi.
 
 |D-4
-|Which engine decides fine-grained access this iteration? (xref:architecture/access-control.adoc[access control])
-|A. Our own check over ODRL-shaped grants (tenant, aggregate, action). B. A with OpenFGA. C. A plus property-level rules. D. Fluree's native policies.
-|*A*, with the data shaped as ODRL so B or C can be compiled from it later without a migration.
+|Which engine decides fine-grained access? (xref:architecture/access-control.adoc[access control])
+|A. Our own check over ODRL-shaped grants. B. A with OpenFGA. C. A plus property-level rules. D. Fluree's native policies.
+|*A*: our own ODRL specification in RDF and our own evaluation. *OpenFGA deferred*, unless a cheap opportunity to reuse it appears.
 
 |D-5
-|How do v1's grants and ODRL relate?
-|One model: a grant *is* an ODRL Permission (assignee, action through a role, target). Two models side by side.
-|*One model*: fewer concepts, one record to audit, one thing to compile to OpenFGA later.
+|How do grants and ODRL relate?
+|One model (a grant is an ODRL Permission). Two models side by side.
+|*One model.*
 
 |D-6
 |Which instance annotations are required? (xref:architecture/generation.adoc#revision[model to code])
-|Label and description required on every class. Required on aggregate roots and owned classes, with an explicit opt-out for small value classes. Recommended only.
-|*Required on roots and owned classes, with the opt-out* (`rp_unlabelled: true`).
+|On every class. On aggregate roots and owned classes, with an opt-out. Recommended only.
+|*On aggregate roots and owned classes*, with the opt-out `rp_unlabelled: true`.
 
 |D-7
 |Who writes created, modified and creator?
 |The session, about the graph IRI. The application, about the entity.
-|*The session, about the graph IRI*: these are facts about the write, which DEC-29 keeps apart from the entity; PROV-O derivation stays the application's.
+|*The session, about the graph IRI*; PROV-O derivation stays the application's.
 
 |D-8
 |Which diagram format?
-|PlantUML (asked for): `.puml` files, rendered locally by a container, never by the public kroki.io service. Mermaid: rendered in the browser, as the docs already do.
-|*Mermaid*, because it needs no rendering service and matches the rest of the docs. PlantUML is equally possible if you prefer it: say so.
+|PlantUML rendered locally. Mermaid.
+|*Mermaid*, with small diagrams (one module each) to keep them readable.
 
 |D-9
 |How is output placement configured?
@@ -86,24 +74,24 @@ flowchart LR
 
 |D-10
 |How do people and programs sign in? (xref:architecture/access-control.adoc#identity[identity])
-|The browser through the web app's server (code + PKCE); a command line by the device flow; programs by private-key JWT or client credentials; scripts by personal access tokens. Or an own login endpoint on the API.
-|*The provider's flows, no login endpoint of our own*: the API accepts any valid token, however it was obtained.
+|The identity provider's flows. A login endpoint of our own.
+|*The provider's flows*; the API accepts any valid token.
 
 |D-11
-|Start implementing the adapters now?
-|Now: Fuseki store, S3 file store (Garage), token validation and the Zitadel identity port, then the access check. After all decisions above.
-|*Now*: the adapters do not depend on D-1 to D-10; the access check follows D-4 and D-5.
+|When are the adapters implemented?
+|Now. After the decisions.
+|*In a separate implementation epic*, after the architecture.
 
 |D-12
-|Where is that implementation planned?
-|In the consumer's spine, as agreed earlier (toolkit capabilities `rp-*`, tasks tagged `[rp]`). In this repository's own `openspec/`.
-|*Your call*: the earlier rule says the consumer's spine; for work that touches only the toolkit, this repository's spine keeps it next to its code.
+|Where is the implementation planned?
+|In the consumer's spine. In this repository's spine.
+|*In this repository*: a new epic in `openspec/changes/`, shaped once the architecture is ready.
 |===
 
-== What changes in architecture v1 once these are taken
+== What changed in architecture v1
 
 * Decision O-1 narrows to domain services (D-2); O-2 widens to content negotiation (D-1).
-* The deferred list loses "JSON-LD representation" and "GraphQL" (D-1), and "fine-grained access"
-  (D-4).
-* The metamodel splits into the modules of xref:architecture/generation.adoc#revision[model to code].
-* The access check works per aggregate as well as per tenant (D-4).
+* JSON-LD and Turtle by content negotiation and per-aggregate access are v1; GraphQL and OpenFGA are
+  deferred, as backups.
+* The metamodel splits into modules (xref:architecture/generation.adoc#revision[model to code]).
+* Epics for this toolkit are planned in this repository (D-12), not in the consumer's.

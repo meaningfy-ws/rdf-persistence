@@ -3,9 +3,9 @@
 
 Status: *draft*, Proposed (2026-11-05). Settles open decision O-1 of
 xref:architecture/index.adoc[architecture v1] with its smallest option. Every step below was run in a
-throwaway spike (LinkML 1.12.1, Fuseki 5.1.0); its findings are marked _(spike)_. A revision is
-proposed in <<revision>> (developer comments, 2026-11-05), waiting for decisions D-2 and D-6 to D-9 in
-xref:architecture/open-decisions.adoc[Open decisions].
+throwaway spike (LinkML 1.12.1, Fuseki 5.1.0); its findings are marked _(spike)_. It is revised
+in <<revision>> (developer, 2026-11-05: decisions D-2 and D-6 to D-9 of
+xref:architecture/open-decisions.adoc[the decisions of 2026-11-05]).
 
 An application using rdf-persistence writes its domain once, in LinkML. A deterministic, build-time
 toolchain turns it into domain classes and shapes; at run time the toolkit reads the same schema to
@@ -18,7 +18,8 @@ role `librarian`.
 == The decision (O-1)
 
 *Generated domain classes, runtime mapper.* Only LinkML's standard generators run, through the
-toolkit's templates. The mapper, the repositories and the routes are not generated: they are generic
+toolkit's templates. Since 2026-11-05 (D-2) the classes and the mapper serve *domain services* only;
+the API path needs neither (xref:architecture/api.adoc[API]). The mapper, the repositories and the routes are not generated: they are generic
 code that reads the schema at run time. A per-aggregate generator (repositories, routes) is built only
 if hand-written routes start repeating themselves across applications.
 
@@ -71,7 +72,7 @@ Annotations are resolved over the *induced* class: a class inherits `AggregateRo
 itself does not inherit class annotations; the boundary check and the mapper do.
 
 [#revision]
-== Revision proposed on 2026-11-05
+== Revision of 2026-11-05 (accepted)
 
 The developer asked for four things on top of the metamodel above: a default set of annotation
 vocabularies everywhere (SKOS, DCTerms, PROV-O, and ODRL for access), models that always carry IRIs,
@@ -149,7 +150,7 @@ lines in `rp-generate` over `SchemaView`. It fails generation when:
 |TypeScript types |`gen-typescript` |a subclass with our own template: the stock template is fixed, has no split mode and handles enums and dates poorly |the frontend package, `src/domain/generated/` |M
 |SHACL shapes |`gen-shacl` |a subclass that adds the toolkit's bookkeeping predicates to the ignored list of closed shapes |the backend package |S
 |JSON-LD context |`gen-jsonld-context` |small: `id`/`type` aliases, `internal` slots left out |the backend package; copied to the frontend when needed |S
-|Diagrams, one per module |`gen-plantuml` (asked for) or `gen-mermaid-class-diagram` |a template marking aggregate roots and owned parts |the docs, `modules/ROOT/images/model/` |S
+|Diagrams, one per module |`gen-mermaid-class-diagram` (D-8) |a template marking aggregate roots and owned parts, and keeping each diagram small (one module, its links to other modules shown as names only) |the docs, next to the model pages |S
 |Hard check |`linkml-lint` + `rp-generate` |new, about 100 lines |— |S
 |===
 
@@ -157,9 +158,10 @@ lines in `rp-generate` over `SchemaView`. It fails generation when:
 `[tool.rp-generate]` table mapping each target to a path; command-line flags override it. LinkML's
 `gen-project` writes everything under one directory, so `rp-generate` does the placing.
 
-*Diagrams, a caution*: `gen-plantuml` renders images by calling the public kroki.io service over the
-network. The `.puml` files can be written without it and rendered locally (a PlantUML container), or
-the Mermaid generator can be used, which needs no rendering service: the docs already draw Mermaid.
+*Diagrams are Mermaid* (D-8): no rendering service is needed and the docs already draw Mermaid
+(`gen-plantuml` would call the public kroki.io service). A diagram that grows past about a dozen
+classes is split by module. In AsciiDoc pages, escape `<` as an HTML entity inside a diagram: the
+page delivers the source as HTML, and a raw `<<stereotype>>` breaks it.
 
 *Extending the generators* means subclassing LinkML internals (`serialize`, the ignored-properties
 method), which can change in a minor release. The pin on `linkml` and the CI regeneration diff
@@ -257,7 +259,7 @@ flowchart LR
 |4 Shapes |`gen-shacl`. Shapes are closed (`sh:closed true`) _(spike)_, and the version token sits on the graph IRI, not the root, so the domain triples validate on their own |generation fails
 |5 JSON-LD context |`gen-jsonld-context`, with `id` and `type` aliased to `@id` and `@type`; served by the service kit (O-2). Known gaps (no `@language` containers, inlined collections keyed by `@index`) need template fixes before a schema uses those features _(not yet run)_ |generation fails
 |6 TypeScript types |`gen-typescript` with the toolkit's template, which fixes enums and dates (the stock output is weak on both); interfaces only, into the client package the application names _(not yet run)_ |generation fails
-|7 Diagrams |`gen-plantuml`, once per schema module, so each diagram shows one module's classes and their links to other modules _(per-module output not yet run)_ |generation fails
+|7 Diagrams |`gen-mermaid-class-diagram`, once per schema module, so each diagram shows one module's classes and their links to other modules _(per-module output not yet run)_ |generation fails
 |===
 
 Each step writes to a temporary file and moves it into place only on success, so a failed run leaves

@@ -1,8 +1,9 @@
 = A lightweight API over a triple store
 :description: How the toolkit serves CRUD and access control over a generic triple store with as little generated code as possible: options, the recommendation and what it means for the mapper.
 
-Status: *Proposed* (2026-11-05), waiting for the decisions in
-xref:architecture/open-decisions.adoc[Open decisions] (D-1 to D-3). Research behind this page: the
+Status: *Accepted* (developer, 2026-11-05: decisions D-1 to D-3 of
+xref:architecture/open-decisions.adoc[the decisions of 2026-11-05]): options A and B together; option C
+kept as the backup for a later implementation. Research behind this page: the
 xref:background/soa/angles/service.adoc[service angle] of the background study, updated on 2026-11-05.
 
 == The question
@@ -81,7 +82,7 @@ session.
 No maintained Python library serves read-write CRUD with access control over a triple store from
 configuration. The parts to build it are mature.
 
-== Recommendation
+== Decision
 
 *A and B together: one generic router, driven by the schema, serving plain JSON by default and JSON-LD
 or Turtle by content negotiation.* No generated routes.
@@ -108,11 +109,12 @@ sequenceDiagram
 * *The wire stays simple.* Plain JSON with `id` as the IRI is also JSON-LD with the generated context,
   so a JSON-LD client reads it as RDF. `Accept: text/turtle` returns the graph itself.
 * *The fewest generated artefacts.* Context and shapes are generated already. OpenAPI comes from a
-  small hook over the schema (or from linkml-openapi, after a spike).
+  small hook of our own over the schema; a short spike checks whether linkml-openapi can replace it
+  (D-3).
 * *Access control stays in one place*: one dependency per route action
   (xref:architecture/access-control.adoc[access control]).
-* *GraphQL later, read-only*: when a client needs deep nested reads, a second endpoint over the same
-  schema and context (option C) without its mutations.
+* *Option C is the backup* for a later implementation: when a client needs deep nested reads, a
+  read-only GraphQL endpoint over the same schema and context.
 
 [#mapper]
 == Do we need a mapper and Python classes?
@@ -120,7 +122,7 @@ sequenceDiagram
 *Not on the API path.* With the recommendation, the router turns JSON into triples with the JSON-LD
 context and validates them with the shapes; reading returns the graph. Nothing there needs a class.
 
-*Yes for domain services.* Where an application writes rules that are more than CRUD (a check across
+*Yes for domain services* (D-2). Where an application writes rules that are more than CRUD (a check across
 two objects, a computed value), typed classes make that code safe and testable without a store. The
 generated Pydantic classes and the mapper (O-1) stay for that, and they are optional: an application
 with only CRUD needs none.
@@ -133,10 +135,9 @@ with only CRUD needs none.
 |Client code |TypeScript types (generated) |no
 |===
 
-== Consequences if the recommendation is taken
+== Consequences
 
 * Decision O-1 narrows: the mapper serves domain services, not the API.
 * Decision O-2 widens: JSON-LD and Turtle by content negotiation, not only the `Link` header.
 * The listing and filter grammar is ours to define: equality filters, paging, sort, as in v1.
-* "JSON-LD representation" and "GraphQL" leave the deferred list: the first is in, the second is a
-  planned read-only endpoint.
+* JSON-LD and Turtle by content negotiation are in v1; GraphQL (option C) is the backup, deferred.

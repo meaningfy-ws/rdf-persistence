@@ -1,11 +1,10 @@
 = rdf-persistence architecture v1
 :description: The modest first commitments of the rdf-persistence toolkit.
 
-Status: *draft*, Proposed (2026-11-05). *Under revision*: the developer's comments of 2026-11-05 are
-worked out in xref:architecture/api.adoc[a lightweight API],
-xref:architecture/access-control.adoc[access control and identity] and the
-xref:architecture/generation.adoc#revision[model-to-code revision]; what is left to decide is in
-xref:architecture/open-decisions.adoc[Open decisions].
+Status: *draft*, Proposed (2026-11-05); revised the same day by the developer's
+xref:architecture/open-decisions.adoc[decisions of 2026-11-05] (Accepted), worked out in
+xref:architecture/api.adoc[a lightweight API], xref:architecture/access-control.adoc[access control
+and identity] and the xref:architecture/generation.adoc#revision[model-to-code revision].
 
 This version commits only to what the toolkit's first consumer needs in its first iteration. The
 xref:background/soa/index.adoc[background study] is not a commitment: a block is built only when a
@@ -39,7 +38,7 @@ and use cases to these ids; this toolkit does not know the consumer.
 ....
 graph TB
     subgraph rp["rdf_persistence"]
-        KIT["Service kit<br/>token check, access check,<br/>problems, ETags"]
+        KIT["Service kit and generic router<br/>token check, access check,<br/>problems, ETags, content negotiation"]
         TEN["Tenancy<br/>catalogue, lifecycle, grants"]
         SES["Aggregate session<br/>and repositories"]
         MAP["Mapper"]
@@ -50,7 +49,7 @@ graph TB
         IP(["Identity port"])
     end
     FUS["Fuseki adapter"]
-    VOL["Volume adapter"]
+    VOL["S3 adapter"]
     ZIT["Zitadel adapter"]
     KIT -->|in-process| POL
     KIT -->|in-process| TEN
@@ -116,12 +115,12 @@ functions, the file store, the identity port and the service kit.
 
 |Access check
 |v1
-|A route dependency in the service kit: each route declares its action; the check resolves the caller's global roles (token) and tenant roles (tenancy grants), applies the consumer's rules (action to allowed roles) and refuses with 403, or with 404 when the caller has no grant (and no global role the rules allow) or the tenant is not `active`. Tenant isolation comes from N-3, so queries are not rewritten.
+|A route dependency in the service kit: each route declares its action; the check evaluates the toolkit's ODRL subset (`rp_access`): the caller's global roles (token), their Permissions and Prohibitions on the tenant and on the aggregate (`graph_iri(root)`), and the consumer's role definitions. It refuses with 403, or with 404 when the caller has no grant (and no global role the rules allow) or the tenant is not `active`. Tenant isolation comes from N-3, so queries are not rewritten. See xref:architecture/access-control.adoc[access control].
 |N-8
 
 |Service kit
 |v1
-|FastAPI helpers: RFC 9457 problem responses, the aggregate version as `ETag` with `If-Match` required on updates and deletes (428 when missing, 409 on conflict), token validation and access check as dependencies, an OpenAPI contract with LinkML bookkeeping stripped. Plain JSON with an `id` holding the IRI, which is also JSON-LD through a generated context served at a fixed path and linked from every response (O-2).
+|FastAPI helpers and one *generic router* driven by the schema at run time (`/{type}`, `/{type}/{id}`): RFC 9457 problem responses, the aggregate version as `ETag` with `If-Match` required on updates and deletes (428 when missing, 409 on conflict), token validation and access check as dependencies, bodies validated with the generated shapes, listings with equality filters and paging, an OpenAPI document from a hook over the schema. Plain JSON with an `id` holding the IRI by default, JSON-LD and Turtle by content negotiation (O-2). See xref:architecture/api.adoc[API].
 |N-9
 
 |Test kit
@@ -159,14 +158,14 @@ functions, the file store, the identity port and the service kit.
 |No v1 need reacts to a change in another aggregate.
 |
 
-|Fine-grained access (graph or triple level), OpenFGA
-|under revision: per aggregate in this iteration (xref:architecture/access-control.adoc[access control], D-4)
-|Isolation is physical (N-3); in-tenant rules are role checks (N-8).
+|Property- or triple-level access; OpenFGA as the decision engine
+|deferred
+|Per-aggregate access is v1 (access check). OpenFGA is reused if a cheap opportunity appears (D-4).
 |
 
-|JSON-LD and Turtle by content negotiation, GraphQL (read-only)
-|under revision: considered now (xref:architecture/api.adoc[API], D-1)
-|Plain JSON stays the default; the same routes serve JSON-LD and Turtle.
+|GraphQL, read-only, over the same schema and context
+|deferred
+|The backup option C of xref:architecture/api.adoc[API] (D-1).
 |N-9
 
 |Annotation sets, forms from shapes, schema migrations, server-sent events
@@ -180,8 +179,8 @@ functions, the file store, the identity port and the service kit.
 [cols="1,4",options="header"]
 |===
 |Id |Decision
-|O-1 |Generated domain classes, runtime mapper: only the standard LinkML generators run, through the toolkit's templates; no generated mappers, repositories or routes. See xref:architecture/generation.adoc[generation workflow].
-|O-2 |Plain JSON with an `id` field holding the IRI, described by OpenAPI, and JSON-LD through a context generated from the schema: the body stays `application/json`, and a `Link` header (`rel="http://www.w3.org/ns/json-ld#context"`) points to the context. Plain clients are unaffected; JSON-LD processors read the body as RDF.
+|O-1 |Generated domain classes, runtime mapper: only the standard LinkML generators run, through the toolkit's templates (extended where needed); no generated mappers, repositories or routes. The classes and the mapper serve domain services only; the API path needs neither (D-2). See xref:architecture/generation.adoc[generation workflow].
+|O-2 |Plain JSON with an `id` field holding the IRI, described by OpenAPI, and JSON-LD through a context generated from the schema: the body stays `application/json`, and a `Link` header (`rel="http://www.w3.org/ns/json-ld#context"`) points to the context. Plain clients are unaffected; JSON-LD processors read the body as RDF. The same routes serve `application/ld+json` and `text/turtle` by content negotiation (D-1).
 |===
 
 [#public-api]
