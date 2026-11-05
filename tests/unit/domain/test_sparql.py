@@ -1,0 +1,158 @@
+"""Spec rp-aggregate-store, SPARQL is never built by concatenating input (PD-3)."""
+
+import pytest
+from hypothesis import given
+from hypothesis import strategies as st
+from rdflib import BNode, Dataset, Graph, Literal, URIRef
+from rdflib.namespace import XSD
+from rdflib.plugins.sparql import prepareQuery, prepareUpdate
+
+from rdf_persistence.domain.sparql import SparqlError, SparqlTerm, fill, term
+
+EX = "http://example.org/"
+HOSTILE = [
+    '"} ; DROP ALL ; #',
+    '"""',
+    "\\",
+    "line1\nline2",
+    "a\r\nb",
+    "}>{<",
+    "tab\there",
+    "\x00\x07\x1f\x7f",
+    "'single' and \"double\"",
+    "$name ${name} $$",
+    "é中\U0001f600",
+]
+
+
+def parsed_object(rendered: str) -> object:
+    """Parse ``rendered`` as the object of one triple and return the term rdflib reads."""
+    graph = Graph()
+    graph.update(f"INSERT DATA {{ <{EX}s> <{EX}p> {rendered} }}")
+    return next(iter(graph))[2]
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (URIRef(f"{EX}a"), f"<{EX}a>"),
+        (Literal("plain"), '"plain"'),
+        (Literal("hola", lang="es"), '"hola"@es'),
+        (Literal("hi", lang="en-GB"), '"hi"@en-GB'),
+        (Literal(5), f'"5"^^<{XSD.integer}>'),
+        (Literal("2020-01-01", datatype=XSD.date), f'"2020-01-01"^^<{XSD.date}>'),
+        (BNode("b1"), "_:b1"),
+    ],
+    ids=["iri", "plain", "lang", "lang-region", "integer", "date", "blank"],
+)
+def test_term_renders_each_kind(value, expected):
+    assert term(value) == expected
+
+
+@pytest.mark.parametrize("text", HOSTILE)
+def test_a_literal_with_hostile_characters_parses_back_to_itself(text):
+    assert parsed_object(term(Literal(text))) == Literal(text), "the literal survives"
+
+
+@pytest.mark.parametrize("text", HOSTILE)
+def test_hostile_literals_with_a_language_or_datatype_parse_back(text):
+    assert parsed_object(term(Literal(text, lang="en"))) == Literal(text, lang="en")
+    assert parsed_object(term(Literal(text, datatype=URIRef(f"{EX}dt")))) == Literal(
+        text, datatype=URIRef(f"{EX}dt")
+    )
+
+
+@given(st.text())
+def test_any_string_literal_round_trips(text):
+    assert parsed_object(term(Literal(text))) == Literal(text)
+
+
+@pytest.mark.parametrize(
+    "iri", [f"{EX}a>b", f"{EX}a b", f"{EX}{{x}}", f'{EX}a"b', f"{EX}a\nb", f"{EX}a\\b", f"{EX}a|b"]
+)
+def test_an_iri_that_could_break_out_is_refused(iri):
+    with pytest.raises(SparqlError, match="IRI"):
+        term(URIRef(iri))
+
+
+def test_a_datatype_iri_that_could_break_out_is_refused():
+    with pytest.raises(SparqlError, match="IRI"):
+        term(Literal("x", datatype=URIRef(f"{EX}a>b")))
+
+
+@pytest.mark.parametrize("label", ["a b", "a;DROP", "", "a}", "a\n"])
+def test_a_blank_node_label_that_is_not_a_label_is_refused(label):
+    with pytest.raises(SparqlError, match="blank node"):
+        term(BNode(label))
+
+
+def test_a_raw_string_is_not_a_term():
+    with pytest.raises(SparqlError, match="rdflib"):
+        term("http://example.org/a")
+
+
+SUBJECT, PREDICATE, GRAPH = (URIRef(f"{EX}{n}") for n in ("s", "p", "g"))
+# One template per kind of SPARQL text the adapters send, each with the names it takes.
+TEMPLATES = {
+    "select": ("SELECT ?p ?o WHERE { $subject ?p ?o } LIMIT 5", ["subject"]),
+    "ask": (
+        "ASK { GRAPH $graph { $subject $predicate $object } }",
+        ["graph", "subject", "predicate", "object"],
+    ),
+    "filter": ("SELECT ?s WHERE { ?s ?p ?o FILTER(?o = $object) }", ["object"]),
+    "update": (
+        "DELETE { GRAPH $graph { $subject $predicate ?o } } "
+        "INSERT { GRAPH $graph { $subject $predicate $object } } "
+        "WHERE { OPTIONAL { GRAPH $graph { $subject $predicate ?o } } }",
+        ["graph", "subject", "predicate", "object"],
+    ),
+}
+VALUES = {"subject": SUBJECT, "predicate": PREDICATE, "graph": GRAPH}
+
+
+def filled(kind: str, text: str) -> str:
+    template, names = TEMPLATES[kind]
+    terms = {n: term(Literal(text) if n == "object" else VALUES[n]) for n in names}
+    return fill(template, **terms)
+
+
+@pytest.mark.parametrize("kind", TEMPLATES)
+@pytest.mark.parametrize("text", HOSTILE)
+def test_every_template_kind_stays_valid_with_a_hostile_literal(kind, text):
+    (prepareUpdate if kind == "update" else prepareQuery)(filled(kind, text))
+
+
+def test_an_injection_attempt_matches_nothing_and_changes_nothing():
+    dataset = Dataset()
+    dataset.graph(GRAPH).add((SUBJECT, PREDICATE, Literal("kept")))
+    attack = '"} ; DROP ALL ; #'
+    assert list(dataset.query(filled("filter", attack))) == [], "the attack matches no row"
+    dataset.update(filled("update", attack))
+    stored = {o for _, _, o in dataset.graph(GRAPH)}
+    assert stored == {Literal(attack)}, (
+        "the attack is stored as a plain value and nothing is dropped"
+    )
+
+
+def test_a_rendered_term_is_not_substituted_again():
+    out = fill("SELECT * WHERE { $a $b ?o }", a=term(Literal("$b")), b=term(URIRef(f"{EX}b")))
+    assert out == f'SELECT * WHERE {{ "$b" <{EX}b> ?o }}'
+
+
+def test_fill_refuses_a_raw_string():
+    with pytest.raises(SparqlError, match="term"):
+        fill("ASK { $s ?p ?o }", s="<http://example.org/a>")
+
+
+def test_fill_refuses_a_missing_name():
+    with pytest.raises(SparqlError, match="missing"):
+        fill("ASK { $s ?p $o }", s=term(SUBJECT))
+
+
+def test_fill_refuses_an_extra_name():
+    with pytest.raises(SparqlError, match="unused"):
+        fill("ASK { $s ?p ?o }", s=term(SUBJECT), o=term(SUBJECT))
+
+
+def test_term_returns_the_type_fill_accepts():
+    assert isinstance(term(SUBJECT), SparqlTerm)
