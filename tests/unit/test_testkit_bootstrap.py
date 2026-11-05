@@ -77,13 +77,14 @@ def test_redact_secrets_drops_the_secret_line() -> None:
     assert "GK123" in redacted
 
 
-def test_environment_sets_variables_and_restores_every_one() -> None:
-    os.environ["RP_TEST_KEPT"] = "before"
-    os.environ.pop("RP_TEST_NEW", None)
+def test_environment_sets_variables_and_restores_every_one(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RP_TEST_KEPT", "before")
+    monkeypatch.delenv("RP_TEST_NEW", raising=False)
     with pytest.raises(RuntimeError), environment(RP_TEST_KEPT="during", RP_TEST_NEW="x"):
         assert os.environ["RP_TEST_KEPT"] == "during"
         assert os.environ["RP_TEST_NEW"] == "x"
         raise RuntimeError("boom")
-    assert os.environ["RP_TEST_KEPT"] == "before"
-    assert "RP_TEST_NEW" not in os.environ
-    del os.environ["RP_TEST_KEPT"]
+    assert os.environ["RP_TEST_KEPT"] == "before", "a changed variable was not restored"
+    assert "RP_TEST_NEW" not in os.environ, "a new variable was not removed"

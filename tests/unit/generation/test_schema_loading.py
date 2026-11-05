@@ -1,6 +1,7 @@
 """load_schema opens a schema whose metamodel imports resolve to the installed package (PD-22)."""
 
 from collections import Counter
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -10,26 +11,41 @@ from rdf_persistence.generation.schema import load_schema
 LIBRARY = Path(__file__).parents[2] / "fixtures" / "library"
 MODEL = Path(__file__).parents[3] / "rdf_persistence" / "model"
 
-# schema file -> (toy classes it defines, metamodel classes it must bring in)
-EXPECTED = {
-    "library": (
-        {"Library", "Book", "Chapter", "Note", "Scan", "LibraryAccess", "LibraryGrant"},
-        {"TenantAccess"},
+
+@dataclass(frozen=True)
+class ToySchema:
+    """A toy schema file, the classes it defines and the metamodel classes it must bring in."""
+
+    name: str
+    toy: frozenset[str]
+    imported: frozenset[str]
+
+
+TOY_SCHEMAS = (
+    ToySchema(
+        "library",
+        frozenset({"Library", "Book", "Chapter", "Note", "Scan", "LibraryAccess", "LibraryGrant"}),
+        frozenset({"TenantAccess"}),
     ),
-    "partial": ({"Shelf"}, {"AggregateRoot", "Described"}),
-    "library_tenant": ({"Library"}, {"AggregateRoot"}),
-    "books": ({"Book", "Chapter", "Note"}, {"Tracked", "Described"}),
-    "scans": ({"Scan", "Book"}, {"StoredFile"}),
-    "library_access": ({"LibraryAccess", "LibraryGrant"}, {"Grant", "TenantAccess", "Principal"}),
-}
+    ToySchema("partial", frozenset({"Shelf"}), frozenset({"AggregateRoot", "Described"})),
+    ToySchema("library_tenant", frozenset({"Library"}), frozenset({"AggregateRoot"})),
+    ToySchema("books", frozenset({"Book", "Chapter", "Note"}), frozenset({"Tracked", "Described"})),
+    ToySchema("scans", frozenset({"Scan", "Book"}), frozenset({"StoredFile"})),
+    ToySchema(
+        "library_access",
+        frozenset({"LibraryAccess", "LibraryGrant"}),
+        frozenset({"Grant", "TenantAccess", "Principal"}),
+    ),
+)
 
 
-@pytest.mark.parametrize("name", EXPECTED)
-def test_toy_schema_loads_with_its_own_and_the_metamodel_classes(name: str) -> None:
-    toy, imported = EXPECTED[name]
-    classes = set(load_schema(LIBRARY / f"{name}.yaml").all_classes())
-    assert toy <= classes, f"{name}: missing toy classes {toy - classes}"
-    assert imported <= classes, f"{name}: missing metamodel classes {imported - classes}"
+@pytest.mark.parametrize("schema", TOY_SCHEMAS, ids=lambda s: s.name)
+def test_toy_schema_loads_with_its_own_and_the_metamodel_classes(schema: ToySchema) -> None:
+    classes = set(load_schema(LIBRARY / f"{schema.name}.yaml").all_classes())
+    assert schema.toy <= classes, f"{schema.name}: missing toy classes {schema.toy - classes}"
+    assert schema.imported <= classes, (
+        f"{schema.name}: missing metamodel classes {schema.imported - classes}"
+    )
 
 
 def test_loading_does_not_depend_on_the_working_directory(
