@@ -1,6 +1,15 @@
 """RDF Persistence."""
 
+from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.domain.base import RpModel
+from rdf_persistence.domain.errors import (
+    BadQuery,
+    Conflict,
+    DatabaseGone,
+    NotFound,
+    PersistenceError,
+    StoreUnavailable,
+)
 from rdf_persistence.domain.generated.rp_access import (
     Action,
     Grant,
@@ -46,6 +55,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     TenantSummary,
     VerifiedCaller,
 )
+from rdf_persistence.services.store import Store
 
 __version__ = "0.1.0"
 
@@ -53,13 +63,19 @@ __all__ = [
     "Action",
     "Activity",
     "AggregateRoot",
+    "BadQuery",
+    "Conflict",
+    "DatabaseGone",
     "DatabaseKind",
     "Described",
+    "FusekiStore",
     "Grant",
     "GrantSet",
     "GraphKind",
     "LabelUpdate",
     "ModuleKind",
+    "NotFound",
+    "PersistenceError",
     "Page",
     "Policy",
     "Principal",
@@ -74,6 +90,8 @@ __all__ = [
     "RpAnnotation",
     "RpModel",
     "ServiceSettings",
+    "Store",
+    "StoreUnavailable",
     "StoredFile",
     "TenantAccess",
     "TenantCreate",

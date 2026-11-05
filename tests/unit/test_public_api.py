@@ -17,6 +17,13 @@ INDEXED_NAMES = [
     "Grant",
     "TenantState",
     "RegistryEntry",
+    "Store",
+    "FusekiStore",
+    "DatabaseGone",
+    "StoreUnavailable",
+    "NotFound",
+    "Conflict",
+    "BadQuery",
 ]
 
 
