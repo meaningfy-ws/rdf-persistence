@@ -221,6 +221,14 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
       imports the others from `rdf_persistence.domain.generated`;
     - `rdf_persistence/generation/model/rp_generation.yaml`: `GenerationManifest`, `ConstraintCase`
       and `ClassShape` (PD-26, PD-27), generated into `rdf_persistence/generation/generated/`.
+  - Stage 1 review (2026-11-05): every plain data record of `generation` and `testkit` (a file to
+    write, a check problem, a flag, a presence alternative, a template view-model, a guard
+    violation) is declared in `rp_generation.yaml` and generated. Hand-written types remain only
+    where a field holds a foreign runtime object LinkML cannot express (a `SchemaView`, a callable,
+    an rdflib graph) or where the type subclasses a LinkML generator or template class; each is
+    named in the model guard's allow-list (PD-28). The annotation vocabulary (`owned`, `internal`,
+    `graph`, `database`, `module_kind`, `rp_path`, `rp_unlabelled`, and `bookkeeping` for the
+    slots the shapes ignore) and its value sets are generated enums, never free strings.
   - Hand-written, because it restates nothing: generic code that reads the schema through
     `SchemaView` at run time (the mapper, the router), the strict base `RpModel`
     (`domain/base.py`), the generator extensions and templates, exception classes, and
@@ -266,6 +274,8 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
     string), `inputs` and `outputs`, each a list of entries with `path` and `sha256`.
     - Paths are POSIX, relative to the folder of the `pyproject.toml`; hashes are over the raw
       bytes; entries are sorted by path.
+    - Inputs also include every `services/schema*.py` module, since they decide how a schema is
+      read (stage 1 review).
     - Inputs: every file of `load_schema(schema)`'s import closure (the metamodel resolved through
       PD-22; `linkml:types` is covered by the `linkml` version instead), every file of the template
       directories, and every `.py` module under `rdf_persistence/generation/` except those under
@@ -303,7 +313,8 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
   1. *Schema gates first*: `linkml-lint` with the raised rules, then the hard and boundary checks;
      nothing is generated from a schema that fails them.
   2. *Golden tests per extension*: RDF output compared by graph isomorphism, other output as exact
-     text, and the set of files compared exactly.
+     text, and the set of files compared exactly. For the toy library the golden is the committed
+     generated tree itself; separate goldens exist only for schemas that are not the toy.
   3. *Cross-artefact conformance*:
      - The cases live in `tests/fixtures/conformance/cases.yaml`, as `ConstraintCase` rows: `kind`,
        `class_name`, `valid` and `invalid` (paths of instance files beside it, in YAML).
@@ -317,7 +328,9 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
        induced slots and its classes) minus the kinds that have at least one row must be empty;
        otherwise the test fails, naming the missing kinds.
      - A consumer runs it on its own schema with `testkit.conformance.run(schema, cases)`.
-  4. *Round trips*: an instance goes to JSON, is expanded with the generated context to RDF, then
+  4. *Round trips* (strategies in `testkit`, run on the toy library's aggregates and the
+     metamodel's `TenantAccess`; equality is on the public projection, since internal slots never
+     cross the context): an instance goes to JSON, is expanded with the generated context to RDF, then
      framed and compacted back. Equal means the generated objects compare equal and the two RDF
      graphs are isomorphic. Hypothesis (pinned in the test group, PD-2) draws the instances with
      strategies built from `SchemaView`: required slots always, optional ones by draw; values by
@@ -352,7 +365,12 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
     `rdf_persistence/` and `tests/`, with `tests/fixtures/` exempt (instance data and request
     bodies).
   - Both are `testkit.assert_models_generated(package, *, roots, allow=())`, so consumers get them
-    too.
+    too. In this repo the model guard also scans `generation` and `testkit`, with the allow-list of
+    PD-24's foreign-object types.
+  - `rp-generate` validates its own inputs (stage 1 review): manifest paths are relative POSIX paths
+    without `..` and hashes are 64 hex digits; a run removes a listed file only if it lies under the
+    project and still has its recorded hash; configured folders are relative, without `..`; the
+    package is a dotted identifier; every staged file must stay inside the staging folder.
 
 ### Generation
 
@@ -391,7 +409,10 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
   the one `label` slot (`skos:prefLabel`); there is no `dcterms:title` slot in the metamodel.
 - **PD-22 Importing the metamodel.** Application modules import metamodel modules as
   `rdf_persistence/model/<module>`. `rdf_persistence/services/schema.py` has `load_schema(path)`
-  (in `services`, so the mapper may use it under PD-1; `generation` imports it from there), which opens a
+  (in `services`, so the mapper may use it under PD-1; `generation` imports it from there). The
+  rules that read a schema's aggregate structure (roots, the tenant root, owned and internal
+  slots, PD-11's defaults, the presence alternatives and keyed slots of a class) live beside it in
+  `services`, once, and `generation`, `testkit` and the mapper all use them. It opens a
   schema with `SchemaView` and an import map from that prefix to the installed package's `model/`
   folder. `rp-generate`, the mapper and the tests load schemas only through it; a unit test loads
   every toy library schema with it.
