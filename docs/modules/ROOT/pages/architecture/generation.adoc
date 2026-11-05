@@ -84,25 +84,20 @@ artefact in the package that uses it.
 [mermaid]
 ....
 flowchart BT
-    CORE["rp_core.yaml<br/>AggregateRoot, version, RegistryEntry,<br/>owned / internal / database / graph / module_kind"]
-    ANN["rp_annotations.yaml<br/>Described, Tracked (SKOS, DCTerms)"]
-    PROV["rp_provenance.yaml<br/>Provenanced, Activity (PROV-O)"]
-    ACC["rp_access.yaml<br/>ODRL subset: Principal, Role, Policy,<br/>Permission, Prohibition, Action, Scope"]
-    TEN["rp_tenancy.yaml<br/>TenantAccess, Grant, TenantState"]
-    FIL["rp_files.yaml<br/>StoredFile"]
-    RP["rp.yaml (imports all)"]
+    CORE["rp_core"]
+    ANN["rp_annotations<br/>SKOS, DCTerms"]
+    PROV["rp_provenance<br/>PROV-O"]
+    ACC["rp_access<br/>ODRL"]
+    TEN["rp_tenancy"]
+    FIL["rp_files"]
     ANN --> CORE
     PROV --> ANN
     ACC --> CORE
     TEN --> ACC
     FIL --> ANN
-    RP --> CORE
-    RP --> ANN
-    RP --> PROV
-    RP --> ACC
-    RP --> TEN
-    RP --> FIL
 ....
+
+`rp.yaml` imports all six modules; an application imports `rp.yaml`, or only the modules it uses.
 
 === Annotations: two layers that are easy to confuse
 
@@ -235,19 +230,13 @@ available only through the Python API _(spike)_.
 
 [mermaid]
 ....
-flowchart LR
-    S[application schema<br/>+ rp metamodel] --> L[1 lint]
-    L --> B[2 boundary check]
-    B --> P[3 domain classes]
-    B --> H[4 shapes]
-    B --> C[5 JSON-LD context]
-    B --> T[6 TypeScript types]
-    B --> D[7 diagrams]
-    P --> O[package: domain/generated/<br/>classes, shapes, context, schema copy]
-    H --> O
-    C --> O
-    T --> TS[client package: generated types]
-    D --> DOC[docs: one diagram per module]
+flowchart TB
+    S["schema + metamodel"] --> L["1 lint"] --> B["2 boundary and hard check"]
+    B --> P["3 Python"]
+    B --> H["4 shapes"]
+    B --> C["5 context"]
+    B --> T["6 TypeScript"]
+    B --> D["7 diagrams"]
 ....
 
 [cols="1,4,3",options="header"]

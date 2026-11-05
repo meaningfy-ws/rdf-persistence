@@ -17,24 +17,22 @@ does the API need generated Python classes and a mapper at all?
 
 [mermaid]
 ....
-flowchart LR
-    subgraph app["The application"]
-        M["LinkML model<br/>(domain modules)"]
-        A["Access module<br/>(roles, rules)"]
-        S["Domain services<br/>(only where rules are more than CRUD)"]
+flowchart TB
+    subgraph app["the application"]
+        direction LR
+        M["model"]
+        A["access module"]
+        S["domain services"]
     end
     subgraph rp["rdf-persistence"]
-        R["Generic router<br/>/{type}/{id}"]
-        V["Validation<br/>SHACL from the model"]
-        C["Access check"]
-        P["Aggregate session<br/>one named graph per aggregate"]
+        direction LR
+        R["router"] --> C["check"] --> V["shapes"] --> P["session"]
     end
-    ST[("Triple store")]
-    M -->|SchemaView at run time| R
-    M -->|generated shapes| V
-    A -->|rules as data| C
-    R --> C --> V --> P --> ST
-    S -->|calls| P
+    ST[("store")]
+    M --> R
+    A --> C
+    S --> P
+    P --> ST
 ....
 
 The router reads the model at run time, so adding a class to the model adds its endpoints. Code is
@@ -91,19 +89,19 @@ or Turtle by content negotiation.* No generated routes.
 ....
 sequenceDiagram
     participant Cl as Client
-    participant R as Generic router
-    participant C as Access check
+    participant R as Router
+    participant C as Check
     participant Se as Session
     participant St as Store
-    Cl->>R: PUT /books/{id}, If-Match: v7, body (JSON or JSON-LD)
-    R->>C: may this caller "modify" this aggregate?
+    Cl->>R: PUT /books/1 (If-Match v7)
+    R->>C: may modify?
     C-->>R: yes
-    R->>R: JSON → triples with the context, then validate with the shapes
-    R->>Se: replace the graph, guarded by v7
-    Se->>St: one guarded update + ASK
-    St-->>Se: committed
-    Se-->>R: new version v8
-    R-->>Cl: 200, ETag: v8, body in the requested format
+    R->>R: to triples, validate
+    R->>Se: replace if v7
+    Se->>St: update + ASK
+    St-->>Se: done
+    Se-->>R: v8
+    R-->>Cl: 200, ETag v8
 ....
 
 * *The wire stays simple.* Plain JSON with `id` as the IRI is also JSON-LD with the generated context,

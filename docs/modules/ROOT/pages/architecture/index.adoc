@@ -38,28 +38,27 @@ and use cases to these ids; this toolkit does not know the consumer.
 ....
 graph TB
     subgraph rp["rdf_persistence"]
-        KIT["Service kit and generic router<br/>token check, access check,<br/>problems, ETags, content negotiation"]
-        TEN["Tenancy<br/>catalogue, lifecycle, grants"]
-        SES["Aggregate session<br/>and repositories"]
+        KIT["Service kit,<br/>router"]
+        POL["Access<br/>rules"]
+        TEN["Tenancy"]
+        LOAD["Graph<br/>loading"]
+        SES["Session"]
         MAP["Mapper"]
-        LOAD["Graph loading"]
-        POL["Access rules<br/>(consumer data)"]
         SP(["Store port"])
-        FP(["File store port"])
+        FP(["File port"])
         IP(["Identity port"])
     end
-    FUS["Fuseki adapter"]
-    VOL["S3 adapter"]
-    ZIT["Zitadel adapter"]
-    KIT -->|in-process| POL
-    KIT -->|in-process| TEN
-    TEN -->|in-process| SES
-    SES -->|in-process| MAP
-    SES -->|in-process| SP
-    LOAD -->|in-process| SP
-    TEN -->|in-process| SP
+    FUS["Fuseki"]
+    S3["S3"]
+    ZIT["Zitadel"]
+    KIT --> POL
+    KIT --> TEN
+    TEN --> SES
+    SES --> MAP
+    SES --> SP
+    LOAD --> SP
     FUS -. implements .-> SP
-    VOL -. implements .-> FP
+    S3 -. implements .-> FP
     ZIT -. implements .-> IP
 ....
 
