@@ -1,0 +1,25 @@
+{
+  "@context": "context.jsonld",
+  "@omitGraph": true,
+  "@embed": "@always",
+  "@omitDefault": true,
+  "@type": "Book",
+  "creator": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
+  "contributor": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
+  "chapters": {
+    "@embed": "@always",
+    "@omitDefault": true,
+    "@type": "Chapter",
+    "notes": {
+      "@embed": "@always",
+      "@omitDefault": true,
+      "@type": "Note"
+    }
+  }
+}

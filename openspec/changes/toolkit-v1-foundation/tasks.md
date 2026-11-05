@@ -56,7 +56,7 @@ Notation:
   - `gen-jsonld-context`: `id`/`type` aliases, `internal` slots left out, and one frame per aggregate type (PD-12);
   - the `gen-typescript` subclass and its template: enums, dates, `internal` skipped;
   - `gen-mermaid-class-diagram` per module, with the template that marks roots and owned parts.
-- [ ] 1.10 Generate the toy library and regenerate the metamodel classes through `rp-generate`, with generator metadata switched off and `**/generated/**` excluded from Ruff, mypy and Xenon (PD-19); commit the output; add `make check-generated` and run it in CI.
+- [x] 1.10 Generate the toy library and regenerate the metamodel classes through `rp-generate`, with generator metadata switched off and `**/generated/**` excluded from Ruff, mypy and Xenon (PD-19); commit the output; add `make check-generated` and run it in CI.
 
 ### 1b. Single source of specification (PD-24 to PD-28; developer, 2026-11-05)
 
@@ -192,7 +192,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 ## Roadmap
 
 - [x] 0.1 · [x] 0.2 · [x] 0.3 · [x] 0.4 · [x] 0.5
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10 · [x] 1.11 · [ ] 1.12 · [ ] 1.13 · [ ] 1.14 · [ ] 1.15 · [ ] 1.16 · [ ] 1.17 · [ ] 1.18
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 1.11 · [ ] 1.12 · [ ] 1.13 · [ ] 1.14 · [ ] 1.15 · [ ] 1.16 · [ ] 1.17 · [ ] 1.18
 - [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8
 - [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4
 - [ ] 4.1 · [ ] 4.2 · [ ] 4.3

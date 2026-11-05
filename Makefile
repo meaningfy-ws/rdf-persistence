@@ -43,7 +43,7 @@ help: ## Display available targets
 #-----------------------------------------------------------------------------
 # Install / build (mutating)
 #-----------------------------------------------------------------------------
-.PHONY: install-uv install lock generate-metamodel refresh-golden build
+.PHONY: install-uv install lock generate generate-metamodel check-generated refresh-golden build
 
 install-uv: ## Install uv if not present
 	@ command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -57,6 +57,20 @@ lock: ## Update uv.lock
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Locking dependencies$(END_BUILD_PRINT)"
 	@ uv lock
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Lock file updated$(END_BUILD_PRINT)"
+
+TOY_PROJECT = tests/fixtures/library/pyproject.toml
+GENERATED_GLOBS = ':(glob)**/generated/**'
+
+generate: ## Regenerate everything from LinkML: the toolkit's schemas and the toy library
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating from LinkML$(END_BUILD_PRINT)"
+	@ uv run rp-generate
+	@ uv run rp-generate --project $(TOY_PROJECT)
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated$(END_BUILD_PRINT)"
+
+check-generated: generate ## Regenerate and fail if the result differs from what is committed (PD-19)
+	@ git diff --exit-code --stat -- $(GENERATED_GLOBS)
+	@ git ls-files --others --exclude-standard -- $(GENERATED_GLOBS) | grep . && exit 1 || true
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated output is fresh$(END_BUILD_PRINT)"
 
 refresh-golden: ## Rewrite the generator extensions' golden files (review the diff before committing)
 	@ RP_REFRESH_GOLDEN=1 uv run pytest tests/unit/generation -k "ext_" -q
