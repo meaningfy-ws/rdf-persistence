@@ -72,6 +72,7 @@ Order: 1.11 at any time; 1.12 and 1.16 after 1.10; 1.13 after 1.8 and 1.12; 1.14
 - [x] 1.16 The model guard and the file guard (PD-28) as `testkit.assert_models_generated`, run on this package.
 - [x] 1.17 Generated code compiles (PD-27 item 7): an import test of every generated module; `mypy-generated.ini` and its run in `make check-quality`; `tsc --noEmit --strict` (typescript 5.9.3) on the TypeScript output in CI.
 - [x] 1.18 The extension register test (PD-25): every extension module under `rdf_persistence/generation/` has a row in `generation.adoc#extensions` whose first column is its module path, and a golden test `tests/unit/generation/test_ext_<module>.py` with goldens in `tests/fixtures/library/golden/<module>/`.
+- [x] 1.19 The stage 1 docs (developer, 2026-11-05): bring `generation.adoc` in line with what stage 1 built and the stage 1 review's decisions (PD-22, PD-24, PD-26 to PD-28), with _(spike)_ kept only on what stage 2 still has to build; and `docs/modules/ROOT/pages/develop/index.adoc`, how to work on the toolkit itself (the generation loop, adding a schema entry or an extension, the guards), added to the nav. `make check-docs` and the extension register test pass.
 
 ## 2. Store, session and tenancy (stage 2)
 
@@ -138,7 +139,7 @@ Order: 1.11 at any time; 1.12 and 1.16 after 1.10; 1.13 after 1.8 and 1.12; 1.14
 ## 6. Close
 
 - [ ] 6.1 `docs/modules/ROOT/pages/howto/adopt.adoc`: how an application adopts the toolkit (schema, `rp-generate`, composition root, router), using the toy library; add it to the nav.
-- [ ] 6.2 Update the architecture pages with what implementation taught: replace _(spike)_ marks with "implemented", and update the public API table and the metamodel slot table (`prohibitions`, `RoleDefinition`). `make check-docs` passes.
+- [ ] 6.2 Update the architecture pages with what stages 2 to 5 taught (`generation.adoc`'s stage 1 parts are done by 1.19): replace _(spike)_ marks with "implemented", and update the public API table and the metamodel slot table (`prohibitions`, `RoleDefinition`). `make check-docs` passes.
 - [ ] 6.3 Run `openspec validate --all --strict`, then archive the change into `openspec/specs/`.
 
 ## Scenario map
@@ -192,7 +193,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 ## Roadmap
 
 - [x] 0.1 · [x] 0.2 · [x] 0.3 · [x] 0.4 · [x] 0.5
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 1.11 · [x] 1.12 · [x] 1.13 · [x] 1.14 · [x] 1.15 · [x] 1.16 · [x] 1.17 · [x] 1.18
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 1.11 · [x] 1.12 · [x] 1.13 · [x] 1.14 · [x] 1.15 · [x] 1.16 · [x] 1.17 · [x] 1.18 · [x] 1.19
 - [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8
 - [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4
 - [ ] 4.1 · [ ] 4.2 · [ ] 4.3

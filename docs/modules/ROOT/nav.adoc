@@ -6,6 +6,8 @@
 ** xref:architecture/api.adoc[A lightweight API]
 ** xref:architecture/access-control.adoc[Access control and identity]
 
+* xref:develop/index.adoc[Working on the toolkit]
+
 * Background
 ** State of the art (not commitments)
 *** xref:background/soa/walkthrough.adoc[Walkthrough]
