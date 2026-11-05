@@ -12,6 +12,7 @@ from rdf_persistence.domain.iris import (
     loaded_graph_iri,
     meta_graph_iri,
     mint_aggregate_iri,
+    mint_part_iri,
     mint_tenant_iri,
     registry_graph_iri,
     system_database_name,
@@ -89,3 +90,10 @@ def test_tenant_name_needs_a_uuid_last_segment():
 def test_minted_ids_are_uuid4():
     last = mint_tenant_iri(BASE, "libraries").rsplit("/", 1)[1]
     assert uuid.UUID(last).version == 4
+
+
+def test_mint_part_iri_sits_under_the_root_and_is_fresh():
+    root = f"{BASE}libraries/t/books/b"
+    iri = mint_part_iri(root)
+    assert re.fullmatch(f"{re.escape(root)}/parts/{UUID_RE}", iri), iri
+    assert mint_part_iri(root) != iri, "each mint is fresh"

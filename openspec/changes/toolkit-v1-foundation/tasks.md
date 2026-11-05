@@ -87,7 +87,7 @@ Order: 1.11 at any time; 1.12 and 1.16 after 1.10; 1.13 after 1.8 and 1.12; 1.14
 
   Exports: `open_session`, the store port, `FusekiStore`, `Conflict`, `NotFound`, `DatabaseGone`.
 - [x] 2.4 Graph loading, with the parser in a worker thread and the loaded graph registered by the caller's commit. `Session.load_graph` (a method, so nothing extra is exported); exports: `InvalidGraph`, `RdfFormat`.
-- [ ] 2.5 The mapper over `SchemaView`, for domain services, with the object-level methods of PD-7a: graph to generated classes and back, with a round trip on the toy library. Known trap: linkml's `rdflib_dumper` fails on a slot whose range is a class but whose value is an IRI string (`Grant.assignee`, range `Principal`); the mapper must handle IRI references, with a test.
+- [x] 2.5 The mapper over `SchemaView`, for domain services, with the object-level methods of PD-7a: graph to generated classes and back, with a round trip on the toy library. Known trap: linkml's `rdflib_dumper` fails on a slot whose range is a class but whose value is an IRI string (`Grant.assignee`, range `Principal`); the mapper must handle IRI references, with a test.
 - [ ] 2.6 Tenancy:
   - the system database, created at start-up if missing, and access records, named as in PD-6a;
   - create, which writes the record last and grants the creator `creator_role`, and delete, which marks `deleting` first;

@@ -40,6 +40,11 @@ def mint_aggregate_iri(tenant_iri: str, rp_path: str) -> URIRef:
     return URIRef(f"{tenant_iri}/{_segment(rp_path)}/{uuid4()}")
 
 
+def mint_part_iri(root_iri: str) -> URIRef:
+    """A fresh IRI ``{root_iri}/parts/{uuid4}`` for an owned part that has none."""
+    return URIRef(f"{root_iri}/parts/{uuid4()}")
+
+
 def loaded_graph_iri(aggregate_iri: str) -> URIRef:
     """A fresh IRI for a graph loaded into an aggregate."""
     return URIRef(f"{aggregate_iri}/content/{uuid4()}")
