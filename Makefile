@@ -192,6 +192,7 @@ clean-code: ## Xenon threshold checks
 
 DOCS_DIR  = $(REPO_ROOT)/docs
 DOCS_SITE = $(DOCS_DIR)/build/site
+DOCS_PORT ?= 8081
 
 install-antora: ## Install the Antora doc toolchain (npm) in docs/
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Installing Antora toolchain$(END_BUILD_PRINT)"
@@ -202,8 +203,8 @@ build-docs: ## Build the documentation site to docs/build/site/
 	@ cd $(DOCS_DIR) && npx antora --fetch antora-playbook.local.yml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Docs built at $(DOCS_SITE)$(END_BUILD_PRINT)"
 
-preview-docs: build-docs ## Build then serve docs at http://localhost:8080
-	@ python3 -m http.server --directory $(DOCS_SITE) 8080
+preview-docs: build-docs ## Build then serve docs at http://localhost:$(DOCS_PORT) (8081, beside MWB2's 8080)
+	@ python3 -m http.server --directory $(DOCS_SITE) $(DOCS_PORT)
 
 check-docs: ## Check the docs: no consumer terms in architecture pages, every page in the nav
 	@ python3 -I docs/tools/check_docs.py
