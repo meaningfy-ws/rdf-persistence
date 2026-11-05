@@ -4,7 +4,7 @@ Change: `soa-python-rdf-orm` · task 6.5. Template: Meaningfy `ADR_TEMPLATE.md`.
 level. Each ADR traces to drivers (AD-*n*, K-*n* in [`business-context.md`](business-context.md))
 and to the diagrams in [`c4-views.md`](c4-views.md). **Decision Outcome is "Open — for the
 developer"** unless a DEC-*n* in `proposal.md` already decides it; options are presented, not
-chosen. The developer's answers of 2026-11-03 (DEC-15…DEC-38) decide or narrow most of them; see
+chosen. The developer's answers of 2026-11-03 (DEC-15…DEC-39) decide or narrow most of them; see
 `docs/modules/ROOT/pages/architecture/soa/decisions.adoc`.
 
 | Id | C4 level | Title | Status |

@@ -7,6 +7,11 @@ schema: meaningfy
 # a parallel MEMORY.md.
 context: |
   Repo: RDF Persistence (rdf-persistence).
+  Purpose: the technology stack (library + generator + service kit) for rapid development
+  of MWBv2, the Mapping Workbench v2 — Meaningfy's application for XML-to-RDF mappings.
+  MWBv2 is a separate product repo that depends on this one, never the reverse; anything
+  generic to model-driven RDF apps lives here, anything mapping-specific lives in MWBv2.
+  Decisions so far: openspec/changes/soa-python-rdf-orm/proposal.md (DEC-1..DEC-39).
   Architecture: cosmic-python layering (domain, adapters, services, entrypoints);
   innermost layer is `domain`. Enforced by .importlinter (`make check-architecture`).
   Top-level package: rdf_persistence (no /src). Default branch: develop.

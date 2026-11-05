@@ -85,7 +85,7 @@ toc::[]
 [cols="1,5",options="header"]
 |===
 |Term |Meaning
-|MWBv2 |Mapping Workbench v2: Meaningfy's model-driven development approach (UML → LinkML → generated backend → data service → JS UI)
+|MWBv2 |Mapping Workbench v2: Meaningfy's application for XML-to-RDF mappings, and the product rdf-persistence is the technology stack for. "The MWBv2 approach" in these pages is the model-driven way its runbook prescribes for building it (UML → LinkML → generated backend → data service → JS UI)
 |Aggregate |A cluster of objects saved together in one transaction, reached through one root (DDD)
 |Unit of work |The object that tracks changes during a session and writes them together on commit
 |Guarded update |A SPARQL `DELETE … INSERT … WHERE` whose WHERE clause checks the expected version
