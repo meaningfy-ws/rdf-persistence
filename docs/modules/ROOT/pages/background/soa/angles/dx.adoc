@@ -1,0 +1,393 @@
+= Developer experience benchmarks
+:description: Which API choices make mainstream ORMs and ODMs loved, how they translate to an RDF, LinkML and SPARQL persistence layer, and a sketch of the resulting rdf-persistence API.
+
+[IMPORTANT]
+.Background, not a commitment
+====
+This page is part of the state-of-the-art study moved from the rdf-persistence repository (commit `43dc152`). It records options and leanings, not decisions. What rdf-persistence commits to is in xref:architecture/index.adoc[rdf-persistence architecture v1].
+====
+
+== Purpose of the angle
+
+This angle covers layer L1 (the persistence API) and its developer tooling, with effects on L0 (what is generated) and L4 (FastAPI integration).
+It asks which API choices make mainstream ORMs and ODMs loved (DEC-12), and how they translate to a layer that keeps LinkML-generated Pydantic classes persistence-free (Data Mapper, cosmic-python).
+
+Deep dives with clone, GitNexus index and code reading: SQLModel, Beanie, ODMantic, Piccolo.
+SQLAlchemy 2.0, Django, Prisma, Drizzle, Tortoise, Pony, Ecto, ActiveRecord and Spring Data are desk-only: official quick-starts, with error strings verified in source where cited. xref:background/soa/libraries/neomodel.adoc[neomodel] is the existing DX 5/5 benchmark, compared only.
+No candidate code was installed or run.
+
+*Headline findings.*
+
+. *Developers love short, typed, unsurprising persistence:* plain Pydantic model classes, one session object, `select(Model).where(Model.f == v)` expressions, a context-managed transaction, and errors that name the model and the field. SQLAlchemy 2.0, SQLModel, Beanie, ODMantic and Piccolo all converge on this; Python developers now expect it.
+. *Data Mapper costs no lines.* ODMantic (9), Ecto (10) and SQLAlchemy 2.0 (14) need 9–14 lines for CRUD plus a query — as short as Active Record; Prisma needs 8 lines of code plus its schema. Persistence-free LinkML classes are free if the session API is right.
+. *The one unsolved typing problem is class-level field expressions on plain classes:* `Hero.age > 35` type-checks as `bool`. SQLModel ships `col()`, Beanie and ODMantic accept `bool` in signatures, SQLAlchemy uses `Mapped[]` descriptors, JPA generates a metamodel (`Person_`). For generated LinkML classes the clean answer is a *generated typed field metamodel*.
+. *RDF forces five real differences:* open world (absent ≠ empty ≠ not loaded), multi-valued properties by default, IRIs as ids known before save, language-tagged strings, named graphs. Each has a mainstream precedent to borrow.
+. *Verdict for every benchmark: borrow ideas.* None speaks RDF; none is a dependency candidate.
+
+== Purpose and origin of the benchmarks
+
+[cols="2,4,3,3",options="header"]
+|===
+|Tool |Built for / by |Design angle |Where its ideas fit
+|SQLAlchemy 2.0 |General SQL toolkit and ORM; Mike Bayer and community, since 2005 |Data Mapper, UoW, expression language |L1 session and query expressions; L2 capability idea
+|SQLModel |"SQL like FastAPI": one class is Pydantic model and table; Sebastián Ramírez |API-first, Pydantic-first |L1 API surface, L4 FastAPI, docs style
+|Django ORM |Web framework ORM; Django Software Foundation |Active Record, batteries |L1 query sets, L0 migrations, L4 admin (U5)
+|Prisma |TS ORM with schema language and generated client; Prisma Data |Schema-first, generated client |L0 generate-on-save, L1 nested writes and batch transactions, L5 typed client
+|Drizzle |TS "SQL-shaped" ORM; Drizzle Team |Code-first, SQL-transparent |L1 query transparency; embedded test engine
+|Beanie |Async MongoDB ODM on Pydantic; Roman Right |Active Record over Pydantic documents |L1 document mapping (closest to JSON-LD), revision locking, projections
+|ODMantic |MongoDB ODM on Pydantic; Arthur Pastel |Data Mapper (engine) over Pydantic |L1 engine shape — the closest analogue to rdf-persistence
+|Tortoise ORM |Django-style async ORM |Active Record, async-only |L1 async lookups
+|Piccolo |Async query builder, ORM and admin; Daniel Townsend |Query-builder-first, batteries |L1 awaitable queries with `run_sync`, test kit
+|Pony |Pythonic generator-expression queries |Bytecode-decompiling DSL, identity map, optimistic checks |L1 default optimistic concurrency; warning on magic
+|Ecto |Elixir data mapper; Plataformatec / Dashbit |Repo + changesets, explicit preload |L1 explicit loading, validation, test sandbox
+|ActiveRecord |Rails ORM; Rails core |Convention over configuration |L1 conventions, `lock_version`
+|Spring Data |Repository abstraction over many stores; VMware/Broadcom |Repository interfaces + derived queries |L1 repositories, "did you mean" errors
+|===
+
+None of them speaks RDF. Their place is the API shape and tooling of rdf-persistence (L1) and of the generated service (L4).
+
+== Landscape summary
+
+DEC-5: more than 200 stars and a commit after 2025-11-03. Measured 2026-11-03; downloads are last month (pypistats, npm). Recorded for completeness: these are idea sources.
+
+[cols="2,2,1,2,1,1",options="header"]
+|===
+|Library |Stars, last push |Lang |Downloads / month |DEC-5 |Depth
+|SQLModel |18,539, 2026-11 |Py |23.9 M |pass |*deep*
+|SQLAlchemy 2.0 |12,276, 2026-11 |Py |329.8 M |pass |desk
+|Django ORM |91,489, 2026-11 |Py |41.1 M |pass |desk
+|Prisma |47,659, 2026-11 |TS |73.6 M |pass |desk
+|prisma-client-py |2,091, archived 2025-04 |Py |— |fail |desk
+|Drizzle |36,205, 2026-11 |TS |118.4 M |pass |desk
+|Beanie |2,709, 2026-11 |Py |1.45 M |pass |*deep*
+|ODMantic |1,177, last commit 2026-01 |Py |62.8 k |pass (single maintainer) |*deep*
+|MongoEngine |4,347, 2026-09 |Py |1.59 M |pass |desk
+|Tortoise ORM |5,640, 2026-10 |Py |478 k |pass |desk
+|Piccolo |1,951, 2026-10 |Py |509 k |pass |*deep*
+|Pony |3,820, 2026-08 |Py |507 k |pass |desk
+|Ecto |6,500, 2026-11 |Elixir |— |pass |desk
+|ActiveRecord |58,846, 2026-11 |Ruby |— |pass |desk
+|Spring Data JPA / Commons |3,294 / 842, 2026-10 |Java |— |pass |desk
+|TypeORM, MikroORM |36,661 / 9,265, 2026-10/11 |TS |19.3 M / — |pass |desk
+|neomodel |1,092, 2026-11 |Py |112 k |pass |compare
+|===
+
+== Deep-dive findings
+
+"Complete example" = a model with one relationship, create, read, update, delete and one filtered query in a session. Lines exclude imports and blank lines.
+
+=== SQLModel — 15 lines, ≈8 concepts
+
+* Pydantic classes, so instance completion works. Class-level `Hero.age` is typed `int`, so `Hero.age > 35` is `bool`; `in_` needs the `col()` wrapper (`sqlmodel/sql/expression.py:200-206`, `docs/tutorial/where.md:719-741`). `select()` has 33 generated overloads for typed tuples (`_expression_select_gen.py`).
+* `Session.exec()` returns model objects, not rows (`sqlmodel/orm/session.py:105-140`); `AsyncSession` mirrors the sync one (`ext/asyncio/session.py:30-59`).
+* Testing is taught: `sqlite://` with `StaticPool`, a pytest fixture and FastAPI `dependency_overrides` (`tests/.../test_main.py:9-27`).
+* *Every docs example is a file and is tested:* 150 files in `docs_src/`, 119 test modules in `tests/test_tutorial/`.
+* Footguns: `session.refresh()` after commit to see generated ids; `table=True` vs data models; `col()` for typed operators. Errors are SQLAlchemy's, correct but model-agnostic.
+
+=== Beanie — 10 lines, ≈9 concepts
+
+* Class-level fields become `ExpressionField` at `init_beanie` time via `setattr` (`beanie/odm/utils/init.py:387, 628`): the library attaches query attributes to plain Pydantic classes at runtime. The type checker still sees `float`. Typing is regression-tested (`tests/typing/find.py`).
+* Opt-in revision locking: `use_revision` adds `revision_id` to the filter and raises `RevisionIdWasChanged` (`documents.py:501-515`). `save_changes()` sends only the diff (when `Settings.use_state_management` is on; off by default, `settings/document.py:10`).
+* Typed projections: `project(projection_model=...)` returns `list[ProjectionTest]`.
+* Data migrations with typed input and output documents, forward and backward (`beanie/migrations/`).
+* *Counter-examples:* exceptions carry no message (`beanie/exceptions.py:1-75`, every class is `pass`); `TypeError("Wrong expression type")`; transactions via a `session=` keyword on every method; a live MongoDB for tests; a global `init_beanie` registry.
+
+=== ODMantic — 9 lines, Data Mapper
+
+* *Engine = Data Mapper:* `engine.save / find / delete / count / session / transaction` (`odmantic/engine.py:295-715`); a duplicated `SyncEngine` (`:715-1085`). Models carry no persistence methods.
+* Typing trick, stated in code: `find(model, *queries: Union[QueryExpression, Dict, bool])` — `# bool: allow using binary operators with mypy` (`engine.py:433-437`).
+* Saves only modified fields (`model.py:542-549, 710-711`).
+* *Good errors:* `DocumentNotFoundError` names the model and instance; `DuplicateKeyError` includes the driver error (`exceptions.py:14-57`).
+* Single maintainer, quiet since 2026-01 — healthy design, fragile project.
+
+=== Piccolo — 9 lines, ≈7 concepts
+
+* Every query is awaitable (`piccolo/query/base.py:140`) and has `.run_sync()` (`:201`) — one API, two call styles, no duplicate class tree.
+* `async with DB.transaction():` held in a ContextVar so nested calls join it (`engine/postgres.py:203-226`).
+* `create_pydantic_model(...)` derives FastAPI models from tables (`utils/pydantic.py:111`).
+* Test kit: `ModelBuilder.build(Band, persist=False)` fabricates valid rows; `piccolo tester run` sets up a test database. Auto migrations, playground, admin.
+
+=== Desk benchmarks — one lesson each
+
+[cols="2,1,5",options="header"]
+|===
+|Library |Lines |Lesson
+|SQLAlchemy 2.0 |14 |`Mapped[T]`: class access gives an expression, instance access gives `T` — the gold standard, but the ORM must own the class. `lazy="raise"` forbids N+1
+|Django |11 |Model-named errors, verified: `Hero matching query does not exist.` (`django/db/models/query.py:751`); `makemigrations` autodetects model diffs
+|Prisma |20 incl. schema |`$transaction([...])` = an atomic batch sent together — the analogue of one SPARQL Update (T1); generated types narrow returns; coded errors, verified: `P2025` (`user-facing-errors/src/query_engine/mod.rs:244-245`). No in-memory engine for tests. The Python port is archived
+|Drizzle |9 |"If you know SQL, you know Drizzle": every query has `.toSQL()`; tests run on PGlite in-process
+|Tortoise |9 |Django idioms, async-only; module-path string registry is typo-prone
+|Pony |8 |Optimistic checks on by default; but its bytecode decompiler lags every CPython release — no syntax magic that depends on interpreter internals
+|Ecto |10 |Unloaded association is `NotLoaded`; accessing it never queries, so *lazy* N+1 is impossible (preloading in a loop is still N+1). SQL Sandbox rolls back each test
+|ActiveRecord |8 |`lock_version` gives automatic optimistic locking; readable errors
+|Spring Data |6 + entity |Derived queries validated at startup; verified error `No property '%s' found for type '%s'` + `Did you mean %s` (`PropertyReferenceException.java:43-44`); JPA static metamodel `Person_`
+|neomodel |14 |Per-class `DoesNotExist`; async-first with generated sync. Footguns: no identity map, lazy N+1, global `db`
+|===
+
+*Scores of the deep dives.* C5 and C7 are scored within their own ecosystem.
+
+[cols="2,1,1,1,1",options="header"]
+|===
+|Criterion |SQLModel |Beanie |ODMantic |Piccolo
+|C1 features |4 |4 |3 |4
+|C2 patterns |4 |3 |5 |3
+|C3 friendliness |5 |4 |4 |4
+|C4 adoption |5 |3 |3 |4
+|C5 reuse of foundations |5 |5 |4 |3
+|C6 DDD fit |3 |2 |4 |2
+|C7 portability |4 |1 |1 |3
+|C8 health |5 |4 |2 |4
+|C9 composability |4 |3 |3 |3
+|C10 maintainability |4 |3 |4 |3
+|*DX* |*5* |4 |4 |4
+|===
+
+*Feature coverage of the deep dives (taxonomy v3).*
+
+[cols="2,2,2,2,2",options="header"]
+|===
+|Feature |SQLModel |Beanie |ODMantic |Piccolo
+|D1 typing / IDE |present |present |present |present
+|D2 async |present |present |present |present
+|D3 framework integration |present |partial |present |present
+|D4 docs |present (tested) |present |present |present
+|D5 testing support |partial (recipe) |absent |absent |present
+|D6 lifecycle hooks |partial (SA events) |present |absent |absent
+|D7 single-source sync/async |absent |absent |absent (duplicated) |present (`run_sync`)
+|D12 per-model exceptions |absent |absent |absent |absent
+|D13 model-aware errors |partial |absent |present |partial
+|P3 UoW / session |present (SA) |partial |partial |absent
+|P5 optimistic concurrency |partial (SQLAlchemy `version_id_col`; not documented in SQLModel) |present (opt-in) |absent |absent
+|P9 change detection |present |present |present |absent
+|Q2 expression builder |present |present |present |present
+|Q3 raw escape → models |present |partial |partial |present
+|Q9 eager loading |present |present |present |present
+|X10 projections |present |present |absent |present
+|===
+
+*Anti-patterns seen:* bare exceptions (Beanie); a `session=` keyword threaded through every call (Beanie); global init registries (Beanie, Tortoise, neomodel); interpreter magic (Pony); `refresh()` after commit to learn ids (SQLModel); an install-extras wall before the first example (Beanie docs); duplicated sync and async class trees (ODMantic).
+
+== Conventions Python developers now expect
+
+. Pydantic models as the entity type; FastAPI models are the same or derived classes.
+. `select(Model).where(Model.field == value)` as the primary query style; Django kwargs lookups are a familiar second style.
+. `with Session(...) as s:` / `async with` and `s.begin()` blocks, plus a decorator form for service functions.
+. FastAPI dependency injection (`Depends(get_session)`, `dependency_overrides` in tests). No global singletons.
+. Async parity: a mirrored `AsyncSession`, or awaitable queries with a sync escape.
+. `get` vs `get_or_none`, `one` vs `one_or_none`; per-model `DoesNotExist`.
+. An in-memory engine for tests plus a fixture recipe in the docs.
+. Typed results, including narrowed projections.
+. Query logging and a way to print the generated query.
+
+== DX principles catalogue
+
+[cols="3,3,4,3",options="header"]
+|===
+|Principle |Evidence |Translation to rdf-persistence |RDF-forced difference
+|*Plain models are the API* |SQLModel, Beanie, ODMantic on Pydantic; Ecto structs |LinkML `gen-pydantic` classes unchanged; no required base class (G1). xref:background/soa/libraries/sparqlmodel.adoc[sparqlmodel]'s base class blocks reuse |Mapping lives in `linkml_meta` (`class_uri`, `slot_uri`), not the class body
+|*Data Mapper can be as short as Active Record* |ODMantic 9 lines, Ecto 10, SQLAlchemy 14 vs Django 11 |A session does `add / get / delete / exec`; repositories are optional sugar |—
+|*Typed expression queries* |SQLAlchemy `Mapped[]`; SQLModel `col()`; ODMantic `bool` in signature; Beanie runtime `ExpressionField`; JPA `Person_` |A generated typed field metamodel `Person_.name: Field[str]` next to the domain module, compiled to a SPARQL AST (Q7) with bound parameters (Q6) |RDF operators: `.lang("en")`, `.any(...)`, `.iri`, `.exists()` / `.missing()`
+|*One way for simple, one way for complex* |Prisma's single `where`; Beanie's mix of expressions, dicts and Mongo operators confuses |`repo.find(name="Ada")` for equality only, typed by a generated `TypedDict`; everything else via expressions |—
+|*The query is transparent* |Drizzle `.toSQL()`; SQLAlchemy `echo=True`; Django `str(qs.query)` |`q.to_sparql()` with bound values; a `rdf_persistence.sparql` logger with timing (S14) |Show prefixes and the named graphs used
+|*Transaction scope is one obvious block* |`with s.begin()`; Django `atomic`; Piccolo ContextVar; Prisma batch; Beanie `session=` as counter-example |`async with session.begin():` commits one SPARQL Update (T1); decorator form; ContextVar so nested calls join |Atomicity is per request: say so (`store.capabilities()`, T7); no fake rollback
+|*Lost updates prevented by default* |Pony; Rails `lock_version`; Beanie `use_revision`; JPA `@Version` |Version triple per aggregate in the WHERE guard (T2), on by default; `ConflictError` names IRI and versions |Foreign writers that ignore the version are not protected; document it
+|*Loading is explicit; unloaded ≠ empty* |Ecto `NotLoaded`; SQLAlchemy `lazy="raise"`; Prisma `include` |References come back as IRIs (LinkML non-inlined slots are `str`); `s.load(obj, Person_.member_of)` batches one query (Q9) |Open world: not loaded, loaded-and-absent, known-empty. A not-loaded sentinel stops saving a partial object as "delete what I did not load" (pairs with P8)
+|*Errors name the model, the field and the fix* |Django; Spring "Did you mean"; Prisma `P2025`; ODMantic; Beanie bare (counter) |Errors carry class CURIE, IRI, slot, graph and the store response body (D11–D13); suggestions; stable codes with a docs page |Include the SPARQL snippet and endpoint; tell "no triples" from "no access" when the store says so
+|*Validation is separate and structured* |Ecto changesets; Rails `errors`; Pydantic `ValidationError` |Pydantic on construction; optional SHACL report on commit mapped to field paths (U6) |Validate the aggregate's graph, not the whole store
+|*Test against a real in-process engine* |SQLModel recipe; Ecto Sandbox; Piccolo `ModelBuilder`; Drizzle PGlite |A pytest plugin with an in-memory pyoxigraph store per test, a LinkML-driven fake builder, graph-isomorphism asserts (refines D5) |Advantage: the in-memory store runs *the same SPARQL* as production
+|*DI, no globals* |SQLModel `Depends`; neomodel `db` and Beanie registry as footguns |`Session` is a FastAPI dependency; identity and graph scope are per request |Required by DEC-8: the end-user identity travels with the session (AZ19)
+|*Async without a second mental model* |SQLAlchemy mirror; Piccolo `run_sync`; neomodel unasync |Async-first, sync generated (D7) |rdflib and pyoxigraph are sync; the in-memory adapter runs inline
+|*One schema source, regenerate on save* |Prisma `generate`; Drizzle inferred types |LinkML is the schema; `make generate-models` emits Pydantic, field metamodel, TypedDicts, JSON-LD context, TS types (G1, G7, G16) |—
+|*Schema changes have a story* |Django `makemigrations`; Prisma `migrate`; Beanie data migrations |Versioned SPARQL Update scripts plus SHACL shape install, recorded in a graph |No DDL: model evolution is data transformation
+|*Tutorial first, every example tested* |SQLModel 150 `docs_src` files, 119 test modules |Docs examples run in CI against the in-memory store |—
+|*An escape hatch that returns models* |SQLAlchemy `text()`; Django `raw()`; Prisma `$queryRaw` |`s.sparql(query, bind=..., as_=Person)` (Q3) |Map by `?id` plus a CONSTRUCT of owned predicates
+|*Typed projections for reads* |Beanie `projection_model`; Prisma `select`; SQLModel `HeroPublic` |`select(Person).project(PersonCard)` → `list[PersonCard]`, read-only (X10) |Projections must never be saved (would drop triples) — enforce by type
+|*Conventions only where safe* |Rails, Spring derived names; Pony lag; sparqlmodel untyped `__getattr__` |No name-derived predicates; defaults only for IRI minting (`id_prefixes`) and CURIE expansion |A guessed predicate writes wrong data silently
+|*Ids are known before save* |SQLModel `refresh()` footgun; ODMantic, Beanie mint ids client-side |IRIs minted client-side (`s.mint(Person)`, UUID default); no refresh dance (I1) |IRIs are ids and links: CURIEs in, CURIE-aware `repr` out
+|===
+
+== Where RDF forces a different design
+
+[cols="2,2,4,3",options="header"]
+|===
+|RDF trait |Mainstream default |rdf-persistence choice |Precedent borrowed
+|Open world |`None` = NULL |`None` = no value in loaded data; a not-loaded sentinel; owned-predicate writes (P8) |Ecto `NotLoaded`, SQLAlchemy `lazy="raise"`
+|Multi-valued by default |Scalar columns |LinkML `multivalued` → `list[T]`, set semantics, deterministic order on load; collection operators (P10) |Prisma `push` / `set`, Mongo `$addToSet`
+|IRIs as ids |Integer autoincrement |`id: str` IRI minted client-side; CURIEs accepted everywhere |Mongo ObjectId minted client-side
+|Language tags |One string |`LangString` = `dict[lang, str]`; `Person_.name.lang("en")` in queries (G6) |JSON-LD `@container: @language`
+|Named graphs |Database / schema |`Session(store, graph=...)`, `s.using(graph=...)`; policy-driven placement (P12) |Django `QuerySet.using("db")`
+|No schema DDL |Migrations alter tables |Data migrations plus SHACL install |Beanie data migrations
+|Multi-typing |One class per row |Load as the requested class; polymorphic query over subclasses (Q17) |SQLAlchemy polymorphic loading
+|===
+
+== API sketch
+
+Illustrative, not executed. Taxonomy v4 ids in the comments.
+
+[source,python]
+----
+# --- 1. generated by LinkML gen-pydantic: the domain, persistence-free (G1) ---
+class Organization(BaseModel):
+    id: str                                   # IRI; class_uri / slot_uri sit in linkml_meta
+    name: LangString                          # {"en": "ACME", "fr": "ACMÉ"}
+class Person(BaseModel):
+    id: str
+    name: str
+    member_of: list[str] = []                 # non-inlined range → IRIs of Organization
+
+# --- 2. generated next to it by rdf-persistence: typed field metamodel (G35) ---
+from org_model.fields import Person_, Organization_    # Person_.name: Field[str]
+
+# --- 3. wiring: one Store, sessions per request (FastAPI dependency) ---
+from rdf_persistence import Store, Session, select, Repository, ConflictError
+store = Store.connect("oxigraph:memory", schema="model/org.yaml")   # or an https SPARQL URL
+store.capabilities()       # Capabilities(atomic_request=True, multi_request_tx=False, ...)
+
+async def get_session(user: User = Depends(current_user)):
+    async with Session(store, graph="ex:graph/hr", identity=user.token) as s:
+        yield s                               # no globals: identity + graph per request
+
+# --- 4. unit of work: one commit == one SPARQL Update, version-guarded (T1, T2) ---
+async with Session(store) as s, s.begin():    # commit on exit, nothing sent on error
+    acme = Organization(id="ex:org/acme", name={"en": "ACME", "fr": "ACMÉ"})
+    ada = Person(id=s.mint(Person), name="Ada", member_of=[acme.id])
+    s.add_all([acme, ada])
+# ConflictError: Person <ex:person/7f3c> changed since it was loaded
+#   (version 3, store has 4). Reload it with session.refresh(obj) and re-apply. [RP-409]
+#   (illustrative, proposed error text)
+
+# --- 5. read and change ---
+async with Session(store) as s, s.begin():
+    ada = await s.get(Person, "ex:person/7f3c")         # raises Person.NotFound (D12)
+    ada.name = "Ada L."                                  # dirty-tracked; owned predicates only
+    orgs = await s.load(ada, Person_.member_of)          # explicit, one query (Q9); unloaded = sentinel (D18)
+    await s.delete(acme)                                 # cascade per LinkML composition
+
+# --- 6. query: typed expressions → SPARQL AST → bound parameters (Q6, Q7) ---
+q = (select(Person)
+     .where(Person_.name.contains("Ada"),
+            Person_.member_of.any(Organization_.name.lang("en") == "ACME"))
+     .order_by(Person_.name)
+     .limit(20))
+people = await s.exec(q)                                 # list[Person]
+page = await s.page(q, size=20)                          # page.items, page.total (Q15)
+print(q.to_sparql())                                     # always inspectable (D17)
+cards = await s.exec(q.project(PersonCard))              # read-only projection (X10)
+
+# --- 7. repository per aggregate: optional sugar, generated or one line ---
+class PersonRepo(Repository[Person]): ...
+await PersonRepo(s).find(name="Ada")                     # kwargs typed by PersonFilter TypedDict (G36)
+
+# --- 8. escape hatch that still returns models (Q3) ---
+rows = await s.sparql("SELECT ?id WHERE { ?id org:memberOf ?o }", bind={"o": acme.id}, as_=Person)
+
+# --- 9. sync twin, generated from the async source (D7) ---
+from rdf_persistence.sync import Session as SyncSession  # same names, no await
+----
+
+*Concepts to learn: 9* — generated model, field metamodel (`Person_`), `Store`, `Session`, `begin`, `select`, `Repository`, `LangString`, `load`. On par with neomodel and SQLModel (8).
+
+*Why each choice.*
+
+. *Generated Pydantic stays untouched.* sparqlmodel and Beanie need a base class; ODMantic and Ecto show a separate engine costs no lines.
+. *`Person_` instead of `Person.name`.* Attaching expressions at runtime (Beanie) mutates the domain class globally, and the IDE still sees `str`, so `.lang()` and `.any()` are invisible. A generated companion is fully typed and keeps the domain pure. Approach A (no generator) gets an untyped `F(Person).name` fallback built from `linkml_meta`.
+. *`Store.connect(url, schema=)` plus capabilities.* The store says honestly what a commit means (T7); tests and production differ by one string.
+. *`Session` per request with `identity` and `graph`* (AZ19, DEC-8). Kills the global-singleton and shared-mirror footguns of neomodel and sparqlmodel.
+. *`async with s.begin()` commits one version-guarded SPARQL Update.* The block is the only transaction concept; Prisma's batch `$transaction` is the mainstream precedent.
+. *`get` raises, `get_or_none` returns `None`* (D12). The per-class exception can live in the generated metamodel (`Person_.NotFound`), so the domain class needs no metaclass.
+. *References are IRIs; loading is explicit.* LinkML already types non-inlined ranges as `str`, which avoids N+1 and open-world confusion.
+. *`select()`, `exec()`, `page()`, `to_sparql()`* — SQLModel naming developers already know; `page()` adds totals (Q15).
+. *Repository is optional sugar.* cosmic-python wants one per aggregate (see xref:background/soa/angles/ddd.adoc[DDD boundaries]); the session is enough for scripts.
+. *Sync twin generated* (D7). FastAPI wants async; notebooks and CLIs want sync.
+
+== Features contributed (v4 ids)
+
+* D17 an inspectable compiled query (`to_sparql()` with bound values) plus query logging (refines S14 on the API side);
+* G35 a generated typed field metamodel for queries, with RDF operators, keeping domain classes persistence-free;
+* G36 generated typed filter and input types per class (`TypedDict`) for finders and partial updates;
+* D18 an explicit-loading sentinel: not loaded vs absent vs empty, never lazily queried, never saved as a deletion;
+* D19 a test kit: pytest plugin with an in-memory store per test, a LinkML-driven fake builder, graph-isomorphism assertions (refines D5);
+* D21 tested documentation: every docs example is a file run in CI;
+* EV1, EV4 data migrations: versioned SPARQL Update scripts with an applied-migrations record in the store, plus SHACL shape install (see xref:background/soa/angles/evolution.adoc[schema evolution]);
+* D22 CURIEs everywhere: prefixes accepted in every id argument, CURIE-aware `repr` and errors;
+* D23 "did you mean" suggestions for unknown slots, classes and prefixes;
+* D24 stable error codes with one docs page per code;
+* D25 deterministic ordering of multi-valued properties on load;
+* D26 typing regression tests (`assert_type` modules in CI).
+
+Recommended as defaults among existing ids: optimistic concurrency on by default (P5, T2), async-first with generated sync (D7), model-aware errors (D12, D13).
+
+== How it plugs into MWBv2
+
+See xref:background/soa/building-blocks.adoc[building blocks] for the layers.
+
+* *L0:* the generator that emits LinkML Pydantic (G1) also emits the field metamodel, filter TypedDicts, per-class exceptions (D12) and the JSON-LD context (G7). Approach B gets all of it; approach A gets the untyped fallback. See xref:background/soa/angles/codegen.adoc[code generation].
+* *L1:* `Store`, `Session`, `select`, `Repository` as sketched; the session is the unit of work (P3, T1, T2) and the only place that talks to the store port.
+* *L2:* `Store.connect(url)` picks the adapter; `capabilities()` (T7) drives honest transaction semantics. See xref:background/soa/angles/stores.adoc[stores and change events].
+* *L3 (DEC-8):* the session carries `identity` and `graph` per request; the adapter forwards identity (AZ19) or the enforcement port injects graph scope. No cross-request cache, so DX choices do not leak data.
+* *L4:* FastAPI `Depends(get_session)`; projections (X10) feed response models; `ConflictError` → 412 (X19); error codes → problem+json. See xref:background/soa/angles/service.adoc[service].
+* *L5:* the same principles hold in TS (Prisma- or Drizzle-style generated types, G16); the JS side consumes the service contract, not the persistence API.
+* *L6:* after-commit hooks (B12) and the outbox (B9); not a DX differentiator.
+
+== Variant fit
+
+Variants and approaches as in xref:background/soa/variants.adoc[architecture variants].
+
+[cols="2,1,5",options="header"]
+|===
+|Variant / approach |Fit |Why
+|V1 Portable Python core |enables |The sketch is the V1 core API; in-memory Oxigraph for tests
+|V2 semantic.works-compatible |supports |Same API; `begin()` must report degraded atomicity behind the chunking proxy (T7, T11)
+|V3 Fluree |supports |`identity=` forwards Fluree credentials; Fluree's conflict detection maps to `ConflictError`
+|V4 GraphDB |supports |`capabilities().multi_request_tx=True` lets `begin()` span several requests (T3)
+|V5 Graph-direct reads |neutral |The read side is xref:background/soa/libraries/ldkit.adoc[LDkit] or JS; the same principles apply there
+|A Runtime mapper |supports |Weaker typing: `F(Model).field`, untyped kwargs
+|B Generated mapper and routes |enables |Best DX: typed metamodel, TypedDicts and per-class exceptions are generated
+|C Generic service |neutral |Weakest DX for domain code (no typed classes); fine for rapid screens
+|===
+
+*Per benchmark.* They contribute ideas, never code. ODMantic *enables* V1 (engine as Data Mapper is the V1 core shape); SQLModel *enables* B (generated typed models plus FastAPI routes); Beanie supports V1 and V3 (revision ≈ T2, Fluree conflicts) and A (runtime `ExpressionField` = A's untyped fallback); Piccolo supports C (admin from schema ≈ U5). No benchmark blocks any variant; V5 is neutral for all.
+
+== Open questions
+
+. Accept a *generated `Person_` companion* as the query vocabulary, or attach expression attributes to the generated classes at runtime (Beanie style: shorter, but untyped operators and a mutated domain class)?
+. *Optimistic concurrency on by default* for every aggregate (Pony; Rails once a `lock_version` column exists), or opt-in (Beanie)? Default-on costs one version triple per aggregate.
+. *Multi-valued as `list[T]`* (what LinkML generates) with set semantics, or `set[T]` / a custom `RdfSet[T]`?
+. *`LangString` as `dict[str, str]`* (JSON-LD language map) or a class with `.best(lang_prefs)`? Depends on the G6 decision.
+. *Repository required or optional?* cosmic-python says one per aggregate; the DX benchmarks say the session alone is enough for scripts.
+. *Async-first with generated sync* (neomodel, D7) or `run_sync()` on awaitables (Piccolo, less code to own)?
+. Ship the *test kit* in the core package (`rdf_persistence.testing`, SQLModel and Piccolo style) or separately?
+
+*Not checked.* SQLAlchemy, Django, Prisma, Drizzle, Tortoise, Pony, Ecto, ActiveRecord and Spring examples were written from official quick-starts and not executed; only the cited error strings were verified in source. GitNexus indexes were built, but findings come mainly from reading source directly. Line counts are approximate.
+
+== Final verdict
+
+*Verdict: ideas.* No benchmark is an RDF dependency; they define the API shape and tooling of rdf-persistence.
+
+. *Data Mapper over generated Pydantic costs no DX* (ODMantic: 9 lines). Keep LinkML classes persistence-free and put the ergonomics in the session; do not adopt Active Record for brevity.
+. *Typed queries need a generated companion* (G35, JPA-metamodel style). Every Pydantic-based ORM fakes it (`col()`, `bool` signatures, runtime `setattr`); only owning the class (SQLAlchemy) or generating a metamodel gives real IDE help, so full DX means approach B.
+. *The loved defaults are safety defaults:* one transaction block = one SPARQL Update, optimistic concurrency on, explicit loading (not loaded ≠ absent), DI with no globals, an in-memory store running the same SPARQL in tests, errors that name model, IRI and fix. Cheap at design time, expensive to retrofit.
+
+== Feature coverage
+
+Round 5, v4 taxonomy: 77 v4 ids per library; grouped n.a. rows counted per id.
+
+[cols="2,1,1,1,1",options="header"]
+|===
+|Library |Present |Partial |Absent |n.a.
+|SQLModel |5 |11 |24 |37
+|Beanie |6 |11 |23 |37
+|ODMantic |1 |8 |31 |37
+|Piccolo |6 |10 |25 |36
+|===
+
+The benchmarks cover the DX ids and, for Beanie and Piccolo, the migration ids (EV1, EV3–EV5). None covers the DDD-boundary ids (B6, B9, B16) or G35/G36: the typed-metamodel gap is real outside RDF too.
+
+== Sources
+
+* SQLModel: https://github.com/fastapi/sqlmodel (commit `6a939fb`)
+* Beanie: https://github.com/BeanieODM/beanie (commit `de3e326`)
+* ODMantic: https://github.com/art049/odmantic (commit `26e4504`)
+* Piccolo: https://github.com/piccolo-orm/piccolo (commit `fc1fc86`)
+* SQLAlchemy: https://github.com/sqlalchemy/sqlalchemy; Django: https://github.com/django/django; Prisma: https://github.com/prisma/prisma (renamed, redirects to `prisma/orm`); Drizzle: https://github.com/drizzle-team/drizzle-orm; Spring Data Commons: https://github.com/spring-projects/spring-data-commons; Ecto: https://github.com/elixir-ecto/ecto
+* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/angle-dx.md`

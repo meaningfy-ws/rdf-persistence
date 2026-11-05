@@ -1,0 +1,189 @@
+= triplemodel
+:description: A stateless Pydantic-to-RDF mapper on pyoxigraph with named write modes and rich literals; good mapping ideas, no persistence, no remote SPARQL.
+
+[IMPORTANT]
+.Background, not a commitment
+====
+This page is part of the state-of-the-art study moved from the rdf-persistence repository (commit `43dc152`). It records options and leanings, not decisions. What rdf-persistence commits to is in xref:architecture/index.adoc[rdf-persistence architecture v1].
+====
+
+== At a glance
+
+[cols="1,3"]
+|===
+|What it is for |Mapping Pydantic models to and from RDF triples in a local graph: write modes, literal conversion, `rdf:List`, language strings, named graphs and file I/O. No session, store or query builder; those live in xref:background/soa/libraries/sparqlmodel.adoc[sparqlmodel].
+|Origin and angle |One author (GitHub `eddiethedean`, "Odos Matthews"), 2026; the same author as sparqlmodel, built as its foundation. Mapping-first and stateless.
+|Language |Python (Pydantic v2, pyoxigraph)
+|Licence |MIT
+|Activity |Commit `bd981af`, release 0.12.0 (2026-05-22). 12 minor releases in 6 days (0.1.0 on 2026-05-17), including an engine swap (rdflib → pyoxigraph, 0.10) and the removal of SHACL (0.11). No activity after 2026-05-22. GitHub: 0 stars, 1 contributor; ~48 PyPI downloads a month (desk scan 2026-11-03).
+|Size |11,216 LOC in about 80 source files; 785 tests
+|Layers |L0 (partial: experimental OWL/RDFS → stub generator) · L1 (mapping only; no session or repository) · L2 (partial: embedded pyoxigraph store with admin operations; no transactions, no remote). No L3–L6.
+|Verdict |*Borrow ideas, avoid as a dependency.* It dropped rdflib, has no remote SPARQL and churned hard before going dormant.
+|===
+
+== Purpose and origin
+
+*Built for* a stateless mapping layer between Pydantic models and RDF triples: declare subject IRIs, literals, lists, language tags, nested resources and named graphs once, then move data between models, local graphs and RDF files.
+
+*Who and in which context.* A single author (GitHub `eddiethedean`), the same as sparqlmodel, which builds on it.
+Twelve minor releases between 2026-05-17 and 05-22, driven by a roadmap with one exit-criteria script per milestone.
+It started on rdflib, switched to pyoxigraph only in 0.10 (reason not stated) and removed SHACL in 0.11.
+Its examples (Nobel, DCAT, Wikidata) show a data-wrangling and ETL angle next to the application one.
+
+*Design angle.* Mapping-first and stateless: "We do not build sessions, query compilers, or cascade `put` semantics" (`docs/ROADMAP.md:20, 42`). Engine-centric, file- and local-graph-oriented, model in code.
+
+*Where it fits.* L1 mapping, with partial L0 and L2. As a dependency it fits nowhere: it fails DEC-5, conflicts with DEC-4 (no rdflib) and has no remote store.
+As an idea source it fits our mapper internals (approach A) and is an easy template target for approach B.
+
+== How it works
+
+*Mapping.* A `TripleModel` subclass declares a nested `class Rdf` (namespace, `type_uri`, `id_field`, prefixes, embed mode, `graph_iri`).
+Fields use `rdf_field(predicate)` or `Annotated[..., Predicate(...)]`; metadata sits in Pydantic `FieldInfo` (`model.py:69`).
+Predicates are validated when the class is defined. A subclass `Rdf` *replaces* the parent's instead of merging (`model.py:47–49`).
+
+*Identity.* `subject_uri = namespace + percent-encode(id_field)`; full `http(s)://` or `urn:` values pass through (`config/rdf_config.py:24–34, 106–130`).
+Minting is deterministic and reversible (`id_from_subject_uri`). No UUID default.
+
+*Export.* `python_to_term` plus a `LiteralRegistry` (Decimal, UUID, Enum, gYear …) converts values (`terms/registry.py:19–163`).
+`set[T]` gives repeated objects; `list[T]` gives an `rdf:List`. Nested models embed by IRI or blank node through strategy objects (`embed/strategies.py:19–134`).
+
+*Write modes.* `add` appends. `replace` clears nested children and removes *owned* triples (mapped predicates plus type), then adds. `patch` resets per subject and predicate (`io/sync/modes.py:54–216`).
+Foreign predicates survive (test `test_replace_preserves_unowned_triples_on_subject`).
+
+*Import.* `graph_to_model` collects owned predicates, applies `strict_import` / `warn_unmapped_fields`, handles duplicates, resolves inverses, and ends in `model_validate` (`io/import_.py:493–623`).
+`rdf:type` dispatch can follow `rdfs:subClassOf` (`io/dispatch.py`, `io/rdfs.py`).
+
+*Named graphs.* `Rdf.graph_iri` or `graph_iri=` places a model in a named graph of a local `Dataset`; TriG and N-Quads I/O (`io/dataset.py:152–245`).
+
+*Store and SPARQL.* Since 0.10 the graph is its own `RdfGraph` facade over `pyoxigraph.Store`, copying rdflib idioms (`store/graph.py:53`).
+SPARQL runs on the local store only; `initBindings` uses pyoxigraph substitutions (`io/sparql.py:243–270`), except ASK, where terms are inlined into the query text (`io/sparql.py:110–124`).
+Remote access is gone: `open_sparql_graph` raises, so `load_sparql` always raises (`io/sparql.py:666–731`).
+`store_rollback` is an explicit no-op (`io/stores.py:121–131`).
+
+*Serialisation.* pyoxigraph formats, JSON-LD included (`store/formats.py:24–68`). JSON-LD contexts only raise a warning, so output is expanded or flat (`store/io_warnings.py:52, 77, 84–88`).
+
+*Codegen.* `triplemodel-codegen` reads OWL/RDFS and emits stub classes (`codegen/parse.py`, `codegen/emit.py`, 124 LOC). Labelled experimental.
+
+== Scores
+
+[cols="2,1,6",options="header"]
+|===
+|Criterion |Score |Reason
+
+|C1 Feature coverage |2 |Rich mapping, literals, lists, language tags, named graphs; no session, identity map, transactions, remote store, query builder or SHACL.
+|C2 Approach and patterns |3 |Clean stateless Data Mapper with strategy write modes; convenience I/O on the model and replacing subclass config.
+|C3 Developer friendliness |4 |Short happy path, typed, class-definition validation, 15 guides and a cookbook; stale RTD landing page, large surface.
+|C4 Ease of adoption |4 |Three dependencies; in-memory and on-disk stores out of the box; no remote store, fast breaking churn.
+|C5 Reuse of foundations |3 |pyoxigraph and Pydantic reused; dropped rdflib and rebuilt an rdflib-like facade (about 550 LOC), cutting off pySHACL, LinkML runtime, SPARQLWrapper.
+|C6 Data-centric and DDD fit |3 |Stateless mapping and owned-predicate writes fit aggregates; classes must inherit `TripleModel`; codegen is OWL-only.
+|C7 SPARQL 1.1 portability |1 |Remote SPARQL removed; nothing to port.
+|C8 Health |3 |CI on 3.10–3.13, 100% coverage gate, 785 tests; single author, burst then dormant.
+|C9 Composability |2 |Many RDF syntaxes, but no JSON-LD contexts or framing, no rdflib interop, custom graph facade, no SPARQL protocol client.
+|C10 Maintainability and operability |2 |128 exports and 11k LOC; "API frozen" claim broken twice in a week; dormant, no logging; pure library with 3 dependencies.
+|DX |3 |Mapping is pleasant; no persistence happy path (no public delete, no query builder, no remote store).
+|===
+
+== What to borrow
+
+* *Write modes as named strategies* (add / replace / patch) with owned-predicate semantics: clear only mapped predicates and `rdf:type`; foreign triples survive (`io/sync/modes.py`, `io/sync/predicate_ops.py`).
+* Deterministic IRI minting `namespace + quote(id)` with a reversible inverse and pass-through for full IRIs.
+* `set[T]` for repeated values versus `list[T]` for `rdf:List`, expressed purely by typing.
+* `LangString` / `MultiLangString` value types and a pluggable `LiteralRegistry` (`register_literal_type`, `terms/registry.py:134`).
+* `BackPopulates` paired inverses validated at class definition (`fields/back_populates.py:169–299`); `OntologyRegistry` hints.
+* Per-class named-graph placement, overridable per call.
+* Strict or warn-on-unmapped import, skolemisation policy, CBD extraction (`io/cbd.py`), graph and model diff (`io/compare.py:46–127`).
+* Precise errors, e.g. `Rdf.namespace is required to derive a subject IRI; set it on the model's Rdf class or pass uri= explicitly.` (`config/rdf_config.py:107–111`).
+
+For our LinkML route the same metadata should come from `class_uri` / `slot_uri`, not a hand-written `class Rdf`.
+
+== What to avoid
+
+* *Advertised but dead API.* The README lists `load_sparql`; it always raises `NotImplementedError` (`io/sparql.py:666–731`).
+* *Silent no-op transactions.* `store_rollback` does nothing (`io/stores.py:128–131`).
+* *Broken stability claim.* "Public API frozen from 0.9" was followed by breaking 0.10 and 0.11.
+* *Re-implemented rdflib.* `RdfGraph` copies rdflib idioms; for ASK queries `initBindings` is emulated by inlining terms into query text (`io/sparql.py:110–124`). That path inlines terms by regex without escaping quotes (`io/sparql.py:96–124`): an injection risk.
+* *Active Record leakage.* `to_graph`, `parse_url`, `serialize`, `construct_from_sparql` on the domain class.
+* *Inheritance footgun.* A subclass `Rdf` replaces the parent config (`model.py:47–49`).
+* *Lossy import by default.* Single-valued fields keep the first value (a `UserWarning`, configurable to an error, `io/import_.py:102–112`); `jsonld_context` is accepted and ignored.
+* *Claimed, not found in code:* JSON-LD context support (`Rdf.jsonld_context` only warns); SHACL (ROADMAP 0.4, removed in 0.11); real store transactions (`store_rollback` exists as an API but is a documented no-op, `docs/ROADMAP.md:115`; callers get no runtime signal).
+* Stale RTD landing page ("SparqlModel … planned but not yet available").
+
+== Authorization seams
+
+* *ACL-agnostic by construction, trivially.* It never talks to an endpoint; it maps to and from a local graph. `fetch_url` is an unauthenticated urllib GET (`io/files.py:199–206`).
+* *Where a PEP would go.* In whatever moves the local graph to and from the remote store: a store adapter in rdf-persistence, or sparqlmodel's `HttpStore`. triplemodel offers no hook.
+* *Graph placement.* `Rdf.graph_iri` works only inside a local `Dataset`. If an adapter emitted `GRAPH <g>`, a rewriting proxy would override it, so placement must stay advisory (DEC-8, A2).
+
+== Code-generation fit
+
+*Feasible, arguably easier than for sparqlmodel*, because the mapping is static configuration:
+`class Rdf` ← `class_uri`, `id_prefixes` and schema `prefixes`; `rdf_field(slot_uri)`; `ref_field` versus nested model ← `inlined`; `set[...]` ← `multivalued`; `LangString` ← language slots; `Rdf.graph_iri` ← an annotation.
+
+Gaps for a generator:
+
+* Entities must subclass `TripleModel`; stock `gen-pydantic` output needs a custom template.
+* A subclass `Rdf` replaces the parent's, so every class needs a full, flattened `Rdf`.
+* `structured_pattern` minting needs generator logic; full-IRI and CURIE identifiers fit.
+* Enums with `meaning:` IRIs need custom mapping.
+* No SHACL: LinkML shapes must be validated with pySHACL on an rdflib graph, which needs a format round-trip.
+
+== Variant fit
+
+See xref:background/soa/variants.adoc[variants].
+
+[cols="2,1,5",options="header"]
+|===
+|Variant / approach |Fit |Why
+
+|V1 Portable Python core |neutral |Its mapping ideas belong inside our mapper; not a dependency (no rdflib, fails DEC-5, no remote store).
+|V2 semantic.works-compatible |neutral |Store-agnostic local mapping; `graph_iri` placement must stay advisory behind `sparql-parser`.
+|V3 Fluree |neutral |Nothing Fluree-specific.
+|V4 GraphDB |neutral |Nothing GraphDB-specific.
+|V5 Graph-direct reads |neutral |`construct_models` / `select_models` show how to hydrate read models from one CONSTRUCT or SELECT (idea only).
+|A Runtime mapper |supports (ideas) |A runtime mapper over static class config; we would read LinkML `class_uri` / `slot_uri` instead of `class Rdf`.
+|B Generated mapper and routes |enables |A static `class Rdf` plus `rdf_field` is easy to emit; the generator must flatten inherited config (G26).
+|C Generic service |blocks |No runtime model materialisation (M6 absent); codegen emits source text only.
+|===
+
+== Final verdict
+
+*Ideas.* Borrow the mapping semantics; never depend on it.
+
+. It is *only a mapper over a local pyoxigraph graph*: no remote SPARQL (`load_sparql` always raises), no session and no real transactions (`store_rollback` is a no-op).
+. It *left rdflib* for its own facade, so it cannot interoperate directly with pySHACL, the LinkML runtime or SPARQLWrapper; this conflicts with DEC-4.
+. Its reusable value is the *mapping semantics*: owned-predicate write modes (add / replace / patch), reversible IRI minting, `set` versus `rdf:List`, `LangString` and the literal registry, strict import and per-class graph placement. Re-express them over LinkML `class_uri` / `slot_uri` metadata with inheritance-safe config.
+
+== Feature coverage
+
+[cols="2,1,1,1,1",options="header"]
+|===
+|Round (taxonomy) |Present |Partial |Absent |n.a.
+|Round 1 (v0, 43 features) |17 |13 |13 |0
+|Round 2 (v1 additions, 63) |7 |13 |37 |6
+|Round 3 (v2 additions, 19) |2 |3 |14 |0
+|Round 4 (v3 additions, 102) |2 |6 |64 |30
+|Round 5 (v4 additions, 77) |2 |8 |45 |22
+|===
+
+In rounds 4 and 5, features that only make sense at a store, service or UI boundary are n.a.: triplemodel has none of these.
+
+Notable present features:
+M1 Pydantic classes, M4 type dispatch with `subClassOf`, I1 deterministic IRI minting, I2 blank-node embedding (experimental),
+R1 sets and `rdf:List`, R2 references and paired inverses, L1 typed literals, L2 language strings, L3 literal registry,
+P2 write modes, P6 named graphs, P7 streaming import, P8 owned-predicate writes, M11 strict import,
+M12 alternative type discriminator, I4 skolemisation, Q3 CONSTRUCT/SELECT to models (local), Q18 CBD,
+X2 RDF formats, X14 graph and model diff, M17 class-definition-time validation, S11 embedded-store admin.
+
+Notable present/partial v3 features: D13 errors naming model, field and predicate (`fields/validation.py:47–51`), S18 bulk load separate from sync (`store/ops.py:49–86`); partial G1 static mapping metadata (not persistence-free), G5 IRI-typed fields, G6 language strings (runtime only), G17 OWL/RDFS → stubs, G23 subclass-aware type dispatch, S17 replace and patch modes plus diff (not diff-only commits).
+
+Notable absences: I3 identity map, P3 unit of work, P4/P13 transactions, S2 remote store, Q2/Q7 query builder, M13 SHACL, D2 async, S14 logging, all of AZ and E.
+G26 (inheritance-safe mapping config) and T7 (honest transaction capability reporting), both proposed by this report in round 3, are absent: triplemodel shows the anti-patterns.
+
+Proposed in round 4: I7 reversible IRI minting (the id can be recovered from the IRI with `id_from_subject_uri`; full IRIs pass through unchanged; `config/rdf_config.py:24–34, 120–130`).
+
+== Sources
+
+* Repository: https://github.com/eddiethedean/triplemodel (commit `bd981af`)
+* Documentation: https://triplemodel.readthedocs.io/ (landing page stale)
+* In-repo docs read: `README.md`, `CHANGELOG.md`, `docs/MIGRATION_0.10.md`, `docs/MIGRATION_0.11.md`, `docs/ROADMAP.md`, `docs/guides/13-sparql-and-endpoints.md`
+* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/triplemodel.md`

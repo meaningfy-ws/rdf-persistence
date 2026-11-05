@@ -1,0 +1,168 @@
+= LDkit
+:description: A small, fully typed TypeScript object-graph mapper over plain SPARQL 1.1: one schema literal, inferred types, a Lens per type. The JavaScript client for graph-direct reads (V5); an idea source otherwise.
+
+[IMPORTANT]
+.Background, not a commitment
+====
+This page is part of the state-of-the-art study moved from the rdf-persistence repository (commit `43dc152`). It records options and leanings, not decisions. What rdf-persistence commits to is in xref:architecture/index.adoc[rdf-persistence architecture v1].
+====
+
+== At a glance
+
+[cols="1,3"]
+|===
+|What it is for |Letting web developers read and write Linked Data as typed plain objects in the browser, Deno or Node, against any SPARQL 1.1 endpoint.
+|Origin and angle |Karel Klíma, with Ruben Taelman (lead developer of Comunica; not stated in the repo) and Martin Nečaský (`CITATION.cff`); peer-reviewed at ISWC 2023. Client-first, zero-backend.
+|Language |TypeScript (RDF/JS interfaces, N3; Comunica optional)
+|Licence |MIT
+|Activity |Commit `09fc801` (2026-10-13). 83 stars. Essentially one maintainer.
+|Size |3,889 LOC core in 33 files; 2,456 LOC schema generators; 316 tests
+|Layers |L5 (JS client and object mapper) primarily · L0 via schema generators · L1 client side (encode/decode) · L2 via pluggable engines, no transactions. No L3, L4, L6.
+|Verdict |*Integrate for V5 graph-direct reads only, behind a replaceable seam; ideas otherwise.* It fails DEC-5 (83 stars), so integrating it needs an explicit exception (DEC-5 exception needed). Mirror its API in Python; generate its schema from the same LinkML model.
+|===
+
+== Purpose and origin
+
+*Built for* letting web developers read and write Linked Data as typed plain JS objects without learning SPARQL, against any SPARQL endpoint, from the browser, Deno or Node (README; the ISWC 2023 paper "Linked Data Object Graph Mapping Toolkit for Web Applications").
+
+*Who and in which context.* Karel Klíma, with co-authors Ruben Taelman and Martin Nečaský (`CITATION.cff`, which lists names only, no affiliation). An academic-plus-open-source setting; CITATION version 2.4.0 (2025-05-21), repository activity to 2026-10.
+
+*Design angle.* Client-first and zero-backend: the browser talks SPARQL directly, types are inferred from the schema, and the bundle stays small (its own ~160-LOC engine).
+
+*Where it fits.* L5, and only for graph-direct reads (V5). It assumes a raw SPARQL Update endpoint for writes, so it does not fit any variant where domain rules and authorization run in the backend for writes.
+
+== How it works
+
+*Schema as a value.* A schema is a JSON-LD-context-like literal: `{"@type": …, name: {"@id": …, "@type": xsd.string, "@optional": true}}` with `@array`, `@multilang`, `@inverse`, `@schema`, `@enum` (`schema/schema.ts`).
+TS conditional types infer the entity interface from it, with no codegen step (`schema/interface.ts`).
+
+*Lens.* `Lens<T>` (`lens/lens.ts:86-556`) exposes `find / findOne / findByIri(s) / count / insert / update / delete`, plus raw `insertData / deleteData` and `query`.
+Each method calls exactly one `QueryBuilder` method (GitNexus `context(QueryBuilder)`), and each call is one SPARQL request.
+
+*Reads.* `CONSTRUCT { ?iri a ldkit:Resource . <shape> } WHERE { { SELECT DISTINCT ?iri WHERE { required shape + filters } LIMIT n OFFSET m } <full shape with OPTIONALs> }` (`query_builder.ts:245-300`).
+Optional properties sit as UNION branches inside one OPTIONAL, avoiding cartesian blow-up (`:118-124`). `findByIris` uses `VALUES`.
+Filters: `$equals $in $lt $contains $strStarts $regex $langMatches $filter` and more (`lens/search_helper.ts`).
+
+*Writes.* `insert` is `INSERT DATA` with no existence check (`query_builder.ts:312-319`).
+`update` is one `+DELETE {old} INSERT {new} WHERE {old}+` per call; arrays support `$set`, `$add`, `$remove` (`update_helper.ts:161-189`).
+`delete` removes only the subject's own triples (`query_builder.ts:331-339`).
+
+*Encode/decode.* `encoder.ts` emits RDF/JS quads; nested objects without `$id` become blank nodes (`encoder.ts:136`). `decoder.ts` rebuilds objects and picks language variants (`decoder.ts:137-212`).
+
+*Engine.* `IQueryEngine = RDF.StringSparqlQueryable` (`engine/types.ts`), the RDF/JS standard. The default is LDkit's own ~160-LOC `fetch` client POSTing `application/sparql-query` / `sparql-update`; Comunica is a drop-in.
+The brief's phrase "CRUD over SPARQL endpoints via Comunica" is inaccurate: Comunica is optional.
+
+*Graphs, identity, transactions.* One `defaultGraph` per Lens (`query_builder.ts:57-80`). The caller supplies `$id`; no minting, no session identity map. No transactions: a multi-entity call is atomic only because it is one Update request.
+
+== Scores
+
+[cols="2,1,6",options="header"]
+|===
+|Criterion |Score |Reason
+
+|C1 Feature coverage |3 |CRUD, filters, pagination, count, inverse and nested properties, typed and language literals; no transactions, identity map, validation, JSON-LD I/O or cascade.
+|C2 Approach and patterns |4 |Clean Data Mapper: plain objects, schema-driven codec, one builder per operation, pluggable engine; no unit of work.
+|C3 Developer friendliness |5 |Fully inferred types from one literal, short happy path, docs site, 7 examples.
+|C4 Ease of adoption |5 |~3.9k LOC, one endpoint URL as config, no heavy dependencies.
+|C5 Reuse of foundations |4 |RDF/JS model and interfaces, N3, optional Comunica (JS ecosystem); own small builder and client for bundle size.
+|C6 Data-centric and DDD fit |4 |Schema-first with SHACL/ShEx/context codegen; entities carry no persistence code; a Lens per type acts as a repository.
+|C7 SPARQL 1.1 portability |5 |Plain SPARQL 1.1 Query and Update over the Protocol; no store-specific API; no GSP.
+|C8 Health |4 |316 tests, CI, commits to 2026-10, MIT, paper, 83 stars; one maintainer.
+|C9 Composability |5 |SPARQL 1.1 Protocol, RDF/JS interfaces, Comunica drop-in, schema import from SHACL/ShEx/JSON-LD context; auth orthogonal via `fetch`.
+|C10 Maintainability and operability |4 |Small plain TS, CI with fmt/lint/test/build, versioned npm releases; bus factor 1, experimental generators.
+|DX |4 |Loved for type inference and brevity; loses a point for silent-data footguns and opaque errors.
+|===
+
+== What to borrow
+
+* *The Lens surface* as a minimal repository interface: `find({where, take, skip})`, `findByIri(s)`, `count`, `insert`, `update`, `delete`, `insertData`, `deleteData`, raw `query`. Mirror it in Python for symmetry.
+* *CONSTRUCT around a paged SELECT*, and *UNION-in-OPTIONAL* for optional fields.
+* *Per-property DELETE/INSERT/WHERE patches* and `$set/$add/$remove` for collections (P10).
+* *The compact mapping vocabulary* `@optional/@array/@multilang/@inverse`, close to LinkML `required`, `multivalued`, `inverse`, `range`.
+* *A pluggable engine behind a community interface*; the Python analogue is a store port over rdflib, pyoxigraph and SPARQLWrapper.
+* *Values only through the tagged-template builder*, with escaped literals (`sparql/stringify.ts`).
+
+== What to avoid
+
+* *Delete leaves debris:* nested blank nodes and incoming links stay (`query_builder.ts:331-339`).
+* *Insert merges silently* on a duplicate `$id` (`INSERT DATA`, `:317`).
+* *Required by default:* entities missing any non-`@optional` property silently drop out of `find()` (`query_builder.ts:233-243`). `update()` on such an entity probably matches nothing (inferred from `update_helper.ts:60-77`, not tested).
+* *Silent truncation:* default `take` is 1000.
+* *Swallowed store errors:* `Invalid query response status` discards the endpoint's error body (`engine/query_engine.ts:95`).
+* *An open write surface:* writes need a raw SPARQL Update endpoint exposed to browsers.
+* *No runtime validation*, no transactions.
+* *No streaming:* `Lens.find()` buffers the whole CONSTRUCT result before decoding.
+* *Leaky logs:* the `logQuery` callback receives the full query with literal values, so personal data can reach logs.
+
+== Authorization seams
+
+* *No PEP inside LDkit*, which is right for a client (DEC-8).
+* *Credential seam:* a custom `fetch` in options or query context (`engine/query_engine.ts` `getFetch`), where an OIDC bearer token is attached and refreshed. Each Lens can carry its own context.
+* *Behind a proxy:* plain SPARQL Protocol POSTs; no `GRAPH` unless `defaultGraph` is set (A2). A JWT-checking proxy that filters graphs, rewrites queries or delegates to store ACLs works unchanged.
+* *Risk and recommendation:* per-entity policy on arbitrary DELETE/INSERT WHERE is hard. Give LDkit clients a *read* SPARQL endpoint behind the proxy and route *writes* through entity endpoints (L4), where the Python PEP and validation run.
+
+== Code-generation fit
+
+*High; works today in two steps.* LinkML slot metadata maps almost one-to-one onto LDkit's `@optional`, `@array`, `@inverse`, `@type`/`@schema`, `@id`.
+
+* `gen-shacl` → `ldkit shacl-to-schema` keeps cardinalities and nested shapes (`scripts/shacl_to_schema.ts`). Preferred.
+* `gen-jsonld-context` → `ldkit context-to-schema` makes every property required, because contexts carry no cardinality.
+* A direct LinkML `gen-ldkit` (about 200–300 LOC of Jinja) would remove the experimental step.
+* `schema-to-package` publishes the generated schema as an npm package for UI teams.
+
+== Variant fit
+
+See xref:background/soa/variants.adoc[variants]. One rule everywhere: *integrate* for V5 graph-direct reads (with an explicit DEC-5 exception), *ideas* otherwise.
+
+[cols="2,1,5",options="header"]
+|===
+|Variant / approach |Fit |Why
+
+|V1 Portable Python core |neutral |Not needed: the UI uses the generated OpenAPI client. Mirror the Lens API in Python.
+|V2 semantic.works-compatible |n.a. |The UI speaks JSON:API through ember-data.
+|V3 Fluree |neutral |Could read through Fluree's SPARQL endpoint behind a thin proxy with store-native policy; blocks domain rules if used for writes.
+|V4 GraphDB |neutral |Could read with GraphDB access control (token → user via proxy); same write caveat.
+|V5 Graph-direct reads |enables |Its design point. Needs a policy-filtered read endpoint and a DEC-5 exception. The default engine always POSTs `application/sparql-query` bodies, so the read proxy must accept and police POST bodies, not only GET `?query=`; one endpoint per Lens.
+|A Runtime mapper |neutral |Client side only.
+|B Generated mapper and routes |supports |Generate the LDkit schema from LinkML: `gen-shacl` → `shacl-to-schema`, or a direct generator (G16).
+|C Generic service |neutral |Fits the spirit (one schema value interpreted at runtime), client side only.
+|===
+
+== Final verdict
+
+*Integrate for V5 graph-direct reads only, behind a replaceable seam (DEC-5 exception needed); ideas otherwise.*
+
+. LDkit assumes a *raw SPARQL endpoint*. Use it for *reads* behind a policy-filtering proxy or store-native ACLs, never for writes that must pass backend domain rules and validation.
+. *Silent-data footguns:* required-by-default properties drop entities from `find()`, `insert` merges duplicates, `delete` orphans blank nodes, the store's error body is discarded, and `take` defaults to 1000.
+. Its schema *can be generated from our LinkML model* (`gen-shacl` → `shacl-to-schema`, or a small direct generator). Its Lens API (`find/findByIri/count/insert/update/delete`, `$set/$add/$remove`) is the shape to mirror in Python.
+
+== Feature coverage
+
+[cols="2,1,1,1,1",options="header"]
+|===
+|Round (taxonomy) |Present |Partial |Absent |n.a.
+|Round 1 (v0, 43 features) |20 |10 |12 |1
+|Round 2 (v1 additions, 63) |9 |13 |39 |2
+|Round 3 (v2 additions, 19) |1 |5 |11 |2
+|Round 4 (v3 additions, 102) |2 |10 |87 |3
+|Round 5 (v4 additions, 77) |2 |4 |56 |15
+|===
+
+Notable present features:
+M1 host-language model (TS schema literal, inferred types; no classes), M2 schema literal, M3/M14 schema generation from SHACL/ShEx/context (experimental), M6 type-inferred schema, I2 blank nodes, R2 nested and inverse, L1 typed literals, L2 multilang, L3 literal-type registry,
+P1 CRUD, P2 per-property patch, P10 collection patch operators, Q1 by IRI, Q2 `where` operators, Q3 raw CONSTRUCT mapped back, Q6 safe value binding, Q9 one CONSTRUCT per find, Q10 grouped decoding, Q19 regex and substring,
+S2 remote endpoint, S4/S8 RDF/JS engine port, X4 TS types, D1–D5, A2 no GRAPH clauses unless asked.
+
+Notable absences: I1 minting, I3 identity map, R4/P11 cascade and orphan cleanup, P4/P13 transactions, X1 JSON-LD, S7 retries.
+
+Notable present/partial v3 features: AZ19 per-request credential injection via custom `fetch` (present), G6 language strings (present); partial G1 static schema separate from plain objects, G2 mapper separate from types, G5 IRI type (plain string alias), G16 TS schema and npm package from SHACL/ShEx/context (not LinkML), G17 shape import, G24 `@enum`, G25 standalone generated package, T1 one Update request per multi-entity call, U2 TanStack Query example, X21 SPARQL Update bodies.
+Its round-3 proposals are now v3 ids AZ19, G16 and D11; D11 is absent (the store error body is discarded, `engine/query_engine.ts:93-96`). No new proposals in round 4.
+Notable v4 features: G36 typed filter and partial-update types and D26 type-level assertions (present); partial B3, U13, D17, D18. D14 is absent, and `insert` on an existing `$id` is exactly the hazard it should warn about.
+
+== Sources
+
+* Repository: https://github.com/karelklima/ldkit (commit `09fc801`)
+* Documentation: https://ldkit.io/, https://ldkit.io/docs/components/lens, https://ldkit.io/docs/features/query-with-comunica
+* Paper: Klíma, Taelman, Nečaský, "LDkit: Linked Data Object Graph Mapping Toolkit for Web Applications", ISWC 2023
+* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/ldkit.md`
+* See also: xref:background/soa/angles/jsclient.adoc[JavaScript client angle], xref:background/soa/libraries/prez.adoc[Prez]

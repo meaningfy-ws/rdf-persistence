@@ -1,0 +1,99 @@
+= Method
+:description: How the state-of-the-art review of RDF persistence libraries was carried out.
+
+[IMPORTANT]
+.Background, not a commitment
+====
+This page is part of the state-of-the-art study moved from the rdf-persistence repository (commit `43dc152`). It records options and leanings, not decisions. What rdf-persistence commits to is in xref:architecture/index.adoc[rdf-persistence architecture v1].
+====
+
+The review covers existing libraries and platforms for persisting domain objects in RDF triple
+stores. It asks one question per candidate: what can rdf-persistence build on, and what ideas
+should it borrow?
+
+== Selection
+
+. *Desk scan.* Every candidate's GitHub statistics (stars, last push, archived flag,
+  contributors), PyPI and npm release history and monthly downloads were collected on
+  2026-11-03.
+. *Reuse threshold.* A library qualifies as a dependency only if its repository has more than
+  200 stars and a commit in the last 12 months. Packages published by a qualifying project
+  (oxrdflib under Oxigraph, linkml-runtime under LinkML) inherit that standing.
+  Libraries below the threshold are studied for design ideas only.
+. *Explicit inclusions.* Owlready2 (the ontology world) and semantic.works (the reference
+  architecture for rapid application development) are reviewed regardless of the threshold.
+
+== Deep analysis
+
+Seventeen repositories were cloned in round 1 — about 46 in total by round 5 — next to this repository and indexed with
+https://github.com/abhigyanpatwari/GitNexus[GitNexus]. Each library was then analysed by a
+dedicated analyst, working in parallel, with three required sources:
+
+. *Code* — GitNexus clusters, execution flows and symbol context, confirmed by reading the source.
+  GitNexus does not parse Common Lisp; for `mu-cl-resources` and `sparql-parser` the source was
+  read directly.
+. *Documentation* — in-repository docs and the published documentation site.
+. *Synthesis* — documentation claims that the code does not back are marked
+  _claimed, not found in code_.
+
+No candidate code was installed or run. Clones are shallow, so contributor counts come from the
+GitHub API, not from git history.
+
+== Scoring
+
+Each library is scored 0–5 on ten criteria plus a developer-experience score. Every score cites evidence: a file and line, a
+GitNexus finding, or a documentation URL.
+
+[cols="1,3,6",options="header"]
+|===
+|Id |Criterion |What a 5 looks like
+|C1 |Feature coverage |Full CRUD, relations, query API, transactions, identity map, named graphs, typed and language-tagged literals, JSON-LD, validation
+|C2 |Approach and design patterns |Named patterns (Data Mapper, Repository, Unit of Work, Identity Map, Query Object), persistence separated from domain objects
+|C3 |Developer friendliness |Typed, discoverable API; short happy path; good errors; tutorials and reference docs
+|C4 |Ease of adoption |Small dependency footprint; works with in-memory and remote stores out of the box
+|C5 |Reuse of mature foundations |Builds on rdflib, pyoxigraph, SPARQL clients, LinkML, pydantic instead of re-implementing them
+|C6 |Data-centric and DDD fit |Model-first; domain objects free of persistence code; repository per aggregate possible
+|C7 |SPARQL 1.1 portability |Works against any SPARQL 1.1 Query + Update endpoint and the Graph Store Protocol
+|C8 |Health |Tests, CI, sane size, recent activity, more than one maintainer, clear licence
+|C9 |Composability and ecosystem fit |Speaks open standards (SPARQL 1.1 protocol, update and Graph Store Protocol, JSON-LD, SHACL, LinkML, OIDC/JWT, RDF/JS); swappable behind a port
+|C10 |Maintainability and operability |Small surface, stable API, simple deployment, clear upgrade path, observability
+|DX |Developer experience |Shortest complete CRUD example is short and obvious; few concepts; typed; clear errors; no footguns
+|===
+
+C9, C10 and DX were added in round 3, when the goal widened from a persistence library to a
+coherent ecosystem that developers enjoy using.
+
+JavaScript-friendliness — whether a library exposes or generates an HTTP contract or types a
+JavaScript client can consume — is recorded but not scored.
+
+== Iterative feature systematisation
+
+The xref:background/soa/feature-taxonomy.adoc[feature taxonomy] is the single, groomed list of
+features. It grows in rounds:
+
+. *Round 1* — each library is analysed against the current taxonomy and proposes features it has
+  that the taxonomy lacks.
+. *Merge* — proposals are deduplicated, renumbered and added as a new taxonomy version.
+. *Cross-check* — every newly added feature is checked in _all_ libraries: how each handles it,
+  or confirmation that it is missing.
+. Rounds repeat until one adds no new features.
+
+== Analysis angles
+
+Each round after the first added angles that cut across all candidates:
+
+* *Round 3* — one angle per building-block layer: L0 modelling and code generation; L2 stores,
+  transactions and change events; L3 identity and authorization; L4 data-management service;
+  L5 JavaScript client and UI. Every library was re-examined for developer experience,
+  authorization seams and code-generation fit, and scored on C9, C10 and DX.
+* *Round 4* — DDD boundaries and transactions, mainstream ORM developer-experience benchmarks,
+  property graphs (side question), and schema evolution, testing and operations; purpose, origin
+  and variant fit for every tool.
+* *Round 5* — integration paths across the chain, licences and risks; every polished page
+  reviewed by its analyst; an independent four-eyes review of the whole set.
+
+The iteration (DEC-9) stopped after round 5, when no analyst proposed a new feature except one
+CI check. See the rounds table on the xref:background/soa/index.adoc[integrated findings].
+
+The raw per-library reports are kept, unedited, in the change
+`openspec/changes/soa-python-rdf-orm/inputs/analysis/`.

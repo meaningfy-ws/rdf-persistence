@@ -12,5 +12,7 @@ asciidoc:
     example-caption: Example@
     listing-caption: Listing@
     table-caption: Table@
+    # IRI templates such as {base} are written literally
+    attribute-missing: skip
 nav:
   - modules/ROOT/nav.adoc

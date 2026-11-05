@@ -1,0 +1,180 @@
+= rdfproxy
+:description: A read-only adapter that turns a SPARQL SELECT into nested, paginated Pydantic models for FastAPI; a clean read side, no write path, GPL-3.0.
+
+[IMPORTANT]
+.Background, not a commitment
+====
+This page is part of the state-of-the-art study moved from the rdf-persistence repository (commit `43dc152`). It records options and leanings, not decisions. What rdf-persistence commits to is in xref:architecture/index.adoc[rdf-persistence architecture v1].
+====
+
+== At a glance
+
+[cols="1,3"]
+|===
+|What it is for |Building read-only REST APIs over SPARQL endpoints: the developer writes a SELECT and a Pydantic model; rdfproxy paginates, runs and groups the rows into nested models.
+|Origin and angle |ACDH-OEAW (Austrian Academy of Sciences); main author Lukas Plank. Read-model-first (a projection adapter, not an ORM).
+|Language |Python ≥3.12 (Pydantic v2, rdflib, pandas, sparqlx)
+|Licence |GPL-3.0
+|Activity |Commit `76aac6a` (2026-10-26), release 0.11.0; 13 releases, 0.1.0 (2024-10) → 0.11.0 (2026-08), via release-please. GitHub: 7 stars, 4 contributors; ~299 PyPI downloads a month (desk scan 2026-11-03).
+|Size |1,875 LOC in 15 modules; 5,163 test LOC, 72 test functions (heavily parametrised)
+|Layers |L4 partial (read-only REST building blocks) · L1 partial (read side only) · L2 partial (SPARQL Query via sparqlx; no Update) · L5 indirect (OpenAPI). No L0, L3, L6.
+|Verdict |*Borrow ideas; do not depend on it* (GPL-3.0, pandas, regex query rewriting). Copy the read-model design and the multi-store test matrix.
+|===
+
+== Purpose and origin
+
+* *Built for:* exposing SPARQL endpoints as conventional, paginated JSON REST APIs (FastAPI) for digital-humanities projects at the Austrian Centre for Digital Humanities (ACDH-OEAW). The examples query Wikidata and GND authors (README) and the RELEVEN project's person data (`examples/releven_person_example.py`).
+* *Who and when:* ACDH-OEAW, principal author Lukas Plank (who also maintains sparqlx). Releases from 2024 to 2026 under release-please.
+* *Design angle:* read-model-first. A curated SELECT plus a Pydantic model gives a typed API resource for web front ends that do not want to speak SPARQL. Writes are out of scope by design; identity and predicate mapping do not matter because the query defines the shape.
+* *Where it fits:* L4 read endpoints and the L1 read side (X10 projections): the CQRS query side next to rdf-persistence's write model. Not L1 writes, L2 transactions, L3 or L6. It fails DEC-5 (7 stars) and is GPL-3.0: ideas only.
+
+== How it works
+
+*Mapping is projection.* Model fields bind to SPARQL variables by name, or by `Annotated[T, SPARQLBinding("var")]` (`utils/_types.py:26-43`).
+There is no predicate mapping, `rdf:type` or IRI identity: the query defines the shape, the model defines the nesting.
+`list[Model]` fields with `ConfigDict(group_by=...)` aggregate rows into nested objects (`mapper.py:189-226`).
+
+*Page flow.* `SPARQLModelAdapter.get_page` (`adapter.py:80-109`):
+
+. builds a count query by replacing the SELECT clause (`constructor.py:151-168`);
+. adds ORDER BY, LIMIT and OFFSET; for grouped models it injects a `select distinct ?group` subquery so pages count groups, not rows (`constructor.py:181-218`);
+. sends items and count queries in one sparqlx `queries()` call (`adapter.py:93-94`);
+. loads bindings into a pandas DataFrame, groups them and builds models recursively (`mapper.py:317-341`).
+
+*Item flow.* `get_item` appends a `filter(str(?k) = "v")` before the final `}` and expects exactly one result (`adapter.py:55-78`, `constructor.py:70-94`).
+
+*SPARQL handling.* rdflib `parseQuery` validates the query (SELECT only, no top-level modifiers; `query_checker.py:12-56`).
+Rewriting is regex and string surgery (`sparql_utils.py:14-81`); the code admits the prefix limitation (`sparql_utils.py:36-39`).
+Key values are escaped with the private `Literal._quote_encode` (`constructor.py:76-78`); `xsd_type` and `lang_tag` are interpolated raw.
+The generic filter `_compute_filter_clause` is a stub returning `None` (`constructor.py:229-231`).
+
+*Integrity guard.* `_check_grouping_consistency` raises when a non-aggregated field differs inside a group (`mapper.py:253-290`).
+
+*Stores.* sparqlx takes an endpoint URL or an rdflib `Graph` (`adapter.py:39-53`).
+The same test suite runs against in-memory rdflib, an Oxigraph container and a Fuseki container (`tests/conftest.py:59-112`).
+No Update, no transactions.
+
+== Scores
+
+[cols="2,1,6",options="header"]
+|===
+|Criterion |Score |Reason
+
+|C1 Feature coverage |1 |Read-only: fetch by key, pagination, ordering; no create, update, delete, identity or JSON-LD.
+|C2 Approach and patterns |4 |Clean read-model adapter, composable query pipeline, strong fail-fast checkers; regex rewriting is the weak point.
+|C3 Developer friendliness |3 |Typed generics (`Page[T]`), FastAPI-native, good exceptions; manual queries, empty Concept and Tutorial pages.
+|C4 Ease of adoption |3 |Works with a URL or an rdflib Graph at once; pandas, niche sparqlx, Python ≥3.12 and GPL-3.0 weigh.
+|C5 Reuse of foundations |3 |rdflib parser, Pydantic, pandas; own sparqlx client instead of SPARQLWrapper; hand-rolled regex rewriting.
+|C6 Data-centric and DDD fit |2 |Plain Pydantic DTOs, good read models; no schema input, no aggregates; shape lives in SELECT queries.
+|C7 SPARQL 1.1 portability |4 |Standard SELECT over HTTP, tested on rdflib, Oxigraph and Fuseki; no Update or GSP.
+|C8 Health |4 |Strong CI (coverage, ruff, deptry, gitlint, release-please), Docker integration tests, institutional backing; one dominant maintainer.
+|C9 Composability |3 |Any SPARQL 1.1 Query endpoint or rdflib Graph; Pydantic/FastAPI/OpenAPI; no Update, GSP, JSON-LD, SHACL; sparqlx not behind a port; GPL-3.0.
+|C10 Maintainability and operability |3 |Semver via release-please, CHANGELOG with BREAKING notes, structured DEBUG logging; 0.x breaks, heavy deps, fragile rewriting.
+|DX |3 |A paginated FastAPI endpoint in about 30 lines; developers hate hand-writing every SELECT, opaque grouping rules, no writes and no filtering.
+|===
+
+== What to borrow
+
+* The read side: query-defined Pydantic projections with `group_by` aggregation and group-aware pagination. It fits a cosmic-python "views" module.
+* Fail-fast checkers at adapter construction: `check_query`, `check_model`, `check_key` (`adapter.py:47-48`, `utils/checkers/`).
+* The `Page{items,page,size,total,pages}` and `QueryParameters[Model]` contract, with an `order_by` enum per model in OpenAPI (`utils/models.py:12, 60-68`).
+* The three-target testcontainers matrix (rdflib, Oxigraph, Fuseki) as our conformance setup.
+* Concurrent dispatch of independent queries (items plus count) in one client call.
+* Specific error messages, e.g. `UnprojectedKeyBindingException: SPARQL binding 'gnd' for model field 'Author.gnd' not in query projection.` (`item_checker.py:33-35`).
+* The sparqlx design (one thin client for a URL or an rdflib `Graph` target, sync and async, SPARQL Query and Update, streaming). As a dependency it is ruled out: GPL-3.0, one maintainer, about 6 stars.
+
+== What to avoid
+
+* *Regex query surgery* can break valid queries: a `FROM` clause is dropped from the count query, so totals come from a different dataset than the items (`sparql_utils.py:16-17`); a query without the optional `WHERE` keyword is rejected (`sparql_utils.py:20-21`); prefixes are stripped from grouped subqueries (`sparql_utils.py:36-39`); a trailing comment containing `}` misplaces injected filters.
+* *Private and unescaped interpolation:* `Literal._quote_encode` (`constructor.py:76-78`); raw `xsd_type` and `lang_tag` (`constructor.py:84-86`).
+* *Fragile grouping assumption:* scalars come from the first row of a group (`mapper.py:95-110`); consistency errors surface at request time when data changes.
+* *pandas as a runtime dependency* only for groupby.
+* *Count over the full user query* and OFFSET paging; slow on large endpoints.
+* *Exception hierarchy gap:* `NoResultsFound`, `MultipleResultsFound`, `UnprojectedKeyBindingException` and `InconsistentGroupingException` do not inherit `RDFProxyBaseException` (`utils/exceptions.py:51-64`).
+* *Thin docs:* the docs site's Concept and Tutorial pages are empty (0 lines in `docs/concept.md`, `docs/tutorial.md`).
+
+== Authorization seams
+
+* *Behind an authorizing proxy:* works, with fixed credentials only. Headers go through `aclient_config` once at construction (`adapter.py:39-53`); examples build adapters at module level, so per-user tokens need an adapter per request or a contextvar-based `httpx.Auth`.
+* *No GRAPH clauses* are generated (A2), so a graph-filtering proxy behaves like a direct endpoint.
+* *PEP site 1, FastAPI dependencies* in the user's app: coarse authz per endpoint; works today.
+* *PEP site 2, the query pipeline:* `_compute_filter_clause` (`constructor.py:229-231`) is where a policy `FILTER` / `VALUES` would go. Three defects make it unsafe today:
+** the count query ignores the filter, so totals leak (`constructor.py:151-168`);
+** in grouped models the filter reaches only the paging subquery, not the outer query (`constructor.py:188-202`);
+** `get_item` uses a separate constructor with no filter hook (`constructor.py:28-94`).
+* *PEP site 3, post-mapping filtering:* too late for rows (breaks totals); fine only for field redaction.
+* So totals, single-item lookups and nested group rows would all leak.
+* *Verdict.* Borrow the seam location (query construction plus FastAPI dependency), not the implementation. A sound PEP must apply one policy to every generated query, preferably on a parsed algebra.
+
+== Code-generation fit
+
+*Partial.* Any Pydantic class, including LinkML `gen-pydantic` output, works as a projection target.
+
+Gaps for a generator:
+
+* Queries are not generated: a SELECT with variables matching field names must be derived from `class_uri` and `slot_uri` (OPTIONAL per optional slot, joins per object range).
+* `ConfigDict(group_by=<identifier slot>)` must be added to every class with multivalued slots.
+* The identifier slot must be projected as a variable.
+* LinkML write models rarely equal API read projections; rdfproxy-style classes fit best as *generated views* beside the write model.
+
+== Variant fit
+
+[cols="2,1,5",options="header"]
+|===
+|Variant / approach |Fit |Why
+
+|V1 Portable Python core |supports (read side) |Read-model endpoints over the same SPARQL store; the policy port must cover its generated queries uniformly (AZ2 gap).
+|V2 semantic.works-compatible |neutral |Works behind `sparql-parser` with a fixed identity only; its `Page` JSON is not the JSON:API dialect (X16 absent).
+|V3 Fluree |blocks (partly) |Standard SELECT works, but Fluree policies need the end-user identity per request and credentials are fixed at construction (`adapter.py:44-53`; AZ19 absent). Workaround: one adapter per request.
+|V4 GraphDB |blocks (partly) |Same as V3 for per-user fine-grained access control; read-only, so GraphDB transactions never matter.
+|V5 Graph-direct reads (CQRS) |supports |Exactly its pattern: a read-only, query-defined projection API, as long as the endpoint or proxy enforces policy.
+|A Runtime mapper |supports (complements) |Hand-written read models next to the runtime mapper's write model.
+|B Generated mapper and routes |enables with G14 |Read-model queries and grouping keys generated from LinkML would remove the hand-written SELECTs (absent today).
+|C Generic service |neutral |Needs a hand-written query per model; a generic service would have to generate those itself.
+|===
+
+== Final verdict
+
+*Ideas.* GPL-3.0, below DEC-5, pandas and regex rewriting rule out a dependency.
+
+Three things to remember:
+
+. *The read side (X10/Q10) is the transferable idea:* query-defined Pydantic projections with group-aware pagination belong in a cosmic-python "views" module beside the write model. In approach B the SELECTs and grouping keys are generated from LinkML (G14), not hand-written.
+. *Policy must be injected into every generated query or it leaks:* rdfproxy's filter seam misses the count, item and grouped outer queries, and even drops a `FROM` clause from its count query. Any rdf-persistence PEP needs the AZ35 equivalence test across all query families.
+. *Identity must flow per request, not per adapter:* credentials fixed at construction work behind a static-identity proxy (V2) but block per-user store policies (V3 Fluree, V4 GraphDB). The store port takes the caller's identity on every call (AZ19).
+
+== Feature coverage
+
+[cols="2,1,1,1,1",options="header"]
+|===
+|Round (taxonomy) |Present |Partial |Absent |n.a.
+|Round 1 (v0; table rows, some grouped) |10 |12 |16 |2
+|Round 2 (v1 additions; counted from the table) |6 |10 |35 |11
+|Round 3 (v2 additions, 19) |2 |2 |8 |7
+|Round 4 (v3 check, 102) |1 |6 |64 |31
+|Round 5 (v4 additions, 77) |1 |5 |34 |37
+|===
+
+Round 2 rows `P8–P15` (n.a.) and `O3–O7` (absent) were counted one per id. The report gives no count line for rounds 1 and 2; round 4 is the report's own count over every v3 feature.
+Round 2 re-marked X4 from present to partial (IRIs are plain `str`; no RDF-term types).
+
+Notable present features:
+M1 Pydantic targets, M5 validation on load, R1 multi-valued aggregation, Q1 fetch by key, Q3 raw SPARQL → objects, Q4 group-aware pagination,
+Q9 N+1 avoidance (one flat SELECT), Q10 grouped result mapping, Q11 query safety and integrity checks, X10 read models,
+D8 multi-store test matrix, A2 GRAPH-free queries, M17 mapping validation at construction, S12 batched queries.
+
+Notable present/partial v3 features: D13 model-aware errors (present, `item_checker.py:33-35`); partial: G5 `AnyUrl` accepted as a bound field type, G9 OpenAPI via FastAPI (not from a schema), G13 per-model `order_by` enum (sort only), U1 typed client via the FastAPI OpenAPI, RAD4 read-only by construction, D11 HTTP errors through sparqlx (store error body not verified).
+
+Notable absences: every write feature (P1 partial, P2–P15 absent or n.a.), Q2/Q14 filter language (stub), X1 JSON-LD, D7 async API, S13 streaming (sparqlx streaming unused).
+
+Proposed by this report: a uniform policy-injection point and schema → query/projection generation (round 3, merged as AZ2 and G14). Round 4 proposed a policy-filter equivalence test (merged as AZ35): for every generated query family (page items, count, item, outer and sub queries), a policy-restricted caller must get the same totals and nested rows as a query run directly on the restricted dataset. It turns AZ2 into a checkable property.
+
+v4: T13 read-only guard present (`check_query` rejects every non-SELECT query at construction, `query_checker.py:12-21`); B3 flat-SELECT aggregate load, D17 DEBUG-logged queries (no public `to_sparql()`), D20 testcontainers fixtures (not shipped), D23 valid-alternative lists (no fuzzy match), D25 deterministic ORDER BY partial; D21 absent (CI skips the examples group, `tests.yml:24`). Write-side features are n.a. (read-only adapter).
+
+== Sources
+
+* Repository: https://github.com/acdh-oeaw/rdfproxy (commit `76aac6a`)
+* Documentation: https://acdh-oeaw.github.io/rdfproxy/
+* sparqlx: https://github.com/lu-pl/sparqlx
+* In-repo docs read: `README.md`, `CHANGELOG.md`, `docs/{index,concept,tutorial,reference}.md`
+* Raw report: `openspec/changes/soa-python-rdf-orm/inputs/analysis/rdfproxy.md`

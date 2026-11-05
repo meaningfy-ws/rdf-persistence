@@ -133,6 +133,15 @@ artifacts above; do not reintroduce parallel epic files under `.claude/`.
 
 ## Project specifics
 
+- **Where work is planned (developer, 2026-11-05).** rdf-persistence is co-developed with its first
+  consumer and planned from that consumer's spine: new EPICs live in the consumer repository's
+  `openspec/changes/`, with this toolkit's capabilities named `rp-<capability>`. This repository's
+  `openspec/changes/` keeps its earlier changes (`soa-python-rdf-orm`); new changes here are opened
+  only for work that no consumer EPIC carries. Commits here cite the planning change id
+  (`Refs: <change-id> ...`); PRs target `develop`, which the consumer installs.
+- **Docs check:** `make check-docs` (no consumer terms in `docs/modules/ROOT/pages/architecture/`;
+  every page in the nav).
+
 <!-- Fill these in for this repository. Delete the guidance comments once resolved. -->
 
 - **Archetype:** <!-- product | library | doc-only -->
