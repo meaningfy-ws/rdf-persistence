@@ -90,6 +90,10 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-13,
   - `rp_path` is a required annotation on every aggregate root (the hard check enforces it), for
     example `rp_path: books`. There is no automatic plural.
   - The toolkit mints IRIs; clients never send them on create.
+  - An owned part whose class includes `Described` is identified by an IRI too (its `id` stays
+    required): the toolkit mints `{root_iri}/parts/{uuid4}` for a part that has none, and keeps it
+    across commits. Only classes without an identifier slot (grants, prohibitions: PD-23) are
+    blank nodes, skolemised on write (PD-8a). (Task 2.5.)
 - **PD-6a Names.** `prefix` is the consumer's short name (lower case, at most 20 characters; the toy
   library uses `lib`, with `base` = `https://example.org/library/`).
 
