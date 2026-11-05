@@ -11,10 +11,16 @@ An application using rdf-persistence writes its domain once, in LinkML. A determ
 toolchain turns it into domain classes and shapes; at run time the toolkit reads the same schema to
 map objects to RDF. No generated file is edited by hand, and no LLM sits in the generation path.
 
+LinkML is the single source of specification
+(xref:architecture/open-decisions.adoc[D-13]): every artefact that restates the model is generated,
+by a stock generator or a toolkit extension (<<extensions>>), and nothing that restates it is
+written or edited by hand (<<guarding>>).
+
 The running example is a toy library application: each library is a tenant holding `Book`
 aggregates, each book with owned chapters and a reference to a scan file; librarians hold the tenant
 role `librarian`.
 
+[#decision]
 == The decision (O-1)
 
 *Generated domain classes, runtime mapper.* Only LinkML's standard generators run, through the
@@ -83,6 +89,7 @@ vocabularies everywhere (SKOS, DCTerms, PROV-O, and ODRL for access), models tha
 labels and definitions (a hard check), the access model in a module of its own, and every generated
 artefact in the package that uses it.
 
+[#modules]
 === Modules of the metamodel
 
 [mermaid]
@@ -103,6 +110,7 @@ flowchart BT
 
 `rp.yaml` imports all six modules; an application imports `rp.yaml`, or only the modules it uses.
 
+[#annotations]
 === Annotations: two layers that are easy to confuse
 
 [cols="1,2,3",options="header"]
@@ -125,6 +133,7 @@ Instance mixins:
 `Principal` is a `prov:Agent` and `AggregateRoot` a `prov:Entity`, so the provenance of a write
 (who, when, which graph) is PROV-O without extra classes.
 
+[#hard-check]
 === The hard check: IRIs, labels and definitions
 
 `linkml-lint` cannot load extra rules, so the check is `linkml-lint` with its relevant rules raised to
@@ -140,17 +149,39 @@ lines in `rp-generate` over `SchemaView`. It fails generation when:
   of its own (a chapter's number) opts out explicitly with `rp_unlabelled: true`;
 . a module annotated `module_kind: domain` imports one annotated `technical` or `access`.
 
+[#extensions]
 === Generated artefacts, extensions and where they go
 
-[cols="2,2,3,2,1",options="header"]
+Each gap in a stock LinkML generator is closed by an extension in `rdf_persistence/generation/`: a
+subclass or a template, never a patch to generated output. Each extension has a row here and a
+golden test on the toy schema; a test fails if an extension module has neither. Modules not yet
+written are listed at their planned paths.
+
+[cols="3,2,2,4,2,1",options="header"]
 |===
-|Artefact |Generator |Extension needed |Placed in (default) |Effort
-|Python classes |`gen-pydantic`, split mode |templates and a hook (`internal` fields excluded from the API) |the backend package, `<pkg>/domain/generated/` |S
-|TypeScript types |`gen-typescript` |a subclass with our own template: the stock template is fixed, has no split mode and handles enums and dates poorly |the frontend package, `src/domain/generated/` |M
-|SHACL shapes |`gen-shacl` |a subclass that adds the toolkit's bookkeeping predicates to the ignored list of closed shapes |the backend package |S
-|JSON-LD context |`gen-jsonld-context` |small: `id`/`type` aliases, `internal` slots left out |the backend package; copied to the frontend when needed |S
-|Diagrams, one per module |`gen-mermaid-class-diagram` (D-8) |a template marking aggregate roots and owned parts, and keeping each diagram small (one module, its links to other modules shown as names only) |the docs, next to the model pages |S
-|Hard check |`linkml-lint` + `rp-generate` |new, about 100 lines |— |S
+|Module |Artefact |Generator |Extension needed |Placed in (default) |Effort
+|`rdf_persistence/generation/extensions/pydantic_split.py` |Python classes |`gen-pydantic`, split mode |templates (`rdf_persistence/generation/templates/pydantic/`) and a hook (`internal` fields excluded from the API) |the backend package, `<pkg>/domain/generated/` |S
+|`rdf_persistence/generation/extensions/pydantic_validators.py` |Model validators for declared rules |`gen-pydantic`, template |the stock generator enforces neither `exactly_one_of` nor `unique_keys`: `exactly_one_of` and `any_of` become a model validator on the declaring class; `unique_keys` becomes a model validator on every class with a multivalued slot whose range declares them, refusing two items with equal key values (an absent value counts, and two absent values are equal) |with the Python classes |M
+|`rdf_persistence/generation/extensions/typescript.py` |TypeScript types |`gen-typescript` |a subclass with our own template: the stock template is fixed, has no split mode and handles enums and dates poorly |the frontend package, `src/domain/generated/` |M
+|`rdf_persistence/generation/extensions/shacl.py` |SHACL shapes |`gen-shacl` |a subclass that adds the toolkit's bookkeeping predicates (`rp:version`, `dcterms:created`, `dcterms:modified`, `dcterms:creator`, `dcterms:contributor`) to the ignored list of closed shapes |the backend package |S
+|`rdf_persistence/generation/extensions/shacl_constraints.py` |Shape constraints for declared rules |`gen-shacl` |the stock generator translates neither rule: `exactly_one_of` becomes `sh:xone`, `any_of` becomes `sh:or`, `unique_keys` becomes a SPARQL constraint on the owning class (absent values treated as in the validators) |with the shapes |M
+|`rdf_persistence/generation/extensions/jsonld_context.py` |JSON-LD context and frames |`gen-jsonld-context` |`id`/`type` aliases, `internal` slots left out, one frame per aggregate type |the backend package; copied to the frontend when needed |S
+|`rdf_persistence/generation/extensions/mermaid.py` |Diagrams, one per module |`gen-mermaid-class-diagram` (D-8) |a template marking aggregate roots and owned parts, and keeping each diagram small (one module, its links to other modules shown as names only) |the docs, next to the model pages |S
+|`rdf_persistence/generation/checks/` |Hard and boundary checks |`linkml-lint` + `rp-generate` |not a generator extension: about 100 lines over `SchemaView` |— |S
+|===
+
+LinkML `rules` (pre- and postconditions) are not supported in v1: `rp-generate` exits 1, naming the
+class, when a schema uses them.
+
+*The toolkit's own data types are generated too.* Each is its own `[[tool.rp-generate]]` entry, and
+`rp.yaml` imports neither, so an application's model does not carry them. Like the metamodel, they
+are exempt from the hard check. They are schemas, not extensions, so they have no row above.
+
+[cols="2,3,2",options="header"]
+|===
+|Schema |Classes |Generated into
+|`rdf_persistence/model/rp_service.yaml` |`ServiceSettings` (the settings of `install_service`), `VerifiedCaller` (what the token verifier returns), and the toolkit's request and response bodies: `TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`, `Problem` |`rdf_persistence/domain/generated/service/`
+|`rdf_persistence/generation/model/rp_generation.yaml` |`GenerationManifest`, `ConstraintCase`, `ClassShape` (see <<guarding>>) |`rdf_persistence/generation/generated/`
 |===
 
 *Placement is declared, not guessed*: the application's `pyproject.toml` gets a
@@ -160,12 +191,13 @@ lines in `rp-generate` over `SchemaView`. It fails generation when:
 *Diagrams are Mermaid* (D-8): no rendering service is needed and the docs already draw Mermaid
 (`gen-plantuml` would call the public kroki.io service). A diagram that grows past about a dozen
 classes is split by module. In AsciiDoc pages, escape `<` as an HTML entity inside a diagram: the
-page delivers the source as HTML, and a raw `<<stereotype>>` breaks it.
+page delivers the source as HTML, and a raw `+<<stereotype>>+` breaks it.
 
 *Extending the generators* means subclassing LinkML internals (`serialize`, the ignored-properties
-method), which can change in a minor release. The pin on `linkml` and the CI regeneration diff
-already guard this; each extension gets a test on the toy schema.
+method), which can change in a minor release. The pin on `linkml` and the checks of <<guarding>>
+guard this; each extension gets a golden test on the toy schema.
 
+[#application-schema]
 == What the application writes
 
 [source,yaml]
@@ -218,6 +250,7 @@ enums:
       librarian: {meaning: lib:Librarian}
 ----
 
+[#toolchain]
 == The toolchain
 
 One command, run from the application's `make generate-models`, regenerates everything:
@@ -268,6 +301,7 @@ modules: they say how a class is persisted, not what it means.
 *Not generated:* mappers, repositories, routes and API clients (O-1); the client calls the API with
 the generated types.
 
+[#run-time]
 == At run time
 
 [source,python]
@@ -291,14 +325,91 @@ async with open_session(store, schema=SCHEMA, tenant=library_iri, caller=caller)
 * *Kinds*: an abstract root with a `designates_type` slot (`rdf:type`) lets `session.get` return the
   concrete subclass.
 
+[#guarding]
 == Guarding the generated code
+
+The rule of xref:architecture/open-decisions.adoc[D-13] comes from
+https://meaningfy.atlassian.net/wiki/spaces/MR/pages/2107342856[the model-driven development runbook]:
+generated models are not hand-written and not modified; a change starts in the model; generation
+runs at build and test time; a model change makes the unit tests fail until it is reviewed.
+
+=== Freshness: the manifest and `rp-generate --check`
+
+Every `[tool.rp-generate]` entry writes a manifest, `rp-manifest.json`, in its `python` folder (model:
+`GenerationManifest`). It records the `linkml` version and the path and SHA-256 of every input and
+output, sorted by path, with paths relative to the `pyproject.toml`.
+
+[cols="1,4",options="header"]
+|===
+|Recorded |Files
+|Inputs |the schema's import closure (metamodel files as `rdf_persistence/<path>`, so the manifest does not depend on where the package is installed), the template directories, and every module under `rdf_persistence/generation/` except `generated/`
+|Outputs |every file the run wrote, in every target folder, except the manifest. A run deletes only the files its previous manifest lists, never a whole folder.
+|===
+
+`rp-generate --check` writes nothing: it runs lint and the hard and boundary checks, then recomputes
+the hashes. A changed input or a different `linkml` version means *stale*; a changed output means
+*edited by hand*. Either exits 1, naming the files and the command that fixes them. Without the
+`generate` extra, only the hashes are compared.
+
+[cols="2,3",options="header"]
+|===
+|Where |What runs
+|`make check-quality` (before every PR, and in CI) |the full `--check`
+|every pytest session |the manifest comparison, by the plugin `rdf_persistence.testkit.freshness` in `pytest_sessionstart`; it stops the run on anything stale or edited. A consumer enables it with `pytest_plugins = ["rdf_persistence.testkit.freshness"]`; the ini option `rp_generate_projects` lists the `pyproject.toml` files to read (default: the rootdir's).
+|pre-commit hook `rp-generate-check` |the check, on commits touching the model, the generation package, the toy library or a `generated/` folder
+|`make check-generated` (CI) |a regeneration from scratch and a diff, which catches a generator that is not deterministic
+|===
+
+Generation is part of the build: `make generate` regenerates every entry, and `make build` runs it
+first.
+
+=== Correctness of the generated code
+
+. *Schema gates first*: lint, then the hard and boundary checks; nothing is generated from a schema
+  that fails them.
+. *Golden tests per extension*: RDF output compared by graph isomorphism, other output as exact
+  text, and the set of files compared exactly.
+. *Classes and shapes agree*: for every row of `tests/fixtures/conformance/cases.yaml`
+  (`ConstraintCase`: a constraint kind, a class, valid and invalid instances), the generated class and
+  the generated shape both accept the valid instances and refuse the invalid ones. The kinds of v1
+  are `required`, `cardinality`, `range_type`, `range_enum`, `pattern`, `value_bounds`, `identifier`,
+  `closed`, `exactly_one_of`, `any_of` and `unique_keys`; the test fails, naming the kind, when a
+  schema uses a kind with no row. A consumer runs it with `testkit.conformance.run(schema, cases)`.
+. *Round trips*: an instance drawn by Hypothesis from the schema goes to JSON, is expanded with the
+  generated context to RDF, then framed and compacted back; the objects compare equal and the RDF
+  graphs are isomorphic.
+. *Model shape*: every generated class's pydantic fields match the schema's induced slots (name,
+  required, multivalued, range), which catches stale or edited code even without the manifest.
+. *A model change fails the tests until acknowledged*: `tests/fixtures/model-shape.yaml` holds the
+  last reviewed shape of every class (`ClassShape` rows). Any model change fails the test until
+  `make refresh-snapshot` rewrites the file and its diff is reviewed in the PR.
+. *Generated code compiles*: every generated module imports and passes mypy with the
+  `mypy-generated.ini` profile (the main run excludes generated folders); the TypeScript output
+  passes `tsc --noEmit --strict` in CI.
+
+=== Guards against hand-written models
+
+Both guards are `testkit.assert_models_generated(package, *, roots, allow=())`, so applications get
+them too.
+
+* *Model guard*: parses every module of `domain`, `services` and `entrypoints`, skipping paths with a
+  `generated` segment, and fails, naming the class, on a class deriving from `pydantic.BaseModel`,
+  `RpModel`, `enum.Enum`, `enum.StrEnum`, `enum.IntEnum`, `typing.TypedDict` or `typing.NamedTuple`,
+  or decorated with `dataclasses.dataclass`. Import aliases are resolved. The only default exception
+  is `RpModel` in `rdf_persistence/domain/base.py`; an application passes its own with `allow=`.
+* *File guard*: fails on `*.shacl.ttl`, `*shapes*.ttl`, `*.context.jsonld`, `*.frame.jsonld`,
+  `*.schema.json`, `openapi*.json`, `openapi*.yaml` and `*.ts` (except `*.test.ts` and `*.spec.ts`)
+  outside a folder named `generated`. This repository scans `rdf_persistence/` and `tests/`, with
+  `tests/fixtures/` exempt.
+
+=== Versions and commits
 
 * `linkml` and `linkml-runtime` are pinned together (mismatched versions fail at import _(spike)_).
   Bumping them is a deliberate change: bump, regenerate, review the diff, accept.
-* CI regenerates and fails if the result differs from what is committed.
-* Generated code sits in the domain layer and imports nothing from services, adapters or entrypoints.
 * The schema and the regenerated code are committed together.
+* Generated code sits in the domain layer and imports nothing from services, adapters or entrypoints.
 
+[#adoption]
 == How an application adopts it
 
 . Write `models/<app>.yaml` and one file per module, importing the metamodel; mark aggregate roots, owned slots, databases;
