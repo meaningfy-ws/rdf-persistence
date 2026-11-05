@@ -6,9 +6,7 @@
 #
 # Runs on push to develop and on PRs targeting develop.
 #
-# Optional secrets:
-#   - SONAR_TOKEN: SonarCloud token. The Sonar step is skipped if it is absent,
-#     so forks and early-stage repos stay green without configuring Sonar.
+# No SonarCloud: Meaningfy is on the free plan (developer, 2026-11-05).
 
 name: CI
 
@@ -123,19 +121,3 @@ jobs:
           path: |
             coverage.xml
             test-results.xml
-
-      # SonarCloud — runs only when SONAR_TOKEN is configured.
-      - name: Check for SonarCloud token
-        id: sonar_check
-        run: |
-          if [ -n "${{ secrets.SONAR_TOKEN }}" ]; then
-            echo "has_token=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_token=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: SonarCloud scan
-        if: always() && steps.sonar_check.outputs.has_token == 'true'
-        uses: SonarSource/sonarqube-scan-action@v4
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

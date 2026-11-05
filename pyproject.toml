@@ -2,7 +2,7 @@
 # Only [project], [dependency-groups], [tool.uv*], [build-system] live here.
 # Every TOOL is configured in its own dedicated root file:
 #   ruff.toml · mypy.ini · pytest.ini · .coveragerc · .importlinter
-#   .pre-commit-config.yaml · sonar-project.properties
+#   .pre-commit-config.yaml
 # The single source of truth for the version is the root VERSION file; keep the
 # `version` field below in sync.
 
