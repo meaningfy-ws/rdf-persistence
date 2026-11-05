@@ -1,0 +1,234 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "ODRL": "http://www.w3.org/ns/odrl/2/",
+      "bibo": "http://purl.org/ontology/bibo/",
+      "dcterms": "http://purl.org/dc/terms/",
+      "lib": "https://example.org/ns/library#",
+      "linkml": "https://w3id.org/linkml/",
+      "prov": "http://www.w3.org/ns/prov#",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "skos": "http://www.w3.org/2004/02/skos/core#",
+      "@vocab": "https://example.org/ns/library#",
+      "action": {
+         "@context": {
+            "text": "skos:notation",
+            "description": "skos:prefLabel",
+            "meaning": "@id"
+         },
+         "@id": "ODRL:action"
+      },
+      "actions": {
+         "@context": {
+            "text": "skos:notation",
+            "description": "skos:prefLabel",
+            "meaning": "@id"
+         },
+         "@container": "@set",
+         "@id": "rp:permits"
+      },
+      "assignee": {
+         "@type": "@id",
+         "@id": "ODRL:assignee"
+      },
+      "authors": {
+         "@container": "@set",
+         "@id": "schema:author"
+      },
+      "byte_size": {
+         "@id": "rp:byteSize"
+      },
+      "chapters": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "chapter"
+      },
+      "city": {
+         "@id": "schema:addressLocality"
+      },
+      "contributor": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "dcterms:contributor"
+      },
+      "created": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:created"
+      },
+      "creator": {
+         "@type": "@id",
+         "@id": "dcterms:creator"
+      },
+      "description": {
+         "@id": "dcterms:description"
+      },
+      "file_name": {
+         "@id": "rp:fileName"
+      },
+      "genre": {
+         "@context": {
+            "text": "skos:notation",
+            "description": "skos:prefLabel",
+            "meaning": "@id"
+         },
+         "@id": "schema:genre"
+      },
+      "grants": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:grant"
+      },
+      "graph": {
+         "@type": "xsd:anyURI",
+         "@id": "rp:graph"
+      },
+      "id": "@id",
+      "isbn": {
+         "@id": "bibo:isbn"
+      },
+      "kind": {
+         "@context": {
+            "text": "skos:notation",
+            "description": "skos:prefLabel",
+            "meaning": "@id"
+         },
+         "@id": "rp:kind"
+      },
+      "label": {
+         "@id": "skos:prefLabel"
+      },
+      "level": {
+         "@context": {
+            "text": "skos:notation",
+            "description": "skos:prefLabel",
+            "meaning": "@id"
+         },
+         "@id": "rp:level"
+      },
+      "loaded_graph": {
+         "@type": "xsd:anyURI",
+         "@id": "rp:loadedGraph"
+      },
+      "media_type": {
+         "@id": "rp:mediaType"
+      },
+      "modified": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:modified"
+      },
+      "notes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "note"
+      },
+      "number": {
+         "@id": "bibo:chapter"
+      },
+      "owned_by": {
+         "@type": "xsd:anyURI",
+         "@id": "rp:ownedBy"
+      },
+      "prohibitions": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:prohibition"
+      },
+      "published": {
+         "@type": "xsd:date",
+         "@id": "dcterms:issued"
+      },
+      "role": {
+         "@id": "rp:role"
+      },
+      "scan_of": {
+         "@type": "@id",
+         "@id": "schema:exampleOfWork"
+      },
+      "sha256": {
+         "@id": "rp:sha256"
+      },
+      "state": {
+         "@context": {
+            "text": "skos:notation",
+            "description": "skos:prefLabel",
+            "meaning": "@id"
+         },
+         "@id": "rp:state"
+      },
+      "target": {
+         "@type": "xsd:anyURI",
+         "@id": "ODRL:target"
+      },
+      "text": {
+         "@id": "schema:text"
+      },
+      "uploaded": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:dateSubmitted"
+      },
+      "uploaded_by": {
+         "@type": "@id",
+         "@id": "rp:uploadedBy"
+      },
+      "version": {
+         "@id": "rp:version"
+      },
+      "type": "@type",
+      "AggregateRoot": {
+         "@id": "rp:AggregateRoot"
+      },
+      "Book": {
+         "@id": "bibo:Book"
+      },
+      "Chapter": {
+         "@id": "bibo:Chapter"
+      },
+      "Described": {
+         "@id": "rp:Described"
+      },
+      "Grant": {
+         "@id": "ODRL:Permission"
+      },
+      "Library": {
+         "@id": "schema:Library"
+      },
+      "LibraryAccess": {
+         "@id": "LibraryAccess"
+      },
+      "Note": {
+         "@id": "Note"
+      },
+      "Policy": {
+         "@id": "ODRL:Set"
+      },
+      "Principal": {
+         "@id": "prov:Agent"
+      },
+      "Prohibition": {
+         "@id": "ODRL:Prohibition"
+      },
+      "RegistryEntry": {
+         "@id": "rp:RegistryEntry"
+      },
+      "RoleDefinition": {
+         "@id": "rp:RoleDefinition"
+      },
+      "Rule": {
+         "@id": "ODRL:Rule"
+      },
+      "Scan": {
+         "@id": "Scan"
+      },
+      "StoredFile": {
+         "@id": "rp:StoredFile"
+      },
+      "TenantAccess": {
+         "@id": "rp:TenantAccess"
+      },
+      "Tracked": {
+         "@id": "rp:Tracked"
+      }
+   }
+}

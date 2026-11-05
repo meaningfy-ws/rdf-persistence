@@ -1,0 +1,23 @@
+{
+  "@context": "context.jsonld",
+  "@omitGraph": true,
+  "@embed": "@always",
+  "@omitDefault": true,
+  "@type": "Scan",
+  "scan_of": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
+  "creator": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
+  "contributor": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
+  "uploaded_by": {
+    "@embed": "@never",
+    "@omitDefault": true
+  }
+}

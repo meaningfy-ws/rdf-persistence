@@ -44,9 +44,9 @@ def _element_problems(
 ) -> Iterator[str]:
     if not explicit_iri and not _has_default_prefix(schema):
         yield _problem(
-            HardRule.Iri, name, "no IRI: no explicit URI and no default_prefix in prefixes"
+            HardRule.IRI, name, "no IRI: no explicit URI and no default_prefix in prefixes"
         )
-    for field in (HardRule.Title, HardRule.Description):
+    for field in (HardRule.TITLE, HardRule.DESCRIPTION):
         if not getattr(element, field.value, None):
             yield _problem(field, name, f"no {field.value}")
 
@@ -64,7 +64,7 @@ def _schema_problems(schema: SchemaDefinition) -> Iterator[str]:
 
 def _value_problems(enum: str, value: PermissibleValue) -> Iterator[str]:
     name = value.text
-    for field in (HardRule.Title, HardRule.Description, HardRule.Meaning):
+    for field in (HardRule.TITLE, HardRule.DESCRIPTION, HardRule.MEANING):
         if not getattr(value, field.value, None):
             yield _problem(field, name, f"permissible value of {enum} has no {field.value}")
 
@@ -76,7 +76,7 @@ def _annotation_problems(schema: SchemaDefinition) -> Iterator[str]:
             value = annotation(element, tag)
             if value is not None and value not in allowed:
                 yield _problem(
-                    HardRule.Annotation, element.name, f"{tag}: {value!r} is not one of {allowed}"
+                    HardRule.ANNOTATION, element.name, f"{tag}: {value!r} is not one of {allowed}"
                 )
 
 
@@ -85,20 +85,30 @@ def _inherited_path(view: SchemaView, cls: ClassDefinition) -> bool:
     return any(annotation(view.get_class(name), "rp_path") for name in ancestry)
 
 
-def _class_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[str]:
-    own = {cls.name for cls in classes}
-    roots = aggregate_roots(view, classes)
+def _path_problems(view: SchemaView, roots: list[ClassDefinition]) -> Iterator[str]:
     for root in roots:
         if not is_tenant_root(root) and not _inherited_path(view, root):
             yield _problem(
-                HardRule.Rp_path, root.name, "an aggregate root needs the rp_path annotation"
+                HardRule.RP_PATH, root.name, "an aggregate root needs the rp_path annotation"
             )
+
+
+def _described_problems(
+    view: SchemaView, classes: list[ClassDefinition], roots: list[ClassDefinition]
+) -> Iterator[str]:
+    own = {cls.name for cls in classes}
     owned = owned_classes(view, classes)
     for cls in roots + [c for c in classes if c.name in owned and c not in roots]:
         if inherits_from_metamodel(view, cls, own):
             continue
         if DESCRIBED not in view.class_ancestors(cls.name):
-            yield _problem(HardRule.Described, cls.name, "a root or owned class includes Described")
+            yield _problem(HardRule.DESCRIBED, cls.name, "a root or owned class includes Described")
+
+
+def _class_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[str]:
+    roots = aggregate_roots(view, classes)
+    yield from _path_problems(view, roots)
+    yield from _described_problems(view, classes, roots)
 
 
 def hard_problems(view: SchemaView, folder: Path) -> list[str]:

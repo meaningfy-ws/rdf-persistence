@@ -50,43 +50,43 @@ class Fault:
 
 
 FAULTS = (
-    Fault(BoundaryRule.Ownership, (Edit("books.yaml", NOTES_OWNED, NOTES_REFERENCED),), "Note"),
+    Fault(BoundaryRule.OWNERSHIP, (Edit("books.yaml", NOTES_OWNED, NOTES_REFERENCED),), "Note"),
     Fault(
-        BoundaryRule.Reference,
+        BoundaryRule.REFERENCE,
         (Edit("books.yaml", NOTES_OWNED, NOTES_REFERENCED),),
         "notes",
         ("Note",),
     ),
     Fault(
-        BoundaryRule.Ownership,
+        BoundaryRule.OWNERSHIP,
         (Edit("books.yaml", BOOK_SLOTS, "slots: [isbn, authors, published, genre]"),),
         "Chapter",
     ),
     Fault(
-        BoundaryRule.Ownership,
+        BoundaryRule.OWNERSHIP,
         (Edit("library_tenant.yaml", "      graph: meta\n", ""),),
         "Library",
     ),
     Fault(
-        BoundaryRule.Reference,
+        BoundaryRule.REFERENCE,
         (Edit("scans.yaml", "range: Book", "range: Chapter"),),
         "scan_of",
         ("Chapter",),
     ),
     Fault(
-        BoundaryRule.Module_kind,
+        BoundaryRule.MODULE_KIND,
         (Edit("books.yaml", BOOK_IMPORTS, ACCESS_IMPORT),),
         "books",
         ("library_access", "access"),
     ),
     Fault(
-        BoundaryRule.Module_kind,
+        BoundaryRule.MODULE_KIND,
         (Edit("books.yaml", BOOK_IMPORTS, TENANCY_IMPORT),),
         "books",
         ("rp_tenancy",),
     ),
     Fault(
-        BoundaryRule.Module_kind,
+        BoundaryRule.MODULE_KIND,
         (
             Edit("books.yaml", BOOK_IMPORTS, ACCESS_IMPORT),
             Edit("library_access.yaml", "module_kind: access", "module_kind: technical"),

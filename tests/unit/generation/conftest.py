@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from rdf_persistence.generation.cli import main
+
 TOY = Path(__file__).parents[2] / "fixtures" / "library"
 ROOT_SCHEMA = "library.yaml"
 
@@ -32,3 +34,12 @@ def break_toy(toy_copy: Path) -> Breaker:
         return toy_copy / ROOT_SCHEMA
 
     return apply
+
+
+@pytest.fixture(scope="session")
+def generated_toy(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """The toy library generated once per session by ``rp-generate``; read-only, returns its output folder."""
+    folder = tmp_path_factory.mktemp("toy") / "library"
+    shutil.copytree(TOY, folder, ignore=shutil.ignore_patterns("__pycache__", "generated"))
+    assert main(["--project", str(folder / "pyproject.toml")]) == 0, "the toy must generate"
+    return folder / "generated"

@@ -37,54 +37,54 @@ class Fault:
 
 FAULTS = (
     Fault(
-        HardRule.Description,
+        HardRule.DESCRIPTION,
         "books.yaml",
         "    description: The International Standard Book Number of the book.\n",
         "",
         "isbn",
     ),
     Fault(
-        HardRule.Description,
+        HardRule.DESCRIPTION,
         "books.yaml",
         "        description: Invented narrative.\n",
         "",
         "fiction",
     ),
     Fault(
-        HardRule.Description,
+        HardRule.DESCRIPTION,
         "books.yaml",
         "    description: The literary genres a book can belong to.\n",
         "",
         "Genre",
     ),
-    Fault(HardRule.Title, "books.yaml", "    title: Book\n", "", "Book"),
-    Fault(HardRule.Title, "books.yaml", "    title: Publication date\n", "", "published"),
-    Fault(HardRule.Meaning, "books.yaml", "        meaning: schema:Fiction\n", "", "fiction"),
-    Fault(HardRule.Iri, "books.yaml", "default_prefix: lib\n", "", "Genre"),
-    Fault(HardRule.Rp_path, "books.yaml", "      rp_path: books\n", "", "Book"),
-    Fault(HardRule.Rp_path, "scans.yaml", "      rp_path: scans\n", "", "Scan"),
+    Fault(HardRule.TITLE, "books.yaml", "    title: Book\n", "", "Book"),
+    Fault(HardRule.TITLE, "books.yaml", "    title: Publication date\n", "", "published"),
+    Fault(HardRule.MEANING, "books.yaml", "        meaning: schema:Fiction\n", "", "fiction"),
+    Fault(HardRule.IRI, "books.yaml", "default_prefix: lib\n", "", "Genre"),
+    Fault(HardRule.RP_PATH, "books.yaml", "      rp_path: books\n", "", "Book"),
+    Fault(HardRule.RP_PATH, "scans.yaml", "      rp_path: scans\n", "", "Scan"),
     Fault(
-        HardRule.Described,
+        HardRule.DESCRIBED,
         "books.yaml",
         "    mixins: [Described]\n    slots: [text]",
         "    slots: [text]",
         "Note",
     ),
     Fault(
-        HardRule.Described,
+        HardRule.DESCRIBED,
         "scans.yaml",
         "[AggregateRoot, Described, Tracked, StoredFile]",
         "[AggregateRoot, Tracked, StoredFile]",
         "Scan",
     ),
-    Fault(HardRule.Annotation, "books.yaml", "database: tenant", "database: sytem", "Book"),
-    Fault(HardRule.Annotation, "library_tenant.yaml", "graph: meta", "graph: tenant", "Library"),
+    Fault(HardRule.ANNOTATION, "books.yaml", "database: tenant", "database: sytem", "Book"),
+    Fault(HardRule.ANNOTATION, "library_tenant.yaml", "graph: meta", "graph: tenant", "Library"),
     Fault(
-        HardRule.Annotation, "books.yaml", "module_kind: domain", "module_kind: dommain", "books"
+        HardRule.ANNOTATION, "books.yaml", "module_kind: domain", "module_kind: dommain", "books"
     ),
-    Fault(HardRule.Annotation, "books.yaml", "owned: true", "owned: maybe", "chapters"),
+    Fault(HardRule.ANNOTATION, "books.yaml", "owned: true", "owned: maybe", "chapters"),
     Fault(
-        HardRule.Annotation, "books.yaml", "rp_unlabelled: true", "rp_unlabelled: sure", "Chapter"
+        HardRule.ANNOTATION, "books.yaml", "rp_unlabelled: true", "rp_unlabelled: sure", "Chapter"
     ),
 )
 
@@ -125,7 +125,7 @@ def test_an_unlabelled_class_still_needs_the_described_mixin(break_toy: Breaker)
         "    mixins: [Described]\n    slots: [number, notes]",
         "    slots: [number, notes]",
     )
-    expected = f"[{HardRule.Described.value}] Chapter:"
+    expected = f"[{HardRule.DESCRIBED.value}] Chapter:"
     assert any(expected in p for p in problems_of(root)), "rp_unlabelled only relaxes the label"
 
 

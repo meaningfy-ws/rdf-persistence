@@ -49,10 +49,10 @@ Notation:
   - `Described` on roots and owned classes;
   - `rp_unlabelled` applied as in PD-11.
 - [x] 1.7 The boundary check: aggregate reachability, ownership, and `module_kind` imports.
-- [ ] 1.8 Steps 3 and 4:
+- [x] 1.8 Steps 3 and 4:
   - split `gen-pydantic` with the toolkit's base template;
   - a `gen-shacl` subclass that ignores the toolkit's bookkeeping predicates (`rp:version`, `dcterms:created`, `dcterms:modified`, `dcterms:creator`, `dcterms:contributor`), and translates `exactly_one_of` to `sh:xone`, `any_of` to `sh:or` and `unique_keys` to a SPARQL constraint on the owning class (PD-24).
-- [ ] 1.9 Steps 5 to 7:
+- [x] 1.9 Steps 5 to 7:
   - `gen-jsonld-context`: `id`/`type` aliases, `internal` slots left out, and one frame per aggregate type (PD-12);
   - the `gen-typescript` subclass and its template: enums, dates, `internal` skipped;
   - `gen-mermaid-class-diagram` per module, with the template that marks roots and owned parts.

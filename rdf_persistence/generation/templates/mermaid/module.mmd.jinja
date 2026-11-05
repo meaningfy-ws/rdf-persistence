@@ -1,0 +1,17 @@
+classDiagram
+{% for cls in module.classes %}
+    class {{ cls.name }} {
+{% if cls.stereotype %}
+        <<{{ cls.stereotype }}>>
+{% endif %}
+{% for attribute in cls.attributes %}
+        +{{ attribute.type }} {{ attribute.name }}
+{% endfor %}
+    }
+{% endfor %}
+{% for name in module.externals %}
+    class {{ name }}
+{% endfor %}
+{% for link in module.links %}
+    {{ link }}
+{% endfor %}

@@ -37,7 +37,7 @@ def _ownership_problems(view: SchemaView, classes: list[ClassDefinition]) -> Ite
         if cls.mixin or cls.abstract or cls.name in roots | owned or is_tenant_root(cls):
             continue
         yield _problem(
-            BoundaryRule.Ownership, cls.name, "is neither an aggregate root nor owned by any root"
+            BoundaryRule.OWNERSHIP, cls.name, "is neither an aggregate root nor owned by any root"
         )
 
 
@@ -58,7 +58,7 @@ def _reference_problems(view: SchemaView, classes: list[ClassDefinition]) -> Ite
                 and not _may_be_referred_to(view, slot.range)
             ):
                 yield _problem(
-                    BoundaryRule.Reference,
+                    BoundaryRule.REFERENCE,
                     name,
                     f"of {cls.name} points to {slot.range}, which is neither a root nor a reference class",
                 )
@@ -80,7 +80,7 @@ def _module_problems(view: SchemaView, schemas: list[SchemaDefinition]) -> Itera
             kind = annotation(imported, "module_kind")
             if kind in FORBIDDEN_FOR_DOMAIN:
                 yield _problem(
-                    BoundaryRule.Module_kind,
+                    BoundaryRule.MODULE_KIND,
                     schema.name,
                     f"is a domain module and imports {imported.name}, a {kind} module",
                 )

@@ -1,12 +1,11 @@
 id: https://example.org/ns/library/access
 name: library_access
 title: Library access module
-description: The access model of the toy library application; the tenant roles are librarian and reader.
+description: The access model of the toy library application; roles are plain strings matched against the role definitions.
 prefixes:
   lib: https://example.org/ns/library#
   linkml: https://w3id.org/linkml/
   rp: https://meaningfy.ws/ns/rdf-persistence#
-  ODRL: http://www.w3.org/ns/odrl/2/
 default_prefix: lib
 default_range: string
 imports:
@@ -20,31 +19,6 @@ annotations:
 classes:
   LibraryAccess:
     title: Library access
-    description: The access record of a library tenant, with grants narrowed to the library's roles.
+    description: The access record of a library tenant; its grants are the metamodel's.
     class_uri: lib:LibraryAccess
     is_a: TenantAccess
-    slot_usage:
-      grants:
-        range: LibraryGrant
-  LibraryGrant:
-    title: Library grant
-    description: A grant of a library role, or of a direct action, to a user.
-    class_uri: ODRL:Permission
-    is_a: Grant
-    slot_usage:
-      role:
-        range: LibraryRole
-
-enums:
-  LibraryRole:
-    title: Library role
-    description: The tenant roles of the library application.
-    permissible_values:
-      librarian:
-        title: Librarian
-        description: Reads, changes, deletes and administers the library.
-        meaning: lib:Librarian
-      reader:
-        title: Reader
-        description: Reads the library.
-        meaning: lib:Reader

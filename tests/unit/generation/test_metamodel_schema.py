@@ -15,7 +15,6 @@ LIBRARY = Path(__file__).parents[2] / "fixtures" / "library"
     [
         (MODEL / "rp.yaml", "Grant", "ODRL:Permission"),
         (MODEL / "rp.yaml", "Prohibition", "ODRL:Prohibition"),
-        (LIBRARY / "library_access.yaml", "LibraryGrant", "ODRL:Permission"),
     ],
 )
 def test_stored_rule_is_typed_as_its_odrl_class(schema: Path, name: str, class_uri: str) -> None:

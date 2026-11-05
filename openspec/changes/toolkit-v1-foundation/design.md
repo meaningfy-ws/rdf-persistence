@@ -185,7 +185,7 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-13,
     level follows from which it is;
   - `role` (`rp:role`) for a role grant, or `action` (`odrl:action`) for a direct permission;
     exactly one of the two. `role` is a string matched against `RoleDefinition.role` (PD-9); no
-    subclassing is needed, and an application may narrow it to an enum by `slot_usage`.
+    subclassing is needed, and an application does not narrow it to an enum: an enum value is stored as its meaning IRI, which a string-valued `role` cannot hold (task 1.8).
 
   The access record owns two collections: `grants` (`rp:grant`, role or direct-action grants) and
   `prohibitions` (`rp:prohibition`), both owned and multivalued. Grant targets are tenant or
@@ -209,7 +209,7 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
   - The toolkit's own data types are declared in LinkML and generated too. `rp.yaml` imports
     neither of these schemas, so consumers' models do not carry them; each is its own
     `[[tool.rp-generate]]` entry (PD-18) and, like the metamodel, is exempt from the checks of PD-23:
-    - `rdf_persistence/model/rp_service.yaml` (`module_kind: technical`): `ServiceSettings` (the
+    - `rdf_persistence/model/service/rp_service.yaml` (`module_kind: technical`; in its own folder, so the metamodel modules it imports are not treated as its own and regenerated with it): `ServiceSettings` (the
       `settings` of `install_service`: `base`, `prefix`, `tenant_segment`, `creator_role`,
       `roles_claim`), `VerifiedCaller` (what `TokenVerifier` returns: `principal`,
       `global_roles`), and the toolkit's own request and response bodies (PD-13: `TenantCreate`,
@@ -235,6 +235,10 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
       the shapes treats absent values the same way;
     - shapes (task 1.8): `exactly_one_of` becomes `sh:xone`, `any_of` becomes `sh:or`, and
       `unique_keys` becomes a SPARQL constraint on the owning class.
+    - shapes are named by the class's native IRI (two classes may share a `class_uri`, such as
+      `odrl:Permission`), and a non-owned slot that refers to another aggregate is checked as an
+      IRI only (no `sh:node` or `sh:class`), so an aggregate's graph validates without the
+      aggregates it refers to (task 1.8);
     - `rules` (LinkML's pre- and postconditions) is not supported in v1: `rp-generate` exits 1,
       naming the class, if a schema uses it.
 - **PD-25 Extending the generators.** Every gap in a stock LinkML generator is closed by an

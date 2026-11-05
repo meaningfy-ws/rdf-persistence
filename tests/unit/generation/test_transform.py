@@ -49,7 +49,7 @@ def test_the_metamodel_is_left_untouched() -> None:
 
 def test_the_generated_toy_classes_reflect_the_transform(toy_copy: Path) -> None:
     assert main(["--project", str(toy_copy / "pyproject.toml")]) == 0, "the toy must generate"
-    tree = ast.parse((toy_copy / "generated" / "library.py").read_text(encoding="utf-8"))
+    tree = ast.parse((toy_copy / "generated" / "books.py").read_text(encoding="utf-8"))
     fields = {
         (cls.name, stmt.target.id): ast.unparse(stmt.annotation)
         for cls in tree.body

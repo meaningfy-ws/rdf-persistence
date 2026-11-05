@@ -6,19 +6,21 @@ from pathlib import Path
 from unittest import mock
 
 import yaml
-from linkml.generators.pydanticgen import PydanticGenerator
-from linkml.generators.pydanticgen.pydanticgen import MetadataMode
 from linkml.linter.linter import Linter
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation.checks.boundary import boundary_problems
 from rdf_persistence.generation.checks.hard import hard_problems
+from rdf_persistence.generation.extensions.jsonld_context import CONTEXT_STEP
+from rdf_persistence.generation.extensions.mermaid import DIAGRAMS_STEP
+from rdf_persistence.generation.extensions.pydantic_split import render_modules
+from rdf_persistence.generation.extensions.shacl import render_shapes
+from rdf_persistence.generation.extensions.typescript import TYPESCRIPT_STEP
+from rdf_persistence.generation.outputs import stage
 from rdf_persistence.generation.pipeline import Run, Step, StepError
-from rdf_persistence.generation.transform import apply_defaults
 from rdf_persistence.services.schema import metamodel_importmap
 
 LINT_CONFIG = Path(__file__).with_name("lint.yaml")
-TEMPLATE_DIR = Path(__file__).with_name("templates") / "pydantic"
 
 
 def raised_rules() -> tuple[str, ...]:
@@ -76,20 +78,21 @@ def hard_check(run: Run) -> None:
 
 
 def python_classes(run: Run) -> None:
-    """Generate the schema's classes with gen-pydantic and the toolkit's base template (PD-19, PD-24)."""
+    """Generate one Python module per schema module with the split gen-pydantic (PD-19, PD-24)."""
     try:
-        generator = PydanticGenerator(
-            str(run.schema_path),
-            importmap=metamodel_importmap(),
-            template_dir=TEMPLATE_DIR,
-            metadata_mode=MetadataMode.NONE,
-            emit_metadata=False,
-        )
-        apply_defaults(generator.schemaview, run.schema_path.parent)
-        source = generator.serialize()
+        modules = render_modules(run.schema_path)
     except Exception as error:  # the generator raises whatever the schema makes it raise
         raise StepError([str(error)]) from error
-    run.staged(run.python_dir / f"{run.schema_path.stem}.py").write_text(source, encoding="utf-8")
+    stage(run, run.python_dir, modules)
+
+
+def shapes(run: Run) -> None:
+    """Generate the closed SHACL shapes next to the Python output (PD-24)."""
+    try:
+        shapes_file = render_shapes(run.schema_path)
+    except Exception as error:  # the generator raises whatever the schema makes it raise
+        raise StepError([str(error)]) from error
+    stage(run, run.python_dir, [shapes_file])
 
 
 # One line per step; a later task adds its step here.
@@ -98,4 +101,8 @@ STEPS = (
     Step("boundary check", boundary_check),
     Step("hard check", hard_check),
     Step("python", python_classes, writes=True),
+    Step("shapes", shapes, writes=True),
+    CONTEXT_STEP,
+    TYPESCRIPT_STEP,
+    DIAGRAMS_STEP,
 )

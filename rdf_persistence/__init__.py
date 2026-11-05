@@ -1,25 +1,35 @@
 """RDF Persistence."""
 
 from rdf_persistence.domain.base import RpModel
-from rdf_persistence.domain.generated.rp import (
+from rdf_persistence.domain.generated.rp_access import (
     Action,
-    Activity,
-    AggregateRoot,
-    Described,
     Grant,
     Policy,
-    Principal,
     Prohibition,
-    Provenanced,
-    RegistryEntry,
-    RegistryKind,
     RoleDefinition,
     RoleLevel,
     Rule,
+)
+from rdf_persistence.domain.generated.rp_annotations import (
+    Described,
+    Tracked,
+)
+from rdf_persistence.domain.generated.rp_core import (
+    AggregateRoot,
+    Principal,
+    RegistryEntry,
+    RegistryKind,
+)
+from rdf_persistence.domain.generated.rp_files import (
     StoredFile,
+)
+from rdf_persistence.domain.generated.rp_provenance import (
+    Activity,
+    Provenanced,
+)
+from rdf_persistence.domain.generated.rp_tenancy import (
     TenantAccess,
     TenantState,
-    Tracked,
 )
 
 __version__ = "0.1.0"

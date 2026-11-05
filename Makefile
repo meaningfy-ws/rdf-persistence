@@ -43,7 +43,7 @@ help: ## Display available targets
 #-----------------------------------------------------------------------------
 # Install / build (mutating)
 #-----------------------------------------------------------------------------
-.PHONY: install-uv install lock generate-metamodel build
+.PHONY: install-uv install lock generate-metamodel refresh-golden build
 
 install-uv: ## Install uv if not present
 	@ command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -57,6 +57,9 @@ lock: ## Update uv.lock
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Locking dependencies$(END_BUILD_PRINT)"
 	@ uv lock
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Lock file updated$(END_BUILD_PRINT)"
+
+refresh-golden: ## Rewrite the generator extensions' golden files (review the diff before committing)
+	@ RP_REFRESH_GOLDEN=1 uv run pytest tests/unit/generation -k "ext_" -q
 
 generate-metamodel: ## Regenerate the metamodel's and the generation module's Python classes with rp-generate
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating the metamodel classes$(END_BUILD_PRINT)"

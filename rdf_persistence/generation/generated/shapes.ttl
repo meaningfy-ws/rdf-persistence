@@ -1,0 +1,51 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rp: <https://meaningfy.ws/ns/rdf-persistence#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+rp:GenerationTarget a sh:NodeShape ;
+	rdfs:comment "One entry of the `[tool.rp-generate]` table of a `pyproject.toml`: a schema and the folders its generated artefacts are written to. Paths are relative to the folder of the `pyproject.toml`." ;
+	rdfs:label "Generation target" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n2 ;
+	sh:property _:c14n0 , _:c14n1 , _:c14n3 , _:c14n4 , _:c14n5 ;
+	sh:targetClass rp:GenerationTarget .
+_:c14n0 sh:datatype xsd:string ;
+	sh:description "The folder that receives one Mermaid file per module; none are written when absent." ;
+	sh:maxCount 1 ;
+	sh:name "Diagrams folder" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:diagramsFolder .
+_:c14n1 sh:datatype xsd:string ;
+	sh:description "The folder that receives the TypeScript types; none are written when absent." ;
+	sh:maxCount 1 ;
+	sh:name "TypeScript folder" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:typescriptFolder .
+_:c14n2 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n3 sh:datatype xsd:string ;
+	sh:description "The folder that receives the classes, shapes, context, frames and the schema copy; the folder of `package` when absent." ;
+	sh:maxCount 1 ;
+	sh:name "Python folder" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:pythonFolder .
+_:c14n4 sh:datatype xsd:string ;
+	sh:description "The root LinkML schema file; the TOML key and the flag are `schema`, which the field name avoids because it would shadow a pydantic method." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Schema file" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:schemaFile .
+_:c14n5 sh:datatype xsd:string ;
+	sh:description "The Python import path of the generated package." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Package" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:package .
