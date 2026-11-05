@@ -76,8 +76,8 @@ Order: 1.11 at any time; 1.12 and 1.16 after 1.10; 1.13 after 1.8 and 1.12; 1.14
 
 ## 2. Store, session and tenancy (stage 2)
 
-- [ ] 2.1 `domain/sparql.py` (PD-3) and `domain/iris.py` (`graph_iri`, minting: PD-4, PD-6), with an injection test per template.
-- [ ] 2.2 The store port in `services`. The Fuseki adapter: query, update, Graph Store `PUT`, dataset create, drop and list, and the 405 mapping.
+- [x] 2.1 `domain/sparql.py` (PD-3) and `domain/iris.py` (`graph_iri`, minting: PD-4, PD-6), with an injection test per template.
+- [x] 2.2 The store port in `services`. The Fuseki adapter: query, update, Graph Store `PUT`, dataset create, drop and list, and the 405 mapping.
 - [ ] 2.3 The session:
   - the graph-level methods of PD-7a;
   - the guarded commit with UUID tokens and `ASK` (PD-5), with a test of the two-editor race;
@@ -194,7 +194,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 
 - [x] 0.1 · [x] 0.2 · [x] 0.3 · [x] 0.4 · [x] 0.5
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 1.11 · [x] 1.12 · [x] 1.13 · [x] 1.14 · [x] 1.15 · [x] 1.16 · [x] 1.17 · [x] 1.18 · [x] 1.19
-- [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8
+- [x] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8
 - [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4
 - [ ] 4.1 · [ ] 4.2 · [ ] 4.3
 - [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4 · [ ] 5.5 · [ ] 5.6 · [ ] 5.7
