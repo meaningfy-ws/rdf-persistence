@@ -57,7 +57,6 @@ from rdf_persistence.domain.generated.service.rp_service import (
     TenantSummary,
     VerifiedCaller,
 )
-from rdf_persistence.services.loading import load_graph
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.store import Store
 
@@ -106,6 +105,5 @@ __all__ = [
     "TenantSummary",
     "Tracked",
     "VerifiedCaller",
-    "load_graph",
     "open_session",
 ]

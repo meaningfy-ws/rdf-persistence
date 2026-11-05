@@ -1,18 +1,12 @@
-"""Graph loading (PD-6a, PD-8a): parse a file of RDF and put it in its own named graph.
-
-The loaded graph is written to ``{aggregate_iri}/content/{uuid4}``. It becomes the aggregate's
-only when the caller's commit passes the returned IRI as ``loaded_graphs``.
-"""
+"""Parsing for graph loading (PD-6a, PD-8a); ``Session.load_graph`` writes the result."""
 
 import io
 
 import anyio.to_thread
-from rdflib import Graph, URIRef
+from rdflib import Graph
 
 from rdf_persistence.domain.errors import InvalidGraph
 from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.iris import loaded_graph_iri
-from rdf_persistence.services.store import Store
 
 _RDFLIB_FORMATS = {
     RdfFormat.TURTLE: "turtle",
@@ -31,18 +25,10 @@ def _parse(data: bytes, format: RdfFormat) -> Graph:
     return graph
 
 
-async def load_graph(
-    store: Store, database: str, aggregate_iri: str, data: bytes, *, format: RdfFormat
-) -> URIRef:
-    """Parse ``data`` and write it to a new named graph of the aggregate; returns its IRI.
-
-    The caller registers the graph by passing the IRI as ``loaded_graphs`` in its commit.
+async def parse_graph(data: bytes, format: RdfFormat) -> Graph:
+    """Parse ``data`` in a worker thread.
 
     Raises:
-        InvalidGraph: The data does not parse as ``format``; nothing is written.
-        DatabaseGone: The tenant database does not exist.
+        InvalidGraph: The data does not parse as ``format``.
     """
-    graph = await anyio.to_thread.run_sync(_parse, data, format)
-    iri = loaded_graph_iri(aggregate_iri)
-    await store.put_graph(database, iri, graph)
-    return iri
+    return await anyio.to_thread.run_sync(_parse, data, format)

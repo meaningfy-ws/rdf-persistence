@@ -17,8 +17,15 @@ from rdf_persistence.domain import vocabulary as v
 from rdf_persistence.domain.errors import Conflict, NotFound
 from rdf_persistence.domain.generated.rp_annotations import Tracked
 from rdf_persistence.domain.generated.rp_core import Principal, RegistryEntry, RegistryKind
-from rdf_persistence.domain.iris import graph_iri, meta_graph_iri, registry_graph_iri
-from rdf_persistence.domain.sparql import Triple, fill, term, triples_block
+from rdf_persistence.domain.generated.rp_files import RdfFormat
+from rdf_persistence.domain.iris import (
+    graph_iri,
+    loaded_graph_iri,
+    meta_graph_iri,
+    registry_graph_iri,
+)
+from rdf_persistence.domain.sparql import SparqlTerm, Triple, fill, term, triples_block
+from rdf_persistence.services.loading import parse_graph
 from rdf_persistence.services.store import Store
 
 Clock = Callable[[], datetime]
@@ -37,21 +44,31 @@ READ_GRAPH = "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH $graph { ?s ?p ?o } }"
 ASK_ANY = "ASK { GRAPH $graph { ?s ?p ?o } }"
 ASK_TOKEN = "ASK { GRAPH $graph { $graph $p_version $token } }"
 ADD = "INSERT DATA { GRAPH $graph { $triples } GRAPH $registry { $entries } }"
-# The guard, the delete of the old graph and of every entry the root owns, and the insert of the
-# new ones, in one update.
+# The guard, the delete of the old graph, of every entry the root owns and of the loaded graphs
+# not listed in $kept, and the insert of the new ones, in one update.
 REPLACE = """
-DELETE { GRAPH $graph { ?s ?p ?o } GRAPH $registry { ?e ?ep ?eo } }
+DELETE { GRAPH $graph { ?s ?p ?o } GRAPH $registry { ?e ?ep ?eo } GRAPH ?lg { ?ls ?lp ?lo } }
 INSERT { GRAPH $graph { $triples } GRAPH $registry { $entries } }
 WHERE {
   GRAPH $graph { $graph $p_version $old . ?s ?p ?o }
   OPTIONAL { GRAPH $registry { ?e $p_owned_by $root ; ?ep ?eo } }
+  OPTIONAL {
+    GRAPH $registry { ?lg $p_owned_by $root ; $p_kind $loaded }
+    GRAPH ?lg { ?ls ?lp ?lo }
+    FILTER (?lg NOT IN ($kept))
+  }
 }
 """
+# Also empties the loaded graphs the root owns: they are part of the aggregate.
 REMOVE = """
-DELETE { GRAPH $graph { ?s ?p ?o } GRAPH $registry { ?e ?ep ?eo } }
+DELETE { GRAPH $graph { ?s ?p ?o } GRAPH $registry { ?e ?ep ?eo } GRAPH ?lg { ?ls ?lp ?lo } }
 WHERE {
   GRAPH $graph { $graph $p_version $old . ?s ?p ?o }
   OPTIONAL { GRAPH $registry { ?e $p_owned_by $root ; ?ep ?eo } }
+  OPTIONAL {
+    GRAPH $registry { ?lg $p_owned_by $root ; $p_kind $loaded }
+    GRAPH ?lg { ?ls ?lp ?lo }
+  }
 }
 """
 
@@ -132,7 +149,9 @@ def replace_text(
     triples: Iterable[Triple],
     entries: Iterable[RegistryEntry],
 ) -> str:
-    """The guarded update that replaces a graph and the registry entries its root owns."""
+    """The guarded update that replaces a graph, its root's registry entries and dropped loads."""
+    entries = list(entries)
+    kept = [e.graph for e in entries if e.kind == RegistryKind.LOADED_GRAPH]
     return fill(
         REPLACE,
         graph=term(graph),
@@ -140,6 +159,9 @@ def replace_text(
         root=term(root),
         p_version=term(v.VERSION),
         p_owned_by=term(v.REGISTRY_OWNED_BY),
+        p_kind=term(v.REGISTRY_KIND),
+        loaded=term(v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH.value]),
+        kept=SparqlTerm(", ".join(term(URIRef(g)) for g in kept)),
         old=term(Literal(old_version)),
         triples=triples_block(triples),
         entries=_entries_block(entries),
@@ -155,6 +177,8 @@ def remove_text(graph: URIRef, registry: URIRef, root: URIRef, old_version: str)
         root=term(root),
         p_version=term(v.VERSION),
         p_owned_by=term(v.REGISTRY_OWNED_BY),
+        p_kind=term(v.REGISTRY_KIND),
+        loaded=term(v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH.value]),
         old=term(Literal(old_version)),
     )
 
@@ -288,8 +312,24 @@ class Session:
             raise Conflict(f"{graph} is no longer at version {if_version}")
         return version
 
+    async def load_graph(self, iri: str, data: bytes, *, format: RdfFormat) -> URIRef:
+        """Parse ``data`` into a new named graph of the aggregate ``iri``; returns its IRI.
+
+        The graph belongs to the aggregate once a commit passes the IRI as ``loaded_graphs``.
+
+        Raises:
+            ValueError: ``iri`` is not inside the tenant.
+            InvalidGraph: The data does not parse as ``format``; nothing is written.
+            DatabaseGone: The tenant database does not exist.
+        """
+        self._graph(iri)
+        parsed = await parse_graph(data, format)
+        loaded = loaded_graph_iri(iri)
+        await self._store.put_graph(self._database, loaded, parsed)
+        return loaded
+
     async def remove(self, iri: str, if_version: str) -> None:
-        """Delete the aggregate's graph and registry entries if it still has ``if_version``.
+        """Delete the aggregate's graph, loaded graphs and registry entries if it still has ``if_version``.
 
         Raises:
             NotFound: The aggregate has no graph.
