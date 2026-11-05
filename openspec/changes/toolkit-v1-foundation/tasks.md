@@ -51,7 +51,7 @@ Notation:
 - [ ] 1.7 The boundary check: aggregate reachability, ownership, and `module_kind` imports.
 - [ ] 1.8 Steps 3 and 4:
   - split `gen-pydantic` with the toolkit's base template;
-  - a `gen-shacl` subclass that ignores the toolkit's bookkeeping predicates (`rp:version`, `dcterms:created`, `dcterms:modified`, `dcterms:creator`, `dcterms:contributor`).
+  - a `gen-shacl` subclass that ignores the toolkit's bookkeeping predicates (`rp:version`, `dcterms:created`, `dcterms:modified`, `dcterms:creator`, `dcterms:contributor`), and translates `exactly_one_of` to `sh:xone`, `any_of` to `sh:or` and `unique_keys` to a SPARQL constraint on the owning class (PD-24).
 - [ ] 1.9 Steps 5 to 7:
   - `gen-jsonld-context`: `id`/`type` aliases, `internal` slots left out, and one frame per aggregate type (PD-12);
   - the `gen-typescript` subclass and its template: enums, dates, `internal` skipped;
@@ -60,14 +60,18 @@ Notation:
 
 ### 1b. Single source of specification (PD-24 to PD-28; developer, 2026-11-05)
 
-- [ ] 1.11 Embed the rule: `AGENTS.md` project specifics state it; `open-decisions.adoc` records it as D-13; `generation.adoc` rewrites "Guarding the generated code" to PD-26 to PD-28 and adds rows to the extension table (pydantic validators for declared rules). `make check-docs` passes.
-- [ ] 1.12 The manifest and `rp-generate --check` (PD-26): stale input, edited output and a fresh run each tested; the testkit pytest plugin that checks at session start; `make check-quality` runs the check; a pre-commit hook; `make generate`, run first by `make build`.
-- [ ] 1.13 The gen-pydantic template extension that enforces the schema's declared rules (`exactly_one_of`, `unique_keys`, `rules`) as model validators, generated from the schema (PD-24). The three strict xfails of task 1.4 pass and lose their marks.
+Order: 1.11 at any time; 1.12, 1.15 and 1.16 after 1.10; 1.13 after 1.8; 1.14 after 1.9 and 1.13;
+1.17 after 1.9; 1.18 after 1.9 and 1.11. Tasks 1.12 and 1.13 regenerate and recommit the output of
+1.10. Hypothesis is added to the test group, pinned, in task 1.14.
+
+- [ ] 1.11 Embed the rule: `AGENTS.md` states it (done with the plan); `open-decisions.adoc` records it as D-13, with a link to the MWBv2 Developer Runbook; `generation.adoc` gets anchors on its sections (`#extensions`, `#guarding`), rewrites "Guarding the generated code" to PD-26 to PD-28, and its extension table gains a first column with each extension's module path and rows for the validators and shape constraints of PD-24. `make check-docs` passes.
+- [ ] 1.12 The manifest and `rp-generate --check` (PD-26): `rp_generation.yaml` with `GenerationManifest` (also `ConstraintCase` and `ClassShape`, used by 1.14 and 1.15), generated; stale input, edited output, a changed `linkml` version and a fresh run each tested; `rdf_persistence/testkit/freshness.py` with the ini option `rp_generate_projects`; the repo's own `[tool.rp-generate]` table in `pyproject.toml`; `make check-quality` runs the check; the pre-commit hook; `make generate`, run first by `make build`.
+- [ ] 1.13 The gen-pydantic template extension that generates model validators for `exactly_one_of`, `any_of` and `unique_keys`, placed as PD-24 says; a schema using `rules` makes `rp-generate` exit 1. The three strict xfails of task 1.4 pass and lose their marks. Also `rp_service.yaml` (`ServiceSettings`, `VerifiedCaller`), generated with the metamodel.
 - [ ] 1.14 The conformance suite (PD-27 items 3 to 5): the constraint-case table with the classes-versus-shapes verdict test and the coverage test; the JSON-LD round trip with Hypothesis; the model-shape test. In `testkit`, run on the metamodel and the toy library.
 - [ ] 1.15 The model-shape snapshot under `tests/fixtures/`, its test and `make refresh-snapshot` (PD-27 item 6).
 - [ ] 1.16 The model guard and the file guard (PD-28) as `testkit.assert_models_generated`, run on this package.
-- [ ] 1.17 Generated code compiles (PD-27 item 7): an import test and mypy with a generated-code profile in `make check-quality`; `tsc --noEmit` on the TypeScript output in CI.
-- [ ] 1.18 The extension register test (PD-25): every module in `rdf_persistence/generation/` has a row in the extension table and a golden test.
+- [ ] 1.17 Generated code compiles (PD-27 item 7): an import test of every generated module; `mypy-generated.ini` and its run in `make check-quality`; `tsc --noEmit --strict` (typescript 5.9.3) on the TypeScript output in CI.
+- [ ] 1.18 The extension register test (PD-25): every extension module under `rdf_persistence/generation/` has a row in `generation.adoc#extensions` whose first column is its module path, and a golden test `tests/unit/generation/test_ext_<module>.py` with goldens in `tests/fixtures/library/golden/<module>/`.
 
 ## 2. Store, session and tenancy (stage 2)
 
