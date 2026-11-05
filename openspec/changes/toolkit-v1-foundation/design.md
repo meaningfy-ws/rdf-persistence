@@ -118,6 +118,13 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-13,
   triples and version; `add_graph(iri, triples)`; `replace_graph(iri, triples, if_version)`;
   `remove(iri, if_version)`. Object level, for domain services, on the mapper (task 2.5):
   `get(cls, iri)`, `add(obj)`, then `commit()`, which calls the graph-level methods.
+- **PD-8a Blank nodes and loaded graphs in a commit** (task 2.3). The guarded update inserts its
+  template once per matched row, so a blank node would be copied. The session therefore skolemises
+  every blank node before a write, to `{graph_iri}/.well-known/genid/{uuid4}` (RDF 1.1 §3.5); readers
+  see the skolem IRIs, and the mapper (task 2.5) and the frames nest them back as owned parts. Grants
+  and prohibitions (PD-23) are written this way. `add_graph` and `replace_graph` take the aggregate's
+  loaded graphs, so their registry entries are written in the same update (task 2.4). A registry
+  entry's subject is the graph IRI it describes; its `rp:kind` is the enum's meaning IRI.
 - **PD-8 The registry and the tenant root.** The commit's update also deletes and inserts the
   aggregate's registry entries, one per graph it owns: its own graph and its loaded graphs. A
   `RegistryEntry` has `graph` (`rp:graph`), `kind` (`rp:kind`: `aggregate`, `loaded_graph`) and

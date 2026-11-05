@@ -24,6 +24,7 @@ INDEXED_NAMES = [
     "NotFound",
     "Conflict",
     "BadQuery",
+    "open_session",
 ]
 
 

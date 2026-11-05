@@ -55,6 +55,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     TenantSummary,
     VerifiedCaller,
 )
+from rdf_persistence.services.session import open_session
 from rdf_persistence.services.store import Store
 
 __version__ = "0.1.0"
@@ -100,4 +101,5 @@ __all__ = [
     "TenantSummary",
     "Tracked",
     "VerifiedCaller",
+    "open_session",
 ]

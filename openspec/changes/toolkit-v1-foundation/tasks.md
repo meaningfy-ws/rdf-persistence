@@ -78,7 +78,7 @@ Order: 1.11 at any time; 1.12 and 1.16 after 1.10; 1.13 after 1.8 and 1.12; 1.14
 
 - [x] 2.1 `domain/sparql.py` (PD-3) and `domain/iris.py` (`graph_iri`, minting: PD-4, PD-6), with an injection test per template.
 - [x] 2.2 The store port in `services`. The Fuseki adapter: query, update, Graph Store `PUT`, dataset create, drop and list, and the 405 mapping.
-- [ ] 2.3 The session:
+- [x] 2.3 The session:
   - the graph-level methods of PD-7a;
   - the guarded commit with UUID tokens and `ASK` (PD-5), with a test of the two-editor race;
   - tracking carried across commits (PD-7) and registry entries in the same update (PD-8);

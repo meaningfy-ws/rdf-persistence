@@ -7,7 +7,7 @@ from rdflib import BNode, Dataset, Graph, Literal, URIRef
 from rdflib.namespace import XSD
 from rdflib.plugins.sparql import prepareQuery, prepareUpdate
 
-from rdf_persistence.domain.sparql import SparqlError, SparqlTerm, fill, term
+from rdf_persistence.domain.sparql import SparqlError, SparqlTerm, fill, term, triples_block
 
 EX = "http://example.org/"
 HOSTILE = [
@@ -156,3 +156,27 @@ def test_fill_refuses_an_extra_name():
 
 def test_term_returns_the_type_fill_accepts():
     assert isinstance(term(SUBJECT), SparqlTerm)
+
+
+def test_a_triples_block_renders_each_triple_through_term():
+    triples = [(SUBJECT, PREDICATE, Literal('"} ; DROP ALL ; #')), (SUBJECT, PREDICATE, GRAPH)]
+    block = triples_block(triples)
+    assert isinstance(block, SparqlTerm), "fill() accepts it"
+    graph = Graph()
+    graph.update(f"INSERT DATA {{ {block} }}")
+    assert set(graph) == set(triples), "the block parses back to the triples"
+
+
+def test_an_empty_triples_block_is_valid_in_a_template():
+    prepareUpdate(
+        fill(
+            "INSERT DATA { GRAPH $graph { $triples } }",
+            graph=term(GRAPH),
+            triples=triples_block([]),
+        )
+    )
+
+
+def test_a_triples_block_refuses_a_raw_string():
+    with pytest.raises(SparqlError, match="rdflib"):
+        triples_block([(SUBJECT, PREDICATE, "raw")])  # type: ignore[list-item]

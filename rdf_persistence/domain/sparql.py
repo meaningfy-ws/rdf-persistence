@@ -6,6 +6,7 @@ SPARQL text from a value, so injection is audited here only.
 """
 
 import re
+from collections.abc import Iterable
 from string import Template
 
 from rdflib import BNode, Literal, URIRef
@@ -84,3 +85,11 @@ def fill(template: str, **terms: SparqlTerm) -> str:
     if unused := terms.keys() - placeholders:
         raise SparqlError(f"unused terms {sorted(unused)}")
     return Template(template).substitute(terms)
+
+
+Triple = tuple[URIRef | BNode, URIRef, URIRef | Literal | BNode]
+
+
+def triples_block(triples: Iterable[Triple]) -> SparqlTerm:
+    """Render triples as the dotted triple patterns of an ``INSERT DATA`` or template body."""
+    return SparqlTerm(" ".join(f"{term(s)} {term(p)} {term(o)} ." for s, p, o in triples))
