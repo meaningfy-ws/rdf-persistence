@@ -2368,6 +2368,9 @@ dependencies = [
 generate = [
     { name = "linkml" },
 ]
+testkit = [
+    { name = "testcontainers" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -2386,7 +2389,6 @@ test = [
     { name = "pytest-asyncio" },
     { name = "pytest-bdd" },
     { name = "pytest-cov" },
-    { name = "testcontainers" },
 ]
 
 [package.metadata]
@@ -2402,8 +2404,9 @@ requires-dist = [
     { name = "pyld", specifier = "==3.3.0" },
     { name = "pyshacl", specifier = "==0.40.2" },
     { name = "rdflib", specifier = "==7.6.0" },
+    { name = "testcontainers", marker = "extra == 'testkit'", specifier = "==4.14.2" },
 ]
-provides-extras = ["generate"]
+provides-extras = ["generate", "testkit"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pre-commit", specifier = "==4.6.0" }]
@@ -2420,7 +2423,6 @@ test = [
     { name = "pytest-asyncio", specifier = "==1.3.0" },
     { name = "pytest-bdd", specifier = "==8.1.0" },
     { name = "pytest-cov", specifier = "==7.1.0" },
-    { name = "testcontainers", specifier = "==4.14.2" },
 ]
 
 [[package]]

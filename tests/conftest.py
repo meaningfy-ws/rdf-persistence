@@ -2,7 +2,8 @@
 
 WHY THIS HOOK EXISTS
 --------------------
-Test-type markers (``unit``, ``feature``, ``e2e``, ``integration``) are stamped
+Test-type markers (``unit``, ``feature``, ``e2e``, ``integration``) and the
+container markers (``store``, ``files``, ``identity``) are stamped
 onto every collected test **by file path**, not by per-file ``pytestmark``.
 
 The natural-looking shortcut — putting ``pytestmark = pytest.mark.unit`` in a
@@ -25,60 +26,60 @@ import pytest
 TESTS_ROOT_DIR = Path(__file__).parent
 TEST_DATA_DIR = TESTS_ROOT_DIR / "test_data"
 
-# Map a path segment to the marker it implies. Order is irrelevant: each test
-# lives under exactly one of these directories.
-_MARKER_BY_DIR = {
-    "/unit/": "unit",
-    "/feature/": "feature",
-    "/integration/": "integration",
-    "/e2e/": "e2e",
+# The container fixtures (PD-16): they start only the containers a test's markers need.
+pytest_plugins = ["rdf_persistence.testkit.containers.fixtures"]
+
+# Map a directory to every marker it implies (PD-16). The first row whose
+# directory occurs in the test path wins, so a row never needs to exclude another.
+_MARKERS_BY_DIR = {
+    "/unit/": ("unit",),
+    "/feature/": ("feature",),
+    "/integration/store/": ("integration", "store"),
+    "/integration/api/": ("integration", "store"),
+    "/integration/tenancy/": ("integration", "store", "files"),
+    "/integration/files/": ("integration", "files"),
+    "/integration/identity/": ("integration", "identity"),
+    "/e2e/": ("e2e", "store", "files", "identity"),
 }
 
 
+def markers_for_path(path: str) -> tuple[str, ...]:
+    """Return every marker implied by the directory a test file lives in.
+
+    Args:
+        path: The test file's path.
+
+    Returns:
+        The markers of the matching row of the path table, or ``()`` if none matches.
+    """
+    posix = Path(path).as_posix()
+    for directory, markers in _MARKERS_BY_DIR.items():
+        if directory in posix:
+            return markers
+    return ()
+
+
 def pytest_collection_modifyitems(items: list) -> None:
-    """Stamp each collected test with its test-type marker by directory.
+    """Stamp each collected test with every marker of its directory's row.
 
     pytest does not honour ``pytestmark`` defined in a ``conftest.py`` (conftest
     is a plugin, not a test module). This collection hook is the correct place
-    to apply markers so that ``-m unit``, ``-m feature``, ``-m integration`` and
-    ``-m e2e`` filter correctly with zero per-file decoration.
+    to apply markers so that ``-m unit``, ``-m store`` and the like filter
+    correctly with zero per-file decoration.
 
     Args:
         items: The list of collected test items, mutated in place.
     """
     for item in items:
-        path = str(item.fspath)
-        for directory, marker in _MARKER_BY_DIR.items():
-            if directory in path:
-                item.add_marker(getattr(pytest.mark, marker))
-                break
+        for marker in markers_for_path(str(item.fspath)):
+            item.add_marker(getattr(pytest.mark, marker))
 
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
-# Put fixtures used across more than one test tree here. Keep narrowly-scoped
-# fixtures in the nearest local conftest.py. Example — a testcontainers-backed
-# datastore for integration tests (uncomment and adapt when you add one):
-#
-#     import redis.asyncio as aioredis
-#     from testcontainers.redis import RedisContainer
-#
-#     @pytest.fixture(scope="module")
-#     def redis_container():
-#         """Start a Redis container once per module (needs Docker)."""
-#         with RedisContainer() as container:
-#             yield container
-#
-#     @pytest.fixture
-#     async def redis_client(redis_container) -> aioredis.Redis:
-#         client = aioredis.Redis(
-#             host=redis_container.get_container_host_ip(),
-#             port=int(redis_container.get_exposed_port(6379)),
-#         )
-#         yield client
-#         await client.flushdb()
-#         await client.aclose()
+# Put fixtures used across more than one test tree here. The container fixtures
+# come from the testkit plugin above.
 
 
 def load_text_file(relative_path: str) -> str:

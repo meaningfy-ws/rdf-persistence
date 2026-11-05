@@ -19,6 +19,7 @@ COMPOSE_FILE = $(REPO_ROOT)/infra/compose.yaml
 ENV_FILE     = $(REPO_ROOT)/infra/.env
 
 # Coverage flags — appended only in coverage-aware targets, never in pytest.ini.
+# `make test-containers` overrides the floor with --cov-fail-under=0 (PD-16).
 COV_FLAGS = --cov=$(PACKAGE_NAME) \
             --cov-report=term-missing \
             --cov-report=xml:$(REPO_ROOT)/coverage.xml \
@@ -85,7 +86,7 @@ pre-commit: ## Run pre-commit hooks on all files
 #-----------------------------------------------------------------------------
 # Validation — non-mutating targets
 #-----------------------------------------------------------------------------
-.PHONY: lint typecheck check-architecture test test-unit test-feature test-e2e test-integration
+.PHONY: lint typecheck check-architecture test test-unit test-feature test-containers test-e2e
 
 lint: ## Run Ruff linting checks
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running Ruff checks$(END_BUILD_PRINT)"
@@ -105,10 +106,15 @@ check-architecture: ## Check architecture constraints with import-linter
 check-spec: ## Validate the OpenSpec spine (pinned CLI, strict)
 	@ npx -y @fission-ai/openspec@1.4.1 validate --all --strict
 
-test: ## Run all tests (with coverage)
-	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running all tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
-	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) All tests passed$(END_BUILD_PRINT)"
+test: ## Run the unit and feature tests, with the coverage floor
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit and feature tests$(END_BUILD_PRINT)"
+	@ uv run pytest $(TEST_PATH) -m "unit or feature" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Unit and feature tests passed$(END_BUILD_PRINT)"
+
+test-containers: ## Run the integration and e2e tests against Docker containers (no coverage floor)
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running container tests$(END_BUILD_PRINT)"
+	@ uv run pytest $(TEST_PATH) -m "integration or e2e" $(COV_FLAGS) --cov-fail-under=0 --junitxml=$(REPO_ROOT)/test-results-containers.xml
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Container tests passed$(END_BUILD_PRINT)"
 
 test-unit: ## Run unit tests only
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit tests$(END_BUILD_PRINT)"
@@ -125,11 +131,6 @@ test-e2e: ## Run end-to-end tests only
 	@ uv run pytest $(TEST_PATH) -m "e2e"
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) E2e tests passed$(END_BUILD_PRINT)"
 
-test-integration: ## Run integration tests only (needs a running datastore)
-	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running integration tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) -m "integration"
-	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Integration tests passed$(END_BUILD_PRINT)"
-
 #-----------------------------------------------------------------------------
 # Aggregates
 #-----------------------------------------------------------------------------
@@ -138,13 +139,13 @@ test-integration: ## Run integration tests only (needs a running datastore)
 check-quality: lint typecheck check-architecture check-spec ## Static checks: lint + typecheck + architecture
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) All quality checks passed$(END_BUILD_PRINT)"
 
-check-all: check-quality test ## Full suite: quality + all tests
+check-all: check-quality test ## Full suite: quality + unit and feature tests (containers: make test-containers)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Full verification suite passed$(END_BUILD_PRINT)"
 
 ci-quick: check-quality test-unit ## CI fast: quality + unit tests
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) CI quick checks passed$(END_BUILD_PRINT)"
 
-ci-full: check-all clean-code ## CI full: quality + all tests + clean-code
+ci-full: check-all clean-code ## CI full: quality + unit and feature tests + clean-code
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) CI full checks passed$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------
@@ -246,7 +247,7 @@ clean: ## Remove build artifacts and caches
 	@ rm -rf $(BUILD_PATH) $(REPO_ROOT)/reports
 	@ rm -rf $(REPO_ROOT)/.pytest_cache $(REPO_ROOT)/.mypy_cache $(REPO_ROOT)/.ruff_cache
 	@ rm -rf $(REPO_ROOT)/.import_linter_cache
-	@ rm -rf $(REPO_ROOT)/coverage.xml $(REPO_ROOT)/test-results.xml $(REPO_ROOT)/.coverage
+	@ rm -rf $(REPO_ROOT)/coverage.xml $(REPO_ROOT)/test-results.xml $(REPO_ROOT)/test-results-containers.xml $(REPO_ROOT)/.coverage
 	@ rm -rf $(REPO_ROOT)/*.egg-info
 	@ uv run ruff clean 2>/dev/null || true
 	@ find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

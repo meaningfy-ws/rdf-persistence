@@ -16,7 +16,7 @@ Notation:
 - [x] 0.3 The toy library schema in `tests/fixtures/library/` (PD-17), as hand-written YAML.
   - Includes `library_roles.yaml` (the role definitions of PD-9's matrix) and `partial.yaml` (imports only `rp_core` and `rp_annotations`).
   - `linkml-lint` passes.
-- [ ] 0.4 Test containers (PD-16):
+- [x] 0.4 Test containers (PD-16):
   - `rdf_persistence/testkit/containers/compose.yaml`, with the Fuseki Dockerfile vendored at a pinned Jena 5.x release, and Garage and Zitadel pinned by digest.
   - The bootstrap for each container.
   - `rdf_persistence/testkit/containers/` as package data behind the extra `rdf-persistence[testkit]`, imported lazily; the markers `store`, `files` and `identity` added to `tests/conftest.py`'s path table and registered in `pytest.ini` (PD-16).
@@ -171,7 +171,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 
 ## Roadmap
 
-- [x] 0.1 · [x] 0.2 · [x] 0.3 · [ ] 0.4 · [ ] 0.5
+- [x] 0.1 · [x] 0.2 · [x] 0.3 · [x] 0.4 · [ ] 0.5
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10
 - [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8
 - [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4
