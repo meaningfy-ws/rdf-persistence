@@ -76,8 +76,9 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-13,
 - **PD-3 One SPARQL value function.**
   - `domain/sparql.py` holds `term(value) -> str`, covering IRIs, literals with datatype or language,
     and blank-node labels, and `fill(template, **terms)`.
-  - Every query template in `adapters` is a module constant with `$name` placeholders. No other code
-    produces SPARQL text.
+  - Every query template is a module constant with `$name` placeholders, kept in the service that
+    sends it (the session, tenancy); adapters forward SPARQL and build none. Only `domain/sparql.py`
+    produces SPARQL text from values, including lists of terms (stage 2 review).
 - **PD-4 Graph IRI.** `graph_iri(root_iri) = root_iri + "/graph"`, defined only in `domain/iris.py`
   (DEC-29).
 - **PD-5 Version tokens.** Each commit writes a fresh random UUID as the version, never a counter.
@@ -142,6 +143,25 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-13,
   `rp_path`, and the generic aggregate routes skip it: it is read and replaced through
   `GET`/`PUT /{tenant_segment}/{t}`, with action `modify` at tenant scope for the replace.
 
+- **PD-8c Stage 2 review decisions.**
+  - Parsing never fetches: a JSON-LD document whose `@context` is not inline is refused as
+    `InvalidGraph` before parsing (no remote or `file:` context is followed).
+  - A commit may name as loaded graphs only IRIs under `{iri}/content/` (PD-6a); `replace_graph`
+    given no list keeps the loaded graphs already registered, so an edit through the unit of work
+    never drops them.
+  - `add_graph` is one conditional insert (`INSERT … WHERE { FILTER NOT EXISTS … }`) confirmed by an
+    ASK, so two concurrent adds of one IRI cannot both succeed.
+  - Tenancy validates the root and the access record before creating anything, so a refused request
+    leaves nothing; deletion and the sweep use the record's stored `database_name`; `finish_deletion`
+    acts only on a record in state `deleting`; tenant IRIs carry a canonical UUID.
+  - The sweep never drops a resource when the system database had to be created at start-up or holds
+    no access record while tenant resources exist: it logs and stops, since that means the records
+    are missing, not that the tenants are orphans.
+  - The vocabulary (predicate IRIs, enum meanings) is read from the schema in `services`, keyed by the
+    generated enums; nothing in `domain` restates it. The session returns the graph IRI it read, so the
+    mapper never re-derives where tracking lives.
+  - The top-level package exports lazily, so importing `rdf_persistence.domain` (as every consumer's
+    generated module does) loads no adapter or service.
 - **PD-8b Tenancy details** (tasks 2.6, 2.7). `Tenancy(store, files, settings, *, mapper,
   access_class, clock)`: it needs the mapper and the consumer's access class (the toy's
   `LibraryAccess`), which `install_service` derives from the schema. `create(label, root, creator)`
