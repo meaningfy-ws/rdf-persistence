@@ -440,6 +440,45 @@ classes:
       admin_pat:
         required: true
 
+  MachineUser:
+    title: Machine user
+    description: >-
+      A service account provisioned in the test Zitadel, with the private key it signs its
+      JWT-profile assertions with.
+    class_uri: rp:MachineUser
+    slots:
+      - name
+      - user_id
+      - key_id
+      - private_key
+    slot_usage:
+      name:
+        required: true
+      user_id:
+        required: true
+      key_id:
+        required: true
+      private_key:
+        required: true
+  ZitadelProject:
+    title: Zitadel project
+    description: >-
+      The project provisioned in the test Zitadel: the organisation and project ids, the machine
+      users of the test principals, and the server that holds them.
+    class_uri: rp:ZitadelProject
+    slots:
+      - server
+      - organisation_id
+      - project_id
+      - machine_users
+    slot_usage:
+      server:
+        required: true
+      organisation_id:
+        required: true
+      project_id:
+        required: true
+
 slots:
   relative_path:
     title: Relative path
@@ -808,6 +847,36 @@ slots:
     description: The exit code the command ended with.
     slot_uri: rp:exitCode
     range: integer
+  user_id:
+    title: User id
+    description: The id of a user in the identity provider.
+    slot_uri: rp:userId
+  private_key:
+    title: Private key
+    description: The PEM private key of a machine user's key pair.
+    slot_uri: rp:privateKey
+    annotations:
+      secret: 'true'
+  server:
+    title: Server
+    description: The test server a provisioned resource lives on.
+    slot_uri: rp:server
+    range: ZitadelServer
+  organisation_id:
+    title: Organisation id
+    description: The id of the organisation that owns the provisioned resources.
+    slot_uri: rp:organisationId
+  project_id:
+    title: Project id
+    description: The id of the provisioned project, whose audience scope puts it in a token.
+    slot_uri: rp:projectId
+  machine_users:
+    title: Machine users
+    description: The service accounts of the test principals.
+    slot_uri: rp:machineUsers
+    range: MachineUser
+    multivalued: true
+    inlined_as_list: true
 
 enums:
   HardRule:
@@ -923,3 +992,15 @@ enums:
         title: Secret
         description: On a slot, `true` when its value must stay out of the repr of the generated class.
         meaning: rp:GenerationAnnotationSecret
+      allows_extra:
+        title: Allows extra
+        description: >-
+          On a class, `true` when it accepts fields it does not declare and keeps them in `model_extra`,
+          as the answer of a foreign API needs. Every other class refuses them.
+        meaning: rp:GenerationAnnotationAllowsExtra
+      strict:
+        title: Strict
+        description: >-
+          On a slot, `true` when its value must already be of its type: a string is not read as a number,
+          and a boolean is not read as one either.
+        meaning: rp:GenerationAnnotationStrict

@@ -27,7 +27,7 @@ def test_hand_written_domain_class_fails_the_guard_and_names_it(tmp_path):
     assert "domain/handwritten.py:4" in str(err.value), "the file and line are named"
 
 
-@pytest.mark.parametrize("layer", ["generation", "testkit"])
+@pytest.mark.parametrize("layer", ["adapters", "generation", "testkit"])
 def test_a_hand_written_record_in_a_widened_layer_is_caught_only_when_the_layer_is_scanned(
     tmp_path, layer
 ):
@@ -46,7 +46,7 @@ def test_a_hand_written_record_in_a_widened_layer_is_caught_only_when_the_layer_
         assert_models_generated(package, roots=[], layers=(layer,), allow=HAND_WRITTEN)
 
 
-# Every plain data record of generation and testkit is generated (PD-24); what stays hand-written
+# Every plain data record of adapters, generation and testkit is generated (PD-24); what stays hand-written
 # holds a foreign runtime object that LinkML cannot express.
 # A type that subclasses a LinkML generator or template class is not flagged by the guard, so it
 # needs no entry here.
@@ -69,7 +69,7 @@ def test_this_repo_has_no_hand_written_model_or_generated_artefact_outside_gener
         "rdf_persistence",
         roots=[REPO / "rdf_persistence", REPO / "tests"],
         exempt=[REPO / "tests" / "fixtures"],
-        layers=(*SCANNED_LAYERS, "generation", "testkit"),
+        layers=(*SCANNED_LAYERS, "adapters", "generation", "testkit"),
         allow=HAND_WRITTEN,
     )
 

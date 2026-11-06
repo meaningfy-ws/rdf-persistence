@@ -10,6 +10,15 @@ from rdf_persistence.domain import generated
 
 INDEXED_NAMES = [
     "RpModel",
+    "S3FileStore",
+    "TokenVerifier",
+    "JwksTokenVerifier",
+    "Identity",
+    "ZitadelIdentity",
+    "zitadel_roles_claim",
+    "IdentityUnavailable",
+    "InvalidToken",
+    "AccountSummary",
     "AggregateRoot",
     "StoredFile",
     "Principal",

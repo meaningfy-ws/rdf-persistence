@@ -1,0 +1,814 @@
+id: https://meaningfy.ws/ns/rdf-persistence/wire
+name: rp_wire
+title: RDF persistence wire module
+description: >-
+  The shapes of the foreign APIs the adapters speak: the requests and answers of Zitadel's management
+  and user APIs, the claims of a verified access token and the OpenID Connect discovery document. The
+  adapters and the testkit's provisioning share them, so no JSON is read or written as a dictionary.
+  A JSON key is the alias of its slot. An answer allows fields it does not declare, because the
+  provider says more than the toolkit reads.
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+annotations:
+  module_kind: technical
+
+classes:
+  Any:
+    title: Any
+    description: Any value; the slots that range over it hold data the toolkit does not model.
+    class_uri: linkml:Any
+  ZitadelEmailQuery:
+    title: Zitadel email query
+    description: >-
+      The search term that finds a user by email address.
+    class_uri: rp:ZitadelEmailQuery
+    slots:
+      - zitadel_email_address
+      - zitadel_text_method
+    slot_usage:
+      zitadel_email_address:
+        required: true
+  ZitadelOrganisationQuery:
+    title: Zitadel organisation query
+    description: >-
+      The search term that keeps the users of one organisation.
+    class_uri: rp:ZitadelOrganisationQuery
+    slots:
+      - zitadel_organization_id
+    slot_usage:
+      zitadel_organization_id:
+        required: true
+  ZitadelProjectQuery:
+    title: Zitadel project query
+    description: >-
+      The search term that keeps the grants of one project.
+    class_uri: rp:ZitadelProjectQuery
+    slots:
+      - zitadel_project_id
+    slot_usage:
+      zitadel_project_id:
+        required: true
+  ZitadelUserQuery:
+    title: Zitadel user query
+    description: >-
+      The search term that keeps the grants of one user.
+    class_uri: rp:ZitadelUserQuery
+    slots:
+      - zitadel_user_id
+    slot_usage:
+      zitadel_user_id:
+        required: true
+  ZitadelQuery:
+    title: Zitadel query
+    description: >-
+      One term of a search; exactly one of its slots is set.
+    class_uri: rp:ZitadelQuery
+    slots:
+      - zitadel_email_query
+      - zitadel_organization_id_query
+      - zitadel_project_id_query
+      - zitadel_user_id_query
+  ZitadelWindow:
+    title: Zitadel window
+    description: >-
+      The part of a search result a page asks for.
+    class_uri: rp:ZitadelWindow
+    slots:
+      - zitadel_offset
+      - zitadel_limit
+    slot_usage:
+      zitadel_offset:
+        required: true
+      zitadel_limit:
+        required: true
+  ZitadelSearch:
+    title: Zitadel search
+    description: >-
+      The body of a search request: a window and the terms that all must hold.
+    class_uri: rp:ZitadelSearch
+    slots:
+      - zitadel_window
+      - zitadel_queries
+    slot_usage:
+      zitadel_window:
+        required: true
+      zitadel_queries:
+        required: true
+  ZitadelGrantRequest:
+    title: Zitadel grant request
+    description: >-
+      The body that grants roles of a project to a user, or replaces the roles of a grant.
+    class_uri: rp:ZitadelGrantRequest
+    slots:
+      - zitadel_project_id
+      - zitadel_role_keys
+    slot_usage:
+      zitadel_role_keys:
+        required: true
+  ZitadelProjectRequest:
+    title: Zitadel project request
+    description: >-
+      The body that creates a project.
+    class_uri: rp:ZitadelProjectRequest
+    slots:
+      - zitadel_name
+    slot_usage:
+      zitadel_name:
+        required: true
+  ZitadelRoleRequest:
+    title: Zitadel role request
+    description: >-
+      The body that adds a role to a project.
+    class_uri: rp:ZitadelRoleRequest
+    slots:
+      - zitadel_role_key
+      - zitadel_display_name
+    slot_usage:
+      zitadel_role_key:
+        required: true
+      zitadel_display_name:
+        required: true
+  ZitadelMachineUserRequest:
+    title: Zitadel machine user request
+    description: >-
+      The body that creates a machine user whose access tokens are JWTs.
+    class_uri: rp:ZitadelMachineUserRequest
+    slots:
+      - zitadel_user_name
+      - zitadel_name
+      - zitadel_access_token_type
+    slot_usage:
+      zitadel_user_name:
+        required: true
+      zitadel_name:
+        required: true
+  ZitadelKeyRequest:
+    title: Zitadel key request
+    description: >-
+      The body that creates a key for a machine user.
+    class_uri: rp:ZitadelKeyRequest
+    slots:
+      - zitadel_key_type
+    slot_usage:
+  ZitadelAssertion:
+    title: Zitadel assertion
+    description: >-
+      The claims of the JWT a machine user signs to ask for an access token (the JWT-profile grant).
+    class_uri: rp:ZitadelAssertion
+    slots:
+      - zitadel_issuer
+      - zitadel_subject
+      - zitadel_audience
+      - zitadel_issued_at
+      - zitadel_expires_at
+    slot_usage:
+      zitadel_issuer:
+        required: true
+      zitadel_subject:
+        required: true
+      zitadel_audience:
+        required: true
+      zitadel_issued_at:
+        required: true
+      zitadel_expires_at:
+        required: true
+  ZitadelTokenRequest:
+    title: Zitadel token request
+    description: >-
+      The form that asks for an access token with a signed assertion.
+    class_uri: rp:ZitadelTokenRequest
+    slots:
+      - zitadel_grant_type
+      - zitadel_scope
+      - zitadel_assertion
+    slot_usage:
+      zitadel_scope:
+        required: true
+      zitadel_assertion:
+        required: true
+  ZitadelEmail:
+    title: Zitadel email
+    description: >-
+      The email address of a person, as Zitadel reports it.
+    class_uri: rp:ZitadelEmail
+    slots:
+      - zitadel_email
+    slot_usage:
+      zitadel_email:
+        required: true
+    annotations:
+      allows_extra: 'true'
+  ZitadelHuman:
+    title: Zitadel human
+    description: >-
+      What Zitadel reports about a person; a service account has none.
+    class_uri: rp:ZitadelHuman
+    slots:
+      - zitadel_human_email
+    annotations:
+      allows_extra: 'true'
+  ZitadelDetails:
+    title: Zitadel details
+    description: >-
+      What Zitadel reports about where a resource lives.
+    class_uri: rp:ZitadelDetails
+    slots:
+      - zitadel_resource_owner
+    annotations:
+      allows_extra: 'true'
+  ZitadelUser:
+    title: Zitadel user
+    description: >-
+      One user of an organisation, as the user search and the user read report it.
+    class_uri: rp:ZitadelUser
+    slots:
+      - zitadel_user_id
+      - zitadel_state
+      - zitadel_username
+      - zitadel_human
+      - zitadel_details
+    slot_usage:
+      zitadel_user_id:
+        required: true
+      zitadel_state:
+        required: true
+      zitadel_username:
+        required: true
+    annotations:
+      allows_extra: 'true'
+  ZitadelUserAnswer:
+    title: Zitadel user answer
+    description: >-
+      The answer that reads one user.
+    class_uri: rp:ZitadelUserAnswer
+    slots:
+      - zitadel_user
+    slot_usage:
+      zitadel_user:
+        required: true
+    annotations:
+      allows_extra: 'true'
+  ZitadelUserGrant:
+    title: Zitadel user grant
+    description: >-
+      The roles of a project that a user holds, as the grant search reports them.
+    class_uri: rp:ZitadelUserGrant
+    slots:
+      - zitadel_id
+      - zitadel_user_id
+      - zitadel_role_keys
+    slot_usage:
+      zitadel_id:
+        required: true
+      zitadel_user_id:
+        required: true
+    annotations:
+      allows_extra: 'true'
+  ZitadelUserPage:
+    title: Zitadel user page
+    description: >-
+      One page of the user search.
+    class_uri: rp:ZitadelUserPage
+    slots:
+      - zitadel_users
+    annotations:
+      allows_extra: 'true'
+  ZitadelGrantPage:
+    title: Zitadel grant page
+    description: >-
+      One page of the grant search.
+    class_uri: rp:ZitadelGrantPage
+    slots:
+      - zitadel_grants
+    annotations:
+      allows_extra: 'true'
+  ZitadelCreated:
+    title: Zitadel created
+    description: >-
+      The answer to creating a project, or the organisation inside the answer that reads it.
+    class_uri: rp:ZitadelCreated
+    slots:
+      - zitadel_id
+    slot_usage:
+      zitadel_id:
+        required: true
+    annotations:
+      allows_extra: 'true'
+  ZitadelOrganisationAnswer:
+    title: Zitadel organisation answer
+    description: >-
+      The answer that reads the organisation of the caller.
+    class_uri: rp:ZitadelOrganisationAnswer
+    slots:
+      - zitadel_org
+    slot_usage:
+      zitadel_org:
+        required: true
+    annotations:
+      allows_extra: 'true'
+  ZitadelMachineUserAnswer:
+    title: Zitadel machine user answer
+    description: >-
+      The answer to creating a machine user.
+    class_uri: rp:ZitadelMachineUserAnswer
+    slots:
+      - zitadel_user_id
+    slot_usage:
+      zitadel_user_id:
+        required: true
+    annotations:
+      allows_extra: 'true'
+  ZitadelKeyAnswer:
+    title: Zitadel key answer
+    description: >-
+      The answer to creating a key: the key file, base64 encoded.
+    class_uri: rp:ZitadelKeyAnswer
+    slots:
+      - zitadel_key_details
+    slot_usage:
+      zitadel_key_details:
+        required: true
+    annotations:
+      allows_extra: 'true'
+  ZitadelKeyFile:
+    title: Zitadel key file
+    description: >-
+      The key file a machine user signs its assertions with, once decoded.
+    class_uri: rp:ZitadelKeyFile
+    slots:
+      - zitadel_key_id
+      - zitadel_key
+    slot_usage:
+      zitadel_key_id:
+        required: true
+      zitadel_key:
+        required: true
+    annotations:
+      allows_extra: 'true'
+  ZitadelTokenAnswer:
+    title: Zitadel token answer
+    description: >-
+      The answer that grants an access token.
+    class_uri: rp:ZitadelTokenAnswer
+    slots:
+      - zitadel_access_token
+    slot_usage:
+      zitadel_access_token:
+        required: true
+    annotations:
+      allows_extra: 'true'
+  JwtClaims:
+    title: JWT claims
+    description: >-
+      The claims of a verified access token that the toolkit reads; the roles claim, whose name is configured, stays among the extra fields.
+    class_uri: rp:JwtClaims
+    slots:
+      - jwt_subject
+      - jwt_issuer
+      - jwt_audience
+      - jwt_expires_at
+      - jwt_not_before
+      - jwt_authorized_party
+    slot_usage:
+      jwt_subject:
+        required: true
+      jwt_issuer:
+        required: true
+      jwt_audience:
+        required: true
+      jwt_expires_at:
+        required: true
+    annotations:
+      allows_extra: 'true'
+  FusekiDatasetList:
+    title: Fuseki dataset list
+    description: >-
+      The answer of the Fuseki administration endpoint that lists datasets.
+    class_uri: rp:FusekiDatasetList
+    slots:
+      - fuseki_datasets
+    slot_usage:
+      fuseki_datasets:
+        required: true
+    annotations:
+      allows_extra: 'true'
+  FusekiDataset:
+    title: Fuseki dataset
+    description: >-
+      One dataset of the Fuseki dataset list.
+    class_uri: rp:FusekiDataset
+    slots:
+      - fuseki_dataset_name
+    slot_usage:
+      fuseki_dataset_name:
+        required: true
+    annotations:
+      allows_extra: 'true'
+  DiscoveryDocument:
+    title: Discovery document
+    description: >-
+      The part of an OpenID Connect discovery document the toolkit reads.
+    class_uri: rp:DiscoveryDocument
+    slots:
+      - discovery_issuer
+      - discovery_jwks_uri
+    slot_usage:
+      discovery_issuer:
+        required: true
+      discovery_jwks_uri:
+        required: true
+    annotations:
+      allows_extra: 'true'
+
+slots:
+  zitadel_email_address:
+    title: Zitadel email address
+    description: >-
+      The address to search for.
+    slot_uri: rp:zitadelEmailAddress
+    alias: emailAddress
+  zitadel_text_method:
+    title: Zitadel text method
+    description: >-
+      How the search term is compared.
+    slot_uri: rp:zitadelTextMethod
+    alias: method
+    equals_string: TEXT_QUERY_METHOD_EQUALS
+    ifabsent: string(TEXT_QUERY_METHOD_EQUALS)
+  zitadel_organization_id:
+    title: Zitadel organisation id
+    description: >-
+      The id of an organisation.
+    slot_uri: rp:zitadelOrganizationId
+    alias: organizationId
+  zitadel_project_id:
+    title: Zitadel project id
+    description: >-
+      The id of a project.
+    slot_uri: rp:zitadelProjectId
+    alias: projectId
+  zitadel_user_id:
+    title: Zitadel user id
+    description: >-
+      The id of a user.
+    slot_uri: rp:zitadelUserId
+    alias: userId
+    pattern: '^[A-Za-z0-9_-]+$'
+  zitadel_email_query:
+    title: Zitadel email query
+    description: >-
+      A term that finds users by email address.
+    slot_uri: rp:zitadelEmailQuery
+    alias: emailQuery
+    range: ZitadelEmailQuery
+  zitadel_organization_id_query:
+    title: Zitadel organisation id query
+    description: >-
+      A term that keeps one organisation.
+    slot_uri: rp:zitadelOrganizationIdQuery
+    alias: organizationIdQuery
+    range: ZitadelOrganisationQuery
+  zitadel_project_id_query:
+    title: Zitadel project id query
+    description: >-
+      A term that keeps one project.
+    slot_uri: rp:zitadelProjectIdQuery
+    alias: projectIdQuery
+    range: ZitadelProjectQuery
+  zitadel_user_id_query:
+    title: Zitadel user id query
+    description: >-
+      A term that keeps one user.
+    slot_uri: rp:zitadelUserIdQuery
+    alias: userIdQuery
+    range: ZitadelUserQuery
+  zitadel_offset:
+    title: Zitadel offset
+    description: >-
+      How many results to skip.
+    slot_uri: rp:zitadelOffset
+    alias: offset
+    range: integer
+  zitadel_limit:
+    title: Zitadel limit
+    description: >-
+      How many results to return at most.
+    slot_uri: rp:zitadelLimit
+    alias: limit
+    range: integer
+  zitadel_window:
+    title: Zitadel window
+    description: >-
+      The part of the result to return.
+    slot_uri: rp:zitadelWindow
+    alias: query
+    range: ZitadelWindow
+  zitadel_queries:
+    title: Zitadel queries
+    description: >-
+      The terms that all must hold.
+    slot_uri: rp:zitadelQueries
+    alias: queries
+    range: ZitadelQuery
+    multivalued: true
+  zitadel_role_keys:
+    title: Zitadel role keys
+    description: >-
+      The keys of project roles.
+    slot_uri: rp:zitadelRoleKeys
+    alias: roleKeys
+    multivalued: true
+  zitadel_name:
+    title: Zitadel name
+    description: >-
+      The display name of a project or a machine user.
+    slot_uri: rp:zitadelName
+    alias: name
+  zitadel_role_key:
+    title: Zitadel role key
+    description: >-
+      The key of a project role.
+    slot_uri: rp:zitadelRoleKey
+    alias: roleKey
+  zitadel_display_name:
+    title: Zitadel display name
+    description: >-
+      The name a role is shown with.
+    slot_uri: rp:zitadelDisplayName
+    alias: displayName
+  zitadel_user_name:
+    title: Zitadel user name
+    description: >-
+      The login name of a machine user.
+    slot_uri: rp:zitadelUserName
+    alias: userName
+  zitadel_access_token_type:
+    title: Zitadel access token type
+    description: >-
+      The kind of access token the user gets.
+    slot_uri: rp:zitadelAccessTokenType
+    alias: accessTokenType
+    equals_string: ACCESS_TOKEN_TYPE_JWT
+    ifabsent: string(ACCESS_TOKEN_TYPE_JWT)
+  zitadel_key_type:
+    title: Zitadel key type
+    description: >-
+      The format of the key.
+    slot_uri: rp:zitadelKeyType
+    alias: type
+    equals_string: KEY_TYPE_JSON
+    ifabsent: string(KEY_TYPE_JSON)
+  zitadel_issuer:
+    title: Zitadel issuer
+    description: >-
+      The machine user that signed the assertion.
+    slot_uri: rp:zitadelIssuer
+    alias: iss
+  zitadel_subject:
+    title: Zitadel subject
+    description: >-
+      The machine user the assertion speaks for.
+    slot_uri: rp:zitadelSubject
+    alias: sub
+  zitadel_audience:
+    title: Zitadel audience
+    description: >-
+      The instance the assertion is for.
+    slot_uri: rp:zitadelAudience
+    alias: aud
+  zitadel_issued_at:
+    title: Zitadel issued at
+    description: >-
+      When the assertion was signed, in seconds since the epoch.
+    slot_uri: rp:zitadelIssuedAt
+    alias: iat
+    range: integer
+  zitadel_expires_at:
+    title: Zitadel expires at
+    description: >-
+      When the assertion stops being valid, in seconds since the epoch.
+    slot_uri: rp:zitadelExpiresAt
+    alias: exp
+    range: integer
+  zitadel_grant_type:
+    title: Zitadel grant type
+    description: >-
+      The OAuth grant type.
+    slot_uri: rp:zitadelGrantType
+    alias: grant_type
+    equals_string: urn:ietf:params:oauth:grant-type:jwt-bearer
+    ifabsent: string(urn:ietf:params:oauth:grant-type:jwt-bearer)
+  zitadel_scope:
+    title: Zitadel scope
+    description: >-
+      The space-separated OAuth scopes.
+    slot_uri: rp:zitadelScope
+    alias: scope
+  zitadel_assertion:
+    title: Zitadel assertion
+    description: >-
+      The signed JWT that proves the machine user's identity.
+    slot_uri: rp:zitadelAssertion
+    alias: assertion
+  zitadel_email:
+    title: Zitadel email
+    description: >-
+      The email address.
+    slot_uri: rp:zitadelEmail
+    alias: email
+  zitadel_human_email:
+    title: Zitadel human email
+    description: >-
+      The email of the person.
+    slot_uri: rp:zitadelHumanEmail
+    alias: email
+    range: ZitadelEmail
+  zitadel_state:
+    title: Zitadel state
+    description: >-
+      The state of the account; the active one is `USER_STATE_ACTIVE`.
+    slot_uri: rp:zitadelState
+    alias: state
+  zitadel_username:
+    title: Zitadel username
+    description: >-
+      The name the account signs in with.
+    slot_uri: rp:zitadelUsername
+    alias: username
+  zitadel_human:
+    title: Zitadel human
+    description: >-
+      The person behind the account, if it is a person's.
+    slot_uri: rp:zitadelHuman
+    alias: human
+    range: ZitadelHuman
+  zitadel_resource_owner:
+    title: Zitadel resource owner
+    description: >-
+      The id of the organisation that owns the resource.
+    slot_uri: rp:zitadelResourceOwner
+    alias: resourceOwner
+  zitadel_details:
+    title: Zitadel details
+    description: >-
+      Where the resource lives.
+    slot_uri: rp:zitadelDetails
+    alias: details
+    range: ZitadelDetails
+  zitadel_user:
+    title: Zitadel user
+    description: >-
+      The user that was read.
+    slot_uri: rp:zitadelUser
+    alias: user
+    range: ZitadelUser
+  zitadel_id:
+    title: Zitadel id
+    description: >-
+      The id of a created or listed thing.
+    slot_uri: rp:zitadelId
+    alias: id
+  zitadel_users:
+    title: Zitadel users
+    description: >-
+      The users of the page.
+    slot_uri: rp:zitadelUsers
+    alias: result
+    range: ZitadelUser
+    multivalued: true
+  zitadel_grants:
+    title: Zitadel grants
+    description: >-
+      The grants of the page.
+    slot_uri: rp:zitadelGrants
+    alias: result
+    range: ZitadelUserGrant
+    multivalued: true
+  zitadel_org:
+    title: Zitadel org
+    description: >-
+      The organisation of the caller.
+    slot_uri: rp:zitadelOrg
+    alias: org
+    range: ZitadelCreated
+  zitadel_key_details:
+    title: Zitadel key details
+    description: >-
+      The key file, base64 encoded.
+    slot_uri: rp:zitadelKeyDetails
+    alias: keyDetails
+  zitadel_key_id:
+    title: Zitadel key id
+    description: >-
+      The id of the key.
+    slot_uri: rp:zitadelKeyId
+    alias: keyId
+  zitadel_key:
+    title: Zitadel key
+    description: >-
+      The private key, in PEM.
+    slot_uri: rp:zitadelKey
+    alias: key
+  zitadel_access_token:
+    title: Zitadel access token
+    description: >-
+      The access token.
+    slot_uri: rp:zitadelAccessToken
+    alias: access_token
+  jwt_subject:
+    title: JWT subject
+    description: >-
+      The account the token is for.
+    slot_uri: rp:jwtSubject
+    alias: sub
+    pattern: '^\S([\s\S]*\S)?$'
+    annotations:
+      strict: 'true'
+  jwt_issuer:
+    title: JWT issuer
+    description: >-
+      The issuer of the token.
+    slot_uri: rp:jwtIssuer
+    alias: iss
+  jwt_audience:
+    title: JWT audience
+    description: >-
+      The audience of the token, one string or a list of them.
+    slot_uri: rp:jwtAudience
+    alias: aud
+    range: Any
+  jwt_expires_at:
+    title: JWT expires at
+    description: >-
+      When the token stops being valid, in seconds since the epoch.
+    slot_uri: rp:jwtExpiresAt
+    alias: exp
+    range: float
+    annotations:
+      strict: 'true'
+  jwt_not_before:
+    title: JWT not before
+    description: >-
+      When the token starts being valid, in seconds since the epoch.
+    slot_uri: rp:jwtNotBefore
+    alias: nbf
+    range: float
+    annotations:
+      strict: 'true'
+  jwt_authorized_party:
+    title: JWT authorized party
+    description: >-
+      The client the token was issued to.
+    slot_uri: rp:jwtAuthorizedParty
+    alias: azp
+  discovery_issuer:
+    title: Discovery issuer
+    description: >-
+      The issuer the document describes.
+    slot_uri: rp:discoveryIssuer
+    alias: issuer
+  fuseki_datasets:
+    title: Fuseki datasets
+    description: >-
+      The datasets Fuseki serves.
+    slot_uri: rp:fusekiDatasets
+    alias: datasets
+    range: FusekiDataset
+    multivalued: true
+  fuseki_dataset_name:
+    title: Fuseki dataset name
+    description: >-
+      The name of the dataset, with a leading slash.
+    slot_uri: rp:fusekiDatasetName
+    alias: ds.name
+  discovery_jwks_uri:
+    title: Discovery JWKS URI
+    description: >-
+      Where the issuer publishes its signing keys.
+    slot_uri: rp:discoveryJwksUri
+    alias: jwks_uri
+
+enums:
+  BadRequestMeans:
+    title: Bad request means
+    description: >-
+      What an answer of 400 means to a call. Zitadel answers 400 to a state change that is already
+      done, and to a grant of a role the project lacks, and the call knows which.
+    permissible_values:
+      failure:
+        title: Failure
+        description: The request was wrong; this is an error like any other status.
+        meaning: rp:BadRequestMeansFailure
+      already_done:
+        title: Already done
+        description: The state change had already happened, so the call has nothing left to do.
+        meaning: rp:BadRequestMeansAlreadyDone
+      missing_role:
+        title: Missing role
+        description: The project has no such role.
+        meaning: rp:BadRequestMeansMissingRole

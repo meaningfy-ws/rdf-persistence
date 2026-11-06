@@ -194,8 +194,9 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-13,
     - {role: librarian, level: tenant, actions: [read, modify, delete, administer]}
     - {role: reader, level: tenant, actions: [read]}
     ```
-  - **Global roles** come from a configurable token claim. The default is Zitadel's
-    `urn:zitadel:iam:org:project:roles`, an object keyed by role name.
+  - **Global roles** come from a configurable token claim, an object keyed by role name. For
+    Zitadel it is `urn:zitadel:iam:org:project:{project_id}:roles` (checked on a live token in task
+    3.3), so `ServiceSettings.roles_claim` has no default: each consumer sets its own project's claim.
   - The toy library's roles are `librarian` and `reader` per library, plus the global role `admin`.
   - Actions are `read`, `modify` and `delete` (ODRL), and `administer` (the toolkit's
     `rp:administer`: change the tenant's grants). Creating an aggregate is `modify` at tenant scope.
@@ -413,6 +414,30 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
     the shapes wrap each pattern as `^(?:P)(?![\s\S])`, because `$` in pyshacl's and Java's regex
     accepts a final newline. The look-ahead is outside the XPath regex syntax SHACL names, but both
     validators the toolkit targets (pyshacl, Jena) accept it.
+- **PD-28a Stage 3 review decisions.**
+  - The wire shapes of foreign APIs are LinkML too: the Zitadel requests and answers, the verified
+    JWT claims and the OIDC discovery document are declared in
+    `rdf_persistence/model/adapters/rp_wire.yaml` (`module_kind: technical`, its own
+    `[[tool.rp-generate]]` entry) and generated into `rdf_persistence/adapters/generated/`; the
+    adapters and the testkit's provisioning share them. The model guard also scans `adapters`.
+    A slot annotated `strict` (generation-local) renders `Field(strict=True)`, so the claims' `exp`,
+    `nbf` and `sub` refuse coerced values; foreign ids (the Zitadel user id) carry a pattern.
+  - The principal IRI is `{issuer}/users/{percent-encoded sub}` (`domain/iris.principal_iri`): keyed
+    on the issuer, so principals of two providers never collide; grants and tracking store it, so
+    changing it means migrating data.
+  - The Zitadel roles claim is `zitadel_roles_claim(project_id)`, exported beside `ZitadelIdentity`.
+  - Token verification: a cached key is looked up without a lock; a refresh is single-flight; the
+    cooldown applies to stale and unknown-`kid` refreshes alike, and inside it the verifier answers
+    at once (an unknown `kid` is `InvalidToken`, stale keys with the provider down are
+    `IdentityUnavailable`); the discovery document's `issuer` must equal the configured issuer, which
+    must be `https` unless the caller opts out (test containers); `exp` and `nbf` must be numbers and
+    `sub` a non-empty string; error messages carry no attacker text.
+  - Every HTTP adapter takes `transport=` for a test double, sets explicit timeouts (connect 5 s,
+    read 30 s) and never retries inside a request; S3 keys may not contain `..` segments or control
+    characters, and an invalid bucket or key is the caller's error, not an outage.
+  - The identity port has a conformance suite run on `FakeIdentity` and Zitadel; the fake knows its
+    roles. Zitadel's disable and enable confirm the resulting state, act only on accounts of the
+    configured organisation, and refuse an empty account id.
   - `rp-generate` validates its own inputs (stage 1 review): manifest paths are relative POSIX paths
     without `..` and hashes are 64 hex digits; a run removes a listed file only if it lies under the
     project and still has its recorded hash; configured folders are relative, without `..`; the
@@ -571,10 +596,11 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
   - **Zitadel with Postgres**, pinned by digest. It starts with `ZITADEL_FIRSTINSTANCE_*`
     variables that create an admin machine user and write its personal access token to a mounted
     file. The fixture uses that token only to provision, through the management API:
-    - a project with the roles `admin`, and an API application whose access-token type is *JWT*
-      (Zitadel issues opaque tokens by default, which a JWKS check cannot verify);
+    - a project with the role `admin`;
     - one machine user per test principal (librarian, reader, outsider, admin), each with a key for
-      the private-key JWT flow.
+      the private-key JWT flow and the access-token type *JWT* (a machine-user setting in Zitadel;
+      by default it issues opaque tokens, which a JWKS check cannot verify). The `admin` user holds
+      the global role `admin`. No API application is needed (task 3.3).
 
     Tests get tokens with the JWT-profile grant, requesting the scopes `openid`,
     `urn:zitadel:iam:org:project:id:{project}:aud` and

@@ -57,7 +57,7 @@ name = what runs without the generate extra imports no linkml (only linkml_runti
 ; the lazy import in cli.py, which is ignored here so every other chain is checked.
 type = forbidden
 source_modules =
-    rdf_persistence.testkit.freshness
+    rdf_persistence.testkit
     rdf_persistence.generation.cli
     rdf_persistence.generation.config
     rdf_persistence.generation.manifest

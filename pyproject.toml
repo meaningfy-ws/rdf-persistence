@@ -90,6 +90,10 @@ package = "rdf_persistence.generation.generated"
 schema = "rdf_persistence/model/service/rp_service.yaml"
 package = "rdf_persistence.domain.generated.service"
 
+[[tool.rp-generate]]
+schema = "rdf_persistence/model/adapters/rp_wire.yaml"
+package = "rdf_persistence.adapters.generated"
+
 [tool.uv]
 default-groups = ["dev", "test", "lint"]
 

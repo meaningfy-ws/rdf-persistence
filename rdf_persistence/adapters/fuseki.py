@@ -3,14 +3,15 @@
 import logging
 from http import HTTPMethod, HTTPStatus
 from io import BytesIO
-from types import TracebackType
-from typing import Self
 from urllib.parse import quote
 
 import httpx
+from pydantic import ValidationError
 from rdflib import Graph, URIRef
 from rdflib.query import Result
 
+from rdf_persistence.adapters._http import CONTENT_TYPE, HttpAdapter
+from rdf_persistence.adapters.generated.rp_wire import FusekiDatasetList
 from rdf_persistence.domain.exceptions import (
     BadQuery,
     Conflict,
@@ -24,13 +25,12 @@ SPARQL_QUERY = "application/sparql-query"
 SPARQL_UPDATE = "application/sparql-update"
 RESULTS_JSON = "application/sparql-results+json"
 TURTLE = "text/turtle"
-CONTENT_TYPE, ACCEPT = "Content-Type", "Accept"
+ACCEPT = "Accept"
 # The endpoints of a dataset, and the administration endpoint of Fuseki.
 QUERY_ENDPOINT, UPDATE_ENDPOINT, DATA_ENDPOINT = "query", "update", "data"
 ADMIN_DATASETS = "/$/datasets"
-# The form fields that create a dataset, and the keys of the dataset list.
+# The form fields that create a dataset.
 FORM_DB_NAME, FORM_DB_TYPE, DATASET_TYPE = "dbName", "dbType", "tdb2"
-LIST_DATASETS_KEY, LIST_NAME_KEY = "datasets", "ds.name"
 GRAPH_PARAM = "graph"
 # The names rdflib gives the formats Fuseki speaks.
 RDFLIB_JSON, RDFLIB_TURTLE = "json", "turtle"
@@ -68,8 +68,11 @@ def _read_result(response: httpx.Response) -> Result:
     return result
 
 
-class FusekiStore:
+class FusekiStore(HttpAdapter):
     """A ``Store`` over Fuseki's SPARQL, Graph Store and admin endpoints, with basic auth."""
+
+    service = "Fuseki"
+    unavailable = StoreUnavailable
 
     def __init__(
         self,
@@ -79,24 +82,7 @@ class FusekiStore:
         *,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
-        self._client = httpx.AsyncClient(
-            base_url=url, auth=httpx.BasicAuth(user, password), transport=transport
-        )
-
-    async def aclose(self) -> None:
-        """Close the HTTP client."""
-        await self._client.aclose()
-
-    async def __aenter__(self) -> Self:
-        return self
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> None:
-        await self.aclose()
+        super().__init__(base_url=url, auth=httpx.BasicAuth(user, password), transport=transport)
 
     async def _send(
         self,
@@ -106,10 +92,7 @@ class FusekiStore:
         on_missing: type[PersistenceError] = DatabaseGone,
         **kwargs,
     ) -> httpx.Response:
-        try:
-            response = await self._client.request(method, path, **kwargs)
-        except httpx.HTTPError as error:
-            raise StoreUnavailable(f"Fuseki is unreachable: {error}") from error
+        response = await self.request(method, path, **kwargs)
         _raise_for_status(response, on_missing=on_missing)
         return response
 
@@ -158,8 +141,7 @@ class FusekiStore:
     async def list_datasets(self) -> list[str]:
         response = await self._send(HTTPMethod.GET, ADMIN_DATASETS, on_missing=NotFound)
         try:
-            return [
-                entry[LIST_NAME_KEY].lstrip("/") for entry in response.json()[LIST_DATASETS_KEY]
-            ]
-        except (ValueError, KeyError, TypeError) as error:
-            raise StoreUnavailable(f"{UNREADABLE}: {type(error).__name__}") from error
+            listing = FusekiDatasetList.model_validate_json(response.content)
+        except ValidationError as error:
+            raise StoreUnavailable(UNREADABLE) from error
+        return [entry.ds_name.lstrip("/") for entry in listing.datasets]

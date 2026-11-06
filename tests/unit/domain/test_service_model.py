@@ -21,14 +21,25 @@ BASE = "https://example.org/"
 
 
 def settings(**changes: str) -> ServiceSettings:
-    fields = {"base": BASE, "prefix": "lib", "tenant_segment": "tenants", "creator_role": "owner"}
+    fields = {
+        "base": BASE,
+        "prefix": "lib",
+        "tenant_segment": "tenants",
+        "creator_role": "owner",
+        "roles_claim": "urn:zitadel:iam:org:project:42:roles",
+    }
     return ServiceSettings(**{**fields, **changes})
 
 
-def test_the_roles_claim_defaults_to_zitadels() -> None:
-    assert settings().roles_claim == "urn:zitadel:iam:org:project:roles", (
-        "Zitadel's claim is the default"
-    )
+def test_the_roles_claim_has_no_default_because_it_names_the_consumers_project() -> None:
+    fields = settings().model_dump(exclude={"roles_claim"})
+    with pytest.raises(ValidationError, match="roles_claim"):
+        ServiceSettings(**fields)
+
+
+def test_an_empty_roles_claim_is_refused() -> None:
+    with pytest.raises(ValidationError, match="Invalid roles_claim format"):
+        settings(roles_claim="")
 
 
 @pytest.mark.parametrize("prefix", ["l", "lib", "a1b2", "a" * 20])

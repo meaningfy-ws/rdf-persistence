@@ -6,6 +6,12 @@ import pytest
 
 from rdf_persistence.domain.exceptions import Conflict, NotFound, StoreUnavailable, TenantGone
 from rdf_persistence.testkit import FakeFileStore, no_network  # noqa: F401  (fixture)
+from rdf_persistence.testkit.file_store_conformance import CASES, run_case
+
+
+@pytest.mark.parametrize("case", CASES, ids=lambda case: case.__name__)
+async def test_the_fake_file_store_conforms(case, no_network):  # noqa: F811
+    await run_case(case, FakeFileStore())
 
 
 @pytest.fixture

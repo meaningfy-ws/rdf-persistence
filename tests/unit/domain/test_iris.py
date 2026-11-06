@@ -18,6 +18,7 @@ from rdf_persistence.domain.iris import (
     mint_aggregate_iri,
     mint_part_iri,
     mint_tenant_iri,
+    principal_iri,
     registry_graph_iri,
     skolem_iri,
     system_database_name,
@@ -201,3 +202,15 @@ def test_every_minted_aggregate_iri_is_an_aggregate_iri():
 )
 def test_a_loaded_graph_is_the_minted_form_under_its_aggregate(graph, loaded):
     assert is_loaded_graph_of(AGGREGATE, graph) is loaded, graph
+
+
+@pytest.mark.parametrize(
+    ("issuer", "subject", "expected"),
+    [
+        ("https://id.example.org", "42", "https://id.example.org/users/42"),
+        ("https://id.example.org/", "42", "https://id.example.org/users/42"),
+        ("https://id.example.org", "a/../b c", "https://id.example.org/users/a%2F..%2Fb%20c"),
+    ],
+)
+def test_principal_iri_keeps_the_subject_in_one_segment(issuer, subject, expected) -> None:
+    assert str(principal_iri(issuer, subject)) == expected, "the principal IRI is wrong"

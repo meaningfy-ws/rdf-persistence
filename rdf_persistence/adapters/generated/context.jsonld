@@ -1,0 +1,270 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "linkml": "https://w3id.org/linkml/",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "issuer": {
+         "@id": "discoveryIssuer"
+      },
+      "jwks_uri": {
+         "@id": "discoveryJwksUri"
+      },
+      "ds.name": {
+         "@id": "fusekiDatasetName"
+      },
+      "datasets": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "fusekiDatasets"
+      },
+      "aud": {
+         "@id": "zitadelAudience"
+      },
+      "azp": {
+         "@id": "jwtAuthorizedParty"
+      },
+      "exp": {
+         "@id": "zitadelExpiresAt"
+      },
+      "iss": {
+         "@id": "zitadelIssuer"
+      },
+      "nbf": {
+         "@type": "xsd:float",
+         "@id": "jwtNotBefore"
+      },
+      "sub": {
+         "@id": "zitadelSubject"
+      },
+      "access_token": {
+         "@id": "zitadelAccessToken"
+      },
+      "accessTokenType": {
+         "@id": "zitadelAccessTokenType"
+      },
+      "assertion": {
+         "@id": "zitadelAssertion"
+      },
+      "details": {
+         "@type": "@id",
+         "@id": "zitadelDetails"
+      },
+      "displayName": {
+         "@id": "zitadelDisplayName"
+      },
+      "email": {
+         "@type": "@id",
+         "@id": "zitadelHumanEmail"
+      },
+      "emailAddress": {
+         "@id": "zitadelEmailAddress"
+      },
+      "emailQuery": {
+         "@type": "@id",
+         "@id": "zitadelEmailQuery"
+      },
+      "grant_type": {
+         "@id": "zitadelGrantType"
+      },
+      "result": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "zitadelUsers"
+      },
+      "human": {
+         "@type": "@id",
+         "@id": "zitadelHuman"
+      },
+      "id": {
+         "@id": "zitadelId"
+      },
+      "iat": {
+         "@id": "zitadelIssuedAt"
+      },
+      "key": {
+         "@id": "zitadelKey"
+      },
+      "keyDetails": {
+         "@id": "zitadelKeyDetails"
+      },
+      "keyId": {
+         "@id": "zitadelKeyId"
+      },
+      "type": "@type",
+      "limit": {
+         "@id": "zitadelLimit"
+      },
+      "name": {
+         "@id": "zitadelName"
+      },
+      "offset": {
+         "@id": "zitadelOffset"
+      },
+      "org": {
+         "@type": "@id",
+         "@id": "zitadelOrg"
+      },
+      "organizationId": {
+         "@id": "zitadelOrganizationId"
+      },
+      "organizationIdQuery": {
+         "@type": "@id",
+         "@id": "zitadelOrganizationIdQuery"
+      },
+      "projectId": {
+         "@id": "zitadelProjectId"
+      },
+      "projectIdQuery": {
+         "@type": "@id",
+         "@id": "zitadelProjectIdQuery"
+      },
+      "queries": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "zitadelQueries"
+      },
+      "resourceOwner": {
+         "@id": "zitadelResourceOwner"
+      },
+      "roleKey": {
+         "@id": "zitadelRoleKey"
+      },
+      "roleKeys": {
+         "@container": "@set",
+         "@id": "zitadelRoleKeys"
+      },
+      "scope": {
+         "@id": "zitadelScope"
+      },
+      "state": {
+         "@id": "zitadelState"
+      },
+      "method": {
+         "@id": "zitadelTextMethod"
+      },
+      "user": {
+         "@type": "@id",
+         "@id": "zitadelUser"
+      },
+      "userId": {
+         "@id": "zitadelUserId"
+      },
+      "userIdQuery": {
+         "@type": "@id",
+         "@id": "zitadelUserIdQuery"
+      },
+      "userName": {
+         "@id": "zitadelUserName"
+      },
+      "username": {
+         "@id": "zitadelUsername"
+      },
+      "query": {
+         "@type": "@id",
+         "@id": "zitadelWindow"
+      },
+      "@version": 1.1,
+      "Any": {
+         "@id": "linkml:Any"
+      },
+      "DiscoveryDocument": {
+         "@id": "DiscoveryDocument"
+      },
+      "FusekiDataset": {
+         "@id": "FusekiDataset"
+      },
+      "FusekiDatasetList": {
+         "@id": "FusekiDatasetList"
+      },
+      "JwtClaims": {
+         "@id": "JwtClaims"
+      },
+      "ZitadelAssertion": {
+         "@id": "ZitadelAssertion"
+      },
+      "ZitadelCreated": {
+         "@id": "ZitadelCreated"
+      },
+      "ZitadelDetails": {
+         "@id": "ZitadelDetails"
+      },
+      "ZitadelEmail": {
+         "@id": "ZitadelEmail"
+      },
+      "ZitadelEmailQuery": {
+         "@id": "ZitadelEmailQuery"
+      },
+      "ZitadelGrantPage": {
+         "@id": "ZitadelGrantPage"
+      },
+      "ZitadelGrantRequest": {
+         "@id": "ZitadelGrantRequest"
+      },
+      "ZitadelHuman": {
+         "@id": "ZitadelHuman"
+      },
+      "ZitadelKeyAnswer": {
+         "@id": "ZitadelKeyAnswer"
+      },
+      "ZitadelKeyFile": {
+         "@id": "ZitadelKeyFile"
+      },
+      "ZitadelKeyRequest": {
+         "@id": "ZitadelKeyRequest"
+      },
+      "ZitadelMachineUserAnswer": {
+         "@id": "ZitadelMachineUserAnswer"
+      },
+      "ZitadelMachineUserRequest": {
+         "@id": "ZitadelMachineUserRequest"
+      },
+      "ZitadelOrganisationAnswer": {
+         "@id": "ZitadelOrganisationAnswer"
+      },
+      "ZitadelOrganisationQuery": {
+         "@id": "ZitadelOrganisationQuery"
+      },
+      "ZitadelProjectQuery": {
+         "@id": "ZitadelProjectQuery"
+      },
+      "ZitadelProjectRequest": {
+         "@id": "ZitadelProjectRequest"
+      },
+      "ZitadelQuery": {
+         "@id": "ZitadelQuery"
+      },
+      "ZitadelRoleRequest": {
+         "@id": "ZitadelRoleRequest"
+      },
+      "ZitadelSearch": {
+         "@id": "ZitadelSearch"
+      },
+      "ZitadelTokenAnswer": {
+         "@id": "ZitadelTokenAnswer"
+      },
+      "ZitadelTokenRequest": {
+         "@id": "ZitadelTokenRequest"
+      },
+      "ZitadelUser": {
+         "@id": "ZitadelUser"
+      },
+      "ZitadelUserAnswer": {
+         "@id": "ZitadelUserAnswer"
+      },
+      "ZitadelUserGrant": {
+         "@id": "ZitadelUserGrant"
+      },
+      "ZitadelUserPage": {
+         "@id": "ZitadelUserPage"
+      },
+      "ZitadelUserQuery": {
+         "@id": "ZitadelUserQuery"
+      },
+      "ZitadelWindow": {
+         "@id": "ZitadelWindow"
+      }
+   }
+}

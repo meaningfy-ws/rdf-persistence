@@ -118,6 +118,10 @@ class GenerationAnnotation(str, Enum):
     "On a GenerationTarget slot, the command-line flag that overrides it."
     SECRET = "secret"
     "On a slot, `true` when its value must stay out of the repr of the generated class."
+    ALLOWS_EXTRA = "allows_extra"
+    "On a class, `true` when it accepts fields it does not declare and keeps them in `model_extra`, as the answer of a foreign API needs. Every other class refuses them."
+    STRICT = "strict"
+    "On a slot, `true` when its value must already be of its type: a string is not read as a number, and a boolean is not read as one either."
 
 
 
@@ -429,6 +433,22 @@ class ZitadelServer(ConfiguredBaseModel):
     admin_pat: str = Field(default=..., title="Admin PAT", description="The personal access token of the admin machine user.", repr=False)
 
 
+class MachineUser(ConfiguredBaseModel):
+    "A service account provisioned in the test Zitadel, with the private key it signs its JWT-profile assertions with."
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    user_id: str = Field(default=..., title="User id", description="The id of a user in the identity provider.")
+    key_id: str = Field(default=..., title="Key id", description="The id of the access key.")
+    private_key: str = Field(default=..., title="Private key", description="The PEM private key of a machine user\u0027s key pair.", repr=False)
+
+
+class ZitadelProject(ConfiguredBaseModel):
+    "The project provisioned in the test Zitadel: the organisation and project ids, the machine users of the test principals, and the server that holds them."
+    server: ZitadelServer = Field(default=..., title="Server", description="The test server a provisioned resource lives on.")
+    organisation_id: str = Field(default=..., title="Organisation id", description="The id of the organisation that owns the provisioned resources.")
+    project_id: str = Field(default=..., title="Project id", description="The id of the provisioned project, whose audience scope puts it in a token.")
+    machine_users: Optional[list[MachineUser]] = Field(default=None, title="Machine users", description="The service accounts of the test principals.")
+
+
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 GenerationTarget.model_rebuild()
@@ -460,3 +480,5 @@ ExecResult.model_rebuild()
 FusekiServer.model_rebuild()
 GarageServer.model_rebuild()
 ZitadelServer.model_rebuild()
+MachineUser.model_rebuild()
+ZitadelProject.model_rebuild()
