@@ -93,6 +93,7 @@ class ServiceSettings(ConfiguredBaseModel):
     tenant_segment: str = Field(default=..., title="Tenant segment", description="The path segment that names the tenant collection in the service\u0027s routes.")
     creator_role: str = Field(default=..., title="Creator role", description="The role a caller is given on the tenant it creates.")
     roles_claim: str = Field(default=..., title="Roles claim", description="The claim of the token that holds the caller\u0027s global roles, an object keyed by role name; for Zitadel, urn:zitadel:iam:org:project:{project_id}:roles of the consumer\u0027s project.")
+    max_body_bytes: Optional[int] = Field(default=1048576, title="Maximum body size", description="The most bytes a request body may hold; a larger one is refused with 413 before it is read whole.", ge=1)
 
     @field_validator("base")
     def pattern_base(cls, v):
@@ -256,6 +257,12 @@ class CallerAccess(ConfiguredBaseModel):
         return self
 
 
+class Authorised(ConfiguredBaseModel):
+    "What a route\u0027s access check settled: the caller\u0027s access to the tenant, and the IRI of the aggregate it was checked on, which the route then acts on."
+    caller_access: CallerAccess = Field(default=..., title="Caller access", description="The caller\u0027s access to the tenant, as the access check loaded it.")
+    checked_target: str = Field(default=..., title="Checked target", description="The IRI of the aggregate the access check was made on.")
+
+
 class Page(ConfiguredBaseModel):
     "One page of a listing, with the position of the page in the whole listing."
     items: list[Any] = Field(default=..., title="Items", description="The objects of the page; framed aggregates, or tenant summaries.")
@@ -357,6 +364,7 @@ TenantSummary.model_rebuild()
 LabelUpdate.model_rebuild()
 GrantSet.model_rebuild()
 CallerAccess.model_rebuild()
+Authorised.model_rebuild()
 Page.model_rebuild()
 Filter.model_rebuild()
 ListRequest.model_rebuild()

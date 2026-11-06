@@ -45,6 +45,14 @@
          "@type": "@id",
          "@id": "base"
       },
+      "caller_access": {
+         "@type": "@id",
+         "@id": "callerAccess"
+      },
+      "checked_target": {
+         "@type": "@id",
+         "@id": "checkedTarget"
+      },
       "datatype": {
          "@type": "@id",
          "@id": "conditionDatatype"
@@ -148,6 +156,9 @@
          "@type": "@id",
          "@id": "loadedGraph"
       },
+      "max_body_bytes": {
+         "@id": "maxBodyBytes"
+      },
       "modified": {
          "@type": "xsd:dateTime",
          "@id": "dcterms:modified"
@@ -245,6 +256,9 @@
       },
       "Any": {
          "@id": "linkml:Any"
+      },
+      "Authorised": {
+         "@id": "Authorised"
       },
       "CallerAccess": {
          "@id": "CallerAccess"

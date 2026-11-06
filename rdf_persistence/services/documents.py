@@ -11,19 +11,20 @@ tracking) are bookkeeping, not content, and are left out.
 """
 
 import json
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 import anyio.to_thread
-from linkml_runtime.linkml_model.meta import ClassDefinition
-from linkml_runtime.utils.formatutils import underscore
+from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
+from linkml_runtime.utils.formatutils import camelcase
 from linkml_runtime.utils.schemaview import SchemaView
 from pyld import jsonld
 from pyshacl import validate
 from rdflib import RDF, SH, XSD, BNode, Graph, Literal, URIRef
 from rdflib.term import Node
 
-from rdf_persistence.domain.exceptions import InvalidBody
+from rdf_persistence.domain.exceptions import InvalidBody, PayloadTooLarge
 from rdf_persistence.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.domain.iris import mint_part_iri
 from rdf_persistence.services import vocabulary as v
@@ -31,6 +32,8 @@ from rdf_persistence.services.artifacts import CONTEXT_FILE, FRAME_SUFFIX, SHAPE
 from rdf_persistence.services.schema_structure import (
     annotation_text,
     holds_owned_part,
+    is_internal,
+    json_name,
     served_roots,
     tenant_root_class,
 )
@@ -43,6 +46,10 @@ NQUADS = {"format": "application/n-quads"}
 NATIVE = {"useNativeTypes": True}
 NOT_INLINE = "a JSON-LD context must be inline: remote contexts are not followed"
 MAX_MESSAGES = 5
+# Objects in a body; with the byte bound, it keeps one request from costing a minute.
+MAX_NODES = 10_000
+TYPE_KEYS = ("type", "@type")
+ID_KEY = "@id"
 
 
 def _refuse_remote(url: str, _options: Any) -> Any:
@@ -92,6 +99,28 @@ class Documents:
             for cls in types
         }
         self._class_of = {self._iri_of(c): c for c in view.all_classes().values()}
+        self._slots = {
+            name: {json_name(slot): slot for slot in view.class_induced_slots(name)}
+            for name in view.all_classes()
+        }
+        self._family = {
+            name: {self._iri_of(view.get_class(c)) for c in view.class_descendants(name)}
+            for name in view.all_classes()
+        }
+        self._internal, self._parts = self._predicates()
+
+    def _predicates(self) -> tuple[dict[Node, str], dict[Node, set[URIRef]]]:
+        """The predicates of the internal slots, by slot name; and of the owned parts, by the classes they take."""
+        internal: dict[Node, str] = {}  # keyed by Node: rdflib types the predicates of a graph so
+        parts: dict[Node, set[URIRef]] = {}
+        for slots in self._slots.values():
+            for name, slot in slots.items():
+                predicate = URIRef(self._view.get_uri(slot, expand=True))
+                if is_internal(slot):
+                    internal[predicate] = name
+                elif holds_owned_part(self._view, slot):
+                    parts.setdefault(predicate, set()).update(self._family[str(slot.range)])
+        return internal, parts
 
     def _iri_of(self, cls: ClassDefinition) -> URIRef:
         return URIRef(self._view.get_uri(cls, expand=True))
@@ -114,44 +143,104 @@ class Documents:
         """
         document = self._document(data, media_type, cls)
         graph = await anyio.to_thread.run_sync(self._triples, document)
+        self._refuse_internal(graph)
         return self._settled(graph, cls, URIRef(iri), creating)
+
+    def _refuse_internal(self, graph: Graph) -> None:
+        """The refusal of a body that sets a slot only the service sets, whatever key it wrote it with."""
+        for predicate in set(graph.predicates()):
+            if predicate in self._internal:
+                raise InvalidBody(f"{self._internal[predicate]} is set by the service")
 
     def _document(self, data: bytes, media_type: str, cls: ClassDefinition) -> dict:
         try:
             body = json.loads(data)
-        except ValueError as error:
-            raise InvalidBody(f"the body is not valid JSON: {error}") from error
+        except (ValueError, RecursionError) as error:  # the second: brackets nested past the parser
+            raise InvalidBody(f"the body is not valid JSON: {str(error)[:200]}") from error
         if not isinstance(body, dict):
             raise InvalidBody("the body must be a JSON object")
+        _bound(body)
         if media_type == JSON_LD:
             return body
-        return {**self._typed(body, cls.name), "@context": self.context}
+        body.pop("@context", None)  # the generated context is the only one a plain JSON body has
+        try:
+            return {**self._typed(body, cls.name), "@context": self.context}
+        except RecursionError as error:
+            raise InvalidBody("the body is nested too deeply") from error
 
     def _typed(self, node: dict, class_name: str) -> dict:
-        """``node`` with an ``@type`` on it and on every owned part below, as the schema says."""
-        slots = {underscore(s.name): s for s in self._view.class_induced_slots(class_name)}
-        typed = {"@type": str(self._iri_of(self._view.get_class(class_name)))}
+        """``node`` with an ``@type`` on it and on every owned part below, as the schema says.
+
+        A key is a slot of the class (by its JSON name), ``@id`` or the type; anything else, a compact
+        or full IRI included, is refused.
+        """
+        slots = self._slots[class_name]
+        typed: dict = {"@type": str(self._iri_of(self._view.get_class(class_name)))}
         for key, value in node.items():
-            slot = slots.get(key)
-            if slot is not None and holds_owned_part(self._view, slot):
-                typed[key] = self._typed_parts(value, str(slot.range))
-            elif key != "@context":
+            if key in TYPE_KEYS:
+                typed["@type"] = self._type_of(value, class_name)
+            elif key == ID_KEY:
                 typed[key] = value
+            elif key in slots and is_internal(slots[key]):
+                raise InvalidBody(f"{key} is set by the service")
+            elif key in slots:
+                typed[key] = self._valued(slots[key], value)
+            else:
+                raise self._unknown(key, class_name)
         return typed
+
+    def _type_of(self, value: Any, class_name: str) -> str:
+        """The IRI of the class a body names for a node: the class itself or one of its subclasses."""
+        family = {
+            camelcase(c): str(self._iri_of(self._view.get_class(c)))
+            for c in self._view.class_descendants(class_name)
+        }
+        named = family.get(value) if isinstance(value, str) else None
+        if named is None and value in family.values():
+            named = value
+        if named is None:
+            raise InvalidBody(f"a {class_name} cannot be typed {value!r}")
+        return named
+
+    def _valued(self, slot: SlotDefinition, value: Any) -> Any:
+        if holds_owned_part(self._view, slot):
+            return self._typed_parts(value, str(slot.range))
+        return self._plain(value)
 
     def _typed_parts(self, value: Any, class_name: str) -> Any:
         if isinstance(value, list):
             return [self._typed_parts(item, class_name) for item in value]
         return self._typed(value, class_name) if isinstance(value, dict) else value
 
+    def _plain(self, value: Any) -> Any:
+        """A value that is no part: a literal, or a reference, an IRI string or an object holding only its ``@id``."""
+        if isinstance(value, list):
+            return [self._plain(item) for item in value]
+        if isinstance(value, dict) and set(value) != {ID_KEY}:
+            raise InvalidBody("a reference is an IRI, or an object with only an @id")
+        return value
+
+    def _unknown(self, key: str, class_name: str) -> InvalidBody:
+        """The refusal of a key the class has no slot for; it names the internal slot the key stands for."""
+        try:
+            expanded = jsonld.expand({"@context": self.context, key: 0}, LOADER)
+            predicates = {URIRef(p) for node in expanded for p in node}
+        except Exception:
+            predicates = set()
+        for predicate in predicates:
+            if predicate in self._internal:
+                return InvalidBody(f"{self._internal[predicate]} is set by the service")
+        return InvalidBody(f"a {class_name} has no field {key!r}")
+
     @staticmethod
     def _triples(document: dict) -> Graph:
         try:
             nquads = jsonld.to_rdf(document, {**NQUADS, **LOADER})
             return Graph().parse(data=nquads, format="nt")
-        except InvalidBody:
-            raise
         except Exception as error:  # pyld and the N-Quads parser raise their own types
+            refusal = _refusal_in(error)  # pyld wraps what the loader raised
+            if refusal is not None:
+                raise refusal from error
             raise InvalidBody(f"the body is not valid JSON-LD: {str(error)[:200]}") from error
 
     def _settled(self, graph: Graph, cls: ClassDefinition, iri: URIRef, creating: bool) -> Graph:
@@ -177,7 +266,37 @@ class Documents:
         outside = [s for s in settled.subjects() if isinstance(s, URIRef) and not _inside(iri, s)]
         if outside:
             raise InvalidBody(f"{outside[0]} is not inside the aggregate {iri}")
+        self._refuse_strays(settled, iri, cls)
         return settled
+
+    def _refuse_strays(self, graph: Graph, root: URIRef, cls: ClassDefinition) -> None:
+        """Only the root and the parts reached from it through owned-part slots, each of the slot's class, may be described."""
+        reached = self._reached(graph, root, cls)
+        stray = next((s for s in graph.subjects() if s not in reached), None)
+        if stray is not None:
+            raise InvalidBody(f"{stray} is not part of the aggregate {root}")
+
+    def _reached(self, graph: Graph, root: URIRef, cls: ClassDefinition) -> set[Node]:
+        reached: set[Node] = {root}
+        pending: list[tuple[Node, set[URIRef]]] = [(root, self._family[cls.name])]
+        while pending:
+            node, classes = pending.pop()
+            types = set(graph.objects(node, RDF.type))
+            if not types or not types <= classes:
+                raise InvalidBody(
+                    f"{node} is not part of the aggregate {root}: it has the wrong type"
+                )
+            for part, part_classes in self._owned_parts(graph, node):
+                if part not in reached:
+                    reached.add(part)
+                    pending.append((part, part_classes))
+        return reached
+
+    def _owned_parts(self, graph: Graph, node: Node) -> Iterator[tuple[Node, set[URIRef]]]:
+        """The nodes ``node`` holds through owned-part slots, with the classes each slot takes."""
+        for predicate, part in graph.predicate_objects(node):
+            if predicate in self._parts and not isinstance(part, Literal):
+                yield part, self._parts[predicate]
 
     @staticmethod
     def _root(graph: Graph, iri: URIRef, creating: bool) -> Node:
@@ -231,11 +350,12 @@ class Documents:
     ) -> str:
         """``stored``, the graph read for an aggregate of class ``cls``, as ``media_type`` text.
 
-        ``graph_iri`` is the graph the session read it from: the statements about it are left out.
+        ``graph_iri`` is the graph the session read it from: the statements about it are left out, and
+        so are the values of the ``internal`` slots, which no representation shows.
         """
         shown = Graph()
         for s, p, o in stored:
-            if s != graph_iri:
+            if s != graph_iri and p not in self._internal:
                 shown.add((s, p, o))
         if media_type == TURTLE:
             return str(shown.serialize(format="turtle"))
@@ -249,6 +369,33 @@ class Documents:
         expanded = jsonld.from_rdf(dataset_of(graph), NATIVE)
         framed: dict = jsonld.frame(expanded, frame, LOADER)
         return framed
+
+
+def _bound(body: dict) -> None:
+    """Raise unless the body holds at most ``MAX_NODES`` objects; counted without recursion."""
+    pending: list[Any] = [body]
+    count = 0
+    while pending:
+        value = pending.pop()
+        if isinstance(value, dict):
+            count += 1
+            if count > MAX_NODES:
+                raise PayloadTooLarge(f"a body holds at most {MAX_NODES} objects")
+            pending.extend(value.values())
+        elif isinstance(value, list):
+            pending.extend(value)
+
+
+def _refusal_in(error: BaseException) -> InvalidBody | None:
+    """The ``InvalidBody`` somewhere in the chain of causes of ``error``, if one is."""
+    seen: set[int] = set()
+    link: BaseException | None = error
+    while link is not None and id(link) not in seen:
+        if isinstance(link, InvalidBody):
+            return link
+        seen.add(id(link))
+        link = link.__cause__ or link.__context__
+    return None
 
 
 def _inside(root: URIRef, iri: URIRef) -> bool:

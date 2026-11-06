@@ -612,7 +612,13 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
     term in one function used by the mapper and the listings.
   - The use cases (create, replace and delete an aggregate; the visible tenants, in one query; building
     a tenant root from its slots) live in `services`; the router keeps negotiation, headers and status.
-  - `ServiceKit.require(authorization, tenant_id, action)` is the access gate for consumer routes.
+  - `ServiceKit.require(authorization, tenant_id, action)` is the access gate for consumer routes. `ServiceKit.require_aggregate(...)` checks
+    one aggregate and returns the generated `Authorised` (the caller's access and the checked target).
+  - A replace keeps the stored values of `internal` slots (on the root and on parts that persist): the
+    client can never set them, so a replace must not erase them (a scan keeps its `file_key`).
+  - Server faults are 500 `internal-error` with no detail; this includes a `BadQuery` the store raises
+    for SPARQL the toolkit wrote. A corrupt access record on the access path stays 404 (fail closed).
+  - The `Link` header names `{base}{prefix}context.jsonld`: a deployment maps `base` to its mount.
   - The OpenAPI document is public, as the published contract; FastAPI's interactive docs are the
     consumer's choice on its app. Any valid token may create a tenant (PD-9); rate limits belong at the
     gateway.
@@ -634,7 +640,7 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
   - Problem `type` IRIs are `{base}problems/{slug}`, with these slugs: `invalid-token`, `forbidden`,
     `not-found`, `conflict`, `precondition-required`, `invalid-body`, `not-acceptable`,
     `unsupported-media-type`, `bad-query`, `unavailable`, and since the stage 5 review
-    `payload-too-large` (413) and `method-not-allowed` (405).
+    `payload-too-large` (413), `method-not-allowed` (405) and `internal-error` (500).
   - Each slug has a fixed `title`: "Invalid token", "Forbidden", "Not found", "Version
     conflict", "Precondition required", "Invalid body", "Not acceptable", "Unsupported media
     type", "Bad query", "Service unavailable".

@@ -1,8 +1,7 @@
 """The generic router over the fakes: tenant routes, aggregate routes, and who may do what (tasks 5.2, 5.3, PD-9, PD-13)."""
 
 import json
-import re
-from collections.abc import AsyncIterator, Callable
+from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
@@ -12,90 +11,13 @@ from pyld import jsonld
 from rdflib import Graph
 from rdflib.compare import graph_diff, isomorphic
 
-from rdf_persistence import GrantSet, Page, Problem, TenantSummary
+from rdf_persistence import GrantSet, Page, TenantSummary
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.domain.iris import graph_iri
-from rdf_persistence.entrypoints.problems import PROBLEM_MEDIA_TYPE
 from rdf_persistence.services.documents import JSON, JSON_LD, TURTLE
 from tests.toy import SETTINGS
-from tests.toy_service import ToyService, principal_of
-
-PROBLEMS = f"{SETTINGS.base}problems/"
-TENANT_BODY = {"label": "Ghent", "root": {"description": "Books for all.", "city": "Ghent"}}
-BOOK = {
-    "label": "Dune",
-    "description": "A planet.",
-    "genre": "fiction",
-    "authors": ["Herbert"],
-    "chapters": [{"number": 1, "notes": [{"label": "n", "description": "d", "text": "t"}]}],
-}
-NIL = "00000000-0000-4000-8000-00000000000"
-
-
-@pytest.fixture
-async def service() -> AsyncIterator[ToyService]:
-    toy = ToyService()
-    async with toy.app.router.lifespan_context(toy.app):
-        yield toy
-
-
-@pytest.fixture
-async def client(service: ToyService) -> AsyncIterator[httpx.AsyncClient]:
-    async with service.client() as http:
-        yield http
-
-
-class Scene:
-    """A tenant made by ``ada`` (a librarian), with a book in it, a reader ``rita`` and an outsider ``omar``."""
-
-    def __init__(self, service: ToyService, http: httpx.AsyncClient) -> None:
-        self.service, self.http = service, http
-        self.tenant = ""
-        self.tenant_iri = ""
-        self.book = ""
-        self.book_iri = ""
-        self.book_etag = ""
-        self.access_etag = ""
-        self.root_etag = ""
-
-    def headers(self, who: str, *roles: str, **extra: str) -> dict[str, str]:
-        return {**self.service.bearer(who, *roles), **extra}
-
-    @classmethod
-    async def set_up(cls, service: ToyService, http: httpx.AsyncClient) -> "Scene":
-        scene = cls(service, http)
-        made = await http.post("/libraries", json=TENANT_BODY, headers=scene.headers("ada"))
-        scene.tenant, scene.tenant_iri = made.headers["location"], made.json()["id"]
-        book = await http.post(f"{scene.tenant}/books", json=BOOK, headers=scene.headers("ada"))
-        scene.book, scene.book_etag = book.headers["location"], book.headers["etag"]
-        scene.book_iri = book.json()["id"]
-        grants = await http.get(f"{scene.tenant}/grants", headers=scene.headers("ada"))
-        scene.access_etag = grants.headers["etag"]
-        body = GrantSet.model_validate(grants.json())
-        reader = Grant(assignee=principal_of("rita"), target=scene.tenant_iri, role="reader")
-        replaced = await http.put(
-            f"{scene.tenant}/grants",
-            content=GrantSet(grants=[*(body.grants or []), reader]).model_dump_json(
-                exclude_none=True
-            ),
-            headers=scene.headers("ada", **{"If-Match": scene.access_etag, "Content-Type": JSON}),
-        )
-        assert replaced.status_code == 200, replaced.text
-        scene.access_etag = replaced.headers["etag"]
-        root = await http.get(scene.tenant, headers=scene.headers("ada"))
-        scene.root_etag = root.headers["etag"]
-        return scene
-
-
-@pytest.fixture
-async def scene(service: ToyService, client: httpx.AsyncClient) -> Scene:
-    return await Scene.set_up(service, client)
-
-
-def problem_of(response: httpx.Response) -> Problem:
-    assert response.headers["content-type"] == PROBLEM_MEDIA_TYPE, response.text
-    return Problem.model_validate(response.json())
-
+from tests.toy_service import principal_of
+from tests.unit.entrypoints.scene import BOOK, NIL, PROBLEMS, TENANT_BODY, Scene, problem_of
 
 # --- tenants ------------------------------------------------------------------------------------
 
@@ -475,9 +397,9 @@ async def test_plain_json_points_at_the_context_by_a_link_header(scene) -> None:
     response = await scene.http.get(scene.book, headers=scene.headers("ada"))
     link = response.headers["link"]
     assert response.headers["content-type"] == JSON, "plain JSON by default"
-    assert re.fullmatch(
-        r'<http://test/context\.jsonld>; rel="http://www\.w3\.org/ns/json-ld#context"', link
-    ), link
+    assert (
+        link == f'<{SETTINGS.base}context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"'
+    ), "built from the service's base"
     assert "@context" not in response.json(), "the context is linked, not inlined"
 
 
@@ -672,10 +594,9 @@ async def test_the_three_representations_of_a_book_are_the_same_triples(scene) -
     def triples(response: httpx.Response, media_type: str) -> Graph:
         if media_type == TURTLE:
             return Graph().parse(data=response.text, format="turtle")
-        body = {
-            "@context": context,
-            **{k: v for k, v in response.json().items() if k != "@context"},
-        }
+        body = response.json()  # JSON-LD is read as served, with its own context
+        if media_type == JSON:  # plain JSON is JSON-LD with the context its Link header names
+            body = {"@context": context, **body}
         return Graph().parse(
             data=jsonld.to_rdf(body, {"format": "application/n-quads"}), format="nt"
         )

@@ -233,6 +233,16 @@ class AccessRules:
         if action not in permitted and not (action == Action.READ and permitted & _IMPLY_READ):
             raise Forbidden(f"{action.value} is not permitted")
 
+    def may(
+        self, caller: VerifiedCaller, access: CallerAccess, target_iri: str, action: Action
+    ) -> bool:
+        """True when ``require`` would let ``caller`` take ``action`` on ``target_iri``."""
+        try:
+            self.require(caller, access, target_iri, action)
+        except (NotFound, Forbidden):
+            return False
+        return True
+
     @staticmethod
     def hidden_graphs(caller: VerifiedCaller, access: CallerAccess) -> list[str]:
         """The graphs of the aggregates a Prohibition of ``read`` keeps from the caller, sorted.

@@ -14,14 +14,12 @@ from tests.toy_service import ToyService, principal_of
 
 
 def triples_of(toy: ToyService, response: httpx.Response, media_type: str) -> Graph:
-    """The RDF a response describes: Turtle is parsed, JSON gets the generated context, JSON-LD has its own."""
+    """The RDF a response describes: Turtle is parsed, JSON gets the generated context, JSON-LD is read as served, with its own."""
     if media_type == TURTLE:
         return Graph().parse(data=response.text, format="turtle")
-    body = response.json()
-    document = {
-        "@context": toy.kit.documents.context,
-        **{k: val for k, val in body.items() if k != "@context"},
-    }
+    document = response.json()
+    if media_type == JSON:  # plain JSON is JSON-LD with the context its Link header names
+        document = {"@context": toy.kit.documents.context, **document}
     return Graph().parse(
         data=jsonld.to_rdf(document, {"format": "application/n-quads"}), format="nt"
     )

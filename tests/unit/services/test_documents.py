@@ -2,7 +2,6 @@
 
 import json
 from copy import deepcopy
-from pathlib import Path
 
 import pytest
 from pyld import jsonld
@@ -13,10 +12,8 @@ from rdf_persistence.domain.exceptions import InvalidBody
 from rdf_persistence.domain.iris import graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.documents import JSON, JSON_LD, TURTLE, Documents
-from rdf_persistence.services.schema import load_schema
-from tests.toy import TENANT, TOY_SCHEMA, book_iri, dune, toy_mapper
+from tests.toy import TENANT, book_iri, dune, toy_mapper
 
-GENERATED = Path(__file__).parents[2] / "fixtures" / "library" / "generated"
 BOOK = book_iri(1)
 GRAPH = graph_iri(BOOK)
 BIBO = "http://purl.org/ontology/bibo/"
@@ -28,16 +25,6 @@ BOOK_JSON = {
     "authors": ["Herbert"],
     "chapters": [{"number": 1, "notes": [{"label": "n", "description": "d", "text": "t"}]}],
 }
-
-
-@pytest.fixture(scope="module")
-def documents() -> Documents:
-    return Documents(load_schema(TOY_SCHEMA), GENERATED)
-
-
-@pytest.fixture(scope="module")
-def book_class(documents: Documents):
-    return documents.aggregates["books"]
 
 
 def encoded(body: object) -> bytes:
@@ -166,7 +153,7 @@ async def test_a_part_outside_the_aggregate_is_refused(documents, book_class) ->
 
 async def test_a_remote_context_is_not_fetched(documents, book_class) -> None:
     body = {"@context": "http://127.0.0.1:9/ctx.jsonld", "type": "Book", "label": "x"}
-    with pytest.raises(InvalidBody):
+    with pytest.raises(InvalidBody, match="inline"):
         await documents.parse(encoded(body), JSON_LD, book_class, BOOK, creating=True)
 
 
@@ -201,11 +188,10 @@ async def test_a_body_without_the_required_description_is_refused_naming_the_slo
 
 
 async def test_an_unknown_field_is_refused(documents, book_class) -> None:
-    graph = await documents.parse(
-        encoded({**BOOK_JSON, "colour": "red"}), JSON, book_class, BOOK, creating=True
-    )
-    with pytest.raises(InvalidBody):
-        await documents.validate(graph)
+    with pytest.raises(InvalidBody, match="colour"):
+        await documents.parse(
+            encoded({**BOOK_JSON, "colour": "red"}), JSON, book_class, BOOK, creating=True
+        )
 
 
 async def test_validating_leaves_the_cached_shapes_unchanged(documents, book_class) -> None:

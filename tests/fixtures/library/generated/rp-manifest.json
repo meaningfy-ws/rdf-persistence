@@ -43,7 +43,7 @@
     },
     {
       "path": "rdf_persistence/generation/components.py",
-      "sha256": "87a5e042dcfe81624d32f5ee1a21fe4ef216bb5df651c27bb86bd3c6472163fa"
+      "sha256": "f04a8acd93db5f68f0c256e4ae83fbb6249dc2751c4bf22fffcdc1d1bd925523"
     },
     {
       "path": "rdf_persistence/generation/config.py",
@@ -59,7 +59,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/jsonld_context.py",
-      "sha256": "2ac5fcb8aca9abb3e85df8120628e6d02525c3ef798b9768b312034ca3315fb8"
+      "sha256": "16dfbe0cb89951f870092f4fb1fee5a95c2cc680573c3f98c6a2733712935a8e"
     },
     {
       "path": "rdf_persistence/generation/extensions/mermaid.py",
@@ -171,7 +171,7 @@
     },
     {
       "path": "rdf_persistence/services/schema_structure.py",
-      "sha256": "1aa3d5e8ebc59bb8ba225d7854712c468d4e9c9817c3111a3c4e7e874ae3fb5c"
+      "sha256": "e36be20c58a6057d1e2953609b54fac63b3b4d59dcfa552acee471d54194664e"
     },
     {
       "path": "scans.yaml",

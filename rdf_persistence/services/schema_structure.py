@@ -19,6 +19,7 @@ from linkml_runtime.linkml_model.meta import (
     SlotDefinition,
     UniqueKey,
 )
+from linkml_runtime.utils.formatutils import underscore
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.domain.generated.rp_core import DatabaseKind, GraphKind, RpAnnotation
@@ -69,6 +70,11 @@ def flag(element: object, tag: RpAnnotation) -> bool:
 
 def is_owned(slot: object) -> bool:
     return flag(slot, RpAnnotation.OWNED)
+
+
+def json_name(slot: SlotDefinition) -> str:
+    """The key of the slot in a JSON body: its alias, else its name, in snake case. The context uses it too."""
+    return str(underscore(slot.alias or slot.name))
 
 
 def holds_owned_part(view: SchemaView, slot: SlotDefinition) -> bool:

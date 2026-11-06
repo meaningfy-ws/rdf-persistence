@@ -66,6 +66,27 @@
         "string"
       ]
     },
+    "Authorised": {
+      "additionalProperties": false,
+      "description": "What a route's access check settled: the caller's access to the tenant, and the IRI of the aggregate it was checked on, which the route then acts on.",
+      "properties": {
+        "caller_access": {
+          "$ref": "#/components/schemas/CallerAccess",
+          "description": "The caller's access to the tenant, as the access check loaded it."
+        },
+        "checked_target": {
+          "description": "The IRI of the aggregate the access check was made on.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "caller_access",
+        "checked_target"
+      ],
+      "title": "Authorised",
+      "type": "object"
+    },
     "CallerAccess": {
       "additionalProperties": false,
       "description": "What the access check needs to know about one caller in one tenant: the tenant's state, and the grants and prohibitions of the access record that name the caller.",
@@ -650,6 +671,11 @@
           "description": "The role a caller is given on the tenant it creates.",
           "pattern": "^.+$",
           "type": "string"
+        },
+        "max_body_bytes": {
+          "description": "The most bytes a request body may hold; a larger one is refused with 413 before it is read whole.",
+          "minimum": 1,
+          "type": "integer"
         },
         "prefix": {
           "description": "The prefix of the database names of the service's tenants; lower case, at most 20 characters.",

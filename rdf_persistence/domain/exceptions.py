@@ -82,3 +82,11 @@ class UnsupportedMediaType(PersistenceError):
 
 class PreconditionRequired(PersistenceError):
     """An update or a delete came without the ``If-Match`` header that names the version it expects."""
+
+
+class PayloadTooLarge(PersistenceError):
+    """A request body is larger than the service takes: too many bytes, or too many nodes."""
+
+
+class StoredDataInvalid(PersistenceError):
+    """What the store holds cannot be decoded: a fault of the service or its data, never of the request."""

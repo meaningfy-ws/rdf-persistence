@@ -74,7 +74,7 @@ _AUTHENTICATED = (problems.INVALID_TOKEN, problems.UNAVAILABLE)
 _IN_A_TENANT = (problems.FORBIDDEN, problems.NOT_FOUND)
 _READS = (*_AUTHENTICATED, *_IN_A_TENANT, problems.NOT_ACCEPTABLE)
 _WRITES = (*_AUTHENTICATED, *_IN_A_TENANT, problems.CONFLICT)
-_BODY = (problems.UNSUPPORTED_MEDIA_TYPE, problems.INVALID_BODY)
+_BODY = (problems.PAYLOAD_TOO_LARGE, problems.UNSUPPORTED_MEDIA_TYPE, problems.INVALID_BODY)
 
 
 def _ref(name: str, pointer: str = "") -> Schema:

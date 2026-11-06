@@ -5,20 +5,28 @@ from datetime import UTC, datetime
 
 import pytest
 
-from rdf_persistence.domain.exceptions import Conflict, NotFound, StoreUnavailable
+from rdf_persistence.domain.exceptions import (
+    Conflict,
+    NotFound,
+    StoredDataInvalid,
+    StoreUnavailable,
+)
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.domain.generated.service.rp_service import GrantSet
 from rdf_persistence.domain.iris import system_database_name, tenant_resource_name
+from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
-from tests.toy import ADA, SETTINGS, library, toy_mapper
+from tests.toy import ADA, BOB, ROLES, SETTINGS, caller, library, toy_mapper
 
+ODRL = "http://www.w3.org/ns/odrl/2/"
 NOW = datetime(2026, 11, 5, 9, 0, tzinfo=UTC)
 CREATOR = Principal(id=ADA)
 SYSTEM = system_database_name(SETTINGS.prefix)
@@ -380,3 +388,57 @@ async def test_an_empty_grant_set_leaves_no_grants(tenancy):
     record, _ = await tenancy.get(summary.id)
     assert not record.grants, "nothing is left"
     assert not record.prohibitions, "nothing is left"
+
+
+# --- the tenants a caller may read, in one query -------------------------------------------------
+
+
+def rules() -> AccessRules:
+    return AccessRules(load_role_definitions(ROLES))
+
+
+async def test_the_visible_tenants_are_those_the_caller_may_read_paged_by_iri(tenancy, store):
+    made = [await tenancy.create(f"Library {n}", library(), CREATOR) for n in range(3)]
+    before = len(store.sent("query"))
+    mine = await tenancy.visible_tenants(caller(), rules(), limit=2, offset=1)
+    assert len(store.sent("query")) - before == 1, "one query, however many tenants"
+    assert mine.total == 3, "all the caller may read"
+    assert (mine.limit, mine.offset) == (2, 1), "the position of the page"
+    assert [t.id for t in mine.items] == sorted(t.id for t in made)[1:3], "ordered by IRI"
+
+
+async def test_a_tenant_the_caller_has_no_grant_in_is_not_visible(tenancy):
+    await tenancy.create("Ghent", library(), CREATOR)
+    page = await tenancy.visible_tenants(caller(principal=BOB), rules(), limit=50, offset=0)
+    assert (page.items, page.total) == ([], 0), "an outsider sees nothing"
+
+
+async def test_a_global_role_sees_every_tenant(tenancy):
+    await tenancy.create("Ghent", library(), CREATOR)
+    page = await tenancy.visible_tenants(
+        caller("admin", principal=BOB), rules(), limit=50, offset=0
+    )
+    assert page.total == 1, "the system-level reader reads all"
+
+
+async def test_a_tenant_being_deleted_is_not_visible(tenancy):
+    made = await tenancy.create("Ghent", library(), CREATOR)
+    record, version = await tenancy.get(made.id)
+    record.state = TenantState.DELETING
+    await tenancy._commit(SYSTEM, made.id, CREATOR, record, version)
+    assert (await tenancy.visible_tenants(caller(), rules(), limit=50, offset=0)).total == 0
+
+
+async def test_a_record_that_cannot_be_decoded_is_a_stored_data_fault_not_a_bad_request(
+    tenancy, store
+):
+    made = await tenancy.create("Ghent", library(), CREATOR)
+    access = f"{made.id}/access"
+    await store.update(
+        SYSTEM,
+        f"INSERT DATA {{ GRAPH <{access}/graph> {{ <{access}> <{v.GRANTS}> [ <{ODRL}target> <{made.id}> ] }} }}",
+    )
+    with pytest.raises(StoredDataInvalid):
+        await tenancy.get(made.id)
+    with pytest.raises(StoredDataInvalid):
+        await tenancy.visible_tenants(caller(), rules(), limit=50, offset=0)

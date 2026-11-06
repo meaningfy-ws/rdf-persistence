@@ -14,13 +14,12 @@ from pathlib import Path
 from typing import Any
 
 from linkml.generators.jsonschemagen import JsonSchemaGenerator
-from linkml_runtime.utils.formatutils import underscore
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation.generated.rp_generation import GeneratedFile
 from rdf_persistence.services.artifacts import COMPONENTS_FILE
 from rdf_persistence.services.schema import load_schema, metamodel_importmap
-from rdf_persistence.services.schema_structure import is_bookkeeping, is_internal
+from rdf_persistence.services.schema_structure import is_bookkeeping, is_internal, json_name
 
 SCHEMAS = "schemas"
 DEFINITIONS = "#/$defs/"
@@ -42,7 +41,7 @@ def _generated(schema_path: Path) -> dict[str, JsonSchema]:
 def _property_names(view: SchemaView, class_name: str, *, hidden: bool) -> set[str]:
     """The JSON names of the slots of a class that the API hides, or of its identifier."""
     return {
-        underscore(slot.alias or slot.name)
+        json_name(slot)
         for slot in view.class_induced_slots(class_name)
         if (is_bookkeeping(slot) or is_internal(slot) if hidden else slot.identifier)
     }

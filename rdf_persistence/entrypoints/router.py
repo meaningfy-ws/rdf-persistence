@@ -19,11 +19,12 @@ from linkml_runtime.linkml_model.meta import ClassDefinition
 from pydantic import BaseModel
 from rdflib import Graph, URIRef
 
-from rdf_persistence.domain.exceptions import BadQuery, Forbidden, InvalidBody, NotFound
+from rdf_persistence.domain.exceptions import BadQuery, InvalidBody, PayloadTooLarge
 from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.domain.generated.service.rp_service import (
+    Authorised,
     CallerAccess,
     GrantSet,
     LabelUpdate,
@@ -35,7 +36,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
 from rdf_persistence.domain.iris import graph_iri, mint_aggregate_iri
 from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.entrypoints.auth import Gate
-from rdf_persistence.entrypoints.kit import ServiceKit
+from rdf_persistence.entrypoints.kit import CONTEXT_FILE_NAME, ServiceKit
 from rdf_persistence.entrypoints.negotiation import (
     accepted_listing_type,
     accepted_media_type,
@@ -45,7 +46,6 @@ from rdf_persistence.entrypoints.negotiation import (
 from rdf_persistence.entrypoints.openapi import AggregateOpenApi, TenantOpenApi
 from rdf_persistence.entrypoints.responses import (
     ACCEPT,
-    CONTEXT_ROUTE,
     document_response,
     model_response,
     page_response,
@@ -55,7 +55,8 @@ from rdf_persistence.services.listing import items_of, list_request, total_of
 
 IF_MATCH = "If-Match"
 CONTENT_TYPE = "Content-Type"
-CONTEXT_FILE_NAME = "context.jsonld"
+CONTENT_LENGTH = "Content-Length"
+CONTEXT_ROUTE = "context"
 NO_CONTENT = 204
 CREATED = 201
 
@@ -64,15 +65,39 @@ def _last_segment(path_or_iri: str) -> str:
     return path_or_iri.rstrip("/").rsplit("/", 1)[-1]
 
 
-async def read_model[M: BaseModel](request: Request, model: type[M]) -> M:
+async def limited_body(request: Request, limit: int) -> bytes:
+    """The body of the request, if it is at most ``limit`` bytes.
+
+    A ``Content-Length`` over the limit is refused before a byte is read, and a body without one
+    (chunked) is refused as soon as it has outgrown the limit.
+
+    Raises:
+        PayloadTooLarge: The body is larger than ``limit``.
+    """
+    refusal = PayloadTooLarge(f"a body holds at most {limit} bytes")
+    declared = request.headers.get(CONTENT_LENGTH, "")
+    if declared.isdigit() and int(declared) > limit:
+        raise refusal
+    chunks: list[bytes] = []
+    size = 0
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > limit:
+            raise refusal
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+async def read_model[M: BaseModel](request: Request, model: type[M], limit: int) -> M:
     """The JSON body of the request as a ``model``.
 
     Raises:
         UnsupportedMediaType: The body is not JSON.
+        PayloadTooLarge: The body is larger than ``limit`` bytes.
         ValidationError: The body is not valid JSON, or does not fit the model (pydantic's).
     """
     request_media_type(request.headers.get(CONTENT_TYPE), (JSON,))
-    return model.model_validate_json(await request.body())
+    return model.model_validate_json(await limited_body(request, limit))
 
 
 class DocumentApi:
@@ -89,7 +114,13 @@ class DocumentApi:
         async with self._kit.session(tenant, caller.principal) as session:
             stored, graph, version = await session.get_graph(iri)
         return await document_response(
-            request, self._kit.documents, stored, graph, self._cls, media_type, version
+            self._kit.context_url,
+            self._kit.documents,
+            stored,
+            graph,
+            self._cls,
+            media_type,
+            version,
         )
 
     async def listing(
@@ -105,7 +136,7 @@ class DocumentApi:
             answer = await session.page(plan)
         items = [await self._item(*item, media_type) for item in items_of(answer, plan)]
         page = Page(items=items, total=total_of(answer, plan), limit=plan.limit, offset=plan.offset)
-        return page_response(request, page, media_type)
+        return page_response(self._kit.context_url, page, media_type)
 
     async def _item(self, root: URIRef, graph: Graph, media_type: str) -> object:
         body = await self._kit.documents.render(graph, graph_iri(root), self._cls, media_type)
@@ -115,9 +146,8 @@ class DocumentApi:
         """The validated triples of the request's body, rooted at ``iri``."""
         media_type = request_media_type(request.headers.get(CONTENT_TYPE), (JSON, JSON_LD))
         documents = self._kit.documents
-        graph = await documents.parse(
-            await request.body(), media_type, self._cls, iri, creating=creating
-        )
+        body = await limited_body(request, self._kit.max_body_bytes)
+        graph = await documents.parse(body, media_type, self._cls, iri, creating=creating)
         await documents.validate(graph)
         # rdflib types a graph's terms as Node; a parsed body holds only URIs, literals and blank nodes
         return cast(Iterable[Triple], graph)
@@ -132,7 +162,7 @@ class DocumentApi:
             await session.add_graph(iri, triples)
             stored, graph, version = await session.get_graph(iri)
         return await document_response(
-            request,
+            self._kit.context_url,
             self._kit.documents,
             stored,
             graph,
@@ -153,7 +183,13 @@ class DocumentApi:
             await session.replace_graph(iri, triples, expected)
             stored, graph, version = await session.get_graph(iri)
         return await document_response(
-            request, self._kit.documents, stored, graph, self._cls, media_type, version
+            self._kit.context_url,
+            self._kit.documents,
+            stored,
+            graph,
+            self._cls,
+            media_type,
+            version,
         )
 
     async def remove(
@@ -168,12 +204,11 @@ class DocumentApi:
 class TenantApi:
     """The tenant routes: create, list, delete, the grants and the label."""
 
-    def __init__(self, kit: ServiceKit, gate: Gate) -> None:
+    def __init__(self, kit: ServiceKit) -> None:
         self._kit = kit
-        self._gate = gate
 
     async def create(self, request: Request, caller: VerifiedCaller) -> Response:
-        body = await read_model(request, TenantCreate)
+        body = await read_model(request, TenantCreate, self._kit.max_body_bytes)
         summary = await self._kit.tenancy.create(
             body.label, self._root(body), Principal(id=caller.principal)
         )
@@ -203,17 +238,10 @@ class TenantApi:
         if paging.filters or paging.sort:
             raise BadQuery("tenants are listed by IRI; only limit and offset are taken")
         assert paging.limit is not None and paging.offset is not None, "ListRequest defaults"
-        visible = [t for t in await self._kit.tenancy.tenants() if await self._may_read(caller, t)]
-        shown = visible[paging.offset : paging.offset + paging.limit]
-        page = Page(items=shown, total=len(visible), limit=paging.limit, offset=paging.offset)
+        page = await self._kit.tenancy.visible_tenants(
+            caller, self._kit.rules, limit=paging.limit, offset=paging.offset
+        )
         return model_response(page)
-
-    async def _may_read(self, caller: VerifiedCaller, tenant: TenantSummary) -> bool:
-        try:
-            await self._gate.check(caller, tenant.id, tenant.id, Action.READ)
-        except (NotFound, Forbidden):
-            return False
-        return True
 
     async def delete(self, request: Request, access: CallerAccess) -> Response:
         expected = expected_version(request.headers.get(IF_MATCH))
@@ -229,7 +257,7 @@ class TenantApi:
         self, request: Request, caller: VerifiedCaller, access: CallerAccess
     ) -> Response:
         expected = expected_version(request.headers.get(IF_MATCH))
-        grants = await read_model(request, GrantSet)
+        grants = await read_model(request, GrantSet, self._kit.max_body_bytes)
         self._kit.rules.validate_grants(grants, access.tenant)
         version = await self._kit.tenancy.set_grants(
             access.tenant, grants, expected, Principal(id=caller.principal)
@@ -240,7 +268,7 @@ class TenantApi:
         self, request: Request, caller: VerifiedCaller, access: CallerAccess
     ) -> Response:
         expected = expected_version(request.headers.get(IF_MATCH))
-        update = await read_model(request, LabelUpdate)
+        update = await read_model(request, LabelUpdate, self._kit.max_body_bytes)
         version = await self._kit.tenancy.rename(
             access.tenant, update.label, expected, Principal(id=caller.principal)
         )
@@ -254,7 +282,7 @@ def _add(router: APIRouter, path: str, method: str, endpoint, docs: dict[str, An
 
 def add_tenant_routes(router: APIRouter, kit: ServiceKit, gate: Gate) -> None:
     """``/{tenant_segment}`` and below: the tenants, their root object, grants and label (PD-13)."""
-    api = TenantApi(kit, gate)
+    api = TenantApi(kit)
     root = DocumentApi(kit, kit.documents.tenant_root)
     segment = kit.settings.tenant_segment
     collection, member = f"/{segment}", f"/{segment}/{{t}}"
@@ -325,9 +353,6 @@ def add_aggregate_routes(
     may_modify = Depends(gate.aggregate(rp_path, Action.MODIFY))
     may_delete = Depends(gate.aggregate(rp_path, Action.DELETE))
 
-    def iri(access: CallerAccess, aggregate_id: str) -> str:
-        return f"{access.tenant}/{rp_path}/{aggregate_id}"
-
     async def listing(
         request: Request, caller: VerifiedCaller = as_caller, access: CallerAccess = may_list
     ) -> Response:
@@ -340,27 +365,26 @@ def add_aggregate_routes(
 
     async def read(
         request: Request,
-        aggregate_id: str,
         caller: VerifiedCaller = as_caller,
-        access: CallerAccess = may_read,
+        checked: Authorised = may_read,
     ) -> Response:
-        return await api.read(request, caller, access.tenant, iri(access, aggregate_id))
+        return await api.read(request, caller, checked.caller_access.tenant, checked.checked_target)
 
     async def replace(
         request: Request,
-        aggregate_id: str,
         caller: VerifiedCaller = as_caller,
-        access: CallerAccess = may_modify,
+        checked: Authorised = may_modify,
     ) -> Response:
-        return await api.replace(request, caller, access.tenant, iri(access, aggregate_id))
+        tenant = checked.caller_access.tenant
+        return await api.replace(request, caller, tenant, checked.checked_target)
 
     async def remove(
         request: Request,
-        aggregate_id: str,
         caller: VerifiedCaller = as_caller,
-        access: CallerAccess = may_delete,
+        checked: Authorised = may_delete,
     ) -> Response:
-        return await api.remove(request, caller, access.tenant, iri(access, aggregate_id))
+        tenant = checked.caller_access.tenant
+        return await api.remove(request, caller, tenant, checked.checked_target)
 
     docs = AggregateOpenApi(kit.view, cls, rp_path)
     _add(router, collection, "GET", listing, docs.listing())
@@ -385,7 +409,7 @@ def add_context_route(router: APIRouter, kit: ServiceKit) -> None:
 def build_router(kit: ServiceKit) -> APIRouter:
     """The router of the service: the context, the tenant routes, and the routes of each aggregate type."""
     router = APIRouter()
-    gate = Gate(kit)
+    gate = kit.gate
     add_context_route(router, kit)
     add_tenant_routes(router, kit, gate)
     for rp_path, cls in kit.documents.aggregates.items():

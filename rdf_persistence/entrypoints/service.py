@@ -42,8 +42,13 @@ def install_service(
     class added to it is served after a restart. Start-up creates the system database if it is
     missing, then runs the sweep before the app serves.
 
+    ``prefix`` is the path the routes are mounted under; the ``Link`` header names the context at
+    ``settings.base`` plus that prefix, never at the ``Host`` the request came with. A request body
+    may hold at most ``settings.max_body_bytes``.
+
     Returns the kit the routes share, for the consumer's own routes: its ``tenancy``, ``store``,
-    ``files`` and ``identity``.
+    ``files`` and ``identity``, and ``require`` and ``require_aggregate``, the token and access check
+    of the toolkit's routes.
 
     Raises:
         InvalidRoleDefinition: ``rules`` is a file that is not a valid list of role definitions;
@@ -62,6 +67,7 @@ def install_service(
         verifier=verifier,
         rules=rules,
         settings=settings,
+        prefix=prefix,
     )
     install_problem_handlers(app, settings.base)
     app.include_router(build_router(kit), prefix=prefix)

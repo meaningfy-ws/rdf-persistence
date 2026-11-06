@@ -28,8 +28,7 @@ from rdf_persistence import (
     ZitadelIdentity,
     zitadel_roles_claim,
 )
-from rdf_persistence.testkit import access_token, assert_public_imports
-from rdf_persistence.testkit.exceptions import TokenRefusedError
+from rdf_persistence.testkit import TokenRefusedError, access_token, assert_public_imports
 from tests.e2e.library_app import build_library_app, library_settings
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note
 from tests.fixtures.library.generated.library import Library
@@ -185,7 +184,8 @@ async def triples(world: World, shelf: Shelf, who: str, media_type: str) -> Grap
         return Graph().parse(data=answer.text, format="turtle")
     if media_type == JSON:  # plain JSON is JSON-LD with the context the Link header names
         context_url = answer.headers["link"].split(">")[0].lstrip("<")
-        context = (await world.http.get(context_url)).json()["@context"]
+        assert context_url.endswith("/context.jsonld"), "the Link names the generated context"
+        context = (await world.http.get("/context.jsonld")).json()["@context"]
         document = {"@context": context, **answer.json()}
     else:
         document = answer.json()

@@ -21,7 +21,7 @@ from tests.unit.domain.builders import ALICE, TENANT, grant, tenant_access
 BASE = "https://example.org/"
 
 
-def settings(**changes: str) -> ServiceSettings:
+def settings(**changes: str | int) -> ServiceSettings:
     fields = {
         "base": BASE,
         "prefix": "lib",
@@ -245,3 +245,13 @@ def test_a_tenant_label_of_1_to_200_characters_is_accepted(build, label: str) ->
 def test_any_other_tenant_label_is_refused(build, label: str) -> None:
     with pytest.raises(ValidationError, match="Invalid label format"):
         build(label)
+
+
+def test_a_body_may_hold_a_mebibyte_unless_the_settings_say_otherwise() -> None:
+    assert settings().max_body_bytes == 1024 * 1024, "the default bound of a request body"
+    assert settings(max_body_bytes=2048).max_body_bytes == 2048, "the consumer's bound"
+
+
+def test_a_body_bound_below_one_byte_is_refused() -> None:
+    with pytest.raises(ValidationError, match="max_body_bytes"):
+        settings(max_body_bytes=0)

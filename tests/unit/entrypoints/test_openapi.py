@@ -30,8 +30,8 @@ SUCCESS = {200, 201, 204}
 # (path, method, the statuses it answers with): the problem statuses are the error matrix's
 READ = {200, 401, 403, 404, 406, 503}
 LIST = {200, 400, 401, 403, 404, 406, 503}
-CREATE = {201, 401, 403, 404, 406, 415, 422, 503}
-REPLACE = {200, 401, 403, 404, 406, 409, 415, 422, 428, 503}
+CREATE = {201, 401, 403, 404, 406, 413, 415, 422, 503}
+REPLACE = {200, 401, 403, 404, 406, 409, 413, 415, 422, 428, 503}
 DELETE = {204, 401, 403, 404, 409, 428, 503}
 
 
@@ -48,13 +48,13 @@ def aggregate_routes(rp_path: str) -> list[tuple[str, str, set[int]]]:
 
 ROUTES = [
     (TENANTS, "get", {200, 400, 401, 503}),
-    (TENANTS, "post", {201, 401, 415, 422, 503}),
+    (TENANTS, "post", {201, 401, 413, 415, 422, 503}),
     (TENANT, "get", READ),
     (TENANT, "put", REPLACE),
     (TENANT, "delete", DELETE),
     (f"{TENANT}/grants", "get", {200, 401, 403, 404, 503}),
-    (f"{TENANT}/grants", "put", {200, 401, 403, 404, 409, 415, 422, 428, 503}),
-    (f"{TENANT}/label", "put", {200, 401, 403, 404, 409, 415, 422, 428, 503}),
+    (f"{TENANT}/grants", "put", {200, 401, 403, 404, 409, 413, 415, 422, 428, 503}),
+    (f"{TENANT}/label", "put", {200, 401, 403, 404, 409, 413, 415, 422, 428, 503}),
     *aggregate_routes("books"),
     *aggregate_routes("scans"),
 ]

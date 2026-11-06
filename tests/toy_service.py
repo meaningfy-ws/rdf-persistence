@@ -40,12 +40,19 @@ class ToyService:
         schema: Path = TOY_SCHEMA,
         package=generated,
         prefix: str | None = None,
+        max_body_bytes: int | None = None,
+        mount: str = "",
     ) -> None:
         self.signer = TokenSigner()
         self.store = store or FakeStore()
         self.files = files or FakeFileStore()
+        self.mount = mount
         self.settings: ServiceSettings = SETTINGS.model_copy(
-            update={"roles_claim": self.signer.roles_claim, "prefix": prefix or SETTINGS.prefix}
+            update={
+                "roles_claim": self.signer.roles_claim,
+                "prefix": prefix or SETTINGS.prefix,
+                "max_body_bytes": max_body_bytes or SETTINGS.max_body_bytes,
+            }
         )
         verifier = JwksTokenVerifier(
             ISSUER, self.signer.audience, self.signer.roles_claim, transport=self.signer.transport
@@ -61,6 +68,7 @@ class ToyService:
             verifier=verifier,
             rules=AccessRules(load_role_definitions(ROLES)),
             settings=self.settings,
+            prefix=mount,
         )
 
     def client(self) -> httpx.AsyncClient:

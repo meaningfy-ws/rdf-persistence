@@ -10,7 +10,7 @@ from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibitio
 from rdf_persistence.entrypoints.problems import PROBLEM_MEDIA_TYPE
 from rdf_persistence.services.documents import JSON, JSON_LD, TURTLE
 from tests.toy_service import ToyService, principal_of
-from tests.unit.entrypoints.test_router import BOOK, TENANT_BODY
+from tests.unit.entrypoints.scene import BOOK, TENANT_BODY
 
 PROBLEM_BAD_QUERY = "Bad query"
 BOOKS = [

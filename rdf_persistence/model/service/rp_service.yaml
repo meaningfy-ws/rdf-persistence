@@ -35,7 +35,10 @@ classes:
       - tenant_segment
       - creator_role
       - roles_claim
+      - max_body_bytes
     slot_usage:
+      max_body_bytes:
+        ifabsent: int(1048576)
       base:
         required: true
       prefix:
@@ -113,6 +116,20 @@ classes:
       tenant:
         required: true
       state:
+        required: true
+  Authorised:
+    title: Authorised
+    description: >-
+      What a route's access check settled: the caller's access to the tenant, and the IRI of the
+      aggregate it was checked on, which the route then acts on.
+    class_uri: rp:Authorised
+    slots:
+      - caller_access
+      - checked_target
+    slot_usage:
+      caller_access:
+        required: true
+      checked_target:
         required: true
   Page:
     title: Page
@@ -298,6 +315,24 @@ slots:
     title: Tenant
     description: The IRI of the tenant.
     slot_uri: rp:tenant
+    range: uri
+  max_body_bytes:
+    title: Maximum body size
+    description: >-
+      The most bytes a request body may hold; a larger one is refused with 413 before it is read
+      whole.
+    slot_uri: rp:maxBodyBytes
+    range: integer
+    minimum_value: 1
+  caller_access:
+    title: Caller access
+    description: The caller's access to the tenant, as the access check loaded it.
+    slot_uri: rp:callerAccess
+    range: CallerAccess
+  checked_target:
+    title: Checked target
+    description: The IRI of the aggregate the access check was made on.
+    slot_uri: rp:checkedTarget
     range: uri
   principal:
     title: Principal

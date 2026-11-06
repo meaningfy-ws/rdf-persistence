@@ -4,15 +4,22 @@ The token is verified first, then the caller's grants in the tenant are loaded i
 route's action is checked on its target. A refusal is raised before the route's own code runs.
 """
 
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends, Header
 
 from rdf_persistence.domain.exceptions import InvalidToken
 from rdf_persistence.domain.generated.rp_access import Action
-from rdf_persistence.domain.generated.service.rp_service import CallerAccess, VerifiedCaller
-from rdf_persistence.entrypoints.kit import ServiceKit
+from rdf_persistence.domain.generated.service.rp_service import (
+    Authorised,
+    CallerAccess,
+    VerifiedCaller,
+)
+from rdf_persistence.domain.iris import aggregate_iri
 from rdf_persistence.services.access import load_caller_access
+
+if TYPE_CHECKING:  # the kit builds its gate, so it cannot be imported here at run time
+    from rdf_persistence.entrypoints.kit import ServiceKit
 
 BEARER_SCHEME = "bearer"
 
@@ -20,7 +27,7 @@ BEARER_SCHEME = "bearer"
 class Gate:
     """Builds the dependencies of the routes of one service."""
 
-    def __init__(self, kit: ServiceKit) -> None:
+    def __init__(self, kit: "ServiceKit") -> None:
         self._kit = kit
 
     async def caller(self, authorization: Annotated[str | None, Header()] = None) -> VerifiedCaller:
@@ -48,14 +55,27 @@ class Gate:
         self._kit.rules.require(caller, access, target, action)
         return access
 
+    async def tenant_access(self, caller: VerifiedCaller, t: str, action: Action) -> CallerAccess:
+        """The caller's access to the tenant whose id in the path is ``t``, if it may take ``action`` there."""
+        tenant = self._kit.tenant_iri(t)
+        return await self.check(caller, tenant, tenant, action)
+
+    async def aggregate_access(
+        self, caller: VerifiedCaller, t: str, rp_path: str, aggregate_id: str, action: Action
+    ) -> Authorised:
+        """The access, and the aggregate IRI it was checked on, which the route then uses as it is."""
+        tenant = self._kit.tenant_iri(t)
+        target = str(aggregate_iri(tenant, rp_path, aggregate_id))
+        access = await self.check(caller, tenant, target, action)
+        return Authorised(caller_access=access, checked_target=target)
+
     def tenant(self, action: Action):
         """A dependency: ``action`` on the tenant of the path."""
 
         async def permitted(
             t: str, caller: Annotated[VerifiedCaller, Depends(self.caller)]
         ) -> CallerAccess:
-            tenant = self._kit.tenant_iri(t)
-            return await self.check(caller, tenant, tenant, action)
+            return await self.tenant_access(caller, t, action)
 
         return permitted
 
@@ -64,8 +84,7 @@ class Gate:
 
         async def permitted(
             t: str, aggregate_id: str, caller: Annotated[VerifiedCaller, Depends(self.caller)]
-        ) -> CallerAccess:
-            tenant = self._kit.tenant_iri(t)
-            return await self.check(caller, tenant, f"{tenant}/{rp_path}/{aggregate_id}", action)
+        ) -> Authorised:
+            return await self.aggregate_access(caller, t, rp_path, aggregate_id, action)
 
         return permitted

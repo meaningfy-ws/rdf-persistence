@@ -10,11 +10,14 @@ from pathlib import Path
 
 PACKAGE = "rdf_persistence"
 PUBLIC_SUBPACKAGE = "testkit"
+TESTKIT = f"{PACKAGE}.{PUBLIC_SUBPACKAGE}"
+# The one module of the testkit a test file names: pytest loads the container fixtures by its path.
+PLUGIN_MODULE = "containers"
 
 
-def _submodules() -> frozenset[str]:
-    """The names of the package's subpackages and modules, from the installed folder."""
-    spec = importlib.util.find_spec(PACKAGE)
+def _submodules(package: str) -> frozenset[str]:
+    """The names of the subpackages and modules of ``package``, from the installed folder."""
+    spec = importlib.util.find_spec(package)
     folders = [Path(p) for p in (spec and spec.submodule_search_locations or ())]
     entries = (entry for folder in folders for entry in folder.iterdir())
     return frozenset(entry.stem for entry in entries if _is_module(entry)) - {"__init__"}
@@ -38,14 +41,22 @@ def _from_names(node: ast.ImportFrom) -> Iterator[str]:
         yield from (f"{node.module}.{alias.name}" for alias in node.names)
 
 
-def _is_private(name: str, submodules: frozenset[str]) -> bool:
+def _is_private(name: str, submodules: frozenset[str], testkit_modules: frozenset[str]) -> bool:
+    """True for a module of the toolkit other than the package, its ``testkit``, and the plugin path.
+
+    A name that is no module (a class imported from the package) is public.
+    """
     parts = name.split(".")
     if parts[0] != PACKAGE or len(parts) == 1:
         return False
-    return parts[1] != PUBLIC_SUBPACKAGE and parts[1] in submodules
+    if parts[1] == PUBLIC_SUBPACKAGE:
+        return len(parts) > 2 and parts[2] in testkit_modules and parts[2] != PLUGIN_MODULE
+    return parts[1] in submodules
 
 
-def _private_imports(source: Path, submodules: frozenset[str]) -> set[str]:
+def _private_imports(
+    source: Path, submodules: frozenset[str], testkit_modules: frozenset[str]
+) -> set[str]:
     """One ``file:line imports name`` text per private import in ``source``."""
     tree = ast.parse(source.read_text(), filename=str(source))
     imports = (node for node in ast.walk(tree) if isinstance(node, ast.Import | ast.ImportFrom))
@@ -53,15 +64,17 @@ def _private_imports(source: Path, submodules: frozenset[str]) -> set[str]:
         f"{source.name}:{node.lineno} imports {name}"
         for node in imports
         for name in _imported_names(node)
-        if _is_private(name, submodules)
+        if _is_private(name, submodules, testkit_modules)
     }
 
 
 def assert_public_imports(path: str | Path) -> None:
-    """Raise one ``AssertionError`` listing each import of ``rdf_persistence.<sub>`` other than ``testkit``.
+    """Raise one ``AssertionError`` listing each import of a module of the toolkit.
 
-    ``from rdf_persistence import X`` is public when ``X`` is a name of the package, and refused
-    when ``X`` is one of its subpackages (``services``, ``adapters``, ...).
+    Only ``rdf_persistence`` and ``rdf_persistence.testkit`` themselves are public, and the path of
+    the container fixtures, ``rdf_persistence.testkit.containers``. ``from rdf_persistence import X``
+    is public when ``X`` is a name of the package, and refused when ``X`` is one of its subpackages
+    (``services``, ``adapters``, ...); the same holds for ``from rdf_persistence.testkit import X``.
     """
-    found = sorted(_private_imports(Path(path), _submodules()))
+    found = sorted(_private_imports(Path(path), _submodules(PACKAGE), _submodules(TESTKIT)))
     assert not found, "a consumer test may use only the public names:\n" + "\n".join(found)

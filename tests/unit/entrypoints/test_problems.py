@@ -4,7 +4,7 @@ import inspect
 
 import httpx
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import ValidationError
 
 from rdf_persistence import LabelUpdate, Problem, ProblemKind
@@ -40,7 +40,9 @@ ROWS = [
     (exceptions.NotAcceptable, 406, "not-acceptable"),
     (exceptions.UnsupportedMediaType, 415, "unsupported-media-type"),
     (exceptions.BadQuery, 400, "bad-query"),
-    (exceptions.SparqlError, 400, "bad-query"),
+    (exceptions.SparqlError, 500, "internal-error"),
+    (exceptions.StoredDataInvalid, 500, "internal-error"),
+    (exceptions.PayloadTooLarge, 413, "payload-too-large"),
     (exceptions.StoreUnavailable, 503, "unavailable"),
     (exceptions.IdentityUnavailable, 503, "unavailable"),
     (exceptions.InvalidRoleDefinition, 503, "unavailable"),
@@ -56,6 +58,9 @@ TITLES = {
     "unsupported-media-type": "Unsupported media type",
     "bad-query": "Bad query",
     "unavailable": "Service unavailable",
+    "payload-too-large": "Payload too large",
+    "method-not-allowed": "Method not allowed",
+    "internal-error": "Internal error",
 }
 SECRET = "http://fuseki.internal:3030/lib-t-0001 refused the connection"
 
@@ -149,6 +154,33 @@ async def test_an_unknown_path_is_a_not_found_problem() -> None:
     )
 
 
-async def test_an_unmapped_failure_is_left_to_the_server_error_page() -> None:
-    response = await get(app_raising(RuntimeError("bug")))
-    assert response.status_code == 500, "a bug is not turned into one of the toolkit's problems"
+async def test_an_unmapped_failure_is_an_internal_error_problem_without_its_text() -> None:
+    response = await get(app_raising(RuntimeError("fuseki bug")))
+    problem = Problem.model_validate(response.json())
+    assert (response.status_code, problem.type) == (500, f"{BASE}problems/internal-error")
+    assert "fuseki" not in response.text, "a fault of the service tells the caller nothing of it"
+
+
+@pytest.mark.parametrize("error", [exceptions.SparqlError, exceptions.StoredDataInvalid])
+async def test_a_fault_of_the_service_hides_its_text(error: type[PersistenceError]) -> None:
+    assert "fuseki" not in (await get(app_raising(error(SECRET)))).text, "no detail"
+
+
+async def test_a_method_the_route_lacks_is_a_problem_that_keeps_the_allow_header() -> None:
+    transport = httpx.ASGITransport(app=app_raising(RuntimeError("x")))
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post("/boom")
+    problem = Problem.model_validate(response.json())
+    assert (response.status_code, problem.type, problem.title) == (
+        405,
+        f"{BASE}problems/method-not-allowed",
+        TITLES["method-not-allowed"],
+    )
+    assert response.headers["allow"] == "GET", "the header the standard asks for"
+
+
+async def test_an_http_exception_is_a_problem_with_a_title_from_its_status() -> None:
+    response = await get(app_raising(HTTPException(status_code=418, detail="fuseki")))
+    problem = Problem.model_validate(response.json())
+    assert (response.status_code, problem.type) == (418, f"{BASE}problems/im-a-teapot")
+    assert "fuseki" not in response.text, "its text is not for the caller"
