@@ -84,6 +84,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.adapters.jwks import JwksTokenVerifier
     from rdf_persistence.adapters.s3 import S3FileStore
     from rdf_persistence.adapters.zitadel import ZitadelIdentity, zitadel_roles_claim
+    from rdf_persistence.entrypoints.kit import ServiceKit
     from rdf_persistence.entrypoints.service import install_service
     from rdf_persistence.services.access import (
         AccessRules,
@@ -110,6 +111,7 @@ _LAZY_MODULES = {
     "ZitadelIdentity": f"{_ADAPTERS}.zitadel",
     "zitadel_roles_claim": f"{_ADAPTERS}.zitadel",
     "install_service": f"{_ENTRYPOINTS}.service",
+    "ServiceKit": f"{_ENTRYPOINTS}.kit",
     "Identity": f"{_SERVICES}.identity",
     "AccessRules": f"{_SERVICES}.access",
     "load_caller_access": f"{_SERVICES}.access",
@@ -186,6 +188,7 @@ __all__ = [
     "RpModel",
     "Rule",
     "S3FileStore",
+    "ServiceKit",
     "ServiceSettings",
     "Session",
     "Store",

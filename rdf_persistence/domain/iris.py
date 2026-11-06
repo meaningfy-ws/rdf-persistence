@@ -37,6 +37,14 @@ def graph_iri(root_iri: str) -> URIRef:
     return URIRef(f"{root_iri}/graph")
 
 
+def root_of_graph(graph: str) -> URIRef:
+    """The root an aggregate's named graph belongs to; the inverse of ``graph_iri``."""
+    root = str(graph).removesuffix("/graph")
+    if root == str(graph) or not root:
+        raise InvalidIri(f"not the graph of an aggregate: {graph!r}")
+    return URIRef(root)
+
+
 def mint_tenant_iri(base: str, tenant_segment: str) -> URIRef:
     """A fresh tenant IRI ``{base}{tenant_segment}/{uuid4}``."""
     return URIRef(f"{base}{_segment(tenant_segment)}/{uuid4()}")

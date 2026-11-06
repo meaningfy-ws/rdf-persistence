@@ -26,6 +26,10 @@
       "sha256": "a99dcb021b453ec170152c59872ed16f7fbcb51c2c0ebe72f1db500f126930f3"
     },
     {
+      "path": "rdf_persistence/generation/components.py",
+      "sha256": "87a5e042dcfe81624d32f5ee1a21fe4ef216bb5df651c27bb86bd3c6472163fa"
+    },
+    {
       "path": "rdf_persistence/generation/config.py",
       "sha256": "681b065ddd4b2649b44ddb05e75134a47e1cfe3caf2be079b36e5fc4ed8bc208"
     },
@@ -79,7 +83,7 @@
     },
     {
       "path": "rdf_persistence/generation/steps.py",
-      "sha256": "f30702c8dd230dd3f06c40f0f636c354932449e0fed499219f137174a10a1433"
+      "sha256": "33ba6eecf60d6c83570f79a0ba765a9f33c099a1eff81bf545646da0e9bf7d6d"
     },
     {
       "path": "rdf_persistence/generation/templates/mermaid/module.mmd.jinja",
@@ -143,7 +147,7 @@
     },
     {
       "path": "rdf_persistence/model/service/rp_service.yaml",
-      "sha256": "9f55018ddc08e2a470cf8e2b612b4c19b5c07715541c3cb9ae0a3487a39a2c7e"
+      "sha256": "62326013df19a0786b4516a75180c6bb818e9a66f923efe201973305fd9761dc"
     },
     {
       "path": "rdf_persistence/services/schema.py",
@@ -161,15 +165,19 @@
     },
     {
       "path": "rdf_persistence/domain/generated/service/context.jsonld",
-      "sha256": "0192d42c41b9b86210b0a7ecea6b5306fdf3cc14c50e08d82a4266c31429e64a"
+      "sha256": "afb001d74b663855754ddb9e4a22ced7a74022f1601f841fc7d01fbc817c3dab"
+    },
+    {
+      "path": "rdf_persistence/domain/generated/service/openapi-components.json",
+      "sha256": "532f26d1989f1fdb5a42a11ef76452c53133626402f1217885b74b16f4fe1839"
     },
     {
       "path": "rdf_persistence/domain/generated/service/rp_service.py",
-      "sha256": "b7c85b5747c84686ecdde322b2b082c84c3cae3a2f47f94ef7756ab43df0e02a"
+      "sha256": "2818b69075fcf20a681ee7586ae42e7a5fd942e90feec135b65dfb04b5fe7519"
     },
     {
       "path": "rdf_persistence/domain/generated/service/shapes.ttl",
-      "sha256": "40561bc358770312d0451d20939c114ba07436facf7deb4d6ca764182c8b9a58"
+      "sha256": "3d09f32d5abb755dbcc2a8347cf11730021e0e08f8bce38bd45bf02546df49f4"
     }
   ]
 }

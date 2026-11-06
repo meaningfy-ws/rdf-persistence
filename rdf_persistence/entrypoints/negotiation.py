@@ -10,7 +10,7 @@ from rdf_persistence.domain.exceptions import (
     PreconditionRequired,
     UnsupportedMediaType,
 )
-from rdf_persistence.services.documents import JSON, REPRESENTATIONS
+from rdf_persistence.services.documents import JSON, JSON_LD, REPRESENTATIONS
 
 ANY = "*/*"
 # How exactly a range names a media type: the most exact range that matches decides its quality.
@@ -68,6 +68,25 @@ def accepted_media_type(accept: str | None) -> str:
     quality, media_type = max(scored, key=lambda pair: pair[0])  # max keeps the first on a tie
     if quality <= 0:
         raise NotAcceptable(f"the service produces {', '.join(REPRESENTATIONS)}")
+    return media_type
+
+
+def accepted_listing_type(accept: str | None) -> str:
+    """The representation of a page for an ``Accept`` header: JSON or JSON-LD, JSON first on a tie.
+
+    A page is an envelope of items with their total, which has no Turtle form, so Turtle is never
+    chosen, whatever its quality.
+
+    Raises:
+        NotAcceptable: Neither JSON nor JSON-LD is acceptable to the client.
+    """
+    ranges = _ranges(accept) if accept is not None and accept.strip() else [(ANY, 1.0)]
+    quality, media_type = max(
+        ((_quality_of(ranges, media_type), media_type) for media_type in (JSON, JSON_LD)),
+        key=lambda pair: pair[0],
+    )
+    if quality <= 0:
+        raise NotAcceptable(f"a listing is served as {JSON} or {JSON_LD}")
     return media_type
 
 

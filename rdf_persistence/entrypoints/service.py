@@ -10,6 +10,7 @@ from fastapi import FastAPI
 
 from rdf_persistence.domain.generated.service.rp_service import ServiceSettings
 from rdf_persistence.entrypoints.kit import ServiceKit
+from rdf_persistence.entrypoints.openapi import install_openapi
 from rdf_persistence.entrypoints.problems import install_problem_handlers
 from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.services.access import AccessRules, load_role_definitions
@@ -48,7 +49,7 @@ def install_service(
         InvalidRoleDefinition: ``rules`` is a file that is not a valid list of role definitions;
             the message names the entry.
         LookupError: The schema has no tenant root class, or no (or several) access record classes.
-        OSError: The generated folder lacks the context, the shapes or a frame.
+        OSError: The generated folder lacks the context, the shapes, a frame or the OpenAPI components.
     """
     if isinstance(rules, Path):
         rules = AccessRules(load_role_definitions(rules))
@@ -64,6 +65,7 @@ def install_service(
     )
     install_problem_handlers(app, settings.base)
     app.include_router(build_router(kit), prefix=prefix)
+    install_openapi(app, kit)
     _run_at_startup(app, kit)
     return kit
 

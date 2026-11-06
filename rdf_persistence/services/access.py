@@ -234,6 +234,21 @@ class AccessRules:
             raise Forbidden(f"{action.value} is not permitted")
 
     @staticmethod
+    def hidden_graphs(caller: VerifiedCaller, access: CallerAccess) -> list[str]:
+        """The graphs of the aggregates a Prohibition of ``read`` keeps from the caller, sorted.
+
+        A listing leaves them out before it pages and counts, so a page never shows what a read of
+        the same aggregate would refuse. A Prohibition of another action hides nothing.
+        """
+        return sorted(
+            {
+                p.target
+                for p in access.prohibitions or []
+                if p.assignee == caller.principal and p.action == Action.READ
+            }
+        )
+
+    @staticmethod
     def _scope(tenant: str, target_iri: str) -> set[str]:
         """The targets whose rules apply to ``target_iri``: the tenant, and the aggregate's graph."""
         if target_iri == tenant:

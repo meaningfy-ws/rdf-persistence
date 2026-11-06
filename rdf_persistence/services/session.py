@@ -17,6 +17,7 @@ from rdf_persistence.domain.exceptions import Conflict, InvalidIri, NotFound
 from rdf_persistence.domain.generated.rp_annotations import Tracked
 from rdf_persistence.domain.generated.rp_core import Principal, RegistryEntry, RegistryKind
 from rdf_persistence.domain.generated.rp_files import RdfFormat
+from rdf_persistence.domain.generated.service.rp_service import ListPlan
 from rdf_persistence.domain.iris import (
     graph_iri,
     is_aggregate_iri,
@@ -29,6 +30,7 @@ from rdf_persistence.domain.iris import (
 )
 from rdf_persistence.domain.sparql import Triple, fill, term, term_list, triples_block
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.listing import fetch
 from rdf_persistence.services.loading import parse_graph
 from rdf_persistence.services.store import Store
 
@@ -308,6 +310,14 @@ class Session:
         if version is None:
             raise NotFound(f"no graph {graph}")
         return stored, graph, str(version)
+
+    async def page(self, plan: ListPlan) -> Graph:
+        """The triples of the aggregates of one page of a listing, and the size of the whole listing.
+
+        Raises:
+            DatabaseGone: The tenant database does not exist.
+        """
+        return await fetch(self._store, self._database, self._registry, plan)
 
     async def add_graph(
         self, iri: str, triples: Iterable[Triple], loaded_graphs: Sequence[URIRef] = ()

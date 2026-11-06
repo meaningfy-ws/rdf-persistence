@@ -1,0 +1,648 @@
+{
+  "schemas": {
+    "Any": {
+      "additionalProperties": true,
+      "description": "Any value; the slots that range over it hold data the toolkit does not model.",
+      "title": "Any",
+      "type": [
+        "null",
+        "boolean",
+        "object",
+        "number",
+        "string"
+      ]
+    },
+    "BadRequestMeans": {
+      "description": "What an answer of 400 means to a call. Zitadel answers 400 to a state change that is already done, and to a grant of a role the project lacks, and the call knows which.",
+      "enum": [
+        "failure",
+        "already_done",
+        "missing_role"
+      ],
+      "title": "BadRequestMeans",
+      "type": "string"
+    },
+    "DiscoveryDocument": {
+      "additionalProperties": false,
+      "description": "The part of an OpenID Connect discovery document the toolkit reads.",
+      "properties": {
+        "issuer": {
+          "description": "The issuer the document describes.",
+          "type": "string"
+        },
+        "jwks_uri": {
+          "description": "Where the issuer publishes its signing keys.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "issuer",
+        "jwks_uri"
+      ],
+      "title": "DiscoveryDocument",
+      "type": "object"
+    },
+    "FusekiDataset": {
+      "additionalProperties": false,
+      "description": "One dataset of the Fuseki dataset list.",
+      "properties": {
+        "ds.name": {
+          "description": "The name of the dataset, with a leading slash.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ds.name"
+      ],
+      "title": "FusekiDataset",
+      "type": "object"
+    },
+    "FusekiDatasetList": {
+      "additionalProperties": false,
+      "description": "The answer of the Fuseki administration endpoint that lists datasets.",
+      "properties": {
+        "datasets": {
+          "description": "The datasets Fuseki serves.",
+          "items": {
+            "$ref": "#/components/schemas/FusekiDataset"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "datasets"
+      ],
+      "title": "FusekiDatasetList",
+      "type": "object"
+    },
+    "JwtClaims": {
+      "additionalProperties": false,
+      "description": "The claims of a verified access token that the toolkit reads; the roles claim, whose name is configured, stays among the extra fields.",
+      "properties": {
+        "aud": {
+          "$ref": "#/components/schemas/Any",
+          "description": "The audience of the token, one string or a list of them."
+        },
+        "azp": {
+          "description": "The client the token was issued to.",
+          "type": "string"
+        },
+        "exp": {
+          "description": "When the token stops being valid, in seconds since the epoch.",
+          "type": "number"
+        },
+        "iss": {
+          "description": "The issuer of the token.",
+          "type": "string"
+        },
+        "nbf": {
+          "description": "When the token starts being valid, in seconds since the epoch.",
+          "type": "number"
+        },
+        "sub": {
+          "description": "The account the token is for.",
+          "pattern": "^\\S([\\s\\S]*\\S)?$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sub",
+        "iss",
+        "aud",
+        "exp"
+      ],
+      "title": "JwtClaims",
+      "type": "object"
+    },
+    "ZitadelAssertion": {
+      "additionalProperties": false,
+      "description": "The claims of the JWT a machine user signs to ask for an access token (the JWT-profile grant).",
+      "properties": {
+        "aud": {
+          "description": "The instance the assertion is for.",
+          "type": "string"
+        },
+        "exp": {
+          "description": "When the assertion stops being valid, in seconds since the epoch.",
+          "type": "integer"
+        },
+        "iat": {
+          "description": "When the assertion was signed, in seconds since the epoch.",
+          "type": "integer"
+        },
+        "iss": {
+          "description": "The machine user that signed the assertion.",
+          "type": "string"
+        },
+        "sub": {
+          "description": "The machine user the assertion speaks for.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "iss",
+        "sub",
+        "aud",
+        "iat",
+        "exp"
+      ],
+      "title": "ZitadelAssertion",
+      "type": "object"
+    },
+    "ZitadelCreated": {
+      "additionalProperties": false,
+      "description": "The answer to creating a project, or the organisation inside the answer that reads it.",
+      "properties": {
+        "id": {
+          "description": "The id of a created or listed thing.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "ZitadelCreated",
+      "type": "object"
+    },
+    "ZitadelDetails": {
+      "additionalProperties": false,
+      "description": "What Zitadel reports about where a resource lives.",
+      "properties": {
+        "resourceOwner": {
+          "description": "The id of the organisation that owns the resource.",
+          "type": "string"
+        }
+      },
+      "title": "ZitadelDetails",
+      "type": "object"
+    },
+    "ZitadelEmail": {
+      "additionalProperties": false,
+      "description": "The email address of a person, as Zitadel reports it.",
+      "properties": {
+        "email": {
+          "description": "The email address.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "email"
+      ],
+      "title": "ZitadelEmail",
+      "type": "object"
+    },
+    "ZitadelEmailQuery": {
+      "additionalProperties": false,
+      "description": "The search term that finds a user by email address.",
+      "properties": {
+        "emailAddress": {
+          "description": "The address to search for.",
+          "type": "string"
+        },
+        "method": {
+          "const": "TEXT_QUERY_METHOD_EQUALS",
+          "description": "How the search term is compared.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "emailAddress"
+      ],
+      "title": "ZitadelEmailQuery",
+      "type": "object"
+    },
+    "ZitadelGrantPage": {
+      "additionalProperties": false,
+      "description": "One page of the grant search.",
+      "properties": {
+        "result": {
+          "description": "The grants of the page.",
+          "items": {
+            "$ref": "#/components/schemas/ZitadelUserGrant"
+          },
+          "type": "array"
+        }
+      },
+      "title": "ZitadelGrantPage",
+      "type": "object"
+    },
+    "ZitadelGrantRequest": {
+      "additionalProperties": false,
+      "description": "The body that grants roles of a project to a user, or replaces the roles of a grant.",
+      "properties": {
+        "projectId": {
+          "description": "The id of a project.",
+          "type": "string"
+        },
+        "roleKeys": {
+          "description": "The keys of project roles.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "roleKeys"
+      ],
+      "title": "ZitadelGrantRequest",
+      "type": "object"
+    },
+    "ZitadelHuman": {
+      "additionalProperties": false,
+      "description": "What Zitadel reports about a person; a service account has none.",
+      "properties": {
+        "email": {
+          "$ref": "#/components/schemas/ZitadelEmail",
+          "description": "The email of the person."
+        }
+      },
+      "title": "ZitadelHuman",
+      "type": "object"
+    },
+    "ZitadelKeyAnswer": {
+      "additionalProperties": false,
+      "description": "The answer to creating a key: the key file, base64 encoded.",
+      "properties": {
+        "keyDetails": {
+          "description": "The key file, base64 encoded.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "keyDetails"
+      ],
+      "title": "ZitadelKeyAnswer",
+      "type": "object"
+    },
+    "ZitadelKeyFile": {
+      "additionalProperties": false,
+      "description": "The key file a machine user signs its assertions with, once decoded.",
+      "properties": {
+        "key": {
+          "description": "The private key, in PEM.",
+          "type": "string"
+        },
+        "keyId": {
+          "description": "The id of the key.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "keyId",
+        "key"
+      ],
+      "title": "ZitadelKeyFile",
+      "type": "object"
+    },
+    "ZitadelKeyRequest": {
+      "additionalProperties": false,
+      "description": "The body that creates a key for a machine user.",
+      "properties": {
+        "type": {
+          "const": "KEY_TYPE_JSON",
+          "description": "The format of the key.",
+          "type": "string"
+        }
+      },
+      "title": "ZitadelKeyRequest",
+      "type": "object"
+    },
+    "ZitadelMachineUserAnswer": {
+      "additionalProperties": false,
+      "description": "The answer to creating a machine user.",
+      "properties": {
+        "userId": {
+          "description": "The id of a user.",
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "userId"
+      ],
+      "title": "ZitadelMachineUserAnswer",
+      "type": "object"
+    },
+    "ZitadelMachineUserRequest": {
+      "additionalProperties": false,
+      "description": "The body that creates a machine user whose access tokens are JWTs.",
+      "properties": {
+        "accessTokenType": {
+          "const": "ACCESS_TOKEN_TYPE_JWT",
+          "description": "The kind of access token the user gets.",
+          "type": "string"
+        },
+        "name": {
+          "description": "The display name of a project or a machine user.",
+          "type": "string"
+        },
+        "userName": {
+          "description": "The login name of a machine user.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "userName",
+        "name"
+      ],
+      "title": "ZitadelMachineUserRequest",
+      "type": "object"
+    },
+    "ZitadelOrganisationAnswer": {
+      "additionalProperties": false,
+      "description": "The answer that reads the organisation of the caller.",
+      "properties": {
+        "org": {
+          "$ref": "#/components/schemas/ZitadelCreated",
+          "description": "The organisation of the caller."
+        }
+      },
+      "required": [
+        "org"
+      ],
+      "title": "ZitadelOrganisationAnswer",
+      "type": "object"
+    },
+    "ZitadelOrganisationQuery": {
+      "additionalProperties": false,
+      "description": "The search term that keeps the users of one organisation.",
+      "properties": {
+        "organizationId": {
+          "description": "The id of an organisation.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "organizationId"
+      ],
+      "title": "ZitadelOrganisationQuery",
+      "type": "object"
+    },
+    "ZitadelProjectQuery": {
+      "additionalProperties": false,
+      "description": "The search term that keeps the grants of one project.",
+      "properties": {
+        "projectId": {
+          "description": "The id of a project.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId"
+      ],
+      "title": "ZitadelProjectQuery",
+      "type": "object"
+    },
+    "ZitadelProjectRequest": {
+      "additionalProperties": false,
+      "description": "The body that creates a project.",
+      "properties": {
+        "name": {
+          "description": "The display name of a project or a machine user.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "ZitadelProjectRequest",
+      "type": "object"
+    },
+    "ZitadelQuery": {
+      "additionalProperties": false,
+      "description": "One term of a search; exactly one of its slots is set.",
+      "properties": {
+        "emailQuery": {
+          "$ref": "#/components/schemas/ZitadelEmailQuery",
+          "description": "A term that finds users by email address."
+        },
+        "organizationIdQuery": {
+          "$ref": "#/components/schemas/ZitadelOrganisationQuery",
+          "description": "A term that keeps one organisation."
+        },
+        "projectIdQuery": {
+          "$ref": "#/components/schemas/ZitadelProjectQuery",
+          "description": "A term that keeps one project."
+        },
+        "userIdQuery": {
+          "$ref": "#/components/schemas/ZitadelUserQuery",
+          "description": "A term that keeps one user."
+        }
+      },
+      "title": "ZitadelQuery",
+      "type": "object"
+    },
+    "ZitadelRoleRequest": {
+      "additionalProperties": false,
+      "description": "The body that adds a role to a project.",
+      "properties": {
+        "displayName": {
+          "description": "The name a role is shown with.",
+          "type": "string"
+        },
+        "roleKey": {
+          "description": "The key of a project role.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "roleKey",
+        "displayName"
+      ],
+      "title": "ZitadelRoleRequest",
+      "type": "object"
+    },
+    "ZitadelSearch": {
+      "additionalProperties": false,
+      "description": "The body of a search request: a window and the terms that all must hold.",
+      "properties": {
+        "queries": {
+          "description": "The terms that all must hold.",
+          "items": {
+            "$ref": "#/components/schemas/ZitadelQuery"
+          },
+          "type": "array"
+        },
+        "query": {
+          "$ref": "#/components/schemas/ZitadelWindow",
+          "description": "The part of the result to return."
+        }
+      },
+      "required": [
+        "query",
+        "queries"
+      ],
+      "title": "ZitadelSearch",
+      "type": "object"
+    },
+    "ZitadelTokenAnswer": {
+      "additionalProperties": false,
+      "description": "The answer that grants an access token.",
+      "properties": {
+        "access_token": {
+          "description": "The access token.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "access_token"
+      ],
+      "title": "ZitadelTokenAnswer",
+      "type": "object"
+    },
+    "ZitadelTokenRequest": {
+      "additionalProperties": false,
+      "description": "The form that asks for an access token with a signed assertion.",
+      "properties": {
+        "assertion": {
+          "description": "The signed JWT that proves the machine user's identity.",
+          "type": "string"
+        },
+        "grant_type": {
+          "const": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+          "description": "The OAuth grant type.",
+          "type": "string"
+        },
+        "scope": {
+          "description": "The space-separated OAuth scopes.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "assertion"
+      ],
+      "title": "ZitadelTokenRequest",
+      "type": "object"
+    },
+    "ZitadelUser": {
+      "additionalProperties": false,
+      "description": "One user of an organisation, as the user search and the user read report it.",
+      "properties": {
+        "details": {
+          "$ref": "#/components/schemas/ZitadelDetails",
+          "description": "Where the resource lives."
+        },
+        "human": {
+          "$ref": "#/components/schemas/ZitadelHuman",
+          "description": "The person behind the account, if it is a person's."
+        },
+        "state": {
+          "description": "The state of the account; the active one is `USER_STATE_ACTIVE`.",
+          "type": "string"
+        },
+        "userId": {
+          "description": "The id of a user.",
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "type": "string"
+        },
+        "username": {
+          "description": "The name the account signs in with.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "userId",
+        "state",
+        "username"
+      ],
+      "title": "ZitadelUser",
+      "type": "object"
+    },
+    "ZitadelUserAnswer": {
+      "additionalProperties": false,
+      "description": "The answer that reads one user.",
+      "properties": {
+        "user": {
+          "$ref": "#/components/schemas/ZitadelUser",
+          "description": "The user that was read."
+        }
+      },
+      "required": [
+        "user"
+      ],
+      "title": "ZitadelUserAnswer",
+      "type": "object"
+    },
+    "ZitadelUserGrant": {
+      "additionalProperties": false,
+      "description": "The roles of a project that a user holds, as the grant search reports them.",
+      "properties": {
+        "id": {
+          "description": "The id of a created or listed thing.",
+          "type": "string"
+        },
+        "roleKeys": {
+          "description": "The keys of project roles.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "userId": {
+          "description": "The id of a user.",
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "userId"
+      ],
+      "title": "ZitadelUserGrant",
+      "type": "object"
+    },
+    "ZitadelUserPage": {
+      "additionalProperties": false,
+      "description": "One page of the user search.",
+      "properties": {
+        "result": {
+          "description": "The users of the page.",
+          "items": {
+            "$ref": "#/components/schemas/ZitadelUser"
+          },
+          "type": "array"
+        }
+      },
+      "title": "ZitadelUserPage",
+      "type": "object"
+    },
+    "ZitadelUserQuery": {
+      "additionalProperties": false,
+      "description": "The search term that keeps the grants of one user.",
+      "properties": {
+        "userId": {
+          "description": "The id of a user.",
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "userId"
+      ],
+      "title": "ZitadelUserQuery",
+      "type": "object"
+    },
+    "ZitadelWindow": {
+      "additionalProperties": false,
+      "description": "The part of a search result a page asks for.",
+      "properties": {
+        "limit": {
+          "description": "How many results to return at most.",
+          "type": "integer"
+        },
+        "offset": {
+          "description": "How many results to skip.",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "offset",
+        "limit"
+      ],
+      "title": "ZitadelWindow",
+      "type": "object"
+    }
+  }
+}

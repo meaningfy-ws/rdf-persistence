@@ -18,6 +18,7 @@ from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.identity import Identity
+from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, generated_models
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import tenant_access_class
@@ -43,6 +44,8 @@ class ServiceKit:
         settings: ServiceSettings,
     ) -> None:
         view = load_schema(schema)
+        self.view = view
+        self.listings = Listings(view)
         self.store = store
         self.files = files
         self.identity = identity
@@ -50,7 +53,8 @@ class ServiceKit:
         self.rules = rules
         self.settings = settings
         self.system_database = system_database_name(settings.prefix)
-        self.documents = Documents(view, Path(next(iter(generated.__path__))))
+        self.generated_folder = Path(next(iter(generated.__path__)))
+        self.documents = Documents(view, self.generated_folder)
         models = generated_models(*_modules_of(generated), rp_access, rp_core, rp_tenancy)
         self.tenant_root_model = models.named(self.documents.tenant_root.name)
         access_class = cast(type[TenantAccess], models.named(tenant_access_class(view).name))
@@ -71,6 +75,15 @@ class ServiceKit:
         if not canonical:
             raise NotFound(f"no tenant {tenant_id!r}")
         return f"{self.settings.base}{self.settings.tenant_segment}/{tenant_id}"
+
+    async def bucket_of(self, tenant: str) -> str:
+        """The tenant's file bucket: the database name its access record stores (PD-6a).
+
+        Raises:
+            NotFound: The tenant has no access record.
+        """
+        record, _ = await self.tenancy.get(tenant)
+        return record.database_name
 
     def session(self, tenant: str, principal: str) -> AbstractAsyncContextManager[Session]:
         """A session on the tenant's database for ``principal``."""

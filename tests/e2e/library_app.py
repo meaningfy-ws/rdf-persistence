@@ -64,8 +64,7 @@ def build_library_app(
         tenant = kit.tenant_iri(tenant_id)
         access = await load_caller_access(kit.store, kit.system_database, tenant, caller.principal)
         kit.rules.require(caller, access, tenant, action)
-        record, _ = await kit.tenancy.get(tenant)
-        return record.database_name
+        return await kit.bucket_of(tenant)
 
     @app.put(path, status_code=204)
     async def put_file(t: str, name: str, request: Request) -> Response:

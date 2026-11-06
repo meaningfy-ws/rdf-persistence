@@ -132,10 +132,10 @@ Order: 1.11 at any time; 1.12 and 1.16 after 1.10; 1.13 after 1.8 and 1.12; 1.14
   - IRIs minted on create (PD-6);
   - bodies handled as in PD-14, including the refused replace with a different `id`.
 - [x] 5.3 Content negotiation: JSON with the `Link` header, JSON-LD and Turtle; 406 and 415; the context served at a fixed path.
-- [ ] 5.4 Listings: `?<slot>=<value>` filters, `limit`, `offset`, `sort` (PD-15), the page object, 400 on a bad query, and an injection attempt through a filter that leaves the store unchanged.
-- [ ] 5.5 The OpenAPI hook over the schema, with bookkeeping stripped; its component schemas are generated from the LinkML schema, never written by hand (PD-24).
+- [x] 5.4 Listings: `?<slot>=<value>` filters, `limit`, `offset`, `sort` (PD-15), the page object, 400 on a bad query, and an injection attempt through a filter that leaves the store unchanged.
+- [x] 5.5 The OpenAPI hook over the schema, with bookkeeping stripped; its component schemas are generated from the LinkML schema, never written by hand (PD-24).
 - [x] 5.6 Spike linkml-openapi on the toy library; record in `api.adoc` whether it can replace 5.5.
-- [ ] 5.7 The end-to-end test: the toy library served over the API against Fuseki, Garage and Zitadel, with JWT access tokens of the machine users obtained by the JWT-profile grant (PD-16).
+- [x] 5.7 The end-to-end test: the toy library served over the API against Fuseki, Garage and Zitadel, with JWT access tokens of the machine users obtained by the JWT-profile grant (PD-16).
 
 ## 6. Close
 
@@ -198,7 +198,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 - [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6 · [x] 2.7 · [x] 2.8
 - [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4
 - [x] 4.1 · [x] 4.2 · [x] 4.3
-- [x] 5.1 · [x] 5.2 · [x] 5.3 · [ ] 5.4 · [ ] 5.5 · [x] 5.6 · [ ] 5.7
+- [x] 5.1 · [x] 5.2 · [x] 5.3 · [x] 5.4 · [x] 5.5 · [x] 5.6 · [x] 5.7
 - [ ] 6.1 · [ ] 6.2 · [ ] 6.3
 
 ## Verification

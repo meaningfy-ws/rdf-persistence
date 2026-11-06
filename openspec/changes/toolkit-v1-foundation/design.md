@@ -267,7 +267,7 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
 - **PD-24 What is generated, and what may be hand-written.**
   - Generated from LinkML: domain classes, SHACL shapes, the JSON-LD context and frames, TypeScript
     types, the OpenAPI component schemas (through `gen-json-schema`, inside the OpenAPI hook of task
-    5.5) and the diagrams. A standalone JSON Schema file is not a v1 artefact.
+    5.5) and the diagrams. A standalone JSON Schema file is not a v1 artefact. `gen-json-schema` runs at generation time, not in the running hook (the generators are an extra, PD-2): an `rp-generate` step writes `openapi-components.json` beside the context (bookkeeping and `internal` slots stripped, the identifier read-only), and the OpenAPI hook reads it (task 5.5).
   - The toolkit's own data types are declared in LinkML and generated too. `rp.yaml` imports
     neither of these schemas, so consumers' models do not carry them; each is its own
     `[[tool.rp-generate]]` entry (PD-18) and, like the metamodel, is exempt from the checks of PD-23:
@@ -589,6 +589,12 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
   503 carry no detail, so a hidden tenant and an absent one answer alike. `POST /{tenant_segment}`
   builds the tenant root through its generated class (the conformance suite keeps classes and shapes
   equal); the other bodies follow PD-14. The aggregate listing is task 5.4.
+- **PD-15a Listings** (task 5.4). One `CONSTRUCT` per page counts the matches and pages the roots in
+  SPARQL; items are ordered in Python by the sort key, ties by IRI. Filters are typed by the slot's
+  range (enum meaning IRI, IRI reference, typed literal); `id`, bookkeeping, `internal` and owned-part
+  slots are not filterable; a slot named `limit`, `offset` or `sort` cannot be filtered on. A
+  Prohibition of `read` on an aggregate hides it from that caller's listing and total. The tenant
+  listing takes only `limit` and `offset`. A listing in Turtle is 406 (a page has no Turtle form).
 - **PD-14 Body handling.**
   1. A JSON body is expanded with the generated context; a JSON-LD body is used as is. Either way it
      becomes triples whose root is the IRI from the path (on create, the minted IRI).

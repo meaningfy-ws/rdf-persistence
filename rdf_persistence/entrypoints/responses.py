@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from rdflib import URIRef
 from rdflib.graph import Graph
 
+from rdf_persistence.domain.generated.service.rp_service import Page
 from rdf_persistence.entrypoints.negotiation import etag_of
 from rdf_persistence.services.documents import JSON, Documents
 
@@ -58,3 +59,11 @@ async def document_response(
         headers[LOCATION] = location
     body = await documents.render(stored, graph, cls, media_type)
     return Response(body, status_code=status, media_type=media_type, headers=headers)
+
+
+def page_response(request: Request, page: Page, media_type: str) -> Response:
+    """A page of aggregates as ``media_type``; plain JSON points at the generated context by a ``Link`` header."""
+    headers = {VARY: ACCEPT}
+    if media_type == JSON:
+        headers[LINK] = f'<{request.url_for(CONTEXT_ROUTE)}>; rel="{CONTEXT_REL}"'
+    return Response(page.model_dump_json(exclude_none=True), media_type=media_type, headers=headers)

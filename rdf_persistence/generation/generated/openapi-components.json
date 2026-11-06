@@ -1,0 +1,900 @@
+{
+  "schemas": {
+    "BoundaryRule": {
+      "description": "The rules of the boundary check; a problem line starts with its rule.",
+      "enum": [
+        "ownership",
+        "reference",
+        "module_kind"
+      ],
+      "title": "BoundaryRule",
+      "type": "string"
+    },
+    "CheckProblem": {
+      "additionalProperties": false,
+      "description": "One problem a check, a pipeline step or the freshness comparison found, with where and by which rule. Only the command line formats it for the developer.",
+      "properties": {
+        "element": {
+          "description": "The element of the schema, or the file, a problem is about.",
+          "type": "string"
+        },
+        "message": {
+          "description": "What is wrong, in a line.",
+          "type": "string"
+        },
+        "rule": {
+          "description": "The id of the rule a problem breaks, a `HardRule` or `BoundaryRule` value or a lint rule name.",
+          "type": "string"
+        },
+        "schema_file": {
+          "description": "The root LinkML schema file; the TOML key and the flag are `schema`, which the field name avoids because it would shadow a pydantic method.",
+          "pattern": "^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$",
+          "type": "string"
+        },
+        "step": {
+          "description": "The name of the pipeline step that found a problem.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message"
+      ],
+      "title": "CheckProblem",
+      "type": "object"
+    },
+    "ClassShape": {
+      "additionalProperties": false,
+      "description": "The reviewed shape of one class, its name and the shape of each of its slots.",
+      "properties": {
+        "class_name": {
+          "description": "The name of a class of the schema.",
+          "type": "string"
+        },
+        "slots": {
+          "description": "The shapes of a class's slots, in schema order.",
+          "items": {
+            "$ref": "#/components/schemas/SlotShape"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "class_name"
+      ],
+      "title": "ClassShape",
+      "type": "object"
+    },
+    "CliFlag": {
+      "additionalProperties": false,
+      "description": "A command-line flag of `rp-generate` and the GenerationTarget field it overrides.",
+      "properties": {
+        "field": {
+          "description": "The name of the GenerationTarget field the option overrides.",
+          "type": "string"
+        },
+        "option": {
+          "description": "The command-line option, with its leading dashes.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "option",
+        "field"
+      ],
+      "title": "CliFlag",
+      "type": "object"
+    },
+    "ConstraintCase": {
+      "additionalProperties": false,
+      "description": "One row of the conformance table: a constraint kind, a class that declares it, and the instance files the generated class and shape must accept and refuse.",
+      "properties": {
+        "class_name": {
+          "description": "The name of a class of the schema.",
+          "type": "string"
+        },
+        "invalid": {
+          "description": "Paths of instance files, beside the cases file, that the class and the shape must refuse.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "$ref": "#/components/schemas/ConstraintKind",
+          "description": "The kind of constraint a case exercises."
+        },
+        "valid": {
+          "description": "Paths of instance files, beside the cases file, that the class and the shape must accept.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "class_name"
+      ],
+      "title": "ConstraintCase",
+      "type": "object"
+    },
+    "ConstraintKind": {
+      "description": "The constraint kinds of v1 that the generated classes and shapes must agree on.",
+      "enum": [
+        "required",
+        "cardinality",
+        "range_type",
+        "range_enum",
+        "pattern",
+        "value_bounds",
+        "identifier",
+        "closed",
+        "exactly_one_of",
+        "any_of",
+        "unique_keys"
+      ],
+      "title": "ConstraintKind",
+      "type": "string"
+    },
+    "ContainerMarker": {
+      "additionalProperties": false,
+      "description": "A pytest marker of the container tests, the container it starts and its help text.",
+      "properties": {
+        "container": {
+          "description": "The name of a container the testkit starts.",
+          "type": "string"
+        },
+        "help": {
+          "description": "A line of help text.",
+          "type": "string"
+        },
+        "marker": {
+          "description": "The name of a pytest marker.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "marker",
+        "container",
+        "help"
+      ],
+      "title": "ContainerMarker",
+      "type": "object"
+    },
+    "ExecResult": {
+      "additionalProperties": false,
+      "description": "What a command run inside a container printed, and how it ended.",
+      "properties": {
+        "exit_code": {
+          "description": "The exit code the command ended with.",
+          "type": "integer"
+        },
+        "stderr": {
+          "description": "What the command wrote to its standard error.",
+          "type": "string"
+        },
+        "stdout": {
+          "description": "What the command wrote to its standard output.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "stdout",
+        "stderr",
+        "exit_code"
+      ],
+      "title": "ExecResult",
+      "type": "object"
+    },
+    "Frame": {
+      "additionalProperties": false,
+      "description": "A JSON-LD frame, the types it selects, its references and the frames of its owned parts.",
+      "properties": {
+        "parts": {
+          "description": "The frames of the owned parts nested in a frame, one per owned slot.",
+          "items": {
+            "$ref": "#/components/schemas/FramePart"
+          },
+          "type": "array"
+        },
+        "references": {
+          "description": "The slots of a frame that hold references, left as IRIs.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "type_terms": {
+          "description": "The context terms of the types a frame selects.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "type_terms",
+        "references",
+        "parts"
+      ],
+      "title": "Frame",
+      "type": "object"
+    },
+    "FramePart": {
+      "additionalProperties": false,
+      "description": "The frame of the parts nested in one owned slot of a frame.",
+      "properties": {
+        "frame": {
+          "$ref": "#/components/schemas/Frame",
+          "description": "The frame of the parts held by a slot."
+        },
+        "name": {
+          "description": "The name of the thing a record describes (a slot, a file, a class, a rule).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "frame"
+      ],
+      "title": "FramePart",
+      "type": "object"
+    },
+    "FusekiServer": {
+      "additionalProperties": false,
+      "description": "Where the test Fuseki answers, and the one user it admits.",
+      "properties": {
+        "password": {
+          "description": "The password of the user.",
+          "type": "string"
+        },
+        "url": {
+          "description": "The base URL a server answers on.",
+          "type": "string"
+        },
+        "user": {
+          "description": "The user name the server admits.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "user",
+        "password"
+      ],
+      "title": "FusekiServer",
+      "type": "object"
+    },
+    "GarageServer": {
+      "additionalProperties": false,
+      "description": "The S3 endpoint of the test Garage and the key bootstrapped on it.",
+      "properties": {
+        "endpoint": {
+          "description": "The URL of the S3 endpoint.",
+          "type": "string"
+        },
+        "key_id": {
+          "description": "The id of the access key.",
+          "type": "string"
+        },
+        "region": {
+          "description": "The region name the S3 client signs for.",
+          "type": "string"
+        },
+        "secret": {
+          "description": "The secret of the access key.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "endpoint",
+        "key_id",
+        "secret",
+        "region"
+      ],
+      "title": "GarageServer",
+      "type": "object"
+    },
+    "GeneratedFile": {
+      "additionalProperties": false,
+      "description": "One file a generator renders, its name inside the target folder and its text.",
+      "properties": {
+        "name": {
+          "description": "The name of the thing a record describes (a slot, a file, a class, a rule).",
+          "type": "string"
+        },
+        "text": {
+          "description": "The text of a file.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "text"
+      ],
+      "title": "GeneratedFile",
+      "type": "object"
+    },
+    "GenerationAnnotation": {
+      "description": "The annotations this module's schema carries for the toolchain itself.",
+      "enum": [
+        "cli_flag",
+        "secret",
+        "allows_extra",
+        "strict"
+      ],
+      "title": "GenerationAnnotation",
+      "type": "string"
+    },
+    "GenerationManifest": {
+      "additionalProperties": false,
+      "description": "What one generation run read and wrote: the installed `linkml` version, the files it read and the files it wrote. Written as `rp-manifest.json` in the target's Python folder.",
+      "properties": {
+        "inputs": {
+          "description": "The files a generation run read, sorted by path.",
+          "items": {
+            "$ref": "#/components/schemas/ManifestEntry"
+          },
+          "type": "array"
+        },
+        "linkml": {
+          "description": "The version of the `linkml` package that ran the generation.",
+          "type": "string"
+        },
+        "outputs": {
+          "description": "The files a generation run wrote, sorted by path; not the manifest itself.",
+          "items": {
+            "$ref": "#/components/schemas/ManifestEntry"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "linkml"
+      ],
+      "title": "GenerationManifest",
+      "type": "object"
+    },
+    "GenerationTarget": {
+      "additionalProperties": false,
+      "description": "One entry of the `[tool.rp-generate]` table of a `pyproject.toml`: a schema and the folders its generated artefacts are written to. Paths are relative to the folder of the `pyproject.toml`.",
+      "properties": {
+        "diagrams": {
+          "description": "The folder that receives one Mermaid file per module; none are written when absent.",
+          "pattern": "^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$",
+          "type": "string"
+        },
+        "package": {
+          "description": "The Python import path of the generated package, a dotted identifier.",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$",
+          "type": "string"
+        },
+        "python": {
+          "description": "The folder that receives the classes, shapes, context, frames and the schema copy; the folder of `package` when absent.",
+          "pattern": "^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$",
+          "type": "string"
+        },
+        "schema_file": {
+          "description": "The root LinkML schema file; the TOML key and the flag are `schema`, which the field name avoids because it would shadow a pydantic method.",
+          "pattern": "^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$",
+          "type": "string"
+        },
+        "typescript": {
+          "description": "The folder that receives the TypeScript types; none are written when absent.",
+          "pattern": "^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_file",
+        "package"
+      ],
+      "title": "GenerationTarget",
+      "type": "object"
+    },
+    "HardRule": {
+      "description": "The rules of the hard check; a problem line starts with its rule.",
+      "enum": [
+        "iri",
+        "title",
+        "description",
+        "meaning",
+        "rp_path",
+        "described",
+        "annotation",
+        "unique_key"
+      ],
+      "title": "HardRule",
+      "type": "string"
+    },
+    "MachineUser": {
+      "additionalProperties": false,
+      "description": "A service account provisioned in the test Zitadel, with the private key it signs its JWT-profile assertions with.",
+      "properties": {
+        "key_id": {
+          "description": "The id of the access key.",
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of the thing a record describes (a slot, a file, a class, a rule).",
+          "type": "string"
+        },
+        "private_key": {
+          "description": "The PEM private key of a machine user's key pair.",
+          "type": "string"
+        },
+        "user_id": {
+          "description": "The id of a user in the identity provider.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "user_id",
+        "key_id",
+        "private_key"
+      ],
+      "title": "MachineUser",
+      "type": "object"
+    },
+    "ManifestEntry": {
+      "additionalProperties": false,
+      "description": "A file and the SHA-256 of its bytes, as recorded by a generation run.",
+      "properties": {
+        "path": {
+          "description": "A file path, POSIX, relative to the folder of the `pyproject.toml`.",
+          "pattern": "^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$",
+          "type": "string"
+        },
+        "sha256": {
+          "description": "The SHA-256 of a file's bytes, in lowercase hexadecimal.",
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "title": "ManifestEntry",
+      "type": "object"
+    },
+    "MmdAttribute": {
+      "additionalProperties": false,
+      "description": "An attribute line of a Mermaid class box.",
+      "properties": {
+        "name": {
+          "description": "The name of the thing a record describes (a slot, a file, a class, a rule).",
+          "type": "string"
+        },
+        "type": {
+          "description": "The type of a value, as the target language names it.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "title": "MmdAttribute",
+      "type": "object"
+    },
+    "MmdClass": {
+      "additionalProperties": false,
+      "description": "One class box of a Mermaid diagram.",
+      "properties": {
+        "attributes": {
+          "description": "The attribute lines of a class box.",
+          "items": {
+            "$ref": "#/components/schemas/MmdAttribute"
+          },
+          "type": "array"
+        },
+        "name": {
+          "description": "The name of the thing a record describes (a slot, a file, a class, a rule).",
+          "type": "string"
+        },
+        "stereotype": {
+          "description": "The stereotype of a class box, `root` or `owned`, absent for a plain class.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "attributes"
+      ],
+      "title": "MmdClass",
+      "type": "object"
+    },
+    "MmdModule": {
+      "additionalProperties": false,
+      "description": "One Mermaid class diagram, for one module of the schema.",
+      "properties": {
+        "classes": {
+          "description": "The class boxes of a diagram.",
+          "items": {
+            "$ref": "#/components/schemas/MmdClass"
+          },
+          "type": "array"
+        },
+        "externals": {
+          "description": "The names of the classes a diagram draws as a name only.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "links": {
+          "description": "The relationship lines of a diagram.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "classes",
+        "links",
+        "externals"
+      ],
+      "title": "MmdModule",
+      "type": "object"
+    },
+    "PresenceRule": {
+      "additionalProperties": false,
+      "description": "A class-level rule over alternatives, and when its validator refuses.",
+      "properties": {
+        "name": {
+          "description": "The name of the thing a record describes (a slot, a file, a class, a rule).",
+          "type": "string"
+        },
+        "need": {
+          "description": "What a rule needs of its alternatives, in words.",
+          "type": "string"
+        },
+        "refused": {
+          "description": "The Python condition under which a rule's validator refuses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "need",
+        "refused"
+      ],
+      "title": "PresenceRule",
+      "type": "object"
+    },
+    "RuleAlternative": {
+      "additionalProperties": false,
+      "description": "One alternative of a rule, its readable label and the Python expression that tells it holds.",
+      "properties": {
+        "holds": {
+          "description": "The Python expression that tells an alternative holds.",
+          "type": "string"
+        },
+        "label": {
+          "description": "A readable label.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "holds"
+      ],
+      "title": "RuleAlternative",
+      "type": "object"
+    },
+    "SlotShape": {
+      "additionalProperties": false,
+      "description": "The shape of one slot of a class, as the schema induces it.",
+      "properties": {
+        "alias": {
+          "description": "The name the slot's field carries in code and JSON when it differs from the slot's name; absent otherwise.",
+          "type": "string"
+        },
+        "multivalued": {
+          "description": "Whether the slot takes several values.",
+          "type": "boolean"
+        },
+        "name": {
+          "description": "The name of the thing a record describes (a slot, a file, a class, a rule).",
+          "type": "string"
+        },
+        "range": {
+          "description": "The name of the type, enum or class the slot's values belong to.",
+          "type": "string"
+        },
+        "required": {
+          "description": "Whether a value is required.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "required",
+        "multivalued",
+        "range"
+      ],
+      "title": "SlotShape",
+      "type": "object"
+    },
+    "TsEnum": {
+      "additionalProperties": false,
+      "description": "A union of string literals that stands for an enum of the schema.",
+      "properties": {
+        "doc": {
+          "description": "A one-line doc comment, empty when there is none.",
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of the thing a record describes (a slot, a file, a class, a rule).",
+          "type": "string"
+        },
+        "values": {
+          "description": "The values of a union type.",
+          "items": {
+            "$ref": "#/components/schemas/TsEnumValue"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "doc",
+        "values"
+      ],
+      "title": "TsEnum",
+      "type": "object"
+    },
+    "TsEnumValue": {
+      "additionalProperties": false,
+      "description": "A string literal of a TypeScript union type.",
+      "properties": {
+        "doc": {
+          "description": "A one-line doc comment, empty when there is none.",
+          "type": "string"
+        },
+        "literal": {
+          "description": "A string literal, quoted.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "literal",
+        "doc"
+      ],
+      "title": "TsEnumValue",
+      "type": "object"
+    },
+    "TsField": {
+      "additionalProperties": false,
+      "description": "A field of a TypeScript interface.",
+      "properties": {
+        "doc": {
+          "description": "A one-line doc comment, empty when there is none.",
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of the thing a record describes (a slot, a file, a class, a rule).",
+          "type": "string"
+        },
+        "optional": {
+          "description": "Whether a field may be left out.",
+          "type": "boolean"
+        },
+        "type": {
+          "description": "The type of a value, as the target language names it.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "optional",
+        "doc"
+      ],
+      "title": "TsField",
+      "type": "object"
+    },
+    "TsImport": {
+      "additionalProperties": false,
+      "description": "The names a TypeScript module imports from another module.",
+      "properties": {
+        "module": {
+          "description": "The name of a schema module.",
+          "type": "string"
+        },
+        "names": {
+          "description": "The names imported from a module.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "module",
+        "names"
+      ],
+      "title": "TsImport",
+      "type": "object"
+    },
+    "TsInterface": {
+      "additionalProperties": false,
+      "description": "A TypeScript interface and its fields.",
+      "properties": {
+        "doc": {
+          "description": "A one-line doc comment, empty when there is none.",
+          "type": "string"
+        },
+        "fields": {
+          "description": "The fields of an interface.",
+          "items": {
+            "$ref": "#/components/schemas/TsField"
+          },
+          "type": "array"
+        },
+        "name": {
+          "description": "The name of the thing a record describes (a slot, a file, a class, a rule).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "doc",
+        "fields"
+      ],
+      "title": "TsInterface",
+      "type": "object"
+    },
+    "TsModule": {
+      "additionalProperties": false,
+      "description": "One TypeScript file, for one module of the schema.",
+      "properties": {
+        "enums": {
+          "description": "The enums a TypeScript module declares.",
+          "items": {
+            "$ref": "#/components/schemas/TsEnum"
+          },
+          "type": "array"
+        },
+        "imports": {
+          "description": "The imports of a TypeScript module.",
+          "items": {
+            "$ref": "#/components/schemas/TsImport"
+          },
+          "type": "array"
+        },
+        "interfaces": {
+          "description": "The interfaces a TypeScript module declares.",
+          "items": {
+            "$ref": "#/components/schemas/TsInterface"
+          },
+          "type": "array"
+        },
+        "name": {
+          "description": "The name of the thing a record describes (a slot, a file, a class, a rule).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "enums",
+        "interfaces",
+        "imports"
+      ],
+      "title": "TsModule",
+      "type": "object"
+    },
+    "UniqueKeyOn": {
+      "additionalProperties": false,
+      "description": "A unique key that a class's multivalued slot is subject to, with the IRIs the constraint query needs.",
+      "properties": {
+        "description": {
+          "description": "A description in words.",
+          "type": "string"
+        },
+        "key_iris": {
+          "description": "The expanded IRIs of the slots that make up a unique key.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "key_name": {
+          "description": "The name of a unique key.",
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of the thing a record describes (a slot, a file, a class, a rule).",
+          "type": "string"
+        },
+        "slot_iri": {
+          "description": "The expanded IRI of a slot.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "slot_iri",
+        "key_name",
+        "key_iris"
+      ],
+      "title": "UniqueKeyOn",
+      "type": "object"
+    },
+    "Violation": {
+      "additionalProperties": false,
+      "description": "A hand-written model or a generated artefact that a guard found out of place.",
+      "properties": {
+        "what": {
+          "description": "What is wrong at that place.",
+          "type": "string"
+        },
+        "where": {
+          "description": "The place of a violation, a file and a line or a path.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "where",
+        "what"
+      ],
+      "title": "Violation",
+      "type": "object"
+    },
+    "ZitadelProject": {
+      "additionalProperties": false,
+      "description": "The project provisioned in the test Zitadel: the organisation and project ids, the machine users of the test principals, and the server that holds them.",
+      "properties": {
+        "machine_users": {
+          "description": "The service accounts of the test principals.",
+          "items": {
+            "$ref": "#/components/schemas/MachineUser"
+          },
+          "type": "array"
+        },
+        "organisation_id": {
+          "description": "The id of the organisation that owns the provisioned resources.",
+          "type": "string"
+        },
+        "project_id": {
+          "description": "The id of the provisioned project, whose audience scope puts it in a token.",
+          "type": "string"
+        },
+        "server": {
+          "$ref": "#/components/schemas/ZitadelServer",
+          "description": "The test server a provisioned resource lives on."
+        }
+      },
+      "required": [
+        "server",
+        "organisation_id",
+        "project_id"
+      ],
+      "title": "ZitadelProject",
+      "type": "object"
+    },
+    "ZitadelServer": {
+      "additionalProperties": false,
+      "description": "Where the test Zitadel answers, and the admin machine user's personal access token, which authenticates the management API for provisioning a project, an application and machine users.",
+      "properties": {
+        "admin_pat": {
+          "description": "The personal access token of the admin machine user.",
+          "type": "string"
+        },
+        "url": {
+          "description": "The base URL a server answers on.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "admin_pat"
+      ],
+      "title": "ZitadelServer",
+      "type": "object"
+    }
+  }
+}

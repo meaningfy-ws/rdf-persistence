@@ -5,19 +5,21 @@ model and a restart add its routes. Each route names the action it needs (PD-9);
 as a dependency, so a refused request never reaches the route's own code. Writes carry the version
 of what they replace in ``If-Match`` (428 without, 409 when stale).
 
-Task 5.4 adds the listing of an aggregate type (``GET /{tenant_segment}/{t}/{rp_path}``) and pages the
-listing of tenants; the seams are ``add_aggregate_routes`` and ``TenantApi.listing``.
+A listing (``GET /{tenant_segment}/{t}/{rp_path}``) needs ``read`` on the tenant: a permission on one
+aggregate alone lists nothing. It leaves out the aggregates a Prohibition of ``read`` hides from the
+caller, before it counts and pages. It is JSON or JSON-LD, never Turtle (PD-15).
 """
 
 import json
 from collections.abc import Iterable
-from typing import cast
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, Request, Response
 from linkml_runtime.linkml_model.meta import ClassDefinition
 from pydantic import BaseModel
+from rdflib import Graph, URIRef
 
-from rdf_persistence.domain.exceptions import Forbidden, InvalidBody, NotFound
+from rdf_persistence.domain.exceptions import BadQuery, Forbidden, InvalidBody, NotFound
 from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
@@ -30,22 +32,26 @@ from rdf_persistence.domain.generated.service.rp_service import (
     TenantSummary,
     VerifiedCaller,
 )
-from rdf_persistence.domain.iris import mint_aggregate_iri
+from rdf_persistence.domain.iris import graph_iri, mint_aggregate_iri
 from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.entrypoints.auth import Gate
 from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.negotiation import (
+    accepted_listing_type,
     accepted_media_type,
     expected_version,
     request_media_type,
 )
+from rdf_persistence.entrypoints.openapi import AggregateOpenApi, TenantOpenApi
 from rdf_persistence.entrypoints.responses import (
     ACCEPT,
     CONTEXT_ROUTE,
     document_response,
     model_response,
+    page_response,
 )
 from rdf_persistence.services.documents import JSON, JSON_LD
+from rdf_persistence.services.listing import items_of, list_request, total_of
 
 IF_MATCH = "If-Match"
 CONTENT_TYPE = "Content-Type"
@@ -85,6 +91,25 @@ class DocumentApi:
         return await document_response(
             request, self._kit.documents, stored, graph, self._cls, media_type, version
         )
+
+    async def listing(
+        self, request: Request, caller: VerifiedCaller, access: CallerAccess
+    ) -> Response:
+        """One page of the documents of the class, filtered and sorted as the query string says."""
+        media_type = accepted_listing_type(request.headers.get(ACCEPT))
+        hidden = self._kit.rules.hidden_graphs(caller, access)
+        plan = self._kit.listings.plan(
+            self._cls, list_request(request.query_params.multi_items()), hidden
+        )
+        async with self._kit.session(access.tenant, caller.principal) as session:
+            answer = await session.page(plan)
+        items = [await self._item(*item, media_type) for item in items_of(answer, plan)]
+        page = Page(items=items, total=total_of(answer, plan), limit=plan.limit, offset=plan.offset)
+        return page_response(request, page, media_type)
+
+    async def _item(self, root: URIRef, graph: Graph, media_type: str) -> object:
+        body = await self._kit.documents.render(graph, graph_iri(root), self._cls, media_type)
+        return json.loads(body)
 
     async def _body(self, request: Request, iri: str, *, creating: bool) -> Iterable[Triple]:
         """The validated triples of the request's body, rooted at ``iri``."""
@@ -167,10 +192,20 @@ class TenantApi:
         }  # replaced by the minted IRI
         return self._kit.tenant_root_model.model_validate({**placeholder, **body.root})
 
-    async def listing(self, caller: VerifiedCaller) -> Response:
-        """The tenants the caller may read, all of them in one page (task 5.4 pages it)."""
+    async def listing(self, request: Request, caller: VerifiedCaller) -> Response:
+        """One page of the tenants the caller may read, ordered by IRI.
+
+        Raises:
+            BadQuery: The query has a filter or a sort key (tenants are paged only), or a bad
+                ``limit`` or ``offset``.
+        """
+        paging = list_request(request.query_params.multi_items())
+        if paging.filters or paging.sort:
+            raise BadQuery("tenants are listed by IRI; only limit and offset are taken")
+        assert paging.limit is not None and paging.offset is not None, "ListRequest defaults"
         visible = [t for t in await self._kit.tenancy.tenants() if await self._may_read(caller, t)]
-        page = Page(items=visible, total=len(visible), limit=max(len(visible), 1), offset=0)
+        shown = visible[paging.offset : paging.offset + paging.limit]
+        page = Page(items=shown, total=len(visible), limit=paging.limit, offset=paging.offset)
         return model_response(page)
 
     async def _may_read(self, caller: VerifiedCaller, tenant: TenantSummary) -> bool:
@@ -213,6 +248,10 @@ class TenantApi:
         return model_response(summary, version=version)
 
 
+def _add(router: APIRouter, path: str, method: str, endpoint, docs: dict[str, Any]) -> None:
+    router.add_api_route(path, endpoint, methods=[method], response_model=None, **docs)
+
+
 def add_tenant_routes(router: APIRouter, kit: ServiceKit, gate: Gate) -> None:
     """``/{tenant_segment}`` and below: the tenants, their root object, grants and label (PD-13)."""
     api = TenantApi(kit, gate)
@@ -228,8 +267,8 @@ def add_tenant_routes(router: APIRouter, kit: ServiceKit, gate: Gate) -> None:
     async def create(request: Request, caller: VerifiedCaller = as_caller) -> Response:
         return await api.create(request, caller)
 
-    async def listing(caller: VerifiedCaller = as_caller) -> Response:
-        return await api.listing(caller)
+    async def listing(request: Request, caller: VerifiedCaller = as_caller) -> Response:
+        return await api.listing(request, caller)
 
     async def read_root(
         request: Request, caller: VerifiedCaller = as_caller, access: CallerAccess = may_read
@@ -257,18 +296,19 @@ def add_tenant_routes(router: APIRouter, kit: ServiceKit, gate: Gate) -> None:
     ) -> Response:
         return await api.set_label(request, caller, access)
 
+    docs = TenantOpenApi(kit.documents.tenant_root)
     routes = (
-        (collection, "GET", listing),
-        (collection, "POST", create),
-        (member, "GET", read_root),
-        (member, "PUT", replace_root),
-        (member, "DELETE", delete),
-        (f"{member}/grants", "GET", grants),
-        (f"{member}/grants", "PUT", set_grants),
-        (f"{member}/label", "PUT", set_label),
+        (collection, "GET", listing, docs.listing()),
+        (collection, "POST", create, docs.create()),
+        (member, "GET", read_root, docs.read_root()),
+        (member, "PUT", replace_root, docs.replace_root()),
+        (member, "DELETE", delete, docs.delete()),
+        (f"{member}/grants", "GET", grants, docs.grants()),
+        (f"{member}/grants", "PUT", set_grants, docs.set_grants()),
+        (f"{member}/label", "PUT", set_label, docs.set_label()),
     )
-    for path, method, endpoint in routes:
-        router.add_api_route(path, endpoint, methods=[method], response_model=None)
+    for path, method, endpoint, doc in routes:
+        _add(router, path, method, endpoint, doc)
 
 
 def add_aggregate_routes(
@@ -280,12 +320,18 @@ def add_aggregate_routes(
     member = f"{collection}/{{aggregate_id}}"
     as_caller = Depends(gate.caller)
     may_create = Depends(gate.tenant(Action.MODIFY))
+    may_list = Depends(gate.tenant(Action.READ))
     may_read = Depends(gate.aggregate(rp_path, Action.READ))
     may_modify = Depends(gate.aggregate(rp_path, Action.MODIFY))
     may_delete = Depends(gate.aggregate(rp_path, Action.DELETE))
 
     def iri(access: CallerAccess, aggregate_id: str) -> str:
         return f"{access.tenant}/{rp_path}/{aggregate_id}"
+
+    async def listing(
+        request: Request, caller: VerifiedCaller = as_caller, access: CallerAccess = may_list
+    ) -> Response:
+        return await api.listing(request, caller, access)
 
     async def create(
         request: Request, caller: VerifiedCaller = as_caller, access: CallerAccess = may_create
@@ -316,10 +362,12 @@ def add_aggregate_routes(
     ) -> Response:
         return await api.remove(request, caller, access.tenant, iri(access, aggregate_id))
 
-    router.add_api_route(collection, create, methods=["POST"], response_model=None)
-    router.add_api_route(member, read, methods=["GET"], response_model=None)
-    router.add_api_route(member, replace, methods=["PUT"], response_model=None)
-    router.add_api_route(member, remove, methods=["DELETE"], response_model=None)
+    docs = AggregateOpenApi(kit.view, cls, rp_path)
+    _add(router, collection, "GET", listing, docs.listing())
+    _add(router, collection, "POST", create, docs.create())
+    _add(router, member, "GET", read, docs.read())
+    _add(router, member, "PUT", replace, docs.replace())
+    _add(router, member, "DELETE", remove, docs.remove())
 
 
 def add_context_route(router: APIRouter, kit: ServiceKit) -> None:

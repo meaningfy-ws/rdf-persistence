@@ -306,11 +306,18 @@ async def test_a_disabled_service_account_is_refused_its_next_token(world) -> No
     assert access_token(world.project, account), "enabled again, it is granted a token"
 
 
-@pytest.mark.xfail(strict=False, reason="5.4 in progress")
 async def test_a_page_of_books(world, shelf) -> None:
-    answer = await world.http.get(f"{shelf.path}/books", headers=world.callers.as_(READER))
+    http, headers = world.http, world.callers.as_(LIBRARIAN)
+    ids = [shelf.book_iri]
+    for label in ("Emma", "Ulysses", "Kim"):
+        added = await http.post(f"{shelf.path}/books", json=body_of(dune(label)), headers=headers)
+        assert added.status_code == 201, added.text
+        ids.append(added.json()["id"])
+    answer = await http.get(f"{shelf.path}/books?limit=2&offset=2", headers=headers)
     assert answer.status_code == 200, answer.text
-    assert Page.model_validate(answer.json()).total == 1, "the one book of the library"
+    page = Page.model_validate(answer.json())
+    assert [item["id"] for item in page.items] == sorted(ids)[2:4], "third and fourth by IRI"
+    assert (page.total, page.limit, page.offset) == (4, 2, 2), "the position in the whole listing"
 
 
 async def test_deleting_the_book_and_the_library_removes_the_database_and_the_bucket(

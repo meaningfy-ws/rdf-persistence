@@ -8,6 +8,7 @@ from rdf_persistence.domain.exceptions import (
     UnsupportedMediaType,
 )
 from rdf_persistence.entrypoints.negotiation import (
+    accepted_listing_type,
     accepted_media_type,
     etag_of,
     expected_version,
@@ -99,3 +100,30 @@ def test_if_match_names_the_version_it_expects(header) -> None:
 def test_an_update_without_if_match_is_a_precondition_required(header) -> None:
     with pytest.raises(PreconditionRequired):
         expected_version(header)
+
+
+# accept header, the representation a listing is served in: a page has no Turtle form (None: 406)
+LISTING_ACCEPT = [
+    (None, JSON),
+    ("*/*", JSON),
+    ("application/json", JSON),
+    ("application/ld+json", JSON_LD),
+    ("text/turtle, application/json;q=0.1", JSON),
+    ("text/turtle;q=0.9, application/ld+json;q=0.2", JSON_LD),
+    ("text/*, application/json;q=0.5", JSON),
+    ("text/turtle", None),
+    ("text/*", None),
+    ("text/html", None),
+    ("application/json;q=0, text/turtle", None),
+]
+
+
+@pytest.mark.parametrize(
+    ("header", "served"), LISTING_ACCEPT, ids=[repr(a) for a, _ in LISTING_ACCEPT]
+)
+def test_a_listing_is_served_as_json_or_json_ld_and_never_as_turtle(header, served) -> None:
+    if served is None:
+        with pytest.raises(NotAcceptable):
+            accepted_listing_type(header)
+    else:
+        assert accepted_listing_type(header) == served, f"Accept: {header!r}"

@@ -3,3 +3,4 @@
 SHAPES_FILE = "shapes.ttl"
 CONTEXT_FILE = "context.jsonld"
 FRAME_SUFFIX = ".frame.jsonld"
+COMPONENTS_FILE = "openapi-components.json"

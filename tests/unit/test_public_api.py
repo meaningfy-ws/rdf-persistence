@@ -47,6 +47,7 @@ INDEXED_NAMES = [
     "new_part",
     "generated_models",
     "install_service",
+    "ServiceKit",
 ]
 
 

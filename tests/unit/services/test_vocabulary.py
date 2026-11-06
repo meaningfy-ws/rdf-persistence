@@ -64,3 +64,8 @@ def test_each_enum_member_maps_to_the_meaning_the_schema_declares(view, enum, ma
     meanings = {m: URIRef(view.expand_curie(values[m.value].meaning)) for m in enum}
     assert dict(mapping) == meanings, f"{enum.__name__} members differ from the enum's meanings"
     assert set(mapping) == set(enum), "keyed by the generated enum, one entry per member"
+
+
+def test_the_total_of_a_listing_is_the_predicate_of_the_page_slot_of_that_name():
+    service = load_schema(vocabulary.SERVICE_MODEL)
+    assert URIRef(service.expand_curie(service.get_slot("total").slot_uri)) == vocabulary.TOTAL

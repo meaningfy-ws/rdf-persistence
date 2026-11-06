@@ -297,3 +297,18 @@ async def test_the_prefix_mounts_every_route_below_it() -> None:
         mounted = await http.get("/api/v1/context.jsonld")
         bare = await http.get("/context.jsonld")
     assert (mounted.status_code, bare.status_code) == (200, 404), "only the prefixed path serves"
+
+
+# --- bucket_of: the public accessor of a consumer's own routes -----------------------------------
+
+
+async def test_bucket_of_a_tenant_is_its_stored_database_name(service, client) -> None:
+    path, _, _ = await made(client, service.bearer("ada"))
+    iri = service.kit.tenant_iri(path.rsplit("/", 1)[1])
+    record, _ = await service.kit.tenancy.get(iri)
+    assert await service.kit.bucket_of(iri) == record.database_name, "the bucket is the database name"
+
+
+async def test_bucket_of_an_unknown_tenant_is_not_found(service) -> None:
+    with pytest.raises(NotFound):
+        await service.kit.bucket_of(service.kit.tenant_iri(A_UUID))

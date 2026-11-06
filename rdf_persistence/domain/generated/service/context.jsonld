@@ -45,6 +45,25 @@
          "@type": "@id",
          "@id": "base"
       },
+      "datatype": {
+         "@type": "@id",
+         "@id": "conditionDatatype"
+      },
+      "predicate": {
+         "@type": "@id",
+         "@id": "conditionPredicate"
+      },
+      "reference": {
+         "@id": "conditionReference"
+      },
+      "value": {
+         "@id": "filterValue"
+      },
+      "conditions": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "condition"
+      },
       "contributor": {
          "@type": "@id",
          "@container": "@set",
@@ -61,11 +80,22 @@
       "creator_role": {
          "@id": "creatorRole"
       },
+      "descending": {
+         "@id": "descending"
+      },
       "description": {
          "@id": "dcterms:description"
       },
       "email": {
          "@id": "email"
+      },
+      "slot": {
+         "@id": "filterSlot"
+      },
+      "filters": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "filter"
       },
       "global_roles": {
          "@container": "@set",
@@ -79,6 +109,11 @@
       "graph": {
          "@type": "@id",
          "@id": "graph"
+      },
+      "hidden_graphs": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "hiddenGraph"
       },
       "id": "@id",
       "items": {
@@ -124,6 +159,14 @@
          "@type": "@id",
          "@id": "ownedBy"
       },
+      "target": {
+         "@type": "@id",
+         "@id": "ODRL:target"
+      },
+      "sort_by": {
+         "@type": "@id",
+         "@id": "planSort"
+      },
       "prefix": {
          "@id": "prefix"
       },
@@ -163,6 +206,9 @@
          "@type": "@id",
          "@id": "root"
       },
+      "sort": {
+         "@id": "sort"
+      },
       "state": {
          "@id": "state",
          "@type": "@vocab",
@@ -170,10 +216,6 @@
             "active": "https://meaningfy.ws/ns/rdf-persistence#Active",
             "deleting": "https://meaningfy.ws/ns/rdf-persistence#Deleting"
          }
-      },
-      "target": {
-         "@type": "@id",
-         "@id": "ODRL:target"
       },
       "tenant": {
          "@type": "@id",
@@ -207,8 +249,14 @@
       "CallerAccess": {
          "@id": "CallerAccess"
       },
+      "Condition": {
+         "@id": "Condition"
+      },
       "Described": {
          "@id": "Described"
+      },
+      "Filter": {
+         "@id": "Filter"
       },
       "Grant": {
          "@id": "ODRL:Permission"
@@ -218,6 +266,12 @@
       },
       "LabelUpdate": {
          "@id": "LabelUpdate"
+      },
+      "ListPlan": {
+         "@id": "ListPlan"
+      },
+      "ListRequest": {
+         "@id": "ListRequest"
       },
       "Page": {
          "@id": "Page"

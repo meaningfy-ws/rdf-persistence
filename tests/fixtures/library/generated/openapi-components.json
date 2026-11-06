@@ -1,0 +1,679 @@
+{
+  "schemas": {
+    "Action": {
+      "description": "The actions a rule can name.",
+      "enum": [
+        "read",
+        "modify",
+        "delete",
+        "administer"
+      ],
+      "title": "Action",
+      "type": "string"
+    },
+    "AggregateRoot": {
+      "additionalProperties": false,
+      "description": "A mixin for classes whose instances are aggregate roots. Each instance is one named graph, whose IRI is derived from the root's IRI; it is versioned, loaded and saved as a whole.",
+      "title": "AggregateRoot",
+      "type": "object"
+    },
+    "Book": {
+      "additionalProperties": false,
+      "description": "A book held by a library; an aggregate root that owns its chapters.",
+      "properties": {
+        "authors": {
+          "description": "The names of the book's authors.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "chapters": {
+          "description": "The chapters of the book; they live in the book's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Chapter"
+          },
+          "type": "array"
+        },
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "genre": {
+          "$ref": "#/components/schemas/Genre",
+          "description": "The literary genre of the book."
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "isbn": {
+          "description": "The International Standard Book Number of the book.",
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        },
+        "published": {
+          "description": "The date the book was published.",
+          "format": "date",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Book",
+      "type": "object"
+    },
+    "Chapter": {
+      "additionalProperties": false,
+      "description": "A chapter of a book, known by its number rather than a label; part of the book's aggregate. It owns its notes.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        },
+        "notes": {
+          "description": "The notes on a chapter; they live in the book's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Note"
+          },
+          "type": "array"
+        },
+        "number": {
+          "description": "The position of a chapter in its book.",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Chapter",
+      "type": "object"
+    },
+    "DatabaseKind": {
+      "description": "The databases an aggregate can live in, the values of the database annotation.",
+      "enum": [
+        "tenant",
+        "system"
+      ],
+      "title": "DatabaseKind",
+      "type": "string"
+    },
+    "Described": {
+      "additionalProperties": false,
+      "description": "A mixin giving an object an IRI, a label and a description. The application writes them.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Described",
+      "type": "object"
+    },
+    "Genre": {
+      "description": "The literary genres a book can belong to.",
+      "enum": [
+        "fiction",
+        "nonfiction",
+        "poetry"
+      ],
+      "title": "Genre",
+      "type": "string"
+    },
+    "Grant": {
+      "additionalProperties": false,
+      "description": "A permission given to a principal on a tenant or on one aggregate, either by role or as a direct action; exactly one of role and action is given.",
+      "oneOf": [
+        {
+          "properties": {
+            "role": {}
+          },
+          "required": [
+            "role"
+          ]
+        },
+        {
+          "properties": {
+            "action": {}
+          },
+          "required": [
+            "action"
+          ]
+        }
+      ],
+      "properties": {
+        "action": {
+          "$ref": "#/components/schemas/Action",
+          "description": "The action a direct permission allows, or a prohibition forbids."
+        },
+        "assignee": {
+          "description": "The principal the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        },
+        "role": {
+          "description": "The name of a role, matched against the application's role definitions.",
+          "type": "string"
+        },
+        "target": {
+          "description": "The IRI of the tenant, or of an aggregate's graph, the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assignee",
+        "target"
+      ],
+      "title": "Grant",
+      "type": "object"
+    },
+    "GraphKind": {
+      "description": "The special graphs a class can live in, the values of the graph annotation.",
+      "enum": [
+        "meta"
+      ],
+      "title": "GraphKind",
+      "type": "string"
+    },
+    "Library": {
+      "additionalProperties": false,
+      "description": "A library; the tenant root. Its IRI is the tenant IRI and it lives in the tenant's meta graph.",
+      "properties": {
+        "city": {
+          "description": "The city where the library is located.",
+          "type": "string"
+        },
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Library",
+      "type": "object"
+    },
+    "LibraryAccess": {
+      "additionalProperties": false,
+      "description": "The access record of a library tenant; its grants are the metamodel's.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "grants": {
+          "description": "The permissions given in the tenant, by role or as direct actions; they live in the access record's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Grant"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "pattern": "^\\S(?:.{0,198}\\S)?$",
+          "type": "string"
+        },
+        "prohibitions": {
+          "description": "The actions forbidden in the tenant; they live in the access record's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Prohibition"
+          },
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/components/schemas/TenantState",
+          "description": "Where the tenant is in its life."
+        }
+      },
+      "required": [
+        "state",
+        "id",
+        "label"
+      ],
+      "title": "LibraryAccess",
+      "type": "object"
+    },
+    "ModuleKind": {
+      "description": "The kinds of schema module, the values of the module_kind annotation.",
+      "enum": [
+        "domain",
+        "technical",
+        "access"
+      ],
+      "title": "ModuleKind",
+      "type": "string"
+    },
+    "Note": {
+      "additionalProperties": false,
+      "description": "A short note on a chapter, with a label of its own.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        },
+        "shade": {
+          "description": "The colour of the note's paper.",
+          "type": "string"
+        },
+        "text": {
+          "description": "The text of a note.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Note",
+      "type": "object"
+    },
+    "Policy": {
+      "additionalProperties": false,
+      "description": "A set of permissions and prohibitions.",
+      "title": "Policy",
+      "type": "object"
+    },
+    "Principal": {
+      "additionalProperties": false,
+      "description": "A reference to a user account in the identity provider, by IRI only.",
+      "properties": {
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Principal",
+      "type": "object"
+    },
+    "Prohibition": {
+      "additionalProperties": false,
+      "description": "The ODRL prohibition that forbids an assignee an action on a target; it wins over any permission.",
+      "properties": {
+        "action": {
+          "$ref": "#/components/schemas/Action",
+          "description": "The action a direct permission allows, or a prohibition forbids."
+        },
+        "assignee": {
+          "description": "The principal the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        },
+        "target": {
+          "description": "The IRI of the tenant, or of an aggregate's graph, the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assignee",
+        "target",
+        "action"
+      ],
+      "title": "Prohibition",
+      "type": "object"
+    },
+    "RdfFormat": {
+      "description": "The serialisations a file of RDF can be loaded from.",
+      "enum": [
+        "turtle",
+        "rdfxml",
+        "ntriples",
+        "jsonld"
+      ],
+      "title": "RdfFormat",
+      "type": "string"
+    },
+    "RegistryEntry": {
+      "additionalProperties": false,
+      "description": "An entry of a tenant's registry graph, naming a graph that belongs to an aggregate. It is written by the session, never by the application.",
+      "properties": {
+        "graph": {
+          "description": "The IRI of a named graph.",
+          "format": "uri",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/components/schemas/RegistryKind",
+          "description": "The kind of graph a registry entry names."
+        },
+        "owned_by": {
+          "description": "The IRI of the aggregate root that owns the graph.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "graph",
+        "kind",
+        "owned_by"
+      ],
+      "title": "RegistryEntry",
+      "type": "object"
+    },
+    "RegistryKind": {
+      "description": "The kinds of graph a registry entry can name.",
+      "enum": [
+        "aggregate",
+        "loaded_graph"
+      ],
+      "title": "RegistryKind",
+      "type": "string"
+    },
+    "RoleDefinition": {
+      "additionalProperties": false,
+      "description": "What a role may do and where it applies. An application supplies its role definitions as data; they are not stored.",
+      "properties": {
+        "actions": {
+          "description": "The actions the role permits.",
+          "items": {
+            "$ref": "#/components/schemas/Action"
+          },
+          "type": "array"
+        },
+        "level": {
+          "$ref": "#/components/schemas/RoleLevel",
+          "description": "Where the role applies."
+        },
+        "role": {
+          "description": "The name of a role, matched against the application's role definitions.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "level",
+        "actions"
+      ],
+      "title": "RoleDefinition",
+      "type": "object"
+    },
+    "RoleLevel": {
+      "description": "The levels at which a role applies.",
+      "enum": [
+        "system",
+        "tenant",
+        "aggregate"
+      ],
+      "title": "RoleLevel",
+      "type": "string"
+    },
+    "RpAnnotation": {
+      "description": "The annotations the toolkit reads from a schema, one entry per tag; any other tag is left alone. Each description says which element carries the tag and which values it accepts.",
+      "enum": [
+        "owned",
+        "internal",
+        "graph",
+        "database",
+        "module_kind",
+        "rp_path",
+        "rp_unlabelled",
+        "bookkeeping"
+      ],
+      "title": "RpAnnotation",
+      "type": "string"
+    },
+    "Rule": {
+      "additionalProperties": false,
+      "description": "An ODRL rule that gives an assignee a ruling on an action over a target.",
+      "properties": {
+        "action": {
+          "$ref": "#/components/schemas/Action",
+          "description": "The action a direct permission allows, or a prohibition forbids."
+        },
+        "assignee": {
+          "description": "The principal the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        },
+        "target": {
+          "description": "The IRI of the tenant, or of an aggregate's graph, the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assignee",
+        "target"
+      ],
+      "title": "Rule",
+      "type": "object"
+    },
+    "Scan": {
+      "additionalProperties": false,
+      "description": "A scanned copy of a book; an aggregate root whose current content is a stored file.",
+      "properties": {
+        "byte_size": {
+          "description": "The size of the file in bytes.",
+          "type": "integer"
+        },
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "file_name": {
+          "description": "The name of the file as uploaded.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        },
+        "media_type": {
+          "description": "The media type of the file.",
+          "type": "string"
+        },
+        "scan_of": {
+          "description": "The book this is a scan of, another aggregate, stored as its IRI.",
+          "format": "uri",
+          "type": "string"
+        },
+        "sha256": {
+          "description": "The SHA-256 digest of the file, in lowercase hexadecimal.",
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "uploaded": {
+          "description": "The time the file was uploaded.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "uploaded_by": {
+          "description": "The principal that uploaded the file.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Scan",
+      "type": "object"
+    },
+    "StoredFile": {
+      "additionalProperties": false,
+      "description": "A mixin for the current content of a kept file; the bytes live in the tenant's bucket under the file key.",
+      "properties": {
+        "byte_size": {
+          "description": "The size of the file in bytes.",
+          "type": "integer"
+        },
+        "file_name": {
+          "description": "The name of the file as uploaded.",
+          "type": "string"
+        },
+        "media_type": {
+          "description": "The media type of the file.",
+          "type": "string"
+        },
+        "sha256": {
+          "description": "The SHA-256 digest of the file, in lowercase hexadecimal.",
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "uploaded": {
+          "description": "The time the file was uploaded.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "uploaded_by": {
+          "description": "The principal that uploaded the file.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "title": "StoredFile",
+      "type": "object"
+    },
+    "TenantAccess": {
+      "additionalProperties": false,
+      "description": "The access record of a tenant: its label, state and database name, with the grants and prohibitions that say who may do what in it.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "grants": {
+          "description": "The permissions given in the tenant, by role or as direct actions; they live in the access record's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Grant"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "pattern": "^\\S(?:.{0,198}\\S)?$",
+          "type": "string"
+        },
+        "prohibitions": {
+          "description": "The actions forbidden in the tenant; they live in the access record's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Prohibition"
+          },
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/components/schemas/TenantState",
+          "description": "Where the tenant is in its life."
+        }
+      },
+      "required": [
+        "state",
+        "id",
+        "label"
+      ],
+      "title": "TenantAccess",
+      "type": "object"
+    },
+    "TenantLabelled": {
+      "additionalProperties": false,
+      "description": "A mixin for what carries a tenant's label, one line of 1 to 200 characters that neither starts nor ends in a space; the access record and the service's request bodies share it, so the label is checked the same everywhere.",
+      "properties": {
+        "label": {
+          "description": "The preferred label of the object.",
+          "pattern": "^\\S(?:.{0,198}\\S)?$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "title": "TenantLabelled",
+      "type": "object"
+    },
+    "TenantState": {
+      "description": "The states of a tenant.",
+      "enum": [
+        "active",
+        "deleting"
+      ],
+      "title": "TenantState",
+      "type": "string"
+    },
+    "Tracked": {
+      "additionalProperties": false,
+      "description": "A mixin for the tracking statements of a commit. The session writes them about the aggregate's graph IRI, never about the root entity.",
+      "properties": {},
+      "title": "Tracked",
+      "type": "object"
+    }
+  }
+}

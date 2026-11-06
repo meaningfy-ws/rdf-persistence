@@ -18,6 +18,7 @@ from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 from rdf_persistence.services.schema_structure import is_bookkeeping
 
 METAMODEL = PACKAGE_DIR / "model" / "rp.yaml"
+SERVICE_MODEL = PACKAGE_DIR / "model" / "service" / "rp_service.yaml"
 
 
 @cache
@@ -26,9 +27,9 @@ def metamodel() -> SchemaView:
     return load_schema(METAMODEL)
 
 
-def predicate(slot: str) -> URIRef:
-    """The predicate of the metamodel slot ``slot``: its ``slot_uri``, expanded."""
-    view = metamodel()
+def predicate(slot: str, view: SchemaView | None = None) -> URIRef:
+    """The predicate of the slot ``slot`` of the metamodel (or of ``view``): its ``slot_uri``, expanded."""
+    view = view or metamodel()
     return URIRef(view.get_uri(view.get_slot(slot), expand=True))
 
 
@@ -62,3 +63,6 @@ TENANT_STATE_IRIS = meanings(TenantState)
 GRANTS = predicate("grants")
 PROHIBITIONS = predicate("prohibitions")
 ASSIGNEE = predicate("assignee")
+
+# A listing's query returns the size of the whole listing as this statement about the listed class.
+TOTAL = predicate("total", load_schema(SERVICE_MODEL))

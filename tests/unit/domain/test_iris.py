@@ -21,6 +21,7 @@ from rdf_persistence.domain.iris import (
     mint_tenant_iri,
     principal_iri,
     registry_graph_iri,
+    root_of_graph,
     skolem_iri,
     system_database_name,
     tenant_iri_of_access,
@@ -38,6 +39,19 @@ def test_graph_iri_appends_graph():
     root = f"{BASE}libraries/t/books/b"
     assert graph_iri(root) == URIRef(f"{root}/graph")
     assert graph_iri(root) != URIRef(root), "never the root IRI itself"
+
+
+def test_root_of_graph_is_the_inverse_of_graph_iri():
+    root = f"{BASE}libraries/t/books/b"
+    assert root_of_graph(graph_iri(root)) == URIRef(root)
+
+
+@pytest.mark.parametrize(
+    "iri", [f"{BASE}libraries/t/books/b", f"{BASE}libraries/t/books/b/graphs", "/graph"]
+)
+def test_root_of_graph_refuses_what_is_not_a_graph_iri(iri):
+    with pytest.raises(InvalidIri):
+        root_of_graph(URIRef(iri))
 
 
 def test_mint_tenant_iri_has_the_base_segment_and_a_uuid():

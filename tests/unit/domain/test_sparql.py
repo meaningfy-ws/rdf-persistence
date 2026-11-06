@@ -8,7 +8,16 @@ from rdflib.namespace import XSD
 from rdflib.plugins.sparql import prepareQuery, prepareUpdate
 
 from rdf_persistence.domain.exceptions import SparqlError
-from rdf_persistence.domain.sparql import SparqlTerm, fill, term, term_list, triples_block
+from rdf_persistence.domain.sparql import (
+    SparqlTerm,
+    count,
+    fill,
+    match_patterns,
+    order_by,
+    term,
+    term_list,
+    triples_block,
+)
 
 EX = "http://example.org/"
 HOSTILE = [
@@ -200,3 +209,50 @@ def test_an_empty_term_list_is_valid_in_an_in_filter():
 def test_a_term_list_refuses_a_raw_string():
     with pytest.raises(SparqlError, match="rdflib"):
         term_list(["raw"])  # type: ignore[list-item]
+
+
+def test_match_patterns_render_one_pattern_per_pair_through_term():
+    pairs = [(URIRef(f"{EX}p"), Literal('"} ; DROP ALL ; #')), (URIRef(f"{EX}q"), URIRef(f"{EX}o"))]
+    text = fill("ASK { $patterns }", patterns=match_patterns("root", pairs))
+    prepareQuery(text)  # parses as one query: the hostile value stayed inside its literal
+    assert text.count("?root") == 2, "one pattern per pair, on the named variable"
+
+
+def test_empty_match_patterns_are_valid_in_a_template():
+    prepareQuery(fill("ASK { ?root a ?type . $patterns }", patterns=match_patterns("root", [])))
+
+
+@pytest.mark.parametrize("variable", ["", "1x", "a b", "x } ; DROP ALL ; {", "?x"])
+def test_match_patterns_refuse_a_variable_that_is_not_a_plain_name(variable):
+    with pytest.raises(SparqlError):
+        match_patterns(variable, [])
+
+
+def test_match_patterns_refuse_a_raw_string():
+    with pytest.raises(SparqlError):
+        match_patterns("root", [(URIRef(f"{EX}p"), "raw")])  # type: ignore[list-item]
+
+
+@pytest.mark.parametrize("value", [0, 1, 50, 10**6])
+def test_a_count_renders_as_the_digits_of_a_non_negative_integer(value):
+    assert fill("LIMIT $n", n=count(value)) == f"LIMIT {value}"
+
+
+@pytest.mark.parametrize("value", [-1, True, 1.5, "5", None])
+def test_a_count_refuses_anything_but_a_non_negative_integer(value):
+    with pytest.raises(SparqlError):
+        count(value)  # type: ignore[arg-type]
+
+
+def test_an_order_by_renders_the_keys_in_order_and_parses():
+    text = fill(
+        "SELECT * { ?key ?root ?x } ORDER BY $order", order=order_by(("key", True), ("root", False))
+    )
+    assert text.endswith("DESC(?key) ASC(?root)"), "direction per key, in the order given"
+    prepareQuery(text)
+
+
+@pytest.mark.parametrize("variable", ["", "a b", "x) ; DROP ALL ; (", "?x"])
+def test_an_order_by_refuses_a_variable_that_is_not_a_plain_name(variable):
+    with pytest.raises(SparqlError):
+        order_by((variable, False))
