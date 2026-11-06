@@ -58,3 +58,7 @@ REGISTRY_KIND_IRIS = meanings(RegistryKind)
 
 STATE = predicate("state")
 TENANT_STATE_IRIS = meanings(TenantState)
+
+GRANTS = predicate("grants")
+PROHIBITIONS = predicate("prohibitions")
+ASSIGNEE = predicate("assignee")

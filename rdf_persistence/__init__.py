@@ -13,13 +13,17 @@ from rdf_persistence.domain.exceptions import (
     BadQuery,
     Conflict,
     DatabaseGone,
+    Forbidden,
     IdentityUnavailable,
+    InvalidGrant,
     InvalidGraph,
+    InvalidRoleDefinition,
     InvalidToken,
     NotFound,
     PersistenceError,
     StoreUnavailable,
     TenantGone,
+    UnknownRole,
 )
 from rdf_persistence.domain.generated.rp_access import (
     Action,
@@ -59,6 +63,7 @@ from rdf_persistence.domain.generated.rp_tenancy import (
 )
 from rdf_persistence.domain.generated.service.rp_service import (
     AccountSummary,
+    CallerAccess,
     GrantSet,
     LabelUpdate,
     Page,
@@ -74,6 +79,11 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.adapters.jwks import JwksTokenVerifier
     from rdf_persistence.adapters.s3 import S3FileStore
     from rdf_persistence.adapters.zitadel import ZitadelIdentity, zitadel_roles_claim
+    from rdf_persistence.services.access import (
+        AccessRules,
+        load_caller_access,
+        load_role_definitions,
+    )
     from rdf_persistence.services.files import FileStore
     from rdf_persistence.services.identity import Identity
     from rdf_persistence.services.mapper import Mapper, UnitOfWork, generated_models, new_part
@@ -93,6 +103,9 @@ _LAZY_MODULES = {
     "ZitadelIdentity": f"{_ADAPTERS}.zitadel",
     "zitadel_roles_claim": f"{_ADAPTERS}.zitadel",
     "Identity": f"{_SERVICES}.identity",
+    "AccessRules": f"{_SERVICES}.access",
+    "load_caller_access": f"{_SERVICES}.access",
+    "load_role_definitions": f"{_SERVICES}.access",
     "TokenVerifier": f"{_SERVICES}.tokens",
     "FileStore": f"{_SERVICES}.files",
     "Mapper": f"{_SERVICES}.mapper",
@@ -117,16 +130,19 @@ def __getattr__(name: str) -> Any:
 
 
 __all__ = [
+    "AccessRules",
     "AccountSummary",
     "Action",
     "Activity",
     "AggregateRoot",
     "BadQuery",
+    "CallerAccess",
     "Conflict",
     "DatabaseGone",
     "DatabaseKind",
     "Described",
     "FileStore",
+    "Forbidden",
     "FusekiStore",
     "Grant",
     "GrantSet",
@@ -134,6 +150,8 @@ __all__ = [
     "Identity",
     "IdentityUnavailable",
     "InvalidGraph",
+    "InvalidGrant",
+    "InvalidRoleDefinition",
     "InvalidToken",
     "JwksTokenVerifier",
     "LabelUpdate",
@@ -171,9 +189,12 @@ __all__ = [
     "TokenVerifier",
     "Tracked",
     "UnitOfWork",
+    "UnknownRole",
     "VerifiedCaller",
     "ZitadelIdentity",
     "generated_models",
+    "load_caller_access",
+    "load_role_definitions",
     "new_part",
     "open_session",
     "sweep",

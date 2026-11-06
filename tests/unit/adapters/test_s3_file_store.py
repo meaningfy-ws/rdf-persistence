@@ -148,7 +148,20 @@ async def test_deleting_a_missing_bucket_is_not_found(s3):
 
 # --- input the caller got wrong is not an outage (PD-28a) ------------------------------------------
 
-BAD_KEYS = ["a/../b", "..", "../x", "a/..", "a/./b", "./a", "a/.", ".", "a\x00b", "a\nb", "a\x7fb", ""]
+BAD_KEYS = [
+    "a/../b",
+    "..",
+    "../x",
+    "a/..",
+    "a/./b",
+    "./a",
+    "a/.",
+    ".",
+    "a\x00b",
+    "a\nb",
+    "a\x7fb",
+    "",
+]
 ORDINARY_KEYS = ["a..b", "..x", "x/..y/z", "folder/ä b+c.bin"]
 
 

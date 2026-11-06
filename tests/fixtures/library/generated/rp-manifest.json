@@ -147,7 +147,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_access.yaml",
-      "sha256": "70fc95ec433e017866da41c0d4db2b6dcba3fa18e1afe0388a8a1a885cb99352"
+      "sha256": "6886d4e61c95d3daebe616136389588652f55670fbb77fa322e1ae82a8de8f3d"
     },
     {
       "path": "rdf_persistence/model/rp_annotations.yaml",
@@ -241,7 +241,7 @@
     },
     {
       "path": "generated/shapes.ttl",
-      "sha256": "eb98eb8ac9a25f0dfa4b6877f5a48fdf3256cc3df26764da0fdcc4eb144c483b"
+      "sha256": "5ab7305af88ce63304c83f14bdf2b478204f493c5210bde96a3c2f68e0b1bac2"
     },
     {
       "path": "web/src/domain/generated/books.ts",
@@ -261,7 +261,7 @@
     },
     {
       "path": "web/src/domain/generated/rp_access.ts",
-      "sha256": "72da830efcdffcf2fc7856db6f70decf1ed22fa3bc4be05a02beec1159c79d3f"
+      "sha256": "8a30f80d9d17b0db635f4ce31313b351dfba91a3758e80be070e1952b2c90841"
     },
     {
       "path": "web/src/domain/generated/rp_core.ts",

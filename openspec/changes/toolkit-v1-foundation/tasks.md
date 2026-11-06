@@ -116,9 +116,9 @@ Order: 1.11 at any time; 1.12 and 1.16 after 1.10; 1.13 after 1.8 and 1.12; 1.14
 
 ## 4. Access (stage 4)
 
-- [ ] 4.1 Loading the role definitions (PD-9), with an invalid file refused. Validating a grant set against `rp_access`, including the `grant_key` uniqueness enforced by the 1.13 validator on `GrantSet` (422 on a duplicate). Also loading a caller's grants (role or direct action) and prohibitions for one tenant in one query.
-- [ ] 4.2 The check: global roles, prohibitions, permissions at tenant and aggregate scope, and role definitions; it answers 403 or 404. Exports: `AccessRules`.
-- [ ] 4.3 PD-9's matrix as one table-driven test, every cell including the `deleting` tenant row.
+- [x] 4.1 Loading the role definitions (PD-9), with an invalid file refused. Validating a grant set against `rp_access`, including the `grant_key` uniqueness enforced by the 1.13 validator on `GrantSet` (422 on a duplicate). Also loading a caller's grants (role or direct action) and prohibitions for one tenant in one query.
+- [x] 4.2 The check: global roles, prohibitions, permissions at tenant and aggregate scope, and role definitions; it answers 403 or 404. Exports: `AccessRules`.
+- [x] 4.3 PD-9's matrix as one table-driven test, every cell including the `deleting` tenant row.
 
 ## 5. Service kit and generic router (stage 5)
 
@@ -169,7 +169,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 | rp-identity: an expired token | 3.2, 5.1 | `tests/unit/services/test_token_verifier.py`; `tests/unit/entrypoints/test_service_kit.py` (401, no handler runs) |
 | rp-identity: a service account | 3.2, 5.7 | `tests/e2e/test_library.py` |
 | rp-identity: disable an account | 3.3 | `tests/integration/identity/test_zitadel.py` |
-| rp-access: a reader may not modify | 4.3 | `tests/unit/services/test_access_matrix.py` |
+| rp-access: a reader may not modify | 4.3, 5.7 | `tests/unit/services/test_access_matrix.py` (the 403); `tests/e2e/test_library.py` (the book unchanged) |
 | rp-access: a permission on one aggregate only | 4.3 | `tests/unit/services/test_access_matrix.py` |
 | rp-access: an outsider | 4.3 | `tests/unit/services/test_access_matrix.py` |
 | rp-access: a tenant being deleted | 4.3 | `tests/unit/services/test_access_matrix.py` |
@@ -197,7 +197,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 1.11 · [x] 1.12 · [x] 1.13 · [x] 1.14 · [x] 1.15 · [x] 1.16 · [x] 1.17 · [x] 1.18 · [x] 1.19 · [x] 1.20
 - [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6 · [x] 2.7 · [x] 2.8
 - [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4
-- [ ] 4.1 · [ ] 4.2 · [ ] 4.3
+- [x] 4.1 · [x] 4.2 · [x] 4.3
 - [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4 · [ ] 5.5 · [ ] 5.6 · [ ] 5.7
 - [ ] 6.1 · [ ] 6.2 · [ ] 6.3
 

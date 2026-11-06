@@ -10,6 +10,9 @@ from rdf_persistence.domain import generated
 
 INDEXED_NAMES = [
     "RpModel",
+    "AccessRules",
+    "Forbidden",
+    "CallerAccess",
     "S3FileStore",
     "TokenVerifier",
     "JwksTokenVerifier",

@@ -52,7 +52,11 @@ class JwksTokenVerifier(HttpAdapter):
         allow_insecure_issuer: bool = False,
     ) -> None:
         """Verify tokens of ``issuer``, which must be an https URL unless ``allow_insecure_issuer`` (test containers)."""
-        for name, value in (("issuer", issuer), ("audience", audience), ("roles_claim", roles_claim)):
+        for name, value in (
+            ("issuer", issuer),
+            ("audience", audience),
+            ("roles_claim", roles_claim),
+        ):
             if not value:
                 raise ValueError(f"the {name} must not be empty")
         if not allow_insecure_issuer and not issuer.startswith(HTTPS_PREFIX):

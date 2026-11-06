@@ -232,6 +232,30 @@ class GrantSet(ConfiguredBaseModel):
         return self
 
 
+class CallerAccess(ConfiguredBaseModel):
+    "What the access check needs to know about one caller in one tenant: the tenant\u0027s state, and the grants and prohibitions of the access record that name the caller."
+    tenant: str = Field(default=..., title="Tenant", description="The IRI of the tenant.")
+    state: TenantState = Field(default=..., title="State", description="Where the tenant is in its life.")
+    grants: Optional[list[Grant]] = Field(default=None, title="Grants", description="The permissions given in the tenant, by role or as direct actions; they live in the access record\u0027s graph.")
+    prohibitions: Optional[list[Prohibition]] = Field(default=None, title="Prohibitions", description="The actions forbidden in the tenant; they live in the access record\u0027s graph.")
+
+    @model_validator(mode="after")
+    def unique_keys_grants_grant_key(self) -> "CallerAccess":
+        seen: set[str] = set()
+        repeated: list[tuple] = []
+        for item in self.grants or []:
+            key = (item.assignee, item.target, item.role, item.action,)
+            if repr(key) in seen:
+                repeated.append(key)
+            seen.add(repr(key))
+        if repeated:
+            raise ValueError(
+                "CallerAccess.grants: unique_keys grant_key (assignee, target, role, action) repeated by "
+                + str(repeated)
+            )
+        return self
+
+
 class Page(ConfiguredBaseModel):
     "One page of a listing, with the position of the page in the whole listing."
     items: list[Any] = Field(default=..., title="Items", description="The objects of the page; framed aggregates, or tenant summaries.")
@@ -279,6 +303,7 @@ TenantCreate.model_rebuild()
 TenantSummary.model_rebuild()
 LabelUpdate.model_rebuild()
 GrantSet.model_rebuild()
+CallerAccess.model_rebuild()
 Page.model_rebuild()
 Problem.model_rebuild()
 AccountSummary.model_rebuild()

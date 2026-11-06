@@ -98,6 +98,22 @@ classes:
     slots:
       - grants
       - prohibitions
+  CallerAccess:
+    title: Caller access
+    description: >-
+      What the access check needs to know about one caller in one tenant: the tenant's state, and the
+      grants and prohibitions of the access record that name the caller.
+    class_uri: rp:CallerAccess
+    slots:
+      - tenant
+      - state
+      - grants
+      - prohibitions
+    slot_usage:
+      tenant:
+        required: true
+      state:
+        required: true
   Page:
     title: Page
     description: One page of a listing, with the position of the page in the whole listing.
@@ -188,6 +204,11 @@ slots:
     slot_uri: rp:rolesClaim
     range: string
     pattern: "^.+$"
+  tenant:
+    title: Tenant
+    description: The IRI of the tenant.
+    slot_uri: rp:tenant
+    range: uri
   principal:
     title: Principal
     description: The user account the token identifies.

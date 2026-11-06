@@ -36,7 +36,7 @@ export interface Rule {
 
 /** A permission given to a principal on a tenant or on one aggregate, either by role or as a direct action; exactly one of role and action is given. */
 export interface Grant {
-  /** The name of a role, matched against the application's role definitions. An application may narrow it to an enum. */
+  /** The name of a role, matched against the application's role definitions. */
   role?: string;
   /** The principal the rule applies to. */
   assignee: string;
@@ -58,7 +58,7 @@ export interface Prohibition {
 
 /** What a role may do and where it applies. An application supplies its role definitions as data; they are not stored. */
 export interface RoleDefinition {
-  /** The name of a role, matched against the application's role definitions. An application may narrow it to an enum. */
+  /** The name of a role, matched against the application's role definitions. */
   role: string;
   /** Where the role applies. */
   level: RoleLevel;
