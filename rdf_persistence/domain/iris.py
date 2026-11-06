@@ -1,6 +1,7 @@
 """IRIs and resource names of the toolkit (PD-4, PD-6, PD-6a): the only place they are derived."""
 
 import re
+from urllib.parse import quote
 from uuid import UUID, uuid4
 
 from rdflib import URIRef
@@ -137,3 +138,12 @@ def tenant_resource_name(prefix: str, tenant_iri: str) -> str:
     if str(tenant_id) != last:
         raise InvalidIri(f"tenant IRI must end in a canonical UUID: {tenant_iri!r}")
     return f"{tenant_name_prefix(prefix)}{tenant_id.hex}"
+
+
+def principal_iri(issuer: str, subject: str) -> URIRef:
+    """The IRI of the person or service account a token's ``sub`` names: ``{issuer}/users/{sub}``.
+
+    The issuer names the provider, so the IRI is unique across providers; percent-encoding keeps a
+    ``sub`` from leaving its path segment.
+    """
+    return URIRef(f"{issuer.rstrip('/')}/users/{quote(subject, safe='')}")
