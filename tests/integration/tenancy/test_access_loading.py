@@ -11,11 +11,11 @@ from rdf_persistence.services.access import load_caller_access
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
 from tests.fixtures.library.generated.library_access import LibraryAccess
-from tests.toy import ADA, BOB, ban, direct, graph_of, library, toy_mapper
+from tests.toy import ADA, BOB, ban, direct, graph_of, library_slots, toy_mapper
 
 
 async def test_the_creator_loads_the_librarian_grant_on_an_active_tenant(tenancy, store, settings):
-    summary = await tenancy.create("Ghent", library(), Principal(id=ADA))
+    summary = await tenancy.create("Ghent", library_slots(), Principal(id=ADA))
     loaded = await load_caller_access(store, system_database_name(settings.prefix), summary.id, ADA)
     assert (loaded.tenant, loaded.state) == (summary.id, TenantState.ACTIVE), "tenant and state"
     assert loaded.grants == [Grant(assignee=ADA, target=summary.id, role="librarian")], "the grant"
@@ -23,7 +23,7 @@ async def test_the_creator_loads_the_librarian_grant_on_an_active_tenant(tenancy
 
 
 async def test_another_principal_loads_the_state_and_no_rules(tenancy, store, settings):
-    summary = await tenancy.create("Ghent", library(), Principal(id=ADA))
+    summary = await tenancy.create("Ghent", library_slots(), Principal(id=ADA))
     loaded = await load_caller_access(store, system_database_name(settings.prefix), summary.id, BOB)
     assert (loaded.state, loaded.grants, loaded.prohibitions) == (
         TenantState.ACTIVE,
@@ -45,7 +45,7 @@ async def test_a_tenant_that_was_never_created_is_not_found(tenancy, store, sett
 async def test_a_direct_grant_and_a_prohibition_of_the_caller_load_and_another_principals_do_not(
     tenancy, store, settings
 ):
-    summary = await tenancy.create("Ghent", library(), Principal(id=ADA))
+    summary = await tenancy.create("Ghent", library_slots(), Principal(id=ADA))
     database = system_database_name(settings.prefix)
     book_graph = graph_of(f"{summary.id}/books/{UUID(int=1)}")
     async with open_session(

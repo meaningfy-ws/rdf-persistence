@@ -15,15 +15,21 @@ from rdf_persistence.domain.exceptions import (
     DatabaseGone,
     Forbidden,
     IdentityUnavailable,
+    InvalidBody,
     InvalidGrant,
     InvalidGraph,
     InvalidRoleDefinition,
     InvalidToken,
+    NotAcceptable,
     NotFound,
+    PayloadTooLarge,
     PersistenceError,
+    PreconditionRequired,
+    StoredDataInvalid,
     StoreUnavailable,
     TenantGone,
     UnknownRole,
+    UnsupportedMediaType,
 )
 from rdf_persistence.domain.generated.rp_access import (
     Action,
@@ -63,11 +69,13 @@ from rdf_persistence.domain.generated.rp_tenancy import (
 )
 from rdf_persistence.domain.generated.service.rp_service import (
     AccountSummary,
+    Authorised,
     CallerAccess,
     GrantSet,
     LabelUpdate,
     Page,
     Problem,
+    ProblemKind,
     ServiceSettings,
     TenantCreate,
     TenantSummary,
@@ -79,6 +87,8 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.adapters.jwks import JwksTokenVerifier
     from rdf_persistence.adapters.s3 import S3FileStore
     from rdf_persistence.adapters.zitadel import ZitadelIdentity, zitadel_roles_claim
+    from rdf_persistence.entrypoints.kit import ServiceKit
+    from rdf_persistence.entrypoints.service import install_service
     from rdf_persistence.services.access import (
         AccessRules,
         load_caller_access,
@@ -96,12 +106,15 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
 __version__ = "0.1.0"
 
 _ADAPTERS, _SERVICES = "rdf_persistence.adapters", "rdf_persistence.services"
+_ENTRYPOINTS = "rdf_persistence.entrypoints"
 _LAZY_MODULES = {
     "FusekiStore": f"{_ADAPTERS}.fuseki",
     "JwksTokenVerifier": f"{_ADAPTERS}.jwks",
     "S3FileStore": f"{_ADAPTERS}.s3",
     "ZitadelIdentity": f"{_ADAPTERS}.zitadel",
     "zitadel_roles_claim": f"{_ADAPTERS}.zitadel",
+    "install_service": f"{_ENTRYPOINTS}.service",
+    "ServiceKit": f"{_ENTRYPOINTS}.kit",
     "Identity": f"{_SERVICES}.identity",
     "AccessRules": f"{_SERVICES}.access",
     "load_caller_access": f"{_SERVICES}.access",
@@ -135,6 +148,7 @@ __all__ = [
     "Action",
     "Activity",
     "AggregateRoot",
+    "Authorised",
     "BadQuery",
     "CallerAccess",
     "Conflict",
@@ -149,6 +163,7 @@ __all__ = [
     "GraphKind",
     "Identity",
     "IdentityUnavailable",
+    "InvalidBody",
     "InvalidGraph",
     "InvalidGrant",
     "InvalidRoleDefinition",
@@ -157,12 +172,16 @@ __all__ = [
     "LabelUpdate",
     "Mapper",
     "ModuleKind",
+    "NotAcceptable",
     "NotFound",
     "Page",
+    "PayloadTooLarge",
     "PersistenceError",
+    "PreconditionRequired",
     "Policy",
     "Principal",
     "Problem",
+    "ProblemKind",
     "Prohibition",
     "Provenanced",
     "RdfFormat",
@@ -174,10 +193,12 @@ __all__ = [
     "RpModel",
     "Rule",
     "S3FileStore",
+    "ServiceKit",
     "ServiceSettings",
     "Session",
     "Store",
     "StoreUnavailable",
+    "StoredDataInvalid",
     "StoredFile",
     "Tenancy",
     "TenantAccess",
@@ -190,9 +211,11 @@ __all__ = [
     "Tracked",
     "UnitOfWork",
     "UnknownRole",
+    "UnsupportedMediaType",
     "VerifiedCaller",
     "ZitadelIdentity",
     "generated_models",
+    "install_service",
     "load_caller_access",
     "load_role_definitions",
     "new_part",

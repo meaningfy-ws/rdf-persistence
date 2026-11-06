@@ -1,0 +1,876 @@
+{
+  "schemas": {
+    "AccountSummary": {
+      "additionalProperties": false,
+      "description": "What the identity port reports about one account of the identity provider: its id, its login name, its email (a service account has none), whether it may sign in, and its global roles.",
+      "properties": {
+        "account_id": {
+          "description": "The identity provider's id of the account.",
+          "pattern": "^.+$",
+          "type": "string"
+        },
+        "active": {
+          "description": "Whether the account may sign in; a disabled account is refused new tokens.",
+          "type": "boolean"
+        },
+        "email": {
+          "description": "The email address of a person's account.",
+          "type": "string"
+        },
+        "global_roles": {
+          "description": "The system-level roles the token grants the principal.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "user_name": {
+          "description": "The name the account signs in with.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "account_id",
+        "user_name",
+        "active"
+      ],
+      "title": "AccountSummary",
+      "type": "object"
+    },
+    "Action": {
+      "description": "The actions a rule can name.",
+      "enum": [
+        "read",
+        "modify",
+        "delete",
+        "administer"
+      ],
+      "title": "Action",
+      "type": "string"
+    },
+    "AggregateRoot": {
+      "additionalProperties": false,
+      "description": "A mixin for classes whose instances are aggregate roots. Each instance is one named graph, whose IRI is derived from the root's IRI; it is versioned, loaded and saved as a whole.",
+      "title": "AggregateRoot",
+      "type": "object"
+    },
+    "Any": {
+      "additionalProperties": true,
+      "description": "Any value; the slots that range over it hold data the toolkit does not model.",
+      "title": "Any",
+      "type": [
+        "null",
+        "boolean",
+        "object",
+        "number",
+        "string"
+      ]
+    },
+    "Authorised": {
+      "additionalProperties": false,
+      "description": "What a route's access check settled: the caller's access to the tenant, and the IRI of the aggregate it was checked on, which the route then acts on.",
+      "properties": {
+        "caller_access": {
+          "$ref": "#/components/schemas/CallerAccess",
+          "description": "The caller's access to the tenant, as the access check loaded it."
+        },
+        "checked_target": {
+          "description": "The IRI of the aggregate the access check was made on.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "caller_access",
+        "checked_target"
+      ],
+      "title": "Authorised",
+      "type": "object"
+    },
+    "CallerAccess": {
+      "additionalProperties": false,
+      "description": "What the access check needs to know about one caller in one tenant: the tenant's state, and the grants and prohibitions of the access record that name the caller.",
+      "properties": {
+        "grants": {
+          "description": "The permissions given in the tenant, by role or as direct actions; they live in the access record's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Grant"
+          },
+          "type": "array"
+        },
+        "prohibitions": {
+          "description": "The actions forbidden in the tenant; they live in the access record's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Prohibition"
+          },
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/components/schemas/TenantState",
+          "description": "Where the tenant is in its life."
+        },
+        "tenant": {
+          "description": "The IRI of the tenant.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tenant",
+        "state"
+      ],
+      "title": "CallerAccess",
+      "type": "object"
+    },
+    "Condition": {
+      "additionalProperties": false,
+      "description": "An equality filter of a listing resolved against the slots of the listed type: the aggregate has this statement. The value is an IRI when it is a reference, else a literal of the datatype.",
+      "properties": {
+        "datatype": {
+          "description": "The IRI of the datatype of a literal value; absent for a plain string.",
+          "format": "uri",
+          "type": "string"
+        },
+        "predicate": {
+          "description": "The IRI of the predicate the aggregate must have a statement with.",
+          "format": "uri",
+          "type": "string"
+        },
+        "reference": {
+          "description": "Whether the value is an IRI rather than a literal.",
+          "type": "boolean"
+        },
+        "value": {
+          "description": "The value of the statement, an IRI or the lexical form of a literal.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "predicate",
+        "value"
+      ],
+      "title": "Condition",
+      "type": "object"
+    },
+    "DatabaseKind": {
+      "description": "The databases an aggregate can live in, the values of the database annotation.",
+      "enum": [
+        "tenant",
+        "system"
+      ],
+      "title": "DatabaseKind",
+      "type": "string"
+    },
+    "Described": {
+      "additionalProperties": false,
+      "description": "A mixin giving an object an IRI, a label and a description. The application writes them.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Described",
+      "type": "object"
+    },
+    "Filter": {
+      "additionalProperties": false,
+      "description": "One equality filter of a listing, the name of a slot of the listed type and the value it must have, as the text the caller sent.",
+      "properties": {
+        "slot": {
+          "description": "The name of the slot the filter is on.",
+          "type": "string"
+        },
+        "value": {
+          "description": "The value the slot must have, as text.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "slot",
+        "value"
+      ],
+      "title": "Filter",
+      "type": "object"
+    },
+    "Grant": {
+      "additionalProperties": false,
+      "description": "A permission given to a principal on a tenant or on one aggregate, either by role or as a direct action; exactly one of role and action is given.",
+      "oneOf": [
+        {
+          "properties": {
+            "role": {}
+          },
+          "required": [
+            "role"
+          ]
+        },
+        {
+          "properties": {
+            "action": {}
+          },
+          "required": [
+            "action"
+          ]
+        }
+      ],
+      "properties": {
+        "action": {
+          "$ref": "#/components/schemas/Action",
+          "description": "The action a direct permission allows, or a prohibition forbids."
+        },
+        "assignee": {
+          "description": "The principal the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        },
+        "role": {
+          "description": "The name of a role, matched against the application's role definitions.",
+          "type": "string"
+        },
+        "target": {
+          "description": "The IRI of the tenant, or of an aggregate's graph, the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assignee",
+        "target"
+      ],
+      "title": "Grant",
+      "type": "object"
+    },
+    "GrantSet": {
+      "additionalProperties": false,
+      "description": "The body that replaces the grants and prohibitions of a tenant; two grants with the same assignee, target and role or action are refused.",
+      "properties": {
+        "grants": {
+          "description": "The permissions given in the tenant, by role or as direct actions; they live in the access record's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Grant"
+          },
+          "type": "array"
+        },
+        "prohibitions": {
+          "description": "The actions forbidden in the tenant; they live in the access record's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Prohibition"
+          },
+          "type": "array"
+        }
+      },
+      "title": "GrantSet",
+      "type": "object"
+    },
+    "GraphKind": {
+      "description": "The special graphs a class can live in, the values of the graph annotation.",
+      "enum": [
+        "meta"
+      ],
+      "title": "GraphKind",
+      "type": "string"
+    },
+    "LabelUpdate": {
+      "additionalProperties": false,
+      "description": "The body that replaces the label of a tenant.",
+      "properties": {
+        "label": {
+          "description": "The preferred label of the object.",
+          "pattern": "^\\S(?:.{0,198}\\S)?$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "title": "LabelUpdate",
+      "type": "object"
+    },
+    "ListPlan": {
+      "additionalProperties": false,
+      "description": "A listing resolved against the slots of the listed type: the class, the typed conditions, the predicate to order by (none orders by IRI), the page, and the graphs of the aggregates the caller may not read.",
+      "properties": {
+        "conditions": {
+          "description": "The equality conditions of a listing; all of them must hold.",
+          "items": {
+            "$ref": "#/components/schemas/Condition"
+          },
+          "type": "array"
+        },
+        "descending": {
+          "description": "Whether the order is reversed.",
+          "type": "boolean"
+        },
+        "hidden_graphs": {
+          "description": "The IRIs of the graphs of the aggregates a listing leaves out.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "limit": {
+          "description": "The most objects the page can hold.",
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "offset": {
+          "description": "The position of the page's first object in the whole listing.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sort_by": {
+          "description": "The IRI of the predicate a listing is ordered by; absent, it is ordered by IRI.",
+          "format": "uri",
+          "type": "string"
+        },
+        "target": {
+          "description": "The IRI of the class of the aggregates listed.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "target",
+        "limit",
+        "offset"
+      ],
+      "title": "ListPlan",
+      "type": "object"
+    },
+    "ListRequest": {
+      "additionalProperties": false,
+      "description": "The query of a listing, as the caller sent it: the equality filters, the position and size of the page and the key to sort by.",
+      "properties": {
+        "filters": {
+          "description": "The equality filters of a listing; all of them must hold.",
+          "items": {
+            "$ref": "#/components/schemas/Filter"
+          },
+          "type": "array"
+        },
+        "limit": {
+          "description": "The most objects the page can hold.",
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "offset": {
+          "description": "The position of the page's first object in the whole listing.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sort": {
+          "description": "The slot a listing is ordered by, ascending, or descending when its name starts with a minus sign; absent, the listing is ordered by IRI.",
+          "type": "string"
+        }
+      },
+      "title": "ListRequest",
+      "type": "object"
+    },
+    "ModuleKind": {
+      "description": "The kinds of schema module, the values of the module_kind annotation.",
+      "enum": [
+        "domain",
+        "technical",
+        "access"
+      ],
+      "title": "ModuleKind",
+      "type": "string"
+    },
+    "Page": {
+      "additionalProperties": false,
+      "description": "One page of a listing, with the position of the page in the whole listing.",
+      "properties": {
+        "items": {
+          "description": "The objects of the page; framed aggregates, or tenant summaries.",
+          "items": {
+            "$ref": "#/components/schemas/Any"
+          },
+          "type": "array"
+        },
+        "limit": {
+          "description": "The most objects the page can hold.",
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "offset": {
+          "description": "The position of the page's first object in the whole listing.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total": {
+          "description": "The number of objects in the whole listing.",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "total",
+        "limit",
+        "offset"
+      ],
+      "title": "Page",
+      "type": "object"
+    },
+    "Policy": {
+      "additionalProperties": false,
+      "description": "A set of permissions and prohibitions.",
+      "title": "Policy",
+      "type": "object"
+    },
+    "Principal": {
+      "additionalProperties": false,
+      "description": "A reference to a user account in the identity provider, by IRI only.",
+      "properties": {
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Principal",
+      "type": "object"
+    },
+    "Problem": {
+      "additionalProperties": false,
+      "description": "An RFC 9457 problem detail, the body of every error answer of the service.",
+      "properties": {
+        "detail": {
+          "description": "An explanation of this occurrence of the problem.",
+          "type": "string"
+        },
+        "instance": {
+          "description": "The IRI that identifies this occurrence of the problem.",
+          "format": "uri",
+          "type": "string"
+        },
+        "status": {
+          "description": "The HTTP status code of the answer.",
+          "type": "integer"
+        },
+        "title": {
+          "description": "A short, fixed summary of the kind of problem.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The IRI that identifies the kind of problem.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "title",
+        "status"
+      ],
+      "title": "Problem",
+      "type": "object"
+    },
+    "ProblemKind": {
+      "additionalProperties": false,
+      "description": "A kind of problem the service answers with: the slug that ends its problem type IRI, its fixed title and the HTTP status it comes with.",
+      "properties": {
+        "slug": {
+          "description": "The last segment of the problem type IRI, lower case words joined by hyphens.",
+          "pattern": "^[a-z]+(?:-[a-z]+)*$",
+          "type": "string"
+        },
+        "status": {
+          "description": "The HTTP status code of the answer.",
+          "type": "integer"
+        },
+        "title": {
+          "description": "A short, fixed summary of the kind of problem.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "slug",
+        "title",
+        "status"
+      ],
+      "title": "ProblemKind",
+      "type": "object"
+    },
+    "ProblemSlug": {
+      "description": "The kinds of problem the toolkit answers with, by the last segment of their problem type IRI, with the underscores written as hyphens.",
+      "enum": [
+        "invalid_token",
+        "forbidden",
+        "not_found",
+        "conflict",
+        "precondition_required",
+        "invalid_body",
+        "not_acceptable",
+        "unsupported_media_type",
+        "bad_query",
+        "unavailable",
+        "payload_too_large",
+        "method_not_allowed",
+        "internal_error"
+      ],
+      "title": "ProblemSlug",
+      "type": "string"
+    },
+    "Prohibition": {
+      "additionalProperties": false,
+      "description": "The ODRL prohibition that forbids an assignee an action on a target; it wins over any permission.",
+      "properties": {
+        "action": {
+          "$ref": "#/components/schemas/Action",
+          "description": "The action a direct permission allows, or a prohibition forbids."
+        },
+        "assignee": {
+          "description": "The principal the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        },
+        "target": {
+          "description": "The IRI of the tenant, or of an aggregate's graph, the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assignee",
+        "target",
+        "action"
+      ],
+      "title": "Prohibition",
+      "type": "object"
+    },
+    "RegistryEntry": {
+      "additionalProperties": false,
+      "description": "An entry of a tenant's registry graph, naming a graph that belongs to an aggregate. It is written by the session, never by the application.",
+      "properties": {
+        "graph": {
+          "description": "The IRI of a named graph.",
+          "format": "uri",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/components/schemas/RegistryKind",
+          "description": "The kind of graph a registry entry names."
+        },
+        "owned_by": {
+          "description": "The IRI of the aggregate root that owns the graph.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "graph",
+        "kind",
+        "owned_by"
+      ],
+      "title": "RegistryEntry",
+      "type": "object"
+    },
+    "RegistryKind": {
+      "description": "The kinds of graph a registry entry can name.",
+      "enum": [
+        "aggregate",
+        "loaded_graph"
+      ],
+      "title": "RegistryKind",
+      "type": "string"
+    },
+    "RoleDefinition": {
+      "additionalProperties": false,
+      "description": "What a role may do and where it applies. An application supplies its role definitions as data; they are not stored.",
+      "properties": {
+        "actions": {
+          "description": "The actions the role permits.",
+          "items": {
+            "$ref": "#/components/schemas/Action"
+          },
+          "type": "array"
+        },
+        "level": {
+          "$ref": "#/components/schemas/RoleLevel",
+          "description": "Where the role applies."
+        },
+        "role": {
+          "description": "The name of a role, matched against the application's role definitions.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "level",
+        "actions"
+      ],
+      "title": "RoleDefinition",
+      "type": "object"
+    },
+    "RoleLevel": {
+      "description": "The levels at which a role applies.",
+      "enum": [
+        "system",
+        "tenant",
+        "aggregate"
+      ],
+      "title": "RoleLevel",
+      "type": "string"
+    },
+    "RpAnnotation": {
+      "description": "The annotations the toolkit reads from a schema, one entry per tag; any other tag is left alone. Each description says which element carries the tag and which values it accepts.",
+      "enum": [
+        "owned",
+        "internal",
+        "graph",
+        "database",
+        "module_kind",
+        "rp_path",
+        "rp_unlabelled",
+        "bookkeeping"
+      ],
+      "title": "RpAnnotation",
+      "type": "string"
+    },
+    "Rule": {
+      "additionalProperties": false,
+      "description": "An ODRL rule that gives an assignee a ruling on an action over a target.",
+      "properties": {
+        "action": {
+          "$ref": "#/components/schemas/Action",
+          "description": "The action a direct permission allows, or a prohibition forbids."
+        },
+        "assignee": {
+          "description": "The principal the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        },
+        "target": {
+          "description": "The IRI of the tenant, or of an aggregate's graph, the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assignee",
+        "target"
+      ],
+      "title": "Rule",
+      "type": "object"
+    },
+    "ServiceSettings": {
+      "additionalProperties": false,
+      "description": "The settings of `install_service`: where the service is mounted, how it names tenants and which role its callers get on a tenant they create.",
+      "properties": {
+        "base": {
+          "description": "The IRI under which the service mints identifiers and problem types, ending in a slash.",
+          "format": "uri",
+          "pattern": "^https?://.+/$",
+          "type": "string"
+        },
+        "creator_role": {
+          "description": "The role a caller is given on the tenant it creates.",
+          "pattern": "^.+$",
+          "type": "string"
+        },
+        "max_body_bytes": {
+          "description": "The most bytes a request body may hold; a larger one is refused with 413 before it is read whole.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "prefix": {
+          "description": "The prefix of the database names of the service's tenants; lower case, at most 20 characters.",
+          "pattern": "^[a-z][a-z0-9]{0,19}$",
+          "type": "string"
+        },
+        "roles_claim": {
+          "description": "The claim of the token that holds the caller's global roles, an object keyed by role name; for Zitadel, urn:zitadel:iam:org:project:{project_id}:roles of the consumer's project.",
+          "pattern": "^.+$",
+          "type": "string"
+        },
+        "tenant_segment": {
+          "description": "The path segment that names the tenant collection in the service's routes.",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "base",
+        "prefix",
+        "tenant_segment",
+        "creator_role",
+        "roles_claim"
+      ],
+      "title": "ServiceSettings",
+      "type": "object"
+    },
+    "TenantAccess": {
+      "additionalProperties": false,
+      "description": "The access record of a tenant: its label, state and database name, with the grants and prohibitions that say who may do what in it.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "grants": {
+          "description": "The permissions given in the tenant, by role or as direct actions; they live in the access record's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Grant"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "pattern": "^\\S(?:.{0,198}\\S)?$",
+          "type": "string"
+        },
+        "prohibitions": {
+          "description": "The actions forbidden in the tenant; they live in the access record's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Prohibition"
+          },
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/components/schemas/TenantState",
+          "description": "Where the tenant is in its life."
+        }
+      },
+      "required": [
+        "state",
+        "id",
+        "label"
+      ],
+      "title": "TenantAccess",
+      "type": "object"
+    },
+    "TenantCreate": {
+      "additionalProperties": false,
+      "description": "The body that creates a tenant, its label and the slots of the tenant's root object.",
+      "properties": {
+        "label": {
+          "description": "The preferred label of the object.",
+          "pattern": "^\\S(?:.{0,198}\\S)?$",
+          "type": "string"
+        },
+        "root": {
+          "$ref": "#/components/schemas/Any",
+          "description": "The slots of the tenant's root object, as the application's schema defines them."
+        }
+      },
+      "required": [
+        "root",
+        "label"
+      ],
+      "title": "TenantCreate",
+      "type": "object"
+    },
+    "TenantLabelled": {
+      "additionalProperties": false,
+      "description": "A mixin for what carries a tenant's label, one line of 1 to 200 characters that neither starts nor ends in a space; the access record and the service's request bodies share it, so the label is checked the same everywhere.",
+      "properties": {
+        "label": {
+          "description": "The preferred label of the object.",
+          "pattern": "^\\S(?:.{0,198}\\S)?$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "title": "TenantLabelled",
+      "type": "object"
+    },
+    "TenantState": {
+      "description": "The states of a tenant.",
+      "enum": [
+        "active",
+        "deleting"
+      ],
+      "title": "TenantState",
+      "type": "string"
+    },
+    "TenantSummary": {
+      "additionalProperties": false,
+      "description": "What the service answers about one tenant, in a listing or after creating it.",
+      "properties": {
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/components/schemas/TenantState",
+          "description": "Where the tenant is in its life."
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "state"
+      ],
+      "title": "TenantSummary",
+      "type": "object"
+    },
+    "Tracked": {
+      "additionalProperties": false,
+      "description": "A mixin for the tracking statements of a commit. The session writes them about the aggregate's graph IRI, never about the root entity.",
+      "properties": {},
+      "title": "Tracked",
+      "type": "object"
+    },
+    "VerifiedCaller": {
+      "additionalProperties": false,
+      "description": "What a token verifier returns for a valid token, the principal and its global roles.",
+      "properties": {
+        "global_roles": {
+          "description": "The system-level roles the token grants the principal.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "principal": {
+          "description": "The user account the token identifies.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "principal"
+      ],
+      "title": "VerifiedCaller",
+      "type": "object"
+    }
+  }
+}

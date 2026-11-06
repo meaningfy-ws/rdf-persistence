@@ -32,7 +32,7 @@ from rdflib.namespace import SH
 
 from rdf_persistence.generation.extensions.shacl_constraints import constraints_graph, shape_uri
 from rdf_persistence.generation.generated.rp_generation import GeneratedFile
-from rdf_persistence.generation.outputs import SHAPES_FILE
+from rdf_persistence.services.artifacts import SHAPES_FILE
 from rdf_persistence.services.schema import metamodel_importmap
 from rdf_persistence.services.schema_structure import (
     apply_defaults,

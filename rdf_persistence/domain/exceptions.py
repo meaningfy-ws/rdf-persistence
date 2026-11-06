@@ -65,3 +65,28 @@ class UnknownRole(PersistenceError, ValueError):
 
 class InvalidGrant(PersistenceError, ValueError):
     """A grant or prohibition targets something that is not the tenant or the graph of one of its aggregates, or names an assignee that is not an IRI."""
+
+
+class InvalidBody(PersistenceError):
+    """A request body is not a valid representation for its route: it fails the shape, names an IRI the
+    client may not choose, or describes another aggregate than the one in the path."""
+
+
+class NotAcceptable(PersistenceError):
+    """The request's ``Accept`` names no representation the service produces."""
+
+
+class UnsupportedMediaType(PersistenceError):
+    """The request's ``Content-Type`` is not one the route accepts."""
+
+
+class PreconditionRequired(PersistenceError):
+    """An update or a delete came without the ``If-Match`` header that names the version it expects."""
+
+
+class PayloadTooLarge(PersistenceError):
+    """A request body is larger than the service takes: too many bytes, or too many nodes."""
+
+
+class StoredDataInvalid(PersistenceError):
+    """What the store holds cannot be decoded: a fault of the service or its data, never of the request."""

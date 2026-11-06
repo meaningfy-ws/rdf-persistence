@@ -8,14 +8,14 @@ generate is left to the schema that does, so one cases file can serve several sc
 
 An instance file is the YAML of one object, keyed by slot name, as the generated class takes it.
 Dates and date-times are quoted, so that YAML keeps them as text. The shape side reads the same
-object as RDF: the instance is made a JSON-LD node (``jsonld_node``) and expanded with the
-generated context, which alone decides how values read (an IRI, an enum's meaning). Internal slots are
-no public requirement: the shapes make them optional, so no constraint kind is counted from them.
+object as RDF the way the router reads a JSON body: ``Documents.expand`` types it by the schema and
+reads it with the generated context, which alone decides how values read (an IRI, an enum's
+meaning). Internal slots are no public requirement: the shapes make them optional, no body carries
+them, and no constraint kind is counted from them.
 """
 
 import importlib
-import json
-import pkgutil
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -24,18 +24,20 @@ from linkml_runtime.linkml_model.meta import SlotDefinition
 from linkml_runtime.utils.formatutils import camelcase, underscore
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel, ValidationError
-from pyld import jsonld
 from pyshacl import validate
 from rdflib import Graph
 
+from rdf_persistence.domain.exceptions import InvalidBody
 from rdf_persistence.generation.config import python_folder, read_targets
 from rdf_persistence.generation.exceptions import ConfigError
 from rdf_persistence.generation.generated.rp_generation import ConstraintCase, ConstraintKind
-from rdf_persistence.generation.outputs import CONTEXT_FILE, SHAPES_FILE
+from rdf_persistence.services.documents import Documents
+from rdf_persistence.services.mapper import generated_models_of
 from rdf_persistence.services.schema_structure import (
     generation_view,
     holds_owned_part,
     is_internal,
+    json_name,
     keyed_slots,
 )
 
@@ -69,32 +71,18 @@ def _generating_target(schema: Path) -> tuple[Path, str, Path]:
     raise LookupError(f"no [[tool.rp-generate]] entry of a pyproject.toml generates {schema}")
 
 
-def _generated_models(package: str, folder: Path) -> dict[str, type[BaseModel]]:
-    models: dict[str, type[BaseModel]] = {}
-    for info in pkgutil.iter_modules([str(folder)]):
-        module = importlib.import_module(f"{package}.{info.name}")
-        models |= {
-            name: member
-            for name, member in vars(module).items()
-            if isinstance(member, type)
-            and issubclass(member, BaseModel)
-            and member.__module__ == module.__name__
-        }
-    return models
-
-
 @dataclass(frozen=True)
 class Conformance:
     """A schema with its generated classes, JSON-LD context and shapes, ready to give verdicts.
 
-    ``folder`` is the Python folder of the entry that generated them, where the frames are too.
+    ``documents`` read the same folder: it expands a body into RDF and frames RDF back into JSON as
+    the router does, so what this suite and the round trip check is the router's own code.
     """
 
     view: SchemaView
-    models: dict[str, type[BaseModel]]
-    context: dict
+    models: Mapping[str, type[BaseModel]]
     shapes: Graph
-    folder: Path
+    documents: Documents
 
     @staticmethod
     def of(schema: Path) -> "Conformance":
@@ -103,14 +91,10 @@ class Conformance:
         Every call reads the files again, so a regeneration between two calls is seen.
         """
         _, package, folder = _generating_target(schema)
-        context = json.loads((folder / CONTEXT_FILE).read_text(encoding="utf-8"))["@context"]
-        return Conformance(
-            view=generation_view(schema),
-            models=_generated_models(package, folder),
-            context=context,
-            shapes=Graph().parse(folder / SHAPES_FILE),
-            folder=folder,
-        )
+        view = generation_view(schema)
+        documents = Documents(view, folder)
+        models = generated_models_of(importlib.import_module(package)).classes()
+        return Conformance(view=view, models=models, shapes=documents.shapes, documents=documents)
 
     def class_names(self) -> set[str]:
         """The schema classes this entry generates."""
@@ -128,42 +112,50 @@ class Conformance:
         """Whether the generated shapes accept the RDF of ``data``, an instance of ``class_name``.
 
         An object the class builds is read back through its JSON (what the API would send); one it
-        refuses is read from ``data`` as it is, since it cannot be built.
+        refuses is read from ``data`` as it is, since it cannot be built. A body the router would
+        refuse before the shapes see it (a key the class has no slot for) is refused here too.
         """
         try:
             built = self.models[camelcase(class_name)].model_validate(data)
             data = built.model_dump(mode="json", by_alias=True, exclude_none=True)
         except ValidationError:
             pass
-        nquads = jsonld.to_rdf(
-            {"@context": self.context, **self.jsonld_node(class_name, data)},
-            {"format": "application/n-quads"},
-        )
-        graph = Graph().parse(data=nquads, format="nt")
+        try:
+            graph = self.documents.expand(
+                self.public(class_name, data), self.view.get_class(class_name)
+            )
+        except InvalidBody:
+            return False
         conforms, _, _ = validate(graph, shacl_graph=self.shapes, inference="none")
         return bool(conforms)
 
-    def jsonld_node(self, class_name: str, data: dict) -> dict:
-        """``data`` as a JSON-LD node of ``class_name``, typed, owned parts too (a frame selects by type).
+    def graph_of(self, model: BaseModel, class_name: str) -> Graph:
+        """The RDF of ``model``, its public JSON read the way the router reads a request body."""
+        body = model.model_dump(mode="json", by_alias=True, exclude_none=True)
+        return self.documents.expand(self.public(class_name, body), self.view.get_class(class_name))
 
-        Only the types are added: the values are read by the generated context as they are. Internal
-        slots are left out, as the public context leaves them out: an API body never carries them.
+    def slots_of(self, class_name: str) -> dict[str, SlotDefinition]:
+        """The slots of ``class_name`` by the keys an object of it is written with: slot name and JSON name."""
+        slots = self.view.class_induced_slots(class_name)
+        return {**{underscore(s.name): s for s in slots}, **{json_name(s): s for s in slots}}
+
+    def public(self, class_name: str, data: dict) -> dict:
+        """``data``, an object of ``class_name`` as JSON, without its internal slots, owned parts too.
+
+        No API body carries them, as the public context leaves them out.
         """
-        slots = {underscore(s.name): s for s in self.view.class_induced_slots(class_name)}
-        node: dict = {"@type": camelcase(class_name)}
-        for key, value in data.items():
-            slot = slots.get(key)
-            if slot is None:
-                node[key] = value
-            elif not is_internal(slot):
-                node[key] = self._typed_parts(slot, value)
-        return node
+        slots = self.slots_of(class_name)
+        return {
+            key: self._public_value(slots.get(key), value)
+            for key, value in data.items()
+            if not (key in slots and is_internal(slots[key]))
+        }
 
-    def _typed_parts(self, slot: SlotDefinition, value: object) -> object:
+    def _public_value(self, slot: SlotDefinition | None, value: object) -> object:
         if isinstance(value, list):
-            return [self._typed_parts(slot, item) for item in value]
-        if isinstance(value, dict) and holds_owned_part(self.view, slot):
-            return self.jsonld_node(slot.range, value)
+            return [self._public_value(slot, item) for item in value]
+        if slot is not None and holds_owned_part(self.view, slot) and isinstance(value, dict):
+            return self.public(str(slot.range), value)
         return value
 
     def used_kinds(self) -> set[ConstraintKind]:

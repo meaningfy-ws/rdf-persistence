@@ -8,7 +8,7 @@ from rdf_persistence.domain.exceptions import Conflict, NotFound
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.iris import access_iri, tenant_resource_name
 from rdf_persistence.services.session import open_session
-from tests.toy import ADA, library
+from tests.toy import ADA, library_slots
 
 ODRL = Namespace("http://www.w3.org/ns/odrl/2/")
 RP = Namespace("https://meaningfy.ws/ns/rdf-persistence#")
@@ -26,7 +26,7 @@ async def access_graph(store, settings, tenant: str):
 async def test_create_then_delete_leaves_no_database_no_bucket_and_no_record(
     tenancy, store, files, settings
 ):
-    summary = await tenancy.create("Ghent", library(), CREATOR)
+    summary = await tenancy.create("Ghent", library_slots(), CREATOR)
     name = tenant_resource_name(settings.prefix, summary.id)
     assert name in await store.list_datasets(), "the database exists after create"
     assert await files.list_buckets(name) == [name], "the bucket exists after create"
@@ -44,14 +44,14 @@ async def test_a_label_the_record_refuses_creates_no_database_and_no_bucket(
     tenancy, store, files, settings
 ):
     with pytest.raises(ValueError, match="label"):
-        await tenancy.create("x" * 201, library(), CREATOR)
+        await tenancy.create("x" * 201, library_slots(), CREATOR)
     prefix = f"{settings.prefix}-t-"
     assert [n for n in await store.list_datasets() if n.startswith(prefix)] == [], "databases"
     assert await files.list_buckets(prefix) == [], "buckets"
 
 
 async def test_finish_deletion_leaves_an_active_tenant_whole(tenancy, store, files, settings):
-    summary = await tenancy.create("Ghent", library(), CREATOR)
+    summary = await tenancy.create("Ghent", library_slots(), CREATOR)
     name = tenant_resource_name(settings.prefix, summary.id)
     with pytest.raises(Conflict):
         await tenancy.finish_deletion(summary.id)
@@ -60,7 +60,7 @@ async def test_finish_deletion_leaves_an_active_tenant_whole(tenancy, store, fil
 
 
 async def test_a_grant_is_an_odrl_permission_of_the_creator_on_the_tenant(tenancy, store, settings):
-    summary = await tenancy.create("Ghent", library(), CREATOR)
+    summary = await tenancy.create("Ghent", library_slots(), CREATOR)
     graph = await access_graph(store, settings, summary.id)
     permissions = list(graph.subjects(RDF.type, ODRL.Permission))
     assert len(permissions) == 1, "one permission, the creator's"
@@ -73,7 +73,7 @@ async def test_a_grant_is_an_odrl_permission_of_the_creator_on_the_tenant(tenanc
 
 
 async def test_the_access_record_owns_the_grant(tenancy, store, settings):
-    summary = await tenancy.create("Ghent", library(), CREATOR)
+    summary = await tenancy.create("Ghent", library_slots(), CREATOR)
     graph = await access_graph(store, settings, summary.id)
     permission = next(graph.subjects(RDF.type, ODRL.Permission))
     assert (URIRef(access_iri(summary.id)), RP.grant, permission) in graph
@@ -83,8 +83,8 @@ ASK_CITY = "ASK { GRAPH ?g { ?s <http://schema.org/addressLocality> '%s' } }"
 
 
 async def test_a_tenant_database_holds_only_its_own_root_object(tenancy, store, settings):
-    ghent = await tenancy.create("Ghent", library(city="Ghent"), CREATOR)
-    await tenancy.create("Bruges", library(city="Bruges"), CREATOR)
+    ghent = await tenancy.create("Ghent", library_slots("Ghent"), CREATOR)
+    await tenancy.create("Bruges", library_slots("Bruges"), CREATOR)
     name = tenant_resource_name(settings.prefix, ghent.id)
     held = [
         bool((await store.query(name, ASK_CITY % city)).askAnswer) for city in ("Ghent", "Bruges")

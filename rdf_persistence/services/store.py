@@ -9,6 +9,8 @@ from typing import Protocol
 from rdflib import Graph, URIRef
 from rdflib.query import Result
 
+from rdf_persistence.domain.exceptions import BadQuery, SparqlError
+
 
 class Store(Protocol):
     """A SPARQL 1.1 store with a Graph Store endpoint and dataset administration."""
@@ -46,3 +48,39 @@ class Store(Protocol):
     async def list_datasets(self) -> list[str]:
         """The names of all datasets."""
         ...
+
+
+class ToolkitStore:
+    """A ``Store`` for the SPARQL the toolkit writes itself, which no request can make malformed.
+
+    Every value in such a text is a term (``domain.sparql``), so a store that refuses the text found
+    a fault of the service, not a bad request: ``BadQuery`` becomes a ``SparqlError``, whose answer
+    carries no detail. Everything else passes through.
+    """
+
+    def __init__(self, store: Store) -> None:
+        self._store = store
+
+    async def query(self, dataset: str, sparql: str) -> Result:
+        try:
+            return await self._store.query(dataset, sparql)
+        except BadQuery as error:
+            raise SparqlError("the store refused a query the toolkit wrote") from error
+
+    async def update(self, dataset: str, sparql: str) -> None:
+        try:
+            await self._store.update(dataset, sparql)
+        except BadQuery as error:
+            raise SparqlError("the store refused an update the toolkit wrote") from error
+
+    async def put_graph(self, dataset: str, graph_iri: URIRef, graph: Graph) -> None:
+        await self._store.put_graph(dataset, graph_iri, graph)
+
+    async def create_dataset(self, name: str) -> None:
+        await self._store.create_dataset(name)
+
+    async def drop_dataset(self, name: str) -> None:
+        await self._store.drop_dataset(name)
+
+    async def list_datasets(self) -> list[str]:
+        return await self._store.list_datasets()

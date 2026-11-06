@@ -131,12 +131,16 @@ class S3FileStore:
             )
             keys = [{"Key": blob["Key"]} for blob in page.get("Contents", [])]
             for start in range(0, len(keys), DELETE_BATCH):
-                await self._run(
+                result = await self._run(
                     self._client.delete_objects,
                     bucket_missing=NotFound,
                     Bucket=name,
                     Delete={"Objects": keys[start : start + DELETE_BATCH]},
                 )
+                # DeleteObjects answers 200 even when some keys failed; report them, not BucketNotEmpty.
+                if failed := result.get("Errors"):
+                    listed = ", ".join(f"{e.get('Key')}: {e.get('Code')}" for e in failed)
+                    raise StoreUnavailable(f"could not delete blobs of {name}: {listed}")
             token = page.get("NextContinuationToken")
             if not page.get("IsTruncated"):
                 break

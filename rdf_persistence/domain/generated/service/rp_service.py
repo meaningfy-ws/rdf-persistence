@@ -85,6 +85,36 @@ class LinkMLMeta(RootModel):
 
 linkml_meta = None
 
+class ProblemSlug(str, Enum):
+    "The kinds of problem the toolkit answers with, by the last segment of their problem type IRI, with the underscores written as hyphens."
+    INVALID_TOKEN = "invalid_token"
+    "No bearer token, or one the service refuses."
+    FORBIDDEN = "forbidden"
+    "The caller may see the thing but is not allowed the action."
+    NOT_FOUND = "not_found"
+    "There is no such thing, or the caller cannot see it."
+    CONFLICT = "conflict"
+    "The write lost a race, or the thing to create already exists."
+    PRECONDITION_REQUIRED = "precondition_required"
+    "An update or a delete came without the version it expects."
+    INVALID_BODY = "invalid_body"
+    "The body is not a valid representation for its route."
+    NOT_ACCEPTABLE = "not_acceptable"
+    "The service produces nothing the client accepts."
+    UNSUPPORTED_MEDIA_TYPE = "unsupported_media_type"
+    "The route does not take the media type of the body."
+    BAD_QUERY = "bad_query"
+    "The query string is not one the route takes."
+    UNAVAILABLE = "unavailable"
+    "A store, the identity provider or the role definitions are not usable."
+    PAYLOAD_TOO_LARGE = "payload_too_large"
+    "The body is larger than the service takes."
+    METHOD_NOT_ALLOWED = "method_not_allowed"
+    "The route has no such method."
+    INTERNAL_ERROR = "internal_error"
+    "The service failed; the answer says no more."
+
+
 
 class ServiceSettings(ConfiguredBaseModel):
     "The settings of `install_service`: where the service is mounted, how it names tenants and which role its callers get on a tenant they create."
@@ -93,6 +123,7 @@ class ServiceSettings(ConfiguredBaseModel):
     tenant_segment: str = Field(default=..., title="Tenant segment", description="The path segment that names the tenant collection in the service\u0027s routes.")
     creator_role: str = Field(default=..., title="Creator role", description="The role a caller is given on the tenant it creates.")
     roles_claim: str = Field(default=..., title="Roles claim", description="The claim of the token that holds the caller\u0027s global roles, an object keyed by role name; for Zitadel, urn:zitadel:iam:org:project:{project_id}:roles of the consumer\u0027s project.")
+    max_body_bytes: Optional[int] = Field(default=1048576, title="Maximum body size", description="The most bytes a request body may hold; a larger one is refused with 413 before it is read whole.", ge=1)
 
     @field_validator("base")
     def pattern_base(cls, v):
@@ -256,12 +287,51 @@ class CallerAccess(ConfiguredBaseModel):
         return self
 
 
+class Authorised(ConfiguredBaseModel):
+    "What a route\u0027s access check settled: the caller\u0027s access to the tenant, and the IRI of the aggregate it was checked on, which the route then acts on."
+    caller_access: CallerAccess = Field(default=..., title="Caller access", description="The caller\u0027s access to the tenant, as the access check loaded it.")
+    checked_target: str = Field(default=..., title="Checked target", description="The IRI of the aggregate the access check was made on.")
+
+
 class Page(ConfiguredBaseModel):
     "One page of a listing, with the position of the page in the whole listing."
     items: list[Any] = Field(default=..., title="Items", description="The objects of the page; framed aggregates, or tenant summaries.")
     total: int = Field(default=..., title="Total", description="The number of objects in the whole listing.", ge=0)
-    limit: int = Field(default=..., title="Limit", description="The most objects the page can hold.", ge=1)
+    limit: int = Field(default=..., title="Limit", description="The most objects the page can hold.", ge=1, le=200)
     offset: int = Field(default=..., title="Offset", description="The position of the page\u0027s first object in the whole listing.", ge=0)
+
+
+class Filter(ConfiguredBaseModel):
+    "One equality filter of a listing, the name of a slot of the listed type and the value it must have, as the text the caller sent."
+    slot: str = Field(default=..., title="Filter slot", description="The name of the slot the filter is on.")
+    value: str = Field(default=..., title="Filter value", description="The value the slot must have, as text.")
+
+
+class ListRequest(ConfiguredBaseModel):
+    "The query of a listing, as the caller sent it: the equality filters, the position and size of the page and the key to sort by."
+    limit: Optional[int] = Field(default=50, title="Limit", description="The most objects the page can hold.", ge=1, le=200)
+    offset: Optional[int] = Field(default=0, title="Offset", description="The position of the page\u0027s first object in the whole listing.", ge=0)
+    sort: Optional[str] = Field(default=None, title="Sort", description="The slot a listing is ordered by, ascending, or descending when its name starts with a minus sign; absent, the listing is ordered by IRI.")
+    filters: Optional[list[Filter]] = Field(default=None, title="Filters", description="The equality filters of a listing; all of them must hold.")
+
+
+class Condition(ConfiguredBaseModel):
+    "An equality filter of a listing resolved against the slots of the listed type: the aggregate has this statement. The value is an IRI when it is a reference, else a literal of the datatype."
+    predicate: str = Field(default=..., title="Condition predicate", description="The IRI of the predicate the aggregate must have a statement with.")
+    value: str = Field(default=..., title="Condition value", description="The value of the statement, an IRI or the lexical form of a literal.")
+    datatype: Optional[str] = Field(default=None, title="Condition datatype", description="The IRI of the datatype of a literal value; absent for a plain string.")
+    reference: Optional[bool] = Field(default=False, title="Condition reference", description="Whether the value is an IRI rather than a literal.")
+
+
+class ListPlan(ConfiguredBaseModel):
+    "A listing resolved against the slots of the listed type: the class, the typed conditions, the predicate to order by (none orders by IRI), the page, and the graphs of the aggregates the caller may not read."
+    target: str = Field(default=..., title="Plan class", description="The IRI of the class of the aggregates listed.")
+    conditions: Optional[list[Condition]] = Field(default=None, title="Conditions", description="The equality conditions of a listing; all of them must hold.")
+    sort_by: Optional[str] = Field(default=None, title="Plan sort", description="The IRI of the predicate a listing is ordered by; absent, it is ordered by IRI.")
+    descending: Optional[bool] = Field(default=False, title="Descending", description="Whether the order is reversed.")
+    limit: int = Field(default=..., title="Limit", description="The most objects the page can hold.", ge=1, le=200)
+    offset: int = Field(default=..., title="Offset", description="The position of the page\u0027s first object in the whole listing.", ge=0)
+    hidden_graphs: Optional[list[str]] = Field(default=None, title="Hidden graphs", description="The IRIs of the graphs of the aggregates a listing leaves out.")
 
 
 class Problem(ConfiguredBaseModel):
@@ -271,6 +341,26 @@ class Problem(ConfiguredBaseModel):
     status: int = Field(default=..., title="Problem status", description="The HTTP status code of the answer.")
     detail: Optional[str] = Field(default=None, title="Problem detail", description="An explanation of this occurrence of the problem.")
     instance: Optional[str] = Field(default=None, title="Problem instance", description="The IRI that identifies this occurrence of the problem.")
+
+
+class ProblemKind(ConfiguredBaseModel):
+    "A kind of problem the service answers with: the slug that ends its problem type IRI, its fixed title and the HTTP status it comes with."
+    slug: str = Field(default=..., title="Problem slug", description="The last segment of the problem type IRI, lower case words joined by hyphens.")
+    title: str = Field(default=..., title="Problem title", description="A short, fixed summary of the kind of problem.")
+    status: int = Field(default=..., title="Problem status", description="The HTTP status code of the answer.")
+
+    @field_validator("slug")
+    def pattern_slug(cls, v):
+        pattern=re.compile("^[a-z]+(?:-[a-z]+)*$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid slug format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid slug format: " + str(v)
+            raise ValueError(err_msg)
+        return v
 
 
 class AccountSummary(ConfiguredBaseModel):
@@ -304,6 +394,12 @@ TenantSummary.model_rebuild()
 LabelUpdate.model_rebuild()
 GrantSet.model_rebuild()
 CallerAccess.model_rebuild()
+Authorised.model_rebuild()
 Page.model_rebuild()
+Filter.model_rebuild()
+ListRequest.model_rebuild()
+Condition.model_rebuild()
+ListPlan.model_rebuild()
 Problem.model_rebuild()
+ProblemKind.model_rebuild()
 AccountSummary.model_rebuild()

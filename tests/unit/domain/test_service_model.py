@@ -8,6 +8,7 @@ from rdf_persistence import (
     LabelUpdate,
     Page,
     Problem,
+    ProblemKind,
     ServiceSettings,
     TenantCreate,
     TenantState,
@@ -20,7 +21,7 @@ from tests.unit.domain.builders import ALICE, TENANT, grant, tenant_access
 BASE = "https://example.org/"
 
 
-def settings(**changes: str) -> ServiceSettings:
+def settings(**changes: str | int) -> ServiceSettings:
     fields = {
         "base": BASE,
         "prefix": "lib",
@@ -176,6 +177,27 @@ def test_a_problem_needs_a_type_a_title_and_a_status(missing: str) -> None:
         Problem(**fields)
 
 
+def test_a_problem_kind_is_a_slug_a_title_and_a_status() -> None:
+    kind = ProblemKind(slug="not-found", title="Not found", status=404)
+    assert (kind.slug, kind.title, kind.status) == ("not-found", "Not found", 404), (
+        "a kind must keep the slug, the fixed title and the status it was given"
+    )
+
+
+@pytest.mark.parametrize("slug", ["", "Not-Found", "not found", "-x", "x/y"])
+def test_a_slug_that_is_not_lower_case_words_joined_by_hyphens_is_refused(slug: str) -> None:
+    with pytest.raises(ValidationError, match="slug"):
+        ProblemKind(slug=slug, title="T", status=400)
+
+
+@pytest.mark.parametrize("missing", ["slug", "title", "status"])
+def test_a_problem_kind_needs_all_three(missing: str) -> None:
+    fields = {"slug": "forbidden", "title": "Forbidden", "status": 403}
+    del fields[missing]
+    with pytest.raises(ValidationError, match=missing):
+        ProblemKind(**fields)
+
+
 def test_the_service_module_declares_only_its_own_classes() -> None:
     declared = {
         n
@@ -223,3 +245,13 @@ def test_a_tenant_label_of_1_to_200_characters_is_accepted(build, label: str) ->
 def test_any_other_tenant_label_is_refused(build, label: str) -> None:
     with pytest.raises(ValidationError, match="Invalid label format"):
         build(label)
+
+
+def test_a_body_may_hold_a_mebibyte_unless_the_settings_say_otherwise() -> None:
+    assert settings().max_body_bytes == 1024 * 1024, "the default bound of a request body"
+    assert settings(max_body_bytes=2048).max_body_bytes == 2048, "the consumer's bound"
+
+
+def test_a_body_bound_below_one_byte_is_refused() -> None:
+    with pytest.raises(ValidationError, match="max_body_bytes"):
+        settings(max_body_bytes=0)

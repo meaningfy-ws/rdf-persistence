@@ -208,7 +208,9 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-13,
   - A *tenant grant* is a grant whose target is the tenant IRI. A caller with no tenant grant, no
     permission on the requested aggregate and no global role that a role definition allows gets
     404. A caller with one of them, but without the
-    action, gets 403. A matching Prohibition gets 403 before anything else.
+    action, gets 403. The check order is: target outside the tenant's scope 404, tenant state
+    404, matching Prohibition 403, no permission at all (grants and global roles) 404, action
+    missing 403. So a Prohibition never reveals a tenant the caller cannot see.
 
   Details settled in task 4.2: a Prohibition of `read` blocks every action (each implies `read`);
   a Prohibition of another action blocks that action only. A tenant-targeted Prohibition covers the
@@ -267,7 +269,7 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
 - **PD-24 What is generated, and what may be hand-written.**
   - Generated from LinkML: domain classes, SHACL shapes, the JSON-LD context and frames, TypeScript
     types, the OpenAPI component schemas (through `gen-json-schema`, inside the OpenAPI hook of task
-    5.5) and the diagrams. A standalone JSON Schema file is not a v1 artefact.
+    5.5) and the diagrams. A standalone JSON Schema file is not a v1 artefact. `gen-json-schema` runs at generation time, not in the running hook (the generators are an extra, PD-2): an `rp-generate` step writes `openapi-components.json` beside the context (bookkeeping and `internal` slots stripped, the identifier read-only), and the OpenAPI hook reads it (task 5.5).
   - The toolkit's own data types are declared in LinkML and generated too. `rp.yaml` imports
     neither of these schemas, so consumers' models do not carry them; each is its own
     `[[tool.rp-generate]]` entry (PD-18) and, like the metamodel, is exempt from the checks of PD-23:
@@ -576,9 +578,52 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
     `S3FileStore(endpoint, access_key_id, secret_access_key, region)`,
     `ZitadelIdentity(issuer, service_token, organisation_id, project_id)` (global roles are project-role
     grants),
-    `JwksTokenVerifier(issuer, audience, roles_claim, *, jwks_uri=None, http_client=None)`: keys come
-    from the issuer's OIDC discovery unless `jwks_uri` is given; the testkit passes an `http_client`
+    `JwksTokenVerifier(issuer, audience, roles_claim, *, jwks_uri=None, transport=None)`: keys come
+    from the issuer's OIDC discovery unless `jwks_uri` is given; the testkit passes a `transport`
     that serves its in-memory JWKS.
+- **PD-13a Service kit details** (tasks 5.1–5.3). `install_service(app, *, schema, generated, store,
+  files, identity, verifier, rules, settings, prefix="")`: `generated` is the consumer's generated
+  package (context, frames, shapes and classes live there); `rules` is an `AccessRules` or the path of
+  the role-definitions file, which is loaded and validated in `install_service` itself, so an invalid
+  file refuses to start before anything touches the store. The lifespan then creates the system
+  database and runs the sweep, before the consumer's own lifespan. It returns a `ServiceKit` (tenancy,
+  store, files, identity) for the consumer's own routes. Problem responses for 401, 403, 404, 409 and
+  503 carry no detail, so a hidden tenant and an absent one answer alike. `POST /{tenant_segment}`
+  builds the tenant root through its generated class (the conformance suite keeps classes and shapes
+  equal); the other bodies follow PD-14. The aggregate listing is task 5.4.
+- **PD-15a Listings** (task 5.4). One `CONSTRUCT` per page counts the matches and pages the roots in
+  SPARQL; items are ordered in Python by the sort key, ties by IRI. Filters are typed by the slot's
+  range (enum meaning IRI, IRI reference, typed literal); `id`, bookkeeping, `internal` and owned-part
+  slots are not filterable; a slot named `limit`, `offset` or `sort` cannot be filtered on. A
+  Prohibition of `read` on an aggregate hides it from that caller's listing and total. The tenant
+  listing takes only `limit` and `offset`. A listing in Turtle is 406 (a page has no Turtle form).
+- **PD-14b Stage 5 review decisions.**
+  - Bodies are strict: a predicate of an `internal` slot is refused in a body (422 naming the slot) and
+    dropped from every response; a plain-JSON body may use only the class's slot names (one
+    `json_name(slot)` rule, the context's) and JSON-LD keywords, at every level; only the root and the
+    owned parts reached from it, each typed with a shaped class, may appear (any other subject is 422).
+  - `ServiceSettings.max_body_bytes` bounds a body: a larger `Content-Length` or stream is 413
+    `payload-too-large`; a node-count cap applies before validation.
+  - Every framework error is a problem response (405 is `method-not-allowed`).
+  - The `Link` header is built from `settings.base` and the mount prefix, never from the `Host`
+    header. Server-side failures (a `SparqlError` from a template, a validation error of stored data)
+    are 500 with no detail; only request input errors are 4xx with detail.
+  - One rule each, in its home: tenant and aggregate IRIs from a path in `domain/iris.py`, the target
+    the access check authorises being the IRI the route then uses; body expansion and framing in
+    `services/documents.py`, which the conformance suite and round trip also use; a value as an RDF
+    term in one function used by the mapper and the listings.
+  - The use cases (create, replace and delete an aggregate; the visible tenants, in one query; building
+    a tenant root from its slots) live in `services`; the router keeps negotiation, headers and status.
+  - `ServiceKit.require(authorization, tenant_id, action)` is the access gate for consumer routes. `ServiceKit.require_aggregate(...)` checks
+    one aggregate and returns the generated `Authorised` (the caller's access and the checked target).
+  - A replace keeps the stored values of `internal` slots (on the root and on parts that persist): the
+    client can never set them, so a replace must not erase them (a scan keeps its `file_key`).
+  - Server faults are 500 `internal-error` with no detail; this includes a `BadQuery` the store raises
+    for SPARQL the toolkit wrote. A corrupt access record on the access path stays 404 (fail closed).
+  - The `Link` header names `{base}{prefix}context.jsonld`: a deployment maps `base` to its mount.
+  - The OpenAPI document is public, as the published contract; FastAPI's interactive docs are the
+    consumer's choice on its app. Any valid token may create a tenant (PD-9); rate limits belong at the
+    gateway.
 - **PD-14 Body handling.**
   1. A JSON body is expanded with the generated context; a JSON-LD body is used as is. Either way it
      becomes triples whose root is the IRI from the path (on create, the minted IRI).
@@ -589,10 +634,15 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
 
   The generated classes are not used on this path (D-2). A replace whose body `id` differs from the
   path is refused (422 `invalid-body`).
+  Within a body: a part without an IRI gets `{root}/parts/{uuid4}` (PD-6); every node must lie under
+  `{root}/` and the root must be typed as the route's class, else 422; bookkeeping predicates are
+  dropped; JSON-LD responses inline the context, so a read body can be sent back (remote contexts are
+  refused, PD-8c).
 - **PD-15 Problems and sorting.**
   - Problem `type` IRIs are `{base}problems/{slug}`, with these slugs: `invalid-token`, `forbidden`,
     `not-found`, `conflict`, `precondition-required`, `invalid-body`, `not-acceptable`,
-    `unsupported-media-type`, `bad-query`, `unavailable`.
+    `unsupported-media-type`, `bad-query`, `unavailable`, and since the stage 5 review
+    `payload-too-large` (413), `method-not-allowed` (405) and `internal-error` (500).
   - Each slug has a fixed `title`: "Invalid token", "Forbidden", "Not found", "Version
     conflict", "Precondition required", "Invalid body", "Not acceptable", "Unsupported media
     type", "Bad query", "Service unavailable".

@@ -233,6 +233,31 @@ class AccessRules:
         if action not in permitted and not (action == Action.READ and permitted & _IMPLY_READ):
             raise Forbidden(f"{action.value} is not permitted")
 
+    def may(
+        self, caller: VerifiedCaller, access: CallerAccess, target_iri: str, action: Action
+    ) -> bool:
+        """True when ``require`` would let ``caller`` take ``action`` on ``target_iri``."""
+        try:
+            self.require(caller, access, target_iri, action)
+        except (NotFound, Forbidden):
+            return False
+        return True
+
+    @staticmethod
+    def hidden_graphs(caller: VerifiedCaller, access: CallerAccess) -> list[str]:
+        """The graphs of the aggregates a Prohibition of ``read`` keeps from the caller, sorted.
+
+        A listing leaves them out before it pages and counts, so a page never shows what a read of
+        the same aggregate would refuse. A Prohibition of another action hides nothing.
+        """
+        return sorted(
+            {
+                p.target
+                for p in access.prohibitions or []
+                if p.assignee == caller.principal and p.action == Action.READ
+            }
+        )
+
     @staticmethod
     def _scope(tenant: str, target_iri: str) -> set[str]:
         """The targets whose rules apply to ``target_iri``: the tenant, and the aggregate's graph."""

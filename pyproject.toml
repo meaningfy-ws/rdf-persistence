@@ -78,14 +78,18 @@ lint = [
     "xenon==0.9.3",
 ]
 
-# This repo's own generation targets (PD-18): the metamodel and the generation module's data.
+# This repo's own generation targets (PD-18): the metamodel, the generation module's data, the
+# service module, the wire models. Only the service module's classes are served, so only it has
+# OpenAPI components.
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/rp.yaml"
 package = "rdf_persistence.domain.generated"
+openapi = false
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/generation/model/rp_generation.yaml"
 package = "rdf_persistence.generation.generated"
+openapi = false
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/service/rp_service.yaml"
@@ -94,6 +98,7 @@ package = "rdf_persistence.domain.generated.service"
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/adapters/rp_wire.yaml"
 package = "rdf_persistence.adapters.generated"
+openapi = false
 
 [tool.uv]
 default-groups = ["dev", "test", "lint"]

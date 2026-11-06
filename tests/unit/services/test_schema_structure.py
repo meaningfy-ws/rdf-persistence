@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pytest
-from linkml_runtime.linkml_model.meta import PresenceEnum
+from linkml_runtime.linkml_model.meta import PresenceEnum, SlotDefinition
 
 from rdf_persistence.domain.generated.rp_core import (
     DatabaseKind,
@@ -28,6 +28,7 @@ from rdf_persistence.services.schema_structure import (
     is_internal,
     is_owned,
     is_tenant_root,
+    json_name,
     keyed_slots,
     presence_alternatives,
 )
@@ -284,3 +285,17 @@ def test_a_slot_holds_owned_parts_or_iris_or_neither(cls, slot, owned_part, iri)
     induced = view.induced_slot(slot, cls)
     assert holds_owned_part(view, induced) is owned_part, f"{cls}.{slot} owned part"
     assert holds_iri(view, induced) is iri, f"{cls}.{slot} IRI"
+
+
+@pytest.mark.parametrize(
+    ("name", "alias", "expected"),
+    [
+        ("file_key", None, "file_key"),
+        ("file key", None, "file_key"),
+        ("problem_slug", "slug", "slug"),
+    ],
+)
+def test_the_json_name_of_a_slot_is_its_alias_or_its_name_in_snake_case(
+    name, alias, expected
+) -> None:
+    assert json_name(SlotDefinition(name=name, alias=alias)) == expected

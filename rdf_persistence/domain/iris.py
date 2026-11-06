@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 
 from rdflib import URIRef
 
-from rdf_persistence.domain.exceptions import InvalidIri
+from rdf_persistence.domain.exceptions import InvalidIri, NotFound
 
 # The patterns of the schema's ``url_segment`` and ``ServiceSettings.prefix`` slots; a test pins them.
 _SEGMENT = re.compile(r"[a-z][a-z0-9-]*")
@@ -37,9 +37,41 @@ def graph_iri(root_iri: str) -> URIRef:
     return URIRef(f"{root_iri}/graph")
 
 
+def root_of_graph(graph: str) -> URIRef:
+    """The root an aggregate's named graph belongs to; the inverse of ``graph_iri``."""
+    root = str(graph).removesuffix("/graph")
+    if root == str(graph) or not root:
+        raise InvalidIri(f"not the graph of an aggregate: {graph!r}")
+    return URIRef(root)
+
+
 def mint_tenant_iri(base: str, tenant_segment: str) -> URIRef:
     """A fresh tenant IRI ``{base}{tenant_segment}/{uuid4}``."""
     return URIRef(f"{base}{_segment(tenant_segment)}/{uuid4()}")
+
+
+def tenant_iri(base: str, tenant_segment: str, tenant_id: str) -> URIRef:
+    """The IRI of the tenant whose id in a path is ``tenant_id``: ``{base}{tenant_segment}/{id}``.
+
+    Raises:
+        NotFound: ``tenant_id`` is not a canonical UUID, so no tenant has it.
+        InvalidIri: ``tenant_segment`` is not a path segment.
+    """
+    if not is_canonical_uuid(tenant_id):
+        raise NotFound(f"no tenant {tenant_id!r}")
+    return URIRef(f"{base}{_segment(tenant_segment)}/{tenant_id}")
+
+
+def aggregate_iri(tenant: str, rp_path: str, aggregate_id: str) -> URIRef:
+    """The IRI of the aggregate whose id in a path is ``aggregate_id``: ``{tenant}/{rp_path}/{id}``.
+
+    Raises:
+        NotFound: ``aggregate_id`` is not a canonical UUID, so no aggregate has it.
+        InvalidIri: ``rp_path`` is not a path segment.
+    """
+    if not is_canonical_uuid(aggregate_id):
+        raise NotFound(f"no aggregate {aggregate_id!r}")
+    return URIRef(f"{tenant}/{_segment(rp_path)}/{aggregate_id}")
 
 
 def mint_aggregate_iri(tenant_iri: str, rp_path: str) -> URIRef:
@@ -62,7 +94,8 @@ def is_inside_tenant(tenant_iri: str, iri: str) -> bool:
     return iri.startswith(f"{tenant_iri}/")
 
 
-def _is_canonical_uuid(text: str) -> bool:
+def is_canonical_uuid(text: str) -> bool:
+    """True for a UUID in its lower case hyphenated form: the only id the toolkit mints."""
     try:
         return str(UUID(text)) == text
     except ValueError:
@@ -76,7 +109,7 @@ def is_aggregate_iri(tenant_iri: str, iri: str) -> bool:
         return True
     path, _, last = iri.rpartition("/")
     parent, _, segment = path.rpartition("/")
-    return parent == tenant_iri and bool(_SEGMENT.fullmatch(segment)) and _is_canonical_uuid(last)
+    return parent == tenant_iri and bool(_SEGMENT.fullmatch(segment)) and is_canonical_uuid(last)
 
 
 def is_aggregate_graph_iri(tenant_iri: str, iri: str) -> bool:
@@ -88,7 +121,7 @@ def is_aggregate_graph_iri(tenant_iri: str, iri: str) -> bool:
 def is_loaded_graph_of(root_iri: str, graph: str) -> bool:
     """True when ``graph`` is exactly ``{root_iri}/content/{canonical uuid}`` (see ``loaded_graph_iri``)."""
     path, _, last = graph.rpartition("/")
-    return path == f"{root_iri}/content" and _is_canonical_uuid(last)
+    return path == f"{root_iri}/content" and is_canonical_uuid(last)
 
 
 def mint_part_iri(root_iri: str) -> URIRef:

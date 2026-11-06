@@ -42,6 +42,10 @@
       "sha256": "a99dcb021b453ec170152c59872ed16f7fbcb51c2c0ebe72f1db500f126930f3"
     },
     {
+      "path": "rdf_persistence/generation/components.py",
+      "sha256": "cedfb9cb9e3745c7ee5f587f674c86182b44e55f4ea8a421be56fec5dac8e45f"
+    },
+    {
       "path": "rdf_persistence/generation/config.py",
       "sha256": "681b065ddd4b2649b44ddb05e75134a47e1cfe3caf2be079b36e5fc4ed8bc208"
     },
@@ -55,7 +59,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/jsonld_context.py",
-      "sha256": "ba97bb653b968a61338fa9c811694d38fbba87d28fa3a6b3ab160bd36b186334"
+      "sha256": "1019afc6c1d50ce9097fa97f2caf5d08ff0dc553125be6b1f145da500cb2664d"
     },
     {
       "path": "rdf_persistence/generation/extensions/mermaid.py",
@@ -71,7 +75,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/shacl.py",
-      "sha256": "ce5e35ff5a44f44f2f30914c6edee595adff09f8d9cfeddb26f286afba06ec48"
+      "sha256": "fc5e91b24073bdcc1787743190bd2e2eec0ab6432cda8f9b3387e2fb13abcd26"
     },
     {
       "path": "rdf_persistence/generation/extensions/shacl_constraints.py",
@@ -86,10 +90,6 @@
       "sha256": "e860a830dc44aa465d47c108f52ec2613f2c02ef031d97892392cbcedea8467d"
     },
     {
-      "path": "rdf_persistence/generation/outputs.py",
-      "sha256": "1b6b87ab3dcb37474945cc3ffbc3ceaa1f01e0d5de2dce34aec91e17a6953234"
-    },
-    {
       "path": "rdf_persistence/generation/pipeline.py",
       "sha256": "5ac69758f39340d64578dd15206f4713b262e111b9e8515da043faebf3b48c0a"
     },
@@ -99,7 +99,7 @@
     },
     {
       "path": "rdf_persistence/generation/steps.py",
-      "sha256": "f30702c8dd230dd3f06c40f0f636c354932449e0fed499219f137174a10a1433"
+      "sha256": "bdbcff141585785ec0e120f059c2058baa3f6f13debebb46b3c5fe92212287da"
     },
     {
       "path": "rdf_persistence/generation/templates/mermaid/module.mmd.jinja",
@@ -171,7 +171,7 @@
     },
     {
       "path": "rdf_persistence/services/schema_structure.py",
-      "sha256": "b2bf676ddc28bfaefef5e8295ccde135b931619b583a16b1f00eb327e981368b"
+      "sha256": "72b163cb06e105469882b193ee6ed7b8f3753ecca126e0a1cc9c59f177072009"
     },
     {
       "path": "scans.yaml",
@@ -234,6 +234,10 @@
     {
       "path": "generated/library_tenant.py",
       "sha256": "d2f2b2762463cdfa7fd419798fdb2e86960d595b7123bb624abe8a17192b5d56"
+    },
+    {
+      "path": "generated/openapi-components.json",
+      "sha256": "325c6e0033e40aeb159d7cb81f51bc27cf82aebf89e38792036554ba23188816"
     },
     {
       "path": "generated/scans.py",

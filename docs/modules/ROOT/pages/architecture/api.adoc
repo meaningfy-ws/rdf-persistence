@@ -5,6 +5,8 @@ Status: *Accepted* (developer, 2026-11-05: decisions D-1 to D-3 of
 xref:architecture/open-decisions.adoc[the decisions of 2026-11-05]): options A and B together; option C
 kept as the backup for a later implementation. Research behind this page: the
 xref:background/soa/angles/service.adoc[service angle] of the background study, updated on 2026-11-05.
+Options A and B are *implemented* (stage 5 of the change `toolkit-v1-foundation`); <<serving>>
+describes the service as built.
 
 == The question
 
@@ -75,7 +77,8 @@ session.
   open SPARQL endpoint.
 * *linkml-store* has no write routes, no authentication and no RDF backend. *linkml-openapi* emits a
   complete OpenAPI 3.1 document from LinkML, with CRUD paths, paging, problem responses and
-  `application/ld+json`, but it is a few months old with one author and no runtime.
+  `application/ld+json`, but it is a few months old with one author and no runtime. A spike found it
+  cannot replace our own OpenAPI hook (<<linkml-openapi>>).
 
 No maintained Python library serves read-write CRUD with access control over a triple store from
 configuration. The parts to build it are mature.
@@ -104,8 +107,8 @@ sequenceDiagram
 * *The wire stays simple.* Plain JSON with `id` as the IRI is also JSON-LD with the generated context,
   so a JSON-LD client reads it as RDF. `Accept: text/turtle` returns the graph itself.
 * *The fewest generated artefacts.* Context and shapes are generated already. OpenAPI comes from a
-  small hook of our own over the schema; a short spike checks whether linkml-openapi can replace it
-  (D-3).
+  small hook of our own over the schema (D-3); a spike showed linkml-openapi cannot replace it
+  (<<linkml-openapi>>).
 * *Access control stays in one place*: one dependency per route action
   (xref:architecture/access-control.adoc[access control]).
 * *Option C is the backup* for a later implementation: when a client needs deep nested reads, a
@@ -136,3 +139,130 @@ with only CRUD needs none.
 * Decision O-2 widens: JSON-LD and Turtle by content negotiation, not only the `Link` header.
 * The listing and filter grammar is ours to define: equality filters, paging, sort, as in v1.
 * JSON-LD and Turtle by content negotiation are in v1; GraphQL (option C) is the backup, deferred.
+
+[#serving]
+== Serving it
+
+An application serves its schema with one call to `install_service` in its composition root. The
+call builds the routes from the schema, so a class added to the model is served after a restart.
+
+[source,python]
+----
+from rdf_persistence import install_service
+
+kit = install_service(
+    app,                                  # the application's FastAPI app
+    schema=Path("models/library.yaml"),   # the root schema
+    generated=library.domain.generated,   # the package rp-generate wrote
+    store=store, files=files, identity=identity, verifier=verifier,
+    rules=Path("models/library_roles.yaml"),
+    settings=settings,
+    prefix="",                            # optional mount prefix
+)
+----
+
+[cols="1,4",options="header"]
+|===
+|Argument |Meaning
+|`schema` |The application's root LinkML file.
+|`generated` |The package `rp-generate` wrote for it. The context, frames, shapes and `openapi-components.json` are read from its folder; a missing file stops the call with `OSError`.
+|`store`, `files`, `identity`, `verifier` |The adapters: a `Store` (Fuseki), a `FileStore` (S3), an `Identity` (the identity provider) and a `TokenVerifier` (JWT access tokens).
+|`rules` |An `AccessRules`, or the path of the role-definitions file. A path is loaded and validated in the call, so an invalid file stops the service before anything touches the store.
+|`settings` |A `ServiceSettings`: `base` (the IRI under which identifiers and problem types are minted), `prefix` (the database and bucket name prefix), `tenant_segment`, `creator_role`, `roles_claim` (the token claim that carries the global roles, specific to the identity provider) and `max_body_bytes` (the largest request body, default 1 MiB).
+|`prefix` |A path prefix under which the routes are mounted.
+|===
+
+At start-up, before the application's own lifespan, the service creates the system database if it is
+missing and runs the sweep. `install_service` returns a `ServiceKit` (its tenancy, store, files and
+identity, and `bucket_of` for a tenant's bucket) for the application's own routes. Such a route
+checks its caller through the kit, so the toolkit's access rules apply to it too:
+
+[source,python]
+----
+@app.get("/libraries/{t}/scan-files/{scan_id}")
+async def get_file(t: str, scan_id: str, request: Request) -> Response:
+    checked = await kit.require_aggregate(
+        request.headers.get("authorization"), t, "scans", scan_id, Action.READ
+    )                                     # 401, 404 or 403 as a problem response, or an Authorised
+    bucket = await kit.bucket_of(checked.caller_access.tenant)
+    return Response(await kit.files.get(bucket, scan_id), media_type="application/octet-stream")
+----
+
+`kit.require(authorization, tenant_id, action)` does the same for an action in the tenant and
+returns the caller's access; `require_aggregate` also applies a prohibition on the aggregate and
+returns, in `checked_target`, the IRI it checked, which the route then acts on.
+
+*Routes* (PD-13), with `{t}` the UUID of the tenant's IRI:
+
+[cols="2,3",options="header"]
+|===
+|Route |Methods
+|`/{tenant_segment}` |`GET` the caller's tenants; `POST` a new tenant
+|`/{tenant_segment}/{t}` |`GET`, `PUT` the tenant's root object; `DELETE` the tenant
+|`/{tenant_segment}/{t}/grants` |`GET`, `PUT` the tenant's grant set
+|`/{tenant_segment}/{t}/label` |`PUT` the tenant's label
+|`/{tenant_segment}/{t}/{rp_path}` |`GET` a listing; `POST` a new aggregate
+|`/{tenant_segment}/{t}/{rp_path}/{id}` |`GET`, `PUT`, `DELETE` one aggregate
+|`/context.jsonld` |`GET` the generated JSON-LD context
+|===
+
+A read of one object answers with its `ETag`; every `PUT` and `DELETE` needs `If-Match` (428 without it, 409 on a
+stale version); a create answers 201 with a `Location`. Plain JSON points at the context by a `Link`
+header, so it is also JSON-LD. The link is built from `settings.base` and the mount prefix, never
+from the request's `Host` header, so a deployment sets `base` to the address it is reached at; `Accept: application/ld+json` and `text/turtle` are served too (406
+for anything else, 415 for a body in another type).
+
+*Bodies are strict* (PD-14b). A body larger than `max_body_bytes`, or holding more than 10 000
+objects, is refused with 413. A plain-JSON body may use only its class's slot names and the JSON-LD
+keywords, at every level. Only the root and the owned parts reached from it, each typed with a class
+of the schema, may appear; any other subject is 422. An `internal` slot is refused in a body (422
+naming it) and never appears in a response. A replace keeps the stored values of the `internal`
+slots of the root and of the parts that persist, matched by their IRI (a scan keeps its file key);
+a part without an identifier cannot be matched, so its internal values are not kept.
+
+*Problem responses* (RFC 9457) have a fixed `type` (`{base}problems/<slug>`) and title, and every
+error answers with one: the toolkit's own, the framework's (an unknown path, 405
+`method-not-allowed` with its `Allow` header) and those of the application's routes. Only the
+statuses that say what to fix in the request (400, 406, 413, 415, 422, 428) carry a `detail`. A
+refusal (401, 403, 404, 409), an outage (503) or a fault of the service (500 `internal-error`)
+carries none, so a hidden tenant and an absent one answer alike, and no answer tells an outsider
+where the store is. A fault is anything the caller cannot fix: SPARQL the toolkit wrote that the
+store refuses, or stored data that does not validate. A bad query string from the caller stays 400
+`bad-query`.
+
+*Listings* (PD-15, PD-15a). A query takes `limit` (1 to 200, default 50), `offset` (default 0),
+`sort` (a slot name, descending with a leading `-`; by IRI when absent) and `?<slot>=<value>`
+equality filters. Filters are typed by the slot's range: an enum value is matched by its meaning
+IRI, a reference by its IRI, anything else as a typed literal. The `id`, bookkeeping, `internal` and
+owned-part slots cannot be filtered on. One SPARQL `CONSTRUCT` per page counts the matches and
+selects the page. A `read` prohibition on an aggregate hides it from that caller's listing and
+total. The tenant listing takes only `limit` and `offset`, and is paged in one query too. A listing has no Turtle form (406).
+
+*The OpenAPI document* is FastAPI's (`/openapi.json`), completed from the schema. It lists every
+aggregate type's routes with their request and response bodies, a query parameter per filterable
+slot, the problem responses of each route (413 on every operation with a body), the `ETag`,
+`If-Match` and `Location` headers, and a
+bearer security scheme. Its component schemas come from `openapi-components.json`, which
+`rp-generate` writes with `gen-json-schema` (xref:architecture/generation.adoc#toolchain[step 5b]),
+so a running service needs no LinkML generator.
+
+[#linkml-openapi]
+== linkml-openapi: not used (spike, task 5.6)
+
+A spike on 2026-11-06 ran linkml-openapi 0.12.0 on the toy library. *Verdict: do not depend on
+it.*
+
+* *Versions.* 0.12.0 is the newest release that installs beside `linkml` 1.12.1: from 0.13 on it
+  requires `pydantic` below 2.13, and the toolkit pins 2.14.2.
+* *Run unchanged*, it stops on the shared `contributor` slot: `Principal` is reachable from
+  several classes, and the tool wants one parent path per class.
+* *Restricted to the aggregate classes*, it emits a document we would not serve:
+** untenanted paths (`/books/\{id}`) and nested sub-resource routes;
+** only 404 and 422 problem responses;
+** no `ETag` or `If-Match` headers;
+** JSON bodies only;
+** the LinkML bookkeeping and the metamodel classes left in.
+
+Closing those gaps would need tool-specific annotations in every consumer's model, plus a
+post-processor: more code than our own hook. The toolkit therefore keeps the small OpenAPI hook of
+task 5.5, whose component schemas come from `gen-json-schema` (PD-24).

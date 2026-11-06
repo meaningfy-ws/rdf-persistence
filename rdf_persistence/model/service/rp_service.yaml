@@ -35,7 +35,10 @@ classes:
       - tenant_segment
       - creator_role
       - roles_claim
+      - max_body_bytes
     slot_usage:
+      max_body_bytes:
+        ifabsent: int(1048576)
       base:
         required: true
       prefix:
@@ -114,6 +117,20 @@ classes:
         required: true
       state:
         required: true
+  Authorised:
+    title: Authorised
+    description: >-
+      What a route's access check settled: the caller's access to the tenant, and the IRI of the
+      aggregate it was checked on, which the route then acts on.
+    class_uri: rp:Authorised
+    slots:
+      - caller_access
+      - checked_target
+    slot_usage:
+      caller_access:
+        required: true
+      checked_target:
+        required: true
   Page:
     title: Page
     description: One page of a listing, with the position of the page in the whole listing.
@@ -132,6 +149,78 @@ classes:
         required: true
       offset:
         required: true
+  Filter:
+    title: Filter
+    description: >-
+      One equality filter of a listing, the name of a slot of the listed type and the value it must
+      have, as the text the caller sent.
+    class_uri: rp:Filter
+    slots:
+      - filter_slot
+      - filter_value
+    slot_usage:
+      filter_slot:
+        required: true
+      filter_value:
+        required: true
+  ListRequest:
+    title: List request
+    description: >-
+      The query of a listing, as the caller sent it: the equality filters, the position and size of
+      the page and the key to sort by.
+    class_uri: rp:ListRequest
+    slots:
+      - limit
+      - offset
+      - sort
+      - filters
+    slot_usage:
+      limit:
+        ifabsent: int(50)
+      offset:
+        ifabsent: int(0)
+  Condition:
+    title: Condition
+    description: >-
+      An equality filter of a listing resolved against the slots of the listed type: the aggregate
+      has this statement. The value is an IRI when it is a reference, else a literal of the datatype.
+    class_uri: rp:Condition
+    slots:
+      - condition_predicate
+      - condition_value
+      - condition_datatype
+      - condition_reference
+    slot_usage:
+      condition_predicate:
+        required: true
+      condition_value:
+        required: true
+      condition_reference:
+        ifabsent: "false"
+  ListPlan:
+    title: List plan
+    description: >-
+      A listing resolved against the slots of the listed type: the class, the typed conditions, the
+      predicate to order by (none orders by IRI), the page, and the graphs of the aggregates the
+      caller may not read.
+    class_uri: rp:ListPlan
+    slots:
+      - plan_class
+      - conditions
+      - plan_sort
+      - descending
+      - limit
+      - offset
+      - hidden_graphs
+    slot_usage:
+      plan_class:
+        required: true
+      descending:
+        ifabsent: "false"
+      limit:
+        required: true
+      offset:
+        required: true
   Problem:
     title: Problem
     description: An RFC 9457 problem detail, the body of every error answer of the service.
@@ -144,6 +233,24 @@ classes:
       - problem_instance
     slot_usage:
       problem_type:
+        required: true
+      problem_title:
+        required: true
+      problem_status:
+        required: true
+
+  ProblemKind:
+    title: Problem kind
+    description: >-
+      A kind of problem the service answers with: the slug that ends its problem type IRI, its fixed
+      title and the HTTP status it comes with.
+    class_uri: rp:ProblemKind
+    slots:
+      - problem_slug
+      - problem_title
+      - problem_status
+    slot_usage:
+      problem_slug:
         required: true
       problem_title:
         required: true
@@ -209,6 +316,24 @@ slots:
     description: The IRI of the tenant.
     slot_uri: rp:tenant
     range: uri
+  max_body_bytes:
+    title: Maximum body size
+    description: >-
+      The most bytes a request body may hold; a larger one is refused with 413 before it is read
+      whole.
+    slot_uri: rp:maxBodyBytes
+    range: integer
+    minimum_value: 1
+  caller_access:
+    title: Caller access
+    description: The caller's access to the tenant, as the access check loaded it.
+    slot_uri: rp:callerAccess
+    range: CallerAccess
+  checked_target:
+    title: Checked target
+    description: The IRI of the aggregate the access check was made on.
+    slot_uri: rp:checkedTarget
+    range: uri
   principal:
     title: Principal
     description: The user account the token identifies.
@@ -243,18 +368,106 @@ slots:
     slot_uri: rp:limit
     range: integer
     minimum_value: 1
+    maximum_value: 200
   offset:
     title: Offset
     description: The position of the page's first object in the whole listing.
     slot_uri: rp:offset
     range: integer
     minimum_value: 0
+  sort:
+    title: Sort
+    description: >-
+      The slot a listing is ordered by, ascending, or descending when its name starts with a minus
+      sign; absent, the listing is ordered by IRI.
+    slot_uri: rp:sort
+    range: string
+  filters:
+    title: Filters
+    description: The equality filters of a listing; all of them must hold.
+    slot_uri: rp:filter
+    range: Filter
+    multivalued: true
+    inlined_as_list: true
+  condition_predicate:
+    title: Condition predicate
+    description: The IRI of the predicate the aggregate must have a statement with.
+    slot_uri: rp:conditionPredicate
+    alias: predicate
+    range: uri
+  condition_value:
+    title: Condition value
+    description: The value of the statement, an IRI or the lexical form of a literal.
+    slot_uri: rp:conditionValue
+    alias: value
+    range: string
+  condition_datatype:
+    title: Condition datatype
+    description: The IRI of the datatype of a literal value; absent for a plain string.
+    slot_uri: rp:conditionDatatype
+    alias: datatype
+    range: uri
+  condition_reference:
+    title: Condition reference
+    description: Whether the value is an IRI rather than a literal.
+    slot_uri: rp:conditionReference
+    alias: reference
+    range: boolean
+  plan_class:
+    title: Plan class
+    description: The IRI of the class of the aggregates listed.
+    slot_uri: rp:planClass
+    alias: target
+    range: uri
+  conditions:
+    title: Conditions
+    description: The equality conditions of a listing; all of them must hold.
+    slot_uri: rp:condition
+    range: Condition
+    multivalued: true
+    inlined_as_list: true
+  plan_sort:
+    title: Plan sort
+    description: The IRI of the predicate a listing is ordered by; absent, it is ordered by IRI.
+    slot_uri: rp:planSort
+    alias: sort_by
+    range: uri
+  descending:
+    title: Descending
+    description: Whether the order is reversed.
+    slot_uri: rp:descending
+    range: boolean
+  hidden_graphs:
+    title: Hidden graphs
+    description: The IRIs of the graphs of the aggregates a listing leaves out.
+    slot_uri: rp:hiddenGraph
+    range: uri
+    multivalued: true
+  filter_slot:
+    title: Filter slot
+    description: The name of the slot the filter is on.
+    slot_uri: rp:filterSlot
+    alias: slot
+    range: string
+  filter_value:
+    title: Filter value
+    description: The value the slot must have, as text.
+    slot_uri: rp:filterValue
+    alias: value
+    range: string
   problem_type:
     title: Problem type
     description: The IRI that identifies the kind of problem.
     slot_uri: rp:problemType
     alias: type
     range: uri
+  problem_slug:
+    title: Problem slug
+    description: The last segment of the problem type IRI, lower case words joined by hyphens.
+    slot_uri: rp:problemSlug
+    alias: slug
+    range: string
+    pattern: "^[a-z]+(?:-[a-z]+)*$"
   problem_title:
     title: Problem title
     description: A short, fixed summary of the kind of problem.
@@ -300,3 +513,62 @@ slots:
     description: Whether the account may sign in; a disabled account is refused new tokens.
     slot_uri: rp:accountActive
     range: boolean
+
+enums:
+  ProblemSlug:
+    title: Problem slug
+    description: >-
+      The kinds of problem the toolkit answers with, by the last segment of their problem type IRI, with the underscores written as hyphens.
+    permissible_values:
+      invalid_token:
+        title: Invalid token
+        meaning: rp:invalidToken
+        description: No bearer token, or one the service refuses.
+      forbidden:
+        title: Forbidden
+        meaning: rp:forbidden
+        description: The caller may see the thing but is not allowed the action.
+      not_found:
+        title: Not found
+        meaning: rp:notFound
+        description: There is no such thing, or the caller cannot see it.
+      conflict:
+        title: Version conflict
+        meaning: rp:conflict
+        description: The write lost a race, or the thing to create already exists.
+      precondition_required:
+        title: Precondition required
+        meaning: rp:preconditionRequired
+        description: An update or a delete came without the version it expects.
+      invalid_body:
+        title: Invalid body
+        meaning: rp:invalidBody
+        description: The body is not a valid representation for its route.
+      not_acceptable:
+        title: Not acceptable
+        meaning: rp:notAcceptable
+        description: The service produces nothing the client accepts.
+      unsupported_media_type:
+        title: Unsupported media type
+        meaning: rp:unsupportedMediaType
+        description: The route does not take the media type of the body.
+      bad_query:
+        title: Bad query
+        meaning: rp:badQuery
+        description: The query string is not one the route takes.
+      unavailable:
+        title: Service unavailable
+        meaning: rp:unavailable
+        description: A store, the identity provider or the role definitions are not usable.
+      payload_too_large:
+        title: Payload too large
+        meaning: rp:payloadTooLarge
+        description: The body is larger than the service takes.
+      method_not_allowed:
+        title: Method not allowed
+        meaning: rp:methodNotAllowed
+        description: The route has no such method.
+      internal_error:
+        title: Internal error
+        meaning: rp:internalError
+        description: The service failed; the answer says no more.

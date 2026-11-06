@@ -6,12 +6,14 @@ import uuid
 import pytest
 from rdflib import URIRef
 
-from rdf_persistence.domain.exceptions import InvalidIri
+from rdf_persistence.domain.exceptions import InvalidIri, NotFound
 from rdf_persistence.domain.iris import (
     access_iri,
+    aggregate_iri,
     graph_iri,
     is_aggregate_graph_iri,
     is_aggregate_iri,
+    is_canonical_uuid,
     is_inside_tenant,
     is_loaded_graph_of,
     loaded_graph_iri,
@@ -21,8 +23,10 @@ from rdf_persistence.domain.iris import (
     mint_tenant_iri,
     principal_iri,
     registry_graph_iri,
+    root_of_graph,
     skolem_iri,
     system_database_name,
+    tenant_iri,
     tenant_iri_of_access,
     tenant_name_prefix,
     tenant_resource_name,
@@ -38,6 +42,19 @@ def test_graph_iri_appends_graph():
     root = f"{BASE}libraries/t/books/b"
     assert graph_iri(root) == URIRef(f"{root}/graph")
     assert graph_iri(root) != URIRef(root), "never the root IRI itself"
+
+
+def test_root_of_graph_is_the_inverse_of_graph_iri():
+    root = f"{BASE}libraries/t/books/b"
+    assert root_of_graph(graph_iri(root)) == URIRef(root)
+
+
+@pytest.mark.parametrize(
+    "iri", [f"{BASE}libraries/t/books/b", f"{BASE}libraries/t/books/b/graphs", "/graph"]
+)
+def test_root_of_graph_refuses_what_is_not_a_graph_iri(iri):
+    with pytest.raises(InvalidIri):
+        root_of_graph(URIRef(iri))
 
 
 def test_mint_tenant_iri_has_the_base_segment_and_a_uuid():
@@ -230,3 +247,51 @@ def test_a_loaded_graph_is_the_minted_form_under_its_aggregate(graph, loaded):
 )
 def test_principal_iri_keeps_the_subject_in_one_segment(issuer, subject, expected) -> None:
     assert str(principal_iri(issuer, subject)) == expected, "the principal IRI is wrong"
+
+
+# --- the IRIs of a path (PD-14b): one rule, validating ------------------------------------------
+
+UUID_A = "12345678-1234-4234-8234-123456789abc"
+
+
+@pytest.mark.parametrize(
+    ("text", "canonical"),
+    [
+        (UUID_A, True),
+        (UUID_A.upper(), False),
+        (UUID_A.replace("-", ""), False),
+        ("books", False),
+        ("", False),
+    ],
+)
+def test_only_a_lower_case_hyphenated_uuid_is_canonical(text, canonical):
+    assert is_canonical_uuid(text) is canonical
+
+
+def test_a_tenant_iri_is_the_base_the_segment_and_the_id():
+    assert tenant_iri(BASE, "libraries", UUID_A) == URIRef(f"{BASE}libraries/{UUID_A}")
+
+
+@pytest.mark.parametrize("tenant_id", ["nope", UUID_A.upper(), f"{UUID_A}/books", "..", ""])
+def test_a_tenant_id_that_is_not_a_canonical_uuid_is_not_found(tenant_id):
+    with pytest.raises(NotFound):
+        tenant_iri(BASE, "libraries", tenant_id)
+
+
+def test_a_tenant_segment_that_breaks_the_rule_is_an_invalid_iri():
+    with pytest.raises(InvalidIri):
+        tenant_iri(BASE, "Libraries/..", UUID_A)
+
+
+def test_an_aggregate_iri_is_the_tenant_the_path_and_the_id():
+    tenant = f"{BASE}libraries/{UUID_A}"
+    assert aggregate_iri(tenant, "books", UUID_A) == URIRef(f"{tenant}/books/{UUID_A}")
+    assert is_aggregate_iri(tenant, aggregate_iri(tenant, "books", UUID_A)), (
+        "what it builds is what is accepted"
+    )
+
+
+@pytest.mark.parametrize("aggregate_id", ["nope", "..", f"{UUID_A}/graph", UUID_A.upper(), ""])
+def test_an_aggregate_id_that_is_not_a_canonical_uuid_is_not_found(aggregate_id):
+    with pytest.raises(NotFound):
+        aggregate_iri(f"{BASE}libraries/{UUID_A}", "books", aggregate_id)

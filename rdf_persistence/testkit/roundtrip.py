@@ -3,6 +3,7 @@
 ``round_trip`` takes an object of a generated aggregate class and checks four things: its JSON,
 expanded with the generated context, gives RDF; the RDF, framed with the generated frame and
 compacted, gives JSON that builds an equal object; and the RDF of that object is the same graph.
+Expanding and framing are the router's own (``Documents.expand`` and ``Documents.frame``).
 
 Equal means equal on the public projection: slots annotated ``internal`` never cross the context
 (PD-12), so the object is rebuilt from the framed JSON with its own internal values added back,
@@ -13,59 +14,15 @@ are in ``rdf_persistence.testkit.strategies``.
 
 import json
 
-from linkml_runtime.linkml_model.meta import SlotDefinition
-from linkml_runtime.utils.formatutils import underscore
 from pydantic import BaseModel
-from pyld import jsonld
-from rdflib import XSD, BNode, Graph, Literal, URIRef
+from rdflib import Graph
 from rdflib.compare import graph_diff, isomorphic
-from rdflib.term import Node
 
-from rdf_persistence.generation.outputs import FRAME_SUFFIX
-from rdf_persistence.services.schema_structure import holds_owned_part, is_internal
+from rdf_persistence.services.artifacts import CONTEXT_KEY, TYPE_KEY
+from rdf_persistence.services.schema_structure import is_internal
 from rdf_persistence.testkit.conformance import Conformance
 
-NQUADS = {"format": "application/n-quads"}
-NATIVE = {"useNativeTypes": True}
-FRAMING_KEYS = {"@context", "@type", "type"}  # the context aliases @type as `type`
-
-
-def rdf_of(conformance: Conformance, model: BaseModel, class_name: str) -> str:
-    """The N-Quads of ``model``, its JSON expanded with the generated context."""
-    body = model.model_dump(mode="json", by_alias=True, exclude_none=True)
-    node = conformance.jsonld_node(class_name, body)
-    nquads: str = jsonld.to_rdf({"@context": conformance.context, **node}, NQUADS)
-    return nquads
-
-
-def dataset_of(graph: Graph) -> dict:
-    """The triples of ``graph`` as the dataset ``jsonld.from_rdf`` takes.
-
-    pyld 3.3.0 reads backslash sequences in N-Quads text wrongly (a literal of a backslash and `r`
-    comes back as a backslash and a carriage return), so the text goes through rdflib instead.
-    """
-
-    def term(node: Node) -> dict:
-        if isinstance(node, URIRef):
-            return {"type": "IRI", "value": str(node)}
-        if isinstance(node, BNode):
-            return {"type": "blank node", "value": f"_:{node}"}
-        assert isinstance(node, Literal)
-        return {"type": "literal", "value": str(node), "datatype": str(node.datatype or XSD.string)}
-
-    triples = [{"subject": term(s), "predicate": term(p), "object": term(o)} for s, p, o in graph]
-    return {"@default": triples}
-
-
-def framed_json(conformance: Conformance, nquads: str, class_name: str) -> dict:
-    """The JSON of the aggregate in ``nquads``, framed with the generated frame and compacted."""
-    frame = json.loads(
-        (conformance.folder / f"{class_name}{FRAME_SUFFIX}").read_text(encoding="utf-8")
-    )
-    frame["@context"] = conformance.context
-    expanded = jsonld.from_rdf(dataset_of(Graph().parse(data=nquads, format="nt")), NATIVE)
-    framed: dict = jsonld.frame(expanded, frame)
-    return framed
+FRAMING_KEYS = {CONTEXT_KEY, TYPE_KEY, "type"}  # the context aliases @type as `type`
 
 
 def without_framing(value: object) -> object:
@@ -77,31 +34,25 @@ def without_framing(value: object) -> object:
     return value
 
 
-def _by_json(value: object) -> str:
-    return json.dumps(value, sort_keys=True)
-
-
-def public_projection(conformance: Conformance, class_name: str, data: dict) -> dict:
-    """``data``, the JSON of an object of ``class_name``, without its internal slots and with every list sorted."""
-    slots = {underscore(s.name): s for s in conformance.view.class_induced_slots(class_name)}
-    return {
-        key: _public_value(conformance, slots.get(key), value)
-        for key, value in data.items()
-        if not (key in slots and is_internal(slots[key]))
-    }
-
-
-def _public_value(conformance: Conformance, slot: SlotDefinition | None, value: object) -> object:
+def _sorted(value: object) -> object:
+    """``value`` with every list sorted, since RDF keeps no order among the values of a slot."""
     if isinstance(value, list):
-        return sorted((_public_value(conformance, slot, item) for item in value), key=_by_json)
-    if slot is not None and holds_owned_part(conformance.view, slot) and isinstance(value, dict):
-        return public_projection(conformance, str(slot.range), value)
+        return sorted(
+            (_sorted(item) for item in value), key=lambda item: json.dumps(item, sort_keys=True)
+        )
+    if isinstance(value, dict):
+        return {key: _sorted(item) for key, item in value.items()}
     return value
+
+
+def public_projection(conformance: Conformance, class_name: str, data: dict) -> object:
+    """``data``, the JSON of an object of ``class_name``, without its internal slots and with every list sorted."""
+    return _sorted(conformance.public(class_name, data))
 
 
 def internal_values(conformance: Conformance, class_name: str, data: dict) -> dict:
     """The top-level internal slots of ``data``, which an object needs to be built again."""
-    slots = {underscore(s.name): s for s in conformance.view.class_induced_slots(class_name)}
+    slots = conformance.slots_of(class_name)
     return {k: v for k, v in data.items() if k in slots and is_internal(slots[k])}
 
 
@@ -119,9 +70,10 @@ def round_trip(conformance: Conformance, original: BaseModel, class_name: str) -
     Raises:
         AssertionError: When the objects differ on their public projection or the graphs differ.
     """
-    nquads = rdf_of(conformance, original, class_name)
+    graph = conformance.graph_of(original, class_name)
     body = original.model_dump(mode="json", by_alias=True, exclude_none=True)
-    framed = without_framing(framed_json(conformance, nquads, class_name))
+    cls = conformance.view.get_class(class_name)
+    framed = without_framing(conformance.documents.frame(graph, cls))
     assert isinstance(framed, dict), "a framed aggregate is one object"
     back = conformance.models[class_name].model_validate(
         {**framed, **internal_values(conformance, class_name, body)}
@@ -131,7 +83,4 @@ def round_trip(conformance: Conformance, original: BaseModel, class_name: str) -
     assert public_projection(conformance, class_name, back_body) == public_projection(
         conformance, class_name, body
     ), "the objects differ after the round trip"
-    assert_isomorphic(
-        Graph().parse(data=nquads, format="nt"),
-        Graph().parse(data=rdf_of(conformance, back, class_name), format="nt"),
-    )
+    assert_isomorphic(graph, conformance.graph_of(back, class_name))

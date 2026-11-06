@@ -8,8 +8,10 @@ This package imports nothing heavy: the token signer and the Zitadel provisionin
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
+from rdf_persistence.testkit.exceptions import TokenRefusedError
 from rdf_persistence.testkit.fakes import FakeFileStore, FakeIdentity, FakeStore, fake_session
 from rdf_persistence.testkit.network import no_network
+from rdf_persistence.testkit.public_imports import assert_public_imports
 
 if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.testkit.tokens import TokenSigner
@@ -33,9 +35,11 @@ def __getattr__(name: str) -> Any:
 
 
 __all__ = [
+    "assert_public_imports",
     "FakeFileStore",
     "FakeIdentity",
     "FakeStore",
+    "TokenRefusedError",
     "TokenSigner",
     "access_token",
     "create_machine_user",

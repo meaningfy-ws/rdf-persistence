@@ -4,19 +4,19 @@ The file store is the fake or Garage, and the tests run against both unchanged. 
 of one test never meet another's, and everything it made is dropped afterwards.
 """
 
-import uuid
 from collections.abc import AsyncIterator
 
 import pytest
 
 from rdf_persistence.adapters.s3 import S3FileStore
 from rdf_persistence.domain.generated.service.rp_service import ServiceSettings
-from rdf_persistence.domain.iris import system_database_name, tenant_name_prefix
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore
+from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.toy import SETTINGS, toy_mapper
+from tests.toy_service import drop_buckets, drop_databases, unique_prefix
 
 FILE_STORES = ["fake", "garage"]
 
@@ -31,17 +31,15 @@ def files(request: pytest.FixtureRequest) -> FileStore:
 
 @pytest.fixture
 def settings() -> ServiceSettings:
-    return SETTINGS.model_copy(update={"prefix": f"t{uuid.uuid4().hex[:12]}"})
+    return SETTINGS.model_copy(update={"prefix": unique_prefix()})
 
 
 @pytest.fixture
 async def tenancy(store, files, settings) -> AsyncIterator[Tenancy]:
-    made = Tenancy(store, files, settings, mapper=toy_mapper(), access_class=LibraryAccess)
+    made = Tenancy(
+        store, files, settings, mapper=toy_mapper(), root_class=Library, access_class=LibraryAccess
+    )
     await made.ensure_system_database()
     yield made
-    mine = (system_database_name(settings.prefix), tenant_name_prefix(settings.prefix))
-    for name in await store.list_datasets():
-        if name.startswith(mine[1]) or name == mine[0]:
-            await store.drop_dataset(name)
-    for bucket in await files.list_buckets(mine[1]):
-        await files.delete_bucket(bucket)
+    await drop_databases(store, settings.prefix)
+    await drop_buckets(files, settings.prefix)

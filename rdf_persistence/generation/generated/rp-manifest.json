@@ -26,6 +26,10 @@
       "sha256": "a99dcb021b453ec170152c59872ed16f7fbcb51c2c0ebe72f1db500f126930f3"
     },
     {
+      "path": "rdf_persistence/generation/components.py",
+      "sha256": "cedfb9cb9e3745c7ee5f587f674c86182b44e55f4ea8a421be56fec5dac8e45f"
+    },
+    {
       "path": "rdf_persistence/generation/config.py",
       "sha256": "681b065ddd4b2649b44ddb05e75134a47e1cfe3caf2be079b36e5fc4ed8bc208"
     },
@@ -39,7 +43,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/jsonld_context.py",
-      "sha256": "ba97bb653b968a61338fa9c811694d38fbba87d28fa3a6b3ab160bd36b186334"
+      "sha256": "1019afc6c1d50ce9097fa97f2caf5d08ff0dc553125be6b1f145da500cb2664d"
     },
     {
       "path": "rdf_persistence/generation/extensions/mermaid.py",
@@ -55,7 +59,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/shacl.py",
-      "sha256": "ce5e35ff5a44f44f2f30914c6edee595adff09f8d9cfeddb26f286afba06ec48"
+      "sha256": "fc5e91b24073bdcc1787743190bd2e2eec0ab6432cda8f9b3387e2fb13abcd26"
     },
     {
       "path": "rdf_persistence/generation/extensions/shacl_constraints.py",
@@ -71,11 +75,7 @@
     },
     {
       "path": "rdf_persistence/generation/model/rp_generation.yaml",
-      "sha256": "a1bfd29243dd815504ac4901780fe4e25428bf3357f4867bcf4553ffa73e5325"
-    },
-    {
-      "path": "rdf_persistence/generation/outputs.py",
-      "sha256": "1b6b87ab3dcb37474945cc3ffbc3ceaa1f01e0d5de2dce34aec91e17a6953234"
+      "sha256": "f8e3c6e543bd9a1a72fa2bac7455c776811ed6a70d426484fc28dc7acb72f38b"
     },
     {
       "path": "rdf_persistence/generation/pipeline.py",
@@ -87,7 +87,7 @@
     },
     {
       "path": "rdf_persistence/generation/steps.py",
-      "sha256": "f30702c8dd230dd3f06c40f0f636c354932449e0fed499219f137174a10a1433"
+      "sha256": "bdbcff141585785ec0e120f059c2058baa3f6f13debebb46b3c5fe92212287da"
     },
     {
       "path": "rdf_persistence/generation/templates/mermaid/module.mmd.jinja",
@@ -139,7 +139,7 @@
     },
     {
       "path": "rdf_persistence/services/schema_structure.py",
-      "sha256": "b2bf676ddc28bfaefef5e8295ccde135b931619b583a16b1f00eb327e981368b"
+      "sha256": "72b163cb06e105469882b193ee6ed7b8f3753ecca126e0a1cc9c59f177072009"
     }
   ],
   "outputs": [
@@ -149,15 +149,15 @@
     },
     {
       "path": "rdf_persistence/generation/generated/context.jsonld",
-      "sha256": "1203a1626b27266696f79de5ad3c6ac6f41057c917a55de27379ba0d83e5ed1e"
+      "sha256": "7943d1287663b8aa85b9130ed350df05ae3f14cbe9743ad849abe5ed0fefc765"
     },
     {
       "path": "rdf_persistence/generation/generated/rp_generation.py",
-      "sha256": "14146141cd520e870d172bbb17d8797510bc9cdc5fa683e02c1c5546193678f1"
+      "sha256": "d6fc1d84b1d48401f5ab25c5fe719376f9f9c8e52f02fd6a1d9cb48a7572b023"
     },
     {
       "path": "rdf_persistence/generation/generated/shapes.ttl",
-      "sha256": "95ec1522ea908cce68ebcdecf72cec29fb37130d67e8c23cb45f022aaa46d47c"
+      "sha256": "21ecb945a6a1900433d10bfc5ed57239bec0babf1d073f6549e9f1163d2ee9d9"
     }
   ]
 }

@@ -85,3 +85,9 @@ def test_a_bad_configuration_is_an_error_naming_the_problem(
 ) -> None:
     with pytest.raises(ConfigError, match=message):
         read(tmp_path, toml, *flags)
+
+
+def test_the_components_are_written_unless_an_entry_switches_them_off(tmp_path: Path) -> None:
+    (default,) = read(tmp_path, SINGLE)
+    (quiet,) = read(tmp_path, SINGLE + "openapi = false\n")
+    assert (default.openapi, quiet.openapi) == (True, False), "on by default, off by the entry"

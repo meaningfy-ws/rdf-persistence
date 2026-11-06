@@ -37,12 +37,12 @@ forbidden_modules =
 
 [importlinter:contract:runtime-without-extras]
 name = runtime layers import neither the testkit, the generators nor test tooling
-; add rdf_persistence.entrypoints to source_modules when the package exists (stage 5)
 type = forbidden
 source_modules =
     rdf_persistence.domain
     rdf_persistence.services
     rdf_persistence.adapters
+    rdf_persistence.entrypoints
 forbidden_modules =
     rdf_persistence.testkit
     rdf_persistence.generation

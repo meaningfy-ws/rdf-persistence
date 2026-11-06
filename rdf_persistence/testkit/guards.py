@@ -158,7 +158,7 @@ def _import_names(tree: ast.Module, module: str, *, is_package: bool) -> dict[st
         if isinstance(node, ast.Import):
             names |= _plain_import(node)
         elif isinstance(node, ast.ImportFrom):
-            names |= _from_import(node, package)
+            names |= from_import_names(node, package)
     return names
 
 
@@ -172,7 +172,8 @@ def _plain_import(node: ast.Import) -> dict[str, str]:
     }
 
 
-def _from_import(node: ast.ImportFrom, package: str) -> dict[str, str]:
+def from_import_names(node: ast.ImportFrom, package: str) -> dict[str, str]:
+    """Map each name ``from ... import`` binds to the dotted name it stands for; ``package`` anchors a relative import."""
     source = _from_source(node, package)
     return {
         alias.asname or alias.name: f"{source}.{alias.name}" if source else alias.name

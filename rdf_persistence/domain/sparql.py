@@ -13,7 +13,7 @@ from rdflib import BNode, Literal, URIRef
 
 from rdf_persistence.domain.exceptions import SparqlError
 
-_FORBIDDEN_IRI_CHARS = re.compile(r'[\x00-\x20<>"{}|\\^`\x7f]')
+FORBIDDEN_IRI_CHARS = re.compile(r'[\x00-\x20<>"{}|\\^`\x7f]')
 _BLANK_LABEL = re.compile(r"[A-Za-z0-9_]([A-Za-z0-9_.-]*[A-Za-z0-9_-])?")  # may not end in "."
 _LANGUAGE_TAG = re.compile(r"[A-Za-z]+(-[A-Za-z0-9]+)*")
 _STRING_ESCAPES = {"\\": "\\\\", '"': '\\"', "\n": "\\n", "\r": "\\r", "\t": "\\t"}
@@ -27,7 +27,7 @@ class SparqlTerm(str):
 
 
 def _iri(value: str) -> str:
-    if not value or _FORBIDDEN_IRI_CHARS.search(value):
+    if not value or FORBIDDEN_IRI_CHARS.search(value):
         raise SparqlError(f"not a valid IRI for SPARQL: {value!r}")
     return f"<{value}>"
 
@@ -96,3 +96,28 @@ def triples_block(triples: Iterable[Triple]) -> SparqlTerm:
 def term_list(values: Iterable[URIRef | Literal | BNode]) -> SparqlTerm:
     """Render values as the comma-separated terms of an ``IN (...)`` list."""
     return SparqlTerm(", ".join(term(value) for value in values))
+
+
+_VARIABLE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def match_patterns(variable: str, pairs: Iterable[tuple[URIRef, URIRef | Literal]]) -> SparqlTerm:
+    """Render ``?variable <predicate> <value> .`` for each pair: equality filters on a subject variable."""
+    if not _VARIABLE.fullmatch(variable):
+        raise SparqlError(f"not a plain variable name: {variable!r}")
+    return SparqlTerm(" ".join(f"?{variable} {term(p)} {term(o)} ." for p, o in pairs))
+
+
+def count(value: int) -> SparqlTerm:
+    """Render a non-negative integer as the digits of a ``LIMIT`` or ``OFFSET``."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise SparqlError(f"a count is a non-negative integer, not {value!r}")
+    return SparqlTerm(str(value))
+
+
+def order_by(*keys: tuple[str, bool]) -> SparqlTerm:
+    """Render the sort keys, each a ``(variable, descending)`` pair, as the conditions of an ``ORDER BY``."""
+    for variable, _ in keys:
+        if not _VARIABLE.fullmatch(variable):
+            raise SparqlError(f"not a plain variable name: {variable!r}")
+    return SparqlTerm(" ".join(f"{'DESC' if down else 'ASC'}(?{name})" for name, down in keys))

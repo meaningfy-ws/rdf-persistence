@@ -12,11 +12,10 @@ import httpx
 from pydantic import BaseModel
 
 from rdf_persistence.domain.exceptions import PersistenceError
+from rdf_persistence.domain.media import CONTENT_TYPE, JSON
 
 CONNECT_TIMEOUT_SECONDS = 5.0
 READ_TIMEOUT_SECONDS = 30.0
-JSON = "application/json"
-CONTENT_TYPE = "Content-Type"
 EMPTY_JSON_OBJECT = "{}"
 
 

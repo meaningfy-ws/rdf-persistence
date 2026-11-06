@@ -8,15 +8,25 @@ Work the toolkit does on its own behalf is attributed to ``{base}toolkit``.
 """
 
 import logging
-from contextlib import suppress
+from collections.abc import Mapping
+from contextlib import AbstractAsyncContextManager, suppress
+from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
+from rdflib import Graph, URIRef
 
-from rdf_persistence.domain.exceptions import Conflict, NotFound
-from rdf_persistence.domain.generated.rp_access import Grant
+from rdf_persistence.domain.exceptions import Conflict, InvalidBody, NotFound, StoredDataInvalid
+from rdf_persistence.domain.generated.rp_access import Action, Grant
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantAccess, TenantState
-from rdf_persistence.domain.generated.service.rp_service import ServiceSettings, TenantSummary
+from rdf_persistence.domain.generated.service.rp_service import (
+    CallerAccess,
+    GrantSet,
+    Page,
+    ServiceSettings,
+    TenantSummary,
+    VerifiedCaller,
+)
 from rdf_persistence.domain.iris import (
     access_iri,
     graph_iri,
@@ -28,8 +38,10 @@ from rdf_persistence.domain.iris import (
 )
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
+from rdf_persistence.services.schema_structure import internal_predicates, refuse_internal
 from rdf_persistence.services.session import Clock, Session, open_session, utc_now
 from rdf_persistence.services.store import Store
 
@@ -52,6 +64,7 @@ class Tenancy:
         settings: ServiceSettings,
         *,
         mapper: Mapper,
+        root_class: type[BaseModel],
         access_class: type[TenantAccess],
         clock: Clock = utc_now,
     ) -> None:
@@ -59,12 +72,16 @@ class Tenancy:
         self._files = files
         self._settings = settings
         self._mapper = mapper
+        self._internal = internal_predicates(mapper.view)
+        self._root_class = root_class
         self._access_class = access_class
         self._clock = clock
         self._system = system_database_name(settings.prefix)
         self._toolkit = Principal(id=str(toolkit_principal_iri(settings.base)))
 
-    def _session(self, database: str, tenant: str, principal: Principal):
+    def _session(
+        self, database: str, tenant: str, principal: Principal
+    ) -> AbstractAsyncContextManager[Session]:
         return open_session(
             self._store,
             database=database,
@@ -73,26 +90,31 @@ class Tenancy:
             clock=self._clock,
         )
 
-    async def _commit(
-        self,
-        database: str,
-        tenant: str,
-        principal: Principal,
-        obj: BaseModel,
-        if_version: str | None = None,
+    def tenant_session(
+        self, tenant: str, principal: Principal
+    ) -> AbstractAsyncContextManager[Session]:
+        """A session on the database of ``tenant`` for ``principal``."""
+        return self._session(tenant_resource_name(self._settings.prefix, tenant), tenant, principal)
+
+    async def _add_root(
+        self, database: str, tenant: str, principal: Principal, obj: BaseModel
     ) -> None:
-        """Store ``obj`` as a new root, or, given ``if_version``, over the root already there."""
+        """Store ``obj`` as a new root."""
         async with self._session(database, tenant, principal) as session:
-            if if_version is None:
-                work = UnitOfWork(session, self._mapper)
-                work.add(obj)
-                await work.commit()
-            else:
-                await session.replace_graph(
-                    str(getattr(obj, "id")),  # noqa: B009 - a root always has an id
-                    self._mapper.to_triples(obj),
-                    if_version,
-                )
+            work = UnitOfWork(session, self._mapper)
+            work.add(obj)
+            await work.commit()
+
+    async def _replace_root(
+        self, database: str, tenant: str, principal: Principal, obj: BaseModel, if_version: str
+    ) -> str:
+        """Store ``obj`` over the root already there, if it still has ``if_version``; answers the new version."""
+        async with self._session(database, tenant, principal) as session:
+            return await session.replace_graph(
+                str(getattr(obj, "id")),  # noqa: B009 - a root always has an id
+                self._mapper.to_triples(obj),
+                if_version,
+            )
 
     async def ensure_system_database(self) -> bool:
         """Create the system database unless it exists (start-up); True if this call created it."""
@@ -102,16 +124,22 @@ class Tenancy:
             await self._store.create_dataset(self._system)
         return True
 
-    async def create(self, label: str, root: BaseModel, creator: Principal) -> TenantSummary:
+    async def create(
+        self, label: str, root_slots: Mapping[str, Any], creator: Principal
+    ) -> TenantSummary:
         """Create a tenant: its database and bucket, its root object, and last its access record.
 
-        ``root`` is the tenant's root object; its ``id`` is replaced by the tenant IRI minted here.
-        The record gives ``creator`` the settings' ``creator_role`` on the tenant. Both objects are
-        built and validated before anything is created, so a refused request leaves nothing (PD-8c).
+        ``root_slots`` are the slots of the tenant's root object, whose ``id`` is the tenant IRI
+        minted here and whose ``label`` is the tenant's unless the slots give one. The record gives
+        ``creator`` the settings' ``creator_role`` on the tenant. Both objects are built and
+        validated before anything is created, so a refused request leaves nothing (PD-8c).
 
         Raises:
-            ValueError: ``label`` or ``root`` is not valid (pydantic's ``ValidationError``).
+            InvalidBody: ``root_slots`` names an ``id`` or sets an ``internal`` slot: the service assigns those.
+            ValueError: ``label`` or ``root_slots`` is not valid (pydantic's ``ValidationError``).
         """
+        if "id" in root_slots:
+            raise InvalidBody("the service assigns the IRI of a new tenant")
         tenant = str(mint_tenant_iri(self._settings.base, self._settings.tenant_segment))
         name = tenant_resource_name(self._settings.prefix, tenant)
         record = self._access_class(
@@ -124,13 +152,14 @@ class Tenancy:
             database_name=name,
             grants=[Grant(assignee=creator.id, target=tenant, role=self._settings.creator_role)],
         )
-        tenant_root = type(root).model_validate(root.model_copy(update={"id": tenant}).model_dump())
+        tenant_root = self._root_class.model_validate({"label": label, **root_slots, "id": tenant})
+        refuse_internal(self._mapper.to_graph(tenant_root), self._internal)
         await self._store.create_dataset(name)
         _log_step("create-database", tenant, name)
         await self._files.create_bucket(name)
         _log_step("create-bucket", tenant, name)
-        await self._commit(name, tenant, creator, tenant_root)
-        await self._commit(self._system, tenant, creator, record)
+        await self._add_root(name, tenant, creator, tenant_root)
+        await self._add_root(self._system, tenant, creator, record)
         _log_step("create-record", tenant, name)
         return TenantSummary(id=tenant, label=label, state=TenantState.ACTIVE)
 
@@ -146,7 +175,20 @@ class Tenancy:
     async def _read(self, session: Session, tenant: str) -> tuple[TenantAccess, str]:
         iri = str(access_iri(tenant))
         graph, graph_name, version = await session.get_graph(iri)
-        return self._mapper.from_graph(self._access_class, iri, graph, graph_name), version
+        return self._decoded(iri, graph, graph_name), version
+
+    def _decoded(self, iri: str, graph: Graph, graph_name: URIRef) -> TenantAccess:
+        """The access record stored at ``iri``.
+
+        Raises:
+            StoredDataInvalid: The graph does not hold a valid record; the request is not to blame.
+        """
+        try:
+            return self._mapper.from_graph(self._access_class, iri, graph, graph_name)
+        except (ValidationError, ValueError) as error:
+            raise StoredDataInvalid(
+                f"the access record {iri} cannot be decoded: {error}"
+            ) from error
 
     async def _records(self) -> list[TenantAccess]:
         """Every access record, decoded by the mapper from the graphs that hold them."""
@@ -155,9 +197,39 @@ class Tenancy:
         if stored is None:
             return []
         iris = sorted({str(record) for record in stored.subjects(v.STATE, None)})
-        return [
-            self._mapper.from_graph(self._access_class, iri, stored, graph_iri(iri)) for iri in iris
-        ]
+        return [self._decoded(iri, stored, graph_iri(iri)) for iri in iris]
+
+    async def rename(self, tenant: str, label: str, if_version: str, principal: Principal) -> str:
+        """Give the tenant a new label, in its access record, whose description follows; answers the new version.
+
+        Raises:
+            NotFound: The tenant has no access record.
+            Conflict: The record is no longer at ``if_version``; nothing changed.
+            ValueError: ``label`` is not valid (pydantic's ``ValidationError``).
+        """
+        record, _ = await self.get(tenant)
+        record.label = label
+        record.description = RECORD_DESCRIPTION.format(label=label.rstrip("."))
+        return await self._replaced(tenant, principal, record, if_version)
+
+    async def set_grants(
+        self, tenant: str, grants: GrantSet, if_version: str, principal: Principal
+    ) -> str:
+        """Replace the grants and the prohibitions of the tenant's access record; answers the new version.
+
+        Raises:
+            NotFound: The tenant has no access record.
+            Conflict: The record is no longer at ``if_version``; nothing changed.
+        """
+        record, _ = await self.get(tenant)
+        record.grants = grants.grants
+        record.prohibitions = grants.prohibitions
+        return await self._replaced(tenant, principal, record, if_version)
+
+    async def _replaced(
+        self, tenant: str, principal: Principal, record: TenantAccess, if_version: str
+    ) -> str:
+        return await self._replace_root(self._system, tenant, principal, record, if_version)
 
     async def tenants(self) -> list[TenantSummary]:
         """Every tenant that has an access record, in any state."""
@@ -173,6 +245,33 @@ class Tenancy:
             key=lambda summary: summary.id,
         )
 
+    async def visible_tenants(
+        self, caller: VerifiedCaller, rules: AccessRules, *, limit: int, offset: int
+    ) -> Page:
+        """One page, ordered by IRI, of the tenants ``caller`` may read, and how many there are in all.
+
+        All the access records are read in one query and the rules are applied to them in memory, so
+        the cost in queries does not grow with the number of tenants.
+
+        Raises:
+            StoredDataInvalid: A record cannot be decoded.
+        """
+        visible = [
+            TenantSummary(
+                id=str(tenant_iri_of_access(record.id)),
+                label=record.label,
+                state=TenantState(record.state),
+            )
+            for record in await self._records()
+            if rules.may(
+                caller, _access_of(record), str(tenant_iri_of_access(record.id)), Action.READ
+            )
+        ]
+        visible.sort(key=lambda summary: summary.id)
+        return Page(
+            items=visible[offset : offset + limit], total=len(visible), limit=limit, offset=offset
+        )
+
     async def delete(self, tenant: str, if_version: str) -> None:
         """Delete the tenant: mark it ``deleting``, drop its database and bucket, remove its record.
 
@@ -186,7 +285,7 @@ class Tenancy:
         record, _ = await self.get(tenant)
         if record.state == TenantState.ACTIVE:
             record.state = TenantState.DELETING
-            await self._commit(self._system, tenant, self._toolkit, record, if_version)
+            await self._replace_root(self._system, tenant, self._toolkit, record, if_version)
         await self.finish_deletion(tenant)
 
     async def finish_deletion(self, tenant: str) -> None:
@@ -214,6 +313,16 @@ class Tenancy:
     async def database_names(self) -> set[str]:
         """The database (and bucket) names the access records store, for every tenant."""
         return {record.database_name for record in await self._records()}
+
+
+def _access_of(record: TenantAccess) -> CallerAccess:
+    """What the access check knows of a tenant, from its whole record."""
+    return CallerAccess(
+        tenant=str(tenant_iri_of_access(record.id)),
+        state=record.state,
+        grants=record.grants,
+        prohibitions=record.prohibitions,
+    )
 
 
 def _log_step(step: str, tenant: str, resource: str) -> None:

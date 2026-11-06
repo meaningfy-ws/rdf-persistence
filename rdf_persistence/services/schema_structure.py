@@ -10,6 +10,7 @@ so the mapper and the freshness check can use it without the ``generate`` extra.
 from collections.abc import Iterator
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 from linkml_runtime.linkml_model.meta import (
     AnonymousClassExpression,
@@ -19,12 +20,17 @@ from linkml_runtime.linkml_model.meta import (
     SlotDefinition,
     UniqueKey,
 )
+from linkml_runtime.utils.formatutils import underscore
 from linkml_runtime.utils.schemaview import SchemaView
+from rdflib import XSD, Graph, Literal, URIRef
+from rdflib.term import Node
 
-from rdf_persistence.domain.generated.rp_core import GraphKind, RpAnnotation
+from rdf_persistence.domain.exceptions import InvalidBody
+from rdf_persistence.domain.generated.rp_core import DatabaseKind, GraphKind, RpAnnotation
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 
 AGGREGATE_ROOT = "AggregateRoot"
+TENANT_ACCESS = "TenantAccess"
 DESCRIPTION = "description"
 LABEL = "label"
 EXACTLY_ONE_OF = "exactly_one_of"
@@ -70,6 +76,11 @@ def is_owned(slot: object) -> bool:
     return flag(slot, RpAnnotation.OWNED)
 
 
+def json_name(slot: SlotDefinition) -> str:
+    """The key of the slot in a JSON body: its alias, else its name, in snake case. The context uses it too."""
+    return str(underscore(slot.alias or slot.name))
+
+
 def holds_owned_part(view: SchemaView, slot: SlotDefinition) -> bool:
     """True when the values of the slot are objects the aggregate owns, written as nodes of its graph."""
     return slot.range in view.all_classes() and is_owned(slot)
@@ -82,8 +93,52 @@ def holds_iri(view: SchemaView, slot: SlotDefinition) -> bool:
     return bool(URI_TYPES & set(view.type_ancestors(slot.range)))
 
 
+def rdf_term(view: SchemaView, slot: SlotDefinition, value: Any) -> URIRef | Literal:
+    """``value``, of a slot that holds no owned part, as the RDF term the store keeps it as.
+
+    An enum value is its permissible value's meaning IRI, or a literal of its text when it has none;
+    a reference to another aggregate and a ``uri`` are IRIs; any other value is a literal of the
+    datatype of the slot's type, a plain literal for a string. The mapper writes values and the
+    listings match them through this one rule.
+
+    Raises:
+        ValueError: ``value`` is not a permissible value of the slot's enum.
+    """
+    range_ = slot.range or str(view.schema.default_range)
+    if range_ in view.all_enums():
+        text = str(value)
+        permissible = view.get_enum(range_).permissible_values.get(text)
+        if permissible is None:
+            raise ValueError(f"{text!r} is not a value of {range_}")
+        meaning = permissible.meaning
+        return URIRef(view.expand_curie(str(meaning))) if meaning else Literal(text)
+    if holds_iri(view, slot):
+        return URIRef(str(value))
+    datatype = URIRef(view.expand_curie(str(view.get_type(range_).uri)))
+    return Literal(str(value)) if datatype == XSD.string else Literal(value, datatype=datatype)
+
+
 def is_internal(slot: object) -> bool:
     return flag(slot, RpAnnotation.INTERNAL)
+
+
+def internal_predicates(
+    view: SchemaView,
+) -> dict[Node, str]:  # Node: rdflib types a graph's predicates so
+    """The predicate of every ``internal`` slot of the schema, with the JSON name of the slot."""
+    return {
+        URIRef(view.get_uri(slot, expand=True)): json_name(slot)
+        for name in view.all_classes()
+        for slot in view.class_induced_slots(name)
+        if is_internal(slot)
+    }
+
+
+def refuse_internal(graph: Graph, internal: dict[Node, str]) -> None:
+    """Raise ``InvalidBody`` when ``graph`` gives an ``internal`` slot a value: only the service sets those."""
+    for predicate in set(graph.predicates()):
+        if predicate in internal:
+            raise InvalidBody(f"{internal[predicate]} is set by the service")
 
 
 def is_bookkeeping(slot: object) -> bool:
@@ -143,6 +198,49 @@ def root_classes(view: SchemaView, folder: Path) -> list[ClassDefinition]:
     classes = own_classes(own_schemas(view, folder))
     roots = {root.name for root in aggregate_roots(view, classes)}
     return [cls for cls in classes if cls.name in roots or is_tenant_root(cls)]
+
+
+def served_roots(view: SchemaView) -> list[ClassDefinition]:
+    """The aggregate roots with a path that live in the tenant databases: what the generic router serves.
+
+    The tenant's access record lives in the system database and has its own routes, so it is left out.
+    """
+    roots = aggregate_roots(view, list(view.all_classes().values()))
+    return [
+        root
+        for root in roots
+        if annotation(root, RpAnnotation.DATABASE) != DatabaseKind.SYSTEM.value
+        and annotation_text(root, RpAnnotation.RP_PATH)
+    ]
+
+
+def _only(found: list[ClassDefinition], what: str) -> ClassDefinition:
+    if len(found) != 1:
+        raise LookupError(f"the schema must define exactly one {what}, found {len(found)}")
+    return found[0]
+
+
+def tenant_root_class(view: SchemaView) -> ClassDefinition:
+    """The class of the tenant's root object, the one annotated ``graph: meta``.
+
+    Raises:
+        LookupError: The schema has none or several.
+    """
+    return _only([c for c in view.all_classes().values() if is_tenant_root(c)], "tenant root class")
+
+
+def tenant_access_class(view: SchemaView) -> ClassDefinition:
+    """The application's access record class: the one concrete descendant of ``TenantAccess``.
+
+    Raises:
+        LookupError: The schema has none or several.
+    """
+    found = [
+        c
+        for c in view.all_classes().values()
+        if not c.abstract and not c.mixin and TENANT_ACCESS in view.class_ancestors(c.name)
+    ]
+    return _only([c for c in found if c.name != TENANT_ACCESS] or found, "tenant access class")
 
 
 def owned_slots(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[tuple[str, str]]:

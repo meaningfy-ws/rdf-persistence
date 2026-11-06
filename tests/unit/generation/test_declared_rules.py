@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from pathlib import Path
+from unittest.mock import create_autospec
 
 import pytest
 from rdflib import Graph, URIRef
@@ -11,6 +12,7 @@ from rdf_persistence.generation.exceptions import SchemaGenerationError
 from rdf_persistence.generation.extensions.pydantic_split import render as render_modules
 from rdf_persistence.generation.extensions.shacl import render as render_shapes
 from rdf_persistence.generation.generated.rp_generation import ConstraintKind
+from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.testkit.conformance import Conformance
 
@@ -142,9 +144,10 @@ def test_a_narrowed_slot_counts_the_unique_keys_of_the_ancestors_of_its_new_rang
     conformance = Conformance(
         view=load_schema(write(tmp_path, NARROWED)),
         models={},
-        context={},
         shapes=Graph(),
-        folder=tmp_path,
+        documents=create_autospec(
+            Documents, instance=True
+        ),  # the kinds are read from the view alone
     )
     assert ConstraintKind.UNIQUE_KEYS in conformance.class_kinds("Cellar"), (
         "the keys of the ancestors of the narrowed range govern the slot"
