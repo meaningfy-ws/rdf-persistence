@@ -75,7 +75,8 @@ session.
   open SPARQL endpoint.
 * *linkml-store* has no write routes, no authentication and no RDF backend. *linkml-openapi* emits a
   complete OpenAPI 3.1 document from LinkML, with CRUD paths, paging, problem responses and
-  `application/ld+json`, but it is a few months old with one author and no runtime.
+  `application/ld+json`, but it is a few months old with one author and no runtime. A spike found it
+  cannot replace our own OpenAPI hook (<<linkml-openapi>>).
 
 No maintained Python library serves read-write CRUD with access control over a triple store from
 configuration. The parts to build it are mature.
@@ -104,8 +105,8 @@ sequenceDiagram
 * *The wire stays simple.* Plain JSON with `id` as the IRI is also JSON-LD with the generated context,
   so a JSON-LD client reads it as RDF. `Accept: text/turtle` returns the graph itself.
 * *The fewest generated artefacts.* Context and shapes are generated already. OpenAPI comes from a
-  small hook of our own over the schema; a short spike checks whether linkml-openapi can replace it
-  (D-3).
+  small hook of our own over the schema (D-3); a spike showed linkml-openapi cannot replace it
+  (<<linkml-openapi>>).
 * *Access control stays in one place*: one dependency per route action
   (xref:architecture/access-control.adoc[access control]).
 * *Option C is the backup* for a later implementation: when a client needs deep nested reads, a
@@ -136,3 +137,24 @@ with only CRUD needs none.
 * Decision O-2 widens: JSON-LD and Turtle by content negotiation, not only the `Link` header.
 * The listing and filter grammar is ours to define: equality filters, paging, sort, as in v1.
 * JSON-LD and Turtle by content negotiation are in v1; GraphQL (option C) is the backup, deferred.
+
+[#linkml-openapi]
+== linkml-openapi: not used (spike, task 5.6)
+
+A spike on 2026-11-06 ran linkml-openapi 0.12.0 on the toy library. *Verdict: do not depend on
+it.*
+
+* *Versions.* 0.12.0 is the newest release that installs beside `linkml` 1.12.1: from 0.13 on it
+  requires `pydantic` below 2.13, and the toolkit pins 2.14.2.
+* *Run unchanged*, it stops on the shared `contributor` slot: `Principal` is reachable from
+  several classes, and the tool wants one parent path per class.
+* *Restricted to the aggregate classes*, it emits a document we would not serve:
+** untenanted paths (`/books/\{id}`) and nested sub-resource routes;
+** only 404 and 422 problem responses;
+** no `ETag` or `If-Match` headers;
+** JSON bodies only;
+** the LinkML bookkeeping and the metamodel classes left in.
+
+Closing those gaps would need tool-specific annotations in every consumer's model, plus a
+post-processor: more code than our own hook. The toolkit therefore keeps the small OpenAPI hook of
+task 5.5, whose component schemas come from `gen-json-schema` (PD-24).
