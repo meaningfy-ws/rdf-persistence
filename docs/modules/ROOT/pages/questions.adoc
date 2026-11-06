@@ -173,13 +173,16 @@ serves needs it: `install_service` stops without it.
 
 == What could strengthen it in the future
 
-These are possibilities, not commitments. None is planned; each would start as its own change.
+These are possibilities, not commitments. Each is shaped as a candidate EPIC in
+`openspec/changes/<id>/`, listed with a suggested order in `openspec/changes/README.md`. None is
+planned: its PLAN waits for the decisions listed in its `inputs/seed.md`.
 
 * *Detailed test profiling.* The check timings are rough; a profile of the slowest tests would show
   where the 5 minutes of unit and feature tests go.
 * *A sweep inside a live tenant* for blobs and loaded graphs that no aggregate names (deferred in
   xref:architecture/index.adoc#building-blocks[architecture v1]).
-* *Unique keys across aggregates*, enforced at commit rather than checked before it.
+* *Unique keys across aggregates.* v1 enforces a unique key only inside one aggregate (the generated
+  validators and shapes); nothing stops two aggregates sharing a key value.
 * *A client library* over the generated TypeScript types and the OpenAPI document.
 * *Events*: an outbox, an event bus and server-sent events, deferred until a need reacts to a
   change in another aggregate.

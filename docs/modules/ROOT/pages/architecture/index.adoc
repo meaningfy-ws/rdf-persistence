@@ -150,7 +150,7 @@ _What is built in v1, and what waits for a need?_
 
 |Unique keys across aggregates (e.g. a name unique within a kind)
 |deferred
-|v1 checks before the commit; two simultaneous writes can both pass.
+|v1 enforces a unique key only inside one aggregate; nothing checks a key across aggregates. Candidate EPIC `cross-aggregate-unique-keys`.
 |
 
 |Sweep of orphans inside a live tenant (blobs, loaded graphs no aggregate names)
