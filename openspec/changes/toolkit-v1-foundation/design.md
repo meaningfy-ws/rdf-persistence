@@ -595,6 +595,27 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
   slots are not filterable; a slot named `limit`, `offset` or `sort` cannot be filtered on. A
   Prohibition of `read` on an aggregate hides it from that caller's listing and total. The tenant
   listing takes only `limit` and `offset`. A listing in Turtle is 406 (a page has no Turtle form).
+- **PD-14b Stage 5 review decisions.**
+  - Bodies are strict: a predicate of an `internal` slot is refused in a body (422 naming the slot) and
+    dropped from every response; a plain-JSON body may use only the class's slot names (one
+    `json_name(slot)` rule, the context's) and JSON-LD keywords, at every level; only the root and the
+    owned parts reached from it, each typed with a shaped class, may appear (any other subject is 422).
+  - `ServiceSettings.max_body_bytes` bounds a body: a larger `Content-Length` or stream is 413
+    `payload-too-large`; a node-count cap applies before validation.
+  - Every framework error is a problem response (405 is `method-not-allowed`).
+  - The `Link` header is built from `settings.base` and the mount prefix, never from the `Host`
+    header. Server-side failures (a `SparqlError` from a template, a validation error of stored data)
+    are 500 with no detail; only request input errors are 4xx with detail.
+  - One rule each, in its home: tenant and aggregate IRIs from a path in `domain/iris.py`, the target
+    the access check authorises being the IRI the route then uses; body expansion and framing in
+    `services/documents.py`, which the conformance suite and round trip also use; a value as an RDF
+    term in one function used by the mapper and the listings.
+  - The use cases (create, replace and delete an aggregate; the visible tenants, in one query; building
+    a tenant root from its slots) live in `services`; the router keeps negotiation, headers and status.
+  - `ServiceKit.require(authorization, tenant_id, action)` is the access gate for consumer routes.
+  - The OpenAPI document is public, as the published contract; FastAPI's interactive docs are the
+    consumer's choice on its app. Any valid token may create a tenant (PD-9); rate limits belong at the
+    gateway.
 - **PD-14 Body handling.**
   1. A JSON body is expanded with the generated context; a JSON-LD body is used as is. Either way it
      becomes triples whose root is the IRI from the path (on create, the minted IRI).
@@ -612,7 +633,8 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
 - **PD-15 Problems and sorting.**
   - Problem `type` IRIs are `{base}problems/{slug}`, with these slugs: `invalid-token`, `forbidden`,
     `not-found`, `conflict`, `precondition-required`, `invalid-body`, `not-acceptable`,
-    `unsupported-media-type`, `bad-query`, `unavailable`.
+    `unsupported-media-type`, `bad-query`, `unavailable`, and since the stage 5 review
+    `payload-too-large` (413) and `method-not-allowed` (405).
   - Each slug has a fixed `title`: "Invalid token", "Forbidden", "Not found", "Version
     conflict", "Precondition required", "Invalid body", "Not acceptable", "Unsupported media
     type", "Bad query", "Service unavailable".
