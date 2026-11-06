@@ -32,7 +32,7 @@ rp:Authorised a sh:NodeShape ;
 	rdfs:label "Authorised" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n43 ;
-	sh:property _:c14n33 , _:c14n58 , _:c14n95 ;
+	sh:property _:c14n33 , _:c14n51 , _:c14n95 ;
 	sh:targetClass rp:Authorised .
 rp:CallerAccess a sh:NodeShape ;
 	rdfs:comment "What the access check needs to know about one caller in one tenant: the tenant's state, and the grants and prohibitions of the access record that name the caller." ;
@@ -47,7 +47,7 @@ rp:Condition a sh:NodeShape ;
 	rdfs:label "Condition" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n109 ;
-	sh:property _:c14n111 , _:c14n117 , _:c14n53 , _:c14n90 ;
+	sh:property _:c14n111 , _:c14n117 , _:c14n54 , _:c14n90 ;
 	sh:targetClass rp:Condition .
 rp:Described a sh:NodeShape ;
 	rdfs:comment "A mixin giving an object an IRI, a label and a description. The application writes them." ;
@@ -120,14 +120,14 @@ rp:Principal a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n133 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n52 ;
+	sh:property _:c14n53 ;
 	sh:targetClass prov:Agent .
 rp:Problem a sh:NodeShape ;
 	rdfs:comment "An RFC 9457 problem detail, the body of every error answer of the service." ;
 	rdfs:label "Problem" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n123 ;
-	sh:property _:c14n127 , _:c14n20 , _:c14n50 , _:c14n56 , _:c14n63 ;
+	sh:property _:c14n127 , _:c14n20 , _:c14n50 , _:c14n57 , _:c14n63 ;
 	sh:targetClass rp:Problem .
 rp:ProblemKind a sh:NodeShape ;
 	rdfs:comment "A kind of problem the service answers with: the slug that ends its problem type IRI, its fixed title and the HTTP status it comes with." ;
@@ -191,7 +191,7 @@ rp:TenantLabelled a sh:NodeShape ;
 	rdfs:comment "A mixin for what carries a tenant's label, one line of 1 to 200 characters that neither starts nor ends in a space; the access record and the service's request bodies share it, so the label is checked the same everywhere." ;
 	rdfs:label "Tenant labelled" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n55 ;
+	sh:ignoredProperties _:c14n56 ;
 	sh:property _:c14n40 ;
 	sh:targetClass rp:TenantLabelled .
 rp:TenantSummary a sh:NodeShape ;
@@ -200,7 +200,7 @@ rp:TenantSummary a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n16 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n108 , _:c14n44 , _:c14n57 ;
+	sh:property _:c14n108 , _:c14n44 , _:c14n58 ;
 	sh:targetClass rp:TenantSummary .
 rp:Tracked a sh:NodeShape ;
 	rdfs:comment "A mixin for the tracking statements of a commit. The session writes them about the aggregate's graph IRI, never about the root entity." ;
@@ -623,7 +623,7 @@ _:c14n198 rdf:first dcterms:modified ;
 _:c14n199 rdf:first rdf:type ;
 	rdf:rest _:c14n200 .
 _:c14n2 rdf:first rp:SystemLevel ;
-	rdf:rest _:c14n51 .
+	rdf:rest _:c14n52 .
 _:c14n20 sh:datatype xsd:string ;
 	sh:description "An explanation of this occurrence of the problem." ;
 	sh:maxCount 1 ;
@@ -947,15 +947,22 @@ _:c14n50 sh:description "The IRI that identifies the kind of problem." ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path rp:problemType .
-_:c14n51 rdf:first rp:TenantLevel ;
+_:c14n51 sh:description "The IRI of the tenant or aggregate the access check was made on, which the route acts on." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Checked target" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 2 ;
+	sh:path rp:checkedTarget .
+_:c14n52 rdf:first rp:TenantLevel ;
 	rdf:rest _:c14n136 .
-_:c14n52 sh:description "The IRI that identifies the object." ;
+_:c14n53 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n53 sh:datatype xsd:string ;
+_:c14n54 sh:datatype xsd:string ;
 	sh:description "The value of the statement, an IRI or the lexical form of a literal." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -963,11 +970,11 @@ _:c14n53 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:conditionValue .
-_:c14n54 rdf:first dcterms:identifier ;
+_:c14n55 rdf:first dcterms:identifier ;
 	rdf:rest _:c14n276 .
-_:c14n55 rdf:first rdf:type ;
+_:c14n56 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n56 sh:datatype xsd:string ;
+_:c14n57 sh:datatype xsd:string ;
 	sh:description "A short, fixed summary of the kind of problem." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -975,19 +982,12 @@ _:c14n56 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:problemTitle .
-_:c14n57 sh:description "The IRI that identifies the object." ;
+_:c14n58 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n58 sh:description "The IRI of the aggregate the access check was made on." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Checked target" ;
-	sh:nodeKind sh:IRI ;
-	sh:order 2 ;
-	sh:path rp:checkedTarget .
 _:c14n59 rdf:first rp:role ;
 	rdf:rest rdf:nil .
 _:c14n6 sh:description "The permissions given in the tenant, by role or as direct actions; they live in the access record's graph." ;
@@ -1194,7 +1194,7 @@ _:c14n92 sh:datatype xsd:integer ;
 	sh:order 5 ;
 	sh:path rp:offset .
 _:c14n93 rdf:first dcterms:description ;
-	rdf:rest _:c14n54 .
+	rdf:rest _:c14n55 .
 _:c14n94 sh:description "Where the role applies." ;
 	sh:in _:c14n2 ;
 	sh:maxCount 1 ;

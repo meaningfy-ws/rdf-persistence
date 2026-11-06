@@ -278,7 +278,7 @@ sequenceDiagram
     Cl->>G: PUT …/books/{id} (If-Match v7)
     G->>St: CONSTRUCT the caller's access
     G->>G: AccessRules.require
-    G->>R: CallerAccess, aggregate IRI
+    G->>R: Authorised (principal, CallerAccess, aggregate IRI)
     R->>R: negotiate, If-Match, read body (size limit)
     R->>D: parse (node cap, context, strict checks)
     D->>D: validate (SHACL)

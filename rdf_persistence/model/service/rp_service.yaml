@@ -334,7 +334,7 @@ slots:
     range: CallerAccess
   checked_target:
     title: Checked target
-    description: The IRI of the aggregate the access check was made on.
+    description: The IRI of the tenant or aggregate the access check was made on, which the route acts on.
     slot_uri: rp:checkedTarget
     range: uri
   principal:
