@@ -6,9 +6,11 @@ xref:architecture/open-decisions.adoc[the decisions of 2026-11-05]): options A a
 kept as the backup for a later implementation. Research behind this page: the
 xref:background/soa/angles/service.adoc[service angle] of the background study, updated on 2026-11-05.
 Options A and B are *implemented* (stage 5 of the change `toolkit-v1-foundation`); <<serving>>
-describes the service as built.
+describes the service as built, and <<anatomy>> traces one request through it.
 
 == The question
+
+_How light can the API over a triple store be?_
 
 An application on this toolkit controls three things: its *model* (LinkML), how the model is
 *served* (an HTTP API), and *who may do what* (access control). Everything else should be generic.
@@ -117,6 +119,8 @@ sequenceDiagram
 [#mapper]
 == Do we need a mapper and Python classes?
 
+_Does the API path need generated Python classes?_
+
 *Not on the API path.* With the recommendation, the router turns JSON into triples with the JSON-LD
 context and validates them with the shapes; reading returns the graph. Nothing there needs a class.
 
@@ -142,6 +146,8 @@ with only CRUD needs none.
 
 [#serving]
 == Serving it
+
+_How do I serve my schema over HTTP, and what does a client meet?_
 
 An application serves its schema with one call to `install_service` in its composition root. The
 call builds the routes from the schema, so a class added to the model is served after a restart.
@@ -213,12 +219,14 @@ from the request's `Host` header, so a deployment sets `base` to the address it 
 for anything else, 415 for a body in another type).
 
 *Bodies are strict* (PD-14b). A body larger than `max_body_bytes`, or holding more than 10 000
-objects, is refused with 413. A plain-JSON body may use only its class's slot names and the JSON-LD
+objects and list values together (a list of strings counts each string), is refused with 413. A plain-JSON body may use only its class's slot names and the JSON-LD
 keywords, at every level. Only the root and the owned parts reached from it, each typed with a class
 of the schema, may appear; any other subject is 422. An `internal` slot is refused in a body (422
 naming it) and never appears in a response. A replace keeps the stored values of the `internal`
 slots of the root and of the parts that persist, matched by their IRI (a scan keeps its file key);
-a part without an identifier cannot be matched, so its internal values are not kept.
+a part sent without its IRI, or without an identifier at all, cannot be matched, so its internal
+values are not kept. An IRI in a body that SPARQL cannot carry (a space, `<`, `>`, `"`, `{`, `}`,
+`|`, `\`, `^` or a backtick) is refused with 422 before anything is sent to the store.
 
 *Problem responses* (RFC 9457) have a fixed `type` (`{base}problems/<slug>`) and title, and every
 error answers with one: the toolkit's own, the framework's (an unknown path, 405
@@ -227,8 +235,9 @@ statuses that say what to fix in the request (400, 406, 413, 415, 422, 428) carr
 refusal (401, 403, 404, 409), an outage (503) or a fault of the service (500 `internal-error`)
 carries none, so a hidden tenant and an absent one answer alike, and no answer tells an outsider
 where the store is. A fault is anything the caller cannot fix: SPARQL the toolkit wrote that the
-store refuses, or stored data that does not validate. A bad query string from the caller stays 400
-`bad-query`.
+store refuses (`ToolkitStore` in `services/store.py` turns the store's `BadQuery` into a
+`SparqlError`), or stored data that does not validate. A bad query string from the caller stays 400
+`bad-query`; so does a filter on an IRI-valued slot whose value is not an IRI SPARQL can carry.
 
 *Listings* (PD-15, PD-15a). A query takes `limit` (1 to 200, default 50), `offset` (default 0),
 `sort` (a slot name, descending with a leading `-`; by IRI when absent) and `?<slot>=<value>`
@@ -245,6 +254,135 @@ slot, the problem responses of each route (413 on every operation with a body), 
 bearer security scheme. Its component schemas come from `openapi-components.json`, which
 `rp-generate` writes with `gen-json-schema` (xref:architecture/generation.adoc#toolchain[step 5b]),
 so a running service needs no LinkML generator.
+
+[#anatomy]
+== Anatomy of a request
+
+_What happens, in which order, when a client replaces an aggregate?_
+
+One `PUT /{tenant_segment}/{t}/{rp_path}/{id}`, traced through the code. FastAPI resolves a route's
+dependencies before it runs the route, so the token and the access check come before the body is
+read. Each step that fails answers its problem at once; later steps do not run.
+
+[mermaid]
+....
+%%{init: {"sequence": {"actorMargin": 25, "width": 110}}}%%
+sequenceDiagram
+    participant Cl as Client
+    participant G as Gate
+    participant R as DocumentApi
+    participant D as Documents
+    participant Se as Session
+    participant St as Store
+    Cl->>G: PUT …/books/{id} (If-Match v7)
+    G->>St: CONSTRUCT the caller's access
+    G->>G: AccessRules.require
+    G->>R: CallerAccess, aggregate IRI
+    R->>R: negotiate, If-Match, read body (size limit)
+    R->>D: parse (node cap, context, strict checks)
+    D->>D: validate (SHACL)
+    R->>Se: get_graph, replace_graph if v7
+    Se->>St: update + ASK
+    Se-->>R: v8
+    R-->>Cl: 200, ETag v8
+....
+
+[cols="1,3,3,1",options="header"]
+|===
+|# |Step |Where |Refusal
+
+|1
+|Verify the bearer token.
+|`entrypoints/auth.py`, `Gate.caller`, which calls the `TokenVerifier` (`JwksTokenVerifier.verify`)
+|401
+
+|2
+|Turn the path into IRIs: the tenant's, then the aggregate's. An id that is not a canonical UUID
+names nothing.
+|`ServiceKit.tenant_iri`; `domain/iris.py`, `aggregate_iri`; called by `Gate.aggregate_access`
+|404
+
+|3
+|Load what the caller may do in the tenant: one `CONSTRUCT` on the system database for the access
+record's state and the rules that name the caller.
+|`services/access.py`, `load_caller_access`, called by `Gate.check`
+|404
+
+|4
+|The access check for `modify` on the aggregate, in the order of
+xref:architecture/access-control.adoc#check[the check].
+|`services/access.py`, `AccessRules.require`
+|404, 403
+
+|5
+|Pick the response type from `Accept`.
+|`entrypoints/negotiation.py`, `accepted_media_type`, in `DocumentApi.replace` (`entrypoints/router.py`)
+|406
+
+|6
+|Read the expected version from `If-Match`.
+|`negotiation.py`, `expected_version`
+|428
+
+|7
+|Check the body's `Content-Type` (JSON or JSON-LD), then read the body with its size limit: a
+`Content-Length` over `max_body_bytes` is refused before a byte is read, a chunked body as soon as
+it outgrows the limit.
+|`negotiation.py`, `request_media_type`; `router.py`, `limited_body`; both in `DocumentApi._body`
+|415, 413
+
+|8
+|Parse the JSON, and count its objects and list values against the cap of 10 000.
+|`services/documents.py`, `Documents._document` and `_bound`, called by `Documents.parse` from
+`Aggregates.replace` (`services/aggregates.py`)
+|422, 413
+
+|9
+|For plain JSON: type every node by the schema and refuse any key that is not a slot of its class,
+and any `internal` slot. Then expand the document with the generated JSON-LD context into triples;
+a remote context is refused. A JSON-LD body is expanded with its own inline context.
+|`Documents._plain_document` and `_typed`; `Documents._triples` (pyld `to_rdf`)
+|422
+
+|10
+|The strict-body checks on the triples: no `internal` predicate in any key form; exactly one root,
+whose IRI is the path's; bookkeeping statements dropped; a part without an IRI gets
+`{root}/parts/{uuid4}`; every IRI one SPARQL can carry; every subject inside the aggregate and
+reached from the root through owned-part slots, typed with a class the slot takes.
+|`Documents.parse` (the internal-slot refusal), `Documents._settled`, `_root`, `_refuse_strays`
+|422
+
+|11
+|Validate the triples against the generated SHACL shapes; the message names up to five slots.
+|`Documents.validate` (pyshacl)
+|422
+
+|12
+|Open a session on the tenant's database, read the stored graph, and add back the stored values
+of the `internal` slots of the nodes the body still describes.
+|`Aggregates.replace`: `Tenancy.tenant_session`, `Session.get_graph`, `Documents.internal_values`
+|404
+
+|13
+|Commit: one SPARQL update of several `;`-joined operations, each guarded by the version from
+`If-Match`, that replaces the graph and the root's registry entries and writes a fresh version
+token and the tracking statements; then an `ASK` for the new token.
+|`services/session.py`, `Session.replace_graph` (`replace_text`, `payload_triples`), through
+`ToolkitStore`
+|409; 500 if the store refuses the text
+
+|14
+|Read the aggregate back and answer it in the negotiated type: framed JSON (with the context's
+`Link` header) or JSON-LD, or Turtle; the bookkeeping and `internal` values left out. The `ETag`
+is the new version token, in quotes; `Vary: Accept` is set.
+|`Session.get_graph`; `entrypoints/responses.py`, `document_response`, with `negotiation.py`,
+`etag_of`, and `Documents.render`
+|—
+|===
+
+A `POST` takes the same path without step 6, with `modify` on the tenant instead of on the
+aggregate in step 4, a minted IRI in step 10 (a body that names an `id` is refused) and
+`Session.add_graph` in step 13; it answers 201 with a `Location`.
 
 [#linkml-openapi]
 == linkml-openapi: not used (spike, task 5.6)

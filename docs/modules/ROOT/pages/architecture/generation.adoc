@@ -1,13 +1,13 @@
 = Model to code: the generation workflow
 :description: How an application's own LinkML model becomes typed, persistable code with rdf-persistence.
 
-Status: *accepted*; build time *implemented* (2026-11-05). Settles open decision O-1 of
+Status: *accepted*; build time *implemented* (2026-11-05); run time *implemented* (2026-11-06). Settles open decision O-1 of
 xref:architecture/index.adoc[architecture v1] with its smallest option, revised in <<revision>>
 (developer, 2026-11-05: decisions D-2 and D-6 to D-9 of
 xref:architecture/open-decisions.adoc[the decisions of 2026-11-05]). The metamodel, `rp-generate`
 and the guards are implemented (stage 1 of the change `toolkit-v1-foundation`). The run-time parts
-(<<run-time>>) were run only in a throwaway spike (LinkML 1.12.1, Fuseki 5.1.0) and keep the mark
-_(spike)_ until stage 2 builds them. To work on the toolchain itself, see
+(<<run-time>>), first tried in a throwaway spike (LinkML 1.12.1, Fuseki 5.1.0), are implemented
+since stage 2: the mapper, the session and the unit of work. To work on the toolchain itself, see
 xref:develop/index.adoc[Working on the toolkit].
 
 An application using rdf-persistence writes its domain once, in LinkML. A deterministic, build-time
@@ -26,6 +26,8 @@ role `librarian`.
 [#decision]
 == The decision (O-1)
 
+_Which code is generated, and which is written once in the toolkit?_
+
 *Generated domain classes, runtime mapper.* Only LinkML's standard generators run, through the
 toolkit's templates. Since 2026-11-05 (D-2) the classes and the mapper serve *domain services* only;
 the API path needs neither (xref:architecture/api.adoc[API]). The mapper, the repositories and the routes are not generated: they are generic
@@ -39,6 +41,8 @@ fully generic service without typed classes ("approach C"), because domain logic
 [#metamodel]
 == The metamodel
 
+_What does the toolkit give a schema to build on?_
+
 A small LinkML schema shipped inside the package (`rdf_persistence/model/`, split into modules
 since the <<revision,revision of 2026-11-05>>; namespace `https://meaningfy.ws/ns/rdf-persistence#`). Its classes are generated once, into the toolkit's own
 package; an application's generated code imports them rather than regenerating them.
@@ -50,13 +54,14 @@ package; an application's generated code imports them rather than regenerating t
 |`owned` (slot annotation) |The slot's values are part of this aggregate and live in its graph (a commit replaces the whole graph). A part whose class includes `Described` has an IRI, `{root_iri}/parts/{uuid4}`, minted by the toolkit when it has none and kept across commits; a part without an identifier slot (a grant, a prohibition) is a blank node, skolemised on write (PD-6, PD-8a). Any other slot whose range is a class refers to another aggregate root, by IRI.
 |`database` (class annotation) |`tenant` (default) or `system`: which database the aggregate lives in.
 |`graph: meta` (class annotation) |The tenant's root object lives in the tenant database's designated `meta` graph instead of a graph of its own.
-|`internal` (slot annotation) |The slot never appears in the API contract (e.g. file keys).
+|`internal` (slot annotation) |Only the service sets the slot (e.g. file keys, a tenant's database name): it never appears in the API contract or a response, a request body that sets it is refused (422), the tenant-create body included, and a replace keeps its stored value on the root and on the parts that persist, matched by IRI. The mapper writes it, so a domain service can set it.
 |`rp_path` (class annotation) |Required on every aggregate root: its path segment in the API and in its IRIs (`{tenant}/{rp_path}/{uuid}`).
 |`rp_unlabelled` (class annotation) |An owned value class whose instances need no label of their own.
 |`Principal` |A reference to a user account in the identity provider, by IRI only.
 |`StoredFile` (mixin) |The current content of a kept file: `file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key` (internal).
 |`loaded_graph` (slot) |A graph whose lifecycle belongs to the aggregate (e.g. the triples of a loaded RDF file).
-|`TenantAccess`, `Grant` |The tenancy records of the system database (N-11): label, state (`TenantState`: `active`, `deleting`), database name, owned grants and prohibitions (ODRL). Role names come from the consumer's role definitions; an application may narrow `role` to an enum by subclassing (`is_a` with `slot_usage`), but need not.
+|`TenantAccess`, `Grant`, `Prohibition` |The tenancy records of the system database (N-11): label, state (`TenantState`: `active`, `deleting`), database name, owned grants and prohibitions (ODRL). `TenantAccess` is a `Policy`; an application subclasses it once, in an access module. Role names come from the consumer's role definitions; an application may narrow `role` to an enum by subclassing (`is_a` with `slot_usage`), but need not.
+|`RoleDefinition` |One entry of the application's role definitions: a `role`, the `level` it applies at (`RoleLevel`: `system`, `tenant`, `aggregate`) and the `actions` it permits. Supplied as a YAML file, read by `load_role_definitions`, never stored.
 |`RegistryEntry` |An entry of a tenant's `registry` graph: the graph's IRI, its kind (`aggregate`, `loaded_graph`) and the aggregate that owns it. Written by the session, never by the application.
 |`version` (slot) |The version token of every aggregate, stated about its graph IRI (not the root), written by the session; not part of any domain class.
 |`module_kind` (schema annotation) |`domain`, `technical` or `access`: what a schema module holds; the boundary check uses it (<<toolchain>>).
@@ -83,7 +88,10 @@ Slots of the metamodel (IRIs in the `rp:` namespace unless shown):
 |`assignee` |`odrl:assignee` |`Principal` (IRI), required (a grant is an `odrl:Permission`, D-5)
 |`target` |`odrl:target` |uri: the tenant IRI, or an aggregate's graph IRI; required
 |`role` |`rp:role` |string, matched against the consumer's role definitions; an application may narrow it to an enum by `slot_usage`; exactly one of `role` and `action`
-|`action` |`odrl:action` |`Action`, for a direct permission
+|`action` |`odrl:action` |`Action` (`read`, `modify`, `delete`, `administer`; fixed by the toolkit): for a direct permission, or the action a prohibition forbids (required there)
+|`prohibitions` |`rp:prohibition` |`Prohibition`, multivalued, owned (blank nodes, skolemised like `grants`)
+|`level` |`rp:level` |`RoleLevel`, required, on `RoleDefinition`
+|`actions` |`rp:permits` |`Action`, multivalued, required (and not empty), on `RoleDefinition`
 |`file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key` |`rp:fileName`, `rp:mediaType`, `rp:byteSize`, `rp:sha256`, `dcterms:dateSubmitted`, `rp:uploadedBy`, `rp:fileKey` |as in the consumer model's slot table; `file_key` internal
 |`loaded_graph` |`rp:loadedGraph` |uri
 |`version` |`rp:version` |string, written by the session only
@@ -231,6 +239,8 @@ guard this; each extension gets a golden test.
 [#application-schema]
 == What the application writes
 
+_What does an application write by hand?_
+
 One file per module and a root schema that imports them. Every element carries an IRI, a `title`
 and a `description` (<<hard-check>>). This example passes `rp-generate`; the toy library in
 `tests/fixtures/library/` is the full version (a tenant root, a stored file, an access module, an
@@ -312,6 +322,8 @@ An application may narrow `Grant.role` to an enum of its own roles by subclassin
 [#toolchain]
 == The toolchain
 
+_What does `rp-generate` run, in which order?_
+
 One command, run from the application's `make generate-models`, regenerates every entry of the
 `[tool.rp-generate]` table:
 
@@ -378,31 +390,51 @@ the generated types.
 [#run-time]
 == At run time
 
+_How does a domain service read and commit an aggregate?_
+
 [source,python]
 ----
-from rdf_persistence import open_session            # public API only
-from library.domain.generated import Book, SCHEMA
+from rdf_persistence import Mapper, UnitOfWork, generated_models, open_session
 
-async with open_session(store, schema=SCHEMA, tenant=library_iri, caller=caller) as session:
-    book = await session.get(Book, book_iri)        # loads the book's graph, maps it to Book
-    book.title = "New title"
-    await session.commit()                           # one guarded update; conflict if the version moved
+from library.domain.generated import books
+from library.domain.generated.books import Book
+
+mapper = Mapper(view, generated_models(books))    # view: the schema's SchemaView (kit.view)
+async with open_session(
+    store, database=database, tenant_iri=library_iri, principal=principal, clock=clock
+) as session:
+    work = UnitOfWork(session, mapper)
+    book = await work.get(Book, book_iri)         # loads the book's graph, maps it to Book
+    book.label = "New title"
+    work.add(book)
+    await work.commit()                           # one guarded update; Conflict if the version moved
 ----
 
-* *Mapping* _(spike: about 70 lines, round trip equal)_: class and slot IRIs come from the schema
-  (`class_uri`, `slot_uri`, or the default prefix); owned parts live in the root's graph, by IRI when their class includes `Described` and as
-  skolemised blank nodes otherwise (PD-6, PD-8a);
-  references to other aggregates are IRIs; multi-valued slots are sets, so order is not kept (model an
-  order slot when order matters).
-* *Commit* _(spike, Fuseki 5.1.0)_: one update deletes the graph's triples and inserts the new ones
-  with a fresh version token, guarded by the old token; Fuseki answers 204 even when the guard
-  matches nothing, so an `ASK` for the new token tells committed from conflict.
+The signature is `open_session(store, *, database, tenant_iri, principal, clock)`, where `principal` is a `Principal`; `clock` defaults
+to the current UTC time. In a service, `kit.session(tenant, principal)` opens it with the tenant's
+database name (xref:howto/adopt.adoc#session[Build an application, step 8]).
+
+* *Mapping* (implemented: `rdf_persistence/services/mapper.py`, `Mapper`): class and slot IRIs come
+  from the schema (`class_uri`, `slot_uri`, or the default prefix); owned parts live in the root's
+  graph, by IRI when their class includes `Described` and as skolemised blank nodes otherwise
+  (PD-6, PD-8a); references to other aggregates are IRIs; multi-valued slots are sets, so order is
+  not kept (model an order slot when order matters). `internal` slots are written; the tracking
+  slots are not, since the session writes them about the graph IRI.
+* *Commit* (implemented: `Session.replace_graph` and `add_graph` in
+  `rdf_persistence/services/session.py`, driven by `UnitOfWork.commit`): a replace is one SPARQL
+  update request of several `;`-joined operations, each guarded by the old version token, that
+  replaces the graph and the root's registry entries and writes a fresh token; Fuseki answers 204
+  even when the guard matches nothing, so an `ASK` for the new token tells committed from
+  conflict. Each aggregate is committed on its own: a conflict on one leaves those committed
+  before it in place.
 * *Kinds*: the mapper reads the class the caller asks for; it does not use `designates_type`. An owned
   part is read as its slot's range class, so a subclass in an owned slot comes back as its parent (a
   known limit of `rdf_persistence/services/mapper.py`, lifted when a schema owns a class hierarchy).
 
 [#guarding]
 == Guarding the generated code
+
+_How is generated code kept fresh and correct?_
 
 The rule of xref:architecture/open-decisions.adoc[D-13] comes from
 https://meaningfy.atlassian.net/wiki/spaces/MR/pages/2107342856[the model-driven development runbook]:
@@ -499,11 +531,13 @@ Both guards are `testkit.assert_models_generated(package, *, roots, allow=(), ex
 [#adoption]
 == How an application adopts it
 
+_How do I start?_
+
 The steps, with examples that run, are in xref:howto/adopt.adoc[Build an application with
 rdf-persistence]. In short:
 
 . Write `models/<app>.yaml` and one file per module, importing the metamodel; mark aggregate roots, owned slots, databases;
   write the application's role definitions (and, optionally, narrow `role` by subclassing `Grant`).
 . Add `make generate` calling `rp-generate`, and the freshness check to CI.
-. Write use-case services against `open_session` and the generated classes.
-. Write routes with the service kit; publish the OpenAPI contract and the JSON-LD context; use the generated TypeScript types in the client, checked against the contract.
+. Write use-case services against a session (`kit.session` or `open_session`), `UnitOfWork` and the generated classes.
+. Serve the schema with `install_service`, and write any extra routes with the `ServiceKit` it returns; publish the OpenAPI contract and the JSON-LD context; use the generated TypeScript types in the client, checked against the contract.

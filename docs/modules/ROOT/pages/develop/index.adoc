@@ -58,6 +58,8 @@ The layers import downward only: `entrypoints | adapters > services > domain`.
 
 == Change a toolkit schema
 
+_How do I change a toolkit schema?_
+
 This applies to the metamodel, `rp_service.yaml` and `rp_generation.yaml`.
 
 . Edit the schema. Every element needs a `title`, a `description` and an IRI; every permissible
@@ -89,6 +91,8 @@ subclass is not flagged, so it needs no entry.
 
 == Add or change a generator extension
 
+_How do I add a generator extension?_
+
 An extension closes a gap in a stock LinkML generator by subclassing it or replacing its template.
 It never patches the generated output.
 
@@ -114,6 +118,8 @@ review the whole generated diff, then run `make check-all`.
 
 == Add a check rule
 
+_How do I add a check rule?_
+
 . Add the rule's value to `HardRule` or `BoundaryRule` in `rp_generation.yaml`, with a title,
   description and meaning, and run `make generate`.
 . Implement it in `rdf_persistence/generation/checks/hard.py` or `boundary.py`, yielding a
@@ -135,6 +141,8 @@ and checks it answers.
 
 == How long the checks take
 
+_How long do the checks take?_
+
 These are rough wall-clock times from ordinary runs on a developer laptop, not from profiling.
 Use them to plan, and add a row or update one when a run differs a lot. Detailed profiling
 comes later.
@@ -143,12 +151,13 @@ comes later.
 |===
 |Target |Tests |Time |Measured |Notes
 
-|`make check-all` |2711 |≈ 6 min |2026-11-06, f2531a1
-|The pytest part alone takes 5 min 35 s; the quality checks come before it.
+|`make check-all` |2733 |≈ 5.5 min |2026-11-06, stage 5 tip
+|The pytest part takes 4.5 to 5.5 min; the quality checks come before it.
 
-|`make test-containers` |170 |≈ 3.5 min |2026-11-06, f2531a1
-|The pytest part takes 3 min 15 s, container start-up included. One run in three failed at
-start-up on a Docker Compose error; run it again.
+|`make test-containers` |170 |2 to 3.5 min |2026-11-06, stage 5 tip
+|The pytest part takes 1 min 45 s to 3 min 15 s, container start-up included; it is faster
+when the images are cached. One run in four failed at start-up on a Docker Compose error; run
+it again.
 
 |`make clean-code`, `make check-architecture`, `make check-docs` |– |≈ 1 s each |2026-11-06,
 f2531a1 |

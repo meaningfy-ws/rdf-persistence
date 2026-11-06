@@ -1,18 +1,22 @@
 = Build an application with rdf-persistence
 :description: How an application adopts rdf-persistence: write its model in LinkML, generate its code, use the generated classes and guard them in its tests.
 
-Status: *part 1 of 2* (2026-11-05). This page covers what the toolkit does today: modelling,
-generation, the generated classes and the test guards (stage 1 of the change
-`toolkit-v1-foundation`). Storing aggregates, tenancy, files, access control and the API come in
-later stages; <<not-yet>> lists them. Every step and example on this page has been run against the
-toolkit.
+Status: *complete* (2026-11-06). Steps 1 to 7 cover modelling, generation, the generated classes
+and the test guards; steps 8 to 13 cover the session, tenancy, files, access, the service and its
+tests (stages 1 to 5 of the change `toolkit-v1-foundation`). Every example is modelled on the toy
+library of the toolkit's repository: `tests/fixtures/library/` (the model), `tests/e2e/library_app.py`
+(the composition root) and `tests/toy_service.py` (the same service over the fakes). Short answers
+to the usual questions, with links back here, are on xref:questions.adoc[Common questions].
 
 You write your domain once, as a LinkML schema. `rp-generate` turns it into Python classes, SHACL
 shapes, a JSON-LD context and frames, TypeScript types and Mermaid diagrams. Your code works with
 the generated classes, and the testkit fails your tests if anyone edits generated code or writes a
 model by hand. The reasons behind this are in xref:architecture/generation.adoc[Model to code].
 
+[#install]
 == 1. Install
+
+_How do I start an application?_
 
 rdf-persistence is installed from its `develop` branch. The generators are needed at build time
 only, so they go in the dev group, together with the test helpers:
@@ -35,6 +39,8 @@ with code 2 and says so.
 
 == 2. Lay out the application
 
+_Where do the model and the generated files go?_
+
 [source,text]
 ----
 models/                       the LinkML schema: a root schema and one file per module
@@ -47,7 +53,10 @@ tests/
 Generated files go only in folders named `generated`. The file guard (<<guard>>) fails on shapes,
 contexts, schemas or TypeScript found anywhere else.
 
+[#model]
 == 3. Write the model
+
+_How do I model my domain?_
 
 Split the schema into one file per module and a root schema that imports them. A *domain module*
 holds one aggregate: its root class and the classes the root owns.
@@ -151,6 +160,8 @@ xref:architecture/generation.adoc#metamodel[the metamodel].
 
 == 4. Generate
 
+_How do I turn the model into code?_
+
 Declare where each artefact goes:
 
 [source,toml]
@@ -183,6 +194,8 @@ the code, change the schema and generate again.
 
 == 5. Use the generated classes
 
+_What do the generated classes check?_
+
 [source,python]
 ----
 from pydantic import ValidationError
@@ -210,8 +223,8 @@ Book(id="https://example.org/library/books/3", label="L", description="D", isbn=
 Every generated class derives from the toolkit's strict base, `RpModel`. It refuses unknown
 fields, validates on assignment, and enforces the rules declared in the schema: `required`,
 ranges, patterns, `exactly_one_of`, `any_of` and `unique_keys`. Each object, owned parts included,
-has an `id`. Once the session is available (stage 2), the toolkit mints a part's IRI,
-`{root_iri}/parts/{uuid4}`, when you leave it out, and keeps it across commits. The metamodel's classes (`AggregateRoot`, `Described`, `Grant`, …) are imported from
+has an `id`. The service mints a part's IRI, `{root_iri}/parts/{uuid4}`, when a request body leaves it out, and
+keeps it across commits; in a domain service, build a part with `new_part` (<<session>>). The metamodel's classes (`AggregateRoot`, `Described`, `Grant`, …) are imported from
 `rdf_persistence`, never generated into your package.
 
 Use the generated classes in your domain services. Do not declare models of your own: no
@@ -220,6 +233,8 @@ Use the generated classes in your domain services. Do not declare models of your
 
 [#guard]
 == 6. Guard the model in your tests
+
+_How do I keep the model and the code from drifting apart?_
 
 The testkit adds four checks to your test suite.
 
@@ -317,6 +332,8 @@ generated code is stale or was edited, and names the files.
 
 == 7. Change the model
 
+_How do I change the model later?_
+
 . Edit the schema.
 . Run `make generate`.
 . Add or adjust conformance cases if you used a new constraint kind; `conformance.run` names any
@@ -326,19 +343,495 @@ generated code is stale or was edited, and names the files.
 When you upgrade rdf-persistence, run `make generate` and review the generated diff: a new
 toolkit version can change the generated code.
 
-[#not-yet]
-== Not yet available
+[#session]
+== 8. Store and read aggregates in a domain service
 
-[cols="2,3,1",options="header"]
+_How do I store and read an aggregate?_
+
+Over HTTP the router stores and reads every aggregate for you (<<serve>>). Write code only for
+rules that are more than CRUD, such as a check across two objects or a computed value. That code
+works on the generated classes through a *session* and a *unit of work*:
+
+* a `Session` reads and commits whole graphs of one tenant database, on behalf of one principal;
+* a `Mapper` turns a generated object and its owned parts into triples and back;
+* a `UnitOfWork(session, mapper)` gives object-level access: `get` a root, `add` a new or changed
+  one, `commit`.
+
+[source,python]
+----
+# library/services/books.py
+import uuid
+
+from rdf_persistence import Mapper, ServiceKit, UnitOfWork, generated_models, new_part
+
+from library.domain.generated import books
+from library.domain.generated.books import Book, Chapter
+
+
+def book_mapper(kit: ServiceKit) -> Mapper:
+    """Build it once: it reads the schema the kit loaded."""
+    return Mapper(kit.view, generated_models(books))
+
+
+async def add_book(kit: ServiceKit, mapper: Mapper, tenant: str, principal: str) -> str:
+    iri = f"{tenant}/books/{uuid.uuid4()}"         # {tenant}/{rp_path}/{uuid4}
+    async with kit.session(tenant, principal) as session:
+        work = UnitOfWork(session, mapper)
+        work.add(Book(id=iri, label="Dune", description="A planet.", author="Frank Herbert"))
+        await work.commit()
+    return iri
+
+
+async def add_chapter(
+    kit: ServiceKit, mapper: Mapper, tenant: str, principal: str, book_iri: str, number: int
+) -> None:
+    async with kit.session(tenant, principal) as session:
+        work = UnitOfWork(session, mapper)
+        book = await work.get(Book, book_iri)       # NotFound if the book has no graph
+        book.chapters = [*(book.chapters or []), new_part(Chapter, book_iri, number=number)]
+        work.add(book)
+        await work.commit()                          # Conflict if the book changed meanwhile
+----
+
+`tenant` is the tenant's IRI and `principal` the caller's IRI (<<access>> shows where both come
+from). `kit.session(tenant, principal)` opens a session on that tenant's database; `kit.view` is
+the schema the service loaded. Pass `generated_models` every module whose classes the mapper reads:
+the roots you `get` and the parts they own.
+
+What a commit does:
+
+* A new root is written with `Session.add_graph`; a root read in this unit of work, with
+  `Session.replace_graph` and the version it was read with. Each commit sends one SPARQL update
+  of several `;`-joined operations, guarded by that version, then an `ASK` for the new version. A
+  version that moved meanwhile raises `Conflict` and changes nothing.
+* Each aggregate is committed on its own. With two changed roots, a conflict on the second leaves
+  the first committed.
+* The session writes the version and the tracking slots (`created`, `creator`, `modified`,
+  `contributor`) as statements about the aggregate's graph, `{root}/graph`. Your code never sets
+  them.
+* An aggregate IRI must be one the toolkit would mint, `{tenant}/{rp_path}/{uuid4}`. Any other is
+  refused (`InvalidIri`, a `PersistenceError` and a `ValueError`) before anything is sent.
+* A part's IRI is `{root}/parts/{uuid4}`. `new_part` mints it, and it stays the same across
+  commits.
+
+The session also works below the object level, on triples. Use it for what the mapper does not
+cover:
+
+[cols="2,3",options="header"]
 |===
-|Part |What it will do |Stage
-|Store and session |Load an aggregate's graph into the generated classes, change it, and commit it with a version check (`open_session`); tenant databases |2
-|Files and identity |Upload and keep files in S3-compatible storage; verify access tokens; manage users in the identity provider |3
-|Access |Role definitions, grants and prohibitions; the access check behind every request |4
-|Service kit and API |A generic router serving every aggregate as JSON, JSON-LD and Turtle; the OpenAPI contract; using the TypeScript types in a client |5
+|`Session` method |What it does
+|`get_graph(iri)` |The aggregate's triples, its graph IRI and its version token
+|`add_graph(iri, triples, loaded_graphs=())` |Store a new aggregate; returns its first version
+|`replace_graph(iri, triples, if_version, loaded_graphs=None)` |Replace it if it still has `if_version`; returns the new version
+|`load_graph(iri, data, *, rdf_format)` |Parse an RDF file into a new graph of the aggregate (<<files>>)
+|`remove(iri, if_version)` |Delete the aggregate, its loaded graphs and its registry entries
 |===
 
-Their design is described in xref:architecture/index.adoc[Architecture v1],
-xref:architecture/api.adoc[A lightweight API] and
-xref:architecture/access-control.adoc[Access control and identity]. This guide gains a section for
-each part when its stage is built.
+Outside a service, `open_session(store, *, database, tenant_iri, principal, clock)` opens the
+same session (`principal` is a `Principal`; the kit's `session` takes its IRI as a string) on a `Store` you hold. The kit's `session` calls it with the tenant's database name.
+
+[#tenancy]
+== 9. Create tenants
+
+_How do tenants work?_
+
+Each tenant has its own database and its own bucket. The system database holds one *access record*
+per tenant: its label, state, database name, grants and prohibitions. Your schema names two
+classes for this, as the toy library does:
+
+[source,yaml]
+----
+# models/library_tenant.yaml (module_kind: domain): the tenant root, kept in the tenant's meta graph
+classes:
+  Library:
+    title: Library
+    description: A library; the tenant root.
+    class_uri: schema:Library
+    mixins: [Described, Tracked]
+    slots: [city]
+    annotations:
+      graph: meta
+      database: tenant
+----
+
+[source,yaml]
+----
+# models/library_access.yaml (module_kind: access): the access record
+classes:
+  LibraryAccess:
+    title: Library access
+    description: The access record of a library tenant; its grants are the metamodel's.
+    class_uri: lib:LibraryAccess
+    is_a: TenantAccess
+----
+
+A client creates a tenant with `POST /{tenant_segment}`. The body is a `TenantCreate`: the label,
+and in `root` the slots of the tenant's root object:
+
+[source,json]
+----
+{"label": "Ghent", "root": {"description": "Books for all.", "city": "Ghent"}}
+----
+
+The answer is 201 with a `TenantSummary` (`id`, `label`, `state`) and a `Location`. In code, the
+same call is `kit.tenancy.create(label, root_slots, creator)`:
+
+[source,python]
+----
+from rdf_persistence import Principal
+
+summary = await kit.tenancy.create(
+    "Ghent", {"description": "Books for all.", "city": "Ghent"}, Principal(id=principal)
+)
+----
+
+What create does, in order:
+
+. It mints the tenant IRI, `{base}{tenant_segment}/{uuid4}`, and builds and validates both
+  objects. A root that names an `id` or sets an `internal` slot is refused (422), and so is an
+  invalid label. A refused request creates nothing.
+. It creates the tenant's database and bucket, both named `{prefix}-t-{uuid hex}`.
+. It stores the root object in the tenant's meta graph.
+. Last, it writes the access record, `active`, with one grant: the creator holds the settings'
+  `creator_role` on the tenant.
+
+A crash part way leaves a database or a bucket that no record names. The start-up sweep drops it.
+
+*Delete* is `DELETE /{tenant_segment}/{t}` with `If-Match`. The version is the access record's: the
+`ETag` of `GET …/grants`, or of the last `PUT …/grants` or `PUT …/label`. The tenant is marked
+`deleting`, so from then on it answers 404. Then its database and bucket are dropped and its record
+is removed. The sweep at the next start-up finishes a deletion that a crash interrupted.
+
+`PUT …/label` renames the tenant. `GET` and `PUT /{tenant_segment}/{t}` read and replace its root
+object, like any aggregate.
+
+[#files]
+== 10. Keep files
+
+_How do I keep uploaded files?_
+
+The toolkit keeps two kinds of file.
+
+*Bytes*, kept as they are. A root that includes the `StoredFile` mixin describes a kept file
+(`file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key`); the toy
+library's `Scan` does. The bytes go to the tenant's bucket through the `FileStore` port:
+`put(bucket, key, data)`, `get(bucket, key)` and `delete(bucket, key)`. The toolkit has no route
+for the bytes, so you add one. `file_key` is `internal`: no request body can set it and no response
+shows it, but a domain service can, since the mapper writes internal slots. The toy library keeps
+the bytes under the scan's id instead. Its route is in <<serve>>.
+
+*RDF*, parsed into a graph of its own. `Session.load_graph(iri, data, rdf_format=RdfFormat.TURTLE)`
+parses the data in a worker thread and puts it into a new named graph, `{iri}/content/{uuid4}`.
+Data that does not parse raises `InvalidGraph`, and nothing is written. The graph belongs to the
+aggregate once a commit names it:
+
+[source,python]
+----
+from rdf_persistence import RdfFormat
+
+async with kit.session(tenant, principal) as session:
+    loaded = await session.load_graph(scan_iri, data, rdf_format=RdfFormat.TURTLE)
+    graph, _, version = await session.get_graph(scan_iri)
+    await session.replace_graph(scan_iri, graph, version, loaded_graphs=[loaded])
+----
+
+`replace_graph` with `loaded_graphs=None` keeps the loaded graphs already registered; a list
+replaces them, and the graphs left out are emptied. `remove` empties every loaded graph of the
+aggregate. Formats: `turtle`, `rdfxml`, `ntriples` and `jsonld`.
+
+[#access]
+== 11. Control access
+
+_Who may do what?_
+
+*Roles are data.* Write them in a YAML file. Each entry names a role, the level it applies at
+(`system`, `tenant` or `aggregate`) and the actions it permits (`read`, `modify`, `delete`,
+`administer`):
+
+[source,yaml]
+----
+# models/library_roles.yaml
+- {role: admin, level: system, actions: [read]}
+- {role: librarian, level: tenant, actions: [read, modify, delete, administer]}
+- {role: reader, level: tenant, actions: [read]}
+----
+
+`load_role_definitions(path)` reads and validates the file. A malformed entry, an entry with no
+actions, or a role defined twice at one level raises `InvalidRoleDefinition`, which names the
+entry. A `system` role comes from the token's global roles (the `roles_claim`); it is never
+granted. The set of actions is fixed by the toolkit: an application cannot add one.
+
+*Grants and prohibitions* live in the tenant's access record. `GET …/grants` answers the
+`GrantSet` with its `ETag`; `PUT …/grants` with `If-Match` replaces it whole:
+
+[source,json]
+----
+{
+  "grants": [
+    {"assignee": "https://idp.example.org/users/ada", "target": "https://example.org/library/libraries/6f1c…", "role": "librarian"},
+    {"assignee": "https://idp.example.org/users/bob", "target": "https://example.org/library/libraries/6f1c…/books/0b7e…/graph", "action": "modify"}
+  ],
+  "prohibitions": [
+    {"assignee": "https://idp.example.org/users/bob", "target": "https://example.org/library/libraries/6f1c…/books/0b7e…/graph", "action": "delete"}
+  ]
+}
+----
+
+* An *assignee* is a principal IRI. The JWKS verifier makes it from the token's issuer and
+  subject: `{issuer}/users/{sub}`.
+* A *target* is the tenant's IRI or an aggregate's graph IRI, `{root}/graph`. The level follows
+  from the target.
+* A *grant* gives exactly one of a `role` (defined at the target's level) or an `action`. Two
+  grants with the same assignee, target and role or action are refused.
+* A *prohibition* forbids one action and wins over every grant. A prohibition of `read` forbids
+  every action, since each implies `read`.
+
+*The check* runs on every tenant route, after the token is verified and before the route's own code. It
+answers in this order:
+
+. The target is not the tenant or one of its aggregates: 404.
+. The tenant is not `active`: 404.
+. A prohibition in scope forbids the action: 403.
+. The caller's grants in scope and its global roles permit no action at all: 404. A hidden tenant
+  and a missing one answer alike.
+. They do not permit this action: 403. Every other action implies `read`.
+
+The scope is the tenant, plus the aggregate's graph for an action on one aggregate. A listing
+needs `read` on the tenant and leaves out the aggregates a `read` prohibition hides from the
+caller. Creating an aggregate needs `modify` on the tenant.
+
+[#serve]
+== 12. Serve the application
+
+_How do I serve it over HTTP?_
+
+The *composition root* is the one place that builds the adapters and hands them to
+`install_service`. The toy library's is `build_library_app`:
+
+[source,python]
+----
+# library/entrypoints/app.py
+from pathlib import Path
+
+from fastapi import FastAPI, Request, Response
+
+from rdf_persistence import (
+    AccessRules,
+    Action,
+    FileStore,
+    Identity,
+    ServiceSettings,
+    Store,
+    TokenVerifier,
+    install_service,
+    load_role_definitions,
+)
+
+from library.domain import generated
+
+SCHEMA = Path("models/library.yaml")
+ROLES = Path("models/library_roles.yaml")
+
+
+def build_library_app(
+    *,
+    store: Store,
+    files: FileStore,
+    identity: Identity,
+    verifier: TokenVerifier,
+    settings: ServiceSettings,
+) -> FastAPI:
+    app = FastAPI()
+    kit = install_service(
+        app,
+        schema=SCHEMA,
+        generated=generated,
+        store=store,
+        files=files,
+        identity=identity,
+        verifier=verifier,
+        rules=AccessRules(load_role_definitions(ROLES)),
+        settings=settings,
+    )
+    path = f"/{settings.tenant_segment}/{{t}}/scan-files/{{scan_id}}"
+
+    async def bucket_after(request: Request, tenant_id: str, scan_id: str, action: Action) -> str:
+        checked = await kit.require_aggregate(
+            request.headers.get("authorization"), tenant_id, "scans", scan_id, action
+        )
+        return await kit.bucket_of(checked.caller_access.tenant)
+
+    @app.put(path, status_code=204)
+    async def put_file(t: str, scan_id: str, request: Request) -> Response:
+        bucket = await bucket_after(request, t, scan_id, Action.MODIFY)
+        await kit.files.put(bucket, scan_id, await request.body())
+        return Response(status_code=204)
+
+    @app.get(path)
+    async def get_file(t: str, scan_id: str, request: Request) -> Response:
+        bucket = await bucket_after(request, t, scan_id, Action.READ)
+        return Response(await kit.files.get(bucket, scan_id), media_type="application/octet-stream")
+
+    return app
+----
+
+The adapters and the settings come from the deployment. The adapters of the store, the identity
+provider and the token verifier are async context managers, so open them for the life of the app:
+
+[source,python]
+----
+from rdf_persistence import (
+    FusekiStore,
+    JwksTokenVerifier,
+    S3FileStore,
+    ServiceSettings,
+    ZitadelIdentity,
+    zitadel_roles_claim,
+)
+
+settings = ServiceSettings(
+    base="https://example.org/library/",   # IRIs and problem types are minted under it
+    prefix="lib",                          # database and bucket names start with it
+    tenant_segment="libraries",
+    creator_role="librarian",
+    roles_claim=zitadel_roles_claim(project_id),
+)
+async with (
+    FusekiStore(fuseki_url, fuseki_user, fuseki_password) as store,
+    ZitadelIdentity(issuer, service_token, organisation_id, project_id) as identity,
+    JwksTokenVerifier(issuer, project_id, zitadel_roles_claim(project_id)) as verifier,
+):
+    files = S3FileStore(s3_endpoint, access_key_id, secret_access_key, region)
+    app = build_library_app(
+        store=store, files=files, identity=identity, verifier=verifier, settings=settings
+    )
+    ...                                    # serve app, for example with uvicorn
+----
+
+The verifier takes the issuer, the audience (the Zitadel project id) and the roles claim. It
+refuses an issuer that is not `https` unless you pass `allow_insecure_issuer=True`, which is for
+test containers only. In Zitadel, set each application to JWT access tokens: the verifier cannot
+check opaque ones.
+
+`install_service` mounts the routes (<<routes>>), the problem responses and the OpenAPI document.
+On start-up, before your own lifespan, it creates the system database if it is missing and runs the
+sweep. It stops with `OSError` if the generated folder lacks the context, the shapes, a frame or
+`openapi-components.json`, and with `LookupError` if the schema has no tenant root or not exactly
+one access record class. `rules` may also be the path of the roles file.
+
+It returns the *`ServiceKit`*, for your own routes and domain services:
+
+[cols="2,3",options="header"]
+|===
+|Member |Use
+|`require(authorization, tenant_id, action)` |Verify the token and check `action` on the tenant; returns the caller's `CallerAccess`
+|`require_aggregate(authorization, tenant_id, rp_path, aggregate_id, action)` |The same on one aggregate, so a prohibition on it applies; returns an `Authorised` whose `checked_target` is the aggregate IRI that was checked
+|`session(tenant, principal)` |A session on the tenant's database (<<session>>)
+|`bucket_of(tenant)` |The tenant's bucket name
+|`tenancy`, `store`, `files`, `identity`, `view`, `settings` |The tenancy service, the ports (`store` is the `Store` you passed, wrapped as `ToolkitStore`), the loaded schema and the settings
+|`tenant_iri(tenant_id)` |The tenant IRI of a tenant id taken from a path
+|===
+
+A route of your own that calls a domain service needs the caller's principal IRI as well. It gets
+the caller and the check separately through the kit's gate, which is what `require_aggregate` does
+in one call:
+
+[source,python]
+----
+caller = await kit.gate.caller(request.headers.get("authorization"))   # 401 without a valid token
+checked = await kit.gate.aggregate_access(caller, t, "books", book_id, Action.MODIFY)
+await add_chapter(
+    kit, mapper, checked.caller_access.tenant, caller.principal, checked.checked_target, number
+)
+----
+
+[#routes]
+The *router* serves every aggregate root of the schema that has an `rp_path`. A class added to the
+model is served after a restart:
+
+[cols="2,3",options="header"]
+|===
+|Route |Methods
+|`/{tenant_segment}` |`GET` the caller's tenants; `POST` a new tenant
+|`/{tenant_segment}/{t}` |`GET`, `PUT` the tenant's root object; `DELETE` the tenant
+|`/{tenant_segment}/{t}/grants` |`GET`, `PUT` the grant set
+|`/{tenant_segment}/{t}/label` |`PUT` the label
+|`/{tenant_segment}/{t}/{rp_path}` |`GET` a listing; `POST` a new aggregate
+|`/{tenant_segment}/{t}/{rp_path}/{id}` |`GET`, `PUT`, `DELETE` one aggregate
+|`/context.jsonld` |`GET` the generated JSON-LD context
+|===
+
+A client creates a book with `POST /libraries/{t}/books` and a plain JSON body without ids:
+
+[source,json]
+----
+{"label": "Dune", "description": "A planet.", "author": "Frank Herbert", "chapters": [{"number": 1}]}
+----
+
+The answer is 201, with the stored book (ids minted), its `ETag` and a `Location`. A `PUT` of the
+same body with `"id"` set and `If-Match` replaces it. Bodies are strict, and every error is an
+RFC 9457 problem; the rules are on
+xref:architecture/api.adoc#serving[A lightweight API, Serving it], and the order of the checks on a
+`PUT` is in xref:architecture/api.adoc#anatomy[Anatomy of a request].
+
+The generated TypeScript types describe the plain JSON a client sends and receives.
+
+[#test-service]
+== 13. Test the service
+
+_How do I test my application without servers?_
+
+`rdf_persistence.testkit` has in-memory stand-ins for the four ports:
+
+[cols="2,3",options="header"]
+|===
+|Helper |Stands in for
+|`FakeStore()` |a `Store` (a small in-memory SPARQL store)
+|`FakeFileStore()` |a `FileStore`
+|`FakeIdentity()` |an `Identity`
+|`TokenSigner()` |the identity provider's keys: `issue(sub=…, roles=[…])` signs a token, and `transport` serves the keys to a `JwksTokenVerifier`
+|`fake_session(store, *, tenant_iri, principal, clock)` |a real `Session` over a `FakeStore`, for a domain service's unit test
+|===
+
+The toy library's router tests build the whole service over them (`tests/toy_service.py`):
+
+[source,python]
+----
+import httpx
+from fastapi import FastAPI
+
+from rdf_persistence import AccessRules, JwksTokenVerifier, install_service, load_role_definitions
+from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
+
+# SCHEMA, ROLES, generated and settings as in the composition root; TENANT_BODY as in step 9
+signer = TokenSigner()
+settings = settings.model_copy(update={"roles_claim": signer.roles_claim})
+verifier = JwksTokenVerifier(
+    "https://idp.test", signer.audience, signer.roles_claim, transport=signer.transport
+)
+app = FastAPI()
+kit = install_service(
+    app,
+    schema=SCHEMA,
+    generated=generated,
+    store=FakeStore(),
+    files=FakeFileStore(),
+    identity=FakeIdentity(),
+    verifier=verifier,
+    rules=AccessRules(load_role_definitions(ROLES)),
+    settings=settings,
+)
+headers = {"Authorization": f"Bearer {signer.issue(sub='ada', roles=[])}"}
+async with app.router.lifespan_context(app):     # start-up: the system database and the sweep
+    transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        created = await client.post("/libraries", json=TENANT_BODY, headers=headers)
+----
+
+`https://idp.test` is the issuer `TokenSigner` signs for. `ASGITransport` does not run the app's
+lifespan, so the test enters it itself; without it the system database does not exist.
+
+Before you rely on an adapter of your own, run the testkit's conformance suites against it:
+`store_conformance`, `file_store_conformance` and `identity_conformance` under
+`rdf_persistence.testkit`. Each has `CASES` and a `run_case` to run one of them on your adapter.
+The toolkit runs the same suites on its fakes and on Fuseki, Garage and Zitadel in containers.

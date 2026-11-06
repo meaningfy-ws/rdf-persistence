@@ -12,6 +12,8 @@ context: |
   MWBv2 is a separate product repo that depends on this one, never the reverse; anything
   generic to model-driven RDF apps lives here, anything mapping-specific lives in MWBv2.
   Decisions so far: openspec/changes/archive/2026-11-05-soa-python-rdf-orm/proposal.md (DEC-1..DEC-39).
+  Toolkit v1 (built): openspec/changes/archive/2026-11-06-toolkit-v1-foundation/ (design.md PD-1..PD-28);
+  its requirements are the rp-* capabilities in openspec/specs/.
   Architecture: cosmic-python layering (domain, adapters, services, entrypoints);
   innermost layer is `domain`. Enforced by .importlinter (`make check-architecture`).
   Top-level package: rdf_persistence (no /src). Default branch: develop.
