@@ -414,6 +414,28 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
     the shapes wrap each pattern as `^(?:P)(?![\s\S])`, because `$` in pyshacl's and Java's regex
     accepts a final newline. The look-ahead is outside the XPath regex syntax SHACL names, but both
     validators the toolkit targets (pyshacl, Jena) accept it.
+- **PD-28a Stage 3 review decisions.**
+  - The wire shapes of foreign APIs are LinkML too: the Zitadel requests and answers, the verified
+    JWT claims and the OIDC discovery document are declared in
+    `rdf_persistence/model/adapters/rp_wire.yaml` (`module_kind: technical`, its own
+    `[[tool.rp-generate]]` entry) and generated into `rdf_persistence/adapters/generated/`; the
+    adapters and the testkit's provisioning share them. The model guard also scans `adapters`.
+  - The principal IRI is `{issuer}/users/{percent-encoded sub}` (`domain/iris.principal_iri`): keyed
+    on the issuer, so principals of two providers never collide; grants and tracking store it, so
+    changing it means migrating data.
+  - The Zitadel roles claim is `zitadel_roles_claim(project_id)`, exported beside `ZitadelIdentity`.
+  - Token verification: a cached key is looked up without a lock; a refresh is single-flight; the
+    cooldown applies to stale and unknown-`kid` refreshes alike, and inside it the verifier answers
+    at once (an unknown `kid` is `InvalidToken`, stale keys with the provider down are
+    `IdentityUnavailable`); the discovery document's `issuer` must equal the configured issuer, which
+    must be `https` unless the caller opts out (test containers); `exp` and `nbf` must be numbers and
+    `sub` a non-empty string; error messages carry no attacker text.
+  - Every HTTP adapter takes `transport=` for a test double, sets explicit timeouts (connect 5 s,
+    read 30 s) and never retries inside a request; S3 keys may not contain `..` segments or control
+    characters, and an invalid bucket or key is the caller's error, not an outage.
+  - The identity port has a conformance suite run on `FakeIdentity` and Zitadel; the fake knows its
+    roles. Zitadel's disable and enable confirm the resulting state, act only on accounts of the
+    configured organisation, and refuse an empty account id.
   - `rp-generate` validates its own inputs (stage 1 review): manifest paths are relative POSIX paths
     without `..` and hashes are 64 hex digits; a run removes a listed file only if it lies under the
     project and still has its recorded hash; configured folders are relative, without `..`; the
