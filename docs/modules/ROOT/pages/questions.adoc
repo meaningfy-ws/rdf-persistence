@@ -1,0 +1,192 @@
+= Common questions
+:description: Short answers to the questions people ask about rdf-persistence, each with a link to the page that goes deeper.
+
+Each answer is short and points to the page with the details. The answers describe the toolkit
+on `develop` as of 2026-11-06 (the change `toolkit-v1-foundation`, stages 1 to 5).
+
+== Using the toolkit
+
+*How do I start an application?*::
+Add `rdf-persistence` to your dependencies from its `develop` branch, with the extras `generate`
+and `testkit` in the dev group, and run `uv sync`. Then write the model, generate, and wire the
+service. See xref:howto/adopt.adoc#install[Build an application, step 1].
+
+*How do I model my domain?*::
+Write one LinkML file per module and a root schema that imports them. Each domain module holds one
+aggregate: a root class that includes `AggregateRoot` and `Described` and has an `rp_path`, and the
+classes it owns through slots annotated `owned: true`. `rp-generate` refuses a schema that breaks
+the rules and names the element at fault. See xref:howto/adopt.adoc#model[step 3] and
+xref:architecture/generation.adoc#metamodel[the metamodel].
+
+*How do I store and read an aggregate?*::
+Over HTTP, the generic router does it for you. In a domain service, open a session on the tenant's
+database (`kit.session(tenant, principal)`), wrap it in a `UnitOfWork(session, mapper)`, then
+`get` the root, change it, `add` it and `commit`. A commit made on stale data raises `Conflict`.
+See xref:howto/adopt.adoc#session[step 8].
+
+*How do tenants and access work?*::
+Each tenant has its own database and bucket, and an access record in the system database that
+holds its grants and prohibitions. The caller who creates a tenant gets the settings'
+`creator_role` on it. Every tenant route checks the caller's token, then its access, before it runs. See
+xref:howto/adopt.adoc#tenancy[step 9], xref:howto/adopt.adoc#access[step 11] and
+xref:architecture/access-control.adoc[Access control and identity].
+
+*How do I serve it over HTTP?*::
+Call `install_service` once in your composition root, with your FastAPI app, the schema, the
+generated package, the four adapters, the role definitions and a `ServiceSettings`. It returns a
+`ServiceKit` for your own routes. See xref:howto/adopt.adoc#serve[step 12] and
+xref:architecture/api.adoc#serving[Serving it].
+
+*How do I test my application with the testkit?*::
+Use `FakeStore`, `FakeFileStore` and `FakeIdentity` in place of the adapters, `fake_session` for a
+domain service, and `TokenSigner` with `JwksTokenVerifier` for tokens, all from
+`rdf_persistence.testkit`. Add the freshness plugin and the model guards to your test suite. See
+xref:howto/adopt.adoc#guard[step 6] and xref:howto/adopt.adoc#test-service[step 13].
+
+== Developing the toolkit
+
+*How do I change a toolkit schema?*::
+Edit the schema under `rdf_persistence/model/` (or `rdf_persistence/model/service/rp_service.yaml` and
+`rdf_persistence/generation/model/rp_generation.yaml`), run
+`make generate`, refresh the model-shape snapshot if a class changed, and commit the schema and the
+generated code together. See xref:develop/index.adoc#change-a-toolkit-schema[Change a toolkit
+schema].
+
+*How do I add a generator extension or a check rule?*::
+An extension is a module in `rdf_persistence/generation/extensions/` with a `render` function, a
+step in `steps.py`, a row in the extensions table and its own test against the toy library. A
+check rule is a value in `rp_generation.yaml`, its code in `checks/` and two test schemas. See
+xref:develop/index.adoc#add-or-change-a-generator-extension[Add or change a generator extension]
+and xref:develop/index.adoc#add-a-check-rule[Add a check rule].
+
+*How do I run the checks, and how long do they take?*::
+`make check-all` before every PR (about 6 minutes), and `make test-containers` when you touch
+adapters or containers (about 3.5 minutes, needs Docker). See
+xref:develop/index.adoc#how-long-the-checks-take[How long the checks take].
+
+*Where are decisions recorded?*::
+Architecture decisions are on xref:architecture/open-decisions.adoc[Decisions of 2026-11-05] (D-1
+to D-13) and in xref:architecture/index.adoc#decisions-taken[architecture v1] (O-1, O-2). The
+decisions of the work in progress (PD-1 and on) are in `openspec/changes/<id>/design.md`; once a
+change is archived, its requirements live in `openspec/specs/`.
+
+== What to expect, and the choices you make
+
+=== Guarantees
+
+*Generated code is fresh.*::
+`rp-generate --check`, and the testkit's freshness plugin, fail when generated code is stale or was
+edited by hand, and name the files. See
+xref:architecture/generation.adoc#guarding[Guarding the generated code].
+
+*Nothing drifts from the model.*::
+`assert_models_generated` fails on a hand-written model class; the file guard fails on shapes,
+contexts, schemas or TypeScript outside a `generated` folder. LinkML stays the one source.
+
+*Classes and shapes agree.*::
+`conformance.run` checks every case against both the generated class and the generated shape, and
+fails until every constraint kind your schema uses has a case. See
+xref:howto/adopt.adoc#guard[step 6].
+
+*No lost update.*::
+Every write to an aggregate is guarded by its version: `If-Match` over HTTP, the version read by a
+`UnitOfWork` in code. A stale write is 409 or `Conflict`, never a silent overwrite.
+
+=== Limits and behaviours you will meet
+
+*Status codes.*::
+401 without a valid bearer token; 404 for a tenant or aggregate you may not see, and for one that
+does not exist (they answer alike); 403 when you may see it but not act; 409 on a stale version;
+428 when `If-Match` is missing; 413 for a body over `max_body_bytes` or over 10 000 objects and
+list values; 415 and 406 for media types; 422 for an invalid body; 400 for a bad query string;
+503 when the store or the identity provider is down; 500 `internal-error` for a fault of the
+service. Only 400, 406, 413, 415, 422 and 428 carry a `detail`. See
+xref:architecture/api.adoc#serving[Serving it].
+
+*Strict bodies.*::
+A plain-JSON body may use only its class's slot names and the JSON-LD keywords. Only the root and
+the owned parts reached from it may appear. A create may not name an `id`; a replace may not name
+another one. An IRI that SPARQL cannot carry (a space, `<`, `>`, a quote) is 422 in a body and 400
+`bad-query` in a listing filter.
+
+*Internal slots.*::
+A slot annotated `internal` (a file key, a database name) is refused in any body, also in the body
+that creates a tenant, and never shown in a response. A replace keeps the stored internal values of
+the root and of the parts that persist, matched by IRI; a part sent without its IRI gets a new
+one and loses them.
+
+*What the toolkit refuses.*::
+At generation: a schema without titles, descriptions or IRIs, LinkML `rules`, `all_of` and
+`none_of`, and a domain module that imports an access module. At run time: an aggregate IRI the
+toolkit did not mint, a remote JSON-LD context, a grant on a target outside the tenant, and a
+grant of a role that is not defined at the target's level.
+
+=== Decisions you make
+
+[cols="2,4,2",options="header"]
+|===
+|Decision |Trade-off |Default
+
+|Schema layout and modules
+|One file per aggregate keeps diagrams small and the boundary check precise. Access rules go in a
+module annotated `module_kind: access`, which domain modules may not import.
+|One root schema importing one file per module
+
+|Aggregate roots and owned classes
+|A root is one named graph, versioned and committed whole. An owned class lives inside its root's
+graph and has no route of its own; anything another aggregate points to must be a root. Exactly
+one class is the tenant root (`graph: meta`).
+|A class is owned unless it needs its own lifecycle, routes or access
+
+|Roles and the creator role
+|Roles are data in a YAML file (`role`, `level`, `actions`). The creator of a tenant gets
+`creator_role`; give that role `administer`, or only a global role can change the tenant's grants.
+|None: the file and `creator_role` are required
+
+|Zitadel settings
+|The API accepts only JWT access tokens, so each Zitadel application is set to the JWT token type,
+and clients ask for the project audience and roles scopes. `roles_claim` must match the provider
+(`zitadel_roles_claim(project_id)`).
+|None: `roles_claim` is required
+
+|File store
+|Each tenant gets a bucket, created and deleted with the tenant. The toolkit has no route for
+file bytes: you write it, checked through the kit.
+|A bucket per tenant always; the bytes route is yours
+
+|JSON-LD or Turtle
+|Plain JSON is the easiest for clients and is JSON-LD through the `Link` header. A JSON-LD body
+brings its own inline context (a remote one is refused). Turtle is for reading one aggregate only:
+no body and no listing takes it.
+|Plain JSON
+
+|The `openapi` switch
+|`openapi = false` in `[tool.rp-generate]` skips `openapi-components.json`. A schema a service
+serves needs it: `install_service` stops without it.
+|`true`
+
+|`max_body_bytes`
+|Larger bodies cost memory and parse time; the 10 000-node cap applies whatever the size.
+|1 MiB (1 048 576 bytes)
+|===
+
+== What could strengthen it in the future
+
+These are possibilities, not commitments. None is planned; each would start as its own change.
+
+* *Detailed test profiling.* The check timings are rough; a profile of the slowest tests would show
+  where the 5 minutes of unit and feature tests go.
+* *Matching id-less parts on replace.* A part sent without its IRI cannot be matched to its stored
+  version, so a replace drops its internal values.
+* *Minting and schema helpers for domain services.* A domain service builds a new aggregate's IRI
+  and the mapper's `SchemaView` itself; the toolkit could export helpers for both.
+* *A sweep inside a live tenant* for blobs and loaded graphs that no aggregate names (deferred in
+  xref:architecture/index.adoc#building-blocks[architecture v1]).
+* *Unique keys across aggregates*, enforced at commit rather than checked before it.
+* *A client library* over the generated TypeScript types and the OpenAPI document.
+* *Events*: an outbox, an event bus and server-sent events, deferred until a need reacts to a
+  change in another aggregate.
+* *GraphQL*, read-only over the same schema and context (option C of
+  xref:architecture/api.adoc[the API page]), *OpenFGA* as the decision engine, and property- or
+  triple-level access.
+* *A second store* (Oxigraph, Virtuoso) with a capability descriptor, and schema migrations.

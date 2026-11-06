@@ -4,9 +4,14 @@
 Status: *Accepted* (developer, 2026-11-05: decisions D-4, D-5 and D-10 of
 xref:architecture/open-decisions.adoc[the decisions of 2026-11-05]). Research behind this page: the
 xref:background/soa/angles/authz.adoc[identity and authorization angle] of the background study,
-updated on 2026-11-05.
+updated on 2026-11-05. The access model, the check and the token verification are *implemented*
+(stages 3 and 4 of the change `toolkit-v1-foundation`: `rdf_persistence/model/rp_access.yaml`,
+`rdf_persistence/services/access.py`, `rdf_persistence/adapters/jwks.py`). How an application
+writes its roles and grants is in xref:howto/adopt.adoc#access[Build an application, step 11].
 
 == Decisions
+
+_Which engine decides access, and where do policies live?_
 
 * *Own check over ODRL* (D-4): the toolkit evaluates its own minimal ODRL subset, per tenant and per
   aggregate, in process. Policies are RDF, our own specification.
@@ -18,6 +23,8 @@ updated on 2026-11-05.
   however it was obtained.
 
 == The access model is its own module
+
+_Where does an application keep its roles and rules?_
 
 The toolkit ships `rp_access.yaml`. An application keeps its roles and rules in its own access module,
 which imports `rp_access` and the domain modules. A domain module never imports an access module: the
@@ -47,6 +54,8 @@ Neither is a library we can embed: Fluree is a database, mu-authorization a Lisp
 
 == The ODRL subset
 
+_What can a policy say?_
+
 ODRL 2.2 (W3C Recommendation, 2018) is the standard RDF vocabulary for policies. The toolkit uses a
 minimal subset, so its access data is readable by any ODRL tool and can be compiled to another engine
 later.
@@ -55,10 +64,13 @@ later.
 ....
 classDiagram
     direction LR
-    class Policy {
-      uid
+    class Policy
+    class TenantAccess {
+      label
+      state
+      database_name
     }
-    class Permission {
+    class Grant {
       assignee
       target
       role or action
@@ -68,21 +80,28 @@ classDiagram
       target
       action
     }
-    Policy *-- Permission
-    Policy *-- Prohibition
+    class RoleDefinition {
+      role
+      level
+      actions
+    }
+    Policy <|-- TenantAccess
+    TenantAccess *-- Grant : grants
+    TenantAccess *-- Prohibition : prohibitions
 ....
 
 [cols="1,2,3",options="header"]
 |===
 |Class |ODRL term |Meaning
-|`Policy` |`odrl:Set` |A set of rules. Conflict resolution is fixed: denial wins, and everything not permitted is denied.
-|`Permission` |`odrl:Permission` |An assignee may perform an action on a target. A grant is a Permission (D-5).
+|`Policy` |`odrl:Set` |An abstract set of rules, with no slots of its own. Conflict resolution is fixed: denial wins, and everything not permitted is denied.
+|`TenantAccess` |`rp:TenantAccess`, `is_a: Policy` |The tenant's access record in the system database: label, state, database name, and the owned `grants` and `prohibitions`. An application subclasses it (the toy library's `LibraryAccess`).
+|`Grant` |`odrl:Permission` |An assignee may perform an action on a target, by a `role` or a direct `action`: exactly one of the two. One grant per assignee, target and role or action (`unique_keys`). A grant is a Permission (D-5).
 |`Prohibition` |`odrl:Prohibition` |An assignee may not perform an action on a target.
 |`Principal` |`odrl:Party`, `prov:Agent` |A user or service account of the identity provider, by IRI.
 |`Role` |`rp:role` on a grant |A role a principal holds in a tenant. In v1 the assignee is always a principal; roles as ODRL party collections are later.
 |Target |`odrl:target` |An IRI: a tenant, or an aggregate's graph (`graph_iri(root)`). The level follows from the IRI. The system level comes only from global roles in the token.
-|`Action` (enum) |`odrl:read`, `odrl:modify`, `odrl:delete`, and `rp:administer` (change a tenant's grants), extended by the application |What is done.
-|`RoleDefinition` |— (toolkit) |Which actions a role permits at which scope level: the application's permission matrix as data (need N-8).
+|`Action` (enum) |`odrl:read`, `odrl:modify` (at tenant scope, also create), `odrl:delete`, and `rp:administer` (change a tenant's grants) |What is done. The set is fixed by the toolkit; an application cannot add an action.
+|`RoleDefinition` |`rp:RoleDefinition` |Which `actions` (`rp:permits`) a `role` permits at which `level` (`RoleLevel`: `system`, `tenant`, `aggregate`): the application's permission matrix, supplied as a YAML file and never stored (need N-8). A `system` role comes from the token's global roles and cannot be granted.
 |===
 
 Left out for now: Duty, Offer and Agreement, constraints, assigner. No LinkML ODRL schema exists to
@@ -106,30 +125,56 @@ flowchart LR
   `but not`).
 * Prior work compiles ODRL to OpenFGA (Plaza-Ortiz et al., 2025); no code is published.
 
+[#check]
 == The check
 
-Each route declares its action; the check runs before the handler.
+_In which order is a request refused, and with which status?_
+
+Each route declares its action; the check runs as a route dependency, after the token is verified
+and before the handler (`entrypoints/auth.py`, `Gate.check`). It loads the caller's access to the
+tenant in one query (`load_caller_access`) and decides in `AccessRules.require`
+(`rdf_persistence/services/access.py`), in this order:
 
 [mermaid]
 ....
 flowchart LR
-    Q["request"] --> P{"prohibited?"}
-    P -- yes --> D403["403"]
-    P -- no --> T{"grant?"}
-    T -- no --> D404["404"]
-    T -- yes --> R{"role permits?"}
+    Q["request"] --> S{"target in<br/>the tenant?"}
+    S -- no --> N1["404"]
+    S -- yes --> A{"tenant<br/>active?"}
+    A -- no --> N2["404"]
+    A -- yes --> P{"prohibited?"}
+    P -- yes --> F1["403"]
+    P -- no --> E{"any action<br/>permitted?"}
+    E -- no --> N3["404"]
+    E -- yes --> R{"this action<br/>permitted?"}
     R -- yes --> OK["allow"]
-    R -- no --> D403
+    R -- no --> F2["403"]
 ....
 
+. *Scope.* The target is the tenant IRI, or an aggregate IRI the toolkit mints in that tenant;
+  anything else is 404. The scope of the rules is the tenant, plus the aggregate's graph IRI
+  (`graph_iri(root)`) for an action on one aggregate.
+. *State.* A tenant that is not `active` is 404.
+. *Prohibition.* A Prohibition in scope for the caller and the action is 403. A Prohibition of
+  `read` forbids every action, since each implies `read`.
+. *Nothing permitted.* The actions permitted by the caller's grants in scope (by role, through the
+  role definitions at the target's level, or directly) and by its global roles (system-level role
+  definitions) form one set. An empty set is 404, so a hidden tenant answers like a missing one.
+. *Action missing.* An action not in the set is 403; `read` passes when any other action is in it.
+
 * A *global role* from the token (an administrator) that the rules allow passes without a grant.
-* A caller without a grant, or a tenant that is not `active`, gets 404, so the tenant's existence is
-  not revealed.
-* *Per aggregate*: a Permission whose target is an aggregate's graph IRI applies to that aggregate only;
-  the check looks up the caller's permissions for the tenant and for `graph_iri(root)`.
+* *Per aggregate*: a Permission whose target is an aggregate's graph IRI applies to that aggregate
+  only.
+* A *listing* needs `read` on the tenant, and leaves out the aggregates a `read` Prohibition hides
+  from the caller before it counts and pages (`AccessRules.hidden_graphs`).
+* *Grants are validated* when they are written (`AccessRules.validate_grants`): a target must be the
+  tenant or an aggregate graph of it (else `InvalidGrant`, 422), an assignee an IRI, and a role
+  defined at its target's level (else `UnknownRole`, 422).
 
 [#identity]
 == Identity: signing in from the browser and from the API
+
+_How do people and programs get a token the API accepts?_
 
 Both are needed: people use a web app, programs and scripts call the API. Zitadel (v4) supports every
 flow below; it has no password grant.

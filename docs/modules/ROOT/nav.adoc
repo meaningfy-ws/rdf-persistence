@@ -1,5 +1,7 @@
 * xref:index.adoc[Introduction]
 
+* xref:questions.adoc[Common questions]
+
 * xref:architecture/index.adoc[Architecture v1]
 ** xref:architecture/open-decisions.adoc[Open decisions (2026-11-05)]
 ** xref:architecture/generation.adoc[Model to code]
