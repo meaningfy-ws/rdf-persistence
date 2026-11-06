@@ -13,7 +13,7 @@ from rdflib import BNode, Literal, URIRef
 
 from rdf_persistence.domain.exceptions import SparqlError
 
-_FORBIDDEN_IRI_CHARS = re.compile(r'[\x00-\x20<>"{}|\\^`\x7f]')
+FORBIDDEN_IRI_CHARS = re.compile(r'[\x00-\x20<>"{}|\\^`\x7f]')
 _BLANK_LABEL = re.compile(r"[A-Za-z0-9_]([A-Za-z0-9_.-]*[A-Za-z0-9_-])?")  # may not end in "."
 _LANGUAGE_TAG = re.compile(r"[A-Za-z]+(-[A-Za-z0-9]+)*")
 _STRING_ESCAPES = {"\\": "\\\\", '"': '\\"', "\n": "\\n", "\r": "\\r", "\t": "\\t"}
@@ -27,7 +27,7 @@ class SparqlTerm(str):
 
 
 def _iri(value: str) -> str:
-    if not value or _FORBIDDEN_IRI_CHARS.search(value):
+    if not value or FORBIDDEN_IRI_CHARS.search(value):
         raise SparqlError(f"not a valid IRI for SPARQL: {value!r}")
     return f"<{value}>"
 

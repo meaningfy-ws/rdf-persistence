@@ -291,6 +291,17 @@ def test_the_internal_values_of_the_nodes_a_replacement_keeps_are_kept(documents
     )
 
 
+def test_the_internal_values_of_a_part_the_replacement_keeps_are_kept(documents) -> None:
+    key = URIRef("https://meaningfy.ws/ns/rdf-persistence#fileKey")
+    part = URIRef(f"{BOOK}/parts/kept")
+    stored = Graph()
+    stored.add((part, key, Literal("K")))
+    replacement = [(part, RDF.type, BOOK_TYPE)]
+    assert documents.internal_values(stored, replacement) == [(part, key, Literal("K"))], (
+        "the internal statement of a part that persists is kept"
+    )
+
+
 def test_a_folder_without_the_frame_of_a_served_type_stops_start_up(tmp_path) -> None:
     folder = tmp_path / "generated"
     shutil.copytree(GENERATED, folder)

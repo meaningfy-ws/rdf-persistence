@@ -139,6 +139,19 @@ async def test_deleting_a_bucket_deletes_every_page_of_its_blobs_then_the_bucket
     stubber.assert_no_pending_responses()
 
 
+async def test_a_blob_the_store_failed_to_delete_stops_the_bucket_delete(s3):
+    files, stubber = s3
+    page = {"Bucket": BUCKET}
+    stubber.add_response("list_objects_v2", {"Contents": [{"Key": "a"}]}, page)
+    stubber.add_response(
+        "delete_objects",
+        {"Errors": [{"Key": "a", "Code": "AccessDenied", "Message": "no"}]},
+        {"Bucket": BUCKET, "Delete": {"Objects": [{"Key": "a"}]}},
+    )
+    with pytest.raises(StoreUnavailable, match="a: AccessDenied"):
+        await files.delete_bucket(BUCKET)
+
+
 async def test_deleting_a_missing_bucket_is_not_found(s3):
     files, stubber = s3
     stubber.add_client_error("list_objects_v2", service_error_code="NoSuchBucket")

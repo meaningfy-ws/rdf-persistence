@@ -108,6 +108,7 @@ def test_a_value_is_typed_by_the_range_of_its_slot(view, slot, text, expected):
         ("genre", f"{SCHEMA_ORG}Fiction"),
         ("scan_of", "not an iri"),
         ("scan_of", "relative/path"),
+        *[("scan_of", f"urn:x:a{char}b") for char in '<>"{}|^\\`'],
     ],
 )
 def test_a_value_the_range_cannot_hold_is_a_bad_query(view, slot, text):

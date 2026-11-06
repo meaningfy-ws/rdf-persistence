@@ -22,8 +22,10 @@ from linkml_runtime.linkml_model.meta import (
 )
 from linkml_runtime.utils.formatutils import underscore
 from linkml_runtime.utils.schemaview import SchemaView
-from rdflib import XSD, Literal, URIRef
+from rdflib import XSD, Graph, Literal, URIRef
+from rdflib.term import Node
 
+from rdf_persistence.domain.exceptions import InvalidBody
 from rdf_persistence.domain.generated.rp_core import DatabaseKind, GraphKind, RpAnnotation
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 
@@ -118,6 +120,25 @@ def rdf_term(view: SchemaView, slot: SlotDefinition, value: Any) -> URIRef | Lit
 
 def is_internal(slot: object) -> bool:
     return flag(slot, RpAnnotation.INTERNAL)
+
+
+def internal_predicates(
+    view: SchemaView,
+) -> dict[Node, str]:  # Node: rdflib types a graph's predicates so
+    """The predicate of every ``internal`` slot of the schema, with the JSON name of the slot."""
+    return {
+        URIRef(view.get_uri(slot, expand=True)): json_name(slot)
+        for name in view.all_classes()
+        for slot in view.class_induced_slots(name)
+        if is_internal(slot)
+    }
+
+
+def refuse_internal(graph: Graph, internal: dict[Node, str]) -> None:
+    """Raise ``InvalidBody`` when ``graph`` gives an ``internal`` slot a value: only the service sets those."""
+    for predicate in set(graph.predicates()):
+        if predicate in internal:
+            raise InvalidBody(f"{internal[predicate]} is set by the service")
 
 
 def is_bookkeeping(slot: object) -> bool:

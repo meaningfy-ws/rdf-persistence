@@ -29,7 +29,7 @@ from rdf_persistence.domain.exceptions import InvalidBody, PayloadTooLarge
 from rdf_persistence.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.domain.iris import mint_part_iri
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
-from rdf_persistence.domain.sparql import Triple
+from rdf_persistence.domain.sparql import FORBIDDEN_IRI_CHARS, Triple
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.artifacts import (
     CONTEXT_FILE,
@@ -42,8 +42,10 @@ from rdf_persistence.services.artifacts import (
 from rdf_persistence.services.schema_structure import (
     annotation_text,
     holds_owned_part,
+    internal_predicates,
     is_internal,
     json_name,
+    refuse_internal,
     served_roots,
     tenant_root_class,
 )
@@ -105,7 +107,8 @@ class Documents:
             name: {self._iri_of(view.get_class(c)) for c in view.class_descendants(name)}
             for name in view.all_classes()
         }
-        self._internal, self._parts = self._predicates()
+        self._internal = internal_predicates(view)
+        self._parts = self._part_predicates()
 
     @cached_property
     def tenant_root(self) -> ClassDefinition:
@@ -139,18 +142,17 @@ class Documents:
         for cls in (*self.aggregates.values(), self.tenant_root):
             self._frame_of(cls.name)
 
-    def _predicates(self) -> tuple[dict[Node, str], dict[Node, set[URIRef]]]:
-        """The predicates of the internal slots, by slot name; and of the owned parts, by the classes they take."""
-        internal: dict[Node, str] = {}  # keyed by Node: rdflib types the predicates of a graph so
-        parts: dict[Node, set[URIRef]] = {}
+    def _part_predicates(self) -> dict[Node, set[URIRef]]:
+        """The predicates of the owned-part slots, by the classes they take."""
+        parts: dict[
+            Node, set[URIRef]
+        ] = {}  # keyed by Node: rdflib types the predicates of a graph so
         for slots in self._slots.values():
-            for name, slot in slots.items():
-                predicate = URIRef(self._view.get_uri(slot, expand=True))
-                if is_internal(slot):
-                    internal[predicate] = name
-                elif holds_owned_part(self._view, slot):
+            for slot in slots.values():
+                if not is_internal(slot) and holds_owned_part(self._view, slot):
+                    predicate = URIRef(self._view.get_uri(slot, expand=True))
                     parts.setdefault(predicate, set()).update(self._family[str(slot.range)])
-        return internal, parts
+        return parts
 
     def _iri_of(self, cls: ClassDefinition) -> URIRef:
         return URIRef(self._view.get_uri(cls, expand=True))
@@ -173,14 +175,8 @@ class Documents:
         """
         document = self._document(data, media_type, cls)
         graph = await anyio.to_thread.run_sync(self._triples, document)
-        self._refuse_internal(graph)
+        refuse_internal(graph, self._internal)
         return self._settled(graph, cls, URIRef(iri), creating)
-
-    def _refuse_internal(self, graph: Graph) -> None:
-        """The refusal of a body that sets a slot only the service sets, whatever key it wrote it with."""
-        for predicate in set(graph.predicates()):
-            if predicate in self._internal:
-                raise InvalidBody(f"{self._internal[predicate]} is set by the service")
 
     def _document(self, data: bytes, media_type: str, cls: ClassDefinition) -> dict:
         try:
@@ -309,6 +305,7 @@ class Documents:
             if p in v.BOOKKEEPING_PREDICATES:
                 continue
             settled.add((named(s), p, named(o)))
+        _refuse_bad_iris(settled)
         outside = [s for s in settled.subjects() if isinstance(s, URIRef) and not _inside(iri, s)]
         if outside:
             raise InvalidBody(f"{outside[0]} is not inside the aggregate {iri}")
@@ -430,7 +427,7 @@ class Documents:
 
 
 def _bound(body: dict) -> None:
-    """Raise unless the body holds at most ``MAX_NODES`` objects; counted without recursion."""
+    """Raise unless the body holds at most ``MAX_NODES`` objects and list values; counted without recursion."""
     pending: list[Any] = [body]
     count = 0
     while pending:
@@ -441,7 +438,21 @@ def _bound(body: dict) -> None:
                 raise PayloadTooLarge(f"a body holds at most {MAX_NODES} objects")
             pending.extend(value.values())
         elif isinstance(value, list):
+            count += sum(
+                not isinstance(item, dict | list) for item in value
+            )  # a list of strings costs as much as one of objects
+            if count > MAX_NODES:
+                raise PayloadTooLarge(
+                    f"a body holds at most {MAX_NODES} objects and values in lists"
+                )
             pending.extend(value)
+
+
+def _refuse_bad_iris(graph: Graph) -> None:
+    """Raise unless every IRI of ``graph`` is one SPARQL can carry: the store would refuse it later."""
+    for term in {t for triple in graph for t in triple if isinstance(t, URIRef)}:
+        if FORBIDDEN_IRI_CHARS.search(term):
+            raise InvalidBody(f"{str(term)[:100]!r} is not a valid IRI")
 
 
 def _refusal_in(error: BaseException) -> InvalidBody | None:

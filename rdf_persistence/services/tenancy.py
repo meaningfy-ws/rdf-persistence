@@ -41,6 +41,7 @@ from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
+from rdf_persistence.services.schema_structure import internal_predicates, refuse_internal
 from rdf_persistence.services.session import Clock, Session, open_session, utc_now
 from rdf_persistence.services.store import Store
 
@@ -71,6 +72,7 @@ class Tenancy:
         self._files = files
         self._settings = settings
         self._mapper = mapper
+        self._internal = internal_predicates(mapper.view)
         self._root_class = root_class
         self._access_class = access_class
         self._clock = clock
@@ -133,7 +135,7 @@ class Tenancy:
         validated before anything is created, so a refused request leaves nothing (PD-8c).
 
         Raises:
-            InvalidBody: ``root_slots`` names an ``id``: the service assigns it.
+            InvalidBody: ``root_slots`` names an ``id`` or sets an ``internal`` slot: the service assigns those.
             ValueError: ``label`` or ``root_slots`` is not valid (pydantic's ``ValidationError``).
         """
         if "id" in root_slots:
@@ -151,6 +153,7 @@ class Tenancy:
             grants=[Grant(assignee=creator.id, target=tenant, role=self._settings.creator_role)],
         )
         tenant_root = self._root_class.model_validate({"label": label, **root_slots, "id": tenant})
+        refuse_internal(self._mapper.to_graph(tenant_root), self._internal)
         await self._store.create_dataset(name)
         _log_step("create-database", tenant, name)
         await self._files.create_bucket(name)

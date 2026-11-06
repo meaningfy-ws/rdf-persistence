@@ -26,6 +26,7 @@ from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.fixtures.library.generated.scans import Scan
 from tests.toy import ADA, BOB, ROLES, SETTINGS, caller, library_slots, toy_mapper
 
 ODRL = "http://www.w3.org/ns/odrl/2/"
@@ -313,6 +314,24 @@ async def test_a_root_the_model_refuses_creates_nothing(tenancy, store, files):
         await tenancy.create("Ghent", broken, CREATOR)
     assert store.sent("create_dataset") == [SYSTEM], "no tenant database was asked for"
     assert files.sent("create_bucket") == [], "no bucket was asked for"
+
+
+async def test_a_root_that_sets_an_internal_slot_creates_nothing(store, files):
+    # no toy tenant root has an internal slot, so a class that has one stands in for the root
+    tenancy = Tenancy(
+        store, files, SETTINGS, mapper=toy_mapper(), root_class=Scan, access_class=LibraryAccess
+    )
+    slots = {
+        "description": "A scan.",
+        "file_name": "a.pdf",
+        "media_type": "application/pdf",
+        "byte_size": 1,
+        "sha256": "0" * 64,
+    }
+    with pytest.raises(InvalidBody, match="file_key"):
+        await tenancy.create("Ghent", {**slots, "file_key": "SECRET"}, CREATOR)
+    assert files.sent("create_bucket") == [], "no bucket was asked for"
+    assert store.sent("create_dataset") == [], "no database was asked for"
 
 
 async def test_each_create_and_drop_step_is_logged_with_the_tenant_and_resource_as_data(

@@ -85,7 +85,7 @@ ERROR_KINDS: tuple[tuple[type[PersistenceError], ProblemKind], ...] = (
     (errors.NotAcceptable, NOT_ACCEPTABLE),
     (errors.UnsupportedMediaType, UNSUPPORTED_MEDIA_TYPE),
     (errors.BadQuery, BAD_QUERY),
-    # a value a query cannot take is refused before the query is built, so this is the service's fault
+    # caller input that SPARQL cannot carry is refused earlier (BadQuery, InvalidBody); one that gets here is ours
     (errors.SparqlError, INTERNAL_ERROR),
     (errors.StoredDataInvalid, INTERNAL_ERROR),
     (errors.PayloadTooLarge, PAYLOAD_TOO_LARGE),

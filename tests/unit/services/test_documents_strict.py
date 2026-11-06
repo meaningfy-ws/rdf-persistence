@@ -106,6 +106,14 @@ async def test_an_internal_slot_is_refused_in_an_owned_part_of_a_json_ld_body(
         await parsed(documents, book_class, body, JSON_LD, iri=BOOK)
 
 
+@pytest.mark.parametrize("char", list('<>"{}|^\\`'))
+async def test_a_reference_that_is_not_a_valid_iri_is_an_invalid_body(
+    documents, scan_class, char
+) -> None:
+    with pytest.raises(InvalidBody):  # the N-Quads parser refuses some of them first
+        await parsed(documents, scan_class, {**SCAN_JSON, "scan_of": f"urn:x:a{char}b"})
+
+
 # --- plain JSON keys are the class's slot names ----------------------------------------------
 
 
@@ -250,6 +258,13 @@ async def test_a_body_of_too_many_nodes_is_refused_before_it_is_expanded(
     async with asyncio.timeout(5):  # a body that is expanded first takes minutes
         with pytest.raises(PayloadTooLarge):
             await parsed(documents, book_class, {**BOOK_JSON, "chapters": chapters}, iri=BOOK)
+
+
+async def test_a_body_of_too_many_list_items_is_refused(documents, book_class) -> None:
+    authors = ["Herbert"] * (MAX_NODES + 1)
+    async with asyncio.timeout(5):
+        with pytest.raises(PayloadTooLarge):
+            await parsed(documents, book_class, {**BOOK_JSON, "authors": authors}, iri=BOOK)
 
 
 async def test_a_json_ld_body_of_too_many_nodes_is_refused(documents, book_class) -> None:

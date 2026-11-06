@@ -26,7 +26,15 @@ from rdf_persistence.domain.generated.service.rp_service import (
     ListRequest,
 )
 from rdf_persistence.domain.iris import root_of_graph
-from rdf_persistence.domain.sparql import count, fill, match_patterns, order_by, term, term_list
+from rdf_persistence.domain.sparql import (
+    FORBIDDEN_IRI_CHARS,
+    count,
+    fill,
+    match_patterns,
+    order_by,
+    term,
+    term_list,
+)
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.schema_structure import (
     holds_iri,
@@ -152,7 +160,11 @@ def typed_value(view: SchemaView, slot: SlotDefinition, text: str) -> URIRef | L
     """
     range_ = slot.range or str(view.schema.default_range)
     is_enum = range_ in view.all_enums()
-    if not is_enum and holds_iri(view, slot) and not _SCHEME.fullmatch(text):
+    if (
+        not is_enum
+        and holds_iri(view, slot)
+        and (not _SCHEME.fullmatch(text) or FORBIDDEN_IRI_CHARS.search(text))
+    ):
         raise BadQuery(f"{text!r} is not an IRI")
     try:
         term = rdf_term(view, slot, text)

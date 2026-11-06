@@ -163,7 +163,7 @@
     },
     {
       "path": "rdf_persistence/services/schema_structure.py",
-      "sha256": "24a4fd4c4444e831b691122f9fc184d54779e6331c62600dcbb9f957cb2b2381"
+      "sha256": "72b163cb06e105469882b193ee6ed7b8f3753ecca126e0a1cc9c59f177072009"
     }
   ],
   "outputs": [
