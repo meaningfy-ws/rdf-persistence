@@ -11,6 +11,8 @@
 * xref:howto/adopt.adoc[Build an application]
 
 * xref:develop/index.adoc[Working on the toolkit]
+** xref:develop/agents.adoc[Working with agents]
+** xref:develop/testing.adoc[Testing checklist]
 
 * Background
 ** State of the art (not commitments)

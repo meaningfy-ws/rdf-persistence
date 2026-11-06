@@ -48,11 +48,14 @@ Common `make` targets (run `make help` for the full list):
 | Target | Purpose |
 |--------|---------|
 | `make install` | Install all dependency groups |
+| `make generate` | Regenerate every model artefact from the LinkML schemas |
 | `make format` | Auto-format with Ruff |
 | `make lint` | Lint with Ruff |
 | `make typecheck` | Type-check with mypy |
 | `make check-architecture` | Enforce layer boundaries with import-linter |
 | `make test` | Run the test suite with coverage |
+| `make test-containers` | Run the integration and e2e tests against Fuseki, Garage and Zitadel (needs Docker) |
+| `make check-generated` | Regenerate from scratch and fail if anything differs from what is committed |
 | `make check-all` | Everything CI runs |
 
 ## Testing
@@ -79,7 +82,8 @@ The published site is the source of truth for API reference, architecture, and u
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow, architecture constraints, and commit/PR
-conventions, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations.
+conventions, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations. Agents, and the
+people working with them, follow [Working with agents](docs/modules/ROOT/pages/develop/agents.adoc).
 
 > **Note on agent-instruction files:** `AGENTS.md` is the **single, canonical** agent-instruction
 > file; `CLAUDE.md` is a thin pointer that imports it (`@AGENTS.md`) for Claude Code. Both are

@@ -5,11 +5,27 @@ the codebase healthy, and the testing and review expectations.
 
 ## Workflow
 
-1. Create a branch off `develop` following the naming convention (see
+1. Work is planned before it is coded, in the OpenSpec spine under `openspec/changes/<id>/`
+   (the EPIC is `proposal.md`; the PLAN is `design.md` + `tasks.md`). Commits cite the change
+   (`Refs: <change-id> <task>`).
+2. Create a branch off `develop` following the naming convention (see
    [git workflow](#commits-and-pull-requests)).
-2. Implement the change with tests (TDD/BDD — see [Testing](#testing-expectations)).
-3. Run `make check-all` locally and ensure it is green.
-4. Open a pull request against `develop`.
+3. Implement the change with tests (TDD/BDD — see [Testing](#testing-expectations)).
+4. Run `make check-all` locally and ensure it is green (`make test-containers` too if you touched
+   adapters or containers).
+5. Open a pull request against `develop`.
+
+Agents follow the same workflow with a fixed team of roles; see
+[Working with agents](docs/modules/ROOT/pages/develop/agents.adoc).
+
+## LinkML is the single source
+
+Every model artefact (classes, enums, shapes, JSON-LD context and frames, TypeScript types, API and
+JSON schemas, diagrams) is generated from the LinkML schemas. To change one, change the schema and
+run `make generate`; never edit a file under a `generated/` folder. Where a stock generator falls
+short, extend it in `rdf_persistence/generation/`, with its own test. Data goes through the
+generated models, not bare dicts. See
+[Working on the toolkit](docs/modules/ROOT/pages/develop/index.adoc).
 
 ## Architecture constraints
 
@@ -17,21 +33,22 @@ This project uses a **cosmic-python layered architecture**, enforced by `import-
 (`make check-architecture`). Respect the dependency direction:
 
 ```
-entrypoints  →  services  →  domain
-adapters     →  domain
+entrypoints | adapters  →  services  →  domain
 ```
 
-- `domain/` holds domain models and pure logic — it imports **nothing** from upper layers and no
-  frameworks or I/O.
-- `adapters/` holds infrastructure (DB, HTTP, queues) and depends only on `domain`.
-- `services/` orchestrates use cases over domain and adapters.
-- `entrypoints/` (API, CLI, workers) parse input, call services, format output.
+- `domain/` holds the generated models, the base model, the errors and pure logic — it imports
+  **nothing** from upper layers and no I/O, web or validation library.
+- `services/` holds the use cases and the **ports** (`Store`, `FileStore`, `Identity`,
+  `TokenVerifier`).
+- `adapters/` implements the ports (Fuseki, S3, Zitadel, JWKS).
+- `entrypoints/` (the service kit) parses input, calls services, formats output.
+- `adapters` and `entrypoints` never import each other; the consumer's composition root wires them.
+- `generation/` (build time) and `testkit/` (tests) may import any layer; no runtime layer imports
+  them.
+- Consumers import only from the top-level package `rdf_persistence` (and `rdf_persistence.testkit`
+  in tests).
 
-When there are multiple components, a **tier hierarchy** applies (`commons` < foundation <
-orchestration < entrypoint APIs): a component may import a lower tier, never a same/higher one.
-Tier peers must not import each other. The contracts live in `.importlinter`.
-
-Avoid free strings for symbolic values — use constants/enums. Keep observability (logging, tracing)
+Avoid free strings for symbolic values — use generated enums. Keep observability (logging, tracing)
 out of `domain`.
 
 ## Testing expectations
@@ -40,6 +57,7 @@ out of `domain`.
 - **Test by layer**: `tests/unit/` mirrors the code tree; `tests/feature/` holds Gherkin
   (`pytest-bdd`) scenarios written from acceptance criteria, mirroring business capabilities.
 - **Coverage gate ≥ 80%** on the suite; keep new/critical code higher.
+- Follow the [testing checklist](docs/modules/ROOT/pages/develop/testing.adoc).
 - Markers (`unit`, `feature`, `e2e`, `integration`) are applied automatically by path — do not add
   per-file `pytestmark`.
 

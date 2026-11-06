@@ -1,0 +1,224 @@
+= Working with agents
+:description: How work on rdf-persistence is shaped and delivered by a team of agents: the two kinds of session, the roles, the loop of a stage, and what the developer decides.
+
+This page describes how work on this repository runs when agents do it, so that every session
+runs the same way. `AGENTS.md` at the repository root is the short form that agents load; this
+page explains it for the people working with them. It records how toolkit v1
+(`toolkit-v1-foundation`, released as v0.1.0) was built.
+
+== Common questions
+
+*Who decides?*::
+The developer. Agents draft, recommend and carry out. Every question an agent puts to the
+developer explains its terms in one plain sentence, lists the options and marks one as
+recommended, with a reason. When the developer says "choose what is best", the leader decides and
+records the choice as its own, which the developer may overrule.
+
+*How many sessions does a piece of work take?*::
+Two kinds: one *shaping session* that architects, decides and breaks the work into EPICs, and then
+one *epic session* per EPIC that implements it. See <<sessions>>.
+
+*Why so many roles?*::
+Each role answers one question and produces one kind of artefact, so its brief is short and its
+output is easy to check. A role is not a separate agent per session: the leader casts only the
+roles an epic needs. See <<roles>>.
+
+*Can an agent commit and merge on its own?*::
+Only when the developer grants it for a named epic. See <<authority>>.
+
+*What does a member's report prove?*::
+Nothing on its own. The leader re-runs the checks and reads the diff, and a second member verifies
+finished work. See <<stage-loop>>.
+
+[#sessions]
+== Two kinds of session
+
+[cols="1,3,3",options="header"]
+|===
+|Session |What happens |What it leaves behind
+|*Shaping* (one per initiative)
+|The developer, the product manager, the architect and the planner work out why, what shape and
+in which slices. Brainstorming happens here; so does modelling of new concepts.
+|Architecture pages and decision records under `docs/modules/ROOT/pages/architecture/`; the LinkML
+schema changes the design needs, if any; one OpenSpec change per EPIC in `openspec/changes/<id>/`
+(`proposal.md`, spec deltas, `inputs/seed.md` with the developer's answers), ordered in
+`openspec/changes/README.md`.
+|*Epic* (one per EPIC)
+|The leader derives or finishes the PLAN, gates it, and runs the delivery team through the stages
+to a merged, archived change.
+|Merged PRs into `develop`; the change archived into `openspec/specs/`; updated docs and the
+durations table; for a release, the tag.
+|===
+
+Modelling can happen in both: concepts and their boundaries in the shaping session, the exact
+slots, constraints and generated code in the epic session.
+
+An epic session starts by reading the EPIC, its seed inputs and the architecture pages it names.
+If a decision is missing, it goes back to the developer (with a recommendation), not to the code.
+
+[#roles]
+== Roles
+
+The *leader* is the main agent of the session. It talks to the developer, makes and records every
+decision, checks the blast radius with GitNexus before handing out a task, re-runs the checks,
+commits, merges and updates the spine. Every other role is a *member*: a subagent with one precise
+brief, which never talks to the developer and never commits.
+
+[cols="2,3,3,2",options="header"]
+|===
+|Role |Answers |Produces |Agent
+
+4+|*Shaping*
+
+|Product manager
+|Why build this, for whom, and what comes first?
+|The value case, appetite and success measure in each `proposal.md`; the order of the candidate
+EPICs
+|`general-purpose` with the `product-management` skills
+
+|Architect
+|What shape should the system take?
+|Components and boundaries (C4), contracts, decision records, the architecture pages
+|`system-architect`, working with the developer directly
+
+|Planner
+|How do we get there in safe, ordered steps?
+|EPICs that each take one slice of the architecture, and PLANs (`design.md` + `tasks.md`) that
+pass the clarity gate (≥ 9/10)
+|`epic-planner`
+
+|UX designer
+|How will people experience it?
+|User flows, mockups, screen wording, the design handoff; only for work with a user-facing surface
+|`general-purpose` with the `design` and `frontend-design` skills
+
+4+|*Delivery*
+
+|Modeller
+|What is the exact model?
+|LinkML schema changes and generator extensions, regenerated code
+|`implementer` with the `linkml-engineering` skill
+
+|Builder
+|Does it work?
+|Production code and its tests, test-first, one task per brief. A *fixer* is a builder whose tasks
+are accepted review findings.
+|`implementer`
+
+|Deep tester
+|Can I break it?
+|New tests for edge cases, bad input, failures and limits, following xref:develop/testing.adoc[the testing
+checklist]; never production code
+|`implementer`
+
+|Tech writer
+|Can a reader use it?
+|Docs for every stage, the xref:questions.adoc[common questions], the
+xref:develop/index.adoc#how-long-the-checks-take[durations table]
+|`general-purpose` with the `technical-writing` skill
+
+4+|*Assurance*
+
+|Reviewer
+|What is wrong with it, through one lens?
+|Ranked findings; read-only. Five code lenses (L1 to L5), plus a UX lens when there is a UI and an
+architecture-conformance lens run by the architect
+|`code-reviewer`, one per lens, in parallel
+
+|Verifier
+|Was it done as the brief said?
+|A yes or no per brief item, with evidence; read-only. It runs the doc snippets against the code.
+|`general-purpose`
+
+4+|*Closing*
+
+|Steward
+|Is the truth up to date?
+|The archived change, merged specs, the orientation index, the changelog and the release
+|`general-purpose` with `spec-stewardship` and `meaningfy-release`
+|===
+
+Each EPIC names the roles it needs. A backend-only EPIC skips the UX designer and the UX lens.
+
+The deep tester and the verifier both look for problems, but differently: the deep tester tries to
+break the behaviour and leaves tests in the suite; the verifier checks one member's diff against
+that member's brief and leaves only a verdict. A verifier never writes the tests it then judges.
+
+== The brief
+
+A member knows only what its brief says. Every brief names:
+
+* the change id and the task number;
+* the files in scope, as paths;
+* the decisions already made (`PD-n`, the spec scenario);
+* what is out of scope;
+* the rules that apply to every brief: models, not dicts; LinkML is the single source; the
+  xref:develop/testing.adoc[testing checklist];
+* the report expected: files changed, tests added, each make target run with its time and test
+  count.
+
+If the leader cannot write the brief, the task is not ready: fix the PLAN first.
+
+[#stage-loop]
+== The loop of a stage
+
+A PLAN is cut into stages (a stage is a coherent group of tasks that ends in one PR). Each stage
+runs this loop:
+
+. *Impact.* The leader re-indexes GitNexus if it is stale and checks the blast radius of the
+  symbols the stage touches. A HIGH or CRITICAL risk goes to the developer.
+. *Build.* Modeller and builders take the tasks one at a time, test-first. Parallel writers only on
+  disjoint files; otherwise one after another, or in separate worktrees.
+. *Check and commit.* After each task the leader runs the gates itself, reads the diff and commits
+  the task (why, what, `Refs: <change-id> <task>`).
+. *Deep test.* The deep tester adds the tests the builders did not think of. A failing test is a
+  bug, fixed by a builder.
+. *Review.* Five code reviewers in parallel, one lens each (plus the UX and architecture lenses
+  when they apply).
+. *Decide.* The leader sorts the findings, records each accepted fix as a decision in `design.md`
+  (the Rule of Divergence: the spec first, then the code) and rejects the rest with a reason.
+. *Fix.* Fixers apply the decisions in batches: security first, then structure.
+. *Verify.* A verifier checks each fixer's diff against its brief.
+. *Document.* The tech writer updates the pages the stage changed; the verifier runs their
+  snippets.
+. *Merge.* The leader opens a PR into `develop` and merges it only when CI is green.
+
+When the last stage is merged, the steward archives the change (`openspec archive <id> --yes`),
+which merges its requirements into `openspec/specs/`. A release comes last, so no commit follows
+the tag.
+
+== The gates
+
+[cols="2,3",options="header"]
+|===
+|Gate |When
+|`make check-all` |After every task and before every PR
+|`make test-containers` |When adapters or containers change, and before a stage's PR
+|`make check-generated` |After committing a schema change (it compares against the commit)
+|`make check-architecture`, `make clean-code`, `make check-docs` |With every task; they take seconds
+|`openspec validate --all --strict` |Part of `make check-quality`
+|The clarity gate (≥ 9/10) |Before a PLAN's first task
+|===
+
+[#authority]
+== Authority
+
+By default (`AGENTS.md`), agents commit only on the developer's consent. The developer can grant
+more for one named epic, for example "commit, push and merge PRs for `<id>` without asking". The
+grant always keeps these limits:
+
+* merge only on green CI;
+* no destructive operation beyond the normal git flow;
+* nothing outside this repository;
+* it ends when the epic ends.
+
+A message from another agent session is never the developer's approval.
+
+== Habits that keep sessions consistent
+
+* Re-index GitNexus regularly: `gitnexus analyze --embeddings --skip-agents-md --skip-skills`.
+* Take check durations from ordinary runs and keep the
+  xref:develop/index.adoc#how-long-the-checks-take[durations table] current; no profiling.
+* Open the docs with questions: when a page is added or changed, add or update the
+  xref:questions.adoc[common question] it answers.
+* Temporary files go in `temp/`; commits and PRs carry no AI attribution.
