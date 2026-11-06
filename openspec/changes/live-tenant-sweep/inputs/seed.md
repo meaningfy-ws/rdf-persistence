@@ -66,6 +66,10 @@ Developer chose "a": an operator command, as a dry run by default (answers Q-1 a
   `file_key` only; `Session.remove` deletes its blobs; delete rather than quarantine; a returned
   report (a LinkML record) plus log lines.
 
+Developer: "accept recommendations, and continue" (2026-11-06).
+- Accepted: a grace period (only items older than a set age, e.g. 1 hour) protects work in flight; only `file_key` names a blob; `Session.remove` deletes its aggregate's blobs; delete, not quarantine; a returned report (a LinkML record) plus log lines.
+- Every question still open: the leader drafts a recommendation when the PLAN is derived, and the developer accepted recommendations by default (2026-11-06). Each one is recorded in the PLAN as the leader's choice, and the developer may overrule it.
+
 ## Test scenarios the EPIC must prove
 
 - A loaded graph never named by a commit is removed once eligible; committed loaded graphs stay.

@@ -65,6 +65,10 @@ Developer: "choose what is best". Leader's choice (2026-11-06), answering Q-2:
   (`unique_keys` plus an annotation for the scope); per tenant and per type; exact match; absent
   values never conflict; 409; generation reports existing duplicates.
 
+Developer: "accept recommendations, and continue" (2026-11-06).
+- Accepted: the key is declared in LinkML (`unique_keys` plus an annotation for its scope); scope is per tenant and per type; exact match; absent values never conflict; a clash is 409 Conflict; generation reports existing duplicates.
+- Every question still open: the leader drafts a recommendation when the PLAN is derived, and the developer accepted recommendations by default (2026-11-06). Each one is recorded in the PLAN as the leader's choice, and the developer may overrule it.
+
 ## Test scenarios the EPIC must prove
 
 - Two concurrent creates with the same key: exactly one succeeds (run many times, on Fuseki).

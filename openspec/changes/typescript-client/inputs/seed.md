@@ -54,6 +54,10 @@ generated from the OpenAPI document; together with the generated types, nothing 
 - Still open: Q-1, Q-3 to Q-7. Recommendations to propose: `fetch` only; plain JSON first; ESM;
   an async iterator over pages.
 
+Developer: "accept recommendations, and continue" (2026-11-06).
+- Accepted: `fetch` only; plain JSON first; ESM; an async iterator over pages; a versioned package with the toolkit's version.
+- Every question still open: the leader drafts a recommendation when the PLAN is derived, and the developer accepted recommendations by default (2026-11-06). Each one is recorded in the PLAN as the leader's choice, and the developer may overrule it.
+
 ## Test scenarios the EPIC must prove
 
 - The toy library's generated client type-checks with `tsc --strict`.

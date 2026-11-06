@@ -73,6 +73,9 @@ Developer: "a, but b and c sound good for future".
 - This reopens D-4 ("OpenFGA only on a cheap opportunity") by the developer's choice.
 - Still open: Q-2 to Q-7, for the later stages; Q-6 (deployment) for stage 1.
 
+Developer: "accept recommendations, and continue" (2026-11-06).
+- Every question still open: the leader drafts a recommendation when the PLAN is derived, and the developer accepted recommendations by default (2026-11-06). Each one is recorded in the PLAN as the leader's choice, and the developer may overrule it.
+
 ## Test scenarios the EPIC must prove
 
 - A protected slot is absent from JSON, JSON-LD and Turtle for a caller without access; present for one with it.

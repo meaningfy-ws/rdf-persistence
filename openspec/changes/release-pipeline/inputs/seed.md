@@ -66,6 +66,9 @@ Developer: "keep install from develop for now".
 - So this EPIC shrinks to versioning and changelog automation. PyPI waits for the developer's call.
 - Still open: Q-1 to Q-5, Q-7, Q-8.
 
+Developer: "accept recommendations, and continue" (2026-11-06).
+- Every question still open: the leader drafts a recommendation when the PLAN is derived, and the developer accepted recommendations by default (2026-11-06). Each one is recorded in the PLAN as the leader's choice, and the developer may overrule it.
+
 ## Test scenarios the EPIC must prove
 
 - A `fix:` commit after v0.1.0 makes release-please open a release PR for 0.1.1 with a changelog entry.

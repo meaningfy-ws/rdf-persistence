@@ -56,6 +56,8 @@ Developer: "i like both a and b, but we shall defer it for now, only remember pr
   SPARQL-to-GraphQL layer with access filtered after it runs.
 - No planning until the developer reopens it.
 
+Developer: "accept recommendations, and continue" (2026-11-06).
+
 ## Test scenarios the EPIC must prove
 
 - A nested query returns the same data the REST routes return for the same aggregates.

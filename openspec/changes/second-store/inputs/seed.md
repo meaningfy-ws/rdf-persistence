@@ -56,6 +56,9 @@ Developer: "as a second stores, I was thinking of TentrisDB, Oxygraph, GraphDB".
 - The capability descriptor is what makes several stores possible.
 - Still open: Q-1 to Q-5, and the comparison itself.
 
+Developer: "accept recommendations, and continue" (2026-11-06).
+- Every question still open: the leader drafts a recommendation when the PLAN is derived, and the developer accepted recommendations by default (2026-11-06). Each one is recorded in the PLAN as the leader's choice, and the developer may overrule it.
+
 ## Test scenarios the EPIC must prove
 
 - The `Store` conformance suite passes on the second store's container.

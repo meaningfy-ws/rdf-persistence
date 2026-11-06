@@ -49,6 +49,10 @@ Developer chose "b and c". Mapping to the leader's question list: run tests in p
 - Still open: Q-1 to Q-6. Defaults to propose: profile `check-all` without coverage, on a laptop
   and in CI; name the top 15; report collection and set-up separately.
 
+Developer: "accept recommendations, and continue" (2026-11-06).
+- Accepted: profile `check-all` without coverage, on a laptop and in CI; name the top 15 tests; report collection and fixture set-up separately.
+- Every question still open: the leader drafts a recommendation when the PLAN is derived, and the developer accepted recommendations by default (2026-11-06). Each one is recorded in the PLAN as the leader's choice, and the developer may overrule it.
+
 ## Test scenarios the EPIC must prove
 
 - Running the documented command on `develop` prints the slowest tests with their times.

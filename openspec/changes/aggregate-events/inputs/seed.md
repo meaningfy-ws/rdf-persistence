@@ -67,6 +67,10 @@ we need also the necessary plumbing for event driven app in the code, no?"
   but no consumer need is named yet.
 - Still open: Q-0, Q-3 to Q-7.
 
+Developer: "accept recommendations, and continue" (2026-11-06).
+- Accepted: a live event stream re-checks the caller's access when grants change.
+- Every question still open: the leader drafts a recommendation when the PLAN is derived, and the developer accepted recommendations by default (2026-11-06). Each one is recorded in the PLAN as the leader's choice, and the developer may overrule it.
+
 ## Test scenarios the EPIC must prove
 
 - Create, replace and remove each record exactly one event, in the same update.

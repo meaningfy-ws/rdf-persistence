@@ -61,6 +61,10 @@ apply them to graph DB schemas".
 - The planning step studies Strapi's rules from its documentation before fixing them here.
 - Still open: Q-1, Q-4 to Q-8.
 
+Developer: "accept recommendations, and continue" (2026-11-06).
+- Accepted: migrations run automatically at start-up, before serving; a tenant whose data is behind the schema is refused until it is migrated.
+- Every question still open: the leader drafts a recommendation when the PLAN is derived, and the developer accepted recommendations by default (2026-11-06). Each one is recorded in the PLAN as the leader's choice, and the developer may overrule it.
+
 ## Test scenarios the EPIC must prove
 
 - A new tenant records the current schema version at creation.
