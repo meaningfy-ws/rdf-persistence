@@ -198,7 +198,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 - [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6 · [x] 2.7 · [x] 2.8
 - [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4
 - [x] 4.1 · [x] 4.2 · [x] 4.3
-- [x] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4 · [ ] 5.5 · [x] 5.6 · [ ] 5.7
+- [x] 5.1 · [x] 5.2 · [x] 5.3 · [ ] 5.4 · [ ] 5.5 · [x] 5.6 · [ ] 5.7
 - [ ] 6.1 · [ ] 6.2 · [ ] 6.3
 
 ## Verification
