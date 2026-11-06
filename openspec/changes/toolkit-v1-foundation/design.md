@@ -208,7 +208,9 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-13,
   - A *tenant grant* is a grant whose target is the tenant IRI. A caller with no tenant grant, no
     permission on the requested aggregate and no global role that a role definition allows gets
     404. A caller with one of them, but without the
-    action, gets 403. A matching Prohibition gets 403 before anything else.
+    action, gets 403. The check order is: target outside the tenant's scope 404, tenant state
+    404, matching Prohibition 403, no permission at all (grants and global roles) 404, action
+    missing 403. So a Prohibition never reveals a tenant the caller cannot see.
 
   Details settled in task 4.2: a Prohibition of `read` blocks every action (each implies `read`);
   a Prohibition of another action blocks that action only. A tenant-targeted Prohibition covers the
@@ -576,8 +578,8 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
     `S3FileStore(endpoint, access_key_id, secret_access_key, region)`,
     `ZitadelIdentity(issuer, service_token, organisation_id, project_id)` (global roles are project-role
     grants),
-    `JwksTokenVerifier(issuer, audience, roles_claim, *, jwks_uri=None, http_client=None)`: keys come
-    from the issuer's OIDC discovery unless `jwks_uri` is given; the testkit passes an `http_client`
+    `JwksTokenVerifier(issuer, audience, roles_claim, *, jwks_uri=None, transport=None)`: keys come
+    from the issuer's OIDC discovery unless `jwks_uri` is given; the testkit passes a `transport`
     that serves its in-memory JWKS.
 - **PD-13a Service kit details** (tasks 5.1–5.3). `install_service(app, *, schema, generated, store,
   files, identity, verifier, rules, settings, prefix="")`: `generated` is the consumer's generated
