@@ -10,6 +10,9 @@ from rdf_persistence.domain import generated
 
 INDEXED_NAMES = [
     "RpModel",
+    "InvalidIri",
+    "mint_aggregate_iri",
+    "load_schema",
     "AccessRules",
     "Forbidden",
     "CallerAccess",

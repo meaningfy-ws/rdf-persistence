@@ -120,13 +120,16 @@ classes:
   Authorised:
     title: Authorised
     description: >-
-      What a route's access check settled: the caller's access to the tenant, and the IRI of the
-      aggregate it was checked on, which the route then acts on.
+      What a route's access check settled: the caller's principal, its access to the tenant, and the
+      IRI of the tenant or aggregate it was checked on, which the route then acts on.
     class_uri: rp:Authorised
     slots:
+      - principal
       - caller_access
       - checked_target
     slot_usage:
+      principal:
+        required: true
       caller_access:
         required: true
       checked_target:

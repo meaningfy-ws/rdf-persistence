@@ -360,9 +360,14 @@ works on the generated classes through a *session* and a *unit of work*:
 [source,python]
 ----
 # library/services/books.py
-import uuid
-
-from rdf_persistence import Mapper, ServiceKit, UnitOfWork, generated_models, new_part
+from rdf_persistence import (
+    Mapper,
+    ServiceKit,
+    UnitOfWork,
+    generated_models,
+    mint_aggregate_iri,
+    new_part,
+)
 
 from library.domain.generated import books
 from library.domain.generated.books import Book, Chapter
@@ -374,7 +379,7 @@ def book_mapper(kit: ServiceKit) -> Mapper:
 
 
 async def add_book(kit: ServiceKit, mapper: Mapper, tenant: str, principal: str) -> str:
-    iri = f"{tenant}/books/{uuid.uuid4()}"         # {tenant}/{rp_path}/{uuid4}
+    iri = str(mint_aggregate_iri(tenant, "books"))  # {tenant}/{rp_path}/{uuid4}
     async with kit.session(tenant, principal) as session:
         work = UnitOfWork(session, mapper)
         work.add(Book(id=iri, label="Dune", description="A planet.", author="Frank Herbert"))
@@ -395,7 +400,7 @@ async def add_chapter(
 
 `tenant` is the tenant's IRI and `principal` the caller's IRI (<<access>> shows where both come
 from). `kit.session(tenant, principal)` opens a session on that tenant's database; `kit.view` is
-the schema the service loaded. Pass `generated_models` every module whose classes the mapper reads:
+the schema the service loaded; outside a service, `load_schema(path)` loads one. Pass `generated_models` every module whose classes the mapper reads:
 the roots you `get` and the parts they own.
 
 What a commit does:
@@ -410,7 +415,7 @@ What a commit does:
   `contributor`) as statements about the aggregate's graph, `{root}/graph`. Your code never sets
   them.
 * An aggregate IRI must be one the toolkit would mint, `{tenant}/{rp_path}/{uuid4}`. Any other is
-  refused (`InvalidIri`, a `PersistenceError` and a `ValueError`) before anything is sent.
+  refused (`InvalidIri`) before anything is sent; `mint_aggregate_iri(tenant, rp_path)` mints one.
 * A part's IRI is `{root}/parts/{uuid4}`. `new_part` mints it, and it stays the same across
   commits.
 
@@ -724,7 +729,7 @@ It returns the *`ServiceKit`*, for your own routes and domain services:
 [cols="2,3",options="header"]
 |===
 |Member |Use
-|`require(authorization, tenant_id, action)` |Verify the token and check `action` on the tenant; returns the caller's `CallerAccess`
+|`require(authorization, tenant_id, action)` |Verify the token and check `action` on the tenant; returns an `Authorised` with the caller's `principal`, its `caller_access`, and the tenant IRI as `checked_target`
 |`require_aggregate(authorization, tenant_id, rp_path, aggregate_id, action)` |The same on one aggregate, so a prohibition on it applies; returns an `Authorised` whose `checked_target` is the aggregate IRI that was checked
 |`session(tenant, principal)` |A session on the tenant's database (<<session>>)
 |`bucket_of(tenant)` |The tenant's bucket name
@@ -732,16 +737,16 @@ It returns the *`ServiceKit`*, for your own routes and domain services:
 |`tenant_iri(tenant_id)` |The tenant IRI of a tenant id taken from a path
 |===
 
-A route of your own that calls a domain service needs the caller's principal IRI as well. It gets
-the caller and the check separately through the kit's gate, which is what `require_aggregate` does
-in one call:
+A route of your own that calls a domain service needs the caller's principal IRI as well. The
+`Authorised` that `require` and `require_aggregate` return carries it:
 
 [source,python]
 ----
-caller = await kit.gate.caller(request.headers.get("authorization"))   # 401 without a valid token
-checked = await kit.gate.aggregate_access(caller, t, "books", book_id, Action.MODIFY)
+checked = await kit.require_aggregate(
+    request.headers.get("authorization"), t, "books", book_id, Action.MODIFY
+)
 await add_chapter(
-    kit, mapper, checked.caller_access.tenant, caller.principal, checked.checked_target, number
+    kit, mapper, checked.caller_access.tenant, checked.principal, checked.checked_target, number
 )
 ----
 

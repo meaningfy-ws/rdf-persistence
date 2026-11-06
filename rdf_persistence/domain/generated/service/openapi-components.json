@@ -68,7 +68,7 @@
     },
     "Authorised": {
       "additionalProperties": false,
-      "description": "What a route's access check settled: the caller's access to the tenant, and the IRI of the aggregate it was checked on, which the route then acts on.",
+      "description": "What a route's access check settled: the caller's principal, its access to the tenant, and the IRI of the tenant or aggregate it was checked on, which the route then acts on.",
       "properties": {
         "caller_access": {
           "$ref": "#/components/schemas/CallerAccess",
@@ -78,9 +78,15 @@
           "description": "The IRI of the aggregate the access check was made on.",
           "format": "uri",
           "type": "string"
+        },
+        "principal": {
+          "description": "The user account the token identifies.",
+          "format": "uri",
+          "type": "string"
         }
       },
       "required": [
+        "principal",
         "caller_access",
         "checked_target"
       ],

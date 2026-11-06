@@ -113,8 +113,8 @@ another one. An IRI that SPARQL cannot carry (a space, `<`, `>`, a quote) is 422
 *Internal slots.*::
 A slot annotated `internal` (a file key, a database name) is refused in any body, also in the body
 that creates a tenant, and never shown in a response. A replace keeps the stored internal values of
-the root and of the parts that persist, matched by IRI; a part sent without its IRI gets a new
-one and loses them.
+the root and of the parts that persist, matched by IRI; a part sent without its IRI is a new
+part, by design, so it has none to keep.
 
 *What the toolkit refuses.*::
 At generation: a schema without titles, descriptions or IRIs, LinkML `rules`, `all_of` and
@@ -177,10 +177,6 @@ These are possibilities, not commitments. None is planned; each would start as i
 
 * *Detailed test profiling.* The check timings are rough; a profile of the slowest tests would show
   where the 5 minutes of unit and feature tests go.
-* *Matching id-less parts on replace.* A part sent without its IRI cannot be matched to its stored
-  version, so a replace drops its internal values.
-* *Minting and schema helpers for domain services.* A domain service builds a new aggregate's IRI
-  and the mapper's `SchemaView` itself; the toolkit could export helpers for both.
 * *A sweep inside a live tenant* for blobs and loaded graphs that no aggregate names (deferred in
   xref:architecture/index.adoc#building-blocks[architecture v1]).
 * *Unique keys across aggregates*, enforced at commit rather than checked before it.

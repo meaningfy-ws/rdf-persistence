@@ -2,7 +2,7 @@
 
 import pytest
 
-from rdf_persistence import CallerAccess, GrantSet
+from rdf_persistence import Authorised, GrantSet
 from rdf_persistence.domain.exceptions import Forbidden, InvalidToken, NotFound
 from rdf_persistence.domain.generated.rp_access import Action, Prohibition
 from rdf_persistence.domain.iris import graph_iri
@@ -23,8 +23,10 @@ async def test_a_caller_with_the_action_gets_its_access_to_the_tenant(scene) -> 
     access = await scene.service.kit.require(
         authorization(scene, "ada"), tenant_id(scene), Action.MODIFY
     )
-    assert isinstance(access, CallerAccess), "the model the routes use"
-    assert access.tenant == scene.tenant_iri, "the tenant of the path"
+    assert isinstance(access, Authorised), "the model the routes use"
+    assert access.caller_access.tenant == scene.tenant_iri, "the tenant of the path"
+    assert access.checked_target == scene.tenant_iri, "a tenant check is made on the tenant"
+    assert access.principal == principal_of("ada"), "the caller, for a domain service"
 
 
 async def test_a_request_without_a_bearer_token_is_refused(scene) -> None:
@@ -64,6 +66,7 @@ async def test_an_aggregate_is_checked_and_its_iri_is_the_one_to_act_on(scene) -
     )
     assert checked.checked_target == iri, "the aggregate the check was made on"
     assert checked.caller_access.tenant == scene.tenant_iri, "and the access to its tenant"
+    assert checked.principal == principal_of("rita"), "and the caller's principal"
 
 
 async def test_a_prohibition_on_the_aggregate_applies(scene) -> None:

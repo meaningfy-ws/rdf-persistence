@@ -11,7 +11,6 @@ from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantAccess
 from rdf_persistence.domain.generated.service.rp_service import (
     Authorised,
-    CallerAccess,
     ServiceSettings,
 )
 from rdf_persistence.domain.iris import system_database_name, tenant_iri
@@ -94,8 +93,9 @@ class ServiceKit:
 
     async def require(
         self, authorization: str | None, tenant_id: str, action: Action
-    ) -> CallerAccess:
-        """The caller's access to the tenant, once its token is verified and it may take ``action`` there.
+    ) -> Authorised:
+        """The caller's principal and access to the tenant, once its token is verified and it may take
+        ``action`` there; ``checked_target`` is the tenant IRI.
 
         ``authorization`` is the ``Authorization`` header of the request; ``tenant_id`` is the tenant's
         id in the path.
@@ -106,7 +106,10 @@ class ServiceKit:
             Forbidden: The caller may see the tenant but not take ``action`` in it.
         """
         caller = await self.gate.caller(authorization)
-        return await self.gate.tenant_access(caller, tenant_id, action)
+        access = await self.gate.tenant_access(caller, tenant_id, action)
+        return Authorised(
+            principal=caller.principal, caller_access=access, checked_target=access.tenant
+        )
 
     async def require_aggregate(
         self,
