@@ -40,6 +40,10 @@
       "assertion": {
          "@id": "zitadelAssertion"
       },
+      "details": {
+         "@type": "@id",
+         "@id": "zitadelDetails"
+      },
       "displayName": {
          "@id": "zitadelDisplayName"
       },
@@ -114,6 +118,9 @@
          "@container": "@set",
          "@id": "zitadelQueries"
       },
+      "resourceOwner": {
+         "@id": "zitadelResourceOwner"
+      },
       "roleKey": {
          "@id": "zitadelRoleKey"
       },
@@ -129,6 +136,10 @@
       },
       "method": {
          "@id": "zitadelTextMethod"
+      },
+      "user": {
+         "@type": "@id",
+         "@id": "zitadelUser"
       },
       "userId": {
          "@id": "zitadelUserId"
@@ -162,6 +173,9 @@
       },
       "ZitadelCreated": {
          "@id": "ZitadelCreated"
+      },
+      "ZitadelDetails": {
+         "@id": "ZitadelDetails"
       },
       "ZitadelEmail": {
          "@id": "ZitadelEmail"
@@ -222,6 +236,9 @@
       },
       "ZitadelUser": {
          "@id": "ZitadelUser"
+      },
+      "ZitadelUserAnswer": {
+         "@id": "ZitadelUserAnswer"
       },
       "ZitadelUserGrant": {
          "@id": "ZitadelUserGrant"

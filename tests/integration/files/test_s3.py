@@ -1,5 +1,8 @@
 """S3FileStore against Garage: the shared conformance suite, the round trip and the put after the tenant is gone."""
 
+import hashlib
+import os
+
 import pytest
 
 from rdf_persistence.adapters.s3 import S3FileStore
@@ -17,12 +20,27 @@ async def test_garage_conforms(case, files):
     await run_case(case, files)
 
 
-async def test_a_blob_put_into_a_bucket_is_read_back_exactly(files):
+MEGABYTES = 8
+
+
+async def test_a_multi_megabyte_blob_comes_back_with_the_same_digest(files):
+    payload = os.urandom(MEGABYTES * 1024 * 1024)
+
     async def round_trip(files, bucket):
-        await files.put(bucket, "k", b"\x00\x01payload")
-        assert await files.get(bucket, "k") == b"\x00\x01payload"
+        await files.put(bucket, "big", payload)
+        back = await files.get(bucket, "big")
+        assert len(back) == len(payload)
+        assert hashlib.sha256(back).digest() == hashlib.sha256(payload).digest()
 
     await run_case(round_trip, files)
+
+
+async def test_a_key_that_climbs_is_refused_before_it_reaches_the_object_store(files):
+    async def climb(files, bucket):
+        with pytest.raises(ValueError, match="key"):
+            await files.put(bucket, "a/../b", b"x")
+
+    await run_case(climb, files)
 
 
 async def test_a_put_after_the_bucket_is_deleted_is_tenant_gone_and_creates_no_bucket(files):

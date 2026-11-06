@@ -2,18 +2,31 @@
 
 import uuid
 
-import jwt
 import pytest
 
+from rdf_persistence.adapters.jwks import JwksTokenVerifier
 from rdf_persistence.adapters.zitadel import ZitadelIdentity, zitadel_roles_claim
-from rdf_persistence.domain.exceptions import NotFound
+from rdf_persistence.domain.exceptions import InvalidToken, NotFound
 from rdf_persistence.testkit.exceptions import TokenRefusedError
+from rdf_persistence.testkit.identity_conformance import CASES, run_case
 from rdf_persistence.testkit.zitadel import ADMIN_ROLE, access_token, create_machine_user
 
 
-def roles_in(project, token: str) -> set[str]:
-    claims = jwt.decode(token, options={"verify_signature": False})
-    return set(claims.get(zitadel_roles_claim(project.project_id), ()))
+@pytest.fixture
+async def verifier(zitadel_project):
+    """A verifier of the container's tokens; the container speaks http, so the https rule is opted out of."""
+    async with JwksTokenVerifier(
+        zitadel_project.server.url,
+        zitadel_project.project_id,
+        zitadel_roles_claim(zitadel_project.project_id),
+        allow_insecure_issuer=True,
+    ) as client:
+        yield client
+
+
+async def roles_in(verifier, project, account) -> set[str]:
+    """The global roles of a fresh token of the account, as the toolkit's verifier reads them."""
+    return set((await verifier.verify(access_token(project, account))).global_roles)
 
 
 @pytest.fixture
@@ -33,10 +46,35 @@ def account(zitadel_project):
     return create_machine_user(zitadel_project, f"bot-{uuid.uuid4().hex[:8]}")
 
 
-async def test_a_service_account_gets_a_jwt_that_names_the_project(zitadel_project, account):
-    claims = jwt.decode(access_token(zitadel_project, account), options={"verify_signature": False})
-    assert claims["sub"] == account.user_id
-    assert zitadel_project.project_id in claims["aud"], "the project audience"
+@pytest.mark.parametrize("case", CASES, ids=lambda case: case.__name__)
+async def test_zitadel_conforms(case, identity, account):
+    await run_case(case, identity, account.user_id)
+
+
+async def test_a_live_token_is_verified_to_the_principal_of_its_account(
+    verifier, zitadel_project, account
+):
+    caller = await verifier.verify(access_token(zitadel_project, account))
+    assert caller.principal == f"{zitadel_project.server.url}/users/{account.user_id}"
+    assert caller.global_roles == [], "an account without grants holds no role"
+
+
+async def test_the_admin_principal_holds_the_admin_role_in_its_verified_token(
+    verifier, zitadel_project
+):
+    admin = next(user for user in zitadel_project.machine_users if user.name == ADMIN_ROLE)
+    caller = await verifier.verify(access_token(zitadel_project, admin))
+    assert caller.global_roles == [ADMIN_ROLE]
+
+
+async def test_a_token_for_another_audience_is_refused_by_the_live_issuers_keys(
+    zitadel_project, account
+):
+    async with JwksTokenVerifier(
+        zitadel_project.server.url, "another-project", "roles", allow_insecure_issuer=True
+    ) as other:
+        with pytest.raises(InvalidToken):
+            await other.verify(access_token(zitadel_project, account))
 
 
 async def test_a_disabled_service_account_is_refused_a_token_until_it_is_enabled(
@@ -58,22 +96,16 @@ async def test_disabling_twice_is_harmless_and_shows_in_the_listing(identity, ac
 
 
 async def test_a_global_role_shows_in_a_fresh_token_until_it_is_removed(
-    identity, zitadel_project, account
+    identity, verifier, zitadel_project, account
 ):
-    assert ADMIN_ROLE not in roles_in(zitadel_project, access_token(zitadel_project, account)), (
-        "none at first"
-    )
+    assert ADMIN_ROLE not in await roles_in(verifier, zitadel_project, account), "none at first"
     await identity.grant_global_role(account.user_id, ADMIN_ROLE)
     await identity.grant_global_role(account.user_id, ADMIN_ROLE)
-    assert ADMIN_ROLE in roles_in(zitadel_project, access_token(zitadel_project, account)), (
-        "granted"
-    )
+    assert ADMIN_ROLE in await roles_in(verifier, zitadel_project, account), "granted"
     listed = {a.account_id: a for a in await identity.list_accounts()}
     assert listed[account.user_id].global_roles == [ADMIN_ROLE]
     await identity.remove_global_role(account.user_id, ADMIN_ROLE)
-    assert ADMIN_ROLE not in roles_in(zitadel_project, access_token(zitadel_project, account)), (
-        "removed"
-    )
+    assert ADMIN_ROLE not in await roles_in(verifier, zitadel_project, account), "removed"
 
 
 async def test_an_unknown_role_or_account_is_not_found(identity, account):

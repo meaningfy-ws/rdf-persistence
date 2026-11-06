@@ -420,6 +420,8 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
     `rdf_persistence/model/adapters/rp_wire.yaml` (`module_kind: technical`, its own
     `[[tool.rp-generate]]` entry) and generated into `rdf_persistence/adapters/generated/`; the
     adapters and the testkit's provisioning share them. The model guard also scans `adapters`.
+    A slot annotated `strict` (generation-local) renders `Field(strict=True)`, so the claims' `exp`,
+    `nbf` and `sub` refuse coerced values; foreign ids (the Zitadel user id) carry a pattern.
   - The principal IRI is `{issuer}/users/{percent-encoded sub}` (`domain/iris.principal_iri`): keyed
     on the issuer, so principals of two providers never collide; grants and tracking store it, so
     changing it means migrating data.

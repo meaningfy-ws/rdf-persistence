@@ -47,7 +47,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/pydantic_split.py",
-      "sha256": "e43701ece0c0db14b6f74ce960afda6327d765ee6369ce1d109b9612c484a055"
+      "sha256": "7a86e5ced002cf89a7909ec6f19579a002c544731a3d0761cfaaadb0b40734c5"
     },
     {
       "path": "rdf_persistence/generation/extensions/pydantic_validators.py",
@@ -71,7 +71,7 @@
     },
     {
       "path": "rdf_persistence/generation/model/rp_generation.yaml",
-      "sha256": "8298a9643d46d9a60037d5578135fe909a6bcc65d967fb0801a4e06b74366bb0"
+      "sha256": "a1bfd29243dd815504ac4901780fe4e25428bf3357f4867bcf4553ffa73e5325"
     },
     {
       "path": "rdf_persistence/generation/outputs.py",
@@ -95,7 +95,7 @@
     },
     {
       "path": "rdf_persistence/generation/templates/pydantic/attribute.py.jinja",
-      "sha256": "b59c8665df44c108987c0157489762ee101dc00e14f0455e99f5b5aa210f018a"
+      "sha256": "1623c7795be25563bc603b31a357a3dd37f0e72c64ed09cd1f293c02e3b86262"
     },
     {
       "path": "rdf_persistence/generation/templates/pydantic/base_model.py.jinja",
@@ -153,7 +153,7 @@
     },
     {
       "path": "rdf_persistence/generation/generated/rp_generation.py",
-      "sha256": "39feccb34628426003415498f5eee6a33099332bd7749f9b28e8819409cd0dc7"
+      "sha256": "14146141cd520e870d172bbb17d8797510bc9cdc5fa683e02c1c5546193678f1"
     },
     {
       "path": "rdf_persistence/generation/generated/shapes.ttl",

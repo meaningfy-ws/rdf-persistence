@@ -1,5 +1,7 @@
 """``JwksTokenVerifier``'s key handling: discovery, the cache, one refresh per unknown kid, an unreachable provider."""
 
+import asyncio
+
 import httpx
 import pytest
 
@@ -8,6 +10,7 @@ from rdf_persistence.domain.exceptions import IdentityUnavailable, InvalidToken
 from rdf_persistence.testkit.tokens import ISSUER, TokenSigner
 
 PAST_COOLDOWN = 11.0
+WITHIN_COOLDOWN = 1.0
 
 
 class ManualClock:
@@ -179,3 +182,144 @@ async def test_a_jwks_without_a_usable_key_is_unavailable(clock: ManualClock) ->
     verifier = JwksTokenVerifier(ISSUER, "aud", "roles", transport=transport, clock=clock)
     with pytest.raises(IdentityUnavailable):
         await verifier.verify(TokenSigner(clock=clock).issue())
+
+
+# --- availability (PD-28a): a request never queues on the network for another's sake ----------
+
+
+class StallingProvider:
+    """A provider a test can hold: every request is counted, and waits for ``release`` while ``stalled``."""
+
+    def __init__(self, signer: TokenSigner) -> None:
+        self._signer = signer
+        self.stalled = False
+        self.calls = 0
+        self.release = asyncio.Event()
+        self.transport = httpx.MockTransport(self._handle)
+
+    async def _handle(self, request: httpx.Request) -> httpx.Response:
+        self.calls += 1
+        if self.stalled:
+            await self.release.wait()
+        return self._signer.handle(request)
+
+
+async def let_tasks_run() -> None:
+    for _ in range(20):
+        await asyncio.sleep(0)
+
+
+@pytest.fixture
+def provider(signer: TokenSigner) -> StallingProvider:
+    return StallingProvider(signer)
+
+
+def verifier_over(provider: StallingProvider, signer: TokenSigner, clock: ManualClock):
+    return JwksTokenVerifier(
+        ISSUER, signer.audience, signer.roles_claim, transport=provider.transport, clock=clock
+    )
+
+
+async def test_a_forged_kid_during_a_slow_provider_does_not_delay_a_valid_token(
+    signer: TokenSigner, provider: StallingProvider, clock: ManualClock
+) -> None:
+    verifier = verifier_over(provider, signer, clock)
+    good = signer.issue()
+    await verifier.verify(good)
+    clock.now += PAST_COOLDOWN
+    provider.stalled = True
+    forged = asyncio.create_task(verifier.verify(signer.issue(kid="forged")))
+    await let_tasks_run()
+    assert not forged.done(), "the forged-kid request is waiting on the provider"
+    caller = await asyncio.wait_for(verifier.verify(good), timeout=1)
+    assert caller.principal, "a cached key needs no lock and no network"
+    provider.release.set()
+    with pytest.raises(InvalidToken):
+        await forged
+
+
+async def test_requests_after_the_expiry_during_an_outage_make_one_provider_call(
+    signer: TokenSigner, provider: StallingProvider, clock: ManualClock
+) -> None:
+    verifier = verifier_over(provider, signer, clock)
+    good = signer.issue()
+    await verifier.verify(good)
+    clock.now += JWKS_TTL_SECONDS + 1
+    signer.unreachable = True
+    provider.stalled = True
+    provider.calls = 0
+    requests = [asyncio.create_task(verifier.verify(good)) for _ in range(5)]
+    await let_tasks_run()
+    provider.release.set()
+    results = await asyncio.gather(*requests, return_exceptions=True)
+    assert all(isinstance(result, IdentityUnavailable) for result in results)
+    assert provider.calls == 1, "one refresh is made; the rest share its outcome"
+
+
+async def test_stale_keys_inside_the_cooldown_are_unavailable_without_a_call(
+    signer: TokenSigner, provider: StallingProvider, clock: ManualClock
+) -> None:
+    verifier = verifier_over(provider, signer, clock)
+    good = signer.issue()
+    await verifier.verify(good)
+    clock.now += JWKS_TTL_SECONDS + 1
+    signer.unreachable = True
+    provider.calls = 0
+    for _ in range(3):
+        with pytest.raises(IdentityUnavailable):
+            await verifier.verify(good)
+        clock.now += WITHIN_COOLDOWN
+    assert provider.calls == 1, "the cooldown holds for stale keys too"
+    clock.now += PAST_COOLDOWN
+    with pytest.raises(IdentityUnavailable):
+        await verifier.verify(good)
+    assert provider.calls == 2, "and ends"
+
+
+async def test_an_unknown_kid_during_an_outage_is_refused_not_unavailable(
+    signer: TokenSigner, provider: StallingProvider, clock: ManualClock
+) -> None:
+    verifier = verifier_over(provider, signer, clock)
+    await verifier.verify(signer.issue())
+    clock.now += PAST_COOLDOWN
+    signer.unreachable = True
+    provider.calls = 0
+    with pytest.raises(IdentityUnavailable):
+        await verifier.verify(signer.issue(kid="forged"))
+    for _ in range(3):
+        with pytest.raises(InvalidToken):
+            await verifier.verify(signer.issue(kid="forged"))
+    assert provider.calls == 1, "inside the cooldown the answer is immediate: 401, not 503"
+
+
+# --- the issuer (PD-28a) -------------------------------------------------------------------
+
+
+async def test_a_discovery_document_naming_another_issuer_is_unavailable(
+    signer: TokenSigner, clock: ManualClock
+) -> None:
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.url.path == DISCOVERY_PATH:
+            return httpx.Response(
+                200, json={"issuer": "https://evil.test", "jwks_uri": f"{ISSUER}/keys"}
+            )
+        return signer.handle(request)
+
+    verifier = JwksTokenVerifier(
+        ISSUER,
+        signer.audience,
+        signer.roles_claim,
+        transport=httpx.MockTransport(respond),
+        clock=clock,
+    )
+    with pytest.raises(IdentityUnavailable, match="issuer"):
+        await verifier.verify(signer.issue())
+
+
+def test_an_issuer_that_is_not_https_is_refused() -> None:
+    with pytest.raises(ValueError, match="https"):
+        JwksTokenVerifier("http://idp.test", "aud", "roles")
+
+
+def test_an_insecure_issuer_is_allowed_when_the_caller_opts_out() -> None:
+    assert JwksTokenVerifier("http://idp.test", "aud", "roles", allow_insecure_issuer=True)

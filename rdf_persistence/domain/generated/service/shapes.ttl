@@ -12,7 +12,7 @@ rp:AccountSummary a sh:NodeShape ;
 	rdfs:comment "What the identity port reports about one account of the identity provider: its id, its login name, its email (a service account has none), whether it may sign in, and its global roles." ;
 	rdfs:label "Account summary" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n21 ;
+	sh:ignoredProperties _:c14n20 ;
 	sh:property _:c14n16 , _:c14n4 , _:c14n5 , _:c14n58 , _:c14n75 ;
 	sh:targetClass rp:AccountSummary .
 rp:AggregateRoot a sh:NodeShape ;
@@ -31,9 +31,9 @@ rp:Described a sh:NodeShape ;
 	rdfs:comment "A mixin giving an object an IRI, a label and a description. The application writes them." ;
 	rdfs:label "Described" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n26 ;
+	sh:ignoredProperties _:c14n25 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n0 , _:c14n34 , _:c14n68 ;
+	sh:property _:c14n0 , _:c14n33 , _:c14n68 ;
 	sh:targetClass rp:Described .
 rp:Grant a sh:NodeShape ;
 	rdfs:comment "A permission given to a principal on a tenant or on one aggregate, either by role or as a direct action; exactly one of role and action is given." ;
@@ -42,7 +42,7 @@ rp:Grant a sh:NodeShape ;
 	sh:ignoredProperties _:c14n57 ;
 	sh:property _:c14n14 , _:c14n50 , _:c14n60 , _:c14n76 ;
 	sh:targetClass odrl:Permission ;
-	sh:xone _:c14n24 .
+	sh:xone _:c14n23 .
 rp:GrantSet a sh:NodeShape ;
 	rdfs:comment "The body that replaces the grants and prohibitions of a tenant; two grants with the same assignee, target and role or action are refused." ;
 	rdfs:label "Grant set" ;
@@ -62,7 +62,7 @@ rp:Page a sh:NodeShape ;
 	rdfs:comment "One page of a listing, with the position of the page in the whole listing." ;
 	rdfs:label "Page" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n49 ;
+	sh:ignoredProperties _:c14n48 ;
 	sh:property _:c14n18 , _:c14n84 , _:c14n87 , _:c14n95 ;
 	sh:targetClass rp:Page .
 rp:Policy a sh:NodeShape ;
@@ -77,14 +77,14 @@ rp:Principal a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n98 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n43 ;
+	sh:property _:c14n42 ;
 	sh:targetClass prov:Agent .
 rp:Problem a sh:NodeShape ;
 	rdfs:comment "An RFC 9457 problem detail, the body of every error answer of the service." ;
 	rdfs:label "Problem" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n91 ;
-	sh:property _:c14n13 , _:c14n40 , _:c14n46 , _:c14n51 , _:c14n94 ;
+	sh:property _:c14n13 , _:c14n39 , _:c14n45 , _:c14n51 , _:c14n94 ;
 	sh:targetClass rp:Problem .
 rp:Prohibition a sh:NodeShape ;
 	rdfs:comment "The ODRL prohibition that forbids an assignee an action on a target; it wins over any permission." ;
@@ -97,29 +97,29 @@ rp:RegistryEntry a sh:NodeShape ;
 	rdfs:comment "An entry of a tenant's registry graph, naming a graph that belongs to an aggregate. It is written by the session, never by the application." ;
 	rdfs:label "Registry entry" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n25 ;
-	sh:property _:c14n12 , _:c14n30 , _:c14n92 ;
+	sh:ignoredProperties _:c14n24 ;
+	sh:property _:c14n12 , _:c14n29 , _:c14n92 ;
 	sh:targetClass rp:RegistryEntry .
 rp:RoleDefinition a sh:NodeShape ;
 	rdfs:comment "What a role may do and where it applies. An application supplies its role definitions as data; they are not stored." ;
 	rdfs:label "Role definition" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n64 ;
-	sh:property _:c14n28 , _:c14n42 , _:c14n72 ;
+	sh:property _:c14n27 , _:c14n41 , _:c14n72 ;
 	sh:targetClass rp:RoleDefinition .
 rp:Rule a sh:NodeShape ;
 	rdfs:comment "An ODRL rule that gives an assignee a ruling on an action over a target." ;
 	rdfs:label "Rule" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n23 ;
-	sh:property _:c14n33 , _:c14n36 , _:c14n53 ;
+	sh:ignoredProperties _:c14n22 ;
+	sh:property _:c14n32 , _:c14n35 , _:c14n53 ;
 	sh:targetClass odrl:Rule .
 rp:ServiceSettings a sh:NodeShape ;
 	rdfs:comment "The settings of `install_service`: where the service is mounted, how it names tenants and which role its callers get on a tenant they create." ;
 	rdfs:label "Service settings" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n85 ;
-	sh:property _:c14n17 , _:c14n19 , _:c14n62 , _:c14n83 , _:c14n9 ;
+	sh:property _:c14n17 , _:c14n49 , _:c14n62 , _:c14n83 , _:c14n9 ;
 	sh:targetClass rp:ServiceSettings .
 rp:TenantAccess a sh:NodeShape ;
 	rdfs:comment "The access record of a tenant: its label, state and database name, with the grants and prohibitions that say who may do what in it." ;
@@ -127,7 +127,7 @@ rp:TenantAccess a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n70 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n15 , _:c14n37 , _:c14n52 , _:c14n67 , _:c14n79 , _:c14n93 , _:c14n97 ;
+	sh:property _:c14n15 , _:c14n36 , _:c14n52 , _:c14n67 , _:c14n79 , _:c14n93 , _:c14n97 ;
 	sh:sparql _:c14n6 ;
 	sh:targetClass rp:TenantAccess .
 rp:TenantCreate a sh:NodeShape ;
@@ -141,8 +141,8 @@ rp:TenantLabelled a sh:NodeShape ;
 	rdfs:comment "A mixin for what carries a tenant's label, one line of 1 to 200 characters that neither starts nor ends in a space; the access record and the service's request bodies share it, so the label is checked the same everywhere." ;
 	rdfs:label "Tenant labelled" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n45 ;
-	sh:property _:c14n32 ;
+	sh:ignoredProperties _:c14n44 ;
+	sh:property _:c14n31 ;
 	sh:targetClass rp:TenantLabelled .
 rp:TenantSummary a sh:NodeShape ;
 	rdfs:comment "What the service answers about one tenant, in a listing or after creating it." ;
@@ -150,20 +150,20 @@ rp:TenantSummary a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n11 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n35 , _:c14n47 , _:c14n81 ;
+	sh:property _:c14n34 , _:c14n46 , _:c14n81 ;
 	sh:targetClass rp:TenantSummary .
 rp:Tracked a sh:NodeShape ;
 	rdfs:comment "A mixin for the tracking statements of a commit. The session writes them about the aggregate's graph IRI, never about the root entity." ;
 	rdfs:label "Tracked" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n20 ;
-	sh:property _:c14n29 , _:c14n63 , _:c14n73 , _:c14n74 ;
+	sh:ignoredProperties _:c14n19 ;
+	sh:property _:c14n28 , _:c14n63 , _:c14n73 , _:c14n74 ;
 	sh:targetClass rp:Tracked .
 rp:VerifiedCaller a sh:NodeShape ;
 	rdfs:comment "What a token verifier returns for a valid token, the principal and its global roles." ;
 	rdfs:label "Verified caller" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n39 ;
+	sh:ignoredProperties _:c14n38 ;
 	sh:property _:c14n77 , _:c14n99 ;
 	sh:targetClass rp:VerifiedCaller .
 _:c14n0 sh:datatype xsd:string ;
@@ -174,7 +174,7 @@ _:c14n0 sh:datatype xsd:string ;
 	sh:order 2 ;
 	sh:path dcterms:description .
 _:c14n1 rdf:first rp:SystemLevel ;
-	rdf:rest _:c14n41 .
+	rdf:rest _:c14n40 .
 _:c14n10 sh:description "The principal the rule applies to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -203,7 +203,7 @@ _:c14n108 rdf:first rdf:type ;
 _:c14n109 rdf:first rp:version ;
 	rdf:rest rdf:nil .
 _:c14n11 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n135 .
+	rdf:rest _:c14n145 .
 _:c14n110 rdf:first dcterms:created ;
 	rdf:rest _:c14n106 .
 _:c14n111 rdf:first dcterms:creator ;
@@ -412,14 +412,8 @@ _:c14n188 rdf:first rp:administer ;
 	rdf:rest rdf:nil .
 _:c14n189 rdf:first odrl:read ;
 	rdf:rest _:c14n190 .
-_:c14n19 sh:datatype xsd:string ;
-	sh:description "The claim of the token that holds the caller's global roles, an object keyed by role name; for Zitadel, urn:zitadel:iam:org:project:{project_id}:roles of the consumer's project." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Roles claim" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 4 ;
-	sh:path rp:rolesClaim .
+_:c14n19 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
 _:c14n190 rdf:first odrl:modify ;
 	rdf:rest _:c14n191 .
 _:c14n191 rdf:first odrl:delete ;
@@ -446,53 +440,51 @@ _:c14n2 sh:description "The permissions given in the tenant, by role or as direc
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 0 ;
 	sh:path rp:grant .
-_:c14n20 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
+_:c14n20 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n140 .
 _:c14n200 rdf:first rp:administer ;
 	rdf:rest rdf:nil .
-_:c14n201 sh:property _:c14n88 .
-_:c14n202 sh:property _:c14n31 .
+_:c14n201 sh:property _:c14n30 .
+_:c14n202 sh:property _:c14n88 .
 _:c14n203 rdf:first rdf:type ;
 	rdf:rest _:c14n54 .
-_:c14n21 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n130 .
-_:c14n22 rdf:first rp:prohibition ;
+_:c14n21 rdf:first rp:prohibition ;
 	rdf:rest _:c14n8 .
-_:c14n23 rdf:first rdf:type ;
-	rdf:rest _:c14n48 .
-_:c14n24 rdf:first _:c14n202 ;
+_:c14n22 rdf:first rdf:type ;
+	rdf:rest _:c14n47 .
+_:c14n23 rdf:first _:c14n201 ;
 	rdf:rest _:c14n61 .
-_:c14n25 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n160 .
-_:c14n26 rdf:first rdf:type ;
+_:c14n24 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n120 .
+_:c14n25 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n27 rdf:first rp:databaseName ;
+_:c14n26 rdf:first rp:databaseName ;
 	rdf:rest _:c14n66 .
-_:c14n28 sh:description "The actions the role permits." ;
+_:c14n27 sh:description "The actions the role permits." ;
 	sh:in _:c14n189 ;
 	sh:minCount 1 ;
 	sh:name "Actions" ;
 	sh:order 2 ;
 	sh:path rp:permits .
-_:c14n29 sh:description "The principal that first committed the graph." ;
+_:c14n28 sh:description "The principal that first committed the graph." ;
 	sh:maxCount 1 ;
 	sh:name "Creator" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 2 ;
 	sh:path dcterms:creator .
-_:c14n3 a sh:SPARQLConstraint ;
-	sh:message "GrantSet.grants: One grant per assignee, target and role or action." ;
-	sh:select "SELECT DISTINCT $this\nWHERE {\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?first .\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?second .\n  FILTER (!sameTerm(?first, ?second))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/assignee> ?first_0 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/assignee> ?second_0 . }\n  FILTER ((!bound(?first_0) && !bound(?second_0)) || sameTerm(?first_0, ?second_0))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/target> ?first_1 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/target> ?second_1 . }\n  FILTER ((!bound(?first_1) && !bound(?second_1)) || sameTerm(?first_1, ?second_1))\n  OPTIONAL { ?first <https://meaningfy.ws/ns/rdf-persistence#role> ?first_2 . }\n  OPTIONAL { ?second <https://meaningfy.ws/ns/rdf-persistence#role> ?second_2 . }\n  FILTER ((!bound(?first_2) && !bound(?second_2)) || sameTerm(?first_2, ?second_2))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/action> ?first_3 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/action> ?second_3 . }\n  FILTER ((!bound(?first_3) && !bound(?second_3)) || sameTerm(?first_3, ?second_3))\n}" .
-_:c14n30 sh:description "The IRI of the aggregate root that owns the graph." ;
+_:c14n29 sh:description "The IRI of the aggregate root that owns the graph." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Owned by" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 2 ;
 	sh:path rp:ownedBy .
-_:c14n31 sh:minCount 1 ;
+_:c14n3 a sh:SPARQLConstraint ;
+	sh:message "GrantSet.grants: One grant per assignee, target and role or action." ;
+	sh:select "SELECT DISTINCT $this\nWHERE {\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?first .\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?second .\n  FILTER (!sameTerm(?first, ?second))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/assignee> ?first_0 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/assignee> ?second_0 . }\n  FILTER ((!bound(?first_0) && !bound(?second_0)) || sameTerm(?first_0, ?second_0))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/target> ?first_1 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/target> ?second_1 . }\n  FILTER ((!bound(?first_1) && !bound(?second_1)) || sameTerm(?first_1, ?second_1))\n  OPTIONAL { ?first <https://meaningfy.ws/ns/rdf-persistence#role> ?first_2 . }\n  OPTIONAL { ?second <https://meaningfy.ws/ns/rdf-persistence#role> ?second_2 . }\n  FILTER ((!bound(?first_2) && !bound(?second_2)) || sameTerm(?first_2, ?second_2))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/action> ?first_3 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/action> ?second_3 . }\n  FILTER ((!bound(?first_3) && !bound(?second_3)) || sameTerm(?first_3, ?second_3))\n}" .
+_:c14n30 sh:minCount 1 ;
 	sh:path rp:role .
-_:c14n32 sh:datatype xsd:string ;
+_:c14n31 sh:datatype xsd:string ;
 	sh:description "The preferred label of the object." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -501,12 +493,20 @@ _:c14n32 sh:datatype xsd:string ;
 	sh:order 0 ;
 	sh:path skos:prefLabel ;
 	sh:pattern "^(?:^\\S(?:.{0,198}\\S)?$)(?![\\s\\S])" .
-_:c14n33 sh:description "The action a direct permission allows, or a prohibition forbids." ;
+_:c14n32 sh:description "The action a direct permission allows, or a prohibition forbids." ;
 	sh:in _:c14n193 ;
 	sh:maxCount 1 ;
 	sh:name "Action" ;
 	sh:order 2 ;
 	sh:path odrl:action .
+_:c14n33 sh:datatype xsd:string ;
+	sh:description "The preferred label of the object." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Label" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path skos:prefLabel .
 _:c14n34 sh:datatype xsd:string ;
 	sh:description "The preferred label of the object." ;
 	sh:maxCount 1 ;
@@ -515,22 +515,14 @@ _:c14n34 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path skos:prefLabel .
-_:c14n35 sh:datatype xsd:string ;
-	sh:description "The preferred label of the object." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Label" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 1 ;
-	sh:path skos:prefLabel .
-_:c14n36 sh:description "The IRI of the tenant, or of an aggregate's graph, the rule applies to." ;
+_:c14n35 sh:description "The IRI of the tenant, or of an aggregate's graph, the rule applies to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Target" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 1 ;
 	sh:path odrl:target .
-_:c14n37 sh:datatype xsd:string ;
+_:c14n36 sh:datatype xsd:string ;
 	sh:description "The preferred label of the object." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -539,10 +531,17 @@ _:c14n37 sh:datatype xsd:string ;
 	sh:order 5 ;
 	sh:path skos:prefLabel ;
 	sh:pattern "^(?:^\\S(?:.{0,198}\\S)?$)(?![\\s\\S])" .
-_:c14n38 rdf:first rp:LoadedGraph ;
+_:c14n37 rdf:first rp:LoadedGraph ;
 	rdf:rest rdf:nil .
-_:c14n39 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n180 .
+_:c14n38 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n150 .
+_:c14n39 sh:description "The IRI that identifies the kind of problem." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Problem type" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path rp:problemType .
 _:c14n4 sh:datatype xsd:boolean ;
 	sh:description "Whether the account may sign in; a disabled account is refused new tokens." ;
 	sh:maxCount 1 ;
@@ -551,16 +550,9 @@ _:c14n4 sh:datatype xsd:boolean ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path rp:accountActive .
-_:c14n40 sh:description "The IRI that identifies the kind of problem." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Problem type" ;
-	sh:nodeKind sh:IRI ;
-	sh:order 0 ;
-	sh:path rp:problemType .
-_:c14n41 rdf:first rp:TenantLevel ;
+_:c14n40 rdf:first rp:TenantLevel ;
 	rdf:rest _:c14n100 .
-_:c14n42 sh:datatype xsd:string ;
+_:c14n41 sh:datatype xsd:string ;
 	sh:description "The name of a role, matched against the application's role definitions. An application may narrow it to an enum." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -568,17 +560,17 @@ _:c14n42 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:role .
-_:c14n43 sh:description "The IRI that identifies the object." ;
+_:c14n42 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n44 rdf:first dcterms:identifier ;
+_:c14n43 rdf:first dcterms:identifier ;
 	rdf:rest _:c14n203 .
-_:c14n45 rdf:first rdf:type ;
+_:c14n44 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n46 sh:datatype xsd:string ;
+_:c14n45 sh:datatype xsd:string ;
 	sh:description "A short, fixed summary of the kind of problem." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -586,16 +578,25 @@ _:c14n46 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:problemTitle .
-_:c14n47 sh:description "The IRI that identifies the object." ;
+_:c14n46 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n48 rdf:first rp:role ;
+_:c14n47 rdf:first rp:role ;
 	rdf:rest rdf:nil .
-_:c14n49 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n140 .
+_:c14n48 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n130 .
+_:c14n49 sh:datatype xsd:string ;
+	sh:description "The claim of the token that holds the caller's global roles, an object keyed by role name; for Zitadel, urn:zitadel:iam:org:project:{project_id}:roles of the consumer's project." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Roles claim" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:rolesClaim ;
+	sh:pattern "^(?:^.+$)(?![\\s\\S])" .
 _:c14n5 sh:datatype xsd:string ;
 	sh:description "The identity provider's id of the account." ;
 	sh:maxCount 1 ;
@@ -634,7 +635,7 @@ _:c14n53 sh:description "The principal the rule applies to." ;
 	sh:order 0 ;
 	sh:path odrl:assignee .
 _:c14n54 rdf:first skos:prefLabel ;
-	rdf:rest _:c14n27 .
+	rdf:rest _:c14n26 .
 _:c14n55 sh:datatype xsd:string ;
 	sh:description "The preferred label of the object." ;
 	sh:maxCount 1 ;
@@ -645,9 +646,9 @@ _:c14n55 sh:datatype xsd:string ;
 	sh:path skos:prefLabel ;
 	sh:pattern "^(?:^\\S(?:.{0,198}\\S)?$)(?![\\s\\S])" .
 _:c14n56 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n125 .
+	rdf:rest _:c14n135 .
 _:c14n57 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n120 .
+	rdf:rest _:c14n125 .
 _:c14n58 sh:datatype xsd:string ;
 	sh:description "The name the account signs in with." ;
 	sh:maxCount 1 ;
@@ -667,7 +668,7 @@ _:c14n60 sh:description "The action a direct permission allows, or a prohibition
 	sh:name "Action" ;
 	sh:order 3 ;
 	sh:path odrl:action .
-_:c14n61 rdf:first _:c14n201 ;
+_:c14n61 rdf:first _:c14n202 ;
 	rdf:rest rdf:nil .
 _:c14n62 sh:description "The IRI under which the service mints identifiers and problem types, ending in a slash." ;
 	sh:maxCount 1 ;
@@ -683,7 +684,7 @@ _:c14n63 sh:description "A principal that committed a later version of the graph
 	sh:order 3 ;
 	sh:path dcterms:contributor .
 _:c14n64 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n145 .
+	rdf:rest _:c14n155 .
 _:c14n65 sh:description "The IRI of the tenant, or of an aggregate's graph, the rule applies to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -692,7 +693,7 @@ _:c14n65 sh:description "The IRI of the tenant, or of an aggregate's graph, the 
 	sh:order 1 ;
 	sh:path odrl:target .
 _:c14n66 rdf:first rp:grant ;
-	rdf:rest _:c14n22 .
+	rdf:rest _:c14n21 .
 _:c14n67 sh:description "The permissions given in the tenant, by role or as direct actions; they live in the access record's graph." ;
 	sh:name "Grants" ;
 	sh:node rp:Grant ;
@@ -708,11 +709,11 @@ _:c14n68 sh:description "The IRI that identifies the object." ;
 _:c14n69 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
 _:c14n7 rdf:first rp:Aggregate ;
-	rdf:rest _:c14n38 .
+	rdf:rest _:c14n37 .
 _:c14n70 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n170 .
+	rdf:rest _:c14n175 .
 _:c14n71 rdf:first dcterms:description ;
-	rdf:rest _:c14n44 .
+	rdf:rest _:c14n43 .
 _:c14n72 sh:description "Where the role applies." ;
 	sh:in _:c14n1 ;
 	sh:maxCount 1 ;
@@ -769,7 +770,7 @@ _:c14n79 sh:description "Where the tenant is in its life." ;
 _:c14n8 rdf:first rp:state ;
 	rdf:rest rdf:nil .
 _:c14n80 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n175 .
+	rdf:rest _:c14n180 .
 _:c14n81 sh:description "Where the tenant is in its life." ;
 	sh:in _:c14n181 ;
 	sh:maxCount 1 ;
@@ -802,7 +803,7 @@ _:c14n84 sh:datatype xsd:integer ;
 	sh:order 2 ;
 	sh:path rp:limit .
 _:c14n85 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n165 .
+	rdf:rest _:c14n170 .
 _:c14n86 sh:datatype xsd:string ;
 	sh:description "The preferred label of the object." ;
 	sh:maxCount 1 ;
@@ -824,7 +825,7 @@ _:c14n87 sh:datatype xsd:integer ;
 _:c14n88 sh:minCount 1 ;
 	sh:path odrl:action .
 _:c14n89 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n150 .
+	rdf:rest _:c14n160 .
 _:c14n9 sh:datatype xsd:string ;
 	sh:description "The role a caller is given on the tenant it creates." ;
 	sh:maxCount 1 ;
@@ -837,7 +838,7 @@ _:c14n9 sh:datatype xsd:string ;
 _:c14n90 rdf:first dcterms:contributor ;
 	rdf:rest _:c14n105 .
 _:c14n91 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n155 .
+	rdf:rest _:c14n165 .
 _:c14n92 sh:description "The kind of graph a registry entry names." ;
 	sh:in _:c14n7 ;
 	sh:maxCount 1 ;

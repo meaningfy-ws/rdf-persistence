@@ -144,3 +144,46 @@ async def test_deleting_a_missing_bucket_is_not_found(s3):
     stubber.add_client_error("list_objects_v2", service_error_code="NoSuchBucket")
     with pytest.raises(NotFound):
         await files.delete_bucket(BUCKET)
+
+
+# --- input the caller got wrong is not an outage (PD-28a) ------------------------------------------
+
+BAD_KEYS = ["a/../b", "..", "../x", "a/..", "a\x00b", "a\nb", "a\x7fb", ""]
+ORDINARY_KEYS = ["a..b", "..x", "x/..y/z", "folder/ä b+c.bin"]
+
+
+@pytest.mark.parametrize("key", BAD_KEYS, ids=repr)
+@pytest.mark.parametrize("operation", ["put", "get", "delete"])
+async def test_a_key_that_climbs_or_holds_a_control_character_is_refused_before_any_request(
+    s3, operation, key
+):
+    files, stubber = s3
+    calls = {
+        "put": lambda: files.put(BUCKET, key, b"x"),
+        "get": lambda: files.get(BUCKET, key),
+        "delete": lambda: files.delete(BUCKET, key),
+    }
+    with pytest.raises(ValueError, match="key"):
+        await calls[operation]()
+    stubber.assert_no_pending_responses()
+
+
+@pytest.mark.parametrize("key", ORDINARY_KEYS)
+async def test_a_key_with_dots_inside_a_segment_is_a_key(s3, key):
+    files, stubber = s3
+    stubber.add_response("put_object", {}, {"Bucket": BUCKET, "Key": key, "Body": b"x"})
+    await files.put(BUCKET, key, b"x")
+
+
+@pytest.mark.parametrize("bucket", ["", "a/b", "Not Valid"])
+async def test_a_bucket_name_boto_refuses_is_the_callers_error_not_an_outage(no_network, bucket):  # noqa: F811
+    files = S3FileStore(
+        URL, "id", "secret", REGION
+    )  # a real client: the stubber looks before boto does
+    with pytest.raises(ValueError, match="bucket"):
+        await files.put(bucket, KEY, b"x")
+
+
+def test_the_timeouts_are_five_seconds_to_connect_and_thirty_to_read():
+    config = S3FileStore("http://s3.test", "id", "secret", REGION)._client.meta.config
+    assert (config.connect_timeout, config.read_timeout) == (5, 30)

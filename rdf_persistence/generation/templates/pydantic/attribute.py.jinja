@@ -15,6 +15,7 @@
     {%- if maximum_cardinality != None %}, max_length={{maximum_cardinality}}{% endif -%}
 {%- endif -%}
 {%- if secret %}, repr=False{% endif -%}
+{%- if strict %}, strict=True{% endif -%}
 {%- if internal -%}
     , json_schema_extra = { "rp_internal": True }
 {%- endif -%})

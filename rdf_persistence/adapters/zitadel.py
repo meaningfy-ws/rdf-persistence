@@ -23,6 +23,7 @@ from rdf_persistence.adapters.generated.rp_wire import (
     ZitadelQuery,
     ZitadelSearch,
     ZitadelUser,
+    ZitadelUserAnswer,
     ZitadelUserGrant,
     ZitadelUserPage,
     ZitadelUserQuery,
@@ -40,7 +41,7 @@ MACHINE_USERS = f"{MANAGEMENT}/users/machine"
 OWN_ORGANISATION = f"{MANAGEMENT}/orgs/me"
 TOKEN_PATH = "/oauth/v2/token"
 PAGE_SIZE = 100
-ACTIVE_STATE = "USER_STATE_ACTIVE"
+ACTIVE_STATE, INACTIVE_STATE = "USER_STATE_ACTIVE", "USER_STATE_INACTIVE"
 UNREADABLE = "Zitadel answered with something unreadable"
 
 log = logging.getLogger(__name__)
@@ -64,6 +65,15 @@ def _summary(user: ZitadelUser, roles: list[str]) -> AccountSummary:
 
 def _user_path(account_id: str, *rest: str) -> str:
     return "/".join([USERS, quote(account_id, safe=""), *rest])
+
+
+def _checked(account_id: str) -> str:
+    """``account_id`` if it has the shape of an id, else ``NotFound``: nothing is sent for a value that cannot be one."""
+    try:
+        ZitadelUserQuery(userId=account_id)
+    except ValidationError:
+        raise NotFound("no such account") from None
+    return account_id
 
 
 def user_grant_path(user_id: str, *rest: str) -> str:
@@ -134,7 +144,7 @@ class ZitadelIdentity(HttpAdapter):
         if status == HTTPStatus.BAD_REQUEST and bad_request == BadRequestMeans.MISSING_ROLE:
             raise NotFound("the project has no such role")
         if not response.is_success:
-            log.debug("Zitadel answered %s: %s", status, response.text)
+            log.debug("Zitadel answered %s", status)
             raise IdentityUnavailable(f"Zitadel answered {status} for {path}")
         return response
 
@@ -159,16 +169,18 @@ class ZitadelIdentity(HttpAdapter):
         return [ZitadelQuery(organizationIdQuery=organisation), *more]
 
     async def _grants(self, account_id: str | None = None) -> list[ZitadelUserGrant]:
+        """The grants of the project; of one account, if given (and only that account's, whatever Zitadel returns)."""
         queries = [ZitadelQuery(projectIdQuery=ZitadelProjectQuery(projectId=self._project_id))]
-        if account_id:
+        if account_id is not None:
             queries.append(ZitadelQuery(userIdQuery=ZitadelUserQuery(userId=account_id)))
-        return await self._search_all(USER_GRANT_SEARCH, queries, _grants_in)
+        found = await self._search_all(USER_GRANT_SEARCH, queries, _grants_in)
+        return found if account_id is None else [g for g in found if g.userId == account_id]
 
     async def find_by_email(self, email: str) -> AccountSummary:
         by_email = ZitadelQuery(emailQuery=ZitadelEmailQuery(emailAddress=email))
         users = await self._search_all(USERS, self._in_organisation(by_email), _users_in)
         if not users:
-            raise NotFound(f"no account with email {email}")
+            raise NotFound("no account with that email")
         grants = await self._grants(users[0].userId)
         return _summary(users[0], [role for grant in grants for role in grant.roleKeys or []])
 
@@ -179,19 +191,34 @@ class ZitadelIdentity(HttpAdapter):
             roles.setdefault(grant.userId, []).extend(grant.roleKeys or [])
         return [_summary(user, roles.get(user.userId, [])) for user in users]
 
+    async def _account(self, account_id: str) -> ZitadelUser:
+        """The account, read from Zitadel; ``NotFound`` unless it has the shape of an id and belongs to the organisation."""
+        response = await self._send(HTTPMethod.GET, _user_path(_checked(account_id)))
+        user = _read(ZitadelUserAnswer, response).user
+        if not user.details or user.details.resourceOwner != self._organisation_id:
+            raise NotFound("no such account")
+        return user
+
     async def disable(self, account_id: str) -> None:
-        path = _user_path(account_id, "deactivate")
-        await self._send(HTTPMethod.POST, path, bad_request=BadRequestMeans.ALREADY_DONE)
+        await self._set_state(account_id, "deactivate", INACTIVE_STATE)
 
     async def enable(self, account_id: str) -> None:
-        path = _user_path(account_id, "reactivate")
-        await self._send(HTTPMethod.POST, path, bad_request=BadRequestMeans.ALREADY_DONE)
+        await self._set_state(account_id, "reactivate", ACTIVE_STATE)
 
-    async def _require_account(self, account_id: str) -> None:
-        await self._send(HTTPMethod.GET, _user_path(account_id))
+    async def _set_state(self, account_id: str, action: str, wanted: str) -> None:
+        """Change the state; a 400 is "already done" only if the account is then in the wanted state."""
+        await self._account(account_id)
+        response = await self._send(
+            HTTPMethod.POST,
+            _user_path(account_id, action),
+            bad_request=BadRequestMeans.ALREADY_DONE,
+        )
+        refused = response.status_code == HTTPStatus.BAD_REQUEST
+        if refused and (await self._account(account_id)).state != wanted:
+            raise IdentityUnavailable("Zitadel refused to change the state of the account")
 
     async def grant_global_role(self, account_id: str, role: str) -> None:
-        await self._require_account(account_id)
+        await self._account(account_id)
         held = await self._grants(account_id)
         if not held:
             body = ZitadelGrantRequest(projectId=self._project_id, roleKeys=[role])
@@ -212,7 +239,7 @@ class ZitadelIdentity(HttpAdapter):
             )
 
     async def remove_global_role(self, account_id: str, role: str) -> None:
-        await self._require_account(account_id)
+        await self._account(account_id)
         held = await self._grants(account_id)
         roles = held[0].roleKeys or [] if held else []
         if role not in roles:

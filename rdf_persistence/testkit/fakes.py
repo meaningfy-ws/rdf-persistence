@@ -171,7 +171,11 @@ class FakeFileStore(_Instrumented):
 class FakeIdentity(_Instrumented):
     """An ``Identity`` over accounts in memory, with the same failure injection as ``FakeStore``.
 
-    It keeps its own copy of each account, and hands out copies.
+    It keeps its own copy of each account, and hands out copies. Its accounts are those of one
+    organisation: any other id is ``NotFound``, as Zitadel answers for an account of another
+    organisation. Given ``roles``, it knows only those, as a project does: granting another is
+    ``NotFound``. Without them, it accepts any role. An account whose last role is removed has none
+    (``None``), as Zitadel reports it. The ``identity_conformance`` suite pins this.
     """
 
     OPERATIONS = frozenset(
@@ -185,8 +189,11 @@ class FakeIdentity(_Instrumented):
         }
     )
 
-    def __init__(self, accounts: Iterable[AccountSummary] = ()) -> None:
+    def __init__(
+        self, accounts: Iterable[AccountSummary] = (), *, roles: Iterable[str] | None = None
+    ) -> None:
         super().__init__()
+        self._roles = None if roles is None else frozenset(roles)
         self._accounts = {a.account_id: a.model_copy(deep=True) for a in accounts}
 
     def _account(self, account_id: str) -> AccountSummary:
@@ -216,6 +223,8 @@ class FakeIdentity(_Instrumented):
     async def grant_global_role(self, account_id: str, role: str) -> None:
         self._enter("grant_global_role", f"{account_id} {role}")
         account = self._account(account_id)
+        if self._roles is not None and role not in self._roles:
+            raise NotFound(f"no role {role}")
         roles = account.global_roles or []
         if role not in roles:
             account.global_roles = [*roles, role]
@@ -224,7 +233,7 @@ class FakeIdentity(_Instrumented):
         self._enter("remove_global_role", f"{account_id} {role}")
         account = self._account(account_id)
         if account.global_roles:
-            account.global_roles = [r for r in account.global_roles if r != role]
+            account.global_roles = [r for r in account.global_roles if r != role] or None
 
 
 @asynccontextmanager

@@ -87,6 +87,19 @@ class ZitadelUserQuery(ConfiguredBaseModel):
     "The search term that keeps the grants of one user."
     userId: str = Field(default=..., title="Zitadel user id", description="The id of a user.")
 
+    @field_validator("userId")
+    def pattern_userId(cls, v):
+        pattern=re.compile("^[A-Za-z0-9_-]+$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid userId format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid userId format: " + str(v)
+            raise ValueError(err_msg)
+        return v
+
 
 class ZitadelQuery(ConfiguredBaseModel):
     "One term of a search; exactly one of its slots is set."
@@ -167,14 +180,42 @@ class ZitadelHuman(ConfiguredBaseModel):
     email: Optional[ZitadelEmail] = Field(default=None, title="Zitadel human email", description="The email of the person.")
 
 
+class ZitadelDetails(ConfiguredBaseModel):
+    "What Zitadel reports about where a resource lives."
+    model_config = ConfigDict(extra="allow")
+
+    resourceOwner: Optional[str] = Field(default=None, title="Zitadel resource owner", description="The id of the organisation that owns the resource.")
+
+
 class ZitadelUser(ConfiguredBaseModel):
-    "One user of an organisation, as the user search reports it."
+    "One user of an organisation, as the user search and the user read report it."
     model_config = ConfigDict(extra="allow")
 
     userId: str = Field(default=..., title="Zitadel user id", description="The id of a user.")
     state: str = Field(default=..., title="Zitadel state", description="The state of the account; the active one is `USER_STATE_ACTIVE`.")
     username: str = Field(default=..., title="Zitadel username", description="The name the account signs in with.")
     human: Optional[ZitadelHuman] = Field(default=None, title="Zitadel human", description="The person behind the account, if it is a person\u0027s.")
+    details: Optional[ZitadelDetails] = Field(default=None, title="Zitadel details", description="Where the resource lives.")
+
+    @field_validator("userId")
+    def pattern_userId(cls, v):
+        pattern=re.compile("^[A-Za-z0-9_-]+$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid userId format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid userId format: " + str(v)
+            raise ValueError(err_msg)
+        return v
+
+
+class ZitadelUserAnswer(ConfiguredBaseModel):
+    "The answer that reads one user."
+    model_config = ConfigDict(extra="allow")
+
+    user: ZitadelUser = Field(default=..., title="Zitadel user", description="The user that was read.")
 
 
 class ZitadelUserGrant(ConfiguredBaseModel):
@@ -184,6 +225,19 @@ class ZitadelUserGrant(ConfiguredBaseModel):
     id: str = Field(default=..., title="Zitadel id", description="The id of a created or listed thing.")
     userId: str = Field(default=..., title="Zitadel user id", description="The id of a user.")
     roleKeys: Optional[list[str]] = Field(default=None, title="Zitadel role keys", description="The keys of project roles.")
+
+    @field_validator("userId")
+    def pattern_userId(cls, v):
+        pattern=re.compile("^[A-Za-z0-9_-]+$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid userId format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid userId format: " + str(v)
+            raise ValueError(err_msg)
+        return v
 
 
 class ZitadelUserPage(ConfiguredBaseModel):
@@ -220,6 +274,19 @@ class ZitadelMachineUserAnswer(ConfiguredBaseModel):
 
     userId: str = Field(default=..., title="Zitadel user id", description="The id of a user.")
 
+    @field_validator("userId")
+    def pattern_userId(cls, v):
+        pattern=re.compile("^[A-Za-z0-9_-]+$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid userId format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid userId format: " + str(v)
+            raise ValueError(err_msg)
+        return v
+
 
 class ZitadelKeyAnswer(ConfiguredBaseModel):
     "The answer to creating a key: the key file, base64 encoded."
@@ -247,11 +314,11 @@ class JwtClaims(ConfiguredBaseModel):
     "The claims of a verified access token that the toolkit reads; the roles claim, whose name is configured, stays among the extra fields."
     model_config = ConfigDict(extra="allow")
 
-    sub: str = Field(default=..., title="JWT subject", description="The account the token is for.")
+    sub: str = Field(default=..., title="JWT subject", description="The account the token is for.", strict=True)
     iss: str = Field(default=..., title="JWT issuer", description="The issuer of the token.")
     aud: Any = Field(default=..., title="JWT audience", description="The audience of the token, one string or a list of them.")
-    exp: float = Field(default=..., title="JWT expires at", description="When the token stops being valid, in seconds since the epoch.")
-    nbf: Optional[float] = Field(default=None, title="JWT not before", description="When the token starts being valid, in seconds since the epoch.")
+    exp: float = Field(default=..., title="JWT expires at", description="When the token stops being valid, in seconds since the epoch.", strict=True)
+    nbf: Optional[float] = Field(default=None, title="JWT not before", description="When the token starts being valid, in seconds since the epoch.", strict=True)
     azp: Optional[str] = Field(default=None, title="JWT authorized party", description="The client the token was issued to.")
 
     @field_validator("sub")
@@ -294,7 +361,9 @@ ZitadelAssertion.model_rebuild()
 ZitadelTokenRequest.model_rebuild()
 ZitadelEmail.model_rebuild()
 ZitadelHuman.model_rebuild()
+ZitadelDetails.model_rebuild()
 ZitadelUser.model_rebuild()
+ZitadelUserAnswer.model_rebuild()
 ZitadelUserGrant.model_rebuild()
 ZitadelUserPage.model_rebuild()
 ZitadelGrantPage.model_rebuild()

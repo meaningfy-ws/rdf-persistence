@@ -37,6 +37,11 @@ def test_the_roles_claim_has_no_default_because_it_names_the_consumers_project()
         ServiceSettings(**fields)
 
 
+def test_an_empty_roles_claim_is_refused() -> None:
+    with pytest.raises(ValidationError, match="Invalid roles_claim format"):
+        settings(roles_claim="")
+
+
 @pytest.mark.parametrize("prefix", ["l", "lib", "a1b2", "a" * 20])
 def test_a_lower_case_prefix_of_at_most_20_characters_is_accepted(prefix: str) -> None:
     assert settings(prefix=prefix).prefix == prefix, "the prefix was not kept"

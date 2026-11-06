@@ -22,11 +22,13 @@ from rdf_persistence.domain.iris import principal_iri
 from rdf_persistence.services.tokens import EpochClock
 
 JWKS_TTL_SECONDS = 600.0
-# An unknown kid refreshes the keys at most this often, so a burst of forged kids cannot hammer the provider.
+# Keys are refreshed at most this often (stale or unknown kid alike), so neither an outage nor a burst of
+# forged kids can hammer the provider; inside it the verifier answers at once.
 UNKNOWN_KID_COOLDOWN_SECONDS = 10.0
 # Asymmetric only: `none` and the HS* family never verify.
 RS256, ES256 = "RS256", "ES256"
 ALLOWED_ALGORITHMS = (RS256, ES256)
+HTTPS_PREFIX = "https://"
 DISCOVERY_PATH = "/.well-known/openid-configuration"
 REQUIRED_CLAIMS = ("exp", "sub")
 
@@ -46,7 +48,11 @@ class JwksTokenVerifier(HttpAdapter):
         jwks_uri: str | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
         clock: EpochClock = time.time,
+        allow_insecure_issuer: bool = False,
     ) -> None:
+        """Verify tokens of ``issuer``, which must be an https URL unless ``allow_insecure_issuer`` (test containers)."""
+        if not allow_insecure_issuer and not issuer.startswith(HTTPS_PREFIX):
+            raise ValueError("the issuer must be an https URL")
         super().__init__(transport=transport)
         self._issuer = issuer
         self._audience = audience
@@ -76,7 +82,7 @@ class JwksTokenVerifier(HttpAdapter):
             raise InvalidToken("the token is malformed") from error
         algorithm, kid = header.get("alg"), header.get("kid")
         if algorithm not in ALLOWED_ALGORITHMS:
-            raise InvalidToken(f"the token's algorithm {algorithm!r} is not accepted")
+            raise InvalidToken("the token's algorithm is not accepted")
         if not isinstance(kid, str) or not kid:
             raise InvalidToken("the token names no key (kid)")
         return algorithm, kid
@@ -98,7 +104,7 @@ class JwksTokenVerifier(HttpAdapter):
                 },
             )
         except jwt.PyJWTError as error:
-            raise InvalidToken(f"the token is not valid: {error}") from error
+            raise InvalidToken("the token is not valid") from error
         try:
             claims = JwtClaims.model_validate(payload)
         except ValidationError as error:
@@ -119,13 +125,26 @@ class JwksTokenVerifier(HttpAdapter):
         return []
 
     async def _key_for(self, kid: str) -> jwt.PyJWK:
-        async with self._lock:
-            if self._is_stale() or (kid not in self._keys and self._cooled_down()):
-                await self._refresh()
+        if self._is_stale() or kid not in self._keys:
+            await self._renew(kid)
         try:
             return self._keys[kid]
         except KeyError:
-            raise InvalidToken(f"no key {kid!r} at the issuer") from None
+            raise InvalidToken("the token's key is unknown to the issuer") from None
+
+    async def _renew(self, kid: str) -> None:
+        """Refresh the keys if the cooldown allows; answer at once if it does not.
+
+        The lock only makes a refresh single-flight: whoever gets it re-checks first, so requests that
+        waited on a refresh share its outcome instead of starting another.
+        """
+        if not self._is_stale() and not self._cooled_down():
+            return  # an unknown kid inside the cooldown: refused by the caller, no network
+        async with self._lock:
+            if (self._is_stale() or kid not in self._keys) and self._cooled_down():
+                await self._refresh()
+            if self._is_stale():
+                raise IdentityUnavailable("the issuer's keys are out of date and cannot be renewed")
 
     def _is_stale(self) -> bool:
         return self._fetched_at is None or self._clock() - self._fetched_at >= JWKS_TTL_SECONDS
@@ -150,12 +169,15 @@ class JwksTokenVerifier(HttpAdapter):
     async def _discover(self) -> str:
         content = await self._fetch(self._issuer.rstrip("/") + DISCOVERY_PATH)
         try:
-            return DiscoveryDocument.model_validate_json(content).jwks_uri
+            document = DiscoveryDocument.model_validate_json(content)
         except ValidationError as error:
             raise IdentityUnavailable("the issuer's discovery document is unusable") from error
+        if document.issuer != self._issuer:
+            raise IdentityUnavailable("the discovery document names another issuer")
+        return document.jwks_uri
 
     async def _fetch(self, uri: str) -> bytes:
         response = await self.request(HTTPMethod.GET, uri)
         if not response.is_success:
-            raise IdentityUnavailable(f"{uri} answered {response.status_code}")
+            raise IdentityUnavailable(f"the issuer answered {response.status_code}")
         return response.content

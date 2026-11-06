@@ -146,6 +146,19 @@ class ServiceSettings(ConfiguredBaseModel):
             raise ValueError(err_msg)
         return v
 
+    @field_validator("roles_claim")
+    def pattern_roles_claim(cls, v):
+        pattern=re.compile("^.+$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid roles_claim format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid roles_claim format: " + str(v)
+            raise ValueError(err_msg)
+        return v
+
 
 class VerifiedCaller(ConfiguredBaseModel):
     "What a token verifier returns for a valid token, the principal and its global roles."

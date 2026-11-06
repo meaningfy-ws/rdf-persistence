@@ -104,7 +104,14 @@ async def test_an_audience_list_containing_ours_is_accepted(
 
 INVALID_TOKENS = [
     "expired",
+    "expired-a-minute-ago",
+    "expires-this-instant",
     "not-yet-valid",
+    "exp-as-a-numeric-string",
+    "exp-as-a-bool",
+    "nbf-as-a-numeric-string",
+    "sub-as-a-number",
+    "alg-none-with-a-known-kid",
     "no-exp",
     "no-sub",
     "exp-not-a-number",
@@ -143,6 +150,18 @@ def make_invalid(name: str, signer: TokenSigner) -> str:
     builders = {
         "expired": lambda: signer.issue(expires_in=-1),
         "not-yet-valid": lambda: signer.issue(not_before_in=60),
+        "expired-a-minute-ago": lambda: signer.issue(expires_in=-60),
+        "expires-this-instant": lambda: signer.issue(expires_in=0),
+        "exp-as-a-numeric-string": lambda: signer.issue(extra={"exp": str(int(NOW) + 600)}),
+        "exp-as-a-bool": lambda: signer.issue(extra={"exp": True}),
+        "nbf-as-a-numeric-string": lambda: signer.issue(extra={"nbf": "0"}),
+        "sub-as-a-number": lambda: signer.issue(sub=None, extra={"sub": 123}),
+        "alg-none-with-a-known-kid": lambda: jwt.encode(
+            {"iss": ISSUER, "aud": signer.audience, "sub": "u", "exp": NOW + 60},
+            None,
+            algorithm="none",
+            headers={"kid": signer.kid},
+        ),
         "no-exp": lambda: signer.issue(expires_in=None),
         "no-sub": lambda: signer.issue(sub=None),
         "exp-not-a-number": lambda: signer.issue(extra={"exp": "soon"}),
@@ -181,5 +200,40 @@ async def test_an_expired_token(signer: TokenSigner, verifier: TokenVerifier) ->
 async def test_hs256_is_refused_for_its_algorithm(
     signer: TokenSigner, verifier: TokenVerifier
 ) -> None:
-    with pytest.raises(InvalidToken, match="algorithm"):
+    with pytest.raises(InvalidToken, match="is not accepted"):
         await verifier.verify(forge_hs256(signer))
+
+
+async def test_alg_none_with_a_known_kid_is_refused_for_its_algorithm(
+    signer: TokenSigner, verifier: TokenVerifier
+) -> None:
+    token = make_invalid("alg-none-with-a-known-kid", signer)
+    with pytest.raises(InvalidToken, match="is not accepted"):
+        await verifier.verify(token)
+
+
+async def test_an_error_message_carries_no_text_of_the_token(
+    signer: TokenSigner, verifier: TokenVerifier
+) -> None:
+    attacker = "attacker-text"
+    forged = [
+        signer.issue(kid=attacker * 200),
+        signer.issue(audience=attacker),
+        signer.issue(issuer=attacker),
+        jwt.encode({"sub": attacker}, "k" * 32, algorithm="HS256", headers={"kid": attacker}),
+        signer.issue(extra={"exp": attacker}),
+        f"{b64(json.dumps({'alg': attacker, 'kid': signer.kid}).encode())}.{b64(b'{}')}.{b64(b'x')}",
+    ]
+    for token in forged:
+        with pytest.raises(InvalidToken) as caught:
+            await verifier.verify(token)
+        assert attacker not in str(caught.value), "the message is fixed text"
+        assert len(str(caught.value)) < 80, "and short"
+
+
+async def test_a_token_refused_by_pyjwt_chains_its_message_as_the_cause(
+    signer: TokenSigner, verifier: TokenVerifier
+) -> None:
+    with pytest.raises(InvalidToken) as caught:
+        await verifier.verify(signer.issue(audience="someone-else"))
+    assert isinstance(caught.value.__cause__, jwt.PyJWTError), "the detail is in the cause only"

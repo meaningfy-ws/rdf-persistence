@@ -212,22 +212,44 @@ classes:
       - zitadel_human_email
     annotations:
       allows_extra: 'true'
+  ZitadelDetails:
+    title: Zitadel details
+    description: >-
+      What Zitadel reports about where a resource lives.
+    class_uri: rp:ZitadelDetails
+    slots:
+      - zitadel_resource_owner
+    annotations:
+      allows_extra: 'true'
   ZitadelUser:
     title: Zitadel user
     description: >-
-      One user of an organisation, as the user search reports it.
+      One user of an organisation, as the user search and the user read report it.
     class_uri: rp:ZitadelUser
     slots:
       - zitadel_user_id
       - zitadel_state
       - zitadel_username
       - zitadel_human
+      - zitadel_details
     slot_usage:
       zitadel_user_id:
         required: true
       zitadel_state:
         required: true
       zitadel_username:
+        required: true
+    annotations:
+      allows_extra: 'true'
+  ZitadelUserAnswer:
+    title: Zitadel user answer
+    description: >-
+      The answer that reads one user.
+    class_uri: rp:ZitadelUserAnswer
+    slots:
+      - zitadel_user
+    slot_usage:
+      zitadel_user:
         required: true
     annotations:
       allows_extra: 'true'
@@ -412,6 +434,7 @@ slots:
       The id of a user.
     slot_uri: rp:zitadelUserId
     alias: userId
+    pattern: '^[A-Za-z0-9_-]+$'
   zitadel_email_query:
     title: Zitadel email query
     description: >-
@@ -600,6 +623,26 @@ slots:
     slot_uri: rp:zitadelHuman
     alias: human
     range: ZitadelHuman
+  zitadel_resource_owner:
+    title: Zitadel resource owner
+    description: >-
+      The id of the organisation that owns the resource.
+    slot_uri: rp:zitadelResourceOwner
+    alias: resourceOwner
+  zitadel_details:
+    title: Zitadel details
+    description: >-
+      Where the resource lives.
+    slot_uri: rp:zitadelDetails
+    alias: details
+    range: ZitadelDetails
+  zitadel_user:
+    title: Zitadel user
+    description: >-
+      The user that was read.
+    slot_uri: rp:zitadelUser
+    alias: user
+    range: ZitadelUser
   zitadel_id:
     title: Zitadel id
     description: >-
@@ -660,6 +703,8 @@ slots:
     slot_uri: rp:jwtSubject
     alias: sub
     pattern: '[\s\S]+'
+    annotations:
+      strict: 'true'
   jwt_issuer:
     title: JWT issuer
     description: >-
@@ -680,6 +725,8 @@ slots:
     slot_uri: rp:jwtExpiresAt
     alias: exp
     range: float
+    annotations:
+      strict: 'true'
   jwt_not_before:
     title: JWT not before
     description: >-
@@ -687,6 +734,8 @@ slots:
     slot_uri: rp:jwtNotBefore
     alias: nbf
     range: float
+    annotations:
+      strict: 'true'
   jwt_authorized_party:
     title: JWT authorized party
     description: >-

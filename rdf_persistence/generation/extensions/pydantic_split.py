@@ -11,7 +11,9 @@ The stock generator lacks five things the toolkit needs, and this module adds th
   ``attribute.py.jinja`` template), which the API layer reads; the slot is still dumped, because the
   mapper must persist it;
 * a slot annotated ``secret: true`` (``GenerationAnnotation``) is declared ``repr=False``, so its value
-  stays out of the repr of the class.
+  stays out of the repr of the class;
+* a slot annotated ``strict: true`` is declared ``strict=True``: pydantic then takes no coerced value
+  (``"123"`` or ``true`` for a number).
 """
 
 import copy
@@ -60,6 +62,7 @@ class InternalAttribute(PydanticAttribute):
     internal: bool = False
     loosens: bool = False
     secret: bool = False
+    strict: bool = False
 
 
 def metamodel_module(name: str, *, toolkit: bool) -> str:
@@ -133,6 +136,7 @@ class SplitPydanticGenerator(PydanticGenerator):
             internal=internal,
             loosens=_loosens_a_base_slot(slot.source, sv),
             secret=secret,
+            strict=annotation_text(slot.source, GenerationAnnotation.STRICT) == "true",
         )
         return slot
 

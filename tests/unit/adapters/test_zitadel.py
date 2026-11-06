@@ -1,6 +1,7 @@
 """ZitadelIdentity request building, answer reading and error mapping, with no network (httpx.MockTransport)."""
 
 import json
+import logging
 from collections.abc import Callable
 
 import httpx
@@ -73,9 +74,31 @@ def grants(*found: str) -> httpx.Response:
     return answer(f'{{"result":[{",".join(found)}]}}')
 
 
+def user_answer(
+    user_id: str = "u1", owner: str = ORG, state: str = "USER_STATE_ACTIVE"
+) -> httpx.Response:
+    """The answer to reading one user: the user, with the organisation that owns it."""
+    user = {
+        "userId": user_id,
+        "state": state,
+        "username": "ann",
+        "details": {"resourceOwner": owner},
+    }
+    return answer(json.dumps({"user": user}))
+
+
+def one_after_another(*answers: httpx.Response) -> Callable[[], httpx.Response]:
+    queue = iter(answers)
+    return lambda: next(queue)
+
+
 USERS, GRANTS = ("POST", "/v2/users"), ("POST", "/management/v1/users/grants/_search")
 USER_1 = ("GET", "/v2/users/u1")
 USER_1_GRANTS = ("POST", "/management/v1/users/u1/grants")
+DEACTIVATE_1, REACTIVATE_1 = (
+    ("POST", "/v2/users/u1/deactivate"),
+    ("POST", "/v2/users/u1/reactivate"),
+)
 GRANT_G1 = ("PUT", "/management/v1/users/u1/grants/g1")
 GRANT_G1_GONE = ("DELETE", "/management/v1/users/u1/grants/g1")
 
@@ -166,17 +189,27 @@ async def test_list_accounts_reads_every_page():
     ("method", "action"), [("disable", "deactivate"), ("enable", "reactivate")]
 )
 async def test_disable_and_enable_post_to_the_users_state_endpoints(method, action):
-    client, recorder = identity_answering({("POST", f"/v2/users/u 1/{action}"): answer()})
-    await getattr(client, method)("u 1")
-    assert recorder.sent[0].url.raw_path == f"/v2/users/u%201/{action}".encode(), "id is escaped"
+    client, recorder = identity_answering(
+        {USER_1: user_answer(), ("POST", f"/v2/users/u1/{action}"): answer()}
+    )
+    await getattr(client, method)("u1")
+    assert recorder.calls() == ["GET /v2/users/u1", f"POST /v2/users/u1/{action}"], (
+        "the account is read first, then changed"
+    )
 
 
 @pytest.mark.parametrize(
     ("method", "action"), [("disable", "deactivate"), ("enable", "reactivate")]
 )
 async def test_disabling_or_enabling_an_account_already_in_that_state_is_harmless(method, action):
-    refusal = answer('{"code":9,"message":"User already inactive"}', status=400)
-    client, _ = identity_answering({("POST", f"/v2/users/u1/{action}"): refusal})
+    refusal = answer('{"code":9,"message":"already in that state"}', status=400)
+    state = "USER_STATE_INACTIVE" if method == "disable" else "USER_STATE_ACTIVE"
+    client, _ = identity_answering(
+        {
+            USER_1: one_after_another(user_answer(), user_answer(state=state)),
+            ("POST", f"/v2/users/u1/{action}"): refusal,
+        }
+    )
     await getattr(client, method)("u1")
 
 
@@ -189,7 +222,7 @@ async def test_disabling_or_enabling_an_unknown_account_is_not_found(method):
 
 async def test_the_first_global_role_creates_the_project_grant():
     client, recorder = identity_answering(
-        {USER_1: answer(), GRANTS: grants(), USER_1_GRANTS: answer()}
+        {USER_1: user_answer(), GRANTS: grants(), USER_1_GRANTS: answer()}
     )
     await client.grant_global_role("u1", "admin")
     assert recorder.calls()[-1] == "POST /management/v1/users/u1/grants"
@@ -198,7 +231,7 @@ async def test_the_first_global_role_creates_the_project_grant():
 
 async def test_another_global_role_extends_the_existing_grant():
     client, recorder = identity_answering(
-        {USER_1: answer(), GRANTS: grants(grant("g1", "u1", "admin")), GRANT_G1: answer()}
+        {USER_1: user_answer(), GRANTS: grants(grant("g1", "u1", "admin")), GRANT_G1: answer()}
     )
     await client.grant_global_role("u1", "auditor")
     assert recorder.body(-1) == {"roleKeys": ["admin", "auditor"]}
@@ -206,7 +239,7 @@ async def test_another_global_role_extends_the_existing_grant():
 
 async def test_granting_a_role_the_account_holds_changes_nothing():
     client, recorder = identity_answering(
-        {USER_1: answer(), GRANTS: grants(grant("g1", "u1", "admin"))}
+        {USER_1: user_answer(), GRANTS: grants(grant("g1", "u1", "admin"))}
     )
     await client.grant_global_role("u1", "admin")
     assert "PUT" not in {r.method for r in recorder.sent}, "no update"
@@ -214,7 +247,9 @@ async def test_granting_a_role_the_account_holds_changes_nothing():
 
 async def test_granting_a_role_the_project_lacks_is_not_found():
     refusal = answer('{"code":9,"message":"Errors.Project.Role.NotFound"}', status=400)
-    client, _ = identity_answering({USER_1: answer(), GRANTS: grants(), USER_1_GRANTS: refusal})
+    client, _ = identity_answering(
+        {USER_1: user_answer(), GRANTS: grants(), USER_1_GRANTS: refusal}
+    )
     with pytest.raises(NotFound, match="role"):
         await client.grant_global_role("u1", "nosuch")
 
@@ -222,7 +257,7 @@ async def test_granting_a_role_the_project_lacks_is_not_found():
 async def test_removing_one_of_several_roles_keeps_the_others():
     client, recorder = identity_answering(
         {
-            USER_1: answer(),
+            USER_1: user_answer(),
             GRANTS: grants(grant("g1", "u1", "admin", "auditor")),
             GRANT_G1: answer(),
         }
@@ -233,7 +268,7 @@ async def test_removing_one_of_several_roles_keeps_the_others():
 
 async def test_removing_the_last_role_deletes_the_grant():
     client, recorder = identity_answering(
-        {USER_1: answer(), GRANTS: grants(grant("g1", "u1", "admin")), GRANT_G1_GONE: answer()}
+        {USER_1: user_answer(), GRANTS: grants(grant("g1", "u1", "admin")), GRANT_G1_GONE: answer()}
     )
     await client.remove_global_role("u1", "admin")
     assert recorder.calls()[-1] == "DELETE /management/v1/users/u1/grants/g1"
@@ -242,7 +277,7 @@ async def test_removing_the_last_role_deletes_the_grant():
 @pytest.mark.parametrize("held", [(), ("auditor",)], ids=["no grant", "other role only"])
 async def test_removing_a_role_the_account_lacks_changes_nothing(held):
     found = (grant("g1", "u1", *held),) if held else ()
-    client, recorder = identity_answering({USER_1: answer(), GRANTS: grants(*found)})
+    client, recorder = identity_answering({USER_1: user_answer(), GRANTS: grants(*found)})
     await client.remove_global_role("u1", "admin")
     assert {r.method for r in recorder.sent} == {"GET", "POST"}, "only reads"
 
@@ -252,6 +287,106 @@ async def test_a_role_change_on_an_unknown_account_is_not_found(method):
     client, _ = identity_answering({})
     with pytest.raises(NotFound):
         await getattr(client, method)("missing", "admin")
+
+
+@pytest.mark.parametrize(
+    ("method", "action", "state"),
+    [
+        ("disable", "deactivate", "USER_STATE_ACTIVE"),
+        ("disable", "deactivate", "USER_STATE_LOCKED"),
+        ("enable", "reactivate", "USER_STATE_INACTIVE"),
+        ("enable", "reactivate", "USER_STATE_LOCKED"),
+    ],
+)
+async def test_a_refused_state_change_that_left_another_state_fails(method, action, state):
+    refusal = answer('{"code":9,"message":"Errors.User.NotFound"}', status=400)
+    client, _ = identity_answering(
+        {
+            USER_1: one_after_another(user_answer(), user_answer(state=state)),
+            ("POST", f"/v2/users/u1/{action}"): refusal,
+        }
+    )
+    with pytest.raises(IdentityUnavailable):
+        await getattr(client, method)("u1")
+
+
+# --- an account is one of this organisation, with a valid id -----------------
+
+ACCOUNT_CHANGES = {
+    "disable": ("u1",),
+    "enable": ("u1",),
+    "grant_global_role": ("u1", "admin"),
+    "remove_global_role": ("u1", "admin"),
+}
+
+
+@pytest.mark.parametrize("method", ACCOUNT_CHANGES)
+@pytest.mark.parametrize("account_id", ["", " ", "a b", "../x", "u1/grants", "u1?x=1"])
+async def test_an_account_id_that_is_not_an_id_is_refused_before_any_request(method, account_id):
+    client, recorder = identity_answering({})
+    arguments = (account_id, *ACCOUNT_CHANGES[method][1:])
+    with pytest.raises(NotFound):
+        await getattr(client, method)(*arguments)
+    assert recorder.sent == [], "nothing was sent"
+
+
+@pytest.mark.parametrize("method", ACCOUNT_CHANGES)
+async def test_an_account_of_another_organisation_is_not_found_and_left_alone(method):
+    client, recorder = identity_answering({USER_1: user_answer(owner="other-org")})
+    with pytest.raises(NotFound):
+        await getattr(client, method)(*ACCOUNT_CHANGES[method])
+    assert recorder.calls() == ["GET /v2/users/u1"], "it was read, and that was all"
+
+
+async def test_an_account_whose_owner_is_not_reported_is_not_found():
+    client, _ = identity_answering(
+        {USER_1: answer('{"user":{"userId":"u1","state":"x","username":"a"}}')}
+    )
+    with pytest.raises(NotFound):
+        await client.disable("u1")
+
+
+async def test_only_the_grants_of_the_account_count():
+    victim = grant("g9", "victim", "reader")
+    client, recorder = identity_answering(
+        {USER_1: user_answer(), GRANTS: grants(victim), USER_1_GRANTS: answer()}
+    )
+    await client.grant_global_role("u1", "admin")
+    assert recorder.calls()[-1] == "POST /management/v1/users/u1/grants", (
+        "a grant of another user is not extended"
+    )
+    client, recorder = identity_answering({USER_1: user_answer(), GRANTS: grants(victim)})
+    await client.remove_global_role("u1", "reader")
+    assert {r.method for r in recorder.sent} == {"GET", "POST"}, (
+        "another user's grant is not touched"
+    )
+
+
+async def test_the_listing_of_an_account_ignores_the_grants_of_others():
+    client, _ = identity_answering(
+        {USERS: users(human()), GRANTS: grants(grant("g9", "victim", "admin"))}
+    )
+    assert (await client.find_by_email("ann@example.org")).global_roles is None
+
+
+# --- what stays out of messages and logs ------------------------------------
+
+
+async def test_the_email_is_not_in_the_error():
+    client, _ = identity_answering({USERS: users()})
+    with pytest.raises(NotFound) as caught:
+        await client.find_by_email("nobody@example.org")
+    assert "nobody@example.org" not in str(caught.value), "an address is personal data"
+
+
+async def test_a_failure_logs_the_status_and_no_body(caplog):
+    client, _ = identity_answering(
+        {USERS: answer("body-with-secrets nobody@example.org", status=500)}
+    )
+    with caplog.at_level(logging.DEBUG), pytest.raises(IdentityUnavailable):
+        await client.find_by_email("nobody@example.org")
+    assert "500" in caplog.text, "the status is logged"
+    assert "body-with-secrets" not in caplog.text, "the body is not"
 
 
 # --- failures ----------------------------------------------------------------

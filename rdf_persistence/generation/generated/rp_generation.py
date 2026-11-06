@@ -120,6 +120,8 @@ class GenerationAnnotation(str, Enum):
     "On a slot, `true` when its value must stay out of the repr of the generated class."
     ALLOWS_EXTRA = "allows_extra"
     "On a class, `true` when it accepts fields it does not declare and keeps them in `model_extra`, as the answer of a foreign API needs. Every other class refuses them."
+    STRICT = "strict"
+    "On a slot, `true` when its value must already be of its type: a string is not read as a number, and a boolean is not read as one either."
 
 
 

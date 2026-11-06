@@ -8,9 +8,33 @@ from rdf_persistence.domain.exceptions import IdentityUnavailable, NotFound
 from rdf_persistence.domain.generated.service.rp_service import AccountSummary
 from rdf_persistence.testkit import no_network  # noqa: F401  (fixture)
 from rdf_persistence.testkit.fakes import FakeIdentity
+from rdf_persistence.testkit.identity_conformance import CASES, ROLE, run_case
 
 ANN = AccountSummary(account_id="1", user_name="ann", email="ann@example.org", active=True)
 BOT = AccountSummary(account_id="2", user_name="bot", active=True, global_roles=["admin"])
+
+
+@pytest.mark.parametrize("case", CASES, ids=lambda case: case.__name__)
+async def test_the_fake_identity_conforms(case, no_network):  # noqa: F811
+    account = AccountSummary(account_id="acct-1", user_name="bot", active=True)
+    await run_case(case, FakeIdentity([account], roles=[ROLE]), "acct-1")
+
+
+async def test_a_role_the_fake_does_not_know_is_not_found_when_it_is_given_its_roles(no_network):  # noqa: F811
+    identity = FakeIdentity([ANN], roles=["admin"])
+    with pytest.raises(NotFound):
+        await identity.grant_global_role("1", "auditor")
+
+
+async def test_the_fake_accepts_any_role_when_it_is_not_given_roles(identity):
+    await identity.grant_global_role("1", "anything")
+    assert (await identity.find_by_email("ann@example.org")).global_roles == ["anything"]
+
+
+async def test_the_last_role_removed_leaves_none_not_an_empty_list(identity):
+    await identity.grant_global_role("1", "admin")
+    await identity.remove_global_role("1", "admin")
+    assert (await identity.find_by_email("ann@example.org")).global_roles is None
 
 
 @pytest.fixture

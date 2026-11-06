@@ -14,7 +14,7 @@ import boto3
 from anyio import to_thread
 from botocore.client import BaseClient
 from botocore.config import Config
-from botocore.exceptions import BotoCoreError, ClientError
+from botocore.exceptions import BotoCoreError, ClientError, ParamValidationError
 
 from rdf_persistence.domain.exceptions import (
     Conflict,
@@ -28,7 +28,9 @@ NO_SUCH_BUCKET, NO_SUCH_KEY = "NoSuchBucket", "NoSuchKey"
 BUCKET_EXISTS = frozenset({"BucketAlreadyOwnedByYou", "BucketAlreadyExists"})
 DEFAULT_REGION = "us-east-1"  # the one region whose create_bucket takes no location constraint
 DELETE_BATCH = 1000  # DeleteObjects takes at most this many keys
-CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS, MAX_ATTEMPTS = 5, 60, 3
+CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS, MAX_ATTEMPTS = 5, 30, 3
+PARENT_SEGMENT = ".."
+DELETE_CHARACTER = "\x7f"
 
 log = logging.getLogger(__name__)
 
@@ -54,6 +56,17 @@ def _translate(error: ClientError, *, bucket_missing: type[PersistenceError]) ->
         return Conflict("the bucket exists")
     log.debug("The object store refused a request: %s", error)
     return StoreUnavailable(f"The object store answered {code or _status(error)}")
+
+
+def _checked_key(key: str) -> str:
+    """``key`` if it is a key the toolkit stores: no ``..`` segment (a path to climb out of a prefix), no control characters."""
+    if (
+        not key
+        or PARENT_SEGMENT in key.split("/")
+        or any(ord(c) < ord(" ") or c == DELETE_CHARACTER for c in key)
+    ):
+        raise ValueError("the key is empty, has a '..' segment or has a control character")
+    return key
 
 
 class S3FileStore:
@@ -95,6 +108,8 @@ class S3FileStore:
             return await to_thread.run_sync(partial(call, **arguments))
         except ClientError as error:
             raise _translate(error, bucket_missing=bucket_missing) from error
+        except ParamValidationError as error:
+            raise ValueError("the bucket or key is not one the object store accepts") from error
         except BotoCoreError as error:
             raise StoreUnavailable(f"The object store is unreachable: {error}") from error
 
@@ -132,14 +147,16 @@ class S3FileStore:
         return sorted(b["Name"] for b in listing["Buckets"] if b["Name"].startswith(prefix))
 
     async def put(self, bucket: str, key: str, data: bytes) -> None:
-        await self._run(self._client.put_object, Bucket=bucket, Key=key, Body=data)
+        await self._run(self._client.put_object, Bucket=bucket, Key=_checked_key(key), Body=data)
 
     async def get(self, bucket: str, key: str) -> bytes:
+        checked = _checked_key(key)
+
         def read() -> bytes:
-            return bytes(self._client.get_object(Bucket=bucket, Key=key)["Body"].read())
+            return bytes(self._client.get_object(Bucket=bucket, Key=checked)["Body"].read())
 
         data: bytes = await self._run(read)
         return data
 
     async def delete(self, bucket: str, key: str) -> None:
-        await self._run(self._client.delete_object, Bucket=bucket, Key=key)
+        await self._run(self._client.delete_object, Bucket=bucket, Key=_checked_key(key))

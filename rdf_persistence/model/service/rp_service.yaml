@@ -187,6 +187,7 @@ slots:
       Zitadel, urn:zitadel:iam:org:project:{project_id}:roles of the consumer's project.
     slot_uri: rp:rolesClaim
     range: string
+    pattern: "^.+$"
   principal:
     title: Principal
     description: The user account the token identifies.
