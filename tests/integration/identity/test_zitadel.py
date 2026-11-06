@@ -115,6 +115,18 @@ async def test_an_unknown_role_or_account_is_not_found(identity, account):
         await identity.disable("1")
 
 
+async def _found_once_indexed(identity, email, attempts=30):
+    """Zitadel indexes a new user for search asynchronously, so a search right after a create can miss it."""
+    import anyio
+
+    for _ in range(attempts - 1):
+        try:
+            return await identity.find_by_email(email)
+        except NotFound:
+            await anyio.sleep(0.5)
+    return await identity.find_by_email(email)
+
+
 async def test_a_person_is_found_by_exact_email(identity, zitadel_project):
     import httpx
 
@@ -130,7 +142,7 @@ async def test_a_person_is_found_by_exact_email(identity, zitadel_project):
         },
     )
     created.raise_for_status()
-    found = await identity.find_by_email(email)
+    found = await _found_once_indexed(identity, email)
     assert (found.account_id, found.email, found.active) == (created.json()["userId"], email, True)
     with pytest.raises(NotFound):
         await identity.find_by_email(email.upper())
