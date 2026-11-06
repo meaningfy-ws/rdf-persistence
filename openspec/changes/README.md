@@ -38,16 +38,26 @@ planned: no `design.md` or `tasks.md` exists until the developer answers its que
 
 ### Suggested order, and why
 
-1. **`release-pipeline`**: cheap, and it lets consumers pin a version before later EPICs change the
-   public API.
-2. **`test-profiling`**: cheap; knowing where the 5 minutes go keeps every later EPIC's checks fast.
-3. **`live-tenant-sweep`**: small, self-contained, and closes a known data leak inside tenants.
-4. **`cross-aggregate-unique-keys`**: medium, contained in the commit; it states the atomicity a
-   store must offer, which `second-store` then puts into its descriptor.
-5. **`second-store`** before **`schema-migrations`** and **`aggregate-events`**: both rely on what a
-   store guarantees (atomic multi-operation updates), and doing the store first avoids writing them twice.
-6. **`schema-migrations`**: needed as soon as consumers hold data across schema changes.
-7. **`typescript-client`**, **`graphql-read-api`**, **`aggregate-events`**: each waits for a named
-   client need (their seeds ask for one first).
-8. **`fine-grained-access`** last: it must cover every read path that exists (REST, GraphQL, events),
-   and its OpenFGA stage reopens D-4, the developer's call.
+Revised after the developer's answers (2026-11-06; recorded in each `inputs/seed.md`):
+
+1. **`test-profiling`**: cheap, and the developer chose parallel tests and a fast/full CI split;
+   every later EPIC's checks benefit.
+2. **`live-tenant-sweep`**: small, self-contained, and closes a known data leak inside tenants
+   (an operator command, a dry run by default).
+3. **`cross-aggregate-unique-keys`**: medium, contained in the commit (a guard in the commit's own
+   update); it states the atomicity a store must offer, which `second-store` then puts into its
+   descriptor.
+4. **`second-store`**: Tentris, Oxigraph and GraphDB compared behind a capability descriptor,
+   before **`schema-migrations`** and **`aggregate-events`**, which both rely on what a store
+   guarantees.
+5. **`schema-migrations`**: automatic, on Strapi-inspired rules; needed as soon as consumers hold
+   data across schema changes.
+6. **`aggregate-events`**: an outbox, an `EventBus` port (Redis or RabbitMQ), and in-process
+   plumbing (domain events and a message bus).
+7. **`typescript-client`**: generated from the OpenAPI document.
+8. **`fine-grained-access`**: stage 1 is OpenFGA per aggregate (D-4 reopened by the developer);
+   property and triple level are later stages.
+9. **`release-pipeline`**: consumers keep installing from `develop` for now, so it waits; v0.1.0
+   was tagged by hand.
+
+**Deferred:** `graphql-read-api`, by the developer. The preference is remembered in its seed.

@@ -52,6 +52,21 @@ From the archived `toolkit-v1-foundation/proposal.md`, No-gos:
 7. **SSE access re-check.** Is a caller's access read once at connect, or re-checked when grants
    change during the stream?
 
+## Developer answers (2026-11-06)
+
+Developer: "whatever is best, i would not mind to have an event bus like redis/rabbitmq, but
+we need also the necessary plumbing for event driven app in the code, no?"
+- Leader's choice (2026-11-06), answering Q-1 and Q-2:
+  - An outbox written in the same commit (at-least-once delivery).
+  - A relay to an external bus (Redis Streams or RabbitMQ) behind an `EventBus` port, with a fake
+    in the testkit.
+  - In-process plumbing: domain events collected by the unit of work, and a message bus that
+    dispatches them to handlers (cosmic-python's message bus).
+  - Server-sent events for clients.
+- Q-0 ("is there a need now?") stays with the developer. The answer reads as "build the plumbing",
+  but no consumer need is named yet.
+- Still open: Q-0, Q-3 to Q-7.
+
 ## Test scenarios the EPIC must prove
 
 - Create, replace and remove each record exactly one event, in the same update.

@@ -40,6 +40,15 @@ From `docs/modules/ROOT/pages/develop/index.adoc`, "How long the checks take":
    `rp-generate` fixtures may cost more than test bodies. Splitting set-up from call time
    (`--durations` reports both) changes what the table must show.
 
+## Developer answers (2026-11-06)
+
+Developer chose "b and c". Mapping to the leader's question list: run tests in parallel
+(pytest-xdist; fixtures must be safe to share), and split CI into a fast job and a full job.
+- A profile pass is still needed to find the slow tests, and to make sure that sharing fixtures
+  under xdist is safe.
+- Still open: Q-1 to Q-6. Defaults to propose: profile `check-all` without coverage, on a laptop
+  and in CI; name the top 15; report collection and set-up separately.
+
 ## Test scenarios the EPIC must prove
 
 - Running the documented command on `develop` prints the slowest tests with their times.

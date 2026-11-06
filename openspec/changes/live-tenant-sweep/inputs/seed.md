@@ -58,6 +58,14 @@ From `docs/modules/ROOT/pages/architecture/index.adoc`, building blocks:
 7. **Dry run?** Should the sweep support listing orphans without removing them? Useful for
    operators; one more mode to test.
 
+## Developer answers (2026-11-06)
+
+Developer chose "a": an operator command, as a dry run by default (answers Q-1 and Q-7).
+- The developer found the question unclear. Remaining questions go to them with a recommendation each.
+- Still open: Q-2 to Q-6. Recommendations to propose: a grace period for in-flight work;
+  `file_key` only; `Session.remove` deletes its blobs; delete rather than quarantine; a returned
+  report (a LinkML record) plus log lines.
+
 ## Test scenarios the EPIC must prove
 
 - A loaded graph never named by a commit is removed once eligible; committed loaded graphs stay.

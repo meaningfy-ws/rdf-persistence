@@ -64,6 +64,15 @@ iteration"; v1 delivered it as per-tenant and per-aggregate access (D-4, option 
 7. **Relationship-based access.** If OpenFGA comes, is "access through relationships" (a reader of a
    library reads its books' scans) part of this EPIC, or only parity with v1?
 
+## Developer answers (2026-11-06)
+
+Developer: "a, but b and c sound good for future".
+- Answers Q-0 and Q-1: stage 1 is OpenFGA as the decision engine, still per aggregate (swap the
+  engine, keep the model). Property level, then triple level, are later stages, kept in this EPIC's
+  outline.
+- This reopens D-4 ("OpenFGA only on a cheap opportunity") by the developer's choice.
+- Still open: Q-2 to Q-7, for the later stages; Q-6 (deployment) for stage 1.
+
 ## Test scenarios the EPIC must prove
 
 - A protected slot is absent from JSON, JSON-LD and Turtle for a caller without access; present for one with it.

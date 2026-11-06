@@ -47,6 +47,13 @@ From the archived `toolkit-v1-foundation/proposal.md`, No-gos:
 6. **Which runtime targets?** Browser only, Node only, or both (ESM only, or ESM and CommonJS)?
 7. **Listings.** A paging helper (async iterator over pages) or one call per page?
 
+## Developer answers (2026-11-06)
+
+Developer: "yes generate from openapi doc please". Answers Q-2: the client's calls are
+generated from the OpenAPI document; together with the generated types, nothing is hand-written.
+- Still open: Q-1, Q-3 to Q-7. Recommendations to propose: `fetch` only; plain JSON first; ESM;
+  an async iterator over pages.
+
 ## Test scenarios the EPIC must prove
 
 - The toy library's generated client type-checks with `tsc --strict`.

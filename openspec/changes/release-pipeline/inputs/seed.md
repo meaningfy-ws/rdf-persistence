@@ -58,6 +58,14 @@ Trusted Publishing with a TestPyPI gate, yank instead of delete).
    all of `meaningfy-release` §6 for later?
 8. **Pre-releases.** Are `-rc.N` releases published to PyPI, or only finals?
 
+## Developer answers (2026-11-06)
+
+Developer: "keep install from develop for now".
+- Answers Q-6: consumers keep installing from `develop`. No PyPI publishing for now; v0.1.0 is a
+  git tag and a GitHub release only (made by hand, 2026-11-06).
+- So this EPIC shrinks to versioning and changelog automation. PyPI waits for the developer's call.
+- Still open: Q-1 to Q-5, Q-7, Q-8.
+
 ## Test scenarios the EPIC must prove
 
 - A `fix:` commit after v0.1.0 makes release-please open a release PR for 0.1.1 with a changelog entry.

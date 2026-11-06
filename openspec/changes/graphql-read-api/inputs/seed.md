@@ -48,6 +48,14 @@ the GraphQL building block traces to the first consumer's need N-9.
    `If-Match` after a GraphQL read?
 7. **Introspection.** On for everyone, only for signed-in callers, or off in production?
 
+## Developer answers (2026-11-06)
+
+Developer: "i like both a and b, but we shall defer it for now, only remember preference".
+- Deferred. If it comes back, the preference is: a schema generated from LinkML, read-only, with
+  resolvers over SPARQL and the per-aggregate access check on every node; or a generic
+  SPARQL-to-GraphQL layer with access filtered after it runs.
+- No planning until the developer reopens it.
+
 ## Test scenarios the EPIC must prove
 
 - A nested query returns the same data the REST routes return for the same aggregates.

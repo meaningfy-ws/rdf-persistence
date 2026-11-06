@@ -48,6 +48,19 @@ From the archived `toolkit-v1-foundation/proposal.md`, No-gos: "… schema migra
 8. **Version of what?** A version declared on the consumer's root schema (`version:` in LinkML), or
    a counter the toolkit derives from the migrations present?
 
+## Developer answers (2026-11-06)
+
+Developer: "migrations must be automated. I liked a lot how the Strapi CRM handles
+migrations automatically. they have a good set of rules, get inspired from there as a principle and
+apply them to graph DB schemas".
+- Answers Q-2 and Q-3 in principle: migrations are automatic, and derived from the change between
+  the stored schema version and the new LinkML schema.
+- The rule set for which changes are safe to apply automatically (added classes and slots) and
+  which need an explicit step (removals, renames, type changes) is modelled on Strapi's. Hand-written
+  data migrations, ordered and recorded once applied, cover what a diff cannot infer.
+- The planning step studies Strapi's rules from its documentation before fixing them here.
+- Still open: Q-1, Q-4 to Q-8.
+
 ## Test scenarios the EPIC must prove
 
 - A new tenant records the current schema version at creation.

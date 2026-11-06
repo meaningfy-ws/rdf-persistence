@@ -47,6 +47,15 @@ the outbox, …".
 5. **Does `schema-migrations` wait for this EPIC?** If migrations must run on every supported store,
    doing this first avoids writing them twice.
 
+## Developer answers (2026-11-06)
+
+Developer: "as a second stores, I was thinking of TentrisDB, Oxygraph, GraphDB".
+- Answers Q-0 with three candidates: Tentris, Oxigraph and GraphDB. The EPIC compares them (licence,
+  datasets per tenant, atomic multi-operation update, SPARQL 1.1 Update and Graph Store support,
+  embedded or server) before picking an order.
+- The capability descriptor is what makes several stores possible.
+- Still open: Q-1 to Q-5, and the comparison itself.
+
 ## Test scenarios the EPIC must prove
 
 - The `Store` conformance suite passes on the second store's container.

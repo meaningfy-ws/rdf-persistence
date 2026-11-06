@@ -53,6 +53,18 @@ From `docs/modules/ROOT/pages/architecture/index.adoc`, building blocks:
 7. **Existing data.** When a key is added to a type that already has duplicates, does generation or
    start-up refuse, warn, or ignore? (Overlaps `schema-migrations`.)
 
+## Developer answers (2026-11-06)
+
+Developer: "choose what is best". Leader's choice (2026-11-06), answering Q-2:
+- A guard inside the commit's own SPARQL update: it writes only if no other aggregate of the scope
+  holds the key value. Fuseki runs each update in one write transaction, so two concurrent commits
+  cannot both pass, and no extra data is stored.
+- For a store that cannot run one update atomically, the `second-store` capability descriptor
+  says so, and the toolkit documents the race instead.
+- Still open: Q-1 and Q-3 to Q-7. Recommendations to propose: declare the key in LinkML
+  (`unique_keys` plus an annotation for the scope); per tenant and per type; exact match; absent
+  values never conflict; 409; generation reports existing duplicates.
+
 ## Test scenarios the EPIC must prove
 
 - Two concurrent creates with the same key: exactly one succeeds (run many times, on Fuseki).
