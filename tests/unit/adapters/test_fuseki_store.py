@@ -11,7 +11,7 @@ from rdflib import Graph, Literal, URIRef
 from rdflib.compare import isomorphic
 
 from rdf_persistence.adapters.fuseki import FusekiStore
-from rdf_persistence.domain.errors import (
+from rdf_persistence.domain.exceptions import (
     BadQuery,
     Conflict,
     DatabaseGone,

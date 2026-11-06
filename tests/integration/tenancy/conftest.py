@@ -10,7 +10,6 @@ from collections.abc import AsyncIterator
 
 import pytest
 
-from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.domain.generated.service.rp_service import ServiceSettings
 from rdf_persistence.domain.iris import system_database_name, tenant_name_prefix
 from rdf_persistence.services.files import FileStore
@@ -20,12 +19,6 @@ from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.toy import SETTINGS, toy_mapper
 
 FILE_STORES = ["fake"]  # 3.1 adds "garage"
-
-
-@pytest.fixture
-async def store(fuseki) -> AsyncIterator[FusekiStore]:
-    async with FusekiStore(fuseki.url, fuseki.user, fuseki.password) as client:
-        yield client
 
 
 @pytest.fixture(params=FILE_STORES)

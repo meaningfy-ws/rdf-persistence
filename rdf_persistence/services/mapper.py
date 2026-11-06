@@ -32,27 +32,42 @@ from rdflib import RDF, BNode, Graph, Literal, URIRef
 from rdflib.term import Node
 
 from rdf_persistence.domain.base import RpModel
-from rdf_persistence.domain.iris import graph_iri, meta_graph_iri, mint_part_iri
+from rdf_persistence.domain.iris import mint_part_iri
 from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services.schema_structure import (
     aggregate_roots,
+    holds_iri,
+    holds_owned_part,
     is_bookkeeping,
-    is_owned,
     is_tenant_root,
 )
 from rdf_persistence.services.session import Session
 
 
-def generated_models(*modules: ModuleType) -> dict[str, type[RpModel]]:
-    """The generated classes of ``modules`` by class name, for ``Mapper``."""
-    return {
-        name: member
-        for module in modules
-        for name, member in vars(module).items()
-        if isinstance(member, type)
-        and issubclass(member, RpModel)
-        and member.__module__ == module.__name__
-    }
+class GeneratedModels:
+    """The generated classes of some modules, found by the name of the schema class they come from."""
+
+    def __init__(self, modules: Iterable[ModuleType]) -> None:
+        self._by_name = {
+            name: member
+            for module in modules
+            for name, member in vars(module).items()
+            if isinstance(member, type)
+            and issubclass(member, RpModel)
+            and member.__module__ == module.__name__
+        }
+
+    def named(self, schema_name: str) -> type[RpModel]:
+        """The generated class of the schema class ``schema_name``; ``LookupError`` if there is none."""
+        try:
+            return self._by_name[camelcase(schema_name)]
+        except KeyError:
+            raise LookupError(f"no generated class for {schema_name}") from None
+
+
+def generated_models(*modules: ModuleType) -> GeneratedModels:
+    """The generated classes of ``modules``, for ``Mapper``."""
+    return GeneratedModels(modules)
 
 
 def new_part[M: BaseModel](cls: type[M], root_iri: str, **fields: Any) -> M:
@@ -72,7 +87,7 @@ class Mapper:
     goes, remembering only the induced slots of a class and their predicates.
     """
 
-    def __init__(self, view: SchemaView, models: dict[str, type[RpModel]]) -> None:
+    def __init__(self, view: SchemaView, models: GeneratedModels) -> None:
         self.view = view
         self._models = models
         self._schema_names = {camelcase(name): name for name in view.all_classes()}
@@ -87,6 +102,11 @@ class Mapper:
         return self._schema_names.get(cls.__name__) in self._roots
 
     # -- writing -----------------------------------------------------------------------------
+
+    def to_triples(self, obj: BaseModel) -> Iterable[Triple]:
+        """The triples of ``obj`` and its owned parts: what ``Session`` takes, without tracking."""
+        # rdflib types a graph's terms as Node; the mapper writes only URIs, literals and blank nodes
+        return cast(Iterable[Triple], self.to_graph(obj))
 
     def to_graph(self, obj: BaseModel) -> Graph:
         """The triples of ``obj`` and its owned parts, without the tracking statements."""
@@ -104,11 +124,11 @@ class Mapper:
                 graph.add((subject, predicate, self._term(slot, value, graph)))
 
     def _term(self, slot: SlotDefinition, value: Any, graph: Graph) -> Node:
-        if self._is_part(slot):
+        if holds_owned_part(self.view, slot):
             return self._write_part(value, graph)
         if self._is_enum(slot):
             return self._meaning(slot.range, str(value)) or Literal(str(value))
-        if self._is_iri(slot):
+        if holds_iri(self.view, slot):
             if isinstance(value, BaseModel):
                 raise ValueError(f"slot {slot.name} holds an object but is not owned: give its IRI")
             return URIRef(str(value))
@@ -122,10 +142,12 @@ class Mapper:
 
     # -- reading -----------------------------------------------------------------------------
 
-    def from_graph[M: BaseModel](self, cls: type[M], iri: str, graph: Graph) -> M:
+    def from_graph[M: BaseModel](
+        self, cls: type[M], iri: str, graph: Graph, graph_iri: URIRef
+    ) -> M:
         """The object of class ``cls`` rooted at ``iri``, owned parts nested.
 
-        The tracking slots are read from the statements about the graph IRI (PD-7), which
+        The tracking slots are read from the statements about ``graph_iri`` (PD-7): the graph IRI
         ``Session.get_graph`` returns with the aggregate.
 
         Raises:
@@ -134,11 +156,7 @@ class Mapper:
         root = URIRef(iri)
         if (root, None, None) not in graph:
             raise ValueError(f"the graph has no statements about {iri}")
-        return self._read(cls, root, graph, self._tracked_by(cls, iri), frozenset())
-
-    def _tracked_by(self, cls: type[BaseModel], iri: str) -> URIRef:
-        meta = is_tenant_root(self.view.get_class(self._schema_names[cls.__name__]))
-        return meta_graph_iri(iri) if meta else graph_iri(iri)
+        return self._read(cls, root, graph, graph_iri, frozenset())
 
     def _read[M: BaseModel](
         self, cls: type[M], node: Node, graph: Graph, tracked_by: URIRef | None, path: frozenset
@@ -165,21 +183,18 @@ class Mapper:
         return cls.model_validate(data)
 
     def _value(self, slot: SlotDefinition, term: Node, graph: Graph, path: frozenset) -> Any:
-        if self._is_part(slot):
+        if holds_owned_part(self.view, slot):
             return self._read(self._model(slot.range), term, graph, None, path)
         if self._is_enum(slot):
             return self._enum_text(slot.range, term)
-        if isinstance(term, Literal) and not self._is_iri(slot):
+        if isinstance(term, Literal) and not holds_iri(self.view, slot):
             return term.toPython()
         return str(term)
 
     # -- the schema --------------------------------------------------------------------------
 
     def _model(self, schema_name: str) -> type[RpModel]:
-        try:
-            return self._models[camelcase(schema_name)]
-        except KeyError:
-            raise LookupError(f"no generated class for {schema_name}") from None
+        return self._models.named(schema_name)
 
     def _identifier(self, name: str) -> str | None:
         slot = self.view.get_identifier_slot(name, use_key=False)
@@ -195,17 +210,8 @@ class Mapper:
             ]
         return self._slots[name]
 
-    def _is_part(self, slot: SlotDefinition) -> bool:
-        return slot.range in self.view.all_classes() and is_owned(slot)
-
     def _is_enum(self, slot: SlotDefinition) -> bool:
         return slot.range in self.view.all_enums()
-
-    def _is_iri(self, slot: SlotDefinition) -> bool:
-        """A class-ranged slot that is not owned holds the IRI of another aggregate; so does a ``uri`` slot."""
-        if slot.range in self.view.all_classes():
-            return not is_owned(slot)
-        return bool({"uri", "uriorcurie"} & set(self.view.type_ancestors(slot.range)))
 
     def _meaning(self, enum: str, text: str) -> URIRef | None:
         meaning = self.view.get_enum(enum).permissible_values[text].meaning
@@ -250,8 +256,8 @@ class UnitOfWork:
             TypeError: The root was already read as another class.
         """
         if iri not in self._objects:
-            graph, version = await self._session.get_graph(iri)
-            self._objects[iri] = self._mapper.from_graph(cls, iri, graph)
+            graph, graph_iri, version = await self._session.get_graph(iri)
+            self._objects[iri] = self._mapper.from_graph(cls, iri, graph, graph_iri)
             self._versions[iri] = version
         obj = self._objects[iri]
         if not isinstance(obj, cls):
@@ -277,8 +283,7 @@ class UnitOfWork:
             Conflict: A new root already exists, or a read one changed since it was read.
         """
         for iri in [i for i in self._objects if i in self._dirty]:
-            # rdflib types a graph's terms as Node; the mapper writes only URIs, literals and blank nodes
-            triples = cast(Iterable[Triple], self._mapper.to_graph(self._objects[iri]))
+            triples = self._mapper.to_triples(self._objects[iri])
             if iri in self._versions:
                 self._versions[iri] = await self._session.replace_graph(
                     iri, triples, self._versions[iri]

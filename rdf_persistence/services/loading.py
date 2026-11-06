@@ -7,7 +7,7 @@ from typing import Any
 import anyio.to_thread
 from rdflib import Graph
 
-from rdf_persistence.domain.errors import InvalidGraph
+from rdf_persistence.domain.exceptions import InvalidGraph
 from rdf_persistence.domain.generated.rp_files import RdfFormat
 
 _RDFLIB_FORMATS = {
@@ -50,9 +50,9 @@ def _refuse_outside_contexts(data: bytes) -> None:
         raise InvalidGraph(NOT_INLINE)
 
 
-def _parse(data: bytes, format: RdfFormat) -> Graph:
-    rdflib_format = _RDFLIB_FORMATS[format]  # an unknown format is a bug, not an invalid graph
-    if format == RdfFormat.JSONLD:
+def _parse(data: bytes, rdf_format: RdfFormat) -> Graph:
+    rdflib_format = _RDFLIB_FORMATS[rdf_format]  # an unknown format is a bug, not an invalid graph
+    if rdf_format == RdfFormat.JSONLD:
         _refuse_outside_contexts(data)
     graph = Graph()
     try:
@@ -62,10 +62,10 @@ def _parse(data: bytes, format: RdfFormat) -> Graph:
     return graph
 
 
-async def parse_graph(data: bytes, format: RdfFormat) -> Graph:
+async def parse_graph(data: bytes, rdf_format: RdfFormat) -> Graph:
     """Parse ``data`` in a worker thread.
 
     Raises:
-        InvalidGraph: The data does not parse as ``format``.
+        InvalidGraph: The data does not parse as ``rdf_format``.
     """
-    return await anyio.to_thread.run_sync(_parse, data, format)
+    return await anyio.to_thread.run_sync(_parse, data, rdf_format)

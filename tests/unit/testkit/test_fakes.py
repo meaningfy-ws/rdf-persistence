@@ -4,10 +4,7 @@ import socket
 
 import pytest
 
-from rdf_persistence.domain.errors import Conflict
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.services.mapper import UnitOfWork
-from rdf_persistence.services.session import Session
+from rdf_persistence import Conflict, Principal, Session, UnitOfWork
 from rdf_persistence.testkit import FakeStore, fake_session, no_network  # noqa: F401  (fixture)
 from tests.fixtures.library.generated.books import Book
 from tests.toy import ADA, TENANT, book_iri, dune, toy_mapper
@@ -44,7 +41,7 @@ async def test_the_fake_session_commits_as_the_given_principal_and_keeps_the_gua
         work = UnitOfWork(session, toy_mapper())
         work.add(dune(book_iri(1)))
         await work.commit()
-        _, stale = await session.get_graph(book_iri(1))
+        _, _, stale = await session.get_graph(book_iri(1))
         await rename(session, book_iri(1), "Dune Messiah")
         assert (await read(session, book_iri(1))).creator == BEN, "tracked as the principal"
         with pytest.raises(Conflict):

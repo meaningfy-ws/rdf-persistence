@@ -7,7 +7,8 @@ from rdflib import BNode, Dataset, Graph, Literal, URIRef
 from rdflib.namespace import XSD
 from rdflib.plugins.sparql import prepareQuery, prepareUpdate
 
-from rdf_persistence.domain.sparql import SparqlError, SparqlTerm, fill, term, triples_block
+from rdf_persistence.domain.exceptions import SparqlError
+from rdf_persistence.domain.sparql import SparqlTerm, fill, term, term_list, triples_block
 
 EX = "http://example.org/"
 HOSTILE = [
@@ -180,3 +181,22 @@ def test_an_empty_triples_block_is_valid_in_a_template():
 def test_a_triples_block_refuses_a_raw_string():
     with pytest.raises(SparqlError, match="rdflib"):
         triples_block([(SUBJECT, PREDICATE, "raw")])  # type: ignore[list-item]
+
+
+def test_a_term_list_is_comma_separated_terms_that_parse_in_an_in_filter():
+    values = [SUBJECT, GRAPH, Literal('"} ; #')]
+    block = term_list(values)
+    assert isinstance(block, SparqlTerm), "fill() accepts it"
+    prepareQuery(fill("SELECT * WHERE { ?s ?p ?o FILTER (?s IN ($values)) }", values=block))
+    assert block == ", ".join(term(v) for v in values), "one rendered term per value, in order"
+
+
+def test_an_empty_term_list_is_valid_in_an_in_filter():
+    prepareQuery(
+        fill("SELECT * WHERE { ?s ?p ?o FILTER (?s NOT IN ($values)) }", values=term_list([]))
+    )
+
+
+def test_a_term_list_refuses_a_raw_string():
+    with pytest.raises(SparqlError, match="rdflib"):
+        term_list(["raw"])  # type: ignore[list-item]

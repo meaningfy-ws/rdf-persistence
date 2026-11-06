@@ -6,19 +6,23 @@ import uuid
 import pytest
 from rdflib import URIRef
 
+from rdf_persistence.domain.exceptions import InvalidIri
 from rdf_persistence.domain.iris import (
     access_iri,
     graph_iri,
+    is_inside_tenant,
     loaded_graph_iri,
     meta_graph_iri,
     mint_aggregate_iri,
     mint_part_iri,
     mint_tenant_iri,
     registry_graph_iri,
+    skolem_iri,
     system_database_name,
     tenant_iri_of_access,
     tenant_name_prefix,
     tenant_resource_name,
+    toolkit_principal_iri,
 )
 
 BASE = "https://example.org/library/"
@@ -57,9 +61,9 @@ def test_meta_registry_and_access_iris():
 
 @pytest.mark.parametrize("segment", ["", "a/b", "a b", "a>b", "../x", "a?b", "a#b"])
 def test_a_segment_that_is_not_a_path_segment_is_refused(segment):
-    with pytest.raises(ValueError, match="segment"):
+    with pytest.raises(InvalidIri, match="segment"):
         mint_aggregate_iri(TENANT, segment)
-    with pytest.raises(ValueError, match="segment"):
+    with pytest.raises(InvalidIri, match="segment"):
         mint_tenant_iri(BASE, segment)
 
 
@@ -77,14 +81,14 @@ def test_tenant_name_starts_with_the_sweep_prefix_and_fits_a_bucket_name():
 
 @pytest.mark.parametrize("prefix", ["", "Lib", "a" * 21, "li b", "lib_x", "-lib"])
 def test_a_prefix_outside_pd_6a_is_refused(prefix):
-    with pytest.raises(ValueError, match="prefix"):
+    with pytest.raises(InvalidIri, match="prefix"):
         system_database_name(prefix)
-    with pytest.raises(ValueError, match="prefix"):
+    with pytest.raises(InvalidIri, match="prefix"):
         tenant_name_prefix(prefix)
 
 
 def test_tenant_name_needs_a_uuid_last_segment():
-    with pytest.raises(ValueError, match="tenant IRI"):
+    with pytest.raises(InvalidIri, match="tenant IRI"):
         tenant_resource_name("lib", URIRef(f"{BASE}libraries/not-a-uuid"))
 
 
@@ -105,7 +109,7 @@ def test_the_tenant_of_an_access_record_is_the_iri_it_hangs_under():
 
 
 def test_an_iri_that_is_not_an_access_record_has_no_tenant():
-    with pytest.raises(ValueError, match="access record"):
+    with pytest.raises(InvalidIri, match="access record"):
         tenant_iri_of_access(f"{TENANT}/books/1")
 
 
@@ -120,5 +124,34 @@ def test_an_iri_that_is_not_an_access_record_has_no_tenant():
     ],
 )
 def test_tenant_name_needs_a_canonical_uuid(last):
-    with pytest.raises(ValueError, match="tenant IRI"):
+    with pytest.raises(InvalidIri, match="tenant IRI"):
         tenant_resource_name("lib", f"{BASE}libraries/{last}")
+
+
+def test_an_iri_rule_breach_is_an_invalid_iri_and_still_a_value_error():
+    assert issubclass(InvalidIri, ValueError), "callers that catch ValueError keep working"
+
+
+def test_a_skolem_iri_lives_under_its_graph_and_is_fresh_each_time():
+    graph = graph_iri(f"{TENANT}/books/1")
+    first = skolem_iri(graph)
+    assert first.startswith(f"{graph}/.well-known/genid/"), "under the graph, in the genid space"
+    assert skolem_iri(graph) != first, "each mint is fresh"
+
+
+def test_the_toolkit_principal_is_toolkit_under_the_base():
+    assert toolkit_principal_iri(BASE) == URIRef(f"{BASE}toolkit")
+
+
+@pytest.mark.parametrize(
+    ("iri", "inside"),
+    [
+        (f"{TENANT}/books/1", True),
+        (f"{TENANT}/access", True),
+        (str(TENANT), False),  # the tenant itself is not inside itself
+        (f"{TENANT}x/books/1", False),  # a longer sibling
+        ("https://example.org/other/books/1", False),
+    ],
+)
+def test_an_iri_is_inside_a_tenant_only_below_its_path(iri, inside):
+    assert is_inside_tenant(str(TENANT), iri) is inside, iri

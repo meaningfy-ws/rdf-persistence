@@ -1,8 +1,10 @@
 """FakeFileStore: the behaviour of the file store port that the services rely on, and its failure injection."""
 
+import inspect
+
 import pytest
 
-from rdf_persistence.domain.errors import Conflict, NotFound, StoreUnavailable, TenantGone
+from rdf_persistence.domain.exceptions import Conflict, NotFound, StoreUnavailable, TenantGone
 from rdf_persistence.testkit import FakeFileStore, no_network  # noqa: F401  (fixture)
 
 
@@ -74,3 +76,20 @@ async def test_an_injected_error_can_wait_for_later_calls(files):
     with pytest.raises(StoreUnavailable):
         await files.create_bucket("d")
     assert await files.list_buckets("") == ["b", "c"]
+
+
+@pytest.mark.parametrize("call", ["on", "sent"])
+def test_a_misspelt_operation_is_refused_not_silently_ignored(call):
+    files = FakeFileStore()
+    args = (StoreUnavailable("down"),) if call == "on" else ()
+    with pytest.raises(ValueError, match="delete_buckets"):
+        getattr(files, call)("delete_buckets", *args)
+
+
+def test_the_known_operations_are_exactly_the_async_methods_of_the_fake():
+    methods = {
+        name
+        for name in dir(FakeFileStore)
+        if not name.startswith("_") and inspect.iscoroutinefunction(getattr(FakeFileStore, name))
+    }
+    assert methods == FakeFileStore.OPERATIONS, "an operation was added or removed without the list"

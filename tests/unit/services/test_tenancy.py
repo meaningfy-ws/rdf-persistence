@@ -1,10 +1,11 @@
 """Tenancy over the fakes: create writes the access record last, delete marks `deleting` first (PD-6a, PD-8, PD-9)."""
 
+import logging
 from datetime import UTC, datetime
 
 import pytest
 
-from rdf_persistence.domain.errors import Conflict, NotFound, StoreUnavailable
+from rdf_persistence.domain.exceptions import Conflict, NotFound, StoreUnavailable
 from rdf_persistence.domain.generated.rp_access import Grant
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
@@ -244,7 +245,9 @@ async def rename_database(tenancy, store, files, tenant: str) -> str:
     """Make the record name ``STORED`` as its database, as if the prefix had been another one."""
     await store.create_dataset(STORED)
     await files.create_bucket(STORED)
-    async with tenancy._system_session(tenant, CREATOR) as session:
+    async with open_session(
+        store, database=SYSTEM, tenant_iri=tenant, principal=CREATOR
+    ) as session:
         work = UnitOfWork(session, toy_mapper())
         record = await work.get(LibraryAccess, f"{tenant}/access")
         record.database_name = STORED
@@ -266,9 +269,31 @@ async def test_delete_drops_the_database_and_bucket_the_record_names_and_not_a_d
     assert derived in await files.list_buckets(PREFIX)
 
 
+@pytest.mark.filterwarnings(
+    "ignore:Pydantic serializer warnings:UserWarning"
+)  # the invalid root is the point
 async def test_a_root_the_model_refuses_creates_nothing(tenancy, store, files):
     broken = library().model_copy(update={"city": 5})  # model_copy does not validate
     with pytest.raises(ValueError, match="city"):
         await tenancy.create("Ghent", broken, CREATOR)
     assert store.sent("create_dataset") == [SYSTEM], "no tenant database was asked for"
     assert files.sent("create_bucket") == [], "no bucket was asked for"
+
+
+async def test_each_create_and_drop_step_is_logged_with_the_tenant_and_resource_as_data(
+    tenancy, caplog
+):
+    with caplog.at_level(logging.INFO):
+        summary = await tenancy.create("Ghent", library(), CREATOR)
+        _, version = await tenancy.get(summary.id)
+        await tenancy.delete(summary.id, version)
+    name = tenant_resource_name(SETTINGS.prefix, summary.id)
+    steps = [(r.step, r.tenant, r.resource) for r in caplog.records if hasattr(r, "step")]
+    assert steps == [
+        ("create-database", summary.id, name),
+        ("create-bucket", summary.id, name),
+        ("create-record", summary.id, name),
+        ("drop-database", summary.id, name),
+        ("drop-bucket", summary.id, name),
+        ("remove-record", summary.id, name),
+    ]

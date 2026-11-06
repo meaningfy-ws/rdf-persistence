@@ -10,11 +10,11 @@ from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence import InvalidGraph
 from rdf_persistence.adapters.fuseki import FusekiStore
-from rdf_persistence.domain import vocabulary as v
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.iris import graph_iri, registry_graph_iri
 from rdf_persistence.domain.sparql import fill, term
+from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.session import Session
 
 TENANT = "https://example.org/libraries/6f1c0c1e"
@@ -25,12 +25,6 @@ SELECT_GRAPHS = "SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }"
 CONSTRUCT = "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH $g { ?s ?p ?o } }"
 TURTLE = b'<https://example.org/b> <http://purl.org/dc/terms/title> "Dune", "Arrakis" .\n'
 BROKEN_TURTLE = b"<https://example.org/b> <http://purl.org/dc/terms/title> ??? ."
-
-
-@pytest.fixture
-async def store(fuseki) -> AsyncIterator[FusekiStore]:
-    async with FusekiStore(fuseki.url, fuseki.user, fuseki.password) as client:
-        yield client
 
 
 @pytest.fixture
@@ -62,7 +56,7 @@ async def test_a_broken_file_fails_with_the_parsers_message_and_creates_no_graph
     store, database, session
 ):
     with pytest.raises(InvalidGraph) as raised:
-        await session.load_graph(BOOK, BROKEN_TURTLE, format=RdfFormat.TURTLE)
+        await session.load_graph(BOOK, BROKEN_TURTLE, rdf_format=RdfFormat.TURTLE)
     with pytest.raises(Exception) as rdflib_raised:
         Graph().parse(data=BROKEN_TURTLE, format="turtle")
     assert str(raised.value) == str(rdflib_raised.value), "the parser's own message"
@@ -77,12 +71,12 @@ async def test_a_jsonld_file_with_a_context_that_is_not_inline_creates_no_graph(
 ):
     data = json.dumps({"@context": context, "@id": "https://example.org/b"}).encode()
     with pytest.raises(InvalidGraph, match="inline"):
-        await session.load_graph(BOOK, data, format=RdfFormat.JSONLD)
+        await session.load_graph(BOOK, data, rdf_format=RdfFormat.JSONLD)
     assert await graphs_in(store, database) == set(), "no graph was created"
 
 
 async def test_a_good_file_lands_in_its_own_graph_under_the_aggregate(store, database, session):
-    loaded = await session.load_graph(BOOK, TURTLE, format=RdfFormat.TURTLE)
+    loaded = await session.load_graph(BOOK, TURTLE, rdf_format=RdfFormat.TURTLE)
     expected = Graph().parse(data=TURTLE, format="turtle")
     held = await contents(store, database, loaded)
     assert str(loaded).startswith(f"{BOOK}/content/"), "named under the aggregate"
@@ -93,7 +87,7 @@ async def test_a_good_file_lands_in_its_own_graph_under_the_aggregate(store, dat
 async def test_the_callers_commit_registers_the_loaded_graph_and_removing_the_aggregate_unregisters_it(
     store, database, session
 ):
-    loaded = await session.load_graph(BOOK, TURTLE, format=RdfFormat.TURTLE)
+    loaded = await session.load_graph(BOOK, TURTLE, rdf_format=RdfFormat.TURTLE)
     version = await session.add_graph(BOOK, [(URIRef(BOOK), TITLE, Literal("x"))], [loaded])
     entries = await registered(store, database)
     assert (loaded, v.REGISTRY_OWNED_BY, URIRef(BOOK)) in entries, "owned by the aggregate"
@@ -104,8 +98,8 @@ async def test_the_callers_commit_registers_the_loaded_graph_and_removing_the_ag
 
 
 async def test_a_replace_that_drops_a_loaded_graph_unregisters_it(store, database, session):
-    first = await session.load_graph(BOOK, TURTLE, format=RdfFormat.TURTLE)
-    second = await session.load_graph(BOOK, TURTLE, format=RdfFormat.TURTLE)
+    first = await session.load_graph(BOOK, TURTLE, rdf_format=RdfFormat.TURTLE)
+    second = await session.load_graph(BOOK, TURTLE, rdf_format=RdfFormat.TURTLE)
     version = await session.add_graph(BOOK, [], [first, second])
     await session.replace_graph(BOOK, [], version, [second])
     entries = await registered(store, database)
@@ -132,7 +126,7 @@ async def test_blank_nodes_are_stored_once_as_skolem_iris_under_the_graph_iri(
 async def test_removing_the_aggregate_drops_the_triples_of_its_loaded_graphs(
     store, database, session
 ):
-    loaded = await session.load_graph(BOOK, TURTLE, format=RdfFormat.TURTLE)
+    loaded = await session.load_graph(BOOK, TURTLE, rdf_format=RdfFormat.TURTLE)
     version = await session.add_graph(BOOK, [(URIRef(BOOK), TITLE, Literal("x"))], [loaded])
     await session.remove(BOOK, version)
     assert await graphs_in(store, database) == set(), "no graph, loaded or not, is left"
@@ -141,8 +135,8 @@ async def test_removing_the_aggregate_drops_the_triples_of_its_loaded_graphs(
 async def test_replace_drops_the_triples_of_unlisted_loaded_graphs_and_keeps_listed_ones(
     store, database, session
 ):
-    kept = await session.load_graph(BOOK, TURTLE, format=RdfFormat.TURTLE)
-    dropped = await session.load_graph(BOOK, TURTLE, format=RdfFormat.TURTLE)
+    kept = await session.load_graph(BOOK, TURTLE, rdf_format=RdfFormat.TURTLE)
+    dropped = await session.load_graph(BOOK, TURTLE, rdf_format=RdfFormat.TURTLE)
     version = await session.add_graph(BOOK, [], [kept, dropped])
     await session.replace_graph(BOOK, [], version, [kept])
     assert await graphs_in(store, database) == {

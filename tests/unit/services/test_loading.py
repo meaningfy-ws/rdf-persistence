@@ -3,7 +3,7 @@
 import io
 import json
 import threading
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
@@ -16,7 +16,8 @@ from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services.loading import _RDFLIB_FORMATS, parse_graph
 from rdf_persistence.services.session import Session
-from rdf_persistence.testkit import FakeStore
+from rdf_persistence.testkit import FakeStore, fake_session
+from rdf_persistence.testkit.fakes import FAKE_DATABASE
 
 TENANT = "https://example.org/libraries/6f1c"
 AGGREGATE = f"{TENANT}/books/1"
@@ -47,19 +48,16 @@ BROKEN = {
 @pytest.fixture
 async def store():
     fake = FakeStore()
-    await fake.create_dataset("db")
+    await fake.create_dataset(FAKE_DATABASE)
     return fake
 
 
 @pytest.fixture
-def session(store) -> Session:
-    return Session(
-        store,
-        database="db",
-        tenant_iri=TENANT,
-        principal=Principal(id="https://example.org/people/ada"),
-        clock=lambda: None,
-    )
+async def session(store) -> AsyncIterator[Session]:
+    async with fake_session(
+        store, tenant_iri=TENANT, principal=Principal(id="https://example.org/people/ada")
+    ) as opened:
+        yield opened
 
 
 def test_every_format_has_a_good_and_a_broken_sample():
@@ -68,22 +66,24 @@ def test_every_format_has_a_good_and_a_broken_sample():
 
 @pytest.mark.parametrize("fmt", list(RdfFormat), ids=lambda f: f.value)
 async def test_a_good_file_is_written_to_a_new_graph_under_the_aggregate(store, session, fmt):
-    loaded = await session.load_graph(AGGREGATE, GOOD[fmt], format=fmt)
+    loaded = await session.load_graph(AGGREGATE, GOOD[fmt], rdf_format=fmt)
     assert str(loaded).startswith(f"{AGGREGATE}/content/"), "the loaded graph IRI"
     assert store.sent("put_graph") == [str(loaded)], "one graph written, under that IRI"
 
 
 async def test_the_loaded_triples_are_those_of_the_file(store, session):
-    loaded = await session.load_graph(AGGREGATE, GOOD[RdfFormat.TURTLE], format=RdfFormat.TURTLE)
+    loaded = await session.load_graph(
+        AGGREGATE, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE
+    )
     query = fill("CONSTRUCT { ?s ?p ?o } WHERE { GRAPH $g { ?s ?p ?o } }", g=term(loaded))
-    held = (await store.query("db", query)).graph
+    held = (await store.query(FAKE_DATABASE, query)).graph
     assert isomorphic(held, EXPECTED), graph_diff(held, EXPECTED)
 
 
 async def test_each_load_gets_its_own_graph(store, session):
     args = (AGGREGATE, GOOD[RdfFormat.TURTLE])
-    first = await session.load_graph(*args, format=RdfFormat.TURTLE)
-    second = await session.load_graph(*args, format=RdfFormat.TURTLE)
+    first = await session.load_graph(*args, rdf_format=RdfFormat.TURTLE)
+    second = await session.load_graph(*args, rdf_format=RdfFormat.TURTLE)
     assert first != second, "a fresh IRI every time"
 
 
@@ -92,7 +92,7 @@ async def test_a_broken_file_is_refused_with_the_parsers_message_and_nothing_is_
     store, session, fmt
 ):
     with pytest.raises(InvalidGraph) as raised:
-        await session.load_graph(AGGREGATE, BROKEN[fmt], format=fmt)
+        await session.load_graph(AGGREGATE, BROKEN[fmt], rdf_format=fmt)
     assert str(raised.value), "the parser's message is carried"
     assert store.sent("put_graph") == [], "no graph written"
     assert store.sent("update") == [] and store.sent("query") == [], "the store was not touched"
@@ -107,14 +107,14 @@ async def test_parsing_runs_in_a_worker_thread(store, session, monkeypatch):
         return original(self, *args, **kwargs)
 
     monkeypatch.setattr(Graph, "parse", spy)
-    await session.load_graph(AGGREGATE, GOOD[RdfFormat.TURTLE], format=RdfFormat.TURTLE)
+    await session.load_graph(AGGREGATE, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE)
     assert seen and seen[0] != threading.main_thread().name, "not on the event-loop thread"
 
 
 async def test_an_aggregate_outside_the_tenant_is_refused_before_any_request(session, store):
     with pytest.raises(ValueError, match="not inside the tenant"):
         await session.load_graph(
-            "https://example.org/other/books/1", GOOD[RdfFormat.TURTLE], format=RdfFormat.TURTLE
+            "https://example.org/other/books/1", GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE
         )
     assert store.sent("put_graph") == [], "nothing was written"
 

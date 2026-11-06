@@ -1,8 +1,10 @@
 """FakeStore: the shared conformance suite, and the fake's own failure injection."""
 
+import inspect
+
 import pytest
 
-from rdf_persistence.domain.errors import StoreUnavailable
+from rdf_persistence.domain.exceptions import StoreUnavailable
 from rdf_persistence.testkit import FakeStore, no_network  # noqa: F401  (fixture)
 from rdf_persistence.testkit.store_conformance import CASES, run_case
 
@@ -49,3 +51,20 @@ async def test_an_injected_error_can_wait_for_later_calls():
     with pytest.raises(StoreUnavailable):
         await store.create_dataset("second")
     assert await store.list_datasets() == ["first"]
+
+
+@pytest.mark.parametrize("call", ["on", "sent"])
+def test_a_misspelt_operation_is_refused_not_silently_ignored(call):
+    store = FakeStore()
+    args = (StoreUnavailable("down"),) if call == "on" else ()
+    with pytest.raises(ValueError, match="create_datasets"):
+        getattr(store, call)("create_datasets", *args)
+
+
+def test_the_known_operations_are_exactly_the_async_methods_of_the_fake():
+    methods = {
+        name
+        for name in dir(FakeStore)
+        if not name.startswith("_") and inspect.iscoroutinefunction(getattr(FakeStore, name))
+    }
+    assert methods == FakeStore.OPERATIONS, "an operation was added or removed without the list"

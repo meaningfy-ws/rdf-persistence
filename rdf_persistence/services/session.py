@@ -13,18 +13,20 @@ from datetime import UTC, datetime
 from rdflib import BNode, Graph, Literal, URIRef
 from rdflib.query import ResultRow
 
-from rdf_persistence.domain import vocabulary as v
-from rdf_persistence.domain.errors import Conflict, NotFound
+from rdf_persistence.domain.exceptions import Conflict, InvalidIri, NotFound
 from rdf_persistence.domain.generated.rp_annotations import Tracked
 from rdf_persistence.domain.generated.rp_core import Principal, RegistryEntry, RegistryKind
 from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.iris import (
     graph_iri,
+    is_inside_tenant,
     loaded_graph_iri,
     meta_graph_iri,
     registry_graph_iri,
+    skolem_iri,
 )
-from rdf_persistence.domain.sparql import SparqlTerm, Triple, fill, term, triples_block
+from rdf_persistence.domain.sparql import Triple, fill, term, term_list, triples_block
+from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.loading import parse_graph
 from rdf_persistence.services.store import Store
 
@@ -50,32 +52,35 @@ INSERT { GRAPH $graph { $triples } GRAPH $registry { $entries } }
 WHERE { FILTER NOT EXISTS { GRAPH $graph { ?s ?p ?o } } }
 """
 READ_LOADED = "SELECT ?lg WHERE { GRAPH $registry { ?lg $p_owned_by $root ; $p_kind $loaded } }"
+# The pieces REPLACE and REMOVE share: what is deleted, the version guard with the root's registry
+# entries, and the loaded graphs the root owns.
+_DELETE_OWNED = "GRAPH $graph { ?s ?p ?o } GRAPH $registry { ?e ?ep ?eo } GRAPH ?lg { ?ls ?lp ?lo }"
+_MATCH_GUARDED = """GRAPH $graph { $graph $p_version $old . ?s ?p ?o }
+  OPTIONAL { GRAPH $registry { ?e $p_owned_by $root ; ?ep ?eo } }"""
+_MATCH_LOADED = """GRAPH $registry { ?lg $p_owned_by $root ; $p_kind $loaded }
+    GRAPH ?lg { ?ls ?lp ?lo }"""
 # The guard, the delete of the old graph, of every entry the root owns and of the loaded graphs
 # not listed in $kept, and the insert of the new ones, in one update.
-REPLACE = """
-DELETE { GRAPH $graph { ?s ?p ?o } GRAPH $registry { ?e ?ep ?eo } GRAPH ?lg { ?ls ?lp ?lo } }
-INSERT { GRAPH $graph { $triples } GRAPH $registry { $entries } }
-WHERE {
-  GRAPH $graph { $graph $p_version $old . ?s ?p ?o }
-  OPTIONAL { GRAPH $registry { ?e $p_owned_by $root ; ?ep ?eo } }
-  OPTIONAL {
-    GRAPH $registry { ?lg $p_owned_by $root ; $p_kind $loaded }
-    GRAPH ?lg { ?ls ?lp ?lo }
+REPLACE = f"""
+DELETE {{ {_DELETE_OWNED} }}
+INSERT {{ GRAPH $graph {{ $triples }} GRAPH $registry {{ $entries }} }}
+WHERE {{
+  {_MATCH_GUARDED}
+  OPTIONAL {{
+    {_MATCH_LOADED}
     FILTER (?lg NOT IN ($kept))
-  }
-}
+  }}
+}}
 """
 # Also empties the loaded graphs the root owns: they are part of the aggregate.
-REMOVE = """
-DELETE { GRAPH $graph { ?s ?p ?o } GRAPH $registry { ?e ?ep ?eo } GRAPH ?lg { ?ls ?lp ?lo } }
-WHERE {
-  GRAPH $graph { $graph $p_version $old . ?s ?p ?o }
-  OPTIONAL { GRAPH $registry { ?e $p_owned_by $root ; ?ep ?eo } }
-  OPTIONAL {
-    GRAPH $registry { ?lg $p_owned_by $root ; $p_kind $loaded }
-    GRAPH ?lg { ?ls ?lp ?lo }
-  }
-}
+REMOVE = f"""
+DELETE {{ {_DELETE_OWNED} }}
+WHERE {{
+  {_MATCH_GUARDED}
+  OPTIONAL {{
+    {_MATCH_LOADED}
+  }}
+}}
 """
 
 
@@ -88,7 +93,7 @@ def registry_triples(entry: RegistryEntry) -> list[Triple]:
     graph = URIRef(entry.graph)
     return [
         (graph, v.REGISTRY_GRAPH, graph),
-        (graph, v.REGISTRY_KIND, v.REGISTRY_KIND_IRIS[RegistryKind(entry.kind).value]),
+        (graph, v.REGISTRY_KIND, v.REGISTRY_KIND_IRIS[RegistryKind(entry.kind)]),
         (graph, v.REGISTRY_OWNED_BY, URIRef(entry.owned_by)),
     ]
 
@@ -109,7 +114,7 @@ def _skolemised(graph: URIRef, triples: Iterable[Triple]) -> list[Triple]:
 
     def named(node):
         if isinstance(node, BNode):
-            minted.setdefault(node, URIRef(f"{graph}/.well-known/genid/{uuid.uuid4()}"))
+            minted.setdefault(node, skolem_iri(graph))
             return minted[node]
         return node
 
@@ -147,6 +152,24 @@ def add_text(
     )
 
 
+def _fill_guarded(
+    template: str, graph: URIRef, registry: URIRef, root: URIRef, old_version: str, **terms
+) -> str:
+    """``template`` with the terms REPLACE and REMOVE share: the graph, registry, root and guard."""
+    return fill(
+        template,
+        graph=term(graph),
+        registry=term(registry),
+        root=term(root),
+        p_version=term(v.VERSION),
+        p_owned_by=term(v.REGISTRY_OWNED_BY),
+        p_kind=term(v.REGISTRY_KIND),
+        loaded=term(v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH]),
+        old=term(Literal(old_version)),
+        **terms,
+    )
+
+
 def replace_text(
     graph: URIRef,
     registry: URIRef,
@@ -157,18 +180,14 @@ def replace_text(
 ) -> str:
     """The guarded update that replaces a graph, its root's registry entries and dropped loads."""
     entries = list(entries)
-    kept = [e.graph for e in entries if e.kind == RegistryKind.LOADED_GRAPH]
-    return fill(
+    kept = [URIRef(e.graph) for e in entries if e.kind == RegistryKind.LOADED_GRAPH]
+    return _fill_guarded(
         REPLACE,
-        graph=term(graph),
-        registry=term(registry),
-        root=term(root),
-        p_version=term(v.VERSION),
-        p_owned_by=term(v.REGISTRY_OWNED_BY),
-        p_kind=term(v.REGISTRY_KIND),
-        loaded=term(v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH.value]),
-        kept=SparqlTerm(", ".join(term(URIRef(g)) for g in kept)),
-        old=term(Literal(old_version)),
+        graph,
+        registry,
+        root,
+        old_version,
+        kept=term_list(kept),
         triples=triples_block(triples),
         entries=_entries_block(entries),
     )
@@ -176,17 +195,7 @@ def replace_text(
 
 def remove_text(graph: URIRef, registry: URIRef, root: URIRef, old_version: str) -> str:
     """The guarded update that deletes a graph and every registry entry the root owns."""
-    return fill(
-        REMOVE,
-        graph=term(graph),
-        registry=term(registry),
-        root=term(root),
-        p_version=term(v.VERSION),
-        p_owned_by=term(v.REGISTRY_OWNED_BY),
-        p_kind=term(v.REGISTRY_KIND),
-        loaded=term(v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH.value]),
-        old=term(Literal(old_version)),
-    )
+    return _fill_guarded(REMOVE, graph, registry, root, old_version)
 
 
 class Session:
@@ -206,8 +215,8 @@ class Session:
         """The graph of the aggregate ``iri``, or the meta graph for the tenant root."""
         if iri == self._tenant:
             return meta_graph_iri(self._tenant)
-        if not iri.startswith(f"{self._tenant}/"):
-            raise ValueError(f"{iri!r} is not inside the tenant {self._tenant!r}")
+        if not is_inside_tenant(self._tenant, iri):
+            raise InvalidIri(f"{iri!r} is not inside the tenant {self._tenant!r}")
         return graph_iri(iri)
 
     def _entries(
@@ -228,7 +237,7 @@ class Session:
         content = f"{iri}/content/"
         outside = [str(g) for g in loaded_graphs if not str(g).startswith(content)]
         if outside:
-            raise ValueError(f"loaded graphs must be under {content!r}: {outside}")
+            raise InvalidIri(f"loaded graphs must be under {content!r}: {outside}")
 
     async def _registered_loaded(self, iri: str) -> list[URIRef]:
         """The loaded graphs the aggregate ``iri`` has registered."""
@@ -237,7 +246,7 @@ class Session:
             registry=term(self._registry),
             p_owned_by=term(v.REGISTRY_OWNED_BY),
             p_kind=term(v.REGISTRY_KIND),
-            loaded=term(v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH.value]),
+            loaded=term(v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH]),
             root=term(URIRef(iri)),
         )
         rows = [
@@ -271,8 +280,12 @@ class Session:
             created=created, creator=creator, contributor=contributors
         )
 
-    async def get_graph(self, iri: str) -> tuple[Graph, str]:
-        """The stored triples of the aggregate, bookkeeping included, and its version token.
+    async def get_graph(self, iri: str) -> tuple[Graph, URIRef, str]:
+        """``(graph, graph_iri, version)`` of the aggregate: its stored triples with the bookkeeping,
+        the IRI of the named graph that holds them, and its version token.
+
+        The graph IRI is where the tracking statements are made (PD-7); hand it to
+        ``Mapper.from_graph``.
 
         Raises:
             NotFound: The aggregate has no graph.
@@ -284,7 +297,7 @@ class Session:
         version = stored.value(graph, v.VERSION)
         if version is None:
             raise NotFound(f"no graph {graph}")
-        return stored, str(version)
+        return stored, graph, str(version)
 
     async def add_graph(
         self, iri: str, triples: Iterable[Triple], loaded_graphs: Sequence[URIRef] = ()
@@ -292,7 +305,7 @@ class Session:
         """Store a new aggregate and register its ``loaded_graphs``; returns its first version.
 
         Raises:
-            ValueError: ``iri`` is not inside the tenant, or a loaded graph is not under
+            InvalidIri: ``iri`` is not inside the tenant, or a loaded graph is not under
                 ``{iri}/content/``; nothing is sent.
             Conflict: The aggregate already has a graph.
         """
@@ -322,7 +335,7 @@ class Session:
         registered, a list replaces them (an empty one drops them all).
 
         Raises:
-            ValueError: A loaded graph is not under ``{iri}/content/``; nothing is sent.
+            InvalidIri: A loaded graph is not under ``{iri}/content/``; nothing is sent.
             NotFound: The aggregate has no graph.
             Conflict: Its version is not ``if_version``; nothing changed.
         """
@@ -349,18 +362,18 @@ class Session:
             raise Conflict(f"{graph} is no longer at version {if_version}")
         return version
 
-    async def load_graph(self, iri: str, data: bytes, *, format: RdfFormat) -> URIRef:
+    async def load_graph(self, iri: str, data: bytes, *, rdf_format: RdfFormat) -> URIRef:
         """Parse ``data`` into a new named graph of the aggregate ``iri``; returns its IRI.
 
         The graph belongs to the aggregate once a commit passes the IRI as ``loaded_graphs``.
 
         Raises:
-            ValueError: ``iri`` is not inside the tenant.
-            InvalidGraph: The data does not parse as ``format``; nothing is written.
+            InvalidIri: ``iri`` is not inside the tenant.
+            InvalidGraph: The data does not parse as ``rdf_format``; nothing is written.
             DatabaseGone: The tenant database does not exist.
         """
         self._graph(iri)
-        parsed = await parse_graph(data, format)
+        parsed = await parse_graph(data, rdf_format)
         loaded = loaded_graph_iri(iri)
         await self._store.put_graph(self._database, loaded, parsed)
         return loaded

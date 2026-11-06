@@ -10,9 +10,9 @@ from pydantic import BaseModel
 from rdflib import RDF, BNode, Graph, Literal, URIRef
 from rdflib.compare import graph_diff, isomorphic
 
-from rdf_persistence.domain import vocabulary as v
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.domain.iris import graph_iri, meta_graph_iri
+from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.mapper import new_part
 from rdf_persistence.services.schema_structure import is_bookkeeping, is_internal
 from rdf_persistence.testkit.conformance import Conformance
@@ -27,6 +27,12 @@ from tests.toy import access as toy_access
 
 SCHEMA = URIRef("http://schema.org/")
 ROOT_CLASSES = {"Book": Book, "Scan": Scan, "Library": Library, "LibraryAccess": LibraryAccess}
+
+
+def storage_of(cls: type[BaseModel], iri: str) -> URIRef:
+    """The named graph that holds the root: the meta graph for the tenant root, else its own graph."""
+    return meta_graph_iri(iri) if cls is Library else graph_iri(iri)
+
 
 # deterministic examples, no deadline: building the strategies is slow the first time
 DRAWN = settings(
@@ -84,7 +90,9 @@ def test_an_aggregate_survives_the_graph_unchanged(name: str, data: st.DataObjec
     obj = data.draw(aggregate(toy(), name))
     mapper = toy_mapper()
     graph = mapper.to_graph(obj)
-    back = mapper.from_graph(ROOT_CLASSES[name], obj.id, graph)
+    back = mapper.from_graph(
+        ROOT_CLASSES[name], obj.id, graph, storage_of(ROOT_CLASSES[name], obj.id)
+    )
     assert canonical(back) == canonical(untracked(obj)), "an object differs after the graph"
 
 
@@ -94,7 +102,7 @@ def test_a_graph_with_skolemised_blank_nodes_gives_the_same_object(data: st.Data
     obj = data.draw(aggregate(toy(), "LibraryAccess"))
     mapper = toy_mapper()
     graph = skolemised(mapper.to_graph(obj), obj.id)
-    back = mapper.from_graph(LibraryAccess, obj.id, graph)
+    back = mapper.from_graph(LibraryAccess, obj.id, graph, graph_iri(obj.id))
     assert canonical(back) == canonical(untracked(obj)), "skolem IRIs nest back as owned parts"
 
 
@@ -141,7 +149,7 @@ def test_an_enum_is_stored_as_its_meaning_iri_and_read_back_as_its_value():
     mapper = toy_mapper()
     graph = mapper.to_graph(dune(iri))
     assert (URIRef(iri), URIRef(f"{SCHEMA}genre"), URIRef(f"{SCHEMA}Fiction")) in graph
-    assert mapper.from_graph(Book, iri, graph).genre == Genre.FICTION.value
+    assert mapper.from_graph(Book, iri, graph, graph_iri(iri)).genre == Genre.FICTION.value
 
 
 def test_a_reference_to_another_aggregate_is_an_iri_not_a_node_description():
@@ -151,7 +159,7 @@ def test_a_reference_to_another_aggregate_is_an_iri_not_a_node_description():
     target = URIRef(book_iri(3))
     assert (URIRef(scan.id), URIRef(f"{SCHEMA}exampleOfWork"), target) in graph
     assert (target, RDF.type, None) not in graph, "the referenced book is not described here"
-    assert mapper.from_graph(Scan, scan.id, graph).scan_of == book_iri(3)
+    assert mapper.from_graph(Scan, scan.id, graph, graph_iri(scan.id)).scan_of == book_iri(3)
 
 
 def test_a_grant_assignee_that_is_an_iri_string_is_written_and_read_as_an_iri():
@@ -167,7 +175,9 @@ def test_a_grant_assignee_that_is_an_iri_string_is_written_and_read_as_an_iri():
     assert (None, URIRef(f"{odrl}action"), URIRef(f"{odrl}delete")) in graph, (
         "the action is a meaning IRI"
     )
-    back = mapper.from_graph(LibraryAccess, access.id, skolemised(graph, access.id))
+    back = mapper.from_graph(
+        LibraryAccess, access.id, skolemised(graph, access.id), graph_iri(access.id)
+    )
     assert canonical(back) == canonical(access)
 
 
@@ -181,7 +191,10 @@ def test_parts_without_an_identifier_are_blank_nodes_that_nest_back_when_skolemi
     assert isinstance(grant, BNode), "a grant has no identity of its own"
     skolem = skolemised(graph, access.id)
     assert all(not isinstance(n, BNode) for t in skolem for n in t), "nothing is left blank"
-    assert mapper.from_graph(LibraryAccess, access.id, skolem).grants == access.grants
+    assert (
+        mapper.from_graph(LibraryAccess, access.id, skolem, graph_iri(access.id)).grants
+        == access.grants
+    )
 
 
 def test_tracking_is_read_from_the_statements_about_the_graph_iri_not_the_root():
@@ -203,7 +216,7 @@ def test_tracking_is_read_from_the_statements_about_the_graph_iri_not_the_root()
     graph.add((about, v.CONTRIBUTOR, URIRef(f"{ADA}2")))
     graph.add((about, v.VERSION, Literal("v1")))
     graph.add((root, v.CREATOR, URIRef("https://example.org/people/impostor")))
-    back = mapper.from_graph(Book, iri, graph)
+    back = mapper.from_graph(Book, iri, graph, about)
     assert back.creator == ADA, "the creator is the one the graph IRI names"
     assert back.contributor == [f"{ADA}2"], "contributors come from the graph IRI too"
     assert back.created is not None and back.created.year == 2026, "created is a date-time"
@@ -214,7 +227,7 @@ def test_the_tenant_root_reads_its_tracking_from_the_meta_graph():
     library = Library(id=TENANT, label="City library", description="d", city="Brussels")
     graph = mapper.to_graph(library)
     graph.add((meta_graph_iri(TENANT), v.CREATOR, URIRef(ADA)))
-    assert mapper.from_graph(Library, TENANT, graph).creator == ADA
+    assert mapper.from_graph(Library, TENANT, graph, meta_graph_iri(TENANT)).creator == ADA
 
 
 def test_tracking_is_not_written_by_the_mapper():
@@ -226,7 +239,7 @@ def test_tracking_is_not_written_by_the_mapper():
 
 def test_a_graph_without_the_root_is_refused():
     with pytest.raises(ValueError, match="no statements"):
-        toy_mapper().from_graph(Book, book_iri(6), Graph())
+        toy_mapper().from_graph(Book, book_iri(6), Graph(), graph_iri(book_iri(6)))
 
 
 def test_new_part_mints_an_iri_under_the_root_and_keeps_the_fields():
@@ -260,4 +273,4 @@ def test_a_stored_graph_whose_owned_parts_loop_is_refused_and_not_a_recursion_er
     node = URIRef(iri) if owner == "root" else first_chapter
     graph.add((node, predicate, node))
     with pytest.raises(ValueError, match="cycle"):
-        toy_mapper().from_graph(Book, iri, graph)
+        toy_mapper().from_graph(Book, iri, graph, graph_iri(iri))

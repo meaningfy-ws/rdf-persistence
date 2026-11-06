@@ -31,15 +31,16 @@ async def sweep(
         present = await _tenant_resources(store, files, prefix)
         if present:
             log.warning(
-                "sweep skipped: no access records on file (system database created now: %s) "
-                "while tenant resources exist; nothing dropped: %s",
-                created,
-                present,
+                "sweep skipped: no access records on file while tenant resources exist; nothing dropped",
+                extra={"step": "skip-sweep", "system_created": created, "resources": present},
             )
             return
     for tenant in records:
-        if tenant.state == TenantState.DELETING.value:
-            log.info("finishing the deletion of %s", tenant.id)
+        if tenant.state == TenantState.DELETING:
+            log.info(
+                "finishing the interrupted deletion of a tenant",
+                extra={"step": "finish-deletion", "tenant": tenant.id},
+            )
             await tenancy.finish_deletion(tenant.id)
     await _drop_orphans(store, files, prefix, await tenancy.database_names())
 
@@ -52,10 +53,15 @@ async def _tenant_resources(store: Store, files: FileStore, prefix: str) -> list
 
 async def _drop_orphans(store: Store, files: FileStore, prefix: str, named: set[str]) -> None:
     for database in _orphans(await store.list_datasets(), prefix, named):
-        log.info("dropping the orphan database %s", database)
+        log.info(
+            "dropping an orphan database",
+            extra={"step": "drop-orphan-database", "resource": database},
+        )
         await store.drop_dataset(database)
     for bucket in _orphans(await files.list_buckets(prefix), prefix, named):
-        log.info("dropping the orphan bucket %s", bucket)
+        log.info(
+            "dropping an orphan bucket", extra={"step": "drop-orphan-bucket", "resource": bucket}
+        )
         await files.delete_bucket(bucket)
 
 

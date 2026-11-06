@@ -3,11 +3,16 @@
 from functools import cache
 from pathlib import Path
 
+from rdf_persistence import (
+    Grant,
+    Mapper,
+    Prohibition,
+    ServiceSettings,
+    TenantState,
+    generated_models,
+    new_part,
+)
 from rdf_persistence.domain.generated import rp_access, rp_core
-from rdf_persistence.domain.generated.rp_access import Grant, Prohibition
-from rdf_persistence.domain.generated.rp_tenancy import TenantState
-from rdf_persistence.domain.generated.service.rp_service import ServiceSettings
-from rdf_persistence.services.mapper import Mapper, generated_models, new_part
 from rdf_persistence.services.schema import load_schema
 from tests.fixtures.library.generated import (
     books,

@@ -14,7 +14,7 @@ from rdflib import Graph, Literal, URIRef
 from rdflib.compare import graph_diff, isomorphic
 from rdflib.query import ResultRow
 
-from rdf_persistence.domain.errors import BadQuery, Conflict, DatabaseGone, NotFound
+from rdf_persistence.domain.exceptions import BadQuery, Conflict, DatabaseGone, NotFound
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services.store import Store
 

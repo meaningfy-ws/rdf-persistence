@@ -5,23 +5,27 @@ from uuid import UUID, uuid4
 
 from rdflib import URIRef
 
+from rdf_persistence.domain.exceptions import InvalidIri
+
 # The patterns of the schema's ``url_segment`` and ``ServiceSettings.prefix`` slots; a test pins them.
 _SEGMENT = re.compile(r"[a-z][a-z0-9-]*")
 _PREFIX = re.compile(r"[a-z][a-z0-9]{0,19}")
 SYSTEM_SUFFIX = "-system"
 TENANT_INFIX = "-t-"
 ACCESS_SEGMENT = "access"
+TOOLKIT_SEGMENT = "toolkit"
+GENID = "/.well-known/genid/"
 
 
 def _segment(value: str) -> str:
     if not _SEGMENT.fullmatch(value):
-        raise ValueError(f"not a path segment: {value!r}")
+        raise InvalidIri(f"not a path segment: {value!r}")
     return value
 
 
 def _prefix(value: str) -> str:
     if not _PREFIX.fullmatch(value):
-        raise ValueError(
+        raise InvalidIri(
             f"prefix must be a lower case letter then up to 19 lower case letters or digits: {value!r}"
         )
     return value
@@ -40,6 +44,21 @@ def mint_tenant_iri(base: str, tenant_segment: str) -> URIRef:
 def mint_aggregate_iri(tenant_iri: str, rp_path: str) -> URIRef:
     """A fresh aggregate IRI ``{tenant_iri}/{rp_path}/{uuid4}``."""
     return URIRef(f"{tenant_iri}/{_segment(rp_path)}/{uuid4()}")
+
+
+def skolem_iri(graph: str) -> URIRef:
+    """A fresh skolem IRI under ``graph`` for a blank node (PD-8a)."""
+    return URIRef(f"{graph}{GENID}{uuid4()}")
+
+
+def toolkit_principal_iri(base: str) -> URIRef:
+    """The principal the toolkit acts as when it works on its own behalf: ``{base}toolkit``."""
+    return URIRef(f"{base}{TOOLKIT_SEGMENT}")
+
+
+def is_inside_tenant(tenant_iri: str, iri: str) -> bool:
+    """True when ``iri`` lies below the tenant's path (the tenant IRI itself does not)."""
+    return iri.startswith(f"{tenant_iri}/")
 
 
 def mint_part_iri(root_iri: str) -> URIRef:
@@ -71,7 +90,7 @@ def tenant_iri_of_access(access_record_iri: str) -> URIRef:
     """The tenant an access record belongs to; the inverse of ``access_iri``."""
     tenant, _, last = access_record_iri.rpartition("/")
     if last != ACCESS_SEGMENT or not tenant:
-        raise ValueError(f"not an access record IRI: {access_record_iri!r}")
+        raise InvalidIri(f"not an access record IRI: {access_record_iri!r}")
     return URIRef(tenant)
 
 
@@ -91,7 +110,7 @@ def tenant_resource_name(prefix: str, tenant_iri: str) -> str:
         last = tenant_iri.rsplit("/", 1)[1]
         tenant_id = UUID(last)
     except (IndexError, ValueError) as error:
-        raise ValueError(f"tenant IRI must end in a UUID: {tenant_iri!r}") from error
+        raise InvalidIri(f"tenant IRI must end in a UUID: {tenant_iri!r}") from error
     if str(tenant_id) != last:
-        raise ValueError(f"tenant IRI must end in a canonical UUID: {tenant_iri!r}")
+        raise InvalidIri(f"tenant IRI must end in a canonical UUID: {tenant_iri!r}")
     return f"{tenant_name_prefix(prefix)}{tenant_id.hex}"

@@ -6,10 +6,11 @@ import pytest
 from rdflib import Graph
 from rdflib.compare import isomorphic
 
-from rdf_persistence.domain.errors import StoreUnavailable
+from rdf_persistence.domain.exceptions import StoreUnavailable
 from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.iris import tenant_resource_name
+from rdf_persistence.domain.iris import system_database_name, tenant_resource_name
 from rdf_persistence.services.mapper import UnitOfWork
+from rdf_persistence.services.session import open_session
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
@@ -87,7 +88,9 @@ async def test_an_active_tenant_is_left_unchanged(tenancy, store, files, kept):
 
 
 async def test_the_sweep_judges_by_the_database_name_the_record_stores(tenancy, store, files, kept):
-    async with tenancy._system_session(kept.id, CREATOR) as session:
+    async with open_session(
+        store, database=system_database_name(SETTINGS.prefix), tenant_iri=kept.id, principal=CREATOR
+    ) as session:
         work = UnitOfWork(session, toy_mapper())
         record = await work.get(LibraryAccess, f"{kept.id}/access")
         record.database_name = ORPHAN
@@ -162,3 +165,14 @@ async def test_a_second_sweep_changes_nothing(tenancy, store, files, kept):
     once = sorted(await store.list_datasets())
     await sweep(tenancy, store, files, SETTINGS)
     assert sorted(await store.list_datasets()) == once
+
+
+async def test_each_orphan_drop_is_logged_with_the_name_as_structured_data(
+    tenancy, store, files, kept, caplog
+):
+    await store.create_dataset(ORPHAN)
+    await files.create_bucket(ORPHAN)
+    with caplog.at_level(logging.INFO):
+        await sweep(tenancy, store, files, SETTINGS)
+    dropped = {(r.step, r.resource) for r in caplog.records if hasattr(r, "step")}
+    assert dropped == {("drop-orphan-database", ORPHAN), ("drop-orphan-bucket", ORPHAN)}

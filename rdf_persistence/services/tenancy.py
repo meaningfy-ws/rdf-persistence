@@ -7,35 +7,38 @@ the bucket and removes the record; any later attempt, or the sweep, finishes wha
 Work the toolkit does on its own behalf is attributed to ``{base}toolkit``.
 """
 
-from collections.abc import Iterable
+import logging
 from contextlib import suppress
-from typing import cast
 
 from pydantic import BaseModel
-from rdflib import URIRef
-from rdflib.query import ResultRow
 
-from rdf_persistence.domain import vocabulary as v
-from rdf_persistence.domain.errors import Conflict, NotFound
+from rdf_persistence.domain.exceptions import Conflict, NotFound
 from rdf_persistence.domain.generated.rp_access import Grant
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantAccess, TenantState
 from rdf_persistence.domain.generated.service.rp_service import ServiceSettings, TenantSummary
 from rdf_persistence.domain.iris import (
     access_iri,
+    graph_iri,
     mint_tenant_iri,
     system_database_name,
     tenant_iri_of_access,
     tenant_resource_name,
+    toolkit_principal_iri,
 )
-from rdf_persistence.domain.sparql import Triple, fill, term
+from rdf_persistence.domain.sparql import fill, term
+from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
 from rdf_persistence.services.session import Clock, Session, open_session, utc_now
 from rdf_persistence.services.store import Store
 
-SELECT_RECORDS = "SELECT ?record ?label ?state WHERE { GRAPH ?graph { ?record $p_state ?state ; $p_label ?label } }"
-TOOLKIT_SEGMENT = "toolkit"
+log = logging.getLogger(__name__)
+
+# Every graph that holds an access record, whole: the mapper decodes the records from it.
+CONSTRUCT_RECORDS = (
+    "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH ?graph { ?record $p_state ?state . ?s ?p ?o } }"
+)
 RECORD_DESCRIPTION = "Who may do what in the tenant {label}."
 
 
@@ -59,16 +62,37 @@ class Tenancy:
         self._access_class = access_class
         self._clock = clock
         self._system = system_database_name(settings.prefix)
-        self._toolkit = Principal(id=f"{settings.base}{TOOLKIT_SEGMENT}")
+        self._toolkit = Principal(id=str(toolkit_principal_iri(settings.base)))
 
-    def _system_session(self, tenant: str, principal: Principal):
+    def _session(self, database: str, tenant: str, principal: Principal):
         return open_session(
             self._store,
-            database=self._system,
+            database=database,
             tenant_iri=tenant,
             principal=principal,
             clock=self._clock,
         )
+
+    async def _commit(
+        self,
+        database: str,
+        tenant: str,
+        principal: Principal,
+        obj: BaseModel,
+        if_version: str | None = None,
+    ) -> None:
+        """Store ``obj`` as a new root, or, given ``if_version``, over the root already there."""
+        async with self._session(database, tenant, principal) as session:
+            if if_version is None:
+                work = UnitOfWork(session, self._mapper)
+                work.add(obj)
+                await work.commit()
+            else:
+                await session.replace_graph(
+                    str(getattr(obj, "id")),  # noqa: B009 - a root always has an id
+                    self._mapper.to_triples(obj),
+                    if_version,
+                )
 
     async def ensure_system_database(self) -> bool:
         """Create the system database unless it exists (start-up); True if this call created it."""
@@ -78,7 +102,7 @@ class Tenancy:
             await self._store.create_dataset(self._system)
         return True
 
-    async def create[M: BaseModel](self, label: str, root: M, creator: Principal) -> TenantSummary:
+    async def create(self, label: str, root: BaseModel, creator: Principal) -> TenantSummary:
         """Create a tenant: its database and bucket, its root object, and last its access record.
 
         ``root`` is the tenant's root object; its ``id`` is replaced by the tenant IRI minted here.
@@ -100,17 +124,12 @@ class Tenancy:
         )
         tenant_root = type(root).model_validate(root.model_copy(update={"id": tenant}).model_dump())
         await self._store.create_dataset(name)
+        _log_step("create-database", tenant, name)
         await self._files.create_bucket(name)
-        async with open_session(
-            self._store, database=name, tenant_iri=tenant, principal=creator, clock=self._clock
-        ) as session:
-            work = UnitOfWork(session, self._mapper)
-            work.add(tenant_root)
-            await work.commit()
-        async with self._system_session(tenant, creator) as session:
-            work = UnitOfWork(session, self._mapper)
-            work.add(record)
-            await work.commit()
+        _log_step("create-bucket", tenant, name)
+        await self._commit(name, tenant, creator, tenant_root)
+        await self._commit(self._system, tenant, creator, record)
+        _log_step("create-record", tenant, name)
         return TenantSummary(id=tenant, label=label, state=TenantState.ACTIVE)
 
     async def get(self, tenant: str) -> tuple[TenantAccess, str]:
@@ -119,26 +138,35 @@ class Tenancy:
         Raises:
             NotFound: The tenant has no access record.
         """
-        async with self._system_session(tenant, self._toolkit) as session:
+        async with self._session(self._system, tenant, self._toolkit) as session:
             return await self._read(session, tenant)
 
     async def _read(self, session: Session, tenant: str) -> tuple[TenantAccess, str]:
-        graph, version = await session.get_graph(str(access_iri(tenant)))
-        return self._mapper.from_graph(self._access_class, str(access_iri(tenant)), graph), version
+        iri = str(access_iri(tenant))
+        graph, graph_name, version = await session.get_graph(iri)
+        return self._mapper.from_graph(self._access_class, iri, graph, graph_name), version
+
+    async def _records(self) -> list[TenantAccess]:
+        """Every access record, decoded by the mapper from the graphs that hold them."""
+        text = fill(CONSTRUCT_RECORDS, p_state=term(v.STATE))
+        stored = (await self._store.query(self._system, text)).graph
+        if stored is None:
+            return []
+        iris = sorted({str(record) for record in stored.subjects(v.STATE, None)})
+        return [
+            self._mapper.from_graph(self._access_class, iri, stored, graph_iri(iri)) for iri in iris
+        ]
 
     async def tenants(self) -> list[TenantSummary]:
         """Every tenant that has an access record, in any state."""
-        text = fill(SELECT_RECORDS, p_state=term(v.STATE), p_label=term(v.LABEL))
-        states = {iri: TenantState(name) for name, iri in v.TENANT_STATE_IRIS.items()}
-        rows = [r for r in await self._store.query(self._system, text) if isinstance(r, ResultRow)]
         return sorted(
             (
                 TenantSummary(
-                    id=str(tenant_iri_of_access(str(r.record))),
-                    label=str(r.label),
-                    state=states[URIRef(r.state)],
+                    id=str(tenant_iri_of_access(record.id)),
+                    label=record.label,
+                    state=TenantState(record.state),
                 )
-                for r in rows
+                for record in await self._records()
             ),
             key=lambda summary: summary.id,
         )
@@ -153,14 +181,10 @@ class Tenancy:
             NotFound: The tenant has no access record.
             Conflict: The record is active and is no longer at ``if_version``; nothing changed.
         """
-        async with self._system_session(tenant, self._toolkit) as session:
-            record, version = await self._read(session, tenant)
-            if record.state == TenantState.ACTIVE.value:
-                if version != if_version:
-                    raise Conflict(f"the access record of {tenant} is no longer at {if_version}")
-                record.state = TenantState.DELETING
-                triples = cast(Iterable[Triple], self._mapper.to_graph(record))
-                await session.replace_graph(record.id, triples, if_version)
+        record, _ = await self.get(tenant)
+        if record.state == TenantState.ACTIVE:
+            record.state = TenantState.DELETING
+            await self._commit(self._system, tenant, self._toolkit, record, if_version)
         await self.finish_deletion(tenant)
 
     async def finish_deletion(self, tenant: str) -> None:
@@ -170,15 +194,26 @@ class Tenancy:
             NotFound: The tenant has no access record.
             Conflict: The record is not ``deleting``; nothing is dropped.
         """
-        async with self._system_session(tenant, self._toolkit) as session:
+        async with self._session(self._system, tenant, self._toolkit) as session:
             record, version = await self._read(session, tenant)
-            if record.state != TenantState.DELETING.value:
+            if record.state != TenantState.DELETING:
                 raise Conflict(f"{tenant} is not deleting: it is {record.state}")
-            for drop in (self._store.drop_dataset, self._files.delete_bucket):
+            drops = (
+                ("drop-database", self._store.drop_dataset),
+                ("drop-bucket", self._files.delete_bucket),
+            )
+            for step, drop in drops:
                 with suppress(NotFound):  # an interrupted attempt already dropped it
                     await drop(record.database_name)
+                _log_step(step, tenant, record.database_name)
             await session.remove(record.id, version)
+            _log_step("remove-record", tenant, record.database_name)
 
     async def database_names(self) -> set[str]:
         """The database (and bucket) names the access records store, for every tenant."""
-        return {(await self.get(t.id))[0].database_name for t in await self.tenants()}
+        return {record.database_name for record in await self._records()}
+
+
+def _log_step(step: str, tenant: str, resource: str) -> None:
+    """One step of creating or dropping a tenant's resources, as data an operator can query."""
+    log.info(step, extra={"step": step, "tenant": tenant, "resource": resource})

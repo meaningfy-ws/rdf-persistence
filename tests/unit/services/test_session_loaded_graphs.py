@@ -1,20 +1,23 @@
 """The session's commit with loaded graphs and blank nodes, over the in-memory FakeStore."""
 
 import asyncio
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 
 import pytest
 from rdflib import BNode, Graph, Literal, URIRef
 
-from rdf_persistence.domain import vocabulary as v
-from rdf_persistence.domain.errors import Conflict
+from rdf_persistence.domain.exceptions import Conflict
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.iris import graph_iri, registry_graph_iri
 from rdf_persistence.domain.sparql import fill, term
+from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.session import Session
-from rdf_persistence.testkit import FakeStore
+from rdf_persistence.testkit import FakeStore, fake_session
+from rdf_persistence.testkit.fakes import FAKE_DATABASE
 
 TENANT = "https://example.org/libraries/6f1c0c1e"
+ADA, BEN = "https://example.org/people/ada", "https://example.org/people/ben"
 ROOT = f"{TENANT}/books/1"
 TITLE = URIRef("http://purl.org/dc/terms/title")
 LOADED = [URIRef(f"{ROOT}/content/a"), URIRef(f"{ROOT}/content/b")]
@@ -25,23 +28,23 @@ ENTRIES = "SELECT ?g WHERE { GRAPH $r { ?g $kind $loaded } }"
 @pytest.fixture
 async def store():
     fake = FakeStore()
-    await fake.create_dataset("db")
+    await fake.create_dataset(FAKE_DATABASE)
     return fake
 
 
 @pytest.fixture
-def session(store) -> Session:
-    return Session(
+async def session(store) -> AsyncIterator[Session]:
+    async with fake_session(
         store,
-        database="db",
         tenant_iri=TENANT,
         principal=Principal(id="https://example.org/people/ada"),
         clock=lambda: datetime(2026, 11, 5, tzinfo=UTC),
-    )
+    ) as opened:
+        yield opened
 
 
 async def has_triples(store, graph: URIRef) -> bool:
-    result = await store.query("db", fill("ASK { GRAPH $g { ?s ?p ?o } }", g=term(graph)))
+    result = await store.query(FAKE_DATABASE, fill("ASK { GRAPH $g { ?s ?p ?o } }", g=term(graph)))
     return bool(result.askAnswer)
 
 
@@ -52,7 +55,7 @@ async def registered_loaded(store) -> set[URIRef]:
         kind=term(v.REGISTRY_KIND),
         loaded=term(v.REGISTRY_KIND_IRIS["loaded_graph"]),
     )
-    return {row.g for row in await store.query("db", text)}
+    return {row.g for row in await store.query(FAKE_DATABASE, text)}
 
 
 async def test_add_registers_every_loaded_graph_in_the_same_update(session, store):
@@ -75,7 +78,7 @@ async def test_replace_with_an_empty_list_unregisters_them(session, store):
 
 async def test_replace_without_a_list_keeps_the_registered_loaded_graphs(session, store):
     for graph in LOADED:
-        await store.put_graph("db", graph, Graph().parse(data=LOADED_TTL, format="turtle"))
+        await store.put_graph(FAKE_DATABASE, graph, Graph().parse(data=LOADED_TTL, format="turtle"))
     version = await session.add_graph(ROOT, [], loaded_graphs=LOADED)
     await session.replace_graph(ROOT, [(URIRef(ROOT), TITLE, Literal("edited"))], version)
     assert await registered_loaded(store) == set(LOADED), "their entries stay"
@@ -128,7 +131,7 @@ async def test_removing_an_aggregate_cannot_empty_the_graph_of_another(session, 
     await session.add_graph(victim, [(URIRef(victim), TITLE, Literal("victim"))])
     with pytest.raises(ValueError, match="content"):
         await session.add_graph(ROOT, [], loaded_graphs=[graph_iri(victim)])
-    stored, _ = await session.get_graph(victim)
+    stored, _, _ = await session.get_graph(victim)
     assert (URIRef(victim), TITLE, Literal("victim")) in stored, "the victim is intact"
 
 
@@ -143,7 +146,7 @@ async def test_a_graph_with_blank_nodes_is_stored_once_with_skolem_iris(session)
     triples = [(URIRef(ROOT), TITLE, part), (part, TITLE, Literal("x"))]
     version = await session.add_graph(ROOT, triples)
     await session.replace_graph(ROOT, triples, version)  # the guard matches many rows here
-    stored, _ = await session.get_graph(ROOT)
+    stored, _, _ = await session.get_graph(ROOT)
     plain = [t for t in stored if t[1] not in v.BOOKKEEPING_PREDICATES]
     assert len(plain) == 2, "two statements, none copied per matched row"
     assert not any(isinstance(n, BNode) for t in stored for n in t), "no blank node stored"
@@ -155,9 +158,9 @@ async def test_a_graph_with_blank_nodes_is_stored_once_with_skolem_iris(session)
 
 async def test_remove_drops_the_triples_of_the_loaded_graphs_it_owned(session, store):
     for graph in LOADED:
-        await store.put_graph("db", graph, Graph().parse(data=LOADED_TTL, format="turtle"))
+        await store.put_graph(FAKE_DATABASE, graph, Graph().parse(data=LOADED_TTL, format="turtle"))
     other = URIRef(f"{TENANT}/books/2/content/z")
-    await store.put_graph("db", other, Graph().parse(data=LOADED_TTL, format="turtle"))
+    await store.put_graph(FAKE_DATABASE, other, Graph().parse(data=LOADED_TTL, format="turtle"))
     version = await session.add_graph(ROOT, [], loaded_graphs=LOADED)
     await session.remove(ROOT, version)
     assert [g for g in (*LOADED, other) if await has_triples(store, g)] == [other], (
@@ -169,7 +172,7 @@ async def test_replace_drops_the_triples_of_unlisted_loaded_graphs_and_keeps_lis
     session, store
 ):
     for graph in LOADED:
-        await store.put_graph("db", graph, Graph().parse(data=LOADED_TTL, format="turtle"))
+        await store.put_graph(FAKE_DATABASE, graph, Graph().parse(data=LOADED_TTL, format="turtle"))
     version = await session.add_graph(ROOT, [], loaded_graphs=LOADED)
     await session.replace_graph(ROOT, [], version, loaded_graphs=LOADED[:1])
     assert await has_triples(store, LOADED[0]), "the listed graph keeps its triples"
@@ -178,14 +181,14 @@ async def test_replace_drops_the_triples_of_unlisted_loaded_graphs_and_keeps_lis
 
 async def test_replace_with_an_empty_list_empties_all_of_them(session, store):
     for graph in LOADED:
-        await store.put_graph("db", graph, Graph().parse(data=LOADED_TTL, format="turtle"))
+        await store.put_graph(FAKE_DATABASE, graph, Graph().parse(data=LOADED_TTL, format="turtle"))
     version = await session.add_graph(ROOT, [], loaded_graphs=LOADED)
     await session.replace_graph(ROOT, [], version, loaded_graphs=[])
     assert [g for g in LOADED if await has_triples(store, g)] == [], "none is left"
 
 
 async def test_a_stale_replace_leaves_the_loaded_graphs_alone(session, store):
-    await store.put_graph("db", LOADED[0], Graph().parse(data=LOADED_TTL, format="turtle"))
+    await store.put_graph(FAKE_DATABASE, LOADED[0], Graph().parse(data=LOADED_TTL, format="turtle"))
     await session.add_graph(ROOT, [], loaded_graphs=LOADED[:1])
     with pytest.raises(Conflict):
         await session.replace_graph(ROOT, [], "stale")
@@ -201,15 +204,13 @@ async def test_two_concurrent_adds_of_one_iri_give_one_success_and_one_conflict(
         await original(dataset, sparql)
 
     store.update = held
-    first, second = (
-        Session(
-            store, database="db", tenant_iri=TENANT, principal=Principal(id=who), clock=lambda: None
+    async with (
+        fake_session(store, tenant_iri=TENANT, principal=Principal(id=ADA)) as first,
+        fake_session(store, tenant_iri=TENANT, principal=Principal(id=BEN)) as second,
+    ):
+        outcomes = await asyncio.gather(
+            first.add_graph(ROOT, []), second.add_graph(ROOT, []), return_exceptions=True
         )
-        for who in ("https://example.org/people/ada", "https://example.org/people/ben")
-    )
-    outcomes = await asyncio.gather(
-        first.add_graph(ROOT, []), second.add_graph(ROOT, []), return_exceptions=True
-    )
-    stored, _ = await first.get_graph(ROOT)
+        stored, _, _ = await first.get_graph(ROOT)
     assert sorted(type(o).__name__ for o in outcomes) == ["Conflict", "str"], "one wins"
     assert len(list(stored.objects(None, v.VERSION))) == 1, "one version token was written"

@@ -8,7 +8,7 @@ from rdflib import Graph, Literal, URIRef
 from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence.adapters.fuseki import FusekiStore
-from rdf_persistence.domain.errors import (
+from rdf_persistence.domain.exceptions import (
     BadQuery,
     Conflict,
     DatabaseGone,
@@ -25,12 +25,6 @@ INSERT = "INSERT DATA { GRAPH $graph { $s $p $o } }"
 
 def triple_text(template: str, obj: Literal | URIRef, graph: URIRef = G) -> str:
     return fill(template, graph=term(graph), s=term(A), p=term(P), o=term(obj))
-
-
-@pytest.fixture
-async def store(fuseki) -> AsyncIterator[FusekiStore]:
-    async with FusekiStore(fuseki.url, fuseki.user, fuseki.password) as client:
-        yield client
 
 
 @pytest.fixture

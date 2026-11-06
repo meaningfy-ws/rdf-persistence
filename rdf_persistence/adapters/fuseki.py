@@ -1,6 +1,7 @@
 """The Apache Jena Fuseki implementation of the ``Store`` port."""
 
 import logging
+from http import HTTPMethod, HTTPStatus
 from io import BytesIO
 from types import TracebackType
 from typing import Self
@@ -10,7 +11,7 @@ import httpx
 from rdflib import Graph, URIRef
 from rdflib.query import Result
 
-from rdf_persistence.domain.errors import (
+from rdf_persistence.domain.exceptions import (
     BadQuery,
     Conflict,
     DatabaseGone,
@@ -23,10 +24,16 @@ SPARQL_QUERY = "application/sparql-query"
 SPARQL_UPDATE = "application/sparql-update"
 RESULTS_JSON = "application/sparql-results+json"
 TURTLE = "text/turtle"
+CONTENT_TYPE, ACCEPT = "Content-Type", "Accept"
+# The endpoints of a dataset, and the administration endpoint of Fuseki.
+QUERY_ENDPOINT, UPDATE_ENDPOINT, DATA_ENDPOINT = "query", "update", "data"
 ADMIN_DATASETS = "/$/datasets"
-DATASET_TYPE = "tdb2"
-HTTP_BAD_REQUEST, HTTP_NOT_FOUND, HTTP_METHOD_NOT_ALLOWED, HTTP_CONFLICT = 400, 404, 405, 409
-HTTP_SERVER_ERROR = 500
+# The form fields that create a dataset, and the keys of the dataset list.
+FORM_DB_NAME, FORM_DB_TYPE, DATASET_TYPE = "dbName", "dbType", "tdb2"
+LIST_DATASETS_KEY, LIST_NAME_KEY = "datasets", "ds.name"
+GRAPH_PARAM = "graph"
+# The names rdflib gives the formats Fuseki speaks.
+RDFLIB_JSON, RDFLIB_TURTLE = "json", "turtle"
 BAD_QUERY_MESSAGE = "Fuseki refused the SPARQL text as malformed"
 UNREADABLE = "Fuseki answered with something unreadable"
 
@@ -40,13 +47,13 @@ def _dataset_path(name: str, endpoint: str) -> str:
 def _raise_for_status(response: httpx.Response, *, on_missing: type[PersistenceError]) -> None:
     """Map a Fuseki status to the toolkit's errors; ``on_missing`` is raised for 404 and 405."""
     status = response.status_code
-    if status >= HTTP_SERVER_ERROR:
+    if status >= HTTPStatus.INTERNAL_SERVER_ERROR:
         raise StoreUnavailable(f"Fuseki answered {status}")
-    if status in (HTTP_NOT_FOUND, HTTP_METHOD_NOT_ALLOWED):
+    if status in (HTTPStatus.NOT_FOUND, HTTPStatus.METHOD_NOT_ALLOWED):
         raise on_missing(f"Fuseki answered {status} for {response.request.url.path}")
-    if status == HTTP_CONFLICT:
+    if status == HTTPStatus.CONFLICT:
         raise Conflict(f"Fuseki answered {status} for {response.request.url.path}")
-    if status == HTTP_BAD_REQUEST:
+    if status == HTTPStatus.BAD_REQUEST:
         log.debug("Fuseki refused a request with 400: %s", response.text)
         raise BadQuery(BAD_QUERY_MESSAGE)
     if not response.is_success:  # 401, 403, 415, a redirect...: not the caller's to tell apart
@@ -55,9 +62,9 @@ def _raise_for_status(response: httpx.Response, *, on_missing: type[PersistenceE
 
 def _read_result(response: httpx.Response) -> Result:
     if response.headers.get("content-type", "").startswith(RESULTS_JSON):
-        return Result.parse(BytesIO(response.content), format="json")
+        return Result.parse(BytesIO(response.content), format=RDFLIB_JSON)
     result = Result("CONSTRUCT")
-    result.graph = Graph().parse(data=response.content, format="turtle")
+    result.graph = Graph().parse(data=response.content, format=RDFLIB_TURTLE)
     return result
 
 
@@ -92,7 +99,12 @@ class FusekiStore:
         await self.aclose()
 
     async def _send(
-        self, method: str, path: str, *, on_missing: type[PersistenceError] = DatabaseGone, **kwargs
+        self,
+        method: HTTPMethod,
+        path: str,
+        *,
+        on_missing: type[PersistenceError] = DatabaseGone,
+        **kwargs,
     ) -> httpx.Response:
         try:
             response = await self._client.request(method, path, **kwargs)
@@ -103,10 +115,10 @@ class FusekiStore:
 
     async def query(self, dataset: str, sparql: str) -> Result:
         response = await self._send(
-            "POST",
-            _dataset_path(dataset, "query"),
+            HTTPMethod.POST,
+            _dataset_path(dataset, QUERY_ENDPOINT),
             content=sparql.encode(),
-            headers={"Content-Type": SPARQL_QUERY, "Accept": f"{RESULTS_JSON}, {TURTLE};q=0.9"},
+            headers={CONTENT_TYPE: SPARQL_QUERY, ACCEPT: f"{RESULTS_JSON}, {TURTLE};q=0.9"},
         )
         try:
             return _read_result(response)
@@ -115,35 +127,39 @@ class FusekiStore:
 
     async def update(self, dataset: str, sparql: str) -> None:
         await self._send(
-            "POST",
-            _dataset_path(dataset, "update"),
+            HTTPMethod.POST,
+            _dataset_path(dataset, UPDATE_ENDPOINT),
             content=sparql.encode(),
-            headers={"Content-Type": SPARQL_UPDATE},
+            headers={CONTENT_TYPE: SPARQL_UPDATE},
         )
 
     async def put_graph(self, dataset: str, graph_iri: URIRef, graph: Graph) -> None:
         await self._send(
-            "PUT",
-            _dataset_path(dataset, "data"),
-            params={"graph": str(graph_iri)},
-            content=graph.serialize(format="turtle").encode(),
-            headers={"Content-Type": TURTLE},
+            HTTPMethod.PUT,
+            _dataset_path(dataset, DATA_ENDPOINT),
+            params={GRAPH_PARAM: str(graph_iri)},
+            content=graph.serialize(format=RDFLIB_TURTLE).encode(),
+            headers={CONTENT_TYPE: TURTLE},
         )
 
     async def create_dataset(self, name: str) -> None:
         await self._send(
-            "POST",
+            HTTPMethod.POST,
             ADMIN_DATASETS,
-            data={"dbName": name, "dbType": DATASET_TYPE},
+            data={FORM_DB_NAME: name, FORM_DB_TYPE: DATASET_TYPE},
             on_missing=NotFound,
         )
 
     async def drop_dataset(self, name: str) -> None:
-        await self._send("DELETE", f"{ADMIN_DATASETS}/{quote(name, safe='')}", on_missing=NotFound)
+        await self._send(
+            HTTPMethod.DELETE, f"{ADMIN_DATASETS}/{quote(name, safe='')}", on_missing=NotFound
+        )
 
     async def list_datasets(self) -> list[str]:
-        response = await self._send("GET", ADMIN_DATASETS, on_missing=NotFound)
+        response = await self._send(HTTPMethod.GET, ADMIN_DATASETS, on_missing=NotFound)
         try:
-            return [entry["ds.name"].lstrip("/") for entry in response.json()["datasets"]]
+            return [
+                entry[LIST_NAME_KEY].lstrip("/") for entry in response.json()[LIST_DATASETS_KEY]
+            ]
         except (ValueError, KeyError, TypeError) as error:
             raise StoreUnavailable(f"{UNREADABLE}: {type(error).__name__}") from error

@@ -11,15 +11,13 @@ from string import Template
 
 from rdflib import BNode, Literal, URIRef
 
+from rdf_persistence.domain.exceptions import SparqlError
+
 _FORBIDDEN_IRI_CHARS = re.compile(r'[\x00-\x20<>"{}|\\^`\x7f]')
 _BLANK_LABEL = re.compile(r"[A-Za-z0-9_]([A-Za-z0-9_.-]*[A-Za-z0-9_-])?")  # may not end in "."
 _LANGUAGE_TAG = re.compile(r"[A-Za-z]+(-[A-Za-z0-9]+)*")
 _STRING_ESCAPES = {"\\": "\\\\", '"': '\\"', "\n": "\\n", "\r": "\\r", "\t": "\\t"}
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
-
-
-class SparqlError(ValueError):
-    """A value cannot become a SPARQL term, or a template and its terms do not match."""
 
 
 class SparqlTerm(str):
@@ -93,3 +91,8 @@ Triple = tuple[URIRef | BNode, URIRef, URIRef | Literal | BNode]
 def triples_block(triples: Iterable[Triple]) -> SparqlTerm:
     """Render triples as the dotted triple patterns of an ``INSERT DATA`` or template body."""
     return SparqlTerm(" ".join(f"{term(s)} {term(p)} {term(o)} ." for s, p, o in triples))
+
+
+def term_list(values: Iterable[URIRef | Literal | BNode]) -> SparqlTerm:
+    """Render values as the comma-separated terms of an ``IN (...)`` list."""
+    return SparqlTerm(", ".join(term(value) for value in values))

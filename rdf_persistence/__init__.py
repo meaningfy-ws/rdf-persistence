@@ -1,8 +1,15 @@
-"""RDF Persistence."""
+"""RDF Persistence.
 
-from rdf_persistence.adapters.fuseki import FusekiStore
+The domain and the generated classes are imported at once. The adapters and the services are loaded
+on first use (``__getattr__``), so importing ``rdf_persistence.domain``, as every consumer's
+generated module does, loads no HTTP client or service (PD-8c).
+"""
+
+from importlib import import_module
+from typing import TYPE_CHECKING, Any
+
 from rdf_persistence.domain.base import RpModel
-from rdf_persistence.domain.errors import (
+from rdf_persistence.domain.exceptions import (
     BadQuery,
     Conflict,
     DatabaseGone,
@@ -58,13 +65,42 @@ from rdf_persistence.domain.generated.service.rp_service import (
     TenantSummary,
     VerifiedCaller,
 )
-from rdf_persistence.services.files import FileStore
-from rdf_persistence.services.session import open_session
-from rdf_persistence.services.store import Store
-from rdf_persistence.services.sweep import sweep
-from rdf_persistence.services.tenancy import Tenancy
+
+if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
+    from rdf_persistence.adapters.fuseki import FusekiStore
+    from rdf_persistence.services.files import FileStore
+    from rdf_persistence.services.mapper import Mapper, UnitOfWork, generated_models, new_part
+    from rdf_persistence.services.session import Session, open_session
+    from rdf_persistence.services.store import Store
+    from rdf_persistence.services.sweep import sweep
+    from rdf_persistence.services.tenancy import Tenancy
 
 __version__ = "0.1.0"
+
+_ADAPTERS, _SERVICES = "rdf_persistence.adapters", "rdf_persistence.services"
+_LAZY_MODULES = {
+    "FusekiStore": f"{_ADAPTERS}.fuseki",
+    "FileStore": f"{_SERVICES}.files",
+    "Mapper": f"{_SERVICES}.mapper",
+    "UnitOfWork": f"{_SERVICES}.mapper",
+    "generated_models": f"{_SERVICES}.mapper",
+    "new_part": f"{_SERVICES}.mapper",
+    "Session": f"{_SERVICES}.session",
+    "open_session": f"{_SERVICES}.session",
+    "Store": f"{_SERVICES}.store",
+    "sweep": f"{_SERVICES}.sweep",
+    "Tenancy": f"{_SERVICES}.tenancy",
+}
+
+
+def __getattr__(name: str) -> Any:
+    """Load an adapter or service name on first use, then keep it."""
+    if name not in _LAZY_MODULES:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(import_module(_LAZY_MODULES[name]), name)
+    globals()[name] = value
+    return value
+
 
 __all__ = [
     "Action",
@@ -82,6 +118,7 @@ __all__ = [
     "GraphKind",
     "InvalidGraph",
     "LabelUpdate",
+    "Mapper",
     "ModuleKind",
     "NotFound",
     "PersistenceError",
@@ -100,6 +137,7 @@ __all__ = [
     "RpAnnotation",
     "RpModel",
     "ServiceSettings",
+    "Session",
     "Store",
     "StoreUnavailable",
     "StoredFile",
@@ -111,7 +149,10 @@ __all__ = [
     "TenantState",
     "TenantSummary",
     "Tracked",
+    "UnitOfWork",
     "VerifiedCaller",
+    "generated_models",
+    "new_part",
     "open_session",
     "sweep",
 ]

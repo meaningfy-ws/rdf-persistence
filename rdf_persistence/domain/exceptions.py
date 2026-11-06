@@ -1,4 +1,4 @@
-"""The errors the persistence layers raise; entrypoints map them to problems."""
+"""The errors the toolkit raises; entrypoints map them to problems."""
 
 # ruff: noqa: N818  (the names are the public vocabulary of the spec: DatabaseGone, Conflict, ...)
 
@@ -33,3 +33,11 @@ class BadQuery(PersistenceError):
 
 class InvalidGraph(PersistenceError):
     """A file of RDF does not parse; the message is the parser's."""
+
+
+class InvalidIri(ValueError):
+    """A value breaks an IRI, path-segment or resource-name rule of the toolkit (``domain.iris``)."""
+
+
+class SparqlError(ValueError):
+    """A value cannot become a SPARQL term, or a template and its terms do not match."""

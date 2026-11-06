@@ -20,6 +20,7 @@ from rdf_persistence.services.schema_structure import (
     ANY_OF,
     EXACTLY_ONE_OF,
     Alternative,
+    holds_owned_part,
     is_owned,
     presence_alternatives,
 )
@@ -62,7 +63,7 @@ def _scalar(conformance: Conformance, slot: SlotDefinition) -> st.SearchStrategy
 
 
 def _slot_values(conformance: Conformance, slot: SlotDefinition, depth: int) -> st.SearchStrategy:
-    owned = is_owned(slot)
+    owned = holds_owned_part(conformance.view, slot)
     one = _fields(conformance, slot.range, depth - 1) if owned else _scalar(conformance, slot)
     if not slot.multivalued:
         return one

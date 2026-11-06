@@ -4,7 +4,7 @@ import pytest
 from rdflib import RDF, Literal, URIRef
 from rdflib.namespace import Namespace
 
-from rdf_persistence.domain.errors import Conflict, NotFound
+from rdf_persistence.domain.exceptions import Conflict, NotFound
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.iris import access_iri, tenant_resource_name
 from rdf_persistence.services.session import open_session
@@ -19,7 +19,7 @@ async def access_graph(store, settings, tenant: str):
     async with open_session(
         store, database=f"{settings.prefix}-system", tenant_iri=tenant, principal=CREATOR
     ) as session:
-        graph, _ = await session.get_graph(str(access_iri(tenant)))
+        graph, _, _ = await session.get_graph(str(access_iri(tenant)))
     return graph
 
 

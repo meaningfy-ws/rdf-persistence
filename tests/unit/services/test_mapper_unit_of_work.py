@@ -6,19 +6,18 @@ from datetime import UTC, datetime
 import pytest
 from rdflib import URIRef
 
-from rdf_persistence.domain.errors import Conflict, NotFound
+from rdf_persistence.domain.exceptions import Conflict, NotFound
 from rdf_persistence.domain.generated.rp_access import Grant
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.iris import registry_graph_iri
 from rdf_persistence.services.mapper import UnitOfWork, new_part
-from rdf_persistence.services.session import Session, open_session
-from rdf_persistence.testkit.fakes import FakeStore
+from rdf_persistence.services.session import Session
+from rdf_persistence.testkit.fakes import FAKE_DATABASE, FakeStore, fake_session
 from tests.fixtures.library.generated.books import Book, Chapter
 from tests.fixtures.library.generated.library import Library
 from tests.toy import ADA, TENANT, access, book_iri, dune, toy_mapper
 
-DATABASE = "toy"
 BEN = "https://example.org/people/ben"
 NOW = datetime(2026, 11, 5, 9, 0, tzinfo=UTC)
 TTL = b'<https://example.org/b> <http://purl.org/dc/terms/title> "Dune" .'
@@ -27,25 +26,18 @@ TTL = b'<https://example.org/b> <http://purl.org/dc/terms/title> "Dune" .'
 @pytest.fixture
 async def store() -> FakeStore:
     fake = FakeStore()
-    await fake.create_dataset(DATABASE)
+    await fake.create_dataset(FAKE_DATABASE)
     return fake
 
 
-async def session_of(store: FakeStore, who: str = ADA) -> AsyncIterator[Session]:
-    async with open_session(
-        store,
-        database=DATABASE,
-        tenant_iri=TENANT,
-        principal=Principal(id=who),
-        clock=lambda: NOW,
-    ) as session:
-        yield session
+def session_of(store: FakeStore, who: str = ADA):
+    return fake_session(store, tenant_iri=TENANT, principal=Principal(id=who), clock=lambda: NOW)
 
 
 @pytest.fixture
 async def session(store: FakeStore) -> AsyncIterator[Session]:
-    async for s in session_of(store):
-        yield s
+    async with session_of(store) as opened:
+        yield opened
 
 
 def unit(session: Session) -> UnitOfWork:
@@ -86,11 +78,11 @@ async def test_a_re_read_and_re_commit_keeps_the_part_iris(session):
 
 async def test_a_change_is_tracked_as_a_later_commit_by_its_author(store):
     iri = book_iri(3)
-    async for ada in session_of(store, ADA):
+    async with session_of(store, ADA) as ada:
         work = unit(ada)
         work.add(dune(iri))
         await work.commit()
-    async for ben in session_of(store, BEN):
+    async with session_of(store, BEN) as ben:
         work = unit(ben)
         book = await work.get(Book, iri)
         book.isbn = "9780441172719"
@@ -217,7 +209,7 @@ async def test_getting_a_root_as_the_wrong_class_is_a_type_error(session):
 
 async def test_editing_a_book_through_the_unit_of_work_keeps_its_loaded_graphs(store, session):
     iri = book_iri(13)
-    loaded = await session.load_graph(iri, TTL, format=RdfFormat.TURTLE)
+    loaded = await session.load_graph(iri, TTL, rdf_format=RdfFormat.TURTLE)
     await session.add_graph(iri, list(toy_mapper().to_graph(dune(iri))), [loaded])
     work = unit(session)
     book = await work.get(Book, iri)
@@ -226,5 +218,5 @@ async def test_editing_a_book_through_the_unit_of_work_keeps_its_loaded_graphs(s
     await work.commit()
     kept = f"ASK {{ GRAPH <{loaded}> {{ ?s ?p ?o }} }}"
     entry = f"ASK {{ GRAPH <{registry_graph_iri(TENANT)}> {{ <{loaded}> ?p ?o }} }}"
-    assert (await store.query(DATABASE, kept)).askAnswer, "the loaded graph keeps its triples"
-    assert (await store.query(DATABASE, entry)).askAnswer, "and its registry entry"
+    assert (await store.query(FAKE_DATABASE, kept)).askAnswer, "the loaded graph keeps its triples"
+    assert (await store.query(FAKE_DATABASE, entry)).askAnswer, "and its registry entry"

@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 from rdflib import URIRef
 
-from rdf_persistence.domain import vocabulary
 from rdf_persistence.domain.generated.rp_core import RegistryEntry, RegistryKind
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
+from rdf_persistence.services import vocabulary
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import is_bookkeeping
 
@@ -41,7 +41,6 @@ def test_the_bookkeeping_predicates_are_exactly_the_bookkeeping_slots_of_the_sch
         ("graph", vocabulary.REGISTRY_GRAPH),
         ("kind", vocabulary.REGISTRY_KIND),
         ("owned_by", vocabulary.REGISTRY_OWNED_BY),
-        ("label", vocabulary.LABEL),
         ("state", vocabulary.STATE),
     ],
 )
@@ -56,25 +55,12 @@ def test_every_registry_slot_has_a_constant():
     )
 
 
-def test_each_registry_kind_maps_to_its_meaning(view):
-    meanings = {
-        kind.value: URIRef(
-            view.expand_curie(view.get_enum("RegistryKind").permissible_values[kind.value].meaning)
-        )
-        for kind in RegistryKind
-    }
-    assert meanings == dict(vocabulary.REGISTRY_KIND_IRIS), (
-        "kind values differ from the enum's meanings"
-    )
-
-
-def test_each_tenant_state_maps_to_its_meaning(view):
-    meanings = {
-        state.value: URIRef(
-            view.expand_curie(view.get_enum("TenantState").permissible_values[state.value].meaning)
-        )
-        for state in TenantState
-    }
-    assert meanings == dict(vocabulary.TENANT_STATE_IRIS), (
-        "state values differ from the enum's meanings"
-    )
+@pytest.mark.parametrize(
+    ("enum", "mapping"),
+    [(RegistryKind, vocabulary.REGISTRY_KIND_IRIS), (TenantState, vocabulary.TENANT_STATE_IRIS)],
+)
+def test_each_enum_member_maps_to_the_meaning_the_schema_declares(view, enum, mapping):
+    values = view.get_enum(enum.__name__).permissible_values
+    meanings = {m: URIRef(view.expand_curie(values[m.value].meaning)) for m in enum}
+    assert dict(mapping) == meanings, f"{enum.__name__} members differ from the enum's meanings"
+    assert set(mapping) == set(enum), "keyed by the generated enum, one entry per member"

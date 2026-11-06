@@ -3,13 +3,14 @@
 from collections import defaultdict
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import ClassVar
 
 from pyparsing import ParseException
 from rdflib import Dataset, Graph, URIRef
 from rdflib.plugins.sparql import prepareQuery, prepareUpdate
 from rdflib.query import Result
 
-from rdf_persistence.domain.errors import (
+from rdf_persistence.domain.exceptions import (
     BadQuery,
     Conflict,
     DatabaseGone,
@@ -30,8 +31,11 @@ class _Instrumented:
 
     ``on(operation, error, times, after)`` makes ``times`` calls of ``operation`` raise ``error``,
     starting ``after`` calls from now; ``sent(operation)`` lists what each call was given, including
-    the calls that failed.
+    the calls that failed. A name that is not in ``OPERATIONS`` raises ``ValueError``, so a typo
+    cannot silently inject nothing.
     """
+
+    OPERATIONS: ClassVar[frozenset[str]] = frozenset()
 
     def __init__(self) -> None:
         self._failures: defaultdict[str, dict[int, PersistenceError]] = defaultdict(dict)
@@ -39,12 +43,18 @@ class _Instrumented:
 
     def on(self, operation: str, error: PersistenceError, times: int = 1, after: int = 0) -> None:
         """Raise ``error`` on ``times`` calls of ``operation``, the first one ``after`` calls from now."""
+        self._known(operation)
         first = len(self._sent[operation]) + after
         self._failures[operation].update({first + n: error for n in range(times)})
 
     def sent(self, operation: str) -> list[str]:
         """What each call of ``operation`` was given, in order."""
+        self._known(operation)
         return list(self._sent[operation])
+
+    def _known(self, operation: str) -> None:
+        if operation not in self.OPERATIONS:
+            raise ValueError(f"unknown operation {operation!r}; known: {sorted(self.OPERATIONS)}")
 
     def _enter(self, operation: str, payload: str) -> None:
         call = len(self._sent[operation])
@@ -55,6 +65,10 @@ class _Instrumented:
 
 class FakeStore(_Instrumented):
     """A ``Store`` over one rdflib ``Dataset`` per dataset name, with failure injection."""
+
+    OPERATIONS = frozenset(
+        {"query", "update", "put_graph", "create_dataset", "drop_dataset", "list_datasets"}
+    )
 
     def __init__(self) -> None:
         super().__init__()
@@ -107,6 +121,10 @@ class FakeStore(_Instrumented):
 
 class FakeFileStore(_Instrumented):
     """A ``FileStore`` in memory, with the same failure injection as ``FakeStore``."""
+
+    OPERATIONS = frozenset(
+        {"create_bucket", "delete_bucket", "list_buckets", "put", "get", "delete"}
+    )
 
     def __init__(self) -> None:
         super().__init__()

@@ -29,6 +29,11 @@ INDEXED_NAMES = [
     "sweep",
     "FileStore",
     "TenantGone",
+    "Session",
+    "Mapper",
+    "UnitOfWork",
+    "new_part",
+    "generated_models",
 ]
 
 

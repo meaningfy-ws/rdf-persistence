@@ -10,11 +10,11 @@ from rdflib import Graph, Literal, URIRef
 from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence.adapters.fuseki import FusekiStore
-from rdf_persistence.domain import vocabulary as v
-from rdf_persistence.domain.errors import Conflict, DatabaseGone, NotFound
+from rdf_persistence.domain.exceptions import Conflict, DatabaseGone, NotFound
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.iris import graph_iri, meta_graph_iri, registry_graph_iri
 from rdf_persistence.domain.sparql import fill, term
+from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.session import Session, open_session
 
 TENANT = "https://example.org/libraries/6f1c0c1e"
@@ -119,7 +119,7 @@ async def test_an_aggregate_is_stored_in_its_derived_graph_and_never_in_a_graph_
 async def test_get_graph_returns_what_was_added_and_its_version(store, database):
     session = session_for(store, database)
     version = await session.add_graph(book(1), title(book(1), "Dune"))
-    graph, read = await session.get_graph(book(1))
+    graph, _, read = await session.get_graph(book(1))
     assert read == version, "the version read is the one returned by the commit"
     expected = graph_of(title(book(1), "Dune"))
     assert isomorphic(without_bookkeeping(graph), expected), graph_diff(
@@ -130,7 +130,7 @@ async def test_get_graph_returns_what_was_added_and_its_version(store, database)
 async def test_a_graph_read_can_be_written_back_as_it_is(store, database):
     session = session_for(store, database)
     version = await session.add_graph(book(1), title(book(1), "Dune"))
-    graph, _ = await session.get_graph(book(1))
+    graph, _, _ = await session.get_graph(book(1))
     new_version = await session.replace_graph(book(1), graph, version)
     assert new_version != version, "a write-back is a new version"
     stored = await about_graph(store, database, graph_iri(book(1)))
@@ -143,7 +143,7 @@ async def test_hostile_literals_are_stored_and_read_back_unchanged(store, databa
     session = session_for(store, database)
     hostile = '"} ; DROP ALL ; #\n\\'
     await session.add_graph(book(1), title(book(1), hostile))
-    graph, _ = await session.get_graph(book(1))
+    graph, _, _ = await session.get_graph(book(1))
     assert (URIRef(book(1)), TITLE, Literal(hostile)) in graph, "stored as a plain value"
     assert str(graph_iri(book(1))) in await graphs_in(store, database), "nothing was dropped"
 
@@ -158,7 +158,7 @@ async def test_adding_an_existing_aggregate_is_a_conflict_and_keeps_the_first(st
     await session.add_graph(book(1), title(book(1), "first"))
     with pytest.raises(Conflict):
         await session.add_graph(book(1), title(book(1), "second"))
-    graph, _ = await session.get_graph(book(1))
+    graph, _, _ = await session.get_graph(book(1))
     assert (URIRef(book(1)), TITLE, Literal("first")) in graph, "the first stays"
     assert (URIRef(book(1)), TITLE, Literal("second")) not in graph, "the second is not stored"
 
@@ -169,7 +169,7 @@ async def test_replacing_with_the_current_version_stores_the_new_triples_under_a
     session = session_for(store, database)
     first = await session.add_graph(book(1), title(book(1), "old"))
     second = await session.replace_graph(book(1), title(book(1), "new"), first)
-    graph, read = await session.get_graph(book(1))
+    graph, _, read = await session.get_graph(book(1))
     expected = graph_of(title(book(1), "new"))
     assert read == second != first, "a fresh token, never the old one"
     assert isomorphic(without_bookkeeping(graph), expected), graph_diff(
@@ -181,10 +181,10 @@ async def test_replacing_with_a_stale_version_is_a_conflict_and_changes_nothing(
     session = session_for(store, database)
     first = await session.add_graph(book(1), title(book(1), "old"))
     await session.replace_graph(book(1), title(book(1), "winner"), first)
-    before, version = await session.get_graph(book(1))
+    before, _, version = await session.get_graph(book(1))
     with pytest.raises(Conflict):
         await session.replace_graph(book(1), title(book(1), "loser"), first)
-    after, version_after = await session.get_graph(book(1))
+    after, _, version_after = await session.get_graph(book(1))
     assert version_after == version, "the version did not move"
     assert isomorphic(after, before), graph_diff(after, before)
 
@@ -198,7 +198,7 @@ async def test_two_editors_who_read_the_same_version_get_one_commit_and_one_conf
     store, database
 ):
     await session_for(store, database).add_graph(book(1), title(book(1), "v0"))
-    _, seen = await session_for(store, database).get_graph(book(1))
+    _, _, seen = await session_for(store, database).get_graph(book(1))
     store.barrier = asyncio.Barrier(2)
     ada, ben = session_for(store, database, ADA), session_for(store, database, BEN)
     outcomes = await asyncio.gather(
@@ -210,7 +210,7 @@ async def test_two_editors_who_read_the_same_version_get_one_commit_and_one_conf
     winners = [o for o in outcomes if isinstance(o, str)]
     losers = [o for o in outcomes if isinstance(o, Conflict)]
     assert (len(winners), len(losers)) == (1, 1), f"one wins, one conflicts: {outcomes}"
-    graph, stored = await session_for(store, database).get_graph(book(1))
+    graph, _, stored = await session_for(store, database).get_graph(book(1))
     winning_title = "by ada" if isinstance(outcomes[0], str) else "by ben"
     expected = graph_of(title(book(1), winning_title))
     assert stored == winners[0], "the stored token is the winner's"
@@ -231,7 +231,7 @@ async def test_two_adds_of_one_iri_give_one_success_and_one_conflict(store, data
     store.barrier = None
     winners = [o for o in outcomes if isinstance(o, str)]
     assert (len(winners), sum(isinstance(o, Conflict) for o in outcomes)) == (1, 1), outcomes
-    graph, stored = await session_for(store, database).get_graph(book(1))
+    graph, _, stored = await session_for(store, database).get_graph(book(1))
     assert stored == winners[0], "the stored token is the winner's"
     assert len(list(graph.objects(None, v.VERSION))) == 1, "one version token, nothing doubled"
     assert len(list(graph.objects(URIRef(book(1)), TITLE))) == 1, "one title, the winner's"
@@ -250,7 +250,7 @@ async def test_a_loaded_graph_outside_the_aggregate_is_refused_and_nothing_chang
     with pytest.raises(ValueError, match="content"):
         await session.add_graph(book(1), [], [bad])
     assert await graphs_in(store, database) == before, "no graph was touched"
-    graph, _ = await session.get_graph(book(2))
+    graph, _, _ = await session.get_graph(book(2))
     assert (URIRef(book(2)), TITLE, Literal("victim")) in graph, "the other aggregate is intact"
 
 
@@ -264,7 +264,7 @@ async def test_a_commit_records_who_and_when_about_the_graph_iri_and_not_the_roo
     assert (graph, v.CREATED, Literal(created)) in stored, "created is the first commit's time"
     assert (graph, v.CREATOR, URIRef(ADA.id)) in stored, "creator is the first committer"
     assert (graph, v.MODIFIED, None) not in stored, "nothing modified yet"
-    graph_read, _ = await ada.get_graph(book(1))
+    graph_read, _, _ = await ada.get_graph(book(1))
     on_root = [p for p in graph_read.predicates(URIRef(book(1))) if p in v.BOOKKEEPING_PREDICATES]
     assert on_root == [], "the root entity carries no tracking"
     await session_for(store, database, BEN, clock).replace_graph(
@@ -313,7 +313,7 @@ async def test_removing_with_a_stale_version_is_a_conflict_and_keeps_everything(
     await session.replace_graph(book(1), title(book(1), "b"), first)
     with pytest.raises(Conflict):
         await session.remove(book(1), first)
-    graph, _ = await session.get_graph(book(1))
+    graph, _, _ = await session.get_graph(book(1))
     assert (URIRef(book(1)), TITLE, Literal("b")) in graph, "the aggregate is still there"
     assert len(await registry(store, database)) == 3, "and so is its entry"
 
@@ -332,11 +332,11 @@ async def test_removing_with_the_current_version_deletes_the_graph_and_removing_
 async def test_other_aggregates_are_not_touched_by_a_commit(store, database):
     session = session_for(store, database)
     await session.add_graph(book(2), title(book(2), "neighbour"))
-    neighbour, _ = await session.get_graph(book(2))
+    neighbour, _, _ = await session.get_graph(book(2))
     version = await session.add_graph(book(1), title(book(1), "a"))
     await session.replace_graph(book(1), title(book(1), "b"), version)
-    await session.remove(book(1), (await session.get_graph(book(1)))[1])
-    after, _ = await session.get_graph(book(2))
+    await session.remove(book(1), (await session.get_graph(book(1)))[2])
+    after, _, _ = await session.get_graph(book(2))
     assert isomorphic(after, neighbour), graph_diff(after, neighbour)
     assert len(await registry(store, database)) == 3, "the neighbour keeps its entry"
 
@@ -393,5 +393,5 @@ async def test_a_dropped_database_is_database_gone(store, call):
 async def test_open_session_yields_a_working_session(store, database):
     async with open_session(store, database=database, tenant_iri=TENANT, principal=ADA) as session:
         await session.add_graph(book(1), title(book(1), "via the context manager"))
-        graph, _ = await session.get_graph(book(1))
+        graph, _, _ = await session.get_graph(book(1))
     assert (URIRef(book(1)), TITLE, Literal("via the context manager")) in graph, "stored"

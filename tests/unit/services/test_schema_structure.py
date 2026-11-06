@@ -22,6 +22,8 @@ from rdf_persistence.services.schema_structure import (
     apply_defaults,
     flag,
     generation_view,
+    holds_iri,
+    holds_owned_part,
     is_bookkeeping,
     is_internal,
     is_owned,
@@ -266,3 +268,19 @@ def test_the_grants_of_an_access_record_are_keyed_in_the_metamodel() -> None:
         (s.name, k.unique_key_name) for s, k in keyed_slots(view, view.get_class("TenantAccess"))
     ]
     assert found == [("grants", "grant_key")], "only the grants of an access record are keyed"
+
+
+@pytest.mark.parametrize(
+    ("cls", "slot", "owned_part", "iri"),
+    [
+        ("Book", "chapters", True, False),  # owned objects
+        ("Scan", "scan_of", False, True),  # a reference to another aggregate
+        ("Book", "id", False, True),  # a uri-typed slot
+        ("Book", "authors", False, False),  # plain text
+    ],
+)
+def test_a_slot_holds_owned_parts_or_iris_or_neither(cls, slot, owned_part, iri) -> None:
+    view = load_schema(TOY)
+    induced = view.induced_slot(slot, cls)
+    assert holds_owned_part(view, induced) is owned_part, f"{cls}.{slot} owned part"
+    assert holds_iri(view, induced) is iri, f"{cls}.{slot} IRI"
