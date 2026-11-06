@@ -104,15 +104,15 @@ Order: 1.11 at any time; 1.12 and 1.16 after 1.10; 1.13 after 1.8 and 1.12; 1.14
 
 ## 3. Files and identity (stage 3)
 
-- [ ] 3.1 The S3 adapter of the file store port (`boto3` in a worker thread), including bucket create, delete and list by prefix for tenancy and the sweep; the tenancy tests of 2.6 and 2.7 re-run against Garage. Exports: `S3FileStore` (the file store port and `TenantGone` are exported since 2.6).
-- [ ] 3.2 The `TokenVerifier` port and `JwksTokenVerifier` (PD-1): JWT access tokens only, cached JWKS, one refresh on an unknown `kid`, and the configurable roles claim (PD-9). Also the testkit token signer and an in-memory JWKS. Exports: `TokenVerifier`, `JwksTokenVerifier`; testkit `TokenSigner`.
-- [ ] 3.3 The identity port and the Zitadel adapter:
+- [x] 3.1 The S3 adapter of the file store port (`boto3` in a worker thread), including bucket create, delete and list by prefix for tenancy and the sweep; the tenancy tests of 2.6 and 2.7 re-run against Garage. Exports: `S3FileStore` (the file store port and `TenantGone` are exported since 2.6).
+- [x] 3.2 The `TokenVerifier` port and `JwksTokenVerifier` (PD-1): JWT access tokens only, cached JWKS, one refresh on an unknown `kid`, and the configurable roles claim (PD-9). Also the testkit token signer and an in-memory JWKS. Exports: `TokenVerifier`, `JwksTokenVerifier`; testkit `TokenSigner`.
+- [x] 3.3 The identity port and the Zitadel adapter:
   - find by email, list, disable, re-enable, and grant or remove a global role;
   - fixture provisioning of the project, the JWT application and the machine users (PD-16);
   - a test that a disabled service account's token request is refused.
 
   Exports: the identity port, `ZitadelIdentity`, `IdentityUnavailable`.
-- [ ] 3.4 The testkit fake of the identity port.
+- [x] 3.4 The testkit fake of the identity port.
 
 ## 4. Access (stage 4)
 
@@ -196,7 +196,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 - [x] 0.1 · [x] 0.2 · [x] 0.3 · [x] 0.4 · [x] 0.5
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 1.11 · [x] 1.12 · [x] 1.13 · [x] 1.14 · [x] 1.15 · [x] 1.16 · [x] 1.17 · [x] 1.18 · [x] 1.19 · [x] 1.20
 - [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6 · [x] 2.7 · [x] 2.8
-- [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4
+- [x] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4
 - [ ] 4.1 · [ ] 4.2 · [ ] 4.3
 - [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4 · [ ] 5.5 · [ ] 5.6 · [ ] 5.7
 - [ ] 6.1 · [ ] 6.2 · [ ] 6.3

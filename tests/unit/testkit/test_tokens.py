@@ -47,4 +47,6 @@ async def test_jwks_requests_counts_the_fetches() -> None:
 def test_the_roles_claim_is_an_object_keyed_by_role_name() -> None:
     signer = TokenSigner()
     claims = jwt.decode(signer.issue(roles=["admin"]), options={"verify_signature": False})
-    assert list(claims[signer.roles_claim]) == ["admin"], "Zitadel's shape: role name to organisations"
+    assert list(claims[signer.roles_claim]) == ["admin"], (
+        "Zitadel's shape: role name to organisations"
+    )

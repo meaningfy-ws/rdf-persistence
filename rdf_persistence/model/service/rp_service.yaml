@@ -44,6 +44,8 @@ classes:
         required: true
       creator_role:
         required: true
+      roles_claim:
+        required: true
   VerifiedCaller:
     title: Verified caller
     description: >-
@@ -132,6 +134,26 @@ classes:
       problem_status:
         required: true
 
+  AccountSummary:
+    title: Account summary
+    description: >-
+      What the identity port reports about one account of the identity provider: its id, its login
+      name, its email (a service account has none), whether it may sign in, and its global roles.
+    class_uri: rp:AccountSummary
+    slots:
+      - account_id
+      - user_name
+      - email
+      - active
+      - global_roles
+    slot_usage:
+      account_id:
+        required: true
+      user_name:
+        required: true
+      active:
+        required: true
+
 slots:
   base:
     title: Base
@@ -160,10 +182,11 @@ slots:
     pattern: "^.+$"
   roles_claim:
     title: Roles claim
-    description: The claim of the token that holds the caller's global roles; Zitadel's by default.
+    description: >-
+      The claim of the token that holds the caller's global roles, an object keyed by role name; for
+      Zitadel, urn:zitadel:iam:org:project:{project_id}:roles of the consumer's project.
     slot_uri: rp:rolesClaim
     range: string
-    ifabsent: string(urn:zitadel:iam:org:project:roles)
   principal:
     title: Principal
     description: The user account the token identifies.
@@ -234,3 +257,24 @@ slots:
     slot_uri: rp:problemInstance
     alias: instance
     range: uri
+  account_id:
+    title: Account id
+    description: The identity provider's id of the account.
+    slot_uri: rp:accountId
+    range: string
+    pattern: "^.+$"
+  user_name:
+    title: User name
+    description: The name the account signs in with.
+    slot_uri: rp:userName
+    range: string
+  email:
+    title: Email
+    description: The email address of a person's account.
+    slot_uri: rp:email
+    range: string
+  active:
+    title: Active
+    description: Whether the account may sign in; a disabled account is refused new tokens.
+    slot_uri: rp:accountActive
+    range: boolean

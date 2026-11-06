@@ -194,8 +194,9 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-13,
     - {role: librarian, level: tenant, actions: [read, modify, delete, administer]}
     - {role: reader, level: tenant, actions: [read]}
     ```
-  - **Global roles** come from a configurable token claim. The default is Zitadel's
-    `urn:zitadel:iam:org:project:roles`, an object keyed by role name.
+  - **Global roles** come from a configurable token claim, an object keyed by role name. For
+    Zitadel it is `urn:zitadel:iam:org:project:{project_id}:roles` (checked on a live token in task
+    3.3), so `ServiceSettings.roles_claim` has no default: each consumer sets its own project's claim.
   - The toy library's roles are `librarian` and `reader` per library, plus the global role `admin`.
   - Actions are `read`, `modify` and `delete` (ODRL), and `administer` (the toolkit's
     `rp:administer`: change the tenant's grants). Creating an aggregate is `modify` at tenant scope.
@@ -571,10 +572,11 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
   - **Zitadel with Postgres**, pinned by digest. It starts with `ZITADEL_FIRSTINSTANCE_*`
     variables that create an admin machine user and write its personal access token to a mounted
     file. The fixture uses that token only to provision, through the management API:
-    - a project with the roles `admin`, and an API application whose access-token type is *JWT*
-      (Zitadel issues opaque tokens by default, which a JWKS check cannot verify);
+    - a project with the role `admin`;
     - one machine user per test principal (librarian, reader, outsider, admin), each with a key for
-      the private-key JWT flow.
+      the private-key JWT flow and the access-token type *JWT* (a machine-user setting in Zitadel;
+      by default it issues opaque tokens, which a JWKS check cannot verify). The `admin` user holds
+      the global role `admin`. No API application is needed (task 3.3).
 
     Tests get tokens with the JWT-profile grant, requesting the scopes `openid`,
     `urn:zitadel:iam:org:project:id:{project}:aud` and

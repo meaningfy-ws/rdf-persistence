@@ -83,6 +83,7 @@ SETTINGS = ServiceSettings(
     prefix="lib",
     tenant_segment="libraries",
     creator_role="librarian",
+    roles_claim="urn:zitadel:iam:org:project:42:roles",
 )
 
 

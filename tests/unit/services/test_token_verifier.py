@@ -38,10 +38,14 @@ async def test_a_valid_token_gives_the_caller_with_the_principal_from_sub(
     signer: TokenSigner, verifier: TokenVerifier
 ) -> None:
     caller = await verifier.verify(signer.issue(sub="u1"))
-    assert caller.principal == f"{ISSUER}/users/u1", "the principal IRI is the issuer's users path plus sub"
+    assert caller.principal == f"{ISSUER}/users/u1", (
+        "the principal IRI is the issuer's users path plus sub"
+    )
 
 
-async def test_the_subject_is_percent_encoded_in_the_principal(signer: TokenSigner, verifier: TokenVerifier) -> None:
+async def test_the_subject_is_percent_encoded_in_the_principal(
+    signer: TokenSigner, verifier: TokenVerifier
+) -> None:
     caller = await verifier.verify(signer.issue(sub="a b/c"))
     assert caller.principal == f"{ISSUER}/users/a%20b%2Fc", "a subject cannot break out of the path"
 
@@ -58,28 +62,42 @@ async def test_global_roles_come_from_an_object_claim(
     assert caller.global_roles == expected, "the role names are the keys of the claim"
 
 
-async def test_global_roles_come_from_a_list_claim(signer: TokenSigner, verifier: TokenVerifier) -> None:
+async def test_global_roles_come_from_a_list_claim(
+    signer: TokenSigner, verifier: TokenVerifier
+) -> None:
     token = signer.issue(extra={signer.roles_claim: ["admin", "auditor"]})
-    assert (await verifier.verify(token)).global_roles == ["admin", "auditor"], "a list claim is read as is"
+    assert (await verifier.verify(token)).global_roles == ["admin", "auditor"], (
+        "a list claim is read as is"
+    )
 
 
-async def test_an_absent_roles_claim_gives_no_roles(signer: TokenSigner, verifier: TokenVerifier) -> None:
+async def test_an_absent_roles_claim_gives_no_roles(
+    signer: TokenSigner, verifier: TokenVerifier
+) -> None:
     token = signer.issue(roles=None)
     assert (await verifier.verify(token)).global_roles == [], "no claim, no global roles"
 
 
-async def test_a_roles_claim_of_another_shape_gives_no_roles(signer: TokenSigner, verifier: TokenVerifier) -> None:
+async def test_a_roles_claim_of_another_shape_gives_no_roles(
+    signer: TokenSigner, verifier: TokenVerifier
+) -> None:
     token = signer.issue(extra={signer.roles_claim: "admin"})
-    assert (await verifier.verify(token)).global_roles == [], "a string is not a role set, so nothing is granted"
+    assert (await verifier.verify(token)).global_roles == [], (
+        "a string is not a role set, so nothing is granted"
+    )
 
 
 async def test_the_roles_claim_is_configurable(signer: TokenSigner) -> None:
-    verifier = JwksTokenVerifier(ISSUER, signer.audience, "groups", http_client=signer.client, clock=lambda: NOW)
+    verifier = JwksTokenVerifier(
+        ISSUER, signer.audience, "groups", http_client=signer.client, clock=lambda: NOW
+    )
     token = signer.issue(extra={"groups": ["staff"]})
     assert (await verifier.verify(token)).global_roles == ["staff"], "the configured claim is read"
 
 
-async def test_an_audience_list_containing_ours_is_accepted(signer: TokenSigner, verifier: TokenVerifier) -> None:
+async def test_an_audience_list_containing_ours_is_accepted(
+    signer: TokenSigner, verifier: TokenVerifier
+) -> None:
     token = signer.issue(extra={"aud": ["other", signer.audience]})
     assert (await verifier.verify(token)).principal, "one matching audience is enough"
 
@@ -111,7 +129,9 @@ def forge_hs256(signer: TokenSigner) -> str:
     Built by hand because PyJWT itself refuses to HMAC with a PEM public key.
     """
     header = b64(json.dumps({"alg": "HS256", "typ": "JWT", "kid": signer.kid}).encode())
-    claims = b64(json.dumps({"iss": ISSUER, "aud": signer.audience, "sub": "u", "exp": NOW + 60}).encode())
+    claims = b64(
+        json.dumps({"iss": ISSUER, "aud": signer.audience, "sub": "u", "exp": NOW + 60}).encode()
+    )
     mac = hmac.new(public_pem(signer), f"{header}.{claims}".encode(), "sha256").digest()
     return f"{header}.{claims}.{b64(mac)}"
 
@@ -127,7 +147,9 @@ def make_invalid(name: str, signer: TokenSigner) -> str:
         "wrong-audience": lambda: signer.issue(audience="someone-else"),
         "bad-signature": lambda: other.issue(),
         "alg-none": lambda: jwt.encode(
-            {"iss": ISSUER, "aud": signer.audience, "sub": "u", "exp": NOW + 60}, None, algorithm="none"
+            {"iss": ISSUER, "aud": signer.audience, "sub": "u", "exp": NOW + 60},
+            None,
+            algorithm="none",
         ),
         "hs256-with-the-public-key": lambda: forge_hs256(signer),
         "garbage": lambda: "not.a.token",
@@ -139,7 +161,9 @@ def make_invalid(name: str, signer: TokenSigner) -> str:
 
 
 @pytest.mark.parametrize("name", INVALID_TOKENS)
-async def test_an_invalid_token_is_refused(name: str, signer: TokenSigner, verifier: TokenVerifier) -> None:
+async def test_an_invalid_token_is_refused(
+    name: str, signer: TokenSigner, verifier: TokenVerifier
+) -> None:
     with pytest.raises(InvalidToken):
         await verifier.verify(make_invalid(name, signer))
 
@@ -150,6 +174,8 @@ async def test_an_expired_token(signer: TokenSigner, verifier: TokenVerifier) ->
         await verifier.verify(signer.issue(expires_in=-1))
 
 
-async def test_hs256_is_refused_for_its_algorithm(signer: TokenSigner, verifier: TokenVerifier) -> None:
+async def test_hs256_is_refused_for_its_algorithm(
+    signer: TokenSigner, verifier: TokenVerifier
+) -> None:
     with pytest.raises(InvalidToken, match="algorithm"):
         await verifier.verify(forge_hs256(signer))

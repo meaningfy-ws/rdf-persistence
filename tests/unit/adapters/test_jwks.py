@@ -33,7 +33,12 @@ def signer(clock: ManualClock) -> TokenSigner:
 
 def verifier_for(signer: TokenSigner, clock: ManualClock, **kwargs: str) -> JwksTokenVerifier:
     return JwksTokenVerifier(
-        ISSUER, signer.audience, signer.roles_claim, http_client=signer.client, clock=clock, **kwargs
+        ISSUER,
+        signer.audience,
+        signer.roles_claim,
+        http_client=signer.client,
+        clock=clock,
+        **kwargs,
     )
 
 
@@ -44,7 +49,9 @@ async def test_keys_are_fetched_once_and_cached(signer: TokenSigner, clock: Manu
     assert signer.jwks_requests == 1, "three valid tokens, one fetch"
 
 
-async def test_an_explicit_jwks_uri_skips_discovery(signer: TokenSigner, clock: ManualClock) -> None:
+async def test_an_explicit_jwks_uri_skips_discovery(
+    signer: TokenSigner, clock: ManualClock
+) -> None:
     seen: list[str] = []
 
     def spy(request: httpx.Request) -> httpx.Response:
@@ -53,7 +60,12 @@ async def test_an_explicit_jwks_uri_skips_discovery(signer: TokenSigner, clock: 
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(spy))
     verifier = JwksTokenVerifier(
-        ISSUER, signer.audience, signer.roles_claim, jwks_uri=f"{ISSUER}/keys", http_client=client, clock=clock
+        ISSUER,
+        signer.audience,
+        signer.roles_claim,
+        jwks_uri=f"{ISSUER}/keys",
+        http_client=client,
+        clock=clock,
     )
     await verifier.verify(signer.issue())
     assert DISCOVERY_PATH not in seen, "no discovery request when the JWKS address is given"
@@ -70,7 +82,9 @@ async def test_the_cache_expires_after_the_ttl(signer: TokenSigner, clock: Manua
     assert signer.jwks_requests == 2, "fetched again once the TTL has passed"
 
 
-async def test_an_unknown_kid_triggers_one_refresh_then_is_accepted(signer: TokenSigner, clock: ManualClock) -> None:
+async def test_an_unknown_kid_triggers_one_refresh_then_is_accepted(
+    signer: TokenSigner, clock: ManualClock
+) -> None:
     verifier = verifier_for(signer, clock)
     await verifier.verify(signer.issue())
     signer.rotate("k2")
@@ -80,17 +94,23 @@ async def test_an_unknown_kid_triggers_one_refresh_then_is_accepted(signer: Toke
     assert signer.jwks_requests == 2, "exactly one refresh"
 
 
-async def test_a_burst_of_unknown_kids_refreshes_once(signer: TokenSigner, clock: ManualClock) -> None:
+async def test_a_burst_of_unknown_kids_refreshes_once(
+    signer: TokenSigner, clock: ManualClock
+) -> None:
     verifier = verifier_for(signer, clock)
     await verifier.verify(signer.issue())
     clock.now += PAST_COOLDOWN
     for _ in range(5):
         with pytest.raises(InvalidToken):
             await verifier.verify(signer.issue(kid="forged"))
-    assert signer.jwks_requests == 2, "the first unknown kid refreshes; the rest do not hammer the provider"
+    assert signer.jwks_requests == 2, (
+        "the first unknown kid refreshes; the rest do not hammer the provider"
+    )
 
 
-async def test_discovery_is_not_repeated_on_refresh(signer: TokenSigner, clock: ManualClock) -> None:
+async def test_discovery_is_not_repeated_on_refresh(
+    signer: TokenSigner, clock: ManualClock
+) -> None:
     verifier = verifier_for(signer, clock)
     await verifier.verify(signer.issue())
     clock.now += JWKS_TTL_SECONDS + 1
@@ -98,13 +118,17 @@ async def test_discovery_is_not_repeated_on_refresh(signer: TokenSigner, clock: 
     assert signer.discovery_requests == 1, "the JWKS address found once is kept"
 
 
-async def test_unreachable_provider_with_no_cached_keys_is_unavailable(signer: TokenSigner, clock: ManualClock) -> None:
+async def test_unreachable_provider_with_no_cached_keys_is_unavailable(
+    signer: TokenSigner, clock: ManualClock
+) -> None:
     signer.unreachable = True
     with pytest.raises(IdentityUnavailable):
         await verifier_for(signer, clock).verify(signer.issue())
 
 
-async def test_unreachable_provider_serves_cached_keys_until_the_ttl(signer: TokenSigner, clock: ManualClock) -> None:
+async def test_unreachable_provider_serves_cached_keys_until_the_ttl(
+    signer: TokenSigner, clock: ManualClock
+) -> None:
     verifier = verifier_for(signer, clock)
     await verifier.verify(signer.issue())
     signer.unreachable = True
@@ -115,7 +139,9 @@ async def test_unreachable_provider_serves_cached_keys_until_the_ttl(signer: Tok
         await verifier.verify(signer.issue())
 
 
-async def test_a_refresh_for_an_unknown_kid_that_fails_is_unavailable(signer: TokenSigner, clock: ManualClock) -> None:
+async def test_a_refresh_for_an_unknown_kid_that_fails_is_unavailable(
+    signer: TokenSigner, clock: ManualClock
+) -> None:
     verifier = verifier_for(signer, clock)
     await verifier.verify(signer.issue())
     signer.unreachable = True
@@ -134,9 +160,13 @@ async def test_a_transport_error_is_unavailable(clock: ManualClock) -> None:
         await verifier.verify(TokenSigner(clock=clock).issue())
 
 
-@pytest.mark.parametrize("body", ["not json", '{"no": "jwks_uri"}'], ids=["not-json", "no-jwks-uri"])
+@pytest.mark.parametrize(
+    "body", ["not json", '{"no": "jwks_uri"}'], ids=["not-json", "no-jwks-uri"]
+)
 async def test_a_broken_discovery_document_is_unavailable(body: str, clock: ManualClock) -> None:
-    client = httpx.AsyncClient(transport=httpx.MockTransport(lambda _r: httpx.Response(200, text=body)))
+    client = httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda _r: httpx.Response(200, text=body))
+    )
     verifier = JwksTokenVerifier(ISSUER, "aud", "roles", http_client=client, clock=clock)
     with pytest.raises(IdentityUnavailable):
         await verifier.verify(TokenSigner(clock=clock).issue())

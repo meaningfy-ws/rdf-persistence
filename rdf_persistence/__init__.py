@@ -13,7 +13,9 @@ from rdf_persistence.domain.exceptions import (
     BadQuery,
     Conflict,
     DatabaseGone,
+    IdentityUnavailable,
     InvalidGraph,
+    InvalidToken,
     NotFound,
     PersistenceError,
     StoreUnavailable,
@@ -56,6 +58,7 @@ from rdf_persistence.domain.generated.rp_tenancy import (
     TenantState,
 )
 from rdf_persistence.domain.generated.service.rp_service import (
+    AccountSummary,
     GrantSet,
     LabelUpdate,
     Page,
@@ -68,18 +71,28 @@ from rdf_persistence.domain.generated.service.rp_service import (
 
 if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.adapters.fuseki import FusekiStore
+    from rdf_persistence.adapters.jwks import JwksTokenVerifier
+    from rdf_persistence.adapters.s3 import S3FileStore
+    from rdf_persistence.adapters.zitadel import ZitadelIdentity
     from rdf_persistence.services.files import FileStore
+    from rdf_persistence.services.identity import Identity
     from rdf_persistence.services.mapper import Mapper, UnitOfWork, generated_models, new_part
     from rdf_persistence.services.session import Session, open_session
     from rdf_persistence.services.store import Store
     from rdf_persistence.services.sweep import sweep
     from rdf_persistence.services.tenancy import Tenancy
+    from rdf_persistence.services.tokens import TokenVerifier
 
 __version__ = "0.1.0"
 
 _ADAPTERS, _SERVICES = "rdf_persistence.adapters", "rdf_persistence.services"
 _LAZY_MODULES = {
     "FusekiStore": f"{_ADAPTERS}.fuseki",
+    "JwksTokenVerifier": f"{_ADAPTERS}.jwks",
+    "S3FileStore": f"{_ADAPTERS}.s3",
+    "ZitadelIdentity": f"{_ADAPTERS}.zitadel",
+    "Identity": f"{_SERVICES}.identity",
+    "TokenVerifier": f"{_SERVICES}.tokens",
     "FileStore": f"{_SERVICES}.files",
     "Mapper": f"{_SERVICES}.mapper",
     "UnitOfWork": f"{_SERVICES}.mapper",
@@ -103,6 +116,7 @@ def __getattr__(name: str) -> Any:
 
 
 __all__ = [
+    "AccountSummary",
     "Action",
     "Activity",
     "AggregateRoot",
@@ -116,13 +130,17 @@ __all__ = [
     "Grant",
     "GrantSet",
     "GraphKind",
+    "Identity",
+    "IdentityUnavailable",
     "InvalidGraph",
+    "InvalidToken",
+    "JwksTokenVerifier",
     "LabelUpdate",
     "Mapper",
     "ModuleKind",
     "NotFound",
-    "PersistenceError",
     "Page",
+    "PersistenceError",
     "Policy",
     "Principal",
     "Problem",
@@ -133,24 +151,27 @@ __all__ = [
     "RegistryKind",
     "RoleDefinition",
     "RoleLevel",
-    "Rule",
     "RpAnnotation",
     "RpModel",
+    "Rule",
+    "S3FileStore",
     "ServiceSettings",
     "Session",
     "Store",
     "StoreUnavailable",
     "StoredFile",
-    "TenantAccess",
     "Tenancy",
+    "TenantAccess",
     "TenantCreate",
     "TenantGone",
     "TenantLabelled",
     "TenantState",
     "TenantSummary",
+    "TokenVerifier",
     "Tracked",
     "UnitOfWork",
     "VerifiedCaller",
+    "ZitadelIdentity",
     "generated_models",
     "new_part",
     "open_session",

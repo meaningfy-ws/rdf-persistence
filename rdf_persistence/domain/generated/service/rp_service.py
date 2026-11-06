@@ -92,7 +92,7 @@ class ServiceSettings(ConfiguredBaseModel):
     prefix: str = Field(default=..., title="Prefix", description="The prefix of the database names of the service\u0027s tenants; lower case, at most 20 characters.")
     tenant_segment: str = Field(default=..., title="Tenant segment", description="The path segment that names the tenant collection in the service\u0027s routes.")
     creator_role: str = Field(default=..., title="Creator role", description="The role a caller is given on the tenant it creates.")
-    roles_claim: Optional[str] = Field(default="urn:zitadel:iam:org:project:roles", title="Roles claim", description="The claim of the token that holds the caller\u0027s global roles; Zitadel\u0027s by default.")
+    roles_claim: str = Field(default=..., title="Roles claim", description="The claim of the token that holds the caller\u0027s global roles, an object keyed by role name; for Zitadel, urn:zitadel:iam:org:project:{project_id}:roles of the consumer\u0027s project.")
 
     @field_validator("base")
     def pattern_base(cls, v):
@@ -236,6 +236,28 @@ class Problem(ConfiguredBaseModel):
     instance: Optional[str] = Field(default=None, title="Problem instance", description="The IRI that identifies this occurrence of the problem.")
 
 
+class AccountSummary(ConfiguredBaseModel):
+    "What the identity port reports about one account of the identity provider: its id, its login name, its email (a service account has none), whether it may sign in, and its global roles."
+    account_id: str = Field(default=..., title="Account id", description="The identity provider\u0027s id of the account.")
+    user_name: str = Field(default=..., title="User name", description="The name the account signs in with.")
+    email: Optional[str] = Field(default=None, title="Email", description="The email address of a person\u0027s account.")
+    active: bool = Field(default=..., title="Active", description="Whether the account may sign in; a disabled account is refused new tokens.")
+    global_roles: Optional[list[str]] = Field(default=None, title="Global roles", description="The system-level roles the token grants the principal.")
+
+    @field_validator("account_id")
+    def pattern_account_id(cls, v):
+        pattern=re.compile("^.+$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid account_id format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid account_id format: " + str(v)
+            raise ValueError(err_msg)
+        return v
+
+
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 ServiceSettings.model_rebuild()
@@ -246,3 +268,4 @@ LabelUpdate.model_rebuild()
 GrantSet.model_rebuild()
 Page.model_rebuild()
 Problem.model_rebuild()
+AccountSummary.model_rebuild()

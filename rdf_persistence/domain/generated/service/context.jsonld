@@ -10,6 +10,9 @@
       "shex": "http://www.w3.org/ns/shex#",
       "skos": "http://www.w3.org/2004/02/skos/core#",
       "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "account_id": {
+         "@id": "accountId"
+      },
       "action": {
          "@id": "ODRL:action",
          "@type": "@vocab",
@@ -30,6 +33,9 @@
             "delete": "http://www.w3.org/ns/odrl/2/delete",
             "administer": "https://meaningfy.ws/ns/rdf-persistence#administer"
          }
+      },
+      "active": {
+         "@id": "accountActive"
       },
       "assignee": {
          "@type": "@id",
@@ -57,6 +63,9 @@
       },
       "description": {
          "@id": "dcterms:description"
+      },
+      "email": {
+         "@id": "email"
       },
       "global_roles": {
          "@container": "@set",
@@ -172,10 +181,16 @@
       "url_segment": {
          "@id": "urlSegment"
       },
+      "user_name": {
+         "@id": "userName"
+      },
       "version": {
          "@id": "version"
       },
       "@version": 1.1,
+      "AccountSummary": {
+         "@id": "AccountSummary"
+      },
       "AggregateRoot": {
          "@id": "AggregateRoot"
       },
