@@ -1,41 +1,39 @@
 """The rule order of the check (PD-9, worked example step 2): each rule has a case that fires and one that does not."""
 
-from pathlib import Path
+from uuid import UUID
 
 import pytest
 
-from rdf_persistence import Action, Grant, Prohibition, TenantState, VerifiedCaller
+from rdf_persistence import Action, TenantState
 from rdf_persistence.domain.exceptions import Forbidden, NotFound
-from rdf_persistence.domain.generated.service.rp_service import CallerAccess
+from rdf_persistence.domain.iris import access_iri
 from rdf_persistence.services.access import AccessRules, load_role_definitions
-from tests.toy import ADA, TENANT, book_iri
+from tests.toy import (
+    BOB,
+    ROLES,
+    TENANT,
+    ban,
+    book_iri,
+    caller,
+    direct,
+    graph_of,
+    held,
+    role,
+)
 
-ROLES = Path(__file__).parents[2] / "fixtures" / "library" / "library_roles.yaml"
-BOB = "https://example.org/people/bob"
 BOOK = book_iri(1)
-BOOK_GRAPH = f"{BOOK}/graph"
-OTHER_GRAPH = f"{book_iri(2)}/graph"
+BOOK_GRAPH = graph_of(BOOK)
+OTHER_GRAPH = graph_of(book_iri(2))
+FOREIGN_TENANT = "https://example.org/libraries/22222222-2222-4222-8222-222222222222"
 ALLOW = None
-RULES = ("inactive-tenant", "prohibition", "invisible", "permitted", "otherwise-forbidden")
-
-
-def verified(*global_roles: str) -> VerifiedCaller:
-    return VerifiedCaller(principal=ADA, global_roles=list(global_roles) or None)
-
-
-def role(name: str, target: str = TENANT, who: str = ADA) -> Grant:
-    return Grant(assignee=who, target=target, role=name)
-
-
-def ban(action: Action, target: str = TENANT, who: str = ADA) -> Prohibition:
-    return Prohibition(assignee=who, target=target, action=action)
-
-
-def held(
-    *grants: Grant, bans: list[Prohibition] | None = None, state=TenantState.ACTIVE
-) -> CallerAccess:
-    return CallerAccess(tenant=TENANT, state=state, grants=list(grants) or None, prohibitions=bans)
-
+RULES = (
+    "foreign-target",
+    "inactive-tenant",
+    "prohibition",
+    "invisible",
+    "permitted",
+    "otherwise-forbidden",
+)
 
 # (rule, applies?, case id, caller, access, target, action, answer)
 CASES = [
@@ -43,7 +41,7 @@ CASES = [
         "inactive-tenant",
         True,
         "deleting beats a prohibition and a grant",
-        verified("admin"),
+        caller("admin"),
         held(role("librarian"), bans=[ban(Action.READ)], state=TenantState.DELETING),
         BOOK,
         Action.READ,
@@ -53,7 +51,7 @@ CASES = [
         "inactive-tenant",
         False,
         "active tenant answers by the other rules",
-        verified(),
+        caller(),
         held(role("reader")),
         BOOK,
         Action.READ,
@@ -63,7 +61,7 @@ CASES = [
         "prohibition",
         True,
         "a prohibition on the tenant blocks an aggregate",
-        verified(),
+        caller(),
         held(role("librarian"), bans=[ban(Action.MODIFY)]),
         BOOK,
         Action.MODIFY,
@@ -73,7 +71,7 @@ CASES = [
         "prohibition",
         True,
         "a prohibition wins before invisibility",
-        verified(),
+        caller(),
         held(bans=[ban(Action.READ)]),
         BOOK,
         Action.READ,
@@ -83,7 +81,7 @@ CASES = [
         "prohibition",
         True,
         "a prohibition of read blocks every action that implies read",
-        verified(),
+        caller(),
         held(role("librarian"), bans=[ban(Action.READ, BOOK_GRAPH)]),
         BOOK,
         Action.DELETE,
@@ -93,7 +91,7 @@ CASES = [
         "prohibition",
         False,
         "a prohibition of modify leaves delete alone",
-        verified(),
+        caller(),
         held(role("librarian"), bans=[ban(Action.MODIFY)]),
         BOOK,
         Action.DELETE,
@@ -103,7 +101,7 @@ CASES = [
         "prohibition",
         False,
         "a prohibition on another aggregate leaves this one alone",
-        verified(),
+        caller(),
         held(role("librarian"), bans=[ban(Action.MODIFY, OTHER_GRAPH)]),
         BOOK,
         Action.MODIFY,
@@ -113,7 +111,7 @@ CASES = [
         "prohibition",
         False,
         "a prohibition on an aggregate does not block tenant scope",
-        verified(),
+        caller(),
         held(role("librarian"), bans=[ban(Action.MODIFY, BOOK_GRAPH)]),
         TENANT,
         Action.MODIFY,
@@ -123,7 +121,7 @@ CASES = [
         "prohibition",
         False,
         "another principal's prohibition is not the caller's",
-        verified(),
+        caller(),
         held(role("librarian"), bans=[ban(Action.MODIFY, who=BOB)]),
         BOOK,
         Action.MODIFY,
@@ -133,7 +131,7 @@ CASES = [
         "invisible",
         True,
         "no grant, no permission, no global role",
-        verified(),
+        caller(),
         held(),
         BOOK,
         Action.READ,
@@ -143,7 +141,7 @@ CASES = [
         "invisible",
         True,
         "a global role no definition names",
-        verified("root"),
+        caller("root"),
         held(),
         BOOK,
         Action.READ,
@@ -153,7 +151,7 @@ CASES = [
         "invisible",
         True,
         "a tenant role in the token is not a global role",
-        verified("librarian"),
+        caller("librarian"),
         held(),
         BOOK,
         Action.READ,
@@ -163,7 +161,7 @@ CASES = [
         "invisible",
         True,
         "a grant of another principal does not show the tenant",
-        verified(),
+        caller(),
         held(role("librarian", who=BOB)),
         BOOK,
         Action.READ,
@@ -173,7 +171,7 @@ CASES = [
         "invisible",
         False,
         "a tenant grant shows the tenant",
-        verified(),
+        caller(),
         held(role("reader")),
         BOOK,
         Action.MODIFY,
@@ -183,7 +181,7 @@ CASES = [
         "invisible",
         False,
         "a global role a definition names shows the tenant",
-        verified("admin"),
+        caller("admin"),
         held(),
         BOOK,
         Action.MODIFY,
@@ -193,7 +191,7 @@ CASES = [
         "permitted",
         True,
         "a role definition permits the action",
-        verified(),
+        caller(),
         held(role("librarian")),
         BOOK,
         Action.DELETE,
@@ -203,8 +201,8 @@ CASES = [
         "permitted",
         True,
         "modify implies read",
-        verified(),
-        held(Grant(assignee=ADA, target=BOOK_GRAPH, action=Action.MODIFY)),
+        caller(),
+        held(direct(Action.MODIFY, BOOK_GRAPH)),
         BOOK,
         Action.READ,
         ALLOW,
@@ -213,8 +211,8 @@ CASES = [
         "permitted",
         True,
         "a direct permission on the aggregate permits it",
-        verified(),
-        held(Grant(assignee=ADA, target=BOOK_GRAPH, action=Action.DELETE)),
+        caller(),
+        held(direct(Action.DELETE, BOOK_GRAPH)),
         BOOK,
         Action.DELETE,
         ALLOW,
@@ -223,7 +221,7 @@ CASES = [
         "permitted",
         True,
         "a system role permits at any scope",
-        verified("admin"),
+        caller("admin"),
         held(),
         TENANT,
         Action.READ,
@@ -233,8 +231,8 @@ CASES = [
         "permitted",
         False,
         "a direct permission on another aggregate shows nothing",
-        verified(),
-        held(Grant(assignee=ADA, target=OTHER_GRAPH, action=Action.MODIFY)),
+        caller(),
+        held(direct(Action.MODIFY, OTHER_GRAPH)),
         BOOK,
         Action.MODIFY,
         NotFound,
@@ -243,8 +241,8 @@ CASES = [
         "permitted",
         False,
         "a direct tenant permission covers the tenant's aggregates",
-        verified(),
-        held(Grant(assignee=ADA, target=TENANT, action=Action.MODIFY)),
+        caller(),
+        held(direct(Action.MODIFY)),
         BOOK,
         Action.MODIFY,
         ALLOW,
@@ -253,41 +251,121 @@ CASES = [
         "otherwise-forbidden",
         True,
         "a reader may not modify",
-        verified(),
+        caller(),
         held(role("reader")),
         BOOK,
         Action.MODIFY,
         Forbidden,
     ),
     (
-        "otherwise-forbidden",
+        "invisible",
         True,
-        "a role no definition names permits nothing",
-        verified(),
+        "a role no definition names permits nothing, so shows nothing",
+        caller(),
         held(role("archivist")),
         BOOK,
         Action.READ,
-        Forbidden,
+        NotFound,
     ),
     (
-        "otherwise-forbidden",
+        "invisible",
         True,
-        "a system role is no tenant role",
-        verified(),
+        "a system role is no tenant role, so shows nothing",
+        caller(),
         held(role("admin")),
         BOOK,
         Action.READ,
-        Forbidden,
+        NotFound,
     ),
     (
         "otherwise-forbidden",
         False,
         "a direct permission on the aggregate does not widen a tenant role",
-        verified(),
-        held(role("reader"), Grant(assignee=ADA, target=BOOK_GRAPH, action=Action.MODIFY)),
+        caller(),
+        held(role("reader"), direct(Action.MODIFY, BOOK_GRAPH)),
         BOOK,
         Action.MODIFY,
         ALLOW,
+    ),
+    (
+        "foreign-target",
+        True,
+        "an aggregate of another tenant",
+        caller(),
+        held(role("librarian")),
+        f"{FOREIGN_TENANT}/books/{UUID(int=3)}",
+        Action.DELETE,
+        NotFound,
+    ),
+    (
+        "foreign-target",
+        True,
+        "the IRI of another tenant",
+        caller(),
+        held(role("librarian")),
+        FOREIGN_TENANT,
+        Action.ADMINISTER,
+        NotFound,
+    ),
+    (
+        "foreign-target",
+        True,
+        "a graph IRI is not an aggregate's root",
+        caller(),
+        held(direct(Action.MODIFY, BOOK_GRAPH)),
+        BOOK_GRAPH,
+        Action.MODIFY,
+        NotFound,
+    ),
+    (
+        "foreign-target",
+        True,
+        "an IRI under the tenant that is no aggregate",
+        caller(),
+        held(role("librarian")),
+        f"{TENANT}/books/x",
+        Action.READ,
+        NotFound,
+    ),
+    (
+        "foreign-target",
+        False,
+        "the tenant's own access record is a target",
+        caller(),
+        held(role("librarian")),
+        str(access_iri(TENANT)),
+        Action.ADMINISTER,
+        ALLOW,
+    ),
+    (
+        "permitted",
+        True,
+        "a direct delete grant on the aggregate reads it",
+        caller(),
+        held(direct(Action.DELETE, BOOK_GRAPH)),
+        BOOK,
+        Action.READ,
+        ALLOW,
+    ),
+    (
+        "permitted",
+        True,
+        "a direct administer grant on the tenant reads it",
+        caller(),
+        held(direct(Action.ADMINISTER)),
+        TENANT,
+        Action.READ,
+        ALLOW,
+    ),
+    (
+        "permitted",
+        True,
+        "a direct read grant does not modify",
+        caller(),
+        held(direct(Action.READ, BOOK_GRAPH)),
+        BOOK,
+        Action.MODIFY,
+        Forbidden,
     ),
 ]
 
@@ -307,10 +385,10 @@ def test_every_rule_of_the_check_has_a_case_that_fires_and_a_case_that_does_not(
 def test_each_rule_case(verified_caller, access, target, action, answer):
     rules = AccessRules(load_role_definitions(ROLES))
     if answer is ALLOW:
-        rules.allowed(verified_caller, access, target, action)
+        rules.require(verified_caller, access, target, action)
         return
     with pytest.raises(answer):
-        rules.allowed(verified_caller, access, target, action)
+        rules.require(verified_caller, access, target, action)
 
 
 def test_a_role_defined_at_aggregate_level_applies_to_that_aggregate_only(tmp_path):
@@ -318,8 +396,16 @@ def test_a_role_defined_at_aggregate_level_applies_to_that_aggregate_only(tmp_pa
     path.write_text("- {role: editor, level: aggregate, actions: [modify]}\n")
     rules = AccessRules(load_role_definitions(path))
     access = held(role("editor", BOOK_GRAPH))
-    rules.allowed(verified(), access, BOOK, Action.MODIFY)
+    rules.require(caller(), access, BOOK, Action.MODIFY)
     with pytest.raises(NotFound):
-        rules.allowed(verified(), access, book_iri(2), Action.MODIFY)
+        rules.require(caller(), access, book_iri(2), Action.MODIFY)
     with pytest.raises(NotFound):
-        rules.allowed(verified(), access, TENANT, Action.MODIFY)
+        rules.require(caller(), access, TENANT, Action.MODIFY)
+
+
+def test_an_aggregate_role_granted_on_the_tenant_shows_nothing_of_it(tmp_path):
+    path = tmp_path / "roles.yaml"
+    path.write_text("- {role: editor, level: aggregate, actions: [modify]}\n")
+    rules = AccessRules(load_role_definitions(path))
+    with pytest.raises(NotFound):
+        rules.require(caller(), held(role("editor", TENANT)), TENANT, Action.READ)

@@ -5,15 +5,19 @@ from pathlib import Path
 from uuid import UUID
 
 from rdf_persistence import (
+    Action,
+    CallerAccess,
     Grant,
     Mapper,
     Prohibition,
     ServiceSettings,
     TenantState,
+    VerifiedCaller,
     generated_models,
     new_part,
 )
 from rdf_persistence.domain.generated import rp_access, rp_core
+from rdf_persistence.domain.iris import graph_iri
 from rdf_persistence.services.schema import load_schema
 from tests.fixtures.library.generated import (
     books,
@@ -29,6 +33,8 @@ from tests.fixtures.library.generated.library_access import LibraryAccess
 TOY_SCHEMA = Path(__file__).parent / "fixtures" / "library" / "library.yaml"
 TENANT = "https://example.org/libraries/6f1c0c1e"
 ADA = "https://example.org/people/ada"
+BOB = "https://example.org/people/bob"
+ROLES = Path(__file__).parent / "fixtures" / "library" / "library_roles.yaml"
 DATABASE = "acme-t-" + "0" * 32
 MODULES = (books, library, library_access, library_tenant, scans, rp_access, rp_core)
 
@@ -40,6 +46,34 @@ def toy_mapper() -> Mapper:
 
 def book_iri(n: object) -> str:
     return f"{TENANT}/books/{UUID(int=int(n))}"  # a minted aggregate IRI ends in a UUID
+
+
+def graph_of(iri: str) -> str:
+    return str(graph_iri(iri))
+
+
+def caller(*global_roles: str, principal: str = ADA) -> VerifiedCaller:
+    """The verified caller, with the given global roles from the token."""
+    return VerifiedCaller(principal=principal, global_roles=list(global_roles) or None)
+
+
+def role(name: str, target: str = TENANT, who: str = ADA) -> Grant:
+    return Grant(assignee=who, target=target, role=name)
+
+
+def direct(action: Action, target: str = TENANT, who: str = ADA) -> Grant:
+    return Grant(assignee=who, target=target, action=action)
+
+
+def ban(action: Action, target: str = TENANT, who: str = ADA) -> Prohibition:
+    return Prohibition(assignee=who, target=target, action=action)
+
+
+def held(
+    *grants: Grant, bans: list[Prohibition] | None = None, state: TenantState = TenantState.ACTIVE
+) -> CallerAccess:
+    """What the check knows of one caller in the toy tenant."""
+    return CallerAccess(tenant=TENANT, state=state, grants=list(grants) or None, prohibitions=bans)
 
 
 def dune(iri: str, *, chapters: int = 2) -> Book:

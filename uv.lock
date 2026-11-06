@@ -2442,6 +2442,7 @@ dependencies = [
     { name = "pyjwt", extra = ["crypto"] },
     { name = "pyld" },
     { name = "pyshacl" },
+    { name = "pyyaml" },
     { name = "rdflib" },
 ]
 
@@ -2485,6 +2486,7 @@ requires-dist = [
     { name = "pyjwt", extras = ["crypto"], specifier = "==2.15.1" },
     { name = "pyld", specifier = "==3.3.0" },
     { name = "pyshacl", specifier = "==0.40.2" },
+    { name = "pyyaml", specifier = "==6.0.3" },
     { name = "rdflib", specifier = "==7.6.0" },
     { name = "testcontainers", marker = "extra == 'testkit'", specifier = "==4.14.2" },
 ]

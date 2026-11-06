@@ -1,42 +1,19 @@
 """PD-9's matrix of the toy library, every cell: who may do what, answered allow, 403 or 404."""
 
 from itertools import product
-from pathlib import Path
 
 import pytest
 
-from rdf_persistence import Action, Grant, Prohibition, TenantState, VerifiedCaller
+from rdf_persistence import Action, TenantState
 from rdf_persistence.domain.exceptions import Forbidden, NotFound
-from rdf_persistence.domain.generated.service.rp_service import CallerAccess
 from rdf_persistence.services.access import AccessRules, load_role_definitions
-from tests.toy import ADA, TENANT, book_iri
+from tests.toy import ROLES, TENANT, ban, book_iri, caller, direct, graph_of, held, role
 
-ROLES = Path(__file__).parents[2] / "fixtures" / "library" / "library_roles.yaml"
 BOOK_B = book_iri(1)
 OTHER_BOOK = book_iri(2)
-BOOK_B_GRAPH = f"{BOOK_B}/graph"
+BOOK_B_GRAPH = graph_of(BOOK_B)
 ALLOW = None  # the cell answers "allow": the check returns
-
-
-def caller(*global_roles: str) -> VerifiedCaller:
-    return VerifiedCaller(principal=ADA, global_roles=list(global_roles) or None)
-
-
-def role(name: str) -> Grant:
-    return Grant(assignee=ADA, target=TENANT, role=name)
-
-
-def direct_modify_on_b() -> Grant:
-    return Grant(assignee=ADA, target=BOOK_B_GRAPH, action=Action.MODIFY)
-
-
-def held(
-    *grants: Grant, prohibitions: list[Prohibition] | None = None, deleting: bool = False
-) -> CallerAccess:
-    state = TenantState.DELETING if deleting else TenantState.ACTIVE
-    return CallerAccess(
-        tenant=TENANT, state=state, grants=list(grants) or None, prohibitions=prohibitions
-    )
+DELETING = TenantState.DELETING
 
 
 # The callers, the rows of the matrix.
@@ -44,18 +21,18 @@ CALLERS = {
     "admin": (caller("admin"), held()),
     "librarian": (caller(), held(role("librarian"))),
     "reader": (caller(), held(role("reader"))),
-    "direct-modify-on-B": (caller(), held(direct_modify_on_b())),
-    "reader+direct-modify-on-B": (caller(), held(role("reader"), direct_modify_on_b())),
+    "direct-modify-on-B": (caller(), held(direct(Action.MODIFY, BOOK_B_GRAPH))),
+    "reader+direct-modify-on-B": (
+        caller(),
+        held(role("reader"), direct(Action.MODIFY, BOOK_B_GRAPH)),
+    ),
     "librarian+prohibition-of-modify-on-B": (
         caller(),
-        held(
-            role("librarian"),
-            prohibitions=[Prohibition(assignee=ADA, target=BOOK_B_GRAPH, action=Action.MODIFY)],
-        ),
+        held(role("librarian"), bans=[ban(Action.MODIFY, BOOK_B_GRAPH)]),
     ),
     "outsider": (caller(), held()),
-    "deleting-librarian": (caller(), held(role("librarian"), deleting=True)),
-    "deleting-admin": (caller("admin"), held(deleting=True)),
+    "deleting-librarian": (caller(), held(role("librarian"), state=DELETING)),
+    "deleting-admin": (caller("admin"), held(state=DELETING)),
 }
 
 # The columns: what is asked of whom. "create" is modify at tenant scope (PD-9).
@@ -112,7 +89,7 @@ def test_each_cell_of_the_matrix(who: str, column: str):
     target, action = REQUESTS[column]
     expected = EXPECTED[who][column]
     if expected is ALLOW:
-        rules.allowed(verified, access, target, action)
+        rules.require(verified, access, target, action)
         return
     with pytest.raises(expected):
-        rules.allowed(verified, access, target, action)
+        rules.require(verified, access, target, action)

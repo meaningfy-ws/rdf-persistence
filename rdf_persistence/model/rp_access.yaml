@@ -103,8 +103,7 @@ slots:
   role:
     title: Role
     description: >-
-      The name of a role, matched against the application's role definitions. An application may narrow
-      it to an enum.
+      The name of a role, matched against the application's role definitions.
     slot_uri: rp:role
     range: string
   level:

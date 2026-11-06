@@ -79,6 +79,12 @@ def is_aggregate_iri(tenant_iri: str, iri: str) -> bool:
     return parent == tenant_iri and bool(_SEGMENT.fullmatch(segment)) and _is_canonical_uuid(last)
 
 
+def is_aggregate_graph_iri(tenant_iri: str, iri: str) -> bool:
+    """True when ``iri`` is the ``graph_iri`` of an aggregate of the tenant (never of the tenant root)."""
+    root = iri.removesuffix("/graph")
+    return root != iri and root != tenant_iri and is_aggregate_iri(tenant_iri, root)
+
+
 def is_loaded_graph_of(root_iri: str, graph: str) -> bool:
     """True when ``graph`` is exactly ``{root_iri}/content/{canonical uuid}`` (see ``loaded_graph_iri``)."""
     path, _, last = graph.rpartition("/")

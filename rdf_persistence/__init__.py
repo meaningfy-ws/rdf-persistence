@@ -15,6 +15,7 @@ from rdf_persistence.domain.exceptions import (
     DatabaseGone,
     Forbidden,
     IdentityUnavailable,
+    InvalidGrant,
     InvalidGraph,
     InvalidRoleDefinition,
     InvalidToken,
@@ -82,7 +83,6 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
         AccessRules,
         load_caller_access,
         load_role_definitions,
-        validate_grants,
     )
     from rdf_persistence.services.files import FileStore
     from rdf_persistence.services.identity import Identity
@@ -106,7 +106,6 @@ _LAZY_MODULES = {
     "AccessRules": f"{_SERVICES}.access",
     "load_caller_access": f"{_SERVICES}.access",
     "load_role_definitions": f"{_SERVICES}.access",
-    "validate_grants": f"{_SERVICES}.access",
     "TokenVerifier": f"{_SERVICES}.tokens",
     "FileStore": f"{_SERVICES}.files",
     "Mapper": f"{_SERVICES}.mapper",
@@ -151,6 +150,7 @@ __all__ = [
     "Identity",
     "IdentityUnavailable",
     "InvalidGraph",
+    "InvalidGrant",
     "InvalidRoleDefinition",
     "InvalidToken",
     "JwksTokenVerifier",
@@ -198,6 +198,5 @@ __all__ = [
     "new_part",
     "open_session",
     "sweep",
-    "validate_grants",
     "zitadel_roles_claim",
 ]

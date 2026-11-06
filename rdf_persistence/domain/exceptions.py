@@ -39,11 +39,11 @@ class InvalidGraph(PersistenceError):
     """A file of RDF does not parse; the message is the parser's."""
 
 
-class InvalidIri(ValueError):
+class InvalidIri(PersistenceError, ValueError):
     """A value breaks an IRI, path-segment or resource-name rule of the toolkit (``domain.iris``)."""
 
 
-class SparqlError(ValueError):
+class SparqlError(PersistenceError, ValueError):
     """A value cannot become a SPARQL term, or a template and its terms do not match."""
 
 
@@ -55,9 +55,13 @@ class IdentityUnavailable(PersistenceError):
     """The identity provider's keys or management API cannot be reached, or answered with a server error."""
 
 
-class InvalidRoleDefinition(ValueError):
+class InvalidRoleDefinition(PersistenceError, ValueError):
     """A file of role definitions cannot be read or holds an entry that is not a role definition."""
 
 
-class UnknownRole(ValueError):
+class UnknownRole(PersistenceError, ValueError):
     """A grant names a role that no tenant-level or aggregate-level role definition defines."""
+
+
+class InvalidGrant(PersistenceError, ValueError):
+    """A grant or prohibition targets something that is not the tenant or the graph of one of its aggregates, or names an assignee that is not an IRI."""

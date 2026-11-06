@@ -1,19 +1,33 @@
 """Loading one caller's access to one tenant: one query, the caller's rules only (PD-9, PD-10)."""
 
 import pytest
+from rdflib import Literal, URIRef
 
-from rdf_persistence import Action, Grant, Principal, Prohibition, TenantState
+from rdf_persistence import Action, Principal, TenantState
 from rdf_persistence.domain.exceptions import NotFound
-from rdf_persistence.domain.iris import access_iri, system_database_name
+from rdf_persistence.domain.iris import access_iri, graph_iri, system_database_name
+from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import load_caller_access
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
 from rdf_persistence.testkit import FakeStore
-from tests.toy import ADA, SETTINGS, TENANT, access, book_iri, toy_mapper
+from tests.toy import (
+    ADA,
+    BOB,
+    SETTINGS,
+    TENANT,
+    access,
+    ban,
+    book_iri,
+    direct,
+    graph_of,
+    role,
+    toy_mapper,
+)
 
-BOB = "https://example.org/people/bob"
 SYSTEM = system_database_name(SETTINGS.prefix)
-BOOK_GRAPH = f"{book_iri(1)}/graph"
+BOOK_GRAPH = graph_of(book_iri(1))
+RECORD_GRAPH = graph_iri(str(access_iri(TENANT)))
 
 
 @pytest.fixture
@@ -33,12 +47,12 @@ async def keep(store: FakeStore, record) -> None:
 
 
 RULES = {
-    "role": Grant(assignee=ADA, target=TENANT, role="reader"),
-    "action": Grant(assignee=ADA, target=BOOK_GRAPH, action=Action.MODIFY),
-    "another": Grant(assignee=BOB, target=TENANT, role="librarian"),
+    "role": role("reader"),
+    "action": direct(Action.MODIFY, BOOK_GRAPH),
+    "another": role("librarian", who=BOB),
 }
-BAN = Prohibition(assignee=ADA, target=BOOK_GRAPH, action=Action.MODIFY)
-BOBS_BAN = Prohibition(assignee=BOB, target=TENANT, action=Action.READ)
+BAN = ban(Action.MODIFY, BOOK_GRAPH)
+BOBS_BAN = ban(Action.READ, who=BOB)
 
 
 async def test_the_callers_grants_and_prohibitions_come_back_and_nobody_elses(store):
@@ -67,7 +81,7 @@ async def test_a_caller_with_no_rules_still_gets_the_tenants_state(store):
 
 
 async def test_a_tenant_without_an_access_record_is_not_found(store):
-    with pytest.raises(NotFound):
+    with pytest.raises(NotFound, match="no access record"):
         await load_caller_access(store, SYSTEM, TENANT, ADA)
 
 
@@ -84,3 +98,42 @@ async def test_an_iri_that_would_break_the_query_is_refused_before_it_is_sent(st
     with pytest.raises(ValueError, match="IRI"):
         await load_caller_access(store, SYSTEM, TENANT, "https://example.org/a> } DROP ALL {")
     assert store.sent("query") == [], "nothing was sent"
+
+
+async def corrupt(store: FakeStore, predicate: URIRef, *values: URIRef | Literal) -> None:
+    """Replace what the stored access record says through ``predicate`` with ``values``."""
+    graph = toy_mapper().to_graph(access(grants=[RULES["action"]], prohibitions=[BAN]))
+    record = URIRef(str(access_iri(TENANT)))
+    graph.remove((record, predicate, None))
+    for value in values:
+        graph.add((record, predicate, value))
+    await store.put_graph(SYSTEM, RECORD_GRAPH, graph)
+
+
+STATE_IRIS = v.TENANT_STATE_IRIS
+
+
+@pytest.mark.parametrize(
+    "states",
+    [
+        (URIRef("https://example.org/not-a-state"),),
+        (STATE_IRIS[TenantState.ACTIVE], STATE_IRIS[TenantState.DELETING]),
+        (),
+    ],
+    ids=["unknown-state", "two-states", "no-state"],
+)
+async def test_a_record_with_an_unusable_state_is_not_found_and_never_a_key_error(store, states):
+    await corrupt(store, v.STATE, *states)
+    with pytest.raises(NotFound, match=TENANT):
+        await load_caller_access(store, SYSTEM, TENANT, ADA)
+
+
+async def test_a_rule_with_an_unknown_action_is_not_found_and_never_a_key_error(store):
+    graph = toy_mapper().to_graph(access(grants=[RULES["action"]]))
+    for rule in graph.objects(None, v.GRANTS):
+        graph.set(
+            (rule, URIRef("http://www.w3.org/ns/odrl/2/action"), URIRef("https://example.org/fly"))
+        )
+    await store.put_graph(SYSTEM, RECORD_GRAPH, graph)
+    with pytest.raises(NotFound, match=TENANT):
+        await load_caller_access(store, SYSTEM, TENANT, ADA)

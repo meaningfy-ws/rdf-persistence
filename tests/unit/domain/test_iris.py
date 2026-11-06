@@ -10,6 +10,7 @@ from rdf_persistence.domain.exceptions import InvalidIri
 from rdf_persistence.domain.iris import (
     access_iri,
     graph_iri,
+    is_aggregate_graph_iri,
     is_aggregate_iri,
     is_inside_tenant,
     is_loaded_graph_of,
@@ -181,6 +182,21 @@ AGGREGATE = f"{TENANT}/books/{uuid.uuid4()}"
 )
 def test_an_aggregate_iri_is_the_minted_form_or_the_tenant_root(iri, accepted):
     assert is_aggregate_iri(str(TENANT), iri) is accepted, iri
+
+
+@pytest.mark.parametrize(
+    ("iri", "accepted"),
+    [
+        (str(graph_iri(str(mint_aggregate_iri(TENANT, "books")))), True),
+        (str(graph_iri(str(access_iri(TENANT)))), True),
+        (str(graph_iri(str(TENANT))), False),  # the tenant root has no aggregate graph of its own
+        (str(mint_aggregate_iri(TENANT, "books")), False),  # the root, not its graph
+        (f"{TENANT}/books/x/graph", False),
+        (f"{BASE}libraries/{uuid.uuid4()}/books/{uuid.uuid4()}/graph", False),
+    ],
+)
+def test_an_aggregate_graph_iri_is_the_graph_of_a_tenants_aggregate(iri, accepted):
+    assert is_aggregate_graph_iri(str(TENANT), iri) is accepted, iri
 
 
 def test_every_minted_aggregate_iri_is_an_aggregate_iri():

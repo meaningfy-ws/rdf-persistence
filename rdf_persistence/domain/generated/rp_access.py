@@ -96,7 +96,7 @@ class Rule(ConfiguredBaseModel):
 
 class Grant(Rule):
     "A permission given to a principal on a tenant or on one aggregate, either by role or as a direct action; exactly one of role and action is given."
-    role: Optional[str] = Field(default=None, title="Role", description="The name of a role, matched against the application\u0027s role definitions. An application may narrow it to an enum.")
+    role: Optional[str] = Field(default=None, title="Role", description="The name of a role, matched against the application\u0027s role definitions.")
     assignee: str = Field(default=..., title="Assignee", description="The principal the rule applies to.")
     target: str = Field(default=..., title="Target", description="The IRI of the tenant, or of an aggregate\u0027s graph, the rule applies to.")
     action: Optional[Action] = Field(default=None, title="Action", description="The action a direct permission allows, or a prohibition forbids.")
@@ -129,7 +129,7 @@ class Prohibition(Rule):
 
 class RoleDefinition(ConfiguredBaseModel):
     "What a role may do and where it applies. An application supplies its role definitions as data; they are not stored."
-    role: str = Field(default=..., title="Role", description="The name of a role, matched against the application\u0027s role definitions. An application may narrow it to an enum.")
+    role: str = Field(default=..., title="Role", description="The name of a role, matched against the application\u0027s role definitions.")
     level: RoleLevel = Field(default=..., title="Level", description="Where the role applies.")
     actions: list[Action] = Field(default=..., title="Actions", description="The actions the role permits.")
 
