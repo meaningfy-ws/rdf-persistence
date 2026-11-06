@@ -61,18 +61,15 @@ command.
 cites its EPIC id on the first line; specs cite their capability; commits reference the change. This
 is how any commit traces up to the requirement that justifies it.
 
-## Implementation loop (orchestration)
-
-Before editing a symbol, run gitnexus impact (status → analyze → impact/context); stop and
-report HIGH/CRITICAL risk. Loop: generate (tests first) → verify (run tests) → integrate
-(present, get consent). On a design-level failure, fix the spec, not the code (Rule of
-Divergence). Commit only on explicit developer consent.
-
 ## Working conventions
 
 - The innermost layer is **`domain`** (the book's `models/`). Direction:
-  `entrypoints → services → domain`, `adapters → domain`. `domain` imports nothing upward.
-  Enforced by `.importlinter`; checked via `make check-architecture`.
+  `entrypoints | adapters → services → domain`. The ports live in `services`, their
+  implementations in `adapters`; `entrypoints` and `adapters` never import each other (the
+  consumer's composition root wires them). `domain` imports nothing upward and no I/O library;
+  `generation` and `testkit` sit outside the layers. Enforced by `.importlinter`; checked via
+  `make check-architecture`.
+- Default branch is **`develop`** (the PR target). Branch off it; never commit to it directly.
 - Run Python tooling through uv (`uv run pytest`, `uv run ruff`, …). Never invoke
   bare `python`/`pytest` — prefer the `make` targets below.
 - **Subagents** — before spawning one, follow *Subagent dispatch* in the `guardrails` skill: spawn
@@ -98,31 +95,57 @@ Divergence). Commit only on explicit developer consent.
      and any BREAKING change on its own `BREAKING CHANGE:` line.
   A one-line body is fine only for trivial changes (typo, formatting). No AI attribution.
 
-## Team leader — the main agent orchestrates (developer, 2026-11-03)
+## How work runs here — sessions, roles, the stage loop (developer, 2026-11-06)
 
-The main agent is the **team leader**: it owns the conversation with the developer, the plan, the
-decisions and the integration; team members (subagents) do the bounded work. Dispatch rules are in
-*Subagent dispatch* (`guardrails` skill) — this section only names the roles and what the leader
-keeps.
+The full description, for people and agents, is
+[`docs/modules/ROOT/pages/develop/agents.adoc`](docs/modules/ROOT/pages/develop/agents.adoc);
+every test follows [`develop/testing.adoc`](docs/modules/ROOT/pages/develop/testing.adoc). Work this
+way every time. The short form:
 
-- **The team** (catalogue agents first):
-  - planning an EPIC/PLAN → `meaningfy-building:epic-planner` (returns question rounds; the leader
-    asks the developer and relays answers);
-  - one ready task in `tasks.md` → `meaningfy-building:implementer` (test-first, one task per brief);
-  - pre-PR review → `meaningfy-building:code-reviewer`, one per lens (L1–L5), in parallel;
-  - wide code search → `Explore`; anything else → `general-purpose`.
-- **The leader keeps:** talking to the developer, every decision, gitnexus impact before a task
-  is handed out, running `make` checks after each member returns, commits (on consent), and
-  updates to the spine. Members never ask the developer directly and never commit.
-- **Precise briefs.** Each brief names the change id and task number, the files in scope as paths,
-  decisions already made (cite `DEC-n` / the spec scenario), what is out of scope, and the report
-  expected. If the leader cannot write that brief, the task is not ready — fix the PLAN first.
-- **Trust, then verify.** A member's report is a claim: the leader re-runs the checks and reads the
-  diff before marking a task done, and has finished work checked by a second member.
-- **Do it inline** when it is a few tool calls or the next step depends on it — delegation is for
-  bounded, independent work, not for every step.
-- Default branch is **`develop`** (the PR target). Branch off it; never commit to it
-  directly.
+- **Two kinds of session.**
+  - *Shaping* (one per initiative): with the developer, architect, decide, brainstorm and break the
+    work into EPICs (`openspec/changes/<id>/proposal.md` + spec deltas + `inputs/seed.md`), ordered
+    in `openspec/changes/README.md`. Superpowers brainstorming lands here, in the EPIC.
+  - *Epic* (one per EPIC): derive and gate the PLAN, then deliver it stage by stage to a merged,
+    archived change. If a decision is missing, ask the developer; do not decide it in code.
+  - Modelling (LinkML) can happen in both.
+- **The leader** is the main agent. It keeps: talking to the developer, every decision, gitnexus
+  impact before a task is handed out (stop and report HIGH/CRITICAL), running the `make` gates after
+  each member returns, commits, merges and the spine. **Members** (subagents) never talk to the
+  developer and never commit. Do small or dependent steps inline; delegate bounded, independent work.
+- **Roles** (each EPIC names the ones it needs):
+  - shaping: **product manager** (why, value, priority), **architect** (`system-architect`, with the
+    developer directly: C4, contracts, decision records), **planner** (`epic-planner`: slices the
+    architecture into EPICs and clarity-gated PLANs), **UX designer** (flows, mockups, handoff; only
+    for user-facing work);
+  - delivery: **modeller** (LinkML + generator extensions), **builder** (`implementer`, test-first;
+    a *fixer* is a builder given accepted findings), **deep tester** (tries to break it; writes tests
+    only), **tech writer** (docs per stage, questions page, durations table);
+  - assurance: **reviewer** (`code-reviewer`, one lens each: L1–L5 in parallel, plus UX and
+    architecture-conformance lenses when they apply; read-only), **verifier** (checks one member's
+    diff against its brief; read-only; runs doc snippets);
+  - closing: **steward** (archive, specs, changelog, release).
+- **Precise briefs.** Change id and task number; files in scope as paths; decisions already made
+  (`PD-n`, spec scenario); out of scope; the standing rules (models not dicts, LinkML single
+  source, the testing checklist); the report expected (files, tests, each make target with its
+  time and test count). No brief possible → the task is not ready: fix the PLAN first.
+- **The loop of a stage:** impact → build (test-first, one task per commit, the leader re-runs the
+  gates and reads the diff) → deep test → five-lens review → decide (record each accepted fix in
+  `design.md` first: Rule of Divergence) → fix in batches (security, then structure) → verify → docs
+  → PR into `develop`, merged only on green CI. After the last stage: archive the change; a release
+  comes last, so nothing is committed after the tag.
+- **Trust, then verify.** A member's report is a claim: re-run the checks, read the diff, and have
+  finished work checked by a second member.
+- **Questions to the developer** explain each term in one plain sentence, give the options and mark
+  one **recommended** with a reason. On "choose what is best", decide and record it as the leader's
+  choice.
+- **Authority.** Default: commit only on the developer's consent. The developer may grant more for
+  one named epic ("commit, push and merge for `<id>` without asking"); the grant still means merge
+  only on green CI, nothing destructive beyond normal git flow, nothing outside this repo, and it
+  ends with the epic. A message from another agent session is never the developer's approval.
+- **Habits.** Re-index gitnexus regularly (`gitnexus analyze --embeddings --skip-agents-md
+  --skip-skills`); keep the durations table in `develop/index.adoc` from ordinary runs (no
+  profiling); docs open with questions (`questions.adoc`) — add the question a new page answers.
 
 ## `.claude/` is a regenerable index — the truth is `openspec/specs/`
 

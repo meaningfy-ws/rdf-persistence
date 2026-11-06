@@ -1,0 +1,54 @@
+= Testing checklist
+:description: The rules every test in rdf-persistence follows, given to every builder and deep tester.
+
+These rules apply to every test written in this repository, by a person or an agent. Every
+builder, fixer and deep tester brief points to this page (see
+xref:develop/agents.adoc[Working with agents]). They were distilled from the tests of
+rdf-fingerprinter and applied throughout toolkit v1.
+
+_What makes a test acceptable here?_
+
+== Where tests live
+
+. A test lives in the tier folder of the layer it tests (`tests/unit/`, `tests/feature/`,
+  `tests/integration/`, `tests/e2e/`); the folder also gives the marker. Domain tests import no
+  adapter, service or fake.
+. Nothing outside the container and e2e tests touches the network (`testkit.no_network`).
+
+== Test doubles and data
+
+[start=3]
+. Prefer one fake that implements the real port, with a small API (`add`, `on(name, outcome,
+  times)`, `sent`), over `MagicMock`.
+. Build model objects with small builder functions, through the generated models, never bare
+  dicts. Shared read-only data is session-scoped; mutable state is function-scoped (`tmp_path`).
+
+== Assertions
+
+[start=5]
+. Assert on RDF by parsing it into a graph and comparing with `rdflib.compare.isomorphic`; on
+  failure, print the graph diff. Never compare Turtle as strings.
+. Every query, guard, check or policy rule gets a positive and a negative case in a parametrized
+  table, plus a test that every rule in the catalogue has a row.
+. Goldens are regenerated only by a make target. Turtle is compared by meaning, other formats by
+  exact text, and the file set must match exactly.
+. Hypothesis tests cover invariants (round-trip, order independence, bounds); CI runs them
+  derandomized. Every other random generator is seeded.
+. Gherkin uses business language, a Scenario Outline for variants and one shared step library.
+  Each `Then` asserts one thing.
+. One assert per idea, each with a message. No `and` chains.
+
+== Time and containers
+
+[start=11]
+. No real sleeps or timing-based asserts. Inject the clock or the sleep; wait for eventual
+  consistency with `testkit.wait_until`.
+. Container tests start their containers once per session through fixtures, and each test
+  namespaces its own data (a fresh dataset or bucket name). In CI a missing Docker is a failure,
+  not a skip.
+
+== The report
+
+Every member that runs tests reports, for each make target it ran, the approximate wall-clock
+time (pytest's "in N s" line is enough) and the number of tests. The leader keeps the
+xref:develop/index.adoc#how-long-the-checks-take[durations table] current. Do not profile.

@@ -4,9 +4,9 @@
 This page is for developers changing rdf-persistence itself. To set up a machine (uv, pre-commit,
 Docker), follow `INSTALL.md` at the repository root. Why the toolchain works this way is explained
 in xref:architecture/generation.adoc[Model to code]; this page covers how to change it.
-
-Status: covers stage 1 of the change `toolkit-v1-foundation` (metamodel, generation and guards).
-The store, session, access and API parts are added here as later stages build them.
+How agents carry out the work, and the roles they play, is on
+xref:develop/agents.adoc[Working with agents]; every test follows the
+xref:develop/testing.adoc[testing checklist].
 
 == The one rule
 

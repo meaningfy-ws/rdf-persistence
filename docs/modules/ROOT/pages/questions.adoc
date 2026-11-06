@@ -64,6 +64,13 @@ and xref:develop/index.adoc#add-a-check-rule[Add a check rule].
 adapters or containers (about 3.5 minutes, needs Docker). See
 xref:develop/index.adoc#how-long-the-checks-take[How long the checks take].
 
+*How do agents work on this repository?*::
+In two kinds of session: a shaping session (product manager, architect and planner, with the
+developer) that ends in EPICs, then one epic session per EPIC, where a leader runs builders,
+testers, reviewers, verifiers and a writer through a fixed loop per stage. The developer makes
+every decision. See xref:develop/agents.adoc[Working with agents] and the
+xref:develop/testing.adoc[testing checklist].
+
 *Where are decisions recorded?*::
 Architecture decisions are on xref:architecture/open-decisions.adoc[Decisions of 2026-11-05] (D-1
 to D-13) and in xref:architecture/index.adoc#decisions-taken[architecture v1] (O-1, O-2). The
