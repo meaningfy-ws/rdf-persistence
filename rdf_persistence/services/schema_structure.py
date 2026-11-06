@@ -21,10 +21,11 @@ from linkml_runtime.linkml_model.meta import (
 )
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.domain.generated.rp_core import GraphKind, RpAnnotation
+from rdf_persistence.domain.generated.rp_core import DatabaseKind, GraphKind, RpAnnotation
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 
 AGGREGATE_ROOT = "AggregateRoot"
+TENANT_ACCESS = "TenantAccess"
 DESCRIPTION = "description"
 LABEL = "label"
 EXACTLY_ONE_OF = "exactly_one_of"
@@ -143,6 +144,49 @@ def root_classes(view: SchemaView, folder: Path) -> list[ClassDefinition]:
     classes = own_classes(own_schemas(view, folder))
     roots = {root.name for root in aggregate_roots(view, classes)}
     return [cls for cls in classes if cls.name in roots or is_tenant_root(cls)]
+
+
+def served_roots(view: SchemaView) -> list[ClassDefinition]:
+    """The aggregate roots with a path that live in the tenant databases: what the generic router serves.
+
+    The tenant's access record lives in the system database and has its own routes, so it is left out.
+    """
+    roots = aggregate_roots(view, list(view.all_classes().values()))
+    return [
+        root
+        for root in roots
+        if annotation(root, RpAnnotation.DATABASE) != DatabaseKind.SYSTEM.value
+        and annotation_text(root, RpAnnotation.RP_PATH)
+    ]
+
+
+def _only(found: list[ClassDefinition], what: str) -> ClassDefinition:
+    if len(found) != 1:
+        raise LookupError(f"the schema must define exactly one {what}, found {len(found)}")
+    return found[0]
+
+
+def tenant_root_class(view: SchemaView) -> ClassDefinition:
+    """The class of the tenant's root object, the one annotated ``graph: meta``.
+
+    Raises:
+        LookupError: The schema has none or several.
+    """
+    return _only([c for c in view.all_classes().values() if is_tenant_root(c)], "tenant root class")
+
+
+def tenant_access_class(view: SchemaView) -> ClassDefinition:
+    """The application's access record class: the one concrete descendant of ``TenantAccess``.
+
+    Raises:
+        LookupError: The schema has none or several.
+    """
+    found = [
+        c
+        for c in view.all_classes().values()
+        if not c.abstract and not c.mixin and TENANT_ACCESS in view.class_ancestors(c.name)
+    ]
+    return _only([c for c in found if c.name != TENANT_ACCESS] or found, "tenant access class")
 
 
 def owned_slots(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[tuple[str, str]]:

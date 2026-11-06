@@ -273,6 +273,26 @@ class Problem(ConfiguredBaseModel):
     instance: Optional[str] = Field(default=None, title="Problem instance", description="The IRI that identifies this occurrence of the problem.")
 
 
+class ProblemKind(ConfiguredBaseModel):
+    "A kind of problem the service answers with: the slug that ends its problem type IRI, its fixed title and the HTTP status it comes with."
+    slug: str = Field(default=..., title="Problem slug", description="The last segment of the problem type IRI, lower case words joined by hyphens.")
+    title: str = Field(default=..., title="Problem title", description="A short, fixed summary of the kind of problem.")
+    status: int = Field(default=..., title="Problem status", description="The HTTP status code of the answer.")
+
+    @field_validator("slug")
+    def pattern_slug(cls, v):
+        pattern=re.compile("^[a-z]+(?:-[a-z]+)*$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid slug format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid slug format: " + str(v)
+            raise ValueError(err_msg)
+        return v
+
+
 class AccountSummary(ConfiguredBaseModel):
     "What the identity port reports about one account of the identity provider: its id, its login name, its email (a service account has none), whether it may sign in, and its global roles."
     account_id: str = Field(default=..., title="Account id", description="The identity provider\u0027s id of the account.")
@@ -306,4 +326,5 @@ GrantSet.model_rebuild()
 CallerAccess.model_rebuild()
 Page.model_rebuild()
 Problem.model_rebuild()
+ProblemKind.model_rebuild()
 AccountSummary.model_rebuild()

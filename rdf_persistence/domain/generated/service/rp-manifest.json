@@ -39,7 +39,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/jsonld_context.py",
-      "sha256": "ba97bb653b968a61338fa9c811694d38fbba87d28fa3a6b3ab160bd36b186334"
+      "sha256": "2ac5fcb8aca9abb3e85df8120628e6d02525c3ef798b9768b312034ca3315fb8"
     },
     {
       "path": "rdf_persistence/generation/extensions/mermaid.py",
@@ -55,7 +55,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/shacl.py",
-      "sha256": "ce5e35ff5a44f44f2f30914c6edee595adff09f8d9cfeddb26f286afba06ec48"
+      "sha256": "fc5e91b24073bdcc1787743190bd2e2eec0ab6432cda8f9b3387e2fb13abcd26"
     },
     {
       "path": "rdf_persistence/generation/extensions/shacl_constraints.py",
@@ -68,10 +68,6 @@
     {
       "path": "rdf_persistence/generation/manifest.py",
       "sha256": "e860a830dc44aa465d47c108f52ec2613f2c02ef031d97892392cbcedea8467d"
-    },
-    {
-      "path": "rdf_persistence/generation/outputs.py",
-      "sha256": "1b6b87ab3dcb37474945cc3ffbc3ceaa1f01e0d5de2dce34aec91e17a6953234"
     },
     {
       "path": "rdf_persistence/generation/pipeline.py",
@@ -147,7 +143,7 @@
     },
     {
       "path": "rdf_persistence/model/service/rp_service.yaml",
-      "sha256": "0c89ceb07590aa458f2aefdd1e5d564df3e353d5dbd0446deff233be9dc5b18c"
+      "sha256": "9f55018ddc08e2a470cf8e2b612b4c19b5c07715541c3cb9ae0a3487a39a2c7e"
     },
     {
       "path": "rdf_persistence/services/schema.py",
@@ -155,7 +151,7 @@
     },
     {
       "path": "rdf_persistence/services/schema_structure.py",
-      "sha256": "b2bf676ddc28bfaefef5e8295ccde135b931619b583a16b1f00eb327e981368b"
+      "sha256": "1aa3d5e8ebc59bb8ba225d7854712c468d4e9c9817c3111a3c4e7e874ae3fb5c"
     }
   ],
   "outputs": [
@@ -165,15 +161,15 @@
     },
     {
       "path": "rdf_persistence/domain/generated/service/context.jsonld",
-      "sha256": "2a52d49e3d8886c1ce9eb741a60f7da91aa679c2be15c06ad9b96f247f0e7581"
+      "sha256": "0192d42c41b9b86210b0a7ecea6b5306fdf3cc14c50e08d82a4266c31429e64a"
     },
     {
       "path": "rdf_persistence/domain/generated/service/rp_service.py",
-      "sha256": "033e027bd3c6e0322f6666c9ee23a1764ba8a9c828003f7eebee5bf05d18ece3"
+      "sha256": "b7c85b5747c84686ecdde322b2b082c84c3cae3a2f47f94ef7756ab43df0e02a"
     },
     {
       "path": "rdf_persistence/domain/generated/service/shapes.ttl",
-      "sha256": "3afea180974c1fdb83a4546ae6cee7d3706e29dc71e24b311ab21e0d1ea91eb6"
+      "sha256": "40561bc358770312d0451d20939c114ba07436facf7deb4d6ca764182c8b9a58"
     }
   ]
 }

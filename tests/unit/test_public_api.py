@@ -46,6 +46,7 @@ INDEXED_NAMES = [
     "UnitOfWork",
     "new_part",
     "generated_models",
+    "install_service",
 ]
 
 

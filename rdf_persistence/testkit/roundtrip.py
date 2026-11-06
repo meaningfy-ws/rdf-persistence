@@ -17,11 +17,11 @@ from linkml_runtime.linkml_model.meta import SlotDefinition
 from linkml_runtime.utils.formatutils import underscore
 from pydantic import BaseModel
 from pyld import jsonld
-from rdflib import XSD, BNode, Graph, Literal, URIRef
+from rdflib import Graph
 from rdflib.compare import graph_diff, isomorphic
-from rdflib.term import Node
 
-from rdf_persistence.generation.outputs import FRAME_SUFFIX
+from rdf_persistence.services.artifacts import FRAME_SUFFIX
+from rdf_persistence.services.documents import dataset_of
 from rdf_persistence.services.schema_structure import holds_owned_part, is_internal
 from rdf_persistence.testkit.conformance import Conformance
 
@@ -36,25 +36,6 @@ def rdf_of(conformance: Conformance, model: BaseModel, class_name: str) -> str:
     node = conformance.jsonld_node(class_name, body)
     nquads: str = jsonld.to_rdf({"@context": conformance.context, **node}, NQUADS)
     return nquads
-
-
-def dataset_of(graph: Graph) -> dict:
-    """The triples of ``graph`` as the dataset ``jsonld.from_rdf`` takes.
-
-    pyld 3.3.0 reads backslash sequences in N-Quads text wrongly (a literal of a backslash and `r`
-    comes back as a backslash and a carriage return), so the text goes through rdflib instead.
-    """
-
-    def term(node: Node) -> dict:
-        if isinstance(node, URIRef):
-            return {"type": "IRI", "value": str(node)}
-        if isinstance(node, BNode):
-            return {"type": "blank node", "value": f"_:{node}"}
-        assert isinstance(node, Literal)
-        return {"type": "literal", "value": str(node), "datatype": str(node.datatype or XSD.string)}
-
-    triples = [{"subject": term(s), "predicate": term(p), "object": term(o)} for s, p, o in graph]
-    return {"@default": triples}
 
 
 def framed_json(conformance: Conformance, nquads: str, class_name: str) -> dict:

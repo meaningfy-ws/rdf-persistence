@@ -17,7 +17,7 @@ from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation.exceptions import SchemaGenerationError
 from rdf_persistence.generation.generated.rp_generation import Frame, FramePart, GeneratedFile
-from rdf_persistence.generation.outputs import CONTEXT_FILE, FRAME_SUFFIX
+from rdf_persistence.services.artifacts import CONTEXT_FILE, FRAME_SUFFIX
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import is_internal, is_owned, root_classes
 

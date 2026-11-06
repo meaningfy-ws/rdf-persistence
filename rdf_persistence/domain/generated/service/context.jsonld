@@ -138,6 +138,9 @@
          "@type": "@id",
          "@id": "problemInstance"
       },
+      "slug": {
+         "@id": "problemSlug"
+      },
       "status": {
          "@id": "problemStatus"
       },
@@ -227,6 +230,9 @@
       },
       "Problem": {
          "@id": "Problem"
+      },
+      "ProblemKind": {
+         "@id": "ProblemKind"
       },
       "Prohibition": {
          "@id": "ODRL:Prohibition"

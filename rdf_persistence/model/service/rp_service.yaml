@@ -150,6 +150,24 @@ classes:
       problem_status:
         required: true
 
+  ProblemKind:
+    title: Problem kind
+    description: >-
+      A kind of problem the service answers with: the slug that ends its problem type IRI, its fixed
+      title and the HTTP status it comes with.
+    class_uri: rp:ProblemKind
+    slots:
+      - problem_slug
+      - problem_title
+      - problem_status
+    slot_usage:
+      problem_slug:
+        required: true
+      problem_title:
+        required: true
+      problem_status:
+        required: true
+
   AccountSummary:
     title: Account summary
     description: >-
@@ -255,6 +273,13 @@ slots:
     slot_uri: rp:problemType
     alias: type
     range: uri
+  problem_slug:
+    title: Problem slug
+    description: The last segment of the problem type IRI, lower case words joined by hyphens.
+    slot_uri: rp:problemSlug
+    alias: slug
+    range: string
+    pattern: "^[a-z]+(?:-[a-z]+)*$"
   problem_title:
     title: Problem title
     description: A short, fixed summary of the kind of problem.

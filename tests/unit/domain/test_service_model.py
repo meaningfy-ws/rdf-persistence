@@ -8,6 +8,7 @@ from rdf_persistence import (
     LabelUpdate,
     Page,
     Problem,
+    ProblemKind,
     ServiceSettings,
     TenantCreate,
     TenantState,
@@ -174,6 +175,27 @@ def test_a_problem_needs_a_type_a_title_and_a_status(missing: str) -> None:
     del fields[missing]
     with pytest.raises(ValidationError, match=missing):
         Problem(**fields)
+
+
+def test_a_problem_kind_is_a_slug_a_title_and_a_status() -> None:
+    kind = ProblemKind(slug="not-found", title="Not found", status=404)
+    assert (kind.slug, kind.title, kind.status) == ("not-found", "Not found", 404), (
+        "a kind must keep the slug, the fixed title and the status it was given"
+    )
+
+
+@pytest.mark.parametrize("slug", ["", "Not-Found", "not found", "-x", "x/y"])
+def test_a_slug_that_is_not_lower_case_words_joined_by_hyphens_is_refused(slug: str) -> None:
+    with pytest.raises(ValidationError, match="slug"):
+        ProblemKind(slug=slug, title="T", status=400)
+
+
+@pytest.mark.parametrize("missing", ["slug", "title", "status"])
+def test_a_problem_kind_needs_all_three(missing: str) -> None:
+    fields = {"slug": "forbidden", "title": "Forbidden", "status": 403}
+    del fields[missing]
+    with pytest.raises(ValidationError, match=missing):
+        ProblemKind(**fields)
 
 
 def test_the_service_module_declares_only_its_own_classes() -> None:

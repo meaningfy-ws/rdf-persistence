@@ -6,9 +6,10 @@ from datetime import UTC, datetime
 import pytest
 
 from rdf_persistence.domain.exceptions import Conflict, NotFound, StoreUnavailable
-from rdf_persistence.domain.generated.rp_access import Grant
+from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
+from rdf_persistence.domain.generated.service.rp_service import GrantSet
 from rdf_persistence.domain.iris import system_database_name, tenant_resource_name
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
@@ -312,3 +313,70 @@ async def test_each_create_and_drop_step_is_logged_with_the_tenant_and_resource_
         ("drop-bucket", summary.id, name),
         ("remove-record", summary.id, name),
     ]
+
+
+# --- changing the access record: the label and the grants (task 5.2) ---------------------------
+
+BEN = Principal(id="https://example.org/people/ben")
+
+
+async def test_rename_replaces_the_label_and_answers_the_new_version(tenancy):
+    summary = await tenancy.create("Ghent", library(), CREATOR)
+    _, version = await tenancy.get(summary.id)
+    new_version = await tenancy.rename(summary.id, "Bruges", version, BEN)
+    record, stored = await tenancy.get(summary.id)
+    assert (record.label, stored) == ("Bruges", new_version), (
+        "the record holds the new label and version"
+    )
+    assert new_version != version, "a commit writes a fresh version"
+
+
+async def test_rename_keeps_the_description_in_step_with_the_label(tenancy):
+    summary = await tenancy.create("Ghent", library(), CREATOR)
+    _, version = await tenancy.get(summary.id)
+    await tenancy.rename(summary.id, "Bruges", version, BEN)
+    record, _ = await tenancy.get(summary.id)
+    assert "Bruges" in record.description and "Ghent" not in record.description, (
+        "the description is derived from the label"
+    )
+
+
+async def test_rename_with_a_stale_version_conflicts_and_changes_nothing(tenancy):
+    summary = await tenancy.create("Ghent", library(), CREATOR)
+    _, version = await tenancy.get(summary.id)
+    await tenancy.rename(summary.id, "Bruges", version, BEN)
+    with pytest.raises(Conflict):
+        await tenancy.rename(summary.id, "Antwerp", version, BEN)
+    assert (await tenancy.get(summary.id))[0].label == "Bruges", "the stale rename left the label"
+
+
+async def test_set_grants_replaces_the_grants_and_the_prohibitions(tenancy):
+    summary = await tenancy.create("Ghent", library(), CREATOR)
+    _, version = await tenancy.get(summary.id)
+    grants = GrantSet(
+        grants=[Grant(assignee=BEN.id, target=summary.id, role="reader")],
+        prohibitions=[Prohibition(assignee=BEN.id, target=summary.id, action=Action.DELETE)],
+    )
+    await tenancy.set_grants(summary.id, grants, version, CREATOR)
+    record, _ = await tenancy.get(summary.id)
+    assert [g.assignee for g in record.grants or []] == [BEN.id], "the creator's grant is replaced"
+    assert [p.action for p in record.prohibitions or []] == [Action.DELETE.value], (
+        "prohibitions too"
+    )
+
+
+async def test_set_grants_with_a_stale_version_conflicts(tenancy):
+    summary = await tenancy.create("Ghent", library(), CREATOR)
+    _, version = await tenancy.get(summary.id)
+    await tenancy.rename(summary.id, "Bruges", version, CREATOR)
+    with pytest.raises(Conflict):
+        await tenancy.set_grants(summary.id, GrantSet(), version, CREATOR)
+
+
+async def test_an_empty_grant_set_leaves_no_grants(tenancy):
+    summary = await tenancy.create("Ghent", library(), CREATOR)
+    _, version = await tenancy.get(summary.id)
+    await tenancy.set_grants(summary.id, GrantSet(), version, CREATOR)
+    record, _ = await tenancy.get(summary.id)
+    assert not record.grants, "nothing is left"
+    assert not record.prohibitions, "nothing is left"

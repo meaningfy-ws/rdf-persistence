@@ -16,7 +16,11 @@ from rdf_persistence.domain.exceptions import Conflict, NotFound
 from rdf_persistence.domain.generated.rp_access import Grant
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantAccess, TenantState
-from rdf_persistence.domain.generated.service.rp_service import ServiceSettings, TenantSummary
+from rdf_persistence.domain.generated.service.rp_service import (
+    GrantSet,
+    ServiceSettings,
+    TenantSummary,
+)
 from rdf_persistence.domain.iris import (
     access_iri,
     graph_iri,
@@ -80,19 +84,23 @@ class Tenancy:
         principal: Principal,
         obj: BaseModel,
         if_version: str | None = None,
-    ) -> None:
-        """Store ``obj`` as a new root, or, given ``if_version``, over the root already there."""
+    ) -> str | None:
+        """Store ``obj`` as a new root, or, given ``if_version``, over the root already there.
+
+        Answers the new version of a replaced root.
+        """
         async with self._session(database, tenant, principal) as session:
             if if_version is None:
                 work = UnitOfWork(session, self._mapper)
                 work.add(obj)
                 await work.commit()
-            else:
-                await session.replace_graph(
-                    str(getattr(obj, "id")),  # noqa: B009 - a root always has an id
-                    self._mapper.to_triples(obj),
-                    if_version,
-                )
+                return None
+            version: str = await session.replace_graph(
+                str(getattr(obj, "id")),  # noqa: B009 - a root always has an id
+                self._mapper.to_triples(obj),
+                if_version,
+            )
+            return version
 
     async def ensure_system_database(self) -> bool:
         """Create the system database unless it exists (start-up); True if this call created it."""
@@ -158,6 +166,40 @@ class Tenancy:
         return [
             self._mapper.from_graph(self._access_class, iri, stored, graph_iri(iri)) for iri in iris
         ]
+
+    async def rename(self, tenant: str, label: str, if_version: str, principal: Principal) -> str:
+        """Give the tenant a new label, in its access record, whose description follows; answers the new version.
+
+        Raises:
+            NotFound: The tenant has no access record.
+            Conflict: The record is no longer at ``if_version``; nothing changed.
+            ValueError: ``label`` is not valid (pydantic's ``ValidationError``).
+        """
+        record, _ = await self.get(tenant)
+        record.label = label
+        record.description = RECORD_DESCRIPTION.format(label=label.rstrip("."))
+        return await self._replaced(tenant, principal, record, if_version)
+
+    async def set_grants(
+        self, tenant: str, grants: GrantSet, if_version: str, principal: Principal
+    ) -> str:
+        """Replace the grants and the prohibitions of the tenant's access record; answers the new version.
+
+        Raises:
+            NotFound: The tenant has no access record.
+            Conflict: The record is no longer at ``if_version``; nothing changed.
+        """
+        record, _ = await self.get(tenant)
+        record.grants = grants.grants
+        record.prohibitions = grants.prohibitions
+        return await self._replaced(tenant, principal, record, if_version)
+
+    async def _replaced(
+        self, tenant: str, principal: Principal, record: TenantAccess, if_version: str
+    ) -> str:
+        version = await self._commit(self._system, tenant, principal, record, if_version)
+        assert version is not None, "a replace answers its version"
+        return version
 
     async def tenants(self) -> list[TenantSummary]:
         """Every tenant that has an access record, in any state."""

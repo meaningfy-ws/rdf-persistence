@@ -579,6 +579,16 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
     `JwksTokenVerifier(issuer, audience, roles_claim, *, jwks_uri=None, http_client=None)`: keys come
     from the issuer's OIDC discovery unless `jwks_uri` is given; the testkit passes an `http_client`
     that serves its in-memory JWKS.
+- **PD-13a Service kit details** (tasks 5.1–5.3). `install_service(app, *, schema, generated, store,
+  files, identity, verifier, rules, settings, prefix="")`: `generated` is the consumer's generated
+  package (context, frames, shapes and classes live there); `rules` is an `AccessRules` or the path of
+  the role-definitions file, which is loaded and validated in `install_service` itself, so an invalid
+  file refuses to start before anything touches the store. The lifespan then creates the system
+  database and runs the sweep, before the consumer's own lifespan. It returns a `ServiceKit` (tenancy,
+  store, files, identity) for the consumer's own routes. Problem responses for 401, 403, 404, 409 and
+  503 carry no detail, so a hidden tenant and an absent one answer alike. `POST /{tenant_segment}`
+  builds the tenant root through its generated class (the conformance suite keeps classes and shapes
+  equal); the other bodies follow PD-14. The aggregate listing is task 5.4.
 - **PD-14 Body handling.**
   1. A JSON body is expanded with the generated context; a JSON-LD body is used as is. Either way it
      becomes triples whose root is the IRI from the path (on create, the minted IRI).
@@ -589,6 +599,10 @@ restates the model is written or edited by hand. The rule is recorded as D-13 (t
 
   The generated classes are not used on this path (D-2). A replace whose body `id` differs from the
   path is refused (422 `invalid-body`).
+  Within a body: a part without an IRI gets `{root}/parts/{uuid4}` (PD-6); every node must lie under
+  `{root}/` and the root must be typed as the route's class, else 422; bookkeeping predicates are
+  dropped; JSON-LD responses inline the context, so a read body can be sent back (remote contexts are
+  refused, PD-8c).
 - **PD-15 Problems and sorting.**
   - Problem `type` IRIs are `{base}problems/{slug}`, with these slugs: `invalid-token`, `forbidden`,
     `not-found`, `conflict`, `precondition-required`, `invalid-body`, `not-acceptable`,

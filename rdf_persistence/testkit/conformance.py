@@ -31,7 +31,7 @@ from rdflib import Graph
 from rdf_persistence.generation.config import python_folder, read_targets
 from rdf_persistence.generation.exceptions import ConfigError
 from rdf_persistence.generation.generated.rp_generation import ConstraintCase, ConstraintKind
-from rdf_persistence.generation.outputs import CONTEXT_FILE, SHAPES_FILE
+from rdf_persistence.services.artifacts import CONTEXT_FILE, SHAPES_FILE
 from rdf_persistence.services.schema_structure import (
     generation_view,
     holds_owned_part,
