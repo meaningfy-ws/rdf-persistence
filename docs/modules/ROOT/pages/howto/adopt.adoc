@@ -176,7 +176,8 @@ check-generated:
 
 `make generate` writes, under `library/domain/generated/`, one Python module per schema module
 (`books.py`, `library.py`), `shapes.ttl`, `context.jsonld`, one `<Root>.frame.jsonld` per
-aggregate root and `rp-manifest.json`; the TypeScript types, one file per module plus `index.ts`;
+aggregate root, `openapi-components.json` (the component schemas of the service's OpenAPI document)
+and `rp-manifest.json`; the TypeScript types, one file per module plus `index.ts`;
 and one `.mmd` diagram per module. Commit them together with the schema. Never edit them: to change
 the code, change the schema and generate again.
 

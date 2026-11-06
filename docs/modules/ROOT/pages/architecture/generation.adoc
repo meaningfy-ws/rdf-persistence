@@ -188,6 +188,7 @@ not the toy keeps a golden folder, rewritten by `make refresh-golden`. Each exte
 |`rdf_persistence/generation/extensions/shacl_constraints.py` |Shape constraints for declared rules |`gen-shacl` |the stock generator translates neither rule: `exactly_one_of` becomes `sh:xone`, `any_of` becomes `sh:or`, `unique_keys` becomes a SPARQL constraint on the owning class (absent values treated as in the validators) |with the shapes |M
 |`rdf_persistence/generation/extensions/jsonld_context.py` |JSON-LD context and frames |`gen-jsonld-context` |`id`/`type` aliases, `internal` slots left out, integers and booleans kept as native JSON, a `uri` read as an IRI and an enum as its meaning IRI (as the shapes expect), one frame per aggregate type |the backend package; copied to the frontend when needed |S
 |`rdf_persistence/generation/extensions/mermaid.py` |Diagrams, one per module |`gen-mermaid-class-diagram` (D-8) |a template marking aggregate roots and owned parts, and keeping each diagram small (one module, its links to other modules shown as names only) |the docs, next to the model pages |S
+|`rdf_persistence/generation/components.py` |OpenAPI component schemas |`gen-json-schema` |not under `extensions/`, since it adds no subclass or template: it trims the stock output to what the API shows (bookkeeping and `internal` slots dropped, the identifier read-only, since the service assigns it) and points its references into `#/components/schemas` (PD-24). It runs at generation time because the generators are an extra (PD-2): the running service only reads the file |`openapi-components.json`, beside the context |S
 |`rdf_persistence/generation/checks/` |Boundary, hard and rules checks |`linkml-lint` + `rp-generate` |not a generator extension: three checks over `SchemaView` (`boundary.py`, `hard.py`, `rules.py`) |— |S
 |===
 
@@ -342,6 +343,7 @@ flowchart TB
     B --> P["3 Python"]
     B --> H["4 shapes"]
     B --> C["5 context"]
+    B --> O["5b OpenAPI components"]
     B --> T["6 TypeScript"]
     B --> D["7 diagrams"]
 ....
@@ -354,6 +356,7 @@ flowchart TB
 |3 Domain classes |`gen-pydantic` in split mode with the toolkit's template directory: `base_model.py.jinja` makes every class inherit the toolkit's strict base `RpModel` (no extra fields, validation on assignment); metadata off; metamodel classes imported from the top-level `rdf_persistence` in an application's run; model validators for `exactly_one_of`, `any_of` and `unique_keys` |generation fails
 |4 Shapes |`gen-shacl` through `RpShaclGenerator`. Shapes are closed (`sh:closed true`), and the version token sits on the graph IRI, not the root, so the domain triples validate on their own |generation fails
 |5 JSON-LD context |`gen-jsonld-context`, with `id` and `type` aliased to `@id` and `@type`, and one frame per aggregate type (`<Class>.frame.jsonld`, with `@omitDefault`); served by the service kit (O-2). Known gaps (no `@language` containers, inlined collections keyed by `@index`) need template fixes before a schema uses those features |generation fails
+|5b OpenAPI components |`gen-json-schema`, trimmed by `rdf_persistence/generation/components.py` (<<extensions>>), into `openapi-components.json`; the service's OpenAPI document (xref:architecture/api.adoc#serving[API]) reads it |generation fails
 |6 TypeScript types |`gen-typescript` with the toolkit's template: interfaces only, one file per module and an `index.ts`, into the client package the application names |generation fails
 |7 Diagrams |`gen-mermaid-class-diagram`, one `.mmd` file per schema module, each showing one module's classes and their links to other modules |generation fails
 |===
