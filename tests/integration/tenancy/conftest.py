@@ -1,7 +1,6 @@
 """Fixtures of the tenancy tests: Fuseki, a file store from a parametrised fixture, and a prefix per test.
 
-The file store is the fake for now; task 3.1 adds Garage as a second parameter, and the tests re-run
-against it unchanged. Each test gets its own prefix, so the system database and the tenant databases
+The file store is the fake or Garage, and the tests run against both unchanged. Each test gets its own prefix, so the system database and the tenant databases
 of one test never meet another's, and everything it made is dropped afterwards.
 """
 
@@ -10,6 +9,7 @@ from collections.abc import AsyncIterator
 
 import pytest
 
+from rdf_persistence.adapters.s3 import S3FileStore
 from rdf_persistence.domain.generated.service.rp_service import ServiceSettings
 from rdf_persistence.domain.iris import system_database_name, tenant_name_prefix
 from rdf_persistence.services.files import FileStore
@@ -18,11 +18,14 @@ from rdf_persistence.testkit import FakeFileStore
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.toy import SETTINGS, toy_mapper
 
-FILE_STORES = ["fake"]  # 3.1 adds "garage"
+FILE_STORES = ["fake", "garage"]
 
 
 @pytest.fixture(params=FILE_STORES)
 def files(request: pytest.FixtureRequest) -> FileStore:
+    if request.param == "garage":
+        server = request.getfixturevalue("garage")
+        return S3FileStore(server.endpoint, server.key_id, server.secret, server.region)
     return FakeFileStore()
 
 
