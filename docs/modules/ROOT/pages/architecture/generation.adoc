@@ -213,8 +213,9 @@ is named in the model guard's allow-list (<<guarding>>).
 
 *Placement is declared, not guessed*: the application's `pyproject.toml` gets a
 `[tool.rp-generate]` table (or an array of tables, one per schema) with the keys `schema`,
-`package`, `python` (default: the package's path), `typescript` and `diagrams`; paths are relative
-to the `pyproject.toml`. The flags `--schema`, `--package`, `--python-out`, `--typescript-out` and
+`package`, `python` (default: the package's path), `typescript`, `diagrams` and `openapi` (default
+`true`; `false` skips step 5b for a schema no service serves, as for the toolkit's metamodel,
+generation and wire schemas); paths are relative to the `pyproject.toml`. The flags `--schema`, `--package`, `--python-out`, `--typescript-out` and
 `--diagrams-out` override the keys of a single entry; with several entries a flag is an error. LinkML's
 `gen-project` writes everything under one directory, so `rp-generate` does the placing.
 
@@ -356,7 +357,7 @@ flowchart TB
 |3 Domain classes |`gen-pydantic` in split mode with the toolkit's template directory: `base_model.py.jinja` makes every class inherit the toolkit's strict base `RpModel` (no extra fields, validation on assignment); metadata off; metamodel classes imported from the top-level `rdf_persistence` in an application's run; model validators for `exactly_one_of`, `any_of` and `unique_keys` |generation fails
 |4 Shapes |`gen-shacl` through `RpShaclGenerator`. Shapes are closed (`sh:closed true`), and the version token sits on the graph IRI, not the root, so the domain triples validate on their own |generation fails
 |5 JSON-LD context |`gen-jsonld-context`, with `id` and `type` aliased to `@id` and `@type`, and one frame per aggregate type (`<Class>.frame.jsonld`, with `@omitDefault`); served by the service kit (O-2). Known gaps (no `@language` containers, inlined collections keyed by `@index`) need template fixes before a schema uses those features |generation fails
-|5b OpenAPI components |`gen-json-schema`, trimmed by `rdf_persistence/generation/components.py` (<<extensions>>), into `openapi-components.json`; the service's OpenAPI document (xref:architecture/api.adoc#serving[API]) reads it |generation fails
+|5b OpenAPI components |`gen-json-schema`, trimmed by `rdf_persistence/generation/components.py` (<<extensions>>), into `openapi-components.json` (skipped when the entry sets `openapi = false`); the service's OpenAPI document (xref:architecture/api.adoc#serving[API]) reads it |generation fails
 |6 TypeScript types |`gen-typescript` with the toolkit's template: interfaces only, one file per module and an `index.ts`, into the client package the application names |generation fails
 |7 Diagrams |`gen-mermaid-class-diagram`, one `.mmd` file per schema module, each showing one module's classes and their links to other modules |generation fails
 |===

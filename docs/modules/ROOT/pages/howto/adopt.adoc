@@ -272,8 +272,9 @@ you really need a type that holds a foreign run-time object, pass it with
 
 `conformance.run` checks each case against both the generated class and the generated shape: the
 valid instances must pass both, and the invalid ones must fail both. It also reports any
-constraint kind your schema uses that no case covers. A case names a kind, a class and instance
-files, which live beside the cases file:
+constraint kind your schema uses that no case covers, so the test fails until every kind has one.
+A case names a kind, a class and instance files, which live beside the cases file. The example
+schema uses four kinds:
 
 [source,yaml]
 ----
@@ -282,13 +283,31 @@ files, which live beside the cases file:
   class_name: Chapter
   valid: [instances/chapter-ok.yaml]
   invalid: [instances/chapter-no-number.yaml]
+- kind: range_type
+  class_name: Chapter
+  valid: [instances/chapter-ok.yaml]
+  invalid: [instances/chapter-number-text.yaml]
+- kind: identifier
+  class_name: Book
+  valid: [instances/book-ok.yaml]
+  invalid: [instances/book-no-id.yaml]
+- kind: closed
+  class_name: Book
+  valid: [instances/book-ok.yaml]
+  invalid: [instances/book-unknown-field.yaml]
 ----
+
+Each instance is a small YAML object, for example:
 
 [source,yaml]
 ----
 # tests/conformance/instances/chapter-no-number.yaml
 id: https://example.org/library/books/1/chapters/1
 ----
+
+The others: `chapter-ok.yaml` adds `number: 1`, `chapter-number-text.yaml` has `number: one`,
+`book-ok.yaml` has an `id`, a `label` and a `description`, `book-no-id.yaml` lacks the `id`, and
+`book-unknown-field.yaml` adds a slot the class does not have (`isbn: "1"`).
 
 The kinds are `required`, `cardinality`, `range_type`, `range_enum`, `pattern`, `value_bounds`,
 `identifier`, `closed`, `exactly_one_of`, `any_of` and `unique_keys`.
