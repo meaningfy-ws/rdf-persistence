@@ -133,6 +133,29 @@ and `identity` from their path, and run only with `make test-containers`. The co
 defined in `rdf_persistence/testkit/containers/compose.yaml`; each has a smoke test that starts it
 and checks it answers.
 
+== How long the checks take
+
+These are rough wall-clock times from ordinary runs on a developer laptop, not from profiling.
+Use them to plan, and add a row or update one when a run differs a lot. Detailed profiling
+comes later.
+
+[cols="2,1,1,1,3"]
+|===
+|Target |Tests |Time |Measured |Notes
+
+|`make check-all` |2711 |≈ 6 min |2026-11-06, f2531a1
+|The pytest part alone takes 5 min 35 s; the quality checks come before it.
+
+|`make test-containers` |170 |≈ 3.5 min |2026-11-06, f2531a1
+|The pytest part takes 3 min 15 s, container start-up included. One run in three failed at
+start-up on a Docker Compose error; run it again.
+
+|`make clean-code`, `make check-architecture`, `make check-docs` |– |≈ 1 s each |2026-11-06,
+f2531a1 |
+
+|`make check-generated` |– |≈ 10 s |2026-11-06, f2531a1 |It regenerates both projects first.
+|===
+
 == Before a PR
 
 * `make check-all` passes. `make test-containers` passes as well if you touched adapters or
