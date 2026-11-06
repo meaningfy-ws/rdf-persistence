@@ -139,8 +139,8 @@ Order: 1.11 at any time; 1.12 and 1.16 after 1.10; 1.13 after 1.8 and 1.12; 1.14
 
 ## 6. Close
 
-- [ ] 6.1 Complete `docs/modules/ROOT/pages/howto/adopt.adoc` (part 1 is task 1.20): the session, tenancy, files, access, the composition root and the router, using the toy library, replacing its "Not yet available" section.
-- [ ] 6.2 Update the architecture pages with what stages 2 to 5 taught (`generation.adoc`'s stage 1 parts are done by 1.19): replace _(spike)_ marks with "implemented", and update the public API table and the metamodel slot table (`prohibitions`, `RoleDefinition`). `make check-docs` passes.
+- [x] 6.1 Complete `docs/modules/ROOT/pages/howto/adopt.adoc` (part 1 is task 1.20): the session, tenancy, files, access, the composition root and the router, using the toy library, replacing its "Not yet available" section.
+- [x] 6.2 Update the architecture pages with what stages 2 to 5 taught (`generation.adoc`'s stage 1 parts are done by 1.19): replace _(spike)_ marks with "implemented", and update the public API table and the metamodel slot table (`prohibitions`, `RoleDefinition`). `make check-docs` passes.
 - [ ] 6.3 Run `openspec validate --all --strict`, then archive the change into `openspec/specs/`.
 
 ## Scenario map
@@ -199,7 +199,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 - [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4
 - [x] 4.1 · [x] 4.2 · [x] 4.3
 - [x] 5.1 · [x] 5.2 · [x] 5.3 · [x] 5.4 · [x] 5.5 · [x] 5.6 · [x] 5.7
-- [ ] 6.1 · [ ] 6.2 · [ ] 6.3
+- [x] 6.1 · [x] 6.2 · [ ] 6.3
 
 ## Verification
 
