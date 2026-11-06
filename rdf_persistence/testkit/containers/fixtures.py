@@ -23,6 +23,7 @@ from rdf_persistence.generation.generated.rp_generation import (
     ExecResult,
     FusekiServer,
     GarageServer,
+    ZitadelProject,
     ZitadelServer,
 )
 from rdf_persistence.testkit.bootstrap import (
@@ -38,6 +39,7 @@ from rdf_persistence.testkit.markers import (
     containers_for,
     register_markers,
 )
+from rdf_persistence.testkit.zitadel import provision_project
 
 COMPOSE_DIR = Path(__file__).parent
 COMPOSE_FILE = "compose.yaml"
@@ -56,6 +58,8 @@ GARAGE_LAYOUT_VERSION = "1"
 GARAGE_KEY_ID_LABEL = "key id"
 GARAGE_SECRET_LABEL = "secret key"
 ZITADEL_PAT_PATH = "/bootstrap/admin.pat"
+# The test principals that get a machine user with a key (PD-16).
+ZITADEL_PRINCIPALS = ("librarian", "reader", "outsider", "admin")
 HTTP_ERRORS = (httpx.HTTPError, OSError)
 
 
@@ -225,3 +229,9 @@ def zitadel(_compose_project: None) -> Iterator[ZitadelServer]:
             lambda: _management_answers(server), "Zitadel's management API", retry_on=HTTP_ERRORS
         )
         yield server
+
+
+@pytest.fixture(scope="session")
+def zitadel_project(zitadel: ZitadelServer) -> ZitadelProject:
+    """A project with the role ``admin``, and a machine user with a key per test principal."""
+    return provision_project(zitadel, ZITADEL_PRINCIPALS)

@@ -1,7 +1,7 @@
 """In-memory fakes of the toolkit's ports, for unit tests that must not touch the network."""
 
 from collections import defaultdict
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterable
 from contextlib import asynccontextmanager
 from typing import ClassVar
 
@@ -19,6 +19,7 @@ from rdf_persistence.domain.exceptions import (
     TenantGone,
 )
 from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.domain.generated.service.rp_service import AccountSummary
 from rdf_persistence.services.session import Clock, Session, open_session, utc_now
 
 FAKE_DATABASE = "fake"
@@ -165,6 +166,65 @@ class FakeFileStore(_Instrumented):
     async def delete(self, bucket: str, key: str) -> None:
         self._enter("delete", f"{bucket}/{key}")
         self._bucket(bucket).pop(key, None)
+
+
+class FakeIdentity(_Instrumented):
+    """An ``Identity`` over accounts in memory, with the same failure injection as ``FakeStore``.
+
+    It keeps its own copy of each account, and hands out copies.
+    """
+
+    OPERATIONS = frozenset(
+        {
+            "find_by_email",
+            "list_accounts",
+            "disable",
+            "enable",
+            "grant_global_role",
+            "remove_global_role",
+        }
+    )
+
+    def __init__(self, accounts: Iterable[AccountSummary] = ()) -> None:
+        super().__init__()
+        self._accounts = {a.account_id: a.model_copy(deep=True) for a in accounts}
+
+    def _account(self, account_id: str) -> AccountSummary:
+        if account_id not in self._accounts:
+            raise NotFound(f"no account {account_id}")
+        return self._accounts[account_id]
+
+    async def find_by_email(self, email: str) -> AccountSummary:
+        self._enter("find_by_email", email)
+        for account in self._accounts.values():
+            if account.email == email:
+                return account.model_copy(deep=True)
+        raise NotFound(f"no account with email {email}")
+
+    async def list_accounts(self) -> list[AccountSummary]:
+        self._enter("list_accounts", "")
+        return [a.model_copy(deep=True) for a in self._accounts.values()]
+
+    async def disable(self, account_id: str) -> None:
+        self._enter("disable", account_id)
+        self._account(account_id).active = False
+
+    async def enable(self, account_id: str) -> None:
+        self._enter("enable", account_id)
+        self._account(account_id).active = True
+
+    async def grant_global_role(self, account_id: str, role: str) -> None:
+        self._enter("grant_global_role", f"{account_id} {role}")
+        account = self._account(account_id)
+        roles = account.global_roles or []
+        if role not in roles:
+            account.global_roles = [*roles, role]
+
+    async def remove_global_role(self, account_id: str, role: str) -> None:
+        self._enter("remove_global_role", f"{account_id} {role}")
+        account = self._account(account_id)
+        if account.global_roles:
+            account.global_roles = [r for r in account.global_roles if r != role]
 
 
 @asynccontextmanager
