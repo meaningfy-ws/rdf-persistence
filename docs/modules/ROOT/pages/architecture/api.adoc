@@ -168,13 +168,29 @@ kit = install_service(
 |`generated` |The package `rp-generate` wrote for it. The context, frames, shapes and `openapi-components.json` are read from its folder; a missing file stops the call with `OSError`.
 |`store`, `files`, `identity`, `verifier` |The adapters: a `Store` (Fuseki), a `FileStore` (S3), an `Identity` (the identity provider) and a `TokenVerifier` (JWT access tokens).
 |`rules` |An `AccessRules`, or the path of the role-definitions file. A path is loaded and validated in the call, so an invalid file stops the service before anything touches the store.
-|`settings` |A `ServiceSettings`: `base` (the IRI under which identifiers and problem types are minted), `prefix` (the database and bucket name prefix), `tenant_segment`, `creator_role` and `roles_claim` (the token claim that carries the global roles, specific to the identity provider).
+|`settings` |A `ServiceSettings`: `base` (the IRI under which identifiers and problem types are minted), `prefix` (the database and bucket name prefix), `tenant_segment`, `creator_role`, `roles_claim` (the token claim that carries the global roles, specific to the identity provider) and `max_body_bytes` (the largest request body, default 1 MiB).
 |`prefix` |A path prefix under which the routes are mounted.
 |===
 
 At start-up, before the application's own lifespan, the service creates the system database if it is
 missing and runs the sweep. `install_service` returns a `ServiceKit` (its tenancy, store, files and
-identity, and `bucket_of` for a tenant's bucket) for the application's own routes.
+identity, and `bucket_of` for a tenant's bucket) for the application's own routes. Such a route
+checks its caller through the kit, so the toolkit's access rules apply to it too:
+
+[source,python]
+----
+@app.get("/libraries/{t}/scan-files/{scan_id}")
+async def get_file(t: str, scan_id: str, request: Request) -> Response:
+    checked = await kit.require_aggregate(
+        request.headers.get("authorization"), t, "scans", scan_id, Action.READ
+    )                                     # 401, 404 or 403 as a problem response, or an Authorised
+    bucket = await kit.bucket_of(checked.caller_access.tenant)
+    return Response(await kit.files.get(bucket, scan_id), media_type="application/octet-stream")
+----
+
+`kit.require(authorization, tenant_id, action)` does the same for an action in the tenant and
+returns the caller's access; `require_aggregate` also applies a prohibition on the aggregate and
+returns, in `checked_target`, the IRI it checked, which the route then acts on.
 
 *Routes* (PD-13), with `{t}` the UUID of the tenant's IRI:
 
@@ -192,13 +208,23 @@ identity, and `bucket_of` for a tenant's bucket) for the application's own route
 
 A read of one object answers with its `ETag`; every `PUT` and `DELETE` needs `If-Match` (428 without it, 409 on a
 stale version); a create answers 201 with a `Location`. Plain JSON points at the context by a `Link`
-header, so it is also JSON-LD; `Accept: application/ld+json` and `text/turtle` are served too (406
+header, so it is also JSON-LD. The link is built from `settings.base` and the mount prefix, never
+from the request's `Host` header, so a deployment sets `base` to the address it is reached at; `Accept: application/ld+json` and `text/turtle` are served too (406
 for anything else, 415 for a body in another type).
 
-*Problem responses* (RFC 9457) have a fixed `type` (`{base}problems/<slug>`) and title. Only the
-statuses that say what to fix in the request (400, 406, 415, 422, 428) carry a `detail`. A refusal
-(401, 403, 404, 409) or an outage (5xx) carries none, so a hidden tenant and an absent one answer
-alike.
+*Bodies are strict* (PD-14b). A body larger than `max_body_bytes`, or holding more than 10 000
+objects, is refused with 413. A plain-JSON body may use only its class's slot names and the JSON-LD
+keywords, at every level. Only the root and the owned parts reached from it, each typed with a class
+of the schema, may appear; any other subject is 422. An `internal` slot is refused in a body (422
+naming it) and never appears in a response.
+
+*Problem responses* (RFC 9457) have a fixed `type` (`{base}problems/<slug>`) and title, and every
+error answers with one: the toolkit's own, the framework's (an unknown path, 405
+`method-not-allowed` with its `Allow` header) and those of the application's routes. Only the
+statuses that say what to fix in the request (400, 406, 413, 415, 422, 428) carry a `detail`. A
+refusal (401, 403, 404, 409), an outage (503) or a fault of the service (500 `internal-error`, such
+as a failing SPARQL template or stored data that does not validate) carries none, so a hidden tenant
+and an absent one answer alike, and no answer tells an outsider where the store is.
 
 *Listings* (PD-15, PD-15a). A query takes `limit` (1 to 200, default 50), `offset` (default 0),
 `sort` (a slot name, descending with a leading `-`; by IRI when absent) and `?<slot>=<value>`
@@ -206,11 +232,12 @@ equality filters. Filters are typed by the slot's range: an enum value is matche
 IRI, a reference by its IRI, anything else as a typed literal. The `id`, bookkeeping, `internal` and
 owned-part slots cannot be filtered on. One SPARQL `CONSTRUCT` per page counts the matches and
 selects the page. A `read` prohibition on an aggregate hides it from that caller's listing and
-total. The tenant listing takes only `limit` and `offset`. A listing has no Turtle form (406).
+total. The tenant listing takes only `limit` and `offset`, and is paged in one query too. A listing has no Turtle form (406).
 
 *The OpenAPI document* is FastAPI's (`/openapi.json`), completed from the schema. It lists every
 aggregate type's routes with their request and response bodies, a query parameter per filterable
-slot, the problem responses of each route, the `ETag`, `If-Match` and `Location` headers, and a
+slot, the problem responses of each route (413 on every operation with a body), the `ETag`,
+`If-Match` and `Location` headers, and a
 bearer security scheme. Its component schemas come from `openapi-components.json`, which
 `rp-generate` writes with `gen-json-schema` (xref:architecture/generation.adoc#toolchain[step 5b]),
 so a running service needs no LinkML generator.
