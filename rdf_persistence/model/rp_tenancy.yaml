@@ -20,8 +20,9 @@ classes:
   TenantLabelled:
     title: Tenant labelled
     description: >-
-      A mixin for what carries a tenant's label, one line of 1 to 200 characters; the access record
-      and the service's request bodies share it, so the label is checked the same everywhere.
+      A mixin for what carries a tenant's label, one line of 1 to 200 characters that neither starts
+      nor ends in a space; the access record and the service's request bodies share it, so the
+      label is checked the same everywhere.
     class_uri: rp:TenantLabelled
     mixin: true
     slots:
@@ -29,7 +30,7 @@ classes:
     slot_usage:
       label:
         required: true
-        pattern: "^.{1,200}$"
+        pattern: "^\\S(?:.{0,198}\\S)?$"
   TenantAccess:
     title: Tenant access
     description: >-

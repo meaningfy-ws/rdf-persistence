@@ -32,6 +32,7 @@ ANY_OF = "any_of"
 PRESENT = PresenceEnum(PresenceEnum.PRESENT)
 ABSENT = PresenceEnum(PresenceEnum.ABSENT)
 _TRUE = "true"
+URI_TYPES = frozenset({"uri", "uriorcurie"})
 _SUPPORTED_CONDITION_FIELDS = {"name", "required", "value_presence"}
 
 # One alternative of a presence rule: each named slot present or absent, all of them together.
@@ -67,6 +68,18 @@ def flag(element: object, tag: RpAnnotation) -> bool:
 
 def is_owned(slot: object) -> bool:
     return flag(slot, RpAnnotation.OWNED)
+
+
+def holds_owned_part(view: SchemaView, slot: SlotDefinition) -> bool:
+    """True when the values of the slot are objects the aggregate owns, written as nodes of its graph."""
+    return slot.range in view.all_classes() and is_owned(slot)
+
+
+def holds_iri(view: SchemaView, slot: SlotDefinition) -> bool:
+    """True when the values of the slot are IRIs: a reference to another aggregate, or a ``uri`` slot."""
+    if slot.range in view.all_classes():
+        return not is_owned(slot)
+    return bool(URI_TYPES & set(view.type_ancestors(slot.range)))
 
 
 def is_internal(slot: object) -> bool:

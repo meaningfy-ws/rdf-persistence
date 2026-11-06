@@ -34,8 +34,8 @@ from rdf_persistence.generation.generated.rp_generation import ConstraintCase, C
 from rdf_persistence.generation.outputs import CONTEXT_FILE, SHAPES_FILE
 from rdf_persistence.services.schema_structure import (
     generation_view,
+    holds_owned_part,
     is_internal,
-    is_owned,
     keyed_slots,
 )
 
@@ -162,7 +162,7 @@ class Conformance:
     def _typed_parts(self, slot: SlotDefinition, value: object) -> object:
         if isinstance(value, list):
             return [self._typed_parts(slot, item) for item in value]
-        if isinstance(value, dict) and is_owned(slot):
+        if isinstance(value, dict) and holds_owned_part(self.view, slot):
             return self.jsonld_node(slot.range, value)
         return value
 

@@ -58,6 +58,18 @@ class LinkMLMeta(RootModel):
 
 linkml_meta = None
 
+class RdfFormat(str, Enum):
+    "The serialisations a file of RDF can be loaded from."
+    TURTLE = "turtle"
+    "The Turtle serialisation, media type text/turtle."
+    RDFXML = "rdfxml"
+    "The RDF/XML serialisation, media type application/rdf+xml."
+    NTRIPLES = "ntriples"
+    "The N-Triples serialisation, media type application/n-triples."
+    JSONLD = "jsonld"
+    "The JSON-LD serialisation, media type application/ld+json."
+
+
 
 class StoredFile(ConfiguredBaseModel):
     "A mixin for the current content of a kept file; the bytes live in the tenant\u0027s bucket under the file key."

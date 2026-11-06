@@ -22,7 +22,7 @@ from rdflib.compare import graph_diff, isomorphic
 from rdflib.term import Node
 
 from rdf_persistence.generation.outputs import FRAME_SUFFIX
-from rdf_persistence.services.schema_structure import is_internal, is_owned
+from rdf_persistence.services.schema_structure import holds_owned_part, is_internal
 from rdf_persistence.testkit.conformance import Conformance
 
 NQUADS = {"format": "application/n-quads"}
@@ -94,7 +94,7 @@ def public_projection(conformance: Conformance, class_name: str, data: dict) -> 
 def _public_value(conformance: Conformance, slot: SlotDefinition | None, value: object) -> object:
     if isinstance(value, list):
         return sorted((_public_value(conformance, slot, item) for item in value), key=_by_json)
-    if slot is not None and is_owned(slot) and isinstance(value, dict):
+    if slot is not None and holds_owned_part(conformance.view, slot) and isinstance(value, dict):
         return public_projection(conformance, str(slot.range), value)
     return value
 

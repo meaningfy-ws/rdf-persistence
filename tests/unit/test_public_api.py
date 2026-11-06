@@ -17,6 +17,23 @@ INDEXED_NAMES = [
     "Grant",
     "TenantState",
     "RegistryEntry",
+    "Store",
+    "FusekiStore",
+    "DatabaseGone",
+    "StoreUnavailable",
+    "NotFound",
+    "Conflict",
+    "BadQuery",
+    "open_session",
+    "Tenancy",
+    "sweep",
+    "FileStore",
+    "TenantGone",
+    "Session",
+    "Mapper",
+    "UnitOfWork",
+    "new_part",
+    "generated_models",
 ]
 
 

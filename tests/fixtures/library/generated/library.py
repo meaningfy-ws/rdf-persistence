@@ -38,6 +38,7 @@ from rdf_persistence import (
     Policy,
     Principal,
     Prohibition,
+    RdfFormat,
     RegistryEntry,
     RegistryKind,
     RoleDefinition,

@@ -18,7 +18,7 @@ see the [README](README.md#installation).
 ```bash
 git clone https://github.com/meaningfy-ws/rdf-persistence.git
 cd rdf-persistence
-make install        # uv sync (dev, test, and lint groups)
+make install        # uv sync --all-extras (every dependency group, plus the generate and testkit extras)
 ```
 
 `make install` does **not** run `uv lock`. Lock dependencies explicitly with `make lock` when
@@ -26,8 +26,8 @@ you change them.
 
 ## 2. Enable pre-commit hooks
 
-The repo ships a pre-commit config (Ruff format + lint) so style issues are caught before they
-reach CI:
+The repo ships a pre-commit config (Ruff format + lint, and `rp-generate-check` on commits that touch
+the model or generated code) so problems are caught before they reach CI:
 
 ```bash
 uv run pre-commit install

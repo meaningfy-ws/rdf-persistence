@@ -1,11 +1,14 @@
 = Model to code: the generation workflow
 :description: How an application's own LinkML model becomes typed, persistable code with rdf-persistence.
 
-Status: *draft*, Proposed (2026-11-05). Settles open decision O-1 of
-xref:architecture/index.adoc[architecture v1] with its smallest option. Every step below was run in a
-throwaway spike (LinkML 1.12.1, Fuseki 5.1.0); its findings are marked _(spike)_. It is revised
-in <<revision>> (developer, 2026-11-05: decisions D-2 and D-6 to D-9 of
-xref:architecture/open-decisions.adoc[the decisions of 2026-11-05]).
+Status: *accepted*; build time *implemented* (2026-11-05). Settles open decision O-1 of
+xref:architecture/index.adoc[architecture v1] with its smallest option, revised in <<revision>>
+(developer, 2026-11-05: decisions D-2 and D-6 to D-9 of
+xref:architecture/open-decisions.adoc[the decisions of 2026-11-05]). The metamodel, `rp-generate`
+and the guards are implemented (stage 1 of the change `toolkit-v1-foundation`). The run-time parts
+(<<run-time>>) were run only in a throwaway spike (LinkML 1.12.1, Fuseki 5.1.0) and keep the mark
+_(spike)_ until stage 2 builds them. To work on the toolchain itself, see
+xref:develop/index.adoc[Working on the toolkit].
 
 An application using rdf-persistence writes its domain once, in LinkML. A deterministic, build-time
 toolchain turns it into domain classes and shapes; at run time the toolkit reads the same schema to
@@ -44,7 +47,7 @@ package; an application's generated code imports them rather than regenerating t
 |===
 |Element |Meaning
 |`AggregateRoot` (mixin) |Instances are aggregate roots: each is one named graph, whose IRI `graph_iri(root)` is derived from the root's IRI (for example `<root>/graph`; background DEC-29), versioned, loaded and saved as a whole.
-|`owned` (slot annotation) |The slot's values are part of this aggregate and live in its graph (as blank nodes; a commit replaces the whole graph). Any other slot whose range is a class refers to another aggregate root, by IRI.
+|`owned` (slot annotation) |The slot's values are part of this aggregate and live in its graph (a commit replaces the whole graph). A part whose class includes `Described` has an IRI, `{root_iri}/parts/{uuid4}`, minted by the toolkit when it has none and kept across commits; a part without an identifier slot (a grant, a prohibition) is a blank node, skolemised on write (PD-6, PD-8a). Any other slot whose range is a class refers to another aggregate root, by IRI.
 |`database` (class annotation) |`tenant` (default) or `system`: which database the aggregate lives in.
 |`graph: meta` (class annotation) |The tenant's root object lives in the tenant database's designated `meta` graph instead of a graph of its own.
 |`internal` (slot annotation) |The slot never appears in the API contract (e.g. file keys).
@@ -56,7 +59,16 @@ package; an application's generated code imports them rather than regenerating t
 |`TenantAccess`, `Grant` |The tenancy records of the system database (N-11): label, state (`TenantState`: `active`, `deleting`), database name, owned grants and prohibitions (ODRL). Role names come from the consumer's role definitions; an application may narrow `role` to an enum by subclassing (`is_a` with `slot_usage`), but need not.
 |`RegistryEntry` |An entry of a tenant's `registry` graph: the graph's IRI, its kind (`aggregate`, `loaded_graph`) and the aggregate that owns it. Written by the session, never by the application.
 |`version` (slot) |The version token of every aggregate, stated about its graph IRI (not the root), written by the session; not part of any domain class.
+|`module_kind` (schema annotation) |`domain`, `technical` or `access`: what a schema module holds; the boundary check uses it (<<toolchain>>).
+|`bookkeeping` (slot annotation) |The session writes the slot about a graph (`version`, `created`, `modified`, `creator`, `contributor`); closed shapes ignore it.
 |===
+
+The annotation names are the generated enum `RpAnnotation`, and their values the enums
+`ModuleKind`, `DatabaseKind` and `GraphKind`: a value outside them fails the hard check, so no code
+compares free strings. The rules that read a schema's aggregate structure (roots, the tenant root,
+owned, internal and bookkeeping slots, PD-11's defaults, the presence alternatives and keyed slots
+of a class) live once, in `rdf_persistence/services/schema_structure.py`, beside `load_schema` in
+`schema.py`; the checks, the extensions, the testkit and the mapper all use them.
 
 Slots of the metamodel (IRIs in the `rp:` namespace unless shown):
 
@@ -67,7 +79,7 @@ Slots of the metamodel (IRIs in the `rp:` namespace unless shown):
 |`label` |`skos:prefLabel` |string, from `Described`; required on `TenantAccess` (1–200 characters) and on described roots
 |`state` |`rp:state` |`TenantState`, required
 |`database_name` |`rp:databaseName` |string, required
-|`grants` |`rp:grant` |`Grant`, multivalued, owned (blank nodes; one per assignee, target and role-or-action by `unique_keys`)
+|`grants` |`rp:grant` |`Grant`, multivalued, owned (blank nodes, skolemised to `{graph_iri}/.well-known/genid/{uuid4}` on write; one per assignee, target and role-or-action by `unique_keys`)
 |`assignee` |`odrl:assignee` |`Principal` (IRI), required (a grant is an `odrl:Permission`, D-5)
 |`target` |`odrl:target` |uri: the tenant IRI, or an aggregate's graph IRI; required
 |`role` |`rp:role` |string, matched against the consumer's role definitions; an application may narrow it to an enum by `slot_usage`; exactly one of `role` and `action`
@@ -136,9 +148,10 @@ Instance mixins:
 [#hard-check]
 === The hard check: IRIs, labels and definitions
 
-`linkml-lint` cannot load extra rules, so the check is `linkml-lint` with its relevant rules raised to
-errors (`no_empty_title`, `recommended`, `canonical_prefixes`, `standard_naming`) plus about 100
-lines in `rp-generate` over `SchemaView`. It fails generation when:
+`linkml-lint` cannot load extra rules, so the check is `linkml-lint` with the rule sets of
+`rdf_persistence/generation/lint.yaml` raised to errors (`recommended`, `standard_naming`,
+`canonical_prefixes`) plus `rdf_persistence/generation/checks/hard.py` over `SchemaView`. Its rules
+are the generated enum `HardRule`. It fails generation when:
 
 . an element has no IRI: no `default_prefix` declared in `prefixes`, and no explicit `class_uri` or
   `slot_uri`;
@@ -147,7 +160,12 @@ lines in `rp-generate` over `SchemaView`. It fails generation when:
 . an aggregate root or owned class does not include `Described`, so instances without IRI, label and
   description are refused by the generated classes and shapes; an owned value class without a label
   of its own (a chapter's number) opts out explicitly with `rp_unlabelled: true`;
-. a module annotated `module_kind: domain` imports one annotated `technical` or `access`.
+. an aggregate root has no `rp_path`, or an `rp_path` that is not a URL segment;
+. an annotation value is not one of its allowed values;
+. a `unique_keys` name is not an identifier (generated validators carry it).
+
+The checks cover the schema's own modules only; the metamodel's are exempt. The `module_kind`
+import rule belongs to the boundary check (<<toolchain>>, step 2).
 
 [#extensions]
 === Generated artefacts, extensions and where they go
@@ -163,22 +181,27 @@ not the toy keeps a golden folder, rewritten by `make refresh-golden`. Each exte
 [cols="3,2,2,4,2,1",options="header"]
 |===
 |Module |Artefact |Generator |Extension needed |Placed in (default) |Effort
-|`rdf_persistence/generation/extensions/pydantic_split.py` |Python classes |`gen-pydantic`, split mode |templates (`rdf_persistence/generation/templates/pydantic/`) and a hook (`internal` fields excluded from the API) |the backend package, `<pkg>/domain/generated/` |S
+|`rdf_persistence/generation/extensions/pydantic_split.py` |Python classes |`gen-pydantic`, split mode |templates (`rdf_persistence/generation/templates/pydantic/`): the metamodel's classes imported from the toolkit, never regenerated; enum members named after the value keys; an `internal` slot marked `rp_internal` for the API layer (still dumped, since the mapper persists it); a `secret` slot kept out of the repr |the backend package, `<pkg>/domain/generated/` |S
 |`rdf_persistence/generation/extensions/pydantic_validators.py` |Model validators for declared rules |`gen-pydantic`, template |the stock generator enforces neither `exactly_one_of` nor `unique_keys`: `exactly_one_of` and `any_of` become a model validator on the declaring class; `unique_keys` becomes a model validator on every class with a multivalued slot whose range declares them, refusing two items with equal key values (an absent value counts, and two absent values are equal) |with the Python classes |M
-|`rdf_persistence/generation/extensions/typescript.py` |TypeScript types |`gen-typescript` |a subclass with our own template: the stock template is fixed, has no split mode and handles enums and dates poorly |the frontend package, `src/domain/generated/` |M
-|`rdf_persistence/generation/extensions/shacl.py` |SHACL shapes |`gen-shacl` |a subclass that adds the toolkit's bookkeeping predicates (`rp:version`, `dcterms:created`, `dcterms:modified`, `dcterms:creator`, `dcterms:contributor`) to the ignored list of closed shapes |the backend package |S
+|`rdf_persistence/generation/extensions/typescript.py` |TypeScript types |`gen-typescript` |a subclass with our own template (the stock one is fixed and has no split mode): one file per module and an index; enums as string-literal unions, dates as ISO strings, owned parts nested and any other class an IRI string, `internal` slots left out |the frontend package, `src/domain/generated/` |M
+|`rdf_persistence/generation/extensions/shacl.py` |SHACL shapes |`gen-shacl` |a subclass: the `bookkeeping` predicates added to the ignored list of closed shapes; a shape per class, named by its own IRI (classes may share a `class_uri`); a reference to another aggregate checked as an IRI only, so a graph validates on its own; an `internal` slot optional; a `pattern` matched against the whole value, as the classes do |the backend package |S
 |`rdf_persistence/generation/extensions/shacl_constraints.py` |Shape constraints for declared rules |`gen-shacl` |the stock generator translates neither rule: `exactly_one_of` becomes `sh:xone`, `any_of` becomes `sh:or`, `unique_keys` becomes a SPARQL constraint on the owning class (absent values treated as in the validators) |with the shapes |M
-|`rdf_persistence/generation/extensions/jsonld_context.py` |JSON-LD context and frames |`gen-jsonld-context` |`id`/`type` aliases, `internal` slots left out, one frame per aggregate type |the backend package; copied to the frontend when needed |S
+|`rdf_persistence/generation/extensions/jsonld_context.py` |JSON-LD context and frames |`gen-jsonld-context` |`id`/`type` aliases, `internal` slots left out, integers and booleans kept as native JSON, a `uri` read as an IRI and an enum as its meaning IRI (as the shapes expect), one frame per aggregate type |the backend package; copied to the frontend when needed |S
 |`rdf_persistence/generation/extensions/mermaid.py` |Diagrams, one per module |`gen-mermaid-class-diagram` (D-8) |a template marking aggregate roots and owned parts, and keeping each diagram small (one module, its links to other modules shown as names only) |the docs, next to the model pages |S
-|`rdf_persistence/generation/checks/` |Hard and boundary checks |`linkml-lint` + `rp-generate` |not a generator extension: about 100 lines over `SchemaView` |— |S
+|`rdf_persistence/generation/checks/` |Boundary, hard and rules checks |`linkml-lint` + `rp-generate` |not a generator extension: three checks over `SchemaView` (`boundary.py`, `hard.py`, `rules.py`) |— |S
 |===
 
-LinkML `rules` (pre- and postconditions) are not supported in v1: `rp-generate` exits 1, naming the
-class, when a schema uses them.
+*Rules the generated code would silently ignore fail instead* (`checks/rules.py`). On a class only
+`exactly_one_of`, `any_of` and `unique_keys` are enforced; LinkML `rules` (pre- and postconditions),
+`all_of` and `none_of` make `rp-generate` exit 1, naming the class. On a slot, only `any_of` as a
+union of ranges passes, since both the classes (`Union[...]`) and the shapes (`sh:or`) render it.
 
 *The toolkit's own data types are generated too.* Each is its own `[[tool.rp-generate]]` entry, and
 `rp.yaml` imports neither, so an application's model does not carry them. Like the metamodel, they
 are exempt from the hard check. They are schemas, not extensions, so they have no row above.
+Hand-written types remain only where a field holds a foreign run-time object LinkML cannot express
+(a `SchemaView`, a callable, an rdflib graph), or where the type subclasses a LinkML generator; each
+is named in the model guard's allow-list (<<guarding>>).
 
 [cols="2,3,2",options="header"]
 |===
@@ -188,7 +211,10 @@ are exempt from the hard check. They are schemas, not extensions, so they have n
 |===
 
 *Placement is declared, not guessed*: the application's `pyproject.toml` gets a
-`[tool.rp-generate]` table mapping each target to a path; command-line flags override it. LinkML's
+`[tool.rp-generate]` table (or an array of tables, one per schema) with the keys `schema`,
+`package`, `python` (default: the package's path), `typescript` and `diagrams`; paths are relative
+to the `pyproject.toml`. The flags `--schema`, `--package`, `--python-out`, `--typescript-out` and
+`--diagrams-out` override the keys of a single entry; with several entries a flag is an error. LinkML's
 `gen-project` writes everything under one directory, so `rp-generate` does the placing.
 
 *Diagrams are Mermaid* (D-8): no rendering service is needed and the docs already draw Mermaid
@@ -203,75 +229,116 @@ guard this; each extension gets a golden test.
 [#application-schema]
 == What the application writes
 
+One file per module and a root schema that imports them. Every element carries an IRI, a `title`
+and a `description` (<<hard-check>>). This example passes `rp-generate`; the toy library in
+`tests/fixtures/library/` is the full version (a tenant root, a stored file, an access module, an
+enum).
+
 [source,yaml]
 ----
-# models/library.yaml — the application's schema (toy example)
-id: https://example.org/ns/library
-name: library
+# models/books.yaml — one domain module of the application's schema (toy example)
+id: https://example.org/ns/library/books
+name: books
+title: Books module
+description: Books and their chapters; the book is the aggregate root.
 prefixes:
   lib: https://example.org/ns/library#
-  dcterms: http://purl.org/dc/terms/
   linkml: https://w3id.org/linkml/
+  dcterms: http://purl.org/dc/terms/
 default_prefix: lib
+default_range: string
 imports:
   - linkml:types
-  - rdf_persistence/model/rp         # resolved through the toolkit's import map
+  - rdf_persistence/model/rp_core           # resolved through the toolkit's import map
+  - rdf_persistence/model/rp_annotations
+annotations:
+  module_kind: domain
 classes:
   Book:
-    description: A book held by a library.
-    mixins: [AggregateRoot]
-    slots: [id, title, author, chapters, scan]
+    title: Book
+    description: A book held by a library; an aggregate root that owns its chapters.
+    mixins: [AggregateRoot, Described, Tracked]
+    slots: [author, chapters]
+    annotations:
+      rp_path: books                         # its path segment in the API and in its IRIs
   Chapter:
+    title: Chapter
     description: A chapter of a book; part of the book's aggregate.
-    slots: [title, number]
-  Scan:
-    description: A scanned copy of a book.
-    mixins: [AggregateRoot, StoredFile]
-  LibraryAccess:
-    is_a: TenantAccess
-    slot_usage: {grants: {range: LibraryGrant}}
-  LibraryGrant:
-    is_a: Grant
-    slot_usage: {role: {range: LibraryRole}}
+    mixins: [Described]
+    slots: [number]
+    annotations:
+      rp_unlabelled: true                    # known by its number, needs no label
 slots:
-  title: {slot_uri: dcterms:title, range: string, required: true, description: The title.}
-  author: {range: string, description: The author's name.}
-  number: {range: integer, description: Position of a chapter in its book.}
+  author:
+    title: Author
+    description: The author's name.
+    slot_uri: dcterms:creator
+  number:
+    title: Chapter number
+    description: The position of a chapter in its book.
+    range: integer
   chapters:
-    description: The book's chapters.
+    title: Chapters
+    description: The book's chapters; they live in the book's graph.
     range: Chapter
     multivalued: true
     inlined_as_list: true
-    annotations: {owned: true}       # chapters live inside the book's graph
-  scan:
-    description: The book's scan, another aggregate, stored as its IRI.
-    range: Scan
-enums:
-  LibraryRole:
-    description: Tenant roles of the library application.
-    permissible_values:
-      librarian: {meaning: lib:Librarian}
+    annotations:
+      owned: true
 ----
+
+[source,yaml]
+----
+# models/library.yaml — the root schema
+id: https://example.org/ns/library
+name: library
+title: Library
+description: The root schema of a toy library application.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - books
+----
+
+An application may narrow `Grant.role` to an enum of its own roles by subclassing (`is_a` with
+`slot_usage`); the toy library keeps plain strings, matched against its role definitions.
 
 [#toolchain]
 == The toolchain
 
-One command, run from the application's `make generate-models`, regenerates everything:
+One command, run from the application's `make generate-models`, regenerates every entry of the
+`[tool.rp-generate]` table:
+
+[source,toml]
+----
+# pyproject.toml
+[tool.rp-generate]
+schema = "models/library.yaml"
+package = "library.domain.generated"
+typescript = "web/src/domain/generated"
+diagrams = "docs/images/model"
+----
 
 [source,shell]
 ----
-rp-generate --schema models/library.yaml --package library.domain.generated \
-            --typescript-out web/src/domain/generated --diagrams-out docs/images/model
+rp-generate                    # every entry of ./pyproject.toml
+rp-generate --project other/pyproject.toml
+rp-generate --check            # write nothing; exit 1 if anything is stale or edited (<<guarding>>)
 ----
 
 `rp-generate` is a thin Python wrapper around LinkML's generator API, not a shell script, because
 split generation (importing the metamodel's classes from the toolkit instead of regenerating them) is
-available only through the Python API _(spike)_.
+available only through the Python API. It is always installed; without the `generate` extra it exits
+2 and says so. Its steps are listed in order in `rdf_persistence/generation/steps.py`.
 
 [mermaid]
 ....
 flowchart TB
-    S["schema + metamodel"] --> L["1 lint"] --> B["2 boundary and hard check"]
+    S["schema + metamodel"] --> L["1 lint"] --> B["2 boundary, hard and rules checks"]
     B --> P["3 Python"]
     B --> H["4 shapes"]
     B --> C["5 context"]
@@ -282,13 +349,13 @@ flowchart TB
 [cols="1,4,3",options="header"]
 |===
 |Step |What it does |Fails when
-|1 Lint |`linkml-lint` with the toolkit's lint configuration: canonical prefixes (`dcterms`, not `dct`), descriptions on every element, snake_case enum values _(spike)_ |the schema has lint errors
-|2 Boundary check |Over LinkML's `SchemaView` (about 40 lines in the spike): roots are the classes whose induced ancestors include `AggregateRoot`; every other non-mixin class is reachable only through `owned` slots (it may be owned by several root classes, e.g. a reusable value class); a non-owned slot whose range is a class must point to a root |a class is reachable through a non-owned slot without being a root, or is owned by nothing, or a module annotated `module_kind: domain` imports one annotated `module_kind: technical` or `access`
-|3 Domain classes |`gen-pydantic` in split mode with the toolkit's template directory: a one-line `base_model.py.jinja` makes every class inherit the toolkit's strict base (no extra fields, validation on assignment); metadata mode off; metamodel classes imported from the top-level `rdf_persistence` _(spike: split generation works; the spike pointed it at a submodule)_ |generation fails
-|4 Shapes |`gen-shacl`. Shapes are closed (`sh:closed true`) _(spike)_, and the version token sits on the graph IRI, not the root, so the domain triples validate on their own |generation fails
-|5 JSON-LD context |`gen-jsonld-context`, with `id` and `type` aliased to `@id` and `@type`; served by the service kit (O-2). Known gaps (no `@language` containers, inlined collections keyed by `@index`) need template fixes before a schema uses those features (implemented, task 1.9; integers and booleans keep native JSON values, frames use `@omitDefault`) |generation fails
-|6 TypeScript types |`gen-typescript` with the toolkit's template, which fixes enums and dates (the stock output is weak on both); interfaces only, into the client package the application names (implemented, task 1.9: enums as string-literal unions, dates as ISO strings, `internal` slots left out) |generation fails
-|7 Diagrams |`gen-mermaid-class-diagram`, once per schema module, so each diagram shows one module's classes and their links to other modules (implemented, task 1.9) |generation fails
+|1 Lint |`linkml-lint` with `rdf_persistence/generation/lint.yaml` (<<hard-check>>), on the schema and each of its own modules; the metamodel is opened through the toolkit's import map |the schema has lint errors
+|2 Checks |Over LinkML's `SchemaView`. *Boundary* (`BoundaryRule`): roots are the classes whose induced ancestors include `AggregateRoot`; every other non-mixin class is reachable only through `owned` slots (it may be owned by several root classes, e.g. a reusable value class); a non-owned slot whose range is a class must point to a root or to a reference class (`Principal`, `Activity`). *Hard*: <<hard-check>>. *Rules*: <<extensions>> |a class is owned by nothing, or reached through a non-owned slot without being a root; a module annotated `module_kind: domain` imports one annotated `technical` or `access`; a hard-check rule fails; a schema uses a rule the generated code would ignore
+|3 Domain classes |`gen-pydantic` in split mode with the toolkit's template directory: `base_model.py.jinja` makes every class inherit the toolkit's strict base `RpModel` (no extra fields, validation on assignment); metadata off; metamodel classes imported from the top-level `rdf_persistence` in an application's run; model validators for `exactly_one_of`, `any_of` and `unique_keys` |generation fails
+|4 Shapes |`gen-shacl` through `RpShaclGenerator`. Shapes are closed (`sh:closed true`), and the version token sits on the graph IRI, not the root, so the domain triples validate on their own |generation fails
+|5 JSON-LD context |`gen-jsonld-context`, with `id` and `type` aliased to `@id` and `@type`, and one frame per aggregate type (`<Class>.frame.jsonld`, with `@omitDefault`); served by the service kit (O-2). Known gaps (no `@language` containers, inlined collections keyed by `@index`) need template fixes before a schema uses those features |generation fails
+|6 TypeScript types |`gen-typescript` with the toolkit's template: interfaces only, one file per module and an `index.ts`, into the client package the application names |generation fails
+|7 Diagrams |`gen-mermaid-class-diagram`, one `.mmd` file per schema module, each showing one module's classes and their links to other modules |generation fails
 |===
 
 Each step writes to a temporary file and moves it into place only on success, so a failed run leaves
@@ -319,14 +386,16 @@ async with open_session(store, schema=SCHEMA, tenant=library_iri, caller=caller)
 ----
 
 * *Mapping* _(spike: about 70 lines, round trip equal)_: class and slot IRIs come from the schema
-  (`class_uri`, `slot_uri`, or the default prefix); owned parts become blank nodes in the root's graph;
+  (`class_uri`, `slot_uri`, or the default prefix); owned parts live in the root's graph, by IRI when their class includes `Described` and as
+  skolemised blank nodes otherwise (PD-6, PD-8a);
   references to other aggregates are IRIs; multi-valued slots are sets, so order is not kept (model an
   order slot when order matters).
 * *Commit* _(spike, Fuseki 5.1.0)_: one update deletes the graph's triples and inserts the new ones
   with a fresh version token, guarded by the old token; Fuseki answers 204 even when the guard
   matches nothing, so an `ASK` for the new token tells committed from conflict.
-* *Kinds*: an abstract root with a `designates_type` slot (`rdf:type`) lets `session.get` return the
-  concrete subclass.
+* *Kinds*: the mapper reads the class the caller asks for; it does not use `designates_type`. An owned
+  part is read as its slot's range class, so a subclass in an owned slot comes back as its parent (a
+  known limit of `rdf_persistence/services/mapper.py`, lifted when a schema owns a class hierarchy).
 
 [#guarding]
 == Guarding the generated code
@@ -345,7 +414,7 @@ output, sorted by path, with paths relative to the `pyproject.toml`.
 [cols="1,4",options="header"]
 |===
 |Recorded |Files
-|Inputs |the schema's import closure (metamodel files as `rdf_persistence/<path>`, so the manifest does not depend on where the package is installed), the template directories, and every module under `rdf_persistence/generation/` except `generated/`
+|Inputs |the schema's import closure (metamodel files as `rdf_persistence/<path>`, so the manifest does not depend on where the package is installed), the template directories, every module under `rdf_persistence/generation/` except `generated/`, and every `rdf_persistence/services/schema*.py` module (they decide how a schema is read)
 |Outputs |every file the run wrote, in every target folder, except the manifest. A run deletes only the files its previous manifest lists, never a whole folder.
 |===
 
@@ -353,6 +422,11 @@ output, sorted by path, with paths relative to the `pyproject.toml`.
 the hashes. A changed input or a different `linkml` version means *stale*; a changed output means
 *edited by hand*. Either exits 1, naming the files and the command that fixes them. Without the
 `generate` extra, only the hashes are compared.
+
+`rp-generate` does not trust its own inputs: manifest paths must be relative POSIX paths without
+`..` and hashes 64 hex digits; a run removes a listed file only if it lies under the project and
+still has its recorded hash; configured folders are relative, without `..`; the package is a dotted
+identifier; every staged file must stay inside the staging folder.
 
 [cols="2,3",options="header"]
 |===
@@ -377,10 +451,13 @@ first.
   the generated shape both accept the valid instances and refuse the invalid ones. The kinds of v1
   are `required`, `cardinality`, `range_type`, `range_enum`, `pattern`, `value_bounds`, `identifier`,
   `closed`, `exactly_one_of`, `any_of` and `unique_keys`; the test fails, naming the kind, when a
-  schema uses a kind with no row. A consumer runs it with `testkit.conformance.run(schema, cases)`.
-. *Round trips*: an instance drawn by Hypothesis from the schema goes to JSON, is expanded with the
-  generated context to RDF, then framed and compacted back; the objects compare equal and the RDF
-  graphs are isomorphic.
+  schema uses a kind with no row. A consumer runs it on its own schema with
+  `testkit.conformance.run(schema, cases)`, which returns the problems found, empty when all pass.
+. *Round trips*: an instance drawn by Hypothesis from the schema (strategies in
+  `rdf_persistence.testkit.strategies`) goes to JSON, is expanded with the generated context to RDF,
+  then framed and compacted back; the objects compare equal on their public projection (internal
+  slots never cross the context) and the RDF graphs are isomorphic. Run on the toy library's
+  aggregates and the metamodel's `TenantAccess`.
 . *Model shape*: every generated class's pydantic fields match the schema's induced slots (name,
   required, multivalued, range), which catches stale or edited code even without the manifest.
 . *A model change fails the tests until acknowledged*: `tests/fixtures/model-shape.yaml` holds the
@@ -392,22 +469,25 @@ first.
 
 === Guards against hand-written models
 
-Both guards are `testkit.assert_models_generated(package, *, roots, allow=())`, so applications get
-them too.
+Both guards are `testkit.assert_models_generated(package, *, roots, allow=(), exempt=(), layers=...)`
+(in `rdf_persistence.testkit.guards`), so applications get them too.
 
 * *Model guard*: parses every module of `domain`, `services` and `entrypoints`, skipping paths with a
   `generated` segment, and fails, naming the class, on a class deriving from `pydantic.BaseModel`,
   `RpModel`, `enum.Enum`, `enum.StrEnum`, `enum.IntEnum`, `typing.TypedDict` or `typing.NamedTuple`,
   or decorated with `dataclasses.dataclass`. Import aliases are resolved. The only default exception
-  is `RpModel` in `rdf_persistence/domain/base.py`; an application passes its own with `allow=`.
+  is `RpModel` in `rdf_persistence/domain/base.py`; an application passes its own with `allow=`, as
+  `"<path>:<ClassName>"`. This repository also scans `generation` and `testkit`, with the
+  foreign-object types of <<extensions>> in its allow-list (`tests/unit/generation/test_model_guard.py`);
+  a subclass of a LinkML generator is not flagged, so it needs no entry.
 * *File guard*: fails on `*.shacl.ttl`, `*shapes*.ttl`, `*.context.jsonld`, `*.frame.jsonld`,
   `*.schema.json`, `openapi*.json`, `openapi*.yaml` and `*.ts` (except `*.test.ts` and `*.spec.ts`)
   outside a folder named `generated`. This repository scans `rdf_persistence/` and `tests/`, with
-  `tests/fixtures/` exempt.
+  `tests/fixtures/` exempt (`exempt=`).
 
 === Versions and commits
 
-* `linkml` and `linkml-runtime` are pinned together (mismatched versions fail at import _(spike)_).
+* `linkml` and `linkml-runtime` are pinned together (mismatched versions fail at import).
   Bumping them is a deliberate change: bump, regenerate, review the diff, accept.
 * The schema and the regenerated code are committed together.
 * Generated code sits in the domain layer and imports nothing from services, adapters or entrypoints.
@@ -415,8 +495,11 @@ them too.
 [#adoption]
 == How an application adopts it
 
+The steps, with examples that run, are in xref:howto/adopt.adoc[Build an application with
+rdf-persistence]. In short:
+
 . Write `models/<app>.yaml` and one file per module, importing the metamodel; mark aggregate roots, owned slots, databases;
   write the application's role definitions (and, optionally, narrow `role` by subclassing `Grant`).
-. Add `make generate-models` calling `rp-generate`, and the freshness check to CI.
+. Add `make generate` calling `rp-generate`, and the freshness check to CI.
 . Write use-case services against `open_session` and the generated classes.
 . Write routes with the service kit; publish the OpenAPI contract and the JSON-LD context; use the generated TypeScript types in the client, checked against the contract.

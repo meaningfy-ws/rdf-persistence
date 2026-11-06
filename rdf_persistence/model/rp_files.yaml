@@ -7,6 +7,7 @@ prefixes:
   rp: https://meaningfy.ws/ns/rdf-persistence#
   linkml: https://w3id.org/linkml/
   dcterms: http://purl.org/dc/terms/
+  formats: http://www.w3.org/ns/formats/
 default_prefix: rp
 default_range: string
 imports:
@@ -67,3 +68,25 @@ slots:
     range: string
     annotations:
       internal: true
+
+enums:
+  RdfFormat:
+    title: RDF format
+    description: The serialisations a file of RDF can be loaded from.
+    permissible_values:
+      turtle:
+        title: Turtle
+        meaning: formats:Turtle
+        description: The Turtle serialisation, media type text/turtle.
+      rdfxml:
+        title: RDF/XML
+        meaning: formats:RDF_XML
+        description: The RDF/XML serialisation, media type application/rdf+xml.
+      ntriples:
+        title: N-Triples
+        meaning: formats:N-Triples
+        description: The N-Triples serialisation, media type application/n-triples.
+      jsonld:
+        title: JSON-LD
+        meaning: formats:JSON-LD
+        description: The JSON-LD serialisation, media type application/ld+json.

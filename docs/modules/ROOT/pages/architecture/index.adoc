@@ -78,7 +78,7 @@ functions, the file store, the identity port and the service kit.
 
 |Mapper
 |v1
-|Domain object to triples and back, IRIs taken from the LinkML schema at run time (spike: about 70 lines). Owned parts are blank nodes in the root's graph; references to other aggregates are IRIs; multi-valued slots are sets; the concrete class of an abstract root comes from its `designates_type` slot.
+|Domain object to triples and back, IRIs taken from the LinkML schema at run time (implemented, task 2.5: `rdf_persistence/services/mapper.py`). Owned parts live in the root's graph: by an IRI minted under the root's (`{root_iri}/parts/{uuid4}`) when their class includes `Described`, otherwise as blank nodes skolemised on write; references to other aggregates are IRIs; multi-valued slots are sets. The mapper reads the class the caller asks for (it does not use `designates_type`), and an owned part as its slot's range class, so a subclass in an owned slot comes back as its parent: a known limit, lifted when a schema owns a class hierarchy.
 |N-1
 
 |Aggregate session and repositories

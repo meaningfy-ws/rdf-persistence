@@ -1,0 +1,324 @@
+= Build an application with rdf-persistence
+:description: How an application adopts rdf-persistence: write its model in LinkML, generate its code, use the generated classes and guard them in its tests.
+
+Status: *part 1 of 2* (2026-11-05). This page covers what the toolkit does today: modelling,
+generation, the generated classes and the test guards (stage 1 of the change
+`toolkit-v1-foundation`). Storing aggregates, tenancy, files, access control and the API come in
+later stages; <<not-yet>> lists them. Every step and example on this page has been run against the
+toolkit.
+
+You write your domain once, as a LinkML schema. `rp-generate` turns it into Python classes, SHACL
+shapes, a JSON-LD context and frames, TypeScript types and Mermaid diagrams. Your code works with
+the generated classes, and the testkit fails your tests if anyone edits generated code or writes a
+model by hand. The reasons behind this are in xref:architecture/generation.adoc[Model to code].
+
+== 1. Install
+
+rdf-persistence is installed from its `develop` branch. The generators are needed at build time
+only, so they go in the dev group, together with the test helpers:
+
+[source,toml]
+----
+# pyproject.toml
+[project]
+dependencies = ["rdf-persistence"]
+
+[dependency-groups]
+dev = ["rdf-persistence[generate,testkit]", "hypothesis", "pytest"]
+
+[tool.uv.sources]
+rdf-persistence = { git = "https://github.com/meaningfy-ws/rdf-persistence", branch = "develop" }
+----
+
+Run `uv sync`. The `rp-generate` command is always installed; without the `generate` extra it exits
+with code 2 and says so.
+
+== 2. Lay out the application
+
+[source,text]
+----
+models/                       the LinkML schema: a root schema and one file per module
+library/domain/generated/     generated Python, shapes, context and frames (never edited)
+web/src/domain/generated/     generated TypeScript types (never edited)
+docs/model/                   generated diagrams, one per module
+tests/
+----
+
+Generated files go only in folders named `generated`. The file guard (<<guard>>) fails on shapes,
+contexts, schemas or TypeScript found anywhere else.
+
+== 3. Write the model
+
+Split the schema into one file per module and a root schema that imports them. A *domain module*
+holds one aggregate: its root class and the classes the root owns.
+
+[source,yaml]
+----
+# models/books.yaml
+id: https://example.org/ns/library/books
+name: books
+title: Books module
+description: Books and their chapters; the book is the aggregate root.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+  dcterms: http://purl.org/dc/terms/
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core           # the toolkit's metamodel, resolved from the package
+  - rdf_persistence/model/rp_annotations
+annotations:
+  module_kind: domain
+classes:
+  Book:
+    title: Book
+    description: A book held by a library; an aggregate root that owns its chapters.
+    mixins: [AggregateRoot, Described, Tracked]
+    slots: [author, chapters]
+    annotations:
+      rp_path: books                         # its path segment in the API and in its IRIs
+  Chapter:
+    title: Chapter
+    description: A chapter of a book; part of the book's aggregate.
+    mixins: [Described]
+    slots: [number]
+    annotations:
+      rp_unlabelled: true                    # known by its number, needs no label
+slots:
+  author:
+    title: Author
+    description: The author's name.
+    slot_uri: dcterms:creator
+  number:
+    title: Chapter number
+    description: The position of a chapter in its book.
+    range: integer
+    required: true
+  chapters:
+    title: Chapters
+    description: The book's chapters; they live in the book's graph.
+    range: Chapter
+    multivalued: true
+    inlined_as_list: true
+    annotations:
+      owned: true
+----
+
+[source,yaml]
+----
+# models/library.yaml — the root schema
+id: https://example.org/ns/library
+name: library
+title: Library
+description: The root schema of a library application.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - books
+----
+
+`rp-generate` refuses a schema that breaks these rules, and names the element at fault:
+
+[cols="2,3",options="header"]
+|===
+|Rule |In the example
+|Every class, slot, enum and permissible value has a `title` and a `description`, and every element an IRI (a `default_prefix`, or an explicit `class_uri` or `slot_uri`) |`title:` and `description:` everywhere; `default_prefix: lib`
+|Every permissible value has a `meaning`, an IRI |(no enum here; see `Genre` in the toy library)
+|An aggregate root includes `AggregateRoot` and `Described` and has an `rp_path` |`Book`
+|Every other class is owned by a root, through a slot annotated `owned: true`, and includes `Described`; one without a label of its own says `rp_unlabelled: true` |`Chapter`, through `chapters`
+|A slot that is not owned and ranges over a class points to an aggregate root; it is stored as that root's IRI |(see `scan_of` in the toy library)
+|A module annotated `module_kind: domain` imports no module annotated `technical` or `access` |`books.yaml`
+|No LinkML `rules`, `all_of` or `none_of`: the generated code would not enforce them |—
+|===
+
+More of the metamodel, each shown in the toy library under `tests/fixtures/library/` of the
+toolkit's repository:
+
+* *the tenant root*: one class annotated `graph: meta`, whose instance is the tenant itself
+  (`library_tenant.yaml`);
+* *a stored file*: a root that includes `StoredFile` (`scans.yaml`);
+* *access*: a class with `is_a: TenantAccess`, in a module annotated `module_kind: access`
+  (`library_access.yaml`), and the role definitions (`library_roles.yaml`).
+
+The full list of annotations and mixins is in
+xref:architecture/generation.adoc#metamodel[the metamodel].
+
+== 4. Generate
+
+Declare where each artefact goes:
+
+[source,toml]
+----
+# pyproject.toml
+[tool.rp-generate]
+schema = "models/library.yaml"
+package = "library.domain.generated"
+typescript = "web/src/domain/generated"
+diagrams = "docs/model"
+----
+
+Add a `make generate` target, since the checks' error messages name it:
+
+[source,makefile]
+----
+generate:
+	uv run rp-generate
+
+check-generated:
+	uv run rp-generate --check
+----
+
+`make generate` writes, under `library/domain/generated/`, one Python module per schema module
+(`books.py`, `library.py`), `shapes.ttl`, `context.jsonld`, one `<Root>.frame.jsonld` per
+aggregate root and `rp-manifest.json`; the TypeScript types, one file per module plus `index.ts`;
+and one `.mmd` diagram per module. Commit them together with the schema. Never edit them: to change
+the code, change the schema and generate again.
+
+== 5. Use the generated classes
+
+[source,python]
+----
+from pydantic import ValidationError
+
+from library.domain.generated.books import Book, Chapter
+
+book = Book(
+    id="https://example.org/library/books/1",
+    label="Dune",
+    description="A science-fiction novel.",
+    author="Frank Herbert",
+    chapters=[Chapter(id="https://example.org/library/books/1/chapters/1", number=1)],
+)
+
+Book(id="https://example.org/library/books/2", label="No description")
+# ValidationError: description: Field required (an aggregate root must be described)
+
+book.chapters[0].number = "one"
+# ValidationError: number: Input should be a valid integer (checked on assignment too)
+
+Book(id="https://example.org/library/books/3", label="L", description="D", isbn="1")
+# ValidationError: isbn: Extra inputs are not permitted
+----
+
+Every generated class derives from the toolkit's strict base, `RpModel`. It refuses unknown
+fields, validates on assignment, and enforces the rules declared in the schema: `required`,
+ranges, patterns, `exactly_one_of`, `any_of` and `unique_keys`. Each object, owned parts included,
+has an `id`. Once the session is available (stage 2), the toolkit mints a part's IRI,
+`{root_iri}/parts/{uuid4}`, when you leave it out, and keeps it across commits. The metamodel's classes (`AggregateRoot`, `Described`, `Grant`, …) are imported from
+`rdf_persistence`, never generated into your package.
+
+Use the generated classes in your domain services. Do not declare models of your own: no
+`BaseModel`, enum, dataclass, `TypedDict` or `NamedTuple` in `domain`, `services` or
+`entrypoints`. A model you need goes into the schema.
+
+[#guard]
+== 6. Guard the model in your tests
+
+The testkit adds four checks to your test suite.
+
+*Freshness.* Stop the test session if generated code is stale or was edited by hand:
+
+[source,python]
+----
+# tests/conftest.py
+pytest_plugins = ["rdf_persistence.testkit.freshness"]
+----
+
+*No hand-written models or artefacts*, *classes and shapes agree*, and *a round trip through
+RDF*:
+
+[source,python]
+----
+# tests/test_model.py
+from pathlib import Path
+
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
+from rdf_persistence.testkit import conformance
+from rdf_persistence.testkit.guards import assert_models_generated
+from rdf_persistence.testkit.roundtrip import round_trip
+from rdf_persistence.testkit.strategies import aggregate
+
+ROOT = Path(__file__).parents[1]
+SCHEMA = ROOT / "models" / "library.yaml"
+
+
+def test_no_hand_written_models():
+    assert_models_generated(ROOT / "library", roots=[ROOT / "library", ROOT / "tests"])
+
+
+def test_classes_and_shapes_agree():
+    assert conformance.run(SCHEMA, ROOT / "tests" / "conformance" / "cases.yaml") == []
+
+
+@settings(max_examples=25)
+@given(data=st.data())
+def test_a_book_survives_the_round_trip(data):
+    model = conformance.Conformance.of(SCHEMA)
+    round_trip(model, data.draw(aggregate(model, "Book")), "Book")
+----
+
+`assert_models_generated` fails on a hand-written model and names its file, line and class. If
+you really need a type that holds a foreign run-time object, pass it with
+`allow=["library/domain/<file>.py:<ClassName>"]`.
+
+`conformance.run` checks each case against both the generated class and the generated shape: the
+valid instances must pass both, and the invalid ones must fail both. It also reports any
+constraint kind your schema uses that no case covers. A case names a kind, a class and instance
+files, which live beside the cases file:
+
+[source,yaml]
+----
+# tests/conformance/cases.yaml
+- kind: required
+  class_name: Chapter
+  valid: [instances/chapter-ok.yaml]
+  invalid: [instances/chapter-no-number.yaml]
+----
+
+[source,yaml]
+----
+# tests/conformance/instances/chapter-no-number.yaml
+id: https://example.org/library/books/1/chapters/1
+----
+
+The kinds are `required`, `cardinality`, `range_type`, `range_enum`, `pattern`, `value_bounds`,
+`identifier`, `closed`, `exactly_one_of`, `any_of` and `unique_keys`.
+
+In CI and as a pre-commit step, run `rp-generate --check`. It writes nothing; it exits 1 when
+generated code is stale or was edited, and names the files.
+
+== 7. Change the model
+
+. Edit the schema.
+. Run `make generate`.
+. Add or adjust conformance cases if you used a new constraint kind; `conformance.run` names any
+  kind that has no case.
+. Run the tests, then commit the schema and the generated code together.
+
+When you upgrade rdf-persistence, run `make generate` and review the generated diff: a new
+toolkit version can change the generated code.
+
+[#not-yet]
+== Not yet available
+
+[cols="2,3,1",options="header"]
+|===
+|Part |What it will do |Stage
+|Store and session |Load an aggregate's graph into the generated classes, change it, and commit it with a version check (`open_session`); tenant databases |2
+|Files and identity |Upload and keep files in S3-compatible storage; verify access tokens; manage users in the identity provider |3
+|Access |Role definitions, grants and prohibitions; the access check behind every request |4
+|Service kit and API |A generic router serving every aggregate as JSON, JSON-LD and Turtle; the OpenAPI contract; using the TypeScript types in a client |5
+|===
+
+Their design is described in xref:architecture/index.adoc[Architecture v1],
+xref:architecture/api.adoc[A lightweight API] and
+xref:architecture/access-control.adoc[Access control and identity]. This guide gains a section for
+each part when its stage is built.

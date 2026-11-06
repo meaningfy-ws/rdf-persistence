@@ -75,12 +75,12 @@ class TenantState(str, Enum):
 
 
 class TenantLabelled(ConfiguredBaseModel):
-    "A mixin for what carries a tenant\u0027s label, one line of 1 to 200 characters; the access record and the service\u0027s request bodies share it, so the label is checked the same everywhere."
+    "A mixin for what carries a tenant\u0027s label, one line of 1 to 200 characters that neither starts nor ends in a space; the access record and the service\u0027s request bodies share it, so the label is checked the same everywhere."
     label: str = Field(default=..., title="Label", description="The preferred label of the object.")
 
     @field_validator("label")
     def pattern_label(cls, v):
-        pattern=re.compile("^.{1,200}$")
+        pattern=re.compile("^\\S(?:.{0,198}\\S)?$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.fullmatch(element):
@@ -117,7 +117,7 @@ class TenantAccess(TenantLabelled, Described, AggregateRoot, Policy):
 
     @field_validator("label")
     def pattern_label(cls, v):
-        pattern=re.compile("^.{1,200}$")
+        pattern=re.compile("^\\S(?:.{0,198}\\S)?$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.fullmatch(element):

@@ -1,0 +1,142 @@
+= Working on the toolkit
+:description: How to change rdf-persistence itself: the package layout, the generation loop, and the steps for adding a model, an extension or a check.
+
+This page is for developers changing rdf-persistence itself. To set up a machine (uv, pre-commit,
+Docker), follow `INSTALL.md` at the repository root. Why the toolchain works this way is explained
+in xref:architecture/generation.adoc[Model to code]; this page covers how to change it.
+
+Status: covers stage 1 of the change `toolkit-v1-foundation` (metamodel, generation and guards).
+The store, session, access and API parts are added here as later stages build them.
+
+== The one rule
+
+LinkML is the single source of specification
+(xref:architecture/open-decisions.adoc[D-13]). Every model artefact (classes, enums, shapes,
+JSON-LD context and frames, TypeScript types, diagrams) is generated. To change one, change the
+schema and run `make generate`. Never edit a file under a `generated/` folder by hand: the freshness
+check rejects it. Plain data records of the toolchain and the testkit are generated too. Hand-written
+types are allowed only where a field holds a run-time object LinkML cannot express (see
+<<hand-written>>).
+
+== Where things are
+
+[cols="2,4",options="header"]
+|===
+|Path |What it holds
+|`rdf_persistence/model/` |The metamodel schemas (`rp_core.yaml`, `rp_annotations.yaml`, `rp_provenance.yaml`, `rp_access.yaml`, `rp_tenancy.yaml`, `rp_files.yaml`, imported together by `rp.yaml`) and `service/rp_service.yaml`
+|`rdf_persistence/domain/generated/` |The metamodel's generated classes, shapes and context; `service/` holds the service records
+|`rdf_persistence/domain/base.py` |`RpModel`, the strict base class of every generated class
+|`rdf_persistence/services/schema.py`, `schema_structure.py` |`load_schema` (with the metamodel import map) and the rules that read a schema's aggregate structure, used by every other part
+|`rdf_persistence/generation/` |`rp-generate`: `cli.py`, `config.py` (the `[tool.rp-generate]` table), `steps.py` (the steps, in order), `pipeline.py` (staging and running them), `manifest.py` (freshness), `lint.yaml`
+|`rdf_persistence/generation/checks/` |The boundary, hard and rules checks
+|`rdf_persistence/generation/extensions/`, `templates/` |One module per extended LinkML generator, and their Jinja templates
+|`rdf_persistence/generation/model/rp_generation.yaml` |The toolchain's and testkit's own records, generated into `generation/generated/`
+|`rdf_persistence/testkit/` |Helpers shipped to applications: the freshness plugin, the guards, conformance, round-trip strategies, the model-shape snapshot, and the container fixtures under `containers/`
+|`tests/fixtures/library/` |The toy library schema, its `pyproject.toml` and its committed generated tree: the golden of every extension
+|===
+
+The layers import downward only: `entrypoints | adapters > services > domain`.
+`make check-architecture` enforces this.
+
+== Make targets
+
+[cols="2,4",options="header"]
+|===
+|Target |Use it to
+|`make install` |Install every dependency group and extra (`uv sync --all-extras`)
+|`make generate` |Regenerate every `[[tool.rp-generate]]` entry of this repository and the toy library
+|`make check-freshness` |Run `rp-generate --check` on both projects: lint, checks, and the manifest comparison
+|`make check-generated` |Regenerate from scratch and fail if anything differs from what is committed
+|`make refresh-snapshot` |Rewrite `tests/fixtures/model-shape.yaml` after a deliberate model change
+|`make refresh-golden` |Rewrite the golden folders of schemas that are not the toy
+|`make test` |Run the unit and feature tests, with the coverage floor
+|`make test-containers` |Run the integration and e2e tests against Fuseki, Garage and Zitadel (needs Docker)
+|`make check-quality` |Lint, type-check (code and generated code), architecture, spec, docs and freshness
+|`make check-all` |`check-quality` and `test`: run it before every PR
+|`make check-docs`, `make build-docs` |Check and build these docs
+|===
+
+== Change a toolkit schema
+
+This applies to the metamodel, `rp_service.yaml` and `rp_generation.yaml`.
+
+. Edit the schema. Every element needs a `title`, a `description` and an IRI; every permissible
+  value needs a `meaning`.
+. Run `make generate`. The schema and its generated code are committed together.
+. If a class gained, lost or changed a slot, the model-shape test fails on purpose. Run
+  `make refresh-snapshot` and review the diff of `tests/fixtures/model-shape.yaml` in the PR.
+. If the change introduces a new constraint kind, add a row to
+  `tests/fixtures/conformance/cases.yaml`. The coverage test names any kind that lacks one.
+. Run `make check-all`.
+
+To add a record the toolchain or testkit needs (a view-model, a problem, a settings object), declare
+it in `rp_generation.yaml`, regenerate, and import it from
+`rdf_persistence.generation.generated.rp_generation`. Use enums for value sets, never free strings.
+
+[#hand-written]
+== Add a hand-written type
+
+Only two kinds of type are written by hand:
+
+* a type whose field holds a foreign run-time object (a `SchemaView`, a callable, an rdflib graph);
+* a subclass of a LinkML generator or template class.
+
+The model guard fails on any other `BaseModel`, `RpModel`, enum, `TypedDict`, `NamedTuple` or
+dataclass outside a `generated` folder. Add a type of the first kind to `HAND_WRITTEN` in
+`tests/unit/generation/test_model_guard.py`, as `"<path>:<ClassName>"`, with a one-line comment
+saying which foreign object it holds. A test fails if an entry no longer exists. A generator
+subclass is not flagged, so it needs no entry.
+
+== Add or change a generator extension
+
+An extension closes a gap in a stock LinkML generator by subclassing it or replacing its template.
+It never patches the generated output.
+
+. Create a module in `rdf_persistence/generation/extensions/`. Its `render(schema_path: Path)`
+  returns a `list[GeneratedFile]`. Open schemas only with `load_schema` (or the metamodel import
+  map), and read aggregate structure only through `services/schema_structure.py`.
+. Add its step to `STEPS` in `rdf_persistence/generation/steps.py`, with `render_step(name, render,
+  folder)`; the folder function picks the target folder.
+. Add a row to the extensions table in
+  xref:architecture/generation.adoc#extensions[Model to code], with the module path in the first
+  column. `tests/unit/generation/test_extension_register.py` fails without it.
+. Write `tests/unit/generation/test_ext_<module>.py`. Render the step with `run_toy` and compare
+  the result with `assert_matches_toy` (the toy's committed tree is the golden). Use
+  `assert_matches_golden` only for a schema that is not the toy.
+. Run `make generate`, review the change to the toy's generated tree, and run `make check-all`.
+
+Changing a module under `generation/` or a template changes the manifests' inputs, so
+`make check-freshness` reports every target stale until you run `make generate`.
+
+Extensions subclass LinkML internals, which can change in a minor release. That is why `linkml`
+and `linkml-runtime` are pinned together. To bump them, change both pins, run `make generate`,
+review the whole generated diff, then run `make check-all`.
+
+== Add a check rule
+
+. Add the rule's value to `HardRule` or `BoundaryRule` in `rp_generation.yaml`, with a title,
+  description and meaning, and run `make generate`.
+. Implement it in `rdf_persistence/generation/checks/hard.py` or `boundary.py`, yielding a
+  `CheckProblem` through `rule_problem`.
+. Test it in `tests/unit/generation/test_hard_check.py` or `test_boundary_check.py`, with one
+  schema that breaks the rule and one that does not.
+. If the rule is normative, add it to the list in
+  xref:architecture/generation.adoc#hard-check[the hard check].
+
+A construct that the generated classes or shapes would silently ignore does not get a new rule.
+It belongs in `checks/rules.py`, so that generation fails instead.
+
+== Container tests
+
+Tests under `tests/integration/store/`, `files/` and `identity/` get the markers `store`, `files`
+and `identity` from their path, and run only with `make test-containers`. The containers are
+defined in `rdf_persistence/testkit/containers/compose.yaml`; each has a smoke test that starts it
+and checks it answers.
+
+== Before a PR
+
+* `make check-all` passes. `make test-containers` passes as well if you touched adapters or
+  containers.
+* Generated code and its schema are in the same commit, and `make check-generated` shows no diff.
+* The commit cites the change and task (`Refs: toolkit-v1-foundation 1.19`).
+* The PR targets `develop`.
