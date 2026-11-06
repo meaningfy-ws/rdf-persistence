@@ -12,6 +12,7 @@ from functools import cache
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import URIRef
 
+from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_core import RegistryKind
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
@@ -58,3 +59,11 @@ REGISTRY_KIND_IRIS = meanings(RegistryKind)
 
 STATE = predicate("state")
 TENANT_STATE_IRIS = meanings(TenantState)
+
+GRANT = predicate("grants")
+PROHIBITION = predicate("prohibitions")
+ASSIGNEE = predicate("assignee")
+TARGET = predicate("target")
+ROLE = predicate("role")
+ACTION = predicate("action")
+ACTION_IRIS = meanings(Action)

@@ -210,6 +210,13 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-13,
     404. A caller with one of them, but without the
     action, gets 403. A matching Prohibition gets 403 before anything else.
 
+  Details settled in task 4.2: a Prohibition of `read` blocks every action (each implies `read`);
+  a Prohibition of another action blocks that action only. A tenant-targeted Prohibition covers the
+  tenant's aggregates. A role grant on an aggregate uses an aggregate-level role definition; a role
+  defined only at `system` level cannot be granted. The check takes the aggregate's root IRI and
+  derives its graph IRI. A caller's access for one tenant (its state, the caller's grants and
+  prohibitions) is loaded in one query into the generated `CallerAccess`.
+
   The toy library's matrix, which task 4.3 tests (`allow`, or the status returned):
 
   | Caller | read book | modify/create book | delete book | administer grants | delete tenant | list books |

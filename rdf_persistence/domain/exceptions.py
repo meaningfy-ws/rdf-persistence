@@ -23,6 +23,10 @@ class NotFound(PersistenceError):
     """The named thing does not exist."""
 
 
+class Forbidden(PersistenceError):
+    """The caller may see the thing but is not allowed the action (403)."""
+
+
 class Conflict(PersistenceError):
     """The write lost a race, or the thing to create already exists."""
 
@@ -49,3 +53,11 @@ class InvalidToken(PersistenceError):
 
 class IdentityUnavailable(PersistenceError):
     """The identity provider's keys or management API cannot be reached, or answered with a server error."""
+
+
+class InvalidRoleDefinition(ValueError):
+    """A file of role definitions cannot be read or holds an entry that is not a role definition."""
+
+
+class UnknownRole(ValueError):
+    """A grant names a role that no tenant-level or aggregate-level role definition defines."""

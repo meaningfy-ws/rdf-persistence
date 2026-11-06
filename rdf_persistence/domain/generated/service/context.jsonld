@@ -172,6 +172,10 @@
          "@type": "@id",
          "@id": "ODRL:target"
       },
+      "tenant": {
+         "@type": "@id",
+         "@id": "tenant"
+      },
       "tenant_segment": {
          "@id": "tenantSegment"
       },
@@ -196,6 +200,9 @@
       },
       "Any": {
          "@id": "linkml:Any"
+      },
+      "CallerAccess": {
+         "@id": "CallerAccess"
       },
       "Described": {
          "@id": "Described"
