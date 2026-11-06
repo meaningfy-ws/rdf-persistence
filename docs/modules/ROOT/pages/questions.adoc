@@ -68,7 +68,8 @@ xref:develop/index.adoc#how-long-the-checks-take[How long the checks take].
 Architecture decisions are on xref:architecture/open-decisions.adoc[Decisions of 2026-11-05] (D-1
 to D-13) and in xref:architecture/index.adoc#decisions-taken[architecture v1] (O-1, O-2). The
 decisions of the work in progress (PD-1 and on) are in `openspec/changes/<id>/design.md`; once a
-change is archived, its requirements live in `openspec/specs/`.
+change is archived, its requirements live in `openspec/specs/` and the change itself, decisions
+included, in `openspec/changes/archive/` (toolkit v1: `2026-11-06-toolkit-v1-foundation`).
 
 == What to expect, and the choices you make
 
