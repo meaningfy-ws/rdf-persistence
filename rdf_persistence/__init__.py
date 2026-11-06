@@ -18,6 +18,7 @@ from rdf_persistence.domain.exceptions import (
     InvalidBody,
     InvalidGrant,
     InvalidGraph,
+    InvalidIri,
     InvalidRoleDefinition,
     InvalidToken,
     NotAcceptable,
@@ -81,6 +82,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     TenantSummary,
     VerifiedCaller,
 )
+from rdf_persistence.domain.iris import mint_aggregate_iri
 
 if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.adapters.fuseki import FusekiStore
@@ -97,6 +99,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.services.files import FileStore
     from rdf_persistence.services.identity import Identity
     from rdf_persistence.services.mapper import Mapper, UnitOfWork, generated_models, new_part
+    from rdf_persistence.services.schema import load_schema
     from rdf_persistence.services.session import Session, open_session
     from rdf_persistence.services.store import Store
     from rdf_persistence.services.sweep import sweep
@@ -125,6 +128,7 @@ _LAZY_MODULES = {
     "UnitOfWork": f"{_SERVICES}.mapper",
     "generated_models": f"{_SERVICES}.mapper",
     "new_part": f"{_SERVICES}.mapper",
+    "load_schema": f"{_SERVICES}.schema",
     "Session": f"{_SERVICES}.session",
     "open_session": f"{_SERVICES}.session",
     "Store": f"{_SERVICES}.store",
@@ -165,6 +169,7 @@ __all__ = [
     "IdentityUnavailable",
     "InvalidBody",
     "InvalidGraph",
+    "InvalidIri",
     "InvalidGrant",
     "InvalidRoleDefinition",
     "InvalidToken",
@@ -218,6 +223,8 @@ __all__ = [
     "install_service",
     "load_caller_access",
     "load_role_definitions",
+    "load_schema",
+    "mint_aggregate_iri",
     "new_part",
     "open_session",
     "sweep",

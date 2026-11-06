@@ -288,9 +288,10 @@ class CallerAccess(ConfiguredBaseModel):
 
 
 class Authorised(ConfiguredBaseModel):
-    "What a route\u0027s access check settled: the caller\u0027s access to the tenant, and the IRI of the aggregate it was checked on, which the route then acts on."
+    "What a route\u0027s access check settled: the caller\u0027s principal, its access to the tenant, and the IRI of the tenant or aggregate it was checked on, which the route then acts on."
+    principal: str = Field(default=..., title="Principal", description="The user account the token identifies.")
     caller_access: CallerAccess = Field(default=..., title="Caller access", description="The caller\u0027s access to the tenant, as the access check loaded it.")
-    checked_target: str = Field(default=..., title="Checked target", description="The IRI of the aggregate the access check was made on.")
+    checked_target: str = Field(default=..., title="Checked target", description="The IRI of the tenant or aggregate the access check was made on, which the route acts on.")
 
 
 class Page(ConfiguredBaseModel):

@@ -194,8 +194,8 @@ async def get_file(t: str, scan_id: str, request: Request) -> Response:
     return Response(await kit.files.get(bucket, scan_id), media_type="application/octet-stream")
 ----
 
-`kit.require(authorization, tenant_id, action)` does the same for an action in the tenant and
-returns the caller's access; `require_aggregate` also applies a prohibition on the aggregate and
+`kit.require(authorization, tenant_id, action)` does the same for an action in the tenant. Both
+return an `Authorised` carrying the caller's `principal` (for a domain service) and its access; `require_aggregate` also applies a prohibition on the aggregate and
 returns, in `checked_target`, the IRI it checked, which the route then acts on.
 
 *Routes* (PD-13), with `{t}` the UUID of the tenant's IRI:
@@ -224,8 +224,9 @@ keywords, at every level. Only the root and the owned parts reached from it, eac
 of the schema, may appear; any other subject is 422. An `internal` slot is refused in a body (422
 naming it) and never appears in a response. A replace keeps the stored values of the `internal`
 slots of the root and of the parts that persist, matched by their IRI (a scan keeps its file key);
-a part sent without its IRI, or without an identifier at all, cannot be matched, so its internal
-values are not kept. An IRI in a body that SPARQL cannot carry (a space, `<`, `>`, `"`, `{`, `}`,
+a part sent without its IRI is a new part, so it has no stored internal values to keep. This is by
+design: every owned part is `Described`, so it has an IRI, and a `GET` returns it for the client
+to send back. An IRI in a body that SPARQL cannot carry (a space, `<`, `>`, `"`, `{`, `}`,
 `|`, `\`, `^` or a backtick) is refused with 422 before anything is sent to the store.
 
 *Problem responses* (RFC 9457) have a fixed `type` (`{base}problems/<slug>`) and title, and every
@@ -277,7 +278,7 @@ sequenceDiagram
     Cl->>G: PUT …/books/{id} (If-Match v7)
     G->>St: CONSTRUCT the caller's access
     G->>G: AccessRules.require
-    G->>R: CallerAccess, aggregate IRI
+    G->>R: Authorised (principal, CallerAccess, aggregate IRI)
     R->>R: negotiate, If-Match, read body (size limit)
     R->>D: parse (node cap, context, strict checks)
     D->>D: validate (SHACL)
