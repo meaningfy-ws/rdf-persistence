@@ -6,6 +6,7 @@ stable and unique across providers, and ``sub`` is percent-encoded so it cannot 
 
 import asyncio
 import json
+import math
 import time
 from collections.abc import Mapping
 from http import HTTPMethod
@@ -51,6 +52,9 @@ class JwksTokenVerifier(HttpAdapter):
         allow_insecure_issuer: bool = False,
     ) -> None:
         """Verify tokens of ``issuer``, which must be an https URL unless ``allow_insecure_issuer`` (test containers)."""
+        for name, value in (("issuer", issuer), ("audience", audience), ("roles_claim", roles_claim)):
+            if not value:
+                raise ValueError(f"the {name} must not be empty")
         if not allow_insecure_issuer and not issuer.startswith(HTTPS_PREFIX):
             raise ValueError("the issuer must be an https URL")
         super().__init__(transport=transport)
@@ -109,6 +113,8 @@ class JwksTokenVerifier(HttpAdapter):
             claims = JwtClaims.model_validate(payload)
         except ValidationError as error:
             raise InvalidToken("the token's claims are malformed") from error
+        if not all(math.isfinite(t) for t in (claims.exp, claims.nbf or 0.0)):
+            raise InvalidToken("the token's times are malformed")
         if claims.exp <= now:
             raise InvalidToken("the token has expired")
         if claims.nbf is not None and claims.nbf > now:

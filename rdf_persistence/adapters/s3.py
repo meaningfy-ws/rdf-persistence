@@ -29,7 +29,7 @@ BUCKET_EXISTS = frozenset({"BucketAlreadyOwnedByYou", "BucketAlreadyExists"})
 DEFAULT_REGION = "us-east-1"  # the one region whose create_bucket takes no location constraint
 DELETE_BATCH = 1000  # DeleteObjects takes at most this many keys
 CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS, MAX_ATTEMPTS = 5, 30, 3
-PARENT_SEGMENT = ".."
+DOT_SEGMENTS = frozenset({".", ".."})
 DELETE_CHARACTER = "\x7f"
 
 log = logging.getLogger(__name__)
@@ -59,13 +59,13 @@ def _translate(error: ClientError, *, bucket_missing: type[PersistenceError]) ->
 
 
 def _checked_key(key: str) -> str:
-    """``key`` if it is a key the toolkit stores: no ``..`` segment (a path to climb out of a prefix), no control characters."""
+    """``key`` if it is a key the toolkit stores: no ``.`` or ``..`` segment (a path to climb out of a prefix), no control characters."""
     if (
         not key
-        or PARENT_SEGMENT in key.split("/")
+        or not DOT_SEGMENTS.isdisjoint(key.split("/"))
         or any(ord(c) < ord(" ") or c == DELETE_CHARACTER for c in key)
     ):
-        raise ValueError("the key is empty, has a '..' segment or has a control character")
+        raise ValueError("the key is empty, has a '.' or '..' segment or has a control character")
     return key
 
 

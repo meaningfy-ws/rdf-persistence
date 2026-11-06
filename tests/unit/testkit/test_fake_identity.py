@@ -129,3 +129,13 @@ def test_the_known_operations_are_exactly_the_async_methods_of_the_fake():
         if not name.startswith("_") and inspect.iscoroutinefunction(getattr(FakeIdentity, name))
     }
     assert methods == FakeIdentity.OPERATIONS, "an operation was added or removed without the list"
+
+
+async def test_an_error_message_names_no_email_and_no_account_id(identity):
+    secret = "someone@example.org"
+    with pytest.raises(NotFound) as by_email:
+        await identity.find_by_email(secret)
+    with pytest.raises(NotFound) as by_id:
+        await identity.disable("acct-secret-1")
+    assert secret not in str(by_email.value)
+    assert "acct-secret-1" not in str(by_id.value)

@@ -323,7 +323,7 @@ class JwtClaims(ConfiguredBaseModel):
 
     @field_validator("sub")
     def pattern_sub(cls, v):
-        pattern=re.compile("[\\s\\S]+")
+        pattern=re.compile("^\\S([\\s\\S]*\\S)?$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.fullmatch(element):
@@ -333,6 +333,20 @@ class JwtClaims(ConfiguredBaseModel):
             err_msg = "Invalid sub format: " + str(v)
             raise ValueError(err_msg)
         return v
+
+
+class FusekiDatasetList(ConfiguredBaseModel):
+    "The answer of the Fuseki administration endpoint that lists datasets."
+    model_config = ConfigDict(extra="allow")
+
+    datasets: list[FusekiDataset] = Field(default=..., title="Fuseki datasets", description="The datasets Fuseki serves.")
+
+
+class FusekiDataset(ConfiguredBaseModel):
+    "One dataset of the Fuseki dataset list."
+    model_config = ConfigDict(extra="allow")
+
+    ds_name: str = Field(default=..., alias="ds.name", title="Fuseki dataset name", description="The name of the dataset, with a leading slash.")
 
 
 class DiscoveryDocument(ConfiguredBaseModel):
@@ -374,4 +388,6 @@ ZitadelKeyAnswer.model_rebuild()
 ZitadelKeyFile.model_rebuild()
 ZitadelTokenAnswer.model_rebuild()
 JwtClaims.model_rebuild()
+FusekiDatasetList.model_rebuild()
+FusekiDataset.model_rebuild()
 DiscoveryDocument.model_rebuild()

@@ -198,7 +198,7 @@ class FakeIdentity(_Instrumented):
 
     def _account(self, account_id: str) -> AccountSummary:
         if account_id not in self._accounts:
-            raise NotFound(f"no account {account_id}")
+            raise NotFound("no such account")
         return self._accounts[account_id]
 
     async def find_by_email(self, email: str) -> AccountSummary:
@@ -206,7 +206,7 @@ class FakeIdentity(_Instrumented):
         for account in self._accounts.values():
             if account.email == email:
                 return account.model_copy(deep=True)
-        raise NotFound(f"no account with email {email}")
+        raise NotFound("no account with that email")
 
     async def list_accounts(self) -> list[AccountSummary]:
         self._enter("list_accounts", "")
@@ -224,7 +224,7 @@ class FakeIdentity(_Instrumented):
         self._enter("grant_global_role", f"{account_id} {role}")
         account = self._account(account_id)
         if self._roles is not None and role not in self._roles:
-            raise NotFound(f"no role {role}")
+            raise NotFound("the project has no such role")
         roles = account.global_roles or []
         if role not in roles:
             account.global_roles = [*roles, role]

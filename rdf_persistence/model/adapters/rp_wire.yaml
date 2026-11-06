@@ -385,6 +385,30 @@ classes:
         required: true
     annotations:
       allows_extra: 'true'
+  FusekiDatasetList:
+    title: Fuseki dataset list
+    description: >-
+      The answer of the Fuseki administration endpoint that lists datasets.
+    class_uri: rp:FusekiDatasetList
+    slots:
+      - fuseki_datasets
+    slot_usage:
+      fuseki_datasets:
+        required: true
+    annotations:
+      allows_extra: 'true'
+  FusekiDataset:
+    title: Fuseki dataset
+    description: >-
+      One dataset of the Fuseki dataset list.
+    class_uri: rp:FusekiDataset
+    slots:
+      - fuseki_dataset_name
+    slot_usage:
+      fuseki_dataset_name:
+        required: true
+    annotations:
+      allows_extra: 'true'
   DiscoveryDocument:
     title: Discovery document
     description: >-
@@ -702,7 +726,7 @@ slots:
       The account the token is for.
     slot_uri: rp:jwtSubject
     alias: sub
-    pattern: '[\s\S]+'
+    pattern: '^\S([\s\S]*\S)?$'
     annotations:
       strict: 'true'
   jwt_issuer:
@@ -748,6 +772,20 @@ slots:
       The issuer the document describes.
     slot_uri: rp:discoveryIssuer
     alias: issuer
+  fuseki_datasets:
+    title: Fuseki datasets
+    description: >-
+      The datasets Fuseki serves.
+    slot_uri: rp:fusekiDatasets
+    alias: datasets
+    range: FusekiDataset
+    multivalued: true
+  fuseki_dataset_name:
+    title: Fuseki dataset name
+    description: >-
+      The name of the dataset, with a leading slash.
+    slot_uri: rp:fusekiDatasetName
+    alias: ds.name
   discovery_jwks_uri:
     title: Discovery JWKS URI
     description: >-

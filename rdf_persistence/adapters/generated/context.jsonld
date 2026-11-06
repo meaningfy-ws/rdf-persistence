@@ -12,6 +12,14 @@
       "jwks_uri": {
          "@id": "discoveryJwksUri"
       },
+      "ds.name": {
+         "@id": "fusekiDatasetName"
+      },
+      "datasets": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "fusekiDatasets"
+      },
       "aud": {
          "@id": "zitadelAudience"
       },
@@ -164,6 +172,12 @@
       },
       "DiscoveryDocument": {
          "@id": "DiscoveryDocument"
+      },
+      "FusekiDataset": {
+         "@id": "FusekiDataset"
+      },
+      "FusekiDatasetList": {
+         "@id": "FusekiDatasetList"
       },
       "JwtClaims": {
          "@id": "JwtClaims"

@@ -323,3 +323,11 @@ def test_an_issuer_that_is_not_https_is_refused() -> None:
 
 def test_an_insecure_issuer_is_allowed_when_the_caller_opts_out() -> None:
     assert JwksTokenVerifier("http://idp.test", "aud", "roles", allow_insecure_issuer=True)
+
+
+@pytest.mark.parametrize("field", ["issuer", "audience", "roles_claim"])
+def test_an_empty_issuer_audience_or_roles_claim_is_refused(field: str) -> None:
+    arguments = {"issuer": "https://idp.test", "audience": "aud", "roles_claim": "roles"}
+    arguments[field] = ""
+    with pytest.raises(ValueError, match=field):
+        JwksTokenVerifier(**arguments)

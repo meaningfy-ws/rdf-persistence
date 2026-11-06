@@ -3,6 +3,7 @@
 import base64
 import hmac
 import json
+import math
 
 import jwt
 import pytest
@@ -116,6 +117,12 @@ INVALID_TOKENS = [
     "no-sub",
     "exp-not-a-number",
     "empty-sub",
+    "whitespace-sub",
+    "padded-sub",
+    "exp-nan",
+    "exp-infinite",
+    "nbf-nan",
+    "nbf-negative-infinite",
     "wrong-issuer",
     "wrong-audience",
     "bad-signature",
@@ -166,6 +173,12 @@ def make_invalid(name: str, signer: TokenSigner) -> str:
         "no-sub": lambda: signer.issue(sub=None),
         "exp-not-a-number": lambda: signer.issue(extra={"exp": "soon"}),
         "empty-sub": lambda: signer.issue(sub=""),
+        "whitespace-sub": lambda: signer.issue(sub="  "),
+        "padded-sub": lambda: signer.issue(sub=" u1"),
+        "exp-nan": lambda: signer.issue(extra={"exp": math.nan}),
+        "exp-infinite": lambda: signer.issue(extra={"exp": math.inf}),
+        "nbf-nan": lambda: signer.issue(extra={"nbf": math.nan}),
+        "nbf-negative-infinite": lambda: signer.issue(extra={"nbf": -math.inf}),
         "wrong-issuer": lambda: signer.issue(issuer="https://evil.example"),
         "wrong-audience": lambda: signer.issue(audience="someone-else"),
         "bad-signature": lambda: other.issue(),

@@ -6,10 +6,12 @@ from io import BytesIO
 from urllib.parse import quote
 
 import httpx
+from pydantic import ValidationError
 from rdflib import Graph, URIRef
 from rdflib.query import Result
 
 from rdf_persistence.adapters._http import CONTENT_TYPE, HttpAdapter
+from rdf_persistence.adapters.generated.rp_wire import FusekiDatasetList
 from rdf_persistence.domain.exceptions import (
     BadQuery,
     Conflict,
@@ -27,9 +29,8 @@ ACCEPT = "Accept"
 # The endpoints of a dataset, and the administration endpoint of Fuseki.
 QUERY_ENDPOINT, UPDATE_ENDPOINT, DATA_ENDPOINT = "query", "update", "data"
 ADMIN_DATASETS = "/$/datasets"
-# The form fields that create a dataset, and the keys of the dataset list.
+# The form fields that create a dataset.
 FORM_DB_NAME, FORM_DB_TYPE, DATASET_TYPE = "dbName", "dbType", "tdb2"
-LIST_DATASETS_KEY, LIST_NAME_KEY = "datasets", "ds.name"
 GRAPH_PARAM = "graph"
 # The names rdflib gives the formats Fuseki speaks.
 RDFLIB_JSON, RDFLIB_TURTLE = "json", "turtle"
@@ -140,8 +141,7 @@ class FusekiStore(HttpAdapter):
     async def list_datasets(self) -> list[str]:
         response = await self._send(HTTPMethod.GET, ADMIN_DATASETS, on_missing=NotFound)
         try:
-            return [
-                entry[LIST_NAME_KEY].lstrip("/") for entry in response.json()[LIST_DATASETS_KEY]
-            ]
-        except (ValueError, KeyError, TypeError) as error:
-            raise StoreUnavailable(f"{UNREADABLE}: {type(error).__name__}") from error
+            listing = FusekiDatasetList.model_validate_json(response.content)
+        except ValidationError as error:
+            raise StoreUnavailable(UNREADABLE) from error
+        return [entry.ds_name.lstrip("/") for entry in listing.datasets]
