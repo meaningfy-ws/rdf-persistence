@@ -17,7 +17,6 @@ from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.mapper import new_part
 from rdf_persistence.services.schema_structure import is_bookkeeping, is_internal
 from rdf_persistence.testkit.conformance import Conformance
-from rdf_persistence.testkit.roundtrip import rdf_of
 from rdf_persistence.testkit.strategies import aggregate
 from tests.fixtures.library.generated.books import Book, Chapter, Genre
 from tests.fixtures.library.generated.library import Library
@@ -120,7 +119,7 @@ def test_the_graph_is_the_one_the_generated_context_gives(name: str, data: st.Da
         for s in view.class_induced_slots(c)
         if is_internal(s)
     }
-    by_context = Graph().parse(data=rdf_of(toy(), obj, name), format="nt")
+    by_context = toy().graph_of(obj, name)
     expected = Graph()
     for s, p, o in by_context:
         if p not in v.BOOKKEEPING_PREDICATES:

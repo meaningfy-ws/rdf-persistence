@@ -78,3 +78,9 @@ def test_the_output_is_reproducible(rendered: Path, tmp_path: Path) -> None:
     again = run_toy(COMPONENTS_STEP, tmp_path)
     name = Path(str(TOY_TARGET.python)) / COMPONENTS_FILE
     assert (again / name).read_bytes() == (rendered / name).read_bytes()
+
+
+def test_a_target_that_serves_nothing_gets_no_components_file(tmp_path: Path) -> None:
+    quiet = TOY_TARGET.model_copy(update={"openapi": False})
+    staged = run_toy(COMPONENTS_STEP, tmp_path, quiet)
+    assert not list(staged.rglob(COMPONENTS_FILE)), "the target switched the step off"

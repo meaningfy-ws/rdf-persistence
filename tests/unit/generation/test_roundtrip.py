@@ -9,8 +9,9 @@ from pathlib import Path
 import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
+from linkml_runtime.linkml_model.meta import ClassDefinition
+from rdflib import Graph
 
-from rdf_persistence.testkit import roundtrip
 from rdf_persistence.testkit.conformance import Conformance
 from rdf_persistence.testkit.roundtrip import round_trip
 from rdf_persistence.testkit.strategies import IRI_BASE, aggregate
@@ -68,12 +69,12 @@ def test_a_round_trip_that_loses_a_value_is_caught(monkeypatch: pytest.MonkeyPat
     book = toy.models["Book"].model_validate(
         {"id": f"{IRI_BASE}1", "label": "Dune", "description": "A planet.", "isbn": "9780441172719"}
     )
-    real = roundtrip.framed_json
+    real = toy.documents.frame
 
-    def lossy(conformance: Conformance, nquads: str, class_name: str) -> dict:
-        return {k: v for k, v in real(conformance, nquads, class_name).items() if k != "isbn"}
+    def lossy(graph: Graph, cls: ClassDefinition) -> dict:
+        return {k: v for k, v in real(graph, cls).items() if k != "isbn"}
 
-    monkeypatch.setattr(roundtrip, "framed_json", lossy)
+    monkeypatch.setattr(toy.documents, "frame", lossy)
     with pytest.raises(AssertionError, match="objects differ"):
         round_trip(toy, book, "Book")
 

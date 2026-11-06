@@ -10,11 +10,9 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Any
 
-from rdf_persistence.services.artifacts import COMPONENTS_FILE
+from rdf_persistence.services.artifacts import COMPONENT_REFERENCES, COMPONENTS_FILE, REF, SCHEMAS
 from rdf_persistence.services.schema import PACKAGE_DIR
 
-COMPONENTS = "#/components/schemas/"
-SCHEMAS = "schemas"
 TOOLKIT_FOLDER = PACKAGE_DIR / "domain" / "generated" / "service"
 
 # One component schema: JSON data of the OpenAPI document, not a model of ours.
@@ -36,8 +34,8 @@ def _references(node: Any) -> Iterator[str]:
     """The names of the component schemas a JSON Schema node refers to."""
     if isinstance(node, dict):
         for key, value in node.items():
-            if key == "$ref" and isinstance(value, str) and value.startswith(COMPONENTS):
-                yield value.removeprefix(COMPONENTS).split("/")[0]
+            if key == REF and isinstance(value, str) and value.startswith(COMPONENT_REFERENCES):
+                yield value.removeprefix(COMPONENT_REFERENCES).split("/")[0]
             else:
                 yield from _references(value)
     elif isinstance(node, list):

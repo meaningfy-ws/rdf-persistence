@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from rdflib import Graph, URIRef
 from rdflib.query import Result
 
-from rdf_persistence.adapters._http import CONTENT_TYPE, HttpAdapter
+from rdf_persistence.adapters._http import HttpAdapter
 from rdf_persistence.adapters.generated.rp_wire import FusekiDatasetList
 from rdf_persistence.domain.exceptions import (
     BadQuery,
@@ -20,12 +20,11 @@ from rdf_persistence.domain.exceptions import (
     PersistenceError,
     StoreUnavailable,
 )
+from rdf_persistence.domain.media import ACCEPT, CONTENT_TYPE, TURTLE
 
 SPARQL_QUERY = "application/sparql-query"
 SPARQL_UPDATE = "application/sparql-update"
 RESULTS_JSON = "application/sparql-results+json"
-TURTLE = "text/turtle"
-ACCEPT = "Accept"
 # The endpoints of a dataset, and the administration endpoint of Fuseki.
 QUERY_ENDPOINT, UPDATE_ENDPOINT, DATA_ENDPOINT = "query", "update", "data"
 ADMIN_DATASETS = "/$/datasets"

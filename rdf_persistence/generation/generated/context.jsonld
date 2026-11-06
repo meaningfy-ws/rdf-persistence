@@ -159,6 +159,9 @@
       "need": {
          "@id": "need"
       },
+      "openapi": {
+         "@id": "openapiComponents"
+      },
       "option": {
          "@id": "option"
       },

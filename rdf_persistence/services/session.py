@@ -30,11 +30,14 @@ from rdf_persistence.domain.iris import (
 )
 from rdf_persistence.domain.sparql import Triple, fill, term, term_list, triples_block
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.listing import fetch
+from rdf_persistence.services.listing import listing_query
 from rdf_persistence.services.loading import parse_graph
 from rdf_persistence.services.store import Store
 
 Clock = Callable[[], datetime]
+# What a read of an aggregate answers: its triples with the bookkeeping, the graph that holds them
+# (where the tracking statements are made, PD-7) and its version token.
+Stored = tuple[Graph, URIRef, str]
 
 READ_STORED = """
 SELECT ?version ?created ?creator ?contributor WHERE {
@@ -292,7 +295,7 @@ class Session:
             created=created, creator=creator, contributor=contributors
         )
 
-    async def get_graph(self, iri: str) -> tuple[Graph, URIRef, str]:
+    async def get_graph(self, iri: str) -> Stored:
         """``(graph, graph_iri, version)`` of the aggregate: its stored triples with the bookkeeping,
         the IRI of the named graph that holds them, and its version token.
 
@@ -317,7 +320,8 @@ class Session:
         Raises:
             DatabaseGone: The tenant database does not exist.
         """
-        return await fetch(self._store, self._database, self._registry, plan)
+        result = await self._store.query(self._database, listing_query(self._registry, plan))
+        return result.graph or Graph()
 
     async def add_graph(
         self, iri: str, triples: Iterable[Triple], loaded_graphs: Sequence[URIRef] = ()

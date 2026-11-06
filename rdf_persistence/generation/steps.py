@@ -102,6 +102,10 @@ def _python_folder(run: Run) -> Path:
     return run.python_dir
 
 
+def _components_folder(run: Run) -> Path | None:
+    return run.python_dir if run.target.openapi else None
+
+
 def _typescript_folder(run: Run) -> Path | None:
     return Path(run.target.typescript) if run.target.typescript else None
 
@@ -117,7 +121,7 @@ RULES_STEP = check_step("rules check", _rules_problems)
 PYTHON_STEP = render_step("python", pydantic_split.render, _python_folder)
 SHAPES_STEP = render_step("shapes", shacl.render, _python_folder)
 CONTEXT_STEP = render_step("context", jsonld_context.render, _python_folder)
-COMPONENTS_STEP = render_step("openapi components", components.render, _python_folder)
+COMPONENTS_STEP = render_step("openapi components", components.render, _components_folder)
 TYPESCRIPT_STEP = render_step("typescript", typescript.render, _typescript_folder)
 DIAGRAMS_STEP = render_step("diagrams", mermaid.render, _diagrams_folder)
 

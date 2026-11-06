@@ -27,7 +27,7 @@
     },
     {
       "path": "rdf_persistence/generation/components.py",
-      "sha256": "f04a8acd93db5f68f0c256e4ae83fbb6249dc2751c4bf22fffcdc1d1bd925523"
+      "sha256": "cedfb9cb9e3745c7ee5f587f674c86182b44e55f4ea8a421be56fec5dac8e45f"
     },
     {
       "path": "rdf_persistence/generation/config.py",
@@ -43,7 +43,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/jsonld_context.py",
-      "sha256": "16dfbe0cb89951f870092f4fb1fee5a95c2cc680573c3f98c6a2733712935a8e"
+      "sha256": "1019afc6c1d50ce9097fa97f2caf5d08ff0dc553125be6b1f145da500cb2664d"
     },
     {
       "path": "rdf_persistence/generation/extensions/mermaid.py",
@@ -83,7 +83,7 @@
     },
     {
       "path": "rdf_persistence/generation/steps.py",
-      "sha256": "33ba6eecf60d6c83570f79a0ba765a9f33c099a1eff81bf545646da0e9bf7d6d"
+      "sha256": "bdbcff141585785ec0e120f059c2058baa3f6f13debebb46b3c5fe92212287da"
     },
     {
       "path": "rdf_persistence/generation/templates/mermaid/module.mmd.jinja",
@@ -139,7 +139,7 @@
     },
     {
       "path": "rdf_persistence/services/schema_structure.py",
-      "sha256": "e36be20c58a6057d1e2953609b54fac63b3b4d59dcfa552acee471d54194664e"
+      "sha256": "24a4fd4c4444e831b691122f9fc184d54779e6331c62600dcbb9f957cb2b2381"
     }
   ],
   "outputs": [
@@ -150,10 +150,6 @@
     {
       "path": "rdf_persistence/adapters/generated/context.jsonld",
       "sha256": "be06c6a92743fd793a963e3b47d2bc5d6f770cf8f47d26472e8525bcf7bbd524"
-    },
-    {
-      "path": "rdf_persistence/adapters/generated/openapi-components.json",
-      "sha256": "7fff0c1a7fdcb7f1f82fe0ebe71d2450875399f8b515050fd783358636f6ccd7"
     },
     {
       "path": "rdf_persistence/adapters/generated/rp_wire.py",

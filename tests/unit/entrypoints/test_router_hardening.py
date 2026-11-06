@@ -10,25 +10,17 @@ import pytest
 from fastapi import HTTPException
 
 from rdf_persistence import Page
-from rdf_persistence.domain.exceptions import SparqlError
-from rdf_persistence.domain.iris import system_database_name, tenant_resource_name
+from rdf_persistence.domain.exceptions import BadQuery, SparqlError
+from rdf_persistence.domain.iris import graph_iri, system_database_name, tenant_resource_name
+from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.documents import JSON, JSON_LD, TURTLE
 from tests.toy import SETTINGS
-from tests.toy_service import ToyService
-from tests.unit.entrypoints.scene import BOOK, PROBLEMS, TENANT_BODY, Scene, problem_of
+from tests.toy_service import DUNE_BODY, SCAN_BODY, TENANT_BODY, ToyService
+from tests.unit.entrypoints.scene import PROBLEMS, Scene, problem_of
 
 RP = "https://meaningfy.ws/ns/rdf-persistence#"
 ODRL = "http://www.w3.org/ns/odrl/2/"
 SECRET = "SECRET-FILE-KEY"
-SCAN = {
-    "label": "Dune, scanned",
-    "description": "A scanned copy.",
-    "file_name": "dune.pdf",
-    "media_type": "application/pdf",
-    "byte_size": 12,
-    "sha256": "0" * 64,
-}
 SMALL = 4096
 LD_HEADER = {"Content-Type": JSON_LD}
 
@@ -44,7 +36,7 @@ async def slug_of(response: httpx.Response, status: int) -> str:
 @pytest.mark.parametrize("key", ["file_key", "rp:fileKey", f"{RP}fileKey"])
 async def test_a_json_scan_cannot_set_the_file_key_in_any_key_form(scene, key) -> None:
     response = await scene.http.post(
-        f"{scene.tenant}/scans", json={**SCAN, key: SECRET}, headers=scene.headers("ada")
+        f"{scene.tenant}/scans", json={**SCAN_BODY, key: SECRET}, headers=scene.headers("ada")
     )
     assert await slug_of(response, 422) == "invalid-body", response.text
     assert "file_key" in response.json()["detail"], "the slot is named"
@@ -54,7 +46,7 @@ async def test_a_json_ld_scan_cannot_set_the_file_key(scene) -> None:
     body = {
         "@context": [scene.service.kit.documents.context, {"rp": RP}],
         "type": "Scan",
-        **SCAN,
+        **SCAN_BODY,
         "rp:fileKey": SECRET,
     }
     response = await scene.http.post(
@@ -66,7 +58,9 @@ async def test_a_json_ld_scan_cannot_set_the_file_key(scene) -> None:
 
 @pytest.mark.parametrize("media_type", [JSON, JSON_LD, TURTLE])
 async def test_a_stored_file_key_is_in_no_representation_and_no_listing(scene, media_type) -> None:
-    made = await scene.http.post(f"{scene.tenant}/scans", json=SCAN, headers=scene.headers("ada"))
+    made = await scene.http.post(
+        f"{scene.tenant}/scans", json=SCAN_BODY, headers=scene.headers("ada")
+    )
     location, iri = made.headers["location"], made.json()["id"]
     database = tenant_resource_name(SETTINGS.prefix, scene.tenant_iri)
     await scene.service.store.update(
@@ -81,16 +75,44 @@ async def test_a_stored_file_key_is_in_no_representation_and_no_listing(scene, m
     assert SECRET not in listing.text, "and neither does a listing"
 
 
+async def stores_file_key(scene, iri: str) -> bool:
+    database = tenant_resource_name(SETTINGS.prefix, scene.tenant_iri)
+    ask = f'ASK {{ GRAPH <{graph_iri(iri)}> {{ <{iri}> <{RP}fileKey> "{SECRET}" }} }}'
+    return bool((await scene.service.store.query(database, ask)).askAnswer)
+
+
+async def test_a_replace_keeps_the_internal_values_the_service_stored(scene) -> None:
+    made = await scene.http.post(
+        f"{scene.tenant}/scans", json=SCAN_BODY, headers=scene.headers("ada")
+    )
+    location, iri, etag = made.headers["location"], made.json()["id"], made.headers["etag"]
+    database = tenant_resource_name(SETTINGS.prefix, scene.tenant_iri)
+    await scene.service.store.update(
+        database,
+        f'INSERT DATA {{ GRAPH <{graph_iri(iri)}> {{ <{iri}> <{RP}fileKey> "{SECRET}" }} }}',
+    )
+    replaced = await scene.http.put(
+        location,
+        json={**SCAN_BODY, "label": "Dune, rescanned"},
+        headers=scene.headers("ada", **{"If-Match": etag}),
+    )
+    assert replaced.status_code == 200, replaced.text
+    assert SECRET not in replaced.text, "and it is still shown to no one"
+    assert await stores_file_key(scene, iri), "the client cannot set the key, so a replace keeps it"
+
+
 # --- nodes the aggregate does not own ---------------------------------------------------------
 
 
 async def test_a_node_smuggled_through_a_reference_is_a_422_and_nothing_is_stored(scene) -> None:
-    made = await scene.http.post(f"{scene.tenant}/scans", json=SCAN, headers=scene.headers("ada"))
+    made = await scene.http.post(
+        f"{scene.tenant}/scans", json=SCAN_BODY, headers=scene.headers("ada")
+    )
     location, iri, etag = made.headers["location"], made.json()["id"], made.headers["etag"]
     smuggled = {"@id": f"{iri}/smuggled", "junk": "anything"}
     response = await scene.http.put(
         location,
-        json={**SCAN, "scan_of": smuggled},
+        json={**SCAN_BODY, "scan_of": smuggled},
         headers=scene.headers("ada", **{"If-Match": etag}),
     )
     assert await slug_of(response, 422) == "invalid-body", response.text
@@ -156,7 +178,7 @@ async def test_a_body_within_the_bound_is_taken(small) -> None:
     async with small.client() as http:
         made = await http.post("/libraries", json=TENANT_BODY, headers=small.bearer("ada"))
         response = await http.post(
-            f"{made.headers['location']}/books", json=BOOK, headers=small.bearer("ada")
+            f"{made.headers['location']}/books", json=DUNE_BODY, headers=small.bearer("ada")
         )
     assert response.status_code == 201, response.text
 
@@ -176,7 +198,7 @@ async def test_a_body_of_too_many_objects_is_a_413(scene) -> None:
     async with asyncio.timeout(5):  # a body that is expanded first takes minutes
         response = await scene.http.post(
             f"{scene.tenant}/books",
-            json={**BOOK, "chapters": chapters},
+            json={**DUNE_BODY, "chapters": chapters},
             headers=scene.headers("ada"),
         )
     assert await slug_of(response, 413) == "payload-too-large", response.text
@@ -235,7 +257,7 @@ async def test_the_link_header_includes_the_prefix_the_service_is_mounted_under(
     async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
         made = await http.post("/v1/libraries", json=TENANT_BODY, headers=toy.bearer("ada"))
         book = await http.post(
-            f"{made.headers['location']}/books", json=BOOK, headers=toy.bearer("ada")
+            f"{made.headers['location']}/books", json=DUNE_BODY, headers=toy.bearer("ada")
         )
         link = book.headers["link"]
         context = await http.get("/v1/context.jsonld")
@@ -248,6 +270,14 @@ async def test_the_link_header_includes_the_prefix_the_service_is_mounted_under(
 
 async def test_a_sparql_error_from_a_template_is_a_500_without_detail(scene) -> None:
     scene.service.store.on("query", SparqlError("secret detail of a template"), after=0)
+    response = await scene.http.get(scene.book, headers=scene.headers("ada"))
+    assert await slug_of(response, 500) == "internal-error", response.text
+    assert "secret" not in response.text, "no detail"
+
+
+async def test_a_query_the_store_refuses_is_a_500_without_detail(scene) -> None:
+    """The toolkit wrote every query it sends, so a store that finds one malformed is the service's fault."""
+    scene.service.store.on("query", BadQuery("secret syntax error at line 3"), after=0)
     response = await scene.http.get(scene.book, headers=scene.headers("ada"))
     assert await slug_of(response, 500) == "internal-error", response.text
     assert "secret" not in response.text, "no detail"
@@ -292,7 +322,7 @@ async def test_a_create_naming_an_iri_in_the_tenant_is_refused_and_nothing_is_th
     chosen = str(uuid4())
     response = await scene.http.post(
         f"{scene.tenant}/books",
-        json={**BOOK, "id": f"{scene.tenant_iri}/books/{chosen}"},
+        json={**DUNE_BODY, "id": f"{scene.tenant_iri}/books/{chosen}"},
         headers=scene.headers("ada"),
     )
     assert await slug_of(response, 422) == "invalid-body", response.text

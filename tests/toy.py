@@ -2,6 +2,7 @@
 
 from functools import cache
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
 from rdf_persistence import (
@@ -122,5 +123,10 @@ SETTINGS = ServiceSettings(
 
 
 def library(city: str = "Ghent", iri: str = TENANT) -> Library:
-    """A tenant root; ``Tenancy.create`` gives it the tenant IRI it mints."""
+    """A tenant root."""
     return Library(id=iri, label="City library", description="Books for all.", city=city)
+
+
+def library_slots(city: str = "Ghent") -> dict[str, Any]:
+    """The slots of a tenant root, as ``Tenancy.create`` takes them: it mints the ``id``."""
+    return library(city).model_dump(exclude={"id"}, exclude_none=True)

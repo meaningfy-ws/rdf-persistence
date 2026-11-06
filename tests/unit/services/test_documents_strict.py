@@ -6,7 +6,8 @@ import pytest
 from rdflib import RDF, Graph, Literal, URIRef
 
 from rdf_persistence.domain.exceptions import InvalidBody, PayloadTooLarge
-from rdf_persistence.services.documents import JSON, JSON_LD, MAX_NODES, TURTLE
+from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
+from rdf_persistence.services.documents import MAX_NODES
 from tests.toy import TENANT, book_iri
 from tests.unit.services.test_documents import BOOK, BOOK_JSON, encoded
 

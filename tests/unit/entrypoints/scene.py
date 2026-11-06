@@ -4,20 +4,11 @@ import httpx
 
 from rdf_persistence import GrantSet, Problem
 from rdf_persistence.domain.generated.rp_access import Grant
-from rdf_persistence.entrypoints.problems import PROBLEM_MEDIA_TYPE
-from rdf_persistence.services.documents import JSON
+from rdf_persistence.domain.media import JSON, PROBLEM_JSON
 from tests.toy import SETTINGS
-from tests.toy_service import ToyService, principal_of
+from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 
 PROBLEMS = f"{SETTINGS.base}problems/"
-TENANT_BODY = {"label": "Ghent", "root": {"description": "Books for all.", "city": "Ghent"}}
-BOOK = {
-    "label": "Dune",
-    "description": "A planet.",
-    "genre": "fiction",
-    "authors": ["Herbert"],
-    "chapters": [{"number": 1, "notes": [{"label": "n", "description": "d", "text": "t"}]}],
-}
 NIL = "00000000-0000-4000-8000-00000000000"
 
 
@@ -42,7 +33,9 @@ class Scene:
         scene = cls(service, http)
         made = await http.post("/libraries", json=TENANT_BODY, headers=scene.headers("ada"))
         scene.tenant, scene.tenant_iri = made.headers["location"], made.json()["id"]
-        book = await http.post(f"{scene.tenant}/books", json=BOOK, headers=scene.headers("ada"))
+        book = await http.post(
+            f"{scene.tenant}/books", json=DUNE_BODY, headers=scene.headers("ada")
+        )
         scene.book, scene.book_etag = book.headers["location"], book.headers["etag"]
         scene.book_iri = book.json()["id"]
         grants = await http.get(f"{scene.tenant}/grants", headers=scene.headers("ada"))
@@ -64,5 +57,5 @@ class Scene:
 
 
 def problem_of(response: httpx.Response) -> Problem:
-    assert response.headers["content-type"] == PROBLEM_MEDIA_TYPE, response.text
+    assert response.headers["content-type"] == PROBLEM_JSON, response.text
     return Problem.model_validate(response.json())

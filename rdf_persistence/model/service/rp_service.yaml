@@ -513,3 +513,62 @@ slots:
     description: Whether the account may sign in; a disabled account is refused new tokens.
     slot_uri: rp:accountActive
     range: boolean
+
+enums:
+  ProblemSlug:
+    title: Problem slug
+    description: >-
+      The kinds of problem the toolkit answers with, by the last segment of their problem type IRI, with the underscores written as hyphens.
+    permissible_values:
+      invalid_token:
+        title: Invalid token
+        meaning: rp:invalidToken
+        description: No bearer token, or one the service refuses.
+      forbidden:
+        title: Forbidden
+        meaning: rp:forbidden
+        description: The caller may see the thing but is not allowed the action.
+      not_found:
+        title: Not found
+        meaning: rp:notFound
+        description: There is no such thing, or the caller cannot see it.
+      conflict:
+        title: Version conflict
+        meaning: rp:conflict
+        description: The write lost a race, or the thing to create already exists.
+      precondition_required:
+        title: Precondition required
+        meaning: rp:preconditionRequired
+        description: An update or a delete came without the version it expects.
+      invalid_body:
+        title: Invalid body
+        meaning: rp:invalidBody
+        description: The body is not a valid representation for its route.
+      not_acceptable:
+        title: Not acceptable
+        meaning: rp:notAcceptable
+        description: The service produces nothing the client accepts.
+      unsupported_media_type:
+        title: Unsupported media type
+        meaning: rp:unsupportedMediaType
+        description: The route does not take the media type of the body.
+      bad_query:
+        title: Bad query
+        meaning: rp:badQuery
+        description: The query string is not one the route takes.
+      unavailable:
+        title: Service unavailable
+        meaning: rp:unavailable
+        description: A store, the identity provider or the role definitions are not usable.
+      payload_too_large:
+        title: Payload too large
+        meaning: rp:payloadTooLarge
+        description: The body is larger than the service takes.
+      method_not_allowed:
+        title: Method not allowed
+        meaning: rp:methodNotAllowed
+        description: The route has no such method.
+      internal_error:
+        title: Internal error
+        meaning: rp:internalError
+        description: The service failed; the answer says no more.

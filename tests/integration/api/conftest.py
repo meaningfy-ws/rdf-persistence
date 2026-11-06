@@ -10,22 +10,7 @@ import httpx
 import pytest
 
 from rdf_persistence import FusekiStore
-from tests.toy_service import ToyService, unique_prefix
-
-TENANT_BODY = {"label": "Ghent", "root": {"description": "Books for all.", "city": "Ghent"}}
-BOOK = {
-    "label": "Dune",
-    "description": "A planet.",
-    "genre": "fiction",
-    "authors": ["Herbert"],
-    "chapters": [{"number": 1, "notes": [{"label": "n", "description": "d", "text": "t"}]}],
-}
-
-
-async def drop_databases(store: FusekiStore, prefix: str) -> None:
-    for name in await store.list_datasets():
-        if name.startswith(f"{prefix}-"):
-            await store.drop_dataset(name)
+from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, drop_databases, unique_prefix
 
 
 @pytest.fixture
@@ -47,12 +32,16 @@ async def client(toy: ToyService) -> AsyncIterator[httpx.AsyncClient]:
         yield http
 
 
-async def make_book(toy: ToyService, http: httpx.AsyncClient, who: str = "ada") -> httpx.Response:
-    """A tenant made by ``who``, and a book in it: the answer to the book's creation."""
+async def make_tenant(toy: ToyService, http: httpx.AsyncClient, who: str = "ada") -> str:
+    """A tenant made by ``who``: the path of its collection of routes."""
     tenant = await http.post("/libraries", json=TENANT_BODY, headers=toy.bearer(who))
     assert tenant.status_code == 201, tenant.text
-    book = await http.post(
-        f"{tenant.headers['location']}/books", json=BOOK, headers=toy.bearer(who)
-    )
+    return str(tenant.headers["location"])
+
+
+async def make_book(toy: ToyService, http: httpx.AsyncClient, who: str = "ada") -> httpx.Response:
+    """A tenant made by ``who``, and a book in it: the answer to the book's creation."""
+    tenant = await make_tenant(toy, http, who)
+    book = await http.post(f"{tenant}/books", json=DUNE_BODY, headers=toy.bearer(who))
     assert book.status_code == 201, book.text
     return book

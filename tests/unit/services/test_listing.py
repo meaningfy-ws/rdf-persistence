@@ -10,10 +10,11 @@ from rdf_persistence.services.listing import (
     Listings,
     list_request,
     listable_slots,
+    sort_keys,
     typed_value,
 )
 from rdf_persistence.services.schema import load_schema
-from tests.toy import TOY_SCHEMA
+from tests.toy import TOY_SCHEMA, dune, toy_mapper
 
 SCHEMA_ORG = "http://schema.org/"
 
@@ -178,3 +179,23 @@ def test_a_literal_filter_keeps_its_datatype_in_the_plan(listings, view):
 def test_the_graphs_hidden_from_the_caller_are_in_the_plan(listings, view):
     plan = plan_of(listings, view, hidden=["https://example.org/g"])
     assert plan.hidden_graphs == ["https://example.org/g"]
+
+
+def test_the_mapper_and_the_listing_hold_a_value_as_the_same_term(view):
+    """One rule makes the term of a value: what the mapper writes, a filter on it matches."""
+    mapped = toy_mapper().to_graph(dune("https://example.org/library/books/1"))
+    stored = {o for _, _, o in mapped}
+    book = view.get_class("Book")
+    slots = listable_slots(view, book)
+    for name, text in [("genre", "fiction"), ("authors", "Herbert")]:
+        assert typed_value(view, slots[name], text) in stored, f"a filter on {name} matches"
+
+
+def test_the_sort_keys_are_the_identifier_and_the_listable_slots_up_and_down(view):
+    keys = sort_keys(view, view.get_class("Book"))
+    assert keys[0] == "id" and "-id" in keys, "the identifier orders by IRI"
+    assert {"label", "published", "-label", "-published"} <= set(keys)
+    assert not {"chapters", "-chapters", "created"} & set(keys), "no owned part, no bookkeeping"
+    assert (
+        len(keys) == len(set(keys)) == 2 * (len(listable_slots(view, view.get_class("Book"))) + 1)
+    )

@@ -11,8 +11,8 @@ caller, before it counts and pages. It is JSON or JSON-LD, never Turtle (PD-15).
 """
 
 import json
-from collections.abc import Iterable
-from typing import Any, cast
+from collections.abc import Awaitable
+from http import HTTPMethod, HTTPStatus
 
 from fastapi import APIRouter, Depends, Request, Response
 from linkml_runtime.linkml_model.meta import ClassDefinition
@@ -33,11 +33,12 @@ from rdf_persistence.domain.generated.service.rp_service import (
     TenantSummary,
     VerifiedCaller,
 )
-from rdf_persistence.domain.iris import graph_iri, mint_aggregate_iri
-from rdf_persistence.domain.sparql import Triple
+from rdf_persistence.domain.iris import graph_iri
+from rdf_persistence.domain.media import ACCEPT, CONTENT_LENGTH, CONTENT_TYPE, JSON, JSON_LD
 from rdf_persistence.entrypoints.auth import Gate
-from rdf_persistence.entrypoints.kit import CONTEXT_FILE_NAME, ServiceKit
+from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.negotiation import (
+    IF_MATCH,
     accepted_listing_type,
     accepted_media_type,
     expected_version,
@@ -45,20 +46,15 @@ from rdf_persistence.entrypoints.negotiation import (
 )
 from rdf_persistence.entrypoints.openapi import AggregateOpenApi, TenantOpenApi
 from rdf_persistence.entrypoints.responses import (
-    ACCEPT,
     document_response,
     model_response,
     page_response,
 )
-from rdf_persistence.services.documents import JSON, JSON_LD
+from rdf_persistence.services.artifacts import CONTEXT_FILE, CONTEXT_KEY
 from rdf_persistence.services.listing import items_of, list_request, total_of
+from rdf_persistence.services.session import Stored
 
-IF_MATCH = "If-Match"
-CONTENT_TYPE = "Content-Type"
-CONTENT_LENGTH = "Content-Length"
 CONTEXT_ROUTE = "context"
-NO_CONTENT = 204
-CREATED = 201
 
 
 def _last_segment(path_or_iri: str) -> str:
@@ -107,21 +103,30 @@ class DocumentApi:
         self._kit = kit
         self._cls = cls
 
+    def _response(
+        self,
+        read: Stored,
+        media_type: str,
+        *,
+        status: HTTPStatus = HTTPStatus.OK,
+        location: str | None = None,
+    ) -> Awaitable[Response]:
+        return document_response(
+            self._kit.context_url,
+            self._kit.documents,
+            read,
+            self._cls,
+            media_type,
+            status=status,
+            location=location,
+        )
+
     async def read(
         self, request: Request, caller: VerifiedCaller, tenant: str, iri: str
     ) -> Response:
         media_type = accepted_media_type(request.headers.get(ACCEPT))
-        async with self._kit.session(tenant, caller.principal) as session:
-            stored, graph, version = await session.get_graph(iri)
-        return await document_response(
-            self._kit.context_url,
-            self._kit.documents,
-            stored,
-            graph,
-            self._cls,
-            media_type,
-            version,
-        )
+        read = await self._kit.aggregates.read(tenant, Principal(id=caller.principal), iri)
+        return await self._response(read, media_type)
 
     async def listing(
         self, request: Request, caller: VerifiedCaller, access: CallerAccess
@@ -142,63 +147,39 @@ class DocumentApi:
         body = await self._kit.documents.render(graph, graph_iri(root), self._cls, media_type)
         return json.loads(body)
 
-    async def _body(self, request: Request, iri: str, *, creating: bool) -> Iterable[Triple]:
-        """The validated triples of the request's body, rooted at ``iri``."""
+    async def _body(self, request: Request) -> tuple[bytes, str]:
+        """The bytes of the request's body and its media type, once the route takes the type."""
         media_type = request_media_type(request.headers.get(CONTENT_TYPE), (JSON, JSON_LD))
-        documents = self._kit.documents
-        body = await limited_body(request, self._kit.max_body_bytes)
-        graph = await documents.parse(body, media_type, self._cls, iri, creating=creating)
-        await documents.validate(graph)
-        # rdflib types a graph's terms as Node; a parsed body holds only URIs, literals and blank nodes
-        return cast(Iterable[Triple], graph)
+        return await limited_body(request, self._kit.max_body_bytes), media_type
 
     async def create(
         self, request: Request, caller: VerifiedCaller, tenant: str, rp_path: str
     ) -> Response:
         media_type = accepted_media_type(request.headers.get(ACCEPT))
-        iri = str(mint_aggregate_iri(tenant, rp_path))
-        triples = await self._body(request, iri, creating=True)
-        async with self._kit.session(tenant, caller.principal) as session:
-            await session.add_graph(iri, triples)
-            stored, graph, version = await session.get_graph(iri)
-        return await document_response(
-            self._kit.context_url,
-            self._kit.documents,
-            stored,
-            graph,
-            self._cls,
-            media_type,
-            version,
-            status=CREATED,
-            location=f"{request.url.path.rstrip('/')}/{_last_segment(iri)}",
+        data, body_type = await self._body(request)
+        iri, read = await self._kit.aggregates.create(
+            tenant, Principal(id=caller.principal), self._cls, rp_path, data, body_type
         )
+        location = f"{request.url.path.rstrip('/')}/{_last_segment(iri)}"
+        return await self._response(read, media_type, status=HTTPStatus.CREATED, location=location)
 
     async def replace(
         self, request: Request, caller: VerifiedCaller, tenant: str, iri: str
     ) -> Response:
         media_type = accepted_media_type(request.headers.get(ACCEPT))
         expected = expected_version(request.headers.get(IF_MATCH))
-        triples = await self._body(request, iri, creating=False)
-        async with self._kit.session(tenant, caller.principal) as session:
-            await session.replace_graph(iri, triples, expected)
-            stored, graph, version = await session.get_graph(iri)
-        return await document_response(
-            self._kit.context_url,
-            self._kit.documents,
-            stored,
-            graph,
-            self._cls,
-            media_type,
-            version,
+        data, body_type = await self._body(request)
+        read = await self._kit.aggregates.replace(
+            tenant, Principal(id=caller.principal), self._cls, iri, data, body_type, expected
         )
+        return await self._response(read, media_type)
 
     async def remove(
         self, request: Request, caller: VerifiedCaller, tenant: str, iri: str
     ) -> Response:
         expected = expected_version(request.headers.get(IF_MATCH))
-        async with self._kit.session(tenant, caller.principal) as session:
-            await session.remove(iri, expected)
-        return Response(status_code=NO_CONTENT)
+        await self._kit.aggregates.remove(tenant, Principal(id=caller.principal), iri, expected)
+        return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
 class TenantApi:
@@ -209,23 +190,13 @@ class TenantApi:
 
     async def create(self, request: Request, caller: VerifiedCaller) -> Response:
         body = await read_model(request, TenantCreate, self._kit.max_body_bytes)
-        summary = await self._kit.tenancy.create(
-            body.label, self._root(body), Principal(id=caller.principal)
-        )
-        location = f"{request.url.path.rstrip('/')}/{_last_segment(summary.id)}"
-        return model_response(summary, status=CREATED, location=location)
-
-    def _root(self, body: TenantCreate) -> BaseModel:
-        """The tenant's root object: the slots of the body, the label defaulting to the tenant's."""
         if not isinstance(body.root, dict):
             raise InvalidBody("root must be an object holding the slots of the tenant's root")
-        if "id" in body.root:
-            raise InvalidBody("the service assigns the IRI of a new tenant")
-        placeholder = {
-            "id": self._kit.settings.base,
-            "label": body.label,
-        }  # replaced by the minted IRI
-        return self._kit.tenant_root_model.model_validate({**placeholder, **body.root})
+        summary = await self._kit.tenancy.create(
+            body.label, body.root, Principal(id=caller.principal)
+        )
+        location = f"{request.url.path.rstrip('/')}/{_last_segment(summary.id)}"
+        return model_response(summary, status=HTTPStatus.CREATED, location=location)
 
     async def listing(self, request: Request, caller: VerifiedCaller) -> Response:
         """One page of the tenants the caller may read, ordered by IRI.
@@ -246,7 +217,7 @@ class TenantApi:
     async def delete(self, request: Request, access: CallerAccess) -> Response:
         expected = expected_version(request.headers.get(IF_MATCH))
         await self._kit.tenancy.delete(access.tenant, expected)
-        return Response(status_code=NO_CONTENT)
+        return Response(status_code=HTTPStatus.NO_CONTENT)
 
     async def grants(self, access: CallerAccess) -> Response:
         record, version = await self._kit.tenancy.get(access.tenant)
@@ -274,10 +245,6 @@ class TenantApi:
         )
         summary = TenantSummary(id=access.tenant, label=update.label, state=TenantState.ACTIVE)
         return model_response(summary, version=version)
-
-
-def _add(router: APIRouter, path: str, method: str, endpoint, docs: dict[str, Any]) -> None:
-    router.add_api_route(path, endpoint, methods=[method], response_model=None, **docs)
 
 
 def add_tenant_routes(router: APIRouter, kit: ServiceKit, gate: Gate) -> None:
@@ -326,17 +293,17 @@ def add_tenant_routes(router: APIRouter, kit: ServiceKit, gate: Gate) -> None:
 
     docs = TenantOpenApi(kit.documents.tenant_root)
     routes = (
-        (collection, "GET", listing, docs.listing()),
-        (collection, "POST", create, docs.create()),
-        (member, "GET", read_root, docs.read_root()),
-        (member, "PUT", replace_root, docs.replace_root()),
-        (member, "DELETE", delete, docs.delete()),
-        (f"{member}/grants", "GET", grants, docs.grants()),
-        (f"{member}/grants", "PUT", set_grants, docs.set_grants()),
-        (f"{member}/label", "PUT", set_label, docs.set_label()),
+        (collection, HTTPMethod.GET, listing, docs.listing()),
+        (collection, HTTPMethod.POST, create, docs.create()),
+        (member, HTTPMethod.GET, read_root, docs.read_root()),
+        (member, HTTPMethod.PUT, replace_root, docs.replace_root()),
+        (member, HTTPMethod.DELETE, delete, docs.delete()),
+        (f"{member}/grants", HTTPMethod.GET, grants, docs.grants()),
+        (f"{member}/grants", HTTPMethod.PUT, set_grants, docs.set_grants()),
+        (f"{member}/label", HTTPMethod.PUT, set_label, docs.set_label()),
     )
     for path, method, endpoint, doc in routes:
-        _add(router, path, method, endpoint, doc)
+        doc.add_to(router, path, method, endpoint)
 
 
 def add_aggregate_routes(
@@ -387,22 +354,26 @@ def add_aggregate_routes(
         return await api.remove(request, caller, tenant, checked.checked_target)
 
     docs = AggregateOpenApi(kit.view, cls, rp_path)
-    _add(router, collection, "GET", listing, docs.listing())
-    _add(router, collection, "POST", create, docs.create())
-    _add(router, member, "GET", read, docs.read())
-    _add(router, member, "PUT", replace, docs.replace())
-    _add(router, member, "DELETE", remove, docs.remove())
+    docs.listing().add_to(router, collection, HTTPMethod.GET, listing)
+    docs.create().add_to(router, collection, HTTPMethod.POST, create)
+    docs.read().add_to(router, member, HTTPMethod.GET, read)
+    docs.replace().add_to(router, member, HTTPMethod.PUT, replace)
+    docs.remove().add_to(router, member, HTTPMethod.DELETE, remove)
 
 
 def add_context_route(router: APIRouter, kit: ServiceKit) -> None:
     """``GET /context.jsonld``: the generated context, public, so the ``Link`` header leads somewhere."""
 
     async def context() -> Response:
-        body = {"@context": kit.documents.context}
+        body = {CONTEXT_KEY: kit.documents.context}
         return Response(json.dumps(body, ensure_ascii=False), media_type=JSON_LD)
 
     router.add_api_route(
-        f"/{CONTEXT_FILE_NAME}", context, methods=["GET"], name=CONTEXT_ROUTE, response_model=None
+        f"/{CONTEXT_FILE}",
+        context,
+        methods=[HTTPMethod.GET],
+        name=CONTEXT_ROUTE,
+        response_model=None,
     )
 
 

@@ -10,6 +10,7 @@ so the mapper and the freshness check can use it without the ``generate`` extra.
 from collections.abc import Iterator
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 from linkml_runtime.linkml_model.meta import (
     AnonymousClassExpression,
@@ -21,6 +22,7 @@ from linkml_runtime.linkml_model.meta import (
 )
 from linkml_runtime.utils.formatutils import underscore
 from linkml_runtime.utils.schemaview import SchemaView
+from rdflib import XSD, Literal, URIRef
 
 from rdf_persistence.domain.generated.rp_core import DatabaseKind, GraphKind, RpAnnotation
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
@@ -87,6 +89,31 @@ def holds_iri(view: SchemaView, slot: SlotDefinition) -> bool:
     if slot.range in view.all_classes():
         return not is_owned(slot)
     return bool(URI_TYPES & set(view.type_ancestors(slot.range)))
+
+
+def rdf_term(view: SchemaView, slot: SlotDefinition, value: Any) -> URIRef | Literal:
+    """``value``, of a slot that holds no owned part, as the RDF term the store keeps it as.
+
+    An enum value is its permissible value's meaning IRI, or a literal of its text when it has none;
+    a reference to another aggregate and a ``uri`` are IRIs; any other value is a literal of the
+    datatype of the slot's type, a plain literal for a string. The mapper writes values and the
+    listings match them through this one rule.
+
+    Raises:
+        ValueError: ``value`` is not a permissible value of the slot's enum.
+    """
+    range_ = slot.range or str(view.schema.default_range)
+    if range_ in view.all_enums():
+        text = str(value)
+        permissible = view.get_enum(range_).permissible_values.get(text)
+        if permissible is None:
+            raise ValueError(f"{text!r} is not a value of {range_}")
+        meaning = permissible.meaning
+        return URIRef(view.expand_curie(str(meaning))) if meaning else Literal(text)
+    if holds_iri(view, slot):
+        return URIRef(str(value))
+    datatype = URIRef(view.expand_curie(str(view.get_type(range_).uri)))
+    return Literal(str(value)) if datatype == XSD.string else Literal(value, datatype=datatype)
 
 
 def is_internal(slot: object) -> bool:

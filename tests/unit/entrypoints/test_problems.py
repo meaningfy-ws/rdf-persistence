@@ -10,9 +10,10 @@ from pydantic import ValidationError
 from rdf_persistence import LabelUpdate, Problem, ProblemKind
 from rdf_persistence.domain import exceptions
 from rdf_persistence.domain.exceptions import PersistenceError
+from rdf_persistence.domain.generated.service.rp_service import ProblemSlug
+from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.problems import (
     KINDS,
-    PROBLEM_MEDIA_TYPE,
     install_problem_handlers,
     kind_of,
 )
@@ -103,12 +104,15 @@ async def test_an_error_answers_with_its_status_and_problem_type(
         TITLES[slug],
         status,
     ), "type, title and status of the body"
-    assert response.headers["content-type"] == PROBLEM_MEDIA_TYPE, "media type"
+    assert response.headers["content-type"] == PROBLEM_JSON, "media type"
 
 
 def test_the_kinds_are_exactly_the_slugs_and_titles_of_pd_15() -> None:
     assert {k.slug: k.title for k in KINDS} == TITLES, "slugs and their fixed titles"
     assert all(isinstance(k, ProblemKind) for k in KINDS), "each kind is a generated ProblemKind"
+    assert [k.slug.replace("-", "_") for k in KINDS] == [s.value for s in ProblemSlug], (
+        "one kind for each generated slug, in the order of the enum"
+    )
 
 
 @pytest.mark.parametrize("error", [exceptions.NotFound, exceptions.Forbidden, exceptions.Conflict])
@@ -149,7 +153,7 @@ async def test_a_pydantic_validation_error_is_an_invalid_body_naming_the_field()
 async def test_an_unknown_path_is_a_not_found_problem() -> None:
     response = await get(app_raising(exceptions.NotFound("x")), "/nowhere")
     assert response.status_code == 404, "status"
-    assert response.headers["content-type"] == PROBLEM_MEDIA_TYPE, (
+    assert response.headers["content-type"] == PROBLEM_JSON, (
         "even a missing route answers a problem"
     )
 

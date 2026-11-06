@@ -7,8 +7,8 @@ from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence import Problem
 from rdf_persistence.domain.iris import graph_iri
+from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.documents import JSON, JSON_LD, TURTLE
 from tests.integration.api.conftest import make_book
 from tests.toy_service import ToyService, principal_of
 

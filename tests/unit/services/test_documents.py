@@ -1,18 +1,22 @@
 """Bodies and representations of an aggregate (PD-14, PD-12): JSON and JSON-LD in, shapes, JSON, JSON-LD and Turtle out."""
 
 import json
+import shutil
 from copy import deepcopy
 
 import pytest
 from pyld import jsonld
-from rdflib import RDF, BNode, Graph, URIRef
+from rdflib import RDF, BNode, Graph, Literal, URIRef
 from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence.domain.exceptions import InvalidBody
 from rdf_persistence.domain.iris import graph_iri
+from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.documents import JSON, JSON_LD, TURTLE, Documents
-from tests.toy import TENANT, book_iri, dune, toy_mapper
+from rdf_persistence.services.documents import Documents
+from rdf_persistence.services.schema import load_schema
+from tests.toy import TENANT, TOY_SCHEMA, book_iri, dune, toy_mapper
+from tests.unit.services.conftest import GENERATED
 
 BOOK = book_iri(1)
 GRAPH = graph_iri(BOOK)
@@ -252,3 +256,45 @@ async def test_the_bookkeeping_of_the_stored_graph_is_not_shown(
     body = await documents.render(stored, GRAPH, book_class, TURTLE)
     assert "graph" not in body, "the version token is the ETag, not content"
     assert "urn:v" not in body, "the version token is the ETag, not content"
+
+
+# --- the one implementation of a body and of a frame ---------------------------------------------
+
+
+def test_expanding_a_json_body_gives_the_triples_of_the_typed_node(documents, book_class) -> None:
+    graph = documents.expand({"id": BOOK, **BOOK_JSON}, book_class)
+    assert (URIRef(BOOK), RDF.type, BOOK_TYPE) in graph, "the class gives the type"
+    assert len(set(graph.subjects(RDF.type, None))) == 3, "the book, its chapter and the note"
+
+
+def test_expanding_refuses_a_key_the_class_has_no_slot_for(documents, book_class) -> None:
+    with pytest.raises(InvalidBody, match="colour"):
+        documents.expand({**BOOK_JSON, "colour": "red"}, book_class)
+
+
+def test_framing_gives_back_the_body_that_was_expanded(documents, book_class) -> None:
+    graph = documents.expand({"id": BOOK, **BOOK_JSON}, book_class)
+    framed = documents.frame(graph, book_class)
+    assert framed["label"] == "Dune" and framed["chapters"][0]["notes"][0]["text"] == "t"
+
+
+def test_the_internal_values_of_the_nodes_a_replacement_keeps_are_kept(documents) -> None:
+    key = URIRef("https://meaningfy.ws/ns/rdf-persistence#fileKey")
+    gone = URIRef(f"{BOOK}/parts/gone")
+    stored = Graph()
+    stored.add((URIRef(BOOK), key, Literal("K")))
+    stored.add((gone, key, Literal("other")))
+    stored.add((URIRef(BOOK), URIRef("urn:public"), Literal("not internal")))
+    replacement = [(URIRef(BOOK), RDF.type, BOOK_TYPE)]
+    assert documents.internal_values(stored, replacement) == [(URIRef(BOOK), key, Literal("K"))], (
+        "only internal statements, only of nodes the replacement describes"
+    )
+
+
+def test_a_folder_without_the_frame_of_a_served_type_stops_start_up(tmp_path) -> None:
+    folder = tmp_path / "generated"
+    shutil.copytree(GENERATED, folder)
+    (folder / "Scan.frame.jsonld").unlink()
+    broken = Documents(load_schema(TOY_SCHEMA), folder)
+    with pytest.raises(FileNotFoundError, match="Scan.frame"):
+        broken.require_frames()

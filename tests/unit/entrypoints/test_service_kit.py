@@ -11,38 +11,23 @@ from fastapi.routing import APIRoute
 
 from rdf_persistence import Problem
 from rdf_persistence.domain.exceptions import InvalidRoleDefinition, NotFound
-from rdf_persistence.entrypoints.problems import PROBLEM_MEDIA_TYPE
+from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.testkit import FakeStore
 from tests.fixtures.library import generated
 from tests.toy import ROLES, SETTINGS, TOY_SCHEMA
-from tests.toy_service import ToyService
+from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
 
 PROBLEMS = f"{SETTINGS.base}problems/"
-TENANT_BODY = {"label": "Ghent", "root": {"description": "Books for all.", "city": "Ghent"}}
-BOOK_BODY = {"label": "Dune", "description": "A planet.", "authors": ["Herbert"]}
 A_UUID = "6f1c0c1e-0000-4000-8000-000000000001"
-
-
-@pytest.fixture
-async def service() -> AsyncIterator[ToyService]:
-    toy = ToyService()
-    async with toy.app.router.lifespan_context(toy.app):
-        yield toy
-
-
-@pytest.fixture
-async def client(service: ToyService) -> AsyncIterator[httpx.AsyncClient]:
-    async with service.client() as http:
-        yield http
 
 
 async def made(client: httpx.AsyncClient, headers: dict[str, str]) -> tuple[str, str, str]:
     """A tenant, and a book in it: ``(tenant path, book path, book ETag)``."""
     tenant = await client.post("/libraries", json=TENANT_BODY, headers=headers)
     path = tenant.headers["location"]
-    book = await client.post(f"{path}/books", json=BOOK_BODY, headers=headers)
+    book = await client.post(f"{path}/books", json=DUNE_BODY, headers=headers)
     return path, book.headers["location"], book.headers["etag"]
 
 
@@ -57,7 +42,7 @@ async def test_an_expired_token_is_a_401_problem_and_no_handler_runs(service, cl
     )
     problem = Problem.model_validate(response.json())
     assert response.status_code == 401, "status"
-    assert response.headers["content-type"] == PROBLEM_MEDIA_TYPE, "a problem, not bare text"
+    assert response.headers["content-type"] == PROBLEM_JSON, "a problem, not bare text"
     assert problem.type == f"{PROBLEMS}invalid-token", "the problem type"
     assert response.headers["www-authenticate"] == "Bearer", "RFC 6750"
     assert len(service.store.sent("query")) == queries_before, (
@@ -76,7 +61,7 @@ async def test_a_request_without_a_valid_bearer_token_is_a_401(
     headers = {} if authorization is None else {"Authorization": authorization}
     response = await client.get(f"/libraries/{A_UUID}", headers=headers)
     assert response.status_code == 401, f"Authorization: {authorization!r}"
-    assert response.headers["content-type"] == PROBLEM_MEDIA_TYPE, "problem media type"
+    assert response.headers["content-type"] == PROBLEM_JSON, "problem media type"
 
 
 async def test_a_token_for_another_audience_is_a_401(service, client) -> None:
@@ -153,7 +138,7 @@ async def test_an_update_without_if_match_is_a_428_problem_and_changes_nothing(
 ) -> None:
     _, book, etag = await made(client, service.bearer("ada"))
     updates = len(service.store.sent("update"))
-    response = await client.put(book, json=BOOK_BODY, headers=service.bearer("ada"))
+    response = await client.put(book, json=DUNE_BODY, headers=service.bearer("ada"))
     assert response.status_code == 428, "status"
     assert response.json()["type"] == f"{PROBLEMS}precondition-required", "problem type"
     assert len(service.store.sent("update")) == updates, "nothing was written"
@@ -170,10 +155,10 @@ async def test_a_delete_without_if_match_is_a_428(service, client) -> None:
 async def test_a_stale_if_match_is_a_409_problem(service, client) -> None:
     _, book, etag = await made(client, service.bearer("ada"))
     headers = {**service.bearer("ada"), "If-Match": etag}
-    assert (await client.put(book, json=BOOK_BODY, headers=headers)).status_code == 200, "first"
-    stale = await client.put(book, json={**BOOK_BODY, "label": "Late"}, headers=headers)
+    assert (await client.put(book, json=DUNE_BODY, headers=headers)).status_code == 200, "first"
+    stale = await client.put(book, json={**DUNE_BODY, "label": "Late"}, headers=headers)
     assert (stale.status_code, stale.json()["type"]) == (409, f"{PROBLEMS}conflict"), "second"
-    assert stale.headers["content-type"] == PROBLEM_MEDIA_TYPE, "problem media type"
+    assert stale.headers["content-type"] == PROBLEM_JSON, "problem media type"
 
 
 # --- problem handlers cover the consumer's own routes too --------------------------------------
@@ -306,7 +291,9 @@ async def test_bucket_of_a_tenant_is_its_stored_database_name(service, client) -
     path, _, _ = await made(client, service.bearer("ada"))
     iri = service.kit.tenant_iri(path.rsplit("/", 1)[1])
     record, _ = await service.kit.tenancy.get(iri)
-    assert await service.kit.bucket_of(iri) == record.database_name, "the bucket is the database name"
+    assert await service.kit.bucket_of(iri) == record.database_name, (
+        "the bucket is the database name"
+    )
 
 
 async def test_bucket_of_an_unknown_tenant_is_not_found(service) -> None:

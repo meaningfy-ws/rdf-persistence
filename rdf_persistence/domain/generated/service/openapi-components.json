@@ -515,6 +515,26 @@
       "title": "ProblemKind",
       "type": "object"
     },
+    "ProblemSlug": {
+      "description": "The kinds of problem the toolkit answers with, by the last segment of their problem type IRI, with the underscores written as hyphens.",
+      "enum": [
+        "invalid_token",
+        "forbidden",
+        "not_found",
+        "conflict",
+        "precondition_required",
+        "invalid_body",
+        "not_acceptable",
+        "unsupported_media_type",
+        "bad_query",
+        "unavailable",
+        "payload_too_large",
+        "method_not_allowed",
+        "internal_error"
+      ],
+      "title": "ProblemSlug",
+      "type": "string"
+    },
     "Prohibition": {
       "additionalProperties": false,
       "description": "The ODRL prohibition that forbids an assignee an action on a target; it wins over any permission.",

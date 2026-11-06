@@ -17,14 +17,15 @@ from linkml.generators.jsonschemagen import JsonSchemaGenerator
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation.generated.rp_generation import GeneratedFile
-from rdf_persistence.services.artifacts import COMPONENTS_FILE
+from rdf_persistence.services.artifacts import (
+    COMPONENT_REFERENCES,
+    COMPONENTS_FILE,
+    DEFINITIONS,
+    REF,
+    SCHEMAS,
+)
 from rdf_persistence.services.schema import load_schema, metamodel_importmap
 from rdf_persistence.services.schema_structure import is_bookkeeping, is_internal, json_name
-
-SCHEMAS = "schemas"
-DEFINITIONS = "#/$defs/"
-COMPONENT_REFERENCES = "#/components/schemas/"
-_REF = "$ref"
 
 # One JSON Schema definition: JSON data of a library, not a model of ours.
 JsonSchema = dict[str, Any]
@@ -38,21 +39,26 @@ def _generated(schema_path: Path) -> dict[str, JsonSchema]:
     return definitions
 
 
-def _property_names(view: SchemaView, class_name: str, *, hidden: bool) -> set[str]:
-    """The JSON names of the slots of a class that the API hides, or of its identifier."""
+def _hidden_properties(view: SchemaView, class_name: str) -> set[str]:
+    """The JSON names of the slots of a class that the API never shows."""
     return {
         json_name(slot)
         for slot in view.class_induced_slots(class_name)
-        if (is_bookkeeping(slot) or is_internal(slot) if hidden else slot.identifier)
+        if is_bookkeeping(slot) or is_internal(slot)
     }
+
+
+def _identifier_properties(view: SchemaView, class_name: str) -> set[str]:
+    """The JSON names of the identifier slots of a class."""
+    return {json_name(slot) for slot in view.class_induced_slots(class_name) if slot.identifier}
 
 
 def _trimmed(view: SchemaView, name: str, definition: JsonSchema) -> JsonSchema:
     """The definition without the slots the API does not show, its identifier read-only."""
     if name not in view.all_classes() or "properties" not in definition:
         return definition
-    hidden = _property_names(view, name, hidden=True)
-    identifiers = _property_names(view, name, hidden=False)
+    hidden = _hidden_properties(view, name)
+    identifiers = _identifier_properties(view, name)
     kept = {
         prop: {**body, "readOnly": True} if prop in identifiers else body
         for prop, body in definition["properties"].items()
@@ -72,7 +78,7 @@ def _retargeted(node: Any) -> Any:
     if isinstance(node, dict):
         return {
             key: value.replace(DEFINITIONS, COMPONENT_REFERENCES)
-            if key == _REF and isinstance(value, str)
+            if key == REF and isinstance(value, str)
             else _retargeted(value)
             for key, value in node.items()
         }

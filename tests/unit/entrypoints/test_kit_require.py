@@ -6,18 +6,9 @@ from rdf_persistence import CallerAccess, GrantSet
 from rdf_persistence.domain.exceptions import Forbidden, InvalidToken, NotFound
 from rdf_persistence.domain.generated.rp_access import Action, Prohibition
 from rdf_persistence.domain.iris import graph_iri
-from rdf_persistence.services.documents import JSON
-from tests.toy_service import principal_of
+from rdf_persistence.domain.media import JSON
+from tests.toy_service import SCAN_BODY, principal_of
 from tests.unit.entrypoints.scene import Scene
-
-SCAN = {
-    "label": "Dune, scanned",
-    "description": "A scanned copy.",
-    "file_name": "dune.pdf",
-    "media_type": "application/pdf",
-    "byte_size": 12,
-    "sha256": "0" * 64,
-}
 
 
 def authorization(scene: Scene, who: str) -> str:
@@ -60,7 +51,9 @@ async def test_an_id_that_is_no_tenant_id_is_a_not_found(scene) -> None:
 
 
 async def scanned(scene: Scene) -> tuple[str, str]:
-    made = await scene.http.post(f"{scene.tenant}/scans", json=SCAN, headers=scene.headers("ada"))
+    made = await scene.http.post(
+        f"{scene.tenant}/scans", json=SCAN_BODY, headers=scene.headers("ada")
+    )
     return made.json()["id"], made.json()["id"].rsplit("/", 1)[-1]
 
 

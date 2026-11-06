@@ -9,6 +9,7 @@ from rdflib import Graph
 
 from rdf_persistence.domain.exceptions import InvalidGraph
 from rdf_persistence.domain.generated.rp_files import RdfFormat
+from rdf_persistence.services.artifacts import CONTEXT_KEY
 
 _RDFLIB_FORMATS = {
     RdfFormat.TURTLE: "turtle",
@@ -28,7 +29,7 @@ def _refers_outside(node: Any) -> bool:
     if not isinstance(node, dict):
         return False
     for key, value in node.items():
-        if key == "@import" or (key == "@context" and not _inline(value)):
+        if key == "@import" or (key == CONTEXT_KEY and not _inline(value)):
             return True
         if _refers_outside(value):
             return True

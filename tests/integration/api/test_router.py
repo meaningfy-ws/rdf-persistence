@@ -11,9 +11,15 @@ import pytest
 
 from rdf_persistence import Problem
 from rdf_persistence.generation.cli import main as generate
-from tests.integration.api.conftest import BOOK, TENANT_BODY, drop_databases, make_book
+from tests.integration.api.conftest import make_book
 from tests.toy import TOY_SCHEMA
-from tests.toy_service import ToyService, unique_prefix
+from tests.toy_service import (
+    DUNE_BODY,
+    TENANT_BODY,
+    ToyService,
+    drop_databases,
+    unique_prefix,
+)
 
 LIBRARY = TOY_SCHEMA.parent
 PACKAGE = "shelflib"
@@ -127,8 +133,8 @@ async def test_a_stale_replace_is_a_409_problem_and_the_book_is_unchanged(toy, c
     created = await make_book(toy, client)
     book, first = created.headers["location"], created.headers["etag"]
     headers = {**toy.bearer("ada"), "If-Match": first}
-    won = await client.put(book, json={**BOOK, "label": "First"}, headers=headers)
-    lost = await client.put(book, json={**BOOK, "label": "Second"}, headers=headers)
+    won = await client.put(book, json={**DUNE_BODY, "label": "First"}, headers=headers)
+    lost = await client.put(book, json={**DUNE_BODY, "label": "Second"}, headers=headers)
     assert won.status_code == 200, won.text
     assert lost.status_code == 409, lost.text
     assert lost.headers["content-type"] == "application/problem+json", "a problem response"
@@ -143,7 +149,10 @@ async def test_two_replaces_in_flight_leave_exactly_one_winner(toy, client) -> N
     book, etag = created.headers["location"], created.headers["etag"]
     headers = {**toy.bearer("ada"), "If-Match": etag}
     answers = await asyncio.gather(
-        *(client.put(book, json={**BOOK, "label": f"Edit {n}"}, headers=headers) for n in range(2))
+        *(
+            client.put(book, json={**DUNE_BODY, "label": f"Edit {n}"}, headers=headers)
+            for n in range(2)
+        )
     )
     assert sorted(a.status_code for a in answers) == [200, 409], (
         "one wins, the other is told to re-read"

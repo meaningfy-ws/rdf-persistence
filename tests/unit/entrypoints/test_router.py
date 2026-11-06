@@ -14,10 +14,10 @@ from rdflib.compare import graph_diff, isomorphic
 from rdf_persistence import GrantSet, Page, TenantSummary
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.domain.iris import graph_iri
-from rdf_persistence.services.documents import JSON, JSON_LD, TURTLE
+from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from tests.toy import SETTINGS
-from tests.toy_service import principal_of
-from tests.unit.entrypoints.scene import BOOK, NIL, PROBLEMS, TENANT_BODY, Scene, problem_of
+from tests.toy_service import DUNE_BODY, TENANT_BODY, principal_of
+from tests.unit.entrypoints.scene import NIL, PROBLEMS, Scene, problem_of
 
 # --- tenants ------------------------------------------------------------------------------------
 
@@ -246,7 +246,7 @@ async def test_the_tenant_root_cannot_change_its_id(scene) -> None:
 
 async def test_a_created_book_has_a_minted_iri_a_location_and_a_version(scene) -> None:
     response = await scene.http.post(
-        f"{scene.tenant}/books", json=BOOK, headers=scene.headers("ada")
+        f"{scene.tenant}/books", json=DUNE_BODY, headers=scene.headers("ada")
     )
     book = response.json()
     assert response.status_code == 201, response.text
@@ -260,7 +260,7 @@ async def test_a_created_book_has_a_minted_iri_a_location_and_a_version(scene) -
 
 
 async def test_a_book_sent_with_an_iri_on_create_is_refused(scene) -> None:
-    body = {**BOOK, "id": f"{SETTINGS.base}libraries/{NIL}1/books/{NIL}2"}
+    body = {**DUNE_BODY, "id": f"{SETTINGS.base}libraries/{NIL}1/books/{NIL}2"}
     response = await scene.http.post(
         f"{scene.tenant}/books", json=body, headers=scene.headers("ada")
     )
@@ -287,7 +287,7 @@ async def test_a_read_of_a_book_that_does_not_exist_is_a_404_problem(scene) -> N
 
 
 async def test_a_replace_changes_the_book_and_moves_its_version(scene) -> None:
-    changed = {**BOOK, "label": "Dune Messiah"}
+    changed = {**DUNE_BODY, "label": "Dune Messiah"}
     response = await scene.http.put(
         scene.book, json=changed, headers=scene.headers("ada", **{"If-Match": scene.book_etag})
     )
@@ -311,7 +311,7 @@ async def test_a_replace_with_another_id_is_refused_and_changes_nothing(scene) -
     other_id = f"{scene.tenant_iri}/books/{NIL}7"
     response = await scene.http.put(
         scene.book,
-        json={**BOOK, "id": other_id},
+        json={**DUNE_BODY, "id": other_id},
         headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
     )
     assert (response.status_code, problem_of(response).type) == (422, f"{PROBLEMS}invalid-body"), (
@@ -325,7 +325,7 @@ async def test_a_replace_with_another_id_is_refused_and_changes_nothing(scene) -
 async def test_a_replace_of_a_book_that_does_not_exist_does_not_create_it(scene) -> None:
     missing = f"{scene.tenant}/books/{NIL}9"
     response = await scene.http.put(
-        missing, json=BOOK, headers=scene.headers("ada", **{"If-Match": '"x"'})
+        missing, json=DUNE_BODY, headers=scene.headers("ada", **{"If-Match": '"x"'})
     )
     assert response.status_code == 404, "a PUT replaces; it does not create (IRIs are minted)"
 
@@ -333,10 +333,10 @@ async def test_a_replace_of_a_book_that_does_not_exist_does_not_create_it(scene)
 @pytest.mark.parametrize(
     "body",
     [
-        {k: v for k, v in BOOK.items() if k != "description"},
-        {**BOOK, "colour": "red"},
-        {**BOOK, "genre": "cookery"},
-        {**BOOK, "chapters": [{"number": "one"}]},
+        {k: v for k, v in DUNE_BODY.items() if k != "description"},
+        {**DUNE_BODY, "colour": "red"},
+        {**DUNE_BODY, "genre": "cookery"},
+        {**DUNE_BODY, "chapters": [{"number": "one"}]},
     ],
     ids=["missing-description", "unknown-slot", "unknown-enum-value", "wrong-datatype"],
 )
@@ -373,7 +373,7 @@ async def test_a_delete_removes_the_book(scene) -> None:
 
 async def test_an_unknown_aggregate_type_is_a_404(scene) -> None:
     response = await scene.http.post(
-        f"{scene.tenant}/shelves", json=BOOK, headers=scene.headers("ada")
+        f"{scene.tenant}/shelves", json=DUNE_BODY, headers=scene.headers("ada")
     )
     assert response.status_code == 404, (
         "the model has no such type, so the router has no such route"
@@ -397,9 +397,9 @@ async def test_plain_json_points_at_the_context_by_a_link_header(scene) -> None:
     response = await scene.http.get(scene.book, headers=scene.headers("ada"))
     link = response.headers["link"]
     assert response.headers["content-type"] == JSON, "plain JSON by default"
-    assert (
-        link == f'<{SETTINGS.base}context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"'
-    ), "built from the service's base"
+    assert link == f'<{SETTINGS.base}context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"', (
+        "built from the service's base"
+    )
     assert "@context" not in response.json(), "the context is linked, not inlined"
 
 
@@ -445,7 +445,7 @@ async def test_a_representation_the_service_does_not_make_is_a_406_before_anythi
 ) -> None:
     writes = len(scene.service.store.sent("update"))
     response = await scene.http.post(
-        f"{scene.tenant}/books", json=BOOK, headers=scene.headers("ada", Accept="text/html")
+        f"{scene.tenant}/books", json=DUNE_BODY, headers=scene.headers("ada", Accept="text/html")
     )
     assert (response.status_code, problem_of(response).type) == (
         406,
@@ -474,8 +474,8 @@ async def test_a_body_in_another_format_is_a_415(scene, content_type) -> None:
 Request = tuple[str, str, dict[str, Any]]
 ROUTES: dict[str, Callable[[Scene], Request]] = {
     "read a book": lambda s: ("GET", s.book, {}),
-    "create a book": lambda s: ("POST", f"{s.tenant}/books", {"json": BOOK}),
-    "replace a book": lambda s: ("PUT", s.book, {"json": BOOK, "etag": s.book_etag}),
+    "create a book": lambda s: ("POST", f"{s.tenant}/books", {"json": DUNE_BODY}),
+    "replace a book": lambda s: ("PUT", s.book, {"json": DUNE_BODY, "etag": s.book_etag}),
     "delete a book": lambda s: ("DELETE", s.book, {"etag": s.book_etag}),
     "read the grants": lambda s: ("GET", f"{s.tenant}/grants", {}),
     "replace the grants": lambda s: (
@@ -580,7 +580,7 @@ async def test_a_prohibition_beats_a_role(scene) -> None:
     )
     assert response.status_code == 200, response.text
     refused = await scene.http.put(
-        scene.book, json=BOOK, headers=scene.headers("ada", **{"If-Match": scene.book_etag})
+        scene.book, json=DUNE_BODY, headers=scene.headers("ada", **{"If-Match": scene.book_etag})
     )
     assert refused.status_code == 403, "the librarian is prohibited from modifying"
 

@@ -9,22 +9,13 @@ import pytest
 from rdf_persistence import Grant, GrantSet, JwksTokenVerifier
 from rdf_persistence.domain.generated.rp_access import Action, Prohibition
 from rdf_persistence.domain.iris import graph_iri
-from rdf_persistence.services.documents import JSON
+from rdf_persistence.domain.media import JSON
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
 from rdf_persistence.testkit.tokens import ISSUER
 from tests.e2e.library_app import build_library_app
 from tests.toy import SETTINGS
-from tests.toy_service import principal_of
-from tests.unit.entrypoints.scene import TENANT_BODY
+from tests.toy_service import SCAN_BODY, TENANT_BODY, principal_of
 
-SCAN = {
-    "label": "Dune, scanned",
-    "description": "A scanned copy.",
-    "file_name": "dune.pdf",
-    "media_type": "application/pdf",
-    "byte_size": 12,
-    "sha256": "0" * 64,
-}
 BYTES = b"%PDF-1.7 dune"
 
 
@@ -77,7 +68,7 @@ class Shelf:
         ada = self.world.as_("ada")
         made = await self.http.post("/libraries", json=TENANT_BODY, headers=ada)
         self.tenant, self.tenant_iri = made.headers["location"], made.json()["id"]
-        scan = await self.http.post(f"{self.tenant}/scans", json=SCAN, headers=ada)
+        scan = await self.http.post(f"{self.tenant}/scans", json=SCAN_BODY, headers=ada)
         self.scan_iri = scan.json()["id"]
         self.scan_id = self.scan_iri.rsplit("/", 1)[-1]
         await self.grants()

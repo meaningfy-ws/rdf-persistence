@@ -15,7 +15,7 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
 from linkml_runtime.utils.formatutils import underscore
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import ValidationError
-from rdflib import XSD, Graph, Literal, URIRef
+from rdflib import Graph, Literal, URIRef
 
 from rdf_persistence.domain.exceptions import BadQuery
 from rdf_persistence.domain.generated.rp_core import RegistryKind
@@ -33,8 +33,8 @@ from rdf_persistence.services.schema_structure import (
     holds_owned_part,
     is_bookkeeping,
     is_internal,
+    rdf_term,
 )
-from rdf_persistence.services.store import Store
 
 LIMIT, OFFSET, SORT = "limit", "offset", "sort"
 RESERVED = frozenset({LIMIT, OFFSET, SORT})
@@ -134,36 +134,33 @@ def listable_slots(view: SchemaView, cls: ClassDefinition) -> dict[str, SlotDefi
     }
 
 
-def _iri(text: str) -> URIRef:
-    if not _SCHEME.fullmatch(text):
-        raise BadQuery(f"{text!r} is not an IRI")
-    return URIRef(text)
+def sort_keys(view: SchemaView, cls: ClassDefinition) -> list[str]:
+    """The keys a listing of ``cls`` may be ordered by, ascending then descending: the identifier and the listable slots."""
+    identifier = view.get_identifier_slot(cls.name)
+    names = [
+        *([underscore(identifier.name)] if identifier else []),
+        *sorted(listable_slots(view, cls)),
+    ]
+    return [*names, *(f"{DESCENDING}{name}" for name in names)]
 
 
 def typed_value(view: SchemaView, slot: SlotDefinition, text: str) -> URIRef | Literal:
-    """``text`` as a value of the slot, the way the store holds it: by the range of the slot.
-
-    An enum value is its permissible value's name, held as the value's meaning; a reference to
-    another aggregate and a ``uri`` are IRIs; any other range is a literal of the datatype of its type.
+    """``text`` as a value of the slot, the way the store holds it (``rdf_term``).
 
     Raises:
         BadQuery: The text is not a value of the slot's range.
     """
     range_ = slot.range or str(view.schema.default_range)
-    if range_ in view.all_enums():
-        value = view.get_enum(range_).permissible_values.get(text)
-        if value is None:
-            raise BadQuery(f"{text!r} is not a value of {range_}")
-        return URIRef(view.expand_curie(str(value.meaning))) if value.meaning else Literal(text)
-    if holds_iri(view, slot):
-        return _iri(text)
-    datatype = URIRef(view.expand_curie(str(view.get_type(range_).uri)))
-    if datatype == XSD.string:
-        return Literal(text)
-    literal = Literal(text, datatype=datatype)
-    if literal.ill_typed:
+    is_enum = range_ in view.all_enums()
+    if not is_enum and holds_iri(view, slot) and not _SCHEME.fullmatch(text):
+        raise BadQuery(f"{text!r} is not an IRI")
+    try:
+        term = rdf_term(view, slot, text)
+    except ValueError as error:
+        raise BadQuery(str(error)) from error
+    if isinstance(term, Literal) and term.ill_typed and not is_enum:
         raise BadQuery(f"{text!r} is not a {range_}")
-    return literal
+    return term
 
 
 def _condition(predicate: URIRef, value: URIRef | Literal) -> Condition:
@@ -263,12 +260,6 @@ def listing_query(registry: URIRef, plan: ListPlan) -> str:
         limit=count(plan.limit),
         offset=count(plan.offset),
     )
-
-
-async def fetch(store: Store, database: str, registry: URIRef, plan: ListPlan) -> Graph:
-    """Run the listing of ``plan`` in the tenant database ``database``: the triples of its page and its total."""
-    result = await store.query(database, listing_query(registry, plan))
-    return result.graph or Graph()
 
 
 def total_of(answer: Graph, plan: ListPlan) -> int:

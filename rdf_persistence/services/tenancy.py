@@ -8,12 +8,14 @@ Work the toolkit does on its own behalf is attributed to ``{base}toolkit``.
 """
 
 import logging
-from contextlib import suppress
+from collections.abc import Mapping
+from contextlib import AbstractAsyncContextManager, suppress
+from typing import Any
 
 from pydantic import BaseModel, ValidationError
 from rdflib import Graph, URIRef
 
-from rdf_persistence.domain.exceptions import Conflict, NotFound, StoredDataInvalid
+from rdf_persistence.domain.exceptions import Conflict, InvalidBody, NotFound, StoredDataInvalid
 from rdf_persistence.domain.generated.rp_access import Action, Grant
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantAccess, TenantState
@@ -61,6 +63,7 @@ class Tenancy:
         settings: ServiceSettings,
         *,
         mapper: Mapper,
+        root_class: type[BaseModel],
         access_class: type[TenantAccess],
         clock: Clock = utc_now,
     ) -> None:
@@ -68,12 +71,15 @@ class Tenancy:
         self._files = files
         self._settings = settings
         self._mapper = mapper
+        self._root_class = root_class
         self._access_class = access_class
         self._clock = clock
         self._system = system_database_name(settings.prefix)
         self._toolkit = Principal(id=str(toolkit_principal_iri(settings.base)))
 
-    def _session(self, database: str, tenant: str, principal: Principal):
+    def _session(
+        self, database: str, tenant: str, principal: Principal
+    ) -> AbstractAsyncContextManager[Session]:
         return open_session(
             self._store,
             database=database,
@@ -82,30 +88,31 @@ class Tenancy:
             clock=self._clock,
         )
 
-    async def _commit(
-        self,
-        database: str,
-        tenant: str,
-        principal: Principal,
-        obj: BaseModel,
-        if_version: str | None = None,
-    ) -> str | None:
-        """Store ``obj`` as a new root, or, given ``if_version``, over the root already there.
+    def tenant_session(
+        self, tenant: str, principal: Principal
+    ) -> AbstractAsyncContextManager[Session]:
+        """A session on the database of ``tenant`` for ``principal``."""
+        return self._session(tenant_resource_name(self._settings.prefix, tenant), tenant, principal)
 
-        Answers the new version of a replaced root.
-        """
+    async def _add_root(
+        self, database: str, tenant: str, principal: Principal, obj: BaseModel
+    ) -> None:
+        """Store ``obj`` as a new root."""
         async with self._session(database, tenant, principal) as session:
-            if if_version is None:
-                work = UnitOfWork(session, self._mapper)
-                work.add(obj)
-                await work.commit()
-                return None
-            version: str = await session.replace_graph(
+            work = UnitOfWork(session, self._mapper)
+            work.add(obj)
+            await work.commit()
+
+    async def _replace_root(
+        self, database: str, tenant: str, principal: Principal, obj: BaseModel, if_version: str
+    ) -> str:
+        """Store ``obj`` over the root already there, if it still has ``if_version``; answers the new version."""
+        async with self._session(database, tenant, principal) as session:
+            return await session.replace_graph(
                 str(getattr(obj, "id")),  # noqa: B009 - a root always has an id
                 self._mapper.to_triples(obj),
                 if_version,
             )
-            return version
 
     async def ensure_system_database(self) -> bool:
         """Create the system database unless it exists (start-up); True if this call created it."""
@@ -115,16 +122,22 @@ class Tenancy:
             await self._store.create_dataset(self._system)
         return True
 
-    async def create(self, label: str, root: BaseModel, creator: Principal) -> TenantSummary:
+    async def create(
+        self, label: str, root_slots: Mapping[str, Any], creator: Principal
+    ) -> TenantSummary:
         """Create a tenant: its database and bucket, its root object, and last its access record.
 
-        ``root`` is the tenant's root object; its ``id`` is replaced by the tenant IRI minted here.
-        The record gives ``creator`` the settings' ``creator_role`` on the tenant. Both objects are
-        built and validated before anything is created, so a refused request leaves nothing (PD-8c).
+        ``root_slots`` are the slots of the tenant's root object, whose ``id`` is the tenant IRI
+        minted here and whose ``label`` is the tenant's unless the slots give one. The record gives
+        ``creator`` the settings' ``creator_role`` on the tenant. Both objects are built and
+        validated before anything is created, so a refused request leaves nothing (PD-8c).
 
         Raises:
-            ValueError: ``label`` or ``root`` is not valid (pydantic's ``ValidationError``).
+            InvalidBody: ``root_slots`` names an ``id``: the service assigns it.
+            ValueError: ``label`` or ``root_slots`` is not valid (pydantic's ``ValidationError``).
         """
+        if "id" in root_slots:
+            raise InvalidBody("the service assigns the IRI of a new tenant")
         tenant = str(mint_tenant_iri(self._settings.base, self._settings.tenant_segment))
         name = tenant_resource_name(self._settings.prefix, tenant)
         record = self._access_class(
@@ -137,13 +150,13 @@ class Tenancy:
             database_name=name,
             grants=[Grant(assignee=creator.id, target=tenant, role=self._settings.creator_role)],
         )
-        tenant_root = type(root).model_validate(root.model_copy(update={"id": tenant}).model_dump())
+        tenant_root = self._root_class.model_validate({"label": label, **root_slots, "id": tenant})
         await self._store.create_dataset(name)
         _log_step("create-database", tenant, name)
         await self._files.create_bucket(name)
         _log_step("create-bucket", tenant, name)
-        await self._commit(name, tenant, creator, tenant_root)
-        await self._commit(self._system, tenant, creator, record)
+        await self._add_root(name, tenant, creator, tenant_root)
+        await self._add_root(self._system, tenant, creator, record)
         _log_step("create-record", tenant, name)
         return TenantSummary(id=tenant, label=label, state=TenantState.ACTIVE)
 
@@ -213,9 +226,7 @@ class Tenancy:
     async def _replaced(
         self, tenant: str, principal: Principal, record: TenantAccess, if_version: str
     ) -> str:
-        version = await self._commit(self._system, tenant, principal, record, if_version)
-        assert version is not None, "a replace answers its version"
-        return version
+        return await self._replace_root(self._system, tenant, principal, record, if_version)
 
     async def tenants(self) -> list[TenantSummary]:
         """Every tenant that has an access record, in any state."""
@@ -271,7 +282,7 @@ class Tenancy:
         record, _ = await self.get(tenant)
         if record.state == TenantState.ACTIVE:
             record.state = TenantState.DELETING
-            await self._commit(self._system, tenant, self._toolkit, record, if_version)
+            await self._replace_root(self._system, tenant, self._toolkit, record, if_version)
         await self.finish_deletion(tenant)
 
     async def finish_deletion(self, tenant: str) -> None:

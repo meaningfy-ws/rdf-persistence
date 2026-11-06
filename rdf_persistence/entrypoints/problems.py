@@ -18,55 +18,55 @@ from starlette.exceptions import HTTPException
 
 from rdf_persistence.domain import exceptions as errors
 from rdf_persistence.domain.exceptions import PersistenceError
-from rdf_persistence.domain.generated.service.rp_service import Problem, ProblemKind
+from rdf_persistence.domain.generated.service.rp_service import Problem, ProblemKind, ProblemSlug
+from rdf_persistence.domain.media import PROBLEM_JSON
+from rdf_persistence.entrypoints.auth import BEARER_SCHEME
 
-PROBLEM_MEDIA_TYPE = "application/problem+json"
 WWW_AUTHENTICATE = "WWW-Authenticate"
-BEARER = "Bearer"
+BEARER = BEARER_SCHEME.capitalize()
 PROBLEMS_PATH = "problems/"
 
+# The fixed title and status of each kind of problem; the slugs are those of the generated ``ProblemSlug``.
+_ROWS = {
+    ProblemSlug.INVALID_TOKEN: ("Invalid token", HTTPStatus.UNAUTHORIZED),
+    ProblemSlug.FORBIDDEN: ("Forbidden", HTTPStatus.FORBIDDEN),
+    ProblemSlug.NOT_FOUND: ("Not found", HTTPStatus.NOT_FOUND),
+    ProblemSlug.CONFLICT: ("Version conflict", HTTPStatus.CONFLICT),
+    ProblemSlug.PRECONDITION_REQUIRED: ("Precondition required", HTTPStatus.PRECONDITION_REQUIRED),
+    ProblemSlug.INVALID_BODY: ("Invalid body", HTTPStatus.UNPROCESSABLE_ENTITY),
+    ProblemSlug.NOT_ACCEPTABLE: ("Not acceptable", HTTPStatus.NOT_ACCEPTABLE),
+    ProblemSlug.UNSUPPORTED_MEDIA_TYPE: (
+        "Unsupported media type",
+        HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+    ),
+    ProblemSlug.BAD_QUERY: ("Bad query", HTTPStatus.BAD_REQUEST),
+    ProblemSlug.UNAVAILABLE: ("Service unavailable", HTTPStatus.SERVICE_UNAVAILABLE),
+    ProblemSlug.PAYLOAD_TOO_LARGE: ("Payload too large", HTTPStatus.REQUEST_ENTITY_TOO_LARGE),
+    ProblemSlug.METHOD_NOT_ALLOWED: ("Method not allowed", HTTPStatus.METHOD_NOT_ALLOWED),
+    ProblemSlug.INTERNAL_ERROR: ("Internal error", HTTPStatus.INTERNAL_SERVER_ERROR),
+}
 
-def _kind(slug: str, title: str, status: HTTPStatus) -> ProblemKind:
-    return ProblemKind(slug=slug, title=title, status=status.value)
+
+def _kind(slug: ProblemSlug) -> ProblemKind:
+    title, status = _ROWS[slug]
+    return ProblemKind(slug=slug.value.replace("_", "-"), title=title, status=status.value)
 
 
-INVALID_TOKEN = _kind("invalid-token", "Invalid token", HTTPStatus.UNAUTHORIZED)
-FORBIDDEN = _kind("forbidden", "Forbidden", HTTPStatus.FORBIDDEN)
-NOT_FOUND = _kind("not-found", "Not found", HTTPStatus.NOT_FOUND)
-CONFLICT = _kind("conflict", "Version conflict", HTTPStatus.CONFLICT)
-PRECONDITION_REQUIRED = _kind(
-    "precondition-required", "Precondition required", HTTPStatus.PRECONDITION_REQUIRED
-)
-INVALID_BODY = _kind("invalid-body", "Invalid body", HTTPStatus.UNPROCESSABLE_ENTITY)
-NOT_ACCEPTABLE = _kind("not-acceptable", "Not acceptable", HTTPStatus.NOT_ACCEPTABLE)
-UNSUPPORTED_MEDIA_TYPE = _kind(
-    "unsupported-media-type", "Unsupported media type", HTTPStatus.UNSUPPORTED_MEDIA_TYPE
-)
-BAD_QUERY = _kind("bad-query", "Bad query", HTTPStatus.BAD_REQUEST)
-UNAVAILABLE = _kind("unavailable", "Service unavailable", HTTPStatus.SERVICE_UNAVAILABLE)
-PAYLOAD_TOO_LARGE = _kind(
-    "payload-too-large", "Payload too large", HTTPStatus.REQUEST_ENTITY_TOO_LARGE
-)
-METHOD_NOT_ALLOWED = _kind(
-    "method-not-allowed", "Method not allowed", HTTPStatus.METHOD_NOT_ALLOWED
-)
-INTERNAL_ERROR = _kind("internal-error", "Internal error", HTTPStatus.INTERNAL_SERVER_ERROR)
+INVALID_TOKEN = _kind(ProblemSlug.INVALID_TOKEN)
+FORBIDDEN = _kind(ProblemSlug.FORBIDDEN)
+NOT_FOUND = _kind(ProblemSlug.NOT_FOUND)
+CONFLICT = _kind(ProblemSlug.CONFLICT)
+PRECONDITION_REQUIRED = _kind(ProblemSlug.PRECONDITION_REQUIRED)
+INVALID_BODY = _kind(ProblemSlug.INVALID_BODY)
+NOT_ACCEPTABLE = _kind(ProblemSlug.NOT_ACCEPTABLE)
+UNSUPPORTED_MEDIA_TYPE = _kind(ProblemSlug.UNSUPPORTED_MEDIA_TYPE)
+BAD_QUERY = _kind(ProblemSlug.BAD_QUERY)
+UNAVAILABLE = _kind(ProblemSlug.UNAVAILABLE)
+PAYLOAD_TOO_LARGE = _kind(ProblemSlug.PAYLOAD_TOO_LARGE)
+METHOD_NOT_ALLOWED = _kind(ProblemSlug.METHOD_NOT_ALLOWED)
+INTERNAL_ERROR = _kind(ProblemSlug.INTERNAL_ERROR)
 
-KINDS = (
-    INVALID_TOKEN,
-    FORBIDDEN,
-    NOT_FOUND,
-    CONFLICT,
-    PRECONDITION_REQUIRED,
-    INVALID_BODY,
-    NOT_ACCEPTABLE,
-    UNSUPPORTED_MEDIA_TYPE,
-    BAD_QUERY,
-    UNAVAILABLE,
-    PAYLOAD_TOO_LARGE,
-    METHOD_NOT_ALLOWED,
-    INTERNAL_ERROR,
-)
+KINDS = tuple(_kind(slug) for slug in ProblemSlug)
 # The error matrix: each error class of the toolkit and the problem it becomes. The base class has
 # no row, so an error added without one stays a 500 until it gets its own (a test lists the gaps).
 ERROR_KINDS: tuple[tuple[type[PersistenceError], ProblemKind], ...] = (
@@ -145,7 +145,7 @@ def problem_response(problem: Problem, headers: Mapping[str, str] | None = None)
     return JSONResponse(
         problem.model_dump(exclude_none=True),
         status_code=problem.status,
-        media_type=PROBLEM_MEDIA_TYPE,
+        media_type=PROBLEM_JSON,
         headers=headers or None,
     )
 

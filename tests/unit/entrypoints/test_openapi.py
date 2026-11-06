@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 from openapi_spec_validator import validate
 
-from rdf_persistence.entrypoints.problems import KINDS, PROBLEM_MEDIA_TYPE
-from rdf_persistence.services.documents import JSON, JSON_LD, TURTLE
+from rdf_persistence.domain.media import JSON, JSON_LD, PROBLEM_JSON, TURTLE
+from rdf_persistence.entrypoints.problems import KINDS
 from rdf_persistence.services.listing import listable_slots
 from rdf_persistence.services.schema_structure import is_internal
 from tests.toy_service import ToyService
@@ -113,9 +113,9 @@ def test_a_problem_response_is_an_rfc_9457_problem_with_the_fixed_title(
     titles = {k.status: k.title for k in KINDS}
     for status in expected - SUCCESS:
         response = op["responses"][str(status)]
-        assert schema_of(response["content"][PROBLEM_MEDIA_TYPE]) == {
-            "$ref": f"{COMPONENT}Problem"
-        }, f"{status} is a Problem"
+        assert schema_of(response["content"][PROBLEM_JSON]) == {"$ref": f"{COMPONENT}Problem"}, (
+            f"{status} is a Problem"
+        )
         assert response["description"] == titles[status], f"{status} carries the problem's title"
 
 

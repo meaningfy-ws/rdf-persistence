@@ -1,7 +1,5 @@
 """What the routes share: the ports, the settings, and the pieces built from the application's schema (PD-13)."""
 
-import importlib
-import pkgutil
 from contextlib import AbstractAsyncContextManager
 from pathlib import Path
 from types import ModuleType
@@ -16,22 +14,22 @@ from rdf_persistence.domain.generated.service.rp_service import (
     CallerAccess,
     ServiceSettings,
 )
-from rdf_persistence.domain.iris import system_database_name, tenant_iri, tenant_resource_name
+from rdf_persistence.domain.iris import system_database_name, tenant_iri
 from rdf_persistence.entrypoints.auth import Gate
 from rdf_persistence.services.access import AccessRules
+from rdf_persistence.services.aggregates import Aggregates
+from rdf_persistence.services.artifacts import CONTEXT_FILE
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.mapper import Mapper, generated_models
+from rdf_persistence.services.mapper import Mapper, generated_models_of
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import tenant_access_class
-from rdf_persistence.services.session import Session, open_session
-from rdf_persistence.services.store import Store
+from rdf_persistence.services.session import Session
+from rdf_persistence.services.store import Store, ToolkitStore
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.services.tokens import TokenVerifier
-
-CONTEXT_FILE_NAME = "context.jsonld"
 
 
 class ServiceKit:
@@ -58,7 +56,7 @@ class ServiceKit:
         view = load_schema(schema)
         self.view = view
         self.listings = Listings(view)
-        self.store = store
+        self.store = ToolkitStore(store)
         self.files = files
         self.identity = identity
         self.verifier = verifier
@@ -66,19 +64,25 @@ class ServiceKit:
         self.settings = settings
         mounted = prefix.strip("/")
         # from the service's own base, never from a request: a Host header is the caller's to forge
-        self.context_url = f"{settings.base}{mounted + '/' if mounted else ''}{CONTEXT_FILE_NAME}"
+        self.context_url = f"{settings.base}{mounted + '/' if mounted else ''}{CONTEXT_FILE}"
         assert settings.max_body_bytes is not None, "ServiceSettings defaults it"
         self.max_body_bytes: int = settings.max_body_bytes
         self.gate = Gate(self)
         self.system_database = system_database_name(settings.prefix)
         self.generated_folder = Path(next(iter(generated.__path__)))
         self.documents = Documents(view, self.generated_folder)
-        models = generated_models(*_modules_of(generated), rp_access, rp_core, rp_tenancy)
-        self.tenant_root_model = models.named(self.documents.tenant_root.name)
+        self.documents.require_frames()
+        models = generated_models_of(generated, rp_access, rp_core, rp_tenancy)
         access_class = cast(type[TenantAccess], models.named(tenant_access_class(view).name))
         self.tenancy = Tenancy(
-            store, files, settings, mapper=Mapper(view, models), access_class=access_class
+            self.store,
+            files,
+            settings,
+            mapper=Mapper(view, models),
+            root_class=models.named(self.documents.tenant_root.name),
+            access_class=access_class,
         )
+        self.aggregates = Aggregates(self.documents, self.tenancy)
 
     def tenant_iri(self, tenant_id: str) -> str:
         """The IRI of the tenant whose id is ``tenant_id`` in a path.
@@ -135,17 +139,4 @@ class ServiceKit:
 
     def session(self, tenant: str, principal: str) -> AbstractAsyncContextManager[Session]:
         """A session on the tenant's database for ``principal``."""
-        return open_session(
-            self.store,
-            database=tenant_resource_name(self.settings.prefix, tenant),
-            tenant_iri=tenant,
-            principal=Principal(id=principal),
-        )
-
-
-def _modules_of(package: ModuleType) -> list[ModuleType]:
-    """The generated modules of a package: one per module of the application's schema."""
-    return [
-        importlib.import_module(f"{package.__name__}.{info.name}")
-        for info in pkgutil.iter_modules(package.__path__)
-    ]
+        return self.tenancy.tenant_session(tenant, Principal(id=principal))

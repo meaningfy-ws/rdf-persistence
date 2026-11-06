@@ -20,6 +20,8 @@ upgrade when a schema owns a hierarchy. A ``uri`` value is taken as an absolute 
 expanded.
 """
 
+import importlib
+import pkgutil
 from collections.abc import Iterable
 from types import ModuleType
 from typing import Any, cast
@@ -40,6 +42,7 @@ from rdf_persistence.services.schema_structure import (
     holds_owned_part,
     is_bookkeeping,
     is_tenant_root,
+    rdf_term,
 )
 from rdf_persistence.services.session import Session
 
@@ -57,6 +60,10 @@ class GeneratedModels:
             and member.__module__ == module.__name__
         }
 
+    def classes(self) -> dict[str, type[RpModel]]:
+        """Every class, by its name in the generated module."""
+        return dict(self._by_name)
+
     def named(self, schema_name: str) -> type[RpModel]:
         """The generated class of the schema class ``schema_name``; ``LookupError`` if there is none."""
         try:
@@ -68,6 +75,15 @@ class GeneratedModels:
 def generated_models(*modules: ModuleType) -> GeneratedModels:
     """The generated classes of ``modules``, for ``Mapper``."""
     return GeneratedModels(modules)
+
+
+def generated_models_of(package: ModuleType, *modules: ModuleType) -> GeneratedModels:
+    """The generated classes of every module of ``package``, and of ``modules``, for ``Mapper``."""
+    found = [
+        importlib.import_module(f"{package.__name__}.{info.name}")
+        for info in pkgutil.iter_modules(package.__path__)
+    ]
+    return GeneratedModels([*found, *modules])
 
 
 def new_part[M: BaseModel](cls: type[M], root_iri: str, **fields: Any) -> M:
@@ -126,13 +142,9 @@ class Mapper:
     def _term(self, slot: SlotDefinition, value: Any, graph: Graph) -> Node:
         if holds_owned_part(self.view, slot):
             return self._write_part(value, graph)
-        if self._is_enum(slot):
-            return self._meaning(slot.range, str(value)) or Literal(str(value))
-        if holds_iri(self.view, slot):
-            if isinstance(value, BaseModel):
-                raise ValueError(f"slot {slot.name} holds an object but is not owned: give its IRI")
-            return URIRef(str(value))
-        return Literal(value)
+        if isinstance(value, BaseModel):
+            raise ValueError(f"slot {slot.name} holds an object but is not owned: give its IRI")
+        return rdf_term(self.view, slot, value)
 
     def _write_part(self, part: BaseModel, graph: Graph) -> Node:
         identifier = self._identifier(self._schema_names[type(part).__name__])

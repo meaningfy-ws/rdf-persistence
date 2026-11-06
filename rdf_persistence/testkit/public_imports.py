@@ -1,12 +1,14 @@
 """``assert_public_imports``: a consumer's end-to-end test uses the toolkit's public names only (PD-20).
 
-Parses the file with ``ast``; standard library only.
+Parses the file with ``ast``; standard library and the testkit's own import reader only.
 """
 
 import ast
 import importlib.util
 from collections.abc import Iterator
 from pathlib import Path
+
+from rdf_persistence.testkit.guards import from_import_names
 
 PACKAGE = "rdf_persistence"
 PUBLIC_SUBPACKAGE = "testkit"
@@ -38,7 +40,7 @@ def _imported_names(node: ast.stmt) -> Iterator[str]:
 def _from_names(node: ast.ImportFrom) -> Iterator[str]:
     if node.level == 0 and node.module:
         yield node.module
-        yield from (f"{node.module}.{alias.name}" for alias in node.names)
+        yield from from_import_names(node, "").values()
 
 
 def _is_private(name: str, submodules: frozenset[str], testkit_modules: frozenset[str]) -> bool:

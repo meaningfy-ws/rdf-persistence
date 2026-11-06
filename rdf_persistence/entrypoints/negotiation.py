@@ -10,8 +10,14 @@ from rdf_persistence.domain.exceptions import (
     PreconditionRequired,
     UnsupportedMediaType,
 )
-from rdf_persistence.services.documents import JSON, JSON_LD, REPRESENTATIONS
+from rdf_persistence.domain.media import JSON, JSON_LD, REPRESENTATIONS
 
+# The headers of the version of an aggregate, and of where a created one is.
+IF_MATCH = "If-Match"
+ETAG = "ETag"
+LOCATION = "Location"
+LINK = "Link"
+VARY = "Vary"
 ANY = "*/*"
 # How exactly a range names a media type: the most exact range that matches decides its quality.
 _EXACT, _TYPE_WILDCARD, _ANY = 3, 2, 1
@@ -55,20 +61,27 @@ def _quality_of(ranges: list[tuple[str, float]], media_type: str) -> float:
     return best[1] if best[0] else 0.0
 
 
+def _negotiate(accept: str | None, offered: tuple[str, ...], refusal: str) -> str:
+    """The media type of ``offered`` an ``Accept`` header ranks highest, the first on a tie; none given is any.
+
+    Raises:
+        NotAcceptable: Nothing offered is acceptable to the client; ``refusal`` is the message.
+    """
+    ranges = _ranges(accept) if accept is not None and accept.strip() else [(ANY, 1.0)]
+    scored = [(_quality_of(ranges, media_type), media_type) for media_type in offered]
+    quality, media_type = max(scored, key=lambda pair: pair[0])  # max keeps the first on a tie
+    if quality <= 0:
+        raise NotAcceptable(refusal)
+    return media_type
+
+
 def accepted_media_type(accept: str | None) -> str:
     """The representation to serve for an ``Accept`` header: the highest quality, JSON first on a tie.
 
     Raises:
         NotAcceptable: Nothing the service produces is acceptable to the client.
     """
-    if accept is None or not accept.strip():
-        return JSON
-    ranges = _ranges(accept)
-    scored = [(_quality_of(ranges, media_type), media_type) for media_type in REPRESENTATIONS]
-    quality, media_type = max(scored, key=lambda pair: pair[0])  # max keeps the first on a tie
-    if quality <= 0:
-        raise NotAcceptable(f"the service produces {', '.join(REPRESENTATIONS)}")
-    return media_type
+    return _negotiate(accept, REPRESENTATIONS, f"the service produces {', '.join(REPRESENTATIONS)}")
 
 
 def accepted_listing_type(accept: str | None) -> str:
@@ -80,14 +93,7 @@ def accepted_listing_type(accept: str | None) -> str:
     Raises:
         NotAcceptable: Neither JSON nor JSON-LD is acceptable to the client.
     """
-    ranges = _ranges(accept) if accept is not None and accept.strip() else [(ANY, 1.0)]
-    quality, media_type = max(
-        ((_quality_of(ranges, media_type), media_type) for media_type in (JSON, JSON_LD)),
-        key=lambda pair: pair[0],
-    )
-    if quality <= 0:
-        raise NotAcceptable(f"a listing is served as {JSON} or {JSON_LD}")
-    return media_type
+    return _negotiate(accept, (JSON, JSON_LD), f"a listing is served as {JSON} or {JSON_LD}")
 
 
 def request_media_type(content_type: str | None, allowed: tuple[str, ...]) -> str:

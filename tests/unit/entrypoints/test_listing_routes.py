@@ -1,16 +1,13 @@
 """Listings over the router and the fakes: pages, filters, sort, who sees what (task 5.4, PD-9, PD-15)."""
 
-from collections.abc import AsyncIterator
-
 import httpx
 import pytest
 
-from rdf_persistence import GrantSet, Page, Problem
+from rdf_persistence import GrantSet, Page
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
-from rdf_persistence.entrypoints.problems import PROBLEM_MEDIA_TYPE
-from rdf_persistence.services.documents import JSON, JSON_LD, TURTLE
-from tests.toy_service import ToyService, principal_of
-from tests.unit.entrypoints.scene import BOOK, TENANT_BODY
+from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
+from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
+from tests.unit.entrypoints.scene import problem_of
 
 PROBLEM_BAD_QUERY = "Bad query"
 BOOKS = [
@@ -20,19 +17,6 @@ BOOKS = [
     ("Candide", "nonfiction", None, []),
     ("Beloved", "fiction", "1987-09-02", ["Morrison"]),
 ]
-
-
-@pytest.fixture
-async def service() -> AsyncIterator[ToyService]:
-    toy = ToyService()
-    async with toy.app.router.lifespan_context(toy.app):
-        yield toy
-
-
-@pytest.fixture
-async def client(service: ToyService) -> AsyncIterator[httpx.AsyncClient]:
-    async with service.client() as http:
-        yield http
 
 
 class Shelf:
@@ -78,7 +62,7 @@ class Shelf:
         made = await http.post("/libraries", json=TENANT_BODY, headers=shelf.headers())
         shelf.tenant, shelf.tenant_iri = made.headers["location"], made.json()["id"]
         for label, genre, published, authors in BOOKS:
-            body = {**BOOK, "label": label, "genre": genre, "authors": authors}
+            body = {**DUNE_BODY, "label": label, "genre": genre, "authors": authors}
             if published:
                 body["published"] = published
             created = await http.post(shelf.path, json=body, headers=shelf.headers())
@@ -96,11 +80,6 @@ class Shelf:
 @pytest.fixture
 async def shelf(service: ToyService, client: httpx.AsyncClient) -> Shelf:
     return await Shelf.set_up(service, client)
-
-
-def problem_of(response: httpx.Response) -> Problem:
-    assert response.headers["content-type"] == PROBLEM_MEDIA_TYPE, response.text
-    return Problem.model_validate(response.json())
 
 
 # --- the page -----------------------------------------------------------------------------------
@@ -161,7 +140,9 @@ async def test_the_total_of_a_filtered_listing_counts_the_matches_only(shelf) ->
 
 async def test_a_listing_never_shows_the_books_of_another_tenant(shelf, client, service) -> None:
     other = await client.post("/libraries", json=TENANT_BODY, headers=shelf.headers("bob"))
-    await client.post(f"{other.headers['location']}/books", json=BOOK, headers=shelf.headers("bob"))
+    await client.post(
+        f"{other.headers['location']}/books", json=DUNE_BODY, headers=shelf.headers("bob")
+    )
     assert len(await shelf.labels()) == 5
     theirs = await client.get(f"{other.headers['location']}/books", headers=shelf.headers("bob"))
     assert theirs.json()["total"] == 1

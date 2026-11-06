@@ -8,8 +8,9 @@ from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.iris import system_database_name, tenant_resource_name
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
+from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
-from tests.toy import ADA, library, toy_mapper
+from tests.toy import ADA, library_slots, toy_mapper
 
 CREATOR = Principal(id=ADA)
 FOREIGN = "other-t-" + "c" * 32
@@ -45,16 +46,17 @@ class CannotDrop:
 async def test_a_crash_during_creation_leaves_orphans_that_the_next_start_up_drops(
     tenancy, store, files, settings
 ):
-    kept = await tenancy.create("Ghent", library(), CREATOR)
+    kept = await tenancy.create("Ghent", library_slots(), CREATOR)
     crashing = Tenancy(
         store,
         CrashAfterBucket(files),
         settings,
         mapper=toy_mapper(),
+        root_class=Library,
         access_class=LibraryAccess,
     )
     with pytest.raises(StoreUnavailable):
-        await crashing.create("Bruges", library(), CREATOR)
+        await crashing.create("Bruges", library_slots(), CREATOR)
     mine = [n for n in await store.list_datasets() if n.startswith(f"{settings.prefix}-t-")]
     assert len(mine) == 2, "the crashed tenant's database exists beside the kept one"
     await sweep(tenancy, store, files, settings)
@@ -68,7 +70,7 @@ async def test_a_crash_during_creation_leaves_orphans_that_the_next_start_up_dro
 async def test_a_database_and_bucket_of_another_service_are_left_alone(
     tenancy, store, files, settings
 ):
-    await tenancy.create("Ghent", library(), CREATOR)  # with a record on file the sweep runs
+    await tenancy.create("Ghent", library_slots(), CREATOR)  # with a record on file the sweep runs
     await store.create_dataset(FOREIGN)
     await files.create_bucket(FOREIGN)
     try:
@@ -81,10 +83,15 @@ async def test_a_database_and_bucket_of_another_service_are_left_alone(
 
 
 async def test_the_sweep_finishes_a_deletion_the_process_did_not(tenancy, store, files, settings):
-    summary = await tenancy.create("Ghent", library(), CREATOR)
+    summary = await tenancy.create("Ghent", library_slots(), CREATOR)
     _, version = await tenancy.get(summary.id)
     dying = Tenancy(
-        CannotDrop(store), files, settings, mapper=toy_mapper(), access_class=LibraryAccess
+        CannotDrop(store),
+        files,
+        settings,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
     )
     with pytest.raises(StoreUnavailable):
         await dying.delete(summary.id, version)
@@ -98,7 +105,7 @@ async def test_the_sweep_finishes_a_deletion_the_process_did_not(tenancy, store,
 async def test_a_lost_system_database_does_not_make_the_tenants_orphans(
     tenancy, store, files, settings
 ):
-    kept = await tenancy.create("Ghent", library(), CREATOR)
+    kept = await tenancy.create("Ghent", library_slots(), CREATOR)
     name = tenant_resource_name(settings.prefix, kept.id)
     await store.drop_dataset(system_database_name(settings.prefix))  # the records are gone
     await sweep(tenancy, store, files, settings)
@@ -109,7 +116,7 @@ async def test_a_lost_system_database_does_not_make_the_tenants_orphans(
 async def test_an_active_tenant_keeps_its_root_graph_record_version_and_blob(
     tenancy, store, files, settings
 ):
-    kept = await tenancy.create("Ghent", library(), CREATOR)
+    kept = await tenancy.create("Ghent", library_slots(), CREATOR)
     name = tenant_resource_name(settings.prefix, kept.id)
     await files.put(name, "scan.pdf", b"%PDF")
     query = f"CONSTRUCT {{ ?s ?p ?o }} WHERE {{ GRAPH <{kept.id}/meta> {{ ?s ?p ?o }} }}"

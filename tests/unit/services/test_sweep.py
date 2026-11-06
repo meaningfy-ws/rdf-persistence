@@ -14,8 +14,9 @@ from rdf_persistence.services.session import open_session
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
+from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
-from tests.toy import ADA, SETTINGS, library, toy_mapper
+from tests.toy import ADA, SETTINGS, library_slots, toy_mapper
 
 CREATOR = Principal(id=ADA)
 ORPHAN = "lib-t-" + "a" * 32
@@ -34,7 +35,9 @@ def files() -> FakeFileStore:
 
 @pytest.fixture
 async def tenancy(store, files) -> Tenancy:
-    made = Tenancy(store, files, SETTINGS, mapper=toy_mapper(), access_class=LibraryAccess)
+    made = Tenancy(
+        store, files, SETTINGS, mapper=toy_mapper(), root_class=Library, access_class=LibraryAccess
+    )
     await made.ensure_system_database()
     return made
 
@@ -42,7 +45,7 @@ async def tenancy(store, files) -> Tenancy:
 @pytest.fixture
 async def kept(tenancy):
     """A tenant that is alive: with a record on file the sweep may judge the other names orphans."""
-    return await tenancy.create("Ghent", library(), CREATOR)
+    return await tenancy.create("Ghent", library_slots(), CREATOR)
 
 
 async def test_a_database_and_a_bucket_that_no_record_names_are_dropped(
@@ -60,7 +63,7 @@ async def test_a_creation_that_stopped_before_the_record_leaves_only_the_kept_te
 ):
     store.on("update", StoreUnavailable("down"), after=1)  # the access record
     with pytest.raises(StoreUnavailable):
-        await tenancy.create("Bruges", library(), CREATOR)
+        await tenancy.create("Bruges", library_slots(), CREATOR)
     await sweep(tenancy, store, files, SETTINGS)
     name = tenant_resource_name(SETTINGS.prefix, kept.id)
     assert sorted(await store.list_datasets()) == sorted(["lib-system", name]), "databases"
@@ -108,7 +111,9 @@ async def test_the_sweep_judges_by_the_database_name_the_record_stores(tenancy, 
 async def test_the_sweep_drops_nothing_when_it_had_to_create_the_system_database(
     store, files, caplog
 ):
-    made = Tenancy(store, files, SETTINGS, mapper=toy_mapper(), access_class=LibraryAccess)
+    made = Tenancy(
+        store, files, SETTINGS, mapper=toy_mapper(), root_class=Library, access_class=LibraryAccess
+    )
     await store.create_dataset(ORPHAN)
     await files.create_bucket(ORPHAN)
     with caplog.at_level(logging.WARNING):
@@ -142,7 +147,7 @@ async def test_a_name_without_the_tenant_prefix_is_never_touched(tenancy, store,
 
 
 async def test_a_tenant_whose_deletion_stopped_is_finished(tenancy, store, files):
-    summary = await tenancy.create("Ghent", library(), CREATOR)
+    summary = await tenancy.create("Ghent", library_slots(), CREATOR)
     _, version = await tenancy.get(summary.id)
     store.on("drop_dataset", StoreUnavailable("down"))
     with pytest.raises(StoreUnavailable):
@@ -154,7 +159,9 @@ async def test_a_tenant_whose_deletion_stopped_is_finished(tenancy, store, files
 
 
 async def test_the_sweep_creates_the_system_database_on_a_first_start(store, files):
-    made = Tenancy(store, files, SETTINGS, mapper=toy_mapper(), access_class=LibraryAccess)
+    made = Tenancy(
+        store, files, SETTINGS, mapper=toy_mapper(), root_class=Library, access_class=LibraryAccess
+    )
     await sweep(made, store, files, SETTINGS)
     assert await store.list_datasets() == ["lib-system"]
 

@@ -85,6 +85,36 @@ class LinkMLMeta(RootModel):
 
 linkml_meta = None
 
+class ProblemSlug(str, Enum):
+    "The kinds of problem the toolkit answers with, by the last segment of their problem type IRI, with the underscores written as hyphens."
+    INVALID_TOKEN = "invalid_token"
+    "No bearer token, or one the service refuses."
+    FORBIDDEN = "forbidden"
+    "The caller may see the thing but is not allowed the action."
+    NOT_FOUND = "not_found"
+    "There is no such thing, or the caller cannot see it."
+    CONFLICT = "conflict"
+    "The write lost a race, or the thing to create already exists."
+    PRECONDITION_REQUIRED = "precondition_required"
+    "An update or a delete came without the version it expects."
+    INVALID_BODY = "invalid_body"
+    "The body is not a valid representation for its route."
+    NOT_ACCEPTABLE = "not_acceptable"
+    "The service produces nothing the client accepts."
+    UNSUPPORTED_MEDIA_TYPE = "unsupported_media_type"
+    "The route does not take the media type of the body."
+    BAD_QUERY = "bad_query"
+    "The query string is not one the route takes."
+    UNAVAILABLE = "unavailable"
+    "A store, the identity provider or the role definitions are not usable."
+    PAYLOAD_TOO_LARGE = "payload_too_large"
+    "The body is larger than the service takes."
+    METHOD_NOT_ALLOWED = "method_not_allowed"
+    "The route has no such method."
+    INTERNAL_ERROR = "internal_error"
+    "The service failed; the answer says no more."
+
+
 
 class ServiceSettings(ConfiguredBaseModel):
     "The settings of `install_service`: where the service is mounted, how it names tenants and which role its callers get on a tenant they create."

@@ -11,9 +11,10 @@ tracking) are bookkeeping, not content, and are left out.
 """
 
 import json
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
+from functools import cached_property
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import anyio.to_thread
 from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
@@ -27,8 +28,17 @@ from rdflib.term import Node
 from rdf_persistence.domain.exceptions import InvalidBody, PayloadTooLarge
 from rdf_persistence.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.domain.iris import mint_part_iri
+from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
+from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.artifacts import CONTEXT_FILE, FRAME_SUFFIX, SHAPES_FILE
+from rdf_persistence.services.artifacts import (
+    CONTEXT_FILE,
+    CONTEXT_KEY,
+    FRAME_SUFFIX,
+    ID_KEY,
+    SHAPES_FILE,
+    TYPE_KEY,
+)
 from rdf_persistence.services.schema_structure import (
     annotation_text,
     holds_owned_part,
@@ -38,18 +48,13 @@ from rdf_persistence.services.schema_structure import (
     tenant_root_class,
 )
 
-JSON = "application/json"
-JSON_LD = "application/ld+json"
-TURTLE = "text/turtle"
-REPRESENTATIONS = (JSON, JSON_LD, TURTLE)
 NQUADS = {"format": "application/n-quads"}
 NATIVE = {"useNativeTypes": True}
 NOT_INLINE = "a JSON-LD context must be inline: remote contexts are not followed"
 MAX_MESSAGES = 5
 # Objects in a body; with the byte bound, it keeps one request from costing a minute.
 MAX_NODES = 10_000
-TYPE_KEYS = ("type", "@type")
-ID_KEY = "@id"
+TYPE_KEYS = ("type", TYPE_KEY)
 
 
 def _refuse_remote(url: str, _options: Any) -> Any:
@@ -85,19 +90,12 @@ class Documents:
     def __init__(self, view: SchemaView, folder: Path) -> None:
         """Read the artefacts the generator wrote to ``folder`` for the schema ``view``."""
         self._view = view
+        self._folder = folder
+        self._frames: dict[str, dict] = {}
         self.context: dict = json.loads((folder / CONTEXT_FILE).read_text(encoding="utf-8"))[
-            "@context"
+            CONTEXT_KEY
         ]
         self.shapes = Graph().parse(folder / SHAPES_FILE)
-        self.tenant_root = tenant_root_class(view)
-        self.aggregates = {
-            str(annotation_text(cls, RpAnnotation.RP_PATH)): cls for cls in served_roots(view)
-        }
-        types = [*self.aggregates.values(), self.tenant_root]
-        self._frames = {
-            cls.name: json.loads((folder / f"{cls.name}{FRAME_SUFFIX}").read_text(encoding="utf-8"))
-            for cls in types
-        }
         self._class_of = {self._iri_of(c): c for c in view.all_classes().values()}
         self._slots = {
             name: {json_name(slot): slot for slot in view.class_induced_slots(name)}
@@ -108,6 +106,38 @@ class Documents:
             for name in view.all_classes()
         }
         self._internal, self._parts = self._predicates()
+
+    @cached_property
+    def tenant_root(self) -> ClassDefinition:
+        """The class of the tenant's root object.
+
+        Raises:
+            LookupError: The schema has none or several.
+        """
+        return tenant_root_class(self._view)
+
+    @cached_property
+    def aggregates(self) -> dict[str, ClassDefinition]:
+        """The aggregate types the generic router serves, by the path they are served at."""
+        return {
+            str(annotation_text(cls, RpAnnotation.RP_PATH)): cls for cls in served_roots(self._view)
+        }
+
+    def _frame_of(self, class_name: str) -> dict:
+        if class_name not in self._frames:
+            text = (self._folder / f"{class_name}{FRAME_SUFFIX}").read_text(encoding="utf-8")
+            self._frames[class_name] = json.loads(text)
+        return self._frames[class_name]
+
+    def require_frames(self) -> None:
+        """Read the frame of every type the service serves, so a folder without one stops start-up.
+
+        Raises:
+            OSError: A frame is missing.
+            LookupError: The schema has no tenant root class.
+        """
+        for cls in (*self.aggregates.values(), self.tenant_root):
+            self._frame_of(cls.name)
 
     def _predicates(self) -> tuple[dict[Node, str], dict[Node, set[URIRef]]]:
         """The predicates of the internal slots, by slot name; and of the owned parts, by the classes they take."""
@@ -160,13 +190,29 @@ class Documents:
         if not isinstance(body, dict):
             raise InvalidBody("the body must be a JSON object")
         _bound(body)
-        if media_type == JSON_LD:
-            return body
-        body.pop("@context", None)  # the generated context is the only one a plain JSON body has
+        return body if media_type == JSON_LD else self._plain_document(body, cls)
+
+    def _plain_document(self, body: dict, cls: ClassDefinition) -> dict:
+        """A plain JSON ``body`` as a JSON-LD document: typed by the schema, read with the generated context."""
+        body = {
+            key: value for key, value in body.items() if key != CONTEXT_KEY
+        }  # ours is the only one
         try:
-            return {**self._typed(body, cls.name), "@context": self.context}
+            return {**self._typed(body, cls.name), CONTEXT_KEY: self.context}
         except RecursionError as error:
             raise InvalidBody("the body is nested too deeply") from error
+
+    def expand(self, body: dict, cls: ClassDefinition) -> Graph:
+        """The triples of a plain JSON ``body`` of class ``cls``, as the router reads a JSON request.
+
+        The keys are the JSON names of the class's slots; the types of the body and its owned parts
+        come from the schema, and the generated context alone decides how the values read.
+
+        Raises:
+            InvalidBody: A key is no slot of the class, or names an ``internal`` one, or the body is
+                not valid JSON-LD once typed.
+        """
+        return self._triples(self._plain_document(body, cls))
 
     def _typed(self, node: dict, class_name: str) -> dict:
         """``node`` with an ``@type`` on it and on every owned part below, as the schema says.
@@ -175,10 +221,10 @@ class Documents:
         or full IRI included, is refused.
         """
         slots = self._slots[class_name]
-        typed: dict = {"@type": str(self._iri_of(self._view.get_class(class_name)))}
+        typed: dict = {TYPE_KEY: str(self._iri_of(self._view.get_class(class_name)))}
         for key, value in node.items():
             if key in TYPE_KEYS:
-                typed["@type"] = self._type_of(value, class_name)
+                typed[TYPE_KEY] = self._type_of(value, class_name)
             elif key == ID_KEY:
                 typed[key] = value
             elif key in slots and is_internal(slots[key]):
@@ -223,7 +269,7 @@ class Documents:
     def _unknown(self, key: str, class_name: str) -> InvalidBody:
         """The refusal of a key the class has no slot for; it names the internal slot the key stands for."""
         try:
-            expanded = jsonld.expand({"@context": self.context, key: 0}, LOADER)
+            expanded = jsonld.expand({CONTEXT_KEY: self.context, key: 0}, LOADER)
             predicates = {URIRef(p) for node in expanded for p in node}
         except Exception:
             predicates = set()
@@ -298,6 +344,17 @@ class Documents:
             if predicate in self._parts and not isinstance(part, Literal):
                 yield part, self._parts[predicate]
 
+    def internal_values(self, stored: Graph, replacement: Iterable[Triple]) -> list[Triple]:
+        """The statements of ``stored`` that give an ``internal`` slot a value, of the nodes ``replacement`` still describes.
+
+        No body can set an internal slot, so a replacement is made without them; adding these keeps
+        what the service stored for the root and the parts that persist, which a replace must not erase.
+        """
+        nodes = {subject for subject, _, _ in replacement}
+        kept = [(s, p, o) for s, p, o in stored if p in self._internal and s in nodes]
+        # a stored graph holds only URIs, literals and blank nodes; rdflib types its terms as Node
+        return cast(list[Triple], kept)
+
     @staticmethod
     def _root(graph: Graph, iri: URIRef, creating: bool) -> Node:
         contained = set(graph.objects())
@@ -359,13 +416,14 @@ class Documents:
                 shown.add((s, p, o))
         if media_type == TURTLE:
             return str(shown.serialize(format="turtle"))
-        framed = await anyio.to_thread.run_sync(self._frame, shown, cls.name)
+        framed = await anyio.to_thread.run_sync(self.frame, shown, cls)
         if media_type == JSON:
-            framed.pop("@context", None)
+            framed.pop(CONTEXT_KEY, None)
         return json.dumps(framed, ensure_ascii=False)
 
-    def _frame(self, graph: Graph, class_name: str) -> dict:
-        frame = {**self._frames[class_name], "@context": self.context}
+    def frame(self, graph: Graph, cls: ClassDefinition) -> dict:
+        """The aggregate of class ``cls`` in ``graph``, framed with the generated frame and compacted with the generated context."""
+        frame = {**self._frame_of(cls.name), CONTEXT_KEY: self.context}
         expanded = jsonld.from_rdf(dataset_of(graph), NATIVE)
         framed: dict = jsonld.frame(expanded, frame, LOADER)
         return framed

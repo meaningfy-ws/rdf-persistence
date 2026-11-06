@@ -7,6 +7,7 @@ from rdf_persistence.domain.exceptions import (
     PreconditionRequired,
     UnsupportedMediaType,
 )
+from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.entrypoints.negotiation import (
     accepted_listing_type,
     accepted_media_type,
@@ -14,7 +15,6 @@ from rdf_persistence.entrypoints.negotiation import (
     expected_version,
     request_media_type,
 )
-from rdf_persistence.services.documents import JSON, JSON_LD, TURTLE
 
 # accept header, the representation served (None: nothing the service produces is acceptable)
 ACCEPT = [

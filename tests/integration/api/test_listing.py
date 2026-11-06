@@ -3,8 +3,7 @@
 import pytest
 
 from rdf_persistence import Page
-from tests.integration.api.conftest import BOOK, TENANT_BODY
-from tests.toy_service import ToyService
+from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
 
 LABELS = ["Dune", "Emma", "Ulysses", "Candide", "Beloved"]
 INJECTIONS = [
@@ -21,7 +20,7 @@ async def library_of(toy: ToyService, http, who: str, labels: list[str]) -> str:
     made = await http.post("/libraries", json=TENANT_BODY, headers=toy.bearer(who))
     path = f"{made.headers['location']}/books"
     for label in labels:
-        created = await http.post(path, json={**BOOK, "label": label}, headers=toy.bearer(who))
+        created = await http.post(path, json={**DUNE_BODY, "label": label}, headers=toy.bearer(who))
         assert created.status_code == 201, created.text
     return path
 

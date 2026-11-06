@@ -4,7 +4,7 @@ The token is verified first, then the caller's grants in the tenant are loaded i
 route's action is checked on its target. A refusal is raised before the route's own code runs.
 """
 
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Final
 
 from fastapi import Depends, Header
 
@@ -21,7 +21,7 @@ from rdf_persistence.services.access import load_caller_access
 if TYPE_CHECKING:  # the kit builds its gate, so it cannot be imported here at run time
     from rdf_persistence.entrypoints.kit import ServiceKit
 
-BEARER_SCHEME = "bearer"
+BEARER_SCHEME: Final = "bearer"
 
 
 class Gate:

@@ -33,17 +33,12 @@ from tests.e2e.library_app import build_library_app, library_settings
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.scans import Scan
-from tests.toy_service import unique_prefix
+from tests.toy_service import body_of, drop_buckets, drop_databases, unique_prefix
 
 JSON, JSON_LD, TURTLE = "application/json", "application/ld+json", "text/turtle"
 LIBRARIAN, READER, OUTSIDER, ADMIN = "librarian", "reader", "outsider", "admin"
 SCAN_BYTES = b"%PDF-1.7 a scanned copy of Dune"
 SCAN_MEDIA_TYPE = "application/pdf"
-
-
-def body_of(model: Book | Library | Scan) -> dict:
-    """A request body: the slots set on a model built without ids (the service mints them)."""
-    return model.model_dump(mode="json", exclude_unset=True)
 
 
 def dune(label: str = "Dune") -> Book:
@@ -120,11 +115,8 @@ async def world(fuseki, garage, zitadel_project) -> AsyncIterator[World]:
             httpx.AsyncClient(transport=transport, base_url="http://library") as http,
         ):
             yield World(http, callers, store, files, identity, zitadel_project, prefix)
-        for name in await store.list_datasets():
-            if name.startswith(f"{prefix}-"):
-                await store.drop_dataset(name)
-        for bucket in await files.list_buckets(f"{prefix}-"):
-            await files.delete_bucket(bucket)
+        await drop_databases(store, prefix)
+        await drop_buckets(files, prefix)
 
 
 @dataclass(frozen=True)
