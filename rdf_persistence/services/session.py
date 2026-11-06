@@ -19,7 +19,9 @@ from rdf_persistence.domain.generated.rp_core import Principal, RegistryEntry, R
 from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.iris import (
     graph_iri,
+    is_aggregate_iri,
     is_inside_tenant,
+    is_loaded_graph_of,
     loaded_graph_iri,
     meta_graph_iri,
     registry_graph_iri,
@@ -52,36 +54,42 @@ INSERT { GRAPH $graph { $triples } GRAPH $registry { $entries } }
 WHERE { FILTER NOT EXISTS { GRAPH $graph { ?s ?p ?o } } }
 """
 READ_LOADED = "SELECT ?lg WHERE { GRAPH $registry { ?lg $p_owned_by $root ; $p_kind $loaded } }"
-# The pieces REPLACE and REMOVE share: what is deleted, the version guard with the root's registry
-# entries, and the loaded graphs the root owns.
-_DELETE_OWNED = "GRAPH $graph { ?s ?p ?o } GRAPH $registry { ?e ?ep ?eo } GRAPH ?lg { ?ls ?lp ?lo }"
-_MATCH_GUARDED = """GRAPH $graph { $graph $p_version $old . ?s ?p ?o }
-  OPTIONAL { GRAPH $registry { ?e $p_owned_by $root ; ?ep ?eo } }"""
-_MATCH_LOADED = """GRAPH $registry { ?lg $p_owned_by $root ; $p_kind $loaded }
-    GRAPH ?lg { ?ls ?lp ?lo }"""
-# The guard, the delete of the old graph, of every entry the root owns and of the loaded graphs
-# not listed in $kept, and the insert of the new ones, in one update.
-REPLACE = f"""
-DELETE {{ {_DELETE_OWNED} }}
-INSERT {{ GRAPH $graph {{ $triples }} GRAPH $registry {{ $entries }} }}
-WHERE {{
-  {_MATCH_GUARDED}
-  OPTIONAL {{
-    {_MATCH_LOADED}
-    FILTER (?lg NOT IN ($kept))
-  }}
-}}
+# REPLACE and REMOVE are one update request of several operations, so a store applies them as one
+# transaction. Every operation repeats the version guard, and the order keeps it true for each: the
+# loaded graphs go first because they are found through the registry entries, the old version
+# triple goes last. Separate operations avoid joining the graph, the registry and the loaded graphs
+# into one product of rows.
+_GUARD = "GRAPH $graph { $graph $p_version $old }"
+_LOADED_ENTRY = "GRAPH $registry { ?lg $p_owned_by $root ; $p_kind $loaded }"
+_DROP_LOADED = """
+DELETE {{ GRAPH ?lg {{ ?ls ?lp ?lo }} }}
+WHERE {{ {guard} {entry} {unless} GRAPH ?lg {{ ?ls ?lp ?lo }} }}
 """
+_DROP_ENTRIES = (
+    f"DELETE {{ GRAPH $registry {{ ?e ?ep ?eo }} }} "
+    f"WHERE {{ {_GUARD} GRAPH $registry {{ ?e $p_owned_by $root ; ?ep ?eo }} }}"
+)
+_DROP_GRAPH = (
+    f"DELETE {{ GRAPH $graph {{ ?s ?p ?o }} }} WHERE {{ {_GUARD} GRAPH $graph {{ ?s ?p ?o }} }}"
+)
+# The old version triple stays, so the guard holds, until the last operation.
+_DROP_GRAPH_BUT_VERSION = (
+    "DELETE { GRAPH $graph { ?s ?p ?o } } "
+    f"WHERE {{ {_GUARD} GRAPH $graph {{ ?s ?p ?o }} FILTER (!(?s = $graph && ?p = $p_version)) }}"
+)
+_WRITE_NEW = (
+    f"INSERT {{ GRAPH $graph {{ $triples }} GRAPH $registry {{ $entries }} }} WHERE {{ {_GUARD} }}"
+)
+_DROP_OLD_VERSION = f"DELETE {{ GRAPH $graph {{ $graph $p_version $old }} }} WHERE {{ {_GUARD} }}"
+_DROP_UNLISTED = _DROP_LOADED.format(
+    guard=_GUARD, entry=_LOADED_ENTRY, unless="FILTER (?lg NOT IN ($kept))"
+)
+_DROP_ALL_LOADED = _DROP_LOADED.format(guard=_GUARD, entry=_LOADED_ENTRY, unless="")
+REPLACE = ";\n".join(
+    (_DROP_UNLISTED, _DROP_ENTRIES, _DROP_GRAPH_BUT_VERSION, _WRITE_NEW, _DROP_OLD_VERSION)
+)
 # Also empties the loaded graphs the root owns: they are part of the aggregate.
-REMOVE = f"""
-DELETE {{ {_DELETE_OWNED} }}
-WHERE {{
-  {_MATCH_GUARDED}
-  OPTIONAL {{
-    {_MATCH_LOADED}
-  }}
-}}
-"""
+REMOVE = ";\n".join((_DROP_ALL_LOADED, _DROP_ENTRIES, _DROP_GRAPH))
 
 
 def utc_now() -> datetime:
@@ -232,12 +240,14 @@ class Session:
             ),
         ]
 
-    def _check_loaded(self, iri: str, loaded_graphs: Sequence[URIRef]) -> None:
-        """Refuse a loaded graph that is not under ``{iri}/content/``: it would take over another graph."""
-        content = f"{iri}/content/"
-        outside = [str(g) for g in loaded_graphs if not str(g).startswith(content)]
+    def _check_commit(self, iri: str, loaded_graphs: Sequence[URIRef]) -> None:
+        """Refuse what could alias another graph: an IRI the toolkit did not mint for an aggregate,
+        or a loaded graph that is not a graph minted under ``{iri}/content/``."""
+        if not is_aggregate_iri(self._tenant, iri):
+            raise InvalidIri(f"{iri!r} is not an aggregate IRI of the tenant {self._tenant!r}")
+        outside = [str(g) for g in loaded_graphs if not is_loaded_graph_of(iri, str(g))]
         if outside:
-            raise InvalidIri(f"loaded graphs must be under {content!r}: {outside}")
+            raise InvalidIri(f"loaded graphs must be minted under '{iri}/content/': {outside}")
 
     async def _registered_loaded(self, iri: str) -> list[URIRef]:
         """The loaded graphs the aggregate ``iri`` has registered."""
@@ -305,12 +315,12 @@ class Session:
         """Store a new aggregate and register its ``loaded_graphs``; returns its first version.
 
         Raises:
-            InvalidIri: ``iri`` is not inside the tenant, or a loaded graph is not under
-                ``{iri}/content/``; nothing is sent.
+            InvalidIri: ``iri`` is not inside the tenant or not an aggregate IRI the toolkit
+                mints, or a loaded graph is not ``{iri}/content/{uuid}``; nothing is sent.
             Conflict: The aggregate already has a graph.
         """
         graph = self._graph(iri)
-        self._check_loaded(iri, loaded_graphs)
+        self._check_commit(iri, loaded_graphs)
         version = str(uuid.uuid4())
         tracking = Tracked(created=self._clock(), creator=self._principal.id)
         payload = payload_triples(graph, version, tracking, triples)
@@ -335,13 +345,13 @@ class Session:
         registered, a list replaces them (an empty one drops them all).
 
         Raises:
-            InvalidIri: A loaded graph is not under ``{iri}/content/``; nothing is sent.
+            InvalidIri: ``iri`` is not an aggregate IRI the toolkit mints, or a loaded graph is not
+                ``{iri}/content/{uuid}``; nothing is sent.
             NotFound: The aggregate has no graph.
             Conflict: Its version is not ``if_version``; nothing changed.
         """
         graph = self._graph(iri)
-        if loaded_graphs is not None:
-            self._check_loaded(iri, loaded_graphs)
+        self._check_commit(iri, loaded_graphs or [])
         _, stored = await self._stored(graph)
         if loaded_graphs is None:
             loaded_graphs = await self._registered_loaded(iri)

@@ -5,6 +5,7 @@ import json
 import threading
 from collections.abc import AsyncIterator, Iterator
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from uuid import UUID
 
 import pytest
 from rdflib import Graph, Literal, URIRef
@@ -20,7 +21,7 @@ from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 
 TENANT = "https://example.org/libraries/6f1c"
-AGGREGATE = f"{TENANT}/books/1"
+AGGREGATE = f"{TENANT}/books/{UUID(int=1)}"
 TITLE = URIRef("http://purl.org/dc/terms/title")
 BOOK = URIRef("https://example.org/b")
 EXPECTED = Graph()

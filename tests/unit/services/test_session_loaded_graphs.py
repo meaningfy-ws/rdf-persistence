@@ -3,11 +3,12 @@
 import asyncio
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
+from uuid import UUID, uuid4
 
 import pytest
 from rdflib import BNode, Graph, Literal, URIRef
 
-from rdf_persistence.domain.exceptions import Conflict
+from rdf_persistence.domain.exceptions import Conflict, InvalidIri
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.iris import graph_iri, registry_graph_iri
 from rdf_persistence.domain.sparql import fill, term
@@ -18,9 +19,11 @@ from rdf_persistence.testkit.fakes import FAKE_DATABASE
 
 TENANT = "https://example.org/libraries/6f1c0c1e"
 ADA, BEN = "https://example.org/people/ada", "https://example.org/people/ben"
-ROOT = f"{TENANT}/books/1"
+ROOT = f"{TENANT}/books/{UUID(int=1)}"
+OTHER = f"{TENANT}/books/{UUID(int=2)}"
+OTHER_LOADED = URIRef(f"{OTHER}/content/{UUID(int=12)}")
 TITLE = URIRef("http://purl.org/dc/terms/title")
-LOADED = [URIRef(f"{ROOT}/content/a"), URIRef(f"{ROOT}/content/b")]
+LOADED = [URIRef(f"{ROOT}/content/{UUID(int=10)}"), URIRef(f"{ROOT}/content/{UUID(int=11)}")]
 LOADED_TTL = '<https://example.org/b> <http://purl.org/dc/terms/title> "Dune" .'
 ENTRIES = "SELECT ?g WHERE { GRAPH $r { ?g $kind $loaded } }"
 
@@ -88,20 +91,20 @@ async def test_replace_without_a_list_keeps_the_registered_loaded_graphs(session
 async def test_replace_without_a_list_leaves_the_loaded_graphs_of_another_aggregate_alone(
     session, store
 ):
-    other = f"{TENANT}/books/2"
-    other_loaded = URIRef(f"{other}/content/z")
-    await session.add_graph(other, [], loaded_graphs=[other_loaded])
+    await session.add_graph(OTHER, [], loaded_graphs=[OTHER_LOADED])
     version = await session.add_graph(ROOT, [], loaded_graphs=LOADED)
     await session.replace_graph(ROOT, [], version)
-    assert await registered_loaded(store) == {*LOADED, other_loaded}
+    assert await registered_loaded(store) == {*LOADED, OTHER_LOADED}
 
 
 OUTSIDE_THE_CONTENT = [
-    pytest.param(URIRef(f"{TENANT}/books/2/graph"), id="another aggregate's graph"),
+    pytest.param(URIRef(f"{OTHER}/graph"), id="another aggregate's graph"),
     pytest.param(registry_graph_iri(TENANT), id="the registry graph"),
-    pytest.param(URIRef(f"{TENANT}/books/2/content/z"), id="another aggregate's loaded graph"),
+    pytest.param(OTHER_LOADED, id="another aggregate's loaded graph"),
     pytest.param(URIRef(f"{ROOT}/content"), id="the content segment without a graph"),
-    pytest.param(URIRef(f"{ROOT}0/content/a"), id="a sibling that shares the prefix text"),
+    pytest.param(
+        URIRef(f"{ROOT}0/content/{UUID(int=10)}"), id="a sibling that shares the prefix text"
+    ),
 ]
 
 
@@ -127,7 +130,7 @@ async def test_replace_refuses_a_loaded_graph_outside_the_aggregate_before_any_r
 
 
 async def test_removing_an_aggregate_cannot_empty_the_graph_of_another(session, store):
-    victim = f"{TENANT}/books/2"
+    victim = OTHER
     await session.add_graph(victim, [(URIRef(victim), TITLE, Literal("victim"))])
     with pytest.raises(ValueError, match="content"):
         await session.add_graph(ROOT, [], loaded_graphs=[graph_iri(victim)])
@@ -159,7 +162,7 @@ async def test_a_graph_with_blank_nodes_is_stored_once_with_skolem_iris(session)
 async def test_remove_drops_the_triples_of_the_loaded_graphs_it_owned(session, store):
     for graph in LOADED:
         await store.put_graph(FAKE_DATABASE, graph, Graph().parse(data=LOADED_TTL, format="turtle"))
-    other = URIRef(f"{TENANT}/books/2/content/z")
+    other = OTHER_LOADED
     await store.put_graph(FAKE_DATABASE, other, Graph().parse(data=LOADED_TTL, format="turtle"))
     version = await session.add_graph(ROOT, [], loaded_graphs=LOADED)
     await session.remove(ROOT, version)
@@ -214,3 +217,45 @@ async def test_two_concurrent_adds_of_one_iri_give_one_success_and_one_conflict(
         stored, _, _ = await first.get_graph(ROOT)
     assert sorted(type(o).__name__ for o in outcomes) == ["Conflict", "str"], "one wins"
     assert len(list(stored.objects(None, v.VERSION))) == 1, "one version token was written"
+
+
+NOT_MINTED = [
+    pytest.param(f"{ROOT}/content/x", id="a path below an aggregate"),
+    pytest.param(f"{TENANT}/books/1", id="not a UUID"),
+    pytest.param(f"{TENANT}/books/{str(uuid4()).upper()}", id="not a canonical UUID"),
+    pytest.param(f"{ROOT}/graph", id="an aggregate's graph IRI"),
+]
+
+
+@pytest.mark.parametrize("bad", NOT_MINTED)
+@pytest.mark.parametrize("call", ["add_graph", "replace_graph"])
+async def test_a_commit_refuses_an_aggregate_iri_that_was_not_minted_before_any_request(
+    session, store, call, bad
+):
+    arguments = (bad, []) if call == "add_graph" else (bad, [], "v")
+    with pytest.raises(InvalidIri, match="aggregate"):
+        await getattr(session, call)(*arguments)
+    assert (store.sent("query"), store.sent("update")) == ([], []), "the store was not touched"
+
+
+async def test_an_aggregate_cannot_pose_as_a_loaded_graph_of_another_and_be_removed_with_it(
+    session, store
+):
+    posing = f"{ROOT}/content/x"
+    with pytest.raises(InvalidIri):
+        await session.add_graph(posing, [(URIRef(posing), TITLE, Literal("victim"))])
+    assert await registered_loaded(store) == set(), "nothing is registered under the root"
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        pytest.param(URIRef(f"{ROOT}/content/x"), id="not a UUID"),
+        pytest.param(URIRef(f"{ROOT}/content/{uuid4().hex}"), id="a UUID without hyphens"),
+        pytest.param(URIRef(f"{ROOT}/content/{uuid4()}/more"), id="a longer path"),
+    ],
+)
+async def test_a_loaded_graph_must_be_exactly_the_minted_form(session, store, bad):
+    with pytest.raises(InvalidIri, match="content"):
+        await session.add_graph(ROOT, [], loaded_graphs=[bad])
+    assert store.sent("update") == [], "nothing was sent"

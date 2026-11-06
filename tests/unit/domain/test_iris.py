@@ -10,7 +10,9 @@ from rdf_persistence.domain.exceptions import InvalidIri
 from rdf_persistence.domain.iris import (
     access_iri,
     graph_iri,
+    is_aggregate_iri,
     is_inside_tenant,
+    is_loaded_graph_of,
     loaded_graph_iri,
     meta_graph_iri,
     mint_aggregate_iri,
@@ -155,3 +157,47 @@ def test_the_toolkit_principal_is_toolkit_under_the_base():
 )
 def test_an_iri_is_inside_a_tenant_only_below_its_path(iri, inside):
     assert is_inside_tenant(str(TENANT), iri) is inside, iri
+
+
+AGGREGATE = f"{TENANT}/books/{uuid.uuid4()}"
+
+
+@pytest.mark.parametrize(
+    ("iri", "accepted"),
+    [
+        (AGGREGATE, True),
+        (str(TENANT), True),  # the tenant's root object
+        (f"{TENANT}/access", True),  # the access record has a fixed IRI
+        (f"{TENANT}/books/1", False),  # not a UUID
+        (f"{TENANT}/books/{str(uuid.uuid4()).upper()}", False),  # not canonical
+        (f"{TENANT}/books/{uuid.uuid4().hex}", False),  # no hyphens
+        (f"{AGGREGATE}/content/x", False),  # a path below an aggregate
+        (f"{AGGREGATE}/graph", False),
+        (f"{TENANT}/Books/{uuid.uuid4()}", False),  # not a path segment
+        (f"{TENANT}/books/{uuid.uuid4()}/", False),
+        (f"{TENANT}x/books/{uuid.uuid4()}", False),  # a longer sibling
+    ],
+)
+def test_an_aggregate_iri_is_the_minted_form_or_the_tenant_root(iri, accepted):
+    assert is_aggregate_iri(str(TENANT), iri) is accepted, iri
+
+
+def test_every_minted_aggregate_iri_is_an_aggregate_iri():
+    assert is_aggregate_iri(str(TENANT), str(mint_aggregate_iri(TENANT, "books")))
+
+
+@pytest.mark.parametrize(
+    ("graph", "loaded"),
+    [
+        (str(loaded_graph_iri(AGGREGATE)), True),
+        (f"{AGGREGATE}/content/{uuid.uuid4()}/more", False),
+        (f"{AGGREGATE}/content/x", False),  # not a UUID
+        (f"{AGGREGATE}/content/{uuid.uuid4().hex}", False),
+        (f"{AGGREGATE}/content/{str(uuid.uuid4()).upper()}", False),
+        (f"{AGGREGATE}/content", False),
+        (f"{AGGREGATE}0/content/{uuid.uuid4()}", False),  # a sibling sharing the prefix text
+        (f"{TENANT}/books/{uuid.uuid4()}/content/{uuid.uuid4()}", False),  # another aggregate's
+    ],
+)
+def test_a_loaded_graph_is_the_minted_form_under_its_aggregate(graph, loaded):
+    assert is_loaded_graph_of(AGGREGATE, graph) is loaded, graph

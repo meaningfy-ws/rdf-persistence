@@ -61,6 +61,29 @@ def is_inside_tenant(tenant_iri: str, iri: str) -> bool:
     return iri.startswith(f"{tenant_iri}/")
 
 
+def _is_canonical_uuid(text: str) -> bool:
+    try:
+        return str(UUID(text)) == text
+    except ValueError:
+        return False
+
+
+def is_aggregate_iri(tenant_iri: str, iri: str) -> bool:
+    """True for what the toolkit mints as an aggregate: the tenant root, its access record, or
+    ``{tenant_iri}/{rp_path}/{canonical uuid}``. Anything else could alias another graph."""
+    if iri in (tenant_iri, str(access_iri(tenant_iri))):
+        return True
+    path, _, last = iri.rpartition("/")
+    parent, _, segment = path.rpartition("/")
+    return parent == tenant_iri and bool(_SEGMENT.fullmatch(segment)) and _is_canonical_uuid(last)
+
+
+def is_loaded_graph_of(root_iri: str, graph: str) -> bool:
+    """True when ``graph`` is exactly ``{root_iri}/content/{canonical uuid}`` (see ``loaded_graph_iri``)."""
+    path, _, last = graph.rpartition("/")
+    return path == f"{root_iri}/content" and _is_canonical_uuid(last)
+
+
 def mint_part_iri(root_iri: str) -> URIRef:
     """A fresh IRI ``{root_iri}/parts/{uuid4}`` for an owned part that has none."""
     return URIRef(f"{root_iri}/parts/{uuid4()}")

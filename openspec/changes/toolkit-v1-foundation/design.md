@@ -653,6 +653,13 @@ WHERE  { GRAPH <g> { <g> rp:version "7f3a…" . ?s ?p ?o }
          OPTIONAL { GRAPH <registry> { ?e rp:ownedBy <b> ; ?ep ?eo } } }
 ```
 
+Since the stage 2 review the update is one request of several operations separated by `;` (one
+transaction in Fuseki), each carrying the version guard in its `WHERE`: first the loaded graphs, then
+the registry entries, and last the aggregate's triples with the new version. One combined `WHERE`
+would multiply the aggregate's triples by its registry entries and loaded-graph triples. A loaded
+graph is exactly `{root}/content/{uuid}`, and only an aggregate IRI of the minted form, the tenant
+root, or the tenant's access record `{tenant}/access` (its IRI is fixed by PD-6a) may be written.
+
 It then asks `ASK { GRAPH <g> { <g> rp:version "c91e…" } }`. True means the commit happened.
 False means a conflict: Fuseki answers 204 even when `WHERE` matched nothing. A new aggregate uses
 `INSERT DATA`, after an `ASK` that `<g>` does not exist. Random IRIs make a race on the same new IRI

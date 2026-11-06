@@ -2,6 +2,7 @@
 
 from functools import cache
 from pathlib import Path
+from uuid import UUID
 
 from rdf_persistence import (
     Grant,
@@ -38,7 +39,7 @@ def toy_mapper() -> Mapper:
 
 
 def book_iri(n: object) -> str:
-    return f"{TENANT}/books/{n}"
+    return f"{TENANT}/books/{UUID(int=int(n))}"  # a minted aggregate IRI ends in a UUID
 
 
 def dune(iri: str, *, chapters: int = 2) -> Book:

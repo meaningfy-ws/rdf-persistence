@@ -84,7 +84,7 @@ def test_database_name_outside_the_tenant_naming_rule_is_refused(name: str) -> N
         tenant_access(database_name=name)
 
 
-@pytest.mark.parametrize("label", ["", "x" * 201, "two\nlines"])
+@pytest.mark.parametrize("label", ["", "x" * 201, "two\nlines", " ", " ."])
 def test_tenant_label_outside_the_pattern_is_refused(label: str) -> None:
     with pytest.raises(ValidationError, match="Invalid label format"):
         tenant_access(label=label)

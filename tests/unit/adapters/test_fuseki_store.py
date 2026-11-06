@@ -175,6 +175,17 @@ async def test_an_unreachable_store_is_unavailable(operation, failure):
         await DATA_PLANE[operation](store)
 
 
+@pytest.mark.parametrize("operation", DATA_PLANE)
+async def test_an_answer_that_cannot_be_decoded_is_unavailable(operation):
+    """A body that claims gzip but is not raises httpx.DecodingError, which is not a transport error."""
+    undecodable = httpx.Response(
+        200, stream=httpx.ByteStream(b"plain"), headers={"content-encoding": "gzip"}
+    )
+    store, _ = store_answering(undecodable)
+    with pytest.raises(StoreUnavailable):
+        await DATA_PLANE[operation](store)
+
+
 async def test_creating_an_existing_dataset_is_a_conflict():
     store, _ = store_answering(reply(409))
     with pytest.raises(Conflict):

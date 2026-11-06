@@ -92,6 +92,21 @@ async def test_create_grants_the_creator_role_on_the_tenant_to_the_creator(tenan
     )
 
 
+@pytest.mark.parametrize(
+    ("label", "description"),
+    [
+        ("Ghent", "Who may do what in the tenant Ghent."),
+        ("St. Mary.", "Who may do what in the tenant St. Mary."),
+        ("Wait...", "Who may do what in the tenant Wait."),
+        (".", "Who may do what in the tenant ."),
+    ],
+)
+async def test_the_record_description_ends_in_one_period(tenancy, label, description):
+    summary = await tenancy.create(label, library(), CREATOR)
+    record, _ = await tenancy.get(summary.id)
+    assert record.description == description
+
+
 async def test_the_record_names_the_database(tenancy):
     summary = await tenancy.create("Ghent", library(), CREATOR)
     record, _ = await tenancy.get(summary.id)

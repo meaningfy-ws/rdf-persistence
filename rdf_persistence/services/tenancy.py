@@ -117,7 +117,9 @@ class Tenancy:
         record = self._access_class(
             id=str(access_iri(tenant)),
             label=label,
-            description=RECORD_DESCRIPTION.format(label=label),
+            description=RECORD_DESCRIPTION.format(
+                label=label.rstrip(".")
+            ),  # the template ends the sentence
             state=TenantState.ACTIVE,
             database_name=name,
             grants=[Grant(assignee=creator.id, target=tenant, role=self._settings.creator_role)],

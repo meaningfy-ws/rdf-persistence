@@ -2,6 +2,7 @@
 
 import json
 from functools import cache
+from uuid import UUID
 
 import pytest
 from hypothesis import HealthCheck, given, settings
@@ -153,7 +154,9 @@ def test_an_enum_is_stored_as_its_meaning_iri_and_read_back_as_its_value():
 
 
 def test_a_reference_to_another_aggregate_is_an_iri_not_a_node_description():
-    scan = Scan(id=f"{TENANT}/scans/1", label="Scan", description="d", scan_of=book_iri(3))
+    scan = Scan(
+        id=f"{TENANT}/scans/{UUID(int=1)}", label="Scan", description="d", scan_of=book_iri(3)
+    )
     mapper = toy_mapper()
     graph = mapper.to_graph(scan)
     target = URIRef(book_iri(3))

@@ -88,7 +88,7 @@ class LibraryAccess(TenantAccess):
 
     @field_validator("label")
     def pattern_label(cls, v):
-        pattern=re.compile("^.{1,200}$")
+        pattern=re.compile("^\\S(?:.{0,198}\\S)?$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.fullmatch(element):

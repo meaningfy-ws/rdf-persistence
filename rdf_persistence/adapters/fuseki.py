@@ -108,7 +108,7 @@ class FusekiStore:
     ) -> httpx.Response:
         try:
             response = await self._client.request(method, path, **kwargs)
-        except httpx.TransportError as error:
+        except httpx.HTTPError as error:
             raise StoreUnavailable(f"Fuseki is unreachable: {error}") from error
         _raise_for_status(response, on_missing=on_missing)
         return response

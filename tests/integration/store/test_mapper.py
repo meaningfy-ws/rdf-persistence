@@ -2,6 +2,7 @@
 
 import uuid
 from collections.abc import AsyncIterator
+from uuid import UUID
 
 import pytest
 
@@ -56,7 +57,9 @@ async def test_a_book_with_chapters_and_notes_comes_back_equal_with_its_tracking
 
 
 async def test_a_scan_keeps_its_reference_to_a_book_as_an_iri(session):
-    scan = Scan(id=f"{TENANT}/scans/1", label="Scan", description="d", scan_of=book_iri(1))
+    scan = Scan(
+        id=f"{TENANT}/scans/{UUID(int=1)}", label="Scan", description="d", scan_of=book_iri(1)
+    )
     work = unit(session)
     work.add(scan)
     await work.commit()

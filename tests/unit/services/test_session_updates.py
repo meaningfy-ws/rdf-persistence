@@ -241,3 +241,55 @@ def test_registry_entry_of_a_loaded_graph_is_written_replaced_and_removed_with_t
     assert (loaded[1], v.REGISTRY_KIND, kind) not in held, "the dropped one is unregistered"
     dataset.update(remove_text(GRAPH, REGISTRY, ROOT, "v2"))
     assert len(contents(dataset, REGISTRY)) == 0, "removing the aggregate removes every entry"
+
+
+def with_loaded_graph() -> tuple[Dataset, URIRef, RegistryEntry]:
+    """A committed aggregate that owns one loaded graph with a triple in it."""
+    loaded = URIRef(f"{ROOT}/content/1")
+    loaded_entry = RegistryEntry(
+        graph=str(loaded), kind=RegistryKind.LOADED_GRAPH, owned_by=str(ROOT)
+    )
+    dataset = Dataset()
+    dataset.update(
+        add_text(
+            GRAPH, REGISTRY, payload(GRAPH, ROOT, "old", "v1"), [entry(GRAPH, ROOT), loaded_entry]
+        )
+    )
+    dataset.graph(loaded).add((ROOT, TITLE, Literal("loaded")))
+    return dataset, loaded, loaded_entry
+
+
+@pytest.mark.parametrize("keep_loaded", [False, True], ids=["drops the load", "keeps the load"])
+@pytest.mark.parametrize("call", ["replace", "remove"])
+def test_a_stale_guard_changes_no_graph_at_all(call, keep_loaded):
+    """Each operation of the update carries the guard: none may run once the version is stale."""
+    dataset, loaded, loaded_entry = with_loaded_graph()
+    graphs = (GRAPH, REGISTRY, loaded)
+    before = [contents(dataset, g) for g in graphs]
+    if call == "replace":
+        entries = [entry(GRAPH, ROOT), *([loaded_entry] if keep_loaded else [])]
+        text = replace_text(
+            GRAPH, REGISTRY, ROOT, "stale", payload(GRAPH, ROOT, "new", "v2"), entries
+        )
+    else:
+        text = remove_text(GRAPH, REGISTRY, ROOT, "stale")
+    dataset.update(text)
+    for graph, was in zip(graphs, before, strict=True):
+        assert_same(contents(dataset, graph), was, f"a stale {call} left {graph} alone")
+
+
+def test_replace_in_one_update_request_orders_the_operations_so_the_guard_holds_for_each():
+    dataset, loaded, loaded_entry = with_loaded_graph()
+    dataset.update(
+        replace_text(
+            GRAPH, REGISTRY, ROOT, "v1", payload(GRAPH, ROOT, "new", "v2"), [entry(GRAPH, ROOT)]
+        )
+    )
+    assert len(contents(dataset, loaded)) == 0, "the dropped load is emptied"
+    assert (loaded, v.REGISTRY_OWNED_BY, ROOT) not in contents(dataset, REGISTRY), (
+        "and unregistered"
+    )
+    assert (GRAPH, v.REGISTRY_OWNED_BY, ROOT) in contents(dataset, REGISTRY), "the aggregate stays"
+    assert set(contents(dataset, GRAPH)) == set(payload(GRAPH, ROOT, "new", "v2")), (
+        "exactly the new"
+    )

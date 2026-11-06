@@ -12,9 +12,9 @@ lib:Book a sh:NodeShape ;
 	rdfs:comment "A book held by a library; an aggregate root that owns its chapters." ;
 	rdfs:label "Book" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n52 ;
+	sh:ignoredProperties _:c14n53 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n111 , _:c14n112 , _:c14n115 , _:c14n120 , _:c14n121 , _:c14n30 , _:c14n42 , _:c14n43 , _:c14n5 , _:c14n64 , _:c14n8 , _:c14n81 ;
+	sh:property _:c14n111 , _:c14n112 , _:c14n115 , _:c14n120 , _:c14n121 , _:c14n29 , _:c14n42 , _:c14n43 , _:c14n5 , _:c14n63 , _:c14n8 , _:c14n81 ;
 	sh:targetClass <http://purl.org/ontology/bibo/Book> .
 lib:Chapter a sh:NodeShape ;
 	rdfs:comment "A chapter of a book, known by its number rather than a label; part of the book's aggregate. It owns its notes." ;
@@ -22,7 +22,7 @@ lib:Chapter a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n118 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n113 , _:c14n114 , _:c14n20 , _:c14n59 , _:c14n7 ;
+	sh:property _:c14n113 , _:c14n114 , _:c14n20 , _:c14n60 , _:c14n7 ;
 	sh:targetClass <http://purl.org/ontology/bibo/Chapter> .
 lib:Library a sh:NodeShape ;
 	rdfs:comment "A library; the tenant root. Its IRI is the tenant IRI and it lives in the tenant's meta graph." ;
@@ -30,7 +30,7 @@ lib:Library a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n119 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n105 , _:c14n108 , _:c14n109 , _:c14n11 , _:c14n39 , _:c14n48 , _:c14n63 , _:c14n83 ;
+	sh:property _:c14n105 , _:c14n108 , _:c14n109 , _:c14n11 , _:c14n38 , _:c14n49 , _:c14n62 , _:c14n83 ;
 	sh:targetClass <http://schema.org/Library> .
 lib:LibraryAccess a sh:NodeShape ;
 	rdfs:comment "The access record of a library tenant; its grants are the metamodel's." ;
@@ -38,16 +38,16 @@ lib:LibraryAccess a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n94 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n110 , _:c14n129 , _:c14n22 , _:c14n27 , _:c14n62 , _:c14n71 , _:c14n93 ;
+	sh:property _:c14n110 , _:c14n129 , _:c14n22 , _:c14n61 , _:c14n70 , _:c14n71 , _:c14n93 ;
 	sh:sparql _:c14n103 ;
 	sh:targetClass lib:LibraryAccess .
 lib:Note a sh:NodeShape ;
 	rdfs:comment "A short note on a chapter, with a label of its own." ;
 	rdfs:label "Note" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n34 ;
+	sh:ignoredProperties _:c14n33 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n125 , _:c14n29 , _:c14n70 , _:c14n75 , _:c14n89 ;
+	sh:property _:c14n125 , _:c14n28 , _:c14n69 , _:c14n75 , _:c14n89 ;
 	sh:targetClass lib:Note .
 lib:Scan a sh:NodeShape ;
 	rdfs:comment "A scanned copy of a book; an aggregate root whose current content is a stored file." ;
@@ -55,7 +55,7 @@ lib:Scan a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n96 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n104 , _:c14n12 , _:c14n2 , _:c14n28 , _:c14n37 , _:c14n45 , _:c14n50 , _:c14n57 , _:c14n69 , _:c14n78 , _:c14n80 , _:c14n84 , _:c14n88 , _:c14n95 , _:c14n99 ;
+	sh:property _:c14n104 , _:c14n12 , _:c14n2 , _:c14n27 , _:c14n36 , _:c14n45 , _:c14n51 , _:c14n58 , _:c14n68 , _:c14n78 , _:c14n80 , _:c14n84 , _:c14n88 , _:c14n95 , _:c14n99 ;
 	sh:targetClass lib:Scan .
 rp:AggregateRoot a sh:NodeShape ;
 	rdfs:comment "A mixin for classes whose instances are aggregate roots. Each instance is one named graph, whose IRI is derived from the root's IRI; it is versioned, loaded and saved as a whole." ;
@@ -67,7 +67,7 @@ rp:Described a sh:NodeShape ;
 	rdfs:comment "A mixin giving an object an IRI, a label and a description. The application writes them." ;
 	rdfs:label "Described" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n31 ;
+	sh:ignoredProperties _:c14n30 ;
 	sh:nodeKind sh:IRI ;
 	sh:property _:c14n0 , _:c14n41 , _:c14n97 ;
 	sh:targetClass rp:Described .
@@ -76,7 +76,7 @@ rp:Grant a sh:NodeShape ;
 	rdfs:label "Grant" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n77 ;
-	sh:property _:c14n116 , _:c14n18 , _:c14n66 , _:c14n79 ;
+	sh:property _:c14n116 , _:c14n18 , _:c14n65 , _:c14n79 ;
 	sh:targetClass odrl:Permission ;
 	sh:xone _:c14n25 .
 rp:Policy a sh:NodeShape ;
@@ -91,7 +91,7 @@ rp:Principal a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n128 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n51 ;
+	sh:property _:c14n52 ;
 	sh:targetClass prov:Agent .
 rp:Prohibition a sh:NodeShape ;
 	rdfs:comment "The ODRL prohibition that forbids an assignee an action on a target; it wins over any permission." ;
@@ -105,14 +105,14 @@ rp:RegistryEntry a sh:NodeShape ;
 	rdfs:label "Registry entry" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n26 ;
-	sh:property _:c14n123 , _:c14n17 , _:c14n36 ;
+	sh:property _:c14n123 , _:c14n17 , _:c14n35 ;
 	sh:targetClass rp:RegistryEntry .
 rp:RoleDefinition a sh:NodeShape ;
 	rdfs:comment "What a role may do and where it applies. An application supplies its role definitions as data; they are not stored." ;
 	rdfs:label "Role definition" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n86 ;
-	sh:property _:c14n102 , _:c14n33 , _:c14n49 ;
+	sh:property _:c14n102 , _:c14n32 , _:c14n50 ;
 	sh:targetClass rp:RoleDefinition .
 rp:Rule a sh:NodeShape ;
 	rdfs:comment "An ODRL rule that gives an assignee a ruling on an action over a target." ;
@@ -126,7 +126,7 @@ rp:StoredFile a sh:NodeShape ;
 	rdfs:label "Stored file" ;
 	sh:closed false ;
 	sh:ignoredProperties _:c14n92 ;
-	sh:property _:c14n1 , _:c14n4 , _:c14n56 , _:c14n6 , _:c14n65 , _:c14n68 , _:c14n73 ;
+	sh:property _:c14n1 , _:c14n4 , _:c14n57 , _:c14n6 , _:c14n64 , _:c14n67 , _:c14n73 ;
 	sh:targetClass rp:StoredFile .
 rp:TenantAccess a sh:NodeShape ;
 	rdfs:comment "The access record of a tenant: its label, state and database name, with the grants and prohibitions that say who may do what in it." ;
@@ -134,22 +134,22 @@ rp:TenantAccess a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n100 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n117 , _:c14n124 , _:c14n127 , _:c14n19 , _:c14n60 , _:c14n67 , _:c14n91 ;
+	sh:property _:c14n117 , _:c14n124 , _:c14n127 , _:c14n19 , _:c14n46 , _:c14n66 , _:c14n91 ;
 	sh:sparql _:c14n9 ;
 	sh:targetClass rp:TenantAccess .
 rp:TenantLabelled a sh:NodeShape ;
-	rdfs:comment "A mixin for what carries a tenant's label, one line of 1 to 200 characters; the access record and the service's request bodies share it, so the label is checked the same everywhere." ;
+	rdfs:comment "A mixin for what carries a tenant's label, one line of 1 to 200 characters that neither starts nor ends in a space; the access record and the service's request bodies share it, so the label is checked the same everywhere." ;
 	rdfs:label "Tenant labelled" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n55 ;
-	sh:property _:c14n61 ;
+	sh:ignoredProperties _:c14n56 ;
+	sh:property _:c14n39 ;
 	sh:targetClass rp:TenantLabelled .
 rp:Tracked a sh:NodeShape ;
 	rdfs:comment "A mixin for the tracking statements of a commit. The session writes them about the aggregate's graph IRI, never about the root entity." ;
 	rdfs:label "Tracked" ;
 	sh:closed false ;
 	sh:ignoredProperties _:c14n21 ;
-	sh:property _:c14n106 , _:c14n107 , _:c14n35 , _:c14n85 ;
+	sh:property _:c14n106 , _:c14n107 , _:c14n34 , _:c14n85 ;
 	sh:targetClass rp:Tracked .
 _:c14n0 sh:datatype xsd:string ;
 	sh:description "A free-text description of the object." ;
@@ -170,7 +170,7 @@ _:c14n10 rdf:first <http://schema.org/NonFiction> ;
 _:c14n100 rdf:first dcterms:contributor ;
 	rdf:rest _:c14n145 .
 _:c14n101 rdf:first dcterms:description ;
-	rdf:rest _:c14n53 .
+	rdf:rest _:c14n54 .
 _:c14n102 sh:description "Where the role applies." ;
 	sh:in _:c14n3 ;
 	sh:maxCount 1 ;
@@ -266,7 +266,7 @@ _:c14n114 sh:datatype xsd:string ;
 	sh:order 3 ;
 	sh:path skos:prefLabel .
 _:c14n115 sh:description "The literary genre of the book." ;
-	sh:in _:c14n54 ;
+	sh:in _:c14n55 ;
 	sh:maxCount 1 ;
 	sh:name "Genre" ;
 	sh:order 3 ;
@@ -286,9 +286,9 @@ _:c14n117 sh:description "Where the tenant is in its life." ;
 	sh:order 0 ;
 	sh:path rp:state .
 _:c14n118 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n180 .
+	rdf:rest _:c14n175 .
 _:c14n119 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n165 .
+	rdf:rest _:c14n160 .
 _:c14n12 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
@@ -378,7 +378,7 @@ _:c14n138 rdf:first rdf:type ;
 _:c14n139 rdf:first rp:version ;
 	rdf:rest rdf:nil .
 _:c14n14 rdf:first rp:Aggregate ;
-	rdf:rest _:c14n46 .
+	rdf:rest _:c14n47 .
 _:c14n140 rdf:first dcterms:created ;
 	rdf:rest _:c14n136 .
 _:c14n141 rdf:first dcterms:creator ;
@@ -566,7 +566,7 @@ _:c14n21 rdf:first rdf:type ;
 _:c14n210 rdf:first rp:administer ;
 	rdf:rest rdf:nil .
 _:c14n211 sh:property _:c14n122 .
-_:c14n212 sh:property _:c14n38 .
+_:c14n212 sh:property _:c14n37 .
 _:c14n213 rdf:first rdf:type ;
 	rdf:rest _:c14n74 .
 _:c14n22 sh:description "Where the tenant is in its life." ;
@@ -579,83 +579,83 @@ _:c14n22 sh:description "Where the tenant is in its life." ;
 _:c14n23 rdf:first rp:prohibition ;
 	rdf:rest _:c14n15 .
 _:c14n24 rdf:first rdf:type ;
-	rdf:rest _:c14n58 .
+	rdf:rest _:c14n59 .
 _:c14n25 rdf:first _:c14n212 ;
 	rdf:rest _:c14n82 .
 _:c14n26 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n160 .
-_:c14n27 sh:datatype xsd:string ;
-	sh:description "The preferred label of the object." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Label" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 5 ;
-	sh:path skos:prefLabel ;
-	sh:pattern "^(?:^.{1,200}$)(?![\\s\\S])" .
-_:c14n28 sh:datatype xsd:integer ;
+	rdf:rest _:c14n155 .
+_:c14n27 sh:datatype xsd:integer ;
 	sh:description "The size of the file in bytes." ;
 	sh:maxCount 1 ;
 	sh:name "Byte size" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 10 ;
 	sh:path rp:byteSize .
-_:c14n29 sh:datatype xsd:string ;
+_:c14n28 sh:datatype xsd:string ;
 	sh:description "A free-text description of the object." ;
 	sh:maxCount 1 ;
 	sh:name "Description" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 4 ;
 	sh:path dcterms:description .
-_:c14n3 rdf:first rp:SystemLevel ;
-	rdf:rest _:c14n47 .
-_:c14n30 sh:datatype xsd:date ;
+_:c14n29 sh:datatype xsd:date ;
 	sh:description "The date the book was published." ;
 	sh:maxCount 1 ;
 	sh:name "Publication date" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 2 ;
 	sh:path dcterms:issued .
-_:c14n31 rdf:first rdf:type ;
+_:c14n3 rdf:first rp:SystemLevel ;
+	rdf:rest _:c14n48 .
+_:c14n30 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n32 rdf:first rp:databaseName ;
+_:c14n31 rdf:first rp:databaseName ;
 	rdf:rest _:c14n90 .
-_:c14n33 sh:description "The actions the role permits." ;
-	sh:in _:c14n203 ;
+_:c14n32 sh:description "The actions the role permits." ;
+	sh:in _:c14n207 ;
 	sh:minCount 1 ;
 	sh:name "Actions" ;
 	sh:order 2 ;
 	sh:path rp:permits .
-_:c14n34 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n155 .
-_:c14n35 sh:description "The principal that first committed the graph." ;
+_:c14n33 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n180 .
+_:c14n34 sh:description "The principal that first committed the graph." ;
 	sh:maxCount 1 ;
 	sh:name "Creator" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 2 ;
 	sh:path dcterms:creator .
-_:c14n36 sh:description "The IRI of the aggregate root that owns the graph." ;
+_:c14n35 sh:description "The IRI of the aggregate root that owns the graph." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Owned by" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 2 ;
 	sh:path rp:ownedBy .
-_:c14n37 sh:description "The principal that uploaded the file." ;
+_:c14n36 sh:description "The principal that uploaded the file." ;
 	sh:maxCount 1 ;
 	sh:name "Uploaded by" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 13 ;
 	sh:path rp:uploadedBy .
-_:c14n38 sh:minCount 1 ;
+_:c14n37 sh:minCount 1 ;
 	sh:path rp:role .
-_:c14n39 sh:datatype xsd:string ;
+_:c14n38 sh:datatype xsd:string ;
 	sh:description "The city where the library is located." ;
 	sh:maxCount 1 ;
 	sh:name "City" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path <http://schema.org/addressLocality> .
+_:c14n39 sh:datatype xsd:string ;
+	sh:description "The preferred label of the object." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Label" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path skos:prefLabel ;
+	sh:pattern "^(?:^\\S(?:.{0,198}\\S)?$)(?![\\s\\S])" .
 _:c14n4 sh:datatype xsd:string ;
 	sh:description "The random key of the file in the tenant's bucket." ;
 	sh:maxCount 1 ;
@@ -664,7 +664,7 @@ _:c14n4 sh:datatype xsd:string ;
 	sh:order 6 ;
 	sh:path rp:fileKey .
 _:c14n40 sh:description "The action a direct permission allows, or a prohibition forbids." ;
-	sh:in _:c14n207 ;
+	sh:in _:c14n203 ;
 	sh:maxCount 1 ;
 	sh:name "Action" ;
 	sh:order 2 ;
@@ -702,25 +702,26 @@ _:c14n45 sh:description "The book this is a scan of, another aggregate, stored a
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path <http://schema.org/exampleOfWork> .
-_:c14n46 rdf:first rp:LoadedGraph ;
+_:c14n46 sh:datatype xsd:string ;
+	sh:description "The preferred label of the object." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Label" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 5 ;
+	sh:path skos:prefLabel ;
+	sh:pattern "^(?:^\\S(?:.{0,198}\\S)?$)(?![\\s\\S])" .
+_:c14n47 rdf:first rp:LoadedGraph ;
 	rdf:rest rdf:nil .
-_:c14n47 rdf:first rp:TenantLevel ;
+_:c14n48 rdf:first rp:TenantLevel ;
 	rdf:rest _:c14n130 .
-_:c14n48 sh:datatype xsd:dateTime ;
+_:c14n49 sh:datatype xsd:dateTime ;
 	sh:description "The time the graph was last committed." ;
 	sh:maxCount 1 ;
 	sh:name "Modified" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 5 ;
 	sh:path dcterms:modified .
-_:c14n49 sh:datatype xsd:string ;
-	sh:description "The name of a role, matched against the application's role definitions. An application may narrow it to an enum." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Role" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 0 ;
-	sh:path rp:role .
 _:c14n5 sh:datatype xsd:string ;
 	sh:description "The International Standard Book Number of the book." ;
 	sh:maxCount 1 ;
@@ -729,34 +730,42 @@ _:c14n5 sh:datatype xsd:string ;
 	sh:order 0 ;
 	sh:path <http://purl.org/ontology/bibo/isbn> .
 _:c14n50 sh:datatype xsd:string ;
+	sh:description "The name of a role, matched against the application's role definitions. An application may narrow it to an enum." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Role" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:role .
+_:c14n51 sh:datatype xsd:string ;
 	sh:description "The name of the file as uploaded." ;
 	sh:maxCount 1 ;
 	sh:name "File name" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 8 ;
 	sh:path rp:fileName .
-_:c14n51 sh:description "The IRI that identifies the object." ;
+_:c14n52 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n52 rdf:first dcterms:contributor ;
+_:c14n53 rdf:first dcterms:contributor ;
 	rdf:rest _:c14n190 .
-_:c14n53 rdf:first dcterms:identifier ;
+_:c14n54 rdf:first dcterms:identifier ;
 	rdf:rest _:c14n213 .
-_:c14n54 rdf:first <http://schema.org/Fiction> ;
+_:c14n55 rdf:first <http://schema.org/Fiction> ;
 	rdf:rest _:c14n10 .
-_:c14n55 rdf:first rdf:type ;
+_:c14n56 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n56 sh:datatype xsd:string ;
+_:c14n57 sh:datatype xsd:string ;
 	sh:description "The name of the file as uploaded." ;
 	sh:maxCount 1 ;
 	sh:name "File name" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:fileName .
-_:c14n57 sh:datatype xsd:string ;
+_:c14n58 sh:datatype xsd:string ;
 	sh:description "The preferred label of the object." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -764,15 +773,8 @@ _:c14n57 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 2 ;
 	sh:path skos:prefLabel .
-_:c14n58 rdf:first rp:role ;
+_:c14n59 rdf:first rp:role ;
 	rdf:rest rdf:nil .
-_:c14n59 sh:datatype xsd:integer ;
-	sh:description "The position of a chapter in its book." ;
-	sh:maxCount 1 ;
-	sh:name "Chapter number" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 0 ;
-	sh:path <http://purl.org/ontology/bibo/chapter> .
 _:c14n6 sh:datatype xsd:string ;
 	sh:description "The media type of the file." ;
 	sh:maxCount 1 ;
@@ -780,36 +782,25 @@ _:c14n6 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:mediaType .
-_:c14n60 sh:datatype xsd:string ;
-	sh:description "The preferred label of the object." ;
+_:c14n60 sh:datatype xsd:integer ;
+	sh:description "The position of a chapter in its book." ;
 	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Label" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 5 ;
-	sh:path skos:prefLabel ;
-	sh:pattern "^(?:^.{1,200}$)(?![\\s\\S])" .
-_:c14n61 sh:datatype xsd:string ;
-	sh:description "The preferred label of the object." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Label" ;
+	sh:name "Chapter number" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
-	sh:path skos:prefLabel ;
-	sh:pattern "^(?:^.{1,200}$)(?![\\s\\S])" .
-_:c14n62 sh:description "The IRI that identifies the object." ;
+	sh:path <http://purl.org/ontology/bibo/chapter> .
+_:c14n61 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 4 ;
 	sh:path dcterms:identifier .
-_:c14n63 sh:description "A principal that committed a later version of the graph." ;
+_:c14n62 sh:description "A principal that committed a later version of the graph." ;
 	sh:name "Contributor" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 7 ;
 	sh:path dcterms:contributor .
-_:c14n64 sh:datatype xsd:string ;
+_:c14n63 sh:datatype xsd:string ;
 	sh:description "A free-text description of the object." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -817,20 +808,20 @@ _:c14n64 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 7 ;
 	sh:path dcterms:description .
-_:c14n65 sh:description "The principal that uploaded the file." ;
+_:c14n64 sh:description "The principal that uploaded the file." ;
 	sh:maxCount 1 ;
 	sh:name "Uploaded by" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 5 ;
 	sh:path rp:uploadedBy .
-_:c14n66 sh:datatype xsd:string ;
+_:c14n65 sh:datatype xsd:string ;
 	sh:description "The name of a role, matched against the application's role definitions. An application may narrow it to an enum." ;
 	sh:maxCount 1 ;
 	sh:name "Role" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:role .
-_:c14n67 sh:datatype xsd:string ;
+_:c14n66 sh:datatype xsd:string ;
 	sh:description "The name of the tenant's database, the prefix, \"-t-\" and the tenant's UUID in hexadecimal; the prefix is lower case, at most 20 characters." ;
 	sh:maxCount 1 ;
 	sh:name "Database name" ;
@@ -838,7 +829,7 @@ _:c14n67 sh:datatype xsd:string ;
 	sh:order 1 ;
 	sh:path rp:databaseName ;
 	sh:pattern "^(?:^[a-z][a-z0-9]{0,19}-t-[0-9a-f]{32}$)(?![\\s\\S])" .
-_:c14n68 sh:datatype xsd:string ;
+_:c14n67 sh:datatype xsd:string ;
 	sh:description "The SHA-256 digest of the file, in lowercase hexadecimal." ;
 	sh:maxCount 1 ;
 	sh:name "SHA-256" ;
@@ -846,7 +837,7 @@ _:c14n68 sh:datatype xsd:string ;
 	sh:order 3 ;
 	sh:path rp:sha256 ;
 	sh:pattern "^(?:^[0-9a-f]{64}$)(?![\\s\\S])" .
-_:c14n69 sh:datatype xsd:string ;
+_:c14n68 sh:datatype xsd:string ;
 	sh:description "A free-text description of the object." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -854,13 +845,7 @@ _:c14n69 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path dcterms:description .
-_:c14n7 sh:description "The notes on a chapter; they live in the book's graph." ;
-	sh:name "Notes" ;
-	sh:node lib:Note ;
-	sh:nodeKind sh:IRI ;
-	sh:order 1 ;
-	sh:path lib:note .
-_:c14n70 sh:datatype xsd:string ;
+_:c14n69 sh:datatype xsd:string ;
 	sh:description "The preferred label of the object." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -868,12 +853,27 @@ _:c14n70 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path skos:prefLabel .
-_:c14n71 sh:description "The permissions given in the tenant, by role or as direct actions; they live in the access record's graph." ;
+_:c14n7 sh:description "The notes on a chapter; they live in the book's graph." ;
+	sh:name "Notes" ;
+	sh:node lib:Note ;
+	sh:nodeKind sh:IRI ;
+	sh:order 1 ;
+	sh:path lib:note .
+_:c14n70 sh:description "The permissions given in the tenant, by role or as direct actions; they live in the access record's graph." ;
 	sh:name "Grants" ;
 	sh:node rp:Grant ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 2 ;
 	sh:path rp:grant .
+_:c14n71 sh:datatype xsd:string ;
+	sh:description "The preferred label of the object." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Label" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 5 ;
+	sh:path skos:prefLabel ;
+	sh:pattern "^(?:^\\S(?:.{0,198}\\S)?$)(?![\\s\\S])" .
 _:c14n72 sh:description "The principal the rule applies to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -889,7 +889,7 @@ _:c14n73 sh:datatype xsd:dateTime ;
 	sh:order 4 ;
 	sh:path dcterms:dateSubmitted .
 _:c14n74 rdf:first skos:prefLabel ;
-	rdf:rest _:c14n32 .
+	rdf:rest _:c14n31 .
 _:c14n75 sh:datatype xsd:string ;
 	sh:description "The text of a note." ;
 	sh:maxCount 1 ;
@@ -951,7 +951,7 @@ _:c14n85 sh:description "A principal that committed a later version of the graph
 	sh:order 3 ;
 	sh:path dcterms:contributor .
 _:c14n86 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n170 .
+	rdf:rest _:c14n165 .
 _:c14n87 sh:description "The IRI of the tenant, or of an aggregate's graph, the rule applies to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -993,7 +993,7 @@ _:c14n93 sh:datatype xsd:string ;
 	sh:path rp:databaseName ;
 	sh:pattern "^(?:^[a-z][a-z0-9]{0,19}-t-[0-9a-f]{32}$)(?![\\s\\S])" .
 _:c14n94 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n175 .
+	rdf:rest _:c14n170 .
 _:c14n95 sh:datatype xsd:dateTime ;
 	sh:description "The time the graph was last committed." ;
 	sh:maxCount 1 ;

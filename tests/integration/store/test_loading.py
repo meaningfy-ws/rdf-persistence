@@ -3,6 +3,7 @@
 import json
 import uuid
 from collections.abc import AsyncIterator
+from uuid import UUID
 
 import pytest
 from rdflib import BNode, Graph, Literal, URIRef
@@ -18,7 +19,7 @@ from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.session import Session
 
 TENANT = "https://example.org/libraries/6f1c0c1e"
-BOOK = f"{TENANT}/books/1"
+BOOK = f"{TENANT}/books/{UUID(int=1)}"
 TITLE = URIRef("http://purl.org/dc/terms/title")
 ADA = Principal(id="https://example.org/people/ada")
 SELECT_GRAPHS = "SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }"
