@@ -217,6 +217,18 @@ decisions are cited, not restated: EPIC DEC-1..DEC-6 and architecture D-1..D-13,
   derives its graph IRI. A caller's access for one tenant (its state, the caller's grants and
   prohibitions) is loaded in one query into the generated `CallerAccess`.
 
+  Stage 4 review: the check is `AccessRules.require(caller, access, target, action)`, a command that
+  raises; a target that is neither the loaded tenant nor an aggregate of it is `NotFound`. A grant set
+  is validated by `AccessRules.validate_grants(grants, tenant)` with the same level-of-target rule as
+  the check (a tenant target uses a tenant-level role, an aggregate graph an aggregate-level one); a
+  target must be the tenant IRI or `graph_iri` of one of its aggregates, and an assignee an IRI. A
+  grant that resolves to no action does not make the tenant visible. "Every action other than `read`
+  implies `read`" is defined once. The caller's access is loaded by one `CONSTRUCT` of the access
+  record with only the caller's rules, decoded through the mapper. Start-up configuration files (the
+  role definitions, like schemas) are read in `services`. Every toolkit error derives from
+  `PersistenceError`; caller input errors (`UnknownRole`, `InvalidRoleDefinition`, `InvalidIri`) are
+  also `ValueError`.
+
   The toy library's matrix, which task 4.3 tests (`allow`, or the status returned):
 
   | Caller | read book | modify/create book | delete book | administer grants | delete tenant | list books |

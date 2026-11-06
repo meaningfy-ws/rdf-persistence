@@ -169,7 +169,7 @@ Every scenario of the specs, the task that satisfies it, and the test that prove
 | rp-identity: an expired token | 3.2, 5.1 | `tests/unit/services/test_token_verifier.py`; `tests/unit/entrypoints/test_service_kit.py` (401, no handler runs) |
 | rp-identity: a service account | 3.2, 5.7 | `tests/e2e/test_library.py` |
 | rp-identity: disable an account | 3.3 | `tests/integration/identity/test_zitadel.py` |
-| rp-access: a reader may not modify | 4.3 | `tests/unit/services/test_access_matrix.py` |
+| rp-access: a reader may not modify | 4.3, 5.7 | `tests/unit/services/test_access_matrix.py` (the 403); `tests/e2e/test_library.py` (the book unchanged) |
 | rp-access: a permission on one aggregate only | 4.3 | `tests/unit/services/test_access_matrix.py` |
 | rp-access: an outsider | 4.3 | `tests/unit/services/test_access_matrix.py` |
 | rp-access: a tenant being deleted | 4.3 | `tests/unit/services/test_access_matrix.py` |
