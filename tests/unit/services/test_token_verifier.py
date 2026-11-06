@@ -24,7 +24,7 @@ def signer() -> TokenSigner:
 @pytest.fixture
 def verifier(signer: TokenSigner) -> TokenVerifier:
     return JwksTokenVerifier(
-        ISSUER, signer.audience, signer.roles_claim, http_client=signer.client, clock=lambda: NOW
+        ISSUER, signer.audience, signer.roles_claim, transport=signer.transport, clock=lambda: NOW
     )
 
 
@@ -89,7 +89,7 @@ async def test_a_roles_claim_of_another_shape_gives_no_roles(
 
 async def test_the_roles_claim_is_configurable(signer: TokenSigner) -> None:
     verifier = JwksTokenVerifier(
-        ISSUER, signer.audience, "groups", http_client=signer.client, clock=lambda: NOW
+        ISSUER, signer.audience, "groups", transport=signer.transport, clock=lambda: NOW
     )
     token = signer.issue(extra={"groups": ["staff"]})
     assert (await verifier.verify(token)).global_roles == ["staff"], "the configured claim is read"
@@ -107,6 +107,8 @@ INVALID_TOKENS = [
     "not-yet-valid",
     "no-exp",
     "no-sub",
+    "exp-not-a-number",
+    "empty-sub",
     "wrong-issuer",
     "wrong-audience",
     "bad-signature",
@@ -143,6 +145,8 @@ def make_invalid(name: str, signer: TokenSigner) -> str:
         "not-yet-valid": lambda: signer.issue(not_before_in=60),
         "no-exp": lambda: signer.issue(expires_in=None),
         "no-sub": lambda: signer.issue(sub=None),
+        "exp-not-a-number": lambda: signer.issue(extra={"exp": "soon"}),
+        "empty-sub": lambda: signer.issue(sub=""),
         "wrong-issuer": lambda: signer.issue(issuer="https://evil.example"),
         "wrong-audience": lambda: signer.issue(audience="someone-else"),
         "bad-signature": lambda: other.issue(),

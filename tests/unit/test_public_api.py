@@ -15,6 +15,7 @@ INDEXED_NAMES = [
     "JwksTokenVerifier",
     "Identity",
     "ZitadelIdentity",
+    "zitadel_roles_claim",
     "IdentityUnavailable",
     "InvalidToken",
     "AccountSummary",

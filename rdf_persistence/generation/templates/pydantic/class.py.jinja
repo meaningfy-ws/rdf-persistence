@@ -12,6 +12,10 @@ class {{ name }}({% if bases is string %}{{ bases }}{% else %}{{ bases | join(',
     linkml_meta: ClassVar[LinkMLMeta] = LinkMLMeta({{ meta | pprint | indent(width=8) }})
 
     {% endif %}
+    {% if allows_extra %}
+    model_config = ConfigDict(extra="allow")
+
+    {% endif %}
     {%  if attributes or validators %}
         {% if attributes %}
             {% for attr in attributes.values() %}

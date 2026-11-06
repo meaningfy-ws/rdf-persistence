@@ -73,7 +73,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.adapters.fuseki import FusekiStore
     from rdf_persistence.adapters.jwks import JwksTokenVerifier
     from rdf_persistence.adapters.s3 import S3FileStore
-    from rdf_persistence.adapters.zitadel import ZitadelIdentity
+    from rdf_persistence.adapters.zitadel import ZitadelIdentity, zitadel_roles_claim
     from rdf_persistence.services.files import FileStore
     from rdf_persistence.services.identity import Identity
     from rdf_persistence.services.mapper import Mapper, UnitOfWork, generated_models, new_part
@@ -91,6 +91,7 @@ _LAZY_MODULES = {
     "JwksTokenVerifier": f"{_ADAPTERS}.jwks",
     "S3FileStore": f"{_ADAPTERS}.s3",
     "ZitadelIdentity": f"{_ADAPTERS}.zitadel",
+    "zitadel_roles_claim": f"{_ADAPTERS}.zitadel",
     "Identity": f"{_SERVICES}.identity",
     "TokenVerifier": f"{_SERVICES}.tokens",
     "FileStore": f"{_SERVICES}.files",
@@ -176,4 +177,5 @@ __all__ = [
     "new_part",
     "open_session",
     "sweep",
+    "zitadel_roles_claim",
 ]

@@ -1,0 +1,697 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rp: <https://meaningfy.ws/ns/rdf-persistence#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix linkml: <https://w3id.org/linkml/> .
+rp:Any a sh:NodeShape ;
+	rdfs:comment "Any value; the slots that range over it hold data the toolkit does not model." ;
+	rdfs:label "Any" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n45 ;
+	sh:targetClass linkml:Any .
+rp:DiscoveryDocument a sh:NodeShape ;
+	rdfs:comment "The part of an OpenID Connect discovery document the toolkit reads." ;
+	rdfs:label "Discovery document" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n54 ;
+	sh:property _:c14n18 , _:c14n86 ;
+	sh:targetClass rp:DiscoveryDocument .
+rp:JwtClaims a sh:NodeShape ;
+	rdfs:comment "The claims of a verified access token that the toolkit reads; the roles claim, whose name is configured, stays among the extra fields." ;
+	rdfs:label "JWT claims" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n72 ;
+	sh:property _:c14n16 , _:c14n36 , _:c14n47 , _:c14n70 , _:c14n71 , _:c14n79 ;
+	sh:targetClass rp:JwtClaims .
+rp:ZitadelAssertion a sh:NodeShape ;
+	rdfs:comment "The claims of the JWT a machine user signs to ask for an access token (the JWT-profile grant)." ;
+	rdfs:label "Zitadel assertion" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n32 ;
+	sh:property _:c14n12 , _:c14n38 , _:c14n40 , _:c14n7 , _:c14n73 ;
+	sh:targetClass rp:ZitadelAssertion .
+rp:ZitadelCreated a sh:NodeShape ;
+	rdfs:comment "The answer to creating a project, or the organisation inside the answer that reads it." ;
+	rdfs:label "Zitadel created" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n51 ;
+	sh:property _:c14n28 ;
+	sh:targetClass rp:ZitadelCreated .
+rp:ZitadelEmail a sh:NodeShape ;
+	rdfs:comment "The email address of a person, as Zitadel reports it." ;
+	rdfs:label "Zitadel email" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n26 ;
+	sh:property _:c14n82 ;
+	sh:targetClass rp:ZitadelEmail .
+rp:ZitadelEmailQuery a sh:NodeShape ;
+	rdfs:comment "The search term that finds a user by email address." ;
+	rdfs:label "Zitadel email query" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n67 ;
+	sh:property _:c14n58 , _:c14n62 ;
+	sh:targetClass rp:ZitadelEmailQuery .
+rp:ZitadelGrantPage a sh:NodeShape ;
+	rdfs:comment "One page of the grant search." ;
+	rdfs:label "Zitadel grant page" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n22 ;
+	sh:property _:c14n39 ;
+	sh:targetClass rp:ZitadelGrantPage .
+rp:ZitadelGrantRequest a sh:NodeShape ;
+	rdfs:comment "The body that grants roles of a project to a user, or replaces the roles of a grant." ;
+	rdfs:label "Zitadel grant request" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n14 ;
+	sh:property _:c14n75 , _:c14n9 ;
+	sh:targetClass rp:ZitadelGrantRequest .
+rp:ZitadelHuman a sh:NodeShape ;
+	rdfs:comment "What Zitadel reports about a person; a service account has none." ;
+	rdfs:label "Zitadel human" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n84 ;
+	sh:property _:c14n81 ;
+	sh:targetClass rp:ZitadelHuman .
+rp:ZitadelKeyAnswer a sh:NodeShape ;
+	rdfs:comment "The answer to creating a key: the key file, base64 encoded." ;
+	rdfs:label "Zitadel key answer" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n44 ;
+	sh:property _:c14n20 ;
+	sh:targetClass rp:ZitadelKeyAnswer .
+rp:ZitadelKeyFile a sh:NodeShape ;
+	rdfs:comment "The key file a machine user signs its assertions with, once decoded." ;
+	rdfs:label "Zitadel key file" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n24 ;
+	sh:property _:c14n30 , _:c14n50 ;
+	sh:targetClass rp:ZitadelKeyFile .
+rp:ZitadelKeyRequest a sh:NodeShape ;
+	rdfs:comment "The body that creates a key for a machine user." ;
+	rdfs:label "Zitadel key request" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n46 ;
+	sh:property _:c14n85 ;
+	sh:targetClass rp:ZitadelKeyRequest .
+rp:ZitadelMachineUserAnswer a sh:NodeShape ;
+	rdfs:comment "The answer to creating a machine user." ;
+	rdfs:label "Zitadel machine user answer" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n13 ;
+	sh:property _:c14n17 ;
+	sh:targetClass rp:ZitadelMachineUserAnswer .
+rp:ZitadelMachineUserRequest a sh:NodeShape ;
+	rdfs:comment "The body that creates a machine user whose access tokens are JWTs." ;
+	rdfs:label "Zitadel machine user request" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n52 ;
+	sh:property _:c14n15 , _:c14n43 , _:c14n60 ;
+	sh:targetClass rp:ZitadelMachineUserRequest .
+rp:ZitadelOrganisationAnswer a sh:NodeShape ;
+	rdfs:comment "The answer that reads the organisation of the caller." ;
+	rdfs:label "Zitadel organisation answer" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n33 ;
+	sh:property _:c14n25 ;
+	sh:targetClass rp:ZitadelOrganisationAnswer .
+rp:ZitadelOrganisationQuery a sh:NodeShape ;
+	rdfs:comment "The search term that keeps the users of one organisation." ;
+	rdfs:label "Zitadel organisation query" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n4 ;
+	sh:property _:c14n11 ;
+	sh:targetClass rp:ZitadelOrganisationQuery .
+rp:ZitadelProjectQuery a sh:NodeShape ;
+	rdfs:comment "The search term that keeps the grants of one project." ;
+	rdfs:label "Zitadel project query" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n19 ;
+	sh:property _:c14n83 ;
+	sh:targetClass rp:ZitadelProjectQuery .
+rp:ZitadelProjectRequest a sh:NodeShape ;
+	rdfs:comment "The body that creates a project." ;
+	rdfs:label "Zitadel project request" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n59 ;
+	sh:property _:c14n56 ;
+	sh:targetClass rp:ZitadelProjectRequest .
+rp:ZitadelQuery a sh:NodeShape ;
+	rdfs:comment "One term of a search; exactly one of its slots is set." ;
+	rdfs:label "Zitadel query" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n49 ;
+	sh:property _:c14n10 , _:c14n34 , _:c14n55 , _:c14n80 ;
+	sh:targetClass rp:ZitadelQuery .
+rp:ZitadelRoleRequest a sh:NodeShape ;
+	rdfs:comment "The body that adds a role to a project." ;
+	rdfs:label "Zitadel role request" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n69 ;
+	sh:property _:c14n0 , _:c14n1 ;
+	sh:targetClass rp:ZitadelRoleRequest .
+rp:ZitadelSearch a sh:NodeShape ;
+	rdfs:comment "The body of a search request: a window and the terms that all must hold." ;
+	rdfs:label "Zitadel search" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n57 ;
+	sh:property _:c14n76 , _:c14n88 ;
+	sh:targetClass rp:ZitadelSearch .
+rp:ZitadelTokenAnswer a sh:NodeShape ;
+	rdfs:comment "The answer that grants an access token." ;
+	rdfs:label "Zitadel token answer" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n8 ;
+	sh:property _:c14n21 ;
+	sh:targetClass rp:ZitadelTokenAnswer .
+rp:ZitadelTokenRequest a sh:NodeShape ;
+	rdfs:comment "The form that asks for an access token with a signed assertion." ;
+	rdfs:label "Zitadel token request" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n6 ;
+	sh:property _:c14n27 , _:c14n37 , _:c14n78 ;
+	sh:targetClass rp:ZitadelTokenRequest .
+rp:ZitadelUser a sh:NodeShape ;
+	rdfs:comment "One user of an organisation, as the user search reports it." ;
+	rdfs:label "Zitadel user" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n42 ;
+	sh:property _:c14n29 , _:c14n31 , _:c14n61 , _:c14n68 ;
+	sh:targetClass rp:ZitadelUser .
+rp:ZitadelUserGrant a sh:NodeShape ;
+	rdfs:comment "The roles of a project that a user holds, as the grant search reports them." ;
+	rdfs:label "Zitadel user grant" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n87 ;
+	sh:property _:c14n23 , _:c14n35 , _:c14n64 ;
+	sh:targetClass rp:ZitadelUserGrant .
+rp:ZitadelUserPage a sh:NodeShape ;
+	rdfs:comment "One page of the user search." ;
+	rdfs:label "Zitadel user page" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n77 ;
+	sh:property _:c14n41 ;
+	sh:targetClass rp:ZitadelUserPage .
+rp:ZitadelUserQuery a sh:NodeShape ;
+	rdfs:comment "The search term that keeps the grants of one user." ;
+	rdfs:label "Zitadel user query" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n65 ;
+	sh:property _:c14n63 ;
+	sh:targetClass rp:ZitadelUserQuery .
+rp:ZitadelWindow a sh:NodeShape ;
+	rdfs:comment "The part of a search result a page asks for." ;
+	rdfs:label "Zitadel window" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n74 ;
+	sh:property _:c14n48 , _:c14n66 ;
+	sh:targetClass rp:ZitadelWindow .
+_:c14n0 sh:datatype xsd:string ;
+	sh:description "The key of a project role." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel role key" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelRoleKey .
+_:c14n1 sh:datatype xsd:string ;
+	sh:description "The name a role is shown with." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel display name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:zitadelDisplayName .
+_:c14n10 sh:description "A term that keeps one organisation." ;
+	sh:maxCount 1 ;
+	sh:name "Zitadel organisation id query" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 1 ;
+	sh:path rp:zitadelOrganizationIdQuery .
+_:c14n11 sh:datatype xsd:string ;
+	sh:description "The id of an organisation." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel organisation id" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelOrganizationId .
+_:c14n12 sh:datatype xsd:string ;
+	sh:description "The machine user the assertion speaks for." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel subject" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:zitadelSubject .
+_:c14n13 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n14 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n15 sh:datatype xsd:string ;
+	sh:description "The display name of a project or a machine user." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:zitadelName .
+_:c14n16 sh:datatype xsd:float ;
+	sh:description "When the token starts being valid, in seconds since the epoch." ;
+	sh:maxCount 1 ;
+	sh:name "JWT not before" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:jwtNotBefore .
+_:c14n17 sh:datatype xsd:string ;
+	sh:description "The id of a user." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel user id" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelUserId .
+_:c14n18 sh:datatype xsd:string ;
+	sh:description "The issuer the document describes." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Discovery issuer" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:discoveryIssuer .
+_:c14n19 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n2 rdf:first "KEY_TYPE_JSON" ;
+	rdf:rest rdf:nil .
+_:c14n20 sh:datatype xsd:string ;
+	sh:description "The key file, base64 encoded." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel key details" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelKeyDetails .
+_:c14n21 sh:datatype xsd:string ;
+	sh:description "The access token." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel access token" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelAccessToken .
+_:c14n22 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n23 sh:datatype xsd:string ;
+	sh:description "The id of a user." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel user id" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:zitadelUserId .
+_:c14n24 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n25 sh:description "The organisation of the caller." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel org" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 0 ;
+	sh:path rp:zitadelOrg .
+_:c14n26 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n27 sh:datatype xsd:string ;
+	sh:description "The signed JWT that proves the machine user's identity." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel assertion" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:zitadelAssertion .
+_:c14n28 sh:datatype xsd:string ;
+	sh:description "The id of a created or listed thing." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel id" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelId .
+_:c14n29 sh:datatype xsd:string ;
+	sh:description "The state of the account; the active one is `USER_STATE_ACTIVE`." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel state" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:zitadelState .
+_:c14n3 rdf:first "TEXT_QUERY_METHOD_EQUALS" ;
+	rdf:rest rdf:nil .
+_:c14n30 sh:datatype xsd:string ;
+	sh:description "The id of the key." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel key id" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelKeyId .
+_:c14n31 sh:datatype xsd:string ;
+	sh:description "The name the account signs in with." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel username" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:zitadelUsername .
+_:c14n32 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n33 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n34 sh:description "A term that keeps one project." ;
+	sh:maxCount 1 ;
+	sh:name "Zitadel project id query" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 2 ;
+	sh:path rp:zitadelProjectIdQuery .
+_:c14n35 sh:datatype xsd:string ;
+	sh:description "The keys of project roles." ;
+	sh:name "Zitadel role keys" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:zitadelRoleKeys .
+_:c14n36 sh:datatype xsd:string ;
+	sh:description "The account the token is for." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "JWT subject" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:jwtSubject ;
+	sh:pattern "^(?:[\\s\\S]+)(?![\\s\\S])" .
+_:c14n37 sh:datatype xsd:string ;
+	sh:description "The space-separated OAuth scopes." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel scope" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:zitadelScope .
+_:c14n38 sh:datatype xsd:integer ;
+	sh:description "When the assertion stops being valid, in seconds since the epoch." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel expires at" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:zitadelExpiresAt .
+_:c14n39 sh:description "The grants of the page." ;
+	sh:name "Zitadel grants" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 0 ;
+	sh:path rp:zitadelGrants .
+_:c14n4 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n40 sh:datatype xsd:string ;
+	sh:description "The instance the assertion is for." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel audience" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:zitadelAudience .
+_:c14n41 sh:description "The users of the page." ;
+	sh:name "Zitadel users" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 0 ;
+	sh:path rp:zitadelUsers .
+_:c14n42 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n43 sh:datatype xsd:string ;
+	sh:defaultValue "ACCESS_TOKEN_TYPE_JWT" ;
+	sh:description "The kind of access token the user gets." ;
+	sh:in _:c14n53 ;
+	sh:maxCount 1 ;
+	sh:name "Zitadel access token type" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:zitadelAccessTokenType .
+_:c14n44 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n45 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n46 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n47 sh:description "The audience of the token, one string or a list of them." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "JWT audience" ;
+	sh:order 2 ;
+	sh:path rp:jwtAudience .
+_:c14n48 sh:datatype xsd:integer ;
+	sh:description "How many results to skip." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel offset" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelOffset .
+_:c14n49 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n5 rdf:first "urn:ietf:params:oauth:grant-type:jwt-bearer" ;
+	rdf:rest rdf:nil .
+_:c14n50 sh:datatype xsd:string ;
+	sh:description "The private key, in PEM." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel key" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:zitadelKey .
+_:c14n51 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n52 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n53 rdf:first "ACCESS_TOKEN_TYPE_JWT" ;
+	rdf:rest rdf:nil .
+_:c14n54 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n55 sh:description "A term that keeps one user." ;
+	sh:maxCount 1 ;
+	sh:name "Zitadel user id query" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 3 ;
+	sh:path rp:zitadelUserIdQuery .
+_:c14n56 sh:datatype xsd:string ;
+	sh:description "The display name of a project or a machine user." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelName .
+_:c14n57 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n58 sh:datatype xsd:string ;
+	sh:defaultValue "TEXT_QUERY_METHOD_EQUALS" ;
+	sh:description "How the search term is compared." ;
+	sh:in _:c14n3 ;
+	sh:maxCount 1 ;
+	sh:name "Zitadel text method" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:zitadelTextMethod .
+_:c14n59 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n6 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n60 sh:datatype xsd:string ;
+	sh:description "The login name of a machine user." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel user name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelUserName .
+_:c14n61 sh:description "The person behind the account, if it is a person's." ;
+	sh:maxCount 1 ;
+	sh:name "Zitadel human" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 3 ;
+	sh:path rp:zitadelHuman .
+_:c14n62 sh:datatype xsd:string ;
+	sh:description "The address to search for." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel email address" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelEmailAddress .
+_:c14n63 sh:datatype xsd:string ;
+	sh:description "The id of a user." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel user id" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelUserId .
+_:c14n64 sh:datatype xsd:string ;
+	sh:description "The id of a created or listed thing." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel id" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelId .
+_:c14n65 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n66 sh:datatype xsd:integer ;
+	sh:description "How many results to return at most." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel limit" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:zitadelLimit .
+_:c14n67 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n68 sh:datatype xsd:string ;
+	sh:description "The id of a user." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel user id" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelUserId .
+_:c14n69 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n7 sh:datatype xsd:string ;
+	sh:description "The machine user that signed the assertion." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel issuer" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelIssuer .
+_:c14n70 sh:datatype xsd:string ;
+	sh:description "The issuer of the token." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "JWT issuer" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:jwtIssuer .
+_:c14n71 sh:datatype xsd:string ;
+	sh:description "The client the token was issued to." ;
+	sh:maxCount 1 ;
+	sh:name "JWT authorized party" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 5 ;
+	sh:path rp:jwtAuthorizedParty .
+_:c14n72 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n73 sh:datatype xsd:integer ;
+	sh:description "When the assertion was signed, in seconds since the epoch." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel issued at" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:zitadelIssuedAt .
+_:c14n74 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n75 sh:datatype xsd:string ;
+	sh:description "The keys of project roles." ;
+	sh:minCount 1 ;
+	sh:name "Zitadel role keys" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:zitadelRoleKeys .
+_:c14n76 sh:description "The terms that all must hold." ;
+	sh:minCount 1 ;
+	sh:name "Zitadel queries" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 1 ;
+	sh:path rp:zitadelQueries .
+_:c14n77 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n78 sh:datatype xsd:string ;
+	sh:defaultValue "urn:ietf:params:oauth:grant-type:jwt-bearer" ;
+	sh:description "The OAuth grant type." ;
+	sh:in _:c14n5 ;
+	sh:maxCount 1 ;
+	sh:name "Zitadel grant type" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelGrantType .
+_:c14n79 sh:datatype xsd:float ;
+	sh:description "When the token stops being valid, in seconds since the epoch." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "JWT expires at" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:jwtExpiresAt .
+_:c14n8 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n80 sh:description "A term that finds users by email address." ;
+	sh:maxCount 1 ;
+	sh:name "Zitadel email query" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 0 ;
+	sh:path rp:zitadelEmailQuery .
+_:c14n81 sh:description "The email of the person." ;
+	sh:maxCount 1 ;
+	sh:name "Zitadel human email" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 0 ;
+	sh:path rp:zitadelHumanEmail .
+_:c14n82 sh:datatype xsd:string ;
+	sh:description "The email address." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel email" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelEmail .
+_:c14n83 sh:datatype xsd:string ;
+	sh:description "The id of a project." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel project id" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelProjectId .
+_:c14n84 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n85 sh:datatype xsd:string ;
+	sh:defaultValue "KEY_TYPE_JSON" ;
+	sh:description "The format of the key." ;
+	sh:in _:c14n2 ;
+	sh:maxCount 1 ;
+	sh:name "Zitadel key type" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelKeyType .
+_:c14n86 sh:datatype xsd:string ;
+	sh:description "Where the issuer publishes its signing keys." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Discovery JWKS URI" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:discoveryJwksUri .
+_:c14n87 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n88 sh:description "The part of the result to return." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Zitadel window" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 0 ;
+	sh:path rp:zitadelWindow .
+_:c14n9 sh:datatype xsd:string ;
+	sh:description "The id of a project." ;
+	sh:maxCount 1 ;
+	sh:name "Zitadel project id" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:zitadelProjectId .

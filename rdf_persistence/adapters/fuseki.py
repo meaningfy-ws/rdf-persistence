@@ -3,14 +3,13 @@
 import logging
 from http import HTTPMethod, HTTPStatus
 from io import BytesIO
-from types import TracebackType
-from typing import Self
 from urllib.parse import quote
 
 import httpx
 from rdflib import Graph, URIRef
 from rdflib.query import Result
 
+from rdf_persistence.adapters._http import CONTENT_TYPE, HttpAdapter
 from rdf_persistence.domain.exceptions import (
     BadQuery,
     Conflict,
@@ -24,7 +23,7 @@ SPARQL_QUERY = "application/sparql-query"
 SPARQL_UPDATE = "application/sparql-update"
 RESULTS_JSON = "application/sparql-results+json"
 TURTLE = "text/turtle"
-CONTENT_TYPE, ACCEPT = "Content-Type", "Accept"
+ACCEPT = "Accept"
 # The endpoints of a dataset, and the administration endpoint of Fuseki.
 QUERY_ENDPOINT, UPDATE_ENDPOINT, DATA_ENDPOINT = "query", "update", "data"
 ADMIN_DATASETS = "/$/datasets"
@@ -68,8 +67,11 @@ def _read_result(response: httpx.Response) -> Result:
     return result
 
 
-class FusekiStore:
+class FusekiStore(HttpAdapter):
     """A ``Store`` over Fuseki's SPARQL, Graph Store and admin endpoints, with basic auth."""
+
+    service = "Fuseki"
+    unavailable = StoreUnavailable
 
     def __init__(
         self,
@@ -79,24 +81,7 @@ class FusekiStore:
         *,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
-        self._client = httpx.AsyncClient(
-            base_url=url, auth=httpx.BasicAuth(user, password), transport=transport
-        )
-
-    async def aclose(self) -> None:
-        """Close the HTTP client."""
-        await self._client.aclose()
-
-    async def __aenter__(self) -> Self:
-        return self
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> None:
-        await self.aclose()
+        super().__init__(base_url=url, auth=httpx.BasicAuth(user, password), transport=transport)
 
     async def _send(
         self,
@@ -106,10 +91,7 @@ class FusekiStore:
         on_missing: type[PersistenceError] = DatabaseGone,
         **kwargs,
     ) -> httpx.Response:
-        try:
-            response = await self._client.request(method, path, **kwargs)
-        except httpx.HTTPError as error:
-            raise StoreUnavailable(f"Fuseki is unreachable: {error}") from error
+        response = await self.request(method, path, **kwargs)
         _raise_for_status(response, on_missing=on_missing)
         return response
 

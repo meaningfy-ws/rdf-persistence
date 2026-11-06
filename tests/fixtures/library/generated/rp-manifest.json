@@ -67,7 +67,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/pydantic_validators.py",
-      "sha256": "e2a3b5d8164523516f121b881026721f07dede5e82d2a9a9395efbce956a5f41"
+      "sha256": "06a7ecf291b80173ed2b8128c3dd6dbbc1d69e4f8244eb0de331e566127a6518"
     },
     {
       "path": "rdf_persistence/generation/extensions/shacl.py",
@@ -115,7 +115,7 @@
     },
     {
       "path": "rdf_persistence/generation/templates/pydantic/class.py.jinja",
-      "sha256": "a5ec4bef6b63478f91bf011a02fa0339ae12df48e400ffb960bf4014b660d855"
+      "sha256": "9116b9503fcb7f949edc0c0a9b1e9aa5ea4e26fa23979e2fa1337f5eb8f59ea7"
     },
     {
       "path": "rdf_persistence/generation/templates/pydantic/enum.py.jinja",

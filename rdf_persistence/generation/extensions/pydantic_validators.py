@@ -30,11 +30,16 @@ from rdf_persistence.generation.exceptions import (
     SchemaGenerationError,
     refusing_unsupported_rules,
 )
-from rdf_persistence.generation.generated.rp_generation import PresenceRule, RuleAlternative
+from rdf_persistence.generation.generated.rp_generation import (
+    GenerationAnnotation,
+    PresenceRule,
+    RuleAlternative,
+)
 from rdf_persistence.services.schema_structure import (
     ABSENT,
     ANY_OF,
     EXACTLY_ONE_OF,
+    annotation_text,
     declared_slots,
     keyed_slots,
     presence_alternatives,
@@ -44,6 +49,7 @@ from rdf_persistence.services.schema_structure import (
 )
 
 VALIDATOR_IMPORT = Import(module="pydantic", objects=[ObjectImport(name="model_validator")])
+CONFIG_IMPORT = Import(module="pydantic", objects=[ObjectImport(name="ConfigDict")])
 
 
 RULES = (
@@ -79,9 +85,10 @@ class UniqueKeysValidator(PydanticTemplateModel):
 
 
 class ValidatedClass(PydanticClass):
-    """A pydantic class that also renders the model validators of its rules."""
+    """A pydantic class that also renders the model validators of its rules, and accepts extra fields if its class allows them."""
 
     rule_validators: dict[str, PresenceValidator | UniqueKeysValidator] = {}
+    allows_extra: bool = False
 
     def _validators(self) -> dict[str, PresenceValidator | UniqueKeysValidator] | None:
         return {**(super()._validators() or {}), **self.rule_validators} or None
@@ -170,16 +177,19 @@ def _unique_keys_validators(
 
 
 def with_validators(result: ClassResult, view: SchemaView) -> ClassResult:
-    """``result`` with the model validators of the rules its class declares; unchanged when it has none."""
+    """``result`` with the model validators of the rules its class declares and its ``allows_extra`` setting; unchanged when it has neither."""
     cls = result.source
     attributes = set(result.cls.attributes or {})
     validators = {
         **_presence_validators(view, cls, attributes),
         **_unique_keys_validators(view, cls, attributes),
     }
-    if not validators:
+    allows_extra = annotation_text(cls, GenerationAnnotation.ALLOWS_EXTRA) == "true"
+    if not validators and not allows_extra:
         return result
     fields = {name: getattr(result.cls, name) for name in PydanticClass.model_fields}
-    result.cls = ValidatedClass(**fields, rule_validators=validators)
-    result.imports = (result.imports or Imports()) + Imports(imports=[VALIDATOR_IMPORT])
+    result.cls = ValidatedClass(**fields, rule_validators=validators, allows_extra=allows_extra)
+    extra = [VALIDATOR_IMPORT] if validators else []
+    extra += [CONFIG_IMPORT] if allows_extra else []
+    result.imports = (result.imports or Imports()) + Imports(imports=extra)
     return result

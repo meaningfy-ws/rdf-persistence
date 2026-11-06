@@ -5,20 +5,15 @@ import uuid
 import jwt
 import pytest
 
-from rdf_persistence.adapters.zitadel import ZitadelIdentity
+from rdf_persistence.adapters.zitadel import ZitadelIdentity, zitadel_roles_claim
 from rdf_persistence.domain.exceptions import NotFound
-from rdf_persistence.testkit.zitadel import (
-    ADMIN_ROLE,
-    TokenRefusedError,
-    access_token,
-    create_machine_user,
-    roles_claim,
-)
+from rdf_persistence.testkit.exceptions import TokenRefusedError
+from rdf_persistence.testkit.zitadel import ADMIN_ROLE, access_token, create_machine_user
 
 
 def roles_in(project, token: str) -> set[str]:
     claims = jwt.decode(token, options={"verify_signature": False})
-    return set(claims.get(roles_claim(project.project_id), ()))
+    return set(claims.get(zitadel_roles_claim(project.project_id), ()))
 
 
 @pytest.fixture

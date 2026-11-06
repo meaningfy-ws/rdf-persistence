@@ -3,11 +3,10 @@
 import httpx
 import pytest
 
-from rdf_persistence.adapters.jwks import JWKS_TTL_SECONDS, JwksTokenVerifier
+from rdf_persistence.adapters.jwks import DISCOVERY_PATH, JWKS_TTL_SECONDS, JwksTokenVerifier
 from rdf_persistence.domain.exceptions import IdentityUnavailable, InvalidToken
 from rdf_persistence.testkit.tokens import ISSUER, TokenSigner
 
-DISCOVERY_PATH = "/.well-known/openid-configuration"
 PAST_COOLDOWN = 11.0
 
 
@@ -36,7 +35,7 @@ def verifier_for(signer: TokenSigner, clock: ManualClock, **kwargs: str) -> Jwks
         ISSUER,
         signer.audience,
         signer.roles_claim,
-        http_client=signer.client,
+        transport=signer.transport,
         clock=clock,
         **kwargs,
     )
@@ -58,13 +57,12 @@ async def test_an_explicit_jwks_uri_skips_discovery(
         seen.append(request.url.path)
         return signer.handle(request)
 
-    client = httpx.AsyncClient(transport=httpx.MockTransport(spy))
     verifier = JwksTokenVerifier(
         ISSUER,
         signer.audience,
         signer.roles_claim,
         jwks_uri=f"{ISSUER}/keys",
-        http_client=client,
+        transport=httpx.MockTransport(spy),
         clock=clock,
     )
     await verifier.verify(signer.issue())
@@ -154,8 +152,9 @@ async def test_a_transport_error_is_unavailable(clock: ManualClock) -> None:
     def refuse(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("down", request=request)
 
-    client = httpx.AsyncClient(transport=httpx.MockTransport(refuse))
-    verifier = JwksTokenVerifier(ISSUER, "aud", "roles", http_client=client, clock=clock)
+    verifier = JwksTokenVerifier(
+        ISSUER, "aud", "roles", transport=httpx.MockTransport(refuse), clock=clock
+    )
     with pytest.raises(IdentityUnavailable):
         await verifier.verify(TokenSigner(clock=clock).issue())
 
@@ -164,10 +163,8 @@ async def test_a_transport_error_is_unavailable(clock: ManualClock) -> None:
     "body", ["not json", '{"no": "jwks_uri"}'], ids=["not-json", "no-jwks-uri"]
 )
 async def test_a_broken_discovery_document_is_unavailable(body: str, clock: ManualClock) -> None:
-    client = httpx.AsyncClient(
-        transport=httpx.MockTransport(lambda _r: httpx.Response(200, text=body))
-    )
-    verifier = JwksTokenVerifier(ISSUER, "aud", "roles", http_client=client, clock=clock)
+    transport = httpx.MockTransport(lambda _r: httpx.Response(200, text=body))
+    verifier = JwksTokenVerifier(ISSUER, "aud", "roles", transport=transport, clock=clock)
     with pytest.raises(IdentityUnavailable):
         await verifier.verify(TokenSigner(clock=clock).issue())
 
@@ -178,7 +175,7 @@ async def test_a_jwks_without_a_usable_key_is_unavailable(clock: ManualClock) ->
             return httpx.Response(200, json={"jwks_uri": f"{ISSUER}/keys"})
         return httpx.Response(200, json={"keys": "oops"})
 
-    client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
-    verifier = JwksTokenVerifier(ISSUER, "aud", "roles", http_client=client, clock=clock)
+    transport = httpx.MockTransport(respond)
+    verifier = JwksTokenVerifier(ISSUER, "aud", "roles", transport=transport, clock=clock)
     with pytest.raises(IdentityUnavailable):
         await verifier.verify(TokenSigner(clock=clock).issue())

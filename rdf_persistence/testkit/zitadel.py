@@ -2,42 +2,57 @@
 
 Plain ``httpx`` and ``PyJWT``, so this needs neither Docker nor the extra ``testkit``. The
 container fixtures call ``provision_project``; a test calls ``create_machine_user`` for a service
-account of its own and ``access_token`` for the token of any machine user.
+account of its own and ``access_token`` for the token of any machine user. Requests and answers are
+the records of ``rdf_persistence.adapters.generated.rp_wire``.
 """
 
 import base64
-import json
+import binascii
 import time
-from collections.abc import Callable, Iterable
-from typing import NoReturn
+from collections.abc import Iterable
+from http import HTTPMethod
 
 import httpx
 import jwt
+from pydantic import BaseModel, ValidationError
 
+from rdf_persistence.adapters._http import READ_TIMEOUT_SECONDS, json_body
+from rdf_persistence.adapters.generated.rp_wire import (
+    ZitadelAssertion,
+    ZitadelCreated,
+    ZitadelGrantRequest,
+    ZitadelKeyAnswer,
+    ZitadelKeyFile,
+    ZitadelKeyRequest,
+    ZitadelMachineUserAnswer,
+    ZitadelMachineUserRequest,
+    ZitadelOrganisationAnswer,
+    ZitadelProjectRequest,
+    ZitadelRoleRequest,
+    ZitadelTokenAnswer,
+    ZitadelTokenRequest,
+)
+from rdf_persistence.adapters.jwks import RS256
+from rdf_persistence.adapters.zitadel import (
+    MACHINE_USERS,
+    MANAGEMENT,
+    ORG_HEADER,
+    OWN_ORGANISATION,
+    PROJECTS,
+    TOKEN_PATH,
+    user_grant_path,
+)
 from rdf_persistence.generation.generated.rp_generation import (
     MachineUser,
     ZitadelProject,
     ZitadelServer,
 )
+from rdf_persistence.services.tokens import EpochClock
+from rdf_persistence.testkit.exceptions import ProvisioningError, TokenRefusedError
 
-JWT_BEARER_GRANT = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 ADMIN_ROLE = "admin"
 PROJECT_NAME = "rp-test"
-ORG_HEADER = "x-zitadel-orgid"
 ASSERTION_SECONDS = 60
-TIMEOUT_SECONDS = 30
-
-
-class ProvisioningError(RuntimeError):
-    """The test Zitadel refused a provisioning call; the message holds the status, never a secret."""
-
-
-class TokenRefusedError(RuntimeError):
-    """Zitadel refused a token request (a disabled account, an unknown key, ...)."""
-
-    def __init__(self, status_code: int) -> None:
-        super().__init__(f"Zitadel refused the token request with {status_code}")
-        self.status_code = status_code
 
 
 def token_scopes(project_id: str) -> str:
@@ -51,22 +66,30 @@ def token_scopes(project_id: str) -> str:
     )
 
 
-def roles_claim(project_id: str) -> str:
-    """The claim that holds the project's roles in a token (Zitadel names it after the project)."""
-    return f"urn:zitadel:iam:org:project:{project_id}:roles"
-
-
 def client_assertion(issuer: str, user: MachineUser, *, now: float) -> str:
     """The signed JWT a machine user presents in the JWT-profile grant."""
     issued = int(now)
-    claims = {
-        "iss": user.user_id,
-        "sub": user.user_id,
-        "aud": issuer,
-        "iat": issued,
-        "exp": issued + ASSERTION_SECONDS,
-    }
-    return jwt.encode(claims, user.private_key, algorithm="RS256", headers={"kid": user.key_id})
+    claims = ZitadelAssertion(
+        iss=user.user_id,
+        sub=user.user_id,
+        aud=issuer,
+        iat=issued,
+        exp=issued + ASSERTION_SECONDS,
+    )
+    return jwt.encode(
+        claims.model_dump(), user.private_key, algorithm=RS256, headers={"kid": user.key_id}
+    )
+
+
+def _unreadable(what: str) -> ProvisioningError:
+    return ProvisioningError(f"Zitadel answered unreadably when asked to {what}")
+
+
+def _read[M: BaseModel](model: type[M], content: bytes, what: str) -> M:
+    try:
+        return model.model_validate_json(content)
+    except ValidationError as error:
+        raise _unreadable(what) from error
 
 
 def access_token(
@@ -74,59 +97,99 @@ def access_token(
     user: MachineUser,
     *,
     transport: httpx.BaseTransport | None = None,
-    now: Callable[[], float] = time.time,
+    now: EpochClock = time.time,
 ) -> str:
     """Get a JWT access token for a machine user with the JWT-profile grant.
 
     Raises:
         TokenRefusedError: Zitadel refused the request.
+        ProvisioningError: Zitadel answered with something unreadable.
     """
     issuer = project.server.url
-    assertion = client_assertion(issuer, user, now=now())
-    form = {
-        "grant_type": JWT_BEARER_GRANT,
-        "scope": token_scopes(project.project_id),
-        "assertion": assertion,
-    }
-    with httpx.Client(base_url=issuer, transport=transport, timeout=TIMEOUT_SECONDS) as client:
-        response = client.post("/oauth/v2/token", data=form)
+    form = ZitadelTokenRequest(
+        scope=token_scopes(project.project_id),
+        assertion=client_assertion(issuer, user, now=now()),
+    )
+    with httpx.Client(base_url=issuer, transport=transport, timeout=READ_TIMEOUT_SECONDS) as client:
+        response = client.post(TOKEN_PATH, data=form.model_dump())
     if not response.is_success:
         raise TokenRefusedError(response.status_code)
-    return str(response.json()["access_token"])
-
-
-def _fail(what: str, response: httpx.Response) -> NoReturn:
-    raise ProvisioningError(f"Zitadel refused to {what} with {response.status_code}")
+    return _read(ZitadelTokenAnswer, response.content, "grant a token").access_token
 
 
 def _manage(
     server: ZitadelServer,
     organisation_id: str | None,
-    method: str,
+    method: HTTPMethod,
     path: str,
-    body: object | None = None,
-) -> httpx.Response:
+    what: str,
+    body: BaseModel | None = None,
+) -> bytes:
+    """Call the management API; the answer's content, or a ``ProvisioningError`` naming ``what`` and the status."""
     headers = {"Authorization": f"Bearer {server.admin_pat}"}
     if organisation_id:
         headers[ORG_HEADER] = organisation_id
-    with httpx.Client(base_url=server.url, headers=headers, timeout=TIMEOUT_SECONDS) as client:
-        return client.request(method, path, json=body)
+    with httpx.Client(base_url=server.url, headers=headers, timeout=READ_TIMEOUT_SECONDS) as client:
+        response = client.request(method, path, **json_body(body))
+    if not response.is_success:
+        raise ProvisioningError(f"Zitadel refused to {what} with {response.status_code}")
+    return response.content
 
 
 def _create_project(server: ZitadelServer, organisation_id: str) -> str:
-    response = _manage(
-        server, organisation_id, "POST", "/management/v1/projects", {"name": PROJECT_NAME}
+    request = ZitadelProjectRequest(name=PROJECT_NAME)
+    answer = _manage(
+        server, organisation_id, HTTPMethod.POST, PROJECTS, "create the project", request
     )
-    if not response.is_success:
-        _fail("create the project", response)
-    project_id = str(response.json()["id"])
-    role = {"roleKey": ADMIN_ROLE, "displayName": ADMIN_ROLE}
-    response = _manage(
-        server, organisation_id, "POST", f"/management/v1/projects/{project_id}/roles", role
+    project_id = _read(ZitadelCreated, answer, "create the project").id
+    role = ZitadelRoleRequest(roleKey=ADMIN_ROLE, displayName=ADMIN_ROLE)
+    _manage(
+        server,
+        organisation_id,
+        HTTPMethod.POST,
+        f"{PROJECTS}/{project_id}/roles",
+        "create the admin role",
+        role,
     )
-    if not response.is_success:
-        _fail("create the admin role", response)
     return project_id
+
+
+def _create_user(project: ZitadelProject, name: str) -> str:
+    request = ZitadelMachineUserRequest(userName=name, name=name)
+    what = f"create the machine user {name}"
+    answer = _manage(
+        project.server, project.organisation_id, HTTPMethod.POST, MACHINE_USERS, what, request
+    )
+    return _read(ZitadelMachineUserAnswer, answer, what).userId
+
+
+def _create_key(project: ZitadelProject, user_id: str, name: str) -> ZitadelKeyFile:
+    what = f"create a key for {name}"
+    answer = _manage(
+        project.server,
+        project.organisation_id,
+        HTTPMethod.POST,
+        f"{MANAGEMENT}/users/{user_id}/keys",
+        what,
+        ZitadelKeyRequest(),
+    )
+    details = _read(ZitadelKeyAnswer, answer, what).keyDetails
+    try:
+        return _read(ZitadelKeyFile, base64.b64decode(details), what)
+    except binascii.Error as error:
+        raise _unreadable(what) from error
+
+
+def _grant_roles(project: ZitadelProject, user_id: str, name: str, roles: list[str]) -> None:
+    grant = ZitadelGrantRequest(projectId=project.project_id, roleKeys=roles)
+    _manage(
+        project.server,
+        project.organisation_id,
+        HTTPMethod.POST,
+        user_grant_path(user_id),
+        f"grant {name} its roles",
+        grant,
+    )
 
 
 def create_machine_user(
@@ -140,34 +203,13 @@ def create_machine_user(
         roles: Roles of the project to grant it.
 
     Raises:
-        ProvisioningError: Zitadel refused a call.
+        ProvisioningError: Zitadel refused a call or answered with something unreadable.
     """
-    server, org = project.server, project.organisation_id
-    created = _manage(
-        server,
-        org,
-        "POST",
-        "/management/v1/users/machine",
-        {"userName": name, "name": name, "accessTokenType": "ACCESS_TOKEN_TYPE_JWT"},
-    )
-    if not created.is_success:
-        _fail(f"create the machine user {name}", created)
-    user_id = str(created.json()["userId"])
-    keyed = _manage(
-        server, org, "POST", f"/management/v1/users/{user_id}/keys", {"type": "KEY_TYPE_JSON"}
-    )
-    if not keyed.is_success:
-        _fail(f"create a key for {name}", keyed)
-    key_file = json.loads(base64.b64decode(keyed.json()["keyDetails"]))
-    role_keys = list(roles)
-    if role_keys:
-        grant = {"projectId": project.project_id, "roleKeys": role_keys}
-        granted = _manage(server, org, "POST", f"/management/v1/users/{user_id}/grants", grant)
-        if not granted.is_success:
-            _fail(f"grant {name} its roles", granted)
-    return MachineUser(
-        name=name, user_id=user_id, key_id=str(key_file["keyId"]), private_key=str(key_file["key"])
-    )
+    user_id = _create_user(project, name)
+    key = _create_key(project, user_id, name)
+    if role_keys := list(roles):
+        _grant_roles(project, user_id, name, role_keys)
+    return MachineUser(name=name, user_id=user_id, key_id=key.keyId, private_key=key.key)
 
 
 def provision_project(server: ZitadelServer, principals: Iterable[str]) -> ZitadelProject:
@@ -176,12 +218,11 @@ def provision_project(server: ZitadelServer, principals: Iterable[str]) -> Zitad
     The principal named ``admin`` holds the ``admin`` role.
 
     Raises:
-        ProvisioningError: Zitadel refused a call.
+        ProvisioningError: Zitadel refused a call or answered with something unreadable.
     """
-    org = _manage(server, None, "GET", "/management/v1/orgs/me")
-    if not org.is_success:
-        _fail("read the organisation", org)
-    organisation_id = str(org.json()["org"]["id"])
+    what = "read the organisation"
+    answer = _manage(server, None, HTTPMethod.GET, OWN_ORGANISATION, what)
+    organisation_id = _read(ZitadelOrganisationAnswer, answer, what).org.id
     bare = ZitadelProject(
         server=server,
         organisation_id=organisation_id,

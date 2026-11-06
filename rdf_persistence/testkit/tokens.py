@@ -1,25 +1,29 @@
 """``TokenSigner``: issues JWTs and serves the matching JWKS and discovery document, in memory.
 
-Pass ``signer.client`` as the ``http_client`` of a ``JwksTokenVerifier``; no network is involved.
+Pass ``signer.transport`` as the ``transport`` of a ``JwksTokenVerifier``; no network is involved.
 """
 
 import time
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from http import HTTPStatus
 from typing import Final
 
 import httpx
 import jwt
 from cryptography.hazmat.primitives.asymmetric import rsa
 
+from rdf_persistence.adapters.generated.rp_wire import DiscoveryDocument
+from rdf_persistence.adapters.jwks import DISCOVERY_PATH, RS256
+from rdf_persistence.adapters.zitadel import zitadel_roles_claim
+from rdf_persistence.services.tokens import EpochClock
+
 ISSUER: Final = "https://idp.test"
 AUDIENCE: Final = "rp-test"
-ZITADEL_ROLES_CLAIM: Final = "urn:zitadel:iam:org:project:roles"
+PROJECT_ID: Final = "test-project"
 DEFAULT_KID: Final = "test-key-1"
 DEFAULT_LIFETIME_SECONDS: Final = 300.0
 ORG_ID, ORG_DOMAIN = "org-1", "org.test"
-SERVICE_UNAVAILABLE = 503
-
-Clock = Callable[[], float]
+KEYS_PATH = "/keys"
 
 
 class TokenSigner:
@@ -30,8 +34,8 @@ class TokenSigner:
         *,
         kid: str = DEFAULT_KID,
         audience: str = AUDIENCE,
-        roles_claim: str = ZITADEL_ROLES_CLAIM,
-        clock: Clock = time.time,
+        roles_claim: str = zitadel_roles_claim(PROJECT_ID),
+        clock: EpochClock = time.time,
     ) -> None:
         self.kid = kid
         self.audience = audience
@@ -42,7 +46,7 @@ class TokenSigner:
         self._clock = clock
         self._keys: dict[str, rsa.RSAPrivateKey] = {}
         self.rotate(kid)
-        self.client = httpx.AsyncClient(transport=httpx.MockTransport(self.handle))
+        self.transport = httpx.MockTransport(self.handle)
 
     @property
     def public_key(self) -> rsa.RSAPublicKey:
@@ -86,22 +90,23 @@ class TokenSigner:
         header_kid = kid or self.kid
         key = self._keys.get(header_kid, self._keys[self.kid])
         return jwt.encode(
-            claims, key, algorithm="RS256", headers={"kid": header_kid} if with_kid else None
+            claims, key, algorithm=RS256, headers={"kid": header_kid} if with_kid else None
         )
 
     def handle(self, request: httpx.Request) -> httpx.Response:
         """The provider: discovery at the well-known path, the JWKS at ``/keys``."""
         if self.unreachable:
-            return httpx.Response(SERVICE_UNAVAILABLE)
-        if request.url.path.endswith("/.well-known/openid-configuration"):
+            return httpx.Response(HTTPStatus.SERVICE_UNAVAILABLE)
+        if request.url.path.endswith(DISCOVERY_PATH):
             self.discovery_requests += 1
-            return httpx.Response(200, json={"issuer": ISSUER, "jwks_uri": f"{ISSUER}/keys"})
+            document = DiscoveryDocument(issuer=ISSUER, jwks_uri=f"{ISSUER}{KEYS_PATH}")
+            return httpx.Response(HTTPStatus.OK, json=document.model_dump())
         self.jwks_requests += 1
         return httpx.Response(
-            200, json={"keys": [self._jwk(kid, key) for kid, key in self._keys.items()]}
+            HTTPStatus.OK, json={"keys": [self._jwk(kid, key) for kid, key in self._keys.items()]}
         )
 
     @staticmethod
     def _jwk(kid: str, key: rsa.RSAPrivateKey) -> Mapping[str, object]:
         jwk = jwt.algorithms.RSAAlgorithm.to_jwk(key.public_key(), as_dict=True)
-        return {**jwk, "kid": kid, "use": "sig", "alg": "RS256"}
+        return {**jwk, "kid": kid, "use": "sig", "alg": RS256}

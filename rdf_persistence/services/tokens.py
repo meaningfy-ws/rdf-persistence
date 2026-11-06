@@ -4,9 +4,13 @@ Only JWT access tokens are supported; opaque tokens need introspection and are n
 identity).
 """
 
+from collections.abc import Callable
 from typing import Protocol
 
 from rdf_persistence.domain.generated.service.rp_service import VerifiedCaller
+
+EpochClock = Callable[[], float]
+"""A clock that answers seconds since the epoch, as the ``exp`` and ``nbf`` claims count them."""
 
 
 class TokenVerifier(Protocol):
