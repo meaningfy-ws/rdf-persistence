@@ -41,3 +41,11 @@ class InvalidIri(ValueError):
 
 class SparqlError(ValueError):
     """A value cannot become a SPARQL term, or a template and its terms do not match."""
+
+
+class InvalidToken(PersistenceError):
+    """An access token is missing, expired, malformed, signed by an unknown key, or for another issuer or audience."""
+
+
+class IdentityUnavailable(PersistenceError):
+    """The identity provider's keys or management API cannot be reached, or answered with a server error."""
