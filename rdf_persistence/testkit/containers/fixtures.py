@@ -136,7 +136,9 @@ def _exec(compose: DockerCompose, service: str, command: list[str]) -> ExecResul
 @pytest.fixture(scope="session")
 def fuseki(_compose_project: None) -> Iterator[FusekiServer]:
     """Fuseki, answering ``/$/ping`` for the test user."""
-    with _running(FUSEKI, port_var="RP_FUSEKI_PORT", build=True) as (_, port):
+    # No build=True: compose builds only when the tag is missing, so the image `make fuseki-image`
+    # loaded is used as is. After editing fuseki/ locally, `docker image rm` the tag in compose.yaml.
+    with _running(FUSEKI, port_var="RP_FUSEKI_PORT") as (_, port):
         server = FusekiServer(
             url=f"http://localhost:{port}", user=FUSEKI_USER, password=FUSEKI_PASSWORD
         )

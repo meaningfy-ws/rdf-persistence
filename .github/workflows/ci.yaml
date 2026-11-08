@@ -168,6 +168,17 @@ jobs:
         if: steps.changes.outputs.code == 'true'
         run: make install
 
+      - name: Cache the Fuseki image
+        if: steps.changes.outputs.code == 'true'
+        uses: actions/cache@v4
+        with:
+          path: temp/fuseki-image.tar
+          key: fuseki-${{ hashFiles('rdf_persistence/testkit/containers/fuseki/**', 'rdf_persistence/testkit/containers/compose.yaml') }}
+
+      - name: Load or build the Fuseki image
+        if: steps.changes.outputs.code == 'true'
+        run: make fuseki-image
+
       - name: Run container tests
         if: steps.changes.outputs.code == 'true'
         run: make test-containers
@@ -181,3 +192,23 @@ jobs:
           path: |
             coverage-containers.xml
             test-results-containers.xml
+
+  # A PR reads only its own caches and its base branch's. This job fills develop's cache on each
+  # push, so a new PR starts with a hit (design PD-1).
+  fuseki-image:
+    name: Warm the Fuseki image cache
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache the Fuseki image
+        uses: actions/cache@v4
+        with:
+          path: temp/fuseki-image.tar
+          key: fuseki-${{ hashFiles('rdf_persistence/testkit/containers/fuseki/**', 'rdf_persistence/testkit/containers/compose.yaml') }}
+
+      - name: Load or build the Fuseki image
+        run: make fuseki-image
