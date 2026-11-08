@@ -6,7 +6,7 @@ import pytest
 
 from rdf_persistence.generation.cli import main
 
-from .test_freshness import DEFAULT_HINT, NAMED, hint
+from .test_freshness import DEFAULT_HINT, NAMED
 from .test_generate_cli import PYPROJECT, SCHEMA
 
 CONFTEST = 'pytest_plugins = ["rdf_persistence.testkit.freshness"]\n'
@@ -85,7 +85,7 @@ def test_an_entry_names_its_own_command_in_the_hint(session: pytest.Pytester) ->
     assert main(["--project", str(session.path / "pyproject.toml")]) == 0
     (session.path / "m.yaml").write_text(SCHEMA + "# changed\n", encoding="utf-8")
     text = stop_text(session)
-    assert hint("make generate-models") in text, "the entry's command is not named"
+    assert "run `make generate-models` to regenerate, then commit the result" in text, "the entry's command is not named"
     assert "`rp-generate`" not in text, "the default is named beside the entry's command"
 
 
@@ -100,7 +100,7 @@ def test_several_stale_projects_print_one_hint_naming_each_command_once(
     session.makeini(INI)
     text = stop_text(session)
     assert text.count("to regenerate, then commit the result") == 1, "not exactly one hint"
-    assert hint("rp-generate", "make generate-models") in text, "a command is missing"
+    assert "run `rp-generate` or `make generate-models` to regenerate, then commit the result" in text, "a command is missing"
 
 
 def test_a_configuration_error_stops_the_session_without_a_hint(session: pytest.Pytester) -> None:
@@ -119,7 +119,8 @@ def test_a_stale_project_and_a_configuration_error_hint_only_the_stale_command(
     session.makeini(INI)
     text = stop_text(session)
     assert "colour" in text, "the configuration error is not named"
-    assert hint("rp-generate") in text, "the stale project's command is not hinted"
+    assert text.count("to regenerate") == 1, "not exactly one hint"
+    assert DEFAULT_HINT in text, "the stale project's command is not hinted"
 
 
 def test_a_configuration_error_beside_a_fresh_project_stops_the_session_without_a_hint(

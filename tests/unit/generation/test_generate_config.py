@@ -1,5 +1,6 @@
 """The [tool.rp-generate] configuration (PD-18) becomes GenerationTarget models."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -111,15 +112,29 @@ def test_the_regenerate_command_is_not_a_flag() -> None:
     assert "regenerate_command" not in {f.field for f in cli_flags()}, "it became an rp-generate flag"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="the model-field spelling regenerate_command is accepted in TOML, not refused",
-)
 def test_a_regenerate_command_spelt_with_an_underscore_is_refused_naming_the_key(
     tmp_path: Path,
 ) -> None:
     with pytest.raises(ConfigError, match="regenerate_command"):
         read(tmp_path, SINGLE + 'regenerate_command = "make generate-models"\n')
+
+
+def test_a_schema_file_spelt_with_an_underscore_is_refused_naming_the_key(tmp_path: Path) -> None:
+    with pytest.raises(ConfigError, match="schema_file"):
+        read(tmp_path, SINGLE.replace('schema = "m.yaml"', 'schema_file = "m.yaml"'))
+
+
+@pytest.mark.parametrize("command", ["", "   ", "make a\nmake b", "make `x`"])
+def test_a_regenerate_command_that_is_blank_multiline_or_backticked_is_refused(
+    tmp_path: Path, command: str
+) -> None:
+    with pytest.raises(ConfigError, match="regenerate-command"):
+        read(tmp_path, SINGLE + f"regenerate-command = {json.dumps(command)}\n")
+
+
+def test_make_generate_models_is_an_accepted_regenerate_command(tmp_path: Path) -> None:
+    (target,) = read(tmp_path, SINGLE + 'regenerate-command = "make generate-models"\n')
+    assert target.regenerate_command == "make generate-models", "a plain command was refused"
 
 
 def test_the_regenerate_command_flag_is_refused_by_the_parser(

@@ -545,6 +545,7 @@ slots:
       `regenerate-command`); `rp-generate` when absent.
     slot_uri: rp:regenerateCommand
     range: string
+    pattern: "^[^`\\r\\n]*[^`\\s][^`\\r\\n]*$"
   path:
     is_a: relative_path
     title: Path

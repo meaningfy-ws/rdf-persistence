@@ -205,10 +205,6 @@ regenerate-command = "make b"
 """
 
 
-def hint(*commands: str) -> str:
-    return f"run {' or '.join(f'`{c}`' for c in commands)} to regenerate, then commit the result"
-
-
 def stale(tmp_path: Path, pyproject: str, *changed: str) -> Path:
     """A generated project (schemas m.yaml and part.yaml) whose ``changed`` schemas then change."""
     path = project(tmp_path, SCHEMA, pyproject)
@@ -225,7 +221,7 @@ def test_without_a_command_the_hint_names_rp_generate(
 ) -> None:
     (generated.parent / "m.yaml").write_text(SCHEMA + "# changed\n", encoding="utf-8")
     _, error = check(generated, capsys)
-    assert error.rstrip().endswith(hint("rp-generate")), "the default command is not the hint"
+    assert error.rstrip().endswith(DEFAULT_HINT), "the default command is not the hint"
 
 
 def test_an_entry_names_its_own_command_in_the_hint(
@@ -233,7 +229,7 @@ def test_an_entry_names_its_own_command_in_the_hint(
 ) -> None:
     path = stale(tmp_path, PYPROJECT + NAMED, "m.yaml")
     _, error = check(path, capsys)
-    assert error.rstrip().endswith(hint("make generate-models")), "the entry's command is not named"
+    assert error.rstrip().endswith("run `make generate-models` to regenerate, then commit the result"), "the entry's command is not named"
     assert "rp-generate`" not in error, "the default is named beside the entry's command"
 
 
@@ -241,10 +237,10 @@ def test_the_hint_names_the_command_of_each_stale_entry_only(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     path = stale(tmp_path, TWO_COMMANDS, "m.yaml", "part.yaml")
-    assert check(path, capsys)[1].rstrip().endswith(hint("make a", "make b")), "both not named"
+    assert check(path, capsys)[1].rstrip().endswith("run `make a` or `make b` to regenerate, then commit the result"), "both not named"
     (tmp_path / "other").mkdir()
     path = stale(tmp_path / "other", TWO_COMMANDS, "part.yaml")
-    assert check(path, capsys)[1].rstrip().endswith(hint("make b")), "a fresh entry's is named"
+    assert check(path, capsys)[1].rstrip().endswith("run `make b` to regenerate, then commit the result"), "a fresh entry's is named"
 
 
 def test_stale_targets_lists_only_the_targets_with_problems(
@@ -263,7 +259,7 @@ def test_fix_hint_dedupes_commands_in_entry_order() -> None:
         GenerationTarget(schema_file="a", package="a", regenerate_command=c)
         for c in ("make b", None, "make b", "make a")
     ]
-    assert manifest_module.fix_hint(targets) == hint("make b", "rp-generate", "make a")
+    assert manifest_module.fix_hint(targets) == "run `make b` or `rp-generate` or `make a` to regenerate, then commit the result"
 
 
 def test_two_stale_entries_with_the_same_command_name_it_once(
@@ -272,7 +268,7 @@ def test_two_stale_entries_with_the_same_command_name_it_once(
     path = stale(tmp_path, TWO_COMMANDS.replace("make b", "make a"), "m.yaml", "part.yaml")
     _, error = check(path, capsys)
     assert error.count("to regenerate, then commit the result") == 1, "not exactly one hint"
-    assert error.rstrip().endswith(hint("make a")), "the shared command is not named once"
+    assert error.rstrip().endswith("run `make a` to regenerate, then commit the result"), "the shared command is not named once"
 
 
 def test_a_stale_entry_without_a_command_and_one_with_name_both(
@@ -280,7 +276,7 @@ def test_a_stale_entry_without_a_command_and_one_with_name_both(
 ) -> None:
     mixed = TWO_COMMANDS.replace('regenerate-command = "make a"\n', "")
     path = stale(tmp_path, mixed, "m.yaml", "part.yaml")
-    assert check(path, capsys)[1].rstrip().endswith(hint("rp-generate", "make b")), "not both"
+    assert check(path, capsys)[1].rstrip().endswith("run `rp-generate` or `make b` to regenerate, then commit the result"), "not both"
 
 
 def test_the_installed_rp_generate_command_exits_1_and_hints_the_entry_command(
@@ -292,7 +288,7 @@ def test_the_installed_rp_generate_command_exits_1_and_hints_the_entry_command(
         [str(command), "--project", str(path), "--check"], capture_output=True, text=True
     )
     assert done.returncode == 1, f"exit code {done.returncode}: {done.stderr}"
-    assert done.stderr.rstrip().endswith(hint("make generate-models")), "the hint is not last"
+    assert done.stderr.rstrip().endswith("run `make generate-models` to regenerate, then commit the result"), "the hint is not last"
     assert done.stdout == "", "a failed check wrote to stdout"
 
 

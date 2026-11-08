@@ -200,6 +200,19 @@ class GenerationTarget(ConfiguredBaseModel):
             raise ValueError(err_msg)
         return v
 
+    @field_validator("regenerate_command")
+    def pattern_regenerate_command(cls, v):
+        pattern=re.compile("^[^`\\r\\n]*[^`\\s][^`\\r\\n]*$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid regenerate_command format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid regenerate_command format: " + str(v)
+            raise ValueError(err_msg)
+        return v
+
 
 class ManifestEntry(ConfiguredBaseModel):
     "A file and the SHA-256 of its bytes, as recorded by a generation run."

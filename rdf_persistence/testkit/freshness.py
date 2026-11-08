@@ -29,7 +29,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
-def _project_problems(project: Path) -> tuple[list[str], list[GenerationTarget]]:
+def _project_report(project: Path) -> tuple[list[str], list[GenerationTarget]]:
     """The report lines of ``project`` and its stale targets (none when its configuration is wrong)."""
     try:
         stale = stale_targets(read_targets(project), project.parent)
@@ -45,7 +45,7 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     lines: list[str] = []
     stale: list[GenerationTarget] = []
     for project in projects:
-        project_lines, project_stale = _project_problems(config.rootpath / project)
+        project_lines, project_stale = _project_report(config.rootpath / project)
         lines += [f"{project}: {line}" for line in project_lines]
         stale += project_stale
     if lines:

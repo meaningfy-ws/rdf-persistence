@@ -180,6 +180,9 @@ def freshness_problems(targets: Iterable[GenerationTarget], base: Path) -> list[
 
 
 def fix_hint(stale: Iterable[GenerationTarget]) -> str:
-    """The hint that ends a failed check: the command of each stale target, once, in order."""
+    """The hint that ends a failed check: the command of each stale target, once, in order.
+
+    ``stale`` is non-empty: a check with nothing stale has no hint.
+    """
     commands = dict.fromkeys(t.regenerate_command or DEFAULT_REGENERATE for t in stale)
     return f"run {' or '.join(f'`{c}`' for c in commands)} to regenerate, then commit the result"
