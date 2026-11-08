@@ -68,7 +68,7 @@ xref:develop/index.adoc#how-long-the-checks-take[How long the checks take].
 In two kinds of session: a shaping session (the developer, the lead, the architect and the
 planner) that ends in EPICs, then one epic session per EPIC, where the lead runs builders,
 reviewers and one checker per stage through a loop that scales with the size of the EPIC. The
-developer makes every decision and accepts the EPIC. See xref:develop/agents.adoc[Working with agents] and the
+developer makes every decision and accepts each EPIC that delivers or changes a use case. See xref:develop/agents.adoc[Working with agents] and the
 xref:develop/testing.adoc[testing checklist].
 
 *Where are decisions recorded?*::

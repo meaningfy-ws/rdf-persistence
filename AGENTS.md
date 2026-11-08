@@ -124,7 +124,9 @@ way every time. The short form:
     code, the docs it changed, accepted fixes, spikes.
   - **Reviewer** (`code-reviewer`): read-only findings, lenses scaled to the EPIC's size.
   - **Checker** (a fresh `general-purpose` agent, one per stage): the briefs and decisions were
-    met, traceability holds, and it cold-reads the how-to and tutorial pages the stage changed.
+    met, traceability holds.
+  - **Cold reader** (a separate fresh agent given only the page, never the checker, which carries
+    the stage's context): whenever a how-to or tutorial page changed, at any size.
   - **Adversarial tester** (a builder brief that writes only tests): LARGE EPICs and up.
 
   Members (subagents) never talk to the developer and never commit. Do small or dependent steps
@@ -138,14 +140,15 @@ way every time. The short form:
   reads the diff and commits) → challenge (reviewers, and the tester when in scope, in parallel)
   → decide and fix (record each accepted finding in `design.md` first: Rule of Divergence;
   builders fix; the lead re-runs the gates) → check (one checker pass) → PR into `develop`,
-  merged only on green CI. After the last stage: the developer's acceptance of the EPIC, then
-  archive; a release comes last, so nothing is committed after the tag.
-- **Scaling.** TINY/SMALL: one combined review pass (L2 + L3), no checker, no tester. MEDIUM: five
+  merged only on green CI. After the last stage: the developer's acceptance of the EPIC (when it
+  delivers or changes a use case), then archive; a release comes last, so nothing is committed after the tag.
+- **Scaling.** TINY/SMALL: one combined review pass (L2 + L3), which is the second
+  check; no checker, no tester. MEDIUM: five
   lenses and the checker. LARGE and up: also the adversarial tester.
 - **Provisional.** Scenario sign-off at the PLAN gate and acceptance per EPIC are new here; their
   first run confirms or reshapes them.
 - **Trust, then verify.** A member's report is a claim: the lead re-runs the checks and reads the
-  diff; the checker is the second pair of eyes.
+  diff; the checker (for TINY/SMALL, the review pass) is the second pair of eyes.
 - **External libraries** (rdflib, LinkML, pydantic, …). When one falls short, the lead records
   three options in `design.md` with a recommendation: contribute upstream (a PR), fork and release
   from the Meaningfy GitHub, or a local workaround isolated in one adapter, marked as a shortcut,

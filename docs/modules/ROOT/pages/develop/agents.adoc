@@ -99,10 +99,14 @@ production code and its tests, the docs the task changed, accepted review findin
 |`code-reviewer`, one per lens, in parallel
 
 |*Checker*
-|One fresh pass per stage: were the briefs and decisions met, does traceability hold; it
-cold-reads the how-to and tutorial pages the stage changed and runs their snippets. Read-only.
+|One fresh pass per stage: were the briefs and decisions met, does traceability hold; it runs
+the snippets of the how-to and tutorial pages the stage changed. Read-only.
 |a fresh `general-purpose` agent
 |===
+
+The *cold reader* is a separate fresh agent given only the page, never the checker, which carries
+the stage's context. It carries out what a how-to or tutorial page says, whenever the stage changed
+one, at any size.
 
 The *adversarial tester* is a builder brief, not a standing role: it writes only tests, for edge
 cases, bad input, failures and limits, following xref:develop/testing.adoc[the testing checklist].
@@ -146,10 +150,12 @@ runs this loop:
   `design.md` (the Rule of Divergence: the spec first, then the code) and rejects the rest with a
   reason. Builders apply the decisions in batches, security first, then structure; the lead
   re-runs the gates.
-. *Check.* The checker makes its single pass. An unmet item goes back to decide and fix.
+. *Check.* The checker makes its single pass (for TINY and SMALL, the review pass is the check); a
+  cold reader reads each how-to or tutorial page the stage changed. An unmet item goes back to
+  decide and fix.
 . *Merge.* The lead opens a PR into `develop` and merges it only when CI is green.
 
-When the last stage is merged, the developer accepts the EPIC against its use cases and scenarios;
+When the last stage is merged, and the EPIC delivers or changes a use case, the developer accepts it against its use cases and scenarios;
 a rejection becomes a decision in `design.md` and goes back to decide and fix. Then the lead
 archives the change (`openspec archive <id> --yes`), which merges its requirements into
 `openspec/specs/`. A release comes last, so no commit follows the tag.
@@ -163,8 +169,7 @@ here; their first run confirms or reshapes them.
 [cols="2,3,2,2",options="header"]
 |===
 |EPIC appetite |Challenge |Check |Adversarial tester
-|TINY / SMALL |One combined review pass (L2 spec and tests, L3 structure) |Folded into the lead's
-re-run |—
+|TINY / SMALL |One combined review pass (L2 spec and tests, L3 structure) |The review pass |—
 |MEDIUM |Five lenses (L1 to L5), read-only, in parallel |Checker |—
 |LARGE and up |Five lenses |Checker |Yes
 |===
