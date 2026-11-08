@@ -44,3 +44,35 @@ def test_code_files_scans_the_package_and_the_tests(tmp_path, monkeypatch):
     found = {f.relative_to(tmp_path).as_posix() for f in check_docs.code_files()}
 
     assert found == {"rdf_persistence/a.py", "tests/b.yaml"}
+
+
+def _testkit_with_page(tmp_path, monkeypatch, page_text):
+    """A tmp repo whose testkit exports `exported`, plus a testing page with `page_text`."""
+    monkeypatch.setattr(check_docs, "ROOT", tmp_path)
+    monkeypatch.setattr(check_docs, "MODULE", tmp_path / "docs")
+    testkit = tmp_path / "rdf_persistence" / "testkit"
+    (testkit / "containers").mkdir(parents=True)
+    (testkit / "__init__.py").write_text('__all__ = ["exported"]\n')
+    (testkit / "containers" / "__init__.py").write_text("")
+    (testkit / "bootstrap.py").write_text("")
+    page = tmp_path / "docs" / "pages" / "develop" / "testing.adoc"
+    page.parent.mkdir(parents=True)
+    page.write_text(page_text)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("use `testkit.exported`", 0),
+        ("use `testkit.some_helper`", 1),
+        ("see `testkit.containers.fixtures`", 0),
+        ("see `testkit.bootstrap`", 0),
+    ],
+)
+def test_testkit_names_must_be_exported_or_a_submodule(tmp_path, monkeypatch, text, expected):
+    _testkit_with_page(tmp_path, monkeypatch, text)
+
+    errors = check_docs.check_testkit_names()
+
+    assert len(errors) == expected, errors
+    assert all("some_helper" in e for e in errors)

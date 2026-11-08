@@ -36,7 +36,7 @@ One stage, one PR. Per task: the affected test directories, `make check-quality`
 
 ## 5. Docs checks and guide
 
-- [ ] 5.1 PD-7, test first: the exported-helper check in `docs/tools/check_docs.py`
+- [x] 5.1 PD-7, test first: the exported-helper check in `docs/tools/check_docs.py`
   (`tests/unit/test_check_docs.py`: a planted page naming `testkit.some_helper` fails naming it; a
   submodule path such as `testkit.containers.fixtures` passes). Gate: `make check-docs`.
 - [ ] 5.2 PD-6: `howto/adopt.adoc` steps 4 to 7, then a fresh cold reader given only the page
