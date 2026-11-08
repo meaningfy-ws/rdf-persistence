@@ -279,6 +279,7 @@ FILE_BAD = [
     "my_shapes.ttl",
     "shapes.ttl",
     "a.context.jsonld",
+    "context.jsonld",
     "A.frame.jsonld",
     "a.schema.json",
     "openapi.json",
@@ -288,7 +289,6 @@ FILE_BAD = [
 ]
 FILE_OK = [
     "data.ttl",
-    "context.jsonld",
     "notes.json",
     "openapi.md",
     "a.test.ts",
