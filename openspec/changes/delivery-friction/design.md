@@ -105,6 +105,29 @@ feature lane with `uv run --with pytest-randomly pytest tests --ignore=tests/int
 `-p randomly --randomly-seed=<another>`; both green, the seeds recorded in the PR. No
 new dependency is added; a test that fails there is made deterministic (DEC-2).
 
+## Delivery notes
+
+- **PD-6a (lead, 2026-11-08) The cold reader's guesses are all fixed, in steps 2 and 4 to 7.** After
+  PD-6's edits, the first cold read of `howto/adopt.adoc` still named 20 guesses: 9 in steps 4 and
+  7, 11 in steps 5 and 6 that predate this EPIC. The seed's scenario is "a cold reader follows steps
+  4 to 7 without a guess", so all 20 are fixed. Each fix states a fact checked in the code; guess 11
+  adds the layer folders to the step 2 layout. A second fresh cold reader confirms.
+- **PD-6b (developer, 2026-11-08) When the guide is done.** A second cold read named 20 new
+  guesses (2 blocking, 18 minor): each pass adds detail and the next reader finds more, so "no
+  guess" never ends. The developer chose: the guide is done when a fresh reader reports **no
+  blocking guess and no contradiction**; the remaining minor guesses are recorded in
+  `evidence/cold-reads.md`, not fixed. Fixed from the second read: both blocking guesses (the
+  pytest `pythonpath` a consumer needs; what a model change does to stored data — there is no
+  migration, `questions.adoc` lists it as deferred), the four contradictions, and six cheap ones.
+  Also fixed: step 1's `[project]` lacked `name`, so `uv sync` failed. Found and filed, not fixed
+  here: the file guard's `*.context.jsonld` misses `context.jsonld` (issue #38).
+- **PD-8a (lead) What broke in parallel.** No test shared a path. xdist aborted on parameters built
+  from `uuid4()` at import (different ids per worker), now fixed literals or explicit ids. The
+  random-order run (seed 124119802) found one golden test comparing a folder that other tests
+  import from; it now generates into its own `tmp_path`. Seed 20261108 passed.
+- **Task 3.1 was done by the lead** without a builder: a three-line Makefile change and a
+  mechanical format.
+
 ## Review
 
 To be filled by the stage: five lenses (MEDIUM), findings accepted or rejected with a reason, then

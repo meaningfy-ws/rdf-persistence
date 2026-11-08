@@ -26,6 +26,8 @@ only, so they go in the dev group, together with the test helpers:
 ----
 # pyproject.toml
 [project]
+name = "library"
+version = "0.1.0"
 dependencies = ["rdf-persistence"]
 
 [dependency-groups]
@@ -35,8 +37,8 @@ dev = ["rdf-persistence[generate,testkit]", "hypothesis", "pytest"]
 rdf-persistence = { git = "https://github.com/meaningfy-ws/rdf-persistence", branch = "develop" }
 ----
 
-Run `uv sync`. The `rp-generate` command is always installed; without the `generate` extra it exits
-with code 2 and says so.
+Run `uv sync`. The `rp-generate` command is always installed. Without the `generate` extra, generating
+exits with code 2 and says so, and `rp-generate --check` only compares the manifest (step 6).
 
 == 2. Lay out the application
 
@@ -46,13 +48,17 @@ _Where do the model and the generated files go?_
 ----
 models/                       the LinkML schema: a root schema and one file per module
 library/domain/generated/     generated Python, shapes, context and frames (never edited)
+library/services/             your domain services (step 8)
+library/entrypoints/          your composition root and routes (step 12)
 web/src/domain/generated/     generated TypeScript types (never edited)
 docs/model/                   generated diagrams, one per module
 tests/
 ----
 
-Generated files go only in folders named `generated`. The file guard (<<guard>>) fails on shapes,
-contexts, schemas or TypeScript found anywhere else.
+Generated files go only in folders named `generated`, except the diagrams, which the file guard
+(<<guard>>) does not look at. It fails on shapes, contexts, frames, JSON schemas, OpenAPI files or
+`.ts` files (other than `*.test.ts` and `*.spec.ts`) found elsewhere in the folders you give it
+(step 6).
 
 [#model]
 == 3. Write the model
@@ -195,29 +201,62 @@ diagrams = "docs/model"
 regenerate-command = "make generate"  # optional
 ----
 
+Two keys are required: `schema` (the root LinkML file) and `package` (the Python import path of the
+generated package). Without one, `rp-generate` exits with code 2 and names the missing key. The
+others are optional:
+
+* `typescript` and `diagrams` are folders; nothing is written when they are absent.
+* `python` is the folder that receives every file listed below except the TypeScript and the
+  diagrams. Set it only when that folder is not the `package` path, for example
+  `python = "src/library/domain/generated"`; `package` stays the import path.
+* `openapi = false` leaves out `openapi-components.json`. That is safe only if you never call
+  `install_service` (step 12): it stops with `OSError` when the file is missing.
+
+`rp-generate` reads the `pyproject.toml` in the folder you run it from. It does not search upward:
+from another folder it exits with code 2, unless you pass `--project path/to/pyproject.toml`.
+Every path in `[tool.rp-generate]` is relative to that file, not to the folder you run the command
+from, and it must stay inside its folder: an absolute path or one with `..` is refused. The Python folder is
+the `package` path with the dots turned into slashes (`library/domain/generated`). It does not have
+to exist: `rp-generate` creates it, and its parent folders, and writes an `__init__.py` into it
+only. `library/` and `library/domain/` get none; Python imports them as namespace packages, so add
+your own `__init__.py` only if a tool needs it.
+
+`rp-generate` prints `rp-generate: generated 1 target(s), no problems` and exits 0 when it is done.
+It exits 1 when it finds problems: a schema that breaks a rule of step 3 (the message names the
+element), or a missing or unreadable `schema` file. It exits 2 when it cannot start: a missing or
+unknown key, a refused path, no `[tool.rp-generate]` entry, or, when generating, no `generate` extra.
+
 Add a make target that runs `uv run rp-generate`; it may have any name, and it may be the target
-that already runs your other generators. Set the optional `regenerate-command` of the
-`[tool.rp-generate]` table to the command you type to run that target, for example
-`make generate-models`. It is only shown, never run: when generated code is stale, the freshness
-checks of step 6 (the pytest plugin and `rp-generate --check`) end with "run `make generate-models`
-to regenerate". Without it they name `rp-generate`, which skips `uv run` and anything else your
-target does. The examples on this page call the target `generate`:
+that already runs your other generators. Set the optional `regenerate-command` to the command you
+type to run that target, as in the example above: `make generate`. It is only shown, never run: when
+generated code is stale, the freshness check (<<guard,step 6>>) ends with "run `make generate` to
+regenerate, then commit the result". Without it, the check names `rp-generate`, which skips
+`uv run` and anything else your target does. The make target on this page is called `generate`:
 
 [source,makefile]
 ----
 generate:
 	uv run rp-generate
-
-check-generated:
-	uv run rp-generate --check
 ----
 
-`make generate` writes, under `library/domain/generated/`, one Python module per schema module
+Run it: it prints `rp-generate: generated 1 target(s), no problems`.
+
+The freshness check is `uv run rp-generate --check`. It writes nothing. On success it prints
+`rp-generate: checked 1 target(s), no problems` and exits 0. Before the first generation it exits 1
+with `no readable manifest: library/domain/generated/rp-manifest.json`. <<guard,Step 6>> says how to
+run it in your tests and in CI.
+
+Your regenerate target writes, under `library/domain/generated/`, one Python module per schema module
 (`books.py`, `library.py`), `shapes.ttl`, `context.jsonld`, one `<Root>.frame.jsonld` per
 aggregate root, `openapi-components.json` (the component schemas of the service's OpenAPI document)
 and `rp-manifest.json`; the TypeScript types, one file per module plus `index.ts`;
 and one `.mmd` diagram per module. Commit them together with the schema. Never edit them: to change
 the code, change the schema and generate again.
+
+A file an earlier run wrote and this one does not, such as the module of a schema file you removed
+or renamed, is deleted by the next run, unless it was edited since: then the run keeps it and says
+`kept <file>: it changed since it was generated; delete it if it is stale`. Before you regenerate,
+`--check` reports the removed schema file as `stale input: models/<file>.yaml (removed)`.
 
 == 5. Use the generated classes
 
@@ -247,11 +286,23 @@ Book(id="https://example.org/library/books/3", label="L", description="D", isbn=
 # ValidationError: isbn: Extra inputs are not permitted
 ----
 
+The fields come from the schema. `author` and `chapters` are in `books.yaml`. The `Described`
+mixin adds `id`, `label` and `description`: `id` and `label` are required, and so is `description`
+on an aggregate root; a class annotated `rp_unlabelled: true` (`Chapter`) needs no `label`. The
+`Tracked` mixin adds `created`, `modified`, `creator` and `contributor`: the session sets them
+(step 8), never you. `AggregateRoot` adds no field; it marks the class as a root.
+
+The class takes any text as an `id`, so the ids above show the checks, not what you can store: the
+session refuses an aggregate IRI the toolkit would not mint (step 8), such as
+`https://example.org/library/books/1`. Mint one with `kit.iris.mint_aggregate` (the kit comes in
+step 12; outside a service, step 14 builds an `Iris`).
+
 Every generated class derives from the toolkit's strict base, `RpModel`. It refuses unknown
 fields, validates on assignment, and enforces the rules declared in the schema: `required`,
 ranges, patterns, `exactly_one_of`, `any_of` and `unique_keys`. Each object, owned parts included,
-has an `id`. The service mints a part's IRI, by default `{root_iri}/parts/{uuid4}`, when a request
-body leaves it out, and keeps it across commits. Under a custom IRI policy the part template
+has a required `id`: `Chapter(number=1)` fails with `id: Field required`. Only a request body to
+the service may leave a part's `id` out. The service then mints its IRI, by default
+`{root_iri}/parts/{uuid4}`, and keeps it across commits. Under a custom IRI policy the part template
 decides. A JSON body's parts are typed by the schema's context, so nothing more is needed; a
 JSON-LD body must give each part's `@type`, and when the part template has `{type}` an untyped part,
 or one whose class is not owned, is a 422. In a domain service, build a part with `new_part`
@@ -259,8 +310,8 @@ or one whose class is not owned, is a 422. In a domain service, build a part wit
 from `rdf_persistence`, never generated into your package.
 
 Use the generated classes in your domain services. Do not declare models of your own: no
-`BaseModel`, enum, dataclass, `TypedDict` or `NamedTuple` in `domain`, `services` or
-`entrypoints`. A model you need goes into the schema.
+`BaseModel`, enum, dataclass, `TypedDict` or `NamedTuple` in `library/domain`, `library/services`
+or `library/entrypoints`, outside `generated` (<<guard,step 6>> checks this). A model you need goes into the schema.
 
 [#guard]
 == 6. Guard the model in your tests
@@ -275,6 +326,19 @@ The testkit adds four checks to your test suite.
 ----
 # tests/conftest.py
 pytest_plugins = ["rdf_persistence.testkit.freshness"]
+----
+
+At the start of every test run the plugin reads the `[tool.rp-generate]` entries of the
+`pyproject.toml` in pytest's rootdir. For other files, list them one per line, relative to the
+rootdir, in the pytest option `rp_generate_projects`. It compares the files with the hashes in each
+`rp-manifest.json`; it regenerates nothing and needs no `generate` extra. When something is stale,
+edited or missing, pytest stops before any test, with exit code 1:
+
+[source,text]
+----
+generated code is not fresh:
+pyproject.toml: edited by hand: library/domain/generated/books.py
+run `make generate` to regenerate, then commit the result
 ----
 
 *No hand-written models or artefacts*, *classes and shapes agree*, and *a round trip through
@@ -308,18 +372,44 @@ def test_classes_and_shapes_agree():
 @settings(max_examples=25)
 @given(data=st.data())
 def test_a_book_survives_the_round_trip(data):
-    model = conformance.Conformance.of(SCHEMA)
-    round_trip(model, data.draw(aggregate(model, "Book")), "Book")
+    conformed = conformance.Conformance.of(SCHEMA)
+    round_trip(conformed, data.draw(aggregate(conformed, "Book")), "Book")
 ----
 
-`assert_models_generated` fails on a hand-written model and names its file, line and class. If
-you really need a type that holds a foreign run-time object, pass it with
-`allow=["library/domain/<file>.py:<ClassName>"]`.
+`assert_models_generated` makes two checks. It fails on a hand-written model, found in the
+`domain`, `services` and `entrypoints` folders of the package you pass first (`ROOT / "library"`),
+and names its file, line and class. It also fails on a generated artefact outside a `generated`
+folder (step 2), found in the `roots` folders: shapes, contexts, frames, JSON schemas, OpenAPI files
+and `.ts` files other than `*.test.ts` and `*.spec.ts`. `web/` is not in `roots` because a web
+application holds hand-written `.ts` files; you may add any folder that holds no
+hand-written `.ts` files. If you really need a type
+that holds a foreign run-time object, pass it with `allow=["library/domain/<file>.py:<ClassName>"]`,
+a path relative to the folder that holds the package (`ROOT` above).
+
+`conformance.run(SCHEMA, cases)` finds the generated classes and shapes by itself. It looks up the
+folders above the schema file for a `pyproject.toml` whose `[tool.rp-generate]` entry has this
+`schema` (`LookupError` if there is none), imports that entry's `package`, so it must be importable
+in your tests (see below), and reads the shapes and the context from the Python folder. It returns a list of
+problems, as text; the list is empty when every case passes. `Conformance.of(SCHEMA)` opens the same
+classes and shapes as one object, which `aggregate` and `round_trip` take.
+
+Nothing puts your project folder on the import path, and `library/` needs no `__init__.py`
+(namespace package), so tell pytest where to find it:
+
+[source,toml]
+----
+# pyproject.toml
+[tool.pytest.ini_options]
+pythonpath = ["."]
+----
+
+Without it the two tests that import the package fail with `ModuleNotFoundError: No module named
+'library'`.
 
 `conformance.run` checks each case against both the generated class and the generated shape: the
 valid instances must pass both, and the invalid ones must fail both. It also reports any
 constraint kind your schema uses that no case covers, so the test fails until every kind has one.
-A case names a kind, a class and instance files, which live beside the cases file. The example
+A case names a kind, a class and instance files, whose paths are relative to the cases file. The example
 schema uses four kinds:
 
 [source,yaml]
@@ -355,23 +445,75 @@ The others: `chapter-ok.yaml` adds `number: 1`, `chapter-number-text.yaml` has `
 `book-ok.yaml` has an `id`, a `label` and a `description`, `book-no-id.yaml` lacks the `id`, and
 `book-unknown-field.yaml` adds a slot the class does not have (`isbn: "1"`).
 
-The kinds are `required`, `cardinality`, `range_type`, `range_enum`, `pattern`, `value_bounds`,
-`identifier`, `closed`, `exactly_one_of`, `any_of` and `unique_keys`.
+`round_trip` takes an object, turns it into RDF, frames the RDF back into JSON and builds an object
+from it. It fails with an `AssertionError`, `the objects differ after the round trip` or `the two
+graphs differ` with the triples on each side, when the object that comes back is not equal to the
+one that went in. `aggregate(conformed, "Book")` draws random valid books for it.
 
-In CI and as a pre-commit step, run `rp-generate --check`. It writes nothing; it exits 1 when
-generated code is stale or was edited, and names the files.
+Each kind of constraint comes from one construct of the schema:
+
+[cols="2,3",options="header"]
+|===
+|Kind |The schema construct
+|`required` |a slot with `required: true`
+|`cardinality` |`minimum_cardinality` or `maximum_cardinality` on a slot
+|`range_type` |a slot whose range is a type (`string`, `integer`, …)
+|`range_enum` |a slot whose range is an enum
+|`pattern` |`pattern` on a slot
+|`value_bounds` |`minimum_value` or `maximum_value` on a slot
+|`identifier` |a slot with `identifier: true`
+|`closed` |every schema with generated classes: they refuse unknown fields
+|`exactly_one_of`, `any_of` |the keys of the same name on a class
+|`unique_keys` |`unique_keys` on a class, or a keyed slot
+|===
+
+Where each check runs:
+
+* *Tests:* the freshness plugin, which compares the manifest.
+* *CI and pre-commit:* `uv run rp-generate --check` (step 4). It writes nothing and exits 1 when
+  generated code is stale or was edited, and names the files. It makes the same comparison as the
+  plugin and also lints the schema and runs its rule checks, which the plugin does not, so keep it
+  in CI even when the tests run the plugin. The lint and rule checks need the `generate` extra (step
+  1: `uv sync` installs it); without it the command compares the manifest only. A pre-commit hook for it:
++
+[source,yaml]
+----
+# .pre-commit-config.yaml
+repos:
+  - repo: local
+    hooks:
+      - id: rp-generate-check
+        name: rp-generate --check
+        entry: uv run rp-generate --check
+        language: system
+        pass_filenames: false
+        files: ^(models/|.*/generated/)
+----
 
 == 7. Change the model
 
 _How do I change the model later?_
 
 . Edit the schema.
-. Run `make generate`.
+. Run your regenerate target.
 . Add or adjust conformance cases if you used a new constraint kind; `conformance.run` names any
   kind that has no case.
 . Run the tests, then commit the schema and the generated code together.
 
-When you upgrade rdf-persistence, run `make generate` and review the generated diff: a new
+When you remove or rename a schema module, the next run deletes the generated files of the old one
+(step 4); you delete nothing by hand, unless that file was edited (step 4: the run keeps it).
+
+The toolkit has no migration of stored data: it reads and writes the graphs as the model now
+describes them. A stored aggregate that lacks a slot you made `required` fails to read with a
+`ValidationError`; triples of a removed or renamed slot are ignored on read and dropped when the
+aggregate is next committed. The service loads the model at start-up, so restart it to serve the
+new one (step 12).
+
+To upgrade rdf-persistence, which is installed from a git branch (step 1), run
+`uv lock --upgrade-package rdf-persistence` and `uv sync`. Then, until you regenerate, the freshness
+plugin and `rp-generate --check` fail with `stale input: rdf_persistence/...`, because the
+manifest records the generator files it was made with, and with `stale: generated with linkml ...`
+if the `linkml` version changed. Run your regenerate target and review the generated diff: a new
 toolkit version can change the generated code.
 
 [#session]

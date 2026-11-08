@@ -39,7 +39,7 @@ One stage, one PR. Per task: the affected test directories, `make check-quality`
 - [x] 5.1 PD-7, test first: the exported-helper check in `docs/tools/check_docs.py`
   (`tests/unit/test_check_docs.py`: a planted page naming `testkit.some_helper` fails naming it; a
   submodule path such as `testkit.containers.fixtures` passes). Gate: `make check-docs`.
-- [ ] 5.2 PD-6: `howto/adopt.adoc` steps 4 to 7, then a fresh cold reader given only the page
+- [x] 5.2 PD-6: `howto/adopt.adoc` steps 4 to 7, then a fresh cold reader given only the page
   (never the checker); each guess it reports is fixed. Gate: `make check-docs`.
 - [x] 5.3 `develop/index.adoc`: the targets table gains `make test-perf`, `make format-check` and
   `make fuseki-image`, says `make test` runs in parallel; the durations table gets the parallel
