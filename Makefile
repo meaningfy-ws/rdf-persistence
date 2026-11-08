@@ -114,7 +114,7 @@ pre-commit: ## Run pre-commit hooks on all files
 #-----------------------------------------------------------------------------
 # Validation — non-mutating targets
 #-----------------------------------------------------------------------------
-.PHONY: lint typecheck typecheck-generated typecheck-ts check-architecture test test-unit test-feature test-containers test-e2e
+.PHONY: lint typecheck typecheck-generated typecheck-ts check-architecture test test-unit test-feature test-containers test-e2e changes-code
 
 lint: ## Run Ruff linting checks
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running Ruff checks$(END_BUILD_PRINT)"
@@ -158,6 +158,9 @@ test-containers: ## Run the integration and e2e tests against Docker containers 
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running container tests$(END_BUILD_PRINT)"
 	@ uv run pytest $(TEST_PATH) -m "integration or e2e" $(COV_FLAGS) --cov-report=xml:$(REPO_ROOT)/coverage-containers.xml --cov-fail-under=0 --junitxml=$(REPO_ROOT)/test-results-containers.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Container tests passed$(END_BUILD_PRINT)"
+
+changes-code: ## Print true when HEAD changes a file outside openspec/, docs/ and top-level *.md since BASE (default origin/develop)
+	@ git diff --name-only $${BASE:-origin/develop}...HEAD | grep -qvE '^(openspec/|docs/|[^/]*\.md$$)' && echo true || echo false
 
 test-unit: ## Run unit tests only
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit tests$(END_BUILD_PRINT)"
