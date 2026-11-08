@@ -8,6 +8,7 @@ import pytest
 
 from rdf_persistence import AccessRules, load_role_definitions
 from rdf_persistence.domain.exceptions import NotFound
+from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from tests.toy import ROLES
 from tests.toy_service import CONSUMER_POLICY, TENANT_BODY, ToyService
 
@@ -87,8 +88,6 @@ async def test_a_wrong_form_id_to_require_aggregate_is_not_found(consumer) -> No
 
 
 def test_with_iris_keeps_the_permits_and_changes_the_policy() -> None:
-    from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
-
     rules = AccessRules(load_role_definitions(ROLES))
     other = Iris(DEFAULT_IRIS.settings.model_copy(update={"base": "https://other.invalid/"}))
     rebound = rules.with_iris(other)

@@ -7,7 +7,7 @@ from uuid import UUID
 
 import pytest
 from linkml_runtime.utils.schemaview import SchemaView
-from rdflib import URIRef
+from rdflib import RDFS, Literal, URIRef
 from rdflib.plugins.sparql import prepareQuery
 
 from rdf_persistence import new_part
@@ -247,18 +247,33 @@ async def test_a_listing_of_aggregates_with_flat_parts_gives_each_item_its_own_p
         iri = policy.book_iri(n)
         model = Book(
             id=iri,
-            label=f"Zorro {n}",
+            label="Zorro",
             description="d",
             genre=Genre.FICTION,
             chapters=[policy.chapter(iri)],
         )
         owned[iri] = {o for _, p, o in toy_mapper().to_triples(model) if p == CHAPTER}
         await shelf.add_graph(iri, toy_mapper().to_triples(model))
-    plan = Listings(view).plan(view.get_class("Book"), list_request([("label", "Zorro 7")]))
-    ((root, triples),) = items_of(await shelf.page(plan), plan)
-    subjects = set(triples.subjects())
-    assert owned[str(root)] <= subjects, "the book's own part is in its item"
-    assert not owned[policy.book_iri(8)] & subjects, "the other book's part is not"
+    plan = Listings(view).plan(view.get_class("Book"), list_request([("label", "Zorro")]))
+    items = items_of(await shelf.page(plan), plan)
+    assert {str(root) for root, _ in items} == set(owned), "both books are listed"
+    for root, triples in items:
+        own_subjects = set(triples.subjects()) - {graph_iri(str(root))}
+        assert own_subjects == {root, *owned[str(root)]}, "the item holds its own parts, no others"
+
+
+async def test_a_subject_stored_in_two_listed_graphs_goes_to_one_item_only(view):
+    """The query names one graph per subject in a dict: a subject shared by two aggregates lands in one item."""
+    default = POLICIES[0]
+    session = await session_of(default)
+    shared = URIRef("https://example.org/shared")
+    for n in (1, 2):
+        iri, triples = book(default, n, "Zorro")
+        await session.add_graph(iri, [*triples, (shared, RDFS.label, Literal("shared"))])
+    plan = Listings(view).plan(view.get_class("Book"), list_request([("label", "Zorro")]))
+    items = items_of(await session.page(plan), plan)
+    assert len(items) == 2, "both books are listed"
+    assert sum(shared in set(triples.subjects()) for _, triples in items) == 1
 
 
 def test_the_query_is_one_construct_with_the_total_and_no_value_pasted_in(view):

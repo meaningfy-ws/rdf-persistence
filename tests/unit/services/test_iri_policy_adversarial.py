@@ -1,8 +1,4 @@
-"""The session, the aggregates service and the tenancy under a flat IRI policy, attacked (iri-policy stage 1).
-
-Probes that expose a gap are kept as ``xfail(strict=True)`` so the suite stays green and the gap
-stays visible.
-"""
+"""The session, the aggregates service and the tenancy under a flat IRI policy, attacked (iri-policy stage 1)."""
 
 import json
 
@@ -160,12 +156,6 @@ async def test_a_replace_that_names_no_loaded_graphs_keeps_the_registered_ones(s
 # -- bodies under a flat part template ------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="a replace may name {root}/graph as a chapter: the stored subjects include the graph IRI "
-    "(its version and creator statements), so the check 'a part this aggregate stores' passes and "
-    "the bookkeeping subject becomes a Chapter",
-)
 async def test_a_chapter_cannot_take_the_iri_of_its_own_graph(aggregates, store):
     iri = await create(aggregates, body({"number": 1}))
     updates = len(store.sent("update"))

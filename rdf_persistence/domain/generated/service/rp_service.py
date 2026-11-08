@@ -235,14 +235,14 @@ class IdSpec(ConfiguredBaseModel):
 
 
 class IriPolicy(ConfiguredBaseModel):
-    "The templates the toolkit mints and accepts IRIs by, one per kind of IRI, and the id specifications of tenant and object ids. Every slot defaults to today\u0027s shape, so an empty policy is the default one. A template fills the variables allowed for its kind; the tenant, aggregate, part, loaded graph and principal templates end in their id variable, and the access, meta and registry templates contain the tenant."
+    "The templates the toolkit mints and accepts IRIs by, one per kind of IRI, and the id specifications of tenant and object ids. Every slot defaults to today\u0027s shape, so an empty policy is the default one. A template fills the variables allowed for its kind; the tenant, aggregate, part, loaded graph and principal templates end in their id variable, the access, meta and registry templates contain the tenant, and the aggregate, part and loaded graph templates name their tenant or, for the last two, their root."
     tenant_template: Optional[str] = Field(default="{base}{tenant_segment}/{tenant_id}", title="Tenant template", description="The template of a tenant IRI; ends in `{tenant_id}`.")
     access_template: Optional[str] = Field(default="{tenant}/access", title="Access template", description="The template of the IRI of a tenant\u0027s access record; contains `{tenant}` or `{tenant_id}`.")
     meta_template: Optional[str] = Field(default="{tenant}/meta", title="Meta template", description="The template of the IRI of a tenant\u0027s meta graph; contains `{tenant}` or `{tenant_id}`.")
     registry_template: Optional[str] = Field(default="{tenant}/registry", title="Registry template", description="The template of the IRI of a tenant\u0027s registry graph; contains `{tenant}` or `{tenant_id}`.")
-    aggregate_template: Optional[str] = Field(default="{tenant}/{rp_path}/{id}", title="Aggregate template", description="The template of an aggregate root IRI; ends in `{id}`.")
-    part_template: Optional[str] = Field(default="{root}/parts/{id}", title="Part template", description="The template of the IRI of an owned part; ends in `{id}`.")
-    loaded_graph_template: Optional[str] = Field(default="{root}/content/{id}", title="Loaded graph template", description="The template of the IRI of a loaded graph; ends in `{id}`.")
+    aggregate_template: Optional[str] = Field(default="{tenant}/{rp_path}/{id}", title="Aggregate template", description="The template of an aggregate root IRI; contains `{tenant}` or `{tenant_id}` and ends in `{id}`.")
+    part_template: Optional[str] = Field(default="{root}/parts/{id}", title="Part template", description="The template of the IRI of an owned part; contains `{tenant}`, `{tenant_id}` or `{root}` and ends in `{id}`.")
+    loaded_graph_template: Optional[str] = Field(default="{root}/content/{id}", title="Loaded graph template", description="The template of the IRI of a loaded graph; contains `{tenant}`, `{tenant_id}` or `{root}` and ends in `{id}`.")
     principal_template: Optional[str] = Field(default="{issuer}/users/{sub}", title="Principal template", description="The template of the IRI of a principal; ends in `{sub}`.")
     tenant_id: Optional[IdSpec] = Field(default=None, title="Tenant id", description="How the id of a new tenant is drawn; absent, a UUIDv4.")
     object_id: Optional[IdSpec] = Field(default=None, title="Object id", description="How the id of a new aggregate root, part or loaded graph is drawn; absent, a UUIDv4.")
@@ -301,7 +301,7 @@ class IriPolicy(ConfiguredBaseModel):
 
     @field_validator("aggregate_template")
     def pattern_aggregate_template(cls, v):
-        pattern=re.compile("^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|type|rp_path|id)\\})*\\{id\\}$")
+        pattern=re.compile("^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|type|rp_path|id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|type|rp_path|id)\\})*\\{id\\}$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.fullmatch(element):
@@ -314,7 +314,7 @@ class IriPolicy(ConfiguredBaseModel):
 
     @field_validator("part_template")
     def pattern_part_template(cls, v):
-        pattern=re.compile("^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{id\\}$")
+        pattern=re.compile("^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{(?:tenant|tenant_id|root)\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{id\\}$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.fullmatch(element):
@@ -327,7 +327,7 @@ class IriPolicy(ConfiguredBaseModel):
 
     @field_validator("loaded_graph_template")
     def pattern_loaded_graph_template(cls, v):
-        pattern=re.compile("^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{id\\}$")
+        pattern=re.compile("^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{(?:tenant|tenant_id|root)\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{id\\}$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.fullmatch(element):

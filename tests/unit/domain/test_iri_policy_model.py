@@ -1,5 +1,7 @@
 """``IdSpec``, ``IriPolicy`` and the ``ServiceSettings`` fields of the IRI policy (iri-policy task 1.1, PD-1, PD-2)."""
 
+import re
+
 import pytest
 from pydantic import ValidationError
 
@@ -68,7 +70,7 @@ def test_settings_without_a_policy_hold_none_and_no_deployment() -> None:
     assert (made.iri_policy, made.deployment) == (None, None), "absent means default"
 
 
-def test_the_consumers_policy_is_accepted() -> None:
+def test_the_consumers_policy_is_accepted(until_stage_two) -> None:
     made = settings(iri_policy=mwb2_policy(), deployment="k3f9a2x")
     assert check_iri_policy(made) is None, "the policy of the proposal was refused"
 
@@ -192,3 +194,10 @@ def test_a_policy_without_a_deployment_variable_needs_no_deployment() -> None:
 
 def test_no_policy_needs_no_check() -> None:
     assert check_iri_policy(settings()) is None
+
+
+@pytest.mark.parametrize("slot", ["part_template", "loaded_graph_template"])
+def test_the_default_part_and_loaded_graph_templates_need_neither_type_tenant_nor_base(slot):
+    """The module functions mint them with no tenant and no class (PD-12j)."""
+    variables = set(re.findall(r"\{[a-z_]+\}", getattr(IriPolicy(), slot)))
+    assert variables == {"{root}", "{id}"}

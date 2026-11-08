@@ -60,14 +60,20 @@ def _flat_documents() -> Documents:
     return Documents(load_schema(TOY_SCHEMA), GENERATED, iris=iris)
 
 
-@pytest.fixture(scope="module", params=["default", "flat"])
+@pytest.fixture(scope="module")
+def default_documents() -> Documents:
+    return Documents(load_schema(TOY_SCHEMA), GENERATED)
+
+
+@pytest.fixture(scope="module")
+def flat_documents() -> Documents:
+    return _flat_documents()
+
+
+@pytest.fixture(scope="module", params=["default_documents", "flat_documents"])
 def documents(request) -> Documents:
     """Every test of a body runs under both IRI policies: parts nested under the root, and beside it."""
-    return (
-        Documents(load_schema(TOY_SCHEMA), GENERATED)
-        if request.param == "default"
-        else _flat_documents()
-    )
+    return request.getfixturevalue(request.param)
 
 
 async def parse(documents: Documents, *args, **kwargs):
@@ -125,16 +131,25 @@ async def test_a_json_body_becomes_the_typed_triples_of_a_node_rooted_at_the_giv
     assert len(chapters) == 1, "an owned part is typed by the range of its slot"
 
 
-async def test_a_part_without_an_iri_gets_one_from_the_policy(
-    documents, book_class, request
-) -> None:
+async def minted_parts(documents: Documents, book_class) -> set[URIRef]:
     graph, _ = await parse(documents, encoded(BOOK_JSON), JSON, book_class, BOOK, creating=True)
-    parts = {s for s in graph.subjects() if s != URIRef(BOOK)}
-    prefix = f"{BOOK}/parts/" if "default" in request.node.callspec.id else "https://example.org/"
-    assert parts and all(str(p).startswith(prefix) for p in parts), (
-        "PD-6: a part without an IRI is minted one"
-    )
     assert not any(isinstance(s, BNode) for s in graph.subjects()), "no blank node is left"
+    return {s for s in graph.subjects() if s != URIRef(BOOK)}
+
+
+async def test_a_part_without_an_iri_gets_one_under_its_root_by_the_default_policy(
+    default_documents, book_class
+) -> None:
+    parts = await minted_parts(default_documents, book_class)
+    assert parts and all(str(p).startswith(f"{BOOK}/parts/") for p in parts)
+
+
+async def test_a_part_without_an_iri_gets_one_beside_its_root_by_a_flat_policy(
+    flat_documents, book_class
+) -> None:
+    parts = await minted_parts(flat_documents, book_class)
+    assert parts and all(str(p).startswith("https://example.org/") for p in parts)
+    assert not any(str(p).startswith(f"{BOOK}/") for p in parts)
 
 
 async def test_a_json_ld_body_and_the_same_json_body_give_the_same_triples(
@@ -143,7 +158,7 @@ async def test_a_json_ld_body_and_the_same_json_body_give_the_same_triples(
     given = {
         "id": BOOK,
         **BOOK_JSON,
-        "chapters": [{**BOOK_JSON["chapters"][0], "id": f"{BOOK}/parts/c1"}],
+        "chapters": [deepcopy(BOOK_JSON["chapters"][0]) | {"id": f"{BOOK}/parts/c1"}],
     }
     given["chapters"][0]["notes"][0]["id"] = f"{BOOK}/parts/n1"
     as_json, _ = await parse(documents, encoded(given), JSON, book_class, BOOK, creating=False)
@@ -206,19 +221,32 @@ async def test_a_body_that_describes_a_node_outside_the_aggregate_is_refused(
         await parse(documents, encoded(body), JSON_LD, book_class, BOOK, creating=True)
 
 
-async def test_a_part_outside_the_aggregate_is_refused_or_reported_as_named(
-    documents, book_class, request
+OUTSIDE = f"{TENANT}/books/elsewhere"
+OUTSIDE_BODY = {**BOOK_JSON, "chapters": [{"id": OUTSIDE, "number": 1}]}
+
+
+async def test_a_part_outside_the_aggregate_is_refused_when_parts_are_nested(
+    default_documents, book_class
 ) -> None:
-    """Nested parts: refused here. Flat parts: no IRI says where a part belongs, so it is reported
-    as named, for the caller to check against what the aggregate stores (PD-7)."""
-    elsewhere = f"{TENANT}/books/elsewhere"
-    body = {**BOOK_JSON, "chapters": [{"id": elsewhere, "number": 1}]}
-    if "default" in request.node.callspec.id:
-        with pytest.raises(InvalidBody, match="inside the aggregate"):
-            await parse(documents, encoded(body), JSON, book_class, BOOK, creating=True)
-        return
-    _, named = await parse(documents, encoded(body), JSON, book_class, BOOK, creating=True)
-    assert named == {URIRef(elsewhere)}
+    with pytest.raises(InvalidBody, match="inside the aggregate"):
+        await parse(default_documents, encoded(OUTSIDE_BODY), JSON, book_class, BOOK, creating=True)
+
+
+async def test_a_part_outside_the_aggregate_is_reported_as_named_when_parts_are_flat(
+    flat_documents, book_class
+) -> None:
+    """No IRI says where a flat part belongs, so the caller checks it against what the aggregate stores (PD-7)."""
+    _, named = await parse(
+        flat_documents, encoded(OUTSIDE_BODY), JSON, book_class, BOOK, creating=True
+    )
+    assert named == {URIRef(OUTSIDE)}
+
+
+async def test_a_part_cannot_take_the_iri_of_its_aggregates_graph(documents, book_class) -> None:
+    """The graph IRI carries the version and the creator, so a part there would be bookkeeping (PD-12d)."""
+    body = {**BOOK_JSON, "chapters": [{"id": str(GRAPH), "number": 1}]}
+    with pytest.raises(InvalidBody, match="graph"):
+        await parse(documents, encoded(body), JSON, book_class, BOOK, creating=False)
 
 
 async def test_a_remote_context_is_not_fetched(documents, book_class) -> None:

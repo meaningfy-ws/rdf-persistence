@@ -25,9 +25,9 @@ from pyshacl import validate
 from rdflib import RDF, SH, XSD, BNode, Graph, Literal, URIRef
 from rdflib.term import Node
 
-from rdf_persistence.domain.exceptions import InvalidBody, InvalidIri, PayloadTooLarge
+from rdf_persistence.domain.exceptions import InvalidBody, PayloadTooLarge
 from rdf_persistence.domain.generated.rp_core import RpAnnotation
-from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris, graph_iri
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.domain.sparql import FORBIDDEN_IRI_CHARS, Triple
 from rdf_persistence.services import vocabulary as v
@@ -90,10 +90,10 @@ def dataset_of(graph: Graph) -> dict:
 class Documents:
     """The schema's context, frames and shapes, and what turns a body into triples and triples into a body."""
 
-    def __init__(self, view: SchemaView, folder: Path, iris: Iris | None = None) -> None:
+    def __init__(self, view: SchemaView, folder: Path, iris: Iris = DEFAULT_IRIS) -> None:
         """Read the artefacts the generator wrote to ``folder`` for the schema ``view``; new parts get
         their IRIs from ``iris`` (default: the default policy)."""
-        self._iris = iris or DEFAULT_IRIS
+        self._iris = iris
         self._view = view
         self._folder = folder
         self._frames: dict[str, dict] = {}
@@ -170,7 +170,7 @@ class Documents:
         iri: str,
         *,
         creating: bool,
-        tenant: str = "",
+        tenant: str,
     ) -> tuple[Graph, set[URIRef]]:
         """The triples of the body ``data`` and the subjects it names: one node of class ``cls`` rooted
         at ``iri``, with its parts.
@@ -307,14 +307,11 @@ class Documents:
         types = list(graph.objects(node, RDF.type))
         owned = self._class_of.get(types[0]) if len(types) == 1 else None  # type: ignore[call-overload]
         cls_type = iri_type_of(owned) if owned is not None else ""
-        try:
-            return self._iris.mint_part(tenant, str(root), cls_type)
-        except InvalidIri as error:
-            if cls_type in self._iris.owned_types:
-                raise
+        if self._iris.part_needs_type() and cls_type not in self._iris.owned_types:
             raise InvalidBody(
                 f"a part of {root} needs a type that is an owned class: {types or 'none given'}"
-            ) from error
+            )
+        return self._iris.mint_part(tenant, str(root), cls_type)
 
     def _settled(
         self, graph: Graph, cls: ClassDefinition, iri: URIRef, creating: bool, tenant: str
@@ -341,16 +338,22 @@ class Documents:
                 continue
             settled.add((named(s), p, named(o)))
         _refuse_bad_iris(settled)
-        iris = {s for s in settled.subjects() if isinstance(s, URIRef)}
-        claimed: set[URIRef] = set()
-        if self._iris.nested_parts:
-            outside = [s for s in iris if not _inside(iri, s)]
-            if outside:
-                raise InvalidBody(f"{outside[0]} is not inside the aggregate {iri}")
-        else:
-            claimed = iris - {iri, *names.values()}
+        claimed = self._named_subjects(settled, iri, set(names.values()))
         self._refuse_strays(settled, iri, cls)
         return settled, claimed
+
+    def _named_subjects(self, graph: Graph, iri: URIRef, minted: set[URIRef]) -> set[URIRef]:
+        """The subjects the body named itself when parts sit beside their root (none when nested); the
+        root's graph IRI is never a part, and a nested part must be inside the root (PD-7, PD-12d)."""
+        subjects = {s for s in graph.subjects() if isinstance(s, URIRef)}
+        if graph_iri(iri) in subjects:
+            raise InvalidBody(f"{graph_iri(iri)} is the aggregate's graph and cannot be a part")
+        if not self._iris.nested_parts:
+            return subjects - {iri, *minted}
+        outside = [s for s in subjects if not _inside(iri, s)]
+        if outside:
+            raise InvalidBody(f"{outside[0]} is not inside the aggregate {iri}")
+        return set()
 
     def _refuse_strays(self, graph: Graph, root: URIRef, cls: ClassDefinition) -> None:
         """Only the root and the parts reached from it through owned-part slots, each of the slot's class, may be described."""

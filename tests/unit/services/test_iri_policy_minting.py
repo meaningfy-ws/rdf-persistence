@@ -22,7 +22,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.domain.iris import Iris
+from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.domain.media import JSON, JSON_LD
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.services.documents import Documents
@@ -107,7 +107,7 @@ def encoded(body: object) -> bytes:
 
 async def created(
     documents: Documents,
-    iris: Iris | None,
+    iris: Iris,
     tenant: str,
     rp_path: str = "books",
     body: dict | None = None,
@@ -194,7 +194,9 @@ async def test_the_api_path_does_not_change_the_type_segment_of_the_iris(rp_path
 
 async def test_under_the_default_policy_the_api_path_is_the_segment_and_parts_are_nested():
     body = {"label": "Dune", "description": "A planet.", "chapters": [{"number": 1}]}
-    iri, triples = await created(DEFAULT_DOCUMENTS, None, TENANT, rp_path="files", body=body)
+    iri, triples = await created(
+        DEFAULT_DOCUMENTS, DEFAULT_IRIS, TENANT, rp_path="files", body=body
+    )
     assert iri.startswith(f"{TENANT}/files/")
     (part,) = {str(s) for s, p, _ in triples if p == RDF.type and str(s) != iri}
     assert part.startswith(f"{iri}/parts/")

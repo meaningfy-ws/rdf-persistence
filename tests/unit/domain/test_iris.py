@@ -205,7 +205,7 @@ def test_an_aggregate_iri_is_the_minted_form_or_the_tenant_root(iri, accepted):
     ("iri", "accepted"),
     [
         (str(graph_iri(str(mint_aggregate_iri(TENANT, "books")))), True),
-        (str(graph_iri(str(access_iri(TENANT)))), True),
+        (str(graph_iri(str(access_iri(TENANT)))), False),  # the access record is not an aggregate
         (str(graph_iri(str(TENANT))), False),  # the tenant root has no aggregate graph of its own
         (str(mint_aggregate_iri(TENANT, "books")), False),  # the root, not its graph
         (f"{TENANT}/books/x/graph", False),

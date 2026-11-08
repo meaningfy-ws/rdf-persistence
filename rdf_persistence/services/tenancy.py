@@ -55,7 +55,7 @@ CONSTRUCT_RECORDS = (
     "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH ?graph { ?record $p_state ?state . ?s ?p ?o } }"
 )
 RECORD_DESCRIPTION = "Who may do what in the tenant {label}."
-MAX_TENANT_DRAWS = 5  # PD-5
+MAX_TENANT_CLASH_DRAWS = 5  # PD-5
 
 
 class Tenancy:
@@ -73,6 +73,7 @@ class Tenancy:
         clock: Clock = utc_now,
         iris: Iris | None = None,
     ) -> None:
+        # not DEFAULT_IRIS: resource names need the settings' prefix, which DEFAULT_IRIS lacks (PD-12j)
         self._iris = iris or Iris(settings)
         self._store = store
         self._files = files
@@ -174,10 +175,10 @@ class Tenancy:
         """A fresh tenant IRI whose access record and resource name nothing uses (PD-5).
 
         Raises:
-            PersistenceError: Every one of ``MAX_TENANT_DRAWS`` draws clashed.
+            PersistenceError: Every one of ``MAX_TENANT_CLASH_DRAWS`` draws clashed.
         """
         datasets = set(await self._store.list_datasets())
-        for _ in range(MAX_TENANT_DRAWS):
+        for _ in range(MAX_TENANT_CLASH_DRAWS):
             tenant = str(self._iris.mint_tenant())
             if self._iris.resource_name(tenant) not in datasets and not (
                 self._system in datasets and await self._has_record(tenant)

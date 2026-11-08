@@ -22,7 +22,6 @@ _SEGMENT = re.compile(r"[a-z][a-z0-9-]*")
 _PREFIX = re.compile(r"[a-z][a-z0-9]{0,19}")
 SYSTEM_SUFFIX = "-system"
 TENANT_INFIX = "-t-"
-ACCESS_SEGMENT = "access"
 TOOLKIT_SEGMENT = "toolkit"
 GENID = "/.well-known/genid/"
 
@@ -54,9 +53,18 @@ def root_of_graph(graph: str) -> URIRef:
     return URIRef(root)
 
 
+def _default_iris(base: str, tenant_segment: str) -> "Iris":
+    """The default policy under ``base`` and ``tenant_segment``, for the module functions below."""
+    return Iris(
+        DEFAULT_IRIS.settings.model_copy(
+            update={"base": base, "tenant_segment": _segment(tenant_segment)}
+        )
+    )
+
+
 def mint_tenant_iri(base: str, tenant_segment: str) -> URIRef:
     """A fresh tenant IRI ``{base}{tenant_segment}/{uuid4}``."""
-    return URIRef(f"{base}{_segment(tenant_segment)}/{uuid4()}")
+    return _default_iris(base, tenant_segment).mint_tenant()
 
 
 def tenant_iri(base: str, tenant_segment: str, tenant_id: str) -> URIRef:
@@ -66,9 +74,7 @@ def tenant_iri(base: str, tenant_segment: str, tenant_id: str) -> URIRef:
         NotFound: ``tenant_id`` is not a canonical UUID, so no tenant has it.
         InvalidIri: ``tenant_segment`` is not a path segment.
     """
-    if not is_canonical_uuid(tenant_id):
-        raise NotFound(f"no tenant {tenant_id!r}")
-    return URIRef(f"{base}{_segment(tenant_segment)}/{tenant_id}")
+    return _default_iris(base, tenant_segment).tenant(tenant_id)
 
 
 def aggregate_iri(tenant: str, rp_path: str, aggregate_id: str) -> URIRef:
@@ -78,14 +84,12 @@ def aggregate_iri(tenant: str, rp_path: str, aggregate_id: str) -> URIRef:
         NotFound: ``aggregate_id`` is not a canonical UUID, so no aggregate has it.
         InvalidIri: ``rp_path`` is not a path segment.
     """
-    if not is_canonical_uuid(aggregate_id):
-        raise NotFound(f"no aggregate {aggregate_id!r}")
-    return DEFAULT_IRIS.aggregate(tenant, "", rp_path, aggregate_id)
+    return DEFAULT_IRIS.aggregate(tenant, cls_type="", rp_path=rp_path, object_id=aggregate_id)
 
 
 def mint_aggregate_iri(tenant_iri: str, rp_path: str) -> URIRef:
     """A fresh aggregate IRI ``{tenant_iri}/{rp_path}/{uuid4}``."""
-    return DEFAULT_IRIS.mint_aggregate(tenant_iri, "", rp_path)
+    return DEFAULT_IRIS.mint_aggregate(tenant_iri, cls_type="", rp_path=rp_path)
 
 
 def skolem_iri(graph: str) -> URIRef:
@@ -129,12 +133,12 @@ def is_loaded_graph_of(root_iri: str, graph: str) -> bool:
 
 def mint_part_iri(root_iri: str) -> URIRef:
     """A fresh IRI ``{root_iri}/parts/{uuid4}`` for an owned part that has none."""
-    return DEFAULT_IRIS.mint_part("", root_iri, "")
+    return DEFAULT_IRIS.mint_part(tenant="", root=root_iri, cls_type="")
 
 
 def loaded_graph_iri(aggregate_iri: str) -> URIRef:
     """A fresh IRI for a graph loaded into an aggregate."""
-    return DEFAULT_IRIS.mint_loaded_graph("", aggregate_iri)
+    return DEFAULT_IRIS.mint_loaded_graph(tenant="", root=aggregate_iri)
 
 
 def meta_graph_iri(tenant_iri: str) -> URIRef:
@@ -173,14 +177,10 @@ def _resource_name(prefix: str, tenant_id: str) -> str:
 
 def tenant_resource_name(prefix: str, tenant_iri: str) -> str:
     """The tenant's database and bucket name ``{prefix}-t-{uuid hex}``."""
-    try:
-        last = tenant_iri.rsplit("/", 1)[1]
-        tenant_id = UUID(last)
-    except (IndexError, ValueError) as error:
-        raise InvalidIri(f"tenant IRI must end in a UUID: {tenant_iri!r}") from error
-    if str(tenant_id) != last:
+    last = tenant_iri.rsplit("/", 1)[-1]
+    if not is_canonical_uuid(last):
         raise InvalidIri(f"tenant IRI must end in a canonical UUID: {tenant_iri!r}")
-    return _resource_name(prefix, tenant_id.hex)
+    return _resource_name(prefix, last)
 
 
 def principal_iri(issuer: str, subject: str) -> URIRef:
@@ -192,23 +192,31 @@ def principal_iri(issuer: str, subject: str) -> URIRef:
     return DEFAULT_IRIS.principal(issuer, subject)
 
 
+def _templates(policy: IriPolicy) -> dict[str, str]:
+    """The templates a policy sets, by slot name."""
+    return {name: value for name, value in policy if name.endswith("_template") and value}
+
+
 def check_iri_policy(settings: ServiceSettings) -> None:
-    """Refuse the two rules of the IRI policy that span fields, which the generated models cannot state.
+    """Refuse what the generated models cannot state, or what the toolkit does not wire yet.
 
     The template variables, the closing id variable and the literal characters are patterns of the
-    schema; what remains is that ``{deployment}`` needs a ``deployment`` slug (PD-1) and that a
-    ``random`` id has a length. Absent policy and absent id specs are the defaults and always valid.
+    schema; what remains is that ``{deployment}`` needs a ``deployment`` slug (PD-1), that a ``random``
+    id has a length, and that no stage-2 template differs from its default (PD-12a). Absent policy
+    and absent id specs are the defaults and always valid.
 
     Raises:
-        InvalidIri: a template uses ``{deployment}`` and no slug is set, or a random id has no length.
+        InvalidIri: a template uses ``{deployment}`` and no slug is set, a random id has no length,
+            or a stage-2 template is not the default.
     """
     policy = settings.iri_policy
     if policy is None:
         return
-    templates = {name: value for name, value in policy if name.endswith("_template") and value}
-    for name, template in templates.items():
+    for name, template in _templates(policy).items():
         if "{deployment}" in template and not settings.deployment:
             raise InvalidIri(f"{name} uses {{deployment}} but the settings set no deployment")
+        if name in STAGE_TWO_TEMPLATES and template != getattr(_DEFAULT_POLICY, name):
+            raise InvalidIri(f"{name}: a template other than the default arrives with stage 2")
     for name in ("tenant_id", "object_id"):
         spec = getattr(policy, name)
         if spec is not None and spec.kind == IdKind.RANDOM and spec.length is None:
@@ -220,13 +228,20 @@ def check_iri_policy(settings: ServiceSettings) -> None:
 DEFAULT_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
 LOADED_GRAPH_TYPE = "content"
 # The words the IRI layout owns; they are never an id (PD-5) and no class may take one as its type (PD-8).
-LAYOUT_WORDS = ("content", "graph", "parts", "access", "meta", "registry")
+LAYOUT_WORDS = (LOADED_GRAPH_TYPE, "graph", "parts", "access", "meta", "registry")
+# The templates the toolkit mints but does not yet read back through the policy (PD-12a, task 5.1).
+STAGE_TWO_TEMPLATES = (
+    "access_template",
+    "meta_template",
+    "registry_template",
+    "principal_template",
+)
 _UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 _VARIABLE = re.compile(r"(\{[a-z_]+\})")
 _WORD = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 _ANY = ".+"
 _NOTHING = "(?!)"
-_MAX_DRAWS = 100
+_MAX_RESERVED_REDRAWS = 100
 _UUID4 = IdSpec(kind=IdKind.UUID4)
 _DEFAULT_POLICY = IriPolicy()
 
@@ -274,7 +289,8 @@ class Iris:
 
     ``root_types`` and ``owned_types`` are the ``{type}`` values of the schema's concrete aggregate roots
     and owned classes (``services.schema_structure.iri_types``); ``id_source`` draws the raw ids. Build
-    one per service: the patterns are compiled on first use and kept. Frozen: no attribute can be set.
+    one per service: the patterns are compiled on first use and kept. Frozen, and it keeps its own copy
+    of ``settings``, so nothing the caller does to theirs changes what it mints (PD-12f).
 
     Raises:
         InvalidIri: the settings fail ``check_iri_policy``.
@@ -292,9 +308,11 @@ class Iris:
         owned_types: frozenset[str] = frozenset(),
         id_source: IdSource = draw_id,
     ) -> None:
-        check_iri_policy(settings)
+        own = settings.model_copy(deep=True)
+        check_iri_policy(own)
+        # not a dataclass: the model guard keeps dataclasses out of the domain (models come from LinkML)
         for name, value in (
-            ("settings", settings),
+            ("settings", own),
             ("root_types", root_types),
             ("owned_types", owned_types),
             ("id_source", id_source),
@@ -318,6 +336,10 @@ class Iris:
         """True when a part's IRI is under its root's (the part template starts with ``{root}/``, PD-7)."""
         return self._template("part_template").startswith("{root}/")
 
+    def part_needs_type(self) -> bool:
+        """True when the part template writes the class's ``{type}``, so a part of no known class has no IRI."""
+        return "{type}" in self._template("part_template")
+
     @cached_property
     def _tenant_spec(self) -> IdSpec:
         return self._policy.tenant_id or _UUID4
@@ -337,14 +359,9 @@ class Iris:
     @cached_property
     def _reserved(self) -> frozenset[str]:
         words = {*LAYOUT_WORDS, *self.root_types, *self.owned_types, self._fixed["deployment"]}
-        for name, template in self._policy:
-            if name.endswith("_template") and template:
-                words.update(
-                    w
-                    for lit in _VARIABLE.split(template)
-                    if lit[:1] != "{"
-                    for w in _WORD.findall(lit)
-                )
+        for template in _templates(self._policy).values():
+            literals = (piece for piece in _VARIABLE.split(template) if piece[:1] != "{")
+            words.update(word for literal in literals for word in _WORD.findall(literal))
         return frozenset(words - {""})
 
     def _pattern(self, template: str, types: frozenset[str] | str = frozenset()) -> re.Pattern[str]:
@@ -386,11 +403,11 @@ class Iris:
     # -- minting --
 
     def _new_id(self, spec: IdSpec) -> str:
-        for _ in range(_MAX_DRAWS):
+        for _ in range(_MAX_RESERVED_REDRAWS):
             candidate = self.id_source(spec)
             if candidate not in self._reserved:
                 return candidate
-        raise InvalidIri(f"no id that is not a reserved word after {_MAX_DRAWS} draws")
+        raise InvalidIri(f"no id that is not a reserved word after {_MAX_RESERVED_REDRAWS} draws")
 
     def _fill(self, template: str, **values: str) -> URIRef:
         if "{tenant_id}" in template and "tenant_id" not in values:
@@ -412,7 +429,7 @@ class Iris:
         Raises:
             NotFound: ``tenant_id`` cannot be an id of the policy.
         """
-        if not self._tenant_id_re.fullmatch(tenant_id):
+        if not self._tenant_id_re.fullmatch(tenant_id) or tenant_id in self._reserved:
             raise NotFound(f"no tenant {tenant_id!r}")
         return self._fill(self._template("tenant_template"), tenant_id=tenant_id)
 
@@ -423,38 +440,43 @@ class Iris:
             InvalidIri: ``tenant_iri`` is not what the tenant template mints.
         """
         found = self._tenant_re.fullmatch(str(tenant_iri))
-        if found is None:
+        if found is None or found["tenant_id"] in self._reserved:
             raise InvalidIri(f"not a tenant IRI of this policy: {tenant_iri!r}")
         return found["tenant_id"]
 
     def access(self, tenant: str) -> URIRef:
+        """The IRI of the tenant's access record; its graph is ``graph_iri`` of it."""
         return self._fill(self._template("access_template"), tenant=tenant)
 
     def meta(self, tenant: str) -> URIRef:
+        """The graph that holds the tenant's root object."""
         return self._fill(self._template("meta_template"), tenant=tenant)
 
     def registry(self, tenant: str) -> URIRef:
+        """The graph that holds the tenant's registry entries."""
         return self._fill(self._template("registry_template"), tenant=tenant)
 
     def mint_aggregate(self, tenant: str, cls_type: str, rp_path: str) -> URIRef:
         """A fresh aggregate root IRI; ``cls_type`` is the class's ``{type}``, ``rp_path`` its segment."""
         return self._aggregate(tenant, cls_type, rp_path, self._new_id(self._object_spec))
 
-    def aggregate(self, tenant: str, cls_type: str, rp_path: str, id: str) -> URIRef:
-        """The IRI of the aggregate whose id in a path is ``id``.
+    def aggregate(self, tenant: str, cls_type: str, rp_path: str, object_id: str) -> URIRef:
+        """The IRI of the aggregate whose id in a path is ``object_id``.
 
         Raises:
-            NotFound: ``id`` cannot be an object id of the policy.
+            NotFound: ``object_id`` cannot be an object id of the policy.
             InvalidIri: ``rp_path`` is not a path segment, or ``cls_type`` not a root type.
         """
-        if not self._object_id_re.fullmatch(id):
-            raise NotFound(f"no aggregate {id!r}")
-        return self._aggregate(tenant, cls_type, rp_path, id)
+        if not self._object_id_re.fullmatch(object_id) or object_id in self._reserved:
+            raise NotFound(f"no aggregate {object_id!r}")
+        return self._aggregate(tenant, cls_type, rp_path, object_id)
 
-    def _aggregate(self, tenant: str, cls_type: str, rp_path: str, id: str) -> URIRef:
+    def _aggregate(self, tenant: str, cls_type: str, rp_path: str, object_id: str) -> URIRef:
         template = self._template("aggregate_template")
         self._allow(template, cls_type, self.root_types)
-        return self._fill(template, tenant=tenant, type=cls_type, rp_path=_segment(rp_path), id=id)
+        return self._fill(
+            template, tenant=tenant, type=cls_type, rp_path=_segment(rp_path), id=object_id
+        )
 
     def mint_part(self, tenant: str, root: str, cls_type: str) -> URIRef:
         """A fresh IRI for an owned part of class type ``cls_type`` that has none."""
@@ -489,10 +511,12 @@ class Iris:
     # -- matching --
 
     def _belongs(self, found: re.Match[str], tenant: str | None) -> bool:
-        """True when what the match read for the tenant is ``tenant`` (``None``: not checked)."""
+        """True when the match reads no reserved word as an id, and its tenant is ``tenant`` (``None``: not checked)."""
+        groups = found.groupdict()
+        if any(groups.get(name) in self._reserved for name in ("id", "tenant_id")):
+            return False
         if tenant is None:
             return True
-        groups = found.groupdict()
         if groups.get("tenant", tenant) != tenant:
             return False
         return "tenant_id" not in groups or groups["tenant_id"] == self.tenant_id_of(tenant)
@@ -510,7 +534,8 @@ class Iris:
 
     def is_loaded_graph(self, tenant: str | None, iri: str, root: str | None = None) -> bool:
         """True when ``iri`` is what the toolkit mints as a loaded graph of ``tenant`` (and of ``root``, when given)."""
-        tenant, root = (None if v is None else str(v) for v in (tenant, root))
+        tenant = None if tenant is None else str(tenant)
+        root = None if root is None else str(root)
         found = self._loaded_re.fullmatch(str(iri))
         if found is None or not self._belongs(found, tenant):
             return False
@@ -523,7 +548,8 @@ class Iris:
         """True when ``iri`` is the ``graph_iri`` of an aggregate of ``tenant`` (never of the tenant root)."""
         tenant, iri = str(tenant), str(iri)
         root = iri.removesuffix("/graph")
-        return root != iri and root != tenant and self.is_aggregate(tenant, root)
+        not_a_graph_root = (iri, tenant, str(self.access(tenant)))
+        return root not in not_a_graph_root and self.is_aggregate(tenant, root)
 
     def tenant_of_access(self, access_record_iri: str) -> URIRef:
         """The tenant an access record belongs to; the inverse of ``access`` (PD-10).
@@ -535,9 +561,12 @@ class Iris:
         if found is None:
             raise InvalidIri(f"not an access record IRI: {access_record_iri!r}")
         groups = found.groupdict()
-        if "tenant" in groups:
-            return URIRef(groups["tenant"])
-        return self.tenant(groups["tenant_id"])
+        tenant = (
+            URIRef(groups["tenant"]) if "tenant" in groups else self.tenant(groups["tenant_id"])
+        )
+        if self.access(tenant) != URIRef(str(access_record_iri)):
+            raise InvalidIri(f"not an access record IRI: {access_record_iri!r}")
+        return tenant
 
 
 # The default policy for the module functions above: their templates ignore the base and the segment.

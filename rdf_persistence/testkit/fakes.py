@@ -20,7 +20,7 @@ from rdf_persistence.domain.exceptions import (
 )
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.service.rp_service import AccountSummary
-from rdf_persistence.domain.iris import Iris
+from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.session import Clock, Session, open_session, utc_now
 
 FAKE_DATABASE = "fake"
@@ -244,7 +244,7 @@ async def fake_session(
     tenant_iri: str = FAKE_TENANT,
     principal: Principal = FAKE_PRINCIPAL,
     clock: Clock = utc_now,
-    iris: Iris | None = None,
+    iris: Iris = DEFAULT_IRIS,
 ) -> AsyncIterator[Session]:
     """A real ``Session`` over a ``FakeStore``, for unit tests of domain services.
 

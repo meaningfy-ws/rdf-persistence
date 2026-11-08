@@ -190,7 +190,9 @@ Five lenses (L1–L5) and the adversarial tester reviewed tasks 1.1–3.4. Accep
   A match whose `id` or `tenant_id` group is a reserved word is no match (`_belongs`), so a loaded
   graph or a path id can never be `{tenant}/meta`, `/registry` or `/access`; `Iris.tenant` and
   `Iris.aggregate` answer `NotFound` for one. `is_aggregate_graph` also excludes the access record's
-  graph (L1 nit).
+  graph (L1 nit); the access record's graph stays a valid grant target because
+  `AccessRules._validate_ends` names it explicitly (an existing, deliberate case: a direct action on
+  the access record), so the nit changes where that rule lives, not what may be granted.
 - **PD-12c Templates must name their tenant** (L1 minor 1). The aggregate template must contain
   `{tenant}` or `{tenant_id}`; the part and loaded-graph templates `{tenant}`, `{tenant_id}` or
   `{root}`. Schema patterns in `rp_service.yaml`, regenerated. Two tenants then never mint one IRI,
@@ -212,7 +214,8 @@ Five lenses (L1–L5) and the adversarial tester reviewed tasks 1.1–3.4. Accep
 - **PD-12h The aggregate IRI of a route is one services method** (L3 minor, L4 minor, L5 minor).
   `Aggregates.iri_of(tenant, rp_path, aggregate_id)`, with a `rp_path → {type}` map built once; the
   gate calls it.
-- **PD-12i `Iris` as a frozen dataclass**, its templates read through one `_templates(policy)` helper
+- **PD-12i `Iris` stays a hand-written frozen class** (amended after the fix: a dataclass trips the
+  model guard, which keeps dataclasses out of the domain because models come from LinkML), its templates read through one `_templates(policy)` helper
   used by `check_iri_policy` and `_reserved`; `part_needs_type()` public, so `Documents` refuses a
   typeless part before minting instead of mapping an exception (L4, L5).
 - **PD-12j Defaults.** Constructors write `iris: Iris = DEFAULT_IRIS` (no `or`). `Tenancy` keeps

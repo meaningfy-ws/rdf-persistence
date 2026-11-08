@@ -1,7 +1,6 @@
 """``Iris`` under hostile input and at the limits of what the schema allows (iri-policy stage 1).
 
-Every test names the production change that would make it fail. Probes that expose a gap are kept
-as ``xfail(strict=True)`` so the suite stays green and the gap stays visible.
+Every test names the production change that would make it fail.
 """
 
 import re
@@ -249,18 +248,13 @@ def both() -> Iris:
     return Iris(settings(policy))
 
 
-def test_an_access_template_with_tenant_and_tenant_id_round_trips():
+def test_an_access_template_with_tenant_and_tenant_id_round_trips(until_stage_two):
     iris = both()
     tenant = str(iris.tenant(TENANT_ID))
     assert str(iris.tenant_of_access(str(iris.access(tenant)))) == tenant
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="tenant_of_access reads {tenant} and ignores a differing {tenant_id}: an access IRI "
-    "the policy would not mint is accepted and names a tenant",
-)
-def test_an_access_iri_whose_two_tenant_variables_disagree_is_not_an_access_iri():
+def test_an_access_iri_whose_two_tenant_variables_disagree_is_not_an_access_iri(until_stage_two):
     iris = both()
     tenant = str(iris.tenant(TENANT_ID))
     forged = f"{tenant}/access/q9y7j1n"
@@ -268,7 +262,7 @@ def test_an_access_iri_whose_two_tenant_variables_disagree_is_not_an_access_iri(
         iris.tenant_of_access(forged)
 
 
-def test_an_access_iri_of_another_tenant_is_not_this_tenants_record():
+def test_an_access_iri_of_another_tenant_is_not_this_tenants_record(until_stage_two):
     iris = both()
     mine, other = str(iris.tenant(TENANT_ID)), str(iris.tenant("q9y7j1n"))
     assert iris.is_aggregate(other, str(iris.access(other)))
@@ -303,11 +297,6 @@ def test_iris_cannot_be_changed_after_it_is_built():
             setattr(iris, name, None)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="ServiceSettings is not frozen, so Iris ('Frozen: no attribute can be set') still "
-    "follows a base changed after it was built, until a cached pattern happens to pin it",
-)
 def test_the_settings_an_iris_was_built_from_cannot_change_what_it_mints():
     built = settings(flat_policy())
     iris = Iris(built, ROOTS, OWNED)
@@ -324,7 +313,7 @@ def test_building_an_iris_checks_the_policy_even_for_a_random_id_without_a_lengt
 
 
 def test_a_template_with_deployment_and_no_slug_is_refused_at_build_time():
-    policy = IriPolicy(access_template="{base}{deployment}/{tenant_id}")
+    policy = IriPolicy(tenant_template="{base}{deployment}/{tenant_id}")
     with pytest.raises(InvalidIri, match="deployment"):
         Iris(settings(policy))
 
@@ -356,3 +345,76 @@ def test_a_default_aggregate_iri_with_a_longer_nesting_is_not_an_aggregate():
         f"{tenant}/x/{nested}",
     ):
         assert not iris.is_aggregate(tenant, deeper), deeper
+
+
+# -- review decisions PD-12a to PD-12c ------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "slot, template",
+    [
+        ("access_template", "{base}{tenant_id}/acc"),
+        ("meta_template", "{base}{tenant_id}/m"),
+        ("registry_template", "{base}{tenant_id}/r"),
+        ("principal_template", "{base}u/{sub}"),
+    ],
+)
+def test_a_template_stage_two_does_not_wire_yet_is_refused_naming_it(slot, template):
+    with pytest.raises(InvalidIri, match=f"{slot}.*stage 2"):
+        Iris(
+            settings(IriPolicy(tenant_id=IdSpec(kind=IdKind.RANDOM, length=7), **{slot: template}))
+        )
+
+
+@pytest.mark.parametrize("slot", ["access_template", "meta_template", "registry_template"])
+def test_the_default_value_of_a_stage_two_template_is_accepted(slot):
+    assert Iris(settings(IriPolicy(**{slot: getattr(IriPolicy(), slot)})))
+
+
+def tiny(length: int) -> Iris:
+    policy = flat_policy(tenant_length=length, object_length=length)
+    return Iris(settings(policy), ROOTS, OWNED)
+
+
+WORDS = [pytest.param(4, "meta", id="meta"), pytest.param(5, "graph", id="graph")]
+
+
+@pytest.mark.parametrize(("length", "word"), WORDS)
+def test_a_reserved_word_is_not_a_tenant_id_when_matching(length, word):
+    iris = tiny(length)
+    with pytest.raises(NotFound):
+        iris.tenant(word)
+    with pytest.raises(InvalidIri):
+        iris.tenant_id_of(f"{BASE}project/{word}")
+
+
+@pytest.mark.parametrize(("length", "word"), WORDS)
+def test_a_reserved_word_is_not_an_object_id_when_matching(length, word):
+    iris = tiny(length)
+    tid = "p4x8k"[:length]
+    tenant = str(iris.tenant(tid))
+    with pytest.raises(NotFound):
+        iris.aggregate(tenant, "book", "books", word)
+    assert not iris.is_aggregate(tenant, f"{BASE}{tid}/book/{word}")
+    assert not iris.is_loaded_graph(tenant, f"{BASE}{tid}/content/{word}")
+
+
+def test_an_aggregate_graph_is_never_the_graph_of_the_access_record():
+    iris = Iris(settings())
+    tenant = str(iris.tenant("12345678-1234-4234-8234-123456789abc"))
+    access = str(iris.access(tenant))
+    assert iris.is_aggregate(tenant, access)
+    assert not iris.is_aggregate_graph(tenant, f"{access}/graph")
+
+
+def test_an_aggregate_template_must_name_its_tenant():
+    with pytest.raises(ValidationError, match="aggregate_template"):
+        IriPolicy(aggregate_template="{base}{type}/{id}")
+
+
+@pytest.mark.parametrize("slot", ["part_template", "loaded_graph_template"])
+def test_a_part_or_loaded_graph_template_must_name_a_tenant_or_a_root(slot):
+    with pytest.raises(ValidationError, match=slot):
+        IriPolicy(**{slot: "{base}{type}/{id}"})
+    for ok in ("{root}/x/{id}", "{base}{tenant}/{id}", "{base}{tenant_id}/{id}"):
+        assert getattr(IriPolicy(**{slot: ok}), slot) == ok

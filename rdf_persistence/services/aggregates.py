@@ -23,10 +23,19 @@ from rdf_persistence.services.tenancy import Tenancy
 class Aggregates:
     """Reads, creates, replaces and deletes the aggregates of a tenant on behalf of a principal."""
 
-    def __init__(self, documents: Documents, tenancy: Tenancy, iris: Iris | None = None) -> None:
+    def __init__(self, documents: Documents, tenancy: Tenancy, iris: Iris = DEFAULT_IRIS) -> None:
         self._documents = documents
         self._tenancy = tenancy
-        self._iris = iris or DEFAULT_IRIS
+        self._iris = iris
+        self._types = {rp_path: iri_type_of(cls) for rp_path, cls in documents.aggregates.items()}
+
+    def iri_of(self, tenant: str, rp_path: str, aggregate_id: str) -> str:
+        """The IRI of the aggregate served at ``rp_path`` whose id in a path is ``aggregate_id``.
+
+        Raises:
+            NotFound: ``aggregate_id`` is not an id the IRI policy mints.
+        """
+        return str(self._iris.aggregate(tenant, self._types[rp_path], rp_path, aggregate_id))
 
     async def read(self, tenant: str, principal: Principal, iri: str) -> Stored:
         """The aggregate ``iri``, as stored.

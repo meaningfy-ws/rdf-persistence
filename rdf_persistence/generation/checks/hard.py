@@ -43,8 +43,6 @@ DESCRIBED = "Described"
 CORE_MODEL = PACKAGE_DIR / "model" / "rp_core.yaml"
 URL_SEGMENT = "url_segment"  # the slot of rp_core whose pattern every route segment follows
 BOOLEAN = ("true", "false")
-# The segments the IRI layout owns; no class may take one as its type (PD-8).
-RESERVED_IRI_TYPES = LAYOUT_WORDS
 PATTERNED_ANNOTATIONS = (RpAnnotation.RP_PATH, RpAnnotation.RP_IRI_TYPE)
 # Every annotation the toolkit reads, and the values it accepts (the enums of rp_core). rp_path takes
 # a pattern instead, checked on its own.
@@ -116,12 +114,12 @@ def _annotated_elements(schema: SchemaDefinition) -> Iterator[Element]:
 
 
 @cache
-def _path_pattern() -> str:
-    """The pattern an ``rp_path`` value must match: the one of the metamodel's ``url_segment`` slot."""
+def _segment_pattern() -> str:
+    """The pattern an ``rp_path`` or ``rp_iri_type`` value must match: the one of the metamodel's ``url_segment`` slot."""
     return str(load_schema(CORE_MODEL).get_slot(URL_SEGMENT).pattern)
 
 
-def _annotation_problems(schema: SchemaDefinition, path_pattern: str) -> Iterator[CheckProblem]:
+def _annotation_problems(schema: SchemaDefinition, segment_pattern: str) -> Iterator[CheckProblem]:
     for element in _annotated_elements(schema):
         name = str(element.name)
         for tag, allowed in ALLOWED_ANNOTATIONS.items():
@@ -132,11 +130,11 @@ def _annotation_problems(schema: SchemaDefinition, path_pattern: str) -> Iterato
                 )
         for tag in PATTERNED_ANNOTATIONS:
             text = annotation_text(element, tag)
-            if text is not None and not re.fullmatch(path_pattern, text):
+            if text is not None and not re.fullmatch(segment_pattern, text):
                 yield rule_problem(
                     HardRule.ANNOTATION,
                     name,
-                    f"{tag.value}: {text!r} does not match {path_pattern}",
+                    f"{tag.value}: {text!r} does not match {segment_pattern}",
                 )
 
 
@@ -181,7 +179,7 @@ def _iri_type_problems(
     for cls in minted:
         by_type.setdefault(iri_type_of(cls), []).append(cls.name)
     for iri_type, names in by_type.items():
-        if iri_type in RESERVED_IRI_TYPES:
+        if iri_type in LAYOUT_WORDS:
             yield rule_problem(
                 HardRule.IRI_TYPE, names[0], f"the type {iri_type!r} is reserved by the IRI layout"
             )
@@ -209,6 +207,6 @@ def hard_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
     )  # PD-23: its roots are its own
     return [
         *(p for schema in schemas for p in _schema_problems(schema)),
-        *(p for schema in schemas for p in _annotation_problems(schema, _path_pattern())),
+        *(p for schema in schemas for p in _annotation_problems(schema, _segment_pattern())),
         *_class_problems(view, classes),
     ]

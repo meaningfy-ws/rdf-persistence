@@ -53,7 +53,7 @@ The session SHALL refuse with `InvalidIri`, before anything is sent to the store
 that matches no aggregate template of its tenant with `{type}` one of the schema's aggregate-root
 types (the tenant root and its access record excepted), a loaded graph that matches no loaded-graph
 template of its tenant with `{type}` `content`, or a loaded graph the registry already assigns to
-another aggregate. Under a flat part template, a request body SHALL be refused with `InvalidBody`
+another aggregate; in the last case it SHALL refuse before anything is written. Under a flat part template, a request body SHALL be refused with `InvalidBody`
 when it names a subject other than the root that is not a part this aggregate already stores (new
 parts arrive as blank nodes and are minted); where the part template nests parts under `{root}`, as
 the default does, any subject under the root's IRI SHALL be accepted, as today. An API path id that
@@ -130,9 +130,14 @@ policy.
 
 `ServiceSettings` SHALL refuse a policy whose template uses a variable not allowed for its kind,
 whose tenant, aggregate, part, loaded-graph or principal template does not end in its id variable,
-whose access, meta or registry template contains neither `{tenant}` nor `{tenant_id}`, contains a character outside `[a-z0-9/:.-]` around its variables,
-or uses `{deployment}` when no deployment slug is set; and a schema SHALL fail generation when two
-classes share an `rp_iri_type` or one equals a reserved word.
+whose access, meta or registry template contains neither `{tenant}` nor `{tenant_id}`, whose
+aggregate template contains neither `{tenant}` nor `{tenant_id}`, whose part or loaded-graph template
+contains none of `{tenant}`, `{tenant_id}` and `{root}`, or that contains a character outside
+`[a-z0-9/:.-]` around its variables. Two rules span fields, which the generated models cannot state:
+a template that uses `{deployment}` when no deployment slug is set, and a `random` id spec with no
+length. They SHALL be refused with `InvalidIri` by `check_iri_policy`, which the service's `Iris` runs when it
+is built and which a caller may run on the settings alone. A schema SHALL fail generation when two classes share an `rp_iri_type`
+or one equals a reserved word.
 
 #### Scenario: a template without its id
 - **WHEN** settings are made with aggregate template `{base}{tenant_id}/{type}`

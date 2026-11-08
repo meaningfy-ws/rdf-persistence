@@ -224,9 +224,9 @@ class Session:
         tenant_iri: str,
         principal: Principal,
         clock: Clock,
-        iris: Iris | None = None,
+        iris: Iris = DEFAULT_IRIS,
     ) -> None:
-        self._iris = iris or DEFAULT_IRIS
+        self._iris = iris
         self._store = store
         self._database = database
         self._tenant = tenant_iri
@@ -258,8 +258,6 @@ class Session:
     async def _check_commit(self, iri: str, loaded_graphs: Sequence[URIRef]) -> None:
         """Refuse what could alias another graph: an IRI the policy does not mint for an aggregate, a
         loaded graph it does not mint for this aggregate, or one another aggregate owns (PD-7)."""
-        if not self._iris.is_aggregate(self._tenant, iri):
-            raise InvalidIri(f"{iri!r} is not an aggregate IRI of the tenant {self._tenant!r}")
         outside = [
             str(g)
             for g in loaded_graphs
@@ -453,7 +451,7 @@ async def open_session(
     tenant_iri: str,
     principal: Principal,
     clock: Clock = utc_now,
-    iris: Iris | None = None,
+    iris: Iris = DEFAULT_IRIS,
 ) -> AsyncIterator[Session]:
     """Open a session on the tenant database ``database`` for ``principal``; ``iris`` is the IRI policy
     (default: the default policy)."""

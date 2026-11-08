@@ -13,7 +13,7 @@ import pytest
 from rdflib import RDF, URIRef
 
 from rdf_persistence import Action, GrantSet
-from rdf_persistence.domain.exceptions import InvalidBody, InvalidGrant, InvalidIri
+from rdf_persistence.domain.exceptions import InvalidBody, InvalidGrant, InvalidIri, NotFound
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.generated.service.rp_service import (
@@ -32,7 +32,7 @@ from rdf_persistence.services.schema_structure import iri_types
 from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from tests.toy import ROLES, TOY_SCHEMA, direct
+from tests.toy import ROLES, TOY_SCHEMA, caller, direct, held
 from tests.unit.services.conftest import GENERATED
 
 BASE = "http://mwb.meaningfy.ws/"
@@ -266,7 +266,7 @@ async def test_the_default_policy_still_accepts_a_part_a_client_names_under_the_
         }
     ).encode()
     graph, named = await documents.parse(
-        given, JSON, documents.aggregates["books"], str(root), creating=False
+        given, JSON, documents.aggregates["books"], str(root), creating=False, tenant=TENANT
     )
     assert (
         URIRef(f"{root}/mine"),
@@ -302,11 +302,22 @@ def test_a_grant_on_what_is_not_an_aggregate_graph_is_refused(target):
 
 
 def test_the_check_scopes_a_flat_aggregate_by_its_graph():
-    from rdf_persistence.domain.exceptions import NotFound
-    from tests.toy import caller, held
-
     graph = str(graph_iri(book(1)))
     access = held(direct(Action.READ, graph, str(ADA.id))).model_copy(update={"tenant": TENANT})
     rules().require(caller(principal=str(ADA.id)), access, book(1), Action.READ)
     with pytest.raises(NotFound):
         rules().require(caller(principal=str(ADA.id)), access, book(2), Action.READ)
+
+
+# -- PD-12h: the aggregate IRI of a route ---------------------------------------------------------
+
+
+def test_the_aggregate_iri_of_a_route_is_the_policys_for_its_class_not_its_path(aggregates):
+    """``books`` is the path, ``book`` the ``{type}`` the flat template writes."""
+    assert aggregates.iri_of(TENANT, "books", f"{1:013d}") == book(1)
+    assert f"/book/{1:013d}" in aggregates.iri_of(TENANT, "books", f"{1:013d}")
+
+
+def test_the_aggregate_iri_of_a_route_for_an_id_the_policy_does_not_mint_is_not_found(aggregates):
+    with pytest.raises(NotFound):
+        aggregates.iri_of(TENANT, "books", "NOT-AN-ID")

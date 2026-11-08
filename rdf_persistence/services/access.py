@@ -171,10 +171,10 @@ class AccessRules:
     """Decides whether a caller may take an action on the tenant or on one of its aggregates."""
 
     def __init__(
-        self, role_definitions: Iterable[RoleDefinition], iris: Iris | None = None
+        self, role_definitions: Iterable[RoleDefinition], iris: Iris = DEFAULT_IRIS
     ) -> None:
         """``iris`` is the IRI policy that says what an aggregate and its graph are (default: the default policy)."""
-        self._iris = iris or DEFAULT_IRIS
+        self._iris = iris
         self._permits: dict[tuple[RoleLevel, str], set[Action]] = {}
         for definition in role_definitions:
             key = (RoleLevel(definition.level), definition.role)
@@ -207,8 +207,14 @@ class AccessRules:
                 raise UnknownRole(f"no {level.value}-level role {grant.role!r} to grant")
 
     def _validate_ends(self, rule: Grant | Prohibition, tenant: str) -> None:
-        if rule.target != tenant and not self._iris.is_aggregate_graph(tenant, rule.target):
-            raise InvalidGrant(f"{rule.target} is neither the tenant nor an aggregate graph of it")
+        own = (
+            tenant,
+            str(graph_iri(self._iris.access(tenant))),
+        )  # the access record's graph is grantable
+        if rule.target not in own and not self._iris.is_aggregate_graph(tenant, rule.target):
+            raise InvalidGrant(
+                f"{rule.target} is neither the tenant, its access record nor an aggregate graph of it"
+            )
         try:
             term(URIRef(rule.assignee))
         except SparqlError as error:
