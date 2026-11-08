@@ -1,4 +1,4 @@
-"""The hard check (task 1.6): IRIs, titles, descriptions, meanings, paths and mixins of the schema."""
+"""The hard check (task 1.6): IRIs, titles, descriptions, meanings, paths, IRI types and mixins of the schema."""
 
 import re
 from collections.abc import Iterator
@@ -41,6 +41,10 @@ DESCRIBED = "Described"
 CORE_MODEL = PACKAGE_DIR / "model" / "rp_core.yaml"
 URL_SEGMENT = "url_segment"  # the slot of rp_core whose pattern every route segment follows
 BOOLEAN = ("true", "false")
+# The segments the IRI layout owns; no class may take one as its type (PD-8).
+RESERVED_IRI_TYPES = ("content", "graph", "parts", "access", "meta", "registry")
+PATTERNED_ANNOTATIONS = (RpAnnotation.RP_PATH, RpAnnotation.RP_IRI_TYPE)
+KEBAB_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 # Every annotation the toolkit reads, and the values it accepts (the enums of rp_core). rp_path takes
 # a pattern instead, checked on its own.
 ALLOWED_ANNOTATIONS = {
@@ -125,13 +129,14 @@ def _annotation_problems(schema: SchemaDefinition, path_pattern: str) -> Iterato
                 yield rule_problem(
                     HardRule.ANNOTATION, name, f"{tag.value}: {value!r} is not one of {allowed}"
                 )
-        path = annotation_text(element, RpAnnotation.RP_PATH)
-        if path is not None and not re.fullmatch(path_pattern, path):
-            yield rule_problem(
-                HardRule.ANNOTATION,
-                name,
-                f"{RpAnnotation.RP_PATH.value}: {path!r} does not match {path_pattern}",
-            )
+        for tag in PATTERNED_ANNOTATIONS:
+            text = annotation_text(element, tag)
+            if text is not None and not re.fullmatch(path_pattern, text):
+                yield rule_problem(
+                    HardRule.ANNOTATION,
+                    name,
+                    f"{tag.value}: {text!r} does not match {path_pattern}",
+                )
 
 
 def _inherited_path(view: SchemaView, cls: ClassDefinition) -> bool:
@@ -161,10 +166,42 @@ def _described_problems(
             )
 
 
+def iri_type_of(cls: ClassDefinition) -> str:
+    """The ``{type}`` of the IRIs of ``cls``: its ``rp_iri_type``, else its name in kebab case."""
+    return (
+        annotation_text(cls, RpAnnotation.RP_IRI_TYPE) or KEBAB_BOUNDARY.sub("-", cls.name).lower()
+    )
+
+
+def _iri_type_problems(
+    view: SchemaView, classes: list[ClassDefinition], roots: list[ClassDefinition]
+) -> Iterator[CheckProblem]:
+    """PD-8: roots and owned classes (the ones the toolkit mints IRIs for) have distinct, unreserved types."""
+    owned = owned_classes(view, classes)
+    minted = [
+        cls
+        for cls in classes
+        if (cls in roots or cls.name in owned) and not cls.mixin and not cls.abstract
+    ]
+    by_type: dict[str, list[str]] = {}
+    for cls in minted:
+        by_type.setdefault(iri_type_of(cls), []).append(cls.name)
+    for iri_type, names in by_type.items():
+        if iri_type in RESERVED_IRI_TYPES:
+            yield rule_problem(
+                HardRule.IRI_TYPE, names[0], f"the type {iri_type!r} is reserved by the IRI layout"
+            )
+        if len(names) > 1:
+            yield rule_problem(
+                HardRule.IRI_TYPE, names[0], f"{', '.join(names)} share the type {iri_type!r}"
+            )
+
+
 def _class_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[CheckProblem]:
     roots = aggregate_roots(view, classes)
     yield from _path_problems(view, roots)
     yield from _described_problems(view, classes, roots)
+    yield from _iri_type_problems(view, classes, roots)
 
 
 def hard_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:

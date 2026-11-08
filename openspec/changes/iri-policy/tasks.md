@@ -13,7 +13,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
   `rdf_persistence/model/rp_core.yaml`, the `rp_path` description reworded, and the `listedIn`
   vocabulary term (PD-7); `make generate` (design PD-1, PD-2, PD-8).
   Tests: defaults equal today's shapes; requirement "Policies are checked when settings are made".
-- [ ] 1.2 Generation check for `rp_iri_type` (unique, not reserved) in
+- [x] 1.2 Generation check for `rp_iri_type` (unique, not reserved) in
   `generation/checks/hard.py` (PD-8), with its own test schema.
 
 ### 2. Domain
@@ -73,7 +73,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
 
 ## Roadmap
 
-- [x] 1.1 · [ ] 1.2 · [ ] 2.1 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
+- [x] 1.1 · [x] 1.2 · [ ] 2.1 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
 
 ## Verification
 
