@@ -70,7 +70,7 @@ def test_settings_without_a_policy_hold_none_and_no_deployment() -> None:
     assert (made.iri_policy, made.deployment) == (None, None), "absent means default"
 
 
-def test_the_consumers_policy_is_accepted(until_stage_two) -> None:
+def test_the_consumers_policy_is_accepted() -> None:
     made = settings(iri_policy=mwb2_policy(), deployment="k3f9a2x")
     assert check_iri_policy(made) is None, "the policy of the proposal was refused"
 

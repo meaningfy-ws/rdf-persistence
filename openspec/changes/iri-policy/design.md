@@ -90,6 +90,9 @@ path ids in `entrypoints/router.py` (`_last_segment`). Two places infer ownershi
   documents, session factory and access rules. Classes a consumer builds itself take it as an
   optional constructor argument defaulting to the default `Iris`: `Session`, `JwksTokenVerifier`
   (`adapters/jwks.py`, for `principal`), and `fake_session` in `testkit/fakes.py`.
+  The verifier is built by the consumer's composition root, so a deployment with its own
+  `principal` template passes `iris=kit.iris` (or `Iris(settings)`) itself: `install_service`
+  cannot rebind it, since entrypoints never import adapters. The adoption guide says so (5.4).
 - **PD-4 Matching.** A check fills the known variables (base, deployment, tenant, tenant_id,
   root) and compiles the rest into a regex. `{type}` is an alternation of the allowed types only:
   the aggregate-root types for the aggregate template, the owned-class types for the part

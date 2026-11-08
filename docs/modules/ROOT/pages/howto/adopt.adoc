@@ -968,9 +968,9 @@ The fields of `IriPolicy`, with their defaults and the variables each template m
 belongs to, `{tenant_id}` and `{id}` the ids, and `{base}`, `{deployment}` and `{tenant_segment}`
 the settings of the same name. `deployment` (lower case letters and digits) is needed only when a
 template uses `{deployment}`. A template that uses another variable, does not end as the table
-says, or names no tenant is refused when the settings are built. For now the access, meta,
-registry and principal templates are refused with `InvalidIri` unless they are the default: the
-toolkit does not yet read them back by the policy.
+says, or names no tenant is refused when the settings are built. For now the principal template
+is refused with `InvalidIri` unless it is the default: the token verifier does not yet mint
+through the policy.
 
 The consumer's table:
 
@@ -982,8 +982,8 @@ The consumer's table:
 |Tenant id |`random`, 7 characters of `[a-z0-9]` |configurable
 |Object id |`random`, 13 characters of `[a-z0-9]` |configurable
 |Database and bucket |`{prefix}-t-{tenant_id}` |fixed
-|Access record, meta and registry graphs |`{tenant}/access`, `{tenant}/meta`, `{tenant}/registry`
-|the default only, for now
+|Access record, meta and registry graphs |`{base}{deployment}/project/{tenant_id}` for the access
+record, `{tenant}/meta`, `{tenant}/registry` |configurable
 |Principal |`{issuer}/users/{sub}` |the default only, for now
 |Guard against a service started under another policy than its tenants were made under |none
 |not yet

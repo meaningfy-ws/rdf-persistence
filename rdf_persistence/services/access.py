@@ -40,7 +40,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     GrantSet,
     VerifiedCaller,
 )
-from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris, access_iri, graph_iri
+from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris, graph_iri
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.mapper import Mapper, generated_models
@@ -122,19 +122,20 @@ def _access_mapper() -> Mapper:
 
 
 async def load_caller_access(
-    store: Store, system_database: str, tenant: str, principal: str
+    store: Store, system_database: str, tenant: str, principal: str, *, iris: Iris = DEFAULT_IRIS
 ) -> CallerAccess:
     """The tenant's state and the grants and prohibitions that name ``principal``, in one query.
 
     The access record is read with one ``CONSTRUCT`` that keeps its own statements and only the
-    rules of ``principal``, and decoded by the mapper.
+    rules of ``principal``, and decoded by the mapper. ``iris`` is the IRI policy that says where the
+    record is (default: the default policy).
 
     Raises:
         NotFound: The tenant has no access record, or the record cannot be decoded (no state or
             two, an unknown state or action).
         SparqlError: ``tenant`` or ``principal`` is not usable in a query (a ``ValueError``).
     """
-    record = access_iri(tenant)
+    record = iris.access(tenant)
     text = fill(
         CONSTRUCT_CALLER_ACCESS,
         graph=term(graph_iri(str(record))),

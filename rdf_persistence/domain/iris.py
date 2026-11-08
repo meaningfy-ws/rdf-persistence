@@ -221,11 +221,9 @@ def check_iri_policy(settings: ServiceSettings) -> None:
 
 
 def _check_template(name: str, template: str, settings: ServiceSettings) -> None:
-    """Refuse one template of ``check_iri_policy``: ``{deployment}`` without a slug, or a stage-2 one."""
+    """Refuse one template of ``check_iri_policy``: ``{deployment}`` without a slug."""
     if "{deployment}" in template and not settings.deployment:
         raise InvalidIri(f"{name} uses {{deployment}} but the settings set no deployment")
-    if name in STAGE_TWO_TEMPLATES and template != getattr(_DEFAULT_POLICY, name):
-        raise InvalidIri(f"{name}: a template other than the default arrives with stage 2")
 
 
 # --- the IRI policy (PD-3 to PD-6, PD-10, PD-11) ------------------------------------------------
@@ -234,13 +232,6 @@ DEFAULT_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
 LOADED_GRAPH_TYPE = "content"
 # The words the IRI layout owns; they are never an id (PD-5) and no class may take one as its type (PD-8).
 LAYOUT_WORDS = (LOADED_GRAPH_TYPE, "graph", "parts", "access", "meta", "registry")
-# The templates the toolkit mints but does not yet read back through the policy (PD-12a, task 5.1).
-STAGE_TWO_TEMPLATES = (
-    "access_template",
-    "meta_template",
-    "registry_template",
-    "principal_template",
-)
 _UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 _VARIABLE = re.compile(r"(\{[a-z_]+\})")
 _WORD = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")

@@ -7,6 +7,8 @@ import pytest
 
 from rdf_persistence.adapters.jwks import DISCOVERY_PATH, JWKS_TTL_SECONDS, JwksTokenVerifier
 from rdf_persistence.domain.exceptions import IdentityUnavailable, InvalidToken
+from rdf_persistence.domain.generated.service.rp_service import IriPolicy, ServiceSettings
+from rdf_persistence.domain.iris import Iris
 from rdf_persistence.testkit.tokens import ISSUER, TokenSigner
 
 PAST_COOLDOWN = 11.0
@@ -33,7 +35,7 @@ def signer(clock: ManualClock) -> TokenSigner:
     return TokenSigner(clock=clock)
 
 
-def verifier_for(signer: TokenSigner, clock: ManualClock, **kwargs: str) -> JwksTokenVerifier:
+def verifier_for(signer: TokenSigner, clock: ManualClock, **kwargs: object) -> JwksTokenVerifier:
     return JwksTokenVerifier(
         ISSUER,
         signer.audience,
@@ -331,3 +333,39 @@ def test_an_empty_issuer_audience_or_roles_claim_is_refused(field: str) -> None:
     arguments[field] = ""
     with pytest.raises(ValueError, match=field):
         JwksTokenVerifier(**arguments)
+
+
+# --- the principal IRI follows the IRI policy (PD-2, PD-3a) --------------------------------------
+
+PRINCIPAL_BASE = "http://mwb.meaningfy.ws/"
+
+
+async def test_the_default_principal_is_the_issuer_and_the_subject(
+    signer: TokenSigner, clock: ManualClock
+) -> None:
+    caller = await verifier_for(signer, clock).verify(signer.issue(sub="user-1"))
+    assert caller.principal == f"{ISSUER}/users/user-1", "the default principal IRI changed"
+
+
+@pytest.mark.parametrize(
+    ("sub", "segment"), [("a/b", "a%2Fb"), ("100%", "100%25"), ("a b", "a%20b")]
+)
+async def test_a_policy_principal_keeps_the_subject_in_one_segment(
+    signer: TokenSigner, clock: ManualClock, sub: str, segment: str
+) -> None:
+    iris = Iris(
+        ServiceSettings(
+            base=PRINCIPAL_BASE,
+            prefix="mwb",
+            tenant_segment="projects",
+            creator_role="owner",
+            roles_claim=signer.roles_claim,
+            deployment="k3f9a2x",
+            iri_policy=IriPolicy(principal_template="{base}{deployment}/user/{sub}"),
+        )
+    )
+    verifier = verifier_for(signer, clock, iris=iris)
+    caller = await verifier.verify(signer.issue(sub=sub))
+    assert caller.principal == f"{PRINCIPAL_BASE}k3f9a2x/user/{segment}", (
+        "the subject left its segment"
+    )

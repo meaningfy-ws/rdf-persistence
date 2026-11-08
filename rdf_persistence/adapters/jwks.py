@@ -1,7 +1,8 @@
 """``TokenVerifier`` over a provider's JWKS: OIDC discovery, a timed key cache, JWT checks.
 
-The principal is ``{issuer}/users/{sub}``: the issuer already names the provider, so the IRI is
-stable and unique across providers, and ``sub`` is percent-encoded so it cannot leave the path.
+The principal is minted by ``Iris.principal``: by default ``{issuer}/users/{sub}``, where the issuer
+already names the provider, so the IRI is stable and unique across providers, and ``sub`` is
+percent-encoded so it cannot leave the path. A deployment's policy may set another template.
 """
 
 import asyncio
@@ -19,7 +20,7 @@ from rdf_persistence.adapters._http import HttpAdapter
 from rdf_persistence.adapters.generated.rp_wire import DiscoveryDocument, JwtClaims
 from rdf_persistence.domain.exceptions import IdentityUnavailable, InvalidToken
 from rdf_persistence.domain.generated.service.rp_service import VerifiedCaller
-from rdf_persistence.domain.iris import principal_iri
+from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.tokens import EpochClock
 
 JWKS_TTL_SECONDS = 600.0
@@ -50,6 +51,7 @@ class JwksTokenVerifier(HttpAdapter):
         transport: httpx.AsyncBaseTransport | None = None,
         clock: EpochClock = time.time,
         allow_insecure_issuer: bool = False,
+        iris: Iris = DEFAULT_IRIS,
     ) -> None:
         """Verify tokens of ``issuer``, which must be an https URL unless ``allow_insecure_issuer`` (test containers)."""
         for name, value in (
@@ -63,6 +65,7 @@ class JwksTokenVerifier(HttpAdapter):
             raise ValueError("the issuer must be an https URL")
         super().__init__(transport=transport)
         self._issuer = issuer
+        self._iris = iris
         self._audience = audience
         self._roles_claim = roles_claim
         self._jwks_uri = jwks_uri
@@ -126,7 +129,7 @@ class JwksTokenVerifier(HttpAdapter):
         return claims
 
     def _principal(self, subject: str) -> str:
-        return str(principal_iri(self._issuer, subject))
+        return str(self._iris.principal(self._issuer, subject))
 
     def _roles(self, claims: JwtClaims) -> list[str]:
         claim = (claims.model_extra or {}).get(self._roles_claim)
