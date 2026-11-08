@@ -194,6 +194,36 @@ def test_wait_returns_the_answer_of_a_slow_call_once_it_finishes() -> None:
     assert calls == [1]
 
 
+def test_wait_calls_again_when_a_slow_call_finishes_with_nothing() -> None:
+    release = threading.Event()
+    calls = []
+
+    def probe():
+        calls.append(1)
+        if len(calls) == 1:
+            release.wait()
+            return []
+        return ["a.csv"]
+
+    clock = FakeClock()
+    first_sleep = clock.sleep
+
+    def sleep_then_release(seconds: float) -> None:
+        first_sleep(seconds)
+        release.set()  # the slow first call finishes, empty, while the wait sleeps
+
+    result = wait_until(
+        probe,
+        "the bucket",
+        timeout=3,
+        probe_timeout=PROBE_TIMEOUT,
+        sleep=sleep_then_release,
+        monotonic=clock.monotonic,
+    )
+    assert result == ["a.csv"]
+    assert calls == [1, 1]
+
+
 @pytest.mark.parametrize("probe_timeout", [0, -1])
 def test_wait_refuses_a_probe_timeout_that_is_not_positive(probe_timeout) -> None:
     with pytest.raises(ValueError, match="probe_timeout"):
