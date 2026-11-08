@@ -4,6 +4,7 @@
    rp-package-boundaries, PD-20); the background study is exempt.
 2. Every page is reachable from the navigation.
 """
+
 import re
 import sys
 from pathlib import Path
@@ -11,8 +12,25 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 MODULE = ROOT / "docs/modules/ROOT"
 CODE_DIRS = ["rdf_persistence", "tests"]
-CODE_SUFFIXES = {".py", ".yaml", ".yml", ".toml", ".feature", ".ttl", ".jsonld", ".json", ".ini", ".md"}
-FORBIDDEN = ["MWB", "Mapping Workbench", "mapping project", "conceptual mapping", "technical mapping"]
+CODE_SUFFIXES = {
+    ".py",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".feature",
+    ".ttl",
+    ".jsonld",
+    ".json",
+    ".ini",
+    ".md",
+}
+FORBIDDEN = [
+    "MWB",
+    "Mapping Workbench",
+    "mapping project",
+    "conceptual mapping",
+    "technical mapping",
+]
 
 
 def pages() -> list[Path]:
@@ -24,16 +42,23 @@ def rel(page: Path) -> str:
 
 
 def code_files() -> list[Path]:
-    return sorted(f for d in CODE_DIRS for f in (ROOT / d).rglob("*")
-                  if f.suffix in CODE_SUFFIXES and "__pycache__" not in f.parts)
+    return sorted(
+        f
+        for d in CODE_DIRS
+        for f in (ROOT / d).rglob("*")
+        if f.suffix in CODE_SUFFIXES and "__pycache__" not in f.parts
+    )
 
 
 def forbidden_in(files: list[Path]) -> list[str]:
     errors = []
     for f in files:
         text = f.read_text(errors="replace")
-        errors += [f"{f.relative_to(ROOT)}: uses '{t}'" for t in FORBIDDEN
-                   if re.search(rf"\b{re.escape(t)}\b", text)]
+        errors += [
+            f"{f.relative_to(ROOT)}: uses '{t}'"
+            for t in FORBIDDEN
+            if re.search(rf"\b{re.escape(t)}\b", text)
+        ]
     return errors
 
 
