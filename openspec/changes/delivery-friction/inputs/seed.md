@@ -52,6 +52,23 @@ discovered?" The gaps, as met in the implementation session for #24, #25 and #26
 6. **The adoption guide:** fix only what the cold reader named, in steps 4 to 7, and run a cold
    reader again on the result. **Recommended**, versus a rewrite of the page.
 
+7. **The suite runs in one process** (~6–14 min for ~3200 tests, per the iri-policy delivery log).
+   - (a) `pytest-xdist` (`-n auto`) in `make test`, once the order and timing tests above are
+     settled. **Recommended.**
+   - (b) keep it serial.
+
+## Developer's answers (2026-11-08)
+
+1. (a), the Actions cache, as long as it is free (it is: no charge, 10 GB per repository).
+   Otherwise drop the e2e (container) tests from GitHub and run them only locally.
+2. (a).
+3. **Deferred:** no timing budget yet; decided later. Until then the timing tests must not fail a
+   gate under load (they leave the default lanes; their budget is not set by this EPIC).
+4. (a), do it.
+5. (a).
+6. Yes, fix steps 4 to 7 and re-run a cold reader.
+7. (a), of course.
+
 ## Test scenarios the EPIC must prove
 
 - The full suite passes in random order (`-p randomly` or reversed order) and under machine load.
@@ -60,3 +77,4 @@ discovered?" The gaps, as met in the implementation session for #24, #25 and #26
 - `make check-docs` fails when rule 11 names an unexported helper.
 - With `probe_timeout`, a probe that never returns ends in `TimeoutError` naming `what`.
 - A cold reader follows steps 4 to 7 without a guess.
+- `make test` runs the suite in parallel (`-n auto`) and passes.
