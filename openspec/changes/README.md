@@ -20,9 +20,10 @@ their capability; commits reference the change id.
 Shaped and planned on 2026-11-08 from the consumer's (MWB2) issues; the developer answered the open
 questions (each change's `inputs/seed.md`). Each has its PLAN (`design.md` + `tasks.md`).
 
-None in flight. `iri-policy` (#26), `testkit-wait-until` (#24) and `generation-fix-hint` (#25)
-were delivered and archived on 2026-11-08 (`archive/2026-11-08-*`). `delivery-friction` is being
-shaped (PR #33).
+None in flight except `delivery-friction` (MEDIUM, PR #33: flaky tests, CI's Maven Central
+download, ungated formatting, adoption-guide gaps and parallel tests, met while delivering #24 to
+#26). `iri-policy` (#26), `testkit-wait-until` (#24) and `generation-fix-hint` (#25) were delivered
+and archived on 2026-11-08 (`archive/2026-11-08-*`).
 
 ## Candidate EPICs
 
