@@ -33,9 +33,14 @@ class AsyncFakeClock(FakeClock):
         self.sleep(seconds)
 
 
-async def _await(probe, clock: AsyncFakeClock, **kwargs):
+async def _wait_async(probe, clock: AsyncFakeClock, **kwargs):
     return await wait_until_async(
-        probe, "the file listing", timeout=10, sleep=clock.asleep, monotonic=clock.monotonic, **kwargs
+        probe,
+        "the file listing",
+        timeout=10,
+        sleep=clock.asleep,
+        monotonic=clock.monotonic,
+        **kwargs,
     )
 
 
@@ -46,7 +51,7 @@ async def test_async_wait_returns_the_value_of_the_third_call_without_real_sleep
     async def probe():
         return next(answers)
 
-    assert await _await(probe, clock) == ["a.csv"]
+    assert await _wait_async(probe, clock) == ["a.csv"]
     assert len(clock.sleeps) == 2
 
 
@@ -55,7 +60,7 @@ async def test_async_wait_times_out_naming_what_it_waited_for() -> None:
         return None
 
     with pytest.raises(TimeoutError, match="the file listing did not answer within 10s"):
-        await _await(probe, AsyncFakeClock())
+        await _wait_async(probe, AsyncFakeClock())
 
 
 async def test_async_wait_retries_the_listed_errors_and_propagates_others() -> None:
@@ -67,13 +72,19 @@ async def test_async_wait_retries_the_listed_errors_and_propagates_others() -> N
             raise ConnectionError("not yet")
         return True
 
-    assert await _await(flaky, AsyncFakeClock(), retry_on=(OSError,)) is True
+    assert await _wait_async(flaky, AsyncFakeClock(), retry_on=(OSError,)) is True
+
+    bug_calls = []
 
     async def bug():
+        bug_calls.append(1)
         raise ValueError("bug")
 
+    clock = AsyncFakeClock()
     with pytest.raises(ValueError):
-        await _await(bug, AsyncFakeClock(), retry_on=(OSError,))
+        await _wait_async(bug, clock, retry_on=(OSError,))
+    assert bug_calls == [1]
+    assert clock.sleeps == []
 
 
 def _wait(probe, clock: FakeClock, **kwargs):
@@ -173,7 +184,7 @@ async def test_async_wait_keeps_polling_on_falsy_results_until_timeout(falsy) ->
 
     clock = AsyncFakeClock()
     with pytest.raises(TimeoutError):
-        await _await(probe, clock)
+        await _wait_async(probe, clock)
     assert len(calls) == len(clock.sleeps) == 10  # truthy is the contract, not "not None"
 
 
@@ -182,11 +193,11 @@ async def test_async_wait_with_empty_retry_on_lets_oserror_propagate() -> None:
         raise OSError("refused")
 
     with pytest.raises(OSError, match="refused"):
-        await _await(probe, AsyncFakeClock(), retry_on=())
+        await _wait_async(probe, AsyncFakeClock(), retry_on=())
 
 
 async def test_async_wait_retries_a_subclass_of_a_listed_error() -> None:
-    class Refused(ConnectionError):
+    class RefusedError(ConnectionError):
         pass
 
     calls = []
@@ -194,10 +205,10 @@ async def test_async_wait_retries_a_subclass_of_a_listed_error() -> None:
     async def probe():
         calls.append(1)
         if len(calls) < 2:
-            raise Refused("not yet")
+            raise RefusedError("not yet")
         return "up"
 
-    assert await _await(probe, AsyncFakeClock(), retry_on=(ConnectionError,)) == "up"
+    assert await _wait_async(probe, AsyncFakeClock(), retry_on=(ConnectionError,)) == "up"
 
 
 async def test_async_wait_does_not_swallow_cancellation_even_when_retry_on_is_broad() -> None:
@@ -208,7 +219,7 @@ async def test_async_wait_does_not_swallow_cancellation_even_when_retry_on_is_br
 
     clock = AsyncFakeClock()
     with pytest.raises(asyncio.CancelledError):
-        await _await(probe, clock, retry_on=(Exception,))
+        await _wait_async(probe, clock, retry_on=(Exception,))
     assert clock.sleeps == []
 
 
@@ -232,7 +243,7 @@ async def test_async_wait_given_a_sync_probe_raises_type_error() -> None:
         return True
 
     with pytest.raises(TypeError):
-        await _await(sync_probe, AsyncFakeClock())
+        await _wait_async(sync_probe, AsyncFakeClock())
 
 
 async def test_async_sync_probe_raising_a_retried_error_is_not_masked() -> None:
@@ -242,7 +253,7 @@ async def test_async_sync_probe_raising_a_retried_error_is_not_masked() -> None:
         raise OSError("sync")
 
     with pytest.raises(TimeoutError):
-        await _await(sync_probe, AsyncFakeClock())
+        await _wait_async(sync_probe, AsyncFakeClock())
 
 
 @pytest.mark.parametrize("timeout", [2.5, 0.5, 180, 1e-3])
@@ -259,7 +270,9 @@ async def test_async_and_sync_timeout_messages_are_identical(timeout) -> None:
             aprobe, "the store", timeout=timeout, sleep=aclock.asleep, monotonic=aclock.monotonic
         )
     with pytest.raises(TimeoutError) as sync_error:
-        wait_until(probe, "the store", timeout=timeout, sleep=sclock.sleep, monotonic=sclock.monotonic)
+        wait_until(
+            probe, "the store", timeout=timeout, sleep=sclock.sleep, monotonic=sclock.monotonic
+        )
     assert str(async_error.value) == str(sync_error.value)
 
 

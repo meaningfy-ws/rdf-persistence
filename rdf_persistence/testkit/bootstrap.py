@@ -1,4 +1,5 @@
-"""Plain helpers behind the container fixtures: wait, parse, and scope environment variables.
+"""Plain helpers behind the container fixtures, and the public waiting helpers of the testkit:
+wait (sync and async), parse, and scope environment variables.
 
 Nothing here needs Docker or ``testcontainers``, so the unit lane can test it.
 """
