@@ -116,6 +116,9 @@ and principal templates, and the policy guard.
 - `adapters/jwks.py`: the principal IRI through the policy (stage 2); `testkit/fakes.py`
   (`fake_session`) accepts a policy.
 - A generation check: `rp_iri_type` values are unique and are not reserved words.
+- As delivered (stage 2): `services/iri_policy_guard.py`, run by `entrypoints/service.py` before
+  the sweep; the record is kept through the `Store` port (PD-13). **BREAKING:** the `TokenVerifier`
+  port exposes `iris`, checked by `install_service` against the settings (PD-14c).
 - Docs: `howto/adopt.adoc` (step 3, tenancy), `architecture/index.adoc`, a worked policy example.
 
 ## Capabilities

@@ -158,7 +158,7 @@ path ids in `entrypoints/router.py` (`_last_segment`). Two places infer ownershi
   the API" (no longer "and in its IRIs"). The value follows the `url_segment` pattern, as `rp_path`
   does. A generation check in `generation/checks/hard.py` fails on two classes with one type, or a
   type equal to `content`, `graph`, `parts`, `access`, `meta`, `registry`.
-- **PD-9 Policy guard (stage 2).** The policy is stored as an `IriPolicy` instance in the system
+- **PD-9 Policy guard (stage 2; storage amended by PD-13, order by PD-14a, comparison by PD-14b).** The policy is stored as an `IriPolicy` instance in the system
   database, in the graph of `{base}toolkit/iri-policy` (beside the toolkit principal
   `{base}toolkit`), written through the toolkit session at start-up after the sweep. On start: no
   record and no access records → write it; no record but access records → the stored data is the

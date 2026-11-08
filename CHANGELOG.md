@@ -8,17 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **IRI policy, stage 1** (`iri-policy`, #26): `ServiceSettings.iri_policy` sets the templates and
-  id kinds of tenant, aggregate, part and loaded-graph IRIs (short random ids, flat IRIs beside the
-  root, a `{type}` from the class or its `rp_iri_type`). One `Iris` per service mints and checks
-  them; ownership follows the stored graph and the registry, not IRI nesting. Exported: `Iris`,
-  `IriPolicy`, `IdSpec`, `IdKind`, `DEFAULT_IRIS`, `AccessRules.with_iris`. The access, meta,
-  registry and principal templates stay at their defaults until stage 2. With no policy, IRIs are
-  minted as before.
+- **IRI policy** (`iri-policy`, #26): `ServiceSettings.iri_policy` sets the template and id kind
+  of every IRI the toolkit mints: tenants, aggregates, parts, loaded graphs, access records, meta and
+  registry graphs, and principals (short random ids, flat IRIs, a `{type}` from the class or its
+  `rp_iri_type`, a `{deployment}` segment). One `Iris` per service mints and checks them; ownership
+  follows the stored graph and the registry, not IRI nesting. At start-up the effective policy is
+  recorded in the system database, and a later start under another policy refuses with
+  `IriPolicyChanged` naming the fields. Exported: `Iris`, `IriPolicy`, `IdSpec`, `IdKind`,
+  `DEFAULT_IRIS`, `AccessRules.with_iris`. With no policy, IRIs are minted as before.
 - **Waiting helpers** (`testkit-wait-until`, #24): `wait_until` and the new `wait_until_async` are
   exported from `rdf_persistence.testkit`.
 
 ### Changed
+- **BREAKING: `TokenVerifier.iris`** (`iri-policy`): a token verifier exposes the `Iris` it mints
+  principals with, and `install_service` refuses a verifier whose principal template differs from
+  the settings'. `JwksTokenVerifier` takes `iris=Iris(settings)`.
 - **Freshness hint** (`generation-fix-hint`, #25): a failed freshness check now names
   `rp-generate`, or the `regenerate-command` of each stale `[tool.rp-generate]` entry, instead of
   `make generate`. A configuration error no longer prints a hint.
