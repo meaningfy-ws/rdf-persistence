@@ -38,6 +38,7 @@ FORBIDDEN_DECORATORS = frozenset({"dataclasses.dataclass", "pydantic.dataclasses
 FORBIDDEN_FILE_PATTERNS = (
     "*.shacl.ttl",
     "*shapes*.ttl",
+    "context.jsonld",
     "*.context.jsonld",
     "*.frame.jsonld",
     "*.schema.json",

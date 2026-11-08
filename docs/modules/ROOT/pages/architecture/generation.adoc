@@ -521,7 +521,7 @@ Both guards are `testkit.assert_models_generated(package, *, roots, allow=(), ex
   `"<path>:<ClassName>"`. This repository also scans `generation` and `testkit`, with the
   foreign-object types of <<extensions>> in its allow-list (`tests/unit/generation/test_model_guard.py`);
   a subclass of a LinkML generator is not flagged, so it needs no entry.
-* *File guard*: fails on `*.shacl.ttl`, `*shapes*.ttl`, `*.context.jsonld`, `*.frame.jsonld`,
+* *File guard*: fails on `*.shacl.ttl`, `*shapes*.ttl`, `context.jsonld`, `*.context.jsonld`, `*.frame.jsonld`,
   `*.schema.json`, `openapi*.json`, `openapi*.yaml` and `*.ts` (except `*.test.ts` and `*.spec.ts`)
   outside a folder named `generated`. This repository scans `rdf_persistence/` and `tests/`, with
   `tests/fixtures/` exempt (`exempt=`).
