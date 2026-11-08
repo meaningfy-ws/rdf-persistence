@@ -51,7 +51,12 @@ package; an application's generated code imports them rather than regenerating t
 |===
 |Element |Meaning
 |`AggregateRoot` (mixin) |Instances are aggregate roots: each is one named graph, whose IRI `graph_iri(root)` is derived from the root's IRI (for example `<root>/graph`; background DEC-29), versioned, loaded and saved as a whole.
-|`owned` (slot annotation) |The slot's values are part of this aggregate and live in its graph (a commit replaces the whole graph). A part whose class includes `Described` has an IRI, by default `{root_iri}/parts/{uuid4}` (the IRI policy's part template), minted by the toolkit when it has none and kept across commits; a part without an identifier slot (a grant, a prohibition) is a blank node, skolemised on write (PD-6, PD-8a). Any other slot whose range is a class refers to another aggregate root, by IRI.
+|`owned` (slot annotation)
+|The slot's values are part of this aggregate and live in its graph (a commit replaces the whole
+graph). A part whose class includes `Described` has an IRI, by default `{root_iri}/parts/{uuid4}`
+(the IRI policy's part template), minted by the toolkit when it has none and kept across commits; a
+part without an identifier slot (a grant, a prohibition) is a blank node, skolemised on write (PD-6,
+PD-8a). Any other slot whose range is a class refers to another aggregate root, by IRI.
 |`database` (class annotation) |`tenant` (default) or `system`: which database the aggregate lives in.
 |`graph: meta` (class annotation) |The tenant's root object lives in the tenant database's designated `meta` graph instead of a graph of its own.
 |`internal` (slot annotation) |Only the service sets the slot (e.g. file keys, a tenant's database name): it never appears in the API contract or a response, a request body that sets it is refused (422), the tenant-create body included, and a replace keeps its stored value on the root and on the parts that persist, matched by IRI. The mapper writes it, so a domain service can set it.

@@ -226,8 +226,8 @@ class Tenancy:
         stored = (await self._store.query(self._system, text)).graph
         if stored is None:
             return []
-        iris = sorted({str(record) for record in stored.subjects(v.STATE, None)})
-        return [self._decoded(iri, stored, graph_iri(iri)) for iri in iris]
+        record_iris = sorted({str(record) for record in stored.subjects(v.STATE, None)})
+        return [self._decoded(iri, stored, graph_iri(iri)) for iri in record_iris]
 
     async def rename(self, tenant: str, label: str, if_version: str, principal: Principal) -> str:
         """Give the tenant a new label, in its access record, whose description follows; answers the new version.

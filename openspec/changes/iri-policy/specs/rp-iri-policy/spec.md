@@ -14,7 +14,8 @@ tenant's database and bucket.
 #### Scenario: an application that sets nothing
 - **GIVEN** settings without `iri_policy`
 - **WHEN** a tenant, an aggregate, an owned part and a loaded graph are minted
-- **THEN** each IRI has today's shape, and the existing IRI tests pass unchanged
+- **THEN** each IRI has today's shape, and the existing IRI tests pass unchanged, with one change:
+  the access record's graph is no longer an aggregate graph (it stays a valid grant target)
 
 ### Requirement: Each kind of IRI follows its configured template
 

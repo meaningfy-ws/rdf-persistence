@@ -56,13 +56,14 @@ test first, then `make test` and `make check-all`. Requirements cited are in
   (`make test-containers`). Docs: `howto/adopt.adoc` step 3 (`rp_path` is the API path only,
   `rp_iri_type`), a "Configure the IRI policy" section with the consumer's table, public API table
   in `architecture/index.adoc`, questions page entry. Gates: `make check-all`, `make check-docs`.
-  Then the stage loop (deep test, five-lens review, fixes, verify) and PR 1 into `develop`.
+- [ ] 4.2 Stage-1 challenge: the stage loop (deep test, five-lens review, fixes, verify), then
+  PR 1 into `develop`.
 
 ## Stage 2 — tenant records, principals and the guard (PR 2)
 
 - [ ] 5.1 Access, meta and registry templates in `services/tenancy.py`, `services/session.py`,
-  `services/access.py`; `tenant_iri_of_access` callers in `services/tenancy.py` use
-  `Iris.tenant_of_access` (PD-10; the `database_name` pattern and description moved to 3.1, PD-10a).
+  `services/access.py` (the `tenant_of_access` callers and the `database_name` pattern and
+  description moved to 3.1, PD-10, PD-10a).
   Tests: the consumer's tenant scenario in full (access record with `{deployment}`).
 - [ ] 5.2 Principal template in `adapters/jwks.py`: `JwksTokenVerifier` takes an optional `Iris`
   (PD-3a) and mints through `Iris.principal`. Tests: default
@@ -73,7 +74,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [x] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
+- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [x] 4.1 · [ ] 4.2 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
 
 ## Verification
 

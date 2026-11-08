@@ -233,6 +233,18 @@ Five lenses (L1–L5) and the adversarial tester reviewed tasks 1.1–3.4. Accep
   `ACCESS_SEGMENT`; `LAYOUT_WORDS` built from `LOADED_GRAPH_TYPE`; `hard.py` uses `LAYOUT_WORDS`;
   docstrings on `access`/`meta`/`registry`; split the dense one-liners.
 
+- **PD-12n Check and cold reader** (fresh checker, cold reader on `adopt.adoc`). `tenant_resource_name`
+  keeps its own UUID check: it is a default-only shim that takes no base or settings, so it cannot be
+  a call on an `Iris`; it goes with the shim clean-up. `tenant_of_access` also checks the tenant it
+  answers against the tenant template. The spec scenario "an application that sets nothing" names its
+  one change: the access record's graph is no longer an aggregate graph (PD-12b), though it stays a
+  grant target. `adopt.adoc` gains what a reader needs to use a policy alone (policy-aware minting
+  through `kit.iris`, how parts get their type, the `IriPolicy` fields and defaults, the refused
+  stage-2 templates, templates that must name their tenant, not changing a policy once tenants
+  exist). Plus the remaining items of PD-12g/j/l/m the checker found unmet.
+  Side effect, accepted: the unexported shim `tenant_iri_of_access` now answers only for tenants under
+  `DEFAULT_IRIS`'s placeholder base; no production code calls it, and it goes with the shim clean-up.
+
 Rejected, with the reason:
 - `iris` required in every service constructor (L4 major 3): PD-3a keeps it optional for classes a
   consumer builds; PD-12j makes the default explicit instead.

@@ -30,6 +30,9 @@ left blank. Times are under load (other sessions ran `make` on the same machine)
 | decide | lead | — | — | — | PD-12a–m recorded; 3 rejected with reasons. L2/L3 found the same major independently |
 | fix PD-12a–m | fixer | 25m43s | 225.0k | 80 | 13 decisions; 1 divergence (access-record grant) caught; gates 1866 tests 250s + check-quality 36s |
 | fix gate | lead | 10m41s + 2m49s | — | — | 3229 passed, 5 failed: the model guard refused `Iris` as a dataclass (PD-12i, the lead's decision missed a project rule); fixed inline in minutes; containers passed |
+| checker | checker | 5m41s | 172.3k | 23 | 6 unmet (docs mostly), several nits; traceability met; no xfail left |
+| cold reader adopt.adoc | reader | 0m58s | 78.5k | 1 | step 14 not followable alone; 5 doc fixes accepted (temp/cold-reader-adopt.md) |
+| fix round 2 (PD-12n) | fixer | 7m25s | 145.4k | 57 | 8 items; doc snippets executed against the toy library |
 | gitnexus re-index | lead | ~3 tries | — | — | incremental and `--force` fail (gitnexus bug); `clean --force` + `analyze` works |
 
 ## Where the time goes (first reading, after 3.2)

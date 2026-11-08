@@ -1,6 +1,6 @@
 """The listing query over an in-memory store: the page, the total, the order, the filters, what is hidden (PD-15)."""
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from uuid import UUID
@@ -40,24 +40,24 @@ HOSTILE = '"} ; DROP ALL ; #'
 
 @dataclass(frozen=True)
 class Policy:
-    """An IRI policy and the shape of the books minted under it: nested (default) or flat (PD-7)."""
+    """An IRI policy and the shape of the ids minted under it: UUIDs (default) or 13 digits (flat, PD-7)."""
 
     name: str
     tenant: str
     iris: Iris
+    object_id: Callable[[int], str]
+    number_of_id: Callable[[str], int]
+
+    def aggregate_iri(self, cls_type: str, rp_path: str, n: int) -> str:
+        return str(self.iris.aggregate(self.tenant, cls_type, rp_path, self.object_id(n)))
 
     def book_iri(self, n: int) -> str:
-        if self.name == "default":
-            return f"{self.tenant}/books/{UUID(int=n)}"
-        return str(self.iris.aggregate(self.tenant, "book", "books", f"{n:013d}"))
+        return self.aggregate_iri("book", "books", n)
 
     def number(self, iri: str) -> int:
-        last = iri.rsplit("/", 1)[1]
-        return UUID(last).int if self.name == "default" else int(last)
+        return self.number_of_id(iri.rsplit("/", 1)[1])
 
     def chapter(self, root: str) -> Chapter:
-        if self.name == "default":
-            return new_part(Chapter, root, number=1)
         return new_part(Chapter, root, iris=self.iris, tenant=self.tenant, number=1)
 
 
@@ -79,10 +79,13 @@ def _flat() -> Policy:
         ),
     )
     iris = Iris(settings, *iri_types(load_schema(TOY_SCHEMA)))
-    return Policy("flat", str(iris.tenant("p4x8k2m")), iris)
+    return Policy("flat", str(iris.tenant("p4x8k2m")), iris, lambda n: f"{n:013d}", int)
 
 
-POLICIES = [Policy("default", FAKE_TENANT, DEFAULT_IRIS), _flat()]
+POLICIES = [
+    Policy("default", FAKE_TENANT, DEFAULT_IRIS, lambda n: str(UUID(int=n)), lambda i: UUID(i).int),
+    _flat(),
+]
 
 
 @pytest.fixture(params=POLICIES, ids=lambda policy: policy.name)
@@ -216,11 +219,7 @@ async def test_a_hidden_graph_is_left_out_of_the_page_and_of_the_total(shelf, vi
 
 
 async def test_another_type_in_the_same_tenant_is_not_listed(shelf, view, policy):
-    scan = (
-        f"{policy.tenant}/scans/{UUID(int=9)}"
-        if policy.name == "default"
-        else str(policy.iris.aggregate(policy.tenant, "scan", "scans", f"{9:013d}"))
-    )
+    scan = policy.aggregate_iri("scan", "scans", 9)
     stored = Scan(id=scan, label="Dune, scanned", description="A scanned copy.")
     await shelf.add_graph(scan, toy_mapper().to_triples(stored))
     assert (await listed(shelf, view, policy))[1] == 5

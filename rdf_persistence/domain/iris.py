@@ -564,7 +564,9 @@ class Iris:
         tenant = (
             URIRef(groups["tenant"]) if "tenant" in groups else self.tenant(groups["tenant_id"])
         )
-        if self.access(tenant) != URIRef(str(access_record_iri)):
+        if self.access(tenant) != URIRef(str(access_record_iri)) or not self._tenant_re.fullmatch(
+            str(tenant)
+        ):
             raise InvalidIri(f"not an access record IRI: {access_record_iri!r}")
         return tenant
 

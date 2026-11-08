@@ -74,6 +74,12 @@ async def test_the_kit_hands_one_policy_to_every_service_it_wires(consumer) -> N
     assert kit.rules._iris is kit.iris, (
         "the rules the consumer built are rebound to the kit's policy"
     )
+    held = {
+        "documents": kit.documents._iris,
+        "tenancy": kit.tenancy._iris,
+        "aggregates": kit.aggregates._iris,
+    }
+    assert all(iris is kit.iris for iris in held.values()), held
 
 
 async def test_a_wrong_form_id_to_require_aggregate_is_not_found(consumer) -> None:

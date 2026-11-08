@@ -270,7 +270,9 @@ def test_the_tenant_of_a_default_access_record_is_the_iri_above_it(default):
     assert default.tenant_of_access(f"{DEFAULT_TENANT}/access") == URIRef(DEFAULT_TENANT)
 
 
-@pytest.mark.parametrize("iri", [f"{DEFAULT_TENANT}/books/1", "/access", "nope"])
+@pytest.mark.parametrize(
+    "iri", [f"{DEFAULT_TENANT}/books/1", "/access", "nope", f"{DEFAULT_TENANT}/content/access"]
+)
 def test_an_iri_that_is_not_an_access_record_has_no_tenant(default, iri):
     with pytest.raises(InvalidIri, match="access record"):
         default.tenant_of_access(iri)

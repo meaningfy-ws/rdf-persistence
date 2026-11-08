@@ -151,10 +151,12 @@ comes later.
 |===
 |Target |Tests |Time |Measured |Notes
 
-|`make check-all` |2733 |≈ 5.5 min |2026-11-06, stage 5 tip
-|The pytest part takes 4.5 to 5.5 min; the quality checks come before it.
+|`make check-all` |3234 |6.5 to 14 min |2026-11-08, iri-policy stage 1
+|The pytest part takes 5.5 to 12 min; the longer runs were under load from other sessions on the
+same machine (load average 3 to 4). The quality checks (`make check-quality`, ≈ 25 to 50 s) come
+before it.
 
-|`make test-containers` |170 |2 to 3.5 min |2026-11-06, stage 5 tip
+|`make test-containers` |172 |2.5 to 4.5 min |2026-11-08, iri-policy stage 1
 |The pytest part takes 1 min 45 s to 3 min 15 s, container start-up included; it is faster
 when the images are cached. One run in four failed at start-up on a Docker Compose error; run
 it again.

@@ -88,7 +88,7 @@ def generated_models_of(package: ModuleType, *modules: ModuleType) -> GeneratedM
 
 
 def new_part[M: BaseModel](
-    cls: type[M], root_iri: str, *, iris: Iris | None = None, tenant: str = "", **fields: Any
+    cls: type[M], root_iri: str, *, iris: Iris = DEFAULT_IRIS, tenant: str = "", **fields: Any
 ) -> M:
     """A part of the aggregate rooted at ``root_iri``, with an IRI minted by ``iris`` (default
     policy: ``{root}/parts/{uuid4}``); ``tenant`` is the tenant the aggregate is in (PD-3).
@@ -100,7 +100,7 @@ def new_part[M: BaseModel](
     domain code builds it here, and the IRI is kept across commits because it is the node's IRI in
     the graph. (Minting inside ``add`` is impossible: the object does not exist before it has an id.)
     """
-    minted = (iris or DEFAULT_IRIS).mint_part(tenant, root_iri, kebab_case(cls.__name__))
+    minted = iris.mint_part(tenant, root_iri, kebab_case(cls.__name__))
     return cls(id=str(minted), **fields)
 
 
