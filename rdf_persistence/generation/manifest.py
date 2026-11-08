@@ -18,7 +18,7 @@ from rdf_persistence.generation.generated.rp_generation import (
 from rdf_persistence.services.schema import LOAD_ERRORS, PACKAGE, PACKAGE_DIR, load_schema
 
 MANIFEST_NAME = "rp-manifest.json"
-FIX_HINT = "run `make generate` to regenerate, then commit the result"
+DEFAULT_REGENERATE = "rp-generate"
 GENERATION_DIR = PACKAGE_DIR / "generation"
 GENERATED_DIR = GENERATION_DIR / "generated"
 TEMPLATES_DIR = GENERATION_DIR / "templates"
@@ -166,6 +166,20 @@ def _target_problems(target: GenerationTarget, base: Path) -> Iterator[CheckProb
     yield from _output_problems(base, recorded)
 
 
+def stale_targets(
+    targets: Iterable[GenerationTarget], base: Path
+) -> list[tuple[GenerationTarget, list[CheckProblem]]]:
+    """Each target with a stale, edited or missing file, with one problem line per such file."""
+    pairs = ((target, list(_target_problems(target, base))) for target in targets)
+    return [(target, problems) for target, problems in pairs if problems]
+
+
 def freshness_problems(targets: Iterable[GenerationTarget], base: Path) -> list[CheckProblem]:
     """Compare every target's manifest with the files now; one line per stale, edited or missing file."""
-    return [problem for target in targets for problem in _target_problems(target, base)]
+    return [problem for _, problems in stale_targets(targets, base) for problem in problems]
+
+
+def fix_hint(stale: Iterable[GenerationTarget]) -> str:
+    """The hint that ends a failed check: the command of each stale target, once, in order."""
+    commands = dict.fromkeys(t.regenerate_command or DEFAULT_REGENERATE for t in stale)
+    return f"run {' or '.join(f'`{c}`' for c in commands)} to regenerate, then commit the result"

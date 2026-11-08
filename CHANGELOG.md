@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Freshness hint** (`generation-fix-hint`, #25): a failed freshness check now names
+  `rp-generate`, or the `regenerate-command` of each stale `[tool.rp-generate]` entry, instead of
+  `make generate`. A configuration error no longer prints a hint.
+
 ## [0.1.0] - 2026-11-06
 
 The first version: the toolkit of change `toolkit-v1-foundation`, archived in

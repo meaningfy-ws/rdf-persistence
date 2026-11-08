@@ -8,7 +8,7 @@ from pathlib import Path
 from rdf_persistence.generation.config import cli_flags, python_folder, read_targets
 from rdf_persistence.generation.exceptions import ConfigError
 from rdf_persistence.generation.generated.rp_generation import CheckProblem, GenerationTarget
-from rdf_persistence.generation.manifest import FIX_HINT, freshness_problems
+from rdf_persistence.generation.manifest import fix_hint, stale_targets
 from rdf_persistence.generation.pipeline import Step, generate
 from rdf_persistence.generation.problems import format_problem
 
@@ -47,8 +47,11 @@ def _pipeline_steps() -> tuple[Step, ...] | None:
 
 def _freshness(targets: list[GenerationTarget], base: Path) -> list[CheckProblem]:
     """The manifest comparison of a check (PD-26), with the command that fixes what it finds."""
-    found = freshness_problems(targets, base)
-    return [*found, CheckProblem(message=FIX_HINT)] if found else []
+    stale = stale_targets(targets, base)
+    if not stale:
+        return []
+    found = [problem for _, problems in stale for problem in problems]
+    return [*found, CheckProblem(message=fix_hint(target for target, _ in stale))]
 
 
 def _list_python_folders(targets: list[GenerationTarget], base: Path) -> int:

@@ -84,20 +84,24 @@ lint = [
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/rp.yaml"
 package = "rdf_persistence.domain.generated"
+regenerate-command = "make generate"
 openapi = false
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/generation/model/rp_generation.yaml"
 package = "rdf_persistence.generation.generated"
+regenerate-command = "make generate"
 openapi = false
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/service/rp_service.yaml"
 package = "rdf_persistence.domain.generated.service"
+regenerate-command = "make generate"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/adapters/rp_wire.yaml"
 package = "rdf_persistence.adapters.generated"
+regenerate-command = "make generate"
 openapi = false
 
 [tool.uv]
