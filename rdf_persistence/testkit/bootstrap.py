@@ -3,9 +3,10 @@
 Nothing here needs Docker or ``testcontainers``, so the unit lane can test it.
 """
 
+import asyncio
 import os
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
 
 DEFAULT_TIMEOUT_SECONDS = 180
@@ -44,7 +45,39 @@ def wait_until[T](
         if result:
             return result
         sleep(POLL_SECONDS)
-    raise TimeoutError(f"{what} did not answer within {timeout:g}s")
+    raise TimeoutError(_timed_out(what, timeout))
+
+
+async def wait_until_async[T](
+    probe: Callable[[], Awaitable[T]],
+    what: str,
+    *,
+    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    retry_on: tuple[type[Exception], ...] = (OSError,),
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    monotonic: Callable[[], float] = time.monotonic,
+) -> T:
+    """Await ``probe`` until it returns something truthy, and return that value.
+
+    Same contract as :func:`wait_until`, for a probe that returns an awaitable.
+
+    Raises:
+        TimeoutError: If the probe did not succeed in time.
+    """
+    deadline = monotonic() + timeout
+    while monotonic() < deadline:
+        try:
+            result = await probe()
+        except retry_on:
+            result = None
+        if result:
+            return result
+        await sleep(POLL_SECONDS)
+    raise TimeoutError(_timed_out(what, timeout))
+
+
+def _timed_out(what: str, timeout: float) -> str:
+    return f"{what} did not answer within {timeout:g}s"
 
 
 def value_after(label: str, output: str) -> str:

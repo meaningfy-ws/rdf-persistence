@@ -4,7 +4,13 @@ import os
 
 import pytest
 
-from rdf_persistence.testkit.bootstrap import environment, redact_secrets, value_after, wait_until
+from rdf_persistence.testkit.bootstrap import (
+    environment,
+    redact_secrets,
+    value_after,
+    wait_until,
+    wait_until_async,
+)
 
 
 class FakeClock:
@@ -20,6 +26,54 @@ class FakeClock:
     def sleep(self, seconds: float) -> None:
         self.sleeps.append(seconds)
         self.now += seconds
+
+
+class AsyncFakeClock(FakeClock):
+    async def asleep(self, seconds: float) -> None:
+        self.sleep(seconds)
+
+
+async def _await(probe, clock: AsyncFakeClock, **kwargs):
+    return await wait_until_async(
+        probe, "the file listing", timeout=10, sleep=clock.asleep, monotonic=clock.monotonic, **kwargs
+    )
+
+
+async def test_async_wait_returns_the_value_of_the_third_call_without_real_sleeping() -> None:
+    clock = AsyncFakeClock()
+    answers = iter([None, None, ["a.csv"]])
+
+    async def probe():
+        return next(answers)
+
+    assert await _await(probe, clock) == ["a.csv"]
+    assert len(clock.sleeps) == 2
+
+
+async def test_async_wait_times_out_naming_what_it_waited_for() -> None:
+    async def probe():
+        return None
+
+    with pytest.raises(TimeoutError, match="the file listing did not answer within 10s"):
+        await _await(probe, AsyncFakeClock())
+
+
+async def test_async_wait_retries_the_listed_errors_and_propagates_others() -> None:
+    calls = []
+
+    async def flaky():
+        calls.append(1)
+        if len(calls) < 3:
+            raise ConnectionError("not yet")
+        return True
+
+    assert await _await(flaky, AsyncFakeClock(), retry_on=(OSError,)) is True
+
+    async def bug():
+        raise ValueError("bug")
+
+    with pytest.raises(ValueError):
+        await _await(bug, AsyncFakeClock(), retry_on=(OSError,))
 
 
 def _wait(probe, clock: FakeClock, **kwargs):

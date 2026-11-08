@@ -11,6 +11,7 @@ ALLOWED = [
     "import rdf_persistence",
     "from rdf_persistence.testkit import access_token",
     "from rdf_persistence.testkit import TokenRefusedError",
+    "from rdf_persistence.testkit import wait_until, wait_until_async",
     "from rdf_persistence.testkit.containers.fixtures import fuseki_url",
     "from rdf_persistence.testkit.containers import fixtures",
     "import rdf_persistence.testkit",
@@ -41,6 +42,13 @@ def module(tmp_path: Path, source: str) -> Path:
 @pytest.mark.parametrize("source", ALLOWED)
 def test_a_public_import_is_accepted(tmp_path, source):
     assert_public_imports(module(tmp_path, source))
+
+
+def test_the_waiting_helpers_are_exported_from_the_public_module():
+    import rdf_persistence.testkit as testkit
+
+    assert {"wait_until", "wait_until_async"} <= set(testkit.__all__)
+    assert callable(testkit.wait_until) and callable(testkit.wait_until_async)
 
 
 @pytest.mark.parametrize("source", REFUSED)
