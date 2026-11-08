@@ -1,6 +1,9 @@
 """The wait, parse and environment helpers behind the container fixtures (PD-16)."""
 
+import asyncio
 import os
+import threading
+import time
 
 import pytest
 
@@ -119,6 +122,137 @@ def test_wait_times_out_naming_what_it_waited_for() -> None:
     clock = FakeClock()
     with pytest.raises(TimeoutError, match="thing did not answer within 10s"):
         _wait(lambda: False, clock)
+
+
+# --- probe_timeout: one hung call counts as "not ready yet" (PD-5) ----------------------------
+
+PROBE_TIMEOUT = 0.05
+OVERALL_TIMEOUT = 0.2
+SHORT_POLL = 0.01
+
+
+def _short_sleep(seconds: float) -> None:
+    time.sleep(SHORT_POLL)
+
+
+async def _short_asleep(seconds: float) -> None:
+    await asyncio.sleep(SHORT_POLL)
+
+
+def _bounded_wait(probe, **kwargs):
+    return wait_until(probe, "the bucket", timeout=OVERALL_TIMEOUT, sleep=_short_sleep, **kwargs)
+
+
+async def _bounded_wait_async(probe, **kwargs):
+    return await wait_until_async(
+        probe, "the bucket", timeout=OVERALL_TIMEOUT, sleep=_short_asleep, **kwargs
+    )
+
+
+def test_wait_times_out_naming_what_when_a_probe_call_never_returns() -> None:
+    release = threading.Event()  # never set during the wait; set after, to free the thread
+    started = time.monotonic()
+    try:
+        with pytest.raises(TimeoutError, match="the bucket did not answer"):
+            _bounded_wait(release.wait, probe_timeout=PROBE_TIMEOUT)
+    finally:
+        release.set()
+    assert time.monotonic() - started < OVERALL_TIMEOUT + 0.5
+
+
+def test_wait_goes_on_after_a_slow_call_and_returns_the_next_answer() -> None:
+    release = threading.Event()
+    calls = []
+
+    def probe():
+        calls.append(1)
+        if len(calls) == 1:
+            release.wait()
+            return None
+        return ["a.csv"]
+
+    try:
+        assert _bounded_wait(probe, probe_timeout=PROBE_TIMEOUT) == ["a.csv"]
+    finally:
+        release.set()
+
+
+def test_wait_propagates_a_non_retry_error_from_the_bounded_call() -> None:
+    calls = []
+
+    def probe():
+        calls.append(1)
+        raise ValueError("bug")
+
+    with pytest.raises(ValueError, match="bug"):
+        _bounded_wait(probe, probe_timeout=1.0, retry_on=(OSError,))
+    assert calls == [1]
+
+
+def test_wait_retries_a_retry_on_error_from_the_bounded_call() -> None:
+    calls = []
+
+    def probe():
+        calls.append(1)
+        if len(calls) < 3:
+            raise ConnectionError("not yet")
+        return True
+
+    assert _bounded_wait(probe, probe_timeout=1.0, retry_on=(OSError,)) is True
+
+
+async def test_async_wait_times_out_naming_what_when_a_probe_call_never_returns() -> None:
+    async def probe():
+        await asyncio.Event().wait()
+
+    started = time.monotonic()
+    with pytest.raises(TimeoutError, match="the bucket did not answer"):
+        await _bounded_wait_async(probe, probe_timeout=PROBE_TIMEOUT)
+    assert time.monotonic() - started < OVERALL_TIMEOUT + 0.5
+
+
+async def test_async_wait_goes_on_after_a_slow_call_and_returns_the_next_answer() -> None:
+    calls = []
+
+    async def probe():
+        calls.append(1)
+        if len(calls) == 1:
+            await asyncio.Event().wait()
+        return ["a.csv"]
+
+    assert await _bounded_wait_async(probe, probe_timeout=PROBE_TIMEOUT) == ["a.csv"]
+
+
+async def test_async_wait_propagates_a_non_retry_error_from_the_bounded_call() -> None:
+    calls = []
+
+    async def probe():
+        calls.append(1)
+        raise ValueError("bug")
+
+    with pytest.raises(ValueError, match="bug"):
+        await _bounded_wait_async(probe, probe_timeout=1.0, retry_on=(OSError,))
+    assert calls == [1]
+
+
+async def test_async_wait_treats_a_timeout_raised_by_the_probe_like_any_retry_error() -> None:
+    calls = []
+
+    async def probe():
+        calls.append(1)
+        if len(calls) == 1:
+            raise TimeoutError("probe's own")  # not the bound: follows retry_on
+        return True
+
+    assert await _bounded_wait_async(probe, probe_timeout=1.0, retry_on=(TimeoutError,)) is True
+
+    async def raises_own_timeout():
+        raise TimeoutError("probe's own")
+
+    with pytest.raises(TimeoutError, match="probe's own"):
+        await _bounded_wait_async(
+            raises_own_timeout, probe_timeout=1.0, retry_on=(ConnectionError,)
+        )
 
 
 OUTPUT = "==== KEY INFORMATION ====\nKey name: rp\nKey ID: GK123\nSecret key: s3cr3t\n"

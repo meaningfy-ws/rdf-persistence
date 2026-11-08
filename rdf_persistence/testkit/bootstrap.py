@@ -6,6 +6,7 @@ Nothing here needs Docker or ``testcontainers``, so the unit lane can test it.
 
 import asyncio
 import os
+import threading
 import time
 from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
@@ -20,6 +21,7 @@ def wait_until[T](
     what: str,
     *,
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    probe_timeout: float | None = None,
     retry_on: tuple[type[Exception], ...] = (OSError,),
     sleep: Callable[[float], None] = time.sleep,
     monotonic: Callable[[], float] = time.monotonic,
@@ -30,6 +32,10 @@ def wait_until[T](
         probe: Returns a falsy value (or raises one of ``retry_on``) while not ready.
         what: Names the thing waited for, in the timeout message.
         timeout: Seconds to wait.
+        probe_timeout: Seconds one call of ``probe`` may take (default: no bound). A call that
+            has not returned by then counts as "not ready yet", like a ``retry_on`` error, and
+            the wait goes on until ``timeout``. The call runs in a daemon thread that cannot be
+            stopped, so a hung call is left behind until the process ends.
         retry_on: Errors that mean "not ready yet"; any other error propagates.
         sleep: Injected so tests need no real sleeping.
         monotonic: Injected clock.
@@ -40,7 +46,7 @@ def wait_until[T](
     deadline = monotonic() + timeout
     while monotonic() < deadline:
         try:
-            result = probe()
+            result = _call_bounded(probe, probe_timeout)
         except retry_on:
             result = None
         if result:
@@ -54,13 +60,16 @@ async def wait_until_async[T](
     what: str,
     *,
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    probe_timeout: float | None = None,
     retry_on: tuple[type[Exception], ...] = (OSError,),
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     monotonic: Callable[[], float] = time.monotonic,
 ) -> T:
     """Await ``probe`` until it returns something truthy, and return that value.
 
-    Same contract as :func:`wait_until`, for a probe that returns an awaitable.
+    Same contract as :func:`wait_until`, for a probe that returns an awaitable. With
+    ``probe_timeout`` set, a call still running after it is cancelled and counts as "not ready
+    yet"; a ``TimeoutError`` the probe raises itself follows ``retry_on`` like any other error.
 
     Raises:
         TimeoutError: If the probe did not succeed in time.
@@ -68,13 +77,50 @@ async def wait_until_async[T](
     deadline = monotonic() + timeout
     while monotonic() < deadline:
         try:
-            result = await probe()
+            result = await _await_bounded(probe, probe_timeout)
         except retry_on:
             result = None
         if result:
             return result
         await sleep(POLL_SECONDS)
     raise TimeoutError(_timed_out(what, timeout))
+
+
+def _call_bounded[T](probe: Callable[[], T], probe_timeout: float | None) -> T | None:
+    """Return the probe's value, or None if it is still running after ``probe_timeout``."""
+    if probe_timeout is None:
+        return probe()
+    box: list[tuple[T | None, BaseException | None]] = []
+
+    def run() -> None:
+        try:
+            box.append((probe(), None))
+        except BaseException as error:  # handed to the caller's thread below
+            box.append((None, error))
+
+    # A Python thread cannot be stopped: a hung call's thread stays until the process ends.
+    worker = threading.Thread(target=run, daemon=True)
+    worker.start()
+    worker.join(probe_timeout)
+    if worker.is_alive():
+        return None
+    result, error = box[0]
+    if error is not None:
+        raise error
+    return result
+
+
+async def _await_bounded[T](
+    probe: Callable[[], Awaitable[T]], probe_timeout: float | None
+) -> T | None:
+    """Return the awaited value, or None if the bound fired and cancelled the call."""
+    try:
+        async with asyncio.timeout(probe_timeout) as bound:
+            return await probe()
+    except TimeoutError:
+        if not bound.expired():  # the probe raised it itself: let retry_on decide
+            raise
+        return None
 
 
 def _timed_out(what: str, timeout: float) -> str:

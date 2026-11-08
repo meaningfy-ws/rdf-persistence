@@ -28,7 +28,7 @@ One stage, one PR. Per task: the affected test directories, `make check-quality`
 
 ## 4. Testkit
 
-- [ ] 4.1 PD-5, test first: `probe_timeout` on `wait_until` and `wait_until_async`
+- [x] 4.1 PD-5, test first: `probe_timeout` on `wait_until` and `wait_until_async`
   (`rdf_persistence/testkit/bootstrap.py`, `tests/unit/test_testkit_bootstrap.py`): the three
   scenarios of `specs/rp-testkit/spec.md` for both helpers; the docstrings and
   `develop/testing.adoc` rule 11 mention it. Gate: `uv run pytest tests/unit/test_testkit_bootstrap.py
