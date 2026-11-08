@@ -43,6 +43,10 @@ class InvalidIri(PersistenceError, ValueError):
     """A value breaks an IRI, path-segment or resource-name rule of the toolkit (``domain.iris``)."""
 
 
+class IriPolicyChanged(PersistenceError):
+    """The configured IRI policy differs from the one the deployment's data follows; the service does not start."""
+
+
 class SparqlError(PersistenceError, ValueError):
     """A value cannot become a SPARQL term, or a template and its terms do not match."""
 

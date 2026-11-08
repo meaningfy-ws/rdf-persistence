@@ -258,7 +258,7 @@ def test_an_rp_path_that_is_not_a_segment_is_invalid(consumer):
 # --- access record, resource names, settings checks ---------------------------------------------
 
 
-def test_the_tenant_of_an_access_record_comes_back_through_the_templates(until_stage_two):
+def test_the_tenant_of_an_access_record_comes_back_through_the_templates():
     policy = _consumer_policy(access_template="{base}{deployment}/project/{tenant_id}")
     iris = Iris(_settings(policy, deployment="k3f9a2x"))
     access = iris.access(TENANT)

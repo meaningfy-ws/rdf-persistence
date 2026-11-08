@@ -15,10 +15,9 @@ from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.domain.exceptions import Conflict, DatabaseGone, InvalidIri, NotFound
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.iris import (
+    DEFAULT_IRIS,
     graph_iri,
     loaded_graph_iri,
-    meta_graph_iri,
-    registry_graph_iri,
 )
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
@@ -108,7 +107,8 @@ async def about_graph(store, database, graph: URIRef) -> Graph:
 
 async def registry(store, database) -> Graph:
     query = fill(
-        "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH $r { ?s ?p ?o } }", r=term(registry_graph_iri(TENANT))
+        "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH $r { ?s ?p ?o } }",
+        r=term(DEFAULT_IRIS.registry(TENANT)),
     )
     return (await store.query(database, query)).graph
 
@@ -246,7 +246,7 @@ async def test_two_adds_of_one_iri_give_one_success_and_one_conflict(store, data
 
 
 @pytest.mark.parametrize(
-    "bad", [graph_iri(book(2)), registry_graph_iri(TENANT)], ids=["aggregate", "registry"]
+    "bad", [graph_iri(book(2)), DEFAULT_IRIS.registry(TENANT)], ids=["aggregate", "registry"]
 )
 async def test_a_loaded_graph_outside_the_aggregate_is_refused_and_nothing_changes(
     store, database, bad
@@ -352,7 +352,7 @@ async def test_the_tenant_root_lives_in_the_meta_graph_versioned_and_tracked_wit
     store, database
 ):
     session = session_for(store, database)
-    meta = meta_graph_iri(TENANT)
+    meta = DEFAULT_IRIS.meta(TENANT)
     first = await session.add_graph(TENANT, title(TENANT, "Central"))
     names = await graphs_in(store, database)
     assert str(meta) in names, "the root is in the meta graph"

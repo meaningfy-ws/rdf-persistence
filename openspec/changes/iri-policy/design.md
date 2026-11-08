@@ -90,6 +90,9 @@ path ids in `entrypoints/router.py` (`_last_segment`). Two places infer ownershi
   documents, session factory and access rules. Classes a consumer builds itself take it as an
   optional constructor argument defaulting to the default `Iris`: `Session`, `JwksTokenVerifier`
   (`adapters/jwks.py`, for `principal`), and `fake_session` in `testkit/fakes.py`.
+  The verifier is built by the consumer's composition root, so a deployment with its own
+  `principal` template passes `iris=kit.iris` (or `Iris(settings)`) itself: `install_service`
+  cannot rebind it, since entrypoints never import adapters. The adoption guide says so (5.4).
 - **PD-4 Matching.** A check fills the known variables (base, deployment, tenant, tenant_id,
   root) and compiles the rest into a regex. `{type}` is an alternation of the allowed types only:
   the aggregate-root types for the aggregate template, the owned-class types for the part
@@ -245,6 +248,18 @@ Five lenses (L1–L5) and the adversarial tester reviewed tasks 1.1–3.4. Accep
   Side effect, accepted: the unexported shim `tenant_iri_of_access` now answers only for tenants under
   `DEFAULT_IRIS`'s placeholder base; no production code calls it, and it goes with the shim clean-up.
 
+- **PD-13 How the policy record is stored (stage 2, a gap in PD-9).** The 5.3 builder found that
+  the toolkit session cannot write PD-9's record: `Session` accepts only a tenant's own graphs,
+  and the mapper writes only roots with an `id`, which `IriPolicy` lacks. The record is
+  configuration, not an aggregate: it has no tenant, version or registry entry. So the guard
+  (in `services/`) writes it through the `Store` port, `put_graph` on the system database, graph
+  `{base}toolkit/iri-policy`, as one statement: that IRI, `rp:iriPolicy`, and the effective
+  `IriPolicy`'s own JSON (`model_dump_json`) as a literal. It reads the record back with
+  `IriPolicy.model_validate_json`, so the data still goes only through the generated model.
+  Rejected: a new schema class with an `id`, plus a tenant-less session. That needs a schema
+  change, regeneration and a new session path for one record. `put_graph` replaces the whole
+  graph, so two workers writing the same policy at once give the same result.
+
 Rejected, with the reason:
 - `iris` required in every service constructor (L4 major 3): PD-3a keeps it optional for classes a
   consumer builds; PD-12j makes the default explicit instead.
@@ -252,6 +267,60 @@ Rejected, with the reason:
   patterns; `_templates` removes the repeated lookups, an enum would add a third copy.
 - A loaded graph not yet committed can be claimed by another aggregate that knows its random IRI
   (tester observation): the same accepted race as PD-7 *Loaded graphs*.
+
+### Stage-2 review decisions (PD-14)
+
+Five lenses and an adversarial tester (65 tests, 19 strict xfails over 9 defects) reviewed
+`a78bf6b..78c40d4`. Accepted:
+
+- **PD-14a The guard runs before the sweep** (L1, L2 and L3 independently). The sweep reads access
+  records through the configured policy, so a changed access or tenant template failed with
+  `InvalidIri` before the guard could name the change. The guard runs straight after
+  `ensure_system_database`, and its "has data" probe ignores the policy: it asks whether any
+  access record exists by type, not through `tenants()`. This amends PD-9's "after the sweep".
+- **PD-14b `Iris` owns the effective policy** (L2, L4, L5, tester 3–6). `Iris.effective_policy`
+  fills every unset part: `None` or empty templates, id specs, the alphabet. It also writes the
+  settings' `{base}`, `{deployment}` and `{tenant_segment}` into the templates, so changing any of
+  them changes the record. The guard compares effective policies on both sides (an older `{}`
+  record included). The comparison (`policy_differences`) moves to `domain/iris.py` beside
+  `check_iri_policy`, and the policy record's IRI comes from `domain/iris.py` on
+  `TOOLKIT_SEGMENT`.
+- **PD-14c The verifier's policy is checked** (L3, L4, L5). `install_service` refuses to start when
+  the verifier mints principals under another policy than the kit's. The `TokenVerifier` port
+  exposes the `Iris` it mints with, and the test fakes follow. A forgotten `iris=` is then caught,
+  not silent.
+- **PD-14d Colliding graphs are refused** (L1 major, tester 7). Building an `Iris` refuses an
+  access, meta or registry template that, for the same tenant, equals another of them or the
+  tenant IRI, or that matches the aggregate or loaded-graph pattern.
+  The check needs a drawn tenant, so it sits in `Iris`, not in the settings-only
+  `check_iri_policy` (amended after the checker; every service builds an `Iris` at start-up).
+- **PD-14e The first write is conditional** (L1, L2). The record is inserted only if none exists,
+  then read back and compared, so two workers that start with different policies cannot both
+  serve.
+- **PD-14f A bad record fails clearly** (L1 nit, tester 1–2). A record that cannot be parsed, or
+  more than one record, refuses start-up with `IriPolicyChanged` saying the record is unreadable,
+  not with a raw `ValidationError`.
+- **PD-14g Error class** (L2). `IriPolicyChanged` maps to `UNAVAILABLE`, as PD-9 says.
+- **PD-14h A `sub` of `""`, `.` or `..` is refused** by the verifier (tester): it would make a
+  dot-segment principal IRI.
+- **PD-14i `tenant_of_access` raises `InvalidIri` for a reserved-word id**, as its docstring says
+  (tester).
+- **PD-14j Small items:**
+  - the stale `check_iri_policy` docstring (L2);
+  - the system database name from `Tenancy`, not computed again (L5);
+  - `_refuse` renamed `_require_same` (L4);
+  - the `problems.py` comment above its entry (L3, L4);
+  - delete the unexported default-only shims (`access_iri`, `meta_graph_iri`,
+    `registry_graph_iri`, `tenant_iri_of_access`) and move their tests to `DEFAULT_IRIS`
+    (L4, L5). Exported names stay.
+- **PD-14k Docs:** `adopt.adoc` warns that a principal template without `{issuer}` merges the
+  same `sub` across identity providers (L1 m3).
+
+Rejected:
+- Requiring `{issuer}` in the principal template (L1 m3): the consumer's own template,
+  `{base}{deployment}/user/{sub}`, has none, by design. The docs warn instead (PD-14k).
+- Moving principal minting out of the adapter into services (L3, alternative): PD-14c catches the
+  same mistake with a smaller change.
 
 ## Algorithm / approach
 
@@ -318,3 +387,4 @@ The guard's first write is idempotent: writing an equal record twice changes not
 ## Open Questions
 
 None blocking. The developer may overturn any leader's choice listed in `inputs/seed.md`.
+

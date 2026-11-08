@@ -51,6 +51,7 @@ from rdf_persistence.services.store import Store
 log = logging.getLogger(__name__)
 
 # Every graph that holds an access record, whole: the mapper decodes the records from it.
+ASK_RECORDS = "ASK { GRAPH ?graph { ?record $p_state ?state } }"
 CONSTRUCT_RECORDS = (
     "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH ?graph { ?record $p_state ?state . ?s ?p ?o } }"
 )
@@ -123,6 +124,16 @@ class Tenancy:
                 self._mapper.to_triples(obj),
                 if_version,
             )
+
+    @property
+    def system_database(self) -> str:
+        """The name of the system database."""
+        return self._system
+
+    async def has_access_records(self) -> bool:
+        """True when any graph of the system database holds an access record, found by type and not through the IRI policy."""
+        result = await self._store.query(self._system, fill(ASK_RECORDS, p_state=term(v.STATE)))
+        return bool(result.askAnswer)
 
     async def ensure_system_database(self) -> bool:
         """Create the system database unless it exists (start-up); True if this call created it."""

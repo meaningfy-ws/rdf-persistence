@@ -6,7 +6,10 @@ from rdflib.namespace import Namespace
 
 from rdf_persistence.domain.exceptions import Conflict, NotFound
 from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.iris import access_iri, tenant_resource_name
+from rdf_persistence.domain.iris import (
+    DEFAULT_IRIS,
+    tenant_resource_name,
+)
 from rdf_persistence.services.session import open_session
 from tests.toy import ADA, library_slots
 
@@ -19,7 +22,7 @@ async def access_graph(store, settings, tenant: str):
     async with open_session(
         store, database=f"{settings.prefix}-system", tenant_iri=tenant, principal=CREATOR
     ) as session:
-        graph, _, _ = await session.get_graph(str(access_iri(tenant)))
+        graph, _, _ = await session.get_graph(str(DEFAULT_IRIS.access(tenant)))
     return graph
 
 
@@ -76,7 +79,7 @@ async def test_the_access_record_owns_the_grant(tenancy, store, settings):
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
     graph = await access_graph(store, settings, summary.id)
     permission = next(graph.subjects(RDF.type, ODRL.Permission))
-    assert (URIRef(access_iri(summary.id)), RP.grant, permission) in graph
+    assert (URIRef(DEFAULT_IRIS.access(summary.id)), RP.grant, permission) in graph
 
 
 ASK_CITY = "ASK { GRAPH ?g { ?s <http://schema.org/addressLocality> '%s' } }"

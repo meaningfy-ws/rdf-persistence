@@ -6,7 +6,9 @@ import pytest
 
 from rdf_persistence import Action, TenantState
 from rdf_persistence.domain.exceptions import Forbidden, NotFound
-from rdf_persistence.domain.iris import access_iri
+from rdf_persistence.domain.iris import (
+    DEFAULT_IRIS,
+)
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from tests.toy import (
     BOB,
@@ -333,7 +335,7 @@ CASES = [
         "the tenant's own access record is a target",
         caller(),
         held(role("librarian")),
-        str(access_iri(TENANT)),
+        str(DEFAULT_IRIS.access(TENANT)),
         Action.ADMINISTER,
         ALLOW,
     ),

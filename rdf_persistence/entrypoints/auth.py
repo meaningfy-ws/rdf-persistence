@@ -50,7 +50,9 @@ class Gate:
             Forbidden: The caller may see it but not take ``action``.
         """
         system = self._kit.system_database
-        access = await load_caller_access(self._kit.store, system, tenant, caller.principal)
+        access = await load_caller_access(
+            self._kit.store, system, tenant, caller.principal, iris=self._kit.iris
+        )
         self._kit.rules.require(caller, access, target, action)
         return access
 

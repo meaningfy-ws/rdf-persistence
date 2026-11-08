@@ -4,6 +4,7 @@ import re
 import secrets
 from collections.abc import Callable
 from functools import cached_property
+from typing import Any
 from urllib.parse import quote
 from uuid import UUID, uuid4
 
@@ -23,6 +24,8 @@ _PREFIX = re.compile(r"[a-z][a-z0-9]{0,19}")
 SYSTEM_SUFFIX = "-system"
 TENANT_INFIX = "-t-"
 TOOLKIT_SEGMENT = "toolkit"
+# The graph, under the base, that records the effective IRI policy of the deployment (PD-9, PD-14b).
+POLICY_SEGMENT = f"{TOOLKIT_SEGMENT}/iri-policy"
 GENID = "/.well-known/genid/"
 
 
@@ -102,6 +105,11 @@ def toolkit_principal_iri(base: str) -> URIRef:
     return URIRef(f"{base}{TOOLKIT_SEGMENT}")
 
 
+def policy_record_iri(base: str) -> URIRef:
+    """The graph, and the subject in it, that record the effective IRI policy: ``{base}toolkit/iri-policy``."""
+    return URIRef(f"{base}{POLICY_SEGMENT}")
+
+
 def is_inside_tenant(tenant_iri: str, iri: str) -> bool:
     """True when ``iri`` lies below the tenant's path (the tenant IRI itself does not)."""
     return iri.startswith(f"{tenant_iri}/")
@@ -141,26 +149,6 @@ def loaded_graph_iri(aggregate_iri: str) -> URIRef:
     return DEFAULT_IRIS.mint_loaded_graph(tenant="", root=aggregate_iri)
 
 
-def meta_graph_iri(tenant_iri: str) -> URIRef:
-    """The graph that holds the tenant's root object."""
-    return DEFAULT_IRIS.meta(tenant_iri)
-
-
-def registry_graph_iri(tenant_iri: str) -> URIRef:
-    """The graph that holds the tenant's registry entries."""
-    return DEFAULT_IRIS.registry(tenant_iri)
-
-
-def access_iri(tenant_iri: str) -> URIRef:
-    """The IRI of the tenant's access record; its graph is ``graph_iri`` of it."""
-    return DEFAULT_IRIS.access(tenant_iri)
-
-
-def tenant_iri_of_access(access_record_iri: str) -> URIRef:
-    """The tenant an access record belongs to; the inverse of ``access_iri``."""
-    return DEFAULT_IRIS.tenant_of_access(access_record_iri)
-
-
 def system_database_name(prefix: str) -> str:
     """The system database ``{prefix}-system``."""
     return f"{_prefix(prefix)}{SYSTEM_SUFFIX}"
@@ -198,16 +186,15 @@ def _templates(policy: IriPolicy) -> dict[str, str]:
 
 
 def check_iri_policy(settings: ServiceSettings) -> None:
-    """Refuse what the generated models cannot state, or what the toolkit does not wire yet.
+    """Refuse what the generated models cannot state.
 
     The template variables, the closing id variable and the literal characters are patterns of the
-    schema; what remains is that ``{deployment}`` needs a ``deployment`` slug (PD-1), that a ``random``
-    id has a length, and that no stage-2 template differs from its default (PD-12a). Absent policy
-    and absent id specs are the defaults and always valid.
+    schema; what remains is that ``{deployment}`` needs a ``deployment`` slug (PD-1) and that a
+    ``random`` id has a length. Absent policy and absent id specs are the defaults and always valid.
+    ``Iris`` also refuses templates whose graphs collide (PD-14d).
 
     Raises:
-        InvalidIri: a template uses ``{deployment}`` and no slug is set, a random id has no length,
-            or a stage-2 template is not the default.
+        InvalidIri: a template uses ``{deployment}`` and no slug is set, or a random id has no length.
     """
     policy = settings.iri_policy
     if policy is None:
@@ -221,11 +208,9 @@ def check_iri_policy(settings: ServiceSettings) -> None:
 
 
 def _check_template(name: str, template: str, settings: ServiceSettings) -> None:
-    """Refuse one template of ``check_iri_policy``: ``{deployment}`` without a slug, or a stage-2 one."""
+    """Refuse one template of ``check_iri_policy``: ``{deployment}`` without a slug."""
     if "{deployment}" in template and not settings.deployment:
         raise InvalidIri(f"{name} uses {{deployment}} but the settings set no deployment")
-    if name in STAGE_TWO_TEMPLATES and template != getattr(_DEFAULT_POLICY, name):
-        raise InvalidIri(f"{name}: a template other than the default arrives with stage 2")
 
 
 # --- the IRI policy (PD-3 to PD-6, PD-10, PD-11) ------------------------------------------------
@@ -234,13 +219,6 @@ DEFAULT_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
 LOADED_GRAPH_TYPE = "content"
 # The words the IRI layout owns; they are never an id (PD-5) and no class may take one as its type (PD-8).
 LAYOUT_WORDS = (LOADED_GRAPH_TYPE, "graph", "parts", "access", "meta", "registry")
-# The templates the toolkit mints but does not yet read back through the policy (PD-12a, task 5.1).
-STAGE_TWO_TEMPLATES = (
-    "access_template",
-    "meta_template",
-    "registry_template",
-    "principal_template",
-)
 _UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 _VARIABLE = re.compile(r"(\{[a-z_]+\})")
 _WORD = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
@@ -248,7 +226,54 @@ _ANY = ".+"
 _NOTHING = "(?!)"
 _MAX_RESERVED_REDRAWS = 100
 _UUID4 = IdSpec(kind=IdKind.UUID4)
+_TEMPLATE_SLOTS = tuple(name for name in IriPolicy.model_fields if name.endswith("_template"))
 _DEFAULT_POLICY = IriPolicy()
+_ID_SPECS = ("tenant_id", "object_id")
+
+
+def _canonical_spec(spec: IdSpec | None) -> IdSpec:
+    if spec is None or spec.kind == IdKind.UUID4:
+        return _UUID4
+    return spec.model_copy(update={"alphabet": spec.alphabet or DEFAULT_ALPHABET})
+
+
+def effective_policy(policy: IriPolicy | None, settings: ServiceSettings) -> IriPolicy:
+    """``policy`` with every unset part filled in, so two spellings of one policy are equal (PD-14b).
+
+    Unset or empty templates take the default; the settings' ``{base}``, ``{deployment}`` and
+    ``{tenant_segment}`` are written into them, so changing a setting a template uses changes the
+    result; the id specs and the alphabet are filled.
+    """
+    policy = policy or _DEFAULT_POLICY
+    fixed = {
+        "base": settings.base,
+        "deployment": settings.deployment or "",
+        "tenant_segment": settings.tenant_segment,
+    }
+    update: dict[str, object] = {}
+    for name in _TEMPLATE_SLOTS:
+        template = str(getattr(policy, name) or getattr(_DEFAULT_POLICY, name))
+        for variable, value in fixed.items():
+            template = template.replace(f"{{{variable}}}", value)
+        update[name] = template
+    update.update({name: _canonical_spec(getattr(policy, name)) for name in _ID_SPECS})
+    return policy.model_copy(update=update)
+
+
+def policy_differences(stored: IriPolicy, configured: IriPolicy) -> list[str]:
+    """The dotted names of the fields on which two policies differ (give effective ones)."""
+    return _differences(stored.model_dump(), configured.model_dump(), "")
+
+
+def _differences(stored: dict[str, Any], configured: dict[str, Any], path: str) -> list[str]:
+    found: list[str] = []
+    for name in stored:
+        if isinstance(stored[name], dict) and isinstance(configured[name], dict):
+            found += _differences(stored[name], configured[name], f"{path}{name}.")
+        elif stored[name] != configured[name]:
+            found.append(f"{path}{name}")
+    return found
+
 
 IdSource = Callable[[IdSpec], str]
 
@@ -323,11 +348,17 @@ class Iris:
             ("id_source", id_source),
         ):
             object.__setattr__(self, name, value)
+        self._require_distinct_graphs()
 
     def __setattr__(self, name: str, value: object) -> None:
         raise AttributeError(f"Iris is frozen: cannot set {name!r}")
 
     # -- what the settings say --
+
+    @cached_property
+    def effective_policy(self) -> IriPolicy:
+        """The policy with every unset part filled in and the settings written into the templates (PD-14b)."""
+        return effective_policy(self.settings.iri_policy, self.settings)
 
     @cached_property
     def _policy(self) -> IriPolicy:
@@ -404,6 +435,41 @@ class Iris:
     @cached_property
     def _object_id_re(self) -> re.Pattern[str]:
         return re.compile(_id_pattern(self._object_spec))
+
+    def _require_distinct_graphs(self) -> None:
+        """Refuse templates under which one tenant's access, meta or registry IRI is another, the tenant's, or an aggregate's (PD-14d).
+
+        Raises:
+            InvalidIri: two of the IRIs coincide, or one reads as an aggregate or a loaded graph.
+        """
+        tenant = self._probe_tenant()
+        if tenant is None:  # no id can be drawn: minting a tenant fails on its own, loudly
+            return
+        taken = {str(tenant): "tenant"}
+        for name, make in (
+            ("access", self.access),
+            ("meta", self.meta),
+            ("registry", self.registry),
+        ):
+            iri = str(make(tenant))
+            if iri in taken:
+                raise InvalidIri(
+                    f"the {name} template mints the same IRI as the {taken[iri]}: {iri!r}"
+                )
+            taken[iri] = name
+            for pattern in (self._aggregate_re, self._loaded_re):
+                found = pattern.fullmatch(iri)
+                if found is not None and self._belongs(found, str(tenant)):
+                    raise InvalidIri(
+                        f"the {name} template mints an IRI that reads as an aggregate: {iri!r}"
+                    )
+
+    def _probe_tenant(self) -> URIRef | None:
+        for _ in range(_MAX_RESERVED_REDRAWS):
+            candidate = draw_id(self._tenant_spec)
+            if candidate not in self._reserved:
+                return self.tenant(candidate)
+        return None
 
     # -- minting --
 
@@ -566,9 +632,12 @@ class Iris:
         if found is None:
             raise InvalidIri(f"not an access record IRI: {access_record_iri!r}")
         groups = found.groupdict()
-        tenant = (
-            URIRef(groups["tenant"]) if "tenant" in groups else self.tenant(groups["tenant_id"])
-        )
+        try:
+            tenant = (
+                URIRef(groups["tenant"]) if "tenant" in groups else self.tenant(groups["tenant_id"])
+            )
+        except NotFound as error:  # a reserved word where the tenant id stands
+            raise InvalidIri(f"not an access record IRI: {access_record_iri!r}") from error
         if self.access(tenant) != URIRef(str(access_record_iri)) or not self._tenant_re.fullmatch(
             str(tenant)
         ):

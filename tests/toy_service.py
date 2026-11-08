@@ -16,7 +16,7 @@ from rdf_persistence import (
     load_role_definitions,
 )
 from rdf_persistence.domain.generated.service.rp_service import IdKind, IdSpec, IriPolicy
-from rdf_persistence.domain.iris import principal_iri
+from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris, principal_iri
 from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
@@ -99,6 +99,7 @@ class ToyService:
         max_body_bytes: int | None = None,
         mount: str = "",
         iri_policy: IriPolicy | None = None,
+        verifier_iris: Iris = DEFAULT_IRIS,
     ) -> None:
         self.signer = TokenSigner()
         self.store = store or FakeStore()
@@ -113,7 +114,11 @@ class ToyService:
             }
         )
         verifier = JwksTokenVerifier(
-            ISSUER, self.signer.audience, self.signer.roles_claim, transport=self.signer.transport
+            ISSUER,
+            self.signer.audience,
+            self.signer.roles_claim,
+            transport=self.signer.transport,
+            iris=verifier_iris,
         )
         self.app = FastAPI()
         self.kit = install_service(

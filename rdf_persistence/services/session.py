@@ -22,8 +22,6 @@ from rdf_persistence.domain.iris import (
     DEFAULT_IRIS,
     Iris,
     graph_iri,
-    meta_graph_iri,
-    registry_graph_iri,
     skolem_iri,
 )
 from rdf_persistence.domain.sparql import Triple, fill, term, term_list, triples_block
@@ -232,12 +230,12 @@ class Session:
         self._tenant = tenant_iri
         self._principal = principal
         self._clock = clock
-        self._registry = registry_graph_iri(tenant_iri)
+        self._registry = iris.registry(tenant_iri)
 
     def _graph(self, iri: str) -> URIRef:
         """The graph of the aggregate ``iri``, or the meta graph for the tenant root."""
         if iri == self._tenant:
-            return meta_graph_iri(self._tenant)
+            return self._iris.meta(self._tenant)
         if not self._iris.is_aggregate(self._tenant, iri):
             raise InvalidIri(f"{iri!r} is not an aggregate IRI of the tenant {self._tenant!r}")
         return graph_iri(iri)

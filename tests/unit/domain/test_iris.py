@@ -9,7 +9,6 @@ from rdflib import URIRef
 from rdf_persistence.domain.exceptions import InvalidIri, NotFound
 from rdf_persistence.domain.iris import (
     DEFAULT_IRIS,
-    access_iri,
     aggregate_iri,
     graph_iri,
     is_aggregate_graph_iri,
@@ -18,17 +17,14 @@ from rdf_persistence.domain.iris import (
     is_inside_tenant,
     is_loaded_graph_of,
     loaded_graph_iri,
-    meta_graph_iri,
     mint_aggregate_iri,
     mint_part_iri,
     mint_tenant_iri,
     principal_iri,
-    registry_graph_iri,
     root_of_graph,
     skolem_iri,
     system_database_name,
     tenant_iri,
-    tenant_iri_of_access,
     tenant_name_prefix,
     tenant_resource_name,
     toolkit_principal_iri,
@@ -75,10 +71,10 @@ def test_loaded_graph_iri_sits_under_the_aggregate():
 
 
 def test_meta_registry_and_access_iris():
-    assert meta_graph_iri(TENANT) == URIRef(f"{TENANT}/meta")
-    assert registry_graph_iri(TENANT) == URIRef(f"{TENANT}/registry")
-    assert access_iri(TENANT) == URIRef(f"{TENANT}/access")
-    assert graph_iri(access_iri(TENANT)) == URIRef(f"{TENANT}/access/graph")
+    assert DEFAULT_IRIS.meta(TENANT) == URIRef(f"{TENANT}/meta")
+    assert DEFAULT_IRIS.registry(TENANT) == URIRef(f"{TENANT}/registry")
+    assert DEFAULT_IRIS.access(TENANT) == URIRef(f"{TENANT}/access")
+    assert graph_iri(DEFAULT_IRIS.access(TENANT)) == URIRef(f"{TENANT}/access/graph")
 
 
 @pytest.mark.parametrize("segment", ["", "a/b", "a b", "a>b", "../x", "a?b", "a#b"])
@@ -129,12 +125,12 @@ def test_mint_part_iri_sits_under_the_root_and_is_fresh():
 def test_the_tenant_of_an_access_record_is_the_iri_it_hangs_under():
     # the shim answers for the default policy, whose base is DEFAULT_IRIS's (PD-12n)
     tenant = URIRef(f"{DEFAULT_IRIS.settings.base}tenants/12345678-1234-4234-8234-123456789abc")
-    assert tenant_iri_of_access(access_iri(tenant)) == tenant
+    assert DEFAULT_IRIS.tenant_of_access(DEFAULT_IRIS.access(tenant)) == tenant
 
 
 def test_an_iri_that_is_not_an_access_record_has_no_tenant():
     with pytest.raises(InvalidIri, match="access record"):
-        tenant_iri_of_access(f"{TENANT}/books/1")
+        DEFAULT_IRIS.tenant_of_access(f"{TENANT}/books/1")
 
 
 @pytest.mark.parametrize(
@@ -208,7 +204,10 @@ def test_an_aggregate_iri_is_the_minted_form_or_the_tenant_root(iri, accepted):
     ("iri", "accepted"),
     [
         (str(graph_iri(str(mint_aggregate_iri(TENANT, "books")))), True),
-        (str(graph_iri(str(access_iri(TENANT)))), False),  # the access record is not an aggregate
+        (
+            str(graph_iri(str(DEFAULT_IRIS.access(TENANT)))),
+            False,
+        ),  # the access record is not an aggregate
         (str(graph_iri(str(TENANT))), False),  # the tenant root has no aggregate graph of its own
         (str(mint_aggregate_iri(TENANT, "books")), False),  # the root, not its graph
         (f"{TENANT}/books/x/graph", False),

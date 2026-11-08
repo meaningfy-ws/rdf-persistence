@@ -1,7 +1,8 @@
 """``TokenVerifier`` over a provider's JWKS: OIDC discovery, a timed key cache, JWT checks.
 
-The principal is ``{issuer}/users/{sub}``: the issuer already names the provider, so the IRI is
-stable and unique across providers, and ``sub`` is percent-encoded so it cannot leave the path.
+The principal is minted by ``Iris.principal``: by default ``{issuer}/users/{sub}``, where the issuer
+already names the provider, so the IRI is stable and unique across providers, and ``sub`` is
+percent-encoded so it cannot leave the path. A deployment's policy may set another template.
 """
 
 import asyncio
@@ -19,7 +20,7 @@ from rdf_persistence.adapters._http import HttpAdapter
 from rdf_persistence.adapters.generated.rp_wire import DiscoveryDocument, JwtClaims
 from rdf_persistence.domain.exceptions import IdentityUnavailable, InvalidToken
 from rdf_persistence.domain.generated.service.rp_service import VerifiedCaller
-from rdf_persistence.domain.iris import principal_iri
+from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.tokens import EpochClock
 
 JWKS_TTL_SECONDS = 600.0
@@ -32,6 +33,8 @@ ALLOWED_ALGORITHMS = (RS256, ES256)
 HTTPS_PREFIX = "https://"
 DISCOVERY_PATH = "/.well-known/openid-configuration"
 REQUIRED_CLAIMS = ("exp", "sub")
+# A principal IRI ending in one of these is empty or a dot segment, which IRI normalisation resolves away (PD-14h).
+UNUSABLE_SUBJECTS = ("", ".", "..")
 
 
 class JwksTokenVerifier(HttpAdapter):
@@ -50,6 +53,7 @@ class JwksTokenVerifier(HttpAdapter):
         transport: httpx.AsyncBaseTransport | None = None,
         clock: EpochClock = time.time,
         allow_insecure_issuer: bool = False,
+        iris: Iris = DEFAULT_IRIS,
     ) -> None:
         """Verify tokens of ``issuer``, which must be an https URL unless ``allow_insecure_issuer`` (test containers)."""
         for name, value in (
@@ -63,6 +67,7 @@ class JwksTokenVerifier(HttpAdapter):
             raise ValueError("the issuer must be an https URL")
         super().__init__(transport=transport)
         self._issuer = issuer
+        self._iris = iris
         self._audience = audience
         self._roles_claim = roles_claim
         self._jwks_uri = jwks_uri
@@ -71,6 +76,10 @@ class JwksTokenVerifier(HttpAdapter):
         self._fetched_at: float | None = None
         self._attempted_at: float | None = None
         self._lock = asyncio.Lock()
+
+    @property
+    def iris(self) -> Iris:
+        return self._iris
 
     async def verify(self, token: str) -> VerifiedCaller:
         if not token:
@@ -119,6 +128,8 @@ class JwksTokenVerifier(HttpAdapter):
             raise InvalidToken("the token's claims are malformed") from error
         if not all(math.isfinite(t) for t in (claims.exp, claims.nbf or 0.0)):
             raise InvalidToken("the token's times are malformed")
+        if claims.sub in UNUSABLE_SUBJECTS:
+            raise InvalidToken("the token's subject cannot name a principal")
         if claims.exp <= now:
             raise InvalidToken("the token has expired")
         if claims.nbf is not None and claims.nbf > now:
@@ -126,7 +137,7 @@ class JwksTokenVerifier(HttpAdapter):
         return claims
 
     def _principal(self, subject: str) -> str:
-        return str(principal_iri(self._issuer, subject))
+        return str(self._iris.principal(self._issuer, subject))
 
     def _roles(self, claims: JwtClaims) -> list[str]:
         claim = (claims.model_extra or {}).get(self._roles_claim)

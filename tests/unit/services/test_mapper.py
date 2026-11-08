@@ -12,7 +12,10 @@ from rdflib import RDF, BNode, Graph, Literal, URIRef
 from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
-from rdf_persistence.domain.iris import graph_iri, meta_graph_iri
+from rdf_persistence.domain.iris import (
+    DEFAULT_IRIS,
+    graph_iri,
+)
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.mapper import new_part
 from rdf_persistence.services.schema_structure import is_bookkeeping, is_internal
@@ -31,7 +34,7 @@ ROOT_CLASSES = {"Book": Book, "Scan": Scan, "Library": Library, "LibraryAccess":
 
 def storage_of(cls: type[BaseModel], iri: str) -> URIRef:
     """The named graph that holds the root: the meta graph for the tenant root, else its own graph."""
-    return meta_graph_iri(iri) if cls is Library else graph_iri(iri)
+    return DEFAULT_IRIS.meta(iri) if cls is Library else graph_iri(iri)
 
 
 # deterministic examples, no deadline: building the strategies is slow the first time
@@ -228,8 +231,8 @@ def test_the_tenant_root_reads_its_tracking_from_the_meta_graph():
     mapper = toy_mapper()
     library = Library(id=TENANT, label="City library", description="d", city="Brussels")
     graph = mapper.to_graph(library)
-    graph.add((meta_graph_iri(TENANT), v.CREATOR, URIRef(ADA)))
-    assert mapper.from_graph(Library, TENANT, graph, meta_graph_iri(TENANT)).creator == ADA
+    graph.add((DEFAULT_IRIS.meta(TENANT), v.CREATOR, URIRef(ADA)))
+    assert mapper.from_graph(Library, TENANT, graph, DEFAULT_IRIS.meta(TENANT)).creator == ADA
 
 
 def test_tracking_is_not_written_by_the_mapper():

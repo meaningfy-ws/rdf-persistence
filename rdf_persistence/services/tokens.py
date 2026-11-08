@@ -8,6 +8,7 @@ from collections.abc import Callable
 from typing import Protocol
 
 from rdf_persistence.domain.generated.service.rp_service import VerifiedCaller
+from rdf_persistence.domain.iris import Iris
 
 EpochClock = Callable[[], float]
 """A clock that answers seconds since the epoch, as the ``exp`` and ``nbf`` claims count them."""
@@ -15,6 +16,11 @@ EpochClock = Callable[[], float]
 
 class TokenVerifier(Protocol):
     """Turns an access token into the caller it identifies."""
+
+    @property
+    def iris(self) -> Iris:
+        """The ``Iris`` the verifier mints principals with; ``install_service`` checks its policy against the kit's."""
+        ...
 
     async def verify(self, token: str) -> VerifiedCaller:
         """The caller a valid token identifies.

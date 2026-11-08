@@ -248,13 +248,13 @@ def both() -> Iris:
     return Iris(settings(policy))
 
 
-def test_an_access_template_with_tenant_and_tenant_id_round_trips(until_stage_two):
+def test_an_access_template_with_tenant_and_tenant_id_round_trips():
     iris = both()
     tenant = str(iris.tenant(TENANT_ID))
     assert str(iris.tenant_of_access(str(iris.access(tenant)))) == tenant
 
 
-def test_an_access_iri_whose_two_tenant_variables_disagree_is_not_an_access_iri(until_stage_two):
+def test_an_access_iri_whose_two_tenant_variables_disagree_is_not_an_access_iri():
     iris = both()
     tenant = str(iris.tenant(TENANT_ID))
     forged = f"{tenant}/access/q9y7j1n"
@@ -262,7 +262,7 @@ def test_an_access_iri_whose_two_tenant_variables_disagree_is_not_an_access_iri(
         iris.tenant_of_access(forged)
 
 
-def test_an_access_iri_of_another_tenant_is_not_this_tenants_record(until_stage_two):
+def test_an_access_iri_of_another_tenant_is_not_this_tenants_record():
     iris = both()
     mine, other = str(iris.tenant(TENANT_ID)), str(iris.tenant("q9y7j1n"))
     assert iris.is_aggregate(other, str(iris.access(other)))
@@ -359,15 +359,15 @@ def test_a_default_aggregate_iri_with_a_longer_nesting_is_not_an_aggregate():
         ("principal_template", "{base}u/{sub}"),
     ],
 )
-def test_a_template_stage_two_does_not_wire_yet_is_refused_naming_it(slot, template):
-    with pytest.raises(InvalidIri, match=f"{slot}.*stage 2"):
-        Iris(
-            settings(IriPolicy(tenant_id=IdSpec(kind=IdKind.RANDOM, length=7), **{slot: template}))
-        )
+def test_an_access_meta_registry_or_principal_template_of_its_own_is_accepted(slot, template):
+    made = Iris(
+        settings(IriPolicy(tenant_id=IdSpec(kind=IdKind.RANDOM, length=7), **{slot: template}))
+    )
+    assert getattr(made.settings.iri_policy, slot) == template
 
 
 @pytest.mark.parametrize("slot", ["access_template", "meta_template", "registry_template"])
-def test_the_default_value_of_a_stage_two_template_is_accepted(slot):
+def test_the_default_value_of_an_access_meta_or_registry_template_is_accepted(slot):
     assert Iris(settings(IriPolicy(**{slot: getattr(IriPolicy(), slot)})))
 
 

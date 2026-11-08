@@ -7,9 +7,10 @@ and under the consumer's (seven lowercase characters, flat objects beside the te
 import pytest
 
 from rdf_persistence import AccessRules, load_role_definitions
-from rdf_persistence.domain.exceptions import NotFound
+from rdf_persistence.domain.exceptions import InvalidIri, IriPolicyChanged, NotFound
+from rdf_persistence.domain.generated.service.rp_service import IriPolicy
 from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
-from tests.toy import ROLES
+from tests.toy import ROLES, SETTINGS
 from tests.toy_service import CONSUMER_POLICY, TENANT_BODY, ToyService
 
 CONSUMER_BASE = "https://example.org/library/"
@@ -100,3 +101,41 @@ def test_with_iris_keeps_the_permits_and_changes_the_policy() -> None:
     assert rebound is not rules
     assert rebound._iris is other and rules._iris is DEFAULT_IRIS, "the original is unchanged"
     assert rebound._permits == rules._permits
+
+
+async def test_start_up_refuses_a_changed_policy_over_the_same_store() -> None:
+    first = ToyService(iri_policy=CONSUMER_POLICY)
+    async with first.app.router.lifespan_context(first.app):
+        pass
+    second = ToyService(first.store, first.files, iri_policy=None)
+    with pytest.raises(IriPolicyChanged, match="tenant_template"):
+        async with second.app.router.lifespan_context(second.app):
+            pass
+
+
+async def test_start_up_names_a_changed_access_template_before_the_sweep_reads_the_records() -> (
+    None
+):
+    first = ToyService()
+    async with first.app.router.lifespan_context(first.app), first.client() as http:
+        made = await http.post("/libraries", json=TENANT_BODY, headers=first.bearer("ada"))
+    assert made.status_code == 201
+    second = ToyService(
+        first.store, first.files, iri_policy=IriPolicy(access_template="{tenant}/acc")
+    )
+    with pytest.raises(IriPolicyChanged, match="access_template"):
+        async with second.app.router.lifespan_context(second.app):
+            pass
+
+
+PEOPLE = IriPolicy(principal_template="{base}people/{sub}")
+
+
+def test_install_refuses_a_verifier_that_mints_principals_by_another_policy() -> None:
+    with pytest.raises(InvalidIri, match="principal"):
+        ToyService(iri_policy=PEOPLE)
+
+
+def test_install_accepts_a_verifier_built_with_the_kits_policy() -> None:
+    settings = SETTINGS.model_copy(update={"iri_policy": PEOPLE})
+    ToyService(iri_policy=PEOPLE, verifier_iris=Iris(settings))

@@ -33,7 +33,27 @@ left blank. Times are under load (other sessions ran `make` on the same machine)
 | checker | checker | 5m41s | 172.3k | 23 | 6 unmet (docs mostly), several nits; traceability met; no xfail left |
 | cold reader adopt.adoc | reader | 0m58s | 78.5k | 1 | step 14 not followable alone; 5 doc fixes accepted (temp/cold-reader-adopt.md) |
 | fix round 2 (PD-12n) | fixer | 7m25s | 145.4k | 57 | 8 items; doc snippets executed against the toy library |
+| final gate | lead | 6m30s + 2m16s | — | — | 3235 passed; containers passed |
+| PR #35 CI (1st) | CI | ~10 min | — | — | failed on Xenon (clean-code): the lead's gate was `check-all`, CI runs `check-all` + `clean-code`; fixed inline (two extract-function splits), pushed |
 | gitnexus re-index | lead | ~3 tries | — | — | incremental and `--force` fail (gitnexus bug); `clean --force` + `analyze` works |
+| 5.1 build | builder | 7m21s | 107.3k | 21 | access, meta, registry templates |
+| 5.2 build | builder | 1m58s | 72.1k | 9 | principal template |
+| 5.1+5.2 gate | lead | 5m37s + 1m00s | — | — | full check-all stopped at 48% (redundant per task, developer); ran the affected unit dirs (2143 passed) + check-quality + clean-code. Full suite once per stage from here |
+| 5.3 build (1st) | builder | 1m02s | 86.4k | 8 | stopped: PD-9's record could not go through the session; the lead recorded PD-13 |
+| 5.3 build | builder | 9m57s | 127.9k | 31 | guard + 13 unit, 1 wiring, 1 container test |
+| 5.3 gate | lead | 4m34s | — | — | entrypoints + guard tests, 416 passed |
+| 5.4 docs | lead | ~5 min | — | — | written by the lead (small); check-docs |
+| S2 review L1 | reviewer | 1m22s | 65.0k | 8 | 1 major (colliding graphs), 3 minor, 1 nit |
+| S2 review L2 | reviewer | 1m01s | 62.7k | 7 | 1 major (guard after sweep), 3 minor, 1 nit |
+| S2 review L3 | reviewer | 1m01s | 50.1k | 7 | 2 major (guard after sweep; unchecked verifier policy), 1 minor |
+| S2 review L4 | reviewer | 0m59s | 48.9k | 7 | 1 major (None templates), 3 minor, 1 nit |
+| S2 review L5 | reviewer | 0m55s | 63.8k | 6 | 1 major (effective policy duplicated), 3 minor, 2 nits |
+| S2 adversarial tester | tester | 2m49s | 105.2k | 16 | 65 tests, 19 strict xfails, 9 defects |
+| S2 decide | lead | ~10 min | — | — | PD-14a–k; 2 rejected. Short briefs (diff range + decisions) made reviewers ~4× cheaper and faster than stage 1 |
+| S2 fix PD-14a–k | fixer | 19m10s | 188.9k | 40 | 11 items, all 19 xfails closed; left a background run (stopped) |
+| S2 checker | checker | 1m15s | 100.2k | 14 | 2 unmet: api.adoc verifier/settings, PD-14d placement; fixed by the lead |
+| S2 cold reader | reader | 0m19s | 60.1k | 2 | 1 gap: no whole-policy example; fixed by the lead |
+| S2 stage gate | lead | 14m39s | — | — | once per stage: check-all 3336 passed (10m46s), clean-code, containers 174 passed (2m28s) |
 
 ## Where the time goes (first reading, after 3.2)
 
