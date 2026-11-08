@@ -93,3 +93,12 @@ Idempotency: both helpers only call the probe; they are as safe to repeat as the
 ## Open Questions
 
 None.
+
+## Review fixes (leader's decisions after the deep test and the five-lens review, 2026-11-08)
+
+- **RF-1** (L2). The propagation test asserts the probe ran once and nothing slept.
+- **RF-2** (L4). The async test helper is `_wait_async`, the twin of `_wait`.
+- **RF-3** (L3). The `bootstrap.py` docstring says it also holds the public waiting helpers.
+- Not taken: bounding a probe that never returns with `asyncio.timeout` (L1): both helpers share
+  this limit today and the EPIC exports them unchanged; a later change may add it to both. A docs
+  check that rule 11 names only exported helpers (L2): no such check exists for other pages.

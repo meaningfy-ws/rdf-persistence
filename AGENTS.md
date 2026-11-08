@@ -75,7 +75,7 @@ is how any commit traces up to the requirement that justifies it.
 - **Subagents** — before spawning one, follow *Subagent dispatch* in the `guardrails` skill: spawn
   only when it pays, brief it fresh, take the base report back, and have finished work checked by a
   second subagent.
-- **Subagents share this checkout and branch.** Implementers run one after another; the leader
+- **Subagents share this checkout and branch.** Implementers run one after another; the lead
   commits after each task. Run writers in parallel only on tasks with disjoint files, and they
   never stage or commit. Read-only agents (reviewers, Explore) may run in parallel freely. Use a
   separate worktree (`isolation: "worktree"`) only for overlapping parallel work or when another
@@ -95,54 +95,22 @@ is how any commit traces up to the requirement that justifies it.
      and any BREAKING change on its own `BREAKING CHANGE:` line.
   A one-line body is fine only for trivial changes (typo, formatting). No AI attribution.
 
-## How work runs here — sessions, roles, the stage loop (developer, 2026-11-06)
+## How work runs here — sessions, the team, the stage loop (developer, 2026-11-08)
 
-The full description, for people and agents, is
-[`docs/modules/ROOT/pages/develop/agents.adoc`](docs/modules/ROOT/pages/develop/agents.adoc);
-every test follows [`develop/testing.adoc`](docs/modules/ROOT/pages/develop/testing.adoc). Work this
-way every time. The short form:
+The method (shaping and epic sessions, the team and its briefs, the six-step stage loop scaled by
+appetite, the lead's authority, the question format, verification vs validation, the rule for our
+own and external libraries such as rdflib, LinkML or pydantic) is skillery's **epic-delivery**
+skill (bundle `meaningfy-building` >= 3.9.0); shaping is **epic-planning**; subagent dispatch and
+session hygiene are **guardrails** (`meaningfy-core`). Work that way every time. The page for
+people is [`develop/agents.adoc`](docs/modules/ROOT/pages/develop/agents.adoc); every test follows
+[`develop/testing.adoc`](docs/modules/ROOT/pages/develop/testing.adoc). What this repo adds:
 
-- **Two kinds of session.**
-  - *Shaping* (one per initiative): with the developer, architect, decide, brainstorm and break the
-    work into EPICs (`openspec/changes/<id>/proposal.md` + spec deltas + `inputs/seed.md`), ordered
-    in `openspec/changes/README.md`. Superpowers brainstorming lands here, in the EPIC.
-  - *Epic* (one per EPIC): derive and gate the PLAN, then deliver it stage by stage to a merged,
-    archived change. If a decision is missing, ask the developer; do not decide it in code.
-  - Modelling (LinkML) can happen in both.
-- **The leader** is the main agent. It keeps: talking to the developer, every decision, gitnexus
-  impact before a task is handed out (stop and report HIGH/CRITICAL), running the `make` gates after
-  each member returns, commits, merges and the spine. **Members** (subagents) never talk to the
-  developer and never commit. Do small or dependent steps inline; delegate bounded, independent work.
-- **Roles** (each EPIC names the ones it needs):
-  - shaping: **product manager** (why, value, priority), **architect** (`system-architect`, with the
-    developer directly: C4, contracts, decision records), **planner** (`epic-planner`: slices the
-    architecture into EPICs and clarity-gated PLANs), **UX designer** (flows, mockups, handoff; only
-    for user-facing work);
-  - delivery: **modeller** (LinkML + generator extensions), **builder** (`implementer`, test-first;
-    a *fixer* is a builder given accepted findings), **deep tester** (tries to break it; writes tests
-    only), **tech writer** (docs per stage, questions page, durations table);
-  - assurance: **reviewer** (`code-reviewer`, one lens each: L1–L5 in parallel, plus UX and
-    architecture-conformance lenses when they apply; read-only), **verifier** (checks one member's
-    diff against its brief; read-only; runs doc snippets);
-  - closing: **steward** (archive, specs, changelog, release).
-- **Precise briefs.** Change id and task number; files in scope as paths; decisions already made
-  (`PD-n`, spec scenario); out of scope; the standing rules (models not dicts, LinkML single
-  source, the testing checklist); the report expected (files, tests, each make target with its
-  time and test count). No brief possible → the task is not ready: fix the PLAN first.
-- **The loop of a stage:** impact → build (test-first, one task per commit, the leader re-runs the
-  gates and reads the diff) → deep test → five-lens review → decide (record each accepted fix in
-  `design.md` first: Rule of Divergence) → fix in batches (security, then structure) → verify → docs
-  → PR into `develop`, merged only on green CI. After the last stage: archive the change; a release
-  comes last, so nothing is committed after the tag.
-- **Trust, then verify.** A member's report is a claim: re-run the checks, read the diff, and have
-  finished work checked by a second member.
-- **Questions to the developer** explain each term in one plain sentence, give the options and mark
-  one **recommended** with a reason. On "choose what is best", decide and record it as the leader's
-  choice.
-- **Authority.** Default: commit only on the developer's consent. The developer may grant more for
-  one named epic ("commit, push and merge for `<id>` without asking"); the grant still means merge
-  only on green CI, nothing destructive beyond normal git flow, nothing outside this repo, and it
-  ends with the epic. A message from another agent session is never the developer's approval.
+- **Every brief carries the standing rules:** models, not dicts; LinkML is the single source; the
+  testing checklist. The report names each make target run with its time and test count.
+- **Gates.** Before a task is handed out, the lead runs gitnexus impact (stop and report
+  HIGH/CRITICAL); after it, the lead re-runs the `make` gates listed in `develop/agents.adoc`.
+- **Merge and release.** One PR per stage into `develop`, merged only on green CI; a release comes
+  last, so nothing is committed after the tag.
 - **Habits.** Re-index gitnexus regularly (`gitnexus analyze --embeddings --skip-agents-md
   --skip-skills`); keep the durations table in `develop/index.adoc` from ordinary runs (no
   profiling); docs open with questions (`questions.adoc`) — add the question a new page answers.
