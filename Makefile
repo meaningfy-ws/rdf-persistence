@@ -123,7 +123,7 @@ pre-commit: ## Run pre-commit hooks on all files
 #-----------------------------------------------------------------------------
 # Validation — non-mutating targets
 #-----------------------------------------------------------------------------
-.PHONY: format-check lint typecheck typecheck-generated typecheck-ts check-architecture test test-unit test-feature test-containers fuseki-image test-e2e test-perf changes-code
+.PHONY: format-check lint typecheck typecheck-generated typecheck-ts check-architecture test test-unit test-feature test-containers fuseki-image test-e2e test-perf
 
 format-check: ## Check formatting with Ruff, without changing files
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking formatting$(END_BUILD_PRINT)"
@@ -183,17 +183,14 @@ fuseki-image: $(FUSEKI_IMAGE_TAR) ## Load the Fuseki test image from its tar, bu
 	@ docker load -i $<
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Fuseki image ready$(END_BUILD_PRINT)"
 
-changes-code: ## Print true when HEAD changes a file outside openspec/, docs/ and top-level *.md since BASE (default origin/develop)
-	@ git diff --name-only $${BASE:-origin/develop}...HEAD | grep -qvE '^(openspec/|docs/|[^/]*\.md$$)' && echo true || echo false
-
-test-unit: ## Run unit tests only
+test-unit: ## Run the unit tests in parallel, with the 80 % coverage floor (CI job "unit")
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -m "unit"
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -m "unit" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Unit tests passed$(END_BUILD_PRINT)"
 
-test-feature: ## Run BDD feature tests only
+test-feature: ## Run the BDD feature tests in parallel, with a 50 % coverage floor (CI job "feature")
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -m "feature"
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -m "feature" $(COV_FLAGS) --cov-report=xml:$(REPO_ROOT)/coverage-feature.xml --cov-fail-under=50
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Feature tests passed$(END_BUILD_PRINT)"
 
 test-perf: ## Run the wall-clock budget tests alone (no coverage, no xdist); not part of check-all
@@ -207,21 +204,30 @@ test-e2e: ## Run end-to-end tests only
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) E2e tests passed$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------
-# Aggregates
+# Groups — one per CI job (.github/workflows/ci.yaml), each runnable alone
 #-----------------------------------------------------------------------------
-.PHONY: check-spec check-quality check-all ci-quick ci-full
+.PHONY: check-spec check-style check-types check-spec-docs check-generation check-quality check-all
 
-check-quality: format-check lint typecheck typecheck-generated check-architecture check-spec check-docs check-freshness ## Static checks: format + lint + typecheck + architecture + spec + docs and code terms + generated code is fresh
+check-style: format-check lint clean-code ## Formatting, lint and the complexity thresholds (CI job "style")
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Style checks passed$(END_BUILD_PRINT)"
+
+check-types: typecheck typecheck-generated typecheck-ts ## mypy on the code and the generated code, tsc on the generated TypeScript (CI job "types")
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Type checks passed$(END_BUILD_PRINT)"
+
+check-spec-docs: check-spec check-docs ## The OpenSpec spine and the docs checks (CI job "spec, docs and generation")
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Spec and docs checks passed$(END_BUILD_PRINT)"
+
+check-generation: check-freshness check-generated ## Generated code is fresh and regenerates unchanged (CI job "spec, docs and generation")
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generation checks passed$(END_BUILD_PRINT)"
+
+#-----------------------------------------------------------------------------
+# Aggregates — run locally before a PR
+#-----------------------------------------------------------------------------
+check-quality: check-style check-types check-architecture check-spec-docs check-freshness ## All static checks: the groups above, without the slower check-generated
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) All quality checks passed$(END_BUILD_PRINT)"
 
-check-all: check-quality test ## Full suite: quality + unit and feature tests (containers: make test-containers)
+check-all: check-quality test ## Full suite: quality + unit and feature tests (containers, locally only: make test-containers)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Full verification suite passed$(END_BUILD_PRINT)"
-
-ci-quick: check-quality test-unit ## CI fast: quality + unit tests
-	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) CI quick checks passed$(END_BUILD_PRINT)"
-
-ci-full: check-all clean-code ## CI full: quality + unit and feature tests + clean-code
-	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) CI full checks passed$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------
 # Reports (opt-in)
@@ -244,7 +250,7 @@ quality-report: ## Generate Radon quality report in reports/
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Quality reports at reports/$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------
-# Clean code analysis (separate from check-quality)
+# Clean code analysis (clean-code runs in check-style)
 #-----------------------------------------------------------------------------
 .PHONY: complexity maintainability clean-code
 

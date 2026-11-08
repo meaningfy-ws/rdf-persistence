@@ -47,9 +47,14 @@ One stage, one PR. Per task: the affected test directories, `make check-quality`
 
 ## 6. CI
 
-- [ ] 6.1 PD-1: `make fuseki-image`, the fixture without `build=True` (with its comment), the cache
+- [x] 6.1 PD-1: `make fuseki-image`, the fixture without `build=True` (with its comment), the cache
   step and `make fuseki-image` in the `containers` job, and the push-only warm-up job in
   `.github/workflows/ci.yaml`. Proof: the local and CI proofs of PD-1, in the PR description.
+  _Superseded in CI by 6.2 (PD-1b): only the local part stands; its proof is local._
+- [x] 6.2 PD-1b: CI drops the container job, the Fuseki cache and the warm-up job, and runs one
+  parallel job per make group (`check-style`, `check-types`, `check-architecture`,
+  `check-spec-docs` + `check-generation`, `test-unit`, `test-feature`); the groups are make
+  targets; coverage floors: `test-unit` 80 %, `test-feature` 50 %. Gate: `make check-all`, each group alone.
 
 ## 7. Close
 

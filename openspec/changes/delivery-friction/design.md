@@ -30,6 +30,28 @@ is open.
   Central is never reached. Proof, CI: the PR's second run logs a cache hit and no `download.sh`
   line. Both go in the PR description.
 
+## PD-1b No containers in CI; one parallel job per make group (developer, 2026-11-08)
+
+Decided after the PR was opened, superseding PD-1's CI part. CI on GitHub runs no container, e2e or
+Fuseki work: the `containers` job, the Fuseki cache action and the push-only warm-up job are
+removed; `make test-containers` (and `make fuseki-image`, `make test-e2e`) run locally. The checks
+split into parallel jobs, each one make group that also runs alone:
+
+| CI job | Make target | Runs |
+|---|---|---|
+| style | `check-style` | `format-check`, `lint`, `clean-code` |
+| types | `check-types` | `typecheck`, `typecheck-generated`, `typecheck-ts` |
+| architecture | `check-architecture` | import-linter |
+| spec, docs and generated code | `check-spec-docs`, `check-generation` | `check-spec`, `check-docs`; `check-freshness`, `check-generated` |
+| unit | `test-unit` | unit tests, `-n auto`, the 80 % coverage floor, SonarCloud |
+| feature | `test-feature` | BDD feature tests, `-n auto`, a 50 % coverage floor |
+
+Each test job has its own floor (developer): unit 80 %, feature 50 %. Measured 2026-11-08, the
+unit tests alone cover 94 %, the feature tests alone 59 %. `make test` keeps the combined 80 %. `check-quality` is now the groups plus `check-freshness`, so it gains
+`clean-code` and `typecheck-ts`; `check-all` = `check-quality` + `test` as before. `ci-quick`,
+`ci-full` and `changes-code` (used only by the removed job) are deleted. A shared composite action
+`.github/actions/setup` holds the Python, uv and `make install` steps every job repeats.
+
 ## PD-2 The listing test compares multivalued values in any order (Q-2 a)
 
 `test_an_item_is_what_a_read_of_the_same_book_returns` compares the two documents after a local
