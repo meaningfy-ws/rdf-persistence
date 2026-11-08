@@ -1,10 +1,14 @@
 # CI workflow for RDF Persistence
 # ============================================================================
 # Thin workflow (decision D12): every step calls a `make` target — never an
-# inline tool command. The gates here mirror `make check-all` + `make
-# clean-code` (i.e. `make ci-full`) so "green locally" means "green in CI".
+# inline tool command. Each job runs one make group, and the jobs run in
+# parallel; together they cover `make check-all` + `make check-generated`, so
+# "green locally" means "green in CI".
 #
-# Runs on push to develop and on PRs targeting develop; the container tests on PRs only.
+# No container, e2e or Fuseki work runs here (developer, 2026-11-08,
+# delivery-friction PD-1b): `make test-containers` is run locally.
+#
+# Runs on push to develop and on PRs targeting develop.
 #
 # SonarCloud on the free plan (developer, 2026-11-05). The free plan analyses
 # public projects, but only the SonarCloud main branch and PRs that target it.
@@ -41,80 +45,54 @@ permissions:
   contents: read
 
 jobs:
-  quality:
-    name: Lint, Typecheck, Architecture & Test
+  style:
+    name: Style (format, lint, complexity)
     runs-on: ubuntu-latest
-
-    # ------------------------------------------------------------------------
-    # Service containers — not used: the integration and e2e tests start their own
-    # containers (testkit, PD-16) in the `containers` job below.
-    # ------------------------------------------------------------------------
-    # services:
-    #   postgres:
-    #     image: postgres:16-alpine
-    #     env:
-    #       POSTGRES_USER: ci_user
-    #       POSTGRES_PASSWORD: ci_password
-    #       POSTGRES_DB: ci_db
-    #     ports:
-    #       - 5432:5432
-    #     options: >-
-    #       --health-cmd "pg_isready -U ci_user"
-    #       --health-interval 10s
-    #       --health-timeout 5s
-    #       --health-retries 5
-    #   redis:
-    #     image: redis:7-alpine
-    #     ports:
-    #       - 6379:6379
-    #     options: >-
-    #       --health-cmd "redis-cli ping"
-    #       --health-interval 10s
-    #       --health-timeout 5s
-    #       --health-retries 5
-
-    # env:
-    #   DATABASE_URL: postgresql://ci_user:ci_password@localhost:5432/ci_db
-    #   REDIS_URL: redis://localhost:6379/0
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: make check-style
 
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-
-      - name: Install dependencies
-        run: make install
-
-      - name: Quality gate (lint, types, architecture, spec, docs)
-        run: make check-quality
-
-      - name: Set up Node 20 (TypeScript check)
-        uses: actions/setup-node@v4
+  types:
+    name: Types (mypy, generated code, TypeScript)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
+      - run: make check-types
 
-      - name: Type-check the generated TypeScript (tsc --noEmit --strict)
-        run: make typecheck-ts
+  architecture:
+    name: Architecture (import-linter)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: make check-architecture
 
-      - name: Check the generated code is fresh
-        run: make check-generated
+  spec-docs-generation:
+    name: Spec, docs and generated code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: make check-spec-docs
+      - run: make check-generation
 
-      - name: Run tests with coverage
-        run: make test
-
-      - name: Clean-code thresholds (Xenon)
-        run: make clean-code
+  unit:
+    name: Unit tests (coverage floor)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # SonarCloud reads the history
+      - uses: ./.github/actions/setup
+      - run: make test-unit
 
       - name: Upload coverage report
         if: always()
@@ -132,52 +110,10 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  containers:
-    name: Container tests (Fuseki, Garage, Zitadel)
+  feature:
+    name: Feature tests (BDD)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    # Pull requests only: the merge to develop would re-run what its PR already ran.
-    if: github.event_name == 'pull_request'
-
-    # Docker is available on GitHub-hosted ubuntu runners; the fixtures start the containers a
-    # test's markers need (PD-16). Coverage is reported without a floor. A PR that changes only
-    # openspec/, docs/ or top-level Markdown skips the steps (and the image downloads) and passes.
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Does the PR change code?
-        id: changes
-        run: echo "code=$(make -s changes-code BASE=origin/${{ github.base_ref }})" >> "$GITHUB_OUTPUT"
-
-      - name: Set up Python 3.12
-        if: steps.changes.outputs.code == 'true'
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install uv
-        if: steps.changes.outputs.code == 'true'
-        uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-
-      - name: Install dependencies
-        if: steps.changes.outputs.code == 'true'
-        run: make install
-
-      - name: Run container tests
-        if: steps.changes.outputs.code == 'true'
-        run: make test-containers
-
-      - name: Upload container test results
-        if: always() && steps.changes.outputs.code == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: container-test-results
-          retention-days: 14
-          path: |
-            coverage-containers.xml
-            test-results-containers.xml
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: make test-feature

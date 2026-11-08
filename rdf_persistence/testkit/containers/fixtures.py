@@ -95,9 +95,7 @@ def _compose_project() -> Iterator[None]:
 
 
 @contextmanager
-def _running(
-    *services: str, port_var: str, build: bool = False
-) -> Iterator[tuple[DockerCompose, int]]:
+def _running(*services: str, port_var: str) -> Iterator[tuple[DockerCompose, int]]:
     """Start the services on a free host port, and tear down and restore the environment after.
 
     The port reaches ``compose.yaml`` through the ``port_var`` variable.
@@ -109,7 +107,6 @@ def _running(
             COMPOSE_DIR,
             compose_file_name=COMPOSE_FILE,
             services=list(services),
-            build=build,
         ) as compose,
     ):
         yield compose, port
@@ -136,7 +133,9 @@ def _exec(compose: DockerCompose, service: str, command: list[str]) -> ExecResul
 @pytest.fixture(scope="session")
 def fuseki(_compose_project: None) -> Iterator[FusekiServer]:
     """Fuseki, answering ``/$/ping`` for the test user."""
-    with _running(FUSEKI, port_var="RP_FUSEKI_PORT", build=True) as (_, port):
+    # No build=True: compose builds only when the tag is missing, so the image `make fuseki-image`
+    # loaded is used as is. After editing fuseki/, run `make fuseki-image` to rebuild and reload it.
+    with _running(FUSEKI, port_var="RP_FUSEKI_PORT") as (_, port):
         server = FusekiServer(
             url=f"http://localhost:{port}", user=FUSEKI_USER, password=FUSEKI_PASSWORD
         )

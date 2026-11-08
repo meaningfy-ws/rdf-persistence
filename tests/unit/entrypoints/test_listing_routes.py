@@ -1,5 +1,7 @@
 """Listings over the router and the fakes: pages, filters, sort, who sees what (task 5.4, PD-9, PD-15)."""
 
+import json
+
 import httpx
 import pytest
 
@@ -82,6 +84,17 @@ async def shelf(service: ToyService, client: httpx.AsyncClient) -> Shelf:
     return await Shelf.set_up(service, client)
 
 
+def _unordered(value: object) -> object:
+    """Make a document comparable regardless of the order of multivalued slots."""
+    if isinstance(value, dict):
+        return {key: _unordered(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return sorted(
+            (_unordered(item) for item in value), key=lambda item: json.dumps(item, sort_keys=True)
+        )
+    return value
+
+
 # --- the page -----------------------------------------------------------------------------------
 
 
@@ -111,7 +124,7 @@ async def test_an_item_is_what_a_read_of_the_same_book_returns(shelf) -> None:
     read = await shelf.http.get(
         item["id"].replace(shelf.tenant_iri, shelf.tenant), headers=shelf.headers()
     )
-    assert item == read.json(), "framed the same way, parts nested"
+    assert _unordered(item) == _unordered(read.json()), "framed the same way, parts nested"
 
 
 @pytest.mark.parametrize(

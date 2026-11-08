@@ -68,6 +68,7 @@ _MARKERS_BY_DIR = (
     DirectoryMarkers("integration/files/", ("integration", FILES)),
     DirectoryMarkers("integration/identity/", ("integration", IDENTITY)),
     DirectoryMarkers("e2e/", ("e2e", STORE, FILES, IDENTITY)),
+    DirectoryMarkers("perf/", ("perf",)),
 )
 
 

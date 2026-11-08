@@ -1,0 +1,19 @@
+name: Set up the project
+description: Python 3.12, uv with its cache, and every dependency group and extra (make install).
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v6
+      with:
+        enable-cache: true
+
+    - name: Install dependencies
+      shell: bash
+      run: make install

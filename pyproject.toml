@@ -60,6 +60,7 @@ testkit = [
 # PEP 735 dependency groups, installed via `uv sync` (all groups are default-groups).
 dev = [
     "pre-commit==4.6.0",
+    "pytest-xdist==3.8.0",
 ]
 test = [
     "pytest==9.0.3",

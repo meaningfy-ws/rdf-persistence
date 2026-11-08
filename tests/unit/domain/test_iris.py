@@ -177,7 +177,10 @@ def test_an_iri_is_inside_a_tenant_only_below_its_path(iri, inside):
     assert is_inside_tenant(str(TENANT), iri) is inside, iri
 
 
-AGGREGATE = f"{TENANT}/books/{uuid.uuid4()}"
+# Fixed, so every xdist worker collects the same parameter ids.
+AGGREGATE_ID = "898b0b0d-e7b5-4c3d-99e3-db49565d00aa"
+OTHER_ID = "9e72d652-503c-4b1a-97a4-14c9253c17dd"
+AGGREGATE = f"{TENANT}/books/{AGGREGATE_ID}"
 
 
 @pytest.mark.parametrize(
@@ -187,13 +190,13 @@ AGGREGATE = f"{TENANT}/books/{uuid.uuid4()}"
         (str(TENANT), True),  # the tenant's root object
         (f"{TENANT}/access", True),  # the access record has a fixed IRI
         (f"{TENANT}/books/1", False),  # not a UUID
-        (f"{TENANT}/books/{str(uuid.uuid4()).upper()}", False),  # not canonical
-        (f"{TENANT}/books/{uuid.uuid4().hex}", False),  # no hyphens
+        (f"{TENANT}/books/{OTHER_ID.upper()}", False),  # not canonical
+        (f"{TENANT}/books/{OTHER_ID.replace('-', '')}", False),  # no hyphens
         (f"{AGGREGATE}/content/x", False),  # a path below an aggregate
         (f"{AGGREGATE}/graph", False),
-        (f"{TENANT}/Books/{uuid.uuid4()}", False),  # not a path segment
-        (f"{TENANT}/books/{uuid.uuid4()}/", False),
-        (f"{TENANT}x/books/{uuid.uuid4()}", False),  # a longer sibling
+        (f"{TENANT}/Books/{OTHER_ID}", False),  # not a path segment
+        (f"{TENANT}/books/{OTHER_ID}/", False),
+        (f"{TENANT}x/books/{OTHER_ID}", False),  # a longer sibling
     ],
 )
 def test_an_aggregate_iri_is_the_minted_form_or_the_tenant_root(iri, accepted):
@@ -203,15 +206,17 @@ def test_an_aggregate_iri_is_the_minted_form_or_the_tenant_root(iri, accepted):
 @pytest.mark.parametrize(
     ("iri", "accepted"),
     [
-        (str(graph_iri(str(mint_aggregate_iri(TENANT, "books")))), True),
+        pytest.param(
+            str(graph_iri(str(mint_aggregate_iri(TENANT, "books")))), True, id="a minted graph"
+        ),
         (
             str(graph_iri(str(DEFAULT_IRIS.access(TENANT)))),
             False,
         ),  # the access record is not an aggregate
         (str(graph_iri(str(TENANT))), False),  # the tenant root has no aggregate graph of its own
-        (str(mint_aggregate_iri(TENANT, "books")), False),  # the root, not its graph
+        pytest.param(str(mint_aggregate_iri(TENANT, "books")), False, id="the root, not its graph"),
         (f"{TENANT}/books/x/graph", False),
-        (f"{BASE}libraries/{uuid.uuid4()}/books/{uuid.uuid4()}/graph", False),
+        (f"{BASE}libraries/{OTHER_ID}/books/{OTHER_ID}/graph", False),
     ],
 )
 def test_an_aggregate_graph_iri_is_the_graph_of_a_tenants_aggregate(iri, accepted):
@@ -225,14 +230,14 @@ def test_every_minted_aggregate_iri_is_an_aggregate_iri():
 @pytest.mark.parametrize(
     ("graph", "loaded"),
     [
-        (str(loaded_graph_iri(AGGREGATE)), True),
-        (f"{AGGREGATE}/content/{uuid.uuid4()}/more", False),
+        pytest.param(str(loaded_graph_iri(AGGREGATE)), True, id="a minted loaded graph"),
+        (f"{AGGREGATE}/content/{OTHER_ID}/more", False),
         (f"{AGGREGATE}/content/x", False),  # not a UUID
-        (f"{AGGREGATE}/content/{uuid.uuid4().hex}", False),
-        (f"{AGGREGATE}/content/{str(uuid.uuid4()).upper()}", False),
+        (f"{AGGREGATE}/content/{OTHER_ID.replace('-', '')}", False),
+        (f"{AGGREGATE}/content/{OTHER_ID.upper()}", False),
         (f"{AGGREGATE}/content", False),
-        (f"{AGGREGATE}0/content/{uuid.uuid4()}", False),  # a sibling sharing the prefix text
-        (f"{TENANT}/books/{uuid.uuid4()}/content/{uuid.uuid4()}", False),  # another aggregate's
+        (f"{AGGREGATE}0/content/{OTHER_ID}", False),  # a sibling sharing the prefix text
+        (f"{TENANT}/books/{OTHER_ID}/content/{OTHER_ID}", False),  # another aggregate's
     ],
 )
 def test_a_loaded_graph_is_the_minted_form_under_its_aggregate(graph, loaded):

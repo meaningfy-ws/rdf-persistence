@@ -42,7 +42,9 @@ _What makes a test acceptable here?_
 
 [start=11]
 . No real sleeps or timing-based asserts. Inject the clock or the sleep; wait for eventual
-  consistency with `testkit.wait_until`, or `testkit.wait_until_async` for an async probe.
+  consistency with `testkit.wait_until`, or `testkit.wait_until_async` for an async probe. When
+  one call can hang (a network call without its own timeout), pass `probe_timeout`: a call that
+  takes longer counts as "not ready yet".
 . Container tests start their containers once per session through fixtures, and each test
   namespaces its own data (a fresh dataset or bucket name). In CI a missing Docker is a failure,
   not a skip.

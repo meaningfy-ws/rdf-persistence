@@ -16,9 +16,9 @@ their own lane (`make test-perf`), outside `make check-all` and CI.
   order of a multivalued slot
 
 #### Scenario: Maven Central refuses a download
-- **GIVEN** a CI run whose Fuseki image is in the Actions cache
-- **WHEN** the container tests start
-- **THEN** Fuseki starts from the cached image, without fetching from `repo1.maven.org`
+- **GIVEN** a local `temp/fuseki-image.tar` newer than `fuseki/` and `compose.yaml`
+- **WHEN** `make fuseki-image` and then `make test-containers` run
+- **THEN** Fuseki starts from the loaded image, without fetching from `repo1.maven.org`
 
 #### Scenario: an unformatted file
 - **GIVEN** a Python file that `ruff format` would change
@@ -38,6 +38,23 @@ their own lane (`make test-perf`), outside `make check-all` and CI.
 #### Scenario: make test
 - **WHEN** `make test` runs
 - **THEN** pytest reports several workers, every test passes and coverage is measured over all of them
+
+### Requirement: CI runs the static checks and the tests in parallel jobs, without containers
+
+The CI workflow SHALL run one job per make group, in parallel: `check-style`, `check-types`,
+`check-architecture`, `check-spec-docs` with `check-generation`, `test-unit` and `test-feature`;
+each group SHALL be a make target that runs alone. `test-unit` SHALL fail under 80 % coverage and
+`test-feature` under 50 %.
+CI SHALL NOT run container, e2e or Fuseki work; `make test-containers` runs locally.
+
+#### Scenario: a failing lint in CI
+- **GIVEN** a PR with a lint error and failing unit tests
+- **WHEN** CI runs
+- **THEN** the style and unit jobs both fail and report, without one waiting for the other
+
+#### Scenario: no containers in CI
+- **WHEN** CI runs on a PR or a push to develop
+- **THEN** no job starts a Docker container or builds the Fuseki image
 
 ### Requirement: The testing checklist names only public helpers
 

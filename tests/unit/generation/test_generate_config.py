@@ -109,7 +109,9 @@ def test_a_regenerate_command_that_is_not_a_string_is_an_error_naming_the_toml_k
 
 
 def test_the_regenerate_command_is_not_a_flag() -> None:
-    assert "regenerate_command" not in {f.field for f in cli_flags()}, "it became an rp-generate flag"
+    assert "regenerate_command" not in {f.field for f in cli_flags()}, (
+        "it became an rp-generate flag"
+    )
 
 
 def test_a_regenerate_command_spelt_with_an_underscore_is_refused_naming_the_key(
@@ -148,6 +150,7 @@ def test_the_regenerate_command_flag_is_refused_by_the_parser(
 
 def test_each_row_of_several_entries_keeps_its_own_regenerate_command(tmp_path: Path) -> None:
     first, second = read(
-        tmp_path, SEVERAL.replace('package = "app.a"', 'package = "app.a"\nregenerate-command = "x"')
+        tmp_path,
+        SEVERAL.replace('package = "app.a"', 'package = "app.a"\nregenerate-command = "x"'),
     )
     assert (first.regenerate_command, second.regenerate_command) == ("x", None), "rows mixed up"
