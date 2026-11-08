@@ -71,6 +71,12 @@ path ids in `entrypoints/router.py` (`_last_segment`). Two places infer ownershi
   policies). `Iris.is_aggregate(tenant, iri)` keeps today's two extra cases of `is_aggregate_iri`
   (`iris.py:105`): the tenant root itself and its access record (the access template filled), on
   which the system-database session relies.
+- **PD-3b The schema reaches `Iris` as types** (lead's decision before task 2.1). `domain` imports no
+  LinkML, so `Iris` takes `root_types` and `owned_types` (frozen sets of `{type}` values), not the
+  schema. One services function, `iri_types(view)` in `services/schema_structure.py`, computes them;
+  `iri_type_of(cls)` (the annotation, else the kebab-case class name) moves there from
+  `generation/checks/hard.py`, which imports it, so the generation check and the minted IRIs use one
+  rule.
 - **PD-3a Who receives `Iris`.** `install_service` builds one and hands it to tenancy, aggregates,
   documents, session factory and access rules. Classes a consumer builds itself take it as an
   optional constructor argument defaulting to the default `Iris`: `Session`, `JwksTokenVerifier`
