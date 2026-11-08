@@ -1,7 +1,9 @@
 """Tenancy over the fakes: create writes the access record last, delete marks `deleting` first (PD-6a, PD-8, PD-9)."""
 
 import logging
+import re
 from datetime import UTC, datetime
+from uuid import UUID
 
 import pytest
 from rdflib import Literal
@@ -10,14 +12,21 @@ from rdf_persistence.domain.exceptions import (
     Conflict,
     InvalidBody,
     NotFound,
+    PersistenceError,
     StoredDataInvalid,
     StoreUnavailable,
 )
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
-from rdf_persistence.domain.generated.service.rp_service import GrantSet
-from rdf_persistence.domain.iris import system_database_name, tenant_resource_name
+from rdf_persistence.domain.generated.service.rp_service import (
+    GrantSet,
+    IdKind,
+    IdSpec,
+    IriPolicy,
+    ServiceSettings,
+)
+from rdf_persistence.domain.iris import Iris, system_database_name, tenant_resource_name
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.mapper import UnitOfWork
@@ -485,3 +494,82 @@ async def test_the_label_of_the_tenant_is_the_roots_unless_the_slots_give_one(te
     summary = await tenancy.create("Ghent", slots, CREATOR)
     root = (await store.query(tenant_resource_name(SETTINGS.prefix, summary.id), ROOT_LABEL)).graph
     assert root is not None and Literal("Ghent") in set(root.objects()), "the tenant's label"
+
+
+# -- the IRI policy: tenants are minted through Iris (iri-policy task 3.1, PD-3a, PD-5, PD-6) --
+
+A_ID = str(UUID(int=1))
+B_ID = str(UUID(int=2))
+A_HEX = A_ID.replace("-", "")
+
+
+def _drawing(*ids: str):
+    """An id source that answers ``ids`` in turn and fails if asked for more."""
+    drawn = iter(ids)
+    return lambda spec: next(drawn)
+
+
+def _tenancy_drawing(store, files, *ids: str) -> Tenancy:
+    return Tenancy(
+        store,
+        files,
+        SETTINGS,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
+        iris=Iris(SETTINGS, id_source=_drawing(*ids)),
+    )
+
+
+async def test_a_tenant_id_that_has_an_access_record_is_drawn_again(store, files):
+    made = _tenancy_drawing(store, files, A_ID, A_ID, B_ID)
+    await made.ensure_system_database()
+    first = await made.create("Ghent", library_slots(), CREATOR)
+    second = await made.create("Bruges", library_slots(), CREATOR)
+    assert (first.id.endswith(A_ID), second.id.endswith(B_ID)) == (True, True)
+    assert len(await tenant_databases(store)) == 2
+
+
+async def test_a_tenant_id_that_only_an_orphan_database_uses_is_drawn_again(store, files):
+    made = _tenancy_drawing(store, files, A_ID, B_ID)
+    await made.ensure_system_database()
+    await store.create_dataset(PREFIX + A_HEX)
+    created = await made.create("Ghent", library_slots(), CREATOR)
+    assert created.id.endswith(B_ID)
+
+
+async def test_five_clashing_draws_fail_and_create_nothing(store, files):
+    made = _tenancy_drawing(store, files, *[A_ID] * 5)
+    await made.ensure_system_database()
+    await store.create_dataset(PREFIX + A_HEX)
+    with pytest.raises(PersistenceError, match="no free tenant id"):
+        await made.create("Ghent", library_slots(), CREATOR)
+    assert await tenant_databases(store) == [PREFIX + A_HEX], "only the orphan"
+    assert await made.tenants() == []
+    assert await files.list_buckets(PREFIX) == []
+
+
+async def test_the_consumers_tenant_is_minted_by_its_policy(store, files):
+    settings = ServiceSettings(
+        base="http://mwb.meaningfy.ws/",
+        prefix="mwb",
+        tenant_segment="projects",
+        creator_role="owner",
+        roles_claim="roles",
+        deployment="k3f9a2x",
+        iri_policy=IriPolicy(
+            tenant_template="{base}project/{tenant_id}",
+            tenant_id=IdSpec(kind=IdKind.RANDOM, length=7),
+        ),
+    )
+    made = Tenancy(
+        store, files, settings, mapper=toy_mapper(), root_class=Library, access_class=LibraryAccess
+    )
+    await made.ensure_system_database()
+    created = await made.create("Ghent", library_slots(), CREATOR)
+    assert re.fullmatch(r"http://mwb\.meaningfy\.ws/project/[a-z0-9]{7}", created.id)
+    tenant_id = created.id.rsplit("/", 1)[1]
+    record, _ = await made.get(created.id)
+    assert record.database_name == f"mwb-t-{tenant_id}"
+    assert f"mwb-t-{tenant_id}" in await store.list_datasets()
+    assert await files.list_buckets("mwb-t-") == [f"mwb-t-{tenant_id}"]

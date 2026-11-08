@@ -492,10 +492,13 @@ summary = await kit.tenancy.create(
 
 What create does, in order:
 
-. It mints the tenant IRI, `{base}{tenant_segment}/{uuid4}`, and builds and validates both
-  objects. A root that names an `id` or sets an `internal` slot is refused (422), and so is an
-  invalid label. A refused request creates nothing.
-. It creates the tenant's database and bucket, both named `{prefix}-t-{uuid hex}`.
+. It mints the tenant IRI by the IRI policy (by default `{base}{tenant_segment}/{uuid4}`), drawing
+  again, at most five times, when the id's access record or database already exists (otherwise
+  `PersistenceError`, "no free tenant id"), and builds and validates both objects. A root that
+  names an `id` or sets an `internal` slot is refused (422), and so is an invalid label. A refused
+  request creates nothing.
+. It creates the tenant's database and bucket, both named `{prefix}-t-{tenant id}` (the id without
+  hyphens: for a UUID, its hex).
 . It stores the root object in the tenant's meta graph.
 . Last, it writes the access record, `active`, with one grant: the creator holds the settings'
   `creator_role` on the tenant.

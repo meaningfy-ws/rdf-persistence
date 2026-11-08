@@ -29,7 +29,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
 
 ### 3. Services and entrypoints
 
-- [ ] 3.1 Tenants: `services/tenancy.py` mints through `Iris`, re-draws on a clash (PD-5); resource
+- [x] 3.1 Tenants: `services/tenancy.py` mints through `Iris`, re-draws on a clash (PD-5); resource
   names from the tenant id. Tests: "a tenant id clash" (access record, and orphan dataset), the
   consumer's tenant without its access record, which stage 1 leaves at the default
   `{tenant}/access`; the scenario is completed in 5.1.
@@ -62,7 +62,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
 
 - [ ] 5.1 Access, meta and registry templates in `services/tenancy.py`, `services/session.py`,
   `services/access.py`; `tenant_iri_of_access` callers in `services/tenancy.py` use
-  `Iris.tenant_of_access` (PD-10); the `database_name` description reworded.
+  `Iris.tenant_of_access` (PD-10; the `database_name` pattern and description moved to 3.1, PD-10a).
   Tests: the consumer's tenant scenario in full (access record with `{deployment}`).
 - [ ] 5.2 Principal template in `adapters/jwks.py`: `JwksTokenVerifier` takes an optional `Iris`
   (PD-3a) and mints through `Iris.principal`. Tests: default
@@ -73,7 +73,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 2.1 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
+- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
 
 ## Verification
 

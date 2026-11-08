@@ -15,7 +15,13 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 from rdflib import Graph, URIRef
 
-from rdf_persistence.domain.exceptions import Conflict, InvalidBody, NotFound, StoredDataInvalid
+from rdf_persistence.domain.exceptions import (
+    Conflict,
+    InvalidBody,
+    NotFound,
+    PersistenceError,
+    StoredDataInvalid,
+)
 from rdf_persistence.domain.generated.rp_access import Action, Grant
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantAccess, TenantState
@@ -28,12 +34,9 @@ from rdf_persistence.domain.generated.service.rp_service import (
     VerifiedCaller,
 )
 from rdf_persistence.domain.iris import (
-    access_iri,
+    Iris,
     graph_iri,
-    mint_tenant_iri,
     system_database_name,
-    tenant_iri_of_access,
-    tenant_resource_name,
     toolkit_principal_iri,
 )
 from rdf_persistence.domain.sparql import fill, term
@@ -52,6 +55,7 @@ CONSTRUCT_RECORDS = (
     "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH ?graph { ?record $p_state ?state . ?s ?p ?o } }"
 )
 RECORD_DESCRIPTION = "Who may do what in the tenant {label}."
+MAX_TENANT_DRAWS = 5  # PD-5
 
 
 class Tenancy:
@@ -67,7 +71,9 @@ class Tenancy:
         root_class: type[BaseModel],
         access_class: type[TenantAccess],
         clock: Clock = utc_now,
+        iris: Iris | None = None,
     ) -> None:
+        self._iris = iris or Iris(settings)
         self._store = store
         self._files = files
         self._settings = settings
@@ -94,7 +100,7 @@ class Tenancy:
         self, tenant: str, principal: Principal
     ) -> AbstractAsyncContextManager[Session]:
         """A session on the database of ``tenant`` for ``principal``."""
-        return self._session(tenant_resource_name(self._settings.prefix, tenant), tenant, principal)
+        return self._session(self._iris.resource_name(tenant), tenant, principal)
 
     async def _add_root(
         self, database: str, tenant: str, principal: Principal, obj: BaseModel
@@ -140,10 +146,10 @@ class Tenancy:
         """
         if "id" in root_slots:
             raise InvalidBody("the service assigns the IRI of a new tenant")
-        tenant = str(mint_tenant_iri(self._settings.base, self._settings.tenant_segment))
-        name = tenant_resource_name(self._settings.prefix, tenant)
+        tenant = await self._free_tenant()
+        name = self._iris.resource_name(tenant)
         record = self._access_class(
-            id=str(access_iri(tenant)),
+            id=str(self._iris.access(tenant)),
             label=label,
             description=RECORD_DESCRIPTION.format(
                 label=label.rstrip(".")
@@ -163,6 +169,28 @@ class Tenancy:
         _log_step("create-record", tenant, name)
         return TenantSummary(id=tenant, label=label, state=TenantState.ACTIVE)
 
+    async def _free_tenant(self) -> str:
+        """A fresh tenant IRI whose access record and resource name nothing uses (PD-5).
+
+        Raises:
+            PersistenceError: Every one of ``MAX_TENANT_DRAWS`` draws clashed.
+        """
+        datasets = set(await self._store.list_datasets())
+        for _ in range(MAX_TENANT_DRAWS):
+            tenant = str(self._iris.mint_tenant())
+            if self._iris.resource_name(tenant) not in datasets and not (
+                self._system in datasets and await self._has_record(tenant)
+            ):
+                return tenant
+        raise PersistenceError("no free tenant id")
+
+    async def _has_record(self, tenant: str) -> bool:
+        try:
+            await self.get(tenant)
+        except NotFound:
+            return False
+        return True
+
     async def get(self, tenant: str) -> tuple[TenantAccess, str]:
         """The tenant's access record and its version token.
 
@@ -173,7 +201,7 @@ class Tenancy:
             return await self._read(session, tenant)
 
     async def _read(self, session: Session, tenant: str) -> tuple[TenantAccess, str]:
-        iri = str(access_iri(tenant))
+        iri = str(self._iris.access(tenant))
         graph, graph_name, version = await session.get_graph(iri)
         return self._decoded(iri, graph, graph_name), version
 
@@ -236,7 +264,7 @@ class Tenancy:
         return sorted(
             (
                 TenantSummary(
-                    id=str(tenant_iri_of_access(record.id)),
+                    id=str(self._iris.tenant_of_access(record.id)),
                     label=record.label,
                     state=TenantState(record.state),
                 )
@@ -258,18 +286,30 @@ class Tenancy:
         """
         visible = [
             TenantSummary(
-                id=str(tenant_iri_of_access(record.id)),
+                id=str(self._iris.tenant_of_access(record.id)),
                 label=record.label,
                 state=TenantState(record.state),
             )
             for record in await self._records()
             if rules.may(
-                caller, _access_of(record), str(tenant_iri_of_access(record.id)), Action.READ
+                caller,
+                self._access_of(record),
+                str(self._iris.tenant_of_access(record.id)),
+                Action.READ,
             )
         ]
         visible.sort(key=lambda summary: summary.id)
         return Page(
             items=visible[offset : offset + limit], total=len(visible), limit=limit, offset=offset
+        )
+
+    def _access_of(self, record: TenantAccess) -> CallerAccess:
+        """What the access check knows of a tenant, from its whole record."""
+        return CallerAccess(
+            tenant=str(self._iris.tenant_of_access(record.id)),
+            state=record.state,
+            grants=record.grants,
+            prohibitions=record.prohibitions,
         )
 
     async def delete(self, tenant: str, if_version: str) -> None:
@@ -313,16 +353,6 @@ class Tenancy:
     async def database_names(self) -> set[str]:
         """The database (and bucket) names the access records store, for every tenant."""
         return {record.database_name for record in await self._records()}
-
-
-def _access_of(record: TenantAccess) -> CallerAccess:
-    """What the access check knows of a tenant, from its whole record."""
-    return CallerAccess(
-        tenant=str(tenant_iri_of_access(record.id)),
-        state=record.state,
-        grants=record.grants,
-        prohibitions=record.prohibitions,
-    )
 
 
 def _log_step(step: str, tenant: str, resource: str) -> None:

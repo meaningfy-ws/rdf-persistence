@@ -66,7 +66,7 @@ linkml_meta = None
 class LibraryAccess(TenantAccess):
     "The access record of a library tenant; its grants are the metamodel\u0027s."
     state: TenantState = Field(default=..., title="State", description="Where the tenant is in its life.")
-    database_name: str = Field(default=..., title="Database name", description="The name of the tenant\u0027s database, the prefix, \"-t-\" and the tenant\u0027s UUID in hexadecimal; the prefix is lower case, at most 20 characters.", json_schema_extra = { "rp_internal": True })
+    database_name: str = Field(default=..., title="Database name", description="The name of the tenant\u0027s database, the prefix, \"-t-\" and the tenant id (hyphens left out); the prefix is lower case, at most 20 characters, the tenant id 4 to 32 lower case letters and digits.", json_schema_extra = { "rp_internal": True })
     grants: Optional[list[Grant]] = Field(default=None, title="Grants", description="The permissions given in the tenant, by role or as direct actions; they live in the access record\u0027s graph.")
     prohibitions: Optional[list[Prohibition]] = Field(default=None, title="Prohibitions", description="The actions forbidden in the tenant; they live in the access record\u0027s graph.")
     id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
@@ -75,7 +75,7 @@ class LibraryAccess(TenantAccess):
 
     @field_validator("database_name")
     def pattern_database_name(cls, v):
-        pattern=re.compile("^[a-z][a-z0-9]{0,19}-t-[0-9a-f]{32}$")
+        pattern=re.compile("^[a-z][a-z0-9]{0,19}-t-[a-z0-9]{4,32}$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.fullmatch(element):

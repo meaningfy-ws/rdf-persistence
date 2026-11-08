@@ -163,7 +163,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_tenancy.yaml",
-      "sha256": "9a77b7ecd57b7e235e1633b91c4d1d9203e0ff41b392fe325c96a1ff1c9ce3de"
+      "sha256": "ac86e3b8e84f0264c32f804bdf7b77e0a85a3b4cd23d40bbe2817d9527629101"
     },
     {
       "path": "rdf_persistence/services/schema.py",
@@ -229,7 +229,7 @@
     },
     {
       "path": "generated/library_access.py",
-      "sha256": "f065a4851d0edbf29972fc1ee8995cb3a49511ed8d5749c19fcbebfa0d332afe"
+      "sha256": "e9e5e178398565980946416b49a165c4791c0132b78fb215326b719c701d5509"
     },
     {
       "path": "generated/library_tenant.py",
@@ -245,7 +245,7 @@
     },
     {
       "path": "generated/shapes.ttl",
-      "sha256": "5ab7305af88ce63304c83f14bdf2b478204f493c5210bde96a3c2f68e0b1bac2"
+      "sha256": "6eb637ff19a580468547ab2b538492e3991f671458de7ed4dba696acda6232d9"
     },
     {
       "path": "web/src/domain/generated/books.ts",

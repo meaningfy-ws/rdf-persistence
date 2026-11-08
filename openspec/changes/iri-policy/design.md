@@ -126,6 +126,14 @@ path ids in `entrypoints/router.py` (`_last_segment`). Two places infer ownershi
     commits naming one freshly loaded graph needs a caller who forges the IRI of a graph another
     request just loaded, inside one tenant where it already has write access; it is accepted and
     written down here.
+- **PD-7a The type of a new part (lead's decision before task 3.2).** A blank node `Documents`
+  names as a part takes its `{type}` from its `rdf:type`, mapped to its class through the schema
+  (`iri_type_of`). When the part template contains `{type}` and the node has no `rdf:type`, or one
+  that is not an owned class of the schema, the body is refused with `InvalidBody` naming the
+  type, never `InvalidIri`: the body is at fault, so the answer is 422. A template without `{type}`
+  (the default) does not read the type, so nothing changes for today's bodies. Until task 3.4 wires
+  one `Iris`, `Aggregates`, `Documents`, `Session` and `new_part` take an optional `iris`
+  defaulting to the default-policy `Iris` the module shims use, which mints today's IRIs.
 - **PD-8 `rp_iri_type`.** A new value of the `RpAnnotation` enum in `rdf_persistence/model/rp_core.yaml`
   (beside `rp_path`, `rp_core.yaml:149`), whose `rp_path` description becomes "its path segment in
   the API" (no longer "and in its IRIs"). The value follows the `url_segment` pattern, as `rp_path`
@@ -144,6 +152,11 @@ path ids in `entrypoints/router.py` (`_last_segment`). Two places infer ownershi
   `{tenant_id}`, DEC-2), takes the tenant or its id, and fills the tenant template. Stored records
   need no change. The `database_name` description in `rp_tenancy.yaml` ("UUID in hexadecimal")
   becomes "the tenant id".
+- **PD-10a `database_name` pattern (gap found in task 3.1).** The slot's pattern
+  `-t-[0-9a-f]{32}$` refused every name a non-UUID policy makes (`mwb-t-4fe0bvg`), so a consumer's
+  tenant could not be stored. The pattern becomes `^[a-z][a-z0-9]{0,19}-t-[a-z0-9]{4,32}$`: the
+  union of every `IdSpec` (length 4 to 32 over `[a-z0-9]`, PD-6) and the UUID hex of the default.
+  The description change of PD-10 moves with it into task 3.1. Stored names all still match.
 - **PD-11 Grant targets.** `access._validate_ends` (`services/access.py:205`) calls
   `Iris.is_aggregate_graph`, which is `root_of_graph` followed by the aggregate match of PD-4.
 
