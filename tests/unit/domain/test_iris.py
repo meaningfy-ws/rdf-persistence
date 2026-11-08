@@ -8,6 +8,7 @@ from rdflib import URIRef
 
 from rdf_persistence.domain.exceptions import InvalidIri, NotFound
 from rdf_persistence.domain.iris import (
+    DEFAULT_IRIS,
     access_iri,
     aggregate_iri,
     graph_iri,
@@ -126,7 +127,9 @@ def test_mint_part_iri_sits_under_the_root_and_is_fresh():
 
 
 def test_the_tenant_of_an_access_record_is_the_iri_it_hangs_under():
-    assert tenant_iri_of_access(access_iri(TENANT)) == TENANT
+    # the shim answers for the default policy, whose base is DEFAULT_IRIS's (PD-12n)
+    tenant = URIRef(f"{DEFAULT_IRIS.settings.base}tenants/12345678-1234-4234-8234-123456789abc")
+    assert tenant_iri_of_access(access_iri(tenant)) == tenant
 
 
 def test_an_iri_that_is_not_an_access_record_has_no_tenant():
@@ -205,7 +208,7 @@ def test_an_aggregate_iri_is_the_minted_form_or_the_tenant_root(iri, accepted):
     ("iri", "accepted"),
     [
         (str(graph_iri(str(mint_aggregate_iri(TENANT, "books")))), True),
-        (str(graph_iri(str(access_iri(TENANT)))), True),
+        (str(graph_iri(str(access_iri(TENANT)))), False),  # the access record is not an aggregate
         (str(graph_iri(str(TENANT))), False),  # the tenant root has no aggregate graph of its own
         (str(mint_aggregate_iri(TENANT, "books")), False),  # the root, not its graph
         (f"{TENANT}/books/x/graph", False),

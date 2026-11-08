@@ -15,7 +15,6 @@ from rdf_persistence.domain.generated.service.rp_service import (
     CallerAccess,
     VerifiedCaller,
 )
-from rdf_persistence.domain.iris import aggregate_iri
 from rdf_persistence.services.access import load_caller_access
 
 if TYPE_CHECKING:  # the kit builds its gate, so it cannot be imported here at run time
@@ -65,7 +64,7 @@ class Gate:
     ) -> Authorised:
         """The access, and the aggregate IRI it was checked on, which the route then uses as it is."""
         tenant = self._kit.tenant_iri(t)
-        target = str(aggregate_iri(tenant, rp_path, aggregate_id))
+        target = self._kit.aggregates.iri_of(tenant, rp_path, aggregate_id)
         access = await self.check(caller, tenant, target, action)
         return Authorised(principal=caller.principal, caller_access=access, checked_target=target)
 

@@ -35,7 +35,10 @@ def scan_ld(documents, context: dict | None = None, **extra) -> dict:
 
 
 async def parsed(documents, cls, body: dict, media_type: str = JSON, iri: str = SCAN):
-    return await documents.parse(encoded(body), media_type, cls, iri, creating=True)
+    graph, _ = await documents.parse(
+        encoded(body), media_type, cls, iri, creating=True, tenant=TENANT
+    )
+    return graph
 
 
 # --- internal slots: refused in every key form, at every level ---------------------------------
@@ -178,7 +181,9 @@ async def test_the_tenant_root_cannot_plant_an_aggregate_of_the_tenant(documents
         "schema:hasPart": planted,
     }
     with pytest.raises(InvalidBody, match="not part of"):
-        await documents.parse(encoded(body), JSON_LD, documents.tenant_root, TENANT, creating=False)
+        await documents.parse(
+            encoded(body), JSON_LD, documents.tenant_root, TENANT, creating=False, tenant=TENANT
+        )
 
 
 async def test_the_tenant_root_cannot_plant_the_access_record(documents) -> None:
@@ -191,7 +196,9 @@ async def test_the_tenant_root_cannot_plant_the_access_record(documents) -> None
         "schema:hasPart": planted,
     }
     with pytest.raises(InvalidBody, match="not part of"):
-        await documents.parse(encoded(body), JSON_LD, documents.tenant_root, TENANT, creating=False)
+        await documents.parse(
+            encoded(body), JSON_LD, documents.tenant_root, TENANT, creating=False, tenant=TENANT
+        )
 
 
 async def test_an_untyped_part_is_refused(documents, book_class) -> None:
@@ -279,7 +286,7 @@ async def test_a_body_nested_beyond_what_the_parser_reads_is_refused_not_a_serve
 ) -> None:
     data = b"[" * 100_000 + b"]" * 100_000
     with pytest.raises(InvalidBody):
-        await documents.parse(data, JSON, book_class, BOOK, creating=True)
+        await documents.parse(data, JSON, book_class, BOOK, creating=True, tenant=TENANT)
 
 
 # --- a refusal that has its own message keeps it ----------------------------------------------

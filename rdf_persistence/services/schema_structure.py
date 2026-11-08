@@ -7,6 +7,7 @@ generated classes and the generated shapes both enforce: the presence alternativ
 so the mapper and the freshness check can use it without the ``generate`` extra.
 """
 
+import re
 from collections.abc import Iterator
 from enum import Enum
 from pathlib import Path
@@ -40,6 +41,8 @@ ABSENT = PresenceEnum(PresenceEnum.ABSENT)
 _TRUE = "true"
 URI_TYPES = frozenset({"uri", "uriorcurie"})
 _SUPPORTED_CONDITION_FIELDS = {"name", "required", "value_presence"}
+
+KEBAB_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
 # One alternative of a presence rule: each named slot present or absent, all of them together.
 Alternative = list[tuple[str, PresenceEnum]]
@@ -265,6 +268,25 @@ def owned_classes(view: SchemaView, classes: list[ClassDefinition]) -> set[str]:
 def owned_class_names(view: SchemaView, folder: Path) -> set[str]:
     """The classes the modules kept in ``folder`` reach through ``owned`` slots."""
     return owned_classes(view, own_classes(own_schemas(view, folder)))
+
+
+def kebab_case(name: str) -> str:
+    """``name`` in kebab case: the default ``{type}`` of a class."""
+    return KEBAB_BOUNDARY.sub("-", name).lower()
+
+
+def iri_type_of(cls: ClassDefinition) -> str:
+    """The ``{type}`` of the IRIs of ``cls``: its ``rp_iri_type``, else its name in kebab case."""
+    return annotation_text(cls, RpAnnotation.RP_IRI_TYPE) or kebab_case(cls.name)
+
+
+def iri_types(view: SchemaView) -> tuple[frozenset[str], frozenset[str]]:
+    """The ``{type}`` values of the concrete aggregate roots and of the concrete owned classes (PD-3b)."""
+    classes = list(view.all_classes().values())
+    roots = aggregate_roots(view, classes)
+    owned = owned_classes(view, classes)
+    parts = [c for c in classes if c.name in owned and not c.mixin and not c.abstract]
+    return frozenset(map(iri_type_of, roots)), frozenset(map(iri_type_of, parts))
 
 
 def inherits_from_metamodel(view: SchemaView, cls: ClassDefinition, own: set[str]) -> bool:

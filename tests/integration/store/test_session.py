@@ -12,7 +12,7 @@ from rdflib import Graph, Literal, URIRef
 from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence.adapters.fuseki import FusekiStore
-from rdf_persistence.domain.exceptions import Conflict, DatabaseGone, NotFound
+from rdf_persistence.domain.exceptions import Conflict, DatabaseGone, InvalidIri, NotFound
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.iris import (
     graph_iri,
@@ -254,7 +254,7 @@ async def test_a_loaded_graph_outside_the_aggregate_is_refused_and_nothing_chang
     session = session_for(store, database)
     await session.add_graph(book(2), title(book(2), "victim"))
     before = await graphs_in(store, database)
-    with pytest.raises(ValueError, match="content"):
+    with pytest.raises(InvalidIri, match="not loaded graphs"):
         await session.add_graph(book(1), [], [bad])
     assert await graphs_in(store, database) == before, "no graph was touched"
     graph, _, _ = await session.get_graph(book(2))

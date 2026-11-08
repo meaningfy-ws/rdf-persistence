@@ -113,7 +113,7 @@ async def test_parsing_runs_in_a_worker_thread(store, session, monkeypatch):
 
 
 async def test_an_aggregate_outside_the_tenant_is_refused_before_any_request(session, store):
-    with pytest.raises(ValueError, match="not inside the tenant"):
+    with pytest.raises(ValueError, match="not an aggregate IRI of the tenant"):
         await session.load_graph(
             "https://example.org/other/books/1", GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE
         )

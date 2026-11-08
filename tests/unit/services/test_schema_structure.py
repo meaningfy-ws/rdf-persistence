@@ -3,7 +3,8 @@
 from pathlib import Path
 
 import pytest
-from linkml_runtime.linkml_model.meta import PresenceEnum, SlotDefinition
+from linkml_runtime.linkml_model.annotations import Annotation
+from linkml_runtime.linkml_model.meta import ClassDefinition, PresenceEnum, SlotDefinition
 
 from rdf_persistence.domain.generated.rp_core import (
     DatabaseKind,
@@ -24,6 +25,8 @@ from rdf_persistence.services.schema_structure import (
     generation_view,
     holds_iri,
     holds_owned_part,
+    iri_type_of,
+    iri_types,
     is_bookkeeping,
     is_internal,
     is_owned,
@@ -299,3 +302,28 @@ def test_the_json_name_of_a_slot_is_its_alias_or_its_name_in_snake_case(
     name, alias, expected
 ) -> None:
     assert json_name(SlotDefinition(name=name, alias=alias)) == expected
+
+
+def test_the_iri_types_of_the_toy_library_are_its_roots_and_its_owned_classes() -> None:
+    roots, owned = iri_types(load_schema(TOY))
+    assert "book" in roots, "Book is a concrete aggregate root"
+    assert {"chapter", "note"} <= owned, "the classes reached through owned slots"
+    assert not roots & owned, "a type is a root's or a part's, not both"
+
+
+@pytest.mark.parametrize(
+    ("name", "annotated", "expected"),
+    [
+        ("OntologyFile", None, "ontology-file"),
+        ("RDFFile", None, "rdf-file"),
+        ("Term", None, "term"),
+        ("OntologyFile", "ofile", "ofile"),
+    ],
+)
+def test_the_iri_type_is_the_annotation_else_the_kebab_case_name(name, annotated, expected) -> None:
+    cls = ClassDefinition(name=name)
+    if annotated:
+        cls.annotations[RpAnnotation.RP_IRI_TYPE.value] = Annotation(
+            tag=RpAnnotation.RP_IRI_TYPE.value, value=annotated
+        )
+    assert iri_type_of(cls) == expected, f"{name} annotated {annotated}"

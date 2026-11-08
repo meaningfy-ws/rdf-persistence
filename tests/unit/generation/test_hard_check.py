@@ -90,6 +90,28 @@ FAULTS = (
     Fault(HardRule.ANNOTATION, "books.yaml", "rp_path: books", "rp_path: Books", "Book"),
     Fault(HardRule.ANNOTATION, "books.yaml", "rp_path: books", "rp_path: books/all", "Book"),
     Fault(HardRule.ANNOTATION, "books.yaml", "rp_path: books", "rp_path: ''", "Book"),
+    Fault(
+        HardRule.ANNOTATION,
+        "books.yaml",
+        "rp_path: books",
+        "rp_path: books\n      rp_iri_type: Bk",
+        "Book",
+    ),
+    # an owned class and a root with one type, and a reserved type
+    Fault(
+        HardRule.IRI_TYPE,
+        "books.yaml",
+        "rp_path: books",
+        "rp_path: books\n      rp_iri_type: chapter",
+        "Book",
+    ),
+    Fault(
+        HardRule.IRI_TYPE,
+        "books.yaml",
+        "rp_path: books",
+        "rp_path: books\n      rp_iri_type: graph",
+        "Book",
+    ),
     # an attribute of a class (Note.shade) gets the rules of a slot
     Fault(
         HardRule.DESCRIPTION,
@@ -199,3 +221,62 @@ def test_the_rp_path_pattern_is_checked_when_the_schema_does_not_import_the_meta
     )
     problems = problems_of(root)
     assert any(f"[{HardRule.ANNOTATION.value}] Thing:" in p for p in problems), problems
+
+
+def _bare_schema(tmp_path: Path, classes: dict[str, str | None]) -> Path:
+    """A schema that does not import the metamodel, with the given root classes (name -> rp_iri_type)."""
+    body = ""
+    for name, iri_type in classes.items():
+        tag = f"      rp_iri_type: {iri_type}\n" if iri_type else ""
+        body += (
+            f"  {name}:\n    title: {name}\n    description: A {name}.\n"
+            f"    is_a: AggregateRoot\n    annotations:\n      rp_path: {name.lower()}\n{tag}"
+        )
+    root = tmp_path / "bare.yaml"
+    root.write_text(
+        "id: https://example.org/bare\nname: bare\ndefault_prefix: ex\ntitle: Bare\n"
+        "description: A bare schema.\nprefixes:\n  linkml: https://w3id.org/linkml/\n"
+        "  ex: https://example.org/bare/\nimports:\n  - linkml:types\nclasses:\n"
+        "  AggregateRoot:\n    title: Root\n    description: A root.\n    abstract: true\n" + body,
+        encoding="utf-8",
+    )
+    return root
+
+
+def _iri_type_problems(root: Path) -> list[str]:
+    return [p for p in problems_of(root) if f"[{HardRule.IRI_TYPE.value}]" in p]
+
+
+def test_two_classes_with_one_explicit_type_are_refused_naming_both(tmp_path: Path) -> None:
+    problems = _iri_type_problems(_bare_schema(tmp_path, {"Alpha": "thing", "Beta": "thing"}))
+    assert len(problems) == 1 and "Alpha" in problems[0] and "Beta" in problems[0], problems
+
+
+def test_a_type_equal_to_another_classes_kebab_name_is_refused(tmp_path: Path) -> None:
+    problems = _iri_type_problems(
+        _bare_schema(tmp_path, {"OntologyFile": None, "Other": "ontology-file"})
+    )
+    assert len(problems) == 1 and "OntologyFile" in problems[0] and "Other" in problems[0], problems
+
+
+@pytest.mark.parametrize("word", ["content", "graph", "parts", "access", "meta", "registry"])
+def test_a_reserved_type_is_refused(tmp_path: Path, word: str) -> None:
+    problems = _iri_type_problems(_bare_schema(tmp_path, {"Alpha": word}))
+    assert len(problems) == 1 and "Alpha" in problems[0] and word in problems[0], problems
+
+
+def test_a_class_named_like_a_reserved_word_is_refused(tmp_path: Path) -> None:
+    assert len(_iri_type_problems(_bare_schema(tmp_path, {"Graph": None}))) == 1
+
+
+def test_distinct_types_pass(tmp_path: Path) -> None:
+    root = _bare_schema(tmp_path, {"OntologyFile": None, "Alpha": "alpha-1"})
+    kinds = (HardRule.IRI_TYPE.value, HardRule.ANNOTATION.value)
+    assert [p for p in problems_of(root) if p.startswith(tuple(f"[{k}]" for k in kinds))] == []
+
+
+def test_a_bad_iri_type_pattern_is_refused_when_the_schema_does_not_import_the_metamodel(
+    tmp_path: Path,
+) -> None:
+    problems = problems_of(_bare_schema(tmp_path, {"Alpha": "Not A Type"}))
+    assert any(f"[{HardRule.ANNOTATION.value}] Alpha:" in p for p in problems), problems

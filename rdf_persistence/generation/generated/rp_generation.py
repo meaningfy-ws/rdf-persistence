@@ -74,6 +74,8 @@ class HardRule(str, Enum):
     "An annotation value is one of its allowed values; the `rp_path` value is a URL segment."
     UNIQUE_KEY = "unique_key"
     "A unique key is named by an identifier, since generated code carries the name."
+    IRI_TYPE = "iri_type"
+    "The `rp_iri_type` of a root or an owned class, or its kebab-case name when it has none, is unique among them and is not a reserved word of the IRI layout."
 
 
 class BoundaryRule(str, Enum):

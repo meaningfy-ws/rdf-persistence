@@ -9,6 +9,7 @@ A Prohibition of ``read`` forbids every action, since each of them implies ``rea
 of any other action forbids that action only.
 """
 
+import copy
 from collections.abc import Iterable
 from functools import cache
 from pathlib import Path
@@ -39,12 +40,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     GrantSet,
     VerifiedCaller,
 )
-from rdf_persistence.domain.iris import (
-    access_iri,
-    graph_iri,
-    is_aggregate_graph_iri,
-    is_aggregate_iri,
-)
+from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris, access_iri, graph_iri
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.mapper import Mapper, generated_models
@@ -174,11 +170,21 @@ def _caller_access(tenant: str, record: URIRef, stored: Graph) -> CallerAccess:
 class AccessRules:
     """Decides whether a caller may take an action on the tenant or on one of its aggregates."""
 
-    def __init__(self, role_definitions: Iterable[RoleDefinition]) -> None:
+    def __init__(
+        self, role_definitions: Iterable[RoleDefinition], iris: Iris = DEFAULT_IRIS
+    ) -> None:
+        """``iris`` is the IRI policy that says what an aggregate and its graph are (default: the default policy)."""
+        self._iris = iris
         self._permits: dict[tuple[RoleLevel, str], set[Action]] = {}
         for definition in role_definitions:
             key = (RoleLevel(definition.level), definition.role)
             self._permits.setdefault(key, set()).update(definition.actions)
+
+    def with_iris(self, iris: Iris) -> "AccessRules":
+        """The same role permits under the IRI policy ``iris``; this object is unchanged."""
+        rebound = copy.copy(self)
+        rebound._iris = iris
+        return rebound
 
     def validate_grants(self, grants: GrantSet, tenant: str) -> None:
         """Check that ``check`` could honour every grant and prohibition of ``grants`` in ``tenant``.
@@ -200,10 +206,15 @@ class AccessRules:
             if grant.role is not None and (level, grant.role) not in self._permits:
                 raise UnknownRole(f"no {level.value}-level role {grant.role!r} to grant")
 
-    @staticmethod
-    def _validate_ends(rule: Grant | Prohibition, tenant: str) -> None:
-        if rule.target != tenant and not is_aggregate_graph_iri(tenant, rule.target):
-            raise InvalidGrant(f"{rule.target} is neither the tenant nor an aggregate graph of it")
+    def _validate_ends(self, rule: Grant | Prohibition, tenant: str) -> None:
+        own = (
+            tenant,
+            str(graph_iri(self._iris.access(tenant))),
+        )  # the access record's graph is grantable
+        if rule.target not in own and not self._iris.is_aggregate_graph(tenant, rule.target):
+            raise InvalidGrant(
+                f"{rule.target} is neither the tenant, its access record nor an aggregate graph of it"
+            )
         try:
             term(URIRef(rule.assignee))
         except SparqlError as error:
@@ -258,12 +269,11 @@ class AccessRules:
             }
         )
 
-    @staticmethod
-    def _scope(tenant: str, target_iri: str) -> set[str]:
+    def _scope(self, tenant: str, target_iri: str) -> set[str]:
         """The targets whose rules apply to ``target_iri``: the tenant, and the aggregate's graph."""
         if target_iri == tenant:
             return {tenant}
-        if not is_aggregate_iri(tenant, target_iri):
+        if not self._iris.is_aggregate(tenant, target_iri):
             raise NotFound(f"{target_iri} is not in tenant {tenant}")
         return {tenant, str(graph_iri(target_iri))}
 

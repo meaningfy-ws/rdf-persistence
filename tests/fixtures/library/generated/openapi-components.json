@@ -472,6 +472,7 @@
         "database",
         "module_kind",
         "rp_path",
+        "rp_iri_type",
         "rp_unlabelled",
         "bookkeeping"
       ],

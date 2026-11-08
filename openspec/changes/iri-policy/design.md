@@ -34,6 +34,14 @@ path ids in `entrypoints/router.py` (`_last_segment`). Two places infer ownershi
     (`generation/extensions/pydantic_validators.py`) or a rule the schema can express; where neither
     can, a check function in `domain/iris.py` called once by `install_service`. The implementer
     picks the first that works and records which in this file.
+  - Implemented as: the variable sets, the closing id variable, the tenant requirement and the
+    literal characters are one `pattern` per template slot in `rp_service.yaml` (generated into the
+    pydantic validators, shapes and schemas); the alphabet is a pattern and the length a 4 to 32
+    range. Only `{deployment}` without a slug and `random` without a length span fields, so
+    `check_iri_policy(settings)` in `domain/iris.py` raises `InvalidIri` for them; the `Iris`
+    constructor (2.1) calls it, so a service with such settings refuses to be built (leader's
+    decision, task 1.1: the generated validators express presence rules only). An absent `tenant_id` or `object_id` means `IdSpec(kind: uuid4)`
+    (an object-valued slot has no `ifabsent`).
 - **PD-2 Defaults.**
 
   | Template | Default | Allowed variables |
@@ -63,6 +71,21 @@ path ids in `entrypoints/router.py` (`_last_segment`). Two places infer ownershi
   policies). `Iris.is_aggregate(tenant, iri)` keeps today's two extra cases of `is_aggregate_iri`
   (`iris.py:105`): the tenant root itself and its access record (the access template filled), on
   which the system-database session relies.
+- **PD-3c Access rules a consumer built (lead's decision before task 3.4).** `install_service`
+  accepts `rules` as a path or as an `AccessRules` the consumer built, which holds the default
+  `Iris`. The kit builds its one `Iris` (settings plus `iri_types(view)`) and rebinds the rules to
+  it: `AccessRules.with_iris(iris)` answers a new `AccessRules` with the same role permits. So every
+  service the kit wires, rules included, uses one policy; a consumer never has to pass an `Iris`.
+  The route's `{type}` comes from the class served at `rp_path` (`iri_type_of`).
+- **PD-3d Public names (lead's decision, found in task 4.1).** A consumer configures a policy from
+  public names: `rdf_persistence` exports `Iris`, `IriPolicy`, `IdSpec`, `IdKind` and
+  `DEFAULT_IRIS` (additive; listed in `test_public_api.py` and the architecture API table).
+- **PD-3b The schema reaches `Iris` as types** (lead's decision before task 2.1). `domain` imports no
+  LinkML, so `Iris` takes `root_types` and `owned_types` (frozen sets of `{type}` values), not the
+  schema. One services function, `iri_types(view)` in `services/schema_structure.py`, computes them;
+  `iri_type_of(cls)` (the annotation, else the kebab-case class name) moves there from
+  `generation/checks/hard.py`, which imports it, so the generation check and the minted IRIs use one
+  rule.
 - **PD-3a Who receives `Iris`.** `install_service` builds one and hands it to tenancy, aggregates,
   documents, session factory and access rules. Classes a consumer builds itself take it as an
   optional constructor argument defaulting to the default `Iris`: `Session`, `JwksTokenVerifier`
@@ -112,6 +135,21 @@ path ids in `entrypoints/router.py` (`_last_segment`). Two places infer ownershi
     commits naming one freshly loaded graph needs a caller who forges the IRI of a graph another
     request just loaded, inside one tenant where it already has write access; it is accepted and
     written down here.
+- **PD-7a The type of a new part (lead's decision before task 3.2).** A blank node `Documents`
+  names as a part takes its `{type}` from its `rdf:type`, mapped to its class through the schema
+  (`iri_type_of`). When the part template contains `{type}` and the node has no `rdf:type`, or one
+  that is not an owned class of the schema, the body is refused with `InvalidBody` naming the
+  type, never `InvalidIri`: the body is at fault, so the answer is 422. A template without `{type}`
+  (the default) does not read the type, so nothing changes for today's bodies. Until task 3.4 wires
+  one `Iris`, `Aggregates`, `Documents`, `Session` and `new_part` take an optional `iris`
+  defaulting to the default-policy `Iris` the module shims use, which mints today's IRIs.
+- **PD-7b `new_part` and `rp_iri_type` (lead's decision, found in task 3.2).** The generated
+  pydantic classes carry no LinkML metadata (`linkml_meta = None`), so `new_part(cls, …)` cannot
+  read a class's `rp_iri_type`; it uses the kebab-case class name, the default `{type}`. Under a
+  template with `{type}`, a part class whose `rp_iri_type` differs is refused by `Iris` with
+  `InvalidIri` (never a wrong IRI), and the docstring and `adopt.adoc` say so. Bodies through
+  `Documents` read the annotation from the schema and are not affected. Upgrade when the generator
+  emits class metadata, or when a consumer needs `rp_iri_type` on a part built in code.
 - **PD-8 `rp_iri_type`.** A new value of the `RpAnnotation` enum in `rdf_persistence/model/rp_core.yaml`
   (beside `rp_path`, `rp_core.yaml:149`), whose `rp_path` description becomes "its path segment in
   the API" (no longer "and in its IRIs"). The value follows the `url_segment` pattern, as `rp_path`
@@ -130,8 +168,90 @@ path ids in `entrypoints/router.py` (`_last_segment`). Two places infer ownershi
   `{tenant_id}`, DEC-2), takes the tenant or its id, and fills the tenant template. Stored records
   need no change. The `database_name` description in `rp_tenancy.yaml` ("UUID in hexadecimal")
   becomes "the tenant id".
+- **PD-10a `database_name` pattern (gap found in task 3.1).** The slot's pattern
+  `-t-[0-9a-f]{32}$` refused every name a non-UUID policy makes (`mwb-t-4fe0bvg`), so a consumer's
+  tenant could not be stored. The pattern becomes `^[a-z][a-z0-9]{0,19}-t-[a-z0-9]{4,32}$`: the
+  union of every `IdSpec` (length 4 to 32 over `[a-z0-9]`, PD-6) and the UUID hex of the default.
+  The description change of PD-10 moves with it into task 3.1. Stored names all still match.
 - **PD-11 Grant targets.** `access._validate_ends` (`services/access.py:205`) calls
   `Iris.is_aggregate_graph`, which is `root_of_graph` followed by the aggregate match of PD-4.
+
+### Stage 1 review decisions (PD-12, lead, 2026-11-08)
+
+Five lenses (L1–L5) and the adversarial tester reviewed tasks 1.1–3.4. Accepted, by batch:
+
+**Batch 1: security and correctness**
+- **PD-12a Stage-2 templates refused until stage 2** (L3 major, L2 major). Tenancy writes the access
+  record at `Iris.access` but `load_caller_access` reads the default, so a custom `access_template`
+  breaks every request. `check_iri_policy` refuses a non-default `access`, `meta`, `registry` or
+  `principal` template with `InvalidIri` naming it ("arrives with stage 2"); task 5.1 removes the
+  refusal as it wires them. Chosen over bringing 5.1 forward: smallest, and matches task 3.1.
+- **PD-12b Reserved words are refused when matching, not only when minting** (L1 major, L1 minor 2).
+  A match whose `id` or `tenant_id` group is a reserved word is no match (`_belongs`), so a loaded
+  graph or a path id can never be `{tenant}/meta`, `/registry` or `/access`; `Iris.tenant` and
+  `Iris.aggregate` answer `NotFound` for one. `is_aggregate_graph` also excludes the access record's
+  graph (L1 nit); the access record's graph stays a valid grant target because
+  `AccessRules._validate_ends` names it explicitly (an existing, deliberate case: a direct action on
+  the access record), so the nit changes where that rule lives, not what may be granted.
+- **PD-12c Templates must name their tenant** (L1 minor 1). The aggregate template must contain
+  `{tenant}` or `{tenant_id}`; the part and loaded-graph templates `{tenant}`, `{tenant_id}` or
+  `{root}`. Schema patterns in `rp_service.yaml`, regenerated. Two tenants then never mint one IRI,
+  and "an aggregate template of its tenant" (spec) can be checked. Every default and the consumer's
+  policy already comply.
+- **PD-12d A part is never the aggregate's graph IRI** (tester xfail 1). The stored subjects include
+  `graph_iri(root)` (it carries the version); the flat replace rule and the nested rule both refuse a
+  body subject equal to `graph_iri(root)`.
+- **PD-12e `tenant_of_access` checks the round trip** (tester xfail 2): it answers only when
+  `access(result)` equals the input.
+- **PD-12f `Iris` keeps its own copy of the settings** (tester xfail 3): `settings.model_copy(deep=True)`
+  at build, so a later change to the caller's object cannot change what it mints.
+
+**Batch 2: structure and clarity**
+- **PD-12g One rule per fact** (L5 majors). The module functions that still build IRIs by hand
+  (`mint_tenant_iri`, `tenant_iri`, `tenant_resource_name`, `aggregate_iri`'s extra UUID check)
+  become one-line calls on `DEFAULT_IRIS`. `_check_commit`'s first test repeats `_graph`'s and goes.
+  Deleting the shims no production code calls is a follow-up (tests use them), not stage 1.
+- **PD-12h The aggregate IRI of a route is one services method** (L3 minor, L4 minor, L5 minor).
+  `Aggregates.iri_of(tenant, rp_path, aggregate_id)`, with a `rp_path → {type}` map built once; the
+  gate calls it.
+- **PD-12i `Iris` stays a hand-written frozen class** (amended after the fix: a dataclass trips the
+  model guard, which keeps dataclasses out of the domain because models come from LinkML), its templates read through one `_templates(policy)` helper
+  used by `check_iri_policy` and `_reserved`; `part_needs_type()` public, so `Documents` refuses a
+  typeless part before minting instead of mapping an exception (L4, L5).
+- **PD-12j Defaults.** Constructors write `iris: Iris = DEFAULT_IRIS` (no `or`). `Tenancy` keeps
+  `Iris(settings)`, with a comment: resource names need the settings' prefix, which `DEFAULT_IRIS`
+  lacks. `Documents.parse`'s `tenant` becomes required; shim call sites pass keywords, and a test pins
+  that the default templates use no `{type}`, `{tenant}` or `{base}` (L4 major 2, L3 nit).
+- **PD-12k Spec text** (L2 minors 3–4): the `{deployment}` and `random`-length checks run "when
+  settings are made or the service's `Iris` is built"; the loaded-graph-of-another-aggregate case
+  refuses "before anything is written".
+- **PD-12l Tests** (L2): the flat-parts listing test lists both books and checks each item's parts
+  exactly; a test pins a subject stored in two listed graphs (default policy); a route-level test
+  with an `rp_path` that differs from the type; no test branches on its id; no imports inside tests.
+- **PD-12m Names and nits** (L4, L5): `subjects` not `iris` in `documents.py`; `segment_pattern` in
+  `hard.py`; `_MAX_RESERVED_REDRAWS` / `MAX_TENANT_CLASH_DRAWS`; `object_id` not `id`; drop
+  `ACCESS_SEGMENT`; `LAYOUT_WORDS` built from `LOADED_GRAPH_TYPE`; `hard.py` uses `LAYOUT_WORDS`;
+  docstrings on `access`/`meta`/`registry`; split the dense one-liners.
+
+- **PD-12n Check and cold reader** (fresh checker, cold reader on `adopt.adoc`). `tenant_resource_name`
+  keeps its own UUID check: it is a default-only shim that takes no base or settings, so it cannot be
+  a call on an `Iris`; it goes with the shim clean-up. `tenant_of_access` also checks the tenant it
+  answers against the tenant template. The spec scenario "an application that sets nothing" names its
+  one change: the access record's graph is no longer an aggregate graph (PD-12b), though it stays a
+  grant target. `adopt.adoc` gains what a reader needs to use a policy alone (policy-aware minting
+  through `kit.iris`, how parts get their type, the `IriPolicy` fields and defaults, the refused
+  stage-2 templates, templates that must name their tenant, not changing a policy once tenants
+  exist). Plus the remaining items of PD-12g/j/l/m the checker found unmet.
+  Side effect, accepted: the unexported shim `tenant_iri_of_access` now answers only for tenants under
+  `DEFAULT_IRIS`'s placeholder base; no production code calls it, and it goes with the shim clean-up.
+
+Rejected, with the reason:
+- `iris` required in every service constructor (L4 major 3): PD-3a keeps it optional for classes a
+  consumer builds; PD-12j makes the default explicit instead.
+- An enum of template variables (L4 major 1, in part): the variables are already the schema's
+  patterns; `_templates` removes the repeated lookups, an enum would add a third copy.
+- A loaded graph not yet committed can be claimed by another aggregate that knows its random IRI
+  (tester observation): the same accepted race as PD-7 *Loaded graphs*.
 
 ## Algorithm / approach
 
@@ -168,7 +288,8 @@ The guard's first write is idempotent: writing an equal record twice changes not
 | Failure mode | How it is detected | Expected handling |
 |---|---|---|
 | Template invalid (variable, end, characters) | settings validation | `ValidationError` naming the template |
-| `{deployment}` used, no slug | settings validation | `ValidationError` naming `deployment` |
+| `{deployment}` used, no slug | `check_iri_policy`, when `Iris` is built | `InvalidIri` naming the template and `deployment` |
+| `random` id without `length` | `check_iri_policy`, when `Iris` is built | `InvalidIri` naming the id spec |
 | `IdSpec.length` outside 4 to 32 | settings validation | `ValidationError` naming the field |
 | Tenant id clash | access record or dataset exists for candidate | re-draw, at most 5, then `PersistenceError` |
 | Same id drawn by two concurrent creates | second `create_dataset` fails | create fails; sweep cleans (PD-5) |

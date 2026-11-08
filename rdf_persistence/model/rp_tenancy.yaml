@@ -65,11 +65,11 @@ slots:
   database_name:
     title: Database name
     description: >-
-      The name of the tenant's database, the prefix, "-t-" and the tenant's UUID in hexadecimal; the prefix is
-      lower case, at most 20 characters.
+      The name of the tenant's database, the prefix, "-t-" and the tenant id (hyphens left out); the prefix is
+      lower case, at most 20 characters, the tenant id 4 to 32 lower case letters and digits.
     slot_uri: rp:databaseName
     range: string
-    pattern: "^[a-z][a-z0-9]{0,19}-t-[0-9a-f]{32}$"
+    pattern: "^[a-z][a-z0-9]{0,19}-t-[a-z0-9]{4,32}$"
     annotations:
       internal: true
   grants:

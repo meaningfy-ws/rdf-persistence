@@ -935,6 +935,12 @@ enums:
         title: Unique key
         description: A unique key is named by an identifier, since generated code carries the name.
         meaning: rp:HardRuleUniqueKey
+      iri_type:
+        title: IRI type
+        description: >-
+          The `rp_iri_type` of a root or an owned class, or its kebab-case name when it has none, is
+          unique among them and is not a reserved word of the IRI layout.
+        meaning: rp:HardRuleIriType
   BoundaryRule:
     title: Boundary rule
     description: The rules of the boundary check; a problem line starts with its rule.

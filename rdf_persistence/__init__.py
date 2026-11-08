@@ -73,6 +73,9 @@ from rdf_persistence.domain.generated.service.rp_service import (
     Authorised,
     CallerAccess,
     GrantSet,
+    IdKind,
+    IdSpec,
+    IriPolicy,
     LabelUpdate,
     Page,
     Problem,
@@ -82,7 +85,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     TenantSummary,
     VerifiedCaller,
 )
-from rdf_persistence.domain.iris import mint_aggregate_iri
+from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris, mint_aggregate_iri
 
 if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.adapters.fuseki import FusekiStore
@@ -157,6 +160,7 @@ __all__ = [
     "CallerAccess",
     "Conflict",
     "DatabaseGone",
+    "DEFAULT_IRIS",
     "DatabaseKind",
     "Described",
     "FileStore",
@@ -165,6 +169,8 @@ __all__ = [
     "Grant",
     "GrantSet",
     "GraphKind",
+    "IdKind",
+    "IdSpec",
     "Identity",
     "IdentityUnavailable",
     "InvalidBody",
@@ -173,6 +179,8 @@ __all__ = [
     "InvalidGrant",
     "InvalidRoleDefinition",
     "InvalidToken",
+    "IriPolicy",
+    "Iris",
     "JwksTokenVerifier",
     "LabelUpdate",
     "Mapper",

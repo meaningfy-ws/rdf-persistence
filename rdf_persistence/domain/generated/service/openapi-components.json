@@ -291,6 +291,97 @@
       "title": "GraphKind",
       "type": "string"
     },
+    "IdKind": {
+      "description": "The ways an id is drawn.",
+      "enum": [
+        "uuid4",
+        "random"
+      ],
+      "title": "IdKind",
+      "type": "string"
+    },
+    "IdSpec": {
+      "additionalProperties": false,
+      "description": "How the toolkit draws an id: a UUIDv4, or `length` characters drawn from `alphabet`. The length is required for `random` ids.",
+      "properties": {
+        "alphabet": {
+          "description": "The characters a random id is drawn from, each a lower case letter or a digit.",
+          "pattern": "^[a-z0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/components/schemas/IdKind",
+          "description": "Whether ids are UUIDv4 or random characters of an alphabet."
+        },
+        "length": {
+          "description": "The number of characters of a random id, 4 to 32.",
+          "maximum": 32,
+          "minimum": 4,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "IdSpec",
+      "type": "object"
+    },
+    "IriPolicy": {
+      "additionalProperties": false,
+      "description": "The templates the toolkit mints and accepts IRIs by, one per kind of IRI, and the id specifications of tenant and object ids. Every slot defaults to today's shape, so an empty policy is the default one. A template fills the variables allowed for its kind; the tenant, aggregate, part, loaded graph and principal templates end in their id variable, the access, meta and registry templates contain the tenant, and the aggregate, part and loaded graph templates name their tenant or, for the last two, their root.",
+      "properties": {
+        "access_template": {
+          "description": "The template of the IRI of a tenant's access record; contains `{tenant}` or `{tenant_id}`.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*$",
+          "type": "string"
+        },
+        "aggregate_template": {
+          "description": "The template of an aggregate root IRI; contains `{tenant}` or `{tenant_id}` and ends in `{id}`.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|type|rp_path|id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|type|rp_path|id)\\})*\\{id\\}$",
+          "type": "string"
+        },
+        "loaded_graph_template": {
+          "description": "The template of the IRI of a loaded graph; contains `{tenant}`, `{tenant_id}` or `{root}` and ends in `{id}`.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{(?:tenant|tenant_id|root)\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{id\\}$",
+          "type": "string"
+        },
+        "meta_template": {
+          "description": "The template of the IRI of a tenant's meta graph; contains `{tenant}` or `{tenant_id}`.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*$",
+          "type": "string"
+        },
+        "object_id": {
+          "$ref": "#/components/schemas/IdSpec",
+          "description": "How the id of a new aggregate root, part or loaded graph is drawn; absent, a UUIDv4."
+        },
+        "part_template": {
+          "description": "The template of the IRI of an owned part; contains `{tenant}`, `{tenant_id}` or `{root}` and ends in `{id}`.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{(?:tenant|tenant_id|root)\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{id\\}$",
+          "type": "string"
+        },
+        "principal_template": {
+          "description": "The template of the IRI of a principal; ends in `{sub}`.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|issuer|sub)\\})*\\{sub\\}$",
+          "type": "string"
+        },
+        "registry_template": {
+          "description": "The template of the IRI of a tenant's registry graph; contains `{tenant}` or `{tenant_id}`.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*$",
+          "type": "string"
+        },
+        "tenant_id": {
+          "$ref": "#/components/schemas/IdSpec",
+          "description": "How the id of a new tenant is drawn; absent, a UUIDv4."
+        },
+        "tenant_template": {
+          "description": "The template of a tenant IRI; ends in `{tenant_id}`.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant_segment|tenant_id)\\})*\\{tenant_id\\}$",
+          "type": "string"
+        }
+      },
+      "title": "IriPolicy",
+      "type": "object"
+    },
     "LabelUpdate": {
       "additionalProperties": false,
       "description": "The body that replaces the label of a tenant.",
@@ -651,6 +742,7 @@
         "database",
         "module_kind",
         "rp_path",
+        "rp_iri_type",
         "rp_unlabelled",
         "bookkeeping"
       ],
@@ -697,6 +789,15 @@
           "description": "The role a caller is given on the tenant it creates.",
           "pattern": "^.+$",
           "type": "string"
+        },
+        "deployment": {
+          "description": "A slug that names this deployment, for templates that use `{deployment}`; lower case letters and digits, at most 32.",
+          "pattern": "^[a-z0-9]{1,32}$",
+          "type": "string"
+        },
+        "iri_policy": {
+          "$ref": "#/components/schemas/IriPolicy",
+          "description": "The IRI policy of the service; absent, the default policy applies."
         },
         "max_body_bytes": {
           "description": "The most bytes a request body may hold; a larger one is refused with 413 before it is read whole.",

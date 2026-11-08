@@ -92,6 +92,10 @@
             "aggregate": "https://meaningfy.ws/ns/rdf-persistence#AggregateLevel"
          }
       },
+      "listed_in": {
+         "@type": "@id",
+         "@id": "listedIn"
+      },
       "loaded_graph": {
          "@type": "@id",
          "@id": "loadedGraph"

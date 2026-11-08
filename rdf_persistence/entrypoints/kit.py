@@ -13,7 +13,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     Authorised,
     ServiceSettings,
 )
-from rdf_persistence.domain.iris import system_database_name, tenant_iri
+from rdf_persistence.domain.iris import Iris, system_database_name
 from rdf_persistence.entrypoints.auth import Gate
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.aggregates import Aggregates
@@ -24,7 +24,7 @@ from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, generated_models_of
 from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import tenant_access_class
+from rdf_persistence.services.schema_structure import iri_types, tenant_access_class
 from rdf_persistence.services.session import Session
 from rdf_persistence.services.store import Store, ToolkitStore
 from rdf_persistence.services.tenancy import Tenancy
@@ -59,7 +59,8 @@ class ServiceKit:
         self.files = files
         self.identity = identity
         self.verifier = verifier
-        self.rules = rules
+        self.iris = Iris(settings, *iri_types(view))
+        self.rules = rules.with_iris(self.iris)
         self.settings = settings
         mounted = prefix.strip("/")
         # from the service's own base, never from a request: a Host header is the caller's to forge
@@ -69,7 +70,7 @@ class ServiceKit:
         self.gate = Gate(self)
         self.system_database = system_database_name(settings.prefix)
         self.generated_folder = Path(next(iter(generated.__path__)))
-        self.documents = Documents(view, self.generated_folder)
+        self.documents = Documents(view, self.generated_folder, self.iris)
         self.documents.require_frames()
         models = generated_models_of(generated, rp_access, rp_core, rp_tenancy)
         access_class = cast(type[TenantAccess], models.named(tenant_access_class(view).name))
@@ -80,16 +81,17 @@ class ServiceKit:
             mapper=Mapper(view, models),
             root_class=models.named(self.documents.tenant_root.name),
             access_class=access_class,
+            iris=self.iris,
         )
-        self.aggregates = Aggregates(self.documents, self.tenancy)
+        self.aggregates = Aggregates(self.documents, self.tenancy, self.iris)
 
     def tenant_iri(self, tenant_id: str) -> str:
         """The IRI of the tenant whose id is ``tenant_id`` in a path.
 
         Raises:
-            NotFound: ``tenant_id`` is not a canonical UUID, so no tenant has it.
+            NotFound: ``tenant_id`` is not an id the IRI policy mints, so no tenant has it.
         """
-        return str(tenant_iri(self.settings.base, self.settings.tenant_segment, tenant_id))
+        return str(self.iris.tenant(tenant_id))
 
     async def require(
         self, authorization: str | None, tenant_id: str, action: Action

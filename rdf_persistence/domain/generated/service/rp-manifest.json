@@ -15,7 +15,7 @@
     },
     {
       "path": "rdf_persistence/generation/checks/hard.py",
-      "sha256": "bd2426ad947454863972902b1749a7e8eb693db236dd4a5bac36a74c9208a4eb"
+      "sha256": "fc4c7504a666168ed4d2cdd3db674d26a1a1a3206d0475dafe3ca27b778de9eb"
     },
     {
       "path": "rdf_persistence/generation/checks/rules.py",
@@ -139,15 +139,15 @@
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "2e740c84cee2dbcc6075d1130437fa2ea4060e4468574a57b7ed68475b60c609"
+      "sha256": "486f60bb3178f2f647768bcf3bf628016f66147286c14c5dc273024bff6c3a93"
     },
     {
       "path": "rdf_persistence/model/rp_tenancy.yaml",
-      "sha256": "9a77b7ecd57b7e235e1633b91c4d1d9203e0ff41b392fe325c96a1ff1c9ce3de"
+      "sha256": "ac86e3b8e84f0264c32f804bdf7b77e0a85a3b4cd23d40bbe2817d9527629101"
     },
     {
       "path": "rdf_persistence/model/service/rp_service.yaml",
-      "sha256": "0679e42406c1a1f19d5dd569be978f942c58c3700abec1a0f01f46e635da67cc"
+      "sha256": "250c80548547cbd6eccdbcf1413c18c05c0e237ed9eade9ec0dbdcd641450020"
     },
     {
       "path": "rdf_persistence/services/schema.py",
@@ -155,7 +155,7 @@
     },
     {
       "path": "rdf_persistence/services/schema_structure.py",
-      "sha256": "72b163cb06e105469882b193ee6ed7b8f3753ecca126e0a1cc9c59f177072009"
+      "sha256": "2ead45a049502e5c542a78b2fee334169a7ee87a32c38565f548845180e16c93"
     }
   ],
   "outputs": [
@@ -165,19 +165,19 @@
     },
     {
       "path": "rdf_persistence/domain/generated/service/context.jsonld",
-      "sha256": "14f1edbdf1c20e76cc7a10e7adbc822778949b97401e66c3ab201518c46c8d16"
+      "sha256": "713295f61fe1f3a48260c909441d0ce6ac0ad58a486e1c390ce5d40de141b466"
     },
     {
       "path": "rdf_persistence/domain/generated/service/openapi-components.json",
-      "sha256": "87ee2eff85c5e25b9e51b639011783a14b82fdc863d6df9c6a13278f7694267e"
+      "sha256": "68bdf21fc4a589a5adeefd78e4442a628bc9522bc0efa309623054f312b678f1"
     },
     {
       "path": "rdf_persistence/domain/generated/service/rp_service.py",
-      "sha256": "f1a0982ceb15705c98b46a2f3aa1d8978f12e0b9a7b4f9f6db8e93ead122adec"
+      "sha256": "6d922bdc61c1ee5f33eed99f301642d9f343d69be915c8e3c6e557d606f49ece"
     },
     {
       "path": "rdf_persistence/domain/generated/service/shapes.ttl",
-      "sha256": "7888c379ffc4761d7c6c1cbeb84e154956ed47c6ef7f8b18ec3bd073e3b15b9f"
+      "sha256": "3859626bae8e90b9c0f5c279ab0c5b6008d044e77d00b3f57f471d8a74e63546"
     }
   ]
 }
