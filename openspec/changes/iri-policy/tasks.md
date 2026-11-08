@@ -33,7 +33,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
   names from the tenant id. Tests: "a tenant id clash" (access record, and orphan dataset), the
   consumer's tenant without its access record, which stage 1 leaves at the default
   `{tenant}/access`; the scenario is completed in 5.1.
-- [ ] 3.2 Roots, parts, loaded graphs: `services/aggregates.py`, `services/documents.py`,
+- [x] 3.2 Roots, parts, loaded graphs: `services/aggregates.py`, `services/documents.py`,
   `services/mapper.py` (`new_part`), `services/session.py` (`add` of a loaded graph) mint through
   `Iris` with the class's `rp_iri_type`. Tests: "a flat object", "the API path changes, the IRIs do
   not".
@@ -73,7 +73,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
+- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
 
 ## Verification
 

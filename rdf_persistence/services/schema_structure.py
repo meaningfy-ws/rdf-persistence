@@ -270,11 +270,14 @@ def owned_class_names(view: SchemaView, folder: Path) -> set[str]:
     return owned_classes(view, own_classes(own_schemas(view, folder)))
 
 
+def kebab_case(name: str) -> str:
+    """``name`` in kebab case: the default ``{type}`` of a class."""
+    return KEBAB_BOUNDARY.sub("-", name).lower()
+
+
 def iri_type_of(cls: ClassDefinition) -> str:
     """The ``{type}`` of the IRIs of ``cls``: its ``rp_iri_type``, else its name in kebab case."""
-    return (
-        annotation_text(cls, RpAnnotation.RP_IRI_TYPE) or KEBAB_BOUNDARY.sub("-", cls.name).lower()
-    )
+    return annotation_text(cls, RpAnnotation.RP_IRI_TYPE) or kebab_case(cls.name)
 
 
 def iri_types(view: SchemaView) -> tuple[frozenset[str], frozenset[str]]:

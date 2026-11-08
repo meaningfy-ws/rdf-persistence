@@ -19,11 +19,12 @@ from rdf_persistence.domain.generated.rp_core import Principal, RegistryEntry, R
 from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.generated.service.rp_service import ListPlan
 from rdf_persistence.domain.iris import (
+    DEFAULT_IRIS,
+    Iris,
     graph_iri,
     is_aggregate_iri,
     is_inside_tenant,
     is_loaded_graph_of,
-    loaded_graph_iri,
     meta_graph_iri,
     registry_graph_iri,
     skolem_iri,
@@ -215,8 +216,16 @@ class Session:
     """Reads and commits whole graphs of one tenant database on behalf of one principal."""
 
     def __init__(
-        self, store: Store, *, database: str, tenant_iri: str, principal: Principal, clock: Clock
+        self,
+        store: Store,
+        *,
+        database: str,
+        tenant_iri: str,
+        principal: Principal,
+        clock: Clock,
+        iris: Iris | None = None,
     ) -> None:
+        self._iris = iris or DEFAULT_IRIS
         self._store = store
         self._database = database
         self._tenant = tenant_iri
@@ -398,7 +407,7 @@ class Session:
         """
         self._graph(iri)
         parsed = await parse_graph(data, rdf_format)
-        loaded = loaded_graph_iri(iri)
+        loaded = self._iris.mint_loaded_graph(self._tenant, iri)
         await self._store.put_graph(self._database, loaded, parsed)
         return loaded
 
@@ -425,6 +434,15 @@ async def open_session(
     tenant_iri: str,
     principal: Principal,
     clock: Clock = utc_now,
+    iris: Iris | None = None,
 ) -> AsyncIterator[Session]:
-    """Open a session on the tenant database ``database`` for ``principal``."""
-    yield Session(store, database=database, tenant_iri=tenant_iri, principal=principal, clock=clock)
+    """Open a session on the tenant database ``database`` for ``principal``; ``iris`` is the IRI policy
+    (default: the default policy)."""
+    yield Session(
+        store,
+        database=database,
+        tenant_iri=tenant_iri,
+        principal=principal,
+        clock=clock,
+        iris=iris,
+    )

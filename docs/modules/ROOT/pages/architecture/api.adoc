@@ -348,7 +348,7 @@ a remote context is refused. A JSON-LD body is expanded with its own inline cont
 |10
 |The strict-body checks on the triples: no `internal` predicate in any key form; exactly one root,
 whose IRI is the path's; bookkeeping statements dropped; a part without an IRI gets
-`{root}/parts/{uuid4}`; every IRI one SPARQL can carry; every subject inside the aggregate and
+one from the IRI policy (by default `{root}/parts/{uuid4}`; its `{type}` is the part's `rdf:type`, else 422); every IRI one SPARQL can carry; every subject inside the aggregate and
 reached from the root through owned-part slots, typed with a class the slot takes.
 |`Documents.parse` (the internal-slot refusal), `Documents._settled`, `_root`, `_refuse_strays`
 |422

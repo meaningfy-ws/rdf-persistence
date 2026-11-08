@@ -230,8 +230,9 @@ Book(id="https://example.org/library/books/3", label="L", description="D", isbn=
 Every generated class derives from the toolkit's strict base, `RpModel`. It refuses unknown
 fields, validates on assignment, and enforces the rules declared in the schema: `required`,
 ranges, patterns, `exactly_one_of`, `any_of` and `unique_keys`. Each object, owned parts included,
-has an `id`. The service mints a part's IRI, `{root_iri}/parts/{uuid4}`, when a request body leaves it out, and
-keeps it across commits; in a domain service, build a part with `new_part` (<<session>>). The metamodel's classes (`AggregateRoot`, `Described`, `Grant`, …) are imported from
+has an `id`. The service mints a part's IRI, by default `{root_iri}/parts/{uuid4}`, when a request body leaves it out, and
+keeps it across commits; under a custom IRI policy the part template decides, and a body's part must then be
+typed with an owned class when the template has `{type}` (else 422). In a domain service, build a part with `new_part` (<<session>>). The metamodel's classes (`AggregateRoot`, `Described`, `Grant`, …) are imported from
 `rdf_persistence`, never generated into your package.
 
 Use the generated classes in your domain services. Do not declare models of your own: no
@@ -421,10 +422,12 @@ What a commit does:
 * The session writes the version and the tracking slots (`created`, `creator`, `modified`,
   `contributor`) as statements about the aggregate's graph, `{root}/graph`. Your code never sets
   them.
-* An aggregate IRI must be one the toolkit would mint, `{tenant}/{rp_path}/{uuid4}`. Any other is
+* An aggregate IRI must be one the toolkit would mint, by default `{tenant}/{rp_path}/{uuid4}`; a custom
+  IRI policy uses the class's `{type}` instead of `{rp_path}`. Any other is
   refused (`InvalidIri`) before anything is sent; `mint_aggregate_iri(tenant, rp_path)` mints one.
-* A part's IRI is `{root}/parts/{uuid4}`. `new_part` mints it, and it stays the same across
-  commits.
+* A part's IRI is, by default, `{root}/parts/{uuid4}`. `new_part` mints it, and it stays the same across
+  commits. Under a custom IRI policy pass `new_part(Chapter, root, iris=iris, tenant=tenant, ...)`: the
+  part template decides, with `{type}` the kebab-case class name (`rp_iri_type` is not read here).
 
 The session also works below the object level, on triples. Use it for what the mapper does not
 cover:
@@ -536,7 +539,8 @@ shows it, but a domain service can, since the mapper writes internal slots. The 
 the bytes under the scan's id instead. Its route is in <<serve>>.
 
 *RDF*, parsed into a graph of its own. `Session.load_graph(iri, data, rdf_format=RdfFormat.TURTLE)`
-parses the data in a worker thread and puts it into a new named graph, `{iri}/content/{uuid4}`.
+parses the data in a worker thread and puts it into a new named graph, by default `{iri}/content/{uuid4}` (the loaded-graph template of the
+IRI policy; `Session` takes the policy as `iris=`).
 Data that does not parse raises `InvalidGraph`, and nothing is written. The graph belongs to the
 aggregate once a commit names it:
 

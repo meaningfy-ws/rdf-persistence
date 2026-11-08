@@ -95,7 +95,7 @@ _What is built in v1, and what waits for a need?_
 
 |Mapper
 |v1
-|Domain object to triples and back, IRIs taken from the LinkML schema at run time (implemented, task 2.5: `rdf_persistence/services/mapper.py`). Owned parts live in the root's graph: by an IRI minted under the root's (`{root_iri}/parts/{uuid4}`) when their class includes `Described`, otherwise as blank nodes skolemised on write; references to other aggregates are IRIs; multi-valued slots are sets. The mapper reads the class the caller asks for (it does not use `designates_type`), and an owned part as its slot's range class, so a subclass in an owned slot comes back as its parent: a known limit, lifted when a schema owns a class hierarchy.
+|Domain object to triples and back, IRIs taken from the LinkML schema at run time (implemented, task 2.5: `rdf_persistence/services/mapper.py`). Owned parts live in the root's graph: by an IRI minted under the root's (by default `{root_iri}/parts/{uuid4}`, per the IRI policy) when their class includes `Described`, otherwise as blank nodes skolemised on write; references to other aggregates are IRIs; multi-valued slots are sets. The mapper reads the class the caller asks for (it does not use `designates_type`), and an owned part as its slot's range class, so a subclass in an owned slot comes back as its parent: a known limit, lifted when a schema owns a class hierarchy.
 |N-1
 
 |Session and unit of work
@@ -110,7 +110,7 @@ _What is built in v1, and what waits for a need?_
 
 |Graph loading
 |v1
-|`Session.load_graph`: parse an RDF file (Turtle, RDF/XML, N-Triples, JSON-LD) in a worker thread; refuse it with `InvalidGraph` if it does not parse, writing nothing; otherwise `PUT` it into a new named graph, `{root}/content/{uuid4}`. A later commit registers it by naming it in `loaded_graphs`. A loaded graph no commit registers stays, unseen, until its tenant is deleted: the start-up sweep drops only whole tenant databases and buckets, and the sweep inside a live tenant is deferred (below).
+|`Session.load_graph`: parse an RDF file (Turtle, RDF/XML, N-Triples, JSON-LD) in a worker thread; refuse it with `InvalidGraph` if it does not parse, writing nothing; otherwise `PUT` it into a new named graph, by default `{root}/content/{uuid4}` (per the IRI policy). A later commit registers it by naming it in `loaded_graphs`. A loaded graph no commit registers stays, unseen, until its tenant is deleted: the start-up sweep drops only whole tenant databases and buckets, and the sweep inside a live tenant is deferred (below).
 |N-5
 
 |File store port and S3 adapter

@@ -80,12 +80,12 @@ def aggregate_iri(tenant: str, rp_path: str, aggregate_id: str) -> URIRef:
     """
     if not is_canonical_uuid(aggregate_id):
         raise NotFound(f"no aggregate {aggregate_id!r}")
-    return _DEFAULT.aggregate(tenant, "", rp_path, aggregate_id)
+    return DEFAULT_IRIS.aggregate(tenant, "", rp_path, aggregate_id)
 
 
 def mint_aggregate_iri(tenant_iri: str, rp_path: str) -> URIRef:
     """A fresh aggregate IRI ``{tenant_iri}/{rp_path}/{uuid4}``."""
-    return _DEFAULT.mint_aggregate(tenant_iri, "", rp_path)
+    return DEFAULT_IRIS.mint_aggregate(tenant_iri, "", rp_path)
 
 
 def skolem_iri(graph: str) -> URIRef:
@@ -114,47 +114,47 @@ def is_canonical_uuid(text: str) -> bool:
 def is_aggregate_iri(tenant_iri: str, iri: str) -> bool:
     """True for what the toolkit mints as an aggregate: the tenant root, its access record, or
     ``{tenant_iri}/{rp_path}/{canonical uuid}``. Anything else could alias another graph."""
-    return _DEFAULT.is_aggregate(tenant_iri, iri)
+    return DEFAULT_IRIS.is_aggregate(tenant_iri, iri)
 
 
 def is_aggregate_graph_iri(tenant_iri: str, iri: str) -> bool:
     """True when ``iri`` is the ``graph_iri`` of an aggregate of the tenant (never of the tenant root)."""
-    return _DEFAULT.is_aggregate_graph(tenant_iri, iri)
+    return DEFAULT_IRIS.is_aggregate_graph(tenant_iri, iri)
 
 
 def is_loaded_graph_of(root_iri: str, graph: str) -> bool:
     """True when ``graph`` is exactly ``{root_iri}/content/{canonical uuid}`` (see ``loaded_graph_iri``)."""
-    return _DEFAULT.is_loaded_graph(None, graph, root_iri)
+    return DEFAULT_IRIS.is_loaded_graph(None, graph, root_iri)
 
 
 def mint_part_iri(root_iri: str) -> URIRef:
     """A fresh IRI ``{root_iri}/parts/{uuid4}`` for an owned part that has none."""
-    return _DEFAULT.mint_part("", root_iri, "")
+    return DEFAULT_IRIS.mint_part("", root_iri, "")
 
 
 def loaded_graph_iri(aggregate_iri: str) -> URIRef:
     """A fresh IRI for a graph loaded into an aggregate."""
-    return _DEFAULT.mint_loaded_graph("", aggregate_iri)
+    return DEFAULT_IRIS.mint_loaded_graph("", aggregate_iri)
 
 
 def meta_graph_iri(tenant_iri: str) -> URIRef:
     """The graph that holds the tenant's root object."""
-    return _DEFAULT.meta(tenant_iri)
+    return DEFAULT_IRIS.meta(tenant_iri)
 
 
 def registry_graph_iri(tenant_iri: str) -> URIRef:
     """The graph that holds the tenant's registry entries."""
-    return _DEFAULT.registry(tenant_iri)
+    return DEFAULT_IRIS.registry(tenant_iri)
 
 
 def access_iri(tenant_iri: str) -> URIRef:
     """The IRI of the tenant's access record; its graph is ``graph_iri`` of it."""
-    return _DEFAULT.access(tenant_iri)
+    return DEFAULT_IRIS.access(tenant_iri)
 
 
 def tenant_iri_of_access(access_record_iri: str) -> URIRef:
     """The tenant an access record belongs to; the inverse of ``access_iri``."""
-    return _DEFAULT.tenant_of_access(access_record_iri)
+    return DEFAULT_IRIS.tenant_of_access(access_record_iri)
 
 
 def system_database_name(prefix: str) -> str:
@@ -189,7 +189,7 @@ def principal_iri(issuer: str, subject: str) -> URIRef:
     The issuer names the provider, so the IRI is unique across providers; percent-encoding keeps a
     ``sub`` from leaving its path segment.
     """
-    return _DEFAULT.principal(issuer, subject)
+    return DEFAULT_IRIS.principal(issuer, subject)
 
 
 def check_iri_policy(settings: ServiceSettings) -> None:
@@ -536,7 +536,7 @@ class Iris:
 
 
 # The default policy for the module functions above: their templates ignore the base and the segment.
-_DEFAULT = Iris(
+DEFAULT_IRIS = Iris(
     ServiceSettings(
         base="https://default.invalid/",
         prefix="rp",

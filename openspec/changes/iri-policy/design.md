@@ -134,6 +134,13 @@ path ids in `entrypoints/router.py` (`_last_segment`). Two places infer ownershi
   (the default) does not read the type, so nothing changes for today's bodies. Until task 3.4 wires
   one `Iris`, `Aggregates`, `Documents`, `Session` and `new_part` take an optional `iris`
   defaulting to the default-policy `Iris` the module shims use, which mints today's IRIs.
+- **PD-7b `new_part` and `rp_iri_type` (lead's decision, found in task 3.2).** The generated
+  pydantic classes carry no LinkML metadata (`linkml_meta = None`), so `new_part(cls, …)` cannot
+  read a class's `rp_iri_type`; it uses the kebab-case class name, the default `{type}`. Under a
+  template with `{type}`, a part class whose `rp_iri_type` differs is refused by `Iris` with
+  `InvalidIri` (never a wrong IRI), and the docstring and `adopt.adoc` say so. Bodies through
+  `Documents` read the annotation from the schema and are not affected. Upgrade when the generator
+  emits class metadata, or when a consumer needs `rp_iri_type` on a part built in code.
 - **PD-8 `rp_iri_type`.** A new value of the `RpAnnotation` enum in `rdf_persistence/model/rp_core.yaml`
   (beside `rp_path`, `rp_core.yaml:149`), whose `rp_path` description becomes "its path segment in
   the API" (no longer "and in its IRIs"). The value follows the `url_segment` pattern, as `rp_path`

@@ -94,6 +94,7 @@ class Tenancy:
             tenant_iri=tenant,
             principal=principal,
             clock=self._clock,
+            iris=self._iris,
         )
 
     def tenant_session(

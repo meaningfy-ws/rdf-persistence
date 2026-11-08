@@ -25,9 +25,9 @@ from pyshacl import validate
 from rdflib import RDF, SH, XSD, BNode, Graph, Literal, URIRef
 from rdflib.term import Node
 
-from rdf_persistence.domain.exceptions import InvalidBody, PayloadTooLarge
+from rdf_persistence.domain.exceptions import InvalidBody, InvalidIri, PayloadTooLarge
 from rdf_persistence.domain.generated.rp_core import RpAnnotation
-from rdf_persistence.domain.iris import mint_part_iri
+from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.domain.sparql import FORBIDDEN_IRI_CHARS, Triple
 from rdf_persistence.services import vocabulary as v
@@ -43,6 +43,7 @@ from rdf_persistence.services.schema_structure import (
     annotation_text,
     holds_owned_part,
     internal_predicates,
+    iri_type_of,
     is_internal,
     json_name,
     refuse_internal,
@@ -89,8 +90,10 @@ def dataset_of(graph: Graph) -> dict:
 class Documents:
     """The schema's context, frames and shapes, and what turns a body into triples and triples into a body."""
 
-    def __init__(self, view: SchemaView, folder: Path) -> None:
-        """Read the artefacts the generator wrote to ``folder`` for the schema ``view``."""
+    def __init__(self, view: SchemaView, folder: Path, iris: Iris | None = None) -> None:
+        """Read the artefacts the generator wrote to ``folder`` for the schema ``view``; new parts get
+        their IRIs from ``iris`` (default: the default policy)."""
+        self._iris = iris or DEFAULT_IRIS
         self._view = view
         self._folder = folder
         self._frames: dict[str, dict] = {}
@@ -160,23 +163,31 @@ class Documents:
     # -- reading a body ------------------------------------------------------------------------
 
     async def parse(
-        self, data: bytes, media_type: str, cls: ClassDefinition, iri: str, *, creating: bool
+        self,
+        data: bytes,
+        media_type: str,
+        cls: ClassDefinition,
+        iri: str,
+        *,
+        creating: bool,
+        tenant: str = "",
     ) -> Graph:
         """The triples of the body ``data``: one node of class ``cls`` rooted at ``iri``, with its parts.
 
         A JSON body is expanded with the generated context, its nodes typed by the schema; a JSON-LD
         body is used as it is. The root has the IRI of the path; on a create that IRI is minted, so a
         body naming one is refused, and on a replace a body naming another is refused. A part without
-        an IRI gets one under the root.
+        an IRI gets one from the IRI policy, by its class (PD-7a); ``tenant`` is the tenant of ``iri``.
 
         Raises:
             InvalidBody: The body is not a JSON object, is not valid JSON-LD, uses a remote context, or
-                describes anything but the one node and its parts.
+                describes anything but the one node and its parts; or a part needs a ``{type}`` in
+                its IRI and has no ``rdf:type`` that is an owned class of the schema.
         """
         document = self._document(data, media_type, cls)
         graph = await anyio.to_thread.run_sync(self._triples, document)
         refuse_internal(graph, self._internal)
-        return self._settled(graph, cls, URIRef(iri), creating)
+        return self._settled(graph, cls, URIRef(iri), creating, tenant)
 
     def _document(self, data: bytes, media_type: str, cls: ClassDefinition) -> dict:
         try:
@@ -285,7 +296,23 @@ class Documents:
                 raise refusal from error
             raise InvalidBody(f"the body is not valid JSON-LD: {str(error)[:200]}") from error
 
-    def _settled(self, graph: Graph, cls: ClassDefinition, iri: URIRef, creating: bool) -> Graph:
+    def _part_iri(self, graph: Graph, node: Node, root: URIRef, tenant: str) -> URIRef:
+        """A fresh IRI for the part ``node`` of ``root``, by the class its ``rdf:type`` names (PD-7a)."""
+        types = list(graph.objects(node, RDF.type))
+        owned = self._class_of.get(types[0]) if len(types) == 1 else None  # type: ignore[call-overload]
+        cls_type = iri_type_of(owned) if owned is not None else ""
+        try:
+            return self._iris.mint_part(tenant, str(root), cls_type)
+        except InvalidIri as error:
+            if cls_type in self._iris.owned_types:
+                raise
+            raise InvalidBody(
+                f"a part of {root} needs a type that is an owned class: {types or 'none given'}"
+            ) from error
+
+    def _settled(
+        self, graph: Graph, cls: ClassDefinition, iri: URIRef, creating: bool, tenant: str
+    ) -> Graph:
         """``graph`` rooted at ``iri``, its parts named, without the bookkeeping, or the refusal."""
         root = self._root(graph, iri, creating)
         if (root, RDF.type, self._iri_of(cls)) not in graph:
@@ -296,7 +323,8 @@ class Documents:
             if node == root:
                 return iri
             if isinstance(node, BNode) and self._has_identifier(graph, node):
-                names.setdefault(node, mint_part_iri(str(iri)))
+                if node not in names:
+                    names[node] = self._part_iri(graph, node, iri, tenant)
                 return names[node]
             return node
 

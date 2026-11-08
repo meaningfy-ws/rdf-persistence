@@ -34,7 +34,7 @@ from rdflib import RDF, BNode, Graph, Literal, URIRef
 from rdflib.term import Node
 
 from rdf_persistence.domain.base import RpModel
-from rdf_persistence.domain.iris import mint_part_iri
+from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services.schema_structure import (
     aggregate_roots,
@@ -42,6 +42,7 @@ from rdf_persistence.services.schema_structure import (
     holds_owned_part,
     is_bookkeeping,
     is_tenant_root,
+    kebab_case,
     rdf_term,
 )
 from rdf_persistence.services.session import Session
@@ -86,14 +87,21 @@ def generated_models_of(package: ModuleType, *modules: ModuleType) -> GeneratedM
     return GeneratedModels([*found, *modules])
 
 
-def new_part[M: BaseModel](cls: type[M], root_iri: str, **fields: Any) -> M:
-    """A part of the aggregate rooted at ``root_iri``, with a minted IRI ``{root}/parts/{uuid4}``.
+def new_part[M: BaseModel](
+    cls: type[M], root_iri: str, *, iris: Iris | None = None, tenant: str = "", **fields: Any
+) -> M:
+    """A part of the aggregate rooted at ``root_iri``, with an IRI minted by ``iris`` (default
+    policy: ``{root}/parts/{uuid4}``); ``tenant`` is the tenant the aggregate is in (PD-3).
+
+    Shortcut: the ``{type}`` is the kebab-case name of ``cls``; the generated class does not carry an
+    ``rp_iri_type``. A policy that needs ``{type}`` refuses a class whose type differs (``InvalidIri``).
 
     A part whose class is ``Described`` has a required ``id``, so it cannot be built without one;
     domain code builds it here, and the IRI is kept across commits because it is the node's IRI in
     the graph. (Minting inside ``add`` is impossible: the object does not exist before it has an id.)
     """
-    return cls(id=str(mint_part_iri(root_iri)), **fields)
+    minted = (iris or DEFAULT_IRIS).mint_part(tenant, root_iri, kebab_case(cls.__name__))
+    return cls(id=str(minted), **fields)
 
 
 class Mapper:

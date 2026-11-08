@@ -10,9 +10,10 @@ from typing import cast
 from linkml_runtime.linkml_model.meta import ClassDefinition
 
 from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.iris import mint_aggregate_iri
+from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services.documents import Documents
+from rdf_persistence.services.schema_structure import iri_type_of
 from rdf_persistence.services.session import Stored
 from rdf_persistence.services.tenancy import Tenancy
 
@@ -20,9 +21,10 @@ from rdf_persistence.services.tenancy import Tenancy
 class Aggregates:
     """Reads, creates, replaces and deletes the aggregates of a tenant on behalf of a principal."""
 
-    def __init__(self, documents: Documents, tenancy: Tenancy) -> None:
+    def __init__(self, documents: Documents, tenancy: Tenancy, iris: Iris | None = None) -> None:
         self._documents = documents
         self._tenancy = tenancy
+        self._iris = iris or DEFAULT_IRIS
 
     async def read(self, tenant: str, principal: Principal, iri: str) -> Stored:
         """The aggregate ``iri``, as stored.
@@ -47,8 +49,8 @@ class Aggregates:
         Raises:
             InvalidBody: The body is not a valid ``cls`` (see ``Documents.parse`` and ``validate``).
         """
-        iri = str(mint_aggregate_iri(tenant, rp_path))
-        triples = await self._triples(data, media_type, cls, iri, creating=True)
+        iri = str(self._iris.mint_aggregate(tenant, iri_type_of(cls), rp_path))
+        triples = await self._triples(tenant, data, media_type, cls, iri, creating=True)
         async with self._tenancy.tenant_session(tenant, principal) as session:
             await session.add_graph(iri, triples)
             return iri, await session.get_graph(iri)
@@ -72,7 +74,7 @@ class Aggregates:
             NotFound: The aggregate has no graph.
             Conflict: Its version is not ``if_version``; nothing changed.
         """
-        triples = await self._triples(data, media_type, cls, iri, creating=False)
+        triples = await self._triples(tenant, data, media_type, cls, iri, creating=False)
         async with self._tenancy.tenant_session(tenant, principal) as session:
             stored, _, _ = await session.get_graph(iri)
             kept = self._documents.internal_values(stored, triples)
@@ -90,10 +92,19 @@ class Aggregates:
             await session.remove(iri, if_version)
 
     async def _triples(
-        self, data: bytes, media_type: str, cls: ClassDefinition, iri: str, *, creating: bool
+        self,
+        tenant: str,
+        data: bytes,
+        media_type: str,
+        cls: ClassDefinition,
+        iri: str,
+        *,
+        creating: bool,
     ) -> list[Triple]:
         """The validated triples of the body, rooted at ``iri``."""
-        graph = await self._documents.parse(data, media_type, cls, iri, creating=creating)
+        graph = await self._documents.parse(
+            data, media_type, cls, iri, creating=creating, tenant=tenant
+        )
         await self._documents.validate(graph)
         # rdflib types a graph's terms as Node; a parsed body holds only URIs, literals and blank nodes
         return cast(list[Triple], list(graph))
