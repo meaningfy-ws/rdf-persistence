@@ -15,7 +15,7 @@ One stage, one PR. Per task: the affected test directories, `make check-quality`
 
 ## 2. Parallel tests
 
-- [ ] 2.1 PD-8: `pytest-xdist` in the dev dependencies (`uv add --dev`), `-n auto` in
+- [x] 2.1 PD-8: `pytest-xdist` in the dev dependencies (`uv add --dev`), `-n auto` in
   `make test`; fix the tests that share state. Gate: two `make test` runs green, coverage ≥ 80 %;
   the two one-off random-order runs of PD-8, seeds recorded for the PR.
 

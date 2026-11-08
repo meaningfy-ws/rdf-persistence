@@ -151,7 +151,7 @@ check-spec: ## Validate the OpenSpec spine (pinned CLI, strict)
 
 test: ## Run the unit and feature tests, with the coverage floor
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit and feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -m "unit or feature" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -m "unit or feature" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Unit and feature tests passed$(END_BUILD_PRINT)"
 
 test-containers: ## Run the integration and e2e tests against Docker containers (no coverage floor)

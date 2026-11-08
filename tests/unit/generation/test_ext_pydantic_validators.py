@@ -98,15 +98,21 @@ slots:
 PACKAGE = "rp_validators_generated"
 
 
-@pytest.fixture(scope="module")
-def generated(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]:
-    """The validators schema generated once into a folder importable as ``rp_validators_generated``."""
-    root = tmp_path_factory.mktemp("validators")
+def _generate_into(root: Path) -> Path:
+    """The validators schema generated into ``root / PACKAGE``, a folder importable as ``PACKAGE``."""
     (root / "validators.yaml").write_text(SCHEMA, encoding="utf-8")
     folder = root / PACKAGE
     folder.mkdir()
     for module in render_modules(root / "validators.yaml"):
         (folder / module.name).write_text(module.text, encoding="utf-8")
+    return folder
+
+
+@pytest.fixture(scope="module")
+def generated(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]:
+    """The validators schema generated once into a folder importable as ``rp_validators_generated``."""
+    root = tmp_path_factory.mktemp("validators")
+    folder = _generate_into(root)
     sys.path.insert(0, str(root))
     yield folder
     sys.path.remove(str(root))
@@ -119,8 +125,9 @@ def models(generated: Path) -> ModuleType:
     return importlib.import_module(f"{PACKAGE}.validators")
 
 
-def test_the_generated_validators_match_the_golden_files(generated: Path) -> None:
-    assert_matches_golden("pydantic_validators", generated)
+def test_the_generated_validators_match_the_golden_files(tmp_path: Path) -> None:
+    # A fresh folder: ``generated`` is imported by other tests, which leaves a ``__pycache__`` in it.
+    assert_matches_golden("pydantic_validators", _generate_into(tmp_path))
 
 
 @pytest.mark.parametrize(

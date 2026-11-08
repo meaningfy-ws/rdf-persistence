@@ -297,7 +297,9 @@ async def test_a_record_the_service_cannot_decode_is_a_500_without_detail(scene)
 # --- the IRIs of a path -------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("aggregate_id", ["nope", str(uuid4()).upper(), "00000000", "a" * 200])
+@pytest.mark.parametrize(
+    "aggregate_id", ["nope", "898B0B0D-E7B5-4C3D-99E3-DB49565D00AA", "00000000", "a" * 200]
+)
 async def test_an_aggregate_id_that_is_no_uuid_is_a_404_before_any_store_call(
     scene, aggregate_id
 ) -> None:
