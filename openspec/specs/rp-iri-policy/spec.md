@@ -130,6 +130,30 @@ policy.
 - **WHEN** the service starts with a non-default policy
 - **THEN** start-up fails, saying the stored data follows the default policy
 
+The record SHALL be the effective policy: unset fields, empty templates and the settings' `{base}`,
+`{deployment}` and `{tenant_segment}` filled in, so a policy written out in full and one left at its
+defaults compare equal, and a changed base or deployment slug counts as a change. The check SHALL
+run before the start-up sweep. Of two services that start together on an empty system database,
+only one record SHALL be written and both SHALL be compared with it. A record that cannot be read,
+or more than one record, SHALL refuse start-up.
+
+#### Scenario: a changed deployment slug
+- **GIVEN** a deployment started once with deployment `dev` and an access template using `{deployment}`
+- **WHEN** it is started with deployment `prod`
+- **THEN** start-up fails naming the access template
+
+### Requirement: Principals are minted by the service's policy
+
+The token verifier SHALL mint each principal IRI from the policy's principal template, keeping
+`sub` in one segment, and SHALL refuse a token whose `sub` is empty, `.` or `..`.
+`install_service` SHALL refuse to start when the verifier's principal template differs from the
+settings' policy.
+
+#### Scenario: a verifier left on the default policy
+- **GIVEN** settings whose principal template is `{base}{deployment}/user/{sub}`
+- **WHEN** the service is installed with a verifier built without that policy
+- **THEN** installation fails with `InvalidIri`
+
 ### Requirement: Policies are checked when settings are made
 
 `ServiceSettings` SHALL refuse a policy whose template uses a variable not allowed for its kind,
@@ -141,9 +165,15 @@ contains none of `{tenant}`, `{tenant_id}` and `{root}`, or that contains a char
 a template that uses `{deployment}` when no deployment slug is set, and a `random` id spec with no
 length. They SHALL be refused with `InvalidIri` by `check_iri_policy`, which the service's `Iris` runs when it
 is built and which a caller may run on the settings alone. A schema SHALL fail generation when two classes share an `rp_iri_type`
-or one equals a reserved word.
+or one equals a reserved word. Building the service's `Iris` SHALL refuse a policy whose access,
+meta or registry IRI, for the same tenant, equals another of them or the tenant IRI, or reads as an
+aggregate or loaded graph.
 
 #### Scenario: a template without its id
 - **WHEN** settings are made with aggregate template `{base}{tenant_id}/{type}`
 - **THEN** validation fails naming the aggregate template
+
+#### Scenario: colliding graphs
+- **WHEN** an `Iris` is built with the same meta and registry template
+- **THEN** it fails with `InvalidIri` naming both
 
