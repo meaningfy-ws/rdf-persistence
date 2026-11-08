@@ -3,7 +3,7 @@
 
 Status: *complete* (2026-11-06). Steps 1 to 7 cover modelling, generation, the generated classes
 and the test guards; steps 8 to 13 cover the session, tenancy, files, access, the service and its
-tests (stages 1 to 5 of the change `toolkit-v1-foundation`). Every example is modelled on the toy
+tests (stages 1 to 5 of the change `toolkit-v1-foundation`); step 14 covers the IRI policy. Every example is modelled on the toy
 library of the toolkit's repository: `tests/fixtures/library/` (the model), `tests/e2e/library_app.py`
 (the composition root) and `tests/toy_service.py` (the same service over the fakes). Short answers
 to the usual questions, with links back here, are on xref:questions.adoc[Common questions].
@@ -87,7 +87,7 @@ classes:
     mixins: [AggregateRoot, Described, Tracked]
     slots: [author, chapters]
     annotations:
-      rp_path: books                         # its path segment in the API and in its IRIs
+      rp_path: books                         # its path segment in the API
   Chapter:
     title: Chapter
     description: A chapter of a book; part of the book's aggregate.
@@ -114,6 +114,12 @@ slots:
     annotations:
       owned: true
 ----
+
+`rp_path` names the class's collection in the API (`/libraries/{t}/books`) and nothing else: by
+default it is also a word in the aggregate's IRI, but a custom IRI policy (<<iri-policy>>) may
+leave it out. The word that stands for the class in an IRI is `{type}`, which is the class's
+`rp_iri_type` annotation, or the class name in kebab case when there is none. Set `rp_iri_type`
+only when the IRIs must say something other than the class name; two classes may not share one.
 
 [source,yaml]
 ----
@@ -230,10 +236,12 @@ Book(id="https://example.org/library/books/3", label="L", description="D", isbn=
 Every generated class derives from the toolkit's strict base, `RpModel`. It refuses unknown
 fields, validates on assignment, and enforces the rules declared in the schema: `required`,
 ranges, patterns, `exactly_one_of`, `any_of` and `unique_keys`. Each object, owned parts included,
-has an `id`. The service mints a part's IRI, by default `{root_iri}/parts/{uuid4}`, when a request body leaves it out, and
-keeps it across commits; under a custom IRI policy the part template decides, and a body's part must then be
-typed with an owned class when the template has `{type}` (else 422). In a domain service, build a part with `new_part` (<<session>>). The metamodel's classes (`AggregateRoot`, `Described`, `Grant`, …) are imported from
-`rdf_persistence`, never generated into your package.
+has an `id`. The service mints a part's IRI, by default `{root_iri}/parts/{uuid4}`, when a request
+body leaves it out, and keeps it across commits. Under a custom IRI policy the part template
+decides, and a body's part must then be typed with an owned class when the template has `{type}`
+(else 422). In a domain service, build a part with `new_part` (<<session>>). The metamodel's
+classes (`AggregateRoot`, `Described`, `Grant`, …) are imported from `rdf_persistence`, never
+generated into your package.
 
 Use the generated classes in your domain services. Do not declare models of your own: no
 `BaseModel`, enum, dataclass, `TypedDict` or `NamedTuple` in `domain`, `services` or
@@ -422,12 +430,13 @@ What a commit does:
 * The session writes the version and the tracking slots (`created`, `creator`, `modified`,
   `contributor`) as statements about the aggregate's graph, `{root}/graph`. Your code never sets
   them.
-* An aggregate IRI must be one the toolkit would mint, by default `{tenant}/{rp_path}/{uuid4}`; a custom
-  IRI policy uses the class's `{type}` instead of `{rp_path}`. Any other is
-  refused (`InvalidIri`) before anything is sent; `mint_aggregate_iri(tenant, rp_path)` mints one.
-* A part's IRI is, by default, `{root}/parts/{uuid4}`. `new_part` mints it, and it stays the same across
-  commits. Under a custom IRI policy pass `new_part(Chapter, root, iris=iris, tenant=tenant, ...)`: the
-  part template decides, with `{type}` the kebab-case class name (`rp_iri_type` is not read here).
+* An aggregate IRI must be one the toolkit would mint, by default `{tenant}/{rp_path}/{uuid4}`; a
+  custom IRI policy may use the class's `{type}` instead of `{rp_path}`. Any other is refused
+  (`InvalidIri`) before anything is sent; `mint_aggregate_iri(tenant, rp_path)` mints one.
+* A part's IRI is, by default, `{root}/parts/{uuid4}`. `new_part` mints it, and it stays the same
+  across commits. Under a custom IRI policy pass
+  `new_part(Chapter, root, iris=iris, tenant=tenant, ...)`: the part template decides, with
+  `{type}` the kebab-case class name (`new_part` does not read `rp_iri_type`).
 
 The session also works below the object level, on triples. Use it for what the mapper does not
 cover:
@@ -539,8 +548,9 @@ shows it, but a domain service can, since the mapper writes internal slots. The 
 the bytes under the scan's id instead. Its route is in <<serve>>.
 
 *RDF*, parsed into a graph of its own. `Session.load_graph(iri, data, rdf_format=RdfFormat.TURTLE)`
-parses the data in a worker thread and puts it into a new named graph, by default `{iri}/content/{uuid4}` (the loaded-graph template of the
-IRI policy; `Session` takes the policy as `iris=`).
+parses the data in a worker thread and puts it into a new named graph, by default
+`{iri}/content/{uuid4}` (the loaded-graph template of the IRI policy; `Session` takes the policy
+as `iris=`).
 Data that does not parse raises `InvalidGraph`, and nothing is written. The graph belongs to the
 aggregate once a commit names it (a graph another aggregate owns is refused with `InvalidIri`):
 
@@ -743,13 +753,19 @@ It returns the *`ServiceKit`*, for your own routes and domain services:
 [cols="2,3",options="header"]
 |===
 |Member |Use
-|`require(authorization, tenant_id, action)` |Verify the token and check `action` on the tenant; returns an `Authorised` with the caller's `principal`, its `caller_access`, and the tenant IRI as `checked_target`
-|`require_aggregate(authorization, tenant_id, rp_path, aggregate_id, action)` |The same on one aggregate, so a prohibition on it applies; returns an `Authorised` whose `checked_target` is the aggregate IRI that was checked
+|`require(authorization, tenant_id, action)` |Verify the token and check `action` on the tenant;
+returns an `Authorised` with the caller's `principal`, its `caller_access`, and the tenant IRI as
+`checked_target`
+|`require_aggregate(authorization, tenant_id, rp_path, aggregate_id, action)` |The same on one
+aggregate, so a prohibition on it applies; returns an `Authorised` whose `checked_target` is the
+aggregate IRI that was checked
 |`session(tenant, principal)` |A session on the tenant's database (<<session>>)
 |`bucket_of(tenant)` |The tenant's bucket name
 |`tenancy`, `store`, `files`, `identity`, `view`, `settings` |The tenancy service, the ports (`store` is the `Store` you passed, wrapped as `ToolkitStore`), the loaded schema and the settings
-|`tenant_iri(tenant_id)` |The tenant IRI of a tenant id taken from a path; `NotFound` if the IRI policy does not mint such an id
-|`iris` |The one `Iris` of the service, built from the settings and the schema; the services the kit wires and its `rules` all use it
+|`tenant_iri(tenant_id)` |The tenant IRI of a tenant id taken from a path; `NotFound` if the IRI
+policy does not mint such an id
+|`iris` |The one `Iris` of the service, built from the settings and the schema; the services the kit
+wires and its `rules` all use it
 |===
 
 A route of your own that calls a domain service needs the caller's principal IRI as well. The
@@ -810,7 +826,8 @@ _How do I test my application without servers?_
 |`FakeFileStore()` |a `FileStore`
 |`FakeIdentity()` |an `Identity`
 |`TokenSigner()` |the identity provider's keys: `issue(sub=…, roles=[…])` signs a token, and `transport` serves the keys to a `JwksTokenVerifier`
-|`fake_session(store, *, tenant_iri, principal, clock, iris)` |a real `Session` over a `FakeStore`, for a domain service's unit test; pass `iris` to test under your own IRI policy
+|`fake_session(store, *, tenant_iri, principal, clock, iris)` |a real `Session` over a `FakeStore`,
+for a domain service's unit test; pass `iris` to test under your own IRI policy
 |===
 
 The toy library's router tests build the whole service over them (`tests/toy_service.py`):
@@ -855,3 +872,85 @@ Before you rely on an adapter of your own, run the testkit's conformance suites 
 `store_conformance`, `file_store_conformance` and `identity_conformance` under
 `rdf_persistence.testkit`. Each has `CASES` and a `run_case` to run one of them on your adapter.
 The toolkit runs the same suites on its fakes and on Fuseki, Garage and Zitadel in containers.
+
+[#iri-policy]
+== 14. Configure the IRI policy
+
+_How do I make my own IRIs?_
+
+By default the toolkit mints a tenant as `{base}{tenant_segment}/{uuid4}` and an aggregate as
+`{tenant}/{rp_path}/{uuid4}`, with owned parts and loaded graphs nested under their root. If your
+organisation fixes another shape, describe it as an *IRI policy* and put it on the settings. The
+policy is a record with a template per kind of IRI and the rule for each id:
+
+[source,python]
+----
+from rdf_persistence import IdKind, IdSpec, IriPolicy, ServiceSettings
+
+FLAT = "{base}{tenant_id}/{type}/{id}"
+settings = ServiceSettings(
+    base="http://mwb.meaningfy.ws/",
+    deployment="k3f9a2x",                   # lower case letters and digits, for {deployment}
+    prefix="lib",
+    tenant_segment="libraries",
+    creator_role="librarian",
+    roles_claim=zitadel_roles_claim(project_id),
+    iri_policy=IriPolicy(
+        tenant_template="{base}project/{tenant_id}",
+        aggregate_template=FLAT,
+        part_template=FLAT,
+        loaded_graph_template=FLAT,
+        tenant_id=IdSpec(kind=IdKind.RANDOM, length=7),
+        object_id=IdSpec(kind=IdKind.RANDOM, length=13),
+    ),
+)
+----
+
+A slot you leave out keeps its default. A tenant is then `http://mwb.meaningfy.ws/project/p4x8k2m`,
+a book `http://mwb.meaningfy.ws/p4x8k2m/book/{13 characters}`, its chapter
+`http://mwb.meaningfy.ws/p4x8k2m/chapter/{13 characters}` and a graph loaded into it
+`http://mwb.meaningfy.ws/p4x8k2m/content/{13 characters}`: all flat, none nested under another. The
+aggregate's named graph stays `{root}/graph`. The API paths keep their shape: the tenant is
+`/libraries/p4x8k2m` and the book `/libraries/p4x8k2m/books/{13 characters}`, because the id in a
+path is the last segment of the IRI. A path id the policy does not mint answers 404.
+
+The consumer's table (stage 1 of the change `iri-policy`):
+
+[cols="3,3,2",options="header"]
+|===
+|Kind |Template or setting |Stage 1
+|Tenant |`{base}project/{tenant_id}` |configurable
+|Aggregate root, owned part, loaded graph |`{base}{tenant_id}/{type}/{id}` |configurable
+|Tenant id |`random`, 7 characters of `[a-z0-9]` |configurable
+|Object id |`random`, 13 characters of `[a-z0-9]` |configurable
+|Database and bucket |`{prefix}-t-{tenant_id}` |fixed
+|Access record, meta and registry graphs |`{tenant}/access`, `{tenant}/meta`, `{tenant}/registry`
+|default until stage 2
+|Principal |`{issuer}/users/{sub}` |default until stage 2
+|Guard against a service started under another policy than its tenants were made under |none
+|not yet
+|===
+
+What the templates may use:
+
+* `{base}`, `{deployment}` (it needs `deployment` in the settings), `{tenant_segment}`,
+  `{tenant_id}`, `{type}`, `{rp_path}` and `{id}`, each only in the templates the generated model
+  allows it in. A template that uses another variable, or does not end in its id, is refused when
+  the settings are built.
+* `{type}` is the class's `rp_iri_type`, else its name in kebab case (step 3), and `content` for a
+  loaded graph.
+* An id is a UUID (`IdKind.UUID4`) or `length` characters of an `alphabet` (`IdKind.RANDOM`; 4 to
+  32 characters, by default `0123456789abcdefghijklmnopqrstuvwxyz`). A drawn id that equals a word
+  the templates use (a `{type}`, `content`, the deployment) is drawn again, and so is a tenant id
+  whose access record or database already exists.
+* A schema in which two classes share an `rp_iri_type`, or one equals such a word, is refused.
+
+One `Iris` serves the whole service. `install_service` builds it from the settings and the schema
+and hands it to every service it wires, to the kit (`kit.iris`) and to the access rules, even
+rules you built yourself: `AccessRules.with_iris(iris)` answers a copy with the same role permits
+under that policy. You never pass one to `install_service`. Outside it, pass the policy to what you
+build: `new_part(..., iris=iris)`, `open_session(..., iris=iris)`, `fake_session(..., iris=iris)`.
+`DEFAULT_IRIS` is the default policy, which `mint_aggregate_iri` and the other module functions use.
+
+The toy library's end-to-end test runs under this table against Fuseki, Garage and Zitadel:
+`tests/e2e/test_library_policy.py`.

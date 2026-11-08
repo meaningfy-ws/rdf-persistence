@@ -37,6 +37,14 @@ generated package, the four adapters, the role definitions and a `ServiceSetting
 `ServiceKit` for your own routes. See xref:howto/adopt.adoc#serve[step 12] and
 xref:architecture/api.adoc#serving[Serving it].
 
+*How do I make my own IRIs?*::
+Describe their shape as an `IriPolicy`: a template for the tenant, the aggregates, the owned parts
+and the loaded graphs (for example `{base}{tenant_id}/{type}/{id}`) and the rule for each id (a
+UUID, or so many random characters), and set it on `ServiceSettings.iri_policy`. The service then
+mints, checks and reads back every IRI by the policy, and the API paths follow the last segment.
+The access, meta and registry graphs and the principal IRI keep their defaults for now. See
+xref:howto/adopt.adoc#iri-policy[step 14].
+
 *How do I test my application with the testkit?*::
 Use `FakeStore`, `FakeFileStore` and `FakeIdentity` in place of the adapters, `fake_session` for a
 domain service, and `TokenSigner` with `JwksTokenVerifier` for tokens, all from

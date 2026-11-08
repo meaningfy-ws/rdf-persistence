@@ -4,6 +4,8 @@
 the toolkit does not have: a scan's file, kept in the tenant's bucket through the kit's file store.
 """
 
+from typing import Any
+
 from fastapi import FastAPI, Request, Response
 
 from rdf_persistence import (
@@ -25,9 +27,9 @@ SCANS = "scans"
 OCTET_STREAM = "application/octet-stream"
 
 
-def library_settings(prefix: str, roles_claim: str) -> ServiceSettings:
-    """The toy library's settings, with the database prefix of one run and the identity provider's roles claim."""
-    return SETTINGS.model_copy(update={"prefix": prefix, "roles_claim": roles_claim})
+def library_settings(prefix: str, roles_claim: str, **overrides: Any) -> ServiceSettings:
+    """The toy library's settings, with the database prefix of one run, the identity provider's roles claim and any ``overrides``."""
+    return SETTINGS.model_copy(update={"prefix": prefix, "roles_claim": roles_claim, **overrides})
 
 
 def build_library_app(
@@ -56,6 +58,7 @@ def build_library_app(
         rules=AccessRules(load_role_definitions(ROLES)),
         settings=settings,
     )
+    app.state.kit = kit  # for a test to look behind the API
     path = SCAN_FILES.format(segment=settings.tenant_segment)
 
     async def bucket_after(request: Request, tenant_id: str, scan_id: str, action: Action) -> str:

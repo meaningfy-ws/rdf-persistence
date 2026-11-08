@@ -52,7 +52,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
 
 ### 4. Stage 1 delivery
 
-- [ ] 4.1 Container end-to-end test of the toy library under the consumer's policy
+- [x] 4.1 Container end-to-end test of the toy library under the consumer's policy
   (`make test-containers`). Docs: `howto/adopt.adoc` step 3 (`rp_path` is the API path only,
   `rp_iri_type`), a "Configure the IRI policy" section with the consumer's table, public API table
   in `architecture/index.adoc`, questions page entry. Gates: `make check-all`, `make check-docs`.
@@ -73,7 +73,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
+- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [x] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
 
 ## Verification
 

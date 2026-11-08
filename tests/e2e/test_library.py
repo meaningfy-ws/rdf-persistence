@@ -9,31 +9,18 @@ import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
-import httpx
 import pytest
 from rdflib import Graph
 from rdflib.compare import graph_diff, isomorphic
 
-from rdf_persistence import (
-    FusekiStore,
-    Grant,
-    GrantSet,
-    JwksTokenVerifier,
-    Page,
-    S3FileStore,
-    TenantCreate,
-    TenantSummary,
-    ZitadelIdentity,
-    zitadel_roles_claim,
-)
+from rdf_persistence import Grant, GrantSet, Page, TenantCreate, TenantSummary
 from rdf_persistence.testkit import TokenRefusedError, access_token, assert_public_imports
-from tests.e2e.library_app import build_library_app, library_settings
+from tests.e2e.world import World, running_world
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.scans import Scan
-from tests.toy_service import body_of, drop_buckets, drop_databases, unique_prefix
+from tests.toy_service import body_of
 
 JSON, JSON_LD, TURTLE = "application/json", "application/ld+json", "text/turtle"
 LIBRARIAN, READER, OUTSIDER, ADMIN = "librarian", "reader", "outsider", "admin"
@@ -53,70 +40,10 @@ def dune(label: str = "Dune") -> Book:
     )
 
 
-@dataclass(frozen=True)
-class Callers:
-    """The bearer headers of the machine users, and the principal IRI of each."""
-
-    tokens: dict[str, str]
-    principals: dict[str, str]
-
-    def as_(self, name: str, **headers: str) -> dict[str, str]:
-        return {"Authorization": f"Bearer {self.tokens[name]}", **headers}
-
-
-@dataclass(frozen=True)
-class World:
-    """The running library: a client, the callers, and the adapters to look behind the API."""
-
-    http: httpx.AsyncClient
-    callers: Callers
-    store: FusekiStore
-    files: S3FileStore
-    identity: ZitadelIdentity
-    project: Any
-    prefix: str
-
-
 @pytest.fixture
 async def world(fuseki, garage, zitadel_project) -> AsyncIterator[World]:
-    prefix = unique_prefix()
-    server = zitadel_project.server
-    users = {user.name: user for user in zitadel_project.machine_users}
-    callers = Callers(
-        tokens={name: access_token(zitadel_project, user) for name, user in users.items()},
-        principals={name: f"{server.url}/users/{user.user_id}" for name, user in users.items()},
-    )
-    async with (
-        FusekiStore(fuseki.url, fuseki.user, fuseki.password) as store,
-        ZitadelIdentity(
-            server.url,
-            server.admin_pat,
-            zitadel_project.organisation_id,
-            zitadel_project.project_id,
-        ) as identity,
-        JwksTokenVerifier(
-            server.url,
-            zitadel_project.project_id,
-            zitadel_roles_claim(zitadel_project.project_id),
-            allow_insecure_issuer=True,
-        ) as verifier,
-    ):
-        files = S3FileStore(garage.endpoint, garage.key_id, garage.secret, garage.region)
-        app = build_library_app(
-            store=store,
-            files=files,
-            identity=identity,
-            verifier=verifier,
-            settings=library_settings(prefix, zitadel_roles_claim(zitadel_project.project_id)),
-        )
-        transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
-        async with (
-            app.router.lifespan_context(app),
-            httpx.AsyncClient(transport=transport, base_url="http://library") as http,
-        ):
-            yield World(http, callers, store, files, identity, zitadel_project, prefix)
-        await drop_databases(store, prefix)
-        await drop_buckets(files, prefix)
+    async with running_world(fuseki, garage, zitadel_project) as running:
+        yield running
 
 
 @dataclass(frozen=True)

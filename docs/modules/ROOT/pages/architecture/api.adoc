@@ -198,7 +198,8 @@ async def get_file(t: str, scan_id: str, request: Request) -> Response:
 return an `Authorised` carrying the caller's `principal` (for a domain service) and its access; `require_aggregate` also applies a prohibition on the aggregate and
 returns, in `checked_target`, the IRI it checked, which the route then acts on.
 
-*Routes* (PD-13), with `{t}` the id in the tenant's IRI, as the IRI policy mints it (a UUID by default):
+*Routes* (PD-13), with `{t}` the id in the tenant's IRI, as the IRI policy mints it (a UUID by
+default):
 
 [cols="2,3",options="header"]
 |===
@@ -245,7 +246,10 @@ store refuses (`ToolkitStore` in `services/store.py` turns the store's `BadQuery
 equality filters. Filters are typed by the slot's range: an enum value is matched by its meaning
 IRI, a reference by its IRI, anything else as a typed literal. The `id`, bookkeeping, `internal` and
 owned-part slots cannot be filtered on. One SPARQL `CONSTRUCT` per page counts the matches and
-selects the page. The query states, for each subject, the graph it found it in (`rp:listedIn`), and the toolkit gives each aggregate the subjects of its own graph; no IRI is read to find a subject's root, so parts beside their root are listed with it. A `read` prohibition on an aggregate hides it from that caller's listing and
+selects the page. The query states, for each subject, the graph it found it in (`rp:listedIn`), and
+the toolkit gives each aggregate the subjects of its own graph; no IRI is read to find a subject's
+root, so parts beside their root are listed with it. A `read` prohibition on an aggregate hides it
+from that caller's listing and
 total. The tenant listing takes only `limit` and `offset`, and is paged in one query too. A listing has no Turtle form (406).
 
 *The OpenAPI document* is FastAPI's (`/openapi.json`), completed from the schema. It lists every
@@ -299,8 +303,10 @@ sequenceDiagram
 
 |2
 |Turn the path into IRIs: the tenant's, then the aggregate's. An id that is not a canonical UUID
-names nothing; the policy decides what a valid id is, so under another policy a UUID may name nothing.
-|`ServiceKit.tenant_iri`, `Iris.tenant` and `Iris.aggregate` (`domain/iris.py`) on the kit's one `Iris` (`ServiceKit.iris`); called by `Gate.aggregate_access`
+names nothing; the policy decides what a valid id is, so under another policy a UUID may name
+nothing.
+|`ServiceKit.tenant_iri`, `Iris.tenant` and `Iris.aggregate` (`domain/iris.py`) on the kit's one
+`Iris` (`ServiceKit.iris`); called by `Gate.aggregate_access`
 |404
 
 |3
@@ -348,7 +354,11 @@ a remote context is refused. A JSON-LD body is expanded with its own inline cont
 |10
 |The strict-body checks on the triples: no `internal` predicate in any key form; exactly one root,
 whose IRI is the path's; bookkeeping statements dropped; a part without an IRI gets
-one from the IRI policy (by default `{root}/parts/{uuid4}`; its `{type}` is the part's `rdf:type`, else 422); every IRI one SPARQL can carry; every subject reached from the root through owned-part slots, typed with a class the slot takes, and, when the part template starts with `{root}/` (the default), inside the aggregate. With parts beside their root, a body may name only parts its aggregate stores: a create names none, a replace names none that the stored graph lacks (422).
+one from the IRI policy (by default `{root}/parts/{uuid4}`; its `{type}` is the part's `rdf:type`,
+else 422); every IRI one SPARQL can carry; every subject reached from the root through owned-part
+slots, typed with a class the slot takes, and, when the part template starts with `{root}/` (the
+default), inside the aggregate. With parts beside their root, a body may name only parts its
+aggregate stores: a create names none, a replace names none that the stored graph lacks (422).
 |`Documents.parse` (the internal-slot refusal), `Documents._settled`, `_root`, `_refuse_strays`
 |422
 
