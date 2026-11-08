@@ -21,7 +21,7 @@ One stage, one PR. Per task: the affected test directories, `make check-quality`
 
 ## 3. Formatting gate
 
-- [ ] 3.1 PD-4: `make format-check` in `check-quality`, `make format` over the same paths; format
+- [x] 3.1 PD-4: `make format-check` in `check-quality`, `make format` over the same paths; format
   the tree in its own commit (four files today: `docs/tools/check_docs.py` and three under
   `tests/unit/generation/`). Proof: plant an unformatted file once, `make check-quality` fails
   naming it; record the output for the PR, remove the file.

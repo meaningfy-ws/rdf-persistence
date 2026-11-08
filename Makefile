@@ -12,6 +12,7 @@ ICON_PROGRESS = [-]
 REPO_ROOT    = $(shell pwd)
 PACKAGE_NAME = rdf_persistence
 TEST_PATH    = $(REPO_ROOT)/tests
+FORMAT_PATHS = $(PACKAGE_NAME) $(TEST_PATH) $(REPO_ROOT)/docs/tools
 BUILD_PATH   = $(REPO_ROOT)/dist
 
 # Docker / infra (activate the Docker section below once infra/ exists).
@@ -98,7 +99,7 @@ run: ## Run the application (python -m <package>; tailor per archetype)
 
 format: ## Format code with Ruff
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Formatting code$(END_BUILD_PRINT)"
-	@ uv run ruff format $(PACKAGE_NAME) $(TEST_PATH)
+	@ uv run ruff format $(FORMAT_PATHS)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Format complete$(END_BUILD_PRINT)"
 
 lint-fix: ## Run Ruff checks with auto-fix
@@ -114,7 +115,12 @@ pre-commit: ## Run pre-commit hooks on all files
 #-----------------------------------------------------------------------------
 # Validation — non-mutating targets
 #-----------------------------------------------------------------------------
-.PHONY: lint typecheck typecheck-generated typecheck-ts check-architecture test test-unit test-feature test-containers test-e2e test-perf changes-code
+.PHONY: format-check lint typecheck typecheck-generated typecheck-ts check-architecture test test-unit test-feature test-containers test-e2e test-perf changes-code
+
+format-check: ## Check formatting with Ruff, without changing files
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking formatting$(END_BUILD_PRINT)"
+	@ uv run ruff format --check $(FORMAT_PATHS)
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Formatting is clean$(END_BUILD_PRINT)"
 
 lint: ## Run Ruff linting checks
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running Ruff checks$(END_BUILD_PRINT)"
@@ -187,7 +193,7 @@ test-e2e: ## Run end-to-end tests only
 #-----------------------------------------------------------------------------
 .PHONY: check-spec check-quality check-all ci-quick ci-full
 
-check-quality: lint typecheck typecheck-generated check-architecture check-spec check-docs check-freshness ## Static checks: lint + typecheck + architecture + spec + docs and code terms + generated code is fresh
+check-quality: format-check lint typecheck typecheck-generated check-architecture check-spec check-docs check-freshness ## Static checks: format + lint + typecheck + architecture + spec + docs and code terms + generated code is fresh
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) All quality checks passed$(END_BUILD_PRINT)"
 
 check-all: check-quality test ## Full suite: quality + unit and feature tests (containers: make test-containers)
