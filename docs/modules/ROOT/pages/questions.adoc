@@ -65,10 +65,10 @@ adapters or containers (about 3.5 minutes, needs Docker). See
 xref:develop/index.adoc#how-long-the-checks-take[How long the checks take].
 
 *How do agents work on this repository?*::
-In two kinds of session: a shaping session (product manager, architect and planner, with the
-developer) that ends in EPICs, then one epic session per EPIC, where a leader runs builders,
-testers, reviewers, verifiers and a writer through a fixed loop per stage. The developer makes
-every decision. See xref:develop/agents.adoc[Working with agents] and the
+In two kinds of session: a shaping session (the developer, the lead, the architect and the
+planner) that ends in EPICs, then one epic session per EPIC, where the lead runs builders,
+reviewers and one checker per stage through a loop that scales with the size of the EPIC. The
+developer makes every decision and accepts the EPIC. See xref:develop/agents.adoc[Working with agents] and the
 xref:develop/testing.adoc[testing checklist].
 
 *Where are decisions recorded?*::

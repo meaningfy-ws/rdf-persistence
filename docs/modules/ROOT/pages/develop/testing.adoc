@@ -1,8 +1,8 @@
 = Testing checklist
-:description: The rules every test in rdf-persistence follows, given to every builder and deep tester.
+:description: The rules every test in rdf-persistence follows, given to every builder and adversarial tester.
 
 These rules apply to every test written in this repository, by a person or an agent. Every
-builder, fixer and deep tester brief points to this page (see
+builder and adversarial tester brief points to this page (see
 xref:develop/agents.adoc[Working with agents]). They were distilled from the tests of
 rdf-fingerprinter and applied throughout toolkit v1.
 
@@ -50,5 +50,5 @@ _What makes a test acceptable here?_
 == The report
 
 Every member that runs tests reports, for each make target it ran, the approximate wall-clock
-time (pytest's "in N s" line is enough) and the number of tests. The leader keeps the
+time (pytest's "in N s" line is enough) and the number of tests. The lead keeps the
 xref:develop/index.adoc#how-long-the-checks-take[durations table] current. Do not profile.
