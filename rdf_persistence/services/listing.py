@@ -289,6 +289,16 @@ def _order_key(graph: Graph, root: URIRef, sort: URIRef) -> tuple:
     return (1, min(values)) if values else (0,)
 
 
+def _by_listed_graph(answer: Graph) -> defaultdict[str, Graph]:
+    """The answer's triples by the root of the graph their subject was listed in, without ``listedIn``."""
+    parts: defaultdict[str, Graph] = defaultdict(Graph)
+    listed_in = {s: g for s, _, g in answer.triples((None, v.LISTED_IN, None))}
+    for s, p, o in answer:
+        if p != v.LISTED_IN and s in listed_in:
+            parts[str(root_of_graph(str(listed_in[s])))].add((s, p, o))
+    return parts
+
+
 def items_of(answer: Graph, plan: ListPlan) -> list[tuple[URIRef, Graph]]:
     """The aggregates of the page with their triples, in the order of the listing.
 
@@ -301,11 +311,7 @@ def items_of(answer: Graph, plan: ListPlan) -> list[tuple[URIRef, Graph]]:
     roots = {
         str(root_of_graph(s)) for s, p, _ in answer if p == v.VERSION and isinstance(s, URIRef)
     }
-    parts: defaultdict[str, Graph] = defaultdict(Graph)
-    listed_in = {s: g for s, _, g in answer.triples((None, v.LISTED_IN, None))}
-    for s, p, o in answer:
-        if p != v.LISTED_IN and s in listed_in:
-            parts[str(root_of_graph(str(listed_in[s])))].add((s, p, o))
+    parts = _by_listed_graph(answer)
     sort = URIRef(plan.sort_by) if plan.sort_by else None
     descending = bool(plan.descending)
     ordered = sorted(roots, reverse=descending and sort is None)

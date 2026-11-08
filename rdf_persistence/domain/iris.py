@@ -213,14 +213,19 @@ def check_iri_policy(settings: ServiceSettings) -> None:
     if policy is None:
         return
     for name, template in _templates(policy).items():
-        if "{deployment}" in template and not settings.deployment:
-            raise InvalidIri(f"{name} uses {{deployment}} but the settings set no deployment")
-        if name in STAGE_TWO_TEMPLATES and template != getattr(_DEFAULT_POLICY, name):
-            raise InvalidIri(f"{name}: a template other than the default arrives with stage 2")
+        _check_template(name, template, settings)
     for name in ("tenant_id", "object_id"):
         spec = getattr(policy, name)
         if spec is not None and spec.kind == IdKind.RANDOM and spec.length is None:
             raise InvalidIri(f"{name}: length is required for random ids")
+
+
+def _check_template(name: str, template: str, settings: ServiceSettings) -> None:
+    """Refuse one template of ``check_iri_policy``: ``{deployment}`` without a slug, or a stage-2 one."""
+    if "{deployment}" in template and not settings.deployment:
+        raise InvalidIri(f"{name} uses {{deployment}} but the settings set no deployment")
+    if name in STAGE_TWO_TEMPLATES and template != getattr(_DEFAULT_POLICY, name):
+        raise InvalidIri(f"{name}: a template other than the default arrives with stage 2")
 
 
 # --- the IRI policy (PD-3 to PD-6, PD-10, PD-11) ------------------------------------------------
