@@ -135,6 +135,7 @@ class GenerationTarget(ConfiguredBaseModel):
     typescript: Optional[str] = Field(default=None, title="TypeScript folder", description="The folder that receives the TypeScript types; none are written when absent.")
     diagrams: Optional[str] = Field(default=None, title="Diagrams folder", description="The folder that receives one Mermaid file per module; none are written when absent.")
     openapi: Optional[bool] = Field(default=True, title="OpenAPI components", description="Whether the OpenAPI component schemas of the classes (`openapi-components.json`) are written next to the context. Only a schema whose classes a service serves needs them; on unless set to false.")
+    regenerate_command: Optional[str] = Field(default=None, title="Regenerate command", description="The command that regenerates this entry, named in the hint of a failed freshness check (TOML key `regenerate-command`); `rp-generate` when absent.")
 
     @field_validator("schema_file")
     def pattern_schema_file(cls, v):
@@ -198,6 +199,19 @@ class GenerationTarget(ConfiguredBaseModel):
                     raise ValueError(err_msg)
         elif isinstance(v, str) and not pattern.fullmatch(v):
             err_msg = "Invalid diagrams format: " + str(v)
+            raise ValueError(err_msg)
+        return v
+
+    @field_validator("regenerate_command")
+    def pattern_regenerate_command(cls, v):
+        pattern=re.compile("^[^`\\r\\n]*[^`\\s][^`\\r\\n]*$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid regenerate_command format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid regenerate_command format: " + str(v)
             raise ValueError(err_msg)
         return v
 

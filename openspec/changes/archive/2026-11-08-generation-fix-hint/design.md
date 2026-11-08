@@ -90,3 +90,20 @@ A configuration error prints its error line and no hint (PD-6).
 ## Open Questions
 
 None.
+
+## Review fixes (leader's decisions after the deep test and the five-lens review, 2026-11-08)
+
+- **RF-1** (L1, L2, L5, deep test). A TOML row that uses a model field name which has its own TOML
+  spelling (`regenerate_command`, `schema_file`) is refused like any unknown key, naming the key,
+  as the error matrix already says. The one key table both translates and gates.
+- **RF-2** (L1, deep test). `regenerate_command` gets a schema pattern: one line, not blank, no
+  backtick (`^[^`\r\n]*[^`\s][^`\r\n]*$`). An empty, blank or backticked command is a
+  `ConfigError` naming `regenerate-command`, not a silent fallback or a broken hint.
+- **RF-3** (L2). The hint tests assert the exact strings of the spec and PD-2, not a copy of the
+  formula; the mixed stale-and-error plugin test asserts exactly one hint.
+- **RF-4** (L4). Names say what they hold: `_project_problems` → `_project_report`; the key maps
+  `FIELD_OF_TOML_KEY` and `TOML_KEY_OF_FIELD`; `fix_hint`'s docstring states that `stale` is
+  non-empty.
+- Not taken: a shared `rp-generate` program-name constant (outside this change); reusing one
+  flattening across `cli`, the plugin and `freshness_problems` (PD-3 keeps them); a `toml_key`
+  annotation (one key does not justify it).

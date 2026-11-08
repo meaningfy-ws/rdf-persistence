@@ -21,7 +21,7 @@ rp:CliFlag a sh:NodeShape ;
 	rdfs:comment "A command-line flag of `rp-generate` and the GenerationTarget field it overrides." ;
 	rdfs:label "Command-line flag" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n130 ;
+	sh:ignoredProperties _:c14n131 ;
 	sh:property _:c14n40 , _:c14n83 ;
 	sh:targetClass rp:CliFlag .
 rp:ConstraintCase a sh:NodeShape ;
@@ -29,13 +29,13 @@ rp:ConstraintCase a sh:NodeShape ;
 	rdfs:label "Constraint case" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n103 ;
-	sh:property _:c14n138 , _:c14n37 , _:c14n64 , _:c14n9 ;
+	sh:property _:c14n139 , _:c14n37 , _:c14n64 , _:c14n9 ;
 	sh:targetClass rp:ConstraintCase .
 rp:ContainerMarker a sh:NodeShape ;
 	rdfs:comment "A pytest marker of the container tests, the container it starts and its help text." ;
 	rdfs:label "Container marker" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n136 ;
+	sh:ignoredProperties _:c14n137 ;
 	sh:property _:c14n14 , _:c14n5 , _:c14n8 ;
 	sh:targetClass rp:ContainerMarker .
 rp:ExecResult a sh:NodeShape ;
@@ -56,7 +56,7 @@ rp:FramePart a sh:NodeShape ;
 	rdfs:comment "The frame of the parts nested in one owned slot of a frame." ;
 	rdfs:label "Frame part" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n131 ;
+	sh:ignoredProperties _:c14n132 ;
 	sh:property _:c14n117 , _:c14n55 ;
 	sh:targetClass rp:FramePart .
 rp:FusekiServer a sh:NodeShape ;
@@ -92,20 +92,20 @@ rp:GenerationTarget a sh:NodeShape ;
 	rdfs:label "Generation target" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n46 ;
-	sh:property _:c14n111 , _:c14n116 , _:c14n13 , _:c14n134 , _:c14n22 , _:c14n39 ;
+	sh:property _:c14n111 , _:c14n116 , _:c14n128 , _:c14n13 , _:c14n135 , _:c14n22 , _:c14n39 ;
 	sh:targetClass rp:GenerationTarget .
 rp:MachineUser a sh:NodeShape ;
 	rdfs:comment "A service account provisioned in the test Zitadel, with the private key it signs its JWT-profile assertions with." ;
 	rdfs:label "Machine user" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n133 ;
+	sh:ignoredProperties _:c14n134 ;
 	sh:property _:c14n101 , _:c14n106 , _:c14n119 , _:c14n51 ;
 	sh:targetClass rp:MachineUser .
 rp:ManifestEntry a sh:NodeShape ;
 	rdfs:comment "A file and the SHA-256 of its bytes, as recorded by a generation run." ;
 	rdfs:label "Manifest entry" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n128 ;
+	sh:ignoredProperties _:c14n129 ;
 	sh:property _:c14n127 , _:c14n71 ;
 	sh:targetClass rp:ManifestEntry .
 rp:MmdAttribute a sh:NodeShape ;
@@ -134,7 +134,7 @@ rp:PresenceRule a sh:NodeShape ;
 	rdfs:label "Presence rule" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n112 ;
-	sh:property _:c14n108 , _:c14n137 , _:c14n65 ;
+	sh:property _:c14n108 , _:c14n138 , _:c14n65 ;
 	sh:targetClass rp:PresenceRule .
 rp:RuleAlternative a sh:NodeShape ;
 	rdfs:comment "One alternative of a rule, its readable label and the Python expression that tells it holds." ;
@@ -204,7 +204,7 @@ rp:Violation a sh:NodeShape ;
 	rdfs:label "Violation" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n36 ;
-	sh:property _:c14n132 , _:c14n60 ;
+	sh:property _:c14n133 , _:c14n60 ;
 	sh:targetClass rp:Violation .
 rp:ZitadelProject a sh:NodeShape ;
 	rdfs:comment "The project provisioned in the test Zitadel: the organisation and project ids, the machine users of the test principals, and the server that holds them." ;
@@ -408,7 +408,7 @@ _:c14n123 sh:datatype xsd:string ;
 	sh:order 3 ;
 	sh:path rp:range .
 _:c14n124 rdf:first rp:ConstraintKindExactlyOneOf ;
-	rdf:rest _:c14n135 .
+	rdf:rest _:c14n136 .
 _:c14n125 sh:description "The values of a union type." ;
 	sh:minCount 1 ;
 	sh:name "Values" ;
@@ -426,10 +426,16 @@ _:c14n127 sh:datatype xsd:string ;
 	sh:order 0 ;
 	sh:path rp:path ;
 	sh:pattern "^(?:^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$)(?![\\s\\S])" .
-_:c14n128 rdf:first rdf:type ;
+_:c14n128 sh:datatype xsd:string ;
+	sh:description "The command that regenerates this entry, named in the hint of a failed freshness check (TOML key `regenerate-command`); `rp-generate` when absent." ;
+	sh:maxCount 1 ;
+	sh:name "Regenerate command" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 6 ;
+	sh:path rp:regenerateCommand ;
+	sh:pattern "^(?:^[^`\\r\\n]*[^`\\s][^`\\r\\n]*$)(?![\\s\\S])" .
+_:c14n129 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n129 rdf:first rp:ConstraintKindRequired ;
-	rdf:rest _:c14n15 .
 _:c14n13 sh:datatype xsd:string ;
 	sh:description "The folder that receives the classes, shapes, context, frames and the schema copy; the folder of `package` when absent." ;
 	sh:maxCount 1 ;
@@ -438,11 +444,13 @@ _:c14n13 sh:datatype xsd:string ;
 	sh:order 2 ;
 	sh:path rp:pythonFolder ;
 	sh:pattern "^(?:^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$)(?![\\s\\S])" .
-_:c14n130 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
+_:c14n130 rdf:first rp:ConstraintKindRequired ;
+	rdf:rest _:c14n15 .
 _:c14n131 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n132 sh:datatype xsd:string ;
+_:c14n132 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n133 sh:datatype xsd:string ;
 	sh:description "The place of a violation, a file and a line or a path." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -450,9 +458,9 @@ _:c14n132 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:where .
-_:c14n133 rdf:first rdf:type ;
+_:c14n134 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n134 sh:datatype xsd:string ;
+_:c14n135 sh:datatype xsd:string ;
 	sh:description "The Python import path of the generated package, a dotted identifier." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -461,11 +469,11 @@ _:c14n134 sh:datatype xsd:string ;
 	sh:order 1 ;
 	sh:path rp:package ;
 	sh:pattern "^(?:^[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$)(?![\\s\\S])" .
-_:c14n135 rdf:first rp:ConstraintKindAnyOf ;
+_:c14n136 rdf:first rp:ConstraintKindAnyOf ;
 	rdf:rest _:c14n66 .
-_:c14n136 rdf:first rdf:type ;
+_:c14n137 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n137 sh:datatype xsd:string ;
+_:c14n138 sh:datatype xsd:string ;
 	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -473,7 +481,7 @@ _:c14n137 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:slotName .
-_:c14n138 sh:datatype xsd:string ;
+_:c14n139 sh:datatype xsd:string ;
 	sh:description "The name of a class of the schema." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -804,7 +812,7 @@ _:c14n63 sh:datatype xsd:string ;
 	sh:order 1 ;
 	sh:path rp:user .
 _:c14n64 sh:description "The kind of constraint a case exercises." ;
-	sh:in _:c14n129 ;
+	sh:in _:c14n130 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Constraint kind" ;

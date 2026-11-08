@@ -221,7 +221,7 @@ is named in the model guard's allow-list (<<guarding>>).
 
 *Placement is declared, not guessed*: the application's `pyproject.toml` gets a
 `[tool.rp-generate]` table (or an array of tables, one per schema) with the keys `schema`,
-`package`, `python` (default: the package's path), `typescript`, `diagrams` and `openapi` (default
+`package`, `python` (default: the package's path), `typescript`, `diagrams`, `regenerate-command` (the command a failed freshness check tells you to run; default `rp-generate`) and `openapi` (default
 `true`; `false` skips step 5b for a schema no service serves, as for the toolkit's metamodel,
 generation and wire schemas); paths are relative to the `pyproject.toml`. The flags `--schema`, `--package`, `--python-out`, `--typescript-out` and
 `--diagrams-out` override the keys of a single entry; with several entries a flag is an error. LinkML's
@@ -538,6 +538,6 @@ rdf-persistence]. In short:
 
 . Write `models/<app>.yaml` and one file per module, importing the metamodel; mark aggregate roots, owned slots, databases;
   write the application's role definitions (and, optionally, narrow `role` by subclassing `Grant`).
-. Add `make generate` calling `rp-generate`, and the freshness check to CI.
+. Add a target that calls `rp-generate` (any name; set it as `regenerate-command` so a failed freshness check names it), and the freshness check to CI.
 . Write use-case services against a session (`kit.session` or `open_session`), `UnitOfWork` and the generated classes.
 . Serve the schema with `install_service`, and write any extra routes with the `ServiceKit` it returns; publish the OpenAPI contract and the JSON-LD context; use the generated TypeScript types in the client, checked against the contract.
