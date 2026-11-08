@@ -56,7 +56,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
   (`make test-containers`). Docs: `howto/adopt.adoc` step 3 (`rp_path` is the API path only,
   `rp_iri_type`), a "Configure the IRI policy" section with the consumer's table, public API table
   in `architecture/index.adoc`, questions page entry. Gates: `make check-all`, `make check-docs`.
-- [ ] 4.2 Stage-1 challenge: the stage loop (deep test, five-lens review, fixes, verify), then
+- [x] 4.2 Stage-1 challenge: the stage loop (deep test, five-lens review, fixes, verify), then
   PR 1 into `develop`.
 
 ## Stage 2 — tenant records, principals and the guard (PR 2)
@@ -74,7 +74,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [x] 4.1 · [ ] 4.2 · [x] 5.1 · [x] 5.2 · [x] 5.3 · [x] 5.4
+- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [x] 4.1 · [x] 4.2 · [x] 5.1 · [x] 5.2 · [x] 5.3 · [x] 5.4
 
 ## Verification
 

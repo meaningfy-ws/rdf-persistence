@@ -20,12 +20,9 @@ their capability; commits reference the change id.
 Shaped and planned on 2026-11-08 from the consumer's (MWB2) issues; the developer answered the open
 questions (each change's `inputs/seed.md`). Each has its PLAN (`design.md` + `tasks.md`).
 
-| Id | Issue | Appetite | Why, in one line | Depends on |
-|---|---|---|---|---|
-| `iri-policy` | #26 | LARGE (two stages) | IRIs have one fixed shape tied to the API path; MWB2's persistent URI policy cannot be expressed. Blocks MWB2's first build EPIC. | none |
-
-**Order:** `iri-policy` stage 1, then stage 2. `testkit-wait-until` (#24) and `generation-fix-hint`
-(#25) were delivered and archived on 2026-11-08 (`archive/2026-11-08-*`).
+None in flight. `iri-policy` (#26), `testkit-wait-until` (#24) and `generation-fix-hint` (#25)
+were delivered and archived on 2026-11-08 (`archive/2026-11-08-*`). `delivery-friction` is being
+shaped (PR #33).
 
 ## Candidate EPICs
 
