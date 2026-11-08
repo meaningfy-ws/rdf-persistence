@@ -50,6 +50,10 @@ left blank. Times are under load (other sessions ran `make` on the same machine)
 | S2 review L5 | reviewer | 0m55s | 63.8k | 6 | 1 major (effective policy duplicated), 3 minor, 2 nits |
 | S2 adversarial tester | tester | 2m49s | 105.2k | 16 | 65 tests, 19 strict xfails, 9 defects |
 | S2 decide | lead | ~10 min | — | — | PD-14a–k; 2 rejected. Short briefs (diff range + decisions) made reviewers ~4× cheaper and faster than stage 1 |
+| S2 fix PD-14a–k | fixer | 19m10s | 188.9k | 40 | 11 items, all 19 xfails closed; left a background run (stopped) |
+| S2 checker | checker | 1m15s | 100.2k | 14 | 2 unmet: api.adoc verifier/settings, PD-14d placement; fixed by the lead |
+| S2 cold reader | reader | 0m19s | 60.1k | 2 | 1 gap: no whole-policy example; fixed by the lead |
+| S2 stage gate | lead | 14m39s | — | — | once per stage: check-all 3336 passed (10m46s), clean-code, containers 174 passed (2m28s) |
 
 ## Where the time goes (first reading, after 3.2)
 
