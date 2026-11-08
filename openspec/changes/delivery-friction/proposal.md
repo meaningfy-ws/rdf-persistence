@@ -4,16 +4,17 @@
 
 # EPIC: Remove the friction met while delivering #24, #25 and #26
 
-> Candidate EPIC, shaped 2026-11-08 from what one delivery session ran into. Not planned: the PLAN
-> (design.md, tasks.md) waits for the developer's answers in inputs/seed.md.
+> Shaped 2026-11-08 from what one delivery session ran into; the developer answered its questions
+> the same day (inputs/seed.md, "Developer's answers"). PLAN: design.md + tasks.md.
 
 **Golden-thread parent:** the stage loop's gates (`develop/agents.adoc`, "The gates") and the
 adoption guide (`howto/adopt.adoc`), which this session found leaky in the places listed below.
 
 ## Appetite
 
-**SMALL**, one stage. Six independent concerns, each a few lines of CI, Makefile, test or doc; no
-new concept and no change to the toolkit's API, except one optional argument (Q-5).
+**MEDIUM**, one stage (re-sized 2026-11-08: "the epic size shall be as necessary"). Seven
+independent concerns of CI, Makefile, test or doc, one new capability (`rp-developer-checks`) and
+one optional testkit argument (Q-5); no change to the toolkit's runtime API.
 
 ## Why
 
@@ -39,12 +40,15 @@ Each item below cost a re-run, a guess or a wrong signal during one session:
 6. **Nothing checks that the testing checklist names public helpers.** Rule 11 named
    `testkit.wait_until` while the testkit did not export it (issue #24); no check would catch the
    next one (review of `testkit-wait-until`, L2).
+7. **The suite runs in one process**: 6 to 14 minutes for about 3200 tests (iri-policy delivery
+   log), on every gate.
 
 ## Solution outline
 
 One stage, one PR: the container job reuses a cached Fuseki image or jar; the two tests become
 deterministic (the listing compares authors as a set or sorts them where the API promises no order;
-the budget tests run where their budget means something); `make check-quality` gains
+the timing tests leave the default lanes until the developer sets a budget); `make test` runs in
+parallel (`pytest-xdist`); `make check-quality` gains
 `ruff format --check` and `develop` is formatted once; step 4 to 7 of `adopt.adoc` answer the
 reader's questions; the waiting helpers can bound one probe call; `make check-docs` checks every
 `testkit.<name>` that `develop/testing.adoc` names against `rdf_persistence.testkit.__all__`.
@@ -68,7 +72,8 @@ reader's questions; the waiting helpers can bound one probe call; `make check-do
 
 ## No-gos
 
-- Parallel test execution, coverage changes or a CI dashboard (`test-profiling`).
+- Coverage changes, a CI dashboard or a timing budget (`test-profiling`; the budget is deferred by
+  the developer). Parallel tests moved into this EPIC by the developer's answer 7.
 - Changing the default timeout or poll interval of the waiting helpers.
 - New runtime dependencies of the package.
 
@@ -76,10 +81,11 @@ reader's questions; the waiting helpers can bound one probe call; `make check-do
 
 ## What Changes
 
-- `.github/workflows/ci.yaml`, possibly `rdf_persistence/testkit/containers/`: a cached Fuseki
-  image or jar (Q-1).
-- `tests/unit/entrypoints/test_listing_routes.py` (or the listing, Q-2) and
-  `tests/unit/services/test_session_performance.py` (Q-3).
+- `.github/workflows/ci.yaml`, `Makefile`, `rdf_persistence/testkit/containers/fixtures.py`: a
+  cached Fuseki image (Q-1).
+- `tests/unit/entrypoints/test_listing_routes.py` (Q-2) and
+  `tests/unit/services/test_session_performance.py`, moved to a `perf` lane (Q-3).
+- `Makefile`, `pyproject.toml`: `pytest-xdist` and `make test` in parallel (Q-7).
 - `Makefile`: `ruff format --check` in `check-quality`; one formatting commit.
 - `docs/modules/ROOT/pages/howto/adopt.adoc` steps 4 to 7.
 - `rdf_persistence/testkit/bootstrap.py`: an optional per-call bound (Q-5).
@@ -89,11 +95,12 @@ reader's questions; the waiting helpers can bound one probe call; `make check-do
 
 ### New Capabilities
 
-None.
+- `rp-developer-checks`: the checks give the same answer on every run, run in parallel, gate
+  formatting, and keep the testing checklist to public helpers.
 
 ### Modified Capabilities
 
-- `rp-developer-checks`: the checks give the same answer on every run, and gate formatting.
+- `rp-testkit`: the waiting helpers take an optional `probe_timeout`.
 
 ## Impact
 
