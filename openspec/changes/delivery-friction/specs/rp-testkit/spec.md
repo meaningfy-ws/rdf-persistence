@@ -19,3 +19,8 @@ not set, the helpers SHALL behave as before.
   returns `["a.csv"]`
 - **WHEN** either helper runs
 - **THEN** it returns `["a.csv"]`
+
+#### Scenario: an error inside the bounded call
+- **GIVEN** `probe_timeout=1.0`, `retry_on=(OSError,)` and a probe that raises `ValueError` at once
+- **WHEN** either helper runs
+- **THEN** the `ValueError` propagates on the first call

@@ -66,7 +66,8 @@ reader's questions; the waiting helpers can bound one probe call; `make check-do
 
 ## Rabbit-holes
 
-- Speeding up the suite. `test-profiling` owns that; this EPIC only removes false failures.
+- Profiling the suite (which tests take the time). `test-profiling` owns that; this EPIC removes
+  false failures and runs the suite in parallel (answer 7), nothing more.
 - Rewriting the adoption guide. Only the gaps the cold reader named, in steps 4 to 7.
 - A general retry policy for GitHub-side failures (HTTP 504 on setup). Re-running the job is enough.
 
