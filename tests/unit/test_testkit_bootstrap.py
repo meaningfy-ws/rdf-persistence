@@ -142,3 +142,147 @@ def test_environment_sets_variables_and_restores_every_one(
         raise RuntimeError("boom")
     assert os.environ["RP_TEST_KEPT"] == "before", "a changed variable was not restored"
     assert "RP_TEST_NEW" not in os.environ, "a new variable was not removed"
+
+
+# --- deep tests: edges of wait_until_async ---------------------------------------------------
+
+
+async def test_async_wait_with_zero_timeout_never_calls_the_probe_and_times_out() -> None:
+    calls = []
+
+    async def probe():
+        calls.append(1)
+        return True
+
+    clock = AsyncFakeClock()
+    with pytest.raises(TimeoutError, match="the file listing did not answer within 0s"):
+        await wait_until_async(
+            probe, "the file listing", timeout=0, sleep=clock.asleep, monotonic=clock.monotonic
+        )
+    assert calls == []
+    assert clock.sleeps == []
+
+
+@pytest.mark.parametrize("falsy", [0, "", [], False, None])
+async def test_async_wait_keeps_polling_on_falsy_results_until_timeout(falsy) -> None:
+    calls = []
+
+    async def probe():
+        calls.append(1)
+        return falsy
+
+    clock = AsyncFakeClock()
+    with pytest.raises(TimeoutError):
+        await _await(probe, clock)
+    assert len(calls) == len(clock.sleeps) == 10  # truthy is the contract, not "not None"
+
+
+async def test_async_wait_with_empty_retry_on_lets_oserror_propagate() -> None:
+    async def probe():
+        raise OSError("refused")
+
+    with pytest.raises(OSError, match="refused"):
+        await _await(probe, AsyncFakeClock(), retry_on=())
+
+
+async def test_async_wait_retries_a_subclass_of_a_listed_error() -> None:
+    class Refused(ConnectionError):
+        pass
+
+    calls = []
+
+    async def probe():
+        calls.append(1)
+        if len(calls) < 2:
+            raise Refused("not yet")
+        return "up"
+
+    assert await _await(probe, AsyncFakeClock(), retry_on=(ConnectionError,)) == "up"
+
+
+async def test_async_wait_does_not_swallow_cancellation_even_when_retry_on_is_broad() -> None:
+    import asyncio
+
+    async def probe():
+        raise asyncio.CancelledError
+
+    clock = AsyncFakeClock()
+    with pytest.raises(asyncio.CancelledError):
+        await _await(probe, clock, retry_on=(Exception,))
+    assert clock.sleeps == []
+
+
+async def test_async_wait_cancelled_during_sleep_propagates() -> None:
+    import asyncio
+
+    async def probe():
+        return None
+
+    async def cancelled_sleep(_seconds):
+        raise asyncio.CancelledError
+
+    with pytest.raises(asyncio.CancelledError):
+        await wait_until_async(
+            probe, "x", timeout=10, sleep=cancelled_sleep, monotonic=AsyncFakeClock().monotonic
+        )
+
+
+async def test_async_wait_given_a_sync_probe_raises_type_error() -> None:
+    def sync_probe():
+        return True
+
+    with pytest.raises(TypeError):
+        await _await(sync_probe, AsyncFakeClock())
+
+
+async def test_async_sync_probe_raising_a_retried_error_is_not_masked() -> None:
+    # The sync probe raises before returning, so the retry swallows it and the misuse
+    # surfaces only as a timeout instead of a TypeError.
+    def sync_probe():
+        raise OSError("sync")
+
+    with pytest.raises(TimeoutError):
+        await _await(sync_probe, AsyncFakeClock())
+
+
+@pytest.mark.parametrize("timeout", [2.5, 0.5, 180, 1e-3])
+async def test_async_and_sync_timeout_messages_are_identical(timeout) -> None:
+    async def aprobe():
+        return None
+
+    def probe():
+        return None
+
+    aclock, sclock = AsyncFakeClock(), FakeClock()
+    with pytest.raises(TimeoutError) as async_error:
+        await wait_until_async(
+            aprobe, "the store", timeout=timeout, sleep=aclock.asleep, monotonic=aclock.monotonic
+        )
+    with pytest.raises(TimeoutError) as sync_error:
+        wait_until(probe, "the store", timeout=timeout, sleep=sclock.sleep, monotonic=sclock.monotonic)
+    assert str(async_error.value) == str(sync_error.value)
+
+
+async def test_async_timeout_message_renders_a_fractional_timeout_plainly() -> None:
+    async def probe():
+        return None
+
+    clock = AsyncFakeClock()
+    with pytest.raises(TimeoutError, match=r"^the store did not answer within 2\.5s$"):
+        await wait_until_async(
+            probe, "the store", timeout=2.5, sleep=clock.asleep, monotonic=clock.monotonic
+        )
+
+
+def test_importing_the_testkit_loads_no_third_party_module() -> None:
+    import subprocess
+    import sys
+
+    code = (
+        "import sys, rdf_persistence.testkit\n"
+        "bad = [m for m in ('jwt', 'cryptography', 'testcontainers', 'httpx') "
+        "if m in sys.modules]\n"
+        "sys.exit(','.join(bad) or 0)"
+    )
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
