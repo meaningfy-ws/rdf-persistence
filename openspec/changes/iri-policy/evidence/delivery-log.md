@@ -18,6 +18,15 @@ left blank. Times are under load (other sessions ran `make` on the same machine)
 | 3.3 build | builder | 42m48s | 214.1k | 85 | one early check-all (~11 min, 10 wording failures) before the lean rule reached it; then touched tests 28s + check-quality 49s |
 | 3.3 gate | lead | 12m34s | — | — | 3042 tests (pytest 11m11s, load avg ~3–4 from other sessions) |
 | 3.4 build | builder | 6m52s | 124.4k | 26 | lean brief + lean gates: touched tests 5.7s, check-quality 22s |
+| 3.4 gate | lead | 8m41s | — | — | 3058 tests (load avg ~3.6) |
+| 4.1 build | builder | 27m25s | 152.4k | 46 | e2e under containers (one full container lane 2m32s by mistake); found 2 stale integration tests from 3.3 (the lean gates do not run containers) and missing exports (PD-3d); used a bare `git stash` despite the rule |
+| review L1 | reviewer | 4m08s | 103.5k | 16 | 1 major (reserved words at match time), 2 minor, 1 nit |
+| review L2 | reviewer | 4m55s | 145.1k | 22 | 2 major, 4 minor, 2 nits |
+| review L3 | reviewer | 3m09s | 96.1k | 17 | 1 major (access template split), 2 minor, 1 nit |
+| review L4 | reviewer | 2m25s | 85.0k | 11 | 3 major, 6 minor, 5 nits |
+| review L5 | reviewer | 2m32s | 96.7k | 13 | 2 major, 6 minor, 4 nits |
+| adversarial tester | tester | 6m21s | 151.2k | 30 | 140 tests, 3 strict xfails |
+| decide | lead | — | — | — | PD-12a–m recorded; 3 rejected with reasons. L2/L3 found the same major independently |
 | gitnexus re-index | lead | ~3 tries | — | — | incremental and `--force` fail (gitnexus bug); `clean --force` + `analyze` works |
 
 ## Where the time goes (first reading, after 3.2)

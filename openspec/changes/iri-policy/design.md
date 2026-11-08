@@ -77,6 +77,9 @@ path ids in `entrypoints/router.py` (`_last_segment`). Two places infer ownershi
   it: `AccessRules.with_iris(iris)` answers a new `AccessRules` with the same role permits. So every
   service the kit wires, rules included, uses one policy; a consumer never has to pass an `Iris`.
   The route's `{type}` comes from the class served at `rp_path` (`iri_type_of`).
+- **PD-3d Public names (lead's decision, found in task 4.1).** A consumer configures a policy from
+  public names: `rdf_persistence` exports `Iris`, `IriPolicy`, `IdSpec`, `IdKind` and
+  `DEFAULT_IRIS` (additive; listed in `test_public_api.py` and the architecture API table).
 - **PD-3b The schema reaches `Iris` as types** (lead's decision before task 2.1). `domain` imports no
   LinkML, so `Iris` takes `root_types` and `owned_types` (frozen sets of `{type}` values), not the
   schema. One services function, `iri_types(view)` in `services/schema_structure.py`, computes them;
@@ -172,6 +175,68 @@ path ids in `entrypoints/router.py` (`_last_segment`). Two places infer ownershi
   The description change of PD-10 moves with it into task 3.1. Stored names all still match.
 - **PD-11 Grant targets.** `access._validate_ends` (`services/access.py:205`) calls
   `Iris.is_aggregate_graph`, which is `root_of_graph` followed by the aggregate match of PD-4.
+
+### Stage 1 review decisions (PD-12, lead, 2026-11-08)
+
+Five lenses (L1–L5) and the adversarial tester reviewed tasks 1.1–3.4. Accepted, by batch:
+
+**Batch 1: security and correctness**
+- **PD-12a Stage-2 templates refused until stage 2** (L3 major, L2 major). Tenancy writes the access
+  record at `Iris.access` but `load_caller_access` reads the default, so a custom `access_template`
+  breaks every request. `check_iri_policy` refuses a non-default `access`, `meta`, `registry` or
+  `principal` template with `InvalidIri` naming it ("arrives with stage 2"); task 5.1 removes the
+  refusal as it wires them. Chosen over bringing 5.1 forward: smallest, and matches task 3.1.
+- **PD-12b Reserved words are refused when matching, not only when minting** (L1 major, L1 minor 2).
+  A match whose `id` or `tenant_id` group is a reserved word is no match (`_belongs`), so a loaded
+  graph or a path id can never be `{tenant}/meta`, `/registry` or `/access`; `Iris.tenant` and
+  `Iris.aggregate` answer `NotFound` for one. `is_aggregate_graph` also excludes the access record's
+  graph (L1 nit).
+- **PD-12c Templates must name their tenant** (L1 minor 1). The aggregate template must contain
+  `{tenant}` or `{tenant_id}`; the part and loaded-graph templates `{tenant}`, `{tenant_id}` or
+  `{root}`. Schema patterns in `rp_service.yaml`, regenerated. Two tenants then never mint one IRI,
+  and "an aggregate template of its tenant" (spec) can be checked. Every default and the consumer's
+  policy already comply.
+- **PD-12d A part is never the aggregate's graph IRI** (tester xfail 1). The stored subjects include
+  `graph_iri(root)` (it carries the version); the flat replace rule and the nested rule both refuse a
+  body subject equal to `graph_iri(root)`.
+- **PD-12e `tenant_of_access` checks the round trip** (tester xfail 2): it answers only when
+  `access(result)` equals the input.
+- **PD-12f `Iris` keeps its own copy of the settings** (tester xfail 3): `settings.model_copy(deep=True)`
+  at build, so a later change to the caller's object cannot change what it mints.
+
+**Batch 2: structure and clarity**
+- **PD-12g One rule per fact** (L5 majors). The module functions that still build IRIs by hand
+  (`mint_tenant_iri`, `tenant_iri`, `tenant_resource_name`, `aggregate_iri`'s extra UUID check)
+  become one-line calls on `DEFAULT_IRIS`. `_check_commit`'s first test repeats `_graph`'s and goes.
+  Deleting the shims no production code calls is a follow-up (tests use them), not stage 1.
+- **PD-12h The aggregate IRI of a route is one services method** (L3 minor, L4 minor, L5 minor).
+  `Aggregates.iri_of(tenant, rp_path, aggregate_id)`, with a `rp_path → {type}` map built once; the
+  gate calls it.
+- **PD-12i `Iris` as a frozen dataclass**, its templates read through one `_templates(policy)` helper
+  used by `check_iri_policy` and `_reserved`; `part_needs_type()` public, so `Documents` refuses a
+  typeless part before minting instead of mapping an exception (L4, L5).
+- **PD-12j Defaults.** Constructors write `iris: Iris = DEFAULT_IRIS` (no `or`). `Tenancy` keeps
+  `Iris(settings)`, with a comment: resource names need the settings' prefix, which `DEFAULT_IRIS`
+  lacks. `Documents.parse`'s `tenant` becomes required; shim call sites pass keywords, and a test pins
+  that the default templates use no `{type}`, `{tenant}` or `{base}` (L4 major 2, L3 nit).
+- **PD-12k Spec text** (L2 minors 3–4): the `{deployment}` and `random`-length checks run "when
+  settings are made or the service's `Iris` is built"; the loaded-graph-of-another-aggregate case
+  refuses "before anything is written".
+- **PD-12l Tests** (L2): the flat-parts listing test lists both books and checks each item's parts
+  exactly; a test pins a subject stored in two listed graphs (default policy); a route-level test
+  with an `rp_path` that differs from the type; no test branches on its id; no imports inside tests.
+- **PD-12m Names and nits** (L4, L5): `subjects` not `iris` in `documents.py`; `segment_pattern` in
+  `hard.py`; `_MAX_RESERVED_REDRAWS` / `MAX_TENANT_CLASH_DRAWS`; `object_id` not `id`; drop
+  `ACCESS_SEGMENT`; `LAYOUT_WORDS` built from `LOADED_GRAPH_TYPE`; `hard.py` uses `LAYOUT_WORDS`;
+  docstrings on `access`/`meta`/`registry`; split the dense one-liners.
+
+Rejected, with the reason:
+- `iris` required in every service constructor (L4 major 3): PD-3a keeps it optional for classes a
+  consumer builds; PD-12j makes the default explicit instead.
+- An enum of template variables (L4 major 1, in part): the variables are already the schema's
+  patterns; `_templates` removes the repeated lookups, an enum would add a third copy.
+- A loaded graph not yet committed can be claimed by another aggregate that knows its random IRI
+  (tester observation): the same accepted race as PD-7 *Loaded graphs*.
 
 ## Algorithm / approach
 
