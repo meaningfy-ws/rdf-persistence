@@ -133,6 +133,7 @@ class GenerationTarget(ConfiguredBaseModel):
     typescript: Optional[str] = Field(default=None, title="TypeScript folder", description="The folder that receives the TypeScript types; none are written when absent.")
     diagrams: Optional[str] = Field(default=None, title="Diagrams folder", description="The folder that receives one Mermaid file per module; none are written when absent.")
     openapi: Optional[bool] = Field(default=True, title="OpenAPI components", description="Whether the OpenAPI component schemas of the classes (`openapi-components.json`) are written next to the context. Only a schema whose classes a service serves needs them; on unless set to false.")
+    regenerate_command: Optional[str] = Field(default=None, title="Regenerate command", description="The command that regenerates this entry, named in the hint of a failed freshness check (TOML key `regenerate-command`); `rp-generate` when absent.")
 
     @field_validator("schema_file")
     def pattern_schema_file(cls, v):

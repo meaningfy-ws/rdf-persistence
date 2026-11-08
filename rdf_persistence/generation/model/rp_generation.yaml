@@ -29,6 +29,7 @@ classes:
       - typescript
       - diagrams
       - openapi
+      - regenerate_command
     slot_usage:
       schema_file:
         required: true
@@ -537,6 +538,13 @@ slots:
     slot_uri: rp:openapiComponents
     range: boolean
     ifabsent: "true"
+  regenerate_command:
+    title: Regenerate command
+    description: >-
+      The command that regenerates this entry, named in the hint of a failed freshness check (TOML key
+      `regenerate-command`); `rp-generate` when absent.
+    slot_uri: rp:regenerateCommand
+    range: string
   path:
     is_a: relative_path
     title: Path

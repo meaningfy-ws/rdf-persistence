@@ -209,6 +209,9 @@
       "refused": {
          "@id": "refused"
       },
+      "regenerate_command": {
+         "@id": "regenerateCommand"
+      },
       "region": {
          "@id": "region"
       },

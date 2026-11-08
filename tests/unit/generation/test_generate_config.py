@@ -91,3 +91,21 @@ def test_the_components_are_written_unless_an_entry_switches_them_off(tmp_path: 
     (default,) = read(tmp_path, SINGLE)
     (quiet,) = read(tmp_path, SINGLE + "openapi = false\n")
     assert (default.openapi, quiet.openapi) == (True, False), "on by default, off by the entry"
+
+
+def test_the_regenerate_command_is_read_from_its_toml_key(tmp_path: Path) -> None:
+    (named,) = read(tmp_path, SINGLE + 'regenerate-command = "make generate-models"\n')
+    (unnamed,) = read(tmp_path, SINGLE)
+    assert named.regenerate_command == "make generate-models", "the key was not read"
+    assert unnamed.regenerate_command is None, "an absent key is not None"
+
+
+def test_a_regenerate_command_that_is_not_a_string_is_an_error_naming_the_toml_key(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(ConfigError, match="regenerate-command"):
+        read(tmp_path, SINGLE + "regenerate-command = 3\n")
+
+
+def test_the_regenerate_command_is_not_a_flag() -> None:
+    assert "regenerate_command" not in {f.field for f in cli_flags()}, "it became an rp-generate flag"

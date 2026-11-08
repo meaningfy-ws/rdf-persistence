@@ -23,7 +23,7 @@
     },
     {
       "path": "rdf_persistence/generation/cli.py",
-      "sha256": "a99dcb021b453ec170152c59872ed16f7fbcb51c2c0ebe72f1db500f126930f3"
+      "sha256": "982838dc928b659219817100c1cf9f0d60e62b55fbf44b3c411c32a0a8a3bf7f"
     },
     {
       "path": "rdf_persistence/generation/components.py",
@@ -31,7 +31,7 @@
     },
     {
       "path": "rdf_persistence/generation/config.py",
-      "sha256": "681b065ddd4b2649b44ddb05e75134a47e1cfe3caf2be079b36e5fc4ed8bc208"
+      "sha256": "76673406592729bed9f590a4ff72587dc7a5ef71121f5c0c8d62d95530b2627f"
     },
     {
       "path": "rdf_persistence/generation/exceptions.py",
@@ -71,7 +71,7 @@
     },
     {
       "path": "rdf_persistence/generation/manifest.py",
-      "sha256": "e860a830dc44aa465d47c108f52ec2613f2c02ef031d97892392cbcedea8467d"
+      "sha256": "9aef5642e32d1952e596dbd9bb45f3d04b9d727e494bdbd9fc670e0db2252483"
     },
     {
       "path": "rdf_persistence/generation/pipeline.py",

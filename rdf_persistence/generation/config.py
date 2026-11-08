@@ -16,9 +16,9 @@ from rdf_persistence.generation.generated.rp_generation import (
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 from rdf_persistence.services.schema_structure import annotation_text
 
-TOML_SCHEMA_KEY = (
-    "schema"  # the model's field is schema_file: `schema` would shadow a pydantic method
-)
+# TOML key -> model field where they differ (`schema` would shadow a pydantic method)
+TOML_KEYS = {"schema": "schema_file", "regenerate-command": "regenerate_command"}
+FIELD_KEYS = {field: key for key, field in TOML_KEYS.items()}
 GENERATION_MODEL = PACKAGE_DIR / "generation" / "model" / "rp_generation.yaml"
 TARGET_CLASS = "GenerationTarget"
 
@@ -50,7 +50,7 @@ def _given_flags(flags: Namespace) -> dict[str, str]:
 def _problems(error: ValidationError) -> str:
     """The errors of a validation, naming TOML keys rather than model fields."""
     return "; ".join(
-        f"{'.'.join(TOML_SCHEMA_KEY if part == 'schema_file' else str(part) for part in e['loc'])}: {e['msg']}"
+        f"{'.'.join(FIELD_KEYS.get(str(part), str(part)) for part in e['loc'])}: {e['msg']}"
         for e in error.errors()
     )
 
@@ -82,7 +82,7 @@ def _toml_entries(project: Path, given: dict[str, str]) -> list[GenerationTarget
         return [
             GenerationTarget.model_validate(
                 {
-                    **{"schema_file" if k == TOML_SCHEMA_KEY else k: v for k, v in row.items()},
+                    **{TOML_KEYS.get(k, k): v for k, v in row.items()},
                     **given,
                 }
             )
