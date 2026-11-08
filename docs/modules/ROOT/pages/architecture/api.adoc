@@ -172,16 +172,17 @@ kit = install_service(
 |Argument |Meaning
 |`schema` |The application's root LinkML file.
 |`generated` |The package `rp-generate` wrote for it. The context, frames, shapes and `openapi-components.json` are read from its folder; a missing file stops the call with `OSError`.
-|`store`, `files`, `identity`, `verifier` |The adapters: a `Store` (Fuseki), a `FileStore` (S3), an `Identity` (the identity provider) and a `TokenVerifier` (JWT access tokens).
+|`store`, `files`, `identity`, `verifier` |The adapters: a `Store` (Fuseki), a `FileStore` (S3), an `Identity` (the identity provider) and a `TokenVerifier` (JWT access tokens). The verifier exposes the `Iris` it mints principals with (`iris`); `install_service` refuses with `InvalidIri` when its principal template differs from the settings' policy.
 |`rules` |An `AccessRules`, or the path of the role-definitions file. A path is loaded and validated in the call, so an invalid file stops the service before anything touches the store.
-|`settings` |A `ServiceSettings`: `base` (the IRI under which identifiers and problem types are minted), `prefix` (the database and bucket name prefix), `tenant_segment`, `creator_role`, `roles_claim` (the token claim that carries the global roles, specific to the identity provider) and `max_body_bytes` (the largest request body, default 1 MiB).
+|`settings` |A `ServiceSettings`: `base` (the IRI under which identifiers and problem types are minted), `prefix` (the database and bucket name prefix), `tenant_segment`, `creator_role`, `roles_claim` (the token claim that carries the global roles, specific to the identity provider) `max_body_bytes` (the largest request body, default 1 MiB), `iri_policy` (how IRIs are minted; unset is the default policy) and `deployment` (the slug a template's `{deployment}` takes).
 |`prefix` |A path prefix under which the routes are mounted.
 |===
 
 At start-up, before the application's own lifespan, the service creates the system database if it is
 missing, records the IRI policy or, when it differs from the recorded one, refuses to start with
-`IriPolicyChanged` naming the differing fields, then runs the sweep. The policy is checked first
-because the sweep reads the access records through it. `install_service` returns a `ServiceKit` (its tenancy, store, files and
+`IriPolicyChanged` naming the differing fields, then runs the sweep. The record is the effective policy, kept in the system database's graph `{base}toolkit/iri-policy`. The policy is checked first
+because the sweep reads the access records through it.
+`install_service` returns a `ServiceKit` (its tenancy, store, files and
 identity, and `bucket_of` for a tenant's bucket) for the application's own routes. Such a route
 checks its caller through the kit, so the toolkit's access rules apply to it too:
 

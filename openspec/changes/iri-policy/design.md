@@ -289,9 +289,11 @@ Five lenses and an adversarial tester (65 tests, 19 strict xfails over 9 defects
   the verifier mints principals under another policy than the kit's. The `TokenVerifier` port
   exposes the `Iris` it mints with, and the test fakes follow. A forgotten `iris=` is then caught,
   not silent.
-- **PD-14d Colliding graphs are refused** (L1 major, tester 7). `check_iri_policy` refuses an
+- **PD-14d Colliding graphs are refused** (L1 major, tester 7). Building an `Iris` refuses an
   access, meta or registry template that, for the same tenant, equals another of them or the
   tenant IRI, or that matches the aggregate or loaded-graph pattern.
+  The check needs a drawn tenant, so it sits in `Iris`, not in the settings-only
+  `check_iri_policy` (amended after the checker; every service builds an `Iris` at start-up).
 - **PD-14e The first write is conditional** (L1, L2). The record is inserted only if none exists,
   then read back and compared, so two workers that start with different policies cannot both
   serve.
