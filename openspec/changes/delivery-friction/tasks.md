@@ -5,7 +5,7 @@ One stage, one PR. Per task: the affected test directories, `make check-quality`
 
 ## 1. Deterministic tests
 
-- [ ] 1.1 PD-2: the listing test compares multivalued values in any order
+- [x] 1.1 PD-2: the listing test compares multivalued values in any order
   (`tests/unit/entrypoints/test_listing_routes.py`, the `_unordered` helper as PD-2 defines it).
   Gate: `uv run pytest tests/unit/entrypoints -q`.
 - [x] 1.2 PD-3: move the budget tests to `tests/perf/` (+ `__init__.py`), the `perf` row in
