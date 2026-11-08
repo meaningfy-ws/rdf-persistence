@@ -119,7 +119,13 @@ def test_a_template_without_its_id_is_refused_naming_the_aggregate_template() ->
 
 @pytest.mark.parametrize(
     "slot",
-    ["tenant_template", "aggregate_template", "part_template", "loaded_graph_template", "principal_template"],
+    [
+        "tenant_template",
+        "aggregate_template",
+        "part_template",
+        "loaded_graph_template",
+        "principal_template",
+    ],
 )
 def test_an_id_template_that_does_not_end_in_its_id_is_refused(slot: str) -> None:
     with pytest.raises(ValidationError, match=slot):

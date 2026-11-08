@@ -19,6 +19,7 @@ from rdf_persistence.domain.generated.rp_core import (
     ModuleKind,
     RpAnnotation,
 )
+from rdf_persistence.domain.iris import LAYOUT_WORDS
 from rdf_persistence.generation.generated.rp_generation import CheckProblem, HardRule
 from rdf_persistence.generation.problems import rule_problem
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
@@ -27,6 +28,7 @@ from rdf_persistence.services.schema_structure import (
     annotation,
     annotation_text,
     inherits_from_metamodel,
+    iri_type_of,
     is_tenant_root,
     is_toolkit_schema,
     own_classes,
@@ -42,9 +44,8 @@ CORE_MODEL = PACKAGE_DIR / "model" / "rp_core.yaml"
 URL_SEGMENT = "url_segment"  # the slot of rp_core whose pattern every route segment follows
 BOOLEAN = ("true", "false")
 # The segments the IRI layout owns; no class may take one as its type (PD-8).
-RESERVED_IRI_TYPES = ("content", "graph", "parts", "access", "meta", "registry")
+RESERVED_IRI_TYPES = LAYOUT_WORDS
 PATTERNED_ANNOTATIONS = (RpAnnotation.RP_PATH, RpAnnotation.RP_IRI_TYPE)
-KEBAB_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 # Every annotation the toolkit reads, and the values it accepts (the enums of rp_core). rp_path takes
 # a pattern instead, checked on its own.
 ALLOWED_ANNOTATIONS = {
@@ -164,13 +165,6 @@ def _described_problems(
             yield rule_problem(
                 HardRule.DESCRIBED, cls.name, "a root or owned class includes Described"
             )
-
-
-def iri_type_of(cls: ClassDefinition) -> str:
-    """The ``{type}`` of the IRIs of ``cls``: its ``rp_iri_type``, else its name in kebab case."""
-    return (
-        annotation_text(cls, RpAnnotation.RP_IRI_TYPE) or KEBAB_BOUNDARY.sub("-", cls.name).lower()
-    )
 
 
 def _iri_type_problems(

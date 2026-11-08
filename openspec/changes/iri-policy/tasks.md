@@ -18,7 +18,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
 
 ### 2. Domain
 
-- [ ] 2.1 `Iris` in `rdf_persistence/domain/iris.py` (PD-3 to PD-6): minting, matching, id drawing
+- [x] 2.1 `Iris` in `rdf_persistence/domain/iris.py` (PD-3 to PD-6): minting, matching, id drawing
   with an injectable id source, reserved words, resource names, `{type}` alternations from the
   schema, `tenant_of_access` (PD-10), `is_aggregate_graph` (PD-11); today's functions become shims on
   the default `Iris`; the constructor calls `check_iri_policy` (PD-1); an absent `IdSpec` is
@@ -73,7 +73,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [ ] 2.1 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
+- [x] 1.1 · [x] 1.2 · [x] 2.1 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
 
 ## Verification
 
