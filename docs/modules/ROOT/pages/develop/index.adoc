@@ -52,7 +52,7 @@ The layers import downward only: `entrypoints | adapters > services > domain`.
 |`make test` |Run the unit and feature tests in parallel (`pytest -n auto`), with the coverage floor
 |`make test-perf` |Run the wall-clock budget tests alone; not part of `check-all` or CI
 |`make test-containers` |Run the integration and e2e tests against Fuseki, Garage and Zitadel (needs Docker)
-|`make fuseki-image` |Load the Fuseki test image from `temp/fuseki-image.tar`, or build it and save the tar (CI caches it)
+|`make fuseki-image` |Load the Fuseki test image from `temp/fuseki-image.tar`; build it and save the tar first when the tar is missing or older than `fuseki/` or `compose.yaml` (CI caches the tar)
 |`make format`, `make format-check` |Format the code with Ruff, or only check it (`check-quality` runs the check)
 |`make check-quality` |Format check, lint, type-check (code and generated code), architecture, spec, docs and freshness
 |`make check-all` |`check-quality` and `test`: run it before every PR

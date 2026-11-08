@@ -1,5 +1,8 @@
 SHELL = /bin/bash -o pipefail
 
+# A failed recipe must not leave a half-written tar that later looks up to date.
+.DELETE_ON_ERROR:
+
 BUILD_PRINT     = \e[1;34m
 END_BUILD_PRINT = \e[0m
 
@@ -12,12 +15,17 @@ ICON_PROGRESS = [-]
 REPO_ROOT    = $(shell pwd)
 PACKAGE_NAME = rdf_persistence
 TEST_PATH    = $(REPO_ROOT)/tests
-FORMAT_PATHS = $(PACKAGE_NAME) $(TEST_PATH) $(REPO_ROOT)/docs/tools
+PYTHON_PATHS = $(PACKAGE_NAME) $(TEST_PATH) $(REPO_ROOT)/docs/tools
 BUILD_PATH   = $(REPO_ROOT)/dist
 
 # Docker / infra (activate the Docker section below once infra/ exists).
 COMPOSE_FILE = $(REPO_ROOT)/infra/compose.yaml
 ENV_FILE     = $(REPO_ROOT)/infra/.env
+
+# The Fuseki test image: built from the compose file and the fuseki/ files next to it, saved as a
+# tar (CI caches the tar).
+FUSEKI_COMPOSE   = $(REPO_ROOT)/rdf_persistence/testkit/containers/compose.yaml
+FUSEKI_IMAGE_TAR = $(REPO_ROOT)/temp/fuseki-image.tar
 
 # Coverage flags — appended only in coverage-aware targets, never in pytest.ini.
 # `make test-containers` overrides the floor with --cov-fail-under=0 (PD-16).
@@ -99,12 +107,12 @@ run: ## Run the application (python -m <package>; tailor per archetype)
 
 format: ## Format code with Ruff
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Formatting code$(END_BUILD_PRINT)"
-	@ uv run ruff format $(FORMAT_PATHS)
+	@ uv run ruff format $(PYTHON_PATHS)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Format complete$(END_BUILD_PRINT)"
 
 lint-fix: ## Run Ruff checks with auto-fix
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running Ruff auto-fix$(END_BUILD_PRINT)"
-	@ uv run ruff check --fix $(PACKAGE_NAME) $(TEST_PATH)
+	@ uv run ruff check --fix $(PYTHON_PATHS)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Ruff auto-fix complete$(END_BUILD_PRINT)"
 
 pre-commit: ## Run pre-commit hooks on all files
@@ -119,12 +127,12 @@ pre-commit: ## Run pre-commit hooks on all files
 
 format-check: ## Check formatting with Ruff, without changing files
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking formatting$(END_BUILD_PRINT)"
-	@ uv run ruff format --check $(FORMAT_PATHS)
+	@ uv run ruff format --check $(PYTHON_PATHS)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Formatting is clean$(END_BUILD_PRINT)"
 
 lint: ## Run Ruff linting checks
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running Ruff checks$(END_BUILD_PRINT)"
-	@ uv run ruff check $(PACKAGE_NAME) $(TEST_PATH)
+	@ uv run ruff check $(PYTHON_PATHS)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Ruff checks passed$(END_BUILD_PRINT)"
 
 typecheck: ## Run mypy type checks
@@ -165,19 +173,14 @@ test-containers: ## Run the integration and e2e tests against Docker containers 
 	@ uv run pytest $(TEST_PATH) -m "integration or e2e" $(COV_FLAGS) --cov-report=xml:$(REPO_ROOT)/coverage-containers.xml --cov-fail-under=0 --junitxml=$(REPO_ROOT)/test-results-containers.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Container tests passed$(END_BUILD_PRINT)"
 
-FUSEKI_COMPOSE = rdf_persistence/testkit/containers/compose.yaml
-FUSEKI_IMAGE_TAR = temp/fuseki-image.tar
+$(FUSEKI_IMAGE_TAR): $(FUSEKI_COMPOSE) $(shell find $(dir $(FUSEKI_COMPOSE))fuseki -type f)
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Building the Fuseki image$(END_BUILD_PRINT)"
+	@ mkdir -p $(dir $@)
+	@ docker compose -f $(FUSEKI_COMPOSE) build fuseki && docker save -o $@ $$(docker compose -f $(FUSEKI_COMPOSE) config --images fuseki)
 
-fuseki-image: ## Load the Fuseki test image from temp/fuseki-image.tar, or build it and save the tar (CI caches the tar)
-	@ if [ -f $(FUSEKI_IMAGE_TAR) ]; then \
-		echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Loading the Fuseki image from $(FUSEKI_IMAGE_TAR)$(END_BUILD_PRINT)"; \
-		docker load -i $(FUSEKI_IMAGE_TAR); \
-	else \
-		echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Building the Fuseki image$(END_BUILD_PRINT)"; \
-		mkdir -p temp; \
-		docker compose -f $(FUSEKI_COMPOSE) build fuseki; \
-		docker save -o $(FUSEKI_IMAGE_TAR) $$(docker compose -f $(FUSEKI_COMPOSE) config --images fuseki); \
-	fi
+fuseki-image: $(FUSEKI_IMAGE_TAR) ## Load the Fuseki test image from its tar, building and saving the tar first when it is missing or older than its inputs
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Loading the Fuseki image$(END_BUILD_PRINT)"
+	@ docker load -i $<
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Fuseki image ready$(END_BUILD_PRINT)"
 
 changes-code: ## Print true when HEAD changes a file outside openspec/, docs/ and top-level *.md since BASE (default origin/develop)

@@ -34,19 +34,24 @@ def wait_until[T](
         timeout: Seconds to wait.
         probe_timeout: Seconds one call of ``probe`` may take (default: no bound). A call that
             has not returned by then counts as "not ready yet", like a ``retry_on`` error, and
-            the wait goes on until ``timeout``. The call runs in a daemon thread that cannot be
-            stopped, so a hung call is left behind until the process ends.
+            the wait goes on until ``timeout``. Must be positive. The call runs in a daemon
+            thread that cannot be stopped: a hung call is joined again on each later poll (no
+            second call starts while it runs) and is left behind if it never ends. So probes
+            should be read-only; a late call may still finish.
         retry_on: Errors that mean "not ready yet"; any other error propagates.
         sleep: Injected so tests need no real sleeping.
         monotonic: Injected clock.
 
     Raises:
         TimeoutError: If the probe did not succeed in time.
+        ValueError: If ``probe_timeout`` is not positive.
     """
+    _require_positive(probe_timeout)
+    bounded = _BoundedCall(probe, probe_timeout)
     deadline = monotonic() + timeout
     while monotonic() < deadline:
         try:
-            result = _call_bounded(probe, probe_timeout)
+            result = bounded()
         except retry_on:
             result = None
         if result:
@@ -73,7 +78,9 @@ async def wait_until_async[T](
 
     Raises:
         TimeoutError: If the probe did not succeed in time.
+        ValueError: If ``probe_timeout`` is not positive.
     """
+    _require_positive(probe_timeout)
     deadline = monotonic() + timeout
     while monotonic() < deadline:
         try:
@@ -86,28 +93,42 @@ async def wait_until_async[T](
     raise TimeoutError(_timed_out(what, timeout))
 
 
-def _call_bounded[T](probe: Callable[[], T], probe_timeout: float | None) -> T | None:
-    """Return the probe's value, or None if it is still running after ``probe_timeout``."""
-    if probe_timeout is None:
-        return probe()
-    box: list[tuple[T | None, BaseException | None]] = []
+def _require_positive(probe_timeout: float | None) -> None:
+    if probe_timeout is not None and probe_timeout <= 0:
+        raise ValueError(f"probe_timeout must be positive, got {probe_timeout:g}")
 
-    def run() -> None:
+
+class _BoundedCall[T]:
+    """Call the probe in a daemon thread; a call still running at the next poll is joined again."""
+
+    def __init__(self, probe: Callable[[], T], probe_timeout: float | None) -> None:
+        self._probe = probe
+        self._probe_timeout = probe_timeout
+        self._worker: threading.Thread | None = None
+        self._outcome: list[tuple[T | None, BaseException | None]] = []
+
+    def __call__(self) -> T | None:
+        """Return the probe's value, or None if the call is still running after the bound."""
+        if self._probe_timeout is None:
+            return self._probe()
+        if self._worker is None:
+            self._outcome = []
+            self._worker = threading.Thread(target=self._run, daemon=True)
+            self._worker.start()
+        self._worker.join(self._probe_timeout)
+        if self._worker.is_alive():
+            return None
+        self._worker = None
+        result, error = self._outcome[0]
+        if error is not None:
+            raise error
+        return result
+
+    def _run(self) -> None:
         try:
-            box.append((probe(), None))
-        except BaseException as error:  # handed to the caller's thread below
-            box.append((None, error))
-
-    # A Python thread cannot be stopped: a hung call's thread stays until the process ends.
-    worker = threading.Thread(target=run, daemon=True)
-    worker.start()
-    worker.join(probe_timeout)
-    if worker.is_alive():
-        return None
-    result, error = box[0]
-    if error is not None:
-        raise error
-    return result
+            self._outcome.append((self._probe(), None))
+        except BaseException as error:  # handed to the caller's thread in __call__
+            self._outcome.append((None, error))
 
 
 async def _await_bounded[T](

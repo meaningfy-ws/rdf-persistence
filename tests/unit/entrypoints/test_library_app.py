@@ -126,7 +126,14 @@ async def test_a_reader_cannot_write_the_file_and_an_outsider_cannot_see_it(
     assert (await http.get(shelf.file, headers=world.as_("omar"))).status_code == 404
 
 
-@pytest.mark.parametrize("scan_id", ["dune.pdf", "0000", "898B0B0D-E7B5-4C3D-99E3-DB49565D00AA"])
+@pytest.mark.parametrize(
+    "scan_id",
+    [
+        "dune.pdf",
+        "0000",
+        pytest.param("898B0B0D-E7B5-4C3D-99E3-DB49565D00AA", id="upper-case-uuid"),
+    ],
+)
 async def test_a_name_that_is_not_a_scan_id_is_a_404_before_the_store_is_asked(
     world, http, shelf, scan_id
 ) -> None:

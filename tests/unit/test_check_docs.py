@@ -76,3 +76,16 @@ def test_testkit_names_must_be_exported_or_a_submodule(tmp_path, monkeypatch, te
 
     assert len(errors) == expected, errors
     assert all("some_helper" in e for e in errors)
+
+
+def test_a_testkit_without_all_is_reported_as_such_not_as_every_name_unexported(
+    tmp_path, monkeypatch
+):
+    _testkit_with_page(tmp_path, monkeypatch, "use `testkit.exported` and `testkit.other`")
+    (tmp_path / "rdf_persistence/testkit/__init__.py").write_text("")
+
+    errors = check_docs.check_testkit_names()
+
+    assert len(errors) == 1, errors
+    assert "__all__" in errors[0]
+    assert "not exported" not in errors[0]

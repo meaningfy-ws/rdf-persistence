@@ -168,16 +168,9 @@ jobs:
         if: steps.changes.outputs.code == 'true'
         run: make install
 
-      - name: Cache the Fuseki image
-        if: steps.changes.outputs.code == 'true'
-        uses: actions/cache@v4
-        with:
-          path: temp/fuseki-image.tar
-          key: fuseki-${{ hashFiles('rdf_persistence/testkit/containers/fuseki/**', 'rdf_persistence/testkit/containers/compose.yaml') }}
-
       - name: Load or build the Fuseki image
         if: steps.changes.outputs.code == 'true'
-        run: make fuseki-image
+        uses: ./.github/actions/fuseki-image
 
       - name: Run container tests
         if: steps.changes.outputs.code == 'true'
@@ -204,11 +197,5 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Cache the Fuseki image
-        uses: actions/cache@v4
-        with:
-          path: temp/fuseki-image.tar
-          key: fuseki-${{ hashFiles('rdf_persistence/testkit/containers/fuseki/**', 'rdf_persistence/testkit/containers/compose.yaml') }}
-
       - name: Load or build the Fuseki image
-        run: make fuseki-image
+        uses: ./.github/actions/fuseki-image

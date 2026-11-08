@@ -74,27 +74,31 @@ def check_nav() -> list[str]:
     return [f"page not in nav: {rel(p)}" for p in pages() if rel(p) not in linked]
 
 
-def testkit_exports() -> set[str]:
-    init = ROOT / "rdf_persistence/testkit/__init__.py"
+def testkit_exports(testkit: Path) -> set[str] | None:
+    """The names in the testkit's ``__all__``, or None if it declares none."""
+    init = testkit / "__init__.py"
     for node in ast.parse(init.read_text()).body:
         if isinstance(node, ast.Assign) and any(
             isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets
         ):
             return set(ast.literal_eval(node.value))
-    return set()
+    return None
 
 
 def check_testkit_names() -> list[str]:
     testkit = ROOT / "rdf_persistence/testkit"
+    exports = testkit_exports(testkit)
+    if exports is None:
+        return [f"{testkit.relative_to(ROOT)}/__init__.py: defines no __all__"]
     known = (
-        testkit_exports()
+        exports
         | {p.stem for p in testkit.glob("*.py")}
         | {p.name for p in testkit.iterdir() if p.is_dir()}
     )
-    text = (MODULE / "pages/develop/testing.adoc").read_text()
+    page = MODULE / "pages/develop/testing.adoc"
     return [
-        f"develop/testing.adoc: testkit.{name} is not exported"
-        for name in sorted(set(re.findall(r"testkit\.(\w+)", text)) - known)
+        f"{rel(page)}: testkit.{name} is not exported"
+        for name in sorted(set(re.findall(r"testkit\.(\w+)", page.read_text())) - known)
     ]
 
 

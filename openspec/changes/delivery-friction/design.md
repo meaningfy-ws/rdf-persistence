@@ -130,8 +130,62 @@ new dependency is added; a test that fails there is made deterministic (DEC-2).
 
 ## Review
 
-To be filled by the stage: five lenses (MEDIUM), findings accepted or rejected with a reason, then
-the fresh checker.
+Five lenses on `41c9b15..c6994ff` (2026-11-08): no P0; one P1 (L2), three P2, the rest P3.
+`make check-architecture` and `make test` (3346, 94.32 %) green under review.
+
+Accepted (the lead's decisions; R-n):
+
+- **R-1 (L2 P1) No wall-clock asserts in the unit lane.** The two "probe never returns" tests assert
+  `elapsed < timeout + 0.5` and sleep for real, which DEC-2 and rule 11 forbid. They take an
+  injected `monotonic` and `sleep` and assert the `TimeoutError` message and the call count; the
+  short real waits inside `probe_timeout` (`join`, `asyncio.timeout`) stay, unasserted.
+- **R-2 (L2 P2, L3 P3-1, L5 P3-2) One Fuseki-image step, saved even when tests fail.**
+  `actions/cache@v4` saves only when the job succeeds, so a PR that misses the cache and then fails
+  a test downloads from Maven Central again on every re-run; and the cache step and key were copied
+  into two jobs. A composite action `.github/actions/fuseki-image` holds `actions/cache/restore`,
+  `make fuseki-image` and `actions/cache/save` (on a miss); both jobs call it, so the key lives once.
+- **R-3 (L4 P2, L1 P3-4) At most one hung sync probe.** `_call_bounded` started a new thread per
+  poll, so a hanging endpoint left up to ~150 threads. A call still running from the previous poll
+  is joined again instead of starting a new one. The docstring says probes should be read-only,
+  since a late call may still finish.
+- **R-4 (L1 P3-3) `probe_timeout <= 0` is a `ValueError`,** with a test: zero makes every call "not
+  ready" and the wait ends in a misleading timeout.
+- **R-5 (L1 P3-1) `make fuseki-image` fails when the build fails:** the build branch is joined with
+  `&&`, so an old image of the same tag is not saved after a failed build.
+- **R-6 (L1 P3-2, L4 P3-4, L3 note) A local tar is rebuilt when its inputs change.** The tar is a
+  make file target that depends on `fuseki/` and `compose.yaml`; `make fuseki-image` loads it. In CI
+  the restored tar is newer than the checkout, so it is loaded; locally an edit of `fuseki/`
+  rebuilds. The fixture's comment says to run `make fuseki-image` after such an edit.
+- **R-7 (L5 P2) One list of Python paths.** `PYTHON_PATHS` (package, `tests`, `docs/tools`) feeds
+  `format`, `format-check`, `lint` and `lint-fix`; `docs/tools` was format-checked but not linted.
+- **R-8 (L4 P3-4, L5 P3-3) The Fuseki Makefile variables** sit in the top block on `$(REPO_ROOT)`;
+  `mkdir -p $(dir …)`; the help text does not spell the path again.
+- **R-9 (L4 P3-3, L5 P3-4) `check_docs.py`:** the testkit path is computed once and passed in; the
+  message uses `rel(page)`; a testkit without `__all__` is reported as such, not as every name
+  "not exported".
+- **R-10 (L4 P3-2) The upper-case UUID parameters carry an id** saying what they stand for.
+- **R-11 (L4 P3-5) `box` is named `outcome`.**
+- **R-12 (L3 note) `_running`'s `build` parameter is deleted:** no caller passes it any more.
+
+As built, three points differ from the wording above:
+
+- **R-6a The restored tar is touched on a cache hit.** R-6 assumed the restored tar is newer than
+  the checkout; `actions/cache` keeps the saved mtime, so `make` would rebuild on every hit. The
+  composite action runs `touch` on the tar on a hit, safe because the key hashes exactly the tar's
+  inputs. It is the one inline command in CI outside `make` (the D12 thin-workflow rule), kept
+  there because it exists only for the cache.
+- **R-6b `.DELETE_ON_ERROR:`** in the Makefile, so a failed build or save never leaves a tar that
+  looks up to date. It applies to every file target (all others are phony).
+- **R-11a** The outcome slot is `_outcome`, an attribute of the new `_BoundedCall` (R-3).
+
+Rejected:
+
+- **L3 P3-2 (automate the thin-workflow rule):** true, but older than this change and outside its
+  shape; a candidate for a later change.
+- **L3 P3-1's "derive the key from `FUSEKI_COMPOSE`":** after R-2 the key is written once, next to
+  the step that uses it; deriving it through make adds a step for no gain.
+- **L2 P3, L1 and L4 blast-radius notes:** informational; `probe_timeout=None` keeps the old path
+  (tested, 100 % coverage of `bootstrap.py`).
 
 ## Clarity gate
 

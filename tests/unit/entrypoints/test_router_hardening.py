@@ -298,7 +298,13 @@ async def test_a_record_the_service_cannot_decode_is_a_500_without_detail(scene)
 
 
 @pytest.mark.parametrize(
-    "aggregate_id", ["nope", "898B0B0D-E7B5-4C3D-99E3-DB49565D00AA", "00000000", "a" * 200]
+    "aggregate_id",
+    [
+        "nope",
+        pytest.param("898B0B0D-E7B5-4C3D-99E3-DB49565D00AA", id="upper-case-uuid"),
+        "00000000",
+        "a" * 200,
+    ],
 )
 async def test_an_aggregate_id_that_is_no_uuid_is_a_404_before_any_store_call(
     scene, aggregate_id
