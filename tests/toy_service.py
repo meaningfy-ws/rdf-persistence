@@ -15,6 +15,7 @@ from rdf_persistence import (
     TenantCreate,
     load_role_definitions,
 )
+from rdf_persistence.domain.generated.service.rp_service import IdKind, IdSpec, IriPolicy
 from rdf_persistence.domain.iris import principal_iri
 from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.services.files import FileStore
@@ -28,6 +29,18 @@ from tests.toy import ROLES, SETTINGS, TOY_SCHEMA
 
 BASE_URL = "http://test"
 LIBRARIAN, READER, OUTSIDER = "librarian", "reader", "outsider"
+
+
+# The consumer's policy: the tenant under ``project/``, every other object flat beside its siblings.
+FLAT = "{base}{tenant_id}/{type}/{id}"
+CONSUMER_POLICY = IriPolicy(
+    tenant_template="{base}project/{tenant_id}",
+    aggregate_template=FLAT,
+    part_template=FLAT,
+    loaded_graph_template=FLAT,
+    tenant_id=IdSpec(kind=IdKind.RANDOM, length=7),
+    object_id=IdSpec(kind=IdKind.RANDOM, length=13),
+)
 
 
 def principal_of(sub: str) -> str:
@@ -85,6 +98,7 @@ class ToyService:
         prefix: str | None = None,
         max_body_bytes: int | None = None,
         mount: str = "",
+        iri_policy: IriPolicy | None = None,
     ) -> None:
         self.signer = TokenSigner()
         self.store = store or FakeStore()
@@ -95,6 +109,7 @@ class ToyService:
                 "roles_claim": self.signer.roles_claim,
                 "prefix": prefix or SETTINGS.prefix,
                 "max_body_bytes": max_body_bytes or SETTINGS.max_body_bytes,
+                "iri_policy": iri_policy,
             }
         )
         verifier = JwksTokenVerifier(

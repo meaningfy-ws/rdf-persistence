@@ -44,7 +44,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
   IRI with a part's type", "a loaded graph of another aggregate", "a body that names another
   aggregate's part", "a listing of aggregates with flat parts", and the existing listing and
   document tests under both policies.
-- [ ] 3.4 Wiring: `install_service` builds one `Iris` and hands it out (PD-3a); `Session` and
+- [x] 3.4 Wiring: `install_service` builds one `Iris` and hands it out (PD-3a); `Session` and
   `fake_session` (`testkit/fakes.py`) take an optional `Iris`; `entrypoints/kit.py` and
   `entrypoints/auth.py` map path ids through it.
   Tests: "a path id of the wrong form"; a feature test serving the toy library under the
@@ -73,7 +73,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [ ] 3.4 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
+- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
 
 ## Verification
 

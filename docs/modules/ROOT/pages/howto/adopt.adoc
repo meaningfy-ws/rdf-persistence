@@ -748,7 +748,8 @@ It returns the *`ServiceKit`*, for your own routes and domain services:
 |`session(tenant, principal)` |A session on the tenant's database (<<session>>)
 |`bucket_of(tenant)` |The tenant's bucket name
 |`tenancy`, `store`, `files`, `identity`, `view`, `settings` |The tenancy service, the ports (`store` is the `Store` you passed, wrapped as `ToolkitStore`), the loaded schema and the settings
-|`tenant_iri(tenant_id)` |The tenant IRI of a tenant id taken from a path
+|`tenant_iri(tenant_id)` |The tenant IRI of a tenant id taken from a path; `NotFound` if the IRI policy does not mint such an id
+|`iris` |The one `Iris` of the service, built from the settings and the schema; the services the kit wires and its `rules` all use it
 |===
 
 A route of your own that calls a domain service needs the caller's principal IRI as well. The
@@ -809,7 +810,7 @@ _How do I test my application without servers?_
 |`FakeFileStore()` |a `FileStore`
 |`FakeIdentity()` |an `Identity`
 |`TokenSigner()` |the identity provider's keys: `issue(sub=…, roles=[…])` signs a token, and `transport` serves the keys to a `JwksTokenVerifier`
-|`fake_session(store, *, tenant_iri, principal, clock)` |a real `Session` over a `FakeStore`, for a domain service's unit test
+|`fake_session(store, *, tenant_iri, principal, clock, iris)` |a real `Session` over a `FakeStore`, for a domain service's unit test; pass `iris` to test under your own IRI policy
 |===
 
 The toy library's router tests build the whole service over them (`tests/toy_service.py`):

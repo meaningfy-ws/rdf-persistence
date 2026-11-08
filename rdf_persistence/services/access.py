@@ -9,6 +9,7 @@ A Prohibition of ``read`` forbids every action, since each of them implies ``rea
 of any other action forbids that action only.
 """
 
+import copy
 from collections.abc import Iterable
 from functools import cache
 from pathlib import Path
@@ -178,6 +179,12 @@ class AccessRules:
         for definition in role_definitions:
             key = (RoleLevel(definition.level), definition.role)
             self._permits.setdefault(key, set()).update(definition.actions)
+
+    def with_iris(self, iris: Iris) -> "AccessRules":
+        """The same role permits under the IRI policy ``iris``; this object is unchanged."""
+        rebound = copy.copy(self)
+        rebound._iris = iris
+        return rebound
 
     def validate_grants(self, grants: GrantSet, tenant: str) -> None:
         """Check that ``check`` could honour every grant and prohibition of ``grants`` in ``tenant``.

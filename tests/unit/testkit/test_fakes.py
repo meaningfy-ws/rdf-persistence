@@ -5,9 +5,14 @@ import socket
 import pytest
 
 from rdf_persistence import Conflict, Principal, Session, UnitOfWork
+from rdf_persistence.domain.exceptions import InvalidIri
+from rdf_persistence.domain.iris import Iris
+from rdf_persistence.services.schema import load_schema
+from rdf_persistence.services.schema_structure import iri_types
 from rdf_persistence.testkit import FakeStore, fake_session, no_network  # noqa: F401  (fixture)
 from tests.fixtures.library.generated.books import Book
-from tests.toy import ADA, TENANT, book_iri, dune, toy_mapper
+from tests.toy import ADA, SETTINGS, TENANT, TOY_SCHEMA, book_iri, dune, toy_mapper
+from tests.toy_service import CONSUMER_POLICY
 
 BEN = "https://example.org/people/ben"
 
@@ -56,3 +61,33 @@ async def test_two_fake_sessions_over_one_store_see_the_same_data(no_network):  
         await work.commit()
     async with fake_session(store, tenant_iri=TENANT, principal=Principal(id=BEN)) as ben:
         assert (await read(ben, book_iri(1))).creator == ADA
+
+
+# --- fake_session under a consumer's IRI policy (iri-policy task 3.4) -------------------------------
+
+
+def _consumer_iris() -> Iris:
+    settings = SETTINGS.model_copy(update={"iri_policy": CONSUMER_POLICY})
+    return Iris(settings, *iri_types(load_schema(TOY_SCHEMA)))
+
+
+async def test_the_fake_session_takes_the_iris_a_consumer_policy_mints(no_network):  # noqa: F811
+    iris = _consumer_iris()
+    tenant = str(iris.tenant("p4x8k2m"))
+    flat_book = str(iris.aggregate(tenant, "book", "books", "abcdefghijklm"))
+    async with fake_session(tenant_iri=tenant, iris=iris) as session:
+        work = UnitOfWork(session, toy_mapper())
+        work.add(dune(flat_book))
+        await work.commit()
+        assert (await read(session, flat_book)).label == "Dune"
+
+
+async def test_the_fake_session_without_iris_refuses_what_only_a_consumer_policy_mints(
+    no_network,  # noqa: F811
+):
+    iris = _consumer_iris()
+    tenant = str(iris.tenant("p4x8k2m"))
+    flat_book = str(iris.aggregate(tenant, "book", "books", "abcdefghijklm"))
+    async with fake_session(tenant_iri=tenant) as session:
+        with pytest.raises(InvalidIri):
+            await session.add_graph(flat_book, [])

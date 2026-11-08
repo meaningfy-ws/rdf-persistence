@@ -16,6 +16,8 @@ left blank. Times are under load (other sessions ran `make` on the same machine)
 | 3.2 build | builder | 17m21s | 171.3k | 36 | its own check-all 12m18s |
 | 3.2 gate | lead | 6m38s | — | — | 2956 tests; 1 gap (PD-7b) recorded |
 | 3.3 build | builder | 42m48s | 214.1k | 85 | one early check-all (~11 min, 10 wording failures) before the lean rule reached it; then touched tests 28s + check-quality 49s |
+| 3.3 gate | lead | 12m34s | — | — | 3042 tests (pytest 11m11s, load avg ~3–4 from other sessions) |
+| 3.4 build | builder | 6m52s | 124.4k | 26 | lean brief + lean gates: touched tests 5.7s, check-quality 22s |
 | gitnexus re-index | lead | ~3 tries | — | — | incremental and `--force` fail (gitnexus bug); `clean --force` + `analyze` works |
 
 ## Where the time goes (first reading, after 3.2)
