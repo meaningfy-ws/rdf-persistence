@@ -905,7 +905,9 @@ template per kind of IRI and the rule for each id:
 
 [source,python]
 ----
-from rdf_persistence import IdKind, IdSpec, IriPolicy, ServiceSettings, zitadel_roles_claim
+from rdf_persistence import (
+    IdKind, IdSpec, IriPolicy, Iris, JwksTokenVerifier, ServiceSettings, zitadel_roles_claim,
+)
 
 project_id = "..."                          # your Zitadel project id (step 12)
 FLAT = "{base}{tenant_id}/{type}/{id}"
@@ -915,8 +917,11 @@ settings = ServiceSettings(
     tenant_segment="libraries",
     creator_role="librarian",
     roles_claim=zitadel_roles_claim(project_id),
+    deployment="dev",                        # what {deployment} takes; needed only if a template uses it
     iri_policy=IriPolicy(
         tenant_template="{base}project/{tenant_id}",
+        access_template="{base}{deployment}/project/{tenant_id}",
+        principal_template="{base}{deployment}/user/{sub}",
         aggregate_template=FLAT,
         part_template=FLAT,
         loaded_graph_template=FLAT,
@@ -924,6 +929,8 @@ settings = ServiceSettings(
         object_id=IdSpec(kind=IdKind.RANDOM, length=13),
     ),
 )
+# the verifier mints principals: give it the same policy; open it with `async with` as in step 12
+verifier = JwksTokenVerifier(issuer, project_id, zitadel_roles_claim(project_id), iris=Iris(settings))
 ----
 
 A slot you leave out keeps its default. A tenant is then `http://mwb.meaningfy.ws/project/p4x8k2m`,
