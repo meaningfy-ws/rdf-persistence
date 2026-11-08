@@ -119,6 +119,13 @@ def test_a_flat_object_is_not_nested_under_another(consumer):
     assert loaded == URIRef(f"{BASE}p4x8k2m/content/c8f3k29dm4x1q")
 
 
+def test_parts_are_nested_under_their_root_only_when_the_part_template_starts_with_it(
+    default, consumer
+):
+    assert default.nested_parts, "today's parts are {root}/parts/{id}"
+    assert not consumer.nested_parts, "the consumer's parts are beside their root"
+
+
 def test_the_api_path_does_not_enter_the_iri(consumer):
     first = consumer.mint_aggregate(TENANT, "ontology-file", "files")
     second = consumer.mint_aggregate(TENANT, "ontology-file", "ontology-files")

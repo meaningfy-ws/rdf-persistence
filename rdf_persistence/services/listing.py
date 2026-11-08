@@ -69,7 +69,7 @@ _PAGE_BY_SLOT = (
     + " GROUP BY ?root ?graph ORDER BY $order LIMIT $limit OFFSET $offset"
 )
 _LISTING = """
-CONSTRUCT { ?s ?p ?o . $class $p_total ?total } WHERE {
+CONSTRUCT { ?s ?p ?o . ?s $p_listed_in ?graph . $class $p_total ?total } WHERE {
   { %s }
   UNION
   { { %s } GRAPH ?graph { ?s ?p ?o } }
@@ -267,6 +267,7 @@ def listing_query(registry: URIRef, plan: ListPlan) -> str:
         **{"class": term(URIRef(plan.target))},
         patterns=match_patterns("root", pairs),
         hidden=term_list(URIRef(graph) for graph in plan.hidden_graphs or []),
+        p_listed_in=term(v.LISTED_IN),
         p_total=term(v.TOTAL),
         order=order_by(*keys),
         limit=count(plan.limit),
@@ -282,15 +283,6 @@ def total_of(answer: Graph, plan: ListPlan) -> int:
     return int(total.toPython())
 
 
-def _owner(subject: str, roots: set[str]) -> str | None:
-    """The root the subject belongs to: itself, or the nearest root above its IRI."""
-    while subject:
-        if subject in roots:
-            return subject
-        subject = subject.rpartition("/")[0]
-    return None
-
-
 def _order_key(graph: Graph, root: URIRef, sort: URIRef) -> tuple:
     """The key an aggregate sorts by: its smallest value of the sort slot; none sorts first."""
     values = [o.toPython() if isinstance(o, Literal) else str(o) for o in graph.objects(root, sort)]
@@ -302,16 +294,18 @@ def items_of(answer: Graph, plan: ListPlan) -> list[tuple[URIRef, Graph]]:
 
     The query selects the page but returns triples, which carry no order, so the order is rebuilt:
     by IRI, then by the sort slot's smallest value with the IRI breaking ties. Each item is the
-    aggregate's root and its triples, the statements about its graph included.
+    aggregate's root and its triples, the statements about its graph included. A triple belongs to
+    the aggregate whose graph the query found its subject in (``listedIn``, PD-7), whatever the
+    subject's IRI looks like.
     """
     roots = {
         str(root_of_graph(s)) for s, p, _ in answer if p == v.VERSION and isinstance(s, URIRef)
     }
     parts: defaultdict[str, Graph] = defaultdict(Graph)
-    for triple in answer:
-        owner = _owner(str(triple[0]), roots)
-        if owner is not None:
-            parts[owner].add(triple)
+    listed_in = {s: g for s, _, g in answer.triples((None, v.LISTED_IN, None))}
+    for s, p, o in answer:
+        if p != v.LISTED_IN and s in listed_in:
+            parts[str(root_of_graph(str(listed_in[s])))].add((s, p, o))
     sort = URIRef(plan.sort_by) if plan.sort_by else None
     descending = bool(plan.descending)
     ordered = sorted(roots, reverse=descending and sort is None)

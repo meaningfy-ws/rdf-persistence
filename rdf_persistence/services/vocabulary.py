@@ -55,6 +55,8 @@ BOOKKEEPING_PREDICATES = frozenset(
 REGISTRY_GRAPH = predicate("graph")
 REGISTRY_KIND = predicate("kind")
 REGISTRY_OWNED_BY = predicate("owned_by")
+# A listing states the graph it found each subject in (PD-7); the toolkit drops it before answering.
+LISTED_IN = predicate("listed_in")
 REGISTRY_KIND_IRIS = meanings(RegistryKind)
 
 STATE = predicate("state")

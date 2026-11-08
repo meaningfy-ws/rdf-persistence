@@ -35,7 +35,8 @@ def scan_ld(documents, context: dict | None = None, **extra) -> dict:
 
 
 async def parsed(documents, cls, body: dict, media_type: str = JSON, iri: str = SCAN):
-    return await documents.parse(encoded(body), media_type, cls, iri, creating=True)
+    graph, _ = await documents.parse(encoded(body), media_type, cls, iri, creating=True)
+    return graph
 
 
 # --- internal slots: refused in every key form, at every level ---------------------------------

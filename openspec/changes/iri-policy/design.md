@@ -71,6 +71,12 @@ path ids in `entrypoints/router.py` (`_last_segment`). Two places infer ownershi
   policies). `Iris.is_aggregate(tenant, iri)` keeps today's two extra cases of `is_aggregate_iri`
   (`iris.py:105`): the tenant root itself and its access record (the access template filled), on
   which the system-database session relies.
+- **PD-3c Access rules a consumer built (lead's decision before task 3.4).** `install_service`
+  accepts `rules` as a path or as an `AccessRules` the consumer built, which holds the default
+  `Iris`. The kit builds its one `Iris` (settings plus `iri_types(view)`) and rebinds the rules to
+  it: `AccessRules.with_iris(iris)` answers a new `AccessRules` with the same role permits. So every
+  service the kit wires, rules included, uses one policy; a consumer never has to pass an `Iris`.
+  The route's `{type}` comes from the class served at `rp_path` (`iri_type_of`).
 - **PD-3b The schema reaches `Iris` as types** (lead's decision before task 2.1). `domain` imports no
   LinkML, so `Iris` takes `root_types` and `owned_types` (frozen sets of `{type}` values), not the
   schema. One services function, `iri_types(view)` in `services/schema_structure.py`, computes them;

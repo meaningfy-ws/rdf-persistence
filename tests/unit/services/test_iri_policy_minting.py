@@ -1,7 +1,7 @@
 """Roots, parts and loaded graphs are minted through ``Iris`` (iri-policy task 3.2, PD-3, PD-3a, PD-7a).
 
-The check that a body's parts sit inside the aggregate is the default's nested rule; the flat rule
-replaces it in task 3.3, so a flat part template is exercised here only where that check is not reached.
+Under the flat policy a root, its parts and its loaded graphs sit beside each other under the tenant
+(task 3.3 made the checks follow the policy); ``TYPED`` keeps parts below the root, by type.
 """
 
 import json
@@ -135,26 +135,38 @@ def test_a_flat_part_is_minted_beside_the_root_not_under_it():
     assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/chapter/{OBJECT_ID}", part.id)
 
 
-async def test_a_flat_loaded_graph_is_minted_under_the_tenant_as_content():
-    # the tenant sits above every flat IRI, which the session still needs to accept an aggregate (task 3.3)
-    iris = policy(tenant_template="{base}{tenant_id}")
-    tenant = str(iris.tenant("p4x8k2m"))
+async def test_a_flat_object_is_stored_beside_its_part_and_its_loaded_graph():
     store = FakeStore()
     await store.create_dataset(FAKE_DATABASE)
     session = Session(
         store,
         database=FAKE_DATABASE,
-        tenant_iri=tenant,
+        tenant_iri=FLAT_TENANT,
         principal=ADA,
         clock=lambda: datetime(2026, 11, 8, tzinfo=UTC),
-        iris=iris,
+        iris=FLAT_IRIS,
     )
+
+    class Tenancy:
+        @asynccontextmanager
+        async def tenant_session(self, tenant, principal):
+            yield session
+
+    body = {"label": "Dune", "description": "A planet.", "chapters": [{"number": 1}]}
+    aggregates = Aggregates(FLAT_DOCUMENTS, Tenancy(), iris=FLAT_IRIS)  # type: ignore[arg-type]
+    iri, (triples, _, version) = await aggregates.create(
+        FLAT_TENANT, ADA, FLAT_DOCUMENTS.aggregates["books"], "books", encoded(body), JSON
+    )
+    (part,) = {str(s) for s in triples.subjects(RDF.type, URIRef(CHAPTER_TYPE))}
+    assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/book/{OBJECT_ID}", iri)
+    assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/chapter/{OBJECT_ID}", part)
     loaded = await session.load_graph(
-        f"{tenant}/book/{'a' * 13}",
+        iri,
         b'<https://e.org/b> <https://e.org/p> "x" .',
         rdf_format=RdfFormat.NTRIPLES,
     )
     assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/content/{OBJECT_ID}", str(loaded))
+    await session.replace_graph(iri, list(triples), version, loaded_graphs=[loaded])
 
 
 async def test_a_part_of_a_body_is_minted_by_the_class_its_type_names():
@@ -204,9 +216,10 @@ def ld(part: dict) -> bytes:
 
 
 async def parsed(documents: Documents, part: dict, root: str, tenant: str):
-    return await documents.parse(
+    graph, _ = await documents.parse(
         ld(part), JSON_LD, documents.aggregates["books"], root, creating=False, tenant=tenant
     )
+    return graph
 
 
 FLAT_ROOT = f"{BASE}p4x8k2m/book/{'a' * 13}"

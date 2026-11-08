@@ -110,7 +110,7 @@ _What is built in v1, and what waits for a need?_
 
 |Graph loading
 |v1
-|`Session.load_graph`: parse an RDF file (Turtle, RDF/XML, N-Triples, JSON-LD) in a worker thread; refuse it with `InvalidGraph` if it does not parse, writing nothing; otherwise `PUT` it into a new named graph, by default `{root}/content/{uuid4}` (per the IRI policy). A later commit registers it by naming it in `loaded_graphs`. A loaded graph no commit registers stays, unseen, until its tenant is deleted: the start-up sweep drops only whole tenant databases and buckets, and the sweep inside a live tenant is deferred (below).
+|`Session.load_graph`: parse an RDF file (Turtle, RDF/XML, N-Triples, JSON-LD) in a worker thread; refuse it with `InvalidGraph` if it does not parse, writing nothing; otherwise `PUT` it into a new named graph, by default `{root}/content/{uuid4}` (per the IRI policy). A later commit registers it by naming it in `loaded_graphs`; the commit is refused (`InvalidIri`, nothing written) if the policy would not mint that graph for the aggregate or if another aggregate already owns it, which one `ASK` on the registry settles (PD-7). A loaded graph no commit registers stays, unseen, until its tenant is deleted: the start-up sweep drops only whole tenant databases and buckets, and the sweep inside a live tenant is deferred (below).
 |N-5
 
 |File store port and S3 adapter

@@ -171,13 +171,19 @@ class Documents:
         *,
         creating: bool,
         tenant: str = "",
-    ) -> Graph:
-        """The triples of the body ``data``: one node of class ``cls`` rooted at ``iri``, with its parts.
+    ) -> tuple[Graph, set[URIRef]]:
+        """The triples of the body ``data`` and the subjects it names: one node of class ``cls`` rooted
+        at ``iri``, with its parts.
 
         A JSON body is expanded with the generated context, its nodes typed by the schema; a JSON-LD
         body is used as it is. The root has the IRI of the path; on a create that IRI is minted, so a
         body naming one is refused, and on a replace a body naming another is refused. A part without
         an IRI gets one from the IRI policy, by its class (PD-7a); ``tenant`` is the tenant of ``iri``.
+
+        Parts are nested under the root when the policy's part template says so, and a subject outside
+        the root is refused. Otherwise (PD-7) only the root and the parts minted now are accepted
+        here, and every other subject IRI of the body is returned as ``named``, for the caller to
+        check against what the aggregate stores; ``named`` is empty for nested parts.
 
         Raises:
             InvalidBody: The body is not a JSON object, is not valid JSON-LD, uses a remote context, or
@@ -312,8 +318,9 @@ class Documents:
 
     def _settled(
         self, graph: Graph, cls: ClassDefinition, iri: URIRef, creating: bool, tenant: str
-    ) -> Graph:
-        """``graph`` rooted at ``iri``, its parts named, without the bookkeeping, or the refusal."""
+    ) -> tuple[Graph, set[URIRef]]:
+        """``graph`` rooted at ``iri``, its parts named, without the bookkeeping, and the subjects the
+        body named itself (flat parts only), or the refusal."""
         root = self._root(graph, iri, creating)
         if (root, RDF.type, self._iri_of(cls)) not in graph:
             raise InvalidBody(f"the body must be a {cls.name}")
@@ -334,11 +341,16 @@ class Documents:
                 continue
             settled.add((named(s), p, named(o)))
         _refuse_bad_iris(settled)
-        outside = [s for s in settled.subjects() if isinstance(s, URIRef) and not _inside(iri, s)]
-        if outside:
-            raise InvalidBody(f"{outside[0]} is not inside the aggregate {iri}")
+        iris = {s for s in settled.subjects() if isinstance(s, URIRef)}
+        claimed: set[URIRef] = set()
+        if self._iris.nested_parts:
+            outside = [s for s in iris if not _inside(iri, s)]
+            if outside:
+                raise InvalidBody(f"{outside[0]} is not inside the aggregate {iri}")
+        else:
+            claimed = iris - {iri, *names.values()}
         self._refuse_strays(settled, iri, cls)
-        return settled
+        return settled, claimed
 
     def _refuse_strays(self, graph: Graph, root: URIRef, cls: ClassDefinition) -> None:
         """Only the root and the parts reached from it through owned-part slots, each of the slot's class, may be described."""

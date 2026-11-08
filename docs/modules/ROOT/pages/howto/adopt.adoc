@@ -542,7 +542,7 @@ the bytes under the scan's id instead. Its route is in <<serve>>.
 parses the data in a worker thread and puts it into a new named graph, by default `{iri}/content/{uuid4}` (the loaded-graph template of the
 IRI policy; `Session` takes the policy as `iris=`).
 Data that does not parse raises `InvalidGraph`, and nothing is written. The graph belongs to the
-aggregate once a commit names it:
+aggregate once a commit names it (a graph another aggregate owns is refused with `InvalidIri`):
 
 [source,python]
 ----

@@ -112,7 +112,7 @@ OUTSIDE_THE_CONTENT = [
 async def test_add_refuses_a_loaded_graph_outside_the_aggregate_before_any_request(
     session, store, bad
 ):
-    with pytest.raises(ValueError, match="content"):
+    with pytest.raises(ValueError, match="loaded graph"):
         await session.add_graph(ROOT, [], loaded_graphs=[LOADED[0], bad])
     assert (store.sent("query"), store.sent("update")) == ([], []), "the store was not touched"
 
@@ -123,7 +123,7 @@ async def test_replace_refuses_a_loaded_graph_outside_the_aggregate_before_any_r
 ):
     version = await session.add_graph(ROOT, [], loaded_graphs=LOADED)
     requests = (len(store.sent("query")), len(store.sent("update")))
-    with pytest.raises(ValueError, match="content"):
+    with pytest.raises(ValueError, match="loaded graph"):
         await session.replace_graph(ROOT, [], version, loaded_graphs=[bad])
     assert (len(store.sent("query")), len(store.sent("update"))) == requests, "nothing was sent"
     assert await registered_loaded(store) == set(LOADED), "and nothing changed"
@@ -132,7 +132,7 @@ async def test_replace_refuses_a_loaded_graph_outside_the_aggregate_before_any_r
 async def test_removing_an_aggregate_cannot_empty_the_graph_of_another(session, store):
     victim = OTHER
     await session.add_graph(victim, [(URIRef(victim), TITLE, Literal("victim"))])
-    with pytest.raises(ValueError, match="content"):
+    with pytest.raises(ValueError, match="loaded graph"):
         await session.add_graph(ROOT, [], loaded_graphs=[graph_iri(victim)])
     stored, _, _ = await session.get_graph(victim)
     assert (URIRef(victim), TITLE, Literal("victim")) in stored, "the victim is intact"
@@ -256,6 +256,6 @@ async def test_an_aggregate_cannot_pose_as_a_loaded_graph_of_another_and_be_remo
     ],
 )
 async def test_a_loaded_graph_must_be_exactly_the_minted_form(session, store, bad):
-    with pytest.raises(InvalidIri, match="content"):
+    with pytest.raises(InvalidIri, match="loaded graph"):
         await session.add_graph(ROOT, [], loaded_graphs=[bad])
     assert store.sent("update") == [], "nothing was sent"

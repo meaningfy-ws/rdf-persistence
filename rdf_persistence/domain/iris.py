@@ -314,6 +314,11 @@ class Iris:
         return str(getattr(self._policy, name) or getattr(_DEFAULT_POLICY, name))
 
     @cached_property
+    def nested_parts(self) -> bool:
+        """True when a part's IRI is under its root's (the part template starts with ``{root}/``, PD-7)."""
+        return self._template("part_template").startswith("{root}/")
+
+    @cached_property
     def _tenant_spec(self) -> IdSpec:
         return self._policy.tenant_id or _UUID4
 

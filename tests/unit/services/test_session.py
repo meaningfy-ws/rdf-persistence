@@ -37,5 +37,5 @@ OUTSIDE = "http://example.org/libraries/other-tenant/books/1"
 )
 async def test_an_iri_outside_the_tenant_is_refused_before_any_request(store, method, arguments):
     async with open_session(store, database="db", tenant_iri=TENANT, principal=ME) as session:
-        with pytest.raises(ValueError, match="not inside the tenant"):
+        with pytest.raises(ValueError, match="not an aggregate IRI of the tenant"):
             await getattr(session, method)(*arguments)

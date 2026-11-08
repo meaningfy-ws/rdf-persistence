@@ -39,12 +39,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     GrantSet,
     VerifiedCaller,
 )
-from rdf_persistence.domain.iris import (
-    access_iri,
-    graph_iri,
-    is_aggregate_graph_iri,
-    is_aggregate_iri,
-)
+from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris, access_iri, graph_iri
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.mapper import Mapper, generated_models
@@ -174,7 +169,11 @@ def _caller_access(tenant: str, record: URIRef, stored: Graph) -> CallerAccess:
 class AccessRules:
     """Decides whether a caller may take an action on the tenant or on one of its aggregates."""
 
-    def __init__(self, role_definitions: Iterable[RoleDefinition]) -> None:
+    def __init__(
+        self, role_definitions: Iterable[RoleDefinition], iris: Iris | None = None
+    ) -> None:
+        """``iris`` is the IRI policy that says what an aggregate and its graph are (default: the default policy)."""
+        self._iris = iris or DEFAULT_IRIS
         self._permits: dict[tuple[RoleLevel, str], set[Action]] = {}
         for definition in role_definitions:
             key = (RoleLevel(definition.level), definition.role)
@@ -200,9 +199,8 @@ class AccessRules:
             if grant.role is not None and (level, grant.role) not in self._permits:
                 raise UnknownRole(f"no {level.value}-level role {grant.role!r} to grant")
 
-    @staticmethod
-    def _validate_ends(rule: Grant | Prohibition, tenant: str) -> None:
-        if rule.target != tenant and not is_aggregate_graph_iri(tenant, rule.target):
+    def _validate_ends(self, rule: Grant | Prohibition, tenant: str) -> None:
+        if rule.target != tenant and not self._iris.is_aggregate_graph(tenant, rule.target):
             raise InvalidGrant(f"{rule.target} is neither the tenant nor an aggregate graph of it")
         try:
             term(URIRef(rule.assignee))
@@ -258,12 +256,11 @@ class AccessRules:
             }
         )
 
-    @staticmethod
-    def _scope(tenant: str, target_iri: str) -> set[str]:
+    def _scope(self, tenant: str, target_iri: str) -> set[str]:
         """The targets whose rules apply to ``target_iri``: the tenant, and the aggregate's graph."""
         if target_iri == tenant:
             return {tenant}
-        if not is_aggregate_iri(tenant, target_iri):
+        if not self._iris.is_aggregate(tenant, target_iri):
             raise NotFound(f"{target_iri} is not in tenant {tenant}")
         return {tenant, str(graph_iri(target_iri))}
 

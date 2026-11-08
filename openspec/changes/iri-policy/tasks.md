@@ -37,7 +37,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
   `services/mapper.py` (`new_part`), `services/session.py` (`add` of a loaded graph) mint through
   `Iris` with the class's `rp_iri_type`. Tests: "a flat object", "the API path changes, the IRIs do
   not".
-- [ ] 3.3 Checks and ownership: `session._graph`, `session._check_commit` (registry `ASK`),
+- [x] 3.3 Checks and ownership: `session._graph`, `session._check_commit` (registry `ASK`),
   `access._validate_ends` (PD-11), the listing query and `items_of` (`listedIn`, delete `_owner`),
   the flat part rule in `services/documents.py` (`parse`) and `services/aggregates.py`
   (`create`, `replace` after `get_graph`), the nested rule kept for the default (PD-4, PD-7). Tests: "a hand-made IRI", "an aggregate
@@ -73,7 +73,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
+- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [ ] 3.4 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
 
 ## Verification
 

@@ -22,9 +22,6 @@ from rdf_persistence.domain.iris import (
     DEFAULT_IRIS,
     Iris,
     graph_iri,
-    is_aggregate_iri,
-    is_inside_tenant,
-    is_loaded_graph_of,
     meta_graph_iri,
     registry_graph_iri,
     skolem_iri,
@@ -58,6 +55,10 @@ ASK_TOKEN = "ASK { GRAPH $graph { $graph $p_version $token } }"
 ADD = """
 INSERT { GRAPH $graph { $triples } GRAPH $registry { $entries } }
 WHERE { FILTER NOT EXISTS { GRAPH $graph { ?s ?p ?o } } }
+"""
+# Does any aggregate other than $root own one of the loaded graphs $graphs (PD-7)?
+OWNED_ELSEWHERE = """
+ASK { GRAPH $registry { ?g $p_owned_by ?owner ; $p_kind $loaded . FILTER (?g IN ($graphs) && ?owner != $root) } }
 """
 READ_LOADED = "SELECT ?lg WHERE { GRAPH $registry { ?lg $p_owned_by $root ; $p_kind $loaded } }"
 # REPLACE and REMOVE are one update request of several operations, so a store applies them as one
@@ -237,8 +238,8 @@ class Session:
         """The graph of the aggregate ``iri``, or the meta graph for the tenant root."""
         if iri == self._tenant:
             return meta_graph_iri(self._tenant)
-        if not is_inside_tenant(self._tenant, iri):
-            raise InvalidIri(f"{iri!r} is not inside the tenant {self._tenant!r}")
+        if not self._iris.is_aggregate(self._tenant, iri):
+            raise InvalidIri(f"{iri!r} is not an aggregate IRI of the tenant {self._tenant!r}")
         return graph_iri(iri)
 
     def _entries(
@@ -254,14 +255,30 @@ class Session:
             ),
         ]
 
-    def _check_commit(self, iri: str, loaded_graphs: Sequence[URIRef]) -> None:
-        """Refuse what could alias another graph: an IRI the toolkit did not mint for an aggregate,
-        or a loaded graph that is not a graph minted under ``{iri}/content/``."""
-        if not is_aggregate_iri(self._tenant, iri):
+    async def _check_commit(self, iri: str, loaded_graphs: Sequence[URIRef]) -> None:
+        """Refuse what could alias another graph: an IRI the policy does not mint for an aggregate, a
+        loaded graph it does not mint for this aggregate, or one another aggregate owns (PD-7)."""
+        if not self._iris.is_aggregate(self._tenant, iri):
             raise InvalidIri(f"{iri!r} is not an aggregate IRI of the tenant {self._tenant!r}")
-        outside = [str(g) for g in loaded_graphs if not is_loaded_graph_of(iri, str(g))]
+        outside = [
+            str(g)
+            for g in loaded_graphs
+            if not self._iris.is_loaded_graph(self._tenant, str(g), root=iri)
+        ]
         if outside:
-            raise InvalidIri(f"loaded graphs must be minted under '{iri}/content/': {outside}")
+            raise InvalidIri(f"not loaded graphs the policy mints for {iri!r}: {outside}")
+        if loaded_graphs and await self._ask(
+            OWNED_ELSEWHERE,
+            registry=term(self._registry),
+            p_owned_by=term(v.REGISTRY_OWNED_BY),
+            p_kind=term(v.REGISTRY_KIND),
+            loaded=term(v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH]),
+            root=term(URIRef(iri)),
+            graphs=term_list(loaded_graphs),
+        ):
+            raise InvalidIri(
+                f"a loaded graph in {list(map(str, loaded_graphs))} is owned by another aggregate"
+            )
 
     async def _registered_loaded(self, iri: str) -> list[URIRef]:
         """The loaded graphs the aggregate ``iri`` has registered."""
@@ -338,12 +355,13 @@ class Session:
         """Store a new aggregate and register its ``loaded_graphs``; returns its first version.
 
         Raises:
-            InvalidIri: ``iri`` is not inside the tenant or not an aggregate IRI the toolkit
-                mints, or a loaded graph is not ``{iri}/content/{uuid}``; nothing is sent.
+            InvalidIri: ``iri`` is not an aggregate IRI the policy mints for the tenant, or a loaded
+                graph is not one it mints for ``iri`` or is owned by another aggregate; nothing is
+                written.
             Conflict: The aggregate already has a graph.
         """
         graph = self._graph(iri)
-        self._check_commit(iri, loaded_graphs)
+        await self._check_commit(iri, loaded_graphs)
         version = str(uuid.uuid4())
         tracking = Tracked(created=self._clock(), creator=self._principal.id)
         payload = payload_triples(graph, version, tracking, triples)
@@ -368,13 +386,14 @@ class Session:
         registered, a list replaces them (an empty one drops them all).
 
         Raises:
-            InvalidIri: ``iri`` is not an aggregate IRI the toolkit mints, or a loaded graph is not
-                ``{iri}/content/{uuid}``; nothing is sent.
+            InvalidIri: ``iri`` is not an aggregate IRI the policy mints for the tenant, or a loaded
+                graph is not one it mints for ``iri`` or is owned by another aggregate; nothing is
+                written.
             NotFound: The aggregate has no graph.
             Conflict: Its version is not ``if_version``; nothing changed.
         """
         graph = self._graph(iri)
-        self._check_commit(iri, loaded_graphs or [])
+        await self._check_commit(iri, loaded_graphs or [])
         _, stored = await self._stored(graph)
         if loaded_graphs is None:
             loaded_graphs = await self._registered_loaded(iri)
@@ -401,7 +420,7 @@ class Session:
         The graph belongs to the aggregate once a commit passes the IRI as ``loaded_graphs``.
 
         Raises:
-            InvalidIri: ``iri`` is not inside the tenant.
+            InvalidIri: ``iri`` is not an aggregate IRI the policy mints for the tenant.
             InvalidGraph: The data does not parse as ``rdf_format``; nothing is written.
             DatabaseGone: The tenant database does not exist.
         """

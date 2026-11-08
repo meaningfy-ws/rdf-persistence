@@ -8,7 +8,9 @@ for itself is HTTP: negotiation, headers and status.
 from typing import cast
 
 from linkml_runtime.linkml_model.meta import ClassDefinition
+from rdflib import URIRef
 
+from rdf_persistence.domain.exceptions import InvalidBody
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.domain.sparql import Triple
@@ -47,10 +49,13 @@ class Aggregates:
         """Store the body ``data`` as a new aggregate of ``cls`` served at ``rp_path``; answers its minted IRI and what was stored.
 
         Raises:
-            InvalidBody: The body is not a valid ``cls`` (see ``Documents.parse`` and ``validate``).
+            InvalidBody: The body is not a valid ``cls`` (see ``Documents.parse`` and ``validate``), or,
+                with parts beside their root, names a part (PD-7).
         """
         iri = str(self._iris.mint_aggregate(tenant, iri_type_of(cls), rp_path))
-        triples = await self._triples(tenant, data, media_type, cls, iri, creating=True)
+        triples, named = await self._triples(tenant, data, media_type, cls, iri, creating=True)
+        if named:
+            raise InvalidBody(f"a new {cls.name} cannot name its parts, found {min(named)}")
         async with self._tenancy.tenant_session(tenant, principal) as session:
             await session.add_graph(iri, triples)
             return iri, await session.get_graph(iri)
@@ -70,13 +75,17 @@ class Aggregates:
         What the service stored in the aggregate's ``internal`` slots stays: no body can set them.
 
         Raises:
-            InvalidBody: The body is not a valid ``cls`` rooted at ``iri``.
+            InvalidBody: The body is not a valid ``cls`` rooted at ``iri``, or, with parts beside
+                their root, names a part the aggregate does not store (PD-7).
             NotFound: The aggregate has no graph.
             Conflict: Its version is not ``if_version``; nothing changed.
         """
-        triples = await self._triples(tenant, data, media_type, cls, iri, creating=False)
+        triples, named = await self._triples(tenant, data, media_type, cls, iri, creating=False)
         async with self._tenancy.tenant_session(tenant, principal) as session:
             stored, _, _ = await session.get_graph(iri)
+            foreign = named - set(stored.subjects())
+            if foreign:
+                raise InvalidBody(f"{min(foreign)} is not a part of the aggregate {iri}")
             kept = self._documents.internal_values(stored, triples)
             await session.replace_graph(iri, [*triples, *kept], if_version)
             return await session.get_graph(iri)
@@ -100,11 +109,11 @@ class Aggregates:
         iri: str,
         *,
         creating: bool,
-    ) -> list[Triple]:
-        """The validated triples of the body, rooted at ``iri``."""
-        graph = await self._documents.parse(
+    ) -> tuple[list[Triple], set[URIRef]]:
+        """The validated triples of the body, rooted at ``iri``, and the subjects it names (see ``Documents.parse``)."""
+        graph, named = await self._documents.parse(
             data, media_type, cls, iri, creating=creating, tenant=tenant
         )
         await self._documents.validate(graph)
         # rdflib types a graph's terms as Node; a parsed body holds only URIs, literals and blank nodes
-        return cast(list[Triple], list(graph))
+        return cast(list[Triple], list(graph)), named
