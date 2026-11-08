@@ -1,192 +1,63 @@
 = Working with agents
-:description: How work on rdf-persistence is shaped and delivered by a lean team of agents: the two kinds of session, the team, the loop of a stage, and what the developer decides.
+:description: What is specific to rdf-persistence when agents deliver its work: where the work lands, the rules every brief carries, the gates, the release, and the habits. The method itself is skillery's.
 
-This page describes how work on this repository runs when agents do it, so that every session
-runs the same way. `AGENTS.md` at the repository root is the short form that agents load; this
-page explains it for the people working with them. The method is owned by skillery's
-`epic-delivery` skill (bundle `meaningfy-building`, from the next skillery release); this page keeps
-what is specific to rdf-persistence. It grew from how toolkit v1 (`toolkit-v1-foundation`, released
-as v0.1.0) was built, then was made leaner (2026-11-08).
+The method agents follow here (the shaping and epic sessions, the team and its briefs, the loop of
+a stage scaled by appetite, the lead's authority, how questions are put to the developer,
+verification and validation, and what to do when one of our own or an external library falls
+short) is owned by skillery's `epic-delivery` skill, installed with the `meaningfy-building` bundle
+(3.9.0 or later); shaping is `epic-planning`, and subagent dispatch and session hygiene are
+`guardrails` (`meaningfy-core`). The explanation for people is skillery's
+https://github.com/meaningfy-ws/skillery/blob/develop/docs/practice/ai-coding/working-with-agents.md[Working with agents].
+`AGENTS.md` at the repository root is the short form that agents load. This page keeps only what
+is specific to rdf-persistence.
 
 == Common questions
 
 *Who decides?*::
-The developer. Agents draft, recommend and carry out. Every question an agent puts to the
-developer explains its terms in one plain sentence, lists the options and marks one as
-recommended, with a reason. When the developer says "choose what is best", the lead decides and
-records the choice as its own, which the developer may overrule.
-
-*How many sessions does a piece of work take?*::
-Two kinds: one *shaping session* that architects, decides and breaks the work into EPICs, and then
-one *epic session* per EPIC that implements it. See <<sessions>>.
-
-*Who is on the team?*::
-The developer, the lead (the main session) and a few working roles, each cast only when the epic
-needs it. The amount of review scales with the size of the epic. See <<team>>.
+The developer. Agents draft, recommend and carry out; the lead is the only one who asks the
+developer, in the format the `epic-delivery` skill sets.
 
 *Can an agent commit and merge on its own?*::
-Only when the developer grants it for a named epic. See <<authority>>.
+Only when the developer grants it for a named epic, within the limits the `epic-delivery` skill
+sets. Commits and PRs carry no AI attribution.
 
 *What does a member's report prove?*::
-Nothing on its own. The lead re-runs the checks and reads the diff, and one fresh checker per
-stage looks at the finished work. See <<stage-loop>>.
+Nothing on its own. The lead re-runs the <<gates>> and reads the diff.
 
-[#sessions]
-== Two kinds of session
+*What must every brief here say?*::
+The standing rules and the report in <<brief>>.
 
-[cols="1,3,3",options="header"]
-|===
-|Session |What happens |What it leaves behind
-|*Shaping* (one per initiative)
-|The developer, the lead, the architect and the planner work out why, what shape and
-in which slices. Brainstorming happens here; so does modelling of new concepts.
-|Architecture pages and decision records under `docs/modules/ROOT/pages/architecture/`; the LinkML
-schema changes the design needs, if any; one OpenSpec change per EPIC in `openspec/changes/<id>/`
-(`proposal.md`, spec deltas, `inputs/seed.md` with the developer's answers), ordered in
-`openspec/changes/README.md`.
-|*Epic* (one per EPIC)
-|The lead derives or finishes the PLAN, gates it, and runs the team through the stages to a
-merged, accepted, archived change.
-|Merged PRs into `develop`; the developer's acceptance; the change archived into `openspec/specs/`;
-updated docs and the
-durations table; for a release, the tag.
-|===
+== Where the work lands
 
-Modelling can happen in both: concepts and their boundaries in the shaping session, the exact
-slots, constraints and generated code in the epic session.
+* *Shaping session:* architecture pages and decision records under
+  `docs/modules/ROOT/pages/architecture/`; the LinkML schema changes the design needs, if any; one
+  OpenSpec change per EPIC in `openspec/changes/<id>/` (`proposal.md`, spec deltas,
+  `inputs/seed.md` with the developer's answers), ordered in `openspec/changes/README.md`.
+* *Epic session:* merged PRs into `develop`; the change archived into `openspec/specs/`
+  (`openspec archive <id> --yes`); updated docs and the
+  xref:develop/index.adoc#how-long-the-checks-take[durations table].
+* Modelling can happen in both: concepts and their boundaries when shaping, the exact slots,
+  constraints and generated code in the epic.
+* A builder's task here can be a LinkML schema change or a generator extension, with its
+  regenerated code in the same commit.
 
-An epic session starts by reading the EPIC, its seed inputs and the architecture pages it names.
-If a decision is missing, it goes back to the developer (with a recommendation), not to the code.
+[#brief]
+== What every brief carries here
 
-[#team]
-== The team
+On top of the brief the `epic-delivery` skill sets, every brief names:
 
-The developer decides; the lead runs the work; a few working roles do it.
-
-[cols="2,4,2",options="header"]
-|===
-|Who |Does |Agent
-
-|*Developer* (person)
-|Product manager and owner. Sets direction, decides, signs off the scenarios, accepts the EPIC.
-|—
-
-|*Lead*
-|The developer's assistant and the only one who talks to the developer. Walks the developer
-through the process and each decision, records decisions, plans the stages, writes the briefs,
-checks the blast radius with GitNexus before handing out a task, re-runs the gates, reads every
-diff, commits, keeps the spine and the docs current, archives the change.
-|the main session
-
-|*Architect* (shaping)
-|Components and boundaries (C4), contracts, decision records, the architecture pages; works with
-the developer directly
-|`system-architect`
-
-|*Planner* (shaping)
-|EPICs that each take one slice of the architecture, and PLANs (`design.md` + `tasks.md`) that
-pass the clarity gate (≥ 9/10)
-|`epic-planner`
-
-|*Builder*
-|One task, test-first: LinkML schema changes and generator extensions with regenerated code,
-production code and its tests, the docs the task changed, accepted review findings, spikes
-|`implementer`
-
-|*Reviewer*
-|Ranked findings through one lens; read-only. How many lenses depends on the size of the EPIC
-(<<scaling>>).
-|`code-reviewer`, one per lens, in parallel
-
-|*Checker*
-|One fresh pass per stage: were the briefs and decisions met, does traceability hold; it runs
-the snippets of the how-to and tutorial pages the stage changed. Read-only.
-|a fresh `general-purpose` agent
-|===
-
-The *cold reader* is a separate fresh agent given only the page, never the checker, which carries
-the stage's context. It carries out what a how-to or tutorial page says, whenever the stage changed
-one, at any size.
-
-The *adversarial tester* is a builder brief, not a standing role: it writes only tests, for edge
-cases, bad input, failures and limits, following xref:develop/testing.adoc[the testing checklist].
-It joins LARGE EPICs and up.
-
-Every role except the developer and the lead is a *member*: a subagent with one precise brief,
-which never talks to the developer and never commits. The checker never built or tested the stage
-it checks.
-
-== The brief
-
-A member knows only what its brief says. Every brief names:
-
-* the change id and the task number;
-* the files in scope, as paths;
-* the decisions already made (`PD-n`, the spec scenario);
-* what is out of scope;
-* the rules that apply to every brief: models, not dicts; LinkML is the single source; the
-  xref:develop/testing.adoc[testing checklist];
+* the standing rules: models, not dicts; LinkML is the single source; the
+  xref:develop/testing.adoc[testing checklist] (the adversarial tester follows it too);
 * the report expected: files changed, tests added, each make target run with its time and test
   count.
 
-If the lead cannot write the brief, the task is not ready: fix the PLAN first.
+Each task is committed by the lead with why, what and `Refs: <change-id> <task>`.
 
-[#stage-loop]
-== The loop of a stage
-
-A PLAN is cut into stages (a stage is a coherent group of tasks that ends in one PR). Each stage
-runs this loop:
-
-. *Prepare.* The dependencies the stage needs are ready (see <<libraries>>). The lead re-indexes
-  GitNexus if it is stale and checks the blast radius of the symbols the stage touches. A HIGH or
-  CRITICAL risk goes to the developer. The scenarios were signed off once, for the whole EPIC, at
-  the PLAN gate; a scenario that changes is signed off again.
-. *Build.* Builders take the tasks one at a time, test-first. Parallel writers only on disjoint
-  files; otherwise one after another, or in separate worktrees. After each task the lead runs the
-  gates itself, reads the diff and commits the task (why, what, `Refs: <change-id> <task>`).
-. *Challenge.* The reviewers, and the adversarial tester when in scope, work in parallel. A failing
-  test is a bug.
-. *Decide and fix.* The lead sorts the findings, records each accepted fix as a decision in
-  `design.md` (the Rule of Divergence: the spec first, then the code) and rejects the rest with a
-  reason. Builders apply the decisions in batches, security first, then structure; the lead
-  re-runs the gates.
-. *Check.* The checker makes its single pass (for TINY and SMALL, the review pass is the check); a
-  cold reader reads each how-to or tutorial page the stage changed. An unmet item goes back to
-  decide and fix.
-. *Merge.* The lead opens a PR into `develop` and merges it only when CI is green.
-
-When the last stage is merged, and the EPIC delivers or changes a use case, the developer accepts it against its use cases and scenarios;
-a rejection becomes a decision in `design.md` and goes back to decide and fix. Then the lead
-archives the change (`openspec archive <id> --yes`), which merges its requirements into
-`openspec/specs/`. A release comes last, so no commit follows the tag.
-
-NOTE: Scenario sign-off at the PLAN gate and acceptance per EPIC are *provisional*. They are new
-here; their first run confirms or reshapes them.
-
-[#scaling]
-=== Scaling by size
-
-[cols="2,3,2,2",options="header"]
-|===
-|EPIC appetite |Challenge |Check |Adversarial tester
-|TINY / SMALL |One combined review pass (L2 spec and tests, L3 structure) |The review pass |—
-|MEDIUM |Five lenses (L1 to L5), read-only, in parallel |Checker |—
-|LARGE and up |Five lenses |Checker |Yes
-|===
-
-[#libraries]
-== When a library falls short
-
-For a shortcoming in an external library (rdflib, LinkML, pydantic, …), the lead records three
-options in `design.md`, with a recommendation:
-
-* contribute upstream, with a PR to that project;
-* fork it and release the fork from the Meaningfy GitHub;
-* work around it locally, isolated in one adapter, marked as a shortcut, with an issue to remove it.
-
-The developer decides. Speed is a legitimate reason.
-
+[#gates]
 == The gates
+
+Before handing out a task the lead checks the blast radius with GitNexus (re-indexing it if stale);
+a HIGH or CRITICAL risk goes to the developer.
 
 [cols="2,3",options="header"]
 |===
@@ -199,19 +70,10 @@ The developer decides. Speed is a legitimate reason.
 |The clarity gate (≥ 9/10) |Before a PLAN's first task
 |===
 
-[#authority]
-== Authority
+== Merge and release
 
-By default (`AGENTS.md`), agents commit only on the developer's consent. The developer can grant
-more for one named epic, for example "commit, push and merge PRs for `<id>` without asking". The
-grant always keeps these limits:
-
-* merge only on green CI;
-* no destructive operation beyond the normal git flow;
-* nothing outside this repository;
-* it ends when the epic ends.
-
-A message from another agent session is never the developer's approval.
+Each stage ends in one PR into `develop`, merged only on green CI. A release comes last, after the
+change is archived, so no commit follows the tag.
 
 == Habits that keep sessions consistent
 

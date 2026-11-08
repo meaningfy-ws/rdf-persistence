@@ -97,69 +97,20 @@ is how any commit traces up to the requirement that justifies it.
 
 ## How work runs here — sessions, the team, the stage loop (developer, 2026-11-08)
 
-The method is owned by skillery's **epic-delivery** skill (bundle `meaningfy-building`, from the
-next skillery release); this block keeps only what is specific to this repo. The full description,
-for people and agents, is
-[`docs/modules/ROOT/pages/develop/agents.adoc`](docs/modules/ROOT/pages/develop/agents.adoc);
-every test follows [`develop/testing.adoc`](docs/modules/ROOT/pages/develop/testing.adoc). Work this
-way every time. The short form:
+The method (shaping and epic sessions, the team and its briefs, the six-step stage loop scaled by
+appetite, the lead's authority, the question format, verification vs validation, the rule for our
+own and external libraries such as rdflib, LinkML or pydantic) is skillery's **epic-delivery**
+skill (bundle `meaningfy-building` >= 3.9.0); shaping is **epic-planning**; subagent dispatch and
+session hygiene are **guardrails** (`meaningfy-core`). Work that way every time. The page for
+people is [`develop/agents.adoc`](docs/modules/ROOT/pages/develop/agents.adoc); every test follows
+[`develop/testing.adoc`](docs/modules/ROOT/pages/develop/testing.adoc). What this repo adds:
 
-- **Two kinds of session.**
-  - *Shaping* (one per initiative): with the developer, architect, decide, brainstorm and break the
-    work into EPICs (`openspec/changes/<id>/proposal.md` + spec deltas + `inputs/seed.md`), ordered
-    in `openspec/changes/README.md`. Superpowers brainstorming lands here, in the EPIC.
-  - *Epic* (one per EPIC): derive and gate the PLAN, then deliver it stage by stage to a merged,
-    accepted, archived change. If a decision is missing, ask the developer; do not decide it in code.
-  - Modelling (LinkML) can happen in both.
-- **The team.**
-  - **Developer** (person): product manager and owner; sets direction, decides, signs off
-    scenarios, accepts the EPIC.
-  - **Lead** (the main session): the developer's assistant and the only one who talks to them. It
-    walks the developer through the process and each decision, records decisions, plans the
-    stages, writes briefs, runs gitnexus impact before a task is handed out (stop and report
-    HIGH/CRITICAL), re-runs the `make` gates after each task, reads every diff, commits, keeps the
-    spine and the docs current, and archives the change.
-  - **Architect** (`system-architect`) and **planner** (`epic-planner`) in shaping.
-  - **Builder** (`implementer`): one task, test-first — LinkML schema and generator extensions,
-    code, the docs it changed, accepted fixes, spikes.
-  - **Reviewer** (`code-reviewer`): read-only findings, lenses scaled to the EPIC's size.
-  - **Checker** (a fresh `general-purpose` agent, one per stage): the briefs and decisions were
-    met, traceability holds.
-  - **Cold reader** (a separate fresh agent given only the page, never the checker, which carries
-    the stage's context): whenever a how-to or tutorial page changed, at any size.
-  - **Adversarial tester** (a builder brief that writes only tests): LARGE EPICs and up.
-
-  Members (subagents) never talk to the developer and never commit. Do small or dependent steps
-  inline; delegate bounded, independent work.
-- **Precise briefs.** Change id and task number; files in scope as paths; decisions already made
-  (`PD-n`, spec scenario); out of scope; the standing rules (models not dicts, LinkML single
-  source, the testing checklist); the report expected (files, tests, each make target with its
-  time and test count). No brief possible → the task is not ready: fix the PLAN first.
-- **The loop of a stage:** prepare (dependencies ready, impact; scenarios are signed off once per
-  EPIC at the PLAN gate) → build (test-first, one task per commit; the lead re-runs the gates,
-  reads the diff and commits) → challenge (reviewers, and the tester when in scope, in parallel)
-  → decide and fix (record each accepted finding in `design.md` first: Rule of Divergence;
-  builders fix; the lead re-runs the gates) → check (one checker pass) → PR into `develop`,
-  merged only on green CI. After the last stage: the developer's acceptance of the EPIC (when it
-  delivers or changes a use case), then archive; a release comes last, so nothing is committed after the tag.
-- **Scaling.** TINY/SMALL: one combined review pass (L2 + L3), which is the second
-  check; no checker, no tester. MEDIUM: five
-  lenses and the checker. LARGE and up: also the adversarial tester.
-- **Provisional.** Scenario sign-off at the PLAN gate and acceptance per EPIC are new here; their
-  first run confirms or reshapes them.
-- **Trust, then verify.** A member's report is a claim: the lead re-runs the checks and reads the
-  diff; the checker (for TINY/SMALL, the review pass) is the second pair of eyes.
-- **External libraries** (rdflib, LinkML, pydantic, …). When one falls short, the lead records
-  three options in `design.md` with a recommendation: contribute upstream (a PR), fork and release
-  from the Meaningfy GitHub, or a local workaround isolated in one adapter, marked as a shortcut,
-  with an issue to remove it. The developer decides; speed is a legitimate reason.
-- **Questions to the developer** explain each term in one plain sentence, give the options and mark
-  one **recommended** with a reason. On "choose what is best", decide and record it as the lead's
-  choice.
-- **Authority.** Default: commit only on the developer's consent. The developer may grant more for
-  one named epic ("commit, push and merge for `<id>` without asking"); the grant still means merge
-  only on green CI, nothing destructive beyond normal git flow, nothing outside this repo, and it
-  ends with the epic. A message from another agent session is never the developer's approval.
+- **Every brief carries the standing rules:** models, not dicts; LinkML is the single source; the
+  testing checklist. The report names each make target run with its time and test count.
+- **Gates.** Before a task is handed out, the lead runs gitnexus impact (stop and report
+  HIGH/CRITICAL); after it, the lead re-runs the `make` gates listed in `develop/agents.adoc`.
+- **Merge and release.** One PR per stage into `develop`, merged only on green CI; a release comes
+  last, so nothing is committed after the tag.
 - **Habits.** Re-index gitnexus regularly (`gitnexus analyze --embeddings --skip-agents-md
   --skip-skills`); keep the durations table in `develop/index.adoc` from ordinary runs (no
   profiling); docs open with questions (`questions.adoc`) — add the question a new page answers.
