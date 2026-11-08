@@ -1,5 +1,6 @@
 """The generation manifest and `rp-generate --check` (PD-26): stale input, edited output, version."""
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -263,3 +264,41 @@ def test_fix_hint_dedupes_commands_in_entry_order() -> None:
         for c in ("make b", None, "make b", "make a")
     ]
     assert manifest_module.fix_hint(targets) == hint("make b", "rp-generate", "make a")
+
+
+def test_two_stale_entries_with_the_same_command_name_it_once(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = stale(tmp_path, TWO_COMMANDS.replace("make b", "make a"), "m.yaml", "part.yaml")
+    _, error = check(path, capsys)
+    assert error.count("to regenerate, then commit the result") == 1, "not exactly one hint"
+    assert error.rstrip().endswith(hint("make a")), "the shared command is not named once"
+
+
+def test_a_stale_entry_without_a_command_and_one_with_name_both(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    mixed = TWO_COMMANDS.replace('regenerate-command = "make a"\n', "")
+    path = stale(tmp_path, mixed, "m.yaml", "part.yaml")
+    assert check(path, capsys)[1].rstrip().endswith(hint("rp-generate", "make b")), "not both"
+
+
+def test_the_installed_rp_generate_command_exits_1_and_hints_the_entry_command(
+    tmp_path: Path,
+) -> None:
+    path = stale(tmp_path, PYPROJECT + NAMED, "m.yaml")
+    command = Path(sys.executable).parent / "rp-generate"
+    done = subprocess.run(
+        [str(command), "--project", str(path), "--check"], capture_output=True, text=True
+    )
+    assert done.returncode == 1, f"exit code {done.returncode}: {done.stderr}"
+    assert done.stderr.rstrip().endswith(hint("make generate-models")), "the hint is not last"
+    assert done.stdout == "", "a failed check wrote to stdout"
+
+
+def test_a_fresh_project_through_the_installed_command_exits_0_silently(generated: Path) -> None:
+    command = Path(sys.executable).parent / "rp-generate"
+    done = subprocess.run(
+        [str(command), "--project", str(generated), "--check"], capture_output=True, text=True
+    )
+    assert (done.returncode, done.stderr) == (0, ""), "a fresh check was not silent success"

@@ -120,3 +120,23 @@ def test_a_stale_project_and_a_configuration_error_hint_only_the_stale_command(
     text = stop_text(session)
     assert "colour" in text, "the configuration error is not named"
     assert hint("rp-generate") in text, "the stale project's command is not hinted"
+
+
+def test_a_configuration_error_beside_a_fresh_project_stops_the_session_without_a_hint(
+    session: pytest.Pytester,
+) -> None:
+    other = make_project(session.path / "other")
+    (other / "pyproject.toml").write_text(PYPROJECT + "colour = 'red'\n", encoding="utf-8")
+    session.makeini(INI)
+    text = stop_text(session)
+    assert "colour" in text, "the configuration error is not named"
+    assert "to regenerate" not in text, "a fresh project and an error suggest regenerating"
+
+
+def test_a_non_string_command_stops_the_session_naming_the_toml_key(
+    session: pytest.Pytester,
+) -> None:
+    (session.path / "pyproject.toml").write_text(PYPROJECT + "regenerate-command = 3\n", "utf-8")
+    text = stop_text(session)
+    assert "regenerate-command" in text, "the TOML key is not named"
+    assert "to regenerate" not in text, "a configuration error suggests regenerating"
