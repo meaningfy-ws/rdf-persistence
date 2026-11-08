@@ -172,10 +172,16 @@ schema = "models/library.yaml"
 package = "library.domain.generated"
 typescript = "web/src/domain/generated"
 diagrams = "docs/model"
-regenerate-command = "make generate"
+regenerate-command = "make generate"  # optional
 ----
 
-Add a target that runs `rp-generate`; it may have any name. Set `regenerate-command` in the entry to that command, so that a failed freshness check tells you to run it (without it the check says to run `rp-generate`):
+Add a make target that runs `uv run rp-generate`; it may have any name, and it may be the target
+that already runs your other generators. Set the optional `regenerate-command` of the
+`[tool.rp-generate]` table to the command you type to run that target, for example
+`make generate-models`. It is only shown, never run: when generated code is stale, the freshness
+checks of step 6 (the pytest plugin and `rp-generate --check`) end with "run `make generate-models`
+to regenerate". Without it they name `rp-generate`, which skips `uv run` and anything else your
+target does. The examples on this page call the target `generate`:
 
 [source,makefile]
 ----
