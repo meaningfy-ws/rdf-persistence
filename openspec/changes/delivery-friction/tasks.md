@@ -41,7 +41,7 @@ One stage, one PR. Per task: the affected test directories, `make check-quality`
   submodule path such as `testkit.containers.fixtures` passes). Gate: `make check-docs`.
 - [ ] 5.2 PD-6: `howto/adopt.adoc` steps 4 to 7, then a fresh cold reader given only the page
   (never the checker); each guess it reports is fixed. Gate: `make check-docs`.
-- [ ] 5.3 `develop/index.adoc`: the targets table gains `make test-perf`, `make format-check` and
+- [x] 5.3 `develop/index.adoc`: the targets table gains `make test-perf`, `make format-check` and
   `make fuseki-image`, says `make test` runs in parallel; the durations table gets the parallel
   `make test` / `make check-all` times from the stage's ordinary gate run (AGENTS.md, habits).
 

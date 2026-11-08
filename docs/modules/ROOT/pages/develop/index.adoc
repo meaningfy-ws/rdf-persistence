@@ -49,9 +49,12 @@ The layers import downward only: `entrypoints | adapters > services > domain`.
 |`make check-generated` |Regenerate from scratch and fail if anything differs from what is committed
 |`make refresh-snapshot` |Rewrite `tests/fixtures/model-shape.yaml` after a deliberate model change
 |`make refresh-golden` |Rewrite the golden folders of schemas that are not the toy
-|`make test` |Run the unit and feature tests, with the coverage floor
+|`make test` |Run the unit and feature tests in parallel (`pytest -n auto`), with the coverage floor
+|`make test-perf` |Run the wall-clock budget tests alone; not part of `check-all` or CI
 |`make test-containers` |Run the integration and e2e tests against Fuseki, Garage and Zitadel (needs Docker)
-|`make check-quality` |Lint, type-check (code and generated code), architecture, spec, docs and freshness
+|`make fuseki-image` |Load the Fuseki test image from `temp/fuseki-image.tar`, or build it and save the tar (CI caches it)
+|`make format`, `make format-check` |Format the code with Ruff, or only check it (`check-quality` runs the check)
+|`make check-quality` |Format check, lint, type-check (code and generated code), architecture, spec, docs and freshness
 |`make check-all` |`check-quality` and `test`: run it before every PR
 |`make check-docs`, `make build-docs` |Check and build these docs
 |===
@@ -151,15 +154,16 @@ comes later.
 |===
 |Target |Tests |Time |Measured |Notes
 
-|`make check-all` |3234 |6.5 to 14 min |2026-11-08, iri-policy stage 1
-|The pytest part takes 5.5 to 12 min; the longer runs were under load from other sessions on the
-same machine (load average 3 to 4). The quality checks (`make check-quality`, ≈ 25 to 50 s) come
-before it.
+|`make check-all` |3346 |≈ 4 to 5 min |2026-11-08, delivery-friction
+|`make test` now runs in parallel: its pytest part takes ≈ 3 min 45 s (≈ 7 min 45 s serially). The
+quality checks (`make check-quality`, ≈ 25 s) come before it.
 
-|`make test-containers` |172 |2.5 to 4.5 min |2026-11-08, iri-policy stage 1
-|The pytest part takes 1 min 45 s to 3 min 15 s, container start-up included; it is faster
-when the images are cached. One run in four failed at start-up on a Docker Compose error; run
-it again.
+|`make test-containers` |174 |≈ 2.5 to 3 min |2026-11-08, delivery-friction
+|The pytest part takes ≈ 2 min 25 s, container start-up included, with the Fuseki image already
+loaded (`make fuseki-image`). Earlier, one run in four failed at start-up on a Docker Compose
+error; run it again.
+
+|`make test-perf` |3 |≈ 2.5 s |2026-11-08, delivery-friction |Measured alone, not under load.
 
 |`make clean-code`, `make check-architecture`, `make check-docs` |– |≈ 1 s each |2026-11-06,
 f2531a1 |
