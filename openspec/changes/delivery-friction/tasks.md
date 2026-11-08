@@ -58,7 +58,7 @@ One stage, one PR. Per task: the affected test directories, `make check-quality`
 
 ## 7. Close
 
-- [ ] 7.1 Five review lenses, decisions in design.md, fixes; fresh checker; gates; PR; merge on
+- [x] 7.1 Five review lenses, decisions in design.md, fixes; fresh checker; gates; PR; merge on
   green CI; archive.
 
 ## Roadmap
