@@ -8,7 +8,7 @@ One stage, one PR. Per task: the affected test directories, `make check-quality`
 - [ ] 1.1 PD-2: the listing test compares multivalued values in any order
   (`tests/unit/entrypoints/test_listing_routes.py`, the `_unordered` helper as PD-2 defines it).
   Gate: `uv run pytest tests/unit/entrypoints -q`.
-- [ ] 1.2 PD-3: move the budget tests to `tests/perf/` (+ `__init__.py`), the `perf` row in
+- [x] 1.2 PD-3: move the budget tests to `tests/perf/` (+ `__init__.py`), the `perf` row in
   `tests/conftest.py` and its case in `tests/unit/test_markers.py`, the `perf` marker in
   `pytest.ini`, and `make test-perf` in the `Makefile`. Gate: `make test-perf`;
   `uv run pytest tests/unit/test_markers.py -q`; `uv run pytest tests -m "unit or feature" --collect-only -q` lists no `perf` test.

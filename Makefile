@@ -114,7 +114,7 @@ pre-commit: ## Run pre-commit hooks on all files
 #-----------------------------------------------------------------------------
 # Validation — non-mutating targets
 #-----------------------------------------------------------------------------
-.PHONY: lint typecheck typecheck-generated typecheck-ts check-architecture test test-unit test-feature test-containers test-e2e changes-code
+.PHONY: lint typecheck typecheck-generated typecheck-ts check-architecture test test-unit test-feature test-containers test-e2e test-perf changes-code
 
 lint: ## Run Ruff linting checks
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running Ruff checks$(END_BUILD_PRINT)"
@@ -171,6 +171,11 @@ test-feature: ## Run BDD feature tests only
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running feature tests$(END_BUILD_PRINT)"
 	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -m "feature"
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Feature tests passed$(END_BUILD_PRINT)"
+
+test-perf: ## Run the wall-clock budget tests alone (no coverage, no xdist); not part of check-all
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running perf tests$(END_BUILD_PRINT)"
+	@ uv run pytest $(TEST_PATH)/perf -m perf
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Perf tests passed$(END_BUILD_PRINT)"
 
 test-e2e: ## Run end-to-end tests only
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running e2e tests$(END_BUILD_PRINT)"

@@ -22,6 +22,7 @@ ROOT = TESTS_ROOT_DIR.as_posix()
         ("integration/files", {"integration", "files"}),
         ("integration/identity", {"integration", "identity"}),
         ("e2e", {"e2e", "store", "files", "identity"}),
+        ("perf", {"perf"}),
     ],
 )
 def test_directory_row_gives_every_marker(directory: str, expected: set[str]) -> None:
