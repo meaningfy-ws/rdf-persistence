@@ -68,13 +68,13 @@ test first, then `make test` and `make check-all`. Requirements cited are in
 - [x] 5.2 Principal template in `adapters/jwks.py`: `JwksTokenVerifier` takes an optional `Iris`
   (PD-3a) and mints through `Iris.principal`. Tests: default
   `{issuer}/users/{sub}` unchanged; `{base}{deployment}/user/{sub}` with percent-encoding.
-- [ ] 5.3 Policy guard at start-up (PD-9). Tests: requirement "The policy is fixed once a deployment
+- [x] 5.3 Policy guard at start-up (PD-9). Tests: requirement "The policy is fixed once a deployment
   has data" (both scenarios) with the fakes, one container test.
 - [ ] 5.4 Docs for the stage (guard, access record split, principal), then the stage loop and PR 2.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [x] 4.1 · [ ] 4.2 · [x] 5.1 · [x] 5.2 · [ ] 5.3 · [ ] 5.4
+- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [x] 4.1 · [ ] 4.2 · [x] 5.1 · [x] 5.2 · [x] 5.3 · [ ] 5.4
 
 ## Verification
 

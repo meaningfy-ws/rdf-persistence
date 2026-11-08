@@ -179,7 +179,8 @@ kit = install_service(
 |===
 
 At start-up, before the application's own lifespan, the service creates the system database if it is
-missing and runs the sweep. `install_service` returns a `ServiceKit` (its tenancy, store, files and
+missing, runs the sweep, then records the IRI policy or, when it differs from the recorded one,
+refuses to start with `IriPolicyChanged` naming the differing fields. `install_service` returns a `ServiceKit` (its tenancy, store, files and
 identity, and `bucket_of` for a tenant's bucket) for the application's own routes. Such a route
 checks its caller through the kit, so the toolkit's access rules apply to it too:
 

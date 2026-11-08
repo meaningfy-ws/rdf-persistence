@@ -7,7 +7,7 @@ and under the consumer's (seven lowercase characters, flat objects beside the te
 import pytest
 
 from rdf_persistence import AccessRules, load_role_definitions
-from rdf_persistence.domain.exceptions import NotFound
+from rdf_persistence.domain.exceptions import IriPolicyChanged, NotFound
 from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from tests.toy import ROLES
 from tests.toy_service import CONSUMER_POLICY, TENANT_BODY, ToyService
@@ -100,3 +100,13 @@ def test_with_iris_keeps_the_permits_and_changes_the_policy() -> None:
     assert rebound is not rules
     assert rebound._iris is other and rules._iris is DEFAULT_IRIS, "the original is unchanged"
     assert rebound._permits == rules._permits
+
+
+async def test_start_up_refuses_a_changed_policy_over_the_same_store() -> None:
+    first = ToyService(iri_policy=CONSUMER_POLICY)
+    async with first.app.router.lifespan_context(first.app):
+        pass
+    second = ToyService(first.store, first.files, iri_policy=None)
+    with pytest.raises(IriPolicyChanged, match="tenant_template"):
+        async with second.app.router.lifespan_context(second.app):
+            pass

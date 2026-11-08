@@ -68,3 +68,6 @@ ASSIGNEE = predicate("assignee")
 
 # A listing's query returns the size of the whole listing as this statement about the listed class.
 TOTAL = predicate("total", load_schema(SERVICE_MODEL))
+
+# The one statement of the policy record: the graph names itself, the object is the policy's JSON (PD-13).
+IRI_POLICY = predicate("iri_policy", load_schema(SERVICE_MODEL))

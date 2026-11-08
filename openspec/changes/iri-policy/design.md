@@ -248,6 +248,18 @@ Five lenses (L1–L5) and the adversarial tester reviewed tasks 1.1–3.4. Accep
   Side effect, accepted: the unexported shim `tenant_iri_of_access` now answers only for tenants under
   `DEFAULT_IRIS`'s placeholder base; no production code calls it, and it goes with the shim clean-up.
 
+- **PD-13 How the policy record is stored (stage 2, a gap in PD-9).** The 5.3 builder found that
+  the toolkit session cannot write PD-9's record: `Session` accepts only a tenant's own graphs,
+  and the mapper writes only roots with an `id`, which `IriPolicy` lacks. The record is
+  configuration, not an aggregate: it has no tenant, version or registry entry. So the guard
+  (in `services/`) writes it through the `Store` port, `put_graph` on the system database, graph
+  `{base}toolkit/iri-policy`, as one statement: that IRI, `rp:iriPolicy`, and the effective
+  `IriPolicy`'s own JSON (`model_dump_json`) as a literal. It reads the record back with
+  `IriPolicy.model_validate_json`, so the data still goes only through the generated model.
+  Rejected: a new schema class with an `id`, plus a tenant-less session. That needs a schema
+  change, regeneration and a new session path for one record. `put_graph` replaces the whole
+  graph, so two workers writing the same policy at once give the same result.
+
 Rejected, with the reason:
 - `iris` required in every service constructor (L4 major 3): PD-3a keeps it optional for classes a
   consumer builds; PD-12j makes the default explicit instead.

@@ -985,12 +985,18 @@ The consumer's table:
 |Access record, meta and registry graphs |`{base}{deployment}/project/{tenant_id}` for the access
 record, `{tenant}/meta`, `{tenant}/registry` |configurable
 |Principal |`{issuer}/users/{sub}` |the default only, for now
-|Guard against a service started under another policy than its tenants were made under |none
-|not yet
+|Guard against a service started under another policy than its tenants were made under |`install_service` start-up
+|enforced
 |===
 
-Do not change the policy of a deployment that already has tenants: their IRIs and graphs are
-stored under the old one, and nothing yet stops you. The guard that does comes later.
+The policy cannot change once a deployment has data: their IRIs and graphs are stored under the old
+policy. At start-up, after the sweep, `install_service` records the effective policy (defaults filled
+in, so leaving a field unset and setting it to its default are the same) in the system database, in
+the graph `{base}toolkit/iri-policy`. On every later start it compares the configured policy with
+the record and, when they differ, refuses to start with `IriPolicyChanged`, naming each differing
+field (`object_id.length`) and logging it with `step: iri-policy`. A system database that has access
+records but no record is taken to hold the default policy: a non-default policy is refused there,
+and the default is recorded. Moving stored data to a new policy is not supported.
 
 What else the policy fixes:
 

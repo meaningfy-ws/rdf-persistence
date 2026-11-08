@@ -36,6 +36,12 @@ left blank. Times are under load (other sessions ran `make` on the same machine)
 | final gate | lead | 6m30s + 2m16s | — | — | 3235 passed; containers passed |
 | PR #35 CI (1st) | CI | ~10 min | — | — | failed on Xenon (clean-code): the lead's gate was `check-all`, CI runs `check-all` + `clean-code`; fixed inline (two extract-function splits), pushed |
 | gitnexus re-index | lead | ~3 tries | — | — | incremental and `--force` fail (gitnexus bug); `clean --force` + `analyze` works |
+| 5.1 build | builder | 7m21s | 107.3k | 21 | access, meta, registry templates |
+| 5.2 build | builder | 1m58s | 72.1k | 9 | principal template |
+| 5.1+5.2 gate | lead | 5m37s + 1m00s | — | — | full check-all stopped at 48% (redundant per task, developer); ran the affected unit dirs (2143 passed) + check-quality + clean-code. Full suite once per stage from here |
+| 5.3 build (1st) | builder | 1m02s | 86.4k | 8 | stopped: PD-9's record could not go through the session; the lead recorded PD-13 |
+| 5.3 build | builder | 9m57s | 127.9k | 31 | guard + 13 unit, 1 wiring, 1 container test |
+| 5.3 gate | lead | 4m34s | — | — | entrypoints + guard tests, 416 passed |
 
 ## Where the time goes (first reading, after 3.2)
 
