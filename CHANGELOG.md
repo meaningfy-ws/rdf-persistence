@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Waiting helpers** (`testkit-wait-until`, #24): `wait_until` and the new `wait_until_async` are
+  exported from `rdf_persistence.testkit`.
+
 ## [0.1.0] - 2026-11-06
 
 The first version: the toolkit of change `toolkit-v1-foundation`, archived in

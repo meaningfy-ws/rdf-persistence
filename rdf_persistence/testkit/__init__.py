@@ -8,6 +8,7 @@ This package imports nothing heavy: the token signer and the Zitadel provisionin
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
+from rdf_persistence.testkit.bootstrap import wait_until, wait_until_async
 from rdf_persistence.testkit.exceptions import TokenRefusedError
 from rdf_persistence.testkit.fakes import FakeFileStore, FakeIdentity, FakeStore, fake_session
 from rdf_persistence.testkit.network import no_network
@@ -46,4 +47,6 @@ __all__ = [
     "fake_session",
     "no_network",
     "provision_project",
+    "wait_until",
+    "wait_until_async",
 ]
