@@ -155,7 +155,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "2e740c84cee2dbcc6075d1130437fa2ea4060e4468574a57b7ed68475b60c609"
+      "sha256": "486f60bb3178f2f647768bcf3bf628016f66147286c14c5dc273024bff6c3a93"
     },
     {
       "path": "rdf_persistence/model/rp_files.yaml",
@@ -205,7 +205,7 @@
     },
     {
       "path": "generated/context.jsonld",
-      "sha256": "8d4869d464b16fec0cbfaf9dd5ecc2901f1b0e48de507532730d6460864b4559"
+      "sha256": "9c78baf2a4dc9dedec2c4420822ab4100a90e7190ab453baccf94f5954ec0f69"
     },
     {
       "path": "generated/diagrams/books.mmd",
@@ -237,7 +237,7 @@
     },
     {
       "path": "generated/openapi-components.json",
-      "sha256": "325c6e0033e40aeb159d7cb81f51bc27cf82aebf89e38792036554ba23188816"
+      "sha256": "900a4e10359bf0ed6e72ee1ba711cbfd28f0f3d060581efc4658edefb6cefb9b"
     },
     {
       "path": "generated/scans.py",
@@ -269,7 +269,7 @@
     },
     {
       "path": "web/src/domain/generated/rp_core.ts",
-      "sha256": "81ee1906f24b403f1886fb37ba59c876c4c25c695127ca7c7272fef7c9b5ce9e"
+      "sha256": "8eb28d5ba692b9b47aa68e1a6763928d0f089ff97e1f0e8f7497d8275545dd96"
     },
     {
       "path": "web/src/domain/generated/rp_files.ts",

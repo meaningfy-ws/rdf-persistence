@@ -34,6 +34,14 @@ path ids in `entrypoints/router.py` (`_last_segment`). Two places infer ownershi
     (`generation/extensions/pydantic_validators.py`) or a rule the schema can express; where neither
     can, a check function in `domain/iris.py` called once by `install_service`. The implementer
     picks the first that works and records which in this file.
+  - Implemented as: the variable sets, the closing id variable, the tenant requirement and the
+    literal characters are one `pattern` per template slot in `rp_service.yaml` (generated into the
+    pydantic validators, shapes and schemas); the alphabet is a pattern and the length a 4 to 32
+    range. Only `{deployment}` without a slug and `random` without a length span fields, so
+    `check_iri_policy(settings)` in `domain/iris.py` raises `InvalidIri` for them; the `Iris`
+    constructor (2.1) calls it, so a service with such settings refuses to be built (leader's
+    decision, task 1.1: the generated validators express presence rules only). An absent `tenant_id` or `object_id` means `IdSpec(kind: uuid4)`
+    (an object-valued slot has no `ifabsent`).
 - **PD-2 Defaults.**
 
   | Template | Default | Allowed variables |
@@ -168,7 +176,8 @@ The guard's first write is idempotent: writing an equal record twice changes not
 | Failure mode | How it is detected | Expected handling |
 |---|---|---|
 | Template invalid (variable, end, characters) | settings validation | `ValidationError` naming the template |
-| `{deployment}` used, no slug | settings validation | `ValidationError` naming `deployment` |
+| `{deployment}` used, no slug | `check_iri_policy`, when `Iris` is built | `InvalidIri` naming the template and `deployment` |
+| `random` id without `length` | `check_iri_policy`, when `Iris` is built | `InvalidIri` naming the id spec |
 | `IdSpec.length` outside 4 to 32 | settings validation | `ValidationError` naming the field |
 | Tenant id clash | access record or dataset exists for candidate | re-draw, at most 5, then `PersistenceError` |
 | Same id drawn by two concurrent creates | second `create_dataset` fails | create fails; sweep cleans (PD-5) |

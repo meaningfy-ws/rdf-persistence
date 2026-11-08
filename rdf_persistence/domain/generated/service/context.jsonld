@@ -10,6 +10,9 @@
       "shex": "http://www.w3.org/ns/shex#",
       "skos": "http://www.w3.org/2004/02/skos/core#",
       "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "access_template": {
+         "@id": "accessTemplate"
+      },
       "account_id": {
          "@id": "accountId"
       },
@@ -36,6 +39,9 @@
       },
       "active": {
          "@id": "accountActive"
+      },
+      "aggregate_template": {
+         "@id": "aggregateTemplate"
       },
       "assignee": {
          "@type": "@id",
@@ -88,6 +94,9 @@
       "creator_role": {
          "@id": "creatorRole"
       },
+      "deployment": {
+         "@id": "deployment"
+      },
       "descending": {
          "@id": "descending"
       },
@@ -124,10 +133,8 @@
          "@id": "hiddenGraph"
       },
       "id": "@id",
-      "items": {
-         "@type": "@id",
-         "@container": "@set",
-         "@id": "items"
+      "alphabet": {
+         "@id": "idAlphabet"
       },
       "kind": {
          "@id": "kind",
@@ -136,6 +143,18 @@
             "aggregate": "https://meaningfy.ws/ns/rdf-persistence#Aggregate",
             "loaded_graph": "https://meaningfy.ws/ns/rdf-persistence#LoadedGraph"
          }
+      },
+      "length": {
+         "@id": "idLength"
+      },
+      "iri_policy": {
+         "@type": "@id",
+         "@id": "iriPolicy"
+      },
+      "items": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "items"
       },
       "label": {
          "@id": "skos:prefLabel"
@@ -152,16 +171,30 @@
       "limit": {
          "@id": "limit"
       },
+      "listed_in": {
+         "@type": "@id",
+         "@id": "listedIn"
+      },
       "loaded_graph": {
          "@type": "@id",
          "@id": "loadedGraph"
       },
+      "loaded_graph_template": {
+         "@id": "loadedGraphTemplate"
+      },
       "max_body_bytes": {
          "@id": "maxBodyBytes"
+      },
+      "meta_template": {
+         "@id": "metaTemplate"
       },
       "modified": {
          "@type": "xsd:dateTime",
          "@id": "dcterms:modified"
+      },
+      "object_id": {
+         "@type": "@id",
+         "@id": "objectId"
       },
       "offset": {
          "@id": "offset"
@@ -169,6 +202,9 @@
       "owned_by": {
          "@type": "@id",
          "@id": "ownedBy"
+      },
+      "part_template": {
+         "@id": "partTemplate"
       },
       "target": {
          "@type": "@id",
@@ -184,6 +220,9 @@
       "principal": {
          "@type": "@id",
          "@id": "principal"
+      },
+      "principal_template": {
+         "@id": "principalTemplate"
       },
       "detail": {
          "@id": "problemDetail"
@@ -206,6 +245,9 @@
          "@type": "@id",
          "@container": "@set",
          "@id": "prohibition"
+      },
+      "registry_template": {
+         "@id": "registryTemplate"
       },
       "role": {
          "@id": "role"
@@ -232,8 +274,15 @@
          "@type": "@id",
          "@id": "tenant"
       },
+      "tenant_id": {
+         "@type": "@id",
+         "@id": "tenantId"
+      },
       "tenant_segment": {
          "@id": "tenantSegment"
+      },
+      "tenant_template": {
+         "@id": "tenantTemplate"
       },
       "total": {
          "@id": "total"
@@ -277,6 +326,12 @@
       },
       "GrantSet": {
          "@id": "GrantSet"
+      },
+      "IdSpec": {
+         "@id": "IdSpec"
+      },
+      "IriPolicy": {
+         "@id": "IriPolicy"
       },
       "LabelUpdate": {
          "@id": "LabelUpdate"

@@ -19,8 +19,10 @@ export type RpAnnotation =
   | "database"
   /** Schema annotation, `domain`, `technical` or `access` (see ModuleKind): the kind of the module; a domain module may not import a technical or an access one. */
   | "module_kind"
-  /** Class annotation, required on every aggregate root: its path segment in the API and in its IRIs. It follows the pattern of the url_segment slot. */
+  /** Class annotation, required on every aggregate root: its path segment in the API. It follows the pattern of the url_segment slot. */
   | "rp_path"
+  /** Class annotation, the `{type}` segment of the IRIs of the class's instances; default, the class name in kebab case. It follows the pattern of the url_segment slot and is unique in a schema. */
+  | "rp_iri_type"
   /** Class annotation, `true` on an owned value class whose instances need no label of their own. */
   | "rp_unlabelled"
   /** Slot annotation, `true` when the session writes the slot about a graph (its version, who created or contributed to it, when); closed shapes ignore the statement. */

@@ -8,7 +8,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
 
 ### 1. Model
 
-- [ ] 1.1 `IdSpec`, `IriPolicy`, `ServiceSettings.iri_policy` and `.deployment` in
+- [x] 1.1 `IdSpec`, `IriPolicy`, `ServiceSettings.iri_policy` and `.deployment` in
   `rdf_persistence/model/service/rp_service.yaml`; `rp_iri_type` in the `RpAnnotation` enum of
   `rdf_persistence/model/rp_core.yaml`, the `rp_path` description reworded, and the `listedIn`
   vocabulary term (PD-7); `make generate` (design PD-1, PD-2, PD-8).
@@ -21,7 +21,8 @@ test first, then `make test` and `make check-all`. Requirements cited are in
 - [ ] 2.1 `Iris` in `rdf_persistence/domain/iris.py` (PD-3 to PD-6): minting, matching, id drawing
   with an injectable id source, reserved words, resource names, `{type}` alternations from the
   schema, `tenant_of_access` (PD-10), `is_aggregate_graph` (PD-11); today's functions become shims on
-  the default `Iris`. Tests: requirements "Without a policy, IRIs are today's" (all of
+  the default `Iris`; the constructor calls `check_iri_policy` (PD-1); an absent `IdSpec` is
+  `uuid4`. Tests: requirements "Without a policy, IRIs are today's" (all of
   `tests/unit/domain/test_iris.py` unchanged), "Each kind of IRI follows its configured template"
   (the consumer's examples), "Ids are random, short when configured, and never reserved"
   (reserved id).
@@ -72,7 +73,7 @@ test first, then `make test` and `make check-all`. Requirements cited are in
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 2.1 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
+- [x] 1.1 · [ ] 1.2 · [ ] 2.1 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
 
 ## Verification
 

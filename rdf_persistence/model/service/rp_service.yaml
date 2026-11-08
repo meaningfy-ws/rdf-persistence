@@ -36,6 +36,8 @@ classes:
       - creator_role
       - roles_claim
       - max_body_bytes
+      - deployment
+      - iri_policy
     slot_usage:
       max_body_bytes:
         ifabsent: int(1048576)
@@ -49,6 +51,58 @@ classes:
         required: true
       roles_claim:
         required: true
+  IdSpec:
+    title: Id specification
+    description: >-
+      How the toolkit draws an id: a UUIDv4, or `length` characters drawn from `alphabet`. The length
+      is required for `random` ids.
+    class_uri: rp:IdSpec
+    slots:
+      - id_kind
+      - id_length
+      - id_alphabet
+    slot_usage:
+      id_kind:
+        required: true
+      id_alphabet:
+        ifabsent: string(0123456789abcdefghijklmnopqrstuvwxyz)
+  IriPolicy:
+    title: IRI policy
+    description: >-
+      The templates the toolkit mints and accepts IRIs by, one per kind of IRI, and the id
+      specifications of tenant and object ids. Every slot defaults to today's shape, so an empty
+      policy is the default one. A template fills the variables allowed for its kind; the tenant,
+      aggregate, part, loaded graph and principal templates end in their id variable, and the access,
+      meta and registry templates contain the tenant.
+    class_uri: rp:IriPolicy
+    slots:
+      - tenant_template
+      - access_template
+      - meta_template
+      - registry_template
+      - aggregate_template
+      - part_template
+      - loaded_graph_template
+      - principal_template
+      - tenant_id
+      - object_id
+    slot_usage:
+      tenant_template:
+        ifabsent: string({base}{tenant_segment}/{tenant_id})
+      access_template:
+        ifabsent: string({tenant}/access)
+      meta_template:
+        ifabsent: string({tenant}/meta)
+      registry_template:
+        ifabsent: string({tenant}/registry)
+      aggregate_template:
+        ifabsent: string({tenant}/{rp_path}/{id})
+      part_template:
+        ifabsent: string({root}/parts/{id})
+      loaded_graph_template:
+        ifabsent: string({root}/content/{id})
+      principal_template:
+        ifabsent: string({issuer}/users/{sub})
   VerifiedCaller:
     title: Verified caller
     description: >-
@@ -327,6 +381,98 @@ slots:
     slot_uri: rp:maxBodyBytes
     range: integer
     minimum_value: 1
+  tenant_template:
+    title: Tenant template
+    description: The template of a tenant IRI; ends in `{tenant_id}`.
+    slot_uri: rp:tenantTemplate
+    range: string
+    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant_segment|tenant_id)\})*\{tenant_id\}$'
+  access_template:
+    title: Access template
+    description: The template of the IRI of a tenant's access record; contains `{tenant}` or `{tenant_id}`.
+    slot_uri: rp:accessTemplate
+    range: string
+    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*\{tenant(?:_id)?\}(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*$'
+  meta_template:
+    title: Meta template
+    description: The template of the IRI of a tenant's meta graph; contains `{tenant}` or `{tenant_id}`.
+    slot_uri: rp:metaTemplate
+    range: string
+    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*\{tenant(?:_id)?\}(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*$'
+  registry_template:
+    title: Registry template
+    description: The template of the IRI of a tenant's registry graph; contains `{tenant}` or `{tenant_id}`.
+    slot_uri: rp:registryTemplate
+    range: string
+    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*\{tenant(?:_id)?\}(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*$'
+  aggregate_template:
+    title: Aggregate template
+    description: The template of an aggregate root IRI; ends in `{id}`.
+    slot_uri: rp:aggregateTemplate
+    range: string
+    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id|type|rp_path|id)\})*\{id\}$'
+  part_template:
+    title: Part template
+    description: The template of the IRI of an owned part; ends in `{id}`.
+    slot_uri: rp:partTemplate
+    range: string
+    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id|root|type|id)\})*\{id\}$'
+  loaded_graph_template:
+    title: Loaded graph template
+    description: The template of the IRI of a loaded graph; ends in `{id}`.
+    slot_uri: rp:loadedGraphTemplate
+    range: string
+    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id|root|type|id)\})*\{id\}$'
+  principal_template:
+    title: Principal template
+    description: The template of the IRI of a principal; ends in `{sub}`.
+    slot_uri: rp:principalTemplate
+    range: string
+    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|issuer|sub)\})*\{sub\}$'
+  tenant_id:
+    title: Tenant id
+    description: How the id of a new tenant is drawn; absent, a UUIDv4.
+    slot_uri: rp:tenantId
+    range: IdSpec
+  object_id:
+    title: Object id
+    description: How the id of a new aggregate root, part or loaded graph is drawn; absent, a UUIDv4.
+    slot_uri: rp:objectId
+    range: IdSpec
+  id_kind:
+    title: Id kind
+    description: Whether ids are UUIDv4 or random characters of an alphabet.
+    slot_uri: rp:idKind
+    alias: kind
+    range: IdKind
+  id_length:
+    title: Id length
+    description: The number of characters of a random id, 4 to 32.
+    slot_uri: rp:idLength
+    alias: length
+    range: integer
+    minimum_value: 4
+    maximum_value: 32
+  id_alphabet:
+    title: Id alphabet
+    description: The characters a random id is drawn from, each a lower case letter or a digit.
+    slot_uri: rp:idAlphabet
+    alias: alphabet
+    range: string
+    pattern: "^[a-z0-9]+$"
+  deployment:
+    title: Deployment
+    description: >-
+      A slug that names this deployment, for templates that use `{deployment}`; lower case letters and
+      digits, at most 32.
+    slot_uri: rp:deployment
+    range: string
+    pattern: "^[a-z0-9]{1,32}$"
+  iri_policy:
+    title: IRI policy
+    description: The IRI policy of the service; absent, the default policy applies.
+    slot_uri: rp:iriPolicy
+    range: IriPolicy
   caller_access:
     title: Caller access
     description: The caller's access to the tenant, as the access check loaded it.
@@ -518,6 +664,18 @@ slots:
     range: boolean
 
 enums:
+  IdKind:
+    title: Id kind
+    description: The ways an id is drawn.
+    permissible_values:
+      uuid4:
+        title: UUIDv4
+        meaning: rp:IdUuid4
+        description: A random UUID, in its canonical form.
+      random:
+        title: Random
+        meaning: rp:IdRandom
+        description: Characters drawn at random from an alphabet.
   ProblemSlug:
     title: Problem slug
     description: >-

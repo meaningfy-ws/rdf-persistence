@@ -91,6 +91,13 @@ slots:
     description: The kind of graph a registry entry names.
     slot_uri: rp:kind
     range: RegistryKind
+  listed_in:
+    title: Listed in
+    description: >-
+      The graph a listing found a subject in. The listing query states it about each subject, and the
+      toolkit drops it before answering.
+    slot_uri: rp:listedIn
+    range: uri
   owned_by:
     title: Owned by
     description: The IRI of the aggregate root that owns the graph.
@@ -149,9 +156,15 @@ enums:
       rp_path:
         title: Path
         description: >-
-          Class annotation, required on every aggregate root: its path segment in the API and in its
-          IRIs. It follows the pattern of the url_segment slot.
+          Class annotation, required on every aggregate root: its path segment in the API. It follows the
+          pattern of the url_segment slot.
         meaning: rp:AnnotationPath
+      rp_iri_type:
+        title: IRI type
+        description: >-
+          Class annotation, the `{type}` segment of the IRIs of the class's instances; default, the class
+          name in kebab case. It follows the pattern of the url_segment slot and is unique in a schema.
+        meaning: rp:AnnotationIriType
       rp_unlabelled:
         title: Unlabelled
         description: >-

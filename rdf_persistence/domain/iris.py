@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 from rdflib import URIRef
 
 from rdf_persistence.domain.exceptions import InvalidIri, NotFound
+from rdf_persistence.domain.generated.service.rp_service import IdKind, ServiceSettings
 
 # The patterns of the schema's ``url_segment`` and ``ServiceSettings.prefix`` slots; a test pins them.
 _SEGMENT = re.compile(r"[a-z][a-z0-9-]*")
@@ -186,3 +187,26 @@ def principal_iri(issuer: str, subject: str) -> URIRef:
     ``sub`` from leaving its path segment.
     """
     return URIRef(f"{issuer.rstrip('/')}/users/{quote(subject, safe='')}")
+
+
+def check_iri_policy(settings: ServiceSettings) -> None:
+    """Refuse the two rules of the IRI policy that span fields, which the generated models cannot state.
+
+    The template variables, the closing id variable and the literal characters are patterns of the
+    schema; what remains is that ``{deployment}`` needs a ``deployment`` slug (PD-1) and that a
+    ``random`` id has a length. Absent policy and absent id specs are the defaults and always valid.
+
+    Raises:
+        InvalidIri: a template uses ``{deployment}`` and no slug is set, or a random id has no length.
+    """
+    policy = settings.iri_policy
+    if policy is None:
+        return
+    templates = {name: value for name, value in policy if name.endswith("_template") and value}
+    for name, template in templates.items():
+        if "{deployment}" in template and not settings.deployment:
+            raise InvalidIri(f"{name} uses {{deployment}} but the settings set no deployment")
+    for name in ("tenant_id", "object_id"):
+        spec = getattr(policy, name)
+        if spec is not None and spec.kind == IdKind.RANDOM and spec.length is None:
+            raise InvalidIri(f"{name}: length is required for random ids")
