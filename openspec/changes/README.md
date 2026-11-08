@@ -22,12 +22,10 @@ questions (each change's `inputs/seed.md`). Each has its PLAN (`design.md` + `ta
 
 | Id | Issue | Appetite | Why, in one line | Depends on |
 |---|---|---|---|---|
-| `testkit-wait-until` | #24 | TINY | The testing checklist names `testkit.wait_until`, which the public test module does not export. | none |
-| `generation-fix-hint` | #25 | TINY | The freshness hint names `make generate`, a target the application may not have. | none |
 | `iri-policy` | #26 | LARGE (two stages) | IRIs have one fixed shape tied to the API path; MWB2's persistent URI policy cannot be expressed. Blocks MWB2's first build EPIC. | none |
 
-**Order:** `iri-policy` stage 1 first (it blocks the consumer), the two TINY ones any time between
-(they touch disjoint files), then `iri-policy` stage 2.
+**Order:** `iri-policy` stage 1, then stage 2. `testkit-wait-until` (#24) and `generation-fix-hint`
+(#25) were delivered and archived on 2026-11-08 (`archive/2026-11-08-*`).
 
 ## Candidate EPICs
 
