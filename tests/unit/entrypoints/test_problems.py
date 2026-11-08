@@ -43,7 +43,7 @@ ROWS = [
     (exceptions.BadQuery, 400, "bad-query"),
     (exceptions.SparqlError, 500, "internal-error"),
     (exceptions.StoredDataInvalid, 500, "internal-error"),
-    (exceptions.IriPolicyChanged, 500, "internal-error"),
+    (exceptions.IriPolicyChanged, 503, "unavailable"),
     (exceptions.PayloadTooLarge, 413, "payload-too-large"),
     (exceptions.StoreUnavailable, 503, "unavailable"),
     (exceptions.IdentityUnavailable, 503, "unavailable"),

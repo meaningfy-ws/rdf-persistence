@@ -10,7 +10,9 @@ from rdf_persistence.domain.exceptions import Conflict, NotFound
 from rdf_persistence.domain.generated.rp_access import Grant
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.iris import registry_graph_iri
+from rdf_persistence.domain.iris import (
+    DEFAULT_IRIS,
+)
 from rdf_persistence.services.mapper import UnitOfWork, new_part
 from rdf_persistence.services.session import Session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE, FakeStore, fake_session
@@ -217,6 +219,6 @@ async def test_editing_a_book_through_the_unit_of_work_keeps_its_loaded_graphs(s
     work.add(book)
     await work.commit()
     kept = f"ASK {{ GRAPH <{loaded}> {{ ?s ?p ?o }} }}"
-    entry = f"ASK {{ GRAPH <{registry_graph_iri(TENANT)}> {{ <{loaded}> ?p ?o }} }}"
+    entry = f"ASK {{ GRAPH <{DEFAULT_IRIS.registry(TENANT)}> {{ <{loaded}> ?p ?o }} }}"
     assert (await store.query(FAKE_DATABASE, kept)).askAnswer, "the loaded graph keeps its triples"
     assert (await store.query(FAKE_DATABASE, entry)).askAnswer, "and its registry entry"

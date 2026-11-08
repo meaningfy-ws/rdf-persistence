@@ -762,8 +762,8 @@ test containers only. In Zitadel, set each application to JWT access tokens: the
 check opaque ones.
 
 `install_service` mounts the routes (<<routes>>), the problem responses and the OpenAPI document.
-On start-up, before your own lifespan, it creates the system database if it is missing and runs the
-sweep. It stops with `OSError` if the generated folder lacks the context, the shapes, a frame or
+On start-up, before your own lifespan, it creates the system database if it is missing, guards the
+IRI policy (see "The policy cannot change", below) and runs the sweep. It stops with `OSError` if the generated folder lacks the context, the shapes, a frame or
 `openapi-components.json`, and with `LookupError` if the schema has no tenant root or not exactly
 one access record class. `rules` may also be the path of the roles file.
 
@@ -878,7 +878,7 @@ kit = install_service(
     settings=settings,
 )
 headers = {"Authorization": f"Bearer {signer.issue(sub='ada', roles=[])}"}
-async with app.router.lifespan_context(app):     # start-up: the system database and the sweep
+async with app.router.lifespan_context(app):     # start-up: the system database, the policy guard and the sweep
     transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         created = await client.post("/libraries", json=TENANT_BODY, headers=headers)
@@ -972,7 +972,12 @@ says, or names no tenant is refused when the settings are built. The verifier mi
 principal, and you build it before the kit: with a `principal_template` of your own, pass it the
 policy as `JwksTokenVerifier(..., iris=Iris(settings))` (`Iris` is exported by `rdf_persistence`).
 Without it the verifier mints the default `{issuer}/users/{sub}`, and grants to your principals
-never match. The access record is not an aggregate: no session reads or commits its graph, but a
+never match: `install_service` compares the `principal_template` of the verifier's `Iris` with the
+settings' and refuses to start (`InvalidIri`) when they differ. A `principal_template` without
+`{issuer}` gives one principal to the same `sub` of every identity provider; leave `{issuer}` out
+only when one provider issues all your tokens. The verifier refuses a token whose `sub` is empty,
+`.` or `..`. Templates under which a tenant's access, meta or registry IRI equals another of them,
+the tenant's, or reads as an aggregate or a loaded graph are refused too. The access record is not an aggregate: no session reads or commits its graph, but a
 grant may still target it.
 
 The consumer's table:
@@ -993,11 +998,17 @@ record, `{tenant}/meta`, `{tenant}/registry` |configurable
 |===
 
 The policy cannot change once a deployment has data: their IRIs and graphs are stored under the old
-policy. At start-up, after the sweep, `install_service` records the effective policy (defaults filled
-in, so leaving a field unset and setting it to its default are the same) in the system database, in
-the graph `{base}toolkit/iri-policy`. On every later start it compares the configured policy with
-the record and, when they differ, refuses to start with `IriPolicyChanged`, naming each differing
-field (`object_id.length`) and logging it with `step: iri-policy`. A system database that has access
+policy. At start-up, before the sweep (which reads the access records through the policy),
+`install_service` records the effective policy in the system database, in the graph
+`{base}toolkit/iri-policy`. The effective policy has every default filled in and the settings'
+`{base}`, `{deployment}` and `{tenant_segment}` written into the templates, so leaving a field unset
+and setting it to its default are the same, and changing `base`, or the `deployment` of a template
+that uses it, changes the policy. The first write is conditional and read back, so two instances that
+start at once with different policies cannot both serve. On every later start it compares the
+configured policy with the record and, when they differ, refuses to start with `IriPolicyChanged`
+(a 503 `unavailable` if a route ever meets it), naming each differing field (`object_id.length`) and
+logging it with `step: iri-policy`. A record that cannot be parsed, or more than one record, refuses
+the start too, saying the record is unreadable. A system database that has access
 records but no record is taken to hold the default policy: a non-default policy is refused there,
 and the default is recorded. Moving stored data to a new policy is not supported.
 

@@ -10,7 +10,10 @@ from rdflib import BNode, Graph, Literal, URIRef
 
 from rdf_persistence.domain.exceptions import Conflict, InvalidIri
 from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.iris import graph_iri, registry_graph_iri
+from rdf_persistence.domain.iris import (
+    DEFAULT_IRIS,
+    graph_iri,
+)
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.session import Session
@@ -54,7 +57,7 @@ async def has_triples(store, graph: URIRef) -> bool:
 async def registered_loaded(store) -> set[URIRef]:
     text = fill(
         ENTRIES,
-        r=term(registry_graph_iri(TENANT)),
+        r=term(DEFAULT_IRIS.registry(TENANT)),
         kind=term(v.REGISTRY_KIND),
         loaded=term(v.REGISTRY_KIND_IRIS["loaded_graph"]),
     )
@@ -99,7 +102,7 @@ async def test_replace_without_a_list_leaves_the_loaded_graphs_of_another_aggreg
 
 OUTSIDE_THE_CONTENT = [
     pytest.param(URIRef(f"{OTHER}/graph"), id="another aggregate's graph"),
-    pytest.param(registry_graph_iri(TENANT), id="the registry graph"),
+    pytest.param(DEFAULT_IRIS.registry(TENANT), id="the registry graph"),
     pytest.param(OTHER_LOADED, id="another aggregate's loaded graph"),
     pytest.param(URIRef(f"{ROOT}/content"), id="the content segment without a graph"),
     pytest.param(

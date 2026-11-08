@@ -6,7 +6,10 @@ import pytest
 
 from rdf_persistence import Action, Grant, Principal, TenantState
 from rdf_persistence.domain.exceptions import NotFound
-from rdf_persistence.domain.iris import access_iri, system_database_name
+from rdf_persistence.domain.iris import (
+    DEFAULT_IRIS,
+    system_database_name,
+)
 from rdf_persistence.services.access import load_caller_access
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
@@ -52,7 +55,7 @@ async def test_a_direct_grant_and_a_prohibition_of_the_caller_load_and_another_p
         store, database=database, tenant_iri=summary.id, principal=Principal(id=ADA)
     ) as session:
         work = UnitOfWork(session, toy_mapper())
-        record = await work.get(LibraryAccess, str(access_iri(summary.id)))
+        record = await work.get(LibraryAccess, str(DEFAULT_IRIS.access(summary.id)))
         record.grants = [
             *(record.grants or []),
             direct(Action.MODIFY, book_graph, ADA),

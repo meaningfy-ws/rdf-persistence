@@ -369,3 +369,27 @@ async def test_a_policy_principal_keeps_the_subject_in_one_segment(
     assert caller.principal == f"{PRINCIPAL_BASE}k3f9a2x/user/{segment}", (
         "the subject left its segment"
     )
+
+
+@pytest.mark.parametrize("sub", ["", ".", ".."])
+async def test_a_dot_or_empty_subject_is_refused(
+    signer: TokenSigner, clock: ManualClock, sub: str
+) -> None:
+    verifier = verifier_for(signer, clock)
+    with pytest.raises(InvalidToken):
+        await verifier.verify(signer.issue(sub=sub))
+
+
+def test_the_verifier_exposes_the_iris_it_mints_with(
+    signer: TokenSigner, clock: ManualClock
+) -> None:
+    iris = Iris(
+        ServiceSettings(
+            base="https://x.example/",
+            prefix="rp",
+            tenant_segment="t",
+            creator_role="o",
+            roles_claim="r",
+        )
+    )
+    assert verifier_for(signer, clock, iris=iris).iris is iris

@@ -90,8 +90,8 @@ ERROR_KINDS: tuple[tuple[type[PersistenceError], ProblemKind], ...] = (
     (errors.StoredDataInvalid, INTERNAL_ERROR),
     (
         errors.IriPolicyChanged,
-        INTERNAL_ERROR,
-    ),  # raised at start-up; a route that met it is ours to fix
+        UNAVAILABLE,
+    ),  # raised at start-up; a service that kept going would mint IRIs by the wrong policy
     (errors.PayloadTooLarge, PAYLOAD_TOO_LARGE),
     (errors.StoreUnavailable, UNAVAILABLE),
     (errors.IdentityUnavailable, UNAVAILABLE),

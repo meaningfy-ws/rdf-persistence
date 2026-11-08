@@ -33,6 +33,8 @@ ALLOWED_ALGORITHMS = (RS256, ES256)
 HTTPS_PREFIX = "https://"
 DISCOVERY_PATH = "/.well-known/openid-configuration"
 REQUIRED_CLAIMS = ("exp", "sub")
+# A principal IRI ending in one of these is empty or a dot segment, which IRI normalisation resolves away (PD-14h).
+UNUSABLE_SUBJECTS = ("", ".", "..")
 
 
 class JwksTokenVerifier(HttpAdapter):
@@ -74,6 +76,10 @@ class JwksTokenVerifier(HttpAdapter):
         self._fetched_at: float | None = None
         self._attempted_at: float | None = None
         self._lock = asyncio.Lock()
+
+    @property
+    def iris(self) -> Iris:
+        return self._iris
 
     async def verify(self, token: str) -> VerifiedCaller:
         if not token:
@@ -122,6 +128,8 @@ class JwksTokenVerifier(HttpAdapter):
             raise InvalidToken("the token's claims are malformed") from error
         if not all(math.isfinite(t) for t in (claims.exp, claims.nbf or 0.0)):
             raise InvalidToken("the token's times are malformed")
+        if claims.sub in UNUSABLE_SUBJECTS:
+            raise InvalidToken("the token's subject cannot name a principal")
         if claims.exp <= now:
             raise InvalidToken("the token has expired")
         if claims.nbf is not None and claims.nbf > now:

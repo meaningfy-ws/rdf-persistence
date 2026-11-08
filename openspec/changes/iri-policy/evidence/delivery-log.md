@@ -42,6 +42,14 @@ left blank. Times are under load (other sessions ran `make` on the same machine)
 | 5.3 build (1st) | builder | 1m02s | 86.4k | 8 | stopped: PD-9's record could not go through the session; the lead recorded PD-13 |
 | 5.3 build | builder | 9m57s | 127.9k | 31 | guard + 13 unit, 1 wiring, 1 container test |
 | 5.3 gate | lead | 4m34s | — | — | entrypoints + guard tests, 416 passed |
+| 5.4 docs | lead | ~5 min | — | — | written by the lead (small); check-docs |
+| S2 review L1 | reviewer | 1m22s | 65.0k | 8 | 1 major (colliding graphs), 3 minor, 1 nit |
+| S2 review L2 | reviewer | 1m01s | 62.7k | 7 | 1 major (guard after sweep), 3 minor, 1 nit |
+| S2 review L3 | reviewer | 1m01s | 50.1k | 7 | 2 major (guard after sweep; unchecked verifier policy), 1 minor |
+| S2 review L4 | reviewer | 0m59s | 48.9k | 7 | 1 major (None templates), 3 minor, 1 nit |
+| S2 review L5 | reviewer | 0m55s | 63.8k | 6 | 1 major (effective policy duplicated), 3 minor, 2 nits |
+| S2 adversarial tester | tester | 2m49s | 105.2k | 16 | 65 tests, 19 strict xfails, 9 defects |
+| S2 decide | lead | ~10 min | — | — | PD-14a–k; 2 rejected. Short briefs (diff range + decisions) made reviewers ~4× cheaper and faster than stage 1 |
 
 ## Where the time goes (first reading, after 3.2)
 

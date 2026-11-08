@@ -5,7 +5,11 @@ from rdflib import Literal, URIRef
 
 from rdf_persistence import Action, Principal, TenantState
 from rdf_persistence.domain.exceptions import NotFound
-from rdf_persistence.domain.iris import access_iri, graph_iri, system_database_name
+from rdf_persistence.domain.iris import (
+    DEFAULT_IRIS,
+    graph_iri,
+    system_database_name,
+)
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import load_caller_access
 from rdf_persistence.services.mapper import UnitOfWork
@@ -27,7 +31,7 @@ from tests.toy import (
 
 SYSTEM = system_database_name(SETTINGS.prefix)
 BOOK_GRAPH = graph_of(book_iri(1))
-RECORD_GRAPH = graph_iri(str(access_iri(TENANT)))
+RECORD_GRAPH = graph_iri(str(DEFAULT_IRIS.access(TENANT)))
 
 
 @pytest.fixture
@@ -91,7 +95,7 @@ async def test_the_load_is_one_query_against_the_access_graph_of_the_tenant(stor
     await load_caller_access(store, SYSTEM, TENANT, ADA)
     sent = store.sent("query")[before:]
     assert len(sent) == 1, "one query"
-    assert str(access_iri(TENANT)) in sent[0], "it names the tenant's access record"
+    assert str(DEFAULT_IRIS.access(TENANT)) in sent[0], "it names the tenant's access record"
 
 
 async def test_an_iri_that_would_break_the_query_is_refused_before_it_is_sent(store):
@@ -103,7 +107,7 @@ async def test_an_iri_that_would_break_the_query_is_refused_before_it_is_sent(st
 async def corrupt(store: FakeStore, predicate: URIRef, *values: URIRef | Literal) -> None:
     """Replace what the stored access record says through ``predicate`` with ``values``."""
     graph = toy_mapper().to_graph(access(grants=[RULES["action"]], prohibitions=[BAN]))
-    record = URIRef(str(access_iri(TENANT)))
+    record = URIRef(str(DEFAULT_IRIS.access(TENANT)))
     graph.remove((record, predicate, None))
     for value in values:
         graph.add((record, predicate, value))

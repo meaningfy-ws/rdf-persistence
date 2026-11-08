@@ -11,7 +11,9 @@ from rdf_persistence.domain.exceptions import Conflict
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.iris import registry_graph_iri
+from rdf_persistence.domain.iris import (
+    DEFAULT_IRIS,
+)
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import Session, open_session
 from tests.fixtures.library.generated.books import Book, Genre
@@ -114,6 +116,6 @@ async def test_editing_the_root_keeps_the_loaded_graphs_and_their_entries(sessio
     work.add(book)
     await work.commit()
     held = f"ASK {{ GRAPH <{loaded}> {{ ?s ?p ?o }} }}"
-    entry = f"ASK {{ GRAPH <{registry_graph_iri(TENANT)}> {{ <{loaded}> ?p ?o }} }}"
+    entry = f"ASK {{ GRAPH <{DEFAULT_IRIS.registry(TENANT)}> {{ <{loaded}> ?p ?o }} }}"
     assert (await store.query(database, held)).askAnswer, "the loaded graph keeps its triples"
     assert (await store.query(database, entry)).askAnswer, "and its registry entry"

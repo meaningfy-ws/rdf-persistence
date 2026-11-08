@@ -13,7 +13,10 @@ from rdf_persistence import InvalidGraph
 from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.iris import graph_iri, registry_graph_iri
+from rdf_persistence.domain.iris import (
+    DEFAULT_IRIS,
+    graph_iri,
+)
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.session import Session
@@ -50,7 +53,7 @@ async def contents(store, database, graph: URIRef) -> Graph:
 
 
 async def registered(store, database) -> Graph:
-    return await contents(store, database, registry_graph_iri(TENANT))
+    return await contents(store, database, DEFAULT_IRIS.registry(TENANT))
 
 
 async def test_a_broken_file_fails_with_the_parsers_message_and_creates_no_graph(
@@ -143,5 +146,5 @@ async def test_replace_drops_the_triples_of_unlisted_loaded_graphs_and_keeps_lis
     assert await graphs_in(store, database) == {
         str(kept),
         str(graph_iri(BOOK)),
-        str(registry_graph_iri(TENANT)),
+        str(DEFAULT_IRIS.registry(TENANT)),
     }, "the dropped loaded graph is gone; the kept one and the aggregate remain"
