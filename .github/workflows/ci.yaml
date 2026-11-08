@@ -4,7 +4,7 @@
 # inline tool command. The gates here mirror `make check-all` + `make
 # clean-code` (i.e. `make ci-full`) so "green locally" means "green in CI".
 #
-# Runs on push to develop and on PRs targeting develop.
+# Runs on push to develop and on PRs targeting develop; the container tests on PRs only.
 #
 # SonarCloud on the free plan (developer, 2026-11-05). The free plan analyses
 # public projects, but only the SonarCloud main branch and PRs that target it.
@@ -136,31 +136,44 @@ jobs:
     name: Container tests (Fuseki, Garage, Zitadel)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Pull requests only: the merge to develop would re-run what its PR already ran.
+    if: github.event_name == 'pull_request'
 
     # Docker is available on GitHub-hosted ubuntu runners; the fixtures start the containers a
-    # test's markers need (PD-16). Coverage is reported without a floor.
+    # test's markers need (PD-16). Coverage is reported without a floor. A PR that changes only
+    # openspec/, docs/ or top-level Markdown skips the steps (and the image downloads) and passes.
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Does the PR change code?
+        id: changes
+        run: echo "code=$(make -s changes-code BASE=origin/${{ github.base_ref }})" >> "$GITHUB_OUTPUT"
 
       - name: Set up Python 3.12
+        if: steps.changes.outputs.code == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Install uv
+        if: steps.changes.outputs.code == 'true'
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
 
       - name: Install dependencies
+        if: steps.changes.outputs.code == 'true'
         run: make install
 
       - name: Run container tests
+        if: steps.changes.outputs.code == 'true'
         run: make test-containers
 
       - name: Upload container test results
-        if: always()
+        if: always() && steps.changes.outputs.code == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: container-test-results
