@@ -168,7 +168,7 @@ flowchart LR
 * A *listing* needs `read` on the tenant, and leaves out the aggregates a `read` Prohibition hides
   from the caller before it counts and pages (`AccessRules.hidden_graphs`).
 * *Grants are validated* when they are written (`AccessRules.validate_grants`): a target must be the
-  tenant or an aggregate graph of it (else `InvalidGrant`, 422), an assignee an IRI, and a role
+  tenant, its access record or an aggregate graph of it (else `InvalidGrant`, 422), an assignee an IRI, and a role
   defined at its target's level (else `UnknownRole`, 422).
 
 [#identity]

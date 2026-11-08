@@ -968,9 +968,12 @@ The fields of `IriPolicy`, with their defaults and the variables each template m
 belongs to, `{tenant_id}` and `{id}` the ids, and `{base}`, `{deployment}` and `{tenant_segment}`
 the settings of the same name. `deployment` (lower case letters and digits) is needed only when a
 template uses `{deployment}`. A template that uses another variable, does not end as the table
-says, or names no tenant is refused when the settings are built. For now the principal template
-is refused with `InvalidIri` unless it is the default: the token verifier does not yet mint
-through the policy.
+says, or names no tenant is refused when the settings are built. The verifier mints the
+principal, and you build it before the kit: with a `principal_template` of your own, pass it the
+policy as `JwksTokenVerifier(..., iris=Iris(settings))` (`Iris` is exported by `rdf_persistence`).
+Without it the verifier mints the default `{issuer}/users/{sub}`, and grants to your principals
+never match. The access record is not an aggregate: no session reads or commits its graph, but a
+grant may still target it.
 
 The consumer's table:
 
@@ -984,7 +987,7 @@ The consumer's table:
 |Database and bucket |`{prefix}-t-{tenant_id}` |fixed
 |Access record, meta and registry graphs |`{base}{deployment}/project/{tenant_id}` for the access
 record, `{tenant}/meta`, `{tenant}/registry` |configurable
-|Principal |`{issuer}/users/{sub}` |the default only, for now
+|Principal |`{base}{deployment}/user/{sub}` |configurable; pass `iris=Iris(settings)` to the verifier
 |Guard against a service started under another policy than its tenants were made under |`install_service` start-up
 |enforced
 |===
