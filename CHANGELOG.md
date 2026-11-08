@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Waiting helpers** (`testkit-wait-until`, #24): `wait_until` and the new `wait_until_async` are
   exported from `rdf_persistence.testkit`.
 
+### Changed
+- **Freshness hint** (`generation-fix-hint`, #25): a failed freshness check now names
+  `rp-generate`, or the `regenerate-command` of each stale `[tool.rp-generate]` entry, instead of
+  `make generate`. A configuration error no longer prints a hint.
+
 ## [0.1.0] - 2026-11-06
 
 The first version: the toolkit of change `toolkit-v1-foundation`, archived in

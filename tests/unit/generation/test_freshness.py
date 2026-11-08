@@ -1,5 +1,6 @@
 """The generation manifest and `rp-generate --check` (PD-26): stale input, edited output, version."""
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -8,10 +9,12 @@ import pytest
 from rdf_persistence import generation
 from rdf_persistence.generation import manifest as manifest_module
 from rdf_persistence.generation.cli import main
-from rdf_persistence.generation.generated.rp_generation import GenerationManifest
+from rdf_persistence.generation.config import read_targets
+from rdf_persistence.generation.generated.rp_generation import GenerationManifest, GenerationTarget
 
-from .test_generate_cli import SCHEMA, project
+from .test_generate_cli import PYPROJECT, SCHEMA, project
 
+DEFAULT_HINT = "run `rp-generate` to regenerate, then commit the result"
 MANIFEST = Path("app/generated/rp-manifest.json")
 OUTPUT = "app/generated/m.py"
 PART = SCHEMA.replace("name: m", "name: part").replace("Thing:", "Part:").replace("things", "parts")
@@ -102,7 +105,7 @@ def test_a_schema_changed_without_regenerating_is_stale_and_named(
     code, error = check(generated, capsys)
     assert code == 1, "a stale input passed the check"
     assert "m.yaml" in error, "the changed schema is not named"
-    assert "make generate" in error, "the fixing command is not named"
+    assert DEFAULT_HINT in error, "the fixing command is not named"
 
 
 def test_a_generated_file_edited_by_hand_is_named(
@@ -113,7 +116,7 @@ def test_a_generated_file_edited_by_hand_is_named(
     code, error = check(generated, capsys)
     assert code == 1, "an edited output passed the check"
     assert OUTPUT in error, "the edited file is not named"
-    assert "make generate" in error, "the fixing command is not named"
+    assert DEFAULT_HINT in error, "the fixing command is not named"
 
 
 def test_a_missing_output_is_named(generated: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -128,7 +131,7 @@ def test_a_project_never_generated_fails_the_check(
 ) -> None:
     code, error = check(project(tmp_path), capsys)
     assert code == 1, "a project without a manifest passed the check"
-    assert "make generate" in error, "the fixing command is not named"
+    assert DEFAULT_HINT in error, "the fixing command is not named"
 
 
 def test_a_changed_linkml_version_is_stale(
@@ -186,3 +189,112 @@ def test_nested_target_folders_keep_each_manifest_apart(tmp_path: Path) -> None:
         "the outer manifest lists the inner"
     )
     assert (tmp_path / "app/generated/part/rp-manifest.json").is_file(), "no inner manifest"
+
+
+NAMED = 'regenerate-command = "make generate-models"\n'
+TWO_COMMANDS = """
+[[tool.rp-generate]]
+schema = "m.yaml"
+package = "app.generated"
+regenerate-command = "make a"
+
+[[tool.rp-generate]]
+schema = "part.yaml"
+package = "app.generated.part"
+regenerate-command = "make b"
+"""
+
+
+def stale(tmp_path: Path, pyproject: str, *changed: str) -> Path:
+    """A generated project (schemas m.yaml and part.yaml) whose ``changed`` schemas then change."""
+    path = project(tmp_path, SCHEMA, pyproject)
+    (tmp_path / "part.yaml").write_text(PART, encoding="utf-8")
+    assert main(["--project", str(path)]) == 0, "the project must generate"
+    for name in changed:
+        file = tmp_path / name
+        file.write_text(file.read_text() + "# changed\n", encoding="utf-8")
+    return path
+
+
+def test_without_a_command_the_hint_names_rp_generate(
+    generated: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (generated.parent / "m.yaml").write_text(SCHEMA + "# changed\n", encoding="utf-8")
+    _, error = check(generated, capsys)
+    assert error.rstrip().endswith(DEFAULT_HINT), "the default command is not the hint"
+
+
+def test_an_entry_names_its_own_command_in_the_hint(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = stale(tmp_path, PYPROJECT + NAMED, "m.yaml")
+    _, error = check(path, capsys)
+    assert error.rstrip().endswith("run `make generate-models` to regenerate, then commit the result"), "the entry's command is not named"
+    assert "rp-generate`" not in error, "the default is named beside the entry's command"
+
+
+def test_the_hint_names_the_command_of_each_stale_entry_only(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = stale(tmp_path, TWO_COMMANDS, "m.yaml", "part.yaml")
+    assert check(path, capsys)[1].rstrip().endswith("run `make a` or `make b` to regenerate, then commit the result"), "both not named"
+    (tmp_path / "other").mkdir()
+    path = stale(tmp_path / "other", TWO_COMMANDS, "part.yaml")
+    assert check(path, capsys)[1].rstrip().endswith("run `make b` to regenerate, then commit the result"), "a fresh entry's is named"
+
+
+def test_stale_targets_lists_only_the_targets_with_problems(
+    tmp_path: Path,
+) -> None:
+    path = stale(tmp_path, TWO_COMMANDS, "part.yaml")
+    targets = read_targets(path)
+    ((target, problems),) = manifest_module.stale_targets(targets, tmp_path)
+    assert target.regenerate_command == "make b", "the fresh target is listed"
+    assert problems, "a stale target has no problem"
+    assert manifest_module.freshness_problems(targets, tmp_path) == problems, "not the flattening"
+
+
+def test_fix_hint_dedupes_commands_in_entry_order() -> None:
+    targets = [
+        GenerationTarget(schema_file="a", package="a", regenerate_command=c)
+        for c in ("make b", None, "make b", "make a")
+    ]
+    assert manifest_module.fix_hint(targets) == "run `make b` or `rp-generate` or `make a` to regenerate, then commit the result"
+
+
+def test_two_stale_entries_with_the_same_command_name_it_once(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = stale(tmp_path, TWO_COMMANDS.replace("make b", "make a"), "m.yaml", "part.yaml")
+    _, error = check(path, capsys)
+    assert error.count("to regenerate, then commit the result") == 1, "not exactly one hint"
+    assert error.rstrip().endswith("run `make a` to regenerate, then commit the result"), "the shared command is not named once"
+
+
+def test_a_stale_entry_without_a_command_and_one_with_name_both(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    mixed = TWO_COMMANDS.replace('regenerate-command = "make a"\n', "")
+    path = stale(tmp_path, mixed, "m.yaml", "part.yaml")
+    assert check(path, capsys)[1].rstrip().endswith("run `rp-generate` or `make b` to regenerate, then commit the result"), "not both"
+
+
+def test_the_installed_rp_generate_command_exits_1_and_hints_the_entry_command(
+    tmp_path: Path,
+) -> None:
+    path = stale(tmp_path, PYPROJECT + NAMED, "m.yaml")
+    command = Path(sys.executable).parent / "rp-generate"
+    done = subprocess.run(
+        [str(command), "--project", str(path), "--check"], capture_output=True, text=True
+    )
+    assert done.returncode == 1, f"exit code {done.returncode}: {done.stderr}"
+    assert done.stderr.rstrip().endswith("run `make generate-models` to regenerate, then commit the result"), "the hint is not last"
+    assert done.stdout == "", "a failed check wrote to stdout"
+
+
+def test_a_fresh_project_through_the_installed_command_exits_0_silently(generated: Path) -> None:
+    command = Path(sys.executable).parent / "rp-generate"
+    done = subprocess.run(
+        [str(command), "--project", str(generated), "--check"], capture_output=True, text=True
+    )
+    assert (done.returncode, done.stderr) == (0, ""), "a fresh check was not silent success"

@@ -1,5 +1,6 @@
 """The [tool.rp-generate] configuration (PD-18) becomes GenerationTarget models."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -91,3 +92,62 @@ def test_the_components_are_written_unless_an_entry_switches_them_off(tmp_path: 
     (default,) = read(tmp_path, SINGLE)
     (quiet,) = read(tmp_path, SINGLE + "openapi = false\n")
     assert (default.openapi, quiet.openapi) == (True, False), "on by default, off by the entry"
+
+
+def test_the_regenerate_command_is_read_from_its_toml_key(tmp_path: Path) -> None:
+    (named,) = read(tmp_path, SINGLE + 'regenerate-command = "make generate-models"\n')
+    (unnamed,) = read(tmp_path, SINGLE)
+    assert named.regenerate_command == "make generate-models", "the key was not read"
+    assert unnamed.regenerate_command is None, "an absent key is not None"
+
+
+def test_a_regenerate_command_that_is_not_a_string_is_an_error_naming_the_toml_key(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(ConfigError, match="regenerate-command"):
+        read(tmp_path, SINGLE + "regenerate-command = 3\n")
+
+
+def test_the_regenerate_command_is_not_a_flag() -> None:
+    assert "regenerate_command" not in {f.field for f in cli_flags()}, "it became an rp-generate flag"
+
+
+def test_a_regenerate_command_spelt_with_an_underscore_is_refused_naming_the_key(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(ConfigError, match="regenerate_command"):
+        read(tmp_path, SINGLE + 'regenerate_command = "make generate-models"\n')
+
+
+def test_a_schema_file_spelt_with_an_underscore_is_refused_naming_the_key(tmp_path: Path) -> None:
+    with pytest.raises(ConfigError, match="schema_file"):
+        read(tmp_path, SINGLE.replace('schema = "m.yaml"', 'schema_file = "m.yaml"'))
+
+
+@pytest.mark.parametrize("command", ["", "   ", "make a\nmake b", "make `x`"])
+def test_a_regenerate_command_that_is_blank_multiline_or_backticked_is_refused(
+    tmp_path: Path, command: str
+) -> None:
+    with pytest.raises(ConfigError, match="regenerate-command"):
+        read(tmp_path, SINGLE + f"regenerate-command = {json.dumps(command)}\n")
+
+
+def test_make_generate_models_is_an_accepted_regenerate_command(tmp_path: Path) -> None:
+    (target,) = read(tmp_path, SINGLE + 'regenerate-command = "make generate-models"\n')
+    assert target.regenerate_command == "make generate-models", "a plain command was refused"
+
+
+def test_the_regenerate_command_flag_is_refused_by_the_parser(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        build_parser().parse_args(["--regenerate-command", "make x"])
+    assert exit_info.value.code == 2, "the parser accepted --regenerate-command"
+    assert "--regenerate-command" in capsys.readouterr().err, "the flag is not named"
+
+
+def test_each_row_of_several_entries_keeps_its_own_regenerate_command(tmp_path: Path) -> None:
+    first, second = read(
+        tmp_path, SEVERAL.replace('package = "app.a"', 'package = "app.a"\nregenerate-command = "x"')
+    )
+    assert (first.regenerate_command, second.regenerate_command) == ("x", None), "rows mixed up"

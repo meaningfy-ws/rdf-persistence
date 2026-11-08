@@ -12,7 +12,8 @@ import pytest
 
 from rdf_persistence.generation.config import read_targets
 from rdf_persistence.generation.exceptions import ConfigError
-from rdf_persistence.generation.manifest import FIX_HINT, freshness_problems
+from rdf_persistence.generation.generated.rp_generation import GenerationTarget
+from rdf_persistence.generation.manifest import fix_hint, stale_targets
 from rdf_persistence.generation.problems import format_problem
 
 PROJECTS_OPTION = "rp_generate_projects"
@@ -28,21 +29,25 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
-def _project_problems(project: Path) -> list[str]:
+def _project_report(project: Path) -> tuple[list[str], list[GenerationTarget]]:
+    """The report lines of ``project`` and its stale targets (none when its configuration is wrong)."""
     try:
-        found = freshness_problems(read_targets(project), project.parent)
+        stale = stale_targets(read_targets(project), project.parent)
     except ConfigError as error:
-        return [str(error)]
-    return [format_problem(problem) for problem in found]
+        return [str(error)], []
+    lines = [format_problem(problem) for _, problems in stale for problem in problems]
+    return lines, [target for target, _ in stale]
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:
     config = session.config
     projects = config.getini(PROJECTS_OPTION) or [DEFAULT_PROJECT]
-    lines = [
-        f"{project}: {problem}"
-        for project in projects
-        for problem in _project_problems(config.rootpath / project)
-    ]
+    lines: list[str] = []
+    stale: list[GenerationTarget] = []
+    for project in projects:
+        project_lines, project_stale = _project_report(config.rootpath / project)
+        lines += [f"{project}: {line}" for line in project_lines]
+        stale += project_stale
     if lines:
-        pytest.exit("\n".join(["generated code is not fresh:", *lines, FIX_HINT]), returncode=1)
+        hint = [fix_hint(stale)] if stale else []  # a configuration error gets none (PD-6)
+        pytest.exit("\n".join(["generated code is not fresh:", *lines, *hint]), returncode=1)
