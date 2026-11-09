@@ -143,6 +143,7 @@ def test_every_rule_has_a_row_in_the_table() -> None:
     assert {f.rule for f in FAULTS} == set(BoundaryRule), "a boundary rule has no planted fault"
 
 
+@pytest.mark.slow
 def test_a_domain_module_importing_the_access_module_names_both_modules(
     break_toy: Breaker, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -208,6 +209,7 @@ def add_api_module(toy: Path, kind: str) -> Path:
     return root
 
 
+@pytest.mark.slow
 def test_a_class_of_a_technical_module_needs_no_owning_root(toy_copy: Path) -> None:
     add_api_module(toy_copy, "technical")
     assert main(["--project", str(toy_copy / "pyproject.toml")]) == 0, "rp-generate must succeed"

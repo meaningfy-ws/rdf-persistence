@@ -992,6 +992,7 @@ def _http_403(old, new, who) -> None:
         raise HTTPException(status_code=403)
 
 
+@pytest.mark.slow
 async def test_a_validator_that_returns_a_value_or_raises_forbidden_is_a_500_and_nothing_is_written() -> (
     None
 ):  # R2-2, R2-3

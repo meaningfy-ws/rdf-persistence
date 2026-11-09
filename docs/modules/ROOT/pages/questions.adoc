@@ -95,6 +95,12 @@ check rule is a value in `rp_generation.yaml`, its code in `checks/` and two tes
 xref:develop/index.adoc#add-or-change-a-generator-extension[Add or change a generator extension]
 and xref:develop/index.adoc#add-a-check-rule[Add a check rule].
 
+*Which tests do I run while developing?*::
+`make test-changed`: it runs the tests of the files you changed against `develop`, in a few seconds to a minute. When
+you are unsure what a change reaches, run `make test-fast` (about 3 minutes). `make check-all`
+comes once, before the PR. See xref:develop/index.adoc#make-targets[Make targets] and
+xref:develop/testing.adoc#slow[Slow tests].
+
 *How do I run the checks, and how long do they take?*::
 `make check-all` before every PR (about 6 minutes), and `make test-containers` when you touch
 adapters or containers (about 3.5 minutes, needs Docker). See

@@ -3,6 +3,8 @@
 import shutil
 from pathlib import Path
 
+import pytest
+
 from rdf_persistence.generation.cli import main
 
 from .conftest import TOY
@@ -12,6 +14,7 @@ def _files(folder: Path) -> set[str]:
     return {p.relative_to(folder).as_posix() for p in folder.rglob("*") if p.is_file()}
 
 
+@pytest.mark.slow
 def test_typescript_goes_to_the_declared_folder_and_nowhere_else(tmp_path: Path) -> None:
     project = tmp_path / "library"
     shutil.copytree(TOY, project, ignore=shutil.ignore_patterns("generated", "golden", "web"))
@@ -31,6 +34,7 @@ def test_typescript_goes_to_the_declared_folder_and_nowhere_else(tmp_path: Path)
     )
 
 
+@pytest.mark.slow
 def test_a_flag_overrides_the_table(tmp_path: Path) -> None:
     project = tmp_path / "library"
     shutil.copytree(TOY, project, ignore=shutil.ignore_patterns("generated", "golden", "web"))

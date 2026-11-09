@@ -129,6 +129,7 @@ def test_no_declared_type_name_is_exported_by_two_files(toy_copy: Path) -> None:
             seen[declared] = name
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("clash", ["Page", "Problem"])
 def test_a_consumer_class_named_like_a_service_type_is_refused_naming_the_clash(
     toy_copy: Path, clash: str, capsys: pytest.CaptureFixture[str]
@@ -153,6 +154,7 @@ def test_a_consumer_enum_named_like_a_service_enum_is_refused(
     assert enum in capsys.readouterr().err, "the clashing enum is not named"
 
 
+@pytest.mark.slow
 def test_a_consumer_module_named_rp_service_is_refused_naming_the_module(
     toy_copy: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -164,6 +166,7 @@ def test_a_consumer_module_named_rp_service_is_refused_naming_the_module(
     assert "rp_service" in error and "reserved" in error, f"the reason is not given: {error}"
 
 
+@pytest.mark.slow
 def test_a_clashing_name_is_allowed_when_the_target_renders_no_typescript(
     toy_copy: Path,
 ) -> None:
@@ -379,6 +382,7 @@ def test_the_service_schema_is_an_input_of_the_toy_manifest() -> None:
     )
 
 
+@pytest.mark.slow
 def test_a_toy_generation_writes_rp_service_ts(toy_copy: Path) -> None:
     assert main(["--project", str(toy_copy / "pyproject.toml")]) == 0, "must generate"
     written = list(toy_copy.rglob("rp_service.ts"))

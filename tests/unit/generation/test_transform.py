@@ -4,6 +4,8 @@ import ast
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 from rdf_persistence.generation.cli import main
 from rdf_persistence.services.components import read_components
 from rdf_persistence.testkit.model_shape import model_schema_diff
@@ -50,6 +52,7 @@ def test_a_root_inheriting_from_an_abstract_root_builds_without_a_description(
     assert model_schema_diff(components, models) == [], "Python and JSON Schema agree"
 
 
+@pytest.mark.slow
 def test_the_generated_toy_classes_reflect_the_transform(toy_copy: Path) -> None:
     assert main(["--project", str(toy_copy / "pyproject.toml")]) == 0, "the toy must generate"
     tree = ast.parse((toy_copy / "generated" / "books.py").read_text(encoding="utf-8"))

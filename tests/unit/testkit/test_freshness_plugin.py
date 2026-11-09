@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence.generation.cli import main
-
-from .test_freshness import DEFAULT_HINT, NAMED
-from .test_generate_cli import PYPROJECT, SCHEMA
+from rdf_persistence.testkit import freshness
+from tests.unit.generation.test_freshness import DEFAULT_HINT, NAMED
+from tests.unit.generation.test_generate_cli import PYPROJECT, SCHEMA
 
 CONFTEST = 'pytest_plugins = ["rdf_persistence.testkit.freshness"]\n'
 TEST = "def test_it():\n    assert True\n"
@@ -31,10 +31,12 @@ def session(pytester: pytest.Pytester) -> pytest.Pytester:
     return pytester
 
 
+@pytest.mark.slow
 def test_a_fresh_project_lets_the_tests_run(session: pytest.Pytester) -> None:
     session.runpytest().assert_outcomes(passed=1)
 
 
+@pytest.mark.slow
 def test_a_schema_changed_without_regenerating_stops_the_session_before_any_test(
     session: pytest.Pytester,
 ) -> None:
@@ -46,6 +48,7 @@ def test_a_schema_changed_without_regenerating_stops_the_session_before_any_test
     assert "test_it" not in result.stdout.str(), "a test ran in a stale session"
 
 
+@pytest.mark.slow
 def test_a_hand_edited_generated_file_stops_the_session_and_is_named(
     session: pytest.Pytester,
 ) -> None:
@@ -56,6 +59,7 @@ def test_a_hand_edited_generated_file_stops_the_session_and_is_named(
     result.stdout.fnmatch_lines(["*app/generated/m.py*"])
 
 
+@pytest.mark.slow
 def test_every_listed_project_is_checked(session: pytest.Pytester) -> None:
     other = make_project(session.path / "other")
     (other / "m.yaml").write_text(SCHEMA + "# changed\n", encoding="utf-8")
@@ -65,6 +69,7 @@ def test_every_listed_project_is_checked(session: pytest.Pytester) -> None:
     result.stdout.fnmatch_lines(["*other*m.yaml*"])
 
 
+@pytest.mark.slow
 def test_a_listed_project_without_targets_stops_the_session(session: pytest.Pytester) -> None:
     session.makeini(INI)
     result = session.runpytest()
@@ -80,6 +85,7 @@ def stop_text(session: pytest.Pytester) -> str:
     return result.stdout.str()
 
 
+@pytest.mark.slow
 def test_an_entry_names_its_own_command_in_the_hint(session: pytest.Pytester) -> None:
     (session.path / "pyproject.toml").write_text(PYPROJECT + NAMED, encoding="utf-8")
     assert main(["--project", str(session.path / "pyproject.toml")]) == 0
@@ -91,6 +97,7 @@ def test_an_entry_names_its_own_command_in_the_hint(session: pytest.Pytester) ->
     assert "`rp-generate`" not in text, "the default is named beside the entry's command"
 
 
+@pytest.mark.slow
 def test_several_stale_projects_print_one_hint_naming_each_command_once(
     session: pytest.Pytester,
 ) -> None:
@@ -107,6 +114,7 @@ def test_several_stale_projects_print_one_hint_naming_each_command_once(
     ), "a command is missing"
 
 
+@pytest.mark.slow
 def test_a_configuration_error_stops_the_session_without_a_hint(session: pytest.Pytester) -> None:
     (session.path / "pyproject.toml").write_text(PYPROJECT + "colour = 'red'\n", encoding="utf-8")
     text = stop_text(session)
@@ -114,6 +122,7 @@ def test_a_configuration_error_stops_the_session_without_a_hint(session: pytest.
     assert "to regenerate" not in text, "a configuration error suggests regenerating"
 
 
+@pytest.mark.slow
 def test_a_stale_project_and_a_configuration_error_hint_only_the_stale_command(
     session: pytest.Pytester,
 ) -> None:
@@ -127,6 +136,7 @@ def test_a_stale_project_and_a_configuration_error_hint_only_the_stale_command(
     assert DEFAULT_HINT in text, "the stale project's command is not hinted"
 
 
+@pytest.mark.slow
 def test_a_configuration_error_beside_a_fresh_project_stops_the_session_without_a_hint(
     session: pytest.Pytester,
 ) -> None:
@@ -138,6 +148,7 @@ def test_a_configuration_error_beside_a_fresh_project_stops_the_session_without_
     assert "to regenerate" not in text, "a fresh project and an error suggest regenerating"
 
 
+@pytest.mark.slow
 def test_a_non_string_command_stops_the_session_naming_the_toml_key(
     session: pytest.Pytester,
 ) -> None:
@@ -145,3 +156,61 @@ def test_a_non_string_command_stops_the_session_naming_the_toml_key(
     text = stop_text(session)
     assert "regenerate-command" in text, "the TOML key is not named"
     assert "to regenerate" not in text, "a configuration error suggests regenerating"
+
+
+def test_an_xdist_worker_does_not_check_again() -> None:
+    """The controller checked before any worker started (PD-7), so a worker returns at once."""
+
+    class Config:
+        workerinput = {"workerid": "gw0"}
+
+        def getini(self, name: str) -> list[str]:
+            raise AssertionError(f"a worker read the ini option {name!r}")
+
+    class Session:
+        config = Config()
+
+    freshness.pytest_sessionstart(Session())  # type: ignore[arg-type]
+
+
+@pytest.mark.slow
+def test_a_stale_project_on_several_workers_stops_the_session_once(
+    session: pytest.Pytester,
+) -> None:
+    (session.path / "m.yaml").write_text(SCHEMA + "# changed\n", encoding="utf-8")
+    result = session.runpytest_subprocess("-n", "2")
+    assert result.ret == 1, "the session did not stop with exit code 1"
+    out = result.stdout.str()
+    assert out.count("generated code is not fresh") == 1, f"not stopped exactly once:\n{out}"
+    assert "gw0" not in out + result.stderr.str(), "a worker started on a stale tree"
+    assert "test_it" not in out, "a test ran in a stale session"
+
+
+COUNTING_CONFTEST = (
+    CONFTEST
+    + """
+from pathlib import Path
+
+from rdf_persistence.testkit import freshness
+
+_checked = freshness._project_report
+
+
+def _counted(project):
+    with (Path(__file__).parent / "checks.log").open("a") as log:
+        log.write(f"{project}\\n")
+    return _checked(project)
+
+
+freshness._project_report = _counted
+"""
+)
+
+
+@pytest.mark.slow
+def test_a_fresh_project_on_several_workers_is_checked_once(session: pytest.Pytester) -> None:
+    session.makeconftest(COUNTING_CONFTEST)
+    result = session.runpytest_subprocess("-n", "2")
+    result.assert_outcomes(passed=1)
+    checks = (session.path / "checks.log").read_text().splitlines()
+    assert len(checks) == 1, f"one listed project must be checked once in all, got {checks}"

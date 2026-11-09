@@ -51,6 +51,7 @@ def test_the_toy_python_output_equals_the_committed_tree(tmp_path: Path) -> None
     assert_matches_toy(run_toy(PYTHON_STEP, tmp_path), "generated/*.py")
 
 
+@pytest.mark.slow
 def test_one_module_is_written_per_schema_module(generated_toy: Path) -> None:
     written = sorted(p.name for p in generated_toy.glob("*.py"))
     assert written == TOY_MODULES, "the split run must write one module per schema module"

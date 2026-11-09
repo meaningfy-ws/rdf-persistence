@@ -33,6 +33,7 @@ def ignored(shapes: Graph, shape: str) -> set[URIRef]:
     return set(Collection(shapes, node))  # type: ignore[arg-type]
 
 
+@pytest.mark.slow
 def test_the_toy_shapes_equal_the_committed_tree(tmp_path: Path) -> None:
     assert_matches_toy(run_toy(SHAPES_STEP, tmp_path), "generated/shapes.ttl")
 

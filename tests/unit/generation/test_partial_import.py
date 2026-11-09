@@ -32,6 +32,7 @@ def partial(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return project
 
 
+@pytest.mark.slow
 def test_the_application_class_is_generated(partial: Path) -> None:
     assert "class Shelf(" in (partial / OUTPUTS["classes"]).read_text(), "the class is missing"
 

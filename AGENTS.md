@@ -120,9 +120,11 @@ people is [`develop/agents.adoc`](docs/modules/ROOT/pages/develop/agents.adoc); 
   run with its time and test count.
 - **Gates.** Before a task is handed out, the lead runs gitnexus impact (stop and report
   HIGH/CRITICAL; subagents have no gitnexus tools, so briefs never ask for it). Per task the
-  builder runs the gates listed in `develop/agents.adoc` and reports each with its time and
-  test count; the lead re-runs `make check-quality` and reads the diff. After a red run, re-run
-  only the failing tests until green, then the full run once. The full suite (`make check-all`,
+  builder runs the gates listed in `develop/agents.adoc` (`make test-changed`, which falls back to
+  `make test-fast`; after changing `domain` or a port in `services`, `make test-fast`;
+  `make check-quality`, `make clean-code`) and reports each with its time and test count; the
+  lead re-runs `make check-quality` and reads the diff. After a red run, re-run only the failing
+  tests until green, then the full run once. The full suite (`make check-all`,
   `make test-containers`) runs once, before the PR.
 - **Challenge, scaled to keep it cheap** (developer, 2026-11-09). The adversarial tester runs right
   after the riskiest task (new invariants, write order, concurrency), not only at the end; review

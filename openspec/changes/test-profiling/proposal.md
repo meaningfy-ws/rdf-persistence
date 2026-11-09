@@ -4,6 +4,8 @@
 
 # EPIC: Profile the slowest tests and checks
 
+> Superseded by `test-lanes` (2026-11-09), which folds in its requirement (DEC-1).
+
 > Candidate EPIC, shaped 2026-11-06 from the v1 future list. Not planned: the PLAN (design.md, tasks.md) waits for the developer's answers in inputs/seed.md.
 
 **Golden-thread parent:** the timings table "How long the checks take" in

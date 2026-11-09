@@ -16,6 +16,9 @@ so no test file needs to decorate itself and the ``-m`` filters in the Makefile
 
 The test-type markers are registered in ``pytest.ini``; the container markers are registered by
 the fixtures plugin (``--strict-markers`` is on, so an unregistered marker is an error).
+
+``slow`` is the exception: it is not stamped by path. Put ``@pytest.mark.slow`` on the test itself
+(see ``develop/testing.adoc``).
 """
 
 from dataclasses import dataclass
