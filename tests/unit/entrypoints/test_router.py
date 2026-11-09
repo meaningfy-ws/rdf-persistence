@@ -12,7 +12,7 @@ from pyld import jsonld
 from rdflib import Graph
 from rdflib.compare import graph_diff, isomorphic
 
-from rdf_persistence import GrantSet, InvalidBody, Page, TenantSummary
+from rdf_persistence import Forbidden, GrantSet, InvalidBody, Page, TenantSummary
 from rdf_persistence.domain.generated.rp_access import (
     Action,
     Grant,
@@ -25,7 +25,7 @@ from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.entrypoints.negotiation import RECORD_ETAG
 from rdf_persistence.services import vocabulary
 from rdf_persistence.services.access import AccessRules, load_role_definitions
-from tests.toy import ROLES, SETTINGS
+from tests.toy import ROLES, SETTINGS, keep_a_librarian
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 from tests.unit.entrypoints.scene import NIL, PROBLEMS, Scene, problem_of
 
@@ -801,11 +801,6 @@ async def _scene_validated(**validators) -> AsyncIterator[Scene]:
         yield await Scene.set_up(toy, http)
 
 
-def _keep_a_librarian(old, new, who) -> None:
-    if not any(g.role == "librarian" for g in new.grants or []):
-        raise InvalidBody("a library keeps at least one librarian")
-
-
 async def _empty_grants(scene: Scene) -> httpx.Response:
     return await scene.http.put(
         f"{scene.tenant}/grants",
@@ -815,7 +810,7 @@ async def _empty_grants(scene: Scene) -> httpx.Response:
 
 
 async def test_a_refusing_grant_validator_is_a_422_and_the_record_keeps_its_etag() -> None:  # T-20
-    async with _scene_validated(grant_validators=[_keep_a_librarian]) as scene:
+    async with _scene_validated(grant_validators=[keep_a_librarian]) as scene:
         refused = await _empty_grants(scene)
         assert (refused.status_code, problem_of(refused).type) == (
             422,
@@ -849,7 +844,10 @@ async def test_a_validator_bug_is_a_500_and_a_pydantic_error_a_422_and_nothing_i
         assert grants.headers["etag"] == scene.access_etag, "nothing written after the bug"
     async with _scene_validated(grant_validators=[_not_valid]) as scene:
         invalid = await _empty_grants(scene)
-        assert invalid.status_code == 422, invalid.text
+        assert (invalid.status_code, problem_of(invalid).type) == (
+            422,
+            f"{PROBLEMS}invalid-body",
+        ), invalid.text
         grants = await scene.http.get(f"{scene.tenant}/grants", headers=scene.headers("ada"))
         assert grants.headers["etag"] == scene.access_etag, "nothing written after the 422"
 
@@ -869,6 +867,7 @@ async def test_a_refusing_root_validator_on_a_root_put_leaves_the_root_unchanged
             422,
             f"{PROBLEMS}invalid-body",
         ), refused.text
+        assert problem_of(refused).detail == "no Bruges", "the validator's own message"
         root = await scene.http.get(scene.tenant, headers=scene.headers("ada"))
         assert (root.json()["city"], root.headers["etag"]) == ("Ghent", scene.root_etag), (
             "the root is as it was"
@@ -889,3 +888,43 @@ async def test_a_root_validator_on_a_root_put_sees_the_stored_root_and_the_body(
         assert (old.city, new.city, who.id) == ("Ghent", "Bruges", principal_of("ada")), (
             "old is the stored root, new the decoded body"
         )
+
+
+def _returns_false(old, new, who) -> bool | None:
+    return False if not new.grants else None
+
+
+def _forbids(old, new, who) -> None:
+    if not new.grants:
+        raise Forbidden("no")
+
+
+async def test_a_validator_that_returns_a_value_or_raises_forbidden_is_a_500_and_nothing_is_written() -> (
+    None
+):  # R2-2, R2-3
+    for validator in (_returns_false, _forbids):
+        async with _scene_validated(grant_validators=[validator]) as scene:
+            broken = await _empty_grants(scene)
+            assert (broken.status_code, problem_of(broken).type) == (
+                500,
+                f"{PROBLEMS}internal-error",
+            ), broken.text
+            grants = await scene.http.get(f"{scene.tenant}/grants", headers=scene.headers("ada"))
+            assert grants.headers["etag"] == scene.access_etag, "nothing written"
+
+
+async def test_a_refusal_on_create_is_a_422_with_its_detail_and_no_tenant_is_listed() -> None:
+    def refuse(old, new, who) -> None:
+        raise InvalidBody("no such library")
+
+    toy = ToyService(root_validators=[refuse])
+    async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
+        headers = toy.bearer("ada")
+        refused = await http.post("/libraries", json=TENANT_BODY, headers=headers)
+        assert (refused.status_code, problem_of(refused).type) == (
+            422,
+            f"{PROBLEMS}invalid-body",
+        ), refused.text
+        assert problem_of(refused).detail == "no such library", "the validator's own message"
+        listed = await http.get("/libraries", headers=headers)
+        assert listed.json()["items"] == [], "no tenant was made"

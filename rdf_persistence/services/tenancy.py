@@ -7,6 +7,7 @@ the bucket and removes the record; any later attempt, or the sweep, finishes wha
 Work the toolkit does on its own behalf is attributed to ``{base}toolkit``.
 """
 
+import inspect
 import logging
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, suppress
@@ -94,8 +95,8 @@ class Tenancy:
         self._access_class = access_class
         self._clock = clock
         self._system = system_database_name(settings.prefix)
-        self._grant_validators = tuple(grant_validators)
-        self._root_validators = tuple(root_validators)
+        self._grant_validators = _plain(grant_validators)
+        self._root_validators = _plain(root_validators)
         self._toolkit = Principal(id=str(toolkit_principal_iri(settings.base)))
 
     def _session(
@@ -188,7 +189,7 @@ class Tenancy:
         )
         tenant_root = self._root_class.model_validate({**root_slots, LABEL: label, "id": tenant})
         refuse_internal(self._mapper.to_graph(tenant_root), self._internal)
-        _run(self._root_validators, None, tenant_root, creator)
+        _run_validators(self._root_validators, None, tenant_root, creator)
         await self._store.create_dataset(name)
         _log_step("create-database", tenant, name)
         await self._files.create_bucket(name)
@@ -283,7 +284,7 @@ class Tenancy:
             root = await work.get(self._root_class, tenant)
             old = root.model_copy(deep=True)
             setattr(root, LABEL, label)  # every root is Described and has a label
-            _run(self._root_validators, old, root, principal)
+            _run_validators(self._root_validators, old, root, principal)
             work.add(root)
             await work.commit()
 
@@ -310,7 +311,12 @@ class Tenancy:
         if self._root_validators:
             async with self.tenant_session(tenant, principal) as session:
                 stored = await UnitOfWork(session, self._mapper).get(self._root_class, tenant)
-            _run(self._root_validators, stored, sent, principal)
+            # the replace keeps the stored root's internal slots (Aggregates.replace), so old and new compare like for like
+            for statement in self._mapper.to_graph(stored):
+                if statement[1] in self._internal:
+                    graph.add(statement)
+            sent = self._mapper.from_graph(self._root_class, tenant, graph, graph_iri(tenant))
+            _run_validators(self._root_validators, stored, sent, principal)
 
     async def set_grants(
         self, tenant: str, grants: GrantSet, if_version: str, principal: Principal
@@ -323,7 +329,7 @@ class Tenancy:
             InvalidBody: A grant validator refuses ``grants``; nothing changed.
         """
         record, _ = await self.get(tenant)
-        _run(
+        _run_validators(
             self._grant_validators,
             GrantSet(grants=record.grants, prohibitions=record.prohibitions),
             grants,
@@ -434,10 +440,39 @@ class Tenancy:
         return {record.database_name for record in await self._records()}
 
 
-def _run(validators: Sequence[Callable[..., None]], *args: Any) -> None:
-    """Run ``validators`` in order on ``args``; the first to raise stops the write."""
+def _plain(validators: Sequence[Callable[..., None]]) -> tuple[Callable[..., None], ...]:
+    """``validators`` as a tuple, refusing a coroutine function: it would never be awaited, so it would always pass."""
+    kept = tuple(validators)
+    for validator in kept:
+        if inspect.iscoroutinefunction(validator) or inspect.iscoroutinefunction(
+            getattr(validator, "__call__", None)  # noqa: B004 - a callable object's own method
+        ):
+            raise TypeError(f"a validator is a plain function, not async: {validator!r}")
+    return kept
+
+
+def _run_validators(
+    validators: Sequence[Callable[..., None]], old: Any, new: Any, who: Any
+) -> None:
+    """Run ``validators`` in order on copies of ``old`` and ``new``; the first to refuse stops the write.
+
+    Validators only refuse: what they do to their arguments is never written. ``InvalidBody`` and pydantic's
+    ``ValidationError`` pass as they are (422). A validator that returns anything, or raises another toolkit
+    error, is a bug in it: ``TypeError``, or ``RuntimeError`` chained to the error, both a 500.
+    """
     for validator in validators:
-        validator(*args)
+        try:
+            result: object = validator(
+                None if old is None else old.model_copy(deep=True), new.model_copy(deep=True), who
+            )
+        except (InvalidBody, ValidationError):
+            raise
+        except PersistenceError as error:
+            raise RuntimeError(f"a validator raised {type(error).__name__}: {error}") from error
+        if result is not None:
+            if inspect.iscoroutine(result):
+                result.close()  # never awaited: no warning
+            raise TypeError(f"a validator returns None or raises, not {result!r}")
 
 
 def _log_step(step: str, tenant: str, resource: str) -> None:
