@@ -156,13 +156,13 @@ comes later.
 |===
 |Target |Tests |Time |Measured |Notes
 
-|`make check-all` |3450 |≈ 7 min |2026-11-09, mwb2-adoption-fixes stage 1
-|Its pytest part takes ≈ 6 min in parallel, up from ≈ 3 min 45 s on 2026-11-08 (more router and
-tenancy tests, and the wheel build and mypy run of `test_packaging.py`). The quality checks
-(`make check-quality`) take ≈ 55 s and come before it.
+|`make check-all` |3507 |≈ 7 min |2026-11-09, mwb2-adoption-fixes stage 2
+|Its pytest part takes ≈ 5 min 45 s in parallel, up from ≈ 3 min 45 s on 2026-11-08 (more router
+and tenancy tests, and the wheel build and mypy run of `test_packaging.py`). The quality checks
+(`make check-quality`) take ≈ 40 to 55 s and come before it.
 
-|`make test-containers` |174 |≈ 3.5 min |2026-11-09, mwb2-adoption-fixes stage 1
-|The pytest part takes ≈ 3 min 10 s, container start-up included, with the Fuseki image already
+|`make test-containers` |174 |≈ 3.5 min |2026-11-09, mwb2-adoption-fixes stage 2
+|The pytest part takes ≈ 3 min 20 s, container start-up included, with the Fuseki image already
 loaded (`make fuseki-image`). Earlier, one run in four failed at start-up on a Docker Compose
 error; run it again.
 
