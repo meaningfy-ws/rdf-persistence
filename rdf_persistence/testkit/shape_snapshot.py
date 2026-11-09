@@ -18,7 +18,7 @@ def class_shapes(schema_paths: Iterable[str | Path]) -> list[ClassShape]:
 
     Mixins are included because the generated code has a class for each of them. A class that
     several closures share is listed once. The shapes are those of the schema after the generation
-    defaults (an unlabelled class's label, an aggregate root's description), as the code has them.
+    defaults (an unlabelled class's label), as the code has them.
     Classes and slots are sorted by name.
     """
     found: dict[str, ClassShape] = {}

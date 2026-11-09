@@ -7,7 +7,7 @@ from rdf_persistence.domain.exceptions import Forbidden, InvalidToken, NotFound
 from rdf_persistence.domain.generated.rp_access import Action, Prohibition
 from rdf_persistence.domain.iris import graph_iri
 from rdf_persistence.domain.media import JSON
-from tests.toy_service import SCAN_BODY, principal_of
+from tests.toy_service import principal_of, store_scan
 from tests.unit.entrypoints.scene import Scene
 
 
@@ -53,10 +53,8 @@ async def test_an_id_that_is_no_tenant_id_is_a_not_found(scene) -> None:
 
 
 async def scanned(scene: Scene) -> tuple[str, str]:
-    made = await scene.http.post(
-        f"{scene.tenant}/scans", json=SCAN_BODY, headers=scene.headers("ada")
-    )
-    return made.json()["id"], made.json()["id"].rsplit("/", 1)[-1]
+    scan = await store_scan(scene.service.kit, scene.tenant_iri, principal_of("ada"))
+    return scan.id, scan.id.rsplit("/", 1)[-1]
 
 
 async def test_an_aggregate_is_checked_and_its_iri_is_the_one_to_act_on(scene) -> None:

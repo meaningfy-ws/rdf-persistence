@@ -1,15 +1,16 @@
 """The model-shape snapshot: a model change fails until `make refresh-snapshot` acknowledges it (PD-27)."""
 
 import importlib
+import json
 import os
 import pkgutil
 from pathlib import Path
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from rdf_persistence.generation.generated.rp_generation import ClassShape, SlotShape
-from rdf_persistence.testkit.model_shape import model_shape_diff
+from rdf_persistence.testkit.model_shape import model_schema_diff, model_shape_diff
 from rdf_persistence.testkit.shape_snapshot import (
     class_shapes,
     read_snapshot,
@@ -238,3 +239,50 @@ def test_a_shape_without_a_generated_class_is_detected() -> None:
     shapes, models = toy_models_and_shapes()
     lines = model_shape_diff([*shapes, shape("Ghost", slot("x"))], models)
     assert any("Ghost" in ln for ln in lines), f"missed the missing class: {lines}"
+
+
+def toy_components() -> dict[str, dict]:
+    path = FIXTURES / "library" / "generated" / "openapi-components.json"
+    return json.loads(path.read_text(encoding="utf-8"))["schemas"]
+
+
+class Doc(BaseModel):
+    id: str
+    description: str = Field(...)
+
+
+def test_the_toy_python_and_json_schema_agree_on_what_is_required() -> None:
+    models = generated_models(TOY_PACKAGE) + generated_models(METAMODEL_PACKAGE)
+    assert model_schema_diff(toy_components(), models) == [], "Python and JSON Schema disagree"
+
+
+def test_a_required_field_the_json_schema_leaves_optional_is_detected() -> None:
+    components = {"Doc": {"properties": {"id": {}, "description": {}}, "required": ["id"]}}
+    assert model_schema_diff(components, [Doc]) == [
+        "required differs: Doc.description: required True in code, False in schema"
+    ], "one line naming the class and slot"
+
+
+def test_an_optional_field_the_json_schema_requires_is_detected() -> None:
+    class OptionalDoc(BaseModel):
+        id: str
+        description: str | None = None
+
+    components = {
+        "OptionalDoc": {
+            "properties": {"id": {}, "description": {}},
+            "required": ["id", "description"],
+        }
+    }
+    assert model_schema_diff(components, [OptionalDoc]) == [
+        "required differs: OptionalDoc.description: required False in code, True in schema"
+    ], "the reverse direction is caught too"
+
+
+def test_a_field_absent_from_the_component_is_skipped() -> None:
+    components = {"Doc": {"properties": {"id": {}}, "required": ["id"]}}
+    assert model_schema_diff(components, [Doc]) == [], "internal slots are not compared"
+
+
+def test_an_unlabelled_class_does_not_require_its_label_in_the_json_schema() -> None:
+    assert "label" not in toy_components()["Chapter"].get("required", []), "PD-8"

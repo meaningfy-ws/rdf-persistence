@@ -19,7 +19,6 @@ from rdf_persistence.testkit import TokenRefusedError, access_token, assert_publ
 from tests.e2e.world import World, running_world
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note
 from tests.fixtures.library.generated.library import Library
-from tests.fixtures.library.generated.scans import Scan
 from tests.toy_service import body_of
 
 JSON, JSON_LD, TURTLE = "application/json", "application/ld+json", "text/turtle"
@@ -189,23 +188,18 @@ async def test_a_stale_replace_is_409_and_the_current_etag_replaces(world, shelf
 
 async def test_a_scan_file_is_kept_in_the_tenants_bucket_and_referenced(world, shelf) -> None:
     http, callers = world.http, world.callers
-    scan = Scan.model_construct(
-        label="Dune, scanned",
-        description="A scanned copy.",
-        scan_of=shelf.book_iri,
-        file_name="dune.pdf",
-        media_type=SCAN_MEDIA_TYPE,
-        byte_size=len(SCAN_BYTES),
-        sha256=hashlib.sha256(SCAN_BYTES).hexdigest(),
-    )
     created = await http.post(
-        f"{shelf.path}/scans", json=body_of(scan), headers=callers.as_(LIBRARIAN)
+        f"{shelf.path}/scan-files",
+        params={"label": "Dune, scanned", "file_name": "dune.pdf", "scan_of": shelf.book_iri},
+        content=SCAN_BYTES,
+        headers=callers.as_(LIBRARIAN, **{"Content-Type": SCAN_MEDIA_TYPE}),
     )
     assert created.status_code == 201, created.text
     name = created.headers["location"].rsplit("/", 1)[-1]
     file_url = f"{shelf.path}/scan-files/{name}"
-    stored = await http.put(file_url, content=SCAN_BYTES, headers=callers.as_(LIBRARIAN))
-    assert stored.status_code == 204, stored.text
+    record = await http.get(created.headers["location"], headers=callers.as_(LIBRARIAN))
+    assert record.json()["sha256"] == hashlib.sha256(SCAN_BYTES).hexdigest(), "the record"
+    assert record.json()["scan_of"] == shelf.book_iri, "refers to its book"
     as_reader = await http.get(file_url, headers=callers.as_(READER))
     assert as_reader.content == SCAN_BYTES, "the reader gets the exact bytes"
     assert (await http.put(file_url, content=b"x", headers=callers.as_(READER))).status_code == 403

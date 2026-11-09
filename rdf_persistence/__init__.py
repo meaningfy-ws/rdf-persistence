@@ -54,6 +54,7 @@ from rdf_persistence.domain.generated.rp_core import (
     RegistryEntry,
     RegistryKind,
     RpAnnotation,
+    WritesKind,
 )
 from rdf_persistence.domain.generated.rp_files import (
     RdfFormat,
@@ -93,6 +94,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.adapters.s3 import S3FileStore
     from rdf_persistence.adapters.zitadel import ZitadelIdentity, zitadel_roles_claim
     from rdf_persistence.entrypoints.kit import ServiceKit
+    from rdf_persistence.entrypoints.router import limited_body
     from rdf_persistence.entrypoints.service import install_service
     from rdf_persistence.services.access import (
         AccessRules,
@@ -121,6 +123,7 @@ _LAZY_MODULES = {
     "zitadel_roles_claim": f"{_ADAPTERS}.zitadel",
     "install_service": f"{_ENTRYPOINTS}.service",
     "ServiceKit": f"{_ENTRYPOINTS}.kit",
+    "limited_body": f"{_ENTRYPOINTS}.router",
     "Identity": f"{_SERVICES}.identity",
     "AccessRules": f"{_SERVICES}.access",
     "load_caller_access": f"{_SERVICES}.access",
@@ -231,9 +234,11 @@ __all__ = [
     "UnknownRole",
     "UnsupportedMediaType",
     "VerifiedCaller",
+    "WritesKind",
     "ZitadelIdentity",
     "generated_models",
     "install_service",
+    "limited_body",
     "load_caller_access",
     "load_role_definitions",
     "load_schema",

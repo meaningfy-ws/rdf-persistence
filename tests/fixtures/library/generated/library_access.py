@@ -71,7 +71,7 @@ class LibraryAccess(TenantAccess):
     prohibitions: Optional[list[Prohibition]] = Field(default=None, title="Prohibitions", description="The actions forbidden in the tenant; they live in the access record\u0027s graph.")
     id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
     label: str = Field(default=..., title="Label", description="The preferred label of the object.")
-    description: str = Field(default=..., title="Description", description="A free-text description of the object.")
+    description: Optional[str] = Field(default=None, title="Description", description="A free-text description of the object.")
 
     @field_validator("database_name")
     def pattern_database_name(cls, v):

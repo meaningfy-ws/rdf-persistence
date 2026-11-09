@@ -49,7 +49,8 @@ from .rp_core import (
     Principal,
     RegistryEntry,
     RegistryKind,
-    RpAnnotation
+    RpAnnotation,
+    WritesKind
 )
 from .rp_files import (
     RdfFormat,

@@ -276,13 +276,10 @@ async def test_a_valid_body_passes_the_shapes(documents, book_class) -> None:
     await documents.validate(graph)
 
 
-async def test_a_body_without_the_required_description_is_refused_naming_the_slot(
-    documents, book_class
-) -> None:
+async def test_a_body_without_a_description_is_accepted(documents, book_class) -> None:
     body = {k: v for k, v in BOOK_JSON.items() if k != "description"}
     graph, _ = await parse(documents, encoded(body), JSON, book_class, BOOK, creating=True)
-    with pytest.raises(InvalidBody, match="description"):
-        await documents.validate(graph)
+    await documents.validate(graph)  # PD-1: a root's description is optional
 
 
 async def test_an_unknown_field_is_refused(documents, book_class) -> None:

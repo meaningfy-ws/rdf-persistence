@@ -283,8 +283,7 @@ book = Book(
     chapters=[Chapter(id="https://example.org/library/books/1/chapters/1", number=1)],
 )
 
-Book(id="https://example.org/library/books/2", label="No description")
-# ValidationError: description: Field required (an aggregate root must be described)
+Book(id="https://example.org/library/books/2", label="No description")  # valid: a description is optional
 
 book.chapters[0].number = "one"
 # ValidationError: number: Input should be a valid integer (checked on assignment too)
@@ -294,8 +293,8 @@ Book(id="https://example.org/library/books/3", label="L", description="D", isbn=
 ----
 
 The fields come from the schema. `author` and `chapters` are in `books.yaml`. The `Described`
-mixin adds `id`, `label` and `description`: `id` and `label` are required, and so is `description`
-on an aggregate root; a class annotated `rp_unlabelled: true` (`Chapter`) needs no `label`. The
+mixin adds `id`, `label` and `description`: `id` and `label` are required, `description` is optional
+everywhere, an aggregate root included; a class annotated `rp_unlabelled: true` (`Chapter`) needs no `label`. The
 `Tracked` mixin adds `created`, `modified`, `creator` and `contributor`: the session sets them
 (step 8), never you. `AggregateRoot` adds no field; it marks the class as a root.
 
@@ -502,13 +501,16 @@ you commit; a model change fails this test until you refresh the file and review
 [source,python]
 ----
 # tests/test_model.py (continued)
+import json
 import os
 
 from rdf_persistence.testkit import (
-    Conformance, class_shapes, model_shape_diff, read_snapshot, snapshot_diff, write_snapshot,
+    Conformance, class_shapes, model_schema_diff, model_shape_diff, read_snapshot, snapshot_diff,
+    write_snapshot,
 )
 
 SNAPSHOT = ROOT / "tests" / "model-shape.yaml"
+COMPONENTS = ROOT / "domain" / "generated" / "openapi-components.json"
 
 
 def test_the_model_shape_is_the_reviewed_one():
@@ -523,11 +525,18 @@ def test_the_generated_classes_follow_the_schema():
     # the schema's own classes; those it imports from the toolkit are the toolkit's to check
     shapes = [s for s in class_shapes([SCHEMA]) if s.class_name in models]
     assert model_shape_diff(shapes, models.values()) == []
+
+
+def test_python_and_json_schema_agree_on_what_is_required():
+    components = json.loads(COMPONENTS.read_text())["schemas"]
+    assert model_schema_diff(components, Conformance.of(SCHEMA).models.values()) == []
 ----
 
 Refresh it with `REFRESH_SNAPSHOT=1 uv run pytest tests/test_model.py`, then review the diff of
 `tests/model-shape.yaml` in your pull request. The second test compares each generated class with
-the schema's induced slots, so stale or edited code fails even before the snapshot does.
+the schema's induced slots, so stale or edited code fails even before the snapshot does. The third
+compares each class's required fields with the `required` list of its JSON Schema in
+`openapi-components.json`, so the Python and the API document cannot disagree on a required field.
 
 == 7. Change the model
 
@@ -775,7 +784,44 @@ library's `Scan` does. The bytes go to the tenant's bucket through the `FileStor
 `put(bucket, key, data)`, `get(bucket, key)` and `delete(bucket, key)`. The toolkit has no route
 for the bytes, so you add one. `file_key` is `internal`: no request body can set it and no response
 shows it, but a domain service can, since the mapper writes internal slots. The toy library keeps
-the bytes under the scan's id instead. Its route is in <<serve>>.
+the bytes under the scan's id instead. Its routes are in <<serve>>.
+
+*A file root is written through a session.* The record and its bytes must change together, so the
+router serves a `StoredFile` root's `GET` and listing but not its `POST`, `PUT` or `DELETE` (a
+request for one gets 405, and the OpenAPI document does not describe them). Write the record in your
+own route with `kit.session(...)` and a `UnitOfWork`, and the bytes with `kit.files`. The toy
+library's `POST …/scan-files` does both:
+
+[source,python]
+----
+from contextlib import suppress
+from rdf_persistence import limited_body
+
+checked = await kit.require(request.headers.get("authorization"), t, Action.MODIFY)
+tenant = checked.caller_access.tenant
+data = await limited_body(request, kit.max_body_bytes)  # 413 when the body is too large
+iri = str(kit.iris.mint_aggregate(tenant, "scan", "scans"))
+scan = Scan(id=iri, label=label, file_name=name, byte_size=len(data), sha256=digest)  # 422 if invalid
+bucket, key = await kit.bucket_of(tenant), iri.rsplit("/", 1)[-1]
+await kit.files.put(bucket, key, data)                                                # the bytes
+try:
+    async with kit.session(tenant, checked.principal) as session:
+        work = UnitOfWork(session, mapper)
+        work.add(scan)
+        await work.commit()                                                           # the record
+except Exception:
+    with suppress(Exception):         # a failing cleanup must not hide the error that caused it
+        await kit.files.delete(bucket, key)
+    raise
+----
+
+`limited_body` is the bound the generic routes use on a request body. Build the record before the
+bytes are stored: a pydantic `ValidationError` is answered 422 by the toolkit's problem handlers, and
+nothing has been stored yet to take back. If the commit fails, the bytes are removed and the
+original error is answered.
+
+Any other root can opt in with the class annotation `rp_writes: service`; there is no value that
+turns it off.
 
 *RDF*, parsed into a graph of its own. `Session.load_graph(iri, data, rdf_format=RdfFormat.TURTLE)`
 parses the data in a worker thread and puts it into a new named graph, by default

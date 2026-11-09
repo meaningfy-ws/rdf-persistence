@@ -12,7 +12,7 @@ from rdf_persistence.testkit.bootstrap import wait_until, wait_until_async
 from rdf_persistence.testkit.exceptions import TokenRefusedError
 from rdf_persistence.testkit.fakes import FakeFileStore, FakeIdentity, FakeStore, fake_session
 from rdf_persistence.testkit.guards import assert_models_generated
-from rdf_persistence.testkit.model_shape import model_shape_diff
+from rdf_persistence.testkit.model_shape import model_schema_diff, model_shape_diff
 from rdf_persistence.testkit.network import no_network
 from rdf_persistence.testkit.public_imports import assert_public_imports
 from rdf_persistence.testkit.shape_snapshot import (
@@ -69,6 +69,7 @@ __all__ = [
     "conformance_problems",
     "create_machine_user",
     "fake_session",
+    "model_schema_diff",
     "model_shape_diff",
     "no_network",
     "provision_project",

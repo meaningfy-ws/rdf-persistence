@@ -56,6 +56,13 @@ mints, checks and reads back every IRI by the policy, and the API paths follow t
 The access, meta and registry graphs and the principal IRI keep their defaults for now. See
 xref:howto/adopt.adoc#iri-policy[step 14].
 
+*Why does my file root answer 405 on PUT?*::
+A root that includes `StoredFile`, or carries the class annotation `rp_writes: service`, is written
+only through a session: the router serves its `GET` and listing but not its `POST`, `PUT` or
+`DELETE`, because the record and its bytes must change together. Write it in your own route with
+`kit.session(...)`, a `UnitOfWork` and `kit.files`. See xref:howto/adopt.adoc#files[step 10] and
+xref:architecture/api.adoc#serving[Serving it].
+
 *How do I test my application with the testkit?*::
 Use `FakeStore`, `FakeFileStore` and `FakeIdentity` in place of the adapters, `fake_session` for a
 domain service, and `TokenSigner` with `JwksTokenVerifier` for tokens, all from

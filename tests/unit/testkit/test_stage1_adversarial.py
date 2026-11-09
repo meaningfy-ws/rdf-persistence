@@ -9,6 +9,7 @@ LAZY = ["Conformance", "conformance_problems", "round_trip", "aggregate"]
 EAGER = [
     "assert_models_generated",
     "model_shape_diff",
+    "model_schema_diff",
     "class_shapes",
     "read_snapshot",
     "write_snapshot",

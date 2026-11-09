@@ -49,7 +49,8 @@ from rdf_persistence.domain.generated.rp_core import (
     Principal,
     RegistryEntry,
     RegistryKind,
-    RpAnnotation
+    RpAnnotation,
+    WritesKind
 )
 from rdf_persistence.domain.generated.rp_tenancy import (
     TenantAccess,

@@ -15,5 +15,5 @@ export interface LibraryAccess {
   /** The preferred label of the object. */
   label: string;
   /** A free-text description of the object. */
-  description: string;
+  description?: string;
 }

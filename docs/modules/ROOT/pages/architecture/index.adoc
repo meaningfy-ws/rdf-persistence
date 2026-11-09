@@ -238,7 +238,7 @@ _What may a consumer import?_
 `Tenancy`, `sweep`, `AccessRules` (with `with_iris`), `load_role_definitions`, `load_caller_access`;
 the ports `Store`, `FileStore`, `Identity`, `TokenVerifier`
 |`rdf_persistence.adapters` |Fuseki, S3 and Zitadel adapters; JWKS token verification |`FusekiStore`, `S3FileStore`, `ZitadelIdentity`, `zitadel_roles_claim`, `JwksTokenVerifier`
-|`rdf_persistence.entrypoints` |service kit (generic router, FastAPI dependencies, problem handlers, ETags, OpenAPI hook, start-up) |`install_service`, `ServiceKit`
+|`rdf_persistence.entrypoints` |service kit (generic router, FastAPI dependencies, problem handlers, ETags, OpenAPI hook, start-up) |`install_service`, `ServiceKit`, `limited_body`
 |`rdf_persistence.testkit` |fakes, token signer, Zitadel provisioning, container fixtures, the
 waiting helpers (`wait_until`, `wait_until_async`), the three conformance suites, freshness plugin,
 guards, round-trip strategies |`rdf_persistence.testkit` (a second public module, for tests only)

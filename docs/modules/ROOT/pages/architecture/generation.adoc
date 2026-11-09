@@ -61,6 +61,7 @@ PD-8a). Any other slot whose range is a class refers to another aggregate root, 
 |`graph: meta` (class annotation) |The tenant's root object lives in the tenant database's designated `meta` graph instead of a graph of its own.
 |`internal` (slot annotation) |Only the service sets the slot (e.g. file keys, a tenant's database name): it never appears in the API contract or a response, a request body that sets it is refused (422), the tenant-create body included, and a replace keeps its stored value on the root and on the parts that persist, matched by IRI. The mapper writes it, so a domain service can set it.
 |`rp_path` (class annotation) |Required on every aggregate root: its path segment in the API and in its IRIs (`{tenant}/{rp_path}/{uuid}`).
+|`rp_writes: service` (class annotation) |An aggregate root the consumer writes through a session: the API serves its `GET` and listing but no `POST`, `PUT` or `DELETE`. A root that includes `StoredFile` is service-written without it. There is no value that turns this off.
 |`rp_unlabelled` (class annotation) |An owned value class whose instances need no label of their own.
 |`Principal` |A reference to a user account in the identity provider, by IRI only.
 |`StoredFile` (mixin) |The current content of a kept file: `file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key` (internal).
@@ -150,7 +151,7 @@ Instance mixins:
 [cols="1,3,2",options="header"]
 |===
 |Mixin |Slots (IRIs) |Written by
-|`Described` |`id` (required), `label` (`skos:prefLabel`, required), `description` (`dcterms:description`, required on roots), `alt_label` (`skos:altLabel`), `definition` (`skos:definition`, for concept-like classes), `exact_match` (`skos:exactMatch`) |the application
+|`Described` |`id` (required), `label` (`skos:prefLabel`, required), `description` (`dcterms:description`, optional everywhere), `alt_label` (`skos:altLabel`), `definition` (`skos:definition`, for concept-like classes), `exact_match` (`skos:exactMatch`) |the application
 |`Tracked` |`created`, `modified` (`dcterms:`), `creator`, `contributor` (`dcterms:`, range `Principal`) |the session, *about the graph IRI* (DEC-29: statements about the graph are kept apart from the entity)
 |`Provenanced` |`was_derived_from`, `was_generated_by` (range `Activity`), `was_attributed_to` (range `prov:Agent`), `generated_at_time` (`prov:`) |the application, about the entity
 |===
@@ -170,8 +171,7 @@ are the generated enum `HardRule`. It fails generation when:
   `slot_uri`;
 . a class, slot, enum or permissible value has no `title` or no `description`;
 . a permissible value has no `meaning` (an IRI);
-. an aggregate root or owned class does not include `Described`, so instances without IRI, label and
-  description are refused by the generated classes and shapes; an owned value class without a label
+. an aggregate root or owned class does not include `Described`, so instances without IRI and label are refused by the generated classes and shapes; an owned value class without a label
   of its own (a chapter's number) opts out explicitly with `rp_unlabelled: true`;
 . an aggregate root has no `rp_path`, or an `rp_path` that is not a URL segment;
 . an annotation value is not one of its allowed values;
@@ -502,6 +502,11 @@ first.
   aggregates and the metamodel's `TenantAccess`.
 . *Model shape*: every generated class's pydantic fields match the schema's induced slots (name,
   required, multivalued, range), which catches stale or edited code even without the manifest.
+. *Python and the API document agree on required fields*: `model_schema_diff(components, models)`
+  (from `rdf_persistence.testkit`) compares each generated class's required fields with the
+  `required` list of its JSON Schema in `openapi-components.json`, and returns one line per
+  difference, empty when they agree. It is what caught a root's description being required in
+  Python only (#59) and an unlabelled class's label being required in the JSON Schema only.
 . *A model change fails the tests until acknowledged*: `tests/fixtures/model-shape.yaml` holds the
   last reviewed shape of every class (`ClassShape` rows). Any model change fails the test until
   `make refresh-snapshot` rewrites the file and its diff is reviewed in the PR.

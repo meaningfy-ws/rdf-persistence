@@ -27,11 +27,18 @@ from rdflib import XSD, Graph, Literal, URIRef
 from rdflib.term import Node
 
 from rdf_persistence.domain.exceptions import InvalidBody
-from rdf_persistence.domain.generated.rp_core import DatabaseKind, GraphKind, RpAnnotation
+from rdf_persistence.domain.generated.rp_core import (
+    DatabaseKind,
+    GraphKind,
+    RpAnnotation,
+    WritesKind,
+)
+from rdf_persistence.domain.generated.rp_files import StoredFile
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 
 AGGREGATE_ROOT = "AggregateRoot"
 TENANT_ACCESS = "TenantAccess"
+STORED_FILE = StoredFile.__name__
 DESCRIPTION = "description"
 LABEL = "label"
 EXACTLY_ONE_OF = "exactly_one_of"
@@ -156,6 +163,13 @@ def is_unlabelled(cls: object) -> bool:
 def is_tenant_root(cls: ClassDefinition) -> bool:
     """The tenant's root object lives in the meta graph and needs no path (PD-8)."""
     return annotation(cls, RpAnnotation.GRAPH) == GraphKind.META.value
+
+
+def is_service_written(view: SchemaView, cls: ClassDefinition) -> bool:
+    """True when the consumer writes the root through a session (PD-3): annotated, or a stored file."""
+    annotated = annotation(cls, RpAnnotation.RP_WRITES) == WritesKind.SERVICE.value
+    stored_file = STORED_FILE in view.class_ancestors(cls.name)
+    return annotated or stored_file
 
 
 def is_toolkit_schema(folder: Path) -> bool:
@@ -301,7 +315,7 @@ def _set_required(cls: ClassDefinition, slot: str, required: bool) -> None:
 
 
 def apply_defaults(view: SchemaView, folder: Path) -> None:
-    """Make an unlabelled class's label optional and every aggregate root's description required (PD-11).
+    """Make an unlabelled class's label optional (PD-11); a root's description stays optional (PD-1).
 
     Only the application's classes change; the toolkit's own schemas are left as they are (PD-23).
     """
@@ -311,8 +325,6 @@ def apply_defaults(view: SchemaView, folder: Path) -> None:
     for cls in classes:
         if is_unlabelled(cls):  # Described gives it the label slot
             _set_required(cls, LABEL, False)
-    for root in aggregate_roots(view, classes):
-        _set_required(root, DESCRIPTION, True)
     view.set_modified()
 
 

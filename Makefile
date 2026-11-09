@@ -123,7 +123,7 @@ pre-commit: ## Run pre-commit hooks on all files
 #-----------------------------------------------------------------------------
 # Validation — non-mutating targets
 #-----------------------------------------------------------------------------
-.PHONY: format-check lint typecheck typecheck-generated typecheck-ts check-architecture test test-unit test-feature test-containers fuseki-image test-e2e test-perf
+.PHONY: format-check lint typecheck typecheck-generated typecheck-ts typecheck-openapi-ts check-architecture test test-unit test-feature test-containers fuseki-image test-e2e test-perf
 
 format-check: ## Check formatting with Ruff, without changing files
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking formatting$(END_BUILD_PRINT)"
@@ -154,6 +154,14 @@ typecheck-ts: ## Run tsc --noEmit --strict (typescript 5.9.3) on the generated T
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running tsc on generated TypeScript$(END_BUILD_PRINT)"
 	@ npx -y -p typescript@5.9.3 tsc --noEmit --strict $(TOY_TS)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated TypeScript type checks passed$(END_BUILD_PRINT)"
+
+typecheck-openapi-ts: ## Run openapi-typescript (7.13.0) on the toy service's OpenAPI document, then tsc --strict on the result (needs Node)
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running tsc on the TypeScript of the OpenAPI document$(END_BUILD_PRINT)"
+	@ mkdir -p temp
+	@ uv run python -m tests.dump_openapi temp/toy-openapi.json
+	@ npx -y openapi-typescript@7.13.0 temp/toy-openapi.json -o temp/toy-openapi.ts
+	@ npx -y -p typescript@5.9.3 tsc --noEmit --strict temp/toy-openapi.ts
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) OpenAPI TypeScript type checks passed$(END_BUILD_PRINT)"
 
 check-architecture: ## Check architecture constraints with import-linter
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking architecture constraints$(END_BUILD_PRINT)"
@@ -211,7 +219,7 @@ test-e2e: ## Run end-to-end tests only
 check-style: format-check lint clean-code ## Formatting, lint and the complexity thresholds (CI job "style")
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Style checks passed$(END_BUILD_PRINT)"
 
-check-types: typecheck typecheck-generated typecheck-ts ## mypy on the code and the generated code, tsc on the generated TypeScript (CI job "types")
+check-types: typecheck typecheck-generated typecheck-ts typecheck-openapi-ts ## mypy on the code and the generated code, tsc on the generated TypeScript and on that of the OpenAPI document (CI job "types")
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Type checks passed$(END_BUILD_PRINT)"
 
 check-spec-docs: check-spec check-docs ## The OpenSpec spine and the docs checks (CI job "spec, docs and generation")

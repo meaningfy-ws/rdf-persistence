@@ -30,6 +30,7 @@ from rdf_persistence.services.schema_structure import (
     is_bookkeeping,
     is_internal,
     is_owned,
+    is_service_written,
     is_tenant_root,
     json_name,
     keyed_slots,
@@ -161,6 +162,50 @@ def test_the_tenant_root_is_the_class_in_the_meta_graph() -> None:
     assert annotation(view.get_class("Library"), RpAnnotation.GRAPH) == GraphKind.META.value
 
 
+SERVICE_WRITTEN = (
+    HEAD
+    + """
+classes:
+  StoredFile:
+    title: Stored file
+    description: The mixin of a root whose content is a stored file.
+    mixin: true
+  Plain:
+    title: Plain
+    description: A root written through the generic routes.
+  Marked:
+    title: Marked
+    description: A root annotated as service-written.
+    annotations: {rp_writes: service}
+  Filed:
+    title: Filed
+    description: A root that mixes in the stored file.
+    mixins: [StoredFile]
+  Derived:
+    title: Derived
+    description: A root whose parent mixes in the stored file.
+    is_a: Filed
+"""
+)
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [("Plain", False), ("Marked", True), ("Filed", True), ("Derived", True)],
+)
+def test_a_root_is_service_written_by_annotation_or_by_a_stored_file_ancestor(
+    tmp_path: Path, name: str, expected: bool
+) -> None:
+    view = view_of(tmp_path, SERVICE_WRITTEN)
+    assert is_service_written(view, view.get_class(name)) is expected, name
+
+
+def test_the_toys_scan_is_service_written_and_its_book_is_not() -> None:
+    view = load_schema(TOY)
+    assert is_service_written(view, view.get_class("Scan")), "a file root"
+    assert not is_service_written(view, view.get_class("Book")), "a plain root"
+
+
 def test_every_value_set_of_the_vocabulary_has_members() -> None:
     sets = {ModuleKind: 3, DatabaseKind: 2, GraphKind: 1}
     assert {k: len(k) for k in sets} == sets, "a value set of the annotation vocabulary changed"
@@ -175,9 +220,9 @@ def required(view, cls: str, slot: str) -> bool:
     [
         ("Chapter", "label", False),  # rp_unlabelled
         ("Note", "label", True),  # labelled, unchanged
-        ("Book", "description", True),  # a root
-        ("Scan", "description", True),  # a root
-        ("LibraryAccess", "description", True),  # a root through TenantAccess
+        ("Book", "description", False),  # a root: optional (PD-1)
+        ("Scan", "description", False),  # a root: optional
+        ("LibraryAccess", "description", False),  # a root through TenantAccess: optional
         ("Chapter", "description", False),  # owned, not a root
         ("Library", "description", False),  # the tenant root is not an AggregateRoot
     ],
@@ -327,3 +372,9 @@ def test_the_iri_type_is_the_annotation_else_the_kebab_case_name(name, annotated
             tag=RpAnnotation.RP_IRI_TYPE.value, value=annotated
         )
     assert iri_type_of(cls) == expected, f"{name} annotated {annotated}"
+
+
+def test_the_defaults_leave_a_root_description_slot_usage_alone() -> None:
+    view = generation_view(TOY)
+    assert "description" not in view.get_class("Book").slot_usage, "PD-1: no root default"
+    assert "label" in view.get_class("Chapter").slot_usage, "rp_unlabelled keeps its default"

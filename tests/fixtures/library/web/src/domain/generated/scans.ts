@@ -9,7 +9,7 @@ export interface Scan {
   /** The preferred label of the object. */
   label: string;
   /** A free-text description of the object. */
-  description: string;
+  description?: string;
   /** The time the graph was first committed. */
   created?: string;
   /** The time the graph was last committed. */
