@@ -15,12 +15,12 @@
       `.gitignore` gains `.serena/` (DEC-7). Acceptance: `make check-docs` and `make check-spec` green.
 - [x] 1.5 Skillery issue (PD-6): draft the text, show it to the developer, file it on approval,
       record the URL in design.md *Upstream*.
-- [ ] 1.6 Stage gate: `make check-all`, `make test-containers`; one review pass (lenses L2 and L3,
+- [x] 1.6 Stage gate: `make check-all`, `make test-containers`; one review pass (lenses L2 and L3,
       SMALL); accepted findings into design.md first; one PR into `develop`, merged on green CI.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [ ] 1.6
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6
 
 ## Verification
 
