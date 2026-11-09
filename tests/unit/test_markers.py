@@ -56,3 +56,15 @@ def test_hook_adds_each_marker_to_the_item() -> None:
     )
     pytest_collection_modifyitems([item])
     assert added == ["integration", "store", "files"]
+
+
+def test_the_slow_marker_is_registered_and_not_slow_deselects_it(pytester: pytest.Pytester) -> None:
+    """Under the repo's own pytest.ini (--strict-markers), `slow` is known and `-m` leaves it out."""
+    ini = (TESTS_ROOT_DIR.parent / "pytest.ini").read_text(encoding="utf-8")
+    pytester.makefile(".ini", pytest=ini)
+    pytester.makepyfile(
+        test_x="import pytest\n\n@pytest.mark.slow\ndef test_slow():\n    pass\n\n"
+        "def test_fast():\n    pass\n"
+    )
+    result = pytester.runpytest("--strict-markers", "-m", "not slow", "-p", "no:randomly")
+    result.assert_outcomes(passed=1, deselected=1)

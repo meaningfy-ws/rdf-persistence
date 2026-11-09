@@ -89,6 +89,7 @@ async def test_find_by_several_values_of_a_slot_needs_them_all(listings):  # T-1
         assert await session.find(Book, authors=["X", "Y"]) == [both]
 
 
+@pytest.mark.slow
 async def test_find_pages_until_every_match_is_collected(listings):  # T-20
     async with fake_session(listings=listings) as session:
         expected = [await put_scan(session, n, "same") for n in range(1, 202)]

@@ -163,6 +163,7 @@ def test_an_xdist_worker_does_not_check_again() -> None:
     freshness.pytest_sessionstart(Session())  # type: ignore[arg-type]
 
 
+@pytest.mark.slow
 def test_a_stale_project_on_several_workers_stops_the_session_once(
     session: pytest.Pytester,
 ) -> None:

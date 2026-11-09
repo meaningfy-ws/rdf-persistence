@@ -216,6 +216,7 @@ def stale(tmp_path: Path, pyproject: str, *changed: str) -> Path:
     return path
 
 
+@pytest.mark.slow
 def test_without_a_command_the_hint_names_rp_generate(
     generated: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -235,6 +236,7 @@ def test_an_entry_names_its_own_command_in_the_hint(
     assert "rp-generate`" not in error, "the default is named beside the entry's command"
 
 
+@pytest.mark.slow
 def test_the_hint_names_the_command_of_each_stale_entry_only(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -253,6 +255,7 @@ def test_the_hint_names_the_command_of_each_stale_entry_only(
     ), "a fresh entry's is named"
 
 
+@pytest.mark.slow
 def test_stale_targets_lists_only_the_targets_with_problems(
     tmp_path: Path,
 ) -> None:
@@ -275,6 +278,7 @@ def test_fix_hint_dedupes_commands_in_entry_order() -> None:
     )
 
 
+@pytest.mark.slow
 def test_two_stale_entries_with_the_same_command_name_it_once(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -286,6 +290,7 @@ def test_two_stale_entries_with_the_same_command_name_it_once(
     )
 
 
+@pytest.mark.slow
 def test_a_stale_entry_without_a_command_and_one_with_name_both(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -298,6 +303,7 @@ def test_a_stale_entry_without_a_command_and_one_with_name_both(
     ), "not both"
 
 
+@pytest.mark.slow
 def test_the_installed_rp_generate_command_exits_1_and_hints_the_entry_command(
     tmp_path: Path,
 ) -> None:
@@ -313,6 +319,7 @@ def test_the_installed_rp_generate_command_exits_1_and_hints_the_entry_command(
     assert done.stdout == "", "a failed check wrote to stdout"
 
 
+@pytest.mark.slow
 def test_a_fresh_project_through_the_installed_command_exits_0_silently(generated: Path) -> None:
     command = Path(sys.executable).parent / "rp-generate"
     done = subprocess.run(
@@ -321,6 +328,7 @@ def test_a_fresh_project_through_the_installed_command_exits_0_silently(generate
     assert (done.returncode, done.stderr) == (0, ""), "a fresh check was not silent success"
 
 
+@pytest.mark.slow
 def test_a_change_to_the_service_schema_makes_a_typescript_target_stale(
     toy_copy: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

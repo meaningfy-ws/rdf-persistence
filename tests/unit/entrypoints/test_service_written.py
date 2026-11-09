@@ -135,6 +135,7 @@ async def shed_service(shed_project: tuple[Path, Any]) -> AsyncIterator[ToyServi
         yield toy
 
 
+@pytest.mark.slow
 def test_an_annotated_root_is_described_by_its_reads_only(shed_project) -> None:
     schema, package = shed_project
     paths = ToyService(schema=schema, package=package).app.openapi()["paths"]

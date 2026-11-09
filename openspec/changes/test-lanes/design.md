@@ -246,6 +246,16 @@ wall time skewed by start-up (PD-4); `World`'s own `TokenSigner()` and the conta
   So PD-5 (one process for small selections) carries the inner-loop speed, not DEC-8. DEC-8 stays:
   it is correct and cheap, and saves CPU on every parallel run.
 
+- **F-2 (task 1.2, 2026-11-09).** Of 59 candidates from a parallel profile (6 min 2 s, 3711
+  tests), 26 tests average 2 s or more per run alone and carry `@pytest.mark.slow` (24 in
+  `generation/`, `services/test_session_find.py`, `test_packaging.py`; 2 in `entrypoints/` whose
+  own work exceeds the toy set-up). `make test-fast`: 3736 tests in 3 min 3 s wall (18 min 44 s
+  CPU), against ≈ 6 min for the full no-coverage run. What remains slow under load is the
+  entrypoint `ToyService` set-up (stage 2) and module- or session-scoped generation fixtures
+  (`shed_project`, `generated_toy`, `partial`, …): their cost is paid once per worker by whichever
+  test runs first, so marking that test only moves the cost to the next one. Those are not
+  chased (Rabbit-holes: tuning every slow test).
+
 ## Open Questions
 
 None. The lead's choices (PD-1 to PD-7, DEC-6's turn from a shared app to a shared key, DEC-8)

@@ -8,6 +8,8 @@ import sys
 import zipfile
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -24,6 +26,7 @@ def test_the_wheel_ships_the_py_typed_marker(tmp_path: Path) -> None:
     )
 
 
+@pytest.mark.slow
 def test_a_consumers_type_checker_reads_our_annotations(tmp_path: Path) -> None:  # T-1b
     consumer = tmp_path / "consumer.py"
     consumer.write_text(

@@ -87,6 +87,7 @@ def test_the_strategies_name_hypothesis_when_it_is_missing() -> None:
     assert "needs hypothesis" in run.stderr, f"the error does not name the dependency: {run.stderr}"
 
 
+@pytest.mark.slow
 def test_the_testkit_and_the_round_trip_do_not_import_hypothesis() -> None:
     code = (
         "import sys, rdf_persistence.testkit, rdf_persistence.testkit.roundtrip\n"
