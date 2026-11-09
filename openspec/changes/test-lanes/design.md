@@ -256,6 +256,14 @@ wall time skewed by start-up (PD-4); `World`'s own `TokenSigner()` and the conta
   test runs first, so marking that test only moves the cost to the next one. Those are not
   chased (Rabbit-holes: tuning every slow test).
 
+- **F-3 (task 2.1, 2026-11-09).** One `ToyService` build: 1.15 s with its own key, 0.53 s with
+  `toy_key()`, back to back in one process at load ≈ 33. The entrypoint folder (559 tests) took
+  157 s and 174 s before (load ≈ 5); after, 219 s and 278 s at load 21 to 23 from unrelated
+  processes (an Airflow pipeline), so the folder's wall times are not comparable and are not
+  claimed. `tests/toy_service.py` is shared infrastructure, so `make test-changed` fell back to
+  `make test-fast` (3769 passed, 1 failed in 5 min; the failure passed when re-run alone and its
+  name was lost; the stage gate's `check-all` is the check on it).
+
 ## Stage 1 review (2026-11-09)
 
 Lenses L1, L2, L3 and L4+L5, no P1. Accepted (the fix lands before the PR):

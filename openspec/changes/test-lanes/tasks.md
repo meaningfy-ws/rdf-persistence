@@ -40,13 +40,13 @@ on the symbols it touches.
 - [x] 1.6 Fold `test-profiling` in (DEC-1): a superseded note at the top of its `proposal.md`
   naming `test-lanes`; its row in `openspec/changes/README.md` marked superseded; its inputs and
   spec delta untouched. `openspec validate --all --strict` passes.
-- [ ] 1.7 Stage gate: review done (lenses L1 to L3, L4+L5 one pass); `make check-quality`; PR into
+- [x] 1.7 Stage gate: review done (lenses L1 to L3, L4+L5 one pass); `make check-quality`; PR into
   `develop`, merged on green CI. No local `check-all` or `test-containers` here (they run once, in
   2.4).
 
 ## 2. Stage 2: a cheap toy set-up
 
-- [ ] 2.1 Measure before: `uv run pytest tests/unit/entrypoints -n auto -q` wall time, two runs,
+- [x] 2.1 Measure before: `uv run pytest tests/unit/entrypoints -n auto -q` wall time, two runs,
   idle machine. T-3, then `TokenSigner(key=...)` (DEC-7), the toy's per-process key and `World`'s
   signer in `tests/unit/entrypoints/test_library_app.py` (PD-6). Gate: `make test-changed
   BASE=<stage 1 merge>` (selects only stage 2's files). Measure after, the same way. Satisfies: rp-testkit "A test
@@ -64,7 +64,7 @@ on the symbols it touches.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [ ] 1.7 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4
 
 ## Verification
 

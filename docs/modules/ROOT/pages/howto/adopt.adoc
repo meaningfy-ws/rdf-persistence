@@ -1190,7 +1190,7 @@ _How do I test my application without servers?_
 |`FakeStore()` |a `Store` (a small in-memory SPARQL store)
 |`FakeFileStore()` |a `FileStore`
 |`FakeIdentity()` |an `Identity`
-|`TokenSigner()` |the identity provider's keys: `issue(sub=…, roles=[…])` signs a token, and `transport` serves the keys to a `JwksTokenVerifier`
+|`TokenSigner()` |the identity provider's keys: `issue(sub=…, roles=[…])` signs a token, and `transport` serves the keys to a `JwksTokenVerifier`. Generating its RSA key takes ≈ 0.5 s; when many tests each build a signer, generate one key per process and pass it as `TokenSigner(key=…)` (each signer still starts with its own state)
 |`fake_session(store, *, tenant_iri, principal, clock, iris, listings)` |a real `Session` over a `FakeStore`,
 for a domain service's unit test; pass `iris` to test under your own IRI policy, and
 `listings=Listings(view)` (both from `rdf_persistence`) to use `find`
