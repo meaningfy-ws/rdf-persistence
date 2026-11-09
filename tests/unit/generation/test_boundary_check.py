@@ -164,3 +164,63 @@ def test_check_mode_runs_the_boundary_check(break_toy: Breaker) -> None:
     assert main(["--project", str(root.parent / "pyproject.toml"), "--check"]) == 1, (
         "--check skipped the boundary check"
     )
+
+
+API_MODULE = """id: https://example.org/ns/library/api
+name: api
+title: API module
+description: The request and response shapes of the library's own routes.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+annotations:
+  module_kind: {kind}
+
+classes:
+  Account:
+    title: Account
+    description: What a route answers about an account; never stored.
+    class_uri: lib:Account
+    attributes:
+      account_id:
+        title: Account id
+        description: The identifier of the account.
+        identifier: true
+      active:
+        title: Active
+        description: Whether the account may sign in.
+        range: boolean
+"""
+
+
+def add_api_module(toy: Path, kind: str) -> Path:
+    """Write ``api.yaml`` of the given kind into the toy and import it from the root schema."""
+    (toy / "api.yaml").write_text(API_MODULE.format(kind=kind), encoding="utf-8")
+    root = toy / ROOT_SCHEMA
+    text = root.read_text(encoding="utf-8")
+    root.write_text(
+        text.replace("  - library_access\n", "  - library_access\n  - api\n", 1), encoding="utf-8"
+    )
+    return root
+
+
+def test_a_class_of_a_technical_module_needs_no_owning_root(toy_copy: Path) -> None:
+    add_api_module(toy_copy, "technical")
+    assert main(["--project", str(toy_copy / "pyproject.toml")]) == 0, "rp-generate must succeed"
+    files = [p for p in toy_copy.rglob("*") if p.is_file() and "generated" in p.parts]
+    for suffix in (".py", ".ts"):
+        found = [
+            p for p in files if p.suffix == suffix and "Account" in p.read_text(encoding="utf-8")
+        ]
+        assert found, f"Account is not in the generated {suffix} files"
+
+
+def test_a_class_of_a_domain_module_still_needs_an_owning_root(toy_copy: Path) -> None:
+    root = add_api_module(toy_copy, "domain")
+    assert "[ownership] Account: is neither an aggregate root nor owned by any root" in problems_of(
+        root
+    ), "a domain class that nothing owns must still be refused"

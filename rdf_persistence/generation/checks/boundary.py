@@ -27,11 +27,13 @@ REFERENCE_CLASSES = ("Principal", "Activity")
 FORBIDDEN_FOR_DOMAIN = (ModuleKind.TECHNICAL.value, ModuleKind.ACCESS.value)
 
 
-def _ownership_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[CheckProblem]:
+def _ownership_problems(
+    view: SchemaView, classes: list[ClassDefinition], exempt: set[str]
+) -> Iterator[CheckProblem]:
     roots = {root.name for root in aggregate_roots(view, classes)}
     owned = owned_classes(view, classes)
     for cls in classes:
-        if cls.mixin or cls.abstract or cls.name in roots | owned or is_tenant_root(cls):
+        if cls.mixin or cls.abstract or cls.name in roots | owned | exempt or is_tenant_root(cls):
             continue
         yield rule_problem(
             BoundaryRule.OWNERSHIP, cls.name, "is neither an aggregate root nor owned by any root"
@@ -91,8 +93,14 @@ def boundary_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
     """
     schemas = own_schemas(view, folder)
     classes = [] if is_toolkit_schema(folder) else own_classes(schemas)
+    technical = {
+        name
+        for schema in schemas
+        if annotation(schema, RpAnnotation.MODULE_KIND) == ModuleKind.TECHNICAL.value
+        for name in schema.classes
+    }
     return [
-        *_ownership_problems(view, classes),
+        *_ownership_problems(view, classes, technical),
         *_reference_problems(view, classes),
         *_module_problems(view, schemas),
     ]
