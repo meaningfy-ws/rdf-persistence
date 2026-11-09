@@ -384,3 +384,44 @@ Tests (`tests/unit/services/test_tenancy.py`, `tests/unit/entrypoints/test_route
 | `rp-generate` with a technical non-root class | succeeds | — |
 | Same class in a domain module | `[ownership]` problem | nothing generated |
 | Read refused (403/404) | no `Allowed-Actions` header | — |
+
+# Stage 1 review decisions (2026-11-09)
+
+Five lenses (L1–L5) and an adversarial tester read `e074a46..feature/mwb2-stage-1`. The lead
+accepted these findings (Rule of Divergence: recorded here before the fix):
+
+- **R1-1** (L2 P1, tester) `Tenancy.rename` validates the new label before any write: the record
+  with the new label and description is built and validated first, then the root is written, then
+  the record. An invalid label raises `ValueError` and writes nothing.
+- **R1-2** (tester; lead's decision under DEC-2, the developer may overrule) `Tenancy.create` refuses
+  a root body whose `label` differs from the tenant's label: `InvalidBody` (422), before anything is
+  created. A root body without a label takes the tenant's, as before. Without this a new tenant
+  starts with two labels and a GET→PUT of its root is refused. The toy's `library_slots()` drops
+  its own label.
+- **R1-3** (L5) The rename's root write goes through `UnitOfWork` in one `tenant_session` (get,
+  change, commit under the root's version) instead of a hand-written read and `_replace_root`.
+- **R1-4** (L3, L5) `vet_root` decodes the body with the mapper and compares the decoded root's
+  `label` with the record's (stage 2's root validators need the decoded root anyway); a body that
+  does not decode to one label is refused. `Mapper.predicate` is removed.
+- **R1-5** (L3, L4, L5) `install_service` and `ServiceKit` default `id_source` to `draw_id`; the kit
+  builds `Iris` in one call.
+- **R1-6** (L4) The slot name `label` is `schema_structure.LABEL` in `services/tenancy.py`; tests
+  use `RECORD_ETAG`; `_LAZY_MODULES` becomes `_LAZY_NAMES`; small docstring and magic-number fixes.
+- **R1-7** (L5) `read_root`'s `Record-ETag` moves from the router closure into `TenantApi`, so stage
+  4 adds `Allowed-Actions` in the same place.
+- **R1-8** (L2, L5) Tests: a mypy check on a consumer file (T-1b: no `import-untyped`, a wrong
+  argument type reported); T-9 makes the record really move; T-2 checks the book is gone and the
+  tenant still reads; T-16 gives the second tenant another label; every assert has a message;
+  shared helpers `Scene.set_grants`, a member-role helper, `_labels`. The adversarial tests stay.
+- **R1-9** (L3, L1) Docs: `architecture/api.adoc` names `Record-ETag`, the 422 on a root PUT that
+  changes the label, and `administer` for the tenant delete. Known behaviour, stated here: two
+  renames at one record version can leave the root with the losing rename's label (the loser gets
+  409; the next rename repairs it, as in T-9); a reader with `read` sees the record's version move
+  when grants change, not what changed.
+
+Rejected, with the reason: renaming `vet_root` (L4: PD-7 widens it to root validators); checking a
+drawn id against the policy (L1: `id_source` is trusted composition-root code for tests); running
+`vet_root` inside the replace session (L5: the `If-Match` write already catches a root that moved;
+the anti-pattern table keeps refusals before the session); carrying the record version on
+`CallerAccess` to save a read (L3, L5: not needed now); aligning the two lazy loaders (L5: over-
+fragmentation); a typed problem when every tenant draw clashes (tester: unchanged by this change).
