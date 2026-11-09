@@ -59,14 +59,16 @@ on the symbols it touches.
   machine stayed at load 20 to 33 from unrelated work, so the number would mean nothing.) Timings: `develop/index.adoc` rows for the entrypoint folder before and after, the
   `services` selection of `make test-changed` against its Goal, and `check-all` (its time taken
   from the 2.4 run, not a separate run); wherever the docs describe `TokenSigner`, mention `key=`.
-- [ ] 2.4 Stage gate: the EPIC's one `make check-all` and one `make test-containers`
+- [x] 2.4 (Done 2026-11-09: `check-all` 3817 passed, 94.51 %, 12 min 37 s; `test-containers` 176
+  passed, 8 min 57 s; review R-13 to R-17; archived inside the stage 2 PR to save a CI round.)
+  Stage gate: the EPIC's one `make check-all` and one `make test-containers`
   (`tests/integration/api/` builds `ToyService`); after a red run, re-run only the failing tests;
   review; PR into `develop`, merged on green CI; then archive the change
   (`/opsx:archive`).
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [ ] 2.4
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4
 
 ## Verification
 

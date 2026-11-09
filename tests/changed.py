@@ -2,7 +2,7 @@
 
 Run as ``uv run python -m tests.changed``. Prints the pytest arguments, one per line (paths, then
 ``-n`` and its value); nothing when no test is to run. Reasons and hints go to stderr. Exit 3 means
-"run make test-fast"; see openspec/changes/test-lanes/design.md (PD-1 to PD-5).
+"run make test-fast"; see openspec/changes/archive/2026-11-09-test-lanes/design.md (PD-1 to PD-5).
 """
 
 import os
