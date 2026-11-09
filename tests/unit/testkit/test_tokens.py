@@ -2,9 +2,8 @@
 
 import httpx
 import jwt
-from cryptography.hazmat.primitives.asymmetric import rsa
 
-from rdf_persistence.testkit.tokens import ISSUER, TokenSigner
+from rdf_persistence.testkit.tokens import ISSUER, TokenSigner, new_key
 
 
 async def get(signer: TokenSigner, url: str) -> httpx.Response:
@@ -70,7 +69,7 @@ async def verifies(token: str, signer: TokenSigner) -> bool:
 
 
 async def test_two_signers_from_one_key_verify_each_others_tokens() -> None:
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    key = new_key()
     first, second = TokenSigner(key=key), TokenSigner(key=key)
     assert await verifies(first.issue(), second), "the second's JWKS verifies the first's token"
     assert await verifies(second.issue(), first), "the first's JWKS verifies the second's token"
@@ -82,7 +81,7 @@ async def test_two_signers_without_a_key_do_not_share_one() -> None:
 
 
 async def test_rotate_after_a_given_key_generates_a_new_key_and_keeps_the_given_one() -> None:
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    key = new_key()
     signer = TokenSigner(kid="k1", key=key)
     signer.rotate("k2")
     jwks = jwt.PyJWKSet.from_dict((await get(signer, f"{ISSUER}/keys")).json())

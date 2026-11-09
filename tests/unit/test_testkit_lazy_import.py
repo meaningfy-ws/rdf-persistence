@@ -28,7 +28,7 @@ def test_testkit_root_does_not_import_the_token_or_provisioning_libraries() -> N
 
 
 @pytest.mark.parametrize(
-    "name", ["TokenSigner", "access_token", "create_machine_user", "provision_project"]
+    "name", ["TokenSigner", "new_key", "access_token", "create_machine_user", "provision_project"]
 )
 def test_the_token_and_provisioning_names_load_on_first_use(name: str) -> None:
     import rdf_persistence.testkit as testkit

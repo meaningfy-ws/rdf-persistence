@@ -51,7 +51,7 @@ class TokenSigner:
         self.jwks_requests = 0
         self.discovery_requests = 0
         self._clock = clock
-        self._keys: dict[str, rsa.RSAPrivateKey] = {kid: key or new_key()}
+        self._keys: dict[str, rsa.RSAPrivateKey] = {kid: new_key() if key is None else key}
         self.transport = httpx.MockTransport(self.handle)
 
     @property

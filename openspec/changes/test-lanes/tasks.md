@@ -54,7 +54,9 @@ on the symbols it touches.
 - [x] 2.2 Adversarial tester on 2.1 (RISK-3): tests that build two signers or two `ToyService`s
   and compare tokens or keys; `rotate` after `key=`; a token from a plain `TokenSigner()` against
   the toy. Accepted findings go into design.md, then one fixer.
-- [ ] 2.3 Timings: `develop/index.adoc` rows for the entrypoint folder before and after, the
+- [x] 2.3 (Done 2026-11-09: the entrypoint row with the per-build set-up, F-3; the `check-all` row
+  from the 2.4 run; `key=` in the adopt guide. The `services` selection was not re-measured: the
+  machine stayed at load 20 to 33 from unrelated work, so the number would mean nothing.) Timings: `develop/index.adoc` rows for the entrypoint folder before and after, the
   `services` selection of `make test-changed` against its Goal, and `check-all` (its time taken
   from the 2.4 run, not a separate run); wherever the docs describe `TokenSigner`, mention `key=`.
 - [ ] 2.4 Stage gate: the EPIC's one `make check-all` and one `make test-containers`
@@ -64,7 +66,7 @@ on the symbols it touches.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 2.1 · [x] 2.2 · [ ] 2.3 · [ ] 2.4
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [ ] 2.4
 
 ## Verification
 

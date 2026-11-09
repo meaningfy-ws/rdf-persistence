@@ -4,7 +4,8 @@
 
 `TokenSigner` SHALL accept an optional keyword `key` (an RSA private key) and sign with it under its
 first key id. Without `key`, it SHALL generate a fresh key, as before. `rotate` SHALL always generate
-a fresh key.
+a fresh key. `rdf_persistence.testkit` SHALL export `new_key()`, which generates such a key, so a
+consumer can share one without importing a private module.
 
 #### Scenario: two signers from one key
 - **GIVEN** one RSA key and two `TokenSigner(key=that_key)`
