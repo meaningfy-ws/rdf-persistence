@@ -55,7 +55,7 @@ export interface ServiceSettings {
   /** A slug that names this deployment, for templates that use `{deployment}`; lower case letters and digits, at most 32. */
   deployment?: string;
   /** The IRI policy of the service; absent, the default policy applies. */
-  iri_policy?: string;
+  iri_policy?: IriPolicy;
 }
 
 /** How the toolkit draws an id: a UUIDv4, or `length` characters drawn from `alphabet`. The length is required for `random` ids. */
@@ -87,9 +87,9 @@ export interface IriPolicy {
   /** The template of the IRI of a principal; ends in `{sub}`. */
   principal_template?: string;
   /** How the id of a new tenant is drawn; absent, a UUIDv4. */
-  tenant_id?: string;
+  tenant_id?: IdSpec;
   /** How the id of a new aggregate root, part or loaded graph is drawn; absent, a UUIDv4. */
-  object_id?: string;
+  object_id?: IdSpec;
 }
 
 /** What a token verifier returns for a valid token, the principal and its global roles. */
@@ -149,7 +149,7 @@ export interface Authorised {
   /** The user account the token identifies. */
   principal: string;
   /** The caller's access to the tenant, as the access check loaded it. */
-  caller_access: string;
+  caller_access: CallerAccess;
   /** The IRI of the tenant or aggregate the access check was made on, which the route acts on. */
   checked_target: string;
 }
@@ -183,7 +183,7 @@ export interface ListRequest {
   /** The slot a listing is ordered by, ascending, or descending when its name starts with a minus sign; absent, the listing is ordered by IRI. */
   sort?: string;
   /** The equality filters of a listing; all of them must hold. */
-  filters?: string[];
+  filters?: Filter[];
 }
 
 /** An equality filter of a listing resolved against the slots of the listed type: the aggregate has this statement. The value is an IRI when it is a reference, else a literal of the datatype. */
@@ -203,7 +203,7 @@ export interface ListPlan {
   /** The IRI of the class of the aggregates listed. */
   target: string;
   /** The equality conditions of a listing; all of them must hold. */
-  conditions?: string[];
+  conditions?: Condition[];
   /** The IRI of the predicate a listing is ordered by; absent, it is ordered by IRI. */
   sort_by?: string;
   /** Whether the order is reversed. */

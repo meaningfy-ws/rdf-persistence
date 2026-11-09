@@ -280,8 +280,9 @@ Tests (`tests/unit/services/test_tenancy.py`, `tests/unit/entrypoints/test_route
   and the metamodel import map, keep the files whose names the consumer's run did not write
   (`rp_service.ts`; `rp_core.ts` etc. are already there), and render `index.ts` once over the union
   of module names. When the schema being rendered *is* `rp_service.yaml`, nothing is added.
-- The files are ordinary outputs of the step, so the manifest, the freshness check and
-  `make check-generated` cover them with no change.
+- The files are ordinary outputs of the step, so the manifest records them and `make check-generated`
+  covers them. Their input, `rp_service.yaml`, is not a schema the consumer imports, so the manifest
+  records it separately for a target that renders TypeScript (R3-1).
 - The toy's `tests/fixtures/library/web/src/domain/generated/` gains `rp_service.ts` on
   `make generate`; `make typecheck-ts` (`tsc --noEmit --strict`, wildcard over that folder) checks it.
 - **T-25** (`tests/unit/generation/`): rendering the toy schema yields `rp_service.ts` holding

@@ -27,13 +27,26 @@ REFERENCE_CLASSES = ("Principal", "Activity")
 FORBIDDEN_FOR_DOMAIN = (ModuleKind.TECHNICAL.value, ModuleKind.ACCESS.value)
 
 
+def _technical_classes(schemas: list[SchemaDefinition]) -> list[ClassDefinition]:
+    """The classes of the modules annotated ``module_kind: technical``; a class is told apart by object, not by name."""
+    return [
+        cls
+        for schema in schemas
+        if annotation(schema, RpAnnotation.MODULE_KIND) == ModuleKind.TECHNICAL.value
+        for cls in schema.classes.values()
+    ]
+
+
 def _ownership_problems(
-    view: SchemaView, classes: list[ClassDefinition], exempt: set[str]
+    view: SchemaView, classes: list[ClassDefinition], technical: list[ClassDefinition]
 ) -> Iterator[CheckProblem]:
+    """Technical classes are exempt, and what they own does not count: a request shape is never stored."""
+    exempt = {id(cls) for cls in technical}
+    stored = [cls for cls in classes if id(cls) not in exempt]
     roots = {root.name for root in aggregate_roots(view, classes)}
-    owned = owned_classes(view, classes)
-    for cls in classes:
-        if cls.mixin or cls.abstract or cls.name in roots | owned | exempt or is_tenant_root(cls):
+    owned = owned_classes(view, stored)
+    for cls in stored:
+        if cls.mixin or cls.abstract or cls.name in roots | owned or is_tenant_root(cls):
             continue
         yield rule_problem(
             BoundaryRule.OWNERSHIP, cls.name, "is neither an aggregate root nor owned by any root"
@@ -93,14 +106,8 @@ def boundary_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
     """
     schemas = own_schemas(view, folder)
     classes = [] if is_toolkit_schema(folder) else own_classes(schemas)
-    technical = {
-        name
-        for schema in schemas
-        if annotation(schema, RpAnnotation.MODULE_KIND) == ModuleKind.TECHNICAL.value
-        for name in schema.classes
-    }
     return [
-        *_ownership_problems(view, classes, technical),
+        *_ownership_problems(view, classes, _technical_classes(schemas)),
         *_reference_problems(view, classes),
         *_module_problems(view, schemas),
     ]

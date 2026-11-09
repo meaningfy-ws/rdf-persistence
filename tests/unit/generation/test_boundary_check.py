@@ -211,16 +211,44 @@ def add_api_module(toy: Path, kind: str) -> Path:
 def test_a_class_of_a_technical_module_needs_no_owning_root(toy_copy: Path) -> None:
     add_api_module(toy_copy, "technical")
     assert main(["--project", str(toy_copy / "pyproject.toml")]) == 0, "rp-generate must succeed"
-    files = [p for p in toy_copy.rglob("*") if p.is_file() and "generated" in p.parts]
-    for suffix in (".py", ".ts"):
-        found = [
-            p for p in files if p.suffix == suffix and "Account" in p.read_text(encoding="utf-8")
-        ]
-        assert found, f"Account is not in the generated {suffix} files"
+    generated = toy_copy / "generated"
+    ts = toy_copy / "web" / "src" / "domain" / "generated" / "api.ts"
+    py = next(generated.rglob("api.py"))
+    assert "export interface Account " in ts.read_text(encoding="utf-8"), "Account is not in api.ts"
+    assert "class Account(" in py.read_text(encoding="utf-8"), "Account is not in api.py"
 
 
-def test_a_class_of_a_domain_module_still_needs_an_owning_root(toy_copy: Path) -> None:
-    root = add_api_module(toy_copy, "domain")
+@pytest.mark.parametrize("kind", ["domain", "access"])
+def test_a_class_of_a_domain_or_access_module_still_needs_an_owning_root(
+    toy_copy: Path, kind: str
+) -> None:
+    root = add_api_module(toy_copy, kind)
     assert "[ownership] Account: is neither an aggregate root nor owned by any root" in problems_of(
         root
-    ), "a domain class that nothing owns must still be refused"
+    ), f"a {kind} class that nothing owns must still be refused"
+
+
+def test_a_domain_class_owned_only_by_a_technical_class_is_refused(toy_copy: Path) -> None:
+    holder = API_MODULE.format(kind="technical").replace(
+        "imports:\n  - linkml:types\n", "imports:\n  - linkml:types\n  - lost\n"
+    ) + (
+        "  Holder:\n    title: Holder\n    description: A request shape.\n    attributes:\n"
+        "      holder_id:\n        description: Id.\n        identifier: true\n"
+        "      part:\n        description: Owns a part.\n        range: Orphan\n"
+        "        annotations:\n          owned: true\n"
+    )
+    (toy_copy / "api.yaml").write_text(holder, encoding="utf-8")
+    (toy_copy / "lost.yaml").write_text(
+        API_MODULE.format(kind="domain")
+        .replace("Account", "Orphan")
+        .replace("account_id", "orphan_id")
+        .replace("api\n", "lost\n", 1)
+        .replace("/api\n", "/lost\n", 1),
+        encoding="utf-8",
+    )
+    root = toy_copy / ROOT_SCHEMA
+    text = root.read_text(encoding="utf-8")
+    root.write_text(text.replace("  - library_access\n", "  - library_access\n  - api\n", 1))
+    assert "[ownership] Orphan: is neither an aggregate root nor owned by any root" in problems_of(
+        root
+    ), "a technical class is never stored, so what it owns is not owned"

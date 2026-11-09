@@ -8,6 +8,7 @@ from linkml_runtime.utils.schemaview import SchemaView
 
 PACKAGE = "rdf_persistence"
 PACKAGE_DIR = Path(str(resources.files(PACKAGE))).resolve()
+SERVICE_SCHEMA = PACKAGE_DIR / "model" / "service" / "rp_service.yaml"
 MODEL_PREFIX = f"{PACKAGE}/model"
 # What opening a schema raises when the file or an import is missing, is not YAML, or is not a LinkML
 # schema (an unknown field is a TypeError, a missing name a ValueError); any other error is a bug.

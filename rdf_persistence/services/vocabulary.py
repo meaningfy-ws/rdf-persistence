@@ -14,11 +14,10 @@ from rdflib import URIRef
 
 from rdf_persistence.domain.generated.rp_core import RegistryKind
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
-from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
+from rdf_persistence.services.schema import PACKAGE_DIR, SERVICE_SCHEMA, load_schema
 from rdf_persistence.services.schema_structure import is_bookkeeping
 
 METAMODEL = PACKAGE_DIR / "model" / "rp.yaml"
-SERVICE_MODEL = PACKAGE_DIR / "model" / "service" / "rp_service.yaml"
 
 
 @cache
@@ -67,7 +66,7 @@ PROHIBITIONS = predicate("prohibitions")
 ASSIGNEE = predicate("assignee")
 
 # A listing's query returns the size of the whole listing as this statement about the listed class.
-TOTAL = predicate("total", load_schema(SERVICE_MODEL))
+TOTAL = predicate("total", load_schema(SERVICE_SCHEMA))
 
 # The one statement of the policy record: the graph names itself, the object is the policy's JSON (PD-13).
-IRI_POLICY = predicate("iri_policy", load_schema(SERVICE_MODEL))
+IRI_POLICY = predicate("iri_policy", load_schema(SERVICE_SCHEMA))

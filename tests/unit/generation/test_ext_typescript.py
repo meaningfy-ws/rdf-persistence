@@ -110,3 +110,16 @@ def test_the_service_types_are_written_with_any_as_unknown(staged: Path) -> None
 def test_the_index_exports_the_service_types_once(staged: Path) -> None:
     index = text(staged, "index")
     assert index.count('export * from "./rp_service";') == 1, "the index exports rp_service once"
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "filters?: Filter[];",
+        "conditions?: Condition[];",
+        "caller_access: CallerAccess;",
+        "iri_policy?: IriPolicy;",
+    ],
+)
+def test_an_inlined_class_range_names_its_interface(staged: Path, line: str) -> None:
+    assert line in text(staged, "rp_service"), f"{line!r} is missing: an inlined class is a string"
