@@ -63,9 +63,9 @@ symbols it changes (stop on HIGH/CRITICAL). Before each PR: `make check-all`,
 
 ## 8. Generation
 
-- [ ] 8.1 PD-9: T-27, T-28, then `_ownership_problems`; the guide's `module_kind` paragraph.
+- [x] 8.1 PD-9: T-27, T-28, then `_ownership_problems`; the guide's `module_kind` paragraph.
   Gate: `uv run pytest tests/unit/generation -q`.
-- [ ] 8.2 PD-8: T-25, then `linkml:Any` → `unknown` in `range()` and `typescript.render`; `make generate` (the toy gains `rp_service.ts`);
+- [x] 8.2 PD-8: T-25, then `linkml:Any` → `unknown` in `range()` and `typescript.render`; `make generate` (the toy gains `rp_service.ts`);
   T-26. Gate: `uv run pytest tests/unit/generation -q`, `make check-generated`, `make typecheck-ts`.
 - [ ] 8.3 Close stage 3: stage gates; PR `Closes #47 #48`. Merge on green CI.
 
