@@ -156,16 +156,18 @@ comes later.
 |===
 |Target |Tests |Time |Measured |Notes
 
-|`make check-all` |3661 |≈ 7 to 10 min; ≈ 16 min on a busy machine |2026-11-09, mwb2-adoption-fixes stage 4
-|Its pytest part takes ≈ 5 min 45 s in parallel, up from ≈ 3 min 45 s on 2026-11-08 (more router
+|`make check-all` |3682 |≈ 7 to 10 min; ≈ 14 to 16 min on a busy machine |2026-11-09, mwb2-file-resources stage 1
+|≈ 14 min on 2026-11-09 with another project's container stack running beside it (pytest part ≈ 12 min). Its pytest part takes ≈ 5 min 45 s in parallel, up from ≈ 3 min 45 s on 2026-11-08 (more router
 and tenancy tests, and the wheel build and mypy run of `test_packaging.py`); ≈ 14.5 min while a
 GitNexus re-index ran beside it. The quality checks (`make check-quality`) take ≈ 40 to 90 s and
 come before it.
 
-|`make test-containers` |174 |≈ 3.5 to 6 min |2026-11-09, mwb2-adoption-fixes stage 4
-|The pytest part takes ≈ 3 min 20 s (≈ 5 min 50 s on a busy machine), container start-up included, with the Fuseki image already
+|`make test-containers` |173 |≈ 3.5 to 8.5 min |2026-11-09, mwb2-file-resources stage 1
+|≈ 8.5 min (pytest ≈ 7 min 50 s) with another project's container stack running beside it. The pytest part takes ≈ 3 min 20 s (≈ 5 min 50 s on a busy machine), container start-up included, with the Fuseki image already
 loaded (`make fuseki-image`). Earlier, one run in four failed at start-up on a Docker Compose
 error; run it again.
+
+|`make typecheck-openapi-ts` |– |≈ 15 s |2026-11-09, mwb2-file-resources stage 1 |Part of `check-types`; `npx` downloads `openapi-typescript` and `typescript` on a first run.
 
 |`make test-perf` |3 |≈ 2.5 s |2026-11-08, delivery-friction |Measured alone, not under load.
 

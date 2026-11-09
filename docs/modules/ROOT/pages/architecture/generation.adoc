@@ -502,6 +502,11 @@ first.
   aggregates and the metamodel's `TenantAccess`.
 . *Model shape*: every generated class's pydantic fields match the schema's induced slots (name,
   required, multivalued, range), which catches stale or edited code even without the manifest.
+. *Python and the API document agree on required fields*: `model_schema_diff(components, models)`
+  (from `rdf_persistence.testkit`) compares each generated class's required fields with the
+  `required` list of its JSON Schema in `openapi-components.json`, and returns one line per
+  difference, empty when they agree. It is what caught a root's description being required in
+  Python only (#59) and an unlabelled class's label being required in the JSON Schema only.
 . *A model change fails the tests until acknowledged*: `tests/fixtures/model-shape.yaml` holds the
   last reviewed shape of every class (`ClassShape` rows). Any model change fails the test until
   `make refresh-snapshot` rewrites the file and its diff is reviewed in the PR.
