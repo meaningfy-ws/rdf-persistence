@@ -273,3 +273,6 @@ settings.local.json
 # Agent/dev temporary files
 temp/
 .rp-generate-*/
+
+# Serena code-assistant state (local)
+.serena/

@@ -96,7 +96,7 @@ xref:develop/index.adoc#add-or-change-a-generator-extension[Add or change a gene
 and xref:develop/index.adoc#add-a-check-rule[Add a check rule].
 
 *Which tests do I run while developing?*::
-`make test-changed`: it runs the tests of the files you changed against `develop`, in seconds. When
+`make test-changed`: it runs the tests of the files you changed against `develop`, in a few seconds to a minute. When
 you are unsure what a change reaches, run `make test-fast` (about 3 minutes). `make check-all`
 comes once, before the PR. See xref:develop/index.adoc#make-targets[Make targets] and
 xref:develop/testing.adoc#slow[Slow tests].

@@ -174,8 +174,8 @@ comes later.
 |`make profile-tests` |– |≈ 6 min |2026-11-09, test-lanes stage 1
 |Prints the 15 slowest tests. The slowest are `test_packaging.py::test_a_consumers_type_checker_reads_our_annotations` (62 s under load, ≈ 10 s alone), the `generation/test_freshness.py` subprocess tests (12 to 32 s under load), and the entrypoint set-up (≈ 10 s per test under load; stage 2 of test-lanes shortens it).
 
-|`make check-all` |3709 |≈ 7 to 10 min; ≈ 14 to 16 min on a busy machine |2026-11-09, mwb2-file-resources stage 2
-|≈ 7 min 50 s on 2026-11-09 (pytest part ≈ 7 min); ≈ 14 min the same day with another project's container stack running beside it. Its pytest part takes ≈ 5 min 45 s in parallel, up from ≈ 3 min 45 s on 2026-11-08 (more router
+|`make check-all` |3763 (18 skipped) |≈ 7 to 10 min unloaded; ≈ 15 min 12 s on a heavily loaded machine |2026-11-09, test-lanes stage 1
+|3763 tests (18 skipped), coverage 94.57 %, ≈ 15 min 12 s on 2026-11-09 on a laptop under heavy load (load average ≈ 48 on 12 cores, review agents running beside it). The unloaded reference is 3709 tests, ≈ 7 min 50 s on 2026-11-09 (mwb2-file-resources stage 2; pytest part ≈ 7 min); ≈ 14 min the same day with another project's container stack running beside it. Its pytest part takes ≈ 5 min 45 s in parallel, up from ≈ 3 min 45 s on 2026-11-08 (more router
 and tenancy tests, and the wheel build and mypy run of `test_packaging.py`); ≈ 14.5 min while a
 GitNexus re-index ran beside it. The quality checks (`make check-quality`) take ≈ 40 to 90 s and
 come before it.

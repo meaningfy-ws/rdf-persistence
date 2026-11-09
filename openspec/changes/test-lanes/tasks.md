@@ -11,23 +11,23 @@ on the symbols it touches.
 
 ## 1. Stage 1: the developer lanes
 
-- [ ] 1.1 T-5, then the freshness guard in `rdf_persistence/testkit/freshness.py` (PD-7, DEC-8).
+- [x] 1.1 T-5, then the freshness guard in `rdf_persistence/testkit/freshness.py` (PD-7, DEC-8).
   Report the 2-test file's wall time with `-n 0` and `-n auto`, before and after.
   Satisfies: rp-generation "The freshness check runs once per parallel session".
-- [ ] 1.2 Register `slow` in `pytest.ini`; T-4 in `tests/unit/test_markers.py`. Profile
+- [x] 1.2 Register `slow` in `pytest.ini`; T-4 in `tests/unit/test_markers.py`. Profile
   (`uv run pytest tests/unit tests/feature -n auto -q -p no:randomly --durations=60 -o addopts=""`),
   confirm each candidate alone by PD-4's measure, and decorate each slow test. List the marked
   tests and their set-up + call times in the report. Satisfies: rp-developer-checks "The fast lane
   leaves out slow tests".
-- [ ] 1.3 Add `PROFILE_MARK`, `test-fast` and `profile-tests` to the `Makefile` (design § Make
+- [x] 1.3 Add `PROFILE_MARK`, `test-fast` and `profile-tests` to the `Makefile` (design § Make
   targets). Run both; report times and counts, and that `make test-unit` still runs the slow tests
   with the coverage floor. Satisfies: "The fast lane leaves out slow tests", "Check timings come
   from a repeatable profile" (command half).
-- [ ] 1.4 T-1, T-2, then `tests/changed.py` (rules, `Selection`, git listing, `-n` choice, `main`)
+- [x] 1.4 T-1, T-2, then `tests/changed.py` (rules, `Selection`, git listing, `-n` choice, `main`)
   and the `test-changed` target. Run it on this branch, on a clean checkout of `develop`, and for
   the Goals' three selections (one test file, `domain`, `services`); report the times against the
   Goals. Satisfies: "The tests of the changed files run on their own" (all six scenarios).
-- [ ] 1.5 Docs: `develop/agents.adoc` gates table (per task `make test-changed`; `test-fast` as the
+- [x] 1.5 Docs: `develop/agents.adoc` gates table (per task `make test-changed`; `test-fast` as the
   fallback; `PYTEST_N`, `BASE`), `develop/testing.adoc` (when and how to mark `slow`, PD-4),
   `develop/index.adoc` (the lanes; table rows for `test-fast`, the three `test-changed` selections
   and `check-all`, with dates; the slowest tests named), `questions.adoc` (the question "Which
@@ -35,7 +35,7 @@ on the symbols it touches.
   docstring and the `pytest.ini` marker comment (test-kind markers by path; `slow` by decorator on
   the test). `make check-docs` passes. Satisfies: "Check timings come from a repeatable profile"
   (table half).
-- [ ] 1.6 Fold `test-profiling` in (DEC-1): a superseded note at the top of its `proposal.md`
+- [x] 1.6 Fold `test-profiling` in (DEC-1): a superseded note at the top of its `proposal.md`
   naming `test-lanes`; its row in `openspec/changes/README.md` marked superseded; its inputs and
   spec delta untouched. `openspec validate --all --strict` passes.
 - [ ] 1.7 Stage gate: `make check-all`, `make test-containers`; review (lenses L1 to L3, L4+L5 one
@@ -59,7 +59,7 @@ on the symbols it touches.
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [ ] 1.7 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4
 
 ## Verification
 

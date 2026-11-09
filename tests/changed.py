@@ -44,54 +44,62 @@ def _is_shared_infrastructure(parts: tuple[str, ...]) -> bool:
     )
 
 
-def _root_unit_tests() -> list[str]:
+def root_unit_tests() -> list[str]:
+    """The test files at the root of tests/unit, relative to the repository root."""
     return sorted(p.as_posix() for p in Path("tests/unit").glob("test_*.py"))
 
 
-def _test_folder_of(parts: tuple[str, ...]) -> list[str] | None:
+def _test_folder_of(parts: tuple[str, ...], root_tests: Sequence[str]) -> list[str] | None:
     """The tests that cover a path under tests/ or rdf_persistence/, None if no rule applies."""
     if parts[0] == "tests" and len(parts) > 2 and parts[1] == "unit":
-        return [f"tests/unit/{parts[2]}/"] if len(parts) > 3 else [PurePosixPath(*parts).as_posix()]
+        if len(parts) > 3:
+            return [f"tests/unit/{parts[2]}/"]
+        # a root-level file that is no test (conftest.py, helpers.py) would collect nothing
+        is_test = parts[2].startswith("test_") and parts[2].endswith(".py")
+        return [PurePosixPath(*parts).as_posix()] if is_test else None
     if parts[0] == "tests" and len(parts) > 1 and parts[1] == "feature":
         return ["tests/feature/"]
     if parts[0] == "rdf_persistence" and len(parts) > 2 and parts[1] in LAYERS:
         return [f"tests/unit/{parts[1]}/"]
     if parts[0] == "rdf_persistence" and len(parts) > 1:
-        return _root_unit_tests()
+        return list(root_tests)
     return None
 
 
-def _classify(path: str) -> tuple[list[str], list[str], list[str]]:
-    """The (selected, hints, fallback reasons) of one changed path; first matching rule wins."""
+def _classify(path: str, root_tests: Sequence[str]) -> Selection:
+    """What one changed path selects, hints and falls back on; the first matching rule wins."""
     parts = PurePosixPath(path).parts
     name = parts[-1]
     if parts[0] in NO_TEST_ROOTS or (len(parts) == 1 and name.endswith(".md")):
-        return [], [], []
+        return Selection((), (), ())
     if parts[0] == "docs":
-        return ["tests/unit/test_check_docs.py"], [], []
+        return Selection(("tests/unit/test_check_docs.py",), (), ())
     if _is_shared_infrastructure(parts):
-        return [], [], [f"{path}: shared test infrastructure or schema"]
+        return Selection((), (), (f"{path}: shared test infrastructure or schema",))
     if len(parts) > 2 and parts[:2] in {("tests", "integration"), ("tests", "e2e")}:
         if name.startswith("test_") and name.endswith(".py"):
-            return [], [f"{path}: run make test-containers"], []
-        return [], [], [f"{path}: helper imported by unit tests"]
+            return Selection((), (f"{path}: run make test-containers",), ())
+        return Selection((), (), (f"{path}: helper imported by unit tests",))
     if parts[:2] == ("tests", "perf"):
-        return [], [f"{path}: run make test-perf"], []
-    selected = _test_folder_of(parts)
+        return Selection((), (f"{path}: run make test-perf",), ())
+    selected = _test_folder_of(parts, root_tests)
     if selected is None:
-        return [], [], [f"{path}: no rule maps it to tests"]
-    return selected, [], []
+        return Selection((), (), (f"{path}: no rule maps it to tests",))
+    return Selection(tuple(selected), (), ())
 
 
-def select(paths: Sequence[str], existing: Callable[[str], bool]) -> Selection:
+def select(
+    paths: Sequence[str], existing: Callable[[str], bool], root_tests: Sequence[str]
+) -> Selection:
+    """The selection for changed paths; `root_tests` are the test files at the root of tests/unit."""
     chosen: set[str] = set()
     hints: list[str] = []
     reasons: list[str] = []
     for path in paths:
-        selected, hint, reason = _classify(path)
-        chosen.update(selected)
-        hints += hint
-        reasons += reason
+        one = _classify(path, root_tests)
+        chosen.update(one.paths)
+        hints += one.hints
+        reasons += one.fallback_reasons
     folders = [p for p in chosen if p.endswith("/")]
     kept = sorted(
         p for p in chosen if existing(p) and not any(p != f and p.startswith(f) for f in folders)
@@ -119,7 +127,7 @@ def _git(*args: str) -> str:
 def changed_files(base: str) -> list[str]:
     """Files changed against the merge base with `base`: committed, uncommitted, untracked."""
     try:
-        merge_base = _git("merge-base", "HEAD", base).strip()
+        merge_base = _git("merge-base", "--end-of-options", "HEAD", base).strip()
     except GitError as error:
         raise GitError(f"{error} (is `{base}` a local branch? try BASE=origin/{base})") from error
     tracked = _git("diff", "--name-only", "--no-renames", merge_base).splitlines()
@@ -135,7 +143,7 @@ def main() -> int:
     except GitError as error:
         print(f"{error}; running make test-fast", file=sys.stderr)
         return FALLBACK_EXIT
-    selection = select(changed, lambda path: Path(path).exists())
+    selection = select(changed, lambda path: Path(path).exists(), root_unit_tests())
     if selection.fallback_reasons:
         print(*selection.fallback_reasons, sep="\n", file=sys.stderr)
         return FALLBACK_EXIT

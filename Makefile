@@ -37,6 +37,9 @@ COV_FLAGS = --cov=$(PACKAGE_NAME) \
 # The unit lane never collects the container tests, so it runs without testcontainers (PD-16).
 UNIT_LANE = --ignore=$(TEST_PATH)/integration --ignore=$(TEST_PATH)/e2e
 
+# The tests `make profile-tests` times; narrow it, e.g. to the lane without the slow tests.
+PROFILE_MARK ?= unit or feature
+
 .DEFAULT_GOAL := help
 
 #-----------------------------------------------------------------------------
@@ -207,19 +210,24 @@ test-perf: ## Run the wall-clock budget tests alone (no coverage, no xdist); not
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Perf tests passed$(END_BUILD_PRINT)"
 
 # Developer lanes (test-lanes): no coverage; the floors are checked by test, test-unit, test-feature.
-PROFILE_MARK ?= unit or feature
-
 test-fast: ## Run the unit and feature tests not marked slow, in parallel, without coverage (developer lane)
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running the fast unit and feature tests$(END_BUILD_PRINT)"
 	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -m "(unit or feature) and not slow"
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Fast tests passed$(END_BUILD_PRINT)"
 
 test-changed: ## Run the tests of the files changed against BASE (default develop), slow ones included, without coverage; PYTEST_N overrides the worker count
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running the tests of the changed files$(END_BUILD_PRINT)"
 	@ args=$$(uv run python -m tests.changed); status=$$?; \
 	  if [ $$status -eq 3 ]; then $(MAKE) --no-print-directory test-fast; \
 	  elif [ $$status -ne 0 ]; then exit $$status; \
-	  elif [ -n "$$args" ]; then uv run pytest $$args $(UNIT_LANE) -m "unit or feature"; fi
+	  elif [ -n "$$args" ]; then set -f; IFS=$$'\n'; \
+	    uv run pytest $$args $(UNIT_LANE) -m "unit or feature" \
+	    && echo -e "$(BUILD_PRINT)$(ICON_DONE) Changed-file tests passed$(END_BUILD_PRINT)"; fi
 
 profile-tests: ## Print the 15 slowest unit and feature tests, set-up and call apart, without coverage (PROFILE_MARK narrows)
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Profiling the unit and feature tests$(END_BUILD_PRINT)"
 	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -q -p no:randomly -m "$(PROFILE_MARK)" --durations=15
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Profile complete$(END_BUILD_PRINT)"
 
 test-e2e: ## Run end-to-end tests only
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running e2e tests$(END_BUILD_PRINT)"

@@ -68,7 +68,7 @@ so a brief never asks a builder or a reviewer for an impact check.
 count), slow tests included. It falls back to `make test-fast` by itself when it cannot map a
 change to tests
 |`make test-fast` |Instead of `make test-changed` when you are unsure what a change reaches, or
-after changing a port or a shared model. It runs every unit and feature test not marked `slow`
+after changing `domain` or a port in `services`. It runs every unit and feature test not marked `slow`
 (≈ 3 min)
 |`make check-quality` |After every task (≈ 1 min)
 |`make check-all` |Once, before the PR: it already holds `make test`, so never run both

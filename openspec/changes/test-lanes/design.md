@@ -256,6 +256,38 @@ wall time skewed by start-up (PD-4); `World`'s own `TokenSigner()` and the conta
   test runs first, so marking that test only moves the cost to the next one. Those are not
   chased (Rabbit-holes: tuning every slow test).
 
+## Stage 1 review (2026-11-09)
+
+Lenses L1, L2, L3 and L4+L5, no P1. Accepted (the fix lands before the PR):
+
+- **R-1** (L1, L2, L4) A non-test file at the root of `tests/unit/` (a future `conftest.py`,
+  `helpers.py`) is passed to pytest and collects nothing (exit 5). It falls back (rule 12); a T-1 row.
+- **R-2** (L3) Tests do not always live in their layer's folder: the freshness plugin
+  (`rdf_persistence/testkit/freshness.py`) is tested in `tests/unit/generation/`. Move
+  `test_freshness_plugin.py` to `tests/unit/testkit/` (absolute imports of its helpers).
+- **R-3** (L3) `select()` reads the file system for rule 11. It takes the root-level unit test
+  files as a parameter; `main()` globs.
+- **R-4** (L2) `main()` has no test: one parametrised test over nothing-to-run (exit 0, empty
+  stdout), fallback (exit 3) and `GitError` (exit 3).
+- **R-5** (L2) The stale-tree-on-workers test passes with or without the guard. Add a fresh-tree
+  test under `-n 2` that counts the checks (a pytester conftest wrapping `_project_report`): one.
+- **R-6** (L2) T-1: a message on every assertion; a test that the rows cover rules 1 to 12; a rule-8
+  row for `tests/unit/entrypoints/test_router.py`.
+- **R-7** (L3) A test that `LAYERS` equals the package's layer folders.
+- **R-8** (L4) `_classify` returns a `Selection` instead of three positional lists.
+- **R-9** (L1) `test-changed` splits the arguments on newlines only and without globbing
+  (`set -f; IFS=$$'\n'`); `git merge-base --end-of-options`.
+- **R-10** (L4) `pytest.ini`: the marker comment and the `slow` line wrapped at ≈ 100 columns.
+  `Makefile`: `PROFILE_MARK` beside `UNIT_LANE`; progress and done lines on the three targets.
+- **R-11** (L4) Docs: "after changing `domain` or a port in `services`, run `make test-fast`" in
+  `develop/agents.adoc` and `AGENTS.md`; `questions.adoc` says "a few seconds to a minute", as
+  `index.adoc` does; the `check-all` row re-measured.
+- **R-12** (L2) The freshness plugin tests that build a project per test: re-measure alone on an
+  idle machine (PD-4) and mark those at 2 s or more.
+
+Rejected: constants for every path string in `tests/changed.py` (the strings are the rule table,
+read once; L4 P3); `git -z` output (non-ASCII names already fall back safely; L1 P3).
+
 ## Open Questions
 
 None. The lead's choices (PD-1 to PD-7, DEC-6's turn from a shared app to a shared key, DEC-8)
