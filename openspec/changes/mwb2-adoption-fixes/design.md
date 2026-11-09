@@ -323,18 +323,19 @@ Tests (`tests/unit/services/test_tenancy.py`, `tests/unit/entrypoints/test_route
 
 ## PD-10 Permitted actions on reads (#51, DEC-10)
 
-- `ACTIONS = (Action.READ, Action.MODIFY, Action.DELETE, Action.ADMINISTER)` — the header's order.
+- `ACTIONS = tuple(Action)` (R4-2), the schema's order `read, modify, delete, administer` — the header's order.
 - Tenant root read (`read_root`) and aggregate read (`add_aggregate_routes` `read`, which has
-  `checked.caller_access` and `checked.checked_target`): `Allowed-Actions: read, modify, delete`,
-  the actions `kit.rules.may(caller, access, target, a)` allows, joined by `", "`. The constant
+  `checked.caller_access` and `checked.checked_target`): `Allowed-Actions`, the actions the routes
+  on the target allow (R4-1: on the tenant `delete` needs `administer`; on an aggregate
+  `administer` is never listed), joined by `", "`. The constant
   `ALLOWED_ACTIONS` lives in `entrypoints/negotiation.py`.
 - `model/service/rp_service.yaml` `TenantSummary`: add slot `allowed_actions` (range `Action`,
   multivalued, optional); `make generate`; `Tenancy.visible_tenants` fills it from the same
   `rules.may` over `ACTIONS` with the record's access it already builds. `create` and `rename`
   leave it empty.
 - OpenAPI: the header on both read operations; the slot comes with the regenerated component.
-- **T-29** a member `[read, modify, delete]` reads the tenant → `Allowed-Actions: read, modify,
-  delete`; a librarian → all four; a reader → `read`.
+- **T-29** a member `[read, modify, delete]` reads the tenant → `Allowed-Actions: read, modify`
+  and a book → `read, modify, delete` (R4-1); a librarian → all four on the tenant; a reader → `read`.
 - **T-30** a reader with a Prohibition of `read` on one book is refused as today (no header); a
   member with a Prohibition of `delete` on a book reads it with `read, modify`.
 - **T-31** `GET /libraries` items carry `allowed_actions` equal to the header a read of that tenant
@@ -505,3 +506,41 @@ Rejected, with the reason: emitting only the API's classes in `rp_service.ts` (L
 shape right, and the API set would be a second list to keep); a note on `ProblemSlug`'s underscores
 (L4: its description already says the wire writes hyphens, and no slot uses it); asserting the CLI
 exit code in T-28 (L2: the CLI path of the boundary check is tested already).
+
+# Stage 4 review decisions (2026-11-09)
+
+Four review passes (L1, L2, L3, L4+L5 together) and an adversarial tester read
+`df84375..feature/mwb2-stage-4`. The lead accepted these findings (Rule of Divergence: recorded
+here before the fix):
+
+- **R4-1** (L1, tester; the lead's decision under DEC-10, the developer may overrule) The header
+  and the listing name what the routes on *that* resource allow, so a UI never shows a button the
+  service refuses. On a tenant, `delete` is listed when the caller may `administer`, because
+  deleting a tenant needs `administer` (PD-2); on an aggregate, `administer` is not listed (no
+  aggregate route needs it; grants are written on the tenant). So a member `[read, modify, delete]`
+  reads the tenant with `read, modify` and a book with `read, modify, delete`; a librarian reads the
+  tenant with all four. PD-10's T-29 and T-31 and the spec scenario change accordingly. One
+  function in `AccessRules` decides, for the reads and the listing alike.
+- **R4-2** (L4) `ACTIONS` is `tuple(Action)`, the schema's order, so an action added to the schema
+  is listed without a code change.
+- **R4-3** (L3, L4) The header is set in one place: a `DocumentApi` read that both the tenant root
+  and the aggregate route call; the value is formatted by a function beside `ALLOWED_ACTIONS` in
+  `entrypoints/negotiation.py`.
+- **R4-4** (L4) The guide's CORS example runs: `app.add_middleware(CORSMiddleware,
+  allow_origins=[...], expose_headers=[...])`.
+- **R4-5** (L2) The model snapshot covers the service schema, so `make refresh-snapshot` shows a
+  change to `rp_service.yaml` for review (T-32 and task 9.1 assumed it did; it did not).
+- **R4-6** (L2) Tests: `AccessRules.allowed_actions` and `Tenancy.visible_tenants` at the service
+  layer (including a Prohibition on the tenant itself); the OpenAPI header on the reads; rename
+  leaves `allowed_actions` empty; status asserts before the header asserts.
+- **R4-7** (L3, L4) The listing decides each tenant's actions once; the OpenAPI text is built from
+  `ACTIONS`; small wording and layout fixes.
+- **R4-8** (tester) The adversarial tests stay; the tenant-delete one passes under R4-1.
+
+Known behaviour, stated here: `Allowed-Actions` comes from the access the request's gate read and
+`Record-ETag` from a later read of the record, so a grant change landing between them can pair a new
+version with the old actions (L3; the next read corrects it, as with R1-9); and a tenant read
+ignores a Prohibition scoped to one aggregate (tester: that aggregate's own read reflects it).
+
+Rejected, with the reason: computing both headers from one record read (L3: a third read path for
+a narrow window the next read repairs).

@@ -926,6 +926,13 @@
       "additionalProperties": false,
       "description": "What the service answers about one tenant, in a listing or after creating it.",
       "properties": {
+        "allowed_actions": {
+          "description": "The actions the caller who asked may take on the tenant, in the order read, modify, delete, administer. Only a listing fills it.",
+          "items": {
+            "$ref": "#/components/schemas/Action"
+          },
+          "type": "array"
+        },
         "id": {
           "description": "The IRI that identifies the object.",
           "format": "uri",

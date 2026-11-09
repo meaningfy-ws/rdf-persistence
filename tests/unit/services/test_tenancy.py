@@ -557,6 +557,18 @@ async def test_the_visible_tenants_are_those_the_caller_may_read_paged_by_iri(te
     assert [t.id for t in mine.items] == sorted(t.id for t in made)[1:3], "ordered by IRI"
 
 
+async def test_a_listed_tenant_carries_the_actions_its_read_lists(tenancy):
+    made = await tenancy.create("Ghent", library_slots(), CREATOR)
+    page = await tenancy.visible_tenants(caller(), rules(), limit=50, offset=0)
+    assert [t.allowed_actions for t in page.items] == [
+        [Action.READ, Action.MODIFY, Action.DELETE, Action.ADMINISTER]
+    ], f"the creator of {made.id} is its librarian"
+    reader = await tenancy.visible_tenants(
+        caller("admin", principal=BOB), rules(), limit=50, offset=0
+    )
+    assert [t.allowed_actions for t in reader.items] == [[Action.READ]], "the global reader"
+
+
 async def test_a_tenant_the_caller_has_no_grant_in_is_not_visible(tenancy):
     await tenancy.create("Ghent", library_slots(), CREATOR)
     page = await tenancy.visible_tenants(caller(principal=BOB), rules(), limit=50, offset=0)

@@ -64,6 +64,7 @@ CONSTRUCT { $record ?p ?o . ?rule ?rule_p ?rule_o } WHERE {
 """
 # Every action other than read implies read at the same scope (PD-9).
 _IMPLY_READ = frozenset(Action) - {Action.READ}
+ACTIONS = tuple(Action)  # the schema's order, which is the order a read lists them in
 
 
 def load_role_definitions(path: Path) -> list[RoleDefinition]:
@@ -114,6 +115,11 @@ def _definition(path: Path, number: int, entry: object) -> RoleDefinition:
 def _level(target: str, tenant: str) -> RoleLevel:
     """The level a grant on ``target`` applies at: the tenant's, or one aggregate's."""
     return RoleLevel.TENANT if target == tenant else RoleLevel.AGGREGATE
+
+
+def _gate(action: Action, is_tenant: bool) -> Action:
+    """The action a route needs to do ``action`` to the tenant (``administer`` for delete) or to an aggregate."""
+    return Action.ADMINISTER if is_tenant and action == Action.DELETE else action
 
 
 @cache
@@ -254,6 +260,22 @@ class AccessRules:
         except (NotFound, Forbidden):
             return False
         return True
+
+    def allowed_actions(
+        self, caller: VerifiedCaller, access: CallerAccess, target_iri: str
+    ) -> list[Action]:
+        """The actions of ``ACTIONS``, in that order, that the routes on ``target_iri`` allow ``caller``.
+
+        On the tenant, ``delete`` stands for deleting the tenant, which needs ``administer`` (PD-2);
+        on an aggregate no route needs ``administer``, so it is not listed (PD-10).
+        """
+        is_tenant = target_iri == access.tenant
+        return [
+            action
+            for action in ACTIONS
+            if self.may(caller, access, target_iri, _gate(action, is_tenant))
+            and (is_tenant or action != Action.ADMINISTER)
+        ]
 
     @staticmethod
     def hidden_graphs(caller: VerifiedCaller, access: CallerAccess) -> list[str]:

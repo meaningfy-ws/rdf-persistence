@@ -73,9 +73,9 @@ symbols it changes (stop on HIGH/CRITICAL). Before each PR: `make check-all`,
 
 ## 9. Allowed actions
 
-- [ ] 9.1 PD-10 model: `allowed_actions` in `rp_service.yaml`, `make generate`,
+- [x] 9.1 PD-10 model: `allowed_actions` in `rp_service.yaml`, `make generate`,
   `make refresh-snapshot` (review: one added slot); T-32. Gate: `make check-generated`.
-- [ ] 9.2 PD-10 behaviour: T-29, T-30, T-31, then the header on both reads, the listing, the
+- [x] 9.2 PD-10 behaviour: T-29, T-30, T-31, then the header on both reads, the listing, the
   OpenAPI text; the guide's CORS note names `Allowed-Actions`. Gate:
   `uv run pytest tests/unit/entrypoints tests/unit/services -q`, `make check-docs`.
 - [ ] 9.3 Close the EPIC: stage gates; the spec deltas (`specs/*/spec.md`) match what was built;

@@ -38,10 +38,12 @@ from rdf_persistence.domain.media import ACCEPT, CONTENT_LENGTH, CONTENT_TYPE, J
 from rdf_persistence.entrypoints.auth import Gate
 from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.negotiation import (
+    ALLOWED_ACTIONS,
     IF_MATCH,
     RECORD_ETAG,
     accepted_listing_type,
     accepted_media_type,
+    allowed_actions_value,
     etag_of,
     expected_version,
     request_media_type,
@@ -124,11 +126,15 @@ class DocumentApi:
         )
 
     async def read(
-        self, request: Request, caller: VerifiedCaller, tenant: str, iri: str
+        self, request: Request, caller: VerifiedCaller, access: CallerAccess, iri: str
     ) -> Response:
+        """The document at ``iri``, with what ``caller`` may do there in ``Allowed-Actions`` (PD-10)."""
         media_type = accepted_media_type(request.headers.get(ACCEPT))
-        read = await self._kit.aggregates.read(tenant, Principal(id=caller.principal), iri)
-        return await self._response(read, media_type)
+        read = await self._kit.aggregates.read(access.tenant, Principal(id=caller.principal), iri)
+        response = await self._response(read, media_type)
+        actions = self._kit.rules.allowed_actions(caller, access, iri)
+        response.headers[ALLOWED_ACTIONS] = allowed_actions_value(actions)
+        return response
 
     async def listing(
         self, request: Request, caller: VerifiedCaller, access: CallerAccess
@@ -205,7 +211,7 @@ class TenantApi:
         self, request: Request, caller: VerifiedCaller, access: CallerAccess
     ) -> Response:
         """The tenant's root object, with the access record's version in ``Record-ETag`` (PD-6)."""
-        response = await self._root.read(request, caller, access.tenant, access.tenant)
+        response = await self._root.read(request, caller, access, access.tenant)
         _, version = await self._kit.tenancy.get(access.tenant)
         response.headers[RECORD_ETAG] = etag_of(version)
         return response
@@ -350,7 +356,7 @@ def add_aggregate_routes(
         caller: VerifiedCaller = as_caller,
         checked: Authorised = may_read,
     ) -> Response:
-        return await api.read(request, caller, checked.caller_access.tenant, checked.checked_target)
+        return await api.read(request, caller, checked.caller_access, checked.checked_target)
 
     async def replace(
         request: Request,

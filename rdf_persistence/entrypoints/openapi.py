@@ -51,8 +51,16 @@ from rdf_persistence.domain.media import JSON, JSON_LD, PROBLEM_JSON, TURTLE
 from rdf_persistence.entrypoints import problems
 from rdf_persistence.entrypoints.auth import BEARER_SCHEME
 from rdf_persistence.entrypoints.kit import ServiceKit
-from rdf_persistence.entrypoints.negotiation import ETAG, IF_MATCH, LOCATION, RECORD_ETAG
+from rdf_persistence.entrypoints.negotiation import (
+    ALLOWED_ACTIONS,
+    ETAG,
+    IF_MATCH,
+    LOCATION,
+    RECORD_ETAG,
+    allowed_actions_value,
+)
 from rdf_persistence.entrypoints.problems import WWW_AUTHENTICATE
+from rdf_persistence.services.access import ACTIONS
 from rdf_persistence.services.artifacts import COMPONENT_REFERENCES, REF
 from rdf_persistence.services.components import TOOLKIT_FOLDER, component_schemas
 from rdf_persistence.services.listing import (
@@ -146,6 +154,18 @@ def _success(
         **({LOCATION: Header(schema=Schema(type="string", format="uri"))} if located else {}),
     }
     return Response(description=description, headers=headers or None, content=content)
+
+
+def _with_allowed_actions(read: Response) -> Response:
+    """``read`` with the ``Allowed-Actions`` header documented (PD-10)."""
+    read.headers = {
+        **(read.headers or {}),
+        ALLOWED_ACTIONS: Header(
+            description=f"what the caller may do here, comma separated, in the order {allowed_actions_value(ACTIONS)}",
+            schema=Schema(type="string"),
+        ),
+    }
+    return read
 
 
 def _parameter(
@@ -265,7 +285,7 @@ class TenantOpenApi:
         )
 
     def read_root(self) -> RouteDocs:
-        read = _success(_document_media(self._root), versioned=True)
+        read = _with_allowed_actions(_success(_document_media(self._root), versioned=True))
         read.headers = {
             **(read.headers or {}),
             RECORD_ETAG: Header(
@@ -381,7 +401,7 @@ class AggregateOpenApi:
         )
 
     def read(self) -> RouteDocs:
-        read = _success(_document_media(self._schema), versioned=True)
+        read = _with_allowed_actions(_success(_document_media(self._schema), versioned=True))
         return route_options(f"Read a {self._cls.name}", self._tag, (HTTPStatus.OK, read), _READS)
 
     def replace(self) -> RouteDocs:

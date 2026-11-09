@@ -44,12 +44,19 @@ one version SHALL NOT both succeed.
 ### Requirement: Reads tell the caller what it may do
 
 A read of a tenant's root or of an aggregate SHALL answer an `Allowed-Actions` header listing,
-from `read, modify, delete, administer` in that order, the actions the caller may take on what it
-read. Each item of the tenant listing SHALL carry the same list in `allowed_actions`. A refused
-read SHALL carry no such header.
+from `read, modify, delete, administer` in that order, the actions the routes on what it read
+would allow the caller: on a tenant, `delete` SHALL be listed only when the caller may
+`administer` (deleting a tenant needs `administer`); on an aggregate, `administer` SHALL NOT be
+listed. Each item of the tenant listing SHALL carry the tenant's list in `allowed_actions`. A
+refused read SHALL carry no such header.
 
-#### Scenario: a member reads the tenant
+#### Scenario: a member reads the tenant and a book
 - **GIVEN** a caller whose tenant role permits `read`, `modify` and `delete`
+- **WHEN** it reads the tenant and then one of its books
+- **THEN** the tenant's `Allowed-Actions` is `read, modify` and the book's is `read, modify, delete`
+- **AND** the tenant's item in the listing has `allowed_actions` `[read, modify]`
+
+#### Scenario: a librarian reads the tenant
+- **GIVEN** a caller whose tenant role permits all four actions
 - **WHEN** it reads the tenant
-- **THEN** `Allowed-Actions` is `read, modify, delete`
-- **AND** the tenant's item in the listing has `allowed_actions` `[read, modify, delete]`
+- **THEN** `Allowed-Actions` is `read, modify, delete, administer`
