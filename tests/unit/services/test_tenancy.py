@@ -1,5 +1,6 @@
 """Tenancy over the fakes: create writes the access record last, delete marks `deleting` first (PD-6a, PD-8, PD-9)."""
 
+import asyncio
 import logging
 import re
 from collections.abc import Awaitable, Callable
@@ -682,3 +683,167 @@ async def test_the_consumers_tenant_is_minted_by_its_policy(store, files):
     assert record.database_name == f"mwb-t-{tenant_id}"
     assert f"mwb-t-{tenant_id}" in await store.list_datasets()
     assert await files.list_buckets("mwb-t-") == [f"mwb-t-{tenant_id}"]
+
+
+# -- consumer validators on tenant writes (mwb2-adoption-fixes PD-7, DEC-6) --
+
+
+def _validated(store, files, **validators) -> Tenancy:
+    return Tenancy(
+        store,
+        files,
+        SETTINGS,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
+        clock=lambda: NOW,
+        **validators,
+    )
+
+
+def _keep_a_librarian(old: GrantSet, new: GrantSet, who: Principal) -> None:
+    if not any(g.role == "librarian" for g in new.grants or []):
+        raise InvalidBody("a library keeps at least one librarian")
+
+
+def _ada_librarian(tenant: str) -> GrantSet:
+    return GrantSet(grants=[Grant(assignee=ADA, target=tenant, role="librarian")])
+
+
+def _bob_librarian(tenant: str) -> GrantSet:
+    return GrantSet(grants=[Grant(assignee=BOB, target=tenant, role="librarian")])
+
+
+async def test_a_grant_validator_sees_the_stored_grants_the_body_and_the_caller(store, files):
+    seen: list[tuple[GrantSet, GrantSet, Principal]] = []
+    made = _validated(store, files, grant_validators=[lambda *args: seen.append(args)])
+    await made.ensure_system_database()
+    summary = await made.create("Ghent", library_slots(), CREATOR)
+    _, version = await made.get(summary.id)
+    body = _bob_librarian(summary.id)
+    await made.set_grants(summary.id, body, version, BEN)
+    old, new, who = seen[0]
+    assert [g.assignee for g in old.grants or []] == [ADA], "old is the record's grants as read"
+    assert (new, who) == (body, BEN), "new is the body and who is the caller"
+
+
+async def test_a_refusing_grant_validator_writes_nothing(store, files):  # T-20
+    made = _validated(store, files, grant_validators=[_keep_a_librarian])
+    await made.ensure_system_database()
+    summary = await made.create("Ghent", library_slots(), CREATOR)
+    _, version = await made.get(summary.id)
+    writes = len(store.sent("update"))
+    with pytest.raises(InvalidBody, match="at least one librarian"):
+        await made.set_grants(summary.id, GrantSet(), version, CREATOR)
+    assert len(store.sent("update")) == writes, "nothing was written"
+    assert (await made.get(summary.id))[1] == version, "the record is at its version"
+
+
+async def test_validators_run_in_order_and_the_first_refusal_stops_the_rest(store, files):
+    calls: list[str] = []
+
+    def refuse(old, new, who):
+        calls.append("refuse")
+        raise InvalidBody("no")
+
+    made = _validated(
+        store,
+        files,
+        grant_validators=[
+            lambda *_: calls.append("first"),
+            refuse,
+            lambda *_: calls.append("last"),
+        ],
+    )
+    await made.ensure_system_database()
+    summary = await made.create("Ghent", library_slots(), CREATOR)
+    _, version = await made.get(summary.id)
+    with pytest.raises(InvalidBody):
+        await made.set_grants(summary.id, GrantSet(), version, CREATOR)
+    assert calls == ["first", "refuse"], "in order, stopping at the first refusal"
+
+
+async def test_two_grant_writes_at_one_version_that_both_pass_land_once(store, files):  # T-21
+    made = _validated(store, files, grant_validators=[_keep_a_librarian])
+    await made.ensure_system_database()
+    summary = await made.create("Ghent", library_slots(), CREATOR)
+    _, version = await made.get(summary.id)
+    results = await asyncio.gather(
+        made.set_grants(summary.id, _ada_librarian(summary.id), version, CREATOR),
+        made.set_grants(summary.id, _bob_librarian(summary.id), version, CREATOR),
+        return_exceptions=True,
+    )
+    conflicts = [r for r in results if isinstance(r, Conflict)]
+    assert len(conflicts) == 1, f"exactly one write loses: {results}"
+    record, _ = await made.get(summary.id)
+    assert any(g.role == "librarian" for g in record.grants or []), "a librarian remains"
+
+
+async def test_a_validator_that_is_not_a_refusal_propagates_and_writes_nothing(
+    store, files
+):  # T-23
+    def broken(old, new, who):
+        raise RuntimeError("bug")
+
+    made = _validated(store, files, grant_validators=[broken])
+    await made.ensure_system_database()
+    summary = await made.create("Ghent", library_slots(), CREATOR)
+    _, version = await made.get(summary.id)
+    writes = len(store.sent("update"))
+    with pytest.raises(RuntimeError, match="bug"):
+        await made.set_grants(summary.id, GrantSet(), version, CREATOR)
+    assert len(store.sent("update")) == writes, "nothing was written"
+
+
+def _root_refusal(old, new, who):
+    raise InvalidBody("no such library")
+
+
+async def test_a_root_validator_on_create_sees_no_old_root_and_the_new_one(store, files):  # T-22
+    seen: list[tuple[object, Library, Principal]] = []
+    made = _validated(store, files, root_validators=[lambda *args: seen.append(args)])
+    await made.ensure_system_database()
+    summary = await made.create("Ghent", library_slots(), CREATOR)
+    old, new, who = seen[0]
+    assert old is None, "a creation has no old root"
+    assert (new.id, new.label, who) == (summary.id, "Ghent", CREATOR), "the new root, minted id"
+
+
+async def test_a_refusing_root_validator_on_create_leaves_no_database_bucket_or_record(
+    store, files
+):  # T-22
+    made = _validated(store, files, root_validators=[_root_refusal])
+    await made.ensure_system_database()
+    with pytest.raises(InvalidBody, match="no such library"):
+        await made.create("Ghent", library_slots(), CREATOR)
+    assert await tenant_databases(store) == [], "no database"
+    assert files.sent("create_bucket") == [], "no bucket"
+    assert await made.tenants() == [], "no record"
+
+
+async def test_a_root_validator_on_rename_sees_the_old_root_and_the_relabelled_one(
+    store, files
+):  # T-22
+    seen: list[tuple[Library, Library, Principal]] = []
+    made = _validated(store, files)
+    await made.ensure_system_database()
+    summary = await made.create("A", library_slots(), CREATOR)
+    _, version = await made.get(summary.id)
+    watched = _validated(store, files, root_validators=[lambda *args: seen.append(args)])
+    await watched.rename(summary.id, "B", version, BEN)
+    old, new, who = seen[0]
+    assert (old.label, new.label, who) == ("A", "B", BEN), "old is as stored, new is relabelled"
+
+
+async def test_a_refusing_root_validator_on_rename_changes_neither_root_nor_record(
+    store, files
+):  # T-22
+    made = _validated(store, files)
+    await made.ensure_system_database()
+    summary = await made.create("A", library_slots(), CREATOR)
+    _, version = await made.get(summary.id)
+    refusing = _validated(store, files, root_validators=[_root_refusal])
+    with pytest.raises(InvalidBody, match="no such library"):
+        await refusing.rename(summary.id, "B", version, BEN)
+    assert await _labels(made, store, summary.id) == ("A", "A"), "both keep the label"
+    assert (await made.get(summary.id))[1] == version, "the record keeps its version"

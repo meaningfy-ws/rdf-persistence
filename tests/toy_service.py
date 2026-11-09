@@ -1,6 +1,7 @@
 """The toy library served over the API with fakes, for the router's tests (task 5.2)."""
 
 import uuid
+from collections.abc import Sequence
 from pathlib import Path
 
 import httpx
@@ -20,6 +21,7 @@ from rdf_persistence.domain.generated.service.rp_service import IdKind, IdSpec, 
 from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris, draw_id, principal_iri
 from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.services.files import FileStore
+from rdf_persistence.services.tenancy import GrantValidator, RootValidator
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
 from rdf_persistence.testkit.tokens import ISSUER
 from tests.fixtures.library import generated
@@ -102,6 +104,8 @@ class ToyService:
         iri_policy: IriPolicy | None = None,
         verifier_iris: Iris = DEFAULT_IRIS,
         id_source: IdSource = draw_id,
+        grant_validators: Sequence[GrantValidator] = (),
+        root_validators: Sequence[RootValidator] = (),
     ) -> None:
         self.signer = TokenSigner()
         self.store = store or FakeStore()
@@ -135,6 +139,8 @@ class ToyService:
             settings=self.settings,
             prefix=mount,
             id_source=id_source,
+            grant_validators=grant_validators,
+            root_validators=root_validators,
         )
 
     def client(self) -> httpx.AsyncClient:

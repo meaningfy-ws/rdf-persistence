@@ -8,7 +8,7 @@ Work the toolkit does on its own behalf is attributed to ``{base}toolkit``.
 """
 
 import logging
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, suppress
 from typing import Any
 
@@ -58,6 +58,13 @@ CONSTRUCT_RECORDS = (
 RECORD_DESCRIPTION = "Who may do what in the tenant {label}."
 MAX_TENANT_CLASH_DRAWS = 5  # PD-5
 
+# A consumer's rule on a tenant write: it refuses by raising ``InvalidBody`` (422, the message is the detail) and
+# returns otherwise. Run in order before the write; the first refusal stops it and nothing is written.
+GrantValidator = Callable[[GrantSet, GrantSet, Principal], None]  # old, new, who
+RootValidator = Callable[
+    [BaseModel | None, BaseModel, Principal], None
+]  # old (None on create), new, who
+
 
 class Tenancy:
     """Creates, reads and deletes tenants: their databases, buckets and access records."""
@@ -73,6 +80,8 @@ class Tenancy:
         access_class: type[TenantAccess],
         clock: Clock = utc_now,
         iris: Iris | None = None,
+        grant_validators: Sequence[GrantValidator] = (),
+        root_validators: Sequence[RootValidator] = (),
     ) -> None:
         # not DEFAULT_IRIS: resource names need the settings' prefix, which DEFAULT_IRIS lacks (PD-12j)
         self._iris = iris or Iris(settings)
@@ -85,6 +94,8 @@ class Tenancy:
         self._access_class = access_class
         self._clock = clock
         self._system = system_database_name(settings.prefix)
+        self._grant_validators = tuple(grant_validators)
+        self._root_validators = tuple(root_validators)
         self._toolkit = Principal(id=str(toolkit_principal_iri(settings.base)))
 
     def _session(
@@ -155,7 +166,8 @@ class Tenancy:
 
         Raises:
             InvalidBody: ``root_slots`` names an ``id`` or sets an ``internal`` slot: the service assigns those;
-                or gives a ``label`` other than ``label``: a tenant has one label (PD-3).
+                or gives a ``label`` other than ``label``: a tenant has one label (PD-3); or a root
+                validator refuses the new root.
             ValueError: ``label`` or ``root_slots`` is not valid (pydantic's ``ValidationError``).
         """
         if "id" in root_slots:
@@ -176,6 +188,7 @@ class Tenancy:
         )
         tenant_root = self._root_class.model_validate({**root_slots, LABEL: label, "id": tenant})
         refuse_internal(self._mapper.to_graph(tenant_root), self._internal)
+        _run(self._root_validators, None, tenant_root, creator)
         await self._store.create_dataset(name)
         _log_step("create-database", tenant, name)
         await self._files.create_bucket(name)
@@ -268,16 +281,18 @@ class Tenancy:
         async with self.tenant_session(tenant, principal) as session:
             work = UnitOfWork(session, self._mapper)
             root = await work.get(self._root_class, tenant)
+            old = root.model_copy(deep=True)
             setattr(root, LABEL, label)  # every root is Described and has a label
+            _run(self._root_validators, old, root, principal)
             work.add(root)
             await work.commit()
 
-    async def vet_root(self, tenant: str, triples: Iterable[Triple]) -> None:
-        """Refuse a replacement body of the tenant's root that gives the tenant another label than its record has (PD-3).
+    async def vet_root(self, tenant: str, triples: Iterable[Triple], principal: Principal) -> None:
+        """Refuse a replacement body of the tenant's root that gives the tenant another label than its record has (PD-3), or that a root validator refuses.
 
         Raises:
             NotFound: The tenant has no access record.
-            InvalidBody: The body's label is not the record's.
+            InvalidBody: The body's label is not the record's, or a root validator refuses the body.
         """
         record, _ = await self.get(tenant)
         graph = Graph()
@@ -292,6 +307,10 @@ class Tenancy:
         labels = set(graph.objects(URIRef(tenant), v.predicate(LABEL)))
         if len(labels) != 1 or getattr(sent, LABEL) != record.label:
             raise refused
+        if self._root_validators:
+            async with self.tenant_session(tenant, principal) as session:
+                stored = await UnitOfWork(session, self._mapper).get(self._root_class, tenant)
+            _run(self._root_validators, stored, sent, principal)
 
     async def set_grants(
         self, tenant: str, grants: GrantSet, if_version: str, principal: Principal
@@ -301,8 +320,15 @@ class Tenancy:
         Raises:
             NotFound: The tenant has no access record.
             Conflict: The record is no longer at ``if_version``; nothing changed.
+            InvalidBody: A grant validator refuses ``grants``; nothing changed.
         """
         record, _ = await self.get(tenant)
+        _run(
+            self._grant_validators,
+            GrantSet(grants=record.grants, prohibitions=record.prohibitions),
+            grants,
+            principal,
+        )
         record.grants = grants.grants
         record.prohibitions = grants.prohibitions
         return await self._replaced(tenant, principal, record, if_version)
@@ -406,6 +432,12 @@ class Tenancy:
     async def database_names(self) -> set[str]:
         """The database (and bucket) names the access records store, for every tenant."""
         return {record.database_name for record in await self._records()}
+
+
+def _run(validators: Sequence[Callable[..., None]], *args: Any) -> None:
+    """Run ``validators`` in order on ``args``; the first to raise stops the write."""
+    for validator in validators:
+        validator(*args)
 
 
 def _log_step(step: str, tenant: str, resource: str) -> None:

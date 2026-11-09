@@ -1,6 +1,6 @@
 """``install_service``: mounts the generic router on a consumer's FastAPI app (PD-13)."""
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
 from types import ModuleType
@@ -21,6 +21,7 @@ from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.iri_policy_guard import guard_iri_policy
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.sweep import sweep
+from rdf_persistence.services.tenancy import GrantValidator, RootValidator
 from rdf_persistence.services.tokens import TokenVerifier
 
 
@@ -37,6 +38,8 @@ def install_service(
     settings: ServiceSettings,
     prefix: str = "",
     id_source: IdSource = draw_id,
+    grant_validators: Sequence[GrantValidator] = (),
+    root_validators: Sequence[RootValidator] = (),
 ) -> ServiceKit:
     """Serve the application's schema on ``app``: its routes, its problem responses, its start-up.
 
@@ -52,6 +55,9 @@ def install_service(
     ``settings.base`` plus that prefix, never at the ``Host`` the request came with. A request body
     may hold at most ``settings.max_body_bytes``. ``id_source`` draws the raw ids of new tenants and
     objects: for tests that need to force a clash; leave it out in a running service.
+
+    ``grant_validators`` and ``root_validators`` are the consumer's own rules on tenant writes: each
+    refuses a write by raising ``InvalidBody`` (422), before anything is written (see ``Tenancy``).
 
     Returns the kit the routes share, for the consumer's own routes: its ``tenancy``, ``store``,
     ``files`` and ``identity``, and ``require`` and ``require_aggregate``, the token and access check
@@ -79,6 +85,8 @@ def install_service(
         settings=settings,
         prefix=prefix,
         id_source=id_source,
+        grant_validators=grant_validators,
+        root_validators=root_validators,
     )
     _require_same_principals(kit)
     install_problem_handlers(app, settings.base)

@@ -86,13 +86,14 @@ class Aggregates:
         Raises:
             InvalidBody: The body is not a valid ``cls`` rooted at ``iri``, or, with parts beside
                 their root, names a part the aggregate does not store (PD-7), or, for a tenant's
-                root, gives the tenant another label than its record has (PD-3).
+                root, gives the tenant another label than its record has (PD-3) or is refused by a
+                root validator.
             NotFound: The aggregate has no graph.
             Conflict: Its version is not ``if_version``; nothing changed.
         """
         triples, named = await self._triples(tenant, data, media_type, cls, iri, creating=False)
         if iri == tenant:
-            await self._tenancy.vet_root(tenant, triples)
+            await self._tenancy.vet_root(tenant, triples, principal)
         async with self._tenancy.tenant_session(tenant, principal) as session:
             stored, _, _ = await session.get_graph(iri)
             foreign = named - set(stored.subjects())

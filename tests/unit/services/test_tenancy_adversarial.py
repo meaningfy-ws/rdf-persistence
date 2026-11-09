@@ -131,7 +131,7 @@ def label_predicate() -> URIRef:
 
 async def test_vet_root_accepts_exactly_the_records_label(tenancy, label_predicate):
     summary = await tenancy.create("A", library_slots(), CREATOR)
-    await tenancy.vet_root(summary.id, _label(label_predicate, summary.id, "A"))
+    await tenancy.vet_root(summary.id, _label(label_predicate, summary.id, "A"), CREATOR)
 
 
 @pytest.mark.parametrize(
@@ -140,7 +140,7 @@ async def test_vet_root_accepts_exactly_the_records_label(tenancy, label_predica
 async def test_vet_root_refuses_none_two_or_other_labels(tenancy, label_predicate, labels):
     summary = await tenancy.create("A", library_slots(), CREATOR)
     with pytest.raises(InvalidBody, match="label route"):
-        await tenancy.vet_root(summary.id, _label(label_predicate, summary.id, *labels))
+        await tenancy.vet_root(summary.id, _label(label_predicate, summary.id, *labels), CREATOR)
 
 
 async def test_vet_root_ignores_the_label_of_another_subject(tenancy, label_predicate):
@@ -149,7 +149,7 @@ async def test_vet_root_ignores_the_label_of_another_subject(tenancy, label_pred
         *_label(label_predicate, summary.id, "A"),
         *_label(label_predicate, summary.id, "Z", subject=OTHER),
     ]
-    await tenancy.vet_root(summary.id, triples)
+    await tenancy.vet_root(summary.id, triples, CREATOR)
 
 
 async def test_vet_root_does_not_take_another_subjects_label_for_the_roots(
@@ -158,19 +158,19 @@ async def test_vet_root_does_not_take_another_subjects_label_for_the_roots(
     summary = await tenancy.create("A", library_slots(), CREATOR)
     only_other = _label(label_predicate, summary.id, "A", subject=OTHER)
     with pytest.raises(InvalidBody):
-        await tenancy.vet_root(summary.id, only_other)
+        await tenancy.vet_root(summary.id, only_other, CREATOR)
 
 
 async def test_vet_root_on_an_unknown_tenant_is_not_found(tenancy, label_predicate):
     with pytest.raises(NotFound):
-        await tenancy.vet_root(f"{SETTINGS.base}libraries/nope", [])
+        await tenancy.vet_root(f"{SETTINGS.base}libraries/nope", [], CREATOR)
 
 
 async def test_vet_root_compares_the_lexical_form_not_the_datatype(tenancy, label_predicate):
     summary = await tenancy.create("A", library_slots(), CREATOR)
     typed = [(URIRef(summary.id), label_predicate, Literal("A", lang="en"))]
     await tenancy.vet_root(
-        summary.id, typed
+        summary.id, typed, CREATOR
     )  # documents today's behaviour: the language is ignored
 
 
@@ -178,4 +178,4 @@ async def test_a_type_triple_does_not_count_as_a_label(tenancy, label_predicate)
     summary = await tenancy.create("A", library_slots(), CREATOR)
     triples = [(URIRef(summary.id), RDF.type, URIRef(OTHER))]
     with pytest.raises(InvalidBody):
-        await tenancy.vet_root(summary.id, triples)
+        await tenancy.vet_root(summary.id, triples, CREATOR)
