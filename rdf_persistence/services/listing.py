@@ -42,9 +42,12 @@ from rdf_persistence.services.schema_structure import (
     is_bookkeeping,
     is_internal,
     rdf_term,
+    served_roots,
 )
 
 LIMIT, OFFSET, SORT = "limit", "offset", "sort"
+# The largest page a listing gives: the bound the generated request model enforces.
+PAGE = next(m.le for m in ListRequest.model_fields["limit"].metadata if hasattr(m, "le"))
 RESERVED = frozenset({LIMIT, OFFSET, SORT})
 DESCENDING = "-"
 _DIGITS = re.compile(r"[0-9]+")
@@ -103,7 +106,7 @@ def list_request(params: Iterable[tuple[str, str]]) -> ListRequest:
     """The listing a query string asks for: ``limit``, ``offset``, ``sort``, every other parameter a filter.
 
     Raises:
-        BadQuery: ``limit`` is not between 1 and 200, ``offset`` is negative, a number is not a whole
+        BadQuery: ``limit`` is not between 1 and ``PAGE``, ``offset`` is negative, a number is not a whole
             number, or ``limit``, ``offset`` or ``sort`` is given twice.
     """
     sent = _sent(params)
@@ -120,7 +123,7 @@ def list_request(params: Iterable[tuple[str, str]]) -> ListRequest:
             **_paging(sent), sort=sent[SORT][0] if sent[SORT] else None, filters=filters or None
         )
     except ValidationError as error:
-        raise BadQuery("limit is between 1 and 200 and offset is not negative") from error
+        raise BadQuery(f"limit is between 1 and {PAGE} and offset is not negative") from error
 
 
 def listable_slots(view: SchemaView, cls: ClassDefinition) -> dict[str, SlotDefinition]:
@@ -197,6 +200,19 @@ class Listings:
     def __init__(self, view: SchemaView) -> None:
         self._view = view
         self._slots: dict[str, Mapping[str, SlotDefinition]] = {}
+        self._roots: dict[str, ClassDefinition] | None = None
+
+    def served_root(self, name: str) -> ClassDefinition:
+        """The aggregate root named ``name`` that the tenant databases serve (``served_roots``).
+
+        Raises:
+            ValueError: ``name`` is not one.
+        """
+        if self._roots is None:
+            self._roots = {root.name: root for root in served_roots(self._view)}
+        if name not in self._roots:
+            raise ValueError(f"{name} is not an aggregate root with a path")
+        return self._roots[name]
 
     def _listable(self, cls: ClassDefinition) -> Mapping[str, SlotDefinition]:
         if cls.name not in self._slots:

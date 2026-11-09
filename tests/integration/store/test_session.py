@@ -385,8 +385,9 @@ async def test_client_sent_bookkeeping_is_not_stored(store, database):
         lambda s: s.add_graph(book(1), title(book(1), "x")),
         lambda s: s.replace_graph(book(1), title(book(1), "x"), "v"),
         lambda s: s.remove(book(1), "v"),
+        lambda s: s.loaded_graph(book(1), loaded_graph_iri(book(1))),
     ],
-    ids=["get", "add", "replace", "remove"],
+    ids=["get", "add", "replace", "remove", "loaded_graph"],
 )
 async def test_a_dropped_database_is_database_gone(store, call):
     name = f"t-{uuid.uuid4().hex}"
@@ -423,3 +424,27 @@ async def test_replace_and_remove_cost_the_size_of_the_graphs_not_their_product(
     else:
         await session.remove(book(1), version)
     assert time.perf_counter() - started < 2.0
+
+
+async def test_find_returns_the_aggregate_with_the_value_on_a_real_store(store, database):
+    from rdf_persistence.services.listing import Listings
+    from rdf_persistence.services.schema import load_schema
+    from tests.fixtures.library.generated.scans import Scan
+    from tests.toy import TOY_SCHEMA, toy_mapper
+
+    session = Session(
+        store,
+        database=database,
+        tenant_iri=TENANT,
+        principal=ADA,
+        clock=Ticker(),
+        listings=Listings(load_schema(TOY_SCHEMA)),
+    )
+    iris = [
+        str(DEFAULT_IRIS.aggregate(TENANT, "scan", "scans", str(uuid.UUID(int=n)))) for n in (1, 2)
+    ]
+    for iri, name in zip(iris, ("a", "b"), strict=True):
+        await session.add_graph(
+            iri, toy_mapper().to_triples(Scan(id=iri, label="scan", file_name=name))
+        )
+    assert await session.find(Scan, file_name="a") == [iris[0]]

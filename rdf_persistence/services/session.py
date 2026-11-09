@@ -9,15 +9,21 @@ import uuid
 from collections.abc import AsyncIterator, Callable, Iterable, Sequence
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from enum import Enum
 
+from pydantic import BaseModel
 from rdflib import BNode, Graph, Literal, URIRef
 from rdflib.query import ResultRow
 
 from rdf_persistence.domain.exceptions import Conflict, InvalidIri, NotFound
 from rdf_persistence.domain.generated.rp_annotations import Tracked
-from rdf_persistence.domain.generated.rp_core import Principal, RegistryEntry, RegistryKind
+from rdf_persistence.domain.generated.rp_core import (
+    Principal,
+    RegistryEntry,
+    RegistryKind,
+)
 from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.generated.service.rp_service import ListPlan
+from rdf_persistence.domain.generated.service.rp_service import Filter, ListPlan, ListRequest
 from rdf_persistence.domain.iris import (
     DEFAULT_IRIS,
     Iris,
@@ -26,7 +32,7 @@ from rdf_persistence.domain.iris import (
 )
 from rdf_persistence.domain.sparql import Triple, fill, term, term_list, triples_block
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.listing import listing_query
+from rdf_persistence.services.listing import PAGE, Listings, items_of, listing_query, total_of
 from rdf_persistence.services.loading import parse_graph
 from rdf_persistence.services.store import Store
 
@@ -223,7 +229,9 @@ class Session:
         principal: Principal,
         clock: Clock,
         iris: Iris = DEFAULT_IRIS,
+        listings: Listings | None = None,
     ) -> None:
+        self._listings = listings
         self._iris = iris
         self._store = store
         self._database = database
@@ -345,6 +353,37 @@ class Session:
         result = await self._store.query(self._database, listing_query(self._registry, plan))
         return result.graph or Graph()
 
+    async def find(self, cls: type[BaseModel], **equals: object) -> list[str]:
+        """The IRIs of the tenant's aggregates of ``cls`` whose slots equal ``equals``, in IRI order.
+
+        A list or tuple value asks for all its items. Prohibitions are ignored (PD-6): a hidden
+        duplicate is still a duplicate; check each IRI with ``require_aggregate`` before showing it.
+
+        Not a snapshot: the pages are separate queries, so a concurrent write can slip past a
+        uniqueness check made with it. With no filters it reads every aggregate of the class, so
+        never pass caller input unfiltered.
+
+        Raises:
+            RuntimeError: The session was opened without listings.
+            ValueError: ``cls`` is not an aggregate root with a path in the tenant databases, or a
+                list value is empty.
+            BadQuery: A name is not a slot a listing may filter on, or a value is not one of its slot.
+            DatabaseGone: The tenant database does not exist.
+        """
+        if self._listings is None:
+            raise RuntimeError("find needs a session opened with listings, e.g. by the service kit")
+        definition = self._listings.served_root(cls.__name__)
+        filters = _filters(equals)
+        found: list[str] = []
+        while True:
+            request = ListRequest(filters=filters or None, limit=PAGE, offset=len(found))
+            plan = self._listings.plan(definition, request)
+            answer = await self.page(plan)
+            items = items_of(answer, plan)
+            found += [str(root) for root, _ in items]
+            if not items or len(found) >= total_of(answer, plan):
+                return found
+
     async def add_graph(
         self, iri: str, triples: Iterable[Triple], loaded_graphs: Sequence[URIRef] = ()
     ) -> str:
@@ -426,6 +465,23 @@ class Session:
         await self._store.put_graph(self._database, loaded, parsed)
         return loaded
 
+    async def loaded_graph(self, iri: str, graph_iri: str) -> Graph:
+        """The triples of ``graph_iri``, a graph loaded for the aggregate ``iri``.
+
+        The session checks no access; the caller gates the read like ``get_graph`` (PD-7).
+
+        Raises:
+            InvalidIri: ``iri`` is not an aggregate IRI the policy mints for the tenant.
+            NotFound: ``graph_iri`` is not a graph loaded for the aggregate.
+            DatabaseGone: The tenant database does not exist.
+        """
+        self._graph(iri)
+        loaded = URIRef(graph_iri)
+        if loaded not in await self._registered_loaded(iri):
+            raise NotFound(f"{graph_iri} is not a graph loaded for {iri}")
+        result = await self._store.query(self._database, fill(READ_GRAPH, graph=term(loaded)))
+        return result.graph or Graph()
+
     async def remove(self, iri: str, if_version: str) -> None:
         """Delete the aggregate's graph, loaded graphs and registry entries if it still has ``if_version``.
 
@@ -441,6 +497,28 @@ class Session:
             raise Conflict(f"{graph} is no longer at version {if_version}")
 
 
+def _items(name: str, value: object) -> list[object]:
+    """The values a filter asks for: a list or tuple gives its items, which may not be none."""
+    items = list(value) if isinstance(value, list | tuple) else [value]
+    if not items:
+        raise ValueError(f"{name} is an empty list; give at least one value or leave it out")
+    return items
+
+
+def _filters(equals: dict[str, object]) -> list[Filter]:
+    """One filter per value; a list or tuple gives one per item."""
+    return [
+        Filter(slot=name, value=_text(item))
+        for name, value in equals.items()
+        for item in _items(name, value)
+    ]
+
+
+def _text(value: object) -> str:
+    """The RDF lexical form of a value (the mapper's); an enum gives its value."""
+    return value.value if isinstance(value, Enum) else str(Literal(value))
+
+
 @asynccontextmanager
 async def open_session(
     store: Store,
@@ -450,9 +528,10 @@ async def open_session(
     principal: Principal,
     clock: Clock = utc_now,
     iris: Iris = DEFAULT_IRIS,
+    listings: Listings | None = None,
 ) -> AsyncIterator[Session]:
     """Open a session on the tenant database ``database`` for ``principal``; ``iris`` is the IRI policy
-    (default: the default policy)."""
+    (default: the default policy); ``listings`` lets the session ``find`` aggregates."""
     yield Session(
         store,
         database=database,
@@ -460,4 +539,5 @@ async def open_session(
         principal=principal,
         clock=clock,
         iris=iris,
+        listings=listings,
     )

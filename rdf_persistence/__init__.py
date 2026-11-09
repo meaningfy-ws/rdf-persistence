@@ -103,6 +103,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     )
     from rdf_persistence.services.files import FileStore
     from rdf_persistence.services.identity import Identity
+    from rdf_persistence.services.listing import Listings
     from rdf_persistence.services.mapper import Mapper, UnitOfWork, generated_models, new_part
     from rdf_persistence.services.schema import load_schema
     from rdf_persistence.services.session import Session, open_session
@@ -134,6 +135,7 @@ _LAZY_MODULES = {
     "UnitOfWork": f"{_SERVICES}.mapper",
     "generated_models": f"{_SERVICES}.mapper",
     "new_part": f"{_SERVICES}.mapper",
+    "Listings": f"{_SERVICES}.listing",
     "load_schema": f"{_SERVICES}.schema",
     "Session": f"{_SERVICES}.session",
     "open_session": f"{_SERVICES}.session",
@@ -190,6 +192,7 @@ __all__ = [
     "Iris",
     "JwksTokenVerifier",
     "LabelUpdate",
+    "Listings",
     "Mapper",
     "ModuleKind",
     "NotAcceptable",

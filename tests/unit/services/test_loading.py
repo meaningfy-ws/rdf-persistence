@@ -12,6 +12,7 @@ from rdflib import Graph, Literal, URIRef
 from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence import InvalidGraph
+from rdf_persistence.domain.exceptions import NotFound
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.sparql import fill, term
@@ -216,3 +217,28 @@ async def test_an_inline_jsonld_context_still_parses(context):
         data = data.replace(b'"title"', b'"http://purl.org/dc/terms/title"')
     graph = await parse_graph(data, RdfFormat.JSONLD)
     assert isomorphic(graph, EXPECTED), graph_diff(graph, EXPECTED)
+
+
+SECOND = f"{TENANT}/books/{UUID(int=2)}"
+
+
+async def loaded_for(session, iri):
+    """Load the sample Turtle for ``iri`` and commit the aggregate so the graph is registered."""
+    loaded = await session.load_graph(iri, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE)
+    await session.add_graph(iri, [], [loaded])
+    return loaded
+
+
+async def test_a_loaded_graph_reads_back_as_the_file_that_was_loaded(session):
+    loaded = await loaded_for(session, AGGREGATE)
+    read = await session.loaded_graph(AGGREGATE, str(loaded))
+    assert isomorphic(read, EXPECTED), graph_diff(read, EXPECTED)
+
+
+async def test_a_graph_of_another_aggregate_or_an_unknown_one_is_not_found(session):
+    await loaded_for(session, AGGREGATE)
+    other = await loaded_for(session, SECOND)
+    with pytest.raises(NotFound):
+        await session.loaded_graph(AGGREGATE, str(other))
+    with pytest.raises(NotFound):
+        await session.loaded_graph(AGGREGATE, f"{AGGREGATE}/content/{UUID(int=9)}")

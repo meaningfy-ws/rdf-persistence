@@ -50,17 +50,17 @@ needs it.
 
 ## 4. Loaded graphs read back (#56)
 
-- [ ] 4.1 PD-5, PD-7: T-13, T-14, T-15, then `Session.loaded_graph` (the delta spec
+- [x] 4.1 PD-5, PD-7: T-13, T-14, T-15, then `Session.loaded_graph` (the delta spec
   already carries PD-7). Gate: `uv run pytest -n auto tests/unit/services
   tests/integration/store -q`, `openspec validate mwb2-file-resources --strict`.
 
 ## 5. Finding aggregates (#60)
 
-- [ ] 5.1 PD-6: T-16 to T-21, then `Session.find`, the `listings` keyword on `Session`, `open_session`,
+- [x] 5.1 PD-6: T-16 to T-21, then `Session.find`, the `listings` keyword on `Session`, `open_session`,
   `fake_session` and `Tenancy`, and the `ServiceKit` wiring (PD-6). The
   report says whether T-16 to T-20 run on `FakeStore` or Fuseki. Gate: `uv run pytest -n auto tests/unit/services tests/unit/entrypoints
   tests/integration/store -q`.
-- [ ] 5.2 Docs: `howto/adopt.adoc` (reading a loaded graph, with the `require_aggregate`
+- [x] 5.2 Docs: `howto/adopt.adoc` (reading a loaded graph, with the `require_aggregate`
   check first; finding aggregates, and that `find` ignores Prohibitions), `questions.adoc`. Gate: `make check-docs`.
 
 Stage 2 close: five-lens review, checker, PR, merge on green CI. Then: comment on and close #56, #60
