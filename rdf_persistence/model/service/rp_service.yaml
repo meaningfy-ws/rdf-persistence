@@ -134,6 +134,7 @@ classes:
       - id
       - label
       - state
+      - allowed_actions
     slot_usage:
       id:
         required: true
@@ -461,6 +462,14 @@ slots:
     alias: alphabet
     range: string
     pattern: "^[a-z0-9]+$"
+  allowed_actions:
+    title: Allowed actions
+    description: >-
+      The actions the caller who asked may take on the tenant, in the order read, modify, delete,
+      administer. Only a listing fills it.
+    slot_uri: rp:allowedActions
+    range: Action
+    multivalued: true
   deployment:
     title: Deployment
     description: >-

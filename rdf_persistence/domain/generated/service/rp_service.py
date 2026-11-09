@@ -382,6 +382,7 @@ class TenantSummary(ConfiguredBaseModel):
     id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
     label: str = Field(default=..., title="Label", description="The preferred label of the object.")
     state: TenantState = Field(default=..., title="State", description="Where the tenant is in its life.")
+    allowed_actions: Optional[list[Action]] = Field(default=None, title="Allowed actions", description="The actions the caller who asked may take on the tenant, in the order read, modify, delete, administer. Only a listing fills it.")
 
 
 class LabelUpdate(TenantLabelled):

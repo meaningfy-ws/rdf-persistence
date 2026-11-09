@@ -43,6 +43,17 @@
       "aggregate_template": {
          "@id": "aggregateTemplate"
       },
+      "allowed_actions": {
+         "@container": "@set",
+         "@id": "allowedActions",
+         "@type": "@vocab",
+         "@context": {
+            "read": "http://www.w3.org/ns/odrl/2/read",
+            "modify": "http://www.w3.org/ns/odrl/2/modify",
+            "delete": "http://www.w3.org/ns/odrl/2/delete",
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer"
+         }
+      },
       "assignee": {
          "@type": "@id",
          "@id": "ODRL:assignee"
