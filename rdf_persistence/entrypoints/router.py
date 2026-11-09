@@ -256,7 +256,6 @@ def add_tenant_routes(router: APIRouter, kit: ServiceKit, gate: Gate) -> None:
     as_caller = Depends(gate.caller)
     may_read = Depends(gate.tenant(Action.READ))
     may_modify = Depends(gate.tenant(Action.MODIFY))
-    may_delete = Depends(gate.tenant(Action.DELETE))
     may_administer = Depends(gate.tenant(Action.ADMINISTER))
 
     async def create(request: Request, caller: VerifiedCaller = as_caller) -> Response:
@@ -275,7 +274,7 @@ def add_tenant_routes(router: APIRouter, kit: ServiceKit, gate: Gate) -> None:
     ) -> Response:
         return await root.replace(request, caller, access.tenant, access.tenant)
 
-    async def delete(request: Request, access: CallerAccess = may_delete) -> Response:
+    async def delete(request: Request, access: CallerAccess = may_administer) -> Response:
         return await api.delete(request, access)
 
     async def grants(access: CallerAccess = may_administer) -> Response:

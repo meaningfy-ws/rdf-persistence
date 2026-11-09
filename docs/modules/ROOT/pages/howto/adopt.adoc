@@ -685,10 +685,10 @@ What create does, in order:
 
 A crash part way leaves a database or a bucket that no record names. The start-up sweep drops it.
 
-*Delete* is `DELETE /{tenant_segment}/{t}` with `If-Match`. The version is the access record's: the
-`ETag` of `GET …/grants`, or of the last `PUT …/grants` or `PUT …/label`. The tenant is marked
-`deleting`, so from then on it answers 404. Then its database and bucket are dropped and its record
-is removed. The sweep at the next start-up finishes a deletion that a crash interrupted.
+*Delete* is `DELETE /{tenant_segment}/{t}` with `If-Match`. It needs `administer` on the tenant.
+The version is the access record's: the `ETag` of `GET …/grants`, or of the last `PUT …/grants` or
+`PUT …/label`. The tenant is marked `deleting`, so from then on it answers 404. Then its database
+and bucket are dropped and its record is removed. The sweep at the next start-up finishes a deletion that a crash interrupted.
 
 `PUT …/label` renames the tenant. `GET` and `PUT /{tenant_segment}/{t}` read and replace its root
 object, like any aggregate.
@@ -744,7 +744,10 @@ _Who may do what?_
 - {role: admin, level: system, actions: [read]}
 - {role: librarian, level: tenant, actions: [read, modify, delete, administer]}
 - {role: reader, level: tenant, actions: [read]}
+- {role: member, level: tenant, actions: [read, modify, delete]}
 ----
+
+A `member` can delete the tenant's aggregates but not the tenant: that needs `administer`.
 
 `load_role_definitions(path)` reads and validates the file. A malformed entry, an entry with no
 actions, or a role defined twice at one level raises `InvalidRoleDefinition`, which names the

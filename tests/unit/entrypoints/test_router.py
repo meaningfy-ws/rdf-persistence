@@ -12,10 +12,17 @@ from rdflib import Graph
 from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence import GrantSet, Page, TenantSummary
-from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
+from rdf_persistence.domain.generated.rp_access import (
+    Action,
+    Grant,
+    Prohibition,
+    RoleDefinition,
+    RoleLevel,
+)
 from rdf_persistence.domain.iris import graph_iri
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
-from tests.toy import SETTINGS
+from rdf_persistence.services.access import AccessRules, load_role_definitions
+from tests.toy import ROLES, SETTINGS
 from tests.toy_service import DUNE_BODY, TENANT_BODY, principal_of
 from tests.unit.entrypoints.scene import NIL, PROBLEMS, Scene, problem_of
 
@@ -139,7 +146,9 @@ async def test_a_grant_set_replaces_the_grants(scene) -> None:
     grants = GrantSet(
         grants=[Grant(assignee=principal_of("ada"), target=scene.tenant_iri, role="librarian")],
         prohibitions=[
-            Prohibition(assignee=principal_of("ada"), target=scene.tenant_iri, action=Action.DELETE)
+            Prohibition(
+                assignee=principal_of("ada"), target=scene.tenant_iri, action=Action.ADMINISTER
+            )
         ],
     )
     response = await scene.http.put(
@@ -153,7 +162,7 @@ async def test_a_grant_set_replaces_the_grants(scene) -> None:
     refused = await scene.http.delete(
         scene.tenant, headers=scene.headers("ada", **{"If-Match": response.headers["etag"]})
     )
-    assert refused.status_code == 403, "the new prohibition forbids deleting"
+    assert refused.status_code == 403, "the new prohibition forbids deleting the tenant"
 
 
 @pytest.mark.parametrize(
@@ -213,6 +222,76 @@ async def test_deleting_a_tenant_drops_it_and_everything_in_it(scene) -> None:
         "the tenant"
     )
     assert await scene.service.files.list_buckets("lib-t-") == [], "and its bucket"
+
+
+async def _ada_is_prohibited(scene: Scene, action: Action) -> str:
+    """Replace the grants: ada stays a librarian, barred from ``action`` on the tenant; the new ETag."""
+    grants = GrantSet(
+        grants=[Grant(assignee=principal_of("ada"), target=scene.tenant_iri, role="librarian")],
+        prohibitions=[
+            Prohibition(assignee=principal_of("ada"), target=scene.tenant_iri, action=action)
+        ],
+    )
+    response = await scene.http.put(
+        f"{scene.tenant}/grants",
+        content=grants.model_dump_json(exclude_none=True),
+        headers=scene.headers("ada", **{"If-Match": scene.access_etag, "Content-Type": JSON}),
+    )
+    assert response.status_code == 200, response.text
+    return response.headers["etag"]
+
+
+async def test_a_member_may_delete_a_book_but_not_the_tenant(scene) -> None:  # T-2
+    member = RoleDefinition(
+        role="member",
+        level=RoleLevel.TENANT,
+        actions=[Action.READ, Action.MODIFY, Action.DELETE],
+    )
+    scene.service.kit.rules = AccessRules([*load_role_definitions(ROLES), member]).with_iris(
+        scene.service.kit.iris
+    )
+    grants = GrantSet(
+        grants=[
+            Grant(assignee=principal_of("ada"), target=scene.tenant_iri, role="librarian"),
+            Grant(assignee=principal_of("mia"), target=scene.tenant_iri, role="member"),
+        ]
+    )
+    put = await scene.http.put(
+        f"{scene.tenant}/grants",
+        content=grants.model_dump_json(exclude_none=True),
+        headers=scene.headers("ada", **{"If-Match": scene.access_etag, "Content-Type": JSON}),
+    )
+    assert put.status_code == 200, put.text
+    refused = await scene.http.delete(
+        scene.tenant, headers=scene.headers("mia", **{"If-Match": put.headers["etag"]})
+    )
+    assert refused.status_code == 403, "delete alone does not delete the tenant"
+    datasets = await scene.service.store.list_datasets()
+    assert [d for d in datasets if d.startswith("lib-t-")] != [], "the dataset is still there"
+    assert len(await scene.service.files.list_buckets("lib-t-")) == 1, "so is the bucket"
+    book = await scene.http.delete(
+        scene.book, headers=scene.headers("mia", **{"If-Match": scene.book_etag})
+    )
+    assert book.status_code == 204, "but a member deletes a book"
+
+
+async def test_a_prohibition_of_administer_keeps_the_tenant(scene) -> None:  # T-3
+    etag = await _ada_is_prohibited(scene, Action.ADMINISTER)
+    refused = await scene.http.delete(
+        scene.tenant, headers=scene.headers("ada", **{"If-Match": etag})
+    )
+    assert refused.status_code == 403, "administer is what deleting the tenant needs"
+
+
+async def test_a_prohibition_of_delete_leaves_the_tenant_deletable(scene) -> None:  # T-5
+    etag = await _ada_is_prohibited(scene, Action.DELETE)
+    book = await scene.http.delete(
+        scene.book, headers=scene.headers("ada", **{"If-Match": scene.book_etag})
+    )
+    deleted = await scene.http.delete(
+        scene.tenant, headers=scene.headers("ada", **{"If-Match": etag})
+    )
+    assert (book.status_code, deleted.status_code) == (403, 204), "delete guards books, not tenant"
 
 
 async def test_deleting_a_tenant_needs_if_match_and_the_current_version(scene) -> None:
