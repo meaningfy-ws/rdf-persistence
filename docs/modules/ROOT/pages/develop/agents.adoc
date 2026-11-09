@@ -63,8 +63,13 @@ so a brief never asks a builder or a reviewer for an impact check.
 [cols="2,3",options="header"]
 |===
 |Gate |When
-|The affected test folders, `uv run pytest <folders> -n auto -q` |After every task. Run serially,
-the entrypoint and service folders take 4 to 6 min; in parallel, about a quarter of that
+|`make test-changed` |After every task. It runs the tests of the files the task changed against
+`develop` (set `BASE=<branch>` to compare with another; `PYTEST_N=<workers>` sets the worker
+count), slow tests included. It falls back to `make test-fast` by itself when it cannot map a
+change to tests
+|`make test-fast` |Instead of `make test-changed` when you are unsure what a change reaches, or
+after changing a port or a shared model. It runs every unit and feature test not marked `slow`
+(≈ 3 min)
 |`make check-quality` |After every task (≈ 1 min)
 |`make check-all` |Once, before the PR: it already holds `make test`, so never run both
 |`make test-containers` |Once, before the PR; and when adapters or containers change
