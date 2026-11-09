@@ -15,7 +15,13 @@ from rdf_persistence.generation.generated.rp_generation import (
     GenerationTarget,
     ManifestEntry,
 )
-from rdf_persistence.services.schema import LOAD_ERRORS, PACKAGE, PACKAGE_DIR, load_schema
+from rdf_persistence.services.schema import (
+    LOAD_ERRORS,
+    PACKAGE,
+    PACKAGE_DIR,
+    SERVICE_SCHEMA,
+    load_schema,
+)
 
 MANIFEST_NAME = "rp-manifest.json"
 DEFAULT_REGENERATE = "rp-generate"
@@ -61,8 +67,8 @@ def _toolkit_files() -> Iterator[Path]:
     yield from (p for p in TEMPLATES_DIR.rglob("*") if p.is_file() and "__pycache__" not in p.parts)
 
 
-def _schema_files(target: GenerationTarget, base: Path) -> Iterator[Path]:
-    view = load_schema(base / target.schema_file)
+def _schema_files(schema_path: Path) -> Iterator[Path]:
+    view = load_schema(schema_path)
     for name in view.imports_closure():
         schema = view.schema_map.get(name)
         if schema is not None and schema.source_file and not name.startswith(LINKML_TYPES_PREFIX):
@@ -75,8 +81,13 @@ def _entries(files: Iterable[Path], base: Path) -> list[ManifestEntry]:
 
 
 def current_inputs(target: GenerationTarget, base: Path) -> list[ManifestEntry]:
-    """The inputs of ``target`` as they are now, sorted by path."""
-    return _entries([*_schema_files(target, base), *_toolkit_files()], base)
+    """The inputs of ``target`` as they are now, sorted by path.
+
+    A target that renders TypeScript also writes ``rp_service.ts``, so the service schema is an input.
+    """
+    schemas = [base / target.schema_file, *([SERVICE_SCHEMA] if target.typescript else [])]
+    files = [f for schema in schemas for f in _schema_files(schema)]
+    return _entries([*files, *_toolkit_files()], base)
 
 
 def build_manifest(

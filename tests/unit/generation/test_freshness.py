@@ -319,3 +319,19 @@ def test_a_fresh_project_through_the_installed_command_exits_0_silently(generate
         [str(command), "--project", str(generated), "--check"], capture_output=True, text=True
     )
     assert (done.returncode, done.stderr) == (0, ""), "a fresh check was not silent success"
+
+
+def test_a_change_to_the_service_schema_makes_a_typescript_target_stale(
+    toy_copy: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    pyproject = toy_copy / "pyproject.toml"
+    assert main(["--project", str(pyproject)]) == 0, "the toy must generate"
+    real = manifest_module.sha256_of
+    monkeypatch.setattr(
+        manifest_module,
+        "sha256_of",
+        lambda path: "0" * 64 if path.name == "rp_service.yaml" else real(path),
+    )
+    code, error = check(pyproject, capsys)
+    assert code == 1, "a changed rp_service.yaml left rp_service.ts looking fresh"
+    assert "stale input: rdf_persistence/model/service/rp_service.yaml (changed)" in error, error

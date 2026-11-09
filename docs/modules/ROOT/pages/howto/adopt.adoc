@@ -180,6 +180,9 @@ toolkit's repository:
 * *a stored file*: a root that includes `StoredFile` (`scans.yaml`);
 * *access*: a class with `is_a: TenantAccess`, in a module annotated `module_kind: access`
   (`library_access.yaml`), and the role definitions (`library_roles.yaml`).
+* *technical*: a module annotated `module_kind: technical` may hold the request and response shapes
+  of your own routes. Its classes need no owning root; they are generated in Python and TypeScript
+  but never stored. A domain module may not import it; the root schema imports it.
 
 The full list of annotations and mixins is in
 xref:architecture/generation.adoc#metamodel[the metamodel].
@@ -249,8 +252,12 @@ run it in your tests and in CI.
 Your regenerate target writes, under `library/domain/generated/`, one Python module per schema module
 (`books.py`, `library.py`), `shapes.ttl`, `context.jsonld`, one `<Root>.frame.jsonld` per
 aggregate root, `openapi-components.json` (the component schemas of the service's OpenAPI document)
-and `rp-manifest.json`; the TypeScript types, one file per module plus `index.ts`;
-and one `.mmd` diagram per module. Commit them together with the schema. Never edit them: to change
+and `rp-manifest.json`; the TypeScript types, one file per module plus `index.ts`, and
+`rp_service.ts`, which holds the classes of the toolkit's `rp_service.yaml`, among them the API's wire
+types (`TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page` and `Problem`); and one
+`.mmd` diagram per module. The module name `rp_service` and the names of the classes and enums of
+`rp_service.yaml` are reserved when a target renders TypeScript: a schema that uses one is refused,
+naming the clash. Commit them together with the schema. Never edit them: to change
 the code, change the schema and generate again.
 
 A file an earlier run wrote and this one does not, such as the module of a schema file you removed

@@ -164,3 +164,91 @@ def test_check_mode_runs_the_boundary_check(break_toy: Breaker) -> None:
     assert main(["--project", str(root.parent / "pyproject.toml"), "--check"]) == 1, (
         "--check skipped the boundary check"
     )
+
+
+API_MODULE = """id: https://example.org/ns/library/api
+name: api
+title: API module
+description: The request and response shapes of the library's own routes.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+annotations:
+  module_kind: {kind}
+
+classes:
+  Account:
+    title: Account
+    description: What a route answers about an account; never stored.
+    class_uri: lib:Account
+    attributes:
+      account_id:
+        title: Account id
+        description: The identifier of the account.
+        identifier: true
+      active:
+        title: Active
+        description: Whether the account may sign in.
+        range: boolean
+"""
+
+
+def add_api_module(toy: Path, kind: str) -> Path:
+    """Write ``api.yaml`` of the given kind into the toy and import it from the root schema."""
+    (toy / "api.yaml").write_text(API_MODULE.format(kind=kind), encoding="utf-8")
+    root = toy / ROOT_SCHEMA
+    text = root.read_text(encoding="utf-8")
+    root.write_text(
+        text.replace("  - library_access\n", "  - library_access\n  - api\n", 1), encoding="utf-8"
+    )
+    return root
+
+
+def test_a_class_of_a_technical_module_needs_no_owning_root(toy_copy: Path) -> None:
+    add_api_module(toy_copy, "technical")
+    assert main(["--project", str(toy_copy / "pyproject.toml")]) == 0, "rp-generate must succeed"
+    generated = toy_copy / "generated"
+    ts = toy_copy / "web" / "src" / "domain" / "generated" / "api.ts"
+    py = next(generated.rglob("api.py"))
+    assert "export interface Account " in ts.read_text(encoding="utf-8"), "Account is not in api.ts"
+    assert "class Account(" in py.read_text(encoding="utf-8"), "Account is not in api.py"
+
+
+@pytest.mark.parametrize("kind", ["domain", "access"])
+def test_a_class_of_a_domain_or_access_module_still_needs_an_owning_root(
+    toy_copy: Path, kind: str
+) -> None:
+    root = add_api_module(toy_copy, kind)
+    assert "[ownership] Account: is neither an aggregate root nor owned by any root" in problems_of(
+        root
+    ), f"a {kind} class that nothing owns must still be refused"
+
+
+def test_a_domain_class_owned_only_by_a_technical_class_is_refused(toy_copy: Path) -> None:
+    holder = API_MODULE.format(kind="technical").replace(
+        "imports:\n  - linkml:types\n", "imports:\n  - linkml:types\n  - lost\n"
+    ) + (
+        "  Holder:\n    title: Holder\n    description: A request shape.\n    attributes:\n"
+        "      holder_id:\n        description: Id.\n        identifier: true\n"
+        "      part:\n        description: Owns a part.\n        range: Orphan\n"
+        "        annotations:\n          owned: true\n"
+    )
+    (toy_copy / "api.yaml").write_text(holder, encoding="utf-8")
+    (toy_copy / "lost.yaml").write_text(
+        API_MODULE.format(kind="domain")
+        .replace("Account", "Orphan")
+        .replace("account_id", "orphan_id")
+        .replace("api\n", "lost\n", 1)
+        .replace("/api\n", "/lost\n", 1),
+        encoding="utf-8",
+    )
+    root = toy_copy / ROOT_SCHEMA
+    text = root.read_text(encoding="utf-8")
+    root.write_text(text.replace("  - library_access\n", "  - library_access\n  - api\n", 1))
+    assert "[ownership] Orphan: is neither an aggregate root nor owned by any root" in problems_of(
+        root
+    ), "a technical class is never stored, so what it owns is not owned"

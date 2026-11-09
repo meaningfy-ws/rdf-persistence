@@ -280,8 +280,9 @@ Tests (`tests/unit/services/test_tenancy.py`, `tests/unit/entrypoints/test_route
   and the metamodel import map, keep the files whose names the consumer's run did not write
   (`rp_service.ts`; `rp_core.ts` etc. are already there), and render `index.ts` once over the union
   of module names. When the schema being rendered *is* `rp_service.yaml`, nothing is added.
-- The files are ordinary outputs of the step, so the manifest, the freshness check and
-  `make check-generated` cover them with no change.
+- The files are ordinary outputs of the step, so the manifest records them and `make check-generated`
+  covers them. Their input, `rp_service.yaml`, is not a schema the consumer imports, so the manifest
+  records it separately for a target that renders TypeScript (R3-1).
 - The toy's `tests/fixtures/library/web/src/domain/generated/` gains `rp_service.ts` on
   `make generate`; `make typecheck-ts` (`tsc --noEmit --strict`, wildcard over that folder) checks it.
 - **T-25** (`tests/unit/generation/`): rendering the toy schema yields `rp_service.ts` holding
@@ -465,3 +466,42 @@ sites, low value); route tests for every validator path (L2: the error mapping i
 adversarial tests cover rename and root `PUT` at the route). Noted: T-24's suites changed only by
 `vet_root`'s new `principal` argument, which PD-7 prescribes; T-21 shows that two writes at one
 version cannot both land, not a real race.
+
+# Stage 3 review decisions (2026-11-09)
+
+Four review passes (L1, L2, L3, L4+L5 together) and an adversarial tester read
+`38c00b8..feature/mwb2-stage-3`. L1 found nothing. The lead accepted these findings (Rule of
+Divergence: recorded here before the fix):
+
+- **R3-1** (L3, tester) `rp_service.yaml` is an input of every target that renders TypeScript: the
+  manifest records it (with what it imports), so a consumer's freshness check reports a stale
+  `rp_service.ts` after the toolkit's service schema changes (stage 4 changes it). The path is one
+  constant in `services/schema.py`, used by `vocabulary.py`, `typescript.py` and `manifest.py`
+  (`manifest.py` may not import linkml). PD-8's "with no change" is corrected.
+- **R3-2** (L4) A slot whose range is a class and that is `inlined` or `inlined_as_list` names that
+  class's interface, not `string`: `filters`, `conditions`, `caller_access`, `iri_policy` and the id
+  specs of `rp_service.ts` were `string`, as wrong as `Any` was. Every generated TypeScript diff
+  this causes is reviewed.
+- **R3-3** (tester, L5; the lead's decision under DEC-9, the developer may overrule) The exemption
+  is keyed on the class's module, not its bare name, so a domain class named like a technical one
+  is not exempted; and an `owned` slot of a technical class does not make a domain class owned (a
+  request shape is never stored, so what it owns is not stored either).
+- **R3-4** (tester; the lead's decision under DEC-8, the developer may overrule) For a target that
+  renders TypeScript, the module name `rp_service` and the names of the classes and enums of
+  `rp_service.yaml` are reserved: a consumer schema that uses one is refused, naming the clash,
+  instead of writing two `Page` interfaces that `index.ts` exports together (a tsc error) or
+  silently hiding the service types behind the consumer's own `rp_service.ts`. The guide says so.
+- **R3-5** (L4) Docs: `rp_service.ts` holds the classes of the toolkit's `rp_service.yaml`; among
+  them the API's wire types (`TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`,
+  `Problem`).
+- **R3-6** (L2, L4) Tests: T-27 asserts `export interface Account ` in `api.ts` and
+  `class Account(` in `api.py` (it passed on `AccountSummary`); T-28 covers a domain and an access
+  module. The adversarial tests stay; they cover rendering `rp_service.yaml` itself.
+- **R3-7** (L4, L3) `ToolkitTypescriptGenerator.files()` goes if nothing calls it; `index_added`
+  becomes `with_index`; the module docstring and `range()` are brought up to date; the exemption
+  set comes from a `_technical_classes` helper.
+
+Rejected, with the reason: emitting only the API's classes in `rp_service.ts` (L4: R3-2 makes every
+shape right, and the API set would be a second list to keep); a note on `ProblemSlug`'s underscores
+(L4: its description already says the wire writes hyphens, and no slot uses it); asserting the CLI
+exit code in T-28 (L2: the CLI path of the boundary check is tested already).
