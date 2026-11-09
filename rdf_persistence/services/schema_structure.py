@@ -33,11 +33,13 @@ from rdf_persistence.domain.generated.rp_core import (
     RpAnnotation,
     WritesKind,
 )
+from rdf_persistence.domain.generated.rp_files import StoredFile
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 
 AGGREGATE_ROOT = "AggregateRoot"
 TENANT_ACCESS = "TenantAccess"
-STORED_FILE = "StoredFile"
+STORED_FILE = StoredFile.__name__
+DESCRIPTION = "description"
 LABEL = "label"
 EXACTLY_ONE_OF = "exactly_one_of"
 ANY_OF = "any_of"
@@ -165,9 +167,9 @@ def is_tenant_root(cls: ClassDefinition) -> bool:
 
 def is_service_written(view: SchemaView, cls: ClassDefinition) -> bool:
     """True when the consumer writes the root through a session (PD-3): annotated, or a stored file."""
-    return annotation(
-        cls, RpAnnotation.RP_WRITES
-    ) == WritesKind.SERVICE.value or STORED_FILE in view.class_ancestors(cls.name)
+    annotated = annotation(cls, RpAnnotation.RP_WRITES) == WritesKind.SERVICE.value
+    stored_file = STORED_FILE in view.class_ancestors(cls.name)
+    return annotated or stored_file
 
 
 def is_toolkit_schema(folder: Path) -> bool:

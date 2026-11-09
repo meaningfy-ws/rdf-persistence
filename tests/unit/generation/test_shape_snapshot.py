@@ -259,7 +259,7 @@ def test_the_toy_python_and_json_schema_agree_on_what_is_required() -> None:
 def test_a_required_field_the_json_schema_leaves_optional_is_detected() -> None:
     components = {"Doc": {"properties": {"id": {}, "description": {}}, "required": ["id"]}}
     assert model_schema_diff(components, [Doc]) == [
-        "required differs: Doc.description (python: yes, json schema: no)"
+        "required differs: Doc.description: required True in code, False in schema"
     ], "one line naming the class and slot"
 
 
@@ -275,7 +275,7 @@ def test_an_optional_field_the_json_schema_requires_is_detected() -> None:
         }
     }
     assert model_schema_diff(components, [OptionalDoc]) == [
-        "required differs: OptionalDoc.description (python: no, json schema: yes)"
+        "required differs: OptionalDoc.description: required False in code, True in schema"
     ], "the reverse direction is caught too"
 
 

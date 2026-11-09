@@ -5,6 +5,8 @@ import importlib.util
 from pathlib import Path
 
 from rdf_persistence.generation.cli import main
+from rdf_persistence.services.components import read_components
+from rdf_persistence.testkit.model_shape import model_schema_diff
 
 from .test_generate_cli import SCHEMA, project
 
@@ -41,6 +43,11 @@ def test_a_root_inheriting_from_an_abstract_root_builds_without_a_description(
     spec.loader.exec_module(module)
     thing = module.Thing(id="https://example.org/t/1", label="t")
     assert thing.description is None, "the #59 reproduction: a root needs no description"
+    components = read_components(tmp_path / "app/generated")
+    for name in ("Item", "Thing"):
+        assert set(components[name]["required"]) == {"id", "label"}, f"{name} in the JSON Schema"
+    models = [module.Item, module.Thing]
+    assert model_schema_diff(components, models) == [], "Python and JSON Schema agree"
 
 
 def test_the_generated_toy_classes_reflect_the_transform(toy_copy: Path) -> None:

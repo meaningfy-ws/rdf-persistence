@@ -2,17 +2,18 @@
 
 import shutil
 import sys
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
+from pathlib import Path
 from typing import Any
 
 import httpx
 import pytest
 
-from rdf_persistence import UnitOfWork
+from rdf_persistence import Mapper, UnitOfWork, generated_models
 from rdf_persistence.domain.exceptions import NotFound
+from rdf_persistence.domain.generated import rp_core
 from rdf_persistence.generation.cli import main as generate
-from tests.fixtures.library.generated.scans import Scan
-from tests.toy import TOY_SCHEMA, toy_mapper
+from tests.toy import TOY_SCHEMA
 from tests.toy_service import SCAN_BODY, ToyService, principal_of, store_scan
 from tests.unit.entrypoints.scene import NIL, Scene, problem_of
 
@@ -102,8 +103,8 @@ async def test_a_scan_that_is_not_there_is_still_a_404_on_read(scene: Scene) -> 
 
 
 @pytest.fixture(scope="module")
-def annotated_document(tmp_path_factory: pytest.TempPathFactory) -> Iterator[dict[str, Any]]:
-    """The OpenAPI document of the toy library plus ``Shed``, a root without ``StoredFile`` annotated ``rp_writes: service``."""
+def shed_project(tmp_path_factory: pytest.TempPathFactory) -> Iterator[tuple[Path, Any]]:
+    """The toy library plus ``Shed``, a root without ``StoredFile`` annotated ``rp_writes: service``: its schema and generated package."""
     root = tmp_path_factory.mktemp("writes")
     project = root / PACKAGE
     ignored = shutil.ignore_patterns("generated", "web", "golden", "__pycache__", "pyproject.toml")
@@ -119,15 +120,24 @@ def annotated_document(tmp_path_factory: pytest.TempPathFactory) -> Iterator[dic
     sys.path.insert(0, str(root))
     package = __import__(f"{PACKAGE}.generated", fromlist=["generated"])
     try:
-        yield ToyService(schema=project / "library.yaml", package=package).app.openapi()
+        yield project / "library.yaml", package
     finally:
         sys.path.remove(str(root))
         for name in [n for n in sys.modules if n == PACKAGE or n.startswith(f"{PACKAGE}.")]:
             del sys.modules[name]
 
 
-def test_an_annotated_root_is_described_by_its_reads_only(annotated_document) -> None:
-    paths = annotated_document["paths"]
+@pytest.fixture
+async def shed_service(shed_project: tuple[Path, Any]) -> AsyncIterator[ToyService]:
+    schema, package = shed_project
+    toy = ToyService(schema=schema, package=package)
+    async with toy.app.router.lifespan_context(toy.app):
+        yield toy
+
+
+def test_an_annotated_root_is_described_by_its_reads_only(shed_project) -> None:
+    schema, package = shed_project
+    paths = ToyService(schema=schema, package=package).app.openapi()["paths"]
     collection, member = "/libraries/{t}/sheds", "/libraries/{t}/sheds/{aggregate_id}"
     assert set(paths[collection]) == {"get"}, "the listing"
     assert set(paths[member]) == {"get"}, "the read"
@@ -139,23 +149,32 @@ def test_an_annotated_root_is_described_by_its_reads_only(annotated_document) ->
 # --- T-8: the consumer's route writes it -----------------------------------------------------
 
 
-async def test_a_session_adds_replaces_and_removes_a_scan_each_with_a_new_version(
-    service: ToyService, scene: Scene
+async def test_a_session_adds_replaces_and_removes_a_shed_each_with_a_new_version(
+    shed_service: ToyService, shed_project: tuple[Path, Any]
 ) -> None:
-    kit, tenant, ada = service.kit, scene.tenant_iri, principal_of("ada")
-    scan = await store_scan(kit, tenant, ada)
+    """``Shed`` is annotated ``rp_writes: service`` (T-7): the generic writes are not served, a session writes it."""
+    _, package = shed_project
+    mapper = Mapper(shed_service.kit.view, generated_models(package.sheds, rp_core))
+    async with shed_service.client() as http:
+        scene = await Scene.set_up(shed_service, http)
+    kit, tenant, ada = shed_service.kit, scene.tenant_iri, principal_of("ada")
+    shed = package.sheds.Shed(
+        id=str(kit.iris.mint_aggregate(tenant, "shed", "sheds")), label="Shed"
+    )
     async with kit.session(tenant, ada) as session:
-        _, _, added = await session.get_graph(scan.id)
-        work = UnitOfWork(session, toy_mapper())
-        read = await work.get(Scan, scan.id)
-        read.label = "Dune, rescanned"
+        work = UnitOfWork(session, mapper)
+        work.add(shed)
+        await work.commit()
+        _, _, added = await session.get_graph(shed.id)
+        read = await work.get(package.sheds.Shed, shed.id)
+        read.label = "Tool shed"
         work.add(read)
         await work.commit()
-        _, _, replaced = await session.get_graph(scan.id)
+        _, _, replaced = await session.get_graph(shed.id)
         assert replaced != added, "the replace is a new version"
-        await session.remove(scan.id, replaced)
+        await session.remove(shed.id, replaced)
         with pytest.raises(NotFound):
-            await session.get_graph(scan.id)
+            await session.get_graph(shed.id)
 
 
 async def test_a_scan_written_through_a_session_is_read_over_the_api(

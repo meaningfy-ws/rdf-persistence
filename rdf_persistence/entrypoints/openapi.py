@@ -62,8 +62,8 @@ from rdf_persistence.entrypoints.negotiation import (
 )
 from rdf_persistence.entrypoints.problems import WWW_AUTHENTICATE
 from rdf_persistence.services.access import ACTIONS
-from rdf_persistence.services.artifacts import COMPONENT_REFERENCES, REF
-from rdf_persistence.services.components import TOOLKIT_FOLDER, component_schemas
+from rdf_persistence.services.artifacts import COMPONENT_REFERENCES, PROPERTIES, REF
+from rdf_persistence.services.components import TOOLKIT_FOLDER, JsonSchema, component_schemas
 from rdf_persistence.services.listing import (
     DESCENDING,
     LIMIT,
@@ -72,6 +72,7 @@ from rdf_persistence.services.listing import (
     listable_slots,
     sort_keys,
 )
+from rdf_persistence.services.schema_structure import DESCRIPTION
 
 BEARER_AUTH = "bearerAuth"
 # The toolkit's own bodies, by the class of rp_service.yaml; every route that has one names it here.
@@ -178,7 +179,7 @@ def _parameter(
             "name": name,
             "in": where,
             "required": required,
-            "description": description,
+            DESCRIPTION: description,
             "schema": schema,
         }
     )
@@ -199,11 +200,11 @@ EXPECTED_VERSION = _header(
 )
 _PAGING = (
     _query(
-        LIMIT, _ref(ListRequest.__name__, f"/properties/{LIMIT}"), "The most items on the page."
+        LIMIT, _ref(ListRequest.__name__, f"{PROPERTIES}{LIMIT}"), "The most items on the page."
     ),
     _query(
         OFFSET,
-        _ref(ListRequest.__name__, f"/properties/{OFFSET}"),
+        _ref(ListRequest.__name__, f"{PROPERTIES}{OFFSET}"),
         "The position of the first item.",
     ),
 )
@@ -355,7 +356,7 @@ class TenantOpenApi:
 
 def _filter(cls: ClassDefinition, rp_path: str, name: str, slot: SlotDefinition) -> Parameter:
     """A query parameter for a slot, typed by the slot's property in the component schema."""
-    pointer = f"/properties/{name}" + ("/items" if slot.multivalued else "")
+    pointer = f"{PROPERTIES}{name}" + ("/items" if slot.multivalued else "")
     note = " May be repeated: all the values must be present." if slot.multivalued else ""
     return _query(
         name, _ref(cls.name, pointer), f"Only the {rp_path} whose {name} is this value.{note}"
@@ -434,16 +435,16 @@ def component_roots(kit: ServiceKit) -> list[str]:
     return [*(cls.name for cls in classes), *TOOLKIT_BODIES]
 
 
-def _target_in(raw: dict[str, dict], pointer: str) -> dict:
+def _target_in(raw: dict[str, JsonSchema], pointer: str) -> JsonSchema:
     """A copy of what ``#/components/schemas/<C>/properties/<p>[/items]`` points at, without its description."""
     name, *path = pointer.removeprefix(COMPONENT_REFERENCES).split("/")
     target = raw[name]
     for step in path:
         target = target[step]
-    return {k: copy.deepcopy(v) for k, v in target.items() if k != "description"}
+    return {k: copy.deepcopy(v) for k, v in target.items() if k != DESCRIPTION}
 
 
-def _inline_property_refs(document: OpenAPI, raw: dict[str, dict]) -> None:
+def _inline_property_refs(document: OpenAPI, raw: dict[str, JsonSchema]) -> None:
     """Replace each parameter schema that points into a property by a copy of its target in ``raw`` (PD-4).
 
     openapi-typescript renders such a pointer as an indexed access on an optional property, which
@@ -455,7 +456,7 @@ def _inline_property_refs(document: OpenAPI, raw: dict[str, dict]) -> None:
         for method in HTTPMethod:
             for parameter in path.get(method.lower(), {}).get("parameters", []):
                 pointer = parameter["schema"].get(REF, "")
-                if "/properties/" in pointer:
+                if PROPERTIES in pointer:
                     parameter["schema"] = _target_in(raw, pointer)
 
 

@@ -17,3 +17,4 @@ SCHEMAS = "schemas"
 REF = "$ref"
 DEFINITIONS = "#/$defs/"
 COMPONENT_REFERENCES = "#/components/schemas/"
+PROPERTIES = "/properties/"  # the pointer segment that leads into a class's property

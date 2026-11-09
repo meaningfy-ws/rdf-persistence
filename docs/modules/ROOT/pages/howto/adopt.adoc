@@ -794,15 +794,31 @@ library's `POST …/scan-files` does both:
 
 [source,python]
 ----
+from contextlib import suppress
+from rdf_persistence import limited_body
+
 checked = await kit.require(request.headers.get("authorization"), t, Action.MODIFY)
 tenant = checked.caller_access.tenant
+data = await limited_body(request, kit.max_body_bytes)  # 413 when the body is too large
 iri = str(kit.iris.mint_aggregate(tenant, "scan", "scans"))
-await kit.files.put(await kit.bucket_of(tenant), iri.rsplit("/", 1)[-1], data)              # the bytes
-async with kit.session(tenant, checked.principal) as session:
-    work = UnitOfWork(session, mapper)
-    work.add(Scan(id=iri, label=label, file_name=name, byte_size=len(data), sha256=digest))
-    await work.commit()                                  # the record
+scan = Scan(id=iri, label=label, file_name=name, byte_size=len(data), sha256=digest)  # 422 if invalid
+bucket, key = await kit.bucket_of(tenant), iri.rsplit("/", 1)[-1]
+await kit.files.put(bucket, key, data)                                                # the bytes
+try:
+    async with kit.session(tenant, checked.principal) as session:
+        work = UnitOfWork(session, mapper)
+        work.add(scan)
+        await work.commit()                                                           # the record
+except Exception:
+    with suppress(Exception):         # a failing cleanup must not hide the error that caused it
+        await kit.files.delete(bucket, key)
+    raise
 ----
+
+`limited_body` is the bound the generic routes use on a request body. Build the record before the
+bytes are stored: a pydantic `ValidationError` is answered 422 by the toolkit's problem handlers, and
+nothing has been stored yet to take back. If the commit fails, the bytes are removed and the
+original error is answered.
 
 Any other root can opt in with the class annotation `rp_writes: service`; there is no value that
 turns it off.

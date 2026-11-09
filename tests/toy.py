@@ -32,6 +32,7 @@ from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 
+SCANS = "scans"  # the rp_path of the scan roots
 TOY_SCHEMA = Path(__file__).parent / "fixtures" / "library" / "library.yaml"
 TENANT = "https://example.org/libraries/6f1c0c1e"
 ADA = "https://example.org/people/ada"

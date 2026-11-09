@@ -35,21 +35,20 @@ def model_schema_diff(
     lines: list[str] = []
     for model in models:
         component = components.get(model.__name__)
-        if component is None:
-            continue
-        properties, required = component.get("properties", {}), set(component.get("required", []))
-        for name, field in model.model_fields.items():
-            key = field.alias or name
-            if key in properties and field.is_required() != (key in required):
-                lines.append(
-                    f"required differs: {model.__name__}.{key} "
-                    f"(python: {_yes(field.is_required())}, json schema: {_yes(key in required)})"
-                )
+        if component is not None:
+            lines += _required_lines(model, component)
     return lines
 
 
-def _yes(flag: bool) -> str:
-    return "yes" if flag else "no"
+def _required_lines(model: type[BaseModel], component: Mapping) -> list[str]:
+    properties, required = component.get("properties", {}), set(component.get("required", []))
+    in_code = {(f.alias or n): f.is_required() for n, f in model.model_fields.items()}
+    return [
+        f"required differs: {model.__name__}.{key}: "
+        f"required {in_code[key]} in code, {key in required} in schema"
+        for key in in_code
+        if key in properties and in_code[key] != (key in required)
+    ]
 
 
 def _field_lines(shape: ClassShape, model: type[BaseModel]) -> list[str]:

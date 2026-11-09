@@ -30,7 +30,7 @@ from tests.fixtures.library import generated
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.scans import Scan
-from tests.toy import ROLES, SETTINGS, TOY_SCHEMA, toy_mapper
+from tests.toy import ROLES, SCANS, SETTINGS, TOY_SCHEMA, toy_mapper
 
 BASE_URL = "http://test"
 LIBRARIAN, READER, OUTSIDER = "librarian", "reader", "outsider"
@@ -94,7 +94,7 @@ async def store_scan(
     kit: ServiceKit, tenant: str, principal: str, *, file_key: str | None = None
 ) -> Scan:
     """Store a scan of Dune the way a consumer's route does, through a session: its generic routes are not served."""
-    iri = str(kit.iris.mint_aggregate(tenant, "scan", "scans"))
+    iri = str(kit.iris.mint_aggregate(tenant, "scan", SCANS))
     scan = Scan.model_validate({**SCAN_BODY, "id": iri, "file_key": file_key})
     async with kit.session(tenant, principal) as session:
         work = UnitOfWork(session, toy_mapper())

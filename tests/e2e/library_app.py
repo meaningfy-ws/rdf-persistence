@@ -6,6 +6,7 @@ through the kit's file store, as a ``StoredFile`` root requires), and its file i
 """
 
 import hashlib
+from contextlib import suppress
 from typing import Any
 
 from fastapi import FastAPI, Request, Response
@@ -22,16 +23,16 @@ from rdf_persistence import (
     UnitOfWork,
     generated_models,
     install_service,
+    limited_body,
     load_role_definitions,
 )
 from tests.fixtures.library import generated
 from tests.fixtures.library.generated import scans
 from tests.fixtures.library.generated.scans import Scan
-from tests.toy import ROLES, SETTINGS, TOY_SCHEMA
+from tests.toy import ROLES, SCANS, SETTINGS, TOY_SCHEMA
 
 SCAN_UPLOADS = "/{segment}/{{t}}/scan-files"
 SCAN_FILES = f"{SCAN_UPLOADS}/{{{{scan_id}}}}"
-SCANS = "scans"
 OCTET_STREAM = "application/octet-stream"
 
 
@@ -84,7 +85,8 @@ def build_library_app(
     ) -> Response:
         """Write a scan: the bytes of the body to the tenant's bucket and its record through a session."""
         checked = await kit.require(request.headers.get("authorization"), t, Action.MODIFY)
-        tenant, data = checked.caller_access.tenant, await request.body()
+        tenant = checked.caller_access.tenant
+        data = await limited_body(request, kit.max_body_bytes)
         iri = str(kit.iris.mint_aggregate(tenant, "scan", SCANS))
         scan = Scan(
             id=iri,
@@ -102,8 +104,9 @@ def build_library_app(
                 work = UnitOfWork(session, mapper)
                 work.add(scan)
                 await work.commit()
-        except BaseException:
-            await kit.files.delete(bucket, scan_id)  # the record and its bytes change together
+        except Exception:
+            with suppress(Exception):  # a failing cleanup must not hide the error that caused it
+                await kit.files.delete(bucket, scan_id)  # the record and its bytes change together
             raise
         return Response(
             status_code=201,

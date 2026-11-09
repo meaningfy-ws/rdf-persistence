@@ -53,6 +53,7 @@ INDEXED_NAMES = [
     "generated_models",
     "install_service",
     "ServiceKit",
+    "limited_body",
     "Iris",
     "IriPolicy",
     "IdSource",
