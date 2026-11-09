@@ -61,6 +61,7 @@ PD-8a). Any other slot whose range is a class refers to another aggregate root, 
 |`graph: meta` (class annotation) |The tenant's root object lives in the tenant database's designated `meta` graph instead of a graph of its own.
 |`internal` (slot annotation) |Only the service sets the slot (e.g. file keys, a tenant's database name): it never appears in the API contract or a response, a request body that sets it is refused (422), the tenant-create body included, and a replace keeps its stored value on the root and on the parts that persist, matched by IRI. The mapper writes it, so a domain service can set it.
 |`rp_path` (class annotation) |Required on every aggregate root: its path segment in the API and in its IRIs (`{tenant}/{rp_path}/{uuid}`).
+|`rp_writes: service` (class annotation) |An aggregate root the consumer writes through a session: the API serves its `GET` and listing but no `POST`, `PUT` or `DELETE`. A root that includes `StoredFile` is service-written without it. There is no value that turns this off.
 |`rp_unlabelled` (class annotation) |An owned value class whose instances need no label of their own.
 |`Principal` |A reference to a user account in the identity provider, by IRI only.
 |`StoredFile` (mixin) |The current content of a kept file: `file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key` (internal).

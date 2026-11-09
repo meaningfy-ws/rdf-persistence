@@ -54,6 +54,7 @@ from rdf_persistence.domain.generated.rp_core import (
     RegistryEntry,
     RegistryKind,
     RpAnnotation,
+    WritesKind,
 )
 from rdf_persistence.domain.generated.rp_files import (
     RdfFormat,
@@ -231,6 +232,7 @@ __all__ = [
     "UnknownRole",
     "UnsupportedMediaType",
     "VerifiedCaller",
+    "WritesKind",
     "ZitadelIdentity",
     "generated_models",
     "install_service",

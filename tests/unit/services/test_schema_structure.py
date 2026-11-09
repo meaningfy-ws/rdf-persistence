@@ -30,6 +30,7 @@ from rdf_persistence.services.schema_structure import (
     is_bookkeeping,
     is_internal,
     is_owned,
+    is_service_written,
     is_tenant_root,
     json_name,
     keyed_slots,
@@ -159,6 +160,50 @@ def test_the_tenant_root_is_the_class_in_the_meta_graph() -> None:
     assert is_tenant_root(view.get_class("Library")), "Library lives in the meta graph"
     assert not is_tenant_root(view.get_class("Book")), "Book has a graph of its own"
     assert annotation(view.get_class("Library"), RpAnnotation.GRAPH) == GraphKind.META.value
+
+
+SERVICE_WRITTEN = (
+    HEAD
+    + """
+classes:
+  StoredFile:
+    title: Stored file
+    description: The mixin of a root whose content is a stored file.
+    mixin: true
+  Plain:
+    title: Plain
+    description: A root written through the generic routes.
+  Marked:
+    title: Marked
+    description: A root annotated as service-written.
+    annotations: {rp_writes: service}
+  Filed:
+    title: Filed
+    description: A root that mixes in the stored file.
+    mixins: [StoredFile]
+  Derived:
+    title: Derived
+    description: A root whose parent mixes in the stored file.
+    is_a: Filed
+"""
+)
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [("Plain", False), ("Marked", True), ("Filed", True), ("Derived", True)],
+)
+def test_a_root_is_service_written_by_annotation_or_by_a_stored_file_ancestor(
+    tmp_path: Path, name: str, expected: bool
+) -> None:
+    view = view_of(tmp_path, SERVICE_WRITTEN)
+    assert is_service_written(view, view.get_class(name)) is expected, name
+
+
+def test_the_toys_scan_is_service_written_and_its_book_is_not() -> None:
+    view = load_schema(TOY)
+    assert is_service_written(view, view.get_class("Scan")), "a file root"
+    assert not is_service_written(view, view.get_class("Book")), "a plain root"
 
 
 def test_every_value_set_of_the_vocabulary_has_members() -> None:

@@ -27,11 +27,17 @@ from rdflib import XSD, Graph, Literal, URIRef
 from rdflib.term import Node
 
 from rdf_persistence.domain.exceptions import InvalidBody
-from rdf_persistence.domain.generated.rp_core import DatabaseKind, GraphKind, RpAnnotation
+from rdf_persistence.domain.generated.rp_core import (
+    DatabaseKind,
+    GraphKind,
+    RpAnnotation,
+    WritesKind,
+)
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 
 AGGREGATE_ROOT = "AggregateRoot"
 TENANT_ACCESS = "TenantAccess"
+STORED_FILE = "StoredFile"
 LABEL = "label"
 EXACTLY_ONE_OF = "exactly_one_of"
 ANY_OF = "any_of"
@@ -155,6 +161,13 @@ def is_unlabelled(cls: object) -> bool:
 def is_tenant_root(cls: ClassDefinition) -> bool:
     """The tenant's root object lives in the meta graph and needs no path (PD-8)."""
     return annotation(cls, RpAnnotation.GRAPH) == GraphKind.META.value
+
+
+def is_service_written(view: SchemaView, cls: ClassDefinition) -> bool:
+    """True when the consumer writes the root through a session (PD-3): annotated, or a stored file."""
+    return annotation(
+        cls, RpAnnotation.RP_WRITES
+    ) == WritesKind.SERVICE.value or STORED_FILE in view.class_ancestors(cls.name)
 
 
 def is_toolkit_schema(folder: Path) -> bool:

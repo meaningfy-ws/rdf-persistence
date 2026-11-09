@@ -1,9 +1,11 @@
 """The toy library's composition root, as a consumer writes it: public names only (PD-13a, PD-20).
 
-``build_library_app`` wires the adapters it is given into ``install_service`` and adds the one route
-the toolkit does not have: a scan's file, kept in the tenant's bucket through the kit's file store.
+``build_library_app`` wires the adapters it is given into ``install_service`` and adds the routes
+the toolkit does not have: a scan is written by ``POST`` (the record through a session, the bytes
+through the kit's file store, as a ``StoredFile`` root requires), and its file is read and replaced.
 """
 
+import hashlib
 from typing import Any
 
 from fastapi import FastAPI, Request, Response
@@ -13,16 +15,22 @@ from rdf_persistence import (
     Action,
     FileStore,
     Identity,
+    Mapper,
     ServiceSettings,
     Store,
     TokenVerifier,
+    UnitOfWork,
+    generated_models,
     install_service,
     load_role_definitions,
 )
 from tests.fixtures.library import generated
+from tests.fixtures.library.generated import scans
+from tests.fixtures.library.generated.scans import Scan
 from tests.toy import ROLES, SETTINGS, TOY_SCHEMA
 
-SCAN_FILES = "/{segment}/{{t}}/scan-files/{{scan_id}}"
+SCAN_UPLOADS = "/{segment}/{{t}}/scan-files"
+SCAN_FILES = f"{SCAN_UPLOADS}/{{{{scan_id}}}}"
 SCANS = "scans"
 OCTET_STREAM = "application/octet-stream"
 
@@ -60,6 +68,8 @@ def build_library_app(
     )
     app.state.kit = kit  # for a test to look behind the API
     path = SCAN_FILES.format(segment=settings.tenant_segment)
+    uploads = SCAN_UPLOADS.format(segment=settings.tenant_segment)
+    mapper = Mapper(kit.view, generated_models(scans))
 
     async def bucket_after(request: Request, tenant_id: str, scan_id: str, action: Action) -> str:
         """The tenant's bucket, once the caller of the request may take ``action`` on the scan."""
@@ -67,6 +77,38 @@ def build_library_app(
             request.headers.get("authorization"), tenant_id, SCANS, scan_id, action
         )
         return await kit.bucket_of(checked.caller_access.tenant)
+
+    @app.post(uploads, status_code=201)
+    async def post_scan(
+        t: str, request: Request, label: str, file_name: str, scan_of: str | None = None
+    ) -> Response:
+        """Write a scan: the bytes of the body to the tenant's bucket and its record through a session."""
+        checked = await kit.require(request.headers.get("authorization"), t, Action.MODIFY)
+        tenant, data = checked.caller_access.tenant, await request.body()
+        iri = str(kit.iris.mint_aggregate(tenant, "scan", SCANS))
+        scan = Scan(
+            id=iri,
+            label=label,
+            file_name=file_name,
+            media_type=request.headers.get("content-type", OCTET_STREAM),
+            byte_size=len(data),
+            sha256=hashlib.sha256(data).hexdigest(),
+            scan_of=scan_of,
+        )
+        bucket, scan_id = await kit.bucket_of(tenant), iri.rsplit("/", 1)[-1]
+        await kit.files.put(bucket, scan_id, data)
+        try:
+            async with kit.session(tenant, checked.principal) as session:
+                work = UnitOfWork(session, mapper)
+                work.add(scan)
+                await work.commit()
+        except BaseException:
+            await kit.files.delete(bucket, scan_id)  # the record and its bytes change together
+            raise
+        return Response(
+            status_code=201,
+            headers={"Location": f"/{settings.tenant_segment}/{t}/{SCANS}/{scan_id}"},
+        )
 
     @app.put(path, status_code=204)
     async def put_file(t: str, scan_id: str, request: Request) -> Response:

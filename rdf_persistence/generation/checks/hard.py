@@ -18,6 +18,7 @@ from rdf_persistence.domain.generated.rp_core import (
     GraphKind,
     ModuleKind,
     RpAnnotation,
+    WritesKind,
 )
 from rdf_persistence.domain.iris import LAYOUT_WORDS
 from rdf_persistence.generation.generated.rp_generation import CheckProblem, HardRule
@@ -50,6 +51,7 @@ ALLOWED_ANNOTATIONS = {
     RpAnnotation.DATABASE: tuple(kind.value for kind in DatabaseKind),
     RpAnnotation.GRAPH: tuple(kind.value for kind in GraphKind),
     RpAnnotation.MODULE_KIND: tuple(kind.value for kind in ModuleKind),
+    RpAnnotation.RP_WRITES: tuple(kind.value for kind in WritesKind),
     RpAnnotation.OWNED: BOOLEAN,
     RpAnnotation.INTERNAL: BOOLEAN,
     RpAnnotation.RP_UNLABELLED: BOOLEAN,

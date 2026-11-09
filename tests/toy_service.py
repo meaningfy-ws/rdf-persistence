@@ -12,9 +12,11 @@ from rdf_persistence import (
     AccessRules,
     IdSource,
     JwksTokenVerifier,
+    ServiceKit,
     ServiceSettings,
     Store,
     TenantCreate,
+    UnitOfWork,
     load_role_definitions,
 )
 from rdf_persistence.domain.generated.service.rp_service import IdKind, IdSpec, IriPolicy
@@ -28,7 +30,7 @@ from tests.fixtures.library import generated
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.scans import Scan
-from tests.toy import ROLES, SETTINGS, TOY_SCHEMA
+from tests.toy import ROLES, SETTINGS, TOY_SCHEMA, toy_mapper
 
 BASE_URL = "http://test"
 LIBRARIAN, READER, OUTSIDER = "librarian", "reader", "outsider"
@@ -86,6 +88,19 @@ TENANT_BODY = TenantCreate(
 ).model_dump(exclude_none=True)
 DUNE_BODY = body_of(dune_book())
 SCAN_BODY = body_of(scan_of_dune())
+
+
+async def store_scan(
+    kit: ServiceKit, tenant: str, principal: str, *, file_key: str | None = None
+) -> Scan:
+    """Store a scan of Dune the way a consumer's route does, through a session: its generic routes are not served."""
+    iri = str(kit.iris.mint_aggregate(tenant, "scan", "scans"))
+    scan = Scan.model_validate({**SCAN_BODY, "id": iri, "file_key": file_key})
+    async with kit.session(tenant, principal) as session:
+        work = UnitOfWork(session, toy_mapper())
+        work.add(scan)
+        await work.commit()
+    return scan
 
 
 class ToyService:

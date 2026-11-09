@@ -13,7 +13,7 @@ from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, Toke
 from rdf_persistence.testkit.tokens import ISSUER
 from tests.e2e.library_app import build_library_app
 from tests.toy import SETTINGS
-from tests.toy_service import SCAN_BODY, TENANT_BODY, principal_of
+from tests.toy_service import TENANT_BODY, principal_of, store_scan
 
 BYTES = b"%PDF-1.7 dune"
 
@@ -67,8 +67,8 @@ class Shelf:
         ada = self.world.as_("ada")
         made = await self.http.post("/libraries", json=TENANT_BODY, headers=ada)
         self.tenant, self.tenant_iri = made.headers["location"], made.json()["id"]
-        scan = await self.http.post(f"{self.tenant}/scans", json=SCAN_BODY, headers=ada)
-        self.scan_iri = scan.json()["id"]
+        scan = await store_scan(self.world.app.state.kit, self.tenant_iri, principal_of("ada"))
+        self.scan_iri = scan.id
         self.scan_id = self.scan_iri.rsplit("/", 1)[-1]
         await self.grants()
         return self
@@ -107,6 +107,32 @@ async def test_the_bytes_are_kept_under_the_id_of_the_scan_and_read_back(
     assert await world.files.get(bucket, shelf.scan_id) == BYTES, "keyed by the scan's id"
     read = await http.get(shelf.file, headers=world.as_("rita"))
     assert read.content == BYTES, "a reader gets them"
+
+
+async def test_the_apps_post_writes_the_record_through_a_session_and_the_bytes_to_the_bucket(
+    world, http, shelf
+) -> None:
+    created = await http.post(
+        f"{shelf.tenant}/scan-files",
+        params={"label": "Dune, rescanned", "file_name": "dune.pdf"},
+        content=BYTES,
+        headers={**world.as_("ada"), "Content-Type": "application/pdf"},
+    )
+    assert created.status_code == 201, created.text
+    record = await http.get(created.headers["location"], headers=world.as_("ada"))
+    assert record.json()["byte_size"] == len(BYTES), "the record, read over the generic route"
+    (bucket,) = await world.files.list_buckets("lib-t-")
+    assert await world.files.get(bucket, created.headers["location"].rsplit("/", 1)[-1]) == BYTES
+
+
+async def test_a_reader_cannot_post_a_scan(world, http, shelf) -> None:
+    refused = await http.post(
+        f"{shelf.tenant}/scan-files",
+        params={"label": "x", "file_name": "x.pdf"},
+        content=BYTES,
+        headers=world.as_("rita"),
+    )
+    assert refused.status_code == 403, refused.text
 
 
 async def test_a_read_prohibition_on_the_scan_stops_the_file_too(world, http, shelf) -> None:

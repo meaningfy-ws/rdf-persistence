@@ -211,10 +211,17 @@ default):
 |`/{tenant_segment}/{t}` |`GET`, `PUT` the tenant's root object; `DELETE` the tenant (needs `administer`)
 |`/{tenant_segment}/{t}/grants` |`GET`, `PUT` the tenant's grant set
 |`/{tenant_segment}/{t}/label` |`PUT` the tenant's label
-|`/{tenant_segment}/{t}/{rp_path}` |`GET` a listing; `POST` a new aggregate
-|`/{tenant_segment}/{t}/{rp_path}/{id}` |`GET`, `PUT`, `DELETE` one aggregate
+|`/{tenant_segment}/{t}/{rp_path}` |`GET` a listing; `POST` a new aggregate (not for a service-written root)
+|`/{tenant_segment}/{t}/{rp_path}/{id}` |`GET`, `PUT`, `DELETE` one aggregate (`GET` only for a service-written root)
 |`/context.jsonld` |`GET` the generated JSON-LD context
 |===
+
+*Service-written roots* (PD-3). A root annotated `rp_writes: service`, and every root that includes
+`StoredFile`, gets the listing and the read but not the generic `POST`, `PUT` and `DELETE`: the
+record and the bytes of a file must change together, which only the consumer's own route can do, in
+a session (the route example above shows the kit calls). The routes are not mounted, so they are also absent from
+the OpenAPI document, and the framework answers 405 with `Allow: GET`. There is no way to opt back
+in. See xref:howto/adopt.adoc#files[Keep files].
 
 A read of one object answers with its `ETag`; the read of a tenant's root also answers with `Record-ETag`, the version of its access record, to send as `If-Match` to the label route. The read of a tenant's root and of an aggregate also answers `Allowed-Actions`, the actions the caller may take on it (`read, modify, delete, administer`, in that order; on a tenant `delete` means deleting the tenant and needs `administer`, on an aggregate `administer` is not listed; no header on a refused read), and each item of the tenant listing carries the same list as `allowed_actions`. A root `PUT` whose label is not the tenant's gets 422: a tenant is renamed through its label route. Every `PUT` and `DELETE` needs `If-Match` (428 without it, 409 on a
 stale version); a create answers 201 with a `Location`. Plain JSON points at the context by a `Link`

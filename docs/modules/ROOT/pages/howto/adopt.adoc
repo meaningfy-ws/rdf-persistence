@@ -784,7 +784,28 @@ library's `Scan` does. The bytes go to the tenant's bucket through the `FileStor
 `put(bucket, key, data)`, `get(bucket, key)` and `delete(bucket, key)`. The toolkit has no route
 for the bytes, so you add one. `file_key` is `internal`: no request body can set it and no response
 shows it, but a domain service can, since the mapper writes internal slots. The toy library keeps
-the bytes under the scan's id instead. Its route is in <<serve>>.
+the bytes under the scan's id instead. Its routes are in <<serve>>.
+
+*A file root is written through a session.* The record and its bytes must change together, so the
+router serves a `StoredFile` root's `GET` and listing but not its `POST`, `PUT` or `DELETE` (a
+request for one gets 405, and the OpenAPI document does not describe them). Write the record in your
+own route with `kit.session(...)` and a `UnitOfWork`, and the bytes with `kit.files`. The toy
+library's `POST …/scan-files` does both:
+
+[source,python]
+----
+checked = await kit.require(request.headers.get("authorization"), t, Action.MODIFY)
+tenant = checked.caller_access.tenant
+iri = str(kit.iris.mint_aggregate(tenant, "scan", "scans"))
+await kit.files.put(await kit.bucket_of(tenant), iri.rsplit("/", 1)[-1], data)              # the bytes
+async with kit.session(tenant, checked.principal) as session:
+    work = UnitOfWork(session, mapper)
+    work.add(Scan(id=iri, label=label, file_name=name, byte_size=len(data), sha256=digest))
+    await work.commit()                                  # the record
+----
+
+Any other root can opt in with the class annotation `rp_writes: service`; there is no value that
+turns it off.
 
 *RDF*, parsed into a graph of its own. `Session.load_graph(iri, data, rdf_format=RdfFormat.TURTLE)`
 parses the data in a worker thread and puts it into a new named graph, by default

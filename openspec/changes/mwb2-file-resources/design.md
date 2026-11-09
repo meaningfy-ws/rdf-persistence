@@ -205,6 +205,16 @@ requirement says the read is gated like `get_graph`, the scenario says a consume
 `read` with `require_aggregate` refuses the caller before the session is opened. The bet (DEC-4)
 holds; this is a PLAN-level correction.
 
+**How PD-3's open branches went (task 2.2, 2026-11-09).** The toy has no served root with a
+reference slot other than `Scan.scan_of`, so the HTTP-level 422 test (`test_router_hardening.py`
+l.107) was deleted; `tests/unit/services/test_documents_strict.py:155/161` already cover a smuggled
+node at the `Documents` level. The service-level stripping of internal slots is covered by
+`test_documents_strict.py` and `test_documents.py:377/390`; none was added. One test the table
+missed, `tests/unit/entrypoints/test_openapi.py` (it listed the scan writes), now expects reads
+only for scans. **Known limit:** the generator imports `WritesKind` from the generated
+`rp_core.py`, so adding a value to a toolkit enum the generator itself reads needs a two-step
+regeneration (as the builder did). Ordinary consumer regeneration is unaffected.
+
 ## PD-8 The JSON Schema reads the generation view too (#59, DEC-1; found in task 1.2)
 
 T-4's first run found a second mismatch: `Chapter.label (python: no, json schema: yes)`.

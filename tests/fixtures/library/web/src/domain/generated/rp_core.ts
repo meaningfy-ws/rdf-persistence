@@ -25,6 +25,8 @@ export type RpAnnotation =
   | "rp_iri_type"
   /** Class annotation, `true` on an owned value class whose instances need no label of their own. */
   | "rp_unlabelled"
+  /** Class annotation, `service` (see WritesKind) on an aggregate root whose generic create, replace and delete are not served; the consumer writes it through a session. A root that mixes in StoredFile is service-written without it. */
+  | "rp_writes"
   /** Slot annotation, `true` when the session writes the slot about a graph (its version, who created or contributed to it, when); closed shapes ignore the statement. */
   | "bookkeeping";
 
@@ -43,6 +45,11 @@ export type DatabaseKind =
   | "tenant"
   /** The system database, shared by all tenants. */
   | "system";
+
+/** How an aggregate root is written, the values of the rp_writes annotation. */
+export type WritesKind =
+  /** The consumer writes the root through a session; the API serves no generic create, replace or delete. */
+  | "service";
 
 /** The special graphs a class can live in, the values of the graph annotation. */
 export type GraphKind =

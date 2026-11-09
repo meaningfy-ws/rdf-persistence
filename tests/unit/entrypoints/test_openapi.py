@@ -35,15 +35,12 @@ REPLACE = {200, 401, 403, 404, 406, 409, 413, 415, 422, 428, 503}
 DELETE = {204, 401, 403, 404, 409, 428, 503}
 
 
-def aggregate_routes(rp_path: str) -> list[tuple[str, str, set[int]]]:
+def aggregate_routes(rp_path: str, *, written: bool = True) -> list[tuple[str, str, set[int]]]:
+    """The routes of a root; ``written=False`` for one the consumer writes through a session (PD-3)."""
     collection, member = f"{TENANT}/{rp_path}", f"{TENANT}/{rp_path}/{{aggregate_id}}"
-    return [
-        (collection, "get", LIST),
-        (collection, "post", CREATE),
-        (member, "get", READ),
-        (member, "put", REPLACE),
-        (member, "delete", DELETE),
-    ]
+    reads = [(collection, "get", LIST), (member, "get", READ)]
+    writes = [(collection, "post", CREATE), (member, "put", REPLACE), (member, "delete", DELETE)]
+    return reads + (writes if written else [])
 
 
 ROUTES = [
@@ -56,7 +53,7 @@ ROUTES = [
     (f"{TENANT}/grants", "put", {200, 401, 403, 404, 409, 413, 415, 422, 428, 503}),
     (f"{TENANT}/label", "put", {200, 401, 403, 404, 409, 413, 415, 422, 428, 503}),
     *aggregate_routes("books"),
-    *aggregate_routes("scans"),
+    *aggregate_routes("scans", written=False),
 ]
 IDS = [f"{method.upper()} {path}" for path, method, _ in ROUTES]
 

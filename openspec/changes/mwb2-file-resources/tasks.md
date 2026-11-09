@@ -22,14 +22,14 @@ other. Review: MEDIUM — five lenses (L4+L5 one pass) and a checker per stage.
 
 ## 2. Service-written roots (#55) — BREAKING for generic writes on StoredFile roots
 
-- [ ] 2.1 PD-3 model and rule: T-9, then `rp_writes` and `WritesKind` in `model/rp_core.yaml`,
+- [x] 2.1 PD-3 model and rule: T-9, then `rp_writes` and `WritesKind` in `model/rp_core.yaml`,
   `make generate`, the hard check, `is_service_written`. Gate: `uv run pytest -n auto
   tests/unit/generation tests/unit/services -q`.
-- [ ] 2.2 PD-3 routes: T-6, T-7, T-8, then `add_aggregate_routes`; change every scan-writing test as PD-3's
+- [x] 2.2 PD-3 routes: T-6, T-7, T-8, then `add_aggregate_routes`; change every scan-writing test as PD-3's
   table says (incl. the e2e toy app's own scan route). The report says which
   way each of PD-3's open branches went (l.107's 422 test, the service-level stripping tests). Gate: `uv run pytest -n auto
   tests/unit/entrypoints tests/unit/services tests/integration/api -q`.
-- [ ] 2.3 PD-3 docs: `howto/adopt.adoc` step 10 (file roots are written through a session; the
+- [x] 2.3 PD-3 docs: `howto/adopt.adoc` step 10 (file roots are written through a session; the
   annotation), `architecture/api.adoc` (which routes a root gets), `questions.adoc` ("Why does my
   file root answer 405 on PUT?"). Gate: `make check-docs`.
 

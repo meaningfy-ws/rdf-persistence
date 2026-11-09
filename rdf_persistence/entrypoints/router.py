@@ -56,6 +56,7 @@ from rdf_persistence.entrypoints.responses import (
 )
 from rdf_persistence.services.artifacts import CONTEXT_FILE, CONTEXT_KEY
 from rdf_persistence.services.listing import items_of, list_request, total_of
+from rdf_persistence.services.schema_structure import is_service_written
 from rdf_persistence.services.session import Stored
 
 CONTEXT_ROUTE = "context"
@@ -376,8 +377,10 @@ def add_aggregate_routes(
 
     docs = AggregateOpenApi(kit.view, cls, rp_path)
     docs.listing().add_to(router, collection, HTTPMethod.GET, listing)
-    docs.create().add_to(router, collection, HTTPMethod.POST, create)
     docs.read().add_to(router, member, HTTPMethod.GET, read)
+    if is_service_written(kit.view, cls):  # the consumer writes it through a session (PD-3)
+        return
+    docs.create().add_to(router, collection, HTTPMethod.POST, create)
     docs.replace().add_to(router, member, HTTPMethod.PUT, replace)
     docs.remove().add_to(router, member, HTTPMethod.DELETE, remove)
 

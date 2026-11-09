@@ -49,7 +49,8 @@ from rdf_persistence import (
     TenantAccess,
     TenantLabelled,
     TenantState,
-    Tracked
+    Tracked,
+    WritesKind
 )
 
 from .books import (

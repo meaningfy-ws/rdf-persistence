@@ -11,11 +11,11 @@ from fastapi import HTTPException
 
 from rdf_persistence import Page
 from rdf_persistence.domain.exceptions import BadQuery, SparqlError
-from rdf_persistence.domain.iris import graph_iri, system_database_name, tenant_resource_name
+from rdf_persistence.domain.iris import system_database_name
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.services import vocabulary as v
 from tests.toy import SETTINGS
-from tests.toy_service import DUNE_BODY, SCAN_BODY, TENANT_BODY, ToyService
+from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of, store_scan
 from tests.unit.entrypoints.scene import PROBLEMS, Scene, problem_of
 
 RP = "https://meaningfy.ws/ns/rdf-persistence#"
@@ -33,40 +33,11 @@ async def slug_of(response: httpx.Response, status: int) -> str:
 # --- internal slots ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("key", ["file_key", "rp:fileKey", f"{RP}fileKey"])
-async def test_a_json_scan_cannot_set_the_file_key_in_any_key_form(scene, key) -> None:
-    response = await scene.http.post(
-        f"{scene.tenant}/scans", json={**SCAN_BODY, key: SECRET}, headers=scene.headers("ada")
-    )
-    assert await slug_of(response, 422) == "invalid-body", response.text
-    assert "file_key" in response.json()["detail"], "the slot is named"
-
-
-async def test_a_json_ld_scan_cannot_set_the_file_key(scene) -> None:
-    body = {
-        "@context": [scene.service.kit.documents.context, {"rp": RP}],
-        "type": "Scan",
-        **SCAN_BODY,
-        "rp:fileKey": SECRET,
-    }
-    response = await scene.http.post(
-        f"{scene.tenant}/scans", json=body, headers=scene.headers("ada", **LD_HEADER)
-    )
-    assert await slug_of(response, 422) == "invalid-body", response.text
-    assert "file_key" in response.json()["detail"], "the slot is named"
-
-
 @pytest.mark.parametrize("media_type", [JSON, JSON_LD, TURTLE])
 async def test_a_stored_file_key_is_in_no_representation_and_no_listing(scene, media_type) -> None:
-    made = await scene.http.post(
-        f"{scene.tenant}/scans", json=SCAN_BODY, headers=scene.headers("ada")
-    )
-    location, iri = made.headers["location"], made.json()["id"]
-    database = tenant_resource_name(SETTINGS.prefix, scene.tenant_iri)
-    await scene.service.store.update(
-        database,
-        f'INSERT DATA {{ GRAPH <{iri}/graph> {{ <{iri}> <{RP}fileKey> "{SECRET}" }} }}',
-    )
+    kit = scene.service.kit
+    scan = await store_scan(kit, scene.tenant_iri, principal_of("ada"), file_key=SECRET)
+    location = f"{scene.tenant}/scans/{scan.id.rsplit('/', 1)[-1]}"
     one = await scene.http.get(location, headers=scene.headers("ada", Accept=media_type))
     assert one.status_code == 200, one.text
     assert SECRET not in one.text, f"{media_type} shows the key"
@@ -75,49 +46,7 @@ async def test_a_stored_file_key_is_in_no_representation_and_no_listing(scene, m
     assert SECRET not in listing.text, "and neither does a listing"
 
 
-async def stores_file_key(scene, iri: str) -> bool:
-    database = tenant_resource_name(SETTINGS.prefix, scene.tenant_iri)
-    ask = f'ASK {{ GRAPH <{graph_iri(iri)}> {{ <{iri}> <{RP}fileKey> "{SECRET}" }} }}'
-    return bool((await scene.service.store.query(database, ask)).askAnswer)
-
-
-async def test_a_replace_keeps_the_internal_values_the_service_stored(scene) -> None:
-    made = await scene.http.post(
-        f"{scene.tenant}/scans", json=SCAN_BODY, headers=scene.headers("ada")
-    )
-    location, iri, etag = made.headers["location"], made.json()["id"], made.headers["etag"]
-    database = tenant_resource_name(SETTINGS.prefix, scene.tenant_iri)
-    await scene.service.store.update(
-        database,
-        f'INSERT DATA {{ GRAPH <{graph_iri(iri)}> {{ <{iri}> <{RP}fileKey> "{SECRET}" }} }}',
-    )
-    replaced = await scene.http.put(
-        location,
-        json={**SCAN_BODY, "label": "Dune, rescanned"},
-        headers=scene.headers("ada", **{"If-Match": etag}),
-    )
-    assert replaced.status_code == 200, replaced.text
-    assert SECRET not in replaced.text, "and it is still shown to no one"
-    assert await stores_file_key(scene, iri), "the client cannot set the key, so a replace keeps it"
-
-
 # --- nodes the aggregate does not own ---------------------------------------------------------
-
-
-async def test_a_node_smuggled_through_a_reference_is_a_422_and_nothing_is_stored(scene) -> None:
-    made = await scene.http.post(
-        f"{scene.tenant}/scans", json=SCAN_BODY, headers=scene.headers("ada")
-    )
-    location, iri, etag = made.headers["location"], made.json()["id"], made.headers["etag"]
-    smuggled = {"@id": f"{iri}/smuggled", "junk": "anything"}
-    response = await scene.http.put(
-        location,
-        json={**SCAN_BODY, "scan_of": smuggled},
-        headers=scene.headers("ada", **{"If-Match": etag}),
-    )
-    assert await slug_of(response, 422) == "invalid-body", response.text
-    turtle = await scene.http.get(location, headers=scene.headers("ada", Accept=TURTLE))
-    assert "smuggled" not in turtle.text, "nothing of it was written"
 
 
 async def test_the_tenant_root_cannot_plant_an_aggregate_in_the_meta_graph(scene) -> None:

@@ -473,6 +473,7 @@
         "rp_path",
         "rp_iri_type",
         "rp_unlabelled",
+        "rp_writes",
         "bookkeeping"
       ],
       "title": "RpAnnotation",
@@ -674,6 +675,14 @@
       "properties": {},
       "title": "Tracked",
       "type": "object"
+    },
+    "WritesKind": {
+      "description": "How an aggregate root is written, the values of the rp_writes annotation.",
+      "enum": [
+        "service"
+      ],
+      "title": "WritesKind",
+      "type": "string"
     }
   }
 }
