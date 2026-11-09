@@ -35,9 +35,9 @@ other. Review: MEDIUM — five lenses (L4+L5 one pass) and a checker per stage.
 
 ## 3. Inline filter schemas (#54)
 
-- [ ] 3.1 PD-4: T-10, T-11, then `_inline_property_refs` in `install_openapi`. Gate:
+- [x] 3.1 PD-4: T-10, T-11, then `_inline_property_refs` in `install_openapi`. Gate:
   `uv run pytest -n auto tests/unit/entrypoints -q`.
-- [ ] 3.2 PD-4 toolchain: `tests/dump_openapi.py`, the `typecheck-openapi-ts` target under
+- [x] 3.2 PD-4 toolchain: `tests/dump_openapi.py`, the `typecheck-openapi-ts` target under
   `check-types`. Gate: `make typecheck-openapi-ts` (T-12).
 
 Stage 1 close: five-lens review, decisions recorded below, fixes, checker, durations in

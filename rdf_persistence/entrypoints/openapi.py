@@ -14,6 +14,7 @@ only the last step, which hands a route to the router, turns them into the mappi
 ``add_api_route`` takes.
 """
 
+import copy
 from collections.abc import Callable, Iterable
 from enum import Enum
 from http import HTTPMethod, HTTPStatus
@@ -433,6 +434,31 @@ def component_roots(kit: ServiceKit) -> list[str]:
     return [*(cls.name for cls in classes), *TOOLKIT_BODIES]
 
 
+def _target_in(raw: dict[str, dict], pointer: str) -> dict:
+    """A copy of what ``#/components/schemas/<C>/properties/<p>[/items]`` points at, without its description."""
+    name, *path = pointer.removeprefix(COMPONENT_REFERENCES).split("/")
+    target = raw[name]
+    for step in path:
+        target = target[step]
+    return {k: copy.deepcopy(v) for k, v in target.items() if k != "description"}
+
+
+def _inline_property_refs(document: OpenAPI, raw: dict[str, dict]) -> None:
+    """Replace each parameter schema that points into a property by a copy of its target in ``raw`` (PD-4).
+
+    openapi-typescript renders such a pointer as an indexed access on an optional property, which
+    ``tsc --strict`` rejects. FastAPI's model keeps the path items of the routes as plain mappings
+    (``paths`` is typed ``PathItem | Any``); a path item it did validate has no such parameters.
+    """
+    paths: list[object] = list((document.paths or {}).values())
+    for path in (p for p in paths if isinstance(p, dict)):
+        for method in HTTPMethod:
+            for parameter in path.get(method.lower(), {}).get("parameters", []):
+                pointer = parameter["schema"].get(REF, "")
+                if "/properties/" in pointer:
+                    parameter["schema"] = _target_in(raw, pointer)
+
+
 def install_openapi(app: FastAPI, kit: ServiceKit) -> None:
     """Make ``app`` publish the component schemas of the routes and the bearer scheme in its document.
 
@@ -453,6 +479,7 @@ def install_openapi(app: FastAPI, kit: ServiceKit) -> None:
             components.schemas = dict(sorted({**(components.schemas or {}), **schemas}.items()))
             components.securitySchemes = {BEARER_AUTH: HTTPBearer(scheme=BEARER_SCHEME)}
             document.components = components
+            _inline_property_refs(document, raw)
             app.openapi_schema = document.model_dump(by_alias=True, exclude_none=True, mode="json")
         return app.openapi_schema
 

@@ -134,14 +134,26 @@ def test_a_listing_takes_a_parameter_per_slot_of_the_type_and_the_paging_ones(
 def test_the_filters_of_a_book_are_typed_by_the_schema(document) -> None:
     op = operation(document, f"{TENANT}/books", "get")
     params = {p["name"]: p for p in op["parameters"] if p["in"] == "query"}
-    assert params["genre"]["schema"] == {"$ref": f"{COMPONENT}Book/properties/genre"}
-    assert params["authors"]["schema"] == {"$ref": f"{COMPONENT}Book/properties/authors/items"}
-    assert params["limit"]["schema"] == {"$ref": f"{COMPONENT}ListRequest/properties/limit"}
+    assert params["genre"]["schema"] == {"$ref": f"{COMPONENT}Genre"}
+    assert params["authors"]["schema"] == {"type": "string"}
+    limit = params["limit"]["schema"]
+    assert limit["type"] == "integer" and limit["maximum"] == 200
     assert properties(document, "ListRequest")["limit"]["maximum"] == 200, "the bounds of PD-15"
     assert "-label" in params["sort"]["schema"]["enum"], "descending is the name with a minus sign"
     assert not {"creator", "chapters", "id"} & set(params), (
         "bookkeeping, parts and the id are not filters"
     )
+
+
+def test_no_parameter_points_into_a_property(document) -> None:
+    pointing = [
+        (path, p["name"])
+        for path, methods in document["paths"].items()
+        for op in methods.values()
+        for p in op.get("parameters", [])
+        if "/properties/" in json.dumps(p["schema"])
+    ]
+    assert pointing == []
 
 
 def test_a_listing_answers_a_page_of_the_type(document) -> None:
