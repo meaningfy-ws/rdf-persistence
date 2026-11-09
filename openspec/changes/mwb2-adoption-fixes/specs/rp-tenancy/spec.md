@@ -34,5 +34,16 @@ label differs from the access record's.
 #### Scenario: the root cannot change the label
 - **GIVEN** a tenant labelled "B"
 - **WHEN** its root is replaced with a body whose label is "C"
-- **THEN** the answer is 400 and the root is unchanged
+- **THEN** the answer is 422 and the root is unchanged
 - **AND** a body whose label is "B" is accepted
+
+### Requirement: Any reader can learn the record's version
+
+A read of the tenant's root SHALL answer the access record's version in a `Record-ETag` header, in
+the form of `ETag`. A rename SHALL accept that version as `If-Match`.
+
+#### Scenario: a member renames the tenant
+- **GIVEN** a caller with `read` and `modify` on the tenant and not `administer`
+- **WHEN** it reads the tenant's root and renames the tenant with the `Record-ETag` it read
+- **THEN** the rename succeeds
+- **AND** a rename with an older version is refused as a conflict

@@ -3,9 +3,12 @@
 
 # Design: mwb2-adoption-fixes
 
-Four independent fixes, one stage. Each PD names its files, the algorithm, a worked example, the
-tests (with ids `T-n`) and its traps. Code facts were read at `develop` `f38a11a` (2026-11-09) and
+Ten issues in four stages (proposal.md, "Solution outline"): **Stage 1** PD-1 to PD-6, **Stage 2**
+PD-7, **Stage 3** PD-8 and PD-9, **Stage 4** PD-10. Each PD names its files, the algorithm, a
+worked example, the tests (with ids `T-n`) and its traps. Code facts were read at `develop` `f38a11a` (2026-11-09) and
 checked by an independent review the same day (see "Clarity gate" in tasks.md).
+
+# Stage 1
 
 ## PD-1 `py.typed` in the wheel (#42, DEC-4)
 
@@ -79,7 +82,7 @@ Example (toy library; `v1` is the record's ETag):
 POST /libraries {"label": "A"}                           → 201, t
 PUT  /libraries/t/label {"label": "B"}  If-Match: v1     → 200, ETag v2
 GET  /libraries/t                                        → {"label": "B", ...}
-PUT  /libraries/t {"label": "C", ...}   If-Match: <root> → 400 invalid-body; root still "B"
+PUT  /libraries/t {"label": "C", ...}   If-Match: <root> → 422 invalid-body; root still "B"
 PUT  /libraries/t {"label": "B", ...}   If-Match: <root> → 200
 PUT  /libraries/t/label {"label": "D"}  If-Match: v1     → 409; record and root still "B"
 ```
@@ -96,7 +99,7 @@ Tests (`tests/unit/services/test_tenancy.py` unless stated):
 - **T-10** (`tests/unit/entrypoints/test_router.py`) the example above through the routes,
   including a root `PUT` whose label equals the record's → 200.
 - **T-11** a root whose stored label drifted before this change (written directly to the fake
-  store): `GET` then `PUT` of the same body → 400; a rename repairs it.
+  store): `GET` then `PUT` of the same body → 422; a rename repairs it.
 
 ## PD-4 The guard API is public (#45, DEC-3)
 
@@ -173,6 +176,171 @@ Tests:
 - **T-14** `make check-docs` stays green (its checklist check reads `__all__`).
 - **T-15** as above.
 
+## PD-5 `install_service` takes an `id_source` (#46, DEC-7)
+
+- `rdf_persistence/entrypoints/service.py` `install_service(..., id_source: IdSource | None = None)`
+  passes it to `ServiceKit`, which builds `Iris(settings, *iri_types(view), id_source=...)`
+  (`entrypoints/kit.py:62`) only when it is given; `None` keeps `Iris`'s default `draw_id`
+  (`domain/iris.py` ~l.282, `secrets`). `Tenancy` and `Aggregates` already take `iris=self.iris`,
+  so both draw through it (`kit.py:84-86`; `mint_tenant` draws through `id_source`, `iris.py:478`;
+  the start-up probe uses `draw_id` directly, l.470, so it does not consume a test's draws).
+  `IdSource` is the alias at `iris.py:278`; export it from `rdf_persistence` beside `Iris` and
+  `IdSpec` (it is not exported today).
+- Docstring: "for tests that need to force a clash; leave it out in a running service".
+- **T-16** (`tests/unit/entrypoints/test_service_kit.py`): `draws = iter([existing, existing,
+  fresh])` — the second tenant create is answered with `fresh`, and the first tenant is unchanged.
+- **T-17**: without `id_source`, two creates draw different ids of the policy's length (the
+  default path is still `draw_id`).
+
+## PD-6 The root read carries the record's version (#50, DEC-5)
+
+- `add_tenant_routes` `read_root` (`router.py` ~l.268): after `root.read(...)`, read
+  `_, version = await kit.tenancy.get(access.tenant)` and set `Record-ETag: etag_of(version)`
+  (`negotiation.etag_of`, the same form as `ETag`). The constant `RECORD_ETAG = "Record-ETag"`
+  lives in `entrypoints/negotiation.py` beside `ETAG`.
+- OpenAPI (`TenantOpenApi.read_root()`): document the header: "the access record's version; send
+  it as `If-Match` to rename the tenant".
+- `howto/adopt.adoc` (tenant routes, ~l.680–700): a reader with `modify` renames with it; a web app
+  on another origin must expose `ETag`, `Record-ETag` (and in stage 4 `Allowed-Actions`) in its
+  CORS settings.
+- Example: `GET /libraries/t` → `ETag: "r7"`, `Record-ETag: "v2"`; `PUT /libraries/t/label
+  If-Match: "v2"` with `modify` only → 200; with `If-Match: "v1"` → 409.
+- **T-18** (`test_router.py`): a caller with `[read, modify, delete]` reads the root, renames with
+  its `Record-ETag` → 200; renames with an older one → 409.
+- **T-19**: `Record-ETag` equals the `ETag` of `GET …/grants` for an administrator.
+
+# Stage 2
+
+## PD-7 Consumer validators on tenant writes (#49, DEC-6)
+
+Types (`rdf_persistence/services/tenancy.py`, exported from `rdf_persistence`):
+
+```python
+GrantValidator = Callable[[GrantSet, GrantSet, Principal], None]          # old, new, who
+RootValidator = Callable[[BaseModel | None, BaseModel, Principal], None]  # old (None on create), new, who
+```
+
+A validator refuses by raising `InvalidBody` (422 `invalid-body`, its message is the problem's
+`detail`); any exception other than `InvalidBody` or pydantic `ValidationError` (also 422, through the existing handler) is a bug and propagates (500). Validators run in the order given;
+the first refusal stops the write.
+
+Wiring: `install_service(..., grant_validators=(), root_validators=())` → `ServiceKit` →
+`Tenancy(..., grant_validators=..., root_validators=...)`.
+
+Where they run (each before the conditional write, so nothing is written on refusal):
+
+| Write | Old | New | Runs |
+|---|---|---|---|
+| `Tenancy.set_grants` | the record's grants and prohibitions, as read | the body | grant validators |
+| `Tenancy.create` | `None` | the new root | root validators, before the database is created |
+| `Tenancy.rename` | the stored root | the root with the new label | root validators, in step 2: after the root is read, before it is written |
+| `Aggregates.replace` when `iri == tenant` | the stored root | the body decoded with the mapper | the label check of PD-3, then root validators |
+
+For the last row, `Tenancy` gets one method, e.g. `vet_root(tenant, triples, principal)`, holding
+both the PD-3 label check and the validators; `Aggregates.replace` calls it before the session
+opens, as PD-3 says.
+
+Atomicity: the write is the existing conditional update (`session.replace_graph`: the update
+carries `if_version`, then an ASK confirms the new token), so two writes at one version cannot both
+land. Example (MWB2's rule):
+
+```python
+def keep_an_owner(old: GrantSet, new: GrantSet, who: Principal) -> None:
+    if not any(g.role == "owner" for g in new.grants or []):
+        raise InvalidBody("a project keeps at least one owner")
+```
+
+```text
+grants {ada: owner, bob: owner} at v1
+PUT grants {ada: owner} If-Match v1   ┐ both pass keep_an_owner
+PUT grants {bob: owner} If-Match v1   ┘ one → 200 (v2), the other → 409
+PUT grants {} If-Match v2             → 422 "a project keeps at least one owner"; record at v2
+```
+
+Tests (`tests/unit/services/test_tenancy.py`, `tests/unit/entrypoints/test_router.py`):
+
+- **T-20** a grant validator refuses → 422 through the route, record unchanged (same ETag after).
+- **T-21** two concurrent `set_grants` at one version (`asyncio.gather` on the fake store), each
+  passing the validator → exactly one `Conflict`; an owner remains.
+- **T-22** root validators on create (`old is None`; refusal → no database, no bucket, no record),
+  on rename (refusal → root and record unchanged), on root `PUT` (refusal → root unchanged).
+- **T-23** a validator raising `RuntimeError` → 500 `internal-error`, nothing written; one raising
+  pydantic `ValidationError` → 422 (the existing handler, `problems.py:130`), nothing written.
+- **T-24** no validators given → every existing tenancy and router test passes unchanged.
+- Docs: `howto/adopt.adoc`, a short section "Enforce your own rules on tenant writes" with the
+  example above; `architecture/access-control.adoc` one paragraph.
+
+# Stage 3
+
+## PD-8 `rp_service.ts` for TypeScript targets (#47, DEC-8)
+
+- `rdf_persistence/generation/extensions/typescript.py` `render(schema_path)`: after
+  `generator.files()` for the consumer's schema, render the toolkit's
+  `PACKAGE_DIR / "model" / "service" / "rp_service.yaml"` with the same `ToolkitTypescriptGenerator`
+  and the metamodel import map, keep the files whose names the consumer's run did not write
+  (`rp_service.ts`; `rp_core.ts` etc. are already there), and render `index.ts` once over the union
+  of module names. When the schema being rendered *is* `rp_service.yaml`, nothing is added.
+- The files are ordinary outputs of the step, so the manifest, the freshness check and
+  `make check-generated` cover them with no change.
+- The toy's `tests/fixtures/library/web/src/domain/generated/` gains `rp_service.ts` on
+  `make generate`; `make typecheck-ts` (`tsc --noEmit --strict`, wildcard over that folder) checks it.
+- **T-25** (`tests/unit/generation/`): rendering the toy schema yields `rp_service.ts` holding
+  `AccountSummary`, `TenantSummary`, `TenantCreate`, `Page`, `Problem`, `GrantSet`, `LabelUpdate`,
+  with `root: unknown` in `TenantCreate` and `items: unknown[]` in `Page`, no `interface Any`; and
+  `index.ts` exports it once.
+- **T-26** `make typecheck-ts` passes with the regenerated toy (needs Node; it runs in the CI
+  "types" job).
+- **`linkml:Any` becomes `unknown`.** Rendered as is (probed 2026-11-09), `rp_service.ts` holds all
+  seven types and passes `tsc --strict`, but `Any` comes out as an empty `interface Any {}` and the
+  slots ranging over it fall through to `string` (`typescript.py:59-60`: a class range that is not
+  owned becomes `"string"`), so `TenantCreate.root: string` and `Page.items: string[]` — wrong, and
+  tsc cannot see it. Fix in `range()`: a class whose `class_uri` is `linkml:Any` maps to `unknown`
+  (and no `interface Any` is emitted). Only the toy target sets `typescript` (the toolkit's own
+  targets in `pyproject.toml`, including `rp_wire.yaml`, which also uses `linkml:Any`, render no
+  TypeScript), so the toy's generated TS is the only output that changes, and only where `Any` is used.
+- Never hand-edit `rp_service.ts`.
+
+## PD-9 Technical classes are exempt from ownership (#48, DEC-9)
+
+- `rdf_persistence/generation/checks/boundary.py` `_ownership_problems`: skip a class whose own
+  module is annotated `module_kind: technical`. Pair each class with its schema where
+  `own_classes` already iterates the schemas (`schema_structure.py:176`), and read the kind with
+  `annotation()` (lower-cased), as `FORBIDDEN_FOR_DOMAIN` is checked (`boundary.py:76-78`). Domain
+  and access modules keep the rule.
+- Nothing else changes: frames are made only for roots, so a technical class gets none; it is
+  generated in Python and TypeScript like any class; its shape is harmless and stays.
+- **T-27** (`tests/unit/generation/test_boundary_check.py` or its neighbour, with `toy_copy`): add a
+  module `api.yaml` (`module_kind: technical`) with `Account {account_id, active}`, imported from
+  the toy's root `library.yaml` (which has no `module_kind`; a domain module may not import a
+  technical one) → `rp-generate` succeeds; `Account` is in the generated Python and TypeScript.
+- **T-28** the same class in a domain module → still `[ownership] Account: is neither an aggregate
+  root nor owned by any root`.
+- Docs: `howto/adopt.adoc` (where `module_kind` is explained): a technical module may hold the
+  request and response shapes of your own routes.
+
+# Stage 4
+
+## PD-10 Permitted actions on reads (#51, DEC-10)
+
+- `ACTIONS = (Action.READ, Action.MODIFY, Action.DELETE, Action.ADMINISTER)` — the header's order.
+- Tenant root read (`read_root`) and aggregate read (`add_aggregate_routes` `read`, which has
+  `checked.caller_access` and `checked.checked_target`): `Allowed-Actions: read, modify, delete`,
+  the actions `kit.rules.may(caller, access, target, a)` allows, joined by `", "`. The constant
+  `ALLOWED_ACTIONS` lives in `entrypoints/negotiation.py`.
+- `model/service/rp_service.yaml` `TenantSummary`: add slot `allowed_actions` (range `Action`,
+  multivalued, optional); `make generate`; `Tenancy.visible_tenants` fills it from the same
+  `rules.may` over `ACTIONS` with the record's access it already builds. `create` and `rename`
+  leave it empty.
+- OpenAPI: the header on both read operations; the slot comes with the regenerated component.
+- **T-29** a member `[read, modify, delete]` reads the tenant → `Allowed-Actions: read, modify,
+  delete`; a librarian → all four; a reader → `read`.
+- **T-30** a reader with a Prohibition of `read` on one book is refused as today (no header); a
+  member with a Prohibition of `delete` on a book reads it with `read, modify`.
+- **T-31** `GET /libraries` items carry `allowed_actions` equal to the header a read of that tenant
+  gives.
+- **T-32** `make check-generated` and the model snapshot pass after `make generate`
+  (`make refresh-snapshot` once, reviewed: one added slot).
+
 ## Anti-patterns (do / don't / why)
 
 | Don't | Do | Why |
@@ -186,6 +354,11 @@ Tests:
 | Widen `assert_public_imports` | Export the names | DEC-3 rejected it |
 | Eagerly import `conformance`/`strategies` in `__init__` | Load them on first use | Keeps `pyshacl` and `hypothesis` out of every test run |
 | Show a guide snippet no test runs | T-15 runs it | The guide is a contract with consumers |
+| Run a validator after the conditional write | Run it before; refuse with `InvalidBody` | Nothing may be written on refusal |
+| Lock or re-read to make validators "safe" | Rely on the conditional write | It is already atomic; a lock adds a failure mode |
+| Hand-write or edit `rp_service.ts` | Generate it in the TypeScript step | LinkML is the single source |
+| Put `allowed_actions` in the framed document | A header on reads, a slot on summaries | DEC-10: the document stays access-free |
+| Patch `secrets.choice` in tests | Pass `id_source` | DEC-7: the public seam |
 
 ## Error matrix
 
@@ -200,7 +373,14 @@ Tests:
 | Rename: root write conflicts (concurrent root `PUT`) | 409 | record unchanged; retry converges |
 | Rename: record moved after step 1 | 409 | root new, record old; re-read ETag, retry converges |
 | Rename: record write fails (store error) | 5xx as today | root new, record old; retry converges |
-| Root `PUT` with a different label | 400 `invalid-body` | root unchanged |
+| Root `PUT` with a different label | 422 `invalid-body` | root unchanged |
 | Root `PUT` with the record's label | 200 | — |
 | Consumer test with step 6 imports | `assert_public_imports` passes | — |
 | Consumer test importing `testkit.strategies` | refused | — |
+| Rename by a `modify` role with the `Record-ETag` | 200 | — |
+| Two grant writes at one version, both valid | one 200, one 409 | the first write |
+| Validator raises `InvalidBody` or pydantic `ValidationError` | 422 | nothing written |
+| Validator raises anything else | 500 `internal-error` | nothing written |
+| `rp-generate` with a technical non-root class | succeeds | — |
+| Same class in a domain module | `[ownership]` problem | nothing generated |
+| Read refused (403/404) | no `Allowed-Actions` header | — |
