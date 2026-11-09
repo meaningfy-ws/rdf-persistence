@@ -274,5 +274,5 @@ settings.local.json
 temp/
 .rp-generate-*/
 
-# Serena code-assistant state (local)
+# Serena MCP state (its memories are not used; the truth is openspec/specs/)
 .serena/

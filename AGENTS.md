@@ -81,6 +81,16 @@ is how any commit traces up to the requirement that justifies it.
   separate worktree (`isolation: "worktree"`) only for overlapping parallel work or when another
   session holds this checkout.
 - **Run checks through make** (`make test`, `make check-all`); don't hand-roll pytest pipelines.
+- **Navigating and editing code: one tool per question.** Blast radius before a task: GitNexus
+  `impact` (the lead's gate). Read a symbol or a file's outline: Serena `get_symbols_overview`
+  and `find_symbol` with its body, not `Read` on a whole file. Who calls it: Serena
+  `find_referencing_symbols`. Replace or add a whole function: Serena `replace_symbol_body` /
+  `insert_after_symbol`. One code shape in many files: `ast-grep run -p '<pattern>' --lang
+  python` (look at the matches, then add `-r '<rewrite>' -U`). Text in docs, YAML, AsciiDoc or
+  the Makefile: Grep. Subagents without Serena use `ast-grep`, Grep and Read with a line range.
+- **Edit in place.** Use the Edit tool or Serena; never rewrite source files with Python
+  heredocs (`s.replace(...)`) or `sed -i`.
+- **Serena memories are not used**; the truth is `openspec/specs/` (`.serena/` is git-ignored).
 - **Temporary files** go in `temp/` (git-ignored), not `/tmp` or the session scratchpad.
 - **Commits and PRs carry no AI attribution** (no `Co-Authored-By`, no "Generated with" line).
   Enforced for Claude Code by `.claude/settings.json` (`attribution` empty); other agents follow
@@ -106,20 +116,26 @@ people is [`develop/agents.adoc`](docs/modules/ROOT/pages/develop/agents.adoc); 
 [`develop/testing.adoc`](docs/modules/ROOT/pages/develop/testing.adoc). What this repo adds:
 
 - **Every brief carries the standing rules:** models, not dicts; LinkML is the single source; the
-  testing checklist. The report names each make target run with its time and test count.
+  testing checklist; how to work (see `develop/agents.adoc`). The report names each make target
+  run with its time and test count.
 - **Gates.** Before a task is handed out, the lead runs gitnexus impact (stop and report
-  HIGH/CRITICAL; subagents have no gitnexus tools, so briefs never ask for it); after it, the lead
-  re-runs the `make` gates listed in `develop/agents.adoc`. Per task: `make test-changed` (falls back to
-  `make test-fast`; after changing `domain` or a port in `services`, run `make test-fast`),
-  `make check-quality`, `make clean-code`; the full suite (`make check-all`,
-  `make test-containers`) once, before the PR.
+  HIGH/CRITICAL; subagents have no gitnexus tools, so briefs never ask for it). Per task the
+  builder runs the gates listed in `develop/agents.adoc` (`make test-changed`, which falls back to
+  `make test-fast`; after changing `domain` or a port in `services`, `make test-fast`;
+  `make check-quality`, `make clean-code`) and reports each with its time and test count; the
+  lead re-runs `make check-quality` and reads the diff. After a red run, re-run only the failing
+  tests until green, then the full run once. The full suite (`make check-all`,
+  `make test-containers`) runs once, before the PR.
 - **Challenge, scaled to keep it cheap** (developer, 2026-11-09). The adversarial tester runs right
   after the riskiest task (new invariants, write order, concurrency), not only at the end; review
   lenses L4 and L5 are one pass; the checker reads the lead's `make check-all` result and does not
   re-run tests. Details and reasons: `develop/agents.adoc`.
 - **Merge and release.** One PR per stage into `develop`, merged only on green CI; a release comes
   last, so nothing is committed after the tag.
-- **Habits.** Re-index gitnexus after each commit (`gitnexus analyze --embeddings
+- **Habits.** **Never poll.** Run long commands in the foreground (timeout up to 10 min), with
+  `run_in_background` and its notice, or wait on a condition with the Monitor tool; a hook denies
+  `sleep` loops in Bash (it runs on plain `python3`, stdlib only, on purpose: it must not
+  depend on the project's environment). Re-index gitnexus after each commit (`gitnexus analyze --embeddings
   --skip-agents-md --skip-skills`, ≈ 20 s). If it errors (developer, 2026-11-09), do not retry or
   investigate: run `gitnexus clean --force` and the same `analyze` again (≈ 4 min, in the
   background), then revert anything it wrote to `AGENTS.md`, `CLAUDE.md` or `.claude/skills/`.

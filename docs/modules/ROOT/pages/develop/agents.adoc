@@ -22,7 +22,8 @@ Only when the developer grants it for a named epic, within the limits the `epic-
 sets. Commits and PRs carry no AI attribution.
 
 *What does a member's report prove?*::
-Nothing on its own. The lead re-runs the <<gates>> and reads the diff.
+Not enough on its own. The lead re-runs `make check-quality` and reads the diff; `make check-all`
+before the PR catches a report that was wrong. See <<gates>>.
 
 *What must every brief here say?*::
 The standing rules and the report in <<brief>>.
@@ -49,7 +50,10 @@ On top of the brief the `epic-delivery` skill sets, every brief names:
 * the standing rules: models, not dicts; LinkML is the single source; the
   xref:develop/testing.adoc[testing checklist] (the adversarial tester follows it too);
 * the report expected: files changed, tests added, each make target run with its time and test
-  count.
+  count;
+* how to work: search with `ast-grep run`, edit in place with the Edit tool, never with Python
+  heredocs or `sed -i`; run commands in the foreground or in the background with its notice, never
+  in a `sleep` loop (a hook denies it).
 
 Each task is committed by the lead with why, what and `Refs: <change-id> <task>`.
 
@@ -60,24 +64,29 @@ Before handing out a task the lead checks the blast radius with GitNexus (re-ind
 a HIGH or CRITICAL risk goes to the developer. Only the lead can: subagents have no GitNexus tools,
 so a brief never asks a builder or a reviewer for an impact check.
 
-[cols="2,3",options="header"]
+[cols="2,1,3",options="header"]
 |===
-|Gate |When
-|`make test-changed` |After every task. It runs the tests of the files the task changed against
-`develop` (set `BASE=<branch>` to compare with another; `PYTEST_N=<workers>` sets the worker
-count), slow tests included. It falls back to `make test-fast` by itself when it cannot map a
-change to tests
-|`make test-fast` |Instead of `make test-changed` when you are unsure what a change reaches, or
-after changing `domain` or a port in `services`. It runs every unit and feature test not marked `slow`
-(≈ 3 min)
-|`make check-quality` |After every task (≈ 1 min)
-|`make check-all` |Once, before the PR: it already holds `make test`, so never run both
-|`make test-containers` |Once, before the PR; and when adapters or containers change
-|`make check-generated` |After committing a schema change (it compares against the commit)
-|`make check-architecture`, `make clean-code`, `make check-docs` |With every task; they take seconds
-|`openspec validate --all --strict` |Part of `make check-quality`
-|The clarity gate (≥ 9/10) |Before a PLAN's first task
+|Gate |Who |When
+|`make test-changed` |builder |After every task. It runs the tests of the files the task changed
+against `develop` (set `BASE=<branch>` to compare with another; `PYTEST_N=<workers>` sets the
+worker count), slow tests included. It falls back to `make test-fast` by itself when it cannot map
+a change to tests
+|`make test-fast` |builder |Instead of `make test-changed` when you are unsure what a change
+reaches, or after changing `domain` or a port in `services`. It runs every unit and feature test
+not marked `slow` (≈ 3 min)
+|`make check-quality` |builder |After every task (≈ 1 min)
+|`make check-quality` |lead |After every task, after reading the diff
+|`make check-all` |lead |Once, before the PR: it already holds `make test`, so never run both
+|`make test-containers` |lead |Once, before the PR; and when adapters or containers change
+|`make check-generated` |builder |After committing a schema change (it compares against the commit)
+|`make check-architecture`, `make clean-code`, `make check-docs` |builder |With every task; they
+take seconds
+|`openspec validate --all --strict` |both |Part of `make check-quality`
+|The clarity gate (≥ 9/10) |lead |Before a PLAN's first task
 |===
+
+The builder owns the per-task gates and reports them; the lead re-runs only `make check-quality`.
+After a red run, re-run only the failing tests until green, then the full run once.
 
 [#challenge]
 == Keeping the challenge cheap
@@ -105,6 +114,11 @@ change is archived, so no commit follows the tag.
 
 == Habits that keep sessions consistent
 
+[#never-poll]
+* *Never poll.* Run long commands in the foreground (timeout up to 10 min), with
+  `run_in_background` and its notice, or wait on a condition with the Monitor tool; a hook
+  (`.claude/hooks/no_polling.py`) denies `sleep` loops in Bash. It runs on plain `python3`,
+  stdlib only, on purpose: it must not depend on the project's environment.
 * Re-index GitNexus after each commit (≈ 20 s):
   `gitnexus analyze --embeddings --skip-agents-md --skip-skills`.
 * Take check durations from ordinary runs and keep the
