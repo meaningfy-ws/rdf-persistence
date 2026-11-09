@@ -123,7 +123,7 @@ pre-commit: ## Run pre-commit hooks on all files
 #-----------------------------------------------------------------------------
 # Validation — non-mutating targets
 #-----------------------------------------------------------------------------
-.PHONY: format-check lint typecheck typecheck-generated typecheck-ts typecheck-openapi-ts check-architecture test test-unit test-feature test-containers fuseki-image test-e2e test-perf
+.PHONY: format-check lint typecheck typecheck-generated typecheck-ts typecheck-openapi-ts check-architecture test test-unit test-feature test-containers fuseki-image test-e2e test-perf test-fast test-changed profile-tests
 
 format-check: ## Check formatting with Ruff, without changing files
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking formatting$(END_BUILD_PRINT)"
@@ -205,6 +205,21 @@ test-perf: ## Run the wall-clock budget tests alone (no coverage, no xdist); not
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running perf tests$(END_BUILD_PRINT)"
 	@ uv run pytest $(TEST_PATH)/perf -m perf
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Perf tests passed$(END_BUILD_PRINT)"
+
+# Developer lanes (test-lanes): no coverage; the floors are checked by test, test-unit, test-feature.
+PROFILE_MARK ?= unit or feature
+
+test-fast: ## Run the unit and feature tests not marked slow, in parallel, without coverage (developer lane)
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -m "(unit or feature) and not slow"
+
+test-changed: ## Run the tests of the files changed against BASE (default develop), slow ones included, without coverage; PYTEST_N overrides the worker count
+	@ args=$$(uv run python -m tests.changed); status=$$?; \
+	  if [ $$status -eq 3 ]; then $(MAKE) --no-print-directory test-fast; \
+	  elif [ $$status -ne 0 ]; then exit $$status; \
+	  elif [ -n "$$args" ]; then uv run pytest $$args $(UNIT_LANE) -m "unit or feature"; fi
+
+profile-tests: ## Print the 15 slowest unit and feature tests, set-up and call apart, without coverage (PROFILE_MARK narrows)
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -q -p no:randomly -m "$(PROFILE_MARK)" --durations=15
 
 test-e2e: ## Run end-to-end tests only
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running e2e tests$(END_BUILD_PRINT)"
