@@ -323,18 +323,19 @@ Tests (`tests/unit/services/test_tenancy.py`, `tests/unit/entrypoints/test_route
 
 ## PD-10 Permitted actions on reads (#51, DEC-10)
 
-- `ACTIONS = (Action.READ, Action.MODIFY, Action.DELETE, Action.ADMINISTER)` — the header's order.
+- `ACTIONS = tuple(Action)` (R4-2), the schema's order `read, modify, delete, administer` — the header's order.
 - Tenant root read (`read_root`) and aggregate read (`add_aggregate_routes` `read`, which has
-  `checked.caller_access` and `checked.checked_target`): `Allowed-Actions: read, modify, delete`,
-  the actions `kit.rules.may(caller, access, target, a)` allows, joined by `", "`. The constant
+  `checked.caller_access` and `checked.checked_target`): `Allowed-Actions`, the actions the routes
+  on the target allow (R4-1: on the tenant `delete` needs `administer`; on an aggregate
+  `administer` is never listed), joined by `", "`. The constant
   `ALLOWED_ACTIONS` lives in `entrypoints/negotiation.py`.
 - `model/service/rp_service.yaml` `TenantSummary`: add slot `allowed_actions` (range `Action`,
   multivalued, optional); `make generate`; `Tenancy.visible_tenants` fills it from the same
   `rules.may` over `ACTIONS` with the record's access it already builds. `create` and `rename`
   leave it empty.
 - OpenAPI: the header on both read operations; the slot comes with the regenerated component.
-- **T-29** a member `[read, modify, delete]` reads the tenant → `Allowed-Actions: read, modify,
-  delete`; a librarian → all four; a reader → `read`.
+- **T-29** a member `[read, modify, delete]` reads the tenant → `Allowed-Actions: read, modify`
+  and a book → `read, modify, delete` (R4-1); a librarian → all four on the tenant; a reader → `read`.
 - **T-30** a reader with a Prohibition of `read` on one book is refused as today (no header); a
   member with a Prohibition of `delete` on a book reads it with `read, modify`.
 - **T-31** `GET /libraries` items carry `allowed_actions` equal to the header a read of that tenant

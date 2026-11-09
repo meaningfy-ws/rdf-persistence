@@ -833,8 +833,12 @@ async def test_the_listing_items_carry_what_the_tenant_read_answers(scene) -> No
     await _everyone_has_a_role(scene)
     for who in ("ada", "mia", "rita"):
         headers = scene.headers(who)
-        header = (await scene.http.get(scene.tenant, headers=headers)).headers.get(ALLOWED_ACTIONS)
-        page = Page.model_validate((await scene.http.get("/libraries", headers=headers)).json())
+        read = await scene.http.get(scene.tenant, headers=headers)
+        assert read.status_code == 200, read.text
+        listing = await scene.http.get("/libraries", headers=headers)
+        assert listing.status_code == 200, listing.text
+        header = read.headers.get(ALLOWED_ACTIONS)
+        page = Page.model_validate(listing.json())
         [item] = [
             t for t in map(TenantSummary.model_validate, page.items) if t.id == scene.tenant_iri
         ]
@@ -844,6 +848,7 @@ async def test_the_listing_items_carry_what_the_tenant_read_answers(scene) -> No
 
 async def test_a_created_tenant_summary_leaves_allowed_actions_empty(service, client) -> None:
     response = await client.post("/libraries", json=TENANT_BODY, headers=service.bearer("ada"))
+    assert response.status_code == 201, response.text
     assert TenantSummary.model_validate(response.json()).allowed_actions is None, "create"
 
 
