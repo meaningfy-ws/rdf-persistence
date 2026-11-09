@@ -31,6 +31,11 @@ holds its grants and prohibitions. The caller who creates a tenant gets the sett
 xref:howto/adopt.adoc#tenancy[step 9], xref:howto/adopt.adoc#access[step 11] and
 xref:architecture/access-control.adoc[Access control and identity].
 
+*How do I enforce my own rule on tenant writes, such as keeping one owner?*::
+Pass `grant_validators` or `root_validators` to `install_service`. A validator raises
+`InvalidBody` to refuse: the answer is 422 and nothing is written. See
+xref:howto/adopt.adoc#validators[Enforce your own rules on tenant writes].
+
 *How do I serve it over HTTP?*::
 Call `install_service` once in your composition root, with your FastAPI app, the schema, the
 generated package, the four adapters, the role definitions and a `ServiceSettings`. It returns a
