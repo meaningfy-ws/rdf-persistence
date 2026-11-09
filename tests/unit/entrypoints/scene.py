@@ -28,6 +28,16 @@ class Scene:
     def headers(self, who: str, *roles: str, **extra: str) -> dict[str, str]:
         return {**self.service.bearer(who, *roles), **extra}
 
+    async def set_grants(self, grants: GrantSet) -> str:
+        """Replace the tenant's grants as ada under the current access ETag; answers the new ETag, which the caller keeps."""
+        response = await self.http.put(
+            f"{self.tenant}/grants",
+            content=grants.model_dump_json(exclude_none=True),
+            headers=self.headers("ada", **{"If-Match": self.access_etag, "Content-Type": JSON}),
+        )
+        assert response.status_code == 200, response.text
+        return response.headers["etag"]
+
     @classmethod
     async def set_up(cls, service: ToyService, http: httpx.AsyncClient) -> "Scene":
         scene = cls(service, http)
@@ -42,15 +52,7 @@ class Scene:
         scene.access_etag = grants.headers["etag"]
         body = GrantSet.model_validate(grants.json())
         reader = Grant(assignee=principal_of("rita"), target=scene.tenant_iri, role="reader")
-        replaced = await http.put(
-            f"{scene.tenant}/grants",
-            content=GrantSet(grants=[*(body.grants or []), reader]).model_dump_json(
-                exclude_none=True
-            ),
-            headers=scene.headers("ada", **{"If-Match": scene.access_etag, "Content-Type": JSON}),
-        )
-        assert replaced.status_code == 200, replaced.text
-        scene.access_etag = replaced.headers["etag"]
+        scene.access_etag = await scene.set_grants(GrantSet(grants=[*(body.grants or []), reader]))
         root = await http.get(scene.tenant, headers=scene.headers("ada"))
         scene.root_etag = root.headers["etag"]
         return scene

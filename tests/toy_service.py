@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from rdf_persistence import (
     AccessRules,
+    IdSource,
     JwksTokenVerifier,
     ServiceSettings,
     Store,
@@ -16,7 +17,7 @@ from rdf_persistence import (
     load_role_definitions,
 )
 from rdf_persistence.domain.generated.service.rp_service import IdKind, IdSpec, IriPolicy
-from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris, principal_iri
+from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris, draw_id, principal_iri
 from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
@@ -100,6 +101,7 @@ class ToyService:
         mount: str = "",
         iri_policy: IriPolicy | None = None,
         verifier_iris: Iris = DEFAULT_IRIS,
+        id_source: IdSource = draw_id,
     ) -> None:
         self.signer = TokenSigner()
         self.store = store or FakeStore()
@@ -132,6 +134,7 @@ class ToyService:
             rules=AccessRules(load_role_definitions(ROLES)),
             settings=self.settings,
             prefix=mount,
+            id_source=id_source,
         )
 
     def client(self) -> httpx.AsyncClient:

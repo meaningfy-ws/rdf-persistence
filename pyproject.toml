@@ -61,6 +61,7 @@ testkit = [
 dev = [
     "pre-commit==4.6.0",
     "pytest-xdist==3.8.0",
+    "uv-build>=0.10,<0.11",
 ]
 test = [
     "pytest==9.0.3",

@@ -2,11 +2,11 @@
 
 import logging
 import re
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
-from rdflib import Literal
 
 from rdf_persistence.domain.exceptions import (
     Conflict,
@@ -43,12 +43,29 @@ NOW = datetime(2026, 11, 5, 9, 0, tzinfo=UTC)
 CREATOR = Principal(id=ADA)
 SYSTEM = system_database_name(SETTINGS.prefix)
 PREFIX = "lib-t-"
-ROOT_LABEL = "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH ?g { ?s ?p ?o } }"
+
+
+class MovableStore(FakeStore):
+    """A FakeStore that can run a coroutine just before the next update of one dataset: another writer."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._before: tuple[str, Callable[[], Awaitable[None]]] | None = None
+
+    def before_update_of(self, dataset: str, action: Callable[[], Awaitable[None]]) -> None:
+        self._before = (dataset, action)
+
+    async def update(self, dataset: str, sparql: str) -> None:
+        if self._before and self._before[0] == dataset:
+            _, action = self._before
+            self._before = None  # once, so the action's own updates run through
+            await action()
+        await super().update(dataset, sparql)
 
 
 @pytest.fixture
-def store() -> FakeStore:
-    return FakeStore()
+def store() -> MovableStore:
+    return MovableStore()
 
 
 @pytest.fixture
@@ -397,6 +414,85 @@ async def test_rename_with_a_stale_version_conflicts_and_changes_nothing(tenancy
     assert (await tenancy.get(summary.id))[0].label == "Bruges", "the stale rename left the label"
 
 
+async def _root_label(store, tenant: str) -> str:
+    async with open_session(
+        store,
+        database=tenant_resource_name(SETTINGS.prefix, tenant),
+        tenant_iri=tenant,
+        principal=CREATOR,
+    ) as session:
+        return (await UnitOfWork(session, toy_mapper()).get(Library, tenant)).label
+
+
+async def _labels(tenancy, store, tenant: str) -> tuple[str, str]:
+    """The tenant's label in its access record and in its root."""
+    return (await tenancy.get(tenant))[0].label, await _root_label(store, tenant)
+
+
+async def test_rename_gives_the_root_and_the_record_one_label(tenancy, store):  # T-6
+    summary = await tenancy.create("A", library_slots(), CREATOR)
+    _, version = await tenancy.get(summary.id)
+    await tenancy.rename(summary.id, "B", version, BEN)
+    assert await _labels(tenancy, store, summary.id) == ("B", "B"), (
+        "record and root both read the new label"
+    )
+
+
+async def test_a_stale_rename_writes_to_neither_dataset(tenancy, store):  # T-7
+    summary = await tenancy.create("A", library_slots(), CREATOR)
+    _, version = await tenancy.get(summary.id)
+    await tenancy.rename(summary.id, "B", version, BEN)
+    writes = len(store.sent("update"))
+    with pytest.raises(Conflict):
+        await tenancy.rename(summary.id, "C", version, BEN)
+    assert len(store.sent("update")) == writes, "the stale rename wrote nothing"
+
+
+async def test_a_rename_whose_record_write_fails_is_repaired_by_retrying(tenancy, store):  # T-8
+    summary = await tenancy.create("A", library_slots(), CREATOR)
+    _, version = await tenancy.get(summary.id)
+    store.on("update", StoreUnavailable("down"), times=1, after=1)
+    with pytest.raises(StoreUnavailable):
+        await tenancy.rename(summary.id, "B", version, BEN)
+    assert await _labels(tenancy, store, summary.id) == ("A", "B"), (
+        "the root was written, the record was not"
+    )
+    await tenancy.rename(summary.id, "B", version, BEN)
+    assert await _labels(tenancy, store, summary.id) == ("B", "B"), (
+        "the same rename retried repairs it"
+    )
+
+
+async def test_a_record_that_moved_during_a_rename_conflicts_and_a_retry_repairs(
+    tenancy, store
+):  # T-9
+    summary = await tenancy.create("A", library_slots(), CREATOR)
+    record, version = await tenancy.get(summary.id)
+
+    async def another_writer_replaces_the_grants() -> None:
+        await tenancy.set_grants(
+            summary.id,
+            GrantSet(grants=record.grants, prohibitions=record.prohibitions),
+            version,
+            CREATOR,
+        )
+
+    store.before_update_of(SYSTEM, another_writer_replaces_the_grants)  # after the root write
+    with pytest.raises(Conflict):
+        await tenancy.rename(summary.id, "B", version, BEN)
+    _, fresh = await tenancy.get(summary.id)
+    assert fresh != version, "the record really moved"
+    assert await _labels(tenancy, store, summary.id) == ("A", "B"), (
+        "the root was written, the record was not"
+    )
+    with pytest.raises(Conflict):
+        await tenancy.rename(summary.id, "B", version, BEN)
+    await tenancy.rename(summary.id, "B", fresh, BEN)
+    assert await _labels(tenancy, store, summary.id) == ("B", "B"), (
+        "a rename with the re-read version repairs it"
+    )
+
+
 async def test_set_grants_replaces_the_grants_and_the_prohibitions(tenancy):
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
     _, version = await tenancy.get(summary.id)
@@ -489,11 +585,24 @@ async def test_the_slots_of_a_root_may_not_choose_the_tenants_iri(tenancy, store
     assert files.sent("create_bucket") == [], "nothing was created"
 
 
-async def test_the_label_of_the_tenant_is_the_roots_unless_the_slots_give_one(tenancy, store):
-    slots = {k: v for k, v in library_slots().items() if k != "label"}
-    summary = await tenancy.create("Ghent", slots, CREATOR)
-    root = (await store.query(tenant_resource_name(SETTINGS.prefix, summary.id), ROOT_LABEL)).graph
-    assert root is not None and Literal("Ghent") in set(root.objects()), "the tenant's label"
+async def test_a_root_without_a_label_takes_the_tenants(tenancy, store):
+    assert "label" not in library_slots(), "the toy's slots carry no label"
+    summary = await tenancy.create("Ghent", library_slots(), CREATOR)
+    assert await _root_label(store, summary.id) == "Ghent", "the tenant's label"
+
+
+async def test_a_root_label_that_is_the_tenants_is_accepted(tenancy, store):
+    summary = await tenancy.create("Ghent", {**library_slots(), "label": "Ghent"}, CREATOR)
+    assert await _root_label(store, summary.id) == "Ghent", "the same label is no clash"
+
+
+async def test_a_root_label_other_than_the_tenants_is_refused_before_anything_is_made(
+    tenancy, store, files
+):
+    with pytest.raises(InvalidBody, match="label"):
+        await tenancy.create("Ghent", {**library_slots(), "label": "City library"}, CREATOR)
+    assert await tenant_databases(store) == [], "no database"
+    assert files.sent("create_bucket") == [], "no bucket"
 
 
 # -- the IRI policy: tenants are minted through Iris (iri-policy task 3.1, PD-3a, PD-5, PD-6) --

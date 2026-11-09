@@ -8,7 +8,7 @@ Work the toolkit does on its own behalf is attributed to ``{base}toolkit``.
 """
 
 import logging
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from contextlib import AbstractAsyncContextManager, suppress
 from typing import Any
 
@@ -39,12 +39,12 @@ from rdf_persistence.domain.iris import (
     system_database_name,
     toolkit_principal_iri,
 )
-from rdf_persistence.domain.sparql import fill, term
+from rdf_persistence.domain.sparql import Triple, fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
-from rdf_persistence.services.schema_structure import internal_predicates, refuse_internal
+from rdf_persistence.services.schema_structure import LABEL, internal_predicates, refuse_internal
 from rdf_persistence.services.session import Clock, Session, open_session, utc_now
 from rdf_persistence.services.store import Store
 
@@ -149,16 +149,19 @@ class Tenancy:
         """Create a tenant: its database and bucket, its root object, and last its access record.
 
         ``root_slots`` are the slots of the tenant's root object, whose ``id`` is the tenant IRI
-        minted here and whose ``label`` is the tenant's unless the slots give one. The record gives
+        minted here and whose ``label`` is the tenant's: the slots may leave it out or repeat it. The record gives
         ``creator`` the settings' ``creator_role`` on the tenant. Both objects are built and
         validated before anything is created, so a refused request leaves nothing (PD-8c).
 
         Raises:
-            InvalidBody: ``root_slots`` names an ``id`` or sets an ``internal`` slot: the service assigns those.
+            InvalidBody: ``root_slots`` names an ``id`` or sets an ``internal`` slot: the service assigns those;
+                or gives a ``label`` other than ``label``: a tenant has one label (PD-3).
             ValueError: ``label`` or ``root_slots`` is not valid (pydantic's ``ValidationError``).
         """
         if "id" in root_slots:
             raise InvalidBody("the service assigns the IRI of a new tenant")
+        if root_slots.get(LABEL, label) != label:
+            raise InvalidBody("the label of a tenant's root is the tenant's")
         tenant = await self._free_tenant()
         name = self._iris.resource_name(tenant)
         record = self._access_class(
@@ -171,7 +174,7 @@ class Tenancy:
             database_name=name,
             grants=[Grant(assignee=creator.id, target=tenant, role=self._settings.creator_role)],
         )
-        tenant_root = self._root_class.model_validate({"label": label, **root_slots, "id": tenant})
+        tenant_root = self._root_class.model_validate({**root_slots, LABEL: label, "id": tenant})
         refuse_internal(self._mapper.to_graph(tenant_root), self._internal)
         await self._store.create_dataset(name)
         _log_step("create-database", tenant, name)
@@ -241,17 +244,54 @@ class Tenancy:
         return [self._decoded(iri, stored, graph_iri(iri)) for iri in record_iris]
 
     async def rename(self, tenant: str, label: str, if_version: str, principal: Principal) -> str:
-        """Give the tenant a new label, in its access record, whose description follows; answers the new version.
+        """Give the tenant a new label, in its root and in its access record, whose description follows; answers the record's new version.
+
+        The record's version is checked and the label validated first, so a stale or invalid rename
+        writes nothing. The root is written before the record: a failure between the two leaves the
+        root renamed and the record not, and the same rename repeated writes both (PD-3).
 
         Raises:
             NotFound: The tenant has no access record.
-            Conflict: The record is no longer at ``if_version``; nothing changed.
+            Conflict: The record is no longer at ``if_version``; the record is unchanged.
             ValueError: ``label`` is not valid (pydantic's ``ValidationError``).
         """
-        record, _ = await self.get(tenant)
-        record.label = label
+        record, version = await self.get(tenant)
+        if version != if_version:
+            raise Conflict(f"{tenant} is not at version {if_version}")
+        record.label = label  # validates the label before anything is written
         record.description = RECORD_DESCRIPTION.format(label=label.rstrip("."))
+        await self._relabel_root(tenant, label, principal)
         return await self._replaced(tenant, principal, record, if_version)
+
+    async def _relabel_root(self, tenant: str, label: str, principal: Principal) -> None:
+        """Store ``label`` in the tenant's root, under the root's own version."""
+        async with self.tenant_session(tenant, principal) as session:
+            work = UnitOfWork(session, self._mapper)
+            root = await work.get(self._root_class, tenant)
+            setattr(root, LABEL, label)  # every root is Described and has a label
+            work.add(root)
+            await work.commit()
+
+    async def vet_root(self, tenant: str, triples: Iterable[Triple]) -> None:
+        """Refuse a replacement body of the tenant's root that gives the tenant another label than its record has (PD-3).
+
+        Raises:
+            NotFound: The tenant has no access record.
+            InvalidBody: The body's label is not the record's.
+        """
+        record, _ = await self.get(tenant)
+        graph = Graph()
+        for triple in triples:
+            graph.add(triple)
+        refused = InvalidBody("the label of a tenant is changed through its label route")
+        try:
+            sent = self._mapper.from_graph(self._root_class, tenant, graph, graph_iri(tenant))
+        except ValueError as error:  # no statement about the tenant, or no label to decode
+            raise refused from error
+        # the mapper reads one value of a single-valued slot: two labels would pass as the first
+        labels = set(graph.objects(URIRef(tenant), v.predicate(LABEL)))
+        if len(labels) != 1 or getattr(sent, LABEL) != record.label:
+            raise refused
 
     async def set_grants(
         self, tenant: str, grants: GrantSet, if_version: str, principal: Principal

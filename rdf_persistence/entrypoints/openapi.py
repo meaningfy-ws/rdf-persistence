@@ -51,7 +51,7 @@ from rdf_persistence.domain.media import JSON, JSON_LD, PROBLEM_JSON, TURTLE
 from rdf_persistence.entrypoints import problems
 from rdf_persistence.entrypoints.auth import BEARER_SCHEME
 from rdf_persistence.entrypoints.kit import ServiceKit
-from rdf_persistence.entrypoints.negotiation import ETAG, IF_MATCH, LOCATION
+from rdf_persistence.entrypoints.negotiation import ETAG, IF_MATCH, LOCATION, RECORD_ETAG
 from rdf_persistence.entrypoints.problems import WWW_AUTHENTICATE
 from rdf_persistence.services.artifacts import COMPONENT_REFERENCES, REF
 from rdf_persistence.services.components import TOOLKIT_FOLDER, component_schemas
@@ -266,6 +266,13 @@ class TenantOpenApi:
 
     def read_root(self) -> RouteDocs:
         read = _success(_document_media(self._root), versioned=True)
+        read.headers = {
+            **(read.headers or {}),
+            RECORD_ETAG: Header(
+                description="the access record's version; send it as `If-Match` to rename the tenant",
+                schema=Schema(type="string"),
+            ),
+        }
         return route_options(
             "Read the root object of a tenant", self.TAG, (HTTPStatus.OK, read), _READS
         )

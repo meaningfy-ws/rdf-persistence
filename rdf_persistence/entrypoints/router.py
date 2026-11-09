@@ -39,8 +39,10 @@ from rdf_persistence.entrypoints.auth import Gate
 from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.negotiation import (
     IF_MATCH,
+    RECORD_ETAG,
     accepted_listing_type,
     accepted_media_type,
+    etag_of,
     expected_version,
     request_media_type,
 )
@@ -183,10 +185,11 @@ class DocumentApi:
 
 
 class TenantApi:
-    """The tenant routes: create, list, delete, the grants and the label."""
+    """The tenant routes: create, list, the root object, delete, the grants and the label."""
 
     def __init__(self, kit: ServiceKit) -> None:
         self._kit = kit
+        self._root = DocumentApi(kit, kit.documents.tenant_root)
 
     async def create(self, request: Request, caller: VerifiedCaller) -> Response:
         body = await read_model(request, TenantCreate, self._kit.max_body_bytes)
@@ -197,6 +200,20 @@ class TenantApi:
         )
         location = f"{request.url.path.rstrip('/')}/{_last_segment(summary.id)}"
         return model_response(summary, status=HTTPStatus.CREATED, location=location)
+
+    async def read_root(
+        self, request: Request, caller: VerifiedCaller, access: CallerAccess
+    ) -> Response:
+        """The tenant's root object, with the access record's version in ``Record-ETag`` (PD-6)."""
+        response = await self._root.read(request, caller, access.tenant, access.tenant)
+        _, version = await self._kit.tenancy.get(access.tenant)
+        response.headers[RECORD_ETAG] = etag_of(version)
+        return response
+
+    async def replace_root(
+        self, request: Request, caller: VerifiedCaller, access: CallerAccess
+    ) -> Response:
+        return await self._root.replace(request, caller, access.tenant, access.tenant)
 
     async def listing(self, request: Request, caller: VerifiedCaller) -> Response:
         """One page of the tenants the caller may read, ordered by IRI.
@@ -250,13 +267,11 @@ class TenantApi:
 def add_tenant_routes(router: APIRouter, kit: ServiceKit, gate: Gate) -> None:
     """``/{tenant_segment}`` and below: the tenants, their root object, grants and label (PD-13)."""
     api = TenantApi(kit)
-    root = DocumentApi(kit, kit.documents.tenant_root)
     segment = kit.settings.tenant_segment
     collection, member = f"/{segment}", f"/{segment}/{{t}}"
     as_caller = Depends(gate.caller)
     may_read = Depends(gate.tenant(Action.READ))
     may_modify = Depends(gate.tenant(Action.MODIFY))
-    may_delete = Depends(gate.tenant(Action.DELETE))
     may_administer = Depends(gate.tenant(Action.ADMINISTER))
 
     async def create(request: Request, caller: VerifiedCaller = as_caller) -> Response:
@@ -268,14 +283,14 @@ def add_tenant_routes(router: APIRouter, kit: ServiceKit, gate: Gate) -> None:
     async def read_root(
         request: Request, caller: VerifiedCaller = as_caller, access: CallerAccess = may_read
     ) -> Response:
-        return await root.read(request, caller, access.tenant, access.tenant)
+        return await api.read_root(request, caller, access)
 
     async def replace_root(
         request: Request, caller: VerifiedCaller = as_caller, access: CallerAccess = may_modify
     ) -> Response:
-        return await root.replace(request, caller, access.tenant, access.tenant)
+        return await api.replace_root(request, caller, access)
 
-    async def delete(request: Request, access: CallerAccess = may_delete) -> Response:
+    async def delete(request: Request, access: CallerAccess = may_administer) -> Response:
         return await api.delete(request, access)
 
     async def grants(access: CallerAccess = may_administer) -> Response:

@@ -15,6 +15,7 @@ from rdf_persistence.domain.media import JSON, JSON_LD, REPRESENTATIONS
 # The headers of the version of an aggregate, and of where a created one is.
 IF_MATCH = "If-Match"
 ETAG = "ETag"
+RECORD_ETAG = "Record-ETag"  # the access record's version, on the root read (PD-6)
 LOCATION = "Location"
 LINK = "Link"
 VARY = "Vary"

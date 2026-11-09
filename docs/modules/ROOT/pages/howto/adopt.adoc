@@ -318,7 +318,7 @@ or `library/entrypoints`, outside `generated` (<<guard,step 6>> checks this). A 
 
 _How do I keep the model and the code from drifting apart?_
 
-The testkit adds four checks to your test suite.
+The testkit adds five checks to your test suite.
 
 *Freshness.* Stop the test session if generated code is stale or was edited by hand:
 
@@ -352,10 +352,9 @@ from pathlib import Path
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from rdf_persistence.testkit import conformance
-from rdf_persistence.testkit.guards import assert_models_generated
-from rdf_persistence.testkit.roundtrip import round_trip
-from rdf_persistence.testkit.strategies import aggregate
+from rdf_persistence.testkit import (
+    Conformance, aggregate, assert_models_generated, conformance_problems, round_trip,
+)
 
 ROOT = Path(__file__).parents[1]
 SCHEMA = ROOT / "models" / "library.yaml"
@@ -366,13 +365,13 @@ def test_no_hand_written_models():
 
 
 def test_classes_and_shapes_agree():
-    assert conformance.run(SCHEMA, ROOT / "tests" / "conformance" / "cases.yaml") == []
+    assert conformance_problems(SCHEMA, ROOT / "tests" / "conformance" / "cases.yaml") == []
 
 
-@settings(max_examples=25)
+@settings(max_examples=25, deadline=None)
 @given(data=st.data())
 def test_a_book_survives_the_round_trip(data):
-    conformed = conformance.Conformance.of(SCHEMA)
+    conformed = Conformance.of(SCHEMA)
     round_trip(conformed, data.draw(aggregate(conformed, "Book")), "Book")
 ----
 
@@ -386,7 +385,7 @@ hand-written `.ts` files. If you really need a type
 that holds a foreign run-time object, pass it with `allow=["library/domain/<file>.py:<ClassName>"]`,
 a path relative to the folder that holds the package (`ROOT` above).
 
-`conformance.run(SCHEMA, cases)` finds the generated classes and shapes by itself. It looks up the
+`conformance_problems(SCHEMA, cases)` finds the generated classes and shapes by itself. It looks up the
 folders above the schema file for a `pyproject.toml` whose `[tool.rp-generate]` entry has this
 `schema` (`LookupError` if there is none), imports that entry's `package`, so it must be importable
 in your tests (see below), and reads the shapes and the context from the Python folder. It returns a list of
@@ -406,7 +405,7 @@ pythonpath = ["."]
 Without it the two tests that import the package fail with `ModuleNotFoundError: No module named
 'library'`.
 
-`conformance.run` checks each case against both the generated class and the generated shape: the
+`conformance_problems` checks each case against both the generated class and the generated shape: the
 valid instances must pass both, and the invalid ones must fail both. It also reports any
 constraint kind your schema uses that no case covers, so the test fails until every kind has one.
 A case names a kind, a class and instance files, whose paths are relative to the cases file. The example
@@ -490,13 +489,46 @@ repos:
         files: ^(models/|.*/generated/)
 ----
 
+*The model's shape changes only on purpose.* The last reviewed shape of every class lives in a file
+you commit; a model change fails this test until you refresh the file and review its diff:
+
+[source,python]
+----
+# tests/test_model.py (continued)
+import os
+
+from rdf_persistence.testkit import (
+    Conformance, class_shapes, model_shape_diff, read_snapshot, snapshot_diff, write_snapshot,
+)
+
+SNAPSHOT = ROOT / "tests" / "model-shape.yaml"
+
+
+def test_the_model_shape_is_the_reviewed_one():
+    current = class_shapes([SCHEMA])
+    if os.environ.get("REFRESH_SNAPSHOT"):  # set it once after a deliberate change
+        write_snapshot(SNAPSHOT, current)
+    assert snapshot_diff(read_snapshot(SNAPSHOT), current) == []
+
+
+def test_the_generated_classes_follow_the_schema():
+    models = {m.__name__: m for m in Conformance.of(SCHEMA).models.values()}
+    # the schema's own classes; those it imports from the toolkit are the toolkit's to check
+    shapes = [s for s in class_shapes([SCHEMA]) if s.class_name in models]
+    assert model_shape_diff(shapes, models.values()) == []
+----
+
+Refresh it with `REFRESH_SNAPSHOT=1 uv run pytest tests/test_model.py`, then review the diff of
+`tests/model-shape.yaml` in your pull request. The second test compares each generated class with
+the schema's induced slots, so stale or edited code fails even before the snapshot does.
+
 == 7. Change the model
 
 _How do I change the model later?_
 
 . Edit the schema.
 . Run your regenerate target.
-. Add or adjust conformance cases if you used a new constraint kind; `conformance.run` names any
+. Add or adjust conformance cases if you used a new constraint kind; `conformance_problems` names any
   kind that has no case.
 . Run the tests, then commit the schema and the generated code together.
 
@@ -658,6 +690,8 @@ and in `root` the slots of the tenant's root object:
 {"label": "Ghent", "root": {"description": "Books for all.", "city": "Ghent"}}
 ----
 
+The root's `label` is the tenant's: leave it out of `root`, or give the same one; another label is refused with 422.
+
 The answer is 201 with a `TenantSummary` (`id`, `label`, `state`) and a `Location`. In code, the
 same call is `kit.tenancy.create(label, root_slots, creator)`:
 
@@ -685,13 +719,25 @@ What create does, in order:
 
 A crash part way leaves a database or a bucket that no record names. The start-up sweep drops it.
 
-*Delete* is `DELETE /{tenant_segment}/{t}` with `If-Match`. The version is the access record's: the
-`ETag` of `GET …/grants`, or of the last `PUT …/grants` or `PUT …/label`. The tenant is marked
-`deleting`, so from then on it answers 404. Then its database and bucket are dropped and its record
-is removed. The sweep at the next start-up finishes a deletion that a crash interrupted.
+*Delete* is `DELETE /{tenant_segment}/{t}` with `If-Match`. It needs `administer` on the tenant.
+The version is the access record's: the `Record-ETag` of `GET /{tenant_segment}/{t}`, the `ETag`
+of `GET …/grants`, or of the last `PUT …/grants` or `PUT …/label`. The tenant is marked `deleting`,
+so from then on it answers 404. Then its database and bucket are dropped and its record is removed.
+The sweep at the next start-up finishes a deletion that a crash interrupted.
 
-`PUT …/label` renames the tenant. `GET` and `PUT /{tenant_segment}/{t}` read and replace its root
-object, like any aggregate.
+`PUT …/label` renames the tenant; it needs `modify`. It writes the label to the root object and to
+the access record, so both always read the same. Its `If-Match` is the record's version: any reader
+finds it in the `Record-ETag` header of `GET /{tenant_segment}/{t}`, beside the root's own `ETag`.
+For example, `GET /libraries/t` answers `ETag: "r7"` and `Record-ETag: "v2"`; then
+`PUT /libraries/t/label` with `If-Match: "v2"` renames, and with an older version it answers 409.
+
+`GET` and `PUT /{tenant_segment}/{t}` read and replace the root object, like any aggregate. A `PUT`
+whose `label` differs from the record's is refused with 422 `invalid-body`: the label changes only
+through `PUT …/label`.
+
+If your web app is served from another origin, its browser sees only the response headers your
+CORS settings expose. The toolkit sets none; expose `ETag` and `Record-ETag` yourself, for example
+with FastAPI's `CORSMiddleware(expose_headers=["ETag", "Record-ETag"])`.
 
 [#files]
 == 10. Keep files
@@ -744,7 +790,10 @@ _Who may do what?_
 - {role: admin, level: system, actions: [read]}
 - {role: librarian, level: tenant, actions: [read, modify, delete, administer]}
 - {role: reader, level: tenant, actions: [read]}
+- {role: member, level: tenant, actions: [read, modify, delete]}
 ----
+
+A `member` can delete the tenant's aggregates but not the tenant: that needs `administer`.
 
 `load_role_definitions(path)` reads and validates the file. A malformed entry, an entry with no
 actions, or a role defined twice at one level raises `InvalidRoleDefinition`, which names the

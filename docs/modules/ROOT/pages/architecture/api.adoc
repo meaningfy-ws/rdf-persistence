@@ -208,7 +208,7 @@ default):
 |===
 |Route |Methods
 |`/{tenant_segment}` |`GET` the caller's tenants; `POST` a new tenant
-|`/{tenant_segment}/{t}` |`GET`, `PUT` the tenant's root object; `DELETE` the tenant
+|`/{tenant_segment}/{t}` |`GET`, `PUT` the tenant's root object; `DELETE` the tenant (needs `administer`)
 |`/{tenant_segment}/{t}/grants` |`GET`, `PUT` the tenant's grant set
 |`/{tenant_segment}/{t}/label` |`PUT` the tenant's label
 |`/{tenant_segment}/{t}/{rp_path}` |`GET` a listing; `POST` a new aggregate
@@ -216,7 +216,7 @@ default):
 |`/context.jsonld` |`GET` the generated JSON-LD context
 |===
 
-A read of one object answers with its `ETag`; every `PUT` and `DELETE` needs `If-Match` (428 without it, 409 on a
+A read of one object answers with its `ETag`; the read of a tenant's root also answers with `Record-ETag`, the version of its access record, to send as `If-Match` to the label route. A root `PUT` whose label is not the tenant's gets 422: a tenant is renamed through its label route. Every `PUT` and `DELETE` needs `If-Match` (428 without it, 409 on a
 stale version); a create answers 201 with a `Location`. Plain JSON points at the context by a `Link`
 header, so it is also JSON-LD. The link is built from `settings.base` and the mount prefix, never
 from the request's `Host` header, so a deployment sets `base` to the address it is reached at; `Accept: application/ld+json` and `text/turtle` are served too (406
