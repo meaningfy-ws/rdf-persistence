@@ -783,7 +783,10 @@ async def _everyone_has_a_role(scene: Scene, *prohibitions: Prohibition) -> None
     ("who", "allowed"),
     [
         ("ada", "read, modify, delete, administer"),  # the toy's librarian
-        ("mia", "read, modify, delete"),  # the member role built in the test
+        (
+            "mia",
+            "read, modify",
+        ),  # the member role built in the test: no administer, no tenant delete
         ("rita", "read"),  # the toy's reader
     ],
 )
@@ -797,6 +800,7 @@ async def test_the_tenant_read_lists_what_the_caller_may_do(scene, who, allowed)
 async def test_the_aggregate_read_lists_what_the_caller_may_do(scene) -> None:  # T-29
     await _everyone_has_a_role(scene)
     response = await scene.http.get(scene.book, headers=scene.headers("mia"))
+    assert response.status_code == 200, response.text
     assert response.headers.get(ALLOWED_ACTIONS) == "read, modify, delete", "the member on a book"
 
 
@@ -818,9 +822,11 @@ async def test_a_prohibition_takes_its_action_off_the_list(scene) -> None:  # T-
         Prohibition(assignee=principal_of("mia"), target=book_graph, action=Action.DELETE),
     )
     book = await scene.http.get(scene.book, headers=scene.headers("mia"))
+    assert book.status_code == 200, book.text
     assert book.headers.get(ALLOWED_ACTIONS) == "read, modify", "delete is prohibited on this book"
     tenant = await scene.http.get(scene.tenant, headers=scene.headers("mia"))
-    assert tenant.headers.get(ALLOWED_ACTIONS) == "read, modify, delete", "the tenant is unaffected"
+    assert tenant.status_code == 200, tenant.text
+    assert tenant.headers.get(ALLOWED_ACTIONS) == "read, modify", "the tenant is unaffected"
 
 
 async def test_the_listing_items_carry_what_the_tenant_read_answers(scene) -> None:  # T-31

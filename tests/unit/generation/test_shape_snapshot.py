@@ -63,7 +63,7 @@ def generated_models(package: str) -> list[type[BaseModel]]:
 
 
 def test_the_current_shapes_equal_the_reviewed_snapshot() -> None:
-    current = class_shapes([METAMODEL, TOY])
+    current = class_shapes([METAMODEL, SERVICE, TOY])
     if os.environ.get(REFRESH):
         write_snapshot(SNAPSHOT, current)
     reviewed = read_snapshot(SNAPSHOT)

@@ -371,14 +371,15 @@ class Tenancy:
         """
         visible = []
         for record in await self._records():
-            tenant, access = str(self._iris.tenant_of_access(record.id)), self._access_of(record)
-            if rules.may(caller, access, tenant, Action.READ):
+            access = self._access_of(record)
+            actions = rules.allowed_actions(caller, access, access.tenant)
+            if Action.READ in actions:
                 visible.append(
                     TenantSummary(
-                        id=tenant,
+                        id=access.tenant,
                         label=record.label,
                         state=TenantState(record.state),
-                        allowed_actions=rules.allowed_actions(caller, access, tenant),
+                        allowed_actions=actions,
                     )
                 )
         visible.sort(key=lambda summary: summary.id)

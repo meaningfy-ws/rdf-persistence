@@ -1,3 +1,25 @@
+- class_name: AccountSummary
+  slots:
+  - name: account_id
+    required: true
+    multivalued: false
+    range: string
+  - name: active
+    required: true
+    multivalued: false
+    range: boolean
+  - name: email
+    required: false
+    multivalued: false
+    range: string
+  - name: global_roles
+    required: false
+    multivalued: true
+    range: string
+  - name: user_name
+    required: true
+    multivalued: false
+    range: string
 - class_name: Activity
   slots:
   - name: id
@@ -10,6 +32,20 @@
     range: Principal
 - class_name: AggregateRoot
   slots: []
+- class_name: Authorised
+  slots:
+  - name: caller_access
+    required: true
+    multivalued: false
+    range: CallerAccess
+  - name: checked_target
+    required: true
+    multivalued: false
+    range: uri
+  - name: principal
+    required: true
+    multivalued: false
+    range: Principal
 - class_name: Book
   slots:
   - name: authors
@@ -60,6 +96,24 @@
     required: false
     multivalued: false
     range: date
+- class_name: CallerAccess
+  slots:
+  - name: grants
+    required: false
+    multivalued: true
+    range: Grant
+  - name: prohibitions
+    required: false
+    multivalued: true
+    range: Prohibition
+  - name: state
+    required: true
+    multivalued: false
+    range: TenantState
+  - name: tenant
+    required: true
+    multivalued: false
+    range: uri
 - class_name: Chapter
   slots:
   - name: description
@@ -82,6 +136,28 @@
     required: false
     multivalued: false
     range: integer
+- class_name: Condition
+  slots:
+  - name: condition_datatype
+    required: false
+    multivalued: false
+    range: uri
+    alias: datatype
+  - name: condition_predicate
+    required: true
+    multivalued: false
+    range: uri
+    alias: predicate
+  - name: condition_reference
+    required: false
+    multivalued: false
+    range: boolean
+    alias: reference
+  - name: condition_value
+    required: true
+    multivalued: false
+    range: string
+    alias: value
 - class_name: Described
   slots:
   - name: description
@@ -96,6 +172,18 @@
     required: true
     multivalued: false
     range: string
+- class_name: Filter
+  slots:
+  - name: filter_slot
+    required: true
+    multivalued: false
+    range: string
+    alias: slot
+  - name: filter_value
+    required: true
+    multivalued: false
+    range: string
+    alias: value
 - class_name: Grant
   slots:
   - name: action
@@ -114,6 +202,81 @@
     required: true
     multivalued: false
     range: uri
+- class_name: GrantSet
+  slots:
+  - name: grants
+    required: false
+    multivalued: true
+    range: Grant
+  - name: prohibitions
+    required: false
+    multivalued: true
+    range: Prohibition
+- class_name: IdSpec
+  slots:
+  - name: id_alphabet
+    required: false
+    multivalued: false
+    range: string
+    alias: alphabet
+  - name: id_kind
+    required: true
+    multivalued: false
+    range: IdKind
+    alias: kind
+  - name: id_length
+    required: false
+    multivalued: false
+    range: integer
+    alias: length
+- class_name: IriPolicy
+  slots:
+  - name: access_template
+    required: false
+    multivalued: false
+    range: string
+  - name: aggregate_template
+    required: false
+    multivalued: false
+    range: string
+  - name: loaded_graph_template
+    required: false
+    multivalued: false
+    range: string
+  - name: meta_template
+    required: false
+    multivalued: false
+    range: string
+  - name: object_id
+    required: false
+    multivalued: false
+    range: IdSpec
+  - name: part_template
+    required: false
+    multivalued: false
+    range: string
+  - name: principal_template
+    required: false
+    multivalued: false
+    range: string
+  - name: registry_template
+    required: false
+    multivalued: false
+    range: string
+  - name: tenant_id
+    required: false
+    multivalued: false
+    range: IdSpec
+  - name: tenant_template
+    required: false
+    multivalued: false
+    range: string
+- class_name: LabelUpdate
+  slots:
+  - name: label
+    required: true
+    multivalued: false
+    range: string
 - class_name: Library
   slots:
   - name: city
@@ -178,6 +341,56 @@
     required: true
     multivalued: false
     range: TenantState
+- class_name: ListPlan
+  slots:
+  - name: conditions
+    required: false
+    multivalued: true
+    range: Condition
+  - name: descending
+    required: false
+    multivalued: false
+    range: boolean
+  - name: hidden_graphs
+    required: false
+    multivalued: true
+    range: uri
+  - name: limit
+    required: true
+    multivalued: false
+    range: integer
+  - name: offset
+    required: true
+    multivalued: false
+    range: integer
+  - name: plan_class
+    required: true
+    multivalued: false
+    range: uri
+    alias: target
+  - name: plan_sort
+    required: false
+    multivalued: false
+    range: uri
+    alias: sort_by
+- class_name: ListRequest
+  slots:
+  - name: filters
+    required: false
+    multivalued: true
+    range: Filter
+  - name: limit
+    required: false
+    multivalued: false
+    range: integer
+  - name: offset
+    required: false
+    multivalued: false
+    range: integer
+  - name: sort
+    required: false
+    multivalued: false
+    range: string
 - class_name: Note
   slots:
   - name: description
@@ -200,6 +413,24 @@
     required: false
     multivalued: false
     range: string
+- class_name: Page
+  slots:
+  - name: items
+    required: true
+    multivalued: true
+    range: Any
+  - name: limit
+    required: true
+    multivalued: false
+    range: integer
+  - name: offset
+    required: true
+    multivalued: false
+    range: integer
+  - name: total
+    required: true
+    multivalued: false
+    range: integer
 - class_name: Policy
   slots: []
 - class_name: Principal
@@ -208,6 +439,50 @@
     required: true
     multivalued: false
     range: uri
+- class_name: Problem
+  slots:
+  - name: problem_detail
+    required: false
+    multivalued: false
+    range: string
+    alias: detail
+  - name: problem_instance
+    required: false
+    multivalued: false
+    range: uri
+    alias: instance
+  - name: problem_status
+    required: true
+    multivalued: false
+    range: integer
+    alias: status
+  - name: problem_title
+    required: true
+    multivalued: false
+    range: string
+    alias: title
+  - name: problem_type
+    required: true
+    multivalued: false
+    range: uri
+    alias: type
+- class_name: ProblemKind
+  slots:
+  - name: problem_slug
+    required: true
+    multivalued: false
+    range: string
+    alias: slug
+  - name: problem_status
+    required: true
+    multivalued: false
+    range: integer
+    alias: status
+  - name: problem_title
+    required: true
+    multivalued: false
+    range: string
+    alias: title
 - class_name: Prohibition
   slots:
   - name: action
@@ -344,6 +619,40 @@
     required: false
     multivalued: false
     range: Principal
+- class_name: ServiceSettings
+  slots:
+  - name: base
+    required: true
+    multivalued: false
+    range: uri
+  - name: creator_role
+    required: true
+    multivalued: false
+    range: string
+  - name: deployment
+    required: false
+    multivalued: false
+    range: string
+  - name: iri_policy
+    required: false
+    multivalued: false
+    range: IriPolicy
+  - name: max_body_bytes
+    required: false
+    multivalued: false
+    range: integer
+  - name: prefix
+    required: true
+    multivalued: false
+    range: string
+  - name: roles_claim
+    required: true
+    multivalued: false
+    range: string
+  - name: tenant_segment
+    required: true
+    multivalued: false
+    range: string
 - class_name: StoredFile
   slots:
   - name: byte_size
@@ -404,12 +713,40 @@
     required: true
     multivalued: false
     range: TenantState
+- class_name: TenantCreate
+  slots:
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: root
+    required: true
+    multivalued: false
+    range: Any
 - class_name: TenantLabelled
   slots:
   - name: label
     required: true
     multivalued: false
     range: string
+- class_name: TenantSummary
+  slots:
+  - name: allowed_actions
+    required: false
+    multivalued: true
+    range: Action
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: state
+    required: true
+    multivalued: false
+    range: TenantState
 - class_name: Tracked
   slots:
   - name: contributor
@@ -428,3 +765,13 @@
     required: false
     multivalued: false
     range: datetime
+- class_name: VerifiedCaller
+  slots:
+  - name: global_roles
+    required: false
+    multivalued: true
+    range: string
+  - name: principal
+    required: true
+    multivalued: false
+    range: Principal

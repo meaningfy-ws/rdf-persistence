@@ -411,3 +411,40 @@ def test_an_aggregate_role_granted_on_the_tenant_shows_nothing_of_it(tmp_path):
     rules = AccessRules(load_role_definitions(path))
     with pytest.raises(NotFound):
         rules.require(caller(), held(role("editor", TENANT)), TENANT, Action.READ)
+
+
+# (case id, caller's rules, target, the actions listed)
+LISTED = [
+    ("librarian on the tenant", held(role("librarian")), TENANT, "read modify delete administer"),
+    ("librarian on a book", held(role("librarian")), BOOK, "read modify delete"),
+    ("reader on the tenant", held(role("reader")), TENANT, "read"),
+    ("reader on a book", held(role("reader")), BOOK, "read"),
+    (
+        "member on the tenant: delete needs administer",
+        held(direct(Action.READ), direct(Action.MODIFY), direct(Action.DELETE)),
+        TENANT,
+        "read modify",
+    ),
+    (
+        "member on a book",
+        held(direct(Action.READ), direct(Action.MODIFY), direct(Action.DELETE)),
+        BOOK,
+        "read modify delete",
+    ),
+    (
+        "member whose modify is prohibited on the tenant",
+        held(direct(Action.READ), direct(Action.MODIFY), bans=[ban(Action.MODIFY)]),
+        TENANT,
+        "read",
+    ),
+    ("a caller with no grant", held(), TENANT, ""),
+]
+
+
+@pytest.mark.parametrize(("case", "access", "target", "listed"), LISTED, ids=[c[0] for c in LISTED])
+def test_the_actions_listed_are_those_the_routes_on_the_target_allow(
+    case, access, target, listed
+) -> None:
+    rules = AccessRules(load_role_definitions(ROLES))
+    actions = rules.allowed_actions(caller(), access, target)
+    assert [a.value for a in actions] == listed.split(), case

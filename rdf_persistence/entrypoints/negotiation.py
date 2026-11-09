@@ -5,20 +5,21 @@ body the route takes; the version of an aggregate travels as a quoted ``ETag`` a
 ``If-Match``.
 """
 
+from collections.abc import Iterable
+
 from rdf_persistence.domain.exceptions import (
     NotAcceptable,
     PreconditionRequired,
     UnsupportedMediaType,
 )
+from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.media import JSON, JSON_LD, REPRESENTATIONS
 
 # The headers of the version of an aggregate, and of where a created one is.
 IF_MATCH = "If-Match"
 ETAG = "ETag"
 RECORD_ETAG = "Record-ETag"  # the access record's version, on the root read (PD-6)
-ALLOWED_ACTIONS = (
-    "Allowed-Actions"  # what the caller may do, on the tenant and aggregate reads (PD-10)
-)
+ALLOWED_ACTIONS = "Allowed-Actions"  # what the caller may do, on the reads (PD-10)
 LOCATION = "Location"
 LINK = "Link"
 VARY = "Vary"
@@ -26,6 +27,11 @@ ANY = "*/*"
 # How exactly a range names a media type: the most exact range that matches decides its quality.
 _EXACT, _TYPE_WILDCARD, _ANY = 3, 2, 1
 WEAK_PREFIX = "W/"
+
+
+def allowed_actions_value(actions: Iterable[Action]) -> str:
+    """The ``Allowed-Actions`` value: ``actions`` by name, comma separated."""
+    return ", ".join(action.value for action in actions)
 
 
 def _quality(parameters: list[str]) -> float:

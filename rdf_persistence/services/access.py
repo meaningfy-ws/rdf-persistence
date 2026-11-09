@@ -64,6 +64,7 @@ CONSTRUCT { $record ?p ?o . ?rule ?rule_p ?rule_o } WHERE {
 """
 # Every action other than read implies read at the same scope (PD-9).
 _IMPLY_READ = frozenset(Action) - {Action.READ}
+ACTIONS = tuple(Action)  # the schema's order, which is the order a read lists them in
 
 
 def load_role_definitions(path: Path) -> list[RoleDefinition]:
@@ -116,6 +117,11 @@ def _level(target: str, tenant: str) -> RoleLevel:
     return RoleLevel.TENANT if target == tenant else RoleLevel.AGGREGATE
 
 
+def _gate(action: Action, is_tenant: bool) -> Action:
+    """The action a route needs to do ``action`` to the tenant (``administer`` for delete) or to an aggregate."""
+    return Action.ADMINISTER if is_tenant and action == Action.DELETE else action
+
+
 @cache
 def _access_mapper() -> Mapper:
     return Mapper(v.metamodel(), generated_models(rp_access, rp_core, rp_tenancy))
@@ -166,14 +172,6 @@ def _caller_access(tenant: str, record: URIRef, stored: Graph) -> CallerAccess:
         grants=decoded.grants,
         prohibitions=decoded.prohibitions,
     )
-
-
-ACTIONS = (
-    Action.READ,
-    Action.MODIFY,
-    Action.DELETE,
-    Action.ADMINISTER,
-)  # the order a read lists them in
 
 
 class AccessRules:
@@ -266,8 +264,18 @@ class AccessRules:
     def allowed_actions(
         self, caller: VerifiedCaller, access: CallerAccess, target_iri: str
     ) -> list[Action]:
-        """The actions of ``ACTIONS`` that ``may`` lets ``caller`` take on ``target_iri``, in that order."""
-        return [a for a in ACTIONS if self.may(caller, access, target_iri, a)]
+        """The actions of ``ACTIONS``, in that order, that the routes on ``target_iri`` allow ``caller``.
+
+        On the tenant, ``delete`` stands for deleting the tenant, which needs ``administer`` (PD-2);
+        on an aggregate no route needs ``administer``, so it is not listed (PD-10).
+        """
+        is_tenant = target_iri == access.tenant
+        return [
+            action
+            for action in ACTIONS
+            if self.may(caller, access, target_iri, _gate(action, is_tenant))
+            and (is_tenant or action != Action.ADMINISTER)
+        ]
 
     @staticmethod
     def hidden_graphs(caller: VerifiedCaller, access: CallerAccess) -> list[str]:

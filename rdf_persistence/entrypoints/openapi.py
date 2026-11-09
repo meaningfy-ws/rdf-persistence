@@ -57,8 +57,10 @@ from rdf_persistence.entrypoints.negotiation import (
     IF_MATCH,
     LOCATION,
     RECORD_ETAG,
+    allowed_actions_value,
 )
 from rdf_persistence.entrypoints.problems import WWW_AUTHENTICATE
+from rdf_persistence.services.access import ACTIONS
 from rdf_persistence.services.artifacts import COMPONENT_REFERENCES, REF
 from rdf_persistence.services.components import TOOLKIT_FOLDER, component_schemas
 from rdf_persistence.services.listing import (
@@ -159,7 +161,7 @@ def _with_allowed_actions(read: Response) -> Response:
     read.headers = {
         **(read.headers or {}),
         ALLOWED_ACTIONS: Header(
-            description="what the caller may do here: `read`, `modify`, `delete`, `administer`, in that order, comma separated",
+            description=f"what the caller may do here, comma separated, in the order {allowed_actions_value(ACTIONS)}",
             schema=Schema(type="string"),
         ),
     }

@@ -176,6 +176,13 @@ def test_a_read_answers_every_representation_and_the_version(document) -> None:
     assert "ETag" in ok["headers"]
 
 
+@pytest.mark.parametrize("path", [TENANT, f"{TENANT}/books/{{aggregate_id}}"])
+def test_a_read_documents_the_allowed_actions_header(document, path) -> None:
+    ok = operation(document, path, "get")["responses"]["200"]
+    description = ok["headers"]["Allowed-Actions"]["description"]
+    assert "read, modify, delete, administer" in description, f"{path}: the order is documented"
+
+
 def test_a_create_answers_the_location_and_the_version(document) -> None:
     created = operation(document, f"{TENANT}/books", "post")["responses"]["201"]
     assert {"Location", "ETag"} <= set(created["headers"])

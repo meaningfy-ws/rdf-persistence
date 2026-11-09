@@ -739,17 +739,28 @@ For example, `GET /libraries/t` answers `ETag: "r7"` and `Record-ETag: "v2"`; th
 `PUT /libraries/t/label` with `If-Match: "v2"` renames, and with an older version it answers 409.
 
 The same read, and the read of any aggregate, also answers `Allowed-Actions`: the actions the caller
-may take there, from `read, modify, delete, administer` and in that order, for example
-`Allowed-Actions: read, modify`. Each item of `GET /{tenant_segment}` carries the same list as
-`allowed_actions`. Show a button only when its action is listed; the server still checks every write.
+may take there, comma separated, in the order `read`, `modify`, `delete`, `administer`, for example
+`Allowed-Actions: read, modify`. On a tenant, `delete` means you may delete the tenant, which needs
+`administer`; on an aggregate there is no `administer`. Each item of `GET /{tenant_segment}` carries
+the same list as `allowed_actions`. Show a button only when its action is listed; the server still
+checks every write.
 
 `GET` and `PUT /{tenant_segment}/{t}` read and replace the root object, like any aggregate. A `PUT`
 whose `label` differs from the record's is refused with 422 `invalid-body`: the label changes only
 through `PUT …/label`.
 
 If your web app is served from another origin, its browser sees only the response headers your
-CORS settings expose. The toolkit sets none; expose `ETag`, `Record-ETag` and `Allowed-Actions` yourself, for example
-with FastAPI's `CORSMiddleware(expose_headers=["ETag", "Record-ETag", "Allowed-Actions"])`.
+CORS settings expose. The toolkit sets none; expose `ETag`, `Record-ETag` and `Allowed-Actions`
+yourself, for example:
+
+[source,python]
+----
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://ui.example"],
+    expose_headers=["ETag", "Record-ETag", "Allowed-Actions"],
+)
+----
 
 [#files]
 == 10. Keep files
