@@ -14,7 +14,7 @@ from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, Toke
 from rdf_persistence.testkit.tokens import ISSUER
 from tests.e2e.library_app import build_library_app
 from tests.toy import SETTINGS
-from tests.toy_service import TENANT_BODY, principal_of, store_scan
+from tests.toy_service import TENANT_BODY, principal_of, store_scan, toy_key
 
 BYTES = b"%PDF-1.7 dune"
 LIMIT = 4096  # holds a tenant's body, not a scan's bytes of LIMIT + 1
@@ -22,7 +22,7 @@ LIMIT = 4096  # holds a tenant's body, not a scan's bytes of LIMIT + 1
 
 class World:
     def __init__(self, max_body_bytes: int | None = None) -> None:
-        self.signer = TokenSigner()
+        self.signer = TokenSigner(key=toy_key())
         self.files = FakeFileStore()
         self.store = FakeStore()
         verifier = JwksTokenVerifier(
