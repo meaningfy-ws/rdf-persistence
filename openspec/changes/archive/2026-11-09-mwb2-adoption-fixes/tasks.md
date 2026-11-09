@@ -57,7 +57,7 @@ symbols it changes (stop on HIGH/CRITICAL). Before each PR: `make check-all`,
   Gate: same; T-24 (the whole unit suite unchanged).
 - [x] 7.3 PD-7 docs: `howto/adopt.adoc` "Enforce your own rules on tenant writes",
   `architecture/access-control.adoc`. Gate: `make check-docs`.
-- [ ] 7.4 Close stage 2: stage gates; PR `Closes #49`. Merge on green CI.
+- [x] 7.4 Close stage 2: stage gates; PR `Closes #49`. Merge on green CI.
 
 # Stage 3 — API shapes (#47, #48)
 
@@ -67,7 +67,7 @@ symbols it changes (stop on HIGH/CRITICAL). Before each PR: `make check-all`,
   Gate: `uv run pytest tests/unit/generation -q`.
 - [x] 8.2 PD-8: T-25, then `linkml:Any` → `unknown` in `range()` and `typescript.render`; `make generate` (the toy gains `rp_service.ts`);
   T-26. Gate: `uv run pytest tests/unit/generation -q`, `make check-generated`, `make typecheck-ts`.
-- [ ] 8.3 Close stage 3: stage gates; PR `Closes #47 #48`. Merge on green CI.
+- [x] 8.3 Close stage 3: stage gates; PR `Closes #47 #48`. Merge on green CI.
 
 # Stage 4 — permitted actions (#51)
 
@@ -78,7 +78,7 @@ symbols it changes (stop on HIGH/CRITICAL). Before each PR: `make check-all`,
 - [x] 9.2 PD-10 behaviour: T-29, T-30, T-31, then the header on both reads, the listing, the
   OpenAPI text; the guide's CORS note names `Allowed-Actions`. Gate:
   `uv run pytest tests/unit/entrypoints tests/unit/services -q`, `make check-docs`.
-- [ ] 9.3 Close the EPIC: stage gates; the spec deltas (`specs/*/spec.md`) match what was built;
+- [x] 9.3 Close the EPIC: stage gates; the spec deltas (`specs/*/spec.md`) match what was built;
   PR `Closes #51`; merge on green CI; then archive the change (`/opsx:archive`).
 
 ## Clarity gate
