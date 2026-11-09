@@ -20,7 +20,7 @@ their capability; commits reference the change id.
 Shaped and planned on 2026-11-08 from the consumer's (MWB2) issues; the developer answered the open
 questions (each change's `inputs/seed.md`). Each has its PLAN (`design.md` + `tasks.md`).
 
-In flight: `test-lanes` (MEDIUM: fast developer test lanes, `make test-changed` and `make test-fast`, and a repeatable profile of the slowest tests; it supersedes `test-profiling`). None else in flight except `delivery-friction` (MEDIUM, PR #33: flaky tests, CI's Maven Central
+`test-lanes` (MEDIUM: fast developer test lanes, `make test-changed` and `make test-fast`, a repeatable profile of the slowest tests, and a shared toy signing key; it supersedes `test-profiling`) was delivered and archived on 2026-11-09 (`archive/2026-11-09-test-lanes`). None else in flight except `delivery-friction` (MEDIUM, PR #33: flaky tests, CI's Maven Central
 download, ungated formatting, adoption-guide gaps and parallel tests, met while delivering #24 to
 #26). `iri-policy` (#26), `testkit-wait-until` (#24) and `generation-fix-hint` (#25) were delivered
 and archived on 2026-11-08 (`archive/2026-11-08-*`).
@@ -50,7 +50,7 @@ planned: no `design.md` or `tasks.md` exists until the developer answers its que
 
 Revised after the developer's answers (2026-11-06; recorded in each `inputs/seed.md`):
 
-1. **`test-profiling`**: superseded by `test-lanes` (2026-11-09), now in flight.
+1. **`test-profiling`**: superseded by `test-lanes` (2026-11-09), delivered and archived the same day.
 2. **`live-tenant-sweep`**: small, self-contained, and closes a known data leak inside tenants
    (an operator command, a dry run by default).
 3. **`cross-aggregate-unique-keys`**: medium, contained in the commit (a guard in the commit's own

@@ -256,6 +256,33 @@ wall time skewed by start-up (PD-4); `World`'s own `TokenSigner()` and the conta
   test runs first, so marking that test only moves the cost to the next one. Those are not
   chased (Rabbit-holes: tuning every slow test).
 
+- **F-3 (task 2.1, 2026-11-09).** One `ToyService` build: 1.15 s with its own key, 0.53 s with
+  `toy_key()`, back to back in one process at load ≈ 33. The entrypoint folder (559 tests) took
+  157 s and 174 s before (load ≈ 5); after, 219 s and 278 s at load 21 to 23 from unrelated
+  processes (an Airflow pipeline), so the folder's wall times are not comparable and are not
+  claimed. `tests/toy_service.py` is shared infrastructure, so `make test-changed` fell back to
+  `make test-fast` (3769 passed, 1 failed in 5 min; the failure passed when re-run alone and its
+  name was lost; the stage gate's `check-all` is the check on it).
+- **F-4 (task 2.2, 2026-11-09).** The adversarial tester's 8 tests (two signers on one key, one
+  rotating; rotation never touches the given key; a stranger signer under the same kid gets a 401
+  from the toy; two `ToyService`s share the key but not state) all pass: no finding to fix.
+  Noted, not changed: `rotate(<first kid>)` replaces the given key in that signer only, as the
+  spec says (rotation always generates). `make test-containers`: 176 passed in 8 min 57 s.
+
+## Stage 2 review (2026-11-09)
+
+One pass, lenses L2, L3 and L4+L5; no must-fix.
+
+- **R-13 (accepted)** `new_key()` is exported from `rdf_persistence.testkit` (lazy, like
+  `TokenSigner`), so the adopt guide's advice needs no private import; the spec delta says so.
+- **R-14 (accepted)** `new_key() if key is None else key`, not `key or new_key()`.
+- **R-15 (accepted)** Three adversarial tests dropped: one only proved a `cryptography` key is
+  immutable, one repeated the "no key given" scenario, one checked plain instance attributes.
+  `test_tokens.py` uses `new_key()`.
+- **R-16 (rejected)** "18 skipped is the suite's figure": the folder run itself reported
+  559 passed, 18 skipped.
+- **R-17 (rejected, nits)** Moving `A_UUID` and renaming the `numbers` helper: cosmetic.
+
 ## Stage 1 review (2026-11-09)
 
 Lenses L1, L2, L3 and L4+L5, no P1. Accepted (the fix lands before the PR):

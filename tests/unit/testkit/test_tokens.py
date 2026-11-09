@@ -3,7 +3,7 @@
 import httpx
 import jwt
 
-from rdf_persistence.testkit.tokens import ISSUER, TokenSigner
+from rdf_persistence.testkit.tokens import ISSUER, TokenSigner, new_key
 
 
 async def get(signer: TokenSigner, url: str) -> httpx.Response:
@@ -56,3 +56,35 @@ def test_the_roles_claim_is_an_object_keyed_by_role_name() -> None:
     assert list(claims[signer.roles_claim]) == ["admin"], (
         "Zitadel's shape: role name to organisations"
     )
+
+
+async def verifies(token: str, signer: TokenSigner) -> bool:
+    """Whether ``signer``'s JWKS verifies ``token``."""
+    jwks = jwt.PyJWKSet.from_dict((await get(signer, f"{ISSUER}/keys")).json())
+    try:
+        jwt.decode(token, jwks[signer.kid].key, algorithms=["RS256"], audience=signer.audience)
+    except jwt.InvalidSignatureError:
+        return False
+    return True
+
+
+async def test_two_signers_from_one_key_verify_each_others_tokens() -> None:
+    key = new_key()
+    first, second = TokenSigner(key=key), TokenSigner(key=key)
+    assert await verifies(first.issue(), second), "the second's JWKS verifies the first's token"
+    assert await verifies(second.issue(), first), "the first's JWKS verifies the second's token"
+
+
+async def test_two_signers_without_a_key_do_not_share_one() -> None:
+    first, second = TokenSigner(), TokenSigner()
+    assert not await verifies(first.issue(), second), "each signer generates its own key"
+
+
+async def test_rotate_after_a_given_key_generates_a_new_key_and_keeps_the_given_one() -> None:
+    key = new_key()
+    signer = TokenSigner(kid="k1", key=key)
+    signer.rotate("k2")
+    jwks = jwt.PyJWKSet.from_dict((await get(signer, f"{ISSUER}/keys")).json())
+    given = key.public_key().public_numbers()
+    assert jwks["k1"].key.public_numbers() == given, "the given key stays in the JWKS"
+    assert jwks["k2"].key.public_numbers() != given, "rotation generates a new key"

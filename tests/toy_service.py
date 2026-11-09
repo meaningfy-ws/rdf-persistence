@@ -1,10 +1,12 @@
 """The toy library served over the API with fakes, for the router's tests (task 5.2)."""
 
+import functools
 import uuid
 from collections.abc import Sequence
 from pathlib import Path
 
 import httpx
+from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -25,7 +27,7 @@ from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.tenancy import GrantValidator, RootValidator
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
-from rdf_persistence.testkit.tokens import ISSUER
+from rdf_persistence.testkit.tokens import ISSUER, new_key
 from tests.fixtures.library import generated
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note
 from tests.fixtures.library.generated.library import Library
@@ -46,6 +48,12 @@ CONSUMER_POLICY = IriPolicy(
     tenant_id=IdSpec(kind=IdKind.RANDOM, length=7),
     object_id=IdSpec(kind=IdKind.RANDOM, length=13),
 )
+
+
+@functools.cache
+def toy_key() -> rsa.RSAPrivateKey:
+    """One signing key per process (each xdist worker is one): generating one per test costs ≈ 0.5 s."""
+    return new_key()
 
 
 def principal_of(sub: str) -> str:
@@ -122,7 +130,7 @@ class ToyService:
         grant_validators: Sequence[GrantValidator] = (),
         root_validators: Sequence[RootValidator] = (),
     ) -> None:
-        self.signer = TokenSigner()
+        self.signer = TokenSigner(key=toy_key())
         self.store = store or FakeStore()
         self.files = files or FakeFileStore()
         self.mount = mount

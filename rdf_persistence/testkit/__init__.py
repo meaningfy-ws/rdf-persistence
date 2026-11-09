@@ -27,13 +27,14 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.testkit.conformance import run as conformance_problems
     from rdf_persistence.testkit.roundtrip import round_trip
     from rdf_persistence.testkit.strategies import aggregate
-    from rdf_persistence.testkit.tokens import TokenSigner
+    from rdf_persistence.testkit.tokens import TokenSigner, new_key
     from rdf_persistence.testkit.zitadel import access_token, create_machine_user, provision_project
 
 # public name -> (module, attribute); the conformance, round-trip and strategy modules load
 # ``pyshacl`` or ``hypothesis``
 _LAZY_NAMES = {
     "TokenSigner": ("rdf_persistence.testkit.tokens", "TokenSigner"),
+    "new_key": ("rdf_persistence.testkit.tokens", "new_key"),
     "access_token": ("rdf_persistence.testkit.zitadel", "access_token"),
     "create_machine_user": ("rdf_persistence.testkit.zitadel", "create_machine_user"),
     "provision_project": ("rdf_persistence.testkit.zitadel", "provision_project"),
@@ -63,6 +64,7 @@ __all__ = [
     "FakeStore",
     "TokenRefusedError",
     "TokenSigner",
+    "new_key",
     "access_token",
     "aggregate",
     "class_shapes",

@@ -26,6 +26,11 @@ ORG_ID, ORG_DOMAIN = "org-1", "org.test"
 KEYS_PATH = "/keys"
 
 
+def new_key() -> rsa.RSAPrivateKey:
+    """A fresh 2048-bit RSA signing key (≈ 0.5 s)."""
+    return rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+
 class TokenSigner:
     """An identity provider for tests: RSA keys, tokens, and the endpoints a verifier reads."""
 
@@ -36,7 +41,9 @@ class TokenSigner:
         audience: str = AUDIENCE,
         roles_claim: str = zitadel_roles_claim(PROJECT_ID),
         clock: EpochClock = time.time,
+        key: rsa.RSAPrivateKey | None = None,
     ) -> None:
+        """``key`` is the first signing key, for tests that share one; without it, a fresh one."""
         self.kid = kid
         self.audience = audience
         self.roles_claim = roles_claim
@@ -44,8 +51,7 @@ class TokenSigner:
         self.jwks_requests = 0
         self.discovery_requests = 0
         self._clock = clock
-        self._keys: dict[str, rsa.RSAPrivateKey] = {}
-        self.rotate(kid)
+        self._keys: dict[str, rsa.RSAPrivateKey] = {kid: new_key() if key is None else key}
         self.transport = httpx.MockTransport(self.handle)
 
     @property
@@ -55,7 +61,7 @@ class TokenSigner:
 
     def rotate(self, kid: str) -> None:
         """Add a fresh key and sign with it from now on; earlier keys stay in the JWKS."""
-        self._keys[kid] = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        self._keys[kid] = new_key()
         self.kid = kid
 
     def issue(
