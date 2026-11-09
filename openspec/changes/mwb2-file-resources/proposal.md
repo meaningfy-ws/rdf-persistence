@@ -34,6 +34,12 @@ cannot build it on the toolkit today:
 
 #59 and #55 block v1-06's file API outright; #54 has a stopgap in MWB2 (S-90).
 
+> Updated 2026-11-09 from MWB2's impact note (`mapping-workbench-v2/temp/rp-adoption-fixes-impact.md`):
+> #59 is MWB2's critical path (it blocks most of v1-06), and #54 no longer matters to MWB2, which
+> drops `openapi-typescript` for the generated `rp_service.ts` (#47) in its change
+> `rp-adoption-refresh`. #54 is still fixed here: it is done, and the OpenAPI document must stay
+> valid for any consumer that does generate a client from it.
+
 ## Solution outline
 
 - **Stage 1 — make file records buildable and trustworthy (#59, #55, #54).** A root's
@@ -41,11 +47,13 @@ cannot build it on the toolkit today:
   and the JSON Schema disagree on whether a slot is required. A root can be marked so the toolkit
   serves its reads but not its generic writes; file roots are marked by default, and the consumer
   writes them through a session in its own routes. Listing filters carry their item type inline.
+  When the stage 1 PR merges, #59, #55 and #54 are commented on (naming the PR) and closed, so
+  MWB2 can refresh its lock and start the v1-06 tasks they unblock without waiting for stage 2.
 - **Stage 2 — read without SPARQL (#56, #60).** A session reads back a graph loaded for an
   aggregate, and finds a class's aggregates in the tenant by equality on slot values.
 
-Outcome: MWB2 drops its S-90 stopgap and builds v1-06's file API, ontology browsing and
-duplicate-name refusal on public toolkit calls only.
+Outcome: MWB2 builds v1-06's file API, ontology browsing and duplicate-name refusal on public
+toolkit calls only. (Its S-90 stopgap goes with `openapi-typescript` in `rp-adoption-refresh`.)
 
 ## Key decisions
 
@@ -133,8 +141,7 @@ _None._
 
 ## Impact
 
-- MWB2: builds file records without a description; removes S-90 (`.d.ts` + `skipLibCheck`);
-  writes its file roots through its own routes (it already plans to); ontology browsing and the
+- MWB2: builds file records without a description once stage 1 merges (lock refresh); writes its file roots through its own routes (it already plans to); ontology browsing and the
   409 on a duplicate name use public calls.
 - Other consumers: generic writes on `StoredFile` roots disappear (**BREAKING**, opt back in is
   not offered); `description` on roots becomes `Optional` in generated Python and TypeScript.

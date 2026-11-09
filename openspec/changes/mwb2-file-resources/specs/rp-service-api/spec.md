@@ -1,3 +1,19 @@
+## MODIFIED Requirements
+
+### Requirement: One generic router serves every aggregate type
+
+The router SHALL serve `/{tenant_segment}/{t}/{rp_path}` (list, create) and
+`/{tenant_segment}/{t}/{rp_path}/{id}` (read, replace, delete) for every aggregate root of the
+application schema, read at run time, with no generated routes and no generated Python classes on
+this path; for a service-written root (annotated `rp_writes: service`, or mixing in `StoredFile`)
+it SHALL serve only the list and the read. It SHALL mint the IRI on create and refuse a client-sent
+one. Bodies SHALL be validated with the generated shapes.
+
+#### Scenario: a new class in the model
+- **WHEN** the toy schema gains an aggregate root `Shelf` with `rp_path: shelves` and the
+  application restarts
+- **THEN** `/libraries/{t}/shelves` serves it with no code added
+
 ## ADDED Requirements
 
 ### Requirement: Some roots are written only through a session

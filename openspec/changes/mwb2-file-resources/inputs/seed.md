@@ -57,3 +57,20 @@ The issue bodies on GitHub are the full seeds.
 - **Q-7** — autonomy: commit, push, open and merge PRs without asking, merging only on green CI.
 - **Q-8 (test scenarios)** — the four scenario sets proposed were kept (answer read as approval of
   all four; the question asked which to drop and all four were ticked — confirm if meant otherwise).
+
+## EPIC update (2026-11-09, after stage 1 was built)
+
+Source: MWB2's impact note `mapping-workbench-v2/temp/rp-adoption-fixes-impact.md` (read-only
+analysis of the earlier epic's effect on MWB2), applied to proposal.md by the developer's side.
+
+- #59 is MWB2's critical path: it blocks v1-06 tasks 1.3–1.5, 1.8, 2.1, 2.2, and 1.6, 1.7, 3.6,
+  4.6 through them.
+- #54 is moot for MWB2: it adopts the generated `rp_service.ts` (#47) and drops `openapi-typescript`
+  and its S-90 stopgap in its change `rp-adoption-refresh`. #54 stays fixed here for other
+  consumers.
+- Stage 1's PR closes #59, #55 and #54 on merge, so MWB2 can refresh its lock without waiting for
+  stage 2.
+- Stage 2 serves v1-06 tasks 2.3, 2.4, 3.7 (#56) and 1.7 (#60).
+
+The bet and DEC-1 to DEC-5 are unchanged; PLAN adjusted in design.md ("EPIC update") and tasks.md
+(stage 1 close, roadmap).

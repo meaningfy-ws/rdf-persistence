@@ -5,6 +5,14 @@
 Decisions are the EPIC's DEC-n; this file says how. `T-n` are the tests each PD is proven by; they
 are written first. File and line references are to `develop` at 85d3ab3.
 
+**EPIC update (2026-11-09, from MWB2's impact note; proposal.md "Why" and "Solution outline").**
+#59 is MWB2's critical path, and #54 is moot for MWB2, which drops `openapi-typescript` in its own
+change `rp-adoption-refresh`. What it changes here: stage 1's close comments on and closes #59,
+#55 and #54 as soon as its PR merges (MWB2 refreshes its lock then, not after stage 2); PD-4 and
+T-12 stay as they are, because the OpenAPI document must stay valid for any consumer that
+generates a client from it; S-90's removal is no longer an outcome of this change. Stage 2 is
+unchanged; it unblocks v1-06 tasks 2.3, 2.4 and 3.7 (#56) and 1.7 (#60).
+
 # Stage 1
 
 ## PD-1 A root's description is optional (#59, DEC-1)
@@ -209,7 +217,8 @@ holds; this is a PLAN-level correction.
 reference slot other than `Scan.scan_of`, so the HTTP-level 422 test (`test_router_hardening.py`
 l.107) was deleted; `tests/unit/services/test_documents_strict.py:155/161` already cover a smuggled
 node at the `Documents` level. The service-level stripping of internal slots is covered by
-`test_documents_strict.py` and `test_documents.py:377/390`; none was added. One test the table
+`test_documents_strict.py` and `test_documents.py:377/390`; `Aggregates.replace` keeping them has
+`tests/unit/services/test_replace_internal_values.py` (added after stage 1, R1-1). One test the table
 missed, `tests/unit/entrypoints/test_openapi.py` (it listed the scan writes), now expects reads
 only for scans. **Known limit:** the generator imports `WritesKind` from the generated
 `rp_core.py`, so adding a value to a toolkit enum the generator itself reads needs a two-step
@@ -252,3 +261,49 @@ Proof: T-4, plus **T-4b** the toy's `Chapter` component does not list `label` as
 | `loaded_graph` on an aggregate that does not exist | `NotFound` (its registry lists no loaded graph) |
 | `find` on a session opened without listings | `RuntimeError` |
 | `find` with a value the slot cannot take (e.g. not a date) | `BadQuery` (existing `typed_value`) |
+
+# Stage 1 review decisions (2026-11-09)
+
+Four read-only passes (L1, L2, L3, L4+L5); no blockers. Accepted findings are fixed in one
+follow-up commit; each is an R1-n below.
+
+**Accepted**
+- **R1-1 (L2)** `Aggregates.replace` keeping internal values lost its only end-to-end test when
+  #55 deleted the scan replace tests. Add a unit test on a temp-schema root with an internal slot
+  that is not service-written: store a value, replace, the value stays. (Corrects "none was added"
+  in PD-3's branch note.)
+- **R1-2 (L2)** The durable requirement "One generic router serves every aggregate type" still says
+  every root gets create/replace/delete. The delta spec gains a MODIFIED block scoping it to roots
+  that are not service-written (done by the lead).
+- **R1-3 (L2)** T-2 asserts the scenario in full: in its temp project, the JSON Schema of `Item` and
+  `Thing` requires only `id` and `label`, and `model_schema_diff` is empty.
+- **R1-4 (L2)** T-8 uses a root annotated `rp_writes: service` (T-7's `Shed`) and asserts the
+  remove too.
+- **R1-5 (L1)** The upload pattern consumers copy (adopt.adoc step 10 and `tests/e2e/library_app.py`)
+  removes the blob when the commit fails, catches `Exception` (not `BaseException`) and suppresses a
+  failing cleanup so the original error surfaces; a pydantic `ValidationError` while building the
+  record answers 422. (Done as: the app's problem handlers already map a `ValidationError` to 422, so no
+  code was added; the toy `Scan` cannot be made invalid from its route, so that 422 has no test, and
+  the record is built before the bytes are stored, so a 422 leaves nothing to clean.)
+- **R1-6 (L1)** That upload reads the body with `limited_body(request, kit.max_body_bytes)`;
+  `limited_body` becomes a public name of `rdf_persistence` (it was internal to the router) so a
+  consumer's own route gets the same bound as the generic ones.
+- **R1-7 (L4)** One constant for the `/properties/` pointer segment, beside `COMPONENT_REFERENCES`
+  in `services/artifacts.py`, used where `_PAGING` builds pointers and where they are inlined.
+- **R1-8 (L4)** `description` is a constant again (`DESCRIPTION`), used in `_target_in` and l.181.
+- **R1-9 (L5)** `model_schema_diff` matches its sibling: the message shape of `_flag_lines`, a
+  per-model `_required_lines` helper, no `_yes`.
+- **R1-10 (L5)** `STORED_FILE = StoredFile.__name__`; `is_service_written` names its two tests.
+- **R1-11 (L5)** `_target_in`/`_inline_property_refs` use the `JsonSchema` alias.
+- **R1-12 (L4)** One scans constant for the tests (`tests/toy.py`), used by `toy_service.py` and
+  `e2e/library_app.py`.
+
+**Rejected**
+- L1 nit "check the upload's media type": which types a file root accepts is the consumer's rule;
+  the toolkit has none to show. The example keeps storing what the client declares.
+- L2 nit "T-1 builds Scan and LibraryAccess without a description": T-4 runs `model_schema_diff`
+  over every toy class, which catches the same defect.
+- L5 "a `component_pointer` helper shared with `services/components.py`", "import `JsonSchema` in
+  `generation/components.py`" and L3 "read `WritesKind` values through a SchemaView in the hard
+  check": forward-looking refactors of older code; out of this EPIC's appetite.
+- L3 "move `tests/dump_openapi.py` under `tests/tools/`": only one such helper exists.

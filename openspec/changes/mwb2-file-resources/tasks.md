@@ -11,11 +11,11 @@ other. Review: MEDIUM — five lenses (L4+L5 one pass) and a checker per stage.
 
 ## 1. Description optional (#59)
 
-- [ ] 1.1 PD-1: T-1, T-2, T-3 fail, then remove the root half of `apply_defaults`, fix the
+- [x] 1.1 PD-1: T-1, T-2, T-3 fail, then remove the root half of `apply_defaults`, fix the
   `class_shapes` docstring, `make generate`, rewrite `tests/fixtures/model-shape.yaml`, update the
   tests that asserted the old default. Gate: `uv run pytest -n auto tests/unit/generation
   tests/unit/testkit tests/unit/services -q`.
-- [ ] 1.2 PD-2: T-4, T-5, then `model_schema_diff` in `testkit/model_shape.py`, its export, its call
+- [x] 1.2 PD-2: T-4, T-5, then `model_schema_diff` in `testkit/model_shape.py`, its export, its call
   in the toolkit's generated-artefact test, `howto/adopt.adoc` step 6 and
   `architecture/generation.adoc` (descriptions optional; the guard). Gate: `uv run pytest -n auto
   tests/unit/testkit tests/unit/generation -q`, `make check-docs`.
@@ -41,7 +41,10 @@ other. Review: MEDIUM — five lenses (L4+L5 one pass) and a checker per stage.
   `check-types`. Gate: `make typecheck-openapi-ts` (T-12).
 
 Stage 1 close: five-lens review, decisions recorded below, fixes, checker, durations in
-`develop/index.adoc`, PR, merge on green CI.
+`develop/index.adoc`, PR, merge on green CI. Then: comment on and close #59, #55, #54
+naming the PR, so MWB2 can refresh its lock (EPIC, Solution outline). #54's comment says it is
+fixed for any consumer generating a client from the OpenAPI document, and that MWB2 no longer
+needs it.
 
 # Stage 2 — read without SPARQL (#56, #60)
 
@@ -60,12 +63,12 @@ Stage 1 close: five-lens review, decisions recorded below, fixes, checker, durat
 - [ ] 5.2 Docs: `howto/adopt.adoc` (reading a loaded graph, with the `require_aggregate`
   check first; finding aggregates, and that `find` ignores Prohibitions), `questions.adoc`. Gate: `make check-docs`.
 
-Stage 2 close: five-lens review, checker, PR, merge on green CI. Then: comment on and close #54,
-#55, #56, #59, #60 naming their PRs; archive the change.
+Stage 2 close: five-lens review, checker, PR, merge on green CI. Then: comment on and close #56, #60
+naming the PR; archive the change.
 
 # Roadmap
 
 | Stage | Issues | Unblocks in MWB2 |
 |---|---|---|
-| 1 | #59, #55, #54 | v1-06 file API (tasks 1.3–1.5, 1.8, 2.1, 2.2); removes S-90 |
-| 2 | #56, #60 | ontology browsing (UC-B6.1, UC-W6); the 409 on a duplicate name (task 1.7) |
+| 1 | #59, #55, #54 | v1-06's critical path: #59 unblocks tasks 1.3–1.5, 1.8, 2.1, 2.2 (and 1.6, 1.7, 3.6, 4.6 through them); #55 unblocks 1.6. #54 is moot for MWB2 (it drops openapi-typescript in `rp-adoption-refresh`) and is fixed for other consumers |
+| 2 | #56, #60 | #56 unblocks v1-06 tasks 2.3, 2.4, 3.7 (counts, browsing, "replace leaves one graph"); #60 unblocks 1.7 (the 409 `duplicate-name`) |
