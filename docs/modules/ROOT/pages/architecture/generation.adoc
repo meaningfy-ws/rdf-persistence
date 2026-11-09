@@ -493,9 +493,10 @@ first.
   are `required`, `cardinality`, `range_type`, `range_enum`, `pattern`, `value_bounds`, `identifier`,
   `closed`, `exactly_one_of`, `any_of` and `unique_keys`; the test fails, naming the kind, when a
   schema uses a kind with no row. A consumer runs it on its own schema with
-  `testkit.conformance.run(schema, cases)`, which returns the problems found, empty when all pass.
-. *Round trips*: an instance drawn by Hypothesis from the schema (strategies in
-  `rdf_persistence.testkit.strategies`) goes to JSON, is expanded with the generated context to RDF,
+  `conformance_problems(schema, cases)` (from `rdf_persistence.testkit`), which returns the
+  problems found, empty when all pass.
+. *Round trips*: an instance drawn by Hypothesis from the schema (the strategy is `aggregate` in
+  `rdf_persistence.testkit`) goes to JSON, is expanded with the generated context to RDF,
   then framed and compacted back; the objects compare equal on their public projection (internal
   slots never cross the context) and the RDF graphs are isomorphic. Run on the toy library's
   aggregates and the metamodel's `TenantAccess`.
@@ -511,7 +512,7 @@ first.
 === Guards against hand-written models
 
 Both guards are `testkit.assert_models_generated(package, *, roots, allow=(), exempt=(), layers=...)`
-(in `rdf_persistence.testkit.guards`), so applications get them too.
+(in `rdf_persistence.testkit`), so applications get them too.
 
 * *Model guard*: parses every module of `domain`, `services` and `entrypoints`, skipping paths with a
   `generated` segment, and fails, naming the class, on a class deriving from `pydantic.BaseModel`,

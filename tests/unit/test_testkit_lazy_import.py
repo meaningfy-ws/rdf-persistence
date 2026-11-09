@@ -41,3 +41,36 @@ def test_an_unknown_testkit_name_is_an_attribute_error() -> None:
 
     with pytest.raises(AttributeError, match="no_such_helper"):
         testkit.no_such_helper  # noqa: B018
+
+
+def test_every_name_of_all_resolves() -> None:
+    import rdf_persistence.testkit as testkit
+
+    assert [name for name in testkit.__all__ if not hasattr(testkit, name)] == []
+
+
+@pytest.mark.parametrize("heavy", ["hypothesis", "pyshacl"])
+def test_testkit_root_does_not_import_the_heavy_libraries(heavy: str) -> None:
+    code = f"import sys, rdf_persistence.testkit; sys.exit({heavy!r} in sys.modules)"
+    assert subprocess.run([sys.executable, "-I", "-c", code], check=False).returncode == 0
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "assert_models_generated",
+        "model_shape_diff",
+        "class_shapes",
+        "read_snapshot",
+        "write_snapshot",
+        "snapshot_diff",
+        "Conformance",
+        "conformance_problems",
+        "round_trip",
+        "aggregate",
+    ],
+)
+def test_the_guard_api_is_in_all(name: str) -> None:
+    import rdf_persistence.testkit as testkit
+
+    assert name in testkit.__all__

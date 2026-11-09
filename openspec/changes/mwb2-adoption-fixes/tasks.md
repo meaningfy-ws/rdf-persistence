@@ -10,36 +10,36 @@ symbols it changes (stop on HIGH/CRITICAL). Before each PR: `make check-all`,
 
 ## 1. Typed package (#42)
 
-- [ ] 1.1 PD-1: T-1 fails, then `uv add --dev "uv_build>=0.10,<0.11"` and the empty
+- [x] 1.1 PD-1: T-1 fails, then `uv add --dev "uv_build>=0.10,<0.11"` and the empty
   `rdf_persistence/py.typed`. Gate: `uv run pytest tests/unit/test_packaging.py -q`.
 
 ## 2. Tenant delete needs administer (#43) — BREAKING
 
-- [ ] 2.1 PD-2: T-2, T-3, T-5 new and T-4 changed (`tests/unit/entrypoints/test_router.py`), then
+- [x] 2.1 PD-2: T-2, T-3, T-5 new and T-4 changed (`tests/unit/entrypoints/test_router.py`), then
   the route in `rdf_persistence/entrypoints/router.py`. Gate:
   `uv run pytest tests/unit/entrypoints tests/unit/services -q`.
-- [ ] 2.2 PD-2 docs: `architecture/access-control.adoc` l.103, `howto/adopt.adoc` (~l.688, roles
+- [x] 2.2 PD-2 docs: `architecture/access-control.adoc` l.103, `howto/adopt.adoc` (~l.688, roles
   example ~l.738). Gate: `make check-docs`.
 
 ## 3. One tenant label (#44) and its version (#50)
 
-- [ ] 3.1 PD-3 rename: T-6 to T-9, then `Tenancy.rename`. Gate: `uv run pytest tests/unit/services -q`.
-- [ ] 3.2 PD-3 root replacement: T-10, T-11, then the `Tenancy` check and its call in
+- [x] 3.1 PD-3 rename: T-6 to T-9, then `Tenancy.rename`. Gate: `uv run pytest tests/unit/services -q`.
+- [x] 3.2 PD-3 root replacement: T-10, T-11, then the `Tenancy` check and its call in
   `Aggregates.replace`. Gate: `uv run pytest tests/unit/entrypoints tests/unit/services -q`.
 - [ ] 3.3 PD-6: T-18, T-19, then `Record-ETag` on `read_root`, its OpenAPI text and the guide
   (incl. the CORS note). Gate: `uv run pytest tests/unit/entrypoints -q`, `make check-docs`.
 
 ## 4. Public guard API (#45)
 
-- [ ] 4.1 PD-4 exports: T-12, T-13, then `rdf_persistence/testkit/__init__.py`. Gate:
+- [x] 4.1 PD-4 exports: T-12, T-13, then `rdf_persistence/testkit/__init__.py`. Gate:
   `uv run pytest tests/unit/testkit tests/unit/test_testkit_lazy_import.py tests/unit/generation -q`.
-- [ ] 4.2 PD-4 docs: T-15, then `howto/adopt.adoc` step 6 (imports, prose at ~l.375/397, the fifth
+- [x] 4.2 PD-4 docs: T-15, then `howto/adopt.adoc` step 6 (imports, prose at ~l.375/397, the fifth
   check), `architecture/generation.adoc` l.496/498/514, `questions.adoc` l.103. Gate:
   `make check-docs` (T-14) and T-15.
 
 ## 5. Id source (#46)
 
-- [ ] 5.1 PD-5: T-16, T-17, then `install_service`, `ServiceKit`, and export `IdSource` from `rdf_persistence`. Gate:
+- [x] 5.1 PD-5: T-16, T-17, then `install_service`, `ServiceKit`, and export `IdSource` from `rdf_persistence`. Gate:
   `uv run pytest tests/unit/entrypoints tests/unit/domain -q`.
 
 ## 6. Close stage 1

@@ -100,7 +100,7 @@ xref:architecture/generation.adoc#guarding[Guarding the generated code].
 contexts, schemas or TypeScript outside a `generated` folder. LinkML stays the one source.
 
 *Classes and shapes agree.*::
-`conformance.run` checks every case against both the generated class and the generated shape, and
+`conformance_problems` checks every case against both the generated class and the generated shape, and
 fails until every constraint kind your schema uses has a case. See
 xref:howto/adopt.adoc#guard[step 6].
 
