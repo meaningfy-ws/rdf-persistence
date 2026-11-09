@@ -168,6 +168,14 @@ def _caller_access(tenant: str, record: URIRef, stored: Graph) -> CallerAccess:
     )
 
 
+ACTIONS = (
+    Action.READ,
+    Action.MODIFY,
+    Action.DELETE,
+    Action.ADMINISTER,
+)  # the order a read lists them in
+
+
 class AccessRules:
     """Decides whether a caller may take an action on the tenant or on one of its aggregates."""
 
@@ -254,6 +262,12 @@ class AccessRules:
         except (NotFound, Forbidden):
             return False
         return True
+
+    def allowed_actions(
+        self, caller: VerifiedCaller, access: CallerAccess, target_iri: str
+    ) -> list[Action]:
+        """The actions of ``ACTIONS`` that ``may`` lets ``caller`` take on ``target_iri``, in that order."""
+        return [a for a in ACTIONS if self.may(caller, access, target_iri, a)]
 
     @staticmethod
     def hidden_graphs(caller: VerifiedCaller, access: CallerAccess) -> list[str]:

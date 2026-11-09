@@ -16,6 +16,9 @@ from rdf_persistence.domain.media import JSON, JSON_LD, REPRESENTATIONS
 IF_MATCH = "If-Match"
 ETAG = "ETag"
 RECORD_ETAG = "Record-ETag"  # the access record's version, on the root read (PD-6)
+ALLOWED_ACTIONS = (
+    "Allowed-Actions"  # what the caller may do, on the tenant and aggregate reads (PD-10)
+)
 LOCATION = "Location"
 LINK = "Link"
 VARY = "Vary"

@@ -369,20 +369,18 @@ class Tenancy:
         Raises:
             StoredDataInvalid: A record cannot be decoded.
         """
-        visible = [
-            TenantSummary(
-                id=str(self._iris.tenant_of_access(record.id)),
-                label=record.label,
-                state=TenantState(record.state),
-            )
-            for record in await self._records()
-            if rules.may(
-                caller,
-                self._access_of(record),
-                str(self._iris.tenant_of_access(record.id)),
-                Action.READ,
-            )
-        ]
+        visible = []
+        for record in await self._records():
+            tenant, access = str(self._iris.tenant_of_access(record.id)), self._access_of(record)
+            if rules.may(caller, access, tenant, Action.READ):
+                visible.append(
+                    TenantSummary(
+                        id=tenant,
+                        label=record.label,
+                        state=TenantState(record.state),
+                        allowed_actions=rules.allowed_actions(caller, access, tenant),
+                    )
+                )
         visible.sort(key=lambda summary: summary.id)
         return Page(
             items=visible[offset : offset + limit], total=len(visible), limit=limit, offset=offset

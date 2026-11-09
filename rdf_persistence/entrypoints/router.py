@@ -38,6 +38,7 @@ from rdf_persistence.domain.media import ACCEPT, CONTENT_LENGTH, CONTENT_TYPE, J
 from rdf_persistence.entrypoints.auth import Gate
 from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.negotiation import (
+    ALLOWED_ACTIONS,
     IF_MATCH,
     RECORD_ETAG,
     accepted_listing_type,
@@ -130,6 +131,11 @@ class DocumentApi:
         read = await self._kit.aggregates.read(tenant, Principal(id=caller.principal), iri)
         return await self._response(read, media_type)
 
+    def allowed(self, caller: VerifiedCaller, access: CallerAccess, target: str) -> str:
+        """The ``Allowed-Actions`` value: what ``caller`` may do on ``target``, comma separated."""
+        actions = self._kit.rules.allowed_actions(caller, access, target)
+        return ", ".join(action.value for action in actions)
+
     async def listing(
         self, request: Request, caller: VerifiedCaller, access: CallerAccess
     ) -> Response:
@@ -208,6 +214,7 @@ class TenantApi:
         response = await self._root.read(request, caller, access.tenant, access.tenant)
         _, version = await self._kit.tenancy.get(access.tenant)
         response.headers[RECORD_ETAG] = etag_of(version)
+        response.headers[ALLOWED_ACTIONS] = self._root.allowed(caller, access, access.tenant)
         return response
 
     async def replace_root(
@@ -350,7 +357,13 @@ def add_aggregate_routes(
         caller: VerifiedCaller = as_caller,
         checked: Authorised = may_read,
     ) -> Response:
-        return await api.read(request, caller, checked.caller_access.tenant, checked.checked_target)
+        response = await api.read(
+            request, caller, checked.caller_access.tenant, checked.checked_target
+        )
+        response.headers[ALLOWED_ACTIONS] = api.allowed(
+            caller, checked.caller_access, checked.checked_target
+        )
+        return response
 
     async def replace(
         request: Request,

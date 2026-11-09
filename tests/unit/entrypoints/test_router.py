@@ -23,7 +23,7 @@ from rdf_persistence.domain.generated.rp_access import (
 )
 from rdf_persistence.domain.iris import graph_iri
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
-from rdf_persistence.entrypoints.negotiation import RECORD_ETAG
+from rdf_persistence.entrypoints.negotiation import ALLOWED_ACTIONS, RECORD_ETAG
 from rdf_persistence.services import vocabulary
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from tests.toy import ROLES, SETTINGS, keep_a_librarian
@@ -763,6 +763,82 @@ async def test_a_prohibition_beats_a_role(scene) -> None:
         scene.book, json=DUNE_BODY, headers=scene.headers("ada", **{"If-Match": scene.book_etag})
     )
     assert refused.status_code == 403, "the librarian is prohibited from modifying"
+
+
+# --- reads tell the caller what it may do (PD-10) ---------------------------------------------------
+
+
+async def _everyone_has_a_role(scene: Scene, *prohibitions: Prohibition) -> None:
+    """ada a librarian, mia a member (read, modify, delete), rita a reader; ``prohibitions`` on top."""
+    scene.access_etag = await _ada_and_mia_are_members(scene)
+    grants = [
+        Grant(assignee=principal_of("ada"), target=scene.tenant_iri, role="librarian"),
+        Grant(assignee=principal_of("mia"), target=scene.tenant_iri, role="member"),
+        Grant(assignee=principal_of("rita"), target=scene.tenant_iri, role="reader"),
+    ]
+    await scene.set_grants(GrantSet(grants=grants, prohibitions=list(prohibitions) or None))
+
+
+@pytest.mark.parametrize(
+    ("who", "allowed"),
+    [
+        ("ada", "read, modify, delete, administer"),  # the toy's librarian
+        ("mia", "read, modify, delete"),  # the member role built in the test
+        ("rita", "read"),  # the toy's reader
+    ],
+)
+async def test_the_tenant_read_lists_what_the_caller_may_do(scene, who, allowed) -> None:  # T-29
+    await _everyone_has_a_role(scene)
+    response = await scene.http.get(scene.tenant, headers=scene.headers(who))
+    assert response.status_code == 200, response.text
+    assert response.headers.get(ALLOWED_ACTIONS) == allowed, f"{who} on the tenant"
+
+
+async def test_the_aggregate_read_lists_what_the_caller_may_do(scene) -> None:  # T-29
+    await _everyone_has_a_role(scene)
+    response = await scene.http.get(scene.book, headers=scene.headers("mia"))
+    assert response.headers.get(ALLOWED_ACTIONS) == "read, modify, delete", "the member on a book"
+
+
+async def test_a_refused_read_carries_no_allowed_actions(scene) -> None:  # T-30
+    book_graph = str(graph_iri(scene.book_iri))
+    await _everyone_has_a_role(
+        scene,
+        Prohibition(assignee=principal_of("rita"), target=book_graph, action=Action.READ),
+    )
+    refused = await scene.http.get(scene.book, headers=scene.headers("rita"))
+    assert refused.status_code == 403, "the reader is refused as before"
+    assert ALLOWED_ACTIONS not in refused.headers, "a refusal says nothing of what is allowed"
+
+
+async def test_a_prohibition_takes_its_action_off_the_list(scene) -> None:  # T-30
+    book_graph = str(graph_iri(scene.book_iri))
+    await _everyone_has_a_role(
+        scene,
+        Prohibition(assignee=principal_of("mia"), target=book_graph, action=Action.DELETE),
+    )
+    book = await scene.http.get(scene.book, headers=scene.headers("mia"))
+    assert book.headers.get(ALLOWED_ACTIONS) == "read, modify", "delete is prohibited on this book"
+    tenant = await scene.http.get(scene.tenant, headers=scene.headers("mia"))
+    assert tenant.headers.get(ALLOWED_ACTIONS) == "read, modify, delete", "the tenant is unaffected"
+
+
+async def test_the_listing_items_carry_what_the_tenant_read_answers(scene) -> None:  # T-31
+    await _everyone_has_a_role(scene)
+    for who in ("ada", "mia", "rita"):
+        headers = scene.headers(who)
+        header = (await scene.http.get(scene.tenant, headers=headers)).headers.get(ALLOWED_ACTIONS)
+        page = Page.model_validate((await scene.http.get("/libraries", headers=headers)).json())
+        [item] = [
+            t for t in map(TenantSummary.model_validate, page.items) if t.id == scene.tenant_iri
+        ]
+        listed = ", ".join(item.allowed_actions or [])
+        assert listed == header, f"{who}: the listing says what the read says"
+
+
+async def test_a_created_tenant_summary_leaves_allowed_actions_empty(service, client) -> None:
+    response = await client.post("/libraries", json=TENANT_BODY, headers=service.bearer("ada"))
+    assert TenantSummary.model_validate(response.json()).allowed_actions is None, "create"
 
 
 # --- the three representations of one book describe the same triples --------------------------------
