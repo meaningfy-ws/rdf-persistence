@@ -51,7 +51,7 @@ on the symbols it touches.
   signer in `tests/unit/entrypoints/test_library_app.py` (PD-6). Gate: `make test-changed
   BASE=<stage 1 merge>` (selects only stage 2's files). Measure after, the same way. Satisfies: rp-testkit "A test
   signer can start from a given key"; DEC-6.
-- [ ] 2.2 Adversarial tester on 2.1 (RISK-3): tests that build two signers or two `ToyService`s
+- [x] 2.2 Adversarial tester on 2.1 (RISK-3): tests that build two signers or two `ToyService`s
   and compare tokens or keys; `rotate` after `key=`; a token from a plain `TokenSigner()` against
   the toy. Accepted findings go into design.md, then one fixer.
 - [ ] 2.3 Timings: `develop/index.adoc` rows for the entrypoint folder before and after, the
@@ -64,7 +64,7 @@ on the symbols it touches.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 2.1 · [x] 2.2 · [ ] 2.3 · [ ] 2.4
 
 ## Verification
 

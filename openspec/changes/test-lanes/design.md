@@ -263,6 +263,11 @@ wall time skewed by start-up (PD-4); `World`'s own `TokenSigner()` and the conta
   claimed. `tests/toy_service.py` is shared infrastructure, so `make test-changed` fell back to
   `make test-fast` (3769 passed, 1 failed in 5 min; the failure passed when re-run alone and its
   name was lost; the stage gate's `check-all` is the check on it).
+- **F-4 (task 2.2, 2026-11-09).** The adversarial tester's 8 tests (two signers on one key, one
+  rotating; rotation never touches the given key; a stranger signer under the same kid gets a 401
+  from the toy; two `ToyService`s share the key but not state) all pass: no finding to fix.
+  Noted, not changed: `rotate(<first kid>)` replaces the given key in that signer only, as the
+  spec says (rotation always generates). `make test-containers`: 176 passed in 8 min 57 s.
 
 ## Stage 1 review (2026-11-09)
 
