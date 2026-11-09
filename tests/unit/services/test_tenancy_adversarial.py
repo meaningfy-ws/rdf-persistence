@@ -104,8 +104,7 @@ async def test_an_invalid_label_is_refused_before_the_root_is_written(tenancy, s
     with pytest.raises(ValidationError):
         await tenancy.rename(summary.id, label, version, BEN)
     assert await _both(tenancy, store, summary.id) == before, (
-        "FAILS today: rename writes the root first and validates the label on the record after, "
-        "so a refused label is already stored in the root"
+        "a refused label is stored in neither the root nor the record (R1-1)"
     )
 
 

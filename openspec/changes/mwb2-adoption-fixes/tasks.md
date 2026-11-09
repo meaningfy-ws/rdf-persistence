@@ -44,7 +44,7 @@ symbols it changes (stop on HIGH/CRITICAL). Before each PR: `make check-all`,
 
 ## 6. Close stage 1
 
-- [ ] 6.1 Stage gates; the durations table in `develop/index.adoc`. PR: `Closes #42 #43 #44 #45
+- [x] 6.1 Stage gates; the durations table in `develop/index.adoc`. PR: `Closes #42 #43 #44 #45
   #46 #50`, the BREAKING change, the T-n list. Merge on green CI.
 
 # Stage 2 — consumer rules on tenant writes (#49)
