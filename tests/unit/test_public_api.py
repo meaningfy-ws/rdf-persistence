@@ -40,6 +40,7 @@ INDEXED_NAMES = [
     "Conflict",
     "BadQuery",
     "open_session",
+    "Listings",
     "Tenancy",
     "GrantValidator",
     "RootValidator",

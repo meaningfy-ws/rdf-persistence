@@ -156,14 +156,14 @@ comes later.
 |===
 |Target |Tests |Time |Measured |Notes
 
-|`make check-all` |3682 |≈ 7 to 10 min; ≈ 14 to 16 min on a busy machine |2026-11-09, mwb2-file-resources stage 1
-|≈ 14 min on 2026-11-09 with another project's container stack running beside it (pytest part ≈ 12 min). Its pytest part takes ≈ 5 min 45 s in parallel, up from ≈ 3 min 45 s on 2026-11-08 (more router
+|`make check-all` |3709 |≈ 7 to 10 min; ≈ 14 to 16 min on a busy machine |2026-11-09, mwb2-file-resources stage 2
+|≈ 7 min 50 s on 2026-11-09 (pytest part ≈ 7 min); ≈ 14 min the same day with another project's container stack running beside it. Its pytest part takes ≈ 5 min 45 s in parallel, up from ≈ 3 min 45 s on 2026-11-08 (more router
 and tenancy tests, and the wheel build and mypy run of `test_packaging.py`); ≈ 14.5 min while a
 GitNexus re-index ran beside it. The quality checks (`make check-quality`) take ≈ 40 to 90 s and
 come before it.
 
-|`make test-containers` |173 |≈ 3.5 to 8.5 min |2026-11-09, mwb2-file-resources stage 1
-|≈ 8.5 min (pytest ≈ 7 min 50 s) with another project's container stack running beside it. The pytest part takes ≈ 3 min 20 s (≈ 5 min 50 s on a busy machine), container start-up included, with the Fuseki image already
+|`make test-containers` |176 |≈ 2.5 to 8.5 min |2026-11-09, mwb2-file-resources stage 2
+|≈ 2 min 40 s (pytest ≈ 2 min 35 s) on 2026-11-09; ≈ 8.5 min the same day with another project's container stack running beside it. Run the store tests serially: under `-n auto` Fuseki can time out. The pytest part takes ≈ 3 min 20 s (≈ 5 min 50 s on a busy machine), container start-up included, with the Fuseki image already
 loaded (`make fuseki-image`). Earlier, one run in four failed at start-up on a Docker Compose
 error; run it again.
 

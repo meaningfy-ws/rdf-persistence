@@ -11,8 +11,6 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from enum import Enum
 
-from linkml_runtime.linkml_model.meta import ClassDefinition
-from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel
 from rdflib import BNode, Graph, Literal, URIRef
 from rdflib.query import ResultRow
@@ -23,7 +21,6 @@ from rdf_persistence.domain.generated.rp_core import (
     Principal,
     RegistryEntry,
     RegistryKind,
-    RpAnnotation,
 )
 from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.generated.service.rp_service import Filter, ListPlan, ListRequest
@@ -35,13 +32,11 @@ from rdf_persistence.domain.iris import (
 )
 from rdf_persistence.domain.sparql import Triple, fill, term, term_list, triples_block
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.listing import Listings, items_of, listing_query, total_of
+from rdf_persistence.services.listing import PAGE, Listings, items_of, listing_query, total_of
 from rdf_persistence.services.loading import parse_graph
-from rdf_persistence.services.schema_structure import aggregate_roots, annotation_text
 from rdf_persistence.services.store import Store
 
 Clock = Callable[[], datetime]
-PAGE = 200  # the largest page a listing gives
 # What a read of an aggregate answers: its triples with the bookkeeping, the graph that holds them
 # (where the tracking statements are made, PD-7) and its version token.
 Stored = tuple[Graph, URIRef, str]
@@ -364,15 +359,20 @@ class Session:
         A list or tuple value asks for all its items. Prohibitions are ignored (PD-6): a hidden
         duplicate is still a duplicate; check each IRI with ``require_aggregate`` before showing it.
 
+        Not a snapshot: the pages are separate queries, so a concurrent write can slip past a
+        uniqueness check made with it. With no filters it reads every aggregate of the class, so
+        never pass caller input unfiltered.
+
         Raises:
             RuntimeError: The session was opened without listings.
-            ValueError: ``cls`` is not an aggregate root with a path.
+            ValueError: ``cls`` is not an aggregate root with a path in the tenant databases, or a
+                list value is empty.
             BadQuery: A name is not a slot a listing may filter on, or a value is not one of its slot.
             DatabaseGone: The tenant database does not exist.
         """
         if self._listings is None:
             raise RuntimeError("find needs a session opened with listings, e.g. by the service kit")
-        definition = _aggregate_class(self._listings.view, cls)
+        definition = self._listings.served_root(cls.__name__)
         filters = _filters(equals)
         found: list[str] = []
         while True:
@@ -476,11 +476,10 @@ class Session:
             DatabaseGone: The tenant database does not exist.
         """
         self._graph(iri)
-        if URIRef(graph_iri) not in await self._registered_loaded(iri):
+        loaded = URIRef(graph_iri)
+        if loaded not in await self._registered_loaded(iri):
             raise NotFound(f"{graph_iri} is not a graph loaded for {iri}")
-        result = await self._store.query(
-            self._database, fill(READ_GRAPH, graph=term(URIRef(graph_iri)))
-        )
+        result = await self._store.query(self._database, fill(READ_GRAPH, graph=term(loaded)))
         return result.graph or Graph()
 
     async def remove(self, iri: str, if_version: str) -> None:
@@ -498,14 +497,12 @@ class Session:
             raise Conflict(f"{graph} is no longer at version {if_version}")
 
 
-def _aggregate_class(view: SchemaView, cls: type[BaseModel]) -> ClassDefinition:
-    definition = view.get_class(cls.__name__)
-    if definition is None or not (
-        definition in aggregate_roots(view, [definition])
-        and annotation_text(definition, RpAnnotation.RP_PATH)
-    ):
-        raise ValueError(f"{cls.__name__} is not an aggregate root with a path")
-    return definition
+def _items(name: str, value: object) -> list[object]:
+    """The values a filter asks for: a list or tuple gives its items, which may not be none."""
+    items = list(value) if isinstance(value, list | tuple) else [value]
+    if not items:
+        raise ValueError(f"{name} is an empty list; give at least one value or leave it out")
+    return items
 
 
 def _filters(equals: dict[str, object]) -> list[Filter]:
@@ -513,12 +510,13 @@ def _filters(equals: dict[str, object]) -> list[Filter]:
     return [
         Filter(slot=name, value=_text(item))
         for name, value in equals.items()
-        for item in (value if isinstance(value, list | tuple) else [value])
+        for item in _items(name, value)
     ]
 
 
 def _text(value: object) -> str:
-    return value.value if isinstance(value, Enum) else str(value)
+    """The RDF lexical form of a value (the mapper's); an enum gives its value."""
+    return value.value if isinstance(value, Enum) else str(Literal(value))
 
 
 @asynccontextmanager

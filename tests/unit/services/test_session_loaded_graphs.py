@@ -231,11 +231,13 @@ NOT_MINTED = [
 
 
 @pytest.mark.parametrize("bad", NOT_MINTED)
-@pytest.mark.parametrize("call", ["add_graph", "replace_graph"])
+@pytest.mark.parametrize("call", ["add_graph", "replace_graph", "loaded_graph"])
 async def test_a_commit_refuses_an_aggregate_iri_that_was_not_minted_before_any_request(
     session, store, call, bad
 ):
-    arguments = (bad, []) if call == "add_graph" else (bad, [], "v")
+    arguments = {"add_graph": (bad, []), "replace_graph": (bad, [], "v")}.get(
+        call, (bad, LOADED[0])
+    )
     with pytest.raises(InvalidIri, match="aggregate"):
         await getattr(session, call)(*arguments)
     assert (store.sent("query"), store.sent("update")) == ([], []), "the store was not touched"

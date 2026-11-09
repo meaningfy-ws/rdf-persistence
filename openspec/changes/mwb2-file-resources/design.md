@@ -309,3 +309,40 @@ follow-up commit; each is an R1-n below.
   `generation/components.py`" and L3 "read `WritesKind` values through a SchemaView in the hard
   check": forward-looking refactors of older code; out of this EPIC's appetite.
 - L3 "move `tests/dump_openapi.py` under `tests/tools/`": only one such helper exists.
+
+# Stage 2 review decisions (2026-11-09)
+
+Four read-only passes (L1, L2, L3, L4+L5); no blockers. Two real defects in `find` (R2-1, R2-2).
+
+**Accepted**
+- **R2-1 (L4+L5)** `find` turned values into text with `str()`, which is not the RDF lexical form:
+  `True` became `"True"` (refused as ill-typed by `typed_value`) and a datetime got a space for the
+  `T`. Values go through `str(Literal(value))` (the mapper's form); enums keep `.value`. Tests: a
+  boolean and a datetime filter.
+- **R2-2 (L3, L4+L5)** `_aggregate_class` re-implemented "a served root" and missed the
+  system-database exclusion, so `find(TenantAccess)` returned `[]` instead of raising. `Listings`
+  gains `served_root(name) -> ClassDefinition` built on `served_roots` (cached like `_listable`),
+  raising the `ValueError`; `Listings.view` is dropped and the session no longer imports schema
+  helpers. (Refines PD-6 step 2: "a served root" means `served_roots`.) Tests: a class not in the
+  schema, a root kept in the system database.
+- **R2-3 (L4+L5)** One page-size constant, read from the generated `ListRequest.limit` bound, in
+  `services/listing.py`; used by `find` and the "between 1 and 200" messages.
+- **R2-4 (L2)** T-17 filters on a slot both classes have (`label`), so the class scoping can fail.
+- **R2-5 (L2)** `loaded_graph` joins the existing "not minted → `InvalidIri`" and "dropped
+  database → `DatabaseGone`" parametrizations.
+- **R2-6 (L2)** Tests that `find` returns an aggregate the principal is prohibited from reading
+  (PD-6 "Prohibitions"), and that an unknown value type is `BadQuery`; one Fuseki test of `find`
+  (a match and its total).
+- **R2-7 (L2)** An empty list value (`authors=[]`) raises `ValueError` naming the slot, instead of
+  silently dropping the filter and returning every aggregate.
+- **R2-8 (L1)** `find`'s docstring says it is not a snapshot (pages are separate queries; a
+  concurrent write can slip past a uniqueness check) and that an unfiltered call reads every
+  aggregate of the class, so callers must not pass unfiltered caller input.
+- **R2-9 (L4+L5)** `loaded_graph` builds `URIRef(graph_iri)` once; `_filters` uses an `_items` helper.
+- **R2-10 (lead, from the docs task)** `Listings` becomes a public name of `rdf_persistence`, since
+  `open_session(listings=...)` and `fake_session(listings=...)` are public and a consumer may import
+  only the top-level package. The adopt guide says where it comes from.
+
+**Rejected**
+- L3 "a free function `find(session, listings, cls, ...)` instead of threading `listings`": the
+  developer chose `session.find(cls, **equals)` (Q-4); the keyword is additive, `None` by default.

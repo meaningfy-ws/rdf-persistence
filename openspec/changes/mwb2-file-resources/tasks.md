@@ -60,7 +60,7 @@ needs it.
   `fake_session` and `Tenancy`, and the `ServiceKit` wiring (PD-6). The
   report says whether T-16 to T-20 run on `FakeStore` or Fuseki. Gate: `uv run pytest -n auto tests/unit/services tests/unit/entrypoints
   tests/integration/store -q`.
-- [ ] 5.2 Docs: `howto/adopt.adoc` (reading a loaded graph, with the `require_aggregate`
+- [x] 5.2 Docs: `howto/adopt.adoc` (reading a loaded graph, with the `require_aggregate`
   check first; finding aggregates, and that `find` ignores Prohibitions), `questions.adoc`. Gate: `make check-docs`.
 
 Stage 2 close: five-lens review, checker, PR, merge on green CI. Then: comment on and close #56, #60
