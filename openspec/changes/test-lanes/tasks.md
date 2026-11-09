@@ -4,8 +4,10 @@
 Two stages, **one PR per stage** into `develop`, each merged on green CI before the next starts.
 The branch is cut from `develop`, not from a feature branch in flight. Within a task, tests come
 first (the `T-n` of design.md). Per task: the affected test folders (from task 1.4 on:
-`make test-changed`), `make check-quality`, `make clean-code`. Once per stage, before the PR:
-`make check-all` and `make test-containers` (both stages touch the testkit). Every report names
+`make test-changed`), `make check-quality`, `make clean-code`. **One local `make check-all` and
+one `make test-containers` for the whole EPIC**, in the stage 2 gate (developer, 2026-11-09): the
+stage 1 PR rests on the `check-all` already run in stage 1 (3,763 passed) and on CI, which runs
+the same jobs; stage 2 changes `ToyService`, which the container tests build. Every report names
 each make target run, with its time and test count. Before each task the lead runs gitnexus impact
 on the symbols it touches.
 
@@ -38,23 +40,26 @@ on the symbols it touches.
 - [x] 1.6 Fold `test-profiling` in (DEC-1): a superseded note at the top of its `proposal.md`
   naming `test-lanes`; its row in `openspec/changes/README.md` marked superseded; its inputs and
   spec delta untouched. `openspec validate --all --strict` passes.
-- [ ] 1.7 Stage gate: `make check-all`, `make test-containers`; review (lenses L1 to L3, L4+L5 one
-  pass); PR into `develop`, merged on green CI.
+- [ ] 1.7 Stage gate: review done (lenses L1 to L3, L4+L5 one pass); `make check-quality`; PR into
+  `develop`, merged on green CI. No local `check-all` or `test-containers` here (they run once, in
+  2.4).
 
 ## 2. Stage 2: a cheap toy set-up
 
-- [ ] 2.1 Measure before: `uv run pytest tests/unit/entrypoints -n auto -q` wall time, three runs,
+- [ ] 2.1 Measure before: `uv run pytest tests/unit/entrypoints -n auto -q` wall time, two runs,
   idle machine. T-3, then `TokenSigner(key=...)` (DEC-7), the toy's per-process key and `World`'s
-  signer in `tests/unit/entrypoints/test_library_app.py` (PD-6). Run the entrypoint, testkit and
-  feature folders and `make test-fast`. Measure after, the same way. Satisfies: rp-testkit "A test
+  signer in `tests/unit/entrypoints/test_library_app.py` (PD-6). Gate: `make test-changed
+  BASE=<stage 1 merge>` (selects only stage 2's files). Measure after, the same way. Satisfies: rp-testkit "A test
   signer can start from a given key"; DEC-6.
 - [ ] 2.2 Adversarial tester on 2.1 (RISK-3): tests that build two signers or two `ToyService`s
   and compare tokens or keys; `rotate` after `key=`; a token from a plain `TokenSigner()` against
   the toy. Accepted findings go into design.md, then one fixer.
 - [ ] 2.3 Timings: `develop/index.adoc` rows for the entrypoint folder before and after, the
-  `services` selection of `make test-changed` against its Goal, and `check-all` re-measured; wherever the docs describe `TokenSigner`, mention `key=`.
-- [ ] 2.4 Stage gate: `make check-all`, `make test-containers` (`tests/integration/api/` builds
-  `ToyService`); review; PR into `develop`, merged on green CI; then archive the change
+  `services` selection of `make test-changed` against its Goal, and `check-all` (its time taken
+  from the 2.4 run, not a separate run); wherever the docs describe `TokenSigner`, mention `key=`.
+- [ ] 2.4 Stage gate: the EPIC's one `make check-all` and one `make test-containers`
+  (`tests/integration/api/` builds `ToyService`); after a red run, re-run only the failing tests;
+  review; PR into `develop`, merged on green CI; then archive the change
   (`/opsx:archive`).
 
 ## Roadmap
