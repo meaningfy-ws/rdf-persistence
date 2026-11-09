@@ -112,6 +112,11 @@ The adversarial tester runs right after the riskiest task, lenses L4 and L5 are 
 and the checker trusts the lead's full-suite run. See
 xref:develop/agents.adoc#challenge[Keeping the challenge cheap].
 
+*Why does a Bash command fail with "Polling loops are blocked"?*::
+A hook denies `sleep` loops so agents stop waiting on their own background runs. Run the command in
+the foreground, in the background with its notice, or use the Monitor tool. See
+xref:develop/agents.adoc#never-poll[Never poll].
+
 *Where are decisions recorded?*::
 Architecture decisions are on xref:architecture/open-decisions.adoc[Decisions of 2026-11-05] (D-1
 to D-13) and in xref:architecture/index.adoc#decisions-taken[architecture v1] (O-1, O-2). The
