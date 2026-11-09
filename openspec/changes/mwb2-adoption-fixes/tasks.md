@@ -26,7 +26,7 @@ symbols it changes (stop on HIGH/CRITICAL). Before each PR: `make check-all`,
 - [x] 3.1 PD-3 rename: T-6 to T-9, then `Tenancy.rename`. Gate: `uv run pytest tests/unit/services -q`.
 - [x] 3.2 PD-3 root replacement: T-10, T-11, then the `Tenancy` check and its call in
   `Aggregates.replace`. Gate: `uv run pytest tests/unit/entrypoints tests/unit/services -q`.
-- [ ] 3.3 PD-6: T-18, T-19, then `Record-ETag` on `read_root`, its OpenAPI text and the guide
+- [x] 3.3 PD-6: T-18, T-19, then `Record-ETag` on `read_root`, its OpenAPI text and the guide
   (incl. the CORS note). Gate: `uv run pytest tests/unit/entrypoints -q`, `make check-docs`.
 
 ## 4. Public guard API (#45)
