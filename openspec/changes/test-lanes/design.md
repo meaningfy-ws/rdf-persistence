@@ -166,7 +166,7 @@ mapper carries a `shortcut:` comment saying a path with one would need NUL-separ
 - **T-3** `tests/unit/testkit/`: the three `rp-testkit` scenarios (`TokenSigner(key=…)`).
 - **T-4** `tests/unit/test_markers.py` (exists): `slow` is registered, and `-m "not slow"`
   deselects a marked test (pytester).
-- **T-5** `tests/unit/generation/test_freshness_plugin.py` (exists): a worker session
+- **T-5** `tests/unit/testkit/test_freshness_plugin.py` (moved by R-2) (exists): a worker session
   (`workerinput` set) skips the check; a stale project under `-n 2` (pytester) stops the session
   with one message.
 - Make targets are checked by running them in the task (reported with time and count), not by a
