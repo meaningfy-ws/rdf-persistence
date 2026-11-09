@@ -198,6 +198,10 @@ class Listings:
         self._view = view
         self._slots: dict[str, Mapping[str, SlotDefinition]] = {}
 
+    @property
+    def view(self) -> SchemaView:
+        return self._view
+
     def _listable(self, cls: ClassDefinition) -> Mapping[str, SlotDefinition]:
         if cls.name not in self._slots:
             self._slots[cls.name] = listable_slots(self._view, cls)

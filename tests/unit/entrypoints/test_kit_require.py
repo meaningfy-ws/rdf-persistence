@@ -7,6 +7,7 @@ from rdf_persistence.domain.exceptions import Forbidden, InvalidToken, NotFound
 from rdf_persistence.domain.generated.rp_access import Action, Prohibition
 from rdf_persistence.domain.iris import graph_iri
 from rdf_persistence.domain.media import JSON
+from tests.fixtures.library.generated.scans import Scan
 from tests.toy_service import principal_of, store_scan
 from tests.unit.entrypoints.scene import Scene
 
@@ -96,3 +97,9 @@ async def test_an_aggregate_id_that_is_no_uuid_is_a_not_found_before_the_store_i
             authorization(scene, "ada"), tenant_id(scene), "scans", "../graph", Action.READ
         )
     assert len(store.sent("query")) == asked, "no query"
+
+
+async def test_a_tenant_session_of_the_kit_can_find_aggregates(scene) -> None:
+    kit = scene.service.kit
+    async with kit.tenancy.tenant_session(scene.tenant_iri, principal_of("ada")) as session:
+        assert await session.find(Scan, file_name="nobody") == [], "the kit gave it its listings"

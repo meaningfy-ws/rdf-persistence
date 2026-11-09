@@ -9,15 +9,24 @@ import uuid
 from collections.abc import AsyncIterator, Callable, Iterable, Sequence
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from enum import Enum
 
+from linkml_runtime.linkml_model.meta import ClassDefinition
+from linkml_runtime.utils.schemaview import SchemaView
+from pydantic import BaseModel
 from rdflib import BNode, Graph, Literal, URIRef
 from rdflib.query import ResultRow
 
 from rdf_persistence.domain.exceptions import Conflict, InvalidIri, NotFound
 from rdf_persistence.domain.generated.rp_annotations import Tracked
-from rdf_persistence.domain.generated.rp_core import Principal, RegistryEntry, RegistryKind
+from rdf_persistence.domain.generated.rp_core import (
+    Principal,
+    RegistryEntry,
+    RegistryKind,
+    RpAnnotation,
+)
 from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.generated.service.rp_service import ListPlan
+from rdf_persistence.domain.generated.service.rp_service import Filter, ListPlan, ListRequest
 from rdf_persistence.domain.iris import (
     DEFAULT_IRIS,
     Iris,
@@ -26,11 +35,13 @@ from rdf_persistence.domain.iris import (
 )
 from rdf_persistence.domain.sparql import Triple, fill, term, term_list, triples_block
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.listing import listing_query
+from rdf_persistence.services.listing import Listings, items_of, listing_query, total_of
 from rdf_persistence.services.loading import parse_graph
+from rdf_persistence.services.schema_structure import aggregate_roots, annotation_text
 from rdf_persistence.services.store import Store
 
 Clock = Callable[[], datetime]
+PAGE = 200  # the largest page a listing gives
 # What a read of an aggregate answers: its triples with the bookkeeping, the graph that holds them
 # (where the tracking statements are made, PD-7) and its version token.
 Stored = tuple[Graph, URIRef, str]
@@ -223,7 +234,9 @@ class Session:
         principal: Principal,
         clock: Clock,
         iris: Iris = DEFAULT_IRIS,
+        listings: Listings | None = None,
     ) -> None:
+        self._listings = listings
         self._iris = iris
         self._store = store
         self._database = database
@@ -345,6 +358,32 @@ class Session:
         result = await self._store.query(self._database, listing_query(self._registry, plan))
         return result.graph or Graph()
 
+    async def find(self, cls: type[BaseModel], **equals: object) -> list[str]:
+        """The IRIs of the tenant's aggregates of ``cls`` whose slots equal ``equals``, in IRI order.
+
+        A list or tuple value asks for all its items. Prohibitions are ignored (PD-6): a hidden
+        duplicate is still a duplicate; check each IRI with ``require_aggregate`` before showing it.
+
+        Raises:
+            RuntimeError: The session was opened without listings.
+            ValueError: ``cls`` is not an aggregate root with a path.
+            BadQuery: A name is not a slot a listing may filter on, or a value is not one of its slot.
+            DatabaseGone: The tenant database does not exist.
+        """
+        if self._listings is None:
+            raise RuntimeError("find needs a session opened with listings, e.g. by the service kit")
+        definition = _aggregate_class(self._listings.view, cls)
+        filters = _filters(equals)
+        found: list[str] = []
+        while True:
+            request = ListRequest(filters=filters or None, limit=PAGE, offset=len(found))
+            plan = self._listings.plan(definition, request)
+            answer = await self.page(plan)
+            items = items_of(answer, plan)
+            found += [str(root) for root, _ in items]
+            if not items or len(found) >= total_of(answer, plan):
+                return found
+
     async def add_graph(
         self, iri: str, triples: Iterable[Triple], loaded_graphs: Sequence[URIRef] = ()
     ) -> str:
@@ -459,6 +498,29 @@ class Session:
             raise Conflict(f"{graph} is no longer at version {if_version}")
 
 
+def _aggregate_class(view: SchemaView, cls: type[BaseModel]) -> ClassDefinition:
+    definition = view.get_class(cls.__name__)
+    if definition is None or not (
+        definition in aggregate_roots(view, [definition])
+        and annotation_text(definition, RpAnnotation.RP_PATH)
+    ):
+        raise ValueError(f"{cls.__name__} is not an aggregate root with a path")
+    return definition
+
+
+def _filters(equals: dict[str, object]) -> list[Filter]:
+    """One filter per value; a list or tuple gives one per item."""
+    return [
+        Filter(slot=name, value=_text(item))
+        for name, value in equals.items()
+        for item in (value if isinstance(value, list | tuple) else [value])
+    ]
+
+
+def _text(value: object) -> str:
+    return value.value if isinstance(value, Enum) else str(value)
+
+
 @asynccontextmanager
 async def open_session(
     store: Store,
@@ -468,9 +530,10 @@ async def open_session(
     principal: Principal,
     clock: Clock = utc_now,
     iris: Iris = DEFAULT_IRIS,
+    listings: Listings | None = None,
 ) -> AsyncIterator[Session]:
     """Open a session on the tenant database ``database`` for ``principal``; ``iris`` is the IRI policy
-    (default: the default policy)."""
+    (default: the default policy); ``listings`` lets the session ``find`` aggregates."""
     yield Session(
         store,
         database=database,
@@ -478,4 +541,5 @@ async def open_session(
         principal=principal,
         clock=clock,
         iris=iris,
+        listings=listings,
     )

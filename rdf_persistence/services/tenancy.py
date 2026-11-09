@@ -44,6 +44,7 @@ from rdf_persistence.domain.sparql import Triple, fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.files import FileStore
+from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
 from rdf_persistence.services.schema_structure import LABEL, internal_predicates, refuse_internal
 from rdf_persistence.services.session import Clock, Session, open_session, utc_now
@@ -81,11 +82,13 @@ class Tenancy:
         access_class: type[TenantAccess],
         clock: Clock = utc_now,
         iris: Iris | None = None,
+        listings: Listings | None = None,
         grant_validators: Sequence[GrantValidator] = (),
         root_validators: Sequence[RootValidator] = (),
     ) -> None:
         # not DEFAULT_IRIS: resource names need the settings' prefix, which DEFAULT_IRIS lacks (PD-12j)
         self._iris = iris or Iris(settings)
+        self._listings = listings
         self._store = store
         self._files = files
         self._settings = settings
@@ -109,6 +112,7 @@ class Tenancy:
             principal=principal,
             clock=self._clock,
             iris=self._iris,
+            listings=self._listings,
         )
 
     def tenant_session(

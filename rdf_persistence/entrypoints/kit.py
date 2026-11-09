@@ -86,6 +86,7 @@ class ServiceKit:
             root_class=models.named(self.documents.tenant_root.name),
             access_class=access_class,
             iris=self.iris,
+            listings=self.listings,
             grant_validators=grant_validators,
             root_validators=root_validators,
         )

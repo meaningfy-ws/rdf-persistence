@@ -56,7 +56,7 @@ needs it.
 
 ## 5. Finding aggregates (#60)
 
-- [ ] 5.1 PD-6: T-16 to T-21, then `Session.find`, the `listings` keyword on `Session`, `open_session`,
+- [x] 5.1 PD-6: T-16 to T-21, then `Session.find`, the `listings` keyword on `Session`, `open_session`,
   `fake_session` and `Tenancy`, and the `ServiceKit` wiring (PD-6). The
   report says whether T-16 to T-20 run on `FakeStore` or Fuseki. Gate: `uv run pytest -n auto tests/unit/services tests/unit/entrypoints
   tests/integration/store -q`.
