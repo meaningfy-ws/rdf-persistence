@@ -1,5 +1,7 @@
 """Tenancy over the fakes: create writes the access record last, delete marks `deleting` first (PD-6a, PD-8, PD-9)."""
 
+import asyncio
+import gc
 import logging
 import re
 from collections.abc import Awaitable, Callable
@@ -7,9 +9,11 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
+from pydantic import ValidationError
 
 from rdf_persistence.domain.exceptions import (
     Conflict,
+    Forbidden,
     InvalidBody,
     NotFound,
     PersistenceError,
@@ -24,6 +28,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     IdKind,
     IdSpec,
     IriPolicy,
+    Page,
     ServiceSettings,
 )
 from rdf_persistence.domain.iris import Iris, system_database_name, tenant_resource_name
@@ -36,7 +41,17 @@ from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.fixtures.library.generated.scans import Scan
-from tests.toy import ADA, BOB, ROLES, SETTINGS, caller, library_slots, toy_mapper
+from tests.toy import (
+    ADA,
+    BOB,
+    ROLES,
+    SETTINGS,
+    caller,
+    keep_a_librarian,
+    library,
+    library_slots,
+    toy_mapper,
+)
 
 ODRL = "http://www.w3.org/ns/odrl/2/"
 NOW = datetime(2026, 11, 5, 9, 0, tzinfo=UTC)
@@ -682,3 +697,264 @@ async def test_the_consumers_tenant_is_minted_by_its_policy(store, files):
     assert record.database_name == f"mwb-t-{tenant_id}"
     assert f"mwb-t-{tenant_id}" in await store.list_datasets()
     assert await files.list_buckets("mwb-t-") == [f"mwb-t-{tenant_id}"]
+
+
+# -- consumer validators on tenant writes (mwb2-adoption-fixes PD-7, DEC-6) --
+
+
+def _validated(store, files, **validators) -> Tenancy:
+    return Tenancy(
+        store,
+        files,
+        SETTINGS,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
+        clock=lambda: NOW,
+        **validators,
+    )
+
+
+def _ada_librarian(tenant: str) -> GrantSet:
+    return GrantSet(grants=[Grant(assignee=ADA, target=tenant, role="librarian")])
+
+
+def _bob_librarian(tenant: str) -> GrantSet:
+    return GrantSet(grants=[Grant(assignee=BOB, target=tenant, role="librarian")])
+
+
+async def test_a_grant_validator_sees_the_stored_grants_the_body_and_the_caller(store, files):
+    seen: list[tuple[GrantSet, GrantSet, Principal]] = []
+    made = _validated(store, files, grant_validators=[lambda *args: seen.append(args)])
+    await made.ensure_system_database()
+    summary = await made.create("Ghent", library_slots(), CREATOR)
+    _, version = await made.get(summary.id)
+    body = _bob_librarian(summary.id)
+    await made.set_grants(summary.id, body, version, BEN)
+    old, new, who = seen[0]
+    assert [g.assignee for g in old.grants or []] == [ADA], "old is the record's grants as read"
+    assert (new, who) == (body, BEN), "new is the body and who is the caller"
+
+
+async def test_a_refusing_grant_validator_writes_nothing(store, files):  # T-20
+    made = _validated(store, files, grant_validators=[keep_a_librarian])
+    await made.ensure_system_database()
+    summary = await made.create("Ghent", library_slots(), CREATOR)
+    _, version = await made.get(summary.id)
+    writes = len(store.sent("update"))
+    with pytest.raises(InvalidBody, match="at least one librarian"):
+        await made.set_grants(summary.id, GrantSet(), version, CREATOR)
+    assert len(store.sent("update")) == writes, "nothing was written"
+    assert (await made.get(summary.id))[1] == version, "the record is at its version"
+
+
+async def test_validators_run_in_order_and_the_first_refusal_stops_the_rest(store, files):
+    calls: list[str] = []
+
+    def refuse(old, new, who):
+        calls.append("refuse")
+        raise InvalidBody("no")
+
+    made = _validated(
+        store,
+        files,
+        grant_validators=[
+            lambda *_: calls.append("first"),
+            refuse,
+            lambda *_: calls.append("last"),
+        ],
+    )
+    await made.ensure_system_database()
+    summary = await made.create("Ghent", library_slots(), CREATOR)
+    _, version = await made.get(summary.id)
+    with pytest.raises(InvalidBody):
+        await made.set_grants(summary.id, GrantSet(), version, CREATOR)
+    assert calls == ["first", "refuse"], "in order, stopping at the first refusal"
+
+
+async def test_two_grant_writes_at_one_version_that_both_pass_land_once(store, files):  # T-21
+    made = _validated(store, files, grant_validators=[keep_a_librarian])
+    await made.ensure_system_database()
+    summary = await made.create("Ghent", library_slots(), CREATOR)
+    _, version = await made.get(summary.id)
+    both = GrantSet(
+        grants=[
+            Grant(assignee=ADA, target=summary.id, role="librarian"),
+            Grant(assignee=BOB, target=summary.id, role="librarian"),
+        ]
+    )
+    version = await made.set_grants(summary.id, both, version, CREATOR)
+    removing_bob, removing_ada = _ada_librarian(summary.id), _bob_librarian(summary.id)
+    results = await asyncio.gather(
+        made.set_grants(summary.id, removing_bob, version, CREATOR),
+        made.set_grants(summary.id, removing_ada, version, CREATOR),
+        return_exceptions=True,
+    )
+    conflicts = [r for r in results if isinstance(r, Conflict)]
+    versions = [r for r in results if isinstance(r, str)]
+    assert (len(conflicts), len(versions)) == (1, 1), f"one write loses, one lands: {results}"
+    record, _ = await made.get(summary.id)
+    assert record.grants in (removing_bob.grants, removing_ada.grants), "exactly one body is stored"
+
+
+async def test_a_validator_that_is_not_a_refusal_propagates_and_writes_nothing(
+    store, files
+):  # T-23
+    def broken(old, new, who):
+        raise RuntimeError("bug")
+
+    made = _validated(store, files, grant_validators=[broken])
+    await made.ensure_system_database()
+    summary = await made.create("Ghent", library_slots(), CREATOR)
+    _, version = await made.get(summary.id)
+    writes = len(store.sent("update"))
+    with pytest.raises(RuntimeError, match="bug"):
+        await made.set_grants(summary.id, GrantSet(), version, CREATOR)
+    assert len(store.sent("update")) == writes, "nothing was written"
+
+
+def _root_refusal(old, new, who):
+    raise InvalidBody("no such library")
+
+
+async def test_a_root_validator_on_create_sees_no_old_root_and_the_new_one(store, files):  # T-22
+    seen: list[tuple[object, Library, Principal]] = []
+    made = _validated(store, files, root_validators=[lambda *args: seen.append(args)])
+    await made.ensure_system_database()
+    summary = await made.create("Ghent", library_slots(), CREATOR)
+    old, new, who = seen[0]
+    assert old is None, "a creation has no old root"
+    assert (new.id, new.label, who) == (summary.id, "Ghent", CREATOR), "the new root, minted id"
+
+
+async def test_a_refusing_root_validator_on_create_leaves_no_database_bucket_or_record(
+    store, files
+):  # T-22
+    made = _validated(store, files, root_validators=[_root_refusal])
+    await made.ensure_system_database()
+    with pytest.raises(InvalidBody, match="no such library"):
+        await made.create("Ghent", library_slots(), CREATOR)
+    assert await tenant_databases(store) == [], "no database"
+    assert files.sent("create_bucket") == [], "no bucket"
+    assert await made.tenants() == [], "no record"
+
+
+async def test_a_root_validator_on_rename_sees_the_old_root_and_the_relabelled_one(
+    store, files
+):  # T-22
+    seen: list[tuple[Library, Library, Principal]] = []
+    made = _validated(store, files)
+    await made.ensure_system_database()
+    summary = await made.create("A", library_slots(), CREATOR)
+    _, version = await made.get(summary.id)
+    watched = _validated(store, files, root_validators=[lambda *args: seen.append(args)])
+    await watched.rename(summary.id, "B", version, BEN)
+    old, new, who = seen[0]
+    assert (old.label, new.label, who) == ("A", "B", BEN), "old is as stored, new is relabelled"
+
+
+async def test_a_refusing_root_validator_on_rename_changes_neither_root_nor_record(
+    store, files
+):  # T-22
+    made = _validated(store, files)
+    await made.ensure_system_database()
+    summary = await made.create("A", library_slots(), CREATOR)
+    _, version = await made.get(summary.id)
+    refusing = _validated(store, files, root_validators=[_root_refusal])
+    with pytest.raises(InvalidBody, match="no such library"):
+        await refusing.rename(summary.id, "B", version, BEN)
+    assert await _labels(made, store, summary.id) == ("A", "A"), "both keep the label"
+    assert (await made.get(summary.id))[1] == version, "the record keeps its version"
+
+
+def _returns(value):
+    def validator(old, new, who):
+        return value
+
+    return validator
+
+
+async def _grant_write(made: Tenancy, store, files) -> None:
+    await made.ensure_system_database()
+    summary = await made.create("Ghent", library_slots(), CREATOR)
+    _, version = await made.get(summary.id)
+    await made.set_grants(summary.id, GrantSet(), version, CREATOR)
+
+
+async def test_a_coroutine_function_as_a_validator_is_refused_at_construction(store, files):  # R2-2
+    async def refuse(old, new, who):
+        raise InvalidBody("no")
+
+    class AsyncRule:
+        async def __call__(self, old, new, who):
+            raise InvalidBody("no")
+
+    for kind in ("grant_validators", "root_validators"):
+        for validator in (refuse, AsyncRule()):
+            with pytest.raises(TypeError, match="not async"):
+                _validated(store, files, **{kind: [validator]})
+
+
+async def test_a_validator_that_returns_false_is_a_bug_and_writes_nothing(store, files):  # R2-2
+    made = _validated(store, files, grant_validators=[_returns(False)])
+    with pytest.raises(TypeError, match="returns None"):
+        await _grant_write(made, store, files)
+    assert len(store.sent("update")) == 2, "only the tenant's creation was written"
+
+
+async def test_a_validator_that_returns_an_awaitable_is_a_bug_without_a_warning(
+    store, files, recwarn
+):  # R2-2
+    async def later():
+        return None
+
+    made = _validated(store, files, grant_validators=[lambda old, new, who: later()])
+    with pytest.raises(TypeError, match="returns None"):
+        await _grant_write(made, store, files)
+    gc.collect()
+    assert not [w for w in recwarn if issubclass(w.category, RuntimeWarning)], (
+        "no unawaited coroutine"
+    )
+
+
+async def test_a_validator_that_raises_another_toolkit_error_is_a_bug_chained_to_it(
+    store, files
+):  # R2-3
+    def forbidden(old, new, who):
+        raise Forbidden("no")
+
+    made = _validated(store, files, grant_validators=[forbidden])
+    with pytest.raises(RuntimeError, match="Forbidden") as raised:
+        await _grant_write(made, store, files)
+    assert isinstance(raised.value.__cause__, Forbidden), "the toolkit error is the cause"
+    assert not isinstance(raised.value, PersistenceError), "so no handler maps it to a status"
+
+
+async def test_a_validator_that_raises_a_pydantic_error_passes_it_on_unchanged(
+    store, files
+):  # R2-3
+    def invalid(old, new, who):
+        Page.model_validate({"items": "x"})
+
+    made = _validated(store, files, grant_validators=[invalid])
+    with pytest.raises(ValidationError):
+        await _grant_write(made, store, files)
+
+
+async def test_a_root_put_validator_sees_the_stored_internal_slots_on_new(store, files):  # R2-4
+    # the toy root has no internal slot: mark its city as one, to show the mechanism
+    seen: list[str] = []
+    plain = _validated(store, files)
+    await plain.ensure_system_database()
+    summary = await plain.create("Ghent", library_slots("Ghent"), CREATOR)
+    made = _validated(
+        store, files, root_validators=[lambda old, new, who: seen.append(f"{old.city}/{new.city}")]
+    )
+    made._internal = {v.predicate("city", toy_mapper().view): "city"}
+    city = v.predicate("city", toy_mapper().view)
+    body = library("Bruges").model_copy(update={"id": summary.id, "label": "Ghent"})
+    sent = [
+        t for t in toy_mapper().to_triples(body) if t[1] != city
+    ]  # no body can set an internal slot
+    await made.vet_root(summary.id, sent, CREATOR)
+    assert seen == ["Ghent/Ghent"], "new carries the stored value of an internal slot"

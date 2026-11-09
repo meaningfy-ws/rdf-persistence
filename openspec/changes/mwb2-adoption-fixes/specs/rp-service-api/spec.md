@@ -21,8 +21,8 @@ drawn. Without it, ids SHALL be drawn from a cryptographic generator.
 ### Requirement: A consumer enforces its own rules on tenant writes
 
 `install_service` SHALL take optional grant validators and root validators. Grant validators SHALL
-run on every write of a tenant's grant set; root validators SHALL run when a tenant is created, its
-root is replaced or it is renamed. Each SHALL run before the write; a validator that raises
+run on every replacement of a tenant's grant set; root validators SHALL run when a tenant is created
+(the creator, who gets the first grant, is the caller), its root is replaced or it is renamed. Each SHALL run before the write; a validator that raises
 `InvalidBody` SHALL refuse the write with a 422 problem and nothing SHALL be written. Two writes at
 one version SHALL NOT both succeed.
 

@@ -41,6 +41,8 @@ INDEXED_NAMES = [
     "BadQuery",
     "open_session",
     "Tenancy",
+    "GrantValidator",
+    "RootValidator",
     "sweep",
     "FileStore",
     "TenantGone",

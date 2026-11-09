@@ -106,7 +106,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.services.session import Session, open_session
     from rdf_persistence.services.store import Store
     from rdf_persistence.services.sweep import sweep
-    from rdf_persistence.services.tenancy import Tenancy
+    from rdf_persistence.services.tenancy import GrantValidator, RootValidator, Tenancy
     from rdf_persistence.services.tokens import TokenVerifier
 
 __version__ = "0.1.0"
@@ -137,6 +137,8 @@ _LAZY_MODULES = {
     "Store": f"{_SERVICES}.store",
     "sweep": f"{_SERVICES}.sweep",
     "Tenancy": f"{_SERVICES}.tenancy",
+    "GrantValidator": f"{_SERVICES}.tenancy",
+    "RootValidator": f"{_SERVICES}.tenancy",
 }
 
 
@@ -168,6 +170,7 @@ __all__ = [
     "FusekiStore",
     "Grant",
     "GrantSet",
+    "GrantValidator",
     "GraphKind",
     "IdKind",
     "IdSource",
@@ -203,6 +206,7 @@ __all__ = [
     "RegistryKind",
     "RoleDefinition",
     "RoleLevel",
+    "RootValidator",
     "RpAnnotation",
     "RpModel",
     "Rule",

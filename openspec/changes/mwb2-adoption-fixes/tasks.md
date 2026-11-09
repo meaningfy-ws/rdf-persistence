@@ -51,11 +51,11 @@ symbols it changes (stop on HIGH/CRITICAL). Before each PR: `make check-all`,
 
 ## 7. Validators
 
-- [ ] 7.1 PD-7 grants: T-20, T-21, T-23, then the types, `install_service`/`ServiceKit` wiring and
+- [x] 7.1 PD-7 grants: T-20, T-21, T-23, then the types, `install_service`/`ServiceKit` wiring and
   `Tenancy.set_grants`. Gate: `uv run pytest tests/unit/services tests/unit/entrypoints -q`.
-- [ ] 7.2 PD-7 roots: T-22, then `Tenancy.create`, `rename` and `vet_root` (with the PD-3 check).
+- [x] 7.2 PD-7 roots: T-22, then `Tenancy.create`, `rename` and `vet_root` (with the PD-3 check).
   Gate: same; T-24 (the whole unit suite unchanged).
-- [ ] 7.3 PD-7 docs: `howto/adopt.adoc` "Enforce your own rules on tenant writes",
+- [x] 7.3 PD-7 docs: `howto/adopt.adoc` "Enforce your own rules on tenant writes",
   `architecture/access-control.adoc`. Gate: `make check-docs`.
 - [ ] 7.4 Close stage 2: stage gates; PR `Closes #49`. Merge on green CI.
 

@@ -1,5 +1,6 @@
 """What the routes share: the ports, the settings, and the pieces built from the application's schema (PD-13)."""
 
+from collections.abc import Sequence
 from contextlib import AbstractAsyncContextManager
 from pathlib import Path
 from types import ModuleType
@@ -27,7 +28,7 @@ from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types, tenant_access_class
 from rdf_persistence.services.session import Session
 from rdf_persistence.services.store import Store, ToolkitStore
-from rdf_persistence.services.tenancy import Tenancy
+from rdf_persistence.services.tenancy import GrantValidator, RootValidator, Tenancy
 from rdf_persistence.services.tokens import TokenVerifier
 
 
@@ -51,8 +52,10 @@ class ServiceKit:
         settings: ServiceSettings,
         prefix: str = "",
         id_source: IdSource = draw_id,
+        grant_validators: Sequence[GrantValidator] = (),
+        root_validators: Sequence[RootValidator] = (),
     ) -> None:
-        """Build the kit; ``prefix`` and ``id_source`` are ``install_service``'s arguments of those names."""
+        """Build the kit; ``prefix``, ``id_source`` and the validators are ``install_service``'s arguments of those names."""
         view = load_schema(schema)
         self.view = view
         self.listings = Listings(view)
@@ -83,6 +86,8 @@ class ServiceKit:
             root_class=models.named(self.documents.tenant_root.name),
             access_class=access_class,
             iris=self.iris,
+            grant_validators=grant_validators,
+            root_validators=root_validators,
         )
         self.aggregates = Aggregates(self.documents, self.tenancy, self.iris)
 

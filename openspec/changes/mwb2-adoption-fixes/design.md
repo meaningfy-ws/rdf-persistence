@@ -221,7 +221,7 @@ RootValidator = Callable[[BaseModel | None, BaseModel, Principal], None]  # old 
 ```
 
 A validator refuses by raising `InvalidBody` (422 `invalid-body`, its message is the problem's
-`detail`); any exception other than `InvalidBody` or pydantic `ValidationError` (also 422, through the existing handler) is a bug and propagates (500). Validators run in the order given;
+`detail`); any exception other than `InvalidBody` or pydantic `ValidationError` (also 422, through the existing handler) is a bug (500; a toolkit error other than `InvalidBody` is re-raised as a `RuntimeError` chained to it, R2-3). Validators are plain functions and get deep copies (R2-1, R2-2). Validators run in the order given;
 the first refusal stops the write.
 
 Wiring: `install_service(..., grant_validators=(), root_validators=())` → `ServiceKit` →
@@ -425,3 +425,43 @@ drawn id against the policy (L1: `id_source` is trusted composition-root code fo
 the anti-pattern table keeps refusals before the session); carrying the record version on
 `CallerAccess` to save a read (L3, L5: not needed now); aligning the two lazy loaders (L5: over-
 fragmentation); a typed problem when every tenant draw clashes (tester: unchanged by this change).
+
+# Stage 2 review decisions (2026-11-09)
+
+Four review passes (L1, L2, L3, L4+L5 together) and an adversarial tester read
+`21db8c9..feature/mwb2-stage-2`. The lead accepted these findings (Rule of Divergence: recorded
+here before the fix):
+
+- **R2-1** (L1, L4, tester: a validator relabelled the root and split the tenant's label; changed
+  the grants written; changed the root's id after the database existed) Validators only refuse:
+  each gets deep copies of `old` and `new`, and the toolkit writes its own object. What a validator
+  does to its arguments is never written.
+- **R2-2** (L1, L4, tester: an `async def` validator was never awaited, so it always passed)
+  Validators fail closed. `Tenancy` refuses a coroutine function at construction (`TypeError`,
+  so `install_service` fails at start-up), and a validator that returns anything but `None`
+  (an awaitable, `False`) is a bug: `TypeError`, 500, nothing written. The docs say validators are
+  plain functions that must not block (they run on the event loop).
+- **R2-3** (L1, L4) The settled rule holds for toolkit errors too: a validator that raises a
+  toolkit error other than `InvalidBody` (`Forbidden`, `Conflict`, …) is a bug and answers 500,
+  not that error's status. `InvalidBody` and pydantic's `ValidationError` stay 422.
+- **R2-4** (L3, L4) On a root `PUT`, `new` carries the stored root's `internal` slot values, as the
+  stored root will after the replace; old and new compare like for like on every path.
+- **R2-5** (L4) Docs: grant validators run on every replacement of a tenant's grants
+  (`PUT …/grants`); the creator's first grant on create is seen by a root validator (`old is
+  None`, `who` is the creator). The `install_service` example uses keywords only and links step 12.
+- **R2-6** (L2) Tests: the root-`PUT` refusal asserts the validator's detail (not the PD-3 label
+  check); T-21 asserts one write lands and the stored grants are exactly one body, starting from
+  two librarians where each write removes a different one; a route test for a refusal on create
+  (422 with the detail, no tenant listed); the T-23 pydantic case asserts `invalid-body`.
+- **R2-7** (L4) `_run` becomes `_run_validators`; the duplicated test rule `_keep_a_librarian`
+  moves to `tests/toy.py`.
+- **R2-8** (tester) The adversarial tests stay. The one comparing `vet_root` on a deleting tenant
+  with and without validators compares the root `PUT`'s outcome instead: without validators the
+  replace session meets the same deleted database, so the answer must be the same either way.
+
+Rejected, with the reason: the extra root read in `vet_root` (L3: settled in stage 1, the
+`If-Match` write catches a root that moved); a shared `grant_set(record)` helper (L4: two call
+sites, low value); route tests for every validator path (L2: the error mapping is generic, and the
+adversarial tests cover rename and root `PUT` at the route). Noted: T-24's suites changed only by
+`vet_root`'s new `principal` argument, which PD-7 prescribes; T-21 shows that two writes at one
+version cannot both land, not a real race.
