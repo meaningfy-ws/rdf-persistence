@@ -57,18 +57,41 @@ Each task is committed by the lead with why, what and `Refs: <change-id> <task>`
 == The gates
 
 Before handing out a task the lead checks the blast radius with GitNexus (re-indexing it if stale);
-a HIGH or CRITICAL risk goes to the developer.
+a HIGH or CRITICAL risk goes to the developer. Only the lead can: subagents have no GitNexus tools,
+so a brief never asks a builder or a reviewer for an impact check.
 
 [cols="2,3",options="header"]
 |===
 |Gate |When
-|`make check-all` |After every task and before every PR
-|`make test-containers` |When adapters or containers change, and before a stage's PR
+|The affected test folders, `uv run pytest <folders> -n auto -q` |After every task. Run serially,
+the entrypoint and service folders take 4 to 6 min; in parallel, about a quarter of that
+|`make check-quality` |After every task (≈ 1 min)
+|`make check-all` |Once, before the PR: it already holds `make test`, so never run both
+|`make test-containers` |Once, before the PR; and when adapters or containers change
 |`make check-generated` |After committing a schema change (it compares against the commit)
 |`make check-architecture`, `make clean-code`, `make check-docs` |With every task; they take seconds
 |`openspec validate --all --strict` |Part of `make check-quality`
 |The clarity gate (≥ 9/10) |Before a PLAN's first task
 |===
+
+[#challenge]
+== Keeping the challenge cheap
+
+_How do we keep review and checking from doubling the work?_
+
+The `epic-delivery` skill sets who challenges a stage. Here three adjustments apply to any work,
+measured on a large stage (2026-11-09):
+
+* *The adversarial tester runs right after the riskiest task*, the one that adds an invariant, a
+  write order or concurrent writes, and again at the end if the stage is large. Both real defects of
+  that stage sat in one task, and finding them at the end meant one large late fix.
+* *Review lenses L4 and L5 are one pass.* About a third of the findings came from more than one lens,
+  mostly L3, L4 and L5 together. L1, L2 and L3 stay separate: each found something the others did not.
+* *The checker reads the lead's `make check-all` result* and checks the briefs and decisions against
+  the diff; it does not run the tests again.
+
+The lead records accepted findings in `design.md` before they are fixed, and gives one fixer the
+whole list.
 
 == Merge and release
 
@@ -77,7 +100,8 @@ change is archived, so no commit follows the tag.
 
 == Habits that keep sessions consistent
 
-* Re-index GitNexus regularly: `gitnexus analyze --embeddings --skip-agents-md --skip-skills`.
+* Re-index GitNexus after each commit (≈ 20 s):
+  `gitnexus analyze --embeddings --skip-agents-md --skip-skills`.
 * Take check durations from ordinary runs and keep the
   xref:develop/index.adoc#how-long-the-checks-take[durations table] current; no profiling.
 * Open the docs with questions: when a page is added or changed, add or update the
