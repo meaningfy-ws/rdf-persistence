@@ -85,7 +85,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     TenantSummary,
     VerifiedCaller,
 )
-from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris, mint_aggregate_iri
+from rdf_persistence.domain.iris import DEFAULT_IRIS, IdSource, Iris, mint_aggregate_iri
 
 if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.adapters.fuseki import FusekiStore
@@ -170,6 +170,7 @@ __all__ = [
     "GrantSet",
     "GraphKind",
     "IdKind",
+    "IdSource",
     "IdSpec",
     "Identity",
     "IdentityUnavailable",

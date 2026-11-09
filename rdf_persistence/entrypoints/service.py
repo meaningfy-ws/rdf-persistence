@@ -10,6 +10,7 @@ from fastapi import FastAPI
 
 from rdf_persistence.domain.exceptions import InvalidIri
 from rdf_persistence.domain.generated.service.rp_service import ServiceSettings
+from rdf_persistence.domain.iris import IdSource
 from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.openapi import install_openapi
 from rdf_persistence.entrypoints.problems import install_problem_handlers
@@ -35,6 +36,7 @@ def install_service(
     rules: AccessRules | Path,
     settings: ServiceSettings,
     prefix: str = "",
+    id_source: IdSource | None = None,
 ) -> ServiceKit:
     """Serve the application's schema on ``app``: its routes, its problem responses, its start-up.
 
@@ -48,7 +50,8 @@ def install_service(
 
     ``prefix`` is the path the routes are mounted under; the ``Link`` header names the context at
     ``settings.base`` plus that prefix, never at the ``Host`` the request came with. A request body
-    may hold at most ``settings.max_body_bytes``.
+    may hold at most ``settings.max_body_bytes``. ``id_source`` draws the raw ids of new tenants and
+    objects: for tests that need to force a clash; leave it out in a running service.
 
     Returns the kit the routes share, for the consumer's own routes: its ``tenancy``, ``store``,
     ``files`` and ``identity``, and ``require`` and ``require_aggregate``, the token and access check
@@ -75,6 +78,7 @@ def install_service(
         rules=rules,
         settings=settings,
         prefix=prefix,
+        id_source=id_source,
     )
     _require_same_principals(kit)
     install_problem_handlers(app, settings.base)

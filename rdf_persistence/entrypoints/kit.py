@@ -13,7 +13,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     Authorised,
     ServiceSettings,
 )
-from rdf_persistence.domain.iris import Iris, system_database_name
+from rdf_persistence.domain.iris import IdSource, Iris, system_database_name
 from rdf_persistence.entrypoints.auth import Gate
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.aggregates import Aggregates
@@ -50,8 +50,10 @@ class ServiceKit:
         rules: AccessRules,
         settings: ServiceSettings,
         prefix: str = "",
+        id_source: IdSource | None = None,
     ) -> None:
-        """Build the kit; ``prefix`` is the path the routes are mounted under (``install_service``'s)."""
+        """Build the kit; ``prefix`` is the path the routes are mounted under, ``id_source`` the
+        ``install_service`` arguments of those names."""
         view = load_schema(schema)
         self.view = view
         self.listings = Listings(view)
@@ -59,7 +61,12 @@ class ServiceKit:
         self.files = files
         self.identity = identity
         self.verifier = verifier
-        self.iris = Iris(settings, *iri_types(view))
+        roots_and_owned = iri_types(view)
+        self.iris = (
+            Iris(settings, *roots_and_owned)
+            if id_source is None
+            else Iris(settings, *roots_and_owned, id_source=id_source)
+        )
         self.rules = rules.with_iris(self.iris)
         self.settings = settings
         mounted = prefix.strip("/")

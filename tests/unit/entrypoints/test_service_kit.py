@@ -1,6 +1,7 @@
 """The service kit (task 5.1): the token and access dependencies, problem handlers, versions, start-up."""
 
 import re
+import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -17,7 +18,7 @@ from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.testkit import FakeStore
 from tests.fixtures.library import generated
 from tests.toy import ROLES, SETTINGS, TOY_SCHEMA
-from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
+from tests.toy_service import CONSUMER_POLICY, DUNE_BODY, TENANT_BODY, ToyService
 
 PROBLEMS = f"{SETTINGS.base}problems/"
 A_UUID = "6f1c0c1e-0000-4000-8000-000000000001"
@@ -299,3 +300,33 @@ async def test_bucket_of_a_tenant_is_its_stored_database_name(service, client) -
 async def test_bucket_of_an_unknown_tenant_is_not_found(service) -> None:
     with pytest.raises(NotFound):
         await service.kit.bucket_of(service.kit.tenant_iri(A_UUID))
+
+
+# --- id_source: a test chooses the ids the service draws (PD-5, DEC-7) ----------------------------
+
+
+async def test_a_tenant_id_that_clashes_is_redrawn_and_the_first_tenant_is_unchanged() -> None:
+    first, fresh = str(uuid.uuid4()), str(uuid.uuid4())
+    draws = iter([first, first, fresh])
+    toy = ToyService(id_source=lambda _spec: next(draws))
+    async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
+        headers = toy.bearer("ada")
+        one = await http.post("/libraries", json=TENANT_BODY, headers=headers)
+        two = await http.post("/libraries", json=TENANT_BODY, headers=headers)
+        again = await http.get(one.headers["location"], headers=headers)
+    assert one.headers["location"].endswith(f"/{first}"), "the first create took the first draw"
+    assert two.headers["location"].endswith(f"/{fresh}"), "the clash was redrawn"
+    assert again.status_code == 200, "the first tenant is unchanged"
+
+
+async def test_without_an_id_source_two_creates_draw_different_ids_of_the_policy_length() -> None:
+    toy = ToyService(iri_policy=CONSUMER_POLICY)
+    async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
+        locations = [
+            (await http.post("/libraries", json=TENANT_BODY, headers=toy.bearer("ada")))
+            .headers["location"]
+            .rsplit("/", 1)[-1]
+            for _ in range(2)
+        ]
+    assert locations[0] != locations[1], "drawn, not fixed"
+    assert [len(i) for i in locations] == [7, 7], "the policy's tenant id length"

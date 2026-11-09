@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from rdf_persistence import (
     AccessRules,
+    IdSource,
     JwksTokenVerifier,
     ServiceSettings,
     Store,
@@ -100,6 +101,7 @@ class ToyService:
         mount: str = "",
         iri_policy: IriPolicy | None = None,
         verifier_iris: Iris = DEFAULT_IRIS,
+        id_source: IdSource | None = None,
     ) -> None:
         self.signer = TokenSigner()
         self.store = store or FakeStore()
@@ -132,6 +134,7 @@ class ToyService:
             rules=AccessRules(load_role_definitions(ROLES)),
             settings=self.settings,
             prefix=mount,
+            id_source=id_source,
         )
 
     def client(self) -> httpx.AsyncClient:

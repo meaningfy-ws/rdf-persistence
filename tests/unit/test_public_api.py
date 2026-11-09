@@ -53,6 +53,7 @@ INDEXED_NAMES = [
     "ServiceKit",
     "Iris",
     "IriPolicy",
+    "IdSource",
     "IdSpec",
     "IdKind",
     "DEFAULT_IRIS",
