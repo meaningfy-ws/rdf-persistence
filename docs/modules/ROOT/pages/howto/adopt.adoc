@@ -844,11 +844,12 @@ caller. Creating an aggregate needs `modify` on the tenant.
 
 _How do I stop a write my application forbids, such as removing the last owner?_
 
-Give `install_service` validators. A *grant validator* runs on every write of a tenant's grant set,
-with the old set, the new one and the caller. A *root validator* runs when a tenant is created, its
-root is replaced or it is renamed, with the old root (`None` on create), the new one and the
-caller. To refuse, raise `InvalidBody`: the answer is 422 `invalid-body` with your message as its
-`detail`, and nothing is written.
+Give `install_service` validators. A *grant validator* runs on every replacement of a tenant's
+grants (`PUT .../grants`), with the old set, the new one and the caller. A *root validator* runs
+when a tenant is created, its root is replaced or it is renamed, with the old root (`None` on
+create), the new one and the caller; on create the caller is the creator, who gets the first grant.
+To refuse, raise `InvalidBody`: the answer is 422 `invalid-body` with your message as its `detail`,
+and nothing is written.
 
 [source,python]
 ----
@@ -860,13 +861,24 @@ def keep_an_owner(old: GrantSet, new: GrantSet, who: Principal) -> None:
         raise InvalidBody("a project keeps at least one owner")
 
 
-install_service(app, ..., grant_validators=[keep_an_owner])
+install_service(
+    app,
+    grant_validators=[keep_an_owner],
+    # ... and the other keyword arguments of step 12
+)
 ----
+
+The other arguments are those of <<serve>>; pass every argument by keyword.
 
 Validators run in the order given, before the write; the first refusal stops it. They need no
 lock: the write is conditional on the version the request sent (`If-Match`), so of two writes at
-one version, both passing the rule, one lands and the other answers 409. Any exception other than
-`InvalidBody` or pydantic's `ValidationError` (also 422) is a bug in the validator and answers 500.
+one version, both passing the rule, one lands and the other answers 409.
+
+A validator is a plain function, not `async`: it runs on the event loop, so it must not block. A
+coroutine function is refused when the service starts. It receives copies of the old and new
+objects, so changing an argument has no effect on what is written. It returns nothing; returning a
+value is a bug. Any exception other than `InvalidBody` or pydantic's `ValidationError` (also 422)
+is a bug in the validator and answers 500, even another error of the toolkit such as `Forbidden`.
 
 [#serve]
 == 12. Serve the application

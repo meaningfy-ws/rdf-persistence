@@ -174,9 +174,12 @@ flowchart LR
 An application adds its own rules on tenant writes through `install_service`'s
 `grant_validators` and `root_validators`. They run in the
 toolkit's write path, after the record or root is read and before the conditional write; raising
-`InvalidBody` refuses the write with 422 and nothing is written. Grant validators see every write of
-a grant set; root validators see a tenant's create, root replacement and rename. Atomicity comes
-from the conditional write itself: two writes at one version cannot both land.
+`InvalidBody` refuses the write with 422 and nothing is written. Grant validators see every
+replacement of a tenant's grants; root validators see a tenant's create (the creator is the caller),
+root replacement and rename. Validators are plain functions that must not block, and get copies of
+the old and new objects, so they can only refuse. Any other exception, a toolkit error such as
+`Forbidden` included, is a bug and answers 500. Atomicity comes from the conditional write itself:
+two writes at one version cannot both land.
 
 [#identity]
 == Identity: signing in from the browser and from the API

@@ -221,7 +221,7 @@ RootValidator = Callable[[BaseModel | None, BaseModel, Principal], None]  # old 
 ```
 
 A validator refuses by raising `InvalidBody` (422 `invalid-body`, its message is the problem's
-`detail`); any exception other than `InvalidBody` or pydantic `ValidationError` (also 422, through the existing handler) is a bug and propagates (500). Validators run in the order given;
+`detail`); any exception other than `InvalidBody` or pydantic `ValidationError` (also 422, through the existing handler) is a bug (500; a toolkit error other than `InvalidBody` is re-raised as a `RuntimeError` chained to it, R2-3). Validators are plain functions and get deep copies (R2-1, R2-2). Validators run in the order given;
 the first refusal stops the write.
 
 Wiring: `install_service(..., grant_validators=(), root_validators=())` → `ServiceKit` →
