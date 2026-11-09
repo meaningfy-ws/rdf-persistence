@@ -161,7 +161,9 @@ like any read of the aggregate, through `require_aggregate` (PD-7 below records 
   raises `NotFound`; an unknown graph IRI does too.
 - **T-15** `kit.require_aggregate(..., Action.READ)` for a principal without `read` raises
   `Forbidden` (the principal sees the tenant but may not read the aggregate; existing behaviour,
-  asserted once beside the new read).
+  asserted once beside the new read). Done as: already covered by
+  `test_a_prohibition_on_the_aggregate_applies` (`tests/unit/entrypoints/test_kit_require.py`); no
+  duplicate added.
 
 ## PD-6 Finding aggregates by slot value (#60, DEC-5)
 

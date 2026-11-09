@@ -50,7 +50,7 @@ needs it.
 
 ## 4. Loaded graphs read back (#56)
 
-- [ ] 4.1 PD-5, PD-7: T-13, T-14, T-15, then `Session.loaded_graph` (the delta spec
+- [x] 4.1 PD-5, PD-7: T-13, T-14, T-15, then `Session.loaded_graph` (the delta spec
   already carries PD-7). Gate: `uv run pytest -n auto tests/unit/services
   tests/integration/store -q`, `openspec validate mwb2-file-resources --strict`.
 

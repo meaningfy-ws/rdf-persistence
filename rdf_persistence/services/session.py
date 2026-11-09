@@ -426,6 +426,24 @@ class Session:
         await self._store.put_graph(self._database, loaded, parsed)
         return loaded
 
+    async def loaded_graph(self, iri: str, graph_iri: str) -> Graph:
+        """The triples of ``graph_iri``, a graph loaded for the aggregate ``iri``.
+
+        The session checks no access; the caller gates the read like ``get_graph`` (PD-7).
+
+        Raises:
+            InvalidIri: ``iri`` is not an aggregate IRI the policy mints for the tenant.
+            NotFound: ``graph_iri`` is not a graph loaded for the aggregate.
+            DatabaseGone: The tenant database does not exist.
+        """
+        self._graph(iri)
+        if URIRef(graph_iri) not in await self._registered_loaded(iri):
+            raise NotFound(f"{graph_iri} is not a graph loaded for {iri}")
+        result = await self._store.query(
+            self._database, fill(READ_GRAPH, graph=term(URIRef(graph_iri)))
+        )
+        return result.graph or Graph()
+
     async def remove(self, iri: str, if_version: str) -> None:
         """Delete the aggregate's graph, loaded graphs and registry entries if it still has ``if_version``.
 

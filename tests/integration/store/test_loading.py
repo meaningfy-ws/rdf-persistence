@@ -11,6 +11,7 @@ from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence import InvalidGraph
 from rdf_persistence.adapters.fuseki import FusekiStore
+from rdf_persistence.domain.exceptions import NotFound
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.iris import (
@@ -148,3 +149,18 @@ async def test_replace_drops_the_triples_of_unlisted_loaded_graphs_and_keeps_lis
         str(graph_iri(BOOK)),
         str(DEFAULT_IRIS.registry(TENANT)),
     }, "the dropped loaded graph is gone; the kept one and the aggregate remain"
+
+
+SECOND_BOOK = f"{TENANT}/books/{UUID(int=2)}"
+
+
+async def test_a_loaded_graph_reads_back_and_one_of_another_aggregate_is_not_found(session):
+    first = await session.load_graph(BOOK, TURTLE, rdf_format=RdfFormat.TURTLE)
+    second = await session.load_graph(SECOND_BOOK, TURTLE, rdf_format=RdfFormat.TURTLE)
+    await session.add_graph(BOOK, [], [first])
+    await session.add_graph(SECOND_BOOK, [], [second])
+    expected = Graph().parse(data=TURTLE, format="turtle")
+    read = await session.loaded_graph(BOOK, str(first))
+    assert isomorphic(read, expected), graph_diff(read, expected)
+    with pytest.raises(NotFound):
+        await session.loaded_graph(BOOK, str(second))
