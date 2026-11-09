@@ -41,7 +41,9 @@ def test_a_testkit_module_import_is_refused_naming_file_line_and_module(tmp_path
     )
     with pytest.raises(AssertionError) as err:
         assert_public_imports(written)
-    assert "test_model.py:2 imports rdf_persistence.testkit.strategies" in str(err.value)
+    assert "test_model.py:2 imports rdf_persistence.testkit.strategies" in str(err.value), (
+        "the refusal names the file, the line and the module"
+    )
 
 
 @pytest.fixture

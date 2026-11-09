@@ -312,11 +312,14 @@ async def test_a_tenant_id_that_clashes_is_redrawn_and_the_first_tenant_is_uncha
     async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
         headers = toy.bearer("ada")
         one = await http.post("/libraries", json=TENANT_BODY, headers=headers)
-        two = await http.post("/libraries", json=TENANT_BODY, headers=headers)
+        two = await http.post(
+            "/libraries", json={**TENANT_BODY, "label": "Bruges"}, headers=headers
+        )
         again = await http.get(one.headers["location"], headers=headers)
     assert one.headers["location"].endswith(f"/{first}"), "the first create took the first draw"
     assert two.headers["location"].endswith(f"/{fresh}"), "the clash was redrawn"
     assert again.status_code == 200, "the first tenant is unchanged"
+    assert again.json()["label"] == TENANT_BODY["label"], "and keeps its label"
 
 
 async def test_without_an_id_source_two_creates_draw_different_ids_of_the_policy_length() -> None:
@@ -329,4 +332,5 @@ async def test_without_an_id_source_two_creates_draw_different_ids_of_the_policy
             for _ in range(2)
         ]
     assert locations[0] != locations[1], "drawn, not fixed"
-    assert [len(i) for i in locations] == [7, 7], "the policy's tenant id length"
+    length = CONSUMER_POLICY.tenant_id.length
+    assert [len(i) for i in locations] == [length, length], "the policy's tenant id length"

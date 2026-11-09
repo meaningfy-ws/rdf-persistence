@@ -690,6 +690,8 @@ and in `root` the slots of the tenant's root object:
 {"label": "Ghent", "root": {"description": "Books for all.", "city": "Ghent"}}
 ----
 
+The root's `label` is the tenant's: leave it out of `root`, or give the same one; another label is refused with 422.
+
 The answer is 201 with a `TenantSummary` (`id`, `label`, `state`) and a `Location`. In code, the
 same call is `kit.tenancy.create(label, root_slots, creator)`:
 

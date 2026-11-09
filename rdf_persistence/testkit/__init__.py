@@ -32,7 +32,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
 
 # public name -> (module, attribute); the conformance, round-trip and strategy modules load
 # ``pyshacl`` or ``hypothesis``
-_LAZY_MODULES = {
+_LAZY_NAMES = {
     "TokenSigner": ("rdf_persistence.testkit.tokens", "TokenSigner"),
     "access_token": ("rdf_persistence.testkit.zitadel", "access_token"),
     "create_machine_user": ("rdf_persistence.testkit.zitadel", "create_machine_user"),
@@ -46,9 +46,9 @@ _LAZY_MODULES = {
 
 def __getattr__(name: str) -> Any:
     """Load a token, Zitadel, conformance or strategy helper on first use, then keep it."""
-    if name not in _LAZY_MODULES:
+    if name not in _LAZY_NAMES:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    module, attribute = _LAZY_MODULES[name]
+    module, attribute = _LAZY_NAMES[name]
     value = getattr(import_module(module), attribute)
     globals()[name] = value
     return value

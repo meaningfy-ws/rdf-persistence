@@ -10,7 +10,7 @@ from fastapi import FastAPI
 
 from rdf_persistence.domain.exceptions import InvalidIri
 from rdf_persistence.domain.generated.service.rp_service import ServiceSettings
-from rdf_persistence.domain.iris import IdSource
+from rdf_persistence.domain.iris import IdSource, draw_id
 from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.openapi import install_openapi
 from rdf_persistence.entrypoints.problems import install_problem_handlers
@@ -36,7 +36,7 @@ def install_service(
     rules: AccessRules | Path,
     settings: ServiceSettings,
     prefix: str = "",
-    id_source: IdSource | None = None,
+    id_source: IdSource = draw_id,
 ) -> ServiceKit:
     """Serve the application's schema on ``app``: its routes, its problem responses, its start-up.
 

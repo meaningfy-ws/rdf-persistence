@@ -21,9 +21,10 @@ from rdf_persistence.domain.generated.rp_access import (
 )
 from rdf_persistence.domain.iris import graph_iri
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
+from rdf_persistence.entrypoints.negotiation import RECORD_ETAG
+from rdf_persistence.services import vocabulary
 from rdf_persistence.services.access import AccessRules, load_role_definitions
-from tests.fixtures.library.generated.library import Library
-from tests.toy import ROLES, SETTINGS, toy_mapper
+from tests.toy import ROLES, SETTINGS
 from tests.toy_service import DUNE_BODY, TENANT_BODY, principal_of
 from tests.unit.entrypoints.scene import NIL, PROBLEMS, Scene, problem_of
 
@@ -70,6 +71,22 @@ async def test_a_tenant_root_the_service_cannot_take_is_a_422(service, client, r
     assert (response.status_code, problem_of(response).type) == (422, f"{PROBLEMS}invalid-body"), (
         root
     )
+
+
+async def test_a_tenant_root_with_another_label_is_a_422_and_creates_nothing(
+    service, client
+) -> None:
+    before = await service.store.list_datasets()
+    response = await client.post(
+        "/libraries",
+        json={"label": "Ghent", "root": {"description": "d", "label": "Bruges"}},
+        headers=service.bearer("ada"),
+    )
+    assert (response.status_code, problem_of(response).type) == (
+        422,
+        f"{PROBLEMS}invalid-body",
+    ), response.text
+    assert await service.store.list_datasets() == before, "nothing was created"
 
 
 async def test_a_refused_tenant_leaves_no_database_behind(service, client) -> None:
@@ -233,16 +250,11 @@ async def _ada_is_prohibited(scene: Scene, action: Action) -> str:
             Prohibition(assignee=principal_of("ada"), target=scene.tenant_iri, action=action)
         ],
     )
-    response = await scene.http.put(
-        f"{scene.tenant}/grants",
-        content=grants.model_dump_json(exclude_none=True),
-        headers=scene.headers("ada", **{"If-Match": scene.access_etag, "Content-Type": JSON}),
-    )
-    assert response.status_code == 200, response.text
-    return response.headers["etag"]
+    return await scene.set_grants(grants)
 
 
-async def test_a_member_may_delete_a_book_but_not_the_tenant(scene) -> None:  # T-2
+async def _ada_and_mia_are_members(scene: Scene) -> str:
+    """Add a ``member`` role (read, modify, delete) to the rules and make mia one; the new access ETag."""
     member = RoleDefinition(
         role="member",
         level=RoleLevel.TENANT,
@@ -251,20 +263,20 @@ async def test_a_member_may_delete_a_book_but_not_the_tenant(scene) -> None:  # 
     scene.service.kit.rules = AccessRules([*load_role_definitions(ROLES), member]).with_iris(
         scene.service.kit.iris
     )
-    grants = GrantSet(
-        grants=[
-            Grant(assignee=principal_of("ada"), target=scene.tenant_iri, role="librarian"),
-            Grant(assignee=principal_of("mia"), target=scene.tenant_iri, role="member"),
-        ]
+    return await scene.set_grants(
+        GrantSet(
+            grants=[
+                Grant(assignee=principal_of("ada"), target=scene.tenant_iri, role="librarian"),
+                Grant(assignee=principal_of("mia"), target=scene.tenant_iri, role="member"),
+            ]
+        )
     )
-    put = await scene.http.put(
-        f"{scene.tenant}/grants",
-        content=grants.model_dump_json(exclude_none=True),
-        headers=scene.headers("ada", **{"If-Match": scene.access_etag, "Content-Type": JSON}),
-    )
-    assert put.status_code == 200, put.text
+
+
+async def test_a_member_may_delete_a_book_but_not_the_tenant(scene) -> None:  # T-2
+    etag = await _ada_and_mia_are_members(scene)
     refused = await scene.http.delete(
-        scene.tenant, headers=scene.headers("mia", **{"If-Match": put.headers["etag"]})
+        scene.tenant, headers=scene.headers("mia", **{"If-Match": etag})
     )
     assert refused.status_code == 403, "delete alone does not delete the tenant"
     datasets = await scene.service.store.list_datasets()
@@ -274,6 +286,10 @@ async def test_a_member_may_delete_a_book_but_not_the_tenant(scene) -> None:  # 
         scene.book, headers=scene.headers("mia", **{"If-Match": scene.book_etag})
     )
     assert book.status_code == 204, "but a member deletes a book"
+    gone = await scene.http.get(scene.book, headers=scene.headers("ada"))
+    assert gone.status_code == 404, "the book is gone"
+    kept = await scene.http.get(scene.tenant, headers=scene.headers("ada"))
+    assert kept.status_code == 200, "and the tenant still reads"
 
 
 async def test_a_prohibition_of_administer_keeps_the_tenant(scene) -> None:  # T-3
@@ -334,7 +350,9 @@ async def test_a_tenant_has_one_label_whichever_route_changes_it(scene) -> None:
     root = await scene.http.get(scene.tenant, headers=scene.headers("ada"))
     assert root.json()["label"] == "B", "the rename reached the root"
     refused = await _put_root(scene, "C", root.headers["etag"])
-    assert (refused.status_code, problem_of(refused).type) == (422, f"{PROBLEMS}invalid-body")
+    assert (refused.status_code, problem_of(refused).type) == (422, f"{PROBLEMS}invalid-body"), (
+        "the body repeats a label the record does not have"
+    )
     assert "label route" in (problem_of(refused).detail or ""), "it names the label route"
     unchanged = await scene.http.get(scene.tenant, headers=scene.headers("ada"))
     assert unchanged.json()["label"] == "B", "the refused PUT wrote nothing"
@@ -347,7 +365,7 @@ async def test_a_tenant_has_one_label_whichever_route_changes_it(scene) -> None:
 
 
 async def test_a_drifted_root_label_is_refused_until_a_rename_repairs_it(scene) -> None:  # T-11
-    label = toy_mapper().predicate(Library, "label")
+    label = vocabulary.predicate("label")
     await scene.service.store.update(
         scene.service.kit.iris.resource_name(scene.tenant_iri),
         f"DELETE {{ GRAPH ?g {{ <{scene.tenant_iri}> <{label}> ?o }} }} "
@@ -358,35 +376,20 @@ async def test_a_drifted_root_label_is_refused_until_a_rename_repairs_it(scene) 
     assert root.json()["label"] == "Drifted", "the root drifted from the record"
     refused = await _put_root(scene, "Drifted", root.headers["etag"])
     assert refused.status_code == 422, "the body repeats a label the record does not have"
-    assert (await _rename(scene, "Ghent", scene.access_etag)).status_code == 200
+    assert (await _rename(scene, "Ghent", scene.access_etag)).status_code == 200, (
+        "the rename was accepted"
+    )
     repaired = await scene.http.get(scene.tenant, headers=scene.headers("ada"))
     assert repaired.json()["label"] == "Ghent", "a rename repairs the root"
-    assert (await _put_root(scene, "Ghent", repaired.headers["etag"])).status_code == 200
+    assert (await _put_root(scene, "Ghent", repaired.headers["etag"])).status_code == 200, (
+        "the root PUT with the record's label is accepted"
+    )
 
 
 async def test_the_root_read_carries_the_version_a_modifier_renames_with(scene) -> None:  # T-18
-    member = RoleDefinition(
-        role="member",
-        level=RoleLevel.TENANT,
-        actions=[Action.READ, Action.MODIFY, Action.DELETE],
-    )
-    scene.service.kit.rules = AccessRules([*load_role_definitions(ROLES), member]).with_iris(
-        scene.service.kit.iris
-    )
-    grants = GrantSet(
-        grants=[
-            Grant(assignee=principal_of("ada"), target=scene.tenant_iri, role="librarian"),
-            Grant(assignee=principal_of("mia"), target=scene.tenant_iri, role="member"),
-        ]
-    )
-    put = await scene.http.put(
-        f"{scene.tenant}/grants",
-        content=grants.model_dump_json(exclude_none=True),
-        headers=scene.headers("ada", **{"If-Match": scene.access_etag, "Content-Type": JSON}),
-    )
-    assert put.status_code == 200, put.text
+    await _ada_and_mia_are_members(scene)
     root = await scene.http.get(scene.tenant, headers=scene.headers("mia"))
-    record_etag = root.headers["record-etag"]
+    record_etag = root.headers[RECORD_ETAG]
     stale = await scene.http.put(
         f"{scene.tenant}/label",
         json={"label": "Bruges"},
@@ -404,8 +407,8 @@ async def test_the_root_read_carries_the_version_a_modifier_renames_with(scene) 
 async def test_the_record_etag_of_the_root_equals_the_etag_of_the_grants(scene) -> None:  # T-19
     root = await scene.http.get(scene.tenant, headers=scene.headers("ada"))
     grants = await scene.http.get(f"{scene.tenant}/grants", headers=scene.headers("ada"))
-    assert root.headers["record-etag"] == grants.headers["etag"]
-    assert root.headers["record-etag"] != root.headers["etag"], "it is not the root's version"
+    assert root.headers[RECORD_ETAG] == grants.headers["etag"], "it is the grants' version"
+    assert root.headers[RECORD_ETAG] != root.headers["etag"], "it is not the root's version"
 
 
 async def test_the_tenant_root_cannot_change_its_id(scene) -> None:

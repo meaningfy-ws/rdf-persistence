@@ -128,5 +128,5 @@ def library(city: str = "Ghent", iri: str = TENANT) -> Library:
 
 
 def library_slots(city: str = "Ghent") -> dict[str, Any]:
-    """The slots of a tenant root, as ``Tenancy.create`` takes them: it mints the ``id``."""
-    return library(city).model_dump(exclude={"id"}, exclude_none=True)
+    """The slots of a tenant root, as ``Tenancy.create`` takes them: it mints the ``id`` and gives the tenant's label."""
+    return library(city).model_dump(exclude={"id", "label"}, exclude_none=True)
