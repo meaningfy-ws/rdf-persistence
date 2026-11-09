@@ -203,7 +203,9 @@ def test_rendering_a_consumer_with_no_rp_core_import_still_resolves_rp_service_i
 
 def test_rendering_the_service_schema_equals_its_own_module_files() -> None:
     own = typescript.with_index(typescript._module_files(typescript.SERVICE_SCHEMA))
-    assert [f.name for f in typescript.render(typescript.SERVICE_SCHEMA)] == [f.name for f in own]
+    assert [f.name for f in typescript.render(typescript.SERVICE_SCHEMA)] == [
+        f.name for f in own
+    ], "rendering the service schema adds nothing to its own files"
 
 
 def test_a_relative_path_to_the_service_schema_is_the_same_file(
