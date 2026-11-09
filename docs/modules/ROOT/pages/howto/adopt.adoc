@@ -738,13 +738,18 @@ finds it in the `Record-ETag` header of `GET /{tenant_segment}/{t}`, beside the 
 For example, `GET /libraries/t` answers `ETag: "r7"` and `Record-ETag: "v2"`; then
 `PUT /libraries/t/label` with `If-Match: "v2"` renames, and with an older version it answers 409.
 
+The same read, and the read of any aggregate, also answers `Allowed-Actions`: the actions the caller
+may take there, from `read, modify, delete, administer` and in that order, for example
+`Allowed-Actions: read, modify`. Each item of `GET /{tenant_segment}` carries the same list as
+`allowed_actions`. Show a button only when its action is listed; the server still checks every write.
+
 `GET` and `PUT /{tenant_segment}/{t}` read and replace the root object, like any aggregate. A `PUT`
 whose `label` differs from the record's is refused with 422 `invalid-body`: the label changes only
 through `PUT …/label`.
 
 If your web app is served from another origin, its browser sees only the response headers your
-CORS settings expose. The toolkit sets none; expose `ETag` and `Record-ETag` yourself, for example
-with FastAPI's `CORSMiddleware(expose_headers=["ETag", "Record-ETag"])`.
+CORS settings expose. The toolkit sets none; expose `ETag`, `Record-ETag` and `Allowed-Actions` yourself, for example
+with FastAPI's `CORSMiddleware(expose_headers=["ETag", "Record-ETag", "Allowed-Actions"])`.
 
 [#files]
 == 10. Keep files

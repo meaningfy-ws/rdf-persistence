@@ -165,6 +165,9 @@ flowchart LR
 * A *global role* from the token (an administrator) that the rules allow passes without a grant.
 * *Per aggregate*: a Permission whose target is an aggregate's graph IRI applies to that aggregate
   only.
+* A *read* of a tenant's root or of an aggregate lists in its `Allowed-Actions` header the actions
+  `AccessRules.may` allows the caller there (`AccessRules.allowed_actions`), so a UI knows which buttons
+  to show; the tenant listing repeats it per item as `allowed_actions`. The stored document stays free of it.
 * A *listing* needs `read` on the tenant, and leaves out the aggregates a `read` Prohibition hides
   from the caller before it counts and pages (`AccessRules.hidden_graphs`).
 * *Grants are validated* when they are written (`AccessRules.validate_grants`): a target must be the

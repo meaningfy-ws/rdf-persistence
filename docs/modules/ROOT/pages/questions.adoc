@@ -31,6 +31,12 @@ holds its grants and prohibitions. The caller who creates a tenant gets the sett
 xref:howto/adopt.adoc#tenancy[step 9], xref:howto/adopt.adoc#access[step 11] and
 xref:architecture/access-control.adoc[Access control and identity].
 
+*How does my UI know which buttons to show?*::
+Read the `Allowed-Actions` header of a tenant or of an aggregate (for example `read, modify`), or the
+`allowed_actions` of the tenant's item in `GET /{tenant_segment}`. If your web app is on another origin,
+expose the header in your CORS settings. See xref:howto/adopt.adoc#tenancy[step 9] and
+xref:architecture/access-control.adoc[Access control and identity].
+
 *How do I enforce my own rule on tenant writes, such as keeping one owner?*::
 Pass `grant_validators` or `root_validators` to `install_service`. A validator raises
 `InvalidBody` to refuse: the answer is 422 and nothing is written. See
