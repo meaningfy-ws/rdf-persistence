@@ -4,8 +4,8 @@
 
 A session SHALL return, through `loaded_graph(iri, graph_iri)`, the triples of a graph loaded for
 the aggregate `iri`, read from the store. A graph IRI that is not loaded for that aggregate SHALL
-be reported as not found; a caller who may not read the aggregate SHALL be refused as for any read
-of it.
+be reported as not found. The read SHALL be gated like any read of the aggregate: the session
+checks no permission, and a consumer route checks `read` with `require_aggregate` before opening it.
 
 #### Scenario: the loaded triples come back
 - **GIVEN** an aggregate with a graph loaded from Turtle and committed with it
@@ -19,8 +19,8 @@ of it.
 
 #### Scenario: a caller without read
 - **GIVEN** a principal with no `read` on the aggregate
-- **WHEN** its session reads the aggregate's loaded graph
-- **THEN** it is refused
+- **WHEN** a consumer route checks `read` on the aggregate with `require_aggregate` before reading its loaded graph
+- **THEN** the caller is refused and no session is opened
 
 ### Requirement: A session finds aggregates by slot values
 
