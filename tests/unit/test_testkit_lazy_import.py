@@ -64,6 +64,7 @@ def test_testkit_root_does_not_import_the_heavy_libraries(heavy: str) -> None:
     [
         "assert_models_generated",
         "model_shape_diff",
+        "model_schema_diff",
         "class_shapes",
         "read_snapshot",
         "write_snapshot",

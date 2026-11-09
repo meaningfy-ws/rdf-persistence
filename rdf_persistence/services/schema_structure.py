@@ -32,7 +32,6 @@ from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 
 AGGREGATE_ROOT = "AggregateRoot"
 TENANT_ACCESS = "TenantAccess"
-DESCRIPTION = "description"
 LABEL = "label"
 EXACTLY_ONE_OF = "exactly_one_of"
 ANY_OF = "any_of"
@@ -301,7 +300,7 @@ def _set_required(cls: ClassDefinition, slot: str, required: bool) -> None:
 
 
 def apply_defaults(view: SchemaView, folder: Path) -> None:
-    """Make an unlabelled class's label optional and every aggregate root's description required (PD-11).
+    """Make an unlabelled class's label optional (PD-11); a root's description stays optional (PD-1).
 
     Only the application's classes change; the toolkit's own schemas are left as they are (PD-23).
     """
@@ -311,8 +310,6 @@ def apply_defaults(view: SchemaView, folder: Path) -> None:
     for cls in classes:
         if is_unlabelled(cls):  # Described gives it the label slot
             _set_required(cls, LABEL, False)
-    for root in aggregate_roots(view, classes):
-        _set_required(root, DESCRIPTION, True)
     view.set_modified()
 
 

@@ -205,6 +205,18 @@ requirement says the read is gated like `get_graph`, the scenario says a consume
 `read` with `require_aggregate` refuses the caller before the session is opened. The bet (DEC-4)
 holds; this is a PLAN-level correction.
 
+## PD-8 The JSON Schema reads the generation view too (#59, DEC-1; found in task 1.2)
+
+T-4's first run found a second mismatch: `Chapter.label (python: no, json schema: yes)`.
+`generation/components.py` builds `openapi-components.json` with
+`JsonSchemaGenerator(str(schema_path))`, which never sees `apply_defaults`; so an `rp_unlabelled`
+class's label is optional in Python, TypeScript and SHACL but required in the JSON Schema and
+OpenAPI. Same defect class as #59. Decision (lead, 2026-11-09; the developer may overrule): the
+components generator reads the schema of `generation_view(schema_path)`, so every artefact sees
+the same defaults; T-4 passes as written. Rejected: exempting `rp_unlabelled` in the guard (hides
+the bug); dropping `rp_unlabelled` from the toy's `Chapter` (hides it in the fixture only).
+Proof: T-4, plus **T-4b** the toy's `Chapter` component does not list `label` as required.
+
 ## Anti-patterns (do / don't / why)
 
 | Do | Don't | Why |

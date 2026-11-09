@@ -175,9 +175,9 @@ def required(view, cls: str, slot: str) -> bool:
     [
         ("Chapter", "label", False),  # rp_unlabelled
         ("Note", "label", True),  # labelled, unchanged
-        ("Book", "description", True),  # a root
-        ("Scan", "description", True),  # a root
-        ("LibraryAccess", "description", True),  # a root through TenantAccess
+        ("Book", "description", False),  # a root: optional (PD-1)
+        ("Scan", "description", False),  # a root: optional
+        ("LibraryAccess", "description", False),  # a root through TenantAccess: optional
         ("Chapter", "description", False),  # owned, not a root
         ("Library", "description", False),  # the tenant root is not an AggregateRoot
     ],
@@ -327,3 +327,9 @@ def test_the_iri_type_is_the_annotation_else_the_kebab_case_name(name, annotated
             tag=RpAnnotation.RP_IRI_TYPE.value, value=annotated
         )
     assert iri_type_of(cls) == expected, f"{name} annotated {annotated}"
+
+
+def test_the_defaults_leave_a_root_description_slot_usage_alone() -> None:
+    view = generation_view(TOY)
+    assert "description" not in view.get_class("Book").slot_usage, "PD-1: no root default"
+    assert "label" in view.get_class("Chapter").slot_usage, "rp_unlabelled keeps its default"

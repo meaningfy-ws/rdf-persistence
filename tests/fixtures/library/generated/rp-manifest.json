@@ -43,7 +43,7 @@
     },
     {
       "path": "rdf_persistence/generation/components.py",
-      "sha256": "cedfb9cb9e3745c7ee5f587f674c86182b44e55f4ea8a421be56fec5dac8e45f"
+      "sha256": "f605eccb99b8767973309750f8c67106abce5615a916ecaab22858a0ce130c41"
     },
     {
       "path": "rdf_persistence/generation/config.py",
@@ -175,7 +175,7 @@
     },
     {
       "path": "rdf_persistence/services/schema_structure.py",
-      "sha256": "2ead45a049502e5c542a78b2fee334169a7ee87a32c38565f548845180e16c93"
+      "sha256": "e1c3f3eaddc5b63930cf9001b71ba5ad7ecb64b993de6809a6440bf014b1b313"
     },
     {
       "path": "scans.yaml",
@@ -205,7 +205,7 @@
     },
     {
       "path": "generated/books.py",
-      "sha256": "eafd651d88a7b81c2df591ba88e4d88192cfd01e3fecbcc5407ff52b31ba8c74"
+      "sha256": "a200e92a4f995c08863bfbbec5c04a827b8d19670588117b668f86bd5b425930"
     },
     {
       "path": "generated/context.jsonld",
@@ -233,7 +233,7 @@
     },
     {
       "path": "generated/library_access.py",
-      "sha256": "e9e5e178398565980946416b49a165c4791c0132b78fb215326b719c701d5509"
+      "sha256": "e5da004d06535ba2d39639b81029337f65735ae891ba9d6987e4ff00172f0522"
     },
     {
       "path": "generated/library_tenant.py",
@@ -241,19 +241,19 @@
     },
     {
       "path": "generated/openapi-components.json",
-      "sha256": "900a4e10359bf0ed6e72ee1ba711cbfd28f0f3d060581efc4658edefb6cefb9b"
+      "sha256": "a143c59abf3a12b9300a58e898b7daf5882ec9a39503b56ce74ac78bb0cc276a"
     },
     {
       "path": "generated/scans.py",
-      "sha256": "125fc70e95f3a666e973e6a3efc270eea80f829e933635909fc697d9b48c988c"
+      "sha256": "326586879b781b8f6247d027c7637a302d1e4b1c3045fb257ddd14da6bbcb2a5"
     },
     {
       "path": "generated/shapes.ttl",
-      "sha256": "6eb637ff19a580468547ab2b538492e3991f671458de7ed4dba696acda6232d9"
+      "sha256": "fe3dfb765740156020d32799a5c6d063aab6a2d99b0a8dccf1699bda6f0e94cb"
     },
     {
       "path": "web/src/domain/generated/books.ts",
-      "sha256": "a3068907b5319ca3389a51a559de2e0ff3bfdb6d70ac16c10ca381780c7afa3b"
+      "sha256": "ff192223a0e1a2ff6b70a476d47c248a020146ee5a84c11563578b0542949654"
     },
     {
       "path": "web/src/domain/generated/index.ts",
@@ -261,7 +261,7 @@
     },
     {
       "path": "web/src/domain/generated/library_access.ts",
-      "sha256": "1117d8d2cdc04264c3ae6ce84ef50b3c59bd9cbac505e1b0bc99aae6c73716bf"
+      "sha256": "2b34841545cb1d5b79f661617632cbff1c76e61e6526d86c72019e7ee7e31153"
     },
     {
       "path": "web/src/domain/generated/library_tenant.ts",
@@ -289,7 +289,7 @@
     },
     {
       "path": "web/src/domain/generated/scans.ts",
-      "sha256": "ce9260e152cc425b596932a608c68a73c5bacf755abfdb77596f08ca1011aa55"
+      "sha256": "ee9db61707ca81041e510adb501870dc8193173fb2fe8544ffe6264cadeab3c3"
     }
   ]
 }

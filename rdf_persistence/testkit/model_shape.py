@@ -1,7 +1,7 @@
 """The model-shape test (PD-27 item 5): generated pydantic fields against the schema's induced slots."""
 
 import typing
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 
 from linkml_runtime.utils.formatutils import underscore
 from pydantic import BaseModel
@@ -22,6 +22,34 @@ def model_shape_diff(shapes: list[ClassShape], models: Iterable[type[BaseModel]]
         else:
             lines += _field_lines(shape, model)
     return lines
+
+
+def model_schema_diff(
+    components: Mapping[str, Mapping], models: Iterable[type[BaseModel]]
+) -> list[str]:
+    """Where a generated model requires a property the JSON Schema leaves optional, or the reverse.
+
+    ``components`` is the ``schemas`` object of a generated ``openapi-components.json``. Models
+    without a component, and properties absent from one, are skipped. Empty when they agree.
+    """
+    lines: list[str] = []
+    for model in models:
+        component = components.get(model.__name__)
+        if component is None:
+            continue
+        properties, required = component.get("properties", {}), set(component.get("required", []))
+        for name, field in model.model_fields.items():
+            key = field.alias or name
+            if key in properties and field.is_required() != (key in required):
+                lines.append(
+                    f"required differs: {model.__name__}.{key} "
+                    f"(python: {_yes(field.is_required())}, json schema: {_yes(key in required)})"
+                )
+    return lines
+
+
+def _yes(flag: bool) -> str:
+    return "yes" if flag else "no"
 
 
 def _field_lines(shape: ClassShape, model: type[BaseModel]) -> list[str]:

@@ -101,8 +101,7 @@
         }
       },
       "required": [
-        "id",
-        "label"
+        "id"
       ],
       "title": "Chapter",
       "type": "object"

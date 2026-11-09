@@ -513,12 +513,12 @@ async def test_a_replace_of_a_book_that_does_not_exist_does_not_create_it(scene)
 @pytest.mark.parametrize(
     "body",
     [
-        {k: v for k, v in DUNE_BODY.items() if k != "description"},
+        {k: v for k, v in DUNE_BODY.items() if k != "label"},
         {**DUNE_BODY, "colour": "red"},
         {**DUNE_BODY, "genre": "cookery"},
         {**DUNE_BODY, "chapters": [{"number": "one"}]},
     ],
-    ids=["missing-description", "unknown-slot", "unknown-enum-value", "wrong-datatype"],
+    ids=["missing-label", "unknown-slot", "unknown-enum-value", "wrong-datatype"],
 )
 async def test_a_book_that_fails_its_shape_is_a_422_and_writes_nothing(scene, body) -> None:
     writes = len(scene.service.store.sent("update"))

@@ -25,7 +25,12 @@ from rdf_persistence.services.artifacts import (
     SCHEMAS,
 )
 from rdf_persistence.services.schema import load_schema, metamodel_importmap
-from rdf_persistence.services.schema_structure import is_bookkeeping, is_internal, json_name
+from rdf_persistence.services.schema_structure import (
+    apply_defaults,
+    is_bookkeeping,
+    is_internal,
+    json_name,
+)
 
 # One JSON Schema definition: JSON data of a library, not a model of ours.
 JsonSchema = dict[str, Any]
@@ -35,6 +40,7 @@ def _generated(schema_path: Path) -> dict[str, JsonSchema]:
     generator = JsonSchemaGenerator(
         str(schema_path), importmap=metamodel_importmap(), include_null=False
     )
+    apply_defaults(generator.schemaview, schema_path.parent)  # PD-8: the same view as the Python
     definitions: dict[str, JsonSchema] = json.loads(generator.serialize())["$defs"]
     return definitions
 

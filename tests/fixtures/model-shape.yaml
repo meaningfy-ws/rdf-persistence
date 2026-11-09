@@ -69,7 +69,7 @@
     multivalued: false
     range: Principal
   - name: description
-    required: true
+    required: false
     multivalued: false
     range: string
   - name: genre
@@ -318,7 +318,7 @@
     multivalued: false
     range: string
   - name: description
-    required: true
+    required: false
     multivalued: false
     range: string
   - name: grants
@@ -576,7 +576,7 @@
     multivalued: false
     range: Principal
   - name: description
-    required: true
+    required: false
     multivalued: false
     range: string
   - name: file_key

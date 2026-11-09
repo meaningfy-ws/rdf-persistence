@@ -82,7 +82,7 @@ class Book(Tracked, Described, AggregateRoot):
     chapters: Optional[list[Chapter]] = Field(default=None, title="Chapters", description="The chapters of the book; they live in the book\u0027s graph.")
     id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
     label: str = Field(default=..., title="Label", description="The preferred label of the object.")
-    description: str = Field(default=..., title="Description", description="A free-text description of the object.")
+    description: Optional[str] = Field(default=None, title="Description", description="A free-text description of the object.")
     created: Optional[datetime ] = Field(default=None, title="Created", description="The time the graph was first committed.")
     modified: Optional[datetime ] = Field(default=None, title="Modified", description="The time the graph was last committed.")
     creator: Optional[str] = Field(default=None, title="Creator", description="The principal that first committed the graph.")

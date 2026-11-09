@@ -283,8 +283,7 @@ book = Book(
     chapters=[Chapter(id="https://example.org/library/books/1/chapters/1", number=1)],
 )
 
-Book(id="https://example.org/library/books/2", label="No description")
-# ValidationError: description: Field required (an aggregate root must be described)
+Book(id="https://example.org/library/books/2", label="No description")  # valid: a description is optional
 
 book.chapters[0].number = "one"
 # ValidationError: number: Input should be a valid integer (checked on assignment too)
@@ -294,8 +293,8 @@ Book(id="https://example.org/library/books/3", label="L", description="D", isbn=
 ----
 
 The fields come from the schema. `author` and `chapters` are in `books.yaml`. The `Described`
-mixin adds `id`, `label` and `description`: `id` and `label` are required, and so is `description`
-on an aggregate root; a class annotated `rp_unlabelled: true` (`Chapter`) needs no `label`. The
+mixin adds `id`, `label` and `description`: `id` and `label` are required, `description` is optional
+everywhere, an aggregate root included; a class annotated `rp_unlabelled: true` (`Chapter`) needs no `label`. The
 `Tracked` mixin adds `created`, `modified`, `creator` and `contributor`: the session sets them
 (step 8), never you. `AggregateRoot` adds no field; it marks the class as a root.
 
@@ -502,13 +501,16 @@ you commit; a model change fails this test until you refresh the file and review
 [source,python]
 ----
 # tests/test_model.py (continued)
+import json
 import os
 
 from rdf_persistence.testkit import (
-    Conformance, class_shapes, model_shape_diff, read_snapshot, snapshot_diff, write_snapshot,
+    Conformance, class_shapes, model_schema_diff, model_shape_diff, read_snapshot, snapshot_diff,
+    write_snapshot,
 )
 
 SNAPSHOT = ROOT / "tests" / "model-shape.yaml"
+COMPONENTS = ROOT / "domain" / "generated" / "openapi-components.json"
 
 
 def test_the_model_shape_is_the_reviewed_one():
@@ -523,11 +525,18 @@ def test_the_generated_classes_follow_the_schema():
     # the schema's own classes; those it imports from the toolkit are the toolkit's to check
     shapes = [s for s in class_shapes([SCHEMA]) if s.class_name in models]
     assert model_shape_diff(shapes, models.values()) == []
+
+
+def test_python_and_json_schema_agree_on_what_is_required():
+    components = json.loads(COMPONENTS.read_text())["schemas"]
+    assert model_schema_diff(components, Conformance.of(SCHEMA).models.values()) == []
 ----
 
 Refresh it with `REFRESH_SNAPSHOT=1 uv run pytest tests/test_model.py`, then review the diff of
 `tests/model-shape.yaml` in your pull request. The second test compares each generated class with
-the schema's induced slots, so stale or edited code fails even before the snapshot does.
+the schema's induced slots, so stale or edited code fails even before the snapshot does. The third
+compares each class's required fields with the `required` list of its JSON Schema in
+`openapi-components.json`, so the Python and the API document cannot disagree on a required field.
 
 == 7. Change the model
 
