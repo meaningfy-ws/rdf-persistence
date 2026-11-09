@@ -48,6 +48,16 @@ generated package, the four adapters, the role definitions and a `ServiceSetting
 `ServiceKit` for your own routes. See xref:howto/adopt.adoc#serve[step 12] and
 xref:architecture/api.adoc#serving[Serving it].
 
+*How do I read back a graph I loaded?*::
+Check the read with `kit.require_aggregate(..., Action.READ)`, then call
+`session.loaded_graph(root_iri, graph_iri)` for a plain rdflib `Graph`. The session checks no access
+itself. See xref:howto/adopt.adoc#files[step 10].
+
+*How do I check that a name is not taken yet?*::
+Call `session.find(Scan, file_name=name)` and answer 409 when the list is not empty. `find` ignores
+Prohibitions, so check each IRI with `require_aggregate` before you show it to anyone. See
+xref:howto/adopt.adoc#files[step 10].
+
 *How do I make my own IRIs?*::
 Describe their shape as an `IriPolicy`: a template for the tenant, the aggregates, the owned parts
 and the loaded graphs (for example `{base}{tenant_id}/{type}/{id}`) and the rule for each id (a

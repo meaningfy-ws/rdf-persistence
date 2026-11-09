@@ -844,6 +844,50 @@ async with kit.session(tenant, principal) as session:
 replaces them, and the graphs left out are emptied. `remove` empties every loaded graph of the
 aggregate. Formats: `turtle`, `rdfxml`, `ntriples` and `jsonld`.
 
+*Reading a loaded graph back.* `Session.loaded_graph(iri, graph_iri)` returns the triples of a graph
+loaded for the aggregate as an rdflib `Graph`. The session checks no access, so check the read
+first, as for any read of the aggregate:
+
+[source,python]
+----
+from rdflib import OWL, RDF
+
+checked = await kit.require_aggregate(
+    request.headers.get("authorization"), t, "scans", scan_id, Action.READ
+)
+async with kit.session(checked.caller_access.tenant, checked.principal) as session:
+    content = await session.loaded_graph(checked.checked_target, graph_iri)
+classes = sum(1 for _ in content.subjects(RDF.type, OWL.Class))
+----
+
+A graph that is not loaded for that aggregate raises `NotFound`, whoever owns it.
+
+*Finding aggregates by value.* `Session.find(cls, **equals)` returns the IRIs of the tenant's
+aggregates of a class whose slots equal the values, in IRI order. Use it for a uniqueness check
+before a write:
+
+[source,python]
+----
+async with kit.session(tenant, principal) as session:
+    if await session.find(Scan, file_name=name):
+        raise HTTPException(status_code=409, detail=f"a scan named {name} exists")
+----
+
+`find` ignores Prohibitions on purpose: a duplicate you may not see is still a duplicate. So never
+show its result to a caller as it is. Check each IRI with `kit.require_aggregate`, or answer from the
+listing route, which applies the rules. A list value asks for all its items:
+`find(Book, authors=["X", "Y"])` returns the books that have both.
+
+`find` is not a snapshot: it reads page by page, so a write made meanwhile by another request can
+slip past a uniqueness check. Called without filters, it reads every aggregate of the class, so never
+pass a caller's input to it unfiltered. `find` raises:
+
+* `RuntimeError`, when the session was opened without listings. The service kit opens its sessions
+  with them.
+* `ValueError`, when the class is not an aggregate root the service serves, or a list value is
+  empty.
+* `BadQuery`, when a name is not a slot, or a value does not fit its slot.
+
 [#access]
 == 11. Control access
 
@@ -1147,8 +1191,9 @@ _How do I test my application without servers?_
 |`FakeFileStore()` |a `FileStore`
 |`FakeIdentity()` |an `Identity`
 |`TokenSigner()` |the identity provider's keys: `issue(sub=…, roles=[…])` signs a token, and `transport` serves the keys to a `JwksTokenVerifier`
-|`fake_session(store, *, tenant_iri, principal, clock, iris)` |a real `Session` over a `FakeStore`,
-for a domain service's unit test; pass `iris` to test under your own IRI policy
+|`fake_session(store, *, tenant_iri, principal, clock, iris, listings)` |a real `Session` over a `FakeStore`,
+for a domain service's unit test; pass `iris` to test under your own IRI policy, and
+`listings=Listings(view)` (both from `rdf_persistence`) to use `find`
 |===
 
 The toy library's router tests build the whole service over them (`tests/toy_service.py`):
