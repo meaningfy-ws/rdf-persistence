@@ -108,11 +108,18 @@ people is [`develop/agents.adoc`](docs/modules/ROOT/pages/develop/agents.adoc); 
 - **Every brief carries the standing rules:** models, not dicts; LinkML is the single source; the
   testing checklist. The report names each make target run with its time and test count.
 - **Gates.** Before a task is handed out, the lead runs gitnexus impact (stop and report
-  HIGH/CRITICAL); after it, the lead re-runs the `make` gates listed in `develop/agents.adoc`.
+  HIGH/CRITICAL; subagents have no gitnexus tools, so briefs never ask for it); after it, the lead
+  re-runs the `make` gates listed in `develop/agents.adoc`. Per task: the affected test folders with
+  `-n auto`, `make check-quality`, `make clean-code`; the full suite (`make check-all`,
+  `make test-containers`) once, before the PR.
+- **Challenge, scaled to keep it cheap** (developer, 2026-11-09). The adversarial tester runs right
+  after the riskiest task (new invariants, write order, concurrency), not only at the end; review
+  lenses L4 and L5 are one pass; the checker reads the lead's `make check-all` result and does not
+  re-run tests. Details and reasons: `develop/agents.adoc`.
 - **Merge and release.** One PR per stage into `develop`, merged only on green CI; a release comes
   last, so nothing is committed after the tag.
-- **Habits.** Re-index gitnexus regularly (`gitnexus analyze --embeddings --skip-agents-md
-  --skip-skills`); keep the durations table in `develop/index.adoc` from ordinary runs (no
+- **Habits.** Re-index gitnexus after each commit (`gitnexus analyze --embeddings
+  --skip-agents-md --skip-skills`, ≈ 20 s); keep the durations table in `develop/index.adoc` from ordinary runs (no
   profiling); docs open with questions (`questions.adoc`) — add the question a new page answers.
 
 ## `.claude/` is a regenerable index — the truth is `openspec/specs/`
