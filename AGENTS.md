@@ -119,7 +119,10 @@ people is [`develop/agents.adoc`](docs/modules/ROOT/pages/develop/agents.adoc); 
 - **Merge and release.** One PR per stage into `develop`, merged only on green CI; a release comes
   last, so nothing is committed after the tag.
 - **Habits.** Re-index gitnexus after each commit (`gitnexus analyze --embeddings
-  --skip-agents-md --skip-skills`, ≈ 20 s); keep the durations table in `develop/index.adoc` from ordinary runs (no
+  --skip-agents-md --skip-skills`, ≈ 20 s). If it errors (developer, 2026-11-09), do not retry or
+  investigate: run `gitnexus clean --force` and the same `analyze` again (≈ 4 min, in the
+  background), then revert anything it wrote to `AGENTS.md`, `CLAUDE.md` or `.claude/skills/`.
+  Keep the durations table in `develop/index.adoc` from ordinary runs (no
   profiling); docs open with questions (`questions.adoc`) — add the question a new page answers.
 
 ## `.claude/` is a regenerable index — the truth is `openspec/specs/`
