@@ -238,6 +238,14 @@ importing each other (rule 8); renames (PD-3); module `pytestmark` against `pyte
 wall time skewed by start-up (PD-4); `World`'s own `TokenSigner()` and the container lane's
 `ToyService` (PD-6); `git ls-files` relative paths (PD-3).
 
+## Delivery findings
+
+- **F-1 (task 1.1, 2026-11-09).** With the freshness guard, `tests/unit/test_smoke.py` (2 tests)
+  takes 22.5 s wall and 61 s CPU with `-n auto` (before: 22.1 s, 73 s) and 5.3 s with `-n 0`. The
+  guard saves ≈ 1 s CPU per worker; the rest of xdist's cost is each worker importing the stack.
+  So PD-5 (one process for small selections) carries the inner-loop speed, not DEC-8. DEC-8 stays:
+  it is correct and cheap, and saves CPU on every parallel run.
+
 ## Open Questions
 
 None. The lead's choices (PD-1 to PD-7, DEC-6's turn from a shared app to a shared key, DEC-8)

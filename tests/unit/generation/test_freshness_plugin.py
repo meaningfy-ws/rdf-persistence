@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence.generation.cli import main
+from rdf_persistence.testkit import freshness
 
 from .test_freshness import DEFAULT_HINT, NAMED
 from .test_generate_cli import PYPROJECT, SCHEMA
@@ -145,3 +146,30 @@ def test_a_non_string_command_stops_the_session_naming_the_toml_key(
     text = stop_text(session)
     assert "regenerate-command" in text, "the TOML key is not named"
     assert "to regenerate" not in text, "a configuration error suggests regenerating"
+
+
+def test_an_xdist_worker_does_not_check_again() -> None:
+    """The controller checked before any worker started (PD-7), so a worker returns at once."""
+
+    class Config:
+        workerinput = {"workerid": "gw0"}
+
+        def getini(self, name: str) -> list[str]:
+            raise AssertionError(f"a worker read the ini option {name!r}")
+
+    class Session:
+        config = Config()
+
+    freshness.pytest_sessionstart(Session())  # type: ignore[arg-type]
+
+
+def test_a_stale_project_on_several_workers_stops_the_session_once(
+    session: pytest.Pytester,
+) -> None:
+    (session.path / "m.yaml").write_text(SCHEMA + "# changed\n", encoding="utf-8")
+    result = session.runpytest_subprocess("-n", "2")
+    assert result.ret == 1, "the session did not stop with exit code 1"
+    out = result.stdout.str()
+    assert out.count("generated code is not fresh") == 1, f"not stopped exactly once:\n{out}"
+    assert "gw0" not in out + result.stderr.str(), "a worker started on a stale tree"
+    assert "test_it" not in out, "a test ran in a stale session"

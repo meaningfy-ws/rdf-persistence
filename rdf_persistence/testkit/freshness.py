@@ -41,6 +41,8 @@ def _project_report(project: Path) -> tuple[list[str], list[GenerationTarget]]:
 
 def pytest_sessionstart(session: pytest.Session) -> None:
     config = session.config
+    if hasattr(config, "workerinput"):
+        return  # an xdist worker: the controller checked before starting it (test-lanes PD-7)
     projects = config.getini(PROJECTS_OPTION) or [DEFAULT_PROJECT]
     lines: list[str] = []
     stale: list[GenerationTarget] = []
