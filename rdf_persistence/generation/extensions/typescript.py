@@ -25,7 +25,7 @@ from rdf_persistence.generation.generated.rp_generation import (
     TsModule,
 )
 from rdf_persistence.generation.templating import environment
-from rdf_persistence.services.schema import metamodel_importmap
+from rdf_persistence.services.schema import PACKAGE_DIR, metamodel_importmap
 from rdf_persistence.services.schema_structure import apply_defaults, is_internal, is_owned
 
 TEMPLATES = "typescript"
@@ -34,6 +34,13 @@ INDEX_TEMPLATE = "index.ts.jinja"
 INDEX_NAME = "index.ts"
 NUMBER_URIS = ("xsd:integer", "xsd:decimal", "xsd:double", "xsd:float")
 BOOLEAN_URI = "xsd:boolean"
+ANY_URI = "linkml:Any"
+SERVICE_SCHEMA = PACKAGE_DIR / "model" / "service" / "rp_service.yaml"
+
+
+def _has_interface(cls: ClassDefinition) -> bool:
+    """Mixins fold into their users and ``linkml:Any`` is ``unknown``; neither is an interface."""
+    return not cls.mixin and cls.class_uri != ANY_URI
 
 
 def doc(text: str | None) -> str:
@@ -58,6 +65,8 @@ class ToolkitTypescriptGenerator(TypescriptGenerator):
         """The TypeScript type of the slot's values (without ``[]``)."""
         view = self.schemaview
         if slot.range in view.all_classes():
+            if view.get_class(slot.range).class_uri == ANY_URI:
+                return "unknown"
             return self.name(view.get_class(slot.range)) if is_owned(slot) else "string"
         if slot.range in view.all_enums():
             return str(self.name(view.get_enum(slot.range)))
@@ -116,7 +125,7 @@ class ToolkitTypescriptGenerator(TypescriptGenerator):
         ]
 
     def module(self, schema: SchemaDefinition) -> TsModule:
-        classes = [cls for cls in schema.classes.values() if not cls.mixin]
+        classes = [cls for cls in schema.classes.values() if _has_interface(cls)]
         interfaces = [self._interface(self.schemaview.get_class(cls.name)) for cls in classes]
         return TsModule(
             name=schema.name,
@@ -127,27 +136,48 @@ class ToolkitTypescriptGenerator(TypescriptGenerator):
 
     def files(self) -> list[GeneratedFile]:
         """One file per module that defines classes or enums, and ``index.ts`` exporting them."""
+        return index_added(self.module_files())
+
+    def module_files(self) -> list[GeneratedFile]:
+        """One file per module that defines classes or enums."""
         env = environment(TEMPLATES)
         self.schemaview.imports_closure()
         modules = [
             self.module(schema)
             for schema in self.schemaview.schema_map.values()
-            if schema.enums or any(not cls.mixin for cls in schema.classes.values())
+            if schema.enums or any(_has_interface(cls) for cls in schema.classes.values())
         ]
         modules.sort(key=lambda module: module.name)
-        files = [
+        return [
             GeneratedFile(
                 name=f"{module.name}.ts",
                 text=env.get_template(MODULE_TEMPLATE).render(module=module),
             )
             for module in modules
         ]
-        index = env.get_template(INDEX_TEMPLATE).render(modules=[module.name for module in modules])
-        return [*files, GeneratedFile(name=INDEX_NAME, text=index)]
+
+
+def index_added(files: list[GeneratedFile]) -> list[GeneratedFile]:
+    """``files`` (module files, in order) and the ``index.ts`` that exports each of them."""
+    names = sorted(file.name.removesuffix(".ts") for file in files)
+    index = environment(TEMPLATES).get_template(INDEX_TEMPLATE).render(modules=names)
+    return [*files, GeneratedFile(name=INDEX_NAME, text=index)]
+
+
+def _module_files(schema_path: Path) -> list[GeneratedFile]:
+    generator = ToolkitTypescriptGenerator(str(schema_path), importmap=metamodel_importmap())
+    apply_defaults(generator.schemaview, schema_path.parent)
+    return generator.module_files()
 
 
 def render(schema_path: Path) -> list[GeneratedFile]:
-    """The TypeScript files of the schema at ``schema_path``."""
-    generator = ToolkitTypescriptGenerator(str(schema_path), importmap=metamodel_importmap())
-    apply_defaults(generator.schemaview, schema_path.parent)
-    return generator.files()
+    """The TypeScript files of the schema at ``schema_path`` plus the toolkit's service types.
+
+    A consumer's API carries the service types (``rp_service``), so they are written beside the
+    modules the schema imports; the index exports every module once.
+    """
+    files = _module_files(schema_path)
+    if schema_path.resolve() != SERVICE_SCHEMA.resolve():
+        written = {file.name for file in files}
+        files += [f for f in _module_files(SERVICE_SCHEMA) if f.name not in written]
+    return index_added(files)

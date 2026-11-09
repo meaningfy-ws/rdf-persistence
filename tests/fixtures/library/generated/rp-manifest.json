@@ -27,7 +27,7 @@
     },
     {
       "path": "rdf_persistence/generation/checks/boundary.py",
-      "sha256": "cd7c897060074760e7971afc4f1b329a2b90358448ab86e3070a6ee14dac22e9"
+      "sha256": "8354701d921b90db91906d76c5fd595bbf53b364325f1d3edec775d3dc3d644e"
     },
     {
       "path": "rdf_persistence/generation/checks/hard.py",
@@ -83,7 +83,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/typescript.py",
-      "sha256": "15f76fffca66001dec9359330e4dcaae5ec6397b9688150153761c77bc056c04"
+      "sha256": "32843a821b693fffda88a3a93669e4e6ac4bf76a342f9280ee87aae2510568dc"
     },
     {
       "path": "rdf_persistence/generation/manifest.py",
@@ -253,7 +253,7 @@
     },
     {
       "path": "web/src/domain/generated/index.ts",
-      "sha256": "61696039e32b8dc3d1f635014e2d120fb2cdebfa38440469efd80d2dc5bcbf23"
+      "sha256": "a005b57b6fc12009a6a24a6a9183fbba666c2b06f0f7f4ee18180b77f65b6ee0"
     },
     {
       "path": "web/src/domain/generated/library_access.ts",
@@ -274,6 +274,10 @@
     {
       "path": "web/src/domain/generated/rp_files.ts",
       "sha256": "266714544987413f17fe468d00b3085859617c67c1362e6ef93a9ede0428f268"
+    },
+    {
+      "path": "web/src/domain/generated/rp_service.ts",
+      "sha256": "67ca8bd11b4547350b95aa32e16281860a6f67a5917d98f71d28a272b77fdff6"
     },
     {
       "path": "web/src/domain/generated/rp_tenancy.ts",

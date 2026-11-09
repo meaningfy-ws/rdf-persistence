@@ -88,3 +88,25 @@ def test_the_output_is_reproducible(staged: Path, tmp_path: Path) -> None:
     again = run_toy(TYPESCRIPT_STEP, tmp_path) / str(TOY_TARGET.typescript)
     first = {p.name: p.read_bytes() for p in staged.iterdir()}
     assert first == {p.name: p.read_bytes() for p in again.iterdir()}, "two runs differ"
+
+
+def test_the_service_types_are_written_with_any_as_unknown(staged: Path) -> None:
+    service = text(staged, "rp_service")
+    for name in (
+        "AccountSummary",
+        "TenantSummary",
+        "TenantCreate",
+        "Page",
+        "Problem",
+        "GrantSet",
+        "LabelUpdate",
+    ):
+        assert f"export interface {name} " in service, f"{name} is missing from rp_service.ts"
+    assert "root: unknown;" in service, "a slot ranging over Any is unknown"
+    assert "items: unknown[];" in service, "a multivalued slot ranging over Any is unknown[]"
+    assert "interface Any" not in service, "Any has no interface of its own"
+
+
+def test_the_index_exports_the_service_types_once(staged: Path) -> None:
+    index = text(staged, "index")
+    assert index.count('export * from "./rp_service";') == 1, "the index exports rp_service once"
