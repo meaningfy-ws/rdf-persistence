@@ -39,8 +39,10 @@ from rdf_persistence.entrypoints.auth import Gate
 from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.negotiation import (
     IF_MATCH,
+    RECORD_ETAG,
     accepted_listing_type,
     accepted_media_type,
+    etag_of,
     expected_version,
     request_media_type,
 )
@@ -267,7 +269,10 @@ def add_tenant_routes(router: APIRouter, kit: ServiceKit, gate: Gate) -> None:
     async def read_root(
         request: Request, caller: VerifiedCaller = as_caller, access: CallerAccess = may_read
     ) -> Response:
-        return await root.read(request, caller, access.tenant, access.tenant)
+        response = await root.read(request, caller, access.tenant, access.tenant)
+        _, version = await kit.tenancy.get(access.tenant)
+        response.headers[RECORD_ETAG] = etag_of(version)
+        return response
 
     async def replace_root(
         request: Request, caller: VerifiedCaller = as_caller, access: CallerAccess = may_modify

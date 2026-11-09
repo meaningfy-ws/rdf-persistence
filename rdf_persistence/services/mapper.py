@@ -216,6 +216,15 @@ class Mapper:
     def _model(self, schema_name: str) -> type[RpModel]:
         return self._models.named(schema_name)
 
+    def predicate(self, cls: type[BaseModel], slot: str) -> URIRef:
+        """The predicate the mapper writes for the slot called ``slot`` of ``cls``.
+
+        Raises:
+            KeyError: ``cls`` has no such slot.
+        """
+        name = self._schema_names[cls.__name__]
+        return {underscore(s.name): p for s, p in self._slots_of(name)}[slot]
+
     def _identifier(self, name: str) -> str | None:
         slot = self.view.get_identifier_slot(name, use_key=False)
         return underscore(slot.name) if slot else None

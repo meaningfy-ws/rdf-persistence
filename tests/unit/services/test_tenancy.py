@@ -397,6 +397,73 @@ async def test_rename_with_a_stale_version_conflicts_and_changes_nothing(tenancy
     assert (await tenancy.get(summary.id))[0].label == "Bruges", "the stale rename left the label"
 
 
+async def _root_label(store, tenant: str) -> str:
+    async with open_session(
+        store,
+        database=tenant_resource_name(SETTINGS.prefix, tenant),
+        tenant_iri=tenant,
+        principal=CREATOR,
+    ) as session:
+        return (await UnitOfWork(session, toy_mapper()).get(Library, tenant)).label
+
+
+async def test_rename_gives_the_root_and_the_record_one_label(tenancy, store):  # T-6
+    summary = await tenancy.create("A", library_slots(), CREATOR)
+    _, version = await tenancy.get(summary.id)
+    await tenancy.rename(summary.id, "B", version, BEN)
+    assert ((await tenancy.get(summary.id))[0].label, await _root_label(store, summary.id)) == (
+        "B",
+        "B",
+    ), "record and root both read the new label"
+
+
+async def test_a_stale_rename_writes_to_neither_dataset(tenancy, store):  # T-7
+    summary = await tenancy.create("A", library_slots(), CREATOR)
+    _, version = await tenancy.get(summary.id)
+    await tenancy.rename(summary.id, "B", version, BEN)
+    writes = len(store.sent("update"))
+    with pytest.raises(Conflict):
+        await tenancy.rename(summary.id, "C", version, BEN)
+    assert len(store.sent("update")) == writes, "the stale rename wrote nothing"
+
+
+async def test_a_rename_whose_record_write_fails_is_repaired_by_retrying(tenancy, store):  # T-8
+    summary = await tenancy.create("A", library_slots(), CREATOR)
+    _, version = await tenancy.get(summary.id)
+    store.on("update", StoreUnavailable("down"), times=1, after=1)
+    with pytest.raises(StoreUnavailable):
+        await tenancy.rename(summary.id, "B", version, BEN)
+    assert ((await tenancy.get(summary.id))[0].label, await _root_label(store, summary.id)) == (
+        "A",
+        "B",
+    ), "the root was written, the record was not"
+    await tenancy.rename(summary.id, "B", version, BEN)
+    assert ((await tenancy.get(summary.id))[0].label, await _root_label(store, summary.id)) == (
+        "B",
+        "B",
+    ), "the same rename retried repairs it"
+
+
+async def test_a_record_that_moved_during_a_rename_conflicts_and_a_retry_repairs(
+    tenancy, store
+):  # T-9
+    summary = await tenancy.create("A", library_slots(), CREATOR)
+    _, version = await tenancy.get(summary.id)
+    store.on("update", Conflict("moved"), times=1, after=1)
+    with pytest.raises(Conflict):
+        await tenancy.rename(summary.id, "B", version, BEN)
+    assert ((await tenancy.get(summary.id))[0].label, await _root_label(store, summary.id)) == (
+        "A",
+        "B",
+    ), "the root was written, the record was not"
+    _, fresh = await tenancy.get(summary.id)
+    await tenancy.rename(summary.id, "B", fresh, BEN)
+    assert ((await tenancy.get(summary.id))[0].label, await _root_label(store, summary.id)) == (
+        "B",
+        "B",
+    ), "a rename with the re-read version repairs it"
+
+
 async def test_set_grants_replaces_the_grants_and_the_prohibitions(tenancy):
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
     _, version = await tenancy.get(summary.id)

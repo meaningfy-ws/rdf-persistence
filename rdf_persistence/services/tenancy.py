@@ -8,7 +8,7 @@ Work the toolkit does on its own behalf is attributed to ``{base}toolkit``.
 """
 
 import logging
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from contextlib import AbstractAsyncContextManager, suppress
 from typing import Any
 
@@ -39,7 +39,7 @@ from rdf_persistence.domain.iris import (
     system_database_name,
     toolkit_principal_iri,
 )
-from rdf_persistence.domain.sparql import fill, term
+from rdf_persistence.domain.sparql import Triple, fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.files import FileStore
@@ -241,17 +241,46 @@ class Tenancy:
         return [self._decoded(iri, stored, graph_iri(iri)) for iri in record_iris]
 
     async def rename(self, tenant: str, label: str, if_version: str, principal: Principal) -> str:
-        """Give the tenant a new label, in its access record, whose description follows; answers the new version.
+        """Give the tenant a new label, in its root and in its access record, whose description follows; answers the record's new version.
+
+        The record's version is checked first, so a stale rename writes nothing. The root is written
+        before the record: a failure between the two leaves the root renamed and the record not, and
+        the same rename repeated writes both (PD-3).
 
         Raises:
             NotFound: The tenant has no access record.
-            Conflict: The record is no longer at ``if_version``; nothing changed.
+            Conflict: The record is no longer at ``if_version``; the record is unchanged.
             ValueError: ``label`` is not valid (pydantic's ``ValidationError``).
         """
-        record, _ = await self.get(tenant)
+        record, version = await self.get(tenant)
+        if version != if_version:
+            raise Conflict(f"{tenant} is not at version {if_version}")
+        await self._relabel_root(tenant, label, principal)
         record.label = label
         record.description = RECORD_DESCRIPTION.format(label=label.rstrip("."))
         return await self._replaced(tenant, principal, record, if_version)
+
+    async def _relabel_root(self, tenant: str, label: str, principal: Principal) -> None:
+        """Store ``label`` in the tenant's root, under the root's own version."""
+        database = self._iris.resource_name(tenant)
+        async with self._session(database, tenant, principal) as session:
+            graph, graph_name, root_version = await session.get_graph(tenant)
+        root = self._mapper.from_graph(self._root_class, tenant, graph, graph_name)
+        setattr(root, "label", label)  # noqa: B010 - every root is Described and has a label
+        await self._replace_root(database, tenant, principal, root, root_version)
+
+    async def vet_root(self, tenant: str, triples: Iterable[Triple]) -> None:
+        """Refuse a replacement body of the tenant's root that gives the tenant another label than its record has (PD-3).
+
+        Raises:
+            NotFound: The tenant has no access record.
+            InvalidBody: The body's label is not the record's.
+        """
+        record, _ = await self.get(tenant)
+        label = self._mapper.predicate(self._root_class, "label")
+        sent = {str(o) for s, p, o in triples if str(s) == tenant and p == label}
+        if sent != {record.label}:
+            raise InvalidBody("the label of a tenant is changed through its label route")
 
     async def set_grants(
         self, tenant: str, grants: GrantSet, if_version: str, principal: Principal
