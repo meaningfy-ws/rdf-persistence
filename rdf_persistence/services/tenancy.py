@@ -457,8 +457,9 @@ def _run_validators(
     """Run ``validators`` in order on copies of ``old`` and ``new``; the first to refuse stops the write.
 
     Validators only refuse: what they do to their arguments is never written. ``InvalidBody`` and pydantic's
-    ``ValidationError`` pass as they are (422). A validator that returns anything, or raises another toolkit
-    error, is a bug in it: ``TypeError``, or ``RuntimeError`` chained to the error, both a 500.
+    ``ValidationError`` pass as they are (422). A validator that returns anything, or raises anything else (a
+    toolkit error or an ``HTTPException`` included), is a bug in it: ``TypeError``, or ``RuntimeError`` chained to
+    the error, both a 500.
     """
     for validator in validators:
         try:
@@ -467,7 +468,7 @@ def _run_validators(
             )
         except (InvalidBody, ValidationError):
             raise
-        except PersistenceError as error:
+        except Exception as error:
             raise RuntimeError(f"a validator raised {type(error).__name__}: {error}") from error
         if result is not None:
             if inspect.iscoroutine(result):

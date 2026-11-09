@@ -878,7 +878,8 @@ A validator is a plain function, not `async`: it runs on the event loop, so it m
 coroutine function is refused when the service starts. It receives copies of the old and new
 objects, so changing an argument has no effect on what is written. It returns nothing; returning a
 value is a bug. Any exception other than `InvalidBody` or pydantic's `ValidationError` (also 422)
-is a bug in the validator and answers 500, even another error of the toolkit such as `Forbidden`.
+is a bug in the validator and answers 500, even another error of the toolkit such as `Forbidden`
+or an `HTTPException`.
 
 [#serve]
 == 12. Serve the application

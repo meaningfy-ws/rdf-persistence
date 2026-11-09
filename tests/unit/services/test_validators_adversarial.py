@@ -135,7 +135,7 @@ async def test_a_passing_root_validator_that_changes_the_id_on_create_cannot_mov
     )
 
 
-async def test_a_validator_that_mutates_the_new_grants_leaks_into_the_stored_record(store, files):
+async def test_a_validator_that_mutates_the_new_grants_changes_nothing_stored(store, files):
     def add_bob(old, new, who):
         new.grants = [*(new.grants or []), _bob(tenant_slot[0])]
 
@@ -255,7 +255,9 @@ async def test_a_validator_bug_on_rename_leaves_root_and_record(store, files):
     _, version = await made.get(tenant)
     with pytest.raises(RuntimeError):
         await made.rename(tenant, "B", version, BEN)
-    assert ((await made.get(tenant))[0].label, (await _root(store, tenant)).label) == ("A", "A")
+    assert ((await made.get(tenant))[0].label, (await _root(store, tenant)).label) == ("A", "A"), (
+        "record and root keep the label"
+    )
     assert (await made.get(tenant))[1] == version, "the record keeps its version"
 
 

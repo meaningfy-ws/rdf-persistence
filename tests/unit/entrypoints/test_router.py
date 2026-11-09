@@ -8,6 +8,7 @@ from uuid import UUID
 
 import httpx
 import pytest
+from fastapi import HTTPException
 from pyld import jsonld
 from rdflib import Graph
 from rdflib.compare import graph_diff, isomorphic
@@ -899,10 +900,15 @@ def _forbids(old, new, who) -> None:
         raise Forbidden("no")
 
 
+def _http_403(old, new, who) -> None:
+    if not new.grants:
+        raise HTTPException(status_code=403)
+
+
 async def test_a_validator_that_returns_a_value_or_raises_forbidden_is_a_500_and_nothing_is_written() -> (
     None
 ):  # R2-2, R2-3
-    for validator in (_returns_false, _forbids):
+    for validator in (_returns_false, _forbids, _http_403):
         async with _scene_validated(grant_validators=[validator]) as scene:
             broken = await _empty_grants(scene)
             assert (broken.status_code, problem_of(broken).type) == (
