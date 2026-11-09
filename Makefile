@@ -15,7 +15,7 @@ ICON_PROGRESS = [-]
 REPO_ROOT    = $(shell pwd)
 PACKAGE_NAME = rdf_persistence
 TEST_PATH    = $(REPO_ROOT)/tests
-PYTHON_PATHS = $(PACKAGE_NAME) $(TEST_PATH) $(REPO_ROOT)/docs/tools
+PYTHON_PATHS = $(PACKAGE_NAME) $(TEST_PATH) $(REPO_ROOT)/docs/tools $(REPO_ROOT)/.claude/hooks
 BUILD_PATH   = $(REPO_ROOT)/dist
 
 # Docker / infra (activate the Docker section below once infra/ exists).
