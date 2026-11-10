@@ -660,6 +660,7 @@ cover:
 |`loaded_graphs(iri)` |The IRIs of the aggregate's loaded graphs, sorted by IRI
 |`loaded_graph(iri, graph_iri)` |The triples of one loaded graph
 |`remove(iri, if_version)` |Delete the aggregate, its loaded graphs and its registry entries
+|`named_file_keys(keys)` |The keys, of those given, that some graph of the tenant still names in `file_key`
 |===
 
 Outside a service, `open_session(store, *, database, tenant_iri, principal, clock)` opens the
@@ -785,8 +786,10 @@ The toolkit keeps two kinds of file.
 library's `Scan` does. The bytes go to the tenant's bucket through the `FileStore` port:
 `put(bucket, key, data)`, `get(bucket, key)` and `delete(bucket, key)`. The toolkit has no route
 for the bytes, so you add one. `file_key` is `internal`: no request body can set it and no response
-shows it, but a domain service can, since the mapper writes internal slots. The toy library keeps
-the bytes under the scan's id instead. Its routes are in <<serve>>.
+shows it, but a domain service can, since the mapper writes internal slots. Store the blob's key in
+`file_key` every time: the sweep (<<sweep-live-tenant>>) and `kit.remove_with_files` find a blob
+through it. The toy library keeps the bytes under the scan's id and sets `file_key` to that same id,
+so the key is the id and `file_key` names it. Its routes are in <<serve>>.
 
 *A file root is written through a session.* The record and its bytes must change together, so the
 router serves a `StoredFile` root's `GET` and listing but not its `POST`, `PUT` or `DELETE` (a
@@ -803,8 +806,9 @@ checked = await kit.require(request.headers.get("authorization"), t, Action.MODI
 tenant = checked.caller_access.tenant
 data = await limited_body(request, kit.max_body_bytes)  # 413 when the body is too large
 iri = str(kit.iris.mint_aggregate(tenant, "scan", "scans"))
-scan = Scan(id=iri, label=label, file_name=name, byte_size=len(data), sha256=digest)  # 422 if invalid
 bucket, key = await kit.bucket_of(tenant), iri.rsplit("/", 1)[-1]
+scan = Scan(id=iri, label=label, file_name=name, byte_size=len(data), sha256=digest,
+            file_key=key)                                                             # 422 if invalid
 await kit.files.put(bucket, key, data)                                                # the bytes
 try:
     async with kit.session(tenant, checked.principal) as session:
@@ -822,13 +826,32 @@ bytes are stored: a pydantic `ValidationError` is answered 422 by the toolkit's 
 nothing has been stored yet to take back. If the commit fails, the bytes are removed and the
 original error is answered.
 
+*Deleting a file root.* Your own delete route calls `kit.remove_with_files(tenant, principal, iri,
+if_version)` instead of a bare remove. In one go it removes the aggregate, its loaded graphs and its
+registry entries, as `Session.remove` does, then deletes from the tenant's bucket the blobs named in
+its `file_key` that no other aggregate names. It raises `NotFound` if the aggregate does not exist
+and `Conflict` if it is not at `if_version`; then nothing changes. If the bucket refuses a blob
+delete, the error is logged, not raised: the aggregate is already gone, and the sweep removes the
+blob later.
+
+[source,python]
+----
+checked = await kit.require_aggregate(
+    request.headers.get("authorization"), t, "scans", scan_id, Action.DELETE
+)
+await kit.remove_with_files(
+    checked.caller_access.tenant, checked.principal, checked.checked_target, if_version
+)
+----
+
 Any other root can opt in with the class annotation `rp_writes: service`; there is no value that
 turns it off.
 
 *RDF*, parsed into a graph of its own. `Session.load_graph(iri, data, rdf_format=RdfFormat.TURTLE)`
 parses the data in a worker thread and puts it into a new named graph, by default
 `{iri}/content/{uuid4}` (the loaded-graph template of the IRI policy; `Session` takes the policy
-as `iris=`).
+as `iris=`). Before it puts the graph, it writes a *load marker*, one triple in the tenant's
+registry graph that records when the graph was loaded; the sweep uses it to leave young graphs alone.
 Data that does not parse raises `InvalidGraph`, and nothing is written. The graph belongs to the
 aggregate once a commit names it (a graph another aggregate owns is refused with `InvalidIri`):
 
@@ -892,6 +915,77 @@ pass a caller's input to it unfiltered. `find` raises:
 * `ValueError`, when the class is not an aggregate root the service serves, or a list value is
   empty.
 * `BadQuery`, when a name is not a slot, or a value does not fit its slot.
+
+[#sweep-live-tenant]
+=== Sweep a live tenant
+
+_How do I clean up orphans in a live tenant?_
+
+An upload that is never committed leaves a blob; a `load_graph` that is never committed leaves a
+loaded graph. Nothing names them, so nobody sees them, and they stay until the tenant is deleted. The
+start-up sweep does not look inside a tenant. `kit.sweep_tenant(tenant)` does. It finds two kinds of
+orphan in one active tenant, each older than a grace period:
+
+* *Loaded graphs* that no commit has registered for an aggregate.
+* *Blobs* in the tenant's bucket that no graph of the tenant names in `file_key`.
+
+It is a library call, so you run it as an operator command: a script, or an admin route you own. The
+toolkit has no command line for it.
+
+*It changes nothing by default.* With no flags it is a dry run: it only reports. Each kind has its
+own flag:
+
+[cols="2,3",options="header"]
+|===
+|Flag |Effect
+|`remove=True` |Delete the orphan loaded graphs (and the stale load markers).
+|`remove_blobs=True` |Delete the orphan blobs.
+|===
+
+*Pass `remove_blobs=True` only when every blob key you store is also stored in `file_key`.* The sweep
+calls a blob an orphan when no `file_key` names it. A consumer that keys its blobs some other way
+would lose every one of them. That is why blobs have a flag of their own, off by default. The toy
+library sets `file_key` (see <<files>>), so it qualifies.
+
+*The grace period is one hour* (`older_than=timedelta(hours=1)`). A loaded graph's age is the time in
+its load marker; a blob's age is its modification time in the object store. Younger items are left
+alone, so an upload or a load that is still waiting for its commit survives. *Commit within the grace
+period.* A load or upload committed later than that, after a sweep with removal has run, is lost: the
+graph comes back empty, the blob is gone. Raise `older_than` if your commits can be slower.
+
+*Upgrade note.* A graph loaded before the load marker existed has no marker, and counts as old. After
+upgrading, do not sweep with `remove=True` while a deploy is running, as a graph loaded just before
+it could be removed before its commit. Run the first sweep after the deploy has settled, and read the
+dry run first.
+
+An operator script, built like the composition root of <<serve>>:
+
+[source,python]
+----
+import asyncio
+from datetime import timedelta
+
+async def main(tenant: str) -> None:
+    kit = build_kit()      # your composition root: install_service(...) as in the serve section
+    report = await kit.sweep_tenant(tenant)    # a dry run
+    print(report.loaded_graphs, report.blobs)  # the orphans, sorted
+    # read the lists; if they are right, remove:
+    done = await kit.sweep_tenant(
+        tenant, remove=True, remove_blobs=True, older_than=timedelta(hours=1)
+    )
+    print(done.removed_loaded_graphs, done.removed_blobs, done.skipped_blobs)
+
+asyncio.run(main("https://example.org/tenants/t"))
+----
+
+The report is a `TenantSweepReport`: `loaded_graphs` and `blobs` (what was found, sorted),
+`removed_loaded_graphs` and `removed_blobs` (whether removal ran for that list), and `skipped_blobs`
+(keys the object store would not delete; the sweep logs them and goes on). It logs one line for each
+item it removes. A removed graph is checked once more in the same update: a commit that registers it
+meanwhile wins and the graph stays. Running the sweep twice is harmless.
+
+It raises `NotFound` if the tenant does not exist and `Conflict` if it is being deleted. On a large
+tenant it reads every graph and every blob, so it is slow; that is fine for an operator command.
 
 [#access]
 == 11. Control access
