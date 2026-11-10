@@ -4,6 +4,7 @@ import re
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import timedelta
 
 import httpx
 import pytest
@@ -334,3 +335,22 @@ async def test_without_an_id_source_two_creates_draw_different_ids_of_the_policy
     assert locations[0] != locations[1], "drawn, not fixed"
     length = CONSUMER_POLICY.tenant_id.length
     assert [len(i) for i in locations] == [length, length], "the policy's tenant id length"
+
+
+# --- the sweep of a live tenant (live-tenant-sweep task 3.2) -------------------------------------
+
+
+async def test_the_kit_sweeps_a_tenant_with_its_own_store_files_and_iris(service, client) -> None:
+    headers = {"Authorization": f"Bearer {service.signer.issue(sub='ada')}"}
+    path = (await client.post("/libraries", json=TENANT_BODY, headers=headers)).headers["location"]
+    tenant = service.kit.tenant_iri(path.rsplit("/", 1)[1])
+    bucket = await service.kit.bucket_of(tenant)
+    await service.files.put(bucket, "left-behind", b"bytes")
+
+    report = await service.kit.sweep_tenant(tenant, older_than=timedelta(seconds=-1))
+
+    assert report.tenant == tenant and report.older_than_seconds == -1
+    assert report.blobs == ["left-behind"], "found through the kit's own file store"
+    assert report.removed_loaded_graphs is False, "a dry run, as by default"
+    await service.kit.sweep_tenant(tenant, remove_blobs=True, older_than=timedelta(seconds=-1))
+    assert await service.files.list_blobs(bucket) == [], "the keywords reach the sweep"

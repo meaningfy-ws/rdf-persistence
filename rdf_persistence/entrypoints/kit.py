@@ -2,6 +2,7 @@
 
 from collections.abc import Sequence
 from contextlib import AbstractAsyncContextManager
+from datetime import timedelta
 from pathlib import Path
 from types import ModuleType
 from typing import cast
@@ -9,13 +10,14 @@ from typing import cast
 from rdf_persistence.domain.generated import rp_access, rp_core, rp_tenancy
 from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_tenancy import TenantAccess
+from rdf_persistence.domain.generated.rp_tenancy import TenantAccess, TenantSweepReport
 from rdf_persistence.domain.generated.service.rp_service import (
     Authorised,
     ServiceSettings,
 )
 from rdf_persistence.domain.iris import IdSource, Iris, draw_id, system_database_name
 from rdf_persistence.entrypoints.auth import Gate
+from rdf_persistence.services import tenant_sweep
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.services.artifacts import CONTEXT_FILE
@@ -148,6 +150,35 @@ class ServiceKit:
         """
         record, _ = await self.tenancy.get(tenant)
         return record.database_name
+
+    async def sweep_tenant(
+        self,
+        tenant: str,
+        *,
+        remove: bool = False,
+        remove_blobs: bool = False,
+        older_than: timedelta = timedelta(hours=1),
+    ) -> TenantSweepReport:
+        """Find the loaded graphs no commit owns and the blobs no graph names in the active tenant,
+        older than ``older_than``; delete the graphs if ``remove`` and the blobs if ``remove_blobs``.
+
+        A dry run by default. Pass ``remove_blobs`` only when every blob key of the tenant is stored
+        in ``rp:fileKey``. See ``rdf_persistence.services.tenant_sweep.sweep_tenant``.
+
+        Raises:
+            NotFound: The tenant has no access record.
+            Conflict: The tenant is being deleted.
+        """
+        return await tenant_sweep.sweep_tenant(
+            self.tenancy,
+            self.store,
+            self.files,
+            self.iris,
+            tenant,
+            remove=remove,
+            remove_blobs=remove_blobs,
+            older_than=older_than,
+        )
 
     def session(self, tenant: str, principal: str) -> AbstractAsyncContextManager[Session]:
         """A session on the tenant's database for ``principal``."""

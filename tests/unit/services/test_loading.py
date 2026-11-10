@@ -4,18 +4,21 @@ import io
 import json
 import threading
 from collections.abc import AsyncIterator, Iterator
+from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from uuid import UUID
 
 import pytest
-from rdflib import Graph, Literal, URIRef
+from rdflib import XSD, Graph, Literal, URIRef
 from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence import InvalidGraph
-from rdf_persistence.domain.exceptions import DatabaseGone, InvalidIri, NotFound
+from rdf_persistence.domain.exceptions import DatabaseGone, InvalidIri, NotFound, StoreUnavailable
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_files import RdfFormat
+from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.domain.sparql import fill, term
+from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.loading import _RDFLIB_FORMATS, parse_graph
 from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import FakeStore, fake_session
@@ -310,3 +313,89 @@ async def test_a_dropped_tenant_database_is_reported(store, session):
     await store.drop_dataset(FAKE_DATABASE)
     with pytest.raises(DatabaseGone):
         await session.loaded_graphs(AGGREGATE)
+
+
+# -- the load marker (live-tenant-sweep PD-2) ---------------------------------------------------
+
+MARKER_TIME = datetime(2026, 11, 10, 9, 30, tzinfo=UTC)
+LOADED_AT = URIRef("https://meaningfy.ws/ns/rdf-persistence#loadedAt")
+PRINCIPAL = Principal(id="https://example.org/people/ada")
+
+
+class _OrderedStore(FakeStore):
+    """A fake store that also records the order of its writes across operations."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.order: list[str] = []
+
+    async def update(self, dataset, sparql):
+        self.order.append("update")
+        await super().update(dataset, sparql)
+
+    async def put_graph(self, dataset, graph_iri, graph):
+        self.order.append("put_graph")
+        await super().put_graph(dataset, graph_iri, graph)
+
+
+async def _marker_triples(store, loaded) -> list[tuple]:
+    registry = DEFAULT_IRIS.registry(TENANT)
+    query = fill(
+        "SELECT ?p ?o WHERE { GRAPH $registry { $g ?p ?o } }",
+        registry=term(registry),
+        g=term(loaded),
+    )
+    return [(row.p, row.o) for row in await store.query(FAKE_DATABASE, query)]
+
+
+async def _marked(clock=lambda: MARKER_TIME, store=None):
+    store = store or _OrderedStore()
+    await store.create_dataset(FAKE_DATABASE)
+    return store, fake_session(store, tenant_iri=TENANT, principal=PRINCIPAL, clock=clock)
+
+
+async def test_the_marker_is_written_to_the_registry_before_the_graph_is_put():
+    store, opened = await _marked()
+    async with opened as session:
+        loaded = await session.load_graph(
+            AGGREGATE, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE
+        )
+    assert store.order == ["update", "put_graph"], "a crash between the two leaves a marker only"
+    expected = [(LOADED_AT, Literal(MARKER_TIME))]
+    assert await _marker_triples(store, loaded) == expected, "the one marker triple, nothing more"
+
+
+async def test_the_marker_holds_the_session_clock_as_a_date_time():
+    store, opened = await _marked(clock=lambda: MARKER_TIME)
+    async with opened as session:
+        loaded = await session.load_graph(
+            AGGREGATE, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE
+        )
+    ((_, stamp),) = await _marker_triples(store, loaded)
+    assert stamp.datatype == XSD.dateTime and stamp.toPython() == MARKER_TIME
+
+
+async def test_a_failed_put_leaves_the_marker():
+    store, opened = await _marked()
+    store.on("put_graph", StoreUnavailable("down"))
+    async with opened as session:
+        with pytest.raises(StoreUnavailable):
+            await session.load_graph(AGGREGATE, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE)
+    registry = DEFAULT_IRIS.registry(TENANT)
+    held = await store.query(
+        FAKE_DATABASE,
+        fill("ASK { GRAPH $r { ?g $p ?t } }", r=term(registry), p=term(LOADED_AT)),
+    )
+    assert held.askAnswer, "the marker is there for the sweep to clear"
+
+
+async def test_a_commit_of_the_loaded_graph_keeps_its_registry_entry_and_listing():
+    store, opened = await _marked()
+    async with opened as session:
+        loaded = await session.load_graph(
+            AGGREGATE, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE
+        )
+        await session.add_graph(AGGREGATE, [], loaded_graphs=[loaded])
+        assert await session.loaded_graphs(AGGREGATE) == [loaded], "still registered and listed"
+    properties = {p for p, _ in await _marker_triples(store, loaded)}
+    assert v.REGISTRY_OWNED_BY in properties and v.REGISTRY_KIND in properties

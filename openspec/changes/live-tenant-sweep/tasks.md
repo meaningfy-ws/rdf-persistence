@@ -16,7 +16,7 @@
 
 ## 2. Load marker
 
-- [ ] 2.1 Test first (`tests/unit/services/test_loading.py`): `load_graph` writes the one marker
+- [x] 2.1 Test first (`tests/unit/services/test_loading.py`): `load_graph` writes the one marker
   triple `<G> rp:loadedAt <clock()>` in the registry before it PUTs the graph (the fake store's
   `sent` order); a failed PUT leaves the marker; a commit of G keeps G's registry entry intact.
   Then the change in `Session.load_graph` (PD-2). Gates: `make test-fast`, `make check-quality`,
@@ -24,7 +24,7 @@
 
 ## 3. The sweep
 
-- [ ] 3.1 Test first (`tests/unit/services/test_tenant_sweep.py`, fakes, injected clock): the spec
+- [x] 3.1 Test first (`tests/unit/services/test_tenant_sweep.py`, fakes, injected clock): the spec
   scenarios and each line of design.md's worked example; dry run changes nothing; `remove` and
   `remove_blobs` act independently; markers of owned graphs and old empty ones go only with
   `remove=True`, young ones stay (PD-6); a registry entry survives marker cleanup; under a policy
@@ -34,7 +34,7 @@
   `Iris.loaded_graph_root` (with its own unit test in `tests/unit/domain/`) and
   `services/tenant_sweep.py` (`sweep_tenant`, its SPARQL constants). Gates: `make test-changed`,
   `make check-quality`, `make clean-code`.
-- [ ] 3.2 `ServiceKit.sweep_tenant` (entrypoints/kit.py) delegating to `sweep_tenant` with the
+- [x] 3.2 `ServiceKit.sweep_tenant` (entrypoints/kit.py) delegating to `sweep_tenant` with the
   kit's tenancy, store, files and iris; public exports (PD-13) and `assert_public_imports`.
   Gates: `make test-changed`, `make check-quality`.
 - [ ] 3.3 Adversarial tester (riskiest task: deletion and its races): tests only, trying to make
@@ -65,7 +65,7 @@
 
 ## Roadmap
 
-- [x] 1.1 · [ ] 1.2 · [ ] 2.1 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
+- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [ ] 3.3 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
 
 ## Verification
 

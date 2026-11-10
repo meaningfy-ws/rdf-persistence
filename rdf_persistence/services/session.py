@@ -18,6 +18,7 @@ from rdflib.query import ResultRow
 from rdf_persistence.domain.exceptions import Conflict, InvalidIri, NotFound
 from rdf_persistence.domain.generated.rp_annotations import Tracked
 from rdf_persistence.domain.generated.rp_core import (
+    PendingLoad,
     Principal,
     RegistryEntry,
     RegistryKind,
@@ -56,6 +57,8 @@ ASK_ANY = "ASK { GRAPH $graph { ?s ?p ?o } }"
 ASK_TOKEN = "ASK { GRAPH $graph { $graph $p_version $token } }"
 # One conditional insert: when the graph already holds a triple nothing is written, so two adds of
 # one IRI cannot both succeed (PD-8c); the caller confirms with an ASK for its token.
+# The marker of a load (PD-2): when the graph was put, so a sweep can tell it from work in flight.
+MARK_LOAD = "INSERT DATA { GRAPH $registry { $marker } }"
 ADD = """
 INSERT { GRAPH $graph { $triples } GRAPH $registry { $entries } }
 WHERE { FILTER NOT EXISTS { GRAPH $graph { ?s ?p ?o } } }
@@ -115,6 +118,11 @@ def registry_triples(entry: RegistryEntry) -> list[Triple]:
         (graph, v.REGISTRY_KIND, v.REGISTRY_KIND_IRIS[RegistryKind(entry.kind)]),
         (graph, v.REGISTRY_OWNED_BY, URIRef(entry.owned_by)),
     ]
+
+
+def marker_triples(marker: PendingLoad) -> list[Triple]:
+    """The one statement of a load marker, about the graph it names."""
+    return [(URIRef(marker.id), v.LOADED_AT, Literal(marker.loaded_at))]
 
 
 def _tracking_triples(graph: URIRef, version: str, tracking: Tracked) -> list[Triple]:
@@ -452,7 +460,8 @@ class Session:
     async def load_graph(self, iri: str, data: bytes, *, rdf_format: RdfFormat) -> URIRef:
         """Parse ``data`` into a new named graph of the aggregate ``iri``; returns its IRI.
 
-        The graph belongs to the aggregate once a commit passes the IRI as ``loaded_graphs``.
+        The graph belongs to the aggregate once a commit passes the IRI as ``loaded_graphs``. A marker
+        with the load time goes to the registry first, for the live-tenant sweep.
 
         Raises:
             InvalidIri: ``iri`` is not an aggregate IRI the policy mints for the tenant.
@@ -462,6 +471,16 @@ class Session:
         self._graph(iri)
         parsed = await parse_graph(data, rdf_format)
         loaded = self._iris.mint_loaded_graph(self._tenant, iri)
+        marker = PendingLoad(id=str(loaded), loaded_at=self._clock())
+        # first: a crash between the two leaves a marker with no graph, never a graph without one
+        await self._store.update(
+            self._database,
+            fill(
+                MARK_LOAD,
+                registry=term(self._registry),
+                marker=triples_block(marker_triples(marker)),
+            ),
+        )
         await self._store.put_graph(self._database, loaded, parsed)
         return loaded
 

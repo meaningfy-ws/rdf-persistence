@@ -54,6 +54,10 @@ BOOKKEEPING_PREDICATES = frozenset(
 REGISTRY_GRAPH = predicate("graph")
 REGISTRY_KIND = predicate("kind")
 REGISTRY_OWNED_BY = predicate("owned_by")
+# The time a load put a graph: the one statement of its marker in the registry (live-tenant-sweep PD-2).
+LOADED_AT = predicate("loaded_at")
+# A graph naming a blob of the tenant's bucket by its key (PD-3 of the live-tenant sweep).
+FILE_KEY = predicate("file_key")
 # A listing states the graph it found each subject in (PD-7); the toolkit drops it before answering.
 LISTED_IN = predicate("listed_in")
 REGISTRY_KIND_IRIS = meanings(RegistryKind)
