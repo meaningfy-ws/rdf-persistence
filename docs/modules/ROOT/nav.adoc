@@ -3,6 +3,7 @@
 * xref:questions.adoc[Common questions]
 
 * xref:architecture/index.adoc[Architecture v1]
+** xref:architecture/data-flows.adoc[Where data lives and what each operation does]
 ** xref:architecture/open-decisions.adoc[Open decisions (2026-11-05)]
 ** xref:architecture/generation.adoc[Model to code]
 ** xref:architecture/api.adoc[A lightweight API]

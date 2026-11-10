@@ -61,7 +61,7 @@ sequenceDiagram
   UoW->>Store: one DELETE … INSERT … WHERE {all version guards} + outbox triples
   UoW->>Store: ASK for this commit's own record
   alt commit record present
-    UoW-->>App: committed; after-commit hooks; events dispatched
+    UoW-->>App: committed, after-commit hooks run, events dispatched
   else commit record absent
     UoW-->>App: ConcurrencyConflict (reload and re-apply)
   end

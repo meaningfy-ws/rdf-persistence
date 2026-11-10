@@ -141,6 +141,12 @@ people is [`develop/agents.adoc`](docs/modules/ROOT/pages/develop/agents.adoc); 
   background), then revert anything it wrote to `AGENTS.md`, `CLAUDE.md` or `.claude/skills/`.
   Keep the durations table in `develop/index.adoc` from ordinary runs (no
   profiling); docs open with questions (`questions.adoc`) — add the question a new page answers.
+- **Pages the developer revised (developer, 2026-11-10).** When the developer says they revised a
+  docs page, add `:page-revised: <date> by the developer` under its `:description:` line, or move
+  the date forward if the page already has one. Only the developer's word sets or moves it; an
+  agent's edit never does. The marked pages are the reviewed baseline for hardening the docs later:
+  list them with `grep -rl ':page-revised:' docs/`; what changed since the review is
+  `git log --since=<date> -- <page>`.
 
 ## `.claude/` is a regenerable index — the truth is `openspec/specs/`
 

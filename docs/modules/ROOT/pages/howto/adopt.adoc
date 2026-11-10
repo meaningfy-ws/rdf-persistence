@@ -1,5 +1,6 @@
 = Build an application with rdf-persistence
 :description: How an application adopts rdf-persistence: write its model in LinkML, generate its code, use the generated classes and guard them in its tests.
+:page-revised: 2026-11-10 by the developer
 
 Status: *complete* (2026-11-06). Steps 1 to 7 cover modelling, generation, the generated classes and
 the test guards; steps 8 to 13 cover the session, tenancy, files, access, the service and its tests

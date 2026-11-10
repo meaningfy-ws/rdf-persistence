@@ -31,6 +31,14 @@ holds its grants and prohibitions. The caller who creates a tenant gets the sett
 xref:howto/adopt.adoc#tenancy[step 9], xref:howto/adopt.adoc#access[step 11] and
 xref:architecture/access-control.adoc[Access control and identity].
 
+*Where is my data stored, and what happens when I create, read, replace or delete it?*::
+Each tenant's aggregates are named graphs in its own database, beside a `meta` graph (the tenant's
+root) and a `registry` graph (which graph belongs to which aggregate); its files are in its own
+bucket; its access record is in the system database. Every write checks the token, the caller's
+access, the IRI policy, the body and the version before it writes; an aggregate is written in one
+SPARQL update. See
+xref:architecture/data-flows.adoc[Where data lives and what each operation does].
+
 *How does my UI know which buttons to show?*::
 Read the `Allowed-Actions` header of a tenant or of an aggregate (for example `read, modify`), or the
 `allowed_actions` of the tenant's item in `GET /{tenant_segment}`. If your web app is on another origin,

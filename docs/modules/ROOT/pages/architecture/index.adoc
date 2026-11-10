@@ -79,6 +79,9 @@ returns, `open_session`, `UnitOfWork` and `Mapper`, the ports and the adapters.
 
 _What is built in v1, and what waits for a need?_
 
+Where each block keeps its data, and what every operation does step by step, is in
+xref:architecture/data-flows.adoc[Where data lives and what each operation does].
+
 [cols="2,1,6,1",options="header"]
 |===
 |Block |State |v1 commitment |Needs

@@ -40,10 +40,13 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"  # the mermaid CLI of check-diagrams needs 22.13 or later
 
       - name: Check the docs
         run: make check-docs
+
+      - name: Render every diagram with the site's mermaid
+        run: make check-diagrams
 
       - name: Install Antora
         run: make install-antora
