@@ -303,11 +303,15 @@ clean-code: ## Xenon threshold checks
 #-----------------------------------------------------------------------------
 # Docs (Antora) — see references/antora-docs.md. Remove this block if --no-docs.
 #-----------------------------------------------------------------------------
-.PHONY: install-antora build-docs preview-docs clean-docs check-docs
+.PHONY: install-antora build-docs preview-docs clean-docs check-docs check-diagrams
 
 DOCS_DIR  = $(REPO_ROOT)/docs
 DOCS_SITE = $(DOCS_DIR)/build/site
 DOCS_PORT ?= 8081
+# One mermaid for the site (both playbooks; check-docs enforces it) and for check-diagrams.
+MERMAID_VERSION = 12.3.0
+MERMAID_CLI_VERSION = 12.2.0
+DIAGRAMS_DIR = $(REPO_ROOT)/temp/diagrams
 
 install-antora: ## Install the Antora doc toolchain (npm) in docs/
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Installing Antora toolchain$(END_BUILD_PRINT)"
@@ -321,8 +325,15 @@ build-docs: ## Build the documentation site to docs/build/site/
 preview-docs: build-docs ## Build then serve docs at http://localhost:$(DOCS_PORT) (8081, beside MWB2's 8080)
 	@ python3 -m http.server --directory $(DOCS_SITE) $(DOCS_PORT)
 
-check-docs: ## No consumer terms in architecture pages, the package or the tests; every page in the nav
+check-docs: ## No consumer terms in architecture pages, the package or the tests; every page in the nav; one mermaid version
 	@ python3 -I docs/tools/check_docs.py
+
+check-diagrams: ## Render every [mermaid] block of the docs with the site's mermaid (MERMAID_VERSION)
+	@ mkdir -p $(DIAGRAMS_DIR)
+	@ python3 -I docs/tools/check_docs.py --mermaid-markdown $(DIAGRAMS_DIR)/all.md
+	@ npx -y -p @mermaid-js/mermaid-cli@$(MERMAID_CLI_VERSION) -p mermaid@$(MERMAID_VERSION) \
+		mmdc -q -p $(DOCS_DIR)/tools/puppeteer.json -i $(DIAGRAMS_DIR)/all.md -o $(DIAGRAMS_DIR)/rendered.md
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Every diagram renders with mermaid $(MERMAID_VERSION)$(END_BUILD_PRINT)"
 
 clean-docs: ## Remove built docs + node_modules
 	@ rm -rf $(DOCS_DIR)/build $(DOCS_DIR)/node_modules

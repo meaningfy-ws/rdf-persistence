@@ -102,8 +102,34 @@ def check_testkit_names() -> list[str]:
     ]
 
 
+def check_mermaid_pin() -> list[str]:
+    """Every playbook serves the mermaid the Makefile pins, so the site draws what `make check-diagrams` rendered."""
+    pin = re.search(r"^MERMAID_VERSION\s*=\s*(\S+)", (ROOT / "Makefile").read_text(), re.M)
+    if not pin:
+        return ["Makefile: no MERMAID_VERSION"]
+    wanted = f"mermaid@{pin.group(1)}/"
+    return [
+        f"{book.relative_to(ROOT)}: serves another mermaid than {pin.group(1)}"
+        for book in sorted((ROOT / "docs").glob("antora-playbook*.yml"))
+        if "mermaid@" in book.read_text() and wanted not in book.read_text()
+    ]
+
+
+def mermaid_markdown() -> str:
+    """Every `[mermaid]` block of every page, as one Markdown file the mermaid CLI renders at once."""
+    blocks = re.compile(r"^\[mermaid\]\n\.{4}\n(.*?)\n\.{4}$", re.M | re.S)
+    return "".join(
+        f"<!-- {rel(page)} -->\n```mermaid\n{body}\n```\n\n"
+        for page in pages()
+        for body in blocks.findall(page.read_text())
+    )
+
+
 def main() -> int:
-    errors = check_forbidden_terms() + check_nav() + check_testkit_names()
+    if sys.argv[1:2] == ["--mermaid-markdown"]:
+        Path(sys.argv[2]).write_text(mermaid_markdown())
+        return 0
+    errors = check_forbidden_terms() + check_nav() + check_testkit_names() + check_mermaid_pin()
     for e in errors:
         print(f"FAIL {e}")
     print(f"{len(errors)} problem(s)" if errors else "docs check passed")

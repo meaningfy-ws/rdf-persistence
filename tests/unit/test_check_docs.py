@@ -89,3 +89,49 @@ def test_a_testkit_without_all_is_reported_as_such_not_as_every_name_unexported(
     assert len(errors) == 1, errors
     assert "__all__" in errors[0]
     assert "not exported" not in errors[0]
+
+
+def _repo_with_pin(tmp_path, monkeypatch, pinned: str, served: list[str]):
+    """A tmp repo whose Makefile pins `pinned` and whose playbooks serve the `served` versions."""
+    monkeypatch.setattr(check_docs, "ROOT", tmp_path)
+    (tmp_path / "Makefile").write_text(f"MERMAID_VERSION = {pinned}\n")
+    (tmp_path / "docs").mkdir()
+    for i, version in enumerate(served):
+        url = f"https://cdn.jsdelivr.net/npm/mermaid@{version}/dist/mermaid.esm.min.mjs"
+        (tmp_path / "docs" / f"antora-playbook{i}.yml").write_text(f"mermaid_library_url: {url}\n")
+
+
+def test_playbooks_serving_the_pinned_mermaid_pass(tmp_path, monkeypatch):
+    _repo_with_pin(tmp_path, monkeypatch, "12.3.0", ["12.3.0", "12.3.0"])
+
+    assert check_docs.check_mermaid_pin() == []
+
+
+@pytest.mark.parametrize("other", ["10", "12.3.1", "12"])
+def test_a_playbook_serving_another_mermaid_fails(tmp_path, monkeypatch, other):
+    _repo_with_pin(tmp_path, monkeypatch, "12.3.0", ["12.3.0", other])
+
+    assert len(check_docs.check_mermaid_pin()) == 1
+
+
+def test_a_makefile_without_a_mermaid_pin_fails(tmp_path, monkeypatch):
+    _repo_with_pin(tmp_path, monkeypatch, "12.3.0", ["12.3.0"])
+    (tmp_path / "Makefile").write_text("all:\n")
+
+    assert check_docs.check_mermaid_pin() == ["Makefile: no MERMAID_VERSION"]
+
+
+def test_mermaid_markdown_holds_every_block_of_every_page(tmp_path, monkeypatch):
+    monkeypatch.setattr(check_docs, "MODULE", tmp_path)
+    page = tmp_path / "pages" / "a.adoc"
+    page.parent.mkdir(parents=True)
+    page.write_text(
+        "= A\n\n[mermaid]\n....\nflowchart LR\n  X --> Y\n....\n\ntext\n\n"
+        "[mermaid]\n....\nsequenceDiagram\n  A->>B: hi\n....\n"
+    )
+
+    markdown = check_docs.mermaid_markdown()
+
+    assert markdown.count("```mermaid\n") == 2
+    assert "flowchart LR\n  X --> Y\n```" in markdown
+    assert "sequenceDiagram\n  A->>B: hi\n```" in markdown

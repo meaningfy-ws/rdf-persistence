@@ -40,3 +40,12 @@ repeating it.
 
 `evidence/docs-owed.md` (inventory, accepted by the developer 2026-11-10) and
 `evidence/cold-read.md`.
+
+## Later scope (developer, 2026-11-10)
+
+The developer asked that the site and the diagram check use one mermaid version, the latest.
+**DEC-3**: the `Makefile` pins `MERMAID_VERSION` (12.3.0) and `MERMAID_CLI_VERSION` (12.2.0);
+`make check-docs` fails when a playbook loads another version; `make check-diagrams` renders every
+diagram of the docs with it, in CI too (Node 22). The first run found one diagram broken on the
+live site (`background/soa/design-implications.adoc`), now fixed. Requirement:
+`specs/rp-developer-checks/spec.md`.

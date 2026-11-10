@@ -34,7 +34,7 @@ antora:
   extensions:
     # Mermaid diagrams rendered client-side from `[mermaid]` blocks.
     - require: '@sntke/antora-mermaid-extension'
-      mermaid_library_url: https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs
+      mermaid_library_url: https://cdn.jsdelivr.net/npm/mermaid@12.3.0/dist/mermaid.esm.min.mjs
       script_stem: header-scripts
       mermaid_initialize_options:
         start_on_load: true
