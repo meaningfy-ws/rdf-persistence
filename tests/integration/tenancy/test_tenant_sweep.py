@@ -32,7 +32,7 @@ class Shelf:
     def __init__(self, tenancy: Tenancy, store, files, tenant: str, database: str) -> None:
         self.tenancy, self.store, self.files = tenancy, store, files
         self.tenant, self.database = tenant, database
-        self.iris = Iris(SETTINGS.model_copy(update={"prefix": SETTINGS.prefix}))
+        self.iris = Iris(SETTINGS)
 
     def session(self, at: datetime):
         return open_session(

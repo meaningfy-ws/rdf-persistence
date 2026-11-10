@@ -162,7 +162,9 @@ class S3FileStore:
                 for blob in page.get("Contents", [])
             ]
             token = page.get("NextContinuationToken")
-            if not page.get("IsTruncated"):
+            if (
+                not page.get("IsTruncated") or not token
+            ):  # no token: asking again restarts the listing
                 return entries
 
     async def put(self, bucket: str, key: str, data: bytes) -> None:

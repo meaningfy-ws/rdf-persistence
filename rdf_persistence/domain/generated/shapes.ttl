@@ -13,20 +13,20 @@ rp:Activity a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n19 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n35 , _:c14n88 ;
+	sh:property _:c14n33 , _:c14n87 ;
 	sh:targetClass prov:Activity .
 rp:AggregateRoot a sh:NodeShape ;
 	rdfs:comment "A mixin for classes whose instances are aggregate roots. Each instance is one named graph, whose IRI is derived from the root's IRI; it is versioned, loaded and saved as a whole." ;
 	rdfs:label "Aggregate root" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n74 ;
+	sh:ignoredProperties _:c14n73 ;
 	sh:targetClass rp:AggregateRoot .
 rp:BlobEntry a sh:NodeShape ;
 	rdfs:comment "One object in a tenant's bucket, as a listing of the bucket reports it." ;
 	rdfs:label "Blob entry" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n32 ;
-	sh:property _:c14n52 , _:c14n76 ;
+	sh:ignoredProperties _:c14n31 ;
+	sh:property _:c14n53 , _:c14n75 ;
 	sh:targetClass rp:BlobEntry .
 rp:Described a sh:NodeShape ;
 	rdfs:comment "A mixin giving an object an IRI, a label and a description. The application writes them." ;
@@ -34,29 +34,29 @@ rp:Described a sh:NodeShape ;
 	sh:closed false ;
 	sh:ignoredProperties _:c14n21 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n0 , _:c14n33 , _:c14n73 ;
+	sh:property _:c14n0 , _:c14n32 , _:c14n72 ;
 	sh:targetClass rp:Described .
 rp:Grant a sh:NodeShape ;
 	rdfs:comment "A permission given to a principal on a tenant or on one aggregate, either by role or as a direct action; exactly one of role and action is given." ;
 	rdfs:label "Grant" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n58 ;
-	sh:property _:c14n10 , _:c14n59 , _:c14n60 , _:c14n82 ;
+	sh:property _:c14n10 , _:c14n59 , _:c14n60 , _:c14n80 ;
 	sh:targetClass odrl:Permission ;
 	sh:xone _:c14n16 .
 rp:PendingLoad a sh:NodeShape ;
 	rdfs:comment "The registry marker of a load not yet committed: one triple saying when the graph was put. It names no registry entry, so deleting it never deletes an entry." ;
 	rdfs:label "Pending load" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n36 ;
+	sh:ignoredProperties _:c14n34 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n26 , _:c14n48 ;
+	sh:property _:c14n25 , _:c14n49 ;
 	sh:targetClass rp:PendingLoad .
 rp:Policy a sh:NodeShape ;
 	rdfs:comment "A set of permissions and prohibitions." ;
 	rdfs:label "Policy" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n77 ;
+	sh:ignoredProperties _:c14n76 ;
 	sh:targetClass odrl:Set .
 rp:Principal a sh:NodeShape ;
 	rdfs:comment "A reference to a user account in the identity provider, by IRI only." ;
@@ -64,7 +64,7 @@ rp:Principal a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n91 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n41 ;
+	sh:property _:c14n40 ;
 	sh:targetClass prov:Agent .
 rp:Prohibition a sh:NodeShape ;
 	rdfs:comment "The ODRL prohibition that forbids an assignee an action on a target; it wins over any permission." ;
@@ -77,66 +77,66 @@ rp:Provenanced a sh:NodeShape ;
 	rdfs:comment "A mixin for entities whose derivation, generating activity and attribution are recorded." ;
 	rdfs:label "Provenanced" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n42 ;
-	sh:property _:c14n20 , _:c14n47 , _:c14n50 , _:c14n61 ;
+	sh:ignoredProperties _:c14n41 ;
+	sh:property _:c14n20 , _:c14n48 , _:c14n51 , _:c14n61 ;
 	sh:targetClass rp:Provenanced .
 rp:RegistryEntry a sh:NodeShape ;
 	rdfs:comment "An entry of a tenant's registry graph, naming a graph that belongs to an aggregate. It is written by the session, never by the application." ;
 	rdfs:label "Registry entry" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n18 ;
-	sh:property _:c14n28 , _:c14n86 , _:c14n9 ;
+	sh:property _:c14n27 , _:c14n85 , _:c14n9 ;
 	sh:targetClass rp:RegistryEntry .
 rp:RoleDefinition a sh:NodeShape ;
 	rdfs:comment "What a role may do and where it applies. An application supplies its role definitions as data; they are not stored." ;
 	rdfs:label "Role definition" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n65 ;
-	sh:property _:c14n24 , _:c14n78 , _:c14n84 ;
+	sh:property _:c14n24 , _:c14n77 , _:c14n83 ;
 	sh:targetClass rp:RoleDefinition .
 rp:Rule a sh:NodeShape ;
 	rdfs:comment "An ODRL rule that gives an assignee a ruling on an action over a target." ;
 	rdfs:label "Rule" ;
 	sh:closed false ;
 	sh:ignoredProperties _:c14n15 ;
-	sh:property _:c14n31 , _:c14n37 , _:c14n53 ;
+	sh:property _:c14n30 , _:c14n36 , _:c14n54 ;
 	sh:targetClass odrl:Rule .
 rp:StoredFile a sh:NodeShape ;
 	rdfs:comment "A mixin for the current content of a kept file; the bytes live in the tenant's bucket under the file key." ;
 	rdfs:label "Stored file" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n70 ;
-	sh:property _:c14n1 , _:c14n3 , _:c14n4 , _:c14n45 , _:c14n49 , _:c14n51 , _:c14n55 ;
+	sh:ignoredProperties _:c14n69 ;
+	sh:property _:c14n1 , _:c14n3 , _:c14n4 , _:c14n46 , _:c14n50 , _:c14n52 , _:c14n55 ;
 	sh:targetClass rp:StoredFile .
 rp:TenantAccess a sh:NodeShape ;
 	rdfs:comment "The access record of a tenant: its label, state and database name, with the grants and prohibitions that say who may do what in it." ;
 	rdfs:label "Tenant access" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n75 ;
+	sh:ignoredProperties _:c14n74 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n11 , _:c14n38 , _:c14n68 , _:c14n71 , _:c14n83 , _:c14n87 , _:c14n90 ;
+	sh:property _:c14n11 , _:c14n37 , _:c14n68 , _:c14n70 , _:c14n81 , _:c14n86 , _:c14n90 ;
 	sh:sparql _:c14n5 ;
 	sh:targetClass rp:TenantAccess .
 rp:TenantLabelled a sh:NodeShape ;
 	rdfs:comment "A mixin for what carries a tenant's label, one line of 1 to 200 characters that neither starts nor ends in a space; the access record and the service's request bodies share it, so the label is checked the same everywhere." ;
 	rdfs:label "Tenant labelled" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n44 ;
-	sh:property _:c14n30 ;
+	sh:ignoredProperties _:c14n45 ;
+	sh:property _:c14n29 ;
 	sh:targetClass rp:TenantLabelled .
 rp:TenantSweepReport a sh:NodeShape ;
 	rdfs:comment "The outcome of a sweep of one live tenant: the loaded graphs and bucket objects found orphaned past the grace period, and whether each list was removed." ;
 	rdfs:label "Tenant sweep report" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n72 ;
-	sh:property _:c14n13 , _:c14n25 , _:c14n34 , _:c14n54 , _:c14n62 , _:c14n69 , _:c14n81 ;
+	sh:ignoredProperties _:c14n71 ;
+	sh:property _:c14n12 , _:c14n35 , _:c14n43 , _:c14n44 , _:c14n62 , _:c14n82 , _:c14n88 ;
 	sh:targetClass rp:TenantSweepReport .
 rp:Tracked a sh:NodeShape ;
 	rdfs:comment "A mixin for the tracking statements of a commit. The session writes them about the aggregate's graph IRI, never about the root entity." ;
 	rdfs:label "Tracked" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n12 ;
-	sh:property _:c14n27 , _:c14n64 , _:c14n79 , _:c14n80 ;
+	sh:ignoredProperties _:c14n13 ;
+	sh:property _:c14n26 , _:c14n64 , _:c14n78 , _:c14n79 ;
 	sh:targetClass rp:Tracked .
 _:c14n0 sh:datatype xsd:string ;
 	sh:description "A free-text description of the object." ;
@@ -205,8 +205,13 @@ _:c14n118 rdf:first dcterms:creator ;
 	rdf:rest _:c14n119 .
 _:c14n119 rdf:first dcterms:modified ;
 	rdf:rest _:c14n120 .
-_:c14n12 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
+_:c14n12 sh:description "The IRI of the tenant." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Tenant" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path rp:tenant .
 _:c14n120 rdf:first rdf:type ;
 	rdf:rest _:c14n121 .
 _:c14n121 rdf:first rp:version ;
@@ -227,12 +232,8 @@ _:c14n128 rdf:first dcterms:creator ;
 	rdf:rest _:c14n129 .
 _:c14n129 rdf:first dcterms:modified ;
 	rdf:rest _:c14n130 .
-_:c14n13 sh:datatype xsd:string ;
-	sh:description "The keys of the orphaned bucket objects found, sorted." ;
-	sh:name "Blobs" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 3 ;
-	sh:path rp:sweptBlob .
+_:c14n13 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
 _:c14n130 rdf:first rdf:type ;
 	rdf:rest _:c14n131 .
 _:c14n131 rdf:first rp:version ;
@@ -276,7 +277,7 @@ _:c14n148 rdf:first odrl:modify ;
 _:c14n149 rdf:first odrl:delete ;
 	rdf:rest _:c14n150 .
 _:c14n15 rdf:first rdf:type ;
-	rdf:rest _:c14n46 .
+	rdf:rest _:c14n47 .
 _:c14n150 rdf:first rp:administer ;
 	rdf:rest rdf:nil .
 _:c14n151 rdf:first odrl:read ;
@@ -295,20 +296,20 @@ _:c14n157 rdf:first odrl:delete ;
 	rdf:rest _:c14n158 .
 _:c14n158 rdf:first rp:administer ;
 	rdf:rest rdf:nil .
-_:c14n159 sh:property _:c14n85 .
+_:c14n159 sh:property _:c14n84 .
 _:c14n16 rdf:first _:c14n160 ;
 	rdf:rest _:c14n63 .
-_:c14n160 sh:property _:c14n29 .
+_:c14n160 sh:property _:c14n28 .
 _:c14n161 rdf:first rdf:type ;
 	rdf:rest _:c14n56 .
 _:c14n17 rdf:first rp:Active ;
 	rdf:rest _:c14n23 .
 _:c14n18 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n107 .
+	rdf:rest _:c14n112 .
 _:c14n19 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n117 .
+	rdf:rest _:c14n132 .
 _:c14n2 rdf:first rp:SystemLevel ;
-	rdf:rest _:c14n40 .
+	rdf:rest _:c14n39 .
 _:c14n20 sh:description "The activity that generated this entity." ;
 	sh:maxCount 1 ;
 	sh:name "Was generated by" ;
@@ -322,39 +323,41 @@ _:c14n22 rdf:first rp:databaseName ;
 _:c14n23 rdf:first rp:Deleting ;
 	rdf:rest rdf:nil .
 _:c14n24 sh:description "The actions the role permits." ;
-	sh:in _:c14n151 ;
+	sh:in _:c14n147 ;
 	sh:minCount 1 ;
 	sh:name "Actions" ;
 	sh:order 2 ;
 	sh:path rp:permits .
-_:c14n25 sh:datatype xsd:boolean ;
-	sh:description "Whether the orphaned loaded graphs were removed." ;
-	sh:maxCount 1 ;
-	sh:name "Removed loaded graphs" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 4 ;
-	sh:path rp:removedLoadedGraphs .
-_:c14n26 sh:description "The IRI of the graph the load put; the marker's subject, so no rp:graph triple." ;
+_:c14n25 sh:description "The IRI of the graph the load put; the marker's subject, so no rp:graph triple." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n27 sh:description "The principal that first committed the graph." ;
+_:c14n26 sh:description "The principal that first committed the graph." ;
 	sh:maxCount 1 ;
 	sh:name "Creator" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 2 ;
 	sh:path dcterms:creator .
-_:c14n28 sh:description "The IRI of the aggregate root that owns the graph." ;
+_:c14n27 sh:description "The IRI of the aggregate root that owns the graph." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Owned by" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 2 ;
 	sh:path rp:ownedBy .
-_:c14n29 sh:minCount 1 ;
+_:c14n28 sh:minCount 1 ;
 	sh:path rp:role .
+_:c14n29 sh:datatype xsd:string ;
+	sh:description "The preferred label of the object." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Label" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path skos:prefLabel ;
+	sh:pattern "^(?:^\\S(?:.{0,198}\\S)?$)(?![\\s\\S])" .
 _:c14n3 sh:datatype xsd:string ;
 	sh:description "The random key of the file in the tenant's bucket." ;
 	sh:maxCount 1 ;
@@ -362,24 +365,15 @@ _:c14n3 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 6 ;
 	sh:path rp:fileKey .
-_:c14n30 sh:datatype xsd:string ;
-	sh:description "The preferred label of the object." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Label" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 0 ;
-	sh:path skos:prefLabel ;
-	sh:pattern "^(?:^\\S(?:.{0,198}\\S)?$)(?![\\s\\S])" .
-_:c14n31 sh:description "The action a direct permission allows, or a prohibition forbids." ;
-	sh:in _:c14n147 ;
+_:c14n30 sh:description "The action a direct permission allows, or a prohibition forbids." ;
+	sh:in _:c14n155 ;
 	sh:maxCount 1 ;
 	sh:name "Action" ;
 	sh:order 2 ;
 	sh:path odrl:action .
-_:c14n32 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n142 .
-_:c14n33 sh:datatype xsd:string ;
+_:c14n31 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n97 .
+_:c14n32 sh:datatype xsd:string ;
 	sh:description "The preferred label of the object." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -387,27 +381,29 @@ _:c14n33 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path skos:prefLabel .
-_:c14n34 sh:datatype xsd:string ;
-	sh:description "The keys of orphaned objects the object store would not delete." ;
-	sh:name "Skipped blobs" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 6 ;
-	sh:path rp:skippedBlob .
-_:c14n35 sh:description "A principal that carried out the activity." ;
+_:c14n33 sh:description "A principal that carried out the activity." ;
 	sh:name "Was associated with" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 1 ;
 	sh:path prov:wasAssociatedWith .
-_:c14n36 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n137 .
-_:c14n37 sh:description "The IRI of the tenant, or of an aggregate's graph, the rule applies to." ;
+_:c14n34 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n122 .
+_:c14n35 sh:datatype xsd:boolean ;
+	sh:description "Whether the orphaned loaded graphs were removed." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Removed loaded graphs" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:removedLoadedGraphs .
+_:c14n36 sh:description "The IRI of the tenant, or of an aggregate's graph, the rule applies to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Target" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 1 ;
 	sh:path odrl:target .
-_:c14n38 sh:datatype xsd:string ;
+_:c14n37 sh:datatype xsd:string ;
 	sh:description "The preferred label of the object." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -416,8 +412,10 @@ _:c14n38 sh:datatype xsd:string ;
 	sh:order 5 ;
 	sh:path skos:prefLabel ;
 	sh:pattern "^(?:^\\S(?:.{0,198}\\S)?$)(?![\\s\\S])" .
-_:c14n39 rdf:first rp:LoadedGraph ;
+_:c14n38 rdf:first rp:LoadedGraph ;
 	rdf:rest rdf:nil .
+_:c14n39 rdf:first rp:TenantLevel ;
+	rdf:rest _:c14n92 .
 _:c14n4 sh:datatype xsd:string ;
 	sh:description "The media type of the file." ;
 	sh:maxCount 1 ;
@@ -425,35 +423,47 @@ _:c14n4 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:mediaType .
-_:c14n40 rdf:first rp:TenantLevel ;
-	rdf:rest _:c14n92 .
-_:c14n41 sh:description "The IRI that identifies the object." ;
+_:c14n40 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n42 rdf:first rdf:type ;
+_:c14n41 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n43 rdf:first dcterms:identifier ;
+_:c14n42 rdf:first dcterms:identifier ;
 	rdf:rest _:c14n161 .
-_:c14n44 rdf:first rdf:type ;
+_:c14n43 sh:description "The IRIs of the orphaned loaded graphs found, sorted." ;
+	sh:minCount 1 ;
+	sh:name "Loaded graphs" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 2 ;
+	sh:path rp:sweptLoadedGraph .
+_:c14n44 sh:datatype xsd:integer ;
+	sh:description "The grace period in seconds; only what is older is reported." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Older than seconds" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:olderThanSeconds .
+_:c14n45 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n45 sh:datatype xsd:string ;
+_:c14n46 sh:datatype xsd:string ;
 	sh:description "The name of the file as uploaded." ;
 	sh:maxCount 1 ;
 	sh:name "File name" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:fileName .
-_:c14n46 rdf:first rp:role ;
+_:c14n47 rdf:first rp:role ;
 	rdf:rest rdf:nil .
-_:c14n47 sh:description "The IRI of an entity this one was derived from." ;
+_:c14n48 sh:description "The IRI of an entity this one was derived from." ;
 	sh:name "Was derived from" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path prov:wasDerivedFrom .
-_:c14n48 sh:datatype xsd:dateTime ;
+_:c14n49 sh:datatype xsd:dateTime ;
 	sh:description "The time a graph was put to the store by a load." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -461,23 +471,23 @@ _:c14n48 sh:datatype xsd:dateTime ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:loadedAt .
-_:c14n49 sh:description "The principal that uploaded the file." ;
+_:c14n5 a sh:SPARQLConstraint ;
+	sh:message "TenantAccess.grants: One grant per assignee, target and role or action." ;
+	sh:select "SELECT DISTINCT $this\nWHERE {\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?first .\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?second .\n  FILTER (!sameTerm(?first, ?second))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/assignee> ?first_0 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/assignee> ?second_0 . }\n  FILTER ((!bound(?first_0) && !bound(?second_0)) || sameTerm(?first_0, ?second_0))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/target> ?first_1 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/target> ?second_1 . }\n  FILTER ((!bound(?first_1) && !bound(?second_1)) || sameTerm(?first_1, ?second_1))\n  OPTIONAL { ?first <https://meaningfy.ws/ns/rdf-persistence#role> ?first_2 . }\n  OPTIONAL { ?second <https://meaningfy.ws/ns/rdf-persistence#role> ?second_2 . }\n  FILTER ((!bound(?first_2) && !bound(?second_2)) || sameTerm(?first_2, ?second_2))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/action> ?first_3 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/action> ?second_3 . }\n  FILTER ((!bound(?first_3) && !bound(?second_3)) || sameTerm(?first_3, ?second_3))\n}" .
+_:c14n50 sh:description "The principal that uploaded the file." ;
 	sh:maxCount 1 ;
 	sh:name "Uploaded by" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 5 ;
 	sh:path rp:uploadedBy .
-_:c14n5 a sh:SPARQLConstraint ;
-	sh:message "TenantAccess.grants: One grant per assignee, target and role or action." ;
-	sh:select "SELECT DISTINCT $this\nWHERE {\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?first .\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?second .\n  FILTER (!sameTerm(?first, ?second))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/assignee> ?first_0 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/assignee> ?second_0 . }\n  FILTER ((!bound(?first_0) && !bound(?second_0)) || sameTerm(?first_0, ?second_0))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/target> ?first_1 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/target> ?second_1 . }\n  FILTER ((!bound(?first_1) && !bound(?second_1)) || sameTerm(?first_1, ?second_1))\n  OPTIONAL { ?first <https://meaningfy.ws/ns/rdf-persistence#role> ?first_2 . }\n  OPTIONAL { ?second <https://meaningfy.ws/ns/rdf-persistence#role> ?second_2 . }\n  FILTER ((!bound(?first_2) && !bound(?second_2)) || sameTerm(?first_2, ?second_2))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/action> ?first_3 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/action> ?second_3 . }\n  FILTER ((!bound(?first_3) && !bound(?second_3)) || sameTerm(?first_3, ?second_3))\n}" .
-_:c14n50 sh:datatype xsd:dateTime ;
+_:c14n51 sh:datatype xsd:dateTime ;
 	sh:description "The time this entity was generated." ;
 	sh:maxCount 1 ;
 	sh:name "Generated at time" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path prov:generatedAtTime .
-_:c14n51 sh:datatype xsd:string ;
+_:c14n52 sh:datatype xsd:string ;
 	sh:description "The SHA-256 digest of the file, in lowercase hexadecimal." ;
 	sh:maxCount 1 ;
 	sh:name "SHA-256" ;
@@ -485,27 +495,20 @@ _:c14n51 sh:datatype xsd:string ;
 	sh:order 3 ;
 	sh:path rp:sha256 ;
 	sh:pattern "^(?:^[0-9a-f]{64}$)(?![\\s\\S])" .
-_:c14n52 sh:datatype xsd:string ;
+_:c14n53 sh:datatype xsd:string ;
 	sh:description "The random key of the file in the tenant's bucket." ;
 	sh:maxCount 1 ;
 	sh:name "File key" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:fileKey .
-_:c14n53 sh:description "The principal the rule applies to." ;
+_:c14n54 sh:description "The principal the rule applies to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Assignee" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path odrl:assignee .
-_:c14n54 sh:datatype xsd:integer ;
-	sh:description "The grace period in seconds; only what is older is reported." ;
-	sh:maxCount 1 ;
-	sh:name "Older than seconds" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 1 ;
-	sh:path rp:olderThanSeconds .
 _:c14n55 sh:datatype xsd:dateTime ;
 	sh:description "The time the file was uploaded." ;
 	sh:maxCount 1 ;
@@ -516,9 +519,9 @@ _:c14n55 sh:datatype xsd:dateTime ;
 _:c14n56 rdf:first skos:prefLabel ;
 	rdf:rest _:c14n22 .
 _:c14n57 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n102 .
+	rdf:rest _:c14n107 .
 _:c14n58 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n112 .
+	rdf:rest _:c14n117 .
 _:c14n59 sh:datatype xsd:string ;
 	sh:description "The name of a role, matched against the application's role definitions." ;
 	sh:maxCount 1 ;
@@ -527,9 +530,9 @@ _:c14n59 sh:datatype xsd:string ;
 	sh:order 0 ;
 	sh:path rp:role .
 _:c14n6 rdf:first rp:Aggregate ;
-	rdf:rest _:c14n39 .
+	rdf:rest _:c14n38 .
 _:c14n60 sh:description "The action a direct permission allows, or a prohibition forbids." ;
-	sh:in _:c14n155 ;
+	sh:in _:c14n151 ;
 	sh:maxCount 1 ;
 	sh:name "Action" ;
 	sh:order 3 ;
@@ -543,6 +546,7 @@ _:c14n61 sh:description "The principal this entity is attributed to." ;
 _:c14n62 sh:datatype xsd:boolean ;
 	sh:description "Whether the orphaned bucket objects were removed." ;
 	sh:maxCount 1 ;
+	sh:minCount 1 ;
 	sh:name "Removed blobs" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 5 ;
@@ -555,7 +559,7 @@ _:c14n64 sh:description "A principal that committed a later version of the graph
 	sh:order 3 ;
 	sh:path dcterms:contributor .
 _:c14n65 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n97 .
+	rdf:rest _:c14n102 .
 _:c14n66 sh:description "The IRI of the tenant, or of an aggregate's graph, the rule applies to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -571,16 +575,11 @@ _:c14n68 sh:description "The permissions given in the tenant, by role or as dire
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 2 ;
 	sh:path rp:grant .
-_:c14n69 sh:description "The IRIs of the orphaned loaded graphs found, sorted." ;
-	sh:name "Loaded graphs" ;
-	sh:nodeKind sh:IRI ;
-	sh:order 2 ;
-	sh:path rp:sweptLoadedGraph .
+_:c14n69 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
 _:c14n7 rdf:first rp:state ;
 	rdf:rest rdf:nil .
-_:c14n70 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
-_:c14n71 sh:datatype xsd:string ;
+_:c14n70 sh:datatype xsd:string ;
 	sh:description "The name of the tenant's database, the prefix, \"-t-\" and the tenant id (hyphens left out); the prefix is lower case, at most 20 characters, the tenant id 4 to 32 lower case letters and digits." ;
 	sh:maxCount 1 ;
 	sh:name "Database name" ;
@@ -588,19 +587,19 @@ _:c14n71 sh:datatype xsd:string ;
 	sh:order 1 ;
 	sh:path rp:databaseName ;
 	sh:pattern "^(?:^[a-z][a-z0-9]{0,19}-t-[a-z0-9]{4,32}$)(?![\\s\\S])" .
-_:c14n72 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n132 .
-_:c14n73 sh:description "The IRI that identifies the object." ;
+_:c14n71 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n142 .
+_:c14n72 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n74 rdf:first rdf:type ;
+_:c14n73 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n75 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n122 .
-_:c14n76 sh:datatype xsd:dateTime ;
+_:c14n74 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n127 .
+_:c14n75 sh:datatype xsd:dateTime ;
 	sh:description "The time the object was last written to the bucket." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -608,22 +607,29 @@ _:c14n76 sh:datatype xsd:dateTime ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path dcterms:modified .
-_:c14n77 rdf:first dcterms:description ;
-	rdf:rest _:c14n43 .
-_:c14n78 sh:description "Where the role applies." ;
+_:c14n76 rdf:first dcterms:description ;
+	rdf:rest _:c14n42 .
+_:c14n77 sh:description "Where the role applies." ;
 	sh:in _:c14n2 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Level" ;
 	sh:order 1 ;
 	sh:path rp:level .
-_:c14n79 sh:datatype xsd:dateTime ;
+_:c14n78 sh:datatype xsd:dateTime ;
 	sh:description "The time the graph was last committed." ;
 	sh:maxCount 1 ;
 	sh:name "Modified" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path dcterms:modified .
+_:c14n79 sh:datatype xsd:dateTime ;
+	sh:description "The time the graph was first committed." ;
+	sh:maxCount 1 ;
+	sh:name "Created" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path dcterms:created .
 _:c14n8 sh:description "The principal the rule applies to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -631,34 +637,28 @@ _:c14n8 sh:description "The principal the rule applies to." ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path odrl:assignee .
-_:c14n80 sh:datatype xsd:dateTime ;
-	sh:description "The time the graph was first committed." ;
-	sh:maxCount 1 ;
-	sh:name "Created" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 0 ;
-	sh:path dcterms:created .
-_:c14n81 sh:description "The IRI of the tenant." ;
-	sh:maxCount 1 ;
-	sh:name "Tenant" ;
-	sh:nodeKind sh:IRI ;
-	sh:order 0 ;
-	sh:path rp:tenant .
-_:c14n82 sh:description "The IRI of the tenant, or of an aggregate's graph, the rule applies to." ;
+_:c14n80 sh:description "The IRI of the tenant, or of an aggregate's graph, the rule applies to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Target" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 2 ;
 	sh:path odrl:target .
-_:c14n83 sh:description "Where the tenant is in its life." ;
+_:c14n81 sh:description "Where the tenant is in its life." ;
 	sh:in _:c14n17 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "State" ;
 	sh:order 0 ;
 	sh:path rp:state .
-_:c14n84 sh:datatype xsd:string ;
+_:c14n82 sh:datatype xsd:string ;
+	sh:description "The keys of orphaned objects the object store would not delete." ;
+	sh:minCount 1 ;
+	sh:name "Skipped blobs" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 6 ;
+	sh:path rp:skippedBlob .
+_:c14n83 sh:datatype xsd:string ;
 	sh:description "The name of a role, matched against the application's role definitions." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -666,28 +666,35 @@ _:c14n84 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:role .
-_:c14n85 sh:minCount 1 ;
+_:c14n84 sh:minCount 1 ;
 	sh:path odrl:action .
-_:c14n86 sh:description "The kind of graph a registry entry names." ;
+_:c14n85 sh:description "The kind of graph a registry entry names." ;
 	sh:in _:c14n6 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Kind" ;
 	sh:order 1 ;
 	sh:path rp:kind .
-_:c14n87 sh:datatype xsd:string ;
+_:c14n86 sh:datatype xsd:string ;
 	sh:description "A free-text description of the object." ;
 	sh:maxCount 1 ;
 	sh:name "Description" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 6 ;
 	sh:path dcterms:description .
-_:c14n88 sh:description "The IRI that identifies the object." ;
+_:c14n87 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
+_:c14n88 sh:datatype xsd:string ;
+	sh:description "The keys of the orphaned bucket objects found, sorted." ;
+	sh:minCount 1 ;
+	sh:name "Blobs" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:sweptBlob .
 _:c14n89 sh:description "The action a direct permission allows, or a prohibition forbids." ;
 	sh:in _:c14n143 ;
 	sh:maxCount 1 ;
@@ -709,7 +716,7 @@ _:c14n90 sh:description "The IRI that identifies the object." ;
 	sh:order 4 ;
 	sh:path dcterms:identifier .
 _:c14n91 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n127 .
+	rdf:rest _:c14n137 .
 _:c14n92 rdf:first rp:AggregateLevel ;
 	rdf:rest rdf:nil .
 _:c14n93 rdf:first dcterms:creator ;

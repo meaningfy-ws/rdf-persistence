@@ -218,6 +218,17 @@ with `session.remove` leaving blob k2 (3 h old); blob k3 uploaded 1 min ago, not
   replace between the read and the remove also makes the remove refuse; a separate check would add
   a race, not remove one. The "still named" read is a new public `Session.named_file_keys(keys)`,
   because the session's store is private.
+- **RF-3** (review L2+L3, P2): every `TenantSweepReport` slot is required (lists may be empty).
+- **RF-4** (review, P2): a test follows the spec scenario "a blob of a removed aggregate is swept"
+  literally (a scan naming the key, removed through the session) and checks a stored scan's
+  bytes.
+- **RF-5** (review, P3): `S3FileStore.list_blobs` ends on a truncated page that carries no
+  continuation token instead of listing from the start again forever.
+- Not taken (review): moving the shared sweep-test helpers out of a test module (other tests in the
+  repo import from test modules too; worth a repo-wide tidy, not this change); one shared
+  delete-and-log helper for the sweep and `remove_with_files` (they catch different errors and log
+  different steps; two small functions read more plainly); the toy route's `If-Match` parsing
+  (test code; the guide's route uses the toolkit's own).
 - Accepted as is: when a commit wins the PD-5 race, the report still lists the graph with
   `removed_loaded_graphs=True`; the report lists what was found and whether removal ran, not what
   each delete did. A loaded graph of the tenant's access record is swept like any aggregate's when

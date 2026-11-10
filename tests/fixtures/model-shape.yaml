@@ -770,31 +770,31 @@
 - class_name: TenantSweepReport
   slots:
   - name: blobs
-    required: false
+    required: true
     multivalued: true
     range: string
   - name: loaded_graphs
-    required: false
+    required: true
     multivalued: true
     range: uri
   - name: older_than_seconds
-    required: false
+    required: true
     multivalued: false
     range: integer
   - name: removed_blobs
-    required: false
+    required: true
     multivalued: false
     range: boolean
   - name: removed_loaded_graphs
-    required: false
+    required: true
     multivalued: false
     range: boolean
   - name: skipped_blobs
-    required: false
+    required: true
     multivalued: true
     range: string
   - name: tenant
-    required: false
+    required: true
     multivalued: false
     range: uri
 - class_name: Tracked

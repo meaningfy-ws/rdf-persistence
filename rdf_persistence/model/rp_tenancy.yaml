@@ -69,6 +69,21 @@ classes:
       - removed_loaded_graphs
       - removed_blobs
       - skipped_blobs
+    slot_usage:
+      tenant:
+        required: true
+      older_than_seconds:
+        required: true
+      loaded_graphs:
+        required: true
+      blobs:
+        required: true
+      removed_loaded_graphs:
+        required: true
+      removed_blobs:
+        required: true
+      skipped_blobs:
+        required: true
 
 slots:
   tenant:

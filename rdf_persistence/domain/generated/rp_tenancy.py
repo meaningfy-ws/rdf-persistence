@@ -147,13 +147,13 @@ class TenantAccess(TenantLabelled, Described, AggregateRoot, Policy):
 
 class TenantSweepReport(ConfiguredBaseModel):
     "The outcome of a sweep of one live tenant: the loaded graphs and bucket objects found orphaned past the grace period, and whether each list was removed."
-    tenant: Optional[str] = Field(default=None, title="Tenant", description="The IRI of the tenant.")
-    older_than_seconds: Optional[int] = Field(default=None, title="Older than seconds", description="The grace period in seconds; only what is older is reported.")
-    loaded_graphs: Optional[list[str]] = Field(default=None, title="Loaded graphs", description="The IRIs of the orphaned loaded graphs found, sorted.")
-    blobs: Optional[list[str]] = Field(default=None, title="Blobs", description="The keys of the orphaned bucket objects found, sorted.")
-    removed_loaded_graphs: Optional[bool] = Field(default=None, title="Removed loaded graphs", description="Whether the orphaned loaded graphs were removed.")
-    removed_blobs: Optional[bool] = Field(default=None, title="Removed blobs", description="Whether the orphaned bucket objects were removed.")
-    skipped_blobs: Optional[list[str]] = Field(default=None, title="Skipped blobs", description="The keys of orphaned objects the object store would not delete.")
+    tenant: str = Field(default=..., title="Tenant", description="The IRI of the tenant.")
+    older_than_seconds: int = Field(default=..., title="Older than seconds", description="The grace period in seconds; only what is older is reported.")
+    loaded_graphs: list[str] = Field(default=..., title="Loaded graphs", description="The IRIs of the orphaned loaded graphs found, sorted.")
+    blobs: list[str] = Field(default=..., title="Blobs", description="The keys of the orphaned bucket objects found, sorted.")
+    removed_loaded_graphs: bool = Field(default=..., title="Removed loaded graphs", description="Whether the orphaned loaded graphs were removed.")
+    removed_blobs: bool = Field(default=..., title="Removed blobs", description="Whether the orphaned bucket objects were removed.")
+    skipped_blobs: list[str] = Field(default=..., title="Skipped blobs", description="The keys of orphaned objects the object store would not delete.")
 
 
 # Model rebuild

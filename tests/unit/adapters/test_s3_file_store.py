@@ -241,6 +241,15 @@ async def test_list_blobs_follows_every_page_and_keeps_the_modified_time(s3):
     stubber.assert_no_pending_responses()
 
 
+async def test_a_truncated_page_without_a_token_ends_the_listing(s3):
+    files, stubber = s3
+    first = datetime(2026, 1, 1, tzinfo=UTC)
+    page = {"IsTruncated": True, "Contents": [{"Key": "a", "LastModified": first}]}
+    stubber.add_response("list_objects_v2", page, {"Bucket": BUCKET})
+    assert await files.list_blobs(BUCKET) == [BlobEntry(file_key="a", modified=first)]
+    stubber.assert_no_pending_responses()
+
+
 async def test_list_blobs_of_an_empty_bucket_is_empty(s3):
     files, stubber = s3
     stubber.add_response("list_objects_v2", {"IsTruncated": False}, {"Bucket": BUCKET})

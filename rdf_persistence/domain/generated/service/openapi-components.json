@@ -1024,6 +1024,15 @@
           "type": "string"
         }
       },
+      "required": [
+        "tenant",
+        "older_than_seconds",
+        "loaded_graphs",
+        "blobs",
+        "removed_loaded_graphs",
+        "removed_blobs",
+        "skipped_blobs"
+      ],
       "title": "TenantSweepReport",
       "type": "object"
     },

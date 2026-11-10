@@ -259,10 +259,24 @@ async def test_the_tenant_graphs_and_aggregates_are_never_candidates(world):
     assert report.loaded_graphs == [str(world.g2)]
 
 
+async def test_the_blob_of_a_scan_removed_through_the_session_is_swept(world):
+    removed = book(world, 3, "scans")
+    version = await world.commit(removed, keys=["k4"])
+    await world.blob("k4", 3 * HOUR)
+    async with world.session() as opened:
+        await opened.remove(removed, version)
+    report = await world.sweep(remove_blobs=True)
+    assert report.blobs == ["k2", "k4"], "the removed scan's blob is an orphan now"
+    assert [b.file_key for b in await world.files.list_blobs(world.database)] == ["k1", "k3"]
+    assert await world.files.get(world.database, "k1") == b"bytes", (
+        "a stored scan's blob is unchanged"
+    )
+
+
 async def test_the_tenant_roots_loaded_graph_is_never_a_candidate(world):
     root_graph = await world.load(world.tenant, 5 * HOUR)
     report = await world.sweep(remove=True)
-    assert str(root_graph) not in (report.loaded_graphs or [])
+    assert str(root_graph) not in report.loaded_graphs
     assert await world.holds(root_graph), "its graph is untouched"
 
 
