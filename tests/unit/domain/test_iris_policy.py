@@ -318,3 +318,23 @@ def test_the_patterns_are_compiled_once_per_iris(consumer):
 def test_an_iris_is_frozen(consumer):
     with pytest.raises(AttributeError, match="frozen"):
         consumer.root_types = frozenset()
+
+
+# --- the root a loaded graph names (live-tenant-sweep PD-4) -------------------------------------
+
+
+def test_a_loaded_graph_names_the_root_its_template_holds(default):
+    root = default.mint_aggregate(DEFAULT_TENANT, "", "files")
+    assert default.loaded_graph_root(default.mint_loaded_graph(DEFAULT_TENANT, root)) == str(root)
+    tenant_graph = default.mint_loaded_graph(DEFAULT_TENANT, DEFAULT_TENANT)
+    assert default.loaded_graph_root(tenant_graph) == DEFAULT_TENANT, "the tenant root's own"
+
+
+def test_an_iri_that_is_not_a_loaded_graph_names_no_root(default):
+    assert default.loaded_graph_root(f"{DEFAULT_TENANT}/files/not-a-loaded-graph") is None
+
+
+def test_a_template_without_a_root_variable_names_no_root(consumer):
+    loaded = consumer.mint_loaded_graph(TENANT, TENANT)
+    assert consumer.is_loaded_graph(TENANT, loaded), "still a loaded graph"
+    assert consumer.loaded_graph_root(loaded) is None

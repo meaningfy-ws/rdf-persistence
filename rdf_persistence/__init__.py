@@ -50,6 +50,7 @@ from rdf_persistence.domain.generated.rp_core import (
     DatabaseKind,
     GraphKind,
     ModuleKind,
+    PendingLoad,
     Principal,
     RegistryEntry,
     RegistryKind,
@@ -57,6 +58,7 @@ from rdf_persistence.domain.generated.rp_core import (
     WritesKind,
 )
 from rdf_persistence.domain.generated.rp_files import (
+    BlobEntry,
     RdfFormat,
     StoredFile,
 )
@@ -68,6 +70,7 @@ from rdf_persistence.domain.generated.rp_tenancy import (
     TenantAccess,
     TenantLabelled,
     TenantState,
+    TenantSweepReport,
 )
 from rdf_persistence.domain.generated.service.rp_service import (
     AccountSummary,
@@ -101,6 +104,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
         load_caller_access,
         load_role_definitions,
     )
+    from rdf_persistence.services.file_removal import remove_with_files
     from rdf_persistence.services.files import FileStore
     from rdf_persistence.services.identity import Identity
     from rdf_persistence.services.listing import Listings
@@ -110,6 +114,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.services.store import Store
     from rdf_persistence.services.sweep import sweep
     from rdf_persistence.services.tenancy import GrantValidator, RootValidator, Tenancy
+    from rdf_persistence.services.tenant_sweep import sweep_tenant
     from rdf_persistence.services.tokens import TokenVerifier
 
 __version__ = "0.1.0"
@@ -141,6 +146,8 @@ _LAZY_MODULES = {
     "open_session": f"{_SERVICES}.session",
     "Store": f"{_SERVICES}.store",
     "sweep": f"{_SERVICES}.sweep",
+    "sweep_tenant": f"{_SERVICES}.tenant_sweep",
+    "remove_with_files": f"{_SERVICES}.file_removal",
     "Tenancy": f"{_SERVICES}.tenancy",
     "GrantValidator": f"{_SERVICES}.tenancy",
     "RootValidator": f"{_SERVICES}.tenancy",
@@ -164,6 +171,7 @@ __all__ = [
     "AggregateRoot",
     "Authorised",
     "BadQuery",
+    "BlobEntry",
     "CallerAccess",
     "Conflict",
     "DatabaseGone",
@@ -199,6 +207,7 @@ __all__ = [
     "NotFound",
     "Page",
     "PayloadTooLarge",
+    "PendingLoad",
     "PersistenceError",
     "PreconditionRequired",
     "Policy",
@@ -230,6 +239,7 @@ __all__ = [
     "TenantGone",
     "TenantLabelled",
     "TenantState",
+    "TenantSweepReport",
     "TenantSummary",
     "TokenVerifier",
     "Tracked",
@@ -249,5 +259,7 @@ __all__ = [
     "new_part",
     "open_session",
     "sweep",
+    "sweep_tenant",
+    "remove_with_files",
     "zitadel_roles_claim",
 ]

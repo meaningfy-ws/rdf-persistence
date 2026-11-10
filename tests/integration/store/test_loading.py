@@ -3,6 +3,7 @@
 import json
 import uuid
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
@@ -31,6 +32,8 @@ CONSTRUCT = "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH $g { ?s ?p ?o } }"
 TURTLE = b'<https://example.org/b> <http://purl.org/dc/terms/title> "Dune", "Arrakis" .\n'
 BROKEN_TURTLE = b"<https://example.org/b> <http://purl.org/dc/terms/title> ??? ."
 
+NOW = datetime(2026, 11, 10, 12, 0, tzinfo=UTC)
+
 
 @pytest.fixture
 async def database(store: FusekiStore) -> AsyncIterator[str]:
@@ -42,7 +45,7 @@ async def database(store: FusekiStore) -> AsyncIterator[str]:
 
 @pytest.fixture
 def session(store, database) -> Session:
-    return Session(store, database=database, tenant_iri=TENANT, principal=ADA, clock=lambda: None)
+    return Session(store, database=database, tenant_iri=TENANT, principal=ADA, clock=lambda: NOW)
 
 
 async def graphs_in(store, database) -> set[str]:
@@ -86,7 +89,8 @@ async def test_a_good_file_lands_in_its_own_graph_under_the_aggregate(store, dat
     held = await contents(store, database, loaded)
     assert str(loaded).startswith(f"{BOOK}/content/"), "named under the aggregate"
     assert isomorphic(held, expected), graph_diff(held, expected)
-    assert await graphs_in(store, database) == {str(loaded)}, "only the loaded graph exists"
+    registry = str(DEFAULT_IRIS.registry(TENANT))  # holds the load's marker (PD-2)
+    assert await graphs_in(store, database) == {str(loaded), registry}, "the graph and its marker"
 
 
 async def test_the_callers_commit_registers_the_loaded_graph_and_removing_the_aggregate_unregisters_it(
@@ -169,7 +173,7 @@ async def test_a_loaded_graph_reads_back_and_one_of_another_aggregate_is_not_fou
 async def test_a_later_session_lists_the_loaded_graph_and_reads_it(store, database, session):
     loaded = await session.load_graph(BOOK, TURTLE, rdf_format=RdfFormat.TURTLE)
     await session.add_graph(BOOK, [], [loaded])
-    later = Session(store, database=database, tenant_iri=TENANT, principal=ADA, clock=lambda: None)
+    later = Session(store, database=database, tenant_iri=TENANT, principal=ADA, clock=lambda: NOW)
     (graph_iri,) = await later.loaded_graphs(BOOK)
     assert graph_iri == loaded
     expected = Graph().parse(data=TURTLE, format="turtle")

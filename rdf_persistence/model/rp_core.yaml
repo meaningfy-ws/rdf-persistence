@@ -50,6 +50,20 @@ classes:
         required: true
       owned_by:
         required: true
+  PendingLoad:
+    title: Pending load
+    description: >-
+      The registry marker of a load not yet committed: one triple saying when the graph was put. It
+      names no registry entry, so deleting it never deletes an entry.
+    class_uri: rp:PendingLoad
+    slots:
+      - id
+      - loaded_at
+    slot_usage:
+      id:
+        description: The IRI of the graph the load put; the marker's subject, so no rp:graph triple.
+      loaded_at:
+        required: true
 
 slots:
   url_segment:
@@ -86,6 +100,11 @@ slots:
     description: The IRI of a named graph.
     slot_uri: rp:graph
     range: uri
+  loaded_at:
+    title: Loaded at
+    description: The time a graph was put to the store by a load.
+    slot_uri: rp:loadedAt
+    range: datetime
   kind:
     title: Kind
     description: The kind of graph a registry entry names.

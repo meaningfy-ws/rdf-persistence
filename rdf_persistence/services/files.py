@@ -6,6 +6,8 @@ kept byte for byte under a key the caller makes up (a random one, per the file-s
 
 from typing import Protocol
 
+from rdf_persistence.domain.generated.rp_files import BlobEntry
+
 
 class FileStore(Protocol):
     """An object store with buckets, over S3 or in memory."""
@@ -42,4 +44,13 @@ class FileStore(Protocol):
 
     async def delete(self, bucket: str, key: str) -> None:
         """Delete the blob; deleting a blob that is not there succeeds. Raises ``TenantGone`` as ``get`` does."""
+        ...
+
+    async def list_blobs(self, bucket: str) -> list[BlobEntry]:
+        """Every blob in the bucket, in key order, with its last-modified time (all pages).
+
+        Raises:
+            TenantGone: The bucket does not exist.
+            StoreUnavailable: The object store is unreachable or failed.
+        """
         ...

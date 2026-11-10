@@ -96,6 +96,22 @@ async def object_operations_on_a_missing_bucket_are_tenant_gone_and_create_nothi
     assert await files.list_buckets(missing) == [], "no bucket was created"
 
 
+async def blobs_are_listed_in_key_order_with_their_modified_time(
+    files: FileStore, bucket: str
+) -> None:
+    assert await files.list_blobs(bucket) == [], "an empty bucket lists nothing"
+    for key in ("b", AWKWARD_KEY, "a"):
+        await files.put(bucket, key, b"x")
+    entries = await files.list_blobs(bucket)
+    assert [entry.file_key for entry in entries] == sorted(["a", "b", AWKWARD_KEY])
+    assert all(entry.modified.tzinfo is not None for entry in entries), "modified is timezone-aware"
+
+
+async def listing_a_missing_bucket_is_tenant_gone(files: FileStore, bucket: str) -> None:
+    with pytest.raises(TenantGone):
+        await files.list_blobs(f"{bucket}-missing")
+
+
 CASES: tuple[Case, ...] = (
     blob_comes_back_byte_for_byte,
     empty_blob_round_trips,
@@ -108,6 +124,8 @@ CASES: tuple[Case, ...] = (
     deleting_a_bucket_removes_its_blobs_and_the_bucket,
     deleting_a_missing_bucket_is_not_found,
     object_operations_on_a_missing_bucket_are_tenant_gone_and_create_nothing,
+    blobs_are_listed_in_key_order_with_their_modified_time,
+    listing_a_missing_bucket_is_tenant_gone,
 )
 
 

@@ -370,11 +370,6 @@ slots:
     slot_uri: rp:rolesClaim
     range: string
     pattern: "^.+$"
-  tenant:
-    title: Tenant
-    description: The IRI of the tenant.
-    slot_uri: rp:tenant
-    range: uri
   max_body_bytes:
     title: Maximum body size
     description: >-

@@ -10,3 +10,9 @@ export type RdfFormat =
   | "ntriples"
   /** The JSON-LD serialisation, media type application/ld+json. */
   | "jsonld";
+
+/** One object in a tenant's bucket, as a listing of the bucket reports it. */
+export interface BlobEntry {
+  /** The time the object was last written to the bucket. */
+  modified: string;
+}

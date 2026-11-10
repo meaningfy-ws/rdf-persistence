@@ -46,6 +46,7 @@ from .rp_core import (
     DatabaseKind,
     GraphKind,
     ModuleKind,
+    PendingLoad,
     Principal,
     RegistryEntry,
     RegistryKind,
@@ -53,6 +54,7 @@ from .rp_core import (
     WritesKind
 )
 from .rp_files import (
+    BlobEntry,
     RdfFormat,
     StoredFile
 )
@@ -63,7 +65,8 @@ from .rp_provenance import (
 from .rp_tenancy import (
     TenantAccess,
     TenantLabelled,
-    TenantState
+    TenantState,
+    TenantSweepReport
 )
 
 

@@ -4,11 +4,13 @@ import re
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import timedelta
 
 import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
+from rdflib import Literal, URIRef
 
 from rdf_persistence import Problem
 from rdf_persistence.domain.exceptions import InvalidRoleDefinition, NotFound
@@ -21,6 +23,7 @@ from tests.toy import ROLES, SETTINGS, TOY_SCHEMA
 from tests.toy_service import CONSUMER_POLICY, DUNE_BODY, TENANT_BODY, ToyService
 
 PROBLEMS = f"{SETTINGS.base}problems/"
+FILE_KEY = URIRef("https://meaningfy.ws/ns/rdf-persistence#fileKey")
 A_UUID = "6f1c0c1e-0000-4000-8000-000000000001"
 
 
@@ -334,3 +337,43 @@ async def test_without_an_id_source_two_creates_draw_different_ids_of_the_policy
     assert locations[0] != locations[1], "drawn, not fixed"
     length = CONSUMER_POLICY.tenant_id.length
     assert [len(i) for i in locations] == [length, length], "the policy's tenant id length"
+
+
+# --- the sweep of a live tenant (live-tenant-sweep task 3.2) -------------------------------------
+
+
+async def test_the_kit_sweeps_a_tenant_with_its_own_store_files_and_iris(service, client) -> None:
+    headers = {"Authorization": f"Bearer {service.signer.issue(sub='ada')}"}
+    path = (await client.post("/libraries", json=TENANT_BODY, headers=headers)).headers["location"]
+    tenant = service.kit.tenant_iri(path.rsplit("/", 1)[1])
+    bucket = await service.kit.bucket_of(tenant)
+    await service.files.put(bucket, "left-behind", b"bytes")
+
+    report = await service.kit.sweep_tenant(tenant, older_than=timedelta(seconds=-1))
+
+    assert report.tenant == tenant and report.older_than_seconds == -1
+    assert report.blobs == ["left-behind"], "found through the kit's own file store"
+    assert report.removed_loaded_graphs is False, "a dry run, as by default"
+    await service.kit.sweep_tenant(tenant, remove_blobs=True, older_than=timedelta(seconds=-1))
+    assert await service.files.list_blobs(bucket) == [], "the keywords reach the sweep"
+
+
+# --- removal of a file aggregate with its blobs (live-tenant-sweep task 4.1) ---------------------
+
+
+async def test_the_kit_removes_an_aggregate_with_its_blobs(service, client) -> None:
+    headers = {"Authorization": f"Bearer {service.signer.issue(sub='ada')}"}
+    path = (await client.post("/libraries", json=TENANT_BODY, headers=headers)).headers["location"]
+    tenant = service.kit.tenant_iri(path.rsplit("/", 1)[1])
+    bucket = await service.kit.bucket_of(tenant)
+    scan = f"{tenant}/scans/{uuid.UUID(int=1)}"
+    async with service.kit.session(tenant, "ada") as session:
+        version = await session.add_graph(scan, [(URIRef(scan), FILE_KEY, Literal("k1"))])
+    await service.files.put(bucket, "k1", b"bytes")
+
+    await service.kit.remove_with_files(tenant, "ada", scan, version)
+
+    assert await service.files.list_blobs(bucket) == [], "the kit's own file store lost the blob"
+    async with service.kit.session(tenant, "ada") as session:
+        with pytest.raises(NotFound):
+            await session.get_graph(scan)

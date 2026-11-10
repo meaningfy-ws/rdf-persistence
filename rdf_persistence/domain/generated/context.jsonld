@@ -36,6 +36,10 @@
          "@type": "@id",
          "@id": "ODRL:assignee"
       },
+      "blobs": {
+         "@container": "@set",
+         "@id": "sweptBlob"
+      },
       "byte_size": {
          "@id": "byteSize"
       },
@@ -96,9 +100,18 @@
          "@type": "@id",
          "@id": "listedIn"
       },
+      "loaded_at": {
+         "@type": "xsd:dateTime",
+         "@id": "loadedAt"
+      },
       "loaded_graph": {
          "@type": "@id",
          "@id": "loadedGraph"
+      },
+      "loaded_graphs": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "sweptLoadedGraph"
       },
       "media_type": {
          "@id": "mediaType"
@@ -106,6 +119,9 @@
       "modified": {
          "@type": "xsd:dateTime",
          "@id": "dcterms:modified"
+      },
+      "older_than_seconds": {
+         "@id": "olderThanSeconds"
       },
       "owned_by": {
          "@type": "@id",
@@ -116,11 +132,21 @@
          "@container": "@set",
          "@id": "prohibition"
       },
+      "removed_blobs": {
+         "@id": "removedBlobs"
+      },
+      "removed_loaded_graphs": {
+         "@id": "removedLoadedGraphs"
+      },
       "role": {
          "@id": "role"
       },
       "sha256": {
          "@id": "sha256"
+      },
+      "skipped_blobs": {
+         "@container": "@set",
+         "@id": "skippedBlob"
       },
       "state": {
          "@id": "state",
@@ -133,6 +159,10 @@
       "target": {
          "@type": "@id",
          "@id": "ODRL:target"
+      },
+      "tenant": {
+         "@type": "@id",
+         "@id": "tenant"
       },
       "uploaded": {
          "@type": "xsd:dateTime",
@@ -174,11 +204,17 @@
       "AggregateRoot": {
          "@id": "AggregateRoot"
       },
+      "BlobEntry": {
+         "@id": "BlobEntry"
+      },
       "Described": {
          "@id": "Described"
       },
       "Grant": {
          "@id": "ODRL:Permission"
+      },
+      "PendingLoad": {
+         "@id": "PendingLoad"
       },
       "Policy": {
          "@id": "ODRL:Set"
@@ -209,6 +245,9 @@
       },
       "TenantLabelled": {
          "@id": "TenantLabelled"
+      },
+      "TenantSweepReport": {
+         "@id": "TenantSweepReport"
       },
       "Tracked": {
          "@id": "Tracked"

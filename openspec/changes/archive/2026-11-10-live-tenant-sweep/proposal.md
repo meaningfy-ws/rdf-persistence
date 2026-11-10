@@ -4,7 +4,7 @@
 
 # EPIC: Sweep orphans inside a live tenant
 
-> Candidate EPIC, shaped 2026-11-06 from the v1 future list. Not planned: the PLAN (design.md, tasks.md) waits for the developer's answers in inputs/seed.md.
+> Shaped 2026-11-06 from the v1 future list. PLANNED 2026-11-10: design.md + tasks.md, clarity gate 9/10 after two attack rounds (inputs/seed.md).
 
 **Golden-thread parent:** capability `rp-tenancy` (requirement "The start-up sweep finishes
 interrupted work") and the deferred building block "Sweep of orphans inside a live tenant" of

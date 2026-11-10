@@ -122,8 +122,8 @@ named graph, by default `{root}/content/{uuid4}` (per the IRI policy). A later c
 by naming it in `loaded_graphs`; the commit is refused (`InvalidIri`, nothing written) if the policy
 would not mint that graph for the aggregate or if another aggregate already owns it, which one `ASK`
 on the registry settles (PD-7). A loaded graph no commit registers stays, unseen, until its tenant
-is deleted: the start-up sweep drops only whole tenant databases and buckets, and the sweep inside a
-live tenant is deferred (below).
+is deleted or until `sweep_tenant` removes it: the start-up sweep drops only whole tenant databases
+and buckets, and the sweep inside a live tenant is the next building block (below).
 |N-5
 
 |File store port and S3 adapter
@@ -167,8 +167,8 @@ live tenant is deferred (below).
 |
 
 |Sweep of orphans inside a live tenant (blobs, loaded graphs no aggregate names)
-|deferred
-|Orphans are invisible and erased with their tenant.
+|v1
+|`sweep_tenant` (`services/tenant_sweep.py`, `ServiceKit.sweep_tenant`): a dry run by default; finds loaded graphs no registry entry owns and blobs no `rp:fileKey` names, older than a grace period (1 hour), and removes graphs with `remove` and blobs with `remove_blobs`. `ServiceKit.remove_with_files` removes a file aggregate with the blobs only it names. Design `live-tenant-sweep`.
 |
 
 |Second store (Oxigraph, Virtuoso) and a capability descriptor
@@ -226,7 +226,7 @@ _What may a consumer import?_
 |`RpModel`; `Iris`, `DEFAULT_IRIS`, `mint_aggregate_iri`; `AggregateRoot`, `Described`, `Tracked`,
 `Provenanced`, `Activity`, `Principal`, `RegistryEntry`, `StoredFile`, `RdfFormat`; `Policy`,
 `Rule`, `Grant`, `Prohibition`, `RoleDefinition`, `RoleLevel`, `Action`; `TenantAccess`,
-`TenantLabelled`, `TenantState`; the annotation enums (`RpAnnotation`, `ModuleKind`, `DatabaseKind`,
+`TenantLabelled`, `TenantState`, `TenantSweepReport`, `BlobEntry`, `PendingLoad`; the annotation enums (`RpAnnotation`, `ModuleKind`, `DatabaseKind`,
 `GraphKind`, `RegistryKind`); the service records (`ServiceSettings`, `IriPolicy`, `IdSpec`,
 `IdKind`, `TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`, `Problem`,
 `ProblemKind`, `VerifiedCaller`, `CallerAccess`, `Authorised`, `AccountSummary`); the errors
@@ -235,8 +235,8 @@ _What may a consumer import?_
 |`rdf_persistence.services`
 |session and unit of work, mapper, tenancy, access check, sweep; the ports
 |`open_session`, `Session`, `UnitOfWork`, `Mapper`, `generated_models`, `new_part`, `load_schema`,
-`Tenancy`, `sweep`, `AccessRules` (with `with_iris`), `load_role_definitions`, `load_caller_access`;
-the ports `Store`, `FileStore`, `Identity`, `TokenVerifier`
+`Tenancy`, `sweep`, `sweep_tenant`, `remove_with_files`, `AccessRules` (with `with_iris`), `load_role_definitions`, `load_caller_access`;
+the ports `Store`, `FileStore` (with `list_blobs`), `Identity`, `TokenVerifier`; `Session.named_file_keys`
 |`rdf_persistence.adapters` |Fuseki, S3 and Zitadel adapters; JWKS token verification |`FusekiStore`, `S3FileStore`, `ZitadelIdentity`, `zitadel_roles_claim`, `JwksTokenVerifier`
 |`rdf_persistence.entrypoints` |service kit (generic router, FastAPI dependencies, problem handlers, ETags, OpenAPI hook, start-up) |`install_service`, `ServiceKit`, `limited_body`
 |`rdf_persistence.testkit` |fakes, token signer, Zitadel provisioning, container fixtures, the

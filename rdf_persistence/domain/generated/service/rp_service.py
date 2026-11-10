@@ -46,6 +46,7 @@ from rdf_persistence.domain.generated.rp_core import (
     DatabaseKind,
     GraphKind,
     ModuleKind,
+    PendingLoad,
     Principal,
     RegistryEntry,
     RegistryKind,
@@ -55,7 +56,8 @@ from rdf_persistence.domain.generated.rp_core import (
 from rdf_persistence.domain.generated.rp_tenancy import (
     TenantAccess,
     TenantLabelled,
-    TenantState
+    TenantState,
+    TenantSweepReport
 )
 
 

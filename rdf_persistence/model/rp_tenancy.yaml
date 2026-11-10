@@ -55,8 +55,75 @@ classes:
     annotations:
       rp_path: access
       database: system
+  TenantSweepReport:
+    title: Tenant sweep report
+    description: >-
+      The outcome of a sweep of one live tenant: the loaded graphs and bucket objects found orphaned
+      past the grace period, and whether each list was removed.
+    class_uri: rp:TenantSweepReport
+    slots:
+      - tenant
+      - older_than_seconds
+      - loaded_graphs
+      - blobs
+      - removed_loaded_graphs
+      - removed_blobs
+      - skipped_blobs
+    slot_usage:
+      tenant:
+        required: true
+      older_than_seconds:
+        required: true
+      loaded_graphs:
+        required: true
+      blobs:
+        required: true
+      removed_loaded_graphs:
+        required: true
+      removed_blobs:
+        required: true
+      skipped_blobs:
+        required: true
 
 slots:
+  tenant:
+    title: Tenant
+    description: The IRI of the tenant.
+    slot_uri: rp:tenant
+    range: uri
+  older_than_seconds:
+    title: Older than seconds
+    description: The grace period in seconds; only what is older is reported.
+    slot_uri: rp:olderThanSeconds
+    range: integer
+  loaded_graphs:
+    title: Loaded graphs
+    description: The IRIs of the orphaned loaded graphs found, sorted.
+    slot_uri: rp:sweptLoadedGraph
+    range: uri
+    multivalued: true
+  blobs:
+    title: Blobs
+    description: The keys of the orphaned bucket objects found, sorted.
+    slot_uri: rp:sweptBlob
+    range: string
+    multivalued: true
+  removed_loaded_graphs:
+    title: Removed loaded graphs
+    description: Whether the orphaned loaded graphs were removed.
+    slot_uri: rp:removedLoadedGraphs
+    range: boolean
+  removed_blobs:
+    title: Removed blobs
+    description: Whether the orphaned bucket objects were removed.
+    slot_uri: rp:removedBlobs
+    range: boolean
+  skipped_blobs:
+    title: Skipped blobs
+    description: The keys of orphaned objects the object store would not delete.
+    slot_uri: rp:skippedBlob
+    range: string
+    multivalued: true
   state:
     title: State
     description: Where the tenant is in its life.

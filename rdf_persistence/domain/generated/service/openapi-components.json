@@ -528,6 +528,29 @@
       "title": "Page",
       "type": "object"
     },
+    "PendingLoad": {
+      "additionalProperties": false,
+      "description": "The registry marker of a load not yet committed: one triple saying when the graph was put. It names no registry entry, so deleting it never deletes an entry.",
+      "properties": {
+        "id": {
+          "description": "The IRI of the graph the load put; the marker's subject, so no rp:graph triple.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "loaded_at": {
+          "description": "The time a graph was put to the store by a load.",
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "loaded_at"
+      ],
+      "title": "PendingLoad",
+      "type": "object"
+    },
     "Policy": {
       "additionalProperties": false,
       "description": "A set of permissions and prohibitions.",
@@ -955,6 +978,62 @@
         "state"
       ],
       "title": "TenantSummary",
+      "type": "object"
+    },
+    "TenantSweepReport": {
+      "additionalProperties": false,
+      "description": "The outcome of a sweep of one live tenant: the loaded graphs and bucket objects found orphaned past the grace period, and whether each list was removed.",
+      "properties": {
+        "blobs": {
+          "description": "The keys of the orphaned bucket objects found, sorted.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "loaded_graphs": {
+          "description": "The IRIs of the orphaned loaded graphs found, sorted.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "older_than_seconds": {
+          "description": "The grace period in seconds; only what is older is reported.",
+          "type": "integer"
+        },
+        "removed_blobs": {
+          "description": "Whether the orphaned bucket objects were removed.",
+          "type": "boolean"
+        },
+        "removed_loaded_graphs": {
+          "description": "Whether the orphaned loaded graphs were removed.",
+          "type": "boolean"
+        },
+        "skipped_blobs": {
+          "description": "The keys of orphaned objects the object store would not delete.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "tenant": {
+          "description": "The IRI of the tenant.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tenant",
+        "older_than_seconds",
+        "loaded_graphs",
+        "blobs",
+        "removed_loaded_graphs",
+        "removed_blobs",
+        "skipped_blobs"
+      ],
+      "title": "TenantSweepReport",
       "type": "object"
     },
     "Tracked": {

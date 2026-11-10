@@ -71,3 +71,11 @@ export interface RegistryEntry {
   /** The IRI of the aggregate root that owns the graph. */
   owned_by: string;
 }
+
+/** The registry marker of a load not yet committed: one triple saying when the graph was put. It names no registry entry, so deleting it never deletes an entry. */
+export interface PendingLoad {
+  /** The IRI of the graph the load put; the marker's subject, so no rp:graph triple. */
+  id: string;
+  /** The time a graph was put to the store by a load. */
+  loaded_at: string;
+}

@@ -13,6 +13,7 @@ default_range: string
 imports:
   - linkml:types
   - rp_core
+  - rp_annotations
 
 classes:
   StoredFile:
@@ -28,6 +29,19 @@ classes:
       - uploaded
       - uploaded_by
       - file_key
+  BlobEntry:
+    title: Blob entry
+    description: One object in a tenant's bucket, as a listing of the bucket reports it.
+    class_uri: rp:BlobEntry
+    slots:
+      - file_key
+      - modified
+    slot_usage:
+      file_key:
+        required: true
+      modified:
+        required: true
+        description: The time the object was last written to the bucket.
 
 slots:
   file_name:

@@ -19,7 +19,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Waiting helpers** (`testkit-wait-until`, #24): `wait_until` and the new `wait_until_async` are
   exported from `rdf_persistence.testkit`.
 
+- **Sweep of a live tenant** (`live-tenant-sweep`): `kit.sweep_tenant(tenant, remove=False,
+  remove_blobs=False, older_than=1 hour)` finds the loaded graphs no commit owns and the blobs no
+  `file_key` names, older than the grace period, and returns a `TenantSweepReport`. It is a dry run
+  by default; `remove` deletes the graphs and `remove_blobs` the blobs (pass it only when every blob
+  key is stored in `file_key`). `Session.load_graph` now writes a load marker (`rp:loadedAt`) in the
+  registry graph; a graph loaded before the upgrade has none and counts as old, so do not sweep with
+  removal during a deploy. Exported: `sweep_tenant`, `TenantSweepReport`, `BlobEntry`, `PendingLoad`.
+- **`remove_with_files`**: `kit.remove_with_files(tenant, principal, iri, if_version)` removes a file
+  aggregate and the blobs only it names; a failed blob delete is logged and left to the sweep.
+  `Session.named_file_keys(keys)` reads which keys a graph still names.
+
 ### Changed
+- **BREAKING for third-party adapters: `FileStore.list_blobs(bucket)`**: the `FileStore` protocol
+  gained `list_blobs`, returning `BlobEntry` (`file_key`, `modified`) in key order. Adapter authors
+  add it; the `file_store_conformance` suite has a case for it. `FakeFileStore` takes a `clock` to
+  stamp `modified`.
 - **BREAKING: `TokenVerifier.iris`** (`iri-policy`): a token verifier exposes the `Iris` it mints
   principals with, and `install_service` refuses a verifier whose principal template differs from
   the settings'. `JwksTokenVerifier` takes `iris=Iris(settings)`.
