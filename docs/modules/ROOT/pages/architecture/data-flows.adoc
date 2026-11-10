@@ -1,5 +1,6 @@
 = Where data lives and what each operation does
 :description: The databases, graphs and buckets the toolkit writes, shown on the toy library, and what each operation does from the HTTP call or Python call down to the triple store.
+:page-revised: 2026-11-10 by the developer
 
 _Where does the toolkit keep tenants, their data and its own bookkeeping? What happens, step by
 step, when an aggregate is created, read, listed, replaced or deleted, and when a tenant is?_
@@ -67,28 +68,63 @@ tenant's access record.
 the key in `rp:fileKey`.
 |===
 
-[#layout]
-== Where everything is stored
+[#big-picture]
+== The big picture
 
-One deployment has one triple store (Fuseki) and one object store (S3, for example Garage). The kit
-is wired to one of each.
+_Who talks to whom?_ A client gets a token from the identity provider and calls the consumer's
+application. Every route, the toolkit's generic ones and the consumer's own, goes through the
+service kit, which reads access from the system database, the tenant's data from its own
+database, and files from its own bucket.
 
 [mermaid]
 ....
 flowchart LR
-  subgraph Fuseki
-    SYS["lib-system<br/>(system database)"]
-    T1["lib-t-&lt;id1&gt;<br/>(tenant database)"]
-    T2["lib-t-&lt;id2&gt;"]
+  C["Client<br/>(web app, script)"]
+  IDP["Identity provider<br/>(Zitadel)"]
+  subgraph APP["Consumer application (FastAPI)"]
+    direction TB
+    R["Generic routes<br/>tenants, aggregates"]
+    OWN["Consumer's own routes<br/>uploads, domain services"]
+    KIT["Service kit<br/>gate, sessions, file store"]
+    R --> KIT
+    OWN --> KIT
   end
-  subgraph S3
-    B1["bucket lib-t-&lt;id1&gt;"]
-    B2["bucket lib-t-&lt;id2&gt;"]
+  subgraph TS["Triple store (Fuseki)"]
+    SYS[("lib-system<br/>access records")]
+    TDB[("lib-t-…<br/>one per tenant")]
   end
-  SYS -- "access record names" --> T1
-  SYS -- "access record names" --> B1
-  SYS -- "access record names" --> T2
-  SYS -- "access record names" --> B2
+  OS[("Object store (S3)<br/>bucket lib-t-… per tenant")]
+  C -- "token" --> IDP
+  C -- "HTTP + bearer token" --> APP
+  KIT -- "public keys (JWKS)" --> IDP
+  KIT -- "SPARQL: who may do what" --> SYS
+  KIT -- "SPARQL: the tenant's data" --> TDB
+  KIT -- "S3: blobs" --> OS
+....
+
+[#layout]
+== Where everything is stored
+
+One deployment has one triple store (Fuseki) and one object store (S3, for example Garage). The kit
+is wired to one of each. Inside them, for one tenant `T` and one book `B`:
+
+[mermaid]
+....
+flowchart LR
+  subgraph TDB["tenant database lib-t-…"]
+    META["T/meta<br/>the tenant root (a Library)"]
+    REG["T/registry<br/>entries and load markers"]
+    BG["B/graph<br/>book B, its parts,<br/>version and tracking"]
+    LG["B/content/&lt;id&gt;<br/>a loaded RDF file"]
+  end
+  subgraph SYSDB["system database lib-system"]
+    ACC["T/access/graph<br/>access record of T:<br/>state, grants, database name"]
+  end
+  BUCKET[("bucket lib-t-…<br/>blob under key k")]
+  ACC -. "names the database<br/>and the bucket" .-> TDB
+  REG -- "B/graph ownedBy B<br/>kind Aggregate" --> BG
+  REG -- "B/content/id ownedBy B<br/>kind LoadedGraph" --> LG
+  BG -. "rp:fileKey k<br/>(file aggregates)" .-> BUCKET
 ....
 
 With `T = https://example.org/library/libraries/<tenant uuid>` and a book `B = T/books/<id>`:
@@ -162,6 +198,24 @@ checked: the session trusts its caller.
 [#http-or-python]
 === Over HTTP or from Python
 
+Both paths meet in the `Session`, the one place that writes SPARQL. The dashed path skips the gate
+and the body checks.
+
+[mermaid]
+....
+flowchart TB
+  H["HTTP request"] --> G["Gate<br/>token, ids, access check"]
+  G --> API["DocumentApi / TenantApi<br/>negotiation, If-Match, body limit"]
+  API --> SVC["Aggregates / Tenancy<br/>parse, SHACL validation"]
+  PY["Python: UnitOfWork over kit.session<br/>(objects already validated by pydantic)"] --> M["Mapper<br/>object to triples"]
+  SVC --> S["Session<br/>IRI policy, version guard,<br/>registry, tracking"]
+  M --> S
+  S --> ST["Store port<br/>SPARQL query and update"]
+  ST --> F[("Fuseki")]
+  classDef skip stroke-dasharray: 4 3
+  class PY skip
+....
+
 [cols="3,1,1",options="header"]
 |===
 |Check |HTTP route |`UnitOfWork` over `kit.session`
@@ -190,6 +244,68 @@ The HTTP routes are `/libraries/{t}/books` and `/libraries/{t}/books/{id}` (`ent
 `DocumentApi`); the use cases are in `services/aggregates.py`, `Aggregates`; the SPARQL is in
 `services/session.py`, `Session`. From Python, the same operations are `UnitOfWork.get`, `add` and
 `commit` over `kit.session(...)`, which skip the HTTP steps and the gate.
+
+*Create.* The service mints the IRI, checks the body, and writes the graph and its registry
+entries in one conditional insert:
+
+[mermaid]
+....
+sequenceDiagram
+  participant Cl as Client
+  participant G as Gate
+  participant A as Aggregates
+  participant D as Documents
+  participant S as Session
+  participant F as Fuseki (lib-t-…)
+  Cl->>G: POST /libraries/{t}/books
+  G->>G: token, access check (modify on the tenant)
+  G->>A: create(body)
+  A->>A: mint B = T/books/{uuid}
+  A->>D: parse, then validate (SHACL)
+  D-->>A: triples of B
+  A->>S: add_graph(B, triples)
+  S->>F: INSERT B/graph + version + tracking, registry entries (only if B/graph is empty)
+  S->>F: ASK new version?
+  alt another add won
+    S-->>Cl: 409
+  end
+  S->>F: CONSTRUCT B/graph
+  A-->>Cl: 201, Location, ETag
+....
+
+*Read, list and delete* are shorter. *Replace* has its own diagram, step by step, in
+xref:architecture/api.adoc#anatomy[Anatomy of a request].
+
+[mermaid]
+....
+sequenceDiagram
+  participant Cl as Client
+  participant G as Gate
+  participant S as Session
+  participant F as Fuseki (lib-t-…)
+  rect rgba(127,127,127,0.08)
+  Note over Cl,F: Read: GET …/books/{id}
+  Cl->>G: token, access check (read on B)
+  G->>S: get_graph(B)
+  S->>F: SELECT version and tracking, CONSTRUCT B/graph
+  S-->>Cl: 200, body without bookkeeping, ETag
+  end
+  rect rgba(127,127,127,0.08)
+  Note over Cl,F: List: GET …/books?filters
+  Cl->>G: token, access check (read on the tenant)
+  G->>S: page(filters, sort, limit, offset)
+  S->>F: one CONSTRUCT through T/registry
+  S-->>Cl: 200, one page and the total
+  end
+  rect rgba(127,127,127,0.08)
+  Note over Cl,F: Delete: DELETE …/books/{id}, If-Match v7
+  Cl->>G: token, access check (delete on B)
+  G->>S: remove(B, v7)
+  S->>F: guarded update: empty loaded graphs, registry entries, B/graph (only if version is v7)
+  S->>F: ASK anything left in B/graph?
+  S-->>Cl: 204, or 409 if stale
+  end
+....
 
 [cols="1,2,4,3",options="header"]
 |===
@@ -247,7 +363,36 @@ writes it through a session in its own route (`is_service_written`,
 == Files and loaded graphs
 
 The toolkit has no generic upload route: the consumer writes it, as the toy library's
-`POST /libraries/{t}/scan-files` does (`tests/e2e/library_app.py`).
+`POST /libraries/{t}/scan-files` does (`tests/e2e/library_app.py`). The bytes go to the bucket
+first and the record second; removal goes the other way:
+
+[mermaid]
+....
+sequenceDiagram
+  participant Cl as Client
+  participant R as Consumer route
+  participant K as Service kit
+  participant O as S3 (bucket lib-t-…)
+  participant F as Fuseki (lib-t-…)
+  Note over Cl,F: Store a file: POST /libraries/{t}/scan-files
+  Cl->>R: bytes
+  R->>K: require(token, t, modify)
+  R->>K: mint B, bucket_of(T)
+  R->>O: put(key = id of B, bytes)
+  R->>F: commit Scan B with fileKey = key (UnitOfWork)
+  alt the commit fails
+    R->>O: delete(key)
+  end
+  R-->>Cl: 201, Location
+  Note over Cl,F: Delete a file aggregate: the consumer's DELETE route
+  Cl->>R: If-Match v3
+  R->>K: require_aggregate(token, t, scans, id, delete)
+  R->>K: remove_with_files(T, principal, B, v3)
+  K->>F: guarded remove of B
+  K->>F: SELECT which of B's keys another graph still names
+  K->>O: delete the others (a failure is logged, the sweep retries)
+  R-->>Cl: 204
+....
 
 [cols="1,5,3",options="header"]
 |===
@@ -279,6 +424,18 @@ not parse); mint `B/content/<id>`. The graph belongs to `B` only once a commit n
 |A load marker in `T/registry` first, then a Graph Store `PUT` of `B/content/<id>`.
 |===
 
+A loaded graph's life:
+
+[mermaid]
+....
+stateDiagram-v2
+  [*] --> Pending: load_graph(B, file) writes a load marker, then PUTs B/content/id
+  Pending --> Owned: a commit of B names it in loaded_graphs (registry entry)
+  Pending --> [*]: sweep_tenant(remove) after the grace period
+  Owned --> Owned: replace of B that keeps it listed
+  Owned --> [*]: B removed, or a replace of B that drops it
+....
+
 A load or an upload that is never committed leaves an orphan. `kit.sweep_tenant(T)` finds and
 removes them; see xref:howto/adopt.adoc#sweep-live-tenant[Sweep a live tenant].
 
@@ -286,7 +443,41 @@ removes them; see xref:howto/adopt.adoc#sweep-live-tenant[Sweep a live tenant].
 == Tenant operations
 
 The routes are `/libraries` and `/libraries/{t}` (`TenantApi`); the use cases are in
-`services/tenancy.py`, `Tenancy`.
+`services/tenancy.py`, `Tenancy`. A tenant's life, and the order of writes that makes a crash
+safe at every step:
+
+[mermaid]
+....
+stateDiagram-v2
+  [*] --> Creating: POST /libraries
+  Creating --> Active: database, bucket and root written, access record written last
+  Creating --> [*]: crash, start-up sweep drops the unnamed database and bucket
+  Active --> Active: rename, grants, replace root, aggregate writes
+  Active --> Deleting: DELETE /libraries/{t} marks the record
+  Deleting --> [*]: database and bucket dropped, record removed last
+  note right of Deleting
+    answers 404 from now on;
+    a crash here is finished by the start-up sweep or the next DELETE
+  end note
+....
+
+[mermaid]
+....
+sequenceDiagram
+  participant Cl as Client
+  participant G as Gate
+  participant T as Tenancy
+  participant F as Fuseki
+  participant O as S3
+  Cl->>G: POST /libraries {label, root}
+  G->>T: create (token checked only)
+  T->>T: validate root, run root validators, mint T
+  T->>F: create database lib-t-…
+  T->>O: create bucket lib-t-…
+  T->>F: lib-t-…: write the root into T/meta
+  T->>F: lib-system: write the access record (active, creator is librarian)
+  T-->>Cl: 201, Location
+....
 
 [cols="1,2,5",options="header"]
 |===
@@ -338,6 +529,28 @@ _Which rules does each operation apply, and what does a refusal answer?_ Over HT
 RFC 9457 problem; from Python, the exception named. Each rule runs before anything is written,
 except the optimistic lock and one aggregate per IRI: those are guards inside the update itself,
 so a refused update changes nothing.
+
+The order a write over HTTP meets them, and the answer at each refusal (the access check itself is
+drawn in xref:architecture/access-control.adoc#check[the check]):
+
+[mermaid]
+....
+flowchart LR
+  A["token valid?"] -- no --> E401["401"]
+  A -- yes --> B["ids minted by<br/>the IRI policy?"]
+  B -- no --> E404["404"]
+  B -- yes --> C["tenant active and<br/>action permitted?"]
+  C -- no --> E4034["404 or 403"]
+  C -- yes --> D["If-Match present?<br/>(replace, delete)"]
+  D -- no --> E428["428"]
+  D -- yes --> E["body: size, type,<br/>shape, SHACL"]
+  E -- no --> E4xx["413, 415 or 422"]
+  E -- yes --> F["IRI policy and<br/>loaded-graph checks"]
+  F -- no --> E422["422"]
+  F -- yes --> G["guarded update,<br/>then ASK"]
+  G -- "stale or taken" --> E409["409"]
+  G -- ok --> OK["200, 201 or 204"]
+....
 
 [cols="2,3,3,1",options="header"]
 |===
