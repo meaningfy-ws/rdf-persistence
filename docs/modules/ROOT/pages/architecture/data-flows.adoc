@@ -1,0 +1,398 @@
+= Where data lives and what each operation does
+:description: The databases, graphs and buckets the toolkit writes, shown on the toy library, and what each operation does from the HTTP call or Python call down to the triple store.
+
+_Where does the toolkit keep tenants, their data and its own bookkeeping? What happens, step by
+step, when an aggregate is created, read, listed, replaced or deleted, and when a tenant is?_
+
+The examples use the toolkit's own toy library (`tests/toy.py`, `tests/fixtures/library/`):
+settings `base="https://example.org/library/"`, `prefix="lib"`, `tenant_segment="libraries"`,
+`creator_role="librarian"`; a tenant is a library; its aggregates are books (`rp_path: books`) and
+scans (`rp_path: scans`, a file aggregate). Every IRI below comes from the default
+IRI policy (`IriPolicy` in `model/service/`); a consumer may set other templates.
+
+== Terms
+
+[cols="1,4",options="header"]
+|===
+|Term |Meaning
+
+|Tenant
+|One isolated workspace: its own database, its own bucket, and one access record. The toolkit never
+reads across tenants. What a tenant stands for (a library, a customer, a project) is the
+consumer's choice. There is one level: a tenant holds no tenants.
+
+|Aggregate
+|One object tree that is stored, versioned and deleted as a whole: a root (a book) and the parts it
+owns (its chapters). It lives in one named graph.
+
+|Tenant root
+|The tenant's own object (a `Library`), the class with `graph: meta`. It is an aggregate whose
+graph is the tenant's `meta` graph.
+
+|Version token
+|A fresh UUID written on every commit. HTTP shows it as the `ETag`; a write must send it back in
+`If-Match`, and a stale one is refused with 409.
+
+|Registry
+|A graph in each tenant database that says which graph belongs to which aggregate.
+
+|Loaded graph
+|A graph parsed from an RDF file (`Session.load_graph`) for one aggregate, kept beside its graph.
+
+|Blob
+|A file's bytes, kept in the tenant's bucket under a key; the aggregate that describes it names
+the key in `rp:fileKey`.
+|===
+
+[#layout]
+== Where everything is stored
+
+One deployment has one triple store (Fuseki) and one object store (S3, for example Garage). The kit
+is wired to one of each.
+
+[mermaid]
+....
+flowchart LR
+  subgraph Fuseki
+    SYS["lib-system<br/>(system database)"]
+    T1["lib-t-&lt;id1&gt;<br/>(tenant database)"]
+    T2["lib-t-&lt;id2&gt;"]
+  end
+  subgraph S3
+    B1["bucket lib-t-&lt;id1&gt;"]
+    B2["bucket lib-t-&lt;id2&gt;"]
+  end
+  SYS -- "access record names" --> T1
+  SYS -- "access record names" --> B1
+  SYS --> T2
+  SYS --> B2
+....
+
+With `T = https://example.org/library/libraries/<tenant uuid>` and a book `B = T/books/<id>`:
+
+[cols="2,3,4",options="header"]
+|===
+|Where |Graph or key |What it holds
+
+|System database `lib-system`
+|`T/access/graph`, one per tenant
+|The tenant's *access record* `T/access`: label, description, state (`active` or `deleting`),
+database name (`lib-t-<uuid without hyphens>`), grants and prohibitions; plus the version token,
+created, creator, modified and contributors of the record.
+
+|Tenant database `lib-t-…`
+|`T/meta`
+|The tenant root (`T a Library`) with its slots, and its version and tracking statements.
+
+|
+|`B/graph`, one per aggregate
+|The book `B`, its owned parts (`B/parts/<id>`, or skolemised blank nodes), and the bookkeeping
+about the graph: `rp:version`, `dcterms:created`, `dcterms:creator`, `dcterms:modified`,
+`dcterms:contributor`.
+
+|
+|`T/registry`
+|One entry per graph an aggregate owns: `B/graph rp:kind rp:Aggregate; rp:ownedBy B`, and for each
+loaded graph `B/content/<id> rp:kind rp:LoadedGraph; rp:ownedBy B`. Also a load marker
+`B/content/<id> rp:loadedAt <time>` for each load.
+
+|
+|`B/content/<id>`
+|The triples of one loaded RDF file, as parsed.
+
+|Bucket `lib-t-…` (same name as the database)
+|any key the consumer picks
+|The bytes of a file. The toy library uses the scan's id as the key and stores it in the scan's
+`rp:fileKey`.
+|===
+
+Who writes what:
+
+* *Only the toolkit* writes the access records, the registry, the version token and the tracking
+  statements. A body that sends them has them dropped or refused.
+* *The consumer's data* is the aggregates' triples, the loaded graphs and the blobs.
+* A slot marked `internal` is written by the consumer's code through a session, never by a body.
+
+[#gate]
+== The gate every route passes
+
+Every route under `/libraries` runs these steps as FastAPI dependencies, before its own code
+(`entrypoints/auth.py`, `Gate`). Each failure answers at once.
+
+. *Token.* `Gate.caller` verifies the bearer token with the `TokenVerifier` (signature, issuer,
+  audience, expiry) and reads the global roles. 401 if it fails.
+. *IRIs.* The path's `{t}` and `{id}` become the tenant and aggregate IRIs (`Iris.tenant`,
+  `Iris.aggregate`). An id the policy does not mint is 404.
+. *Access.* `load_caller_access` runs one `CONSTRUCT` on the system database: the access record's
+  state and the grants and prohibitions that name the caller.
+. *Check.* `AccessRules.require` decides for the route's action (`read`, `modify`, `delete`,
+  `administer`): 404 if the tenant is not `active` or the caller may do nothing there, 403 for a
+  prohibition or a missing permission. See xref:architecture/access-control.adoc#check[the check].
+
+The route then answers `Allowed-Actions` with what the caller may do. Create a tenant and list
+tenants check only the token.
+
+A consumer's own route calls the same gate through `kit.require(authorization, t, action)` or
+`kit.require_aggregate(...)`. Code that opens `kit.session(tenant, principal)` directly is not
+checked: the session trusts its caller.
+
+[#aggregates]
+== Aggregate operations
+
+The HTTP routes are `/libraries/{t}/books` and `/libraries/{t}/books/{id}` (`entrypoints/router.py`,
+`DocumentApi`); the use cases are in `services/aggregates.py`, `Aggregates`; the SPARQL is in
+`services/session.py`, `Session`. From Python, the same operations are `UnitOfWork.get`, `add` and
+`commit` over `kit.session(...)`, which skip the HTTP steps and the gate.
+
+[cols="1,2,4,3",options="header"]
+|===
+|Operation |Call |Steps after the gate |Writes to the store
+
+|Create
+|`POST …/books` (action `modify` on the tenant); `UnitOfWork.add` + `commit`
+|Read the body (size limit, `Content-Type`); parse it (JSON with the generated context, or
+JSON-LD); mint `B` and the IRIs of new parts; refuse unknown, `internal` or stray statements;
+validate with the generated SHACL shapes (`Documents.parse`, `validate`). `Session.add_graph`
+checks any loaded graphs named in the commit (minted for `B`, owned by nobody else).
+|One `INSERT … WHERE { FILTER NOT EXISTS … }` into the tenant database: the triples and the
+version and tracking statements into `B/graph`, the registry entries into `T/registry`. Then an
+`ASK` for the new token (409 if another add won). 201, `Location`, `ETag`.
+
+|Read
+|`GET …/books/{id}` (`read` on the book)
+|`Session.get_graph`: a `SELECT` of the version and tracking, then a `CONSTRUCT` of `B/graph`.
+Answered as framed JSON, JSON-LD or Turtle, without bookkeeping and `internal` values.
+|Nothing.
+
+|List
+|`GET …/books?…` (`read` on the tenant)
+|Equality filters, sort and paging from the query string (`list_request`); `Session.page` sends one
+`CONSTRUCT` that reads the registry for the books and their graphs, and the total.
+|Nothing.
+
+|Replace
+|`PUT …/books/{id}` with `If-Match` (`modify` on the book); `UnitOfWork.commit` of a changed object
+|As create, but the root is `B` and parts must already be stored; the stored `internal` values are
+added back. Every step is in xref:architecture/api.adoc#anatomy[Anatomy of a request].
+|One update of five `;`-joined operations, each guarded by the old token: empty the loaded graphs
+no longer listed, drop `B`'s registry entries, empty `B/graph` but the old token, write the new
+triples, token, tracking (created and creator kept, modified and the caller as contributor added)
+and registry entries, then drop the old token. An `ASK` for the new token; 409 if it is missing.
+
+|Delete
+|`DELETE …/books/{id}` with `If-Match` (`delete` on the book); `Session.remove`
+|`Session.remove` reads the version (404 if there is none).
+|One guarded update: empty every loaded graph `B` owns, drop its registry entries, empty
+`B/graph`. 409 if the graph is still there. Blobs are *not* deleted: use `remove_with_files`.
+|===
+
+*No change history is kept.* A replace overwrites; only the current version and the tracking
+statements remain.
+
+*Some aggregates have no write routes.* A class annotated as written by the service, or one that
+includes `StoredFile` (the toy library's `Scan`), gets only `GET` routes: the consumer writes it
+through a session in its own route (`is_service_written`, `services/schema_structure.py`).
+
+[#files]
+== Files and loaded graphs
+
+The toolkit has no generic upload route: the consumer writes it, as the toy library's
+`POST /libraries/{t}/scan-files` does (`tests/e2e/library_app.py`).
+
+[cols="1,5,3",options="header"]
+|===
+|Operation |Steps |Writes
+
+|Store a file
+|The consumer's route: `kit.require(…, MODIFY)`; read the body (`limited_body`); mint `B`
+(`kit.iris.mint_aggregate`); `kit.files.put(bucket, key, bytes)`, with `bucket = kit.bucket_of(T)`;
+then commit the `Scan` (with `file_key = key`) through a session. If the commit fails, it deletes
+the blob.
+|The blob in the bucket; then the aggregate as in create.
+
+|Read a file
+|The consumer's route: `kit.require_aggregate(…, READ)`; `kit.files.get(bucket, key)`.
+|Nothing.
+
+|Remove a file aggregate
+|`kit.remove_with_files(T, principal, B, version)`: `Session.remove`, then a `SELECT` for which of
+`B`'s keys another graph still names, then `FileStore.delete` for the others. A failed delete is
+logged and left for the sweep.
+|As delete, then the blobs.
+
+|Load an RDF file
+|`Session.load_graph(B, data, rdf_format=…)`: parse in a worker thread (nothing written if it does
+not parse); mint `B/content/<id>`. The graph belongs to `B` only once a commit names it in
+`loaded_graphs`.
+|A load marker in `T/registry` first, then a Graph Store `PUT` of `B/content/<id>`.
+|===
+
+A load or an upload that is never committed leaves an orphan. `kit.sweep_tenant(T)` finds and
+removes them; see xref:howto/adopt.adoc#sweep-live-tenant[Sweep a live tenant].
+
+[#tenants]
+== Tenant operations
+
+The routes are `/libraries` and `/libraries/{t}` (`TenantApi`); the use cases are in
+`services/tenancy.py`, `Tenancy`.
+
+[cols="1,2,5",options="header"]
+|===
+|Operation |Call (action) |Steps, in order
+
+|Create
+|`POST /libraries` (token only)
+|Validate the label and the root's slots, and run the consumer's root validators. Mint `T`, unused by
+any database or record. Create the database `lib-t-…`; create the bucket; add the root to `T/meta`;
+*last*, add the access record (state `active`, the creator as `librarian`) to `lib-system`. A crash
+before the last step leaves a database and bucket no record names, which the start-up sweep drops.
+
+|List
+|`GET /libraries` (token only)
+|One `CONSTRUCT` of every access record; the rules are applied in memory; the page holds the tenants
+the caller may `read`, with their `allowed_actions`.
+
+|Read
+|`GET /libraries/{t}` (`read`)
+|The root from `T/meta`; the record's version in `Record-ETag`.
+
+|Replace the root
+|`PUT /libraries/{t}` (`modify`)
+|As an aggregate replace on `T/meta`; the label must stay the record's (`Tenancy.vet_root`).
+
+|Rename
+|`PUT /libraries/{t}/label` (`modify`)
+|Check the record's version; write the label to the root, then to the record.
+
+|Grants
+|`GET` and `PUT /libraries/{t}/grants` (`administer`)
+|Read, or validate (the consumer's grant validators) and replace, the grants and prohibitions in
+the access record, guarded by its version.
+
+|Delete
+|`DELETE /libraries/{t}` (`administer`)
+|Mark the record `deleting` (from then on the tenant answers 404); drop the database; drop the
+bucket; *last*, remove the record. A crash midway is finished by the start-up sweep or the next
+delete.
+|===
+
+[#rules]
+== Rules and checks
+
+_Which rules does each operation apply, and what does a refusal answer?_ Over HTTP, a refusal is an
+RFC 9457 problem; from Python, the exception named. Each rule runs before anything is written,
+unless the table says otherwise.
+
+[cols="2,3,3,1",options="header"]
+|===
+|Rule |Applied by |Refuses |Answer
+
+|*Token* valid: signature, issuer, audience, expiry
+|Every route (`Gate.caller`)
+|A missing or bad token (`InvalidToken`)
+|401
+
+|*IRI policy: ids.* An id in a path must be one the policy mints (by default a canonical UUID)
+|Every route with `{t}` or `{id}` (`Iris.tenant`, `Iris.aggregate`)
+|Any other id: it names nothing (`NotFound`)
+|404
+
+|*IRI policy: what a session touches.* A session reads and writes only the tenant root and IRIs the
+aggregate template mints for its own tenant
+|`Session.get_graph`, `add_graph`, `replace_graph`, `remove`, `load_graph`
+|An IRI of another tenant, or not an aggregate IRI (`InvalidIri`)
+|422
+
+|*IRI policy: what the service mints.* New tenants, aggregates, parts and loaded graphs get IRIs
+from the templates; a create body may not name an `id` or a part
+|Create tenant, create aggregate, `load_graph`
+|A body naming the root's or a part's IRI on create (`InvalidBody`)
+|422
+
+|*IRI policy: the templates themselves*, checked once when the service starts
+|`check_iri_policy`, `Iris`; see xref:howto/adopt.adoc#iri-policy[Configure the IRI policy]
+|`{deployment}` without a slug, colliding graphs, an id with no length
+|start-up error
+
+|*Tenant state.* Only an `active` tenant serves
+|The access check
+|A `deleting` or missing tenant (`NotFound`); the live-tenant sweep answers `Conflict`
+|404
+
+|*Access.* The caller's roles, grants and prohibitions permit the route's action
+|The access check (`AccessRules.require`)
+|Nothing permitted: `NotFound`; a prohibition or a missing permission: `Forbidden`
+|404, 403
+
+|*Body size and type*
+|Writes with a body
+|Over `max_body_bytes` (413); a `Content-Type` other than JSON or JSON-LD (415)
+|413, 415
+
+|*Body shape*: at most 10 000 objects and list values; only slots of the class; no `internal`
+slot; one root, the path's; every node reached from the root through owned slots; parts only
+those the aggregate stores; no remote JSON-LD context
+|Create and replace (`Documents.parse`); steps 8 to 10 of
+xref:architecture/api.adoc#anatomy[Anatomy of a request]
+|`InvalidBody`
+|422, 413
+
+|*Body content*: the generated SHACL shapes (required slots, ranges, cardinalities, patterns)
+|Create and replace (`Documents.validate`)
+|`InvalidBody`, naming up to five slots
+|422
+
+|*Optimistic lock.* A write sends the version it read
+|Replace, delete, rename, grants, delete tenant
+|No `If-Match` (`PreconditionRequired`, 428); a stale one (`Conflict`, 409; nothing changed)
+|428, 409
+
+|*One aggregate per IRI*
+|Create (`Session.add_graph`)
+|A graph that already holds triples (`Conflict`)
+|409
+
+|*Loaded graphs.* A commit may register only graphs the policy mints under its own root, and none
+another aggregate owns
+|Create and replace with `loaded_graphs` (`Session._check_commit`)
+|`InvalidIri`
+|422
+
+|*RDF file parses*
+|`load_graph`
+|`InvalidGraph`; nothing written
+|422
+
+|*Tenant label.* The root's label is the record's; it changes only through the label route
+|Replace root (`Tenancy.vet_root`), create tenant
+|`InvalidBody`
+|422
+
+|*Grants are honourable.* Targets are the tenant or its aggregates' graphs; assignees are IRIs; a
+granted role exists at its target's level
+|`PUT …/grants` (`AccessRules.validate_grants`)
+|`InvalidGrant`, `UnknownRole`
+|422
+
+|*The consumer's own rules*: root validators and grant validators, passed to `install_service`
+|Create tenant, replace root, rename (root validators); `PUT …/grants` (grant validators)
+|Whatever the validator raises as `InvalidBody`
+|422
+|===
+
+[#sweeps]
+== Sweeps
+
+[cols="1,4",options="header"]
+|===
+|Sweep |What it does
+
+|Start-up sweep (`sweep`)
+|Run once by the consumer before it serves. Finishes the deletion of `deleting` tenants and drops
+databases and buckets no access record names. Never looks inside an active tenant.
+
+|Live-tenant sweep (`kit.sweep_tenant`)
+|Run by an operator. Inside one active tenant, finds loaded graphs no registry entry owns and blobs no
+`rp:fileKey` names, older than one hour; a dry run unless `remove` or `remove_blobs` is set. Skips the
+tenant root's loaded graphs (issue #73).
+|===
