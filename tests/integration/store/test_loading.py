@@ -181,3 +181,31 @@ async def test_a_later_session_lists_the_loaded_graph_and_reads_it(store, databa
     assert isomorphic(read, expected), graph_diff(read, expected)
     with pytest.raises(NotFound):
         await later.loaded_graphs(SECOND_BOOK)
+
+
+# --- the tenant root's loaded graphs on Fuseki (tenant-root-loads, issue #73) -------------------
+
+ROOT_TRIPLES = [(URIRef(TENANT), TITLE, Literal("Ghent"))]
+
+
+async def _root_with(session: Session, loaded: list[URIRef]) -> str:
+    version = await session.add_graph(TENANT, ROOT_TRIPLES)
+    return await session.replace_graph(TENANT, ROOT_TRIPLES, version, loaded_graphs=loaded)
+
+
+async def test_it01_a_root_load_comes_back_in_a_later_session(store, database, session):
+    loaded = await session.load_graph(TENANT, TURTLE, rdf_format=RdfFormat.TURTLE)
+    await _root_with(session, [loaded])
+    later = Session(store, database=database, tenant_iri=TENANT, principal=ADA, clock=lambda: NOW)
+    assert await later.loaded_graphs(TENANT) == [loaded]
+    expected = Graph().parse(data=TURTLE, format="turtle")
+    read = await later.loaded_graph(TENANT, str(loaded))
+    assert isomorphic(read, expected), graph_diff(read, expected)
+
+
+async def test_it03_a_root_replace_with_an_empty_list_empties_its_load(store, database, session):
+    loaded = await session.load_graph(TENANT, TURTLE, rdf_format=RdfFormat.TURTLE)
+    version = await _root_with(session, [loaded])
+    await session.replace_graph(TENANT, ROOT_TRIPLES, version, loaded_graphs=[])
+    assert await session.loaded_graphs(TENANT) == []
+    assert str(loaded) not in await graphs_in(store, database)

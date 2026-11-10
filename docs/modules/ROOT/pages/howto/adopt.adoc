@@ -957,7 +957,9 @@ graph comes back empty, the blob is gone. Raise `older_than` if your commits can
 *Upgrade note.* A graph loaded before the load marker existed has no marker, and counts as old. After
 upgrading, do not sweep with `remove=True` while a deploy is running, as a graph loaded just before
 it could be removed before its commit. Run the first sweep after the deploy has settled, and read the
-dry run first.
+dry run first. A graph loaded for the tenant root before `tenant-root-loads` was never registered,
+even if a commit named it, so the dry run lists it as an orphan: to keep it, commit the root again
+with it in `loaded_graphs` before you sweep with `remove=True`.
 
 An operator script, built like the composition root of <<serve>>:
 

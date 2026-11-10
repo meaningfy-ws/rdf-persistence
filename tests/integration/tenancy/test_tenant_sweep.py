@@ -128,3 +128,24 @@ async def test_removing_with_files_deletes_only_the_keys_no_other_aggregate_name
     assert await shelf.blobs() == ["shared"], "the blob only the removed scan named is gone"
     await remove(shared, shared_version)
     assert await shelf.blobs() == ["shared"], "a key another scan still names stays"
+
+
+async def test_it02_a_root_load_is_swept_only_when_no_commit_owns_it(shelf):
+    now = datetime.now(UTC)
+    kept, orphan = await shelf.load(shelf.tenant, now), await shelf.load(shelf.tenant, now)
+    async with shelf.session(now) as opened:
+        graph, _, version = await opened.get_graph(shelf.tenant)
+        await opened.replace_graph(shelf.tenant, list(graph), version, loaded_graphs=[kept])
+    report = await sweep_tenant(
+        shelf.tenancy,
+        shelf.store,
+        shelf.files,
+        shelf.iris,
+        shelf.tenant,
+        clock=lambda: now + 2 * HOUR,
+        remove=True,
+    )
+    assert report.loaded_graphs == [str(orphan)]
+    assert not await shelf.holds(orphan) and await shelf.holds(kept)
+    async with shelf.session(now) as opened:
+        assert await opened.loaded_graphs(shelf.tenant) == [kept]

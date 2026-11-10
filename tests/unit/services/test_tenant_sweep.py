@@ -273,11 +273,70 @@ async def test_the_blob_of_a_scan_removed_through_the_session_is_swept(world):
     )
 
 
-async def test_the_tenant_roots_loaded_graph_is_never_a_candidate(world):
-    root_graph = await world.load(world.tenant, 5 * HOUR)
+async def commit_root(world, loaded: list[URIRef]) -> None:
+    """Commit the tenant root, which the world created, with ``loaded`` (tenant-root-loads)."""
+    async with open_session(
+        world.store,
+        database=world.database,
+        tenant_iri=world.tenant,
+        principal=CREATOR,
+        clock=lambda: NOW,
+        iris=world.iris,
+    ) as opened:
+        graph, _, version = await opened.get_graph(world.tenant)
+        await opened.replace_graph(world.tenant, list(graph), version, loaded_graphs=loaded)
+
+
+async def root_loads(world) -> list[URIRef]:
+    async with open_session(
+        world.store,
+        database=world.database,
+        tenant_iri=world.tenant,
+        principal=CREATOR,
+        clock=lambda: NOW,
+        iris=world.iris,
+    ) as opened:
+        return await opened.loaded_graphs(world.tenant)
+
+
+async def root_world(world) -> tuple[URIRef, URIRef]:
+    """Two root loads two hours old: ``kept`` committed with the root, ``orphan`` never."""
+    kept, orphan = (
+        await world.load(world.tenant, 2 * HOUR),
+        await world.load(world.tenant, 2 * HOUR),
+    )
+    await commit_root(world, [kept])
+    return kept, orphan
+
+
+async def test_tc11_a_root_load_is_swept_only_when_no_commit_owns_it(world):
+    kept, orphan = await root_world(world)
     report = await world.sweep(remove=True)
-    assert str(root_graph) not in report.loaded_graphs
-    assert await world.holds(root_graph), "its graph is untouched"
+    assert str(orphan) in report.loaded_graphs and str(kept) not in report.loaded_graphs
+    assert not await world.holds(orphan) and await world.holds(kept)
+    assert await root_loads(world) == [kept]
+
+
+async def test_tc12_a_dry_run_reports_an_old_root_load_and_keeps_it(world):
+    kept, orphan = await root_world(world)
+    report = await world.sweep()
+    assert str(orphan) in report.loaded_graphs and not report.removed_loaded_graphs
+    assert await world.holds(orphan) and await world.holds(kept)
+
+
+async def test_tc13_a_young_root_load_is_kept(world):
+    young = await world.load(world.tenant, timedelta(minutes=5))
+    report = await world.sweep(remove=True)
+    assert str(young) not in report.loaded_graphs
+    assert await world.holds(young)
+
+
+async def test_tc02_a_rename_keeps_the_roots_loaded_graph(world):
+    kept, _ = await root_world(world)
+    _, record_version = await world.tenancy.get(world.tenant)
+    await world.tenancy.rename(world.tenant, "Ghent Central", record_version, CREATOR)
+    assert await root_loads(world) == [kept]
+    assert await world.holds(kept)
 
 
 async def test_another_tenants_graphs_and_blobs_are_untouched(world):
@@ -408,10 +467,12 @@ async def test_under_a_template_without_root_an_old_orphan_is_still_found():
     orphan = await world.load(aggregate, 2 * HOUR)
     kept = await world.load(aggregate, 3 * HOUR)
     await world.commit(aggregate, [kept])
-    assert iris.loaded_graph_root(str(orphan)) is None
+    # TC-14: the root's loads under the flat policy
+    root_kept, root_orphan = await root_world(world)
     report = await world.sweep(remove=True)
-    assert report.loaded_graphs == [str(orphan)]
+    assert report.loaded_graphs == sorted([str(orphan), str(root_orphan)])
     assert not await world.holds(orphan) and await world.holds(kept)
+    assert not await world.holds(root_orphan) and await world.holds(root_kept)
 
 
 # -- the order of the reads (PD-7) --------------------------------------------------------------
