@@ -467,9 +467,8 @@ async def test_under_a_template_without_root_an_old_orphan_is_still_found():
     orphan = await world.load(aggregate, 2 * HOUR)
     kept = await world.load(aggregate, 3 * HOUR)
     await world.commit(aggregate, [kept])
-    root_kept, root_orphan = await root_world(
-        world
-    )  # TC-14: the root's loads under the flat policy
+    # TC-14: the root's loads under the flat policy
+    root_kept, root_orphan = await root_world(world)
     report = await world.sweep(remove=True)
     assert report.loaded_graphs == sorted([str(orphan), str(root_orphan)])
     assert not await world.holds(orphan) and await world.holds(kept)

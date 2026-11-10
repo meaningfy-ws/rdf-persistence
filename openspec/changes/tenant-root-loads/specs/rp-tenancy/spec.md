@@ -42,7 +42,6 @@ graph loaded for the tenant root SHALL be treated like one loaded for any aggreg
 - **WHEN** the live-tenant sweep runs on it
 - **THEN** it is refused as a conflict and nothing is removed
 
-
 #### Scenario: a root load is swept only when no commit owns it
 - **GIVEN** an active tenant with two graphs loaded for its root two hours ago, one committed with the root and one never committed
 - **WHEN** the live-tenant sweep runs with removal of loaded graphs

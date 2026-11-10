@@ -280,7 +280,7 @@ async def test_a_loaded_graph_must_be_exactly_the_minted_form(session, store, ba
 # --- the tenant root's loaded graphs (tenant-root-loads, issue #73) ---------------------------
 
 ROOT_TRIPLES = [(URIRef(TENANT), TITLE, Literal("Ghent"))]
-AGGREGATE = URIRef("https://meaningfy.ws/ns/rdf-persistence#Aggregate")
+AGGREGATE = v.REGISTRY_KIND_IRIS["aggregate"]
 
 
 async def _root_with(session, loaded: list[URIRef]) -> str:
