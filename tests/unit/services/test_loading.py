@@ -12,7 +12,7 @@ from rdflib import Graph, Literal, URIRef
 from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence import InvalidGraph
-from rdf_persistence.domain.exceptions import NotFound
+from rdf_persistence.domain.exceptions import DatabaseGone, InvalidIri, NotFound
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.sparql import fill, term
@@ -242,3 +242,71 @@ async def test_a_graph_of_another_aggregate_or_an_unknown_one_is_not_found(sessi
         await session.loaded_graph(AGGREGATE, str(other))
     with pytest.raises(NotFound):
         await session.loaded_graph(AGGREGATE, f"{AGGREGATE}/content/{UUID(int=9)}")
+
+
+async def listed_by_a_new_session(store, iri):
+    """The loaded graphs of ``iri`` as a later request, in a session of its own, sees them."""
+    async with fake_session(store, tenant_iri=TENANT) as later:
+        return await later.loaded_graphs(iri)
+
+
+async def test_a_later_session_finds_the_loaded_graph_and_reads_it(store, session):
+    loaded = await loaded_for(session, AGGREGATE)
+    await loaded_for(session, SECOND)
+    assert await listed_by_a_new_session(store, AGGREGATE) == [loaded], "only this aggregate's"
+    async with fake_session(store, tenant_iri=TENANT) as later:
+        (graph_iri,) = await later.loaded_graphs(AGGREGATE)
+        read = await later.loaded_graph(AGGREGATE, graph_iri)
+    assert isomorphic(read, EXPECTED), graph_diff(read, EXPECTED)
+
+
+async def test_after_a_replace_only_the_new_loaded_graph_is_listed(store, session):
+    await loaded_for(session, AGGREGATE)
+    _, _, version = await session.get_graph(AGGREGATE)
+    new = await session.load_graph(AGGREGATE, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE)
+    version = await session.replace_graph(AGGREGATE, [], version, [new])
+    assert await listed_by_a_new_session(store, AGGREGATE) == [new]
+    await session.replace_graph(AGGREGATE, [], version)
+    assert await listed_by_a_new_session(store, AGGREGATE) == [new], "None keeps the registered"
+
+
+async def test_several_loaded_graphs_are_listed_sorted_by_iri(store, session):
+    graphs = [
+        await session.load_graph(AGGREGATE, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE)
+        for _ in range(3)
+    ]
+    await session.add_graph(AGGREGATE, [], graphs)
+    assert await listed_by_a_new_session(store, AGGREGATE) == sorted(graphs)
+
+
+async def test_an_aggregate_without_loaded_graphs_lists_none(store, session):
+    await session.add_graph(AGGREGATE, [])
+    unregistered = await session.load_graph(
+        SECOND, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE
+    )
+    await session.add_graph(SECOND, [])
+    assert await listed_by_a_new_session(store, AGGREGATE) == []
+    assert unregistered not in await listed_by_a_new_session(store, SECOND), "loaded, not committed"
+
+
+async def test_a_removed_or_never_stored_aggregate_is_not_found(session):
+    await loaded_for(session, AGGREGATE)
+    _, _, version = await session.get_graph(AGGREGATE)
+    await session.remove(AGGREGATE, version)
+    with pytest.raises(NotFound):
+        await session.loaded_graphs(AGGREGATE)
+    with pytest.raises(NotFound):
+        await session.loaded_graphs(SECOND)
+
+
+async def test_an_iri_the_policy_does_not_mint_is_refused_before_any_query(store, session):
+    before = len(store.sent("query"))
+    with pytest.raises(InvalidIri):
+        await session.loaded_graphs("https://elsewhere.example/books/1")
+    assert len(store.sent("query")) == before, "nothing sent"
+
+
+async def test_a_dropped_tenant_database_is_reported(store, session):
+    await store.drop_dataset(FAKE_DATABASE)
+    with pytest.raises(DatabaseGone):
+        await session.loaded_graphs(AGGREGATE)

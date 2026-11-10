@@ -164,3 +164,16 @@ async def test_a_loaded_graph_reads_back_and_one_of_another_aggregate_is_not_fou
     assert isomorphic(read, expected), graph_diff(read, expected)
     with pytest.raises(NotFound):
         await session.loaded_graph(BOOK, str(second))
+
+
+async def test_a_later_session_lists_the_loaded_graph_and_reads_it(store, database, session):
+    loaded = await session.load_graph(BOOK, TURTLE, rdf_format=RdfFormat.TURTLE)
+    await session.add_graph(BOOK, [], [loaded])
+    later = Session(store, database=database, tenant_iri=TENANT, principal=ADA, clock=lambda: None)
+    (graph_iri,) = await later.loaded_graphs(BOOK)
+    assert graph_iri == loaded
+    expected = Graph().parse(data=TURTLE, format="turtle")
+    read = await later.loaded_graph(BOOK, graph_iri)
+    assert isomorphic(read, expected), graph_diff(read, expected)
+    with pytest.raises(NotFound):
+        await later.loaded_graphs(SECOND_BOOK)

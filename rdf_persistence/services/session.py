@@ -482,6 +482,19 @@ class Session:
         result = await self._store.query(self._database, fill(READ_GRAPH, graph=term(loaded)))
         return result.graph or Graph()
 
+    async def loaded_graphs(self, iri: str) -> list[URIRef]:
+        """The IRIs of the graphs loaded for the aggregate ``iri``, sorted by IRI (not load order).
+
+        The session checks no access; the caller gates the read like ``get_graph`` (PD-7).
+
+        Raises:
+            InvalidIri: ``iri`` is not an aggregate IRI the policy mints for the tenant.
+            NotFound: The aggregate has no graph.
+            DatabaseGone: The tenant database does not exist.
+        """
+        await self._stored(self._graph(iri))
+        return await self._registered_loaded(iri)
+
     async def remove(self, iri: str, if_version: str) -> None:
         """Delete the aggregate's graph, loaded graphs and registry entries if it still has ``if_version``.
 

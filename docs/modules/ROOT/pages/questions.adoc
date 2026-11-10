@@ -50,8 +50,9 @@ xref:architecture/api.adoc#serving[Serving it].
 
 *How do I read back a graph I loaded?*::
 Check the read with `kit.require_aggregate(..., Action.READ)`, then call
-`session.loaded_graph(root_iri, graph_iri)` for a plain rdflib `Graph`. The session checks no access
-itself. See xref:howto/adopt.adoc#files[step 10].
+`session.loaded_graph(root_iri, graph_iri)` for a plain rdflib `Graph`. If a later request does not
+hold `graph_iri`, `session.loaded_graphs(root_iri)` lists the aggregate's loaded graphs. The session
+checks no access itself. See xref:howto/adopt.adoc#files[step 10].
 
 *How do I check that a name is not taken yet?*::
 Call `session.find(Scan, file_name=name)` and answer 409 when the list is not empty. `find` ignores
