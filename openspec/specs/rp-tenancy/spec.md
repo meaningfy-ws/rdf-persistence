@@ -76,8 +76,8 @@ blob that no graph of the tenant names in `rp:fileKey`, each older than a grace 
 hour). It SHALL remove the loaded graphs only when asked to remove them, and the blobs only when
 asked, separately, to remove blobs; by default it is a dry run. It SHALL never remove a loaded
 graph or blob that a committed aggregate names, nor one younger than the grace period, and SHALL
-never touch the tenant's `meta`, `registry`, access or aggregate graphs, a loaded graph of the
-tenant root, nor another tenant. It SHALL return a report listing what it found and what it removed.
+never touch the tenant's `meta`, `registry`, access or aggregate graphs, nor another tenant. A
+graph loaded for the tenant root SHALL be treated like one loaded for any aggregate. It SHALL return a report listing what it found and what it removed.
 
 #### Scenario: an uncommitted loaded graph is swept
 - **GIVEN** an active library tenant with a graph loaded for a book two hours ago and never named by a commit
@@ -108,6 +108,11 @@ tenant root, nor another tenant. It SHALL return a report listing what it found 
 - **GIVEN** a tenant in the deleting state
 - **WHEN** the live-tenant sweep runs on it
 - **THEN** it is refused as a conflict and nothing is removed
+
+#### Scenario: a root load is swept only when no commit owns it
+- **GIVEN** an active tenant with two graphs loaded for its root two hours ago, one committed with the root and one never committed
+- **WHEN** the live-tenant sweep runs with removal of loaded graphs
+- **THEN** the uncommitted graph is gone and listed in the report, and the committed one still exists and is still listed by the root
 
 ### Requirement: A file aggregate can be removed with its blobs
 

@@ -67,5 +67,5 @@ of `test_tenant_sweep.py` whose loaded-graph template has no `{root}`.
 
 ## 4. Close
 
-- [ ] 4.1 `make check-all`, `make test-containers`; `openspec validate tenant-root-loads --strict`;
+- [x] 4.1 `make check-all`, `make test-containers`; `openspec validate tenant-root-loads --strict`;
   PR into `develop` closing #73; merge on green CI; archive the change.
