@@ -80,3 +80,17 @@ Developer: "accept recommendations, and continue" (2026-11-06).
 - The sweep of one tenant never touches another tenant's database or bucket.
 - The sweep runs against the testkit fakes and against Fuseki and Garage with the same outcome.
 - The start-up sweep's v1 scenarios still pass unchanged.
+
+## PLAN attack and developer answers (2026-11-10)
+
+A fresh reviewer attacked the first PLAN (gate 6/10). Two findings reopened accepted answers:
+
+- **F1.** The adopt guide's toy library stores blobs under the scan id and leaves `file_key` empty,
+  so trusting `file_key` alone (Q-3 a) would delete its blobs. Options: fix the guide and make blob
+  removal its own opt-in flag (recommended); fix the guide only; sweep graphs only.
+  **Answer: fix the guide and toy library to set `file_key`, and blob removal is a separate,
+  explicit flag.**
+- **F2.** File aggregates have no generic DELETE route, and `Session` holds no `FileStore`, so
+  "remove deletes its blobs" (Q-4 a) has no place. Options: sweep only (recommended); a kit helper
+  the consumer's delete route calls. **Answer: a kit helper.**
+- **Autonomy.** **Answer: commit, push, PR and merge on green CI for `live-tenant-sweep`.**
