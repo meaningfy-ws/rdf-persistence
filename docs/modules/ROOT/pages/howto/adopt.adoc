@@ -657,6 +657,8 @@ cover:
 |`add_graph(iri, triples, loaded_graphs=())` |Store a new aggregate; returns its first version
 |`replace_graph(iri, triples, if_version, loaded_graphs=None)` |Replace it if it still has `if_version`; returns the new version
 |`load_graph(iri, data, *, rdf_format)` |Parse an RDF file into a new graph of the aggregate (<<files>>)
+|`loaded_graphs(iri)` |The IRIs of the aggregate's loaded graphs, sorted by IRI
+|`loaded_graph(iri, graph_iri)` |The triples of one loaded graph
 |`remove(iri, if_version)` |Delete the aggregate, its loaded graphs and its registry entries
 |===
 
@@ -845,8 +847,10 @@ replaces them, and the graphs left out are emptied. `remove` empties every loade
 aggregate. Formats: `turtle`, `rdfxml`, `ntriples` and `jsonld`.
 
 *Reading a loaded graph back.* `Session.loaded_graph(iri, graph_iri)` returns the triples of a graph
-loaded for the aggregate as an rdflib `Graph`. The session checks no access, so check the read
-first, as for any read of the aggregate:
+loaded for the aggregate as an rdflib `Graph`. A later request finds the graph's IRI with
+`Session.loaded_graphs(iri)`: the IRIs of the graphs committed with the aggregate, sorted by IRI (not
+in load order), empty if it has none, `NotFound` if the aggregate does not exist. The session checks
+no access, so check the read first, as for any read of the aggregate:
 
 [source,python]
 ----
@@ -856,6 +860,7 @@ checked = await kit.require_aggregate(
     request.headers.get("authorization"), t, "scans", scan_id, Action.READ
 )
 async with kit.session(checked.caller_access.tenant, checked.principal) as session:
+    (graph_iri,) = await session.loaded_graphs(checked.checked_target)
     content = await session.loaded_graph(checked.checked_target, graph_iri)
 classes = sum(1 for _ in content.subjects(RDF.type, OWL.Class))
 ----
