@@ -150,9 +150,20 @@ async def _registry_view(
     for row in await _rows(store, database, text):
         if row.owner is not None:
             owned.add(str(row.g))
-        if row.at is not None:
-            loaded_at[str(row.g)] = Literal(row.at).toPython()
+        at = _aware(row.at)
+        if at is not None:  # an unreadable marker counts as none; of several, the youngest (RF-1)
+            loaded_at[str(row.g)] = max(at, loaded_at.get(str(row.g), at))
     return owned, loaded_at
+
+
+def _aware(value: object) -> datetime | None:
+    """The marker's time if it is a timezone-aware datetime; ``None`` for anything another tool wrote."""
+    if value is None:
+        return None
+    python = Literal(
+        value
+    ).toPython()  # an ill-typed literal comes back as its text, not a datetime
+    return python if isinstance(python, datetime) and python.tzinfo is not None else None
 
 
 async def _named_keys(store: Store, database: str) -> set[str]:
