@@ -62,6 +62,10 @@
          "@type": "@id",
          "@id": "base"
       },
+      "blobs": {
+         "@container": "@set",
+         "@id": "sweptBlob"
+      },
       "caller_access": {
          "@type": "@id",
          "@id": "callerAccess"
@@ -186,12 +190,21 @@
          "@type": "@id",
          "@id": "listedIn"
       },
+      "loaded_at": {
+         "@type": "xsd:dateTime",
+         "@id": "loadedAt"
+      },
       "loaded_graph": {
          "@type": "@id",
          "@id": "loadedGraph"
       },
       "loaded_graph_template": {
          "@id": "loadedGraphTemplate"
+      },
+      "loaded_graphs": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "sweptLoadedGraph"
       },
       "max_body_bytes": {
          "@id": "maxBodyBytes"
@@ -209,6 +222,9 @@
       },
       "offset": {
          "@id": "offset"
+      },
+      "older_than_seconds": {
+         "@id": "olderThanSeconds"
       },
       "owned_by": {
          "@type": "@id",
@@ -260,6 +276,12 @@
       "registry_template": {
          "@id": "registryTemplate"
       },
+      "removed_blobs": {
+         "@id": "removedBlobs"
+      },
+      "removed_loaded_graphs": {
+         "@id": "removedLoadedGraphs"
+      },
       "role": {
          "@id": "role"
       },
@@ -269,6 +291,10 @@
       "root": {
          "@type": "@id",
          "@id": "root"
+      },
+      "skipped_blobs": {
+         "@container": "@set",
+         "@id": "skippedBlob"
       },
       "sort": {
          "@id": "sort"
@@ -356,6 +382,9 @@
       "Page": {
          "@id": "Page"
       },
+      "PendingLoad": {
+         "@id": "PendingLoad"
+      },
       "Policy": {
          "@id": "ODRL:Set"
       },
@@ -394,6 +423,9 @@
       },
       "TenantSummary": {
          "@id": "TenantSummary"
+      },
+      "TenantSweepReport": {
+         "@id": "TenantSweepReport"
       },
       "Tracked": {
          "@id": "Tracked"

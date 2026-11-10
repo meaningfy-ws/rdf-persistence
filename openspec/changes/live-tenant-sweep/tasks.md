@@ -2,13 +2,13 @@
 
 ## 1. Model and port
 
-- [ ] 1.1 Schema (design PD-2, PD-8, PD-12): `PendingLoad` (`graph` as identifier, `loaded_at`
+- [x] 1.1 Schema (design PD-2, PD-8, PD-12): `PendingLoad` (`id` as identifier, holding the graph IRI; `loaded_at`
   with `slot_uri: rp:loadedAt`) in `rp_core.yaml`; `BlobEntry` (`file_key`, `modified`) in
   `rp_files.yaml`; `TenantSweepReport` (`tenant`, `older_than_seconds`, `loaded_graphs`, `blobs`,
   `removed_loaded_graphs`, `removed_blobs`, `skipped_blobs`) in `rp_tenancy.yaml`, reusing existing
   slots where they exist. `make generate`; model-shape fixture updated.
   Gates: `make test-changed`, `make check-quality`.
-- [ ] 1.2 Test first: a conformance case "blobs are listed in key order with their modified time;
+- [x] 1.2 Test first: a conformance case "blobs are listed in key order with their modified time;
   a missing bucket is TenantGone" in `testkit/file_store_conformance.py`; then
   `FileStore.list_blobs` (PD-12) in `services/files.py`, `FakeFileStore` (with `clock`) and
   `S3FileStore` (paged `list_objects_v2`). Gates: `make test-changed`, `make check-quality`,
@@ -60,12 +60,12 @@
   file delete route calls `remove_with_files`), `architecture/index.adoc` (building block to v1,
   public API table), `questions.adoc` (the future-list entry becomes an answer), CHANGELOG
   (`FileStore.list_blobs` for adapter authors). Gate: `make check-docs`.
-- [ ] 5.4 File the GitHub issue for F4 (the tenant root's loaded graphs are never registered) and
-  link it from design.md.
+- [x] 5.4 File the GitHub issue for F4 (the tenant root's loaded graphs are never registered) and
+  link it from design.md: #73.
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 2.1 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
+- [x] 1.1 · [ ] 1.2 · [ ] 2.1 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
 
 ## Verification
 

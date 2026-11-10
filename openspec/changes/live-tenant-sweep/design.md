@@ -52,8 +52,11 @@ tenant root's unregistered loaded graphs (F4, its own issue).
 - **PD-2** (Q-2 a, leader for the mechanism): the grace period `older_than` defaults to **1 hour**.
   A loaded graph's age comes from a **load marker**, the one triple
   `<G> rp:loadedAt "<time>"^^xsd:dateTime` in the registry graph. Its model is a LinkML
-  `PendingLoad` (`rp_core.yaml`) whose `graph` is the **identifier** (the subject, not a triple) and
-  whose `loaded_at` has `slot_uri: rp:loadedAt`, so the generated shape matches what is stored (N2).
+  `PendingLoad` (`rp_core.yaml`) whose identifier is the existing `id` slot, holding the graph IRI
+  (the subject, not a triple), and whose `loaded_at` has `slot_uri: rp:loadedAt`, so the generated
+  shape matches what is stored (N2). Not `graph` as identifier (build of task 1.1): the JSON-LD
+  context is one map per slot name, so it would turn `graph` into `@id` for every class and break
+  `RegistryEntry`'s `rp:graph` triple.
   The session writes the triple from the model by hand, as `registry_triples` does. The marker
   writes no `rp:graph` triple, so deleting it can never delete a registry entry's triple (F6).
   `load_graph` writes the marker **before** it PUTs the graph: a crash between the two leaves a
@@ -205,4 +208,4 @@ with `session.remove` leaving blob k2 (3 h old); blob k3 uploaded 1 min ago, not
 ## Open Questions
 
 None. Follow-up outside this change: the tenant root's loaded graphs are never registered (F4),
-filed as a GitHub issue.
+GitHub issue #73.

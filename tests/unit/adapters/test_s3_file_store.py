@@ -1,5 +1,6 @@
 """S3FileStore's calls and error mapping, against botocore's Stubber (no network)."""
 
+from datetime import UTC, datetime
 from io import BytesIO
 
 import boto3
@@ -16,6 +17,7 @@ from rdf_persistence.domain.exceptions import (
     StoreUnavailable,
     TenantGone,
 )
+from rdf_persistence.domain.generated.rp_files import BlobEntry
 from rdf_persistence.testkit import no_network  # noqa: F401  (fixture)
 
 REGION = "garage"
@@ -213,3 +215,40 @@ async def test_a_bucket_name_boto_refuses_is_the_callers_error_not_an_outage(no_
 def test_the_timeouts_are_five_seconds_to_connect_and_thirty_to_read():
     config = S3FileStore("http://s3.test", "id", "secret", REGION)._client.meta.config
     assert (config.connect_timeout, config.read_timeout) == (5, 30)
+
+
+async def test_list_blobs_follows_every_page_and_keeps_the_modified_time(s3):
+    files, stubber = s3
+    first, second = datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 2, tzinfo=UTC)
+    stubber.add_response(
+        "list_objects_v2",
+        {
+            "IsTruncated": True,
+            "NextContinuationToken": "t",
+            "Contents": [{"Key": "a", "LastModified": first}],
+        },
+        {"Bucket": BUCKET},
+    )
+    stubber.add_response(
+        "list_objects_v2",
+        {"IsTruncated": False, "Contents": [{"Key": "b", "LastModified": second}]},
+        {"Bucket": BUCKET, "ContinuationToken": "t"},
+    )
+    assert await files.list_blobs(BUCKET) == [
+        BlobEntry(file_key="a", modified=first),
+        BlobEntry(file_key="b", modified=second),
+    ]
+    stubber.assert_no_pending_responses()
+
+
+async def test_list_blobs_of_an_empty_bucket_is_empty(s3):
+    files, stubber = s3
+    stubber.add_response("list_objects_v2", {"IsTruncated": False}, {"Bucket": BUCKET})
+    assert await files.list_blobs(BUCKET) == []
+
+
+async def test_list_blobs_of_a_missing_bucket_is_tenant_gone(s3):
+    files, stubber = s3
+    stubber.add_client_error("list_objects_v2", service_error_code="NoSuchBucket")
+    with pytest.raises(TenantGone):
+        await files.list_blobs(BUCKET)

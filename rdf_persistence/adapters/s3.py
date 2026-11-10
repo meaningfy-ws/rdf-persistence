@@ -23,6 +23,7 @@ from rdf_persistence.domain.exceptions import (
     StoreUnavailable,
     TenantGone,
 )
+from rdf_persistence.domain.generated.rp_files import BlobEntry
 
 NO_SUCH_BUCKET, NO_SUCH_KEY = "NoSuchBucket", "NoSuchKey"
 BUCKET_EXISTS = frozenset({"BucketAlreadyOwnedByYou", "BucketAlreadyExists"})
@@ -149,6 +150,20 @@ class S3FileStore:
     async def list_buckets(self, prefix: str) -> list[str]:
         listing = await self._run(self._client.list_buckets)
         return sorted(b["Name"] for b in listing["Buckets"] if b["Name"].startswith(prefix))
+
+    async def list_blobs(self, bucket: str) -> list[BlobEntry]:
+        entries: list[BlobEntry] = []
+        token: str | None = None
+        while True:
+            extra: dict[str, Any] = {"ContinuationToken": token} if token else {}
+            page = await self._run(self._client.list_objects_v2, Bucket=bucket, **extra)
+            entries += [
+                BlobEntry(file_key=blob["Key"], modified=blob["LastModified"])
+                for blob in page.get("Contents", [])
+            ]
+            token = page.get("NextContinuationToken")
+            if not page.get("IsTruncated"):
+                return entries
 
     async def put(self, bucket: str, key: str, data: bytes) -> None:
         await self._run(self._client.put_object, Bucket=bucket, Key=_checked_key(key), Body=data)

@@ -46,6 +46,16 @@
     required: true
     multivalued: false
     range: Principal
+- class_name: BlobEntry
+  slots:
+  - name: file_key
+    required: true
+    multivalued: false
+    range: string
+  - name: modified
+    required: true
+    multivalued: false
+    range: datetime
 - class_name: Book
   slots:
   - name: authors
@@ -431,6 +441,16 @@
     required: true
     multivalued: false
     range: integer
+- class_name: PendingLoad
+  slots:
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: loaded_at
+    required: true
+    multivalued: false
+    range: datetime
 - class_name: Policy
   slots: []
 - class_name: Principal
@@ -747,6 +767,36 @@
     required: true
     multivalued: false
     range: TenantState
+- class_name: TenantSweepReport
+  slots:
+  - name: blobs
+    required: false
+    multivalued: true
+    range: string
+  - name: loaded_graphs
+    required: false
+    multivalued: true
+    range: uri
+  - name: older_than_seconds
+    required: false
+    multivalued: false
+    range: integer
+  - name: removed_blobs
+    required: false
+    multivalued: false
+    range: boolean
+  - name: removed_loaded_graphs
+    required: false
+    multivalued: false
+    range: boolean
+  - name: skipped_blobs
+    required: false
+    multivalued: true
+    range: string
+  - name: tenant
+    required: false
+    multivalued: false
+    range: uri
 - class_name: Tracked
   slots:
   - name: contributor

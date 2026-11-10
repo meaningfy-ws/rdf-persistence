@@ -42,6 +42,10 @@
          "@container": "@set",
          "@id": "schema:author"
       },
+      "blobs": {
+         "@container": "@set",
+         "@id": "rp:sweptBlob"
+      },
       "byte_size": {
          "@id": "rp:byteSize"
       },
@@ -118,9 +122,18 @@
          "@type": "@id",
          "@id": "rp:listedIn"
       },
+      "loaded_at": {
+         "@type": "xsd:dateTime",
+         "@id": "rp:loadedAt"
+      },
       "loaded_graph": {
          "@type": "@id",
          "@id": "rp:loadedGraph"
+      },
+      "loaded_graphs": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:sweptLoadedGraph"
       },
       "media_type": {
          "@id": "rp:mediaType"
@@ -140,6 +153,9 @@
       "number": {
          "@id": "bibo:chapter"
       },
+      "older_than_seconds": {
+         "@id": "rp:olderThanSeconds"
+      },
       "owned_by": {
          "@type": "@id",
          "@id": "rp:ownedBy"
@@ -153,6 +169,12 @@
          "@type": "xsd:date",
          "@id": "dcterms:issued"
       },
+      "removed_blobs": {
+         "@id": "rp:removedBlobs"
+      },
+      "removed_loaded_graphs": {
+         "@id": "rp:removedLoadedGraphs"
+      },
       "role": {
          "@id": "rp:role"
       },
@@ -162,6 +184,10 @@
       },
       "sha256": {
          "@id": "rp:sha256"
+      },
+      "skipped_blobs": {
+         "@container": "@set",
+         "@id": "rp:skippedBlob"
       },
       "state": {
          "@id": "rp:state",
@@ -174,6 +200,10 @@
       "target": {
          "@type": "@id",
          "@id": "ODRL:target"
+      },
+      "tenant": {
+         "@type": "@id",
+         "@id": "rp:tenant"
       },
       "text": {
          "@id": "schema:text"
@@ -197,6 +227,9 @@
       "AggregateRoot": {
          "@id": "rp:AggregateRoot"
       },
+      "BlobEntry": {
+         "@id": "rp:BlobEntry"
+      },
       "Book": {
          "@id": "bibo:Book"
       },
@@ -217,6 +250,9 @@
       },
       "Note": {
          "@id": "Note"
+      },
+      "PendingLoad": {
+         "@id": "rp:PendingLoad"
       },
       "Policy": {
          "@id": "ODRL:Set"
@@ -247,6 +283,9 @@
       },
       "TenantLabelled": {
          "@id": "rp:TenantLabelled"
+      },
+      "TenantSweepReport": {
+         "@id": "rp:TenantSweepReport"
       },
       "Tracked": {
          "@id": "rp:Tracked"

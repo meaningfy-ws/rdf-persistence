@@ -136,8 +136,15 @@ class RegistryEntry(ConfiguredBaseModel):
     owned_by: str = Field(default=..., title="Owned by", description="The IRI of the aggregate root that owns the graph.")
 
 
+class PendingLoad(ConfiguredBaseModel):
+    "The registry marker of a load not yet committed: one triple saying when the graph was put. It names no registry entry, so deleting it never deletes an entry."
+    id: str = Field(default=..., title="Identifier", description="The IRI of the graph the load put; the marker\u0027s subject, so no rp:graph triple.")
+    loaded_at: datetime  = Field(default=..., title="Loaded at", description="The time a graph was put to the store by a load.")
+
+
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 AggregateRoot.model_rebuild()
 Principal.model_rebuild()
 RegistryEntry.model_rebuild()
+PendingLoad.model_rebuild()

@@ -50,6 +50,7 @@ from rdf_persistence.domain.generated.rp_core import (
     DatabaseKind,
     GraphKind,
     ModuleKind,
+    PendingLoad,
     Principal,
     RegistryEntry,
     RegistryKind,
@@ -57,6 +58,7 @@ from rdf_persistence.domain.generated.rp_core import (
     WritesKind,
 )
 from rdf_persistence.domain.generated.rp_files import (
+    BlobEntry,
     RdfFormat,
     StoredFile,
 )
@@ -68,6 +70,7 @@ from rdf_persistence.domain.generated.rp_tenancy import (
     TenantAccess,
     TenantLabelled,
     TenantState,
+    TenantSweepReport,
 )
 from rdf_persistence.domain.generated.service.rp_service import (
     AccountSummary,
@@ -164,6 +167,7 @@ __all__ = [
     "AggregateRoot",
     "Authorised",
     "BadQuery",
+    "BlobEntry",
     "CallerAccess",
     "Conflict",
     "DatabaseGone",
@@ -199,6 +203,7 @@ __all__ = [
     "NotFound",
     "Page",
     "PayloadTooLarge",
+    "PendingLoad",
     "PersistenceError",
     "PreconditionRequired",
     "Policy",
@@ -230,6 +235,7 @@ __all__ = [
     "TenantGone",
     "TenantLabelled",
     "TenantState",
+    "TenantSweepReport",
     "TenantSummary",
     "TokenVerifier",
     "Tracked",

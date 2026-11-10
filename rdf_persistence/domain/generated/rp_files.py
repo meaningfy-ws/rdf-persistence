@@ -95,6 +95,13 @@ class StoredFile(ConfiguredBaseModel):
         return v
 
 
+class BlobEntry(ConfiguredBaseModel):
+    "One object in a tenant\u0027s bucket, as a listing of the bucket reports it."
+    file_key: str = Field(default=..., title="File key", description="The random key of the file in the tenant\u0027s bucket.", json_schema_extra = { "rp_internal": True })
+    modified: datetime  = Field(default=..., title="Modified", description="The time the object was last written to the bucket.")
+
+
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 StoredFile.model_rebuild()
+BlobEntry.model_rebuild()

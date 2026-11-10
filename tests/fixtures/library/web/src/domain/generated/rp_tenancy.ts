@@ -23,3 +23,21 @@ export interface TenantAccess {
   /** A free-text description of the object. */
   description?: string;
 }
+
+/** The outcome of a sweep of one live tenant: the loaded graphs and bucket objects found orphaned past the grace period, and whether each list was removed. */
+export interface TenantSweepReport {
+  /** The IRI of the tenant. */
+  tenant?: string;
+  /** The grace period in seconds; only what is older is reported. */
+  older_than_seconds?: number;
+  /** The IRIs of the orphaned loaded graphs found, sorted. */
+  loaded_graphs?: string[];
+  /** The keys of the orphaned bucket objects found, sorted. */
+  blobs?: string[];
+  /** Whether the orphaned loaded graphs were removed. */
+  removed_loaded_graphs?: boolean;
+  /** Whether the orphaned bucket objects were removed. */
+  removed_blobs?: boolean;
+  /** The keys of orphaned objects the object store would not delete. */
+  skipped_blobs?: string[];
+}

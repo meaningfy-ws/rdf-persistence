@@ -3,6 +3,7 @@
 from collections import defaultdict
 from collections.abc import AsyncIterator, Iterable
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import ClassVar
 
 from pyparsing import ParseException
@@ -19,6 +20,7 @@ from rdf_persistence.domain.exceptions import (
     TenantGone,
 )
 from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.domain.generated.rp_files import BlobEntry
 from rdf_persistence.domain.generated.service.rp_service import AccountSummary
 from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.listing import Listings
@@ -126,12 +128,14 @@ class FakeFileStore(_Instrumented):
     """A ``FileStore`` in memory, with the same failure injection as ``FakeStore``."""
 
     OPERATIONS = frozenset(
-        {"create_bucket", "delete_bucket", "list_buckets", "put", "get", "delete"}
+        {"create_bucket", "delete_bucket", "list_buckets", "put", "get", "delete", "list_blobs"}
     )
 
-    def __init__(self) -> None:
+    def __init__(self, clock: Clock = utc_now) -> None:
         super().__init__()
+        self._clock = clock
         self._buckets: dict[str, dict[str, bytes]] = {}
+        self._modified: dict[tuple[str, str], datetime] = {}
 
     def _bucket(self, name: str) -> dict[str, bytes]:
         if name not in self._buckets:
@@ -157,6 +161,14 @@ class FakeFileStore(_Instrumented):
     async def put(self, bucket: str, key: str, data: bytes) -> None:
         self._enter("put", f"{bucket}/{key}")
         self._bucket(bucket)[key] = data
+        self._modified[bucket, key] = self._clock()
+
+    async def list_blobs(self, bucket: str) -> list[BlobEntry]:
+        self._enter("list_blobs", bucket)
+        return [
+            BlobEntry(file_key=key, modified=self._modified[bucket, key])
+            for key in sorted(self._bucket(bucket))
+        ]
 
     async def get(self, bucket: str, key: str) -> bytes:
         self._enter("get", f"{bucket}/{key}")

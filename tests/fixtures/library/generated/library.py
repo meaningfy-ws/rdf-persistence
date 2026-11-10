@@ -30,11 +30,13 @@ from pydantic import (
 from rdf_persistence import (
     Action,
     AggregateRoot,
+    BlobEntry,
     DatabaseKind,
     Described,
     Grant,
     GraphKind,
     ModuleKind,
+    PendingLoad,
     Policy,
     Principal,
     Prohibition,
@@ -49,6 +51,7 @@ from rdf_persistence import (
     TenantAccess,
     TenantLabelled,
     TenantState,
+    TenantSweepReport,
     Tracked,
     WritesKind
 )
