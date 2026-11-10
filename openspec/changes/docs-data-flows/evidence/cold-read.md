@@ -24,4 +24,35 @@ Left as they are: links into other pages explain framed JSON, the Graph Store `P
 blank nodes, the IRI-policy templates and `Allowed-Actions`; repeating them here would break the
 single-source rule.
 
-Second read: not run. The fixes answer each stuck point directly; the developer reviews the PR.
+Second read: below.
+
+# Second cold read (2026-11-10, after the diagrams)
+
+A new fresh agent got only the page and ten new questions, and checked each diagram against the
+text. Seven answers sure, two guessing, one sure with a gap.
+
+| # | Question | Stuck point | Fix |
+|---|---|---|---|
+| 1 | Path from browser to store | Create diagram skipped DocumentApi | Message names DocumentApi |
+| 2 | Access record and its links | Diagram said it names the bucket; table only the database | Both say the bucket has the database's name |
+| 3 | Two creates of one IRI | `alt` without `else`: 201 seemed to follow 409 | `alt` / `else stored` |
+| 4 | An uncommitted loaded graph | "grace period" defined later | Terms: load marker, grace period |
+| 5 | Crash during tenant delete | **Error in the page:** "the next DELETE" finishes it, yet the gate answers 404 for a deleting tenant | Only the next start-up sweep finishes it (checked in code: `finish_deletion` is called by `Tenancy.delete` and `sweep` only) |
+| 6 | Replace without If-Match | Intro called the lock a guard inside the update | Intro: presence checked first, version match inside |
+| 7 | Python write: SHACL, version | Pydantic vs SHACL unclear | Says what pydantic checks and what it does not |
+| 8 | Failed commit after upload | Failure of the cleanup delete not said | Diagram: the blob becomes an orphan for the sweep |
+| 9 | Tokens for rename and replace root | Read row named only Record-ETag; rename changes both | Read row names both; rename row says both change |
+| 10 | Stale If-Match in the flowchart | Agrees with the table | Flowchart scoped to aggregate writes |
+
+Also fixed: the files diagram now goes through the kit to the stores; "every route" became
+"every generic route"; the sweep's `Conflict` has its own row (a Python call, not 404); a
+"Creating" note says it is not a stored state; rename is two writes, not one guarded update, and
+why it needs `modify`; "honourable" became "can be checked"; the dashed box is named; the tenant
+root's loaded graphs and #73 explained.
+
+Left as they are: terms explained on linked pages (skolemised blank nodes, Graph Store PUT, framed
+JSON, `Allowed-Actions`, the `{deployment}` slug, `UnitOfWork`, the Store port), by the
+single-source rule.
+
+All ten diagrams render (mermaid CLI 12; the site loads mermaid 10). `make check-docs` passed;
+`make build-docs` built with no warnings.

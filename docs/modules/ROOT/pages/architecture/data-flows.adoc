@@ -66,6 +66,15 @@ tenant's access record.
 |Blob
 |A file's bytes, kept in the tenant's bucket under a key; the aggregate that describes it names
 the key in `rp:fileKey`.
+
+|Tracking statements
+|What the session writes about a graph on every commit: its version token, `dcterms:created` and
+`dcterms:creator` (first commit), `dcterms:modified` and `dcterms:contributor` (later commits).
+
+|Load marker, grace period
+|A load marker is one statement in the registry, written by `load_graph`: "this graph was loaded
+at this time". The live-tenant sweep leaves alone anything younger than its grace period (one
+hour by default), so work still waiting for its commit survives.
 |===
 
 [#big-picture]
@@ -121,7 +130,7 @@ flowchart LR
     ACC["T/access/graph<br/>access record of T:<br/>state, grants, database name"]
   end
   BUCKET[("bucket lib-t-…<br/>blob under key k")]
-  ACC -. "names the database<br/>and the bucket" .-> TDB
+  ACC -. "database name<br/>(the bucket has the same)" .-> TDB
   REG -- "B/graph ownedBy B<br/>kind Aggregate" --> BG
   REG -- "B/content/id ownedBy B<br/>kind LoadedGraph" --> LG
   BG -. "rp:fileKey k<br/>(file aggregates)" .-> BUCKET
@@ -136,7 +145,8 @@ With `T = https://example.org/library/libraries/<tenant uuid>` and a book `B = T
 |System database `lib-system`
 |`T/access/graph`, one per tenant
 |The tenant's *access record* `T/access`: label, description, state (`active` or `deleting`),
-database name (`lib-t-<uuid without hyphens>`), grants and prohibitions; plus the version token,
+database name (`lib-t-<uuid without hyphens>`, which is also the bucket's name), grants and
+prohibitions; plus the version token,
 created, creator, modified and contributors of the record.
 
 |Tenant database `lib-t-…`
@@ -175,8 +185,8 @@ Who writes what:
 [#gate]
 == The gate every route passes
 
-Every route under `/libraries` runs these steps as FastAPI dependencies, before its own code
-(`entrypoints/auth.py`, `Gate`). Each failure answers at once.
+Every generic route under `/libraries` runs these steps as FastAPI dependencies, before its own
+code (`entrypoints/auth.py`, `Gate`). Each failure answers at once.
 
 . *Token.* `Gate.caller` verifies the bearer token with the `TokenVerifier` (signature, issuer,
   audience, expiry) and reads the global roles. 401 if it fails.
@@ -198,8 +208,10 @@ checked: the session trusts its caller.
 [#http-or-python]
 === Over HTTP or from Python
 
-Both paths meet in the `Session`, the one place that writes SPARQL. The dashed path skips the gate
-and the body checks.
+Both paths meet in the `Session`, the one place that writes SPARQL. The Python path (the dashed
+box, left) enters below the gate and the body checks, so it skips them. Pydantic checks the
+object's slots and their types when it is built; it does not run the SHACL shapes or the body
+rules (one root, no stray statements, only stored parts).
 
 [mermaid]
 ....
@@ -259,7 +271,7 @@ sequenceDiagram
   participant F as Fuseki (lib-t-…)
   Cl->>G: POST /libraries/{t}/books
   G->>G: token, access check (modify on the tenant)
-  G->>A: create(body)
+  G->>A: create(body), through DocumentApi
   A->>A: mint B = T/books/{uuid}
   A->>D: parse, then validate (SHACL)
   D-->>A: triples of B
@@ -267,10 +279,11 @@ sequenceDiagram
   S->>F: INSERT B/graph + version + tracking, registry entries (only if B/graph is empty)
   S->>F: ASK new version?
   alt another add won
-    S-->>Cl: 409
+    S-->>Cl: 409, nothing written by this request
+  else stored
+    S->>F: CONSTRUCT B/graph
+    A-->>Cl: 201, Location, ETag
   end
-  S->>F: CONSTRUCT B/graph
-  A-->>Cl: 201, Location, ETag
 ....
 
 *Read, list and delete* are shorter. *Replace* has its own diagram, step by step, in
@@ -378,12 +391,16 @@ sequenceDiagram
   Cl->>R: bytes
   R->>K: require(token, t, modify)
   R->>K: mint B, bucket_of(T)
-  R->>O: put(key = id of B, bytes)
-  R->>F: commit Scan B with fileKey = key (UnitOfWork)
+  R->>K: files.put(bucket, key = id of B, bytes)
+  K->>O: put
+  R->>K: session: commit Scan B with fileKey = key
+  K->>F: insert B/graph
   alt the commit fails
-    R->>O: delete(key)
+    R->>K: files.delete(bucket, key)
+    K->>O: delete (if this fails too, the blob is an orphan for the sweep)
+  else stored
+    R-->>Cl: 201, Location
   end
-  R-->>Cl: 201, Location
   Note over Cl,F: Delete a file aggregate: the consumer's DELETE route
   Cl->>R: If-Match v3
   R->>K: require_aggregate(token, t, scans, id, delete)
@@ -455,9 +472,12 @@ stateDiagram-v2
   Active --> Active: rename, grants, replace root, aggregate writes
   Active --> Deleting: DELETE /libraries/{t} marks the record
   Deleting --> [*]: database and bucket dropped, record removed last
+  note right of Creating
+    not a stored state: no record exists yet
+  end note
   note right of Deleting
     answers 404 from now on;
-    a crash here is finished by the start-up sweep or the next DELETE
+    after a crash here, the next start-up sweep finishes it
   end note
 ....
 
@@ -500,7 +520,7 @@ them all.
 
 |Read
 |`GET /libraries/{t}` (`read`)
-|The root from `T/meta`; the record's version in `Record-ETag`.
+|The root from `T/meta`; the root's version in `ETag`, the record's in `Record-ETag`.
 
 |Replace the root
 |`PUT /libraries/{t}` (`modify`)
@@ -508,7 +528,10 @@ them all.
 
 |Rename
 |`PUT /libraries/{t}/label` (`modify`)
-|Check the record's version; write the label to the root, then to the record.
+|Check the record's version (`If-Match` carries `Record-ETag`); write the label to the root, then
+to the record, so both versions change. These are two writes, not one: a crash between them
+leaves the root renamed and the record not, and repeating the rename writes both. Renaming needs
+`modify` like any edit of the tenant; changing grants needs `administer`.
 
 |Grants
 |`GET` and `PUT /libraries/{t}/grants` (`administer`)
@@ -518,8 +541,8 @@ the access record, guarded by its version.
 |Delete
 |`DELETE /libraries/{t}` (`administer`)
 |Mark the record `deleting` (from then on the tenant answers 404); drop the database; drop the
-bucket; *last*, remove the record. A crash midway is finished by the start-up sweep or the next
-delete.
+bucket; *last*, remove the record. After a crash midway, the tenant answers 404 to every route,
+including another `DELETE`; the next start-up sweep finishes it.
 |===
 
 [#rules]
@@ -527,10 +550,11 @@ delete.
 
 _Which rules does each operation apply, and what does a refusal answer?_ Over HTTP, a refusal is an
 RFC 9457 problem; from Python, the exception named. Each rule runs before anything is written,
-except the optimistic lock and one aggregate per IRI: those are guards inside the update itself,
-so a refused update changes nothing.
+except the version match of the optimistic lock and one aggregate per IRI: those are guards inside
+the update itself, so a refused update changes nothing. (Whether `If-Match` is present at all is
+checked first, before the body.)
 
-The order a write over HTTP meets them, and the answer at each refusal (the access check itself is
+The order a write to an aggregate over HTTP meets them, and the answer at each refusal (the access check itself is
 drawn in xref:architecture/access-control.adoc#check[the check]):
 
 [mermaid]
@@ -585,9 +609,13 @@ from the templates; a create body may not name an `id` or a part
 
 |*Tenant state.* Only an `active` tenant serves
 |The access check
-|A `deleting` or missing tenant (`NotFound`); `kit.sweep_tenant` on a `deleting` tenant raises
-`Conflict`
+|A `deleting` or missing tenant (`NotFound`)
 |404
+
+|*No live sweep of a dying tenant*
+|`kit.sweep_tenant` (a Python call, no HTTP route)
+|A `deleting` tenant (`Conflict`)
+|exception
 
 |*Access.* The caller's roles, grants and prohibitions permit the route's action
 |The access check (`AccessRules.require`)
@@ -638,7 +666,7 @@ another aggregate owns
 |`InvalidBody`
 |422
 
-|*Grants are honourable.* Targets are the tenant or its aggregates' graphs; assignees are IRIs; a
+|*Grants can be checked.* Targets are the tenant or its aggregates' graphs; assignees are IRIs; a
 granted role exists at its target's level
 |`PUT …/grants` (`AccessRules.validate_grants`)
 |`InvalidGrant`, `UnknownRole`
@@ -663,6 +691,7 @@ databases and buckets no access record names. Never looks inside an active tenan
 
 |Live-tenant sweep (`kit.sweep_tenant`)
 |Run by an operator. Inside one active tenant, finds loaded graphs no registry entry owns and blobs no
-`rp:fileKey` names, older than one hour; a dry run unless `remove` or `remove_blobs` is set. Skips the
-tenant root's loaded graphs (issue #73).
+`rp:fileKey` names, older than one hour; a dry run unless `remove` or `remove_blobs` is set. Skips
+graphs loaded for the tenant root (`load_graph(T, …)`): a commit of the root never registers them
+(issue #73), so they would all look like orphans.
 |===
