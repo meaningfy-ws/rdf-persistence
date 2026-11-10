@@ -50,12 +50,12 @@
 
 ## 5. Toy library, containers and docs
 
-- [ ] 5.1 The toy library (`tests/toy_service.py` and its routes) sets `file_key` to the scan id and
+- [x] 5.1 The toy library (`tests/toy_service.py` and its routes) sets `file_key` to the scan id and
   deletes a scan with `kit.remove_with_files`; a feature or e2e test shows a scan's blob survives
   `sweep_tenant(remove=True, remove_blobs=True)` and goes with its delete. Gate: `make test-changed`.
-- [ ] 5.2 Integration (`tests/integration/`): the sweep against Fuseki and Garage gives the worked
+- [x] 5.2 Integration (`tests/integration/`): the sweep against Fuseki and Garage gives the worked
   example's outcome; `S3FileStore` passes the listing conformance case. Gate: `make test-containers`.
-- [ ] 5.3 Docs: adopt guide ("Sweep a live tenant": the operator script, the two flags and when
+- [x] 5.3 Docs: adopt guide ("Sweep a live tenant": the operator script, the two flags and when
   `remove_blobs` is safe, the grace period, RISK-1, RISK-2; the toy library sets `file_key`; the
   file delete route calls `remove_with_files`), `architecture/index.adoc` (building block to v1,
   public API table), `questions.adoc` (the future-list entry becomes an answer), CHANGELOG
@@ -65,7 +65,7 @@
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
+- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 4.1 · [x] 5.1 · [x] 5.2 · [x] 5.3 · [x] 5.4
 
 ## Verification
 

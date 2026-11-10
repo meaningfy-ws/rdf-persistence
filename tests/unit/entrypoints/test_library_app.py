@@ -1,6 +1,7 @@
 """The consumer's file route, gated by ``ServiceKit.require_aggregate`` (PD-14b), over the fakes."""
 
 from collections.abc import AsyncIterator
+from datetime import timedelta
 
 import httpx
 import pytest
@@ -212,3 +213,34 @@ async def test_a_name_that_is_not_a_scan_id_is_a_404_before_the_store_is_asked(
     )
     assert response.status_code == 404, response.text
     assert len(world.store.sent("query")) == asked, "no query"
+
+
+async def test_a_posted_scan_survives_the_sweep_and_its_blob_goes_with_its_delete(
+    world, http, shelf
+) -> None:
+    ada = world.as_("ada")
+    created = await http.post(
+        f"{shelf.tenant}/scan-files",
+        params={"label": "Dune, rescanned", "file_name": "dune.pdf"},
+        content=BYTES,
+        headers=ada,
+    )
+    location = created.headers["location"]
+    scan_id = location.rsplit("/", 1)[-1]
+    (bucket,) = await world.files.list_buckets("lib-t-")
+    kit = world.app.state.kit
+    await world.files.put(bucket, "stray", b"no scan names it")
+    # no grace period: every blob is old, so only rp:fileKey can keep the scan's
+    swept = await kit.sweep_tenant(
+        shelf.tenant_iri, remove=True, remove_blobs=True, older_than=timedelta(0)
+    )
+    assert swept.blobs == ["stray"], "the scan's id is in rp:fileKey, so only the stray goes"
+    assert await world.files.get(bucket, scan_id) == BYTES, "the blob stays"
+    version = (await http.get(location, headers=ada)).headers["etag"]
+    deleted = await http.delete(
+        f"{shelf.tenant}/scan-files/{scan_id}", headers={**ada, "If-Match": version}
+    )
+    assert deleted.status_code == 204, deleted.text
+    assert [b.file_key for b in await world.files.list_blobs(bucket)] == [], (
+        "the blob goes with the scan"
+    )

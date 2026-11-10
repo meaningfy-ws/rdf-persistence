@@ -96,6 +96,7 @@ def build_library_app(
             byte_size=len(data),
             sha256=hashlib.sha256(data).hexdigest(),
             scan_of=scan_of,
+            file_key=iri.rsplit("/", 1)[-1],  # the key stays the scan's id; the sweep reads it
         )
         bucket, scan_id = await kit.bucket_of(tenant), iri.rsplit("/", 1)[-1]
         await kit.files.put(bucket, scan_id, data)
@@ -117,6 +118,18 @@ def build_library_app(
     async def put_file(t: str, scan_id: str, request: Request) -> Response:
         bucket = await bucket_after(request, t, scan_id, Action.MODIFY)
         await kit.files.put(bucket, scan_id, await request.body())
+        return Response(status_code=204)
+
+    @app.delete(path, status_code=204)
+    async def delete_scan(t: str, scan_id: str, request: Request) -> Response:
+        """Delete the scan at the version of ``If-Match``, and its blob with it."""
+        checked = await kit.require_aggregate(
+            request.headers.get("authorization"), t, SCANS, scan_id, Action.DELETE
+        )
+        version = request.headers.get("if-match", "").strip().strip('"')
+        await kit.remove_with_files(
+            checked.caller_access.tenant, checked.principal, checked.checked_target, version
+        )
         return Response(status_code=204)
 
     @app.get(path)
