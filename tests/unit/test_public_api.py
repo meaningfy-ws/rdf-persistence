@@ -46,6 +46,7 @@ INDEXED_NAMES = [
     "RootValidator",
     "sweep",
     "sweep_tenant",
+    "remove_with_files",
     "FileStore",
     "TenantGone",
     "Session",

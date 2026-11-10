@@ -104,6 +104,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
         load_caller_access,
         load_role_definitions,
     )
+    from rdf_persistence.services.file_removal import remove_with_files
     from rdf_persistence.services.files import FileStore
     from rdf_persistence.services.identity import Identity
     from rdf_persistence.services.listing import Listings
@@ -146,6 +147,7 @@ _LAZY_MODULES = {
     "Store": f"{_SERVICES}.store",
     "sweep": f"{_SERVICES}.sweep",
     "sweep_tenant": f"{_SERVICES}.tenant_sweep",
+    "remove_with_files": f"{_SERVICES}.file_removal",
     "Tenancy": f"{_SERVICES}.tenancy",
     "GrantValidator": f"{_SERVICES}.tenancy",
     "RootValidator": f"{_SERVICES}.tenancy",
@@ -258,5 +260,6 @@ __all__ = [
     "open_session",
     "sweep",
     "sweep_tenant",
+    "remove_with_files",
     "zitadel_roles_claim",
 ]

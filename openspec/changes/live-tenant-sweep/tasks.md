@@ -37,12 +37,12 @@
 - [x] 3.2 `ServiceKit.sweep_tenant` (entrypoints/kit.py) delegating to `sweep_tenant` with the
   kit's tenancy, store, files and iris; public exports (PD-13) and `assert_public_imports`.
   Gates: `make test-changed`, `make check-quality`.
-- [ ] 3.3 Adversarial tester (riskiest task: deletion and its races): tests only, trying to make
+- [x] 3.3 Adversarial tester (riskiest task: deletion and its races): tests only, trying to make
   the sweep remove what a commit names or will name, or touch another tenant.
 
 ## 4. Remove with files
 
-- [ ] 4.1 Test first (`tests/unit/services/test_remove_with_files.py`, fakes): removes the
+- [x] 4.1 Test first (`tests/unit/services/test_remove_with_files.py`, fakes): removes the
   aggregate and its blob; `Conflict` at a stale version with nothing changed; a key another
   aggregate names stays; a failing blob delete still removes the aggregate and logs (PD-10). Then
   `remove_with_files` (service) and `ServiceKit.remove_with_files`.
@@ -65,7 +65,7 @@
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [ ] 3.3 · [ ] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
+- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 4.1 · [ ] 5.1 · [ ] 5.2 · [ ] 5.3 · [ ] 5.4
 
 ## Verification
 

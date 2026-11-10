@@ -17,7 +17,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
 )
 from rdf_persistence.domain.iris import IdSource, Iris, draw_id, system_database_name
 from rdf_persistence.entrypoints.auth import Gate
-from rdf_persistence.services import tenant_sweep
+from rdf_persistence.services import file_removal, tenant_sweep
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.services.artifacts import CONTEXT_FILE
@@ -178,6 +178,20 @@ class ServiceKit:
             remove=remove,
             remove_blobs=remove_blobs,
             older_than=older_than,
+        )
+
+    async def remove_with_files(
+        self, tenant: str, principal: str, iri: str, if_version: str
+    ) -> None:
+        """Remove the aggregate ``iri`` at ``if_version`` and delete the blobs only it names in
+        ``rp:fileKey``. A blob that cannot be deleted is logged; the sweep removes it later.
+
+        Raises:
+            NotFound: The tenant or the aggregate does not exist.
+            Conflict: The aggregate is not at ``if_version``; nothing changed.
+        """
+        await file_removal.remove_with_files(
+            self.tenancy, self.files, tenant, Principal(id=principal), iri, if_version
         )
 
     def session(self, tenant: str, principal: str) -> AbstractAsyncContextManager[Session]:

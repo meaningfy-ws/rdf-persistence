@@ -186,6 +186,8 @@ with `session.remove` leaving blob k2 (3 h old); blob k3 uploaded 1 min ago, not
 | A key another aggregate also names | key read after the remove | blob kept |
 | Blob delete fails in `remove_with_files` | exception from `files.delete` | logged, not raised; the sweep removes it later |
 | Graph with no marker (loaded before this change) | no `rp:loadedAt` | counts as old (RISK-2) |
+| Marker another tool wrote unreadable (naive or ill-typed dateTime, a date, a string) | not a timezone-aware datetime | ignored, as if absent (RF-1) |
+| Several markers on one graph | more than one `rp:loadedAt` | the youngest counts (RF-1) |
 | Two sweeps at once | — | harmless: deletes are idempotent |
 
 ## Risks / Trade-offs
@@ -204,6 +206,22 @@ with `session.remove` leaving blob k2 (3 h old); blob k3 uploaded 1 min ago, not
   the toy library set `file_key`; the docs name the condition next to the flag.
 - Clock skew between the service and the object store shifts a blob's grace period by the skew.
   Accepted: minutes against a one-hour default.
+
+## Review fixes (leader's decisions after the adversarial tester, 2026-11-10)
+
+- **RF-1** (tester, defect 1): an unreadable marker crashed every sweep of the tenant (`TypeError`
+  comparing it with the cutoff). The sweep now reads a marker only when it is a timezone-aware
+  `datetime`; anything else counts as no marker (old, as RISK-2), and of several markers the
+  youngest counts, so a stray marker can never make a graph look older than its real load.
+- **RF-2** (build of task 4.1): `remove_with_files` makes no separate version check: it reads the
+  keys, then `session.remove(iri, if_version)` refuses a stale version with nothing changed, and a
+  replace between the read and the remove also makes the remove refuse; a separate check would add
+  a race, not remove one. The "still named" read is a new public `Session.named_file_keys(keys)`,
+  because the session's store is private.
+- Accepted as is: when a commit wins the PD-5 race, the report still lists the graph with
+  `removed_loaded_graphs=True`; the report lists what was found and whether removal ran, not what
+  each delete did. A loaded graph of the tenant's access record is swept like any aggregate's when
+  no commit owns it.
 
 ## Open Questions
 

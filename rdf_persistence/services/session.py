@@ -53,6 +53,9 @@ SELECT ?version ?created ?creator ?contributor WHERE {
 }
 """
 READ_GRAPH = "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH $graph { ?s ?p ?o } }"
+READ_NAMED_KEYS = (
+    "SELECT DISTINCT ?key WHERE { GRAPH ?g { ?s $p_file_key ?key } FILTER (?key IN ($keys)) }"
+)
 ASK_ANY = "ASK { GRAPH $graph { ?s ?p ?o } }"
 ASK_TOKEN = "ASK { GRAPH $graph { $graph $p_version $token } }"
 # One conditional insert: when the graph already holds a triple nothing is written, so two adds of
@@ -513,6 +516,17 @@ class Session:
         """
         await self._stored(self._graph(iri))
         return await self._registered_loaded(iri)
+
+    async def named_file_keys(self, keys: Iterable[str]) -> set[str]:
+        """The members of ``keys`` that some graph of the tenant database still names in ``rp:fileKey``."""
+        wanted = [Literal(k) for k in keys]
+        if not wanted:
+            return set()
+        text = fill(READ_NAMED_KEYS, p_file_key=term(v.FILE_KEY), keys=term_list(wanted))
+        rows = [
+            r for r in await self._store.query(self._database, text) if isinstance(r, ResultRow)
+        ]
+        return {str(r.key) for r in rows}
 
     async def remove(self, iri: str, if_version: str) -> None:
         """Delete the aggregate's graph, loaded graphs and registry entries if it still has ``if_version``.
