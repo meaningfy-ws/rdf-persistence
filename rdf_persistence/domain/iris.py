@@ -615,12 +615,6 @@ class Iris:
             return named == root
         return tenant is None or named is None or self.is_aggregate(tenant, named)
 
-    def loaded_graph_root(self, iri: str) -> str | None:
-        """The ``{root}`` of the loaded-graph template in ``iri``; ``None`` when ``iri`` is not a loaded
-        graph or the template has no ``{root}``."""
-        found = self._loaded_re.fullmatch(str(iri))
-        return None if found is None else found.groupdict().get("root")
-
     def is_aggregate_graph(self, tenant: str, iri: str) -> bool:
         """True when ``iri`` is the ``graph_iri`` of an aggregate of ``tenant`` (never of the tenant root)."""
         tenant, iri = str(tenant), str(iri)

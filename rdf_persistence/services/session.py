@@ -1,8 +1,9 @@
 """The session: guarded, tracked commits of whole graphs to one tenant database (PD-5, PD-7, PD-8).
 
 The graph level (PD-7a) works on an aggregate's root IRI and its triples. An aggregate lives in
-the one graph ``graph_iri(root)``; the tenant's root object lives in the tenant's meta graph and has
-no registry entry. Every commit writes a fresh version token and is confirmed by an ``ASK`` for it.
+the one graph ``graph_iri(root)``; the tenant's root object lives in the tenant's meta graph, which
+has no registry entry, while the graphs loaded for the root are registered like any aggregate's.
+Every commit writes a fresh version token and is confirmed by an ``ASK`` for it.
 """
 
 import uuid
@@ -262,15 +263,13 @@ class Session:
     def _entries(
         self, iri: str, graph: URIRef, loaded_graphs: Sequence[URIRef]
     ) -> list[RegistryEntry]:
-        if iri == self._tenant:
-            return []
-        return [
-            RegistryEntry(graph=str(graph), kind=RegistryKind.AGGREGATE, owned_by=iri),
-            *(
-                RegistryEntry(graph=str(g), kind=RegistryKind.LOADED_GRAPH, owned_by=iri)
-                for g in loaded_graphs
-            ),
+        loaded = [
+            RegistryEntry(graph=str(g), kind=RegistryKind.LOADED_GRAPH, owned_by=iri)
+            for g in loaded_graphs
         ]
+        if iri == self._tenant:  # as in _graph: the root's graph is meta, never listed (DEC-2)
+            return loaded
+        return [RegistryEntry(graph=str(graph), kind=RegistryKind.AGGREGATE, owned_by=iri), *loaded]
 
     async def _check_commit(self, iri: str, loaded_graphs: Sequence[URIRef]) -> None:
         """Refuse what could alias another graph: an IRI the policy does not mint for an aggregate, a

@@ -8,8 +8,8 @@ of `test_tenant_sweep.py` whose loaded-graph template has no `{root}`.
 
 ## 1. Register the root's loaded graphs
 
-- [ ] 1.1 Test first, in `tests/unit/services/test_session_loaded_graphs.py` (fake store); then
-  PD-1 and PD-5 in `Session._entries` and `Session._graph`, and the `session.py` module docstring
+- [x] 1.1 Test first, in `tests/unit/services/test_session_loaded_graphs.py` (fake store); then
+  PD-1 in `Session._entries` (not `_graph`: PD-5 withdrawn, issue #76), and the `session.py` module docstring
   (the root's loaded graphs are registered). TC-02 goes in `tests/unit/services/test_tenant_sweep.py`
   on `make_world` (it has a `Tenancy` and a created tenant); TC-10 opens its session with
   `listings=`, built like the `listings()` fixture of `tests/unit/services/test_session_find.py`.
@@ -25,12 +25,11 @@ of `test_tenant_sweep.py` whose loaded-graph template has no `{root}`.
 | TC-06 | as TC-05; commit `B` with `[]`, then remove `B` | `loaded_graphs(T) == [g]`, `g` unchanged |
 | TC-07 | as TC-05; commit root without `loaded_graphs` (`None`) | `loaded_graphs(B) == [h]`, `loaded_graphs(T) == [g]` (root variant of `test_replace_without_a_list_leaves_the_loaded_graphs_of_another_aggregate_alone`) |
 | TC-08 | flat policy; `B` committed with `[h]`; commit root with `[h]` | `InvalidIri`; nothing written |
-| TC-09 | session opened with `tenant_iri=URIRef(T)`; `load_graph(str(T), ttl)` and commit root `str(T)` with `[g]` | `loaded_graphs(str(T)) == [g]`; no graph `T/graph` exists |
 | TC-10 | TC-01 | registry holds no `rp:kind rp:Aggregate` entry for `T/meta`; `session.find(Book)` returns exactly the committed books (regression guard) |
 
 ## 2. The sweep
 
-- [ ] 2.1 Test first, in `tests/unit/services/test_tenant_sweep.py` (fakes, injected clock); then
+- [x] 2.1 Test first, in `tests/unit/services/test_tenant_sweep.py` (fakes, injected clock); then
   PD-2: drop the skip in `_candidate_graphs`, delete `Iris.loaded_graph_root`, and update the
   `tenant_sweep.py` module docstring and the `_candidate_graphs` docstring. Delete
   `test_a_loaded_graph_names_the_root_its_template_holds` and

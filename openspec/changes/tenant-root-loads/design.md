@@ -39,10 +39,10 @@ query.
   registered ones (`_registered_loaded`), now including the root's. (`Tenancy._replace_root` writes
   the access record on the system database, never `T`: the policy refuses an access template equal
   to the tenant, `Iris._require_distinct_graphs`.)
-- **PD-5** (attack, note): `_graph` and `_entries` recognise the root by `str(iri) == str(self._tenant)`,
-  so a session opened with a `URIRef` tenant and called with a plain string (or the reverse) still
-  treats the root as the root. Today `URIRef("a") == "a"` is false and the root would get an
-  `Aggregate` entry and graph `T/graph`.
+- **PD-5** (attack, note; **withdrawn** 2026-11-10): comparing the root by `str()` in `_graph` and
+  `_entries`. GitNexus rates `Session._graph` CRITICAL (15 flows), and #73 does not need it; the
+  developer chose to leave `_graph` untouched and fix the fragility on its own (issue #76).
+  `_entries` keeps the same `iri == self._tenant` comparison as `_graph`, so the two stay consistent.
 
 - **PD-6** (gate): the second clarity gate scored the PLAN 8.7/10 with five gaps (root created
   first in the session tests; TC-02 on a world with a `Tenancy`; TC-10's session with `listings`;
@@ -55,7 +55,7 @@ query.
 def _entries(self, iri, graph, loaded_graphs):
     loaded = [RegistryEntry(graph=str(g), kind=RegistryKind.LOADED_GRAPH, owned_by=iri)
               for g in loaded_graphs]
-    if str(iri) == str(self._tenant):   # the root's graph is meta: no Aggregate entry (DEC-2, PD-5)
+    if iri == self._tenant:   # as in _graph: the root's graph is meta, no Aggregate entry (DEC-2)
         return loaded
     return [RegistryEntry(graph=str(graph), kind=RegistryKind.AGGREGATE, owned_by=iri), *loaded]
 ```
@@ -74,7 +74,7 @@ Worked example (default policy, `T = …/libraries/t1`):
 | Don't | Do instead | Why |
 |---|---|---|
 | Write an `Aggregate` entry for `T/meta` | Only `LoadedGraph` entries for the root (PD-1) | The listing query reads `Aggregate` entries; the root would join listings (DEC-2) |
-| Compare the root with `iri == self._tenant` | `str(iri) == str(self._tenant)` (PD-5) | `URIRef("a") == "a"` is false; the root would be stored as aggregate `T/graph` |
+| Compare the root differently in `_entries` than in `_graph` | The same `iri == self._tenant` in both | The two must agree on what the root is; the `URIRef`/`str` fragility is issue #76 |
 | Special-case the root in `REPLACE`, `REMOVE`, `ADD` or `READ_LOADED` | Leave the templates as they are | They work by owner; the root needs only entries |
 | Keep `Iris.loaded_graph_root` "in case" | Delete it with its tests (PD-2) | Its only caller is the skip this change removes; it was never released |
 | Write anything else `ownedBy T` in the registry | Only loaded-graph entries own by `T` | A root replace drops every entry `ownedBy T` (`_DROP_ENTRIES`) |
@@ -94,7 +94,7 @@ Worked example (default policy, `T = …/libraries/t1`):
 | Root replace with `loaded_graphs=[]` | the root's loads emptied; a book's loads untouched (entries are scoped by owner) |
 | Book replace with `[]`, or book remove | the root's loads untouched |
 | `Session.remove(T, v)` (no route calls it; a consumer can) | now also empties the root's loaded graphs and drops their entries, as for any aggregate; before, only `meta` |
-| `iri` and the session's tenant differ only as `URIRef` vs `str` | treated as the root (PD-5) |
+| `iri` and the session's tenant differ only as `URIRef` vs `str` | unchanged: treated as an aggregate by both `_graph` and `_entries` (issue #76) |
 | The store fails during a root commit | one update request: nothing written; the store's error (`StoreUnavailable`, `DatabaseGone`) is raised unchanged; nothing new is logged |
 
 ## Risks / Trade-offs

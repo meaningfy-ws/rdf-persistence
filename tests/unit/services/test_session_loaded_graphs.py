@@ -6,19 +6,30 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
-from rdflib import BNode, Graph, Literal, URIRef
+from rdflib import RDF, BNode, Graph, Literal, URIRef
 
 from rdf_persistence.domain.exceptions import Conflict, InvalidIri
 from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.domain.generated.rp_files import RdfFormat
+from rdf_persistence.domain.generated.service.rp_service import IriPolicy, ServiceSettings
 from rdf_persistence.domain.iris import (
     DEFAULT_IRIS,
+    Iris,
     graph_iri,
 )
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.listing import Listings
+from rdf_persistence.services.schema import load_schema
+from rdf_persistence.services.schema_structure import iri_types
 from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from tests.fixtures.library.generated.books import Book
+from tests.toy import TOY_SCHEMA
+
+BOOK = URIRef("http://purl.org/ontology/bibo/Book")
+FLAT = "{base}{tenant_id}/{type}/{id}"
 
 TENANT = "https://example.org/libraries/6f1c0c1e"
 ADA, BEN = "https://example.org/people/ada", "https://example.org/people/ben"
@@ -264,3 +275,120 @@ async def test_a_loaded_graph_must_be_exactly_the_minted_form(session, store, ba
     with pytest.raises(InvalidIri, match="loaded graph"):
         await session.add_graph(ROOT, [], loaded_graphs=[bad])
     assert store.sent("update") == [], "nothing was sent"
+
+
+# --- the tenant root's loaded graphs (tenant-root-loads, issue #73) ---------------------------
+
+ROOT_TRIPLES = [(URIRef(TENANT), TITLE, Literal("Ghent"))]
+AGGREGATE = URIRef("https://meaningfy.ws/ns/rdf-persistence#Aggregate")
+
+
+async def _root_with(session, loaded: list[URIRef]) -> str:
+    """The tenant root stored, then committed with ``loaded``; answers its version."""
+    version = await session.add_graph(TENANT, ROOT_TRIPLES)
+    return await session.replace_graph(TENANT, ROOT_TRIPLES, version, loaded_graphs=loaded)
+
+
+async def _load(session, aggregate: str) -> URIRef:
+    return await session.load_graph(aggregate, LOADED_TTL.encode(), rdf_format=RdfFormat.TURTLE)
+
+
+async def test_tc01_a_root_load_comes_back_in_a_new_session(store):
+    async with fake_session(store, tenant_iri=TENANT) as first:
+        loaded = await _load(first, TENANT)
+        await _root_with(first, [loaded])
+    async with fake_session(store, tenant_iri=TENANT) as later:
+        assert await later.loaded_graphs(TENANT) == [loaded]
+        content = await later.loaded_graph(TENANT, str(loaded))
+    assert set(content) == set(Graph().parse(data=LOADED_TTL, format="turtle"))
+
+
+async def test_tc03_a_root_replace_with_an_empty_list_empties_its_load(session, store):
+    loaded = await _load(session, TENANT)
+    version = await _root_with(session, [loaded])
+    await session.replace_graph(TENANT, ROOT_TRIPLES, version, loaded_graphs=[])
+    assert await session.loaded_graphs(TENANT) == []
+    assert not await has_triples(store, loaded)
+
+
+async def test_tc04_removing_the_root_empties_its_loads_and_their_entries(session, store):
+    loaded = await _load(session, TENANT)
+    version = await _root_with(session, [loaded])
+    await session.remove(TENANT, version)
+    assert not await has_triples(store, loaded)
+    assert await registered_loaded(store) == set()
+
+
+async def _root_and_book(session) -> tuple[URIRef, URIRef, str, str]:
+    """The root committed with one load and a book with another; answers both and both versions."""
+    mine, theirs = await _load(session, TENANT), await _load(session, ROOT)
+    root_version = await _root_with(session, [mine])
+    book_version = await session.add_graph(ROOT, [], loaded_graphs=[theirs])
+    return mine, theirs, root_version, book_version
+
+
+async def test_tc05_a_root_replace_with_an_empty_list_leaves_a_books_loads(session, store):
+    _, theirs, root_version, _ = await _root_and_book(session)
+    await session.replace_graph(TENANT, ROOT_TRIPLES, root_version, loaded_graphs=[])
+    assert await session.loaded_graphs(ROOT) == [theirs]
+    assert await has_triples(store, theirs)
+
+
+async def test_tc06_a_books_replace_and_remove_leave_the_roots_loads(session, store):
+    mine, _, _, book_version = await _root_and_book(session)
+    book_version = await session.replace_graph(ROOT, [], book_version, loaded_graphs=[])
+    await session.remove(ROOT, book_version)
+    assert await session.loaded_graphs(TENANT) == [mine]
+    assert await has_triples(store, mine)
+
+
+async def test_tc07_a_root_replace_without_a_list_keeps_both_sets(session, store):
+    mine, theirs, root_version, _ = await _root_and_book(session)
+    await session.replace_graph(TENANT, ROOT_TRIPLES, root_version)
+    assert await session.loaded_graphs(TENANT) == [mine]
+    assert await session.loaded_graphs(ROOT) == [theirs]
+
+
+async def test_tc08_a_root_commit_cannot_claim_a_books_load_under_a_flat_policy(store):
+    settings = ServiceSettings(
+        base="http://mwb.meaningfy.ws/",
+        prefix="mwb",
+        tenant_segment="projects",
+        creator_role="librarian",
+        roles_claim="roles",
+        iri_policy=IriPolicy(
+            tenant_template="{base}project/{tenant_id}",
+            aggregate_template=FLAT,
+            part_template=FLAT,
+            loaded_graph_template=FLAT,
+        ),
+    )
+    iris = Iris(settings, *iri_types(load_schema(TOY_SCHEMA)))
+    tenant = str(iris.mint_tenant())
+    book = str(iris.mint_aggregate(tenant, "book", "books"))
+    root_triples = [(URIRef(tenant), TITLE, Literal("Ghent"))]
+    async with fake_session(store, tenant_iri=tenant, iris=iris) as session:
+        theirs = await _load(session, book)
+        await session.add_graph(book, [], loaded_graphs=[theirs])
+        version = await session.add_graph(tenant, root_triples)
+        before = len(store.sent("update"))
+        with pytest.raises(InvalidIri, match="owned by another aggregate"):
+            await session.replace_graph(tenant, root_triples, version, loaded_graphs=[theirs])
+        assert len(store.sent("update")) == before, "nothing written"
+        assert await session.loaded_graphs(book) == [theirs]
+
+
+async def test_tc10_the_root_gets_no_aggregate_entry_and_joins_no_listing(store):
+    listings = Listings(load_schema(TOY_SCHEMA))
+    async with fake_session(store, tenant_iri=TENANT, listings=listings) as session:
+        loaded = await _load(session, TENANT)
+        await _root_with(session, [loaded])
+        await session.add_graph(ROOT, [(URIRef(ROOT), RDF.type, BOOK)])
+        assert await session.find(Book) == [ROOT]
+    text = fill(
+        "ASK { GRAPH $r { $meta ?p $aggregate } }",
+        r=term(DEFAULT_IRIS.registry(TENANT)),
+        meta=term(DEFAULT_IRIS.meta(TENANT)),
+        aggregate=term(AGGREGATE),
+    )
+    assert not (await store.query(FAKE_DATABASE, text)).askAnswer

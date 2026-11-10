@@ -1,7 +1,8 @@
 """The sweep of one live tenant: the loaded graphs no commit owns and the blobs no graph names (live-tenant-sweep).
 
-A loaded graph is an orphan when its IRI is one the policy mints for the tenant (and not for the tenant
-root), no registry entry owns it, and its load marker is older than the grace period (or it has none).
+A loaded graph is an orphan when its IRI is one the policy mints for the tenant (for an aggregate or for
+the tenant root alike), no registry entry owns it, and its load marker is older than the grace period
+(or it has none).
 A blob is an orphan when no graph of the tenant names its key in ``rp:fileKey`` and the bucket last
 wrote it before the grace period. Both are deleted only when asked, separately; a dry run changes
 nothing. The reads go in the safe order (PD-7): what is listed first is judged by what is read after,
@@ -128,11 +129,9 @@ async def _rows(store: Store, database: str, text: str) -> list[ResultRow]:
 
 
 async def _candidate_graphs(store: Store, database: str, iris: Iris, tenant: str) -> list[str]:
-    """The tenant's loaded graphs, but the tenant root's own (its loads are never registered)."""
+    """The tenant's loaded graphs, the tenant root's included (tenant-root-loads)."""
     found = (str(row.g) for row in await _rows(store, database, LIST_GRAPHS))
-    return [
-        g for g in found if iris.is_loaded_graph(tenant, g) and iris.loaded_graph_root(g) != tenant
-    ]
+    return [g for g in found if iris.is_loaded_graph(tenant, g)]
 
 
 async def _registry_view(
