@@ -4,6 +4,8 @@
 _Where does the toolkit keep tenants, their data and its own bookkeeping? What happens, step by
 step, when an aggregate is created, read, listed, replaced or deleted, and when a tenant is?_
 
+This page describes the toolkit on `develop` as of 2026-11-10 (after `live-tenant-sweep`).
+
 The examples use the toolkit's own toy library (`tests/toy.py`, `tests/fixtures/library/`):
 settings `base="https://example.org/library/"`, `prefix="lib"`, `tenant_segment="libraries"`,
 `creator_role="librarian"`; a tenant is a library; its aggregates are books (`rp_path: books`) and
