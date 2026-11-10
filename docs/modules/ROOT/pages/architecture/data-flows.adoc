@@ -30,7 +30,9 @@ owns (its chapters). It lives in one named graph.
 
 |Tenant root
 |The tenant's own object (a `Library`), the class annotated `graph: meta` in the schema. It is
-stored like an aggregate, in the tenant's `meta` graph, but has no registry entry.
+stored like an aggregate, in the tenant's `meta` graph, but `T/meta` has no registry entry, so the
+root appears in no listing. Graphs loaded for the root (`load_graph(T, …)`) are registered like any
+aggregate's, owned by `T`.
 
 |File aggregate
 |An aggregate whose class includes `StoredFile` (the toy library's `Scan`): its triples describe a
@@ -162,8 +164,9 @@ about the graph: `rp:version`, `dcterms:created`, `dcterms:creator`, `dcterms:mo
 |
 |`T/registry`
 |One entry per graph an aggregate owns: `B/graph rp:kind rp:Aggregate; rp:ownedBy B`, and for each
-loaded graph `B/content/<id> rp:kind rp:LoadedGraph; rp:ownedBy B`. Also a load marker
-`B/content/<id> rp:loadedAt <time>` for each load.
+loaded graph `B/content/<id> rp:kind rp:LoadedGraph; rp:ownedBy B`; a graph loaded for the tenant
+root gets only the second kind, `T/content/<id> rp:kind rp:LoadedGraph; rp:ownedBy T`. Also a load
+marker `B/content/<id> rp:loadedAt <time>` for each load.
 
 |
 |`B/content/<id>`
@@ -691,7 +694,6 @@ databases and buckets no access record names. Never looks inside an active tenan
 
 |Live-tenant sweep (`kit.sweep_tenant`)
 |Run by an operator. Inside one active tenant, finds loaded graphs no registry entry owns and blobs no
-`rp:fileKey` names, older than one hour; a dry run unless `remove` or `remove_blobs` is set. Skips
-graphs loaded for the tenant root (`load_graph(T, …)`): a commit of the root never registers them
-(issue #73), so they would all look like orphans.
+`rp:fileKey` names, older than one hour; a dry run unless `remove` or `remove_blobs` is set. Graphs
+loaded for the tenant root are judged like any other.
 |===

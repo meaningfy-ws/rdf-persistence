@@ -48,7 +48,7 @@ of `test_tenant_sweep.py` whose loaded-graph template has no `{root}`.
 
 ## 3. On Fuseki, and the docs
 
-- [ ] 3.1 Integration tests; gate:
+- [x] 3.1 Integration tests; gate:
   `make test-containers TEST_PATH="tests/integration/store/test_loading.py tests/integration/tenancy/test_tenant_sweep.py"`.
 
 | ID | File | Input | Expected |
@@ -57,7 +57,7 @@ of `test_tenant_sweep.py` whose loaded-graph template has no `{root}`.
 | IT-02 | `tests/integration/tenancy/test_tenant_sweep.py` | TC-11 on Fuseki | as TC-11 |
 | IT-03 | `tests/integration/store/test_loading.py` | TC-03 on Fuseki | as TC-03 |
 
-- [ ] 3.2 Docs. In `docs/modules/ROOT/pages/architecture/data-flows.adoc`: the Terms row
+- [x] 3.2 Docs. In `docs/modules/ROOT/pages/architecture/data-flows.adoc`: the Terms row
   "Tenant root" (it has no registry entry *of its own*, but its loaded graphs have entries); the
   sweep row of `#sweeps` (drop "Skips graphs loaded for the tenant root … issue #73"); the
   loaded-graph state diagram in `#files` (unchanged, check it). In
