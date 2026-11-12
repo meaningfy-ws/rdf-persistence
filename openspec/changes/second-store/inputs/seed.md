@@ -68,3 +68,38 @@ Developer: "accept recommendations, and continue" (2026-11-06).
 - The start-up sweep finds and drops orphans on the second store without touching active tenants.
 - A store lacking a required capability stops the service at start-up with a message naming it.
 - Every query template still resists injection on the second store.
+
+## Leader's recommendations (2026-11-12)
+
+The developer accepted recommendations by default (2026-11-06); the leader answered each open
+question while reshaping the four tenancy candidates. Each answer is a DEC in `../proposal.md`
+marked "leader's choice"; the developer may overrule any of them.
+
+- Q-0 (which store) -> GraphDB first (DEC-5): repositories map onto the toolkit's databases, so
+  tenancy, the sweep and IRIs stay as they are. Oxigraph and Tentris serve one dataset per server.
+  A spike on the container confirms repository admin, Graph Store `PUT`, atomic multi-operation
+  updates, dataset N-Quads, and the free edition's licence for CI; if it fails, back to the
+  developer with Oxigraph (one tenant per server).
+- Q-1 (tenants on a single-dataset store) -> not supported; such a store is refused (DEC-6).
+- Q-2 (what the descriptor says) -> `datasets`, `atomic_update_request`, `graph_store_put`,
+  `dataset_quads`; all required, no fallbacks (DEC-7). `atomic_update_request` is what guarded
+  commits, `cross-aggregate-unique-keys` and `atomic-commit` (#83) rely on.
+- Q-3 (where declared) -> statically by the adapter, a generated model; the conformance suite
+  proves every claim (DEC-8).
+- Q-4 (embedded) -> server only (DEC-9).
+- Q-5 (`schema-migrations` waits?) -> no; migrations use the port (DEC-10).
+- Boundary with `tenant-stores`: this EPIC is the product; `tenant-stores` is several wired stores.
+  Each named store carries a descriptor (DEC-11). Appetite cut from LARGE to MEDIUM by DEC-6.
+
+Order: fourth of the four, and after `cross-aggregate-unique-keys` and `atomic-commit` (#83).
+
+## Test scenarios the EPIC must prove (amended 2026-11-12)
+
+The list above stands, with "the second store" read as GraphDB, plus:
+
+- The spike's five facts, each recorded with its evidence before any adapter code.
+- An update request whose second operation fails leaves the first undone, on GraphDB and on Fuseki
+  (the atomicity case added to the conformance suite).
+- A store declaring any of the four capabilities false stops the start-up, naming store and
+  capability.
+- A tenant dumped on Fuseki restores on GraphDB (with `tenant-stores`: wired side by side).
