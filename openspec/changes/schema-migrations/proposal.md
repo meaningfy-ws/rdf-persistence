@@ -6,6 +6,8 @@
 # EPIC: Migrate stored data when a schema changes
 
 > Candidate EPIC, shaped 2026-11-06 from the v1 future list. Not planned: the PLAN (design.md, tasks.md) waits for the developer's answers in inputs/seed.md.
+>
+> **Backlog position (2026-11-12):** after the tenant-governance EPICs (`tenant-dump-restore` records the schema version in its manifest, which this EPIC then reads). It must migrate the toolkit's own new metamodel modules (`rp_collections`, `rp_workflow`, `rp_discussion`) and stored workflow states when a workflow file drops a state (No-go of the collaboration EPIC). See `openspec/changes/README.md`.
 
 **Golden-thread parent:** capabilities `rp-generation` and `rp-aggregate-store`, and the deferred
 building block "schema migrations" of `docs/modules/ROOT/pages/architecture/index.adoc`.

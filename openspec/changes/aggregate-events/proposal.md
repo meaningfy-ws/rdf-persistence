@@ -5,6 +5,8 @@
 # EPIC: Aggregate events: outbox, event bus and server-sent events
 
 > Candidate EPIC, shaped 2026-11-06 from the v1 future list. Not planned: the PLAN (design.md, tasks.md) waits for the developer's answers in inputs/seed.md.
+>
+> **Backlog position (2026-11-12):** after `atomic-commit` (hard: the outbox insert is one more operation of its transaction, DEC-6 there) and `collaboration-and-reference-collections` (whose No-gos defer notifications here). The capability descriptor of `second-store` must state that one update request is atomic; that is all this EPIC needs from it, so it no longer waits for the whole of `second-store`. Q-0 (a named need) is now answered by the consumer: notify on workflow transitions and comments (#80, #81). See `openspec/changes/README.md`.
 
 **Golden-thread parent:** capability `rp-aggregate-store` (the commit) and the deferred building
 blocks "Outbox, event bus and relay" and "server-sent events" of

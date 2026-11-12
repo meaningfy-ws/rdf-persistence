@@ -15,64 +15,80 @@ deltas into `openspec/specs/` (the durable truth) and move the change under `arc
 **Golden thread (cite your parent):** `tasks.md` cites its EPIC id on the first line; specs cite
 their capability; commits reference the change id.
 
-## Planned EPICs (from GitHub issues)
 
-Shaped and planned on 2026-11-08 from the consumer's (MWB2) issues; the developer answered the open
-questions (each change's `inputs/seed.md`). Each has its PLAN (`design.md` + `tasks.md`).
+## The backlog, in order (reshaped 2026-11-12)
 
-`test-lanes` (MEDIUM: fast developer test lanes, `make test-changed` and `make test-fast`, a repeatable profile of the slowest tests, and a shared toy signing key; it supersedes `test-profiling`) was delivered and archived on 2026-11-09 (`archive/2026-11-09-test-lanes`). None else in flight except `delivery-friction` (MEDIUM, PR #33: flaky tests, CI's Maven Central
-download, ungated formatting, adoption-guide gaps and parallel tests, met while delivering #24 to
-#26). `iri-policy` (#26), `testkit-wait-until` (#24) and `generation-fix-hint` (#25) were delivered
-and archived on 2026-11-08 (`archive/2026-11-08-*`).
+Reshaped by the lead on 2026-11-12, with the developer away and asked to decide: the open issues
+come first (#72, #76, #78–#81, #83), then the candidate EPICs. Each EPIC owns one concern; where
+two met, one now names the other as a dependency and the shared piece lives in exactly one of them
+(the table's last column). Delivered work is under `archive/`; `test-profiling` was deleted
+(superseded by `test-lanes`, 2026-11-09).
 
-## Shaped EPICs (from GitHub issues, not yet planned)
+"PLAN" means `design.md` + `tasks.md` exist. "Gated" means a fresh reviewer scored the PLAN ≥9/10
+after an attack; until then it is the planner's own score.
 
-| Id | Appetite | Why, in one line | Issues |
+| # | Id | Appetite | Issues | PLAN | Depends on | Owns (and nobody else) |
+|---|---|---|---|---|---|---|
+| 1 | `boundary-owned-hint` | TINY | #72 | yes | none | the REFERENCE problem's fix text |
+| 2 | `release-pipeline` | SMALL | none | yes | none | versioning, release notes, the 0.2.0 cut |
+| 3 | `atomic-commit` | MEDIUM (2 stages) | #83, #76 | yes | none | `Session.transaction()`: one guarded update request for many aggregates; `UnitOfWork.remove`/`version`; the root limit and batch mode; the tenant-root comparison |
+| 4 | `collaboration-and-reference-collections` | LARGE (4 stages) | #78, #79, #80, #81 | yes | 3 | reverse references, reference collections, discussion, workflow, the `annotate` action |
+| 5 | `cross-aggregate-unique-keys` | MEDIUM | none | yes | 3 | key guards added to the transaction; `KeyConflict` |
+| 6 | `tenant-dump-restore` | MEDIUM | none | yes | none | the dump format (manifest with schema version), restore into a new tenant |
+| 7 | `app-level-data` | MEDIUM | none | no | none | the application database and its aggregates |
+| 8 | `tenant-stores` | MEDIUM | none | no | 6 (copies are dump + restore) | several wired stores; the access record names a tenant's store |
+| 9 | `aggregate-events` | LARGE | none | no | 3 (outbox = one more transaction operation) | outbox, relay, `EventBus`, SSE, notifications |
+| 10 | `schema-migrations` | LARGE | none | no | 6 (reads the dump's schema version) | schema version per tenant, automatic migrations |
+| 11 | `second-store` | MEDIUM | none | no | 3, 5 (the descriptor states their atomicity need) | another store product, the capability descriptor |
+| 12 | `typescript-client` | LARGE | none | no | 2 | the generated client |
+| 13 | `fine-grained-access` | VERY LARGE (staged) | none | no | 9 | OpenFGA, property- and triple-level access |
+| — | `graphql-read-api` | LARGE | none | no | — | deferred by the developer (2026-11-06) |
+
+### Why this order
+
+1. **#72 and the release first, as fillers.** Both are independent and small. Cutting 0.2.0
+   (pending since 2026-11-10) before `atomic-commit` gives consumers a version tag from before the
+   commit behaviour change.
+2. **`atomic-commit` before every other feature.** MWB2's v2-02 waits on it, and three EPICs write
+   several aggregates at once: the collaboration EPIC (cascade delete, a transition with its
+   record and comment, delete with comments), unique keys (their guard joins the transaction's
+   guard) and events (the outbox insert joins the transaction). Issue #76 is folded in: it fixes
+   the same hub (`Session._graph`), so one impact gate covers both.
+3. **The collaboration EPIC next**: the consumer's shaped model waits on it. Its stage order was
+   changed to reverse references, collections, discussion, workflow, because a transition posts
+   its comment into the thread. The version token on read (its former DEC-8) moved to
+   `atomic-commit`.
+4. **Unique keys** after it: no consumer is waiting for them, and they reuse the transaction.
+5. **Tenant governance** (dump/restore, application data, several stores): the developer's own need
+   of 2026-11-10, in the order that lets each reuse the one before.
+6. **Events, then migrations.** Events now have a named need (notify on transitions and comments);
+   migrations become pressing once consumers keep data across schema changes. Dump/restore's
+   manifest records the schema version that migrations will read.
+7. **`second-store`, the client, fine-grained access** last: no consumer need yet.
+
+### Readiness and what the developer reviews (2026-11-13)
+
+Every PLAN below was attacked and clarity-gated by a reviewer who did not write it; the findings
+are recorded in the PLAN's last gate PD. "Ready" means it can go to an epic session now; the
+review items are decisions the lead took on the developer's behalf and the developer may overrule.
+
+| Change | Gate | Ready? | Review first |
 |---|---|---|---|
-| `collaboration-and-reference-collections` | LARGE (four stages) | No reverse references, no collections that only point, no workflow states, no discussion; each application would invent them and their cross-graph SPARQL. | #78, #79, #80, #81 |
+| `boundary-owned-hint` | 9 | ready | none |
+| `release-pipeline` | 8 → 9 | ready | PD-1: `main` is moved to the tag by hand after each release (`GITHUB_TOKEN` cannot push workflow changes); PD-4: CHANGELOG kept by hand, release-please writes only the notes; PD-5: PyPI jobs removed; PD-9: 0.2.0 cut by the first run |
+| `atomic-commit` | 8 → 8.5 → fixed | ready | DEC-4: default limit 500 roots and batch mode built now; the all-or-nothing behaviour change ships without a flag; #76 folded in |
+| `cross-aggregate-unique-keys` | 8 → 9 | ready after `atomic-commit` | PD-2: an unscoped `unique_keys` declared on a root now fails generation; PD-11: duplicates are found by an operator call `key_duplicates()`, not by generation (generation never sees data); PD-8/PD-9: 409 `key-conflict`, version conflicts reported first |
+| `tenant-dump-restore` | 7.5 → 9 | ready | DEC-1: restore always into a new tenant; DEC-2: the tenant id is rewritten in every IRI, policies that glue the id to other characters are refused; DEC-4: grants not dumped, the restorer is the only grantee |
+| `collaboration-and-reference-collections` | 8 → 8.5 → fixed | ready after `atomic-commit` | a `Collaboration` service opened from the kit (not `session.*` methods); comments and transition records are toolkit-written aggregates no generic route serves; replies target the aggregate; undefined transition → `Conflict`, state changed by a plain write → `Forbidden`; deleting a resource deletes its comments and records |
 
-## Candidate EPICs
+Shaped, not planned (PLAN at the start of their epic session): `app-level-data`, `tenant-stores`,
+`second-store`, `aggregate-events`, `schema-migrations`, `typescript-client`,
+`fine-grained-access`. Their open questions are answered as leader's choices in each proposal and
+`inputs/seed.md`. Three need the developer before planning:
 
-Shaped on 2026-11-06 from the v1 future list (`docs/modules/ROOT/pages/questions.adoc`, "What could
-strengthen it in the future"), `docs/modules/ROOT/pages/architecture/open-decisions.adoc`, and the
-No-gos and Rabbit-holes of the archived `toolkit-v1-foundation` proposal. Each holds a
-`proposal.md` (the EPIC), its spec deltas, and `inputs/seed.md` with the open questions. None is
-planned: no `design.md` or `tasks.md` exists until the developer answers its questions.
-
-| Id | Appetite | Why, in one line | Depends on |
-|---|---|---|---|
-| `release-pipeline` | SMALL | The release workflow exists but has never released (it looks for releases on `main` while running on `develop`); consumers can only install `develop`. | none |
-| `test-profiling` | TINY | Superseded by `test-lanes` (2026-11-09), which folds in its requirement. Was: the check timings are rough wall-clock times; nobody knows which tests take the 5 minutes. | none |
-| `live-tenant-sweep` | SMALL | Loaded graphs no commit names and blobs no aggregate names stay in a live tenant until it is deleted. | none |
-| `cross-aggregate-unique-keys` | MEDIUM | `unique_keys` hold only inside one aggregate; two concurrent creates with one key both commit. | none; shares the atomic-update question with `second-store` |
-| `second-store` | LARGE | The `Store` port assumes Fuseki's database-per-tenant administration; Oxigraph or Virtuoso cannot back it. | soft: after `cross-aggregate-unique-keys` (its guard sets an atomicity need the descriptor must state) |
-| `schema-migrations` | LARGE | No schema version is stored; data under an old schema surfaces only when a replace fails its shapes. | soft: `second-store` (migrations should run on every supported store) |
-| `aggregate-events` | LARGE | Nothing records that a commit happened; a reaction to a change can only poll. | soft: `second-store` (the outbox relies on atomic updates) |
-| `typescript-client` | LARGE | Types and the OpenAPI document are generated, but every client hand-writes its calls, versions and problem handling. | soft: `release-pipeline` (a versioned client pairs with a versioned server) |
-| `graphql-read-api` | LARGE | Nested reads across aggregates take one REST call per aggregate; option C is the API's declared backup. | none |
-| `fine-grained-access` | VERY LARGE (staged) | Access is per tenant and per aggregate; no property can be hidden, and OpenFGA is deferred by D-4. | soft: after `graphql-read-api` and `aggregate-events`, so property filtering covers every read path once |
-
-### Suggested order, and why
-
-Revised after the developer's answers (2026-11-06; recorded in each `inputs/seed.md`):
-
-1. **`test-profiling`**: superseded by `test-lanes` (2026-11-09), delivered and archived the same day.
-2. **`live-tenant-sweep`**: small, self-contained, and closes a known data leak inside tenants
-   (an operator command, a dry run by default).
-3. **`cross-aggregate-unique-keys`**: medium, contained in the commit (a guard in the commit's own
-   update); it states the atomicity a store must offer, which `second-store` then puts into its
-   descriptor.
-4. **`second-store`**: Tentris, Oxigraph and GraphDB compared behind a capability descriptor,
-   before **`schema-migrations`** and **`aggregate-events`**, which both rely on what a store
-   guarantees.
-5. **`schema-migrations`**: automatic, on Strapi-inspired rules; needed as soon as consumers hold
-   data across schema changes.
-6. **`aggregate-events`**: an outbox, an `EventBus` port (Redis or RabbitMQ), and in-process
-   plumbing (domain events and a message bus).
-7. **`typescript-client`**: generated from the OpenAPI document.
-8. **`fine-grained-access`**: stage 1 is OpenFGA per aggregate (D-4 reopened by the developer);
-   property and triple level are later stages.
-9. **`release-pipeline`**: consumers keep installing from `develop` for now, so it waits; v0.1.0
-   was tagged by hand.
-
-**Deferred:** `graphql-read-api`, by the developer. The preference is remembered in its seed.
+- `tenant-dump-restore` / `tenant-stores`: should a backup ever be restorable under its original
+  tenant IRI, or across deployments with another IRI policy? (Recommended: not now.)
+- `second-store`: GraphDB Free (not open source) as the second store? (Recommended: yes if its
+  licence allows CI use, else Oxigraph with one tenant per server.)
+- `aggregate-events`: confirm the named need (notify on workflow transitions and comments) before
+  it is planned.

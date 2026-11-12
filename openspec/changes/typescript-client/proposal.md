@@ -5,6 +5,8 @@
 # EPIC: A TypeScript client library
 
 > Candidate EPIC, shaped 2026-11-06 from the v1 future list. Not planned: the PLAN (design.md, tasks.md) waits for the developer's answers in inputs/seed.md.
+>
+> **Backlog position (2026-11-12):** after `release-pipeline` (a versioned client pairs with a versioned server); independent of the rest. See `openspec/changes/README.md`.
 
 **Golden-thread parent:** capabilities `rp-service-api` (requirement "The contract is published")
 and `rp-generation` (TypeScript types), and the path table of
