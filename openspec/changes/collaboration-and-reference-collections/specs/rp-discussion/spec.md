@@ -4,7 +4,7 @@
 
 ### Requirement: A comment can be posted on any aggregate
 
-`session.comment(iri, text, audience, references, reply_to)` SHALL store a comment as an
+`collaboration.comment(iri, text, audience, references, reply_to)` SHALL store a comment as an
 aggregate of its own (an `oa:Annotation` targeting `iri`, with a textual body) carrying the
 session's principal as author, the time, an optional audience of roles, optional references to
 other resources of the tenant and an optional comment it replies to. Posting SHALL require the
@@ -23,7 +23,7 @@ reply SHALL name a comment on the same target.
 
 ### Requirement: A thread shows only what the caller's roles may see
 
-`session.thread(iri)` SHALL return the comments targeting `iri`, oldest first, with their replies,
+`collaboration.thread(iri)` SHALL return the comments targeting `iri`, oldest first, with their replies,
 leaving out every comment whose audience names none of the caller's roles on the tenant or the
 aggregate. A comment with no audience SHALL be visible to every caller who may read the target.
 

@@ -51,7 +51,7 @@ Deleting a collection SHALL delete only the collection. A delete with an explici
 also delete every member as resolved at that moment (explicit and by rule; a nested collection is
 deleted as a member, its own members kept), and only if the caller may `delete` every one of them
 and none changed since it was resolved; otherwise nothing SHALL be deleted and the refusal SHALL
-name the members that caused it.
+name the members that caused it which the caller may read, and count the others.
 
 #### Scenario: a plain delete
 - **GIVEN** a collection with two books
@@ -63,9 +63,9 @@ name the members that caused it.
 - **WHEN** the caller deletes the collection with cascade
 - **THEN** nothing is deleted and the refusal names b2
 
-### Requirement: A session lists the collections a resource belongs to
+### Requirement: A collaboration lists the collections a resource belongs to
 
-A session SHALL return, through `collections_of(iri)`, the collections of the tenant that hold
+A collaboration SHALL return, through `collections_of(iri)`, the collections of the tenant that hold
 `iri` explicitly or by their rule, filtered by the caller's `read` access with the others counted
 as hidden, as for referrers.
 

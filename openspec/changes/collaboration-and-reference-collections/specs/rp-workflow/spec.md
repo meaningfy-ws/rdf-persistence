@@ -25,12 +25,14 @@ loaded, before any request is served.
 
 An aggregate class whose schema names a workflow SHALL carry a current state (`adms:status`), set
 to the workflow's initial state when the aggregate is first stored and readable like any slot. A
-plain write that changes the state SHALL be refused and change nothing; only a transition changes
-it.
+state is a `skos:Concept` whose IRI is the workflow's IRI, a slash and the state's name. A plain
+write that changes the state SHALL be refused and change nothing; only a transition changes it.
+An aggregate stored before its class named the workflow SHALL have no state until its first
+transition, which SHALL start from the initial state.
 
 #### Scenario: a new book starts in draft
 - **WHEN** a session stores a new book whose class follows the review workflow
-- **THEN** reading the book gives the state `draft`
+- **THEN** reading the book gives the state `draft` (the IRI `<review workflow IRI>/draft`)
 
 #### Scenario: a plain write cannot skip review
 - **GIVEN** a stored book in `draft`
@@ -39,10 +41,11 @@ it.
 
 ### Requirement: Only defined and permitted transitions happen
 
-`session.transition(iri, to, comment)` SHALL move the aggregate to `to` only if the workflow
-defines a transition from its current state to `to`, the session's principal holds one of that
-transition's roles on the tenant or the aggregate, a comment is given when the transition requires
-one, and the aggregate has not changed since it was read. Otherwise it SHALL be refused, with the
+`collaboration.transition(iri, to, if_version, comment)` SHALL move the aggregate to `to` only if
+the workflow defines a transition from its current state to `to`, the session's principal holds
+one of that transition's roles on the tenant or the aggregate, a comment is given when the
+transition requires one, no Prohibition of `modify` applies to the principal on the aggregate
+or the tenant, and the aggregate still has the version token `if_version` the caller read. Otherwise it SHALL be refused, with the
 reason, and nothing SHALL change.
 
 #### Scenario: an allowed transition
@@ -67,9 +70,9 @@ reason, and nothing SHALL change.
 
 ### Requirement: Every transition is recorded as provenance
 
-Every transition SHALL be recorded, in the same update as the state change, as a `prov:Activity`
+Every transition SHALL be recorded, in the same update as the state change, as a record that is a `prov:Activity` in the metamodel
 of its own naming the aggregate, the source and target states, the principal, the time and the
-comment if any. A session SHALL list an aggregate's transitions oldest first. A plain write of the
+comment if any. A collaboration SHALL list an aggregate's transitions oldest first. A plain write of the
 aggregate SHALL leave its transition records unchanged; deleting the aggregate SHALL delete them.
 
 #### Scenario: the history of a book
