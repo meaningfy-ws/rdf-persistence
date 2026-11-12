@@ -25,6 +25,12 @@ download, ungated formatting, adoption-guide gaps and parallel tests, met while 
 #26). `iri-policy` (#26), `testkit-wait-until` (#24) and `generation-fix-hint` (#25) were delivered
 and archived on 2026-11-08 (`archive/2026-11-08-*`).
 
+## Shaped EPICs (from GitHub issues, not yet planned)
+
+| Id | Appetite | Why, in one line | Issues |
+|---|---|---|---|
+| `collaboration-and-reference-collections` | LARGE (four stages) | No reverse references, no collections that only point, no workflow states, no discussion; each application would invent them and their cross-graph SPARQL. | #78, #79, #80, #81 |
+
 ## Candidate EPICs
 
 Shaped on 2026-11-06 from the v1 future list (`docs/modules/ROOT/pages/questions.adoc`, "What could
