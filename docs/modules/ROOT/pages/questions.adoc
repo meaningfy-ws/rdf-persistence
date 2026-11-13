@@ -89,6 +89,13 @@ and the blobs no `file_key` names, older than one hour, and changes nothing unle
 is stored in `file_key`. Delete a file aggregate with `kit.remove_with_files`, which removes its
 blobs too. See xref:howto/adopt.adoc#sweep-live-tenant[Sweep a live tenant].
 
+*How do I back up or copy a project?*::
+Call `kit.dump_tenant(tenant, out)` to write the tenant's graphs (as N-Quads) and files to one
+archive, and `kit.restore_tenant(src, creator)` to create a new tenant from it, with a new id and
+new IRIs. The restorer alone gets the creator role; grants are not dumped. The archive must come
+from the same schema version and IRI policy, and the graphs are held in memory. See
+xref:howto/dump-restore.adoc[Back up or copy a project].
+
 *How do I test my application with the testkit?*::
 Use `FakeStore`, `FakeFileStore` and `FakeIdentity` in place of the adapters, `fake_session` for a
 domain service, and `TokenSigner` with `JwksTokenVerifier` for tokens, all from

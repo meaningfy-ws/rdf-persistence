@@ -202,8 +202,9 @@ class ServiceKit:
         (a principal IRI) is granted the creator role in it and no one else is.
 
         The archive must come from a service with the same schema and IRI policy. Nothing is created if it is
-        refused, and nothing is left if the restore fails. Route it behind ``Action.ADMINISTER`` on the caller's
-        account. See ``rdf_persistence.services.tenant_dump.restore``.
+        refused, and nothing is left if the restore fails. There is no tenant yet, so ``require`` cannot guard it:
+        verify the caller with ``gate.caller``, apply the consumer's own rule on who may create a tenant, and pass
+        ``caller.principal`` as ``creator``. See ``rdf_persistence.services.tenant_dump.restore``.
 
         Raises:
             InvalidBody: The archive is not a dump this service can restore.

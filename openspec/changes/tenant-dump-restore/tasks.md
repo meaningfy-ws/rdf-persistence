@@ -72,11 +72,11 @@ fakes (`testkit/fakes.py`); integration tests use the Fuseki and Garage containe
 
 ## 4. On the containers, and the docs
 
-- [ ] 4.1 Integration test `tests/integration/tenancy/test_tenant_dump.py`: IT-01 = TC-10 on Fuseki
+- [x] 4.1 Integration test `tests/integration/tenancy/test_tenant_dump.py`: IT-01 = TC-10 on Fuseki
   and Garage; IT-02 = TC-17. Gate:
   `make test-containers TEST_PATH=tests/integration/tenancy/test_tenant_dump.py`.
-- [ ] 4.2 Docs: a how-to `docs/modules/ROOT/pages/howto/dump-restore.adoc` (the two calls, routing
-  them with `require(..., Action.ADMINISTER)`, the archive format v1, what is not dumped, the limits:
+- [x] 4.2 Docs: a how-to `docs/modules/ROOT/pages/howto/dump-restore.adoc` (the two calls, routing
+  them (dump with `require(..., Action.ADMINISTER)`; restore with `gate.caller`, PD-11), the archive format v1, what is not dumped, the limits:
   same policy, same schema version, no template gluing the tenant id to a letter or digit, in-memory
   size of the graphs, stop writes for an exact copy, no deploy or restart during a restore, declare a
   schema `version`); the page in the nav; a `questions.adoc` entry ("How do I back up or copy a project?");

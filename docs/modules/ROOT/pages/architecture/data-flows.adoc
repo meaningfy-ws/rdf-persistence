@@ -548,6 +548,83 @@ bucket; *last*, remove the record. After a crash midway, the tenant answers 404 
 including another `DELETE`; the next start-up sweep finishes it.
 |===
 
+[#dump-restore]
+== Dump and restore a tenant
+
+`kit.dump_tenant` and `kit.restore_tenant` (`services/tenant_dump.py`) are Python calls with no
+route and no gate; the consumer decides who may call them (see
+xref:howto/dump-restore.adoc[Back up or copy a project]). A dump is one gzipped tar: `manifest.json`,
+`graphs.nq`, then `blobs/<key>`. A restore always creates a new tenant, in the same order as `create`:
+database, bucket, data, access record last.
+
+[mermaid]
+....
+sequenceDiagram
+  participant C as Caller
+  participant D as tenant_dump
+  participant T as Tenancy
+  participant F as Fuseki
+  participant O as S3
+  Note over C,O: dump_tenant(T, out)
+  C->>D: dump
+  D->>T: get the access record (NotFound, or Conflict if deleting)
+  D->>F: lib-t-…: export every named graph as N-Quads, one read
+  D->>O: list the bucket's blobs
+  D-->>C: out: manifest.json, graphs.nq
+  loop each blob
+    D->>O: get the blob (gone since the listing, so skipped and logged)
+    D-->>C: out: blobs/key
+  end
+  Note over C,O: restore_tenant(src, creator)
+  C->>D: restore
+  D->>D: read manifest and graphs.nq, check format, schema, IRI policy
+  D->>T: free_tenant: mint T2, unused
+  D->>D: rewrite the IRIs from T to T2, check graphs and root
+  D->>T: restore
+  T->>F: create database lib-t-… for T2
+  T->>O: create bucket lib-t-…
+  T->>F: import the N-Quads
+  loop each blob member
+    T->>O: put the blob
+  end
+  T->>T: database and bucket still exist?
+  T->>F: lib-system: write the access record (active, creator is librarian)
+  T-->>C: TenantSummary of T2
+....
+
+[cols="1,2,5",options="header"]
+|===
+|Operation |Call |Steps, in order
+
+|Dump
+|`kit.dump_tenant(T, out)`
+|Read the access record (unknown tenant is `NotFound`, a `deleting` one is `Conflict`; nothing is written).
+Export every named graph of the tenant's database as N-Quads in one read, so the graphs agree with each
+other. List the bucket. Write the manifest, the N-Quads, then each blob as it is read. Blobs are
+copied after the graphs, as found. The access record and its grants are not dumped.
+
+|Restore, checks
+|`kit.restore_tenant(src, creator)`
+|Before anything is created: the first member is `manifest.json` and the second `graphs.nq`; the
+manifest's format, schema id and version and effective IRI policy equal the service's; the policy
+does not glue the tenant id to a letter, digit or variable. Mint `T2`. Rewrite each IRI term of the
+graph names, subjects and objects under the base, replacing the old tenant id between delimiters
+with the new one (predicates, datatypes and literals are untouched). Every quad must be in a graph
+the policy mints for `T2`, none in the default graph; the root must decode and pass the root
+validators. Any failure is `InvalidBody` and nothing exists yet.
+
+|Restore, writes
+|same call
+|Create the database and the bucket; import the N-Quads; put each blob as it is read from the
+archive; check that the database and bucket still exist; *last*, write the access record with the
+caller as the only grantee, in the creator role. A bad blob member or any failure after the database
+exists drops the new database and bucket (best effort) and writes no record. A crash leaves them
+for the next start-up sweep. A start-up sweep that runs during a long restore would drop them, which
+the existence check turns into a `PersistenceError`.
+|===
+
+The graphs are held in memory during both calls; blobs are streamed one at a time.
+
 [#rules]
 == Rules and checks
 

@@ -116,6 +116,10 @@ session do (`create` only shares `_new_record` and calls `free_tenant` by its pu
   `Exception`, not `BaseException`, so a cancelled restore leaves its orphans to the start-up sweep;
   `dump` takes a keyword-only `clock`; the public API exports `TenantDump` (the kit methods ride on
   `ServiceKit`).
+- **PD-11** (task 4.2 finding): only the dump is routed behind `require(..., Action.ADMINISTER)` on
+  the tenant. A restore has no tenant yet, so `require` cannot guard it: the consumer verifies the
+  caller with `gate.caller`, applies its own rule on who may create a tenant, and passes
+  `caller.principal` as `creator` (the `restore_tenant` docstring and the how-to say so).
 
 ## Algorithm / approach
 
