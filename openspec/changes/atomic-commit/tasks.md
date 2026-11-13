@@ -70,7 +70,8 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
 
 - [x] 1.4 On Fuseki: `tests/integration/store/test_transaction.py`, and the store conformance case
   of RISK-1 in `rdf_persistence/testkit/store_conformance.py` (an update request whose second
-  operation fails at run time, `CREATE GRAPH` on an existing graph, leaves the first unapplied, PD-13), run against the fake and Fuseki. Gate:
+  operation fails at run time, `LOAD` of a missing file, leaves the first unapplied, PD-13
+  "Found"), run against the fake and Fuseki. Gate:
   `make test-containers TEST_PATH="tests/integration/store/test_transaction.py tests/integration/store/test_mapper.py tests/integration/store/test_store_conformance.py"`
   (adjust to the conformance runner's file name).
 
@@ -80,7 +81,7 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
 | IT-02 | TC-02 on Fuseki | as TC-02 |
 | IT-03 | TC-20 on Fuseki | as TC-20 |
 | IT-04 | 20 concurrent transactions each replacing A at `a1` plus adding its own new book (`asyncio.gather`) | exactly one succeeds; exactly one new book stored |
-| IT-05 | conformance: request `INSERT DATA {…} ; CREATE GRAPH <existing>` (PD-13) | `BadQuery`; the first insert not visible |
+| IT-05 | conformance: request `INSERT DATA {…} ; LOAD <file:///nonexistent/none.ttl>` (PD-13 "Found") | `BadQuery` or `StoreUnavailable`; the first insert not visible |
 
 - [x] 1.5 Docs: `architecture/data-flows.adoc` (the commit flow: one request, the marker; the
   `rp:CommitMarker` term), `howto/adopt.adoc` (multi-aggregate commits, `Conflict.iris`,

@@ -92,7 +92,8 @@ async def test_a_change_is_tracked_as_a_later_commit_by_its_author(store):
         await work.commit()
         read = await unit(ben).get(Book, iri)
     assert (read.creator, read.contributor) == (ADA, [BEN]), "tracking is read back"
-    assert read.created == NOW and read.modified == NOW, "the commit times are read back"
+    assert read.created == NOW, "the creation time is read back"
+    assert read.modified == NOW, "the modification time is read back"
 
 
 async def test_grants_are_stored_as_skolemised_parts_and_read_back(session):
@@ -253,7 +254,7 @@ async def test_a_conflict_on_one_book_leaves_every_book_of_the_commit_unwritten(
     with pytest.raises(Conflict) as raised:
         await work.commit()
     assert raised.value.iris == (b,), "only the changed book is named"
-    assert (await unit(session).get(Book, a)).label != "mine", "A is unchanged in the store"
+    assert (await unit(session).get(Book, a)).label == dune(a).label, "A is unchanged in the store"
     assert (await unit(session).get(Book, b)).label == "elsewhere", "B keeps the other edit"
 
 
@@ -270,8 +271,8 @@ async def test_one_commit_stores_new_books_and_removes_a_read_one_in_one_request
     await work.commit()
     assert len(store.sent("update")) == before + 1, "one update request"
     for book in news:
-        assert (await unit(session).get(Book, book.id)).label == book.label
-        assert work.version(book.id)
+        assert (await unit(session).get(Book, book.id)).label == book.label, "stored as added"
+        assert work.version(book.id) == (await session.get_graph(book.id))[2], "with its new token"
     with pytest.raises(NotFound):
         await unit(session).get(Book, a)
     with pytest.raises(LookupError):
@@ -337,8 +338,35 @@ async def test_a_failed_commit_leaves_the_held_book_and_its_version_unchanged(se
     work.add(second)
     with pytest.raises(Conflict):
         await work.commit()
-    assert await work.get(Book, a) is first and first.label == "mine"
-    assert work.version(a) == read_at
+    assert await work.get(Book, a) is first, "the held object is the one read"
+    assert first.label == "mine", "with the edit it carried"
+    assert work.version(a) == read_at, "and the version it was read at"
+
+
+async def test_a_book_read_with_a_uriref_is_removed_and_refused_again_as_for_a_str(session):
+    iri = book_iri(36)
+    await seed(session, 36)
+    work = unit(session)
+    book = await work.get(Book, URIRef(iri))
+    assert work.version(iri) == work.version(URIRef(iri)), "the version is found by either type"
+    assert await work.get(Book, iri) is book, "a str reads the object a URIRef read"
+    work.remove(book)
+    await work.commit()
+    with pytest.raises(NotFound):
+        await unit(session).get(Book, iri)
+    with pytest.raises(ValueError, match="removed"):
+        work.add(book)
+
+
+async def test_a_book_read_with_a_uriref_and_changed_is_replaced_not_added(session):
+    iri = book_iri(37)
+    await seed(session, 37)
+    work = unit(session)
+    book = await work.get(Book, URIRef(iri))
+    book.label = "changed"
+    work.add(book)
+    await work.commit()
+    assert (await unit(session).get(Book, iri)).label == "changed", "the stored book was replaced"
 
 
 async def test_a_new_book_that_is_removed_before_commit_is_refused_at_remove(session):

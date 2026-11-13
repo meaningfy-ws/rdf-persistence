@@ -276,6 +276,7 @@ class UnitOfWork:
             NotFound: The aggregate has no graph.
             TypeError: The root was already read as another class.
         """
+        iri = str(iri)  # a URIRef never equals a str, so the held roots are keyed by str (PD-12)
         if iri not in self._objects:
             graph, graph_iri, version = await self._session.get_graph(iri)
             self._objects[iri] = self._mapper.from_graph(cls, iri, graph, graph_iri)
@@ -315,9 +316,10 @@ class UnitOfWork:
         Raises:
             LookupError: The root was not read or committed by this unit of work.
         """
-        if iri not in self._versions:
+        key = str(iri)
+        if key not in self._versions:
             raise LookupError(iri)
-        return self._versions[iri]
+        return self._versions[key]
 
     def _root_iri(self, obj: BaseModel) -> str:
         if not self._mapper.is_root(type(obj)):
@@ -326,7 +328,7 @@ class UnitOfWork:
 
     async def commit(self) -> None:
         """Write every added root and remove every removed one, in one transaction, in the order
-        they were taken.
+        of the first ``get`` or ``add`` of each root.
 
         Raises:
             Conflict: A new root already exists, or a read one changed since it was read; nothing

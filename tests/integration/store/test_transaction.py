@@ -94,12 +94,13 @@ async def test_it01_replace_add_and_remove_commit_together(store, database, sess
         a2 = await t.replace_graph(A, title(A, "second"), seeded[A])
         c1 = await t.add_graph(C, title(C, "new"))
         assert await t.remove(B, seeded[B]) is None
-    assert (await session.get_graph(A))[2] == a2
-    assert (await session.get_graph(C))[2] == c1
-    assert await stored_title(session, A) == "second"
-    assert not await stored(session, B)
-    assert await has_entry(store, database, C) and not await has_entry(store, database, B)
-    assert not await a_marker_is_left(store, database)
+    assert (await session.get_graph(A))[2] == a2, "A holds the replace's token"
+    assert (await session.get_graph(C))[2] == c1, "C holds the add's token"
+    assert await stored_title(session, A) == "second", "A was replaced"
+    assert not await stored(session, B), "B was removed"
+    assert await has_entry(store, database, C), "the added root is registered"
+    assert not await has_entry(store, database, B), "the removed root is unregistered"
+    assert not await a_marker_is_left(store, database), "the marker was released"
 
 
 async def test_it02_a_replaced_root_changed_meanwhile_refuses_everything(
@@ -163,7 +164,9 @@ async def test_it03_a_unit_of_work_that_changes_a_and_adds_b_refuses_both_when_b
     mine.add(book_b)
     with pytest.raises(Conflict) as refused:
         await mine.commit()
-    assert refused.value.iris == (B,)
-    assert (await UnitOfWork(session, toy_mapper()).get(Book, A)).label == dune(A).label
-    assert (await UnitOfWork(session, toy_mapper()).get(Book, B)).label == "theirs"
-    assert not await a_marker_is_left(store, database)
+    assert refused.value.iris == (B,), "only the changed book is named"
+    label_a = (await UnitOfWork(session, toy_mapper()).get(Book, A)).label
+    assert label_a == dune(A).label, "A is unchanged in the store"
+    label_b = (await UnitOfWork(session, toy_mapper()).get(Book, B)).label
+    assert label_b == "theirs", "B keeps the other edit"
+    assert not await a_marker_is_left(store, database), "the marker was released"

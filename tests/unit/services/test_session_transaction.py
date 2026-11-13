@@ -108,12 +108,13 @@ async def test_tc01_replace_add_and_remove_commit_together(store, session, seede
         a2 = await t.replace_graph(A, title(A, "second"), seeded[A])
         c1 = await t.add_graph(C, title(C, "new"))
         assert await t.remove(B, seeded[B]) is None
-    assert (await session.get_graph(A))[2] == a2
-    assert (await session.get_graph(C))[2] == c1
-    assert await stored_title(session, A) == "second"
-    assert not await stored(session, B)
-    assert await has_entry(store, C) and not await has_entry(store, B)
-    assert not await a_marker_is_left(store)
+    assert (await session.get_graph(A))[2] == a2, "A holds the replace's token"
+    assert (await session.get_graph(C))[2] == c1, "C holds the add's token"
+    assert await stored_title(session, A) == "second", "A was replaced"
+    assert not await stored(session, B), "B was removed"
+    assert await has_entry(store, C), "the added root is registered"
+    assert not await has_entry(store, B), "the removed root is unregistered"
+    assert not await a_marker_is_left(store), "the marker was released"
     assert len(store.sent("update")) == 3, "two seeds and one request for the transaction"
 
 
@@ -248,6 +249,46 @@ async def test_tc12a_removes_only_are_never_a_success_after_a_failed_confirmatio
             await t.remove(B, seeded[B])
     assert refused.value.iris == (B,)
     assert await stored(session, B)
+
+
+async def test_removing_a_root_that_another_writer_removed_meanwhile_is_a_success(
+    store, session, other, seeded
+):
+    """PD-17e: the guard fails, nothing is written, and the confirming ASK (the graph is empty) holds."""
+    async with session.transaction() as t:
+        await t.remove(B, seeded[B])
+        await other.remove(B, seeded[B])
+    assert not await stored(session, B), "B stays removed"
+    assert await stored(session, A), "A is untouched"
+    assert not await a_marker_is_left(store), "no marker is left"
+
+
+async def test_a_removed_root_that_another_writer_removed_meanwhile_is_named_with_a_second_change(
+    session, other, seeded
+):
+    """PD-17f: with a replace beside it the remove cannot count as done; its root is named."""
+    with pytest.raises(Conflict) as refused:
+        async with session.transaction() as t:
+            await t.remove(A, seeded[A])
+            await t.replace_graph(B, title(B, "mine"), seeded[B])
+            await other.remove(A, seeded[A])
+    assert refused.value.iris == (A,), "the root whose graph is gone is named"
+    assert f"{graph_of(A)} is no longer at version {seeded[A]}" == str(refused.value), "as changed"
+    assert await stored_title(session, B) == "first", "B was not replaced"
+
+
+async def test_a_store_failure_during_the_confirming_ask_propagates_though_the_commit_applied(
+    store, session, seeded
+):
+    async def fail_next_query() -> None:
+        store.after_update = None
+        store.on("query", StoreUnavailable("down"))
+
+    with pytest.raises(StoreUnavailable):
+        async with session.transaction() as t:
+            await t.replace_graph(A, title(A, "mine"), seeded[A])
+            store.after_update = fail_next_query
+    assert await stored_title(session, A) == "mine", "the commit applied; the caller re-reads"
 
 
 async def test_tc13_a_str_and_a_uriref_of_one_root_are_one_claim(session, seeded):

@@ -176,6 +176,44 @@ required); any change to listings, loads, the sweeps' logic or the HTTP routes.
     `ASK` is false.
   - **f** In the diagnosis a removed root whose graph is gone counts as "no longer at version",
     like a changed one (PD-4's "or is absent").
+- **PD-18** (stage 1 review, lenses L1, L2, L3, L4+L5, 2026-11-13; decided by the lead).
+  Accepted:
+  - **a** (L1 W1, L3 W1, L4 W3) `Transaction`'s fragment lists and end flag are private
+    (`_guards`, `_operations`, `_ended`); PD-16's additions use internal methods from inside
+    `services`. Every `SparqlTerm` comes from `domain/sparql.py`: a joining helper there replaces the
+    hand-made `SparqlTerm(" ".join(…))` casts, and the variable suffix of `_ABSENT` goes through
+    `fill`/`count` (L1 S1, L5 S2). This amends PD-6 ("keeps `guards`, `operations`").
+  - **b** (L1 W2, L4 W1) The `FakeStore` splitter's long-string branches are made disjoint (no
+    exponential backtracking); a test bounds the time of an unterminated long string. Its comment
+    takes the `shortcut:` form naming rdflib#3710 (L3 S1). Only rdflib's run-time `Exception` and
+    `ParseException` become `BadQuery`; `RecursionError` and the fake's own bugs propagate (L1 S3).
+    The dataset copy uses `addN` over the quads (L5 S4).
+  - **c** (L4 W2) `UnitOfWork` keys its roots by `str(iri)` in `get`, `version` and the rest, as
+    PD-12 did for the session.
+  - **d** (L4 W4) `_holds` no longer records state; `_collect` records what each change wrote.
+  - **e** (L3 W3, L4 W5) `add_text`, `replace_text`, `remove_text` and the `ADD` alias are deleted;
+    `tests/unit/services/test_session_updates.py` builds requests from `*_parts` + `request_text`.
+  - **f** (L2 W1-W5, S1-S3) Tests: PD-17e (a removed root removed meanwhile is a success); a store
+    failure during the confirming `ASK` propagates and the commit applied; the tenant-root
+    scenario over both type pairings; the three slow tests shrunk or marked `slow`; `and`-chained
+    asserts split, with messages; TC-20 and TC-21 assert exact values; PD-4 reads as PD-17f (a
+    removed root whose graph is gone is named), with a test.
+  - **g** (L2 W6, W7) `architecture/index.adoc` and `api.adoc` describe the marker guard and the
+    transaction. (W8: tasks.md IT-05 now cites PD-13 "Found".)
+  - **h** (L4+L5 S6) Error matrix: (a) removes-only whose commit applied and whose root another
+    writer re-added before the `ASK` → false `Conflict` (known diagnosis limit, as DEC-3); (b) an
+    add whose graph holds triples but no version triple → `Conflict` with empty `iris` and the
+    "lost a race" message. Documented, not changed.
+  - **i** Small text: the module docstring names the transaction (L3 S2); the `RuntimeError`
+    message carries no design id (L5 S5); `UnitOfWork.commit`'s docstring says the order is that of
+    first `get` or `add` (L5 S7).
+
+  Rejected: moving the templates and builders to their own module and a `_Change` record with
+  `_prepare_*` methods (L3 W2 c, L5 S1): a structural move on a CRITICAL hub with no behaviour
+  gain; PD-5 sanctions `Transaction` using the session's helpers, and they stay in one module.
+  `Session._rows` (L5 S3): touches existing reads outside this change. An ETag test (L2 S4): the
+  token path to the API is unchanged. One table of guards (L2 S5): each guard has positive and
+  negative cases already.
 - **PD-14** (attack, finding 7): conflict messages change: an add now says
   "… no longer at version …" or "… already exists" per root as found by the diagnosis (PD-4),
   in one message for all roots. Tests that match the old message text are updated; they are

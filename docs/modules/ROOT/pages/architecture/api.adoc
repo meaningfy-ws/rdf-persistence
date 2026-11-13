@@ -384,11 +384,14 @@ of the `internal` slots of the nodes the body still describes.
 |404
 
 |13
-|Commit: one SPARQL update of several `;`-joined operations, each guarded by the version from
-`If-Match`, that replaces the graph and the root's registry entries and writes a fresh version
-token and the tracking statements; then an `ASK` for the new token.
-|`services/session.py`, `Session.replace_graph` (`replace_text`, `payload_triples`), through
-`ToolkitStore`
+|Commit: a one-change `Transaction` sends one SPARQL update request (`request_text`) of `;`-joined
+operations: a guard operation that writes a commit marker only if the graph is at the version from
+`If-Match`, the operations that replace the graph and the root's registry entries and write a fresh
+version token and the tracking statements, each matching only while the marker is there, and the
+release of the marker; then an `ASK` for the new token (see
+xref:architecture/data-flows.adoc#commit[Committing several aggregates at once]).
+|`services/session.py`, `Session.replace_graph`, `Transaction.replace_graph`
+(`replace_parts`, `request_text`, `payload_triples`), through `ToolkitStore`
 |409; 500 if the store refuses the text
 
 |14

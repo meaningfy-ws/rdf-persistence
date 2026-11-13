@@ -12,6 +12,8 @@ from rdf_persistence.domain.sparql import (
     SparqlTerm,
     count,
     fill,
+    fragment,
+    join,
     match_patterns,
     order_by,
     term,
@@ -256,3 +258,28 @@ def test_an_order_by_renders_the_keys_in_order_and_parses():
 def test_an_order_by_refuses_a_variable_that_is_not_a_plain_name(variable):
     with pytest.raises(SparqlError):
         order_by((variable, False))
+
+
+def test_join_makes_one_term_of_several_in_order_that_fill_accepts():
+    joined = join([term(SUBJECT), term(GRAPH), term(Literal("x"))])
+    assert isinstance(joined, SparqlTerm), "fill() accepts it"
+    assert joined == f"{term(SUBJECT)} {term(GRAPH)} {term(Literal('x'))}", (
+        "in order, one space apart"
+    )
+
+
+def test_join_of_nothing_is_an_empty_term():
+    assert join([]) == "", "an empty list joins to nothing"
+
+
+def test_join_refuses_a_raw_string():
+    with pytest.raises(SparqlError, match="SparqlTerm"):
+        join([term(SUBJECT), "raw"])  # type: ignore[list-item]
+
+
+def test_a_fragment_is_a_filled_template_that_can_be_joined_and_filled_again():
+    guard = fragment("GRAPH $graph { $graph $p ?o }", graph=term(GRAPH), p=term(PREDICATE))
+    assert isinstance(guard, SparqlTerm), "join() and fill() accept it"
+    both = fill("ASK { $guards }", guards=join([guard, guard]))
+    prepareQuery(both)
+    assert both.count(f"GRAPH {term(GRAPH)}") == 2, "both fragments are in the text"

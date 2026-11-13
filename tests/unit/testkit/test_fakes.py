@@ -1,6 +1,7 @@
 """A consumer's domain service tested with the fakes and no network (rp-testkit: a unit test of a domain service)."""
 
 import socket
+import time
 
 import pytest
 
@@ -193,21 +194,47 @@ async def test_a_semicolon_that_is_not_an_operation_separator_does_not_split_the
     assert await count_split(store) == 2
 
 
-async def test_a_request_of_six_hundred_operations_succeeds():
+MANY = 120  # rdflib's update parser recurses once per operation and fails from about 50 to 100
+
+
+async def test_a_request_of_many_operations_succeeds():
     store = FakeStore()
     await store.create_dataset(NAME)
-    await store.update(NAME, " ;\n".join(insert(f"urn:s{n}") for n in range(600)))
-    assert await count_split(store) == 600
+    await store.update(NAME, " ;\n".join(insert(f"urn:s{n}") for n in range(MANY)))
+    assert await count_split(store) == MANY, "every operation was applied"
 
 
 async def test_a_failure_in_the_last_of_many_operations_leaves_nothing_applied():
     store = FakeStore()
     await store.create_dataset(NAME)
     await store.update(NAME, EXISTING)
-    many = " ;\n".join(insert(f"urn:s{n}") for n in range(300))
+    many = " ;\n".join(insert(f"urn:s{n}") for n in range(MANY))
     with pytest.raises(BadQuery):
         await store.update(NAME, f"{many} ; CREATE GRAPH <urn:g:two>")
-    assert await count_split(store) == 0
+    assert await count_split(store) == 0, "none of the earlier operations is visible"
+
+
+@pytest.mark.parametrize("quote", ['"""', "'''"], ids=["double", "single"])
+async def test_an_unterminated_long_string_is_refused_without_backtracking_forever(quote):
+    store = FakeStore()
+    await store.create_dataset(NAME)
+    started = time.monotonic()
+    with pytest.raises(BadQuery):
+        await store.update(NAME, f"INSERT DATA {{ <urn:s> <urn:p> {quote}" + "\\a" * 40)
+    assert time.monotonic() - started < 1, "the splitter scans a long string in linear time"
+
+
+async def test_a_failure_that_is_not_the_stores_own_propagates_unchanged(monkeypatch):
+    """A bug in the fake itself must not be reported as the caller's bad query."""
+    store = FakeStore()
+    await store.create_dataset(NAME)
+
+    def too_deep(_text):
+        raise RecursionError("deep")
+
+    monkeypatch.setattr("rdf_persistence.testkit.fakes.prepareUpdate", too_deep)
+    with pytest.raises(RecursionError):
+        await store.update(NAME, TWO_INSERTS)
 
 
 async def test_a_prologue_applies_to_every_operation():
