@@ -51,10 +51,12 @@ tenant over server-sent events, seeing only events about what it may read.
   `rp-access`); a subscriber sees only what that check lets it read.
 - **DEC-4**: Ports in `services`, implementations in `adapters`; adapters are tested against real
   containers (PD-1; archived DEC-4).
-- **DEC-5** (2026-11-13): the events are `message-bus`'s LinkML messages: the toolkit's change
-  events and the domain events a unit of work collected. The outbox stores both, as one more
-  operation of the commit's transaction (`atomic-commit`), so an event exists if and only if its
-  change does.
+- **DEC-5** (developer, 2026-11-13): what is published is `message-bus`'s message, **one per
+  commit**: the completed activity with its `prov:Generation`s and `prov:Invalidation`s (the fixed
+  PROV event set; no other event kind). The outbox entry is one more operation of the commit's
+  transaction (`atomic-commit`), so a message exists if and only if its change does. Order per
+  aggregate follows from the versions; a server-sent-events reader receives the activity with the
+  parts about aggregates it may not read removed.
 - **DEC-6** (leader's choice, 2026-11-13, the developer may overrule): the broker is reached through
   **FastStream** behind the `EventBus` port: one library for Redis Streams, RabbitMQ, NATS and
   Kafka, pydantic messages (which the generated models are), and an AsyncAPI document generated

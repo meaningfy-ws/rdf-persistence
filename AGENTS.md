@@ -186,3 +186,5 @@ artifacts above; do not reintroduce parallel epic files under `.claude/`.
 - **GitNexus repo name:** <!-- the name this repo is indexed under (gitnexus_*) -->
 
 See `docs/` for methodology (ai-coding), standards (engineering-standards), and philosophy.
+
+- **Rules:** this repository's rules for agents are in `docs/rules/`. At the start of an activity, load them with the rulebook skill; change them only through it, by pull request.

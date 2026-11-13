@@ -2,7 +2,8 @@
 
 ### Requirement: A committed change records its event atomically
 
-Every commit that adds, replaces or removes an aggregate SHALL record one event naming the
+Every commit SHALL record one outbox message, the commit's activity with its generations and
+invalidations (capability `rp-messages`). Every commit that adds, replaces or removes an aggregate SHALL record one event naming the
 aggregate, the kind of change and the new version, in the same update as the change, so that a
 refused commit records no event and a successful one always does.
 

@@ -2,46 +2,67 @@
 
 ## ADDED Requirements
 
-### Requirement: Commands have one handler, events have any number
+### Requirement: Every commit records one activity with its PROV events
 
-The message bus SHALL dispatch a command to exactly one handler and raise that handler's error to
-the caller, and SHALL dispatch an event to every handler registered for its class, logging a
-handler's error and still running the others. A bus whose command map gives a command class no
-handler or more than one SHALL be refused when it is built.
+Every successful commit SHALL record, in the same transaction, one activity whose class is the
+command it served (a standard `Add`, `Replace` or `Remove` when no other command was given),
+carrying its start, end and principal, and for each aggregate it touched one `prov:Generation`
+(added, or the new version of a replaced one) or `prov:Invalidation` (removed, or the old version of
+a replaced one). A refused commit SHALL record no activity.
 
-#### Scenario: a failing event handler
-- **GIVEN** two handlers registered for an event, the first of which raises an error
-- **WHEN** the event is handled
-- **THEN** the error is logged and the second handler still runs
-
-#### Scenario: a failing command handler
-- **WHEN** a command whose handler raises an error is handled
-- **THEN** the caller receives that error
-
-### Requirement: Events leave the unit of work only after a successful commit
-
-A unit of work SHALL collect the events raised through it and one change event per root it
-added, replaced or removed, naming the root, its class, its new version and the committer. The bus
-SHALL receive them only after the commit succeeded; a refused commit SHALL hand over none.
+#### Scenario: a generic replace
+- **GIVEN** a stored book
+- **WHEN** it is replaced through the generic HTTP API
+- **THEN** one `Replace` activity is recorded, associated with the caller, with a generation of the
+  new version and an invalidation of the old one
 
 #### Scenario: a refused commit
-- **GIVEN** a handler that replaces a book, raises an event and commits, while the book changed
-  meanwhile
-- **WHEN** the commit is refused as a conflict
-- **THEN** no event, neither the raised one nor a change event, reaches any handler
+- **GIVEN** a unit of work holding an old version of a book
+- **WHEN** its commit is refused as a conflict
+- **THEN** no activity, generation or invalidation is recorded
 
-#### Scenario: a committed replace
-- **GIVEN** a handler that replaces a book and commits
-- **WHEN** the command is handled
-- **THEN** the handlers of the replace change event receive one event naming the book and its new
-  version
+### Requirement: One message per commit reaches observers along the class hierarchy
 
-### Requirement: Events raised while handling are handled in the same call
+After a successful commit the bus SHALL hand the completed activity, with its generations and
+invalidations, as one message to every observer registered for the activity's class or an ancestor
+of it. An observer's error SHALL be logged and the other observers SHALL still run.
 
-Events raised by handlers SHALL be handled in the same `handle` call, after the message that raised
-them, up to a limit of messages per call; past the limit the call SHALL stop with an error naming it.
+#### Scenario: a specialised transition
+- **GIVEN** an observer registered for `Transition` and a consumer class `ApproveMapping is_a: Transition`
+- **WHEN** an `ApproveMapping` command commits
+- **THEN** the observer receives one message: the `ApproveMapping` activity with its generations
 
-#### Scenario: an event loop
-- **GIVEN** a handler that raises the event it handles
-- **WHEN** that event is handled
+#### Scenario: a failing observer
+- **GIVEN** two observers of `Activity`, the first of which raises an error
+- **WHEN** any command commits
+- **THEN** the error is logged and the second observer still runs
+
+### Requirement: A command goes to the nearest handler
+
+The bus SHALL hand a command to the handler of its nearest class that has one and SHALL raise that
+handler's error to the caller. A command with no handler along its class hierarchy SHALL be refused
+with an error naming its class.
+
+#### Scenario: an extension without its own handler
+- **GIVEN** `ApproveMapping is_a: Transition` and no handler registered for `ApproveMapping`
+- **WHEN** an `ApproveMapping` command is handled
+- **THEN** the toolkit's `Transition` handler runs it
+
+### Requirement: The toolkit fills the provenance of a command
+
+A command carrying a value for a slot the toolkit fills (start, end, principal) SHALL be refused
+before anything is written.
+
+#### Scenario: a forged principal
+- **WHEN** a command naming another principal as its agent is handled
+- **THEN** it is refused and nothing is written
+
+### Requirement: Messages raised while handling stay bounded
+
+Commands sent by observers SHALL be handled in the same `handle` call, after the current message,
+up to a limit of messages per call; past the limit the call SHALL stop with an error naming it.
+
+#### Scenario: a loop
+- **GIVEN** an observer of `PublishRelease` that sends a `PublishRelease` command
+- **WHEN** a `PublishRelease` command is handled
 - **THEN** the call stops with an error naming the limit

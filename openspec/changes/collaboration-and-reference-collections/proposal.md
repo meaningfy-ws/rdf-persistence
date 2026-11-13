@@ -7,6 +7,11 @@
 > Shaped 2026-11-12 from four consumer issues. Planned 2026-11-12: the PLAN is `design.md` +
 > `tasks.md`.
 >
+> **Note 2026-11-13 (no change to this PLAN):** the later change `message-bus` adopts this EPIC's
+> `TransitionRecord` (`is_a: Activity`) as its layer-2 command `Transition`, and comments and
+> membership changes as layer-2 commands. Whether transition records are deleted with their
+> resource (PD-15 here) or kept as audit (`message-bus` DEC-10) is decided in that PLAN.
+>
 > **Re-shaped 2026-11-12 (lead's cross-EPIC decisions, applied while deriving the PLAN):**
 > (1) DEC-8 (the version token on the object-level read, `UnitOfWork.version(iri)`) moved to the
 > change `atomic-commit` (issue #83, its DEC-5), which reworks `UnitOfWork` anyway; the delta

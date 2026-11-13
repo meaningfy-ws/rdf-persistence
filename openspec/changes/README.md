@@ -37,8 +37,8 @@ after an attack; until then it is the planner's own score.
 | 6 | `tenant-dump-restore` | MEDIUM | none | yes | none | the dump format (manifest with schema version), restore into a new tenant |
 | 7 | `app-level-data` | MEDIUM | none | no | none | the application database and its aggregates |
 | 8 | `tenant-stores` | MEDIUM | none | no | 6 (copies are dump + restore) | several wired stores; the access record names a tenant's store |
-| 9 | `message-bus` | MEDIUM | none | no | 3 (events leave only after the all-or-nothing commit) | `Event`/`Command` models, `MessageBus`, handlers, `bootstrap`, the unit of work's events (in process) |
-| 10 | `aggregate-events` | LARGE | none | no | 3, 9 (outbox = one more transaction operation; stores 9's events) | outbox, relay, `EventBus` port on FastStream (Redis Streams first), incoming events into the bus, SSE |
+| 9 | `message-bus` | LARGE | none | no | 3 (the activity is one more transaction operation), 4 (adopts its `TransitionRecord`) | commands as `prov:Activity` subclasses in three layers, activity records on every commit, the fixed PROV events (`Generation`, `Invalidation`), `MessageBus` with hierarchy dispatch (in process) |
+| 10 | `aggregate-events` | LARGE | none | no | 3, 9 (publishes 9's one message per commit) | outbox, relay, `EventBus` port on FastStream (Redis Streams first), incoming messages into the bus, SSE |
 | 11 | `schema-migrations` | LARGE | none | no | 6 (reads the dump's schema version) | schema version per tenant, automatic migrations |
 | 12 | `second-store` | MEDIUM | none | no | 3, 5 (the descriptor states their atomicity need) | GraphDB (confirmed), the capability descriptor |
 | 13 | `typescript-client` | LARGE | none | no | 2 | the generated client |
@@ -94,5 +94,8 @@ Shaped, not planned (PLAN at the start of their epic session): `app-level-data`,
 - GraphDB Free as the second store: yes (`second-store` DEC-5 confirmed).
 - Events: yes, and more broadly event-driven applications as in Cosmic Python, adopting libraries
   where needed. `aggregate-events` was split: `message-bus` (in process, hand-rolled as in the
-  book) and `aggregate-events` (outbox, FastStream with Redis Streams first, SSE). Review the
-  library choices: `message-bus` DEC-4, `aggregate-events` DEC-6.
+  book) and `aggregate-events` (outbox, FastStream with Redis Streams first, SSE). Then, the same
+  day, the messages were integrated with PROV-O: commands are `prov:Activity` subclasses in three
+  layers, the events a fixed PROV set, one message per commit (`message-bus` DEC-1 to DEC-7,
+  repository rule P-0001). Review the leader's choices: `message-bus` DEC-10 (activity records kept
+  as audit) and DEC-11 (hand-rolled bus), `aggregate-events` DEC-6 (FastStream).

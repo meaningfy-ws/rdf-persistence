@@ -40,6 +40,34 @@ and depends on this one.
   toolkit's own change events (added, replaced, removed); consumers declare theirs `is_a` one of them.
 - **Async.** The toolkit is asyncio throughout; handlers are coroutines.
 
+## Re-shape: PROV-O (2026-11-13, same session)
+
+Developer, on modelling: "we must model also actions/events side by side with the model, i mean
+model events/actions as data structures, as kids of events not thir actual implementation, just the
+link ml, andthen this must be a rule ... better to model more "static" domain structures, and then
+more dynamic model structures (events/processes/states) in a separate sibling linkml module?"
+
+Developer: "well in fact here the messages and prov-o might be tightly linked, please find a way to
+integrate them natively, even adopt prov-o concepts if appropriate, then i smeel a weak link to
+usecases? or can we mainly say that there is a standard set of operations/events on an aggregate
+(CRUD-Like), and then leave out connection with the use cases complelty?"
+
+Lead's proposal: commands are `prov:Activity` subclasses; the events are the PROV instantaneous
+events `prov:Generation` and `prov:Invalidation`; the use case lives on the activity, not on events.
+
+Developer: "so if i underatnd well, the events will be standard more or less, and the shall we then
+have like standard commands, and then a set of "extensions" commands that are use case related (if
+at all)?"
+
+Lead: three layers (aggregate, toolkit features, consumer extensions); extensions specialise a
+standard command or are bare `Activity` subclasses; dispatch follows the class hierarchy; the
+generic routes record activities without going through the bus.
+
+Developer: "and yes, 1. events fixed prov set, 2, one per commit rather than aggregate, sure then i
+agree with what you said above, go ahead"
+
+The modelling rule was recorded as repository rule P-0001 (`docs/rules/`).
+
 ## Test scenarios the EPIC must prove
 
 - A command reaches exactly one handler; a command with no handler or two is refused at bus start.
