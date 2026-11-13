@@ -44,6 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Freshness hint** (`generation-fix-hint`, #25): a failed freshness check now names
   `rp-generate`, or the `regenerate-command` of each stale `[tool.rp-generate]` entry, instead of
   `make generate`. A configuration error no longer prints a hint.
+- **Releases** (`release-pipeline`): releases are proposed by release-please; `VERSION` removed,
+  the version lives in `pyproject.toml`.
 
 ## [0.1.0] - 2026-11-06
 
@@ -84,12 +86,7 @@ capabilities in `openspec/specs/`.
 - **Docs**: the build guide, the architecture pages, the common questions, and the developer guide
   with the check timings.
 
-<!--
-Release process:
-1. Move the Unreleased entries under a new `## [X.Y.Z] - YYYY-MM-DD` heading.
-2. Bump the version in VERSION / pyproject.toml.
-3. Update the comparison links below.
--->
+<!-- Release process: docs/modules/ROOT/pages/develop/index.adoc#release -->
 
 [Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/meaningfy-ws/rdf-persistence/releases/tag/v0.1.0

@@ -110,7 +110,8 @@ whole list.
 == Merge and release
 
 Each stage ends in one PR into `develop`, merged only on green CI. A release comes last, after the
-change is archived, so no commit follows the tag.
+change is archived, so no commit follows the tag. Release-please proposes the release and a person
+merges it; the steps are in xref:develop/index.adoc#release[Cutting a release].
 
 == Habits that keep sessions consistent
 

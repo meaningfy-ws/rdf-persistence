@@ -1,14 +1,15 @@
-# Release workflow — release-please + PyPI Trusted Publishing (OIDC).
+# Release workflow — release-please, then a wheel and sdist attached to the GitHub Release.
 #
-# Content/intent owned by the `meaningfy-release` skill; this is the projected library template.
-#   - release-please drafts/maintains a "release PR" from Conventional Commits (version bump +
-#     CHANGELOG). Merging it tags vX.Y.Z and creates the GitHub Release.
-#   - The publish job runs on that release: TestPyPI dry-run gate, then PyPI via OIDC (NO API token).
+# No PyPI: consumers install the `develop` branch or pin a tag (`@vX.Y.Z`). PyPI is a later change.
+#   - release-please reads the Conventional Commits on `develop` and opens or updates one release
+#     PR into `develop` (version bump in pyproject.toml, uv.lock and the manifest; the release
+#     notes are its body). Merging it tags vX.Y.Z and creates the GitHub Release.
+#   - `build` runs on a release only: it builds with `uv build`, checks that the wheel carries the
+#     tag's version and imports, and attaches wheel and sdist to the Release.
+#   - There is no job that moves `main`: GITHUB_TOKEN cannot push changes to workflow files, so
+#     whoever merged the release PR fast-forwards `main` by hand once `build` is green.
 #
-# One-time setup before this works (see the meaningfy-release skill, references/pypi-publishing.md):
-#   1. Configure a PyPI *and* TestPyPI Trusted Publisher binding owner=meaningfy-ws,
-#      repo=rdf-persistence, workflow=release.yaml, environment=release.
-#   2. Create a GitHub `release` environment (optionally with required reviewers).
+# How to cut a release: docs/modules/ROOT/pages/develop/index.adoc#release
 
 name: release
 
@@ -16,59 +17,47 @@ on:
   push:
     branches: [develop]
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pull-requests: write
+  issues: write              # release-please creates its autorelease: labels
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
     outputs:
       released: ${{ steps.rp.outputs.release_created }}
+      tag: ${{ steps.rp.outputs.tag_name }}
+      version: ${{ steps.rp.outputs.version }}
     steps:
       - id: rp
         uses: googleapis/release-please-action@v4
         with:
-          release-type: python
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          target-branch: develop
 
-  # Build once; reused by the TestPyPI gate and the PyPI publish.
   build:
     needs: release-please
     if: needs.release-please.outputs.released == 'true'
     runs-on: ubuntu-latest
+    env:
+      TAG: ${{ needs.release-please.outputs.tag }}
+      VERSION: ${{ needs.release-please.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-      - run: pipx run build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-  # Dry-run gate: a bad upload to PyPI can only be yanked, never replaced at the same version.
-  testpypi:
-    needs: build
-    runs-on: ubuntu-latest
-    environment: release
-    permissions:
-      id-token: write            # REQUIRED for the OIDC exchange
-    steps:
-      - uses: actions/download-artifact@v4
-        with: {name: dist, path: dist/}
-      - uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-          skip-existing: true
-
-  pypi:
-    needs: testpypi
-    runs-on: ubuntu-latest
-    environment: release
-    permissions:
-      id-token: write            # REQUIRED — no username/password/token; OIDC mints a short-lived one
-    steps:
-      - uses: actions/download-artifact@v4
-        with: {name: dist, path: dist/}
-      - uses: pypa/gh-action-pypi-publish@release/v1
+          ref: ${{ needs.release-please.outputs.tag }}
+      - uses: astral-sh/setup-uv@v6
+      - run: uv build
+      - name: Wheel carries the release version
+        run: |
+          test -f "dist/rdf_persistence-${VERSION}-py3-none-any.whl"
+          uv run --no-project --isolated --with "dist/rdf_persistence-${VERSION}-py3-none-any.whl" \
+            python -c "import rdf_persistence; print(rdf_persistence.__version__)" | grep -x "${VERSION}"
+      - run: gh release upload "$TAG" dist/* --clobber

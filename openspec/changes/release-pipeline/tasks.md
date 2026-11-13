@@ -7,7 +7,7 @@ by the real 0.2.0 run after it (3.1). Code changes are test-first.
 
 ## 1. Version source and release-please
 
-- [ ] 1.1 Test first, in `tests/unit/test_smoke.py`: TC-01. Then PD-2: delete `VERSION`; in
+- [x] 1.1 Test first, in `tests/unit/test_smoke.py`: TC-01. Then PD-2: delete `VERSION`; in
   `rdf_persistence/__init__.py` set `__version__` from `importlib.metadata.version("rdf-persistence")`;
   in `pyproject.toml` replace the comment "The single source of truth for the version is the root
   VERSION file; keep the `version` field below in sync." with "The version lives here alone;
@@ -18,7 +18,7 @@ by the real 0.2.0 run after it (3.1). Code changes are test-first.
 |---|---|---|
 | TC-01 | `rdf_persistence.__version__` and `tomllib.load(pyproject.toml)["project"]["version"]` | equal and non-empty |
 
-- [ ] 1.2 Add `release-please-config.json` exactly as in design.md "Algorithm / approach" and
+- [x] 1.2 Add `release-please-config.json` exactly as in design.md "Algorithm / approach" and
   `.release-please-manifest.json` = `{".": "0.1.0"}`. In `.github/workflows/release.yaml` (PD-1,
   PD-5, PD-6, PD-10): rewrite the header comment (no PyPI; what each job does; points to
   `develop/index.adoc#release`); `concurrency`; the action gets `config-file`, `manifest-file`,
@@ -31,7 +31,7 @@ by the real 0.2.0 run after it (3.1). Code changes are test-first.
   .github/workflows/release.yaml release-please-config.json .release-please-manifest.json` if
   pre-commit has YAML/JSON hooks.
 
-- [ ] 1.3 Dry run (attack, read-only): push the branch, then
+- [x] 1.3 Dry run (attack, read-only): push the branch, then
   `npx -y release-please@17 release-pr --dry-run --token "$(gh auth token)"
   --repo-url meaningfy-ws/rdf-persistence --target-branch ci/release-pipeline
   --config-file release-please-config.json --manifest-file .release-please-manifest.json`.
@@ -47,7 +47,7 @@ by the real 0.2.0 run after it (3.1). Code changes are test-first.
 
 ## 2. Docs
 
-- [ ] 2.1 `docs/modules/ROOT/pages/develop/index.adoc`: a section `[#release]` "Cutting a release":
+- [x] 2.1 `docs/modules/ROOT/pages/develop/index.adoc`: a section `[#release]` "Cutting a release":
   how a release PR appears; the bump rule before 1.0.0 (PD-3) and `Release-As: 1.0.0`; the
   CHANGELOG PR of PD-11 (rename `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD`, add an empty
   `[Unreleased]`, update the two compare links); merge the release PR; what the workflow then does;

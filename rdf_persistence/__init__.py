@@ -6,6 +6,7 @@ generated module does, loads no HTTP client or service (PD-8c).
 """
 
 from importlib import import_module
+from importlib.metadata import version
 from typing import TYPE_CHECKING, Any
 
 from rdf_persistence.domain.base import RpModel
@@ -117,7 +118,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.services.tenant_sweep import sweep_tenant
     from rdf_persistence.services.tokens import TokenVerifier
 
-__version__ = "0.1.0"
+__version__ = version("rdf-persistence")
 
 _ADAPTERS, _SERVICES = "rdf_persistence.adapters", "rdf_persistence.services"
 _ENTRYPOINTS = "rdf_persistence.entrypoints"
