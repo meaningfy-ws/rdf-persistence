@@ -30,7 +30,9 @@ stored or none is, and a stale root raises `Conflict` whose `iris` names the roo
 `work.version(iri)` gives a root's version token. For triples, use `async with
 session.transaction()`. A commit that used to leave the first roots written after a conflict now
 leaves nothing. See xref:howto/adopt.adoc#transaction[Save several aggregates at once] and
-xref:architecture/data-flows.adoc#commit[how the commit works].
+xref:architecture/data-flows.adoc#commit[how the commit works]. One commit holds at most 500
+roots by default (`max_roots`); more raises `CommitTooLarge`, and `commit(batches=True)` takes them
+in several transactions (see xref:howto/adopt.adoc#transaction-batches[Save more than 500 aggregates]).
 
 *How do tenants and access work?*::
 Each tenant has its own database and bucket, and an access record in the system database that

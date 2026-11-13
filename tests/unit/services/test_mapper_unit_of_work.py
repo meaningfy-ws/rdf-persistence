@@ -497,13 +497,13 @@ async def test_tc32b_the_same_unit_of_work_retries_only_what_is_left(session, st
     for book in three_books(70):
         work.add(book)
     store.on("update", BadQuery("the store went away"), after=1)
-    with pytest.raises(BadQuery):
+    with pytest.raises(BadQuery, match=r"batches committed"):
         await work.commit(batches=True)
     sent = len(store.sent("update"))
     await work.commit(batches=True)
     assert len(store.sent("update")) == sent + 1, "one request, for the third book"
     for n in (70, 71, 72):
-        assert (await unit(session).get(Book, book_iri(n))).id == book_iri(n)
+        assert (await unit(session).get(Book, book_iri(n))).id == book_iri(n), f"book {n} stored"
 
 
 async def test_a_re_run_of_books_with_random_part_iris_conflicts_and_duplicates_nothing(session):
@@ -522,11 +522,11 @@ async def test_a_re_run_of_books_with_random_part_iris_conflicts_and_duplicates_
 async def test_tc33_a_batch_that_conflicts_stops_there_and_says_how_many_committed(session):
     clash = book_iri(82)
     seed_one = unit(session)
-    seed_one.add(dune(clash).model_copy(update={"label": "Another title"}))
+    seed_one.add(steady_dune(clash).model_copy(update={"label": "Another title"}))
     await seed_one.commit()
     work = limited(session, 2)
     for iri in (80, 81, 82):
-        work.add(dune(book_iri(iri)))
+        work.add(steady_dune(book_iri(iri)))  # only the title of the last differs from the stored
     with pytest.raises(Conflict, match=r"1 of 2 batches committed") as raised:
         await work.commit(batches=True)
     assert raised.value.iris == (clash,), "the same fields as the batch raised"
@@ -544,3 +544,79 @@ async def test_tc34_a_commit_of_exactly_the_limit_is_one_request(session, store)
     assert len(store.sent("update")) == before + 1, "one request"
     for book in books:
         assert (await unit(session).get(Book, book.id)).id == book.id
+
+
+# -- fixes after the stage 2 review (PD-20) ----------------------------------------------------
+
+
+async def test_a_retry_after_a_failed_batch_does_not_rewrite_a_root_taken_as_committed(
+    session, store
+):
+    """PD-20b: the equal root is taken in the batch that conflicts; the retry leaves it alone."""
+    equal, clash = book_iri(95), book_iri(96)
+    seeding = unit(session)
+    seeding.add(steady_dune(equal))
+    await seeding.commit()
+    stored_version = seeding.version(equal)
+    theirs = unit(session)
+    theirs.add(steady_dune(clash).model_copy(update={"label": "Theirs"}))
+    await theirs.commit()
+    work = limited(session, 2)
+    work.add(steady_dune(equal))
+    work.add(steady_dune(clash))
+    with pytest.raises(Conflict):
+        await work.commit(batches=True)
+    cleared = unit(session)
+    cleared.remove(await cleared.get(Book, clash))
+    await cleared.commit()
+    sent = len(store.sent("update"))
+    await work.commit(batches=True)
+    assert len(store.sent("update")) == sent + 1, "one request, for the root that was refused"
+    assert (await session.get_graph(equal))[2] == stored_version, "the equal root is not rewritten"
+    assert work.version(equal) == stored_version, "and it is held at its stored version"
+    assert (await unit(session).get(Book, clash)).label == "Dune", "the other root is stored"
+
+
+@pytest.mark.parametrize("limit", [0, -1])
+def test_a_limit_below_one_is_refused_naming_the_value(session, limit):
+    with pytest.raises(ValueError, match=str(limit)):
+        limited(session, limit)
+
+
+async def test_a_failing_batch_keeps_the_conflict_roots_and_adds_the_count_to_the_message(session):
+    clash = book_iri(97)
+    seeding = unit(session)
+    seeding.add(steady_dune(clash).model_copy(update={"label": "Theirs"}))
+    await seeding.commit()
+    work = limited(session, 2)
+    work.add(steady_dune(clash))
+    with pytest.raises(Conflict) as raised:
+        await work.commit(batches=True)
+    assert raised.value.iris == (clash,), "the roots are kept"
+    assert "0 of 1 batches committed" in str(raised.value), "the count is in the message"
+    assert str(clash) in str(raised.value), "the original message is kept"
+
+
+async def test_a_failing_batch_keeps_the_arguments_of_a_foreign_exception_and_notes_the_count(
+    session, store
+):
+    work = limited(session, 2)
+    work.add(steady_dune(book_iri(98)))
+    store.on("update", RuntimeError("x", 42))  # type: ignore[arg-type]
+    with pytest.raises(RuntimeError) as raised:
+        await work.commit(batches=True)
+    assert raised.value.args == ("x", 42), "the arguments are as raised"
+    assert any("0 of 1 batches committed" in n for n in raised.value.__notes__), (
+        "the count is a note"
+    )
+
+
+async def test_a_failing_batch_extends_only_the_first_argument_of_a_toolkit_error(session, store):
+    work = limited(session, 2)
+    work.add(steady_dune(book_iri(99)))
+    store.on("update", NotFound("gone", 7))
+    with pytest.raises(NotFound) as raised:
+        await work.commit(batches=True)
+    assert raised.value.args[1:] == (7,), "the other arguments are kept"
+    assert "gone" in str(raised.value.args[0]), "the first argument is extended"
+    assert "0 of 1 batches committed" in str(raised.value.args[0]), "with the count"

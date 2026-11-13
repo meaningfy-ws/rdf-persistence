@@ -169,6 +169,11 @@ def _skolemised(graph: URIRef, triples: Iterable[Triple]) -> list[Triple]:
     return [(named(s), p, named(o)) for s, p, o in triples]
 
 
+def without_bookkeeping(graph: URIRef, triples: Iterable[Triple]) -> list[Triple]:
+    """``triples`` without the statements about ``graph`` that only the session writes."""
+    return [t for t in triples if not (t[0] == graph and t[1] in v.BOOKKEEPING_PREDICATES)]
+
+
 def payload_triples(
     graph: URIRef, version: str, tracking: Tracked, triples: Iterable[Triple]
 ) -> list[Triple]:
@@ -179,7 +184,7 @@ def payload_triples(
     skolem IRIs, since the replace update inserts its template once per matched row and would
     copy each blank node (PD-8a).
     """
-    kept = [t for t in triples if not (t[0] == graph and t[1] in v.BOOKKEEPING_PREDICATES)]
+    kept = without_bookkeeping(graph, triples)
     return [*_skolemised(graph, kept), *_tracking_triples(graph, version, tracking)]
 
 
@@ -625,7 +630,7 @@ class Transaction:
       added again before the confirming ``ASK``, raises a ``Conflict`` though the commit applied
       (a false conflict, as for an overwritten write).
     * An add whose graph holds triples but no version triple raises a ``Conflict`` with empty
-      ``iris`` and the message "lost a race", since the diagnosis finds no version to blame.
+      ``iris`` and the message "lost a race with another writer", since the diagnosis finds no version to blame.
     """
 
     def __init__(self, session: Session) -> None:
@@ -790,11 +795,15 @@ class Transaction:
         return {URIRef(r.g): None if r.version is None else str(r.version) for r in rows}
 
     def _refused(self, graph: URIRef, found: str | None) -> str | None:
-        """Why the graph, found at ``found``, refuses the change as it was read; None if it does not."""
-        read_at = self._read_at[graph]
+        """Why the graph, found at ``found``, refuses the change as it was read, in words about its
+        root (PD-20a); None if it does not."""
+        root, read_at = self._roots[graph], self._read_at[graph]
         if read_at is None:
-            return None if found is None else f"{graph} already exists"
-        return None if found == read_at else f"{graph} is no longer at version {read_at}"
+            return None if found is None else f"{root} already exists"
+        if found == read_at:
+            return None
+        who = "changed" if found is not None else "removed"
+        return f"{root} was {who} by someone else since it was read"
 
     async def _diagnose(self) -> None:
         """The confirmation failed: either nothing was written, or the commit applied and another
@@ -802,10 +811,14 @@ class Transaction:
         found = await self._versions_found()
         if any(found.get(graph) == token for graph, token in self._wrote.items()):
             return  # all or nothing: the commit applied, and a later writer changed some graph
-        reasons = {g: r for g in self._roots if (r := self._refused(g, found.get(g))) is not None}
+        reasons = {}  # root -> why, in the order of the sorted roots
+        for graph in sorted(self._roots, key=self._roots.__getitem__):
+            if (reason := self._refused(graph, found.get(graph))) is not None:
+                reasons[self._roots[graph]] = reason
         raise Conflict(
-            "; ".join(reasons.values()) or "the transaction lost a race with another writer",
-            iris=tuple(sorted(self._roots[graph] for graph in reasons)),
+            "; ".join(reasons.values())
+            or "the commit lost a race with another writer; read again and retry",
+            iris=tuple(reasons),
         )
 
 

@@ -4,7 +4,7 @@ import re
 import uuid
 
 import pytest
-from rdflib import URIRef
+from rdflib import BNode, Literal, URIRef
 
 from rdf_persistence.domain.exceptions import InvalidIri, NotFound
 from rdf_persistence.domain.iris import (
@@ -16,6 +16,7 @@ from rdf_persistence.domain.iris import (
     is_canonical_uuid,
     is_inside_tenant,
     is_loaded_graph_of,
+    is_skolem_of,
     loaded_graph_iri,
     mint_aggregate_iri,
     mint_part_iri,
@@ -157,6 +158,16 @@ def test_a_skolem_iri_lives_under_its_graph_and_is_fresh_each_time():
     first = skolem_iri(graph)
     assert first.startswith(f"{graph}/.well-known/genid/"), "under the graph, in the genid space"
     assert skolem_iri(graph) != first, "each mint is fresh"
+
+
+def test_is_skolem_of_tells_the_skolem_iris_of_a_graph_from_everything_else():
+    graph = graph_iri(f"{TENANT}/books/1")
+    other = graph_iri(f"{TENANT}/books/2")
+    assert is_skolem_of(graph, skolem_iri(graph)), "a minted skolem IRI"
+    assert not is_skolem_of(graph, skolem_iri(other)), "a skolem IRI of another graph"
+    assert not is_skolem_of(graph, graph), "the graph IRI itself"
+    assert not is_skolem_of(graph, BNode("x")), "a blank node"
+    assert not is_skolem_of(graph, Literal(f"{graph}/.well-known/genid/x")), "a literal"
 
 
 def test_the_toolkit_principal_is_toolkit_under_the_base():

@@ -179,7 +179,7 @@ async def test_every_existing_added_root_is_named_sorted(session, other, seeded)
             await other.add_graph(C, title(C, "theirs"))
             await other.add_graph(D, title(D, "theirs"))
     assert refused.value.iris == (C, D)
-    assert "already exists" in str(refused.value)
+    assert str(refused.value) == f"{C} already exists; {D} already exists", "one clause per root"
 
 
 async def test_adds_of_roots_with_overlapping_variables_in_a_big_transaction_all_commit(session):
@@ -199,7 +199,7 @@ async def test_a_replaced_root_removed_meanwhile_is_a_conflict(session, other, s
             await t.replace_graph(A, title(A, "mine"), seeded[A])
             await other.remove(A, seeded[A])
     assert refused.value.iris == (A,)
-    assert "no longer at version" in str(refused.value)
+    assert str(refused.value) == f"{A} was removed by someone else since it was read", "says gone"
     assert not await stored(session, A)
 
 
@@ -539,17 +539,20 @@ async def test_a_conflict_on_the_tenant_root_names_the_tenant_iri(session, other
 # -- single-root methods keep their messages ------------------------------------------------------
 
 
-async def test_single_root_conflict_messages_are_as_before(session, other, seeded):
+async def test_single_root_conflict_messages_name_the_root_and_never_graph_or_version(
+    session, other, seeded
+):
     with pytest.raises(Conflict) as exists:
         await session.add_graph(A, title(A, "again"))
-    assert str(exists.value) == f"{graph_of(A)} already exists"
+    assert str(exists.value) == f"{A} already exists", "an add of an existing root"
     await other.replace_graph(A, title(A, "theirs"), seeded[A])
+    changed = f"{A} was changed by someone else since it was read"
     with pytest.raises(Conflict) as stale:
         await session.replace_graph(A, title(A, "mine"), seeded[A])
-    assert str(stale.value) == f"{graph_of(A)} is no longer at version {seeded[A]}"
+    assert str(stale.value) == changed, "a replace of a root at another version"
     with pytest.raises(Conflict) as stale_remove:
         await session.remove(A, seeded[A])
-    assert str(stale_remove.value) == f"{graph_of(A)} is no longer at version {seeded[A]}"
+    assert str(stale_remove.value) == changed, "a remove of a root at another version"
 
 
 async def test_a_single_root_remove_of_a_missing_root_is_not_found_and_sends_nothing(

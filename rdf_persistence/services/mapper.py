@@ -20,6 +20,7 @@ upgrade when a schema owns a hierarchy. A ``uri`` value is taken as an absolute 
 expanded.
 """
 
+import asyncio
 import importlib
 import pkgutil
 from collections.abc import Iterable
@@ -35,8 +36,8 @@ from rdflib.compare import isomorphic
 from rdflib.term import Node
 
 from rdf_persistence.domain.base import RpModel
-from rdf_persistence.domain.exceptions import CommitTooLarge, NotFound
-from rdf_persistence.domain.iris import DEFAULT_IRIS, GENID, Iris
+from rdf_persistence.domain.exceptions import CommitTooLarge, NotFound, PersistenceError
+from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris, is_skolem_of
 from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services.schema_structure import (
     aggregate_roots,
@@ -47,8 +48,7 @@ from rdf_persistence.services.schema_structure import (
     kebab_case,
     rdf_term,
 )
-from rdf_persistence.services.session import Session
-from rdf_persistence.services.vocabulary import BOOKKEEPING_PREDICATES
+from rdf_persistence.services.session import Session, without_bookkeeping
 
 
 class GeneratedModels:
@@ -253,6 +253,9 @@ def _listed(value: Any) -> Iterable[Any]:
     return value if isinstance(value, list) else [value]
 
 
+DEFAULT_MAX_ROOTS = 500  # roots in one commit transaction (atomic-commit PD-10)
+
+
 class UnitOfWork:
     """Object-level access to one session: ``get`` roots, ``add`` new or changed ones, ``commit``.
 
@@ -265,7 +268,11 @@ class UnitOfWork:
     roots is refused (``CommitTooLarge``); ``commit(batches=True)`` takes it in several transactions.
     """
 
-    def __init__(self, session: Session, mapper: Mapper, max_roots: int = 500) -> None:
+    def __init__(
+        self, session: Session, mapper: Mapper, max_roots: int = DEFAULT_MAX_ROOTS
+    ) -> None:
+        if max_roots < 1:
+            raise ValueError(f"max_roots must be at least 1, got {max_roots}")
         self._session = session
         self._mapper = mapper
         self._max_roots = max_roots
@@ -360,8 +367,7 @@ class UnitOfWork:
         if not batches:
             if len(order) > self._max_roots:
                 raise CommitTooLarge(
-                    f"{len(order)} roots to commit, more than max_roots={self._max_roots}; "
-                    "commit(batches=True) takes them in several transactions"
+                    f"{len(order)} roots to commit, more than the limit of {self._max_roots}"
                 )
             await self._write(order)
             return
@@ -370,16 +376,20 @@ class UnitOfWork:
             try:
                 await self._write_batch(batch)
             except Exception as error:
-                error.args = (f"{error}; {done} of {len(slices)} batches committed before it",)
+                _add_count(error, f"{done} of {len(slices)} batches committed before it")
                 raise
 
     async def _write_batch(self, batch: list[str]) -> None:
-        taken = {iri: v for iri in batch if (v := await self._stored_equal(iri)) is not None}
+        stored = await asyncio.gather(*(self._stored_version_if_equal(iri) for iri in batch))
+        taken: dict[str, str] = {}
+        for iri, version in zip(batch, stored, strict=True):
+            if version is not None:
+                taken[iri] = version
         self._versions.update(taken)
+        self._dirty.difference_update(taken)  # before the write, so a retry never rewrites them
         await self._write([iri for iri in batch if iri not in taken])
-        self._dirty.difference_update(taken)
 
-    async def _stored_equal(self, iri: str) -> str | None:
+    async def _stored_version_if_equal(self, iri: str) -> str | None:
         """The stored version of the root ``iri`` if it is to be added and already stored as it
         would be written (PD-9); else None."""
         if iri in self._removed or iri in self._versions:
@@ -411,19 +421,28 @@ class UnitOfWork:
         self._dirty.difference_update(order)
 
 
+def _add_count(error: Exception, count: str) -> None:
+    """Say ``count`` on ``error`` and keep its type, fields and arguments (PD-20d): a toolkit error
+    gets it appended to its first argument; any other error gets it as a note."""
+    if isinstance(error, PersistenceError) and error.args:
+        error.args = (f"{error.args[0]}; {count}", *error.args[1:])
+    elif isinstance(error, PersistenceError):
+        error.args = (count,)
+    else:
+        error.add_note(count)
+
+
 def _same_triples(graph_iri: URIRef, stored: Graph, written: Graph) -> bool:
     """Whether ``stored`` holds what ``written`` says: the statements about the graph IRI that the
     session adds are left out, and the skolem IRIs of the graph read as blank nodes."""
-    skolem = f"{graph_iri}{GENID}"
 
     def blank(term: Node) -> Node:
-        return BNode(str(term)) if isinstance(term, URIRef) and term.startswith(skolem) else term
+        return BNode(str(term)) if is_skolem_of(graph_iri, term) else term
 
     def comparable(graph: Graph) -> Graph:
         copy = Graph()
-        for s, p, o in graph:
-            if s != graph_iri or p not in BOOKKEEPING_PREDICATES:
-                copy.add((blank(s), p, blank(o)))
+        for s, p, o in without_bookkeeping(graph_iri, cast(Iterable[Triple], graph)):
+            copy.add((blank(s), p, blank(o)))
         return copy
 
     return isomorphic(comparable(stored), comparable(written))

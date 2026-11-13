@@ -129,14 +129,11 @@ required); any change to listings, loads, the sweeps' logic or the HTTP routes.
   table). If it fails or takes over 30 s, the default is lowered to what passes and the change is
   noted here. **Measured (task 2.2, 2026-11-13):** 500 books with two chapters and notes each
   commit in ≈ 4 s (3.8 s, 4.0 s) as one update request of ≈ 2.9 MB; Fuseki takes it with no body
-  limit or timeout. The default of 500 holds.
+  limit or timeout. The default of 500 holds. IT-06's `< 30 s` assert is a deliberate exception
+  to the testing checklist's "no timing-based asserts" (rule 11): PD-10's limit is the thing it
+  checks, and the test is `slow` and container-only (PD-20).
 - **PD-11**: The confirmation needs the version token of every changed graph in one `ASK`, so a
   transaction of 500 roots sends a 500-pattern `ASK`. Accepted; measured with PD-10.
-- **PD-19** (stage 2 full gates, 2026-11-13; decided by the lead, the developer may overrule):
-  every toolkit error has an HTTP problem kind (the problem-table guard). `CommitTooLarge` answers
-  413 `payload-too-large` with its detail: a commit over the limit comes from a request that asked
-  for too much, and the caller can fix it. (Not 500 `internal-error`: that would call a limit the
-  caller can meet a fault of the service.)
 
 - **PD-12** (DEC-7, issue #76): `Session.__init__` stores `self._tenant = str(tenant_iri)`;
   `_graph` and `_entries` compare `str(iri) == self._tenant`. Every other use of `self._tenant`
@@ -221,6 +218,50 @@ required); any change to listings, loads, the sweeps' logic or the HTTP routes.
   `Session._rows` (L5 S3): touches existing reads outside this change. An ETag test (L2 S4): the
   token path to the API is unchanged. One table of guards (L2 S5): each guard has positive and
   negative cases already.
+- **PD-19** (stage 2 full gates, 2026-11-13; decided by the lead, the developer may overrule):
+  every toolkit error has an HTTP problem kind (the problem-table guard). `CommitTooLarge` answers
+  413 `payload-too-large` with its detail: a commit over the limit comes from a request that asked
+  for too much, and the caller can fix it. (Not 500 `internal-error`: that would call a limit the
+  caller can meet a fault of the service.)
+- **PD-20** (acceptance demo and stage 2 review, 2026-11-13). **The developer:** the acceptance
+  is not yet given; the conflict message must read for a person, and the demo is shown again
+  after the fixes, with the retry after a failed batch. **The lead**, on the review lenses L1, L2,
+  L3, L4+L5:
+  - **a** (developer) A `Conflict` message names **root IRIs**, never graph IRIs or version
+    tokens, one clause per root: "`<root>` was changed by someone else since it was read",
+    "`<root>` already exists", "`<root>` was removed by someone else since it was read"; a race
+    with no culprit says "the commit lost a race with another writer; read again and retry".
+    This supersedes PD-14's wording; tests that pin the old text change with it.
+  - **b** (L2 W1, L4 W2) `_write_batch` drops a root it takes as committed from the pending
+    changes **before** writing the batch, so a retry after a failed batch never rewrites it; a
+    test with an equal stored root and a clashing one in one batch.
+  - **c** (L1 W1, L4 W3) `UnitOfWork` refuses `max_roots < 1` with `ValueError` naming the value.
+  - **d** (L4 W1) A failing batch's exception keeps its type, `args` and fields: a
+    `PersistenceError` gets the count appended to its first argument (the rest kept); any other
+    exception gets it as a note (`add_note`). (PD-9 "same type and fields" was broken for multi-
+    argument and custom-`__str__` errors.)
+  - **e** (L3 W1, L5 S3, S4) The inverse of the stored form lives beside the code that makes it:
+    `iris.is_skolem_of(graph, term)` beside `skolem_iri`, and a helper beside `payload_triples` in
+    `session.py` that drops the bookkeeping statements; `mapper.py` no longer imports `GENID` or
+    `BOOKKEEPING_PREDICATES`.
+  - **f** (L4 W4) The per-root "already stored as written?" reads of a batch run concurrently
+    (`asyncio.gather`); RISK-4 records that batch mode reads each added root once more.
+  - **g** (L1 S1) `CommitTooLarge`'s message names the count and the limit only (it reaches HTTP
+    callers as a 413 detail; the batch-mode hint stays in the docstring and the how-to).
+  - **h** Clean code: `DEFAULT_MAX_ROOTS = 500` (L4 W5); `_stored_equal` renamed to say it returns
+    a version (L4 S1); its comprehension becomes a loop (L4 S2).
+  - **i** Tests: TC-33 with `steady_dune` so only the title differs (L2 W2); every new assert has a
+    message (L2 W5); TC-32b matches "batches committed" on a non-`Conflict` error (L2 S3).
+  - **j** Docs: adopt.adoc says committed roots leave the *pending changes* (L2 S1) and that batch
+    mode reads existing roots, so it belongs behind read permission (L1 S2); questions.adoc names
+    the limit and links the batch section (L2 S2); the durations table refreshed (L2 S4); tasks.md
+    TC-32/32a record the inputs used (L2 W3).
+
+  Rejected: `commit_in_batches()` instead of a flag (L4 S5): PD-9 names `commit(batches=True)`.
+  A Fuseki test of literal canonical forms on re-run (L4 S6): the demo's re-run on Fuseki
+  converged; a decimal or dateTime slot that Fuseki rewrites would conflict on re-run, which is
+  safe, and is recorded under RISK-5. One existence query per batch (L4 W4 option 1): new SPARQL
+  for a re-run optimisation; `gather` is enough until a timing says otherwise.
 - **PD-14** (attack, finding 7): conflict messages change: an add now says
   "… no longer at version …" or "… already exists" per root as found by the diagnosis (PD-4),
   in one message for all roots. Tests that match the old message text are updated; they are
@@ -329,9 +370,12 @@ drops the marker, and the `ASK` is true.
   Fuseki before the PR.
 - **RISK-4** — the pre-check reads are N round trips for N roots (certain; low for forms, medium
   for 500-root batches). Accepted; batching the reads into one `VALUES` query is a later
-  optimisation if PD-10's timing calls for it.
+  optimisation if PD-10's timing calls for it. Batch mode reads each added root once more before
+  its batch (is it already stored as written?), concurrently per batch (PD-20f).
 - **RISK-5** — batch-mode idempotence compares graphs with `isomorphic`, which is costly on large
-  graphs (low; low). Accepted: only for added roots that already exist, i.e. only on a re-run.
+  graphs (low; low). Accepted: only for added roots that already exist, i.e. only on a re-run. A
+  literal the store returns in another lexical form (a decimal `1.50` as `1.5`) compares as
+  different, so that root conflicts on a re-run: safe, nothing duplicated (PD-20).
 - **Assumption** — nothing else in the registry is typed `rp:CommitMarker`, and the sweeps ignore
   subjects they do not know. Checked 2026-11-12: `tenant_sweep.py` reads `PendingLoad` markers
   and entries by kind; a stray marker (RISK-1 only) is inert.

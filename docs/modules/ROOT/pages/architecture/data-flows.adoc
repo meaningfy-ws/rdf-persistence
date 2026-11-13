@@ -459,7 +459,7 @@ the version read, an added root that now exists. The list is sorted.
 ====
 `Conflict.iris` is a diagnosis read *after* the refusal, so another writer can change the graphs
 between the refusal and the read, and the list can be wrong or empty (the message then says the
-transaction lost a race). That nothing was written is the guarantee; the list is help for the
+commit lost a race). That nothing was written is the guarantee; the list is help for the
 caller. One known gap: if the commit applied and every added or replaced graph was then
 overwritten by others before the `ASK`, the call raises a `Conflict` although the data is
 consistent; a re-read shows the others' versions.
