@@ -175,6 +175,11 @@ session do (`create` only shares `_new_record` and calls `free_tenant` by its pu
     and imports, maps each error to its HTTP status, says a restore makes a new IRI (links to the
     old one break), explains the two labels, says the toolkit has no write freeze (the consumer
     stops writes), says where a schema declares `version`, and links terms to their pages.
+  - *Header bytes count too* (fixer's finding while applying PD-13): `tarfile` reads GNU long-name
+    and pax extended headers whole before restore sees the member, so the per-member charge misses
+    them. Restore reads the gzip stream through a counting wrapper that refuses with `InvalidBody`
+    once the decompressed bytes pass `max_bytes` plus `HEADER_ALLOWANCE` (4 tar records); it bounds every read,
+    headers included.
   Rejected: `creator` typed as the verified caller (L1 S4; the kit takes principal IRIs as strings
   everywhere); trimming error details (L1 S2, L4 S5; the caller uploaded the archive); CI on more
   Python versions (L4 W3 b; the end marker removes the dependency on tarfile internals); further

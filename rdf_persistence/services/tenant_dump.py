@@ -46,6 +46,9 @@ MANIFEST, GRAPHS, BLOBS, END = "manifest.json", "graphs.nq", "blobs/", "end"
 MAX_MANIFEST_BYTES = (
     64 * 1024
 )  # a manifest is a few hundred bytes plus the policy; this is generous
+# Beyond ``max_bytes`` the wrapper still lets through the tar's own overhead: the header and padding blocks that the
+# per-member charge does not count and the two zero blocks and the record padding at the end (PD-13).
+HEADER_ALLOWANCE = 4 * tarfile.RECORDSIZE
 # What a damaged gzip or tar stream raises while it is read.
 _DAMAGED = (tarfile.TarError, gzip.BadGzipFile, EOFError, zlib.error)
 
@@ -148,6 +151,26 @@ class _Budget:
             )
 
 
+class _Counted:
+    """A read-only view of ``stream`` that refuses once more than ``limit`` bytes have been read from it (PD-13).
+
+    ``tarfile`` holds a GNU long name or a pax header whole before the member is seen, so the per-member charge
+    misses it; this bounds every read, headers included. ``tarfile`` in stream mode only calls ``read``.
+    """
+
+    def __init__(self, stream: gzip.GzipFile, limit: int) -> None:
+        self._stream, self._limit, self._seen = stream, limit, 0
+
+    def read(self, size: int) -> bytes:
+        chunk = self._stream.read(size)
+        self._seen += len(chunk)
+        if self._seen > self._limit:
+            raise InvalidBody(
+                f"the archive holds more than {self._limit} bytes once decompressed, more than this service restores"
+            )
+        return chunk
+
+
 async def restore(
     tenancy: Tenancy,
     iris: Iris,
@@ -171,7 +194,7 @@ async def restore(
         PersistenceError: The tenant could not be created; see ``Tenancy.restore``.
     """
     budget = _Budget(max_bytes)
-    with _opened(src) as (tar, stream):
+    with _opened(src, max_bytes + HEADER_ALLOWANCE) as (tar, stream):
         members = iter(tar)
         manifest = _manifest(tar, members, budget)
         _check_manifest(manifest, view, iris)
@@ -187,12 +210,15 @@ async def restore(
 
 
 @contextmanager
-def _opened(src: BinaryIO) -> Iterator[tuple[tarfile.TarFile, gzip.GzipFile]]:
-    """The tar and, under it, the gzip stream: that one is read to its end (PD-12 F1), which the tar does not reach."""
+def _opened(src: BinaryIO, limit: int) -> Iterator[tuple[tarfile.TarFile, gzip.GzipFile]]:
+    """The tar and, under it, the gzip stream: that one is read to its end (PD-12 F1), which the tar does not reach.
+
+    The tar reads the stream through ``_Counted``, which refuses past ``limit`` decompressed bytes.
+    """
     stream = gzip.GzipFile(fileobj=src)
     with _readable("it is not a gzipped tar"):
         # a stream: members are read in order, never back; closed by the ``with`` below
-        tar = tarfile.open(fileobj=stream, mode="r|")  # noqa: SIM115
+        tar = tarfile.open(fileobj=_Counted(stream, limit), mode="r|")  # type: ignore[call-overload]  # noqa: SIM115
     with tar:
         yield tar, stream
 

@@ -174,7 +174,8 @@ archive an outsider uploaded.
 
 *A size budget.* Restore reads at most `max_restore_bytes` of decompressed archive (a setting; the
 default is 1 GiB, set it on `ServiceSettings`), counting each member's size plus the tar block, and
-checks each member's size before reading it. A dump of a larger tenant needs a larger setting. This
+checks each member's size before reading it. It also refuses once the whole decompressed stream, tar
+headers included, passes that setting plus a few tar records. A dump of a larger tenant needs a larger setting. This
 bounds a hostile archive; it is not a guarantee that an honest tenant fits.
 
 *The graphs are held in memory.* The N-Quads of the whole tenant are read into memory at once, in the

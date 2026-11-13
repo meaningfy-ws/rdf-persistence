@@ -684,6 +684,34 @@ async def test_the_gzip_stream_after_the_end_marker_is_bounded_by_the_budget(wor
     await refused(world, tail, max_bytes=charged(data) + 100_000)
 
 
+def with_header_on_the_manifest(data: bytes, header: dict[str, str], fmt: int) -> bytes:
+    """The archive ``data`` with ``header`` as the extended header of its first member (the manifest)."""
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w:gz", format=fmt) as tar:
+        for index, (name, payload) in enumerate(unpack(data)):
+            info = tarfile.TarInfo(name)
+            info.size = len(payload)
+            if index == 0:
+                info.pax_headers = header
+            tar.addfile(info, io.BytesIO(payload))
+    return buffer.getvalue()
+
+
+async def test_a_pax_header_larger_than_the_budget_is_refused_and_creates_nothing(world):
+    data = await dumped(
+        world
+    )  # about 2 MB of header, a few KB once gzipped; the budget is far smaller
+    hostile = with_header_on_the_manifest(data, {"comment": "x" * 2_000_000}, tarfile.PAX_FORMAT)
+    reason = await refused(world, hostile, max_bytes=charged(data) + 100_000)
+    assert "bytes" in reason, "the reason says it is the size"
+
+
+async def test_a_header_inside_the_budget_does_not_stop_a_restore(world):
+    data = await dumped(world)
+    small = with_header_on_the_manifest(data, {"comment": "x" * 1_000}, tarfile.PAX_FORMAT)
+    assert (await restored(world, small, max_bytes=charged(data) + 10_000)).id != world.tenant
+
+
 def test_a_dump_ends_with_the_end_marker_even_when_it_holds_no_blob():
     assert [n for n, _ in unpack(pack((MANIFEST, b"{}"), (GRAPHS, b"")))][-1] == END, "the helper"
 
