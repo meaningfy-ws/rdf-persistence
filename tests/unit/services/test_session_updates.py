@@ -17,6 +17,7 @@ from rdf_persistence.services.session import (
     remove_parts,
     replace_parts,
     request_text,
+    without_bookkeeping,
 )
 
 EX = "http://example.org/t/"
@@ -164,6 +165,20 @@ def test_remove_also_deletes_the_entries_of_loaded_graphs_owned_by_the_root():
     dataset.update(remove_text(GRAPH, REGISTRY, ROOT, "v1"))
     assert (loaded, v.REGISTRY_OWNED_BY, ROOT) not in contents(dataset, REGISTRY), (
         "loaded entry gone"
+    )
+
+
+def test_without_bookkeeping_drops_only_the_statements_about_the_graph_that_the_session_writes():
+    kept = (ROOT, TITLE, Literal("Dune"))
+    about_other_graph = (OTHER, v.VERSION, Literal("v"))
+    triples = [
+        kept,
+        (GRAPH, v.VERSION, Literal("v")),
+        (GRAPH, v.CREATOR, URIRef(ME)),
+        about_other_graph,
+    ]
+    assert without_bookkeeping(GRAPH, triples) == [kept, about_other_graph], (
+        "bookkeeping about this graph is dropped, nothing else"
     )
 
 

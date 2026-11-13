@@ -39,6 +39,10 @@ class Conflict(PersistenceError):
         self.iris = tuple(iris)
 
 
+class CommitTooLarge(PersistenceError):
+    """A unit of work holds more roots than its ``max_roots``; commit fewer, or in batches."""
+
+
 class BadQuery(PersistenceError):
     """The store refused the SPARQL text as malformed."""
 

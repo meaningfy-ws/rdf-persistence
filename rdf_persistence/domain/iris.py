@@ -100,6 +100,11 @@ def skolem_iri(graph: str) -> URIRef:
     return URIRef(f"{graph}{GENID}{uuid4()}")
 
 
+def is_skolem_of(graph: str, term: object) -> bool:
+    """Whether ``term`` is a skolem IRI minted under ``graph`` (the inverse of ``skolem_iri``)."""
+    return isinstance(term, URIRef) and term.startswith(f"{graph}{GENID}")
+
+
 def toolkit_principal_iri(base: str) -> URIRef:
     """The principal the toolkit acts as when it works on its own behalf: ``{base}toolkit``."""
     return URIRef(f"{base}{TOOLKIT_SEGMENT}")

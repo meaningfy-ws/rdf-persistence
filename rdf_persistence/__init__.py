@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from rdf_persistence.domain.base import RpModel
 from rdf_persistence.domain.exceptions import (
     BadQuery,
+    CommitTooLarge,
     Conflict,
     DatabaseGone,
     Forbidden,
@@ -177,6 +178,7 @@ __all__ = [
     "BlobEntry",
     "CallerAccess",
     "CommitMarker",
+    "CommitTooLarge",
     "Conflict",
     "DatabaseGone",
     "DEFAULT_IRIS",

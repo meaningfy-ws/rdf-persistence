@@ -141,7 +141,7 @@ async def test_tc03_adding_an_existing_root_refuses_the_whole_transaction(sessio
             await t.add_graph(B, title(B, "again"))
     assert refused.value.iris == (B,)
     assert (await session.get_graph(A))[2] == seeded[A]
-    assert "already exists" in str(refused.value)
+    assert str(refused.value) == f"{B} already exists", "the root is named, not its graph"
 
 
 async def test_tc04_removing_a_root_changed_meanwhile_conflicts(session, other, seeded):
@@ -277,7 +277,7 @@ async def test_a_removed_root_that_another_writer_removed_meanwhile_is_named_wit
             await t.replace_graph(B, title(B, "mine"), seeded[B])
             await other.remove(A, seeded[A])
     assert refused.value.iris == (A,), "the root whose graph is gone is named"
-    assert f"{graph_of(A)} is no longer at version {seeded[A]}" == str(refused.value), "as changed"
+    assert str(refused.value) == f"{A} was removed by someone else since it was read", "says gone"
     assert await stored_title(session, B) == "first", "B was not replaced"
 
 
@@ -339,7 +339,7 @@ async def test_a_lost_race_with_no_culprit_says_so_with_no_iris(store, session, 
 
             store.after_update = restore_old_state
     assert refused.value.iris == ()
-    assert "lost a race" in str(refused.value)
+    assert str(refused.value) == "the commit lost a race with another writer; read again and retry"
 
 
 # -- a transaction is single-use (PD-17c) ---------------------------------------------------------

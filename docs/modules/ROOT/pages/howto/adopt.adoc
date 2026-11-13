@@ -714,8 +714,11 @@ What to expect:
 * *`Conflict.iris`* lists the root IRIs whose guard failed, sorted. It is a *diagnosis*: the
   session reads the stored versions after the refusal, so another writer can change them in
   between and the list can be incomplete or empty. Use it to tell the user which objects moved;
-  do not treat it as exact. The message says the same in words. A `Conflict` raised elsewhere has
-  an empty `iris`.
+  do not treat it as exact. The message says the same in words, one clause per root and never
+  a graph IRI or a version token: "<root> was changed by someone else since it was read",
+  "<root> was removed by someone else since it was read", or "<root> already exists" (an add). With
+  no root to blame it reads "the commit lost a race with another writer; read again and retry".
+  A `Conflict` raised elsewhere has an empty `iris`.
 * *`UnitOfWork.version(iri)`* returns the version token of a root this unit of work read, or
   after a commit the new token (the same token `Session.get_graph` returns and the HTTP API sends
   as `ETag`). Record it to know which version a process used. A root it neither read nor
@@ -740,6 +743,52 @@ second left the first written. It now writes all or none. There is no flag: code
 partial write (for example, catching `Conflict` and keeping the first root) has to commit the roots
 in separate units of work. Code that treated a `Conflict` as "nothing changed" is now correct for
 every root.
+
+[#transaction-batches]
+==== Save more than 500 aggregates
+
+_What if I commit more than 500 aggregates at once?_ By default `commit()` refuses. A unit of work
+holds at most `max_roots` changed roots (added, replaced or removed), 500 unless you pass another
+value: `UnitOfWork(session, mapper, max_roots=200)` (a value below 1 raises `ValueError`). Over the
+limit, `commit()` raises `CommitTooLarge` before it reads or writes anything. The message names the
+count and the limit; over HTTP it is a 413.
+The unit of work is unchanged, so you can raise the limit or commit in batches.
+
+For a large import, ask for batches:
+
+[source,python]
+----
+work = UnitOfWork(session, mapper, max_roots=500)
+for row in rows:
+    work.add(Book(id=book_iri(row), label=row.title, description=row.text, author=row.author))
+try:
+    await work.commit(batches=True)      # batches of 500, in the order added
+except Conflict as conflict:
+    print(conflict)                      # says how many batches were committed
+    # fix the cause, then call work.commit(batches=True) again for the rest
+----
+
+What to expect:
+
+* *Each batch is one transaction; the whole is not atomic.* Batches commit in the order the roots
+  were added. If batch 3 of 5 fails, batches 1 and 2 stay written.
+* *A conflict stops at that batch.* It is raised as it is (same type, same `iris`), and the
+  message adds how many batches were committed (a non-toolkit exception keeps its arguments and
+  gets that as a note). The roots that were committed leave the *pending changes* of the unit of
+  work (it still holds them as read), so the same unit of work can retry the rest. Retry only once
+  you have dealt with the cause.
+* *Batch mode reads before it writes.* To tell a re-run from a clash it reads each root it is to
+  add, once per batch, so it needs read permission on those roots as well as write: use it behind
+  a principal that has both.
+* *Re-running an interrupted import converges for added roots.* A new unit of work that adds the
+  same roots again takes a root that already exists as committed, if its stored triples equal the
+  triples the commit would write. Nothing is written twice. This holds when the re-run builds the
+  same part IRIs: anonymous parts, or part IRIs derived from the source data.
+* *Parts from `new_part` break that.* It mints a random IRI each time, so a re-run sees different
+  triples, and those roots conflict. This is safe: nothing is duplicated. Derive the part IRIs
+  from the source if the import must be re-runnable.
+* *Replaces and removes are not idempotent.* After an interruption, read the roots again and build
+  the changes from what is stored now.
 
 Outside a service, `open_session(store, *, database, tenant_iri, principal, clock)` opens the
 same session (`principal` is a `Principal`; the kit's `session` takes its IRI as a string) on a `Store` you hold. The kit's `session` calls it with the tenant's database name.

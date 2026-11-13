@@ -93,7 +93,7 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
 
 ## 2. The size limit and batch mode
 
-- [ ] 2.1 `max_roots`, `CommitTooLarge`, `commit(batches=True)` (PD-8, PD-9), test first in
+- [x] 2.1 `max_roots`, `CommitTooLarge`, `commit(batches=True)` (PD-8, PD-9), test first in
   `tests/unit/services/test_mapper_unit_of_work.py`. Gates: `make test-changed`,
   `make check-quality`, `make clean-code`.
 
@@ -107,12 +107,16 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
 | TC-33 | `max_roots=2`, batch re-run where one added book exists with a different title | `Conflict(iris=(that book,))`, message says how many batches committed |
 | TC-34 | `max_roots=2`, exactly two roots, `commit()` | one request, both stored |
 
-- [ ] 2.2 Fuseki: IT-06, a 500-book commit with the default limit (PD-10), timed; the time goes in
+As built (PD-20j): TC-32 and TC-32b use books whose chapter IRI is derived from the book
+(`steady_dune`), since `new_part` mints random part IRIs (PD-9); TC-32a uses `LibraryAccess` roots
+with id-less `Grant` parts, the toy schema's anonymous part (its chapters all have an id).
+
+- [x] 2.2 Fuseki: IT-06, a 500-book commit with the default limit (PD-10), timed; the time goes in
   the durations table of `docs/modules/ROOT/pages/develop/index.adoc`. If it fails or exceeds
   30 s, lower the default and record the value in design.md PD-10. Gate:
   `make test-containers TEST_PATH=tests/integration/store/test_transaction.py`.
 
-- [ ] 2.3 Docs: batch mode in `howto/adopt.adoc` (not atomic overall; re-run converges).
+- [x] 2.3 Docs: batch mode in `howto/adopt.adoc` (not atomic overall; re-run converges).
   Gate: `make check-docs`.
 
 - [ ] 2.4 Close: `make check-all`, `make test-containers`; `openspec validate atomic-commit --strict`;
