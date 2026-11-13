@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-13
+
 ### Added
 - **IRI policy** (`iri-policy`, #26): `ServiceSettings.iri_policy` sets the template and id kind
   of every IRI the toolkit mints: tenants, aggregates, parts, loaded graphs, access records, meta and
@@ -88,5 +90,6 @@ capabilities in `openspec/specs/`.
 
 <!-- Release process: docs/modules/ROOT/pages/develop/index.adoc#release -->
 
-[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/meaningfy-ws/rdf-persistence/releases/tag/v0.1.0

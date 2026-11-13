@@ -64,7 +64,9 @@ by the real 0.2.0 run after it (3.1). Code changes are test-first.
 
 ## 3. Close and first release
 
-- [ ] 3.1 `make check-all`; `openspec validate release-pipeline --strict`; PR into `develop`
+- [x] 3.1 (2026-11-13: PR #86 merged on green CI; RL-01 met by release PR #87; this archive rides
+  in the CHANGELOG PR of PD-11 so no commit follows the tag; RL-02..RL-06 are checked after it
+  and reported to the developer, not committed) `make check-all`; `openspec validate release-pipeline --strict`; PR into `develop`
   (Refs: release-pipeline DEC-1 DEC-2 DEC-4..DEC-9); merge on green CI. Then, by the pipeline
   (PD-9, PD-11), verify each row; the merge of the release PR is the developer's unless the epic's
   autonomy grant covers it:
@@ -78,4 +80,4 @@ by the real 0.2.0 run after it (3.1). Code changes are test-first.
 | RL-05 | `ci.yaml` on the release commit; then the PD-1 push to `main`, by whoever merged the release PR | CI green; `git rev-parse origin/main` = `git rev-parse 'v0.2.0^{commit}'` |
 | RL-06 | next `docs:`-only PR into `develop` | no release PR (spec scenario "only docs and chores") |
 
-- [ ] 3.2 Archive the change (`/opsx:archive`).
+- [x] 3.2 Archive the change (`/opsx:archive`).
