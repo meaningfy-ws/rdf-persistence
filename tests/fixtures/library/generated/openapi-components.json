@@ -68,6 +68,16 @@
           "description": "The date the book was published.",
           "format": "date",
           "type": "string"
+        },
+        "sequel_of": {
+          "description": "The book this one follows, another aggregate, stored as its IRI.",
+          "format": "uri",
+          "type": "string"
+        },
+        "shelf": {
+          "description": "The shelf the book stands on, another aggregate, stored as its IRI.",
+          "format": "uri",
+          "type": "string"
         }
       },
       "required": [
@@ -327,6 +337,11 @@
       "additionalProperties": false,
       "description": "A short note on a chapter, with a label of its own.",
       "properties": {
+        "about": {
+          "description": "The book a note is about, another aggregate, stored as its IRI.",
+          "format": "uri",
+          "type": "string"
+        },
         "description": {
           "description": "A free-text description of the object.",
           "type": "string"
@@ -614,6 +629,32 @@
         "label"
       ],
       "title": "Scan",
+      "type": "object"
+    },
+    "Shelf": {
+      "additionalProperties": false,
+      "description": "A shelf of the library; an aggregate root that books are placed on.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Shelf",
       "type": "object"
     },
     "StoredFile": {

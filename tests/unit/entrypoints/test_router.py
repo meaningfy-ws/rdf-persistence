@@ -553,7 +553,7 @@ async def test_a_delete_removes_the_book(scene) -> None:
 
 async def test_an_unknown_aggregate_type_is_a_404(scene) -> None:
     response = await scene.http.post(
-        f"{scene.tenant}/shelves", json=DUNE_BODY, headers=scene.headers("ada")
+        f"{scene.tenant}/magazines", json=DUNE_BODY, headers=scene.headers("ada")
     )
     assert response.status_code == 404, (
         "the model has no such type, so the router has no such route"

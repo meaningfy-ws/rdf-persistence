@@ -67,8 +67,8 @@ FAULTS = (
     Fault(
         HardRule.DESCRIBED,
         "books.yaml",
-        "    mixins: [Described]\n    slots: [text]",
-        "    slots: [text]",
+        "    mixins: [Described]\n    slots: [text, about]",
+        "    slots: [text, about]",
         "Note",
     ),
     Fault(
@@ -133,15 +133,15 @@ FAULTS = (
     Fault(
         HardRule.UNIQUE_KEY,
         "books.yaml",
-        "    slots: [text]\n",
-        "    slots: [text]\n    unique_keys:\n      bad key:\n        unique_key_slots: [text]\n",
+        "    slots: [text, about]\n",
+        "    slots: [text, about]\n    unique_keys:\n      bad key:\n        unique_key_slots: [text]\n",
         "Note",
     ),
     Fault(
         HardRule.UNIQUE_KEY,
         "books.yaml",
-        "    slots: [text]\n",
-        "    slots: [text]\n    unique_keys:\n      a-b:\n        unique_key_slots: [text]\n",
+        "    slots: [text, about]\n",
+        "    slots: [text, about]\n    unique_keys:\n      a-b:\n        unique_key_slots: [text]\n",
         "Note",
     ),
 )

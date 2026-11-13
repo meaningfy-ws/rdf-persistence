@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.services.schema import load_schema
+from rdf_persistence.services.schema import SERVICE_SCHEMA, load_schema
 from rdf_persistence.services.schema_structure import is_internal
 
 MODEL = Path(__file__).parents[3] / "rdf_persistence" / "model"
@@ -33,3 +33,21 @@ def test_rules_share_one_abstract_rule_class(name: str) -> None:
 def test_database_name_is_internal() -> None:
     slot = load_schema(MODEL / "rp.yaml").get_slot("database_name")
     assert is_internal(slot), "database_name must be marked internal"
+
+
+@pytest.mark.parametrize(
+    ("schema", "class_name", "slot", "slot_uri"),
+    [
+        (MODEL / "rp.yaml", "Grant", "target", "ODRL:target"),
+        (SERVICE_SCHEMA, "Page", "items", "rp:items"),
+        (LIBRARY / "library.yaml", "Grant", "target", "ODRL:target"),
+    ],
+)
+def test_a_slot_name_shared_across_the_imports_keeps_its_own_predicate(
+    schema: Path, class_name: str, slot: str, slot_uri: str
+) -> None:
+    """A new module's slot must not take the name of another's (one slot namespace per closure)."""
+    induced = load_schema(schema).induced_slot(slot, class_name)
+    assert induced.slot_uri == slot_uri, (
+        f"{class_name}.{slot} is {induced.slot_uri}, not {slot_uri}"
+    )

@@ -21,7 +21,7 @@ GENERATION_MODEL = MODEL_DIR / "generation" / "model" / "rp_generation.yaml"
 
 NOTES_OWNED = "    range: Note\n    multivalued: true\n    inlined_as_list: true\n    annotations:\n      owned: true\n"
 NOTES_REFERENCED = "    range: Note\n    multivalued: true\n    inlined_as_list: true\n"
-BOOK_SLOTS = "slots: [isbn, authors, published, genre, chapters]"
+BOOK_SLOTS = "slots: [isbn, authors, published, genre, chapters, shelf, sequel_of]"
 BOOK_IMPORTS = "  - rdf_persistence/model/rp_annotations\nannotations:\n  module_kind: domain"
 ACCESS_IMPORT = "  - rdf_persistence/model/rp_annotations\n  - library_access\nannotations:\n  module_kind: domain"
 TENANCY_IMPORT = "  - rdf_persistence/model/rp_annotations\n  - rdf_persistence/model/rp_tenancy\nannotations:\n  module_kind: domain"
@@ -60,7 +60,13 @@ FAULTS = (
     ),
     Fault(
         BoundaryRule.OWNERSHIP,
-        (Edit("books.yaml", BOOK_SLOTS, "slots: [isbn, authors, published, genre]"),),
+        (
+            Edit(
+                "books.yaml",
+                BOOK_SLOTS,
+                "slots: [isbn, authors, published, genre, shelf, sequel_of]",
+            ),
+        ),
         "Chapter",
     ),
     Fault(

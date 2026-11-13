@@ -17,7 +17,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 
 ## 1. Reverse references (#78)
 
-- [ ] 1.1 Models and fixture. `rp_service.yaml`: `Authorised.global_roles`, `Referrer`,
+- [x] 1.1 Models and fixture. `rp_service.yaml`: `Authorised.global_roles`, `Referrer`,
   `ReferrerList`, `MemberList`, `AggregateHead` (PD-1, PD-2; qualified slot names). `books.yaml`: `Shelf`, `shelf`, `sequel_of`, `about`
   (PD-4); `tests/toy.py` gains `shelf(iri)`. `make generate`; refresh the model-shape snapshot
   (`make refresh-snapshot`, review the diff). `Gate.aggregate_access` and `ServiceKit.require`

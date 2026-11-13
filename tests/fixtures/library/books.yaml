@@ -24,9 +24,17 @@ classes:
     description: A book held by a library; an aggregate root that owns its chapters.
     class_uri: bibo:Book
     mixins: [AggregateRoot, Described, Tracked]
-    slots: [isbn, authors, published, genre, chapters]
+    slots: [isbn, authors, published, genre, chapters, shelf, sequel_of]
     annotations:
       rp_path: books
+      database: tenant
+  Shelf:
+    title: Shelf
+    description: A shelf of the library; an aggregate root that books are placed on.
+    class_uri: lib:Shelf
+    mixins: [AggregateRoot, Described, Tracked]
+    annotations:
+      rp_path: shelves
       database: tenant
   Chapter:
     title: Chapter
@@ -41,7 +49,7 @@ classes:
     description: A short note on a chapter, with a label of its own.
     class_uri: lib:Note
     mixins: [Described]
-    slots: [text]
+    slots: [text, about]
     attributes:
       shade:
         title: Shade
@@ -95,6 +103,21 @@ slots:
     inlined_as_list: true
     annotations:
       owned: true
+  shelf:
+    title: Shelf
+    description: The shelf the book stands on, another aggregate, stored as its IRI.
+    slot_uri: lib:shelf
+    range: Shelf
+  sequel_of:
+    title: Sequel of
+    description: The book this one follows, another aggregate, stored as its IRI.
+    slot_uri: lib:sequelOf
+    range: Book
+  about:
+    title: About
+    description: The book a note is about, another aggregate, stored as its IRI.
+    slot_uri: lib:about
+    range: Book
   text:
     title: Text
     description: The text of a note.

@@ -150,6 +150,21 @@
          "@type": "@id",
          "@id": "graph"
       },
+      "head_iri": {
+         "@type": "@id",
+         "@id": "headIri"
+      },
+      "head_types": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "headType"
+      },
+      "head_version": {
+         "@id": "headVersion"
+      },
+      "hidden_count": {
+         "@id": "hiddenCount"
+      },
       "hidden_graphs": {
          "@type": "@id",
          "@container": "@set",
@@ -219,6 +234,11 @@
       "max_restore_bytes": {
          "@id": "maxRestoreBytes"
       },
+      "member_iris": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "memberIri"
+      },
       "meta_template": {
          "@id": "metaTemplate"
       },
@@ -282,6 +302,21 @@
          "@type": "@id",
          "@container": "@set",
          "@id": "prohibition"
+      },
+      "referrer": {
+         "@type": "@id",
+         "@id": "referrer"
+      },
+      "referrer_class": {
+         "@id": "referrerClass"
+      },
+      "referrer_slot": {
+         "@id": "referrerSlot"
+      },
+      "referrers": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "referrers"
       },
       "registry_template": {
          "@id": "registryTemplate"
@@ -368,6 +403,9 @@
       "AccountSummary": {
          "@id": "AccountSummary"
       },
+      "AggregateHead": {
+         "@id": "AggregateHead"
+      },
       "AggregateRoot": {
          "@id": "AggregateRoot"
       },
@@ -413,6 +451,9 @@
       "ListRequest": {
          "@id": "ListRequest"
       },
+      "MemberList": {
+         "@id": "MemberList"
+      },
       "Page": {
          "@id": "Page"
       },
@@ -433,6 +474,12 @@
       },
       "Prohibition": {
          "@id": "ODRL:Prohibition"
+      },
+      "Referrer": {
+         "@id": "Referrer"
+      },
+      "ReferrerList": {
+         "@id": "ReferrerList"
       },
       "RegistryEntry": {
          "@id": "RegistryEntry"

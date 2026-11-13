@@ -54,6 +54,7 @@ ROUTES = [
     (f"{TENANT}/label", "put", {200, 401, 403, 404, 409, 413, 415, 422, 428, 503}),
     *aggregate_routes("books"),
     *aggregate_routes("scans", written=False),
+    *aggregate_routes("shelves"),
 ]
 IDS = [f"{method.upper()} {path}" for path, method, _ in ROUTES]
 
@@ -121,7 +122,7 @@ def test_fastapis_own_validation_error_is_not_published(document) -> None:
     assert "ValidationError" not in document["components"]["schemas"]
 
 
-@pytest.mark.parametrize("rp_path", ["books", "scans"])
+@pytest.mark.parametrize("rp_path", ["books", "scans", "shelves"])
 def test_a_listing_takes_a_parameter_per_slot_of_the_type_and_the_paging_ones(
     toy, document, rp_path
 ) -> None:

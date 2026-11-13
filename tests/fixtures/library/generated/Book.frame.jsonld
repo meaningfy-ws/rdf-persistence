@@ -4,6 +4,14 @@
   "@embed": "@always",
   "@omitDefault": true,
   "@type": "Book",
+  "shelf": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
+  "sequel_of": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
   "creator": {
     "@embed": "@never",
     "@omitDefault": true
@@ -19,7 +27,11 @@
     "notes": {
       "@embed": "@always",
       "@omitDefault": true,
-      "@type": "Note"
+      "@type": "Note",
+      "about": {
+        "@embed": "@never",
+        "@omitDefault": true
+      }
     }
   }
 }

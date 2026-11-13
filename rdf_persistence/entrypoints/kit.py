@@ -123,7 +123,10 @@ class ServiceKit:
         caller = await self.gate.caller(authorization)
         access = await self.gate.tenant_access(caller, tenant_id, action)
         return Authorised(
-            principal=caller.principal, caller_access=access, checked_target=access.tenant
+            principal=caller.principal,
+            caller_access=access,
+            checked_target=access.tenant,
+            global_roles=caller.global_roles,
         )
 
     async def require_aggregate(

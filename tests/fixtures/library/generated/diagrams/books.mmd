@@ -6,6 +6,9 @@ classDiagram
         +date published
         +Genre genre
     }
+    class Shelf {
+        <<root>>
+    }
     class Chapter {
         <<owned>>
         +integer number
@@ -16,4 +19,7 @@ classDiagram
         +string shade
     }
     Book "1" *-- "*" Chapter : chapters
+    Book "1" --> "0..1" Shelf : shelf
+    Book "1" --> "0..1" Book : sequel_of
     Chapter "1" *-- "*" Note : notes
+    Note "1" --> "0..1" Book : about

@@ -68,7 +68,12 @@ class Gate:
         tenant = self._kit.tenant_iri(t)
         target = self._kit.aggregates.iri_of(tenant, rp_path, aggregate_id)
         access = await self.check(caller, tenant, target, action)
-        return Authorised(principal=caller.principal, caller_access=access, checked_target=target)
+        return Authorised(
+            principal=caller.principal,
+            caller_access=access,
+            checked_target=target,
+            global_roles=caller.global_roles,
+        )
 
     def tenant(self, action: Action):
         """A dependency: ``action`` on the tenant of the path."""

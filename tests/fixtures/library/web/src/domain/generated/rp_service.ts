@@ -170,7 +170,7 @@ export interface CallerAccess {
   prohibitions?: Prohibition[];
 }
 
-/** What a route's access check settled: the caller's principal, its access to the tenant, and the IRI of the tenant or aggregate it was checked on, which the route then acts on. */
+/** What a route's access check settled: the caller's principal, its access to the tenant, and the IRI of the tenant or aggregate it was checked on, which the route then acts on, and the global roles the token granted the caller. */
 export interface Authorised {
   /** The user account the token identifies. */
   principal: string;
@@ -178,6 +178,8 @@ export interface Authorised {
   caller_access: CallerAccess;
   /** The IRI of the tenant or aggregate the access check was made on, which the route acts on. */
   checked_target: string;
+  /** The system-level roles the token grants the principal. */
+  global_roles?: string[];
 }
 
 /** One page of a listing, with the position of the page in the whole listing. */
@@ -278,4 +280,40 @@ export interface AccountSummary {
   active: boolean;
   /** The system-level roles the token grants the principal. */
   global_roles?: string[];
+}
+
+/** One aggregate that points at another: its IRI, its schema class and the slot that holds the reference. */
+export interface Referrer {
+  /** The IRI of the aggregate that holds the reference. */
+  referrer: string;
+  /** The name of the schema class of the aggregate that holds the reference. */
+  referrer_class: string;
+  /** The name of the slot that holds the reference. */
+  referrer_slot: string;
+}
+
+/** The aggregates that point at one resource and that the caller may read, and the number of referrers left out because the caller may not read them. */
+export interface ReferrerList {
+  /** The aggregates that point at the resource, ordered by IRI and slot. */
+  referrers?: Referrer[];
+  /** The number of referrers or members the caller may not read, so are not listed. */
+  hidden_count: number;
+}
+
+/** The members of a collection that the caller may read, and the number of members left out because the caller may not read them. */
+export interface MemberList {
+  /** The IRIs of the members of a collection. */
+  member_iris?: string[];
+  /** The number of referrers or members the caller may not read, so are not listed. */
+  hidden_count: number;
+}
+
+/** The IRI, the types and the version token of one stored aggregate, without its content. */
+export interface AggregateHead {
+  /** The IRI of the stored aggregate. */
+  head_iri?: string;
+  /** The class IRIs the stored aggregate is typed with. */
+  head_types?: string[];
+  /** The version token of the stored aggregate's graph. */
+  head_version?: string;
 }
