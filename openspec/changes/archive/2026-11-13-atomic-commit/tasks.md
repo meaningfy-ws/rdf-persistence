@@ -119,5 +119,5 @@ with id-less `Grant` parts, the toy schema's anonymous part (its chapters all ha
 - [x] 2.3 Docs: batch mode in `howto/adopt.adoc` (not atomic overall; re-run converges).
   Gate: `make check-docs`.
 
-- [ ] 2.4 Close: `make check-all`, `make test-containers`; `openspec validate atomic-commit --strict`;
+- [x] 2.4 Close: `make check-all`, `make test-containers`; `openspec validate atomic-commit --strict`;
   PR into `develop` closing #83; merge on green CI; archive the change.

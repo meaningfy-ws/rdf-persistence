@@ -279,6 +279,10 @@ required); any change to listings, loads, the sweeps' logic or the HTTP routes.
     half a sentence or go.
   - **e** Cut repeats: the history lives in adopt.adoc#transaction-change (commits.adoc links
     it); the message wording is quoted once in commits.adoc, the recipe shows one example.
+  - **f** (second cold read) The import example derives the root's UUID from the source key
+    (`uuid5`): the default IRI policy takes only a canonical UUID, so an ISBN in the IRI is refused
+    (`InvalidIri`). The outage error is named (`StoreUnavailable`); an empty `iris` → show the
+    message; the questions and the how-to state the "nothing written" rule with its exception.
 
   Rejected: cutting "how the store keeps it atomic" from commits.adoc (three sentences that
   answer "why is it all or nothing"); a section on mixed batches and on a source row edited
