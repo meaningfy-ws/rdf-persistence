@@ -24,6 +24,11 @@
   (around "technical modules for concerns such as paging or API envelopes"), a YAML block with
   `Terms.items` ranged on `Term`, `inlined_as_list: true` and `annotations: {owned: true}`.
 
+- **PD-3** (review, 2026-11-13): TC-01 also asserts `make Term an aggregate root`, and the test
+  helper asserts the import line it rewrites exists. Rejected: building the message from
+  `REFERENCE_CLASSES` and `RpAnnotation.OWNED` (PD-1 fixes the wording; a change to either list is
+  rare and caught by TC-01).
+
 ## Algorithm / approach
 
 One f-string. Worked example: issue #72's `Terms`/`Term` module gives

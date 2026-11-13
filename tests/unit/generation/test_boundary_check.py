@@ -254,3 +254,71 @@ def test_a_domain_class_owned_only_by_a_technical_class_is_refused(toy_copy: Pat
     assert "[ownership] Orphan: is neither an aggregate root nor owned by any root" in problems_of(
         root
     ), "a technical class is never stored, so what it owns is not owned"
+
+
+TERMS_MODULE = """id: https://example.org/ns/library/terms
+name: terms
+title: Terms module
+description: A page of terms, shaped for a route.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+annotations:
+  module_kind: technical
+
+classes:
+  Term:
+    title: Term
+    description: One term of a page.
+    class_uri: lib:Term
+    attributes:
+      label:
+        title: Label
+        description: The term's label.
+        identifier: true
+  Terms:
+    title: Terms
+    description: A page of terms.
+    class_uri: lib:Terms
+    attributes:
+      items:
+        title: Items
+        description: The terms of this page.
+        range: Term
+        multivalued: true
+        inlined_as_list: true
+{extra}"""
+
+
+def add_terms_module(toy: Path, extra: str) -> Path:
+    """Write ``terms.yaml`` (a technical module) into the toy and import it from the root schema."""
+    (toy / "terms.yaml").write_text(TERMS_MODULE.format(extra=extra), encoding="utf-8")
+    root = toy / ROOT_SCHEMA
+    text = root.read_text(encoding="utf-8")
+    assert "  - library_access\n" in text, "the toy root schema no longer imports library_access"
+    root.write_text(
+        text.replace("  - library_access\n", "  - library_access\n  - terms\n", 1), encoding="utf-8"
+    )
+    return root
+
+
+def test_the_reference_problem_names_its_fixes(toy_copy: Path) -> None:
+    found = [p for p in problems_of(add_terms_module(toy_copy, "")) if "[reference]" in p]
+    assert len(found) == 1, f"one not-owned slot, one reference problem: {found}"
+    for fix in (
+        "owned: true",
+        "Term inline",
+        "make Term an aggregate root",
+        "point the slot at a root, Principal or Activity",
+    ):
+        assert fix in found[0], f"{fix!r} is not named in {found[0]}"
+
+
+def test_an_owned_slot_of_a_technical_module_has_no_reference_problem(toy_copy: Path) -> None:
+    owned = "        annotations:\n          owned: true\n"
+    found = [p for p in problems_of(add_terms_module(toy_copy, owned)) if "[reference]" in p]
+    assert found == [], "an owned slot is held inline"

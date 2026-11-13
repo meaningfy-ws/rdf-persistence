@@ -31,6 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Session.named_file_keys(keys)` reads which keys a graph still names.
 
 ### Changed
+- **The boundary REFERENCE problem names its fixes** (`boundary-owned-hint`, #72): annotate the
+  slot `owned: true`, make the range an aggregate root, or point the slot at a root, `Principal`
+  or `Activity`. Rule id unchanged; the old text stays a prefix.
 - **BREAKING for third-party adapters: `FileStore.list_blobs(bucket)`**: the `FileStore` protocol
   gained `list_blobs`, returning `BlobEntry` (`file_key`, `modified`) in key order. Adapter authors
   add it; the `file_store_conformance` suite has a case for it. `FakeFileStore` takes a `clock` to
