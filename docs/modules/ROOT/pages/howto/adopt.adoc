@@ -741,6 +741,46 @@ partial write (for example, catching `Conflict` and keeping the first root) has 
 in separate units of work. Code that treated a `Conflict` as "nothing changed" is now correct for
 every root.
 
+[#transaction-batches]
+==== Save more than 500 aggregates
+
+_What if I commit more than 500 aggregates at once?_ By default `commit()` refuses. A unit of work
+holds at most `max_roots` changed roots (added, replaced or removed), 500 unless you pass another
+value: `UnitOfWork(session, mapper, max_roots=200)`. Over the limit, `commit()` raises
+`CommitTooLarge` before it reads or writes anything. The message names the count and the limit.
+The unit of work is unchanged, so you can raise the limit or commit in batches.
+
+For a large import, ask for batches:
+
+[source,python]
+----
+work = UnitOfWork(session, mapper, max_roots=500)
+for row in rows:
+    work.add(Book(id=book_iri(row), label=row.title, description=row.text, author=row.author))
+try:
+    await work.commit(batches=True)      # batches of 500, in the order added
+except Conflict as conflict:
+    print(conflict)                      # says how many batches were committed
+    # fix the cause, then call work.commit(batches=True) again for the rest
+----
+
+What to expect:
+
+* *Each batch is one transaction; the whole is not atomic.* Batches commit in the order the roots
+  were added. If batch 3 of 5 fails, batches 1 and 2 stay written.
+* *A conflict stops at that batch.* It is raised as it is (same type, same `iris`), and the
+  message adds how many batches were committed. The roots that were committed leave the unit of
+  work, so the same unit of work can retry the rest. Retry only once you have dealt with the cause.
+* *Re-running an interrupted import converges for added roots.* A new unit of work that adds the
+  same roots again takes a root that already exists as committed, if its stored triples equal the
+  triples the commit would write. Nothing is written twice. This holds when the re-run builds the
+  same part IRIs: anonymous parts, or part IRIs derived from the source data.
+* *Parts from `new_part` break that.* It mints a random IRI each time, so a re-run sees different
+  triples, and those roots conflict. This is safe: nothing is duplicated. Derive the part IRIs
+  from the source if the import must be re-runnable.
+* *Replaces and removes are not idempotent.* After an interruption, read the roots again and build
+  the changes from what is stored now.
+
 Outside a service, `open_session(store, *, database, tenant_iri, principal, clock)` opens the
 same session (`principal` is a `Principal`; the kit's `session` takes its IRI as a string) on a `Store` you hold. The kit's `session` calls it with the tenant's database name.
 

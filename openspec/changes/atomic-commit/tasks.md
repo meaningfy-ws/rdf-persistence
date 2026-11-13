@@ -112,7 +112,7 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
   30 s, lower the default and record the value in design.md PD-10. Gate:
   `make test-containers TEST_PATH=tests/integration/store/test_transaction.py`.
 
-- [ ] 2.3 Docs: batch mode in `howto/adopt.adoc` (not atomic overall; re-run converges).
+- [x] 2.3 Docs: batch mode in `howto/adopt.adoc` (not atomic overall; re-run converges).
   Gate: `make check-docs`.
 
 - [ ] 2.4 Close: `make check-all`, `make test-containers`; `openspec validate atomic-commit --strict`;
