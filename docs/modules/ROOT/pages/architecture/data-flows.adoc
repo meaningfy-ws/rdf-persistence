@@ -73,6 +73,18 @@ the key in `rp:fileKey`.
 |What the session writes about a graph on every commit: its version token, `dcterms:created` and
 `dcterms:creator` (first commit), `dcterms:modified` and `dcterms:contributor` (later commits).
 
+|Transaction
+|The writes of several aggregates of one tenant (adds, replaces, removes), collected by
+`Session.transaction()` and sent as one SPARQL update request. The store applies the request as one
+unit, so every change is stored or none is.
+
+|`rp:CommitMarker`
+|One statement pair in `T/registry`, `<urn:uuid:…> a rp:CommitMarker ; rp:startedAt <time>`, with a
+fresh IRI per transaction. The first operation of the request writes it only if every guard holds;
+every later operation matches only while it is there; the last operation deletes it. It never
+outlives a request. A `rp:CommitMarker` that stays in the registry means the store did not apply
+the request as one unit. It is not a load marker.
+
 |Load marker, grace period
 |A load marker is one statement in the registry, written by `load_graph`: "this graph was loaded
 at this time". The live-tenant sweep leaves alone anything younger than its grace period (one
@@ -166,7 +178,8 @@ about the graph: `rp:version`, `dcterms:created`, `dcterms:creator`, `dcterms:mo
 |One entry per graph an aggregate owns: `B/graph rp:kind rp:Aggregate; rp:ownedBy B`, and for each
 loaded graph `B/content/<id> rp:kind rp:LoadedGraph; rp:ownedBy B`; a graph loaded for the tenant
 root gets only the second kind, `T/content/<id> rp:kind rp:LoadedGraph; rp:ownedBy T`. Also a load
-marker `B/content/<id> rp:loadedAt <time>` for each load.
+marker `B/content/<id> rp:loadedAt <time>` for each load. During a commit, for the length of one
+update request, also a `rp:CommitMarker` (see <<commit>>).
 
 |
 |`B/content/<id>`
@@ -257,11 +270,13 @@ flowchart TB
 
 The HTTP routes are `/libraries/{t}/books` and `/libraries/{t}/books/{id}` (`entrypoints/router.py`,
 `DocumentApi`); the use cases are in `services/aggregates.py`, `Aggregates`; the SPARQL is in
-`services/session.py`, `Session`. From Python, the same operations are `UnitOfWork.get`, `add` and
-`commit` over `kit.session(...)`, which skip the HTTP steps and the gate.
+`services/session.py`, `Session`. From Python, the same operations are `UnitOfWork.get`, `add`, `remove` and
+`commit` over `kit.session(...)`, which skip the HTTP steps and the gate. Every write below is a
+one-change transaction; <<commit>> shows how several changes share one request.
 
 *Create.* The service mints the IRI, checks the body, and writes the graph and its registry
-entries in one conditional insert:
+entries in one update request (a guard that `B/graph` is empty, the insert, the release of the
+marker, see <<commit>>):
 
 [mermaid]
 ....
@@ -317,7 +332,7 @@ sequenceDiagram
   Note over Cl,F: Delete: DELETE …/books/{id}, If-Match v7
   Cl->>G: token, access check (delete on B)
   G->>S: remove(B, v7)
-  S->>F: guarded update: empty loaded graphs, registry entries, B/graph (only if version is v7)
+  S->>F: one update: empty loaded graphs, registry entries, B/graph (only if version is v7)
   S->>F: ASK anything left in B/graph?
   S-->>Cl: 204, or 409 if stale
   end
@@ -334,8 +349,9 @@ JSON-LD); mint `B` and the IRIs of new parts; refuse unknown, `internal` or stra
 validate with the generated SHACL shapes (`Documents.parse`, `validate`). A body that names an
 `id` or a part is refused (422). `Session.add_graph` checks any loaded graphs named in the commit
 (minted for `B`, owned by nobody else).
-|One `INSERT … WHERE { FILTER NOT EXISTS … }` into the tenant database: the triples and the
-version and tracking statements into `B/graph`, the registry entries into `T/registry`. Then an
+|One update request to the tenant database (<<commit>>): the guard operation checks that `B/graph`
+is empty and writes the marker; then the triples and the version and tracking statements go into
+`B/graph` and the registry entries into `T/registry`; the last operation drops the marker. Then an
 `ASK` for the new token (409 if another add won). 201, `Location`, `ETag`.
 
 |Read
@@ -354,17 +370,19 @@ Answered as framed JSON, JSON-LD or Turtle, without bookkeeping and `internal` v
 |`PUT …/books/{id}` with `If-Match` (`modify` on the book); `UnitOfWork.commit` of a changed object
 |As create, but the root is `B` and parts must already be stored; the stored `internal` values are
 added back. Every step is in xref:architecture/api.adoc#anatomy[Anatomy of a request].
-|One update of five `;`-joined operations, each guarded by the old token: empty the loaded graphs
-no longer listed, drop `B`'s registry entries, empty `B/graph` except the old token, write the new
-triples, token, tracking (created and creator kept, modified and the caller as contributor added)
-and registry entries, then drop the old token. With a stale token no operation matches, so
+|One update request (<<commit>>). Its guard operation checks that `B/graph` still holds the old
+token and writes the marker. Five operations follow, each matching only while the marker is there:
+empty the loaded graphs no longer listed, drop `B`'s registry entries, empty `B/graph` except the
+old token, write the new triples, token, tracking (created and creator kept, modified and the
+caller as contributor added) and registry entries, then drop the old token. The last operation
+drops the marker. With a stale token the guard writes no marker, so no later operation matches and
 nothing changes; the `ASK` for the new token then fails and the answer is 409.
 
 |Delete
 |`DELETE …/books/{id}` with `If-Match` (`delete` on the book); `Session.remove`
 |`Session.remove` reads the version (404 if there is none).
-|One guarded update: empty every loaded graph `B` owns, drop its registry entries, empty
-`B/graph`. 409 if the graph is still there. Blobs are *not* deleted: use `remove_with_files`.
+|One update request (<<commit>>), guarded by the version: empty every loaded graph `B` owns, drop
+its registry entries, empty `B/graph`. 409 if the graph is still there. Blobs are *not* deleted: use `remove_with_files`.
 |===
 
 *No change history is kept.* A replace overwrites; only the current version and the tracking
@@ -374,6 +392,91 @@ statements remain.
 aggregate, gets only `GET` routes; a `POST`, `PUT` or `DELETE` on them answers 405. The consumer
 writes it through a session in its own route (`is_service_written`,
 `services/schema_structure.py`).
+
+[#commit]
+== Committing several aggregates at once
+
+_How can one commit change several aggregates and still be all or nothing?_ A transaction
+(`Session.transaction()`) collects the changes and sends them as *one* update request. A store
+applies one request as one unit, so a store failure leaves nothing half-written. The difficulty
+is the guards. Repeating each root's guard in every operation, as a single replace could, fails
+across roots: once the new book `C` is inserted, "`C/graph` is empty" is false for every later
+operation, and once `A`'s old token is dropped, "`A` is at its old token" is false. So the guards
+are checked once, at the start, and a marker carries the result through the request.
+
+The example: the library changes book `A` (stored at `a1`), adds a new book `C`, and removes book
+`B` (stored at `b1`), in one transaction.
+
+[mermaid]
+....
+sequenceDiagram
+  participant S as Session (Transaction)
+  participant F as Fuseki (lib-t-…)
+  Note over S: collect: replace A at a1, add C, remove B at b1<br/>(nothing sent yet, the pre-checks are reads)
+  S->>F: one request of joined operations
+  Note over F: 1 guard: A at a1, C/graph empty, B at b1 → write the rp:CommitMarker<br/>2 the marked operations of A, C and B<br/>3 release: delete the marker
+  S->>F: ASK A at its new token, C at its new token, B/graph empty?
+  alt true
+    S-->>S: committed
+  else false
+    S->>F: SELECT the version each graph holds now
+    alt a changed graph holds this transaction's token
+      S-->>S: committed (another writer changed it afterwards)
+    else
+      S-->>S: Conflict, iris = the roots whose guard failed
+    end
+  end
+....
+
+*The request.* Three parts, joined with `;`:
+
+. *The guard operation.* `INSERT { GRAPH T/registry { <marker> a rp:CommitMarker ; rp:startedAt … } } WHERE { … }`.
+  The `WHERE` holds one pattern per change: `GRAPH A/graph { A/graph rp:version "a1" }` for a
+  replace or a remove, and `FILTER NOT EXISTS { GRAPH C/graph { ?s ?p ?o } }` for an add. If any
+  pattern fails, the `WHERE` has no row and no marker is written. The marker's IRI is a fresh
+  `urn:uuid` for every transaction, so two transactions never share one.
+. *The marked operations.* The operations of each change (for a replace, the five of the table
+  above), each with `GRAPH T/registry { <marker> a rp:CommitMarker }` in place of its own guard.
+  Without a marker they match nothing, so a refused transaction changes nothing, whatever the
+  order of the operations.
+. *The release.* `DELETE` of the marker's statements. The marker lives in `T/registry` for the
+  length of the request only; the registry listings and the sweeps never see it.
+
+*The confirmation.* Fuseki answers 204 whether the guard matched or not, so one `ASK` tells
+which happened. It holds, for each added or replaced graph, `GRAPH G { G rp:version <new token> }`,
+and for each removed graph, that nothing is in it. True: done.
+
+*The diagnosis.* A false `ASK` has two possible causes. Either nothing was written (a guard
+failed), or the commit applied and another writer changed one of its graphs before the `ASK` ran.
+The session reads the version of every graph of the transaction with one `SELECT`. If any added or
+replaced graph holds this transaction's new token, the commit applied (all or nothing, so the
+other changes applied too) and the call succeeds. A transaction that only removes roots is never
+taken as a success after a false `ASK`. Otherwise nothing was written, and the session raises
+`Conflict` with `iris` set to the roots whose guard failed: a replaced or removed root no longer at
+the version read, an added root that now exists. The list is sorted.
+
+[IMPORTANT]
+====
+`Conflict.iris` is a diagnosis read *after* the refusal, so another writer can change the graphs
+between the refusal and the read, and the list can be wrong or empty (the message then says the
+transaction lost a race). That nothing was written is the guarantee; the list is help for the
+caller. One known gap: if the commit applied and every added or replaced graph was then
+overwritten by others before the `ASK`, the call raises a `Conflict` although the data is
+consistent; a re-read shows the others' versions.
+====
+
+*Before the request.* Each `add_graph`, `replace_graph` and `remove` of the transaction runs its
+pre-checks at once, as a single call always did: the IRI policy, the loaded graphs the root may
+own, the stored tracking. Giving one root twice (even once as a `str` and once as a `URIRef`) is a
+`ValueError` at the second call; an exception inside the `async with` block sends nothing; an
+empty transaction sends nothing. The pre-checks are reads before the request, so they are one
+read per root and can race with other writers as before; the guards in the request are what
+protect the commit.
+
+*Limits.* One tenant only: nothing spans two tenants, or a tenant and the system database. Files
+are not part of it: a blob keeps its write order and its sweep (<<files>>). Nothing is read inside
+the request; the guards are the version tokens the caller read. A store must apply a multi-operation
+update as one transaction (Fuseki does); the store conformance suite checks it.
 
 [#files]
 == Files and loaded graphs

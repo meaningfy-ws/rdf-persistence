@@ -442,13 +442,13 @@ database name (xref:howto/adopt.adoc#session[Build an application, step 8]).
   (PD-6, PD-8a); references to other aggregates are IRIs; multi-valued slots are sets, so order is
   not kept (model an order slot when order matters). `internal` slots are written; the tracking
   slots are not, since the session writes them about the graph IRI.
-* *Commit* (implemented: `Session.replace_graph` and `add_graph` in
-  `rdf_persistence/services/session.py`, driven by `UnitOfWork.commit`): a replace is one SPARQL
-  update request of several `;`-joined operations, each guarded by the old version token, that
-  replaces the graph and the root's registry entries and writes a fresh token; Fuseki answers 204
-  even when the guard matches nothing, so an `ASK` for the new token tells committed from
-  conflict. Each aggregate is committed on its own: a conflict on one leaves those committed
-  before it in place.
+* *Commit* (implemented: `Session.transaction` in `rdf_persistence/services/session.py`, driven
+  by `UnitOfWork.commit`): every added, replaced and removed root of the commit goes in one SPARQL
+  update request of several `;`-joined operations; the first writes a commit marker only if every
+  root's version guard holds, and the others run only while the marker is there. Fuseki answers
+  204 even when the guards match nothing, so an `ASK` for the new tokens tells committed from
+  conflict. All or nothing: a conflict on one root leaves every root of the commit unwritten (see
+  xref:architecture/data-flows.adoc#commit[the commit flow]).
 * *Kinds*: the mapper reads the class the caller asks for; it does not use `designates_type`. An owned
   part is read as its slot's range class, so a subclass in an owned slot comes back as its parent (a
   known limit of `rdf_persistence/services/mapper.py`, lifted when a schema owns a class hierarchy).

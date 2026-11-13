@@ -82,7 +82,7 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
 | IT-04 | 20 concurrent transactions each replacing A at `a1` plus adding its own new book (`asyncio.gather`) | exactly one succeeds; exactly one new book stored |
 | IT-05 | conformance: request `INSERT DATA {…} ; CREATE GRAPH <existing>` (PD-13) | `BadQuery`; the first insert not visible |
 
-- [ ] 1.5 Docs: `architecture/data-flows.adoc` (the commit flow: one request, the marker; the
+- [x] 1.5 Docs: `architecture/data-flows.adoc` (the commit flow: one request, the marker; the
   `rp:CommitMarker` term), `howto/adopt.adoc` (multi-aggregate commits, `Conflict.iris`,
   `version`, `remove`; the behaviour change), `questions.adoc` ("Can I save several aggregates at
   once?"). Gates: `make check-docs`, `make check-diagrams`.

@@ -24,6 +24,14 @@ database (`kit.session(tenant, principal)`), wrap it in a `UnitOfWork(session, m
 `get` the root, change it, `add` it and `commit`. A commit made on stale data raises `Conflict`.
 See xref:howto/adopt.adoc#session[step 8].
 
+*Can I save several aggregates at once?*::
+Yes. Add, change and `remove` the roots in one `UnitOfWork` and call `commit()` once: all are
+stored or none is, and a stale root raises `Conflict` whose `iris` names the roots that moved.
+`work.version(iri)` gives a root's version token. For triples, use `async with
+session.transaction()`. A commit that used to leave the first roots written after a conflict now
+leaves nothing. See xref:howto/adopt.adoc#transaction[Save several aggregates at once] and
+xref:architecture/data-flows.adoc#commit[how the commit works].
+
 *How do tenants and access work?*::
 Each tenant has its own database and bucket, and an access record in the system database that
 holds its grants and prohibitions. The caller who creates a tenant gets the settings'

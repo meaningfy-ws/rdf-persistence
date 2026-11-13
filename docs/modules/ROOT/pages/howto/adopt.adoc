@@ -627,12 +627,13 @@ the roots you `get` and the parts they own.
 
 What a commit does:
 
-* A new root is written with `Session.add_graph`; a root read in this unit of work, with
-  `Session.replace_graph` and the version it was read with. Each commit sends one SPARQL update
-  of several `;`-joined operations, guarded by that version, then an `ASK` for the new version. A
-  version that moved meanwhile raises `Conflict` and changes nothing.
-* Each aggregate is committed on its own. With two changed roots, a conflict on the second leaves
-  the first committed.
+* A new root is added with `add_graph`; a root read in this unit of work is replaced with
+  `replace_graph` and the version it was read with; a root removed with `remove(obj)` is deleted
+  with the version it was read with. `commit()` collects all of them into one transaction and
+  sends one SPARQL update request, then an `ASK` for the new versions. A version that moved
+  meanwhile raises `Conflict` and changes nothing (<<transaction>>).
+* A commit is all or nothing. With two changed roots, a conflict on the second leaves the first
+  unchanged too. (In 0.2.0 and earlier the first stayed written; see <<transaction-change>>.)
 * The session writes the version and the tracking slots (`created`, `creator`, `modified`,
   `contributor`) as statements about the aggregate's graph, `{root}/graph`. Your code never sets
   them.
@@ -661,8 +662,84 @@ cover:
 |`loaded_graphs(iri)` |The IRIs of the aggregate's loaded graphs, sorted by IRI
 |`loaded_graph(iri, graph_iri)` |The triples of one loaded graph
 |`remove(iri, if_version)` |Delete the aggregate, its loaded graphs and its registry entries
+|`transaction()` |An `async with` block that collects several of the writes above and sends them as one (<<transaction>>)
 |`named_file_keys(keys)` |The keys, of those given, that some graph of the tenant still names in `file_key`
 |===
+
+`add_graph`, `replace_graph` and `remove` are each a transaction of one change, so a single write
+and a multi-aggregate commit follow the same path.
+
+[#transaction]
+=== Save several aggregates at once
+
+_Can I save several aggregates at once?_ Yes, and they are stored all together or not at all. In
+code that works on objects, change what you need in one `UnitOfWork` and call `commit()` once:
+
+[source,python]
+----
+async with kit.session(tenant, principal) as session:
+    work = UnitOfWork(session, mapper)
+    dune = await work.get(Book, dune_iri)
+    old = await work.get(Book, old_iri)
+    dune.label = "Dune, 2nd edition"
+    work.add(dune)                                   # replaced, at the version it was read
+    work.add(Book(id=new_iri, label="Emma", description="A novel.", author="Jane Austen"))
+    work.remove(old)                                 # removed with its loaded graphs
+    try:
+        await work.commit()                          # all three, or none
+    except Conflict as conflict:
+        print(conflict.iris)                         # for example ('https://…/books/<id>',)
+    else:
+        print(work.version(dune_iri))                # the new token
+----
+
+For triples, open a transaction on the session: each call checks what it can at once (the IRI
+policy, the loaded graphs, that a replaced or removed root exists), and the block sends one
+request when it ends.
+
+[source,python]
+----
+async with session.transaction() as t:
+    new_a = await t.replace_graph(a_iri, a_triples, a_version)   # returns the new version
+    await t.add_graph(c_iri, c_triples)
+    await t.remove(b_iri, b_version)
+----
+
+What to expect:
+
+* *One request, all or nothing.* Every guard is checked before anything is written: a replaced or
+  removed root must still have the version you read, and an added root must not exist yet. If one
+  guard fails, nothing changes and `Conflict` is raised. How it works is in
+  xref:architecture/data-flows.adoc#commit[Committing several aggregates at once].
+* *`Conflict.iris`* lists the root IRIs whose guard failed, sorted. It is a *diagnosis*: the
+  session reads the stored versions after the refusal, so another writer can change them in
+  between and the list can be incomplete or empty. Use it to tell the user which objects moved;
+  do not treat it as exact. The message says the same in words. A `Conflict` raised elsewhere has
+  an empty `iris`.
+* *`UnitOfWork.version(iri)`* returns the version token of a root this unit of work read, or
+  after a commit the new token (the same token `Session.get_graph` returns and the HTTP API sends
+  as `ETag`). Record it to know which version a process used. A root it neither read nor
+  committed raises `LookupError`.
+* *`UnitOfWork.remove(obj)`* removes a root this unit of work read, in the same commit as the
+  rest. A root it did not read raises `ValueError`, because its version is needed. A new root
+  added here and then removed raises `ValueError`. A root read, added and then removed is
+  removed; `add` after `remove` raises `ValueError`.
+* *The same root twice* in one transaction raises `ValueError` at the second call, before anything
+  is sent. An exception inside the `async with` block sends nothing; an empty transaction sends
+  nothing.
+* After a `Conflict`, the unit of work is unchanged: read again with a new unit of work and retry.
+  The transaction never retries by itself.
+* *One tenant only.* A transaction does not span tenants or the system database, and a file's
+  bytes keep their own write order (<<files>>).
+
+[#transaction-change]
+==== The behaviour changed
+
+`UnitOfWork.commit()` used to write each root on its own: with two changed roots, a conflict on the
+second left the first written. It now writes all or none. There is no flag: code that relied on the
+partial write (for example, catching `Conflict` and keeping the first root) has to commit the roots
+in separate units of work. Code that treated a `Conflict` as "nothing changed" is now correct for
+every root.
 
 Outside a service, `open_session(store, *, database, tenant_iri, principal, clock)` opens the
 same session (`principal` is a `Principal`; the kit's `session` takes its IRI as a string) on a `Store` you hold. The kit's `session` calls it with the tenant's database name.
