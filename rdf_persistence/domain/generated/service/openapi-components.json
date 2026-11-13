@@ -921,6 +921,63 @@
       "title": "TenantCreate",
       "type": "object"
     },
+    "TenantDump": {
+      "additionalProperties": false,
+      "description": "The manifest of a tenant dump archive, written by `dump_tenant` and read by `restore_tenant`: where and when the dump was taken, which schema and toolkit it came from, the tenant it holds and the IRI policy that minted its IRIs, so a restore can map them into another deployment.",
+      "properties": {
+        "created_at": {
+          "description": "When the dump was taken, so a person choosing among dumps can tell them apart.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "format_version": {
+          "description": "The version of the dump archive layout; a restore refuses a version it does not know.",
+          "type": "integer"
+        },
+        "iri_policy": {
+          "$ref": "#/components/schemas/IriPolicy",
+          "description": "The IRI policy of the service; absent, the default policy applies."
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        },
+        "schema_id": {
+          "description": "The id of the LinkML schema whose data the dump holds; a restore checks it against its own.",
+          "format": "uri",
+          "type": "string"
+        },
+        "schema_version": {
+          "description": "The version of that schema, when it declares one.",
+          "type": "string"
+        },
+        "source_tenant": {
+          "description": "The IRI of the tenant the dump was taken from.",
+          "format": "uri",
+          "type": "string"
+        },
+        "source_tenant_id": {
+          "description": "The id part of the source tenant's IRI, which a restore replaces by the new tenant's id.",
+          "type": "string"
+        },
+        "toolkit_version": {
+          "description": "The version of the toolkit that wrote the dump.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "format_version",
+        "created_at",
+        "toolkit_version",
+        "schema_id",
+        "source_tenant",
+        "source_tenant_id",
+        "label",
+        "iri_policy"
+      ],
+      "title": "TenantDump",
+      "type": "object"
+    },
     "TenantLabelled": {
       "additionalProperties": false,
       "description": "A mixin for what carries a tenant's label, one line of 1 to 200 characters that neither starts nor ends in a space; the access record and the service's request bodies share it, so the label is checked the same everywhere.",

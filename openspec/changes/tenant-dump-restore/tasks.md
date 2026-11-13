@@ -26,9 +26,9 @@ fakes (`testkit/fakes.py`); integration tests use the Fuseki and Garage containe
 
 ## 2. The manifest and the rewrite
 
-- [ ] 2.1 PD-2: `TenantDump` in `model/service/rp_service.yaml`; `make generate`; the freshness and
+- [x] 2.1 PD-2: `TenantDump` in `model/service/rp_service.yaml`; `make generate`; the freshness and
   conformance checks pass. Gates: `make test-changed`, `make check-quality`.
-- [ ] 2.2 Test first, `tests/unit/services/test_tenant_dump_rewrite.py`; then PD-4 (`rewrite`,
+- [x] 2.2 Test first, `tests/unit/services/test_tenant_dump_rewrite.py`; then PD-4 (`rewrite`,
   `glued_templates`). No change to `domain/iris.py`. Gates: `make test-fast`, `make check-quality`,
   `make clean-code`.
 

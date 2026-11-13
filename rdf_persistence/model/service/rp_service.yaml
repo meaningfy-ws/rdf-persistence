@@ -104,6 +104,41 @@ classes:
         ifabsent: string({root}/content/{id})
       principal_template:
         ifabsent: string({issuer}/users/{sub})
+  TenantDump:
+    title: Tenant dump
+    description: >-
+      The manifest of a tenant dump archive, written by `dump_tenant` and read by `restore_tenant`:
+      where and when the dump was taken, which schema and toolkit it came from, the tenant it holds
+      and the IRI policy that minted its IRIs, so a restore can map them into another deployment.
+    class_uri: rp:TenantDump
+    slots:
+      - format_version
+      - dump_created_at
+      - toolkit_version
+      - schema_id
+      - schema_version
+      - source_tenant
+      - source_tenant_id
+      - label
+      - iri_policy
+    slot_usage:
+      format_version:
+        required: true
+      dump_created_at:
+        required: true
+      toolkit_version:
+        required: true
+      schema_id:
+        required: true
+      source_tenant:
+        required: true
+      source_tenant_id:
+        required: true
+      label:
+        required: true
+      iri_policy:
+        required: true
+        inlined: true
   VerifiedCaller:
     title: Verified caller
     description: >-
@@ -478,6 +513,42 @@ slots:
     description: The IRI policy of the service; absent, the default policy applies.
     slot_uri: rp:iriPolicy
     range: IriPolicy
+  format_version:
+    title: Format version
+    description: The version of the dump archive layout; a restore refuses a version it does not know.
+    slot_uri: rp:dumpFormatVersion
+    range: integer
+  dump_created_at:
+    title: Dump created at
+    description: When the dump was taken, so a person choosing among dumps can tell them apart.
+    slot_uri: rp:dumpCreatedAt
+    alias: created_at
+    range: datetime
+  toolkit_version:
+    title: Toolkit version
+    description: The version of the toolkit that wrote the dump.
+    slot_uri: rp:toolkitVersion
+    range: string
+  schema_id:
+    title: Schema id
+    description: The id of the LinkML schema whose data the dump holds; a restore checks it against its own.
+    slot_uri: rp:dumpSchemaId
+    range: uri
+  schema_version:
+    title: Schema version
+    description: The version of that schema, when it declares one.
+    slot_uri: rp:dumpSchemaVersion
+    range: string
+  source_tenant:
+    title: Source tenant
+    description: The IRI of the tenant the dump was taken from.
+    slot_uri: rp:sourceTenant
+    range: uri
+  source_tenant_id:
+    title: Source tenant id
+    description: The id part of the source tenant's IRI, which a restore replaces by the new tenant's id.
+    slot_uri: rp:sourceTenantId
+    range: string
   caller_access:
     title: Caller access
     description: The caller's access to the tenant, as the access check loaded it.
