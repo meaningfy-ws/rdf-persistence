@@ -31,7 +31,7 @@ by the real 0.2.0 run after it (3.1). Code changes are test-first.
   .github/workflows/release.yaml release-please-config.json .release-please-manifest.json` if
   pre-commit has YAML/JSON hooks.
 
-- [ ] 1.3 Dry run (attack, read-only): push the branch, then
+- [x] 1.3 Dry run (attack, read-only): push the branch, then
   `npx -y release-please@17 release-pr --dry-run --token "$(gh auth token)"
   --repo-url meaningfy-ws/rdf-persistence --target-branch ci/release-pipeline
   --config-file release-please-config.json --manifest-file .release-please-manifest.json`.

@@ -117,6 +117,11 @@ Every PD is the **leader's choice (2026-11-12), the developer may overrule** it 
 - **PD-13** (build, 2026-11-13; lead's choice): the `build` job checks out `ref: <tag>`, not the
   pushed commit, so a push to `develop` while the release run is queued can never build the wrong
   commit; `TAG` and `VERSION` are job-level `env`. Found by the builder of task 1.2.
+- **PD-14** (review, 2026-11-13): the workflow also grants `issues: write`, which
+  release-please-action documents for its `autorelease:` labels; the how-to says the CHANGELOG PR
+  gets no CI run (`*.md` is path-ignored); the Error matrix row on quick pushes is made exact.
+  Rejected: automated tests for "wheel equals tag" (the `build` job and task 3.1 cover it, as
+  planned).
 
 ## Algorithm / approach
 
@@ -212,7 +217,7 @@ Worked example, the first run after this change merges:
 | `main` is not an ancestor of the release commit | the manual push is refused (non-fast-forward); `main` unchanged; look at who moved `main` before doing anything else, never `--force` |
 | Push to `main` refused (missing `workflows` permission, or a branch protection or ruleset added later) | `main` unchanged; nothing else is affected (tag, Release, wheel stand). Push with a credential that may update workflow files and is allowed by the protection (the developer's own), or ask the developer to relax the rule; never through `GITHUB_TOKEN` |
 | `gh release upload` fails (network) | job fails; re-run the job (upload is idempotent with `--clobber`) |
-| Two pushes to `develop` in quick succession | the second run waits (concurrency group) |
+| Several pushes to `develop` in quick succession | later runs wait (concurrency group); only the newest pending run runs, and it reads the latest `develop` |
 | Release PR merged with squash or with a merge commit | either: the tag goes on the resulting commit on `develop` |
 
 ## Risks / Trade-offs

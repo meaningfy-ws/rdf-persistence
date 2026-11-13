@@ -214,7 +214,8 @@ reviews and merges them. Nobody edits the version by hand: it lives in `pyprojec
 . Open a PR into `develop`, `docs(changelog): release X.Y.Z`, that renames `[Unreleased]` in
   `CHANGELOG.md` to `[X.Y.Z] - YYYY-MM-DD`, adds an empty `[Unreleased]` above it, and updates the
   two compare links at the foot. Do not commit on release-please's own branch: it rebuilds that
-  branch on every push to `develop`. Merge it; the release PR refreshes.
+  branch on every push to `develop`. It gets no CI run (`ci.yaml` ignores `*.md`), so merge it
+  after review; the release PR refreshes.
 . Review the release PR (the version and the notes against the CHANGELOG) and merge it. The PR
   gets no CI run of its own, because a PR made with the workflow token starts no workflow;
   `ci.yaml` runs on the merge commit.
