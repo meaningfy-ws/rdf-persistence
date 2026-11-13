@@ -129,6 +129,56 @@ session do (`create` only shares `_new_record` and calls `free_tenant` by its pu
   F4, a member name that is not valid UTF-8. Kept as is (design silent, not a defect): a subject or
   object naming another tenant's IRI inside an accepted graph is restored verbatim, never rewritten
   (PD-5 checks graph names only); an id in an IRI's query or fragment moves with the path.
+- **PD-13** (stage review, PR #89; the lead's decisions on the findings). Accepted:
+  - *Decompression budget* (L1 C1, L4 C1): restore charges `member.size + tarfile.BLOCKSIZE` per
+    member against a total budget, checked from the header **before** each read, and refuses past
+    it with `InvalidBody`, nothing created when the overflow is before the blobs. The budget is a
+    new `ServiceSettings` slot `max_restore_bytes` (LinkML, `make generate`; default 1 GiB), passed by
+    `ServiceKit.restore_tenant` as `restore(..., max_bytes=...)`; `max_body_bytes` is not reused. The
+    manifest has its own cap, `MAX_MANIFEST_BYTES = 64 KiB`. The parsed N-Quads bytes are released
+    once parsed. RISK-2 stays for honest tenants; this bounds hostile ones.
+  - *End marker* (L4 W3, L1 S1): format v1 (unreleased) ends with an empty regular member `end`;
+    `dump` writes it last, `restore` refuses an archive whose blobs are not followed by `end`, or
+    that has anything after it, then drains the gzip stream (bounded by the budget) so its trailer
+    is checked. The `tar.offset` / `fileobj.tell()` check is removed.
+  - *Record write outside the cleanup* (L4 W1): `Tenancy.restore` writes the access record after
+    the `try` whose `except` drops the database and bucket; a failed record write leaves orphans
+    for the start-up sweep (RISK-6), never a record without its database.
+  - *Checks owned by the writer* (L3 W1, S1): `rewrite`, `glued_templates` and the graph check move
+    to a pure `domain/tenant_move.py` (no I/O); `Tenancy.restore(parsed, source_tenant_id, blobs,
+    creator)` draws the tenant itself, rewrites, checks graphs, vets the root and
+    writes; `free_tenant` and `vet_restored_root` become private again. `tenant_dump.py` keeps the
+    archive: read, manifest checks, N-Quads parse, the blob iterator. Supersedes PD-6's
+    `free_tenant` and PD-10's public `vet_restored_root`.
+  - *One blob-key rule* (L1 W1): a pure `domain` function is the only key rule, used by the S3
+    adapter, `FakeFileStore.put` (so the fake refuses as Garage does) and restore (as `InvalidBody`).
+    The adversarial round-trip case with a newline key becomes a refusal case.
+  - *Smaller*: `except (ParserError, ValueError)` around the N-Quads parse (L4 W2); one N-Quads
+    format name, `media.N_QUADS`, everywhere (L3 S4, L4 W4); one log line per dump (`step="dump"`,
+    tenant, blob count) and per restore (`step="restore"`, source tenant, new tenant), no content
+    (L4 S5); `Conflict` (the drawn id was taken; retry) listed in `restore_tenant`'s docstring
+    (L4 S6); the blocking reads and writes of `src`/`out` named in the kit docstrings and a
+    `shortcut:` comment, as is the whole-blob read (L3 S5, L4 S8); `except ValueError` only in the
+    root check (L4 S4); explicit "found" text in the member message (L4 S3).
+  - *Restore trusts graph content* (L1 W2, the lead's choice; the developer may overrule): restore
+    checks structure (graph names, the root, keys), not each aggregate against its shapes. The
+    `restore_tenant` docstring and the how-to say: restore only archives your own deployment wrote
+    or that come from a party you trust as much as a tenant creator.
+  - *Tests* (L2 W1, W3-W8, S1, S2, S4): TC-13 checks parts and splits the policy check; Hypothesis
+    settings `derandomize=True`; one assert per idea with a message; a dump changes nothing; a root
+    that does not decode; the missing `glued_templates` rows; `PersistenceError` not `Exception`;
+    `ToolkitStore` pass-through lines; graph diff in the conformance message; TC-23 names the
+    database. Tests for the budget, the end marker and the record-write order.
+  - *Docs* (L2 W2, S3, L3 W2, cold reader): the how-to and data-flows list every refusal cause and
+    when cleanup applies; the architecture index lists the port's dataset-level Graph Store
+    GET/POST, `Tenancy.restore` and the two kit calls; the how-to introduces `kit`, `t`, `path`
+    and imports, maps each error to its HTTP status, says a restore makes a new IRI (links to the
+    old one break), explains the two labels, says the toolkit has no write freeze (the consumer
+    stops writes), says where a schema declares `version`, and links terms to their pages.
+  Rejected: `creator` typed as the verified caller (L1 S4; the kit takes principal IRIs as strings
+  everywhere); trimming error details (L1 S2, L4 S5; the caller uploaded the archive); CI on more
+  Python versions (L4 W3 b; the end marker removes the dependency on tarfile internals); further
+  splitting of `tenant_dump.py` (L3 S3).
 
 ## Algorithm / approach
 
