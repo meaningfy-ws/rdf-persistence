@@ -31,6 +31,7 @@ from rdf_persistence import (
     Action,
     AggregateRoot,
     BlobEntry,
+    CommitMarker,
     DatabaseKind,
     Described,
     Grant,

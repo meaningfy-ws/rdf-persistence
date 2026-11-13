@@ -43,6 +43,7 @@ from .rp_annotations import (
 )
 from .rp_core import (
     AggregateRoot,
+    CommitMarker,
     DatabaseKind,
     GraphKind,
     ModuleKind,

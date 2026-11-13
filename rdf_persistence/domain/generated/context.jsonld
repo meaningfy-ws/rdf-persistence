@@ -43,6 +43,7 @@
       "byte_size": {
          "@id": "byteSize"
       },
+      "id": "@id",
       "contributor": {
          "@type": "@id",
          "@container": "@set",
@@ -75,7 +76,6 @@
          "@type": "@id",
          "@id": "graph"
       },
-      "id": "@id",
       "kind": {
          "@id": "kind",
          "@type": "@vocab",
@@ -148,6 +148,10 @@
          "@container": "@set",
          "@id": "skippedBlob"
       },
+      "started_at": {
+         "@type": "xsd:dateTime",
+         "@id": "startedAt"
+      },
       "state": {
          "@id": "state",
          "@type": "@vocab",
@@ -206,6 +210,9 @@
       },
       "BlobEntry": {
          "@id": "BlobEntry"
+      },
+      "CommitMarker": {
+         "@id": "CommitMarker"
       },
       "Described": {
          "@id": "Described"

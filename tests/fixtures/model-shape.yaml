@@ -146,6 +146,16 @@
     required: false
     multivalued: false
     range: integer
+- class_name: CommitMarker
+  slots:
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: started_at
+    required: true
+    multivalued: false
+    range: datetime
 - class_name: Condition
   slots:
   - name: condition_datatype

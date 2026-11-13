@@ -64,6 +64,20 @@ classes:
         description: The IRI of the graph the load put; the marker's subject, so no rp:graph triple.
       loaded_at:
         required: true
+  CommitMarker:
+    title: Commit marker
+    description: >-
+      The registry marker of one transaction's commit: a fresh IRI per transaction, written first in
+      the single request, so the writes that follow apply only if it was written.
+    class_uri: rp:CommitMarker
+    slots:
+      - id
+      - started_at
+    slot_usage:
+      id:
+        description: A fresh urn:uuid IRI, never shared by two transactions.
+      started_at:
+        required: true
 
 slots:
   url_segment:
@@ -104,6 +118,11 @@ slots:
     title: Loaded at
     description: The time a graph was put to the store by a load.
     slot_uri: rp:loadedAt
+    range: datetime
+  started_at:
+    title: Started at
+    description: The time a transaction started.
+    slot_uri: rp:startedAt
     range: datetime
   kind:
     title: Kind

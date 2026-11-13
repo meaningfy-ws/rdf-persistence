@@ -48,6 +48,7 @@ from rdf_persistence.domain.generated.rp_annotations import (
 )
 from rdf_persistence.domain.generated.rp_core import (
     AggregateRoot,
+    CommitMarker,
     DatabaseKind,
     GraphKind,
     ModuleKind,
@@ -175,6 +176,7 @@ __all__ = [
     "BadQuery",
     "BlobEntry",
     "CallerAccess",
+    "CommitMarker",
     "Conflict",
     "DatabaseGone",
     "DEFAULT_IRIS",

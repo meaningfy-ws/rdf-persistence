@@ -142,9 +142,16 @@ class PendingLoad(ConfiguredBaseModel):
     loaded_at: datetime  = Field(default=..., title="Loaded at", description="The time a graph was put to the store by a load.")
 
 
+class CommitMarker(ConfiguredBaseModel):
+    "The registry marker of one transaction\u0027s commit: a fresh IRI per transaction, written first in the single request, so the writes that follow apply only if it was written."
+    id: str = Field(default=..., title="Identifier", description="A fresh urn:uuid IRI, never shared by two transactions.")
+    started_at: datetime  = Field(default=..., title="Started at", description="The time a transaction started.")
+
+
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 AggregateRoot.model_rebuild()
 Principal.model_rebuild()
 RegistryEntry.model_rebuild()
 PendingLoad.model_rebuild()
+CommitMarker.model_rebuild()

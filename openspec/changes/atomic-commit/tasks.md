@@ -18,7 +18,7 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
 | TC-00a | session opened with `URIRef(TENANT)`; `add_graph(TENANT_str, root_triples)` | stored in `T/meta`; no `Aggregate` entry for it |
 | TC-00b | session opened with `TENANT` as `str`; `get_graph(URIRef(TENANT))` after TC-00a's write | returns the root from `T/meta` |
 
-- [ ] 1.1 The marker in the metamodel: `CommitMarker` in `rdf_persistence/model/rp_core.yaml`
+- [x] 1.1 The marker in the metamodel: `CommitMarker` in `rdf_persistence/model/rp_core.yaml`
   (PD-1), `make generate`, `vocabulary.py` terms. Gates: `make test-fast`, `make check-quality`,
   `make clean-code`.
 

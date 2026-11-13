@@ -74,6 +74,7 @@
          "@type": "@id",
          "@id": "checkedTarget"
       },
+      "id": "@id",
       "datatype": {
          "@type": "@id",
          "@id": "conditionDatatype"
@@ -154,7 +155,6 @@
          "@container": "@set",
          "@id": "hiddenGraph"
       },
-      "id": "@id",
       "alphabet": {
          "@id": "idAlphabet"
       },
@@ -323,6 +323,10 @@
       "source_tenant_id": {
          "@id": "sourceTenantId"
       },
+      "started_at": {
+         "@type": "xsd:dateTime",
+         "@id": "startedAt"
+      },
       "state": {
          "@id": "state",
          "@type": "@vocab",
@@ -375,6 +379,9 @@
       },
       "CallerAccess": {
          "@id": "CallerAccess"
+      },
+      "CommitMarker": {
+         "@id": "CommitMarker"
       },
       "Condition": {
          "@id": "Condition"

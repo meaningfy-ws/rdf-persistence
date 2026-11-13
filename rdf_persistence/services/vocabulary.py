@@ -56,6 +56,9 @@ REGISTRY_KIND = predicate("kind")
 REGISTRY_OWNED_BY = predicate("owned_by")
 # The time a load put a graph: the one statement of its marker in the registry (live-tenant-sweep PD-2).
 LOADED_AT = predicate("loaded_at")
+# A transaction's commit marker: its class and the time it started (atomic-commit PD-1).
+COMMIT_MARKER = URIRef(metamodel().get_uri(metamodel().get_class("CommitMarker"), expand=True))
+STARTED_AT = predicate("started_at")
 # A graph naming a blob of the tenant's bucket by its key (PD-3 of the live-tenant sweep).
 FILE_KEY = predicate("file_key")
 # A listing states the graph it found each subject in (PD-7); the toolkit drops it before answering.
