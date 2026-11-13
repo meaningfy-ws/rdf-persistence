@@ -132,6 +132,11 @@ required); any change to listings, loads, the sweeps' logic or the HTTP routes.
   limit or timeout. The default of 500 holds.
 - **PD-11**: The confirmation needs the version token of every changed graph in one `ASK`, so a
   transaction of 500 roots sends a 500-pattern `ASK`. Accepted; measured with PD-10.
+- **PD-19** (stage 2 full gates, 2026-11-13; decided by the lead, the developer may overrule):
+  every toolkit error has an HTTP problem kind (the problem-table guard). `CommitTooLarge` answers
+  413 `payload-too-large` with its detail: a commit over the limit comes from a request that asked
+  for too much, and the caller can fix it. (Not 500 `internal-error`: that would call a limit the
+  caller can meet a fault of the service.)
 
 - **PD-12** (DEC-7, issue #76): `Session.__init__` stores `self._tenant = str(tenant_iri)`;
   `_graph` and `_entries` compare `str(iri) == self._tenant`. Every other use of `self._tenant`

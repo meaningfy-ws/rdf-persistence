@@ -45,6 +45,7 @@ ROWS = [
     (exceptions.StoredDataInvalid, 500, "internal-error"),
     (exceptions.IriPolicyChanged, 503, "unavailable"),
     (exceptions.PayloadTooLarge, 413, "payload-too-large"),
+    (exceptions.CommitTooLarge, 413, "payload-too-large"),
     (exceptions.StoreUnavailable, 503, "unavailable"),
     (exceptions.IdentityUnavailable, 503, "unavailable"),
     (exceptions.InvalidRoleDefinition, 503, "unavailable"),

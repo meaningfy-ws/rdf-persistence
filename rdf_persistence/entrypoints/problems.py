@@ -93,6 +93,10 @@ ERROR_KINDS: tuple[tuple[type[PersistenceError], ProblemKind], ...] = (
         UNAVAILABLE,
     ),  # raised at start-up; a service that kept going would mint IRIs by the wrong policy
     (errors.PayloadTooLarge, PAYLOAD_TOO_LARGE),
+    (
+        errors.CommitTooLarge,
+        PAYLOAD_TOO_LARGE,
+    ),  # a request asked for more roots than one commit takes
     (errors.StoreUnavailable, UNAVAILABLE),
     (errors.IdentityUnavailable, UNAVAILABLE),
     (
