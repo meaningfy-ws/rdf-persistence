@@ -31,10 +31,12 @@ from linkml_runtime.utils.formatutils import camelcase, underscore
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel
 from rdflib import RDF, BNode, Graph, Literal, URIRef
+from rdflib.compare import isomorphic
 from rdflib.term import Node
 
 from rdf_persistence.domain.base import RpModel
-from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.domain.exceptions import CommitTooLarge, NotFound
+from rdf_persistence.domain.iris import DEFAULT_IRIS, GENID, Iris
 from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services.schema_structure import (
     aggregate_roots,
@@ -46,6 +48,7 @@ from rdf_persistence.services.schema_structure import (
     rdf_term,
 )
 from rdf_persistence.services.session import Session
+from rdf_persistence.services.vocabulary import BOOKKEEPING_PREDICATES
 
 
 class GeneratedModels:
@@ -258,12 +261,14 @@ class UnitOfWork:
     removes every root passed to ``remove``, in one session transaction: all or nothing. On a
     ``Conflict`` nothing is stored and nothing in the unit of work changes, so the caller can read
     ``Conflict.iris``, ``get`` again from a new unit of work for the fresh values, and retry.
-    The held objects keep the tracking they were read with.
+    The held objects keep the tracking they were read with. A commit of more than ``max_roots``
+    roots is refused (``CommitTooLarge``); ``commit(batches=True)`` takes it in several transactions.
     """
 
-    def __init__(self, session: Session, mapper: Mapper) -> None:
+    def __init__(self, session: Session, mapper: Mapper, max_roots: int = 500) -> None:
         self._session = session
         self._mapper = mapper
+        self._max_roots = max_roots
         self._objects: dict[str, BaseModel] = {}
         self._versions: dict[str, str] = {}  # of the roots that are stored
         self._dirty: set[str] = set()
@@ -326,15 +331,67 @@ class UnitOfWork:
             raise ValueError(f"{type(obj).__name__} is not an aggregate root")
         return str(getattr(obj, "id"))  # noqa: B009
 
-    async def commit(self) -> None:
+    async def commit(self, *, batches: bool = False) -> None:
         """Write every added root and remove every removed one, in one transaction, in the order
         of the first ``get`` or ``add`` of each root.
 
+        With ``batches=True`` the same list is cut into batches of ``max_roots``, each its own
+        transaction, committed in order: the way to store more roots than one request holds. This is
+        **not atomic overall**: a failure leaves the earlier batches stored. The batch that fails
+        raises its own exception, same type and fields, its message extended with how many batches
+        were committed; the unit of work keeps the rest, so ``commit(batches=True)`` again (or a new
+        unit of work given the same roots) carries on.
+
+        A re-run converges for **adds** only: before a batch, a root to add whose stored graph already
+        equals what this commit would write is taken as committed and left out. Equal means the same
+        triples, with the stored skolem IRIs read as blank nodes, so it holds when the parts get the
+        same IRIs on the re-run: anonymous parts, or IRIs derived from the source. A part made with
+        ``new_part`` has a random IRI, so such a root conflicts on the re-run (safe: nothing is
+        duplicated). Replaces and removes are not idempotent; read the roots again.
+
         Raises:
+            CommitTooLarge: More than ``max_roots`` roots were added, changed or removed, and
+                ``batches`` is not set; nothing was read or written.
             Conflict: A new root already exists, or a read one changed since it was read; nothing
-                was written and this unit of work is unchanged.
+                was written (in batch mode: nothing of that batch) and the unit of work keeps the
+                roots not yet committed.
         """
         order = [i for i in self._objects if i in self._dirty or i in self._removed]
+        if not batches:
+            if len(order) > self._max_roots:
+                raise CommitTooLarge(
+                    f"{len(order)} roots to commit, more than max_roots={self._max_roots}; "
+                    "commit(batches=True) takes them in several transactions"
+                )
+            await self._write(order)
+            return
+        slices = [order[n : n + self._max_roots] for n in range(0, len(order), self._max_roots)]
+        for done, batch in enumerate(slices):
+            try:
+                await self._write_batch(batch)
+            except Exception as error:
+                error.args = (f"{error}; {done} of {len(slices)} batches committed before it",)
+                raise
+
+    async def _write_batch(self, batch: list[str]) -> None:
+        taken = {iri: v for iri in batch if (v := await self._stored_equal(iri)) is not None}
+        self._versions.update(taken)
+        await self._write([iri for iri in batch if iri not in taken])
+        self._dirty.difference_update(taken)
+
+    async def _stored_equal(self, iri: str) -> str | None:
+        """The stored version of the root ``iri`` if it is to be added and already stored as it
+        would be written (PD-9); else None."""
+        if iri in self._removed or iri in self._versions:
+            return None
+        try:
+            stored, graph_iri, version = await self._session.get_graph(iri)
+        except NotFound:
+            return None
+        written = self._mapper.to_graph(self._objects[iri])
+        return version if _same_triples(graph_iri, stored, written) else None
+
+    async def _write(self, order: list[str]) -> None:
         written: dict[str, str] = {}
         async with self._session.transaction() as transaction:
             for iri in order:
@@ -349,6 +406,24 @@ class UnitOfWork:
                 else:
                     written[iri] = await transaction.add_graph(iri, triples)
         self._versions.update(written)
-        for iri in self._removed & self._objects.keys():  # stays in _removed: add stays refused
+        for iri in self._removed & self._objects.keys() & set(order):  # stays in _removed
             del self._objects[iri], self._versions[iri]
-        self._dirty.clear()
+        self._dirty.difference_update(order)
+
+
+def _same_triples(graph_iri: URIRef, stored: Graph, written: Graph) -> bool:
+    """Whether ``stored`` holds what ``written`` says: the statements about the graph IRI that the
+    session adds are left out, and the skolem IRIs of the graph read as blank nodes."""
+    skolem = f"{graph_iri}{GENID}"
+
+    def blank(term: Node) -> Node:
+        return BNode(str(term)) if isinstance(term, URIRef) and term.startswith(skolem) else term
+
+    def comparable(graph: Graph) -> Graph:
+        copy = Graph()
+        for s, p, o in graph:
+            if s != graph_iri or p not in BOOKKEEPING_PREDICATES:
+                copy.add((blank(s), p, blank(o)))
+        return copy
+
+    return isomorphic(comparable(stored), comparable(written))

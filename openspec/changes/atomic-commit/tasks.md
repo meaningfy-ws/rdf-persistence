@@ -93,7 +93,7 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
 
 ## 2. The size limit and batch mode
 
-- [ ] 2.1 `max_roots`, `CommitTooLarge`, `commit(batches=True)` (PD-8, PD-9), test first in
+- [x] 2.1 `max_roots`, `CommitTooLarge`, `commit(batches=True)` (PD-8, PD-9), test first in
   `tests/unit/services/test_mapper_unit_of_work.py`. Gates: `make test-changed`,
   `make check-quality`, `make clean-code`.
 
