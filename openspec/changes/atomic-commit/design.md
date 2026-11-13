@@ -146,7 +146,11 @@ required); any change to listings, loads, the sweeps' logic or the HTTP routes.
   atomicity; the conformance case makes the **second operation fail at run time**:
   `INSERT DATA {…} ; CREATE GRAPH <g>` with `<g>` already existing (not `SILENT`). If Fuseki does
   not fail that operation, the case uses another run-time failure found during task 1.4 and
-  records it here.
+  records it here. **Found (task 1.4, 2026-11-13):** Fuseki accepts `CREATE GRAPH` on an existing
+  non-empty graph (a no-op, against SPARQL 1.1 Update), and rdflib's `DROP`/`CLEAR`/`ADD`/`MOVE`/
+  `COPY` of a missing graph succeed too; so the case is `INSERT DATA {…} ; LOAD
+  <file:///nonexistent/none.ttl>`, which both stores fail whole. Fuseki answers 500
+  (`StoreUnavailable`), the fake `BadQuery`; the case accepts either and asserts nothing applied.
 - **PD-16** (DEC-6, from the collaboration PLAN): the collaboration EPIC extends the transaction
   with internal pieces, added by that EPIC, not this one (its PD-6, PD-8, PD-15, PD-19):
   `_require_present` (the target still has a graph), `_require_match` (a rule member still

@@ -68,7 +68,7 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
 | TC-27b | uow gets A, `add(A)`, `remove(A)`, commit | A removed; `add(A)` after that raises `ValueError` |
 | TC-28 | existing `test_a_commit_writes_only_what_was_added_and_only_once` | still green: one update request per commit now, so it asserts one request |
 
-- [ ] 1.4 On Fuseki: `tests/integration/store/test_transaction.py`, and the store conformance case
+- [x] 1.4 On Fuseki: `tests/integration/store/test_transaction.py`, and the store conformance case
   of RISK-1 in `rdf_persistence/testkit/store_conformance.py` (an update request whose second
   operation fails at run time, `CREATE GRAPH` on an existing graph, leaves the first unapplied, PD-13), run against the fake and Fuseki. Gate:
   `make test-containers TEST_PATH="tests/integration/store/test_transaction.py tests/integration/store/test_mapper.py tests/integration/store/test_store_conformance.py"`
