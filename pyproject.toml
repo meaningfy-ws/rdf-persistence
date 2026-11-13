@@ -3,8 +3,7 @@
 # Every TOOL is configured in its own dedicated root file:
 #   ruff.toml · mypy.ini · pytest.ini · .coveragerc · .importlinter
 #   .pre-commit-config.yaml · sonar-project.properties
-# The single source of truth for the version is the root VERSION file; keep the
-# `version` field below in sync.
+# The version lives here alone; release-please bumps it (never edit it by hand).
 
 [project]
 name = "rdf-persistence"

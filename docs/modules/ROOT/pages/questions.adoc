@@ -122,6 +122,11 @@ xref:develop/testing.adoc#slow[Slow tests].
 adapters or containers (about 3.5 minutes, needs Docker). See
 xref:develop/index.adoc#how-long-the-checks-take[How long the checks take].
 
+*How is a release cut?*::
+release-please proposes it as a PR into `develop` from the Conventional Commits; you move the
+changelog entries under the new version, merge the release PR, and fast-forward `main` to the tag
+by hand. See xref:develop/index.adoc#release[Cutting a release].
+
 *How do agents work on this repository?*::
 By skillery's delivery method (the `epic-delivery` skill): a shaping session that ends in EPICs,
 then one epic session per EPIC, where the lead runs a small team through a loop that scales with

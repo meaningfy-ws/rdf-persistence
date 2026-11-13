@@ -114,6 +114,9 @@ Every PD is the **leader's choice (2026-11-12), the developer may overrule** it 
   matrix "push refused"); the `uv.lock` fallback is a follow-up `chore: uv lock` PR after the
   release, not part of the CHANGELOG PR (Error matrix); Context corrected (`ci.yaml` also runs on
   push to `develop`) and RISK-1 shrunk; the `main` job and its `needs` are gone from task 1.2.
+- **PD-13** (build, 2026-11-13; lead's choice): the `build` job checks out `ref: <tag>`, not the
+  pushed commit, so a push to `develop` while the release run is queued can never build the wrong
+  commit; `TAG` and `VERSION` are job-level `env`. Found by the builder of task 1.2.
 
 ## Algorithm / approach
 

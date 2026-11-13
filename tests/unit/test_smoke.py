@@ -7,6 +7,8 @@ the import assertion — it is the cheapest guard against a broken package layou
 """
 
 import importlib
+import tomllib
+from pathlib import Path
 
 
 def test_package_imports() -> None:
@@ -21,3 +23,12 @@ def test_package_exposes_version() -> None:
     version = getattr(module, "__version__", None)
     assert isinstance(version, str)
     assert version
+
+
+def test_version_matches_pyproject() -> None:
+    """``__version__`` is the ``pyproject.toml`` version, the one file release-please bumps (TC-01)."""
+    pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
+    declared = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
+    module = importlib.import_module("rdf_persistence")
+    assert module.__version__ == declared
+    assert declared

@@ -198,6 +198,46 @@ f2531a1 |
 |`make check-generated` |– |≈ 10 s |2026-11-06, f2531a1 |It regenerates both projects first.
 |===
 
+[#release]
+== Cutting a release
+
+Releases are proposed by release-please from the Conventional Commits on `develop`; a person
+reviews and merges them. Nobody edits the version by hand: it lives in `pyproject.toml` alone, and
+`rdf_persistence.__version__` reads it from the installed package.
+
+. After a `feat`, `fix`, `perf` or `revert` commit (or any commit marked breaking) lands on
+  `develop`, the `release` workflow opens or updates one PR, "chore(develop): release X.Y.Z". Its
+  body holds the release notes. Commits of other types alone open no PR.
+. Before 1.0.0 a breaking change and a `feat` bump the MINOR, and a `fix` or `perf` bumps the PATCH.
+  To declare 1.0.0, add a `Release-As: 1.0.0` footer to a commit on `develop`; the bump rule never
+  does it.
+. Open a PR into `develop`, `docs(changelog): release X.Y.Z`, that renames `[Unreleased]` in
+  `CHANGELOG.md` to `[X.Y.Z] - YYYY-MM-DD`, adds an empty `[Unreleased]` above it, and updates the
+  two compare links at the foot. Do not commit on release-please's own branch: it rebuilds that
+  branch on every push to `develop`. Merge it; the release PR refreshes.
+. Review the release PR (the version and the notes against the CHANGELOG) and merge it. The PR
+  gets no CI run of its own, because a PR made with the workflow token starts no workflow;
+  `ci.yaml` runs on the merge commit.
+. The merge tags `vX.Y.Z` and creates the GitHub Release. The `build` job then builds the wheel
+  and sdist with `uv build`, checks that the wheel carries `X.Y.Z` and imports in a clean
+  environment, and attaches both to the Release.
+. Once `build` is green, fast-forward `main` to the release, by hand:
++
+[source,bash]
+----
+git fetch origin --tags && git push origin "vX.Y.Z^{commit}:refs/heads/main"
+----
++
+Never add `--force`. If git refuses, `main` holds a commit that is not in the release: find out who
+moved it before doing anything else. If GitHub refuses for a missing `workflows` permission or a
+branch rule, push with a credential that may update workflow files, or ask the developer to relax
+the rule.
+. If the release PR left the root version in `uv.lock` unchanged, open a `chore: uv lock` PR into
+  `develop`. A stale lock is only noise: CI runs `uv sync` without `--locked`.
+
+A failed `build` is fixed forward with a new PATCH release; never move or re-create a tag. There is
+no PyPI yet: consumers install the `develop` branch, or pin a release with `@vX.Y.Z`.
+
 == Before a PR
 
 * `make check-all` passes. `make test-containers` passes as well if you touched adapters or
