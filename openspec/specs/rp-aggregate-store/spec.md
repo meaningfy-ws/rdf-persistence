@@ -217,7 +217,9 @@ operations entirely or not at all; the store conformance suite SHALL prove it on
 A unit of work SHALL remove a root it read, in the same atomic commit as its other changes. It
 SHALL return, through `version(iri)`, the version token of a root it read or committed: the token
 read, and after a commit the new one. Asking for a root it has neither read nor committed SHALL
-raise a lookup error naming it.
+raise a lookup error naming it. It SHALL take a root out of its pending changes through
+`discard(iri)`, so the next commit neither writes nor removes that root: a new root is forgotten,
+a root it read stays held at the version read; a root it does not hold SHALL raise a lookup error.
 
 #### Scenario: record the version that was used
 - **GIVEN** a stored book
@@ -233,6 +235,12 @@ raise a lookup error naming it.
 - **GIVEN** a unit of work that read books A and B, changed A and removed B
 - **WHEN** it commits and A had changed meanwhile
 - **THEN** a conflict names A, and B is still stored
+
+#### Scenario: leave the clashing root out and commit the rest
+- **GIVEN** a unit of work adding three new books, one of which already exists with other content
+- **WHEN** its batch-mode commit raises a conflict, it discards the roots the conflict lists, and
+  commits again
+- **THEN** the other two books are stored and the existing book is unchanged
 
 ### Requirement: A commit has a size limit and an explicit batch mode
 

@@ -172,12 +172,11 @@ Read it as "N of M batches committed before it". A failing batch writes nothing 
 |A fresh run |A new unit of work that adds all 600 books again. Before each batch it reads every root it is to add; one that is already stored exactly as you would write it counts as committed and is skipped.
 |===
 
-Use the first when the process is still alive and the cause lies outside the unit of work: a store
-outage (it raises `StoreUnavailable`; catch it as in
-xref:howto/adopt.adoc#transaction-batches[Save more than 500 aggregates]), or the clashing stored
-book corrected or removed in the store. A unit of work cannot drop a pending add, so to leave a row
-out, start a fresh run without it. Use the fresh run too after a crash, when the old unit of work
-is gone.
+Use the first when the process is still alive: after a store outage (it raises `StoreUnavailable`;
+catch it as in xref:howto/adopt.adoc#transaction-batches[Save more than 500 aggregates]), or after
+a conflict, once the clashing stored book is corrected in the store or left out of the commit with
+`work.discard(iri)`. `discard` takes a root out of the pending changes: the next commit neither
+writes nor removes it. Use the fresh run after a crash, when the old unit of work is gone.
 
 === When a fresh run converges
 

@@ -322,6 +322,23 @@ class UnitOfWork:
         self._dirty.discard(iri)
         self._removed.add(iri)
 
+    def discard(self, iri: str) -> None:
+        """Take the root ``iri`` out of the pending changes: the next ``commit`` neither writes nor
+        removes it. A new root is forgotten; a root read here stays held at the version read.
+
+        Use it after a ``Conflict`` to leave the roots in ``Conflict.iris`` out and commit the rest.
+
+        Raises:
+            LookupError: The root is not held by this unit of work.
+        """
+        key = str(iri)
+        if key not in self._objects:
+            raise LookupError(key)
+        self._dirty.discard(key)
+        self._removed.discard(key)
+        if key not in self._versions:
+            del self._objects[key]
+
     def version(self, iri: str) -> str:
         """The version token of the stored root ``iri``, as read or as last committed here.
 

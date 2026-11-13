@@ -624,3 +624,65 @@ async def test_a_failing_batch_extends_only_the_first_argument_of_a_toolkit_erro
     assert raised.value.args[1:] == (7,), "the other arguments are kept"
     assert "gone" in str(raised.value.args[0]), "the first argument is extended"
     assert "0 of 1 batches committed" in str(raised.value.args[0]), "with the count"
+
+
+# -- discard: take a root out of the pending changes ---------------------------------------------
+
+
+@pytest.fixture
+async def stored_book(session) -> str:
+    seeding = unit(session)
+    seeding.add(steady_dune(book_iri(114)))
+    await seeding.commit()
+    return book_iri(114)
+
+
+async def test_discarding_the_root_a_batch_refused_lets_the_rest_commit(session, store):
+    clash = book_iri(110)
+    theirs = unit(session)
+    theirs.add(steady_dune(clash).model_copy(update={"label": "Theirs"}))
+    await theirs.commit()
+    work = limited(session, 2)
+    for n in (110, 111, 112):
+        work.add(steady_dune(book_iri(n)))
+    with pytest.raises(Conflict) as refused:
+        await work.commit(batches=True)
+    for iri in refused.value.iris:
+        work.discard(iri)
+    await work.commit(batches=True)
+    assert (await unit(session).get(Book, clash)).label == "Theirs", "the clashing book is theirs"
+    for n in (111, 112):
+        label = (await unit(session).get(Book, book_iri(n))).label
+        assert label == "Dune", "the other books are stored"
+    with pytest.raises(LookupError):
+        work.version(clash)
+
+
+async def test_a_discarded_change_of_a_read_root_is_not_written(session, store, stored_book):
+    work = unit(session)
+    book = await work.get(Book, stored_book)
+    read_at = work.version(stored_book)
+    book.label = "Changed"
+    work.add(book)
+    work.discard(stored_book)
+    sent = len(store.sent("update"))
+    await work.commit()
+    assert len(store.sent("update")) == sent, "nothing is sent"
+    assert work.version(stored_book) == read_at, "the root is still held at the version read"
+
+
+async def test_a_discarded_removal_keeps_the_root_and_it_can_be_added_again(
+    session, store, stored_book
+):
+    work = unit(session)
+    book = await work.get(Book, stored_book)
+    work.remove(book)
+    work.discard(stored_book)
+    work.add(book)
+    await work.commit()
+    assert (await unit(session).get(Book, stored_book)).id == stored_book, "the book is stored"
+
+
+async def test_discarding_a_root_this_unit_of_work_does_not_hold_is_a_lookup_error(session):
+    with pytest.raises(LookupError, match="books"):
+        unit(session).discard(book_iri(113))

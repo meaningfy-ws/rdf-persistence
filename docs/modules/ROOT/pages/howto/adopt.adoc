@@ -730,6 +730,9 @@ What to expect:
   rest. A root it did not read raises `ValueError`, because its version is needed. A new root
   added here and then removed raises `ValueError`. A root read, added and then removed is
   removed; `add` after `remove` raises `ValueError`.
+* *`UnitOfWork.discard(iri)`* takes a root out of the pending changes: the next commit neither
+  writes nor removes it. A new root is forgotten; a root read here stays held at the version read.
+  A root the unit of work does not hold raises `LookupError`.
 * *The same root twice* in one transaction raises `ValueError` at the second call, before anything
   is sent. An exception inside the `async with` block sends nothing; an empty transaction sends
   nothing.
@@ -830,10 +833,10 @@ What to expect:
 * *Replaces and removes are not idempotent.* After an interruption, read the roots again and build
   the changes from what is stored now.
 
-*Retry in the same unit of work.* The process is still alive and the cause lies outside the unit
-of work: a store outage, or the clashing stored book corrected or removed in the store. A unit of
-work cannot drop a pending add. Deal with the cause, then call `commit(batches=True)` again: it
-sends the roots not yet committed. The batches after the failed one were never sent. Like a fresh
+*Retry in the same unit of work.* The process is still alive. After a store outage, wait and
+commit again. After a conflict, leave the clashing roots out with `work.discard(iri)` (the next
+commit neither writes nor removes a discarded root), or correct the stored book in the store.
+Then call `commit(batches=True)` again: it sends the roots not yet committed. The batches after the failed one were never sent. Like a fresh
 run, it skips an added root already stored exactly as written, so a batch the store applied before
 its reply was lost does no harm.
 
@@ -845,7 +848,8 @@ try:
     await work.commit(batches=True)
 except Conflict as conflict:
     print(conflict)                      # … already exists; 1 of 3 batches committed before it
-    # correct or remove the clashing stored book in the store, then:
+    for iri in conflict.iris:            # leave the clashing books out
+        work.discard(iri)
     await work.commit(batches=True)      # sends the roots not yet committed
 except StoreUnavailable as outage:       # the store did not answer
     print(outage)                        # … 1 of 3 batches committed before it
@@ -853,8 +857,8 @@ except StoreUnavailable as outage:       # the store did not answer
     await work.commit(batches=True)
 ----
 
-*Retry with a fresh run.* The process crashed, you start the import again, or a source row must be
-left out. Build a new unit of work from the same source (without that row) and commit in batches.
+*Retry with a fresh run.* The process crashed, or you start the import again. Build a new unit of
+work from the same source and commit in batches.
 Roots already stored exactly as you would write them are skipped, so a second run after a full
 success sends no update at all. The book's own IRI must be the same on every run. The default
 policy wants a UUID as the last segment (step 8), so derive the UUID from the source key instead
