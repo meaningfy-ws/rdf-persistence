@@ -8,7 +8,7 @@
 
 | ID | Input | Expected |
 |---|---|---|
-| TC-01 | technical module, `Terms.items` → `Term`, not owned | one REFERENCE problem; text contains `owned: true`, `Term inline` and `point the slot at a root, Principal or Activity` |
+| TC-01 | technical module, `Terms.items` → `Term`, not owned | one REFERENCE problem; text contains `owned: true`, `Term inline`, `make Term an aggregate root` and `point the slot at a root, Principal or Activity` |
 | TC-02 | same with `annotations: {owned: true}` | no REFERENCE problem |
 | TC-03 | existing REFERENCE tests | still green (old text is a prefix) |
 

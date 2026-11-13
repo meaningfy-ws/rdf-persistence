@@ -299,6 +299,7 @@ def add_terms_module(toy: Path, extra: str) -> Path:
     (toy / "terms.yaml").write_text(TERMS_MODULE.format(extra=extra), encoding="utf-8")
     root = toy / ROOT_SCHEMA
     text = root.read_text(encoding="utf-8")
+    assert "  - library_access\n" in text, "the toy root schema no longer imports library_access"
     root.write_text(
         text.replace("  - library_access\n", "  - library_access\n  - terms\n", 1), encoding="utf-8"
     )
@@ -308,7 +309,12 @@ def add_terms_module(toy: Path, extra: str) -> Path:
 def test_the_reference_problem_names_its_fixes(toy_copy: Path) -> None:
     found = [p for p in problems_of(add_terms_module(toy_copy, "")) if "[reference]" in p]
     assert len(found) == 1, f"one not-owned slot, one reference problem: {found}"
-    for fix in ("owned: true", "Term inline", "point the slot at a root, Principal or Activity"):
+    for fix in (
+        "owned: true",
+        "Term inline",
+        "make Term an aggregate root",
+        "point the slot at a root, Principal or Activity",
+    ):
         assert fix in found[0], f"{fix!r} is not named in {found[0]}"
 
 
