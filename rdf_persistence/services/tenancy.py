@@ -365,7 +365,7 @@ class Tenancy:
         """
         record, version = await self.get(tenant)
         if version != if_version:
-            raise Conflict(f"{tenant} is not at version {if_version}")
+            raise Conflict(f"{tenant} was changed by someone else since it was read")
         record.label = label  # validates the label before anything is written
         record.description = RECORD_DESCRIPTION.format(label=label.rstrip("."))
         await self._relabel_root(tenant, label, principal)

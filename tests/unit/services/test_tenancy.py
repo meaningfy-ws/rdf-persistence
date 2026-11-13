@@ -424,8 +424,9 @@ async def test_rename_with_a_stale_version_conflicts_and_changes_nothing(tenancy
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
     _, version = await tenancy.get(summary.id)
     await tenancy.rename(summary.id, "Bruges", version, BEN)
-    with pytest.raises(Conflict):
+    with pytest.raises(Conflict, match="was changed by someone else") as refused:
         await tenancy.rename(summary.id, "Antwerp", version, BEN)
+    assert version not in str(refused.value), "the message carries no version token"
     assert (await tenancy.get(summary.id))[0].label == "Bruges", "the stale rename left the label"
 
 

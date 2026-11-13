@@ -271,6 +271,7 @@ def test_an_unknown_base_is_a_git_error_that_names_it(feature_repo):
 def _run_main(monkeypatch, capsys, listing):
     monkeypatch.chdir(REPO)
     monkeypatch.delenv("PYTEST_N", raising=False)
+    monkeypatch.delenv("BASE", raising=False)  # make test-changed BASE=<branch> exports it
     monkeypatch.setattr(changed, "_git", lambda *args: f"{REPO}\n")
 
     def listed(base):
