@@ -85,5 +85,5 @@ fakes (`testkit/fakes.py`); integration tests use the Fuseki and Garage containe
 
 ## 5. Close
 
-- [ ] 5.1 `make check-all`, `make test-containers`; `openspec validate tenant-dump-restore --strict`;
+- [x] 5.1 `make check-all`, `make test-containers`; `openspec validate tenant-dump-restore --strict`;
   PR into `develop`; merge on green CI; archive the change.
