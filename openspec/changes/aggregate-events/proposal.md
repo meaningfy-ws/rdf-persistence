@@ -6,6 +6,14 @@
 
 > Candidate EPIC, shaped 2026-11-06 from the v1 future list. Not planned: the PLAN (design.md, tasks.md) waits for the developer's answers in inputs/seed.md.
 >
+> **Re-shaped 2026-11-13 (logged).** The developer confirmed the need and widened it: "support event
+> driven applications with design patterns and architecture described in the cosmic python book
+> ... adopt popular libraries/frameworks if necessary". The in-process layer (domain events,
+> commands, handlers, the message bus, the unit of work's events) moved to its own change,
+> `message-bus`, which this EPIC now depends on. This EPIC keeps what crosses the process boundary,
+> the book's chapter 11 plus the outbox it recommends: DEC-5 to DEC-8 below; the Solution outline,
+> No-gos and What Changes are read with them, and DEC-5 to DEC-8 win where they differ.
+>
 > **Backlog position (2026-11-12):** after `atomic-commit` (hard: the outbox insert is one more operation of its transaction, DEC-6 there) and `collaboration-and-reference-collections` (whose No-gos defer notifications here). The capability descriptor of `second-store` must state that one update request is atomic; that is all this EPIC needs from it, so it no longer waits for the whole of `second-store`. Q-0 (a named need) is now answered by the consumer: notify on workflow transitions and comments (#80, #81). See `openspec/changes/README.md`.
 
 **Golden-thread parent:** capability `rp-aggregate-store` (the commit) and the deferred building
@@ -43,6 +51,22 @@ tenant over server-sent events, seeing only events about what it may read.
   `rp-access`); a subscriber sees only what that check lets it read.
 - **DEC-4**: Ports in `services`, implementations in `adapters`; adapters are tested against real
   containers (PD-1; archived DEC-4).
+- **DEC-5** (2026-11-13): the events are `message-bus`'s LinkML messages: the toolkit's change
+  events and the domain events a unit of work collected. The outbox stores both, as one more
+  operation of the commit's transaction (`atomic-commit`), so an event exists if and only if its
+  change does.
+- **DEC-6** (leader's choice, 2026-11-13, the developer may overrule): the broker is reached through
+  **FastStream** behind the `EventBus` port: one library for Redis Streams, RabbitMQ, NATS and
+  Kafka, pydantic messages (which the generated models are), and an AsyncAPI document generated
+  from the subscribers. **Redis Streams first** (the book's choice, one light container); RabbitMQ
+  is a configuration of the same adapter, proved in the conformance suite if time allows. The
+  PLAN's first task is a spike on FastStream with the generated models. Rejected: hand-rolled
+  `redis-py` as in the book (every broker would be new code); Celery or Dramatiq (task queues, not
+  event streams).
+- **DEC-7** (2026-11-13): incoming external events are handed to the message bus, so a handler does
+  not care whether its event came from this process or another (the book's chapter 11). Consumers
+  are idempotent by event id: the relay delivers at least once.
+- **DEC-8** (2026-11-13): commands stay in process; only events cross the broker.
 
 ## Rabbit-holes
 
@@ -57,7 +81,8 @@ tenant over server-sent events, seeing only events about what it may read.
 ## No-gos
 
 - Event sourcing: the graph stays the state; events are notifications.
-- Sagas, process managers or commands sent through the bus.
+- Sagas, process managers, or commands sent through the broker (commands stay in process, DEC-8).
+- The in-process bus, handlers and the unit of work's events (`message-bus`).
 - Replaying history from before this EPIC.
 - WebSockets or a push service other than server-sent events.
 - Any consumer term, model or code.

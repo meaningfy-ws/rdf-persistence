@@ -37,11 +37,12 @@ after an attack; until then it is the planner's own score.
 | 6 | `tenant-dump-restore` | MEDIUM | none | yes | none | the dump format (manifest with schema version), restore into a new tenant |
 | 7 | `app-level-data` | MEDIUM | none | no | none | the application database and its aggregates |
 | 8 | `tenant-stores` | MEDIUM | none | no | 6 (copies are dump + restore) | several wired stores; the access record names a tenant's store |
-| 9 | `aggregate-events` | LARGE | none | no | 3 (outbox = one more transaction operation) | outbox, relay, `EventBus`, SSE, notifications |
-| 10 | `schema-migrations` | LARGE | none | no | 6 (reads the dump's schema version) | schema version per tenant, automatic migrations |
-| 11 | `second-store` | MEDIUM | none | no | 3, 5 (the descriptor states their atomicity need) | another store product, the capability descriptor |
-| 12 | `typescript-client` | LARGE | none | no | 2 | the generated client |
-| 13 | `fine-grained-access` | VERY LARGE (staged) | none | no | 9 | OpenFGA, property- and triple-level access |
+| 9 | `message-bus` | MEDIUM | none | no | 3 (events leave only after the all-or-nothing commit) | `Event`/`Command` models, `MessageBus`, handlers, `bootstrap`, the unit of work's events (in process) |
+| 10 | `aggregate-events` | LARGE | none | no | 3, 9 (outbox = one more transaction operation; stores 9's events) | outbox, relay, `EventBus` port on FastStream (Redis Streams first), incoming events into the bus, SSE |
+| 11 | `schema-migrations` | LARGE | none | no | 6 (reads the dump's schema version) | schema version per tenant, automatic migrations |
+| 12 | `second-store` | MEDIUM | none | no | 3, 5 (the descriptor states their atomicity need) | GraphDB (confirmed), the capability descriptor |
+| 13 | `typescript-client` | LARGE | none | no | 2 | the generated client |
+| 14 | `fine-grained-access` | VERY LARGE (staged) | none | no | 10 | OpenFGA, property- and triple-level access |
 | — | `graphql-read-api` | LARGE | none | no | — | deferred by the developer (2026-11-06) |
 
 ### Why this order
@@ -61,7 +62,9 @@ after an attack; until then it is the planner's own score.
 4. **Unique keys** after it: no consumer is waiting for them, and they reuse the transaction.
 5. **Tenant governance** (dump/restore, application data, several stores): the developer's own need
    of 2026-11-10, in the order that lets each reuse the one before.
-6. **Events, then migrations.** Events now have a named need (notify on transitions and comments);
+6. **Message bus, events, then migrations.** The developer confirmed the events need on
+   2026-11-13 and widened it to event-driven applications as in Cosmic Python, so the in-process
+   layer (`message-bus`) comes first and the broker layer (`aggregate-events`) builds on it;
    migrations become pressing once consumers keep data across schema changes. Dump/restore's
    manifest records the schema version that migrations will read.
 7. **`second-store`, the client, fine-grained access** last: no consumer need yet.
@@ -82,13 +85,14 @@ review items are decisions the lead took on the developer's behalf and the devel
 | `collaboration-and-reference-collections` | 8 → 8.5 → fixed | ready after `atomic-commit` | a `Collaboration` service opened from the kit (not `session.*` methods); comments and transition records are toolkit-written aggregates no generic route serves; replies target the aggregate; undefined transition → `Conflict`, state changed by a plain write → `Forbidden`; deleting a resource deletes its comments and records |
 
 Shaped, not planned (PLAN at the start of their epic session): `app-level-data`, `tenant-stores`,
-`second-store`, `aggregate-events`, `schema-migrations`, `typescript-client`,
+`second-store`, `message-bus`, `aggregate-events`, `schema-migrations`, `typescript-client`,
 `fine-grained-access`. Their open questions are answered as leader's choices in each proposal and
-`inputs/seed.md`. Three need the developer before planning:
+`inputs/seed.md`. The three that needed the developer were answered on 2026-11-13:
 
-- `tenant-dump-restore` / `tenant-stores`: should a backup ever be restorable under its original
-  tenant IRI, or across deployments with another IRI policy? (Recommended: not now.)
-- `second-store`: GraphDB Free (not open source) as the second store? (Recommended: yes if its
-  licence allows CI use, else Oxigraph with one tenant per server.)
-- `aggregate-events`: confirm the named need (notify on workflow transitions and comments) before
-  it is planned.
+- Restore under the original tenant IRI or across IRI policies: not now (`tenant-dump-restore`
+  DEC-1 confirmed).
+- GraphDB Free as the second store: yes (`second-store` DEC-5 confirmed).
+- Events: yes, and more broadly event-driven applications as in Cosmic Python, adopting libraries
+  where needed. `aggregate-events` was split: `message-bus` (in process, hand-rolled as in the
+  book) and `aggregate-events` (outbox, FastStream with Redis Streams first, SSE). Review the
+  library choices: `message-bus` DEC-4, `aggregate-events` DEC-6.

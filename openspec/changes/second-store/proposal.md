@@ -53,8 +53,9 @@ install_service(app, ..., store=store)           # refuses to start if a require
 - **DEC-3**: The capability descriptor is a LinkML class (`StoreCapabilities`), generated and read
   through its model (D-13; PD-24; AGENTS.md).
 - **DEC-4**: Fuseki stays supported and stays the default in the toy library's tests.
-- **DEC-5** (Q-0; leader's choice, 2026-11-12, the developer may overrule): of the developer's three
-  candidates, **GraphDB first**. Its repositories map one to one onto the toolkit's databases
+- **DEC-5** (Q-0; leader's choice, 2026-11-12, **confirmed by the developer 2026-11-13**: "second
+  store yes"): of the developer's three candidates, **GraphDB first**, GraphDB Free accepted although
+  it is not open source. Its repositories map one to one onto the toolkit's databases
   (created and deleted over its REST API), it implements SPARQL 1.1 Update and the Graph Store
   protocol (RDF4J), and runs as a server in a container. Oxigraph and Tentris serve one dataset per
   server, so they would need a graph-prefix tenancy (DEC-6, rejected) or a process per tenant. The

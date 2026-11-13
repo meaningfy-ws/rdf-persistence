@@ -51,7 +51,8 @@ with open("library.rpdump", "rb") as src:
 
 ## Key decisions
 
-- **DEC-1** (Q-1; leader's choice, 2026-11-12, the developer may overrule): restore always creates a
+- **DEC-1** (Q-1; leader's choice, 2026-11-12, **confirmed by the developer 2026-11-13**: "restore
+  target as you recommend"; restoring under the original IRI or across IRI policies is not now): restore always creates a
   **new** tenant; it never writes over an existing one. To replace a tenant, delete it and restore.
   Reason: creation already has a crash-safe order (record last, the start-up sweep drops what no
   record names), and no merge semantics are needed. Rejected: restore over an existing tenant (needs
