@@ -43,7 +43,7 @@ fakes (`testkit/fakes.py`); integration tests use the Fuseki and Garage containe
 
 ## 3. Dump and restore
 
-- [ ] 3.1 Test first, `tests/unit/services/test_tenant_dump.py` (fakes, `make_world` of
+- [x] 3.1 Test first, `tests/unit/services/test_tenant_dump.py` (fakes, `make_world` of
   `test_tenant_sweep.py` for a created tenant); then `services/tenant_dump.py` (PD-3, PD-5, PD-7),
   `Tenancy.restore`, `_new_record` and `_free_tenant` renamed `free_tenant` (PD-6),
   `ServiceKit.dump_tenant` / `restore_tenant` (PD-8) and `test_public_api.py`. Gates: `make test-fast`, `make check-quality`, `make clean-code`.

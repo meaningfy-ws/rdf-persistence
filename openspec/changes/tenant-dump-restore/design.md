@@ -107,6 +107,16 @@ session do (`create` only shares `_new_record` and calls `free_tenant` by its pu
   `ServiceKit.restore_tenant(src: BinaryIO, creator: str) -> TenantSummary`, docstrings like
   `sweep_tenant`'s; both exported from the public API (`test_public_api.py`).
 
+- **PD-10** (as built, task 3.1; the design was silent): `Tenancy.vet_restored_root(tenant, graph,
+  restorer) -> label` decodes and validates the root, because the mapper, root class and validators
+  are `Tenancy`'s; `toolkit_version` comes from `importlib.metadata` (`"unknown"` when not installed),
+  since `services` may not import the top-level package; the manifest is also refused when
+  `tenant_id_of(source_tenant) != source_tenant_id` (an empty or odd id would make `rewrite` match
+  everywhere); the cleanup ignores a `NotFound` drop (never created or already gone) and catches
+  `Exception`, not `BaseException`, so a cancelled restore leaves its orphans to the start-up sweep;
+  `dump` takes a keyword-only `clock`; the public API exports `TenantDump` (the kit methods ride on
+  `ServiceKit`).
+
 ## Algorithm / approach
 
 ```python
