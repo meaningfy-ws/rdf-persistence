@@ -155,7 +155,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "cce085251f9f92569688519e3961a2ae348c174255c3b2df494eaa722027aee8"
+      "sha256": "a77b7553df20d8ef5f7b6e7c393b09145ad86f80f556fcb9adb1e7be2a197d16"
     },
     {
       "path": "rdf_persistence/model/rp_files.yaml",
@@ -209,7 +209,7 @@
     },
     {
       "path": "generated/context.jsonld",
-      "sha256": "52cca6a6e5f6789681e02ee2cdb19b6fffbb03503443f0943547c8bff5d18611"
+      "sha256": "d70b65bc774aa5528ee017ef4b681100c0707d03fb277dc5ccb1d12ce421df3d"
     },
     {
       "path": "generated/diagrams/books.mmd",
@@ -229,7 +229,7 @@
     },
     {
       "path": "generated/library.py",
-      "sha256": "35c276aaafd9577ccc535ff1c803eff98612571314dcb5583b400775586a63f7"
+      "sha256": "966bbdc260efd5bde451176d0c6e810ad8439c1e1b32011a734f417dca916a2f"
     },
     {
       "path": "generated/library_access.py",
@@ -241,7 +241,7 @@
     },
     {
       "path": "generated/openapi-components.json",
-      "sha256": "5eb4cca2a6b9efa11d06d4df12fe7289d0356898b17d03e184b11201921289ec"
+      "sha256": "c04f1097e310f4058cf50608effcc8e03852e59bf3c386c6357519d4be31a953"
     },
     {
       "path": "generated/scans.py",
@@ -249,7 +249,7 @@
     },
     {
       "path": "generated/shapes.ttl",
-      "sha256": "15cd15e33b803a157aeff64409e175a28e1303e08d8b4690b731ebd5c3374b44"
+      "sha256": "41a66056ca43ec4316194f1a17288b31ef83423bc9b236ebb754403554198211"
     },
     {
       "path": "web/src/domain/generated/books.ts",
@@ -273,7 +273,7 @@
     },
     {
       "path": "web/src/domain/generated/rp_core.ts",
-      "sha256": "3d42cd1a04bc562188b69b2166115b90a18ab43ae4f32172bc13191d703f6397"
+      "sha256": "8311c8413d2904631031c6983acb3b732517d6175760ea3d500eadb8c5f6fb1f"
     },
     {
       "path": "web/src/domain/generated/rp_files.ts",

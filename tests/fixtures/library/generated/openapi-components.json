@@ -113,6 +113,29 @@
       "title": "Chapter",
       "type": "object"
     },
+    "CommitMarker": {
+      "additionalProperties": false,
+      "description": "The registry marker of one transaction's commit: a fresh IRI per transaction, written first in the single request, so the writes that follow apply only if it was written.",
+      "properties": {
+        "id": {
+          "description": "A fresh urn:uuid IRI, never shared by two transactions.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "started_at": {
+          "description": "The time a transaction started.",
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "started_at"
+      ],
+      "title": "CommitMarker",
+      "type": "object"
+    },
     "DatabaseKind": {
       "description": "The databases an aggregate can live in, the values of the database annotation.",
       "enum": [

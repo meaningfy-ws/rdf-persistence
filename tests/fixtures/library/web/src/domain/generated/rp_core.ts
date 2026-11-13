@@ -79,3 +79,11 @@ export interface PendingLoad {
   /** The time a graph was put to the store by a load. */
   loaded_at: string;
 }
+
+/** The registry marker of one transaction's commit: a fresh IRI per transaction, written first in the single request, so the writes that follow apply only if it was written. */
+export interface CommitMarker {
+  /** A fresh urn:uuid IRI, never shared by two transactions. */
+  id: string;
+  /** The time a transaction started. */
+  started_at: string;
+}

@@ -85,6 +85,23 @@ def fill(template: str, **terms: SparqlTerm) -> str:
     return Template(template).substitute(terms)
 
 
+def fragment(template: str, **terms: SparqlTerm) -> SparqlTerm:
+    """``fill`` for a piece of a larger text: the result is a ``SparqlTerm``, so ``join`` and ``fill`` take it."""
+    return SparqlTerm(fill(template, **terms))
+
+
+def join(parts: Iterable[SparqlTerm]) -> SparqlTerm:
+    """Join ``SparqlTerm``s, one space apart, into one: patterns, guards or a ``VALUES`` list.
+
+    Raises:
+        SparqlError: A part is not a ``SparqlTerm``.
+    """
+    items = list(parts)
+    if raw := [type(p).__name__ for p in items if not isinstance(p, SparqlTerm)]:
+        raise SparqlError(f"join() takes only SparqlTerm parts; got {raw}")
+    return SparqlTerm(" ".join(items))
+
+
 Triple = tuple[URIRef | BNode, URIRef, URIRef | Literal | BNode]
 
 

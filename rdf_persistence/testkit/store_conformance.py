@@ -14,13 +14,20 @@ from rdflib import BNode, Dataset, Graph, Literal, URIRef
 from rdflib.compare import graph_diff, isomorphic
 from rdflib.query import ResultRow
 
-from rdf_persistence.domain.exceptions import BadQuery, Conflict, DatabaseGone, NotFound
+from rdf_persistence.domain.exceptions import (
+    BadQuery,
+    Conflict,
+    DatabaseGone,
+    NotFound,
+    StoreUnavailable,
+)
 from rdf_persistence.domain.media import N_QUADS
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services.store import Store
 
 EX = "http://example.org/"
 A, B, P, G, OTHER = (URIRef(f"{EX}{n}") for n in ("a", "b", "p", "g", "other"))
+MISSING_FILE = URIRef("file:///nonexistent/none.ttl")
 ASK_TRIPLE = "ASK { GRAPH $graph { $s $p $o } }"
 INSERT = "INSERT DATA { GRAPH $graph { $s $p $o } }"
 GUARDED_BUMP = """
@@ -150,6 +157,19 @@ async def _dropped(store: Store, dataset: str) -> str:
     return name
 
 
+async def a_request_that_fails_at_run_time_applies_none_of_it(store: Store, dataset: str) -> None:
+    """One update request is one transaction (atomic-commit PD-13, RISK-1).
+
+    The request parses, so the failure comes from the second operation at run time: a ``LOAD`` of a
+    file that does not exist. Fuseki answers 500 (``StoreUnavailable``), the fake ``BadQuery``; the
+    case pins only that the request fails and that none of it is applied.
+    """
+    first = triple_text(INSERT, Literal("first"), graph=OTHER)
+    with pytest.raises((BadQuery, StoreUnavailable)):
+        await store.update(dataset, f"{first} ; {fill('LOAD $f', f=term(MISSING_FILE))}")
+    assert not await _holds(store, dataset, Literal("first"), graph=OTHER), "first op not applied"
+
+
 async def query_on_a_dropped_dataset_is_gone(store: Store, dataset: str) -> None:
     with pytest.raises(DatabaseGone):
         await store.query(await _dropped(store, dataset), "ASK {}")
@@ -224,6 +244,7 @@ CASES: tuple[Case, ...] = (
     malformed_update_is_bad_query,
     guarded_update_that_matches_changes_the_data,
     guarded_update_that_matches_nothing_changes_nothing,
+    a_request_that_fails_at_run_time_applies_none_of_it,
     query_on_a_dropped_dataset_is_gone,
     update_on_a_dropped_dataset_is_gone,
     put_graph_on_a_dropped_dataset_is_gone,

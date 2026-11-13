@@ -57,6 +57,7 @@
       "city": {
          "@id": "schema:addressLocality"
       },
+      "id": "@id",
       "contributor": {
          "@type": "@id",
          "@container": "@set",
@@ -94,7 +95,6 @@
          "@type": "@id",
          "@id": "rp:graph"
       },
-      "id": "@id",
       "isbn": {
          "@id": "bibo:isbn"
       },
@@ -189,6 +189,10 @@
          "@container": "@set",
          "@id": "rp:skippedBlob"
       },
+      "started_at": {
+         "@type": "xsd:dateTime",
+         "@id": "rp:startedAt"
+      },
       "state": {
          "@id": "rp:state",
          "@type": "@vocab",
@@ -235,6 +239,9 @@
       },
       "Chapter": {
          "@id": "bibo:Chapter"
+      },
+      "CommitMarker": {
+         "@id": "rp:CommitMarker"
       },
       "Described": {
          "@id": "rp:Described"

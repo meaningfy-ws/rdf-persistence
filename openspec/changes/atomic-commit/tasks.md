@@ -8,7 +8,7 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
 
 ## 1. The atomic transaction
 
-- [ ] 1.0 Issue #76 (PD-12), test first in `tests/unit/services/test_session_loaded_graphs.py`
+- [x] 1.0 Issue #76 (PD-12), test first in `tests/unit/services/test_session_loaded_graphs.py`
   or a new `tests/unit/services/test_session_tenant_root.py` (fake store). Gates:
   `make test-fast`, `make check-quality`, `make clean-code`. Commit with `Refs: atomic-commit
   DEC-7` and `Closes #76` in the PR.
@@ -18,11 +18,11 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
 | TC-00a | session opened with `URIRef(TENANT)`; `add_graph(TENANT_str, root_triples)` | stored in `T/meta`; no `Aggregate` entry for it |
 | TC-00b | session opened with `TENANT` as `str`; `get_graph(URIRef(TENANT))` after TC-00a's write | returns the root from `T/meta` |
 
-- [ ] 1.1 The marker in the metamodel: `CommitMarker` in `rdf_persistence/model/rp_core.yaml`
+- [x] 1.1 The marker in the metamodel: `CommitMarker` in `rdf_persistence/model/rp_core.yaml`
   (PD-1), `make generate`, `vocabulary.py` terms. Gates: `make test-fast`, `make check-quality`,
   `make clean-code`.
 
-- [ ] 1.2 `Session.transaction()` and `Transaction` (PD-2 to PD-7), test first in
+- [x] 1.2 `Session.transaction()` and `Transaction` (PD-2 to PD-7), test first in
   `tests/unit/services/test_session_transaction.py` (fake store); then the single-aggregate
   methods become one-change transactions (PD-5). The existing tests in
   `tests/unit/services/test_session*.py`, `test_tenancy*.py`, `test_aggregates*.py` stay green;
@@ -50,7 +50,7 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
 | TC-13 | `t.replace_graph(A_str,…)` then `t.remove(URIRef(A_str),…)` | `ValueError` at the second call (claim keyed on the graph) |
 | TC-14 | fake store: `INSERT DATA {…} ; CREATE GRAPH <existing>` | `BadQuery`; the insert not visible (PD-13) |
 
-- [ ] 1.3 `UnitOfWork` on the transaction (PD-8, without batches), test first in
+- [x] 1.3 `UnitOfWork` on the transaction (PD-8, without batches), test first in
   `tests/unit/services/test_mapper_unit_of_work.py`; update the class docstring (all or nothing).
   Gates: `make test-changed`, `make check-quality`, `make clean-code`.
 
@@ -68,9 +68,10 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
 | TC-27b | uow gets A, `add(A)`, `remove(A)`, commit | A removed; `add(A)` after that raises `ValueError` |
 | TC-28 | existing `test_a_commit_writes_only_what_was_added_and_only_once` | still green: one update request per commit now, so it asserts one request |
 
-- [ ] 1.4 On Fuseki: `tests/integration/store/test_transaction.py`, and the store conformance case
+- [x] 1.4 On Fuseki: `tests/integration/store/test_transaction.py`, and the store conformance case
   of RISK-1 in `rdf_persistence/testkit/store_conformance.py` (an update request whose second
-  operation fails at run time, `CREATE GRAPH` on an existing graph, leaves the first unapplied, PD-13), run against the fake and Fuseki. Gate:
+  operation fails at run time, `LOAD` of a missing file, leaves the first unapplied, PD-13
+  "Found"), run against the fake and Fuseki. Gate:
   `make test-containers TEST_PATH="tests/integration/store/test_transaction.py tests/integration/store/test_mapper.py tests/integration/store/test_store_conformance.py"`
   (adjust to the conformance runner's file name).
 
@@ -80,9 +81,9 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
 | IT-02 | TC-02 on Fuseki | as TC-02 |
 | IT-03 | TC-20 on Fuseki | as TC-20 |
 | IT-04 | 20 concurrent transactions each replacing A at `a1` plus adding its own new book (`asyncio.gather`) | exactly one succeeds; exactly one new book stored |
-| IT-05 | conformance: request `INSERT DATA {…} ; CREATE GRAPH <existing>` (PD-13) | `BadQuery`; the first insert not visible |
+| IT-05 | conformance: request `INSERT DATA {…} ; LOAD <file:///nonexistent/none.ttl>` (PD-13 "Found") | `BadQuery` or `StoreUnavailable`; the first insert not visible |
 
-- [ ] 1.5 Docs: `architecture/data-flows.adoc` (the commit flow: one request, the marker; the
+- [x] 1.5 Docs: `architecture/data-flows.adoc` (the commit flow: one request, the marker; the
   `rp:CommitMarker` term), `howto/adopt.adoc` (multi-aggregate commits, `Conflict.iris`,
   `version`, `remove`; the behaviour change), `questions.adoc` ("Can I save several aggregates at
   once?"). Gates: `make check-docs`, `make check-diagrams`.

@@ -42,10 +42,28 @@ def test_the_bookkeeping_predicates_are_exactly_the_bookkeeping_slots_of_the_sch
         ("kind", vocabulary.REGISTRY_KIND),
         ("owned_by", vocabulary.REGISTRY_OWNED_BY),
         ("state", vocabulary.STATE),
+        ("started_at", vocabulary.STARTED_AT),
     ],
 )
 def test_each_constant_is_the_uri_of_its_slot(view, slot, predicate):
     assert slot_iri(view, slot) == predicate, f"{slot} differs from the schema"
+
+
+def test_the_commit_marker_class_iri_is_the_class_uri_of_the_schema(view):
+    declared = URIRef(view.expand_curie(view.get_class("CommitMarker").class_uri))
+    assert declared == vocabulary.COMMIT_MARKER, "COMMIT_MARKER differs from the schema"
+
+
+def test_a_commit_marker_is_an_id_and_the_time_the_transaction_started():
+    from datetime import UTC, datetime
+
+    from rdf_persistence.domain.generated.rp_core import CommitMarker
+
+    started = datetime(2026, 11, 13, tzinfo=UTC)
+    marker = CommitMarker(id="urn:uuid:00000000-0000-0000-0000-000000000001", started_at=started)
+    assert marker.started_at == started
+    with pytest.raises(ValueError, match="started_at"):
+        CommitMarker(id="urn:uuid:00000000-0000-0000-0000-000000000001")
 
 
 def test_every_registry_slot_has_a_constant():

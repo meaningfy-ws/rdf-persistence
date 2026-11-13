@@ -1,15 +1,17 @@
 """In-memory fakes of the toolkit's ports, for unit tests that must not touch the network."""
 
+import re
 from collections import defaultdict
-from collections.abc import AsyncIterator, Iterable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import ClassVar
+from typing import ClassVar, cast
 
 from pyparsing import ParseException
 from rdflib import Dataset, Graph, URIRef
 from rdflib.plugins.sparql import prepareQuery, prepareUpdate
 from rdflib.query import Result
+from rdflib.term import Node
 
 from rdf_persistence.domain.blob_keys import checked_blob_key
 from rdf_persistence.domain.exceptions import (
@@ -70,8 +72,40 @@ class _Instrumented:
             raise self._failures[operation].pop(call)
 
 
+# What a ';' inside must not split: an IRI, a string (short or long, with escapes), a comment.
+# The branches of a long string are disjoint (a plain character, an escape, or a quote that does not
+# start the closing three), so an unterminated one is scanned in linear time.
+# shortcut: a splitter of our own for the fake, since rdflib's update parser recurses once per
+# operation and fails from about 50 to 100 (rdflib#3710); drop it when a fixed rdflib is pinned.
+_SPARQL_TOKENS = re.compile(
+    r"""<[^<>"{}|^`\\\s]*>|\"\"\"(?:[^"\\]|\\.|"(?!""))*\"\"\"|'''(?:[^'\\]|\\.|'(?!''))*'''"""
+    r"""|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|#[^\n]*|([;{}])""",
+    re.DOTALL,
+)
+_PROLOGUE = re.compile(r"\s*(?:(?:PREFIX\s+[^\s:]*:\s*<[^>]*>|BASE\s*<[^>]*>)\s*)+", re.IGNORECASE)
+
+
+def _operations(request: str) -> list[str]:
+    """The operations of an update request, split at its top-level ``;`` (not one inside braces,
+    where it joins predicate lists), empty ones dropped."""
+    parts, start, depth = [], 0, 0
+    for token in _SPARQL_TOKENS.finditer(request):
+        mark = token.group(1)
+        depth += (mark == "{") - (mark == "}")
+        if mark == ";" and depth == 0:
+            parts.append(request[start : token.start()])
+            start = token.end()
+    return [part for part in [*parts, request[start:]] if part.strip()]
+
+
 class FakeStore(_Instrumented):
-    """A ``Store`` over one rdflib ``Dataset`` per dataset name, with failure injection."""
+    """A ``Store`` over one rdflib ``Dataset`` per dataset name, with failure injection.
+
+    ``update`` applies a request to a copy of the dataset and keeps the copy only if every operation
+    succeeds, so a request is atomic as on Fuseki; any failure is a ``BadQuery``. ``after_update``,
+    when set, is awaited after a successful update and before it returns, so a test can make another
+    writer act between an update and the caller's next read.
+    """
 
     OPERATIONS = frozenset(
         {
@@ -89,6 +123,7 @@ class FakeStore(_Instrumented):
     def __init__(self) -> None:
         super().__init__()
         self._datasets: dict[str, Dataset] = {}
+        self.after_update: Callable[[], Awaitable[None]] | None = None
 
     def _dataset(self, name: str) -> Dataset:
         if name not in self._datasets:
@@ -106,10 +141,23 @@ class FakeStore(_Instrumented):
     async def update(self, dataset: str, sparql: str) -> None:
         self._enter("update", sparql)
         data = self._dataset(dataset)
+        copy = Dataset()
+        # rdflib's stubs type the graph of a quad as a Graph in addN, though quads() yields identifiers
+        copy.addN(cast(Iterable[tuple[Node, Node, Node, Graph]], data.quads()))
+        operations = _operations(sparql)  # our own code: a failure here is not the caller's query
+        prologue = ""  # PREFIX and BASE declarations apply to the operations after them
         try:
-            data.update(prepareUpdate(sparql))
-        except ParseException as error:
+            for operation in operations:
+                copy.update(prepareUpdate(prologue + operation))
+                found = _PROLOGUE.match(operation)
+                prologue += found.group() if found else ""
+        except RecursionError:
+            raise
+        except Exception as error:  # rdflib raises a bare Exception at run time (PD-13)
             raise BadQuery(str(error)) from error
+        self._datasets[dataset] = copy
+        if self.after_update is not None:
+            await self.after_update()
 
     async def put_graph(self, dataset: str, graph_iri: URIRef, graph: Graph) -> None:
         self._enter("put_graph", str(graph_iri))

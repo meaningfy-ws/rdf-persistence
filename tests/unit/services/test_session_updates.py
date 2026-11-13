@@ -10,11 +10,13 @@ from rdf_persistence.domain.generated.rp_annotations import Tracked
 from rdf_persistence.domain.generated.rp_core import RegistryEntry, RegistryKind
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.session import (
-    add_text,
+    add_parts,
+    new_marker,
     payload_triples,
     registry_triples,
-    remove_text,
-    replace_text,
+    remove_parts,
+    replace_parts,
+    request_text,
 )
 
 EX = "http://example.org/t/"
@@ -24,6 +26,29 @@ REGISTRY = URIRef(f"{EX}registry")
 TITLE = URIRef("http://purl.org/dc/terms/title")
 NOW = datetime(2026, 11, 5, 12, 0, tzinfo=UTC)
 ME = "http://example.org/people/me"
+
+
+def add_text(graph, registry, triples, entries) -> str:
+    """The request of one add: its guard and operations, under a fresh marker."""
+    marker = new_marker(NOW)
+    guard, operations = add_parts(graph, registry, URIRef(marker.id), 0, triples, entries)
+    return request_text(registry, marker, [guard], [operations])
+
+
+def replace_text(graph, registry, root, old_version, triples, entries) -> str:
+    """The request of one replace."""
+    marker = new_marker(NOW)
+    guard, operations = replace_parts(
+        graph, registry, root, URIRef(marker.id), old_version, triples, entries
+    )
+    return request_text(registry, marker, [guard], [operations])
+
+
+def remove_text(graph, registry, root, old_version) -> str:
+    """The request of one remove."""
+    marker = new_marker(NOW)
+    guard, operations = remove_parts(graph, registry, root, URIRef(marker.id), old_version)
+    return request_text(registry, marker, [guard], [operations])
 
 
 def entry(graph: URIRef, root: URIRef) -> RegistryEntry:

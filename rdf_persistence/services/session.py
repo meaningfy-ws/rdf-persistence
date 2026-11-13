@@ -3,7 +3,9 @@
 The graph level (PD-7a) works on an aggregate's root IRI and its triples. An aggregate lives in
 the one graph ``graph_iri(root)``; the tenant's root object lives in the tenant's meta graph, which
 has no registry entry, while the graphs loaded for the root are registered like any aggregate's.
-Every commit writes a fresh version token and is confirmed by an ``ASK`` for it.
+Every commit writes a fresh version token and is confirmed by an ``ASK`` for it. Several commits
+can be made in one ``Transaction`` (``Session.transaction()``): one update request, all or nothing,
+and ``request_text`` builds that request from the guards and operations of its changes (PD-2, PD-5).
 """
 
 import uuid
@@ -13,12 +15,13 @@ from datetime import UTC, datetime
 from enum import Enum
 
 from pydantic import BaseModel
-from rdflib import BNode, Graph, Literal, URIRef
+from rdflib import RDF, BNode, Graph, Literal, URIRef
 from rdflib.query import ResultRow
 
 from rdf_persistence.domain.exceptions import Conflict, InvalidIri, NotFound
 from rdf_persistence.domain.generated.rp_annotations import Tracked
 from rdf_persistence.domain.generated.rp_core import (
+    CommitMarker,
     PendingLoad,
     Principal,
     RegistryEntry,
@@ -32,7 +35,17 @@ from rdf_persistence.domain.iris import (
     graph_iri,
     skolem_iri,
 )
-from rdf_persistence.domain.sparql import Triple, fill, term, term_list, triples_block
+from rdf_persistence.domain.sparql import (
+    SparqlTerm,
+    Triple,
+    count,
+    fill,
+    fragment,
+    join,
+    term,
+    term_list,
+    triples_block,
+)
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.listing import PAGE, Listings, items_of, listing_query, total_of
 from rdf_persistence.services.loading import parse_graph
@@ -57,57 +70,61 @@ READ_GRAPH = "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH $graph { ?s ?p ?o } }"
 READ_NAMED_KEYS = (
     "SELECT DISTINCT ?key WHERE { GRAPH ?g { ?s $p_file_key ?key } FILTER (?key IN ($keys)) }"
 )
-ASK_ANY = "ASK { GRAPH $graph { ?s ?p ?o } }"
-ASK_TOKEN = "ASK { GRAPH $graph { $graph $p_version $token } }"
-# One conditional insert: when the graph already holds a triple nothing is written, so two adds of
-# one IRI cannot both succeed (PD-8c); the caller confirms with an ASK for its token.
 # The marker of a load (PD-2): when the graph was put, so a sweep can tell it from work in flight.
 MARK_LOAD = "INSERT DATA { GRAPH $registry { $marker } }"
-ADD = """
-INSERT { GRAPH $graph { $triples } GRAPH $registry { $entries } }
-WHERE { FILTER NOT EXISTS { GRAPH $graph { ?s ?p ?o } } }
-"""
 # Does any aggregate other than $root own one of the loaded graphs $graphs (PD-7)?
 OWNED_ELSEWHERE = """
 ASK { GRAPH $registry { ?g $p_owned_by ?owner ; $p_kind $loaded . FILTER (?g IN ($graphs) && ?owner != $root) } }
 """
 READ_LOADED = "SELECT ?lg WHERE { GRAPH $registry { ?lg $p_owned_by $root ; $p_kind $loaded } }"
-# REPLACE and REMOVE are one update request of several operations, so a store applies them as one
-# transaction. Every operation repeats the version guard, and the order keeps it true for each: the
-# loaded graphs go first because they are found through the registry entries, the old version
-# triple goes last. Separate operations avoid joining the graph, the registry and the loaded graphs
-# into one product of rows.
-_GUARD = "GRAPH $graph { $graph $p_version $old }"
+# A transaction is one update request of several operations, so a store applies them as one
+# transaction (PD-2). Its first operation inserts a marker if every guard holds; every later
+# operation matches only while the marker is there; the last one drops it. An operation that
+# repeated its own guard could not work across roots: an add's own insert turns its guard false.
+# The guards of a replace and a remove are the version it was read at; of an add, that no triple is
+# there. Variables of an add's guard carry its number so the guards never join.
+START = "INSERT { GRAPH $registry { $marker_triples } } WHERE { $guards }"
+RELEASE = "DELETE { GRAPH $registry { $marker ?p ?o } } WHERE { GRAPH $registry { $marker ?p ?o } }"
+_AT_VERSION = "GRAPH $graph { $graph $p_version $old }"
+_ABSENT = "FILTER NOT EXISTS { GRAPH $graph { ?s$n ?p$n ?o$n } }"
+_MARKED = "GRAPH $registry { $marker a $commit_marker }"
 _LOADED_ENTRY = "GRAPH $registry { ?lg $p_owned_by $root ; $p_kind $loaded }"
 _DROP_LOADED = """
 DELETE {{ GRAPH ?lg {{ ?ls ?lp ?lo }} }}
-WHERE {{ {guard} {entry} {unless} GRAPH ?lg {{ ?ls ?lp ?lo }} }}
+WHERE {{ {marked} {entry} {unless} GRAPH ?lg {{ ?ls ?lp ?lo }} }}
 """
 _DROP_ENTRIES = (
     f"DELETE {{ GRAPH $registry {{ ?e ?ep ?eo }} }} "
-    f"WHERE {{ {_GUARD} GRAPH $registry {{ ?e $p_owned_by $root ; ?ep ?eo }} }}"
+    f"WHERE {{ {_MARKED} GRAPH $registry {{ ?e $p_owned_by $root ; ?ep ?eo }} }}"
 )
 _DROP_GRAPH = (
-    f"DELETE {{ GRAPH $graph {{ ?s ?p ?o }} }} WHERE {{ {_GUARD} GRAPH $graph {{ ?s ?p ?o }} }}"
+    f"DELETE {{ GRAPH $graph {{ ?s ?p ?o }} }} WHERE {{ {_MARKED} GRAPH $graph {{ ?s ?p ?o }} }}"
 )
-# The old version triple stays, so the guard holds, until the last operation.
+# The old version triple stays until the last operation, as it did when each operation was guarded.
 _DROP_GRAPH_BUT_VERSION = (
     "DELETE { GRAPH $graph { ?s ?p ?o } } "
-    f"WHERE {{ {_GUARD} GRAPH $graph {{ ?s ?p ?o }} FILTER (!(?s = $graph && ?p = $p_version)) }}"
+    f"WHERE {{ {_MARKED} GRAPH $graph {{ ?s ?p ?o }} FILTER (!(?s = $graph && ?p = $p_version)) }}"
 )
 _WRITE_NEW = (
-    f"INSERT {{ GRAPH $graph {{ $triples }} GRAPH $registry {{ $entries }} }} WHERE {{ {_GUARD} }}"
+    f"INSERT {{ GRAPH $graph {{ $triples }} GRAPH $registry {{ $entries }} }} WHERE {{ {_MARKED} }}"
 )
-_DROP_OLD_VERSION = f"DELETE {{ GRAPH $graph {{ $graph $p_version $old }} }} WHERE {{ {_GUARD} }}"
+_DROP_OLD_VERSION = f"DELETE {{ GRAPH $graph {{ $graph $p_version $old }} }} WHERE {{ {_MARKED} }}"
 _DROP_UNLISTED = _DROP_LOADED.format(
-    guard=_GUARD, entry=_LOADED_ENTRY, unless="FILTER (?lg NOT IN ($kept))"
+    marked=_MARKED, entry=_LOADED_ENTRY, unless="FILTER (?lg NOT IN ($kept))"
 )
-_DROP_ALL_LOADED = _DROP_LOADED.format(guard=_GUARD, entry=_LOADED_ENTRY, unless="")
+_DROP_ALL_LOADED = _DROP_LOADED.format(marked=_MARKED, entry=_LOADED_ENTRY, unless="")
 REPLACE = ";\n".join(
     (_DROP_UNLISTED, _DROP_ENTRIES, _DROP_GRAPH_BUT_VERSION, _WRITE_NEW, _DROP_OLD_VERSION)
 )
 # Also empties the loaded graphs the root owns: they are part of the aggregate.
 REMOVE = ";\n".join((_DROP_ALL_LOADED, _DROP_ENTRIES, _DROP_GRAPH))
+# What the transaction wrote, in one ASK (PD-3), and which graph holds what, for the diagnosis (PD-4).
+CONFIRM = "ASK { $patterns }"
+_HOLDS_TOKEN = "GRAPH $graph { $graph $p_version $new }"
+READ_VERSIONS = (
+    "SELECT ?g ?version WHERE { VALUES ?g { $graphs } "
+    "OPTIONAL { GRAPH ?g { ?g $p_version ?version } } }"
+)
 
 
 def utc_now() -> datetime:
@@ -170,63 +187,128 @@ def _entries_block(entries: Iterable[RegistryEntry]):
     return triples_block(t for entry in entries for t in registry_triples(entry))
 
 
-def add_text(
-    graph: URIRef, registry: URIRef, triples: Iterable[Triple], entries: Iterable[RegistryEntry]
+def new_marker(at: datetime) -> CommitMarker:
+    """The marker of one transaction: a fresh IRI, so no two transactions share one (PD-1)."""
+    return CommitMarker(id=f"urn:uuid:{uuid.uuid4()}", started_at=at)
+
+
+def commit_marker_triples(marker: CommitMarker) -> list[Triple]:
+    """The statements of a commit marker: its type and when its transaction started."""
+    subject = URIRef(marker.id)
+    return [
+        (subject, RDF.type, v.COMMIT_MARKER),
+        (subject, v.STARTED_AT, Literal(marker.started_at)),
+    ]
+
+
+def request_text(
+    registry: URIRef,
+    marker: CommitMarker,
+    guards: Iterable[SparqlTerm],
+    operations: Iterable[str],
 ) -> str:
-    """The update that stores a new graph and its registry entries."""
-    return fill(
-        ADD,
-        graph=term(graph),
+    """One update request: the guard operation, the marked ``operations``, the release (PD-2)."""
+    start = fill(
+        START,
         registry=term(registry),
-        triples=triples_block(triples),
-        entries=_entries_block(entries),
+        marker_triples=triples_block(commit_marker_triples(marker)),
+        guards=join(guards),
     )
+    release = fill(RELEASE, registry=term(registry), marker=term(URIRef(marker.id)))
+    return ";\n".join([start, *operations, release])
 
 
-def _fill_guarded(
-    template: str, graph: URIRef, registry: URIRef, root: URIRef, old_version: str, **terms
+def _fill_marked(
+    template: str, graph: URIRef, registry: URIRef, marker: URIRef, **terms: SparqlTerm
 ) -> str:
-    """``template`` with the terms REPLACE and REMOVE share: the graph, registry, root and guard."""
+    """``template`` with the terms every marked operation shares."""
     return fill(
         template,
         graph=term(graph),
         registry=term(registry),
-        root=term(root),
-        p_version=term(v.VERSION),
-        p_owned_by=term(v.REGISTRY_OWNED_BY),
-        p_kind=term(v.REGISTRY_KIND),
-        loaded=term(v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH]),
-        old=term(Literal(old_version)),
+        marker=term(marker),
+        commit_marker=term(v.COMMIT_MARKER),
         **terms,
     )
 
 
-def replace_text(
+def _owner_terms(root: URIRef) -> dict[str, SparqlTerm]:
+    return {
+        "root": term(root),
+        "p_owned_by": term(v.REGISTRY_OWNED_BY),
+        "p_kind": term(v.REGISTRY_KIND),
+        "loaded": term(v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH]),
+    }
+
+
+def add_parts(
+    graph: URIRef,
+    registry: URIRef,
+    marker: URIRef,
+    number: int,
+    triples: Iterable[Triple],
+    entries: Iterable[RegistryEntry],
+) -> tuple[SparqlTerm, str]:
+    """The guard (nothing is in ``graph``) and the marked operation that stores a new graph."""
+    guard = _absent(graph, number)
+    operations = _fill_marked(
+        _WRITE_NEW,
+        graph,
+        registry,
+        marker,
+        triples=triples_block(triples),
+        entries=_entries_block(entries),
+    )
+    return guard, operations
+
+
+def _absent(graph: URIRef, number: int) -> SparqlTerm:
+    """The pattern that holds while ``graph`` has no triple; ``number`` suffixes its variables, so
+    the patterns of several changes never join."""
+    return fragment(_ABSENT, graph=term(graph), n=count(number))
+
+
+def _at_version(graph: URIRef, version: str) -> SparqlTerm:
+    return fragment(
+        _AT_VERSION, graph=term(graph), p_version=term(v.VERSION), old=term(Literal(version))
+    )
+
+
+def replace_parts(
     graph: URIRef,
     registry: URIRef,
     root: URIRef,
+    marker: URIRef,
     old_version: str,
     triples: Iterable[Triple],
     entries: Iterable[RegistryEntry],
-) -> str:
-    """The guarded update that replaces a graph, its root's registry entries and dropped loads."""
+) -> tuple[SparqlTerm, str]:
+    """The guard (``graph`` is at ``old_version``) and the marked operations that replace a graph,
+    its root's registry entries and the loaded graphs not kept."""
     entries = list(entries)
     kept = [URIRef(e.graph) for e in entries if e.kind == RegistryKind.LOADED_GRAPH]
-    return _fill_guarded(
+    operations = _fill_marked(
         REPLACE,
         graph,
         registry,
-        root,
-        old_version,
+        marker,
+        **_owner_terms(root),
+        p_version=term(v.VERSION),
+        old=term(Literal(old_version)),
         kept=term_list(kept),
         triples=triples_block(triples),
         entries=_entries_block(entries),
     )
+    return _at_version(graph, old_version), operations
 
 
-def remove_text(graph: URIRef, registry: URIRef, root: URIRef, old_version: str) -> str:
-    """The guarded update that deletes a graph and every registry entry the root owns."""
-    return _fill_guarded(REMOVE, graph, registry, root, old_version)
+def remove_parts(
+    graph: URIRef, registry: URIRef, root: URIRef, marker: URIRef, old_version: str
+) -> tuple[SparqlTerm, str]:
+    """The guard (``graph`` is at ``old_version``) and the marked operations that delete a graph and
+    every registry entry the root owns."""
+    operations = _fill_marked(REMOVE, graph, registry, marker, **_owner_terms(root))
+    return _at_version(graph, old_version), operations
 
 
 class Session:
@@ -247,14 +329,14 @@ class Session:
         self._iris = iris
         self._store = store
         self._database = database
-        self._tenant = tenant_iri
+        self._tenant = str(tenant_iri)  # a URIRef never equals a str (PD-12)
         self._principal = principal
         self._clock = clock
         self._registry = iris.registry(tenant_iri)
 
     def _graph(self, iri: str) -> URIRef:
         """The graph of the aggregate ``iri``, or the meta graph for the tenant root."""
-        if iri == self._tenant:
+        if str(iri) == self._tenant:
             return self._iris.meta(self._tenant)
         if not self._iris.is_aggregate(self._tenant, iri):
             raise InvalidIri(f"{iri!r} is not an aggregate IRI of the tenant {self._tenant!r}")
@@ -267,7 +349,7 @@ class Session:
             RegistryEntry(graph=str(g), kind=RegistryKind.LOADED_GRAPH, owned_by=iri)
             for g in loaded_graphs
         ]
-        if iri == self._tenant:  # as in _graph: the root's graph is meta, never listed (DEC-2)
+        if str(iri) == self._tenant:  # as in _graph: the root's graph is meta, never listed (DEC-2)
             return loaded
         return [RegistryEntry(graph=str(graph), kind=RegistryKind.AGGREGATE, owned_by=iri), *loaded]
 
@@ -405,18 +487,8 @@ class Session:
                 written.
             Conflict: The aggregate already has a graph.
         """
-        graph = self._graph(iri)
-        await self._check_commit(iri, loaded_graphs)
-        version = str(uuid.uuid4())
-        tracking = Tracked(created=self._clock(), creator=self._principal.id)
-        payload = payload_triples(graph, version, tracking, triples)
-        entries = self._entries(iri, graph, loaded_graphs)
-        await self._store.update(self._database, add_text(graph, self._registry, payload, entries))
-        if not await self._ask(
-            ASK_TOKEN, graph=term(graph), p_version=term(v.VERSION), token=term(Literal(version))
-        ):
-            raise Conflict(f"{graph} already exists")
-        return version
+        async with self.transaction() as transaction:
+            return await transaction.add_graph(iri, triples, loaded_graphs)
 
     async def replace_graph(
         self,
@@ -437,27 +509,8 @@ class Session:
             NotFound: The aggregate has no graph.
             Conflict: Its version is not ``if_version``; nothing changed.
         """
-        graph = self._graph(iri)
-        await self._check_commit(iri, loaded_graphs or [])
-        _, stored = await self._stored(graph)
-        if loaded_graphs is None:
-            loaded_graphs = await self._registered_loaded(iri)
-        tracking = Tracked(
-            created=stored.created,
-            creator=stored.creator,
-            modified=self._clock(),
-            contributor=sorted({*(stored.contributor or []), self._principal.id}),
-        )
-        version = str(uuid.uuid4())
-        payload = payload_triples(graph, version, tracking, triples)
-        entries = self._entries(iri, graph, loaded_graphs)
-        text = replace_text(graph, self._registry, URIRef(iri), if_version, payload, entries)
-        await self._store.update(self._database, text)
-        if not await self._ask(
-            ASK_TOKEN, graph=term(graph), p_version=term(v.VERSION), token=term(Literal(version))
-        ):
-            raise Conflict(f"{graph} is no longer at version {if_version}")
-        return version
+        async with self.transaction() as transaction:
+            return await transaction.replace_graph(iri, triples, if_version, loaded_graphs)
 
     async def load_graph(self, iri: str, data: bytes, *, rdf_format: RdfFormat) -> URIRef:
         """Parse ``data`` into a new named graph of the aggregate ``iri``; returns its IRI.
@@ -534,12 +587,226 @@ class Session:
             NotFound: The aggregate has no graph.
             Conflict: Its version is not ``if_version``; nothing changed.
         """
-        graph = self._graph(iri)
-        await self._stored(graph)
-        text = remove_text(graph, self._registry, URIRef(iri), if_version)
-        await self._store.update(self._database, text)
-        if await self._ask(ASK_ANY, graph=term(graph)):
-            raise Conflict(f"{graph} is no longer at version {if_version}")
+        async with self.transaction() as transaction:
+            await transaction.remove(iri, if_version)
+
+    @asynccontextmanager
+    async def transaction(self) -> AsyncIterator["Transaction"]:
+        """Collect aggregate writes and commit them as one update request, all or nothing (PD-5).
+
+        ``add_graph``, ``replace_graph`` and ``remove`` on the yielded ``Transaction`` take the
+        arguments of the session's own, check what those check and send nothing; leaving the block
+        cleanly sends one request. An exception inside the block, or a block with no change, sends
+        nothing.
+
+        Raises:
+            ValueError: (from a change) The aggregate already has a change in this transaction.
+            RuntimeError: (from a change) The block has ended, so the change would be dropped.
+            Conflict: A guard failed, so nothing changed; ``iris`` names the roots found conflicting.
+        """
+        transaction = Transaction(self)
+        try:
+            yield transaction
+            await transaction.commit()
+        finally:
+            transaction._end()
+
+
+class Transaction:
+    """Aggregate writes of one session, collected and sent as one update request (PD-2 to PD-6).
+
+    The filled SPARQL fragments of the changes made so far are private; no public method takes
+    SPARQL, so later pieces (key guards, outbox inserts) are added from inside ``services`` only
+    (PD-6).
+
+    Two limits of the diagnosis after a failed confirmation (PD-4), documented and not changed:
+
+    * A transaction of removes only whose commit applied, and whose removed root another writer
+      added again before the confirming ``ASK``, raises a ``Conflict`` though the commit applied
+      (a false conflict, as for an overwritten write).
+    * An add whose graph holds triples but no version triple raises a ``Conflict`` with empty
+      ``iris`` and the message "lost a race", since the diagnosis finds no version to blame.
+    """
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+        self._marker = new_marker(session._clock())
+        self._ended = False  # set when the block ends, committed or raised
+        self._guards: list[SparqlTerm] = []
+        self._operations: list[str] = []
+        self._confirm: list[SparqlTerm] = []  # what holds when every change took effect (PD-3)
+        # per graph, in the order of the changes: its root, the version the caller read (None for an
+        # add), and the token the commit writes (none for a remove); read for the diagnosis (PD-4)
+        self._roots: dict[URIRef, str] = {}
+        self._read_at: dict[URIRef, str | None] = {}
+        self._wrote: dict[URIRef, str] = {}
+
+    def _end(self) -> None:
+        """Refuse every later change: the block is over, so a change would be dropped."""
+        self._ended = True
+
+    def _collect(
+        self,
+        iri: str,
+        graph: URIRef,
+        read_at: str | None,
+        wrote: str | None,
+        parts: tuple[SparqlTerm, str],
+        confirm: SparqlTerm,
+    ) -> None:
+        """Keep one change: its root, the version read, the token it writes (None for a remove),
+        its guard and operations, and the pattern the commit confirms."""
+        self._roots[graph] = str(iri)  # Conflict.iris holds str, whatever the caller passed (PD-7)
+        self._read_at[graph] = read_at
+        if wrote is not None:
+            self._wrote[graph] = wrote
+        self._guards.append(parts[0])
+        self._operations.append(parts[1])
+        self._confirm.append(confirm)
+
+    def _claim(self, iri: str) -> URIRef:
+        """The graph of ``iri``; a second change on the same graph, whatever string type, is refused."""
+        if self._ended:
+            raise RuntimeError("the transaction has ended; a change now would be dropped")
+        graph = self._session._graph(iri)
+        if graph in self._roots:
+            raise ValueError(f"{iri} already has a change in this transaction")
+        return graph
+
+    @property
+    def _marker_iri(self) -> URIRef:
+        return URIRef(self._marker.id)
+
+    @staticmethod
+    def _holds(graph: URIRef, version: str) -> SparqlTerm:
+        """The pattern that holds once ``graph`` carries the new ``version``."""
+        return fragment(
+            _HOLDS_TOKEN,
+            graph=term(graph),
+            p_version=term(v.VERSION),
+            new=term(Literal(version)),
+        )
+
+    async def add_graph(
+        self, iri: str, triples: Iterable[Triple], loaded_graphs: Sequence[URIRef] = ()
+    ) -> str:
+        """Collect a new aggregate and its ``loaded_graphs``; returns its first version.
+
+        Raises what ``Session.add_graph`` raises before the request, and ``ValueError`` if the
+        aggregate has a change in this transaction already.
+        """
+        session = self._session
+        graph = self._claim(iri)
+        await session._check_commit(iri, loaded_graphs)
+        version = str(uuid.uuid4())
+        tracking = Tracked(created=session._clock(), creator=session._principal.id)
+        parts = add_parts(
+            graph,
+            session._registry,
+            self._marker_iri,
+            len(self._roots),
+            payload_triples(graph, version, tracking, triples),
+            session._entries(iri, graph, loaded_graphs),
+        )
+        self._collect(iri, graph, None, version, parts, self._holds(graph, version))
+        return version
+
+    async def replace_graph(
+        self,
+        iri: str,
+        triples: Iterable[Triple],
+        if_version: str,
+        loaded_graphs: Sequence[URIRef] | None = None,
+    ) -> str:
+        """Collect the replacement of the aggregate if it still has ``if_version``; returns the new
+        version. ``loaded_graphs`` is as in ``Session.replace_graph``."""
+        session = self._session
+        graph = self._claim(iri)
+        await session._check_commit(iri, loaded_graphs or [])
+        _, stored = await session._stored(graph)
+        if loaded_graphs is None:
+            loaded_graphs = await session._registered_loaded(iri)
+        tracking = Tracked(
+            created=stored.created,
+            creator=stored.creator,
+            modified=session._clock(),
+            contributor=sorted({*(stored.contributor or []), session._principal.id}),
+        )
+        version = str(uuid.uuid4())
+        parts = replace_parts(
+            graph,
+            session._registry,
+            URIRef(iri),
+            self._marker_iri,
+            if_version,
+            payload_triples(graph, version, tracking, triples),
+            session._entries(iri, graph, loaded_graphs),
+        )
+        self._collect(iri, graph, if_version, version, parts, self._holds(graph, version))
+        return version
+
+    async def remove(self, iri: str, if_version: str) -> None:
+        """Collect the removal of the aggregate, its loaded graphs and entries, if it still has
+        ``if_version``.
+
+        Raises:
+            NotFound: The aggregate has no graph.
+        """
+        session = self._session
+        graph = self._claim(iri)
+        await session._stored(graph)
+        parts = remove_parts(graph, session._registry, URIRef(iri), self._marker_iri, if_version)
+        self._collect(iri, graph, if_version, None, parts, _absent(graph, len(self._roots)))
+
+    async def commit(self) -> None:
+        """Send the request and confirm it (PD-2, PD-3); nothing is sent if there is no change.
+
+        Raises:
+            Conflict: A guard failed; nothing changed, and ``iris`` names the roots found conflicting.
+        """
+        if not self._roots:
+            return
+        session = self._session
+        await session._store.update(
+            session._database,
+            request_text(session._registry, self._marker, self._guards, self._operations),
+        )
+        if not await session._ask(CONFIRM, patterns=join(self._confirm)):
+            await self._diagnose()
+
+    async def _versions_found(self) -> dict[URIRef, str | None]:
+        """The version each graph of the transaction holds now, ``None`` for a graph with none."""
+        session = self._session
+        text = fill(
+            READ_VERSIONS,
+            graphs=join(term(graph) for graph in self._roots),
+            p_version=term(v.VERSION),
+        )
+        rows = [
+            r
+            for r in await session._store.query(session._database, text)
+            if isinstance(r, ResultRow)
+        ]
+        return {URIRef(r.g): None if r.version is None else str(r.version) for r in rows}
+
+    def _refused(self, graph: URIRef, found: str | None) -> str | None:
+        """Why the graph, found at ``found``, refuses the change as it was read; None if it does not."""
+        read_at = self._read_at[graph]
+        if read_at is None:
+            return None if found is None else f"{graph} already exists"
+        return None if found == read_at else f"{graph} is no longer at version {read_at}"
+
+    async def _diagnose(self) -> None:
+        """The confirmation failed: either nothing was written, or the commit applied and another
+        writer changed a graph before the ``ASK``. Returns in the second case, else raises (PD-4)."""
+        found = await self._versions_found()
+        if any(found.get(graph) == token for graph, token in self._wrote.items()):
+            return  # all or nothing: the commit applied, and a later writer changed some graph
+        reasons = {g: r for g in self._roots if (r := self._refused(g, found.get(g))) is not None}
+        raise Conflict(
+            "; ".join(reasons.values()) or "the transaction lost a race with another writer",
+            iris=tuple(sorted(self._roots[graph] for graph in reasons)),
+        )
 
 
 def _items(name: str, value: object) -> list[object]:

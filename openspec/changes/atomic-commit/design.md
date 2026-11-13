@@ -18,7 +18,10 @@ Every write of an aggregate goes through `Session` (`services/session.py`):
 `UnitOfWork.commit` (`services/mapper.py`) calls those methods once per dirty root, so a conflict
 on the third root leaves the first two written. Callers of the three session methods:
 `services/aggregates.py` (generic API), `services/tenancy.py` (tenant root and access records on
-the system database), `services/mapper.py` (`UnitOfWork`), tests and the e2e app.
+the system database), `services/mapper.py` (`UnitOfWork`), `services/file_removal.py`
+(`remove_with_files`, single-root `remove`; unchanged by PD-5), tests and the e2e app. GitNexus
+impact (2026-11-13): `_graph` CRITICAL, `add_graph`/`replace_graph`/`UnitOfWork.commit` HIGH, as
+RISK-3 expects; the developer said proceed.
 
 Repeating one root's guard in every operation works because an operation never invalidates its own
 guard before the last step. Across several roots it does not: once root B's graph is inserted, B's
@@ -143,7 +146,11 @@ required); any change to listings, loads, the sweeps' logic or the HTTP routes.
   atomicity; the conformance case makes the **second operation fail at run time**:
   `INSERT DATA {…} ; CREATE GRAPH <g>` with `<g>` already existing (not `SILENT`). If Fuseki does
   not fail that operation, the case uses another run-time failure found during task 1.4 and
-  records it here.
+  records it here. **Found (task 1.4, 2026-11-13):** Fuseki accepts `CREATE GRAPH` on an existing
+  non-empty graph (a no-op, against SPARQL 1.1 Update), and rdflib's `DROP`/`CLEAR`/`ADD`/`MOVE`/
+  `COPY` of a missing graph succeed too; so the case is `INSERT DATA {…} ; LOAD
+  <file:///nonexistent/none.ttl>`, which both stores fail whole. Fuseki answers 500
+  (`StoreUnavailable`), the fake `BadQuery`; the case accepts either and asserts nothing applied.
 - **PD-16** (DEC-6, from the collaboration PLAN): the collaboration EPIC extends the transaction
   with internal pieces, added by that EPIC, not this one (its PD-6, PD-8, PD-15, PD-19):
   `_require_present` (the target still has a graph), `_require_match` (a rule member still
@@ -151,6 +158,62 @@ required); any change to listings, loads, the sweeps' logic or the HTTP routes.
   records about the root) and `_allow_state` (only a transition may change a workflow state).
   This change only keeps `guards` and `operations` open to such additions (PD-6) and its tests
   independent of them.
+- **PD-17** (adversarial tester after task 1.2, 2026-11-13; the developer chose the option for
+  rdflib, the lead decided the rest):
+  - **a** rdflib's update parser recurses once per operation (RecursionError beyond ~50-100
+    operations), so `FakeStore` failed a transaction of 15 replaced roots. `FakeStore.update`
+    splits the request at top-level `;` (outside IRIs, strings and comments) and runs each
+    operation on the dataset copy, still all or nothing (PD-13). Upstream:
+    https://github.com/RDFLib/rdflib/issues/3710. Fuseki is not affected.
+  - **b** `Conflict.iris` holds `str` root IRIs even when the caller passed a `URIRef` (PD-7).
+  - **c** A `Transaction` used after its block ended (committed or raised) raises `RuntimeError`;
+    a change is never silently dropped.
+  - **d** A change method that raises inside the block, when the caller catches it, leaves no
+    claim; the other changes commit on a clean exit. Intended: only collected changes are sent.
+  - **e** A removes-only transaction whose root another writer already removed: the guard fails,
+    nothing is written, and the confirming `ASK` (graph empty) is true, so it returns as a
+    success, as `Session.remove` did before. Idempotent removal; the diagnosis runs only when the
+    `ASK` is false.
+  - **f** In the diagnosis a removed root whose graph is gone counts as "no longer at version",
+    like a changed one (PD-4's "or is absent").
+- **PD-18** (stage 1 review, lenses L1, L2, L3, L4+L5, 2026-11-13; decided by the lead).
+  Accepted:
+  - **a** (L1 W1, L3 W1, L4 W3) `Transaction`'s fragment lists and end flag are private
+    (`_guards`, `_operations`, `_ended`); PD-16's additions use internal methods from inside
+    `services`. Every `SparqlTerm` comes from `domain/sparql.py`: a joining helper there replaces the
+    hand-made `SparqlTerm(" ".join(…))` casts, and the variable suffix of `_ABSENT` goes through
+    `fill`/`count` (L1 S1, L5 S2). This amends PD-6 ("keeps `guards`, `operations`").
+  - **b** (L1 W2, L4 W1) The `FakeStore` splitter's long-string branches are made disjoint (no
+    exponential backtracking); a test bounds the time of an unterminated long string. Its comment
+    takes the `shortcut:` form naming rdflib#3710 (L3 S1). Only rdflib's run-time `Exception` and
+    `ParseException` become `BadQuery`; `RecursionError` and the fake's own bugs propagate (L1 S3).
+    The dataset copy uses `addN` over the quads (L5 S4).
+  - **c** (L4 W2) `UnitOfWork` keys its roots by `str(iri)` in `get`, `version` and the rest, as
+    PD-12 did for the session.
+  - **d** (L4 W4) `_holds` no longer records state; `_collect` records what each change wrote.
+  - **e** (L3 W3, L4 W5) `add_text`, `replace_text`, `remove_text` and the `ADD` alias are deleted;
+    `tests/unit/services/test_session_updates.py` builds requests from `*_parts` + `request_text`.
+  - **f** (L2 W1-W5, S1-S3) Tests: PD-17e (a removed root removed meanwhile is a success); a store
+    failure during the confirming `ASK` propagates and the commit applied; the tenant-root
+    scenario over both type pairings; the three slow tests shrunk or marked `slow`; `and`-chained
+    asserts split, with messages; TC-20 and TC-21 assert exact values; PD-4 reads as PD-17f (a
+    removed root whose graph is gone is named), with a test.
+  - **g** (L2 W6, W7) `architecture/index.adoc` and `api.adoc` describe the marker guard and the
+    transaction. (W8: tasks.md IT-05 now cites PD-13 "Found".)
+  - **h** (L4+L5 S6) Error matrix: (a) removes-only whose commit applied and whose root another
+    writer re-added before the `ASK` → false `Conflict` (known diagnosis limit, as DEC-3); (b) an
+    add whose graph holds triples but no version triple → `Conflict` with empty `iris` and the
+    "lost a race" message. Documented, not changed.
+  - **i** Small text: the module docstring names the transaction (L3 S2); the `RuntimeError`
+    message carries no design id (L5 S5); `UnitOfWork.commit`'s docstring says the order is that of
+    first `get` or `add` (L5 S7).
+
+  Rejected: moving the templates and builders to their own module and a `_Change` record with
+  `_prepare_*` methods (L3 W2 c, L5 S1): a structural move on a CRITICAL hub with no behaviour
+  gain; PD-5 sanctions `Transaction` using the session's helpers, and they stay in one module.
+  `Session._rows` (L5 S3): touches existing reads outside this change. An ETag test (L2 S4): the
+  token path to the API is unchanged. One table of guards (L2 S5): each guard has positive and
+  negative cases already.
 - **PD-14** (attack, finding 7): conflict messages change: an add now says
   "… no longer at version …" or "… already exists" per root as found by the diagnosis (PD-4),
   in one message for all roots. Tests that match the old message text are updated; they are
@@ -237,6 +300,9 @@ drops the marker, and the `ASK` is true.
 | The commit applied, then another writer changed one of its graphs before the `ASK` | success (PD-4: some graph holds this transaction's new token) |
 | Removes only; another writer changed a removed root first | `ASK` fails; `Conflict(iris=(that root,))`; nothing written (never a success, PD-4) |
 | The commit applied, then **every** added or replaced graph was overwritten by others before the `ASK` | false `Conflict` (known diagnosis limit, DEC-3); the data is consistent; a re-read shows the others' versions |
+| Removes only; the commit applied, then another writer re-added a removed root before the `ASK` | false `Conflict` naming it (known diagnosis limit, PD-18h); a re-read shows the other writer's root, which a blind retry must not remove |
+| An add whose graph holds triples but no version triple | `Conflict` with empty `iris` and the "lost a race" message (PD-18h) |
+| Removes only; another writer already removed the root | success, nothing written (idempotent removal, PD-17e) |
 | A `str` and a `URIRef` of one root in one transaction | `ValueError` (claim keyed on the graph, PD-5) |
 | Batch re-run of roots whose parts got random IRIs from `new_part` | those roots conflict; nothing duplicated (PD-9) |
 
