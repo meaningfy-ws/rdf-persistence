@@ -188,6 +188,9 @@ come before it.
 loaded (`make fuseki-image`). Earlier, one run in four failed at start-up on a Docker Compose
 error; run it again.
 
+|`tests/integration/store/test_transaction.py::test_it06_…` (500 new books in one commit) |1 |Commit ≈ 4 s (3.8 s and 4.0 s in two runs); the file's 5 tests ≈ 17 to 32 s with container start-up |2026-11-13, atomic-commit stage 2
+|One `UnitOfWork` with the default `max_roots=500`, each book with 2 chapters and 2 notes, on real Fuseki. One update request of ≈ 2.9 MB. The limit is 30 s (PD-10). Marked `slow`.
+
 |`make typecheck-openapi-ts` |– |≈ 15 s |2026-11-09, mwb2-file-resources stage 1 |Part of `check-types`; `npx` downloads `openapi-typescript` and `typescript` on a first run.
 
 |`make test-perf` |3 |≈ 2.5 s |2026-11-08, delivery-friction |Measured alone, not under load.

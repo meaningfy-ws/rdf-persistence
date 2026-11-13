@@ -127,7 +127,9 @@ required); any change to listings, loads, the sweeps' logic or the HTTP routes.
 - **PD-10** (DEC-4): The default limit of 500 roots is checked in stage 2's integration test (a
   500-book commit on Fuseki finishes, and its time is recorded in `develop/index.adoc`'s durations
   table). If it fails or takes over 30 s, the default is lowered to what passes and the change is
-  noted here.
+  noted here. **Measured (task 2.2, 2026-11-13):** 500 books with two chapters and notes each
+  commit in ≈ 4 s (3.8 s, 4.0 s) as one update request of ≈ 2.9 MB; Fuseki takes it with no body
+  limit or timeout. The default of 500 holds.
 - **PD-11**: The confirmation needs the version token of every changed graph in one `ASK`, so a
   transaction of 500 roots sends a 500-pattern `ASK`. Accepted; measured with PD-10.
 

@@ -107,7 +107,7 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
 | TC-33 | `max_roots=2`, batch re-run where one added book exists with a different title | `Conflict(iris=(that book,))`, message says how many batches committed |
 | TC-34 | `max_roots=2`, exactly two roots, `commit()` | one request, both stored |
 
-- [ ] 2.2 Fuseki: IT-06, a 500-book commit with the default limit (PD-10), timed; the time goes in
+- [x] 2.2 Fuseki: IT-06, a 500-book commit with the default limit (PD-10), timed; the time goes in
   the durations table of `docs/modules/ROOT/pages/develop/index.adoc`. If it fails or exceeds
   30 s, lower the default and record the value in design.md PD-10. Gate:
   `make test-containers TEST_PATH=tests/integration/store/test_transaction.py`.

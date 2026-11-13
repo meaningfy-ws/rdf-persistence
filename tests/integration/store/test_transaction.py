@@ -4,6 +4,7 @@ A and B are stored books, C a new one; "another session" is a second session on 
 """
 
 import asyncio
+import time
 import uuid
 from collections.abc import AsyncIterator
 
@@ -169,4 +170,42 @@ async def test_it03_a_unit_of_work_that_changes_a_and_adds_b_refuses_both_when_b
     assert label_a == dune(A).label, "A is unchanged in the store"
     label_b = (await UnitOfWork(session, toy_mapper()).get(Book, B)).label
     assert label_b == "theirs", "B keeps the other edit"
+    assert not await a_marker_is_left(store, database), "the marker was released"
+
+
+COUNT_ENTRIES = "SELECT (COUNT(DISTINCT ?g) AS ?n) WHERE { GRAPH $registry { ?g $kind ?k } }"
+
+
+@pytest.mark.slow
+async def test_it06_a_commit_of_the_default_limit_of_new_books_is_one_update_within_30_s(
+    store, database, session, capsys
+):
+    """PD-10, PD-11, RISK-2: 500 books, each with two chapters and their notes, in one commit."""
+    updates: list[int] = []
+    send = store.update
+
+    async def counted(dataset: str, sparql: str) -> None:
+        updates.append(len(sparql))
+        await send(dataset, sparql)
+
+    store.update = counted  # type: ignore[method-assign]
+    unit = UnitOfWork(session, toy_mapper())
+    for n in range(500):
+        unit.add(dune(book(1000 + n)))
+    started = time.perf_counter()
+    await unit.commit()
+    seconds = time.perf_counter() - started
+    with capsys.disabled():
+        print(
+            f"\nIT-06: 500 books committed in {seconds:.1f} s; updates {len(updates)}, bytes {updates}"
+        )
+    counted_entries = await store.query(
+        database,
+        fill(
+            COUNT_ENTRIES, registry=term(DEFAULT_IRIS.registry(TENANT)), kind=term(v.REGISTRY_KIND)
+        ),
+    )
+    assert int(next(iter(counted_entries)).n) == 500, "all 500 books are registered"
+    assert len(updates) == 1, f"one update request, got {updates}"
+    assert seconds < 30, f"500 books took {seconds:.1f} s (PD-10 allows 30 s)"
     assert not await a_marker_is_left(store, database), "the marker was released"
