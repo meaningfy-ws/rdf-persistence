@@ -11,7 +11,7 @@
     },
     {
       "path": "rdf_persistence/generation/checks/boundary.py",
-      "sha256": "ddbbe5a3e51558c5a5884350178ca78adf707aa4c1f831d2d30e7b2a6ccc89c3"
+      "sha256": "c89df34b37640ef24a7dfbec4068b7c7a068e7a3186e8b0a49c5b412a175ac03"
     },
     {
       "path": "rdf_persistence/generation/checks/hard.py",

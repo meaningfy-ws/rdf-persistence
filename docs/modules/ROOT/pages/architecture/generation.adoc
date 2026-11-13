@@ -389,6 +389,23 @@ API envelopes, written as mixins. A root schema imports the modules. Domain modu
 technical ones (step 2). The metamodel's mixins (`AggregateRoot`, `StoredFile`) are usable in domain
 modules: they say how a class is persisted, not what it means.
 
+A technical module's class that holds another class, such as a page of terms, marks the slot
+`owned: true`; without it the boundary check reports the slot as a reference to a class that is
+neither a root nor a reference class.
+
+[source,yaml]
+----
+classes:
+  Terms:
+    attributes:
+      items:
+        range: Term
+        multivalued: true
+        inlined_as_list: true
+        annotations:
+          owned: true
+----
+
 *Not generated:* mappers, repositories, routes and API clients (O-1); the client calls the API with
 the generated types.
 

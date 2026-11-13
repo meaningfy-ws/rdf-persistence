@@ -68,7 +68,10 @@ def _reference_problems(view: SchemaView, classes: list[ClassDefinition]) -> Ite
                 yield rule_problem(
                     BoundaryRule.REFERENCE,
                     name,
-                    f"of {cls.name} points to {slot.range}, which is neither a root nor a reference class",
+                    f"of {cls.name} points to {slot.range}, which is neither a root nor a reference class: "
+                    f"annotate the slot owned: true to hold {slot.range} inline, "
+                    f"or make {slot.range} an aggregate root, "
+                    "or point the slot at a root, Principal or Activity",
                 )
 
 
