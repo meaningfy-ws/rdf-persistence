@@ -8,7 +8,7 @@ fakes (`testkit/fakes.py`); integration tests use the Fuseki and Garage containe
 
 ## 1. The port
 
-- [ ] 1.1 Spike on the Fuseki container (a throwaway test in `temp/`, not committed): which endpoint
+- [x] 1.1 Spike on the Fuseki container (a throwaway test in `temp/`, not committed): which endpoint
   answers a dataset-level `GET` with `Accept: application/n-quads` and takes a `POST` of N-Quads;
   record the answer in design.md PD-1. If neither works, switch to the RISK-1 fallback and tell the
   lead before 1.2.

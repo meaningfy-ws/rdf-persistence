@@ -27,8 +27,10 @@ session do (`create` only shares `_new_record` and calls `free_tenant` by its pu
 - **PD-1** (port): `Store.export_quads(dataset) -> bytes` (N-Quads of every named graph, one read)
   and `Store.import_quads(dataset, nquads: bytes) -> None` (adds the quads). `ToolkitStore` passes
   both through. Fuseki: `GET` on the dataset's Graph Store endpoint with `Accept: application/n-quads`,
-  and `POST` there with `Content-Type: application/n-quads`; task 1.1 proves the exact endpoint
-  (`/{ds}` or `/{ds}/data`) on the container before anything builds on it. Fake: serialise/parse its
+  and `POST` there with `Content-Type: application/n-quads`; task 1.1 proved the endpoint is
+  `/{ds}/data` (`DATA_ENDPOINT`, as `put_graph`; `/{ds}` behaves the same; a dropped dataset answers
+  404, mapped to `DatabaseGone` by the existing status mapping): see
+  `evidence/spike-fuseki-nquads.md`. Fake: serialise/parse its
   `Dataset` as `nquads`. Default graph: Fuseki's dataset `GET` returns the default graph's triples
   as three-term lines beside the named graphs' quads (TDB2, no union default graph); the toolkit
   never writes the default graph, so it is empty, and the export passes whatever is there through
