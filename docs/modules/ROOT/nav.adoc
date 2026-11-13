@@ -10,6 +10,7 @@
 ** xref:architecture/access-control.adoc[Access control and identity]
 
 * xref:howto/adopt.adoc[Build an application]
+** xref:howto/commits.adoc[How commits and conflicts work]
 * xref:howto/dump-restore.adoc[Back up or copy a project]
 
 * xref:develop/index.adoc[Working on the toolkit]

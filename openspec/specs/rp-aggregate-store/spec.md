@@ -15,9 +15,10 @@ as a graph name. A tenant's root object SHALL live in the tenant's designated `m
 
 ### Requirement: Stale writes are refused
 
-A commit SHALL replace the aggregate's graph in one guarded update that succeeds only if the
-stored version token equals the one the caller read, and SHALL confirm the outcome with an `ASK`
-for the new token. A guard that does not match SHALL raise a conflict and change nothing.
+A commit SHALL write in one guarded update that succeeds only if the stored version token of
+every aggregate it replaces or removes equals the one the caller read, and SHALL confirm the
+outcome with an `ASK` for the new tokens. A guard that does not match SHALL raise a conflict and
+change nothing.
 
 #### Scenario: two editors
 - **WHEN** two sessions read version v7 of a book and both commit
@@ -155,4 +156,123 @@ every adapter and on the fake.
 #### Scenario: a database that does not exist
 - **WHEN** a dropped database is exported
 - **THEN** the store raises `DatabaseGone`
+
+### Requirement: Several aggregates of one tenant commit atomically
+
+A session SHALL offer a transaction that collects adds, replaces and removes of aggregates of its
+tenant and sends them as one update request. The request SHALL apply every change only if every
+guard holds (each replaced or removed aggregate still has the version token given, each added
+aggregate has no graph), and otherwise SHALL change nothing. The outcome SHALL be confirmed by one
+`ASK`. A refused transaction SHALL raise a conflict that lists, sorted, the root IRIs found
+conflicting by one read after the refusal; the list is a diagnosis and MAY be incomplete or empty.
+The conflict's message SHALL name roots in words and SHALL NOT contain a graph IRI or a version
+token. A transaction of removes only, whose aggregates another writer already removed, SHALL
+succeed. A transaction SHALL refuse the same aggregate twice before sending anything, and SHALL
+refuse any change after its block has ended. A store SHALL apply one update request of several
+operations entirely or not at all; the store conformance suite SHALL prove it on every adapter.
+
+#### Scenario: one root changed meanwhile
+- **GIVEN** stored books A and B read by one unit of work
+- **WHEN** A is changed by the unit of work, B is changed by another session meanwhile, and the
+  unit of work commits A and B
+- **THEN** a conflict naming B is raised and neither A nor B is changed in the store
+
+#### Scenario: adds and a remove together
+- **GIVEN** a unit of work adding three new books and removing a stored one
+- **WHEN** it commits
+- **THEN** the store holds the three books with new version tokens and not the removed one
+
+#### Scenario: an add over an existing root
+- **GIVEN** a transaction that replaces book A and adds book B, which already exists
+- **WHEN** it is sent
+- **THEN** a conflict naming B is raised and A keeps its old version
+
+#### Scenario: the store fails during the request
+- **GIVEN** a transaction of several changes
+- **WHEN** the store fails before answering the update
+- **THEN** the store error is raised and no change is visible (one request, one store transaction)
+
+#### Scenario: a root twice
+- **WHEN** a transaction is given book A twice
+- **THEN** it is refused before any request is sent
+
+#### Scenario: a conflict a person can read
+- **GIVEN** a transaction that replaces book B, which another session changed meanwhile
+- **WHEN** it is sent
+- **THEN** the conflict lists B's IRI, and its message says B was changed by someone else since it
+  was read, with no graph IRI and no version token
+
+#### Scenario: removing what is already removed
+- **GIVEN** a transaction that only removes book B, which another session removed meanwhile
+- **WHEN** it is sent
+- **THEN** it succeeds and nothing is written
+
+#### Scenario: a request that fails part-way
+- **GIVEN** an update request of two operations whose second fails when the store runs it
+- **WHEN** it is sent to the fake store or to Fuseki
+- **THEN** the request fails and the first operation is not applied
+
+### Requirement: The unit of work removes roots and exposes version tokens
+
+A unit of work SHALL remove a root it read, in the same atomic commit as its other changes. It
+SHALL return, through `version(iri)`, the version token of a root it read or committed: the token
+read, and after a commit the new one. Asking for a root it has neither read nor committed SHALL
+raise a lookup error naming it.
+
+#### Scenario: record the version that was used
+- **GIVEN** a stored book
+- **WHEN** a unit of work gets the book and asks for its version
+- **THEN** it gets the token `Session.get_graph` returns and the generic API sends as `ETag`
+
+#### Scenario: after a commit
+- **GIVEN** a unit of work that got a book, changed it and committed
+- **WHEN** it asks for the book's version
+- **THEN** it gets the new token, different from the one it read
+
+#### Scenario: remove with the others
+- **GIVEN** a unit of work that read books A and B, changed A and removed B
+- **WHEN** it commits and A had changed meanwhile
+- **THEN** a conflict names A, and B is still stored
+
+### Requirement: A commit has a size limit and an explicit batch mode
+
+A unit of work SHALL refuse, before reading or writing, a commit of more roots than its limit
+(500 by default), and SHALL refuse a limit below 1 when it is created. An HTTP route that meets
+the limit SHALL answer 413 `payload-too-large`. With batch mode it SHALL commit in batches of at
+most the limit, each batch atomic, and SHALL state that the whole is not atomic. A batch that
+fails SHALL raise its error with its type and fields unchanged, saying how many batches were
+committed, and the roots not yet committed SHALL stay pending so the same unit of work can retry.
+Re-running the same changes in batch mode after an interruption SHALL end in the same stored state
+for added roots whose own IRI and whose parts' IRIs are the same on every run: an added root that
+already exists with the same triples, bookkeeping excluded, counts as committed.
+
+#### Scenario: over the limit
+- **GIVEN** a unit of work with a limit of 2 and three new books
+- **WHEN** it commits without batch mode
+- **THEN** it is refused with an error naming the limit, and nothing is written
+
+#### Scenario: a batch fails and the same unit of work retries
+- **GIVEN** a limit of 2 and a batch holding a book already stored as it would be written and a
+  book that clashes with a stored one
+- **WHEN** the batch-mode commit raises a conflict, the clashing stored book is removed, and the
+  same unit of work commits in batch mode again
+- **THEN** the conflict said how many batches were committed, and the retry writes only the book
+  that clashed
+
+#### Scenario: batches re-run after an interruption
+- **GIVEN** three new books, a limit of 2, and a first batch-mode commit interrupted after its
+  first batch
+- **WHEN** a new unit of work adds the same three books and commits in batch mode
+- **THEN** the store holds the three books once each
+
+### Requirement: The tenant root is recognised whatever the IRI's type
+
+A session SHALL treat an IRI as its tenant root when its text equals the tenant IRI, whether
+either is given as a string or as an rdflib `URIRef`.
+
+#### Scenario: URIRef tenant, string IRI
+- **GIVEN** a session opened with the tenant IRI as a `URIRef`
+- **WHEN** the tenant root is written and read with the IRI as a `str`
+- **THEN** it is stored in the tenant's `meta` graph and the registry holds no `Aggregate` entry
+  for it (and the same with the types swapped)
 
