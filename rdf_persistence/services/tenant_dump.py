@@ -177,7 +177,7 @@ async def restore(
             graphs or root), or a member among the blobs is not a blob.
         PersistenceError: The tenant could not be created; see ``Tenancy.restore``.
     """
-    with _opened(src) as tar:
+    with _opened(src) as (tar, stream):
         members = iter(tar)
         manifest = _manifest(tar, members)
         _check_manifest(manifest, view, iris)
@@ -186,16 +186,18 @@ async def restore(
         data = _moved(quads, manifest, tenant, iris)
         _check_graphs(data, tenant, iris)
         label = tenancy.vet_restored_root(tenant, data.graph(iris.meta(tenant)), creator)
-        return await tenancy.restore(tenant, data, label, _blobs(tar, members), creator)
+        return await tenancy.restore(tenant, data, label, _blobs(tar, members, stream), creator)
 
 
 @contextmanager
-def _opened(src: BinaryIO) -> Iterator[tarfile.TarFile]:
+def _opened(src: BinaryIO) -> Iterator[tuple[tarfile.TarFile, gzip.GzipFile]]:
+    """The tar and, under it, the gzip stream: that one is read to its end marker (PD-12 F1), which the tar does not reach."""
+    stream = gzip.GzipFile(fileobj=src)
     with _readable("it is not a gzipped tar"):
         # a stream: members are read in order, never back; closed by the ``with`` below
-        tar = tarfile.open(fileobj=src, mode="r|gz")  # noqa: SIM115
+        tar = tarfile.open(fileobj=stream, mode="r|")  # noqa: SIM115
     with tar:
-        yield tar
+        yield tar, stream
 
 
 @contextmanager
@@ -295,16 +297,42 @@ def _check_graphs(data: Dataset, tenant: str, iris: Iris) -> None:
             )
 
 
-def _blobs(tar: tarfile.TarFile, members: Iterator[tarfile.TarInfo]) -> Iterator[tuple[str, bytes]]:
-    """The ``(key, bytes)`` of each remaining member, read as it is asked for; a member that is not a blob is ``InvalidBody``."""
+def _blobs(
+    tar: tarfile.TarFile, members: Iterator[tarfile.TarInfo], stream: gzip.GzipFile
+) -> Iterator[tuple[str, bytes]]:
+    """The ``(key, bytes)`` of each remaining member, read as it is asked for.
+
+    A member that is not a blob, a key that climbs (a ``.`` or ``..`` segment) or repeats, a name that is not
+    UTF-8, or a gzip stream that does not end with its marker is ``InvalidBody`` (PD-3, PD-12).
+    """
+    seen: set[str] = set()
     while True:
         with _readable():
             member = next(members, None)
         if member is None:
+            if tar.fileobj.tell() == tar.offset:  # the stream ended where an end block should be
+                raise InvalidBody("the archive has no tar end blocks: it is cut short")
+            with _readable("the gzip stream does not end properly"):
+                while stream.read(1 << 16):  # verifies the CRC and the length at the end
+                    pass
             return
         key = member.name.removeprefix(BLOBS)
         if not member.name.startswith(BLOBS) or not key or not member.isfile():
             raise InvalidBody(
                 f"the archive member {member.name!r} is not a blob: a regular file under {BLOBS}"
             )
+        _check_key(key, member.name, seen)
         yield key, _read(tar, member, member.name)
+
+
+def _check_key(key: str, name: str, seen: set[str]) -> None:
+    """PD-12 F2 to F4: a blob key that is UTF-8, climbs nowhere and was not seen before."""
+    try:
+        name.encode("utf-8")  # tarfile decodes with surrogateescape, so a stray byte shows here
+    except UnicodeEncodeError as error:
+        raise InvalidBody(f"the archive member name {name!r} is not UTF-8") from error
+    if {".", ".."} & set(key.split("/")):
+        raise InvalidBody(f"the blob key {key!r} has a '.' or '..' path segment")
+    if key in seen:
+        raise InvalidBody(f"the archive holds the blob {key!r} twice")
+    seen.add(key)

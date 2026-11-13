@@ -120,6 +120,17 @@ session do (`create` only shares `_new_record` and calls `free_tenant` by its pu
   the tenant. A restore has no tenant yet, so `require` cannot guard it: the consumer verifies the
   caller with `gate.caller`, applies its own rule on who may create a tenant, and passes
   `caller.principal` as `creator` (the `restore_tenant` docstring and the how-to say so).
+- **PD-12** (adversarial tester after 3.1; accepted findings). A restore refuses with `InvalidBody`,
+  cleaning up as PD-6 when the database already exists, and never writes the record:
+  F1, an archive whose gzip stream does not end with its end-of-stream marker (CRC and length
+  checked), even when it is cut exactly at a member boundary (what a dump that failed half-way, or a
+  truncated upload, leaves); the gzip stream is read to its end before the record is written.
+  F2, a blob key with a `..` or `.` path segment. F3, two blob members with the same key.
+  F4, a member name that is not valid UTF-8. Kept as is (design silent, not a defect): a subject or
+  object naming another tenant's IRI inside an accepted graph is restored verbatim, never rewritten
+  (PD-5 checks graph names only); an id in an IRI's query or fragment moves with the path.
+
+## Algorithm / approach
 
 ## Algorithm / approach
 
