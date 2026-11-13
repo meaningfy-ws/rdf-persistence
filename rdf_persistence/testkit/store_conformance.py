@@ -10,7 +10,7 @@ from collections.abc import Awaitable, Callable, Iterable
 from typing import cast
 
 import pytest
-from rdflib import Graph, Literal, URIRef
+from rdflib import BNode, Dataset, Graph, Literal, URIRef
 from rdflib.compare import graph_diff, isomorphic
 from rdflib.query import ResultRow
 
@@ -164,6 +164,43 @@ async def put_graph_on_a_dropped_dataset_is_gone(store: Store, dataset: str) -> 
         await store.put_graph(await _dropped(store, dataset), G, Graph())
 
 
+def _two_graphs() -> Dataset:
+    """Two named graphs: language-tagged and typed literals; a blank node subject of two triples."""
+    data = Dataset()
+    first, second = data.graph(G), data.graph(OTHER)
+    first.add((A, P, Literal("bonjour", lang="fr")))
+    first.add((A, P, Literal(7)))
+    node = BNode()
+    second.add((node, P, B))
+    second.add((node, P, Literal("x")))
+    return data
+
+
+async def export_then_import_round_trips_every_named_graph(store: Store, dataset: str) -> None:
+    source, copy = _two_graphs(), f"{dataset}-copy"
+    for graph in source.graphs():
+        await store.put_graph(dataset, cast(URIRef, graph.identifier), graph)
+    await store.create_dataset(copy)
+    await store.import_quads(copy, await store.export_quads(dataset))
+    restored = Dataset()
+    restored.parse(data=await store.export_quads(copy), format="nquads")
+    for graph in source.graphs():
+        assert isomorphic(restored.graph(graph.identifier), graph), graph.identifier
+    assert len(restored.default_graph) == 0, "no default-graph triple"
+    blank = {s for s in restored.graph(OTHER).subjects() if isinstance(s, BNode)}
+    assert len(blank) == 1, "the blank node still links its two triples"
+
+
+async def export_of_a_dropped_dataset_is_gone(store: Store, dataset: str) -> None:
+    with pytest.raises(DatabaseGone):
+        await store.export_quads(await _dropped(store, dataset))
+
+
+async def import_into_a_dropped_dataset_is_gone(store: Store, dataset: str) -> None:
+    with pytest.raises(DatabaseGone):
+        await store.import_quads(await _dropped(store, dataset), b"")
+
+
 CASES: tuple[Case, ...] = (
     create_list_and_drop,
     create_existing_is_conflict,
@@ -181,6 +218,9 @@ CASES: tuple[Case, ...] = (
     query_on_a_dropped_dataset_is_gone,
     update_on_a_dropped_dataset_is_gone,
     put_graph_on_a_dropped_dataset_is_gone,
+    export_then_import_round_trips_every_named_graph,
+    export_of_a_dropped_dataset_is_gone,
+    import_into_a_dropped_dataset_is_gone,
 )
 
 

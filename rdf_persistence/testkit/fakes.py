@@ -26,6 +26,7 @@ from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.session import Clock, Session, open_session, utc_now
 
+NQUADS = "nquads"  # rdflib's name for N-Quads
 FAKE_DATABASE = "fake"
 FAKE_TENANT = "https://example.org/tenants/fake"
 FAKE_PRINCIPAL = Principal(id="https://example.org/people/fake")
@@ -72,7 +73,16 @@ class FakeStore(_Instrumented):
     """A ``Store`` over one rdflib ``Dataset`` per dataset name, with failure injection."""
 
     OPERATIONS = frozenset(
-        {"query", "update", "put_graph", "create_dataset", "drop_dataset", "list_datasets"}
+        {
+            "query",
+            "update",
+            "put_graph",
+            "export_quads",
+            "import_quads",
+            "create_dataset",
+            "drop_dataset",
+            "list_datasets",
+        }
     )
 
     def __init__(self) -> None:
@@ -106,6 +116,14 @@ class FakeStore(_Instrumented):
         target.remove((None, None, None))
         for triple in graph:
             target.add(triple)
+
+    async def export_quads(self, dataset: str) -> bytes:
+        self._enter("export_quads", dataset)
+        return self._dataset(dataset).serialize(format=NQUADS).encode()
+
+    async def import_quads(self, dataset: str, nquads: bytes) -> None:
+        self._enter("import_quads", dataset)
+        self._dataset(dataset).parse(data=nquads, format=NQUADS)
 
     async def create_dataset(self, name: str) -> None:
         self._enter("create_dataset", name)

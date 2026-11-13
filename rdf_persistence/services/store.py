@@ -37,6 +37,19 @@ class Store(Protocol):
         """Replace the named graph with ``graph`` (Graph Store PUT); raises as ``query`` does."""
         ...
 
+    async def export_quads(self, dataset: str) -> bytes:
+        """Every quad of the dataset as N-Quads, read once; the default graph passes through.
+
+        Raises:
+            DatabaseGone: The dataset does not exist.
+            StoreUnavailable: The store is unreachable or failed.
+        """
+        ...
+
+    async def import_quads(self, dataset: str, nquads: bytes) -> None:
+        """Add the N-Quads to the dataset; raises as ``export_quads`` does."""
+        ...
+
     async def create_dataset(self, name: str) -> None:
         """Create an empty dataset. Raises ``Conflict`` if it exists."""
         ...
@@ -75,6 +88,12 @@ class ToolkitStore:
 
     async def put_graph(self, dataset: str, graph_iri: URIRef, graph: Graph) -> None:
         await self._store.put_graph(dataset, graph_iri, graph)
+
+    async def export_quads(self, dataset: str) -> bytes:
+        return await self._store.export_quads(dataset)
+
+    async def import_quads(self, dataset: str, nquads: bytes) -> None:
+        await self._store.import_quads(dataset, nquads)
 
     async def create_dataset(self, name: str) -> None:
         await self._store.create_dataset(name)

@@ -3,6 +3,7 @@
 JSON = "application/json"
 JSON_LD = "application/ld+json"
 TURTLE = "text/turtle"
+N_QUADS = "application/n-quads"
 PROBLEM_JSON = "application/problem+json"
 # The representations of an aggregate, in the order a tie in ``Accept`` is settled.
 REPRESENTATIONS = (JSON, JSON_LD, TURTLE)
