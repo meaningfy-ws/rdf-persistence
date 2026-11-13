@@ -91,7 +91,7 @@ words, one clause per root (never a version token):
 * `<root> already exists`: you added it, and something is stored under that IRI.
 
 When no root can be named, the message reads `the commit lost a race with another writer; read
-again and retry`, and `iris` is empty.
+again and retry`, and `iris` is empty: show the message.
 
 === What to do
 
@@ -115,7 +115,8 @@ xref:architecture/data-flows.adoc#commit[the diagnosis].
 That nothing was written holds, with one rare exception: a false conflict. A commit that only
 removes roots can apply, and then another writer re-adds one of them before the store is asked
 again; the commit is reported as a `Conflict` although it was stored. Read again: the stored state
-shows the truth either way.
+shows the truth either way. A root you removed that is present after reading again was re-added
+by someone else: leave it; do not remove it again blindly.
 
 A removes-only commit also succeeds when another writer has already removed the roots: the shelf
 is empty, as you wanted. (Mixed with other changes, a root removed meanwhile is named in the
@@ -167,22 +168,26 @@ Read it as "N of M batches committed before it". A failing batch writes nothing 
 [cols="1,3",options="header"]
 |===
 |Retry |What it does
-|The same unit of work |`commit(batches=True)` again. The roots of the committed batches left its pending changes, so it sends the roots not yet committed.
+|The same unit of work |`commit(batches=True)` again. The roots of the committed batches left its pending changes, so it sends the roots not yet committed (the batches after the failed one were never sent). It also skips an added root already stored exactly as written, so a batch the store applied before its reply was lost does no harm.
 |A fresh run |A new unit of work that adds all 600 books again. Before each batch it reads every root it is to add; one that is already stored exactly as you would write it counts as committed and is skipped.
 |===
 
 Use the first when the process is still alive and the cause lies outside the unit of work: a store
-outage, or the clashing stored book corrected or removed in the store. A unit of work cannot drop a
-pending add, so to leave a row out, start a fresh run without it. Use the fresh run too after a
-crash, when the old unit of work is gone.
+outage (it raises `StoreUnavailable`; catch it as in
+xref:howto/adopt.adoc#transaction-batches[Save more than 500 aggregates]), or the clashing stored
+book corrected or removed in the store. A unit of work cannot drop a pending add, so to leave a row
+out, start a fresh run without it. Use the fresh run too after a crash, when the old unit of work
+is gone.
 
 === When a fresh run converges
 
 "Exactly as you would write it" compares the stored triples with the triples the commit would
 write. It holds when the re-run builds the same IRIs: the book's own IRI must be the same on every
-run, so derive it from the source (for example the ISBN), never mint it at random. The same goes
-for the parts of a book: anonymous parts, or part IRIs you derive from the source row (for example
-from the chapter number). It is not the case for `new_part`, which mints a random IRI each time: the
+run, so derive it from the source, never mint it at random. The default policy takes a UUID, so
+derive that from the source key (`uuid5` of the ISBN; the example is in
+xref:howto/adopt.adoc#transaction-batches[Save more than 500 aggregates]). The same goes for the
+parts of a book: parts without an IRI of their own (blank nodes), or part IRIs you give, which are
+stored as written, derived from the source row (for example the chapter number). It is not the case for `new_part`, which mints a random IRI each time: the
 re-run sees different triples, and those books conflict with the stored ones. That is safe,
 because nothing is duplicated, but the import does not converge. Derive the part IRIs from the
 source if the import must be re-runnable.

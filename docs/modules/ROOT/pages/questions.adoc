@@ -27,7 +27,8 @@ See xref:howto/adopt.adoc#session[step 8].
 *Can I save several aggregates at once?*::
 Yes. Add, change and `remove` the roots in one `UnitOfWork` and call `commit()` once: all are
 stored or none is (a root is the root object of an aggregate), and a stale root raises `Conflict`
-whose `iris` names the roots that moved.
+whose `iris` is a diagnosis of the roots that moved (xref:howto/commits.adoc#diagnosis[it can be
+incomplete]).
 `work.version(iri)` gives a root's version token. For triples, use `async with
 session.transaction()`. A commit that used to leave the first roots written after a conflict now
 leaves nothing. See xref:howto/adopt.adoc#transaction[Save several aggregates at once] and
@@ -39,7 +40,8 @@ in several transactions (see xref:howto/adopt.adoc#transaction-batches[Save more
 The second commit is refused: every aggregate has a version token that changes on every write, and
 a commit is stored only if each root it changes is still at the version it read and each new root
 does not exist yet. Nothing is
-overwritten silently, and nothing of the refused commit is written. See
+overwritten silently, and nothing of the refused commit is written (bar the rare false conflict of a
+removes-only commit). See
 xref:howto/commits.adoc[How commits and conflicts work].
 
 *Why did my commit raise `Conflict`?*::
