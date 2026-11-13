@@ -300,6 +300,9 @@ drops the marker, and the `ASK` is true.
 | The commit applied, then another writer changed one of its graphs before the `ASK` | success (PD-4: some graph holds this transaction's new token) |
 | Removes only; another writer changed a removed root first | `ASK` fails; `Conflict(iris=(that root,))`; nothing written (never a success, PD-4) |
 | The commit applied, then **every** added or replaced graph was overwritten by others before the `ASK` | false `Conflict` (known diagnosis limit, DEC-3); the data is consistent; a re-read shows the others' versions |
+| Removes only; the commit applied, then another writer re-added a removed root before the `ASK` | false `Conflict` naming it (known diagnosis limit, PD-18h); a re-read shows the other writer's root, which a blind retry must not remove |
+| An add whose graph holds triples but no version triple | `Conflict` with empty `iris` and the "lost a race" message (PD-18h) |
+| Removes only; another writer already removed the root | success, nothing written (idempotent removal, PD-17e) |
 | A `str` and a `URIRef` of one root in one transaction | `ValueError` (claim keyed on the graph, PD-5) |
 | Batch re-run of roots whose parts got random IRIs from `new_part` | those roots conflict; nothing duplicated (PD-9) |
 

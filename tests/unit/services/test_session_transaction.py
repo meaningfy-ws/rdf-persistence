@@ -189,12 +189,16 @@ async def test_tc07_the_tenant_root_and_a_book_commit_together(store, session, s
 async def test_tc08_a_replace_with_no_loaded_graphs_empties_the_old_ones(store, session, seeded):
     loaded = await session.load_graph(A, LOADED_TTL.encode(), rdf_format=RdfFormat.TURTLE)
     a2 = await session.replace_graph(A, title(A, "mine"), seeded[A], loaded_graphs=[loaded])
+    registry = term(DEFAULT_IRIS.registry(TENANT))
+    assert await ask(store, ENTRY, registry=registry, graph=term(loaded)), (
+        "the entry is there first"
+    )
     async with session.transaction() as t:
         await t.replace_graph(A, title(A, "second"), a2, loaded_graphs=[])
         await t.add_graph(C, title(C, "new"))
-    assert not await ask(store, HAS_TRIPLES, g=term(loaded))
-    assert not await has_entry(store, str(loaded))
-    assert await stored(session, C)
+    assert not await ask(store, HAS_TRIPLES, g=term(loaded)), "the loaded graph is emptied"
+    assert not await ask(store, ENTRY, registry=registry, graph=term(loaded)), "its entry is gone"
+    assert await stored(session, C), "C is stored"
 
 
 async def test_tc09_an_empty_transaction_sends_nothing(store, session):

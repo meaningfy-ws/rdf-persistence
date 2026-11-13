@@ -445,7 +445,7 @@ database name (xref:howto/adopt.adoc#session[Build an application, step 8]).
 * *Commit* (implemented: `Session.transaction` in `rdf_persistence/services/session.py`, driven
   by `UnitOfWork.commit`): every added, replaced and removed root of the commit goes in one SPARQL
   update request of several `;`-joined operations; the first writes a commit marker only if every
-  root's version guard holds, and the others run only while the marker is there. Fuseki answers
+  root's guard holds (its version for a replace or remove, its absence for an add), and the others run only while the marker is there. Fuseki answers
   204 even when the guards match nothing, so an `ASK` for the new tokens tells committed from
   conflict. All or nothing: a conflict on one root leaves every root of the commit unwritten (see
   xref:architecture/data-flows.adoc#commit[the commit flow]).
