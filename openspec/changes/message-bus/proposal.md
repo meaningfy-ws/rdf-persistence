@@ -106,6 +106,14 @@ the toolkit's features needs no layer 3.
   In process only: an observer that has not run when the process stops is lost; durable delivery is
   `aggregate-events`.
 
+- **DEC-12** (developer, 2026-11-13: "proceed with the thin option"): a command carries its data
+  (an `Add` or `Replace` its triples, an extension its parameters); a stored activity record and a
+  published message carry references only: who, when, the use case, its small parameters, and the
+  IRI, class and version token of each generation and invalidation, never the aggregate's triples.
+  An observer that needs the content reads it (`get_graph`). Undo and version history are not
+  planned (developer, 2026-11-13); the version tokens in the records are what a later version
+  history would resolve.
+
 ## Rabbit-holes
 
 - **Collaboration's records.** `TransitionRecord` (collaboration EPIC) becomes the layer-2

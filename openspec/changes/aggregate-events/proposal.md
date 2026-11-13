@@ -69,6 +69,10 @@ tenant over server-sent events, seeing only events about what it may read.
   not care whether its event came from this process or another (the book's chapter 11). Consumers
   are idempotent by event id: the relay delivers at least once.
 - **DEC-8** (2026-11-13): commands stay in process; only events cross the broker.
+- **DEC-9** (developer, 2026-11-13; answers seed Q-4): messages are **thin** (`message-bus`
+  DEC-12): references and version tokens, never the aggregate's triples. A subscriber reads the
+  content with its own rights. Event-carried state (fat messages) is not in this EPIC; if a consumer
+  ever needs it, it is an opt-in per aggregate class with its own decision.
 
 ## Rabbit-holes
 
