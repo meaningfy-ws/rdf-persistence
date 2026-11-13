@@ -73,7 +73,8 @@ required); any change to listings, loads, the sweeps' logic or the HTTP routes.
   the root IRIs (not graph IRIs), **sorted** (so `cross-aggregate-unique-keys` and tests can
   compare them without knowing the order of the changes). If the diagnosis finds no
   culprit (a writer restored the old state meanwhile), `Conflict.iris` is empty and the message
-  says the transaction lost a race.
+  says the transaction lost a race. (The message wording here and in PD-14, PD-17f and PD-18f is
+  superseded by PD-20a: root IRIs in words, no version tokens.)
 - **PD-5** (DEC-2): `Session.transaction()` is an async context manager returning a
   `Transaction` bound to the session. `Transaction.add_graph`, `replace_graph`, `remove` take the
   arguments of today's session methods, run today's pre-checks (`_graph`, `_check_commit`,

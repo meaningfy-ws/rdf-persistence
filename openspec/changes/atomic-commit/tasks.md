@@ -103,13 +103,13 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
 | TC-31 | `max_roots=2`, three new books, `commit(batches=True)` | two update requests; three books stored |
 | TC-32 | as TC-31 with a store stub failing the second request; then a new uow adds the same three books, `commit(batches=True)` | three books stored once each; the first two kept their first versions (idempotent re-run) |
 | TC-32a | as TC-32 with books that each own an anonymous chapter (no id) | idempotent: three books once each (skolem IRIs compared as blank nodes, PD-9) |
+| TC-32b | as TC-32, the same uow retries `commit(batches=True)` after the failure | only the third book is sent; three books stored |
+| TC-33 | `max_roots=2`, batch re-run where one added book exists with a different title | `Conflict(iris=(that book,))`, message says how many batches committed |
+| TC-34 | `max_roots=2`, exactly two roots, `commit()` | one request, both stored |
 
 As built (PD-20j): TC-32 and TC-32b use books whose chapter IRI is derived from the book
 (`steady_dune`), since `new_part` mints random part IRIs (PD-9); TC-32a uses `LibraryAccess` roots
 with id-less `Grant` parts, the toy schema's anonymous part (its chapters all have an id).
-| TC-32b | as TC-32, the same uow retries `commit(batches=True)` after the failure | only the third book is sent; three books stored |
-| TC-33 | `max_roots=2`, batch re-run where one added book exists with a different title | `Conflict(iris=(that book,))`, message says how many batches committed |
-| TC-34 | `max_roots=2`, exactly two roots, `commit()` | one request, both stored |
 
 - [x] 2.2 Fuseki: IT-06, a 500-book commit with the default limit (PD-10), timed; the time goes in
   the durations table of `docs/modules/ROOT/pages/develop/index.adoc`. If it fails or exceeds

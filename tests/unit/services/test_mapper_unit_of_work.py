@@ -450,8 +450,10 @@ async def test_tc31_batches_commit_one_transaction_per_max_roots(session, store)
     await work.commit(batches=True)
     assert len(store.sent("update")) == before + 2, "two update requests"
     for book in books:
-        assert (await unit(session).get(Book, book.id)).label == book.label
-        assert work.version(book.id) == (await session.get_graph(book.id))[2]
+        stored_label = (await unit(session).get(Book, book.id)).label
+        assert stored_label == book.label, "each book is stored with its label"
+        stored_version = (await session.get_graph(book.id))[2]
+        assert work.version(book.id) == stored_version, "the unit of work holds the stored token"
 
 
 async def test_tc32_a_re_run_after_a_failed_batch_stores_each_book_once(session, store):
@@ -471,7 +473,8 @@ async def test_tc32_a_re_run_after_a_failed_batch_stores_each_book_once(session,
     for n in (50, 51):
         assert (await session.get_graph(book_iri(n)))[2] == kept[n], "the first versions stand"
         assert second_run.version(book_iri(n)) == kept[n], "taken as committed"
-    assert (await unit(session).get(Book, book_iri(52))).label == "Dune"
+    third = (await unit(session).get(Book, book_iri(52))).label
+    assert third == "Dune", "the third book is stored by the re-run"
 
 
 async def test_tc32a_a_re_run_of_roots_with_anonymous_parts_is_idempotent(session, store):
@@ -515,7 +518,7 @@ async def test_a_re_run_of_books_with_random_part_iris_conflicts_and_duplicates_
     second_run.add(dune(book_iri(75)))
     with pytest.raises(Conflict) as raised:
         await second_run.commit(batches=True)
-    assert raised.value.iris == (book_iri(75),)
+    assert raised.value.iris == (book_iri(75),), "the conflict names the re-added book"
     assert (await session.get_graph(book_iri(75)))[2] == kept, "the stored book is untouched"
 
 
@@ -543,7 +546,8 @@ async def test_tc34_a_commit_of_exactly_the_limit_is_one_request(session, store)
     await work.commit()
     assert len(store.sent("update")) == before + 1, "one request"
     for book in books:
-        assert (await unit(session).get(Book, book.id)).id == book.id
+        stored_id = (await unit(session).get(Book, book.id)).id
+        assert stored_id == book.id, "both books are stored"
 
 
 # -- fixes after the stage 2 review (PD-20) ----------------------------------------------------
