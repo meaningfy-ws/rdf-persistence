@@ -27,8 +27,10 @@ session do (`create` only shares `_new_record` and calls `free_tenant` by its pu
 - **PD-1** (port): `Store.export_quads(dataset) -> bytes` (N-Quads of every named graph, one read)
   and `Store.import_quads(dataset, nquads: bytes) -> None` (adds the quads). `ToolkitStore` passes
   both through. Fuseki: `GET` on the dataset's Graph Store endpoint with `Accept: application/n-quads`,
-  and `POST` there with `Content-Type: application/n-quads`; task 1.1 proves the exact endpoint
-  (`/{ds}` or `/{ds}/data`) on the container before anything builds on it. Fake: serialise/parse its
+  and `POST` there with `Content-Type: application/n-quads`; task 1.1 proved the endpoint is
+  `/{ds}/data` (`DATA_ENDPOINT`, as `put_graph`; `/{ds}` behaves the same; a dropped dataset answers
+  404, mapped to `DatabaseGone` by the existing status mapping): see
+  `evidence/spike-fuseki-nquads.md`. Fake: serialise/parse its
   `Dataset` as `nquads`. Default graph: Fuseki's dataset `GET` returns the default graph's triples
   as three-term lines beside the named graphs' quads (TDB2, no union default graph); the toolkit
   never writes the default graph, so it is empty, and the export passes whatever is there through
@@ -105,7 +107,104 @@ session do (`create` only shares `_new_record` and calls `free_tenant` by its pu
   `ServiceKit.restore_tenant(src: BinaryIO, creator: str) -> TenantSummary`, docstrings like
   `sweep_tenant`'s; both exported from the public API (`test_public_api.py`).
 
+- **PD-10** (as built, task 3.1; the design was silent): `Tenancy.vet_restored_root(tenant, graph,
+  restorer) -> label` decodes and validates the root, because the mapper, root class and validators
+  are `Tenancy`'s; `toolkit_version` comes from `importlib.metadata` (`"unknown"` when not installed),
+  since `services` may not import the top-level package; the manifest is also refused when
+  `tenant_id_of(source_tenant) != source_tenant_id` (an empty or odd id would make `rewrite` match
+  everywhere); the cleanup ignores a `NotFound` drop (never created or already gone) and catches
+  `Exception`, not `BaseException`, so a cancelled restore leaves its orphans to the start-up sweep;
+  `dump` takes a keyword-only `clock`; the public API exports `TenantDump` (the kit methods ride on
+  `ServiceKit`).
+- **PD-11** (task 4.2 finding): only the dump is routed behind `require(..., Action.ADMINISTER)` on
+  the tenant. A restore has no tenant yet, so `require` cannot guard it: the consumer verifies the
+  caller with `gate.caller`, applies its own rule on who may create a tenant, and passes
+  `caller.principal` as `creator` (the `restore_tenant` docstring and the how-to say so).
+- **PD-12** (adversarial tester after 3.1; accepted findings). A restore refuses with `InvalidBody`,
+  cleaning up as PD-6 when the database already exists, and never writes the record:
+  F1, an archive whose gzip stream does not end with its end-of-stream marker (CRC and length
+  checked), even when it is cut exactly at a member boundary (what a dump that failed half-way, or a
+  truncated upload, leaves); the gzip stream is read to its end before the record is written.
+  F2, a blob key with a `..` or `.` path segment. F3, two blob members with the same key.
+  F4, a member name that is not valid UTF-8. Kept as is (design silent, not a defect): a subject or
+  object naming another tenant's IRI inside an accepted graph is restored verbatim, never rewritten
+  (PD-5 checks graph names only); an id in an IRI's query or fragment moves with the path.
+- **PD-13** (stage review, PR #89; the lead's decisions on the findings). Accepted:
+  - *Decompression budget* (L1 C1, L4 C1): restore charges `member.size + tarfile.BLOCKSIZE` per
+    member against a total budget, checked from the header **before** each read, and refuses past
+    it with `InvalidBody`, nothing created when the overflow is before the blobs. The budget is a
+    new `ServiceSettings` slot `max_restore_bytes` (LinkML, `make generate`; default 1 GiB), passed by
+    `ServiceKit.restore_tenant` as `restore(..., max_bytes=...)`; `max_body_bytes` is not reused. The
+    manifest has its own cap, `MAX_MANIFEST_BYTES = 64 KiB`. The parsed N-Quads bytes are released
+    once parsed. RISK-2 stays for honest tenants; this bounds hostile ones.
+  - *End marker* (L4 W3, L1 S1): format v1 (unreleased) ends with an empty regular member `end`;
+    `dump` writes it last, `restore` refuses an archive whose blobs are not followed by `end`, or
+    that has anything after it, then drains the gzip stream (bounded by the budget) so its trailer
+    is checked. The `tar.offset` / `fileobj.tell()` check is removed.
+  - *Record write outside the cleanup* (L4 W1): `Tenancy.restore` writes the access record after
+    the `try` whose `except` drops the database and bucket; a failed record write leaves orphans
+    for the start-up sweep (RISK-6), never a record without its database.
+  - *Checks owned by the writer* (L3 W1, S1): `rewrite`, `glued_templates` and the graph check move
+    to a pure `domain/tenant_move.py` (no I/O); `Tenancy.restore(parsed, source_tenant_id, blobs,
+    creator)` draws the tenant itself, rewrites, checks graphs, vets the root and
+    writes; `free_tenant` and `vet_restored_root` become private again. `tenant_dump.py` keeps the
+    archive: read, manifest checks, N-Quads parse, the blob iterator. Supersedes PD-6's
+    `free_tenant` and PD-10's public `vet_restored_root`.
+  - *One blob-key rule* (L1 W1): a pure `domain` function is the only key rule, used by the S3
+    adapter, `FakeFileStore.put` (so the fake refuses as Garage does) and restore (as `InvalidBody`).
+    The adversarial round-trip case with a newline key becomes a refusal case.
+  - *Smaller*: `except (ParserError, ValueError)` around the N-Quads parse (L4 W2); one N-Quads
+    format name, `media.N_QUADS`, everywhere (L3 S4, L4 W4); one log line per dump (`step="dump"`,
+    tenant, blob count) and per restore (`step="restore"`, source tenant, new tenant), no content
+    (L4 S5); `Conflict` (the drawn id was taken; retry) listed in `restore_tenant`'s docstring
+    (L4 S6); the blocking reads and writes of `src`/`out` named in the kit docstrings and a
+    `shortcut:` comment, as is the whole-blob read (L3 S5, L4 S8); `except ValueError` only in the
+    root check (L4 S4); explicit "found" text in the member message (L4 S3).
+  - *Restore trusts graph content* (L1 W2, the lead's choice; the developer may overrule): restore
+    checks structure (graph names, the root, keys), not each aggregate against its shapes. The
+    `restore_tenant` docstring and the how-to say: restore only archives your own deployment wrote
+    or that come from a party you trust as much as a tenant creator.
+  - *Tests* (L2 W1, W3-W8, S1, S2, S4): TC-13 checks parts and splits the policy check; Hypothesis
+    settings `derandomize=True`; one assert per idea with a message; a dump changes nothing; a root
+    that does not decode; the missing `glued_templates` rows; `PersistenceError` not `Exception`;
+    `ToolkitStore` pass-through lines; graph diff in the conformance message; TC-23 names the
+    database. Tests for the budget, the end marker and the record-write order.
+  - *Docs* (L2 W2, S3, L3 W2, cold reader): the how-to and data-flows list every refusal cause and
+    when cleanup applies; the architecture index lists the port's dataset-level Graph Store
+    GET/POST, `Tenancy.restore` and the two kit calls; the how-to introduces `kit`, `t`, `path`
+    and imports, maps each error to its HTTP status, says a restore makes a new IRI (links to the
+    old one break), explains the two labels, says the toolkit has no write freeze (the consumer
+    stops writes), says where a schema declares `version`, and links terms to their pages.
+  - *Header bytes count too* (fixer's finding while applying PD-13): `tarfile` reads GNU long-name
+    and pax extended headers whole before restore sees the member, so the per-member charge misses
+    them. Restore reads the gzip stream through a counting wrapper that refuses with `InvalidBody`
+    once the decompressed bytes pass `max_bytes` plus `HEADER_ALLOWANCE` (4 tar records); it bounds every read,
+    headers included.
+  Rejected: `creator` typed as the verified caller (L1 S4; the kit takes principal IRIs as strings
+  everywhere); see the full list below.
+- **PD-14** (checker, after PD-13). Accepted: the per-member charge counts the member's padding to
+  the next tar block (`member.size` rounded up to `BLOCKSIZE`, plus the header block), so the
+  budget and the counting wrapper agree and an honest archive under `max_restore_bytes` is never
+  refused; the spec deltas state format v1's `end` member, the refusal of an archive cut short or
+  with anything after `end`, and the `max_restore_bytes` refusal; the data-flows diagram shows the
+  as-built flow (`Tenancy.restore` draws, rewrites, checks; `tenant_dump` reads the archive and
+  its end); the how-to introduces `path`; the conformance cases name TC-01..TC-03; the end-marker
+  test runs `dump`; a GNU long-name header over budget is tested; the `TenantDump` description no
+  longer says "another deployment" (DEC-3: same policy); this design's sketch shows the PD-13
+  flow. The developer confirmed on 2026-11-13: restore stays structure-only (PD-13), and the
+  acceptance demo is skipped.
+- Rejected at PD-13 (kept for the record): `creator` typed as the verified caller (L1 S4; the kit takes principal IRIs as strings
+  everywhere); trimming error details (L1 S2, L4 S5; the caller uploaded the archive); CI on more
+  Python versions (L4 W3 b; the end marker removes the dependency on tarfile internals); further
+  splitting of `tenant_dump.py` (L3 S3).
+
 ## Algorithm / approach
+
+As built after PD-13: `dump` also writes an empty final member `end`; in `restore` the archive is
+read through a counting wrapper bounded by `max_bytes`, each member is charged before it is read,
+`Tenancy.restore(parsed, source_tenant_id, blobs, creator)` draws the tenant, rewrites, checks
+graphs and the root and writes, and the blob iterator ends by requiring `end` and draining the gzip
+trailer. The sketch below is the PD-3..PD-7 shape it grew from.
 
 ```python
 async def dump(tenancy, store, files, iris, view, tenant, out):

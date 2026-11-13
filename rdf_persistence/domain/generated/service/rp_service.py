@@ -135,6 +135,7 @@ class ServiceSettings(ConfiguredBaseModel):
     creator_role: str = Field(default=..., title="Creator role", description="The role a caller is given on the tenant it creates.")
     roles_claim: str = Field(default=..., title="Roles claim", description="The claim of the token that holds the caller\u0027s global roles, an object keyed by role name; for Zitadel, urn:zitadel:iam:org:project:{project_id}:roles of the consumer\u0027s project.")
     max_body_bytes: Optional[int] = Field(default=1048576, title="Maximum body size", description="The most bytes a request body may hold; a larger one is refused with 413 before it is read whole.", ge=1)
+    max_restore_bytes: Optional[int] = Field(default=1073741824, title="Maximum restore size", description="The most bytes a restore archive may hold once decompressed, counting each member\u0027s size and its tar block; a larger archive is refused with `InvalidBody` as it is read, so a small hostile upload cannot fill the memory or the object store.", ge=1)
     deployment: Optional[str] = Field(default=None, title="Deployment", description="A slug that names this deployment, for templates that use `{deployment}`; lower case letters and digits, at most 32.")
     iri_policy: Optional[IriPolicy] = Field(default=None, title="IRI policy", description="The IRI policy of the service; absent, the default policy applies.")
 
@@ -355,6 +356,19 @@ class IriPolicy(ConfiguredBaseModel):
         return v
 
 
+class TenantDump(ConfiguredBaseModel):
+    "The manifest of a tenant dump archive, written by `dump_tenant` and read by `restore_tenant`: where and when the dump was taken, which schema and toolkit it came from, the tenant it holds and the IRI policy that minted its IRIs, so a restore can check that the dump was made under the same schema and policy."
+    format_version: int = Field(default=..., title="Format version", description="The version of the dump archive layout; a restore refuses a version it does not know.")
+    created_at: datetime  = Field(default=..., title="Dump created at", description="When the dump was taken, so a person choosing among dumps can tell them apart.")
+    toolkit_version: str = Field(default=..., title="Toolkit version", description="The version of the toolkit that wrote the dump.")
+    schema_id: str = Field(default=..., title="Schema id", description="The id of the LinkML schema whose data the dump holds; a restore checks it against its own.")
+    schema_version: Optional[str] = Field(default=None, title="Schema version", description="The version of that schema, when it declares one.")
+    source_tenant: str = Field(default=..., title="Source tenant", description="The IRI of the tenant the dump was taken from.")
+    source_tenant_id: str = Field(default=..., title="Source tenant id", description="The id part of the source tenant\u0027s IRI, which a restore replaces by the new tenant\u0027s id.")
+    label: str = Field(default=..., title="Label", description="The preferred label of the object.")
+    iri_policy: IriPolicy = Field(default=..., title="IRI policy", description="The IRI policy of the service; absent, the default policy applies.")
+
+
 class VerifiedCaller(ConfiguredBaseModel):
     "What a token verifier returns for a valid token, the principal and its global roles."
     principal: str = Field(default=..., title="Principal", description="The user account the token identifies.")
@@ -556,6 +570,7 @@ class AccountSummary(ConfiguredBaseModel):
 ServiceSettings.model_rebuild()
 IdSpec.model_rebuild()
 IriPolicy.model_rebuild()
+TenantDump.model_rebuild()
 VerifiedCaller.model_rebuild()
 TenantCreate.model_rebuild()
 TenantSummary.model_rebuild()

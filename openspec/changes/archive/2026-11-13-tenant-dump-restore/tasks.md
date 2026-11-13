@@ -8,12 +8,12 @@ fakes (`testkit/fakes.py`); integration tests use the Fuseki and Garage containe
 
 ## 1. The port
 
-- [ ] 1.1 Spike on the Fuseki container (a throwaway test in `temp/`, not committed): which endpoint
+- [x] 1.1 Spike on the Fuseki container (a throwaway test in `temp/`, not committed): which endpoint
   answers a dataset-level `GET` with `Accept: application/n-quads` and takes a `POST` of N-Quads;
   record the answer in design.md PD-1. If neither works, switch to the RISK-1 fallback and tell the
   lead before 1.2.
-- [ ] 1.2 Test first: two cases in `testkit/store_conformance.py` (run by
-  `tests/unit/services/test_store.py` on the fake and `tests/integration/store/test_store_conformance.py`
+- [x] 1.2 Test first: two cases in `testkit/store_conformance.py` (run by
+  `tests/unit/testkit/test_fake_store.py` on the fake and `tests/integration/store/test_store_conformance.py`
   on Fuseki); then PD-1 in `services/store.py` (`Store`, `ToolkitStore`), `adapters/fuseki.py` and
   `testkit/fakes.py`. Gates: `make test-fast`, `make check-quality`, `make clean-code`,
   `make test-containers TEST_PATH=tests/integration/store/test_store_conformance.py`.
@@ -26,9 +26,9 @@ fakes (`testkit/fakes.py`); integration tests use the Fuseki and Garage containe
 
 ## 2. The manifest and the rewrite
 
-- [ ] 2.1 PD-2: `TenantDump` in `model/service/rp_service.yaml`; `make generate`; the freshness and
+- [x] 2.1 PD-2: `TenantDump` in `model/service/rp_service.yaml`; `make generate`; the freshness and
   conformance checks pass. Gates: `make test-changed`, `make check-quality`.
-- [ ] 2.2 Test first, `tests/unit/services/test_tenant_dump_rewrite.py`; then PD-4 (`rewrite`,
+- [x] 2.2 Test first, `tests/unit/services/test_tenant_dump_rewrite.py`; then PD-4 (`rewrite`,
   `glued_templates`). No change to `domain/iris.py`. Gates: `make test-fast`, `make check-quality`,
   `make clean-code`.
 
@@ -43,7 +43,7 @@ fakes (`testkit/fakes.py`); integration tests use the Fuseki and Garage containe
 
 ## 3. Dump and restore
 
-- [ ] 3.1 Test first, `tests/unit/services/test_tenant_dump.py` (fakes, `make_world` of
+- [x] 3.1 Test first, `tests/unit/services/test_tenant_dump.py` (fakes, `make_world` of
   `test_tenant_sweep.py` for a created tenant); then `services/tenant_dump.py` (PD-3, PD-5, PD-7),
   `Tenancy.restore`, `_new_record` and `_free_tenant` renamed `free_tenant` (PD-6),
   `ServiceKit.dump_tenant` / `restore_tenant` (PD-8) and `test_public_api.py`. Gates: `make test-fast`, `make check-quality`, `make clean-code`.
@@ -72,11 +72,11 @@ fakes (`testkit/fakes.py`); integration tests use the Fuseki and Garage containe
 
 ## 4. On the containers, and the docs
 
-- [ ] 4.1 Integration test `tests/integration/tenancy/test_tenant_dump.py`: IT-01 = TC-10 on Fuseki
+- [x] 4.1 Integration test `tests/integration/tenancy/test_tenant_dump.py`: IT-01 = TC-10 on Fuseki
   and Garage; IT-02 = TC-17. Gate:
   `make test-containers TEST_PATH=tests/integration/tenancy/test_tenant_dump.py`.
-- [ ] 4.2 Docs: a how-to `docs/modules/ROOT/pages/howto/dump-restore.adoc` (the two calls, routing
-  them with `require(..., Action.ADMINISTER)`, the archive format v1, what is not dumped, the limits:
+- [x] 4.2 Docs: a how-to `docs/modules/ROOT/pages/howto/dump-restore.adoc` (the two calls, routing
+  them (dump with `require(..., Action.ADMINISTER)`; restore with `gate.caller`, PD-11), the archive format v1, what is not dumped, the limits:
   same policy, same schema version, no template gluing the tenant id to a letter or digit, in-memory
   size of the graphs, stop writes for an exact copy, no deploy or restart during a restore, declare a
   schema `version`); the page in the nav; a `questions.adoc` entry ("How do I back up or copy a project?");
@@ -85,5 +85,5 @@ fakes (`testkit/fakes.py`); integration tests use the Fuseki and Garage containe
 
 ## 5. Close
 
-- [ ] 5.1 `make check-all`, `make test-containers`; `openspec validate tenant-dump-restore --strict`;
+- [x] 5.1 `make check-all`, `make test-containers`; `openspec validate tenant-dump-restore --strict`;
   PR into `develop`; merge on green CI; archive the change.

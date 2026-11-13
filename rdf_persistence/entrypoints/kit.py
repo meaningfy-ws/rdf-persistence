@@ -5,7 +5,7 @@ from contextlib import AbstractAsyncContextManager
 from datetime import timedelta
 from pathlib import Path
 from types import ModuleType
-from typing import cast
+from typing import BinaryIO, cast
 
 from rdf_persistence.domain.generated import rp_access, rp_core, rp_tenancy
 from rdf_persistence.domain.generated.rp_access import Action
@@ -14,10 +14,12 @@ from rdf_persistence.domain.generated.rp_tenancy import TenantAccess, TenantSwee
 from rdf_persistence.domain.generated.service.rp_service import (
     Authorised,
     ServiceSettings,
+    TenantDump,
+    TenantSummary,
 )
 from rdf_persistence.domain.iris import IdSource, Iris, draw_id, system_database_name
 from rdf_persistence.entrypoints.auth import Gate
-from rdf_persistence.services import file_removal, tenant_sweep
+from rdf_persistence.services import file_removal, tenant_dump, tenant_sweep
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.services.artifacts import CONTEXT_FILE
@@ -73,6 +75,8 @@ class ServiceKit:
         self.context_url = f"{settings.base}{mounted + '/' if mounted else ''}{CONTEXT_FILE}"
         assert settings.max_body_bytes is not None, "ServiceSettings defaults it"
         self.max_body_bytes: int = settings.max_body_bytes
+        assert settings.max_restore_bytes is not None, "ServiceSettings defaults it"
+        self.max_restore_bytes: int = settings.max_restore_bytes
         self.gate = Gate(self)
         self.system_database = system_database_name(settings.prefix)
         self.generated_folder = Path(next(iter(generated.__path__)))
@@ -178,6 +182,53 @@ class ServiceKit:
             remove=remove,
             remove_blobs=remove_blobs,
             older_than=older_than,
+        )
+
+    async def dump_tenant(self, tenant: str, out: BinaryIO) -> TenantDump:
+        """Write the active tenant, its graphs and its blobs, to ``out`` as one gzipped tar archive; answers the
+        manifest, the archive's first member.
+
+        Stop writes to the tenant for an exact copy: a blob deleted between the listing and its read is left out.
+        Writing to ``out`` blocks (a synchronous file or buffer): run the call off the request loop, or give it a
+        buffer and send that. Route it behind ``require(..., Action.ADMINISTER)``. See
+        ``rdf_persistence.services.tenant_dump.dump``.
+
+        Raises:
+            NotFound: The tenant has no access record.
+            Conflict: The tenant is being deleted; nothing is written.
+        """
+        return await tenant_dump.dump(
+            self.tenancy, self.store, self.files, self.iris, self.view, tenant, out
+        )
+
+    async def restore_tenant(self, src: BinaryIO, creator: str) -> TenantSummary:
+        """Create a new tenant, with a new IRI, from the archive ``dump_tenant`` wrote, which ``src`` holds; ``creator``
+        (a principal IRI) is granted the creator role in it and no one else is.
+
+        The archive must come from a service with the same schema and IRI policy, and may hold at most
+        ``settings.max_restore_bytes`` once decompressed. Restore only an archive your own deployment wrote, or one
+        from a party you trust as much as a tenant creator: the restore checks the archive's structure (its graph
+        names, its root, its blob keys), not each object against its shapes. Nothing is created if it is refused,
+        and nothing is left if the restore fails. There is no tenant yet, so ``require`` cannot guard it: verify the
+        caller with ``gate.caller``, apply the consumer's own rule on who may create a tenant, and pass
+        ``caller.principal`` as ``creator``. Reading ``src`` blocks (a synchronous file or buffer): run the call off
+        the request loop. See ``rdf_persistence.services.tenant_dump.restore``.
+
+        Raises:
+            InvalidBody: The archive is not a dump this service can restore, or is larger than
+                ``max_restore_bytes`` decompressed.
+            Conflict: The new tenant's id was taken at the same moment; retry the call.
+            PersistenceError: The store or the object store failed, or a start-up sweep dropped the new
+                database or bucket meanwhile; nothing is left, except that a failed write of the access record
+                leaves an unnamed database and bucket for the start-up sweep.
+        """
+        return await tenant_dump.restore(
+            self.tenancy,
+            self.iris,
+            self.view,
+            src,
+            Principal(id=creator),
+            max_bytes=self.max_restore_bytes,
         )
 
     async def remove_with_files(

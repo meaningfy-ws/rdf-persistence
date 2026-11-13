@@ -88,7 +88,7 @@ xref:architecture/data-flows.adoc[Where data lives and what each operation does]
 
 |Store port
 |v1
-|One asynchronous interface, `Store` (`services/store.py`): SPARQL 1.1 query and update, a Graph Store Protocol `PUT` of one named graph (`put_graph`), and dataset administration (create, drop, list). There is no Graph Store get or drop: a graph is read with `CONSTRUCT` and emptied with an update. `ToolkitStore` wraps it for the SPARQL the toolkit writes: a refusal of such text is a fault of the service (500), not the caller's `BadQuery` (400).
+|One asynchronous interface, `Store` (`services/store.py`): SPARQL 1.1 query and update, a Graph Store Protocol `PUT` of one named graph (`put_graph`), dataset administration (create, drop, list), and, on the whole dataset, a Graph Store `GET` (`export_quads`: every named graph as N-Quads in one read) and `POST` (`import_quads`: adds N-Quads). There is no Graph Store get or drop of one graph: a graph is read with `CONSTRUCT` and emptied with an update. `ToolkitStore` wraps it for the SPARQL the toolkit writes: a refusal of such text is a fault of the service (500), not the caller's `BadQuery` (400).
 |N-1, N-3, N-5
 
 |Fuseki adapter
@@ -114,7 +114,7 @@ comes back as its parent: a known limit, lifted when a schema owns a class hiera
 
 |Tenancy
 |v1
-|`Tenancy` (`services/tenancy.py`). A system database (one per deployment) holding one *tenant access record* per tenant (`{tenant}/access`): label, database name, state (`active`, `deleting`) and owned *grants* (ODRL Permissions: assignee, target, role or action; one per assignee, target and role-or-action), and prohibitions. The tenant's root object lives in the designated `meta` graph (`graph: meta`); the `registry` graph comes into being with its first entry. *Create* writes the access record last, directly `active`; *delete* marks it `deleting` first and removes it last. A *start-up sweep*, run by the consumer's single instance before it serves, finishes `deleting` tenants and drops tenant databases and buckets that no record names; it never touches anything inside a live tenant.
+|`Tenancy` (`services/tenancy.py`). A system database (one per deployment) holding one *tenant access record* per tenant (`{tenant}/access`): label, database name, state (`active`, `deleting`) and owned *grants* (ODRL Permissions: assignee, target, role or action; one per assignee, target and role-or-action), and prohibitions. The tenant's root object lives in the designated `meta` graph (`graph: meta`); the `registry` graph comes into being with its first entry. *Create* writes the access record last, directly `active`; *delete* marks it `deleting` first and removes it last. A *start-up sweep*, run by the consumer's single instance before it serves, finishes `deleting` tenants and drops tenant databases and buckets that no record names; it never touches anything inside a live tenant. *Restore* (`Tenancy.restore`) creates a new tenant from a dump in the same order, record last: it draws a free tenant, rewrites the IRIs, checks the graphs and the root, writes the data, then the record with the restorer as the only grantee; a refusal or failure after the database exists drops the new database and bucket. `ServiceKit.dump_tenant` and `ServiceKit.restore_tenant` are its Python calls, with no route (see xref:architecture/data-flows.adoc#dump-restore[Dump and restore a tenant]).
 |N-3, N-4, N-11
 
 |Graph loading
@@ -172,6 +172,11 @@ and buckets, and the sweep inside a live tenant is the next building block (belo
 |Sweep of orphans inside a live tenant (blobs, loaded graphs no aggregate names)
 |v1
 |`sweep_tenant` (`services/tenant_sweep.py`, `ServiceKit.sweep_tenant`): a dry run by default; finds loaded graphs no registry entry owns and blobs no `rp:fileKey` names, older than a grace period (1 hour), and removes graphs with `remove` and blobs with `remove_blobs`. `ServiceKit.remove_with_files` removes a file aggregate with the blobs only it names. Design `live-tenant-sweep`.
+|
+
+|Dump and restore of a tenant
+|v1
+|`dump` and `restore` (`services/tenant_dump.py`, `ServiceKit.dump_tenant`, `ServiceKit.restore_tenant`): one gzipped tar (`manifest.json`, `graphs.nq`, `blobs/<key>`, an empty `end` member). A restore always makes a new tenant with a new id and IRIs; it refuses an archive of another schema or IRI policy, a malformed or cut-short one, or one over `max_restore_bytes`. It checks structure, not each aggregate's shapes. Design `tenant-dump-restore`.
 |
 
 |Second store (Oxigraph, Virtuoso) and a capability descriptor

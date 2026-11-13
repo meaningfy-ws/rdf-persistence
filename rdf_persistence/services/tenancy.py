@@ -14,7 +14,7 @@ from contextlib import AbstractAsyncContextManager, suppress
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
-from rdflib import Graph, URIRef
+from rdflib import Dataset, Graph, URIRef
 
 from rdf_persistence.domain.exceptions import (
     Conflict,
@@ -40,7 +40,9 @@ from rdf_persistence.domain.iris import (
     system_database_name,
     toolkit_principal_iri,
 )
+from rdf_persistence.domain.media import N_QUADS
 from rdf_persistence.domain.sparql import Triple, fill, term
+from rdf_persistence.domain.tenant_move import check_graphs, rewrite
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.files import FileStore
@@ -181,16 +183,7 @@ class Tenancy:
             raise InvalidBody("the label of a tenant's root is the tenant's")
         tenant = await self._free_tenant()
         name = self._iris.resource_name(tenant)
-        record = self._access_class(
-            id=str(self._iris.access(tenant)),
-            label=label,
-            description=RECORD_DESCRIPTION.format(
-                label=label.rstrip(".")
-            ),  # the template ends the sentence
-            state=TenantState.ACTIVE,
-            database_name=name,
-            grants=[Grant(assignee=creator.id, target=tenant, role=self._settings.creator_role)],
-        )
+        record = self._new_record(tenant, name, label, creator)
         tenant_root = self._root_class.model_validate({**root_slots, LABEL: label, "id": tenant})
         refuse_internal(self._mapper.to_graph(tenant_root), self._internal)
         _run_validators(self._root_validators, None, tenant_root, creator)
@@ -202,6 +195,103 @@ class Tenancy:
         await self._add_root(self._system, tenant, creator, record)
         _log_step("create-record", tenant, name)
         return TenantSummary(id=tenant, label=label, state=TenantState.ACTIVE)
+
+    def _new_record(self, tenant: str, name: str, label: str, creator: Principal) -> TenantAccess:
+        """The access record of a new tenant: active, granting ``creator`` the settings' ``creator_role`` and no one else."""
+        return self._access_class(
+            id=str(self._iris.access(tenant)),
+            label=label,
+            description=RECORD_DESCRIPTION.format(
+                label=label.rstrip(".")
+            ),  # the template ends the sentence
+            state=TenantState.ACTIVE,
+            database_name=name,
+            grants=[Grant(assignee=creator.id, target=tenant, role=self._settings.creator_role)],
+        )
+
+    async def restore(
+        self,
+        parsed: Dataset,
+        source_tenant_id: str,
+        blobs: Iterable[tuple[str, bytes]],
+        creator: Principal,
+    ) -> TenantSummary:
+        """Create a new tenant out of a dump: its database holding the quads of ``parsed``, its bucket holding
+        ``blobs``, and last its access record, which grants ``creator`` the creator role (tenant-dump-restore PD-6, PD-13).
+
+        ``parsed`` holds the dumped tenant ``source_tenant_id``'s quads. This draws the new tenant, moves the quads
+        to it (``tenant_move.rewrite``), refuses graphs the IRI policy does not mint for it and a root that does not
+        decode or that a root validator refuses, all before anything is created. The new tenant's label is the
+        root's. ``blobs`` is read one item at a time, as each is put. Once the database exists, any failure up to
+        the vanished check (``blobs`` raising included) drops the database and the bucket as far as it can (a failed
+        drop is logged, step ``restore-cleanup``, and left to the start-up sweep) and raises the original error. The
+        record is written after that: if its write fails, the database and the bucket stay for the start-up sweep.
+
+        Raises:
+            InvalidBody: A quad is in the default graph or a foreign graph, or the root does not decode or a root
+                validator refuses it; or ``blobs`` raises it.
+            Conflict: The drawn tenant id was taken between the draw and the create; retry.
+            PersistenceError: No free tenant id, or the new database or bucket was dropped (a start-up sweep
+                elsewhere) before the record.
+        """
+        tenant = await self._free_tenant()
+        data = rewrite(
+            parsed, self._settings.base, source_tenant_id, self._iris.tenant_id_of(tenant)
+        )
+        check_graphs(data, tenant, self._iris)
+        label = self._vet_restored_root(tenant, data.graph(self._iris.meta(tenant)), creator)
+        name = self._iris.resource_name(tenant)
+        record = self._new_record(tenant, name, label, creator)
+        await self._store.create_dataset(name)
+        _log_step("create-database", tenant, name)
+        try:
+            await self._files.create_bucket(name)
+            _log_step("create-bucket", tenant, name)
+            await self._store.import_quads(name, data.serialize(format=N_QUADS).encode())
+            for key, payload in blobs:
+                await self._files.put(name, key, payload)
+            if (
+                name not in await self._store.list_datasets()
+                or name not in await self._files.list_buckets(name)
+            ):
+                raise PersistenceError(
+                    "the new tenant's database or bucket vanished during the restore"
+                )
+        except Exception:
+            await self._drop_restored(tenant, name)
+            raise
+        await self._add_root(self._system, tenant, creator, record)
+        _log_step("create-record", tenant, name)
+        return TenantSummary(id=tenant, label=label, state=TenantState.ACTIVE)
+
+    async def _drop_restored(self, tenant: str, name: str) -> None:
+        """Best effort: drop what a failed restore created; what stays is the start-up sweep's."""
+        for drop in (self._store.drop_dataset, self._files.delete_bucket):
+            try:
+                await drop(name)
+            except NotFound:  # never created, or already dropped
+                pass
+            except Exception:
+                log.warning(
+                    "a failed restore could not drop %s",
+                    name,
+                    exc_info=True,
+                    extra={"step": "restore-cleanup", "tenant": tenant, "resource": name},
+                )
+
+    def _vet_restored_root(self, tenant: str, graph: Graph, restorer: Principal) -> str:
+        """The label of the root of ``tenant`` in ``graph`` (its meta graph), once it decodes and the root validators
+        accept it as a new root made by ``restorer``; the new tenant's label is this one (tenant-dump-restore PD-5).
+
+        Raises:
+            InvalidBody: The root does not decode, or a root validator refuses it.
+        """
+        try:
+            root = self._mapper.from_graph(self._root_class, tenant, graph, self._iris.meta(tenant))
+            _run_validators(self._root_validators, None, root, restorer)
+        except ValueError as error:  # pydantic's ValidationError is one; InvalidBody is not
+            raise InvalidBody(f"the dump's root cannot be restored: {error}") from error
+        return str(getattr(root, LABEL))
 
     async def _free_tenant(self) -> str:
         """A fresh tenant IRI whose access record and resource name nothing uses (PD-5).

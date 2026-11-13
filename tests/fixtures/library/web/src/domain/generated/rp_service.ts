@@ -52,6 +52,8 @@ export interface ServiceSettings {
   roles_claim: string;
   /** The most bytes a request body may hold; a larger one is refused with 413 before it is read whole. */
   max_body_bytes?: number;
+  /** The most bytes a restore archive may hold once decompressed, counting each member's size and its tar block; a larger archive is refused with `InvalidBody` as it is read, so a small hostile upload cannot fill the memory or the object store. */
+  max_restore_bytes?: number;
   /** A slug that names this deployment, for templates that use `{deployment}`; lower case letters and digits, at most 32. */
   deployment?: string;
   /** The IRI policy of the service; absent, the default policy applies. */
@@ -90,6 +92,28 @@ export interface IriPolicy {
   tenant_id?: IdSpec;
   /** How the id of a new aggregate root, part or loaded graph is drawn; absent, a UUIDv4. */
   object_id?: IdSpec;
+}
+
+/** The manifest of a tenant dump archive, written by `dump_tenant` and read by `restore_tenant`: where and when the dump was taken, which schema and toolkit it came from, the tenant it holds and the IRI policy that minted its IRIs, so a restore can check that the dump was made under the same schema and policy. */
+export interface TenantDump {
+  /** The version of the dump archive layout; a restore refuses a version it does not know. */
+  format_version: number;
+  /** When the dump was taken, so a person choosing among dumps can tell them apart. */
+  created_at: string;
+  /** The version of the toolkit that wrote the dump. */
+  toolkit_version: string;
+  /** The id of the LinkML schema whose data the dump holds; a restore checks it against its own. */
+  schema_id: string;
+  /** The version of that schema, when it declares one. */
+  schema_version?: string;
+  /** The IRI of the tenant the dump was taken from. */
+  source_tenant: string;
+  /** The id part of the source tenant's IRI, which a restore replaces by the new tenant's id. */
+  source_tenant_id: string;
+  /** The preferred label of the object. */
+  label: string;
+  /** The IRI policy of the service; absent, the default policy applies. */
+  iri_policy: IriPolicy;
 }
 
 /** What a token verifier returns for a valid token, the principal and its global roles. */

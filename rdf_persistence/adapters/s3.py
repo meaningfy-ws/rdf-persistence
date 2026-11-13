@@ -16,6 +16,7 @@ from botocore.client import BaseClient
 from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError, ParamValidationError
 
+from rdf_persistence.domain.blob_keys import checked_blob_key
 from rdf_persistence.domain.exceptions import (
     Conflict,
     NotFound,
@@ -30,8 +31,6 @@ BUCKET_EXISTS = frozenset({"BucketAlreadyOwnedByYou", "BucketAlreadyExists"})
 DEFAULT_REGION = "us-east-1"  # the one region whose create_bucket takes no location constraint
 DELETE_BATCH = 1000  # DeleteObjects takes at most this many keys
 CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS, MAX_ATTEMPTS = 5, 30, 3
-DOT_SEGMENTS = frozenset({".", ".."})
-DELETE_CHARACTER = "\x7f"
 
 log = logging.getLogger(__name__)
 
@@ -57,17 +56,6 @@ def _translate(error: ClientError, *, bucket_missing: type[PersistenceError]) ->
         return Conflict("the bucket exists")
     log.debug("The object store refused a request: %s", error)
     return StoreUnavailable(f"The object store answered {code or _status(error)}")
-
-
-def _checked_key(key: str) -> str:
-    """``key`` if it is a key the toolkit stores: no ``.`` or ``..`` segment (a path to climb out of a prefix), no control characters."""
-    if (
-        not key
-        or not DOT_SEGMENTS.isdisjoint(key.split("/"))
-        or any(ord(c) < ord(" ") or c == DELETE_CHARACTER for c in key)
-    ):
-        raise ValueError("the key is empty, has a '.' or '..' segment or has a control character")
-    return key
 
 
 class S3FileStore:
@@ -168,10 +156,12 @@ class S3FileStore:
                 return entries
 
     async def put(self, bucket: str, key: str, data: bytes) -> None:
-        await self._run(self._client.put_object, Bucket=bucket, Key=_checked_key(key), Body=data)
+        await self._run(
+            self._client.put_object, Bucket=bucket, Key=checked_blob_key(key), Body=data
+        )
 
     async def get(self, bucket: str, key: str) -> bytes:
-        checked = _checked_key(key)
+        checked = checked_blob_key(key)
 
         def read() -> bytes:
             return bytes(self._client.get_object(Bucket=bucket, Key=checked)["Body"].read())
@@ -180,4 +170,4 @@ class S3FileStore:
         return data
 
     async def delete(self, bucket: str, key: str) -> None:
-        await self._run(self._client.delete_object, Bucket=bucket, Key=_checked_key(key))
+        await self._run(self._client.delete_object, Bucket=bucket, Key=checked_blob_key(key))

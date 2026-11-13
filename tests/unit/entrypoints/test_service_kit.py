@@ -1,5 +1,6 @@
 """The service kit (task 5.1): the token and access dependencies, problem handlers, versions, start-up."""
 
+import io
 import re
 import uuid
 from collections.abc import AsyncIterator
@@ -13,7 +14,7 @@ from fastapi.routing import APIRoute
 from rdflib import Literal, URIRef
 
 from rdf_persistence import Problem
-from rdf_persistence.domain.exceptions import InvalidRoleDefinition, NotFound
+from rdf_persistence.domain.exceptions import InvalidBody, InvalidRoleDefinition, NotFound
 from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.entrypoints.service import install_service
@@ -356,6 +357,51 @@ async def test_the_kit_sweeps_a_tenant_with_its_own_store_files_and_iris(service
     assert report.removed_loaded_graphs is False, "a dry run, as by default"
     await service.kit.sweep_tenant(tenant, remove_blobs=True, older_than=timedelta(seconds=-1))
     assert await service.files.list_blobs(bucket) == [], "the keywords reach the sweep"
+
+
+# --- dump and restore of a tenant (tenant-dump-restore PD-8) -------------------------------------
+
+
+async def test_the_kit_dumps_a_tenant_and_restores_it_for_another_principal(
+    service, client
+) -> None:
+    headers = {"Authorization": f"Bearer {service.signer.issue(sub='ada')}"}
+    path = (await client.post("/libraries", json=TENANT_BODY, headers=headers)).headers["location"]
+    tenant = service.kit.tenant_iri(path.rsplit("/", 1)[1])
+    await service.files.put(await service.kit.bucket_of(tenant), "k1", b"scan bytes")
+    archive = io.BytesIO()
+
+    manifest = await service.kit.dump_tenant(tenant, archive)
+    summary = await service.kit.restore_tenant(
+        io.BytesIO(archive.getvalue()), "https://example.org/people/bob"
+    )
+
+    assert manifest.source_tenant == tenant, "the manifest names the tenant it came from"
+    assert summary.id != tenant and summary.label == manifest.label, "a new tenant with the label"
+    record, _ = await service.kit.tenancy.get(summary.id)
+    assert [g.assignee for g in record.grants] == ["https://example.org/people/bob"], (
+        "the restorer only"
+    )
+    assert await service.files.get(record.database_name, "k1") == b"scan bytes", (
+        "the blob came along"
+    )
+
+
+async def test_the_kit_restores_no_more_than_the_settings_max_restore_bytes(
+    service, client, monkeypatch
+) -> None:
+    headers = {"Authorization": f"Bearer {service.signer.issue(sub='ada')}"}
+    path = (await client.post("/libraries", json=TENANT_BODY, headers=headers)).headers["location"]
+    tenant = service.kit.tenant_iri(path.rsplit("/", 1)[1])
+    archive = io.BytesIO()
+    await service.kit.dump_tenant(tenant, archive)
+    assert service.kit.max_restore_bytes == 1024**3, "the settings' default reaches the kit"
+    monkeypatch.setattr(service.kit, "max_restore_bytes", 1024)
+
+    with pytest.raises(InvalidBody, match="bytes"):
+        await service.kit.restore_tenant(
+            io.BytesIO(archive.getvalue()), "https://example.org/people/bob"
+        )
 
 
 # --- removal of a file aggregate with its blobs (live-tenant-sweep task 4.1) ---------------------

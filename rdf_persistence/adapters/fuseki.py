@@ -20,7 +20,7 @@ from rdf_persistence.domain.exceptions import (
     PersistenceError,
     StoreUnavailable,
 )
-from rdf_persistence.domain.media import ACCEPT, CONTENT_TYPE, TURTLE
+from rdf_persistence.domain.media import ACCEPT, CONTENT_TYPE, N_QUADS, TURTLE
 
 SPARQL_QUERY = "application/sparql-query"
 SPARQL_UPDATE = "application/sparql-update"
@@ -122,6 +122,20 @@ class FusekiStore(HttpAdapter):
             params={GRAPH_PARAM: str(graph_iri)},
             content=graph.serialize(format=RDFLIB_TURTLE).encode(),
             headers={CONTENT_TYPE: TURTLE},
+        )
+
+    async def export_quads(self, dataset: str) -> bytes:
+        response = await self._send(
+            HTTPMethod.GET, _dataset_path(dataset, DATA_ENDPOINT), headers={ACCEPT: N_QUADS}
+        )
+        return response.content
+
+    async def import_quads(self, dataset: str, nquads: bytes) -> None:
+        await self._send(
+            HTTPMethod.POST,
+            _dataset_path(dataset, DATA_ENDPOINT),
+            content=nquads,
+            headers={CONTENT_TYPE: N_QUADS},
         )
 
     async def create_dataset(self, name: str) -> None:

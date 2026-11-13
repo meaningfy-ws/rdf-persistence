@@ -661,6 +661,10 @@
     required: false
     multivalued: false
     range: integer
+  - name: max_restore_bytes
+    required: false
+    multivalued: false
+    range: integer
   - name: prefix
     required: true
     multivalued: false
@@ -743,6 +747,45 @@
     required: true
     multivalued: false
     range: Any
+- class_name: TenantDump
+  slots:
+  - name: dump_created_at
+    required: true
+    multivalued: false
+    range: datetime
+    alias: created_at
+  - name: format_version
+    required: true
+    multivalued: false
+    range: integer
+  - name: iri_policy
+    required: true
+    multivalued: false
+    range: IriPolicy
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: schema_id
+    required: true
+    multivalued: false
+    range: uri
+  - name: schema_version
+    required: false
+    multivalued: false
+    range: string
+  - name: source_tenant
+    required: true
+    multivalued: false
+    range: uri
+  - name: source_tenant_id
+    required: true
+    multivalued: false
+    range: string
+  - name: toolkit_version
+    required: true
+    multivalued: false
+    range: string
 - class_name: TenantLabelled
   slots:
   - name: label

@@ -255,3 +255,55 @@ def test_a_body_may_hold_a_mebibyte_unless_the_settings_say_otherwise() -> None:
 def test_a_body_bound_below_one_byte_is_refused() -> None:
     with pytest.raises(ValidationError, match="max_body_bytes"):
         settings(max_body_bytes=0)
+
+
+def test_a_restore_may_hold_a_gibibyte_unless_the_settings_say_otherwise() -> None:
+    assert settings().max_restore_bytes == 1024**3, "the default bound of a restore archive"
+    assert settings(max_restore_bytes=4096).max_restore_bytes == 4096, "the consumer's bound"
+
+
+def test_a_restore_bound_below_one_byte_is_refused() -> None:
+    with pytest.raises(ValidationError, match="max_restore_bytes"):
+        settings(max_restore_bytes=0)
+
+
+def tenant_dump(**changes: object) -> "rp_service.TenantDump":
+    fields: dict[str, object] = {
+        "format_version": 1,
+        "created_at": "2026-11-13T10:00:00Z",
+        "toolkit_version": "0.1.0",
+        "schema_id": "https://example.org/schema",
+        "source_tenant": TENANT,
+        "source_tenant_id": "abc123",
+        "label": "Acme",
+        "iri_policy": rp_service.IriPolicy(),
+    }
+    fields.update(changes)
+    return rp_service.TenantDump(**fields)
+
+
+def test_a_tenant_dump_manifest_round_trips_through_its_json() -> None:
+    manifest = tenant_dump(schema_version="2")
+    again = rp_service.TenantDump.model_validate_json(manifest.model_dump_json())
+    assert again == manifest, "the manifest must survive its own JSON"
+    assert again.iri_policy.tenant_template == "{base}{tenant_segment}/{tenant_id}", (
+        "the effective policy must travel in the manifest"
+    )
+
+
+def test_a_tenant_dump_may_leave_out_the_schema_version_only() -> None:
+    assert tenant_dump().schema_version is None, "the schema version is optional"
+    for name in [
+        "format_version",
+        "created_at",
+        "toolkit_version",
+        "schema_id",
+        "source_tenant",
+        "source_tenant_id",
+        "label",
+        "iri_policy",
+    ]:
+        fields = tenant_dump().model_dump()
+        del fields[name]
+        with pytest.raises(ValidationError, match=name):
+            rp_service.TenantDump(**fields)

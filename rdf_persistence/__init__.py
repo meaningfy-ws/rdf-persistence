@@ -87,6 +87,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     ProblemKind,
     ServiceSettings,
     TenantCreate,
+    TenantDump,
     TenantSummary,
     VerifiedCaller,
 )
@@ -237,6 +238,7 @@ __all__ = [
     "Tenancy",
     "TenantAccess",
     "TenantCreate",
+    "TenantDump",
     "TenantGone",
     "TenantLabelled",
     "TenantState",

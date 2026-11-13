@@ -164,7 +164,8 @@ async def test_with_no_grace_period_what_was_just_written_is_kept(world):
     assert str(world.g3) in report.loaded_graphs, "a minute-old orphan is old enough then"
 
 
-ODD_KEYS = ['a"b', "a'b", "a b", "é☃", "a\nb", "a\\b", "}{ ; DROP ALL", "<x>", "k\u0000z"]
+# Keys with a control character are left out: the one blob-key rule (``checked_blob_key``) refuses them, as Garage does.
+ODD_KEYS = ['a"b', "a'b", "a b", "é☃", "a\\b", "}{ ; DROP ALL", "<x>"]
 
 
 @pytest.mark.parametrize("key", ODD_KEYS)

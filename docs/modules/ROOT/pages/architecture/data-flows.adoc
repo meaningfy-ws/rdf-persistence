@@ -548,6 +548,104 @@ bucket; *last*, remove the record. After a crash midway, the tenant answers 404 
 including another `DELETE`; the next start-up sweep finishes it.
 |===
 
+[#dump-restore]
+== Dump and restore a tenant
+
+`kit.dump_tenant` and `kit.restore_tenant` (`services/tenant_dump.py`) are Python calls with no
+route and no gate; the consumer decides who may call them (see
+xref:howto/dump-restore.adoc[Back up or copy a project]). A dump is one gzipped tar: `manifest.json`,
+`graphs.nq`, then `blobs/<key>`, then an empty member `end` that shows the dump finished. A restore
+always creates a new tenant, in the same order as `create`: database, bucket, data, access record
+last.
+
+[mermaid]
+....
+sequenceDiagram
+  participant C as Caller
+  participant D as tenant_dump
+  participant T as Tenancy
+  participant F as Fuseki
+  participant O as S3
+  Note over C,O: dump_tenant(T, out)
+  C->>D: dump
+  D->>T: get the access record (NotFound, or Conflict if deleting)
+  D->>F: lib-t-…: export every named graph as N-Quads, one read
+  D->>O: list the bucket's blobs
+  D-->>C: out: manifest.json, graphs.nq
+  loop each blob
+    D->>O: get the blob (gone since the listing, so skipped and logged)
+    D-->>C: out: blobs/key
+  end
+  D-->>C: out: end (empty)
+  Note over C,O: restore_tenant(src, creator)
+  C->>D: restore
+  D->>D: read manifest.json, check format, schema, IRI policy
+  D->>D: read graphs.nq, parse the N-Quads
+  D->>T: restore(parsed quads, blob iterator)
+  T->>T: draw T2, unused (private)
+  T->>T: rewrite the IRIs from T to T2, check the graphs and the root
+  T->>F: create database lib-t-… for T2
+  T->>O: create bucket lib-t-…
+  T->>F: import the N-Quads
+  loop each blob member
+    T->>D: next blob from the iterator
+    D-->>T: key and bytes (each member charged against the budget)
+    T->>O: put the blob
+  end
+  T->>D: iterator end: the end member follows, the gzip trailer checks
+  T->>T: database and bucket still exist?
+  T->>F: lib-system: write the access record (active, creator is librarian)
+  T-->>C: TenantSummary of T2
+....
+
+[cols="1,2,5",options="header"]
+|===
+|Operation |Call |Steps, in order
+
+|Dump
+|`kit.dump_tenant(T, out)`
+|Read the access record (unknown tenant is `NotFound`, a `deleting` one is `Conflict`; nothing is written).
+Export every named graph of the tenant's database as N-Quads in one read, so the graphs agree with each
+other. List the bucket. Write the manifest, the N-Quads, then each blob as it is read, then the empty
+`end` member. Blobs are copied after the graphs, as found. The access record and its grants are not
+dumped. A dump that fails half-way has no `end`, so a restore refuses it.
+
+|Restore, checks
+|`kit.restore_tenant(src, creator)`
+|Before anything is created: the first member is `manifest.json` (at most 64 KiB) and the second
+`graphs.nq`, both regular files with UTF-8 names; the manifest's format, schema id and version and
+effective IRI policy equal the service's, and its `source_tenant_id` is the id of its
+`source_tenant`; the policy does not glue the tenant id to a letter, digit or variable. Mint `T2`
+(`Conflict` later if a concurrent create takes it first). Rewrite each IRI term of the graph names,
+subjects and objects under the base, replacing the old tenant id between delimiters with the new one
+(predicates, datatypes and literals are untouched). Every quad must be in a graph the policy mints
+for `T2`, none in the default graph; the root must decode and pass the root validators. Restore
+checks this structure, not each aggregate against its shapes, so it trusts the graph content (only
+restore archives a deployment you trust wrote). The size budget: before each member is read, its size
+plus a tar block is charged against `max_restore_bytes` (default 1 GiB, a `ServiceSettings` slot), and
+the restore is refused when the total passes it. Any failure here is `InvalidBody` and nothing exists
+yet.
+
+|Restore, writes
+|same call
+|Create the database and the bucket; import the N-Quads; put each blob as it is read from the
+archive; require the empty `end` member after the blobs, nothing after it, and read the gzip stream
+to its trailer; check that the database and bucket still exist; *last*, write the access record with
+the caller as the only grantee, in the creator role.
+
+*When the new database and bucket are dropped.* A refusal or failure from the moment the database
+exists up to the existence check drops them (best effort, failures logged) and writes no record. That
+covers: a blob member that is not a regular file under `blobs/`; a key with a `.` or `..` segment, a
+key seen twice, a name that is not UTF-8, or a key the object store refuses; no `end` member, or
+anything after it, or a gzip stream that does not end properly; more bytes than `max_restore_bytes`;
+and a failure of the store or the object store. The access record is written after that cleanup
+block, so a failed record write leaves the database and bucket, with no record, for the next
+start-up sweep; so does a crash. A start-up sweep that runs during a long restore would drop them,
+which the existence check turns into a `PersistenceError`.
+|===
+
+The graphs are held in memory during both calls; blobs are streamed one at a time.
+
 [#rules]
 == Rules and checks
 

@@ -68,6 +68,13 @@ async def test_an_object_operation_on_a_missing_bucket_is_tenant_gone_and_create
     assert await files.list_buckets("missing") == [], "no bucket was created"
 
 
+@pytest.mark.parametrize("key", ["a\nb", "../x", ""], ids=repr)
+async def test_a_put_of_a_key_the_object_store_refuses_is_refused_and_stores_nothing(files, key):
+    with pytest.raises(ValueError, match="key"):
+        await files.put("b", key, b"x")
+    assert await files.list_blobs("b") == [], "the fake refuses as Garage does"
+
+
 async def test_an_injected_error_is_raised_once_and_sent_records_the_failed_call(files):
     files.on("create_bucket", StoreUnavailable("down"))
     with pytest.raises(StoreUnavailable):
