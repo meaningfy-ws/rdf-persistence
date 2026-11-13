@@ -4,8 +4,8 @@
 
 ### Requirement: The REFERENCE problem names its fixes
 
-When a non-owned slot ranges over a class that is neither an aggregate root nor a reference
-class, the problem `rp-generate` reports SHALL name the slot, its class and its range, and SHALL
+The problem `rp-generate` reports SHALL, when a non-owned slot ranges over a class that is
+neither an aggregate root nor a reference class, name the slot, its class and its range, and SHALL
 name two fixes: annotating the slot `owned: true`, or making the range an aggregate root or pointing the slot at a root, `Principal` or `Activity`.
 
 #### Scenario: a nested response class without owned

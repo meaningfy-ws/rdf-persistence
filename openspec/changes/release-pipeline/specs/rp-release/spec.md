@@ -2,8 +2,8 @@
 
 ### Requirement: Releases are proposed from Conventional Commits and merged by a human
 
-After a releasable commit (`feat`, `fix`, `perf`, `revert`, or any commit marked breaking) lands on
-`develop`, release-please SHALL open or update one release PR into `develop` that bumps the version
+Release-please SHALL, after a releasable commit (`feat`, `fix`, `perf`, `revert`, or any commit
+marked breaking) lands on `develop`, open or update one release PR into `develop` that bumps the version
 by the rule below. Merging that PR SHALL tag `vX.Y.Z` on its merge commit and create the GitHub
 Release. Commits of other types alone SHALL open no release PR. Before 1.0.0, a breaking change
 SHALL bump the MINOR and a `feat` SHALL bump the MINOR; a `fix` SHALL bump the PATCH.

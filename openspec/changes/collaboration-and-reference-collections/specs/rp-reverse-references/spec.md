@@ -4,8 +4,8 @@
 
 ### Requirement: A session lists the referrers of a resource
 
-A collaboration (the access-aware service the kit opens over a session for an authorised caller)
-SHALL return, through `referrers(iri)`, every aggregate of the tenant whose stored triples refer
+A collaboration SHALL return (a collaboration is the access-aware service the kit opens over a
+session for an authorised caller), through `referrers(iri)`, every aggregate of the tenant whose stored triples refer
 to `iri`, each with the referrer's IRI, its class and the slot that refers, read across the
 aggregate graphs of the tenant database by the toolkit. The links that make a comment or a
 transition record depend on `iri` (its target, the aggregate it was made on) SHALL NOT count:
