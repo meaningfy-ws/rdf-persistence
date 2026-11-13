@@ -295,3 +295,30 @@ async def test_a_lost_race_with_no_culprit_says_so_with_no_iris(store, session, 
             store.after_update = restore_old_state
     assert refused.value.iris == ()
     assert "lost a race" in str(refused.value)
+
+
+# -- a transaction is single-use (PD-17c) ---------------------------------------------------------
+
+
+async def test_a_transaction_used_after_its_block_committed_raises_instead_of_dropping_the_change(
+    session, seeded
+):
+    async with session.transaction() as t:
+        await t.add_graph(C, title(C, "new"))
+    late = (
+        lambda: t.add_graph(D, title(D, "late")),
+        lambda: t.replace_graph(A, title(A, "late"), seeded[A]),
+        lambda: t.remove(A, seeded[A]),
+    )
+    for use in late:
+        with pytest.raises(RuntimeError, match="ended"):
+            await use()
+    assert not await stored(session, D)
+
+
+async def test_a_transaction_used_after_its_block_raised_raises_too(session, seeded):
+    with pytest.raises(KeyError):
+        async with session.transaction() as t:
+            raise KeyError("boom")
+    with pytest.raises(RuntimeError, match="ended"):
+        await t.add_graph(C, title(C, "late"))

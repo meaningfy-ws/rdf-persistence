@@ -1,5 +1,6 @@
 """In-memory fakes of the toolkit's ports, for unit tests that must not touch the network."""
 
+import re
 from collections import defaultdict
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
 from contextlib import asynccontextmanager
@@ -70,6 +71,28 @@ class _Instrumented:
             raise self._failures[operation].pop(call)
 
 
+# What a ';' inside must not split: an IRI, a string (short or long, with escapes), a comment.
+_SPARQL_TOKENS = re.compile(
+    r"""<[^<>"{}|^`\\\s]*>|\"\"\"(?:\\.|(?!\"\"\").)*\"\"\"|'''(?:\\.|(?!''').)*'''"""
+    r"""|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|#[^\n]*|([;{}])""",
+    re.DOTALL,
+)
+_PROLOGUE = re.compile(r"\s*(?:(?:PREFIX\s+[^\s:]*:\s*<[^>]*>|BASE\s*<[^>]*>)\s*)+", re.IGNORECASE)
+
+
+def _operations(request: str) -> list[str]:
+    """The operations of an update request, split at its top-level ``;`` (not one inside braces,
+    where it joins predicate lists), empty ones dropped."""
+    parts, start, depth = [], 0, 0
+    for token in _SPARQL_TOKENS.finditer(request):
+        mark = token.group(1)
+        depth += (mark == "{") - (mark == "}")
+        if mark == ";" and depth == 0:
+            parts.append(request[start : token.start()])
+            start = token.end()
+    return [part for part in [*parts, request[start:]] if part.strip()]
+
+
 class FakeStore(_Instrumented):
     """A ``Store`` over one rdflib ``Dataset`` per dataset name, with failure injection.
 
@@ -118,8 +141,13 @@ class FakeStore(_Instrumented):
             target = copy.graph(graph.identifier)
             for triple in graph:
                 target.add(triple)
+        prologue = ""  # PREFIX and BASE declarations apply to the operations after them
         try:
-            copy.update(prepareUpdate(sparql))
+            # one operation at a time: rdflib's parser recurses once per operation (rdflib#3710)
+            for operation in _operations(sparql):
+                copy.update(prepareUpdate(prologue + operation))
+                found = _PROLOGUE.match(operation)
+                prologue += found.group() if found else ""
         except Exception as error:  # rdflib raises a bare Exception at run time (PD-13)
             raise BadQuery(str(error)) from error
         self._datasets[dataset] = copy

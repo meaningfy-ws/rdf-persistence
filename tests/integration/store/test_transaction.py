@@ -15,8 +15,11 @@ from rdf_persistence.domain.exceptions import Conflict, NotFound
 from rdf_persistence.domain.iris import DEFAULT_IRIS, graph_iri
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import Session
+from tests.fixtures.library.generated.books import Book
 from tests.integration.store.test_session import BEN, TENANT, TITLE, book, session_for, title
+from tests.toy import dune, toy_mapper
 
 A, B, C = book(1), book(2), book(3)
 ENTRY = "ASK { GRAPH $registry { $graph ?p ?o } }"
@@ -137,4 +140,30 @@ async def test_it04_of_twenty_concurrent_transactions_exactly_one_commits(
     present = [own for own in new_books if await stored(session, own)]
     assert len(present) == 1, "exactly one new book is stored"
     assert await stored_title(session, A) == present[0], "and it is the winner's replacement"
+    assert not await a_marker_is_left(store, database)
+
+
+async def test_it03_a_unit_of_work_that_changes_a_and_adds_b_refuses_both_when_b_changed_meanwhile(
+    store, database, session
+):
+    for root in (A, B):
+        seed = UnitOfWork(session, toy_mapper())
+        seed.add(dune(root))
+        await seed.commit()
+    mine = UnitOfWork(session, toy_mapper())
+    book_a, book_b = await mine.get(Book, A), await mine.get(Book, B)
+    other = UnitOfWork(session_for(store, database, principal=BEN), toy_mapper())
+    theirs = await other.get(Book, B)
+    theirs.label = "theirs"
+    other.add(theirs)
+    await other.commit()
+    book_a.label = "mine"
+    book_b.label = "mine"
+    mine.add(book_a)
+    mine.add(book_b)
+    with pytest.raises(Conflict) as refused:
+        await mine.commit()
+    assert refused.value.iris == (B,)
+    assert (await UnitOfWork(session, toy_mapper()).get(Book, A)).label == dune(A).label
+    assert (await UnitOfWork(session, toy_mapper()).get(Book, B)).label == "theirs"
     assert not await a_marker_is_left(store, database)

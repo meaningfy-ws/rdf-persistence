@@ -620,11 +620,15 @@ class Session:
 
         Raises:
             ValueError: (from a change) The aggregate already has a change in this transaction.
+            RuntimeError: (from a change) The block has ended, so the change would be dropped.
             Conflict: A guard failed, so nothing changed; ``iris`` names the roots found conflicting.
         """
         transaction = Transaction(self)
-        yield transaction
-        await transaction.commit()
+        try:
+            yield transaction
+            await transaction.commit()
+        finally:
+            transaction.ended = True
 
 
 class Transaction:
@@ -638,6 +642,7 @@ class Transaction:
     def __init__(self, session: Session) -> None:
         self._session = session
         self._marker = new_marker(session._clock())
+        self.ended = False  # set when the block ends, committed or raised
         self.guards: list[str] = []
         self.operations: list[str] = []
         self._confirm: list[str] = []  # what holds when every change took effect (PD-3)
@@ -650,7 +655,7 @@ class Transaction:
     def _collect(
         self, iri: str, graph: URIRef, read_at: str | None, parts: tuple[str, str], confirm: str
     ) -> None:
-        self._roots[graph] = iri
+        self._roots[graph] = str(iri)  # Conflict.iris holds str, whatever the caller passed (PD-7)
         self._read_at[graph] = read_at
         self.guards.append(parts[0])
         self.operations.append(parts[1])
@@ -658,6 +663,8 @@ class Transaction:
 
     def _claim(self, iri: str) -> URIRef:
         """The graph of ``iri``; a second change on the same graph, whatever string type, is refused."""
+        if self.ended:
+            raise RuntimeError("the transaction has ended; a change now would be dropped (PD-17c)")
         graph = self._session._graph(iri)
         if graph in self._roots:
             raise ValueError(f"{iri} already has a change in this transaction")

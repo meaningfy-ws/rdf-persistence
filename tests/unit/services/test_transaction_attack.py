@@ -145,12 +145,6 @@ async def test_one_stale_root_among_twelve_changes_nothing(store, session, other
     assert not await a_marker_is_left(store)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="rdflib's SPARQL parser hits its recursion limit on a request of ~75 operations (15 replaces), "
-    "so FakeStore.update raises BadQuery; a unit of work of 15 replaced roots cannot commit on the fake "
-    "(design PD-10 expects 500 roots)",
-)
 async def test_fifteen_replaced_roots_commit_on_the_fake_store(session):
     roots = [book_iri(600 + n) for n in range(15)]
     versions = {iri: await session.add_graph(iri, title(iri, "first")) for iri in roots}
@@ -242,10 +236,6 @@ async def test_the_conflict_iris_are_plain_strings_of_the_roots_not_graph_iris(
     assert graph_of(A) not in refused.value.iris
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Conflict.iris holds the URIRef the caller passed; a URIRef never equals a str (PD-7: tuple[str, ...])",
-)
 async def test_conflict_iris_are_equal_to_str_roots_when_the_caller_passed_urirefs(
     session, other, seeded
 ):

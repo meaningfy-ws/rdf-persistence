@@ -150,3 +150,83 @@ async def test_the_after_update_hook_does_not_run_when_the_update_fails():
     with pytest.raises(BadQuery):
         await store.update(NAME, INSERT_THEN_CREATE_EXISTING)
     assert ran == []
+
+
+# --- the fake store splits a request at its top-level semicolons (atomic-commit PD-17a) -------------
+
+
+DOUBLE_STRING = '"x;y"'
+SINGLE_STRING = "'x;y'"
+LONG_STRING = r'"""x;\"y"""'  # a long string holding a semicolon and an escaped quote
+
+
+def insert(subject: str, obj: str = "<urn:o>") -> str:
+    return f"INSERT DATA {{ GRAPH <urn:g:split> {{ <{subject}> <urn:p> {obj} }} }}"
+
+
+async def count_split(store: FakeStore) -> int:
+    rows = await store.query(
+        NAME, "SELECT (COUNT(*) AS ?n) WHERE { GRAPH <urn:g:split> { ?s ?p ?o } }"
+    )
+    return int(next(iter(rows))[0])
+
+
+@pytest.mark.parametrize(
+    "request_text",
+    [
+        pytest.param(f"{insert('urn:a;b')} ; {insert('urn:c')}", id="in-an-iri"),
+        pytest.param(f"{insert('urn:a', DOUBLE_STRING)} ; {insert('urn:c')}", id="in-a-string"),
+        pytest.param(
+            f"{insert('urn:a', SINGLE_STRING)} ; {insert('urn:c')}", id="in-a-single-quoted-string"
+        ),
+        pytest.param(f"{insert('urn:a', LONG_STRING)} ; {insert('urn:c')}", id="in-a-long-string"),
+        pytest.param(f"{insert('urn:a')} # one ; two\n ; {insert('urn:c')}", id="in-a-comment"),
+        pytest.param(f"{insert('urn:a')} ; ; {insert('urn:c')} ;", id="empty-operations"),
+    ],
+)
+async def test_a_semicolon_that_is_not_an_operation_separator_does_not_split_the_request(
+    request_text,
+):
+    store = FakeStore()
+    await store.create_dataset(NAME)
+    await store.update(NAME, request_text)
+    assert await count_split(store) == 2
+
+
+async def test_a_request_of_six_hundred_operations_succeeds():
+    store = FakeStore()
+    await store.create_dataset(NAME)
+    await store.update(NAME, " ;\n".join(insert(f"urn:s{n}") for n in range(600)))
+    assert await count_split(store) == 600
+
+
+async def test_a_failure_in_the_last_of_many_operations_leaves_nothing_applied():
+    store = FakeStore()
+    await store.create_dataset(NAME)
+    await store.update(NAME, EXISTING)
+    many = " ;\n".join(insert(f"urn:s{n}") for n in range(300))
+    with pytest.raises(BadQuery):
+        await store.update(NAME, f"{many} ; CREATE GRAPH <urn:g:two>")
+    assert await count_split(store) == 0
+
+
+async def test_a_prologue_applies_to_every_operation():
+    store = FakeStore()
+    await store.create_dataset(NAME)
+    await store.update(
+        NAME,
+        "PREFIX ex: <urn:> INSERT DATA { GRAPH ex:g:split { ex:a ex:p ex:o } } ;"
+        " INSERT DATA { GRAPH ex:g:split { ex:c ex:p ex:o } }",
+    )
+    assert await count_split(store) == 2
+
+
+async def test_a_semicolon_joining_a_predicate_list_inside_braces_does_not_split_the_request():
+    store = FakeStore()
+    await store.create_dataset(NAME)
+    await store.update(
+        NAME,
+        "INSERT DATA { GRAPH <urn:g:split> { <urn:a> <urn:p> <urn:o> ; <urn:q> <urn:o> } } ;"
+        f" {insert('urn:c')}",
+    )
+    assert await count_split(store) == 3

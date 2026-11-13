@@ -158,6 +158,24 @@ required); any change to listings, loads, the sweeps' logic or the HTTP routes.
   records about the root) and `_allow_state` (only a transition may change a workflow state).
   This change only keeps `guards` and `operations` open to such additions (PD-6) and its tests
   independent of them.
+- **PD-17** (adversarial tester after task 1.2, 2026-11-13; the developer chose the option for
+  rdflib, the lead decided the rest):
+  - **a** rdflib's update parser recurses once per operation (RecursionError beyond ~50-100
+    operations), so `FakeStore` failed a transaction of 15 replaced roots. `FakeStore.update`
+    splits the request at top-level `;` (outside IRIs, strings and comments) and runs each
+    operation on the dataset copy, still all or nothing (PD-13). Upstream:
+    https://github.com/RDFLib/rdflib/issues/3710. Fuseki is not affected.
+  - **b** `Conflict.iris` holds `str` root IRIs even when the caller passed a `URIRef` (PD-7).
+  - **c** A `Transaction` used after its block ended (committed or raised) raises `RuntimeError`;
+    a change is never silently dropped.
+  - **d** A change method that raises inside the block, when the caller catches it, leaves no
+    claim; the other changes commit on a clean exit. Intended: only collected changes are sent.
+  - **e** A removes-only transaction whose root another writer already removed: the guard fails,
+    nothing is written, and the confirming `ASK` (graph empty) is true, so it returns as a
+    success, as `Session.remove` did before. Idempotent removal; the diagnosis runs only when the
+    `ASK` is false.
+  - **f** In the diagnosis a removed root whose graph is gone counts as "no longer at version",
+    like a changed one (PD-4's "or is absent").
 - **PD-14** (attack, finding 7): conflict messages change: an add now says
   "… no longer at version …" or "… already exists" per root as found by the diagnosis (PD-4),
   in one message for all roots. Tests that match the old message text are updated; they are
