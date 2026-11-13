@@ -26,7 +26,8 @@ See xref:howto/adopt.adoc#session[step 8].
 
 *Can I save several aggregates at once?*::
 Yes. Add, change and `remove` the roots in one `UnitOfWork` and call `commit()` once: all are
-stored or none is, and a stale root raises `Conflict` whose `iris` names the roots that moved.
+stored or none is (a root is the root object of an aggregate), and a stale root raises `Conflict`
+whose `iris` names the roots that moved.
 `work.version(iri)` gives a root's version token. For triples, use `async with
 session.transaction()`. A commit that used to leave the first roots written after a conflict now
 leaves nothing. See xref:howto/adopt.adoc#transaction[Save several aggregates at once] and
@@ -36,13 +37,15 @@ in several transactions (see xref:howto/adopt.adoc#transaction-batches[Save more
 
 *What happens when two people edit the same thing?*::
 The second commit is refused: every aggregate has a version token that changes on every write, and
-a commit is stored only if each root it changes is still at the version it read. Nothing is
+a commit is stored only if each root it changes is still at the version it read and each new root
+does not exist yet. Nothing is
 overwritten silently, and nothing of the refused commit is written. See
 xref:howto/commits.adoc[How commits and conflicts work].
 
 *Why did my commit raise `Conflict`?*::
-Another writer changed (or removed) a root you read since you read it, or a root you added already
-exists. Nothing was written. `conflict.iris` and the message name the roots. Read them again in a
+Another writer changed (or removed) a root you change since you read it, or a root you add already
+exists. Nothing was written (rarely, a false conflict; read again to see the truth).
+`conflict.iris` and the message name the roots. Read them again in a
 new unit of work, apply your edit if it still makes sense, and commit; the toolkit never retries
 for you. See xref:howto/adopt.adoc#handle-a-conflict[Handle a conflict] and
 xref:howto/commits.adoc#conflict[what a conflict means].

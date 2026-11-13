@@ -88,7 +88,7 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
   `version`, `remove`; the behaviour change), `questions.adoc` ("Can I save several aggregates at
   once?"). Gates: `make check-docs`, `make check-diagrams`.
 
-- [ ] 1.6 Close stage 1: `make check-all`, `make test-containers`; PR into `develop`
+- [x] 1.6 Close stage 1: `make check-all`, `make test-containers`; PR into `develop`
   (`Refs: atomic-commit`, `Closes #83` only after stage 2); merge on green CI.
 
 ## 2. The size limit and batch mode

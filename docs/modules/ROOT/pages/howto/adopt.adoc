@@ -677,6 +677,8 @@ code that works on objects, change what you need in one `UnitOfWork` and call `c
 
 [source,python]
 ----
+from rdf_persistence import Conflict, UnitOfWork
+
 async with kit.session(tenant, principal) as session:
     work = UnitOfWork(session, mapper)
     dune = await work.get(Book, dune_iri)
@@ -684,7 +686,7 @@ async with kit.session(tenant, principal) as session:
     dune.label = "Dune, 2nd edition"
     work.add(dune)                                   # replaced, at the version it was read
     work.add(Book(id=new_iri, label="Emma", description="A novel.", author="Jane Austen"))
-    work.remove(old)                                 # removed with its loaded graphs
+    work.remove(old)                                 # removed
     try:
         await work.commit()                          # all three, or none
     except Conflict as conflict:
@@ -694,8 +696,9 @@ async with kit.session(tenant, principal) as session:
 ----
 
 For triples, open a transaction on the session: each call checks what it can at once (the IRI
-policy, the loaded graphs, that a replaced or removed root exists), and the block sends one
-request when it ends.
+policy, that a replaced or removed root exists), and the block sends one
+request when it ends. (In both, a *root* is the root object of an aggregate: one book with its
+chapters. `add` of a root you read replaces it.)
 
 [source,python]
 ----
@@ -713,12 +716,10 @@ What to expect:
   xref:architecture/data-flows.adoc#commit[Committing several aggregates at once].
 * *`Conflict.iris`* lists the root IRIs whose guard failed, sorted. It is a *diagnosis*: the
   session reads the stored versions after the refusal, so another writer can change them in
-  between and the list can be incomplete or empty. Use it to tell the user which objects moved;
-  do not treat it as exact. The message says the same in words, one clause per root and never
-  a graph IRI or a version token: "<root> was changed by someone else since it was read",
-  "<root> was removed by someone else since it was read", or "<root> already exists" (an add). With
-  no root to blame it reads "the commit lost a race with another writer; read again and retry".
-  A `Conflict` raised elsewhere has an empty `iris`.
+  between and the list can miss a root, name one too many, or be empty. Use it to tell the user
+  which objects moved; do not treat it as exact. The message words it per root; the three clauses
+  are in xref:howto/commits.adoc#conflict[what a conflict means]. A `Conflict` raised elsewhere has
+  an empty `iris`.
 * *`UnitOfWork.version(iri)`* returns the version token of a root this unit of work read, or
   after a commit the new token (the same token `Session.get_graph` returns and the HTTP API sends
   as `ETag`). Record it to know which version a process used. A root it neither read nor
@@ -738,11 +739,16 @@ What to expect:
 [#handle-a-conflict]
 ==== Handle a conflict
 
-_My commit raised `Conflict`. What do I do?_ Nothing was written. Read the roots again in a *new*
-unit of work, apply the edit again if it still makes sense, and commit:
+_My commit raised `Conflict`. What do I do?_ Nothing was written (barring the rare false conflict in
+xref:howto/commits.adoc#diagnosis[the diagnosis]; reading again shows the true state). Read the
+roots again in a *new* unit of work, apply the edit again if it still makes sense, and commit. Here
+`kit`, `mapper`, `tenant` and `principal` are the ones from xref:howto/adopt.adoc#session[step 8]:
 
 [source,python]
 ----
+from rdf_persistence import Conflict, UnitOfWork
+
+
 async def rename(kit, mapper, tenant, principal, iri, label):
     for _ in range(2):                               # your policy: here, one retry
         async with kit.session(tenant, principal) as session:
@@ -761,18 +767,17 @@ async def rename(kit, mapper, tenant, principal, iri, label):
     raise RuntimeError(f"{iri} keeps changing; give up")
 ----
 
-The message names each root in words, never a graph IRI or a version token: `<root> was changed by
-someone else since it was read`, `<root> was removed by someone else since it was read`, or
-`<root> already exists` for an add. `conflict.iris` lists the same roots, sorted. The toolkit does
-not retry for you, because only your code knows whether the edit still makes sense on the new copy
-(the `if` above is that check). Why, and what `iris` can miss: xref:howto/commits.adoc[How commits
-and conflicts work].
+The message names each root and `conflict.iris` lists the same roots, sorted; for example
+`https://…/books/<id> was changed by someone else since it was read`. The toolkit does not retry
+for you, because only your code knows whether the edit still makes sense on the new copy (the `if`
+above is that check). The three message clauses, and what `iris` can miss, are in
+xref:howto/commits.adoc#conflict[How commits and conflicts work].
 
 [#transaction-change]
 ==== The behaviour changed
 
-`UnitOfWork.commit()` used to write each root on its own: with two changed roots, a conflict on the
-second left the first written. It now writes all or none. There is no flag: code that relied on the
+Up to and including 0.2.0, `UnitOfWork.commit()` wrote each root on its own: with two changed
+roots, a conflict on the second left the first written. It now writes all or none. There is no flag: code that relied on the
 partial write (for example, catching `Conflict` and keeping the first root) has to commit the roots
 in separate units of work. Code that treated a `Conflict` as "nothing changed" is now correct for
 every root.
@@ -798,34 +803,31 @@ try:
     await work.commit(batches=True)      # batches of 500, in the order added
 except Conflict as conflict:
     print(conflict)                      # says how many batches were committed
-    # fix the cause, then call work.commit(batches=True) again for the rest
+    # see "Two ways to carry on" below
 ----
 
 What to expect:
 
-* *Each batch is one transaction; the whole is not atomic.* Batches commit in the order the roots
-  were added. If batch 3 of 5 fails, batches 1 and 2 stay written.
+* *Each batch is one transaction; the whole is not atomic.* Batches commit in the order each root
+  was first read or added. If batch 3 of 5 fails, batches 1 and 2 stay written.
 * *A conflict stops at that batch.* It is raised as it is (same type, same `iris`), and the
   message adds how many batches were committed (a non-toolkit exception keeps its arguments and
   gets that as a note). The roots that were committed leave the *pending changes* of the unit of
-  work (it still holds them as read), so the same unit of work can retry the rest. Retry only once
-  you have dealt with the cause.
+  work (it still holds them as read), so the same unit of work can retry the rest, if the cause
+  lies outside it (below).
 * *Batch mode reads before it writes.* To tell a re-run from a clash it reads each root it is to
   add, once per batch, so it needs read permission on those roots as well as write: use it behind
   a principal that has both.
-* *Two ways to carry on after a failure* (below). A fresh run converges for added roots: a new
-  unit of work that adds the same roots again takes a root that already exists as committed, if
-  its stored triples equal the triples the commit would write. Nothing is written twice. This holds
-  when the re-run builds the same part IRIs: anonymous parts, or part IRIs derived from the source
-  data.
-* *Parts from `new_part` break that.* It mints a random IRI each time, so a re-run sees different
-  triples, and those roots conflict. This is safe: nothing is duplicated. Derive the part IRIs
-  from the source if the import must be re-runnable.
+* *A fresh run converges for added roots* (below): a root already stored exactly as you would
+  write it counts as committed. This needs the same IRIs on every run, the book's own and its
+  parts' (not `new_part`, which mints a random one); otherwise those roots conflict, safely.
 * *Replaces and removes are not idempotent.* After an interruption, read the roots again and build
   the changes from what is stored now.
 
-*Retry in the same unit of work.* The process is still alive. Deal with the cause, then call
-`commit(batches=True)` again: it sends only the roots not yet committed.
+*Retry in the same unit of work.* The process is still alive and the cause lies outside the unit
+of work: a store outage, or the clashing stored book corrected or removed in the store. A unit of
+work cannot drop a pending add. Deal with the cause, then call `commit(batches=True)` again: it
+sends the roots not yet committed.
 
 [source,python]
 ----
@@ -833,21 +835,27 @@ try:
     await work.commit(batches=True)
 except Conflict as conflict:
     print(conflict)                      # … already exists; 1 of 3 batches committed before it
-    # fix the cause (for example, remove the clashing row from the source), then:
-    await work.commit(batches=True)      # sends only batches 2 and 3
+    # correct or remove the clashing stored book in the store, then:
+    await work.commit(batches=True)      # sends the roots not yet committed
 ----
 
-*Retry with a fresh run.* The process crashed, or you start the import again. Build a new unit of
-work from the same source and commit in batches. Roots already stored exactly as you would write
-them are skipped, so a second run after a full success sends no update at all.
+*Retry with a fresh run.* The process crashed, you start the import again, or a source row must be
+left out. Build a new unit of work from the same source (without that row) and commit in batches.
+Roots already stored exactly as you would write them are skipped, so a second run after a full
+success sends no update at all. The book's own IRI must be the same on every run, so derive it
+from the source:
 
 [source,python]
 ----
+def book_iri(row):
+    return f"{BOOKS}{row.isbn}"                    # the same row gives the same IRI, every run
+
+
 async def import_books(kit, mapper, tenant, principal, rows):
     async with kit.session(tenant, principal) as session:
         work = UnitOfWork(session, mapper)
         for row in rows:
-            # part IRIs derived from the source, not new_part(): the re-run must build the same ones
+            # IRIs derived from the source, not minted at random: the re-run must build the same ones
             work.add(Book(id=book_iri(row), label=row.title, description=row.text, author=row.author))
         await work.commit(batches=True)
 

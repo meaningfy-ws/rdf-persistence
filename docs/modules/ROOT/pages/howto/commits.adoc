@@ -10,8 +10,10 @@ xref:howto/adopt.adoc#transaction[Save several aggregates at once]; the mechanis
 is in xref:architecture/data-flows.adoc#commit[Committing several aggregates at once]. It describes
 `develop` as of 2026-11-13 (the change `atomic-commit`).
 
-The running example is a small library. It holds books A, B, C and D. A, B and D are stored; C is
-new.
+A *root* is the root object of an aggregate: one book with its chapters is one root, stored and
+versioned as a whole. The running example is a small library of books A, B, C and D. A, B and D are
+stored; C is new. The snippets run inside `async with kit.session(tenant, principal) as session:`
+(see xref:howto/adopt.adoc#session[step 8]) after `from rdf_persistence import Conflict, UnitOfWork`.
 
 == A commit is all or nothing
 
@@ -19,9 +21,10 @@ You change A, you change B, you add C and you remove D in one `UnitOfWork`, then
 once. Either all four changes are stored, or none is. Nobody can read a library where A is new and
 D is still on the shelf.
 
-It was not always so. Until 0.2.0 each root was written on its own. If B had been changed by
-someone else meanwhile, the commit raised `Conflict` on B, and A was already written. Code had to
-guess which roots had made it. Now a `Conflict` means one thing: nothing was written.
+Up to and including 0.2.0 each root was written on its own, so a conflict could leave the first
+roots written. What changed for existing code is in
+xref:howto/adopt.adoc#transaction-change[The behaviour changed]. Now a `Conflict` means one thing:
+nothing was written, with one rare exception (see <<diagnosis>>).
 
 == The version token: how the store knows you read an old copy
 
@@ -48,9 +51,11 @@ first. Each kind of change has its own expectation:
 |===
 |Change |Guard: it is stored only if
 |Replace (`add` of a book you read) |A is still at the version you read.
-|Remove (`remove(book)`) |D is still at the version you read.
+|Remove (`remove(book)`) |D is still at the version you read. (A commit of removes only also succeeds if another writer already removed them.)
 |Add (`add` of a new book) |Nothing exists under C's IRI yet.
 |===
+
+So `add` of a root you read replaces it; `add` of a root you did not read creates it.
 
 All the guards are checked together, before any write. If one fails, the store writes nothing.
 
@@ -78,8 +83,8 @@ except Conflict as conflict:
     print(conflict.iris)    # ('https://…/books/b',)
 ----
 
-`Conflict.iris` names the roots (never graph IRIs) that caused the refusal, sorted. The message
-says the same in words, one clause per root:
+`Conflict.iris` names the roots that caused the refusal, sorted. The message says the same in
+words, one clause per root (never a version token):
 
 * `<root> was changed by someone else since it was read`: you replaced it, and its version moved.
 * `<root> was removed by someone else since it was read`: you replaced or removed it, and it is gone.
@@ -99,17 +104,22 @@ right spelling. Applying your edit again would write a wrong title over a right 
 your code, must look at the fresh B and decide. The recipe is in
 xref:howto/adopt.adoc#handle-a-conflict[Handle a conflict].
 
+[#diagnosis]
 === The diagnosis can be incomplete
 
-The commit is refused first, and `iris` is worked out afterwards, by reading what each graph holds
-now. Another writer can change a graph in between. So the list can miss a root or, rarely, be
-empty. That nothing was written is a guarantee; the list is help for the person reading the
-message. The known gaps are in the note under
+The commit is refused first, and `iris` is worked out afterwards, by reading what each root holds
+now. Another writer can change a root in between. So the list can miss a root, name one too many,
+or be empty. It is help for the person reading the message; the known gaps are in the note under
 xref:architecture/data-flows.adoc#commit[the diagnosis].
 
-One case is not a conflict. A commit that only removes roots succeeds when another writer has
-already removed them: the shelf is empty, as you wanted. (Mixed with other changes, a root removed
-meanwhile is named in the `Conflict` like any other.)
+That nothing was written holds, with one rare exception: a false conflict. A commit that only
+removes roots can apply, and then another writer re-adds one of them before the store is asked
+again; the commit is reported as a `Conflict` although it was stored. Read again: the stored state
+shows the truth either way.
+
+A removes-only commit also succeeds when another writer has already removed the roots: the shelf
+is empty, as you wanted. (Mixed with other changes, a root removed meanwhile is named in the
+`Conflict` like any other.)
 
 == Why one commit holds at most 500 roots
 
@@ -138,7 +148,7 @@ or ask for batch mode.
 == Batch mode is many commits, not one
 
 `commit(batches=True)` cuts the roots into slices of `max_roots` and commits each slice as its own
-all-or-nothing transaction, in the order you added them. 600 books make two batches: 500, then 100.
+all-or-nothing transaction, in the order each root was first read or added. 600 books make two batches: 500, then 100.
 
 The whole is *not* atomic. If batch 2 fails, batch 1 stays stored. The error says so:
 
@@ -157,19 +167,22 @@ Read it as "N of M batches committed before it". A failing batch writes nothing 
 [cols="1,3",options="header"]
 |===
 |Retry |What it does
-|The same unit of work |`commit(batches=True)` again. The roots of the committed batches left its pending changes, so it sends only what is left.
+|The same unit of work |`commit(batches=True)` again. The roots of the committed batches left its pending changes, so it sends the roots not yet committed.
 |A fresh run |A new unit of work that adds all 600 books again. Before each batch it reads every root it is to add; one that is already stored exactly as you would write it counts as committed and is skipped.
 |===
 
-Use the first when the process is still alive, once you have dealt with the cause. Use the second
-after a crash, when the old unit of work is gone.
+Use the first when the process is still alive and the cause lies outside the unit of work: a store
+outage, or the clashing stored book corrected or removed in the store. A unit of work cannot drop a
+pending add, so to leave a row out, start a fresh run without it. Use the fresh run too after a
+crash, when the old unit of work is gone.
 
 === When a fresh run converges
 
 "Exactly as you would write it" compares the stored triples with the triples the commit would
-write. It holds when the re-run builds the same IRIs for the parts of a book. That is the case
-for anonymous parts and for part IRIs you derive from the source row (for example from the
-chapter number). It is not the case for `new_part`, which mints a random IRI each time: the
+write. It holds when the re-run builds the same IRIs: the book's own IRI must be the same on every
+run, so derive it from the source (for example the ISBN), never mint it at random. The same goes
+for the parts of a book: anonymous parts, or part IRIs you derive from the source row (for example
+from the chapter number). It is not the case for `new_part`, which mints a random IRI each time: the
 re-run sees different triples, and those books conflict with the stored ones. That is safe,
 because nothing is duplicated, but the import does not converge. Derive the part IRIs from the
 source if the import must be re-runnable.

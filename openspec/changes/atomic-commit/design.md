@@ -263,6 +263,26 @@ required); any change to listings, loads, the sweeps' logic or the HTTP routes.
   converged; a decimal or dateTime slot that Fuseki rewrites would conflict on re-run, which is
   safe, and is recorded under RISK-5. One existence query per batch (L4 W4 option 1): new SPARQL
   for a re-run optimisation; `gather` is enough until a timing says otherwise.
+- **PD-21** (docs stage, cold reader and L2 doc agreement, 2026-11-13; decided by the lead).
+  Accepted, all in the docs:
+  - **a** A unit of work has no way to drop a pending add, so the same-unit-of-work retry is for
+    a cause outside it (a store outage, the clashing stored root corrected or removed); to leave a
+    clashing row out, start a fresh run without it. The retry "sends the roots not yet
+    committed" (it re-cuts the batches). No `UnitOfWork.discard` is added: nobody needs it yet.
+  - **b** The root's own IRI, not only its parts', must be the same on every run of an import.
+  - **c** "Nothing was written" on a `Conflict` carries its exception (the rare false conflict of
+    PD-4/PD-18h); `Conflict.iris` can miss a root, name one too many, or be empty.
+  - **d** Wording: "up to and including 0.2.0"; a conflict comes from a root you *change*; the
+    remove guard notes the removes-only exception; order is "first read or added"; "root" is
+    defined once as the aggregate's root object and used throughout; `add` of a read root is a
+    replace, said in the text; imports in the first snippet; "graph IRI" and "loaded graphs" get
+    half a sentence or go.
+  - **e** Cut repeats: the history lives in adopt.adoc#transaction-change (commits.adoc links
+    it); the message wording is quoted once in commits.adoc, the recipe shows one example.
+
+  Rejected: cutting "how the store keeps it atomic" from commits.adoc (three sentences that
+  answer "why is it all or nothing"); a section on mixed batches and on a source row edited
+  between runs (covered by "only adds converge; the rest conflicts, read again").
 - **PD-14** (attack, finding 7): conflict messages change: an add now says
   "… no longer at version …" or "… already exists" per root as found by the diagnosis (PD-4),
   in one message for all roots. Tests that match the old message text are updated; they are
