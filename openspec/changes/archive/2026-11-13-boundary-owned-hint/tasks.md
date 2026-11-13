@@ -14,5 +14,5 @@
 
 - [x] 1.2 Docs (PD-2) in `architecture/generation.adoc`. Gate: `make check-docs`.
 
-- [ ] 1.3 Close: `make check-all`; `openspec validate boundary-owned-hint --strict`; PR into
+- [x] 1.3 Close: `make check-all`; `openspec validate boundary-owned-hint --strict`; PR into
   `develop` closing #72; merge on green CI; archive the change.
