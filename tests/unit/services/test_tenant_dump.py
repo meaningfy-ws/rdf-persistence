@@ -636,9 +636,14 @@ async def test_tc25_the_restored_tenant_takes_the_roots_label_not_the_manifests(
 # -- PD-13: the decompression budget, the end marker, the record write ------------------------------------
 
 
+def charge_of(payload: bytes) -> int:
+    """What a restore charges for one member (PD-14): its header block plus its size padded to a block."""
+    return tarfile.BLOCKSIZE + -(-len(payload) // tarfile.BLOCKSIZE) * tarfile.BLOCKSIZE
+
+
 def charged(data: bytes) -> int:
-    """What a restore charges for ``data``: each member's size plus one tar block."""
-    return sum(len(payload) + tarfile.BLOCKSIZE for _, payload in unpack(data))
+    """What a restore charges for the whole of ``data``."""
+    return sum(charge_of(payload) for _, payload in unpack(data))
 
 
 async def test_a_budget_that_holds_every_member_and_its_block_restores_and_one_byte_less_refuses(
@@ -649,9 +654,16 @@ async def test_a_budget_that_holds_every_member_and_its_block_restores_and_one_b
     assert "bytes" in await refused(world, data, max_bytes=charged(data) - 1), "one byte short"
 
 
+async def test_many_small_blobs_are_charged_with_their_padding(world):
+    members = unpack(await dumped(world))[:2]
+    data = pack(*members, *((f"blobs/b{i}", b"x") for i in range(50)))
+    assert (await restored(world, data, max_bytes=charged(data))).id != world.tenant, "fits"
+    assert "bytes" in await refused(world, data, max_bytes=charged(data) - 1), "one byte short"
+
+
 async def test_a_budget_the_graphs_overflow_is_refused_before_anything_is_created(world):
     data = await dumped(world)
-    head = sum(len(p) + tarfile.BLOCKSIZE for _, p in unpack(data)[:1])
+    head = charge_of(unpack(data)[0][1])  # the manifest alone
     await refused(world, data, max_bytes=head)  # refused() asserts that nothing was created
 
 
@@ -712,8 +724,25 @@ async def test_a_header_inside_the_budget_does_not_stop_a_restore(world):
     assert (await restored(world, small, max_bytes=charged(data) + 10_000)).id != world.tenant
 
 
-def test_a_dump_ends_with_the_end_marker_even_when_it_holds_no_blob():
-    assert [n for n, _ in unpack(pack((MANIFEST, b"{}"), (GRAPHS, b"")))][-1] == END, "the helper"
+async def test_a_dump_of_a_tenant_with_no_blob_still_ends_with_an_empty_regular_end_member():
+    world = await make_world(iris_of(SETTINGS), SETTINGS)
+    out = io.BytesIO()
+    await dump(world.tenancy, world.store, world.files, world.iris, VIEW, world.tenant, out)
+    with tarfile.open(fileobj=io.BytesIO(out.getvalue()), mode="r:gz") as tar:
+        last = tar.getmembers()[-1]
+    assert (last.name, last.isfile(), last.size) == (END, True, 0), "an empty regular file end"
+
+
+async def test_a_gnu_long_name_header_over_the_budget_is_refused_and_creates_nothing(world):
+    data = await dumped(world)
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w:gz", format=tarfile.GNU_FORMAT) as tar:
+        for name, payload in unpack(data):
+            info = tarfile.TarInfo("blobs/" + "n" * 2_000_000 if name == "blobs/k1" else name)
+            info.size = len(payload)
+            tar.addfile(info, io.BytesIO(payload))
+    reason = await refused(world, buffer.getvalue(), max_bytes=charged(data) + 100_000)
+    assert "bytes" in reason, "the reason says it is the size"
 
 
 @pytest.mark.parametrize(

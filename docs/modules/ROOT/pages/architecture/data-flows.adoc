@@ -579,17 +579,20 @@ sequenceDiagram
   D-->>C: out: end (empty)
   Note over C,O: restore_tenant(src, creator)
   C->>D: restore
-  D->>D: read manifest and graphs.nq, check format, schema, IRI policy
-  D->>T: free_tenant: mint T2, unused
-  D->>D: rewrite the IRIs from T to T2, check graphs and root
-  D->>T: restore
+  D->>D: read manifest.json, check format, schema, IRI policy
+  D->>D: read graphs.nq, parse the N-Quads
+  D->>T: restore(parsed quads, blob iterator)
+  T->>T: draw T2, unused (private)
+  T->>T: rewrite the IRIs from T to T2, check the graphs and the root
   T->>F: create database lib-t-… for T2
   T->>O: create bucket lib-t-…
   T->>F: import the N-Quads
   loop each blob member
+    T->>D: next blob from the iterator
+    D-->>T: key and bytes (each member charged against the budget)
     T->>O: put the blob
   end
-  T->>T: the end member follows, the gzip stream is complete?
+  T->>D: iterator end: the end member follows, the gzip trailer checks
   T->>T: database and bucket still exist?
   T->>F: lib-system: write the access record (active, creator is librarian)
   T-->>C: TenantSummary of T2

@@ -46,8 +46,8 @@ MANIFEST, GRAPHS, BLOBS, END = "manifest.json", "graphs.nq", "blobs/", "end"
 MAX_MANIFEST_BYTES = (
     64 * 1024
 )  # a manifest is a few hundred bytes plus the policy; this is generous
-# Beyond ``max_bytes`` the wrapper still lets through the tar's own overhead: the header and padding blocks that the
-# per-member charge does not count and the two zero blocks and the record padding at the end (PD-13).
+# Beyond ``max_bytes`` the wrapper still lets through the tar's own overhead that the per-member charge does not
+# count: the long-name and extended header blocks, the two zero blocks and the record padding at the end (PD-13).
 HEADER_ALLOWANCE = 4 * tarfile.RECORDSIZE
 # What a damaged gzip or tar stream raises while it is read.
 _DAMAGED = (tarfile.TarError, gzip.BadGzipFile, EOFError, zlib.error)
@@ -134,7 +134,7 @@ def _add(tar: tarfile.TarFile, name: str, payload: bytes, mtime: float) -> None:
 
 
 class _Budget:
-    """The bytes a restore may still read: each member costs its size plus the tar block of its header (PD-13).
+    """The bytes a restore may still read: each member costs its header block plus its size padded to a block (PD-13, PD-14).
 
     A gzip bomb is a few kilobytes that decompress to gigabytes; the header of each member says its size before
     any of it is read, so the archive is refused before the memory or the object store is filled.
@@ -149,6 +149,11 @@ class _Budget:
             raise InvalidBody(
                 f"the archive holds more than {self._limit} bytes once decompressed, more than this service restores"
             )
+
+
+def _block_cost(size: int) -> int:
+    """What a member of ``size`` bytes takes in the tar: its header block and its content padded to a block (PD-14)."""
+    return tarfile.BLOCKSIZE + -(-size // tarfile.BLOCKSIZE) * tarfile.BLOCKSIZE
 
 
 class _Counted:
@@ -258,7 +263,7 @@ def _read(
         raise InvalidBody(
             f"{what} holds {member.size} bytes, more than the {cap // 1024} KiB allowed"
         )
-    budget.charge(member.size + tarfile.BLOCKSIZE)
+    budget.charge(_block_cost(member.size))
     with _readable(what):
         file = tar.extractfile(member)
         assert file is not None, "a regular file has content"
@@ -368,7 +373,7 @@ def _finish(
     """The ``end`` member is an empty regular file and the last one; then the gzip stream is read to its trailer."""
     if not end.isfile() or end.size:
         raise InvalidBody(f"the archive member {END} must be an empty regular file")
-    budget.charge(tarfile.BLOCKSIZE)
+    budget.charge(_block_cost(0))
     with _readable():
         after = next(members, None)
     if after is not None:

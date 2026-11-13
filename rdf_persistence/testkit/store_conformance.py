@@ -178,6 +178,7 @@ def _two_graphs() -> Dataset:
 
 
 async def export_then_import_round_trips_every_named_graph(store: Store, dataset: str) -> None:
+    """TC-01 of tenant-dump-restore."""
     source, copy = _two_graphs(), f"{dataset}-copy"
     for graph in source.graphs():
         await store.put_graph(dataset, cast(URIRef, graph.identifier), graph)
@@ -198,11 +199,13 @@ async def export_then_import_round_trips_every_named_graph(store: Store, dataset
 
 
 async def export_of_a_dropped_dataset_is_gone(store: Store, dataset: str) -> None:
+    """TC-02 of tenant-dump-restore."""
     with pytest.raises(DatabaseGone):
         await store.export_quads(await _dropped(store, dataset))
 
 
 async def import_into_a_dropped_dataset_is_gone(store: Store, dataset: str) -> None:
+    """TC-03 of tenant-dump-restore."""
     with pytest.raises(DatabaseGone):
         await store.import_quads(await _dropped(store, dataset), b"")
 

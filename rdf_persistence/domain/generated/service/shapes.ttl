@@ -210,7 +210,7 @@ rp:TenantCreate a sh:NodeShape ;
 	sh:property _:c14n144 , _:c14n84 ;
 	sh:targetClass rp:TenantCreate .
 rp:TenantDump a sh:NodeShape ;
-	rdfs:comment "The manifest of a tenant dump archive, written by `dump_tenant` and read by `restore_tenant`: where and when the dump was taken, which schema and toolkit it came from, the tenant it holds and the IRI policy that minted its IRIs, so a restore can map them into another deployment." ;
+	rdfs:comment "The manifest of a tenant dump archive, written by `dump_tenant` and read by `restore_tenant`: where and when the dump was taken, which schema and toolkit it came from, the tenant it holds and the IRI policy that minted its IRIs, so a restore can check that the dump was made under the same schema and policy." ;
 	rdfs:label "Tenant dump" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n13 ;

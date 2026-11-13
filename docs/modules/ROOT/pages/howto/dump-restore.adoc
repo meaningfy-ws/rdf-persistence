@@ -64,6 +64,8 @@ policy.
 tenant id from the URL; `require` checks the caller against it and answers the tenant's IRI in
 `checked.caller_access.tenant`, which is what `dump_tenant` takes:
 
+`path` is any file path you choose (for example a temporary one made with `tempfile.mkstemp`):
+
 [source,python]
 ----
 checked = await kit.require(request.headers.get("authorization"), t, Action.ADMINISTER)
@@ -72,7 +74,8 @@ with open(path, "wb") as out:
 ----
 
 *A restore* has no tenant to check yet, so `require` cannot guard it. Verify the token, apply your
-own rule about who may create projects, and pass the caller as `creator`:
+own rule about who may create projects, and pass the caller as `creator`; here `path` is the archive
+file you received:
 
 [source,python]
 ----

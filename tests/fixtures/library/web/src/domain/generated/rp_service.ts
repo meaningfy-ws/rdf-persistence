@@ -94,7 +94,7 @@ export interface IriPolicy {
   object_id?: IdSpec;
 }
 
-/** The manifest of a tenant dump archive, written by `dump_tenant` and read by `restore_tenant`: where and when the dump was taken, which schema and toolkit it came from, the tenant it holds and the IRI policy that minted its IRIs, so a restore can map them into another deployment. */
+/** The manifest of a tenant dump archive, written by `dump_tenant` and read by `restore_tenant`: where and when the dump was taken, which schema and toolkit it came from, the tenant it holds and the IRI policy that minted its IRIs, so a restore can check that the dump was made under the same schema and policy. */
 export interface TenantDump {
   /** The version of the dump archive layout; a restore refuses a version it does not know. */
   format_version: number;

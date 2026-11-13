@@ -3,7 +3,8 @@
 ### Requirement: A tenant can be dumped and restored into a new tenant
 
 The service kit SHALL write a tenant as one archive holding a manifest, every named graph of the
-tenant's database as N-Quads, and every blob of its bucket. It SHALL restore such an archive only
+tenant's database as N-Quads, and every blob of its bucket (format version 1), and SHALL end the archive with an empty regular member
+named `end`. It SHALL restore such an archive only
 into a new tenant, minted as on create, whose IRIs carry the new tenant id in place of the source
 tenant id, whose access record grants only the restorer the creator role, and whose aggregates,
 loaded graphs and blobs read back as the original's did. It SHALL write the new access record last.
@@ -45,7 +46,10 @@ tenant, whose root does not decode or is refused by a root validator, or whose f
 members are not the manifest and the N-Quads file. It SHALL also refuse, with `InvalidBody`, a
 deployment whose IRI policy glues the tenant id to a letter, a digit or another variable. A later
 archive member that is not a blob SHALL be refused with `InvalidBody`, leaving no tenant as a failed
-restore does.
+restore does. It SHALL likewise refuse an archive whose blobs are not followed by the empty `end`
+member, or that holds any member after `end`, or whose gzip stream does not end properly, and an
+archive that holds more than `max_restore_bytes` once decompressed (the member headers included),
+refusing it from the header before the member is read.
 
 #### Scenario: another schema version
 - **GIVEN** a dump whose manifest records schema version 1.0.0
@@ -61,6 +65,18 @@ restore does.
 - **GIVEN** a dump with a quad in the graph `http://elsewhere.example/g`
 - **WHEN** it is restored
 - **THEN** it is refused and nothing is created
+
+#### Scenario: an archive cut short or with a member after the end
+- **GIVEN** a dump archive that stops after its blobs without the `end` member, or that holds a member after `end`
+- **WHEN** it is restored
+- **THEN** it is refused with `InvalidBody` and no access record is written
+- **AND** the new database and bucket the blobs were written to are dropped, as a failed restore does
+
+#### Scenario: an archive past the restore budget
+- **GIVEN** a service whose `max_restore_bytes` is smaller than a dump archive holds once decompressed
+- **WHEN** the archive is restored
+- **THEN** it is refused with `InvalidBody` naming the byte limit, and no access record is written
+- **AND** when the overflow is met before the blobs, no database or bucket is created
 
 ### Requirement: Dumping a tenant needs it active
 
