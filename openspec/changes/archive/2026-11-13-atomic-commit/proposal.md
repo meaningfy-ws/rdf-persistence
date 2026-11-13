@@ -139,3 +139,27 @@ await uow.commit(batches=True)   # over the limit: atomic per batch, re-runnable
   session tests are the safety net.
 - Unblocks MWB2 v2-02 and the toolkit EPICs `collaboration-and-reference-collections`,
   `cross-aggregate-unique-keys`, `aggregate-events`.
+
+## As built (2026-11-13)
+
+Delivered in #91, #93 and #94, in the two planned stages; the solution outline and every DEC held.
+Where the result differs from the text above (each is a recorded decision in design.md, and the
+living spec `openspec/specs/rp-aggregate-store/spec.md` says the same):
+
+| Above | As built | Decision |
+|---|---|---|
+| Appetite: "no new … model" | One metamodel class was added, `CommitMarker` (the marker of DEC-1), generated from LinkML | PD-1 |
+| DEC-3: "that nothing was written is the guarantee" | Holds, with one rare exception: a commit that applied and whose every written graph another writer overwrote (or, for removes only, re-added) before the confirming `ASK` raises a false `Conflict`. A re-read shows the true state | PD-4, PD-18h |
+| DEC-3: `iris` "names every root whose guard did not hold" | A diagnosis: sorted root IRIs, can miss a root, name one too many, or be empty | PD-4 |
+| (not said) | The conflict message names roots in words, no graph IRI or version token (the developer, at acceptance) | PD-20a |
+| (not said) | Removing a root another writer already removed is a success (removes-only commit) | PD-17e |
+| (not said) | A transaction used after its block ended raises `RuntimeError` | PD-17c |
+| DEC-6: "holds a list of guard patterns and a list of operations" | The lists are private; later EPICs extend them from inside `services` | PD-18a |
+| DEC-4: the limit | Also: a limit below 1 is refused; `CommitTooLarge` answers HTTP 413; a failed batch keeps its error's type and fields and says how many batches committed; a re-run converges only if the root's own IRI is stable too | PD-19, PD-20 |
+| What Changes: `ADD`, `REPLACE`, `REMOVE` rebuilt | `ADD` and the `*_text` builders were removed (no caller); `domain/sparql.py` gained `fragment`/`join`, `domain/iris.py` `is_skolem_of`, `session.py` `without_bookkeeping` | PD-18, PD-20e |
+| What Changes: tests on the fake store | `FakeStore` itself changed: atomic per request, an `after_update` hook, requests run one operation at a time (rdflib's parser limit, RDFLib/rdflib#3710) | PD-13, PD-17a |
+| RISK-1's conformance case: `CREATE GRAPH` on an existing graph | `LOAD` of a missing file (Fuseki accepts that `CREATE GRAPH`) | PD-13 |
+| Measured default | 500 roots: ≈ 4 s, one request of ≈ 2.9 MB on Fuseki; the default holds | PD-10 |
+
+Not built, as the No-gos say: no transaction across tenants or stores, no retry, no new route.
+Left open: a unit of work cannot drop a pending add (PD-21a).

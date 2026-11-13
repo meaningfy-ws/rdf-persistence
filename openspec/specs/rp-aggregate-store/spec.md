@@ -163,8 +163,13 @@ A session SHALL offer a transaction that collects adds, replaces and removes of 
 tenant and sends them as one update request. The request SHALL apply every change only if every
 guard holds (each replaced or removed aggregate still has the version token given, each added
 aggregate has no graph), and otherwise SHALL change nothing. The outcome SHALL be confirmed by one
-`ASK`. A refused transaction SHALL raise a conflict that names every aggregate whose guard did not
-hold. A transaction SHALL refuse the same aggregate twice before sending anything.
+`ASK`. A refused transaction SHALL raise a conflict that lists, sorted, the root IRIs found
+conflicting by one read after the refusal; the list is a diagnosis and MAY be incomplete or empty.
+The conflict's message SHALL name roots in words and SHALL NOT contain a graph IRI or a version
+token. A transaction of removes only, whose aggregates another writer already removed, SHALL
+succeed. A transaction SHALL refuse the same aggregate twice before sending anything, and SHALL
+refuse any change after its block has ended. A store SHALL apply one update request of several
+operations entirely or not at all; the store conformance suite SHALL prove it on every adapter.
 
 #### Scenario: one root changed meanwhile
 - **GIVEN** stored books A and B read by one unit of work
@@ -191,6 +196,22 @@ hold. A transaction SHALL refuse the same aggregate twice before sending anythin
 - **WHEN** a transaction is given book A twice
 - **THEN** it is refused before any request is sent
 
+#### Scenario: a conflict a person can read
+- **GIVEN** a transaction that replaces book B, which another session changed meanwhile
+- **WHEN** it is sent
+- **THEN** the conflict lists B's IRI, and its message says B was changed by someone else since it
+  was read, with no graph IRI and no version token
+
+#### Scenario: removing what is already removed
+- **GIVEN** a transaction that only removes book B, which another session removed meanwhile
+- **WHEN** it is sent
+- **THEN** it succeeds and nothing is written
+
+#### Scenario: a request that fails part-way
+- **GIVEN** an update request of two operations whose second fails when the store runs it
+- **WHEN** it is sent to the fake store or to Fuseki
+- **THEN** the request fails and the first operation is not applied
+
 ### Requirement: The unit of work removes roots and exposes version tokens
 
 A unit of work SHALL remove a root it read, in the same atomic commit as its other changes. It
@@ -215,16 +236,28 @@ raise a lookup error naming it.
 
 ### Requirement: A commit has a size limit and an explicit batch mode
 
-A unit of work SHALL refuse, before writing, a commit of more roots than its limit. With batch
-mode it SHALL commit in batches of at most the limit, each batch atomic, and SHALL state that the
-whole is not atomic. Re-running the same changes in batch mode after an interruption SHALL end in
-the same stored state for added roots whose parts carry no randomly minted IRIs (design PD-9): an added root that already exists with the same triples, bookkeeping
-excluded, counts as committed.
+A unit of work SHALL refuse, before reading or writing, a commit of more roots than its limit
+(500 by default), and SHALL refuse a limit below 1 when it is created. An HTTP route that meets
+the limit SHALL answer 413 `payload-too-large`. With batch mode it SHALL commit in batches of at
+most the limit, each batch atomic, and SHALL state that the whole is not atomic. A batch that
+fails SHALL raise its error with its type and fields unchanged, saying how many batches were
+committed, and the roots not yet committed SHALL stay pending so the same unit of work can retry.
+Re-running the same changes in batch mode after an interruption SHALL end in the same stored state
+for added roots whose own IRI and whose parts' IRIs are the same on every run: an added root that
+already exists with the same triples, bookkeeping excluded, counts as committed.
 
 #### Scenario: over the limit
 - **GIVEN** a unit of work with a limit of 2 and three new books
 - **WHEN** it commits without batch mode
 - **THEN** it is refused with an error naming the limit, and nothing is written
+
+#### Scenario: a batch fails and the same unit of work retries
+- **GIVEN** a limit of 2 and a batch holding a book already stored as it would be written and a
+  book that clashes with a stored one
+- **WHEN** the batch-mode commit raises a conflict, the clashing stored book is removed, and the
+  same unit of work commits in batch mode again
+- **THEN** the conflict said how many batches were committed, and the retry writes only the book
+  that clashed
 
 #### Scenario: batches re-run after an interruption
 - **GIVEN** three new books, a limit of 2, and a first batch-mode commit interrupted after its
