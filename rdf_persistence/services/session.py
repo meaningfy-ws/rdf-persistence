@@ -247,14 +247,14 @@ class Session:
         self._iris = iris
         self._store = store
         self._database = database
-        self._tenant = tenant_iri
+        self._tenant = str(tenant_iri)  # a URIRef never equals a str (PD-12)
         self._principal = principal
         self._clock = clock
         self._registry = iris.registry(tenant_iri)
 
     def _graph(self, iri: str) -> URIRef:
         """The graph of the aggregate ``iri``, or the meta graph for the tenant root."""
-        if iri == self._tenant:
+        if str(iri) == self._tenant:
             return self._iris.meta(self._tenant)
         if not self._iris.is_aggregate(self._tenant, iri):
             raise InvalidIri(f"{iri!r} is not an aggregate IRI of the tenant {self._tenant!r}")
@@ -267,7 +267,7 @@ class Session:
             RegistryEntry(graph=str(g), kind=RegistryKind.LOADED_GRAPH, owned_by=iri)
             for g in loaded_graphs
         ]
-        if iri == self._tenant:  # as in _graph: the root's graph is meta, never listed (DEC-2)
+        if str(iri) == self._tenant:  # as in _graph: the root's graph is meta, never listed (DEC-2)
             return loaded
         return [RegistryEntry(graph=str(graph), kind=RegistryKind.AGGREGATE, owned_by=iri), *loaded]
 

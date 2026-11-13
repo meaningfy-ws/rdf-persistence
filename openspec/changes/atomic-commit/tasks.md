@@ -8,7 +8,7 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
 
 ## 1. The atomic transaction
 
-- [ ] 1.0 Issue #76 (PD-12), test first in `tests/unit/services/test_session_loaded_graphs.py`
+- [x] 1.0 Issue #76 (PD-12), test first in `tests/unit/services/test_session_loaded_graphs.py`
   or a new `tests/unit/services/test_session_tenant_root.py` (fake store). Gates:
   `make test-fast`, `make check-quality`, `make clean-code`. Commit with `Refs: atomic-commit
   DEC-7` and `Closes #76` in the PR.

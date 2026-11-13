@@ -18,7 +18,10 @@ Every write of an aggregate goes through `Session` (`services/session.py`):
 `UnitOfWork.commit` (`services/mapper.py`) calls those methods once per dirty root, so a conflict
 on the third root leaves the first two written. Callers of the three session methods:
 `services/aggregates.py` (generic API), `services/tenancy.py` (tenant root and access records on
-the system database), `services/mapper.py` (`UnitOfWork`), tests and the e2e app.
+the system database), `services/mapper.py` (`UnitOfWork`), `services/file_removal.py`
+(`remove_with_files`, single-root `remove`; unchanged by PD-5), tests and the e2e app. GitNexus
+impact (2026-11-13): `_graph` CRITICAL, `add_graph`/`replace_graph`/`UnitOfWork.commit` HIGH, as
+RISK-3 expects; the developer said proceed.
 
 Repeating one root's guard in every operation works because an operation never invalidates its own
 guard before the last step. Across several roots it does not: once root B's graph is inserted, B's
