@@ -735,6 +735,39 @@ What to expect:
 * *One tenant only.* A transaction does not span tenants or the system database, and a file's
   bytes keep their own write order (<<files>>).
 
+[#handle-a-conflict]
+==== Handle a conflict
+
+_My commit raised `Conflict`. What do I do?_ Nothing was written. Read the roots again in a *new*
+unit of work, apply the edit again if it still makes sense, and commit:
+
+[source,python]
+----
+async def rename(kit, mapper, tenant, principal, iri, label):
+    for _ in range(2):                               # your policy: here, one retry
+        async with kit.session(tenant, principal) as session:
+            work = UnitOfWork(session, mapper)       # new: it reads the current copy
+            book = await work.get(Book, iri)
+            if book.label == label:
+                return                               # someone already did it
+            book.label = label
+            work.add(book)
+            try:
+                await work.commit()
+            except Conflict as conflict:
+                print(conflict)                      # https://…/books/<id> was changed by someone else since it was read
+                continue
+            return
+    raise RuntimeError(f"{iri} keeps changing; give up")
+----
+
+The message names each root in words, never a graph IRI or a version token: `<root> was changed by
+someone else since it was read`, `<root> was removed by someone else since it was read`, or
+`<root> already exists` for an add. `conflict.iris` lists the same roots, sorted. The toolkit does
+not retry for you, because only your code knows whether the edit still makes sense on the new copy
+(the `if` above is that check). Why, and what `iris` can miss: xref:howto/commits.adoc[How commits
+and conflicts work].
+
 [#transaction-change]
 ==== The behaviour changed
 
@@ -780,15 +813,50 @@ What to expect:
 * *Batch mode reads before it writes.* To tell a re-run from a clash it reads each root it is to
   add, once per batch, so it needs read permission on those roots as well as write: use it behind
   a principal that has both.
-* *Re-running an interrupted import converges for added roots.* A new unit of work that adds the
-  same roots again takes a root that already exists as committed, if its stored triples equal the
-  triples the commit would write. Nothing is written twice. This holds when the re-run builds the
-  same part IRIs: anonymous parts, or part IRIs derived from the source data.
+* *Two ways to carry on after a failure* (below). A fresh run converges for added roots: a new
+  unit of work that adds the same roots again takes a root that already exists as committed, if
+  its stored triples equal the triples the commit would write. Nothing is written twice. This holds
+  when the re-run builds the same part IRIs: anonymous parts, or part IRIs derived from the source
+  data.
 * *Parts from `new_part` break that.* It mints a random IRI each time, so a re-run sees different
   triples, and those roots conflict. This is safe: nothing is duplicated. Derive the part IRIs
   from the source if the import must be re-runnable.
 * *Replaces and removes are not idempotent.* After an interruption, read the roots again and build
   the changes from what is stored now.
+
+*Retry in the same unit of work.* The process is still alive. Deal with the cause, then call
+`commit(batches=True)` again: it sends only the roots not yet committed.
+
+[source,python]
+----
+try:
+    await work.commit(batches=True)
+except Conflict as conflict:
+    print(conflict)                      # … already exists; 1 of 3 batches committed before it
+    # fix the cause (for example, remove the clashing row from the source), then:
+    await work.commit(batches=True)      # sends only batches 2 and 3
+----
+
+*Retry with a fresh run.* The process crashed, or you start the import again. Build a new unit of
+work from the same source and commit in batches. Roots already stored exactly as you would write
+them are skipped, so a second run after a full success sends no update at all.
+
+[source,python]
+----
+async def import_books(kit, mapper, tenant, principal, rows):
+    async with kit.session(tenant, principal) as session:
+        work = UnitOfWork(session, mapper)
+        for row in rows:
+            # part IRIs derived from the source, not new_part(): the re-run must build the same ones
+            work.add(Book(id=book_iri(row), label=row.title, description=row.text, author=row.author))
+        await work.commit(batches=True)
+
+await import_books(kit, mapper, tenant, principal, rows)   # crashes after batch 2
+await import_books(kit, mapper, tenant, principal, rows)   # skips what is stored, writes the rest
+----
+
+Both paths, and when a fresh run does not converge, are explained in
+xref:howto/commits.adoc#batch-mode[How commits and conflicts work].
 
 Outside a service, `open_session(store, *, database, tenant_iri, principal, clock)` opens the
 same session (`principal` is a `Principal`; the kit's `session` takes its IRI as a string) on a `Store` you hold. The kit's `session` calls it with the tenant's database name.

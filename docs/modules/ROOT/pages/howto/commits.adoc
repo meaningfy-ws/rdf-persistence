@@ -1,0 +1,179 @@
+= How commits and conflicts work
+:description: What a commit guarantees, what a version token is, when a commit raises Conflict and what to do then, why one commit holds at most 500 roots, and what batch mode does and does not promise.
+
+_What happens when two people edit the same thing? Why did my commit raise `Conflict`? Is a commit
+of several books all or nothing? Why does it refuse 600 books? What is batch mode, and is it safe to
+run again?_
+
+This page explains how a commit behaves, from the side of the code that calls it. The steps are in
+xref:howto/adopt.adoc#transaction[Save several aggregates at once]; the mechanism inside the store
+is in xref:architecture/data-flows.adoc#commit[Committing several aggregates at once]. It describes
+`develop` as of 2026-11-13 (the change `atomic-commit`).
+
+The running example is a small library. It holds books A, B, C and D. A, B and D are stored; C is
+new.
+
+== A commit is all or nothing
+
+You change A, you change B, you add C and you remove D in one `UnitOfWork`, then call `commit()`
+once. Either all four changes are stored, or none is. Nobody can read a library where A is new and
+D is still on the shelf.
+
+It was not always so. Until 0.2.0 each root was written on its own. If B had been changed by
+someone else meanwhile, the commit raised `Conflict` on B, and A was already written. Code had to
+guess which roots had made it. Now a `Conflict` means one thing: nothing was written.
+
+== The version token: how the store knows you read an old copy
+
+Every aggregate carries a *version token*. It is a random id, and it changes on every write, even
+a write that changes nothing. It is not a counter and it says nothing about order. It only answers
+one question: is the stored aggregate still the one I read?
+
+`work.get(Book, iri)` remembers the token it read. `work.version(iri)` returns it. You never pass
+it back by hand; `commit()` does that for you.
+
+[source,python]
+----
+work = UnitOfWork(session, mapper)
+book_a = await work.get(Book, a_iri)
+work.version(a_iri)        # '3f2c…': the token A had when you read it
+----
+
+== The guard of each change
+
+A commit does not lock anything. It states what it expects to find, and the store checks that
+first. Each kind of change has its own expectation:
+
+[cols="1,3",options="header"]
+|===
+|Change |Guard: it is stored only if
+|Replace (`add` of a book you read) |A is still at the version you read.
+|Remove (`remove(book)`) |D is still at the version you read.
+|Add (`add` of a new book) |Nothing exists under C's IRI yet.
+|===
+
+All the guards are checked together, before any write. If one fails, the store writes nothing.
+
+== How the store keeps it atomic
+
+The toolkit sends the whole commit as one update request, and a store applies one request as one
+transaction. The first step of the request checks every guard and writes a marker only if all of
+them hold. Every later step of the request needs that marker, and the last step removes it. If a
+guard fails, there is no marker, so the other steps find nothing to change. The steps are in
+xref:architecture/data-flows.adoc#commit[Committing several aggregates at once].
+
+[#conflict]
+== When a commit raises Conflict
+
+Say you read A and B. Another session changes B and commits. You edit both and commit. B is no
+longer at the version you read, so the commit raises `Conflict`. A is not written, although A
+itself did not move.
+
+[source,python]
+----
+try:
+    await work.commit()
+except Conflict as conflict:
+    print(conflict)         # https://…/books/b was changed by someone else since it was read
+    print(conflict.iris)    # ('https://…/books/b',)
+----
+
+`Conflict.iris` names the roots (never graph IRIs) that caused the refusal, sorted. The message
+says the same in words, one clause per root:
+
+* `<root> was changed by someone else since it was read`: you replaced it, and its version moved.
+* `<root> was removed by someone else since it was read`: you replaced or removed it, and it is gone.
+* `<root> already exists`: you added it, and something is stored under that IRI.
+
+When no root can be named, the message reads `the commit lost a race with another writer; read
+again and retry`, and `iris` is empty.
+
+=== What to do
+
+Read again in a *new* unit of work, apply the edit again, commit. The old unit of work still holds
+the stale copy and the stale tokens; do not reuse it for the retry.
+
+The toolkit never does this for you. Only the caller knows whether the edit still makes sense. You
+changed B's title because the old title was misspelled. Someone else has since changed it to the
+right spelling. Applying your edit again would write a wrong title over a right one. A person, or
+your code, must look at the fresh B and decide. The recipe is in
+xref:howto/adopt.adoc#handle-a-conflict[Handle a conflict].
+
+=== The diagnosis can be incomplete
+
+The commit is refused first, and `iris` is worked out afterwards, by reading what each graph holds
+now. Another writer can change a graph in between. So the list can miss a root or, rarely, be
+empty. That nothing was written is a guarantee; the list is help for the person reading the
+message. The known gaps are in the note under
+xref:architecture/data-flows.adoc#commit[the diagnosis].
+
+One case is not a conflict. A commit that only removes roots succeeds when another writer has
+already removed them: the shelf is empty, as you wanted. (Mixed with other changes, a root removed
+meanwhile is named in the `Conflict` like any other.)
+
+== Why one commit holds at most 500 roots
+
+One commit is one request, and a request has a size. For 500 books with two chapters and some
+notes each, the request is about 2.9 MB, and Fuseki takes about 4 seconds to apply it. Much more
+would risk a body limit or a timeout on a store you do not control, and the whole request would be
+lost with the one guard that failed.
+
+So a `UnitOfWork` refuses a commit over its `max_roots`, 500 unless you pass another value. The
+count is the roots added, replaced and removed. The refusal comes before anything is read or
+written, and the unit of work is unchanged:
+
+[source,python]
+----
+work = UnitOfWork(session, mapper)           # max_roots=500
+for row in rows:                             # 600 rows
+    work.add(Book(id=book_iri(row), label=row.title, description=row.text, author=row.author))
+await work.commit()
+# CommitTooLarge: 600 roots to commit, more than the limit of 500
+----
+
+Over HTTP the same error answers 413. You have two ways out: commit fewer roots per unit of work,
+or ask for batch mode.
+
+[#batch-mode]
+== Batch mode is many commits, not one
+
+`commit(batches=True)` cuts the roots into slices of `max_roots` and commits each slice as its own
+all-or-nothing transaction, in the order you added them. 600 books make two batches: 500, then 100.
+
+The whole is *not* atomic. If batch 2 fails, batch 1 stays stored. The error says so:
+
+[source,python]
+----
+try:
+    await work.commit(batches=True)
+except Conflict as conflict:
+    print(conflict)    # … already exists; 1 of 2 batches committed before it
+----
+
+Read it as "N of M batches committed before it". A failing batch writes nothing of itself.
+
+=== Two ways to carry on after a failed batch
+
+[cols="1,3",options="header"]
+|===
+|Retry |What it does
+|The same unit of work |`commit(batches=True)` again. The roots of the committed batches left its pending changes, so it sends only what is left.
+|A fresh run |A new unit of work that adds all 600 books again. Before each batch it reads every root it is to add; one that is already stored exactly as you would write it counts as committed and is skipped.
+|===
+
+Use the first when the process is still alive, once you have dealt with the cause. Use the second
+after a crash, when the old unit of work is gone.
+
+=== When a fresh run converges
+
+"Exactly as you would write it" compares the stored triples with the triples the commit would
+write. It holds when the re-run builds the same IRIs for the parts of a book. That is the case
+for anonymous parts and for part IRIs you derive from the source row (for example from the
+chapter number). It is not the case for `new_part`, which mints a random IRI each time: the
+re-run sees different triples, and those books conflict with the stored ones. That is safe,
+because nothing is duplicated, but the import does not converge. Derive the part IRIs from the
+source if the import must be re-runnable.
+
+Only adds converge. A replace or a remove needs a read of what is stored now, so build those
+changes again from fresh reads. Batch mode also reads each root it is to add, so run it behind a
+principal that may read as well as write.

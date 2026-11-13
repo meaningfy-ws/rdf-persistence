@@ -34,6 +34,19 @@ xref:architecture/data-flows.adoc#commit[how the commit works]. One commit holds
 roots by default (`max_roots`); more raises `CommitTooLarge`, and `commit(batches=True)` takes them
 in several transactions (see xref:howto/adopt.adoc#transaction-batches[Save more than 500 aggregates]).
 
+*What happens when two people edit the same thing?*::
+The second commit is refused: every aggregate has a version token that changes on every write, and
+a commit is stored only if each root it changes is still at the version it read. Nothing is
+overwritten silently, and nothing of the refused commit is written. See
+xref:howto/commits.adoc[How commits and conflicts work].
+
+*Why did my commit raise `Conflict`?*::
+Another writer changed (or removed) a root you read since you read it, or a root you added already
+exists. Nothing was written. `conflict.iris` and the message name the roots. Read them again in a
+new unit of work, apply your edit if it still makes sense, and commit; the toolkit never retries
+for you. See xref:howto/adopt.adoc#handle-a-conflict[Handle a conflict] and
+xref:howto/commits.adoc#conflict[what a conflict means].
+
 *How do tenants and access work?*::
 Each tenant has its own database and bucket, and an access record in the system database that
 holds its grants and prohibitions. The caller who creates a tenant gets the settings'

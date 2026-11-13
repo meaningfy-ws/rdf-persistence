@@ -402,7 +402,8 @@ applies one request as one unit, so a store failure leaves nothing half-written.
 is the guards. Repeating each root's guard in every operation, as a single replace could, fails
 across roots: once the new book `C` is inserted, "`C/graph` is empty" is false for every later
 operation, and once `A`'s old token is dropped, "`A` is at its old token" is false. So the guards
-are checked once, at the start, and a marker carries the result through the request.
+are checked once, at the start, and a marker carries the result through the request. The caller's
+view, with the conflict and the size limit, is in xref:howto/commits.adoc[How commits and conflicts work].
 
 The example: the library changes book `A` (stored at `a1`), adds a new book `C`, and removes book
 `B` (stored at `b1`), in one transaction.
