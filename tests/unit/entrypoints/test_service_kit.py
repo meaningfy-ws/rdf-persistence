@@ -14,7 +14,7 @@ from fastapi.routing import APIRoute
 from rdflib import Literal, URIRef
 
 from rdf_persistence import Problem
-from rdf_persistence.domain.exceptions import InvalidRoleDefinition, NotFound
+from rdf_persistence.domain.exceptions import InvalidBody, InvalidRoleDefinition, NotFound
 from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.entrypoints.service import install_service
@@ -385,6 +385,23 @@ async def test_the_kit_dumps_a_tenant_and_restores_it_for_another_principal(
     assert await service.files.get(record.database_name, "k1") == b"scan bytes", (
         "the blob came along"
     )
+
+
+async def test_the_kit_restores_no_more_than_the_settings_max_restore_bytes(
+    service, client, monkeypatch
+) -> None:
+    headers = {"Authorization": f"Bearer {service.signer.issue(sub='ada')}"}
+    path = (await client.post("/libraries", json=TENANT_BODY, headers=headers)).headers["location"]
+    tenant = service.kit.tenant_iri(path.rsplit("/", 1)[1])
+    archive = io.BytesIO()
+    await service.kit.dump_tenant(tenant, archive)
+    assert service.kit.max_restore_bytes == 1024**3, "the settings' default reaches the kit"
+    monkeypatch.setattr(service.kit, "max_restore_bytes", 1024)
+
+    with pytest.raises(InvalidBody, match="bytes"):
+        await service.kit.restore_tenant(
+            io.BytesIO(archive.getvalue()), "https://example.org/people/bob"
+        )
 
 
 # --- removal of a file aggregate with its blobs (live-tenant-sweep task 4.1) ---------------------

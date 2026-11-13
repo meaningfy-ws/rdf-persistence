@@ -135,6 +135,7 @@ class ServiceSettings(ConfiguredBaseModel):
     creator_role: str = Field(default=..., title="Creator role", description="The role a caller is given on the tenant it creates.")
     roles_claim: str = Field(default=..., title="Roles claim", description="The claim of the token that holds the caller\u0027s global roles, an object keyed by role name; for Zitadel, urn:zitadel:iam:org:project:{project_id}:roles of the consumer\u0027s project.")
     max_body_bytes: Optional[int] = Field(default=1048576, title="Maximum body size", description="The most bytes a request body may hold; a larger one is refused with 413 before it is read whole.", ge=1)
+    max_restore_bytes: Optional[int] = Field(default=1073741824, title="Maximum restore size", description="The most bytes a restore archive may hold once decompressed, counting each member\u0027s size and its tar block; a larger archive is refused with `InvalidBody` as it is read, so a small hostile upload cannot fill the memory or the object store.", ge=1)
     deployment: Optional[str] = Field(default=None, title="Deployment", description="A slug that names this deployment, for templates that use `{deployment}`; lower case letters and digits, at most 32.")
     iri_policy: Optional[IriPolicy] = Field(default=None, title="IRI policy", description="The IRI policy of the service; absent, the default policy applies.")
 

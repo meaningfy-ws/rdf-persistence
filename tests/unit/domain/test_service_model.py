@@ -257,6 +257,16 @@ def test_a_body_bound_below_one_byte_is_refused() -> None:
         settings(max_body_bytes=0)
 
 
+def test_a_restore_may_hold_a_gibibyte_unless_the_settings_say_otherwise() -> None:
+    assert settings().max_restore_bytes == 1024**3, "the default bound of a restore archive"
+    assert settings(max_restore_bytes=4096).max_restore_bytes == 4096, "the consumer's bound"
+
+
+def test_a_restore_bound_below_one_byte_is_refused() -> None:
+    with pytest.raises(ValidationError, match="max_restore_bytes"):
+        settings(max_restore_bytes=0)
+
+
 def tenant_dump(**changes: object) -> "rp_service.TenantDump":
     fields: dict[str, object] = {
         "format_version": 1,

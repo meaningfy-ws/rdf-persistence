@@ -5,6 +5,7 @@ The world is the sweep test's tenant ``T`` (Ghent) with a book ``B``, a graph ``
 """
 
 import copy
+import gzip
 import io
 import logging
 import tarfile
@@ -12,8 +13,9 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
-from rdflib import URIRef
+from rdflib import Dataset, URIRef
 from rdflib.compare import isomorphic
+from rdflib.namespace import SKOS
 
 from rdf_persistence.domain.exceptions import (
     Conflict,
@@ -54,8 +56,9 @@ from tests.unit.services.test_tenant_sweep import (
 VIEW = load_schema(TOY_SCHEMA)
 RESTORER = Principal(id=BOB)
 SCAN_TYPE = "scan"
-MANIFEST, GRAPHS = "manifest.json", "graphs.nq"
+MANIFEST, GRAPHS, END = "manifest.json", "graphs.nq", "end"
 BLOB_BYTES = bytes(range(256))
+MAX_BYTES = 1 << 30  # the default of ``max_restore_bytes``
 FLAT_SETTINGS = ServiceSettings(
     base="http://mwb.meaningfy.ws/",
     prefix="mwb",
@@ -104,9 +107,21 @@ async def dumped(world: SimpleNamespace, tenant: str | None = None) -> bytes:
 
 
 async def restored(
-    world: SimpleNamespace, data: bytes, *, tenancy: Tenancy | None = None, view=VIEW
+    world: SimpleNamespace,
+    data: bytes,
+    *,
+    tenancy: Tenancy | None = None,
+    view=VIEW,
+    max_bytes: int = MAX_BYTES,
 ):
-    return await restore(tenancy or world.tenancy, world.iris, view, io.BytesIO(data), RESTORER)
+    return await restore(
+        tenancy or world.tenancy,
+        world.iris,
+        view,
+        io.BytesIO(data),
+        RESTORER,
+        max_bytes=max_bytes,
+    )
 
 
 def unpack(data: bytes) -> list[tuple[str, bytes]]:
@@ -114,8 +129,13 @@ def unpack(data: bytes) -> list[tuple[str, bytes]]:
         return [(m.name, tar.extractfile(m).read()) for m in tar.getmembers()]  # type: ignore[union-attr]
 
 
-def pack(*entries: tuple[str, bytes] | tuple[str, bytes, bytes]) -> bytes:
-    """A tar.gz of ``(name, payload)`` regular files; a third item names another member type (a link, a directory)."""
+def pack(*entries: tuple[str, bytes] | tuple[str, bytes, bytes], end: bool = True) -> bytes:
+    """A tar.gz of ``(name, payload)`` regular files; a third item names another member type (a link, a directory).
+
+    The ``end`` marker member is added last unless ``end`` is false or the entries already end with it.
+    """
+    if end and not (entries and entries[-1][0] == END):
+        entries = (*entries, (END, b""))
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
         for name, payload, *kind in entries:
@@ -180,15 +200,19 @@ async def assert_answers_like_the_original(world: SimpleNamespace, summary) -> N
     assert restored_book.model_dump(exclude={"id", "chapters"}) == original.model_dump(
         exclude={"id", "chapters"}
     ), "the same slot values"
-    assert [c.number for c in restored_book.chapters] == [c.number for c in original.chapters]
+    assert [c.number for c in restored_book.chapters] == [c.number for c in original.chapters], (
+        "the same parts"
+    )
     book_new = moved(world, world.book, new)
     async with world.tenancy.tenant_session(new, RESTORER) as opened, world.session() as old:
         for owner, load in ((world.book, world.g), (world.tenant, world.r)):
             owner_new = moved(world, owner, new)
-            assert await opened.loaded_graphs(owner_new) == [URIRef(moved(world, str(load), new))]
+            assert await opened.loaded_graphs(owner_new) == [
+                URIRef(moved(world, str(load), new))
+            ], "the same load, under the new id"
             copied = await opened.loaded_graph(owner_new, moved(world, str(load), new))
             assert isomorphic(copied, await old.loaded_graph(owner, str(load))), "the same triples"
-    assert book_new == restored_book.id
+    assert book_new == restored_book.id, "the book is where the rewrite put it"
     record, _ = await world.tenancy.get(new)
     assert await world.files.get(record.database_name, "k1") == BLOB_BYTES, "the blob byte for byte"
 
@@ -202,13 +226,16 @@ async def test_tc13_a_restored_tenant_answers_like_the_original_under_the_flat_p
     flat = await populated(await make_world(iris_of(FLAT_SETTINGS), FLAT_SETTINGS))
     summary = await restored(flat, await dumped(flat))
     await assert_answers_like_the_original(flat, summary)
-    new = summary.id
-    for iri in (
-        moved(flat, flat.book, new),
-        moved(flat, str(flat.g), new),
-        moved(flat, str(flat.r), new),
-    ):
-        assert flat.iris.is_aggregate(new, iri) or flat.iris.is_loaded_graph(new, iri), iri
+
+
+async def test_tc13_the_flat_policy_accepts_the_restored_aggregate_and_loaded_graphs():
+    flat = await populated(await make_world(iris_of(FLAT_SETTINGS), FLAT_SETTINGS))
+    new = (await restored(flat, await dumped(flat))).id
+    assert flat.iris.is_aggregate(new, moved(flat, flat.book, new)), "the book is an aggregate"
+    for load in (flat.g, flat.r):
+        assert flat.iris.is_loaded_graph(new, moved(flat, str(load), new)), (
+            f"{load} is a loaded graph of the new tenant"
+        )
 
 
 async def test_tc11_the_restored_tenant_accepts_a_replace_and_the_original_is_unchanged(world):
@@ -232,9 +259,11 @@ async def test_tc12_only_the_restorer_is_granted_the_creator_role(world):
     await world.tenancy.set_grants(world.tenant, grants, version, Principal(id=ADA))
     new = (await restored(world, await dumped(world))).id
     record, _ = await world.tenancy.get(new)
-    assert [(g.assignee, g.role, g.target) for g in record.grants] == [(BOB, "librarian", new)]
-    assert record.state == TenantState.ACTIVE
-    assert not record.prohibitions
+    assert [(g.assignee, g.role, g.target) for g in record.grants] == [(BOB, "librarian", new)], (
+        "the restorer alone"
+    )
+    assert record.state == TenantState.ACTIVE, "active"
+    assert not record.prohibitions, "no prohibition"
 
 
 async def test_tc14_a_literal_holding_the_source_tenants_iri_is_kept():
@@ -272,22 +301,55 @@ async def test_tc16_a_blob_gone_before_its_read_is_skipped_and_logged(world, cap
     world.files.on("get", NotFound("deleted meanwhile"))  # the first read, of k1
     with caplog.at_level(logging.WARNING, logger="rdf_persistence.services.tenant_dump"):
         data = await dumped(world)
-    assert [n for n, _ in unpack(data)] == [MANIFEST, GRAPHS, "blobs/k2"], "k1 is not in the dump"
+    assert [n for n, _ in unpack(data)] == [MANIFEST, GRAPHS, "blobs/k2", END], (
+        "k1 is not in the dump"
+    )
     steps = [(r.__dict__.get("step"), r.__dict__.get("resource")) for r in caplog.records]
     assert steps == [("dump-blob-gone", "k1")]
 
 
-async def test_a_dump_holds_the_manifest_the_graphs_and_the_blobs_in_that_order(world):
+async def test_a_dump_holds_the_manifest_the_graphs_the_blobs_and_the_end_marker_in_that_order(
+    world,
+):
     data = await dumped(world)
-    assert [n for n, _ in unpack(data)] == [MANIFEST, GRAPHS, "blobs/k1"]
-    manifest = manifest_of(data)
-    assert manifest.format_version == 1
-    assert manifest.source_tenant == world.tenant
-    assert manifest.source_tenant_id == world.iris.tenant_id_of(world.tenant)
-    assert manifest.label == "Ghent"
-    assert manifest.iri_policy == world.iris.effective_policy
-    assert manifest.schema_id == VIEW.schema.id
-    assert manifest.created_at.tzinfo is not None and manifest.created_at <= datetime.now(UTC)
+    assert [n for n, _ in unpack(data)] == [MANIFEST, GRAPHS, "blobs/k1", END], "the member order"
+    assert dict(unpack(data))[END] == b"", "the end marker is empty"
+
+
+async def test_a_dump_manifest_names_the_source_the_policy_and_the_schema(world):
+    manifest = manifest_of(await dumped(world))
+    assert manifest.format_version == 1, "format version"
+    assert manifest.source_tenant == world.tenant, "source tenant"
+    assert manifest.source_tenant_id == world.iris.tenant_id_of(world.tenant), "source tenant id"
+    assert manifest.label == "Ghent", "the record's label"
+    assert manifest.iri_policy == world.iris.effective_policy, "the effective policy"
+    assert manifest.schema_id == VIEW.schema.id, "the schema id"
+    assert manifest.created_at.tzinfo is not None, "an aware timestamp"
+    assert manifest.created_at <= datetime.now(UTC), "taken in the past"
+
+
+async def test_a_dump_changes_nothing_in_the_tenant(world):
+    before = (await world.store.export_quads(world.database), await state_of(world))
+    blobs = await world.files.list_blobs(world.database)
+    await dumped(world)
+    assert await world.store.export_quads(world.database) == before[0], "the graphs"
+    assert await state_of(world) == before[1], "the databases, buckets and tenants"
+    assert await world.files.list_blobs(world.database) == blobs, "the blobs"
+
+
+async def test_a_dump_and_a_restore_each_log_one_line_without_content(world, caplog):
+    with caplog.at_level(logging.INFO, logger="rdf_persistence.services.tenant_dump"):
+        data = await dumped(world)
+        new = (await restored(world, data)).id
+    lines = [r for r in caplog.records if r.__dict__.get("step") in ("dump", "restore")]
+    assert [(r.__dict__["step"], r.__dict__["tenant"]) for r in lines] == [
+        ("dump", world.tenant),
+        ("restore", new),
+    ], "one dump line for the source, one restore line for the new tenant"
+    assert lines[0].__dict__["blobs"] == 1, "the dump line counts the blobs"
+    assert lines[1].__dict__["source"] == world.tenant, "the restore line names the source"
+    text = " ".join(r.getMessage() for r in lines)
+    assert "Dune" not in text and "k1" not in text, "no graph or blob content in the log"
 
 
 # -- TC-17 to TC-21: a restore refuses a dump it cannot trust ----------------------------------------
@@ -314,7 +376,8 @@ async def test_tc17_another_schema_version_is_refused_naming_both(world):
         world.tenancy, world.store, world.files, world.iris, at_version("1.0.0"), world.tenant, out
     )
     reason = await refused(world, out.getvalue(), view=at_version("1.1.0"))
-    assert "1.0.0" in reason and "1.1.0" in reason
+    assert "1.0.0" in reason, "the dump's version"
+    assert "1.1.0" in reason, "the service's version"
 
 
 async def test_tc17_another_schema_id_is_refused(world):
@@ -322,7 +385,7 @@ async def test_tc17_another_schema_id_is_refused(world):
     other.schema.id = "https://example.org/other-schema"
     assert "https://example.org/other-schema" in await refused(
         world, await dumped(world), view=other
-    )
+    ), "the reason names the service's schema id"
 
 
 async def test_a_format_version_other_than_one_is_refused_naming_it(world):
@@ -337,11 +400,12 @@ async def test_a_format_version_other_than_one_is_refused_naming_it(world):
     assert "2" in await refused(world, edited(await dumped(world), MANIFEST, bump))
 
 
-async def test_a_manifest_that_is_not_a_tenant_dump_is_refused(world):
-    assert await refused(
-        world, edited(await dumped(world), MANIFEST, lambda _: b'{"format_version": 1}')
-    )
-    assert await refused(world, edited(await dumped(world), MANIFEST, lambda _: b"not json"))
+@pytest.mark.parametrize(
+    "text", [b'{"format_version": 1}', b"not json"], ids=["fields-missing", "not-json"]
+)
+async def test_a_manifest_that_is_not_a_tenant_dump_is_refused(world, text):
+    reason = await refused(world, edited(await dumped(world), MANIFEST, lambda _: text))
+    assert MANIFEST in reason, "the reason names the manifest"
 
 
 async def test_tc18_another_iri_policy_is_refused_naming_the_field():
@@ -361,7 +425,7 @@ async def test_tc18_another_iri_policy_is_refused_naming_the_field():
 
     assert "object_id.length" in await refused(
         world, edited(await dumped(world), MANIFEST, thirteen)
-    )
+    ), "the reason names the differing field"
 
 
 async def test_a_policy_that_glues_the_tenant_id_to_a_letter_is_refused_naming_the_template():
@@ -380,14 +444,14 @@ async def test_a_policy_that_glues_the_tenant_id_to_a_letter_is_refused_naming_t
 async def test_tc19_a_quad_in_a_foreign_graph_is_refused_naming_it(world):
     foreign = b"<http://elsewhere.example/s> <http://elsewhere.example/p> <http://elsewhere.example/o> <http://elsewhere.example/g> .\n"
     reason = await refused(world, edited(await dumped(world), GRAPHS, lambda nq: nq + foreign))
-    assert "http://elsewhere.example/g" in reason
+    assert "http://elsewhere.example/g" in reason, "the reason names the foreign graph"
 
 
 async def test_tc19_a_quad_in_the_default_graph_is_refused(world):
     default = b"<http://elsewhere.example/s> <http://elsewhere.example/p> <http://elsewhere.example/o> .\n"
     assert "default graph" in await refused(
         world, edited(await dumped(world), GRAPHS, lambda nq: nq + default)
-    )
+    ), "the reason names the default graph"
 
 
 async def test_a_dump_without_a_root_is_refused(world):
@@ -398,7 +462,21 @@ async def test_a_dump_without_a_root_is_refused(world):
             if f"<{world.tenant}> ".encode() not in line
         )
 
-    assert await refused(world, edited(await dumped(world), GRAPHS, without_root))
+    assert "root" in await refused(world, edited(await dumped(world), GRAPHS, without_root)), (
+        "the reason names the root"
+    )
+
+
+async def test_a_root_that_does_not_decode_is_refused(world):
+    """The root is there but cannot be read as a tenant root: its required label is gone."""
+
+    def unlabelled(nq: bytes) -> bytes:
+        label = f"<{world.tenant}> <{SKOS.prefLabel}> ".encode()
+        return b"".join(line for line in nq.splitlines(keepends=True) if not line.startswith(label))
+
+    assert "root" in await refused(world, edited(await dumped(world), GRAPHS, unlabelled)), (
+        "the reason names the root"
+    )
 
 
 async def test_tc20_a_root_validator_that_refuses_stops_the_restore():
@@ -457,7 +535,7 @@ async def test_tc22_a_failed_import_raises_and_leaves_no_database_bucket_or_reco
     world.store.on("import_quads", StoreUnavailable("the store failed"))
     with pytest.raises(StoreUnavailable, match="the store failed"):
         await restored(world, data)
-    assert await state_of(world) == before
+    assert await state_of(world) == before, "no database, bucket or record is left"
 
 
 async def test_tc23_a_cleanup_that_fails_too_is_logged_and_the_sweep_finishes_it(world, caplog):
@@ -469,11 +547,18 @@ async def test_tc23_a_cleanup_that_fails_too_is_logged_and_the_sweep_finishes_it
         pytest.raises(StoreUnavailable, match="the import failed"),
     ):
         await restored(world, data)
-    assert "restore-cleanup" in [r.__dict__.get("step") for r in caplog.records]
-    assert len(await world.store.list_datasets()) == 3, "system, source and the leftover database"
+    cleanup = [r for r in caplog.records if r.__dict__.get("step") == "restore-cleanup"]
+    assert [r.__dict__["resource"] for r in cleanup] == [cleanup[0].__dict__["resource"]], (
+        "one failed drop was logged, naming the database"
+    )
+    leftover = cleanup[0].__dict__["resource"]
+    datasets = set(await world.store.list_datasets())
+    assert leftover in datasets, "the logged database is still there"
+    assert leftover != world.database, "and it is the new one, not the source"
+    assert len(datasets) == 3, "system, source and the leftover database"
     assert await world.files.list_buckets("") == [world.database], "the bucket was still dropped"
     await sweep(world.tenancy, world.store, world.files, SETTINGS)
-    assert len(await world.store.list_datasets()) == 2, (
+    assert set(await world.store.list_datasets()) == datasets - {leftover}, (
         "the sweep drops the database no record names"
     )
 
@@ -505,7 +590,7 @@ async def test_tc27_a_member_that_is_not_a_blob_fails_after_the_blobs_before_it_
     with pytest.raises(InvalidBody):
         await restored(world, archive)
     assert world.files.sent("put")[-1].endswith("/a"), "blobs/a was put before the refusal"
-    assert await state_of(world) == before
+    assert await state_of(world) == before, "and then dropped with the rest"
 
 
 async def test_tc27_a_blob_member_that_is_a_directory_fails_and_leaves_nothing(world):
@@ -515,7 +600,7 @@ async def test_tc27_a_blob_member_that_is_a_directory_fails_and_leaves_nothing(w
         await restored(
             world, pack(*members, ("blobs/a", b"first"), ("blobs/dir", b"", tarfile.DIRTYPE))
         )
-    assert await state_of(world) == before
+    assert await state_of(world) == before, "nothing is left"
 
 
 # -- TC-24, TC-25 -----------------------------------------------------------------------------------
@@ -524,10 +609,11 @@ async def test_tc27_a_blob_member_that_is_a_directory_fails_and_leaves_nothing(w
 async def test_tc24_a_tenant_with_its_root_only_dumps_and_restores():
     world = await make_world(iris_of(SETTINGS), SETTINGS)
     data = await dumped(world)
-    assert [n for n, _ in unpack(data)] == [MANIFEST, GRAPHS], "no blob"
+    assert [n for n, _ in unpack(data)] == [MANIFEST, GRAPHS, END], "no blob"
     new = (await restored(world, data)).id
     record, _ = await world.tenancy.get(new)
-    assert record.label == "Ghent" and await world.files.list_blobs(record.database_name) == []
+    assert record.label == "Ghent", "the label"
+    assert await world.files.list_blobs(record.database_name) == [], "an empty bucket"
 
 
 async def test_tc25_the_restored_tenant_takes_the_roots_label_not_the_manifests():
@@ -545,3 +631,114 @@ async def test_tc25_the_restored_tenant_takes_the_roots_label_not_the_manifests(
     async with world.tenancy.tenant_session(summary.id, RESTORER) as opened:
         root = await UnitOfWork(opened, toy_mapper()).get(Library, summary.id)
     assert (summary.label, record.label, root.label) == ("New", "New", "New")
+
+
+# -- PD-13: the decompression budget, the end marker, the record write ------------------------------------
+
+
+def charged(data: bytes) -> int:
+    """What a restore charges for ``data``: each member's size plus one tar block."""
+    return sum(len(payload) + tarfile.BLOCKSIZE for _, payload in unpack(data))
+
+
+async def test_a_budget_that_holds_every_member_and_its_block_restores_and_one_byte_less_refuses(
+    world,
+):
+    data = await dumped(world)
+    assert (await restored(world, data, max_bytes=charged(data))).id != world.tenant, "fits"
+    assert "bytes" in await refused(world, data, max_bytes=charged(data) - 1), "one byte short"
+
+
+async def test_a_budget_the_graphs_overflow_is_refused_before_anything_is_created(world):
+    data = await dumped(world)
+    head = sum(len(p) + tarfile.BLOCKSIZE for _, p in unpack(data)[:1])
+    await refused(world, data, max_bytes=head)  # refused() asserts that nothing was created
+
+
+async def test_a_blob_that_overflows_the_budget_is_refused_and_leaves_nothing(world):
+    members = unpack(await dumped(world))[:2]
+    archive = pack(*members, ("blobs/big", b"\0" * 200_000))  # about 200 bytes once gzipped
+    before = await state_of(world)
+    budget = charged(pack(*members, ("blobs/small", b"x")))
+    with pytest.raises(InvalidBody, match="bytes"):
+        await restored(world, archive, max_bytes=budget)
+    assert not [k for k in world.files.sent("put") if k.endswith("/big")], "the blob was never read"
+    assert await state_of(world) == before, "database and bucket dropped, no record"
+
+
+async def test_a_manifest_larger_than_its_cap_is_refused_whatever_the_budget(world):
+    def padded(payload: bytes) -> bytes:
+        manifest = TenantDump.model_validate_json(payload)
+        return manifest.model_copy(update={"label": "x" * 70_000}).model_dump_json().encode()
+
+    reason = await refused(world, edited(await dumped(world), MANIFEST, padded))
+    assert MANIFEST in reason and "64" in reason, "the reason names the manifest and its cap"
+
+
+async def test_the_gzip_stream_after_the_end_marker_is_bounded_by_the_budget(world):
+    data = await dumped(world)
+    members = unpack(data)
+    tail = gzip.compress(  # the tar of the dump, then a long run of zero bytes under the same gzip
+        gzip.decompress(pack(*members)) + b"\0" * 5_000_000
+    )
+    await refused(world, tail, max_bytes=charged(data) + 100_000)
+
+
+def test_a_dump_ends_with_the_end_marker_even_when_it_holds_no_blob():
+    assert [n for n, _ in unpack(pack((MANIFEST, b"{}"), (GRAPHS, b"")))][-1] == END, "the helper"
+
+
+@pytest.mark.parametrize(
+    "damage",
+    [
+        lambda head: pack(*head, ("blobs/a", b"x"), end=False),
+        lambda head: pack(*head, end=False),
+        lambda head: pack(*head, (END, b"not empty")),
+        lambda head: pack(*head, (END, b"", tarfile.SYMTYPE)),
+        lambda head: pack(*head, (END, b""), ("blobs/after", b"x"), end=False),
+        lambda head: pack(*head, (END, b""), (END, b""), end=False),
+    ],
+    ids=[
+        "blobs-without-end",
+        "no-blobs-without-end",
+        "end-not-empty",
+        "end-a-link",
+        "blob-after-end",
+        "two-ends",
+    ],
+)
+async def test_an_archive_whose_blobs_are_not_followed_by_exactly_one_empty_end_is_refused(
+    world, damage
+):
+    head = unpack(await dumped(world))[:2]
+    before = await state_of(world)
+    with pytest.raises(InvalidBody):
+        await restored(world, damage(head))
+    assert await state_of(world) == before, "database and bucket dropped, no record"
+
+
+async def test_a_failed_record_write_leaves_orphans_for_the_sweep_and_no_record(world):
+    data = await dumped(world)
+    before = await state_of(world)
+    world.store.on("update", StoreUnavailable("the system database is down"), times=50)
+    with pytest.raises(StoreUnavailable, match="system database"):
+        await restored(world, data)
+    databases, buckets, tenants = await state_of(world)
+    assert tenants == before[2], "no access record"
+    assert len(databases) == len(before[0]) + 1, "the new database is left to the sweep"
+    assert len(buckets) == len(before[1]) + 1, "and so is the new bucket"
+    await sweep(world.tenancy, world.store, world.files, SETTINGS)
+    assert await state_of(world) == before, "the start-up sweep drops both"
+
+
+async def test_tenancy_restore_vets_the_graphs_itself_and_creates_nothing_for_a_foreign_one(world):
+    foreign = Dataset()
+    foreign.graph(URIRef("http://elsewhere.example/g")).add(
+        (URIRef("urn:x:s"), URIRef("urn:x:p"), URIRef("urn:x:o"))
+    )
+    before = await state_of(world)
+    with pytest.raises(InvalidBody, match="http://elsewhere.example/g"):
+        await world.tenancy.restore(
+            foreign, world.iris.tenant_id_of(world.tenant), iter(()), RESTORER
+        )
+    assert await state_of(world) == before, "checked before any create"

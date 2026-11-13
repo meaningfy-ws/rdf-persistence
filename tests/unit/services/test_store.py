@@ -30,6 +30,23 @@ async def test_an_update_the_store_finds_malformed_is_a_sparql_error(store):
         await store.update(DATASET, "INSERT nothing")
 
 
+async def test_the_dataset_level_export_and_import_pass_through_unchanged(store):
+    await store.put_graph(
+        DATASET, GRAPH, Graph().parse(data="<urn:x> <urn:y> <urn:z> .", format="nt")
+    )
+    exported = await store.export_quads(DATASET)
+    assert exported.strip() == b"<urn:x> <urn:y> <urn:z> <https://example.org/g> .", (
+        "the quads of the one named graph"
+    )
+    await store.create_dataset("copy")
+    await store.import_quads("copy", exported)
+    assert await store.export_quads("copy") == exported, "imported as exported"
+    with pytest.raises(DatabaseGone):
+        await store.export_quads("missing")
+    with pytest.raises(DatabaseGone):
+        await store.import_quads("missing", exported)
+
+
 async def test_everything_else_passes_through_unchanged(store):
     await store.put_graph(
         DATASET, GRAPH, Graph().parse(data="<urn:x> <urn:y> <urn:z> .", format="nt")

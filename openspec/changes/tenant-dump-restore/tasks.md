@@ -13,7 +13,7 @@ fakes (`testkit/fakes.py`); integration tests use the Fuseki and Garage containe
   record the answer in design.md PD-1. If neither works, switch to the RISK-1 fallback and tell the
   lead before 1.2.
 - [x] 1.2 Test first: two cases in `testkit/store_conformance.py` (run by
-  `tests/unit/services/test_store.py` on the fake and `tests/integration/store/test_store_conformance.py`
+  `tests/unit/testkit/test_fake_store.py` on the fake and `tests/integration/store/test_store_conformance.py`
   on Fuseki); then PD-1 in `services/store.py` (`Store`, `ToolkitStore`), `adapters/fuseki.py` and
   `testkit/fakes.py`. Gates: `make test-fast`, `make check-quality`, `make clean-code`,
   `make test-containers TEST_PATH=tests/integration/store/test_store_conformance.py`.

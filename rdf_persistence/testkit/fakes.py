@@ -11,6 +11,7 @@ from rdflib import Dataset, Graph, URIRef
 from rdflib.plugins.sparql import prepareQuery, prepareUpdate
 from rdflib.query import Result
 
+from rdf_persistence.domain.blob_keys import checked_blob_key
 from rdf_persistence.domain.exceptions import (
     BadQuery,
     Conflict,
@@ -23,10 +24,10 @@ from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_files import BlobEntry
 from rdf_persistence.domain.generated.service.rp_service import AccountSummary
 from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.domain.media import N_QUADS
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.session import Clock, Session, open_session, utc_now
 
-NQUADS = "nquads"  # rdflib's name for N-Quads
 FAKE_DATABASE = "fake"
 FAKE_TENANT = "https://example.org/tenants/fake"
 FAKE_PRINCIPAL = Principal(id="https://example.org/people/fake")
@@ -119,11 +120,11 @@ class FakeStore(_Instrumented):
 
     async def export_quads(self, dataset: str) -> bytes:
         self._enter("export_quads", dataset)
-        return self._dataset(dataset).serialize(format=NQUADS).encode()
+        return self._dataset(dataset).serialize(format=N_QUADS).encode()
 
     async def import_quads(self, dataset: str, nquads: bytes) -> None:
         self._enter("import_quads", dataset)
-        self._dataset(dataset).parse(data=nquads, format=NQUADS)
+        self._dataset(dataset).parse(data=nquads, format=N_QUADS)
 
     async def create_dataset(self, name: str) -> None:
         self._enter("create_dataset", name)
@@ -178,6 +179,7 @@ class FakeFileStore(_Instrumented):
 
     async def put(self, bucket: str, key: str, data: bytes) -> None:
         self._enter("put", f"{bucket}/{key}")
+        checked_blob_key(key)  # refuses as the S3 adapter does
         self._bucket(bucket)[key] = data
         self._modified[bucket, key] = self._clock()
 

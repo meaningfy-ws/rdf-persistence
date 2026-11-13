@@ -661,6 +661,10 @@
     required: false
     multivalued: false
     range: integer
+  - name: max_restore_bytes
+    required: false
+    multivalued: false
+    range: integer
   - name: prefix
     required: true
     multivalued: false

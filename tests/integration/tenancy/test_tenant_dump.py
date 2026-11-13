@@ -23,6 +23,7 @@ from tests.toy import SETTINGS, dune, library_slots, toy_mapper
 from tests.toy_service import SCAN_BODY
 from tests.unit.services.test_tenant_dump import (
     BLOB_BYTES,
+    MAX_BYTES,
     RESTORER,
     VIEW,
     iris_of,
@@ -84,7 +85,14 @@ async def read_book(world: SimpleNamespace, tenant: str, iri: str, who) -> Book:
 async def test_it01_a_tenant_restored_from_its_dump_answers_like_the_original(world):
     out = io.BytesIO()
     await dump(world.tenancy, world.store, world.files, world.iris, VIEW, world.tenant, out)
-    summary = await restore(world.tenancy, world.iris, VIEW, io.BytesIO(out.getvalue()), RESTORER)
+    summary = await restore(
+        world.tenancy,
+        world.iris,
+        VIEW,
+        io.BytesIO(out.getvalue()),
+        RESTORER,
+        max_bytes=MAX_BYTES,
+    )
 
     new = summary.id
     assert new != world.tenant, "a new tenant"
@@ -116,7 +124,15 @@ async def test_it02_a_dump_of_another_schema_version_is_refused_and_creates_noth
     before = await stores_state(world)
 
     with pytest.raises(InvalidBody) as caught:
-        await restore(world.tenancy, world.iris, newer, io.BytesIO(out.getvalue()), RESTORER)
+        await restore(
+            world.tenancy,
+            world.iris,
+            newer,
+            io.BytesIO(out.getvalue()),
+            RESTORER,
+            max_bytes=MAX_BYTES,
+        )
 
-    assert "1.0.0" in str(caught.value) and "1.1.0" in str(caught.value)
+    assert "1.0.0" in str(caught.value), "the dump's version"
+    assert "1.1.0" in str(caught.value), "the service's version"
     assert await stores_state(world) == before, "no database, bucket or record created"

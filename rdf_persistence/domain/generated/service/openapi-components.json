@@ -828,6 +828,11 @@
           "minimum": 1,
           "type": "integer"
         },
+        "max_restore_bytes": {
+          "description": "The most bytes a restore archive may hold once decompressed, counting each member's size and its tar block; a larger archive is refused with `InvalidBody` as it is read, so a small hostile upload cannot fill the memory or the object store.",
+          "minimum": 1,
+          "type": "integer"
+        },
         "prefix": {
           "description": "The prefix of the database names of the service's tenants; lower case, at most 20 characters.",
           "pattern": "^[a-z][a-z0-9]{0,19}$",

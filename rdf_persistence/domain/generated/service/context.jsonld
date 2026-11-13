@@ -216,6 +216,9 @@
       "max_body_bytes": {
          "@id": "maxBodyBytes"
       },
+      "max_restore_bytes": {
+         "@id": "maxRestoreBytes"
+      },
       "meta_template": {
          "@id": "metaTemplate"
       },

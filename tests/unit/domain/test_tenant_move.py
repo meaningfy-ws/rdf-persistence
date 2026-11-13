@@ -1,9 +1,10 @@
-"""The tenant id rewrite and the policies it cannot handle (tenant-dump-restore PD-4, TC-04 to TC-09)."""
+"""The tenant id rewrite, the policies it cannot handle and the graph check (tenant-dump-restore PD-4, PD-5, PD-13; TC-04 to TC-09)."""
 
 import pytest
 from rdflib import Dataset, Literal, URIRef
 from rdflib.namespace import DCTERMS
 
+from rdf_persistence.domain.exceptions import InvalidBody
 from rdf_persistence.domain.generated.service.rp_service import (
     IdKind,
     IdSpec,
@@ -11,9 +12,9 @@ from rdf_persistence.domain.generated.service.rp_service import (
     ServiceSettings,
 )
 from rdf_persistence.domain.iris import Iris
+from rdf_persistence.domain.tenant_move import check_graphs, glued_templates, rewrite
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
-from rdf_persistence.services.tenant_dump import glued_templates, rewrite
 from tests.toy import SETTINGS, TOY_SCHEMA
 
 OLD = "9f1e6c2a-3b4d-4e5f-8a9b-0c1d2e3f4a5b"
@@ -187,10 +188,69 @@ def test_an_aggregate_under_the_users_path_moves_as_graph_subject_and_object():
         ({}, []),
         ({"tenant_template": "{base}t{tenant_id}"}, ["tenant_template"]),
         ({"aggregate_template": "{tenant}{id}"}, ["aggregate_template"]),
+        ({"aggregate_template": "{base}{tenant_id}x{id}"}, ["aggregate_template"]),
+        ({"aggregate_template": "{base}{tenant_id}7{id}"}, ["aggregate_template"]),
+        ({"tenant_template": "{base}libraries/7{tenant_id}"}, ["tenant_template"]),
+        ({"meta_template": "{tenant}x"}, ["meta_template"]),
+        (
+            {"meta_template": "{tenant}9", "registry_template": "{tenant}registry"},
+            ["meta_template", "registry_template"],
+        ),
+        ({"aggregate_template": "{base}{tenant_id}-{id}"}, []),
+        ({"meta_template": "{tenant}.meta"}, []),
+    ],
+    ids=[
+        "default",
+        "letter-before-id",
+        "variable-after-tenant",
+        "letter-after-id",
+        "digit-after-id",
+        "digit-before-id",
+        "letter-after-tenant",
+        "two-templates-named",
+        "dash-is-a-delimiter",
+        "dot-is-a-delimiter",
     ],
 )
 def test_glued_templates_names_the_templates_that_glue_the_tenant_id(
     templates: dict, expected: list[str]
 ):
     effective = iris_of(policy_settings(**templates)).effective_policy
-    assert glued_templates(effective) == expected
+    assert glued_templates(effective) == expected, "exactly the glued templates, in policy order"
+
+
+# -- the graph check (PD-5, second half) ---------------------------------------------------------
+
+
+def minted_graphs(iris: Iris, tenant: str) -> list[URIRef]:
+    aggregate = str(iris.mint_aggregate(tenant, BOOK, "books"))
+    loaded = str(iris.mint_loaded_graph(tenant, aggregate))
+    return [iris.meta(tenant), iris.registry(tenant), URIRef(f"{aggregate}/graph"), URIRef(loaded)]
+
+
+def test_every_graph_the_policy_mints_for_the_tenant_passes_the_check():
+    iris = iris_of()
+    tenant = str(iris.tenant(NEW))
+    source = dataset_of(
+        *(
+            (URIRef(f"{g}#s"), DCTERMS.relation, Literal("x"), g)
+            for g in minted_graphs(iris, tenant)
+        )
+    )
+    check_graphs(source, tenant, iris)
+
+
+def test_a_graph_of_another_tenant_is_refused_naming_it():
+    iris = iris_of()
+    other = minted_graphs(iris, str(iris.tenant(OLD)))[0]
+    source = dataset_of((URIRef("urn:x:s"), DCTERMS.relation, Literal("x"), other))
+    with pytest.raises(InvalidBody, match=str(other)):
+        check_graphs(source, str(iris.tenant(NEW)), iris)
+
+
+def test_a_quad_in_the_default_graph_is_refused():
+    iris = iris_of()
+    source = Dataset()
+    source.default_graph.add((URIRef("urn:x:s"), DCTERMS.relation, Literal("x")))
+    with pytest.raises(InvalidBody, match="default graph"):
+        check_graphs(source, str(iris.tenant(NEW)), iris)

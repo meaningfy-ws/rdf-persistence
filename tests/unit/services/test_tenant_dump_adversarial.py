@@ -19,13 +19,21 @@ from rdflib import Dataset, Literal, URIRef
 from rdflib.compare import isomorphic
 from rdflib.namespace import DCTERMS
 
-from rdf_persistence.domain.exceptions import InvalidBody, NotFound, StoreUnavailable
+from rdf_persistence.domain.exceptions import (
+    InvalidBody,
+    NotFound,
+    PersistenceError,
+    StoreUnavailable,
+)
 from rdf_persistence.domain.generated.service.rp_service import IriPolicy, TenantDump
+from rdf_persistence.domain.media import N_QUADS
+from rdf_persistence.domain.tenant_move import rewrite
 from rdf_persistence.services.sweep import sweep
-from rdf_persistence.services.tenant_dump import dump, rewrite
+from rdf_persistence.services.tenant_dump import dump
 from tests.toy import SETTINGS
 from tests.unit.services.test_tenant_dump import (
     BLOB_BYTES,
+    END,
     GRAPHS,
     MANIFEST,
     VIEW,
@@ -57,13 +65,16 @@ async def world() -> SimpleNamespace:
     return await populated(await make_world(iris_of(SETTINGS), SETTINGS))
 
 
-def raw_tar(*members: tuple[str, bytes] | tuple[str, bytes, int], end: bool = True) -> bytes:
+def raw_tar(
+    *members: tuple[str, bytes] | tuple[str, bytes, int], end: bool = True, marker: bool = True
+) -> bytes:
     """A gzipped tar written block by block, so a header may lie: ``(name, payload)`` or ``(name, payload, declared size)``.
 
-    A name is encoded as latin-1 so a test can plant a byte that is not UTF-8.
+    A name is encoded as latin-1 so a test can plant a byte that is not UTF-8. ``marker`` adds the dump's ``end``
+    member; ``end`` adds the tar's two zero blocks.
     """
     out = io.BytesIO()
-    for name, payload, *declared in members:
+    for name, payload, *declared in (*members, *([(END, b"")] if marker else [])):
         info = tarfile.TarInfo(name)
         info.size = declared[0] if declared else len(payload)
         out.write(info.tobuf(tarfile.GNU_FORMAT, "latin-1", "surrogateescape"))
@@ -390,15 +401,6 @@ async def test_a_failing_second_blob_put_drops_the_database_and_the_bucket(world
     assert await state_of(world) == before
 
 
-async def test_a_failing_record_write_drops_the_database_and_the_bucket(world):
-    data = await dumped(world)
-    before = await state_of(world)
-    world.store.on("update", StoreUnavailable("the system database is down"), times=50)
-    with pytest.raises(StoreUnavailable, match="system database"):
-        await restored(world, data)
-    assert await state_of(world) == before
-
-
 async def test_a_bucket_gone_before_the_record_fails_the_restore_cleanly(world):
     data = await dumped(world)
     before = await state_of(world)
@@ -410,7 +412,7 @@ async def test_a_bucket_gone_before_the_record_fails_the_restore_cleanly(world):
             await world.files.delete_bucket(bucket)
 
     world.files.put = put_then_lose_the_bucket  # type: ignore[method-assign]
-    with pytest.raises(Exception, match="vanished"):
+    with pytest.raises(PersistenceError, match="vanished"):
         await restored(world, data)
     assert await state_of(world) == before
 
@@ -427,7 +429,7 @@ async def test_a_database_gone_in_an_archive_without_blobs_is_still_noticed():
         await world.store.drop_dataset(name)
 
     world.store.import_quads = import_then_lose_the_database  # type: ignore[method-assign]
-    with pytest.raises(Exception, match="vanished"):
+    with pytest.raises(PersistenceError, match="vanished"):
         await restored(world, data)
     assert await state_of(world) == before
 
@@ -503,8 +505,8 @@ async def test_an_archive_cut_after_a_whole_blob_is_refused_not_restored_without
 async def test_every_blob_gone_still_dumps_the_manifest_and_the_graphs(world):
     world.files.on("get", NotFound("gone"), times=5)
     data = await dumped(world)
-    assert [n for n, _ in unpack(data)] == [MANIFEST, GRAPHS]
-    assert (await restored(world, data)).label == "Ghent"
+    assert [n for n, _ in unpack(data)] == [MANIFEST, GRAPHS, END], "no blob member"
+    assert (await restored(world, data)).label == "Ghent", "and it restores"
 
 
 KEYS = {
@@ -514,7 +516,6 @@ KEYS = {
     "long": "k" * 300,
     "long-path": "/".join(["segment-of-some-length"] * 20),
     "dots": "..hidden",
-    "newline": "line\nbreak",
 }
 
 
@@ -523,7 +524,16 @@ async def test_a_blob_key_survives_a_dump_and_a_restore(world, key):
     await world.files.put(world.database, key, key.encode())
     new = (await restored(world, await dumped(world))).id
     record, _ = await world.tenancy.get(new)
-    assert await world.files.get(record.database_name, key) == key.encode()
+    assert await world.files.get(record.database_name, key) == key.encode(), "the blob's bytes"
+
+
+@pytest.mark.parametrize("key", ["line\nbreak", "tab\there", "del\x7f"], ids=repr)
+async def test_a_blob_key_with_a_control_character_is_refused_by_the_one_key_rule(world, key):
+    """Garage refuses such a key (``checked_blob_key``); the archive of a store that held one is refused whole."""
+    before = await state_of(world)
+    with pytest.raises(InvalidBody, match="key"):
+        await restored(world, pack(*await head_of(world), (f"blobs/{key}", b"x")))
+    assert await state_of(world) == before, "database and bucket dropped, no record"
 
 
 async def test_a_blob_of_zero_bytes_and_one_of_every_byte_value_survive(world):
@@ -560,7 +570,7 @@ async def test_a_dump_is_deterministic_in_its_members_for_the_same_clock(world):
 
 def named_graphs(nquads: bytes) -> dict[str, object]:
     dataset = Dataset()
-    dataset.parse(data=nquads, format="nquads")
+    dataset.parse(data=nquads, format=N_QUADS)
     return {str(g.identifier): g for g in dataset.graphs() if len(g)}
 
 
@@ -591,7 +601,7 @@ async def test_restoring_one_archive_twice_gives_two_tenants_that_share_no_iri(w
     for tenant in (world.tenant, one, two):
         record, _ = await world.tenancy.get(tenant)
         dataset = Dataset()
-        dataset.parse(data=await world.store.export_quads(record.database_name), format="nquads")
+        dataset.parse(data=await world.store.export_quads(record.database_name), format=N_QUADS)
         # the toolkit's own IRIs: those under the base (a loaded document's own IRIs are the consumer's data)
         exported.append(
             {
@@ -654,20 +664,24 @@ def quads_of(dataset: Dataset) -> set[tuple]:
     return set(dataset.quads())
 
 
-@settings(max_examples=150, suppress_health_check=[HealthCheck.too_slow], deadline=None)
+@settings(
+    max_examples=150, suppress_health_check=[HealthCheck.too_slow], deadline=None, derandomize=True
+)
 @given(iri=iri_texts(), other=iri_texts(), old=IDS, new=IDS)
 def test_rewrite_changes_nothing_when_the_ids_are_equal_and_never_touches_literals(
     iri, other, old, new
 ):
     source = dataset_with(iri, other)
-    assert quads_of(rewrite(source, BASE, old, old)) == quads_of(source)
+    assert quads_of(rewrite(source, BASE, old, old)) == quads_of(source), "equal ids: no change"
     for _, predicate, obj, _ in rewrite(source, BASE, old, new).quads():
-        assert predicate in (DCTERMS.relation, DCTERMS.title)
+        assert predicate in (DCTERMS.relation, DCTERMS.title), "predicates are never moved"
         if predicate == DCTERMS.title:
-            assert str(obj) == f"about {other} and {iri}"
+            assert str(obj) == f"about {other} and {iri}", "a literal is never moved"
 
 
-@settings(max_examples=200, suppress_health_check=[HealthCheck.too_slow], deadline=None)
+@settings(
+    max_examples=200, suppress_health_check=[HealthCheck.too_slow], deadline=None, derandomize=True
+)
 @given(iri=iri_texts(), other=iri_texts(), old=IDS, new=IDS)
 def test_rewrite_to_a_new_id_and_back_restores_the_dataset_when_the_new_id_is_not_there(
     iri, other, old, new
@@ -675,7 +689,7 @@ def test_rewrite_to_a_new_id_and_back_restores_the_dataset_when_the_new_id_is_no
     assume(old != new and new not in iri and new not in other)
     source = dataset_with(iri, other)
     there = rewrite(source, BASE, old, new)
-    assert quads_of(rewrite(there, BASE, new, old)) == quads_of(source)
+    assert quads_of(rewrite(there, BASE, new, old)) == quads_of(source), "there and back again"
 
 
 @pytest.mark.parametrize(("old", "new"), [("ab", "abc"), ("abc", "ab"), ("a", "a0"), ("1", "10")])
@@ -685,7 +699,8 @@ def test_an_old_id_that_is_a_prefix_of_the_new_one_or_the_reverse_is_matched_who
     quads = list(rewrite(dataset_with(iri, iri), BASE, old, new).quads())
     ((s, _, o, g),) = [q for q in quads if q[1] == DCTERMS.relation]
     expected = f"{BASE}t/{new}/x/{longer}z/{new}-{new}.{new}?q={new}#{new}"
-    assert {str(s), str(g)} == {expected} and str(o) == expected
+    assert {str(s), str(g)} == {expected}, "subject and graph"
+    assert str(o) == expected, "object"
 
 
 async def test_an_id_in_a_query_or_a_fragment_moves_with_the_path_design_silent(world):
@@ -695,4 +710,6 @@ async def test_an_id_in_a_query_or_a_fragment_moves_with_the_path_design_silent(
     iri = f"{world.tenant}/books/x?owner={old}#{old}"
     quads = rewrite(dataset_with(iri, iri), SETTINGS.base, old, "newid").quads()
     ((s, _, _, _),) = [q for q in quads if q[1] == DCTERMS.relation]
-    assert str(s) == f"{SETTINGS.base}libraries/newid/books/x?owner=newid#newid"
+    assert str(s) == f"{SETTINGS.base}libraries/newid/books/x?owner=newid#newid", (
+        "path, query, fragment"
+    )

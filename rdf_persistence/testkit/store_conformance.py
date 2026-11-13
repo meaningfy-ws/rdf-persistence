@@ -15,6 +15,7 @@ from rdflib.compare import graph_diff, isomorphic
 from rdflib.query import ResultRow
 
 from rdf_persistence.domain.exceptions import BadQuery, Conflict, DatabaseGone, NotFound
+from rdf_persistence.domain.media import N_QUADS
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services.store import Store
 
@@ -183,9 +184,14 @@ async def export_then_import_round_trips_every_named_graph(store: Store, dataset
     await store.create_dataset(copy)
     await store.import_quads(copy, await store.export_quads(dataset))
     restored = Dataset()
-    restored.parse(data=await store.export_quads(copy), format="nquads")
+    restored.parse(data=await store.export_quads(copy), format=N_QUADS)
     for graph in source.graphs():
-        assert isomorphic(restored.graph(graph.identifier), graph), graph.identifier
+        copied = restored.graph(graph.identifier)
+        _, only_in_copy, only_in_source = graph_diff(copied, graph)
+        assert isomorphic(copied, graph), (
+            f"{graph.identifier} differs after the round trip: "
+            f"only in the copy {sorted(only_in_copy)}, only in the source {sorted(only_in_source)}"
+        )
     assert len(restored.default_graph) == 0, "no default-graph triple"
     blank = {s for s in restored.graph(OTHER).subjects() if isinstance(s, BNode)}
     assert len(blank) == 1, "the blank node still links its two triples"

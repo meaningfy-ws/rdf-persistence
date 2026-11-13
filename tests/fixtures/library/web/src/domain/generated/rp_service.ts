@@ -52,6 +52,8 @@ export interface ServiceSettings {
   roles_claim: string;
   /** The most bytes a request body may hold; a larger one is refused with 413 before it is read whole. */
   max_body_bytes?: number;
+  /** The most bytes a restore archive may hold once decompressed, counting each member's size and its tar block; a larger archive is refused with `InvalidBody` as it is read, so a small hostile upload cannot fill the memory or the object store. */
+  max_restore_bytes?: number;
   /** A slug that names this deployment, for templates that use `{deployment}`; lower case letters and digits, at most 32. */
   deployment?: string;
   /** The IRI policy of the service; absent, the default policy applies. */

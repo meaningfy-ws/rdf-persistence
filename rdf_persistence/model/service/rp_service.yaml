@@ -36,11 +36,14 @@ classes:
       - creator_role
       - roles_claim
       - max_body_bytes
+      - max_restore_bytes
       - deployment
       - iri_policy
     slot_usage:
       max_body_bytes:
         ifabsent: int(1048576)
+      max_restore_bytes:
+        ifabsent: int(1073741824)
       base:
         required: true
       prefix:
@@ -411,6 +414,15 @@ slots:
       The most bytes a request body may hold; a larger one is refused with 413 before it is read
       whole.
     slot_uri: rp:maxBodyBytes
+    range: integer
+    minimum_value: 1
+  max_restore_bytes:
+    title: Maximum restore size
+    description: >-
+      The most bytes a restore archive may hold once decompressed, counting each member's size and
+      its tar block; a larger archive is refused with `InvalidBody` as it is read, so a small hostile
+      upload cannot fill the memory or the object store.
+    slot_uri: rp:maxRestoreBytes
     range: integer
     minimum_value: 1
   tenant_template:
