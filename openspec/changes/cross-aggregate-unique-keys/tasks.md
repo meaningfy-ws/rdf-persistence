@@ -4,8 +4,8 @@
 `T` and `U` are toy library tenants; `A`, `B`, `C`, `D` books of `T`. "Keys" is
 `aggregate_keys(load_schema(TOY_SCHEMA))` (`tests/toy.py`); the session tests open
 `fake_session(..., keys=keys)`. "The transaction" is atomic-commit's `Transaction`
-(`services/session.py`): its `guards` list, `_send` and `_diagnose` (atomic-commit PD-4 to PD-6;
-RISK-4). Lists of IRIs in the tables are shown as lists; the code uses sorted tuples. The adversarial tester runs right after task
+(`services/session.py`): its private `_guards` list, `commit` and `_diagnose`, as built (PD-15;
+a `KeyConflict` from the store is a diagnosis). Lists of IRIs in the tables are shown as lists; the code uses sorted tuples. The adversarial tester runs right after task
 1.2, the riskiest (new invariant in the write path).
 
 ## 1. Declare and enforce (stage 1, PR 1)

@@ -88,7 +88,7 @@ overrule any of them.
 - **PD-6** (DEC-2): the transaction computes the claims when `add_graph` or `replace_graph` is
   called, and on exit, before sending: (a) two claims of one key with equal values → `KeyConflict`
   naming both roots, nothing sent; (b) for each claim, one `FILTER NOT EXISTS` pattern
-  (`KEY_HELD`, below) is appended to `Transaction.guards` (atomic-commit PD-6), excluding the roots this transaction
+  (`KEY_HELD`, below) joins the transaction's guards in `Transaction.commit` (PD-15), excluding the roots this transaction
   replaces or removes (their stored state is going away; their new state is a claim of its own,
   checked by (a)). Removes claim nothing.
 - **PD-7** (DEC-2): the key pattern finds holders through the registry: a graph registered
@@ -107,7 +107,7 @@ overrule any of them.
 - **PD-9** (DEC-2, atomic-commit DEC-3 and its PD-4): diagnosis after a failed `ASK`, in order,
   inside `Transaction._diagnose`: (1) atomic-commit's read; if the commit applied, success as
   there; (2) if it names version culprits, `Conflict(iris)` (stale data must be re-read before a
-  key clash means anything); (3) only in its "no culprit" branch, and if there are key claims, one
+  key clash means anything); (3) only when it names no root (`reasons` is empty, PD-15), and if there are key claims, one
   `SELECT` (`diagnosis`, a `UNION` of `KEY_HELD` per claim, each binding its index) gives the
   claims now held → `KeyConflict`; (4) otherwise atomic-commit's `Conflict(iris=())`, "lost a
   race". The read races with other writers: a diagnosis, not a
@@ -138,6 +138,45 @@ overrule any of them.
   `iris`, now sorted in atomic-commit PD-4 too; `KeyConflict` through batch mode; inherited
   unscoped keys; `xsd:string` normalisation; PD-13's evidence) are folded into PD-2, PD-5, PD-8,
   PD-13 and the tasks.
+- **PD-15** (leader, 2026-11-14, before task 1.1; RISK-4 resolved): the PLAN checked against
+  atomic-commit as built (its proposal's "As built (2026-11-13)" table) and `develop` at 38f4a41.
+  - **Names.** The guard list is private, `Transaction._guards` (its PD-18a), as are
+    `_operations`, `_roots` and `_read_at`. There is no `_send`: `Transaction.commit` builds the
+    request with `request_text(registry, marker, guards, operations)` and confirms it.
+    `_diagnose` exists; its "no culprit" branch is `reasons` being empty. The key code is added
+    from inside `services` (`services/unique_keys.py` and `Transaction` itself), which is what
+    PD-18a allows; nothing of the transaction becomes public.
+  - **Where the guards join.** `commit` passes `[*self._guards, *key_guards]` to `request_text`;
+    `_guards` itself is not changed, so the key guards are built once, when every change is
+    known. The excluded roots are those with a read version: `self._roots[g]` for each `g` with
+    `self._read_at[g] is not None` (replaces and removes).
+  - **The in-transaction clash (PD-6a) is exact**: it compares the transaction's own claims and
+    sends nothing.
+  - **A `KeyConflict` from the store is a diagnosis, as `Conflict.iris` is** (atomic-commit
+    PD-4: the read after the refusal can miss a root or name one too many). What is
+    guaranteed: of two concurrent writers of one key value at most one commits, and a refused
+    commit wrote nothing. What is best effort: the exception's type and its `iris`. Known cases,
+    none changed by this PLAN:
+    (a) the holder is removed before the read → `Conflict(iris=())` (TC-25); a retry passes;
+    (b) another writer changes a root of the transaction between the refusal and the read → the
+    version read names it and the clash is reported as a plain `Conflict`; after the re-read the
+    retry raises the `KeyConflict`;
+    (c) the version read misses its culprit (an add over a graph removed since, or a graph with
+    no version triple) and the claimed value is held → `KeyConflict`, true of the store's state
+    though not the only cause;
+    (d) `iris` lists every claim held at the read, so it can name a root whose holder arrived
+    after the refusal, or miss one whose holder left;
+    (e) atomic-commit's false conflict (the commit applied and every graph it wrote was
+    overwritten or removed before the `ASK`) can surface as a `KeyConflict` if the removed
+    root's value was taken meanwhile. A re-read shows the true state.
+    So `KeyConflict` means "at the read, another aggregate of the type held a value this commit
+    claims", not "this is why the commit was refused". The spec delta says "as a diagnosis".
+  - **The message** follows atomic-commit PD-20a: roots and key names in words, no graph IRI,
+    no version token, no key value and no holder (PD-8).
+  - **Batch mode** is `UnitOfWork.commit(batches=True)` (`services/mapper.py`): a batch's
+    exception keeps its type and fields and gets "`n` of `m` batches committed before it"
+    (TC-27 expects "1 of 2"). `UnitOfWork.discard` (38f4a41) acts before the transaction is
+    opened, so a discarded root claims nothing.
 
 ## Algorithm / approach
 
@@ -172,12 +211,12 @@ In `Transaction` (atomic-commit PD-5, PD-6, in `services/session.py`):
 ```python
 # add_graph / replace_graph, after the existing pre-checks:
 self._key_claims += claims(self._session._keys, iri, triples)
-# _send, before guard_op(marker, self.guards) is built:
+# commit, before request_text(...) is built (PD-15):
 if clash := same_value(self._key_claims):
     raise KeyConflict(..., iris=roots_of(clash), keys=names_of(clash))   # nothing sent
-excluded = self._replaced_or_removed_roots()
-self.guards += [guard(c, registry, excluded) for c in self._key_claims]
-# _diagnose, in atomic-commit's "no culprit" branch (PD-9):
+excluded = self._replaced_or_removed_roots()   # the roots with a read version
+guards = [*self._guards, *(guard(c, registry, excluded) for c in self._key_claims)]
+# _diagnose, when the version read names no root (`reasons` empty; PD-9, PD-15):
 #   if self._key_claims and (held := rows of diagnosis(self._key_claims, registry, excluded)):
 #       raise KeyConflict(..., iris=roots_of(held), keys=names_of(held))
 #   else: atomic-commit's Conflict(iris=())
@@ -260,8 +299,7 @@ FILTER NOT EXISTS {
   them.
 - **RISK-4** — `atomic-commit`'s merged code differs from its PLAN's `Transaction.guards`,
   `_send` and `_diagnose` (its PD-4 to PD-6), on which this PLAN builds (medium; low).
-  Mitigation: the builder of task 1.2 adapts to the merged code, keeping PD-6 and PD-9, and
-  records the names here.
+  **Resolved 2026-11-14 (PD-15):** the names differ (`_guards`, `commit`), the approach holds.
 - **RISK-5** — numeric values written with a non-canonical lexical form compare equal on Fuseki
   (TDB2 stores numbers by value) and not on the fake, or in the in-transaction check (low; low).
   The mapper and the router write canonical forms. Accepted; noted in the how-to.
