@@ -28,7 +28,15 @@ class Forbidden(PersistenceError):
 
 
 class Conflict(PersistenceError):
-    """The write lost a race, or the thing to create already exists."""
+    """The write lost a race, or the thing to create already exists.
+
+    ``iris`` are the root IRIs found conflicting, sorted; empty when the writer lost a race with no
+    culprit left to name. A diagnosis read after the refusal, so it can itself race (PD-7).
+    """
+
+    def __init__(self, *args: object, iris: tuple[str, ...] = ()) -> None:
+        super().__init__(*args)
+        self.iris = tuple(iris)
 
 
 class BadQuery(PersistenceError):

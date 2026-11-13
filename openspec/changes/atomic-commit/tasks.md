@@ -22,7 +22,7 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
   (PD-1), `make generate`, `vocabulary.py` terms. Gates: `make test-fast`, `make check-quality`,
   `make clean-code`.
 
-- [ ] 1.2 `Session.transaction()` and `Transaction` (PD-2 to PD-7), test first in
+- [x] 1.2 `Session.transaction()` and `Transaction` (PD-2 to PD-7), test first in
   `tests/unit/services/test_session_transaction.py` (fake store); then the single-aggregate
   methods become one-change transactions (PD-5). The existing tests in
   `tests/unit/services/test_session*.py`, `test_tenancy*.py`, `test_aggregates*.py` stay green;

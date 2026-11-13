@@ -1,7 +1,7 @@
 """In-memory fakes of the toolkit's ports, for unit tests that must not touch the network."""
 
 from collections import defaultdict
-from collections.abc import AsyncIterator, Iterable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import ClassVar
@@ -71,7 +71,13 @@ class _Instrumented:
 
 
 class FakeStore(_Instrumented):
-    """A ``Store`` over one rdflib ``Dataset`` per dataset name, with failure injection."""
+    """A ``Store`` over one rdflib ``Dataset`` per dataset name, with failure injection.
+
+    ``update`` applies a request to a copy of the dataset and keeps the copy only if every operation
+    succeeds, so a request is atomic as on Fuseki; any failure is a ``BadQuery``. ``after_update``,
+    when set, is awaited after a successful update and before it returns, so a test can make another
+    writer act between an update and the caller's next read.
+    """
 
     OPERATIONS = frozenset(
         {
@@ -89,6 +95,7 @@ class FakeStore(_Instrumented):
     def __init__(self) -> None:
         super().__init__()
         self._datasets: dict[str, Dataset] = {}
+        self.after_update: Callable[[], Awaitable[None]] | None = None
 
     def _dataset(self, name: str) -> Dataset:
         if name not in self._datasets:
@@ -106,10 +113,18 @@ class FakeStore(_Instrumented):
     async def update(self, dataset: str, sparql: str) -> None:
         self._enter("update", sparql)
         data = self._dataset(dataset)
+        copy = Dataset()
+        for graph in data.graphs():
+            target = copy.graph(graph.identifier)
+            for triple in graph:
+                target.add(triple)
         try:
-            data.update(prepareUpdate(sparql))
-        except ParseException as error:
+            copy.update(prepareUpdate(sparql))
+        except Exception as error:  # rdflib raises a bare Exception at run time (PD-13)
             raise BadQuery(str(error)) from error
+        self._datasets[dataset] = copy
+        if self.after_update is not None:
+            await self.after_update()
 
     async def put_graph(self, dataset: str, graph_iri: URIRef, graph: Graph) -> None:
         self._enter("put_graph", str(graph_iri))
