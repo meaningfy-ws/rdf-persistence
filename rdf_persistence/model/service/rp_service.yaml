@@ -81,6 +81,7 @@ classes:
     class_uri: rp:IriPolicy
     slots:
       - tenant_template
+      - application_template
       - access_template
       - meta_template
       - registry_template
@@ -93,6 +94,8 @@ classes:
     slot_usage:
       tenant_template:
         ifabsent: string({base}{tenant_segment}/{tenant_id})
+      application_template:
+        ifabsent: string({base}app)
       access_template:
         ifabsent: string({tenant}/access)
       meta_template:
@@ -485,6 +488,12 @@ slots:
     slot_uri: rp:tenantTemplate
     range: string
     pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant_segment|tenant_id)\})*\{tenant_id\}$'
+  application_template:
+    title: Application template
+    description: The template of the application IRI, the root of the application database's IRIs.
+    slot_uri: rp:applicationTemplate
+    range: string
+    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant_segment)\})+$'
   access_template:
     title: Access template
     description: The template of the IRI of a tenant's access record; contains `{tenant}` or `{tenant_id}`.

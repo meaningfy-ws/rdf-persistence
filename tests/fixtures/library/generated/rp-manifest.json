@@ -159,7 +159,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "f9479354b0b83780b8f521e5f7ba2becca6b605b41936d1f9382a3f3230bedd2"
+      "sha256": "3581bf96ee585dd749880d5978e04a8b581a81eae344b40d157165148de8fb64"
     },
     {
       "path": "rdf_persistence/model/rp_discussion.yaml",
@@ -175,7 +175,7 @@
     },
     {
       "path": "rdf_persistence/model/service/rp_service.yaml",
-      "sha256": "88102e08f8173f2d6ac1a447be031937d2f388fe049adb259f068c1bebb79c61"
+      "sha256": "9c8e5dc9791b37180f5f115f80c7774ba2447faa7ebc9efc496a85c671b303dc"
     },
     {
       "path": "rdf_persistence/services/schema.py",
@@ -253,7 +253,7 @@
     },
     {
       "path": "generated/openapi-components.json",
-      "sha256": "dbd1624d2f4545a068508abde6bd2693355c8478a96ab3dad98e56c751717980"
+      "sha256": "943dd26c2b86f8f03dc28453417a2b68dd314d1f9db2f02bafd6c38e42da5933"
     },
     {
       "path": "generated/scans.py",
@@ -289,7 +289,7 @@
     },
     {
       "path": "web/src/domain/generated/rp_core.ts",
-      "sha256": "831c6c342ff14c2e7860002c3c2373045a1fa7001a603b07172f50e935f56c33"
+      "sha256": "70dac6c17dce67d4028c7516e595f407a281e7ef949b44f7aa591548adeabd75"
     },
     {
       "path": "web/src/domain/generated/rp_discussion.ts",
@@ -301,7 +301,7 @@
     },
     {
       "path": "web/src/domain/generated/rp_service.ts",
-      "sha256": "60014c475a66b65fbff72a435dc8c4c69ea06b1acdb27aad6e4a7e9e501f2739"
+      "sha256": "3f63ce11ff11524b57d3757a2084ef8d2bb2c22b4661b0b13ca1e390bc82b463"
     },
     {
       "path": "web/src/domain/generated/rp_tenancy.ts",

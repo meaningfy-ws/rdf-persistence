@@ -73,7 +73,7 @@ class RpAnnotation(str, Enum):
     GRAPH = "graph"
     "Class annotation, `meta` (see GraphKind) for the tenant root object, which lives in the tenant\u0027s meta graph instead of a graph of its own."
     DATABASE = "database"
-    "Class annotation, `tenant` (the default) or `system` (see DatabaseKind): the database an aggregate lives in."
+    "Class annotation, `tenant` (the default), `system` or `application` (see DatabaseKind): the database an aggregate lives in."
     MODULE_KIND = "module_kind"
     "Schema annotation, `domain`, `technical` or `access` (see ModuleKind): the kind of the module; a domain module may not import a technical or an access one."
     RP_PATH = "rp_path"
@@ -106,6 +106,8 @@ class DatabaseKind(str, Enum):
     "The tenant\u0027s own database, the default."
     SYSTEM = "system"
     "The system database, shared by all tenants."
+    APPLICATION = "application"
+    "The application database, one per deployment, outside every tenant."
 
 
 class WritesKind(str, Enum):

@@ -17,7 +17,7 @@ and `make clean-code` unless it names others.
 
 ## 1. The model and which class lives where
 
-- [ ] 1.1 PD-1: `DatabaseKind.application` in `model/rp_core.yaml`, `application_template` in
+- [x] 1.1 PD-1: `DatabaseKind.application` in `model/rp_core.yaml`, `application_template` in
   `model/service/rp_service.yaml`; `make generate`; `make refresh-snapshot` and read its diff.
   Tests in `tests/unit/domain/test_iri_policy_model.py`. Gates: `make test-fast`,
   `make check-quality`, `make check-generated` (after the lead's commit).

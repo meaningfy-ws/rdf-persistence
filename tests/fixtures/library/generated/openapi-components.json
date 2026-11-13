@@ -234,7 +234,8 @@
       "description": "The databases an aggregate can live in, the values of the database annotation.",
       "enum": [
         "tenant",
-        "system"
+        "system",
+        "application"
       ],
       "title": "DatabaseKind",
       "type": "string"

@@ -76,6 +76,8 @@ export interface IdSpec {
 export interface IriPolicy {
   /** The template of a tenant IRI; ends in `{tenant_id}`. */
   tenant_template?: string;
+  /** The template of the application IRI, the root of the application database's IRIs. */
+  application_template?: string;
   /** The template of the IRI of a tenant's access record; contains `{tenant}` or `{tenant_id}`. */
   access_template?: string;
   /** The template of the IRI of a tenant's meta graph; contains `{tenant}` or `{tenant_id}`. */

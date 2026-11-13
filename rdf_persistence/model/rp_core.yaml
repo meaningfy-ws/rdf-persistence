@@ -252,8 +252,8 @@ enums:
       database:
         title: Database
         description: >-
-          Class annotation, `tenant` (the default) or `system` (see DatabaseKind): the database an
-          aggregate lives in.
+          Class annotation, `tenant` (the default), `system` or `application` (see DatabaseKind): the
+          database an aggregate lives in.
         meaning: rp:AnnotationDatabase
       module_kind:
         title: Module kind
@@ -327,6 +327,10 @@ enums:
         title: System
         description: The system database, shared by all tenants.
         meaning: rp:DatabaseSystem
+      application:
+        title: Application
+        description: The application database, one per deployment, outside every tenant.
+        meaning: rp:DatabaseApplication
   WritesKind:
     title: Writes kind
     description: How an aggregate root is written, the values of the rp_writes annotation.

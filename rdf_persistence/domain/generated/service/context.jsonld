@@ -57,6 +57,9 @@
             "annotate": "http://www.w3.org/ns/odrl/2/annotate"
          }
       },
+      "application_template": {
+         "@id": "applicationTemplate"
+      },
       "assignee": {
          "@type": "@id",
          "@id": "ODRL:assignee"

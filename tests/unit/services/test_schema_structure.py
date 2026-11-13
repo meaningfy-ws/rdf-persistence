@@ -209,7 +209,7 @@ def test_the_toys_scan_is_service_written_and_its_book_is_not() -> None:
 
 
 def test_every_value_set_of_the_vocabulary_has_members() -> None:
-    sets = {ModuleKind: 3, DatabaseKind: 2, GraphKind: 1}
+    sets = {ModuleKind: 3, DatabaseKind: 3, GraphKind: 1}
     assert {k: len(k) for k in sets} == sets, "a value set of the annotation vocabulary changed"
 
 

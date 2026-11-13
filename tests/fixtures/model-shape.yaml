@@ -345,6 +345,10 @@
     required: false
     multivalued: false
     range: string
+  - name: application_template
+    required: false
+    multivalued: false
+    range: string
   - name: loaded_graph_template
     required: false
     multivalued: false
