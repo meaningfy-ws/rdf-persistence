@@ -157,6 +157,7 @@ async def test_a_commit_writes_only_what_was_added_and_only_once(session, store)
     work.add(dune(iri))
     await work.commit()
     writes = len(store.sent("update"))
+    assert writes == 1, "one update request per commit"
     await work.get(Book, iri)
     await work.commit()
     assert len(store.sent("update")) == writes, "nothing changed, nothing is written"
@@ -222,3 +223,141 @@ async def test_editing_a_book_through_the_unit_of_work_keeps_its_loaded_graphs(s
     entry = f"ASK {{ GRAPH <{DEFAULT_IRIS.registry(TENANT)}> {{ <{loaded}> ?p ?o }} }}"
     assert (await store.query(FAKE_DATABASE, kept)).askAnswer, "the loaded graph keeps its triples"
     assert (await store.query(FAKE_DATABASE, entry)).askAnswer, "and its registry entry"
+
+
+async def seed(session, *numbers: int) -> None:
+    work = unit(session)
+    for number in numbers:
+        work.add(dune(book_iri(number)))
+    await work.commit()
+
+
+async def change_elsewhere(store, iri: str, label: str) -> None:
+    async with session_of(store, BEN) as other:
+        work = unit(other)
+        book = await work.get(Book, iri)
+        book.label = label
+        work.add(book)
+        await work.commit()
+
+
+async def test_a_conflict_on_one_book_leaves_every_book_of_the_commit_unwritten(session, store):
+    a, b = book_iri(20), book_iri(21)
+    await seed(session, 20, 21)
+    work = unit(session)
+    first, second = await work.get(Book, a), await work.get(Book, b)
+    await change_elsewhere(store, b, "elsewhere")
+    first.label = "mine"
+    work.add(first)
+    work.add(second)
+    with pytest.raises(Conflict) as raised:
+        await work.commit()
+    assert raised.value.iris == (b,), "only the changed book is named"
+    assert (await unit(session).get(Book, a)).label != "mine", "A is unchanged in the store"
+    assert (await unit(session).get(Book, b)).label == "elsewhere", "B keeps the other edit"
+
+
+async def test_one_commit_stores_new_books_and_removes_a_read_one_in_one_request(session, store):
+    a = book_iri(22)
+    await seed(session, 22)
+    work = unit(session)
+    gone = await work.get(Book, a)
+    news = [dune(book_iri(n)) for n in (23, 24, 25)]
+    for book in news:
+        work.add(book)
+    work.remove(gone)
+    before = len(store.sent("update"))
+    await work.commit()
+    assert len(store.sent("update")) == before + 1, "one update request"
+    for book in news:
+        assert (await unit(session).get(Book, book.id)).label == book.label
+        assert work.version(book.id)
+    with pytest.raises(NotFound):
+        await unit(session).get(Book, a)
+    with pytest.raises(LookupError):
+        work.version(a)
+
+
+async def test_version_of_a_read_book_is_the_session_token(session):
+    iri = book_iri(26)
+    await seed(session, 26)
+    work = unit(session)
+    await work.get(Book, iri)
+    assert work.version(iri) == (await session.get_graph(iri))[2]
+
+
+async def test_version_after_a_commit_is_the_new_token(session):
+    iri = book_iri(27)
+    await seed(session, 27)
+    work = unit(session)
+    book = await work.get(Book, iri)
+    read_at = work.version(iri)
+    book.label = "changed"
+    work.add(book)
+    await work.commit()
+    assert work.version(iri) != read_at
+    assert work.version(iri) == (await session.get_graph(iri))[2]
+
+
+async def test_version_of_an_unread_book_is_a_lookup_error_naming_it(session):
+    with pytest.raises(LookupError) as raised:
+        unit(session).version(book_iri(28))
+    assert raised.value.args == (book_iri(28),), "the error names the IRI"
+
+
+async def test_a_book_not_read_here_cannot_be_removed(session):
+    with pytest.raises(ValueError, match="read"):
+        unit(session).remove(dune(book_iri(29)))
+
+
+async def test_a_conflict_in_a_commit_with_a_removal_keeps_the_removed_book(session, store):
+    a, b = book_iri(30), book_iri(31)
+    await seed(session, 30, 31)
+    work = unit(session)
+    first, second = await work.get(Book, a), await work.get(Book, b)
+    first.label = "mine"
+    work.add(first)
+    work.remove(second)
+    await change_elsewhere(store, a, "elsewhere")
+    with pytest.raises(Conflict) as raised:
+        await work.commit()
+    assert raised.value.iris == (a,)
+    assert (await unit(session).get(Book, b)).id == b, "B is still stored"
+
+
+async def test_a_failed_commit_leaves_the_held_book_and_its_version_unchanged(session, store):
+    a, b = book_iri(32), book_iri(33)
+    await seed(session, 32, 33)
+    work = unit(session)
+    first, second = await work.get(Book, a), await work.get(Book, b)
+    read_at = work.version(a)
+    await change_elsewhere(store, b, "elsewhere")
+    first.label = "mine"
+    work.add(first)
+    work.add(second)
+    with pytest.raises(Conflict):
+        await work.commit()
+    assert await work.get(Book, a) is first and first.label == "mine"
+    assert work.version(a) == read_at
+
+
+async def test_a_new_book_that_is_removed_before_commit_is_refused_at_remove(session):
+    work = unit(session)
+    book = dune(book_iri(34))
+    work.add(book)
+    with pytest.raises(ValueError, match="read"):
+        work.remove(book)
+
+
+async def test_remove_wins_over_an_earlier_add_and_a_later_add_is_refused(session):
+    iri = book_iri(35)
+    await seed(session, 35)
+    work = unit(session)
+    book = await work.get(Book, iri)
+    work.add(book)
+    work.remove(book)
+    await work.commit()
+    with pytest.raises(NotFound):
+        await unit(session).get(Book, iri)
+    with pytest.raises(ValueError, match="removed"):
+        work.add(book)

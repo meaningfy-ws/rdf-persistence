@@ -254,11 +254,11 @@ class UnitOfWork:
     """Object-level access to one session: ``get`` roots, ``add`` new or changed ones, ``commit``.
 
     A root read twice is the same object, so edits cannot race with themselves. ``commit`` writes
-    each changed aggregate with the version it read (``replace_graph``), or as new (``add_graph``);
-    ``Conflict`` propagates from the first aggregate that changed meanwhile. Each aggregate is
-    committed atomically, the set of them is not: those committed before the conflict stay done.
-    The held objects keep the tracking they were read with; ``get`` again from a new unit of work
-    for the fresh values.
+    every added root, with the version it read (``replace_graph``) or as new (``add_graph``), and
+    removes every root passed to ``remove``, in one session transaction: all or nothing. On a
+    ``Conflict`` nothing is stored and nothing in the unit of work changes, so the caller can read
+    ``Conflict.iris``, ``get`` again from a new unit of work for the fresh values, and retry.
+    The held objects keep the tracking they were read with.
     """
 
     def __init__(self, session: Session, mapper: Mapper) -> None:
@@ -267,6 +267,7 @@ class UnitOfWork:
         self._objects: dict[str, BaseModel] = {}
         self._versions: dict[str, str] = {}  # of the roots that are stored
         self._dirty: set[str] = set()
+        self._removed: set[str] = set()
 
     async def get[M: BaseModel](self, cls: type[M], iri: str) -> M:
         """The root ``iri`` as an object of ``cls``.
@@ -288,26 +289,64 @@ class UnitOfWork:
         """Take a new root, or a changed one read here, to be written by the next ``commit``.
 
         Raises:
-            ValueError: ``obj`` is not an aggregate root or the tenant root.
+            ValueError: ``obj`` is not an aggregate root or the tenant root, or it was removed here.
         """
-        if not self._mapper.is_root(type(obj)):
-            raise ValueError(f"{type(obj).__name__} is not an aggregate root")
-        iri = str(getattr(obj, "id"))  # noqa: B009
+        iri = self._root_iri(obj)
+        if iri in self._removed:
+            raise ValueError(f"{iri} was removed in this unit of work")
         self._objects[iri] = obj
         self._dirty.add(iri)
 
-    async def commit(self) -> None:
-        """Write every added root.
+    def remove(self, obj: BaseModel) -> None:
+        """Take a root read here to be removed by the next ``commit``; it leaves the added ones.
 
         Raises:
-            Conflict: A new root already exists, or a read one changed since it was read.
+            ValueError: ``obj`` is not an aggregate root, or was not read by this unit of work.
         """
-        for iri in [i for i in self._objects if i in self._dirty]:
-            triples = self._mapper.to_triples(self._objects[iri])
-            if iri in self._versions:
-                self._versions[iri] = await self._session.replace_graph(
-                    iri, triples, self._versions[iri]
-                )
-            else:
-                self._versions[iri] = await self._session.add_graph(iri, triples)
-            self._dirty.discard(iri)
+        iri = self._root_iri(obj)
+        if iri not in self._versions:
+            raise ValueError(f"{iri} was not read by this unit of work; read it to remove it")
+        self._dirty.discard(iri)
+        self._removed.add(iri)
+
+    def version(self, iri: str) -> str:
+        """The version token of the stored root ``iri``, as read or as last committed here.
+
+        Raises:
+            LookupError: The root was not read or committed by this unit of work.
+        """
+        if iri not in self._versions:
+            raise LookupError(iri)
+        return self._versions[iri]
+
+    def _root_iri(self, obj: BaseModel) -> str:
+        if not self._mapper.is_root(type(obj)):
+            raise ValueError(f"{type(obj).__name__} is not an aggregate root")
+        return str(getattr(obj, "id"))  # noqa: B009
+
+    async def commit(self) -> None:
+        """Write every added root and remove every removed one, in one transaction, in the order
+        they were taken.
+
+        Raises:
+            Conflict: A new root already exists, or a read one changed since it was read; nothing
+                was written and this unit of work is unchanged.
+        """
+        order = [i for i in self._objects if i in self._dirty or i in self._removed]
+        written: dict[str, str] = {}
+        async with self._session.transaction() as transaction:
+            for iri in order:
+                if iri in self._removed:
+                    await transaction.remove(iri, self._versions[iri])
+                    continue
+                triples = self._mapper.to_triples(self._objects[iri])
+                if iri in self._versions:
+                    written[iri] = await transaction.replace_graph(
+                        iri, triples, self._versions[iri]
+                    )
+                else:
+                    written[iri] = await transaction.add_graph(iri, triples)
+        self._versions.update(written)
+        for iri in self._removed & self._objects.keys():  # stays in _removed: add stays refused
+            del self._objects[iri], self._versions[iri]
+        self._dirty.clear()

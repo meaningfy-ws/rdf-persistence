@@ -50,7 +50,7 @@ store. Before stage 1 the lead runs GitNexus impact on `Session.add_graph`, `rep
 | TC-13 | `t.replace_graph(A_str,…)` then `t.remove(URIRef(A_str),…)` | `ValueError` at the second call (claim keyed on the graph) |
 | TC-14 | fake store: `INSERT DATA {…} ; CREATE GRAPH <existing>` | `BadQuery`; the insert not visible (PD-13) |
 
-- [ ] 1.3 `UnitOfWork` on the transaction (PD-8, without batches), test first in
+- [x] 1.3 `UnitOfWork` on the transaction (PD-8, without batches), test first in
   `tests/unit/services/test_mapper_unit_of_work.py`; update the class docstring (all or nothing).
   Gates: `make test-changed`, `make check-quality`, `make clean-code`.
 
