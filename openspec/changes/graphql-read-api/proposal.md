@@ -5,6 +5,8 @@
 # EPIC: A read-only GraphQL API
 
 > Candidate EPIC, shaped 2026-11-06 from the v1 future list. Not planned: the PLAN (design.md, tasks.md) waits for the developer's answers in inputs/seed.md.
+>
+> **Backlog position (2026-11-12):** deferred by the developer (2026-11-06); unchanged. See `openspec/changes/README.md`.
 
 **Golden-thread parent:** capability `rp-service-api` and option C of
 `docs/modules/ROOT/pages/architecture/api.adoc` (decision D-1: "C is the backup for a later

@@ -71,6 +71,14 @@ Developer: "accept recommendations, and continue" (2026-11-06).
 - Accepted: a live event stream re-checks the caller's access when grants change.
 - Every question still open: the leader drafts a recommendation when the PLAN is derived, and the developer accepted recommendations by default (2026-11-06). Each one is recorded in the PLAN as the leader's choice, and the developer may overrule it.
 
+Developer (2026-11-13), answering "confirm the named need": "in general we want to support event
+driven applications with design patetrns and archietcture described in teh cosmis python book. so
+most likely yes, we need support for best pratices of event driven (adopt popular
+libraries/frameworks if necessary)"
+- Q-0 answered: yes. The lead re-shaped the EPIC (proposal.md, "Re-shaped 2026-11-13"): the
+  in-process plumbing moved to the new change `message-bus`; the broker library is FastStream,
+  Redis Streams first (DEC-6).
+
 ## Test scenarios the EPIC must prove
 
 - Create, replace and remove each record exactly one event, in the same update.

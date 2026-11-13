@@ -5,6 +5,8 @@
 # EPIC: Fine-grained access: OpenFGA and property- or triple-level access
 
 > Candidate EPIC, shaped 2026-11-06 from the v1 future list. Not planned: the PLAN (design.md, tasks.md) waits for the developer's answers in inputs/seed.md.
+>
+> **Backlog position (2026-11-12):** last. A comment's audience by role (collaboration EPIC, `rp-discussion`) is a separate, simpler check and is not replaced by this EPIC; property-level filtering must later cover the new reads `referrers`, `collections_of` and `thread`. See `openspec/changes/README.md`.
 
 **Golden-thread parent:** capability `rp-access` and
 `docs/modules/ROOT/pages/architecture/access-control.adoc` (decisions D-4, D-5; the section "How
