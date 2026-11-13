@@ -5,6 +5,9 @@
 
 > Shaped 2026-11-12 from issue #83. First in the backlog order (openspec/changes/README.md): the
 > collaboration EPIC, cross-aggregate unique keys and aggregate events build on its transaction.
+>
+> **Developer review 2026-11-13: all recommendations accepted** ("accept all recommendations"):
+> all-or-nothing commit with no flag, DEC-4 (limit 500, batch mode now), #76 folded in.
 
 **Golden-thread parent:** issues #83 and #76; capability `rp-aggregate-store` (one named graph per
 aggregate; stale writes are refused with a guarded update confirmed by an `ASK`).

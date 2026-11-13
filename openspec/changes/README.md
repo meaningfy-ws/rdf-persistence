@@ -71,6 +71,11 @@ after an attack; until then it is the planner's own score.
 
 ### Readiness and what the developer reviews (2026-11-13)
 
+**Reviewed 2026-11-13: the developer accepted every recommendation** ("accept all
+recommendations"), the review items of the table below included. Each proposal carries a
+"Developer review 2026-11-13" note; `message-bus` DEC-13 and `aggregate-events` DEC-10 record the
+event decisions.
+
 Every PLAN below was attacked and clarity-gated by a reviewer who did not write it; the findings
 are recorded in the PLAN's last gate PD. "Ready" means it can go to an epic session now; the
 review items are decisions the lead took on the developer's behalf and the developer may overrule.

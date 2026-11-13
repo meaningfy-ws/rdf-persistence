@@ -114,6 +114,13 @@ the toolkit's features needs no layer 3.
   planned (developer, 2026-11-13); the version tokens in the records are what a later version
   history would resolve.
 
+- **DEC-13** (developer, 2026-11-13, "accept all recommendations"): DEC-10 and DEC-11 confirmed.
+  Activity records are kept when their resource is deleted; the collaboration EPIC's transition
+  records follow this once adopted (first Rabbit-hole, now decided). Personal data in records (the
+  principal) is accepted for now; a purge per principal comes when a consumer needs erasure.
+  Observers run right after the commit, inside the same request (the book's way); slow work goes to
+  the broker. No route to read an aggregate's history in this EPIC.
+
 ## Rabbit-holes
 
 - **Collaboration's records.** `TransitionRecord` (collaboration EPIC) becomes the layer-2

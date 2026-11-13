@@ -7,6 +7,13 @@
 > Shaped 2026-11-12 from four consumer issues. Planned 2026-11-12: the PLAN is `design.md` +
 > `tasks.md`.
 >
+> **Developer review 2026-11-13: all recommendations accepted** ("accept all recommendations"):
+> PD-1 (the `Collaboration` service), PD-11, PD-15 with RISK-3 (deleting a resource deletes its
+> comments and records, a consumer's own `oa:Annotation`s included), RISK-8 accepted (a hidden
+> member's IRI can be learnt, never its content), the PD-8 cascade limit, Q-1 no, Q-2 no. Also
+> decided: once `message-bus` adopts `TransitionRecord` as `Transition`, transition records are
+> kept as audit (`message-bus` DEC-10); until then this PLAN deletes them as planned.
+>
 > **Note 2026-11-13 (no change to this PLAN):** the later change `message-bus` adopts this EPIC's
 > `TransitionRecord` (`is_a: Activity`) as its layer-2 command `Transition`, and comments and
 > membership changes as layer-2 commands. Whether transition records are deleted with their

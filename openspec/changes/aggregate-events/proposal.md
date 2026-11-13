@@ -73,6 +73,12 @@ tenant over server-sent events, seeing only events about what it may read.
   DEC-12): references and version tokens, never the aggregate's triples. A subscriber reads the
   content with its own rights. Event-carried state (fat messages) is not in this EPIC; if a consumer
   ever needs it, it is an opt-in per aggregate class with its own decision.
+- **DEC-10** (developer, 2026-11-13, "accept all recommendations"): the activity record (kept,
+  `message-bus` DEC-10) **is** the outbox entry; a "published" mark replaces a separate outbox. The
+  relay is a background task of the service, single instance; several instances need a lease,
+  deferred. Server-sent-events clients resume (`Last-Event-ID`) within 7 days. DEC-6 (FastStream,
+  Redis Streams first) is confirmed; messages travel as the generated JSON with a link to the
+  JSON-LD context. Tenant-level events stay out (system database).
 
 ## Rabbit-holes
 

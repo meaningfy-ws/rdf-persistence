@@ -7,6 +7,9 @@
 > Candidate EPIC, shaped 2026-11-06 from the v1 future list; re-shaped and planned 2026-11-12
 > (see "Re-shaped 2026-11-12" below). The PLAN is design.md + tasks.md. Starts after
 > `atomic-commit` is merged.
+>
+> **Developer review 2026-11-13: all recommendations accepted** ("accept all recommendations"):
+> PD-2, PD-8, PD-9, PD-11.
 
 **Golden-thread parent:** capability `rp-aggregate-store` (requirement "Stale writes are refused")
 and the deferred building block "Unique keys across aggregates" of

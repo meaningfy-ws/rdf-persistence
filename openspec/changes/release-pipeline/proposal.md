@@ -7,6 +7,10 @@
 
 > Shaped 2026-11-06 from the v1 future list; re-shaped and planned 2026-11-12 (see "Re-shaped
 > 2026-11-12" below). PLAN: design.md, tasks.md.
+>
+> **Developer review 2026-11-13: all recommendations accepted** ("accept all recommendations"):
+> PD-1 (`main` moved to the tag by hand), PD-4 (CHANGELOG by hand), PD-5 (PyPI jobs removed), PD-9
+> (0.2.0 cut by the first run), and the lead may merge the 0.2.0 release PR on green CI.
 
 **Golden-thread parent:** the `meaningfy-release` policy and capability `rp-package-boundaries`
 (requirement "Consumers use the public API only", the surface SemVer protects). It lifts the v1

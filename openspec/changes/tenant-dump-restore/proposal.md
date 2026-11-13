@@ -4,6 +4,10 @@
 
 # EPIC: Dump a tenant and restore it into a new one
 
+> **Developer review 2026-11-13: all recommendations accepted** ("accept all recommendations"):
+> every leader's choice below stands, DEC-2 (IRIs rewritten, glued templates refused) and DEC-4
+> (grants not dumped) included.
+>
 > Shaped 2026-11-10; open questions answered by the leader on 2026-11-12 (inputs/seed.md, "Leader's
 > recommendations"); the developer may overrule any DEC marked "leader's choice". First of the four
 > tenancy candidates (`tenant-dump-restore`, `app-level-data`, `tenant-stores`, `second-store`); its
