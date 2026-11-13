@@ -181,13 +181,30 @@ session do (`create` only shares `_new_record` and calls `free_tenant` by its pu
     once the decompressed bytes pass `max_bytes` plus `HEADER_ALLOWANCE` (4 tar records); it bounds every read,
     headers included.
   Rejected: `creator` typed as the verified caller (L1 S4; the kit takes principal IRIs as strings
+  everywhere); see the full list below.
+- **PD-14** (checker, after PD-13). Accepted: the per-member charge counts the member's padding to
+  the next tar block (`member.size` rounded up to `BLOCKSIZE`, plus the header block), so the
+  budget and the counting wrapper agree and an honest archive under `max_restore_bytes` is never
+  refused; the spec deltas state format v1's `end` member, the refusal of an archive cut short or
+  with anything after `end`, and the `max_restore_bytes` refusal; the data-flows diagram shows the
+  as-built flow (`Tenancy.restore` draws, rewrites, checks; `tenant_dump` reads the archive and
+  its end); the how-to introduces `path`; the conformance cases name TC-01..TC-03; the end-marker
+  test runs `dump`; a GNU long-name header over budget is tested; the `TenantDump` description no
+  longer says "another deployment" (DEC-3: same policy); this design's sketch shows the PD-13
+  flow. The developer confirmed on 2026-11-13: restore stays structure-only (PD-13), and the
+  acceptance demo is skipped.
+- Rejected at PD-13 (kept for the record): `creator` typed as the verified caller (L1 S4; the kit takes principal IRIs as strings
   everywhere); trimming error details (L1 S2, L4 S5; the caller uploaded the archive); CI on more
   Python versions (L4 W3 b; the end marker removes the dependency on tarfile internals); further
   splitting of `tenant_dump.py` (L3 S3).
 
 ## Algorithm / approach
 
-## Algorithm / approach
+As built after PD-13: `dump` also writes an empty final member `end`; in `restore` the archive is
+read through a counting wrapper bounded by `max_bytes`, each member is charged before it is read,
+`Tenancy.restore(parsed, source_tenant_id, blobs, creator)` draws the tenant, rewrites, checks
+graphs and the root and writes, and the blob iterator ends by requiring `end` and draining the gzip
+trailer. The sketch below is the PD-3..PD-7 shape it grew from.
 
 ```python
 async def dump(tenancy, store, files, iris, view, tenant, out):
