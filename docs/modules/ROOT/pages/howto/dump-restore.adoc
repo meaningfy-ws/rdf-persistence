@@ -1,13 +1,14 @@
 = Back up or copy a project
 :description: How to dump a tenant to one archive and restore it as a new tenant: the two calls, how to route them, the archive format, what is left out, the limits and the errors.
 
-_How do I back up or copy a project? How do I move its data into a new one?_
+_How do I back up or copy a project? How do I make a new project from an old one's data?_
 
 A tenant (a project) is a database of named graphs and a bucket of files. `kit.dump_tenant` writes
 both to one archive. `kit.restore_tenant` reads such an archive and creates a *new* tenant out of it,
-with a new id and new IRIs. This page shows the two calls, how to guard them, what the archive holds
-and what it leaves out, and the limits you must respect. It describes `develop` as of 2026-11-13
-(the change `tenant-dump-restore`). The flows, step by step, are on
+with a new id and new IRIs. A restored backup is therefore a copy, not the original back: a link to
+an IRI of the old tenant does not reach the copy. This page shows the two calls, how to guard them,
+what the archive holds and what it leaves out, and the limits you must respect. It describes `develop`
+as of 2026-11-13 (the change `tenant-dump-restore`). The flows, step by step, are on
 xref:architecture/data-flows.adoc#dump-restore[Where data lives and what each operation does].
 
 [#calls]
@@ -15,6 +16,12 @@ xref:architecture/data-flows.adoc#dump-restore[Where data lives and what each op
 
 [source,python]
 ----
+from rdf_persistence import Action   # used in the next section
+
+# kit: the ServiceKit that install_service returned (see step 12 of the adoption guide)
+# tenant: the tenant IRI, such as kit.tenant_iri(tenant_id)
+# principal: the principal IRI of the person who will own the copy
+
 with open("library.rpdump", "wb") as out:
     manifest = await kit.dump_tenant(tenant, out)               # -> TenantDump
 
@@ -22,8 +29,17 @@ with open("library.rpdump", "rb") as src:
     copy = await kit.restore_tenant(src, creator=principal)    # -> TenantSummary
 ----
 
-`tenant` is the tenant's IRI and `creator` is a principal IRI. `out` and `src` are binary file
-objects: a file, a `BytesIO`, or anything with `write` or `read`.
+* `kit` is the `ServiceKit` that `install_service` returns. How to get it is in
+  xref:howto/adopt.adoc#serve[Serve the application].
+* `tenant` is the tenant's *IRI*. A route has only the tenant *id* from the URL; turn it into the IRI
+  with `kit.tenant_iri(tenant_id)`, or take it from the check in <<routing>>.
+* `creator` and `principal` are a principal IRI, as in
+  xref:howto/adopt.adoc#access[Control access].
+* `out` and `src` are binary file objects: a temporary file, a `BytesIO`, or any object with `write` or
+  `read`. A stream that cannot seek is fine: the archive is written and read once, front to back.
+* Both calls read and write `out` and `src` with ordinary blocking calls, so they hold the event
+  loop while they do. Run them off it (a worker thread, or a job queue) when the service handles other
+  requests.
 
 * *`dump_tenant(tenant, out)`* writes the tenant's graphs and blobs to `out` and answers the
   manifest (the archive's first member).
@@ -31,10 +47,11 @@ objects: a file, a `BytesIO`, or anything with `write` or `read`.
   new tenant's IRI). It never writes over an existing tenant. To replace a tenant, delete it, then
   restore.
 * The new tenant has a *new id and new IRIs*: every IRI of the old tenant that holds its id is
-  rewritten to hold the new one, so the copy can live beside the original. Its label is the one in
-  the dumped root.
-* `creator` is the only grantee of the new tenant, with the settings' `creator_role`, as when you
-  create a tenant.
+  rewritten to hold the new one (minted by the xref:howto/adopt.adoc#iri-policy[IRI policy]), so the
+  copy can live beside the original. Anything outside your data that points at an old IRI, a link in
+  an e-mail or another system, points at the original, not the copy.
+* `creator` is the only grantee of the new tenant, with the settings' `creator_role`
+  (see xref:howto/adopt.adoc#tenancy[Create tenants]), as when you create a tenant.
 
 [#routing]
 == 2. Route them
@@ -43,7 +60,9 @@ Both calls are Python only and unguarded, like `kit.sweep_tenant`. You decide wh
 toolkit has no HTTP route for them, because archives are large and who may copy a project is your
 policy.
 
-*A dump* reads the whole tenant, so check `administer` on it first, as you do for grants:
+*A dump* reads the whole tenant, so check `administer` on it first, as you do for grants. `t` is the
+tenant id from the URL; `require` checks the caller against it and answers the tenant's IRI in
+`checked.caller_access.tenant`, which is what `dump_tenant` takes:
 
 [source,python]
 ----
@@ -73,13 +92,17 @@ One gzipped tar. The members come in this order, and restore reads them in this 
 |Member |Content
 
 |`manifest.json`
-|The `TenantDump` record, as JSON.
+|The `TenantDump` record, as JSON. At most 64 KiB.
 
 |`graphs.nq`
 |Every named graph of the tenant's database as plain N-Quads, so any triple store tool can read it.
 
 |`blobs/<key>`
 |One regular file per blob of the tenant's bucket, named by its key. Zero or more.
+
+|`end`
+|An empty regular file, always last. It shows that the dump finished: an archive without it, or with
+anything after it, was cut short and is refused.
 |===
 
 The manifest holds:
@@ -98,14 +121,17 @@ The manifest holds:
 |The installed `rdf-persistence` version, or `unknown` when run from an uninstalled source tree.
 
 |`schema_id`, `schema_version`
-|The schema the data conforms to. `schema_version` is empty when the schema declares no `version`.
+|The schema the data conforms to. `schema_version` is absent (`null`) when the schema declares no
+`version`. A LinkML schema declares it in its top-level `version:` key.
 
 |`source_tenant`, `source_tenant_id`
 |The IRI and the id of the tenant that was dumped.
 
 |`label`
-|The tenant's label in its access record, for a person choosing among dumps. Restore does not use
-it: the new tenant takes the label of the dumped root.
+|The tenant's label in its *access record*, for a person choosing among dumps. The restored tenant
+does not take it: it takes the label of the dumped *root* (the tenant's root object, which holds the
+label the tenant answers with). The two differ only if a rename was cut short between writing the root
+and the record.
 
 |`iri_policy`
 |The effective IRI policy of the service that made the dump.
@@ -118,7 +144,7 @@ The format is a contract: a change to it raises `format_version`.
 
 * *The access record and its grants and prohibitions.* They live in the system database, and
   principals and roles differ between deployments. The restorer alone gets the creator role in the
-  new tenant; grant the others afterwards.
+  new tenant; grant the others afterwards. See xref:architecture/access-control.adoc[Access control].
 * *Anything outside the tenant's own database and bucket*, such as your application's data in other
   stores.
 
@@ -126,12 +152,13 @@ The format is a contract: a change to it raises `format_version`.
 == 5. Limits
 
 *Same IRI policy.* Restore refuses a dump made under another effective IRI policy (base, deployment
-slug, templates, id rules) and names the fields that differ. A dump moves between tenants of one
-deployment, or between deployments that share a policy.
+slug, templates, id rules) and names the fields that differ. A dump restores into the deployment that
+made it, or into one that shares its policy.
 
 *Same schema id and version.* Restore refuses a dump of another schema id or version. *Declare a
-`version` in your schema*: without one, two versions of the schema cannot be told apart, and a dump
-of an older one restores without complaint and fails later, when a replace breaks its shapes.
+`version` in your schema's top-level `version:` key*: without one, two versions of the schema cannot
+be told apart, and a dump of an older one restores without complaint and fails later, when a replace
+breaks its shapes.
 
 *No template that glues the tenant id to a letter or digit.* The rewrite replaces the old id where
 it stands between delimiters (a character other than a letter or digit, or the end of the IRI). It
@@ -139,20 +166,34 @@ works for templates such as `{base}{tenant_id}-{id}` or `{tenant}.meta`. It cann
 touches a letter, a digit or another variable, so restore refuses such a policy and names the
 templates.
 
+*Restore checks structure, not content.* Restore checks the graph names, the root, the blob keys and
+the manifest. It does not check each aggregate against its shapes, and it keeps an IRI that names
+another tenant inside an accepted graph as it is. Restore only archives your own deployment wrote, or
+that come from a party you trust as much as a person who may create a tenant. Do not restore an
+archive an outsider uploaded.
+
+*A size budget.* Restore reads at most `max_restore_bytes` of decompressed archive (a setting; the
+default is 1 GiB, set it on `ServiceSettings`), counting each member's size plus the tar block, and
+checks each member's size before reading it. A dump of a larger tenant needs a larger setting. This
+bounds a hostile archive; it is not a guarantee that an honest tenant fits.
+
 *The graphs are held in memory.* The N-Quads of the whole tenant are read into memory at once, in the
 dump and again, parsed, in the restore. Blobs are streamed one at a time. Size the process's memory
 to your largest tenant.
 
-*Stop writes for an exact copy.* The graphs are read in one go and are consistent with each other.
-The blobs are copied after, as they are found. A write during the dump can leave a blob the graphs do
-not name, or the other way round, and a blob deleted between the listing and its read is left out
-(logged, step `dump-blob-gone`). There is no snapshot across the store and the bucket.
+*Stop writes for an exact copy.* The toolkit has no write freeze: it cannot stop your application
+from writing to the tenant while a dump runs. The graphs are read in one go and are consistent with
+each other. The blobs are copied after, as they are found. A write during the dump can leave a blob
+the graphs do not name, or the other way round, and a blob deleted between the listing and its read is
+left out (logged, step `dump-blob-gone`). There is no snapshot across the store and the bucket. For an
+exact copy, stop writes to the tenant before the dump (your application's job).
 
 *No deploy and no restart during a restore.* A restore can take minutes. The new database and bucket
-exist before the access record does, and the start-up sweep drops any database or bucket that no
-record names. A service instance that starts meanwhile would drop the half-made tenant. The restore
-checks that both still exist before it writes the record and fails with `PersistenceError` if not.
-A sweep in the milliseconds between that check and the record write is not caught.
+exist before the access record does, and the start-up sweep (see
+xref:howto/adopt.adoc#tenancy[Create tenants]) drops any database or bucket that no record names. A
+service instance that starts meanwhile would drop the half-made tenant. The restore checks that both
+still exist before it writes the record and fails with `PersistenceError` if not. A sweep in the
+milliseconds between that check and the record write is not caught.
 
 *A rare id clash.* An object id, or a principal's `sub`, equal to the source tenant id is rewritten
 too. With random ids this is negligible. The rewrite is the same everywhere, so references stay
@@ -161,30 +202,86 @@ consistent, and a result that no longer fits the policy is refused.
 [#errors]
 == 6. What a caller sees
 
-[cols="1,4",options="header"]
+Over HTTP the toolkit answers each error with a status (the table of
+xref:architecture/data-flows.adoc#rules[Rules]; `problem_for` in `entrypoints/problems.py` builds the
+body). The calls here are Python, so they raise the errors, and a route of yours maps them the same
+way:
+
+[cols="1,1,4",options="header"]
 |===
-|Error |Meaning
+|Error |Status |Meaning
+
+|`InvalidToken`
+|401
+|`kit.gate.caller` or `kit.require`: no bearer token, or one the verifier refuses.
+
+|`Forbidden`
+|403
+|`kit.require`: the caller may see the tenant but may not `administer` it.
 
 |`NotFound`
-|Dump: the tenant has no access record.
+|404
+|Dump: the tenant has no access record. (`kit.require` raises it too when the tenant is not visible
+to the caller.)
 
 |`Conflict`
-|Dump: the tenant is being deleted. Nothing is written to `out`.
+|409
+|Dump: the tenant is being deleted. Restore: the id it drew for the new tenant was taken by a
+concurrent create before the database existed; nothing was written, call again.
 
 |`InvalidBody`
-|Restore: the archive is not a dump this service can restore. Causes: not a gzipped tar; a first
-member that is not `manifest.json`, or a second that is not `graphs.nq`; a manifest that does not
-validate; another format version, schema id or version, or IRI policy; a policy that glues the id; a
-quad in the default graph or in a graph the policy does not mint for a tenant; a root that is
-missing or that a root validator refuses; a member among the blobs that is not a regular file under
-`blobs/`. Nothing is created, except for a bad blob, which is found while the blobs stream in: the
-new database and bucket are then dropped.
+|422
+|Restore: the archive is not a dump this service can restore. See the table below.
 
 |`PersistenceError`
+|500
 |Restore: the store or the object store failed, or the new database or bucket vanished during the
 restore (see the limit above). What was created is dropped, best effort, and no record is written.
-A restore cut short by a crash leaves a database and bucket that the next start-up sweep drops.
+A restore cut short by a crash leaves a database and bucket that the next start-up sweep drops. A
+store that cannot be reached raises its own error (`StoreUnavailable`, 503) unchanged.
 |===
 
-A dump whose store is unreachable raises the store's error unchanged, and `out` may hold a partial
-archive: discard it.
+*What `out` holds after a failed dump.* `NotFound` and `Conflict` are raised before anything is
+written, so `out` is untouched. A failure of the store or the object store mid-way leaves a partial
+archive in `out`: discard it. (It has no `end` member, so a restore refuses it anyway.)
+
+*Why a restore refuses (`InvalidBody`).* Every cause, and what exists afterwards:
+
+[cols="3,2",options="header"]
+|===
+|Cause |What exists afterwards
+
+|Not a gzipped tar; a first member that is not `manifest.json`, or a second that is not `graphs.nq`;
+a member that is not a regular file; a member name that is not UTF-8
+|Nothing created.
+
+|A manifest over 64 KiB, or one that does not validate
+|Nothing created.
+
+|Another format version, schema id or version, or IRI policy; a policy that glues the id
+|Nothing created.
+
+|A manifest whose `source_tenant_id` is not the id of its `source_tenant`
+|Nothing created.
+
+|A quad in the default graph or in a graph the policy does not mint for a tenant; a root that is
+missing, does not decode, or that a root validator refuses
+|Nothing created.
+
+|More decompressed bytes than `max_restore_bytes`, found before the blobs
+|Nothing created.
+
+|A member among the blobs that is not a regular file under `blobs/`; a blob key with a `.` or `..`
+segment, a key twice, a name that is not UTF-8, or a key the object store refuses
+|The new database and bucket are created, then dropped. No record.
+
+|The blobs not followed by the `end` member, anything after it, or a gzip stream that does not end
+properly (an unterminated or truncated archive)
+|Dropped, as above.
+
+|More decompressed bytes than `max_restore_bytes`, found among the blobs
+|Dropped, as above.
+|===
+
+A failure while the access record itself is written (the last step) leaves the new database and
+bucket in place with no record; the next start-up sweep drops them.
