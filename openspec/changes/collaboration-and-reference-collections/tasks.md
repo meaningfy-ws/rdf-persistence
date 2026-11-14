@@ -48,7 +48,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-12 | bob prohibited `read` on s1, `referrers(s1)` | `Forbidden` (as `require`) |
 | TC-13 | b1's own graph names s1 in the tracking (`dcterms:creator` is about the graph) | not a referrer row |
 
-- [ ] 1.3 On Fuseki: `tests/integration/store/test_collaboration.py`; gate
+- [x] 1.3 On Fuseki: `tests/integration/store/test_collaboration.py`; gate
   `make test-containers TEST_PATH=tests/integration/store/test_collaboration.py`.
 
 | ID | Input | Expected |
@@ -56,7 +56,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | IT-01 | TC-03 and TC-04 | as there |
 | IT-02 | TC-05 | as there |
 
-- [ ] 1.4 Docs (PD-23): `howto/reverse-references.adoc`, nav, `questions.adoc` ("Who points at
+- [x] 1.4 Docs (PD-23): `howto/reverse-references.adoc`, nav, `questions.adoc` ("Who points at
   this resource?"); `make check-docs`. Close the stage (header).
 
 ## 2. Reference collections (#79)
