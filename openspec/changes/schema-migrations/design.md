@@ -409,3 +409,46 @@ None.
   6. *A step's `?s ?p ?o` also matches a registry graph* (the tester's "not checked"). PD-5 gains
      a third filter: a graph that holds registry statements (`?x rp:kind ?k`) is not a step's to
      change, as the stamps graph and loaded graphs are not.
+- **PD-22 The review of stage 1 (four reviewers, 2026-11-14: L1, L2, L3, and L4 with L5 as one
+  pass, as `develop/agents.adoc` says for this repository).** No blocker. Accepted:
+  1. *The prefixed-name check still scanned text and could be passed* (`FILTER(?o<rdf:x||?p>1)`
+     read as an IRI; rdflib resolves `rdf:` by default, a store would refuse it at start-up). The
+     check reads the parse tree for prefixed names; no text scan is left (L1).
+  2. *Turning untrusted pattern text into SPARQL had no single home.* The pattern checks move to
+     `domain/sparql.py` as one function that answers a `SparqlTerm` or raises; `load_migration`
+     calls it, and nothing else makes a `SparqlTerm` from a file's text. This narrows PD-17's
+     "`domain/sparql.py` only builds text" (L3). The parse and the walk get separate `try` blocks,
+     so a defect in the walk is not reported as the developer's syntax error (L4).
+  3. *A step could delete or write the toolkit's own predicates* (`rp:version`, `rp:kind`, the
+     stamp's) in a data graph and so break the token rotation or hide a graph from later steps.
+     A delete or insert template that names one is refused (L1).
+  4. *The file-name rule of PD-4 was written twice.* One `migration_file_name` in
+     `services/migrations.py`, imported by the generation step (L1, L3, L4).
+  5. *Reading a YAML file into a model was copied from the workflow loader.* One shared helper in
+     `services`, with the duplicate-key refusal, used by both loaders (L4).
+  6. *The drafted drop built SPARQL with f-strings.* It uses `term(URIRef(...))` (L1).
+  7. *The new hard checks had no rule id.* They get `HardRule` values and a row in the rule
+     catalogue, and name the target (L2, L3).
+  8. *`Migration.schema_id` reused the dump's slot and its IRI.* The slot becomes a neutral
+     `rp:schemaId`; a dump is a JSON file, so nothing stored changes (L3).
+  9. *The generation docs contradict what PR 1 ships.* The `adopt.adoc` example and its
+     required keys, and the keys and pipeline table of `architecture/generation.adoc`, change in
+     PR 1; the how-to stays in stage 3 (L2).
+  10. Smaller ones, all accepted: a lock that is not UTF-8 and a schema with no source file give a
+      problem, not a traceback; the draft is created exclusively (no race, no symlink followed);
+      messages are cut to a bounded length; the stored classes are computed once per summary; the
+      renamed-root case runs through `rp-generate` and asserts "not migratable"; tests that
+      accepted two outcomes or any exception assert one; the non-adversarial new tests follow the
+      checklist's one-idea-per-assert rule; the hard-check function is renamed for what it checks.
+  **Not accepted:** an enum for `root_database` (the lock's schema is technical and does not
+  import `rp_core`); caching the lock between the check and the write step (the render steps load
+  the schema the same way); replacing the request-text tests (the applied tests are the proof,
+  the text tests are cheap). **Routed elsewhere:** a literal holding backslash-u is mis-rendered by
+  `domain/sparql.py` for every write, older than this change: a repository issue, not a fix here;
+  the refusal of such versions stays until it is closed. **For stage 2:** the runner goes in its
+  own module, `services/migration_runner.py` (L3: `migrations.py` already has the file, the
+  request and the chain).
+- **D-7 What PR 1 carries beyond D-5 (lead).** Also `first_version`, `pending_from`, the
+  `tenant_behind` problem and its mapping: no caller yet, the stage 2 runner uses them. TC-01 is
+  amended: the lock holds no toolkit class that a root does not own (PD-3, "reachable through
+  inlined slots"; the toy lock holds `MembershipRule` and `SlotEquality` through `Shelf`).
