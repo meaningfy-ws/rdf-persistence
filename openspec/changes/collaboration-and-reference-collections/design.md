@@ -688,6 +688,86 @@ delivers.
   to whoever may read it; a foreign aggregate typed `rp:TransitionRecord` that does not decode
   is left out of `transitions` and goes with the aggregate it names; a status on a part is not
   the root's state; a workflow file no class uses is accepted.
+- **PD-32** (stage 4 challenge, 2026-11-14; four review passes on PR #100). Accepted, fixed
+  before the merge. Security first:
+  1. **The state is guarded through the class, in both directions** (L1 C1, L4/L5 W3 and S1,
+     L2 W2; replaces PD-31 item 1's rule). PD-31 took the workflow from the stored class, which
+     left a three-write path: retype the aggregate to a class under no workflow (the state was
+     kept), write again (no workflow, so the state was dropped), retype back (no state: it
+     reads as the initial one). Through the generic API this needed only `modify`, where the
+     schema serves a superclass without a workflow. And refusing every `adms:status` on a
+     class under no workflow, as PD-31 did, would break an application whose own classes use
+     that property. The rule now, with S the workflow of the stored root's types and N that of
+     the written ones (a set of types under two workflows is refused outright):
+     - add: N none → written as it is (the application's own `adms:status` is its own); N a
+       workflow → no state (the initial one is set) or the initial one, else `Forbidden`;
+     - replace, S none and N none → written as it is;
+     - replace, S a workflow → N must be the same workflow, else `Forbidden` (an aggregate
+       under a workflow keeps a class under it); then the stored state is kept when none is
+       written, the stored one passes, another is `Forbidden` unless the transaction allows it;
+     - replace, S none and N a workflow (the aggregate takes a class under a workflow) → it
+       may hold no state and write none, else `Forbidden`; it then has no state until its
+       first transition (PD-22).
+     One read of the stored types and state per guarded replace, as before. The spec says so.
+  2. **A stale write is a conflict, not a refusal of the state** (L4/L5 W2, L1 S3). When the
+     workflow rule refuses a replace and the stored version is not the one the caller read,
+     the answer is `Conflict` naming the root (the client read an older state; 409, not 403).
+     `transition` compares the version it read with `if_version` first and answers `Conflict`.
+     The order of checks of a commit is otherwise unchanged.
+  3. **A Prohibition of `annotate` refuses a transition's comment** (L1 W1): the role on the
+     edge stands in for the right to comment, not for an explicit ban; without it a silenced
+     user with a transition role could post into the thread through a self-edge.
+  4. A workflow `id` is checked with the IRI rule the SPARQL layer uses
+     (`domain/sparql.FORBIDDEN_IRI_CHARS`), and may not end with `#`; two classes that share a
+     class IRI and name different workflows are refused at start; the rejected input echoed in
+     an `InvalidWorkflow` text is cut to a short length (L4/L5 W1 and S9, L1 S1 and S2).
+
+  Structure:
+  5. A test pins the callers of `Transaction._allow_state` (`services/transitions.py`),
+     `_require_match` (`services/reference_collections.py`) and `_require_present`
+     (`services/discussion.py`) (L3 W1). The import contract on `services.session` becomes a
+     layers contract over the collaboration modules (L3 S2). One helper in
+     `schema_structure.py` says which workflow a class follows, used by the build check and at
+     run time (L3 S5). `Workflows.from_files(paths, view, rules)` replaces the parallel `files`
+     argument (L3 S3, L4/L5 S9). `Session.objects_of` goes (L3, L4/L5 W5, L2 S9). One
+     `decode_typed` helper for "typed X, then decode or none" (L4/L5 S5). The set of
+     toolkit-written classes is computed once (L4/L5 S6). `Collaboration` and `Workflows` are
+     exported from the package: the kit returns one and exposes the other (L3).
+  6. The fix hint of the `WORKFLOW` hard rule for a class that is no aggregate root says what
+     to do (L4/L5 W6). `transition` says "unknown state" for a `to` that is no state of the
+     workflow (L4/L5 S8).
+
+  Spec, tests and docs:
+  7. The spec says what is built: the file rules, the state as an IRI with no stored statement
+     about it, the class rule of item 1, system-level token roles, a blank comment, the
+     Prohibition of `annotate`, a stale version (L2 W1 to W3, S1, S2). PD-16's "url_segment
+     pattern" for state names is superseded by D-10 item 1.
+  8. Tests: the three-write path through the generic routes and through a session; the
+     decision table of the guard as one parametrised test (L4/L5 S3); an application's own
+     `adms:status` on a class under no workflow, in a service with workflows; a subclass that
+     inherits the workflow through a guarded session and a transition (L2 W5); an aggregate of
+     another class with a `prov:used` link is a referrer (L2 W6); messages on the stage's
+     message-less asserts and the chained ones split (L2 W7); the assertions that cannot fail
+     (L2 S5); the scenario "names the transition" pinned (L2 S4).
+  9. Docs: the how-to (finding aggregates by state only as far as the code is tested to do it;
+     changing `initial_state` and renaming a workflow; the "offer the moves" snippet for a book
+     with no state; `PreconditionRequired`; the cost sentence; a record is also a referrer of
+     its comment; an application's own `adms:status`; a restored archive carries states and
+     records as they are, L1 S4); `data-flows.adoc`'s cost and rule (L2 W4).
+  10. Error matrix rows: two stored states (`StoredDataInvalid`; repaired only by a direct
+      write to the store, L4/L5 W4); a class change of an aggregate under a workflow
+      (`Forbidden`); a stale version on a plain write that would change the state (`Conflict`).
+
+  Rejected: letting a plain replace narrow two stored states to one (L4/L5 W4: that state
+  comes from raw writes, and choosing between two states is a state change); making the
+  `workflows` argument required everywhere (L3 S4, L4/L5 S4: test churn, the kit always passes
+  it); moving `mint_iri` and `moment_of` out of `discussion.py` (L3 S1: `transitions` depends
+  on `discussion` by the model anyway). Accepted as cost: a transition reads the store five
+  times and writes once (L4/L5 S7); fewer reads would mean a wider private transaction API.
+  For the docs stage (L3): `architecture/generation.adoc` (nine metamodel modules, the
+  `WORKFLOW` and reserved-segment rules), `index.adoc` (the collaboration component, the
+  public API table), `access-control.adoc` (how a transition is permitted), `data-flows.adoc`
+  (a transition's request).
 
 ## Delivery decisions
 
@@ -912,6 +992,13 @@ ada `comment(b1, "thanks", reply_to=c2)` → `c3`.
 | Two transitions racing from one version | one wins, the other `Conflict` |
 | Stored state dropped from the workflow file | readable; transitions from it `Conflict`; plain writes pass |
 | `transition` on a class with no workflow | `InvalidBody` |
+| An aggregate with two stored states (raw triples) | `transition` is `StoredDataInvalid`; a plain write keeps both; repaired only by a direct write to the store (PD-32) |
+| A replace that gives an aggregate under a workflow a class under none, or under another workflow, or no class | `Forbidden`; nothing written (PD-32 item 1) |
+| A replace that gives a class under a workflow to an aggregate that holds or writes a state | `Forbidden` (PD-32 item 1) |
+| `adms:status` on an aggregate whose class is under no workflow | the application's own; written as given (PD-32 item 1) |
+| A plain write that would change the state, at a version that is no longer current | `Conflict` naming the aggregate, not `Forbidden` (PD-32 item 2) |
+| `transition` with a comment by a caller prohibited `annotate` | `Forbidden`; nothing written (PD-32 item 3) |
+| Workflow file: an `id` that is no clean absolute IRI or ends with `/` or `#`, a state listed twice, a transition with no role, two workflows with one `id`, not UTF-8, too deeply nested | `InvalidWorkflow` at kit start, naming the file (PD-31 item 5, PD-32 item 4) |
 | Session opened with `open_session` and no guards | no state or collection checks (documented) |
 | The store fails during any transaction | one request: nothing written; the store's error raised |
 

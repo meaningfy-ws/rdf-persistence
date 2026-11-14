@@ -37,6 +37,7 @@ from rdf_persistence.services.schema_structure import (
     keyed_slots,
     presence_alternatives,
     served_roots,
+    workflow_name_of,
 )
 
 ROOT = Path(__file__).parents[3]
@@ -446,6 +447,49 @@ def test_a_root_the_toolkit_writes_is_no_served_root_but_keeps_its_iri_type() ->
     view = SchemaView(TOOLKIT_WRITTEN)
     assert [root.name for root in served_roots(view)] == ["Book"], "the note is not served"
     assert iri_types(view)[0] == {"note", "book"}, "but its IRIs are minted and recognised"
+
+
+WORKFLOWS = (
+    HEAD
+    + """
+classes:
+  Item:
+    title: Item
+    description: A base that names a workflow.
+    annotations: {workflow: review}
+  Novel:
+    title: Novel
+    description: Inherits it.
+    is_a: Item
+  Essay:
+    title: Essay
+    description: Names its own.
+    is_a: Item
+    annotations: {workflow: other}
+  Blank:
+    title: Blank
+    description: A blank annotation counts for nothing.
+    is_a: Item
+    annotations: {workflow: ""}
+  Plain:
+    title: Plain
+    description: Names none.
+"""
+)
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("Item", "review"),
+        ("Novel", "review"),
+        ("Essay", "other"),
+        ("Blank", "review"),
+        ("Plain", None),
+    ],
+)
+def test_the_workflow_of_a_class_is_the_first_name_up_its_is_a_chain(name, expected) -> None:
+    assert workflow_name_of(SchemaView(WORKFLOWS), name) == expected, name
 
 
 def test_a_root_under_a_system_database_ancestor_is_no_served_root() -> None:

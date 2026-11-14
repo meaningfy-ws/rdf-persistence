@@ -168,7 +168,9 @@ async def version(session: Session, iri: str) -> str:
 
 
 async def status_of(session: Session, iri: str) -> list[str]:
-    return sorted(map(str, await session.objects_of(iri, v.WORKFLOW_STATUS)))
+    return sorted(
+        map(str, (await session.root_values(iri, [v.WORKFLOW_STATUS]))[v.WORKFLOW_STATUS])
+    )
 
 
 async def records_of(session: Session, iri: str) -> list[str]:
@@ -206,11 +208,15 @@ async def test_a_librarian_moves_a_book_and_gets_the_new_version(session, ada, b
     assert new != first, "and it is a new one"
 
 
-@pytest.mark.parametrize("to", ["accepted", "nonsense"])
+@pytest.mark.parametrize(
+    ("to", "said"),
+    [("accepted", r"draft.*accepted"), ("nonsense", r"'nonsense' is an unknown state")],
+    ids=["a-state-with-no-edge-from-here", "no-state-of-the-workflow"],
+)
 async def test_a_move_the_workflow_has_not_is_a_conflict_naming_both_states(
-    session, ada, books, to
-):  # TC-83
-    with pytest.raises(Conflict, match=rf"draft.*{to}"):
+    session, ada, books, to, said
+):  # TC-83; PD-32 item 6: a `to` that is no state says so
+    with pytest.raises(Conflict, match=said):
         await go(ada, session, to)
     assert await status_of(session, B1) == [DRAFT], "b1 stays in draft"
 
@@ -255,8 +261,14 @@ async def test_each_move_is_recorded_with_its_agent_time_and_comment(
         first, second = await p1.transitions(B1)
         [ready] = await p1.thread(B1)
     assert (first.was_associated_with, second.was_associated_with) == ([ADA], [BOB]), "the agents"
-    assert (first.started_at_time, second.started_at_time) == (T0, T0 + timedelta(minutes=1))
-    assert (first.used_resource, first.from_state_iri, first.to_state_iri) == (B1, DRAFT, IN_REVIEW)
+    assert (first.started_at_time, second.started_at_time) == (T0, T0 + timedelta(minutes=1)), (
+        "the times are the session's clock"
+    )
+    assert (first.used_resource, first.from_state_iri, first.to_state_iri) == (
+        B1,
+        DRAFT,
+        IN_REVIEW,
+    ), "the first move is of b1, from draft to in review"
     assert (second.from_state_iri, second.to_state_iri) == (IN_REVIEW, ACCEPTED), "the states"
     assert first.transition_comment == ready.id, "the first names the comment of the thread"
     assert ready.body_value == "ready", "which holds the text"
@@ -314,7 +326,7 @@ async def test_a_book_stored_before_its_class_named_the_workflow_starts_from_the
     await put(plain, dune(B1, chapters=1))
     assert await status_of(session, B1) == [], "it has no state"
     await go(ada, session, "in_review")
-    assert await status_of(session, B1) == [IN_REVIEW]
+    assert await status_of(session, B1) == [IN_REVIEW], "the first transition gives it a state"
     [record] = await ada.transitions(B1)
     assert record.from_state_iri == DRAFT, "the move was from the initial state"
 

@@ -79,6 +79,18 @@ def annotation(element: object, tag: RpAnnotation) -> str | None:
     return None if text is None else text.lower()
 
 
+def workflow_name_of(view: SchemaView, class_name: str) -> str | None:
+    """The workflow the class follows: the first non-empty ``workflow`` annotation up its ``is_a`` chain, as written."""
+    return next(
+        (
+            text
+            for ancestor in view.class_ancestors(class_name, mixins=False)
+            if (text := annotation_text(view.get_class(ancestor), RpAnnotation.WORKFLOW))
+        ),
+        None,
+    )
+
+
 def flag(element: object, tag: RpAnnotation) -> bool:
     """True when the element's annotation ``tag`` is ``true``."""
     return annotation(element, tag) == _TRUE

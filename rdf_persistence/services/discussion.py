@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 
 from linkml_runtime.linkml_model.meta import ClassDefinition
 from linkml_runtime.utils.schemaview import SchemaView
+from pydantic import BaseModel
 from rdflib import RDF, Graph, URIRef
 
 from rdf_persistence.domain.exceptions import InvalidBody, InvalidIri, NotFound, UnknownRole
@@ -53,6 +54,19 @@ def mint_iri(cls: ClassDefinition, iris: Iris, tenant: str) -> str:
     if path is None:
         raise LookupError(f"the class {cls.name} has no rp_path")
     return str(iris.mint_aggregate(tenant, iri_type_of(cls), path))
+
+
+def decode_typed[M: BaseModel](
+    mapper: Mapper, model: type[M], type_iri: URIRef, iri: str, graph: Graph
+) -> M | None:
+    """The ``model`` at the root ``iri`` of ``graph``, or None when the root is not typed ``type_iri``
+    or the class refuses the triples (a foreign aggregate that borrows the type)."""
+    if (URIRef(iri), RDF.type, type_iri) not in graph:
+        return None
+    try:
+        return mapper.from_graph(model, iri, graph, graph_iri(iri))
+    except ValueError:  # pydantic's refusal of the triples
+        return None
 
 
 def visible(comments: Iterable[Comment], roles: AbstractSet[str]) -> list[Comment]:
@@ -127,6 +141,12 @@ class Discussion:
         self._mapper = mapper
         self._caller = caller
         self._access = access
+        # the classes the toolkit writes, other than the web annotation an application may write too
+        self._written = {
+            view.get_uri(c, expand=True)
+            for c in view.all_classes().values()
+            if is_toolkit_written(c)
+        } - {str(v.ANNOTATION)}
 
     async def comment(
         self,
@@ -226,12 +246,7 @@ class Discussion:
 
     def _toolkit_written(self, iri: str, graph: Graph) -> bool:
         """True when the root is typed with a toolkit-written class other than the web annotation."""
-        written = {
-            self._view.get_uri(c, expand=True)
-            for c in self._view.all_classes().values()
-            if is_toolkit_written(c)
-        } - {str(v.ANNOTATION)}
-        return any(str(t) in written for t in graph.objects(URIRef(iri), RDF.type))
+        return any(str(t) in self._written for t in graph.objects(URIRef(iri), RDF.type))
 
     def _require_valid(self, text: str, audience: Sequence[str], references: Sequence[str]) -> None:
         if not text.strip():
@@ -267,9 +282,4 @@ class Discussion:
     def _decode(self, iri: str, graph: Graph) -> Comment | None:
         """The comment at ``iri``, or None for a root that is not one: not typed as a web annotation,
         or another's annotation that the comment class refuses (no text, no motivation; PD-29)."""
-        if (URIRef(iri), RDF.type, v.ANNOTATION) not in graph:
-            return None
-        try:
-            return self._mapper.from_graph(Comment, iri, graph, graph_iri(iri))
-        except ValueError:  # pydantic's refusal of the triples
-            return None
+        return decode_typed(self._mapper, Comment, v.ANNOTATION, iri, graph)

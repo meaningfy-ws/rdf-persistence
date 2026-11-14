@@ -489,7 +489,9 @@ def as_librarian(collaboration, who: str = ADA):
 
 
 async def status_of(session: Session, iri: str) -> list[str]:
-    return sorted(map(str, await session.objects_of(iri, v.WORKFLOW_STATUS)))
+    return sorted(
+        map(str, (await session.root_values(iri, [v.WORKFLOW_STATUS]))[v.WORKFLOW_STATUS])
+    )
 
 
 async def records_of(session: Session, iri: str) -> list[str]:
@@ -533,7 +535,11 @@ async def test_two_principals_move_a_book_and_each_move_is_recorded(
     [ready] = await p1.thread(B1)
     assert (first.was_associated_with, second.was_associated_with) == ([ADA], [BOB]), "the agents"
     assert first.started_at_time <= second.started_at_time, "in order"
-    assert (first.used_resource, first.from_state_iri, first.to_state_iri) == (B1, DRAFT, IN_REVIEW)
+    assert (first.used_resource, first.from_state_iri, first.to_state_iri) == (
+        B1,
+        DRAFT,
+        IN_REVIEW,
+    ), "the first move is of b1, from draft to in review"
     assert (second.from_state_iri, second.to_state_iri) == (IN_REVIEW, ACCEPTED), "the states"
     assert first.transition_comment == ready.id, "the first names the comment of the thread"
     assert ready.body_value == "ready", "which holds the text"

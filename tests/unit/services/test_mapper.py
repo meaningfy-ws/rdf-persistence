@@ -254,8 +254,12 @@ def test_a_comment_names_the_states_of_the_transition_that_posted_it():
     )
     mapper = toy_mapper()
     graph = mapper.to_graph(comment)
-    assert (URIRef(iri), URIRef(f"{RP}fromState"), URIRef(f"{REVIEW}/in_review")) in graph
-    assert (URIRef(iri), URIRef(f"{RP}toState"), URIRef(f"{REVIEW}/draft")) in graph
+    assert (URIRef(iri), URIRef(f"{RP}fromState"), URIRef(f"{REVIEW}/in_review")) in graph, (
+        "the state the comment is made in"
+    )
+    assert (URIRef(iri), URIRef(f"{RP}toState"), URIRef(f"{REVIEW}/draft")) in graph, (
+        "the state it is made towards"
+    )
     back = mapper.from_graph(Comment, iri, graph, graph_iri(iri))
     assert untracked(back) == untracked(comment), "the same comment comes back"
 
@@ -276,16 +280,16 @@ def test_a_transition_record_with_every_slot_round_trips_typed_rp_transition_rec
     graph = mapper.to_graph(record)
     assert (URIRef(iri), RDF.type, URIRef(f"{RP}TransitionRecord")) in graph, "the stored type"
     assert (URIRef(iri), RDF.type, URIRef(f"{PROV}Activity")) not in graph, "not the superclass"
-    assert (URIRef(iri), URIRef(f"{PROV}used"), URIRef(book_iri(1))) in graph
-    assert (URIRef(iri), URIRef(f"{PROV}wasAssociatedWith"), URIRef(ADA)) in graph
+    assert (URIRef(iri), URIRef(f"{PROV}used"), URIRef(book_iri(1))) in graph, "the aggregate"
+    assert (URIRef(iri), URIRef(f"{PROV}wasAssociatedWith"), URIRef(ADA)) in graph, "the agent"
     assert (
         URIRef(iri),
         URIRef(f"{RP}transitionComment"),
         URIRef(record.transition_comment),
-    ) in graph
-    assert (URIRef(iri), URIRef(f"{RP}fromState"), URIRef(f"{REVIEW}/draft")) in graph
-    assert (URIRef(iri), URIRef(f"{RP}toState"), URIRef(f"{REVIEW}/in_review")) in graph
-    assert (URIRef(iri), URIRef(f"{PROV}startedAtTime"), None) in graph
+    ) in graph, "the comment"
+    assert (URIRef(iri), URIRef(f"{RP}fromState"), URIRef(f"{REVIEW}/draft")) in graph, "from"
+    assert (URIRef(iri), URIRef(f"{RP}toState"), URIRef(f"{REVIEW}/in_review")) in graph, "to"
+    assert (URIRef(iri), URIRef(f"{PROV}startedAtTime"), None) in graph, "the time"
     back = mapper.from_graph(TransitionRecord, iri, graph, graph_iri(iri))
     assert untracked(back) == untracked(record), "the same record comes back"
 
@@ -305,19 +309,19 @@ def test_the_workflow_file_of_the_toy_validates_into_the_generated_model():
     """PD-17: the file is the model's own shape; the loader itself is task 4.2."""
     text = (TOY_SCHEMA.parent / "review.workflow.yaml").read_text(encoding="utf-8")
     workflow = Workflow.model_validate(yaml.safe_load(text))
-    assert workflow.id == REVIEW and workflow.workflow_name == "review"
-    assert workflow.workflow_states == ["draft", "in_review", "accepted"]
-    assert workflow.initial_state == "draft"
-    assert len(workflow.workflow_transitions) == 3
+    assert workflow.id == REVIEW, "the identifier"
+    assert workflow.workflow_name == "review", "the name"
+    assert workflow.workflow_states == ["draft", "in_review", "accepted"], "the states"
+    assert workflow.initial_state == "draft", "the initial state"
+    assert len(workflow.workflow_transitions) == 3, "the transitions"
     back = workflow.workflow_transitions[2]
     assert (back.from_state, back.to_state, back.transition_roles) == (
         "in_review",
         "draft",
         ["librarian"],
-    )
-    assert (
-        back.comment_required is True and workflow.workflow_transitions[0].comment_required is False
-    )
+    ), "the last one goes back to draft for a librarian"
+    assert back.comment_required is True, "and needs a comment"
+    assert workflow.workflow_transitions[0].comment_required is False, "the first does not"
 
 
 def test_a_grant_assignee_that_is_an_iri_string_is_written_and_read_as_an_iri():

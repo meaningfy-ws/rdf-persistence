@@ -21,7 +21,7 @@ from pydantic import BaseModel
 from rdflib import RDF, BNode, Graph, Literal, URIRef
 from rdflib.query import ResultRow
 
-from rdf_persistence.domain.exceptions import Conflict, InvalidIri, NotFound
+from rdf_persistence.domain.exceptions import Conflict, Forbidden, InvalidIri, NotFound
 from rdf_persistence.domain.generated.rp_annotations import Tracked
 from rdf_persistence.domain.generated.rp_core import (
     AggregateKey,
@@ -94,7 +94,6 @@ SELECT ?version ?created ?creator ?contributor WHERE {
 }
 """
 READ_GRAPH = "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH $graph { ?s ?p ?o } }"
-READ_OBJECTS = "SELECT ?o WHERE { GRAPH $graph { $iri $predicate ?o } }"
 READ_ROOT_VALUES = "SELECT ?p ?o WHERE { GRAPH $graph { $iri ?p ?o FILTER (?p IN ($predicates)) } }"
 READ_NAMED_KEYS = (
     "SELECT DISTINCT ?key WHERE { GRAPH ?g { ?s $p_file_key ?key } FILTER (?key IN ($keys)) }"
@@ -633,21 +632,6 @@ class Session:
             for r in rows
         ]
 
-    async def objects_of(self, iri: str, predicate: URIRef) -> list[URIRef | Literal | BNode]:
-        """What the aggregate ``iri`` states with ``predicate`` of its root, sorted; none if it is not stored.
-
-        Raises:
-            DatabaseGone: The tenant database does not exist.
-        """
-        text = fill(
-            READ_OBJECTS,
-            graph=term(self._graph(iri)),
-            iri=term(URIRef(iri)),
-            predicate=term(predicate),
-        )
-        rows = await self._store.query(self._database, text)
-        return sorted(cast(URIRef | Literal | BNode, r.o) for r in rows if isinstance(r, ResultRow))
-
     async def root_values(
         self, iri: str, predicates: Sequence[URIRef]
     ) -> dict[URIRef, set[URIRef | Literal | BNode]]:
@@ -813,7 +797,9 @@ class Session:
                 graph is not one it mints for ``iri`` or is owned by another aggregate; nothing is
                 written.
             NotFound: The aggregate has no graph.
-            Conflict: Its version is not ``if_version``; nothing changed.
+            Conflict: Its version is not ``if_version``; nothing changed. This also answers a write
+                the guards would refuse for its state when the version is not ``if_version``.
+            Forbidden: The write guards refuse the state or the class of an aggregate under a workflow.
             KeyConflict: Another aggregate of the tenant holds a value of a key the aggregate claims.
             InvalidBody: A key slot has two values or more; nothing is written.
         """
@@ -1047,12 +1033,19 @@ class Transaction:
         session = self._session
         graph = self._claim(iri)
         await session._check_commit(iri, loaded_graphs or [])
-        _, stored = await session._stored(graph)
+        found, stored = await session._stored(graph)
         triples = list(triples)
         if session._write_guards is not None:
-            triples = await session._write_guards.prepare(
-                session, iri, triples, stored, self._allowed.get(str(iri))
-            )
+            try:
+                triples = await session._write_guards.prepare(
+                    session, iri, triples, stored, self._allowed.get(str(iri))
+                )
+            except Forbidden as refusal:
+                if (
+                    found != if_version
+                ):  # the client read an older state: a conflict, not a refusal (PD-32)
+                    raise Conflict(changed_text(str(iri), found), iris=(str(iri),)) from refusal
+                raise
         key_claims = claims_of(session._keys, iri, triples)
         if loaded_graphs is None:
             loaded_graphs = await session._registered_loaded(iri)
@@ -1193,10 +1186,7 @@ class Transaction:
         root, read_at = self._roots[graph], self._read_at[graph]
         if read_at is None:
             return None if found is None else f"{root} already exists"
-        if found == read_at:
-            return None
-        who = "changed" if found is not None else "removed"
-        return f"{root} was {who} by someone else since it was read"
+        return None if found == read_at else changed_text(root, found)
 
     def _reasons(self, found: dict[URIRef, str | None]) -> dict[str, str]:
         """Root -> why the commit was refused for it, in the order of the sorted roots: the changes
@@ -1224,6 +1214,12 @@ class Transaction:
             or "the commit lost a race with another writer; read again and retry",
             iris=tuple(reasons),
         )
+
+
+def changed_text(root: str, found: str | None) -> str:
+    """Why a write read at an older version is refused for ``root``, which now has version ``found`` (none: removed)."""
+    who = "changed" if found is not None else "removed"
+    return f"{root} was {who} by someone else since it was read"
 
 
 def _items(name: str, value: object) -> list[object]:

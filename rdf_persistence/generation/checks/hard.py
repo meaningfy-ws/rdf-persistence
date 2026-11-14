@@ -43,6 +43,7 @@ from rdf_persistence.services.schema_structure import (
     own_schemas,
     owned_classes,
     tenant_database_roots,
+    workflow_name_of,
 )
 
 # The metaslot each element rule requires: a rule id is not an attribute name.
@@ -275,20 +276,8 @@ def _workflow_problems(
     tag = RpAnnotation.WORKFLOW.value
     ancestors = view.class_ancestors(cls.name)
     if annotation_text(cls, RpAnnotation.WORKFLOW) is not None:
-        fix = f"a {tag} is on an aggregate root that is not the tenant root; "
-        if is_tenant_root(cls):
-            yield rule_problem(
-                HardRule.WORKFLOW, cls.name, f"the tenant root has no workflow: remove {tag}"
-            )
-        elif AGGREGATE_ROOT not in ancestors:
-            yield rule_problem(
-                HardRule.WORKFLOW, cls.name, f"{fix}remove {tag} or include AggregateRoot"
-            )
-        elif UNDER_WORKFLOW not in ancestors:
-            yield rule_problem(
-                HardRule.WORKFLOW, cls.name, f"{tag} needs the mixin: include {UNDER_WORKFLOW}"
-            )
-    elif cls in roots and UNDER_WORKFLOW in ancestors and not _inherited_workflow(view, cls):
+        yield from _annotated_workflow_problems(cls, ancestors)
+    elif cls in roots and UNDER_WORKFLOW in ancestors and workflow_name_of(view, cls.name) is None:
         yield rule_problem(
             HardRule.WORKFLOW,
             cls.name,
@@ -296,9 +285,26 @@ def _workflow_problems(
         )
 
 
-def _inherited_workflow(view: SchemaView, cls: ClassDefinition) -> bool:
-    ancestry = view.class_ancestors(cls.name, mixins=False)
-    return any(annotation(view.get_class(name), RpAnnotation.WORKFLOW) for name in ancestry)
+def _annotated_workflow_problems(
+    cls: ClassDefinition, ancestors: list[str]
+) -> Iterator[CheckProblem]:
+    """A class that names a workflow is an aggregate root, not the tenant root, with the mixin."""
+    tag = RpAnnotation.WORKFLOW.value
+    if is_tenant_root(cls):
+        yield rule_problem(
+            HardRule.WORKFLOW, cls.name, f"the tenant root has no workflow: remove {tag}"
+        )
+    elif AGGREGATE_ROOT not in ancestors:
+        yield rule_problem(
+            HardRule.WORKFLOW,
+            cls.name,
+            f"a {tag} goes only on an aggregate root (not the tenant root): "
+            f"remove {tag} or include AggregateRoot",
+        )
+    elif UNDER_WORKFLOW not in ancestors:
+        yield rule_problem(
+            HardRule.WORKFLOW, cls.name, f"{tag} needs the mixin: include {UNDER_WORKFLOW}"
+        )
 
 
 def _class_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[CheckProblem]:

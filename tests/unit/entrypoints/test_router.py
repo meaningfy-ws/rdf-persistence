@@ -457,7 +457,9 @@ async def test_a_book_created_in_another_state_is_a_403_and_stores_nothing(scene
     response = await scene.http.post(
         listed, json={**DUNE_BODY, "workflow_status": ACCEPTED}, headers=scene.headers("ada")
     )
-    assert (response.status_code, problem_of(response).type) == (403, f"{PROBLEMS}forbidden")
+    assert (response.status_code, problem_of(response).type) == (403, f"{PROBLEMS}forbidden"), (
+        "a refusal: a book is created in the initial state only"
+    )
     after = (await scene.http.get(listed, headers=scene.headers("ada"))).json()["total"]
     assert after == before, "nothing was stored"
 
@@ -468,7 +470,9 @@ async def test_a_put_cannot_change_the_state_of_a_book(scene) -> None:  # TC-78
         json={**DUNE_BODY, "workflow_status": ACCEPTED},
         headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
     )
-    assert (response.status_code, problem_of(response).type) == (403, f"{PROBLEMS}forbidden")
+    assert (response.status_code, problem_of(response).type) == (403, f"{PROBLEMS}forbidden"), (
+        "a refusal: only a transition changes the state"
+    )
     stored = await scene.http.get(scene.book, headers=scene.headers("ada"))
     assert (stored.json()["workflow_status"], stored.headers["etag"]) == (DRAFT, scene.book_etag), (
         "the book is in draft and unchanged"

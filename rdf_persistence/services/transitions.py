@@ -20,14 +20,14 @@ from rdf_persistence.domain.generated.rp_workflow import (
     WorkflowTransition,
 )
 from rdf_persistence.domain.generated.service.rp_service import CallerAccess, VerifiedCaller
-from rdf_persistence.domain.iris import Iris, graph_iri
+from rdf_persistence.domain.iris import Iris
 from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
-from rdf_persistence.services.discussion import mint_iri, moment_of
+from rdf_persistence.services.discussion import decode_typed, mint_iri, moment_of
 from rdf_persistence.services.mapper import Mapper
-from rdf_persistence.services.session import Dependents, Session
-from rdf_persistence.services.workflows import Workflows, state_iri
+from rdf_persistence.services.session import Dependents, Session, changed_text
+from rdf_persistence.services.workflows import SHOWN, Workflows, state_iri
 
 RECORD = "TransitionRecord"
 COMMENT = "Comment"
@@ -78,25 +78,32 @@ class Transitions:
         Raises:
             LookupError: The schema does not import the module rp_workflow.
             NotFound: The caller can see nothing of ``iri``, or ``iri`` has no graph.
-            Forbidden: The caller may see ``iri`` but not read it; ``modify`` is prohibited on it; or
-                none of the roles on the edge is the caller's.
+            Forbidden: The caller may see ``iri`` but not read it; ``modify`` is prohibited on it;
+                ``annotate`` is prohibited on it and a comment that is not blank is given; or none
+                of the roles on the edge is the caller's.
             InvalidBody: ``iri`` is under no workflow; or the edge needs a comment and ``comment``
                 is none or blank.
-            Conflict: The workflow has no edge from the current state to ``to`` (a stored state the
-                file no longer lists has none); or the version is not ``if_version``, or ``iri`` was
-                removed meanwhile; nothing was stored.
-            StoredDataInvalid: ``iri`` holds more than one state; nothing was stored.
+            Conflict: The version of ``iri`` is not ``if_version`` (checked first, so it hides every
+                refusal below it), or ``iri`` was removed meanwhile; or the workflow has no edge from
+                the current state to ``to``, or ``to`` is no state of it (a stored state the file no
+                longer lists has none); nothing was stored.
+            StoredDataInvalid: ``iri`` holds more than one state, or classes under more than one
+                workflow; nothing was stored.
             DatabaseGone: The tenant database does not exist.
         """
         self._require_module()
         self._rules.require(self._caller, self._access, iri, Action.READ)
         if self._rules.prohibits(self._caller, self._access, iri, Action.MODIFY):
             raise Forbidden("modify is prohibited")
-        graph, _, _ = await self._session.get_graph(iri)
+        comment = comment if comment and comment.strip() else None  # a blank one is none
+        if comment and self._rules.prohibits(self._caller, self._access, iri, Action.ANNOTATE):
+            raise Forbidden("annotate is prohibited")
+        graph, _, held = await self._session.get_graph(iri)
+        if held != if_version:  # the caller read an older state: say so before anything about it
+            raise Conflict(changed_text(iri, held), iris=(iri,))
         workflow = self._workflow_of(iri, graph)
         current = _current(workflow, iri, graph)
         edge = self._edge(workflow, iri, current, to)
-        comment = comment if comment and comment.strip() else None  # a blank one is none
         if edge.comment_required and comment is None:
             raise InvalidBody(f"the move to {to} needs a comment")
         return await self._store(iri, graph, workflow, current, to, comment, if_version)
@@ -125,16 +132,22 @@ class Transitions:
 
     def _workflow_of(self, iri: str, graph: Graph) -> Workflow:
         found = (
-            self._workflows.for_iri(str(t))
-            for t in graph.objects(URIRef(iri), RDF.type)
+            self._workflows.of_types(graph.objects(URIRef(iri), RDF.type))
             if self._workflows is not None
+            else []
         )
-        if (workflow := next((w for w in found if w is not None), None)) is None:
+        if not found:
             raise InvalidBody(f"{iri} is not under a workflow")
-        return workflow
+        if len(found) > 1:
+            raise StoredDataInvalid(f"{iri} has classes under more than one workflow")
+        return found[0]
 
     def _edge(self, workflow: Workflow, iri: str, current: str, to: str) -> WorkflowTransition:
         """The edge from ``current`` to the state ``to`` that the caller may take."""
+        if to not in workflow.workflow_states:
+            raise Conflict(
+                f"{to[:SHOWN]!r} is an unknown state of the workflow {workflow.workflow_name}"
+            )
         edge = next(
             (
                 e
@@ -196,12 +209,7 @@ class Transitions:
 
     def _decode(self, iri: str, graph: Graph) -> TransitionRecord | None:
         """The record at ``iri``, or None for a root that is not one (not typed so, or one the class refuses)."""
-        if (URIRef(iri), RDF.type, v.TRANSITION_RECORD) not in graph:
-            return None
-        try:
-            return self._mapper.from_graph(TransitionRecord, iri, graph, graph_iri(iri))
-        except ValueError:  # pydantic's refusal of the triples
-            return None
+        return decode_typed(self._mapper, TransitionRecord, v.TRANSITION_RECORD, iri, graph)
 
 
 def _current(workflow: Workflow, iri: str, graph: Graph) -> str:

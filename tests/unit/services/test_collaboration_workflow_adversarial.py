@@ -19,7 +19,7 @@ import pytest
 import yaml
 from rdflib import RDF, XSD, BNode, Literal, URIRef
 
-from rdf_persistence import Action, UnitOfWork
+from rdf_persistence import Action, UnitOfWork, generated_models
 from rdf_persistence.domain.exceptions import (
     Conflict,
     Forbidden,
@@ -31,6 +31,7 @@ from rdf_persistence.domain.exceptions import (
     StoreUnavailable,
 )
 from rdf_persistence.domain.generated.rp_access import Grant
+from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_workflow import TransitionRecord, WorkflowTransition
 from rdf_persistence.domain.generated.service.rp_service import CallerAccess, TenantState
 from rdf_persistence.domain.iris import DEFAULT_IRIS
@@ -48,11 +49,13 @@ from rdf_persistence.services.session import Session, Transaction
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.services.transitions import Transitions
 from rdf_persistence.services.workflows import Workflows, load_workflow, state_iri
+from rdf_persistence.services.write_guards import WriteGuards
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import (
     ADA,
     BOB,
+    MODULES,
     REVIEW_WORKFLOW,
     ROLES,
     TENANT,
@@ -316,7 +319,9 @@ TYPE_CHANGES = [
 async def test_a_replace_that_changes_the_type_cannot_write_a_state(
     store, session, books, replace, types
 ):
-    """The builder derives the workflow from the type in the triples being written (PD-19)."""
+    """PD-32 item 1: the workflow is that of the STORED class, and an aggregate under a workflow
+    keeps a class under it. Dropping the type, or a record or annotation type, is refused by that
+    rule; a shelf type is refused first by the collection check, as these triples are no shelf."""
     seen = await snapshot(session, store)
     with pytest.raises((Forbidden, InvalidBody)):
         await replace(session, B1, typed(B1, ACCEPTED, types=types))
@@ -338,18 +343,51 @@ async def test_a_writer_cannot_strip_the_type_write_a_state_and_restore_the_type
     assert (await snapshot(session, store))[2:4] == seen[2:4], "and nothing was recorded"
 
 
+@pytest.mark.parametrize("types", [(v.ANNOTATION,), ()], ids=["an-annotation-type", "no-type"])
+@pytest.mark.parametrize("replace", REPLACES, ids=named)
+async def test_the_three_write_path_is_closed_at_its_first_step(
+    store, session, ada, books, replace, types
+):
+    """PD-32 item 1: retype to a class under no workflow (the state was kept), write again (no workflow:
+    the state was dropped), retype back (no state, so the initial one). The first step is refused now.
+
+    Shown through a session and its transactions. The generic routes cannot show it on the toy: a
+    route fixes the class of its body, and the toy serves no superclass without a workflow above a
+    class with one; the rule is the one below the routes (``Aggregates`` writes through a session)."""
+    await go(ada, session, "in_review")
+    seen = await snapshot(session, store)
+    with pytest.raises(Forbidden, match="keeps a class under it"):
+        await replace(session, B1, typed(B1, types=types))
+    assert await snapshot(session, store) == seen, "the book is as the transition left it"
+    assert await status_of(session, B1) == [IN_REVIEW], "still in review, not back in draft"
+
+
 @pytest.mark.parametrize("add", ADDS, ids=named)
-async def test_a_book_cannot_be_added_without_its_type_in_a_state_and_replaced_with_it(
+async def test_an_application_own_status_on_a_class_under_no_workflow_is_written(session, add):
+    """PD-32 item 1 (turns round PD-31): a shelf follows no workflow, so its adms:status is the application's."""
+    own, another = (URIRef(f"https://example.org/own/{name}") for name in ("open", "closed"))
+    root = URIRef(S1)
+    triples = toy_mapper().to_triples(shelf(S1))
+    await add(session, S1, [*triples, (root, v.WORKFLOW_STATUS, own)])
+    assert await status_of(session, S1) == [str(own)], "written on add"
+    await replace_by_session(session, S1, [*triples, (root, v.WORKFLOW_STATUS, another)])
+    assert await status_of(session, S1) == [str(another)], "and on replace"
+    await replace_by_session(session, S1, list(triples))
+    assert await status_of(session, S1) == [], "a replace without it drops it, as any slot"
+
+
+@pytest.mark.parametrize("add", ADDS, ids=named)
+async def test_a_root_added_without_a_class_in_a_state_cannot_become_a_book_holding_it(
     session, add
 ):
-    """The same hole through an add: untyped, so no workflow, then typed with the state it holds."""
-    try:
-        await add(session, B1, typed(B1, ACCEPTED, types=()))
+    """PD-32 item 1: an untyped root is no book, so its state is its own (written as given); taking
+    the class of a workflow while holding a state is refused, so it never becomes a book in accepted."""
+    await add(session, B1, typed(B1, ACCEPTED, types=()))
+    with pytest.raises(Forbidden, match="holds no state"):
         await replace_by_session(session, B1, typed(B1, ACCEPTED))
-    except (Forbidden, InvalidBody):
-        pass
-    heads = await session.objects_of(B1, v.WORKFLOW_STATUS)
-    assert [str(h) for h in heads] != [ACCEPTED], "a book never starts in accepted"
+    held = await session.root_values(B1, [RDF.type, v.WORKFLOW_STATUS])
+    assert held[RDF.type] == set(), "the root still has no class"
+    assert {str(s) for s in held[v.WORKFLOW_STATUS]} == {ACCEPTED}, "and its own state, as written"
 
 
 async def test_a_book_typed_with_the_workflow_class_and_another_takes_no_state(session):
@@ -468,6 +506,174 @@ async def test_the_generic_put_cannot_change_the_type_of_a_book(toy, extra):
     assert response.status_code in (400, 403, 422), response.text
     stored = await scene.http.get(scene.book, headers=scene.headers("ada"))
     assert stored.json()["workflow_status"] == DRAFT, "the book is in draft"
+
+
+# -- 1e. finding aggregates by state (PD-32 item 9: the how-to says only what this test shows) ----
+
+
+async def test_session_find_filters_the_books_of_a_state(session, ada, books):
+    await go(ada, session, "in_review")
+    book = type(dune(B1))
+    assert await session.find(book, workflow_status=IN_REVIEW) == [B1], "b1 moved"
+    assert await session.find(book, workflow_status=DRAFT) == [B2], "b2 did not"
+    assert await session.find(book, workflow_status=ACCEPTED) == [], "none is accepted"
+
+
+# -- 1d. a `to` that is no state of the workflow (PD-32 item 6) ---------------------------------
+
+
+@pytest.mark.parametrize("to", ["archived", "DRAFT", "", ACCEPTED, DRAFT, " draft"])
+async def test_a_target_that_is_no_state_name_of_the_workflow_is_a_conflict_saying_so(
+    session, ada, books, to
+):
+    with pytest.raises(Conflict, match="unknown state") as refused:
+        await go(ada, session, to)
+    assert "review" in str(refused.value), "it names the workflow"
+    assert await status_of(session, B1) == [DRAFT], "the book stays in draft"
+
+
+async def test_a_state_of_the_workflow_with_no_edge_from_here_is_still_a_missing_transition(
+    session, ada, books
+):
+    with pytest.raises(Conflict, match="no transition from") as refused:
+        await go(ada, session, "accepted")
+    assert "unknown state" not in str(refused.value), "accepted is a state"
+
+
+# -- 1c. a Prohibition of annotate refuses a transition's comment (PD-32 item 3) ----------------
+
+SILENCED = [
+    pytest.param([ban(Action.ANNOTATE, graph_of(B1))], id="ban-on-the-aggregate"),
+    pytest.param([ban(Action.ANNOTATE)], id="ban-on-the-tenant"),
+]
+
+
+@pytest.mark.parametrize("bans", SILENCED)
+async def test_a_transition_with_a_comment_by_a_caller_prohibited_annotate_is_forbidden(
+    store, rules, session, books, bans
+):
+    silenced = make(rules, session, ADA, [role("librarian")], bans=bans)
+    seen = await snapshot(session, store)
+    with pytest.raises(Forbidden, match="annotate"):
+        await silenced.transition(
+            B1, "in_review", if_version=await version(session, B1), comment="ready"
+        )
+    assert await snapshot(session, store) == seen, "no state, no record, no comment"
+
+
+@pytest.mark.parametrize("bans", SILENCED)
+@pytest.mark.parametrize("comment", [None, "", "   "], ids=["none", "empty", "blank"])
+async def test_a_transition_without_a_comment_by_a_caller_prohibited_annotate_passes(
+    rules, session, books, bans, comment
+):
+    silenced = make(rules, session, ADA, [role("librarian")], bans=bans)
+    await silenced.transition(
+        B1, "in_review", if_version=await version(session, B1), comment=comment
+    )
+    assert await status_of(session, B1) == [IN_REVIEW], "the book moved"
+    assert await comments_on(session, B1) == [], "with no comment in the thread"
+
+
+# -- 1b. a stale write is a conflict, not a refusal of the state (PD-32 item 2) -----------------
+
+
+async def replace_stale(
+    session: Session, iri: str, triples: list[Triple], read: str, *, by
+) -> None:
+    if by == "session":
+        await session.replace_graph(iri, triples, read)
+        return
+    async with session.transaction() as transaction:
+        await transaction.replace_graph(iri, triples, read)
+
+
+@pytest.mark.parametrize("by", ["session", "transaction"])
+async def test_a_replace_of_the_body_read_before_a_transition_is_a_conflict_not_a_refusal(
+    store, session, ada, books, by
+):
+    """The reviewer's scenario: read in draft; another writer moves it to in_review; the body read
+    (in draft) is written back. It would change the state, but the client only read an older one."""
+    read = await version(session, B1)
+    await go(ada, session, "in_review")
+    seen = await snapshot(session, store)
+    with pytest.raises(Conflict, match="changed by someone else since it was read") as refused:
+        await replace_stale(session, B1, typed(B1, DRAFT), read, by=by)
+    assert refused.value.iris == (B1,), "the conflict names the aggregate"
+    assert not isinstance(refused.value, Forbidden), "it is no refusal of the state"
+    assert await snapshot(session, store) == seen, "nothing changed"
+
+
+@pytest.mark.parametrize("by", ["session", "transaction"])
+async def test_a_stale_replace_the_guards_do_not_refuse_is_still_refused_by_the_commit(
+    store, session, ada, books, by
+):
+    read = await version(session, B1)
+    await go(ada, session, "in_review")
+    seen = await snapshot(session, store)
+    with pytest.raises(Conflict, match="changed by someone else since it was read"):
+        await replace_stale(
+            session, B1, typed(B1), read, by=by
+        )  # no state written: the stored one is kept
+    assert await snapshot(session, store) == seen, "nothing changed"
+
+
+@pytest.mark.parametrize("by", ["session", "transaction"])
+async def test_a_replace_at_the_current_version_that_changes_the_state_is_still_forbidden(
+    session, books, by
+):
+    with pytest.raises(Forbidden):
+        await replace_stale(session, B1, typed(B1, ACCEPTED), await version(session, B1), by=by)
+    assert await status_of(session, B1) == [DRAFT], "the book stays in draft"
+
+
+async def test_a_stale_transition_is_a_conflict_about_the_version_not_about_the_edge(
+    session, ada, books
+):
+    read = await version(session, B1)
+    await go(ada, session, "in_review")
+    # from in_review there is no edge to in_review: before, this said so; now the version is first
+    with pytest.raises(Conflict, match="changed by someone else since it was read") as refused:
+        await ada.transition(B1, "in_review", if_version=read)
+    assert refused.value.iris == (B1,), "it names the aggregate"
+    assert await status_of(session, B1) == [IN_REVIEW], "the book is as the other writer left it"
+    assert len(await ada.transitions(B1)) == 1, "no second record"
+
+
+async def test_a_stale_transition_by_a_reader_is_a_conflict_before_the_role_check(
+    session, ada, bob, books
+):
+    read = await version(session, B1)
+    await go(ada, session, "in_review")
+    with pytest.raises(Conflict, match="changed by someone else"):
+        await bob.transition(B1, "accepted", if_version=read)
+
+
+async def test_a_transition_at_the_current_version_with_no_edge_is_still_about_the_edge(
+    session, ada, books
+):
+    with pytest.raises(Conflict, match="no transition from") as refused:
+        await ada.transition(B1, "accepted", if_version=await version(session, B1))
+    assert "changed by someone else" not in str(refused.value), "the version is current"
+
+
+async def test_the_generic_put_of_a_body_read_before_a_transition_is_a_409(toy):
+    scene = toy
+    tenant_id = scene.tenant.rsplit("/", 1)[1]
+    authorised = await scene.service.kit.require(
+        scene.headers("ada")["Authorization"], tenant_id, Action.READ
+    )
+    async with scene.service.kit.collaboration(authorised) as collaboration:
+        await collaboration.transition(
+            scene.book_iri, "in_review", if_version=scene.book_etag.strip('"')
+        )
+    response = await scene.http.put(
+        scene.book,
+        json={**DUNE_BODY, "workflow_status": DRAFT},
+        headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
+    )
+    assert response.status_code == 409, response.text
+    stored = await scene.http.get(scene.book, headers=scene.headers("ada"))
+    assert stored.json()["workflow_status"] == IN_REVIEW, "the book is where the transition left it"
 
 
 async def test_the_generic_post_cannot_create_a_book_with_two_states(toy):
@@ -754,6 +960,39 @@ async def test_a_book_of_a_subclass_takes_no_state_through_a_plain_write(tmp_pat
             await workflows.keep_state(session, str(novel), triples, None, None)
 
 
+async def test_a_subclass_inherits_the_workflow_through_a_guarded_session_and_a_transition(
+    tmp_path, rules, store, now
+):  # PD-32 item 8, L2 W5. The toy has no generated Novel model: the raw triples stand for it.
+    folder = copy_schema(tmp_path)
+    edit(folder, "books.yaml", "  Shelf:\n", NOVEL)
+    view = load_schema(folder / "library.yaml")
+    flows = Workflows([REVIEW], view, rules)
+    guards = WriteGuards(toy_mapper(), generated_models(*MODULES), Listings(view), flows)
+    novel = book_iri(5)
+    own = [(URIRef(novel), RDF.type, URIRef(f"{LIB}Novel"))]
+    async with fake_session(
+        store,
+        tenant_iri=TENANT,
+        principal=Principal(id=ADA),
+        clock=lambda: now["t"],
+        guards=guards,
+        dependents=built.combined(view),
+    ) as session:
+        await session.add_graph(novel, own)
+        assert await status_of(session, novel) == [DRAFT], "the novel starts in the initial state"
+        with pytest.raises(Forbidden):
+            await session.replace_graph(
+                novel,
+                [*own, (URIRef(novel), v.WORKFLOW_STATUS, URIRef(ACCEPTED))],
+                await version(session, novel),
+            )
+        who = built.collab(rules, session, ADA, role("librarian"), view=view)
+        await who.transition(novel, "in_review", if_version=await version(session, novel))
+        assert await status_of(session, novel) == [IN_REVIEW], "the transition found the workflow"
+        [record] = await who.transitions(novel)
+        assert (record.from_state_iri, record.to_state_iri) == (DRAFT, IN_REVIEW), "and recorded it"
+
+
 @pytest.mark.parametrize("target", [TENANT, "https://example.org/elsewhere", EVIL, ""])
 async def test_the_tenant_and_a_foreign_iri_are_documented_errors_for_transition(
     rules, session, ada, books, target
@@ -978,7 +1217,9 @@ async def test_the_records_of_a_book_are_its_own(session, ada, books):
     await go(ada, session, "in_review")
     await go(ada, session, "in_review", B2)
     await go(ada, session, "accepted", B2)
-    assert (len(await ada.transitions(B1)), len(await ada.transitions(B2))) == (1, 2)
+    assert (len(await ada.transitions(B1)), len(await ada.transitions(B2))) == (1, 2), (
+        "one move of b1, two of b2"
+    )
     assert {r.used_resource for r in await ada.transitions(B2)} == {B2}, "only the moves of b2"
 
 
@@ -1175,6 +1416,22 @@ async def test_an_aggregate_of_another_class_that_names_the_book_with_prov_used_
     assert await session.heads([S1]), "the shelf stays: only a record's link is dropped"
 
 
+async def test_an_aggregate_of_another_class_that_links_to_the_book_with_prov_used_is_a_referrer(
+    plain, ada, session, books
+):  # PD-32 item 8, L2 W6
+    await put(plain, shelf(S1))
+    await plain.replace_graph(
+        S1,
+        [*toy_mapper().to_triples(shelf(S1)), (URIRef(S1), v.USED, URIRef(B1))],
+        await version(plain, S1),
+    )
+    shown = await ada.referrers(B1)
+    listed = {r.referrer: (r.referrer_class, r.referrer_slot) for r in shown.referrers or []}
+    assert S1 in listed, f"the shelf is listed among the referrers of the book: {listed}"
+    assert listed[S1][0] == "Shelf", f"as a shelf: {listed[S1]}"
+    assert "used" in listed[S1][1], f"by the link it uses: {listed[S1]}"
+
+
 # -- 6. workflow files, the kit and the hard rule (PD-17, PD-18, D-10, RISK-4) -------------------
 
 BASE = {
@@ -1301,7 +1558,7 @@ ACCEPTED_FILES = [
 @pytest.mark.parametrize("changes", ACCEPTED_FILES)
 def test_pinned_a_file_the_model_does_not_refuse_is_loaded(tmp_path, changes):
     """Pinned: a file the model and PD-31 accept is loaded."""
-    assert load_workflow(written(tmp_path, **changes)).workflow_name == "flow"
+    assert load_workflow(written(tmp_path, **changes)).workflow_name == "flow", "it is loaded"
 
 
 REFUSED_BY_THE_LOADER = [  # PD-31 item 5, decided: these were pinned as loading

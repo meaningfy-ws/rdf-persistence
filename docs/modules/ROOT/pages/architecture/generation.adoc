@@ -134,7 +134,9 @@ flowchart BT
     FIL --> ANN
 ....
 
-`rp.yaml` imports all six modules; an application imports `rp.yaml`, or only the modules it uses.
+`rp.yaml` imports all nine modules (`rp_core`, `rp_annotations`, `rp_provenance`, `rp_access`,
+`rp_tenancy`, `rp_files`, `rp_collections`, `rp_discussion` and `rp_workflow`); an application
+imports `rp.yaml`, or only the modules it uses.
 
 [#annotations]
 === Annotations: two layers that are easy to confuse

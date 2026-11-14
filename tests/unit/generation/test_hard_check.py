@@ -227,12 +227,31 @@ def test_a_workflow_problem_carries_the_fix_hint(break_toy: Breaker) -> None:
     """PD-18: the problem says what to change."""
     root = break_toy("books.yaml", "      workflow: review\n", "")
     named = f"[{HardRule.WORKFLOW.value}] Book:"
-    assert any(named in p and "workflow" in p and "UnderWorkflow" in p for p in problems_of(root))
+    assert any(
+        named in p and "add the annotation workflow: <name>" in p for p in problems_of(root)
+    ), "a root under the mixin with no annotation is told to add one"
     root = break_toy("books.yaml", "rp_path: shelves", "rp_path: shelves\n      workflow: review")
     assert any(
-        f"[{HardRule.WORKFLOW.value}] Shelf:" in p and "UnderWorkflow" in p
+        f"[{HardRule.WORKFLOW.value}] Shelf:" in p and "include UnderWorkflow" in p
         for p in problems_of(root)
+    ), "an annotated root without the mixin is told to include it"
+
+
+def test_a_workflow_on_a_class_that_is_no_root_says_what_to_remove_or_include(
+    break_toy: Breaker,
+) -> None:
+    """PD-32 item 6: the hint of this branch only."""
+    root = break_toy(
+        "books.yaml",
+        "      rp_unlabelled: true\n  Note:",
+        "      rp_unlabelled: true\n      workflow: review\n  Note:",
     )
+    named = f"[{HardRule.WORKFLOW.value}] Chapter:"
+    [problem] = [p for p in problems_of(root) if named in p]
+    assert (
+        "a workflow goes only on an aggregate root (not the tenant root): "
+        "remove workflow or include AggregateRoot"
+    ) in problem, problem
 
 
 def test_a_subclass_of_an_annotated_root_inherits_the_annotation(break_toy: Breaker) -> None:

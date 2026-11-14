@@ -45,7 +45,7 @@ from rdf_persistence.services.store import Store, ToolkitStore
 from rdf_persistence.services.tenancy import GrantValidator, RootValidator, Tenancy
 from rdf_persistence.services.tokens import TokenVerifier
 from rdf_persistence.services.transitions import dependents as transition_dependents
-from rdf_persistence.services.workflows import Workflows, load_workflow
+from rdf_persistence.services.workflows import Workflows
 from rdf_persistence.services.write_guards import WriteGuards
 
 
@@ -105,9 +105,7 @@ class ServiceKit:
         )
         mapper = Mapper(view, models)
         self.mapper, self.models = mapper, models
-        self.workflows = Workflows(
-            [load_workflow(path) for path in workflows], view, self.rules, workflows
-        )
+        self.workflows = Workflows.from_files(workflows, view, self.rules)
         access_class = cast(type[TenantAccess], models.named(tenant_access_class(view).name))
         self.tenancy = Tenancy(
             self.store,
@@ -233,7 +231,8 @@ class ServiceKit:
         The archive must come from a service with the same schema and IRI policy, and may hold at most
         ``settings.max_restore_bytes`` once decompressed. Restore only an archive your own deployment wrote, or one
         from a party you trust as much as a tenant creator: the restore checks the archive's structure (its graph
-        names, its root, its blob keys), not each object against its shapes. Nothing is created if it is refused,
+        names, its root, its blob keys), not each object against its shapes, and not the workflow rule: the states
+        of the aggregates and their transition records are restored as they were dumped. Nothing is created if it is refused,
         and nothing is left if the restore fails. There is no tenant yet, so ``require`` cannot guard it: verify the
         caller with ``gate.caller``, apply the consumer's own rule on who may create a tenant, and pass
         ``caller.principal`` as ``creator``. Reading ``src`` blocks (a synchronous file or buffer): run the call off
