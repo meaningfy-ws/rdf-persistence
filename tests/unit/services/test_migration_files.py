@@ -202,7 +202,9 @@ def test_a_keyword_inside_an_iri_string_or_comment_is_not_a_keyword(tmp_path):
 
 
 @pytest.mark.parametrize("clause", ["where_pattern", "delete_pattern", "insert_pattern"])
-def test_a_pattern_that_does_not_parse_is_refused(tmp_path, clause):
+def test_a_pattern_with_a_prefixed_name_is_refused_naming_the_pattern_and_the_step(
+    tmp_path, clause
+):
     fields = {
         "where_pattern": f"?s {SHELF} ?o .",
         "delete_pattern": f"?s {SHELF} ?o .",

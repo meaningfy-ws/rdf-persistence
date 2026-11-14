@@ -42,7 +42,7 @@ runs right after task 2.2, the riskiest (write order, atomicity, concurrency). G
 | TC-03 | remove a slot IRI from `Book` | destructive; `draft` has one step titled `DROP … (deletes data)` with the where and delete patterns of the design's example |
 | TC-04 | remove a class; add a required slot; set `required`; multivalued to single; change a range; remove an enum value | each needs-a-step; `draft` has one `unresolved` step per change, naming class and slot |
 | TC-05 | rename a slot in LinkML keeping `slot_uri`; rename a non-root class keeping `class_uri` | no change |
-| TC-05a | rename `Book` keeping `class_uri` and no `rp_iri_type`; change `rp_path`; flip a slot's `inlined` | each "not migratable": `rp-generate` fails naming it, with any version |
+| TC-05a | rename a root (the toy `Shelf`) keeping `class_uri` and no `rp_iri_type`; change `rp_path`; flip a slot's `inlined` | each "not migratable": `rp-generate` fails naming it, with any version |
 | TC-06 | TC-03's edit, version unchanged | `rp-generate` and `rp-generate --check` fail naming `Book` and the slot, say to set a new `version`; lock and outputs unchanged |
 | TC-07 | TC-03's edit, `version: "2"`, no file | succeeds, printing the draft's path; `migrations/1__2.yaml` holds the draft; lock says `2`; the manifest does not list the draft; a second run changes nothing and removes nothing |
 | TC-08 | TC-07, the developer edited the file | the run keeps the file byte for byte; `--check` reports nothing |
@@ -144,7 +144,7 @@ an unknown version TC-52.
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · PR 1 · [ ] 2.1 · [ ] 2.2 · adversarial tester · [ ] 2.3 · PR 2 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 2.1 · PR 1 (#109) · [ ] 2.2 · adversarial tester · [ ] 2.3 · PR 2 ·
   #102 merged · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · PR 3
 
 ## Verification

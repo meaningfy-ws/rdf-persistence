@@ -83,7 +83,8 @@ marks an answer the developer delegated (seed, 2026-11-06) and may overrule.
   the schema id, the version, and the RDF-facing summary of what the target stores. Per stored
   class (a root class of the target's own modules, `own_schemas` and `root_classes`, or a class
   reachable from one through inlined slots; never a mixin or an abstract class): its class IRI, its
-  IRI type and `rp_path` when it is a root, and per induced slot its IRI, its range as an IRI (for
+  IRI type, `rp_path` and database when it is a root (classes that share one class IRI are one
+  entry with the union of their slots, PD-21 item 5), and per induced slot its IRI, its range as an IRI (for
   an enum: the enum's name), `required`, `multivalued`, `inlined`. Per enum used as a range: the
   `meaning` IRI of each value (its text when it has none). `rp-generate` compares lock and schema:
 
@@ -95,7 +96,7 @@ marks an answer the developer delegated (seed, 2026-11-06) and may overrule.
   | class added; slot added, not required; `required` dropped; single to multivalued; enum value added | safe | rewrites the lock; with a new version, writes a migration with no steps |
   | slot IRI gone from a class | destructive | needs a new version; drafts a `drop` step (PD-5) |
   | class IRI gone; slot added `required`; `required` set; multivalued to single; range changed; enum value gone | needs a step | needs a new version; drafts an `unresolved` step naming the change |
-  | a root's IRI type or `rp_path` changed; a slot's `inlined` changed | not migratable | fails: a step cannot change an IRI or move data between graphs |
+  | a root's IRI type, `rp_path` or database changed; a slot's `inlined` changed | not migratable | fails: a step cannot change an IRI or move data between graphs |
   | any change not "safe", version unchanged | refused | fails, naming the changes: "set a new `version:`" |
   | the lock's schema id differs; the new version is one the chain already left (the `from_version` of an existing migration file); lock unreadable | refused | fails |
 
@@ -124,24 +125,29 @@ marks an answer the developer delegated (seed, 2026-11-06) and may overrule.
   WHERE { GRAPH <stamps> { <schema id> rp:dataSchemaVersion "<from>" }
           GRAPH ?rp_graph { <where_pattern> }
           FILTER (?rp_graph != <stamps>)
-          FILTER NOT EXISTS { GRAPH ?rp_registry { ?rp_graph rp:kind <loaded-graph kind> } } }
+          FILTER NOT EXISTS { GRAPH ?rp_registry { ?rp_graph rp:kind <loaded-graph kind> } }
+          FILTER NOT EXISTS { GRAPH ?rp_graph { ?rp_entry rp:kind ?rp_kind } } }
   ```
 
   So a step works inside one graph at a time, never moves data between graphs, never touches a
-  loaded graph (EPIC Rabbit-holes: loaded files follow their own vocabularies; leader's choice) and
-  does nothing once the stamp has moved. A pattern may use `?rp_graph` (the graph's IRI, the subject
+  loaded graph (EPIC Rabbit-holes: loaded files follow their own vocabularies; leader's choice) or
+  a registry graph (the third filter, PD-21 item 6), and does nothing once the stamp has moved. A pattern may use `?rp_graph` (the graph's IRI, the subject
   of its tracking statements). A step with `unresolved` (text) is a draft: loading it fails. One
   form covers the recipes of the how-to: rename a slot, retype (a changed class IRI), drop a slot,
   give a new required slot a value, replace a value (an enum value, a workflow state). No Python
   hook and no raw request: neither could carry the guard.
-- **PD-6 A step is checked when it is loaded,** by `rp-generate` and at start-up, in
-  `load_migration`: each pattern must parse alone as a group (`ASK { p }` for the where,
-  `INSERT { p } WHERE {}` for the other two, rdflib); the request built from the migration must
-  parse into exactly the expected number of operations (one per step, plus the token rotation
-  when there is a step, plus the stamp move); `delete_pattern` and `insert_pattern` must
-  not contain a blank node (`_:`, `[`, or a collection `(`); no pattern may contain `GRAPH` or
-  `SERVICE`, or a variable starting `?rp_` other than `?rp_graph`. A failure is `InvalidMigration`,
-  naming the file and the step.
+- **PD-6 A step is checked when it is loaded,** by `rp-generate` and at start-up
+  (`load_migration`; as amended by PD-21 and PD-22, the check of one pattern is
+  `domain/sparql.py` `checked_group` and reads the parser's tree, never the text). Each pattern
+  must parse alone as a group (`ASK { p }` for the where, `INSERT { p } WHERE {}` for the other
+  two, rdflib); its tree must hold no graph or service pattern, no variable starting `rp_` other
+  than `rp_graph`, no prefixed name; the text must hold no codepoint escape (`\u`, `\U`); a
+  delete or insert template must hold no blank node or collection and none of the toolkit's own
+  predicates (`rp:version`, `rp:kind`, the stamp's). A pattern too long for the parser is refused
+  as too long to check. The file is refused when a YAML key is given twice, and when the request
+  built from the migration does not parse into exactly the expected number of operations (one per
+  step, plus the token rotation when there is a step, plus the stamp move). A failure is
+  `InvalidMigration`, naming the file and the step.
 - **PD-7 One request per migration and database; the stamp is the guard.** The request is: every
   step in order; if the migration has a step, the rotation of every version token (PD-8); last, the
   stamp moved from `from` to `to`, itself matching only the `from` stamp. Applied atomically (the
@@ -215,10 +221,14 @@ marks an answer the developer delegated (seed, 2026-11-06) and may overrule.
   (`InvalidBody`) before anything is created.
 - **PD-16 The application database is one more shared database (app-level-data).** Delivered in
   stage 3, after PR #102 is in `develop` (developer, 2026-11-14: this session brings #102 in).
-- **PD-17 Layers.** `domain`: `stamps_graph_iri`, the exceptions; `domain/sparql.py` only builds
-  text. `services/migrations.py`: `load_migration`, `load_chain`, the request text, the runner on
-  the `Store` port, `migrate_dataset`. `generation/lock.py`: the summary, the diff, the drafts;
-  `generation` imports `services/migrations.py` for `load_migration` (`.importlinter` forbids the
+- **PD-17 Layers (as amended by PD-22).** `domain`: `stamps_graph_iri`, the exceptions;
+  `domain/sparql.py` builds SPARQL text and holds the one check of a step's pattern
+  (`checked_group`). `services/migrations.py`: `load_migration`, `load_chain`,
+  `migration_file_name`, the request text. `services/migration_runner.py`: the runner on the
+  `Store` port and `migrate_dataset`. `services/yaml_files.py`: reading a YAML file into a mapping,
+  shared with the workflow loader. `generation/lock.py` and `lock_step.py`: the summary, the diff,
+  the drafts, the two pipeline steps; `generation` imports `load_migration` and
+  `migration_file_name` from `services/migrations.py` (`.importlinter` forbids the
   runtime layers to import `generation`, not the reverse). A new file under `generation/` changes
   the inputs of every consumer's manifest, so every consumer regenerates on upgrade (as PD-14 asks
   anyway). No report class: the runner logs each migration and answers the set of tenants set
@@ -238,7 +248,7 @@ Worked example. The toy library is at version `"1"`. The developer changes the s
    to_version: "2"
    description: Drafted by rp-generate from the schema change. Review every step.
    steps:
-     - title: DROP lib:shelf of lib:Book (deletes data)
+     - title: DROP <https://example.org/ns/library#shelf> of <https://example.org/ns/library#Book> (deletes data)
        where_pattern: "?s a <https://example.org/ns/library#Book> ; <https://example.org/ns/library#shelf> ?o"
        delete_pattern: "?s <https://example.org/ns/library#shelf> ?o"
    ```
@@ -275,9 +285,9 @@ migration file.
 | Failure mode | How it is detected | Expected handling |
 |---|---|---|
 | Non-safe schema change, same version | lock diff in `rp-generate` (also `--check`) | generation fails naming each change; nothing written |
-| A root's IRI type or `rp_path`, or a slot's `inlined`, changed | lock diff | generation fails: not migratable |
+| A root's IRI type, `rp_path` or database, or a slot's `inlined`, changed | lock diff | generation fails: not migratable |
 | Root schema without `version`, or with an unquoted one; own root class without `migrations` | hard check | generation fails (PD-1, PD-14) |
-| Migration file with an `unresolved` step, a pattern that does not parse or escapes its group, a blank node, `GRAPH`, a reserved variable | `load_migration` (PD-6) | `rp-generate` fails; the kit raises `InvalidMigration` naming file and step |
+| Migration file with an `unresolved` step, a pattern that does not parse or escapes its group, a blank node, `GRAPH`, `SERVICE`, a reserved variable, a prefixed name, a codepoint escape, a toolkit predicate in a template, a step too long to check, a key given twice | `load_migration` (PD-6) | `rp-generate` fails; the kit raises `InvalidMigration` naming file and step |
 | Chain forks, has a gap, a cycle, or does not end at the running version | `load_chain` | `InvalidMigration`; the service does not start |
 | File's `schema_id` is not the chain's | `load_chain` | `InvalidMigration` |
 | The store refuses or times out a tenant's request | exception from `Store.update`, or the stamp read back is before `to` | tenant set aside (PD-11); data and stamp unchanged; next tenant runs |
