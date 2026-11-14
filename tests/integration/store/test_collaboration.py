@@ -6,15 +6,19 @@ import uuid
 from collections.abc import AsyncIterator, Callable
 
 import pytest
+from rdflib import URIRef
 
 from rdf_persistence import Action, CallerAccess, VerifiedCaller, generated_models
 from rdf_persistence.domain.exceptions import Conflict, Forbidden
 from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
 from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.domain.generated.rp_discussion import Comment, Motivation
 from rdf_persistence.domain.generated.service.rp_service import ReferrerList
 from rdf_persistence.domain.iris import DEFAULT_IRIS
+from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
+from rdf_persistence.services.discussion import dependents
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import DEFAULT_MAX_ROOTS, UnitOfWork
 from rdf_persistence.services.schema import load_schema
@@ -66,15 +70,27 @@ async def session(store, database) -> AsyncIterator[Session]:
         principal=Principal(id=ADA),
         listings=listings,
         guards=guards,
+        dependents=dependents(load_schema(TOY_SCHEMA)),  # the pairs the kit passes through Tenancy
     ) as opened:
         yield opened
 
 
+@pytest.fixture(scope="module")
+def rules(tmp_path_factory: pytest.TempPathFactory) -> AccessRules:
+    """The toy roles and a ``reviewer`` that reads and annotates."""
+    path = tmp_path_factory.mktemp("roles") / "roles.yaml"
+    path.write_text(
+        ROLES.read_text() + "- {role: reviewer, level: tenant, actions: [read, annotate]}\n"
+    )
+    return AccessRules(load_role_definitions(path))
+
+
 @pytest.fixture
-def collaboration(session: Session) -> Callable[[VerifiedCaller, CallerAccess], Collaboration]:
+def collaboration(
+    session: Session, rules: AccessRules
+) -> Callable[[VerifiedCaller, CallerAccess], Collaboration]:
     """Builds a ``Collaboration`` over the Fuseki session for a caller and its access."""
     view = load_schema(TOY_SCHEMA)
-    rules = AccessRules(load_role_definitions(ROLES))
 
     def build(who: VerifiedCaller, access: CallerAccess) -> Collaboration:
         return Collaboration(
@@ -322,3 +338,133 @@ async def test_the_collections_of_a_book_among_fifty_rule_shelves(session, colla
     elapsed = time.perf_counter() - started
     print(f"IT-05 collections_of over 50 rule shelves: {elapsed:.3f} s")
     assert found.member_iris == shelves[::3], "exactly the shelves whose rule b3 meets"
+
+
+def as_reviewer(collaboration, who: str = BOB):
+    return collaboration(
+        caller(principal=who), held(role("reader", who=who), role("reviewer", who=who))
+    )
+
+
+def counting_updates(store, monkeypatch) -> list[str]:
+    """The text of every update request sent from now on."""
+    sent: list[str] = []
+    original = store.update
+
+    async def counting(dataset: str, text: str) -> None:
+        sent.append(text)
+        await original(dataset, text)
+
+    monkeypatch.setattr(store, "update", counting)
+    return sent
+
+
+async def comments_on(session: Session, iri: str) -> list[str]:
+    return sorted(await session.graphs_with(v.HAS_TARGET, URIRef(iri)))
+
+
+async def test_a_comment_leaves_its_target_untouched(session, collaboration):  # IT-06, TC-50
+    await put_book(session, B1)
+    before = await version_of(session, B1)
+    stored_iri = await as_reviewer(collaboration).comment(B1, "nice", references=[B2])
+    assert await version_of(session, B1) == before, "b1 is not written"
+    [stored] = await as_reviewer(collaboration).thread(B1)
+    assert stored.id == stored_iri, "the thread holds the comment that was posted"
+    assert stored.body_value == "nice", "with its text"
+    assert stored.has_target == B1, "on b1"
+    assert stored.motivated_by == Motivation.COMMENTING, "as a comment, not a reply"
+
+
+async def test_a_comment_for_librarians_is_not_in_a_readers_thread(session, collaboration):  # TC-52
+    await put_book(session, B1)
+    c = await as_reviewer(collaboration, ADA).comment(B1, "for librarians", audience=["librarian"])
+    librarian = collaboration(caller(principal=ADA), held(role("librarian"), role("reviewer")))
+    assert await as_reviewer(collaboration).thread(B1) == [], "bob, a reader, sees nothing"
+    assert [x.id for x in await librarian.thread(B1)] == [c], "ada, a librarian, sees it"
+
+
+async def test_a_reply_names_its_parent_and_is_a_reply(session, collaboration):  # TC-53
+    await put_book(session, B1)
+    c2 = await as_reviewer(collaboration).comment(B1, "nice")
+    c3 = await as_reviewer(collaboration, ADA).comment(B1, "thanks", reply_to=c2)
+    parent, reply = await as_reviewer(collaboration).thread(B1)
+    assert parent.id == c2, "the older comment comes first"
+    assert reply.id == c3, "its reply after it"
+    assert reply.replies_to == c2, "the reply names its parent"
+    assert reply.motivated_by == Motivation.REPLYING, "and says it replies"
+
+
+async def test_removing_an_aggregate_removes_the_comments_on_it_only(
+    store, session, collaboration
+):  # IT-07, TC-61
+    await put_book(session, B1)
+    await put_book(session, B2)
+    build = as_reviewer(collaboration)
+    on_b1 = await build.comment(B1, "see b2", references=[B2])
+    on_b2 = await build.comment(B2, "about b2")
+    await session.remove(B2, await version_of(session, B2))
+    assert not await stored(session, on_b2), "the comment on b2 is gone, graph and entry"
+    assert await comments_on(session, B2) == [], "no stored root targets b2"
+    assert await stored(session, on_b1), "the comment on b1 stays"
+
+
+async def test_a_remove_leaves_an_aggregate_of_another_class_that_links_to_it(
+    session, collaboration
+):
+    await put_book(session, B1)
+    await put(session, a_shelf(S1, member_class="Book", had_member=[B1]))
+    await as_reviewer(collaboration).comment(B1, "goes with b1")
+    await session.remove(B1, await version_of(session, B1))
+    assert await stored(session, S1), "the shelf names b1 by had_member, not by a comment's target"
+    assert await comments_on(session, B1) == [], "the comment on b1 went with it"
+
+
+async def test_a_comment_races_the_removal_of_its_target_and_loses(
+    store, session, collaboration, monkeypatch
+):  # TC-62 on Fuseki
+    await put_book(session, B1)
+    original = store.update
+    done = False
+
+    async def another_writer_first(dataset: str, text: str) -> None:
+        nonlocal done
+        if not done:
+            done = True
+            await session.remove(B1, await version_of(session, B1))
+        await original(dataset, text)
+
+    monkeypatch.setattr(store, "update", another_writer_first)
+    with pytest.raises(Conflict) as refused:
+        await as_reviewer(collaboration).comment(B1, "too late")
+    assert refused.value.iris == (B1,), "names the target"
+    assert await comments_on(session, B1) == [], "no comment is stored"
+
+
+@pytest.mark.slow
+async def test_a_target_with_many_comments_is_removed_with_them_in_one_request(
+    store, session, monkeypatch
+):  # TC-63
+    await put_book(session, B1)
+    ids: list[str] = []
+    for start in range(0, 600, 100):
+        async with session.transaction() as t:
+            for n in range(start, start + 100):
+                minted = str(DEFAULT_IRIS.mint_aggregate(TENANT, "rp-comment", "rp-comments"))
+                model = Comment(
+                    id=minted,
+                    has_target=B1,
+                    body_value=f"remark {n}",
+                    motivated_by=Motivation.COMMENTING,
+                )
+                await t.add_graph(minted, toy_mapper().to_triples(model))
+                ids.append(minted)
+    assert len(await session.heads(ids)) == 600, "the comments are stored"
+    sent = counting_updates(store, monkeypatch)
+    work = UnitOfWork(session, toy_mapper())
+    work.remove(await work.get(Book, B1))
+    started = time.perf_counter()
+    await work.commit()
+    print(f"remove of a book with 600 comments: {time.perf_counter() - started:.2f} s")
+    assert len(sent) == 1, "one update request"
+    assert await session.heads(ids) == [], "no comment graph is left"
+    assert await session.graphs_with(v.HAS_TARGET) == {}, "no stored root targets anything"

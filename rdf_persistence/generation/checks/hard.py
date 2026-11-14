@@ -50,6 +50,7 @@ DESCRIBED = "Described"
 CORE_MODEL = PACKAGE_DIR / "model" / "rp_core.yaml"
 URL_SEGMENT = "url_segment"  # the slot of rp_core whose pattern every route segment follows
 BOOLEAN = ("true", "false")
+RESERVED_PREFIX = "rp-"  # the segments of the toolkit's own roots, such as rp-comments
 PATTERNED_ANNOTATIONS = (RpAnnotation.RP_PATH, RpAnnotation.RP_IRI_TYPE)
 # Every annotation the toolkit reads, and the values it accepts (the enums of rp_core). rp_path takes
 # a pattern instead, checked on its own.
@@ -248,11 +249,25 @@ def _iri_type_problems(
             )
 
 
+def _reserved_segment_problems(cls: ClassDefinition) -> Iterator[CheckProblem]:
+    """PD-11: the toolkit's own roots use the ``rp-`` prefix, so an application's path or type may not."""
+    for tag in PATTERNED_ANNOTATIONS:
+        text = annotation_text(cls, tag)
+        if text is not None and text.startswith(RESERVED_PREFIX):
+            yield rule_problem(
+                HardRule.RESERVED_SEGMENT,
+                cls.name,
+                f"{tag.value}: {text!r} starts with {RESERVED_PREFIX!r}, which the toolkit's own "
+                f"roots use; rename it without that prefix",
+            )
+
+
 def _class_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[CheckProblem]:
     roots = aggregate_roots(view, classes)
     tenant_roots = tenant_database_roots(view, classes)
     for cls in classes:
         yield from _key_problems(view, cls, tenant_roots)
+        yield from _reserved_segment_problems(cls)
     yield from _path_problems(view, roots)
     yield from _described_problems(view, classes, roots)
     yield from _iri_type_problems(view, classes, roots)

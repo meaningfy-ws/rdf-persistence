@@ -13,6 +13,7 @@ from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
+from rdf_persistence.domain.generated.rp_discussion import Comment, Motivation
 from rdf_persistence.domain.iris import (
     DEFAULT_IRIS,
     graph_iri,
@@ -33,6 +34,7 @@ SCHEMA = URIRef("http://schema.org/")
 LIB = "https://example.org/ns/library#"
 RP = "https://meaningfy.ws/ns/rdf-persistence#"
 PROV = "http://www.w3.org/ns/prov#"
+OA = "http://www.w3.org/ns/oa#"
 ROOT_CLASSES = {"Book": Book, "Scan": Scan, "Library": Library, "LibraryAccess": LibraryAccess}
 
 
@@ -208,6 +210,29 @@ def test_a_shelf_with_members_and_a_rule_round_trips_and_is_typed_by_its_own_cla
     ), "the rule is a skolem node in the shelf's graph"
     back = mapper.from_graph(Shelf, iri, skolem, graph_iri(iri))
     assert untracked(back) == untracked(on), "the same shelf comes back"
+
+
+def test_a_comment_with_every_slot_round_trips_typed_as_a_web_annotation():
+    """The motivation is stored as the enum's IRI, the type is oa:Annotation (PD-10)."""
+    iri = f"{TENANT}/rp-comments/{UUID(int=1)}"
+    comment = Comment(
+        id=iri,
+        has_target=book_iri(1),
+        body_value="Check the second chapter.",
+        motivated_by=Motivation.REPLYING,
+        comment_audience=["librarian", "reader"],
+        comment_references=[book_iri(2)],
+        replies_to=f"{TENANT}/rp-comments/{UUID(int=2)}",
+    )
+    mapper = toy_mapper()
+    graph = mapper.to_graph(comment)
+    assert (URIRef(iri), RDF.type, URIRef(f"{OA}Annotation")) in graph, "the stored type"
+    assert (URIRef(iri), URIRef(f"{OA}motivatedBy"), URIRef(f"{OA}replying")) in graph, "an IRI"
+    assert (URIRef(iri), URIRef(f"{OA}hasTarget"), URIRef(book_iri(1))) in graph
+    assert (URIRef(iri), URIRef(f"{RP}repliesTo"), URIRef(comment.replies_to)) in graph
+    assert len(list(graph.objects(URIRef(iri), URIRef(f"{RP}audience")))) == 2
+    back = mapper.from_graph(Comment, iri, graph, graph_iri(iri))
+    assert untracked(back) == untracked(comment), "the same comment comes back"
 
 
 def test_a_grant_assignee_that_is_an_iri_string_is_written_and_read_as_an_iri():

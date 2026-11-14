@@ -25,11 +25,19 @@ reply SHALL name a comment on the same target.
 
 `collaboration.thread(iri)` SHALL return the comments targeting `iri`, oldest first, with their replies,
 leaving out every comment whose audience names none of the caller's roles on the tenant or the
-aggregate. A comment with no audience SHALL be visible to every caller who may read the target.
+aggregate, nor a role defined at system level that the caller's token carries. A role name in a
+token that is not defined at system level SHALL NOT count. A comment with no audience SHALL be
+visible to every caller who may read the target. A comment SHALL NOT be readable, replaceable or
+deletable through a generic aggregate route, whatever the IRI policy.
 
 #### Scenario: an audience the caller is not in
 - **GIVEN** a comment on book b with audience `librarian`
 - **WHEN** a principal granted only `reader` reads b's thread
+- **THEN** the comment is not in the thread
+
+#### Scenario: a token role with the name of a tenant role
+- **GIVEN** a comment on book b with audience `librarian`, a role defined at tenant level only
+- **WHEN** a principal granted only `reader`, whose token carries a role named `librarian`, reads b's thread
 - **THEN** the comment is not in the thread
 
 ### Requirement: Comments are found through what they reference

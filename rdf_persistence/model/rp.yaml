@@ -16,3 +16,4 @@ imports:
   - rp_tenancy
   - rp_files
   - rp_collections
+  - rp_discussion

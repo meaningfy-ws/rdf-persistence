@@ -217,6 +217,11 @@ code (`entrypoints/auth.py`, `Gate`). Each failure answers at once.
 The route then answers `Allowed-Actions` with what the caller may do. Create a tenant and list
 tenants check only the token.
 
+A generic route answers only for an aggregate of its own class (or a class derived from it):
+`Aggregates.read`, `replace` and `remove` give 404, as for a missing aggregate, when the stored
+root has another type. So no route reaches a comment, whatever the IRI policy, and the route of
+one class does not answer for an aggregate of another.
+
 A consumer's own route calls the same gate through `kit.require(authorization, t, action)` or
 `kit.require_aggregate(...)`. Code that opens `kit.session(tenant, principal)` directly is not
 checked: the session trusts its caller. `kit.collaboration(authorised)` is a third way in: it opens
@@ -388,7 +393,8 @@ nothing changes; the `ASK` for the new token then fails and the answer is 409.
 |`DELETE …/books/{id}` with `If-Match` (`delete` on the book); `Session.remove`
 |`Session.remove` reads the version (404 if there is none).
 |One update request (<<commit>>), guarded by the version: empty every loaded graph `B` owns, drop
-its registry entries, empty `B/graph`. 409 if the graph is still there. Blobs are *not* deleted: use `remove_with_files`.
+its registry entries, empty `B/graph`, and drop the comments that target `B` (see <<commit>>,
+_Delete removes dependents_). 409 if the graph is still there. Blobs are *not* deleted: use `remove_with_files`.
 |===
 
 *No change history is kept.* A replace overwrites; only the current version and the tracking
@@ -497,6 +503,23 @@ adds, besides the version tokens, one guard for each member that only meets the 
 the member must still be of the member class and still meet the rule when the request is applied
 (`Transaction._require_match`, the test of `Session.matches`). When only such a guard fails, no
 version moved, so the `Conflict` names no root (`iris` is empty).
+
+*Delete removes dependents.* A remove carries one more marked operation (`_DROP_DEPENDENTS`,
+`services/session.py`). It drops, with the removed aggregate, the comments that target it: the
+graph and the registry entry of every registered aggregate whose root is an `oa:Annotation` with
+`oa:hasTarget` the removed root. It is one operation whatever their number, so the root limit of
+a commit does not count them, and it has no version guard of its own, because a comment is never
+edited. The session is given the pairs of class and link to drop (`dependents`); the kit passes
+them to every session it opens when the schema imports `rp_discussion`, and a session opened
+without them drops only the aggregate. The same pairs also leave a comment's link to its target
+out of `Session.referrer_rows`, so what `referrers` omits and what a remove drops cannot differ.
+The operation starts from the link to the removed root and checks the registry afterwards, so a
+tenant with no comment pays next to nothing for it.
+
+*A presence guard.* Posting a comment (`Discussion.comment`) writes the comment's graph only and
+adds one guard on its target: the target must still have a version when the request is applied
+(`Transaction._require_present`). A comment that loses the race with the removal of its target is
+refused with a `Conflict` whose `iris` names the target, and nothing is stored.
 
 *Limits.* One tenant only: nothing spans two tenants, or a tenant and the system database. Files
 are not part of it: a blob keeps its write order and its sweep (<<files>>). Nothing is read inside

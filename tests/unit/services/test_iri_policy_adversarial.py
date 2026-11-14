@@ -20,6 +20,7 @@ from tests.toy import ROLES, direct
 from tests.unit.services.test_iri_policy_checks import (
     ADA,
     BASE,
+    BOOK_CLASS,
     DOCUMENTS,
     IRIS,
     TENANT,
@@ -191,7 +192,7 @@ async def test_a_chapter_cannot_take_the_iri_of_something_that_is_not_a_part(
     aggregates, store, named
 ):
     iri = await create(aggregates, one_book())
-    (own,) = chapter_ids(await aggregates.read(TENANT, ADA, iri))
+    (own,) = chapter_ids(await aggregates.read(TENANT, ADA, iri, BOOK_CLASS))
     updates = len(store.sent("update"))
     with pytest.raises(InvalidBody):
         await replace(aggregates, iri, body({"id": named(own, iri), "number": 1}))
@@ -200,7 +201,7 @@ async def test_a_chapter_cannot_take_the_iri_of_something_that_is_not_a_part(
 
 async def test_two_chapters_that_name_the_same_stored_part_are_one_part_or_refused(aggregates):
     iri = await create(aggregates, one_book())
-    (own,) = chapter_ids(await aggregates.read(TENANT, ADA, iri))
+    (own,) = chapter_ids(await aggregates.read(TENANT, ADA, iri, BOOK_CLASS))
     try:
         stored = await replace(
             aggregates, iri, body({"id": own, "number": 1}, {"id": own, "number": 2})
@@ -235,19 +236,19 @@ async def test_a_new_chapter_typed_as_a_root_class_is_refused(aggregates, store)
 async def test_a_replace_may_not_move_a_part_between_aggregates_by_naming_it_in_both(aggregates):
     first = await create(aggregates, one_book(1))
     second = await create(aggregates, one_book(2))
-    (stolen,) = chapter_ids(await aggregates.read(TENANT, ADA, first))
+    (stolen,) = chapter_ids(await aggregates.read(TENANT, ADA, first, BOOK_CLASS))
     with pytest.raises(InvalidBody):
         await replace(aggregates, second, body({"id": stolen, "number": 9}))
-    assert chapter_ids(await aggregates.read(TENANT, ADA, first)) == {stolen}
+    assert chapter_ids(await aggregates.read(TENANT, ADA, first, BOOK_CLASS)) == {stolen}
 
 
 async def test_a_replace_that_drops_a_part_then_another_replace_cannot_take_it_back_by_name(
     aggregates,
 ):
     iri = await create(aggregates, one_book())
-    (gone,) = chapter_ids(await aggregates.read(TENANT, ADA, iri))
+    (gone,) = chapter_ids(await aggregates.read(TENANT, ADA, iri, BOOK_CLASS))
     await replace(aggregates, iri, body({"number": 2}))  # the old chapter is dropped
-    assert gone not in chapter_ids(await aggregates.read(TENANT, ADA, iri))
+    assert gone not in chapter_ids(await aggregates.read(TENANT, ADA, iri, BOOK_CLASS))
     with pytest.raises(InvalidBody):
         await replace(aggregates, iri, body({"id": gone, "number": 1}))
 
@@ -255,9 +256,9 @@ async def test_a_replace_that_drops_a_part_then_another_replace_cannot_take_it_b
 async def test_a_replace_naming_the_stored_part_of_a_deleted_aggregate_is_refused(aggregates):
     first = await create(aggregates, one_book(1))
     second = await create(aggregates, one_book(2))
-    (orphan,) = chapter_ids(await aggregates.read(TENANT, ADA, first))
-    _, _, version = await aggregates.read(TENANT, ADA, first)
-    await aggregates.remove(TENANT, ADA, first, version)
+    (orphan,) = chapter_ids(await aggregates.read(TENANT, ADA, first, BOOK_CLASS))
+    _, _, version = await aggregates.read(TENANT, ADA, first, BOOK_CLASS)
+    await aggregates.remove(TENANT, ADA, first, version, BOOK_CLASS)
     with pytest.raises(InvalidBody):
         await replace(aggregates, second, body({"id": orphan, "number": 1}))
 
@@ -266,7 +267,7 @@ async def test_the_create_of_a_blank_node_part_mints_beside_the_root_in_the_tena
     aggregates,
 ):
     iri = await create(aggregates, body({"number": 1}, {"number": 2}))
-    chapters = chapter_ids(await aggregates.read(TENANT, ADA, iri))
+    chapters = chapter_ids(await aggregates.read(TENANT, ADA, iri, BOOK_CLASS))
     assert len(chapters) == 2
     for chapter in chapters:
         assert chapter.startswith(f"{BASE}p4x8k2m/chapter/") and not chapter.startswith(iri)

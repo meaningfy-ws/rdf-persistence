@@ -4,6 +4,7 @@ A and B are stored books of the toy tenant, C and D new ones; "another session" 
 the same fake store.
 """
 
+import re
 from collections.abc import AsyncIterator
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
@@ -18,7 +19,7 @@ from rdf_persistence.domain.generated.service.rp_service import Condition
 from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.session import Session
+from rdf_persistence.services.session import Session, remove_parts
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import TENANT, book_iri, graph_of
@@ -434,3 +435,113 @@ async def test_a_match_guard_after_the_block_ended_raises(session, typed):
         await t.remove(A, typed[A])
     with pytest.raises(RuntimeError, match="ended"):
         t._require_match(B, str(KIND), titled("second"))
+
+
+# -- _require_present: a guard that the aggregate still exists (collaboration PD-15) ---------------
+
+
+async def test_a_present_guard_that_holds_lets_the_commit_through(session, seeded):
+    async with session.transaction() as t:
+        t._require_present(A)
+        await t.add_graph(C, title(C, "new"))
+    assert await stored(session, C), "a is there, so the commit went through"
+
+
+async def test_a_present_guard_on_a_removed_root_refuses_the_commit_and_names_it(
+    store, session, other, seeded
+):
+    await other.remove(A, seeded[A])
+    with pytest.raises(Conflict) as refused:
+        async with session.transaction() as t:
+            t._require_present(A)
+            await t.add_graph(C, title(C, "new"))
+    assert refused.value.iris == (A,), "the conflict names the root that is gone"
+    said = str(refused.value)
+    assert said == f"{A} was removed by someone else since it was read", "and says so in words"
+    assert not await stored(session, C), "nothing was written"
+    assert not await a_marker_is_left(store), "and no commit marker is left"
+
+
+async def test_two_present_guards_of_one_transaction_do_not_join(session, seeded):
+    async with session.transaction() as t:
+        t._require_present(A)
+        t._require_present(B)
+        await t.add_graph(C, title(C, "new"))
+    assert await stored(session, C), "both are there: two guards hold side by side"
+
+
+async def test_a_present_guard_after_the_block_ended_raises(session, seeded):
+    async with session.transaction() as t:
+        await t.add_graph(C, title(C, "new"))
+    with pytest.raises(RuntimeError, match="ended"):
+        t._require_present(A)
+
+
+# -- _DROP_DEPENDENTS: a remove also drops the records that point at the removed root --------------
+
+NOTE = URIRef("https://example.org/Annot")
+LINK = URIRef("https://example.org/about")
+MENTIONS = URIRef("https://example.org/mentions")
+PAIRS = ((NOTE, LINK),)
+
+
+def annotation(iri: str, kind_of: URIRef, predicate: URIRef, target: str) -> list:
+    return [(URIRef(iri), RDF.type, kind_of), (URIRef(iri), predicate, URIRef(target))]
+
+
+@pytest.fixture
+async def dropping(store) -> AsyncIterator[Session]:
+    """A session that removes the dependents of ``PAIRS`` with their target."""
+    async with fake_session(store, tenant_iri=TENANT, dependents=PAIRS) as s:
+        yield s
+
+
+async def test_a_remove_drops_the_graph_and_entry_of_each_dependent_and_nothing_else(
+    store, dropping, seeded
+):
+    other_type = book_iri(11)  # another type, the same link
+    other_link = book_iri(12)  # the type, another link: a reference, not a dependent
+    other_target = book_iri(13)  # a dependent of B
+    gone = [book_iri(14), book_iri(15)]
+    for iri in gone:
+        await dropping.add_graph(iri, annotation(iri, NOTE, LINK, A))
+    await dropping.add_graph(other_type, annotation(other_type, KIND, LINK, A))
+    await dropping.add_graph(other_link, annotation(other_link, NOTE, MENTIONS, A))
+    await dropping.add_graph(other_target, annotation(other_target, NOTE, LINK, B))
+    await dropping.remove(A, seeded[A])
+    for iri in gone:
+        assert not await stored(dropping, iri), f"{iri} is gone"
+        assert not await has_entry(store, iri), f"{iri} has no registry entry"
+    for iri in (B, other_type, other_link, other_target):
+        assert await stored(dropping, iri), f"{iri} stays"
+        assert await has_entry(store, iri), f"{iri} keeps its registry entry"
+    assert not await stored(dropping, A), "the removed root itself is gone"
+
+
+async def test_many_dependents_go_in_the_one_request_of_the_remove(store, dropping, seeded):
+    for n in range(30, 40):
+        await dropping.add_graph(book_iri(n), annotation(book_iri(n), NOTE, LINK, A))
+    sent = len(store.sent("update"))
+    await dropping.remove(A, seeded[A])
+    assert len(store.sent("update")) == sent + 1, "one update request for the root and all ten"
+    left = [n for n in range(30, 40) if await stored(dropping, book_iri(n))]
+    assert left == [], "no dependent is left"
+
+
+async def test_a_remove_without_pairs_is_the_request_it_always_was(store, session, seeded):
+    await session.add_graph(C, annotation(C, NOTE, LINK, A))
+    await session.remove(A, seeded[A])
+    text = store.sent("update")[-1]
+    match = re.search(r"urn:uuid:[0-9a-f-]+", text)
+    assert match, "the request names its marker"
+    removal = remove_parts(
+        URIRef(graph_of(A)),
+        DEFAULT_IRIS.registry(TENANT),
+        URIRef(A),
+        URIRef(match.group()),
+        seeded[A],
+    )[1]
+    assert len(text.split(";\n")) == 2 + len(removal.split(";\n")), "start, the removal, release"
+    assert removal in text, "the removal is the text remove_parts gives without pairs"
+    assert "?d " not in text, "no dependents operation"
+    assert await stored(session, C), "the would-be dependent stays"

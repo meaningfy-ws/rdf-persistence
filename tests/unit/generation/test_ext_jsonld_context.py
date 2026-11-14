@@ -120,6 +120,7 @@ def test_an_enum_slot_maps_each_value_to_its_meaning_iri(staged: Path) -> None:
         "modify": "http://www.w3.org/ns/odrl/2/modify",
         "delete": "http://www.w3.org/ns/odrl/2/delete",
         "administer": "https://meaningfy.ws/ns/rdf-persistence#administer",
+        "annotate": "http://www.w3.org/ns/odrl/2/annotate",
     }, "one term per permissible value, its meaning expanded"
 
 

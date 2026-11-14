@@ -133,7 +133,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 
 ## 3. Discussion (#81)
 
-- [ ] 3.1 `annotate` (PD-9): `rp_access.yaml`; `AccessRules.roles`, `AccessRules.defines`;
+- [x] 3.1 `annotate` (PD-9): `rp_access.yaml`; `AccessRules.roles`, `AccessRules.defines`;
   `make generate`; snapshot, golden and OpenAPI files refreshed (RISK-7). `library_roles.yaml`
   is unchanged; a test role file adds `{role: reviewer, level: tenant, actions: [read, annotate]}`.
   Test first in `tests/unit/services/test_access.py`.
@@ -146,7 +146,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-44 | `roles` for tenant `reader` + aggregate-level role on b1 + global `admin` | {reader, the aggregate role, admin}; on b2 without the aggregate role |
 | TC-44a | `prohibits(…, b1, MODIFY)` with `ban(MODIFY, graph_of(b1))`; with `ban(MODIFY)` on the tenant; with none | True, True, False |
 
-- [ ] 3.2 `model/rp_discussion.yaml` (PD-10), `WritesKind.toolkit`, `served_roots` (PD-11), the
+- [x] 3.2 `model/rp_discussion.yaml` (PD-10), `WritesKind.toolkit`, `served_roots` (PD-11), the
   `RESERVED_SEGMENT` hard rule; the kit's `generated_models_of` gains `rp_discussion` (PD-1);
   `make generate`; TC-02a re-run. Test first in
   `tests/unit/services/test_schema_structure.py` and `tests/unit/generation/test_hard_checks.py`.
@@ -158,7 +158,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-47 | an own class with `rp_path: rp-notes` | hard problem `RESERVED_SEGMENT` |
 | TC-48 | the toy service's router | no `/rp-comments` route |
 
-- [ ] 3.3 `comment`, `thread`, the transaction pieces `_require_present` and `_DROP_DEPENDENTS`
+- [x] 3.3 `comment`, `thread`, the transaction pieces `_require_present` and `_DROP_DEPENDENTS`
   (PD-12 to PD-15); the dependent pair `(oa:Annotation, oa:hasTarget)` excluded from `referrers`
   and comment referrers filtered by target readability and the thread rule (PD-3). Test first in
   `tests/unit/services/test_collaboration_discussion.py` and `tests/unit/services/test_session_transaction.py`.
@@ -183,14 +183,14 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-63 | 600 comments on b1; remove b1 | one update request; no comment graph left; no `CommitTooLarge` |
 | TC-64 | thread order: three comments with injected clock t2, t1, t1 | by created, then IRI |
 
-- [ ] 3.4 On Fuseki; gate as 1.3.
+- [x] 3.4 On Fuseki; gate as 1.3.
 
 | ID | Input | Expected |
 |---|---|---|
 | IT-06 | TC-50, TC-52, TC-53 | as there |
 | IT-07 | TC-61, TC-63 | as there |
 
-- [ ] 3.5 Docs: `howto/discussion.adoc`, nav, `questions.adoc` ("Can a reviewer comment without
+- [x] 3.5 Docs: `howto/discussion.adoc`, nav, `questions.adoc` ("Can a reviewer comment without
   editing?"); data-flows: delete removes dependents. `make check-docs`. Close the stage.
 
 ## 4. Workflow (#80)

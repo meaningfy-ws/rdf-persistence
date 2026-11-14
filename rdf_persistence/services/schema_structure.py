@@ -173,6 +173,11 @@ def is_service_written(view: SchemaView, cls: ClassDefinition) -> bool:
     return annotated or stored_file
 
 
+def is_toolkit_written(cls: ClassDefinition) -> bool:
+    """True when the toolkit writes the root itself (``rp_writes: toolkit``): no route serves it (PD-11)."""
+    return annotation(cls, RpAnnotation.RP_WRITES) == WritesKind.TOOLKIT.value
+
+
 def is_toolkit_schema(folder: Path) -> bool:
     """True for the toolkit's own schemas, which PD-23 exempts from the class-level rules."""
     return folder.resolve().is_relative_to(PACKAGE_DIR)
@@ -221,10 +226,15 @@ def root_classes(view: SchemaView, folder: Path) -> list[ClassDefinition]:
 def served_roots(view: SchemaView) -> list[ClassDefinition]:
     """The aggregate roots with a path that live in the tenant databases: what the generic router serves.
 
-    The tenant's access record lives in the system database and has its own routes, so it is left out.
+    The tenant's access record lives in the system database and has its own routes, so it is left out;
+    so is a root the toolkit writes itself (``rp_writes: toolkit``), which no route serves (PD-11).
     """
     roots = tenant_database_roots(view, list(view.all_classes().values()))
-    return [root for root in roots if annotation_text(root, RpAnnotation.RP_PATH)]
+    return [
+        root
+        for root in roots
+        if annotation_text(root, RpAnnotation.RP_PATH) and not is_toolkit_written(root)
+    ]
 
 
 def _only(found: list[ClassDefinition], what: str) -> ClassDefinition:

@@ -338,7 +338,7 @@ _:c14n102 sh:datatype xsd:string ;
 	sh:order 0 ;
 	sh:path rp:role .
 _:c14n103 sh:description "The action a direct permission allows, or a prohibition forbids." ;
-	sh:in _:c14n395 ;
+	sh:in _:c14n385 ;
 	sh:maxCount 1 ;
 	sh:name "Action" ;
 	sh:order 3 ;
@@ -368,7 +368,7 @@ _:c14n106 sh:datatype xsd:boolean ;
 	sh:nodeKind sh:Literal ;
 	sh:order 5 ;
 	sh:path rp:removedBlobs .
-_:c14n107 rdf:first _:c14n408 ;
+_:c14n107 rdf:first _:c14n413 ;
 	rdf:rest rdf:nil .
 _:c14n108 sh:datatype xsd:dateTime ;
 	sh:description "When the dump was taken, so a person choosing among dumps can tell them apart." ;
@@ -432,7 +432,7 @@ _:c14n117 sh:description "The permissions given in the tenant, by role or as dir
 	sh:order 2 ;
 	sh:path rp:grant .
 _:c14n118 sh:description "Where the tenant is in its life." ;
-	sh:in _:c14n385 ;
+	sh:in _:c14n410 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "State" ;
@@ -504,7 +504,7 @@ _:c14n128 sh:description "A fresh urn:uuid IRI, never shared by two transactions
 	sh:order 0 ;
 	sh:path dcterms:identifier .
 _:c14n129 sh:description "The actions the caller who asked may take on the tenant, in the order read, modify, delete, administer. Only a listing fills it." ;
-	sh:in _:c14n399 ;
+	sh:in _:c14n395 ;
 	sh:name "Allowed actions" ;
 	sh:order 3 ;
 	sh:path rp:allowedActions .
@@ -669,7 +669,7 @@ _:c14n154 sh:datatype xsd:string ;
 	sh:order 2 ;
 	sh:path rp:referrerSlot .
 _:c14n155 sh:description "Where the tenant is in its life." ;
-	sh:in _:c14n383 ;
+	sh:in _:c14n408 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "State" ;
@@ -723,7 +723,7 @@ _:c14n160 sh:datatype xsd:string ;
 _:c14n161 rdf:first dcterms:contributor ;
 	rdf:rest _:c14n350 .
 _:c14n162 sh:description "Where the tenant is in its life." ;
-	sh:in _:c14n381 ;
+	sh:in _:c14n406 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "State" ;
@@ -940,7 +940,7 @@ _:c14n194 sh:datatype xsd:integer ;
 	sh:order 3 ;
 	sh:path rp:offset .
 _:c14n195 sh:description "The action a direct permission allows, or a prohibition forbids." ;
-	sh:in _:c14n403 ;
+	sh:in _:c14n405 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Action" ;
@@ -1458,69 +1458,71 @@ _:c14n38 rdf:first dcterms:contributor ;
 	rdf:rest _:c14n290 .
 _:c14n380 rdf:first dcterms:created ;
 	rdf:rest _:c14n376 .
-_:c14n381 rdf:first rp:Active ;
+_:c14n381 rdf:first odrl:annotate ;
+	rdf:rest rdf:nil .
+_:c14n382 rdf:first rp:administer ;
+	rdf:rest _:c14n381 .
+_:c14n383 rdf:first odrl:delete ;
 	rdf:rest _:c14n382 .
-_:c14n382 rdf:first rp:Deleting ;
-	rdf:rest rdf:nil .
-_:c14n383 rdf:first rp:Active ;
+_:c14n384 rdf:first odrl:modify ;
+	rdf:rest _:c14n383 .
+_:c14n385 rdf:first odrl:read ;
 	rdf:rest _:c14n384 .
-_:c14n384 rdf:first rp:Deleting ;
+_:c14n386 rdf:first odrl:annotate ;
 	rdf:rest rdf:nil .
-_:c14n385 rdf:first rp:Active ;
+_:c14n387 rdf:first rp:administer ;
 	rdf:rest _:c14n386 .
-_:c14n386 rdf:first rp:Deleting ;
-	rdf:rest rdf:nil .
-_:c14n387 rdf:first odrl:read ;
+_:c14n388 rdf:first odrl:delete ;
+	rdf:rest _:c14n387 .
+_:c14n389 rdf:first odrl:modify ;
 	rdf:rest _:c14n388 .
-_:c14n388 rdf:first odrl:modify ;
-	rdf:rest _:c14n389 .
-_:c14n389 rdf:first odrl:delete ;
-	rdf:rest _:c14n390 .
 _:c14n39 rdf:first rp:IdUuid4 ;
 	rdf:rest _:c14n203 .
-_:c14n390 rdf:first rp:administer ;
+_:c14n390 rdf:first odrl:read ;
+	rdf:rest _:c14n389 .
+_:c14n391 rdf:first odrl:annotate ;
 	rdf:rest rdf:nil .
-_:c14n391 rdf:first odrl:read ;
-	rdf:rest _:c14n392 .
-_:c14n392 rdf:first odrl:modify ;
-	rdf:rest _:c14n393 .
+_:c14n392 rdf:first rp:administer ;
+	rdf:rest _:c14n391 .
 _:c14n393 rdf:first odrl:delete ;
-	rdf:rest _:c14n394 .
-_:c14n394 rdf:first rp:administer ;
-	rdf:rest rdf:nil .
+	rdf:rest _:c14n392 .
+_:c14n394 rdf:first odrl:modify ;
+	rdf:rest _:c14n393 .
 _:c14n395 rdf:first odrl:read ;
-	rdf:rest _:c14n396 .
-_:c14n396 rdf:first odrl:modify ;
-	rdf:rest _:c14n397 .
-_:c14n397 rdf:first odrl:delete ;
-	rdf:rest _:c14n398 .
-_:c14n398 rdf:first rp:administer ;
+	rdf:rest _:c14n394 .
+_:c14n396 rdf:first odrl:annotate ;
 	rdf:rest rdf:nil .
-_:c14n399 rdf:first odrl:read ;
-	rdf:rest _:c14n400 .
+_:c14n397 rdf:first rp:administer ;
+	rdf:rest _:c14n396 .
+_:c14n398 rdf:first odrl:delete ;
+	rdf:rest _:c14n397 .
+_:c14n399 rdf:first odrl:modify ;
+	rdf:rest _:c14n398 .
 _:c14n4 a sh:SPARQLConstraint ;
 	sh:message "GrantSet.grants: One grant per assignee, target and role or action." ;
 	sh:select "SELECT DISTINCT $this\nWHERE {\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?first .\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?second .\n  FILTER (!sameTerm(?first, ?second))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/assignee> ?first_0 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/assignee> ?second_0 . }\n  FILTER ((!bound(?first_0) && !bound(?second_0)) || sameTerm(?first_0, ?second_0))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/target> ?first_1 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/target> ?second_1 . }\n  FILTER ((!bound(?first_1) && !bound(?second_1)) || sameTerm(?first_1, ?second_1))\n  OPTIONAL { ?first <https://meaningfy.ws/ns/rdf-persistence#role> ?first_2 . }\n  OPTIONAL { ?second <https://meaningfy.ws/ns/rdf-persistence#role> ?second_2 . }\n  FILTER ((!bound(?first_2) && !bound(?second_2)) || sameTerm(?first_2, ?second_2))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/action> ?first_3 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/action> ?second_3 . }\n  FILTER ((!bound(?first_3) && !bound(?second_3)) || sameTerm(?first_3, ?second_3))\n}" .
-_:c14n40 rdf:first _:c14n407 ;
+_:c14n40 rdf:first _:c14n412 ;
 	rdf:rest _:c14n107 .
-_:c14n400 rdf:first odrl:modify ;
-	rdf:rest _:c14n401 .
-_:c14n401 rdf:first odrl:delete ;
-	rdf:rest _:c14n402 .
+_:c14n400 rdf:first odrl:read ;
+	rdf:rest _:c14n399 .
+_:c14n401 rdf:first odrl:annotate ;
+	rdf:rest rdf:nil .
 _:c14n402 rdf:first rp:administer ;
-	rdf:rest rdf:nil .
-_:c14n403 rdf:first odrl:read ;
-	rdf:rest _:c14n404 .
+	rdf:rest _:c14n401 .
+_:c14n403 rdf:first odrl:delete ;
+	rdf:rest _:c14n402 .
 _:c14n404 rdf:first odrl:modify ;
-	rdf:rest _:c14n405 .
-_:c14n405 rdf:first odrl:delete ;
-	rdf:rest _:c14n406 .
-_:c14n406 rdf:first rp:administer ;
+	rdf:rest _:c14n403 .
+_:c14n405 rdf:first odrl:read ;
+	rdf:rest _:c14n404 .
+_:c14n406 rdf:first rp:Active ;
+	rdf:rest _:c14n407 .
+_:c14n407 rdf:first rp:Deleting ;
 	rdf:rest rdf:nil .
-_:c14n407 sh:property _:c14n56 .
-_:c14n408 sh:property _:c14n179 .
-_:c14n409 rdf:first rdf:type ;
-	rdf:rest _:c14n96 .
+_:c14n408 rdf:first rp:Active ;
+	rdf:rest _:c14n409 .
+_:c14n409 rdf:first rp:Deleting ;
+	rdf:rest rdf:nil .
 _:c14n41 sh:description "The IRI of the class of the roots." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -1528,6 +1530,14 @@ _:c14n41 sh:description "The IRI of the class of the roots." ;
 	sh:nodeKind sh:IRI ;
 	sh:order 1 ;
 	sh:path rp:rootClass .
+_:c14n410 rdf:first rp:Active ;
+	rdf:rest _:c14n411 .
+_:c14n411 rdf:first rp:Deleting ;
+	rdf:rest rdf:nil .
+_:c14n412 sh:property _:c14n56 .
+_:c14n413 sh:property _:c14n179 .
+_:c14n414 rdf:first rdf:type ;
+	rdf:rest _:c14n96 .
 _:c14n42 rdf:first dcterms:contributor ;
 	rdf:rest _:c14n215 .
 _:c14n43 sh:datatype xsd:string ;
@@ -1552,7 +1562,7 @@ _:c14n46 rdf:first rp:databaseName ;
 _:c14n47 rdf:first dcterms:contributor ;
 	rdf:rest _:c14n335 .
 _:c14n48 sh:description "The actions the role permits." ;
-	sh:in _:c14n387 ;
+	sh:in _:c14n400 ;
 	sh:minCount 1 ;
 	sh:name "Actions" ;
 	sh:order 2 ;
@@ -1623,7 +1633,7 @@ _:c14n57 sh:datatype xsd:string ;
 	sh:path skos:prefLabel ;
 	sh:pattern "^(?:^\\S(?:.{0,198}\\S)?$)(?![\\s\\S])" .
 _:c14n58 sh:description "The action a direct permission allows, or a prohibition forbids." ;
-	sh:in _:c14n391 ;
+	sh:in _:c14n390 ;
 	sh:maxCount 1 ;
 	sh:name "Action" ;
 	sh:order 2 ;
@@ -1753,7 +1763,7 @@ _:c14n76 sh:datatype xsd:string ;
 _:c14n77 rdf:first dcterms:contributor ;
 	rdf:rest _:c14n270 .
 _:c14n78 rdf:first dcterms:identifier ;
-	rdf:rest _:c14n409 .
+	rdf:rest _:c14n414 .
 _:c14n79 sh:description "The IRI policy of the service; absent, the default policy applies." ;
 	sh:maxCount 1 ;
 	sh:name "IRI policy" ;

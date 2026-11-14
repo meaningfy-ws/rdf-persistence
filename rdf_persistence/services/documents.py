@@ -122,6 +122,10 @@ class Documents:
         """
         return tenant_root_class(self._view)
 
+    def family(self, cls: ClassDefinition) -> set[URIRef]:
+        """The IRIs of ``cls`` and of the classes derived from it."""
+        return self._family[cls.name]
+
     @cached_property
     def aggregates(self) -> dict[str, ClassDefinition]:
         """The aggregate types the generic router serves, by the path they are served at."""

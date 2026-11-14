@@ -124,5 +124,9 @@ xref:architecture/access-control.adoc[Access control and identity].
   those of a subclass, and an item shown with an IRI matches no name.
 * *`referrers` does not check that the resource exists.* A well-formed IRI of the tenant that no
   aggregate has gives an empty result, like a resource nothing refers to.
-* The links of a comment or of a transition record to the resource it was made on do not count
-  as references. The toolkit has neither yet, so today this changes nothing.
+* *A comment's link to its target does not count.* The comments on a book are not its referrers.
+  A comment that *references* a resource is a referrer of it, shown as `Comment` with the slot
+  `comment_references`. It is listed only to a caller who may read the comment's target and sees
+  the comment in that thread; otherwise it is counted in `hidden_count`. See
+  xref:howto/discussion.adoc[Comment on a resource without editing it]. Transition records do not
+  exist yet.

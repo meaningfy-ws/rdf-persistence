@@ -14,3 +14,4 @@ imports:
   - books
   - scans
   - library_access
+  - rdf_persistence/model/rp_discussion

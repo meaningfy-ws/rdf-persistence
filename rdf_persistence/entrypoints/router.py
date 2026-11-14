@@ -131,7 +131,9 @@ class DocumentApi:
     ) -> Response:
         """The document at ``iri``, with what ``caller`` may do there in ``Allowed-Actions`` (PD-10)."""
         media_type = accepted_media_type(request.headers.get(ACCEPT))
-        read = await self._kit.aggregates.read(access.tenant, Principal(id=caller.principal), iri)
+        read = await self._kit.aggregates.read(
+            access.tenant, Principal(id=caller.principal), iri, self._cls
+        )
         response = await self._response(read, media_type)
         actions = self._kit.rules.allowed_actions(caller, access, iri)
         response.headers[ALLOWED_ACTIONS] = allowed_actions_value(actions)
@@ -187,7 +189,9 @@ class DocumentApi:
         self, request: Request, caller: VerifiedCaller, tenant: str, iri: str
     ) -> Response:
         expected = expected_version(request.headers.get(IF_MATCH))
-        await self._kit.aggregates.remove(tenant, Principal(id=caller.principal), iri, expected)
+        await self._kit.aggregates.remove(
+            tenant, Principal(id=caller.principal), iri, expected, self._cls
+        )
         return Response(status_code=HTTPStatus.NO_CONTENT)
 
 

@@ -11,6 +11,7 @@ from rdf_persistence.domain.generated import (
     rp_access,
     rp_collections,
     rp_core,
+    rp_discussion,
     rp_tenancy,
 )
 from rdf_persistence.domain.generated.rp_access import Action
@@ -30,6 +31,7 @@ from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.services.artifacts import CONTEXT_FILE
 from rdf_persistence.services.collaboration import Collaboration
+from rdf_persistence.services.discussion import dependents
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.identity import Identity
@@ -90,7 +92,9 @@ class ServiceKit:
         self.generated_folder = Path(next(iter(generated.__path__)))
         self.documents = Documents(view, self.generated_folder, self.iris)
         self.documents.require_frames()
-        models = generated_models_of(generated, rp_access, rp_core, rp_tenancy, rp_collections)
+        models = generated_models_of(
+            generated, rp_access, rp_core, rp_tenancy, rp_collections, rp_discussion
+        )
         mapper = Mapper(view, models)
         self.mapper, self.models = mapper, models
         access_class = cast(type[TenantAccess], models.named(tenant_access_class(view).name))
@@ -106,6 +110,7 @@ class ServiceKit:
             guards=WriteGuards(mapper, models, self.listings),
             grant_validators=grant_validators,
             root_validators=root_validators,
+            dependents=dependents(view),
         )
         self.aggregates = Aggregates(self.documents, self.tenancy, self.iris)
 
@@ -245,6 +250,10 @@ class ServiceKit:
     ) -> None:
         """Remove the aggregate ``iri`` at ``if_version`` and delete the blobs only it names in
         ``rp:fileKey``. A blob that cannot be deleted is logged; the sweep removes it later.
+
+        It removes whatever aggregate ``iri`` names and checks no class: with an IRI policy whose
+        aggregate template names neither the type nor the path, check the type of what is stored
+        there before calling it with an id from a request.
 
         Raises:
             NotFound: The tenant or the aggregate does not exist.

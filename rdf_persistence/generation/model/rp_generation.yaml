@@ -941,6 +941,12 @@ enums:
           The `rp_iri_type` of a root or an owned class, or its kebab-case name when it has none, is
           unique among them and is not a reserved word of the IRI layout.
         meaning: rp:HardRuleIriType
+      reserved_segment:
+        title: Reserved segment
+        description: >-
+          The `rp_path` and `rp_iri_type` of an application class do not start with `rp-`, the prefix
+          of the toolkit's own roots.
+        meaning: rp:HardRuleReservedSegment
   BoundaryRule:
     title: Boundary rule
     description: The rules of the boundary check; a problem line starts with its rule.

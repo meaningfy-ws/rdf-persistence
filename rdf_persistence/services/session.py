@@ -145,6 +145,18 @@ REPLACE = ";\n".join(
 )
 # Also empties the loaded graphs the root owns: they are part of the aggregate.
 REMOVE = ";\n".join((_DROP_ALL_LOADED, _DROP_ENTRIES, _DROP_GRAPH))
+# The records that depend on the removed root (a comment's target, PD-15): the graph and the registry
+# entry of each registered aggregate whose root has one of the types $pairs with that link to $root.
+# One operation whatever their number, and no version guard of theirs: they are never edited. It
+# starts from the link to $root, so a tenant with no comment costs next to nothing (PD-30 item 6).
+_DROP_DEPENDENTS = f"""
+DELETE {{ GRAPH ?d {{ ?s ?p ?o }} GRAPH $registry {{ ?d ?ep ?eo }} }}
+WHERE {{ {_MARKED}
+  VALUES (?type ?link) {{ $pairs }}
+  GRAPH ?d {{ ?c ?link $root ; a ?type }}
+  GRAPH $registry {{ ?d $p_kind $aggregate ; $p_owned_by ?c }}
+  {{ GRAPH ?d {{ ?s ?p ?o }} }} UNION {{ GRAPH $registry {{ ?d ?ep ?eo }} }} }}
+"""
 # What the transaction wrote, in one ASK (PD-3), and which graph holds what, for the diagnosis (PD-4).
 CONFIRM = "ASK { $patterns }"
 _HOLDS_TOKEN = "GRAPH $graph { $graph $p_version $new }"
@@ -170,6 +182,7 @@ SELECT DISTINCT ?root ?s ?p ?o WHERE {
 MATCHES = "ASK { GRAPH $graph { ?root a $type . $patterns FILTER (?root = $iri) } }"
 # The same as a guard of a transaction: its variables carry $n, the guard's index in the transaction,
 # so the guards never join.
+_PRESENT = "GRAPH $graph { $graph $p_version ?held$n }"
 _MATCH_GUARD = "GRAPH $graph { ?root$n a $type . $patterns FILTER (?root$n = $iri) }"
 READ_VERSIONS = (
     "SELECT ?g ?version WHERE { VALUES ?g { $graphs } "
@@ -200,12 +213,17 @@ _NOT_DEPENDENT = (
 ReferrerRow = tuple[str, str, str | None, str]
 
 
-def _without_dependents(pairs: Sequence[tuple[URIRef, URIRef]]) -> SparqlTerm:
+Dependents = Sequence[tuple[URIRef, URIRef]]
+
+
+def _pair_values(pairs: Dependents) -> SparqlTerm:
+    """The rows of a ``VALUES`` list, one ``(class predicate)`` per pair."""
+    return join(fragment("($cls $link)", cls=term(c), link=term(p)) for c, p in pairs)
+
+
+def _without_dependents(pairs: Dependents) -> SparqlTerm:
     """The clause that drops the links of ``(class, predicate)`` ``pairs``; none at all when there are none."""
-    if not pairs:
-        return SparqlTerm("")
-    listed = join(fragment("($cls $link)", cls=term(c), link=term(p)) for c, p in pairs)
-    return fragment(_NOT_DEPENDENT, pairs=listed)
+    return fragment(_NOT_DEPENDENT, pairs=_pair_values(pairs)) if pairs else SparqlTerm("")
 
 
 def utc_now() -> datetime:
@@ -389,11 +407,28 @@ def replace_parts(
 
 
 def remove_parts(
-    graph: URIRef, registry: URIRef, root: URIRef, marker: URIRef, old_version: str
+    graph: URIRef,
+    registry: URIRef,
+    root: URIRef,
+    marker: URIRef,
+    old_version: str,
+    dependents: Dependents = (),
 ) -> tuple[SparqlTerm, str]:
     """The guard (``graph`` is at ``old_version``) and the marked operations that delete a graph and
-    every registry entry the root owns."""
+    every registry entry the root owns, and the ``dependents`` that point at the root (none, none)."""
     operations = _fill_marked(REMOVE, graph, registry, marker, **_owner_terms(root))
+    if dependents:
+        operations += ";\n" + fill(
+            _DROP_DEPENDENTS,
+            registry=term(registry),
+            marker=term(marker),
+            commit_marker=term(v.COMMIT_MARKER),
+            root=term(root),
+            p_kind=term(v.REGISTRY_KIND),
+            aggregate=term(v.REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
+            p_owned_by=term(v.REGISTRY_OWNED_BY),
+            pairs=_pair_values(dependents),
+        )
     return _at_version(graph, old_version), operations
 
 
@@ -423,7 +458,9 @@ class Session:
         listings: Listings | None = None,
         keys: Sequence[AggregateKey] = (),
         guards: WriteGuard | None = None,
+        dependents: Dependents = (),
     ) -> None:
+        self._dependents = tuple(dependents)  # (class, link) pairs a remove also drops (PD-15)
         self._keys = tuple(keys)
         self._write_guards = guards
         self._listings = listings
@@ -546,16 +583,12 @@ class Session:
         result = await self._store.query(self._database, listing_query(self._registry, plan))
         return result.graph or Graph()
 
-    async def referrer_rows(
-        self,
-        iri: str,
-        *,
-        dependents: Sequence[tuple[URIRef, URIRef]] = (),
-    ) -> list[ReferrerRow]:
+    async def referrer_rows(self, iri: str) -> list[ReferrerRow]:
         """What the tenant's aggregate graphs say that refers to ``iri``, one row per referrer, type and link.
 
-        A link whose predicate and referrer class equal a pair of ``dependents`` is left out. No
-        access is checked, and nothing is narrowed: the caller decides what to show.
+        A link whose predicate and referrer class equal a ``dependents`` pair of this session (the
+        pairs a remove drops with its target) is left out. No access is checked, and nothing is
+        narrowed: the caller decides what to show.
 
         Raises:
             DatabaseGone: The tenant database does not exist.
@@ -568,7 +601,7 @@ class Session:
             p_owned_by=term(v.REGISTRY_OWNED_BY),
             iri=term(URIRef(iri)),
             rdf_type=term(RDF.type),
-            dependents=_without_dependents(dependents),
+            dependents=_without_dependents(self._dependents),
         )
         rows = [
             r for r in await self._store.query(self._database, text) if isinstance(r, ResultRow)
@@ -864,6 +897,7 @@ class Transaction:
         self._roots: dict[URIRef, str] = {}
         self._read_at: dict[URIRef, str | None] = {}
         self._wrote: dict[URIRef, str] = {}
+        self._required: dict[URIRef, str] = {}  # graph -> root of each ``_require_present`` (PD-25)
         self._key_claims: list[KeyClaim] = []  # what the changes claim of the session's keys (PD-6)
 
     def _end(self) -> None:
@@ -993,8 +1027,29 @@ class Transaction:
         session = self._session
         graph = self._claim(iri)
         await session._stored(graph)
-        parts = remove_parts(graph, session._registry, URIRef(iri), self._marker_iri, if_version)
+        parts = remove_parts(
+            graph,
+            session._registry,
+            URIRef(iri),
+            self._marker_iri,
+            if_version,
+            session._dependents,
+        )
         self._collect(iri, graph, if_version, None, parts, _absent(graph, len(self._roots)))
+
+    def _require_present(self, iri: str) -> None:
+        """Guard the commit on the aggregate ``iri`` still having a version when the request is
+        applied; a commit refused for it names ``iri`` (PD-15). It collects no change.
+
+        Do not use it on a graph the same transaction removes: the guards are checked when the
+        request starts, before any of its operations, so the guard holds and tells nothing."""
+        self._require_open()
+        graph = self._session._graph(iri)
+        number = count(len(self._guards))
+        self._guards.append(
+            fragment(_PRESENT, graph=term(graph), p_version=term(v.VERSION), n=number)
+        )
+        self._required[graph] = str(iri)
 
     def _require_match(self, iri: str, class_iri: str, conditions: Sequence[Condition]) -> None:
         """Guard the commit on ``iri`` being of exactly ``class_iri`` and holding every condition
@@ -1056,7 +1111,7 @@ class Transaction:
         session = self._session
         text = fill(
             READ_VERSIONS,
-            graphs=join(term(graph) for graph in self._roots),
+            graphs=join(term(graph) for graph in {**self._roots, **self._required}),
             p_version=term(v.VERSION),
         )
         rows = [
@@ -1077,16 +1132,25 @@ class Transaction:
         who = "changed" if found is not None else "removed"
         return f"{root} was {who} by someone else since it was read"
 
+    def _reasons(self, found: dict[URIRef, str | None]) -> dict[str, str]:
+        """Root -> why the commit was refused for it, in the order of the sorted roots: the changes
+        that no longer fit, and the required graphs that have no version now."""
+        reasons = {}
+        for graph in sorted(self._roots, key=self._roots.__getitem__):
+            if (reason := self._refused(graph, found.get(graph))) is not None:
+                reasons[self._roots[graph]] = reason
+        for graph, root in self._required.items():
+            if found.get(graph) is None:
+                reasons[root] = f"{root} was removed by someone else since it was read"
+        return dict(sorted(reasons.items()))
+
     async def _diagnose(self) -> None:
         """The confirmation failed: either nothing was written, or the commit applied and another
         writer changed a graph before the ``ASK``. Returns in the second case, else raises (PD-4)."""
         found = await self._versions_found()
         if any(found.get(graph) == token for graph, token in self._wrote.items()):
             return  # all or nothing: the commit applied, and a later writer changed some graph
-        reasons = {}  # root -> why, in the order of the sorted roots
-        for graph in sorted(self._roots, key=self._roots.__getitem__):
-            if (reason := self._refused(graph, found.get(graph))) is not None:
-                reasons[self._roots[graph]] = reason
+        reasons = self._reasons(found)
         if not reasons and self._key_claims and (held := await self._claims_held()):
             raise key_conflict(held, within_commit=False)
         raise Conflict(
@@ -1130,13 +1194,16 @@ async def open_session(
     listings: Listings | None = None,
     keys: Sequence[AggregateKey] = (),
     guards: WriteGuard | None = None,
+    dependents: Dependents = (),
 ) -> AsyncIterator[Session]:
     """Open a session on the tenant database ``database`` for ``principal``; ``iris`` is the IRI policy
     (default: the default policy); ``listings`` lets the session ``find`` aggregates.
 
     ``keys`` are the keys across aggregates the commits enforce (``schema_structure.aggregate_keys``
     of the schema). With none, no key is enforced: a consumer opening sessions itself passes them.
-    ``guards`` vet each add and replace (none: nothing is checked).
+    ``guards`` vet each add and replace (none: nothing is checked). ``dependents`` are the
+    ``(class IRI, predicate)`` pairs whose records a remove drops with the aggregate they point at
+    (none: a remove drops only the aggregate).
     """
     yield Session(
         store,
@@ -1148,4 +1215,5 @@ async def open_session(
         listings=listings,
         keys=keys,
         guards=guards,
+        dependents=dependents,
     )

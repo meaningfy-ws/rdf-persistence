@@ -6,10 +6,13 @@ unit of work, which bypass this class, are unaffected. The reads and the cascade
 collections are ``ReferenceCollections``'s; this class hands them over, so the public face is one.
 """
 
+from collections.abc import Sequence
+
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.domain.exceptions import BadQuery, InvalidIri
 from rdf_persistence.domain.generated.rp_access import Action
+from rdf_persistence.domain.generated.rp_discussion import Comment
 from rdf_persistence.domain.generated.service.rp_service import (
     CallerAccess,
     MemberList,
@@ -19,6 +22,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
 )
 from rdf_persistence.domain.iris import Iris
 from rdf_persistence.services.access import AccessRules
+from rdf_persistence.services.discussion import Discussion
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.services.reference_collections import ReferenceCollections
@@ -58,6 +62,15 @@ class Collaboration:
             caller=caller,
             access=access,
         )
+        self._discussion = Discussion(
+            session,
+            view=view,
+            rules=rules,
+            iris=iris,
+            mapper=mapper,
+            caller=caller,
+            access=access,
+        )
 
     async def referrers(
         self, iri: str, *, class_name: str | None = None, slot: str | None = None
@@ -80,8 +93,9 @@ class Collaboration:
         """
         self._require_readable(iri)
         self._require_names(class_name, slot)
-        named = self._named(await self._session.referrer_rows(iri))
-        return self._readable(named, class_name, slot)
+        rows = await self._session.referrer_rows(iri)
+        judged = await self._discussion.judged(iri, rows)
+        return self._readable(self._named(rows), class_name, slot, judged)
 
     async def members(self, collection: str, *, deep: bool = False) -> MemberList:
         """The members of the collection that the caller may read, sorted; ``hidden_count`` is the
@@ -100,6 +114,31 @@ class Collaboration:
         The ``Raises`` are those of ``ReferenceCollections.collections_of``.
         """
         return await self._collections.collections_of(iri)
+
+    async def comment(
+        self,
+        iri: str,
+        text: str,
+        *,
+        audience: Sequence[str] = (),
+        references: Sequence[str] = (),
+        reply_to: str | None = None,
+    ) -> str:
+        """Post a comment on the aggregate ``iri`` and return its IRI.
+
+        The aggregate is not written, and deleting it deletes its comments. The ``Raises`` are those
+        of ``Discussion.comment``.
+        """
+        return await self._discussion.comment(
+            iri, text, audience=audience, references=references, reply_to=reply_to
+        )
+
+    async def thread(self, iri: str) -> list[Comment]:
+        """The comments on ``iri`` that the caller sees, oldest first, a reply naming its parent.
+
+        The ``Raises`` are those of ``Discussion.thread``.
+        """
+        return await self._discussion.thread(iri)
 
     async def delete_cascade(self, collection: str, if_version: str) -> None:
         """Delete the collection and each of its members, in one request, all or nothing.
@@ -152,12 +191,26 @@ class Collaboration:
         )
 
     def _readable(
-        self, named: set[tuple[str, str, str]], class_name: str | None, slot: str | None
+        self,
+        named: set[tuple[str, str, str]],
+        class_name: str | None,
+        slot: str | None,
+        judged: dict[str, bool],
     ) -> ReferrerList:
-        """The items the caller may read, narrowed and sorted, and the number of other referrers (PD-26)."""
+        """The items the caller may read, narrowed and sorted, and the number of other referrers (PD-26).
+
+        A comment in ``judged`` is readable when its thread shows it to the caller and by no other
+        right; any other referrer, when the caller may read it (PD-3, PD-30).
+        """
         referrers = {referrer for referrer, _, _ in named}
         readable = {
-            r for r in referrers if self._rules.may(self._caller, self._access, r, Action.READ)
+            r
+            for r in referrers
+            if (
+                judged[r]
+                if r in judged
+                else self._rules.may(self._caller, self._access, r, Action.READ)
+            )
         }
         items = [
             Referrer(referrer=r, referrer_class=c, referrer_slot=s)

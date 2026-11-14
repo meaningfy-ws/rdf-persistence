@@ -76,6 +76,8 @@ class HardRule(str, Enum):
     "A unique key is named by an identifier, since generated code carries the name."
     IRI_TYPE = "iri_type"
     "The `rp_iri_type` of a root or an owned class, or its kebab-case name when it has none, is unique among them and is not a reserved word of the IRI layout."
+    RESERVED_SEGMENT = "reserved_segment"
+    "The `rp_path` and `rp_iri_type` of an application class do not start with `rp-`, the prefix of the toolkit\u0027s own roots."
 
 
 class BoundaryRule(str, Enum):

@@ -8,9 +8,9 @@ for itself is HTTP: negotiation, headers and status.
 from typing import cast
 
 from linkml_runtime.linkml_model.meta import ClassDefinition
-from rdflib import URIRef
+from rdflib import RDF, URIRef
 
-from rdf_persistence.domain.exceptions import InvalidBody
+from rdf_persistence.domain.exceptions import InvalidBody, NotFound
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.domain.sparql import Triple
@@ -37,14 +37,27 @@ class Aggregates:
         """
         return str(self._iris.aggregate(tenant, self._types[rp_path], rp_path, aggregate_id))
 
-    async def read(self, tenant: str, principal: Principal, iri: str) -> Stored:
+    def _require_class(self, stored: Stored, iri: str, cls: ClassDefinition) -> None:
+        """A route answers only for an aggregate of its own class, or one derived from it (PD-30).
+
+        The refusal reads as a missing aggregate, so it tells nothing of what else has the IRI.
+        """
+        graph, graph_iri, _ = stored
+        if not self._documents.family(cls) & set(graph.objects(URIRef(iri), RDF.type)):
+            raise NotFound(f"no graph {graph_iri}")
+
+    async def read(
+        self, tenant: str, principal: Principal, iri: str, cls: ClassDefinition
+    ) -> Stored:
         """The aggregate ``iri``, as stored.
 
         Raises:
-            NotFound: The aggregate has no graph.
+            NotFound: The aggregate has no graph, or is not of ``cls`` (a class derived from it will do).
         """
         async with self._tenancy.tenant_session(tenant, principal) as session:
-            return await session.get_graph(iri)
+            stored = await session.get_graph(iri)
+        self._require_class(stored, iri, cls)
+        return stored
 
     async def create(
         self,
@@ -88,14 +101,16 @@ class Aggregates:
                 their root, names a part the aggregate does not store (PD-7), or, for a tenant's
                 root, gives the tenant another label than its record has (PD-3) or is refused by a
                 root validator.
-            NotFound: The aggregate has no graph.
+            NotFound: The aggregate has no graph, or is not of ``cls`` (a class derived from it will do).
             Conflict: Its version is not ``if_version``; nothing changed.
         """
         triples, named = await self._triples(tenant, data, media_type, cls, iri, creating=False)
         if iri == tenant:
             await self._tenancy.vet_root(tenant, triples, principal)
         async with self._tenancy.tenant_session(tenant, principal) as session:
-            stored, _, _ = await session.get_graph(iri)
+            found = await session.get_graph(iri)
+            self._require_class(found, iri, cls)
+            stored = found[0]
             foreign = named - set(stored.subjects())
             if foreign:
                 raise InvalidBody(f"{min(foreign)} is not a part of the aggregate {iri}")
@@ -103,14 +118,22 @@ class Aggregates:
             await session.replace_graph(iri, [*triples, *kept], if_version)
             return await session.get_graph(iri)
 
-    async def remove(self, tenant: str, principal: Principal, iri: str, if_version: str) -> None:
+    async def remove(
+        self,
+        tenant: str,
+        principal: Principal,
+        iri: str,
+        if_version: str,
+        cls: ClassDefinition,
+    ) -> None:
         """Delete the aggregate ``iri`` if it is still at ``if_version``.
 
         Raises:
-            NotFound: The aggregate has no graph.
+            NotFound: The aggregate has no graph, or is not of ``cls`` (a class derived from it will do).
             Conflict: Its version is not ``if_version``; nothing changed.
         """
         async with self._tenancy.tenant_session(tenant, principal) as session:
+            self._require_class(await session.get_graph(iri), iri, cls)
             await session.remove(iri, if_version)
 
     async def _triples(
