@@ -162,7 +162,6 @@ The format is a contract: a change to it raises `format_version`.
 slug, templates, id rules) and names the fields that differ. A dump restores into the deployment that
 made it, or into one that shares its policy.
 
-// TODO(lead): verify against task 3.1 as built
 *Same schema id; any version of the chain.* Restore refuses a dump of another schema id. It accepts
 a dump at any version of your migration chain: it applies the pending migrations to the restored
 data, before the data is checked and imported, so the new tenant follows the running version (see

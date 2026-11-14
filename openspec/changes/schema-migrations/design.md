@@ -525,6 +525,53 @@ None.
   changes to the same path (`tenant_dump.restore` and its manifest check, `Tenancy.restore`
   migrating the parsed dump, `dump` writing the tenant's own version), the developer answered
   "Go ahead" (2026-11-14).
+- **PD-25 The review of stage 3 (four reviewers, 2026-11-14: L1, L2, L3, L4 with L5).** No
+  blocker. Accepted:
+  1. *The stamps rule compared a stamp's text only*, so an archive could plant a stamp with a
+     language tag or a datatype that passed every check and that the runner's guard (a plain
+     literal) could never match again. A stamp is a plain string literal; anything else is "not
+     a stamp" (L1).
+  2. *The in-memory migration blamed every error on the client.* `RecursionError` and
+     `MemoryError` escape; the request is built outside the `try`, so a defect in our own text
+     escapes too; only rdflib's update is caught (it raises bare exceptions at run time) (L1, L4).
+  3. *Messages echoed archive text without a cap.* Every value from the archive or the manifest
+     in a message (subjects, predicates, schema id, version, rdflib's message) goes through
+     `shown()` (L1, L4).
+  4. *The migration of a parsed dump ran on the event loop.* It runs in a worker thread
+     (`asyncio.to_thread`); `restore`'s docstring says reading and migrating block that thread.
+     Its cost is bounded only by the steps (a step joining a pattern with itself can grow the
+     data); the how-to says so. **Not accepted:** a size guard on the migrated dataset (a restore
+     is called by a party trusted as a tenant creator, `kit.py`; no need today) (L1, L4).
+  5. *A second restore mode no production path takes.* `chains` is required in `restore` and
+     `_check_manifest`; the exact-version branch goes (L3, L4).
+  6. *Nothing kept the import cycle of PD-24 item 2 from coming back.* `.importlinter` forbids
+     `services.migrations` to import `services.tenancy`, `services.migration_runner` or
+     `services.tenant_dump`, and `services.tenancy` to import `services.migration_runner` (L3).
+  7. *`dump` fell back to the running version for an unstamped tenant*, against PD-10 (an
+     unstamped database follows the first version). It writes the tenant's stamp or no version;
+     a dump with no version is refused on restore (PD-15) (L3).
+  8. *A missing stamp read back as the version "None".* Reported as "there is no stamp" (L3, L4).
+  9. *Nothing checked that the manifest's version agrees with the dump's stamp.* A restore
+     refuses a dump where they differ (L1).
+  10. *Tests:* a kit-level restore of an older dump (the spec says "the service kit"); TC-52
+      asserts the version is named; the forward-only refusal of the in-memory migration is
+      tested; helpers the dump and migration tests import from `test_migration_runner.py` move to
+      a shared test helper module (L2, L4).
+  11. *Docs wrong after stage 3:* the restore checks and the stamps graph in
+      `architecture/data-flows.adoc` (and its restore diagram gains the migration step); the
+      start-up order in `architecture/index.adoc`; the stage note in the `rp-tenancy` spec delta,
+      no longer true (L2).
+  **Not accepted:** TC-40 rebuilt on the text of a real migration request (Fuseki commits a whole
+  request as one transaction; TC-41 and TC-42 already run real requests).
+- **RISK-11 Rolling a release back after it migrated the shared databases (found by the docs
+  writer, stage 3).** PD-12 said a tenant whose migration failed keeps its data and stamp, "so
+  the previous release serves it". True for that tenant, but the new release has already moved
+  the stamps of the system and application databases, and the previous release refuses to start
+  on a stamp its chain does not know (`MigrationFailed`), and sets aside every tenant the new
+  release migrated. So a rollback needs the shared databases restored too, and the toolkit has no
+  dump of them. Accepted: the how-to says to back up the store itself before deploying a migration
+  and restore it to roll back, or to fix forward. A dump of the shared databases is a later
+  change. PD-12 is narrowed by this.
 - **RISK-10 A template with a variable predicate (`?s ?p ?o`) can still delete a graph's version
   token or registry statement** (found while fixing PD-22 item 3, which refuses those predicates
   only when a template names them). Accepted: removing every triple of a class is a legitimate
