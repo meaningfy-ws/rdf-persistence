@@ -1,0 +1,167 @@
+= Keep data that belongs to no project
+:description: How to keep application-wide data, such as settings, catalogues or shared templates, in the application database: the schema annotation, the three kit calls, who may do what, references to tenant data, moving an existing class, and the limits.
+
+_Where does data that belongs to no project go?_
+
+A tenant is a project: its data lives in its own database. Some data belongs to no project: a
+catalogue every project reads, settings for the whole deployment, templates every project shares.
+The toolkit keeps such data in the *application database*, one per deployment, apart from the
+tenant databases and from the system database that holds the access records. You mark a class
+`database: application` in the schema, and three kit calls do the rest. This page shows them, who
+may do what, and the limits. The flows are on
+xref:architecture/data-flows.adoc[Where data lives and what each operation does].
+
+[#when]
+== 1. When to use it
+
+Use it for data that every project reads or that the deployment owns: settings, catalogues,
+shared templates. Do not make a "settings tenant" for it: a tenant carries grants, a bucket and a
+sweep that such data does not need, and it shows up among the projects.
+
+[#schema]
+== 2. Mark the class in the schema
+
+Add the class annotation `database: application` next to `rp_path`. This is the toy library's
+`Template`, in `tests/fixtures/library/templates.yaml`:
+
+[source,yaml]
+----
+classes:
+  Template:
+    description: A report template shared by every library.
+    class_uri: lib:Template
+    mixins: [AggregateRoot, Described, Tracked]
+    annotations:
+      rp_path: templates
+      database: application
+----
+
+Then run `make generate`. The annotation is inherited along `is_a`: a subclass of an application
+class is an application class too. It is never inherited through a mixin. Generation refuses:
+
+* an application class that is the tenant root;
+* an application class that is owned by another class (the owner decides the database);
+* an application class that is not an aggregate root;
+* an application class that is a stored file (the application space has no bucket);
+* an application class that shares its class IRI with a root of another database;
+* a mixin that carries the annotation.
+
+A tenant session refuses an application class, and the application session refuses a tenant class
+and the application IRI itself as an aggregate IRI, all with `InvalidIri` before anything is sent
+to the store.
+
+[#calls]
+== 3. The three kit calls
+
+`kit` is the `ServiceKit` that `install_service` returns (see
+xref:howto/adopt.adoc#serve[Serve the application]). `Authorised.principal` is the principal's IRI,
+a `str`. The mapper is built once, as in xref:howto/adopt.adoc#session[Store and read aggregates in a domain service].
+
+[source,python]
+----
+from rdf_persistence import Action, UnitOfWork
+
+from library.domain.generated.templates import Template
+
+# mapper: the Mapper built once from the schema (see the adoption guide)
+
+authorised = await kit.require_application(authorization, Action.MODIFY)  # Forbidden, InvalidToken
+iri = kit.application_iri(Template)                                       # a new IRI by the policy
+async with kit.application_session(authorised.principal) as session:
+    work = UnitOfWork(session, mapper)
+    work.add(Template(id=iri, label="Monthly report", description="Totals by branch."))
+    await work.commit()
+----
+
+* *`require_application(authorization, action)`* verifies the bearer token and checks the caller's
+  global roles. It answers an `Authorised` whose `checked_target` is the application IRI. It reads
+  no grant and calls no store. It raises `InvalidToken` for a missing or refused token and
+  `Forbidden` when the roles do not permit `action`; it never answers `NotFound`.
+* *`application_iri(cls)`* mints a new aggregate IRI for an application class. It raises
+  `InvalidIri` for a class that is not an application class.
+* *`application_session(principal)`* opens a session on the application database. It takes
+  application classes only. It raises `LookupError` when the schema declares no application class.
+
+NOTE: `application_session` checks no right. Your route must call `require_application` first and
+pass the principal it returned. The `Authorised` that `require_application` answers is for the
+application session only; do not use it for calls on a tenant.
+
+The toolkit has no HTTP route for application data. You write the route and call these three.
+
+[#startup]
+== 4. Start-up
+
+With `install_service` there is nothing to do: the service creates the application database at
+start-up when the schema has an application class. A consumer that does not use `install_service`
+calls this once before it serves:
+
+[source,python]
+----
+await kit.tenancy.ensure_application_database()   # True if it created the database
+----
+
+It is safe to call on every start: it answers `False` when the database exists, and when the schema
+has no application class it does nothing.
+
+[#access]
+== 5. Who may do what
+
+Access to application data is decided by the caller's *global roles* in the token, at level
+`system`, and by nothing else. No grant and no prohibition applies. A role that permits an action
+permits it on application data; `read` is implied by any other action.
+
+The toy library's `library_roles.yaml` has one:
+
+[source,yaml]
+----
+- {role: app-editor, level: system, actions: [read, modify]}
+----
+
+Read this plainly: a role at level `system` also permits the same actions in *every tenant*. So an
+`app-editor` can edit every tenant, and a system-level role that already exists, such as an `admin`
+that reads, can now read application data. There is no role level for application data only. If you
+need an application-only editor, that is a change to the toolkit, not a setting.
+
+[#references]
+== 6. References between application and tenant data
+
+Tenant data may refer to an application aggregate, and application data to a tenant aggregate, by
+plain IRI value. The toolkit does not check that the target exists, and it cannot read across the
+two databases: a query never joins them. A tenant dump keeps such an IRI unchanged, because it
+holds no tenant id. This holds for UUID tenant ids; with short random tenant ids a restore rewrites
+any delimited token equal to the old tenant id, so an application IRI that holds that token would be
+rewritten. A restore also refuses a dump that holds an object typed as an application class.
+Read the referred aggregate yourself, through the other session.
+
+[#moving]
+== 7. Move a class that already has data
+
+If you change a class that already has stored aggregates from `database: tenant` to
+`database: application`, its old aggregates stay in the tenant databases. A tenant session still
+reads them by IRI and removes them, but no longer replaces, finds or serves them. Move them in
+three steps, in a script you write:
+
+. Read each aggregate through the tenant session.
+. Add it through the application session, under a new IRI from `kit.application_iri(cls)`.
+. Remove the old aggregate from the tenant.
+
+The toolkit has no move tool. Aggregates that refer to the old IRI keep pointing at it until you
+change them.
+
+[#limits]
+== 8. Limits
+
+* No generic routes and no OpenAPI paths for application data (<<calls>>).
+* No files: the application database has no bucket. Its loaded graphs are allowed, its blobs are not.
+* No grants, prohibitions or per-aggregate permissions (<<access>>).
+* No sweep and no dump of the application database. `kit.dump_tenant` and `kit.sweep_tenant` cover
+  tenants only.
+* No query joins application and tenant data (<<references>>).
+* One application space per deployment. A second one is a tenant.
+* The application IRI template is fixed from the first start. A deployment that already has a
+  policy record can use only the default, `{base}app`; a different `application_template` makes
+  the start-up check fail with `IriPolicyChanged`. The word `app` is reserved: no tenant takes it
+  as an id.
+* An older toolkit version cannot read the policy record that this version writes, nor a dump
+  written by it: the older version refuses to start, or refuses the dump. Do not go back after the
+  first start on this version.

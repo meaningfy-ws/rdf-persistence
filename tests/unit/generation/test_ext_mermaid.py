@@ -32,9 +32,13 @@ def test_the_output_equals_the_committed_tree(rendered: Path) -> None:
 
 def test_one_diagram_per_module_of_the_application(staged: Path) -> None:
     names = sorted(p.name for p in staged.iterdir())
-    assert names == ["books.mmd", "library_access.mmd", "library_tenant.mmd", "scans.mmd"], (
-        "the modules that define classes, and not the metamodel's"
-    )
+    assert names == [
+        "books.mmd",
+        "library_access.mmd",
+        "library_tenant.mmd",
+        "scans.mmd",
+        "templates.mmd",
+    ], "the modules that define classes, and not the metamodel's"
 
 
 @pytest.mark.parametrize(

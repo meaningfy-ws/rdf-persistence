@@ -143,3 +143,30 @@ async def test_the_first_write_does_not_overwrite_a_rival_and_is_compared_with_i
     with pytest.raises(IriPolicyChanged, match="object_id"):
         await guard_iri_policy(store, tenancy, settings_of(None))
     await guard_iri_policy(store, tenancy, settings_of(THIRTEEN))
+
+
+# -- app-level-data PD-1, PD-11, TC-48: a record from before the application template existed -------
+
+
+async def record_without_application_template(store: FakeStore, tenancy: Tenancy) -> None:
+    """The system database holds the default policy as an older service wrote it: no ``application_template``."""
+    text = effective_of(IriPolicy()).model_dump_json(exclude={"application_template"})
+    assert "application_template" not in text, "the record is the old shape"
+    record = Graph()
+    record.add((RECORD_GRAPH, v.IRI_POLICY, Literal(text)))
+    await store.put_graph(tenancy.system_database, RECORD_GRAPH, record)
+
+
+async def test_tc48_a_record_without_the_application_template_is_the_default_policy(store, tenancy):
+    await record_without_application_template(store, tenancy)
+    await guard_iri_policy(store, tenancy, settings_of(None))
+    assert store.sent("update") == [], "the old record is read as it is, not rewritten"
+
+
+async def test_tc48_a_record_without_the_application_template_refuses_another_one_naming_it(
+    store, tenancy
+):
+    await record_without_application_template(store, tenancy)
+    renamed = IriPolicy(application_template="{base}application")
+    with pytest.raises(IriPolicyChanged, match="application_template"):
+        await guard_iri_policy(store, tenancy, settings_of(renamed))

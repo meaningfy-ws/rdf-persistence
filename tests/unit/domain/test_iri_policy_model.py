@@ -201,3 +201,32 @@ def test_the_default_part_and_loaded_graph_templates_need_neither_type_tenant_no
     """The module functions mint them with no tenant and no class (PD-12j)."""
     variables = set(re.findall(r"\{[a-z_]+\}", getattr(IriPolicy(), slot)))
     assert variables == {"{root}", "{id}"}
+
+
+# app-level-data task 1.1 (PD-1): the application template
+
+
+def test_the_default_application_template_is_base_app() -> None:
+    assert IriPolicy().application_template == "{base}app"
+
+
+@pytest.mark.parametrize("template", ["{base}{deployment}/app", "{base}{tenant_segment}-app"])
+def test_an_application_template_of_the_allowed_placeholders_is_accepted(template: str) -> None:
+    assert IriPolicy(application_template=template).application_template == template
+
+
+@pytest.mark.parametrize("template", ["{base}{tenant_id}", "{base}App", "", "{tenant}/app"])
+def test_an_application_template_outside_the_pattern_is_refused(template: str) -> None:
+    with pytest.raises(ValidationError, match="application_template"):
+        IriPolicy(application_template=template)
+
+
+def test_a_recorded_policy_without_the_field_holds_the_default_and_the_effective_one_parses() -> (
+    None
+):
+    recorded = IriPolicy.model_validate_json('{"tenant_template": "{base}t/{tenant_id}"}')
+    effective = IriPolicy.model_validate_json('{"application_template": "https://ex.org/app"}')
+    assert (recorded.application_template, effective.application_template) == (
+        "{base}app",
+        "https://ex.org/app",
+    )

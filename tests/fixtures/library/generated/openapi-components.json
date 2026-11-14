@@ -274,7 +274,8 @@
       "description": "The databases an aggregate can live in, the values of the database annotation.",
       "enum": [
         "tenant",
-        "system"
+        "system",
+        "application"
       ],
       "title": "DatabaseKind",
       "type": "string"
@@ -973,6 +974,32 @@
         }
       },
       "title": "StoredFile",
+      "type": "object"
+    },
+    "Template": {
+      "additionalProperties": false,
+      "description": "A report template shared by every library.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Template",
       "type": "object"
     },
     "TenantAccess": {

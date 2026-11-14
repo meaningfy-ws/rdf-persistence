@@ -107,6 +107,17 @@ async def tenant_databases(store: FakeStore) -> list[str]:
     return [name for name in await store.list_datasets() if name.startswith(PREFIX)]
 
 
+async def test_a_conflict_on_creating_the_system_database_is_suppressed_and_answers_false(
+    store, files
+):
+    """D-6 h: another worker won the race, so this call did not make it."""
+    made = Tenancy(
+        store, files, SETTINGS, mapper=toy_mapper(), root_class=Library, access_class=LibraryAccess
+    )
+    store.on("create_dataset", Conflict("another worker created it"))
+    assert await made.ensure_system_database() is False, "this call did not create it"
+
+
 async def test_the_system_database_is_created_once_and_the_call_says_whether_it_made_it(
     store, files
 ):

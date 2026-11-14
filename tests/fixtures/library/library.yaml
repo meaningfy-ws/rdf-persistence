@@ -13,6 +13,7 @@ imports:
   - library_tenant
   - books
   - scans
+  - templates
   - library_access
   - rdf_persistence/model/rp_discussion
   - rdf_persistence/model/rp_workflow

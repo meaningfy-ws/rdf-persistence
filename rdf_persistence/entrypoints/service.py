@@ -116,13 +116,14 @@ def _require_same_principals(kit: ServiceKit) -> None:
 
 
 def _run_at_startup(app: FastAPI, kit: ServiceKit) -> None:
-    """Make the app's lifespan create the system database, guard the IRI policy and sweep, then run the app's own."""
+    """Make the app's lifespan create the system database, guard the IRI policy, create the application database and sweep, then run the app's own."""
     inner = app.router.lifespan_context
 
     @asynccontextmanager
     async def lifespan(scope_app: FastAPI) -> AsyncIterator[Any]:
         await kit.tenancy.ensure_system_database()
         await guard_iri_policy(kit.store, kit.tenancy, kit.settings)
+        await kit.tenancy.ensure_application_database()
         await sweep(kit.tenancy, kit.store, kit.files, kit.settings)
         async with inner(scope_app) as state:
             yield state

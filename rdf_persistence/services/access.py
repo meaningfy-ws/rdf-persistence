@@ -248,8 +248,22 @@ class AccessRules:
         permitted = self._permitted_actions(caller, access, scope)
         if not permitted:  # a grant that resolves to no action shows nothing
             raise NotFound(f"nothing of {target_iri} is visible to the caller")
-        if action not in permitted and not (action == Action.READ and permitted & _IMPLY_READ):
+        if not self._allows(permitted, action):
             raise Forbidden(f"{action.value} is not permitted")
+
+    def require_application(self, caller: VerifiedCaller, action: Action) -> None:
+        """Raise unless the caller's global roles permit ``action`` on the application's data (PD-9).
+
+        The application is no tenant: it has no access record, so no grant and no prohibition is read.
+        What the roles defined at level ``system`` permit is what the caller may do; any permitted
+        action implies ``read``.
+
+        Raises:
+            Forbidden: The global roles permit no ``action`` here. Never ``NotFound``: that the
+                application exists is no secret.
+        """
+        if not self._allows(self._system_actions(caller), action):
+            raise Forbidden(f"{action.value} is not permitted on application data")
 
     def may(
         self, caller: VerifiedCaller, access: CallerAccess, target_iri: str, action: Action
@@ -342,10 +356,21 @@ class AccessRules:
             for g in access.grants or []
             if g.assignee == caller.principal and g.target in scope
         )
-        system = (
-            self._permits.get((RoleLevel.SYSTEM, role), set()) for role in caller.global_roles or []
+        return set().union(*grants, self._system_actions(caller))
+
+    def _system_actions(self, caller: VerifiedCaller) -> set[Action]:
+        """What the roles defined at level ``system`` that the caller's token carries permit."""
+        return set().union(
+            *(
+                self._permits.get((RoleLevel.SYSTEM, role), set())
+                for role in caller.global_roles or []
+            )
         )
-        return set().union(*grants, *system)
+
+    @staticmethod
+    def _allows(permitted: set[Action], action: Action) -> bool:
+        """True when ``action`` is permitted, or is ``read`` and another permitted action implies it."""
+        return action in permitted or (action == Action.READ and bool(permitted & _IMPLY_READ))
 
     @staticmethod
     def _prohibited(

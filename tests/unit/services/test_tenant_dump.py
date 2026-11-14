@@ -45,7 +45,7 @@ from rdf_persistence.services.tenant_dump import dump, restore
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
-from tests.toy import ADA, BOB, SETTINGS, TOY_SCHEMA, dune, role, toy_mapper
+from tests.toy import ADA, BOB, SETTINGS, TOY_SCHEMA, dune, role, template, toy_mapper
 from tests.unit.services.test_tenant_sweep import (
     BOOK_TYPE,
     FLAT,
@@ -428,6 +428,45 @@ async def test_tc18_another_iri_policy_is_refused_naming_the_field():
     ), "the reason names the differing field"
 
 
+async def test_tc50_a_dump_whose_manifest_lacks_the_application_template_restores_on_the_default_policy(
+    world,
+):
+    def as_an_older_service_wrote_it(payload: bytes) -> bytes:
+        manifest = TenantDump.model_validate_json(payload)
+        return manifest.model_dump_json(exclude={"iri_policy": {"application_template"}}).encode()
+
+    data = edited(await dumped(world), MANIFEST, as_an_older_service_wrote_it)
+    assert "application_template" not in dict(unpack(data))[MANIFEST].decode(), "the old shape"
+    summary = await restored(world, data)
+    assert summary.id != world.tenant, "restored as a new tenant"
+
+
+async def test_tc50_a_manifest_that_names_another_application_template_is_still_refused(world):
+    def renamed(payload: bytes) -> bytes:
+        manifest = TenantDump.model_validate_json(payload)
+        manifest.iri_policy.application_template = "{base}application"
+        return manifest.model_dump_json().encode()
+
+    reason = await refused(world, edited(await dumped(world), MANIFEST, renamed))
+    assert "application_template" in reason, "the reason names the differing field"
+
+
+async def test_tc49_a_triple_in_a_tenant_graph_that_names_an_application_aggregate_survives_a_restore(
+    world,
+):
+    template = str(world.iris.mint_aggregate(str(world.iris.application), "template", "templates"))
+    book = str(world.iris.mint_aggregate(world.tenant, BOOK_TYPE, "books"))
+    cites = (URIRef(book), SKOS.related, URIRef(template))
+    async with world.session() as opened:
+        await opened.add_graph(book, [*toy_mapper().to_triples(dune(book)), cites])
+    new = (await restored(world, await dumped(world))).id
+    async with world.tenancy.tenant_session(new, RESTORER) as opened:
+        graph, _, _ = await opened.get_graph(moved(world, book, new))
+    assert list(graph.objects(URIRef(moved(world, book, new)), SKOS.related)) == [
+        URIRef(template)
+    ], "the restored book names the same application aggregate"
+
+
 async def test_a_policy_that_glues_the_tenant_id_to_a_letter_is_refused_naming_the_template():
     glued = ServiceSettings(
         base=SETTINGS.base,
@@ -799,3 +838,28 @@ async def test_tenancy_restore_vets_the_graphs_itself_and_creates_nothing_for_a_
             foreign, world.iris.tenant_id_of(world.tenant), iter(()), RESTORER
         )
     assert await state_of(world) == before, "checked before any create"
+
+
+async def test_a_dump_that_holds_an_application_class_is_refused_and_creates_nothing(world):
+    """D-6 b: a ``Template`` put into the tenant's database directly must not be restored there."""
+    template_iri = str(world.iris.mint_aggregate(world.tenant, "template", "templates"))
+    async with world.session() as opened:  # no refused types: the way a stray graph gets there
+        await opened.add_graph(template_iri, toy_mapper().to_triples(template(template_iri)))
+    data = await dumped(world)
+    before = await state_of(world)
+    with pytest.raises(InvalidBody, match="the dump holds an object of the application class"):
+        await restored(world, data)
+    assert await state_of(world) == before, "no database, bucket or access record was created"
+
+
+async def test_a_manifest_that_names_the_application_as_its_source_tenant_is_refused(world):
+    """The application is no tenant, so a dump cannot claim to come from it."""
+    application = str(world.iris.application)
+
+    def from_the_application(payload: bytes) -> bytes:
+        manifest = TenantDump.model_validate_json(payload)
+        manifest.source_tenant, manifest.source_tenant_id = application, "app"
+        return manifest.model_dump_json().encode()
+
+    reason = await refused(world, edited(await dumped(world), MANIFEST, from_the_application))
+    assert application in reason, "the reason names the application IRI"

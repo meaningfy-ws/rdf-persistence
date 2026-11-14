@@ -12,3 +12,4 @@ export * from "./rp_service";
 export * from "./rp_tenancy";
 export * from "./rp_workflow";
 export * from "./scans";
+export * from "./templates";

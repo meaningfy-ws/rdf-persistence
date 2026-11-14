@@ -16,6 +16,7 @@
 ** xref:howto/discussion.adoc[Comment on a resource without editing it]
 ** xref:howto/workflow.adoc[Put a resource through review]
 * xref:howto/dump-restore.adoc[Back up or copy a project]
+* xref:howto/application-data.adoc[Keep data that belongs to no project]
 
 * xref:develop/index.adoc[Working on the toolkit]
 ** xref:develop/agents.adoc[Working with agents]

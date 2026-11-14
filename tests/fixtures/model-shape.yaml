@@ -357,6 +357,10 @@
     required: false
     multivalued: false
     range: string
+  - name: application_template
+    required: false
+    multivalued: false
+    range: string
   - name: loaded_graph_template
     required: false
     multivalued: false
@@ -943,6 +947,36 @@
     required: false
     multivalued: false
     range: Principal
+- class_name: Template
+  slots:
+  - name: contributor
+    required: false
+    multivalued: true
+    range: Principal
+  - name: created
+    required: false
+    multivalued: false
+    range: datetime
+  - name: creator
+    required: false
+    multivalued: false
+    range: Principal
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: modified
+    required: false
+    multivalued: false
+    range: datetime
 - class_name: TenantAccess
   slots:
   - name: database_name

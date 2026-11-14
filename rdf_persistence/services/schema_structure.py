@@ -236,18 +236,49 @@ def root_classes(view: SchemaView, folder: Path) -> list[ClassDefinition]:
     return [cls for cls in classes if cls.name in roots or is_tenant_root(cls)]
 
 
-def served_roots(view: SchemaView) -> list[ClassDefinition]:
-    """The aggregate roots with a path that live in the tenant databases: what the generic router serves.
+_DATABASES = {kind.value: kind for kind in DatabaseKind}
 
-    The tenant's access record lives in the system database and has its own routes, so it is left out;
+
+def database_of(view: SchemaView, cls: ClassDefinition) -> DatabaseKind:
+    """The database of ``cls``: the ``database`` annotation of the first class of its ``is_a`` chain that has one.
+
+    Annotations are not inherited, so a subclass of an application class is told here; a mixin's
+    annotation does not count. A class with none lives in the tenant databases, and so does one with
+    an unknown value (the hard check reports that).
+    """
+    for name in view.class_ancestors(cls.name, mixins=False):
+        value = annotation(view.get_class(name), RpAnnotation.DATABASE)
+        if value is not None:
+            return _DATABASES.get(value, DatabaseKind.TENANT)
+    return DatabaseKind.TENANT
+
+
+def database_roots(view: SchemaView, database: DatabaseKind) -> list[ClassDefinition]:
+    """The concrete aggregate roots of the schema that live in ``database``, path or not."""
+    roots = aggregate_roots(view, list(view.all_classes().values()))
+    return [root for root in roots if database_of(view, root) == database]
+
+
+def served_roots(
+    view: SchemaView, database: DatabaseKind = DatabaseKind.TENANT
+) -> list[ClassDefinition]:
+    """The aggregate roots with a path that live in ``database``: the tenant databases are what the generic router serves.
+
+    The tenant's access record lives in the system database and has its own routes, so the default leaves it out;
     so is a root the toolkit writes itself (``rp_writes: toolkit``), which no route serves (PD-11).
     """
-    roots = tenant_database_roots(view, list(view.all_classes().values()))
     return [
         root
-        for root in roots
+        for root in database_roots(view, database)
         if annotation_text(root, RpAnnotation.RP_PATH) and not is_toolkit_written(root)
     ]
+
+
+def root_class_iris(view: SchemaView, database: DatabaseKind) -> frozenset[URIRef]:
+    """The class IRIs of the concrete aggregate roots that live in ``database``, path or not."""
+    return frozenset(
+        URIRef(view.get_uri(root, expand=True)) for root in database_roots(view, database)
+    )
 
 
 def _only(found: list[ClassDefinition], what: str) -> ClassDefinition:
@@ -433,22 +464,20 @@ def _keys_of(view: SchemaView, range_: str) -> dict[str, UniqueKey]:
 
 
 def in_system_database(view: SchemaView, cls: ClassDefinition) -> bool:
-    """True when the class or an ancestor is annotated ``database: system``."""
-    return any(
-        annotation(view.get_class(name), RpAnnotation.DATABASE) == DatabaseKind.SYSTEM.value
-        for name in view.class_ancestors(cls.name)
-    )
+    """True when ``cls`` lives in the system database (``database_of``: its ``is_a`` chain, not its mixins)."""
+    return database_of(view, cls) == DatabaseKind.SYSTEM
 
 
-def tenant_database_roots(
-    view: SchemaView, classes: list[ClassDefinition]
-) -> list[ClassDefinition]:
-    """The concrete aggregate roots among ``classes`` that live in a tenant's database."""
+def keyed_roots(view: SchemaView, classes: list[ClassDefinition]) -> list[ClassDefinition]:
+    """The concrete aggregate roots among ``classes`` outside the system database: they can carry a key across aggregates.
+
+    The tenant databases and the application database both qualify; the system database is shared by all tenants.
+    """
     return [root for root in aggregate_roots(view, classes) if not in_system_database(view, root)]
 
 
 def aggregate_keys(view: SchemaView) -> list[AggregateKey]:
-    """The keys across aggregates of the schema: one per tenant-database root and scoped key it has.
+    """The keys across aggregates of the schema: one per keyed root (outside the system database) and scoped key it has.
 
     A root has the scoped keys it declares and inherits; the nearest declaration of a key name wins.
     The entries are in the order of the root's class IRI, then the key name.
@@ -462,7 +491,7 @@ def aggregate_keys(view: SchemaView) -> list[AggregateKey]:
                 for slot in key.unique_key_slots
             ],
         )
-        for root in tenant_database_roots(view, list(view.all_classes().values()))
+        for root in keyed_roots(view, list(view.all_classes().values()))
         for key in _all_keys_of(view, root.name).values()
         if is_scoped(key)
     ]

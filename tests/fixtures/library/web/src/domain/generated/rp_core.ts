@@ -15,7 +15,7 @@ export type RpAnnotation =
   | "internal"
   /** Class annotation, `meta` (see GraphKind) for the tenant root object, which lives in the tenant's meta graph instead of a graph of its own. */
   | "graph"
-  /** Class annotation, `tenant` (the default) or `system` (see DatabaseKind): the database an aggregate lives in. */
+  /** Class annotation, `tenant` (the default), `system` or `application` (see DatabaseKind): the database an aggregate lives in. */
   | "database"
   /** Schema annotation, `domain`, `technical` or `access` (see ModuleKind): the kind of the module; a domain module may not import a technical or an access one. */
   | "module_kind"
@@ -48,7 +48,9 @@ export type DatabaseKind =
   /** The tenant's own database, the default. */
   | "tenant"
   /** The system database, shared by all tenants. */
-  | "system";
+  | "system"
+  /** The application database, one per deployment, outside every tenant. */
+  | "application";
 
 /** How an aggregate root is written, the values of the rp_writes annotation. */
 export type WritesKind =

@@ -26,6 +26,7 @@ TOY_MODULES = [
     "library_access.py",
     "library_tenant.py",
     "scans.py",
+    "templates.py",
 ]
 
 

@@ -23,6 +23,7 @@ from rdf_persistence.domain.generated.rp_core import (
     WritesKind,
 )
 from rdf_persistence.domain.iris import LAYOUT_WORDS
+from rdf_persistence.generation.checks.application import application_problems
 from rdf_persistence.generation.generated.rp_generation import CheckProblem, HardRule
 from rdf_persistence.generation.problems import rule_problem
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
@@ -39,10 +40,10 @@ from rdf_persistence.services.schema_structure import (
     is_scoped,
     is_tenant_root,
     is_toolkit_schema,
+    keyed_roots,
     own_classes,
     own_schemas,
     owned_classes,
-    tenant_database_roots,
     workflow_name_of,
 )
 
@@ -309,12 +310,13 @@ def _annotated_workflow_problems(
 
 def _class_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[CheckProblem]:
     roots = aggregate_roots(view, classes)
-    tenant_roots = tenant_database_roots(view, classes)
+    keyed = keyed_roots(view, classes)
     for cls in classes:
-        yield from _key_problems(view, cls, tenant_roots)
+        yield from _key_problems(view, cls, keyed)
         yield from _reserved_segment_problems(cls)
         yield from _workflow_problems(view, cls, roots)
     yield from _path_problems(view, roots)
+    yield from application_problems(view, classes, roots)
     yield from _described_problems(view, classes, roots)
     yield from _iri_type_problems(view, classes, roots)
 

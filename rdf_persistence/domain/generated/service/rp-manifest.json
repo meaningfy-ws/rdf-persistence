@@ -10,12 +10,16 @@
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
+      "path": "rdf_persistence/generation/checks/application.py",
+      "sha256": "d98626982d0dc612efeac77f8a8b556078b456bfa8bebdea71b1b93b58476f35"
+    },
+    {
       "path": "rdf_persistence/generation/checks/boundary.py",
       "sha256": "c89df34b37640ef24a7dfbec4068b7c7a068e7a3186e8b0a49c5b412a175ac03"
     },
     {
       "path": "rdf_persistence/generation/checks/hard.py",
-      "sha256": "9b5b4a2c52cfa935fcebdf7541eab824f14148b0a7048102fb63e95b2e847e0d"
+      "sha256": "efaa73692d7098e83d94dc5d9fd5070d7027f39bd1dab37fd607df83b19f12f3"
     },
     {
       "path": "rdf_persistence/generation/checks/rules.py",
@@ -139,7 +143,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "c67d1fc71511340b147504ecf50013e086e557612953b326886ad2899e45cf4f"
+      "sha256": "c6731e08cb1714955bad199f8faaf435bb942b6f29a4e6ef69d6afb660848c92"
     },
     {
       "path": "rdf_persistence/model/rp_tenancy.yaml",
@@ -147,7 +151,7 @@
     },
     {
       "path": "rdf_persistence/model/service/rp_service.yaml",
-      "sha256": "88102e08f8173f2d6ac1a447be031937d2f388fe049adb259f068c1bebb79c61"
+      "sha256": "9c8e5dc9791b37180f5f115f80c7774ba2447faa7ebc9efc496a85c671b303dc"
     },
     {
       "path": "rdf_persistence/services/schema.py",
@@ -155,7 +159,7 @@
     },
     {
       "path": "rdf_persistence/services/schema_structure.py",
-      "sha256": "5eda637740d705fa34f2d45745b153a961a571a8799442d586cd7bfbf13634be"
+      "sha256": "993ed716d90379e4215503f317a3954c3e28a34d8f843b76aeaba99a40265d61"
     }
   ],
   "outputs": [
@@ -165,19 +169,19 @@
     },
     {
       "path": "rdf_persistence/domain/generated/service/context.jsonld",
-      "sha256": "904374518ed3298678ff6458d9aa824eab0207209f51020e9fcb1ef58c57526e"
+      "sha256": "3a181dfa9da1eb3ab5014aacd5adeeeb7a820bc04a1197bfae63eff9718bef58"
     },
     {
       "path": "rdf_persistence/domain/generated/service/openapi-components.json",
-      "sha256": "4ebb93b235407b7ee143e9e2bc3805544fcfe2913103642d4260836a3f3017bd"
+      "sha256": "8eabdd2475e165404805db616bc49c63a5b8ebf4be3ccc9819869fd6b315fc35"
     },
     {
       "path": "rdf_persistence/domain/generated/service/rp_service.py",
-      "sha256": "feea0237f1112228bafdc102222cac043da1f7483d6c9a8fba59e7d48a95cc54"
+      "sha256": "961bb4f7e1c92546135322ef53931657f3954175d6355f2eeb2e421727a8f25e"
     },
     {
       "path": "rdf_persistence/domain/generated/service/shapes.ttl",
-      "sha256": "9112ede5dd10dacde2f43181a80a4c39827c6f203b3a242c4e764e500ee5027f"
+      "sha256": "f2f95eb28aa9e0a1b160fa2712aa2c3e8ea69c7386f093de15553897f96dbba6"
     }
   ]
 }

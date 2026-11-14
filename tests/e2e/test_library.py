@@ -241,7 +241,7 @@ async def test_deleting_the_book_and_the_library_removes_the_database_and_the_bu
     async def own_databases() -> list[str]:
         return [n for n in await world.store.list_datasets() if n.startswith(prefix)]
 
-    assert len(await own_databases()) == 2, "the system database and the tenant's"
+    assert len(await own_databases()) == 3, "the system, the application and the tenant's database"
     assert len(await world.files.list_buckets(prefix)) == 1, "the tenant's bucket"
 
     gone = await http.delete(shelf.book, headers=callers.as_(LIBRARIAN, **{"If-Match": shelf.etag}))
@@ -254,5 +254,5 @@ async def test_deleting_the_book_and_the_library_removes_the_database_and_the_bu
     )
     assert dropped.status_code == 204, dropped.text
     assert (await http.get(shelf.path, headers=callers.as_(READER))).status_code == 404
-    assert len(await own_databases()) == 1, "only the system database remains"
+    assert len(await own_databases()) == 2, "the system and the application database remain"
     assert await world.files.list_buckets(prefix) == [], "the bucket is gone"

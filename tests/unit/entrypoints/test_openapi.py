@@ -322,3 +322,9 @@ def test_every_status_the_document_names_has_a_problem_kind_or_is_a_success() ->
     named = set().union(*(s for _, _, s in ROUTES)) - SUCCESS
     assert named <= kinds, f"unknown problem statuses {named - kinds}"
     assert all(HTTPStatus(s) for s in named)
+
+
+def test_an_application_class_has_no_path_and_no_component(document) -> None:
+    """TC-12: ``Template`` lives in the application database, so the tenant routes leave it out."""
+    assert not [path for path in document["paths"] if "templates" in path]
+    assert "Template" not in document["components"]["schemas"]

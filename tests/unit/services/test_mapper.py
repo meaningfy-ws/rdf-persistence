@@ -30,7 +30,18 @@ from tests.fixtures.library.generated.books import Book, Chapter, Genre, Shelf
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.fixtures.library.generated.scans import Scan
-from tests.toy import ADA, TENANT, TOY_SCHEMA, book_iri, dune, shelf, shelf_iri, toy_mapper
+from tests.fixtures.library.generated.templates import Template
+from tests.toy import (
+    ADA,
+    TENANT,
+    TOY_SCHEMA,
+    book_iri,
+    dune,
+    shelf,
+    shelf_iri,
+    template,
+    toy_mapper,
+)
 from tests.toy import access as toy_access
 
 SCHEMA = URIRef("http://schema.org/")
@@ -154,6 +165,20 @@ def test_owned_parts_are_nested_and_typed():
     assert all(str(c).startswith(f"{iri}/parts/") for c in chapters), "minted under the root"
     note = next(graph.objects(chapters[0], URIRef("https://example.org/ns/library#note")))
     assert (note, URIRef("http://schema.org/text"), Literal("a note")) in graph, "notes nest too"
+
+
+def test_an_application_class_round_trips_through_the_mapper():
+    """TC-14: the generated ``Template`` has a label and survives the graph."""
+    iri = "https://example.org/app/templates/" + str(UUID(int=1))
+    obj = template(iri)
+    assert "label" in Template.model_fields, "the generated Template has a label"
+    mapper = toy_mapper()
+    graph = mapper.to_graph(obj)
+    assert (URIRef(iri), RDF.type, URIRef("https://example.org/ns/library#Template")) in graph, (
+        "the graph types the root with the Template class"
+    )
+    back = mapper.from_graph(Template, iri, graph, graph_iri(iri))
+    assert canonical(back) == canonical(untracked(obj)), "the template differs after the graph"
 
 
 def test_an_enum_is_stored_as_its_meaning_iri_and_read_back_as_its_value():

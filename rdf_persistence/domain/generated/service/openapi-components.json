@@ -248,7 +248,8 @@
       "description": "The databases an aggregate can live in, the values of the database annotation.",
       "enum": [
         "tenant",
-        "system"
+        "system",
+        "application"
       ],
       "title": "DatabaseKind",
       "type": "string"
@@ -424,6 +425,11 @@
         "aggregate_template": {
           "description": "The template of an aggregate root IRI; contains `{tenant}` or `{tenant_id}` and ends in `{id}`.",
           "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|type|rp_path|id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|type|rp_path|id)\\})*\\{id\\}$",
+          "type": "string"
+        },
+        "application_template": {
+          "description": "The template of the application IRI, the root of the application database's IRIs.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant_segment)\\})+$",
           "type": "string"
         },
         "loaded_graph_template": {
