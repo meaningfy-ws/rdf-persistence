@@ -80,6 +80,10 @@ class HardRule(str, Enum):
     "The `rp_path` and `rp_iri_type` of an application class do not start with `rp-`, the prefix of the toolkit\u0027s own roots."
     WORKFLOW = "workflow"
     "The `workflow` annotation is on an aggregate root that is not the tenant root and includes `UnderWorkflow`, and every concrete root that includes `UnderWorkflow` has the annotation, its own or inherited."
+    MIGRATIONS_FOLDER = "migrations_folder"
+    "A target whose own modules define a root class that the toolkit stores sets `migrations`, the folder of the schema lock and of its migration files, in its `[tool.rp-generate]` entry."
+    QUOTED_VERSION = "quoted_version"
+    "The root schema of a target that sets `migrations` has a `version`, written as a quoted string in the YAML source, since an unquoted `1.10` is read as the number 1.1."
 
 
 class LockRule(str, Enum):

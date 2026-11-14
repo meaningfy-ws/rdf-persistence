@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from rdf_persistence.domain.exceptions import InvalidMigration
+from rdf_persistence.domain.exceptions import InvalidMigration, SparqlError
 from rdf_persistence.generation.generated.rp_generation import (
     LockChange,
     LockedClass,
@@ -539,18 +539,14 @@ def test_a_drop_draft_loads_whatever_legal_characters_the_iris_hold(
         "nul",
     ],
 )
-def test_a_drop_draft_for_an_iri_that_cannot_be_written_in_angle_brackets_is_not_loadable(
-    tmp_path: Path, character: str
+def test_a_drop_draft_for_an_iri_that_cannot_be_written_in_angle_brackets_is_refused(
+    character: str,
 ) -> None:
-    """An IRI with such a character is no IRI; a loadable file would run a different step than the
-    one drafted, so the draft fails or the load refuses, and never loads a changed meaning."""
+    """An IRI with such a character is no IRI; a draft that held it would run a different step than
+    the one meant, so ``term`` refuses it while drafting (PD-22.6)."""
     old, new = dropped(BOOK, f"urn:a{character}b ?p ?o . ?s <urn:c")
-    try:
-        path = written(tmp_path, old, new)
-    except Exception:  # a clean refusal while drafting is as good
-        return
-    with pytest.raises(InvalidMigration):
-        load_migration(path)
+    with pytest.raises(SparqlError, match="not a valid IRI"):
+        draft(old, new)
 
 
 def test_a_draft_with_unresolved_steps_is_refused_and_loads_once_they_are_removed(

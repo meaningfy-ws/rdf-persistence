@@ -6,12 +6,10 @@ output, and drafts the migration of a new version straight into the migrations f
 developer's file from then on, never staged, never overwritten.
 """
 
-import re
 import sys
 from pathlib import Path
 
 import yaml
-from pydantic import ValidationError
 
 from rdf_persistence.domain.exceptions import InvalidMigration
 from rdf_persistence.domain.generated.service.rp_service import Migration
@@ -26,20 +24,13 @@ from rdf_persistence.generation.generated.rp_generation import (
 )
 from rdf_persistence.generation.lock import changes, described, draft, summarise
 from rdf_persistence.generation.pipeline import Run, schema_faults, stage
-from rdf_persistence.services.migrations import load_migration
+from rdf_persistence.services.migrations import load_migration, migration_file_name
 from rdf_persistence.services.schema_structure import generation_view
 
 LOCK_NAME = "schema.lock.json"
-OUTSIDE_NAME = re.compile(r"[^A-Za-z0-9.-]")  # PD-4: written as `_` in a file name
-NOT_STEPPED = (
-    LockRule.SAFE,
-    LockRule.NOT_MIGRATABLE,
-)  # what needs no new version, or no step can do
-
-
-def migration_file_name(from_version: str, to_version: str) -> str:
-    """``<from>__<to>.yaml``, each version with every character outside ``[A-Za-z0-9.-]`` as ``_`` (PD-4)."""
-    return f"{OUTSIDE_NAME.sub('_', from_version)}__{OUTSIDE_NAME.sub('_', to_version)}.yaml"
+MAX_ERROR = 300  # characters of a library's error text kept in a message
+# What needs no new version (safe), or what no step can do (not migratable).
+NOT_STEPPED = (LockRule.SAFE, LockRule.NOT_MIGRATABLE)
 
 
 def _folder(run: Run) -> Path | None:
@@ -59,9 +50,13 @@ def _read_lock(path: Path) -> SchemaLock | CheckProblem | None:
         return None
     try:
         return SchemaLock.model_validate_json(path.read_text(encoding="utf-8"))
-    except (OSError, ValidationError) as error:
+    except (
+        OSError,
+        ValueError,
+    ) as error:  # not UTF-8 (UnicodeDecodeError) or not a lock (pydantic)
         return CheckProblem(
-            element=path.name, message=f"cannot be read ({error}); restore it from version control"
+            element=path.name,
+            message=f"cannot be read ({str(error)[:MAX_ERROR]}); restore it from version control",
         )
 
 
@@ -145,18 +140,22 @@ def _draft_text(migration: Migration) -> str:
 def _write_draft(folder: Path, old: SchemaLock, new: SchemaLock) -> None:
     """Draft the migration from ``old`` to ``new`` unless its file exists; say where it is."""
     path = folder / migration_file_name(old.schema_version, new.schema_version)
-    if path.exists():
-        return
+    text = _draft_text(draft(old, new))  # before the file exists: a refusal leaves none behind
     folder.mkdir(parents=True, exist_ok=True)
-    path.write_text(_draft_text(draft(old, new)), encoding="utf-8")
+    try:
+        with path.open("x", encoding="utf-8") as file:  # exclusive: no race, no link followed
+            file.write(text)
+    except FileExistsError:
+        return
     print(f"rp-generate: drafted {path}: review it before you commit")
 
 
 def write_lock(run: Run) -> None:
     """Stage the lock; with a new version and no file for it yet, draft the migration (PD-3)."""
-    folder, relative = _folder(run), migrations_folder(run.target)
-    if folder is None or relative is None:
+    relative = migrations_folder(run.target)
+    if relative is None:
         return
+    folder = run.base / relative
     new = _current(run)
     old = _read_lock(folder / LOCK_NAME)
     text = new.model_dump_json(indent=2) + "\n"

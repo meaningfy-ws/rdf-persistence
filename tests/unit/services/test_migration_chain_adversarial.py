@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 import yaml
 
-from rdf_persistence.domain.exceptions import InvalidMigration
 from rdf_persistence.services.migrations import first_version, load_chain, pending_from
 from tests.unit.services.test_migration_chain import SCHEMA, put, refused
 
@@ -68,15 +67,24 @@ def test_a_file_named_for_another_spelling_of_the_same_versions_is_refused(tmp_p
     assert "1.0__2.yaml" in refused(tmp_path, "2")
 
 
-def test_the_empty_version_is_a_version_or_a_clean_refusal(tmp_path):
+@pytest.fixture
+def empty_first_version_chain(tmp_path):
+    """Chosen outcome: the empty text is a version like any other (the stamp holds it as a literal)."""
     put(tmp_path, "", "1", name="__1.yaml")
-    try:
-        chain = load_chain(tmp_path, SCHEMA, "1")
-    except InvalidMigration:
-        return
-    assert chain[0] == ("", "1")
-    assert first_version(chain) == ""
-    assert pending_from(chain, "") is not None
+    return load_chain(tmp_path, SCHEMA, "1")
+
+
+def test_the_empty_version_is_a_version_of_the_chain(empty_first_version_chain):
+    assert empty_first_version_chain[0] == ("", "1"), "the empty version is in the chain"
+
+
+def test_the_empty_version_can_be_the_first_one(empty_first_version_chain):
+    assert first_version(empty_first_version_chain) == "", "a database with no stamp starts there"
+
+
+def test_the_migrations_pending_from_the_empty_version_are_the_one_step(empty_first_version_chain):
+    pending = pending_from(empty_first_version_chain, "")
+    assert [m.to_version for m in pending] == ["1"], "the step from the empty version"
 
 
 @pytest.mark.parametrize("version", ["", " ", "x", "1 "])
@@ -145,15 +153,12 @@ def test_a_sub_folder_with_migrations_is_not_read(tmp_path):
     assert load_chain(tmp_path, SCHEMA, "2")[0] == ("1", "2")
 
 
-def test_a_folder_named_like_a_migration_is_refused_cleanly_or_ignored(tmp_path):
+def test_a_folder_named_like_a_migration_is_refused_naming_it(tmp_path):
+    """Chosen outcome: ``*.yaml`` is what the folder holds (PD-4), so a directory so named is a file
+    that cannot be read, and the reviewer is told which."""
     chain_of(tmp_path, ["1", "2"])
     (tmp_path / "old.yaml").mkdir()
-    try:
-        chain = load_chain(tmp_path, SCHEMA, "2")
-    except InvalidMigration as error:
-        assert "old.yaml" in str(error)
-    else:
-        assert chain[0] == ("1", "2")
+    assert "old.yaml" in refused(tmp_path, "2"), "the unreadable entry is named"
 
 
 def test_other_extensions_are_not_migrations(tmp_path):

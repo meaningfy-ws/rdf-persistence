@@ -140,6 +140,7 @@ classes:
         required: true
       schema_id:
         required: true
+        description: The id of the LinkML schema whose data the dump holds; a restore checks it against its own.
       source_tenant:
         required: true
       source_tenant_id:
@@ -695,8 +696,8 @@ slots:
     range: string
   schema_id:
     title: Schema id
-    description: The id of the LinkML schema whose data the dump holds; a restore checks it against its own.
-    slot_uri: rp:dumpSchemaId
+    description: The id of the LinkML schema whose stored data a dump manifest or a migration is about.
+    slot_uri: rp:schemaId
     range: uri
   schema_version:
     title: Schema version

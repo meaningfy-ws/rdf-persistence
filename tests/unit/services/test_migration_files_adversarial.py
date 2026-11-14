@@ -665,13 +665,10 @@ def test_bytes_that_are_not_text_are_refused_naming_the_file(tmp_path, content):
         load_migration(raw(tmp_path, content))
 
 
-def test_a_file_that_starts_with_a_byte_order_mark_loads_or_is_refused_cleanly(tmp_path):
-    text = chr(0xFEFF) + HEADER
-    try:
-        loaded = load_migration(raw(tmp_path, text))
-    except InvalidMigration:
-        return
-    assert (loaded.from_version, loaded.to_version) == ("1", "2")
+def test_a_file_that_starts_with_a_byte_order_mark_loads(tmp_path):
+    """Chosen outcome: the YAML reader skips the mark, as editors on some systems write one."""
+    loaded = load_migration(raw(tmp_path, chr(0xFEFF) + HEADER))
+    assert (loaded.from_version, loaded.to_version) == ("1", "2"), "the fields are read"
 
 
 @pytest.mark.parametrize(
@@ -684,14 +681,17 @@ def test_a_step_field_that_is_not_text_is_refused_naming_the_file(tmp_path, fiel
         load_migration(raw(tmp_path, text))
 
 
-@pytest.mark.parametrize("version", ["1.10", "1.0", "010", "1e3", "0x10", "true", "null", "~"])
-def test_an_unquoted_version_does_not_silently_become_another_version(tmp_path, version):
+@pytest.mark.parametrize("version", ["1.10", "1.0", "010", "0x10", "true", "null", "~"])
+def test_an_unquoted_version_that_yaml_reads_as_another_type_is_refused(tmp_path, version):
     text = f"schema_id: {SCHEMA}\nfrom_version: {version}\nto_version: '9'\n"
-    try:
-        loaded = load_migration(raw(tmp_path, text))
-    except InvalidMigration:
-        return
-    assert loaded.from_version == version, "the file said one thing, the toolkit read another"
+    with pytest.raises(InvalidMigration, match="from_version"):
+        load_migration(raw(tmp_path, text))
+
+
+def test_an_unquoted_version_that_yaml_reads_as_text_is_the_text_written(tmp_path):
+    text = f"schema_id: {SCHEMA}\nfrom_version: 1e3\nto_version: '9'\n"
+    loaded = load_migration(raw(tmp_path, text))
+    assert loaded.from_version == "1e3", "the file said one thing, the toolkit read the same"
 
 
 @pytest.mark.parametrize(

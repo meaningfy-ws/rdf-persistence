@@ -1115,6 +1115,18 @@ enums:
           `UnderWorkflow`, and every concrete root that includes `UnderWorkflow` has the annotation,
           its own or inherited.
         meaning: rp:HardRuleWorkflow
+      migrations_folder:
+        title: Migrations folder
+        description: >-
+          A target whose own modules define a root class that the toolkit stores sets `migrations`,
+          the folder of the schema lock and of its migration files, in its `[tool.rp-generate]` entry.
+        meaning: rp:HardRuleMigrationsFolder
+      quoted_version:
+        title: Quoted version
+        description: >-
+          The root schema of a target that sets `migrations` has a `version`, written as a quoted
+          string in the YAML source, since an unquoted `1.10` is read as the number 1.1.
+        meaning: rp:HardRuleQuotedVersion
   LockRule:
     title: Lock rule
     description: How a change between two locks is treated.

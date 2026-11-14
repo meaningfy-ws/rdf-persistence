@@ -6,13 +6,23 @@ import pytest
 
 from rdf_persistence.generation.cli import main
 from rdf_persistence.generation.generated.rp_generation import SchemaLock
+from rdf_persistence.generation.lock_step import _write_draft
 from rdf_persistence.generation.manifest import MANIFEST_NAME
 from rdf_persistence.services.migrations import load_migration
 
 from .conftest import Breaker
-from .test_lock import BOOK_SLOTS, DROP_SHELF, ISBN_REQUIRED, NEW_PATH, NEW_TYPE, Edits
+from .test_lock import (
+    BOOK_SLOTS,
+    DROP_SHELF,
+    ISBN_REQUIRED,
+    NEW_PATH,
+    NEW_TYPE,
+    RENAME_ROOT,
+    Edits,
+)
 
 LOCK_NAME = "schema.lock.json"
+MESSAGE_ROOM = 1500  # the whole output of a run, with the error text cut
 VERSION_2 = (("library.yaml", 'version: "1"', 'version: "2"'),)
 FAILED = 1
 ADD_SUBTITLE: Edits = (
@@ -52,6 +62,12 @@ class Toy:
         code = main(["--project", str(self.folder / "pyproject.toml"), *flags])
         out = self._capsys.readouterr()
         return code, out.out + out.err
+
+    def passes(self, *flags: str) -> str:
+        """Run ``rp-generate``, assert it exits 0, and return what it printed."""
+        code, printed = self.run(*flags)
+        assert code == 0, f"rp-generate {flags} failed: {printed}"
+        return printed
 
     def locked_version(self) -> str:
         return str(SchemaLock.model_validate_json(self.lock.read_text("utf-8")).schema_version)
@@ -95,7 +111,7 @@ def test_the_lock_is_a_manifest_output_and_a_second_run_changes_nothing(bootstra
     manifest = (bootstrapped.folder / "generated" / MANIFEST_NAME).read_text("utf-8")
     assert "migrations/schema.lock.json" in manifest, "the lock is listed like a generated file"
     before = bootstrapped.files()
-    assert bootstrapped.run()[0] == 0
+    bootstrapped.passes()
     assert bootstrapped.files() == before, "a second run writes the same bytes and removes nothing"
 
 
@@ -105,7 +121,7 @@ def test_a_hand_edited_lock_is_reported_stale(bootstrapped: Toy) -> None:
     bootstrapped.lock.write_text(text.replace('"1"', '"9"', 1), encoding="utf-8")
     code, printed = bootstrapped.run("--check")
     assert code == FAILED, printed
-    assert "edited by hand: migrations/schema.lock.json" in printed
+    assert "edited by hand: migrations/schema.lock.json" in printed, "the lock is named as edited"
 
 
 # ---- the rules without a new version (TC-06, TC-05a, TC-09) --------------------------------------
@@ -129,6 +145,7 @@ def test_a_removed_slot_with_the_version_unchanged_fails_naming_it(bootstrapped:
     [
         pytest.param(NEW_PATH, "IRI type or path", id="path"),
         pytest.param(NEW_TYPE, "IRI type or path", id="iri-type"),
+        pytest.param(RENAME_ROOT, "IRI type or path", id="renamed-root"),
     ],
 )
 @pytest.mark.parametrize("version", [(), VERSION_2], ids=["same-version", "new-version"])
@@ -139,6 +156,7 @@ def test_a_change_that_cannot_be_migrated_fails_with_any_version(
     bootstrapped.edit((*edits, *version))
     code, printed = bootstrapped.run()
     assert code == FAILED, printed
+    assert "not migratable" in printed, "the run says no step can do it"
     assert word in printed, "the change is named"
     assert drafts(bootstrapped) == [], "nothing is drafted for a change no step can do"
     assert bootstrapped.locked_version() == "1", "the lock is untouched"
@@ -168,7 +186,7 @@ def test_safe_changes_with_the_version_unchanged_rewrite_the_lock_only(bootstrap
     code, printed = bootstrapped.run()
     assert code == 0, printed
     assert "subtitle" in bootstrapped.lock.read_text("utf-8"), "the lock follows the schema"
-    assert bootstrapped.lock.read_bytes() != before
+    assert bootstrapped.lock.read_bytes() != before, "the lock was rewritten"
     assert drafts(bootstrapped) == [], "no new version, no migration"
 
 
@@ -177,10 +195,11 @@ def test_safe_changes_with_a_new_version_draft_a_migration_with_no_steps(
 ) -> None:
     """TC-09"""
     bootstrapped.edit((*ADD_SUBTITLE, *VERSION_2))
-    assert bootstrapped.run()[0] == 0
-    assert drafts(bootstrapped) == ["1__2.yaml"]
+    bootstrapped.passes()
+    assert drafts(bootstrapped) == ["1__2.yaml"], "one draft, named from the two versions"
     migration = load_migration(bootstrapped.migrations / "1__2.yaml")
-    assert (migration.from_version, migration.to_version) == ("1", "2")
+    assert migration.from_version == "1", "the draft starts at the old version"
+    assert migration.to_version == "2", "the draft ends at the new version"
     assert migration.steps == [], "a safe change needs no step"
 
 
@@ -188,9 +207,10 @@ def test_a_raised_version_with_no_change_drafts_a_migration_with_no_steps(
     bootstrapped: Toy,
 ) -> None:
     bootstrapped.edit(VERSION_2)
-    assert bootstrapped.run()[0] == 0
-    assert load_migration(bootstrapped.migrations / "1__2.yaml").steps == []
-    assert bootstrapped.locked_version() == "2"
+    bootstrapped.passes()
+    steps = load_migration(bootstrapped.migrations / "1__2.yaml").steps
+    assert steps == [], "nothing changed, so there is no step"
+    assert bootstrapped.locked_version() == "2", "the lock follows the version"
 
 
 # ---- the draft (TC-07, TC-08, TC-13) -------------------------------------------------------------
@@ -201,33 +221,32 @@ def test_a_removed_slot_with_a_new_version_drafts_a_drop_and_prints_where(
 ) -> None:
     """TC-07"""
     bootstrapped.edit((*DROP_SHELF, *VERSION_2))
-    code, printed = bootstrapped.run()
-    assert code == 0, printed
+    printed = bootstrapped.passes()
     draft = bootstrapped.migrations / "1__2.yaml"
     assert str(draft) in printed, "the run prints the path of the draft"
     (step,) = load_migration(draft).steps or []
     assert step.title.startswith("DROP "), step.title
-    assert bootstrapped.locked_version() == "2"
+    assert bootstrapped.locked_version() == "2", "the lock follows the version"
     manifest = (bootstrapped.folder / "generated" / MANIFEST_NAME).read_text("utf-8")
     assert "1__2.yaml" not in manifest, "a draft is the developer's file, not a manifest output"
     again = bootstrapped.files()
-    assert bootstrapped.run()[0] == 0
+    bootstrapped.passes()
     assert bootstrapped.files() == again, "a second run changes nothing and removes nothing"
-    assert bootstrapped.run("--check")[0] == 0
+    bootstrapped.passes("--check")
 
 
 def test_an_edited_draft_is_kept_byte_for_byte(bootstrapped: Toy) -> None:
     """TC-08"""
     bootstrapped.edit((*DROP_SHELF, *VERSION_2))
-    assert bootstrapped.run()[0] == 0
+    bootstrapped.passes()
     draft = bootstrapped.migrations / "1__2.yaml"
     draft.write_text(
         draft.read_text("utf-8").replace("Review every step.", "Reviewed."), encoding="utf-8"
     )
     edited = draft.read_bytes()
-    assert bootstrapped.run()[0] == 0
+    bootstrapped.passes()
     assert draft.read_bytes() == edited, "the run keeps the file"
-    assert bootstrapped.run("--check")[0] == 0
+    bootstrapped.passes("--check")
 
 
 def test_a_version_with_a_slash_is_written_with_an_underscore_in_the_file_name(
@@ -235,11 +254,12 @@ def test_a_version_with_a_slash_is_written_with_an_underscore_in_the_file_name(
 ) -> None:
     """TC-13"""
     toy.edit((("library.yaml", 'version: "1"', 'version: "1.0/beta"'),))
-    assert toy.run()[0] == 0
+    toy.passes()
     toy.edit((("library.yaml", 'version: "1.0/beta"', 'version: "2"'),))
-    assert toy.run()[0] == 0
-    assert drafts(toy) == ["1.0_beta__2.yaml"]
-    assert load_migration(toy.migrations / "1.0_beta__2.yaml").from_version == "1.0/beta"
+    toy.passes()
+    assert drafts(toy) == ["1.0_beta__2.yaml"], "the slash is written as an underscore"
+    migration = load_migration(toy.migrations / "1.0_beta__2.yaml")
+    assert migration.from_version == "1.0/beta", "the file keeps the version as written"
 
 
 # ---- an unresolved draft (TC-09a) and a file that does not load ----------------------------------
@@ -252,7 +272,7 @@ def test_an_unresolved_draft_succeeds_once_then_fails_the_next_run_and_the_check
     bootstrapped.edit((*ISBN_REQUIRED, *VERSION_2))
     code, printed = bootstrapped.run()
     assert code == 0, f"the run that drafts succeeds: {printed}"
-    assert bootstrapped.locked_version() == "2"
+    assert bootstrapped.locked_version() == "2", "the lock follows the version"
     for flags in ((), ("--check",)):
         code, printed = bootstrapped.run(*flags)
         assert code == FAILED, f"{flags}: {printed}"
@@ -268,7 +288,8 @@ def test_a_migration_file_that_does_not_load_fails_the_run(bootstrapped: Toy) ->
     )
     code, printed = bootstrapped.run()
     assert code == FAILED, printed
-    assert "1__2.yaml" in printed and "Half done" in printed, printed
+    assert "1__2.yaml" in printed, "the file is named"
+    assert "Half done" in printed, "the step is named"
 
 
 def test_a_run_that_fails_earlier_writes_no_draft(bootstrapped: Toy) -> None:
@@ -283,7 +304,8 @@ def test_a_run_that_fails_earlier_writes_no_draft(bootstrapped: Toy) -> None:
             ),
         )
     )
-    assert bootstrapped.run()[0] == FAILED
+    code, printed = bootstrapped.run()
+    assert code == FAILED, printed
     assert drafts(bootstrapped) == [], "a draft is written only when the whole run succeeds"
 
 
@@ -293,7 +315,7 @@ def test_a_run_that_fails_earlier_writes_no_draft(bootstrapped: Toy) -> None:
 def test_a_version_the_chain_already_left_is_refused(bootstrapped: Toy) -> None:
     """TC-14"""
     bootstrapped.edit(VERSION_2)
-    assert bootstrapped.run()[0] == 0
+    bootstrapped.passes()
     bootstrapped.edit((("library.yaml", 'version: "2"', 'version: "1"'),))
     code, printed = bootstrapped.run()
     assert code == FAILED, printed
@@ -316,3 +338,32 @@ def test_an_unreadable_lock_is_refused(bootstrapped: Toy) -> None:
     code, printed = bootstrapped.run()
     assert code == FAILED, printed
     assert LOCK_NAME in printed, "the lock is named"
+
+
+def test_a_lock_that_is_not_utf8_is_refused_with_a_problem(bootstrapped: Toy) -> None:
+    """PD-22.10: bytes that are not text are a problem line, not a traceback."""
+    bootstrapped.lock.write_bytes(b"\xff\xfe{")
+    code, printed = bootstrapped.run()
+    assert code == FAILED, printed
+    assert LOCK_NAME in printed, "the lock is named"
+    assert "Traceback" not in printed, "a problem line, not a crash"
+
+
+def test_a_long_lock_error_is_cut_in_the_message(bootstrapped: Toy) -> None:
+    """PD-22.10: the pydantic text of a lock full of faults does not fill the screen."""
+    bootstrapped.lock.write_text(
+        '{"schema_id": 1, "schema_version": 2, "locked_classes": [' + "1," * 400 + "1]}",
+        encoding="utf-8",
+    )
+    code, printed = bootstrapped.run()
+    assert code == FAILED, printed
+    assert len(printed) < MESSAGE_ROOM, f"{len(printed)} characters printed"
+
+
+def test_a_draft_is_never_written_through_a_link_at_its_path(bootstrapped: Toy) -> None:
+    """PD-22.10: the draft is created exclusively, so a dangling link at its path is not followed."""
+    old = SchemaLock.model_validate_json(bootstrapped.lock.read_text("utf-8"))
+    elsewhere = bootstrapped.folder / "elsewhere.yaml"
+    (bootstrapped.migrations / "1__2.yaml").symlink_to(elsewhere)
+    _write_draft(bootstrapped.migrations, old, old.model_copy(update={"schema_version": "2"}))
+    assert not elsewhere.exists(), "the draft was written through the link"

@@ -37,7 +37,7 @@ runs right after task 2.2, the riskiest (write order, atomicity, concurrency). G
 
 | ID | Input | Expected |
 |---|---|---|
-| TC-01 | toy schema | lock has `Book` with its class IRI, IRI type, path and each slot's IRI, range IRI, required, multivalued, inlined; the tenant root `Library` with its induced slots; the classes of owned parts; no mixin, no abstract class, no toolkit class; enum values by `meaning` |
+| TC-01 | toy schema | lock has `Book` with its class IRI, IRI type, path and each slot's IRI, range IRI, required, multivalued, inlined; the tenant root `Library` with its induced slots; the classes of owned parts; no mixin, no abstract class, no toolkit class that a root does not own (D-7); enum values by `meaning` |
 | TC-02 | add a class; add an optional slot; drop `required`; single to multivalued; add an enum value | each classified safe |
 | TC-03 | remove a slot IRI from `Book` | destructive; `draft` has one step titled `DROP … (deletes data)` with the where and delete patterns of the design's example |
 | TC-04 | remove a class; add a required slot; set `required`; multivalued to single; change a range; remove an enum value | each needs-a-step; `draft` has one `unresolved` step per change, naming class and slot |

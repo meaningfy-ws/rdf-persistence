@@ -105,6 +105,11 @@ BAD_FILES = [
     ("not-yaml", "id: [\n", ["YAML"]),
     ("a-list-for-a-mapping", "- draft\n- accepted\n", ["mapping"]),
     (
+        "a-key-given-twice",
+        "id: https://example.org/w/review\nworkflow_name: review\nworkflow_name: other\n",
+        ["twice", "workflow_name"],
+    ),
+    (
         "states-missing",
         "id: https://example.org/w/review\nworkflow_name: review\ninitial_state: draft\n",
         ["workflow_states"],

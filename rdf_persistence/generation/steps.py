@@ -14,8 +14,9 @@ from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation import components
 from rdf_persistence.generation.checks.boundary import boundary_problems
-from rdf_persistence.generation.checks.hard import hard_problems, migration_problems
+from rdf_persistence.generation.checks.hard import hard_problems, stored_schema_problems
 from rdf_persistence.generation.checks.rules import rules_problems
+from rdf_persistence.generation.config import migrations_folder
 from rdf_persistence.generation.extensions import (
     jsonld_context,
     mermaid,
@@ -99,7 +100,7 @@ def _hard_problems(run: Run) -> list[CheckProblem]:
     folder = run.schema_path.parent
     return [
         *hard_problems(run.view, folder),
-        *migration_problems(run.view, folder, run.target.migrations),
+        *stored_schema_problems(run.view, folder, migrations_folder(run.target)),
     ]
 
 

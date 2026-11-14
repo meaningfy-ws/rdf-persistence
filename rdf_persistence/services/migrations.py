@@ -6,26 +6,31 @@ while the database's stamp is still ``from_version``, so a second sender changes
 """
 
 import re
-from collections.abc import Hashable, Iterable, Iterator
 from pathlib import Path
 
-import yaml
 from pydantic import ValidationError
 from pyparsing import ParseBaseException
-from rdflib import RDF, BNode, Literal, URIRef, Variable
-from rdflib.plugins.sparql import prepareQuery, prepareUpdate
+from rdflib import Literal, URIRef
 from rdflib.plugins.sparql.parser import parseUpdate
-from rdflib.plugins.sparql.parserutils import CompValue
 
 from rdf_persistence.domain.exceptions import InvalidMigration, SparqlError
 from rdf_persistence.domain.generated.rp_core import RegistryKind
 from rdf_persistence.domain.generated.service.rp_service import Migration, MigrationStep
-from rdf_persistence.domain.sparql import SparqlTerm, fragment, term
+from rdf_persistence.domain.sparql import (
+    CODEPOINT_ESCAPE,
+    SparqlTerm,
+    checked_group,
+    fragment,
+    term,
+)
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.yaml_files import SHOWN, problems_of, read_mapping, shown
 
-SHOWN = 200  # characters of a parser's message that an error carries
+# The toolkit's own predicates: a step may read them, never write them (PD-22 item 3).
+_OWN_PREDICATES = (v.VERSION, v.REGISTRY_KIND, v.DATA_SCHEMA_VERSION)
+_CHECKED_STAMPS = URIRef("urn:stamps")  # any graph IRI will do to check the shape of the request
 
-# The one place a user's text meets the template: a pattern that load_migration has checked.
+# The one place a user's text meets the template: a pattern that checked_group has accepted.
 _STEP = (
     "$delete $insert WHERE { GRAPH $stamps { $schema $p_stamp $from } "
     "GRAPH ?rp_graph { $where } FILTER (?rp_graph != $stamps) "
@@ -47,22 +52,6 @@ _STAMP_MOVE = (
     "WHERE { GRAPH $stamps { $schema $p_stamp $from } }"
 )
 
-# What a keyword search must not look inside: strings, IRIs and comments (the first that matches wins).
-_OPAQUE = re.compile(
-    r'"""(?:.|\n)*?"""|\'\'\'(?:.|\n)*?\'\'\'|"(?:[^"\\\n]|\\.)*"|\'(?:[^\'\\\n]|\\.)*\''
-    r"|<[^<>\s]*>|#[^\n]*"
-)
-_PREFIXED = re.compile(
-    r"(?<![\w?$])[A-Za-z][\w.-]*:|(?<![\w?$]):\w"
-)  # the request has no PREFIX (D-4)
-# SPARQL expands \uXXXX and \UXXXXXXXX before it reads a word, so no text scan can be trusted (PD-21).
-_CODEPOINT_ESCAPE = re.compile(r"\\[uU]")
-_GRAPH_VARIABLE = "rp_graph"
-_RESERVED_PREFIX = "rp_"
-# The parse-tree nodes of a graph pattern and of a service pattern, as rdflib names them: the
-# translated algebra (Graph, Service) and the raw tree inside FILTER EXISTS (the *GraphPattern).
-_GRAPH_NODES = frozenset({"Graph", "GraphGraphPattern", "Service", "ServiceGraphPattern"})
-
 
 def load_migration(path: Path) -> Migration:
     """The migration in the YAML file ``path``, validated and checked step by step (PD-6).
@@ -70,24 +59,31 @@ def load_migration(path: Path) -> Migration:
     Raises:
         InvalidMigration: The file cannot be read, is not YAML or not a migration, or a step is a
             draft, lacks a pattern, holds a pattern that does not parse alone, is too long to check,
-            has a codepoint escape, or (in what the parser understood) a blank node in a template,
-            a graph or service pattern or a reserved variable, or the request built from the
-            migration does not parse into the expected operations; the file has a key twice, or a
-            schema id or version has a codepoint escape; the message names the file and the step.
+            has a codepoint escape, a prefixed name, or (in what the parser understood) a blank node
+            or one of the toolkit's own predicates in a template, a graph or service pattern or a
+            reserved variable, or the request built from the migration does not parse into the
+            expected operations; the file has a key twice, or a schema id or version has a codepoint
+            escape; the message names the file and the step.
     """
-    migration = _validated(path, _read_mapping(path))
+    migration = _validated(path, read_mapping(path, "migration", InvalidMigration))
     for field in ("schema_id", "from_version", "to_version"):
-        if _CODEPOINT_ESCAPE.search(getattr(migration, field)):
+        if CODEPOINT_ESCAPE.search(getattr(migration, field)):
             raise InvalidMigration(f"{path}: {field} has a codepoint escape (\\u or \\U)")
     for number, step in enumerate(migration.steps or [], start=1):
         if problem := _step_problem(step):
-            raise InvalidMigration(f"{path}: step {number} ({step.title}): {problem}")
+            raise InvalidMigration(f"{path}: step {number} ({shown(step.title)}): {problem}")
     if problem := _request_problem(migration):
         raise InvalidMigration(f"{path}: {problem}")
     return migration
 
 
 _NOT_IN_NAME = re.compile(r"[^A-Za-z0-9.-]")
+
+
+def migration_file_name(from_version: str, to_version: str) -> str:
+    """``<from>__<to>.yaml``, each version with every character outside ``[A-Za-z0-9.-]`` as ``_`` (PD-4)."""
+    return f"{_NOT_IN_NAME.sub('_', from_version)}__{_NOT_IN_NAME.sub('_', to_version)}.yaml"
+
 
 # The ordered versions, and the migration from each version to the next (versions[i] to
 # versions[i + 1] is migrations[i]). A plain pair: a record class would be a hand-written model.
@@ -146,7 +142,8 @@ def _line_ending_at(
 
 def first_version(chain: Chain) -> str:
     """The version a database with no stamp is taken to be at (PD-10)."""
-    return chain[0][0]
+    versions, _ = chain
+    return versions[0]
 
 
 def pending_from(chain: Chain, version: str) -> tuple[Migration, ...] | None:
@@ -162,12 +159,11 @@ def pending_from(chain: Chain, version: str) -> tuple[Migration, ...] | None:
 
 def _file_problem(path: Path, migration: Migration, schema_id: str) -> str | None:
     if migration.schema_id != schema_id:
-        return f"is for the schema {migration.schema_id}, not {schema_id}"
-    expected = "__".join(
-        _NOT_IN_NAME.sub("_", v) for v in (migration.from_version, migration.to_version)
-    )
-    if path.name != f"{expected}.yaml":
-        return f"holds the step {migration.from_version} to {migration.to_version}, so it is named {expected}.yaml"
+        return f"is for the schema {shown(migration.schema_id)}, not {shown(schema_id)}"
+    expected = migration_file_name(migration.from_version, migration.to_version)
+    if path.name != expected:
+        steps = f"{shown(migration.from_version)} to {shown(migration.to_version)}"
+        return f"holds the step {steps}, so it is named {shown(expected)}"
     return None
 
 
@@ -179,66 +175,34 @@ def _one_per(files: dict[Path, Migration], field: str, verb: str) -> dict[str, P
         if value in found:
             other = found[value]
             raise InvalidMigration(
-                f"{other.name} and {path.name} both {verb} {value}: a fork or a duplicate step"
+                f"{other.name} and {path.name} both {verb} {shown(value)}: a fork or a duplicate step"
             )
         found[value] = path
     return found
-
-
-class _UniqueKeyLoader(yaml.SafeLoader):
-    """A safe loader that refuses a mapping key given twice: a reviewer reads what runs (PD-21)."""
-
-    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> dict:
-        seen: set[Hashable] = set()
-        for key_node, _ in node.value:
-            key = self.construct_object(key_node, deep=deep)
-            if not isinstance(key, Hashable):
-                continue  # the parent refuses it
-            if key in seen:
-                raise yaml.constructor.ConstructorError(
-                    None, None, f"found the key {key!r} twice", key_node.start_mark
-                )
-            seen.add(key)
-        mapping: dict = super().construct_mapping(node, deep)
-        return mapping
-
-
-def _read_mapping(path: Path) -> dict:
-    try:
-        data = yaml.load(path.read_text(encoding="utf-8"), Loader=_UniqueKeyLoader)
-    except OSError as error:
-        raise InvalidMigration(f"cannot read the migration {path}: {error}") from error
-    except UnicodeDecodeError as error:
-        raise InvalidMigration(f"{path} is not UTF-8 text: {str(error)[:SHOWN]}") from error
-    except yaml.YAMLError as error:
-        raise InvalidMigration(f"{path} is not valid YAML: {str(error)[:SHOWN]}") from error
-    except RecursionError as error:
-        raise InvalidMigration(f"{path} is nested too deeply to read") from error
-    if not isinstance(data, dict):
-        raise InvalidMigration(f"{path} must hold one migration, a mapping")
-    return data
 
 
 def _validated(path: Path, data: dict) -> Migration:
     try:
         return Migration.model_validate(data)
     except ValidationError as error:
-        problems = "; ".join(
-            f"{'.'.join(map(str, e['loc']))}: {str(e['msg'])[:SHOWN]}" for e in error.errors()
-        )
-        raise InvalidMigration(f"{path}: {problems}") from error
+        raise InvalidMigration(f"{path}: {problems_of(error)}") from error
 
 
 def migration_request(migration: Migration, stamps: URIRef) -> str:
     """The one update request that moves a database from ``from_version`` to ``to_version`` (PD-7).
 
     Every step as PD-5 states it, then, if there is a step, the rotation of every ``rp:version``
-    token (PD-8), then the stamp move; each operation matches only the ``from_version`` stamp. The
-    patterns are the text of a migration that ``load_migration`` has checked.
+    token (PD-8), then the stamp move; each operation matches only the ``from_version`` stamp. A
+    pattern goes in only as ``checked_group`` answers it.
 
     Raises:
-        SparqlError: The schema id is not an IRI that SPARQL can carry.
+        SparqlError: The schema id is not an IRI that SPARQL can carry, or a pattern fails its check.
     """
+    return ";\n".join(_operations(migration, stamps))
+
+
+def _operations(migration: Migration, stamps: URIRef) -> list[SparqlTerm]:
+    """The operations of the request, one each: the steps, the rotation if any, the stamp move."""
     guard = {
         "stamps": term(stamps),
         "schema": term(URIRef(migration.schema_id)),
@@ -250,108 +214,72 @@ def migration_request(migration: Migration, stamps: URIRef) -> str:
     if steps:
         operations.append(fragment(_ROTATION, p_version=term(v.VERSION), **guard))
     operations.append(fragment(_STAMP_MOVE, to=term(Literal(migration.to_version)), **guard))
-    return ";\n".join(operations)
+    return operations
 
 
 def _step_operation(step: MigrationStep, guard: dict[str, SparqlTerm]) -> SparqlTerm:
+    where, delete, insert = _checked_patterns(step)
     return fragment(
         _STEP,
-        delete=_clause("DELETE", step.delete_pattern),
-        insert=_clause("INSERT", step.insert_pattern),
-        where=SparqlTerm(step.where_pattern or ""),
+        delete=_clause("DELETE", delete),
+        insert=_clause("INSERT", insert),
+        where=where,
         p_kind=term(v.REGISTRY_KIND),
         loaded=term(v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH]),
         **guard,
     )
 
 
-def _clause(verb: str, pattern: str | None) -> SparqlTerm:
-    if not (pattern and pattern.strip()):
+def _clause(verb: str, pattern: SparqlTerm) -> SparqlTerm:
+    if not pattern:
         return SparqlTerm("")
-    return fragment(_CLAUSE, verb=SparqlTerm(verb), pattern=SparqlTerm(pattern))
+    return fragment(_CLAUSE, verb=SparqlTerm(verb), pattern=pattern)
+
+
+def _checked_patterns(step: MigrationStep) -> tuple[SparqlTerm, SparqlTerm, SparqlTerm]:
+    """The where, delete and insert patterns of ``step`` as checked terms; a blank one is empty.
+
+    Raises:
+        SparqlError: A pattern breaks a check; the message starts with the pattern's name.
+    """
+    return (
+        _checked("where_pattern", step.where_pattern, template=False),
+        _checked("delete_pattern", step.delete_pattern, template=True),
+        _checked("insert_pattern", step.insert_pattern, template=True),
+    )
+
+
+def _checked(name: str, text: str | None, *, template: bool) -> SparqlTerm:
+    if not (text and text.strip()):
+        return SparqlTerm("")
+    try:
+        return checked_group(text, template=template, forbidden=_OWN_PREDICATES if template else ())
+    except SparqlError as error:
+        raise SparqlError(f"{name} {str(error)[:SHOWN]}") from error
 
 
 def _step_problem(step: MigrationStep) -> str | None:
     """What is wrong with one step, or None."""
     if step.unresolved:
-        return f"is a draft, unresolved: {step.unresolved}"
+        return f"is a draft, unresolved: {shown(step.unresolved)}"
     if not (step.where_pattern and step.where_pattern.strip()):
         return "has no where_pattern"
-    patterns = {
-        "where_pattern": step.where_pattern,
-        "delete_pattern": step.delete_pattern,
-        "insert_pattern": step.insert_pattern,
-    }
-    given = {name: text for name, text in patterns.items() if text and text.strip()}
-    if given.keys() == {"where_pattern"}:
+    if not any((text or "").strip() for text in (step.delete_pattern, step.insert_pattern)):
         return "has neither delete_pattern nor insert_pattern"
-    for name, text in given.items():
-        if problem := _pattern_problem(name, text):
-            return problem
-    return None
-
-
-def _pattern_problem(name: str, text: str) -> str | None:
-    """What is wrong with one pattern, read as the parser understood it (PD-6, PD-21)."""
-    if _CODEPOINT_ESCAPE.search(text):
-        return f"{name} has a codepoint escape (\\u or \\U); write the character itself"
     try:
-        tree = _parsed(name, text)
-        problem = next(filter(None, (_node_problem(name, n) for n in _nodes(tree))), None)
-    except RecursionError:  # rdflib's parser gives up at about a hundred triple patterns
-        return f"{name} is too long to check; split the step into smaller steps"
-    except Exception:  # rdflib raises a bare Exception for a name it cannot resolve
-        return f"{name} does not parse alone as a group graph pattern"
-    if problem:
-        return problem
-    if _PREFIXED.search(_OPAQUE.sub(" ", text)):
-        return f"{name} has a prefixed name; write the full IRI in angle brackets"
-    return None
-
-
-def _parsed(name: str, text: str) -> object:
-    """The algebra rdflib reads from the pattern alone, as a where or as a template."""
-    if name == "where_pattern":
-        return prepareQuery(f"ASK {{ {text} }}").algebra
-    return prepareUpdate(f"INSERT {{ {text} }} WHERE {{}}").algebra
-
-
-def _nodes(node: object) -> Iterator[object]:
-    """``node`` and everything inside it: every nested parse node, list, tuple, set and dict value."""
-    yield node
-    if isinstance(node, dict):  # a CompValue is an ordered dict; the keys of a plain one are terms
-        children: Iterable[object] = [*node.keys(), *node.values()]
-    elif isinstance(node, list | tuple | set | frozenset):
-        children = node
-    else:
-        return
-    for child in children:
-        yield from _nodes(child)
-
-
-def _node_problem(name: str, node: object) -> str | None:
-    # In a template rdflib moves each GRAPH block into the ``quads`` of its clause.
-    if isinstance(node, CompValue) and (node.name in _GRAPH_NODES or dict.get(node, "quads")):
-        return f"{name} contains GRAPH or SERVICE: a step works inside one graph"
-    if (
-        isinstance(node, Variable)
-        and node.startswith(_RESERVED_PREFIX)
-        and str(node) != _GRAPH_VARIABLE
-    ):
-        return f"{name} uses the reserved variable ?{node}; only ?{_GRAPH_VARIABLE} is open to it"
-    # rdf:nil is what ( ) parses to: a collection is a template's blank nodes, so the empty one goes too
-    if name != "where_pattern" and (isinstance(node, BNode) or node == RDF.nil):
-        return f"{name} has a blank node (_:, [ ] or a collection), which a migration cannot mint"
+        _checked_patterns(step)
+    except SparqlError as error:
+        return str(error)
     return None
 
 
 def _request_problem(migration: Migration) -> str | None:
     """What is wrong with the request built from the migration, or None."""
-    expected = len(migration.steps or []) + (1 if migration.steps else 0) + 1
     try:
-        found = len(parseUpdate(migration_request(migration, URIRef("urn:stamps"))).request)
+        expected = len(_operations(migration, _CHECKED_STAMPS))
+        found = len(parseUpdate(migration_request(migration, _CHECKED_STAMPS)).request)
     except SparqlError as error:
-        return f"cannot build the request: {error}"
+        return f"cannot build the request: {str(error)[:SHOWN]}"
     except (ParseBaseException, RecursionError) as error:
         return f"the request does not parse: {str(error)[:SHOWN]}"
     if found != expected:

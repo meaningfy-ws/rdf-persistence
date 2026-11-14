@@ -65,19 +65,19 @@ def toy_lock() -> SchemaLock:
 
 
 def test_the_lock_names_the_schema(toy_lock: SchemaLock) -> None:
-    assert (toy_lock.schema_id, toy_lock.schema_version) == ("https://example.org/ns/library", "1")
+    assert toy_lock.schema_id == "https://example.org/ns/library", "the lock names the schema"
+    assert toy_lock.schema_version == "1", "the lock names the version"
 
 
 def test_a_root_is_locked_with_its_iri_type_path_and_slots(toy_lock: SchemaLock) -> None:
     book = classes_of(toy_lock)[BOOK]
-    assert (book.iri_type, book.root_path) == ("book", "books"), "a root records type and path"
+    assert book.iri_type == "book", "a root records its type"
+    assert book.root_path == "books", "a root records its path"
     isbn = slots_of(toy_lock, BOOK)[ISBN]
-    assert (isbn.range, isbn.required, isbn.multivalued, isbn.inlined) == (
-        XSD_STRING,
-        False,
-        False,
-        False,
-    )
+    assert isbn.range == XSD_STRING, "a string slot records the datatype IRI"
+    assert not isbn.required, "isbn is optional"
+    assert not isbn.multivalued, "isbn is single"
+    assert not isbn.inlined, "isbn is a value"
 
 
 def test_a_slot_to_a_class_records_the_class_iri_and_an_owned_slot_is_inlined(
@@ -86,16 +86,17 @@ def test_a_slot_to_a_class_records_the_class_iri_and_an_owned_slot_is_inlined(
     slots = slots_of(toy_lock, BOOK)
     chapters = slots["https://example.org/ns/library#chapter"]
     assert chapters.range == "http://purl.org/ontology/bibo/Chapter", "range is the class IRI"
-    assert (chapters.multivalued, chapters.inlined) == (True, True)
+    assert chapters.multivalued, "chapters are many"
+    assert chapters.inlined, "chapters are owned"
     assert slots[SHELF_SLOT].range == SHELF, "a reference to a root keeps the root's IRI"
-    assert slots[SHELF_SLOT].inlined is False
+    assert slots[SHELF_SLOT].inlined is False, "a reference is not owned"
 
 
 def test_an_enum_range_is_the_enum_name_and_its_values_are_meaning_iris(
     toy_lock: SchemaLock,
 ) -> None:
     genre = slots_of(toy_lock, BOOK)["http://schema.org/genre"]
-    assert genre.range == "Genre"
+    assert genre.range == "Genre", "an enum range is the enum's name"
     enums = {e.name: e.enum_values for e in toy_lock.locked_enums or []}
     assert enums["Genre"] == [
         "http://schema.org/Fiction",
@@ -114,12 +115,16 @@ def test_the_tenant_root_and_the_owned_parts_are_locked(toy_lock: SchemaLock) ->
     )
 
 
-def test_the_lock_holds_no_mixin_abstract_or_toolkit_class(toy_lock: SchemaLock) -> None:
+def test_the_lock_holds_no_mixin_or_toolkit_class_that_no_root_reaches(
+    toy_lock: SchemaLock,
+) -> None:
+    """The toy has no abstract class; an abstract root is the case of `test_lock_adversarial.py`."""
     uris = set(classes_of(toy_lock))
     toolkit = {u.rsplit("#", 1)[-1] for u in uris if "meaningfy.ws" in u}
     assert toolkit == {"MembershipRule", "SlotEquality"}, f"toolkit classes in the lock: {toolkit}"
     assert not any(u.endswith(("#Comment", "#TenantAccess")) for u in uris), "unreachable class"
-    assert not any(u.endswith(("#Described", "#Tracked", "#AggregateRoot")) for u in uris)
+    mixins = ("#Described", "#Tracked", "#AggregateRoot")
+    assert not any(u.endswith(mixins) for u in uris), "a mixin is not stored"
 
 
 def test_the_lock_is_sorted_and_repeatable(toy_lock: SchemaLock) -> None:
@@ -129,7 +134,7 @@ def test_the_lock_is_sorted_and_repeatable(toy_lock: SchemaLock) -> None:
         slot_uris = [s.slot_uri for s in cls.locked_slots or []]
         assert slot_uris == sorted(slot_uris), f"slots of {cls.class_uri} sorted"
     names = [e.name for e in toy_lock.locked_enums or []]
-    assert names == sorted(names)
+    assert names == sorted(names), "enums sorted by name"
     again = lock_of(Path(__file__).parents[2] / "fixtures" / "library" / ROOT_SCHEMA)
     assert again == toy_lock, "the same schema gives the same lock"
 
@@ -191,18 +196,20 @@ def test_a_change_is_classified_in_both_directions(
 def test_a_slot_change_names_its_class_and_slot(toy_copy: Path, break_toy: Breaker) -> None:
     before, after = locks_after(toy_copy, break_toy, ISBN_REQUIRED)
     (change,) = changes(before, after)
-    assert (change.class_uri, change.slot_uri) == (BOOK, ISBN)
+    assert change.class_uri == BOOK, "the class is named"
+    assert change.slot_uri == ISBN, "the slot is named"
 
 
 def test_an_enum_change_names_enum_and_value(toy_copy: Path, break_toy: Breaker) -> None:
     before, after = locks_after(toy_copy, break_toy, ENUM_VALUE)
     (change,) = changes(after, before)
-    assert (change.enum_name, change.enum_value) == ("Genre", "http://schema.org/Drama")
+    assert change.enum_name == "Genre", "the enum is named"
+    assert change.enum_value == "http://schema.org/Drama", "the value is named"
 
 
 def test_no_change_gives_no_differences(toy_copy: Path) -> None:
     lock = lock_of(toy_copy / ROOT_SCHEMA)
-    assert changes(lock, lock) == []
+    assert changes(lock, lock) == [], "no change, no difference"
     assert draft(lock, lock).steps == [], "no change, no step"
 
 
@@ -217,28 +224,28 @@ def test_a_removed_slot_iri_is_destructive_and_drafts_a_drop(
     before, after = locks_after(toy_copy, break_toy, DROP_SHELF)
     found = changes(before, after)
     destructive = [c for c in found if c.rule == LockRule.DESTRUCTIVE]
-    assert [(c.class_uri, c.slot_uri) for c in destructive] == [(BOOK, SHELF_SLOT)]
-    assert [c.rule for c in found if c.rule != LockRule.DESTRUCTIVE] == [LockRule.SAFE]
+    assert [(c.class_uri, c.slot_uri) for c in destructive] == [(BOOK, SHELF_SLOT)], "one drop"
+    others = [c.rule for c in found if c.rule != LockRule.DESTRUCTIVE]
+    assert others == [LockRule.SAFE], "the new slot IRI is safe"
 
     migration = draft(before, after)
-    assert (migration.schema_id, migration.from_version, migration.to_version) == (
-        "https://example.org/ns/library",
-        "1",
-        "1",
-    ), "versions come from the two locks"
+    assert migration.schema_id == "https://example.org/ns/library", "the schema comes from the lock"
+    assert migration.from_version == "1", "from comes from the old lock"
+    assert migration.to_version == "1", "to comes from the new lock"
     (step,) = migration.steps or []
-    assert step.title == f"DROP <{SHELF_SLOT}> of <{BOOK}> (deletes data)"
-    assert step.where_pattern == f"?s a <{BOOK}> ; <{SHELF_SLOT}> ?o"
-    assert step.delete_pattern == f"?s <{SHELF_SLOT}> ?o"
-    assert step.insert_pattern is None
-    assert step.unresolved is None
+    assert step.title == f"DROP <{SHELF_SLOT}> of <{BOOK}> (deletes data)", "the title"
+    assert step.where_pattern == f"?s a <{BOOK}> ; <{SHELF_SLOT}> ?o", "the where pattern"
+    assert step.delete_pattern == f"?s <{SHELF_SLOT}> ?o", "the delete pattern"
+    assert step.insert_pattern is None, "a drop inserts nothing"
+    assert step.unresolved is None, "a drop is resolved"
 
 
 def test_the_draft_takes_its_versions_from_the_locks(toy_copy: Path, break_toy: Breaker) -> None:
     before, after = locks_after(toy_copy, break_toy, DROP_SHELF)
     newer = after.model_copy(update={"schema_version": "2"})
     migration = draft(before, newer)
-    assert (migration.from_version, migration.to_version) == ("1", "2")
+    assert migration.from_version == "1", "from is the old lock's version"
+    assert migration.to_version == "2", "to is the new lock's version"
 
 
 # ---- TC-04: unresolved steps -------------------------------------------------------------------
@@ -250,13 +257,16 @@ def test_a_needs_a_step_change_drafts_one_unresolved_step_naming_it(
     before, after = locks_after(toy_copy, break_toy, ISBN_REQUIRED)
     (step,) = draft(before, after).steps or []
     assert step.unresolved, "an unresolved step says what is missing"
-    assert ISBN in step.title and BOOK in step.title, "the title names slot and class"
-    assert (step.where_pattern, step.delete_pattern, step.insert_pattern) == (None, None, None)
+    assert ISBN in step.title, "the title names the slot"
+    assert BOOK in step.title, "the title names the class"
+    assert step.where_pattern is None, "an unresolved step has no where pattern"
+    assert step.delete_pattern is None, "an unresolved step has no delete pattern"
+    assert step.insert_pattern is None, "an unresolved step has no insert pattern"
 
 
 def test_a_safe_change_drafts_no_step(toy_copy: Path, break_toy: Breaker) -> None:
     before, after = locks_after(toy_copy, break_toy, ADD_SUBTITLE)
-    assert draft(before, after).steps == []
+    assert draft(before, after).steps == [], "a safe change needs no step"
 
 
 def test_each_change_gets_its_own_step_in_a_stable_order(
@@ -265,7 +275,7 @@ def test_each_change_gets_its_own_step_in_a_stable_order(
     before, after = locks_after(toy_copy, break_toy, (*ISBN_REQUIRED, *AUTHORS_SINGLE, *DROP_SHELF))
     steps = draft(before, after).steps or []
     assert len(steps) == 3, [s.title for s in steps]
-    assert sum(1 for s in steps if s.unresolved) == 2
+    assert sum(1 for s in steps if s.unresolved) == 2, "two of the three need the developer"
     assert draft(before, after) == draft(before, after), "the same locks give the same draft"
 
 
@@ -287,7 +297,7 @@ def test_a_linkml_rename_that_keeps_the_iris_changes_nothing(
     toy_copy: Path, break_toy: Breaker, edits: Edits
 ) -> None:
     before, after = locks_after(toy_copy, break_toy, edits)
-    assert changes(before, after) == []
+    assert changes(before, after) == [], "a rename that keeps the IRIs stores the same"
 
 
 # ---- TC-05a: not migratable --------------------------------------------------------------------
@@ -332,5 +342,5 @@ def test_a_change_is_described_by_its_target() -> None:
     enum = LockChange(
         rule=LockRule.SAFE, what="enum value added", enum_name="Genre", enum_value="x"
     )
-    assert described(slot) == f"slot added: <{ISBN}> of <{BOOK}>"
-    assert described(enum) == "enum value added: Genre x"
+    assert described(slot) == f"slot added: <{ISBN}> of <{BOOK}>", "a slot of its class"
+    assert described(enum) == "enum value added: Genre x", "an enum and its value"

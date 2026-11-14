@@ -381,7 +381,7 @@
       },
       "schema_id": {
          "@type": "@id",
-         "@id": "dumpSchemaId"
+         "@id": "schemaId"
       },
       "schema_version": {
          "@id": "dumpSchemaVersion"

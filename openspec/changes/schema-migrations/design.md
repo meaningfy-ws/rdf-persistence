@@ -448,6 +448,11 @@ None.
   the refusal of such versions stays until it is closed. **For stage 2:** the runner goes in its
   own module, `services/migration_runner.py` (L3: `migrations.py` already has the file, the
   request and the chain).
+- **RISK-10 A template with a variable predicate (`?s ?p ?o`) can still delete a graph's version
+  token or registry statement** (found while fixing PD-22 item 3, which refuses those predicates
+  only when a template names them). Accepted: removing every triple of a class is a legitimate
+  step, and the request cannot tell the two apart. The how-to says to keep the graph's own
+  statements out of such a step (`FILTER (?s != ?rp_graph)`).
 - **D-7 What PR 1 carries beyond D-5 (lead).** Also `first_version`, `pending_from`, the
   `tenant_behind` problem and its mapping: no caller yet, the stage 2 runner uses them. TC-01 is
   amended: the lock holds no toolkit class that a root does not own (PD-3, "reachable through

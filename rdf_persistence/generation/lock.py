@@ -10,9 +10,11 @@ from pathlib import Path
 
 from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
+from rdflib import URIRef
 
 from rdf_persistence.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.domain.generated.service.rp_service import Migration, MigrationStep
+from rdf_persistence.domain.sparql import term
 from rdf_persistence.generation.generated.rp_generation import (
     LockChange,
     LockedClass,
@@ -28,24 +30,6 @@ from rdf_persistence.services.schema_structure import (
     iri_type_of,
     root_classes,
 )
-
-
-def _change(
-    rule: LockRule,
-    what: str,
-    class_uri: str | None = None,
-    slot_uri: str | None = None,
-    enum_name: str | None = None,
-    enum_value: str | None = None,
-) -> LockChange:
-    return LockChange(
-        rule=rule,
-        what=what,
-        class_uri=class_uri,
-        slot_uri=slot_uri,
-        enum_name=enum_name,
-        enum_value=enum_value,
-    )
 
 
 def described(change: LockChange) -> str:
@@ -156,10 +140,11 @@ def _locked_enum(view: SchemaView, name: str) -> LockedEnum:
 def summarise(view: SchemaView, folder: Path) -> SchemaLock:
     """The lock of the schema: what the modules kept in ``folder`` store, sorted so it is repeatable."""
     roots = {root.name for root in root_classes(view, folder)}
-    classes = [_locked_class(view, cls, roots) for cls in _stored_classes(view, folder)]
+    stored = _stored_classes(view, folder)
+    classes = [_locked_class(view, cls, roots) for cls in stored]
     enums = {
         str(slot.range)
-        for cls in _stored_classes(view, folder)
+        for cls in stored
         for slot in view.class_induced_slots(cls.name)
         if str(slot.range) in view.all_enums()
     }
@@ -197,24 +182,24 @@ def _slot_changes(class_uri: str, old: LockedSlot, new: LockedSlot) -> Iterator[
     )
     for happened, rule, what in rows:
         if happened:
-            yield _change(rule, what, class_uri, new.slot_uri)
+            yield LockChange(rule=rule, what=what, class_uri=class_uri, slot_uri=new.slot_uri)
 
 
 def _class_changes(old: LockedClass, new: LockedClass) -> Iterator[LockChange]:
     uri = new.class_uri
     if (old.iri_type, old.root_path) != (new.iri_type, new.root_path):
-        yield _change(
-            LockRule.NOT_MIGRATABLE,
-            f"IRI type or path changed from {old.iri_type}/{old.root_path} "
+        yield LockChange(
+            rule=LockRule.NOT_MIGRATABLE,
+            what=f"IRI type or path changed from {old.iri_type}/{old.root_path} "
             f"to {new.iri_type}/{new.root_path} (a step cannot change an IRI)",
-            uri,
+            class_uri=uri,
         )
     if old.root_database != new.root_database:
-        yield _change(
-            LockRule.NOT_MIGRATABLE,
-            f"database changed from {old.root_database} to {new.root_database} "
+        yield LockChange(
+            rule=LockRule.NOT_MIGRATABLE,
+            what=f"database changed from {old.root_database} to {new.root_database} "
             "(the data would be read from another database)",
-            uri,
+            class_uri=uri,
         )
     yield from _class_slot_changes(old, new)
 
@@ -225,10 +210,15 @@ def _class_slot_changes(old: LockedClass, new: LockedClass) -> Iterator[LockChan
     new_slots = {s.slot_uri: s for s in new.locked_slots or []}
     for slot_uri in sorted(old_slots.keys() | new_slots.keys()):
         if slot_uri not in new_slots:
-            yield _change(LockRule.DESTRUCTIVE, "slot removed (deletes data)", uri, slot_uri)
+            yield LockChange(
+                rule=LockRule.DESTRUCTIVE,
+                what="slot removed (deletes data)",
+                class_uri=uri,
+                slot_uri=slot_uri,
+            )
         elif slot_uri not in old_slots:
             rule = LockRule.NEEDS_STEP if new_slots[slot_uri].required else LockRule.SAFE
-            yield _change(rule, "slot added", uri, slot_uri)
+            yield LockChange(rule=rule, what="slot added", class_uri=uri, slot_uri=slot_uri)
         else:
             yield from _slot_changes(uri, old_slots[slot_uri], new_slots[slot_uri])
 
@@ -236,10 +226,15 @@ def _class_slot_changes(old: LockedClass, new: LockedClass) -> Iterator[LockChan
 def _enum_changes(old: LockedEnum, new: LockedEnum) -> Iterator[LockChange]:
     before, after = set(old.enum_values or []), set(new.enum_values or [])
     for value in sorted(after - before):
-        yield _change(LockRule.SAFE, "enum value added", enum_name=new.name, enum_value=value)
+        yield LockChange(
+            rule=LockRule.SAFE, what="enum value added", enum_name=new.name, enum_value=value
+        )
     for value in sorted(before - after):
-        yield _change(
-            LockRule.NEEDS_STEP, "enum value removed", enum_name=new.name, enum_value=value
+        yield LockChange(
+            rule=LockRule.NEEDS_STEP,
+            what="enum value removed",
+            enum_name=new.name,
+            enum_value=value,
         )
 
 
@@ -248,9 +243,9 @@ def _all_class_changes(old: SchemaLock, new: SchemaLock) -> Iterator[LockChange]
     new_classes = {c.class_uri: c for c in _merged(new.locked_classes or [])}
     for uri in sorted(old_classes.keys() | new_classes.keys()):
         if uri not in new_classes:
-            yield _change(LockRule.NEEDS_STEP, "class removed", uri)
+            yield LockChange(rule=LockRule.NEEDS_STEP, what="class removed", class_uri=uri)
         elif uri not in old_classes:
-            yield _change(LockRule.SAFE, "class added", uri)
+            yield LockChange(rule=LockRule.SAFE, what="class added", class_uri=uri)
         else:
             yield from _class_changes(old_classes[uri], new_classes[uri])
 
@@ -276,7 +271,7 @@ DRAFT_DESCRIPTION = "Drafted by rp-generate from the schema change. Review every
 
 
 def _drop_step(change: LockChange) -> MigrationStep:
-    cls, slot = f"<{change.class_uri}>", f"<{change.slot_uri}>"
+    cls, slot = term(URIRef(str(change.class_uri))), term(URIRef(str(change.slot_uri)))
     return MigrationStep(
         title=f"DROP {slot} of {cls} (deletes data)",
         where_pattern=f"?s a {cls} ; {slot} ?o",

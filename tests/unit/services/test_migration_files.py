@@ -11,7 +11,7 @@ import yaml
 from rdflib import RDF, Literal, URIRef
 from rdflib.plugins.sparql.parser import parseUpdate
 
-from rdf_persistence.domain.exceptions import InvalidMigration
+from rdf_persistence.domain.exceptions import InvalidMigration, SparqlError
 from rdf_persistence.domain.generated.rp_core import RegistryKind
 from rdf_persistence.domain.generated.service.rp_service import Migration, MigrationStep
 from rdf_persistence.domain.iris import stamps_graph_iri
@@ -65,7 +65,7 @@ def refusal(tmp_path: Path, *steps: MigrationStep) -> str:
 
 def test_a_valid_file_loads_into_the_generated_model(tmp_path):
     loaded = load_migration(write(tmp_path, migration(rename())))
-    assert loaded == migration(rename())
+    assert loaded == migration(rename()), "the file's fields are the model's"
 
 
 def test_a_step_may_use_the_graph_variable_in_where_and_insert(tmp_path):  # TC-11a
@@ -73,7 +73,8 @@ def test_a_step_may_use_the_graph_variable_in_where_and_insert(tmp_path):  # TC-
         where_pattern=f"?rp_graph {SHELF} ?o .",
         insert_pattern=f"?rp_graph {PLACE} ?o .",
     )
-    assert load_migration(write(tmp_path, migration(using))).steps == [using]
+    steps = load_migration(write(tmp_path, migration(using))).steps
+    assert steps == [using], "?rp_graph is open to a step"
 
 
 def test_a_where_pattern_may_filter_bind_and_be_optional(tmp_path):  # D-4
@@ -81,11 +82,22 @@ def test_a_where_pattern_may_filter_bind_and_be_optional(tmp_path):  # D-4
         where_pattern=f'?s {SHELF} ?o . OPTIONAL {{ ?s {PLACE} ?p }} FILTER (?o != "x") BIND (1 AS ?n)',
         insert_pattern=f"?s {PLACE} ?o .",
     )
-    assert load_migration(write(tmp_path, migration(rich))).steps == [rich]
+    steps = load_migration(write(tmp_path, migration(rich))).steps
+    assert steps == [rich], "filter, bind and optional are allowed in a where"
 
 
 def test_a_file_with_no_step_loads(tmp_path):
-    assert load_migration(write(tmp_path, migration())).steps is None
+    steps = load_migration(write(tmp_path, migration())).steps
+    assert steps is None, "a migration may only move the stamp"
+
+
+def test_a_where_pattern_may_read_the_toolkits_own_predicates(tmp_path):  # PD-22 item 3
+    reading = step(
+        where_pattern=f"?s <{v.VERSION}> ?t . ?s <{v.REGISTRY_KIND}> ?k . ?s <{v.DATA_SCHEMA_VERSION}> ?d .",
+        insert_pattern=f"?s {PLACE} ?t .",
+    )
+    steps = load_migration(write(tmp_path, migration(reading))).steps
+    assert steps == [reading], "reading is harmless"
 
 
 # -- TC-11, one test per refusal -----------------------------------------------------------------
@@ -96,22 +108,31 @@ def test_an_unresolved_step_is_refused_naming_file_and_step(tmp_path):
         title="drop shelf", unresolved="what replaces it?", where_pattern=f"?s {SHELF} ?o ."
     )
     message = refusal(tmp_path, rename(), draft)
-    assert FILE in message and "step 2" in message and "drop shelf" in message
-    assert "what replaces it?" in message
+    assert FILE in message, "the file is named"
+    assert "step 2" in message, "the step's number is named"
+    assert "drop shelf" in message, "the step's title is named"
+    assert "what replaces it?" in message, "the draft's note is shown"
+
+
+def test_a_long_draft_note_and_title_are_cut_in_the_message(tmp_path):
+    draft = step(title="t" * 5000, unresolved="n" * 5000)
+    message = refusal(tmp_path, draft)
+    assert len(message) < 1000, "what the file says is bounded"
 
 
 def test_a_step_without_a_where_pattern_is_refused(tmp_path):
-    assert "where_pattern" in refusal(tmp_path, step(insert_pattern=f"?s {PLACE} ?o ."))
+    message = refusal(tmp_path, step(insert_pattern=f"?s {PLACE} ?o ."))
+    assert "where_pattern" in message, "the missing pattern is named"
 
 
 def test_a_blank_where_pattern_is_refused(tmp_path):
-    assert "where_pattern" in refusal(
-        tmp_path, step(where_pattern="  ", insert_pattern=f"?s {PLACE} ?o .")
-    )
+    message = refusal(tmp_path, step(where_pattern="  ", insert_pattern=f"?s {PLACE} ?o ."))
+    assert "where_pattern" in message, "a blank pattern is a missing one"
 
 
 def test_a_step_with_neither_delete_nor_insert_is_refused(tmp_path):
-    assert "delete_pattern" in refusal(tmp_path, step(where_pattern=f"?s {SHELF} ?o ."))
+    message = refusal(tmp_path, step(where_pattern=f"?s {SHELF} ?o ."))
+    assert "delete_pattern" in message, "the two patterns it lacks are named"
 
 
 @pytest.mark.parametrize(
@@ -126,12 +147,25 @@ def test_a_step_with_neither_delete_nor_insert_is_refused(tmp_path):
 @pytest.mark.parametrize("clause", ["insert_pattern", "delete_pattern"])
 def test_a_blank_node_in_delete_or_insert_is_refused(tmp_path, clause, pattern):
     refused = refusal(tmp_path, step(where_pattern=f"?s {SHELF} ?o .", **{clause: pattern}))
-    assert "blank node" in refused and "step 1" in refused
+    assert "blank node" in refused, "the reason is given"
+    assert "step 1" in refused, "the step is named"
+
+
+@pytest.mark.parametrize("predicate", [v.VERSION, v.REGISTRY_KIND, v.DATA_SCHEMA_VERSION])
+@pytest.mark.parametrize("clause", ["insert_pattern", "delete_pattern"])
+def test_a_template_naming_a_toolkit_predicate_is_refused(
+    tmp_path, clause, predicate
+):  # PD-22 item 3
+    refused = refusal(
+        tmp_path, step(where_pattern=f"?s {SHELF} ?o .", **{clause: f"?s <{predicate}> ?o ."})
+    )
+    assert clause in refused, "the pattern is named"
 
 
 def test_a_blank_node_in_where_is_allowed(tmp_path):
     fine = step(where_pattern=f"?s {SHELF} [ {PLACE} ?o ] .", insert_pattern=f"?s {PLACE} ?o .")
-    assert load_migration(write(tmp_path, migration(fine))).steps == [fine]
+    steps = load_migration(write(tmp_path, migration(fine))).steps
+    assert steps == [fine], "a where only matches"
 
 
 @pytest.mark.parametrize("keyword", ["GRAPH", "graph", "SERVICE"])
@@ -143,7 +177,7 @@ def test_graph_and_service_are_refused_in_any_pattern(tmp_path, clause, keyword)
         "insert_pattern": f"?s {PLACE} ?o .",
     }
     fields[clause] = f"{keyword} <urn:other> {{ ?s {SHELF} ?o }}"
-    assert clause in refusal(tmp_path, step(**fields))
+    assert clause in refusal(tmp_path, step(**fields)), "the pattern is named"
 
 
 @pytest.mark.parametrize("variable", ["?rp_registry", "$rp_registry", "?rp_x"])
@@ -152,7 +186,7 @@ def test_a_reserved_variable_is_refused(tmp_path, variable):
         tmp_path,
         step(where_pattern=f"{variable} {SHELF} ?o .", insert_pattern=f"?s {PLACE} ?o ."),
     )
-    assert "rp_" in refused
+    assert "rp_" in refused, "the reserved variable is named"
 
 
 def test_a_keyword_inside_an_iri_string_or_comment_is_not_a_keyword(tmp_path):
@@ -163,7 +197,8 @@ def test_a_keyword_inside_an_iri_string_or_comment_is_not_a_keyword(tmp_path):
         ),
         insert_pattern=f"?s {PLACE} ?o .",
     )
-    assert load_migration(write(tmp_path, migration(fine))).steps == [fine]
+    steps = load_migration(write(tmp_path, migration(fine))).steps
+    assert steps == [fine], "a word inside a string, an IRI or a comment is no keyword"
 
 
 @pytest.mark.parametrize("clause", ["where_pattern", "delete_pattern", "insert_pattern"])
@@ -175,7 +210,8 @@ def test_a_pattern_that_does_not_parse_is_refused(tmp_path, clause):
     }
     fields[clause] = "?s ex:shelf ?o ."  # no PREFIX in the request
     refused = refusal(tmp_path, step(**fields))
-    assert clause in refused and "step 1" in refused
+    assert clause in refused, "the pattern is named"
+    assert "step 1" in refused, "the step is named"
 
 
 @pytest.mark.parametrize("clause", ["where_pattern", "delete_pattern", "insert_pattern"])
@@ -186,7 +222,7 @@ def test_a_pattern_that_escapes_its_group_is_refused(tmp_path, clause):
         "insert_pattern": f"?s {PLACE} ?o .",
     }
     fields[clause] = "?s ?p ?o } } ; CLEAR ALL ; INSERT DATA { <a> <b> <c>"
-    assert clause in refusal(tmp_path, step(**fields))
+    assert clause in refusal(tmp_path, step(**fields)), "the pattern is named"
 
 
 @pytest.mark.parametrize("clause", ["delete_pattern", "insert_pattern"])
@@ -198,7 +234,8 @@ def test_a_pattern_that_parses_alone_but_breaks_the_whole_request_is_refused(tmp
         "insert_pattern": f"?s {PLACE} ?o .",
     }
     fields[clause] = "?s ?p ?o } WHERE {} ; CLEAR ALL ; INSERT { ?s ?p ?o"
-    assert "the request does not parse" in refusal(tmp_path, step(**fields))
+    message = refusal(tmp_path, step(**fields))
+    assert "the request does not parse" in message, "the whole request is checked"
 
 
 def test_a_request_with_the_wrong_number_of_operations_is_refused(tmp_path, monkeypatch):
@@ -216,7 +253,21 @@ def test_a_request_with_the_wrong_number_of_operations_is_refused(tmp_path, monk
 
 def test_a_prefixed_name_is_refused_because_the_request_has_no_prefixes(tmp_path):
     prefixed = step(where_pattern="?s rdf:type ?o .", insert_pattern=f"?s {PLACE} ?o .")
-    assert "prefixed name" in refusal(tmp_path, prefixed)
+    assert "prefixed name" in refusal(tmp_path, prefixed), "the reason is given"
+
+
+def test_a_prefixed_name_hidden_in_a_filter_that_looks_like_an_iri_is_refused(
+    tmp_path,
+):  # PD-22 item 1
+    hidden = step(
+        where_pattern=f"?s {SHELF} ?o FILTER(?o<rdf:x||?p>1)", insert_pattern=f"?s {PLACE} ?o ."
+    )
+    assert "prefixed name" in refusal(tmp_path, hidden), "the parse tree has the name"
+
+
+def test_an_unclosed_iri_is_refused_as_not_parsing(tmp_path):
+    unclosed = step(where_pattern="?s <urn:shelf ?o .", insert_pattern=f"?s {PLACE} ?o .")
+    assert "does not parse" in refusal(tmp_path, unclosed), "the parser's refusal is the reason"
 
 
 def test_an_invalid_file_is_refused_naming_the_file(tmp_path):
@@ -250,48 +301,64 @@ def test_the_request_is_the_steps_then_the_rotation_then_the_stamp_move():  # TC
         delete_pattern=f"?s {PLACE} ?o .",
     )
     ops = operations(migration_request(migration(rename(), second), STAMPS))
-    assert len(ops) == 4
-    assert f"INSERT {{ GRAPH ?rp_graph {{ ?s {PLACE} ?o . }} }}" in ops[0]
-    assert (
-        "INSERT" not in ops[1] and f"DELETE {{ GRAPH ?rp_graph {{ ?s {PLACE} ?o . }} }}" in ops[1]
-    )
-    assert "STRUUID()" in ops[2] and str(v.VERSION) in ops[2]
-    assert '"2"' in ops[3] and '"1"' in ops[3]
+    assert len(ops) == 4, "two steps, the rotation, the stamp move"
+    assert f"INSERT {{ GRAPH ?rp_graph {{ ?s {PLACE} ?o . }} }}" in ops[0], "step 1 inserts"
+    assert "INSERT" not in ops[1], "step 2 has no insert"
+    assert f"DELETE {{ GRAPH ?rp_graph {{ ?s {PLACE} ?o . }} }}" in ops[1], "step 2 deletes"
+    assert "STRUUID()" in ops[2], "the rotation mints a token"
+    assert str(v.VERSION) in ops[2], "the rotation replaces the version token"
+    assert '"2"' in ops[3], "the stamp moves to the new version"
+    assert '"1"' in ops[3], "the stamp moves from the old version"
 
 
 def test_each_operation_carries_the_from_guard():  # TC-15
     ops = operations(migration_request(migration(rename(), rename()), STAMPS))
     guard = f'GRAPH <{STAMPS}> {{ <{SCHEMA}> <{v.DATA_SCHEMA_VERSION}> "1" }}'
-    assert all(guard in op for op in ops)
+    unguarded = [op for op in ops if guard not in op]
+    assert unguarded == [], "every operation matches only the from stamp"
 
 
-def test_a_step_keeps_to_one_graph_and_leaves_stamps_and_loaded_graphs_alone():
+def test_a_step_leaves_the_stamps_graph_alone():
+    step_op = operations(migration_request(migration(rename()), STAMPS))[0]
+    assert f"FILTER (?rp_graph != <{STAMPS}>)" in step_op, "the stamps graph is filtered out"
+
+
+def test_a_step_leaves_loaded_graphs_alone():
     step_op = operations(migration_request(migration(rename()), STAMPS))[0]
     loaded = v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH]
-    assert f"FILTER (?rp_graph != <{STAMPS}>)" in step_op
-    assert (
+    guard = (
         f"FILTER NOT EXISTS {{ GRAPH ?rp_registry {{ ?rp_graph <{v.REGISTRY_KIND}> <{loaded}> }} }}"
-        in step_op
     )
-    assert (
-        f"FILTER NOT EXISTS {{ GRAPH ?rp_graph {{ ?rp_entry <{v.REGISTRY_KIND}> ?rp_kind }} }}"
-        in step_op
-    )
+    assert guard in step_op, "a graph the registry calls loaded is filtered out"
+
+
+def test_a_step_leaves_registry_graphs_alone():
+    step_op = operations(migration_request(migration(rename()), STAMPS))[0]
+    guard = f"FILTER NOT EXISTS {{ GRAPH ?rp_graph {{ ?rp_entry <{v.REGISTRY_KIND}> ?rp_kind }} }}"
+    assert guard in step_op, "a graph that holds registry statements is filtered out"
 
 
 def test_the_rotation_leaves_the_modified_date_alone():
     rotation = operations(migration_request(migration(rename()), STAMPS))[1]
-    assert str(v.MODIFIED) not in rotation
+    assert str(v.MODIFIED) not in rotation, "a migration is not an edit"
 
 
 def test_without_steps_the_request_is_the_stamp_move_alone():  # TC-15
     request = migration_request(migration(), STAMPS)
-    assert len(operations(request)) == 1
-    assert "STRUUID" not in request and '"2"' in request
+    assert len(operations(request)) == 1, "one operation"
+    assert "STRUUID" not in request, "no rotation without a step"
+    assert '"2"' in request, "the stamp moves to the new version"
 
 
 def test_the_request_parses_into_the_expected_operations():
-    assert len(parseUpdate(migration_request(migration(rename(), rename()), STAMPS)).request) == 4
+    request = migration_request(migration(rename(), rename()), STAMPS)
+    assert len(parseUpdate(request).request) == 4, "two steps, the rotation, the stamp move"
+
+
+def test_the_request_refuses_a_pattern_that_was_not_checked():
+    unchecked = step(where_pattern=f"?s {SHELF} ?o .", insert_pattern="?s ex:place ?o .")
+    with pytest.raises(SparqlError, match="insert_pattern"):
+        migration_request(migration(unchecked), STAMPS)
 
 
 # -- the request, applied -------------------------------------------------------------------------
@@ -339,13 +406,15 @@ async def stamp(store: FakeStore) -> list[str]:
 async def test_the_request_moves_the_data_rotates_the_token_and_moves_the_stamp(store):
     await store.update(DATABASE, migration_request(migration(rename()), STAMPS))
     book = await triples(store, BOOK)
-    assert (BOOK, PLACE_IRI, Literal("A3")) in book
-    assert not any(p == SHELF_IRI for _, p, _ in book)
-    assert (BOOK, RDF.type, URIRef("urn:Book")) in book
+    assert (BOOK, PLACE_IRI, Literal("A3")) in book, "the value is under the new predicate"
+    assert not any(p == SHELF_IRI for _, p, _ in book), "the old predicate is gone"
+    assert (BOOK, RDF.type, URIRef("urn:Book")) in book, "the rest of the graph is kept"
     token = next(o for _, p, o in book if p == v.VERSION)
-    assert token != OLD_TOKEN
-    assert await triples(store, LOADED) == {(BOOK, SHELF_IRI, Literal("loaded"))}
-    assert await stamp(store) == ["2"]
+    assert token != OLD_TOKEN, "the version token is rotated"
+    assert await triples(store, LOADED) == {(BOOK, SHELF_IRI, Literal("loaded"))}, (
+        "a loaded graph is not touched"
+    )
+    assert await stamp(store) == ["2"], "the stamp moved"
 
 
 async def test_sending_the_same_request_again_changes_nothing(store):
@@ -353,4 +422,5 @@ async def test_sending_the_same_request_again_changes_nothing(store):
     await store.update(DATABASE, request)
     before = {g: await triples(store, g) for g in (BOOK, LOADED, STAMPS)}
     await store.update(DATABASE, request)
-    assert {g: await triples(store, g) for g in (BOOK, LOADED, STAMPS)} == before
+    after = {g: await triples(store, g) for g in (BOOK, LOADED, STAMPS)}
+    assert after == before, "the stamp is the guard: a second send matches nothing"
