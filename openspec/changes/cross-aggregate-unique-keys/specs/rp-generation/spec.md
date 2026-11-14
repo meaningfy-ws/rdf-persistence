@@ -20,8 +20,8 @@ validator or shape SHALL be generated for a scoped key.
   output file changes
 
 #### Scenario: a key slot that is not a slot of the root
-- **WHEN** the toy schema declares on `Book` a scoped key over a slot `shelf` that `Book` lacks
-- **THEN** `rp-generate` exits with an error naming `Book` and `shelf`
+- **WHEN** the toy schema declares on `Book` a scoped key over a slot `binding` that `Book` lacks
+- **THEN** `rp-generate` exits with an error naming `Book` and `binding`
 
 #### Scenario: a root key without a scope
 - **WHEN** the toy schema declares on `Book` a `unique_keys` entry without `rp_unique_scope`

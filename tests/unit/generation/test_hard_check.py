@@ -300,7 +300,7 @@ def _planted(break_toy: Breaker, module: str, old: str, new: str) -> list[str]:
     return problems_of(break_toy(module, old, new))
 
 
-@pytest.mark.parametrize("slot", ["chapters", "authors", "id", "created", "shelf"])
+@pytest.mark.parametrize("slot", ["chapters", "authors", "id", "created", "binding"])
 def test_a_key_over_a_slot_that_cannot_be_keyed_names_class_key_and_slot(
     break_toy: Breaker, slot: str
 ) -> None:
