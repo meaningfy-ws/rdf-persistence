@@ -35,7 +35,7 @@ after an attack; until then it is the planner's own score.
 | 4 | `collaboration-and-reference-collections` | LARGE (4 stages) | #78, #79, #80, #81 | delivered 2026-11-14 (#95, #98, #99, #100, #101) | 3 | reverse references, reference collections, discussion, workflow, the `annotate` action |
 | 5 | `cross-aggregate-unique-keys` | MEDIUM | none | yes | 3 | key guards added to the transaction; `KeyConflict` |
 | 6 | `tenant-dump-restore` | MEDIUM | none | delivered 2026-11-13 (#89) | none | the dump format (manifest with schema version), restore into a new tenant |
-| 7 | `app-level-data` | MEDIUM | none | no | none | the application database and its aggregates |
+| 7 | `app-level-data` | MEDIUM | none | delivered 2026-11-14 (#102) | none | the application database and its aggregates |
 | 8 | `tenant-stores` | MEDIUM | none | no | 6 (copies are dump + restore) | several wired stores; the access record names a tenant's store |
 | 9 | `message-bus` | LARGE | none | no | 3 (the activity is one more transaction operation), 4 (adopts its `TransitionRecord`) | commands as `prov:Activity` subclasses in three layers, activity records on every commit, the fixed PROV events (`Generation`, `Invalidation`), `MessageBus` with hierarchy dispatch (in process) |
 | 10 | `aggregate-events` | LARGE | none | no | 3, 9 (publishes 9's one message per commit) | outbox, relay, `EventBus` port on FastStream (Redis Streams first), incoming messages into the bus, SSE |
@@ -88,8 +88,9 @@ review items are decisions the lead took on the developer's behalf and the devel
 | `cross-aggregate-unique-keys` | 8 → 9 | ready (`atomic-commit` is delivered) | PD-2: an unscoped `unique_keys` declared on a root now fails generation; PD-11: duplicates are found by an operator call `key_duplicates()`, not by generation (generation never sees data); PD-8/PD-9: 409 `key-conflict`, version conflicts reported first |
 | `tenant-dump-restore` | 7.5 → 9 | delivered, archived | DEC-1: restore always into a new tenant; DEC-2: the tenant id is rewritten in every IRI, policies that glue the id to other characters are refused; DEC-4: grants not dumped, the restorer is the only grantee |
 | `collaboration-and-reference-collections` | 8 → 8.5 → fixed | delivered, archived | a `Collaboration` service opened from the kit (not `session.*` methods); comments and transition records are toolkit-written aggregates no generic route serves; replies target the aggregate; undefined transition → `Conflict`, state changed by a plain write → `Forbidden`; deleting a resource deletes its comments and records |
+| `app-level-data` | 7.8 → 9 | delivered, archived | DEC-1: a database of its own, `{prefix}-app`; DEC-2: access from global roles at level `system` only, so an application editor can edit every tenant; DEC-3: Python only (`require_application`, `application_iri`, `application_session`); the application IRI never answers as a tenant; the annotation is inherited along `is_a`; a session refuses the other space's classes by `rdf:type` |
 
-Shaped, not planned (PLAN at the start of their epic session): `app-level-data`, `tenant-stores`,
+Shaped, not planned (PLAN at the start of their epic session): `tenant-stores`,
 `second-store`, `message-bus`, `aggregate-events`, `schema-migrations`, `typescript-client`,
 `fine-grained-access`. Their open questions are answered as leader's choices in each proposal and
 `inputs/seed.md`. The three that needed the developer were answered on 2026-11-13:
