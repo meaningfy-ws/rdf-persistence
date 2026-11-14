@@ -31,14 +31,21 @@ SELECT_GRAPHS = "SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }"
 
 
 class Ticker:
-    """A clock that moves one minute on each reading."""
+    """A clock that moves one minute on each reading and keeps the readings it gave."""
 
     def __init__(self) -> None:
         self.now = START
+        self.readings: list[datetime] = []
 
     def __call__(self) -> datetime:
         self.now += timedelta(minutes=1)
+        self.readings.append(self.now)
         return self.now
+
+    @property
+    def tracked(self) -> datetime:
+        """The last commit's tracking time: a recording commit reads the clock once more, for its activity's end."""
+        return self.readings[-2]
 
 
 class RendezvousStore(FusekiStore):
@@ -266,7 +273,7 @@ async def test_a_commit_records_who_and_when_about_the_graph_iri_and_not_the_roo
     graph = graph_iri(book(1))
     ada = session_for(store, database, ADA, clock)
     first = await ada.add_graph(book(1), title(book(1), "v1"))
-    created = clock.now
+    created = clock.tracked
     stored = await about_graph(store, database, graph)
     assert (graph, v.CREATED, Literal(created)) in stored, "created is the first commit's time"
     assert (graph, v.CREATOR, URIRef(ADA.id)) in stored, "creator is the first committer"
@@ -280,7 +287,9 @@ async def test_a_commit_records_who_and_when_about_the_graph_iri_and_not_the_roo
     stored = await about_graph(store, database, graph)
     assert (graph, v.CREATED, Literal(created)) in stored, "created is kept"
     assert (graph, v.CREATOR, URIRef(ADA.id)) in stored, "creator is kept"
-    assert (graph, v.MODIFIED, Literal(clock.now)) in stored, "modified is the second commit's time"
+    assert (graph, v.MODIFIED, Literal(clock.tracked)) in stored, (
+        "modified is the second commit's time"
+    )
     assert set(stored.objects(graph, v.CONTRIBUTOR)) == {URIRef(BEN.id)}, "the committer is added"
 
 
@@ -294,7 +303,9 @@ async def test_contributors_accumulate_and_modified_is_replaced(store, database)
         )
     stored = await about_graph(store, database, graph)
     assert set(stored.objects(graph, v.CONTRIBUTOR)) == {URIRef(BEN.id), URIRef(CY.id)}, "each once"
-    assert list(stored.objects(graph, v.MODIFIED)) == [Literal(clock.now)], "one modified, the last"
+    assert list(stored.objects(graph, v.MODIFIED)) == [Literal(clock.tracked)], (
+        "one modified, the last"
+    )
     assert list(stored.objects(graph, v.CREATOR)) == [URIRef(ADA.id)], "one creator"
 
 
