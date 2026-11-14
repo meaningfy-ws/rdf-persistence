@@ -223,13 +223,8 @@ def served_roots(view: SchemaView) -> list[ClassDefinition]:
 
     The tenant's access record lives in the system database and has its own routes, so it is left out.
     """
-    roots = aggregate_roots(view, list(view.all_classes().values()))
-    return [
-        root
-        for root in roots
-        if annotation(root, RpAnnotation.DATABASE) != DatabaseKind.SYSTEM.value
-        and annotation_text(root, RpAnnotation.RP_PATH)
-    ]
+    roots = tenant_database_roots(view, list(view.all_classes().values()))
+    return [root for root in roots if annotation_text(root, RpAnnotation.RP_PATH)]
 
 
 def _only(found: list[ClassDefinition], what: str) -> ClassDefinition:

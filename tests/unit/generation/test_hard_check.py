@@ -12,6 +12,7 @@ from rdf_persistence.generation.generated.rp_generation import GenerationTarget,
 from rdf_persistence.generation.pipeline import generate
 from rdf_persistence.generation.problems import format_problem
 from rdf_persistence.services.schema import load_schema
+from rdf_persistence.services.schema_structure import aggregate_keys, keyed_slots
 
 from .conftest import ROOT_SCHEMA, Breaker
 
@@ -305,9 +306,8 @@ def test_a_key_over_a_slot_that_cannot_be_keyed_names_class_key_and_slot(
 ) -> None:
     """TC-04: an owned part, a multivalued slot, the identifier, bookkeeping, a slot Book lacks."""
     problems = _planted(break_toy, "books.yaml", KEY_SLOTS, f"unique_key_slots: [{slot}]")
-    assert any(
-        p.startswith(f"{UNIQUE_KEY} Book:") and "isbn_key" in p and slot in p for p in problems
-    ), problems
+    named = f"{UNIQUE_KEY} Book: unique key 'isbn_key': slot '{slot}' "
+    assert any(p.startswith(named) for p in problems), problems
 
 
 def test_a_scope_other_than_tenant_is_refused_naming_the_value_and_the_allowed_one(
@@ -336,9 +336,10 @@ def test_a_key_on_a_class_that_is_no_tenant_database_root_is_refused(
     break_toy: Breaker, module: str, old: str, slot: str, cls: str
 ) -> None:
     """TC-06"""
-    key = f"    unique_keys:\n      k:\n        unique_key_slots: [{slot}]\n{KEY_SCOPE}"
+    key = f"    unique_keys:\n      stray_key:\n        unique_key_slots: [{slot}]\n{KEY_SCOPE}"
     problems = _planted(break_toy, module, old, old + key)
-    assert any(p.startswith(f"{UNIQUE_KEY} {cls}:") and "k" in p for p in problems), problems
+    named = f"{UNIQUE_KEY} {cls}: unique key 'stray_key': "
+    assert any(p.startswith(named) for p in problems), problems
 
 
 def test_an_unscoped_key_on_a_root_is_refused_with_the_fix(break_toy: Breaker) -> None:
@@ -391,6 +392,12 @@ def test_an_unscoped_key_a_root_only_inherits_is_not_refused(break_toy: Breaker)
         "    mixins: [Described, Keyed]\n    slots: [number, notes]",
     )
     assert problems_of(root) == [], "an inherited unscoped key is no root key (PD-2)"
+    view = load_schema(root)
+    assert "label_key" not in {k.key_name for k in aggregate_keys(view)}, (
+        "Book gets no key across aggregates"
+    )
+    chapters = [(s.name, k.unique_key_name) for s, k in keyed_slots(view, view.get_class("Book"))]
+    assert ("chapters", "label_key") in chapters, "the key stays in-aggregate on Chapter"
 
 
 def test_a_run_with_a_bad_key_exits_1_naming_the_slot_and_writes_nothing(

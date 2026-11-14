@@ -9,6 +9,7 @@ from collections.abc import AsyncIterator
 
 import pytest
 from rdflib import RDF, Literal, URIRef
+from rdflib.namespace import XSD
 
 from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.domain.exceptions import Conflict, KeyConflict, NotFound
@@ -30,9 +31,12 @@ WITH_ISBN = "SELECT DISTINCT ?g WHERE { GRAPH ?g { ?root $isbn $value } }"
 HAS_ISBN = "ASK { GRAPH ?g { $root $isbn $value } }"
 
 
-def book(iri: str, isbn: str) -> list:
+def book(iri: str, isbn: str | Literal) -> list:
     root = URIRef(iri)
-    return [(root, RDF.type, BOOK), (root, ISBN, Literal(isbn))]
+    return [
+        (root, RDF.type, BOOK),
+        (root, ISBN, isbn if isinstance(isbn, Literal) else Literal(isbn)),
+    ]
 
 
 def session_of(store: FusekiStore, database: str, principal: Principal = ADA) -> Session:
@@ -131,6 +135,25 @@ async def test_it02_one_transaction_removes_the_holder_and_adds_the_key(session)
         await t.add_graph(B, book(B, "1"))
     assert await stored(session, B), "B was stored"
     assert not await stored(session, A), "A was removed"
+
+
+@pytest.mark.parametrize(
+    ("stored_value", "claimed_value"),
+    [
+        (Literal("1", datatype=XSD.string), Literal("1")),
+        (Literal("2"), Literal("2", datatype=XSD.string)),
+    ],
+    ids=["typed-stored-plain-claimed", "plain-stored-typed-claimed"],
+)
+async def test_an_xsd_string_and_a_plain_literal_are_one_value(
+    session, stored_value, claimed_value
+):
+    """PD-5's premise: Fuseki holds the two as one term, so each blocks the other (TC-26)."""
+    holder, claimant = book_iri(7), book_iri(8)
+    await session.add_graph(holder, book(holder, stored_value))
+    with pytest.raises(KeyConflict) as refused:
+        await session.add_graph(claimant, book(claimant, claimed_value))
+    assert refused.value.iris == (claimant,), "the second root's claim clashed"
 
 
 async def test_it04_a_stale_replace_that_also_clashes_is_a_plain_conflict(store, database, session):

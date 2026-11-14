@@ -55,9 +55,10 @@ from rdf_persistence.services.loading import parse_graph
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.unique_keys import (
     KeyClaim,
-    claims,
+    claims_of,
     diagnosis,
     guard,
+    held,
     key_conflict,
     same_value,
 )
@@ -794,7 +795,7 @@ class Transaction:
         graph = self._claim(iri)
         await session._check_commit(iri, loaded_graphs)
         triples = list(triples)
-        key_claims = claims(session._keys, iri, triples)
+        key_claims = claims_of(session._keys, iri, triples)
         version = str(uuid.uuid4())
         tracking = Tracked(created=session._clock(), creator=session._principal.id)
         parts = add_parts(
@@ -823,7 +824,7 @@ class Transaction:
         await session._check_commit(iri, loaded_graphs or [])
         _, stored = await session._stored(graph)
         triples = list(triples)
-        key_claims = claims(session._keys, iri, triples)
+        key_claims = claims_of(session._keys, iri, triples)
         if loaded_graphs is None:
             loaded_graphs = await session._registered_loaded(iri)
         tracking = Tracked(
@@ -873,7 +874,8 @@ class Transaction:
         session = self._session
         if clash := same_value(self._key_claims):
             raise key_conflict(clash, within_commit=True)
-        key_guards = [guard(c, session._registry, self._excluded()) for c in self._key_claims]
+        excluded = self._excluded()
+        key_guards = [guard(c, session._registry, excluded) for c in self._key_claims]
         await session._store.update(
             session._database,
             request_text(
@@ -893,12 +895,7 @@ class Transaction:
         """The claims of the transaction that another aggregate holds now (PD-9)."""
         session = self._session
         text = diagnosis(self._key_claims, session._registry, self._excluded())
-        rows = [
-            r
-            for r in await session._store.query(session._database, text)
-            if isinstance(r, ResultRow)
-        ]
-        return [self._key_claims[int(r.claim)] for r in rows]
+        return held(self._key_claims, await session._store.query(session._database, text))
 
     async def _versions_found(self) -> dict[URIRef, str | None]:
         """The version each graph of the transaction holds now, ``None`` for a graph with none."""

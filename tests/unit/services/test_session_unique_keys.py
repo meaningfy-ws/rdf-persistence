@@ -24,7 +24,7 @@ from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import aggregate_keys
 from rdf_persistence.services.session import Session, new_marker, request_text
-from rdf_persistence.services.unique_keys import claims, diagnosis, guard, same_value
+from rdf_persistence.services.unique_keys import claims_of, diagnosis, guard, held, same_value
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import TENANT, TOY_SCHEMA, book_iri, dune, graph_of, toy_mapper
@@ -123,7 +123,6 @@ async def test_tc10_the_message_names_roots_and_keys_in_words(session):
     with pytest.raises(KeyConflict) as refused:
         await session.add_graph(B, book(B, LONG_ISBN))
     text = str(refused.value)
-    print(text)
     assert B in text and "isbn_key" in text, "it names the root and the key"
     assert LONG_ISBN not in text, "it gives no key value"
     assert A not in text, "it gives no holder"
@@ -256,7 +255,7 @@ async def test_tc23_a_session_without_keys_enforces_none(store):
 
 
 def test_tc24_a_hostile_value_appears_only_as_an_escaped_literal():
-    claim = claims(KEYS, B, book(B, HOSTILE))[0]
+    claim = claims_of(KEYS, B, book(B, HOSTILE))[0]
     registry = DEFAULT_IRIS.registry(TENANT)
     excluded = [URIRef(A)]
     rendered = str(term(Literal(HOSTILE)))
@@ -301,6 +300,13 @@ async def test_tc26_a_string_literal_is_the_plain_literal(session):
     assert refused.value.iris == (B,), 'xsd:string "1" is "1"'
 
 
+async def test_tc26_a_stored_string_literal_blocks_the_plain_literal(session):
+    await session.add_graph(A, book(A, Literal("1", datatype=XSD.string)))
+    with pytest.raises(KeyConflict) as refused:
+        await session.add_graph(B, book(B, "1"))
+    assert refused.value.iris == (B,), 'the stored xsd:string "1" is "1"'
+
+
 async def test_tc26_the_normalisation_holds_inside_one_transaction(session):
     with pytest.raises(KeyConflict) as refused:
         async with session.transaction() as t:
@@ -323,10 +329,19 @@ async def test_a_language_tag_makes_another_value(session):
 
 def test_same_value_names_the_claims_another_claim_repeats():
     one, two, three = (
-        claims(KEYS, iri, book(iri, isbn))[0] for iri, isbn in ((C, "3"), (D, "3"), (E, "4"))
+        claims_of(KEYS, iri, book(iri, isbn))[0] for iri, isbn in ((C, "3"), (D, "3"), (E, "4"))
     )
     assert same_value([one, two, three]) == [one, two], "E is alone"
     assert same_value([one, three]) == [], "no repeat"
+
+
+async def test_held_reads_the_claims_a_diagnosis_found(store, session):
+    await session.add_graph(A, book(A, "1"))
+    one, two = (claims_of(KEYS, iri, book(iri, isbn))[0] for iri, isbn in ((B, "1"), (C, "2")))
+    text = diagnosis([one, two], DEFAULT_IRIS.registry(TENANT), [])
+    assert held([one, two], await store.query(FAKE_DATABASE, text)) == [one], (
+        "only B's value is held"
+    )
 
 
 async def test_tc27_a_key_conflict_of_a_later_batch_keeps_its_type_and_says_how_far_it_got(session):

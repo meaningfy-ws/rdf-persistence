@@ -173,7 +173,7 @@ class Conformance:
         """The kinds of the rules ``name`` declares or holds through a keyed slot."""
         cls = self.view.get_class(name)
         kinds = {kind for kind, found in _CLASS_KINDS if getattr(cls, found)}
-        keyed = keyed_slots(self.view, cls) or any(
+        keyed = bool(keyed_slots(self.view, cls)) or any(
             not is_scoped(key) for key in cls.unique_keys.values()
         )
         return kinds | ({ConstraintKind.UNIQUE_KEYS} if keyed else set())

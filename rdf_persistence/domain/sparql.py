@@ -90,16 +90,20 @@ def fragment(template: str, **terms: SparqlTerm) -> SparqlTerm:
     return SparqlTerm(fill(template, **terms))
 
 
+def _joined(separator: str, parts: Iterable[SparqlTerm], caller: str) -> SparqlTerm:
+    items = list(parts)
+    if raw := [type(p).__name__ for p in items if not isinstance(p, SparqlTerm)]:
+        raise SparqlError(f"{caller}() takes only SparqlTerm parts; got {raw}")
+    return SparqlTerm(separator.join(items))
+
+
 def join(parts: Iterable[SparqlTerm]) -> SparqlTerm:
     """Join ``SparqlTerm``s, one space apart, into one: patterns, guards or a ``VALUES`` list.
 
     Raises:
         SparqlError: A part is not a ``SparqlTerm``.
     """
-    items = list(parts)
-    if raw := [type(p).__name__ for p in items if not isinstance(p, SparqlTerm)]:
-        raise SparqlError(f"join() takes only SparqlTerm parts; got {raw}")
-    return SparqlTerm(" ".join(items))
+    return _joined(" ", parts, "join")
 
 
 def union(parts: Iterable[SparqlTerm]) -> SparqlTerm:
@@ -108,10 +112,7 @@ def union(parts: Iterable[SparqlTerm]) -> SparqlTerm:
     Raises:
         SparqlError: A part is not a ``SparqlTerm``.
     """
-    items = list(parts)
-    if raw := [type(p).__name__ for p in items if not isinstance(p, SparqlTerm)]:
-        raise SparqlError(f"union() takes only SparqlTerm parts; got {raw}")
-    return SparqlTerm(" UNION ".join(items))
+    return _joined(" UNION ", parts, "union")
 
 
 Triple = tuple[URIRef | BNode, URIRef, URIRef | Literal | BNode]

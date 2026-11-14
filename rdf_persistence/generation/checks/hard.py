@@ -110,6 +110,7 @@ def _bad_key_slot(view: SchemaView, root: ClassDefinition, slot_name: str) -> st
 def _scoped_key_reasons(
     view: SchemaView, key: UniqueKey, below: list[ClassDefinition]
 ) -> Iterator[str]:
+    """Why the scoped ``key`` cannot be enforced across the aggregates of the roots ``below`` its class."""
     if not below:
         yield "it is on a class that is neither a tenant-database aggregate root nor an ancestor of one"
     if key.consider_nulls_inequal is False:
@@ -128,12 +129,13 @@ def _key_problems(
     for key in cls.unique_keys.values():
         name = str(key.unique_key_name)
         if is_scoped(key):
-            reasons = dict.fromkeys(_scoped_key_reasons(view, key, below))
+            reasons = list(_scoped_key_reasons(view, key, below))
         elif cls in roots:
-            reasons = {f"on a root it needs {RpAnnotation.RP_UNIQUE_SCOPE.value}: tenant": None}
+            scope = f"{RpAnnotation.RP_UNIQUE_SCOPE.value}: {UniqueScope.TENANT.value}"
+            reasons = [f"on a root it needs {scope}"]
         else:
             continue
-        for reason in reasons:
+        for reason in dict.fromkeys(reasons):
             yield rule_problem(HardRule.UNIQUE_KEY, cls.name, f"unique key {name!r}: {reason}")
 
 

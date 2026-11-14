@@ -201,7 +201,7 @@ KEY_HELD = """
   FILTER (?key_root NOT IN ($excluded))
 """
 
-def claims(keys, iri, triples) -> list[KeyClaim]: ...   # PD-5, raises InvalidBody on 2+ values
+def claims_of(keys, iri, triples) -> list[KeyClaim]: ... # PD-5, raises InvalidBody on 2+ values (named so by D-5 F-6)
 def same_value(claims) -> list[KeyClaim]: ...          # PD-6a: the claims another claim repeats
 def guard(claim, registry, excluded) -> str:           # "FILTER NOT EXISTS { KEY_HELD }"
 def diagnosis(claims, registry, excluded) -> str:      # SELECT DISTINCT ?claim { {KEY_HELD BIND(0 AS ?claim)} UNION … }

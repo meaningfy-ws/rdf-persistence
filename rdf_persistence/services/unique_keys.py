@@ -12,6 +12,7 @@ from collections.abc import Iterable, Sequence
 
 from rdflib import RDF, BNode, Literal, URIRef
 from rdflib.namespace import XSD
+from rdflib.query import ResultRow
 
 from rdf_persistence.domain.exceptions import InvalidBody, KeyConflict
 from rdf_persistence.domain.generated.rp_core import AggregateKey, RegistryKind
@@ -63,7 +64,7 @@ def _plain(value: Value) -> Value:
     return value
 
 
-def claims(keys: Iterable[AggregateKey], iri: str, triples: Iterable[Triple]) -> list[KeyClaim]:
+def claims_of(keys: Iterable[AggregateKey], iri: str, triples: Iterable[Triple]) -> list[KeyClaim]:
     """The claims of the root ``iri`` holding ``triples``: one per key of its type with a value for
     each predicate (PD-5); a key with a predicate that has no value claims nothing.
 
@@ -129,6 +130,11 @@ def diagnosis(claims: Sequence[KeyClaim], registry: URIRef, excluded: Iterable[U
         for number, claim in enumerate(claims)
     )
     return fill(_DIAGNOSIS, branches=union(branches))
+
+
+def held(claims: Sequence[KeyClaim], rows: Iterable[object]) -> list[KeyClaim]:
+    """The claims whose index (``?claim``) the ``rows`` of a ``diagnosis`` answer hold."""
+    return [claims[int(row.claim)] for row in rows if isinstance(row, ResultRow)]
 
 
 def key_conflict(claims: Iterable[KeyClaim], *, within_commit: bool) -> KeyConflict:
