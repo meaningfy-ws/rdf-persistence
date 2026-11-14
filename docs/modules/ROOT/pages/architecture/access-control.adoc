@@ -163,6 +163,8 @@ flowchart LR
 . *Action missing.* An action not in the set is 403; `read` passes when any other action is in it.
 
 * A *global role* from the token (an administrator) that the rules allow passes without a grant.
+  A role name in a token counts only if the roles file defines it at system level: for a comment's
+  audience too, so a token role named like a tenant role opens nothing.
 * *Per aggregate*: a Permission whose target is an aggregate's graph IRI applies to that aggregate
   only.
 * A *read* of a tenant's root or of an aggregate lists in its `Allowed-Actions` header the actions the

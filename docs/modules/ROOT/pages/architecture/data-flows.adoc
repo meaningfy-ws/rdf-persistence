@@ -217,6 +217,11 @@ code (`entrypoints/auth.py`, `Gate`). Each failure answers at once.
 The route then answers `Allowed-Actions` with what the caller may do. Create a tenant and list
 tenants check only the token.
 
+A generic route answers only for an aggregate of its own class (or a class derived from it):
+`Aggregates.read`, `replace` and `remove` give 404, as for a missing aggregate, when the stored
+root has another type. So no route reaches a comment, whatever the IRI policy, and the route of
+one class does not answer for an aggregate of another.
+
 A consumer's own route calls the same gate through `kit.require(authorization, t, action)` or
 `kit.require_aggregate(...)`. Code that opens `kit.session(tenant, principal)` directly is not
 checked: the session trusts its caller. `kit.collaboration(authorised)` is a third way in: it opens
@@ -506,7 +511,10 @@ graph and the registry entry of every registered aggregate whose root is an `oa:
 a commit does not count them, and it has no version guard of its own, because a comment is never
 edited. The session is given the pairs of class and link to drop (`dependents`); the kit passes
 them to every session it opens when the schema imports `rp_discussion`, and a session opened
-without them drops only the aggregate.
+without them drops only the aggregate. The same pairs also leave a comment's link to its target
+out of `Session.referrer_rows`, so what `referrers` omits and what a remove drops cannot differ.
+The operation starts from the link to the removed root and checks the registry afterwards, so a
+tenant with no comment pays next to nothing for it.
 
 *A presence guard.* Posting a comment (`Discussion.comment`) writes the comment's graph only and
 adds one guard on its target: the target must still have a version when the request is applied

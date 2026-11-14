@@ -262,7 +262,9 @@ class AccessRules:
         return True
 
     def roles(self, caller: VerifiedCaller, access: CallerAccess, target_iri: str) -> set[str]:
-        """The names of the roles ``caller`` holds on ``target_iri``: its role grants in scope and its global roles.
+        """The names of the roles ``caller`` holds on ``target_iri``: its role grants in scope and those of
+        its token's roles that the roles file defines at system level (a token role of another name,
+        which the identity provider's administrator chose, counts for nothing; PD-30).
 
         Raises:
             NotFound: ``target_iri`` is not the tenant or one of its aggregates.
@@ -273,7 +275,10 @@ class AccessRules:
             for g in access.grants or []
             if g.role and g.assignee == caller.principal and g.target in scope
         }
-        return granted | set(caller.global_roles or [])
+        system = {
+            role for role in caller.global_roles or [] if (RoleLevel.SYSTEM, role) in self._permits
+        }
+        return granted | system
 
     def defines(self, role: str) -> bool:
         """True when a role of this name is defined at any level."""

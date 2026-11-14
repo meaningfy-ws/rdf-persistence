@@ -13,9 +13,14 @@ from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from rdflib import RDF, Literal, URIRef
 
-from rdf_persistence import Problem
-from rdf_persistence.domain.exceptions import InvalidBody, InvalidRoleDefinition, NotFound
-from rdf_persistence.domain.generated.rp_access import Action
+from rdf_persistence import GrantSet, Problem
+from rdf_persistence.domain.exceptions import (
+    Forbidden,
+    InvalidBody,
+    InvalidRoleDefinition,
+    NotFound,
+)
+from rdf_persistence.domain.generated.rp_access import Action, Grant
 from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.entrypoints.service import install_service
@@ -23,7 +28,7 @@ from rdf_persistence.services.vocabulary import ANNOTATION, HAS_TARGET
 from rdf_persistence.testkit import FakeStore
 from tests.fixtures.library import generated
 from tests.toy import ROLES, SETTINGS, TOY_SCHEMA
-from tests.toy_service import CONSUMER_POLICY, DUNE_BODY, TENANT_BODY, ToyService
+from tests.toy_service import CONSUMER_POLICY, DUNE_BODY, TENANT_BODY, ToyService, principal_of
 
 PROBLEMS = f"{SETTINGS.base}problems/"
 FILE_KEY = URIRef("https://meaningfy.ws/ns/rdf-persistence#fileKey")
@@ -457,6 +462,9 @@ async def test_the_kit_sessions_drop_the_comments_of_a_removed_aggregate(service
         await session.remove(book, (await session.get_graph(book))[2])
         with pytest.raises(NotFound):
             await session.get_graph(comment)
+
+
+async def test_a_collaboration_opens_on_the_answer_of_require_aggregate(service, client) -> None:
     headers = service.bearer("ada")
     path = (await client.post("/libraries", json=TENANT_BODY, headers=headers)).headers["location"]
     tenant_id = path.rsplit("/", 1)[1]
@@ -470,3 +478,69 @@ async def test_the_kit_sessions_drop_the_comments_of_a_removed_aggregate(service
     assert [(r.referrer, r.referrer_slot) for r in found.referrers or []] == [
         (book.json()["id"], "shelf")
     ], "the aggregate that was checked is the one asked about"
+
+
+async def allow_annotating(scene, *who: str) -> None:
+    """Grant each of ``who`` the action ``annotate`` on the tenant, beside the grants it has."""
+    grants = GrantSet.model_validate(
+        (await scene.http.get(f"{scene.tenant}/grants", headers=scene.headers("ada"))).json()
+    )
+    added = [
+        Grant(assignee=principal_of(sub), target=scene.tenant_iri, action=Action.ANNOTATE)
+        for sub in who
+    ]
+    scene.access_etag = await scene.set_grants(GrantSet(grants=[*(grants.grants or []), *added]))
+
+
+async def comment_as(scene, sub: str, text: str) -> str:
+    """``sub`` comments on the scene's book through a collaboration the kit opens for its token."""
+    tenant_id = scene.tenant.rsplit("/", 1)[1]
+    authorised = await scene.service.kit.require(
+        scene.headers(sub)["Authorization"], tenant_id, Action.READ
+    )
+    async with scene.service.kit.collaboration(authorised) as collaboration:
+        return await collaboration.comment(scene.book_iri, text)
+
+
+async def test_each_caller_who_comments_through_the_kit_is_the_author_of_its_comment(scene) -> None:
+    await allow_annotating(scene, "ada", "rita")
+    by_ada = await comment_as(scene, "ada", "from ada")
+    by_rita = await comment_as(scene, "rita", "from rita")
+    tenant_id = scene.tenant.rsplit("/", 1)[1]
+    authorised = await scene.service.kit.require(
+        scene.headers("ada")["Authorization"], tenant_id, Action.READ
+    )
+    async with scene.service.kit.collaboration(authorised) as collaboration:
+        thread = await collaboration.thread(scene.book_iri)
+    assert {c.id: c.creator for c in thread} == {
+        by_ada: principal_of("ada"),
+        by_rita: principal_of("rita"),
+    }, "each comment is tracked to the caller whose collaboration posted it"
+
+
+async def test_the_generic_delete_of_a_book_drops_the_comments_on_it(scene) -> None:
+    await allow_annotating(scene, "ada")
+    comment = await comment_as(scene, "ada", "a remark")
+    deleted = await scene.http.delete(
+        scene.book, headers=scene.headers("ada", **{"If-Match": scene.book_etag})
+    )
+    assert deleted.status_code == 204, "the comment did not change the book's version"
+    async with scene.service.kit.session(scene.tenant_iri, "ada") as session:
+        with pytest.raises(NotFound):
+            await session.get_graph(comment)
+
+
+async def test_a_reviewer_who_comments_is_still_refused_the_modify_of_the_book(scene) -> None:
+    """The rp-access scenario through the generic route: annotate implies read and nothing else."""
+    await allow_annotating(scene, "rita")
+    await comment_as(scene, "rita", "a remark")
+    refused = await scene.http.put(
+        scene.book, json=DUNE_BODY, headers=scene.headers("rita", **{"If-Match": scene.book_etag})
+    )
+    assert refused.status_code == 403, "a comment is no right to write"
+    tenant_id = scene.tenant.rsplit("/", 1)[1]
+    book_id = scene.book.rsplit("/", 1)[1]
+    with pytest.raises(Forbidden):
+        await scene.service.kit.require_aggregate(
+            scene.headers("rita")["Authorization"], tenant_id, "books", book_id, Action.MODIFY
+        )

@@ -566,6 +566,70 @@ delivers.
   without that role name; a reply whose parent is on another target, in a cycle or gone is
   hidden; references may name any aggregate IRI of the tenant, the tenant root and the access
   record included (an IRI is shown as given, PD-13).
+- **PD-30** (stage 3 challenge, 2026-11-14; four review passes on PR #99). Accepted, fixed
+  before the merge. Security first:
+  1. **A generic aggregate route answers only for an aggregate of its own class** (L1 C1; the
+     lead's decision). PD-11 relied on "no route reaches a comment", but a route builds its
+     target IRI from the IRI policy, and a policy whose aggregate template names neither the
+     type nor the path gives a comment and a book of the same id one IRI: a reader outside the
+     audience could then `GET` a comment as a book, and with `modify` or `delete` overwrite or
+     remove it. `Aggregates.read`, `replace` and `remove` refuse with `NotFound` a stored root
+     that is not typed with the route's class or a class derived from it. Read and replace
+     already read the graph; remove gains one read. This also closes the older confusion
+     between two served classes under such a policy. A test uses a flat policy. As built: the
+     class is a required argument of `read` and `remove` (the lead, over the fixer's optional
+     one: a check that can be left out by forgetting an argument protects nobody), and the
+     class family comes from `Documents.family`.
+  2. **Every annotation that refers is judged as a comment** (L1 W1): `referrers` of a hidden
+     comment listed its replies (their `rp:repliesTo` link), because only `dcterms:references`
+     rows went through the visibility rule. Every referrer row whose class is `oa:Annotation`
+     does now, whatever the link; and for a referrer that is a comment the thread's rule alone
+     decides (L4/L5 W4: the read right on the comment's own IRI no longer hides a comment the
+     caller sees in the thread).
+  3. **A token role counts for an audience only if it is defined at system level** (L1 W2,
+     L4/L5 W1, L2 W1; narrows PD-9's "plus its global roles"). A token role named like a tenant
+     role, which the identity provider's administrator assigns and not the tenant's, no longer
+     opens that role's comments. The spec says so, with a scenario.
+  4. **A long chain of replies cannot break a thread** (L4/L5 C1): the visibility rule walked
+     reply chains by recursion and hit Python's limit at about a thousand replies, depending on
+     the order the store returned them; any caller with `annotate` could cause it. The walk is
+     a loop; a test reads 5 000 shuffled replies.
+
+  Correctness and cost:
+  5. The comment referrers of a resource are read in one `graphs_with` query, not one read per
+     comment: no `NotFound` when a comment goes between the two reads (L4/L5 W3, L1 S1).
+  6. The dependents operation starts from the link to the removed root, then checks the
+     registry (L4/L5 W2), as PD-26 and PD-28 did for the reads; measured on Fuseki on a tenant
+     with thousands of aggregates and no comment, with and without the operation, and the
+     figures go in the durations table.
+  7. A comment may be posted on an application's own `oa:Annotation` aggregate; only what
+     decodes as a toolkit comment (or, from stage 4, a record) refuses one (L4/L5 W6).
+  8. The dependent pairs have one source, the session's own: `referrer_rows` uses them, so
+     what `referrers` leaves out and what a remove drops cannot differ (L3 W2, L4/L5 S2).
+     "What the toolkit writes" is one helper in `schema_structure.py` (L3 W3, L4/L5 S1).
+     `.importlinter` names `services.discussion` (L3 W1).
+  9. Small: the sort key of a thread does not compare a naive with an aware time; minting does
+     not fall back to an empty path; `_require_present`'s docstring says it must not be used
+     on a graph the same transaction removes.
+
+  Spec, tests and docs:
+  10. Tests (L2): the author of a comment is the caller, through `kit.collaboration` with two
+      callers; the generic `DELETE` route drops the comments; the stage 2 kit test swallowed by
+      a stage 3 test gets its own `def` back; a reference to a never-stored aggregate IRI is
+      accepted (pinned); removing a comment keeps its replies stored and hidden; a reviewer's
+      modify is refused through a guarded path (the rp-access scenario); messages on the
+      message-less asserts of the stage's test files; the assertion that cannot fail.
+  11. Docs: references are checked for the IRI's shape, not for existence; a hidden comment
+      that references a resource is still counted in that resource's referrers; an
+      application's own annotation deleted with its target leaves the graphs it loaded
+      (L4/L5 W5, L1 S3: documented, not built, since toolkit comments load nothing);
+      `data-flows.adoc` says the same pairs leave comment links out of `referrers`. The Error
+      matrix row "10 000 comments" reads 600, what TC-63 and IT-07 test.
+
+  Rejected: answering `NotFound` and not `InvalidIri` for a comment on a comment (L1 S2: the
+  developer reviewed PD-13; comment IRIs are random, and item 1 and 2 close the paths that hand
+  them out); one value for `keys`, `guards` and `dependents` (L3 S1: when a fourth appears);
+  moving the validation of the text before the read of the target (L4/L5 S7: PD-13's order).
 
 ## Delivery decisions
 
@@ -732,7 +796,7 @@ ada `comment(b1, "thanks", reply_to=c2)` → `c3`.
 | A comment references a resource some thread readers may not read | the IRI is shown as given; the resource itself stays guarded |
 | Author not in its own comment's audience | the author does not see it (spec as written, Q-1) |
 | A reply under a hidden parent | hidden too |
-| Delete of an aggregate with 10 000 comments | one operation; all gone in the same request |
+| Delete of an aggregate with 600 comments (tested; more is the same one operation) | one operation; all gone in the same request |
 | A consumer's own `oa:Annotation` aggregate targeting a deleted resource | deleted with it (RISK-3) |
 | An `oa:Annotation` aggregate on b that does not decode as a `Comment` (no body, no or an unknown motivation) | not in `thread(b)`; as a referrer it is an ordinary one (PD-29) |
 | Workflow file: undefined state / unknown role / duplicate transition / duplicate name | `InvalidWorkflow` at kit start |

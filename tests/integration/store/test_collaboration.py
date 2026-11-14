@@ -369,8 +369,10 @@ async def test_a_comment_leaves_its_target_untouched(session, collaboration):  #
     stored_iri = await as_reviewer(collaboration).comment(B1, "nice", references=[B2])
     assert await version_of(session, B1) == before, "b1 is not written"
     [stored] = await as_reviewer(collaboration).thread(B1)
-    assert (stored.id, stored.body_value) == (stored_iri, "nice")
-    assert (stored.has_target, stored.motivated_by) == (B1, Motivation.COMMENTING)
+    assert stored.id == stored_iri, "the thread holds the comment that was posted"
+    assert stored.body_value == "nice", "with its text"
+    assert stored.has_target == B1, "on b1"
+    assert stored.motivated_by == Motivation.COMMENTING, "as a comment, not a reply"
 
 
 async def test_a_comment_for_librarians_is_not_in_a_readers_thread(session, collaboration):  # TC-52
@@ -386,8 +388,10 @@ async def test_a_reply_names_its_parent_and_is_a_reply(session, collaboration): 
     c2 = await as_reviewer(collaboration).comment(B1, "nice")
     c3 = await as_reviewer(collaboration, ADA).comment(B1, "thanks", reply_to=c2)
     parent, reply = await as_reviewer(collaboration).thread(B1)
-    assert (parent.id, reply.id) == (c2, c3)
-    assert (reply.replies_to, reply.motivated_by) == (c2, Motivation.REPLYING)
+    assert parent.id == c2, "the older comment comes first"
+    assert reply.id == c3, "its reply after it"
+    assert reply.replies_to == c2, "the reply names its parent"
+    assert reply.motivated_by == Motivation.REPLYING, "and says it replies"
 
 
 async def test_removing_an_aggregate_removes_the_comments_on_it_only(
@@ -400,7 +404,7 @@ async def test_removing_an_aggregate_removes_the_comments_on_it_only(
     on_b2 = await build.comment(B2, "about b2")
     await session.remove(B2, await version_of(session, B2))
     assert not await stored(session, on_b2), "the comment on b2 is gone, graph and entry"
-    assert await comments_on(session, B2) == []
+    assert await comments_on(session, B2) == [], "no stored root targets b2"
     assert await stored(session, on_b1), "the comment on b1 stays"
 
 
@@ -412,7 +416,7 @@ async def test_a_remove_leaves_an_aggregate_of_another_class_that_links_to_it(
     await as_reviewer(collaboration).comment(B1, "goes with b1")
     await session.remove(B1, await version_of(session, B1))
     assert await stored(session, S1), "the shelf names b1 by had_member, not by a comment's target"
-    assert await comments_on(session, B1) == []
+    assert await comments_on(session, B1) == [], "the comment on b1 went with it"
 
 
 async def test_a_comment_races_the_removal_of_its_target_and_loses(
@@ -463,4 +467,4 @@ async def test_a_target_with_many_comments_is_removed_with_them_in_one_request(
     print(f"remove of a book with 600 comments: {time.perf_counter() - started:.2f} s")
     assert len(sent) == 1, "one update request"
     assert await session.heads(ids) == [], "no comment graph is left"
-    assert await session.graphs_with(v.HAS_TARGET) == {}
+    assert await session.graphs_with(v.HAS_TARGET) == {}, "no stored root targets anything"

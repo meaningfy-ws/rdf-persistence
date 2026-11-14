@@ -67,6 +67,7 @@ def flat_iris() -> Iris:
 IRIS = flat_iris()
 TENANT = str(IRIS.tenant("p4x8k2m"))
 DOCUMENTS = Documents(VIEW, GENERATED, iris=IRIS)
+BOOK_CLASS = DOCUMENTS.aggregates["books"]  # the class of the route the aggregates are read through
 
 
 def book(n: int) -> str:
@@ -200,7 +201,7 @@ async def create(aggregates: Aggregates, data: bytes) -> str:
 
 
 async def replace(aggregates: Aggregates, iri: str, data: bytes):
-    _, _, version = await aggregates.read(TENANT, ADA, iri)
+    _, _, version = await aggregates.read(TENANT, ADA, iri, BOOK_CLASS)
     return await aggregates.replace(
         TENANT, ADA, DOCUMENTS.aggregates["books"], iri, data, JSON, version
     )
@@ -229,7 +230,7 @@ async def test_a_replace_naming_a_part_of_another_aggregate_is_refused_and_nothi
 ):
     first = await create(aggregates, body({"number": 1}))
     second = await create(aggregates, body({"number": 1}))
-    foreign = next(iter(chapter_ids(await aggregates.read(TENANT, ADA, second))))
+    foreign = next(iter(chapter_ids(await aggregates.read(TENANT, ADA, second, BOOK_CLASS))))
     updates = len(store.sent("update"))
     with pytest.raises(InvalidBody, match="is not a part of the aggregate"):
         await replace(aggregates, first, body({"id": foreign, "number": 1}))
@@ -238,14 +239,14 @@ async def test_a_replace_naming_a_part_of_another_aggregate_is_refused_and_nothi
 
 async def test_a_replace_naming_a_part_the_aggregate_already_stores_is_accepted(aggregates):
     iri = await create(aggregates, body({"number": 1}))
-    (own,) = chapter_ids(await aggregates.read(TENANT, ADA, iri))
+    (own,) = chapter_ids(await aggregates.read(TENANT, ADA, iri, BOOK_CLASS))
     stored = await replace(aggregates, iri, body({"id": own, "number": 2}))
     assert chapter_ids(stored) == {own}, "the part keeps its IRI"
 
 
 async def test_a_replace_may_add_a_part_without_naming_it(aggregates):
     iri = await create(aggregates, body({"number": 1}))
-    (own,) = chapter_ids(await aggregates.read(TENANT, ADA, iri))
+    (own,) = chapter_ids(await aggregates.read(TENANT, ADA, iri, BOOK_CLASS))
     stored = await replace(aggregates, iri, body({"id": own, "number": 1}, {"number": 2}))
     assert len(chapter_ids(stored)) == 2 and own in chapter_ids(stored)
 

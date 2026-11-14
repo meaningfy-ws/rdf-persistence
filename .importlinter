@@ -79,5 +79,6 @@ source_modules =
 forbidden_modules =
     rdf_persistence.services.access
     rdf_persistence.services.collaboration
+    rdf_persistence.services.discussion
     rdf_persistence.services.reference_collections
     rdf_persistence.services.write_guards

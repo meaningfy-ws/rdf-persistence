@@ -173,6 +173,11 @@ def is_service_written(view: SchemaView, cls: ClassDefinition) -> bool:
     return annotated or stored_file
 
 
+def is_toolkit_written(cls: ClassDefinition) -> bool:
+    """True when the toolkit writes the root itself (``rp_writes: toolkit``): no route serves it (PD-11)."""
+    return annotation(cls, RpAnnotation.RP_WRITES) == WritesKind.TOOLKIT.value
+
+
 def is_toolkit_schema(folder: Path) -> bool:
     """True for the toolkit's own schemas, which PD-23 exempts from the class-level rules."""
     return folder.resolve().is_relative_to(PACKAGE_DIR)
@@ -228,8 +233,7 @@ def served_roots(view: SchemaView) -> list[ClassDefinition]:
     return [
         root
         for root in roots
-        if annotation_text(root, RpAnnotation.RP_PATH)
-        and annotation(root, RpAnnotation.RP_WRITES) != WritesKind.TOOLKIT.value
+        if annotation_text(root, RpAnnotation.RP_PATH) and not is_toolkit_written(root)
     ]
 
 

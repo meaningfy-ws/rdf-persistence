@@ -6,30 +6,28 @@ the aggregate it is about, and a reply also names the comment it answers. ``Disc
 ``visible`` is the one rule of who sees a comment, which ``Collaboration.referrers`` uses too.
 """
 
+import math
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from collections.abc import Set as AbstractSet
-from datetime import UTC, datetime
+from datetime import UTC
 
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import RDF, Graph, URIRef
 
 from rdf_persistence.domain.exceptions import InvalidBody, InvalidIri, NotFound, UnknownRole
 from rdf_persistence.domain.generated.rp_access import Action
-from rdf_persistence.domain.generated.rp_core import RpAnnotation, WritesKind
+from rdf_persistence.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.domain.generated.rp_discussion import Comment, Motivation
 from rdf_persistence.domain.generated.service.rp_service import CallerAccess, VerifiedCaller
 from rdf_persistence.domain.iris import Iris, graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.mapper import Mapper
-from rdf_persistence.services.schema_structure import annotation, annotation_text, iri_type_of
+from rdf_persistence.services.schema_structure import annotation_text, iri_type_of
 from rdf_persistence.services.session import Dependents, ReferrerRow, Session
 
 COMMENT = "Comment"
-_NEVER = datetime.min.replace(
-    tzinfo=UTC
-)  # a stored comment always has a time; this sorts one that has none first
 
 
 def dependents(view: SchemaView) -> Dependents:
@@ -48,20 +46,44 @@ def visible(comments: Iterable[Comment], roles: AbstractSet[str]) -> list[Commen
     """
     by_iri = {c.id: c for c in comments}
     seen: dict[str, bool] = {}
-
-    def sees(comment: Comment) -> bool:
-        if comment.id not in seen:
-            seen[comment.id] = False  # a cycle in stored data ends here, hidden
-            parent = by_iri.get(comment.replies_to or "")
+    for start in by_iri.values():
+        climbed, above = _climb(start, by_iri, seen)
+        for comment in reversed(climbed):  # judged from the top down, so no recursion
             audience = comment.comment_audience
-            seen[comment.id] = (not audience or bool(roles & set(audience))) and (
-                comment.replies_to is None or (parent is not None and sees(parent))
-            )
-        return seen[comment.id]
+            above = seen[comment.id] = above and (not audience or bool(roles & set(audience)))
+    return sorted((c for c in by_iri.values() if seen[c.id]), key=_oldest_first)
 
-    return sorted(
-        (c for c in by_iri.values() if sees(c)), key=lambda c: (c.created or _NEVER, c.id)
-    )
+
+def _climb(
+    start: Comment, by_iri: dict[str, Comment], seen: dict[str, bool]
+) -> tuple[list[Comment], bool]:
+    """The comments from ``start`` up the replies that are not judged yet, and whether what lies above them is seen.
+
+    What lies above is seen when it is a judged comment that is, or a comment that answers nothing;
+    a parent that is missing or a cycle in stored data hides the chain.
+    """
+    climbed: list[Comment] = []
+    on_path: set[str] = set()
+    node = start
+    while True:
+        if node.id in seen:
+            return climbed, seen[node.id]
+        if node.id in on_path:
+            return climbed, False
+        climbed.append(node)
+        on_path.add(node.id)
+        if node.replies_to is None:
+            return climbed, True
+        if (parent := by_iri.get(node.replies_to)) is None:
+            return climbed, False
+        node = parent
+
+
+def _oldest_first(comment: Comment) -> tuple[float, str]:
+    """The sort key of a thread: the time (a naive one read as UTC, none first), then the IRI."""
+    created = comment.created
+    moment = created.replace(tzinfo=created.tzinfo or UTC).timestamp() if created else -math.inf
+    return moment, comment.id
 
 
 class Discussion:
@@ -104,7 +126,7 @@ class Discussion:
 
         Raises:
             LookupError: The schema does not import the module rp_discussion.
-            InvalidIri: ``iri`` is the tenant, or a comment; or a reference is not an aggregate of the tenant.
+            InvalidIri: ``iri`` is the tenant, or a comment (an annotation the application wrote is none); or a reference is not an aggregate of the tenant.
             NotFound: The caller can see nothing of ``iri``, ``iri`` has no graph, or ``reply_to``
                 is not in the thread as this caller sees it.
             Forbidden: The caller may see ``iri`` but not annotate it.
@@ -142,41 +164,44 @@ class Discussion:
         comments = [c for c in decoded if c is not None]
         return visible(comments, self._rules.roles(self._caller, self._access, iri))
 
-    async def unseen(self, rows: Sequence[ReferrerRow]) -> set[str]:
-        """Of the referrers in ``rows``, the comments this caller may not see (PD-3 step 4).
+    async def judged(self, iri: str, rows: Sequence[ReferrerRow]) -> dict[str, bool]:
+        """Of the referrers of ``iri`` in ``rows`` that are comments, whether this caller sees each
+        (PD-3 step 4, PD-30 item 2).
 
-        A comment is seen when the caller may read the aggregate it is on and it is in that
-        aggregate's thread as the caller sees it.
+        Every referrer typed ``oa:Annotation`` is read, by whatever link it refers; one that decodes
+        as a comment is seen when the caller may read the aggregate it is on and it is in that
+        aggregate's thread as the caller sees it. One that does not decode is not in the answer,
+        and one removed since ``rows`` were read is not either.
         """
         if self._view.get_class(COMMENT) is None:
-            return set()
+            return {}
+        links = sorted({link for _, cls, _, link in rows if cls == str(v.ANNOTATION)})
         on: defaultdict[str, set[str]] = defaultdict(set)
-        for referrer, cls, _, link in rows:
-            if (cls, link) != (str(v.ANNOTATION), str(v.COMMENT_REFERENCES)):
-                continue
-            graph, _, _ = await self._session.get_graph(referrer)
-            if (comment := self._decode(referrer, graph)) is not None:
-                on[comment.has_target].add(referrer)
-        hidden: set[str] = set()
+        for link in links:  # one read per link: the comments that refer to ``iri`` by it
+            for comment in await self._referring(iri, link):
+                on[comment.has_target].add(comment.id)
+        judged: dict[str, bool] = {}
         for target, comments in on.items():
             readable = self._rules.may(self._caller, self._access, target, Action.READ)
-            hidden |= comments - ({c.id for c in await self.thread(target)} if readable else set())
-        return hidden
+            thread = {c.id for c in await self.thread(target)} if readable else set()
+            judged |= {c: c in thread for c in comments}
+        return judged
+
+    async def _referring(self, iri: str, link: str) -> list[Comment]:
+        """The comments whose root refers to ``iri`` by the predicate ``link``."""
+        found = await self._session.graphs_with(URIRef(link), URIRef(iri))
+        decoded = (self._decode(root, graph) for root, graph in found.items())
+        return [c for c in decoded if c is not None]
 
     def _require_module(self) -> None:
         if self._view.get_class(COMMENT) is None:
             raise LookupError("the schema does not import the module rp_discussion")
 
     async def _require_commentable(self, iri: str) -> None:
-        """The aggregate exists and is not itself something the toolkit writes (a comment)."""
+        """The aggregate exists and is not itself a comment: an annotation the application wrote takes one."""
         graph, _, _ = await self._session.get_graph(iri)
-        toolkit = {
-            self._view.get_uri(c, expand=True)
-            for c in self._view.all_classes().values()
-            if annotation(c, RpAnnotation.RP_WRITES) == WritesKind.TOOLKIT.value
-        }
-        if toolkit & {str(t) for t in graph.objects(URIRef(iri), RDF.type)}:
-            raise InvalidIri(f"{iri} is written by the toolkit; it takes no comment")
+        if self._decode(iri, graph) is not None:
+            raise InvalidIri(f"{iri} is a comment; it takes no comment")
 
     def _require_valid(self, text: str, audience: Sequence[str], references: Sequence[str]) -> None:
         if not text.strip():
@@ -195,12 +220,11 @@ class Discussion:
         reply_to: str | None,
     ) -> str:
         comment_class = self._view.get_class(COMMENT)
+        path = annotation_text(comment_class, RpAnnotation.RP_PATH)
+        if path is None:
+            raise LookupError(f"the class {COMMENT} has no rp_path")
         minted = str(
-            self._iris.mint_aggregate(
-                self._access.tenant,
-                iri_type_of(comment_class),
-                annotation_text(comment_class, RpAnnotation.RP_PATH) or "",
-            )
+            self._iris.mint_aggregate(self._access.tenant, iri_type_of(comment_class), path)
         )
         model = Comment(
             id=minted,

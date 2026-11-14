@@ -182,12 +182,15 @@ async def test_the_tracking_statements_of_a_graph_are_not_referrers(collaboratio
     assert found.hidden_count == 0, "and not a hidden referrer either"
 
 
-async def test_a_link_is_dropped_only_for_the_class_a_dependent_pair_names(toy_session):
-    await put_book(toy_session, B1, shelf=S1)
+async def test_a_link_is_dropped_only_for_the_class_a_dependent_pair_names():
     view = load_schema(TOY_SCHEMA)
     book = URIRef(view.get_uri(view.get_class("Book"), expand=True))
     note = URIRef(view.get_uri(view.get_class("Note"), expand=True))
     shelf = URIRef(view.get_uri(view.get_slot("shelf"), expand=True))
-    assert await toy_session.referrer_rows(S1, dependents=[(book, shelf)]) == [], "a book's shelf"
-    kept = await toy_session.referrer_rows(S1, dependents=[(note, shelf)])
+    async with fake_session(tenant_iri=TENANT, dependents=[(book, shelf)]) as dropping:
+        await put_book(dropping, B1, shelf=S1)
+        assert await dropping.referrer_rows(S1) == [], "a book's shelf"
+    async with fake_session(tenant_iri=TENANT, dependents=[(note, shelf)]) as other:
+        await put_book(other, B1, shelf=S1)
+        kept = await other.referrer_rows(S1)
     assert [r[0] for r in kept] == [B1], "the same predicate on another class still counts"

@@ -22,7 +22,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
 )
 from rdf_persistence.domain.iris import Iris
 from rdf_persistence.services.access import AccessRules
-from rdf_persistence.services.discussion import Discussion, dependents
+from rdf_persistence.services.discussion import Discussion
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.services.reference_collections import ReferenceCollections
@@ -93,9 +93,9 @@ class Collaboration:
         """
         self._require_readable(iri)
         self._require_names(class_name, slot)
-        rows = await self._session.referrer_rows(iri, dependents=dependents(self._view))
-        unseen = await self._discussion.unseen(rows)
-        return self._readable(self._named(rows), class_name, slot, unseen)
+        rows = await self._session.referrer_rows(iri)
+        judged = await self._discussion.judged(iri, rows)
+        return self._readable(self._named(rows), class_name, slot, judged)
 
     async def members(self, collection: str, *, deep: bool = False) -> MemberList:
         """The members of the collection that the caller may read, sorted; ``hidden_count`` is the
@@ -195,17 +195,22 @@ class Collaboration:
         named: set[tuple[str, str, str]],
         class_name: str | None,
         slot: str | None,
-        unseen: set[str],
+        judged: dict[str, bool],
     ) -> ReferrerList:
         """The items the caller may read, narrowed and sorted, and the number of other referrers (PD-26).
 
-        A comment in ``unseen`` is one the caller may not see, so it is not readable (PD-3).
+        A comment in ``judged`` is readable when its thread shows it to the caller and by no other
+        right; any other referrer, when the caller may read it (PD-3, PD-30).
         """
         referrers = {referrer for referrer, _, _ in named}
         readable = {
             r
-            for r in referrers - unseen
-            if self._rules.may(self._caller, self._access, r, Action.READ)
+            for r in referrers
+            if (
+                judged[r]
+                if r in judged
+                else self._rules.may(self._caller, self._access, r, Action.READ)
+            )
         }
         items = [
             Referrer(referrer=r, referrer_class=c, referrer_slot=s)

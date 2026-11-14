@@ -14,7 +14,8 @@ errors are imported from `rdf_persistence`, except `LookupError`, which is Pytho
 A *comment* is a remark on one aggregate, its *target*. It is an aggregate of its own, a W3C Web
 Annotation (`oa:Annotation`), and the target is never written. The toolkit writes and reads
 comments itself: no generic route serves them, because a comment can be limited to an audience.
-So you write your own routes for posting and for reading, with the kit, as for the other
+A generic route answers only for an aggregate of its own class, so none answers for a comment,
+whatever the IRI policy: asked for one by its id, it says 404, as for a missing aggregate. So you write your own routes for posting and for reading, with the kit, as for the other
 collaboration calls. The running example is the toy library: a reviewer comments on a book.
 
 == Add comments to your schema
@@ -106,11 +107,14 @@ too, each with its own check.
 * `audience` names roles the roles file defines. It defaults to an empty sequence, stored as
   `comment_audience` `None`. Both are *no audience*: everyone who may read the target sees the
   comment.
-* `references` are IRIs of aggregates of the same tenant. A person can be referenced only if
-  your application stores people as aggregates; see <<references>>.
+* `references` are IRIs of aggregates of the same tenant. They are checked against the IRI
+  policy's shape, not for existence: a mistyped id that has the shape of an aggregate IRI is
+  stored as given, and the tenant root and the access record pass. A person can be referenced
+  only if your application stores people as aggregates; see <<references>>.
 * `reply_to` is a comment of the same thread that the caller sees. A *reply* is a comment on the
   same aggregate that names another comment of that thread in `replies_to`; that comment may
-  itself be a reply. A comment's own IRI cannot be the target of a comment.
+  itself be a reply. A comment's own IRI cannot be the target of a comment, but an annotation your
+  application wrote (an aggregate typed `oa:Annotation` that is no comment) takes comments.
 
 == Read a thread
 
@@ -137,7 +141,9 @@ xref:architecture/access-control.adoc#check[The check]):
 * *No audience:* everyone who may read the target.
 * *An audience:* the callers who hold a role of one of those names. A role is held by a grant on
   the tenant, by a grant on the target (an aggregate-level role, granted on that aggregate), or
-  as a *global role*, which comes from the caller's token.
+  as a *global role*, which comes from the caller's token. A role in the token counts only if
+  the roles file defines it at system level: a token role that is named like a tenant role, and
+  that the identity provider's administrator assigned, opens nothing.
 * *A reply has its own audience;* it does not inherit its parent's. A reply under a hidden parent
   is hidden too, whatever its own audience.
 * *The author gets no exception.* An author who posts a comment for `librarian` and is not a
@@ -145,8 +151,9 @@ xref:architecture/access-control.adoc#check[The check]):
   as it is.
 * *The audience is stored by role name.* Rename or remove a role in the roles file, and the
   comments addressed to it are hidden from everyone who holds no role of that name.
-* *No hidden count.* Unlike `referrers`, `thread` does not say how many comments it left out: a
-  caller cannot tell that hidden comments exist.
+* *No hidden count in a thread.* `thread` does not say how many comments it left out. A hidden
+  comment that references a resource is still counted in that resource's `referrers`
+  `hidden_count`, so a caller can learn that such a comment exists, not what it says.
 
 [#references]
 == References and referrers
@@ -158,8 +165,9 @@ who may read the comment's target and sees the comment in that thread; for anyon
 counted in `hidden_count`. The comments *on* a book are not its referrers.
 
 There is no separate mention. A reference is the IRI of an aggregate of the tenant, so a person
-can be referenced only if your application stores people as aggregates; any other IRI is refused
-(`InvalidIri`). A reference notifies nobody.
+can be referenced only if your application stores people as aggregates; an IRI the policy does
+not mint for an aggregate is refused (`InvalidIri`). The check is of the IRI's shape, not of
+existence: an aggregate that was never stored can be referenced. A reference notifies nobody.
 
 == Delete
 
@@ -173,7 +181,9 @@ This holds for every delete through the kit: `session.remove`, `UnitOfWork.remov
 ====
 The delete goes by type and target, not by who wrote the record. An aggregate of your own schema
 whose class is `oa:Annotation` and that has the deleted aggregate as its `oa:hasTarget` is deleted
-with it too.
+with it too, and the graphs it loaded are left behind (the delete drops its graph and its registry
+entry, not the graphs it owns). A toolkit comment loads nothing, so only such an annotation of
+yours is affected.
 ====
 
 [#one-comment]
@@ -191,7 +201,7 @@ replies to a removed comment stay stored and are hidden.
 
 What makes a comment is its type, `oa:Annotation`, with a target, a text and a motivation,
 wherever its IRI is. An aggregate of your own typed `oa:Annotation` that targets a resource but is
-not a valid comment is left out of the thread.
+not a valid comment is left out of the thread, and in `referrers` it is an ordinary referrer.
 
 == Errors
 
@@ -201,7 +211,7 @@ Of `comment`; a refused comment stores nothing:
 |===
 |Error |When
 |`LookupError` |The schema does not import `rp_discussion`.
-|`InvalidIri` |The target is the tenant root or a comment, or a reference is not an aggregate of the tenant.
+|`InvalidIri` |The target is the tenant root or a comment (an annotation your application wrote is none), or a reference has not the shape of an aggregate IRI of the tenant.
 |`NotFound` |The caller can see nothing of the target, the target is not stored, or `reply_to` is not in the thread as this caller sees it.
 |`Forbidden` |The caller may see the target but not annotate it.
 |`InvalidBody` |The text is blank.
@@ -229,7 +239,8 @@ Of `thread`:
 * *No notifications.* Posting, replying and referencing tell nobody.
 * *The audience is not property-level access.* Only `thread` and `referrers` check it. It hides a
   comment from a list; it is not a general way to hide parts of an aggregate.
-* *No comment on the tenant root or on a comment.* To answer a comment, reply to it.
+* *No comment on the tenant root or on a comment.* To answer a comment, reply to it. An
+  annotation your application wrote does take comments.
 * *Take your sessions from the kit.* The kit's sessions (`kit.session`, `kit.collaboration`)
   already delete the comments with their target. A session opened directly with `open_session`
   does not: it deletes only the aggregate, and its comments stay in the store.

@@ -200,6 +200,9 @@ error; run it again.
 |`tests/integration/store/test_collaboration.py::test_a_target_with_many_comments_is_removed_with_them_in_one_request` (IT-07, TC-63) |1 |Remove ≈ 0.28 s (one run); the whole test ≈ 3 s with the 600 comments seeded in 6 commits of 100; the file's 20 tests ≈ 32 s with container start-up |2026-11-14, collaboration-and-reference-collections stage 3
 |A book with 600 comments removed in one update request on real Fuseki, comments and registry entries included. Printed, not asserted. Marked `slow`.
 
+|`tests/integration/store/test_dependents_cost.py` (PD-30 item 6) |1 |Median remove of one of 5 000 books, no comment: without the drop of the dependents 0.051 s, 0.054 s, 0.058 s; with it, registry first (the old order) 0.075 s, 0.085 s, 0.079 s; link first (the new order) 0.057 s, 0.052 s, 0.060 s (three runs, five removes each); the test ≈ 15 s with container start-up |2026-11-14, collaboration-and-reference-collections stage 3 review round
+|A tenant of 5 000 stored books (50 commits of 100) and no comment on real Fuseki. The new order costs about what no drop costs. Printed, not asserted. Marked `slow`.
+
 |`make typecheck-openapi-ts` |– |≈ 15 s |2026-11-09, mwb2-file-resources stage 1 |Part of `check-types`; `npx` downloads `openapi-typescript` and `typescript` on a first run.
 
 |`make test-perf` |3 |≈ 2.5 s |2026-11-08, delivery-friction |Measured alone, not under load.

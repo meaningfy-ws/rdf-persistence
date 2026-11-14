@@ -147,13 +147,14 @@ REPLACE = ";\n".join(
 REMOVE = ";\n".join((_DROP_ALL_LOADED, _DROP_ENTRIES, _DROP_GRAPH))
 # The records that depend on the removed root (a comment's target, PD-15): the graph and the registry
 # entry of each registered aggregate whose root has one of the types $pairs with that link to $root.
-# One operation whatever their number, and no version guard of theirs: they are never edited.
+# One operation whatever their number, and no version guard of theirs: they are never edited. It
+# starts from the link to $root, so a tenant with no comment costs next to nothing (PD-30 item 6).
 _DROP_DEPENDENTS = f"""
 DELETE {{ GRAPH ?d {{ ?s ?p ?o }} GRAPH $registry {{ ?d ?ep ?eo }} }}
 WHERE {{ {_MARKED}
-  GRAPH $registry {{ ?d $p_kind $aggregate ; $p_owned_by ?c }}
   VALUES (?type ?link) {{ $pairs }}
-  GRAPH ?d {{ ?c a ?type ; ?link $root }}
+  GRAPH ?d {{ ?c ?link $root ; a ?type }}
+  GRAPH $registry {{ ?d $p_kind $aggregate ; $p_owned_by ?c }}
   {{ GRAPH ?d {{ ?s ?p ?o }} }} UNION {{ GRAPH $registry {{ ?d ?ep ?eo }} }} }}
 """
 # What the transaction wrote, in one ASK (PD-3), and which graph holds what, for the diagnosis (PD-4).
@@ -582,16 +583,12 @@ class Session:
         result = await self._store.query(self._database, listing_query(self._registry, plan))
         return result.graph or Graph()
 
-    async def referrer_rows(
-        self,
-        iri: str,
-        *,
-        dependents: Sequence[tuple[URIRef, URIRef]] = (),
-    ) -> list[ReferrerRow]:
+    async def referrer_rows(self, iri: str) -> list[ReferrerRow]:
         """What the tenant's aggregate graphs say that refers to ``iri``, one row per referrer, type and link.
 
-        A link whose predicate and referrer class equal a pair of ``dependents`` is left out. No
-        access is checked, and nothing is narrowed: the caller decides what to show.
+        A link whose predicate and referrer class equal a ``dependents`` pair of this session (the
+        pairs a remove drops with its target) is left out. No access is checked, and nothing is
+        narrowed: the caller decides what to show.
 
         Raises:
             DatabaseGone: The tenant database does not exist.
@@ -604,7 +601,7 @@ class Session:
             p_owned_by=term(v.REGISTRY_OWNED_BY),
             iri=term(URIRef(iri)),
             rdf_type=term(RDF.type),
-            dependents=_without_dependents(dependents),
+            dependents=_without_dependents(self._dependents),
         )
         rows = [
             r for r in await self._store.query(self._database, text) if isinstance(r, ResultRow)
@@ -1042,7 +1039,10 @@ class Transaction:
 
     def _require_present(self, iri: str) -> None:
         """Guard the commit on the aggregate ``iri`` still having a version when the request is
-        applied; a commit refused for it names ``iri`` (PD-15). It collects no change."""
+        applied; a commit refused for it names ``iri`` (PD-15). It collects no change.
+
+        Do not use it on a graph the same transaction removes: the guards are checked when the
+        request starts, before any of its operations, so the guard holds and tells nothing."""
         self._require_open()
         graph = self._session._graph(iri)
         number = count(len(self._guards))

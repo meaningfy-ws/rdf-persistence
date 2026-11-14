@@ -374,7 +374,9 @@ async def test_a_part_typed_as_an_annotation_in_another_graph_is_not_dropped(
 async def test_a_consumers_own_annotation_aggregate_targeting_the_removed_one_is_dropped(
     session, after_removal
 ):  # RISK-3, accepted
-    assert await stored(session, after_removal.dropped["consumer annotation"]) == []
+    assert await stored(session, after_removal.dropped["consumer annotation"]) == [], (
+        "the annotation went with its target"
+    )
 
 
 async def test_the_aggregates_that_only_use_the_predicate_still_target_the_removed_one(
@@ -510,7 +512,9 @@ async def test_the_kit_remove_with_files_drops_the_comments():
             old = (await session.get_graph(first))[2]
         await toy.kit.remove_with_files(tenant, "ada", first, old)
         async with toy.kit.session(tenant, "ada") as session:
-            assert await stored(session, on_first, on_second) == [on_second]
+            assert await stored(session, on_first, on_second) == [on_second], (
+                "the comment on the removed aggregate is gone, the other stays"
+            )
 
 
 # -- 2. races: the presence guard under concurrent writers --------------------------------------
@@ -681,7 +685,8 @@ AUDIENCES = [
         (),
         False,
     ),
-    ("a global role", ["admin"], [READER], ("admin",), True),
+    ("a global role defined at system level", ["admin"], [READER], ("admin",), True),
+    ("a token role defined at tenant level only", ["librarian"], [READER], ("librarian",), False),
     ("a global role not held", ["admin"], [READER], (), False),
     ("a direct grant has no role", ["reader"], [direct(Action.READ, TENANT, BOB)], (), False),
     ("the role of the caller", ["reader"], [READER], (), True),
@@ -703,15 +708,15 @@ async def test_a_comment_is_seen_by_the_roles_of_its_audience_where_they_are_hel
 
 @pytest.mark.parametrize(
     ("viewer_roles", "sees"),
-    [((), False), (("ghost",), True)],
+    [((), False), (("ghost",), False)],
     ids=["a caller without the role", "a token that carries the name"],
 )
-async def test_an_audience_role_the_roles_file_does_not_define_is_matched_by_name_only(
+async def test_an_audience_role_the_roles_file_does_not_define_is_matched_by_no_one(
     viewer_roles, sees, rules, session, books
-):  # pinned: written without the service, so the service never checked the name
+):  # pinned: written without the service, so the service never checked the name; PD-30 item 3
     await put(session, a_comment(1, B1, comment_audience=["ghost"]))
     who = acts(rules, session, ADA, role("librarian"), roles=viewer_roles)
-    assert bool(await who.thread(B1)) is sees
+    assert bool(await who.thread(B1)) is sees, f"a token carrying {viewer_roles} sees the comment"
 
 
 async def test_the_author_outside_its_own_audience_cannot_reply_to_its_comment(bob, books):
@@ -738,7 +743,7 @@ async def test_a_ban_of_read_on_one_aggregate_leaves_comments_on_the_others(rule
         rules, session, BOB, role("reviewer", who=BOB), bans=[ban(Action.READ, graph_of(B1), BOB)]
     )
     c = await who.comment(B2, "fine here")
-    assert [x.id for x in await who.thread(B2)] == [c]
+    assert [x.id for x in await who.thread(B2)] == [c], "the ban on b1 does not reach b2's thread"
 
 
 async def test_a_tenant_ban_of_annotate_refuses_comments_and_keeps_the_thread_readable(
@@ -930,7 +935,10 @@ async def test_a_foreign_annotation_with_no_target_that_references_an_aggregate_
         comment_iri(1), annotation(comment_iri(1), (v.COMMENT_REFERENCES, URIRef(B3)), BODY, MOTIVE)
     )
     found = await ada.referrers(B3)
-    assert found.hidden_count >= 0, "no target: referrers must return, or raise a documented error"
+    listed = found.referrers or []
+    assert len(listed) + found.hidden_count == 1, (
+        "the annotation is one referrer, listed or counted"
+    )
 
 
 async def test_a_comment_with_two_targets_is_shown_on_both_threads_naming_one(session, ada, books):
@@ -1052,7 +1060,8 @@ async def test_hundreds_of_references_are_stored_and_read_back(session, ada, boo
 async def test_duplicate_references_and_roles_are_stored_once(session, ada, books):
     await ada.comment(B1, "dups", references=[B2, B2], audience=["librarian", "librarian"])
     [seen] = await ada.thread(B1)
-    assert (seen.comment_references, seen.comment_audience) == ([B2], ["librarian"])
+    assert seen.comment_references == [B2], "the reference once"
+    assert seen.comment_audience == ["librarian"], "and the role once"
 
 
 @pytest.mark.parametrize(

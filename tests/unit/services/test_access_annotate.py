@@ -31,7 +31,9 @@ def test_a_reviewer_may_annotate_but_not_modify(rules: AccessRules) -> None:
 
 def test_a_role_that_does_not_name_annotate_does_not_allow_it(rules: AccessRules) -> None:
     """TC-42"""
-    assert not rules.may(caller(), held(role("librarian")), B1, Action.ANNOTATE)
+    assert not rules.may(caller(), held(role("librarian")), B1, Action.ANNOTATE), (
+        "the librarian names read, modify, delete and administer, not annotate"
+    )
 
 
 def test_a_direct_annotate_permission_implies_read(rules: AccessRules) -> None:
@@ -42,8 +44,10 @@ def test_a_direct_annotate_permission_implies_read(rules: AccessRules) -> None:
 
 
 def test_annotate_is_the_last_action_so_the_order_of_the_others_is_kept() -> None:
-    assert list(Action)[-1] == Action.ANNOTATE
-    assert [a.value for a in Action][:4] == ["read", "modify", "delete", "administer"]
+    assert list(Action)[-1] == Action.ANNOTATE, "annotate was added at the end"
+    assert [a.value for a in Action][:4] == ["read", "modify", "delete", "administer"], (
+        "so a read that lists the actions lists the first four as before"
+    )
 
 
 def test_the_roles_of_a_caller_are_its_grants_in_scope_and_its_global_roles(
@@ -52,16 +56,28 @@ def test_the_roles_of_a_caller_are_its_grants_in_scope_and_its_global_roles(
     """TC-44"""
     access = held(role("reader"), role("owner", graph_of(B1)), role("owner", graph_of(B2)))
     who = caller("admin")
-    assert rules.roles(who, access, B1) == {"reader", "owner", "admin"}
+    assert rules.roles(who, access, B1) == {"reader", "owner", "admin"}, (
+        "the tenant grant, b1's own, and the token's system-level role"
+    )
     only_reader = held(role("reader"), role("owner", graph_of(B1)))
     assert rules.roles(who, only_reader, B2) == {"reader", "admin"}, "b1's role is not b2's"
+
+
+def test_a_token_role_counts_only_where_the_roles_file_defines_it_at_system_level(
+    rules: AccessRules,
+) -> None:
+    """PD-30 item 3: a token role named like a tenant or aggregate role, or like none, is no role."""
+    who = caller("admin", "librarian", "owner", "ghost")
+    assert rules.roles(who, held(role("reader")), B1) == {"reader", "admin"}, (
+        "only the token's system-level role joins the granted one"
+    )
 
 
 def test_a_direct_grant_has_no_role_and_a_tenant_target_sees_tenant_grants_only(
     rules: AccessRules,
 ) -> None:
     access = held(direct(Action.READ), role("reader"), role("owner", graph_of(B1)))
-    assert rules.roles(caller(), access, TENANT) == {"reader"}
+    assert rules.roles(caller(), access, TENANT) == {"reader"}, "no direct grant, no b1 role"
 
 
 @pytest.mark.parametrize(
@@ -69,7 +85,7 @@ def test_a_direct_grant_has_no_role_and_a_tenant_target_sees_tenant_grants_only(
     [("reader", True), ("owner", True), ("reviewer", True), ("admin", True), ("nobody", False)],
 )
 def test_a_role_is_defined_at_any_level(rules: AccessRules, role_name: str, defined: bool) -> None:
-    assert rules.defines(role_name) is defined
+    assert rules.defines(role_name) is defined, f"{role_name} is {'' if defined else 'not '}defined"
 
 
 def test_prohibits_tells_a_ban_on_the_aggregate_or_the_tenant_from_none(rules: AccessRules) -> None:
@@ -77,7 +93,7 @@ def test_prohibits_tells_a_ban_on_the_aggregate_or_the_tenant_from_none(rules: A
     who = caller()
     on_graph = held(role("librarian"), bans=[ban(Action.MODIFY, graph_of(B1))])
     on_tenant = held(role("librarian"), bans=[ban(Action.MODIFY)])
-    assert rules.prohibits(who, on_graph, B1, Action.MODIFY)
-    assert rules.prohibits(who, on_tenant, B1, Action.MODIFY)
-    assert not rules.prohibits(who, held(role("librarian")), B1, Action.MODIFY)
+    assert rules.prohibits(who, on_graph, B1, Action.MODIFY), "a ban on the aggregate"
+    assert rules.prohibits(who, on_tenant, B1, Action.MODIFY), "a ban on the tenant"
+    assert not rules.prohibits(who, held(role("librarian")), B1, Action.MODIFY), "no ban at all"
     assert not rules.prohibits(who, on_graph, B2, Action.MODIFY), "a ban on b1 is not one on b2"
