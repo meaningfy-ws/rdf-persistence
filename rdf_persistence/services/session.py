@@ -166,6 +166,8 @@ CONSTRUCT { ?s ?p ?o } WHERE {
 """
 # Is $iri an aggregate of class $type whose graph holds every statement of $patterns (PD-7)?
 MATCHES = "ASK { GRAPH $graph { ?root a $type . $patterns FILTER (?root = $iri) } }"
+# The same as a guard of a transaction: its variables carry $n, so the guards never join.
+_MATCH_GUARD = "GRAPH $graph { ?root$n a $type . $patterns FILTER (?root$n = $iri) }"
 READ_VERSIONS = (
     "SELECT ?g ?version WHERE { VALUES ?g { $graphs } "
     "OPTIONAL { GRAPH ?g { ?g $p_version ?version } } }"
@@ -877,10 +879,13 @@ class Transaction:
         self._operations.append(parts[1])
         self._confirm.append(confirm)
 
-    def _claim(self, iri: str) -> URIRef:
-        """The graph of ``iri``; a second change on the same graph, whatever string type, is refused."""
+    def _require_open(self) -> None:
         if self._ended:
             raise RuntimeError("the transaction has ended; a change now would be dropped")
+
+    def _claim(self, iri: str) -> URIRef:
+        """The graph of ``iri``; a second change on the same graph, whatever string type, is refused."""
+        self._require_open()
         graph = self._session._graph(iri)
         if graph in self._roots:
             raise ValueError(f"{iri} already has a change in this transaction")
@@ -980,6 +985,24 @@ class Transaction:
         await session._stored(graph)
         parts = remove_parts(graph, session._registry, URIRef(iri), self._marker_iri, if_version)
         self._collect(iri, graph, if_version, None, parts, _absent(graph, len(self._roots)))
+
+    def _require_match(self, iri: str, class_iri: str, conditions: Sequence[Condition]) -> None:
+        """Guard the commit on ``iri`` being of exactly ``class_iri`` and holding every condition
+        when the request is applied (the test of ``Session.matches``). It collects no change and
+        names no one if it fails (PD-15)."""
+        self._require_open()
+        number = count(len(self._guards))
+        patterns = match_patterns(f"root{number}", condition_pairs(conditions))
+        self._guards.append(
+            fragment(
+                _MATCH_GUARD,
+                graph=term(self._session._graph(iri)),
+                type=term(URIRef(class_iri)),
+                patterns=patterns,
+                iri=term(URIRef(iri)),
+                n=number,
+            )
+        )
 
     async def commit(self) -> None:
         """Send the request and confirm it (PD-2, PD-3); nothing is sent if there is no change.

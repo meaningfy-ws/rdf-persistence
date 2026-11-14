@@ -12,7 +12,14 @@ from functools import cached_property
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import RDF, Graph, URIRef
 
-from rdf_persistence.domain.exceptions import BadQuery, InvalidIri, NotFound, StoredDataInvalid
+from rdf_persistence.domain.exceptions import (
+    BadQuery,
+    CommitTooLarge,
+    Forbidden,
+    InvalidIri,
+    NotFound,
+    StoredDataInvalid,
+)
 from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_collections import ReferenceCollection
 from rdf_persistence.domain.generated.service.rp_service import (
@@ -28,7 +35,7 @@ from rdf_persistence.domain.iris import Iris
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.mapper import GeneratedModels, Mapper
+from rdf_persistence.services.mapper import DEFAULT_MAX_ROOTS, GeneratedModels, Mapper
 from rdf_persistence.services.session import ReferrerRow, Session
 from rdf_persistence.services.write_guards import (
     COLLECTION_MIXIN,
@@ -126,6 +133,64 @@ class Collaboration:
         rows = await self._session.referrer_rows(iri)
         named = {referrer for referrer, _, _, predicate in rows if predicate == str(v.HAD_MEMBER)}
         return self._listed(named | await self._rule_holders(iri))
+
+    async def delete_cascade(self, collection: str, if_version: str) -> None:
+        """Delete the collection and each of its members, in one request, all or nothing.
+
+        The members are those the collection names and those that meet its rule, resolved now: not
+        deep (a member that is a collection is deleted, its own members stay) and not the collection
+        itself. A member that is already gone is skipped. A plain delete of the collection keeps its
+        members.
+
+        Raises:
+            LookupError: The schema does not import the collection module.
+            NotFound: The caller can see nothing of ``collection``, or it has no graph.
+            Forbidden: The caller may not delete ``collection``, or a member; the message names the
+                members it may read and counts the others.
+            BadQuery: ``collection`` is not a reference collection.
+            StoredDataInvalid: The collection cannot be decoded, or its member class or rule is no
+                longer one the schema accepts.
+            CommitTooLarge: The collection and its members are more than ``DEFAULT_MAX_ROOTS``.
+            Conflict: ``collection`` is not at ``if_version``, or a member changed, or no longer
+                meets the rule, since it was read; nothing is deleted.
+            DatabaseGone: The tenant database does not exist.
+        """
+        self._require_collections()
+        self._rules.require(self._caller, self._access, collection, Action.DELETE)
+        stored = await self._collection(collection)
+        members = await self._direct(collection, stored) - {collection}
+        self._require_room(members)
+        self._require_deletable(members)
+        heads = await self._session.heads(sorted(members))
+        by_rule = members - set(stored.had_member or [])
+        plan = self._plan(stored) if by_rule else None
+        async with self._session.transaction() as transaction:
+            await transaction.remove(collection, if_version)
+            for head in heads:
+                iri, version = str(head.head_iri), str(head.head_version)
+                with suppress(NotFound):  # went since the heads were read: nothing left to delete
+                    await transaction.remove(iri, version)
+                    if plan is not None and iri in by_rule:
+                        transaction._require_match(iri, plan.target, plan.conditions or [])
+
+    def _require_room(self, members: set[str]) -> None:
+        """Only ``UnitOfWork.commit`` enforces the limit, so a cascade counts before it reads more."""
+        if len(members) + 1 > DEFAULT_MAX_ROOTS:
+            raise CommitTooLarge(
+                f"the collection and its {len(members)} members are more than the {DEFAULT_MAX_ROOTS} "
+                "roots one commit holds"
+            )
+
+    def _require_deletable(self, members: set[str]) -> None:
+        refused = {
+            m for m in members if not self._rules.may(self._caller, self._access, m, Action.DELETE)
+        }
+        named = sorted(
+            m for m in refused if self._rules.may(self._caller, self._access, m, Action.READ)
+        )
+        if refused:
+            hidden = [f"{len(refused) - len(named)} not readable"] * (len(refused) > len(named))
+            raise Forbidden(f"delete is not permitted on {', '.join([*named, *hidden])}")
 
     def _require_readable(self, iri: str) -> None:
         if not self._iris.is_aggregate(self._access.tenant, iri):

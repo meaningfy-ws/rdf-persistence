@@ -101,7 +101,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-31 | stored s1 whose rule slot the schema no longer has (write the graph without guards) | `StoredDataInvalid` naming s1 |
 | TC-32 | `Session.heads([b1, b9])` | one `AggregateHead` for b1 (type `bibo:Book`, its version); none for b9 |
 
-- [ ] 2.4 `delete_cascade` (PD-8). This is the riskiest task of the change: the adversarial tester
+- [x] 2.4 `delete_cascade` (PD-8). This is the riskiest task of the change: the adversarial tester
   runs after it. Includes `Transaction._require_match` (PD-15) and the `DEFAULT_MAX_ROOTS`
   constant in `services/mapper.py` if `atomic-commit` did not export it. Test first in
   `tests/unit/services/test_collaboration_cascade.py`.
