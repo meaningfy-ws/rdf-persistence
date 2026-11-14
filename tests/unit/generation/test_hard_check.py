@@ -9,6 +9,7 @@ from rdf_persistence.generation import steps
 from rdf_persistence.generation.checks.application import ROWS
 from rdf_persistence.generation.checks.hard import hard_problems
 from rdf_persistence.generation.cli import main
+from rdf_persistence.generation.config import read_targets
 from rdf_persistence.generation.generated.rp_generation import GenerationTarget, HardRule
 from rdf_persistence.generation.pipeline import generate
 from rdf_persistence.generation.problems import format_problem
@@ -294,7 +295,9 @@ ISBN_DESCRIPTION = "    description: The International Standard Book Number of t
 
 def test_the_step_reports_a_slot_without_a_description_by_name(break_toy: Breaker) -> None:
     root = break_toy("books.yaml", ISBN_DESCRIPTION, "")
-    target = GenerationTarget(schema_file=ROOT_SCHEMA, package="app.generated")
+    target = GenerationTarget(
+        schema_file=ROOT_SCHEMA, package="app.generated", migrations="migrations"
+    )
     found = generate([target], root.parent, (steps.HARD_STEP,), check=True)
     assert len(found) == 1, f"one broken slot, one line: {found}"
     line = format_problem(found[0])
@@ -598,3 +601,61 @@ def test_an_unknown_database_lists_the_three_kinds(tmp_path: Path) -> None:
     problems = _annotation_problems(tmp_path, classes)
     assert len(problems) == 1, problems
     assert "('tenant', 'system', 'application')" in problems[0], problems
+
+
+# ---- the migrations folder and the version (PD-1, PD-14, TC-10) -----------------------------------
+
+REPO = Path(__file__).parents[3]
+TOY_VERSION = 'version: "1"\n'
+
+
+def _migration_problems(root: Path, migrations: str | None) -> list[str]:
+    target = GenerationTarget(
+        schema_file=ROOT_SCHEMA, package="app.generated", migrations=migrations
+    )
+    found = generate([target], root.parent, (steps.HARD_STEP,), check=True)
+    return [format_problem(p) for p in found]
+
+
+def test_a_target_with_root_classes_and_no_migrations_folder_is_refused(toy_copy: Path) -> None:
+    """TC-10"""
+    found = _migration_problems(toy_copy / ROOT_SCHEMA, None)
+    assert len(found) == 1, found
+    assert "Book" in found[0] and "migrations" in found[0], "the root and the setting are named"
+    assert ROOT_SCHEMA in found[0], "the schema of the target is named"
+
+
+def test_a_target_with_migrations_and_no_version_is_refused(break_toy: Breaker) -> None:
+    """TC-10"""
+    root = break_toy(ROOT_SCHEMA, TOY_VERSION, "")
+    found = _migration_problems(root, "migrations")
+    assert len(found) == 1 and "version" in found[0], found
+
+
+@pytest.mark.parametrize("written", ["1.10", "1", "true", "v1"])
+def test_an_unquoted_version_is_refused_and_a_quoted_one_passes(
+    break_toy: Breaker, written: str
+) -> None:
+    """TC-10: `version: 1.10` is read as 1.1, so every spelling is quoted."""
+    root = break_toy(ROOT_SCHEMA, TOY_VERSION, f"version: {written}\n")
+    found = _migration_problems(root, "migrations")
+    assert len(found) == 1 and "quoted" in found[0], found
+    plain = root.read_text("utf-8")
+    for quote in ('"', "'"):
+        root.write_text(
+            plain.replace(f"version: {written}\n", f"version: {quote}{written}{quote}\n"),
+            encoding="utf-8",
+        )
+        assert _migration_problems(root, "migrations") == [], f"{quote}{written}{quote} is quoted"
+
+
+def test_the_toy_with_migrations_and_a_quoted_version_passes(toy_copy: Path) -> None:
+    assert _migration_problems(toy_copy / ROOT_SCHEMA, "migrations") == []
+
+
+def test_the_toolkits_four_targets_pass_the_hard_check_with_their_own_settings() -> None:
+    """TC-10: rp_service, rp_wire and rp_generation need no migrations folder; rp.yaml has one."""
+    targets = read_targets(REPO / "pyproject.toml")
+    assert len(targets) == 4, [t.schema_file for t in targets]
+    found = generate(targets, REPO, (steps.HARD_STEP,), check=True)
+    assert [format_problem(p) for p in found] == []

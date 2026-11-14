@@ -5,6 +5,7 @@ from collections.abc import Iterator
 from functools import cache
 from pathlib import Path
 
+import yaml
 from linkml_runtime.linkml_model.meta import (
     ClassDefinition,
     Element,
@@ -44,8 +45,11 @@ from rdf_persistence.services.schema_structure import (
     own_classes,
     own_schemas,
     owned_classes,
+    root_classes,
     workflow_name_of,
 )
+
+QUOTES = ('"', "'")  # the styles of a quoted YAML scalar
 
 # The metaslot each element rule requires: a rule id is not an attribute name.
 ELEMENT_METASLOTS = ((HardRule.TITLE, "title"), (HardRule.DESCRIPTION, "description"))
@@ -321,6 +325,49 @@ def _class_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterato
     yield from application_problems(view, classes, roots)
     yield from _described_problems(view, classes, roots)
     yield from _iri_type_problems(view, classes, roots)
+
+
+def _version_problems(view: SchemaView) -> Iterator[CheckProblem]:
+    """The root schema's ``version`` is a quoted string in the YAML source (PD-1): ``1.10`` is read as 1.1."""
+    source = Path(str(view.schema.source_file))
+    name = source.name
+    version = next(
+        (
+            value
+            for key, value in yaml.compose(source.read_text(encoding="utf-8")).value
+            if key.value == "version"
+        ),
+        None,
+    )
+    if version is None:
+        yield CheckProblem(element=name, message="a target with migrations needs a root `version:`")
+    elif version.style not in QUOTES:
+        yield CheckProblem(
+            element=name,
+            message=f'`version: {version.value}` must be a quoted string (`version: "{version.value}"`): '
+            "an unquoted number loses its zeros",
+        )
+
+
+def migration_problems(
+    view: SchemaView, folder: Path, migrations: str | None
+) -> list[CheckProblem]:
+    """The declarations a stored schema needs (PD-1, PD-14).
+
+    A target whose own modules define a root class sets ``migrations``; a target that sets it
+    has a quoted root ``version``.
+    """
+    if migrations:
+        return list(_version_problems(view))
+    roots = [cls.name for cls in root_classes(view, folder)]
+    if not roots:
+        return []
+    return [
+        CheckProblem(
+            element=", ".join(roots),
+            message="a target that stores its own root classes needs a `migrations` folder in its [tool.rp-generate] entry",
+        )
+    ]
 
 
 def hard_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:

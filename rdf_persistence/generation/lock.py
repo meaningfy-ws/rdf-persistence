@@ -5,7 +5,7 @@ its IRIs changes nothing. ``changes`` classifies each difference between two loc
 ``draft`` turns them into the steps of a migration for the developer to review.
 """
 
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
@@ -23,6 +23,7 @@ from rdf_persistence.generation.generated.rp_generation import (
 )
 from rdf_persistence.services.schema_structure import (
     annotation_text,
+    database_of,
     holds_owned_part,
     iri_type_of,
     root_classes,
@@ -106,12 +107,42 @@ def _locked_class(view: SchemaView, cls: ClassDefinition, roots: set[str]) -> Lo
         class_uri=_iri(view, cls),
         iri_type=iri_type_of(cls) if is_root else None,
         root_path=annotation_text(cls, RpAnnotation.RP_PATH) if is_root else None,
+        root_database=database_of(view, cls).value if is_root else None,
         locked_slots=slots,
     )
 
 
-def _slot_key(slot: LockedSlot) -> str:
-    return slot.slot_uri
+def _slot_key(slot: LockedSlot) -> tuple[str, str, bool, bool, bool]:
+    """Every field, so slots sharing an IRI keep one order whatever the schema's declaration order."""
+    return (
+        slot.slot_uri,
+        slot.range,
+        bool(slot.required),
+        bool(slot.multivalued),
+        bool(slot.inlined),
+    )
+
+
+def _merged(classes: Iterable[LockedClass]) -> list[LockedClass]:
+    """One class per IRI, with the union of the slots: stored data cannot tell classes sharing an IRI apart."""
+    by_uri: dict[str, list[LockedClass]] = {}
+    for cls in classes:
+        by_uri.setdefault(cls.class_uri, []).append(cls)
+    return [_merge_group(uri, group) for uri, group in sorted(by_uri.items())]
+
+
+def _merge_group(uri: str, group: list[LockedClass]) -> LockedClass:
+    def first(field: str) -> str | None:
+        return next((v for c in group if (v := getattr(c, field))), None)
+
+    slots = {_slot_key(s): s for c in group for s in c.locked_slots or []}
+    return LockedClass(
+        class_uri=uri,
+        iri_type=first("iri_type"),
+        root_path=first("root_path"),
+        root_database=first("root_database"),
+        locked_slots=sorted(slots.values(), key=_slot_key),
+    )
 
 
 def _locked_enum(view: SchemaView, name: str) -> LockedEnum:
@@ -135,7 +166,7 @@ def summarise(view: SchemaView, folder: Path) -> SchemaLock:
     return SchemaLock(
         schema_id=str(view.schema.id),
         schema_version=str(view.schema.version),
-        locked_classes=sorted(classes, key=lambda c: c.class_uri),
+        locked_classes=_merged(classes),
         locked_enums=[_locked_enum(view, name) for name in sorted(enums)],
     )
 
@@ -178,6 +209,18 @@ def _class_changes(old: LockedClass, new: LockedClass) -> Iterator[LockChange]:
             f"to {new.iri_type}/{new.root_path} (a step cannot change an IRI)",
             uri,
         )
+    if old.root_database != new.root_database:
+        yield _change(
+            LockRule.NOT_MIGRATABLE,
+            f"database changed from {old.root_database} to {new.root_database} "
+            "(the data would be read from another database)",
+            uri,
+        )
+    yield from _class_slot_changes(old, new)
+
+
+def _class_slot_changes(old: LockedClass, new: LockedClass) -> Iterator[LockChange]:
+    uri = new.class_uri
     old_slots = {s.slot_uri: s for s in old.locked_slots or []}
     new_slots = {s.slot_uri: s for s in new.locked_slots or []}
     for slot_uri in sorted(old_slots.keys() | new_slots.keys()):
@@ -201,8 +244,8 @@ def _enum_changes(old: LockedEnum, new: LockedEnum) -> Iterator[LockChange]:
 
 
 def _all_class_changes(old: SchemaLock, new: SchemaLock) -> Iterator[LockChange]:
-    old_classes = {c.class_uri: c for c in old.locked_classes or []}
-    new_classes = {c.class_uri: c for c in new.locked_classes or []}
+    old_classes = {c.class_uri: c for c in _merged(old.locked_classes or [])}
+    new_classes = {c.class_uri: c for c in _merged(new.locked_classes or [])}
     for uri in sorted(old_classes.keys() | new_classes.keys()):
         if uri not in new_classes:
             yield _change(LockRule.NEEDS_STEP, "class removed", uri)

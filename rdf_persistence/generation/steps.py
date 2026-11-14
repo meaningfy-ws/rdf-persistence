@@ -14,7 +14,7 @@ from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation import components
 from rdf_persistence.generation.checks.boundary import boundary_problems
-from rdf_persistence.generation.checks.hard import hard_problems
+from rdf_persistence.generation.checks.hard import hard_problems, migration_problems
 from rdf_persistence.generation.checks.rules import rules_problems
 from rdf_persistence.generation.extensions import (
     jsonld_context,
@@ -24,7 +24,8 @@ from rdf_persistence.generation.extensions import (
     typescript,
 )
 from rdf_persistence.generation.generated.rp_generation import CheckProblem
-from rdf_persistence.generation.pipeline import Run, check_step, render_step
+from rdf_persistence.generation.lock_step import lock_problems, write_lock
+from rdf_persistence.generation.pipeline import Run, Step, check_step, render_step
 from rdf_persistence.services.schema import metamodel_importmap
 from rdf_persistence.services.schema_structure import own_schemas
 
@@ -95,7 +96,11 @@ def _boundary_problems(run: Run) -> list[CheckProblem]:
 
 
 def _hard_problems(run: Run) -> list[CheckProblem]:
-    return hard_problems(run.view, run.schema_path.parent)
+    folder = run.schema_path.parent
+    return [
+        *hard_problems(run.view, folder),
+        *migration_problems(run.view, folder, run.target.migrations),
+    ]
 
 
 def _python_folder(run: Run) -> Path:
@@ -118,12 +123,15 @@ LINT_STEP = check_step("lint", lint_problems)
 BOUNDARY_STEP = check_step("boundary check", _boundary_problems)
 HARD_STEP = check_step("hard check", _hard_problems)
 RULES_STEP = check_step("rules check", _rules_problems)
+LOCK_CHECK_STEP = check_step("lock check", lock_problems)
 PYTHON_STEP = render_step("python", pydantic_split.render, _python_folder)
 SHAPES_STEP = render_step("shapes", shacl.render, _python_folder)
 CONTEXT_STEP = render_step("context", jsonld_context.render, _python_folder)
 COMPONENTS_STEP = render_step("openapi components", components.render, _components_folder)
 TYPESCRIPT_STEP = render_step("typescript", typescript.render, _typescript_folder)
 DIAGRAMS_STEP = render_step("diagrams", mermaid.render, _diagrams_folder)
+# Last, so a draft is never written by a run whose earlier steps of the target failed.
+LOCK_STEP = Step("lock", write_lock, writes=True)
 
 # One step per line, in order; a later task adds its step here.
 STEPS = (
@@ -131,10 +139,12 @@ STEPS = (
     BOUNDARY_STEP,
     HARD_STEP,
     RULES_STEP,
+    LOCK_CHECK_STEP,
     PYTHON_STEP,
     SHAPES_STEP,
     CONTEXT_STEP,
     COMPONENTS_STEP,
     TYPESCRIPT_STEP,
     DIAGRAMS_STEP,
+    LOCK_STEP,
 )

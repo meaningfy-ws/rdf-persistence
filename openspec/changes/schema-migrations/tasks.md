@@ -20,10 +20,10 @@ runs right after task 2.2, the riskiest (write order, atomicity, concurrency). G
   `make generate`, then refresh what the generated-code guards compare
   (`tests/fixtures/model-shape.yaml`, the toy TypeScript, the public-imports list) by their own
   commands. No behaviour yet; the generated classes exist and `make test-fast` passes.
-- [ ] 1.2 Lock and diff. Test first, in a new `tests/unit/generation/test_lock.py`. Then a new
+- [x] 1.2 Lock and diff. Test first, in a new `tests/unit/generation/test_lock.py`. Then a new
   `rdf_persistence/generation/lock.py`: `summarise(view, folder) -> SchemaLock`,
   `changes(old, new)` classified per the PD-3 table, and `draft(old, new) -> Migration`.
-- [ ] 1.3 The steps in the pipeline. Test first, in `tests/unit/generation/test_lock_step.py`,
+- [x] 1.3 The steps in the pipeline. Test first, in `tests/unit/generation/test_lock_step.py`,
   `test_hard_check.py`, `tests/unit/services/test_migration_files.py` and
   `tests/unit/domain/test_sparql.py`. Then: `stamps_graph_iri` (`domain/iris.py`) and
   `InvalidMigration` (`domain/exceptions.py`, exported as its neighbours are); in a new
@@ -58,7 +58,7 @@ runs right after task 2.2, the riskiest (write order, atomicity, concurrency). G
 
 ## 2. Stamps and the runner (stage 2, PR 2)
 
-- [ ] 2.1 Chain. Test first, in `tests/unit/services/test_migration_chain.py`. Then
+- [x] 2.1 Chain. Test first, in `tests/unit/services/test_migration_chain.py`. Then
   `MigrationFailed`, `TenantBehind` (`domain/exceptions.py`, exported) and, in
   `services/migrations.py`, `load_chain(folder, schema_id, current)` (PD-4) answering the ordered
   versions and migrations.

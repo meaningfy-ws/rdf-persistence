@@ -259,6 +259,7 @@ class LockedClass(ConfiguredBaseModel):
     class_uri: str = Field(default=..., title="Class IRI", description="The IRI of a stored class.")
     iri_type: Optional[str] = Field(default=None, title="IRI type", description="The `rp_iri_type` of a root class, the type segment of its aggregates\u0027 IRIs.")
     root_path: Optional[str] = Field(default=None, title="Root path", description="The `rp_path` of a root class, the route segment of its aggregates.")
+    root_database: Optional[str] = Field(default=None, title="Root database", description="The database of a root class (`tenant`, `application` or `system`), where its aggregates are read from.")
     locked_slots: Optional[list[LockedSlot]] = Field(default=None, title="Locked slots", description="The slots of a locked class, sorted by slot IRI.")
 
 

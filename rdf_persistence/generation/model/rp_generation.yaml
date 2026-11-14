@@ -63,6 +63,7 @@ classes:
       - class_uri
       - iri_type
       - root_path
+      - root_database
       - locked_slots
     slot_usage:
       class_uri:
@@ -684,6 +685,10 @@ slots:
     title: Root path
     description: The `rp_path` of a root class, the route segment of its aggregates.
     slot_uri: rp:lockedRootPath
+  root_database:
+    title: Root database
+    description: The database of a root class (`tenant`, `application` or `system`), where its aggregates are read from.
+    slot_uri: rp:lockedRootDatabase
   inlined:
     title: Inlined
     description: Whether the slot's values are stored inside the aggregate's graph.

@@ -39,6 +39,11 @@ def python_folder(target: GenerationTarget) -> Path:
     return Path(target.python or target.package.replace(".", "/"))
 
 
+def migrations_folder(target: GenerationTarget) -> Path | None:
+    """The migrations folder of ``target``, relative to the folder of the ``pyproject.toml``; ``None`` when it sets none."""
+    return Path(target.migrations) if target.migrations else None
+
+
 def _given_flags(flags: Namespace) -> dict[str, str]:
     return {
         f.field: getattr(flags, f.field)

@@ -87,6 +87,7 @@ schema = "rdf_persistence/model/rp.yaml"
 package = "rdf_persistence.domain.generated"
 regenerate-command = "make generate"
 openapi = false
+migrations = "rdf_persistence/model/migrations"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/generation/model/rp_generation.yaml"

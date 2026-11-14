@@ -259,6 +259,9 @@
       "required": {
          "@id": "required"
       },
+      "root_database": {
+         "@id": "lockedRootDatabase"
+      },
       "root_path": {
          "@id": "lockedRootPath"
       },

@@ -21,12 +21,14 @@ PYPROJECT = """
 [tool.rp-generate]
 schema = "m.yaml"
 package = "app.generated"
+migrations = "migrations"
 """
 
 SCHEMA = """
 id: https://example.org/ns/m
 name: m
 title: Module
+version: "1"
 description: A module for the tests.
 prefixes:
   tst: https://example.org/ns/m#
@@ -47,6 +49,7 @@ classes:
 """
 
 OUTPUT = Path("app/generated/m.py")
+PROJECT_FILES = ["app", "m.yaml", "migrations", "pyproject.toml"]  # what a run leaves in the folder
 
 
 def project(tmp_path: Path, schema: str = SCHEMA, pyproject: str = PYPROJECT) -> Path:
@@ -68,7 +71,7 @@ def test_a_run_writes_the_classes_to_the_package_folder(tmp_path: Path) -> None:
 
 def test_a_run_leaves_no_staging_folder_behind(tmp_path: Path) -> None:
     main(["--project", str(project(tmp_path))])
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["app", "m.yaml", "pyproject.toml"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == PROJECT_FILES
 
 
 def test_a_missing_extra_exits_2_naming_the_extra(
@@ -188,7 +191,7 @@ def test_check_writes_nothing(tmp_path: Path) -> None:
     before = tree(tmp_path)
     assert main(["--project", str(pyproject), "--check"]) == 0, "a fresh project failed --check"
     assert tree(tmp_path) == before, "--check wrote files"
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["app", "m.yaml", "pyproject.toml"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == PROJECT_FILES
 
 
 def test_check_fails_on_a_lint_problem(tmp_path: Path) -> None:
