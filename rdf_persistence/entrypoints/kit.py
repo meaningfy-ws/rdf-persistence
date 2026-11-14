@@ -13,6 +13,7 @@ from rdf_persistence.domain.generated import (
     rp_core,
     rp_discussion,
     rp_tenancy,
+    rp_workflow,
 )
 from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_core import Principal
@@ -93,7 +94,7 @@ class ServiceKit:
         self.documents = Documents(view, self.generated_folder, self.iris)
         self.documents.require_frames()
         models = generated_models_of(
-            generated, rp_access, rp_core, rp_tenancy, rp_collections, rp_discussion
+            generated, rp_access, rp_core, rp_tenancy, rp_collections, rp_discussion, rp_workflow
         )
         mapper = Mapper(view, models)
         self.mapper, self.models = mapper, models

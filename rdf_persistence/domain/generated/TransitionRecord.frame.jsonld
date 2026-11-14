@@ -1,0 +1,11 @@
+{
+  "@context": "context.jsonld",
+  "@omitGraph": true,
+  "@embed": "@always",
+  "@omitDefault": true,
+  "@type": "TransitionRecord",
+  "was_associated_with": {
+    "@embed": "@never",
+    "@omitDefault": true
+  }
+}

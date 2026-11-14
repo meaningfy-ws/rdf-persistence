@@ -15,6 +15,7 @@ imports:
   - linkml:types
   - rdf_persistence/model/rp_core
   - rdf_persistence/model/rp_annotations
+  - rdf_persistence/model/rp_workflow
   - rdf_persistence/model/rp_collections
 annotations:
   module_kind: domain
@@ -24,7 +25,7 @@ classes:
     title: Book
     description: A book held by a library; an aggregate root that owns its chapters.
     class_uri: bibo:Book
-    mixins: [AggregateRoot, Described, Tracked]
+    mixins: [AggregateRoot, Described, Tracked, UnderWorkflow]
     slots: [isbn, authors, published, genre, chapters, shelf, sequel_of]
     unique_keys:
       isbn_key:
@@ -34,6 +35,7 @@ classes:
     annotations:
       rp_path: books
       database: tenant
+      workflow: review
   Shelf:
     title: Shelf
     description: A shelf of the library; an aggregate root that books are placed on, and a collection of the books it names.

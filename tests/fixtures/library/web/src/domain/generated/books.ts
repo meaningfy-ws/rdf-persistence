@@ -40,6 +40,8 @@ export interface Book {
   creator?: string;
   /** A principal that committed a later version of the graph. */
   contributor?: string[];
+  /** The current state of the aggregate, the IRI of a state of its workflow. */
+  workflow_status?: string;
 }
 
 /** A shelf of the library; an aggregate root that books are placed on, and a collection of the books it names. */

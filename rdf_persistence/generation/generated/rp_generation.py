@@ -78,6 +78,8 @@ class HardRule(str, Enum):
     "The `rp_iri_type` of a root or an owned class, or its kebab-case name when it has none, is unique among them and is not a reserved word of the IRI layout."
     RESERVED_SEGMENT = "reserved_segment"
     "The `rp_path` and `rp_iri_type` of an application class do not start with `rp-`, the prefix of the toolkit\u0027s own roots."
+    WORKFLOW = "workflow"
+    "The `workflow` annotation is on an aggregate root that is not the tenant root and includes `UnderWorkflow`, and every concrete root that includes `UnderWorkflow` has the annotation, its own or inherited."
 
 
 class BoundaryRule(str, Enum):

@@ -195,7 +195,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 
 ## 4. Workflow (#80)
 
-- [ ] 4.1 `model/rp_workflow.yaml` (PD-16), `from_state_iri`/`to_state_iri` on `Comment`, the
+- [x] 4.1 `model/rp_workflow.yaml` (PD-16), `from_state_iri`/`to_state_iri` on `Comment`, the
   kit's `generated_models_of` gains `rp_workflow` (PD-1), TC-02a re-run,
   `RpAnnotation.workflow` and the `WORKFLOW` hard rule (PD-18); the toy `Book` mixes in
   `UnderWorkflow` and is annotated `workflow: review`; `tests/fixtures/library/review.workflow.yaml`

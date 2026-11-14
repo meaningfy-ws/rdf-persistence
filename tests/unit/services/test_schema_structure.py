@@ -414,6 +414,18 @@ def test_the_comment_still_has_an_iri_type_the_policy_mints_and_recognises() -> 
     assert "rp-comment" in roots, "the IRI policy mints and recognises comment IRIs"
 
 
+def test_the_transition_record_is_no_served_root() -> None:
+    """The record is written by the toolkit alone, so no route or listing serves it (PD-16)."""
+    served = [root.name for root in served_roots(load_schema(TOY))]
+    assert "TransitionRecord" not in served, "no generic route for a transition record"
+    assert "Book" in served, "the workflow mixin changes nothing for the book's route"
+
+
+def test_the_transition_record_has_an_iri_type_the_policy_mints_and_recognises() -> None:
+    roots, _ = iri_types(load_schema(TOY))
+    assert "rp-transition" in roots, "the IRI policy mints and recognises record IRIs"
+
+
 TOOLKIT_WRITTEN = (
     HEAD
     + """

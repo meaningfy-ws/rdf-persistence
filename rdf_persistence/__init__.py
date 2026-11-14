@@ -88,6 +88,12 @@ from rdf_persistence.domain.generated.rp_tenancy import (
     TenantState,
     TenantSweepReport,
 )
+from rdf_persistence.domain.generated.rp_workflow import (
+    TransitionRecord,
+    UnderWorkflow,
+    Workflow,
+    WorkflowTransition,
+)
 from rdf_persistence.domain.generated.service.rp_service import (
     AccountSummary,
     Authorised,
@@ -277,11 +283,15 @@ __all__ = [
     "TenantSummary",
     "TokenVerifier",
     "Tracked",
+    "TransitionRecord",
+    "UnderWorkflow",
     "UniqueScope",
     "UnitOfWork",
     "UnknownRole",
     "UnsupportedMediaType",
     "VerifiedCaller",
+    "Workflow",
+    "WorkflowTransition",
     "WritesKind",
     "ZitadelIdentity",
     "generated_models",

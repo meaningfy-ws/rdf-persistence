@@ -704,6 +704,46 @@ delivers.
   4. Regenerating after adding a metamodel module that the package exports needs two passes
      (the package cannot import before the generated module exists, and the hard check reads
      the old generated `WritesKind`). A fresh clone is unaffected; task 4.1 will meet it again.
+- **D-9** (2026-11-14, the lead, before stage 4): what stages 1 to 3 as built change for
+  stage 4, so the briefs follow the code and not the older text.
+  1. `services/workflows.py` loads and validates workflow files and holds the workflow rule of
+     the write guards (PD-17, PD-19). `transition` and `transitions` live in
+     `services/transitions.py` (a `Transitions` class); `Collaboration` delegates (PD-28
+     item 9). `.importlinter`'s contract on `services.session` names both new modules.
+  2. The kit is the one place that combines the dependent pairs: `discussion.dependents(view)`
+     plus the records' pair `(rp:TransitionRecord, prov:used)` from the transitions module,
+     passed once to `Tenancy` (PD-30 item 8; L3's advice at stage 3).
+  3. `WriteGuards.prepare` gains its `allowed_state` argument now (D-5), given by
+     `Transaction.add_graph`/`replace_graph` from the private `Transaction._allow_state`.
+  4. A transition record is `rp_writes: toolkit`: no route serves it, the generic routes answer
+     404 for it under any IRI policy (PD-30 item 1), no collection may name it, and it takes no
+     comment (`Discussion` refuses a target typed with a toolkit-written class other than an
+     annotation the application wrote, PD-30 item 7).
+  5. The roles a transition asks for are `AccessRules.roles`, where a token role counts only if
+     defined at system level (PD-30 item 3).
+  6. `from_state_iri` and `to_state_iri` are slots of both `Comment` and `TransitionRecord`
+     (PD-16); which module defines them follows the import direction the generator accepts.
+  7. Regenerating needs two passes when a module the package exports is new (D-8 item 4).
+  8. The toy `Book` goes under the review workflow (PD-18, task 4.1). Every kit in the tests
+     then needs the workflow file, and every book stored through a kit gains a state: if that
+     ripples into more than a few dozen existing assertions, the builder stops and reports,
+     and the lead decides between carrying the ripple and putting a new toy class under the
+     workflow.
+  9. Impact (GitNexus, before the build): `ServiceKit.__init__`, `install_service`,
+     `WriteGuards.prepare`, `Transaction.add_graph`/`replace_graph` and `open_session` are on
+     the write path of every aggregate. The changes are optional arguments and one guard rule
+     that asks nothing of a class without a workflow (TC-81: no extra query).
+- **D-10** (2026-11-14, the lead, task 4.1 as built):
+  1. A state name follows its own pattern, `^[a-z][a-z0-9_-]*$`, not the url_segment pattern
+     PD-16 names: PD-17's own example has `in_review`, which that pattern refuses. The workflow
+     name keeps the url_segment pattern, as the class annotation that refers to it does.
+  2. `from_state_iri` and `to_state_iri` are defined in `rp_discussion.yaml`, and `rp_workflow`
+     imports `rp_discussion`: a transition needs the comment anyway, while the other direction
+     would make every user of discussion import the workflow module.
+  3. `RESERVED_SEGMENT` applies to `rp_path` and `rp_iri_type` only; the `workflow` annotation
+     is patterned but is no path segment.
+  4. The `WORKFLOW` hard rule accepts an annotated abstract class that has `AggregateRoot`
+     among its ancestors (a base whose concrete subclasses inherit the workflow).
 
 ## Algorithm / approach
 

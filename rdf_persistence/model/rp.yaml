@@ -17,3 +17,4 @@ imports:
   - rp_files
   - rp_collections
   - rp_discussion
+  - rp_workflow

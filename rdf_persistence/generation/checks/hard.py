@@ -27,6 +27,8 @@ from rdf_persistence.generation.generated.rp_generation import CheckProblem, Har
 from rdf_persistence.generation.problems import rule_problem
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 from rdf_persistence.services.schema_structure import (
+    AGGREGATE_ROOT,
+    UNDER_WORKFLOW,
     aggregate_roots,
     annotation,
     annotation_text,
@@ -51,7 +53,11 @@ CORE_MODEL = PACKAGE_DIR / "model" / "rp_core.yaml"
 URL_SEGMENT = "url_segment"  # the slot of rp_core whose pattern every route segment follows
 BOOLEAN = ("true", "false")
 RESERVED_PREFIX = "rp-"  # the segments of the toolkit's own roots, such as rp-comments
-PATTERNED_ANNOTATIONS = (RpAnnotation.RP_PATH, RpAnnotation.RP_IRI_TYPE)
+SEGMENT_ANNOTATIONS = (
+    RpAnnotation.RP_PATH,
+    RpAnnotation.RP_IRI_TYPE,
+)  # the ones a segment of a route or IRI
+PATTERNED_ANNOTATIONS = (*SEGMENT_ANNOTATIONS, RpAnnotation.WORKFLOW)
 # Every annotation the toolkit reads, and the values it accepts (the enums of rp_core). rp_path takes
 # a pattern instead, checked on its own.
 ALLOWED_ANNOTATIONS = {
@@ -251,7 +257,7 @@ def _iri_type_problems(
 
 def _reserved_segment_problems(cls: ClassDefinition) -> Iterator[CheckProblem]:
     """PD-11: the toolkit's own roots use the ``rp-`` prefix, so an application's path or type may not."""
-    for tag in PATTERNED_ANNOTATIONS:
+    for tag in SEGMENT_ANNOTATIONS:
         text = annotation_text(cls, tag)
         if text is not None and text.startswith(RESERVED_PREFIX):
             yield rule_problem(
@@ -262,12 +268,46 @@ def _reserved_segment_problems(cls: ClassDefinition) -> Iterator[CheckProblem]:
             )
 
 
+def _workflow_problems(
+    view: SchemaView, cls: ClassDefinition, roots: list[ClassDefinition]
+) -> Iterator[CheckProblem]:
+    """PD-18: the ``workflow`` annotation and the ``UnderWorkflow`` mixin go together on an aggregate root."""
+    tag = RpAnnotation.WORKFLOW.value
+    ancestors = view.class_ancestors(cls.name)
+    if annotation_text(cls, RpAnnotation.WORKFLOW) is not None:
+        fix = f"a {tag} is on an aggregate root that is not the tenant root; "
+        if is_tenant_root(cls):
+            yield rule_problem(
+                HardRule.WORKFLOW, cls.name, f"the tenant root has no workflow: remove {tag}"
+            )
+        elif AGGREGATE_ROOT not in ancestors:
+            yield rule_problem(
+                HardRule.WORKFLOW, cls.name, f"{fix}remove {tag} or include AggregateRoot"
+            )
+        elif UNDER_WORKFLOW not in ancestors:
+            yield rule_problem(
+                HardRule.WORKFLOW, cls.name, f"{tag} needs the mixin: include {UNDER_WORKFLOW}"
+            )
+    elif cls in roots and UNDER_WORKFLOW in ancestors and not _inherited_workflow(view, cls):
+        yield rule_problem(
+            HardRule.WORKFLOW,
+            cls.name,
+            f"includes {UNDER_WORKFLOW} with no workflow: add the annotation {tag}: <name>",
+        )
+
+
+def _inherited_workflow(view: SchemaView, cls: ClassDefinition) -> bool:
+    ancestry = view.class_ancestors(cls.name, mixins=False)
+    return any(annotation(view.get_class(name), RpAnnotation.WORKFLOW) for name in ancestry)
+
+
 def _class_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[CheckProblem]:
     roots = aggregate_roots(view, classes)
     tenant_roots = tenant_database_roots(view, classes)
     for cls in classes:
         yield from _key_problems(view, cls, tenant_roots)
         yield from _reserved_segment_problems(cls)
+        yield from _workflow_problems(view, cls, roots)
     yield from _path_problems(view, roots)
     yield from _described_problems(view, classes, roots)
     yield from _iri_type_problems(view, classes, roots)

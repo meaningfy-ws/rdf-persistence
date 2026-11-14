@@ -38,6 +38,7 @@ from rdf_persistence.domain.generated.rp_files import StoredFile
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 
 AGGREGATE_ROOT = "AggregateRoot"
+UNDER_WORKFLOW = "UnderWorkflow"
 TENANT_ACCESS = "TenantAccess"
 STORED_FILE = StoredFile.__name__
 DESCRIPTION = "description"
