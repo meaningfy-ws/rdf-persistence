@@ -29,7 +29,7 @@ and `make clean-code` unless it names others.
 | TC-03 | `application_template` of `{base}{tenant_id}`, `{base}App`, `""`, `{tenant}/app` | each a `ValidationError` |
 | TC-04 | `IriPolicy.model_validate_json` of a policy JSON without the field; of one holding the effective `"https://ex.org/app"` | both parse; the first holds the default |
 
-- [ ] 1.2 PD-4 and PD-5: `database_of`, `served_roots(view, database)`, `root_class_iris` in
+- [x] 1.2 PD-4 and PD-5: `database_of`, `served_roots(view, database)`, `root_class_iris` in
   `services/schema_structure.py`; `Listings(view, database)` in `services/listing.py`; the
   application rows of the hard check in `generation/checks/hard.py`. Tests in
   `tests/unit/services/test_schema_structure_databases.py` (schemas written to `tmp_path`) and

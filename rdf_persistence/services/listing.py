@@ -18,7 +18,7 @@ from pydantic import ValidationError
 from rdflib import Graph, Literal, URIRef
 
 from rdf_persistence.domain.exceptions import BadQuery
-from rdf_persistence.domain.generated.rp_core import RegistryKind
+from rdf_persistence.domain.generated.rp_core import DatabaseKind, RegistryKind
 from rdf_persistence.domain.generated.service.rp_service import (
     Condition,
     Filter,
@@ -202,19 +202,20 @@ def condition_pairs(conditions: Iterable[Condition]) -> list[tuple[URIRef, URIRe
 class Listings:
     """Turns a ``ListRequest`` into a ``ListPlan`` against the classes of one schema."""
 
-    def __init__(self, view: SchemaView) -> None:
+    def __init__(self, view: SchemaView, database: DatabaseKind = DatabaseKind.TENANT) -> None:
         self._view = view
+        self._database = database
         self._slots: dict[str, Mapping[str, SlotDefinition]] = {}
         self._roots: dict[str, ClassDefinition] | None = None
 
     def served_root(self, name: str) -> ClassDefinition:
-        """The aggregate root named ``name`` that the tenant databases serve (``served_roots``).
+        """The aggregate root named ``name`` that the listings' database serves (``served_roots``).
 
         Raises:
             ValueError: ``name`` is not one.
         """
         if self._roots is None:
-            self._roots = {root.name: root for root in served_roots(self._view)}
+            self._roots = {root.name: root for root in served_roots(self._view, self._database)}
         if name not in self._roots:
             raise ValueError(f"{name} is not an aggregate root with a path")
         return self._roots[name]

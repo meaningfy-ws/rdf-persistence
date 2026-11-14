@@ -426,3 +426,96 @@ def test_a_run_with_a_bad_key_exits_1_naming_the_slot_and_writes_nothing(
     err = capsys.readouterr().err
     assert "Book" in err and "isbn_key" in err and "chapters" in err, err
     assert sorted(p.name for p in root.parent.iterdir()) == before, "outputs were touched"
+
+
+@dataclass(frozen=True)
+class ApplicationRow:
+    """One PD-5 row: a schema body that breaks it and nothing else, and how its message ends."""
+
+    name: str
+    classes: str
+    element: str
+    ending: str
+
+
+_APP = "    annotations:\n      database: application\n      rp_path: tpl\n"
+_ROOT = "    is_a: AggregateRoot\n"
+APPLICATION_ROWS = (
+    ApplicationRow(
+        "tenant-root",
+        "  Tpl:\n    annotations:\n      database: application\n      graph: meta\n",
+        "Tpl",
+        "an application class cannot be the tenant root",
+    ),
+    ApplicationRow(
+        "owned",
+        "  Owner:\n" + _ROOT + "    annotations:\n      rp_path: owner\n    attributes:\n"
+        "      part:\n        range: Tpl\n        annotations:\n          owned: true\n"
+        "  Tpl:\n    annotations:\n      database: application\n",
+        "Tpl",
+        "an application class cannot be owned; its owner decides the database",
+    ),
+    ApplicationRow(
+        "not-a-root",
+        "  Tpl:\n    annotations:\n      database: application\n",
+        "Tpl",
+        "only an aggregate root can be application-level",
+    ),
+    ApplicationRow(
+        "stored-file",
+        "  StoredFile:\n    mixin: true\n  Tpl:\n" + _ROOT + "    mixins: [StoredFile]\n" + _APP,
+        "Tpl",
+        "an application class cannot be a stored file: the application space has no bucket",
+    ),
+    ApplicationRow(
+        "shared-class-iri",
+        "  Other:\n" + _ROOT + "    class_uri: ex:Same\n    annotations:\n      rp_path: other\n"
+        "  Tpl:\n" + _ROOT + "    class_uri: ex:Same\n" + _APP,
+        "Tpl",
+        "an application class cannot share its class IRI with Other",
+    ),
+    ApplicationRow(
+        "mixin",
+        "  Tpl:\n    mixin: true\n    annotations:\n      database: application\n",
+        "Tpl",
+        "the database annotation is not inherited through a mixin",
+    ),
+)
+VALID_APPLICATION = "  Tpl:\n" + _ROOT + _APP
+
+
+def _annotation_problems(tmp_path: Path, classes: str) -> list[str]:
+    """The ``annotation`` problems of a schema with an abstract ``AggregateRoot`` and ``classes``."""
+    root = _bare_schema(tmp_path, {})
+    root.write_text(root.read_text(encoding="utf-8") + classes, encoding="utf-8")
+    return [p for p in problems_of(root) if p.startswith(f"[{HardRule.ANNOTATION.value}]")]
+
+
+@pytest.mark.parametrize("row", APPLICATION_ROWS, ids=lambda r: r.name)
+def test_an_application_class_that_breaks_a_row_gets_that_rows_problem(
+    tmp_path: Path, row: ApplicationRow
+) -> None:
+    problems = _annotation_problems(tmp_path, row.classes)
+    assert len(problems) == 1, f"first row wins, one problem: {problems}"
+    assert problems[0].startswith(f"[annotation] {row.element}: "), problems
+    assert problems[0].endswith(row.ending), problems
+
+
+def test_every_application_row_has_a_case() -> None:
+    assert len(APPLICATION_ROWS) == 6, "the five rows of PD-5 and the mixin row"
+
+
+def test_a_valid_application_root_passes(tmp_path: Path) -> None:
+    assert _annotation_problems(tmp_path, VALID_APPLICATION) == [], "a path and a root: no problem"
+
+
+def test_an_abstract_application_class_is_skipped(tmp_path: Path) -> None:
+    classes = "  Tpl:\n    abstract: true\n    annotations:\n      database: application\n"
+    assert _annotation_problems(tmp_path, classes) == [], "abstract classes are not reported"
+
+
+def test_an_unknown_database_lists_the_three_kinds(tmp_path: Path) -> None:
+    classes = "  Tpl:\n" + _ROOT + "    annotations:\n      database: elsewhere\n      rp_path: t\n"
+    problems = _annotation_problems(tmp_path, classes)
+    assert len(problems) == 1, problems
+    assert "('tenant', 'system', 'application')" in problems[0], problems

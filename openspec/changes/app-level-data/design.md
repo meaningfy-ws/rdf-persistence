@@ -321,6 +321,9 @@ field is a `str` (PD-9), and the how-to shows the correct call.
 - **D-1** (lead, 2026-11-14): one stage, one PR into `develop`. The full MEDIUM review set: lenses
   L1, L2, L3 and one pass for L4 with L5 (repository rule), a checker, and the adversarial tester
   right after task 2.1 (the `Iris` change adds the invariants every other task relies on).
+- **D-3** (developer, 2026-11-14): the impact check rates the change to `Iris._belongs` and
+  `Iris._fill` CRITICAL (every route, dump and restore runs through them). Asked before the build,
+  the developer answered "Build it": PD-3 as planned, the adversarial tester right after task 2.1.
 - **D-2** (lead, 2026-11-14): the PLAN was attacked by a fresh reviewer before the gate. Accepted
   and worked in: `tenant_id_of` and the tenant pattern stay closed to `A` (PD-3); the `database`
   annotation is inherited (PD-4); a shared class IRI is refused (PD-5 row 5); the application
