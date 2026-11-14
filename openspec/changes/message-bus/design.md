@@ -384,6 +384,15 @@ aggregate (DEC-13).
   - d. `Mapper.served` of a class the schema does not have raised `KeyError`. Fix: `ValueError`
     naming the class.
   The xfail markers are removed with the fixes.
+- **D-7** (lead, 2026-11-14) `schema-migrations` merged into `develop` (#109) while stage 2 was in
+  review, and brought a schema lock: a changed model needs a new `version:` in the root schema and
+  a reviewed migration. Stage 2 removes the class `rp:TransitionRecord` (and with it the
+  generation and invalidation parts it carried as an aggregate), so `rdf_persistence/model/rp.yaml`
+  is now version "2" and `rdf_persistence/model/migrations/1__2.yaml` is the reviewed migration.
+  It has **no steps**: PD-1 item 4 (the developer: no migration of stored `rp:TransitionRecord`
+  graphs) is exactly the lock's "remove the step if no data needs moving", and the file says so.
+  The later stages add classes only (`PostComment`, `PostReply`, `DeleteFile`), which the lock
+  treats as it treats any addition; a builder that meets the lock check stops and reports.
 - **D-6** (lead, 2026-11-14) Review of stage 2 (commits `c961418`, `9fccff5`; L1, L2, L3 and
   L4+L5 as one pass; nothing blocking). Accepted:
   - a. **Publish exactly what is recorded** (L4; completes D-5 a). When the confirmation fails and
