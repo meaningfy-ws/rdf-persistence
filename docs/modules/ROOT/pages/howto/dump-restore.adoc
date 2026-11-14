@@ -128,7 +128,7 @@ The manifest holds:
 |`schema_id`, `schema_version`
 |The schema the data conforms to. `schema_version` is the version the tenant's own data follows,
 read from the tenant's stamp, not the version the running service has. It is absent (`null`) when
-the schema declares no `version`, and a restore refuses such a dump. A LinkML schema declares it in
+the tenant holds no stamp, and a restore refuses such a dump. A LinkML schema declares it in
 its top-level `version:` key.
 
 |`source_tenant`, `source_tenant_id`
@@ -164,10 +164,11 @@ made it, or into one that shares its policy.
 
 *Same schema id; any version of the chain.* Restore refuses a dump of another schema id. It accepts
 a dump at any version of your migration chain: it applies the pending migrations to the restored
-data, before the data is checked and imported, so the new tenant follows the running version (see
-xref:howto/migrate.adoc#dump[Change a schema that has stored data]). It refuses, with `InvalidBody`
+data, before its graphs and root are checked and imported, so the new tenant follows the running
+version (see xref:howto/migrate.adoc#dump[Change a schema that has stored data]). The manifest and
+the stamps are checked before the migration. It refuses, with `InvalidBody`
 and before it creates anything: a dump with no `schema_version`, a version or a stamp that no chain
-knows, a dump with no stamps graph, a stamps graph that holds anything but stamps, and a dump whose
+knows, a manifest whose `schema_version` differs from the dump's own stamp, a dump with no stamps graph, a stamps graph that holds anything but stamps, and a dump whose
 migration fails. Your schema must declare a quoted `version:` (its top-level `version:` key), which
 `rp-generate` requires when you use a `migrations` folder.
 
@@ -281,8 +282,9 @@ is not a version of the chain; a policy that glues the id
 schema versions apart); a root that is missing, does not decode, or that a root validator refuses
 |Nothing created.
 
-|A record of schema versions that is missing, holds a stamp no chain knows, or holds anything but
-stamps; a migration of the dump that fails
+|A record of schema versions that is missing, holds a stamp no chain knows, holds a stamp that
+differs from the manifest's `schema_version`, or holds anything but stamps; a migration of the dump
+that fails
 |Nothing created.
 
 |More decompressed bytes than `max_restore_bytes`, found before the blobs

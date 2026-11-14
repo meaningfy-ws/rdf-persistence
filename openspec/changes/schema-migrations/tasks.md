@@ -123,6 +123,12 @@ an unknown version TC-52; `rp-service-api`: a chain that forks TC-38, a tenant s
 - [x] 3.2 (closed by tasks 2.2 and 2.3, design D-1) The application database (PD-16). Test first. `migrate_shared` includes it when it
   exists; `ensure_application_database` stamps the one it creates (PD-10); the lifespan order of PD-9.
 - [x] 3.3 Containers. In `tests/integration/store/`: the migration request against Fuseki.
+  TC-41 on Fuseki covers the value, stamp, tokens and modified date. The decode and shape check
+  (TC-24) and the old-token conflict and no-step token case (TC-26) do not depend on the store; the
+  fake store covers them in `tests/unit/services/test_migration_runner.py`:
+  `test_the_value_moves_to_the_new_predicate_and_the_book_still_validates`,
+  `test_the_token_changes_the_modified_date_stays_and_an_old_token_conflicts` and
+  `test_a_migration_with_no_steps_leaves_every_token`.
 - [x] 3.4 Docs. A new `howto/migrate.adoc` (the rules table, the five recipes of PD-5, what cannot
   be migrated, reworking an unmerged version, dump first, stop old instances, what a tenant set
   aside looks like and how to recover); in `docs/modules/ROOT/pages/howto/adopt.adoc`, section "7. Change the model" rewritten to point

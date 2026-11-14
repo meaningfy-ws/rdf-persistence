@@ -202,10 +202,12 @@ marks an answer the developer delegated (seed, 2026-11-06) and may overrule.
 - **PD-12 No down-migrations (seed Q-5, leader's choice).** Rollback is: the failed tenant stays at
   its previous data and stamp, so the previous release serves it; for a migration that succeeded and
   was wrong, restore a dump taken before it. The how-to says to dump before deploying a migration
-  with steps.
+  with steps. RISK-11 narrows this: a previous release cannot start once the shared databases were
+  migrated, so a rollback needs a backup of the store taken before the deployment.
 - **PD-13 The toolkit's metamodel uses the same mechanism (seed Q-7, leader's choice).** `rp.yaml`
-  declares `version: "1"`; its target sets `migrations = "rdf_persistence/model/migrations"`; the
-  folder ships in the wheel, with a lock and no migration yet. A later change to an `rp_*` module
+  declares a `version:` (stage 1 set `"1"`; message-bus stage 2, #110, raised it to `"2"` with
+  `1__2.yaml`, no steps); its target sets `migrations = "rdf_persistence/model/migrations"`; the
+  folder ships in the wheel, with a lock. A later change to an `rp_*` module
   that stored data must follow adds a file there, in the same PR. A workflow file that drops a state
   is migrated by the consumer with a "replace a value" step on `adms:status`, carried by a new
   schema version; nothing detects it (as today: a transition from the dropped state conflicts).
@@ -224,18 +226,18 @@ marks an answer the developer delegated (seed, 2026-11-06) and may overrule.
   `Dataset.update`), so the rest of restore sees current data and stamps. A manifest with no
   version, a version or a stamp unknown to a chain, or a dump with no stamps graph is refused
   (`InvalidBody`) before anything is created. As built (task 3.1): `services/tenant_dump.py`
-  `restore` calls `migrate_dataset` right after parsing and before `Tenancy.restore`, which is
-  unchanged; `Tenancy` cannot call the runner without bringing back the import cycle PD-24 item 2
+  `restore` checks the manifest and the stamps, then calls `migrate_dataset` before `Tenancy.restore`,
+  whose stamps check now calls `stamp_problems`; `Tenancy` cannot call the runner without bringing back the import cycle PD-24 item 2
   removed. The stamps rule is written once, `stamp_problems` in `services/migrations.py`, used by
   the stage 2 refusal (the running versions only) and by `migrate_dataset` (any version of the
   chain).
 - **PD-16 The application database is one more shared database (app-level-data).** Delivered in
-  stage 3, after PR #102 is in `develop` (developer, 2026-11-14: this session brings #102 in).
+  stage 2 (D-1), after PR #102 is in `develop` (developer, 2026-11-14: this session brings #102 in).
 - **PD-17 Layers (as amended by PD-22 and PD-24 item 2).** `domain`: `stamps_graph_iri`, the
   exceptions; `domain/sparql.py` builds SPARQL text and holds the one check of a step's pattern
   (`checked_group`). `services/migrations.py`: `load_migration`, `load_chain`, `chain_of`,
   `migration_file_name`, the request text, the stamp's read and conditional write (`stamps`,
-  `stamp_if_none`), the `SchemaChain` alias and the helpers `versions`, `first_version`,
+  `stamp_if_none`, `stamp_problems`), the `SchemaChain` alias and the helpers `versions`, `first_version`,
   `current_version`, `pending_from`; it imports neither `tenancy` nor the runner.
   `services/vocabulary.py`: `TOOLKIT_MIGRATIONS`, beside the metamodel's path.
   `services/migration_runner.py`: the runner on the `Store` port (`migrate_database`,

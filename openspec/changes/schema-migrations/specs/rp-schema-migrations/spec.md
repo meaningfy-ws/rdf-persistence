@@ -90,7 +90,7 @@ failing system or application database SHALL stop the service from starting.
 
 A dump's manifest SHALL record the schema version the tenant's data follows (its stamp; none when
 the tenant has no stamp), and a restore SHALL accept a dump of the service's schema at any version
-of its chain, migrate it to the running versions in memory before it is checked and imported, and
+of its chain, migrate it to the running versions in memory before its graphs and root are checked and imported, and
 refuse, creating nothing, a dump with no version, an unknown one, or one whose manifest version
 differs from the stamp the dump holds.
 

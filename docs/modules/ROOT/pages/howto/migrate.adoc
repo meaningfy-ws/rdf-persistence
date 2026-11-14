@@ -69,7 +69,8 @@ instances before you start the new ones. See <<deploy>>.
 
 *A tenant answers 503 `tenant-behind`. What now?*::
 Its migration failed at start-up. Read the log, fix the cause, ship the fix and restart every
-instance. Rolling back needs a restore of earlier dumps. See <<behind>>.
+instance. Rolling back the shared databases needs a backup of the store taken before you deployed;
+a restore of dumps makes new tenants and does not change their stamps. See <<behind>>.
 
 *Can I undo a migration?*::
 No. There are no down-migrations. Restore a dump taken before it. See <<no-down>>.
@@ -662,8 +663,9 @@ data and stamp, but the new release has already moved the system database, and t
 database if there is one, to the new version. An older release does not know that stamp. For a
 tenant it sets the tenant aside, and for the system or application database it stops start-up with
 `MigrationFailed`. The same holds for the tenants the new release migrated: their stamp is new, and
-the older release sets them aside. So roll back only together with a restore of dumps taken before
-the deployment (<<deploy>>), or do not roll back.
+the older release sets them aside. A restore of dumps does not undo this: it makes new tenants and
+does not change the stamps of the shared databases. So roll back only with a backup of the store
+taken before the deployment, or do not roll back.
 The toolkit has no dump of the system database or of the application database. If a migration
 of your schema changes data there, or you may want to roll back, back up the store itself before
 you deploy, with the store's own backup (Fuseki's, for example), and restore that backup to roll
@@ -693,13 +695,17 @@ What does not exist yet:
 
 A dump records the schema version the tenant's data follows (`schema_version` in the manifest).
 A restore accepts a dump of your schema at any version of the chain, migrates the restored data to
-the running version (in memory, with the pending migrations of both chains) before it is checked
-and imported, and then the new tenant serves it. For the toy library, a dump taken at `"1"`
+the running version (in memory, with the pending migrations of both chains) before its graphs and
+root are checked and imported, and then the new tenant serves it. The manifest and the stamps are
+checked first. The migration runs in a worker thread, and its cost is bounded only by the steps: a
+step that joins a pattern with itself can grow the data, and a large dump is slow on rdflib
+(design RISK-12). For the toy library, a dump taken at `"1"`
 restores into a service at `"2"`, with `1__2` applied. The restore creates a new tenant every time.
 
 `kit.restore_tenant` refuses, with `InvalidBody` and nothing created: a dump with no version, a
-version or stamp that the chain does not know, a dump with no stamps graph, a stamps graph with
-anything but one stamp per schema, and a dump whose migration fails.
+version or stamp that the chain does not know, a manifest whose version differs from the dump's own
+stamp, a dump with no stamps graph, a stamps graph with anything but one stamp per schema, and a
+dump whose migration fails.
 
 [#no-down]
 == 11. No down-migrations
