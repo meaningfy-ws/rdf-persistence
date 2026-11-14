@@ -352,3 +352,40 @@ PD-11 (operator report instead of generation).
   `keys` (the public `open_session` accepts it), one root's two equal claims were taken for two
   roots and a single add raised `KeyConflict`. The test is
   `test_a_key_given_twice_does_not_clash_a_root_with_itself`.
+- **D-5** (leader, 2026-11-14; stage 1 review, lenses L1, L2, L3, L4+L5; L3 had no finding).
+  Accepted, fixed in one pass before the merge:
+  - **F-1** (L2 W1): a value stored as `"1"^^xsd:string` did not block a plain `"1"` claim on
+    the fake store, though Fuseki holds the two as one term (PD-5 normalised only the claim).
+    The fake store reads an `xsd:string` literal as the plain literal when data enters it, so a
+    consumer's unit tests see what Fuseki does; the reverse of TC-26 is tested on the fake, and
+    both directions once on Fuseki, which also checks PD-5's premise. If the fake cannot do this
+    with a small change, the fixer stops and the limit is recorded instead.
+  - **F-2** (L2 W2): TC-03 also asserts that the toy has no keyed slot, validator or shape for
+    `isbn_key` and that `Grant`'s key is still a keyed slot.
+  - **F-3** (L2 W3): TC-08a also asserts the inherited key stays in-aggregate on `Chapter` and
+    gives `Book` no key across aggregates.
+  - **F-4** (L2 S1, S2): no `print` in a test; the hard-check tests assert the quoted key and
+    slot names, not a substring that is always there.
+  - **F-5** (L4+L5 W1): one rule for "lives in the system database": the annotation is
+    inherited (`in_system_database`), and `served_roots` uses it too.
+  - **F-6** (L4+L5 W2, W4, S5): `claims` becomes `claims_of`; the reading of the diagnosis rows
+    moves next to the query (`held` in `unique_keys.py`); the excluded roots are computed once.
+  - **F-7** (L4+L5 W3, S8, S10, S12): `UniqueScope.TENANT.value` in the hard-check message;
+    `join` and `union` share one private helper; the reasons of `_key_problems` are one list;
+    `class_kinds` computes a bool.
+  - **F-8** (L1): a 409 on a taken value tells anyone who may write the type that the value
+    exists in the tenant, even when the holder is hidden from them. No tenant-wide key can
+    avoid it; PD-8 keeps the holder and the value out of the answer. Recorded as **RISK-7**
+    (accepted): a slot holding confidential values should not be a scoped key; the how-to says
+    so (task 2.3).
+  Rejected:
+  - L4+L5 S6 (a helper for two repeated lines in `add_graph` and `replace_graph`) and S7 (one
+    shared `_rows` for six query sites, five of them not of this change): refactors of the
+    transaction code another session changes in parallel; not this change's job.
+  - L4+L5 S9 (drop `str(iri)`): callers do pass `URIRef`s; the conversion is the point.
+  - L4+L5 S11 (group problem kinds by status for the `WWW-Authenticate` header): no effect
+    today, one 401 kind exists.
+  - L2 S4 (list the key conflict only on routes of keyed types): the spec asks that the
+    document list the type; a route option per schema key is more machinery than it is worth.
+  - L2 S3: TC-33 is read as "the 409 answer names the key conflict"; the document lists no
+    problem slug for any kind.
