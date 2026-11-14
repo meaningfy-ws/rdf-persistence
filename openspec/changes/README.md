@@ -39,7 +39,7 @@ after an attack; until then it is the planner's own score.
 | 8 | `tenant-stores` | MEDIUM | none | no | 6 (copies are dump + restore) | several wired stores; the access record names a tenant's store |
 | 9 | `message-bus` | LARGE (4 stages) | none | yes, gated 9.1 (2026-11-14) | 3 (the activity is one more transaction operation), 4 (adopts its `TransitionRecord`) | commands as `prov:Activity` subclasses in three layers, activity records on every commit, the fixed PROV events (`Generation`, `Invalidation`), `MessageBus` with hierarchy dispatch (in process) |
 | 10 | `aggregate-events` | LARGE | none | no | 3, 9 (publishes 9's one message per commit) | outbox, relay, `EventBus` port on FastStream (Redis Streams first), incoming messages into the bus, SSE |
-| 11 | `schema-migrations` | LARGE | none | no | 6 (reads the dump's schema version) | schema version per tenant, automatic migrations |
+| 11 | `schema-migrations` | LARGE (3 stages) | none | yes, gated 9.1 (2026-11-14) | 6 (reads the dump's schema version), 7 (its last stage reaches the application database) | schema version per database, the schema lock and its rules in `rp-generate`, migrations applied at start-up |
 | 12 | `second-store` | MEDIUM | none | no | 3, 5 (the descriptor states their atomicity need) | GraphDB (confirmed), the capability descriptor |
 | 13 | `typescript-client` | LARGE | none | no | 2 | the generated client |
 | 14 | `fine-grained-access` | VERY LARGE (staged) | none | no | 10 | OpenFGA, property- and triple-level access |

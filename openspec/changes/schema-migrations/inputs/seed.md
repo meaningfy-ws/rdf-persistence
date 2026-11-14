@@ -75,3 +75,20 @@ Developer: "accept recommendations, and continue" (2026-11-06).
 - Two service instances starting at once do not run one migration twice (if eager).
 - Owned parts (skolemised blank nodes) and loaded-graph registry entries survive a migration.
 - A metamodel change shipped by the toolkit migrates the access records (if Q-7 says yes).
+
+## Developer answers (2026-11-14, session H, one question round)
+
+Asked after reading the code, the archived `tenant-dump-restore` and `app-level-data` (PR #102):
+
+1. **Where is the old schema compared with the new?** Answer: "At rp-generate (Recommended)": a
+   committed lock file; additive changes pass, a removed slot gets a drafted drop to review, other
+   changes a drafted unresolved step; the service only applies reviewed files.
+2. **How does an instance know a tenant is behind?** Answer: "Remembered at start-up
+   (Recommended)": in memory per instance; the how-to says to stop old instances first.
+3. **Order with PR #102 (the application database)?** Answer: "just focus on this repo primarely,
+   and do what needed, there is no data yet anywhere, leave the apps, they will adjust afterwards to
+   the new situation; so do 102 and the last stage (or whatever needed)".
+4. **Opt-in or mandatory `version:` and migrations folder?** Answer: "Mandatory for all".
+
+The leader's choices for Q-1 and Q-5 to Q-8 are in `design.md` (PD-1, PD-2, PD-8, PD-12, PD-13),
+each marked "leader's choice"; the developer may overrule them.

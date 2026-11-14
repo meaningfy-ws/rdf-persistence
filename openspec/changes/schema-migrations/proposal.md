@@ -5,7 +5,7 @@
 
 # EPIC: Migrate stored data when a schema changes
 
-> Candidate EPIC, shaped 2026-11-06 from the v1 future list. Not planned: the PLAN (design.md, tasks.md) waits for the developer's answers in inputs/seed.md.
+> Shaped 2026-11-06 from the v1 future list. Planned 2026-11-14 (session H): the PLAN is design.md and tasks.md. The developer's answers are in inputs/seed.md; the questions the developer delegated are answered below as the leader's choices, which the developer may overrule.
 >
 > **Backlog position (2026-11-12):** after the tenant-governance EPICs (`tenant-dump-restore` records the schema version in its manifest, which this EPIC then reads). It must migrate the toolkit's own new metamodel modules (`rp_collections`, `rp_workflow`, `rp_discussion`) and stored workflow states when a workflow file drops a state (No-go of the collaboration EPIC). See `openspec/changes/README.md`.
 
@@ -47,6 +47,21 @@ version. The toolkit's own metamodel changes are migrated the same way.
 - **DEC-5**: `linkml` and `linkml-runtime` stay pinned together; a bump regenerates the toy library
   and reviews the diff (archived DEC-5). A generator bump is not a data migration.
 
+- **DEC-6** (developer, 2026-11-06): migrations are automatic, by rules modelled on Strapi's, run
+  at start-up before serving; a tenant that is behind is refused.
+- **DEC-7** (developer, 2026-11-14): the rules run in `rp-generate` against a committed lock;
+  the service applies reviewed migration files. A removed slot is drafted as a drop to review,
+  never dropped silently.
+- **DEC-8** (developer, 2026-11-14): an instance remembers at start-up which tenants are behind.
+- **DEC-9** (developer, 2026-11-14): a schema version and a migrations folder are mandatory for
+  every consumer; no data exists yet, consumers adjust.
+- **DEC-10** (developer, 2026-11-14): this EPIC also reaches the application database of
+  `app-level-data`, as its last stage, after PR #102.
+- **Leader's choices** (seed Q-1, Q-5 to Q-8; design.md PD-1, PD-2, PD-8, PD-12, PD-13): the
+  version is the root schema's LinkML `version:`; it is recorded per database, in the database; a
+  migrated database gets new version tokens; no down-migrations (restore a dump); the toolkit's
+  metamodel is migrated by the same mechanism. Loaded graphs are not migrated.
+
 ## Rabbit-holes
 
 - **Inferring migrations from a schema diff.** Tempting, and wrong for renames and splits.
@@ -57,8 +72,9 @@ version. The toolkit's own metamodel changes are migrated the same way.
 
 ## No-gos
 
-- Automatic migrations inferred from a schema diff, beyond what the developer chooses in Q-2.
-- Down-migrations to older schemas, unless chosen in Q-5.
+- Automatic migrations inferred from a schema diff, beyond the drafts of DEC-7; guessing a rename.
+- Down-migrations to older schemas.
+- Migrating loaded graphs; validating every stored aggregate at start-up; migrations in Python.
 - Migrating file contents in the bucket.
 - Migrating between stores (see `second-store`).
 - Any consumer term, model or code.
