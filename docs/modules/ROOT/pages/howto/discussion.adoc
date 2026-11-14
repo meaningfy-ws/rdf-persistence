@@ -173,7 +173,7 @@ existence: an aggregate that was never stored can be referenced. A reference not
 
 Deleting an aggregate deletes the comments on it, in the same request, however many there are.
 This holds for every delete through the kit: `session.remove`, `UnitOfWork.remove`, the generic
-`DELETE`, and each member a `delete_cascade` deletes.
+`DELETE`, `kit.remove_with_files`, and each member a `delete_cascade` deletes.
 
 * A comment that only *references* the deleted aggregate stays, with its reference.
 
@@ -241,6 +241,13 @@ Of `thread`:
   comment from a list; it is not a general way to hide parts of an aggregate.
 * *No comment on the tenant root or on a comment.* To answer a comment, reply to it. An
   annotation your application wrote does take comments.
+* *`thread` does not check that the aggregate exists.* For an IRI of the tenant that nothing is
+  stored at it returns an empty list, while `comment` raises `NotFound`.
+* *An IRI policy that does not tell classes apart.* If your aggregate template names neither the
+  type nor the path, a comment and an aggregate of yours can share an IRI for the same id. The
+  generic routes answer 404 for it. A route of your own that deletes by an id from its path
+  (`kit.remove_with_files`, `session.remove`) checks no class: check the type of what you read
+  before you delete it.
 * *Take your sessions from the kit.* The kit's sessions (`kit.session`, `kit.collaboration`)
   already delete the comments with their target. A session opened directly with `open_session`
   does not: it deletes only the aggregate, and its comments stay in the store.

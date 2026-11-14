@@ -444,7 +444,7 @@ async def test_a_present_guard_that_holds_lets_the_commit_through(session, seede
     async with session.transaction() as t:
         t._require_present(A)
         await t.add_graph(C, title(C, "new"))
-    assert await stored(session, C)
+    assert await stored(session, C), "a is there, so the commit went through"
 
 
 async def test_a_present_guard_on_a_removed_root_refuses_the_commit_and_names_it(
@@ -455,10 +455,11 @@ async def test_a_present_guard_on_a_removed_root_refuses_the_commit_and_names_it
         async with session.transaction() as t:
             t._require_present(A)
             await t.add_graph(C, title(C, "new"))
-    assert refused.value.iris == (A,)
-    assert str(refused.value) == f"{A} was removed by someone else since it was read"
+    assert refused.value.iris == (A,), "the conflict names the root that is gone"
+    said = str(refused.value)
+    assert said == f"{A} was removed by someone else since it was read", "and says so in words"
     assert not await stored(session, C), "nothing was written"
-    assert not await a_marker_is_left(store)
+    assert not await a_marker_is_left(store), "and no commit marker is left"
 
 
 async def test_two_present_guards_of_one_transaction_do_not_join(session, seeded):
@@ -466,7 +467,7 @@ async def test_two_present_guards_of_one_transaction_do_not_join(session, seeded
         t._require_present(A)
         t._require_present(B)
         await t.add_graph(C, title(C, "new"))
-    assert await stored(session, C)
+    assert await stored(session, C), "both are there: two guards hold side by side"
 
 
 async def test_a_present_guard_after_the_block_ended_raises(session, seeded):
@@ -514,7 +515,7 @@ async def test_a_remove_drops_the_graph_and_entry_of_each_dependent_and_nothing_
     for iri in (B, other_type, other_link, other_target):
         assert await stored(dropping, iri), f"{iri} stays"
         assert await has_entry(store, iri), f"{iri} keeps its registry entry"
-    assert not await stored(dropping, A)
+    assert not await stored(dropping, A), "the removed root itself is gone"
 
 
 async def test_many_dependents_go_in_the_one_request_of_the_remove(store, dropping, seeded):
@@ -522,8 +523,9 @@ async def test_many_dependents_go_in_the_one_request_of_the_remove(store, droppi
         await dropping.add_graph(book_iri(n), annotation(book_iri(n), NOTE, LINK, A))
     sent = len(store.sent("update"))
     await dropping.remove(A, seeded[A])
-    assert len(store.sent("update")) == sent + 1
-    assert not any([await stored(dropping, book_iri(n)) for n in range(30, 40)])
+    assert len(store.sent("update")) == sent + 1, "one update request for the root and all ten"
+    left = [n for n in range(30, 40) if await stored(dropping, book_iri(n))]
+    assert left == [], "no dependent is left"
 
 
 async def test_a_remove_without_pairs_is_the_request_it_always_was(store, session, seeded):
@@ -540,6 +542,6 @@ async def test_a_remove_without_pairs_is_the_request_it_always_was(store, sessio
         seeded[A],
     )[1]
     assert len(text.split(";\n")) == 2 + len(removal.split(";\n")), "start, the removal, release"
-    assert removal in text
+    assert removal in text, "the removal is the text remove_parts gives without pairs"
     assert "?d " not in text, "no dependents operation"
     assert await stored(session, C), "the would-be dependent stays"

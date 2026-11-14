@@ -626,6 +626,17 @@ delivers.
       `data-flows.adoc` says the same pairs leave comment links out of `referrers`. The Error
       matrix row "10 000 comments" reads 600, what TC-63 and IT-07 test.
 
+  12. From the checker (2026-11-14): `kit.remove_with_files` removes by IRI with no class
+      check; under a flat IRI policy an application's own delete route could be pointed at a
+      comment. Not changed (its signature has no class, and code holding the kit is trusted, as
+      with a session): the kit's docstring and the how-to say to check the type first. A
+      comment whose link to a resource sits on a part of its graph, not on its root, is judged
+      as an ordinary referrer; toolkit comments have no parts, so only raw application triples
+      can do this (accepted). Tests: a non-comment annotation is listed to who may read it and
+      counted for who may not; messages on the stage's remaining message-less asserts. The
+      how-to lists `kit.remove_with_files` among the deletes that drop comments and says what
+      `thread` answers for an IRI nothing is stored at.
+
   Rejected: answering `NotFound` and not `InvalidIri` for a comment on a comment (L1 S2: the
   developer reviewed PD-13; comment IRIs are random, and item 1 and 2 close the paths that hand
   them out); one value for `keys`, `guards` and `dependents` (L3 S1: when a fourth appears);

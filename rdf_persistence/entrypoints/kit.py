@@ -251,6 +251,10 @@ class ServiceKit:
         """Remove the aggregate ``iri`` at ``if_version`` and delete the blobs only it names in
         ``rp:fileKey``. A blob that cannot be deleted is logged; the sweep removes it later.
 
+        It removes whatever aggregate ``iri`` names and checks no class: with an IRI policy whose
+        aggregate template names neither the type nor the path, check the type of what is stored
+        there before calling it with an id from a request.
+
         Raises:
             NotFound: The tenant or the aggregate does not exist.
             Conflict: The aggregate is not at ``if_version``; nothing changed.

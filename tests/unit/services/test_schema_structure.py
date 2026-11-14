@@ -404,13 +404,14 @@ classes:
 
 def test_the_comment_is_a_root_the_generic_router_does_not_serve() -> None:
     """TC-45: its audience would leak through a generic GET (PD-11)."""
-    assert "Comment" not in [root.name for root in served_roots(load_schema(TOY))]
+    served = [root.name for root in served_roots(load_schema(TOY))]
+    assert "Comment" not in served, "no generic route, listing or frame for a comment"
 
 
 def test_the_comment_still_has_an_iri_type_the_policy_mints_and_recognises() -> None:
     """TC-46"""
     roots, _ = iri_types(load_schema(TOY))
-    assert "rp-comment" in roots
+    assert "rp-comment" in roots, "the IRI policy mints and recognises comment IRIs"
 
 
 TOOLKIT_WRITTEN = (
@@ -431,8 +432,8 @@ classes:
 
 def test_a_root_the_toolkit_writes_is_no_served_root_but_keeps_its_iri_type() -> None:
     view = SchemaView(TOOLKIT_WRITTEN)
-    assert [root.name for root in served_roots(view)] == ["Book"]
-    assert iri_types(view)[0] == {"note", "book"}
+    assert [root.name for root in served_roots(view)] == ["Book"], "the note is not served"
+    assert iri_types(view)[0] == {"note", "book"}, "but its IRIs are minted and recognised"
 
 
 def test_a_root_under_a_system_database_ancestor_is_no_served_root() -> None:

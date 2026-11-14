@@ -922,6 +922,28 @@ async def test_referrers_returns_for_a_foreign_annotation_that_references_the_ag
     assert set(listed) <= {comment_iri(1)}, f"{shape}: and nothing else is listed"
 
 
+async def test_an_annotation_that_is_no_comment_is_a_referrer_like_any_other(
+    rules, session, ada, books
+):
+    """PD-29: listed to who may read it, counted for who may not; no thread rule applies."""
+    foreign = comment_iri(1)
+    await session.add_graph(
+        foreign, annotation(foreign, (v.COMMENT_REFERENCES, URIRef(B3)), MOTIVE)
+    )
+    seen = await ada.referrers(B3)
+    assert [r.referrer for r in seen.referrers or []] == [foreign], "ada may read it: listed"
+    banned = acts(
+        rules,
+        session,
+        BOB,
+        role("reader", who=BOB),
+        bans=[ban(Action.READ, graph_of(foreign), BOB)],
+    )
+    unseen = await banned.referrers(B3)
+    assert not unseen.referrers, "bob may not read it: not listed"
+    assert unseen.hidden_count == 1, "and counted once"
+
+
 async def test_an_annotation_without_a_text_is_not_in_the_thread(session, ada, books):
     """PD-29: what does not decode as a comment is not a comment."""
     await session.add_graph(comment_iri(1), annotation(comment_iri(1), MOTIVE))
