@@ -23,6 +23,9 @@ _SEGMENT = re.compile(r"[a-z][a-z0-9-]*")
 _PREFIX = re.compile(r"[a-z][a-z0-9]{0,19}")
 SYSTEM_SUFFIX = "-system"
 TENANT_INFIX = "-t-"
+# The application is the one place for data that belongs to no tenant: an id no tenant may take.
+APPLICATION_ID = "app"
+APPLICATION_SUFFIX = "-app"
 TOOLKIT_SEGMENT = "toolkit"
 # The graph, under the base, that records the effective IRI policy of the deployment (PD-9, PD-14b).
 POLICY_SEGMENT = f"{TOOLKIT_SEGMENT}/iri-policy"
@@ -157,6 +160,11 @@ def loaded_graph_iri(aggregate_iri: str) -> URIRef:
 def system_database_name(prefix: str) -> str:
     """The system database ``{prefix}-system``."""
     return f"{_prefix(prefix)}{SYSTEM_SUFFIX}"
+
+
+def application_database_name(prefix: str) -> str:
+    """The application database ``{prefix}-app``; it never starts with a tenant's ``{prefix}-t-``."""
+    return f"{_prefix(prefix)}{APPLICATION_SUFFIX}"
 
 
 def tenant_name_prefix(prefix: str) -> str:
@@ -353,6 +361,7 @@ class Iris:
             ("id_source", id_source),
         ):
             object.__setattr__(self, name, value)
+        self._require_application_iri()
         self._require_distinct_graphs()
 
     def __setattr__(self, name: str, value: object) -> None:
@@ -398,19 +407,40 @@ class Iris:
         }
 
     @cached_property
+    def application(self) -> URIRef:
+        """The IRI of the application: what holds data that belongs to no tenant (the ``application_template``)."""
+        return URIRef(self._template("application_template").format(**self._fixed))
+
+    def _id_of(self, tenant: str) -> str:
+        """The id ``{tenant_id}`` stands for in the IRIs of ``tenant``: ``app`` for the application."""
+        if str(tenant) == str(self.application):
+            return APPLICATION_ID
+        return self.tenant_id_of(tenant)
+
+    @cached_property
     def _reserved(self) -> frozenset[str]:
-        words = {*LAYOUT_WORDS, *self.root_types, *self.owned_types, self._fixed["deployment"]}
+        words = {
+            *LAYOUT_WORDS,
+            *self.root_types,
+            *self.owned_types,
+            self._fixed["deployment"],
+            APPLICATION_ID,
+        }
         for template in _templates(self._policy).values():
             literals = (piece for piece in _VARIABLE.split(template) if piece[:1] != "{")
             words.update(word for literal in literals for word in _WORD.findall(literal))
         return frozenset(words - {""})
 
-    def _pattern(self, template: str, types: frozenset[str] | str = frozenset()) -> re.Pattern[str]:
+    def _pattern(
+        self, template: str, types: frozenset[str] | str = frozenset(), application: bool = False
+    ) -> re.Pattern[str]:
+        """``template`` as a regex; with ``application`` the ``{tenant_id}`` may also be ``app`` (only the application's aggregates)."""
         alternation = types if isinstance(types, str) else _alternation(types)
+        tenant_id = _id_pattern(self._tenant_spec)
         groups = {
             "tenant": _ANY,
             "root": _ANY,
-            "tenant_id": _id_pattern(self._tenant_spec),
+            "tenant_id": f"(?:{tenant_id}|{APPLICATION_ID})" if application else tenant_id,
             "id": _id_pattern(self._object_spec),
             "rp_path": _SEGMENT.pattern,
             "type": alternation,
@@ -427,11 +457,15 @@ class Iris:
 
     @cached_property
     def _aggregate_re(self) -> re.Pattern[str]:
-        return self._pattern(self._template("aggregate_template"), self.root_types)
+        return self._pattern(
+            self._template("aggregate_template"), self.root_types, application=True
+        )
 
     @cached_property
     def _loaded_re(self) -> re.Pattern[str]:
-        return self._pattern(self._template("loaded_graph_template"), re.escape(LOADED_GRAPH_TYPE))
+        return self._pattern(
+            self._template("loaded_graph_template"), re.escape(LOADED_GRAPH_TYPE), application=True
+        )
 
     @cached_property
     def _tenant_id_re(self) -> re.Pattern[str]:
@@ -441,15 +475,35 @@ class Iris:
     def _object_id_re(self) -> re.Pattern[str]:
         return re.compile(_id_pattern(self._object_spec))
 
+    def _require_application_iri(self) -> None:
+        """Refuse an application IRI outside the base, on the toolkit's own IRI, or one that reads as a tenant.
+
+        Raises:
+            InvalidIri: the ``application_template`` mints such an IRI.
+        """
+        iri, base = str(self.application), self.settings.base
+        toolkit = str(toolkit_principal_iri(base))
+        if not iri.startswith(base) or iri == base:
+            raise InvalidIri(f"the application template mints an IRI outside the base: {iri!r}")
+        if iri == toolkit or iri.startswith(f"{toolkit}/"):
+            raise InvalidIri(f"the application template mints the toolkit's own IRI: {iri!r}")
+        if self._tenant_re.fullmatch(iri):
+            raise InvalidIri(
+                f"the application template mints an IRI that reads as a tenant: {iri!r}"
+            )
+
     def _require_distinct_graphs(self) -> None:
-        """Refuse templates under which one tenant's access, meta or registry IRI is another, the tenant's, or an aggregate's (PD-14d).
+        """Refuse templates under which the access, meta or registry IRI of a tenant or of the application is another, its owner's, or an aggregate's (PD-14d).
 
         Raises:
             InvalidIri: two of the IRIs coincide, or one reads as an aggregate or a loaded graph.
         """
         tenant = self._probe_tenant()
-        if tenant is None:  # no id can be drawn: minting a tenant fails on its own, loudly
-            return
+        if tenant is not None:  # else no id can be drawn: minting a tenant fails on its own, loudly
+            self._require_distinct_graphs_of(tenant)
+        self._require_distinct_graphs_of(self.application)
+
+    def _require_distinct_graphs_of(self, tenant: URIRef) -> None:
         taken = {str(tenant): "tenant"}
         for name, make in (
             ("access", self.access),
@@ -487,7 +541,7 @@ class Iris:
 
     def _fill(self, template: str, **values: str) -> URIRef:
         if "{tenant_id}" in template and "tenant_id" not in values:
-            values["tenant_id"] = self.tenant_id_of(values["tenant"])
+            values["tenant_id"] = self._id_of(values["tenant"])
         return URIRef(template.format(**self._fixed, **values))
 
     @staticmethod
@@ -586,16 +640,23 @@ class Iris:
 
     # -- matching --
 
+    def _reads_reserved(self, groups: dict[str, str | None]) -> bool:
+        """True when a matched ``id`` is a reserved word, or a matched ``tenant_id`` is one other than ``app``."""
+        tenant_id = groups.get("tenant_id")
+        return groups.get("id") in self._reserved or (
+            tenant_id in self._reserved and tenant_id != APPLICATION_ID
+        )
+
     def _belongs(self, found: re.Match[str], tenant: str | None) -> bool:
         """True when the match reads no reserved word as an id, and its tenant is ``tenant`` (``None``: not checked)."""
         groups = found.groupdict()
-        if any(groups.get(name) in self._reserved for name in ("id", "tenant_id")):
+        if self._reads_reserved(groups):
             return False
         if tenant is None:
             return True
         if groups.get("tenant", tenant) != tenant:
             return False
-        return "tenant_id" not in groups or groups["tenant_id"] == self.tenant_id_of(tenant)
+        return "tenant_id" not in groups or groups["tenant_id"] == self._id_of(tenant)
 
     def is_aggregate(self, tenant: str, iri: str) -> bool:
         """True for what the toolkit mints as an aggregate of ``tenant``, or its root or access record.

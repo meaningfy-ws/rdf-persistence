@@ -59,7 +59,7 @@ and `make clean-code` unless it names others.
 
 ## 2. The application's IRIs
 
-- [ ] 2.1 PD-2 and PD-3 in `domain/iris.py`. Tests in `tests/unit/domain/test_iris_application.py`,
+- [x] 2.1 PD-2 and PD-3 in `domain/iris.py`. Tests in `tests/unit/domain/test_iris_application.py`,
   each row under the default and the flat policy unless it names one, on
   `Iris(settings, root_types=frozenset({"template", "book"}), owned_types=frozenset({"chapter"}))`. Gates: `make test-fast`,
   `make check-quality`, `make clean-code`. The lead runs the adversarial tester right after this
