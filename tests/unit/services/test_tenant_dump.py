@@ -35,7 +35,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     ServiceSettings,
     TenantDump,
 )
-from rdf_persistence.domain.iris import Iris
+from rdf_persistence.domain.iris import Iris, stamps_graph_iri
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
@@ -183,6 +183,35 @@ def moved(world: SimpleNamespace, old: str, new_tenant: str) -> str:
 @pytest.fixture
 async def world() -> SimpleNamespace:
     return await populated(await make_world(iris_of(SETTINGS), SETTINGS))
+
+
+# -- schema-migrations TC-34, TC-35: the stamps travel with a dump -------------------------------
+
+TOOLKIT_SCHEMA = "https://meaningfy.ws/ns/rdf-persistence"
+LIBRARY_SCHEMA = "https://example.org/ns/library"
+STAMPS = ((TOOLKIT_SCHEMA, "1"), (LIBRARY_SCHEMA, "2"))
+ALL_STAMPS = "SELECT ?s ?v WHERE {{ GRAPH <{graph}> {{ ?s ?p ?v }} }}"
+
+
+async def stamps_held(world: SimpleNamespace, tenant: str) -> dict[str, str]:
+    database = (await world.tenancy.get(tenant))[0].database_name
+    graph = stamps_graph_iri(SETTINGS.base)
+    rows = await world.store.query(database, ALL_STAMPS.format(graph=graph))
+    return {str(row.s): str(row.v) for row in rows}  # type: ignore[union-attr]
+
+
+async def test_tc34_a_stamped_tenant_dumps_and_restores_at_the_same_version():
+    world = await populated(await make_world(iris_of(SETTINGS), SETTINGS, stamps=STAMPS))
+    assert await stamps_held(world, world.tenant) == dict(STAMPS), "create stamped the tenant"
+    summary = await restored(world, await dumped(world))
+    assert await stamps_held(world, summary.id) == dict(STAMPS), (
+        "the restored tenant holds the stamps"
+    )
+
+
+async def test_tc35_a_tenant_set_aside_can_still_be_dumped(world):
+    world.tenancy.behind.add(world.tenant)
+    assert await dumped(world), "the dump is made"
 
 
 # -- TC-10, TC-13: a restored tenant answers like the original -----------------------------------

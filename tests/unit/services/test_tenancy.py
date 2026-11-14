@@ -228,6 +228,28 @@ async def test_the_access_record_is_written_after_the_bucket_and_the_root(tenanc
     ), "root first, access record second"
 
 
+async def test_create_stamps_the_new_database_before_it_writes_the_root(store, files):
+    """schema-migrations PD-10, TC-34: every pair of ``stamps``, right after the database is made."""
+    made = Tenancy(
+        store, files, SETTINGS, mapper=toy_mapper(), root_class=Library,
+        access_class=LibraryAccess, stamps=(("urn:schema:a", "1"), ("urn:schema:b", "7")),
+    )  # fmt: skip
+    await made.ensure_system_database()
+    before = len(store.sent("update"))
+    summary = await made.create("Ghent", library_slots(), CREATOR)
+    updates = store.sent("update")[before:]
+    assert all("schema-stamps" in text for text in updates[:2]), "the stamps come first"
+    assert f"{summary.id}/meta" in updates[2], "then the root"
+    assert ('"1"' in updates[0], '"7"' in updates[1]) == (True, True), (
+        "one stamp per pair, in order"
+    )
+
+
+async def test_without_stamps_nothing_is_stamped(tenancy, store):
+    await tenancy.create("Ghent", library_slots(), CREATOR)
+    assert not any("schema-stamps" in text for text in store.sent("update")), "no stamp is written"
+
+
 async def test_tenants_lists_every_record_with_its_state(tenancy):
     first = await tenancy.create("Ghent", library_slots(), CREATOR)
     second = await tenancy.create("Bruges", library_slots(), CREATOR)

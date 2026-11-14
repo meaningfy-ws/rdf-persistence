@@ -11,7 +11,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.domain.iris import Iris
+from rdf_persistence.domain.iris import Iris, stamps_graph_iri
 from rdf_persistence.domain.tenant_move import check_graphs, glued_templates, rewrite
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.schema import load_schema
@@ -245,6 +245,27 @@ def test_every_graph_the_policy_mints_for_the_tenant_passes_the_check():
         )
     )
     check_graphs(source, tenant, iris)
+
+
+def test_a_quad_in_the_stamps_graph_passes_the_check():
+    """schema-migrations PD-15, TC-34: a dump of a stamped tenant holds the stamps graph."""
+    iris = iris_of()
+    tenant = str(iris.tenant(NEW))
+    stamp = (
+        URIRef("urn:x:schema"),
+        v.DATA_SCHEMA_VERSION,
+        Literal("1"),
+        stamps_graph_iri(SETTINGS.base),
+    )
+    check_graphs(dataset_of(stamp), tenant, iris)
+
+
+def test_a_graph_beside_the_stamps_graph_is_still_refused():
+    iris = iris_of()
+    other = URIRef(f"{SETTINGS.base}toolkit/schema-stamps-two")
+    source = dataset_of((URIRef("urn:x:s"), DCTERMS.relation, Literal("x"), other))
+    with pytest.raises(InvalidBody, match="schema-stamps-two"):
+        check_graphs(source, str(iris.tenant(NEW)), iris)
 
 
 def test_a_quad_in_the_provenance_graph_passes_the_check():

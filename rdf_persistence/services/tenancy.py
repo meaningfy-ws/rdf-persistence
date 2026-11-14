@@ -24,6 +24,7 @@ from rdf_persistence.domain.exceptions import (
     NotFound,
     PersistenceError,
     StoredDataInvalid,
+    TenantBehind,
 )
 from rdf_persistence.domain.generated.rp_access import Action, Grant
 from rdf_persistence.domain.generated.rp_core import DatabaseKind, Principal, RpAnnotation
@@ -40,6 +41,7 @@ from rdf_persistence.domain.iris import (
     Iris,
     application_database_name,
     graph_iri,
+    stamps_graph_iri,
     system_database_name,
     toolkit_principal_iri,
 )
@@ -51,6 +53,7 @@ from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
+from rdf_persistence.services.migration_runner import stamp_if_none
 from rdf_persistence.services.schema_structure import (
     LABEL,
     aggregate_keys,
@@ -118,8 +121,13 @@ class Tenancy:
         grant_validators: Sequence[GrantValidator] = (),
         root_validators: Sequence[RootValidator] = (),
         dependents: Dependents = (),
+        stamps: Sequence[tuple[str, str]] = (),
     ) -> None:
         self._dependents = dependents
+        self._stamps = tuple(
+            stamps
+        )  # (schema id, current version) of each chain, written to a new database (PD-10)
+        self.behind: set[str] = set()  # the tenants whose migration failed at start-up (PD-11)
         # not DEFAULT_IRIS: resource names need the settings' prefix, which DEFAULT_IRIS lacks (PD-12j)
         self._iris = iris or Iris(settings)
         self._listings = listings
@@ -172,7 +180,13 @@ class Tenancy:
     def tenant_session(
         self, tenant: str, principal: Principal
     ) -> AbstractAsyncContextManager[Session]:
-        """A session on the database of ``tenant`` for ``principal``; it refuses application classes (PD-6)."""
+        """A session on the database of ``tenant`` for ``principal``; it refuses application classes (PD-6).
+
+        Raises:
+            TenantBehind: The tenant's migration failed at start-up (``behind``).
+        """
+        if tenant in self.behind:
+            raise TenantBehind(f"the tenant {tenant} is behind its schema: its migration failed")
         return self._session(
             self._iris.resource_name(tenant), tenant, principal, self._application_types
         )
@@ -238,6 +252,27 @@ class Tenancy:
         """The name of the system database."""
         return self._system
 
+    @property
+    def application_database(self) -> str | None:
+        """The name of the application database; None when the schema declares no application class."""
+        if not self._application_types:
+            return None
+        return application_database_name(self._settings.prefix)
+
+    @property
+    def stamps_graph(self) -> URIRef:
+        """The graph of each database that records the schema versions its data follows (PD-2)."""
+        return stamps_graph_iri(self._settings.base)
+
+    def database_of(self, tenant: str) -> str:
+        """The name of the database of ``tenant``."""
+        return self._iris.resource_name(tenant)
+
+    async def _stamp(self, database: str) -> None:
+        """Stamp ``database``, which this call just created, with every pair of ``stamps`` (PD-10)."""
+        for schema_id, version in self._stamps:
+            await stamp_if_none(self._store, database, self.stamps_graph, schema_id, version)
+
     async def has_access_records(self) -> bool:
         """True when any graph of the system database holds an access record, found by type and not through the IRI policy."""
         result = await self._store.query(self._system, fill(ASK_RECORDS, p_state=term(v.STATE)))
@@ -251,6 +286,7 @@ class Tenancy:
             await self._store.create_dataset(name)
         except Conflict:  # another worker created it first
             return False
+        await self._stamp(name)
         return True
 
     async def ensure_system_database(self) -> bool:
@@ -264,7 +300,9 @@ class Tenancy:
         """
         if not self._application_types:
             return False
-        return await self._ensure_dataset(application_database_name(self._settings.prefix))
+        return await self._ensure_dataset(
+            application_database_name(self._settings.prefix)
+        )  # stamped when created
 
     async def create(
         self, label: str, root_slots: Mapping[str, Any], creator: Principal
@@ -293,6 +331,7 @@ class Tenancy:
         refuse_internal(self._mapper.to_graph(tenant_root), self._internal)
         _run_validators(self._root_validators, None, tenant_root, creator)
         await self._store.create_dataset(name)
+        await self._stamp(name)  # before the root: a database found with data has its stamp (PD-10)
         _log_step("create-database", tenant, name)
         await self._files.create_bucket(name)
         _log_step("create-bucket", tenant, name)

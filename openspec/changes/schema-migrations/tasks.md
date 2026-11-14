@@ -62,7 +62,7 @@ runs right after task 2.2, the riskiest (write order, atomicity, concurrency). G
   `MigrationFailed`, `TenantBehind` (`domain/exceptions.py`, exported) and, in
   `services/migrations.py`, `load_chain(folder, schema_id, current)` (PD-4) answering the ordered
   versions and migrations.
-- [ ] 2.2 Runner. Test first, in `tests/unit/services/test_migrations.py` and the existing dump and
+- [x] 2.2 Runner. Test first, in `tests/unit/services/test_migrations.py` and the existing dump and
   restore tests. Then, in `services/migrations.py`: `stamp_if_none`, `stamps`,
   `migrate_database(store, database, chains)` (PD-7, PD-10), `migrate_shared` and
   `migrate_tenants(tenancy, store, chains) -> set[str]` (PD-9, PD-11); `Tenancy.behind` and the
