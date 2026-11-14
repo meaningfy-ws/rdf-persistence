@@ -63,7 +63,7 @@ def check_graphs(data: Dataset, tenant: str, iris: Iris) -> None:
     Raises:
         InvalidBody: A quad is in the default graph or in a graph that is not the tenant's.
     """
-    minted = {iris.meta(tenant), iris.registry(tenant)}
+    minted = {iris.meta(tenant), iris.registry(tenant), iris.provenance(tenant)}
     for graph in sorted({str(graph) for *_, graph in data.quads()}):
         if graph == str(DATASET_DEFAULT_GRAPH_ID):
             raise InvalidBody("the dump has a quad in the default graph")

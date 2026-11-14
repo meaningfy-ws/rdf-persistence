@@ -22,10 +22,52 @@
     range: string
 - class_name: Activity
   slots:
+  - name: ended_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: generations
+    required: false
+    multivalued: true
+    range: Generation
   - name: id
     required: true
     multivalued: false
     range: uri
+  - name: invalidations
+    required: false
+    multivalued: true
+    range: Invalidation
+  - name: started_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: was_associated_with
+    required: false
+    multivalued: true
+    range: Principal
+- class_name: Add
+  slots:
+  - name: ended_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: generations
+    required: false
+    multivalued: true
+    range: Generation
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: invalidations
+    required: false
+    multivalued: true
+    range: Invalidation
+  - name: started_at_time
+    required: false
+    multivalued: false
+    range: datetime
   - name: was_associated_with
     required: false
     multivalued: true
@@ -302,6 +344,28 @@
     multivalued: false
     range: string
     alias: value
+- class_name: Generation
+  slots:
+  - name: activity
+    required: true
+    multivalued: false
+    range: uri
+  - name: at_time
+    required: true
+    multivalued: false
+    range: datetime
+  - name: entity
+    required: true
+    multivalued: false
+    range: uri
+  - name: entity_class
+    required: false
+    multivalued: false
+    range: uri
+  - name: entity_version
+    required: true
+    multivalued: false
+    range: string
 - class_name: Grant
   slots:
   - name: action
@@ -347,6 +411,28 @@
     multivalued: false
     range: integer
     alias: length
+- class_name: Invalidation
+  slots:
+  - name: activity
+    required: true
+    multivalued: false
+    range: uri
+  - name: at_time
+    required: true
+    multivalued: false
+    range: datetime
+  - name: entity
+    required: true
+    multivalued: false
+    range: uri
+  - name: entity_class
+    required: false
+    multivalued: false
+    range: uri
+  - name: entity_version
+    required: true
+    multivalued: false
+    range: string
 - class_name: IriPolicy
   slots:
   - name: access_template
@@ -378,6 +464,10 @@
     multivalued: false
     range: string
   - name: principal_template
+    required: false
+    multivalued: false
+    range: string
+  - name: provenance_template
     required: false
     multivalued: false
     range: string
@@ -737,6 +827,58 @@
     required: true
     multivalued: false
     range: uri
+- class_name: Remove
+  slots:
+  - name: ended_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: generations
+    required: false
+    multivalued: true
+    range: Generation
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: invalidations
+    required: false
+    multivalued: true
+    range: Invalidation
+  - name: started_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: was_associated_with
+    required: false
+    multivalued: true
+    range: Principal
+- class_name: Replace
+  slots:
+  - name: ended_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: generations
+    required: false
+    multivalued: true
+    range: Generation
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: invalidations
+    required: false
+    multivalued: true
+    range: Invalidation
+  - name: started_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: was_associated_with
+    required: false
+    multivalued: true
+    range: Principal
 - class_name: RoleDefinition
   slots:
   - name: actions
@@ -1130,14 +1272,26 @@
     range: datetime
 - class_name: TransitionRecord
   slots:
+  - name: ended_at_time
+    required: false
+    multivalued: false
+    range: datetime
   - name: from_state_iri
     required: true
     multivalued: false
     range: uri
+  - name: generations
+    required: false
+    multivalued: true
+    range: Generation
   - name: id
     required: true
     multivalued: false
     range: uri
+  - name: invalidations
+    required: false
+    multivalued: true
+    range: Invalidation
   - name: started_at_time
     required: true
     multivalued: false

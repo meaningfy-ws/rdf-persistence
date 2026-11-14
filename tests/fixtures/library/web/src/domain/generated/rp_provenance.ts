@@ -6,4 +6,88 @@ export interface Activity {
   id: string;
   /** A principal that carried out the activity. */
   was_associated_with?: string[];
+  /** The time the activity started. */
+  started_at_time?: string;
+  /** The time the activity ended. */
+  ended_at_time?: string;
+  /** The versions of entities the activity generated. */
+  generations?: Generation[];
+  /** The versions of entities the activity invalidated. */
+  invalidations?: Invalidation[];
+}
+
+/** The generation of one version of an entity by an activity. */
+export interface Generation {
+  /** The IRI of the activity this generation or invalidation belongs to. */
+  activity: string;
+  /** The time of the generation or invalidation, the end of its activity. */
+  at_time: string;
+  /** The IRI of the entity whose version was generated or invalidated. */
+  entity: string;
+  /** The IRI of the entity's class, when it had one. */
+  entity_class?: string;
+  /** The version token of the entity that was generated or invalidated. */
+  entity_version: string;
+}
+
+/** The invalidation of one version of an entity by an activity. */
+export interface Invalidation {
+  /** The IRI of the activity this generation or invalidation belongs to. */
+  activity: string;
+  /** The time of the generation or invalidation, the end of its activity. */
+  at_time: string;
+  /** The IRI of the entity whose version was generated or invalidated. */
+  entity: string;
+  /** The IRI of the entity's class, when it had one. */
+  entity_class?: string;
+  /** The version token of the entity that was generated or invalidated. */
+  entity_version: string;
+}
+
+/** An activity that added an aggregate. */
+export interface Add {
+  /** The IRI that identifies the object. */
+  id: string;
+  /** A principal that carried out the activity. */
+  was_associated_with?: string[];
+  /** The time the activity started. */
+  started_at_time?: string;
+  /** The time the activity ended. */
+  ended_at_time?: string;
+  /** The versions of entities the activity generated. */
+  generations?: Generation[];
+  /** The versions of entities the activity invalidated. */
+  invalidations?: Invalidation[];
+}
+
+/** An activity that replaced an aggregate with a new version. */
+export interface Replace {
+  /** The IRI that identifies the object. */
+  id: string;
+  /** A principal that carried out the activity. */
+  was_associated_with?: string[];
+  /** The time the activity started. */
+  started_at_time?: string;
+  /** The time the activity ended. */
+  ended_at_time?: string;
+  /** The versions of entities the activity generated. */
+  generations?: Generation[];
+  /** The versions of entities the activity invalidated. */
+  invalidations?: Invalidation[];
+}
+
+/** An activity that removed an aggregate. */
+export interface Remove {
+  /** The IRI that identifies the object. */
+  id: string;
+  /** A principal that carried out the activity. */
+  was_associated_with?: string[];
+  /** The time the activity started. */
+  started_at_time?: string;
+  /** The time the activity ended. */
+  ended_at_time?: string;
+  /** The versions of entities the activity generated. */
+  generations?: Generation[];
+  /** The versions of entities the activity invalidated. */
+  invalidations?: Invalidation[];
 }

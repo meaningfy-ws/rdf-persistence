@@ -67,6 +67,11 @@ INDEXED_NAMES = [
     "IdSpec",
     "IdKind",
     "DEFAULT_IRIS",
+    "Generation",
+    "Invalidation",
+    "Add",
+    "Replace",
+    "Remove",
 ]
 
 

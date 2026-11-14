@@ -240,6 +240,28 @@ def test_every_graph_the_policy_mints_for_the_tenant_passes_the_check():
     check_graphs(source, tenant, iris)
 
 
+def test_a_quad_in_the_provenance_graph_passes_the_check():
+    """message-bus PD-5, TC-08."""
+    iris = iris_of()
+    tenant = str(iris.tenant(NEW))
+    source = dataset_of(
+        (URIRef("urn:uuid:a"), DCTERMS.relation, Literal("x"), iris.provenance(tenant))
+    )
+    check_graphs(source, tenant, iris)
+
+
+def test_a_provenance_quad_moves_its_graph_and_object_but_not_its_subject():
+    """TC-09."""
+    iris = iris_of()
+    old, new = str(iris.tenant(OLD)), str(iris.tenant(NEW))
+    activity, entity = URIRef("urn:uuid:a"), URIRef("https://rp.example/entity")
+    source = dataset_of((activity, entity, URIRef(f"{old}/books/1"), iris.provenance(old)))
+    moved = rewrite(source, SETTINGS.base, OLD, NEW)
+    assert quads_of(moved) == {
+        (activity, entity, URIRef(f"{new}/books/1"), URIRef(f"{new}/provenance"))
+    }
+
+
 def test_a_graph_of_another_tenant_is_refused_naming_it():
     iris = iris_of()
     other = minted_graphs(iris, str(iris.tenant(OLD)))[0]

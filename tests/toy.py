@@ -23,6 +23,7 @@ from rdf_persistence.domain.generated import (
     rp_collections,
     rp_core,
     rp_discussion,
+    rp_provenance,
     rp_workflow,
 )
 from rdf_persistence.domain.iris import graph_iri
@@ -59,6 +60,7 @@ MODULES = (
     rp_core,
     rp_collections,
     rp_discussion,
+    rp_provenance,
     rp_workflow,
 )
 

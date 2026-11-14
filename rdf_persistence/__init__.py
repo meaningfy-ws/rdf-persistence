@@ -81,7 +81,12 @@ from rdf_persistence.domain.generated.rp_files import (
 )
 from rdf_persistence.domain.generated.rp_provenance import (
     Activity,
+    Add,
+    Generation,
+    Invalidation,
     Provenanced,
+    Remove,
+    Replace,
 )
 from rdf_persistence.domain.generated.rp_tenancy import (
     TenantAccess,
@@ -199,6 +204,7 @@ __all__ = [
     "AccountSummary",
     "Action",
     "Activity",
+    "Add",
     "AggregateKey",
     "AggregateRoot",
     "Authorised",
@@ -218,6 +224,7 @@ __all__ = [
     "FileStore",
     "Forbidden",
     "FusekiStore",
+    "Generation",
     "Grant",
     "GrantSet",
     "GrantValidator",
@@ -234,6 +241,7 @@ __all__ = [
     "InvalidRoleDefinition",
     "InvalidToken",
     "InvalidWorkflow",
+    "Invalidation",
     "IriPolicy",
     "Iris",
     "JwksTokenVerifier",
@@ -264,6 +272,8 @@ __all__ = [
     "ReferrerList",
     "RegistryEntry",
     "RegistryKind",
+    "Remove",
+    "Replace",
     "RoleDefinition",
     "RoleLevel",
     "RootValidator",

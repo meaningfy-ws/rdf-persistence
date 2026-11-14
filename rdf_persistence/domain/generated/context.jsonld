@@ -36,9 +36,17 @@
             "annotate": "http://www.w3.org/ns/odrl/2/annotate"
          }
       },
+      "activity": {
+         "@type": "@id",
+         "@id": "prov:activity"
+      },
       "assignee": {
          "@type": "@id",
          "@id": "ODRL:assignee"
+      },
+      "at_time": {
+         "@type": "xsd:dateTime",
+         "@id": "prov:atTime"
       },
       "blobs": {
          "@container": "@set",
@@ -79,6 +87,21 @@
       "description": {
          "@id": "dcterms:description"
       },
+      "ended_at_time": {
+         "@type": "xsd:dateTime",
+         "@id": "prov:endedAtTime"
+      },
+      "entity": {
+         "@type": "@id",
+         "@id": "entity"
+      },
+      "entity_class": {
+         "@type": "@id",
+         "@id": "entityClass"
+      },
+      "entity_version": {
+         "@id": "entityVersion"
+      },
       "equals_slot": {
          "@id": "equalsSlot"
       },
@@ -98,6 +121,11 @@
       "generated_at_time": {
          "@type": "xsd:dateTime",
          "@id": "prov:generatedAtTime"
+      },
+      "generations": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "generation"
       },
       "grants": {
          "@type": "@id",
@@ -119,6 +147,11 @@
       },
       "initial_state": {
          "@id": "initialState"
+      },
+      "invalidations": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "invalidation"
       },
       "key_name": {
          "@id": "keyName"
@@ -333,6 +366,9 @@
       "Activity": {
          "@id": "prov:Activity"
       },
+      "Add": {
+         "@id": "Add"
+      },
       "AggregateKey": {
          "@id": "AggregateKey"
       },
@@ -351,8 +387,14 @@
       "Described": {
          "@id": "Described"
       },
+      "Generation": {
+         "@id": "prov:Generation"
+      },
       "Grant": {
          "@id": "ODRL:Permission"
+      },
+      "Invalidation": {
+         "@id": "prov:Invalidation"
       },
       "KeyDuplicate": {
          "@id": "KeyDuplicate"
@@ -380,6 +422,12 @@
       },
       "RegistryEntry": {
          "@id": "RegistryEntry"
+      },
+      "Remove": {
+         "@id": "Remove"
+      },
+      "Replace": {
+         "@id": "Replace"
       },
       "RoleDefinition": {
          "@id": "RoleDefinition"

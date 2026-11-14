@@ -31,6 +31,10 @@ export type RpAnnotation =
   | "workflow"
   /** Slot annotation, `true` when the session writes the slot about a graph (its version, who created or contributed to it, when); closed shapes ignore the statement. */
   | "bookkeeping"
+  /** Slot annotation, `true` when the toolkit sets the slot of an activity's record itself, and a caller's value is ignored. */
+  | "toolkit_filled"
+  /** Annotation of a `slot_usage` entry in a command class, `true` when the command carries the slot but the stored record does not; it is never required there. */
+  | "payload"
   /** Annotation of a `unique_keys` entry on an aggregate root (or an ancestor of roots), `tenant` (see UniqueScope): the key holds across the aggregates of a tenant, not inside one aggregate. A key without it keeps its in-aggregate meaning. */
   | "rp_unique_scope";
 

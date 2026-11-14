@@ -19,7 +19,7 @@
     },
     {
       "path": "rdf_persistence/generation/checks/hard.py",
-      "sha256": "efaa73692d7098e83d94dc5d9fd5070d7027f39bd1dab37fd607df83b19f12f3"
+      "sha256": "c8dde777728dad3739d94bb2ee393d0b7dace95fa8898e77fbba46af32bbbff4"
     },
     {
       "path": "rdf_persistence/generation/checks/rules.py",
@@ -143,7 +143,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "c6731e08cb1714955bad199f8faaf435bb942b6f29a4e6ef69d6afb660848c92"
+      "sha256": "ebd0f0f12891985889bd21fcc67dadb2311a1cbca41b092d68edcf2c43747412"
     },
     {
       "path": "rdf_persistence/model/rp_tenancy.yaml",
@@ -151,7 +151,7 @@
     },
     {
       "path": "rdf_persistence/model/service/rp_service.yaml",
-      "sha256": "9c8e5dc9791b37180f5f115f80c7774ba2447faa7ebc9efc496a85c671b303dc"
+      "sha256": "bcc35c360c3e9c1c9bc37dc0a016e4cff6cd3f4b563f55d77cd1291dcc5f0080"
     },
     {
       "path": "rdf_persistence/services/schema.py",
@@ -169,19 +169,19 @@
     },
     {
       "path": "rdf_persistence/domain/generated/service/context.jsonld",
-      "sha256": "3a181dfa9da1eb3ab5014aacd5adeeeb7a820bc04a1197bfae63eff9718bef58"
+      "sha256": "6aa51dc91fff7a73f35ca928700c79ca8b05430a10f9d2d1bd45599304416981"
     },
     {
       "path": "rdf_persistence/domain/generated/service/openapi-components.json",
-      "sha256": "8eabdd2475e165404805db616bc49c63a5b8ebf4be3ccc9819869fd6b315fc35"
+      "sha256": "5fe3854fb2dd4fc30e7f7564acef928f655915a0ce29c536cb5c8d932cdeb1cd"
     },
     {
       "path": "rdf_persistence/domain/generated/service/rp_service.py",
-      "sha256": "961bb4f7e1c92546135322ef53931657f3954175d6355f2eeb2e421727a8f25e"
+      "sha256": "2401bef1cc078ff72dd64641c29ace42f227d77023a9bb71acb40a1d6115ae63"
     },
     {
       "path": "rdf_persistence/domain/generated/service/shapes.ttl",
-      "sha256": "f2f95eb28aa9e0a1b160fa2712aa2c3e8ea69c7386f093de15553897f96dbba6"
+      "sha256": "7fb13a87abc83a1a370cf15c0e024e1bd12add8a5f0d722fbf4772c626929fb1"
     }
   ]
 }

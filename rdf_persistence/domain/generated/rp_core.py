@@ -88,6 +88,10 @@ class RpAnnotation(str, Enum):
     "Class annotation on an aggregate root: the name of the workflow its instances follow, which follows the pattern of the url_segment slot; the root includes UnderWorkflow. A subclass inherits it."
     BOOKKEEPING = "bookkeeping"
     "Slot annotation, `true` when the session writes the slot about a graph (its version, who created or contributed to it, when); closed shapes ignore the statement."
+    TOOLKIT_FILLED = "toolkit_filled"
+    "Slot annotation, `true` when the toolkit sets the slot of an activity\u0027s record itself, and a caller\u0027s value is ignored."
+    PAYLOAD = "payload"
+    "Annotation of a `slot_usage` entry in a command class, `true` when the command carries the slot but the stored record does not; it is never required there."
     RP_UNIQUE_SCOPE = "rp_unique_scope"
     "Annotation of a `unique_keys` entry on an aggregate root (or an ancestor of roots), `tenant` (see UniqueScope): the key holds across the aggregates of a tenant, not inside one aggregate. A key without it keeps its in-aggregate meaning."
 

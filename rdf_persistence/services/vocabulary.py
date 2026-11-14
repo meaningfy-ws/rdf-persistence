@@ -12,10 +12,10 @@ from functools import cache
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import URIRef
 
-from rdf_persistence.domain.generated.rp_core import RegistryKind
+from rdf_persistence.domain.generated.rp_core import RegistryKind, RpAnnotation
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.services.schema import PACKAGE_DIR, SERVICE_SCHEMA, load_schema
-from rdf_persistence.services.schema_structure import is_bookkeeping
+from rdf_persistence.services.schema_structure import flag, is_bookkeeping
 
 METAMODEL = PACKAGE_DIR / "model" / "rp.yaml"
 
@@ -49,6 +49,21 @@ CONTRIBUTOR = predicate("contributor")
 # The statements the session makes about a graph IRI; closed shapes ignore them (PD-7).
 BOOKKEEPING_PREDICATES = frozenset(
     predicate(slot.name) for slot in metamodel().all_slots().values() if is_bookkeeping(slot)
+)
+
+# The slots of an activity's record the toolkit sets itself (message-bus PD-2).
+TOOLKIT_FILLED = frozenset(
+    slot.name
+    for slot in metamodel().all_slots().values()
+    if flag(slot, RpAnnotation.TOOLKIT_FILLED)
+)
+# The five the session itself writes in stage 1; a test pins it inside TOOLKIT_FILLED.
+SESSION_FILLED = (
+    "started_at_time",
+    "ended_at_time",
+    "was_associated_with",
+    "generations",
+    "invalidations",
 )
 
 REGISTRY_GRAPH = predicate("graph")

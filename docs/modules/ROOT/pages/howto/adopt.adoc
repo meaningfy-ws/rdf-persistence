@@ -1741,8 +1741,8 @@ The fields of `IriPolicy`, with their defaults and the variables each template m
 |`loaded_graph_template`
 |`{root}/content/{id}`
 |as `part_template`; its `{type}` is `content`
-|`access_template`, `meta_template`, `registry_template`
-|`{tenant}/access`, `{tenant}/meta`, `{tenant}/registry`
+|`access_template`, `meta_template`, `registry_template`, `provenance_template`
+|`{tenant}/access`, `{tenant}/meta`, `{tenant}/registry`, `{tenant}/provenance`
 |`{base}`, `{deployment}`, `{tenant}`, `{tenant_id}`; names `{tenant}` or `{tenant_id}`
 |`principal_template`
 |`{issuer}/users/{sub}`

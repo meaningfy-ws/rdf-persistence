@@ -16,10 +16,34 @@
       "additionalProperties": false,
       "description": "Something that happened and generated or changed entities, carried out by principals.",
       "properties": {
+        "ended_at_time": {
+          "description": "The time the activity ended.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "generations": {
+          "description": "The versions of entities the activity generated.",
+          "items": {
+            "$ref": "#/components/schemas/Generation"
+          },
+          "type": "array"
+        },
         "id": {
           "description": "The IRI that identifies the object.",
           "format": "uri",
           "readOnly": true,
+          "type": "string"
+        },
+        "invalidations": {
+          "description": "The versions of entities the activity invalidated.",
+          "items": {
+            "$ref": "#/components/schemas/Invalidation"
+          },
+          "type": "array"
+        },
+        "started_at_time": {
+          "description": "The time the activity started.",
+          "format": "date-time",
           "type": "string"
         },
         "was_associated_with": {
@@ -35,6 +59,55 @@
         "id"
       ],
       "title": "Activity",
+      "type": "object"
+    },
+    "Add": {
+      "additionalProperties": false,
+      "description": "An activity that added an aggregate.",
+      "properties": {
+        "ended_at_time": {
+          "description": "The time the activity ended.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "generations": {
+          "description": "The versions of entities the activity generated.",
+          "items": {
+            "$ref": "#/components/schemas/Generation"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "invalidations": {
+          "description": "The versions of entities the activity invalidated.",
+          "items": {
+            "$ref": "#/components/schemas/Invalidation"
+          },
+          "type": "array"
+        },
+        "started_at_time": {
+          "description": "The time the activity started.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "was_associated_with": {
+          "description": "A principal that carried out the activity.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Add",
       "type": "object"
     },
     "AggregateKey": {
@@ -306,6 +379,44 @@
       "title": "Described",
       "type": "object"
     },
+    "Generation": {
+      "additionalProperties": false,
+      "description": "The generation of one version of an entity by an activity.",
+      "properties": {
+        "activity": {
+          "description": "The IRI of the activity this generation or invalidation belongs to.",
+          "format": "uri",
+          "type": "string"
+        },
+        "at_time": {
+          "description": "The time of the generation or invalidation, the end of its activity.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "entity": {
+          "description": "The IRI of the entity whose version was generated or invalidated.",
+          "format": "uri",
+          "type": "string"
+        },
+        "entity_class": {
+          "description": "The IRI of the entity's class, when it had one.",
+          "format": "uri",
+          "type": "string"
+        },
+        "entity_version": {
+          "description": "The version token of the entity that was generated or invalidated.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "activity",
+        "at_time",
+        "entity",
+        "entity_version"
+      ],
+      "title": "Generation",
+      "type": "object"
+    },
     "Genre": {
       "description": "The literary genres a book can belong to.",
       "enum": [
@@ -371,6 +482,44 @@
       ],
       "title": "GraphKind",
       "type": "string"
+    },
+    "Invalidation": {
+      "additionalProperties": false,
+      "description": "The invalidation of one version of an entity by an activity.",
+      "properties": {
+        "activity": {
+          "description": "The IRI of the activity this generation or invalidation belongs to.",
+          "format": "uri",
+          "type": "string"
+        },
+        "at_time": {
+          "description": "The time of the generation or invalidation, the end of its activity.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "entity": {
+          "description": "The IRI of the entity whose version was generated or invalidated.",
+          "format": "uri",
+          "type": "string"
+        },
+        "entity_class": {
+          "description": "The IRI of the entity's class, when it had one.",
+          "format": "uri",
+          "type": "string"
+        },
+        "entity_version": {
+          "description": "The version token of the entity that was generated or invalidated.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "activity",
+        "at_time",
+        "entity",
+        "entity_version"
+      ],
+      "title": "Invalidation",
+      "type": "object"
     },
     "KeyDuplicate": {
       "additionalProperties": false,
@@ -737,6 +886,104 @@
       "title": "RegistryKind",
       "type": "string"
     },
+    "Remove": {
+      "additionalProperties": false,
+      "description": "An activity that removed an aggregate.",
+      "properties": {
+        "ended_at_time": {
+          "description": "The time the activity ended.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "generations": {
+          "description": "The versions of entities the activity generated.",
+          "items": {
+            "$ref": "#/components/schemas/Generation"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "invalidations": {
+          "description": "The versions of entities the activity invalidated.",
+          "items": {
+            "$ref": "#/components/schemas/Invalidation"
+          },
+          "type": "array"
+        },
+        "started_at_time": {
+          "description": "The time the activity started.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "was_associated_with": {
+          "description": "A principal that carried out the activity.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Remove",
+      "type": "object"
+    },
+    "Replace": {
+      "additionalProperties": false,
+      "description": "An activity that replaced an aggregate with a new version.",
+      "properties": {
+        "ended_at_time": {
+          "description": "The time the activity ended.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "generations": {
+          "description": "The versions of entities the activity generated.",
+          "items": {
+            "$ref": "#/components/schemas/Generation"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "invalidations": {
+          "description": "The versions of entities the activity invalidated.",
+          "items": {
+            "$ref": "#/components/schemas/Invalidation"
+          },
+          "type": "array"
+        },
+        "started_at_time": {
+          "description": "The time the activity started.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "was_associated_with": {
+          "description": "A principal that carried out the activity.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Replace",
+      "type": "object"
+    },
     "RoleDefinition": {
       "additionalProperties": false,
       "description": "What a role may do and where it applies. An application supplies its role definitions as data; they are not stored.",
@@ -789,6 +1036,8 @@
         "rp_writes",
         "workflow",
         "bookkeeping",
+        "toolkit_filled",
+        "payload",
         "rp_unique_scope"
       ],
       "title": "RpAnnotation",
@@ -1140,10 +1389,22 @@
       "additionalProperties": false,
       "description": "The record of one transition of an aggregate: which aggregate, from which state to which, when, by whom and with which comment. The toolkit writes it in the update that changes the state and deletes it with the aggregate. It is a prov:Activity in the generated vocabulary, and typed with its own class when stored.",
       "properties": {
+        "ended_at_time": {
+          "description": "The time the activity ended.",
+          "format": "date-time",
+          "type": "string"
+        },
         "from_state_iri": {
           "description": "The IRI of the state an aggregate left, on the comment a transition posted and on the transition's record. Defined here, so that the workflow module, which imports this one, uses it too. A state name in a workflow file is another thing: it has no IRI.",
           "format": "uri",
           "type": "string"
+        },
+        "generations": {
+          "description": "The versions of entities the activity generated.",
+          "items": {
+            "$ref": "#/components/schemas/Generation"
+          },
+          "type": "array"
         },
         "id": {
           "description": "The IRI that identifies the object.",
@@ -1151,8 +1412,15 @@
           "readOnly": true,
           "type": "string"
         },
+        "invalidations": {
+          "description": "The versions of entities the activity invalidated.",
+          "items": {
+            "$ref": "#/components/schemas/Invalidation"
+          },
+          "type": "array"
+        },
         "started_at_time": {
-          "description": "The time the transition was made.",
+          "description": "The time the activity started.",
           "format": "date-time",
           "type": "string"
         },
@@ -1167,7 +1435,7 @@
           "type": "string"
         },
         "used_resource": {
-          "description": "The IRI of the aggregate the transition moved.",
+          "description": "The IRI of the aggregate the activity used.",
           "format": "uri",
           "type": "string"
         },

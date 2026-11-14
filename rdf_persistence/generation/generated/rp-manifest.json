@@ -19,7 +19,7 @@
     },
     {
       "path": "rdf_persistence/generation/checks/hard.py",
-      "sha256": "efaa73692d7098e83d94dc5d9fd5070d7027f39bd1dab37fd607df83b19f12f3"
+      "sha256": "c8dde777728dad3739d94bb2ee393d0b7dace95fa8898e77fbba46af32bbbff4"
     },
     {
       "path": "rdf_persistence/generation/checks/rules.py",

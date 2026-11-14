@@ -32,6 +32,50 @@ classes:
     slots:
       - id
       - was_associated_with
+      - started_at_time
+      - ended_at_time
+      - generations
+      - invalidations
+  Generation:
+    title: Generation
+    description: The generation of one version of an entity by an activity.
+    class_uri: prov:Generation
+    slots: &part_slots
+      - activity
+      - at_time
+      - entity
+      - entity_class
+      - entity_version
+    slot_usage: &part_usage
+      activity:
+        required: true
+      at_time:
+        required: true
+      entity:
+        required: true
+      entity_version:
+        required: true
+  Invalidation:
+    title: Invalidation
+    description: The invalidation of one version of an entity by an activity.
+    class_uri: prov:Invalidation
+    slots: *part_slots
+    slot_usage: *part_usage
+  Add:
+    title: Add
+    description: An activity that added an aggregate.
+    class_uri: rp:Add
+    is_a: Activity
+  Replace:
+    title: Replace
+    description: An activity that replaced an aggregate with a new version.
+    class_uri: rp:Replace
+    is_a: Activity
+  Remove:
+    title: Remove
+    description: An activity that removed an aggregate.
+    class_uri: rp:Remove
+    is_a: Activity
 
 slots:
   was_derived_from:
@@ -61,3 +105,69 @@ slots:
     slot_uri: prov:wasAssociatedWith
     range: Principal
     multivalued: true
+    annotations:
+      toolkit_filled: true
+  started_at_time:
+    title: Started at time
+    description: The time the activity started.
+    slot_uri: prov:startedAtTime
+    range: datetime
+    annotations:
+      toolkit_filled: true
+  ended_at_time:
+    title: Ended at time
+    description: The time the activity ended.
+    slot_uri: prov:endedAtTime
+    range: datetime
+    annotations:
+      toolkit_filled: true
+  used_resource:
+    title: Used resource
+    description: The IRI of the aggregate the activity used.
+    slot_uri: prov:used
+    range: uri
+  generations:
+    title: Generations
+    description: The versions of entities the activity generated.
+    slot_uri: rp:generation
+    range: Generation
+    multivalued: true
+    inlined_as_list: true
+    annotations:
+      owned: true
+      toolkit_filled: true
+  invalidations:
+    title: Invalidations
+    description: The versions of entities the activity invalidated.
+    slot_uri: rp:invalidation
+    range: Invalidation
+    multivalued: true
+    inlined_as_list: true
+    annotations:
+      owned: true
+      toolkit_filled: true
+  activity:
+    title: Activity
+    description: The IRI of the activity this generation or invalidation belongs to.
+    slot_uri: prov:activity
+    range: uri
+  at_time:
+    title: At time
+    description: The time of the generation or invalidation, the end of its activity.
+    slot_uri: prov:atTime
+    range: datetime
+  entity:
+    title: Entity
+    description: The IRI of the entity whose version was generated or invalidated.
+    slot_uri: rp:entity
+    range: uri
+  entity_class:
+    title: Entity class
+    description: The IRI of the entity's class, when it had one.
+    slot_uri: rp:entityClass
+    range: uri
+  entity_version:
+    title: Entity version
+    description: The version token of the entity that was generated or invalidated.
+    slot_uri: rp:entityVersion
+    range: string

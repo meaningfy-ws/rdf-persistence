@@ -1,14 +1,33 @@
 """Schema-level facts of the metamodel that the generated classes cannot show."""
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
+from rdflib import URIRef
 
+from rdf_persistence.domain.generated.rp_provenance import Generation, Invalidation, Replace
+from rdf_persistence.domain.generated.rp_workflow import TransitionRecord
+from rdf_persistence.services import vocabulary
 from rdf_persistence.services.schema import SERVICE_SCHEMA, load_schema
-from rdf_persistence.services.schema_structure import is_internal
+from rdf_persistence.services.schema_structure import is_internal, is_owned
+from tests.toy import ADA, book_iri, toy_mapper
 
 MODEL = Path(__file__).parents[3] / "rdf_persistence" / "model"
 LIBRARY = Path(__file__).parents[2] / "fixtures" / "library"
+AT = datetime(2026, 11, 14, tzinfo=UTC)
+PROV_ASSOCIATED = URIRef("http://www.w3.org/ns/prov#wasAssociatedWith")
+# The fields TransitionRecord had before the slot move, and whether each is required.
+TRANSITION_FIELDS = {
+    "used_resource": True,
+    "from_state_iri": True,
+    "to_state_iri": True,
+    "started_at_time": True,
+    "transition_comment": False,
+    "id": True,
+    "was_associated_with": False,
+}
 
 
 @pytest.mark.parametrize(
@@ -67,3 +86,59 @@ def test_a_slot_name_shared_across_the_imports_keeps_its_own_predicate(
     assert induced.slot_uri == slot_uri, (
         f"{class_name}.{slot} is {induced.slot_uri}, not {slot_uri}"
     )
+
+
+def test_an_activity_has_the_four_optional_slots_and_owns_its_parts() -> None:
+    view = load_schema(MODEL / "rp.yaml")
+    for name in ("started_at_time", "ended_at_time", "generations", "invalidations"):
+        assert not view.induced_slot(name, "Activity").required, f"Activity.{name} is optional"
+    for name in ("generations", "invalidations"):
+        slot = view.induced_slot(name, "Activity")
+        assert slot.multivalued and is_owned(slot), f"Activity.{name} is an owned list"
+
+
+def test_the_toolkit_filled_slots_are_the_five_the_session_writes() -> None:
+    five = {
+        "started_at_time",
+        "ended_at_time",
+        "was_associated_with",
+        "generations",
+        "invalidations",
+    }
+    assert set(vocabulary.TOOLKIT_FILLED) == five, "annotated toolkit_filled"
+    assert set(vocabulary.SESSION_FILLED) == five, "the literal tuple"
+
+
+def test_a_replace_with_an_agent_round_trips_with_one_associated_principal() -> None:
+    iri = "urn:uuid:00000000-0000-0000-0000-000000000001"
+    replace = Replace(id=iri, was_associated_with=[ADA])
+    mapper = toy_mapper()
+    graph = mapper.to_graph(replace)
+    agents = list(graph.objects(URIRef(iri), PROV_ASSOCIATED))
+    assert agents == [URIRef(ADA)], "one prov:wasAssociatedWith IRI"
+    assert mapper.from_graph(Replace, iri, graph, None) == replace, "the same model"
+
+
+@pytest.mark.parametrize("cls", [Generation, Invalidation])
+def test_a_part_needs_a_version_and_not_a_class(cls: type[Generation | Invalidation]) -> None:
+    part = {"activity": "urn:uuid:1", "at_time": AT, "entity": book_iri(1)}
+    with pytest.raises(ValidationError):
+        cls(**part)
+    assert cls(**part, entity_version="v1").entity_class is None, "valid without a class"
+
+
+def test_a_replace_with_one_generation_round_trips_through_the_mapper() -> None:
+    iri = "urn:uuid:00000000-0000-0000-0000-000000000001"
+    part = Generation(activity=iri, at_time=AT, entity=book_iri(1), entity_version="v2")
+    replace = Replace(id=iri, generations=[part])
+    mapper = toy_mapper()
+    assert mapper.from_graph(Replace, iri, mapper.to_graph(replace), None) == replace
+
+
+def test_a_transition_record_keeps_its_fields_after_the_slot_move() -> None:
+    required = {
+        name: field.is_required()
+        for name, field in TransitionRecord.model_fields.items()
+        if name in TRANSITION_FIELDS
+    }
+    assert required == TRANSITION_FIELDS, "same fields, same required-ness"

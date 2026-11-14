@@ -72,7 +72,7 @@ export interface IdSpec {
   alphabet?: string;
 }
 
-/** The templates the toolkit mints and accepts IRIs by, one per kind of IRI, and the id specifications of tenant and object ids. Every slot defaults to today's shape, so an empty policy is the default one. A template fills the variables allowed for its kind; the tenant, aggregate, part, loaded graph and principal templates end in their id variable, the access, meta and registry templates contain the tenant, and the aggregate, part and loaded graph templates name their tenant or, for the last two, their root. */
+/** The templates the toolkit mints and accepts IRIs by, one per kind of IRI, and the id specifications of tenant and object ids. Every slot defaults to today's shape, so an empty policy is the default one. A template fills the variables allowed for its kind; the tenant, aggregate, part, loaded graph and principal templates end in their id variable, the access, meta, registry and provenance templates contain the tenant, and the aggregate, part and loaded graph templates name their tenant or, for the last two, their root. */
 export interface IriPolicy {
   /** The template of a tenant IRI; ends in `{tenant_id}`. */
   tenant_template?: string;
@@ -84,6 +84,8 @@ export interface IriPolicy {
   meta_template?: string;
   /** The template of the IRI of a tenant's registry graph; contains `{tenant}` or `{tenant_id}`. */
   registry_template?: string;
+  /** The template of the IRI of a tenant's provenance graph; contains `{tenant}` or `{tenant_id}`. */
+  provenance_template?: string;
   /** The template of an aggregate root IRI; contains `{tenant}` or `{tenant_id}` and ends in `{id}`. */
   aggregate_template?: string;
   /** The template of the IRI of an owned part; contains `{tenant}`, `{tenant_id}` or `{root}` and ends in `{id}`. */
