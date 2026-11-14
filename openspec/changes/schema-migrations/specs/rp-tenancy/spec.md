@@ -16,9 +16,6 @@ the empty `end` member, or that holds any member after `end`, or whose gzip stre
 properly, and an archive that holds more than `max_restore_bytes` once decompressed (the member
 headers included), refusing it from the header before the member is read.
 
-<!-- Built in stage 3 of the change. Stage 2 (#112) is stricter: it refuses any dump whose
-     version and stamps are not exactly the versions the service runs (design.md PD-24 item 1). -->
-
 #### Scenario: an older schema version of the chain
 - **GIVEN** a dump whose manifest records schema version 1 and a service at version 2 with the migration from 1 to 2
 - **WHEN** the service restores it

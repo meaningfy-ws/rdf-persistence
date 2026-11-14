@@ -206,7 +206,7 @@ See xref:howto/application-data.adoc[Keep data that belongs to no project].
 |The *stamp*: one statement per schema, `<schema id> rp:dataSchemaVersion "<version>"`, the version
 the database's data follows. A database holds two: the toolkit's own metamodel and the consumer's
 root schema. It is not a tenant's graph: a step of a migration never changes it, and a restore copies
-it as it is. See <<migrations>>.
+it without rewriting its IRIs, after the in-memory migration has moved the stamps forward. See <<migrations>>.
 
 |Bucket `lib-t-…` (same name as the database)
 |any key the consumer picks
@@ -892,6 +892,7 @@ sequenceDiagram
   C->>D: restore
   D->>D: read manifest.json, check format, schema, IRI policy
   D->>D: read graphs.nq, parse the N-Quads
+  D->>D: migrate the parsed quads in memory to the running versions
   D->>T: restore(parsed quads, blob iterator)
   T->>T: draw T2, unused (private)
   T->>T: rewrite the IRIs from T to T2, check the graphs and the root
@@ -924,14 +925,18 @@ dumped. A dump that fails half-way has no `end`, so a restore refuses it.
 |Restore, checks
 |`kit.restore_tenant(src, creator)`
 |Before anything is created: the first member is `manifest.json` (at most 64 KiB) and the second
-`graphs.nq`, both regular files with UTF-8 names; the manifest's format, schema id and version and
-effective IRI policy equal the service's, and its `source_tenant_id` is the id of its
+`graphs.nq`, both regular files with UTF-8 names; the manifest's format, schema id and effective IRI policy equal the
+service's, its version is one of the versions of the service's chain for that schema and agrees with the
+dump's own stamp, and its `source_tenant_id` is the id of its
 `source_tenant`; the policy does not glue the tenant id to a letter, digit or variable. Mint `T2`
 (`Conflict` later if a concurrent create takes it first). Rewrite each IRI term of the graph names,
 subjects and objects under the base, replacing the old tenant id between delimiters with the new one
 (predicates, datatypes and literals are untouched). The schema-stamps graph is the one exception: its
-quads are copied as they are, and the dump is refused unless its stamps are exactly the versions the
-service runs, one statement per schema and nothing else. Every other quad must be in a graph the
+quads are copied without a rewrite. Right after the dump is parsed, and before the rewrite and the
+checks on its graphs, the pending migrations are applied to it in memory (`migrate_dataset`), so the
+rest of restore sees current data. The dump is refused
+unless its stamps graph holds one plain-string stamp per schema, each at a version of that schema's
+chain, and nothing else; after the migration the stamps are the versions the service runs. Every other quad must be in a graph the
 policy mints for `T2`, none in the default graph; the root must decode and pass the root validators. Restore
 checks this structure, not each aggregate against its shapes, so it trusts the graph content (only
 restore archives a deployment you trust wrote). The size budget: before each member is read, its size
@@ -1016,7 +1021,7 @@ the service answers `503` with the problem `tenant-behind`. What does not go thr
 tenant deleted; a dump and the live sweep use the store directly. A rename writes the tenant's root,
 so it answers `503`. The tenant leaves the set only at a later start, when its migration succeeds.
 
-A restore (see <<dump-restore>>) also meets the stamps: it copies the stamps graph as it is.
+A restore (see <<dump-restore>>) also meets the stamps: it migrates the parsed dump in memory, then copies the stamps graph without rewriting its IRIs.
 
 [#rules]
 == Rules and checks
