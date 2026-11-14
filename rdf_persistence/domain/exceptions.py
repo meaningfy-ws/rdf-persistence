@@ -103,11 +103,14 @@ class InvalidMigration(PersistenceError, ValueError):
 class MigrationFailed(PersistenceError):
     """The system or application database could not be migrated at start-up: the store refused or
     timed out, the stamp read back is behind, or the stamp is unknown to the chain (PD-11).
-    The message names the database, the migration and the cause; ``migration`` and ``cause`` hold the
-    last two apart, for the log."""
+    The message names the database, the migration and the cause; ``schema`` (the schema id),
+    ``migration`` (a migration's name, or empty) and ``cause`` hold the rest apart, for the log."""
 
-    def __init__(self, message: str, *, migration: str = "", cause: str = "") -> None:
-        super().__init__(message)
+    def __init__(
+        self, *args: object, schema: str = "", migration: str = "", cause: str = ""
+    ) -> None:
+        super().__init__(*args)
+        self.schema = schema
         self.migration = migration
         self.cause = cause
 

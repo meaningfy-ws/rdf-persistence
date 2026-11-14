@@ -238,11 +238,20 @@ async def test_create_stamps_the_new_database_before_it_writes_the_root(store, f
     before = len(store.sent("update"))
     summary = await made.create("Ghent", library_slots(), CREATOR)
     updates = store.sent("update")[before:]
-    assert all("schema-stamps" in text for text in updates[:2]), "the stamps come first"
-    assert f"{summary.id}/meta" in updates[2], "then the root"
-    assert ('"1"' in updates[0], '"7"' in updates[1]) == (True, True), (
-        "one stamp per pair, in order"
-    )
+    stamped = [i for i, text in enumerate(updates) if "schema-stamps" in text]
+    root = next(i for i, text in enumerate(updates) if f"{summary.id}/meta" in text)
+    assert len(stamped) == 2, "one stamp per pair"
+    assert max(stamped) < root, "every stamp comes before the first update of the root's graph"
+    assert '"1"' in updates[stamped[0]], "the first pair is stamped first"
+    assert '"7"' in updates[stamped[1]], "the second pair is stamped second"
+
+
+def test_set_aside_replaces_the_set_and_behind_answers_a_frozenset(tenancy):
+    assert tenancy.behind == frozenset(), "no tenant is set aside at first"
+    tenancy.set_aside(["urn:t:a", "urn:t:b"])
+    tenancy.set_aside(iter(["urn:t:b", "urn:t:c"]))
+    assert tenancy.behind == frozenset({"urn:t:b", "urn:t:c"}), "the second call replaces the first"
+    assert isinstance(tenancy.behind, frozenset), "and the answer cannot be changed by the caller"
 
 
 async def test_without_stamps_nothing_is_stamped(tenancy, store):

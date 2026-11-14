@@ -33,10 +33,14 @@ from rdf_persistence.services.migration_runner import (
     migrate_database,
     migrate_shared,
     migrate_tenants,
+)
+from rdf_persistence.services.migrations import (
+    Chain,
+    load_chain,
+    migration_request,
     stamp_if_none,
     stamps,
 )
-from rdf_persistence.services.migrations import Chain, load_chain, migration_request
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import LABEL
 from rdf_persistence.services.tenancy import Tenancy
@@ -167,9 +171,10 @@ async def test_a_database_with_no_stamp_is_stamped_with_the_first_version_then_m
     await migrate_database(world.store, unstamped.database, [(LIB, lib_chain)], STAMPS)
     assert await held(world.store, unstamped.database) == {LIB: "2"}, "stamped, then moved to 2"
     first, second = world.store.sent("update")[-2:]
-    assert "NOT EXISTS" in first and '"1"' in first, (
-        "the first write stamps the first version, conditionally"
+    assert "NOT EXISTS" in first, (
+        "the first write is conditional: it stamps only a database with none"
     )
+    assert '"1"' in first, "the first write stamps the first version"
     assert '"2"' in second, "then the migration moves it"
 
 
@@ -233,8 +238,8 @@ async def test_two_stamps_of_one_schema_are_refused_naming_both(world):
     with pytest.raises(StoredDataInvalid) as refused:
         await stamps(world.store, world.database, STAMPS)
     assert LIB in str(refused.value), "the schema is named"
-    assert '"1"' in str(refused.value), "the first version is named"
-    assert '"2"' in str(refused.value), "the second version is named"
+    assert "'1'" in str(refused.value), "the first version is named, quoted as repr does"
+    assert "'2'" in str(refused.value), "the second version is named, quoted as repr does"
 
 
 # -- TC-24 to TC-26: what a migration does to the data -----------------------------------------------
@@ -365,13 +370,39 @@ async def test_a_failing_tenant_is_set_aside_and_the_next_one_runs(world, lib_ch
     assert await held(world.store, databases[healthy]) == {LIB: "2"}, "the other tenant is at 2"
     record = next(r for r in caplog.records if getattr(r, "step", "") == "migrate-tenant")
     assert record.tenant == failing, "the log names the tenant"  # type: ignore[attr-defined]
-    assert "1__2" in record.migration, "the log names the migration"  # type: ignore[attr-defined]
+    assert record.migration == f"1__2 of {LIB}", "the log names the migration"  # type: ignore[attr-defined]
+    assert record.schema == LIB, "the schema has its own field"  # type: ignore[attr-defined]
     assert "down" in record.cause, "the log gives the cause"  # type: ignore[attr-defined]
     assert record.levelno == logging.ERROR, "at error"
     assert await migrate_tenants(world.tenancy, world.store, [(LIB, lib_chain)]) == set(), (
         "a run that succeeds sets nothing aside"
     )
     assert world.tenancy.behind == set(), "and empties the set"
+
+
+async def test_a_tenant_whose_second_migration_fails_is_set_aside_and_the_log_names_it(
+    world, three, caplog
+):
+    """TC-28 at tenant level: the first migration stays applied, the second is named."""
+    world.store.on("update", StoreUnavailable("down"), after=1)
+    with caplog.at_level(logging.ERROR):
+        aside = await migrate_tenants(world.tenancy, world.store, [(LIB, three)])
+    assert aside == {world.tenant}, "the tenant is the returned set"
+    assert world.tenancy.behind == {world.tenant}, "and is set aside"
+    assert await held(world.store, world.database) == {LIB: "2"}, "1__2 stays applied"
+    record = next(r for r in caplog.records if getattr(r, "step", "") == "migrate-tenant")
+    assert record.levelno == logging.ERROR, "logged at error"
+    assert record.migration == f"2__3 of {LIB}", "the log names the second migration"  # type: ignore[attr-defined]
+
+
+async def test_a_failure_of_the_stamp_alone_names_no_migration(world, lib_chain):
+    await world.store.update(world.database, f"DELETE WHERE {{ GRAPH <{STAMPS}> {{ ?s ?p ?o }} }}")
+    await put_stamp(world.store, world.database, LIB, "9")
+    with pytest.raises(MigrationFailed) as failed:
+        await migrate_database(world.store, world.database, [(LIB, lib_chain)], STAMPS)
+    assert failed.value.migration == "", "no migration is at fault, so the field is empty"
+    assert failed.value.schema == LIB, "the schema is named apart"
+    assert "'9'" in failed.value.cause, "the stamp read from the store is quoted as repr does"
 
 
 async def test_each_applied_migration_is_logged_at_info(world, lib_chain, caplog):
@@ -552,7 +583,7 @@ async def test_the_application_database_is_left_alone_when_it_does_not_exist(wor
 
 async def test_a_tenant_set_aside_has_no_session_and_another_has(world, lib_chain):
     other = await second_tenant(world)
-    world.tenancy.behind.add(world.tenant)
+    world.tenancy.set_aside([world.tenant])
     with pytest.raises(TenantBehind, match=world.tenant):
         world.tenancy.tenant_session(world.tenant, CREATOR)
     async with world.tenancy.tenant_session(other.id, CREATOR) as session:
@@ -563,7 +594,10 @@ async def test_the_toolkits_chain_runs_first_in_every_database(world, lib_chain,
     other = await second_tenant(world)
     for database in (world.database, other.database):
         await put_stamp(world.store, database, RP, "1")
+    # world.database already holds the library stamp "1" (from the world); the other one gets it here
     await put_stamp(world.store, other.database, LIB, "1")
+    # The other tenant holds no old ISBN, so the consumer's step matches nothing there; the request is
+    # still sent, and this test reads only the order of the requests, not what they change.
     sent = len(world.store.sent("update"))
     await migrate_tenants(world.tenancy, world.store, [(RP, rp_chain), (LIB, lib_chain)])
     order = ["rp" if f"<{RP}>" in text else "lib" for text in world.store.sent("update")[sent:]]
@@ -584,5 +618,5 @@ async def test_a_stamp_unknown_to_the_chain_after_a_request_names_the_stamp(worl
     world.store.after_update = to_nine
     with pytest.raises(MigrationFailed) as failed:
         await migrate_database(world.store, world.database, [(LIB, three)], STAMPS)
-    assert '"9"' in failed.value.cause, "the stamp read back is named"
+    assert "'9'" in failed.value.cause, "the stamp read back is named, quoted as repr does"
     assert "not one of the chain" in failed.value.cause, "and said to be unknown"

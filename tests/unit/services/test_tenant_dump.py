@@ -36,6 +36,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     TenantDump,
 )
 from rdf_persistence.domain.iris import Iris, stamps_graph_iri
+from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
@@ -210,8 +211,80 @@ async def test_tc34_a_stamped_tenant_dumps_and_restores_at_the_same_version():
 
 
 async def test_tc35_a_tenant_set_aside_can_still_be_dumped(world):
-    world.tenancy.behind.add(world.tenant)
+    world.tenancy.set_aside([world.tenant])
     assert await dumped(world), "the dump is made"
+
+
+# -- schema-migrations PD-24.1: a restore takes exactly the stamps the service runs --------------------
+
+STAMPS_GRAPH = stamps_graph_iri(SETTINGS.base)
+
+
+def stamp_line(schema: str, version: str, predicate: str = str(v.DATA_SCHEMA_VERSION)) -> str:
+    return f'<{schema}> <{predicate}> "{version}" <{STAMPS_GRAPH}> .\n'
+
+
+def with_stamps(data: bytes, *statements: str) -> bytes:
+    """``data`` whose stamps graph holds exactly the N-Quads ``statements``."""
+    marker = f"<{STAMPS_GRAPH}> .".encode()
+
+    def change(nq: bytes) -> bytes:
+        kept = [line for line in nq.splitlines(keepends=True) if marker not in line]
+        return b"".join([*kept, *(s.encode() for s in statements)])
+
+    return edited(data, GRAPHS, change)
+
+
+@pytest.fixture
+async def stamped() -> SimpleNamespace:
+    return await populated(await make_world(iris_of(SETTINGS), SETTINGS, stamps=STAMPS))
+
+
+async def test_a_dump_with_the_stamps_the_service_runs_is_restored_with_exactly_them(stamped):
+    data = with_stamps(
+        await dumped(stamped),
+        stamp_line(TOOLKIT_SCHEMA, "1"),
+        stamp_line(LIBRARY_SCHEMA, "2"),
+    )
+    summary = await restored(stamped, data)
+    assert await stamps_held(stamped, summary.id) == dict(STAMPS), "the restored tenant holds them"
+
+
+@pytest.mark.parametrize(
+    ("statements", "named"),
+    [
+        ([("TOOLKIT", "1")], [LIBRARY_SCHEMA, "missing"]),
+        ([("TOOLKIT", "1"), ("LIBRARY", "1")], ["'1'", "'2'"]),
+        ([("TOOLKIT", "1"), ("LIBRARY", "2"), ("LIBRARY", "3")], ["'3'", "'2'"]),
+        ([("TOOLKIT", "1"), ("LIBRARY", "2"), ("urn:schema:other", "1")], ["urn:schema:other"]),
+        ([("TOOLKIT", "1"), ("LIBRARY", "2"), ("LIBRARY", "x", "urn:p")], ["urn:p", "not a stamp"]),
+    ],
+    ids=[
+        "a stamp missing",
+        "another version",
+        "a doubled stamp",
+        "a foreign schema",
+        "not a stamp",
+    ],
+)
+async def test_a_dump_whose_stamps_graph_differs_is_refused_before_anything_is_created(
+    stamped, statements, named
+):
+    ids = {"TOOLKIT": TOOLKIT_SCHEMA, "LIBRARY": LIBRARY_SCHEMA}
+    lines = [stamp_line(ids.get(schema, schema), *rest) for schema, *rest in statements]
+    reason = await refused(stamped, with_stamps(await dumped(stamped), *lines))
+    for text in named:
+        assert text in reason, f"the reason names {text}"
+
+
+async def test_a_dump_with_a_stamp_is_refused_by_a_service_that_configures_none(world):
+    reason = await refused(world, with_stamps(await dumped(world), stamp_line(LIBRARY_SCHEMA, "2")))
+    assert LIBRARY_SCHEMA in reason, "the stamp no one asked for is named"
+
+
+async def test_a_dump_with_no_stamp_is_restored_by_a_service_that_configures_none(world):
+    summary = await restored(world, await dumped(world))
+    assert await stamps_held(world, summary.id) == {}, "the restored tenant holds no stamp"
 
 
 # -- TC-10, TC-13: a restored tenant answers like the original -----------------------------------

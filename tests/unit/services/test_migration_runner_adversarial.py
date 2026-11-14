@@ -107,7 +107,7 @@ async def count(store, database: str, predicate: URIRef) -> int:
 
 async def set_stamp(store, database: str, schema: str, version_text: str) -> None:
     """Replace the stamp of ``schema`` with ``version_text``, written as SPARQL (``"2"``, ``<urn:x>``, ...)."""
-    stamps_graph = f"<{Iris(SETTINGS).settings.base}toolkit/schema-stamps>"
+    stamps_graph = f"<{STAMPS}>"
     await store.update(
         database,
         f"DELETE WHERE {{ GRAPH {stamps_graph} {{ <{schema}> <{STAMP}> ?o }} }}; "
@@ -426,7 +426,7 @@ async def test_a_tenant_set_aside_and_deleted_before_the_next_run_leaves_nothing
 async def test_a_tenant_in_behind_is_still_listed_read_dumped_and_swept_and_a_new_one_is_served(
     world,
 ):
-    world.tenancy.behind.add(world.tenant)
+    world.tenancy.set_aside([world.tenant])
     assert world.tenant in [t.id for t in await world.tenancy.tenants()], "listed"
     record, _ = await world.tenancy.get(world.tenant)
     assert record.database_name == world.database, "read"
@@ -435,7 +435,7 @@ async def test_a_tenant_in_behind_is_still_listed_read_dumped_and_swept_and_a_ne
     await dump(world.tenancy, world.store, world.files, world.iris, view, world.tenant, out)
     assert out.getvalue(), "dumped"
     report = await world.sweep()
-    assert report is not None, "the live sweep runs"
+    assert report.tenant == world.tenant, "the live sweep ran on the tenant set aside"
     created = await world.tenancy.create("Bruges", {"city": "Bruges"}, CREATOR)
     async with world.tenancy.tenant_session(created.id, CREATOR) as session:
         assert session is not None, "a new tenant is served beside the one set aside"
@@ -444,7 +444,7 @@ async def test_a_tenant_in_behind_is_still_listed_read_dumped_and_swept_and_a_ne
 
 
 async def test_the_start_up_sweep_keeps_the_database_of_a_tenant_set_aside(world):
-    world.tenancy.behind.add(world.tenant)
+    world.tenancy.set_aside([world.tenant])
     await sweep(world.tenancy, world.store, world.files, SETTINGS)
     assert world.database in await world.store.list_datasets(), "its database is not an orphan"
 

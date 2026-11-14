@@ -111,7 +111,8 @@ optional slot TC-02, TC-09; a removed slot without a new version TC-06; with a n
 TC-08; a change that would change stored IRIs TC-05a; an unresolved draft TC-09a, TC-22; a renamed
 slot TC-24; a second start TC-25, TC-32, TC-42; a failing migration TC-29; what a migration leaves
 alone TC-27; a client with an old version token TC-26; restoring an older dump TC-51; a dump from
-an unknown version TC-52.
+an unknown version TC-52; `rp-service-api`: a chain that forks TC-38, a tenant set aside TC-37
+(one book asked for, and the books listed).
 
 ## 3. Dump, the application database, Fuseki, docs (stage 3, PR 3; after #102)
 

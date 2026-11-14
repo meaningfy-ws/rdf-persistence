@@ -8,22 +8,25 @@ while the database's stamp is still ``from_version``, so a second sender changes
 import re
 from pathlib import Path
 
+from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import ValidationError
 from pyparsing import ParseBaseException
 from rdflib import Literal, URIRef
 from rdflib.plugins.sparql.parser import parseUpdate
 
-from rdf_persistence.domain.exceptions import InvalidMigration, SparqlError
+from rdf_persistence.domain.exceptions import InvalidMigration, SparqlError, StoredDataInvalid
 from rdf_persistence.domain.generated.rp_core import RegistryKind
 from rdf_persistence.domain.generated.service.rp_service import Migration, MigrationStep
 from rdf_persistence.domain.sparql import (
     CODEPOINT_ESCAPE,
     SparqlTerm,
     checked_group,
+    fill,
     fragment,
     term,
 )
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.store import Store
 from rdf_persistence.services.yaml_files import SHOWN, problems_of, read_mapping, shown
 
 # The toolkit's own predicates: a step may read them, never write them (PD-22 item 3).
@@ -140,10 +143,36 @@ def _line_ending_at(
     return line[::-1]
 
 
+SchemaChain = tuple[str, Chain]  # the schema id and its chain
+
+
+def chain_of(view: SchemaView, folder: Path) -> SchemaChain:
+    """The schema id of ``view`` and the chain of ``folder`` that ends at the schema's version (PD-24.2).
+
+    Raises:
+        InvalidMigration: The schema has no ``version``, or ``load_chain`` refuses the folder.
+    """
+    schema_id = str(view.schema.id)
+    if not view.schema.version:
+        raise InvalidMigration(
+            f"the schema {schema_id} has no version: add version: to the root schema"
+        )
+    return schema_id, load_chain(folder, schema_id, str(view.schema.version))
+
+
+def versions(chain: Chain) -> tuple[str, ...]:
+    """The versions of ``chain`` in order, the oldest first."""
+    return chain[0]
+
+
 def first_version(chain: Chain) -> str:
     """The version a database with no stamp is taken to be at (PD-10)."""
-    versions, _ = chain
-    return versions[0]
+    return versions(chain)[0]
+
+
+def current_version(chain: Chain) -> str:
+    """The last version of ``chain``: the one the schema runs."""
+    return versions(chain)[-1]
 
 
 def pending_from(chain: Chain, version: str) -> tuple[Migration, ...] | None:
@@ -151,10 +180,10 @@ def pending_from(chain: Chain, version: str) -> tuple[Migration, ...] | None:
 
     Returns None when ``version`` is not in the chain (data newer than the service, or foreign).
     """
-    versions, migrations = chain
-    if version not in versions:
+    ordered, migrations = chain
+    if version not in ordered:
         return None
-    return migrations[versions.index(version) :]
+    return migrations[ordered.index(version) :]
 
 
 def _file_problem(path: Path, migration: Migration, schema_id: str) -> str | None:
@@ -285,3 +314,42 @@ def _request_problem(migration: Migration) -> str | None:
     if found != expected:
         return f"the request parses into {found} operations, not the {expected} a migration makes"
     return None
+
+
+SELECT_STAMPS = "SELECT ?schema ?version WHERE { GRAPH $graph { ?schema $p_stamp ?version } }"
+# The first writer wins: the stamp is inserted only if the schema has none (as the IRI policy record is).
+INSERT_STAMP = (
+    "INSERT { GRAPH $graph { $schema $p_stamp $version } } "
+    "WHERE { FILTER NOT EXISTS { GRAPH $graph { $schema $p_stamp ?any } } }"
+)
+
+
+async def stamps(store: Store, database: str, stamps_graph: URIRef) -> dict[str, str]:
+    """The version each schema's data follows in ``database``: schema id to version.
+
+    Raises:
+        StoredDataInvalid: One schema has two stamps; the message names both versions.
+    """
+    text = fill(SELECT_STAMPS, graph=term(stamps_graph), p_stamp=term(v.DATA_SCHEMA_VERSION))
+    found: dict[str, set[str]] = {}
+    for row in await store.query(database, text):
+        found.setdefault(str(row.schema), set()).add(str(row.version))  # type: ignore[union-attr]
+    for schema, held in found.items():
+        if len(held) > 1:
+            both = " and ".join(repr(version) for version in sorted(held))
+            raise StoredDataInvalid(f"{database} holds two stamps of {schema}: {both}")
+    return {schema: next(iter(held)) for schema, held in found.items()}
+
+
+async def stamp_if_none(
+    store: Store, database: str, stamps_graph: URIRef, schema_id: str, version: str
+) -> None:
+    """Stamp ``database`` with ``version`` for ``schema_id`` unless it has a stamp for it: first writer wins."""
+    text = fill(
+        INSERT_STAMP,
+        graph=term(stamps_graph),
+        schema=term(URIRef(schema_id)),
+        p_stamp=term(v.DATA_SCHEMA_VERSION),
+        version=term(Literal(version)),
+    )
+    await store.update(database, text)

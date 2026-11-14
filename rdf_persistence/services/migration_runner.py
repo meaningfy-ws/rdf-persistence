@@ -14,70 +14,28 @@ class would be a hand-written model.
 
 import logging
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import cast
 
-from rdflib import Literal, URIRef
+from rdflib import URIRef
 
-from rdf_persistence.domain.exceptions import MigrationFailed, PersistenceError, StoredDataInvalid
+from rdf_persistence.domain.exceptions import MigrationFailed, PersistenceError
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.domain.generated.service.rp_service import Migration
-from rdf_persistence.domain.sparql import fill, term
-from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.migrations import (
     Chain,
+    SchemaChain,
     first_version,
     migration_request,
     pending_from,
+    stamp_if_none,
+    stamps,
+    versions,
 )
 from rdf_persistence.services.store import Store
+from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.services.yaml_files import SHOWN
 
-if (
-    TYPE_CHECKING
-):  # Tenancy imports this module to stamp what it creates; the runner needs it as a type only
-    from rdf_persistence.services.tenancy import Tenancy
-
 log = logging.getLogger(__name__)
-
-SchemaChain = tuple[str, Chain]  # the schema id and its chain
-
-SELECT_STAMPS = "SELECT ?schema ?version WHERE { GRAPH $graph { ?schema $p_stamp ?version } }"
-# The first writer wins: the stamp is inserted only if the schema has none (as the IRI policy record is).
-INSERT_STAMP = (
-    "INSERT { GRAPH $graph { $schema $p_stamp $version } } "
-    "WHERE { FILTER NOT EXISTS { GRAPH $graph { $schema $p_stamp ?any } } }"
-)
-
-
-async def stamps(store: Store, database: str, stamps_graph: URIRef) -> dict[str, str]:
-    """The version each schema's data follows in ``database``: schema id to version.
-
-    Raises:
-        StoredDataInvalid: One schema has two stamps; the message names both versions.
-    """
-    text = fill(SELECT_STAMPS, graph=term(stamps_graph), p_stamp=term(v.DATA_SCHEMA_VERSION))
-    versions: dict[str, set[str]] = {}
-    for row in await store.query(database, text):
-        versions.setdefault(str(row.schema), set()).add(str(row.version))  # type: ignore[union-attr]
-    for schema, found in versions.items():
-        if len(found) > 1:
-            both = " and ".join(f'"{version}"' for version in sorted(found))
-            raise StoredDataInvalid(f"{database} holds two stamps of {schema}: {both}")
-    return {schema: next(iter(found)) for schema, found in versions.items()}
-
-
-async def stamp_if_none(
-    store: Store, database: str, stamps_graph: URIRef, schema_id: str, version: str
-) -> None:
-    """Stamp ``database`` with ``version`` for ``schema_id`` unless it has a stamp for it: first writer wins."""
-    text = fill(
-        INSERT_STAMP,
-        graph=term(stamps_graph),
-        schema=term(URIRef(schema_id)),
-        p_stamp=term(v.DATA_SCHEMA_VERSION),
-        version=term(Literal(version)),
-    )
-    await store.update(database, text)
 
 
 async def migrate_database(
@@ -94,7 +52,7 @@ async def migrate_database(
         await _migrate_schema(store, database, schema_id, chain, stamps_graph)
 
 
-async def migrate_shared(tenancy: "Tenancy", store: Store, chains: Sequence[SchemaChain]) -> None:
+async def migrate_shared(tenancy: Tenancy, store: Store, chains: Sequence[SchemaChain]) -> None:
     """Migrate the system database, then the application database when it exists (PD-9); it creates none.
 
     Raises:
@@ -109,14 +67,15 @@ async def migrate_shared(tenancy: "Tenancy", store: Store, chains: Sequence[Sche
 
 
 async def migrate_tenants(
-    tenancy: "Tenancy", store: Store, chains: Sequence[SchemaChain]
+    tenancy: Tenancy, store: Store, chains: Sequence[SchemaChain]
 ) -> set[str]:
     """Migrate every tenant but those ``deleting``, in IRI order; answers the tenants set aside (PD-11).
 
-    ``tenancy.behind`` is emptied first and then holds the tenants whose migration failed, each logged
-    at ERROR (step ``migrate-tenant``). The next tenant runs after a failure.
+    The tenants whose migration failed are each logged at ERROR (step ``migrate-tenant``) and, once
+    the run ends, replace ``tenancy.behind`` (``set_aside``): until then the previous set stays in
+    force. The next tenant runs after a failure.
     """
-    tenancy.behind.clear()
+    failed: set[str] = set()
     for tenant in await tenancy.tenants():
         if tenant.state == TenantState.DELETING:
             continue
@@ -126,15 +85,22 @@ async def migrate_tenants(
             )
         except MigrationFailed as error:
             log.error(str(error), extra=_failure("migrate-tenant", error, tenant=tenant.id))
-            tenancy.behind.add(tenant.id)
-    return set(tenancy.behind)
+            failed.add(tenant.id)
+    tenancy.set_aside(failed)
+    return failed
 
 
 def _failure(step: str, error: MigrationFailed, **where: str) -> dict[str, str]:
-    return {"step": step, **where, "migration": error.migration, "cause": error.cause}
+    return {
+        "step": step,
+        **where,
+        "schema": error.schema,
+        "migration": error.migration,
+        "cause": error.cause,
+    }
 
 
-async def _shared_databases(tenancy: "Tenancy", store: Store) -> list[str]:
+async def _shared_databases(tenancy: Tenancy, store: Store) -> list[str]:
     databases = [tenancy.system_database]
     application = tenancy.application_database
     if application is not None and application in await store.list_datasets():
@@ -149,12 +115,12 @@ async def _migrate_schema(
     while True:
         pending = pending_from(chain, version)
         if pending is None:
-            known = ", ".join(f'"{known}"' for known in chain[0])
+            known = ", ".join(repr(known) for known in versions(chain))
             raise _failed(
                 database,
                 schema_id,
                 None,
-                f'the stamp "{version}" is not one of the versions {known}',
+                f"the stamp {version!r} is not one of the versions {known}",
             )
         if not pending:
             return
@@ -205,37 +171,46 @@ async def _apply(
     except PersistenceError as error:
         raise _failed(database, schema_id, migration, error) from error
     version = await _read_stamp(store, database, schema_id, stamps_graph, migration)
-    problem = _not_forward(version, migration, chain[0])
-    if version is None or problem is not None:
+    if problem := _not_forward(version, migration, versions(chain)):
         raise _failed(database, schema_id, migration, f"after the request {problem}")
     log.info(
         "migrated a database",
-        extra={"step": "migrate", "database": database, "migration": _name(schema_id, migration)},
+        extra={
+            "step": "migrate",
+            "database": database,
+            "schema": schema_id,
+            "migration": _name(schema_id, migration),
+        },
     )
-    return version
+    return cast(str, version)  # _not_forward answered a problem for None
 
 
-def _not_forward(version: str | None, migration: Migration, versions: Sequence[str]) -> str | None:
+def _not_forward(version: str | None, migration: Migration, ordered: Sequence[str]) -> str | None:
     """What is wrong with the stamp read back, or None when it is ``to`` or a later version of the chain."""
     if version is None:
-        return "no stamp"
-    if version not in versions:
-        return f'the stamp "{version}" is not one of the chain\'s versions'
-    if versions.index(version) < versions.index(migration.to_version):
+        return "there is no stamp"
+    if version not in ordered:
+        return f"the stamp {version!r} is not one of the chain's versions"
+    if ordered.index(version) < ordered.index(migration.to_version):
         return (
-            f'the stamp "{version}" went backwards (the migration ends at "{migration.to_version}")'
+            f"the stamp {version!r} went backwards (the migration ends at {migration.to_version!r})"
         )
     return None
 
 
-def _name(schema_id: str, migration: Migration | None) -> str:
-    if migration is None:
-        return f"the stamp of {schema_id}"
+def _name(schema_id: str, migration: Migration) -> str:
     return f"{migration.from_version}__{migration.to_version} of {schema_id}"
 
 
 def _failed(
     database: str, schema_id: str, migration: Migration | None, cause: object
 ) -> MigrationFailed:
-    name, why = _name(schema_id, migration), str(cause)[:SHOWN]
-    return MigrationFailed(f"cannot migrate {database}: {name}: {why}", migration=name, cause=why)
+    """``migration`` names the migration (empty when the failure is of the stamp alone); the schema goes apart."""
+    what = _name(schema_id, migration) if migration else f"the stamp of {schema_id}"
+    why = str(cause)[:SHOWN]
+    return MigrationFailed(
+        f"cannot migrate {database}: {what}: {why}",
+        schema=schema_id,
+        migration=_name(schema_id, migration) if migration else "",
+        cause=why,
+    )

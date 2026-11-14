@@ -7,7 +7,6 @@ from pathlib import Path
 from types import ModuleType
 from typing import BinaryIO, cast
 
-from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel
 
 from rdf_persistence.domain.generated import (
@@ -47,9 +46,8 @@ from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, generated_models_of
-from rdf_persistence.services.migration_runner import SchemaChain
-from rdf_persistence.services.migrations import load_chain
-from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
+from rdf_persistence.services.migrations import chain_of, current_version
+from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import (
     iri_types,
     tenant_access_class,
@@ -59,17 +57,9 @@ from rdf_persistence.services.store import Store, ToolkitStore
 from rdf_persistence.services.tenancy import GrantValidator, RootValidator, Tenancy
 from rdf_persistence.services.tokens import TokenVerifier
 from rdf_persistence.services.transitions import dependents as transition_dependents
-from rdf_persistence.services.vocabulary import metamodel
+from rdf_persistence.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
 from rdf_persistence.services.workflows import Workflows
 from rdf_persistence.services.write_guards import WriteGuards
-
-TOOLKIT_MIGRATIONS = PACKAGE_DIR / "model" / "migrations"  # the toolkit's own chain (PD-13)
-
-
-def _chain_of(view: SchemaView, folder: Path) -> SchemaChain:
-    """The schema id of ``view`` and the chain of ``folder`` that ends at the schema's version."""
-    schema_id = str(view.schema.id)
-    return schema_id, load_chain(folder, schema_id, str(view.schema.version))
 
 
 class ServiceKit:
@@ -109,8 +99,8 @@ class ServiceKit:
         view = load_schema(schema)
         self.view = view
         self.chains = (
-            _chain_of(metamodel(), TOOLKIT_MIGRATIONS),
-            _chain_of(view, migrations),
+            chain_of(metamodel(), TOOLKIT_MIGRATIONS),
+            chain_of(view, migrations),
         )
         self.listings = Listings(view)
         self.store = ToolkitStore(store)
@@ -159,7 +149,7 @@ class ServiceKit:
             grant_validators=grant_validators,
             root_validators=root_validators,
             dependents=(*discussion_dependents(view), *transition_dependents(view)),
-            stamps=[(schema_id, chain[0][-1]) for schema_id, chain in self.chains],
+            stamps=[(schema_id, current_version(chain)) for schema_id, chain in self.chains],
         )
         self.aggregates = Aggregates(self.documents, self.tenancy, self.iris)
 

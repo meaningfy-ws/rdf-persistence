@@ -10,7 +10,7 @@ from rdf_persistence.domain.exceptions import InvalidMigration
 from rdf_persistence.domain.generated.service.rp_service import Migration
 from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.migration_runner import stamps
+from rdf_persistence.services.migrations import stamps, versions
 from rdf_persistence.services.vocabulary import metamodel
 from rdf_persistence.testkit import FakeStore
 from tests.fixtures.library import generated
@@ -35,18 +35,32 @@ class LoggedStore(FakeStore):
     def __init__(self) -> None:
         super().__init__()
         self.calls: list[tuple[str, str]] = []
+        self.texts: list[
+            str
+        ] = []  # the SPARQL of each call, at the index of the call ("" for a drop)
 
     async def query(self, dataset, sparql):
         self.calls.append(("query", dataset))
+        self.texts.append(sparql)
         return await super().query(dataset, sparql)
 
     async def update(self, dataset, sparql):
         self.calls.append(("update", dataset))
+        self.texts.append(sparql)
         await super().update(dataset, sparql)
 
     async def drop_dataset(self, name):
         self.calls.append(("drop_dataset", name))
+        self.texts.append("")
         await super().drop_dataset(name)
+
+    def first(self, kind: str, database: str, mentioning: str) -> int:
+        """The index of the first call of ``kind`` on ``database`` whose SPARQL mentions ``mentioning``."""
+        return next(
+            i
+            for i, call in enumerate(self.calls)
+            if call == (kind, database) and mentioning in self.texts[i]
+        )
 
 
 async def a_tenant(toy: ToyService) -> str:
@@ -78,7 +92,9 @@ def test_the_kit_holds_the_toolkits_chain_first_and_the_consumers_second() -> No
     assert [schema for schema, _ in kit.chains] == [str(metamodel().schema.id), LIB], (
         "toolkit first"
     )
-    assert [chain[0] for _, chain in kit.chains] == [("1",), ("1",)], "each at its current version"
+    assert [versions(chain) for _, chain in kit.chains] == [("1",), ("1",)], (
+        "each at its current version"
+    )
 
 
 async def test_a_tenant_created_through_the_service_holds_both_stamps_current() -> None:
@@ -95,8 +111,10 @@ async def test_a_tenant_created_through_the_service_holds_both_stamps_current() 
 def test_a_consumer_chain_that_forks_stops_the_service(tmp_path) -> None:
     write_step(tmp_path, LIB, "1", "2")
     write_step(tmp_path, LIB, "1", "3")
-    with pytest.raises(InvalidMigration, match="1__"):
+    with pytest.raises(InvalidMigration) as refused:
         ToyService(migrations=tmp_path)
+    assert "1__2" in str(refused.value), "the first forking file is named"
+    assert "1__3" in str(refused.value), "the second forking file is named"
 
 
 # --- the folder is required (TC-39) --------------------------------------------------------------
@@ -155,3 +173,16 @@ async def test_start_up_migrates_the_system_database_then_sweeps_then_migrates_t
     first_tenant = min(i for i, call in enumerate(calls) if call == ("query", database))
     assert last_application < sweep, "the shared databases are migrated before the sweep"
     assert sweep < first_tenant, "the tenants are migrated after the sweep"
+
+
+async def test_the_iri_policy_is_recorded_before_the_first_stamp_of_the_system_database_is_read() -> (
+    None
+):
+    store = LoggedStore()
+    toy = ToyService(store)
+    system = toy.kit.tenancy.system_database
+    async with toy.app.router.lifespan_context(toy.app):
+        pass
+    policy = store.first("update", system, "iri-policy")
+    first_stamp_read = store.first("query", system, "schema-stamps")
+    assert policy < first_stamp_read, "the policy record is written first, then the stamps are read"

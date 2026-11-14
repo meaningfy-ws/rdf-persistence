@@ -1508,7 +1508,9 @@ def build_library_app(
 
 `migrations` is the folder of your migration files. At start-up the service brings every database
 to the version the schema runs, before it serves. A tenant whose migration failed is set aside:
-its requests answer 503 with the problem `tenant-behind`, and the other tenants are served.
+its requests for data (its aggregates, files and listings) answer 503 with the problem
+`tenant-behind`. Its record, its grants and its deletion are still served, and so are a dump and the
+live sweep. The other tenants are served.
 
 The adapters and the settings come from the deployment. The adapters of the store, the identity
 provider and the token verifier are async context managers, so open them for the life of the app:

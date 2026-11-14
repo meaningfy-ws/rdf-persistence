@@ -15,7 +15,8 @@ from typing import Any
 
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel, ValidationError
-from rdflib import RDF, Dataset, Graph, URIRef
+from rdflib import RDF, Dataset, Graph, Literal, URIRef
+from rdflib.term import Node
 
 from rdf_persistence.domain.exceptions import (
     Conflict,
@@ -53,7 +54,7 @@ from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
-from rdf_persistence.services.migration_runner import stamp_if_none
+from rdf_persistence.services.migrations import stamp_if_none
 from rdf_persistence.services.schema_structure import (
     LABEL,
     aggregate_keys,
@@ -73,6 +74,7 @@ from rdf_persistence.services.session import (
     utc_now,
 )
 from rdf_persistence.services.store import Store
+from rdf_persistence.services.yaml_files import MOST_PROBLEMS, shown
 
 log = logging.getLogger(__name__)
 
@@ -124,10 +126,10 @@ class Tenancy:
         stamps: Sequence[tuple[str, str]] = (),
     ) -> None:
         self._dependents = dependents
-        self._stamps = tuple(
-            stamps
-        )  # (schema id, current version) of each chain, written to a new database (PD-10)
-        self.behind: set[str] = set()  # the tenants whose migration failed at start-up (PD-11)
+        # (schema id, current version) of each chain, written to a new database (PD-10)
+        self._stamps = tuple(stamps)
+        # the tenants whose migration failed at start-up (PD-11)
+        self._behind: frozenset[str] = frozenset()
         # not DEFAULT_IRIS: resource names need the settings' prefix, which DEFAULT_IRIS lacks (PD-12j)
         self._iris = iris or Iris(settings)
         self._listings = listings
@@ -260,6 +262,15 @@ class Tenancy:
         return application_database_name(self._settings.prefix)
 
     @property
+    def behind(self) -> frozenset[str]:
+        """The tenants whose migration failed at start-up: their requests for data are refused (PD-11)."""
+        return self._behind
+
+    def set_aside(self, tenants: Iterable[str]) -> None:
+        """Replace the set of tenants set aside by ``tenants``; the one writer of ``behind`` (PD-24.4)."""
+        self._behind = frozenset(tenants)
+
+    @property
     def stamps_graph(self) -> URIRef:
         """The graph of each database that records the schema versions its data follows (PD-2)."""
         return stamps_graph_iri(self._settings.base)
@@ -298,11 +309,11 @@ class Tenancy:
 
         False, with no store call, when the schema declares no application class (PD-8).
         """
-        if not self._application_types:
+        database = self.application_database
+        if database is None:
             return False
-        return await self._ensure_dataset(
-            application_database_name(self._settings.prefix)
-        )  # stamped when created
+        # stamped when created
+        return await self._ensure_dataset(database)
 
     async def create(
         self, label: str, root_slots: Mapping[str, Any], creator: Principal
@@ -383,6 +394,7 @@ class Tenancy:
             parsed, self._settings.base, source_tenant_id, self._iris.tenant_id_of(tenant)
         )
         check_graphs(data, tenant, self._iris)
+        self._refuse_other_stamps(data)
         self._refuse_application_objects(data)
         label = self._vet_restored_root(tenant, data.graph(self._iris.meta(tenant)), creator)
         name = self._iris.resource_name(tenant)
@@ -408,6 +420,30 @@ class Tenancy:
         await self._add_root(self._system, tenant, creator, record)
         _log_step("create-record", tenant, name)
         return TenantSummary(id=tenant, label=label, state=TenantState.ACTIVE)
+
+    def _refuse_other_stamps(self, data: Dataset) -> None:
+        """Refuse a dump whose stamps graph is not exactly one stamp per configured pair (PD-24.1).
+
+        Until a dump can be migrated (stage 3) the restored database must follow the versions this service
+        runs, and the runner trusts the graph: no other version, schema or statement may come in with it.
+        """
+        wanted = dict(self._stamps)
+        held = sorted(data.graph(self.stamps_graph), key=str)
+        stamped = {str(s) for s, p, _ in held if p == v.DATA_SCHEMA_VERSION}
+        differences = [
+            f"the stamp of {schema} at {version!r} is missing"
+            for schema, version in wanted.items()
+            if schema not in stamped
+        ]
+        differences += [d for triple in held if (d := _stamp_difference(triple, wanted))]
+        if differences:
+            more = len(differences) - MOST_PROBLEMS
+            listed = "; ".join(differences[:MOST_PROBLEMS]) + (
+                f"; +{more} more" if more > 0 else ""
+            )
+            raise InvalidBody(
+                f"the dump's stamps graph is not the versions this service runs: {listed}"
+            )
 
     def _refuse_application_objects(self, data: Dataset) -> None:
         """Refuse a dump that types a subject with an application class: no tenant database holds one (D-6 b)."""
@@ -682,6 +718,19 @@ class Tenancy:
     async def database_names(self) -> set[str]:
         """The database (and bucket) names the access records store, for every tenant."""
         return {record.database_name for record in await self._records()}
+
+
+def _stamp_difference(triple: tuple[Node, Node, Node], wanted: Mapping[str, str]) -> str | None:
+    """How one statement of a dump's stamps graph differs from ``wanted`` (schema id to version), or None."""
+    subject, predicate, value = triple
+    text = shown(str(value))
+    if predicate != v.DATA_SCHEMA_VERSION or not isinstance(value, Literal):
+        return f"<{subject}> <{predicate}> {text} is not a stamp"
+    if str(subject) not in wanted:
+        return f"<{subject}>, a schema this service does not run, is at {text}"
+    if value != Literal(wanted[str(subject)]):
+        return f"<{subject}> is at {text}, not {wanted[str(subject)]!r}"
+    return None
 
 
 def _plain(validators: Sequence[Callable[..., None]]) -> tuple[Callable[..., None], ...]:

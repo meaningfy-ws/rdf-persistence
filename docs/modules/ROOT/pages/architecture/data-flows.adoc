@@ -909,8 +909,10 @@ effective IRI policy equal the service's, and its `source_tenant_id` is the id o
 `source_tenant`; the policy does not glue the tenant id to a letter, digit or variable. Mint `T2`
 (`Conflict` later if a concurrent create takes it first). Rewrite each IRI term of the graph names,
 subjects and objects under the base, replacing the old tenant id between delimiters with the new one
-(predicates, datatypes and literals are untouched). Every quad must be in a graph the policy mints
-for `T2`, none in the default graph; the root must decode and pass the root validators. Restore
+(predicates, datatypes and literals are untouched). The schema-stamps graph is the one exception: its
+quads are copied as they are, and the dump is refused unless its stamps are exactly the versions the
+service runs, one statement per schema and nothing else. Every other quad must be in a graph the
+policy mints for `T2`, none in the default graph; the root must decode and pass the root validators. Restore
 checks this structure, not each aggregate against its shapes, so it trusts the graph content (only
 restore archives a deployment you trust wrote). The size budget: before each member is read, its size
 plus a tar block is charged against `max_restore_bytes` (default 1 GiB, a `ServiceSettings` slot), and
