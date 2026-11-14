@@ -163,6 +163,10 @@ aggregate (DEC-13).
     second command.
   - `Session.add_graph`, `replace_graph` and `remove` take `served=None` too and pass it to their
     one-change transaction.
+  - As built (task 2.2): a `Served` is claimed when its transaction opens, so a refused or failed
+    commit spends it too; a retry builds a new `Served` (`mapper.served(command)` again). `Served`
+    is a plain class and the events are tuples, because the model guard forbids dataclasses in
+    `services` and they are internal to one commit, never stored or sent as such.
   - Diagnosis after a failed confirmation (`_diagnose`): the existing reasons first, unchanged. Only
     when they find none and the commit was served, an `ASK` for the activity IRI in the provenance
     graph; if it is there, `Conflict` naming it. (A served commit that applied and whose every graph

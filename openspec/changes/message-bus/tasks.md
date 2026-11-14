@@ -71,7 +71,7 @@ green CI.
 
 ## 2. The activity on every commit (stage 2)
 
-- [ ] 2.1 `Served` and `Mapper.served` (PD-8). `services/provenance.py` (D-3 b): the `Served` dataclass;
+- [x] 2.1 `Served` and `Mapper.served` (PD-8). `services/provenance.py` (D-3 b): the `Served` dataclass;
   `services/mapper.py`: `served(command)`. Test first in `tests/unit/services/test_mapper.py`.
   Payload stripping is tested in 2.3 on `Transition`.
 
@@ -81,7 +81,7 @@ green CI.
 | TC-21 | `mapper.served(Replace(id="urn:uuid:1", …))` with each `SESSION_FILLED` slot set (parametrized) | `triples` holds no statement of that slot |
 | TC-21a | `mapper.served(Replace(id="https://example.org/x"))` | `ValueError` naming the id |
 
-- [ ] 2.2 The commit records and publishes (PD-6 to PD-10; D-1). `services/session.py`:
+- [x] 2.2 The commit records and publishes (PD-6 to PD-10; D-1). `services/session.py`:
   `Session(record_activities=True, on_commit=None)`, `open_session` likewise,
   `transaction(served=None)` and `served=` on `add_graph`, `replace_graph`, `remove`, the events
   collected per change, `_stored` returning the root's types, the activity operation, the id guard

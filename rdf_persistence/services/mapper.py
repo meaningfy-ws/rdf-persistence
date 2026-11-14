@@ -37,10 +37,16 @@ from rdflib.term import Node
 
 from rdf_persistence.domain.base import RpModel
 from rdf_persistence.domain.exceptions import CommitTooLarge, NotFound, PersistenceError
+from rdf_persistence.domain.generated.rp_core import RpAnnotation
+from rdf_persistence.domain.generated.rp_provenance import Activity
 from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris, is_skolem_of
 from rdf_persistence.domain.sparql import Triple
+from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.provenance import Served
 from rdf_persistence.services.schema_structure import (
+    ACTIVITY,
     aggregate_roots,
+    flag,
     holds_iri,
     holds_owned_part,
     is_bookkeeping,
@@ -140,6 +146,40 @@ class Mapper:
         graph = Graph()
         self._write(obj, URIRef(getattr(obj, "id")), graph)  # noqa: B009 - a root always has an id
         return graph
+
+    def served(self, command: Activity) -> Served:
+        """``command`` as a ``Served`` for the transaction that commits it (message-bus PD-8).
+
+        Its ``activity`` is the command without its payload slots (``payload: true`` on the induced
+        slot of its class); its ``triples`` are its own statements without ``rdf:type``, the payload
+        slots and the slots the session fills; its ``types`` are its class and every ancestor up to
+        ``prov:Activity``.
+
+        Raises:
+            ValueError: ``command`` is no activity, or its id is not a ``urn:uuid:`` IRI.
+        """
+        name = self._schema_names[type(command).__name__]
+        payload = {
+            underscore(s.name): None
+            for s, _ in self._slots_of(name)
+            if flag(s, RpAnnotation.PAYLOAD)
+        }
+        types: list[URIRef] = []
+        for cls in self.view.class_ancestors(name, mixins=False):
+            types.append(URIRef(self.view.get_uri(cls, expand=True)))
+            if cls == ACTIVITY:
+                break
+        else:
+            raise ValueError(f"{type(command).__name__} is not an {ACTIVITY}")
+        own = command.model_copy(update={**payload, **dict.fromkeys(v.SESSION_FILLED)})
+        graph = self.to_graph(own)
+        graph.remove((URIRef(command.id), RDF.type, None))
+        return Served(command.model_copy(update=payload), list(self._triples(graph)), types)
+
+    @staticmethod
+    def _triples(graph: Graph) -> Iterable[Triple]:
+        # rdflib types a graph's terms as Node; the mapper writes only URIs, literals and blank nodes
+        return cast(Iterable[Triple], graph)
 
     def _write(self, obj: BaseModel, subject: Node, graph: Graph) -> None:
         name = self._schema_names[type(obj).__name__]

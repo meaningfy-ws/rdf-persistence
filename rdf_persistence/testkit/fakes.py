@@ -32,6 +32,7 @@ from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.session import (
     Clock,
     Dependents,
+    OnCommit,
     Session,
     WriteGuard,
     open_session,
@@ -353,12 +354,15 @@ async def fake_session(
     keys: Sequence[AggregateKey] = (),
     guards: WriteGuard | None = None,
     dependents: Dependents = (),
+    record_activities: bool = True,
+    on_commit: OnCommit | None = None,
 ) -> AsyncIterator[Session]:
     """A real ``Session`` over a ``FakeStore``, for unit tests of domain services.
 
     Pass the same ``store`` to several sessions to share their data; the tenant database is created
     on the store if it is not there yet. ``iris`` is the IRI policy of the code under test (default: the
     default policy). ``keys`` are the keys across aggregates the session enforces (default: none).
+    ``record_activities`` and ``on_commit`` are the session's (message-bus PD-9, PD-10).
     """
     store = store or FakeStore()
     if FAKE_DATABASE not in await store.list_datasets():
@@ -374,5 +378,7 @@ async def fake_session(
         keys=keys,
         guards=guards,
         dependents=dependents,
+        record_activities=record_activities,
+        on_commit=on_commit,
     ) as session:
         yield session

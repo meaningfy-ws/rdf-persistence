@@ -177,6 +177,7 @@ class Tenancy:
             dependents=self._dependents,
             refused_types=refused_types,
             allowed_types=allowed_types,
+            record_activities=database != self._system,  # no tenancy activities (message-bus PD-9)
         )
 
     def tenant_session(
