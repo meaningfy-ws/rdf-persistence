@@ -5,7 +5,10 @@ _Who points at this resource? Which books stand on this shelf? Is it still in us
 it? Why is the list shorter than I expect, and what is `hidden_count`?_
 
 This page shows how to ask a tenant which aggregates refer to one resource. It describes
-`develop` as of 2026-11-14 (the change `collaboration-and-reference-collections`).
+`develop` as of 2026-11-14 (the change `collaboration-and-reference-collections`). The terms
+tenant, aggregate, kit and IRI policy, and the names `kit`, `t` and `Action` in the snippets, are
+those of xref:howto/adopt.adoc[Build an application]; the errors are imported from
+`rdf_persistence`.
 
 A *referrer* of a resource is an aggregate that has a stored slot holding the IRI of that resource.
 The running example is the toy library: a book has a `shelf` slot that holds the IRI of a shelf, so
@@ -80,9 +83,14 @@ Say books b1 and b2 stand on shelf s1, and Bob is prohibited from reading b2. Bo
 b1, and a `hidden_count` of 1. A hidden referrer counts once, however many of its slots refer.
 
 The count is there so that you can warn the caller that other uses exist ("one more item uses this
-shelf") without telling what they are. The count is the same whatever you narrow by. If it followed
-the narrowing, a caller could ask class by class and slot by slot and learn the class and slot of a
-referrer it may not read. How a read is decided is in
+shelf") without telling what they are. It counts aggregates, while the list has one item per
+referrer and slot, so the two do not add up to a total.
+
+The count is the same whatever you narrow by: it answers the question without `class_name` and
+`slot`. Ask for the shelves that refer to a book and you may get no item and a `hidden_count` of 1,
+for a hidden book that refers to it. If the count followed the narrowing, a caller could ask class
+by class and slot by slot and learn the class and slot of a referrer it may not read. How a read is
+decided is in
 xref:architecture/access-control.adoc[Access control and identity].
 
 == Errors
@@ -106,7 +114,15 @@ xref:architecture/access-control.adoc[Access control and identity].
   type; only triples written by hand can lack it.
 * *`referrers` informs; it protects nothing.* The toolkit has no referential integrity: a delete is
   never refused because of referrers. To keep a shelf that still holds books, call `referrers`
-  in your own delete route and refuse there. Another request can still add a reference between
-  your check and your delete.
+  in your own delete route and refuse there, also when the list is empty and `hidden_count` is
+  not 0. The answer of a delete check opens the collaboration as well: an action other than
+  `read` implies `read`. Another request can still add a reference between your check and your
+  delete; nothing locks the resource.
+* *A graph loaded into an aggregate is not read.* Only the aggregate's own graph counts; a triple
+  in RDF you loaded for it is not a reference.
+* *Narrowing compares names, exactly.* `class_name="Book"` keeps the items shown as `Book`, not
+  those of a subclass, and an item shown with an IRI matches no name.
+* *`referrers` does not check that the resource exists.* A well-formed IRI of the tenant that no
+  aggregate has gives an empty result, like a resource nothing refers to.
 * The links of a comment or of a transition record to the resource it was made on do not count
   as references. The toolkit has neither yet, so today this changes nothing.
