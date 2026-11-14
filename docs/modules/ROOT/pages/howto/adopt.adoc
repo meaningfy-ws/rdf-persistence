@@ -234,7 +234,8 @@ key. A schema that defines aggregate roots of its own needs a third, `migrations
 the schema lock and the migration files. The root schema then carries a quoted `version:`
 (`version: "1"`), since an unquoted `1.10` is read as a number and loses its zero. Without them the
 hard check fails. `rp-generate` keeps the lock, `schema.lock.json`, in that folder, and when the
-version changes it drafts a migration there for you to review. The other keys are optional:
+version changes it drafts a migration there for you to review (see
+xref:howto/migrate.adoc[Change a schema that has stored data]). The other keys are optional:
 
 * `typescript` and `diagrams` are folders; nothing is written when they are absent.
 * `python` is the folder that receives every file listed below except the TypeScript and the
@@ -579,11 +580,13 @@ _How do I change the model later?_
 When you remove or rename a schema module, the next run deletes the generated files of the old one
 (step 4); you delete nothing by hand, unless that file was edited (step 4: the run keeps it).
 
-The toolkit has no migration of stored data: it reads and writes the graphs as the model now
-describes them. A stored aggregate that lacks a slot you made `required` fails to read with a
-`ValidationError`; triples of a removed or renamed slot are ignored on read and dropped when the
-aggregate is next committed. The service loads the model at start-up, so restart it to serve the
-new one (step 12).
+The toolkit reads and writes the graphs as the model now describes them, so a schema that has
+stored data needs a new `version:` and, for some changes, a migration file. `rp-generate` compares
+the schema with its lock, drafts the migration, and the service applies it at start-up, once per
+database. Without one, a stored aggregate that lacks a slot you made `required` fails to read with a
+`ValidationError`, and triples of a removed or renamed slot are ignored on read and dropped when the
+aggregate is next committed. See xref:howto/migrate.adoc[Change a schema that has stored data]. The
+service loads the model at start-up, so restart it to serve the new one (step 12).
 
 To upgrade rdf-persistence, which is installed from a git branch (step 1), run
 `uv lock --upgrade-package rdf-persistence` and `uv sync`. Then, until you regenerate, the freshness
@@ -1511,7 +1514,7 @@ to the version the schema runs, before it serves. A tenant whose migration faile
 its requests for data (its aggregates, files and listings) answer 503 with the problem
 `tenant-behind`. Its record can still be read, its grants changed and the tenant deleted. A rename
 answers 503 too, because it writes the tenant's root. A dump and the live sweep still work. The
-other tenants are served.
+other tenants are served. See xref:howto/migrate.adoc#startup[Change a schema that has stored data].
 
 The adapters and the settings come from the deployment. The adapters of the store, the identity
 provider and the token verifier are async context managers, so open them for the life of the app:

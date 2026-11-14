@@ -103,6 +103,14 @@ await kit.tenancy.ensure_application_database()   # True if it created the datab
 It is safe to call on every start: it answers `False` when the database exists, and when the schema
 has no application class it does nothing.
 
+A consumer that calls it itself must also run the migrations at start-up, as `install_service`
+does: `migrate_shared(kit.tenancy, kit.store, kit.chains)` (the system database, then the
+application database), then its sweep, then `migrate_tenants(kit.tenancy, kit.store, kit.chains)`, in
+that order, after the IRI policy guard and this call. Both are in
+`rdf_persistence.services.migration_runner`. Without them the
+databases keep the stamps they were created with, and a schema change is never applied. See
+xref:howto/migrate.adoc#startup[Change a schema that has stored data].
+
 [#access]
 == 5. Who may do what
 

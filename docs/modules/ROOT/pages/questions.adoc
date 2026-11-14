@@ -195,6 +195,14 @@ schema, check the caller with `kit.require_application`, mint IRIs with `kit.app
 open `kit.application_session`. Access comes from global roles at level `system`, which also apply
 in every tenant. See xref:howto/application-data.adoc[Keep data that belongs to no project].
 
+*My schema changed and I have stored data: what do I do?*::
+Set a new quoted `version:` in the root schema and run `make generate`. `rp-generate` compares the
+schema with its committed lock, refuses a change that needs a new version, and drafts a migration
+file for you to review. The service applies the migration files at start-up, once per database,
+before it serves. A tenant whose migration fails answers `503` (`tenant-behind`) until a later start
+migrates it. Dump every tenant before you deploy a migration with steps. See
+xref:howto/migrate.adoc[Change a schema that has stored data].
+
 *How do I test my application with the testkit?*::
 Use `FakeStore`, `FakeFileStore` and `FakeIdentity` in place of the adapters, `fake_session` for a
 domain service, and `TokenSigner` with `JwksTokenVerifier` for tokens, all from
@@ -371,4 +379,4 @@ planned: its PLAN waits for the decisions listed in its `inputs/seed.md`.
 * *GraphQL*, read-only over the same schema and context (option C of
   xref:architecture/api.adoc[the API page]), *OpenFGA* as the decision engine, and property- or
   triple-level access.
-* *A second store* (Oxigraph, Virtuoso) with a capability descriptor, and schema migrations.
+* *A second store* (Oxigraph, Virtuoso) with a capability descriptor.
