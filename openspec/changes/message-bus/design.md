@@ -361,7 +361,13 @@ aggregate (DEC-13).
     record), `questions.adoc`, and the description of `rp_provenance.yaml` (L2, L3, L5).
   Rejected: reading a missing `provenance_template` of a recorded policy as the configured value
   (L5 item 2): it would let a policy change pass the guard unseen; the case is documented (f).
-  Carried to stage 2 (task 2.2): the IRIs of a `Served` are checked where it is built (the id is
+- **D-4** (developer, 2026-11-14: "reconcile the deviations between epic implementation and epic
+  shape") The proposal gained the table "Where the PLAN and the code differ from the shape", and
+  `specs/rp-messages/spec.md` was rewritten to say what this PLAN says (mixed commits, kept
+  records, the reused activity IRI, the toolkit's three handlers, the wider set of toolkit-filled
+  slots, toy names instead of a consumer's). The table is kept current at each stage's merge and
+  becomes the "As built" record at the archive.
+  Carried to stage 2 from D-3 (task 2.2): the IRIs of a `Served` are checked where it is built (the id is
   a `urn:uuid:`, PD-3; principals come from the session), so no unchecked caller text reaches
   `URIRef` (L1); `Transition` is no aggregate root and inherits the parts as an activity, which is
   what PD-11 intends (L3). TC-16's "root frames unchanged" has one known exception:

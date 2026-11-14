@@ -245,7 +245,7 @@ green CI.
 | TC-95 | `handle(command(DeleteFile, used_resource=f1), c)` with `bootstrap()` | `LookupError` (no handler, PD-1 item 2) |
 
 - [ ] 4.2 Testkit and feature scenarios. `testkit/`: `RecordingObserver` (PD-22), exported and
-  covered in `tests/unit/testkit/`. `tests/feature/`: `messages.feature` with the seven scenarios of
+  covered in `tests/unit/testkit/`. `tests/feature/`: `messages.feature` with every scenario (ten since the reconciliation of 2026-11-14) of
   `specs/rp-messages/spec.md` on the toy classes, and its step module beside the existing ones.
 
 - [ ] 4.3 Docs. `architecture/index.adoc` (the building block; no consumer terms),
