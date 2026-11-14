@@ -130,3 +130,28 @@ None.
   deployment whose schema declares an application class.
 - `schema-migrations` must migrate the application database as well as each tenant;
   `aggregate-events` must emit for it (noted in both).
+
+## As built (2026-11-14)
+
+Delivered in one stage, one PR into `develop`; the solution outline and every DEC held. Where the
+result differs from the text above, or adds to it (each is a recorded decision in
+[design.md](design.md), and the spec deltas say the same):
+
+| Above | As built | Decision |
+|---|---|---|
+| The example: `Template(id=...)`, `authorised.principal.id` | The kit mints the IRI, `kit.application_iri(Template)`; `Authorised.principal` is the principal's IRI, a `str`, so the session is `kit.application_session(authorised.principal)` | PD-9, PD-10 |
+| DEC-3: two kit operations | Three: `require_application`, `application_iri`, `application_session`; and `Tenancy.ensure_application_database()`, which `install_service` calls at start-up and a consumer with its own start-up calls once | PD-8, PD-10 |
+| DEC-2: "from the caller's global roles … at level `system`" | Holds. Its consequence, not said above: a role at level `system` also permits its actions in every tenant, so an application editor can edit every tenant, and a system-level reader that already exists can read application data. A role for application data only needs a new role level | PD-9, RISK-1 |
+| DEC-2: "the same `AccessRules`" | The same class, a method of its own, `require_application`: it answers `Forbidden`, never `NotFound`, and reads no grant. `Authorised.caller_access` is filled with the application IRI, state `active`, no grants | PD-9 |
+| DEC-5: "minted like a tenant whose IRI is the application IRI" | Minted and matched like one, but the application IRI never answers as a tenant: `tenant_id_of`, `tenant("app")`, `resource_name` and `tenant_of_access` refuse it, so dump, restore and the access lookup cannot take it for one | PD-3 |
+| DEC-5: "refuses a policy whose application IRI reads as a tenant IRI" | Also refused when `Iris` is built: an application IRI outside the base or on the toolkit's own IRI; application access, meta or registry IRIs that coincide; and templates under which an aggregate, part or loaded graph of the application reads as a tenant, or a tenant as one of its aggregates (found by the adversarial tests) | PD-3, D-4 |
+| DEC-5: "a recorded policy without the field compares as the default" | Holds, and so the application template is fixed from the first start: a deployment that already has a policy record can use only the default `{base}app`. A dump written before this change is read the same way and still restores | PD-1, PD-11, RISK-6 |
+| DEC-6: "application-level only through the schema annotation" | The annotation is read along the `is_a` chain, so a subclass of an application class is one; a mixin's annotation does not count and generation refuses it | PD-4, PD-5 |
+| DEC-6: the sessions refuse the other space's classes | By the root's `rdf:type`, on every write, because an IRI policy may write no class into an IRI. A tenant session refuses application classes; the application session takes application classes only, so an untyped root is refused there too. Reads are not checked: nothing of the other space is stored | PD-6 |
+| DEC-6: generation fails for the tenant root or a class owned by a tenant class | Also for an application class that is not an aggregate root, is a stored file (no bucket), or shares its class IRI with a root of another database | PD-5 |
+| Rabbit-holes (not said) | A class moved from `tenant` to `application` leaves its stored aggregates in the tenant databases: still readable by IRI and removable there, no longer replaceable, findable or served. The how-to gives the three steps of the move; there is no move tool | RISK-7 |
+| What Changes: "the access decision of DEC-2" in `services/` | As listed, plus `services/schema_structure.py` (`database_of`, `served_roots` by database, `root_class_iris`), `services/listing.py` (listings per database) and `services/tenant_dump.py` (old manifests) | PD-4, PD-11 |
+
+Not built, as the No-gos say: no routes or OpenAPI paths, no grants, no bucket, no sweep or dump of
+the application database, no cross-database read. An older toolkit version cannot read the policy
+record or a dump written by this one (RISK-2).
