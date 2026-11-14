@@ -4,6 +4,7 @@ A, B are stored books of the toy tenant; "another session" is a second session o
 """
 
 import asyncio
+import time
 import uuid
 from collections.abc import AsyncIterator
 
@@ -13,7 +14,7 @@ from rdflib.namespace import XSD
 
 from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.domain.exceptions import Conflict, KeyConflict, NotFound
-from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.domain.generated.rp_core import KeyDuplicate, Principal
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import aggregate_keys
@@ -39,14 +40,14 @@ def book(iri: str, isbn: str | Literal) -> list:
     ]
 
 
-def session_of(store: FusekiStore, database: str, principal: Principal = ADA) -> Session:
+def session_of(store: FusekiStore, database: str, principal: Principal = ADA, keys=KEYS) -> Session:
     return Session(
         store,
         database=database,
         tenant_iri=TENANT,
         principal=principal,
         clock=Ticker(),
-        keys=KEYS,
+        keys=keys,
     )
 
 
@@ -165,3 +166,57 @@ async def test_it04_a_stale_replace_that_also_clashes_is_a_plain_conflict(store,
         await session.replace_graph(A, book(A, "2"), version_a)
     assert type(refused.value) is Conflict, "the version comes first, not a KeyConflict"
     assert refused.value.iris == (A,), "A is the root that changed"
+
+
+async def test_it05_the_report_names_the_roots_that_share_a_key_value(store, database, session):
+    alone = book_iri(3)  # TC-40
+    unkeyed = session_of(store, database, keys=())
+    for iri, isbn in ((A, "1"), (B, "1"), (alone, "2")):
+        await unkeyed.add_graph(iri, book(iri, isbn))
+    every_quad = "SELECT ?g ?s ?p ?o WHERE { GRAPH ?g { ?s ?p ?o } }"
+    before = len(list(await store.query(database, every_quad)))
+    assert await session.key_duplicates() == [
+        KeyDuplicate(key_name="isbn_key", root_class=str(BOOK), key_values=["1"], key_roots=[A, B])
+    ], "one group: ISBN 1, roots A and B sorted; C is alone"
+    after = len(list(await store.query(database, every_quad)))
+    assert after == before, "the report changed nothing in the store"
+
+
+BOOKS, BATCH = 1000, 100
+
+
+async def mean_seconds(adds) -> float:
+    """The mean wall time of awaiting each coroutine of ``adds`` in turn."""
+    spent = []
+    for add in adds:
+        start = time.perf_counter()
+        await add
+        spent.append(time.perf_counter() - start)
+    return sum(spent) / len(spent)
+
+
+@pytest.mark.slow
+async def test_it06_a_keyed_add_stays_under_half_a_second_in_a_tenant_of_a_thousand_books(
+    store, database, session
+):
+    unkeyed = session_of(store, database, keys=())
+    started = time.perf_counter()
+    for first in range(0, BOOKS, BATCH):  # 10 transactions of 100 books, unkeyed: only the load
+        async with unkeyed.transaction() as load:
+            for n in range(first, first + BATCH):
+                iri = book_iri(10_000 + n)
+                await load.add_graph(iri, book(iri, f"load-{n}"))
+    loaded = time.perf_counter() - started
+    keyed = await mean_seconds(
+        session.add_graph(iri, book(iri, f"new-{n}"))
+        for n, iri in enumerate(book_iri(20_000 + n) for n in range(ROUNDS))
+    )
+    bare = await mean_seconds(
+        session.add_graph(iri, [(URIRef(iri), RDF.type, BOOK)])
+        for iri in (book_iri(30_000 + n) for n in range(ROUNDS))
+    )
+    print(
+        f"\nIT-06: {BOOKS} books loaded in {loaded:.1f} s ({BOOKS // BATCH} transactions of {BATCH});"
+        f" mean keyed add {keyed:.3f} s, mean add without ISBN {bare:.3f} s over {ROUNDS} each"
+    )
+    assert keyed < 0.5, f"mean keyed add {keyed:.3f} s (without ISBN {bare:.3f} s)"

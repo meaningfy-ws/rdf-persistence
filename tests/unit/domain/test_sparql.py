@@ -20,6 +20,8 @@ from rdf_persistence.domain.sparql import (
     term_list,
     triples_block,
     union,
+    value_patterns,
+    value_variables,
 )
 
 EX = "http://example.org/"
@@ -234,6 +236,38 @@ def test_match_patterns_refuse_a_variable_that_is_not_a_plain_name(variable):
 def test_match_patterns_refuse_a_raw_string():
     with pytest.raises(SparqlError):
         match_patterns("root", [(URIRef(f"{EX}p"), "raw")])  # type: ignore[list-item]
+
+
+def test_value_patterns_refuse_a_raw_string():
+    with pytest.raises(SparqlError):
+        value_patterns("root", ["http://example.org/p"])  # type: ignore[list-item]
+
+
+def test_value_patterns_and_variables_name_one_variable_per_predicate():
+    predicates = [URIRef(f"{EX}p"), URIRef(f"{EX}q")]
+    patterns = value_patterns("root", predicates)
+    assert patterns == f"?root <{EX}p> ?v0 . ?root <{EX}q> ?v1 .", "one pattern per predicate"
+    assert value_variables(2) == "?v0 ?v1", "the variables the patterns bind, in order"
+    prepareQuery(
+        fill("SELECT $vars WHERE { $patterns }", vars=value_variables(2), patterns=patterns)
+    )
+
+
+def test_no_value_patterns_and_no_variables_are_empty():
+    assert value_patterns("root", []) == "", "no predicate, no pattern"
+    assert value_variables(0) == "", "no predicate, no variable"
+
+
+@pytest.mark.parametrize("variable", ["", "1x", "a b", "x } ; DROP ALL ; {", "?x"])
+def test_value_patterns_refuse_a_variable_that_is_not_a_plain_name(variable):
+    with pytest.raises(SparqlError):
+        value_patterns(variable, [])
+
+
+@pytest.mark.parametrize("number", [-1, True, 1.5, "2", None])
+def test_value_variables_refuse_anything_but_a_non_negative_integer(number):
+    with pytest.raises(SparqlError):
+        value_variables(number)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("value", [0, 1, 50, 10**6])

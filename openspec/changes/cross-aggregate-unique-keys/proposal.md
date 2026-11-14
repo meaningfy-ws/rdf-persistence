@@ -137,3 +137,29 @@ None.
 - A new problem type in the OpenAPI document (`entrypoints/openapi.py`).
 - Public API: `KeyConflict`, `Session.key_duplicates` and the `KeyDuplicate` it returns. Nothing
   removed.
+
+## As built (2026-11-14)
+
+Delivered in #96 and #97, in the two planned stages; the solution outline, every DEC and every
+No-go held. Where the result differs from the text above (each is a recorded decision in
+design.md, and the spec deltas say the same):
+
+| Above | As built | Decision |
+|---|---|---|
+| Solution outline: of two concurrent writes "exactly one succeeds" | The guarantee is: at most one commits, and a refused commit writes nothing. On Fuseki, 20 rounds of two racing adds each gave exactly one success | PD-15, IT-01 |
+| Solution outline: "The refusal is a `KeyConflict`" | Exact for two changes of one transaction. For a value held in the store it is a diagnosis read after the refusal: `iris` can name a root too many or miss one, and a clash whose holder is gone by then arrives as a plain `Conflict` | PD-15, PD-9 |
+| (not said) | A stale version wins over a key clash: such a write gets a plain `Conflict` | PD-9 |
+| (not said) | `KeyConflict` carries `iris` (the refused roots) and `keys` (the key names); neither it nor the 409 names the value or the holder | PD-8 |
+| DEC-1: "on the aggregate root" | Also on an ancestor of roots; each root below it gets its own key, the nearest declaration wins. Refused by the hard check: an unscoped key on a root, a scoped key on an owned part, the tenant root or a `database: system` root, a slot that is multivalued, the identifier, bookkeeping or an owned part, and `consider_nulls_inequal: false` | PD-2, D-6 |
+| DEC-5: "exact match of RDF terms" | `"1"^^xsd:string` equals plain `"1"` (one RDF 1.1 term); a blank-node value claims nothing; on Fuseki numbers compare by value, in the fake store and inside one transaction by lexical form | PD-5, D-3, RISK-5 |
+| What Changes: `unique_keys.py` holds "the keys of a schema" | `aggregate_keys(view)` is in `services/schema_structure.py`, beside the other schema readers; `unique_keys.py` holds claims, guards, the diagnosis and the report | PD-3 |
+| What Changes: `AggregateKey` and `KeyDuplicate` classes | Their slots are `key_name`, `root_class`, `key_predicates`, `key_values`, `key_roots`, so that they cannot clash with a consumer schema's slots | PD-16 |
+| What Changes (not listed) | `services/tenancy.py` computes the keys once and passes them to each session; `open_session` and `fake_session` take `keys=` and enforce nothing without it; `domain/sparql.py` gained `union`, `value_patterns`, `value_variables` | PD-10, PD-12, RISK-3 |
+| What Changes (not listed) | `FakeStore` reads `xsd:string` as a plain literal, as Fuseki does; `served_roots` treats `database: system` as inherited from an ancestor | D-5 (F-1, F-5) |
+| Impact: public API | Also exported: `AggregateKey`, `UniqueScope`. `aggregate_keys` is not exported; the how-to names its module | PD-10 |
+| DEC-6: the report | One `KeyDuplicate` per key and repeated value, sorted; a root with two values of a key slot is listed under each | PD-11, D-9 |
+| Rabbit-hole: the cost of the guard | Measured on Fuseki, tenant of 1,000 books: mean keyed add 0.049 s against 0.047 s without a key. On the fake store a commit of 300 keyed roots takes about 18 s (tests only) | RISK-1 |
+| (not said) | Accepted risk: a 409 `key-conflict` tells anyone who may write the type that the value exists in the tenant, even when its holder is hidden from them. The how-to says not to key a confidential slot | RISK-7 |
+
+Not built, as the No-gos say: no key across tenants or types, no key on owned parts, no
+normalisation, no automatic repair of existing duplicates.
