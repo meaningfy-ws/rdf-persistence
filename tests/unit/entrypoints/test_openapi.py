@@ -8,7 +8,8 @@ import pytest
 from openapi_spec_validator import validate
 
 from rdf_persistence.domain.media import JSON, JSON_LD, PROBLEM_JSON, TURTLE
-from rdf_persistence.entrypoints.problems import KINDS
+from rdf_persistence.entrypoints.problems import CONFLICT as VERSION_CONFLICT
+from rdf_persistence.entrypoints.problems import KEY_CONFLICT, KINDS
 from rdf_persistence.services.listing import listable_slots
 from rdf_persistence.services.schema_structure import is_internal
 from tests.toy_service import ToyService
@@ -30,7 +31,7 @@ SUCCESS = {200, 201, 204}
 # (path, method, the statuses it answers with): the problem statuses are the error matrix's
 READ = {200, 401, 403, 404, 406, 503}
 LIST = {200, 400, 401, 403, 404, 406, 503}
-CREATE = {201, 401, 403, 404, 406, 413, 415, 422, 503}
+CREATE = {201, 401, 403, 404, 406, 409, 413, 415, 422, 503}
 REPLACE = {200, 401, 403, 404, 406, 409, 413, 415, 422, 428, 503}
 DELETE = {204, 401, 403, 404, 409, 428, 503}
 
@@ -108,14 +109,28 @@ def test_a_problem_response_is_an_rfc_9457_problem_with_the_fixed_title(
     document, path, method, expected
 ) -> None:
     op = operation(document, path, method)
-    # two kinds share 409; reversed, the earlier one (the version conflict the routes document) wins
-    titles = {k.status: k.title for k in reversed(KINDS)}
+    # two kinds share 409: the description of a status names the titles of its kinds the route has
     for status in expected - SUCCESS:
         response = op["responses"][str(status)]
         assert schema_of(response["content"][PROBLEM_JSON]) == {"$ref": f"{COMPONENT}Problem"}, (
             f"{status} is a Problem"
         )
-        assert response["description"] == titles[status], f"{status} carries the problem's title"
+        titles = [k.title for k in KINDS if k.status == status]
+        assert any(title in response["description"] for title in titles), (
+            f"{status} carries the problem's title"
+        )
+
+
+@pytest.mark.parametrize(
+    ("path", "method"), [(f"{TENANT}/books", "post"), (f"{TENANT}/books/{{aggregate_id}}", "put")]
+)
+def test_a_write_that_a_unique_key_can_refuse_lists_the_key_conflict(
+    document, path, method
+) -> None:  # TC-33
+    description = operation(document, path, method)["responses"]["409"]["description"]
+    assert KEY_CONFLICT.title in description, "the key conflict is listed"
+    if method == "put":
+        assert VERSION_CONFLICT.title in description, "beside the version conflict"
 
 
 def test_fastapis_own_validation_error_is_not_published(document) -> None:

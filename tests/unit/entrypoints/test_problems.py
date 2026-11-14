@@ -32,6 +32,7 @@ ROWS = [
     (exceptions.DatabaseGone, 404, "not-found"),
     (exceptions.TenantGone, 404, "not-found"),
     (exceptions.Conflict, 409, "conflict"),
+    (exceptions.KeyConflict, 409, "key-conflict"),
     (exceptions.PreconditionRequired, 428, "precondition-required"),
     (exceptions.InvalidBody, 422, "invalid-body"),
     (exceptions.InvalidGraph, 422, "invalid-body"),
@@ -118,7 +119,19 @@ def test_the_kinds_are_exactly_the_slugs_and_titles_of_pd_15() -> None:
     )
 
 
-@pytest.mark.parametrize("error", [exceptions.NotFound, exceptions.Forbidden, exceptions.Conflict])
+def test_a_key_conflict_has_its_own_kind_and_a_version_conflict_keeps_its_own() -> None:  # TC-30
+    key = kind_of(exceptions.KeyConflict("x", iris=("i",), keys=("k",)))
+    assert key is not None
+    assert (key.slug, key.title, key.status) == ("key-conflict", "Key conflict", 409), "own kind"
+    version = kind_of(exceptions.Conflict("x"))
+    assert version is not None
+    assert (version.slug, version.title) == ("conflict", "Version conflict"), "unchanged"
+
+
+@pytest.mark.parametrize(
+    "error",
+    [exceptions.NotFound, exceptions.Forbidden, exceptions.Conflict, exceptions.KeyConflict],
+)
 async def test_a_refusal_hides_the_text_of_the_error(error: type[PersistenceError]) -> None:
     body = (await get(app_raising(error(SECRET)))).text
     assert "fuseki" not in body, "the detail would tell a caller what exists, or where the store is"
