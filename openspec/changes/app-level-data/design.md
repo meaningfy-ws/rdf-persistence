@@ -323,6 +323,15 @@ field is a `str` (PD-9), and the how-to shows the correct call.
 - **D-1** (lead, 2026-11-14): one stage, one PR into `develop`. The full MEDIUM review set: lenses
   L1, L2, L3 and one pass for L4 with L5 (repository rule), a checker, and the adversarial tester
   right after task 2.1 (the `Iris` change adds the invariants every other task relies on).
+- **D-5** (lead, 2026-11-14; the rebase on `develop` after sessions D and E merged reference
+  collections, discussion and keys across aggregates). Choices made where their code met this
+  change: `served_roots` filters by `database_of` and also leaves out the roots the toolkit writes
+  itself (`is_toolkit_written`), as theirs did; the application session is given the same `keys`,
+  write `guards` and `dependents` as a tenant session, so a key across aggregates on an
+  application class is enforced inside the application space as it is inside one tenant;
+  `require_application` builds its answer through `Gate.authorised`, so it carries the caller's
+  global roles like every other `Authorised`. Not built: comments and reference collections on
+  application data (their classes are tenant classes, so the application session refuses them).
 - **D-4** (lead, 2026-11-14; accepted finding of the adversarial tester after task 2.1). RISK-5 was
   wrong for one family of policies: with `application_template: "{base}{tenant_segment}"` and
   `aggregate_template: "{tenant}/{id}"`, an aggregate of `A` is `{base}tenants/<uuid>`, which
