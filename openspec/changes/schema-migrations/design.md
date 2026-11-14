@@ -516,7 +516,10 @@ None.
   rated HIGH (the restore path), and PD-24 item 1 adds a refusal in `Tenancy.restore`. Both were
   built before the developer was asked, against the rule that a HIGH risk goes to the developer
   first; the lead reported it to the developer the same day. Both only add: a graph left alone, a
-  dump refused.
+  dump refused. The developer answered "Keep both" (2026-11-14). Asked before stage 3 about its
+  changes to the same path (`tenant_dump.restore` and its manifest check, `Tenancy.restore`
+  migrating the parsed dump, `dump` writing the tenant's own version), the developer answered
+  "Go ahead" (2026-11-14).
 - **RISK-10 A template with a variable predicate (`?s ?p ?o`) can still delete a graph's version
   token or registry statement** (found while fixing PD-22 item 3, which refuses those predicates
   only when a template names them). Accepted: removing every triple of a class is a legitimate
