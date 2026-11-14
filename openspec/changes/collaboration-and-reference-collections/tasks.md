@@ -61,7 +61,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 
 ## 2. Reference collections (#79)
 
-- [ ] 2.1 `model/rp_collections.yaml` (PD-5), imported by `rp.yaml`; the toy `Shelf` mixes in
+- [x] 2.1 `model/rp_collections.yaml` (PD-5), imported by `rp.yaml`; the toy `Shelf` mixes in
   `ReferenceCollection`; the kit's `generated_models_of` gains `rp_collections` (PD-1);
   `make generate`; snapshot; TC-02a re-run. Test first in `tests/unit/services/test_mapper.py`.
 

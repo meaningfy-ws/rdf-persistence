@@ -41,6 +41,11 @@ from .rp_annotations import (
     Described,
     Tracked
 )
+from .rp_collections import (
+    MembershipRule,
+    ReferenceCollection,
+    SlotEquality
+)
 from .rp_core import (
     AggregateKey,
     AggregateRoot,

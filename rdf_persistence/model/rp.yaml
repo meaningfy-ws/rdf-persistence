@@ -15,3 +15,4 @@ imports:
   - rp_access
   - rp_tenancy
   - rp_files
+  - rp_collections

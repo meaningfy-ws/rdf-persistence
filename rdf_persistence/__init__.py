@@ -48,6 +48,11 @@ from rdf_persistence.domain.generated.rp_annotations import (
     Described,
     Tracked,
 )
+from rdf_persistence.domain.generated.rp_collections import (
+    MembershipRule,
+    ReferenceCollection,
+    SlotEquality,
+)
 from rdf_persistence.domain.generated.rp_core import (
     AggregateKey,
     AggregateRoot,
@@ -215,6 +220,7 @@ __all__ = [
     "LabelUpdate",
     "Listings",
     "Mapper",
+    "MembershipRule",
     "ModuleKind",
     "NotAcceptable",
     "NotFound",
@@ -230,6 +236,7 @@ __all__ = [
     "Prohibition",
     "Provenanced",
     "RdfFormat",
+    "ReferenceCollection",
     "RegistryEntry",
     "RegistryKind",
     "RoleDefinition",
@@ -242,6 +249,7 @@ __all__ = [
     "ServiceKit",
     "ServiceSettings",
     "Session",
+    "SlotEquality",
     "Store",
     "StoreUnavailable",
     "StoredDataInvalid",

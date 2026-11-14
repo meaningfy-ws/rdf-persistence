@@ -479,6 +479,12 @@
     required: false
     multivalued: true
     range: uri
+- class_name: MembershipRule
+  slots:
+  - name: rule_equalities
+    required: false
+    multivalued: true
+    range: SlotEquality
 - class_name: Note
   slots:
   - name: about
@@ -617,6 +623,20 @@
     required: false
     multivalued: false
     range: Activity
+- class_name: ReferenceCollection
+  slots:
+  - name: had_member
+    required: false
+    multivalued: true
+    range: uri
+  - name: member_class
+    required: true
+    multivalued: false
+    range: string
+  - name: membership_rule
+    required: false
+    multivalued: false
+    range: MembershipRule
 - class_name: Referrer
   slots:
   - name: referrer
@@ -801,6 +821,10 @@
     required: false
     multivalued: false
     range: string
+  - name: had_member
+    required: false
+    multivalued: true
+    range: uri
   - name: id
     required: true
     multivalued: false
@@ -809,10 +833,28 @@
     required: true
     multivalued: false
     range: string
+  - name: member_class
+    required: true
+    multivalued: false
+    range: string
+  - name: membership_rule
+    required: false
+    multivalued: false
+    range: MembershipRule
   - name: modified
     required: false
     multivalued: false
     range: datetime
+- class_name: SlotEquality
+  slots:
+  - name: equals_slot
+    required: true
+    multivalued: false
+    range: string
+  - name: equals_value
+    required: true
+    multivalued: false
+    range: string
 - class_name: StoredFile
   slots:
   - name: byte_size

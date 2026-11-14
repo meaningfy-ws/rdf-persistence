@@ -60,6 +60,12 @@
       "description": {
          "@id": "dcterms:description"
       },
+      "equals_slot": {
+         "@id": "equalsSlot"
+      },
+      "equals_value": {
+         "@id": "equalsValue"
+      },
       "file_name": {
          "@id": "fileName"
       },
@@ -75,6 +81,11 @@
       "graph": {
          "@type": "@id",
          "@id": "graph"
+      },
+      "had_member": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "prov:hadMember"
       },
       "key_name": {
          "@id": "keyName"
@@ -133,6 +144,13 @@
       "media_type": {
          "@id": "mediaType"
       },
+      "member_class": {
+         "@id": "memberClass"
+      },
+      "membership_rule": {
+         "@type": "@id",
+         "@id": "membershipRule"
+      },
       "modified": {
          "@type": "xsd:dateTime",
          "@id": "dcterms:modified"
@@ -161,6 +179,11 @@
       "root_class": {
          "@type": "@id",
          "@id": "rootClass"
+      },
+      "rule_equalities": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "ruleEquality"
       },
       "sha256": {
          "@id": "sha256"
@@ -247,6 +270,9 @@
       "KeyDuplicate": {
          "@id": "KeyDuplicate"
       },
+      "MembershipRule": {
+         "@id": "MembershipRule"
+      },
       "PendingLoad": {
          "@id": "PendingLoad"
       },
@@ -262,6 +288,9 @@
       "Provenanced": {
          "@id": "Provenanced"
       },
+      "ReferenceCollection": {
+         "@id": "prov:Collection"
+      },
       "RegistryEntry": {
          "@id": "RegistryEntry"
       },
@@ -270,6 +299,9 @@
       },
       "Rule": {
          "@id": "ODRL:Rule"
+      },
+      "SlotEquality": {
+         "@id": "SlotEquality"
       },
       "StoredFile": {
          "@id": "StoredFile"

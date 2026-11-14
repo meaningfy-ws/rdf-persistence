@@ -78,6 +78,12 @@
       "description": {
          "@id": "dcterms:description"
       },
+      "equals_slot": {
+         "@id": "rp:equalsSlot"
+      },
+      "equals_value": {
+         "@id": "rp:equalsValue"
+      },
       "file_name": {
          "@id": "rp:fileName"
       },
@@ -98,6 +104,11 @@
       "graph": {
          "@type": "@id",
          "@id": "rp:graph"
+      },
+      "had_member": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "prov:hadMember"
       },
       "isbn": {
          "@id": "bibo:isbn"
@@ -159,6 +170,13 @@
       "media_type": {
          "@id": "rp:mediaType"
       },
+      "member_class": {
+         "@id": "rp:memberClass"
+      },
+      "membership_rule": {
+         "@type": "@id",
+         "@id": "rp:membershipRule"
+      },
       "modified": {
          "@type": "xsd:dateTime",
          "@id": "dcterms:modified"
@@ -202,6 +220,11 @@
       "root_class": {
          "@type": "@id",
          "@id": "rp:rootClass"
+      },
+      "rule_equalities": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:ruleEquality"
       },
       "scan_of": {
          "@type": "@id",
@@ -294,6 +317,9 @@
       "LibraryAccess": {
          "@id": "LibraryAccess"
       },
+      "MembershipRule": {
+         "@id": "rp:MembershipRule"
+      },
       "Note": {
          "@id": "Note"
       },
@@ -309,6 +335,9 @@
       "Prohibition": {
          "@id": "ODRL:Prohibition"
       },
+      "ReferenceCollection": {
+         "@id": "prov:Collection"
+      },
       "RegistryEntry": {
          "@id": "rp:RegistryEntry"
       },
@@ -323,6 +352,9 @@
       },
       "Shelf": {
          "@id": "Shelf"
+      },
+      "SlotEquality": {
+         "@id": "rp:SlotEquality"
       },
       "StoredFile": {
          "@id": "rp:StoredFile"

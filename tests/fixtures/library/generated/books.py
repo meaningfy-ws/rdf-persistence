@@ -30,7 +30,9 @@ from pydantic import (
 from rdf_persistence import (
     AggregateRoot,
     Described,
+    MembershipRule,
     Principal,
+    ReferenceCollection,
     Tracked
 )
 
@@ -91,8 +93,8 @@ class Book(Tracked, Described, AggregateRoot):
     contributor: Optional[list[str]] = Field(default=None, title="Contributor", description="A principal that committed a later version of the graph.")
 
 
-class Shelf(Tracked, Described, AggregateRoot):
-    "A shelf of the library; an aggregate root that books are placed on."
+class Shelf(ReferenceCollection, Tracked, Described, AggregateRoot):
+    "A shelf of the library; an aggregate root that books are placed on, and a collection of the books it names."
     id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
     label: str = Field(default=..., title="Label", description="The preferred label of the object.")
     description: Optional[str] = Field(default=None, title="Description", description="A free-text description of the object.")
@@ -100,6 +102,9 @@ class Shelf(Tracked, Described, AggregateRoot):
     modified: Optional[datetime ] = Field(default=None, title="Modified", description="The time the graph was last committed.")
     creator: Optional[str] = Field(default=None, title="Creator", description="The principal that first committed the graph.")
     contributor: Optional[list[str]] = Field(default=None, title="Contributor", description="A principal that committed a later version of the graph.")
+    member_class: str = Field(default=..., title="Member class", description="The schema name of the class of the aggregates the collection collects.")
+    had_member: Optional[list[str]] = Field(default=None, title="Had member", description="The IRIs of the aggregates the collection names as its members.")
+    membership_rule: Optional[MembershipRule] = Field(default=None, title="Membership rule", description="The rule that says which aggregates of the member class belong to the collection.")
 
 
 class Chapter(Described):

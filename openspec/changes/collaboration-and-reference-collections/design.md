@@ -422,6 +422,17 @@ delivers.
   (PD-3 step 1 needs `is_aggregate`) and holds the mapper, models and listings only from the
   stage that first uses them. The cross-graph read is `Session.referrer_rows` (rows of IRIs, no
   access, no schema names); the names and the access filter stay in `Collaboration`.
+- **D-4** (2026-11-14, the lead, before stage 2): two consequences of PD-26 for PD-7 and the
+  impact gate.
+  1. `collections_of` cannot reuse the public `referrers(iri, slot="had_member")` for its hidden
+     count: since PD-26 that count covers every hidden referrer, not only hidden collections.
+     It uses the same rows (`Session.referrer_rows`) and keeps those whose predicate is
+     `prov:hadMember` before the access split. This narrowing is the toolkit's own, not a
+     caller's, so it reveals nothing a caller chose to probe.
+  2. Impact before task 2.2 (GitNexus, 2026-11-14): `open_session` CRITICAL (187 dependents),
+     `Session.replace_graph` HIGH, `Tenancy` MEDIUM. Reported to the developer. The change is
+     PD-6's: an optional `guards=None`, so a session opened without guards behaves as before;
+     the session tests, the store conformance suite and the full gates are the safety net.
 
 ## Algorithm / approach
 

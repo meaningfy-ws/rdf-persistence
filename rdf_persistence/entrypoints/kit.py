@@ -7,7 +7,12 @@ from pathlib import Path
 from types import ModuleType
 from typing import BinaryIO, cast
 
-from rdf_persistence.domain.generated import rp_access, rp_core, rp_tenancy
+from rdf_persistence.domain.generated import (
+    rp_access,
+    rp_collections,
+    rp_core,
+    rp_tenancy,
+)
 from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantAccess, TenantSweepReport
@@ -84,7 +89,7 @@ class ServiceKit:
         self.generated_folder = Path(next(iter(generated.__path__)))
         self.documents = Documents(view, self.generated_folder, self.iris)
         self.documents.require_frames()
-        models = generated_models_of(generated, rp_access, rp_core, rp_tenancy)
+        models = generated_models_of(generated, rp_access, rp_core, rp_tenancy, rp_collections)
         access_class = cast(type[TenantAccess], models.named(tenant_access_class(view).name))
         self.tenancy = Tenancy(
             self.store,

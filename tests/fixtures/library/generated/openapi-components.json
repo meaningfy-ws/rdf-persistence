@@ -391,6 +391,21 @@
       "title": "LibraryAccess",
       "type": "object"
     },
+    "MembershipRule": {
+      "additionalProperties": false,
+      "description": "The rule of a collection, a part of its graph with no identifier of its own. An aggregate belongs when it equals every equality; a rule with no equality means every aggregate of the member class.",
+      "properties": {
+        "rule_equalities": {
+          "description": "The conditions of the rule, all of which an aggregate must meet.",
+          "items": {
+            "$ref": "#/components/schemas/SlotEquality"
+          },
+          "type": "array"
+        }
+      },
+      "title": "MembershipRule",
+      "type": "object"
+    },
     "ModuleKind": {
       "description": "The kinds of schema module, the values of the module_kind annotation.",
       "enum": [
@@ -523,6 +538,33 @@
       ],
       "title": "RdfFormat",
       "type": "string"
+    },
+    "ReferenceCollection": {
+      "additionalProperties": false,
+      "description": "A mixin for an aggregate that collects other aggregates of one class: the members it names, and a rule that says which aggregates of that class belong. A collection of collections has the collection class as its member class.",
+      "properties": {
+        "had_member": {
+          "description": "The IRIs of the aggregates the collection names as its members.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "member_class": {
+          "description": "The schema name of the class of the aggregates the collection collects.",
+          "type": "string"
+        },
+        "membership_rule": {
+          "$ref": "#/components/schemas/MembershipRule",
+          "description": "The rule that says which aggregates of the member class belong to the collection."
+        }
+      },
+      "required": [
+        "member_class"
+      ],
+      "title": "ReferenceCollection",
+      "type": "object"
     },
     "RegistryEntry": {
       "additionalProperties": false,
@@ -702,11 +744,19 @@
     },
     "Shelf": {
       "additionalProperties": false,
-      "description": "A shelf of the library; an aggregate root that books are placed on.",
+      "description": "A shelf of the library; an aggregate root that books are placed on, and a collection of the books it names.",
       "properties": {
         "description": {
           "description": "A free-text description of the object.",
           "type": "string"
+        },
+        "had_member": {
+          "description": "The IRIs of the aggregates the collection names as its members.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
         },
         "id": {
           "description": "The IRI that identifies the object.",
@@ -717,13 +767,42 @@
         "label": {
           "description": "The preferred label of the object.",
           "type": "string"
+        },
+        "member_class": {
+          "description": "The schema name of the class of the aggregates the collection collects.",
+          "type": "string"
+        },
+        "membership_rule": {
+          "$ref": "#/components/schemas/MembershipRule",
+          "description": "The rule that says which aggregates of the member class belong to the collection."
         }
       },
       "required": [
         "id",
-        "label"
+        "label",
+        "member_class"
       ],
       "title": "Shelf",
+      "type": "object"
+    },
+    "SlotEquality": {
+      "additionalProperties": false,
+      "description": "One condition of a membership rule, a slot of the member class and the value it must equal.",
+      "properties": {
+        "equals_slot": {
+          "description": "The name of the slot of the member class the condition looks at.",
+          "type": "string"
+        },
+        "equals_value": {
+          "description": "The value the slot must equal, in the lexical form a listing filter would send.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "equals_slot",
+        "equals_value"
+      ],
+      "title": "SlotEquality",
       "type": "object"
     },
     "StoredFile": {
