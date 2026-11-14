@@ -297,6 +297,10 @@ FILTER NOT EXISTS {
 - **RISK-1** — the guard is slow on large tenants if Fuseki evaluates the registry before the value
   (low; medium: every keyed commit). Mitigation: value pattern first (PD-7); IT-06 measures a
   keyed add against 1,000 stored books and fails above 0.5 s per commit.
+  **Measured 2026-11-14 (IT-06, local Fuseki container, one run):** mean keyed add 0.049 s, mean
+  add without an ISBN 0.047 s (20 adds each, tenant of 1,000 books): the guard costs about 2 ms
+  per add at this size. On the fake store (rdflib) a commit of 300 keyed roots takes about 18 s,
+  since rdflib evaluates each guard without an index; that is a test-time cost only.
 - **RISK-2** — a consumer's schema already has an unscoped `unique_keys` on a root; generation
   now fails (low; low). Accepted: today such a key silently does nothing; the message says to add
   `rp_unique_scope: tenant` or remove it.

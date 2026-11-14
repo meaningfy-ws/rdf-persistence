@@ -26,6 +26,7 @@ from rdf_persistence.domain.generated.rp_annotations import Tracked
 from rdf_persistence.domain.generated.rp_core import (
     AggregateKey,
     CommitMarker,
+    KeyDuplicate,
     PendingLoad,
     Principal,
     RegistryEntry,
@@ -72,6 +73,8 @@ from rdf_persistence.services.unique_keys import (
     KeyClaim,
     claims_of,
     diagnosis,
+    duplicates,
+    duplicates_query,
     guard,
     held,
     key_conflict,
@@ -833,6 +836,21 @@ class Session:
             r for r in await self._store.query(self._database, text) if isinstance(r, ResultRow)
         ]
         return {str(r.key) for r in rows}
+
+    async def key_duplicates(self) -> list[KeyDuplicate]:
+        """The key values two aggregates of the tenant or more hold now, for the keys of the session.
+
+        Read-only (PD-11): an operator runs it after declaring a key and before deploying it. Ordered
+        by key name, then values; a session without keys reports nothing and asks nothing."""
+        found = [
+            duplicate
+            for key in self._keys
+            for duplicate in duplicates(
+                key,
+                await self._store.query(self._database, duplicates_query(key, self._registry)),
+            )
+        ]
+        return sorted(found, key=lambda d: (d.key_name, d.key_values))
 
     async def remove(self, iri: str, if_version: str) -> None:
         """Delete the aggregate's graph, loaded graphs and registry entries if it still has ``if_version``.

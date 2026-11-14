@@ -15,17 +15,20 @@ from rdflib.namespace import XSD
 from rdflib.query import ResultRow
 
 from rdf_persistence.domain.exceptions import InvalidBody, KeyConflict
-from rdf_persistence.domain.generated.rp_core import AggregateKey, RegistryKind
+from rdf_persistence.domain.generated.rp_core import AggregateKey, KeyDuplicate, RegistryKind
 from rdf_persistence.domain.sparql import (
     SparqlTerm,
     Triple,
     count,
     fill,
     fragment,
+    join,
     match_patterns,
     term,
     term_list,
     union,
+    value_patterns,
+    value_variables,
 )
 from rdf_persistence.services import vocabulary as v
 
@@ -41,6 +44,11 @@ FILTER (?key_root NOT IN ($excluded))
 _GUARD = "FILTER NOT EXISTS { " + KEY_HELD + " }"
 _BRANCH = "{ " + KEY_HELD + " BIND($index AS ?claim) }"
 _DIAGNOSIS = "SELECT DISTINCT ?claim WHERE { $branches }"
+_ROOTS_SEPARATOR = " "  # no IRI holds a space
+_DUPLICATES = (
+    'SELECT $variables (GROUP_CONCAT(DISTINCT STR(?key_root); SEPARATOR="' + _ROOTS_SEPARATOR + '")'
+    " AS ?key_roots) WHERE { $held } GROUP BY $variables HAVING (COUNT(DISTINCT ?key_root) > 1)"
+)
 Value = URIRef | Literal
 
 
@@ -106,8 +114,16 @@ def _held(
 ) -> dict[str, SparqlTerm]:
     """The terms of ``KEY_HELD`` for ``claim``; ``extra`` are those of the template around it."""
     pairs = [*zip(map(URIRef, claim.key.key_predicates), claim.values, strict=True)]
+    values = match_patterns("key_root", [*pairs, (RDF.type, URIRef(claim.key.root_class))])
+    return _held_around(values, registry, excluded, **extra)
+
+
+def _held_around(
+    values: SparqlTerm, registry: URIRef, excluded: Iterable[URIRef], **extra: SparqlTerm
+) -> dict[str, SparqlTerm]:
+    """The terms of ``KEY_HELD`` around the ``values`` patterns."""
     return {
-        "values": match_patterns("key_root", [*pairs, (RDF.type, URIRef(claim.key.root_class))]),
+        "values": values,
         "registry": term(registry),
         "p_kind": term(v.REGISTRY_KIND),
         "aggregate": term(v.REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
@@ -130,6 +146,38 @@ def diagnosis(claims: Sequence[KeyClaim], registry: URIRef, excluded: Iterable[U
         for number, claim in enumerate(claims)
     )
     return fill(_DIAGNOSIS, branches=union(branches))
+
+
+def duplicates_query(key: AggregateKey, registry: URIRef) -> str:
+    """One read-only ``SELECT`` of the values of ``key`` two aggregates or more hold (PD-11): per
+    group the values (``?v0`` …) and the roots, as IRIs joined by a space (``?key_roots``, which no
+    IRI contains). It joins the registry as ``KEY_HELD`` does, and excludes no root."""
+    predicates = [URIRef(name) for name in key.key_predicates]
+    values = join(
+        [
+            value_patterns("key_root", predicates),
+            match_patterns("key_root", [(RDF.type, URIRef(key.root_class))]),
+        ]
+    )
+    return fill(
+        _DUPLICATES,
+        variables=value_variables(len(predicates)),
+        held=fragment(KEY_HELD, **_held_around(values, registry, [])),
+    )
+
+
+def duplicates(key: AggregateKey, rows: Iterable[object]) -> list[KeyDuplicate]:
+    """The ``KeyDuplicate`` of each row the ``duplicates_query`` of ``key`` answered."""
+    return [
+        KeyDuplicate(
+            key_name=key.key_name,
+            root_class=key.root_class,
+            key_values=[str(row[n]) for n in range(len(key.key_predicates))],
+            key_roots=sorted(str(row.key_roots).split(_ROOTS_SEPARATOR)),
+        )
+        for row in rows
+        if isinstance(row, ResultRow)
+    ]
 
 
 def held(claims: Sequence[KeyClaim], rows: Iterable[object]) -> list[KeyClaim]:

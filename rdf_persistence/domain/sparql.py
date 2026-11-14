@@ -6,7 +6,7 @@ SPARQL text from a value, so injection is audited here only.
 """
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from string import Template
 
 from rdflib import BNode, Literal, URIRef
@@ -136,6 +136,18 @@ def match_patterns(variable: str, pairs: Iterable[tuple[URIRef, URIRef | Literal
     if not _VARIABLE.fullmatch(variable):
         raise SparqlError(f"not a plain variable name: {variable!r}")
     return SparqlTerm(" ".join(f"?{variable} {term(p)} {term(o)} ." for p, o in pairs))
+
+
+def value_patterns(subject: str, predicates: Sequence[URIRef]) -> SparqlTerm:
+    """Render ``?subject <predicate> ?v0 .``, ``?v1`` and so on, one pattern per predicate in order."""
+    if not _VARIABLE.fullmatch(subject):
+        raise SparqlError(f"not a plain variable name: {subject!r}")
+    return SparqlTerm(" ".join(f"?{subject} {term(p)} ?v{n} ." for n, p in enumerate(predicates)))
+
+
+def value_variables(number: int) -> SparqlTerm:
+    """Render the variables ``?v0 ?v1 …`` that ``value_patterns`` binds, ``number`` of them."""
+    return SparqlTerm(" ".join(f"?v{n}" for n in range(int(count(number)))))
 
 
 def count(value: int) -> SparqlTerm:
