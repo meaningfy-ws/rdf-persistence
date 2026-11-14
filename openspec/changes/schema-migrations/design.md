@@ -373,6 +373,15 @@ None.
   `http://purl.org/ontology/bibo/Book`; the worked example's `lib:Book` stands for it).
   `Tenancy`'s `stamps` argument is optional and empty by default (about twenty tests build a
   `Tenancy`); only the kit passes it, and with none `create` stamps nothing.
+- **D-5 Task 2.1 rides in PR 1 (lead, 2026-11-14).** The chain loader and the exceptions
+  `MigrationFailed` and `TenantBehind` were built beside task 1.3b, on disjoint files, to use the
+  waiting time. They are pure code with no caller yet, so PR 1 carries them. Task 2.2 starts only
+  after stage 1's full gates have run, so that PR 1's check results describe what it contains.
+- **D-6 The shape is reconciled in `proposal.md` (developer, 2026-11-14: "reconcile the deviations
+  of epic implementation and epic shape").** Its "Reconciliation with the shape" table lists every
+  place where the PLAN or the code left the shaped text, with the decision behind it. Two living
+  requirements change and now have spec deltas: `rp-tenancy` (a restore across versions) and
+  `rp-service-api` (the migrations folder, the problem `tenant-behind`).
 
 ## Accepted findings
 
