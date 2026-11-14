@@ -458,6 +458,16 @@ None.
   the refusal of such versions stays until it is closed. **For stage 2:** the runner goes in its
   own module, `services/migration_runner.py` (L3: `migrations.py` already has the file, the
   request and the chain).
+- **PD-23 The adversarial tester's findings on the runner (2026-11-14; 54 tests, 3 failing), all
+  accepted.**
+  1. *A stamp read back that is earlier in the chain than the migration's `to` was taken as
+     progress*, so a stamp moved backwards by another writer made the runner apply migrations
+     again, without a bound. PD-7 as written is now enforced: after a request the stamp must be
+     `to` or a later version of the chain; an earlier one, like an unknown one, is
+     `MigrationFailed`. So the loop always ends: each round moves forward in a finite chain or
+     fails.
+  2. *A restore rewrote a stamp whose schema id held the source tenant's id.* The IRI rewrite of a
+     restore leaves the stamps graph alone: its quads are copied as they are.
 - **RISK-10 A template with a variable predicate (`?s ?p ?o`) can still delete a graph's version
   token or registry statement** (found while fixing PD-22 item 3, which refuses those predicates
   only when a template names them). Accepted: removing every triple of a class is a legitimate
