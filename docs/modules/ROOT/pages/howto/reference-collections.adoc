@@ -172,7 +172,7 @@ and keeps its members. To delete the members too, ask for a cascade:
 checked = await kit.require_aggregate(
     request.headers.get("authorization"), t, "shelves", shelf_id, Action.DELETE
 )
-async with kit.session(t, checked.principal) as session:
+async with kit.session(checked.caller_access.tenant, checked.principal) as session:
     work = UnitOfWork(session, mapper)
     await work.get(Shelf, checked.checked_target)
     if_version = work.version(checked.checked_target)    # the token of the shelf you read

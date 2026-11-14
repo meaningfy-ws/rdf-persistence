@@ -1440,6 +1440,11 @@ IRI policy (see "The policy cannot change", below) and runs the sweep. It stops 
 `openapi-components.json`, and with `LookupError` if the schema has no tenant root or not exactly
 one access record class. `rules` may also be the path of the roles file.
 
+If a class of your schema follows a workflow, pass the workflow files too, as a sequence of paths:
+`install_service(app, ..., workflows=[Path("models/review.workflow.yaml")])`. They are checked
+here, and a bad or missing file stops the service with `InvalidWorkflow`. See
+xref:howto/workflow.adoc[Put a resource through review].
+
 It returns the *`ServiceKit`*, for your own routes and domain services:
 
 [cols="2,3",options="header"]

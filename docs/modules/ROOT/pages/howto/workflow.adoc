@@ -1,0 +1,295 @@
+= Put a resource through review
+:description: How to define a workflow in a file, put an aggregate class under it, start the service with it, move an aggregate from state to state with Collaboration.transition, read its history, the errors, and the limits.
+
+_How do I put a resource through review? Who may move it to the next state? Why is my write of the
+state refused? Where is the history? What happens when I change the workflow file?_
+
+This page shows how to give an aggregate a workflow. It describes `develop` as of 2026-11-14 (the
+change `collaboration-and-reference-collections`). The terms tenant, aggregate, kit, session and
+IRI policy, and the names `kit`, `t`, `mapper` and `Action` in the snippets, are those of
+xref:howto/adopt.adoc[Build an application]; a *collaboration* (`collab`) is opened as in
+xref:howto/reverse-references.adoc[Find who points at a resource]. `UnitOfWork`,
+`TransitionRecord`, `VerifiedCaller` and the errors are imported from `rdf_persistence`, except `LookupError`, which
+is Python's own.
+
+A *workflow* is a set of *states*, one of them the *initial state*, and the *transitions* between
+them. Each transition names the roles that may make it and whether it needs a comment. A workflow
+is configuration: a YAML file the service reads when it starts, never data of a tenant. The
+toolkit owns the current state of an aggregate: a new aggregate gets the initial state, only a
+transition changes it, and every transition leaves a record. The running example is the toy
+library: a book goes through review.
+
+== Write the workflow file
+
+One file holds one workflow. The toy's is `review.workflow.yaml`:
+
+[source,yaml]
+----
+id: https://example.org/ns/library/workflows/review
+workflow_name: review
+workflow_states: [draft, in_review, accepted]
+initial_state: draft
+workflow_transitions:
+  - {from_state: draft, to_state: in_review, transition_roles: [librarian]}
+  - {from_state: in_review, to_state: accepted, transition_roles: [librarian]}
+  - {from_state: in_review, to_state: draft, transition_roles: [librarian], comment_required: true}
+----
+
+[cols="1,3",options="header"]
+|===
+|Field |What it holds
+|`id` |The IRI of the workflow, unique among the files. Every state IRI starts with it. An absolute IRI (a scheme, then something) with no space, `<`, `>`, quote or control character, and no slash at the end. Required.
+|`workflow_name` |The name a class refers to. Lower-case letters, digits and hyphens, starting with a letter. Required.
+|`workflow_states` |The names of the states, each listed once: `^[a-z][a-z0-9_-]*$` (lower case, starting with a letter; digits, hyphens and underscores). Required.
+|`initial_state` |The state a new aggregate starts in, one of the states. Required.
+|`workflow_transitions` |The transitions. A state may have none.
+|`from_state`, `to_state` |The names of the two states of a transition. Required.
+|`transition_roles` |The names of the roles of which the caller needs one; at least one. Each is a role the roles file defines (xref:howto/adopt.adoc#access[step 11] of the adoption guide). Required.
+|`comment_required` |`true` when the transition needs a comment; `false` when left out.
+|===
+
+The IRI of a state is the workflow's `id`, a slash and the state's name:
+`https://example.org/ns/library/workflows/review/draft`. This IRI is what an aggregate stores as
+its state, in `adms:status`; a transition's `to` and the arguments of the calls below are the
+*name*, so go from one to the other by cutting `id/` off the IRI, or with `state_iri(workflow,
+name)` from `rdf_persistence.services.workflows`. The toolkit stores the IRI only and no triples
+that describe the state; read it as a `skos:Concept` of the scheme the `id` names.
+
+=== Change a file on a system that holds data
+
+There is no migration, and the files are read when the service starts (the kit loads them in its
+constructor), so a change takes effect with a restart.
+
+[cols="2,3",options="header"]
+|===
+|Edit |What happens to aggregates already stored
+|Add a state or a transition; change a transition's roles or `comment_required` |Safe. Nothing stored changes.
+|Remove a transition |Safe for the data. An aggregate in its source state stays there, readable, and is refused (`Conflict`) a move along it; with no other transition out, it cannot move until one is back.
+|Remove or rename a state an aggregate is in; change the `id` |Strands those aggregates: each stays readable and reports its stored state, every transition from it is refused (`Conflict`), and plain writes still pass. Put the state (or the old `id`) back in the file, with a transition out of it, to free them.
+|===
+
+== Put a class under the workflow
+
+Import the module `rp_workflow`, mix `UnderWorkflow` into the aggregate root and name the workflow
+in the class annotation `workflow`, then regenerate (`make generate`):
+
+[source,yaml]
+----
+imports:
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+  - rdf_persistence/model/rp_workflow
+
+classes:
+  Book:
+    mixins: [AggregateRoot, Described, Tracked, UnderWorkflow]
+    annotations:
+      rp_path: books
+      database: tenant
+      workflow: review
+----
+
+The mixin gives the class the slot `workflow_status`, the IRI of the current state. One workflow
+may serve several classes (each names it); a class follows one workflow, and a subclass inherits
+its parent's annotation unless it names its own. `make generate` refuses, by the hard rule `WORKFLOW`
+(a hard rule is a check that `make generate` runs on the schema and that stops generation; see
+xref:architecture/generation.adoc#hard-check[The hard check]):
+
+* `workflow` on the tenant root: the tenant root cannot be under a workflow;
+* `workflow` on a class that is not an aggregate root;
+* `workflow` without the mixin `UnderWorkflow`;
+* an aggregate root with `UnderWorkflow` and no `workflow`, its own or inherited.
+
+The value of `workflow` follows the same pattern as `workflow_name`.
+
+== Start the service with the workflow
+
+Give the paths of the workflow files to `install_service` (or to `ServiceKit`):
+
+[source,python]
+----
+kit = install_service(app, ..., workflows=[Path("models/review.workflow.yaml")])
+----
+
+The files are checked when the kit is built, before the service serves. A fault raises
+`InvalidWorkflow`, which names the file and the element:
+
+* the file cannot be read, is not UTF-8, is nested too deeply, is not YAML, or is not a mapping;
+* a required field is missing, or a name does not follow its pattern;
+* the `id` is not an absolute IRI, holds a space, `<`, `>`, a quote or a control character, or ends with a slash;
+* a state is listed twice, or a transition has an empty `transition_roles`;
+* `initial_state`, or a state of a transition, is not one of `workflow_states`;
+* two transitions have the same two states;
+* a transition names a role the roles file does not define;
+* two files define a workflow of the same name or the same `id`;
+* a class of the schema names a workflow that no file defines (the message names the class and the files given).
+
+So a schema with a class under a workflow does not start without that workflow's file.
+
+== What a plain write does
+
+A plain write is any add or replace that is not a transition: the generic `POST` and `PUT`,
+`UnitOfWork`, `session.add_graph` and `session.replace_graph`.
+
+* *A new book gets the initial state.* Leave `workflow_status` out; reading the book shows
+  `"workflow_status": "https://example.org/ns/library/workflows/review/draft"`.
+* *A write that leaves the state out keeps it.* So does one that names the stored state.
+* *A write that names another state is refused* with `Forbidden` and changes nothing. Through the
+  generic API this is the 403 problem `forbidden`. A new book may name the initial state only.
+* *Hiding the class does not help.* A replace follows the workflow of the stored book, so the state
+  is kept whatever the new triples say about the class; a state on a root whose class is under no
+  workflow is refused too.
+* *A book stored before its class named the workflow has no state.* Plain writes leave it without
+  one. Its first transition starts from the initial state.
+* *Take your sessions from the kit.* A session opened directly with `open_session` and no `guards`
+  checks none of this.
+
+In a service that loads a workflow, every replace of an aggregate, of any class, costs one small
+read (its stored types and state); an add costs none. A service with no class under a workflow
+pays nothing.
+
+== Make a transition
+
+Check the caller with `Action.READ`: the roles on the transition decide who may make it, not
+`modify`. Then open the collaboration with the answer:
+
+[source,python]
+----
+checked = await kit.require_aggregate(
+    request.headers.get("authorization"), t, "books", book_id, Action.READ
+)
+book = checked.checked_target    # the IRI of the checked book
+async with kit.session(checked.caller_access.tenant, checked.principal) as session:
+    work = UnitOfWork(session, mapper)
+    await work.get(Book, book)
+    if_version = work.version(book)    # the token of the book you read
+async with kit.collaboration(checked) as collab:
+    v2 = await collab.transition(book, "in_review", if_version=if_version)
+    v3 = await collab.transition(book, "draft", if_version=v2, comment="chapter 3 is missing")
+----
+
+`collab.transition(iri, to, *, if_version, comment=None)` moves the aggregate to the state named
+`to` (a name, not an IRI) and returns its new version token. `if_version` is the version token of
+the aggregate as the client read it (see xref:howto/commits.adoc[How commits and conflicts work]).
+The generic API sends it as the `ETag` of a read, so a route of yours can pass the `If-Match`
+value on, with `expected_version(request.headers.get("If-Match"))` from
+`rdf_persistence.entrypoints.negotiation`; reading it with `UnitOfWork`, as above, is the
+alternative. The call checks, in this order:
+
+. the caller may read the aggregate;
+. no Prohibition of `modify` applies to the caller on the aggregate or on the tenant: it freezes
+  the aggregate, transitions included (a Prohibition is a rule that forbids an action on a target;
+  see xref:architecture/access-control.adoc#check[The check]);
+. the workflow has a transition from the current state to `to`;
+. the caller holds one of that transition's roles: by a grant on the tenant or on the aggregate,
+  or as a token role that the roles file defines at system level (a token role of any other name
+  counts for nothing; see xref:architecture/access-control.adoc#check[The check]);
+. the comment is not blank, where the transition requires one;
+. the aggregate still has the version `if_version`.
+
+A comment given where none is required is stored in the thread all the same; a blank one (`None`,
+empty or whitespace) is no comment, and stores nothing.
+
+=== Offer the moves
+
+There is no call that lists the moves a caller may make. The kit holds the loaded workflows, so an
+application derives its buttons from the definition and the caller's roles:
+
+[source,python]
+----
+workflow = kit.workflows.for_class("Book")    # by class name; for_iri(class_iri) by the class IRI
+caller = VerifiedCaller(principal=checked.principal, global_roles=checked.global_roles)
+held = kit.rules.roles(caller, checked.caller_access, book)
+book_model = await work.get(Book, book)    # as in the snippet above
+here = book_model.workflow_status.removeprefix(f"{workflow.id}/")    # the state's name
+buttons = [
+    m.to_state for m in workflow.workflow_transitions or []
+    if m.from_state == here and held & set(m.transition_roles)
+]
+----
+
+`for_class` and `for_iri` return `None` for a class under no workflow. A book with no stored state
+starts from `workflow.initial_state`. `transition` checks everything again, so the buttons are
+only a convenience.
+
+`modify` alone does not allow a transition, and a transition does not need `modify`: a reviewer
+often may not edit what it reviews.
+
+One transition stores, in one request, all or nothing:
+
+* the new state of the aggregate;
+* a `TransitionRecord`, an aggregate of its own that the toolkit writes;
+* with a comment, a comment in the aggregate's thread
+  (xref:howto/discussion.adoc[Comment on a resource without editing it]). It has no audience, so
+  everyone who may read the aggregate sees it, and it names the two states in `from_state_iri` and
+  `to_state_iri`. The caller needs no `annotate` right for it.
+
+== Read the history
+
+[source,python]
+----
+async with kit.collaboration(checked) as collab:
+    for r in await collab.transitions(checked.checked_target):
+        print(r.started_at_time, r.was_associated_with, r.from_state_iri, r.to_state_iri)
+----
+
+`transitions` needs `read` on the aggregate and returns its `TransitionRecord` models, oldest
+first (two records of the same time go by IRI):
+
+[cols="1,3",options="header"]
+|===
+|Slot |What it holds
+|`id` |The IRI of the record, minted by the toolkit.
+|`used_resource` |The IRI of the aggregate that was moved.
+|`from_state_iri`, `to_state_iri` |The IRIs of the two states.
+|`started_at_time` |The time of the transition.
+|`was_associated_with` |The IRI of the principal that made it, in a list.
+|`transition_comment` |The IRI of the comment the transition posted, or `None`. The text is in the thread: find the comment of that `id` in `collab.thread(iri)`.
+|===
+
+* A record is read only this way: no generic route serves it, and it is never a member of a
+  collection. It is not a referrer of its aggregate, and it takes no comment (`InvalidIri`).
+* A plain write of the aggregate leaves its records as they are.
+* Deleting the aggregate deletes its records, with its comments, in the same request.
+
+== Errors
+
+Of `transition`; a refused transition stores nothing:
+
+[cols="1,3",options="header"]
+|===
+|Error |When
+|`LookupError` |The schema does not import `rp_workflow`.
+|`NotFound` |The caller can see nothing of the aggregate, or it is not stored.
+|`Forbidden` |The caller may see the aggregate but not read it; `modify` is prohibited on it; or the caller holds none of the transition's roles.
+|`InvalidBody` |The aggregate's class is under no workflow (the error the toolkit uses for a request that cannot be carried out as given); or the transition needs a comment and `comment` is `None` or blank.
+|`StoredDataInvalid` |The aggregate holds more than one state (raw triples the toolkit would not write); nothing changes.
+|`Conflict` |The workflow has no transition from the current state to `to` (the message names both; a stored state the file no longer lists has none); or the version is not `if_version`, or the aggregate was removed meanwhile.
+|`DatabaseGone` |The tenant database does not exist.
+|===
+
+Of `transitions`:
+
+[cols="1,3",options="header"]
+|===
+|Error |When
+|`LookupError` |The schema does not import `rp_workflow`.
+|`NotFound` |The caller can see nothing of the aggregate.
+|`Forbidden` |The caller may see the aggregate but not read it.
+|`DatabaseGone` |The tenant database does not exist.
+|===
+
+At start: `InvalidWorkflow`, from `install_service` or `ServiceKit`, for the faults listed under
+<<Start the service with the workflow>>. It is also a `ValueError`.
+
+== Limits
+
+* *No workflow editor, and no workflow stored as tenant data.* A workflow is a file.
+* *No timers, parallel states, quorum approvals or automatic transitions.* An aggregate is in one
+  state, and one caller moves it.
+* *No migration of states when a file changes.* See <<Change a file on a system that holds data>>.
+* *Two transitions racing from one version:* one wins; the other gets `Conflict` and stores
+  nothing, neither record nor comment.
+* *The history is deleted with the aggregate.* It is not an audit log that outlives it.
+* *No route for a transition.* As for the other collaboration calls, you write your own, with the
+  kit.

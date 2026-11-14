@@ -128,5 +128,6 @@ xref:architecture/access-control.adoc[Access control and identity].
   A comment that *references* a resource is a referrer of it, shown as `Comment` with the slot
   `comment_references`. It is listed only to a caller who may read the comment's target and sees
   the comment in that thread; otherwise it is counted in `hidden_count`. See
-  xref:howto/discussion.adoc[Comment on a resource without editing it]. Transition records do not
-  exist yet.
+  xref:howto/discussion.adoc[Comment on a resource without editing it]. A transition
+  record's link to its aggregate does not count either: the records of a book are not its
+  referrers (xref:howto/workflow.adoc[Put a resource through review]).

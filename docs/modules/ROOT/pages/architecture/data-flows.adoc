@@ -267,7 +267,7 @@ flowchart TB
 |yes
 |yes
 
-|Write guards on every add and replace (for a reference collection: its member class, its members, its rule)
+|Write guards on every add and replace (for a reference collection: its member class, its members, its rule; for a class under a workflow: its state)
 |yes
 |yes; a session opened with `open_session` and no `guards` checks nothing
 
@@ -489,12 +489,17 @@ protect the commit.
 *Write guards.* After these pre-checks and before the change is collected, each `add_graph` and
 `replace_graph` hands the triples to the session's *write guards* (`services/write_guards.py`,
 `WriteGuards.prepare`), which return the triples to write or raise. They are not the guards of the
-request: they are checks in Python that read the store. The one rule so far is for a root whose
+request: they are checks in Python that read the store. There are two rules. The first is for a root whose
 class mixes in `ReferenceCollection`: its member class is a served aggregate root (`InvalidBody`),
 every member is an aggregate IRI of the tenant (`InvalidIri`) and a stored aggregate of that class
 (`InvalidBody`), and its rule is one a listing of that class accepts (`InvalidBody`). A refused
 change is not collected, so nothing of the transaction is sent. A member must therefore be stored
-before the commit that names it. The kit builds the write guards once and gives them to every
+before the commit that names it. The second is for a root whose class names a workflow
+(`Workflows.keep_state`, `services/workflows.py`): an add gets the initial state, a replace keeps
+the stored one (none stays none), and a write that names another state is refused (`Forbidden`)
+unless the transaction is a transition's, which allows the one state it moves to. A class without
+a workflow costs nothing; a replace of one with a workflow costs one small read, of the stored
+state. The kit builds the write guards once and gives them to every
 session it opens; a session opened with `open_session` and no `guards` checks nothing. A `remove`
 is not guarded.
 
@@ -514,7 +519,10 @@ them to every session it opens when the schema imports `rp_discussion`, and a se
 without them drops only the aggregate. The same pairs also leave a comment's link to its target
 out of `Session.referrer_rows`, so what `referrers` omits and what a remove drops cannot differ.
 The operation starts from the link to the removed root and checks the registry afterwards, so a
-tenant with no comment pays next to nothing for it.
+tenant with no comment pays next to nothing for it. Transition records go with their aggregate
+in the same way: when the schema imports `rp_workflow`, the kit adds the pair of
+`rp:TransitionRecord` and `prov:used`, so a remove drops the records of the removed root and
+`referrers` leaves their link out.
 
 *A presence guard.* Posting a comment (`Discussion.comment`) writes the comment's graph only and
 adds one guard on its target: the target must still have a version when the request is applied
