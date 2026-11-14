@@ -23,15 +23,14 @@ from rdf_persistence.domain.generated.rp_core import (
     WritesKind,
 )
 from rdf_persistence.domain.iris import LAYOUT_WORDS
+from rdf_persistence.generation.checks.application import application_problems
 from rdf_persistence.generation.generated.rp_generation import CheckProblem, HardRule
 from rdf_persistence.generation.problems import rule_problem
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 from rdf_persistence.services.schema_structure import (
-    STORED_FILE,
     aggregate_roots,
     annotation,
     annotation_text,
-    database_of,
     holds_owned_part,
     inherits_from_metamodel,
     iri_type_of,
@@ -264,51 +263,6 @@ def _reserved_segment_problems(cls: ClassDefinition) -> Iterator[CheckProblem]:
             )
 
 
-def _application_row(
-    view: SchemaView,
-    cls: ClassDefinition,
-    roots: list[ClassDefinition],
-    owned: set[str],
-    others: dict[str, str],
-) -> str | None:
-    """The message of the first PD-5 row that ``cls``, an application class, breaks; None when it breaks none."""
-    if is_tenant_root(cls):
-        return "an application class cannot be the tenant root"
-    if cls.name in owned:
-        return "an application class cannot be owned; its owner decides the database"
-    if cls not in roots:
-        return "only an aggregate root can be application-level"
-    if STORED_FILE in view.class_ancestors(cls.name):
-        return "an application class cannot be a stored file: the application space has no bucket"
-    clash = others.get(view.get_uri(cls, expand=True))
-    return clash and f"an application class cannot share its class IRI with {clash}"
-
-
-def _application_problems(
-    view: SchemaView, classes: list[ClassDefinition], roots: list[ClassDefinition]
-) -> Iterator[CheckProblem]:
-    """PD-5: what an application class must be. Abstract classes are skipped; a mixin's annotation is not inherited."""
-    owned = owned_classes(view, classes)
-    every_root = aggregate_roots(view, list(view.all_classes().values()))
-    others = {
-        view.get_uri(root, expand=True): root.name
-        for root in every_root
-        if database_of(view, root) != DatabaseKind.APPLICATION
-    }
-    for cls in classes:
-        if cls.mixin:
-            if annotation(cls, RpAnnotation.DATABASE) == DatabaseKind.APPLICATION.value:
-                yield rule_problem(
-                    HardRule.ANNOTATION,
-                    cls.name,
-                    "the database annotation is not inherited through a mixin",
-                )
-        elif not cls.abstract and database_of(view, cls) == DatabaseKind.APPLICATION:
-            row = _application_row(view, cls, roots, owned, others)
-            if row:
-                yield rule_problem(HardRule.ANNOTATION, cls.name, row)
-
-
 def _class_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[CheckProblem]:
     roots = aggregate_roots(view, classes)
     tenant_roots = tenant_database_roots(view, classes)
@@ -316,7 +270,7 @@ def _class_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterato
         yield from _key_problems(view, cls, tenant_roots)
         yield from _reserved_segment_problems(cls)
     yield from _path_problems(view, roots)
-    yield from _application_problems(view, classes, roots)
+    yield from application_problems(view, classes, roots)
     yield from _described_problems(view, classes, roots)
     yield from _iri_type_problems(view, classes, roots)
 

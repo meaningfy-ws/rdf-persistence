@@ -10,12 +10,16 @@
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
+      "path": "rdf_persistence/generation/checks/application.py",
+      "sha256": "6cfeef29f7ee48cd52464d48e8a12d11d1fd8bc0fd996608e5ed738425016763"
+    },
+    {
       "path": "rdf_persistence/generation/checks/boundary.py",
       "sha256": "c89df34b37640ef24a7dfbec4068b7c7a068e7a3186e8b0a49c5b412a175ac03"
     },
     {
       "path": "rdf_persistence/generation/checks/hard.py",
-      "sha256": "71ae7d7dd1ac82f305fd7c202d4d832cbebf9394ad04fc86281eb53814d34e58"
+      "sha256": "58719a830786d4235d130e15f9d690ca488aaa6c5c3d938b514249347927c235"
     },
     {
       "path": "rdf_persistence/generation/checks/rules.py",
