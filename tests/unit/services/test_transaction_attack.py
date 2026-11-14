@@ -31,6 +31,10 @@ HAS_TRIPLES = "ASK { GRAPH $g { ?s ?p ?o } }"
 ANY_MARKER = "ASK { GRAPH $registry { ?m a $marker } }"
 ENTRY = "ASK { GRAPH $registry { $graph ?p ?o } }"
 URN_MARKER = re.compile(r"urn:uuid:[0-9a-f-]{36}")
+# The marker alone: the request also names the commit's activity, a urn:uuid too (message-bus PD-6).
+COMMIT_MARKER_IRI = re.compile(
+    r"(urn:uuid:[0-9a-f-]{36})> <[^>]*> <" + re.escape(str(v.COMMIT_MARKER))
+)
 
 
 def title(iri: str, text: str) -> list:
@@ -338,7 +342,7 @@ async def test_two_transactions_of_one_session_use_two_markers(store, session, s
             await t.add_graph(book_iri(500 + n), title(book_iri(500 + n), "new"))
     first, second = store.sent("update")[-2:]
     assert set(URN_MARKER.findall(first)).isdisjoint(URN_MARKER.findall(second))
-    assert len(set(URN_MARKER.findall(first))) == 1, "one marker per transaction"
+    assert len(set(COMMIT_MARKER_IRI.findall(first))) == 1, "one marker per transaction"
 
 
 async def test_two_open_transactions_of_one_session_use_two_markers(store, session):

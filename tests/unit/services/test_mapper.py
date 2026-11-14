@@ -16,7 +16,13 @@ from rdflib.compare import graph_diff, isomorphic
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
 from rdf_persistence.domain.generated.rp_discussion import Comment, Motivation
-from rdf_persistence.domain.generated.rp_workflow import TransitionRecord, Workflow
+from rdf_persistence.domain.generated.rp_provenance import (
+    Activity,
+    Generation,
+    Invalidation,
+    Replace,
+)
+from rdf_persistence.domain.generated.rp_workflow import Transition, Workflow
 from rdf_persistence.domain.iris import (
     DEFAULT_IRIS,
     graph_iri,
@@ -289,10 +295,10 @@ def test_a_comment_names_the_states_of_the_transition_that_posted_it():
     assert untracked(back) == untracked(comment), "the same comment comes back"
 
 
-def test_a_transition_record_with_every_slot_round_trips_typed_rp_transition_record():
-    """The stored type is rp:TransitionRecord; prov:Activity is in the generated OWL and shapes only."""
-    iri = f"{TENANT}/rp-transitions/{UUID(int=1)}"
-    record = TransitionRecord(
+def test_a_transition_with_every_stored_slot_round_trips_typed_rp_transition():
+    """The stored type is rp:Transition; prov:Activity is in the generated OWL and shapes only."""
+    iri = f"urn:uuid:{UUID(int=1)}"
+    record = Transition(
         id=iri,
         used_resource=book_iri(1),
         from_state_iri=f"{REVIEW}/draft",
@@ -303,7 +309,7 @@ def test_a_transition_record_with_every_slot_round_trips_typed_rp_transition_rec
     )
     mapper = toy_mapper()
     graph = mapper.to_graph(record)
-    assert (URIRef(iri), RDF.type, URIRef(f"{RP}TransitionRecord")) in graph, "the stored type"
+    assert (URIRef(iri), RDF.type, URIRef(f"{RP}Transition")) in graph, "the stored type"
     assert (URIRef(iri), RDF.type, URIRef(f"{PROV}Activity")) not in graph, "not the superclass"
     assert (URIRef(iri), URIRef(f"{PROV}used"), URIRef(book_iri(1))) in graph, "the aggregate"
     assert (URIRef(iri), URIRef(f"{PROV}wasAssociatedWith"), URIRef(ADA)) in graph, "the agent"
@@ -315,7 +321,7 @@ def test_a_transition_record_with_every_slot_round_trips_typed_rp_transition_rec
     assert (URIRef(iri), URIRef(f"{RP}fromState"), URIRef(f"{REVIEW}/draft")) in graph, "from"
     assert (URIRef(iri), URIRef(f"{RP}toState"), URIRef(f"{REVIEW}/in_review")) in graph, "to"
     assert (URIRef(iri), URIRef(f"{PROV}startedAtTime"), None) in graph, "the time"
-    back = mapper.from_graph(TransitionRecord, iri, graph, graph_iri(iri))
+    back = mapper.from_graph(Transition, iri, graph, graph_iri(iri))
     assert untracked(back) == untracked(record), "the same record comes back"
 
 
@@ -461,3 +467,53 @@ def test_a_stored_graph_whose_owned_parts_loop_is_refused_and_not_a_recursion_er
     graph.add((node, predicate, node))
     with pytest.raises(ValueError, match="cycle"):
         toy_mapper().from_graph(Book, iri, graph, graph_iri(iri))
+
+
+# -- a served command (message-bus PD-8, TC-20 to TC-21a) ---------------------------------------
+
+ACTIVITY_ID = "urn:uuid:5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c001"
+STARTED = datetime(2026, 11, 14, 10, 0, tzinfo=UTC)
+SESSION_SLOT_VALUES = {
+    "started_at_time": STARTED,
+    "ended_at_time": STARTED,
+    "was_associated_with": [ADA],
+    "generations": [
+        Generation(activity=ACTIVITY_ID, at_time=STARTED, entity=book_iri(1), entity_version="v")
+    ],
+    "invalidations": [
+        Invalidation(activity=ACTIVITY_ID, at_time=STARTED, entity=book_iri(1), entity_version="v")
+    ],
+}
+
+
+def test_tc20_a_served_command_names_its_types_and_leaves_its_own_triples_empty():
+    served = toy_mapper().served(Replace(id=ACTIVITY_ID))
+    assert served.types == [URIRef(f"{RP}Replace"), URIRef(f"{PROV}Activity")], (
+        "own class, ancestor"
+    )
+    assert list(served.triples) == [], "a bare command has no statement but its types"
+    assert served.activity.id == ACTIVITY_ID, "the command's id is the activity's"
+
+
+def test_tc20_a_served_command_of_the_bare_activity_has_the_one_type():
+    served = toy_mapper().served(Activity(id=ACTIVITY_ID))
+    assert served.types == [URIRef(f"{PROV}Activity")], "no ancestor beyond prov:Activity"
+
+
+@pytest.mark.parametrize("slot", sorted(v.SESSION_FILLED))
+def test_tc21_a_served_command_keeps_no_statement_of_a_slot_the_session_fills(slot):
+    served = toy_mapper().served(Replace(id=ACTIVITY_ID, **{slot: SESSION_SLOT_VALUES[slot]}))
+    assert list(served.triples) == [], f"{slot} is the session's to write"
+
+
+@pytest.mark.parametrize("bad", ["https://example.org/x", "urn:uuid", "urn:isbn:0"])
+def test_tc21a_a_command_whose_id_is_not_a_uuid_urn_is_refused_naming_the_id(bad):
+    with pytest.raises(ValueError, match=bad):
+        toy_mapper().served(Replace(id=bad))
+
+
+def test_a_served_command_serves_one_commit_and_a_second_claim_is_refused():
+    served = toy_mapper().served(Replace(id=ACTIVITY_ID))
+    served.claim()
+    with pytest.raises(RuntimeError, match=ACTIVITY_ID):
+        served.claim()

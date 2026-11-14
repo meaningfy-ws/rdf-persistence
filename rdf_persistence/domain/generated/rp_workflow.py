@@ -28,10 +28,7 @@ from pydantic import (
     model_serializer
 )
 
-from .rp_core import (
-    AggregateRoot,
-    Principal
-)
+from .rp_core import Principal
 from .rp_provenance import (
     Activity,
     Generation,
@@ -115,15 +112,18 @@ class UnderWorkflow(ConfiguredBaseModel):
     workflow_status: Optional[str] = Field(default=None, title="Workflow status", description="The current state of the aggregate, the IRI of a state of its workflow.")
 
 
-class TransitionRecord(AggregateRoot, Activity):
-    "The record of one transition of an aggregate: which aggregate, from which state to which, when, by whom and with which comment. The toolkit writes it in the update that changes the state and deletes it with the aggregate. It is a prov:Activity in the generated vocabulary, and typed with its own class when stored."
+class Transition(Activity):
+    "One transition of an aggregate, as an activity: which aggregate it used, from which state to which, when, by whom and with which comment. The toolkit stores it as the activity of the commit that moves the aggregate, in the provenance graph, and keeps it when the aggregate is deleted. The payload slots belong to the command only: the stored record has none of them."
     used_resource: str = Field(default=..., title="Used resource", description="The IRI of the aggregate the activity used.")
-    from_state_iri: str = Field(default=..., title="From state IRI", description="The IRI of the state an aggregate left, on the comment a transition posted and on the transition\u0027s record. Defined here, so that the workflow module, which imports this one, uses it too. A state name in a workflow file is another thing: it has no IRI.")
-    to_state_iri: str = Field(default=..., title="To state IRI", description="The IRI of the state an aggregate entered, on the comment a transition posted and on the transition\u0027s record. Defined here beside from_state_iri.")
-    started_at_time: datetime  = Field(default=..., title="Started at time", description="The time the activity started.")
+    from_state_iri: Optional[str] = Field(default=None, title="From state IRI", description="The IRI of the state an aggregate left, on the comment a transition posted and on the transition\u0027s record. Defined here, so that the workflow module, which imports this one, uses it too. A state name in a workflow file is another thing: it has no IRI.")
+    to_state_iri: Optional[str] = Field(default=None, title="To state IRI", description="The IRI of the state an aggregate entered, on the comment a transition posted and on the transition\u0027s record. Defined here beside from_state_iri.")
     transition_comment: Optional[str] = Field(default=None, title="Transition comment", description="The IRI of the comment the transition posted, when it had one.")
+    to_state: Optional[str] = Field(default=None, title="To state", description="The name of the state a transition enters. A stored record gives an IRI in to_state_iri.")
+    expected_version: Optional[str] = Field(default=None, title="Expected version", description="The version of the aggregate the caller read; the move is made only if it still holds.")
+    body_value: Optional[str] = Field(default=None, title="Body value", description="The text of the comment.")
     id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
     was_associated_with: Optional[list[str]] = Field(default=None, title="Was associated with", description="A principal that carried out the activity.")
+    started_at_time: Optional[datetime ] = Field(default=None, title="Started at time", description="The time the activity started.")
     ended_at_time: Optional[datetime ] = Field(default=None, title="Ended at time", description="The time the activity ended.")
     generations: Optional[list[Generation]] = Field(default=None, title="Generations", description="The versions of entities the activity generated.")
     invalidations: Optional[list[Invalidation]] = Field(default=None, title="Invalidations", description="The versions of entities the activity invalidated.")
@@ -134,4 +134,4 @@ class TransitionRecord(AggregateRoot, Activity):
 Workflow.model_rebuild()
 WorkflowTransition.model_rebuild()
 UnderWorkflow.model_rebuild()
-TransitionRecord.model_rebuild()
+Transition.model_rebuild()

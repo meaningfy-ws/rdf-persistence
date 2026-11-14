@@ -140,6 +140,7 @@ flowchart LR
   subgraph TDB["tenant database lib-t-…"]
     META["T/meta<br/>the tenant root (a Library)"]
     REG["T/registry<br/>entries and load markers"]
+    PROV["T/provenance<br/>one activity per commit"]
     BG["B/graph<br/>book B, its parts,<br/>version and tracking"]
     LG["B/content/&lt;id&gt;<br/>a loaded RDF file"]
   end
@@ -154,6 +155,7 @@ flowchart LR
   ACC -. "database name<br/>(the bucket has the same)" .-> TDB
   REG -- "B/graph ownedBy B<br/>kind Aggregate" --> BG
   REG -- "B/content/id ownedBy B<br/>kind LoadedGraph" --> LG
+  PROV -. "generation, invalidation<br/>name B and its version" .-> BG
   BG -. "rp:fileKey k<br/>(file aggregates)" .-> BUCKET
   AREG -- "ownedBy<br/>kind Aggregate, LoadedGraph" --> AG
 ....
@@ -407,12 +409,13 @@ nothing changes; the `ASK` for the new token then fails and the answer is 409.
 |`DELETE …/books/{id}` with `If-Match` (`delete` on the book); `Session.remove`
 |`Session.remove` reads the version (404 if there is none).
 |One update request (<<commit>>), guarded by the version: empty every loaded graph `B` owns, drop
-its registry entries, empty `B/graph`, and drop the comments that target `B` and the transition
-records about it (see <<commit>>, _Delete removes dependents_). 409 if the graph is still there. Blobs are *not* deleted: use `remove_with_files`.
+its registry entries, empty `B/graph`, and drop the comments that target `B` (its transition
+activities stay; see <<commit>>, _Delete removes dependents_). 409 if the graph is still there. Blobs are *not* deleted: use `remove_with_files`.
 |===
 
-*No change history is kept.* A replace overwrites; only the current version and the tracking
-statements remain.
+*No content history is kept.* A replace overwrites; only the current version and the tracking
+statements remain. What was done, by whom and when is kept as the activity of the commit, in the
+provenance graph (<<commit>>, _The activity_), with version tokens and no content.
 
 *Some aggregates have no write routes.* A class annotated `rp_writes: service`, or a file
 aggregate, gets only `GET` routes; a `POST`, `PUT` or `DELETE` on them answers 405. The consumer
@@ -441,7 +444,7 @@ sequenceDiagram
   participant F as Fuseki (lib-t-…)
   Note over S: collect: replace A at a1, add C, remove B at b1<br/>(nothing sent yet, the pre-checks are reads)
   S->>F: one request of joined operations
-  Note over F: 1 guard: A at a1, C/graph empty, B at b1 → write the rp:CommitMarker<br/>2 the marked operations of A, C and B<br/>3 release: delete the marker
+  Note over F: 1 guard: A at a1, C/graph empty, B at b1 → write the rp:CommitMarker<br/>2 the marked operations of A, C and B<br/>2b the marked insert of the activity into T/provenance<br/>3 release: delete the marker
   S->>F: ASK A at its new token, C at its new token, B/graph empty?
   alt true
     S-->>S: committed
@@ -455,7 +458,7 @@ sequenceDiagram
   end
 ....
 
-*The request.* Three parts, joined with `;`:
+*The request.* Four parts, joined with `;`:
 
 . *The guard operation.* `INSERT { GRAPH T/registry { <marker> a rp:CommitMarker ; rp:startedAt … } } WHERE { … }`.
   The `WHERE` holds one pattern per change: `GRAPH A/graph { A/graph rp:version "a1" }` for a
@@ -466,6 +469,14 @@ sequenceDiagram
   above), each with `GRAPH T/registry { <marker> a rp:CommitMarker }` in place of its own guard.
   Without a marker they match nothing, so a refused transaction changes nothing, whatever the
   order of the operations.
+. *The activity.* One more marked operation, `INSERT { GRAPH T/provenance { … } } WHERE { <marker> … }`,
+  records the commit as one PROV activity: its class (`Add`, `Replace` or `Remove` when every
+  change is of that kind, else `Activity`; the class of the command when one is served), its start
+  (the marker's time), its end, the principal, and one generation (new version token) or
+  invalidation (old token) for each aggregate, each naming the aggregate's IRI and class and
+  nothing of its content. It is marked like the others, so a refused commit records nothing. The
+  application database has a provenance graph of its own, and a session opened with
+  `record_activities=False` (the system database's sessions are) writes none.
 . *The release.* `DELETE` of the marker's statements. The marker lives in `T/registry` for the
   length of the request only; the registry listings and the sweeps never see it.
 
@@ -540,10 +551,9 @@ them to every session it opens when the schema imports `rp_discussion`, and a se
 without them drops only the aggregate. The same pairs also leave a comment's link to its target
 out of `Session.referrer_rows`, so what `referrers` omits and what a remove drops cannot differ.
 The operation starts from the link to the removed root and checks the registry afterwards, so a
-tenant with no comment pays next to nothing for it. Transition records go with their aggregate
-in the same way: when the schema imports `rp_workflow`, the kit adds the pair of
-`rp:TransitionRecord` and `prov:used`, so a remove drops the records of the removed root and
-`referrers` leaves their link out.
+tenant with no comment pays next to nothing for it. The dependents are comments only. A
+transition's activity is not one: it lives in the provenance graph, and a remove adds its own
+activity there and drops no other (<<commit>>, _The activity_).
 
 *A presence guard.* Posting a comment (`Discussion.comment`) writes the comment's graph only and
 adds one guard on its target: the target must still have a version when the request is applied
@@ -622,10 +632,10 @@ sequenceDiagram
   W->>F: SELECT the stored classes and state of B
   W-->>S: triples (the new state is the allowed one)
   S->>F: SELECT the loaded graphs B owns
-  T->>S: add_graph(R, the record), add_graph(C, the comment)
+  T->>S: add_graph(C, the comment), the Transition R as the served activity
   S->>F: one request of joined operations
-  Note over F: 1 guard: B at v7, R/graph empty, C/graph empty → write the rp:CommitMarker<br/>2 the marked operations of B, R and C<br/>3 release: delete the marker
-  S->>F: ASK B, R and C at their new tokens?
+  Note over F: 1 guard: B at v7, C/graph empty → write the rp:CommitMarker<br/>2 the marked operations of B and C<br/>2b the marked insert of R into T/provenance<br/>3 release: delete the marker
+  S->>F: ASK B and C at their new tokens?
   alt true
     T-->>T: the new version of B
   else false
@@ -647,24 +657,27 @@ its class named a workflow).
   (`<workflow id>/accepted`). `Transaction._allow_state` was called first, so the write guards
   accept this one state (<<commit>>, _Write guards_ and
   <<private-pieces,the three private pieces>>).
-. *Add the record `R`*, a `rp:TransitionRecord` minted by the IRI policy with the path
-  `rp-transitions`: the aggregate
-  (`prov:used`), the state left and the state entered (`rp:fromState`, `rp:toState`), the time
-  (`prov:startedAtTime`, the session's clock), who (`prov:wasAssociatedWith`, the session's
-  principal) and, with a comment, its IRI (`rp:transitionComment`).
+. *Record the activity `R`*, a `Transition` with an id of the form `urn:uuid:…`, as the served
+  activity of the same transaction: the aggregate (`used_resource`), the state left and the state
+  entered, the comment's IRI if any, and, filled by the session as for every commit, the start,
+  the end and the principal. Its parts are one invalidation and one generation of `B` (the old
+  and the new token) and, with a comment, one generation of `C`. It is inserted into
+  `T/provenance`, not stored as an aggregate.
 . *Add the comment `C`*, only when a comment that is not blank is given: an `oa:Annotation` with
   the path `rp-comments` that targets `B`, with the text, the motivation `oa:commenting`, the two
   states and no audience, so everyone who reads `B` sees it in the thread.
 
-*The request* is the one of <<commit>>: the guard operation holds "`B` at `v7`" and "`R/graph`
-and `C/graph` are empty", then the marked operations, then the release, then the `ASK`. The state
-allowance is not part of it. Two transitions of one book at the same version cannot both land: the
-second finds no `v7`. The record and the comment are aggregates of their own, so `B`'s graph holds
-only its new state, and no route serves either (`rp_writes: toolkit`).
+*The request* is the one of <<commit>>: the guard operation holds "`B` at `v7`" and "`C/graph`
+is empty", then the marked operations, then the marked insert of `R`, then the release, then the
+`ASK`. The state allowance is not part of it. Two transitions of one book at the same version
+cannot both land: the second finds no `v7`. The comment is an aggregate of its own, so `B`'s graph
+holds only its new state, and no route serves it (`rp_writes: toolkit`).
 
-*Reading it back.* `Collaboration.transitions(iri)` reads the records with `Session.graphs_with`
-(every registered aggregate whose root has `prov:used` the aggregate), oldest first. A delete of
-`B` drops them with it (<<commit>>, _Delete removes dependents_).
+*Reading it back.* `Collaboration.transitions(iri)` first checks that `B` is stored (it does not
+read its graph; an aggregate that is not stored is `NotFound`), then reads the activities of the provenance graph typed `rp:Transition`
+that used `B` and generated a new version of it, oldest first, each with only the generations and
+invalidations of `B`. A delete of `B` leaves them where they are, so an aggregate added
+again at the same IRI shows the old history, and a record may name a comment that went with `B`.
 
 [#files]
 == Files and loaded graphs

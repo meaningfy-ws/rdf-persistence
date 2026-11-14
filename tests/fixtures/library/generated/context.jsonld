@@ -129,6 +129,9 @@
       "equals_value": {
          "@id": "rp:equalsValue"
       },
+      "expected_version": {
+         "@id": "rp:expectedVersion"
+      },
       "file_name": {
          "@id": "rp:fileName"
       },
@@ -540,8 +543,8 @@
       "Tracked": {
          "@id": "rp:Tracked"
       },
-      "TransitionRecord": {
-         "@id": "rp:TransitionRecord"
+      "Transition": {
+         "@id": "rp:Transition"
       },
       "UnderWorkflow": {
          "@id": "rp:UnderWorkflow"

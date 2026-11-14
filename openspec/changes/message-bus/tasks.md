@@ -71,7 +71,7 @@ green CI.
 
 ## 2. The activity on every commit (stage 2)
 
-- [ ] 2.1 `Served` and `Mapper.served` (PD-8). `services/provenance.py` (D-3 b): the `Served` dataclass;
+- [x] 2.1 `Served` and `Mapper.served` (PD-8). `services/provenance.py` (D-3 b): the `Served` dataclass;
   `services/mapper.py`: `served(command)`. Test first in `tests/unit/services/test_mapper.py`.
   Payload stripping is tested in 2.3 on `Transition`.
 
@@ -81,7 +81,7 @@ green CI.
 | TC-21 | `mapper.served(Replace(id="urn:uuid:1", …))` with each `SESSION_FILLED` slot set (parametrized) | `triples` holds no statement of that slot |
 | TC-21a | `mapper.served(Replace(id="https://example.org/x"))` | `ValueError` naming the id |
 
-- [ ] 2.2 The commit records and publishes (PD-6 to PD-10; D-1). `services/session.py`:
+- [x] 2.2 The commit records and publishes (PD-6 to PD-10; D-1). `services/session.py`:
   `Session(record_activities=True, on_commit=None)`, `open_session` likewise,
   `transaction(served=None)` and `served=` on `add_graph`, `replace_graph`, `remove`, the events
   collected per change, `_stored` returning the root's types, the activity operation, the id guard
@@ -117,7 +117,7 @@ green CI.
 | TC-40d | an add of a `Template` through `kit.application_session` | one `rp:Add` in the application database's provenance graph (`iris.provenance(iris.application)`) |
 | TC-40c | a stale replace served with a fresh id | `Conflict` naming the book, not the activity IRI (existing reasons first) |
 
-- [ ] 2.3 `Transition` replaces `TransitionRecord`, kept on delete (PD-11; DEC-13).
+- [x] 2.3 `Transition` replaces `TransitionRecord`, kept on delete (PD-11; DEC-13).
   `rp_workflow.yaml` (the class, `expected_version`, the three `toolkit_filled` annotations,
   `to_state`/`expected_version`/`body_value` `payload: true` in `Transition`'s `slot_usage`);
   `make generate`; `services/transitions.py` (`_store`, `transitions`, no `dependents`);
@@ -145,7 +145,7 @@ green CI.
 | TC-49b | `vocabulary.TOOLKIT_FILLED` | also `from_state_iri`, `to_state_iri`, `transition_comment` (TC-02 updated); `SESSION_FILLED` unchanged and a subset |
 | TC-49c | `mapper.served(Transition(id=…, used_resource=b1, to_state="in_review", expected_version=v1, body_value="x", from_state_iri=s1))` | `triples` hold `prov:used` and the from state, none of the three payload slots; `activity` has the three payload slots None |
 
-- [ ] 2.4 Cost (PD-12). `tests/integration/store/test_activity_cost.py` (slow, container):
+- [x] 2.4 Cost (PD-12). `tests/integration/store/test_activity_cost.py` (slow, container):
   measurement (b), the 20 000 activities preloaded with a few bulk `INSERT DATA` updates through
   the store, not through commits; re-run IT-06
   (`tests/integration/store/test_transaction.py::test_it06_a_commit_of_the_default_limit_of_new_books_is_one_update_within_30_s`). Record both in
@@ -155,7 +155,7 @@ green CI.
 |---|---|---|
 | TC-50 | 20 000 activities preloaded; 200 sequential replaces, recorded and unrecorded | prints both means; asserts only that every commit succeeded and that 200 activities were added |
 
-- [ ] 2.5 Docs of stage 2. The deltas `specs/rp-workflow/spec.md` and
+- [x] 2.5 Docs of stage 2. The deltas `specs/rp-workflow/spec.md` and
   `specs/rp-reverse-references/spec.md` of this change already say records are kept; align
   `howto/workflow.adoc` (the "history is deleted" paragraph), `questions.adoc` (the delete answer),
   `architecture/data-flows.adoc` (delete removes dependents; the transition flow),
@@ -258,8 +258,8 @@ green CI.
 
 ## Roadmap
 
-- [x] 1.1 · [ ] 1.2 · [ ] 1.3 · PR 1 · [ ] 2.1 · [ ] 2.2 · (adversarial tester) · [ ] 2.3 ·
-  [ ] 2.4 · [ ] 2.5 · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · PR 3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · PR 4
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · PR 1 (#107) · [x] 2.1 · [x] 2.2 · (adversarial tester) · [x] 2.3 ·
+  [x] 2.4 · [x] 2.5 · PR 2 (#110) · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · PR 3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · PR 4
 
 1.1 then 1.3; 1.2 touches other files than 1.1 except the generated ones, so it runs after 1.1 too.
 3.1 and 3.2 touch disjoint files and may run in parallel; so may 4.2 and 4.3 after 4.1. Everything

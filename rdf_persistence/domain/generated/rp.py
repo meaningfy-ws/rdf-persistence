@@ -87,7 +87,7 @@ from .rp_tenancy import (
     TenantSweepReport
 )
 from .rp_workflow import (
-    TransitionRecord,
+    Transition,
     UnderWorkflow,
     Workflow,
     WorkflowTransition
@@ -95,7 +95,7 @@ from .rp_workflow import (
 
 
 metamodel_version = "1.12.0"
-version = "1"
+version = "2"
 
 
 from rdf_persistence.domain.base import RpModel as ConfiguredBaseModel

@@ -9,7 +9,7 @@ change `collaboration-and-reference-collections`). The terms tenant, aggregate, 
 IRI policy, and the names `kit`, `t`, `mapper` and `Action` in the snippets, are those of
 xref:howto/adopt.adoc[Build an application]; a *collaboration* (`collab`) is opened as in
 xref:howto/reverse-references.adoc[Find who points at a resource]. `UnitOfWork`,
-`TransitionRecord`, `VerifiedCaller` and the errors are imported from `rdf_persistence`, except `LookupError`, which
+`Transition`, `VerifiedCaller` and the errors are imported from `rdf_persistence`, except `LookupError`, which
 is Python's own.
 
 A *workflow* is a set of *states*, one of them the *initial state*, and the *transitions* between
@@ -241,7 +241,8 @@ often may not edit what it reviews.
 One transition stores, in one request, all or nothing:
 
 * the new state of the aggregate;
-* a `TransitionRecord`, an aggregate of its own that the toolkit writes;
+* a `Transition`, a PROV activity that the toolkit writes into the tenant's provenance graph, and
+  that stays there when the aggregate is deleted;
 * with a comment, a comment in the aggregate's thread
   (xref:howto/discussion.adoc[Comment on a resource without editing it]). It has no audience, so
   everyone who may read the aggregate sees it, and it names the two states in `from_state_iri` and
@@ -256,8 +257,11 @@ async with kit.collaboration(checked) as collab:
         print(r.started_at_time, r.was_associated_with, r.from_state_iri, r.to_state_iri)
 ----
 
-`transitions` needs `read` on the aggregate and returns its `TransitionRecord` models, oldest
-first (two records of the same time go by IRI):
+`transitions` needs `read` on a stored aggregate and returns its `Transition` models, oldest
+first (two records of the same time go by IRI). An aggregate that is not stored is `NotFound`:
+no collaboration call returns the transitions of a deleted aggregate, though its records stay in
+the provenance graph. Code that holds a session can read any activity of that graph with
+`Session.activities`, which checks no access:
 
 [cols="1,3",options="header"]
 |===
@@ -271,11 +275,10 @@ first (two records of the same time go by IRI):
 |===
 
 * A record is read only this way: no generic route serves it, and it is never a member of a
-  collection. It is not a referrer of its aggregate, and it takes no comment (`InvalidIri`). It is
-  listed among the referrers of the comment it names
-  (xref:howto/reverse-references.adoc[Find who points at a resource]), to a caller who may read it.
+  collection. It is not an aggregate, so it is not a referrer of its aggregate, and it takes no
+  comment (`NotFound`: its IRI is no aggregate of the tenant).
 * A plain write of the aggregate leaves its records as they are.
-* Deleting the aggregate deletes its records, with its comments, in the same request.
+* Deleting the aggregate deletes its comments, in the same request, and keeps its records.
 
 == Find the aggregates in a state
 
@@ -325,20 +328,29 @@ At start: `InvalidWorkflow`, from `install_service` or `ServiceKit`, for the fau
 * *No timers, parallel states, quorum approvals or automatic transitions.* An aggregate is in one
   state, and one caller moves it.
 * *No migration of states when a file changes.* See <<Change a file on a system that holds data>>.
-* *Deleting an aggregate deletes its history, and code that holds a session can store it again.*
+* *Deleting an aggregate keeps its history, and code that holds a session can store it again.*
   The generic API mints a new IRI for every new aggregate, so a caller cannot bring a deleted book
   back. Application code with a session can add an aggregate at the same IRI: it starts in the
-  initial state with no records. Guard such a route as you would guard a transition.
+  initial state, and `transitions` shows the old history, because the records name the IRI.
+  Guard such a route as you would guard a transition.
 * *Two transitions racing from one version:* one wins; the other gets `Conflict` and stores
   nothing, neither record nor comment.
-* *The history is deleted with the aggregate.* It is not an audit log that outlives it.
+* *The history outlives the aggregate, but no collaboration call returns it.* The records stay in the
+  tenant's provenance graph when the aggregate is deleted, and `transitions` needs a stored
+  aggregate; `Session.activities` still reads them and checks no access. A
+  kept record may name, in `transition_comment`, a comment that was deleted with the aggregate.
 * *Two stored states.* An aggregate that holds two states (raw triples the toolkit would not
   write, for example from a direct write to the store) cannot be moved: `transition` answers
   `StoredDataInvalid`. A plain write keeps both and one that names a single state is refused, so
   the toolkit cannot repair it. Remove the extra `adms:status` statement with a direct write to
   the store.
 * *A restored archive carries states and records as they are.* `restore_tenant` checks the
-  structure of the archive, not the workflow rule: the states and the transition records come
-  back as they were dumped.
+  structure of the archive, not the workflow rule: the states and the transition records (in the
+  provenance graph) come back as they were dumped.
+* *Records of an earlier version are not read.* A `rp:TransitionRecord` graph stored before this
+  change stays a registered aggregate that `transitions` ignores, and a delete no longer drops it.
+  Each is an aggregate like any other: `referrers` of its aggregate lists it under the class IRI
+  `rp:TransitionRecord`, and a session removes it as it removes any aggregate.
+  `transitions` of an aggregate that is not stored is `NotFound`.
 * *No route for a transition.* As for the other collaboration calls, you write your own, with the
   kit.

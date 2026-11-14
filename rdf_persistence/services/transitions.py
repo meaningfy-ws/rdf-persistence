@@ -1,8 +1,8 @@
-"""Transitions: the one write that changes the state of an aggregate, and the records it leaves (PD-15, PD-20 to PD-22).
+"""Transitions: the one write that changes the state of an aggregate, and the activities it leaves (PD-15, PD-20 to PD-22; message-bus PD-11).
 
 A transition moves an aggregate along an edge of its workflow. Who may make it is decided by the
-roles on the edge, not by ``modify``; the aggregate, its record and the comment that goes with it are
-written in one transaction. ``Transitions`` holds one ``Session`` and the caller it acts for;
+roles on the edge, not by ``modify``; the aggregate and the comment that goes with it are written in
+one transaction, whose activity is the ``Transition``. ``Transitions`` holds one ``Session`` and the caller it acts for;
 ``Collaboration`` hands ``transition`` and ``transitions`` over to it.
 """
 
@@ -11,11 +11,17 @@ from typing import cast
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import RDF, Graph, URIRef
 
-from rdf_persistence.domain.exceptions import Conflict, Forbidden, InvalidBody, StoredDataInvalid
+from rdf_persistence.domain.exceptions import (
+    Conflict,
+    Forbidden,
+    InvalidBody,
+    NotFound,
+    StoredDataInvalid,
+)
 from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_discussion import Comment, Motivation
 from rdf_persistence.domain.generated.rp_workflow import (
-    TransitionRecord,
+    Transition,
     Workflow,
     WorkflowTransition,
 )
@@ -24,22 +30,15 @@ from rdf_persistence.domain.iris import Iris
 from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
-from rdf_persistence.services.discussion import decode_typed, mint_iri, moment_of
+from rdf_persistence.services.discussion import mint_iri, moment_of
 from rdf_persistence.services.mapper import Mapper
-from rdf_persistence.services.session import Dependents, Session, changed_text
+from rdf_persistence.services.provenance import new_activity_id
+from rdf_persistence.services.session import Session, changed_text
 from rdf_persistence.services.workflows import Workflows, state_iri
 from rdf_persistence.services.yaml_files import SHOWN
 
-RECORD = "TransitionRecord"
+TRANSITION_CLASS = "Transition"
 COMMENT = "Comment"
-
-
-def dependents(view: SchemaView) -> Dependents:
-    """The ``(class, link)`` pair a remove drops with the aggregate it points at: a record's ``prov:used``.
-
-    None for a schema that does not import the workflow module.
-    """
-    return ((v.TRANSITION_RECORD, v.USED),) if view.get_class(RECORD) else ()
 
 
 class Transitions:
@@ -67,14 +66,23 @@ class Transitions:
         self._workflows = workflows
 
     async def transition(
-        self, iri: str, to: str, *, if_version: str, comment: str | None = None
+        self,
+        iri: str,
+        to: str,
+        *,
+        if_version: str,
+        comment: str | None = None,
+        command: Transition | None = None,
     ) -> str:
         """Move the aggregate ``iri`` to the state named ``to``, if it still has ``if_version``;
         returns its new version.
 
-        The state, a record of the move (who, when, from and to) and, with ``comment``, a comment in
-        the thread of ``iri`` for everyone who reads it, are stored in one request. The roles on the
-        edge decide who may make the move; a Prohibition of ``modify`` freezes the aggregate.
+        The state and, with ``comment``, a comment in the thread of ``iri`` for everyone who reads
+        it, are stored in one request, and that request's activity is the move: a ``Transition``
+        (who, when, from and to), kept when the aggregate is deleted. ``command`` is the
+        ``Transition`` to store (a consumer's subclass, say; none: a new one); the states and the
+        comment it carries are overwritten by the computed ones. The roles on the edge decide who
+        may make the move; a Prohibition of ``modify`` freezes the aggregate.
 
         Raises:
             LookupError: The schema does not import the module rp_workflow.
@@ -107,28 +115,35 @@ class Transitions:
         edge = self._edge(workflow, iri, current, to)
         if edge.comment_required and comment is None:
             raise InvalidBody(f"the move to {to} needs a comment")
-        return await self._store(iri, graph, workflow, current, to, comment, if_version)
+        return await self._store(iri, graph, workflow, current, to, comment, if_version, command)
 
-    async def transitions(self, iri: str) -> list[TransitionRecord]:
-        """The records of the moves of the aggregate ``iri``, oldest first, ties by IRI.
+    async def transitions(self, iri: str) -> list[Transition]:
+        """The moves of the aggregate ``iri``, oldest first, ties by IRI.
+
+        A move whose aggregate was deleted is kept in the provenance graph and returned by no call;
+        an aggregate added again at the same IRI shows the old moves.
 
         Raises:
             LookupError: The schema does not import the module rp_workflow.
-            NotFound: The caller can see nothing of ``iri``.
+            NotFound: The caller can see nothing of ``iri``, or ``iri`` has no graph.
             Forbidden: The caller may see ``iri`` but not read it.
             DatabaseGone: The tenant database does not exist.
         """
         self._require_module()
         self._rules.require(self._caller, self._access, iri, Action.READ)
-        found = await self._session.graphs_with(v.USED, URIRef(iri))
-        decoded = (self._decode(root, graph) for root, graph in found.items())
+        if not await self._session.heads([iri]):  # an aggregate that is not stored has no moves
+            raise NotFound(f"no graph for {iri}")
+        found = await self._session.activities(
+            v.TRANSITION, v.USED, URIRef(iri), entity=URIRef(iri)
+        )
+        decoded = [self._decode(root, graph) for root, graph in found.items()]
         return sorted(
-            (r for r in decoded if r is not None),
+            (_about(r, iri) for r in decoded if r is not None),
             key=lambda r: (moment_of(r.started_at_time), r.id),
         )
 
     def _require_module(self) -> None:
-        if self._view.get_class(RECORD) is None:
+        if self._view.get_class(TRANSITION_CLASS) is None:
             raise LookupError("the schema does not import the module rp_workflow")
 
     def _workflow_of(self, iri: str, graph: Graph) -> Workflow:
@@ -172,21 +187,19 @@ class Transitions:
         to: str,
         comment: str | None,
         if_version: str,
+        command: Transition | None,
     ) -> str:
         entered = state_iri(workflow, to)
-        record = self._mint(RECORD)
         posted = self._mint(COMMENT) if comment else None
-        models: list[TransitionRecord | Comment] = [
-            TransitionRecord(
-                id=record,
-                used_resource=iri,
-                from_state_iri=current,
-                to_state_iri=entered,
-                started_at_time=self._session.now(),
-                was_associated_with=[self._session.principal.id],
-                transition_comment=posted,
-            )
-        ]
+        record = (command or Transition(id=new_activity_id(), used_resource=iri)).model_copy(
+            update={
+                "used_resource": iri,
+                "from_state_iri": current,
+                "to_state_iri": entered,
+                "transition_comment": posted,
+            }
+        )
+        models: list[Comment] = []
         if comment:
             models.append(
                 Comment(
@@ -198,7 +211,7 @@ class Transitions:
                     to_state_iri=entered,
                 )
             )
-        async with self._session.transaction() as transaction:
+        async with self._session.transaction(served=self._mapper.served(record)) as transaction:
             transaction._allow_state(iri, entered)
             version = await transaction.replace_graph(iri, _moved(iri, graph, entered), if_version)
             for model in models:
@@ -208,9 +221,25 @@ class Transitions:
     def _mint(self, class_name: str) -> str:
         return mint_iri(self._view.get_class(class_name), self._iris, self._access.tenant)
 
-    def _decode(self, iri: str, graph: Graph) -> TransitionRecord | None:
-        """The record at ``iri``, or None for a root that is not one (not typed so, or one the class refuses)."""
-        return decode_typed(self._mapper, TransitionRecord, v.TRANSITION_RECORD, iri, graph)
+    def _decode(self, iri: str, graph: Graph) -> Transition | None:
+        """The activity at ``iri``, or None for a root that is not one (not typed so, or one the class refuses)."""
+        if (URIRef(iri), RDF.type, v.TRANSITION) not in graph:
+            return None
+        try:
+            return self._mapper.from_graph(Transition, iri, graph, None)
+        except ValueError:  # pydantic's refusal of the triples
+            return None
+
+
+def _about(move: Transition, iri: str) -> Transition:
+    """``move`` with only the generations and invalidations of the entity ``iri``: what else the
+    commit changed is no business of a reader of ``iri`` (D-6 b)."""
+    return move.model_copy(
+        update={
+            "generations": [g for g in move.generations or [] if g.entity == iri] or None,
+            "invalidations": [i for i in move.invalidations or [] if i.entity == iri] or None,
+        }
+    )
 
 
 def _current(workflow: Workflow, iri: str, graph: Graph) -> str:

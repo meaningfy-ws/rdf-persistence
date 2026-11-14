@@ -23,7 +23,6 @@ from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import DEFAULT_MAX_ROOTS, UnitOfWork
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import Session, open_session
-from rdf_persistence.services.transitions import dependents as transition_dependents
 from rdf_persistence.services.workflows import Workflows, load_workflow, state_iri
 from rdf_persistence.services.write_guards import WriteGuards
 from tests.fixtures.library.generated.books import Book, Genre
@@ -88,7 +87,7 @@ def opened(store, database: str, who: str, rules: AccessRules):
         principal=Principal(id=who),
         listings=listings,
         guards=guards,
-        dependents=(*dependents(view), *transition_dependents(view)),
+        dependents=dependents(view),
     )
 
 
@@ -495,7 +494,8 @@ async def status_of(session: Session, iri: str) -> list[str]:
 
 
 async def records_of(session: Session, iri: str) -> list[str]:
-    return sorted(await session.graphs_with(v.USED, URIRef(iri)))
+    """The IRIs of the transition activities that used ``iri``."""
+    return sorted(await session.activities(v.TRANSITION, v.USED, URIRef(iri)))
 
 
 async def go(who: Collaboration, session: Session, to: str, iri: str = B1, **more) -> str:
@@ -554,7 +554,7 @@ async def test_a_move_with_a_comment_is_one_request_and_the_comment_ends_the_thr
     await go(build, session, "in_review")
     sent = counting_updates(store, monkeypatch)
     await go(build, session, "accepted", comment="fine")
-    assert len(sent) == 1, "the state, the record and the comment: one request"
+    assert len(sent) == 1, "the state, the comment and the transition's activity: one request"
     *_, fine = await as_reviewer(collaboration).thread(B1)  # bob only reads: no audience
     assert fine.body_value == "fine", "the comment ends the thread"
     assert fine.creator == ADA, "by ada"
@@ -583,9 +583,9 @@ async def test_a_plain_replace_cannot_change_the_state_on_a_guarded_session(sess
     assert await status_of(session, B1) == [DRAFT], "b1 stays in draft"
 
 
-async def test_removing_a_moved_book_removes_its_records_and_comments_in_one_request(
+async def test_removing_a_moved_book_removes_its_comments_and_keeps_its_transitions_in_one_request(
     store, session, collaboration, monkeypatch
-):  # IT-10, TC-90
+):  # IT-10, TC-44
     await put_book(session, B1)
     await put_book(session, B2)
     build = as_librarian(collaboration)
@@ -596,6 +596,7 @@ async def test_removing_a_moved_book_removes_its_records_and_comments_in_one_req
     sent = counting_updates(store, monkeypatch)
     await session.remove(B1, await version_of(session, B1))
     assert len(sent) == 1, "one update request"
-    assert await session.heads([B1, record, ready]) == [], "b1, its record and its comment are gone"
-    assert len(await records_of(session, B2)) == 1, "the record of b2 stays"
+    assert await session.heads([B1, ready]) == [], "b1 and its comment are gone"
+    assert await records_of(session, B1) == [record], "the transition of b1 stays"
+    assert len(await records_of(session, B2)) == 1, "and the transition of b2"
     assert len(await comments_on(session, B2)) == 1, "and its comment"

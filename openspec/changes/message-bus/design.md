@@ -163,6 +163,10 @@ aggregate (DEC-13).
     second command.
   - `Session.add_graph`, `replace_graph` and `remove` take `served=None` too and pass it to their
     one-change transaction.
+  - As built (task 2.2): a `Served` is claimed when its transaction opens, so a refused or failed
+    commit spends it too; a retry builds a new `Served` (`mapper.served(command)` again). `Served`
+    is a plain class and the events are tuples, because the model guard forbids dataclasses in
+    `services` and they are internal to one commit, never stored or sent as such.
   - Diagnosis after a failed confirmation (`_diagnose`): the existing reasons first, unchanged. Only
     when they find none and the commit was served, an `ASK` for the activity IRI in the provenance
     graph; if it is there, `Conflict` naming it. (A served commit that applied and whose every graph
@@ -361,6 +365,88 @@ aggregate (DEC-13).
     record), `questions.adoc`, and the description of `rp_provenance.yaml` (L2, L3, L5).
   Rejected: reading a missing `provenance_template` of a recorded policy as the configured value
   (L5 item 2): it would let a policy change pass the guard unseen; the case is documented (f).
+- **D-5** (lead, 2026-11-14) The adversarial tester's run after task 2.2
+  (`tests/unit/services/test_session_activity_adversarial.py`: 46 tests, 5 findings kept as strict
+  xfail until fixed). All five accepted:
+  - a. A transaction of removes whose root another writer removed first: nothing is written, yet
+    the confirming `ASK` holds (the graph is gone) and the hook got a `Remove` that is not stored.
+    Fix: a recording commit also confirms its activity (`GRAPH $provenance { <id> a prov:Activity }`
+    joins the confirm patterns). When that fails the existing diagnosis decides as today (this
+    case stays a success, atomic-commit PD-17e), and nothing is published: only a commit whose
+    confirmation held publishes.
+  - b. A `Served` built by hand could carry statements about other subjects (a past activity, an
+    aggregate) and statements the session fills (a second principal, a second time). Fix: the
+    `Served` constructor refuses with `ValueError` a triple whose subject is neither the activity
+    IRI nor a blank node, and a triple of the activity whose predicate is `rdf:type` or one of the
+    `SESSION_FILLED` predicates.
+  - c. A clock that goes back gave a start after the end. Fix: the end is the later of the
+    session clock and the start.
+  - d. `Mapper.served` of a class the schema does not have raised `KeyError`. Fix: `ValueError`
+    naming the class.
+  The xfail markers are removed with the fixes.
+- **D-7** (lead, 2026-11-14) `schema-migrations` merged into `develop` (#109) while stage 2 was in
+  review, and brought a schema lock: a changed model needs a new `version:` in the root schema and
+  a reviewed migration. Stage 2 removes the class `rp:TransitionRecord` (and with it the
+  generation and invalidation parts it carried as an aggregate), so `rdf_persistence/model/rp.yaml`
+  is now version "2" and `rdf_persistence/model/migrations/1__2.yaml` is the reviewed migration.
+  It has **no steps**: PD-1 item 4 (the developer: no migration of stored `rp:TransitionRecord`
+  graphs) is exactly the lock's "remove the step if no data needs moving", and the file says so.
+  The later stages add classes only (`PostComment`, `PostReply`, `DeleteFile`), which the lock
+  treats as it treats any addition; a builder that meets the lock check stops and reports.
+- **D-6** (lead, 2026-11-14) Review of stage 2 (commits `c961418`, `9fccff5`; L1, L2, L3 and
+  L4+L5 as one pass; nothing blocking). Accepted:
+  - a. **Publish exactly what is recorded** (L4; completes D-5 a). When the confirmation fails and
+    the diagnosis finds the commit applied (it returns), a recording session asks whether its
+    activity is stored (`ID_TAKEN` with its id) and publishes if it is; a session that does not
+    record logs a warning naming the activity and does not publish. The removes-only case of D-5 a
+    finds no activity and publishes nothing. This replaces "recorded, not published" for the
+    overtaken commit in the Error matrix.
+  - b. **`transitions(iri)` returns only real moves of `iri`, and only what is about it** (L1).
+    `Session.activities` takes an optional `entity`: only activities with a generation whose
+    `rp:entity` is that IRI. `Transitions.transitions` passes the aggregate, and drops from each
+    returned `Transition` the generations and invalidations of other entities, so a commit that
+    also changed other aggregates does not show their IRIs to a reader of this one. The docstring
+    of `Session.transaction` says a `Served` is trusted: its toolkit-filled slots other than the
+    session's are stored as the caller set them.
+  - c. `READ_ACTIVITIES` starts from the selective statement (`?activity $predicate $object`), then
+    the type, and reads the parts with `VALUES ?link`; the comment says so (L4).
+  - d. `transitions` checks the aggregate is stored with `Session.heads`, not by reading its graph
+    (L5).
+  - e. Activities are decoded without an aggregate's tracking graph: `Mapper.from_graph` takes
+    `graph_iri: URIRef | None`, and `Transitions._decode` no longer goes through
+    `discussion.decode_typed` (L3).
+  - f. One home for a new activity id: `provenance.new_activity_id()`, used by `completed` and
+    `Transitions._store` (and by the bus in stage 3). The id of a `Served` must parse as a UUID
+    after the prefix (L1, L3).
+  - g. The types of `Add`, `Replace`, `Remove` and `Activity` come from the metamodel
+    (`vocabulary.activity_types(name)`, class and ancestors), not from a hand-written table; the
+    tests compare with it (L5).
+  - h. A `Served` given to a session that neither records nor has a hook is a `ValueError`: its
+    statements would be dropped silently (L4).
+  - i. The record template and the id guard's templates sit in `session.py` beside the other
+    request templates, filled with `_fill_marked`; `provenance.py` builds triples and models only.
+    `RECORD` in `transitions.py` is renamed (L4, L5).
+  - j. Tests (L2): TC-22 asserts the provenance graph holds no statement about the book itself
+    and no title; TC-24 asserts the `Add` is still there; TC-26 asserts which book is generated
+    and which invalidated; TC-31 puts a change in the second transaction; TC-48 expects `Conflict`
+    for the stale version and `Forbidden` for the role; one test through the toy service: a `PUT`
+    of a book over HTTP records one `Replace` associated with the caller (the spec's "a generic
+    replace").
+  - k. Docs (L2, L4): `architecture/index.adoc` names `Session.activities`; `questions.adoc` names
+    the plain activity of a mixed commit; `data-flows.adoc` and `architecture/index.adoc` say that
+    the application database has its own provenance graph and that a session with
+    `record_activities=False` writes none; `develop/index.adoc` says what was measured (the lead
+    updates the figures after the container run); `howto/workflow.adoc` says how old
+    `rp:TransitionRecord` graphs are removed (they are registered aggregates: a session removes
+    each like any aggregate) and that `transitions` of an aggregate that is not stored is
+    `NotFound`. The docstring of `open_session` says a hook that commits on the session it was
+    given is called again for that commit (L1).
+  Rejected: a shared helper for the two row-grouping loops in `session.py` (two short loops; L5
+  nit); renaming locals (`done`, `record`) beyond `RECORD` (L4 nit); a test through
+  `kit.application_session` instead of the tenancy method it calls in one line (L2 nit). Noted:
+  `make test-perf` ran at 1.86 s of its 2.0 s budget after task 2.2 (RISK-3); stage 3 reports it
+  again. Carried to stage 3: `services.messagebus` sits above `services.collaboration` in the
+  `collaboration-layers` contract of `.importlinter` (L3).
 - **D-4** (developer, 2026-11-14: "reconcile the deviations between epic implementation and epic
   shape") The proposal gained the table "Where the PLAN and the code differ from the shape", and
   `specs/rp-messages/spec.md` was rewritten to say what this PLAN says (mixed commits, kept
@@ -417,7 +503,10 @@ new version.
 | Failure mode | How it is detected | Expected handling |
 |---|---|---|
 | A guard fails (conflict, key conflict) | The marker is not inserted | No activity, no publish; the existing `Conflict` |
-| The commit applied but the confirming `ASK` is false (another writer overwrote every graph; atomic-commit PD-4) | `_diagnose` raises a false `Conflict` | The activity is stored (it happened) and is not published. Documented beside the existing limit |
+| The commit applied but the confirming `ASK` is false (another writer overwrote every graph; atomic-commit PD-4) | `_diagnose` raises a false `Conflict` | The caller still gets the false `Conflict` of atomic-commit PD-4 when the diagnosis cannot tell; when the diagnosis finds the commit applied, the session asks whether its activity is stored and publishes it if so (D-6 a). What is published is always what is recorded |
+| A remove of a root another writer removed first | The request writes nothing, and the activity is not in the provenance graph | The call succeeds as before (atomic-commit PD-17e); no activity is recorded or published (D-5 a) |
+| A `Served` with a statement about another subject, a type or a session-filled predicate | The `Served` constructor | `ValueError`; no request (D-5 b) |
+| A `Served` given to a session that neither records nor has a hook | When the transaction opens | `ValueError` (D-6 h) |
 | The activity IRI already exists | The id guard fails; diagnosis finds the IRI in the provenance graph | `Conflict` whose message names the activity IRI; nothing written |
 | The same `Served` in a second transaction | A flag on the `Served` | `RuntimeError` before the request |
 | `UnitOfWork.commit(batches=True)` with a command | Checked first | `ValueError`; nothing written |

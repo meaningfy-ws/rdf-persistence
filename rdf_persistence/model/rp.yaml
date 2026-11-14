@@ -1,7 +1,7 @@
 id: https://meaningfy.ws/ns/rdf-persistence
 name: rp
 title: RDF persistence metamodel
-version: "1"
+version: "2"
 description: The whole RDF persistence metamodel. An application imports this schema, or only the modules it uses.
 prefixes:
   rp: https://meaningfy.ws/ns/rdf-persistence#

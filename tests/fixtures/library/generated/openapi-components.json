@@ -1385,13 +1385,21 @@
       "title": "Tracked",
       "type": "object"
     },
-    "TransitionRecord": {
+    "Transition": {
       "additionalProperties": false,
-      "description": "The record of one transition of an aggregate: which aggregate, from which state to which, when, by whom and with which comment. The toolkit writes it in the update that changes the state and deletes it with the aggregate. It is a prov:Activity in the generated vocabulary, and typed with its own class when stored.",
+      "description": "One transition of an aggregate, as an activity: which aggregate it used, from which state to which, when, by whom and with which comment. The toolkit stores it as the activity of the commit that moves the aggregate, in the provenance graph, and keeps it when the aggregate is deleted. The payload slots belong to the command only: the stored record has none of them.",
       "properties": {
+        "body_value": {
+          "description": "The text of the comment.",
+          "type": "string"
+        },
         "ended_at_time": {
           "description": "The time the activity ended.",
           "format": "date-time",
+          "type": "string"
+        },
+        "expected_version": {
+          "description": "The version of the aggregate the caller read; the move is made only if it still holds.",
           "type": "string"
         },
         "from_state_iri": {
@@ -1424,6 +1432,10 @@
           "format": "date-time",
           "type": "string"
         },
+        "to_state": {
+          "description": "The name of the state a transition enters. A stored record gives an IRI in to_state_iri.",
+          "type": "string"
+        },
         "to_state_iri": {
           "description": "The IRI of the state an aggregate entered, on the comment a transition posted and on the transition's record. Defined here beside from_state_iri.",
           "format": "uri",
@@ -1450,12 +1462,9 @@
       },
       "required": [
         "used_resource",
-        "from_state_iri",
-        "to_state_iri",
-        "started_at_time",
         "id"
       ],
-      "title": "TransitionRecord",
+      "title": "Transition",
       "type": "object"
     },
     "UnderWorkflow": {

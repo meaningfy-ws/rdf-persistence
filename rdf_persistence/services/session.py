@@ -10,8 +10,9 @@ A session opened with ``keys`` (unique keys across aggregates, see ``services.un
 guard per key a change claims, so the check and the write are one request; a clash is a ``KeyConflict``.
 """
 
+import logging
 import uuid
-from collections.abc import AsyncIterator, Callable, Iterable, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Sequence
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from enum import Enum
@@ -33,6 +34,7 @@ from rdf_persistence.domain.generated.rp_core import (
     RegistryKind,
 )
 from rdf_persistence.domain.generated.rp_files import RdfFormat
+from rdf_persistence.domain.generated.rp_provenance import Activity
 from rdf_persistence.domain.generated.service.rp_service import (
     AggregateHead,
     Condition,
@@ -68,6 +70,14 @@ from rdf_persistence.services.listing import (
     total_of,
 )
 from rdf_persistence.services.loading import parse_graph
+from rdf_persistence.services.provenance import (
+    Change,
+    Served,
+    activity_triples,
+    class_in,
+    completed,
+    first_class,
+)
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.unique_keys import (
     KeyClaim,
@@ -81,18 +91,23 @@ from rdf_persistence.services.unique_keys import (
     same_value,
 )
 
+log = logging.getLogger(__name__)
+
 Clock = Callable[[], datetime]
+# What a session hands every commit's completed activity to, after the commit (PD-10).
+OnCommit = Callable[[Activity, "Session"], Awaitable[None]]
 # What a read of an aggregate answers: its triples with the bookkeeping, the graph that holds them
 # (where the tracking statements are made, PD-7) and its version token.
 Stored = tuple[Graph, URIRef, str]
 
 READ_STORED = """
-SELECT ?version ?created ?creator ?contributor WHERE {
+SELECT ?version ?created ?creator ?contributor ?type WHERE {
   GRAPH $graph {
     $graph $p_version ?version .
     OPTIONAL { $graph $p_created ?created }
     OPTIONAL { $graph $p_creator ?creator }
     OPTIONAL { $graph $p_contributor ?contributor }
+    OPTIONAL { $root a ?type }
   }
 }
 """
@@ -119,6 +134,13 @@ RELEASE = "DELETE { GRAPH $registry { $marker ?p ?o } } WHERE { GRAPH $registry 
 _AT_VERSION = "GRAPH $graph { $graph $p_version $old }"
 _ABSENT = "FILTER NOT EXISTS { GRAPH $graph { ?s$n ?p$n ?o$n } }"
 _MARKED = "GRAPH $registry { $marker a $commit_marker }"
+# The commit's activity (message-bus PD-6, PD-8, D-5 a): one more marked operation of the request,
+# the guard that no statement is made of its IRI yet, what confirms it is stored, and the question
+# about an IRI that is taken.
+_RECORD = "INSERT { GRAPH $provenance { $triples } } WHERE { $marked }"
+_ID_FREE = "FILTER NOT EXISTS { GRAPH $provenance { $id ?taken_p ?taken_o } }"
+_RECORDED = "GRAPH $provenance { $id a $activity_class }"
+ID_TAKEN = "ASK { GRAPH $provenance { $id ?p ?o } }"
 _LOADED_ENTRY = "GRAPH $registry { ?lg $p_owned_by $root ; $p_kind $loaded }"
 _DROP_LOADED = """
 DELETE {{ GRAPH ?lg {{ ?ls ?lp ?lo }} }}
@@ -182,6 +204,22 @@ SELECT DISTINCT ?root ?s ?p ?o WHERE {
   GRAPH ?g { ?s ?p ?o }
 }
 """
+# Every activity of the provenance graph typed $type that has the statement ($predicate $object): its own
+# statements and those of its generations and invalidations, one row per triple and activity (PD-11).
+# The selective statement ($predicate $object) comes first, then the type, so the store starts from the
+# few activities that hold the statement; the parts are read through $generation and $invalidation.
+# $of_entity is empty, or requires a generation of one entity (D-6 b).
+READ_ACTIVITIES = """
+SELECT DISTINCT ?activity ?s ?p ?o WHERE {
+  GRAPH $provenance {
+    ?activity $predicate $object ; a $type .
+    $of_entity
+    { ?activity ?p ?o . BIND (?activity AS ?s) }
+    UNION { VALUES ?link { $generation $invalidation } ?activity ?link ?s . ?s ?p ?o }
+  }
+}
+"""
+_OF_ENTITY = "?activity $generation ?of_part . ?of_part $p_entity $entity ."
 # Is $iri an aggregate of class $type whose graph holds every statement of $patterns (PD-7)?
 MATCHES = "ASK { GRAPH $graph { ?root a $type . $patterns FILTER (?root = $iri) } }"
 # The same as a guard of a transaction: its variables carry $n, the guard's index in the transaction,
@@ -289,6 +327,14 @@ def payload_triples(
     """
     kept = without_bookkeeping(graph, triples)
     return [*_skolemised(graph, kept), *_tracking_triples(graph, version, tracking)]
+
+
+def _tracking_of(rows: Sequence[ResultRow]) -> Tracked:
+    """The tracking the rows of ``READ_STORED`` state: the first creation time and creator, every contributor."""
+    created = next((Literal(r.created).toPython() for r in rows if r.created is not None), None)
+    creator = next((str(r.creator) for r in rows if r.creator is not None), None)
+    contributors = sorted({str(r.contributor) for r in rows if r.contributor is not None})
+    return Tracked(created=created, creator=creator, contributor=contributors)
 
 
 def _entries_block(entries: Iterable[RegistryEntry]):
@@ -471,7 +517,12 @@ class Session:
         dependents: Dependents = (),
         refused_types: frozenset[URIRef] = frozenset(),
         allowed_types: frozenset[URIRef] | None = None,
+        record_activities: bool = True,
+        on_commit: OnCommit | None = None,
     ) -> None:
+        self._record_activities = record_activities  # one activity per commit (message-bus PD-9)
+        self._on_commit = on_commit  # awaited with the completed activity after a commit (PD-10)
+        self._provenance = iris.provenance(tenant_iri)
         self._dependents = tuple(dependents)  # (class, link) pairs a remove also drops (PD-15)
         self._keys = tuple(keys)
         self._write_guards = guards
@@ -571,11 +622,13 @@ class Session:
         result = await self._store.query(self._database, fill(template, **terms))
         return bool(result.askAnswer)
 
-    async def _stored(self, graph: URIRef) -> tuple[str, Tracked]:
-        """The version and tracking stored for ``graph``; raises NotFound if it holds none."""
+    async def _stored(self, graph: URIRef, root: str) -> tuple[str, Tracked, str | None]:
+        """The version and tracking stored for ``graph``, and the class IRI of its ``root`` (the first
+        in sorted order, none if it has no type); raises NotFound if it holds none."""
         text = fill(
             READ_STORED,
             graph=term(graph),
+            root=term(URIRef(root)),
             p_version=term(v.VERSION),
             p_created=term(v.CREATED),
             p_creator=term(v.CREATOR),
@@ -586,11 +639,10 @@ class Session:
         ]
         if not rows:
             raise NotFound(f"no graph {graph}")
-        created = next((Literal(r.created).toPython() for r in rows if r.created is not None), None)
-        creator = next((str(r.creator) for r in rows if r.creator is not None), None)
-        contributors = sorted({str(r.contributor) for r in rows if r.contributor is not None})
-        return str(rows[0].version), Tracked(
-            created=created, creator=creator, contributor=contributors
+        return (
+            str(rows[0].version),
+            _tracking_of(rows),
+            first_class(r.type for r in rows if r.type is not None),
         )
 
     async def get_graph(self, iri: str) -> Stored:
@@ -736,6 +788,45 @@ class Session:
                 graphs.setdefault(str(row.root), Graph()).add((row.s, row.p, row.o))
         return graphs
 
+    async def activities(
+        self, type_iri: URIRef, predicate: URIRef, obj: URIRef, *, entity: URIRef | None = None
+    ) -> dict[str, Graph]:
+        """The activities of the provenance graph typed ``type_iri`` that have the statement
+        ``(activity, predicate, obj)``, each with all its own statements and those of its
+        generations and invalidations, one ``Graph`` per activity, keyed by its IRI. With
+        ``entity``, only those with a generation of that entity.
+
+        No access is checked and no schema name is known: the caller decodes each graph.
+
+        Raises:
+            DatabaseGone: The tenant database does not exist.
+        """
+        of_entity = (
+            SparqlTerm("")
+            if entity is None
+            else fragment(
+                _OF_ENTITY,
+                generation=term(v.HAS_GENERATION),
+                p_entity=term(v.ENTITY),
+                entity=term(entity),
+            )
+        )
+        text = fill(
+            READ_ACTIVITIES,
+            provenance=term(self._provenance),
+            type=term(type_iri),
+            predicate=term(predicate),
+            object=term(obj),
+            of_entity=of_entity,
+            generation=term(v.HAS_GENERATION),
+            invalidation=term(v.HAS_INVALIDATION),
+        )
+        graphs: dict[str, Graph] = {}
+        for row in await self._store.query(self._database, text):
+            if isinstance(row, ResultRow):
+                graphs.setdefault(str(row.activity), Graph()).add((row.s, row.p, row.o))
+        return graphs
+
     async def matches(self, iri: str, class_iri: str, conditions: Sequence[Condition]) -> bool:
         """Whether the aggregate ``iri`` is of exactly the class ``class_iri`` and holds every condition.
 
@@ -787,9 +878,15 @@ class Session:
                 return found
 
     async def add_graph(
-        self, iri: str, triples: Iterable[Triple], loaded_graphs: Sequence[URIRef] = ()
+        self,
+        iri: str,
+        triples: Iterable[Triple],
+        loaded_graphs: Sequence[URIRef] = (),
+        served: Served | None = None,
     ) -> str:
         """Store a new aggregate and register its ``loaded_graphs``; returns its first version.
+
+        ``served`` is the command this commit carries out, recorded as its activity (see ``transaction``).
 
         Raises:
             InvalidIri: ``iri`` is not an aggregate IRI the policy mints for the tenant, or a loaded
@@ -799,7 +896,7 @@ class Session:
             KeyConflict: Another aggregate of the tenant holds a value of a key the aggregate claims.
             InvalidBody: A key slot has two values or more; nothing is written.
         """
-        async with self.transaction() as transaction:
+        async with self.transaction(served) as transaction:
             return await transaction.add_graph(iri, triples, loaded_graphs)
 
     async def replace_graph(
@@ -808,6 +905,7 @@ class Session:
         triples: Iterable[Triple],
         if_version: str,
         loaded_graphs: Sequence[URIRef] | None = None,
+        served: Served | None = None,
     ) -> str:
         """Replace the aggregate if it still has ``if_version``; returns the new version token.
 
@@ -825,7 +923,7 @@ class Session:
             KeyConflict: Another aggregate of the tenant holds a value of a key the aggregate claims.
             InvalidBody: A key slot has two values or more; nothing is written.
         """
-        async with self.transaction() as transaction:
+        async with self.transaction(served) as transaction:
             return await transaction.replace_graph(iri, triples, if_version, loaded_graphs)
 
     async def load_graph(self, iri: str, data: bytes, *, rdf_format: RdfFormat) -> URIRef:
@@ -882,7 +980,7 @@ class Session:
             NotFound: The aggregate has no graph.
             DatabaseGone: The tenant database does not exist.
         """
-        await self._stored(self._graph(iri))
+        await self._stored(self._graph(iri), iri)
         return await self._registered_loaded(iri)
 
     async def named_file_keys(self, keys: Iterable[str]) -> set[str]:
@@ -914,26 +1012,32 @@ class Session:
             found.extend(duplicates(key, result))
         return sorted(found, key=lambda d: (d.key_name, d.key_values, d.key_roots))
 
-    async def remove(self, iri: str, if_version: str) -> None:
+    async def remove(self, iri: str, if_version: str, served: Served | None = None) -> None:
         """Delete the aggregate's graph, loaded graphs and registry entries if it still has ``if_version``.
 
         Raises:
             NotFound: The aggregate has no graph.
             Conflict: Its version is not ``if_version``; nothing changed.
         """
-        async with self.transaction() as transaction:
+        async with self.transaction(served) as transaction:
             await transaction.remove(iri, if_version)
 
     @asynccontextmanager
-    async def transaction(self) -> AsyncIterator["Transaction"]:
+    async def transaction(self, served: Served | None = None) -> AsyncIterator["Transaction"]:
         """Collect aggregate writes and commit them as one update request, all or nothing (PD-5).
 
         ``add_graph``, ``replace_graph`` and ``remove`` on the yielded ``Transaction`` take the
         arguments of the session's own, check what those check and send nothing; leaving the block
         cleanly sends one request. An exception inside the block, or a block with no change, sends
-        nothing.
+        nothing. The request also stores the commit's activity (message-bus PD-6): the standard one,
+        or ``served``, a command's ``Served`` (``Mapper.served``), which serves this one commit. A
+        ``Served`` is trusted: its toolkit-filled slots other than the session's are stored as the
+        caller set them.
 
         Raises:
+            ValueError: ``served`` is given to a session that neither records activities nor has
+                a hook, which would drop its statements.
+            RuntimeError: ``served`` has served a commit already; nothing is sent.
             ValueError: (from a change) The aggregate already has a change in this transaction.
             RuntimeError: (from a change) The block has ended, so the change would be dropped.
             Conflict: A guard failed, so nothing changed; ``iris`` names the roots found conflicting.
@@ -941,7 +1045,7 @@ class Session:
                 aggregate; ``iris`` and ``keys`` name the roots and keys. The store's side of it is
                 a diagnosis, like ``Conflict.iris``.
         """
-        transaction = Transaction(self)
+        transaction = Transaction(self, served)
         try:
             yield transaction
             await transaction.commit()
@@ -965,7 +1069,15 @@ class Transaction:
       ``iris`` and the message "lost a race with another writer", since the diagnosis finds no version to blame.
     """
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, served: Served | None = None) -> None:
+        if served is not None:
+            if not (session._record_activities or session._on_commit):
+                raise ValueError(
+                    "a served command needs a session that records activities or has a hook"
+                )
+            served.claim()  # one command, one commit: refused before any request (PD-8)
+        self._served = served
+        self._changes: list[Change] = []  # what each change's event needs (PD-3)
         self._session = session
         self._marker = new_marker(session._clock())
         self._ended = False  # set when the block ends, committed or raised
@@ -993,9 +1105,11 @@ class Transaction:
         wrote: str | None,
         parts: tuple[SparqlTerm, str],
         confirm: SparqlTerm,
+        change: Change,
     ) -> None:
         """Keep one change: its root, the version read, the token it writes (None for a remove),
-        its guard and operations, and the pattern the commit confirms."""
+        its guard and operations, the pattern the commit confirms and what its event records."""
+        self._changes.append(change)
         self._roots[graph] = str(iri)  # Conflict.iris holds str, whatever the caller passed (PD-7)
         self._read_at[graph] = read_at
         if wrote is not None:
@@ -1057,7 +1171,8 @@ class Transaction:
             payload_triples(graph, version, tracking, triples),
             session._entries(iri, graph, loaded_graphs),
         )
-        self._collect(iri, graph, None, version, parts, self._holds(graph, version))
+        change: Change = ((str(iri), class_in(iri, triples), version), None)
+        self._collect(iri, graph, None, version, parts, self._holds(graph, version), change)
         self._key_claims += key_claims
         return version
 
@@ -1074,7 +1189,7 @@ class Transaction:
         triples = session._refuse_foreign(iri, triples)
         graph = self._claim(iri)
         await session._check_commit(iri, loaded_graphs or [])
-        found, stored = await session._stored(graph)
+        found, stored, was = await session._stored(graph, iri)
         if session._write_guards is not None:
             try:
                 triples = await session._write_guards.prepare(
@@ -1105,7 +1220,11 @@ class Transaction:
             payload_triples(graph, version, tracking, triples),
             session._entries(iri, graph, loaded_graphs),
         )
-        self._collect(iri, graph, if_version, version, parts, self._holds(graph, version))
+        change: Change = (
+            (str(iri), class_in(iri, triples), version),
+            (str(iri), was, if_version),
+        )
+        self._collect(iri, graph, if_version, version, parts, self._holds(graph, version), change)
         self._key_claims += key_claims
         return version
 
@@ -1118,7 +1237,7 @@ class Transaction:
         """
         session = self._session
         graph = self._claim(iri)
-        await session._stored(graph)
+        _, _, was = await session._stored(graph, iri)
         parts = remove_parts(
             graph,
             session._registry,
@@ -1127,7 +1246,8 @@ class Transaction:
             if_version,
             session._dependents,
         )
-        self._collect(iri, graph, if_version, None, parts, _absent(graph, len(self._roots)))
+        change: Change = (None, (str(iri), was, if_version))
+        self._collect(iri, graph, if_version, None, parts, _absent(graph, len(self._roots)), change)
 
     def _require_present(self, iri: str) -> None:
         """Guard the commit on the aggregate ``iri`` still having a version when the request is
@@ -1184,14 +1304,96 @@ class Transaction:
             raise key_conflict(clash, within_commit=True)
         excluded = self._excluded()
         key_guards = [guard(c, session._registry, excluded) for c in self._key_claims]
+        guards, operations = [*self._guards, *key_guards], list(self._operations)
+        done = self._completed()
+        confirm = list(self._confirm)
+        if done is not None and session._record_activities:
+            operations.append(self._record(*done))
+            id_term = term(URIRef(done[0].id))
+            provenance = term(session._provenance)
+            confirm.append(
+                fragment(
+                    _RECORDED,
+                    provenance=provenance,
+                    id=id_term,
+                    activity_class=term(v.ACTIVITY),
+                )
+            )
+            if self._served is not None:
+                guards.append(fragment(_ID_FREE, provenance=provenance, id=id_term))
         await session._store.update(
-            session._database,
-            request_text(
-                session._registry, self._marker, [*self._guards, *key_guards], self._operations
-            ),
+            session._database, request_text(session._registry, self._marker, guards, operations)
         )
-        if not await session._ask(CONFIRM, patterns=join(self._confirm)):
-            await self._diagnose()
+        activity = None if done is None else done[0]
+        if await self._confirmed(confirm, activity) and activity is not None:
+            await self._publish(activity)
+
+    async def _confirmed(self, confirm: list[SparqlTerm], activity: Activity | None) -> bool:
+        """Whether the commit took effect and its ``activity`` is to be published; else it is
+        diagnosed (PD-4)."""
+        session = self._session
+        if await session._ask(CONFIRM, patterns=join(confirm)):
+            return True
+        # Only the activity is missing: a guard failed over removes only, nothing written (D-5 a).
+        if len(confirm) > len(self._confirm) and await session._ask(
+            CONFIRM, patterns=join(self._confirm)
+        ):
+            return False
+        await self._diagnose()  # raises unless the commit applied and a later writer overtook it
+        return await self._overtaken_is_stored(activity)
+
+    async def _overtaken_is_stored(self, activity: Activity | None) -> bool:
+        """An overtaken commit is published exactly when its activity is stored (D-6 a)."""
+        session = self._session
+        if activity is None:
+            return False
+        if session._record_activities:
+            return await session._ask(
+                ID_TAKEN, provenance=term(session._provenance), id=term(URIRef(activity.id))
+            )
+        log.warning("%s applied but was overtaken; not handed to on_commit", activity.id)
+        return False
+
+    def _completed(self) -> tuple[Activity, list[URIRef]] | None:
+        """The activity of this commit, built when it is recorded or a hook takes it (PD-7, PD-10)."""
+        session = self._session
+        if not (session._record_activities or session._on_commit):
+            return None
+        return completed(
+            self._changes,
+            served=self._served,
+            principal=session._principal,
+            started=self._marker.started_at,
+            ended=session._clock(),
+        )
+
+    def _record(self, activity: Activity, types: list[URIRef]) -> str:
+        """The marked operation that stores ``activity``, its parts skolemised under the provenance graph (PD-6)."""
+        session = self._session
+        own = self._served.triples if self._served is not None else []
+        marked = fragment(
+            _MARKED,
+            registry=term(session._registry),
+            marker=term(self._marker_iri),
+            commit_marker=term(v.COMMIT_MARKER),
+        )
+        triples = _skolemised(session._provenance, [*activity_triples(activity, types), *own])
+        return fill(
+            _RECORD,
+            provenance=term(session._provenance),
+            triples=triples_block(triples),
+            marked=marked,
+        )
+
+    async def _publish(self, activity: Activity) -> None:
+        """Hand the completed ``activity`` to the session's hook; its failure never undoes the commit (PD-10)."""
+        hook = self._session._on_commit
+        if hook is None:
+            return
+        try:
+            await hook(activity, self._session)
+        except Exception:
+            log.exception("on_commit failed on %s", activity.id)
 
     def _excluded(self) -> list[URIRef]:
         """The roots the transaction replaces or removes: their stored state is going away (PD-6)."""
@@ -1240,6 +1442,16 @@ class Transaction:
                 reasons[root] = f"{root} was removed by someone else since it was read"
         return dict(sorted(reasons.items()))
 
+    async def _taken_activity(self) -> str | None:
+        """The IRI of this commit's served activity if the provenance graph holds it already (PD-8)."""
+        session, served = self._session, self._served
+        if served is None or not session._record_activities:
+            return None
+        taken = await session._ask(
+            ID_TAKEN, provenance=term(session._provenance), id=term(URIRef(served.activity.id))
+        )
+        return served.activity.id if taken else None
+
     async def _diagnose(self) -> None:
         """The confirmation failed: either nothing was written, or the commit applied and another
         writer changed a graph before the ``ASK``. Returns in the second case, else raises (PD-4)."""
@@ -1249,6 +1461,8 @@ class Transaction:
         reasons = self._reasons(found)
         if not reasons and self._key_claims and (held := await self._claims_held()):
             raise key_conflict(held, within_commit=False)
+        if not reasons and (taken := await self._taken_activity()):
+            raise Conflict(f"the activity {taken} already exists")
         raise Conflict(
             "; ".join(reasons.values())
             or "the commit lost a race with another writer; read again and retry",
@@ -1299,6 +1513,8 @@ async def open_session(
     dependents: Dependents = (),
     refused_types: frozenset[URIRef] = frozenset(),
     allowed_types: frozenset[URIRef] | None = None,
+    record_activities: bool = True,
+    on_commit: OnCommit | None = None,
 ) -> AsyncIterator[Session]:
     """Open a session on the tenant database ``database`` for ``principal``; ``iris`` is the IRI policy
     (default: the default policy); ``listings`` lets the session ``find`` aggregates.
@@ -1309,6 +1525,10 @@ async def open_session(
     ``(class IRI, predicate)`` pairs whose records a remove drops with the aggregate they point at
     (none: a remove drops only the aggregate). A root typed with one of ``refused_types``, or with
     none of ``allowed_types`` when that is set, is refused (app-level-data PD-6).
+    ``record_activities`` stores one activity per commit in the provenance graph; ``on_commit`` is
+    awaited with the completed activity and the session after each commit, and its failure is logged
+    (message-bus PD-9, PD-10). A hook that commits on the session it was given is called again for
+    that commit.
     """
     yield Session(
         store,
@@ -1323,4 +1543,6 @@ async def open_session(
         dependents=dependents,
         refused_types=refused_types,
         allowed_types=allowed_types,
+        record_activities=record_activities,
+        on_commit=on_commit,
     )

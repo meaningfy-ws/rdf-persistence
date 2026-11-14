@@ -13,7 +13,7 @@ from linkml_runtime.utils.schemaview import SchemaView
 from rdf_persistence.domain.exceptions import BadQuery, InvalidIri
 from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_discussion import Comment
-from rdf_persistence.domain.generated.rp_workflow import TransitionRecord
+from rdf_persistence.domain.generated.rp_workflow import Transition
 from rdf_persistence.domain.generated.service.rp_service import (
     CallerAccess,
     MemberList,
@@ -95,8 +95,8 @@ class Collaboration:
 
         ``class_name`` and ``slot`` keep only the listed referrers of that schema class and the links
         by that slot. The hidden count ignores them: it counts every referrer the caller may not
-        read, so narrowing cannot show the class or slot of one. The links of a comment or a
-        transition record to what they were made on do not count.
+        read, so narrowing cannot show the class or slot of one. The links of a comment to what it
+        was made on do not count.
 
         Raises:
             InvalidIri: ``iri`` is not an aggregate IRI the policy mints for the tenant.
@@ -155,17 +155,26 @@ class Collaboration:
         return await self._discussion.thread(iri)
 
     async def transition(
-        self, iri: str, to: str, *, if_version: str, comment: str | None = None
+        self,
+        iri: str,
+        to: str,
+        *,
+        if_version: str,
+        comment: str | None = None,
+        command: Transition | None = None,
     ) -> str:
         """Move the aggregate ``iri`` to the state named ``to`` and return its new version.
 
-        The state, a record of the move and the comment, if any, are stored in one request. The
-        ``Raises`` are those of ``Transitions.transition``.
+        The state and the comment, if any, are stored in one request, whose activity is the move
+        (``command``, if given, or a new ``Transition``). The ``Raises`` are those of
+        ``Transitions.transition``.
         """
-        return await self._transitions.transition(iri, to, if_version=if_version, comment=comment)
+        return await self._transitions.transition(
+            iri, to, if_version=if_version, comment=comment, command=command
+        )
 
-    async def transitions(self, iri: str) -> list[TransitionRecord]:
-        """The records of the moves of ``iri``, oldest first.
+    async def transitions(self, iri: str) -> list[Transition]:
+        """The moves of ``iri``, oldest first.
 
         The ``Raises`` are those of ``Transitions.transitions``.
         """

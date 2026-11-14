@@ -137,15 +137,27 @@ workflow in the class annotation `workflow`, and pass the file to `install_servi
 roles, and records the move; `collab.transitions(iri)` reads the history. See
 xref:howto/workflow.adoc[Put a resource through review].
 
-*Why does my delete take comments and history with it?*::
-A comment and a transition record are aggregates of their own, each about one aggregate. Every
-delete through the kit (`session.remove`, `UnitOfWork.remove`, the generic `DELETE`,
-`kit.remove_with_files`, each member of a `delete_cascade`) drops them with that aggregate, in the
-same request. A comment that only references the deleted aggregate stays. The history is not an
-audit log that outlives its aggregate. A session opened directly with `open_session` and no
+*Why does my delete take comments with it, and not the history?*::
+A comment is an aggregate of its own, about one aggregate. Every delete through the kit
+(`session.remove`, `UnitOfWork.remove`, the generic `DELETE`, `kit.remove_with_files`, each member
+of a `delete_cascade`) drops the comments on that aggregate with it, in the same request. A comment
+that only references the deleted aggregate stays. The history stays too: a transition is an
+activity in the provenance graph, kept when its aggregate goes. No collaboration call returns it
+for an aggregate that is no longer stored; code that holds a session can read any activity with
+`Session.activities`, which checks no access. A session opened directly with `open_session` and no
 `dependents` deletes only the aggregate. See xref:howto/discussion.adoc#delete[Delete] and
 xref:howto/workflow.adoc#read-the-history[Read the history]; the request itself is in
 xref:architecture/data-flows.adoc#commit[Committing several aggregates at once].
+
+*Where is the record of who changed what?*::
+Every commit writes one activity into the tenant's provenance graph, in the same request as the
+change: its kind (add, replace, remove or a transition; a commit that mixes kinds, such as an add
+and a remove together, is a plain activity), start and end, the principal, and for each
+aggregate the version it was generated or invalidated at. It names the aggregates and keeps no
+content. The application database has a provenance graph of its own, and a session opened with
+`record_activities=False`, as the system database's sessions are, records none. See
+xref:howto/workflow.adoc#read-the-history[Read the history] for transitions and
+xref:architecture/data-flows.adoc#commit[Committing several aggregates at once] for the request.
 
 *How do I make my own IRIs?*::
 Describe their shape as an `IriPolicy`: a template for the tenant, the aggregates, the owned parts

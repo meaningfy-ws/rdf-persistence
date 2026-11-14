@@ -15,6 +15,7 @@ from rdflib import URIRef
 from rdf_persistence.domain.generated.rp_core import RegistryKind, RpAnnotation
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.services.schema import PACKAGE_DIR, SERVICE_SCHEMA, load_schema
+from rdf_persistence.services.schema_structure import ACTIVITY as ACTIVITY_NAME
 from rdf_persistence.services.schema_structure import flag, is_bookkeeping
 
 METAMODEL = PACKAGE_DIR / "model" / "rp.yaml"
@@ -37,6 +38,22 @@ def class_iri(name: str) -> URIRef:
     """The IRI of the class ``name`` of the metamodel: its ``class_uri``, expanded."""
     view = metamodel()
     return URIRef(view.get_uri(view.get_class(name), expand=True))
+
+
+def activity_types(name: str, view: SchemaView | None = None) -> list[URIRef]:
+    """The class IRIs of the activity class ``name`` of the metamodel (or of ``view``): its own
+    first, then each ancestor up to ``prov:Activity``; classes only, no mixins (message-bus PD-7).
+
+    Raises:
+        ValueError: ``name`` is no activity class.
+    """
+    view = view or metamodel()
+    types: list[URIRef] = []
+    for cls in view.class_ancestors(name, mixins=False):
+        types.append(URIRef(view.get_uri(cls, expand=True)))
+        if cls == ACTIVITY_NAME:
+            return types
+    raise ValueError(f"{name} is not an {ACTIVITY_NAME}")
 
 
 def meanings[E: Enum](members: type[E]) -> Mapping[E, URIRef]:
@@ -66,7 +83,8 @@ TOOLKIT_FILLED = frozenset(
     for slot in metamodel().all_slots().values()
     if flag(slot, RpAnnotation.TOOLKIT_FILLED)
 )
-# The five the session itself writes in stage 1; a test pins it inside TOOLKIT_FILLED.
+# The five the session itself writes; a test pins it as a subset of TOOLKIT_FILLED (which, with the
+# three of a transition, has eight).
 SESSION_FILLED = (
     "started_at_time",
     "ended_at_time",
@@ -81,6 +99,11 @@ ACTIVITY_ENDED = predicate("ended_at_time")
 ASSOCIATED_WITH = predicate("was_associated_with")
 HAS_GENERATION = predicate("generations")
 HAS_INVALIDATION = predicate("invalidations")
+SESSION_FILLED_PREDICATES = frozenset(predicate(name) for name in SESSION_FILLED)
+ACTIVITY = class_iri("Activity")
+ADD = class_iri("Add")
+REPLACE = class_iri("Replace")
+REMOVE = class_iri("Remove")
 GENERATION = class_iri("Generation")
 INVALIDATION = class_iri("Invalidation")
 PART_ACTIVITY = predicate("activity")
@@ -118,9 +141,13 @@ COMMENT_REFERENCES = predicate("comment_references")
 # An aggregate under a workflow holds its current state, the IRI of one of the workflow's states (PD-16).
 WORKFLOW_STATUS = predicate("workflow_status")
 
-# A transition leaves a record: its class and the aggregate it moved, by prov:used (PD-15).
-TRANSITION_RECORD = class_iri("TransitionRecord")
+# A transition is an activity: its class, the aggregate it moved by prov:used, the states and the comment
+# it names (message-bus PD-11).
+TRANSITION = class_iri("Transition")
 USED = predicate("used_resource")
+FROM_STATE = predicate("from_state_iri")
+TO_STATE = predicate("to_state_iri")
+TRANSITION_COMMENT = predicate("transition_comment")
 
 GRANTS = predicate("grants")
 PROHIBITIONS = predicate("prohibitions")

@@ -27,22 +27,28 @@ export interface WorkflowTransition {
   comment_required?: boolean;
 }
 
-/** The record of one transition of an aggregate: which aggregate, from which state to which, when, by whom and with which comment. The toolkit writes it in the update that changes the state and deletes it with the aggregate. It is a prov:Activity in the generated vocabulary, and typed with its own class when stored. */
-export interface TransitionRecord {
+/** One transition of an aggregate, as an activity: which aggregate it used, from which state to which, when, by whom and with which comment. The toolkit stores it as the activity of the commit that moves the aggregate, in the provenance graph, and keeps it when the aggregate is deleted. The payload slots belong to the command only: the stored record has none of them. */
+export interface Transition {
   /** The IRI of the aggregate the activity used. */
   used_resource: string;
   /** The IRI of the state an aggregate left, on the comment a transition posted and on the transition's record. Defined here, so that the workflow module, which imports this one, uses it too. A state name in a workflow file is another thing: it has no IRI. */
-  from_state_iri: string;
+  from_state_iri?: string;
   /** The IRI of the state an aggregate entered, on the comment a transition posted and on the transition's record. Defined here beside from_state_iri. */
-  to_state_iri: string;
-  /** The time the activity started. */
-  started_at_time: string;
+  to_state_iri?: string;
   /** The IRI of the comment the transition posted, when it had one. */
   transition_comment?: string;
+  /** The name of the state a transition enters. A stored record gives an IRI in to_state_iri. */
+  to_state?: string;
+  /** The version of the aggregate the caller read; the move is made only if it still holds. */
+  expected_version?: string;
+  /** The text of the comment. */
+  body_value?: string;
   /** The IRI that identifies the object. */
   id: string;
   /** A principal that carried out the activity. */
   was_associated_with?: string[];
+  /** The time the activity started. */
+  started_at_time?: string;
   /** The time the activity ended. */
   ended_at_time?: string;
   /** The versions of entities the activity generated. */

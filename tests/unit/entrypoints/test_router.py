@@ -21,7 +21,8 @@ from rdf_persistence.domain.generated.rp_access import (
     RoleDefinition,
     RoleLevel,
 )
-from rdf_persistence.domain.iris import graph_iri
+from rdf_persistence.domain.generated.rp_provenance import Replace
+from rdf_persistence.domain.iris import DEFAULT_IRIS, graph_iri, tenant_resource_name
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.entrypoints.negotiation import ALLOWED_ACTIONS, RECORD_ETAG
 from rdf_persistence.services import vocabulary
@@ -29,6 +30,7 @@ from rdf_persistence.services.access import AccessRules, load_role_definitions
 from tests.toy import ROLES, SETTINGS, keep_a_librarian
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 from tests.unit.entrypoints.scene import NIL, PROBLEMS, Scene, problem_of
+from tests.unit.services.test_session_activity import activities
 
 # --- tenants ------------------------------------------------------------------------------------
 
@@ -486,6 +488,25 @@ async def test_a_put_without_a_state_keeps_the_state_of_the_book(scene) -> None:
         headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
     )
     assert (response.status_code, response.json()["workflow_status"]) == (200, DRAFT), response.text
+
+
+async def test_a_generic_put_of_a_book_records_one_replace_for_the_caller(scene) -> None:
+    response = await scene.http.put(
+        scene.book,
+        json={**DUNE_BODY, "label": "Dune Messiah"},
+        headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
+    )
+    assert response.status_code == 200, response.text
+    prefix = scene.service.settings.prefix
+    found = await activities(
+        scene.service.store,
+        DEFAULT_IRIS.provenance(scene.tenant_iri),
+        tenant_resource_name(prefix, scene.tenant_iri),
+    )
+    [replace] = [a for a in found if type(a) is Replace]
+    assert replace.was_associated_with == [principal_of("ada")], "the caller"
+    assert [g.entity for g in replace.generations] == [scene.book_iri], "the book was generated"
+    assert [i.entity for i in replace.invalidations] == [scene.book_iri], "and the old one ended"
 
 
 @pytest.mark.parametrize(("state", "found"), [(DRAFT, True), (ACCEPTED, False)])

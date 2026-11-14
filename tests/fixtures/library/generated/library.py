@@ -68,7 +68,7 @@ from rdf_persistence import (
     TenantState,
     TenantSweepReport,
     Tracked,
-    TransitionRecord,
+    Transition,
     UnderWorkflow,
     UniqueScope,
     Workflow,

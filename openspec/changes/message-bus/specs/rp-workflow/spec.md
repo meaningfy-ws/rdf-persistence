@@ -8,8 +8,12 @@ Every transition SHALL be recorded, in the same update as the state change, as a
 activity (a `prov:Activity`) in the tenant's provenance graph, naming the aggregate, the source and
 target states, the principal, the time and the comment if any. A collaboration SHALL list an
 aggregate's transitions oldest first. A plain write of the aggregate SHALL leave its transition
-records unchanged. Deleting the aggregate SHALL keep them in the provenance graph; no call returns
-the transitions of an aggregate that is no longer stored.
+records unchanged. A listed transition SHALL be an activity that used the aggregate and generated a
+version of it, and SHALL carry only the generations and invalidations of that aggregate; a record
+of a consumer's subclass SHALL be returned as a `Transition`. Deleting the aggregate SHALL keep them
+in the provenance graph; no collaboration call SHALL return the transitions of an aggregate that is
+no longer stored, while a session, which checks no access, MAY read every activity of the
+provenance graph with `activities`.
 
 #### Scenario: the history of a book
 - **GIVEN** a book moved from `draft` to `in_review` by p1 with comment "ready", then to

@@ -541,7 +541,9 @@ async def test_a_remove_without_pairs_is_the_request_it_always_was(store, sessio
         URIRef(match.group()),
         seeded[A],
     )[1]
-    assert len(text.split(";\n")) == 2 + len(removal.split(";\n")), "start, the removal, release"
+    assert len(text.split(";\n")) == 3 + len(removal.split(";\n")), (
+        "start, the removal, the activity (message-bus PD-6), release"
+    )
     assert removal in text, "the removal is the text remove_parts gives without pairs"
     assert "?d " not in text, "no dependents operation"
     assert await stored(session, C), "the would-be dependent stays"

@@ -138,7 +138,9 @@ async def test_removing_the_aggregate_drops_the_triples_of_its_loaded_graphs(
     loaded = await session.load_graph(BOOK, TURTLE, rdf_format=RdfFormat.TURTLE)
     version = await session.add_graph(BOOK, [(URIRef(BOOK), TITLE, Literal("x"))], [loaded])
     await session.remove(BOOK, version)
-    assert await graphs_in(store, database) == set(), "no graph, loaded or not, is left"
+    assert await graphs_in(store, database) == {str(DEFAULT_IRIS.provenance(TENANT))}, (
+        "no graph, loaded or not, is left but the provenance graph: its records are kept"
+    )
 
 
 async def test_replace_drops_the_triples_of_unlisted_loaded_graphs_and_keeps_listed_ones(
@@ -152,7 +154,8 @@ async def test_replace_drops_the_triples_of_unlisted_loaded_graphs_and_keeps_lis
         str(kept),
         str(graph_iri(BOOK)),
         str(DEFAULT_IRIS.registry(TENANT)),
-    }, "the dropped loaded graph is gone; the kept one and the aggregate remain"
+        str(DEFAULT_IRIS.provenance(TENANT)),
+    }, "the dropped loaded graph is gone; the kept one, the aggregate and the records remain"
 
 
 SECOND_BOOK = f"{TENANT}/books/{UUID(int=2)}"

@@ -60,6 +60,7 @@ ACTIVITY_FRAMES = [
     "Add.frame.jsonld",
     "Remove.frame.jsonld",
     "Replace.frame.jsonld",
+    "Transition.frame.jsonld",
 ]
 
 
@@ -73,7 +74,6 @@ def test_one_frame_per_aggregate_type_the_tenant_root_and_each_activity(staged: 
             "Scan.frame.jsonld",
             "Shelf.frame.jsonld",
             "Template.frame.jsonld",
-            "TransitionRecord.frame.jsonld",
             *ACTIVITY_FRAMES,
         ]
     ), "a frame per root, the tenant root, and Activity with every descendant of the closure"
@@ -82,9 +82,8 @@ def test_one_frame_per_aggregate_type_the_tenant_root_and_each_activity(staged: 
 def test_the_metamodel_has_a_frame_per_activity_class_and_its_root_frames_stay() -> None:
     names = sorted(f.name for f in render(PACKAGE_DIR / "model" / "rp.yaml") if "frame" in f.name)
     assert names == sorted(
-        ["Comment.frame.jsonld", "TenantAccess.frame.jsonld", "TransitionRecord.frame.jsonld"]
-        + ACTIVITY_FRAMES
-    ), "one frame for Activity, Add, Replace and Remove beside the three root frames"
+        ["Comment.frame.jsonld", "TenantAccess.frame.jsonld"] + ACTIVITY_FRAMES
+    ), "one frame for Activity, Add, Replace, Remove and Transition beside the two root frames"
 
 
 def test_the_replace_frame_nests_the_generations_and_invalidations(staged: Path) -> None:
