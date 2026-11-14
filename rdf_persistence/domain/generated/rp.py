@@ -42,16 +42,19 @@ from .rp_annotations import (
     Tracked
 )
 from .rp_core import (
+    AggregateKey,
     AggregateRoot,
     CommitMarker,
     DatabaseKind,
     GraphKind,
+    KeyDuplicate,
     ModuleKind,
     PendingLoad,
     Principal,
     RegistryEntry,
     RegistryKind,
     RpAnnotation,
+    UniqueScope,
     WritesKind
 )
 from .rp_files import (

@@ -28,6 +28,7 @@ from rdflib.term import Node
 
 from rdf_persistence.domain.exceptions import InvalidBody
 from rdf_persistence.domain.generated.rp_core import (
+    AggregateKey,
     DatabaseKind,
     GraphKind,
     RpAnnotation,
@@ -222,13 +223,8 @@ def served_roots(view: SchemaView) -> list[ClassDefinition]:
 
     The tenant's access record lives in the system database and has its own routes, so it is left out.
     """
-    roots = aggregate_roots(view, list(view.all_classes().values()))
-    return [
-        root
-        for root in roots
-        if annotation(root, RpAnnotation.DATABASE) != DatabaseKind.SYSTEM.value
-        and annotation_text(root, RpAnnotation.RP_PATH)
-    ]
+    roots = tenant_database_roots(view, list(view.all_classes().values()))
+    return [root for root in roots if annotation_text(root, RpAnnotation.RP_PATH)]
 
 
 def _only(found: list[ClassDefinition], what: str) -> ClassDefinition:
@@ -394,13 +390,60 @@ def _holds_objects(view: SchemaView, slot: SlotDefinition) -> bool:
     )
 
 
-def _keys_of(view: SchemaView, range_: str) -> dict[str, UniqueKey]:
+def is_scoped(key: UniqueKey) -> bool:
+    """True for a key across aggregates (annotated ``rp_unique_scope``); any other key is in-aggregate."""
+    return annotation_text(key, RpAnnotation.RP_UNIQUE_SCOPE) is not None
+
+
+def _all_keys_of(view: SchemaView, range_: str) -> dict[str, UniqueKey]:
     """The unique keys of a class and its ancestors by name; the nearest declaration of a name wins."""
     keys: dict[str, UniqueKey] = {}
     for name in view.class_ancestors(range_):
         for key_name, key in (view.get_class(name).unique_keys or {}).items():
             keys.setdefault(key_name, key)
     return keys
+
+
+def _keys_of(view: SchemaView, range_: str) -> dict[str, UniqueKey]:
+    """The in-aggregate keys of a class and its ancestors; a key across aggregates is no validator or shape."""
+    return {name: key for name, key in _all_keys_of(view, range_).items() if not is_scoped(key)}
+
+
+def in_system_database(view: SchemaView, cls: ClassDefinition) -> bool:
+    """True when the class or an ancestor is annotated ``database: system``."""
+    return any(
+        annotation(view.get_class(name), RpAnnotation.DATABASE) == DatabaseKind.SYSTEM.value
+        for name in view.class_ancestors(cls.name)
+    )
+
+
+def tenant_database_roots(
+    view: SchemaView, classes: list[ClassDefinition]
+) -> list[ClassDefinition]:
+    """The concrete aggregate roots among ``classes`` that live in a tenant's database."""
+    return [root for root in aggregate_roots(view, classes) if not in_system_database(view, root)]
+
+
+def aggregate_keys(view: SchemaView) -> list[AggregateKey]:
+    """The keys across aggregates of the schema: one per tenant-database root and scoped key it has.
+
+    A root has the scoped keys it declares and inherits; the nearest declaration of a key name wins.
+    The entries are in the order of the root's class IRI, then the key name.
+    """
+    keys = [
+        AggregateKey(
+            key_name=str(key.unique_key_name),
+            root_class=view.get_uri(root, expand=True),
+            key_predicates=[
+                view.get_uri(view.induced_slot(str(slot), root.name), expand=True)
+                for slot in key.unique_key_slots
+            ],
+        )
+        for root in tenant_database_roots(view, list(view.all_classes().values()))
+        for key in _all_keys_of(view, root.name).values()
+        if is_scoped(key)
+    ]
+    return sorted(keys, key=lambda key: (key.root_class, key.key_name))
 
 
 def keyed_slots(view: SchemaView, cls: ClassDefinition) -> list[tuple[SlotDefinition, UniqueKey]]:

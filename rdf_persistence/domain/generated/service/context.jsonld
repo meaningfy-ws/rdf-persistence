@@ -193,6 +193,23 @@
          "@container": "@set",
          "@id": "items"
       },
+      "key_name": {
+         "@id": "keyName"
+      },
+      "key_predicates": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "keyPredicates"
+      },
+      "key_roots": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "keyRoots"
+      },
+      "key_values": {
+         "@container": "@set",
+         "@id": "keyValues"
+      },
       "label": {
          "@id": "skos:prefLabel"
       },
@@ -337,6 +354,10 @@
          "@type": "@id",
          "@id": "root"
       },
+      "root_class": {
+         "@type": "@id",
+         "@id": "rootClass"
+      },
       "schema_id": {
          "@type": "@id",
          "@id": "dumpSchemaId"
@@ -406,6 +427,9 @@
       "AggregateHead": {
          "@id": "AggregateHead"
       },
+      "AggregateKey": {
+         "@id": "AggregateKey"
+      },
       "AggregateRoot": {
          "@id": "AggregateRoot"
       },
@@ -441,6 +465,9 @@
       },
       "IriPolicy": {
          "@id": "IriPolicy"
+      },
+      "KeyDuplicate": {
+         "@id": "KeyDuplicate"
       },
       "LabelUpdate": {
          "@id": "LabelUpdate"

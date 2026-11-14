@@ -39,6 +39,23 @@ class Conflict(PersistenceError):
         self.iris = tuple(iris)
 
 
+class KeyConflict(Conflict):
+    """A commit claims a value of a unique key that another aggregate of the tenant holds.
+
+    ``iris`` are the roots of the commit whose claim clashed and ``keys`` the names of the keys,
+    both sorted; never the holder's IRI, which the caller may not see. When it comes from the
+    store it is a diagnosis, as ``Conflict.iris`` is: read after the refusal, it can race, so it
+    says what another aggregate held at the read, not why the commit was refused. A clash between
+    two changes of one commit is exact. A subclass, so code that catches ``Conflict`` catches it.
+    """
+
+    def __init__(
+        self, *args: object, iris: tuple[str, ...] = (), keys: tuple[str, ...] = ()
+    ) -> None:
+        super().__init__(*args, iris=iris)
+        self.keys = tuple(keys)
+
+
 class CommitTooLarge(PersistenceError):
     """A unit of work holds more roots than its ``max_roots``; commit fewer, or in batches."""
 

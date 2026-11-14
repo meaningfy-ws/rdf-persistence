@@ -4,11 +4,14 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel
 from rdflib import Graph
 
 from rdf_persistence.generation.generated.rp_generation import ConstraintCase, ConstraintKind
+from rdf_persistence.services.schema import load_schema
+from rdf_persistence.services.schema_structure import keyed_slots
 from rdf_persistence.testkit.conformance import (
     Conformance,
     coverage_problems,
@@ -24,6 +27,7 @@ METAMODEL = ROOT / "rdf_persistence" / "model" / "rp.yaml"
 TOY = ROOT / "tests" / "fixtures" / "library" / "library.yaml"
 CASES = ROOT / "tests" / "fixtures" / "conformance" / "cases.yaml"
 INSTANCES = CASES.parent / "instances"
+TEXT = {".py", ".ttl", ".jsonld", ".json", ".yaml"}
 SCHEMAS = pytest.mark.parametrize("schema", [METAMODEL, TOY], ids=["metamodel", "toy"])
 
 # The kinds each schema's own classes use; neither uses cardinality, value bounds or any_of.
@@ -193,3 +197,41 @@ def test_an_internal_slot_adds_no_constraint_kind() -> None:
     view = SchemaView(INTERNAL_ONLY)
     thing = replace(Conformance.of(TOY), view=view, models={"Thing": BaseModel})
     assert K.REQUIRED not in thing.used_kinds(), "an internal slot is no public requirement"
+
+
+def test_a_key_across_aggregates_is_no_unique_keys_constraint() -> None:
+    """TC-03: the scoped key of Book has no validator and no shape; Grant's in-aggregate key keeps both."""
+    assert K.UNIQUE_KEYS not in Conformance.of(TOY).class_kinds("Book"), "isbn_key is scoped"
+    assert K.UNIQUE_KEYS in Conformance.of(METAMODEL).class_kinds("Grant"), "grant_key is not"
+
+
+def test_a_key_across_aggregates_is_no_keyed_slot_validator_or_shape() -> None:
+    """TC-03: no slot holding Books is keyed by isbn_key, and nothing generated mentions it."""
+    toy = load_schema(TOY)
+    # no toy slot holds Book objects, so a Shelf that does makes a regression of the filter visible
+    toy.add_class(
+        ClassDefinition(
+            name="Shelf",
+            attributes={
+                "books": SlotDefinition(name="books", range="Book", multivalued=True, inlined=True)
+            },
+        )
+    )
+    keys = {
+        key.unique_key_name
+        for cls in toy.all_classes().values()
+        for _, key in keyed_slots(toy, cls)
+    }
+    assert "isbn_key" not in keys, "isbn_key governs no slot"
+    generated = ROOT / "tests" / "fixtures" / "library" / "generated"
+    mentions = [
+        p.name
+        for p in generated.rglob("*")
+        if p.is_file() and p.suffix in TEXT and "isbn_key" in p.read_text()
+    ]
+    assert mentions == [], "no generated validator, shape or model names isbn_key"
+    grants = load_schema(METAMODEL)
+    assert any(
+        key.unique_key_name == "grant_key"
+        for _, key in keyed_slots(grants, grants.get_class("TenantAccess"))
+    ), "Grant's key is still a keyed slot"

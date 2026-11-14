@@ -48,7 +48,12 @@ from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
-from rdf_persistence.services.schema_structure import LABEL, internal_predicates, refuse_internal
+from rdf_persistence.services.schema_structure import (
+    LABEL,
+    aggregate_keys,
+    internal_predicates,
+    refuse_internal,
+)
 from rdf_persistence.services.session import Clock, Session, open_session, utc_now
 from rdf_persistence.services.store import Store
 
@@ -96,6 +101,7 @@ class Tenancy:
         self._settings = settings
         self._mapper = mapper
         self._internal = internal_predicates(mapper.view)
+        self._keys = aggregate_keys(mapper.view)
         self._root_class = root_class
         self._access_class = access_class
         self._clock = clock
@@ -115,6 +121,7 @@ class Tenancy:
             clock=self._clock,
             iris=self._iris,
             listings=self._listings,
+            keys=self._keys,
         )
 
     def tenant_session(

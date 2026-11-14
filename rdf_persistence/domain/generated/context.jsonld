@@ -76,6 +76,23 @@
          "@type": "@id",
          "@id": "graph"
       },
+      "key_name": {
+         "@id": "keyName"
+      },
+      "key_predicates": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "keyPredicates"
+      },
+      "key_roots": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "keyRoots"
+      },
+      "key_values": {
+         "@container": "@set",
+         "@id": "keyValues"
+      },
       "kind": {
          "@id": "kind",
          "@type": "@vocab",
@@ -141,6 +158,10 @@
       "role": {
          "@id": "role"
       },
+      "root_class": {
+         "@type": "@id",
+         "@id": "rootClass"
+      },
       "sha256": {
          "@id": "sha256"
       },
@@ -205,6 +226,9 @@
       "Activity": {
          "@id": "prov:Activity"
       },
+      "AggregateKey": {
+         "@id": "AggregateKey"
+      },
       "AggregateRoot": {
          "@id": "AggregateRoot"
       },
@@ -219,6 +243,9 @@
       },
       "Grant": {
          "@id": "ODRL:Permission"
+      },
+      "KeyDuplicate": {
+         "@id": "KeyDuplicate"
       },
       "PendingLoad": {
          "@id": "PendingLoad"

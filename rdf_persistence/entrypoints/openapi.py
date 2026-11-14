@@ -133,12 +133,13 @@ def _document_media(schema: Schema, *, turtle: bool = True) -> dict[str, MediaTy
     return {**media, **_media(Schema(type="string"), TURTLE)} if turtle else media
 
 
-def _problem(kind: ProblemKind) -> Response:
+def _problem(kind: ProblemKind, description: str) -> Response:
+    """The answer for ``kind``; ``description`` names every title of the route that shares its status."""
     headers: dict[str, Header | Reference] = {
         WWW_AUTHENTICATE: Header(schema=Schema(type="string"))
     }
     return Response(
-        description=kind.title,
+        description=description,
         content=_media(_ref(Problem.__name__), PROBLEM_JSON),
         headers=headers if kind == problems.INVALID_TOKEN else None,
     )
@@ -226,9 +227,9 @@ def route_options(
     """
     status, response = success
     responses: dict[str, Response | object] = {str(status.value): response}
-    responses.update(
-        {str(kind.status): _problem(kind) for kind in sorted(kinds, key=lambda k: k.status)}
-    )
+    for kind in sorted(kinds, key=lambda k: k.status):
+        shared = [k.title for k in kinds if k.status == kind.status]
+        responses[str(kind.status)] = _problem(kind, " or ".join(shared))
     # Any other failure is a problem as well; declaring it keeps FastAPI from adding its own 422.
     responses[DEFAULT] = Response(
         description="Any other problem", content=_media(_ref(Problem.__name__), PROBLEM_JSON)
@@ -398,7 +399,13 @@ class AggregateOpenApi:
             f"Create a {self._cls.name}",
             self._tag,
             (HTTPStatus.CREATED, created),
-            (*_AUTHENTICATED, *_IN_A_TENANT, problems.NOT_ACCEPTABLE, *_BODY),
+            (
+                *_AUTHENTICATED,
+                *_IN_A_TENANT,
+                problems.KEY_CONFLICT,
+                problems.NOT_ACCEPTABLE,
+                *_BODY,
+            ),
             request=_body(self._schema, documents=True),
         )
 
@@ -408,7 +415,13 @@ class AggregateOpenApi:
 
     def replace(self) -> RouteDocs:
         replaced = _success(_document_media(self._schema), versioned=True)
-        kinds = (*_WRITES, problems.NOT_ACCEPTABLE, *_BODY, problems.PRECONDITION_REQUIRED)
+        kinds = (
+            *_WRITES,
+            problems.KEY_CONFLICT,
+            problems.NOT_ACCEPTABLE,
+            *_BODY,
+            problems.PRECONDITION_REQUIRED,
+        )
         return route_options(
             f"Replace a {self._cls.name}",
             self._tag,

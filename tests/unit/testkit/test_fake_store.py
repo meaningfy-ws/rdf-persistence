@@ -3,6 +3,8 @@
 import inspect
 
 import pytest
+from rdflib import Graph, Literal, URIRef
+from rdflib.namespace import XSD
 
 from rdf_persistence.domain.exceptions import StoreUnavailable
 from rdf_persistence.testkit import FakeStore, no_network  # noqa: F401  (fixture)
@@ -12,6 +14,26 @@ from rdf_persistence.testkit.store_conformance import CASES, run_case
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.__name__)
 async def test_the_fake_store_conforms(case, no_network):  # noqa: F811
     await run_case(case, FakeStore())
+
+
+@pytest.mark.parametrize("entry", ["update", "put_graph", "import_quads"])
+async def test_an_xsd_string_literal_enters_as_the_plain_literal(entry):
+    store = FakeStore()
+    await store.create_dataset("d")
+    typed = Literal("1", datatype=XSD.string)
+    triple = (URIRef("urn:s"), URIRef("urn:p"), typed)
+    if entry == "update":
+        await store.update(
+            "d", f'INSERT DATA {{ GRAPH <urn:g> {{ <urn:s> <urn:p> "1"^^<{XSD.string}> }} }}'
+        )
+    elif entry == "put_graph":
+        await store.put_graph("d", URIRef("urn:g"), Graph().add(triple))
+    else:
+        await store.import_quads("d", f'<urn:s> <urn:p> "1"^^<{XSD.string}> <urn:g> .\n'.encode())
+    plain = await store.query("d", 'ASK { GRAPH <urn:g> { <urn:s> <urn:p> "1" } }')
+    assert plain.askAnswer, "the plain literal matches"
+    stored = await store.query("d", "SELECT ?o WHERE { GRAPH <urn:g> { <urn:s> <urn:p> ?o } }")
+    assert [r.o.datatype for r in stored] == [None], "one term, the plain one"
 
 
 async def test_an_injected_error_is_raised_once_then_the_call_works():

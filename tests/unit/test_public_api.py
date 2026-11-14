@@ -38,6 +38,7 @@ INDEXED_NAMES = [
     "StoreUnavailable",
     "NotFound",
     "Conflict",
+    "KeyConflict",
     "BadQuery",
     "open_session",
     "Listings",

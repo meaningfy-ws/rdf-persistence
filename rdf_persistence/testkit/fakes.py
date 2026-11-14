@@ -2,13 +2,14 @@
 
 import re
 from collections import defaultdict
-from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Sequence
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import ClassVar, cast
 
 from pyparsing import ParseException
-from rdflib import Dataset, Graph, URIRef
+from rdflib import Dataset, Graph, Literal, URIRef
+from rdflib.namespace import XSD
 from rdflib.plugins.sparql import prepareQuery, prepareUpdate
 from rdflib.query import Result
 from rdflib.term import Node
@@ -22,7 +23,7 @@ from rdf_persistence.domain.exceptions import (
     PersistenceError,
     TenantGone,
 )
-from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.domain.generated.rp_core import AggregateKey, Principal
 from rdf_persistence.domain.generated.rp_files import BlobEntry
 from rdf_persistence.domain.generated.service.rp_service import AccountSummary
 from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
@@ -98,8 +99,20 @@ def _operations(request: str) -> list[str]:
     return [part for part in [*parts, request[start:]] if part.strip()]
 
 
+def _plain_strings(data: Dataset) -> None:
+    """Read each ``xsd:string`` literal of ``data`` as the plain literal of its text, as Fuseki does."""
+    typed = [q for q in data.quads() if isinstance(q[2], Literal) and q[2].datatype == XSD.string]
+    for s, p, o, g in typed:
+        graph = data.graph(g)
+        graph.remove((s, p, o))
+        graph.add((s, p, Literal(str(o))))
+
+
 class FakeStore(_Instrumented):
     """A ``Store`` over one rdflib ``Dataset`` per dataset name, with failure injection.
+
+    Data that enters the store reads an ``xsd:string`` literal as the plain literal of the same
+    text, so a query compares them as Fuseki does (one term).
 
     ``update`` applies a request to a copy of the dataset and keeps the copy only if every operation
     succeeds, so a request is atomic as on Fuseki; any failure is a ``BadQuery``. ``after_update``,
@@ -155,6 +168,7 @@ class FakeStore(_Instrumented):
             raise
         except Exception as error:  # rdflib raises a bare Exception at run time (PD-13)
             raise BadQuery(str(error)) from error
+        _plain_strings(copy)
         self._datasets[dataset] = copy
         if self.after_update is not None:
             await self.after_update()
@@ -165,6 +179,7 @@ class FakeStore(_Instrumented):
         target.remove((None, None, None))
         for triple in graph:
             target.add(triple)
+        _plain_strings(self._dataset(dataset))
 
     async def export_quads(self, dataset: str) -> bytes:
         self._enter("export_quads", dataset)
@@ -173,6 +188,7 @@ class FakeStore(_Instrumented):
     async def import_quads(self, dataset: str, nquads: bytes) -> None:
         self._enter("import_quads", dataset)
         self._dataset(dataset).parse(data=nquads, format=N_QUADS)
+        _plain_strings(self._dataset(dataset))
 
     async def create_dataset(self, name: str) -> None:
         self._enter("create_dataset", name)
@@ -327,12 +343,13 @@ async def fake_session(
     clock: Clock = utc_now,
     iris: Iris = DEFAULT_IRIS,
     listings: Listings | None = None,
+    keys: Sequence[AggregateKey] = (),
 ) -> AsyncIterator[Session]:
     """A real ``Session`` over a ``FakeStore``, for unit tests of domain services.
 
     Pass the same ``store`` to several sessions to share their data; the tenant database is created
     on the store if it is not there yet. ``iris`` is the IRI policy of the code under test (default: the
-    default policy).
+    default policy). ``keys`` are the keys across aggregates the session enforces (default: none).
     """
     store = store or FakeStore()
     if FAKE_DATABASE not in await store.list_datasets():
@@ -345,5 +362,6 @@ async def fake_session(
         clock=clock,
         iris=iris,
         listings=listings,
+        keys=keys,
     ) as session:
         yield session

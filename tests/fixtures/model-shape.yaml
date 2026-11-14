@@ -44,6 +44,20 @@
     required: false
     multivalued: false
     range: string
+- class_name: AggregateKey
+  slots:
+  - name: key_name
+    required: true
+    multivalued: false
+    range: string
+  - name: key_predicates
+    required: true
+    multivalued: true
+    range: uri
+  - name: root_class
+    required: true
+    multivalued: false
+    range: uri
 - class_name: AggregateRoot
   slots: []
 - class_name: Authorised
@@ -317,6 +331,24 @@
     required: false
     multivalued: false
     range: string
+- class_name: KeyDuplicate
+  slots:
+  - name: key_name
+    required: true
+    multivalued: false
+    range: string
+  - name: key_roots
+    required: true
+    multivalued: true
+    range: uri
+  - name: key_values
+    required: true
+    multivalued: true
+    range: string
+  - name: root_class
+    required: true
+    multivalued: false
+    range: uri
 - class_name: LabelUpdate
   slots:
   - name: label

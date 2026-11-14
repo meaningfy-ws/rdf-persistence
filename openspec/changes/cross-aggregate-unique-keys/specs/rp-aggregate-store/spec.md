@@ -11,7 +11,9 @@ two concurrent writes with the same key at most one succeeds, and a refused comm
 nothing. Values are equal when they are the same RDF term, after an `xsd:string` literal is read as the plain literal of the same text. An aggregate with a key slot absent
 SHALL claim nothing and SHALL never conflict. Aggregates of other types, subclasses included, and
 of other tenants SHALL never conflict. A refusal SHALL be a key conflict, told apart from a
-version conflict, naming the roots of the commit whose key clashed.
+version conflict, naming the roots of the commit whose key clashed. Like a version conflict's
+roots, the kind of the refusal and its roots are a diagnosis read after the refusal: it can miss a
+root or name one too many, and a clash whose holder is gone by then is reported as a lost race.
 
 #### Scenario: two concurrent creates with the same key
 - **GIVEN** the toy library declares a key on the book's ISBN and an active library tenant

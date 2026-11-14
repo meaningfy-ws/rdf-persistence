@@ -88,7 +88,7 @@ overrule any of them.
 - **PD-6** (DEC-2): the transaction computes the claims when `add_graph` or `replace_graph` is
   called, and on exit, before sending: (a) two claims of one key with equal values → `KeyConflict`
   naming both roots, nothing sent; (b) for each claim, one `FILTER NOT EXISTS` pattern
-  (`KEY_HELD`, below) is appended to `Transaction.guards` (atomic-commit PD-6), excluding the roots this transaction
+  (`KEY_HELD`, below) joins the transaction's guards in `Transaction.commit` (PD-15), excluding the roots this transaction
   replaces or removes (their stored state is going away; their new state is a claim of its own,
   checked by (a)). Removes claim nothing.
 - **PD-7** (DEC-2): the key pattern finds holders through the registry: a graph registered
@@ -107,7 +107,7 @@ overrule any of them.
 - **PD-9** (DEC-2, atomic-commit DEC-3 and its PD-4): diagnosis after a failed `ASK`, in order,
   inside `Transaction._diagnose`: (1) atomic-commit's read; if the commit applied, success as
   there; (2) if it names version culprits, `Conflict(iris)` (stale data must be re-read before a
-  key clash means anything); (3) only in its "no culprit" branch, and if there are key claims, one
+  key clash means anything); (3) only when it names no root (`reasons` is empty, PD-15), and if there are key claims, one
   `SELECT` (`diagnosis`, a `UNION` of `KEY_HELD` per claim, each binding its index) gives the
   claims now held → `KeyConflict`; (4) otherwise atomic-commit's `Conflict(iris=())`, "lost a
   race". The read races with other writers: a diagnosis, not a
@@ -138,6 +138,51 @@ overrule any of them.
   `iris`, now sorted in atomic-commit PD-4 too; `KeyConflict` through batch mode; inherited
   unscoped keys; `xsd:string` normalisation; PD-13's evidence) are folded into PD-2, PD-5, PD-8,
   PD-13 and the tasks.
+- **PD-15** (leader, 2026-11-14, before task 1.1; RISK-4 resolved): the PLAN checked against
+  atomic-commit as built (its proposal's "As built (2026-11-13)" table) and `develop` at 38f4a41.
+  - **Names.** The guard list is private, `Transaction._guards` (its PD-18a), as are
+    `_operations`, `_roots` and `_read_at`. There is no `_send`: `Transaction.commit` builds the
+    request with `request_text(registry, marker, guards, operations)` and confirms it.
+    `_diagnose` exists; its "no culprit" branch is `reasons` being empty. The key code is added
+    from inside `services` (`services/unique_keys.py` and `Transaction` itself), which is what
+    PD-18a allows; nothing of the transaction becomes public.
+  - **Where the guards join.** `commit` passes `[*self._guards, *key_guards]` to `request_text`;
+    `_guards` itself is not changed, so the key guards are built once, when every change is
+    known. The excluded roots are those with a read version: `self._roots[g]` for each `g` with
+    `self._read_at[g] is not None` (replaces and removes).
+  - **The in-transaction clash (PD-6a) is exact**: it compares the transaction's own claims and
+    sends nothing.
+  - **A `KeyConflict` from the store is a diagnosis, as `Conflict.iris` is** (atomic-commit
+    PD-4: the read after the refusal can miss a root or name one too many). What is
+    guaranteed: of two concurrent writers of one key value at most one commits, and a refused
+    commit wrote nothing. What is best effort: the exception's type and its `iris`. Known cases,
+    none changed by this PLAN:
+    (a) the holder is removed before the read → `Conflict(iris=())` (TC-25); a retry passes;
+    (b) another writer changes a root of the transaction between the refusal and the read → the
+    version read names it and the clash is reported as a plain `Conflict`; after the re-read the
+    retry raises the `KeyConflict`;
+    (c) the version read misses its culprit (an add over a graph removed since, or a graph with
+    no version triple) and the claimed value is held → `KeyConflict`, true of the store's state
+    though not the only cause;
+    (d) `iris` lists every claim held at the read, so it can name a root whose holder arrived
+    after the refusal, or miss one whose holder left;
+    (e) atomic-commit's false conflict (the commit applied and every graph it wrote was
+    overwritten or removed before the `ASK`) can surface as a `KeyConflict` if the removed
+    root's value was taken meanwhile. A re-read shows the true state.
+    So `KeyConflict` means "at the read, another aggregate of the type held a value this commit
+    claims", not "this is why the commit was refused". The spec delta says "as a diagnosis".
+  - **The message** follows atomic-commit PD-20a: roots and key names in words, no graph IRI,
+    no version token, no key value and no holder (PD-8).
+  - **Batch mode** is `UnitOfWork.commit(batches=True)` (`services/mapper.py`): a batch's
+    exception keeps its type and fields and gets "`n` of `m` batches committed before it"
+    (TC-27 expects "1 of 2"). `UnitOfWork.discard` (38f4a41) acts before the transaction is
+    opened, so a discarded root claims nothing.
+- **PD-16** (leader, 2026-11-14, reading task 1.1's diff; changes PD-3 and PD-11): the slots of
+  `AggregateKey` and `KeyDuplicate` are named for what they hold: `key_name` (one slot, used by
+  both classes, instead of `name` and `key`), `root_class`, `key_predicates`, `key_values`,
+  `key_roots`. They are global slots of `rp_core.yaml`, which every consumer schema imports; a
+  slot called `name`, `key` or `values` there would meet a consumer's own slot of that name.
+  TC-01 and TC-40 read with these field names.
 
 ## Algorithm / approach
 
@@ -156,7 +201,7 @@ KEY_HELD = """
   FILTER (?key_root NOT IN ($excluded))
 """
 
-def claims(keys, iri, triples) -> list[KeyClaim]: ...   # PD-5, raises InvalidBody on 2+ values
+def claims_of(keys, iri, triples) -> list[KeyClaim]: ... # PD-5, raises InvalidBody on 2+ values (named so by D-5 F-6)
 def same_value(claims) -> list[KeyClaim]: ...          # PD-6a: the claims another claim repeats
 def guard(claim, registry, excluded) -> str:           # "FILTER NOT EXISTS { KEY_HELD }"
 def diagnosis(claims, registry, excluded) -> str:      # SELECT DISTINCT ?claim { {KEY_HELD BIND(0 AS ?claim)} UNION … }
@@ -172,12 +217,12 @@ In `Transaction` (atomic-commit PD-5, PD-6, in `services/session.py`):
 ```python
 # add_graph / replace_graph, after the existing pre-checks:
 self._key_claims += claims(self._session._keys, iri, triples)
-# _send, before guard_op(marker, self.guards) is built:
+# commit, before request_text(...) is built (PD-15):
 if clash := same_value(self._key_claims):
     raise KeyConflict(..., iris=roots_of(clash), keys=names_of(clash))   # nothing sent
-excluded = self._replaced_or_removed_roots()
-self.guards += [guard(c, registry, excluded) for c in self._key_claims]
-# _diagnose, in atomic-commit's "no culprit" branch (PD-9):
+excluded = self._replaced_or_removed_roots()   # the roots with a read version
+guards = [*self._guards, *(guard(c, registry, excluded) for c in self._key_claims)]
+# _diagnose, when the version read names no root (`reasons` empty; PD-9, PD-15):
 #   if self._key_claims and (held := rows of diagnosis(self._key_claims, registry, excluded)):
 #       raise KeyConflict(..., iris=roots_of(held), keys=names_of(held))
 #   else: atomic-commit's Conflict(iris=())
@@ -260,14 +305,17 @@ FILTER NOT EXISTS {
   them.
 - **RISK-4** — `atomic-commit`'s merged code differs from its PLAN's `Transaction.guards`,
   `_send` and `_diagnose` (its PD-4 to PD-6), on which this PLAN builds (medium; low).
-  Mitigation: the builder of task 1.2 adapts to the merged code, keeping PD-6 and PD-9, and
-  records the names here.
+  **Resolved 2026-11-14 (PD-15):** the names differ (`_guards`, `commit`), the approach holds.
 - **RISK-5** — numeric values written with a non-canonical lexical form compare equal on Fuseki
   (TDB2 stores numbers by value) and not on the fake, or in the in-transaction check (low; low).
   The mapper and the router write canonical forms. Accepted; noted in the how-to.
 - **RISK-6** — declaring a key over existing duplicates blocks edits of those aggregates (medium
   for a consumer adding a key to live data; medium). Mitigation: `key_duplicates()` and the
   how-to's order: declare, report on every tenant, fix, deploy.
+- **RISK-7** (D-5 F-8) — a 409 `key-conflict` tells anyone who may write the type that the value
+  exists in the tenant, even when the aggregate holding it is hidden from them (low; medium for
+  confidential values). Accepted: every tenant-wide key has it; PD-8 keeps the holder and the
+  value out of the answer. The how-to says not to make a slot of confidential values a key.
 - **Assumption** — `atomic-commit` lets a toolkit extension append patterns to the guard
   operation's `WHERE` and run its own read after the version diagnosis (its DEC-6, DEC-3).
   If not, this PLAN returns to the gate.
@@ -277,3 +325,76 @@ FILTER NOT EXISTS {
 None. The decisions for the developer to review are PD-2 (unscoped root keys fail generation),
 PD-8 (no holder IRIs in the conflict), PD-9 (version conflict reported before a key clash) and
 PD-11 (operator report instead of generation).
+
+## Delivery decisions
+
+- **D-1** (leader, 2026-11-14, before task 1.2): GitNexus rates `open_session` CRITICAL (2 direct
+  callers, 27 flows: every router and tenancy flow opens a session) and `Transaction` MEDIUM
+  (10 direct). The rule sends a HIGH or CRITICAL risk to the developer. The lead goes on and
+  reports it instead of stopping, because the developer reviewed this very change (PD-10: an
+  optional `keys=()` on `Session` and `open_session`) and asked for an independent run; the
+  rating counts the flows through the function, and the change keeps every existing call valid:
+  with no key declared the request text and the diagnosis are as before. The guard for it is
+  the existing session, mapper, tenancy and router suites, which must stay green unchanged, and
+  the adversarial tester right after task 1.2.
+- **D-2** (leader, 2026-11-14, reading task 1.2's diff; changes PD-5; the developer may overrule):
+  `KeyClaim` is a plain private class with `__slots__`, not a `NamedTuple`. The model guard
+  (`testkit/guards.py`, PD-28) refuses a hand-written `NamedTuple` in `services`, and PD-5 asked
+  for one; the guard is not changed and gets no allow-list entry. The class holds rdflib terms
+  for the length of one transaction and never leaves `services/session.py` and
+  `services/unique_keys.py`: local, encapsulated logic, not a model. A generated model was
+  rejected for the reason PD-5 gives (its fields would be strings, read back into terms).
+- **D-3** (leader, 2026-11-14, reading task 1.2's diff):
+  (a) `value_patterns` and `value_variables` (PD-12) are not added in stage 1: nothing there
+  needs them (`match_patterns` covers the claimed values). Task 2.1 adds them if the report does.
+  (b) The diagnosis joins its branches with a new `union` helper of `domain/sparql.py`, beside
+  `join`, so no SPARQL text is assembled outside that module (DEC-3).
+  (c) A blank-node object of a key predicate is no value and claims nothing: in a pattern it
+  would act as a variable and match any holder.
+- **D-4** (leader, 2026-11-14; adversarial tester, accepted): `same_value` (PD-6a) counts a
+  clash only between claims of **different roots**. With one `AggregateKey` given twice in
+  `keys` (the public `open_session` accepts it), one root's two equal claims were taken for two
+  roots and a single add raised `KeyConflict`. The test is
+  `test_a_key_given_twice_does_not_clash_a_root_with_itself`.
+- **D-5** (leader, 2026-11-14; stage 1 review, lenses L1, L2, L3, L4+L5; L3 had no finding).
+  Accepted, fixed in one pass before the merge:
+  - **F-1** (L2 W1): a value stored as `"1"^^xsd:string` did not block a plain `"1"` claim on
+    the fake store, though Fuseki holds the two as one term (PD-5 normalised only the claim).
+    The fake store reads an `xsd:string` literal as the plain literal when data enters it, so a
+    consumer's unit tests see what Fuseki does; the reverse of TC-26 is tested on the fake, and
+    both directions once on Fuseki, which also checks PD-5's premise. If the fake cannot do this
+    with a small change, the fixer stops and the limit is recorded instead.
+  - **F-2** (L2 W2): TC-03 also asserts that the toy has no keyed slot, validator or shape for
+    `isbn_key` and that `Grant`'s key is still a keyed slot.
+  - **F-3** (L2 W3): TC-08a also asserts the inherited key stays in-aggregate on `Chapter` and
+    gives `Book` no key across aggregates.
+  - **F-4** (L2 S1, S2): no `print` in a test; the hard-check tests assert the quoted key and
+    slot names, not a substring that is always there.
+  - **F-5** (L4+L5 W1): one rule for "lives in the system database": the annotation is
+    inherited (`in_system_database`), and `served_roots` uses it too.
+  - **F-6** (L4+L5 W2, W4, S5): `claims` becomes `claims_of`; the reading of the diagnosis rows
+    moves next to the query (`held` in `unique_keys.py`); the excluded roots are computed once.
+  - **F-7** (L4+L5 W3, S8, S10, S12): `UniqueScope.TENANT.value` in the hard-check message;
+    `join` and `union` share one private helper; the reasons of `_key_problems` are one list;
+    `class_kinds` computes a bool.
+  - **F-8** (L1): a 409 on a taken value tells anyone who may write the type that the value
+    exists in the tenant, even when the holder is hidden from them. No tenant-wide key can
+    avoid it; PD-8 keeps the holder and the value out of the answer. Recorded as **RISK-7**
+    (accepted): a slot holding confidential values should not be a scoped key; the how-to says
+    so (task 2.3).
+  Rejected:
+  - L4+L5 S6 (a helper for two repeated lines in `add_graph` and `replace_graph`) and S7 (one
+    shared `_rows` for six query sites, five of them not of this change): refactors of the
+    transaction code another session changes in parallel; not this change's job.
+  - L4+L5 S9 (drop `str(iri)`): callers do pass `URIRef`s; the conversion is the point.
+  - L4+L5 S11 (group problem kinds by status for the `WWW-Authenticate` header): no effect
+    today, one 401 kind exists.
+  - L2 S4 (list the key conflict only on routes of keyed types): the spec asks that the
+    document list the type; a route option per schema key is more machinery than it is worth.
+  - L2 S3: TC-33 is read as "the 409 answer names the key conflict"; the document lists no
+    problem slug for any kind.
+- **D-6** (leader, 2026-11-14; the stage 1 checker, accepted; changes the mechanism of PD-2): a
+  scope other than `tenant` is a `HardRule.UNIQUE_KEY` problem naming the class and the key,
+  raised with the other key checks (`_scoped_key_reasons`), not an annotation problem naming
+  only the key: the spec says "naming the class and the key", and a `UniqueKey` does not know
+  its class. `_annotated_elements` yields schema elements only, as before this change.

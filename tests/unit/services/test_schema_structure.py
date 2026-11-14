@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from linkml_runtime.linkml_model.annotations import Annotation
 from linkml_runtime.linkml_model.meta import ClassDefinition, PresenceEnum, SlotDefinition
+from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.domain.generated.rp_core import (
     DatabaseKind,
@@ -35,6 +36,7 @@ from rdf_persistence.services.schema_structure import (
     json_name,
     keyed_slots,
     presence_alternatives,
+    served_roots,
 )
 
 ROOT = Path(__file__).parents[3]
@@ -378,3 +380,29 @@ def test_the_defaults_leave_a_root_description_slot_usage_alone() -> None:
     view = generation_view(TOY)
     assert "description" not in view.get_class("Book").slot_usage, "PD-1: no root default"
     assert "label" in view.get_class("Chapter").slot_usage, "rp_unlabelled keeps its default"
+
+
+SYSTEM_BASE = (
+    HEAD
+    + """
+classes:
+  AggregateRoot:
+    mixin: true
+  SystemBase:
+    abstract: true
+    mixins: [AggregateRoot]
+    annotations: {database: system}
+  AccessRecord:
+    is_a: SystemBase
+    annotations: {rp_path: accesses}
+  Book:
+    mixins: [AggregateRoot]
+    annotations: {rp_path: books}
+"""
+)
+
+
+def test_a_root_under_a_system_database_ancestor_is_no_served_root() -> None:
+    """F-5: the database annotation is inherited, as in_system_database reads it."""
+    view = SchemaView(SYSTEM_BASE)
+    assert [root.name for root in served_roots(view)] == ["Book"]

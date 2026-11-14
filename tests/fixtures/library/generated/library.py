@@ -29,6 +29,7 @@ from pydantic import (
 )
 from rdf_persistence import (
     Action,
+    AggregateKey,
     AggregateRoot,
     BlobEntry,
     CommitMarker,
@@ -36,6 +37,7 @@ from rdf_persistence import (
     Described,
     Grant,
     GraphKind,
+    KeyDuplicate,
     ModuleKind,
     PendingLoad,
     Policy,
@@ -54,6 +56,7 @@ from rdf_persistence import (
     TenantState,
     TenantSweepReport,
     Tracked,
+    UniqueScope,
     WritesKind
 )
 

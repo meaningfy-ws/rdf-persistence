@@ -102,6 +102,23 @@
       "isbn": {
          "@id": "bibo:isbn"
       },
+      "key_name": {
+         "@id": "rp:keyName"
+      },
+      "key_predicates": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:keyPredicates"
+      },
+      "key_roots": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:keyRoots"
+      },
+      "key_values": {
+         "@container": "@set",
+         "@id": "rp:keyValues"
+      },
       "kind": {
          "@id": "rp:kind",
          "@type": "@vocab",
@@ -182,6 +199,10 @@
       "role": {
          "@id": "rp:role"
       },
+      "root_class": {
+         "@type": "@id",
+         "@id": "rp:rootClass"
+      },
       "scan_of": {
          "@type": "@id",
          "@id": "schema:exampleOfWork"
@@ -240,6 +261,9 @@
       },
       "@version": 1.1,
       "type": "@type",
+      "AggregateKey": {
+         "@id": "rp:AggregateKey"
+      },
       "AggregateRoot": {
          "@id": "rp:AggregateRoot"
       },
@@ -260,6 +284,9 @@
       },
       "Grant": {
          "@id": "ODRL:Permission"
+      },
+      "KeyDuplicate": {
+         "@id": "rp:KeyDuplicate"
       },
       "Library": {
          "@id": "schema:Library"

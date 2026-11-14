@@ -11,6 +11,36 @@
       "title": "Action",
       "type": "string"
     },
+    "AggregateKey": {
+      "additionalProperties": false,
+      "description": "A key across aggregates, as the runtime reads it from the schema: no two aggregate roots of one class in a tenant's database hold the same values for its predicates.",
+      "properties": {
+        "key_name": {
+          "description": "The name of a key across aggregates, as declared in `unique_keys`.",
+          "type": "string"
+        },
+        "key_predicates": {
+          "description": "The predicates of the key's slots, in the order of the key.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "root_class": {
+          "description": "The IRI of the class of the aggregate roots the key governs; a root of a subclass is its own scope.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key_name",
+        "root_class",
+        "key_predicates"
+      ],
+      "title": "AggregateKey",
+      "type": "object"
+    },
     "AggregateRoot": {
       "additionalProperties": false,
       "description": "A mixin for classes whose instances are aggregate roots. Each instance is one named graph, whose IRI is derived from the root's IRI; it is versioned, loaded and saved as a whole.",
@@ -246,6 +276,44 @@
       ],
       "title": "GraphKind",
       "type": "string"
+    },
+    "KeyDuplicate": {
+      "additionalProperties": false,
+      "description": "A set of aggregate roots of one class that hold the same values for a key across aggregates, found in a tenant's database by the duplicates report.",
+      "properties": {
+        "key_name": {
+          "description": "The name of a key across aggregates, as declared in `unique_keys`.",
+          "type": "string"
+        },
+        "key_roots": {
+          "description": "The IRIs of the roots that hold the values, sorted.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "key_values": {
+          "description": "The lexical forms of the shared values, in the order of the key.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "root_class": {
+          "description": "The IRI of the class of the roots.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key_name",
+        "root_class",
+        "key_values",
+        "key_roots"
+      ],
+      "title": "KeyDuplicate",
+      "type": "object"
     },
     "Library": {
       "additionalProperties": false,
@@ -542,7 +610,8 @@
         "rp_iri_type",
         "rp_unlabelled",
         "rp_writes",
-        "bookkeeping"
+        "bookkeeping",
+        "rp_unique_scope"
       ],
       "title": "RpAnnotation",
       "type": "string"
@@ -825,6 +894,14 @@
       "properties": {},
       "title": "Tracked",
       "type": "object"
+    },
+    "UniqueScope": {
+      "description": "The scopes of a key across aggregates, the values of the rp_unique_scope annotation.",
+      "enum": [
+        "tenant"
+      ],
+      "title": "UniqueScope",
+      "type": "string"
     },
     "WritesKind": {
       "description": "How an aggregate root is written, the values of the rp_writes annotation.",

@@ -10,6 +10,7 @@ from linkml_runtime.linkml_model.meta import (
     Element,
     PermissibleValue,
     SchemaDefinition,
+    UniqueKey,
 )
 from linkml_runtime.utils.schemaview import SchemaView
 
@@ -18,6 +19,7 @@ from rdf_persistence.domain.generated.rp_core import (
     GraphKind,
     ModuleKind,
     RpAnnotation,
+    UniqueScope,
     WritesKind,
 )
 from rdf_persistence.domain.iris import LAYOUT_WORDS
@@ -28,13 +30,17 @@ from rdf_persistence.services.schema_structure import (
     aggregate_roots,
     annotation,
     annotation_text,
+    holds_owned_part,
     inherits_from_metamodel,
     iri_type_of,
+    is_bookkeeping,
+    is_scoped,
     is_tenant_root,
     is_toolkit_schema,
     own_classes,
     own_schemas,
     owned_classes,
+    tenant_database_roots,
 )
 
 # The metaslot each element rule requires: a rule id is not an attribute name.
@@ -56,6 +62,7 @@ ALLOWED_ANNOTATIONS = {
     RpAnnotation.INTERNAL: BOOLEAN,
     RpAnnotation.RP_UNLABELLED: BOOLEAN,
     RpAnnotation.BOOKKEEPING: BOOLEAN,
+    RpAnnotation.RP_UNIQUE_SCOPE: tuple(scope.value for scope in UniqueScope),
 }
 
 
@@ -83,6 +90,56 @@ def _unique_key_problems(cls: ClassDefinition) -> Iterator[CheckProblem]:
             yield rule_problem(
                 HardRule.UNIQUE_KEY, cls.name, f"unique key {name!r} is not an identifier"
             )
+
+
+def _bad_key_slot(view: SchemaView, root: ClassDefinition, slot_name: str) -> str | None:
+    """Why the slot cannot be part of a key across aggregates of ``root``; None when it can."""
+    slot = next((s for s in view.class_induced_slots(root.name) if s.name == slot_name), None)
+    if slot is None:
+        return f"slot {slot_name!r} is not a slot of {root.name}"
+    reasons = (
+        (slot.multivalued, "multivalued"),
+        (slot.identifier, "the identifier, written as the subject"),
+        (is_bookkeeping(slot), "bookkeeping"),
+        (holds_owned_part(view, slot), "an owned part"),
+    )
+    found = next((reason for hit, reason in reasons if hit), None)
+    return None if found is None else f"slot {slot_name!r} is {found}"
+
+
+def _scoped_key_reasons(
+    view: SchemaView, key: UniqueKey, below: list[ClassDefinition]
+) -> Iterator[str]:
+    """Why the scoped ``key`` cannot be enforced across the aggregates of the roots ``below`` its class."""
+    scope, allowed = RpAnnotation.RP_UNIQUE_SCOPE, ALLOWED_ANNOTATIONS[RpAnnotation.RP_UNIQUE_SCOPE]
+    if (value := annotation_text(key, scope)) not in allowed:
+        yield f"{scope.value}: {value!r} is not one of {allowed}"
+    if not below:
+        yield "it is on a class that is neither a tenant-database aggregate root nor an ancestor of one"
+    if key.consider_nulls_inequal is False:
+        yield "consider_nulls_inequal: false contradicts a missing value claiming nothing"
+    for root in below:
+        for slot in key.unique_key_slots:
+            if (reason := _bad_key_slot(view, root, str(slot))) is not None:
+                yield reason
+
+
+def _key_problems(
+    view: SchemaView, cls: ClassDefinition, roots: list[ClassDefinition]
+) -> Iterator[CheckProblem]:
+    """PD-2: a key across aggregates must enforce something; a root's in-aggregate key would not."""
+    below = [root for root in roots if cls.name in view.class_ancestors(root.name)]
+    for key in cls.unique_keys.values():
+        name = str(key.unique_key_name)
+        if is_scoped(key):
+            reasons = list(_scoped_key_reasons(view, key, below))
+        elif cls in roots:
+            scope = f"{RpAnnotation.RP_UNIQUE_SCOPE.value}: {UniqueScope.TENANT.value}"
+            reasons = [f"on a root it needs {scope}"]
+        else:
+            continue
+        for reason in dict.fromkeys(reasons):
+            yield rule_problem(HardRule.UNIQUE_KEY, cls.name, f"unique key {name!r}: {reason}")
 
 
 def _schema_problems(schema: SchemaDefinition) -> Iterator[CheckProblem]:
@@ -193,6 +250,9 @@ def _iri_type_problems(
 
 def _class_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[CheckProblem]:
     roots = aggregate_roots(view, classes)
+    tenant_roots = tenant_database_roots(view, classes)
+    for cls in classes:
+        yield from _key_problems(view, cls, tenant_roots)
     yield from _path_problems(view, roots)
     yield from _described_problems(view, classes, roots)
     yield from _iri_type_problems(view, classes, roots)

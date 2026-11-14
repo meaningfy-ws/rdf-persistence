@@ -25,6 +25,11 @@ classes:
     class_uri: bibo:Book
     mixins: [AggregateRoot, Described, Tracked]
     slots: [isbn, authors, published, genre, chapters, shelf, sequel_of]
+    unique_keys:
+      isbn_key:
+        unique_key_slots: [isbn]
+        annotations:
+          rp_unique_scope: tenant
     annotations:
       rp_path: books
       database: tenant

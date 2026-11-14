@@ -12,6 +12,7 @@ from rdf_persistence.generation.generated.rp_generation import GenerationTarget,
 from rdf_persistence.generation.pipeline import generate
 from rdf_persistence.generation.problems import format_problem
 from rdf_persistence.services.schema import load_schema
+from rdf_persistence.services.schema_structure import aggregate_keys, keyed_slots
 
 from .conftest import ROOT_SCHEMA, Breaker
 
@@ -287,3 +288,122 @@ def test_a_bad_iri_type_pattern_is_refused_when_the_schema_does_not_import_the_m
 ) -> None:
     problems = problems_of(_bare_schema(tmp_path, {"Alpha": "Not A Type"}))
     assert any(f"[{HardRule.ANNOTATION.value}] Alpha:" in p for p in problems), problems
+
+
+# Keys across aggregates (cross-aggregate-unique-keys PD-2): the toy's Book declares isbn_key.
+KEY_SLOTS = "unique_key_slots: [isbn]"
+KEY_SCOPE = "        annotations:\n          rp_unique_scope: tenant\n"
+UNIQUE_KEY = f"[{HardRule.UNIQUE_KEY.value}]"
+
+
+def _planted(break_toy: Breaker, module: str, old: str, new: str) -> list[str]:
+    return problems_of(break_toy(module, old, new))
+
+
+@pytest.mark.parametrize("slot", ["chapters", "authors", "id", "created", "binding"])
+def test_a_key_over_a_slot_that_cannot_be_keyed_names_class_key_and_slot(
+    break_toy: Breaker, slot: str
+) -> None:
+    """TC-04: an owned part, a multivalued slot, the identifier, bookkeeping, a slot Book lacks."""
+    problems = _planted(break_toy, "books.yaml", KEY_SLOTS, f"unique_key_slots: [{slot}]")
+    named = f"{UNIQUE_KEY} Book: unique key 'isbn_key': slot '{slot}' "
+    assert any(p.startswith(named) for p in problems), problems
+
+
+def test_a_scope_other_than_tenant_is_refused_naming_the_value_and_the_allowed_one(
+    break_toy: Breaker,
+) -> None:
+    """TC-05"""
+    problems = _planted(
+        break_toy, "books.yaml", "rp_unique_scope: tenant", "rp_unique_scope: world"
+    )
+    named = f"[{HardRule.UNIQUE_KEY.value}] Book: unique key 'isbn_key': "
+    assert any(p.startswith(named) and "'world'" in p and "tenant" in p for p in problems), problems
+
+
+@pytest.mark.parametrize(
+    ("module", "old", "slot", "cls"),
+    [
+        ("books.yaml", "    slots: [number, notes]\n", "number", "Chapter"),
+        ("library_tenant.yaml", "    slots: [city]\n", "city", "Library"),
+        ("library_access.yaml", "    is_a: TenantAccess\n", "database_name", "LibraryAccess"),
+    ],
+    ids=["owned-part", "tenant-root", "system-root"],
+)
+def test_a_key_on_a_class_that_is_no_tenant_database_root_is_refused(
+    break_toy: Breaker, module: str, old: str, slot: str, cls: str
+) -> None:
+    """TC-06"""
+    key = f"    unique_keys:\n      stray_key:\n        unique_key_slots: [{slot}]\n{KEY_SCOPE}"
+    problems = _planted(break_toy, module, old, old + key)
+    named = f"{UNIQUE_KEY} {cls}: unique key 'stray_key': "
+    assert any(p.startswith(named) for p in problems), problems
+
+
+def test_an_unscoped_key_on_a_root_is_refused_with_the_fix(break_toy: Breaker) -> None:
+    """TC-07"""
+    problems = _planted(break_toy, "books.yaml", KEY_SCOPE, "")
+    assert any(
+        p.startswith(f"{UNIQUE_KEY} Book:") and "isbn_key" in p and "rp_unique_scope: tenant" in p
+        for p in problems
+    ), problems
+
+
+def test_a_key_that_counts_missing_values_as_equal_is_refused(break_toy: Breaker) -> None:
+    """TC-08: false contradicts the rule that an absent value claims nothing."""
+    refused = _planted(
+        break_toy, "books.yaml", KEY_SCOPE, KEY_SCOPE + "        consider_nulls_inequal: false\n"
+    )
+    assert any(p.startswith(f"{UNIQUE_KEY} Book:") and "isbn_key" in p for p in refused), refused
+
+
+def test_a_key_with_consider_nulls_inequal_true_passes(break_toy: Breaker) -> None:
+    """TC-08"""
+    root = break_toy("books.yaml", KEY_SCOPE, KEY_SCOPE + "        consider_nulls_inequal: true\n")
+    assert problems_of(root) == []
+
+
+MIXIN = """  Keyed:
+    title: Keyed
+    description: A mixin whose label is the key of whatever uses it.
+    class_uri: lib:Keyed
+    mixin: true
+    unique_keys:
+      label_key:
+        unique_key_slots: [label]
+  Chapter:
+    title: Chapter
+"""
+
+
+def test_an_unscoped_key_a_root_only_inherits_is_not_refused(break_toy: Breaker) -> None:
+    """TC-08a: Keyed types a root and an owned part; on the part it is an in-aggregate key."""
+    root = break_toy("books.yaml", "  Chapter:\n    title: Chapter\n", MIXIN)
+    break_toy(
+        "books.yaml",
+        "mixins: [AggregateRoot, Described, Tracked]",
+        "mixins: [AggregateRoot, Described, Tracked, Keyed]",
+    )
+    break_toy(
+        "books.yaml",
+        "    mixins: [Described]\n    slots: [number, notes]",
+        "    mixins: [Described, Keyed]\n    slots: [number, notes]",
+    )
+    assert problems_of(root) == [], "an inherited unscoped key is no root key (PD-2)"
+    view = load_schema(root)
+    assert "label_key" not in {k.key_name for k in aggregate_keys(view)}, (
+        "Book gets no key across aggregates"
+    )
+    chapters = [(s.name, k.unique_key_name) for s, k in keyed_slots(view, view.get_class("Book"))]
+    assert ("chapters", "label_key") in chapters, "the key stays in-aggregate on Chapter"
+
+
+def test_a_run_with_a_bad_key_exits_1_naming_the_slot_and_writes_nothing(
+    break_toy: Breaker, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = break_toy("books.yaml", KEY_SLOTS, "unique_key_slots: [chapters]")
+    before = sorted(p.name for p in root.parent.iterdir())
+    assert main(["--project", str(root.parent / "pyproject.toml")]) == 1, "wrong exit code"
+    err = capsys.readouterr().err
+    assert "Book" in err and "isbn_key" in err and "chapters" in err, err
+    assert sorted(p.name for p in root.parent.iterdir()) == before, "outputs were touched"

@@ -78,6 +78,48 @@ classes:
         description: A fresh urn:uuid IRI, never shared by two transactions.
       started_at:
         required: true
+  AggregateKey:
+    title: Aggregate key
+    description: >-
+      A key across aggregates, as the runtime reads it from the schema: no two aggregate roots of one
+      class in a tenant's database hold the same values for its predicates.
+    class_uri: rp:AggregateKey
+    slots:
+      - key_name
+      - root_class
+      - key_predicates
+    slot_usage:
+      key_name:
+        required: true
+      root_class:
+        required: true
+        description: The IRI of the class of the aggregate roots the key governs; a root of a subclass is its own scope.
+      key_predicates:
+        required: true
+        description: The predicates of the key's slots, in the order of the key.
+  KeyDuplicate:
+    title: Key duplicate
+    description: >-
+      A set of aggregate roots of one class that hold the same values for a key across aggregates, found
+      in a tenant's database by the duplicates report.
+    class_uri: rp:KeyDuplicate
+    slots:
+      - key_name
+      - root_class
+      - key_values
+      - key_roots
+    slot_usage:
+      key_name:
+        required: true
+      root_class:
+        required: true
+        description: The IRI of the class of the roots.
+      key_values:
+        required: true
+        description: The lexical forms of the shared values, in the order of the key.
+      key_roots:
+        required: true
+        description: The IRIs of the roots that hold the values, sorted.
 
 slots:
   url_segment:
@@ -141,6 +183,34 @@ slots:
     description: The IRI of the aggregate root that owns the graph.
     slot_uri: rp:ownedBy
     range: uri
+  key_name:
+    title: Key name
+    description: The name of a key across aggregates, as declared in `unique_keys`.
+    slot_uri: rp:keyName
+    range: string
+  root_class:
+    title: Root class
+    description: The IRI of the class of the aggregate roots a key governs.
+    slot_uri: rp:rootClass
+    range: uri
+  key_predicates:
+    title: Key predicates
+    description: The predicates of the slots of a key.
+    slot_uri: rp:keyPredicates
+    range: uri
+    multivalued: true
+  key_values:
+    title: Key values
+    description: The values that a set of roots share for a key.
+    slot_uri: rp:keyValues
+    range: string
+    multivalued: true
+  key_roots:
+    title: Key roots
+    description: The IRIs of aggregate roots.
+    slot_uri: rp:keyRoots
+    range: uri
+    multivalued: true
 
 enums:
   RegistryKind:
@@ -221,6 +291,13 @@ enums:
           Slot annotation, `true` when the session writes the slot about a graph (its version, who
           created or contributed to it, when); closed shapes ignore the statement.
         meaning: rp:AnnotationBookkeeping
+      rp_unique_scope:
+        title: Unique scope
+        description: >-
+          Annotation of a `unique_keys` entry on an aggregate root (or an ancestor of roots), `tenant`
+          (see UniqueScope): the key holds across the aggregates of a tenant, not inside one aggregate.
+          A key without it keeps its in-aggregate meaning.
+        meaning: rp:AnnotationUniqueScope
   ModuleKind:
     title: Module kind
     description: The kinds of schema module, the values of the module_kind annotation.
@@ -265,3 +342,11 @@ enums:
         title: Meta
         description: The tenant's meta graph, which holds the tenant root object.
         meaning: rp:GraphMeta
+  UniqueScope:
+    title: Unique scope
+    description: The scopes of a key across aggregates, the values of the rp_unique_scope annotation.
+    permissible_values:
+      tenant:
+        title: Tenant
+        description: The key holds across all the aggregate roots of one class in a tenant's database.
+        meaning: rp:UniqueScopeTenant

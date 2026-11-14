@@ -1022,3 +1022,32 @@ async def test_a_refusal_on_create_is_a_422_with_its_detail_and_no_tenant_is_lis
         assert problem_of(refused).detail == "no such library", "the validator's own message"
         listed = await http.get("/libraries", headers=headers)
         assert listed.json()["items"] == [], "no tenant was made"
+
+
+# --- unique keys across aggregates ----------------------------------------------------------------
+
+
+async def test_a_second_book_with_a_taken_isbn_is_a_key_conflict_without_detail(
+    scene,
+) -> None:  # TC-31
+    body = {**DUNE_BODY, "isbn": "1"}
+    first = await scene.http.post(f"{scene.tenant}/books", json=body, headers=scene.headers("ada"))
+    second = await scene.http.post(f"{scene.tenant}/books", json=body, headers=scene.headers("ada"))
+    problem = problem_of(second)
+    assert (first.status_code, second.status_code) == (201, 409), "the second is refused"
+    assert problem.type == f"{PROBLEMS}key-conflict", "its own type"
+    assert problem.detail is None, "no detail: it would tell what exists"
+    assert "detail" not in second.json(), "none in the body either"
+    listing = await scene.http.get(f"{scene.tenant}/books?isbn=1", headers=scene.headers("ada"))
+    assert len(listing.json()["items"]) == 1, "one book with that isbn"
+
+
+async def test_a_stale_replace_that_also_clashes_is_a_version_conflict(scene) -> None:  # TC-32
+    taken = {**DUNE_BODY, "isbn": "1"}
+    await scene.http.post(f"{scene.tenant}/books", json=taken, headers=scene.headers("ada"))
+    response = await scene.http.put(
+        scene.book, json=taken, headers=scene.headers("ada", **{"If-Match": '"stale"'})
+    )
+    assert (response.status_code, problem_of(response).type) == (409, f"{PROBLEMS}conflict"), (
+        "stale data is re-read before a key clash means anything"
+    )

@@ -4,13 +4,13 @@
 `T` and `U` are toy library tenants; `A`, `B`, `C`, `D` books of `T`. "Keys" is
 `aggregate_keys(load_schema(TOY_SCHEMA))` (`tests/toy.py`); the session tests open
 `fake_session(..., keys=keys)`. "The transaction" is atomic-commit's `Transaction`
-(`services/session.py`): its `guards` list, `_send` and `_diagnose` (atomic-commit PD-4 to PD-6;
-RISK-4). Lists of IRIs in the tables are shown as lists; the code uses sorted tuples. The adversarial tester runs right after task
+(`services/session.py`): its private `_guards` list, `commit` and `_diagnose`, as built (PD-15;
+a `KeyConflict` from the store is a diagnosis). Lists of IRIs in the tables are shown as lists; the code uses sorted tuples. The adversarial tester runs right after task
 1.2, the riskiest (new invariant in the write path).
 
 ## 1. Declare and enforce (stage 1, PR 1)
 
-- [ ] 1.1 Declaration. Test first, in `tests/unit/generation/test_hard_check.py` (schema edits as
+- [x] 1.1 Declaration. Test first, in `tests/unit/generation/test_hard_check.py` (schema edits as
   in `test_boundary_check.py`'s `Edit`) and a new `tests/unit/services/test_aggregate_keys.py`
   (inline schemas). Then: in `rdf_persistence/model/rp_core.yaml`, the `rp_unique_scope` value of
   `RpAnnotation`, the enum `UniqueScope` (`tenant`), the classes `AggregateKey` and `KeyDuplicate`
@@ -24,17 +24,17 @@ RISK-4). Lists of IRIs in the tables are shown as lists; the code uses sorted tu
 
 | ID | Input | Expected |
 |---|---|---|
-| TC-01 | toy schema | `aggregate_keys` == `[AggregateKey(name="isbn_key", root_class=bibo:Book, predicates=[bibo:isbn])]` |
+| TC-01 | toy schema | `aggregate_keys` == `[AggregateKey(key_name="isbn_key", root_class=bibo:Book, key_predicates=[bibo:isbn])]` (PD-16) |
 | TC-02 | inline schema: abstract `Publication` with scoped key over `title`; roots `Book2`, `Magazine` `is_a Publication`; `Magazine` redeclares the key name over `issn` | two entries: `Book2` over `title`, `Magazine` over `issn` (nearest wins), each with its own class IRI |
 | TC-03 | toolkit schemas and toy schema regenerated | Grant's validator and shape byte-identical to before; no validator or shape for `isbn_key`; `class_kinds("Book")` lacks `UNIQUE_KEYS`, `class_kinds("Grant")` has it |
-| TC-04 | `Book` scoped key over `chapters` / over `authors` / over `id` / over `shelf` (not a slot) | `rp-generate` fails, a `unique_key` problem naming `Book`, `isbn_key` and the slot; no output changes |
+| TC-04 | `Book` scoped key over `chapters` / over `authors` / over `id` / over `binding` (not a slot; the toy `Book` got a `shelf` slot meanwhile) | `rp-generate` fails, a `unique_key` problem naming `Book`, `isbn_key` and the slot; no output changes |
 | TC-05 | `rp_unique_scope: world` | fails, naming the value and the allowed `tenant` |
 | TC-06 | scoped key on `Chapter` (owned part), on `Library` (tenant root), on a `database: system` root | fails, naming the class |
 | TC-07 | unscoped `unique_keys` on `Book` | fails, naming `Book` and the key, telling to add `rp_unique_scope: tenant` |
 | TC-08 | scoped key with `consider_nulls_inequal: false` | fails; with `true` or unset, passes |
 | TC-08a | abstract mixin with an unscoped key over `title`, used by `Book` (root) and `Chapter` (owned) | passes; the key stays an in-aggregate key on `Chapter`; no cross-aggregate key for `Book` (PD-2) |
 
-- [ ] 1.2 Enforcement. Test first, in a new `tests/unit/services/test_session_unique_keys.py`
+- [x] 1.2 Enforcement. Test first, in a new `tests/unit/services/test_session_unique_keys.py`
   (fake store, toy mapper) and `tests/unit/domain/test_sparql.py`. Then: `domain/sparql.py`
   `value_patterns`, `value_variables` (PD-12); `domain/exceptions.py` `KeyConflict` (PD-8); new
   `services/unique_keys.py` (`KeyClaim`, `KEY_HELD`, `claims`, `same_value`, `guard`, `diagnosis`;
@@ -66,7 +66,7 @@ RISK-4). Lists of IRIs in the tables are shown as lists; the code uses sorted tu
 | TC-26 | `A` stored with isbn `"1"` (plain); raw `add_graph(B)` with `"1"^^xsd:string` | `KeyConflict(iris=[B])` (PD-5 normalisation) |
 | TC-27 | `max_roots=2`; batch commit of `C` "5", `D` "6", `E` "5" | `KeyConflict(iris=[E], keys=["isbn_key"])` from the second batch; message says 1 batch committed |
 
-- [ ] 1.3 The problem. Test first, in `tests/unit/entrypoints/test_problems.py`,
+- [x] 1.3 The problem. Test first, in `tests/unit/entrypoints/test_problems.py`,
   `tests/unit/entrypoints/test_router.py`, `tests/unit/entrypoints/test_openapi.py`. Then the
   `ERROR_KINDS` row and `KEY_CONFLICT` in `entrypoints/problems.py` (PD-8). Gates:
   `make test-changed`, `make check-quality`, `make clean-code`.
@@ -78,7 +78,7 @@ RISK-4). Lists of IRIs in the tables are shown as lists; the code uses sorted tu
 | TC-32 | PUT `B` with `A`'s isbn and a stale `If-Match` | 409, type `…/problems/conflict` |
 | TC-33 | OpenAPI document | lists `key-conflict` among the problem types |
 
-- [ ] 1.4 On Fuseki. New `tests/integration/store/test_unique_keys.py`; router case in
+- [x] 1.4 On Fuseki. New `tests/integration/store/test_unique_keys.py`; router case in
   `tests/integration/api/test_router.py`. Gate:
   `make test-containers TEST_PATH="tests/integration/store/test_unique_keys.py tests/integration/api/test_router.py"`.
 
@@ -100,7 +100,7 @@ RISK-4). Lists of IRIs in the tables are shown as lists; the code uses sorted tu
 
 | ID | Input | Expected |
 |---|---|---|
-| TC-40 | session without keys writes `A`, `B` with isbn "1", `C` "2"; keyed session `key_duplicates()` | `[KeyDuplicate(key="isbn_key", root_class=bibo:Book, values=["1"], roots=[A, B])]`; store unchanged |
+| TC-40 | session without keys writes `A`, `B` with isbn "1", `C` "2"; keyed session `key_duplicates()` | `[KeyDuplicate(key_name="isbn_key", root_class=bibo:Book, key_values=["1"], key_roots=[A, B])]` (PD-16); store unchanged |
 | TC-41 | no duplicates; no keys | `[]` |
 | TC-42 | TC-40, then replace `A` keeping "1" with the keyed session | `KeyConflict`; after changing `A` to "4", `key_duplicates()` is `[]` |
 
