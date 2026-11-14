@@ -7,7 +7,7 @@ Feature: A service that keeps its data in step with its schema
     Given the library service runs the library schema at version 1
     When Ada creates a library
     Then the library records version 1 of the library schema
-    And the library records version 1 of the toolkit's own schema
+    And the library records version 2 of the toolkit's own schema
 
   Scenario: A reader cannot ask for a book of a library that is behind the schema
     Given Ada's library holds a book
