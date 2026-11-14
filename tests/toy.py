@@ -18,7 +18,13 @@ from rdf_persistence import (
     generated_models,
     new_part,
 )
-from rdf_persistence.domain.generated import rp_access, rp_collections, rp_core, rp_discussion
+from rdf_persistence.domain.generated import (
+    rp_access,
+    rp_collections,
+    rp_core,
+    rp_discussion,
+    rp_workflow,
+)
 from rdf_persistence.domain.iris import graph_iri
 from rdf_persistence.services.schema import load_schema
 from tests.fixtures.library.generated import (
@@ -40,6 +46,7 @@ TENANT = "https://example.org/libraries/6f1c0c1e"
 ADA = "https://example.org/people/ada"
 BOB = "https://example.org/people/bob"
 ROLES = Path(__file__).parent / "fixtures" / "library" / "library_roles.yaml"
+REVIEW_WORKFLOW = Path(__file__).parent / "fixtures" / "library" / "review.workflow.yaml"
 DATABASE = "acme-t-" + "0" * 32
 MODULES = (
     books,
@@ -52,6 +59,7 @@ MODULES = (
     rp_core,
     rp_collections,
     rp_discussion,
+    rp_workflow,
 )
 
 

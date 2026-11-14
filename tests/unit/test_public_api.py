@@ -58,6 +58,8 @@ INDEXED_NAMES = [
     "generated_models",
     "install_service",
     "ServiceKit",
+    "Collaboration",
+    "Workflows",
     "limited_body",
     "Iris",
     "IriPolicy",

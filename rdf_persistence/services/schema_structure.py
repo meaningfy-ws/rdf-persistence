@@ -38,6 +38,7 @@ from rdf_persistence.domain.generated.rp_files import StoredFile
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 
 AGGREGATE_ROOT = "AggregateRoot"
+UNDER_WORKFLOW = "UnderWorkflow"
 TENANT_ACCESS = "TenantAccess"
 STORED_FILE = StoredFile.__name__
 DESCRIPTION = "description"
@@ -76,6 +77,18 @@ def annotation(element: object, tag: RpAnnotation) -> str | None:
     """The lower-cased value of the element's annotation ``tag``; None when it has none."""
     text = annotation_text(element, tag)
     return None if text is None else text.lower()
+
+
+def workflow_name_of(view: SchemaView, class_name: str) -> str | None:
+    """The workflow the class follows: the first non-empty ``workflow`` annotation up its ``is_a`` chain, as written."""
+    return next(
+        (
+            text
+            for ancestor in view.class_ancestors(class_name, mixins=False)
+            if (text := annotation_text(view.get_class(ancestor), RpAnnotation.WORKFLOW))
+        ),
+        None,
+    )
 
 
 def flag(element: object, tag: RpAnnotation) -> bool:

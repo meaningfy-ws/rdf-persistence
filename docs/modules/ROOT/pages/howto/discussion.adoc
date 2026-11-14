@@ -42,6 +42,7 @@ The module brings the class `Comment`:
 |`comment_audience` |The names of the roles that may see the comment, or `None` (no audience).
 |`comment_references` |The IRIs of other aggregates the comment points at, or `None`.
 |`replies_to` |For a reply, the IRI of the comment it answers.
+|`from_state_iri`, `to_state_iri` |For a comment a workflow transition posted, the IRIs of the two states; otherwise `None`. Such a comment has no audience, and its author needed no `annotate`: see xref:howto/workflow.adoc[Put a resource through review].
 |`creator`, `created` |The IRI of the principal the session acts for, and the time, written by the session as for any aggregate. How to show a name for that IRI is your application's matter.
 |===
 
@@ -211,7 +212,7 @@ Of `comment`; a refused comment stores nothing:
 |===
 |Error |When
 |`LookupError` |The schema does not import `rp_discussion`.
-|`InvalidIri` |The target is the tenant root or a comment (an annotation your application wrote is none), or a reference has not the shape of an aggregate IRI of the tenant.
+|`InvalidIri` |The target is the tenant root, a comment (an annotation your application wrote is none) or a transition record, or a reference has not the shape of an aggregate IRI of the tenant.
 |`NotFound` |The caller can see nothing of the target, the target is not stored, or `reply_to` is not in the thread as this caller sees it.
 |`Forbidden` |The caller may see the target but not annotate it.
 |`InvalidBody` |The text is blank.
@@ -239,8 +240,8 @@ Of `thread`:
 * *No notifications.* Posting, replying and referencing tell nobody.
 * *The audience is not property-level access.* Only `thread` and `referrers` check it. It hides a
   comment from a list; it is not a general way to hide parts of an aggregate.
-* *No comment on the tenant root or on a comment.* To answer a comment, reply to it. An
-  annotation your application wrote does take comments.
+* *No comment on the tenant root, on a comment or on a transition record.* To answer a comment,
+  reply to it. An annotation your application wrote does take comments.
 * *`thread` does not check that the aggregate exists.* For an IRI of the tenant that nothing is
   stored at it returns an empty list, while `comment` raises `NotFound`.
 * *An IRI policy that does not tell classes apart.* If your aggregate template names neither the

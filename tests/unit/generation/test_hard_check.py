@@ -115,6 +115,34 @@ FAULTS = (
         "rp_path: books\n      rp_iri_type: rp-book",
         "Book",
     ),
+    # TC-65 to TC-68a: the workflow annotation and the mixin go together on a root
+    Fault(  # TC-65: a root annotated, without the mixin
+        HardRule.WORKFLOW,
+        "books.yaml",
+        "rp_path: shelves",
+        "rp_path: shelves\n      workflow: review",
+        "Shelf",
+    ),
+    Fault(  # an owned class is no aggregate root
+        HardRule.WORKFLOW,
+        "books.yaml",
+        "rp_unlabelled: true",
+        "rp_unlabelled: true\n      workflow: review",
+        "Chapter",
+    ),
+    Fault(  # TC-66: a root with the mixin and no annotation
+        HardRule.WORKFLOW, "books.yaml", "      workflow: review\n", "", "Book"
+    ),
+    Fault(  # TC-67: the name follows the url_segment pattern
+        HardRule.ANNOTATION, "books.yaml", "workflow: review", "workflow: Review", "Book"
+    ),
+    Fault(  # TC-68a: the tenant root lives in the meta graph, outside the workflows
+        HardRule.WORKFLOW,
+        "library_tenant.yaml",
+        "graph: meta",
+        "graph: meta\n      workflow: review",
+        "Library",
+    ),
     # an owned class and a root with one type, and a reserved type
     Fault(
         HardRule.IRI_TYPE,
@@ -185,6 +213,52 @@ def test_a_reserved_segment_is_refused_with_the_fix_and_one_without_the_dash_pas
     named = f"[{HardRule.RESERVED_SEGMENT.value}] Book:"
     assert any(named in p and "rp-notes" in p and "rename" in p for p in reserved), reserved
     assert problems_of(break_toy("books.yaml", "rp_path: rp-notes", "rp_path: rpnotes")) == []
+
+
+SUBCLASS = """  Novel:
+    title: Novel
+    description: A book of fiction, which follows the workflow of its parent.
+    is_a: Book
+    class_uri: lib:Novel
+  Shelf:
+"""
+
+
+def test_a_workflow_problem_carries_the_fix_hint(break_toy: Breaker) -> None:
+    """PD-18: the problem says what to change."""
+    root = break_toy("books.yaml", "      workflow: review\n", "")
+    named = f"[{HardRule.WORKFLOW.value}] Book:"
+    assert any(
+        named in p and "add the annotation workflow: <name>" in p for p in problems_of(root)
+    ), "a root under the mixin with no annotation is told to add one"
+    root = break_toy("books.yaml", "rp_path: shelves", "rp_path: shelves\n      workflow: review")
+    assert any(
+        f"[{HardRule.WORKFLOW.value}] Shelf:" in p and "include UnderWorkflow" in p
+        for p in problems_of(root)
+    ), "an annotated root without the mixin is told to include it"
+
+
+def test_a_workflow_on_a_class_that_is_no_root_says_what_to_remove_or_include(
+    break_toy: Breaker,
+) -> None:
+    """PD-32 item 6: the hint of this branch only."""
+    root = break_toy(
+        "books.yaml",
+        "      rp_unlabelled: true\n  Note:",
+        "      rp_unlabelled: true\n      workflow: review\n  Note:",
+    )
+    named = f"[{HardRule.WORKFLOW.value}] Chapter:"
+    [problem] = [p for p in problems_of(root) if named in p]
+    assert (
+        "a workflow goes only on an aggregate root (not the tenant root): "
+        "remove workflow or include AggregateRoot"
+    ) in problem, problem
+
+
+def test_a_subclass_of_an_annotated_root_inherits_the_annotation(break_toy: Breaker) -> None:
+    """TC-68"""
+    root = break_toy("books.yaml", "  Shelf:\n", SUBCLASS)
+    assert problems_of(root) == [], "the subclass is a root under the workflow, inherited"
 
 
 def test_a_fault_names_only_the_broken_element(break_toy: Breaker) -> None:
@@ -401,8 +475,8 @@ def test_an_unscoped_key_a_root_only_inherits_is_not_refused(break_toy: Breaker)
     root = break_toy("books.yaml", "  Chapter:\n    title: Chapter\n", MIXIN)
     break_toy(
         "books.yaml",
-        "mixins: [AggregateRoot, Described, Tracked]",
-        "mixins: [AggregateRoot, Described, Tracked, Keyed]",
+        "mixins: [AggregateRoot, Described, Tracked, UnderWorkflow]",
+        "mixins: [AggregateRoot, Described, Tracked, UnderWorkflow, Keyed]",
     )
     break_toy(
         "books.yaml",

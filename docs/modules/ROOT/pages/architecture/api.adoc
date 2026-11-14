@@ -247,7 +247,10 @@ error answers with one: the toolkit's own, the framework's (an unknown path, 405
 statuses that say what to fix in the request (400, 406, 413, 415, 422, 428) carry a `detail`. A
 refusal (401, 403, 404, 409), an outage (503) or a fault of the service (500 `internal-error`)
 carries none, so a hidden tenant and an absent one answer alike, and no answer tells an outsider
-where the store is. A fault is anything the caller cannot fix: SPARQL the toolkit wrote that the
+where the store is. Two refusals share 409 and differ in `type`: `conflict` ("Version conflict": a
+stale version) and `key-conflict` ("Key conflict": a write claims a unique key value another
+aggregate of the tenant holds). Neither carries a detail, so the answer names neither the value nor
+the holder. A fault is anything the caller cannot fix: SPARQL the toolkit wrote that the
 store refuses (`ToolkitStore` in `services/store.py` turns the store's `BadQuery` into a
 `SparqlError`), or stored data that does not validate. A bad query string from the caller stays 400
 `bad-query`; so does a filter on an IRI-valued slot whose value is not an IRI SPARQL can carry.

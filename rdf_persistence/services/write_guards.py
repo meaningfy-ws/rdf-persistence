@@ -25,27 +25,44 @@ from rdf_persistence.services.reference_collections import (
     rule_plan,
 )
 from rdf_persistence.services.session import Session
+from rdf_persistence.services.workflows import Workflows
 
 
 class WriteGuards:
     """The checks of the writes of one schema, built once and shared by every session."""
 
-    def __init__(self, mapper: Mapper, models: GeneratedModels, listings: Listings) -> None:
+    def __init__(
+        self,
+        mapper: Mapper,
+        models: GeneratedModels,
+        listings: Listings,
+        workflows: Workflows | None = None,
+    ) -> None:
         self._mapper = mapper
         self._models = models
         self._listings = listings
         self._collections = collection_classes(mapper.view)
+        self._workflows = workflows
 
     async def prepare(
-        self, session: Session, iri: str, triples: list[Triple], stored: Tracked | None
+        self,
+        session: Session,
+        iri: str,
+        triples: list[Triple],
+        stored: Tracked | None,
+        allowed_state: str | None,
     ) -> list[Triple]:
         """The triples to write for the root ``iri`` (``stored`` is ``None`` for an add).
+
+        ``allowed_state`` is the state the transaction allows the root to take; only the workflow
+        rule uses it.
 
         Raises:
             InvalidBody: The triples of a collection do not decode, or it names a member class that
                 is not served, a member that is not a stored aggregate of the class, or a rule a
                 listing refuses.
             InvalidIri: A member is not an aggregate IRI of the tenant.
+            Forbidden: The triples of an aggregate under a workflow change its state.
         """
         graph = Graph()
         for triple in triples:
@@ -53,7 +70,9 @@ class WriteGuards:
         name = collection_class(self._collections, iri, graph)
         if name is not None:
             await self._check_collection(session, self._decoded(name, iri, graph))
-        return triples
+        if self._workflows is None:
+            return triples
+        return await self._workflows.keep_state(session, iri, triples, stored, allowed_state)
 
     def _decoded(self, name: str, iri: str, graph: Graph) -> ReferenceCollection:
         try:

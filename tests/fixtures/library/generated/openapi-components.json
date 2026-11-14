@@ -12,6 +12,31 @@
       "title": "Action",
       "type": "string"
     },
+    "Activity": {
+      "additionalProperties": false,
+      "description": "Something that happened and generated or changed entities, carried out by principals.",
+      "properties": {
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "was_associated_with": {
+          "description": "A principal that carried out the activity.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Activity",
+      "type": "object"
+    },
     "AggregateKey": {
       "additionalProperties": false,
       "description": "A key across aggregates, as the runtime reads it from the schema: no two aggregate roots of one class in a tenant's database hold the same values for its predicates.",
@@ -109,6 +134,11 @@
           "description": "The shelf the book stands on, another aggregate, stored as its IRI.",
           "format": "uri",
           "type": "string"
+        },
+        "workflow_status": {
+          "description": "The current state of the aggregate, the IRI of a state of its workflow.",
+          "format": "uri",
+          "type": "string"
         }
       },
       "required": [
@@ -177,6 +207,11 @@
           },
           "type": "array"
         },
+        "from_state_iri": {
+          "description": "The IRI of the state an aggregate left, on the comment a transition posted and on the transition's record. Defined here, so that the workflow module, which imports this one, uses it too. A state name in a workflow file is another thing: it has no IRI.",
+          "format": "uri",
+          "type": "string"
+        },
         "has_target": {
           "description": "The IRI of the aggregate the comment is about.",
           "format": "uri",
@@ -194,6 +229,11 @@
         },
         "replies_to": {
           "description": "The IRI of the comment this one answers.",
+          "format": "uri",
+          "type": "string"
+        },
+        "to_state_iri": {
+          "description": "The IRI of the state an aggregate entered, on the comment a transition posted and on the transition's record. Defined here beside from_state_iri.",
           "format": "uri",
           "type": "string"
         }
@@ -592,6 +632,37 @@
       "title": "Prohibition",
       "type": "object"
     },
+    "Provenanced": {
+      "additionalProperties": false,
+      "description": "A mixin for entities whose derivation, generating activity and attribution are recorded.",
+      "properties": {
+        "generated_at_time": {
+          "description": "The time this entity was generated.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "was_attributed_to": {
+          "description": "The principal this entity is attributed to.",
+          "format": "uri",
+          "type": "string"
+        },
+        "was_derived_from": {
+          "description": "The IRI of an entity this one was derived from.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "was_generated_by": {
+          "description": "The activity that generated this entity.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "title": "Provenanced",
+      "type": "object"
+    },
     "RdfFormat": {
       "description": "The serialisations a file of RDF can be loaded from.",
       "enum": [
@@ -716,6 +787,7 @@
         "rp_iri_type",
         "rp_unlabelled",
         "rp_writes",
+        "workflow",
         "bookkeeping",
         "rp_unique_scope"
       ],
@@ -1064,6 +1136,73 @@
       "title": "Tracked",
       "type": "object"
     },
+    "TransitionRecord": {
+      "additionalProperties": false,
+      "description": "The record of one transition of an aggregate: which aggregate, from which state to which, when, by whom and with which comment. The toolkit writes it in the update that changes the state and deletes it with the aggregate. It is a prov:Activity in the generated vocabulary, and typed with its own class when stored.",
+      "properties": {
+        "from_state_iri": {
+          "description": "The IRI of the state an aggregate left, on the comment a transition posted and on the transition's record. Defined here, so that the workflow module, which imports this one, uses it too. A state name in a workflow file is another thing: it has no IRI.",
+          "format": "uri",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "started_at_time": {
+          "description": "The time the transition was made.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "to_state_iri": {
+          "description": "The IRI of the state an aggregate entered, on the comment a transition posted and on the transition's record. Defined here beside from_state_iri.",
+          "format": "uri",
+          "type": "string"
+        },
+        "transition_comment": {
+          "description": "The IRI of the comment the transition posted, when it had one.",
+          "format": "uri",
+          "type": "string"
+        },
+        "used_resource": {
+          "description": "The IRI of the aggregate the transition moved.",
+          "format": "uri",
+          "type": "string"
+        },
+        "was_associated_with": {
+          "description": "A principal that carried out the activity.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "used_resource",
+        "from_state_iri",
+        "to_state_iri",
+        "started_at_time",
+        "id"
+      ],
+      "title": "TransitionRecord",
+      "type": "object"
+    },
+    "UnderWorkflow": {
+      "additionalProperties": false,
+      "description": "A mixin for an aggregate root that follows a workflow, which its class names with the workflow annotation. It gives the root its current state; only a transition changes it.",
+      "properties": {
+        "workflow_status": {
+          "description": "The current state of the aggregate, the IRI of a state of its workflow.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "title": "UnderWorkflow",
+      "type": "object"
+    },
     "UniqueScope": {
       "description": "The scopes of a key across aggregates, the values of the rp_unique_scope annotation.",
       "enum": [
@@ -1071,6 +1210,82 @@
       ],
       "title": "UniqueScope",
       "type": "string"
+    },
+    "Workflow": {
+      "additionalProperties": false,
+      "description": "The definition of a workflow, read from a file when the service starts and never stored: its name, its states, the state an aggregate starts in and the transitions between states. Its identifier is the IRI of the scheme whose concepts are the states, and it must stay stable once aggregates have states.",
+      "properties": {
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "initial_state": {
+          "description": "The name of the state a new aggregate starts in, one of the states.",
+          "type": "string"
+        },
+        "workflow_name": {
+          "description": "The name the workflow goes by, which the workflow annotation of a class refers to.",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "type": "string"
+        },
+        "workflow_states": {
+          "description": "The names of the states, lower case, starting with a letter, with digits, hyphens and underscores. The IRI of a state is the workflow's identifier, a slash and its name.",
+          "items": {
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "workflow_transitions": {
+          "description": "The transitions of the workflow; they are part of its definition.",
+          "items": {
+            "$ref": "#/components/schemas/WorkflowTransition"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "workflow_name",
+        "workflow_states",
+        "initial_state"
+      ],
+      "title": "Workflow",
+      "type": "object"
+    },
+    "WorkflowTransition": {
+      "additionalProperties": false,
+      "description": "One transition of a workflow, from one state to another, with the roles that may make it. The states are named, not given as IRIs.",
+      "properties": {
+        "comment_required": {
+          "description": "Whether the transition needs a comment; no by default.",
+          "type": "boolean"
+        },
+        "from_state": {
+          "description": "The name of the state a transition leaves. A stored record gives an IRI in from_state_iri.",
+          "type": "string"
+        },
+        "to_state": {
+          "description": "The name of the state a transition enters. A stored record gives an IRI in to_state_iri.",
+          "type": "string"
+        },
+        "transition_roles": {
+          "description": "The names of the roles of which one is needed to make the transition.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "from_state",
+        "to_state",
+        "transition_roles"
+      ],
+      "title": "WorkflowTransition",
+      "type": "object"
     },
     "WritesKind": {
       "description": "How an aggregate root is written, the values of the rp_writes annotation.",

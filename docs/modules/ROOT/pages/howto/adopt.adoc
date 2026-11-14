@@ -185,6 +185,28 @@ toolkit's repository:
   of your own routes. Its classes need no owning root; they are generated in Python and TypeScript
   but never stored. A domain module may not import it; the root schema imports it.
 
+*A value unique across aggregates.* Declare a `unique_keys` entry on the root and annotate it
+`rp_unique_scope: tenant`: no two books of a tenant then share an ISBN.
+
+[source,yaml]
+----
+  Book:
+    # …
+    slots: [isbn, authors, chapters]
+    unique_keys:
+      isbn_key:
+        unique_key_slots: [isbn]            # one or more single-valued slots of the root
+        annotations:
+          rp_unique_scope: tenant           # unique among the books of one tenant; a
+                                            # subclass of Book is a scope of its own
+----
+
+`rp-generate` refuses such a key unless it sits on an aggregate root of the tenant databases (or
+on a class those roots inherit from; not the tenant root, of which a tenant has one), and refuses
+one whose slot is multivalued, the identifier, bookkeeping or an owned part. The toolkit enforces the key when a
+session commits (xref:howto/adopt.adoc#key-conflict[step 8]); it generates no validator or shape
+for it.
+
 The full list of annotations and mixins is in
 xref:architecture/generation.adoc#metamodel[the metamodel].
 
@@ -779,6 +801,84 @@ for you, because only your code knows whether the edit still makes sense on the 
 above is that check). The three message clauses, and what `iris` can miss, are in
 xref:howto/commits.adoc#conflict[How commits and conflicts work].
 
+[#key-conflict]
+==== Keep a value unique across aggregates
+
+_Two books must not share an ISBN. What happens when they do?_ Declare the key in the model (<<model>>).
+A commit that adds or replaces a book whose ISBN another book of the tenant holds raises
+`KeyConflict`, a subclass of `Conflict`, and writes nothing. Over HTTP it is a 409 problem of type
+`key-conflict`.
+
+[source,python]
+----
+from rdf_persistence import KeyConflict
+
+
+try:
+    await work.commit()
+except KeyConflict as conflict:
+    print(conflict.iris, conflict.keys)      # the roots of this commit that clashed, and the key
+                                             # names (isbn_key), both sorted
+----
+
+`iris` and `keys` name your own roots and the keys, never the aggregate that holds the value, which
+the caller may not be allowed to see. What is guaranteed: of two concurrent writers of one value at
+most one commits, and a refused commit writes nothing. What is not: which roots the error names.
+When the value is held by a stored aggregate, the toolkit finds out what clashed by reading the
+store after the refusal, as it does for `Conflict.iris`, and another writer can change things in
+between. So `iris` can name a root too many or miss one, and if the holder was removed in between,
+the commit raises a plain `Conflict` with an empty `iris` instead. Only a clash between two changes
+of one commit is reported exactly.
+
+After a `KeyConflict`, do not retry the commit as it is: it fails until the value changes or its
+holder goes. Change the value, or tell the user which of their values is taken (the error names
+the root and the key; read the value from your own object). After a plain `Conflict`, read again
+and retry, as in <<handle-a-conflict>>; if the value is still taken, the retry raises the `KeyConflict`.
+
+How a key behaves:
+
+* Values are compared as exact RDF terms: case, whitespace and language all count (`"dune"`,
+  `"Dune"` and `"Dune"@en` are three values). Write numbers in their canonical form, as the
+  mapper and the router do: one written otherwise (`"07"^^xsd:integer`) equals `7` on Fuseki but
+  not on the fake store of the testkit.
+* An aggregate with a slot of the key absent claims nothing, so any number of books may lack an
+  ISBN. A key over several slots claims only when all have a value.
+* The scope is the tenant and the type: the root's own class. A subclass that inherits the key is
+  its own scope, so a `Magazine` and a `Book` may share an ISBN. Another tenant never clashes.
+* `kit.session` and the generic router enforce the keys of the schema. `open_session` enforces
+  none unless you pass `keys=aggregate_keys(mapper.view)` (from
+  `rdf_persistence.services.schema_structure`); a session you open without `keys` accepts
+  duplicates.
+* A 409 tells a writer that the value exists in the tenant, even when the aggregate holding it is
+  hidden from them. So do not make a slot of confidential values a key.
+
+[#key-on-live-data]
+==== Add a key to live data
+
+_A tenant already has two books with one ISBN. How do I add the key?_ Until the duplicates are
+fixed, an edit of one of them that keeps its ISBN is refused with `KeyConflict`; removing it or
+changing the ISBN passes. So order the steps:
+
+. Declare the key and regenerate (`make generate`). Do not deploy the service yet.
+. With the new code, from a script or a shell beside the running service, call
+  `key_duplicates()` on a session of every tenant (below). It only reads, and it counts every
+  aggregate whatever the principal may see. It returns a list of `KeyDuplicate`, one per set of
+  key values held by two aggregates or more: `key_name`, `root_class`, `key_values` (the lexical
+  forms, in the key's slot order) and `key_roots` (the roots, sorted). Values of the same text but
+  another datatype or language are different values, so they are separate entries that look
+  alike. A stored root that has two values for a key slot appears once per value, and must be
+  brought to one value.
+. Fix each duplicate: change the value of, or remove, every root but one.
+. Run the report once more, since the service still running accepts new duplicates; when it is
+  empty, deploy.
+
+[source,python]
+----
+async with kit.session(tenant, principal) as session:
+    for duplicate in await session.key_duplicates():
+        print(duplicate.key_name, duplicate.key_values, duplicate.key_roots)
+----
+
 [#transaction-change]
 ==== The behaviour changed
 
@@ -1117,8 +1217,10 @@ classes = sum(1 for _ in content.subjects(RDF.type, OWL.Class))
 A graph that is not loaded for that aggregate raises `NotFound`, whoever owns it.
 
 *Finding aggregates by value.* `Session.find(cls, **equals)` returns the IRIs of the tenant's
-aggregates of a class whose slots equal the values, in IRI order. Use it for a uniqueness check
-before a write:
+aggregates of a class whose slots equal the values, in IRI order. To keep a value unique, declare a
+key instead (<<key-conflict>>): a check before a write can be beaten by a write made meanwhile, and
+a key is checked in the commit itself. Use `find` to look aggregates up. This is what a uniqueness
+check looks like with it, for a value no key covers:
 
 [source,python]
 ----
@@ -1439,6 +1541,11 @@ On start-up, before your own lifespan, it creates the system database if it is m
 IRI policy (see "The policy cannot change", below) and runs the sweep. It stops with `OSError` if the generated folder lacks the context, the shapes, a frame or
 `openapi-components.json`, and with `LookupError` if the schema has no tenant root or not exactly
 one access record class. `rules` may also be the path of the roles file.
+
+If a class of your schema follows a workflow, pass the workflow files too, as a sequence of paths:
+`install_service(app, ..., workflows=[Path("models/review.workflow.yaml")])`. They are checked
+here, and a bad or missing file stops the service with `InvalidWorkflow`. See
+xref:howto/workflow.adoc[Put a resource through review].
 
 It returns the *`ServiceKit`*, for your own routes and domain services:
 

@@ -14,6 +14,7 @@
 ** xref:howto/reverse-references.adoc[Find who points at a resource]
 ** xref:howto/reference-collections.adoc[Group resources you do not own]
 ** xref:howto/discussion.adoc[Comment on a resource without editing it]
+** xref:howto/workflow.adoc[Put a resource through review]
 * xref:howto/dump-restore.adoc[Back up or copy a project]
 * xref:howto/application-data.adoc[Keep data that belongs to no project]
 

@@ -286,6 +286,13 @@ enums:
           mixes in StoredFile is service-written without it. `toolkit` marks a root the toolkit
           writes and reads itself, which no route serves.
         meaning: rp:AnnotationWrites
+      workflow:
+        title: Workflow
+        description: >-
+          Class annotation on an aggregate root: the name of the workflow its instances follow, which
+          follows the pattern of the url_segment slot; the root includes UnderWorkflow. A subclass
+          inherits it.
+        meaning: rp:AnnotationWorkflow
       bookkeeping:
         title: Bookkeeping
         description: >-

@@ -5,7 +5,8 @@
 # EPIC: Collaboration and reference collections
 
 > Shaped 2026-11-12 from four consumer issues. Planned 2026-11-12: the PLAN is `design.md` +
-> `tasks.md`.
+> `tasks.md`. **Delivered 2026-11-14** in #95, #98, #99 and #100; where the result differs from
+> this text, see "As built" at the end.
 >
 > **Developer review 2026-11-13: all recommendations accepted** ("accept all recommendations"):
 > PD-1 (the `Collaboration` service), PD-11, PD-15 with RISK-3 (deleting a resource deletes its
@@ -212,3 +213,50 @@ async with kit.collaboration(authorised) as collab:        # access-aware, over 
   definition names it.
 - Deleting an aggregate now also deletes comments and transition records about it.
 - Unblocks the consumer's review, discussion and grouping features (inputs/consumer-needs.md).
+
+## As built (2026-11-14)
+
+Delivered in #95 (reverse references), #98 (reference collections), #99 (discussion) and #100
+(workflow), in the four planned stages and the planned order; the solution outline and DEC-1,
+DEC-5 and DEC-8 held as written. Where the result differs from the text above (each is a
+recorded decision in design.md, and the spec deltas of this change say the same):
+
+| Above | As built | Decision |
+|---|---|---|
+| Solution outline: `collab.referrers`, hidden referrers "only counted" | The hidden count is the same whatever class or slot the call narrows by; with the narrowing in the count a caller could learn the class and slot of a referrer it may not read | PD-26 |
+| DEC-7: "what the caller may not read is counted as hidden, never named", for collections too | Holds for members a collection names. A member that only meets the collection's rule and that the caller may not read is neither listed nor counted, and a cascade leaves it and refuses nothing for it: the rule is chosen by whoever may modify the collection, so its hidden matches would count, by slot value, what that caller may not read | PD-28 item 1 |
+| Solution outline: a cascade "deletes them only if the caller may delete every one" | Also: only stored aggregates of the collection's member class (a collection written without guards could name the tenant's access record), never the tenant root, and the member class must be a served root | PD-27 item 1, PD-28 items 2, 3 |
+| (not said) | A collection cannot be saved in the same commit as members that are not stored yet: the write guard reads the store when the collection is collected | D-6 |
+| DEC-2: the state's "values `skos:Concept`s of a scheme minted per workflow" | A state is an IRI (`<workflow id>/<state name>`) in `adms:status`; the toolkit stores no statement about it. State names have their own pattern (lower case, digits, hyphens, underscores) | PD-32 item 7, D-10 |
+| DEC-2: `oa:hasBody`; "a reply targets the comment it answers" | `oa:bodyValue` and `rp:repliesTo`; see the re-shape note (5) at the top | PD-12 |
+| DEC-3: "reverse references find them" (comments and records) | Only by what they reference: a comment's link to its target and a record's link to its aggregate are left out of `referrers`, as a remove drops them. A comment is found through `dcterms:references`, a record as a referrer of its comment | PD-30 item 8 |
+| Solution outline: a comment "on any aggregate" | Not on the tenant root, a toolkit comment or a transition record (`InvalidIri`); an application's own `oa:Annotation` takes one | PD-13, PD-30 item 7 |
+| DEC-2, DEC-3: comments are `oa:Annotation`s | An aggregate typed `oa:Annotation` that does not decode as a toolkit comment (an application's own) is not a comment: left out of a thread, an ordinary referrer, and it takes comments. It is still deleted with its target (RISK-3) | PD-29, PD-30 item 7 |
+| DEC-4: `annotate`, "granted through role definitions like the other actions" | Holds. Also: a Prohibition of `annotate` refuses the comment of a transition, which otherwise needs no `annotate` right | PD-32 item 3 |
+| DEC-6: roles "resolved from the caller's grants on the tenant and on the aggregate, as the access check resolves them today" | Also a role of the caller's token, but only one the role definitions define at system level; the same for a comment's audience. A token role named like a tenant role does not count | PD-30 item 3 |
+| DEC-6: "guarded by the aggregate's version token like any write" | Holds; a transition at a version that is no longer current answers a conflict before the workflow, role and comment checks, and a plain write that would change the state at such a version answers a conflict, not a refusal of the state | PD-32 item 2 |
+| Solution outline: "The toolkit owns the current state; only `collab.transition(...)` changes it" | Holds, and is guarded through the class: an aggregate under a workflow keeps a class under that workflow, one that takes such a class holds no state, types under two workflows are refused. An aggregate of a class under no workflow may use `adms:status` as the application's own. A guarded replace costs one small read in a service where a class follows a workflow | PD-31 item 1, PD-32 item 1 |
+| Rabbit-holes, "Mentions": "a reference whose target is a principal" | A reference is an aggregate IRI of the tenant; a person can be referenced only where the application stores people as aggregates | PD-13, PD-29 item 2 |
+| Rabbit-holes, "Editing a workflow file under live data" | Holds. Also refused at start: an `id` that is no clean absolute IRI or ends with `/` or `#`, a state listed twice, a transition with no role, two workflows with one `id`; every refusal names the file | PD-31 items 4 to 6, PD-32 item 4 |
+| No-gos: "No new generic HTTP routes" | No route was added, but the existing ones changed: a generic route answers only for a stored aggregate of its own class or a class derived from it, else 404. With an IRI policy whose template names neither type nor path, a comment or a record would otherwise share an IRI with an aggregate of the same id | PD-30 item 1 |
+| What Changes: `services/collaboration.py` with all eight methods; `services/session.py` with the write guards and the deletion of dependents | `Collaboration` is the one public face and delegates: `services/reference_collections.py`, `services/discussion.py`, `services/transitions.py`; `services/workflows.py` loads the files and holds the state rule; `services/write_guards.py` composes the rules. `Session` stays free of schema, access and feature knowledge and gained generic reads (`referrer_rows`, `heads`, `matches`, `graphs_with`, `root_values`, `not_aggregates`), `principal`, `now()`, and optional `guards` and `dependents`. `Transaction` gained three private pieces (`_require_match`, `_require_present`, `_allow_state`), each with one allowed caller, pinned by a test | PD-1, PD-15, PD-28 item 9, D-7, D-9, PD-32 item 5 |
+| What Changes: `rp_access.yaml` gains `annotate` | Also `rp_core.yaml`: `WritesKind.toolkit` (a root the toolkit writes itself, served by no route) and the `workflow` class annotation; hard rules `RESERVED_SEGMENT` (the `rp-` prefix of paths and IRI types is the toolkit's) and `WORKFLOW`; `rp_service.yaml`: `Authorised.global_roles`, `Referrer`, `ReferrerList`, `MemberList`, `AggregateHead` | PD-2, PD-11, PD-18 |
+| Impact: "Deleting an aggregate now also deletes comments and transition records about it" | Holds for every delete through the kit, in one more operation of the same request (600 comments: 0.28 s on Fuseki). A session opened directly with `open_session` and no `dependents` deletes only the aggregate | PD-15, D-7, PD-30 item 6 |
+| Impact: "Public API grows (`Collaboration`, `kit.collaboration`, new generated classes, a new action); nothing removed" | Also `kit.workflows`, `Workflows`, `ServiceKit(workflows=)`, `install_service(workflows=)`, `InvalidWorkflow`. `Aggregates.read` and `remove` take the route's class as a required argument (a signature change for code that calls them directly) | PD-17, PD-30 item 1, PD-32 item 5 |
+
+Not built, as the No-gos say: no paging of `referrers`, `members` or `thread`; no notifications;
+no editing or deleting of one comment by a caller; no workflow editor, timers or migration of
+states. Left open (the developer, 2026-11-14: only what has impact is closed; the rest is left):
+
+- No call lists the moves a caller may make from the current state; an application derives them
+  from `kit.workflows` and `kit.rules.roles` (the how-to shows how).
+- Closed: listing by state works, in Python (`session.find(..., workflow_status=<state IRI>)`) and over
+  HTTP (the generic listing's `workflow_status` filter, the review queue), both tested.
+- Untested end to end: a named member of a subclass of the member class, and a rule member of a
+  subclass (the toy library has no aggregate-root subclass); a cascade over a stored-file member
+  leaving its blob to the sweep; the state guard's three-write path through the generic routes
+  (shown through a session and a transaction).
+- Code that holds a session can remove an aggregate and add it again at the same IRI, in the
+  initial state with no records; the generic API cannot, since it mints the IRI.
+- Transition records are deleted with their aggregate, as planned until `message-bus` adopts
+  `TransitionRecord` (its DEC-10).

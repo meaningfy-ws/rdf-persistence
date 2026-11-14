@@ -146,6 +146,10 @@
     required: false
     multivalued: false
     range: Shelf
+  - name: workflow_status
+    required: false
+    multivalued: false
+    range: uri
 - class_name: CallerAccess
   slots:
   - name: grants
@@ -212,6 +216,10 @@
     required: false
     multivalued: false
     range: Principal
+  - name: from_state_iri
+    required: false
+    multivalued: false
+    range: uri
   - name: has_target
     required: true
     multivalued: false
@@ -229,6 +237,10 @@
     multivalued: false
     range: Motivation
   - name: replies_to
+    required: false
+    multivalued: false
+    range: uri
+  - name: to_state_iri
     required: false
     multivalued: false
     range: uri
@@ -1116,6 +1128,42 @@
     required: false
     multivalued: false
     range: datetime
+- class_name: TransitionRecord
+  slots:
+  - name: from_state_iri
+    required: true
+    multivalued: false
+    range: uri
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: started_at_time
+    required: true
+    multivalued: false
+    range: datetime
+  - name: to_state_iri
+    required: true
+    multivalued: false
+    range: uri
+  - name: transition_comment
+    required: false
+    multivalued: false
+    range: uri
+  - name: used_resource
+    required: true
+    multivalued: false
+    range: uri
+  - name: was_associated_with
+    required: false
+    multivalued: true
+    range: Principal
+- class_name: UnderWorkflow
+  slots:
+  - name: workflow_status
+    required: false
+    multivalued: false
+    range: uri
 - class_name: VerifiedCaller
   slots:
   - name: global_roles
@@ -1126,3 +1174,43 @@
     required: true
     multivalued: false
     range: Principal
+- class_name: Workflow
+  slots:
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: initial_state
+    required: true
+    multivalued: false
+    range: string
+  - name: workflow_name
+    required: true
+    multivalued: false
+    range: string
+  - name: workflow_states
+    required: true
+    multivalued: true
+    range: string
+  - name: workflow_transitions
+    required: false
+    multivalued: true
+    range: WorkflowTransition
+- class_name: WorkflowTransition
+  slots:
+  - name: comment_required
+    required: false
+    multivalued: false
+    range: boolean
+  - name: from_state
+    required: true
+    multivalued: false
+    range: string
+  - name: to_state
+    required: true
+    multivalued: false
+    range: string
+  - name: transition_roles
+    required: true
+    multivalued: true
+    range: string

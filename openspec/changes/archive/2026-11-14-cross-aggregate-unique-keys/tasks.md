@@ -89,12 +89,12 @@ a `KeyConflict` from the store is a diagnosis). Lists of IRIs in the tables are 
 | IT-03 | router: two tenants each POST a book with isbn "1"; then a second POST in the first | 201, 201, then 409 `key-conflict` |
 | IT-04 | TC-18 on Fuseki | as TC-18 |
 
-- [ ] 1.5 Stage close: `make check-all`, `make test-containers`; PR 1 into `develop`
+- [x] 1.5 Stage close: `make check-all`, `make test-containers`; PR 1 into `develop`
   (`Refs: cross-aggregate-unique-keys PD-1..PD-10, PD-12, PD-13`); merge on green CI.
 
 ## 2. Report, cost and docs (stage 2, PR 2)
 
-- [ ] 2.1 The duplicates report. Test first, in `tests/unit/services/test_session_unique_keys.py`.
+- [x] 2.1 The duplicates report. Test first, in `tests/unit/services/test_session_unique_keys.py`.
   Then `duplicates_query` (`services/unique_keys.py`) and `Session.key_duplicates()` (PD-11);
   export `KeyDuplicate`. Gates: `make test-changed`, `make check-quality`, `make clean-code`.
 
@@ -104,7 +104,7 @@ a `KeyConflict` from the store is a diagnosis). Lists of IRIs in the tables are 
 | TC-41 | no duplicates; no keys | `[]` |
 | TC-42 | TC-40, then replace `A` keeping "1" with the keyed session | `KeyConflict`; after changing `A` to "4", `key_duplicates()` is `[]` |
 
-- [ ] 2.2 Cost and report on Fuseki, in `tests/integration/store/test_unique_keys.py`. Gate:
+- [x] 2.2 Cost and report on Fuseki, in `tests/integration/store/test_unique_keys.py`. Gate:
   `make test-containers TEST_PATH=tests/integration/store/test_unique_keys.py`.
 
 | ID | Input | Expected |
@@ -112,7 +112,7 @@ a `KeyConflict` from the store is a diagnosis). Lists of IRIs in the tables are 
 | IT-05 | TC-40 on Fuseki | as TC-40 |
 | IT-06 | 1,000 stored books with distinct ISBNs; 20 keyed adds, 20 adds without ISBN | mean keyed add < 0.5 s; both means printed and recorded in design.md, RISK-1 (RISK-1) |
 
-- [ ] 2.3 Docs. `docs/modules/ROOT/pages/architecture/index.adoc`: the building block row
+- [x] 2.3 Docs. `docs/modules/ROOT/pages/architecture/index.adoc`: the building block row
   "Unique keys across aggregates" from deferred to delivered, and the `Session` row (key guards in
   the guard operation). `architecture/generation.adoc`: scoped keys beside the `unique_keys`
   rows and the hard-check list. `architecture/api.adoc`: the `key-conflict` problem.
@@ -124,6 +124,6 @@ a `KeyConflict` from the store is a diagnosis). Lists of IRIs in the tables are 
 
 ## 3. Close
 
-- [ ] 3.1 `make check-all`, `make test-containers`; `openspec validate cross-aggregate-unique-keys
+- [x] 3.1 `make check-all`, `make test-containers`; `openspec validate cross-aggregate-unique-keys
   --strict`; PR 2 into `develop` (`Refs: cross-aggregate-unique-keys PD-11`); merge on green CI;
   archive the change.

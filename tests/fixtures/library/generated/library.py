@@ -29,6 +29,7 @@ from pydantic import (
 )
 from rdf_persistence import (
     Action,
+    Activity,
     AggregateKey,
     AggregateRoot,
     BlobEntry,
@@ -46,6 +47,7 @@ from rdf_persistence import (
     Policy,
     Principal,
     Prohibition,
+    Provenanced,
     RdfFormat,
     ReferenceCollection,
     RegistryEntry,
@@ -61,7 +63,11 @@ from rdf_persistence import (
     TenantState,
     TenantSweepReport,
     Tracked,
+    TransitionRecord,
+    UnderWorkflow,
     UniqueScope,
+    Workflow,
+    WorkflowTransition,
     WritesKind
 )
 

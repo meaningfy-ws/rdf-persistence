@@ -1,15 +1,21 @@
-<!-- Capability: rp-workflow. Change: collaboration-and-reference-collections (GitHub issue #80). -->
+# rp-workflow Specification
 
-## ADDED Requirements
+## Purpose
+Review workflows defined in files: the state of an aggregate is owned by the toolkit, changes only
+by a transition a role on the edge permits, and every move leaves a record.
 
+## Requirements
 ### Requirement: A workflow is defined in a file and validated
 
 The toolkit SHALL load a workflow definition from a YAML file naming its states, its initial
 state and its transitions, each transition with a source state, a target state, the roles
 allowed to make it and whether a comment is required. The file SHALL be validated against a model
 generated from the metamodel; a definition whose initial state or a transition names an undefined
-state, or whose transition names a role the role definitions do not define, SHALL be refused when
-loaded, before any request is served.
+state, or whose transition names a role the role definitions do not define or names no role,
+or that lists a state twice, or whose identifier the toolkit cannot turn into state IRIs (it is
+not an absolute IRI, holds a character an IRI may not, or ends with a slash or a hash), or that
+shares its identifier or its name with another workflow, or that cannot be read as YAML, SHALL
+be refused when loaded, before any request is served, naming the file and the element.
 
 #### Scenario: a review workflow
 - **GIVEN** a file with states `draft`, `in_review`, `accepted`, initial `draft`, and a transition
@@ -25,10 +31,21 @@ loaded, before any request is served.
 
 An aggregate class whose schema names a workflow SHALL carry a current state (`adms:status`), set
 to the workflow's initial state when the aggregate is first stored and readable like any slot. A
-state is a `skos:Concept` whose IRI is the workflow's IRI, a slash and the state's name. A plain
-write that changes the state SHALL be refused and change nothing; only a transition changes it.
-An aggregate stored before its class named the workflow SHALL have no state until its first
-transition, which SHALL start from the initial state.
+state is identified by an IRI: the workflow's IRI, a slash and the state's name. It is meant as
+a concept of the scheme the workflow's IRI names; the toolkit stores the IRI and no statement
+about it. A plain write that changes the state SHALL be refused and change nothing; only a
+transition changes it. A plain write SHALL NOT change the state by changing the class either:
+an aggregate of a class under a workflow SHALL keep a class under that workflow, an aggregate
+that takes such a class SHALL hold no state, and a write that types an aggregate with classes
+under two workflows SHALL be refused. An aggregate stored before its class named the workflow
+SHALL have no state until its first transition, which SHALL start from the initial state. An
+aggregate of a class under no workflow is not the toolkit's to guard: what it states with
+`adms:status` is the application's.
+
+#### Scenario: a write that hides the class
+- **GIVEN** a stored book in `accepted`
+- **WHEN** a session replaces the book with triples that name no class, or a class under no workflow
+- **THEN** the replace is refused and the book stays an accepted book
 
 #### Scenario: a new book starts in draft
 - **WHEN** a session stores a new book whose class follows the review workflow
@@ -43,10 +60,15 @@ transition, which SHALL start from the initial state.
 
 `collaboration.transition(iri, to, if_version, comment)` SHALL move the aggregate to `to` only if
 the workflow defines a transition from its current state to `to`, the session's principal holds
-one of that transition's roles on the tenant or the aggregate, a comment is given when the
+one of that transition's roles on the tenant or the aggregate, or as a role of its token that
+the role definitions define at system level, a comment that is not blank is given when the
 transition requires one, no Prohibition of `modify` applies to the principal on the aggregate
-or the tenant, and the aggregate still has the version token `if_version` the caller read. Otherwise it SHALL be refused, with the
-reason, and nothing SHALL change.
+or the tenant, no Prohibition of `annotate` applies when a comment is given, and the aggregate
+still has the version token `if_version` the caller read. Otherwise it SHALL be refused, with
+the reason, and nothing SHALL change. A transition asked at a version token that is no longer
+the aggregate's SHALL be refused as a conflict by a caller who may read the aggregate and is not prohibited,
+whatever the workflow, the roles or the comment would say. A blank comment
+is no comment.
 
 #### Scenario: an allowed transition
 - **GIVEN** a book in `draft` and a principal granted `librarian`
@@ -80,3 +102,4 @@ aggregate SHALL leave its transition records unchanged; deleting the aggregate S
   `accepted` by p2
 - **WHEN** a session lists the book's transitions
 - **THEN** it gets two records in that order, with agents p1 and p2, their times and the comment
+

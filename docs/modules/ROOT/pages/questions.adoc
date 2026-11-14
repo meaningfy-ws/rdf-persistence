@@ -36,6 +36,13 @@ xref:architecture/data-flows.adoc#commit[how the commit works]. One commit holds
 roots by default (`max_roots`); more raises `CommitTooLarge`, and `commit(batches=True)` takes them
 in several transactions (see xref:howto/adopt.adoc#transaction-batches[Save more than 500 aggregates]).
 
+*Can two aggregates share a key value?*::
+Not if the model forbids it. Declare a `unique_keys` entry on the root with
+`rp_unique_scope: tenant`, and a commit that claims a value another aggregate of the tenant (of
+the same type) holds raises `KeyConflict`, a 409 `key-conflict`, and writes nothing. See
+xref:howto/adopt.adoc#key-conflict[Keep a value unique across aggregates] and, for data that
+already has duplicates, xref:howto/adopt.adoc#key-on-live-data[Add a key to live data].
+
 *What happens when two people edit the same thing?*::
 The second commit is refused: every aggregate has a version token that changes on every write, and
 a commit is stored only if each root it changes is still at the version it read and each new root
@@ -120,6 +127,25 @@ the comments the caller sees, oldest first. A comment may be limited to an audie
 answer another comment, and reference other aggregates. Deleting an aggregate deletes the
 comments on it. See
 xref:howto/discussion.adoc[Comment on a resource without editing it].
+
+*How do I put a resource through review?*::
+Give its class a workflow: a YAML file of states and transitions, each transition with the roles
+that may make it. Mix `UnderWorkflow` (module `rp_workflow`) into the aggregate root, name the
+workflow in the class annotation `workflow`, and pass the file to `install_service` with
+`workflows=`. A new aggregate starts in the initial state; a plain write cannot change the state.
+`collab.transition(iri, to, if_version=...)` moves it, if the caller holds one of the transition's
+roles, and records the move; `collab.transitions(iri)` reads the history. See
+xref:howto/workflow.adoc[Put a resource through review].
+
+*Why does my delete take comments and history with it?*::
+A comment and a transition record are aggregates of their own, each about one aggregate. Every
+delete through the kit (`session.remove`, `UnitOfWork.remove`, the generic `DELETE`,
+`kit.remove_with_files`, each member of a `delete_cascade`) drops them with that aggregate, in the
+same request. A comment that only references the deleted aggregate stays. The history is not an
+audit log that outlives its aggregate. A session opened directly with `open_session` and no
+`dependents` deletes only the aggregate. See xref:howto/discussion.adoc#delete[Delete] and
+xref:howto/workflow.adoc#read-the-history[Read the history]; the request itself is in
+xref:architecture/data-flows.adoc#commit[Committing several aggregates at once].
 
 *How do I make my own IRIs?*::
 Describe their shape as an `IriPolicy`: a template for the tenant, the aggregates, the owned parts
@@ -326,8 +352,6 @@ planned: its PLAN waits for the decisions listed in its `inputs/seed.md`.
 
 * *Detailed test profiling.* The check timings are rough; a profile of the slowest tests would show
   where the 5 minutes of unit and feature tests go.
-* *Unique keys across aggregates.* v1 enforces a unique key only inside one aggregate (the generated
-  validators and shapes); nothing stops two aggregates sharing a key value.
 * *A client library* over the generated TypeScript types and the OpenAPI document.
 * *Events*: an outbox, an event bus and server-sent events, deferred until a need reacts to a
   change in another aggregate.

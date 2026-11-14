@@ -439,6 +439,67 @@ async def test_a_created_book_has_a_minted_iri_a_location_and_a_version(scene) -
     assert response.headers["etag"], "version"
 
 
+DRAFT = "https://example.org/ns/library/workflows/review/draft"
+ACCEPTED = "https://example.org/ns/library/workflows/review/accepted"
+
+
+async def test_a_created_book_starts_in_the_initial_state_of_its_workflow(scene) -> None:  # TC-76
+    response = await scene.http.post(
+        f"{scene.tenant}/books", json=DUNE_BODY, headers=scene.headers("ada")
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["workflow_status"] == DRAFT, "the body shows the state"
+
+
+async def test_a_book_created_in_another_state_is_a_403_and_stores_nothing(scene) -> None:  # TC-77
+    listed = f"{scene.tenant}/books"
+    before = (await scene.http.get(listed, headers=scene.headers("ada"))).json()["total"]
+    response = await scene.http.post(
+        listed, json={**DUNE_BODY, "workflow_status": ACCEPTED}, headers=scene.headers("ada")
+    )
+    assert (response.status_code, problem_of(response).type) == (403, f"{PROBLEMS}forbidden"), (
+        "a refusal: a book is created in the initial state only"
+    )
+    after = (await scene.http.get(listed, headers=scene.headers("ada"))).json()["total"]
+    assert after == before, "nothing was stored"
+
+
+async def test_a_put_cannot_change_the_state_of_a_book(scene) -> None:  # TC-78
+    response = await scene.http.put(
+        scene.book,
+        json={**DUNE_BODY, "workflow_status": ACCEPTED},
+        headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
+    )
+    assert (response.status_code, problem_of(response).type) == (403, f"{PROBLEMS}forbidden"), (
+        "a refusal: only a transition changes the state"
+    )
+    stored = await scene.http.get(scene.book, headers=scene.headers("ada"))
+    assert (stored.json()["workflow_status"], stored.headers["etag"]) == (DRAFT, scene.book_etag), (
+        "the book is in draft and unchanged"
+    )
+
+
+async def test_a_put_without_a_state_keeps_the_state_of_the_book(scene) -> None:  # TC-79
+    response = await scene.http.put(
+        scene.book,
+        json={**DUNE_BODY, "label": "Dune Messiah"},
+        headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
+    )
+    assert (response.status_code, response.json()["workflow_status"]) == (200, DRAFT), response.text
+
+
+@pytest.mark.parametrize(("state", "found"), [(DRAFT, True), (ACCEPTED, False)])
+async def test_a_listing_filters_the_books_by_their_state(scene, state: str, found: bool) -> None:
+    """A review queue over HTTP: the generic listing takes the state's IRI as a filter."""
+    listing = await scene.http.get(
+        f"{scene.tenant}/books", params={"workflow_status": state}, headers=scene.headers("ada")
+    )
+    assert listing.status_code == 200, listing.text
+    states = [item["workflow_status"] for item in listing.json()["items"]]
+    assert bool(states) is found, f"the stored book is in draft, so {state} lists it: {found}"
+    assert set(states) <= {state}, "and only books in the state asked"
+
+
 async def test_a_shelf_with_a_member_of_the_wrong_class_is_a_422_and_stores_nothing(scene) -> None:
     """TC-21: the generic route passes the collection guard; the member is a book, not a shelf."""
     body = {

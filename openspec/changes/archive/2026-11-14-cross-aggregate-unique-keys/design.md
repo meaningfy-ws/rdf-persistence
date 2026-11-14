@@ -297,6 +297,10 @@ FILTER NOT EXISTS {
 - **RISK-1** — the guard is slow on large tenants if Fuseki evaluates the registry before the value
   (low; medium: every keyed commit). Mitigation: value pattern first (PD-7); IT-06 measures a
   keyed add against 1,000 stored books and fails above 0.5 s per commit.
+  **Measured 2026-11-14 (IT-06, local Fuseki container, one run):** mean keyed add 0.049 s, mean
+  add without an ISBN 0.047 s (20 adds each, tenant of 1,000 books): the guard costs about 2 ms
+  per add at this size. On the fake store (rdflib) a commit of 300 keyed roots takes about 18 s,
+  since rdflib evaluates each guard without an index; that is a test-time cost only.
 - **RISK-2** — a consumer's schema already has an unscoped `unique_keys` on a root; generation
   now fails (low; low). Accepted: today such a key silently does nothing; the message says to add
   `rp_unique_scope: tenant` or remove it.
@@ -398,3 +402,39 @@ PD-11 (operator report instead of generation).
   raised with the other key checks (`_scoped_key_reasons`), not an annotation problem naming
   only the key: the spec says "naming the class and the key", and a `UniqueKey` does not know
   its class. `_annotated_elements` yields schema elements only, as before this change.
+- **D-7** (leader, 2026-11-14, before the stage 2 challenge): stage 2 uses the small review set
+  of a MEDIUM appetite: two reviewers (L1+L2, and L3+L4+L5), then the checker. The stage adds
+  374 lines against `develop` (limit 600), and its risk is low: a read-only report, two SPARQL
+  helpers, tests and docs; nothing in the write path changes. A cold reader reads the how-to
+  sections, since a how-to page changed.
+- **D-8** (leader, 2026-11-14; the cold reader of the how-to, accepted): the two how-to sections
+  also say: what to do after a `KeyConflict` (do not retry; change the value or tell the user)
+  and that a clash can also arrive as a plain `Conflict`; that the scope is per type, at the
+  declaration; that numbers compare by exact term only when canonical; how to run the report
+  before the key is enforced (from a script with the new code, the service not yet deployed) and
+  to run it again just before deploying; and that every root but one of a duplicate must change.
+  Not taken: explaining terms the page defines in its earlier steps (bookkeeping, owned part,
+  shape, `kit`, `work`), which the reader was not given.
+- **D-9** (leader, 2026-11-14; stage 2 review, L1+L2 and L3+L4+L5; no critical finding).
+  Correction to D-7: the stage does touch one helper of the commit guard (`_held` is split into
+  `_held` and `_held_around` so the report shares its terms); the text `guard` and `diagnosis`
+  build is the same, and their tests cover it. Accepted, fixed in one pass:
+  - **G-1**: the report is sorted by key name, values, then roots, so two entries with equal
+    lexical forms have a fixed order. `key_values` stay lexical forms (PD-11); the how-to says
+    that terms of one text but another datatype or language are separate entries. One test.
+  - **G-2**: the scope test of the report stores a root of another class with the same value,
+    and its loaded graph holds the value about the root itself where the session allows it.
+  - **G-3**: IT-05 asserts the store is unchanged, as TC-40 does.
+  - **G-4**: `key_duplicates` is a plain loop; `value_variables` says why it calls `count`.
+  - **G-5**: the `key_duplicates` docstring says it checks no access and what it raises; the
+    how-to says "one per set of key values" and that a stored root with two values for a key
+    slot appears once per value and must be brought to one; one test pins that.
+  - **G-6**: `value_patterns` has a test for a raw string predicate.
+  Rejected:
+  - one `_variable` helper for the three copies of the variable-name check in
+    `domain/sparql.py`: two of them are not this change's lines;
+  - refusing an `AggregateKey` with no predicates: `aggregate_keys` cannot produce one (LinkML
+    requires `unique_key_slots`), and the guard already ignores it;
+  - selecting one row per root instead of `GROUP_CONCAT`: no need until a duplicate carries more
+    than IRIs;
+  - removing the `print` of IT-06: the task row asks for the two means to be printed.

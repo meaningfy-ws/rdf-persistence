@@ -36,6 +36,8 @@ classes:
       - comment_audience
       - comment_references
       - replies_to
+      - from_state_iri
+      - to_state_iri
     slot_usage:
       has_target:
         required: true
@@ -80,6 +82,21 @@ slots:
     title: Replies to
     description: The IRI of the comment this one answers.
     slot_uri: rp:repliesTo
+    range: uri
+  from_state_iri:
+    title: From state IRI
+    description: >-
+      The IRI of the state an aggregate left, on the comment a transition posted and on the transition's
+      record. Defined here, so that the workflow module, which imports this one, uses it too. A state
+      name in a workflow file is another thing: it has no IRI.
+    slot_uri: rp:fromState
+    range: uri
+  to_state_iri:
+    title: To state IRI
+    description: >-
+      The IRI of the state an aggregate entered, on the comment a transition posted and on the
+      transition's record. Defined here beside from_state_iri.
+    slot_uri: rp:toState
     range: uri
 
 enums:

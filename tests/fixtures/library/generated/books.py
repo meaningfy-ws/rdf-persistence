@@ -33,7 +33,8 @@ from rdf_persistence import (
     MembershipRule,
     Principal,
     ReferenceCollection,
-    Tracked
+    Tracked,
+    UnderWorkflow
 )
 
 
@@ -75,7 +76,7 @@ class Genre(str, Enum):
 
 
 
-class Book(Tracked, Described, AggregateRoot):
+class Book(UnderWorkflow, Tracked, Described, AggregateRoot):
     "A book held by a library; an aggregate root that owns its chapters."
     isbn: Optional[str] = Field(default=None, title="ISBN", description="The International Standard Book Number of the book.")
     authors: Optional[list[str]] = Field(default=None, title="Authors", description="The names of the book\u0027s authors.")
@@ -91,6 +92,7 @@ class Book(Tracked, Described, AggregateRoot):
     modified: Optional[datetime ] = Field(default=None, title="Modified", description="The time the graph was last committed.")
     creator: Optional[str] = Field(default=None, title="Creator", description="The principal that first committed the graph.")
     contributor: Optional[list[str]] = Field(default=None, title="Contributor", description="A principal that committed a later version of the graph.")
+    workflow_status: Optional[str] = Field(default=None, title="Workflow status", description="The current state of the aggregate, the IRI of a state of its workflow.")
 
 
 class Shelf(ReferenceCollection, Tracked, Described, AggregateRoot):

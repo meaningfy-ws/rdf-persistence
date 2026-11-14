@@ -19,7 +19,7 @@
     },
     {
       "path": "rdf_persistence/generation/checks/hard.py",
-      "sha256": "6dc30691e5e1d61fd17c2f9b592941099afa5e4a6b085da0126ba7ac04987d1c"
+      "sha256": "efaa73692d7098e83d94dc5d9fd5070d7027f39bd1dab37fd607df83b19f12f3"
     },
     {
       "path": "rdf_persistence/generation/checks/rules.py",
@@ -135,7 +135,7 @@
     },
     {
       "path": "rdf_persistence/model/rp.yaml",
-      "sha256": "f2ee1936556962f93ad160f98e6609b676ad6c3a05ef5a6ce48d6bf276136c15"
+      "sha256": "7f7a5c080e7eede1e4ca0c56232b6ddb06b2d6dade6d1e032b34e9350174b290"
     },
     {
       "path": "rdf_persistence/model/rp_access.yaml",
@@ -151,11 +151,11 @@
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "3581bf96ee585dd749880d5978e04a8b581a81eae344b40d157165148de8fb64"
+      "sha256": "c6731e08cb1714955bad199f8faaf435bb942b6f29a4e6ef69d6afb660848c92"
     },
     {
       "path": "rdf_persistence/model/rp_discussion.yaml",
-      "sha256": "4df06399fc556bafd3f97138411884542319462b7aefe2a8984b9cdfb01c0a97"
+      "sha256": "ebb5d774cfffb1f899ce4d1dd93669bf6b6120cf81955e53377c983c78f117ee"
     },
     {
       "path": "rdf_persistence/model/rp_files.yaml",
@@ -170,12 +170,16 @@
       "sha256": "c20223db84ae8373e72e513e3abbd2fe9de1c918be2a7339e67acfe761d536a8"
     },
     {
+      "path": "rdf_persistence/model/rp_workflow.yaml",
+      "sha256": "d96f5bcf96a8645ad27ff121b0c08824a8c5337a3a2742fe8685e9fdd1d542fb"
+    },
+    {
       "path": "rdf_persistence/services/schema.py",
       "sha256": "fcb37313df4dcceb52735a76ef35ff9b627cb17c532324c63d753cdbb26eaa8e"
     },
     {
       "path": "rdf_persistence/services/schema_structure.py",
-      "sha256": "8f43854e771f3487d1e12f01009a7292b97423a1d5195cd104513e4a124f0bf9"
+      "sha256": "993ed716d90379e4215503f317a3954c3e28a34d8f843b76aeaba99a40265d61"
     }
   ],
   "outputs": [
@@ -188,16 +192,20 @@
       "sha256": "606ae580faa789b964142d18d54fbc732f352163e973d896b5de03eabe82836f"
     },
     {
+      "path": "rdf_persistence/domain/generated/TransitionRecord.frame.jsonld",
+      "sha256": "9923b54c8998aecf65d6c462c9ad858eb14ac7d2d31187a1483ec6ee546fa4c3"
+    },
+    {
       "path": "rdf_persistence/domain/generated/__init__.py",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
       "path": "rdf_persistence/domain/generated/context.jsonld",
-      "sha256": "42de9a65966dfc037584db29c012a0bc6d86225431fded98ad8f4703ba49dd74"
+      "sha256": "018786488a1d9de5475b6448437059a43a4cc485b8b057565361668b11ef5c2d"
     },
     {
       "path": "rdf_persistence/domain/generated/rp.py",
-      "sha256": "e32f662d93de9aebddb8a4747cfeb46d709e79bc0efb08237988fd6cf1a5b60d"
+      "sha256": "b06f6882f9d63e8a52913748c48403e2f2a93ae239c11f20b7f41b2b9df58cd9"
     },
     {
       "path": "rdf_persistence/domain/generated/rp_access.py",
@@ -213,11 +221,11 @@
     },
     {
       "path": "rdf_persistence/domain/generated/rp_core.py",
-      "sha256": "9b09ffcaed3e0fe0be2cad0e38454ff9a9c390b61608db7be1260d67fec75882"
+      "sha256": "9a68673fe8eb565cbf7ae0efdf8a29e557fe7546f72a471283e7289c380388a6"
     },
     {
       "path": "rdf_persistence/domain/generated/rp_discussion.py",
-      "sha256": "bdd1d14674aaafbcbf4c031866c3aefe8f87a96fb5dd492d1e5cb4bc2e5c068d"
+      "sha256": "f36ae467f4d5662cd2ffd8a70540cb28fb5bf4e192faaae92c0ac25b94ecb45e"
     },
     {
       "path": "rdf_persistence/domain/generated/rp_files.py",
@@ -232,8 +240,12 @@
       "sha256": "261a831b7664084507ba1278c1081a3ce65dc1325835f51ab14fec7d0188e9a6"
     },
     {
+      "path": "rdf_persistence/domain/generated/rp_workflow.py",
+      "sha256": "3dc1440155d8f5a138b0d6277cd1a6ffe1d09aceaef731680ca9e86a003572e7"
+    },
+    {
       "path": "rdf_persistence/domain/generated/shapes.ttl",
-      "sha256": "675345f80a7dbc6e7f4da2928847eb67552a96adf1e61efb9a60bbd65effb5bd"
+      "sha256": "cf7f11eb81ba4124c7456ff44762d7f777bf2f4c3cf53aea45387ad50b9a7ee0"
     }
   ]
 }

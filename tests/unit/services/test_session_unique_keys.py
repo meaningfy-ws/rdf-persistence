@@ -16,7 +16,7 @@ from rdflib.namespace import XSD
 from rdflib.plugins.sparql import prepareQuery, prepareUpdate
 
 from rdf_persistence.domain.exceptions import Conflict, InvalidBody, KeyConflict
-from rdf_persistence.domain.generated.rp_core import AggregateKey, Principal
+from rdf_persistence.domain.generated.rp_core import AggregateKey, KeyDuplicate, Principal
 from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.domain.sparql import fill, term
@@ -24,7 +24,14 @@ from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import aggregate_keys
 from rdf_persistence.services.session import Session, new_marker, request_text
-from rdf_persistence.services.unique_keys import claims_of, diagnosis, guard, held, same_value
+from rdf_persistence.services.unique_keys import (
+    claims_of,
+    diagnosis,
+    duplicates_query,
+    guard,
+    held,
+    same_value,
+)
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import TENANT, TOY_SCHEMA, book_iri, dune, graph_of, toy_mapper
@@ -354,3 +361,113 @@ async def test_tc27_a_key_conflict_of_a_later_batch_keeps_its_type_and_says_how_
     assert refused.value.keys == ("isbn_key",), "the key"
     assert "1 of 2 batches committed" in str(refused.value), "the message says how far it got"
     assert await stored(session, C), "the first batch is stored"
+
+
+async def seeded(store: FakeStore) -> None:
+    """A and B hold the ISBN "1", C holds "2", written by a session that enforces no key."""
+    async with opened(store, keys=()) as unkeyed:
+        await unkeyed.add_graph(A, book(A, "1"))
+        await unkeyed.add_graph(B, book(B, "1"))
+        await unkeyed.add_graph(C, book(C, "2"))
+
+
+async def test_tc40_the_report_names_the_roots_that_share_a_key_value(store, session):
+    await seeded(store)
+    sent = len(store.sent("update"))
+    assert await session.key_duplicates() == [
+        KeyDuplicate(key_name="isbn_key", root_class=str(BOOK), key_values=["1"], key_roots=[A, B])
+    ], "one group: ISBN 1, roots A and B sorted; C is alone"
+    assert len(store.sent("update")) == sent, "the report changed nothing in the store"
+
+
+async def test_tc41_no_duplicates_is_an_empty_report(session):
+    await session.add_graph(A, book(A, "1"))
+    await session.add_graph(B, book(B, "2"))
+    await session.add_graph(C, book(C))
+    assert await session.key_duplicates() == [], "distinct ISBNs, and no ISBN claims nothing"
+
+
+async def test_tc41_a_session_without_keys_reports_nothing_and_asks_nothing(store):
+    await seeded(store)
+    async with opened(store, keys=()) as unkeyed:
+        queries = len(store.sent("query"))
+        assert await unkeyed.key_duplicates() == [], "no key, no report"
+        assert len(store.sent("query")) == queries, "the store was not asked"
+
+
+async def test_tc42_a_replace_keeping_a_duplicate_is_refused_until_it_changes_the_value(
+    store, session
+):
+    await seeded(store)
+    version_a = (await session.get_graph(A))[2]
+    with pytest.raises(KeyConflict):
+        await session.replace_graph(A, book(A, "1", title="again"), version_a)
+    await session.replace_graph(A, book(A, "4"), version_a)
+    assert await session.key_duplicates() == [], "A left the value, so B holds it alone"
+
+
+async def test_the_report_counts_aggregates_of_this_tenant_and_type_only(store, session):
+    other_book = f"{OTHER_TENANT}/books/{UUID(int=1)}"
+    ttl = f'<{B}> a <{BOOK}> ; <{ISBN}> "1" .'
+    await session.add_graph(A, book(A, "1"))
+    loaded = await session.load_graph(B, ttl.encode(), rdf_format=RdfFormat.TURTLE)
+    await session.add_graph(B, book(B, "2"), [loaded])
+    async with opened(store, tenant=OTHER_TENANT) as elsewhere:
+        await elsewhere.add_graph(other_book, book(other_book, "1"))
+    await session.add_graph(
+        C, [(URIRef(C), RDF.type, URIRef(BIBO + "Periodical")), (URIRef(C), ISBN, Literal("1"))]
+    )
+    assert await session.key_duplicates() == [], (
+        "a loaded graph, another tenant and another class are no holders"
+    )
+
+
+async def test_values_of_one_text_but_another_language_are_separate_entries_in_root_order(store):
+    async with opened(store, keys=()) as unkeyed:
+        for iri, isbn in ((B, Literal("1", lang="en")), (A, Literal("1", lang="en"))) + (
+            (D, Literal("1")),
+            (C, Literal("1")),
+        ):
+            await unkeyed.add_graph(iri, book(iri, isbn))
+    async with opened(store) as keyed:
+        report = await keyed.key_duplicates()
+    assert [(d.key_values, d.key_roots) for d in report] == [(["1"], [A, B]), (["1"], [C, D])], (
+        "two entries that look alike, in the order of their roots"
+    )
+
+
+async def test_a_root_with_two_values_for_a_key_slot_appears_once_per_value(store):
+    async with opened(store, keys=()) as unkeyed:
+        await unkeyed.add_graph(A, book(A, "1", "2"))
+        await unkeyed.add_graph(B, book(B, "1"))
+    async with opened(store) as keyed:
+        report = await keyed.key_duplicates()
+    assert [(d.key_values, d.key_roots) for d in report] == [(["1"], [A, B])], (
+        "A and B share 1; A's 2 is held by A alone"
+    )
+
+
+async def test_the_report_is_ordered_by_key_then_values_with_composite_keys(store):
+    both = AggregateKey(
+        key_name="a_title_isbn_key", root_class=str(BOOK), key_predicates=[str(TITLE), str(ISBN)]
+    )
+    async with opened(store, keys=(*KEYS, both)) as keyed:
+        async with opened(store, keys=()) as unkeyed:
+            for iri, isbn, title in ((A, "9", "t"), (B, "9", "t"), (C, "5", "t"), (D, "5", "t")):
+                await unkeyed.add_graph(iri, book(iri, isbn, title=title))
+        assert [(d.key_name, d.key_values, d.key_roots) for d in await keyed.key_duplicates()] == [
+            ("a_title_isbn_key", ["t", "5"], [C, D]),
+            ("a_title_isbn_key", ["t", "9"], [A, B]),
+            ("isbn_key", ["5"], [C, D]),
+            ("isbn_key", ["9"], [A, B]),
+        ], "by key name, then by the values in key order; the values are lexical forms"
+
+
+def test_the_report_query_parses_and_names_the_registry_and_the_class():
+    registry = DEFAULT_IRIS.registry(TENANT)
+    text = duplicates_query(KEYS[0], registry)
+    prepareQuery(text)
+    assert "HAVING" in text and "GROUP BY" in text, (
+        "a group per value, kept when two roots share it"
+    )
+    assert str(registry) in text and str(BOOK) in text, "it names the registry and the key's class"

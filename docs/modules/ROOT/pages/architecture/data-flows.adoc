@@ -5,7 +5,8 @@
 _Where does the toolkit keep tenants, their data and its own bookkeeping? What happens, step by
 step, when an aggregate is created, read, listed, replaced or deleted, and when a tenant is?_
 
-This page describes the toolkit on `develop` as of 2026-11-10 (after `live-tenant-sweep`).
+This page describes the toolkit on `develop` as of 2026-11-14 (after
+`collaboration-and-reference-collections`).
 
 The examples use the toolkit's own toy library (`tests/toy.py`, `tests/fixtures/library/`):
 settings `base="https://example.org/library/"`, `prefix="lib"`, `tenant_segment="libraries"`,
@@ -280,7 +281,7 @@ flowchart TB
 |yes
 |yes
 
-|Write guards on every add and replace (for a reference collection: its member class, its members, its rule)
+|Write guards on every add and replace (for a reference collection: its member class, its members, its rule; for a class under a workflow: its state)
 |yes
 |yes; a session opened with `open_session` and no `guards` checks nothing
 
@@ -342,7 +343,7 @@ sequenceDiagram
   Note over Cl,F: Read: GET …/books/{id}
   Cl->>G: token, access check (read on B)
   G->>S: get_graph(B)
-  S->>F: SELECT version and tracking, CONSTRUCT B/graph
+  S->>F: CONSTRUCT B/graph (version and tracking are in it)
   S-->>Cl: 200, body without bookkeeping, ETag
   end
   rect rgba(127,127,127,0.08)
@@ -380,7 +381,7 @@ is empty and writes the marker; then the triples and the version and tracking st
 
 |Read
 |`GET …/books/{id}` (`read` on the book)
-|`Session.get_graph`: a `SELECT` of the version and tracking, then a `CONSTRUCT` of `B/graph`.
+|`Session.get_graph`: one `CONSTRUCT` of `B/graph`, which holds the version and tracking too.
 Answered as framed JSON, JSON-LD or Turtle, without bookkeeping and `internal` values.
 |Nothing.
 
@@ -406,8 +407,8 @@ nothing changes; the `ASK` for the new token then fails and the answer is 409.
 |`DELETE …/books/{id}` with `If-Match` (`delete` on the book); `Session.remove`
 |`Session.remove` reads the version (404 if there is none).
 |One update request (<<commit>>), guarded by the version: empty every loaded graph `B` owns, drop
-its registry entries, empty `B/graph`, and drop the comments that target `B` (see <<commit>>,
-_Delete removes dependents_). 409 if the graph is still there. Blobs are *not* deleted: use `remove_with_files`.
+its registry entries, empty `B/graph`, and drop the comments that target `B` and the transition
+records about it (see <<commit>>, _Delete removes dependents_). 409 if the graph is still there. Blobs are *not* deleted: use `remove_with_files`.
 |===
 
 *No change history is kept.* A replace overwrites; only the current version and the tracking
@@ -502,12 +503,24 @@ protect the commit.
 *Write guards.* After these pre-checks and before the change is collected, each `add_graph` and
 `replace_graph` hands the triples to the session's *write guards* (`services/write_guards.py`,
 `WriteGuards.prepare`), which return the triples to write or raise. They are not the guards of the
-request: they are checks in Python that read the store. The one rule so far is for a root whose
+request: they are checks in Python that read the store. There are two rules. The first is for a root whose
 class mixes in `ReferenceCollection`: its member class is a served aggregate root (`InvalidBody`),
 every member is an aggregate IRI of the tenant (`InvalidIri`) and a stored aggregate of that class
 (`InvalidBody`), and its rule is one a listing of that class accepts (`InvalidBody`). A refused
 change is not collected, so nothing of the transaction is sent. A member must therefore be stored
-before the commit that names it. The kit builds the write guards once and gives them to every
+before the commit that names it. The second keeps the state of an aggregate under a workflow
+(`Workflows.keep_state`, `services/workflows.py`), through the class in both directions. With S the
+workflow of the classes of the stored root and N that of the classes written (a set of classes under
+two workflows is refused, `Forbidden`): an add of a root with no N is written as it is, because an
+`adms:status` there is the application's own, and one with an N gets the initial state or may name
+it, nothing else. A replace with neither S nor N is written as it is. With an S the aggregate keeps a
+class under it (N must be S, else `Forbidden`), and a write without a state keeps the stored one
+(none stays none); one that names another state is refused (`Forbidden`) unless the transaction is a
+transition's, which allows the one state it moves to. With no S but an N the aggregate must hold no
+state and write none. When a replace is refused on a version that is no longer the one the caller
+read, the answer is a `Conflict`, not a refusal of the state. A service where no class follows a
+workflow pays nothing; where one does, every guarded replace costs one small read of the stored
+classes and state (an add costs none). The kit builds the write guards once and gives them to every
 session it opens; a session opened with `open_session` and no `guards` checks nothing. A `remove`
 is not guarded.
 
@@ -527,18 +540,131 @@ them to every session it opens when the schema imports `rp_discussion`, and a se
 without them drops only the aggregate. The same pairs also leave a comment's link to its target
 out of `Session.referrer_rows`, so what `referrers` omits and what a remove drops cannot differ.
 The operation starts from the link to the removed root and checks the registry afterwards, so a
-tenant with no comment pays next to nothing for it.
+tenant with no comment pays next to nothing for it. Transition records go with their aggregate
+in the same way: when the schema imports `rp_workflow`, the kit adds the pair of
+`rp:TransitionRecord` and `prov:used`, so a remove drops the records of the removed root and
+`referrers` leaves their link out.
 
 *A presence guard.* Posting a comment (`Discussion.comment`) writes the comment's graph only and
 adds one guard on its target: the target must still have a version when the request is applied
 (`Transaction._require_present`). A comment that loses the race with the removal of its target is
 refused with a `Conflict` whose `iris` names the target, and nothing is stored.
 
+[#private-pieces]
+*The three private pieces, side by side.* A transaction has no public method that takes SPARQL or
+lifts a rule. What the collaboration code needs beyond add, replace and remove is three private
+methods of `Transaction`. Each collects no change and has exactly one caller; a test
+(`tests/unit/services/test_private_transaction_pieces.py`) fails when another module uses one, so
+a new way past a rule has to be argued for.
+
+[cols="2,3,2,3",options="header"]
+|===
+|Piece |What it does |Its one caller |When it fails
+
+|`_require_match(iri, class_iri, conditions)` (match)
+|Adds a guard to the request: `iri` is of exactly that class and holds every condition when the
+request is applied.
+|`ReferenceCollections.delete_cascade` (`services/reference_collections.py`), for each member that only meets the rule
+|`Conflict` with empty `iris`: no version moved, so no root is named.
+
+|`_require_present(iri)` (presence)
+|Adds a guard to the request: the graph of `iri` still has a version when the request is applied.
+Not for a graph the same transaction removes: guards are checked before any operation, so it
+would hold and tell nothing.
+|`Discussion.comment` (`services/discussion.py`), on the comment's target
+|`Conflict` whose `iris` names `iri`.
+
+|`_allow_state(iri, state_iri)` (state allowance)
+|Adds nothing to the request. It lets this transaction's write of `iri` set that one state: the
+transaction hands it to the write guards, which otherwise refuse a state other than the stored one.
+|`Transitions.transition` (`services/transitions.py`)
+|It refuses nothing (only a call after the block ends, `RuntimeError`, like every change); a write
+that names any other state is still refused (`Forbidden`).
+|===
+
+The first two are guards of the request, checked by the store when the request is applied. The third
+is a permit read in Python by the write guards, before the request is built.
+
 *Limits.* One tenant only: nothing spans two tenants, a tenant and the system database, or a
 tenant and the application database. Files
 are not part of it: a blob keeps its write order and its sweep (<<files>>). Nothing is read inside
 the request; the guards are the version tokens the caller read. A store must apply a multi-operation
 update as one transaction (Fuseki does); the store conformance suite checks it.
+
+[#transition]
+== Moving an aggregate through its workflow
+
+_What is written when a book changes state?_ A transition (`Collaboration.transition`, handed to
+`Transitions.transition` in `services/transitions.py`) is the one write that changes the state of
+an aggregate under a workflow. It has no route. It is one transaction of up to three changes, so
+the state, the record of the move and the comment are stored together or not at all. The caller's
+view is in xref:howto/workflow.adoc#make-a-transition[Make a transition]; who may make the move
+is in xref:architecture/access-control.adoc#collaboration[access control].
+
+The example: a librarian moves book `B`, read at `v7` in the state `in_review`, to `accepted`,
+with a comment.
+
+[mermaid]
+....
+sequenceDiagram
+  participant T as Transitions
+  participant S as Session (Transaction)
+  participant W as Write guards
+  participant F as Fuseki (lib-t-…)
+  T->>T: access: read on B, no Prohibition of modify or annotate
+  T->>S: get_graph(B)
+  S->>F: CONSTRUCT B/graph
+  T->>T: B at v7? workflow of B's classes, current state,<br/>edge to accepted, the caller's role, comment if required
+  T->>S: _allow_state(B, …/review/accepted)
+  T->>S: replace_graph(B, triples with the new state, v7)
+  S->>F: SELECT version and tracking of B
+  S->>W: prepare(B, triples, allowed state)
+  W->>F: SELECT the stored classes and state of B
+  W-->>S: triples (the new state is the allowed one)
+  S->>F: SELECT the loaded graphs B owns
+  T->>S: add_graph(R, the record), add_graph(C, the comment)
+  S->>F: one request of joined operations
+  Note over F: 1 guard: B at v7, R/graph empty, C/graph empty → write the rp:CommitMarker<br/>2 the marked operations of B, R and C<br/>3 release: delete the marker
+  S->>F: ASK B, R and C at their new tokens?
+  alt true
+    T-->>T: the new version of B
+  else false
+    S-->>T: the diagnosis of a commit: Conflict when nothing was stored
+  end
+....
+
+*Before the request.* The access checks come first, then one read of `B`; the replace reads three
+more times (version and tracking, the stored classes and state, the loaded graphs `B` owns). With
+the check after the request that is five reads and one write (PD-32). A version other than
+the one the caller read is a `Conflict` at once, before anything is said about the workflow. The
+workflow is found from the classes of the stored root; the current state is the stored
+`adms:status`, or the initial state when the aggregate holds none (for example one stored before
+its class named a workflow).
+
+*The changes.*
+
+. *Replace `B`* at `v7`: its stored triples with `adms:status` set to the IRI of the new state
+  (`<workflow id>/accepted`). `Transaction._allow_state` was called first, so the write guards
+  accept this one state (<<commit>>, _Write guards_ and
+  <<private-pieces,the three private pieces>>).
+. *Add the record `R`*, a `rp:TransitionRecord` minted by the IRI policy with the path
+  `rp-transitions`: the aggregate
+  (`prov:used`), the state left and the state entered (`rp:fromState`, `rp:toState`), the time
+  (`prov:startedAtTime`, the session's clock), who (`prov:wasAssociatedWith`, the session's
+  principal) and, with a comment, its IRI (`rp:transitionComment`).
+. *Add the comment `C`*, only when a comment that is not blank is given: an `oa:Annotation` with
+  the path `rp-comments` that targets `B`, with the text, the motivation `oa:commenting`, the two
+  states and no audience, so everyone who reads `B` sees it in the thread.
+
+*The request* is the one of <<commit>>: the guard operation holds "`B` at `v7`" and "`R/graph`
+and `C/graph` are empty", then the marked operations, then the release, then the `ASK`. The state
+allowance is not part of it. Two transitions of one book at the same version cannot both land: the
+second finds no `v7`. The record and the comment are aggregates of their own, so `B`'s graph holds
+only its new state, and no route serves either (`rp_writes: toolkit`).
+
+*Reading it back.* `Collaboration.transitions(iri)` reads the records with `Session.graphs_with`
+(every registered aggregate whose root has `prov:used` the aggregate), oldest first. A delete of
+`B` drops them with it (<<commit>>, _Delete removes dependents_).
 
 [#files]
 == Files and loaded graphs

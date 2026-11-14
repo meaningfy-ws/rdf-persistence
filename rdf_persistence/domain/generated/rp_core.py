@@ -84,6 +84,8 @@ class RpAnnotation(str, Enum):
     "Class annotation, `true` on an owned value class whose instances need no label of their own."
     RP_WRITES = "rp_writes"
     "Class annotation (see WritesKind). `service` marks an aggregate root whose generic create, replace and delete are not served; the consumer writes it through a session. A root that mixes in StoredFile is service-written without it. `toolkit` marks a root the toolkit writes and reads itself, which no route serves."
+    WORKFLOW = "workflow"
+    "Class annotation on an aggregate root: the name of the workflow its instances follow, which follows the pattern of the url_segment slot; the root includes UnderWorkflow. A subclass inherits it."
     BOOKKEEPING = "bookkeeping"
     "Slot annotation, `true` when the session writes the slot about a graph (its version, who created or contributed to it, when); closed shapes ignore the statement."
     RP_UNIQUE_SCOPE = "rp_unique_scope"

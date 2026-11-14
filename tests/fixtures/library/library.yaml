@@ -16,3 +16,4 @@ imports:
   - templates
   - library_access
   - rdf_persistence/model/rp_discussion
+  - rdf_persistence/model/rp_workflow

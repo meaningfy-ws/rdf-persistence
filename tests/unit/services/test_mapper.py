@@ -1,10 +1,12 @@
 """The mapper between generated objects and the graph of an aggregate (PD-7, PD-7a, PD-8a, PD-10)."""
 
 import json
+from datetime import UTC, datetime
 from functools import cache
 from uuid import UUID
 
 import pytest
+import yaml
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from pydantic import BaseModel
@@ -14,6 +16,7 @@ from rdflib.compare import graph_diff, isomorphic
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
 from rdf_persistence.domain.generated.rp_discussion import Comment, Motivation
+from rdf_persistence.domain.generated.rp_workflow import TransitionRecord, Workflow
 from rdf_persistence.domain.iris import (
     DEFAULT_IRIS,
     graph_iri,
@@ -258,6 +261,92 @@ def test_a_comment_with_every_slot_round_trips_typed_as_a_web_annotation():
     assert len(list(graph.objects(URIRef(iri), URIRef(f"{RP}audience")))) == 2
     back = mapper.from_graph(Comment, iri, graph, graph_iri(iri))
     assert untracked(back) == untracked(comment), "the same comment comes back"
+
+
+REVIEW = "https://example.org/ns/library/workflows/review"
+
+
+def test_a_comment_names_the_states_of_the_transition_that_posted_it():
+    """PD-16: the two state slots are optional slots of the comment, stored as IRIs."""
+    iri = f"{TENANT}/rp-comments/{UUID(int=3)}"
+    comment = Comment(
+        id=iri,
+        has_target=book_iri(1),
+        body_value="Not ready.",
+        motivated_by=Motivation.COMMENTING,
+        from_state_iri=f"{REVIEW}/in_review",
+        to_state_iri=f"{REVIEW}/draft",
+    )
+    mapper = toy_mapper()
+    graph = mapper.to_graph(comment)
+    assert (URIRef(iri), URIRef(f"{RP}fromState"), URIRef(f"{REVIEW}/in_review")) in graph, (
+        "the state the comment is made in"
+    )
+    assert (URIRef(iri), URIRef(f"{RP}toState"), URIRef(f"{REVIEW}/draft")) in graph, (
+        "the state it is made towards"
+    )
+    back = mapper.from_graph(Comment, iri, graph, graph_iri(iri))
+    assert untracked(back) == untracked(comment), "the same comment comes back"
+
+
+def test_a_transition_record_with_every_slot_round_trips_typed_rp_transition_record():
+    """The stored type is rp:TransitionRecord; prov:Activity is in the generated OWL and shapes only."""
+    iri = f"{TENANT}/rp-transitions/{UUID(int=1)}"
+    record = TransitionRecord(
+        id=iri,
+        used_resource=book_iri(1),
+        from_state_iri=f"{REVIEW}/draft",
+        to_state_iri=f"{REVIEW}/in_review",
+        started_at_time=datetime(2026, 11, 14, 9, 30, tzinfo=UTC),
+        transition_comment=f"{TENANT}/rp-comments/{UUID(int=2)}",
+        was_associated_with=[ADA],
+    )
+    mapper = toy_mapper()
+    graph = mapper.to_graph(record)
+    assert (URIRef(iri), RDF.type, URIRef(f"{RP}TransitionRecord")) in graph, "the stored type"
+    assert (URIRef(iri), RDF.type, URIRef(f"{PROV}Activity")) not in graph, "not the superclass"
+    assert (URIRef(iri), URIRef(f"{PROV}used"), URIRef(book_iri(1))) in graph, "the aggregate"
+    assert (URIRef(iri), URIRef(f"{PROV}wasAssociatedWith"), URIRef(ADA)) in graph, "the agent"
+    assert (
+        URIRef(iri),
+        URIRef(f"{RP}transitionComment"),
+        URIRef(record.transition_comment),
+    ) in graph, "the comment"
+    assert (URIRef(iri), URIRef(f"{RP}fromState"), URIRef(f"{REVIEW}/draft")) in graph, "from"
+    assert (URIRef(iri), URIRef(f"{RP}toState"), URIRef(f"{REVIEW}/in_review")) in graph, "to"
+    assert (URIRef(iri), URIRef(f"{PROV}startedAtTime"), None) in graph, "the time"
+    back = mapper.from_graph(TransitionRecord, iri, graph, graph_iri(iri))
+    assert untracked(back) == untracked(record), "the same record comes back"
+
+
+def test_a_book_under_a_workflow_keeps_its_state_as_an_adms_status_iri():
+    iri = book_iri(1)
+    book = dune(iri, workflow_status=f"{REVIEW}/draft")
+    mapper = toy_mapper()
+    graph = mapper.to_graph(book)
+    status = URIRef("http://www.w3.org/ns/adms#status")
+    assert (URIRef(iri), status, URIRef(f"{REVIEW}/draft")) in graph, "an IRI, not a literal"
+    back = mapper.from_graph(Book, iri, graph, graph_iri(iri))
+    assert canonical(back) == canonical(untracked(book)), "the same book comes back"
+
+
+def test_the_workflow_file_of_the_toy_validates_into_the_generated_model():
+    """PD-17: the file is the model's own shape; the loader itself is task 4.2."""
+    text = (TOY_SCHEMA.parent / "review.workflow.yaml").read_text(encoding="utf-8")
+    workflow = Workflow.model_validate(yaml.safe_load(text))
+    assert workflow.id == REVIEW, "the identifier"
+    assert workflow.workflow_name == "review", "the name"
+    assert workflow.workflow_states == ["draft", "in_review", "accepted"], "the states"
+    assert workflow.initial_state == "draft", "the initial state"
+    assert len(workflow.workflow_transitions) == 3, "the transitions"
+    back = workflow.workflow_transitions[2]
+    assert (back.from_state, back.to_state, back.transition_roles) == (
+        "in_review",
+        "draft",
+        ["librarian"],
+    ), "the last one goes back to draft for a librarian"
+    assert back.comment_required is True, "and needs a comment"
+    assert workflow.workflow_transitions[0].comment_required is False, "the first does not"
 
 
 def test_a_grant_assignee_that_is_an_iri_string_is_written_and_read_as_an_iri():
