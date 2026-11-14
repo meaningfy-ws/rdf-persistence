@@ -15,7 +15,7 @@ from collections.abc import AsyncIterator, Callable, Iterable, Sequence
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Protocol
+from typing import Protocol, cast
 
 from pydantic import BaseModel
 from rdflib import RDF, BNode, Graph, Literal, URIRef
@@ -94,6 +94,7 @@ SELECT ?version ?created ?creator ?contributor WHERE {
 }
 """
 READ_GRAPH = "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH $graph { ?s ?p ?o } }"
+READ_OBJECTS = "SELECT ?o WHERE { GRAPH $graph { $iri $predicate ?o } }"
 READ_NAMED_KEYS = (
     "SELECT DISTINCT ?key WHERE { GRAPH ?g { ?s $p_file_key ?key } FILTER (?key IN ($keys)) }"
 )
@@ -435,11 +436,17 @@ def remove_parts(
 class WriteGuard(Protocol):
     """What a transaction asks before it collects an add or a replace (PD-6): the triples to write.
 
-    ``stored`` is ``None`` for an add, the stored tracking for a replace. It raises to refuse.
+    ``stored`` is ``None`` for an add, the stored tracking for a replace. ``allowed_state`` is the one
+    state the transaction allows this root to take (PD-19), or ``None``. It raises to refuse.
     """
 
     async def prepare(
-        self, session: "Session", iri: str, triples: list[Triple], stored: Tracked | None
+        self,
+        session: "Session",
+        iri: str,
+        triples: list[Triple],
+        stored: Tracked | None,
+        allowed_state: str | None,
     ) -> list[Triple]: ...
 
 
@@ -615,6 +622,21 @@ class Session:
             )
             for r in rows
         ]
+
+    async def objects_of(self, iri: str, predicate: URIRef) -> list[URIRef | Literal | BNode]:
+        """What the aggregate ``iri`` states with ``predicate`` of its root, sorted; none if it is not stored.
+
+        Raises:
+            DatabaseGone: The tenant database does not exist.
+        """
+        text = fill(
+            READ_OBJECTS,
+            graph=term(self._graph(iri)),
+            iri=term(URIRef(iri)),
+            predicate=term(predicate),
+        )
+        rows = await self._store.query(self._database, text)
+        return sorted(cast(URIRef | Literal | BNode, r.o) for r in rows if isinstance(r, ResultRow))
 
     def not_aggregates(self, iris: Iterable[str]) -> list[str]:
         """The ``iris`` the policy does not mint for an aggregate of this tenant."""
@@ -899,6 +921,7 @@ class Transaction:
         self._wrote: dict[URIRef, str] = {}
         self._required: dict[URIRef, str] = {}  # graph -> root of each ``_require_present`` (PD-25)
         self._key_claims: list[KeyClaim] = []  # what the changes claim of the session's keys (PD-6)
+        self._allowed: dict[str, str] = {}  # root -> the one state this transaction may set (PD-19)
 
     def _end(self) -> None:
         """Refuse every later change: the block is over, so a change would be dropped."""
@@ -962,7 +985,9 @@ class Transaction:
         await session._check_commit(iri, loaded_graphs)
         triples = list(triples)
         if session._write_guards is not None:
-            triples = await session._write_guards.prepare(session, iri, triples, None)
+            triples = await session._write_guards.prepare(
+                session, iri, triples, None, self._allowed.get(str(iri))
+            )
         key_claims = claims_of(session._keys, iri, triples)
         version = str(uuid.uuid4())
         tracking = Tracked(created=session._clock(), creator=session._principal.id)
@@ -993,7 +1018,9 @@ class Transaction:
         _, stored = await session._stored(graph)
         triples = list(triples)
         if session._write_guards is not None:
-            triples = await session._write_guards.prepare(session, iri, triples, stored)
+            triples = await session._write_guards.prepare(
+                session, iri, triples, stored, self._allowed.get(str(iri))
+            )
         key_claims = claims_of(session._keys, iri, triples)
         if loaded_graphs is None:
             loaded_graphs = await session._registered_loaded(iri)
@@ -1050,6 +1077,13 @@ class Transaction:
             fragment(_PRESENT, graph=term(graph), p_version=term(v.VERSION), n=number)
         )
         self._required[graph] = str(iri)
+
+    def _allow_state(self, iri: str, state_iri: str) -> None:
+        """Let this transaction set the state of the aggregate ``iri`` to ``state_iri``: the one
+        thing a plain write may not do, which only a transition does (PD-15, PD-19). It collects
+        no change."""
+        self._require_open()
+        self._allowed[str(iri)] = str(state_iri)
 
     def _require_match(self, iri: str, class_iri: str, conditions: Sequence[Condition]) -> None:
         """Guard the commit on ``iri`` being of exactly ``class_iri`` and holding every condition

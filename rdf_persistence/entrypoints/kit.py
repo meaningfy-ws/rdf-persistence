@@ -44,6 +44,7 @@ from rdf_persistence.services.session import Session
 from rdf_persistence.services.store import Store, ToolkitStore
 from rdf_persistence.services.tenancy import GrantValidator, RootValidator, Tenancy
 from rdf_persistence.services.tokens import TokenVerifier
+from rdf_persistence.services.workflows import Workflows, load_workflow
 from rdf_persistence.services.write_guards import WriteGuards
 
 
@@ -69,8 +70,13 @@ class ServiceKit:
         id_source: IdSource = draw_id,
         grant_validators: Sequence[GrantValidator] = (),
         root_validators: Sequence[RootValidator] = (),
+        workflows: Sequence[Path] = (),
     ) -> None:
-        """Build the kit; ``prefix``, ``id_source`` and the validators are ``install_service``'s arguments of those names."""
+        """Build the kit; ``prefix``, ``id_source``, the validators and ``workflows`` are ``install_service``'s arguments of those names.
+
+        Raises:
+            InvalidWorkflow: A workflow file is not valid, or a class names a workflow no file defines.
+        """
         view = load_schema(schema)
         self.view = view
         self.listings = Listings(view)
@@ -98,6 +104,7 @@ class ServiceKit:
         )
         mapper = Mapper(view, models)
         self.mapper, self.models = mapper, models
+        self.workflows = Workflows([load_workflow(path) for path in workflows], view, self.rules)
         access_class = cast(type[TenantAccess], models.named(tenant_access_class(view).name))
         self.tenancy = Tenancy(
             self.store,
@@ -108,7 +115,7 @@ class ServiceKit:
             access_class=access_class,
             iris=self.iris,
             listings=self.listings,
-            guards=WriteGuards(mapper, models, self.listings),
+            guards=WriteGuards(mapper, models, self.listings, self.workflows),
             grant_validators=grant_validators,
             root_validators=root_validators,
             dependents=dependents(view),

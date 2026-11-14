@@ -210,7 +210,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-68 | subclass of an annotated root | no problem (inherited) |
 | TC-68a | the tenant root class annotated `workflow: review` | hard problem `WORKFLOW` |
 
-- [ ] 4.2 `services/workflows.py` (PD-17), `InvalidWorkflow`, `ServiceKit(workflows=)`,
+- [x] 4.2 `services/workflows.py` (PD-17), `InvalidWorkflow`, `ServiceKit(workflows=)`,
   `install_service(workflows=)`. Test first in `tests/unit/services/test_workflows.py`.
 
 | ID | Input | Expected |
@@ -223,7 +223,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-74 | `Book` annotated, no workflow files given to the kit | kit construction raises `InvalidWorkflow` |
 | TC-75 | not YAML; a list instead of a mapping; `workflow_states` missing | `InvalidWorkflow` naming the file |
 
-- [ ] 4.3 The workflow rule of `WriteGuards` (PD-19). Test first in
+- [x] 4.3 The workflow rule of `WriteGuards` (PD-19). Test first in
   `tests/unit/services/test_write_guards.py`.
 
 | ID | Input | Expected |

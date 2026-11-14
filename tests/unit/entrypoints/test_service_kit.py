@@ -27,7 +27,7 @@ from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.services.vocabulary import ANNOTATION, HAS_TARGET
 from rdf_persistence.testkit import FakeStore
 from tests.fixtures.library import generated
-from tests.toy import ROLES, SETTINGS, TOY_SCHEMA
+from tests.toy import REVIEW_WORKFLOW, ROLES, SETTINGS, TOY_SCHEMA
 from tests.toy_service import CONSUMER_POLICY, DUNE_BODY, TENANT_BODY, ToyService, principal_of
 
 PROBLEMS = f"{SETTINGS.base}problems/"
@@ -245,6 +245,7 @@ def installed(app: FastAPI, toy: ToyService, **changes) -> FastAPI:
         "verifier": toy.kit.verifier,
         "rules": toy.kit.rules,
         "settings": toy.settings,
+        "workflows": [REVIEW_WORKFLOW],
     }
     install_service(app, **{**wiring, **changes})
     return app

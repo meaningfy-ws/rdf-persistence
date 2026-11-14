@@ -44,6 +44,7 @@ TENANT = "https://example.org/libraries/6f1c0c1e"
 ADA = "https://example.org/people/ada"
 BOB = "https://example.org/people/bob"
 ROLES = Path(__file__).parent / "fixtures" / "library" / "library_roles.yaml"
+REVIEW_WORKFLOW = Path(__file__).parent / "fixtures" / "library" / "review.workflow.yaml"
 DATABASE = "acme-t-" + "0" * 32
 MODULES = (
     books,
