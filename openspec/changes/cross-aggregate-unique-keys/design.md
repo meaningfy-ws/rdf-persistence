@@ -402,3 +402,8 @@ PD-11 (operator report instead of generation).
   raised with the other key checks (`_scoped_key_reasons`), not an annotation problem naming
   only the key: the spec says "naming the class and the key", and a `UniqueKey` does not know
   its class. `_annotated_elements` yields schema elements only, as before this change.
+- **D-7** (leader, 2026-11-14, before the stage 2 challenge): stage 2 uses the small review set
+  of a MEDIUM appetite: two reviewers (L1+L2, and L3+L4+L5), then the checker. The stage adds
+  374 lines against `develop` (limit 600), and its risk is low: a read-only report, two SPARQL
+  helpers, tests and docs; nothing in the write path changes. A cold reader reads the how-to
+  sections, since a how-to page changed.
