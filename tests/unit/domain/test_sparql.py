@@ -238,6 +238,11 @@ def test_match_patterns_refuse_a_raw_string():
         match_patterns("root", [(URIRef(f"{EX}p"), "raw")])  # type: ignore[list-item]
 
 
+def test_value_patterns_refuse_a_raw_string():
+    with pytest.raises(SparqlError):
+        value_patterns("root", ["http://example.org/p"])  # type: ignore[list-item]
+
+
 def test_value_patterns_and_variables_name_one_variable_per_predicate():
     predicates = [URIRef(f"{EX}p"), URIRef(f"{EX}q")]
     patterns = value_patterns("root", predicates)

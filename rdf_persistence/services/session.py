@@ -841,16 +841,19 @@ class Session:
         """The key values two aggregates of the tenant or more hold now, for the keys of the session.
 
         Read-only (PD-11): an operator runs it after declaring a key and before deploying it. Ordered
-        by key name, then values; a session without keys reports nothing and asks nothing."""
-        found = [
-            duplicate
-            for key in self._keys
-            for duplicate in duplicates(
-                key,
-                await self._store.query(self._database, duplicates_query(key, self._registry)),
-            )
-        ]
-        return sorted(found, key=lambda d: (d.key_name, d.key_values))
+        by key name, then values, then roots; a session without keys reports nothing and asks nothing.
+
+        The session checks no access: every aggregate counts, whatever the principal may see; it is
+        an operator's tool.
+
+        Raises:
+            DatabaseGone: The tenant database does not exist.
+        """
+        found: list[KeyDuplicate] = []
+        for key in self._keys:
+            result = await self._store.query(self._database, duplicates_query(key, self._registry))
+            found.extend(duplicates(key, result))
+        return sorted(found, key=lambda d: (d.key_name, d.key_values, d.key_roots))
 
     async def remove(self, iri: str, if_version: str) -> None:
         """Delete the aggregate's graph, loaded graphs and registry entries if it still has ``if_version``.

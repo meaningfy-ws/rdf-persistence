@@ -861,9 +861,12 @@ changing the ISBN passes. So order the steps:
 . Declare the key and regenerate (`make generate`). Do not deploy the service yet.
 . With the new code, from a script or a shell beside the running service, call
   `key_duplicates()` on a session of every tenant (below). It only reads, and it counts every
-  aggregate whatever the principal may see. It returns a list of `KeyDuplicate`, one per value
-  held by two aggregates or more: `key_name`, `root_class`, `key_values` (the lexical forms, in the
-  key's slot order) and `key_roots` (the roots, sorted).
+  aggregate whatever the principal may see. It returns a list of `KeyDuplicate`, one per set of
+  key values held by two aggregates or more: `key_name`, `root_class`, `key_values` (the lexical
+  forms, in the key's slot order) and `key_roots` (the roots, sorted). Values of the same text but
+  another datatype or language are different values, so they are separate entries that look
+  alike. A stored root that has two values for a key slot appears once per value, and must be
+  brought to one value.
 . Fix each duplicate: change the value of, or remove, every root but one.
 . Run the report once more, since the service still running accepts new duplicates; when it is
   empty, deploy.

@@ -173,9 +173,13 @@ async def test_it05_the_report_names_the_roots_that_share_a_key_value(store, dat
     unkeyed = session_of(store, database, keys=())
     for iri, isbn in ((A, "1"), (B, "1"), (alone, "2")):
         await unkeyed.add_graph(iri, book(iri, isbn))
+    every_quad = "SELECT ?g ?s ?p ?o WHERE { GRAPH ?g { ?s ?p ?o } }"
+    before = len(list(await store.query(database, every_quad)))
     assert await session.key_duplicates() == [
         KeyDuplicate(key_name="isbn_key", root_class=str(BOOK), key_values=["1"], key_roots=[A, B])
     ], "one group: ISBN 1, roots A and B sorted; C is alone"
+    after = len(list(await store.query(database, every_quad)))
+    assert after == before, "the report changed nothing in the store"
 
 
 BOOKS, BATCH = 1000, 100

@@ -408,13 +408,43 @@ async def test_tc42_a_replace_keeping_a_duplicate_is_refused_until_it_changes_th
 
 async def test_the_report_counts_aggregates_of_this_tenant_and_type_only(store, session):
     other_book = f"{OTHER_TENANT}/books/{UUID(int=1)}"
-    ttl = f'<https://example.org/x> a <{BOOK}> ; <{ISBN}> "1" .'
+    ttl = f'<{B}> a <{BOOK}> ; <{ISBN}> "1" .'
     await session.add_graph(A, book(A, "1"))
     loaded = await session.load_graph(B, ttl.encode(), rdf_format=RdfFormat.TURTLE)
     await session.add_graph(B, book(B, "2"), [loaded])
     async with opened(store, tenant=OTHER_TENANT) as elsewhere:
         await elsewhere.add_graph(other_book, book(other_book, "1"))
-    assert await session.key_duplicates() == [], "a loaded graph and another tenant are no holders"
+    await session.add_graph(
+        C, [(URIRef(C), RDF.type, URIRef(BIBO + "Periodical")), (URIRef(C), ISBN, Literal("1"))]
+    )
+    assert await session.key_duplicates() == [], (
+        "a loaded graph, another tenant and another class are no holders"
+    )
+
+
+async def test_values_of_one_text_but_another_language_are_separate_entries_in_root_order(store):
+    async with opened(store, keys=()) as unkeyed:
+        for iri, isbn in ((B, Literal("1", lang="en")), (A, Literal("1", lang="en"))) + (
+            (D, Literal("1")),
+            (C, Literal("1")),
+        ):
+            await unkeyed.add_graph(iri, book(iri, isbn))
+    async with opened(store) as keyed:
+        report = await keyed.key_duplicates()
+    assert [(d.key_values, d.key_roots) for d in report] == [(["1"], [A, B]), (["1"], [C, D])], (
+        "two entries that look alike, in the order of their roots"
+    )
+
+
+async def test_a_root_with_two_values_for_a_key_slot_appears_once_per_value(store):
+    async with opened(store, keys=()) as unkeyed:
+        await unkeyed.add_graph(A, book(A, "1", "2"))
+        await unkeyed.add_graph(B, book(B, "1"))
+    async with opened(store) as keyed:
+        report = await keyed.key_duplicates()
+    assert [(d.key_values, d.key_roots) for d in report] == [(["1"], [A, B])], (
+        "A and B share 1; A's 2 is held by A alone"
+    )
 
 
 async def test_the_report_is_ordered_by_key_then_values_with_composite_keys(store):

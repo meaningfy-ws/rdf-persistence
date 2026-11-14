@@ -147,6 +147,7 @@ def value_patterns(subject: str, predicates: Sequence[URIRef]) -> SparqlTerm:
 
 def value_variables(number: int) -> SparqlTerm:
     """Render the variables ``?v0 ?v1 …`` that ``value_patterns`` binds, ``number`` of them."""
+    # count() refuses a bool, a negative or a non-int
     return SparqlTerm(" ".join(f"?v{n}" for n in range(int(count(number)))))
 
 
