@@ -251,6 +251,26 @@ class AccessRules:
         if action not in permitted and not (action == Action.READ and permitted & _IMPLY_READ):
             raise Forbidden(f"{action.value} is not permitted")
 
+    def require_application(self, caller: VerifiedCaller, action: Action) -> None:
+        """Raise unless the caller's global roles permit ``action`` on the application's data (PD-9).
+
+        The application is no tenant: it has no access record, so no grant and no prohibition is read.
+        What the roles defined at level ``system`` permit is what the caller may do; any permitted
+        action implies ``read``.
+
+        Raises:
+            Forbidden: The global roles permit no ``action`` here. Never ``NotFound``: that the
+                application exists is no secret.
+        """
+        permitted = set().union(
+            *(
+                self._permits.get((RoleLevel.SYSTEM, role), set())
+                for role in caller.global_roles or []
+            )
+        )
+        if action not in permitted and not (action == Action.READ and permitted & _IMPLY_READ):
+            raise Forbidden(f"{action.value} is not permitted on application data")
+
     def may(
         self, caller: VerifiedCaller, access: CallerAccess, target_iri: str, action: Action
     ) -> bool:

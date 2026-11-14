@@ -108,7 +108,7 @@ and `make clean-code` unless it names others.
 
 ## 4. Access, the kit and the start-up
 
-- [ ] 4.1 PD-9, PD-10, PD-11: `AccessRules.require_application`; `ServiceKit.require_application`,
+- [x] 4.1 PD-9, PD-10, PD-11: `AccessRules.require_application`; `ServiceKit.require_application`,
   `application_session` and `application_iri`; the `ensure_application_database` call in
   `entrypoints/service.py`; the manifest comparison in `services/tenant_dump.py`;
   `tests/unit/test_public_api.py` if a public name is added; the existing tests that pin the

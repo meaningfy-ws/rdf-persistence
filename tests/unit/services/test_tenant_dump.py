@@ -428,6 +428,45 @@ async def test_tc18_another_iri_policy_is_refused_naming_the_field():
     ), "the reason names the differing field"
 
 
+async def test_tc50_a_dump_whose_manifest_lacks_the_application_template_restores_on_the_default_policy(
+    world,
+):
+    def as_an_older_service_wrote_it(payload: bytes) -> bytes:
+        manifest = TenantDump.model_validate_json(payload)
+        return manifest.model_dump_json(exclude={"iri_policy": {"application_template"}}).encode()
+
+    data = edited(await dumped(world), MANIFEST, as_an_older_service_wrote_it)
+    assert "application_template" not in dict(unpack(data))[MANIFEST].decode(), "the old shape"
+    summary = await restored(world, data)
+    assert summary.id != world.tenant, "restored as a new tenant"
+
+
+async def test_tc50_a_manifest_that_names_another_application_template_is_still_refused(world):
+    def renamed(payload: bytes) -> bytes:
+        manifest = TenantDump.model_validate_json(payload)
+        manifest.iri_policy.application_template = "{base}application"
+        return manifest.model_dump_json().encode()
+
+    reason = await refused(world, edited(await dumped(world), MANIFEST, renamed))
+    assert "application_template" in reason, "the reason names the differing field"
+
+
+async def test_tc49_a_triple_in_a_tenant_graph_that_names_an_application_aggregate_survives_a_restore(
+    world,
+):
+    template = str(world.iris.mint_aggregate(str(world.iris.application), "template", "templates"))
+    book = str(world.iris.mint_aggregate(world.tenant, BOOK_TYPE, "books"))
+    cites = (URIRef(book), SKOS.related, URIRef(template))
+    async with world.session() as opened:
+        await opened.add_graph(book, [*toy_mapper().to_triples(dune(book)), cites])
+    new = (await restored(world, await dumped(world))).id
+    async with world.tenancy.tenant_session(new, RESTORER) as opened:
+        graph, _, _ = await opened.get_graph(moved(world, book, new))
+    assert list(graph.objects(URIRef(moved(world, book, new)), SKOS.related)) == [
+        URIRef(template)
+    ], "the restored book names the same application aggregate"
+
+
 async def test_a_policy_that_glues_the_tenant_id_to_a_letter_is_refused_naming_the_template():
     glued = ServiceSettings(
         base=SETTINGS.base,

@@ -7,6 +7,9 @@ from pathlib import Path
 from types import ModuleType
 from typing import BinaryIO, cast
 
+from pydantic import BaseModel
+
+from rdf_persistence.domain.exceptions import InvalidIri
 from rdf_persistence.domain.generated import (
     rp_access,
     rp_collections,
@@ -15,10 +18,15 @@ from rdf_persistence.domain.generated import (
     rp_tenancy,
 )
 from rdf_persistence.domain.generated.rp_access import Action
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_tenancy import TenantAccess, TenantSweepReport
+from rdf_persistence.domain.generated.rp_core import DatabaseKind, Principal, RpAnnotation
+from rdf_persistence.domain.generated.rp_tenancy import (
+    TenantAccess,
+    TenantState,
+    TenantSweepReport,
+)
 from rdf_persistence.domain.generated.service.rp_service import (
     Authorised,
+    CallerAccess,
     ServiceSettings,
     TenantDump,
     TenantSummary,
@@ -38,7 +46,13 @@ from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, generated_models_of
 from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import iri_types, tenant_access_class
+from rdf_persistence.services.schema_structure import (
+    annotation_text,
+    iri_type_of,
+    iri_types,
+    served_roots,
+    tenant_access_class,
+)
 from rdf_persistence.services.session import Session
 from rdf_persistence.services.store import Store, ToolkitStore
 from rdf_persistence.services.tenancy import GrantValidator, RootValidator, Tenancy
@@ -291,3 +305,42 @@ class ServiceKit:
     def session(self, tenant: str, principal: str) -> AbstractAsyncContextManager[Session]:
         """A session on the tenant's database for ``principal``."""
         return self.tenancy.tenant_session(tenant, Principal(id=principal))
+
+    async def require_application(self, authorization: str | None, action: Action) -> Authorised:
+        """The caller's principal, once its token is verified and its global roles permit ``action`` on
+        application data; ``checked_target`` is the application IRI.
+
+        The application is no tenant: no grant is read and the store is not called. A role defined at
+        level ``system`` permits its actions here as it does in every tenant (PD-9).
+
+        Raises:
+            InvalidToken: No bearer token, or one the verifier refuses.
+            Forbidden: The caller's global roles do not permit ``action``.
+        """
+        caller = await self.gate.caller(authorization)
+        self.rules.require_application(caller, action)
+        application = str(self.iris.application)
+        access = CallerAccess(tenant=application, state=TenantState.ACTIVE)
+        return self.gate.authorised(caller, access, application)
+
+    def application_session(self, principal: str) -> AbstractAsyncContextManager[Session]:
+        """A session on the application database for ``principal``; it takes application classes only.
+
+        Raises:
+            LookupError: The schema declares no application class.
+        """
+        return self.tenancy.application_session(Principal(id=principal))
+
+    def application_iri(self, cls: type[BaseModel]) -> str:
+        """A new aggregate IRI of the application for the application class ``cls``.
+
+        Raises:
+            InvalidIri: ``cls`` is not an application class, a class served from the application database.
+        """
+        served = {root.name: root for root in served_roots(self.view, DatabaseKind.APPLICATION)}
+        if cls.__name__ not in served:
+            raise InvalidIri(f"{cls.__name__} is not an application class")
+        root = served[cls.__name__]
+        path = annotation_text(root, RpAnnotation.RP_PATH)
+        assert path, "a served root has a path"
+        return str(self.iris.mint_aggregate(str(self.iris.application), iri_type_of(root), path))

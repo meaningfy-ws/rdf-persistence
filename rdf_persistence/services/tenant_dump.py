@@ -31,7 +31,7 @@ from rdf_persistence.domain.exceptions import Conflict, InvalidBody, InvalidIri,
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.domain.generated.service.rp_service import TenantDump, TenantSummary
-from rdf_persistence.domain.iris import Iris, policy_differences
+from rdf_persistence.domain.iris import Iris, effective_policy, policy_differences
 from rdf_persistence.domain.media import N_QUADS
 from rdf_persistence.domain.tenant_move import glued_templates
 from rdf_persistence.services.files import FileStore
@@ -305,7 +305,9 @@ def _check_manifest(manifest: TenantDump, view: SchemaView, iris: Iris) -> None:
         raise InvalidBody(
             f"the dump is of schema {dumped[0]} version {dumped[1]}, this service has {own[0]} version {own[1]}"
         )
-    if differing := policy_differences(manifest.iri_policy, iris.effective_policy):
+    # an older dump has no application_template: it reads as the default, as a recorded policy does (PD-11)
+    dumped_policy = effective_policy(manifest.iri_policy, iris.settings)
+    if differing := policy_differences(dumped_policy, iris.effective_policy):
         raise InvalidBody(
             f"the dump was made under another IRI policy: {', '.join(differing)} differ"
         )
