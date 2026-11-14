@@ -535,6 +535,37 @@ delivers.
   aggregate-root subclass, and adding one ripples through every generated artefact; the shared
   class helper is tested; the how-to says "the class or a class derived from it" without an
   example).
+- **PD-29** (stage 3, the adversarial tester after task 3.3 and the cold reader of the how-to,
+  2026-11-14; 174 tests, 7 failing, one defect). Accepted, fixed before the PR:
+  1. **An annotation that is not a toolkit comment breaks nothing.** `thread` and `referrers`
+     decoded every root typed `oa:Annotation` as a `Comment`; an application's own annotation,
+     or one written as raw triples, without a body or a motivation made a bare pydantic
+     `ValidationError` escape for every caller. A root that does not decode as a `Comment` is
+     not a comment: `thread` leaves it out, and `referrers` treats it as any other referrer
+     (listed if the caller may read it, counted if not). New Error matrix row, below.
+  2. **Mentions** (the EPIC's rabbit-hole says a mention is a reference whose target is a
+     principal): as planned in PD-13 and built, a reference is an aggregate IRI of the tenant.
+     A principal can be referenced only where the application stores principals as aggregates.
+     The how-to says so; no code change.
+  3. The how-to page, from the cold read: the example's audience uses a role the example
+     defines; one spelling of "no audience"; what a reply's audience is (its own; it is hidden
+     with its parent anyway); `thread` gives no hidden count; `creator` is the principal's IRI;
+     application code that holds a session can read and remove a comment like any aggregate
+     (the toolkit offers no caller-facing way: no route, no listing, never a collection
+     member), and the type `oa:Annotation` with a target, a body and a motivation is what makes
+     a comment, wherever its IRI; a stored audience names roles by name, so renaming a role
+     hides its comments; "a reply may answer a reply" beside "no comment on a comment" said
+     once, together; which check opens the collaboration for reading (`read`) and for posting
+     (`annotate`).
+
+  Pinned by the tester and confirmed as intended: a comment that races the removal of its
+  target is refused or dropped with it, never orphaned; a comment racing a replace of its
+  target succeeds; a comment racing a remove-and-re-add lands on the new aggregate (the guard
+  asks only for a version); a session opened without the dependent pairs orphans the comments
+  (documented limit); an undefined role in a stored audience hides the comment from everyone
+  without that role name; a reply whose parent is on another target, in a cycle or gone is
+  hidden; references may name any aggregate IRI of the tenant, the tenant root and the access
+  record included (an IRI is shown as given, PD-13).
 
 ## Delivery decisions
 
@@ -703,6 +734,7 @@ ada `comment(b1, "thanks", reply_to=c2)` → `c3`.
 | A reply under a hidden parent | hidden too |
 | Delete of an aggregate with 10 000 comments | one operation; all gone in the same request |
 | A consumer's own `oa:Annotation` aggregate targeting a deleted resource | deleted with it (RISK-3) |
+| An `oa:Annotation` aggregate on b that does not decode as a `Comment` (no body, no or an unknown motivation) | not in `thread(b)`; as a referrer it is an ordinary one (PD-29) |
 | Workflow file: undefined state / unknown role / duplicate transition / duplicate name | `InvalidWorkflow` at kit start |
 | Class annotated `workflow: x`, no file `x` | `InvalidWorkflow` at kit start |
 | Annotated class without `UnderWorkflow`, the reverse, or the tenant root annotated | `make generate` hard problem `WORKFLOW` |

@@ -183,14 +183,14 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-63 | 600 comments on b1; remove b1 | one update request; no comment graph left; no `CommitTooLarge` |
 | TC-64 | thread order: three comments with injected clock t2, t1, t1 | by created, then IRI |
 
-- [ ] 3.4 On Fuseki; gate as 1.3.
+- [x] 3.4 On Fuseki; gate as 1.3.
 
 | ID | Input | Expected |
 |---|---|---|
 | IT-06 | TC-50, TC-52, TC-53 | as there |
 | IT-07 | TC-61, TC-63 | as there |
 
-- [ ] 3.5 Docs: `howto/discussion.adoc`, nav, `questions.adoc` ("Can a reviewer comment without
+- [x] 3.5 Docs: `howto/discussion.adoc`, nav, `questions.adoc` ("Can a reviewer comment without
   editing?"); data-flows: delete removes dependents. `make check-docs`. Close the stage.
 
 ## 4. Workflow (#80)

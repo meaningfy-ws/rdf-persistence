@@ -138,9 +138,8 @@ class Discussion:
         self._require_module()
         self._rules.require(self._caller, self._access, iri, Action.READ)
         found = await self._session.graphs_with(v.HAS_TARGET, URIRef(iri))
-        comments = [
-            self._decode(root, graph) for root, graph in found.items() if self._is(graph, root)
-        ]
+        decoded = (self._decode(root, graph) for root, graph in found.items())
+        comments = [c for c in decoded if c is not None]
         return visible(comments, self._rules.roles(self._caller, self._access, iri))
 
     async def unseen(self, rows: Sequence[ReferrerRow]) -> set[str]:
@@ -153,8 +152,11 @@ class Discussion:
             return set()
         on: defaultdict[str, set[str]] = defaultdict(set)
         for referrer, cls, _, link in rows:
-            if (cls, link) == (str(v.ANNOTATION), str(v.COMMENT_REFERENCES)):
-                on[(await self._comment(referrer)).has_target].add(referrer)
+            if (cls, link) != (str(v.ANNOTATION), str(v.COMMENT_REFERENCES)):
+                continue
+            graph, _, _ = await self._session.get_graph(referrer)
+            if (comment := self._decode(referrer, graph)) is not None:
+                on[comment.has_target].add(referrer)
         hidden: set[str] = set()
         for target, comments in on.items():
             readable = self._rules.may(self._caller, self._access, target, Action.READ)
@@ -214,14 +216,12 @@ class Discussion:
             await transaction.add_graph(minted, self._mapper.to_triples(model))
         return minted
 
-    async def _comment(self, iri: str) -> Comment:
-        graph, _, _ = await self._session.get_graph(iri)
-        return self._decode(iri, graph)
-
-    def _decode(self, iri: str, graph: Graph) -> Comment:
-        return self._mapper.from_graph(Comment, iri, graph, graph_iri(iri))
-
-    @staticmethod
-    def _is(graph: Graph, root: str) -> bool:
-        """Whether ``root`` is typed as a web annotation in ``graph`` (a comment or another's)."""
-        return (URIRef(root), RDF.type, v.ANNOTATION) in graph
+    def _decode(self, iri: str, graph: Graph) -> Comment | None:
+        """The comment at ``iri``, or None for a root that is not one: not typed as a web annotation,
+        or another's annotation that the comment class refuses (no text, no motivation; PD-29)."""
+        if (URIRef(iri), RDF.type, v.ANNOTATION) not in graph:
+            return None
+        try:
+            return self._mapper.from_graph(Comment, iri, graph, graph_iri(iri))
+        except ValueError:  # pydantic's refusal of the triples
+            return None
