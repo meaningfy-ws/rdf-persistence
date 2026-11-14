@@ -22,35 +22,46 @@ from rdf_persistence.domain.generated.rp_provenance import (
     Remove,
     Replace,
 )
-from rdf_persistence.domain.sparql import SparqlTerm, Triple, fill, fragment, term, triples_block
+from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services import vocabulary as v
 
 ID_PREFIX = "urn:uuid:"
-# One more marked operation of the commit's request (PD-6), and the guard and the question about
-# an activity IRI that is taken (PD-8).
-_RECORD = "INSERT { GRAPH $provenance { $triples } } WHERE { $marked }"
-_ID_FREE = "FILTER NOT EXISTS { GRAPH $provenance { $id ?taken_p ?taken_o } }"
-ID_TAKEN = "ASK { GRAPH $provenance { $id ?p ?o } }"
-_STANDARD_TYPES: dict[type[Activity], list[URIRef]] = {
-    Add: [v.ADD, v.ACTIVITY],
-    Replace: [v.REPLACE, v.ACTIVITY],
-    Remove: [v.REMOVE, v.ACTIVITY],
-    Activity: [v.ACTIVITY],
-}
+
+
+def new_activity_id() -> str:
+    """A new activity IRI: ``urn:uuid:`` and a random UUID (PD-3)."""
+    return f"{ID_PREFIX}{uuid.uuid4()}"
+
+
+def _is_activity_id(text: str) -> bool:
+    """Whether ``text`` is ``urn:uuid:`` and a UUID in its canonical form."""
+    tail = text.removeprefix(ID_PREFIX)
+    try:
+        return text.startswith(ID_PREFIX) and str(uuid.UUID(tail)) == tail
+    except ValueError:
+        return False
 
 
 class Served:
     """A command the session records as its commit's activity (PD-8): the model with its id and no
     payload, its own statements, and its class IRIs (own and every ancestor). It serves one commit.
 
-    Raises ``ValueError`` naming the id when it is not a ``urn:uuid:`` IRI: an aggregate IRI as an
-    activity id would be rewritten on restore, and no unchecked text may reach an IRI (D-3).
+    Raises ``ValueError`` naming the id when it is not ``urn:uuid:`` and a UUID: an aggregate IRI as an
+    activity id would be rewritten on restore, and no unchecked text may reach an IRI (D-3). It also
+    refuses a triple about another subject than the activity or a blank node, and a triple of the
+    activity that gives ``rdf:type`` or a slot the session fills (D-5 b).
     A plain class: it holds the state of one use, which a generated model does not.
     """
 
     def __init__(self, activity: Activity, triples: list[Triple], types: list[URIRef]) -> None:
-        if not activity.id.startswith(ID_PREFIX):
-            raise ValueError(f"the activity id {activity.id!r} is not a {ID_PREFIX} IRI")
+        if not _is_activity_id(activity.id):
+            raise ValueError(f"the activity id {activity.id!r} is not a {ID_PREFIX}<uuid> IRI")
+        own = URIRef(activity.id)
+        for s, p, _ in triples:
+            if s != own and not isinstance(s, BNode):
+                raise ValueError(f"a served triple names the subject {s}, not the activity {own}")
+            if s == own and (p == RDF.type or p in v.SESSION_FILLED_PREDICATES):
+                raise ValueError(f"a served triple of the activity names {p}, which is not its own")
         self.activity = activity
         self.triples = triples
         self.types = types
@@ -101,8 +112,8 @@ def completed(
     ``was_associated_with`` the command carried is overwritten.
     """
     if served is None:
-        base = _standard(changes)(id=f"{ID_PREFIX}{uuid.uuid4()}")
-        types = _STANDARD_TYPES[type(base)]
+        base = _standard(changes)(id=new_activity_id())
+        types = v.activity_types(type(base).__name__)
     else:
         base, types = served.activity, served.types
 
@@ -121,23 +132,13 @@ def completed(
     activity = base.model_copy(
         update={
             "started_at_time": started,
-            "ended_at_time": ended,
+            "ended_at_time": max(started, ended),  # a clock that went back (D-5 c)
             "was_associated_with": [principal.id],
             "generations": parts(Generation, [g for g, _ in changes if g]),
             "invalidations": parts(Invalidation, [i for _, i in changes if i]),
         }
     )
     return activity, list(types)
-
-
-def record_operation(provenance: URIRef, marked: SparqlTerm, triples: Iterable[Triple]) -> str:
-    """The operation that stores ``triples`` in the provenance graph while the commit's marker is there."""
-    return fill(_RECORD, provenance=term(provenance), triples=triples_block(triples), marked=marked)
-
-
-def id_guard(provenance: URIRef, activity_id: str) -> SparqlTerm:
-    """The pattern that holds while no statement is made of ``activity_id`` in the provenance graph."""
-    return fragment(_ID_FREE, provenance=term(provenance), id=term(URIRef(activity_id)))
 
 
 def _part_triples(

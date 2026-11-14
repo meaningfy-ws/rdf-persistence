@@ -150,9 +150,11 @@ xref:architecture/data-flows.adoc#commit[Committing several aggregates at once].
 
 *Where is the record of who changed what?*::
 Every commit writes one activity into the tenant's provenance graph, in the same request as the
-change: its kind (add, replace, remove or a transition), start and end, the principal, and for each
+change: its kind (add, replace, remove or a transition; a commit that mixes kinds, such as an add
+and a remove together, is a plain activity), start and end, the principal, and for each
 aggregate the version it was generated or invalidated at. It names the aggregates and keeps no
-content. Sessions on the system database record none. See
+content. The application database has a provenance graph of its own, and a session opened with
+`record_activities=False`, as the system database's sessions are, records none. See
 xref:howto/workflow.adoc#read-the-history[Read the history] for transitions and
 xref:architecture/data-flows.adoc#commit[Committing several aggregates at once] for the request.
 

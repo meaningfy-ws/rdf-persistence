@@ -7,12 +7,17 @@ one transaction, whose activity is the ``Transition``. ``Transitions`` holds one
 """
 
 from typing import cast
-from uuid import uuid4
 
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import RDF, Graph, URIRef
 
-from rdf_persistence.domain.exceptions import Conflict, Forbidden, InvalidBody, StoredDataInvalid
+from rdf_persistence.domain.exceptions import (
+    Conflict,
+    Forbidden,
+    InvalidBody,
+    NotFound,
+    StoredDataInvalid,
+)
 from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_discussion import Comment, Motivation
 from rdf_persistence.domain.generated.rp_workflow import (
@@ -25,14 +30,14 @@ from rdf_persistence.domain.iris import Iris
 from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
-from rdf_persistence.services.discussion import decode_typed, mint_iri, moment_of
+from rdf_persistence.services.discussion import mint_iri, moment_of
 from rdf_persistence.services.mapper import Mapper
-from rdf_persistence.services.provenance import ID_PREFIX
+from rdf_persistence.services.provenance import new_activity_id
 from rdf_persistence.services.session import Session, changed_text
 from rdf_persistence.services.workflows import Workflows, state_iri
 from rdf_persistence.services.yaml_files import SHOWN
 
-RECORD = "Transition"
+TRANSITION_CLASS = "Transition"
 COMMENT = "Comment"
 
 
@@ -126,16 +131,19 @@ class Transitions:
         """
         self._require_module()
         self._rules.require(self._caller, self._access, iri, Action.READ)
-        await self._session.get_graph(iri)  # an aggregate that is not stored has no moves to show
-        found = await self._session.activities(v.TRANSITION, v.USED, URIRef(iri))
+        if not await self._session.heads([iri]):  # an aggregate that is not stored has no moves
+            raise NotFound(f"no graph for {iri}")
+        found = await self._session.activities(
+            v.TRANSITION, v.USED, URIRef(iri), entity=URIRef(iri)
+        )
         decoded = [self._decode(root, graph) for root, graph in found.items()]
         return sorted(
-            (r for r in decoded if r is not None),
+            (_about(r, iri) for r in decoded if r is not None),
             key=lambda r: (moment_of(r.started_at_time), r.id),
         )
 
     def _require_module(self) -> None:
-        if self._view.get_class(RECORD) is None:
+        if self._view.get_class(TRANSITION_CLASS) is None:
             raise LookupError("the schema does not import the module rp_workflow")
 
     def _workflow_of(self, iri: str, graph: Graph) -> Workflow:
@@ -183,8 +191,9 @@ class Transitions:
     ) -> str:
         entered = state_iri(workflow, to)
         posted = self._mint(COMMENT) if comment else None
-        record = (command or Transition(id=f"{ID_PREFIX}{uuid4()}", used_resource=iri)).model_copy(
+        record = (command or Transition(id=new_activity_id(), used_resource=iri)).model_copy(
             update={
+                "used_resource": iri,
                 "from_state_iri": current,
                 "to_state_iri": entered,
                 "transition_comment": posted,
@@ -214,7 +223,23 @@ class Transitions:
 
     def _decode(self, iri: str, graph: Graph) -> Transition | None:
         """The activity at ``iri``, or None for a root that is not one (not typed so, or one the class refuses)."""
-        return decode_typed(self._mapper, Transition, v.TRANSITION, iri, graph)
+        if (URIRef(iri), RDF.type, v.TRANSITION) not in graph:
+            return None
+        try:
+            return self._mapper.from_graph(Transition, iri, graph, None)
+        except ValueError:  # pydantic's refusal of the triples
+            return None
+
+
+def _about(move: Transition, iri: str) -> Transition:
+    """``move`` with only the generations and invalidations of the entity ``iri``: what else the
+    commit changed is no business of a reader of ``iri`` (D-6 b)."""
+    return move.model_copy(
+        update={
+            "generations": [g for g in move.generations or [] if g.entity == iri] or None,
+            "invalidations": [i for i in move.invalidations or [] if i.entity == iri] or None,
+        }
+    )
 
 
 def _current(workflow: Workflow, iri: str, graph: Graph) -> str:

@@ -347,6 +347,7 @@ At start: `InvalidWorkflow`, from `install_service` or `ServiceKit`, for the fau
   provenance graph) come back as they were dumped.
 * *Records of an earlier version are not read.* A `rp:TransitionRecord` graph stored before this
   change stays a registered aggregate that `transitions` ignores, and a delete no longer drops it.
-  Clear such graphs with a direct write to the store.
+  Each is an aggregate like any other, so a session removes it as it removes any aggregate.
+  `transitions` of an aggregate that is not stored is `NotFound`.
 * *No route for a transition.* As for the other collaboration calls, you write your own, with the
   kit.

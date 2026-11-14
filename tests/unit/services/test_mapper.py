@@ -471,7 +471,7 @@ def test_a_stored_graph_whose_owned_parts_loop_is_refused_and_not_a_recursion_er
 
 # -- a served command (message-bus PD-8, TC-20 to TC-21a) ---------------------------------------
 
-ACTIVITY_ID = "urn:uuid:1"
+ACTIVITY_ID = "urn:uuid:5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c001"
 STARTED = datetime(2026, 11, 14, 10, 0, tzinfo=UTC)
 SESSION_SLOT_VALUES = {
     "started_at_time": STARTED,

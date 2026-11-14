@@ -12,7 +12,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from rdflib import RDF, Graph, URIRef
+from rdflib import RDF, XSD, Graph, URIRef
 from rdflib.compare import isomorphic
 
 from rdf_persistence import Action, generated_models
@@ -408,13 +408,39 @@ async def test_a_refused_transition_leaves_no_activity(
     store, session, ada, bob, books, how
 ):  # TC-48
     seen = await provenance_of(store)
-    with pytest.raises((Conflict, Forbidden)):
-        if how == "stale":
+    if how == "stale":
+        with pytest.raises(Conflict):
             await ada.transition(B1, "in_review", if_version="stale", comment="ready")
-        else:
+    else:
+        with pytest.raises(Forbidden):
             await go(bob, session, "in_review")
     assert isomorphic(await provenance_of(store), seen), "the provenance graph is as it was"
     assert await records_of(session, B1) == [], "no transition"
+
+
+async def test_a_transition_typed_activity_that_did_not_replace_the_book_is_not_returned(
+    session, ada, books
+):  # D-6 b: an activity that used b1 but generated none of it is no move of b1
+    command = Transition(
+        id="urn:uuid:5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c04e",
+        used_resource=B1,
+        from_state_iri=DRAFT,
+        to_state_iri=IN_REVIEW,
+    )
+    async with session.transaction(served=toy_mapper().served(command)) as transaction:
+        await transaction.replace_graph(
+            B2, toy_mapper().to_triples(dune(B2)), await version(session, B2)
+        )
+    assert await ada.transitions(B1) == [], "b1 was not replaced by it"
+
+
+async def test_a_move_with_a_comment_shows_only_the_parts_about_the_book(session, ada, books):
+    await go(ada, session, "in_review", comment="ready")
+    [found] = await ada.transitions(B1)
+    assert [g.entity for g in found.generations] == [B1], "the comment's generation is dropped"
+    assert [i.entity for i in found.invalidations] == [B1], "and so is any other invalidation"
+    [ready] = await comments_on(session, B1)
+    assert found.transition_comment == ready, "though the comment is still named"
 
 
 async def test_a_transition_of_a_subclass_comes_back_as_a_transition(
@@ -425,7 +451,9 @@ async def test_a_transition_of_a_subclass_comes_back_as_a_transition(
     await store.update(
         FAKE_DATABASE,
         f"INSERT DATA {{ GRAPH <{PROVENANCE}> {{ <{foreign}> a <{v.TRANSITION}>, <{kind}>, <{v.ACTIVITY}> ; "
-        f"<{v.USED}> <{B1}> }} }}",
+        f"<{v.USED}> <{B1}> ; <{v.HAS_GENERATION}> <{foreign}/part> . <{foreign}/part> a <{v.GENERATION}> ; "
+        f'<{v.PART_ACTIVITY}> <{foreign}> ; <{v.AT_TIME}> "2026-01-01T00:00:00Z"^^<{XSD.dateTime}> ; '
+        f'<{v.ENTITY}> <{B1}> ; <{v.ENTITY_VERSION}> "v" }} }}',
     )
     [found] = await ada.transitions(B1)
     assert (type(found), found.id, found.used_resource) == (Transition, foreign, B1)
@@ -449,6 +477,22 @@ async def test_a_value_the_caller_set_for_a_computed_slot_is_overwritten(
     graph = await provenance_of(store)
     assert list(graph.objects(URIRef(forged.id), v.FROM_STATE)) == [URIRef(DRAFT)], "computed, once"
     assert list(graph.objects(URIRef(forged.id), v.TO_STATE)) == [URIRef(IN_REVIEW)], "and so is to"
+
+
+async def test_a_command_naming_another_aggregate_is_stored_against_the_moved_one(
+    store, session, ada, books
+):  # beside TC-49a: the aggregate is the one moved, not the one the command names
+    forged = Transition(
+        id="urn:uuid:5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c04d",
+        used_resource=B2,
+        from_state_iri=ACCEPTED,
+        to_state_iri=ACCEPTED,
+    )
+    await ada._transitions.transition(
+        B1, "in_review", if_version=await version(session, B1), command=forged
+    )
+    graph = await provenance_of(store)
+    assert list(graph.objects(URIRef(forged.id), v.USED)) == [URIRef(B1)], "the moved aggregate"
 
 
 def test_the_toolkit_fills_eight_slots_and_the_session_five_of_them():  # TC-49b

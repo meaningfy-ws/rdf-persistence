@@ -144,6 +144,8 @@ async def test_tc22_an_add_records_one_add_for_the_principal_with_one_generation
     assert {p.at_time for p in activity.generations} == {activity.ended_at_time}, (
         "atTime is the end"
     )
+    assert not [*stored.triples((URIRef(B1), None, None))], "no statement about the book itself"
+    assert not [*stored.triples((None, URIRef("http://purl.org/dc/terms/title"), None))], "no title"
 
 
 async def test_tc23_a_replace_records_one_replace_with_a_generation_and_an_invalidation(
@@ -164,6 +166,7 @@ async def test_tc24_a_remove_records_one_remove_with_the_version_it_removed(stor
     assert type(remove) is Remove, "typed rp:Remove"
     assert remove.generations is None, "nothing generated"
     assert events(remove.invalidations) == [(B1, BOOK_CLASS, v1)], "the removed version"
+    assert [type(a) for a in await activities(store)] == [Add, Remove], "the Add is still there"
 
 
 async def test_tc25_a_transaction_of_two_adds_records_one_add_with_two_generations(store, session):
@@ -180,9 +183,11 @@ async def test_tc25_a_transaction_of_two_adds_records_one_add_with_two_generatio
 async def test_tc26_a_mixed_transaction_records_one_plain_activity(store, session):
     v1 = await session.add_graph(B1, book(B1))
     async with session.transaction() as transaction:
-        await transaction.add_graph(B3, book(B3))
+        v3 = await transaction.add_graph(B3, book(B3))
         await transaction.remove(B1, v1)
     mixed = (await activities(store))[-1]
+    assert events(mixed.generations) == [(B3, BOOK_CLASS, v3)], "the added book is generated"
+    assert events(mixed.invalidations) == [(B1, BOOK_CLASS, v1)], "the removed book is invalidated"
     stored = await stored_graph(store, PROVENANCE)
     assert {*stored.objects(URIRef(mixed.id), RDF.type)} == {v.ACTIVITY}, "prov:Activity only"
     assert type(mixed) is Activity, "read as the plain class"
@@ -256,11 +261,11 @@ async def test_tc31_a_served_command_serves_one_transaction_and_the_second_sends
     v1 = await session.add_graph(B1, book(B1))
     served = toy_mapper().served(Replace(id=X))
     async with session.transaction(served=served) as transaction:
-        await transaction.replace_graph(B1, book(B1), v1)
+        v2 = await transaction.replace_graph(B1, book(B1), v1)
     sent = len(store.sent("update"))
     with pytest.raises(RuntimeError, match=X):
-        async with session.transaction(served=served):
-            pass
+        async with session.transaction(served=served) as transaction:
+            await transaction.replace_graph(B1, book(B1), v2)
     assert len(store.sent("update")) == sent, "no request for the second"
 
 

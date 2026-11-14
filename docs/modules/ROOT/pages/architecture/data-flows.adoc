@@ -474,8 +474,9 @@ sequenceDiagram
   change is of that kind, else `Activity`; the class of the command when one is served), its start
   (the marker's time), its end, the principal, and one generation (new version token) or
   invalidation (old token) for each aggregate, each naming the aggregate's IRI and class and
-  nothing of its content. It is marked like the others, so a refused commit records nothing. A
-  session on the system database records none; a session on the application database does.
+  nothing of its content. It is marked like the others, so a refused commit records nothing. The
+  application database has a provenance graph of its own, and a session opened with
+  `record_activities=False` (the system database's sessions are) writes none.
 . *The release.* `DELETE` of the marker's statements. The marker lives in `T/registry` for the
   length of the request only; the registry listings and the sweeps never see it.
 
@@ -674,7 +675,8 @@ holds only its new state, and no route serves it (`rp_writes: toolkit`).
 
 *Reading it back.* `Collaboration.transitions(iri)` first reads `B` (an aggregate that is not
 stored is `NotFound`), then reads the activities of the provenance graph typed `rp:Transition`
-that used `B`, oldest first. A delete of `B` leaves them where they are, so an aggregate added
+that used `B` and generated a new version of it, oldest first, each with only the generations and
+invalidations of `B`. A delete of `B` leaves them where they are, so an aggregate added
 again at the same IRI shows the old history, and a record may name a comment that went with `B`.
 
 [#files]

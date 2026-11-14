@@ -1381,7 +1381,10 @@ async def foreign_transition(
     time = f'; <{v.ACTIVITY_STARTED}> "{started}"^^<{XSD.dateTime}> ' if started else ""
     await store.update(
         FAKE_DATABASE,
-        f"INSERT DATA {{ GRAPH <{PROVENANCE}> {{ <{iri}> a <{v.TRANSITION}> ; <{v.USED}> <{B1}> {time}{extra} }} }}",
+        f"INSERT DATA {{ GRAPH <{PROVENANCE}> {{ <{iri}> a <{v.TRANSITION}> ; <{v.USED}> <{B1}> {time}{extra} ; "
+        f"<{v.HAS_GENERATION}> <{iri}/part> . <{iri}/part> a <{v.GENERATION}> ; <{v.PART_ACTIVITY}> <{iri}> ; "
+        f'<{v.AT_TIME}> "2026-01-01T00:00:00Z"^^<{XSD.dateTime}> ; <{v.ENTITY}> <{B1}> ; '
+        f'<{v.ENTITY_VERSION}> "v" }} }}',
     )
     return iri
 

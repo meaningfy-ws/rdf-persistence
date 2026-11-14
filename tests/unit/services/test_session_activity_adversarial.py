@@ -195,9 +195,6 @@ async def test_a_served_command_with_no_change_sends_nothing_and_records_nothing
 # -- concurrency -------------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True, reason="FINDING 3: a remove whose guard failed is published, never recorded"
-)
 async def test_a_remove_of_a_root_another_writer_removed_records_and_publishes_nothing(store):
     # Error matrix, "removes-only success path": the guard fails, so nothing is written; the
     # confirming ASK (the graph is absent) cannot tell, so the hook must not hear of a Remove
@@ -234,6 +231,45 @@ async def test_an_overwritten_commit_is_recorded_not_published_and_conflicts(sto
         replaces = [a for a in await activities(store) if type(a) is Replace]
         assert len(replaces) == 2, "the false conflict's replace and the other writer's"
         assert hook.calls == [], "nothing was published"
+
+
+async def overtaken_commit(store, **options):
+    """A commit of two replaces; another writer changes one of the two graphs before the ASK, so the
+    commit applied and the call returns (PD-4)."""
+    async with opened(store, **options) as session, opened(store) as other:
+        v1 = await session.add_graph(B1, book(B1))
+        v2 = await session.add_graph(B2, book(B2))
+
+        async def overtake() -> None:
+            store.after_update = None
+            _, _, current = await other.get_graph(B1)
+            await other.replace_graph(B1, book(B1), current)
+
+        store.after_update = overtake
+        async with session.transaction() as transaction:
+            await transaction.replace_graph(B1, book(B1), v1)
+            await transaction.replace_graph(B2, book(B2), v2)
+
+
+async def test_an_overtaken_commit_that_applied_is_published_with_the_activity_it_recorded(store):
+    # D-6 a: publish exactly what is recorded.
+    hook = Hook()
+    await overtaken_commit(store, on_commit=hook)
+    ours = [a for a, _ in hook.calls if type(a) is Replace and len(a.generations) == 2]
+    assert len(ours) == 1, "the two-root commit was published once"
+    assert ours[0].id in [a.id for a in await activities(store)], "and it is stored"
+
+
+async def test_an_overtaken_commit_of_a_session_that_does_not_record_is_not_published(
+    store, caplog
+):
+    # D-6 a: nothing is stored to publish, so the hook is not called and the warning names why.
+    hook = Hook()
+    await overtaken_commit(store, record_activities=False, on_commit=hook)
+    assert [a for a, _ in hook.calls if a.generations and len(a.generations) == 2] == [], (
+        "not handed to the hook"
+    )
+    assert "overtaken" in caplog.text, "and the log says so"
 
 
 async def test_a_served_commit_overwritten_before_the_ask_still_names_its_graph_or_activity(store):
@@ -403,7 +439,6 @@ async def test_a_loaded_graph_is_not_an_entity_of_the_commit_that_registers_it(s
     assert [g.entity for g in found.generations] == [B1], "the root only, not its loaded graph"
 
 
-@pytest.mark.xfail(strict=True, reason="FINDING 4: a clock that goes back stores start after end")
 async def test_the_start_of_an_activity_is_not_after_its_end_when_the_clock_goes_back(store):
     # PD-7: start is the marker time, end the clock at commit; a clock that goes back inverts them.
     times = iter(
@@ -450,9 +485,6 @@ async def test_the_session_overwrites_the_slots_it_fills_on_a_command_that_carri
     assert found.started_at_time.year == 2026 and found.ended_at_time.year == 2026, "its times"
 
 
-@pytest.mark.xfail(
-    strict=True, reason="FINDING 1: a hand-built Served writes statements about other subjects"
-)
 async def test_a_served_with_statements_about_another_subject_writes_none_of_them(store, session):
     # PD-3 / PD-8: a Served is the command's own statements; the activity and its parts are the
     # only subjects of the provenance graph.
@@ -463,24 +495,26 @@ async def test_a_served_with_statements_about_another_subject_writes_none_of_the
         (URIRef(B1), URIRef("http://purl.org/dc/terms/title"), Literal("hijacked")),
         (PROVENANCE, URIRef("https://example.org/x/says"), Literal("hijacked")),
     ]
-    await session.add_graph(B2, book(B2), served=Served(Add(id=X), forged, [v.ADD, v.ACTIVITY]))
+    with pytest.raises(ValueError, match="subject"):  # D-5 b: refused where it is built
+        await session.add_graph(B2, book(B2), served=Served(Add(id=X), forged, [v.ADD, v.ACTIVITY]))
     stored = await stored_graph(store, PROVENANCE)
     assert (URIRef(old), v.ASSOCIATED_WITH, URIRef(EVE)) not in stored, (
         "the old record is as it was"
     )
     subjects = {s for s in stored.subjects() if not str(s).startswith(f"{PROVENANCE}/")}
-    assert subjects == {URIRef(old), URIRef(X)}, "only the two activities are subjects"
+    assert subjects == {URIRef(old)}, (
+        "the commit is refused: no new subject, the old one is as it was"
+    )
 
 
-@pytest.mark.xfail(
-    strict=True, reason="FINDING 2: a hand-built Served adds to the slots the session fills"
-)
 async def test_a_served_with_a_session_filled_statement_cannot_add_a_second_principal(
     store, session
 ):
     # PD-8: the session fills the principal, the times and the parts; only Mapper.served strips them.
     forged = [(URIRef(X), v.ASSOCIATED_WITH, URIRef(EVE))]
-    await session.add_graph(B1, book(B1), served=Served(Add(id=X), forged, [v.ADD, v.ACTIVITY]))
+    with pytest.raises(ValueError, match="not its own"):  # D-5 b: refused where it is built
+        await session.add_graph(B1, book(B1), served=Served(Add(id=X), forged, [v.ADD, v.ACTIVITY]))
+    await session.add_graph(B1, book(B1), served=Served(Add(id=X), [], [v.ADD, v.ACTIVITY]))
     stored = await stored_graph(store, PROVENANCE)
     assert {*stored.objects(URIRef(X), v.ASSOCIATED_WITH)} == {URIRef(ADA)}, "ADA only"
 
@@ -500,10 +534,6 @@ async def test_a_huge_served_triple_list_commits_whole_or_not_at_all(store, sess
     assert len([*stored.objects(URIRef(X), URIRef("https://example.org/x/n"))]) == 1500, "all kept"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="FINDING 5: Mapper.served raises KeyError, not ValueError, for an unknown class",
-)
 async def test_a_command_class_the_schema_does_not_know_is_refused_as_not_an_activity():
     # Mapper.served: "Raises ValueError: command is no activity".
     class Stranger(Activity):
@@ -516,6 +546,26 @@ async def test_a_command_class_the_schema_does_not_know_is_refused_as_not_an_act
 async def test_a_command_whose_id_is_an_aggregate_iri_is_refused_by_the_mapper():
     with pytest.raises(ValueError, match="urn:uuid"):
         toy_mapper().served(Add(id=B1))
+
+
+async def test_a_served_whose_id_is_urn_uuid_but_no_uuid_is_refused():
+    with pytest.raises(ValueError, match="uuid"):
+        Served(Add(id="urn:uuid:not-a-uuid"), [], [v.ADD, v.ACTIVITY])
+
+
+async def test_a_served_given_to_a_session_that_neither_records_nor_has_a_hook_is_refused(store):
+    async with opened(store, record_activities=False) as session:
+        with pytest.raises(ValueError, match="records activities"):
+            async with session.transaction(served=served()):
+                pass
+    assert store.sent("update") == [], "nothing was sent"
+
+
+def test_the_types_of_an_activity_class_come_from_the_metamodel():
+    assert v.activity_types("Add") == [v.ADD, v.ACTIVITY], "own class first, then the ancestor"
+    assert v.activity_types("Activity") == [v.ACTIVITY], "the plain one has itself only"
+    with pytest.raises(ValueError, match="Principal"):
+        v.activity_types("Principal")
 
 
 async def test_a_served_is_spent_by_a_refused_commit_and_a_retry_needs_a_new_one(store, session):
@@ -665,7 +715,8 @@ async def test_a_session_that_does_not_record_still_hands_its_hook_the_activity(
 
 
 async def test_a_session_that_does_not_record_does_not_guard_the_id(store):
-    async with opened(store, record_activities=False) as session:
+    # D-6 h: a served command needs a hook when the session records nothing
+    async with opened(store, record_activities=False, on_commit=Hook()) as session:
         await session.add_graph(B1, book(B1), served=served(Add(id=X)))
         await session.add_graph(B2, book(B2), served=served(Add(id=X)))
     assert len(await stored_graph(store, PROVENANCE)) == 0, "no guard, no record"

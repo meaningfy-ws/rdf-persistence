@@ -44,7 +44,6 @@ from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.provenance import Served
 from rdf_persistence.services.schema_structure import (
-    ACTIVITY,
     aggregate_roots,
     flag,
     holds_iri,
@@ -158,19 +157,14 @@ class Mapper:
         Raises:
             ValueError: ``command`` is no activity, or its id is not a ``urn:uuid:`` IRI.
         """
-        name = self._schema_names[type(command).__name__]
+        if (name := self._schema_names.get(type(command).__name__)) is None:
+            raise ValueError(f"{type(command).__name__} is not a class of the schema")
         payload = {
             underscore(s.name): None
             for s, _ in self._slots_of(name)
             if flag(s, RpAnnotation.PAYLOAD)
         }
-        types: list[URIRef] = []
-        for cls in self.view.class_ancestors(name, mixins=False):
-            types.append(URIRef(self.view.get_uri(cls, expand=True)))
-            if cls == ACTIVITY:
-                break
-        else:
-            raise ValueError(f"{type(command).__name__} is not an {ACTIVITY}")
+        types = v.activity_types(name, self.view)  # the mapper's view knows a consumer's classes
         own = command.model_copy(update={**payload, **dict.fromkeys(v.SESSION_FILLED)})
         graph = self.to_graph(own)
         graph.remove((URIRef(command.id), RDF.type, None))
@@ -206,12 +200,13 @@ class Mapper:
     # -- reading -----------------------------------------------------------------------------
 
     def from_graph[M: BaseModel](
-        self, cls: type[M], iri: str, graph: Graph, graph_iri: URIRef
+        self, cls: type[M], iri: str, graph: Graph, graph_iri: URIRef | None
     ) -> M:
         """The object of class ``cls`` rooted at ``iri``, owned parts nested.
 
         The tracking slots are read from the statements about ``graph_iri`` (PD-7): the graph IRI
-        ``Session.get_graph`` returns with the aggregate.
+        ``Session.get_graph`` returns with the aggregate. None (an activity has no tracking graph)
+        leaves them unset.
 
         Raises:
             ValueError: ``graph`` has no statement about ``iri``, or its owned parts form a cycle.

@@ -15,6 +15,7 @@ from rdflib import URIRef
 from rdf_persistence.domain.generated.rp_core import RegistryKind, RpAnnotation
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.services.schema import PACKAGE_DIR, SERVICE_SCHEMA, load_schema
+from rdf_persistence.services.schema_structure import ACTIVITY as ACTIVITY_NAME
 from rdf_persistence.services.schema_structure import flag, is_bookkeeping
 
 METAMODEL = PACKAGE_DIR / "model" / "rp.yaml"
@@ -37,6 +38,22 @@ def class_iri(name: str) -> URIRef:
     """The IRI of the class ``name`` of the metamodel: its ``class_uri``, expanded."""
     view = metamodel()
     return URIRef(view.get_uri(view.get_class(name), expand=True))
+
+
+def activity_types(name: str, view: SchemaView | None = None) -> list[URIRef]:
+    """The class IRIs of the activity class ``name`` of the metamodel (or of ``view``): its own
+    first, then each ancestor up to ``prov:Activity``; classes only, no mixins (message-bus PD-7).
+
+    Raises:
+        ValueError: ``name`` is no activity class.
+    """
+    view = view or metamodel()
+    types: list[URIRef] = []
+    for cls in view.class_ancestors(name, mixins=False):
+        types.append(URIRef(view.get_uri(cls, expand=True)))
+        if cls == ACTIVITY_NAME:
+            return types
+    raise ValueError(f"{name} is not an {ACTIVITY_NAME}")
 
 
 def meanings[E: Enum](members: type[E]) -> Mapping[E, URIRef]:
@@ -82,6 +99,7 @@ ACTIVITY_ENDED = predicate("ended_at_time")
 ASSOCIATED_WITH = predicate("was_associated_with")
 HAS_GENERATION = predicate("generations")
 HAS_INVALIDATION = predicate("invalidations")
+SESSION_FILLED_PREDICATES = frozenset(predicate(name) for name in SESSION_FILLED)
 ACTIVITY = class_iri("Activity")
 ADD = class_iri("Add")
 REPLACE = class_iri("Replace")

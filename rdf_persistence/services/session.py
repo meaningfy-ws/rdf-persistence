@@ -71,15 +71,12 @@ from rdf_persistence.services.listing import (
 )
 from rdf_persistence.services.loading import parse_graph
 from rdf_persistence.services.provenance import (
-    ID_TAKEN,
     Change,
     Served,
     activity_triples,
     class_in,
     completed,
     first_class,
-    id_guard,
-    record_operation,
 )
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.unique_keys import (
@@ -137,6 +134,13 @@ RELEASE = "DELETE { GRAPH $registry { $marker ?p ?o } } WHERE { GRAPH $registry 
 _AT_VERSION = "GRAPH $graph { $graph $p_version $old }"
 _ABSENT = "FILTER NOT EXISTS { GRAPH $graph { ?s$n ?p$n ?o$n } }"
 _MARKED = "GRAPH $registry { $marker a $commit_marker }"
+# The commit's activity (message-bus PD-6, PD-8, D-5 a): one more marked operation of the request,
+# the guard that no statement is made of its IRI yet, what confirms it is stored, and the question
+# about an IRI that is taken.
+_RECORD = "INSERT { GRAPH $provenance { $triples } } WHERE { $marked }"
+_ID_FREE = "FILTER NOT EXISTS { GRAPH $provenance { $id ?taken_p ?taken_o } }"
+_RECORDED = "GRAPH $provenance { $id a $activity_class }"
+ID_TAKEN = "ASK { GRAPH $provenance { $id ?p ?o } }"
 _LOADED_ENTRY = "GRAPH $registry { ?lg $p_owned_by $root ; $p_kind $loaded }"
 _DROP_LOADED = """
 DELETE {{ GRAPH ?lg {{ ?ls ?lp ?lo }} }}
@@ -202,16 +206,20 @@ SELECT DISTINCT ?root ?s ?p ?o WHERE {
 """
 # Every activity of the provenance graph typed $type that has the statement ($predicate $object): its own
 # statements and those of its generations and invalidations, one row per triple and activity (PD-11).
-# The activity's pattern comes first, so the store starts from the activities of the type.
+# The selective statement ($predicate $object) comes first, then the type, so the store starts from the
+# few activities that hold the statement; the parts are read through $generation and $invalidation.
+# $of_entity is empty, or requires a generation of one entity (D-6 b).
 READ_ACTIVITIES = """
 SELECT DISTINCT ?activity ?s ?p ?o WHERE {
   GRAPH $provenance {
-    ?activity a $type ; $predicate $object .
+    ?activity $predicate $object ; a $type .
+    $of_entity
     { ?activity ?p ?o . BIND (?activity AS ?s) }
-    UNION { ?activity ?link ?s . ?s ?p ?o FILTER (?link IN ($generation, $invalidation)) }
+    UNION { VALUES ?link { $generation $invalidation } ?activity ?link ?s . ?s ?p ?o }
   }
 }
 """
+_OF_ENTITY = "?activity $generation ?of_part . ?of_part $p_entity $entity ."
 # Is $iri an aggregate of class $type whose graph holds every statement of $patterns (PD-7)?
 MATCHES = "ASK { GRAPH $graph { ?root a $type . $patterns FILTER (?root = $iri) } }"
 # The same as a guard of a transaction: its variables carry $n, the guard's index in the transaction,
@@ -781,23 +789,35 @@ class Session:
         return graphs
 
     async def activities(
-        self, type_iri: URIRef, predicate: URIRef, obj: URIRef
+        self, type_iri: URIRef, predicate: URIRef, obj: URIRef, *, entity: URIRef | None = None
     ) -> dict[str, Graph]:
         """The activities of the provenance graph typed ``type_iri`` that have the statement
         ``(activity, predicate, obj)``, each with all its own statements and those of its
-        generations and invalidations, one ``Graph`` per activity, keyed by its IRI.
+        generations and invalidations, one ``Graph`` per activity, keyed by its IRI. With
+        ``entity``, only those with a generation of that entity.
 
         No access is checked and no schema name is known: the caller decodes each graph.
 
         Raises:
             DatabaseGone: The tenant database does not exist.
         """
+        of_entity = (
+            SparqlTerm("")
+            if entity is None
+            else fragment(
+                _OF_ENTITY,
+                generation=term(v.HAS_GENERATION),
+                p_entity=term(v.ENTITY),
+                entity=term(entity),
+            )
+        )
         text = fill(
             READ_ACTIVITIES,
             provenance=term(self._provenance),
             type=term(type_iri),
             predicate=term(predicate),
             object=term(obj),
+            of_entity=of_entity,
             generation=term(v.HAS_GENERATION),
             invalidation=term(v.HAS_INVALIDATION),
         )
@@ -1010,9 +1030,13 @@ class Session:
         arguments of the session's own, check what those check and send nothing; leaving the block
         cleanly sends one request. An exception inside the block, or a block with no change, sends
         nothing. The request also stores the commit's activity (message-bus PD-6): the standard one,
-        or ``served``, a command's ``Served`` (``Mapper.served``), which serves this one commit.
+        or ``served``, a command's ``Served`` (``Mapper.served``), which serves this one commit. A
+        ``Served`` is trusted: its toolkit-filled slots other than the session's are stored as the
+        caller set them.
 
         Raises:
+            ValueError: ``served`` is given to a session that neither records activities nor has
+                a hook, which would drop its statements.
             RuntimeError: ``served`` has served a commit already; nothing is sent.
             ValueError: (from a change) The aggregate already has a change in this transaction.
             RuntimeError: (from a change) The block has ended, so the change would be dropped.
@@ -1047,6 +1071,10 @@ class Transaction:
 
     def __init__(self, session: Session, served: Served | None = None) -> None:
         if served is not None:
+            if not (session._record_activities or session._on_commit):
+                raise ValueError(
+                    "a served command needs a session that records activities or has a hook"
+                )
             served.claim()  # one command, one commit: refused before any request (PD-8)
         self._served = served
         self._changes: list[Change] = []  # what each change's event needs (PD-3)
@@ -1278,18 +1306,53 @@ class Transaction:
         key_guards = [guard(c, session._registry, excluded) for c in self._key_claims]
         guards, operations = [*self._guards, *key_guards], list(self._operations)
         done = self._completed()
+        confirm = list(self._confirm)
         if done is not None and session._record_activities:
             operations.append(self._record(*done))
+            id_term = term(URIRef(done[0].id))
+            provenance = term(session._provenance)
+            confirm.append(
+                fragment(
+                    _RECORDED,
+                    provenance=provenance,
+                    id=id_term,
+                    activity_class=term(v.ACTIVITY),
+                )
+            )
             if self._served is not None:
-                guards.append(id_guard(session._provenance, self._served.activity.id))
+                guards.append(fragment(_ID_FREE, provenance=provenance, id=id_term))
         await session._store.update(
             session._database, request_text(session._registry, self._marker, guards, operations)
         )
-        if not await session._ask(CONFIRM, patterns=join(self._confirm)):
-            await self._diagnose()
-            return  # applied, and a later writer changed a graph: recorded, not published (PD-10)
-        if done is not None:
-            await self._publish(done[0])
+        activity = None if done is None else done[0]
+        if await self._confirmed(confirm, activity) and activity is not None:
+            await self._publish(activity)
+
+    async def _confirmed(self, confirm: list[SparqlTerm], activity: Activity | None) -> bool:
+        """Whether the commit took effect and its ``activity`` is to be published; else it is
+        diagnosed (PD-4)."""
+        session = self._session
+        if await session._ask(CONFIRM, patterns=join(confirm)):
+            return True
+        # Only the activity is missing: a guard failed over removes only, nothing written (D-5 a).
+        if len(confirm) > len(self._confirm) and await session._ask(
+            CONFIRM, patterns=join(self._confirm)
+        ):
+            return False
+        await self._diagnose()  # raises unless the commit applied and a later writer overtook it
+        return await self._overtaken_is_stored(activity)
+
+    async def _overtaken_is_stored(self, activity: Activity | None) -> bool:
+        """An overtaken commit is published exactly when its activity is stored (D-6 a)."""
+        session = self._session
+        if activity is None:
+            return False
+        if session._record_activities:
+            return await session._ask(
+                ID_TAKEN, provenance=term(session._provenance), id=term(URIRef(activity.id))
+            )
+        log.warning("%s applied but was overtaken; not handed to on_commit", activity.id)
+        return False
 
     def _completed(self) -> tuple[Activity, list[URIRef]] | None:
         """The activity of this commit, built when it is recorded or a hook takes it (PD-7, PD-10)."""
@@ -1315,7 +1378,12 @@ class Transaction:
             commit_marker=term(v.COMMIT_MARKER),
         )
         triples = _skolemised(session._provenance, [*activity_triples(activity, types), *own])
-        return record_operation(session._provenance, marked, triples)
+        return fill(
+            _RECORD,
+            provenance=term(session._provenance),
+            triples=triples_block(triples),
+            marked=marked,
+        )
 
     async def _publish(self, activity: Activity) -> None:
         """Hand the completed ``activity`` to the session's hook; its failure never undoes the commit (PD-10)."""
@@ -1459,7 +1527,8 @@ async def open_session(
     none of ``allowed_types`` when that is set, is refused (app-level-data PD-6).
     ``record_activities`` stores one activity per commit in the provenance graph; ``on_commit`` is
     awaited with the completed activity and the session after each commit, and its failure is logged
-    (message-bus PD-9, PD-10).
+    (message-bus PD-9, PD-10). A hook that commits on the session it was given is called again for
+    that commit.
     """
     yield Session(
         store,
