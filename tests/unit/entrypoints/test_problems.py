@@ -52,6 +52,8 @@ ROWS = [
     (exceptions.InvalidRoleDefinition, 503, "unavailable"),
     (exceptions.InvalidWorkflow, 503, "unavailable"),
     (exceptions.InvalidMigration, 503, "unavailable"),
+    (exceptions.MigrationFailed, 503, "unavailable"),
+    (exceptions.TenantBehind, 503, "tenant-behind"),
 ]
 TITLES = {
     "invalid-token": "Invalid token",

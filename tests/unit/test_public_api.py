@@ -36,6 +36,8 @@ INDEXED_NAMES = [
     "FusekiStore",
     "DatabaseGone",
     "StoreUnavailable",
+    "MigrationFailed",
+    "TenantBehind",
     "NotFound",
     "Conflict",
     "KeyConflict",

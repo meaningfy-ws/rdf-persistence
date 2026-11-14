@@ -273,6 +273,10 @@ def test_a_step_keeps_to_one_graph_and_leaves_stamps_and_loaded_graphs_alone():
         f"FILTER NOT EXISTS {{ GRAPH ?rp_registry {{ ?rp_graph <{v.REGISTRY_KIND}> <{loaded}> }} }}"
         in step_op
     )
+    assert (
+        f"FILTER NOT EXISTS {{ GRAPH ?rp_graph {{ ?rp_entry <{v.REGISTRY_KIND}> ?rp_kind }} }}"
+        in step_op
+    )
 
 
 def test_the_rotation_leaves_the_modified_date_alone():

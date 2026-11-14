@@ -110,6 +110,8 @@ ERROR_KINDS: tuple[tuple[type[PersistenceError], ProblemKind], ...] = (
     ),  # raised at start-up; a service that kept going would be unusable
     (errors.InvalidWorkflow, UNAVAILABLE),  # raised at start-up, for the same reason
     (errors.InvalidMigration, UNAVAILABLE),  # raised at start-up, for the same reason
+    (errors.MigrationFailed, UNAVAILABLE),  # raised at start-up, for the same reason
+    (errors.TenantBehind, TENANT_BEHIND),
 )
 # The statuses the framework raises on its own, which have a kind of their own.
 _OF_THE_FRAMEWORK = {
