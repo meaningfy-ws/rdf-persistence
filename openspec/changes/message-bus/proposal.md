@@ -14,6 +14,14 @@
 > events are a fixed PROV set, and one message is published per commit. Appetite grew from MEDIUM
 > to LARGE (layer 2). Decisions marked "leader's choice" may be overruled by the developer.
 
+> **Narrowed 2026-11-14 (logged, in the epic session, before the PLAN was gated).** The code has no
+> add-member, remove-member or upload operation, and grants are one "set grants" call on the system
+> database (a No-go). The developer accepted (inputs/seed.md, "Question round of the epic
+> session"): layer 2 in this EPIC is `Transition`, `PostComment`, `PostReply` (the names `Comment`
+> and `Grant` are stored classes already) and `DeleteFile`; toolkit handlers exist for `Transition`
+> and the two comment commands only; a commit of mixed changes with no command is a plain
+> `Activity`. Where the layer table or the capabilities below say otherwise, design.md PD-1 holds.
+
 **Golden-thread parent:** capability `rp-aggregate-store` (the unit of work); `rp_provenance.yaml`
 (`Activity`, `prov:Activity`); the developer's direction (2026-11-13): "support event driven
 applications with design patterns and architecture described in the cosmic python book" and

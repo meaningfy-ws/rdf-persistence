@@ -77,3 +77,28 @@ The modelling rule was recorded as repository rule P-0001 (`docs/rules/`).
   version and committer.
 - An event raised by a handler is handled in the same `handle` call, after the current message.
 - Handlers receive their dependencies through the bootstrap, and tests swap them for fakes.
+
+## Question round of the epic session (2026-11-14)
+
+The lead read the code on `develop` and brought seven questions the DECs did not cover, each with a
+recommendation. Developer, 2026-11-14: "continue, i agree with you" (every recommendation accepted).
+
+1. Layer 2 names operations the toolkit does not have (no add or remove member call, no upload
+   call; grant, revoke and prohibit are one "set grants" call on the system database). Accepted:
+   layer 2 in this EPIC is `Transition`, the two comment commands and `DeleteFile`; the others come
+   with their operation, grants with the tenancy activities.
+2. Which commands get a toolkit handler. Accepted: `Transition` and the comment commands only;
+   `Add`, `Replace`, `Remove` and `DeleteFile` are recorded and observed, with no handler.
+3. `Comment` and `Grant` are model classes already. Accepted: `PostComment`, and
+   `PostReply is_a: PostComment`.
+4. `rp:TransitionRecord` graphs a consumer of `develop` may hold. Accepted: no migration; they are
+   no longer read.
+5. A commit with no command that mixes adds, replaces and removes. Accepted: a plain `Activity`.
+6. Comments deleted with their target. Accepted: still deleted, and no invalidation for each.
+7. The PROV shape (activity typed with its class and `prov:Activity`; `rp:generation` and
+   `rp:invalidation` parts carrying `prov:activity`, `prov:atTime`, `rp:entity`, `rp:entityClass`
+   and the version token). Accepted.
+
+Also accepted as the lead's choices: writes outside the transaction (`load_graph` before its
+commit, the sweeps, restore's import) record nothing; sessions on the system database record
+nothing; `TransitionRecord` is renamed `Transition`; four stages, one PR each.

@@ -37,7 +37,7 @@ after an attack; until then it is the planner's own score.
 | 6 | `tenant-dump-restore` | MEDIUM | none | delivered 2026-11-13 (#89) | none | the dump format (manifest with schema version), restore into a new tenant |
 | 7 | `app-level-data` | MEDIUM | none | delivered 2026-11-14 (#102) | none | the application database and its aggregates |
 | 8 | `tenant-stores` | MEDIUM | none | no | 6 (copies are dump + restore) | several wired stores; the access record names a tenant's store |
-| 9 | `message-bus` | LARGE | none | no | 3 (the activity is one more transaction operation), 4 (adopts its `TransitionRecord`) | commands as `prov:Activity` subclasses in three layers, activity records on every commit, the fixed PROV events (`Generation`, `Invalidation`), `MessageBus` with hierarchy dispatch (in process) |
+| 9 | `message-bus` | LARGE (4 stages) | none | yes, gated 9.1 (2026-11-14) | 3 (the activity is one more transaction operation), 4 (adopts its `TransitionRecord`) | commands as `prov:Activity` subclasses in three layers, activity records on every commit, the fixed PROV events (`Generation`, `Invalidation`), `MessageBus` with hierarchy dispatch (in process) |
 | 10 | `aggregate-events` | LARGE | none | no | 3, 9 (publishes 9's one message per commit) | outbox, relay, `EventBus` port on FastStream (Redis Streams first), incoming messages into the bus, SSE |
 | 11 | `schema-migrations` | LARGE | none | no | 6 (reads the dump's schema version) | schema version per tenant, automatic migrations |
 | 12 | `second-store` | MEDIUM | none | no | 3, 5 (the descriptor states their atomicity need) | GraphDB (confirmed), the capability descriptor |
