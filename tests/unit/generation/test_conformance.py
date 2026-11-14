@@ -193,3 +193,9 @@ def test_an_internal_slot_adds_no_constraint_kind() -> None:
     view = SchemaView(INTERNAL_ONLY)
     thing = replace(Conformance.of(TOY), view=view, models={"Thing": BaseModel})
     assert K.REQUIRED not in thing.used_kinds(), "an internal slot is no public requirement"
+
+
+def test_a_key_across_aggregates_is_no_unique_keys_constraint() -> None:
+    """TC-03: the scoped key of Book has no validator and no shape; Grant's in-aggregate key keeps both."""
+    assert K.UNIQUE_KEYS not in Conformance.of(TOY).class_kinds("Book"), "isbn_key is scoped"
+    assert K.UNIQUE_KEYS in Conformance.of(METAMODEL).class_kinds("Grant"), "grant_key is not"

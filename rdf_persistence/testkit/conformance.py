@@ -37,6 +37,7 @@ from rdf_persistence.services.schema_structure import (
     generation_view,
     holds_owned_part,
     is_internal,
+    is_scoped,
     json_name,
     keyed_slots,
 )
@@ -172,7 +173,10 @@ class Conformance:
         """The kinds of the rules ``name`` declares or holds through a keyed slot."""
         cls = self.view.get_class(name)
         kinds = {kind for kind, found in _CLASS_KINDS if getattr(cls, found)}
-        return kinds | ({ConstraintKind.UNIQUE_KEYS} if keyed_slots(self.view, cls) else set())
+        keyed = keyed_slots(self.view, cls) or any(
+            not is_scoped(key) for key in cls.unique_keys.values()
+        )
+        return kinds | ({ConstraintKind.UNIQUE_KEYS} if keyed else set())
 
     def _slot_kinds(self, slot: SlotDefinition) -> set[ConstraintKind]:
         kinds = {kind for kind, found in _SLOT_KINDS if getattr(slot, found) is not None}
@@ -186,7 +190,6 @@ class Conformance:
 _CLASS_KINDS = (
     (ConstraintKind.EXACTLY_ONE_OF, "exactly_one_of"),
     (ConstraintKind.ANY_OF, "any_of"),
-    (ConstraintKind.UNIQUE_KEYS, "unique_keys"),
 )
 _SLOT_KINDS = (
     (ConstraintKind.REQUIRED, "required"),

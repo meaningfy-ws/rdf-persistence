@@ -48,16 +48,19 @@ from rdf_persistence.domain.generated.rp_annotations import (
     Tracked,
 )
 from rdf_persistence.domain.generated.rp_core import (
+    AggregateKey,
     AggregateRoot,
     CommitMarker,
     DatabaseKind,
     GraphKind,
+    KeyDuplicate,
     ModuleKind,
     PendingLoad,
     Principal,
     RegistryEntry,
     RegistryKind,
     RpAnnotation,
+    UniqueScope,
     WritesKind,
 )
 from rdf_persistence.domain.generated.rp_files import (
@@ -172,6 +175,7 @@ __all__ = [
     "AccountSummary",
     "Action",
     "Activity",
+    "AggregateKey",
     "AggregateRoot",
     "Authorised",
     "BadQuery",
@@ -205,6 +209,7 @@ __all__ = [
     "IriPolicy",
     "Iris",
     "JwksTokenVerifier",
+    "KeyDuplicate",
     "LabelUpdate",
     "Listings",
     "Mapper",
@@ -250,6 +255,7 @@ __all__ = [
     "TenantSummary",
     "TokenVerifier",
     "Tracked",
+    "UniqueScope",
     "UnitOfWork",
     "UnknownRole",
     "UnsupportedMediaType",

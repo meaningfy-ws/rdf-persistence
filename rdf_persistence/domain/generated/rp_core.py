@@ -86,6 +86,8 @@ class RpAnnotation(str, Enum):
     "Class annotation, `service` (see WritesKind) on an aggregate root whose generic create, replace and delete are not served; the consumer writes it through a session. A root that mixes in StoredFile is service-written without it."
     BOOKKEEPING = "bookkeeping"
     "Slot annotation, `true` when the session writes the slot about a graph (its version, who created or contributed to it, when); closed shapes ignore the statement."
+    RP_UNIQUE_SCOPE = "rp_unique_scope"
+    "Annotation of a `unique_keys` entry on an aggregate root (or an ancestor of roots), `tenant` (see UniqueScope): the key holds across the aggregates of a tenant, not inside one aggregate. A key without it keeps its in-aggregate meaning."
 
 
 class ModuleKind(str, Enum):
@@ -118,6 +120,12 @@ class GraphKind(str, Enum):
     "The tenant\u0027s meta graph, which holds the tenant root object."
 
 
+class UniqueScope(str, Enum):
+    "The scopes of a key across aggregates, the values of the rp_unique_scope annotation."
+    TENANT = "tenant"
+    "The key holds across all the aggregate roots of one class in a tenant\u0027s database."
+
+
 
 class AggregateRoot(ConfiguredBaseModel):
     "A mixin for classes whose instances are aggregate roots. Each instance is one named graph, whose IRI is derived from the root\u0027s IRI; it is versioned, loaded and saved as a whole."
@@ -148,6 +156,21 @@ class CommitMarker(ConfiguredBaseModel):
     started_at: datetime  = Field(default=..., title="Started at", description="The time a transaction started.")
 
 
+class AggregateKey(ConfiguredBaseModel):
+    "A key across aggregates, as the runtime reads it from the schema: no two aggregate roots of one class in a tenant\u0027s database hold the same values for its predicates."
+    key_name: str = Field(default=..., title="Key name", description="The name of a key across aggregates, as declared in `unique_keys`.")
+    root_class: str = Field(default=..., title="Root class", description="The IRI of the class of the aggregate roots the key governs; a root of a subclass is its own scope.")
+    key_predicates: list[str] = Field(default=..., title="Key predicates", description="The predicates of the key\u0027s slots, in the order of the key.")
+
+
+class KeyDuplicate(ConfiguredBaseModel):
+    "A set of aggregate roots of one class that hold the same values for a key across aggregates, found in a tenant\u0027s database by the duplicates report."
+    key_name: str = Field(default=..., title="Key name", description="The name of a key across aggregates, as declared in `unique_keys`.")
+    root_class: str = Field(default=..., title="Root class", description="The IRI of the class of the roots.")
+    key_values: list[str] = Field(default=..., title="Key values", description="The lexical forms of the shared values, in the order of the key.")
+    key_roots: list[str] = Field(default=..., title="Key roots", description="The IRIs of the roots that hold the values, sorted.")
+
+
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 AggregateRoot.model_rebuild()
@@ -155,3 +178,5 @@ Principal.model_rebuild()
 RegistryEntry.model_rebuild()
 PendingLoad.model_rebuild()
 CommitMarker.model_rebuild()
+AggregateKey.model_rebuild()
+KeyDuplicate.model_rebuild()

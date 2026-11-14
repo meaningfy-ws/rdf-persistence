@@ -32,6 +32,7 @@ _ROWS = {
     ProblemSlug.FORBIDDEN: ("Forbidden", HTTPStatus.FORBIDDEN),
     ProblemSlug.NOT_FOUND: ("Not found", HTTPStatus.NOT_FOUND),
     ProblemSlug.CONFLICT: ("Version conflict", HTTPStatus.CONFLICT),
+    ProblemSlug.KEY_CONFLICT: ("Key conflict", HTTPStatus.CONFLICT),
     ProblemSlug.PRECONDITION_REQUIRED: ("Precondition required", HTTPStatus.PRECONDITION_REQUIRED),
     ProblemSlug.INVALID_BODY: ("Invalid body", HTTPStatus.UNPROCESSABLE_ENTITY),
     ProblemSlug.NOT_ACCEPTABLE: ("Not acceptable", HTTPStatus.NOT_ACCEPTABLE),

@@ -19,6 +19,8 @@ export type ProblemSlug =
   | "not_found"
   /** The write lost a race, or the thing to create already exists. */
   | "conflict"
+  /** The write would give an aggregate a key value that another aggregate of its class holds. */
+  | "key_conflict"
   /** An update or a delete came without the version it expects. */
   | "precondition_required"
   /** The body is not a valid representation for its route. */

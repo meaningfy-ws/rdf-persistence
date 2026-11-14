@@ -10,7 +10,7 @@ a `KeyConflict` from the store is a diagnosis). Lists of IRIs in the tables are 
 
 ## 1. Declare and enforce (stage 1, PR 1)
 
-- [ ] 1.1 Declaration. Test first, in `tests/unit/generation/test_hard_check.py` (schema edits as
+- [x] 1.1 Declaration. Test first, in `tests/unit/generation/test_hard_check.py` (schema edits as
   in `test_boundary_check.py`'s `Edit`) and a new `tests/unit/services/test_aggregate_keys.py`
   (inline schemas). Then: in `rdf_persistence/model/rp_core.yaml`, the `rp_unique_scope` value of
   `RpAnnotation`, the enum `UniqueScope` (`tenant`), the classes `AggregateKey` and `KeyDuplicate`
@@ -24,7 +24,7 @@ a `KeyConflict` from the store is a diagnosis). Lists of IRIs in the tables are 
 
 | ID | Input | Expected |
 |---|---|---|
-| TC-01 | toy schema | `aggregate_keys` == `[AggregateKey(name="isbn_key", root_class=bibo:Book, predicates=[bibo:isbn])]` |
+| TC-01 | toy schema | `aggregate_keys` == `[AggregateKey(key_name="isbn_key", root_class=bibo:Book, key_predicates=[bibo:isbn])]` (PD-16) |
 | TC-02 | inline schema: abstract `Publication` with scoped key over `title`; roots `Book2`, `Magazine` `is_a Publication`; `Magazine` redeclares the key name over `issn` | two entries: `Book2` over `title`, `Magazine` over `issn` (nearest wins), each with its own class IRI |
 | TC-03 | toolkit schemas and toy schema regenerated | Grant's validator and shape byte-identical to before; no validator or shape for `isbn_key`; `class_kinds("Book")` lacks `UNIQUE_KEYS`, `class_kinds("Grant")` has it |
 | TC-04 | `Book` scoped key over `chapters` / over `authors` / over `id` / over `shelf` (not a slot) | `rp-generate` fails, a `unique_key` problem naming `Book`, `isbn_key` and the slot; no output changes |
@@ -100,7 +100,7 @@ a `KeyConflict` from the store is a diagnosis). Lists of IRIs in the tables are 
 
 | ID | Input | Expected |
 |---|---|---|
-| TC-40 | session without keys writes `A`, `B` with isbn "1", `C` "2"; keyed session `key_duplicates()` | `[KeyDuplicate(key="isbn_key", root_class=bibo:Book, values=["1"], roots=[A, B])]`; store unchanged |
+| TC-40 | session without keys writes `A`, `B` with isbn "1", `C` "2"; keyed session `key_duplicates()` | `[KeyDuplicate(key_name="isbn_key", root_class=bibo:Book, key_values=["1"], key_roots=[A, B])]` (PD-16); store unchanged |
 | TC-41 | no duplicates; no keys | `[]` |
 | TC-42 | TC-40, then replace `A` keeping "1" with the keyed session | `KeyConflict`; after changing `A` to "4", `key_duplicates()` is `[]` |
 

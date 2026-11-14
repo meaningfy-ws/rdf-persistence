@@ -28,7 +28,9 @@ export type RpAnnotation =
   /** Class annotation, `service` (see WritesKind) on an aggregate root whose generic create, replace and delete are not served; the consumer writes it through a session. A root that mixes in StoredFile is service-written without it. */
   | "rp_writes"
   /** Slot annotation, `true` when the session writes the slot about a graph (its version, who created or contributed to it, when); closed shapes ignore the statement. */
-  | "bookkeeping";
+  | "bookkeeping"
+  /** Annotation of a `unique_keys` entry on an aggregate root (or an ancestor of roots), `tenant` (see UniqueScope): the key holds across the aggregates of a tenant, not inside one aggregate. A key without it keeps its in-aggregate meaning. */
+  | "rp_unique_scope";
 
 /** The kinds of schema module, the values of the module_kind annotation. */
 export type ModuleKind =
@@ -55,6 +57,11 @@ export type WritesKind =
 export type GraphKind =
   /** The tenant's meta graph, which holds the tenant root object. */
   | "meta";
+
+/** The scopes of a key across aggregates, the values of the rp_unique_scope annotation. */
+export type UniqueScope =
+  /** The key holds across all the aggregate roots of one class in a tenant's database. */
+  | "tenant";
 
 /** A reference to a user account in the identity provider, by IRI only. */
 export interface Principal {
@@ -86,4 +93,26 @@ export interface CommitMarker {
   id: string;
   /** The time a transaction started. */
   started_at: string;
+}
+
+/** A key across aggregates, as the runtime reads it from the schema: no two aggregate roots of one class in a tenant's database hold the same values for its predicates. */
+export interface AggregateKey {
+  /** The name of a key across aggregates, as declared in `unique_keys`. */
+  key_name: string;
+  /** The IRI of the class of the aggregate roots the key governs; a root of a subclass is its own scope. */
+  root_class: string;
+  /** The predicates of the key's slots, in the order of the key. */
+  key_predicates: string[];
+}
+
+/** A set of aggregate roots of one class that hold the same values for a key across aggregates, found in a tenant's database by the duplicates report. */
+export interface KeyDuplicate {
+  /** The name of a key across aggregates, as declared in `unique_keys`. */
+  key_name: string;
+  /** The IRI of the class of the roots. */
+  root_class: string;
+  /** The lexical forms of the shared values, in the order of the key. */
+  key_values: string[];
+  /** The IRIs of the roots that hold the values, sorted. */
+  key_roots: string[];
 }

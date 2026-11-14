@@ -42,16 +42,19 @@ from rdf_persistence.domain.generated.rp_annotations import (
     Tracked
 )
 from rdf_persistence.domain.generated.rp_core import (
+    AggregateKey,
     AggregateRoot,
     CommitMarker,
     DatabaseKind,
     GraphKind,
+    KeyDuplicate,
     ModuleKind,
     PendingLoad,
     Principal,
     RegistryEntry,
     RegistryKind,
     RpAnnotation,
+    UniqueScope,
     WritesKind
 )
 from rdf_persistence.domain.generated.rp_tenancy import (
@@ -107,6 +110,8 @@ class ProblemSlug(str, Enum):
     "There is no such thing, or the caller cannot see it."
     CONFLICT = "conflict"
     "The write lost a race, or the thing to create already exists."
+    KEY_CONFLICT = "key_conflict"
+    "The write would give an aggregate a key value that another aggregate of its class holds."
     PRECONDITION_REQUIRED = "precondition_required"
     "An update or a delete came without the version it expects."
     INVALID_BODY = "invalid_body"

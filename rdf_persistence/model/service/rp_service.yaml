@@ -892,6 +892,10 @@ enums:
         title: Version conflict
         meaning: rp:conflict
         description: The write lost a race, or the thing to create already exists.
+      key_conflict:
+        title: Key conflict
+        meaning: rp:keyConflict
+        description: The write would give an aggregate a key value that another aggregate of its class holds.
       precondition_required:
         title: Precondition required
         meaning: rp:preconditionRequired

@@ -10,6 +10,7 @@ from linkml_runtime.linkml_model.meta import (
     Element,
     PermissibleValue,
     SchemaDefinition,
+    UniqueKey,
 )
 from linkml_runtime.utils.schemaview import SchemaView
 
@@ -18,6 +19,7 @@ from rdf_persistence.domain.generated.rp_core import (
     GraphKind,
     ModuleKind,
     RpAnnotation,
+    UniqueScope,
     WritesKind,
 )
 from rdf_persistence.domain.iris import LAYOUT_WORDS
@@ -28,13 +30,17 @@ from rdf_persistence.services.schema_structure import (
     aggregate_roots,
     annotation,
     annotation_text,
+    holds_owned_part,
     inherits_from_metamodel,
     iri_type_of,
+    is_bookkeeping,
+    is_scoped,
     is_tenant_root,
     is_toolkit_schema,
     own_classes,
     own_schemas,
     owned_classes,
+    tenant_database_roots,
 )
 
 # The metaslot each element rule requires: a rule id is not an attribute name.
@@ -56,6 +62,7 @@ ALLOWED_ANNOTATIONS = {
     RpAnnotation.INTERNAL: BOOLEAN,
     RpAnnotation.RP_UNLABELLED: BOOLEAN,
     RpAnnotation.BOOKKEEPING: BOOLEAN,
+    RpAnnotation.RP_UNIQUE_SCOPE: tuple(scope.value for scope in UniqueScope),
 }
 
 
@@ -85,6 +92,51 @@ def _unique_key_problems(cls: ClassDefinition) -> Iterator[CheckProblem]:
             )
 
 
+def _bad_key_slot(view: SchemaView, root: ClassDefinition, slot_name: str) -> str | None:
+    """Why the slot cannot be part of a key across aggregates of ``root``; None when it can."""
+    slot = next((s for s in view.class_induced_slots(root.name) if s.name == slot_name), None)
+    if slot is None:
+        return f"slot {slot_name!r} is not a slot of {root.name}"
+    reasons = (
+        (slot.multivalued, "multivalued"),
+        (slot.identifier, "the identifier, written as the subject"),
+        (is_bookkeeping(slot), "bookkeeping"),
+        (holds_owned_part(view, slot), "an owned part"),
+    )
+    found = next((reason for hit, reason in reasons if hit), None)
+    return None if found is None else f"slot {slot_name!r} is {found}"
+
+
+def _scoped_key_reasons(
+    view: SchemaView, key: UniqueKey, below: list[ClassDefinition]
+) -> Iterator[str]:
+    if not below:
+        yield "it is on a class that is neither a tenant-database aggregate root nor an ancestor of one"
+    if key.consider_nulls_inequal is False:
+        yield "consider_nulls_inequal: false contradicts a missing value claiming nothing"
+    for root in below:
+        for slot in key.unique_key_slots:
+            if (reason := _bad_key_slot(view, root, str(slot))) is not None:
+                yield reason
+
+
+def _key_problems(
+    view: SchemaView, cls: ClassDefinition, roots: list[ClassDefinition]
+) -> Iterator[CheckProblem]:
+    """PD-2: a key across aggregates must enforce something; a root's in-aggregate key would not."""
+    below = [root for root in roots if cls.name in view.class_ancestors(root.name)]
+    for key in cls.unique_keys.values():
+        name = str(key.unique_key_name)
+        if is_scoped(key):
+            reasons = dict.fromkeys(_scoped_key_reasons(view, key, below))
+        elif cls in roots:
+            reasons = {f"on a root it needs {RpAnnotation.RP_UNIQUE_SCOPE.value}: tenant": None}
+        else:
+            continue
+        for reason in reasons:
+            yield rule_problem(HardRule.UNIQUE_KEY, cls.name, f"unique key {name!r}: {reason}")
+
+
 def _schema_problems(schema: SchemaDefinition) -> Iterator[CheckProblem]:
     for cls in schema.classes.values():
         yield from _element_problems(cls, cls.name, cls.class_uri, schema)
@@ -106,11 +158,12 @@ def _value_problems(enum: str, value: PermissibleValue) -> Iterator[CheckProblem
             yield rule_problem(rule, name, f"permissible value of {enum} has no {metaslot}")
 
 
-def _annotated_elements(schema: SchemaDefinition) -> Iterator[Element]:
+def _annotated_elements(schema: SchemaDefinition) -> Iterator[Element | UniqueKey]:
     yield schema
     for cls in schema.classes.values():
         yield cls
         yield from cls.attributes.values()
+        yield from cls.unique_keys.values()
     yield from schema.slots.values()
     yield from schema.enums.values()
 
@@ -123,7 +176,7 @@ def _segment_pattern() -> str:
 
 def _annotation_problems(schema: SchemaDefinition, segment_pattern: str) -> Iterator[CheckProblem]:
     for element in _annotated_elements(schema):
-        name = str(element.name)
+        name = str(element.unique_key_name if isinstance(element, UniqueKey) else element.name)
         for tag, allowed in ALLOWED_ANNOTATIONS.items():
             value = annotation(element, tag)
             if value is not None and value not in allowed:
@@ -193,6 +246,9 @@ def _iri_type_problems(
 
 def _class_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[CheckProblem]:
     roots = aggregate_roots(view, classes)
+    tenant_roots = tenant_database_roots(view, classes)
+    for cls in classes:
+        yield from _key_problems(view, cls, tenant_roots)
     yield from _path_problems(view, roots)
     yield from _described_problems(view, classes, roots)
     yield from _iri_type_problems(view, classes, roots)

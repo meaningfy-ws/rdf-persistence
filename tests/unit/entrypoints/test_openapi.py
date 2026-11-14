@@ -108,7 +108,8 @@ def test_a_problem_response_is_an_rfc_9457_problem_with_the_fixed_title(
     document, path, method, expected
 ) -> None:
     op = operation(document, path, method)
-    titles = {k.status: k.title for k in KINDS}
+    # two kinds share 409; reversed, the earlier one (the version conflict the routes document) wins
+    titles = {k.status: k.title for k in reversed(KINDS)}
     for status in expected - SUCCESS:
         response = op["responses"][str(status)]
         assert schema_of(response["content"][PROBLEM_JSON]) == {"$ref": f"{COMPONENT}Problem"}, (

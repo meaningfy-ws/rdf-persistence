@@ -177,6 +177,12 @@ overrule any of them.
     exception keeps its type and fields and gets "`n` of `m` batches committed before it"
     (TC-27 expects "1 of 2"). `UnitOfWork.discard` (38f4a41) acts before the transaction is
     opened, so a discarded root claims nothing.
+- **PD-16** (leader, 2026-11-14, reading task 1.1's diff; changes PD-3 and PD-11): the slots of
+  `AggregateKey` and `KeyDuplicate` are named for what they hold: `key_name` (one slot, used by
+  both classes, instead of `name` and `key`), `root_class`, `key_predicates`, `key_values`,
+  `key_roots`. They are global slots of `rp_core.yaml`, which every consumer schema imports; a
+  slot called `name`, `key` or `values` there would meet a consumer's own slot of that name.
+  TC-01 and TC-40 read with these field names.
 
 ## Algorithm / approach
 
