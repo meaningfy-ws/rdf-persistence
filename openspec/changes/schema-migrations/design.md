@@ -468,6 +468,45 @@ None.
      fails.
   2. *A restore rewrote a stamp whose schema id held the source tenant's id.* The IRI rewrite of a
      restore leaves the stamps graph alone: its quads are copied as they are.
+- **PD-24 The review of stage 2 (four reviewers, 2026-11-14: L1, L2, L3, L4 with L5).** No
+  blocker. Accepted:
+  1. *A restore accepted whatever the dump's stamps graph held* (a wrong or doubled stamp, a stamp
+     of another schema, other triples, or none), and the runner trusts that graph. Until stage 3
+     migrates a dump, a restore refuses (`InvalidBody`, before anything is created) a dump whose
+     stamps graph does not hold exactly the versions the service runs, one statement per chain
+     and nothing else. Stage 3 relaxes "runs" to "a version of the chain" and keeps "nothing
+     else" (PD-15). Stamps read from a store are quoted with their escapes in messages and logs
+     (L1).
+  2. *`Tenancy` and the runner imported each other.* The stamp's read and its conditional write
+     move to `services/migrations.py`, with the `SchemaChain` alias and the helpers `versions`
+     and `current_version`; the runner imports `Tenancy` plainly; where the toolkit's own
+     migrations folder is and how a chain is built from a schema view move from the kit to
+     `services` (L3, L4). PD-17 is amended by this.
+  3. *A schema with no `version` became the version "None".* The kit refuses it
+     (`InvalidMigration`, naming the schema) (L4).
+  4. *The runner wrote into `Tenancy.behind`.* `Tenancy` owns it: `set_aside(tenants)` replaces
+     the set once, at the end of `migrate_tenants`; `behind` is read-only (L3, L4).
+  5. *A listing of a tenant set aside had no test* (the scenario of `rp-service-api`); the feature
+     had two behaviours in one scenario and a librarian where the spec says a reader. Two
+     scenarios, a reader, and a listing (L2).
+  6. *Two pages were wrong about restore*: the stamps graph is accepted and copied as it is
+     (`architecture/data-flows.adoc`, `howto/dump-restore.adoc`). Corrected now, with "requests
+     for its data" where the pages said every request of a tenant set aside answers 503 (L2).
+  7. Smaller ones, all accepted: `MigrationFailed` takes its data as `Conflict` does; the log's
+     `migration` field holds a migration's name or nothing; the stronger assertions the L2
+     reviewer lists (both files named for a fork; the tenant-level failure of TC-28; the order of
+     the IRI-policy record and the first stamp; one idea per assert).
+  **Not accepted:** reading the stamps once per database to halve the start-up queries (two per
+  database when nothing is pending; about 4 to 10 s for a thousand tenants: measured by L4, not a
+  need today); a generated `MigrationChain` class (a chain is never stored nor sent); a real race
+  in the fake store for TC-23 (the fake applies an update without yielding; TC-42 on Fuseki is the
+  check). The test helpers that build a `Tenancy` keep `stamps=()` by default (D-4), which task
+  2.2's text did not say.
+- **PD-20, added 2026-11-14.** The PD-23 fix also changed `rewrite` (`domain/tenant_move.py`),
+  rated HIGH (the restore path), and PD-24 item 1 adds a refusal in `Tenancy.restore`. Both were
+  built before the developer was asked, against the rule that a HIGH risk goes to the developer
+  first; the lead reported it to the developer the same day. Both only add: a graph left alone, a
+  dump refused.
 - **RISK-10 A template with a variable predicate (`?s ?p ?o`) can still delete a graph's version
   token or registry statement** (found while fixing PD-22 item 3, which refuses those predicates
   only when a template names them). Accepted: removing every triple of a class is a legitimate

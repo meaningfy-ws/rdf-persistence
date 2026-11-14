@@ -62,7 +62,7 @@ runs right after task 2.2, the riskiest (write order, atomicity, concurrency). G
   `MigrationFailed`, `TenantBehind` (`domain/exceptions.py`, exported) and, in
   `services/migrations.py`, `load_chain(folder, schema_id, current)` (PD-4) answering the ordered
   versions and migrations.
-- [x] 2.2 Runner. Test first, in `tests/unit/services/test_migrations.py` and the existing dump and
+- [x] 2.2 Runner. Test first, in `tests/unit/services/test_migration_runner.py` and the existing dump and
   restore tests. Then, in `services/migrations.py`: `stamp_if_none`, `stamps`,
   `migrate_database(store, database, chains)` (PD-7, PD-10), `migrate_shared` and
   `migrate_tenants(tenancy, store, chains) -> set[str]` (PD-9, PD-11); `Tenancy.behind` and the
@@ -116,10 +116,10 @@ an unknown version TC-52.
 ## 3. Dump, the application database, Fuseki, docs (stage 3, PR 3; after #102)
 
 - [ ] 3.1 Dump and restore (PD-15). Test first, in the existing dump and restore unit tests. Then
-  `migrate_dataset(dataset, chains)` in `services/migrations.py`; `services/tenant_dump.py` (`dump`
+  `migrate_dataset(dataset, chains)` in `services/migration_runner.py` (PD-17); `services/tenant_dump.py` (`dump`
   reads the stamp; `_check_manifest` takes the chain) and `Tenancy.restore` (migrate the parsed
   dataset first).
-- [ ] 3.2 The application database (PD-16). Test first. `migrate_shared` includes it when it
+- [x] 3.2 (closed by tasks 2.2 and 2.3, design D-1) The application database (PD-16). Test first. `migrate_shared` includes it when it
   exists; `ensure_application_database` stamps the one it creates (PD-10); the lifespan order of PD-9.
 - [ ] 3.3 Containers. In `tests/integration/store/`: the migration request against Fuseki.
 - [ ] 3.4 Docs. A new `howto/migrate.adoc` (the rules table, the five recipes of PD-5, what cannot
@@ -144,7 +144,7 @@ an unknown version TC-52.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 2.1 · PR 1 (#109) · [ ] 2.2 · adversarial tester · [ ] 2.3 · PR 2 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 2.1 · PR 1 (#109) · [x] 2.2 · adversarial tester · [x] 2.3 · [x] 3.2 · PR 2 ·
   #102 merged · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · PR 3
 
 ## Verification
