@@ -3,8 +3,9 @@
 ### Requirement: A restore refuses a dump it cannot trust
 
 The service kit SHALL refuse a dump, with `InvalidBody` and before creating anything, whose format
-version or schema id differ from the running service's, whose schema version is absent or is not a
-version of the service's migration chain, that carries no schema stamp or a stamp unknown to a
+version or schema id differ from the running service's, whose schema version is absent, is not a
+version of the service's migration chain, or differs from the dump's own stamp, whose
+schema-stamps graph holds anything but one plain-string stamp per schema at a version of its
 chain, whose recorded effective IRI policy differs from the service's, that holds a quad outside
 the named graphs the policy mints for a tenant and the schema-stamps graph, whose root, once
 migrated to the running version, does not decode or is refused by a root validator, or whose first
