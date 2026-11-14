@@ -2,8 +2,9 @@
 
 > Derives from: EPIC `collaboration-and-reference-collections` (proposal.md, issues #78 to #81).
 
-**Verdict: pending.** The demo below was run by the lead on 2026-11-14 and is shown to the
-developer; only the developer accepts. The change is not archived before the verdict.
+**Verdict: accepted by the developer, 2026-11-14** ("fine go ahead"), after the demo below, run
+by the lead the same day, and the three decisions listed at the end, none of which the developer
+overruled.
 
 ## What was shown (2026-11-14, real Fuseki, the toy library)
 
