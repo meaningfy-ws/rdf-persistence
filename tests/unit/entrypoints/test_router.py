@@ -488,6 +488,18 @@ async def test_a_put_without_a_state_keeps_the_state_of_the_book(scene) -> None:
     assert (response.status_code, response.json()["workflow_status"]) == (200, DRAFT), response.text
 
 
+@pytest.mark.parametrize(("state", "found"), [(DRAFT, True), (ACCEPTED, False)])
+async def test_a_listing_filters_the_books_by_their_state(scene, state: str, found: bool) -> None:
+    """A review queue over HTTP: the generic listing takes the state's IRI as a filter."""
+    listing = await scene.http.get(
+        f"{scene.tenant}/books", params={"workflow_status": state}, headers=scene.headers("ada")
+    )
+    assert listing.status_code == 200, listing.text
+    states = [item["workflow_status"] for item in listing.json()["items"]]
+    assert bool(states) is found, f"the stored book is in draft, so {state} lists it: {found}"
+    assert set(states) <= {state}, "and only books in the state asked"
+
+
 async def test_a_shelf_with_a_member_of_the_wrong_class_is_a_422_and_stores_nothing(scene) -> None:
     """TC-21: the generic route passes the collection guard; the member is a book, not a shelf."""
     body = {
