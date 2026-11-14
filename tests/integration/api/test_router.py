@@ -11,7 +11,7 @@ import pytest
 
 from rdf_persistence import Problem
 from rdf_persistence.generation.cli import main as generate
-from tests.integration.api.conftest import make_book
+from tests.integration.api.conftest import make_book, make_tenant
 from tests.toy import TOY_SCHEMA
 from tests.toy_service import (
     DUNE_BODY,
@@ -146,6 +146,19 @@ async def test_a_stale_replace_is_a_409_problem_and_the_book_is_unchanged(toy, c
     reread = await client.get(book, headers=toy.bearer("ada"))
     assert reread.json()["label"] == "First", "the book is unchanged by the stale replace"
     assert reread.headers["etag"] == won.headers["etag"], "and so is its version"
+
+
+async def test_one_isbn_is_free_in_each_tenant_and_taken_within_one(toy, client) -> None:  # IT-03
+    body = {**DUNE_BODY, "isbn": "1"}
+    first = await make_tenant(toy, client)
+    second = await make_tenant(toy, client, "ben")
+    answers = [
+        await client.post(f"{first}/books", json=body, headers=toy.bearer("ada")),
+        await client.post(f"{second}/books", json=body, headers=toy.bearer("ben")),
+        await client.post(f"{first}/books", json=body, headers=toy.bearer("ada")),
+    ]
+    assert [a.status_code for a in answers] == [201, 201, 409], "taken only within its own tenant"
+    assert answers[2].json()["type"].endswith("problems/key-conflict"), "its own problem type"
 
 
 async def test_two_replaces_in_flight_leave_exactly_one_winner(toy, client) -> None:

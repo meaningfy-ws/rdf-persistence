@@ -78,7 +78,7 @@ a `KeyConflict` from the store is a diagnosis). Lists of IRIs in the tables are 
 | TC-32 | PUT `B` with `A`'s isbn and a stale `If-Match` | 409, type `…/problems/conflict` |
 | TC-33 | OpenAPI document | lists `key-conflict` among the problem types |
 
-- [ ] 1.4 On Fuseki. New `tests/integration/store/test_unique_keys.py`; router case in
+- [x] 1.4 On Fuseki. New `tests/integration/store/test_unique_keys.py`; router case in
   `tests/integration/api/test_router.py`. Gate:
   `make test-containers TEST_PATH="tests/integration/store/test_unique_keys.py tests/integration/api/test_router.py"`.
 
