@@ -312,6 +312,10 @@ FILTER NOT EXISTS {
 - **RISK-6** — declaring a key over existing duplicates blocks edits of those aggregates (medium
   for a consumer adding a key to live data; medium). Mitigation: `key_duplicates()` and the
   how-to's order: declare, report on every tenant, fix, deploy.
+- **RISK-7** (D-5 F-8) — a 409 `key-conflict` tells anyone who may write the type that the value
+  exists in the tenant, even when the aggregate holding it is hidden from them (low; medium for
+  confidential values). Accepted: every tenant-wide key has it; PD-8 keeps the holder and the
+  value out of the answer. The how-to says not to make a slot of confidential values a key.
 - **Assumption** — `atomic-commit` lets a toolkit extension append patterns to the guard
   operation's `WHERE` and run its own read after the version diagnosis (its DEC-6, DEC-3).
   If not, this PLAN returns to the gate.
