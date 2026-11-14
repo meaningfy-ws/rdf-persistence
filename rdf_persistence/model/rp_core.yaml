@@ -299,6 +299,18 @@ enums:
           Slot annotation, `true` when the session writes the slot about a graph (its version, who
           created or contributed to it, when); closed shapes ignore the statement.
         meaning: rp:AnnotationBookkeeping
+      toolkit_filled:
+        title: Toolkit filled
+        description: >-
+          Slot annotation, `true` when the toolkit sets the slot of an activity's record itself, and a
+          caller's value is ignored.
+        meaning: rp:AnnotationToolkitFilled
+      payload:
+        title: Payload
+        description: >-
+          Annotation of a `slot_usage` entry in a command class, `true` when the command carries the
+          slot but the stored record does not; it is never required there.
+        meaning: rp:AnnotationPayload
       rp_unique_scope:
         title: Unique scope
         description: >-

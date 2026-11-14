@@ -138,8 +138,8 @@ something other than the class name:
 ----
 
 It follows the same pattern as `rp_path`: a url segment of lower case letters, digits and hyphens.
-Two classes may not share one, and `content`, `graph`, `parts`, `access`, `meta` and `registry` are
-reserved by the IRI layout, so `rp-generate` refuses them. The toolkit's routes read `rp_iri_type`;
+Two classes may not share one, and `content`, `graph`, `parts`, `access`, `meta`, `registry` and `provenance`
+are reserved by the IRI layout, so `rp-generate` refuses them. The toolkit's routes read `rp_iri_type`;
 `new_part` does not (step 8).
 
 [source,yaml]
@@ -1741,8 +1741,8 @@ The fields of `IriPolicy`, with their defaults and the variables each template m
 |`loaded_graph_template`
 |`{root}/content/{id}`
 |as `part_template`; its `{type}` is `content`
-|`access_template`, `meta_template`, `registry_template`
-|`{tenant}/access`, `{tenant}/meta`, `{tenant}/registry`
+|`access_template`, `meta_template`, `registry_template`, `provenance_template`
+|`{tenant}/access`, `{tenant}/meta`, `{tenant}/registry`, `{tenant}/provenance`
 |`{base}`, `{deployment}`, `{tenant}`, `{tenant_id}`; names `{tenant}` or `{tenant_id}`
 |`principal_template`
 |`{issuer}/users/{sub}`
@@ -1764,8 +1764,8 @@ never match: `install_service` compares the `principal_template` of the verifier
 settings' and refuses to start (`InvalidIri`) when they differ. A `principal_template` without
 `{issuer}` gives one principal to the same `sub` of every identity provider; leave `{issuer}` out
 only when one provider issues all your tokens. The verifier refuses a token whose `sub` is empty,
-`.` or `..`. Templates under which a tenant's access, meta or registry IRI equals another of them,
-the tenant's, or reads as an aggregate or a loaded graph are refused too. The access record is not an aggregate: no session reads or commits its graph, but a
+`.` or `..`. Templates under which a tenant's access, meta, registry or provenance IRI equals
+another of them, the tenant's, or reads as an aggregate or a loaded graph are refused too. The access record is not an aggregate: no session reads or commits its graph, but a
 grant may still target it.
 
 The consumer's table:
@@ -1799,6 +1799,14 @@ logging it with `step: iri-policy`. A record that cannot be parsed, or more than
 the start too, saying the record is unreadable. A system database that has access
 records but no record is taken to hold the default policy: a non-default policy is refused there,
 and the default is recorded. Moving stored data to a new policy is not supported.
+
+*Upgrading from a version without the provenance graph.* Three points. `provenance` is now a
+reserved class IRI type (see step 3), so a class that used it must be renamed. The generated folder
+gains five frames (`Activity`, `Add`, `Remove`, `Replace` and the transition's own), so run your
+regenerate target once and commit the result. A recorded policy from before this version reads as
+the default `{tenant}/provenance`, and that is not a change; but a deployment whose recorded policy
+already uses `{tenant}/provenance` for another graph cannot start, and the only way out is a new
+policy record.
 
 What else the policy fixes:
 

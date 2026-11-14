@@ -245,12 +245,13 @@ class IdSpec(ConfiguredBaseModel):
 
 
 class IriPolicy(ConfiguredBaseModel):
-    "The templates the toolkit mints and accepts IRIs by, one per kind of IRI, and the id specifications of tenant and object ids. Every slot defaults to today\u0027s shape, so an empty policy is the default one. A template fills the variables allowed for its kind; the tenant, aggregate, part, loaded graph and principal templates end in their id variable, the access, meta and registry templates contain the tenant, and the aggregate, part and loaded graph templates name their tenant or, for the last two, their root."
+    "The templates the toolkit mints and accepts IRIs by, one per kind of IRI, and the id specifications of tenant and object ids. Every slot defaults to today\u0027s shape, so an empty policy is the default one. A template fills the variables allowed for its kind; the tenant, aggregate, part, loaded graph and principal templates end in their id variable, the access, meta, registry and provenance templates contain the tenant, and the aggregate, part and loaded graph templates name their tenant or, for the last two, their root."
     tenant_template: Optional[str] = Field(default="{base}{tenant_segment}/{tenant_id}", title="Tenant template", description="The template of a tenant IRI; ends in `{tenant_id}`.")
     application_template: Optional[str] = Field(default="{base}app", title="Application template", description="The template of the application IRI, the root of the application database\u0027s IRIs.")
     access_template: Optional[str] = Field(default="{tenant}/access", title="Access template", description="The template of the IRI of a tenant\u0027s access record; contains `{tenant}` or `{tenant_id}`.")
     meta_template: Optional[str] = Field(default="{tenant}/meta", title="Meta template", description="The template of the IRI of a tenant\u0027s meta graph; contains `{tenant}` or `{tenant_id}`.")
     registry_template: Optional[str] = Field(default="{tenant}/registry", title="Registry template", description="The template of the IRI of a tenant\u0027s registry graph; contains `{tenant}` or `{tenant_id}`.")
+    provenance_template: Optional[str] = Field(default="{tenant}/provenance", title="Provenance template", description="The template of the IRI of a tenant\u0027s provenance graph; contains `{tenant}` or `{tenant_id}`.")
     aggregate_template: Optional[str] = Field(default="{tenant}/{rp_path}/{id}", title="Aggregate template", description="The template of an aggregate root IRI; contains `{tenant}` or `{tenant_id}` and ends in `{id}`.")
     part_template: Optional[str] = Field(default="{root}/parts/{id}", title="Part template", description="The template of the IRI of an owned part; contains `{tenant}`, `{tenant_id}` or `{root}` and ends in `{id}`.")
     loaded_graph_template: Optional[str] = Field(default="{root}/content/{id}", title="Loaded graph template", description="The template of the IRI of a loaded graph; contains `{tenant}`, `{tenant_id}` or `{root}` and ends in `{id}`.")
@@ -320,6 +321,19 @@ class IriPolicy(ConfiguredBaseModel):
                     raise ValueError(err_msg)
         elif isinstance(v, str) and not pattern.fullmatch(v):
             err_msg = "Invalid registry_template format: " + str(v)
+            raise ValueError(err_msg)
+        return v
+
+    @field_validator("provenance_template")
+    def pattern_provenance_template(cls, v):
+        pattern=re.compile("^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid provenance_template format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid provenance_template format: " + str(v)
             raise ValueError(err_msg)
         return v
 

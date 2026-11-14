@@ -1,5 +1,6 @@
 """The policy guard at start-up over the fakes: the policy is fixed once a deployment has data (PD-9, PD-13)."""
 
+import json
 import logging
 
 import pytest
@@ -83,6 +84,17 @@ async def test_every_differing_field_is_named(store, tenancy):
 async def test_the_default_policy_unset_or_explicit_is_one_policy(store, tenancy, first, second):
     await guard_iri_policy(store, tenancy, settings_of(first))
     await guard_iri_policy(store, tenancy, settings_of(second))
+
+
+async def test_a_policy_recorded_before_the_provenance_template_reads_as_the_default(
+    store, tenancy
+):
+    """message-bus TC-07: the recorded JSON has no ``provenance_template``; it is not a change."""
+    recorded = effective_of(IriPolicy()).model_dump(mode="json", exclude={"provenance_template"})
+    record = Graph()
+    record.add((RECORD_GRAPH, v.IRI_POLICY, Literal(json.dumps(recorded))))
+    await store.put_graph(tenancy.system_database, RECORD_GRAPH, record)
+    await guard_iri_policy(store, tenancy, settings_of(None))
 
 
 async def test_a_non_default_policy_over_data_without_a_record_is_refused(store, tenancy):

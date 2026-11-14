@@ -32,7 +32,11 @@ from .rp_core import (
     AggregateRoot,
     Principal
 )
-from .rp_provenance import Activity
+from .rp_provenance import (
+    Activity,
+    Generation,
+    Invalidation
+)
 
 
 metamodel_version = "1.12.0"
@@ -113,13 +117,16 @@ class UnderWorkflow(ConfiguredBaseModel):
 
 class TransitionRecord(AggregateRoot, Activity):
     "The record of one transition of an aggregate: which aggregate, from which state to which, when, by whom and with which comment. The toolkit writes it in the update that changes the state and deletes it with the aggregate. It is a prov:Activity in the generated vocabulary, and typed with its own class when stored."
-    used_resource: str = Field(default=..., title="Used resource", description="The IRI of the aggregate the transition moved.")
+    used_resource: str = Field(default=..., title="Used resource", description="The IRI of the aggregate the activity used.")
     from_state_iri: str = Field(default=..., title="From state IRI", description="The IRI of the state an aggregate left, on the comment a transition posted and on the transition\u0027s record. Defined here, so that the workflow module, which imports this one, uses it too. A state name in a workflow file is another thing: it has no IRI.")
     to_state_iri: str = Field(default=..., title="To state IRI", description="The IRI of the state an aggregate entered, on the comment a transition posted and on the transition\u0027s record. Defined here beside from_state_iri.")
-    started_at_time: datetime  = Field(default=..., title="Started at time", description="The time the transition was made.")
+    started_at_time: datetime  = Field(default=..., title="Started at time", description="The time the activity started.")
     transition_comment: Optional[str] = Field(default=None, title="Transition comment", description="The IRI of the comment the transition posted, when it had one.")
     id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
     was_associated_with: Optional[list[str]] = Field(default=None, title="Was associated with", description="A principal that carried out the activity.")
+    ended_at_time: Optional[datetime ] = Field(default=None, title="Ended at time", description="The time the activity ended.")
+    generations: Optional[list[Generation]] = Field(default=None, title="Generations", description="The versions of entities the activity generated.")
+    invalidations: Optional[list[Invalidation]] = Field(default=None, title="Invalidations", description="The versions of entities the activity invalidated.")
 
 
 # Model rebuild

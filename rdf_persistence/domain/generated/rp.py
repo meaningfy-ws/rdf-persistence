@@ -73,7 +73,12 @@ from .rp_files import (
 )
 from .rp_provenance import (
     Activity,
-    Provenanced
+    Add,
+    Generation,
+    Invalidation,
+    Provenanced,
+    Remove,
+    Replace
 )
 from .rp_tenancy import (
     TenantAccess,

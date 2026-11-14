@@ -13,6 +13,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
 )
 from rdf_persistence.domain.iris import Iris
 from rdf_persistence.domain.tenant_move import check_graphs, glued_templates, rewrite
+from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
 from tests.toy import SETTINGS, TOY_SCHEMA
@@ -225,7 +226,13 @@ def test_glued_templates_names_the_templates_that_glue_the_tenant_id(
 def minted_graphs(iris: Iris, tenant: str) -> list[URIRef]:
     aggregate = str(iris.mint_aggregate(tenant, BOOK, "books"))
     loaded = str(iris.mint_loaded_graph(tenant, aggregate))
-    return [iris.meta(tenant), iris.registry(tenant), URIRef(f"{aggregate}/graph"), URIRef(loaded)]
+    return [
+        iris.meta(tenant),
+        iris.registry(tenant),
+        URIRef(f"{aggregate}/graph"),
+        URIRef(loaded),
+        iris.provenance(tenant),
+    ]
 
 
 def test_every_graph_the_policy_mints_for_the_tenant_passes_the_check():
@@ -240,9 +247,32 @@ def test_every_graph_the_policy_mints_for_the_tenant_passes_the_check():
     check_graphs(source, tenant, iris)
 
 
-def test_a_graph_of_another_tenant_is_refused_naming_it():
+def test_a_quad_in_the_provenance_graph_passes_the_check():
+    """message-bus PD-5, TC-08."""
     iris = iris_of()
-    other = minted_graphs(iris, str(iris.tenant(OLD)))[0]
+    tenant = str(iris.tenant(NEW))
+    source = dataset_of(
+        (URIRef("urn:uuid:a"), DCTERMS.relation, Literal("x"), iris.provenance(tenant))
+    )
+    check_graphs(source, tenant, iris)
+
+
+def test_a_provenance_quad_moves_its_graph_and_object_but_not_its_subject():
+    """TC-09."""
+    iris = iris_of()
+    old, new = str(iris.tenant(OLD)), str(iris.tenant(NEW))
+    activity = URIRef("urn:uuid:a")
+    source = dataset_of((activity, v.ENTITY, URIRef(f"{old}/books/1"), iris.provenance(old)))
+    moved = rewrite(source, SETTINGS.base, OLD, NEW)
+    assert quads_of(moved) == {
+        (activity, v.ENTITY, URIRef(f"{new}/books/1"), URIRef(f"{new}/provenance"))
+    }, "graph and object move to the new tenant, the activity subject stays"
+
+
+@pytest.mark.parametrize("which", [0, -1], ids=["meta", "provenance"])
+def test_a_graph_of_another_tenant_is_refused_naming_it(which):
+    iris = iris_of()
+    other = minted_graphs(iris, str(iris.tenant(OLD)))[which]
     source = dataset_of((URIRef("urn:x:s"), DCTERMS.relation, Literal("x"), other))
     with pytest.raises(InvalidBody, match=str(other)):
         check_graphs(source, str(iris.tenant(NEW)), iris)

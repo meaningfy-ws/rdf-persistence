@@ -152,7 +152,8 @@ Describe their shape as an `IriPolicy`: a template for the tenant, the aggregate
 and the loaded graphs (for example `{base}{tenant_id}/{type}/{id}`) and the rule for each id (a
 UUID, or so many random characters), and set it on `ServiceSettings.iri_policy`. The service then
 mints, checks and reads back every IRI by the policy, and the API paths follow the last segment.
-The access, meta and registry graphs and the principal IRI keep their defaults for now. See
+The access, meta, registry and provenance graphs have templates of their own (the provenance
+graph holds the records of what was done, `{tenant}/provenance` by default), and the principal IRI keeps its default. See
 xref:howto/adopt.adoc#iri-policy[step 14].
 
 *Why does my file root answer 405 on PUT?*::

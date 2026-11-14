@@ -87,6 +87,10 @@ classes:
       - started_at_time
       - transition_comment
     slot_usage:
+      used_resource:
+        required: true
+      started_at_time:
+        required: true
       from_state_iri:
         required: true
       to_state_iri:
@@ -152,18 +156,6 @@ slots:
     description: The current state of the aggregate, the IRI of a state of its workflow.
     slot_uri: ADMS:status
     range: uri
-  used_resource:
-    title: Used resource
-    description: The IRI of the aggregate the transition moved.
-    slot_uri: prov:used
-    range: uri
-    required: true
-  started_at_time:
-    title: Started at time
-    description: The time the transition was made.
-    slot_uri: prov:startedAtTime
-    range: datetime
-    required: true
   transition_comment:
     title: Transition comment
     description: The IRI of the comment the transition posted, when it had one.

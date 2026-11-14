@@ -81,3 +81,12 @@ layers =
     rdf_persistence.services.discussion | rdf_persistence.services.reference_collections | rdf_persistence.services.workflows
     rdf_persistence.services.access
     rdf_persistence.services.session
+
+[importlinter:contract:session-and-provenance-without-mapper]
+name = the session and the activity shape never import the mapper, which imports the session (message-bus PD-6)
+type = forbidden
+source_modules =
+    rdf_persistence.services.session
+    rdf_persistence.services.provenance
+forbidden_modules =
+    rdf_persistence.services.mapper

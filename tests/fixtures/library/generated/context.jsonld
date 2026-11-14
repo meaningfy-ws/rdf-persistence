@@ -42,9 +42,17 @@
             "annotate": "http://www.w3.org/ns/odrl/2/annotate"
          }
       },
+      "activity": {
+         "@type": "@id",
+         "@id": "prov:activity"
+      },
       "assignee": {
          "@type": "@id",
          "@id": "ODRL:assignee"
+      },
+      "at_time": {
+         "@type": "xsd:dateTime",
+         "@id": "prov:atTime"
       },
       "authors": {
          "@container": "@set",
@@ -97,6 +105,21 @@
       "description": {
          "@id": "dcterms:description"
       },
+      "ended_at_time": {
+         "@type": "xsd:dateTime",
+         "@id": "prov:endedAtTime"
+      },
+      "entity": {
+         "@type": "@id",
+         "@id": "rp:entity"
+      },
+      "entity_class": {
+         "@type": "@id",
+         "@id": "rp:entityClass"
+      },
+      "entity_version": {
+         "@id": "rp:entityVersion"
+      },
       "equals_slot": {
          "@id": "rp:equalsSlot"
       },
@@ -116,6 +139,11 @@
       "generated_at_time": {
          "@type": "xsd:dateTime",
          "@id": "prov:generatedAtTime"
+      },
+      "generations": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:generation"
       },
       "genre": {
          "@id": "schema:genre",
@@ -146,6 +174,11 @@
       },
       "initial_state": {
          "@id": "rp:initialState"
+      },
+      "invalidations": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:invalidation"
       },
       "isbn": {
          "@id": "bibo:isbn"
@@ -393,6 +426,9 @@
       "Activity": {
          "@id": "prov:Activity"
       },
+      "Add": {
+         "@id": "rp:Add"
+      },
       "AggregateKey": {
          "@id": "rp:AggregateKey"
       },
@@ -417,8 +453,14 @@
       "Described": {
          "@id": "rp:Described"
       },
+      "Generation": {
+         "@id": "prov:Generation"
+      },
       "Grant": {
          "@id": "ODRL:Permission"
+      },
+      "Invalidation": {
+         "@id": "prov:Invalidation"
       },
       "KeyDuplicate": {
          "@id": "rp:KeyDuplicate"
@@ -455,6 +497,12 @@
       },
       "RegistryEntry": {
          "@id": "rp:RegistryEntry"
+      },
+      "Remove": {
+         "@id": "rp:Remove"
+      },
+      "Replace": {
+         "@id": "rp:Replace"
       },
       "RoleDefinition": {
          "@id": "rp:RoleDefinition"

@@ -231,7 +231,7 @@ def _check_template(name: str, template: str, settings: ServiceSettings) -> None
 DEFAULT_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
 LOADED_GRAPH_TYPE = "content"
 # The words the IRI layout owns; they are never an id (PD-5) and no class may take one as its type (PD-8).
-LAYOUT_WORDS = (LOADED_GRAPH_TYPE, "graph", "parts", "access", "meta", "registry")
+LAYOUT_WORDS = (LOADED_GRAPH_TYPE, "graph", "parts", "access", "meta", "registry", "provenance")
 _UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 _VARIABLE = re.compile(r"(\{[a-z_]+\})")
 _WORD = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
@@ -494,7 +494,7 @@ class Iris:
             )
 
     def _require_distinct_graphs(self) -> None:
-        """Refuse templates under which the access, meta or registry IRI of a tenant or of the application is another, its owner's, or an aggregate's (PD-14d).
+        """Refuse templates under which the access, meta, registry or provenance IRI of a tenant or of the application is another, its owner's, or an aggregate's (PD-14d).
 
         Raises:
             InvalidIri: two of the IRIs coincide, or one reads as an aggregate or a loaded graph.
@@ -510,6 +510,7 @@ class Iris:
             ("access", self.access),
             ("meta", self.meta),
             ("registry", self.registry),
+            ("provenance", self.provenance),
         ):
             iri = str(make(tenant))
             if iri in taken:
@@ -634,6 +635,10 @@ class Iris:
     def registry(self, tenant: str) -> URIRef:
         """The graph that holds the tenant's registry entries."""
         return self._fill(self._template("registry_template"), tenant=tenant)
+
+    def provenance(self, tenant: str) -> URIRef:
+        """The graph that holds the tenant's activity records; it is not registered."""
+        return self._fill(self._template("provenance_template"), tenant=tenant)
 
     def mint_aggregate(self, tenant: str, cls_type: str, rp_path: str) -> URIRef:
         """A fresh aggregate root IRI; ``cls_type`` is the class's ``{type}``, ``rp_path`` its segment."""

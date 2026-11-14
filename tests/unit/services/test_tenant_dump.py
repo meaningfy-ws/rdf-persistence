@@ -441,6 +441,19 @@ async def test_tc50_a_dump_whose_manifest_lacks_the_application_template_restore
     assert summary.id != world.tenant, "restored as a new tenant"
 
 
+async def test_a_dump_whose_manifest_lacks_the_provenance_template_restores_on_the_default_policy(
+    world,
+):
+    def as_an_older_service_wrote_it(payload: bytes) -> bytes:
+        manifest = TenantDump.model_validate_json(payload)
+        return manifest.model_dump_json(exclude={"iri_policy": {"provenance_template"}}).encode()
+
+    data = edited(await dumped(world), MANIFEST, as_an_older_service_wrote_it)
+    assert "provenance_template" not in dict(unpack(data))[MANIFEST].decode(), "the old shape"
+    summary = await restored(world, data)
+    assert summary.id != world.tenant, "restored as a new tenant"
+
+
 async def test_tc50_a_manifest_that_names_another_application_template_is_still_refused(world):
     def renamed(payload: bytes) -> bytes:
         manifest = TenantDump.model_validate_json(payload)

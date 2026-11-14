@@ -71,9 +71,66 @@ class Activity(ConfiguredBaseModel):
     "Something that happened and generated or changed entities, carried out by principals."
     id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
     was_associated_with: Optional[list[str]] = Field(default=None, title="Was associated with", description="A principal that carried out the activity.")
+    started_at_time: Optional[datetime ] = Field(default=None, title="Started at time", description="The time the activity started.")
+    ended_at_time: Optional[datetime ] = Field(default=None, title="Ended at time", description="The time the activity ended.")
+    generations: Optional[list[Generation]] = Field(default=None, title="Generations", description="The versions of entities the activity generated.")
+    invalidations: Optional[list[Invalidation]] = Field(default=None, title="Invalidations", description="The versions of entities the activity invalidated.")
+
+
+class Generation(ConfiguredBaseModel):
+    "The generation of one version of an entity by an activity."
+    activity: str = Field(default=..., title="Activity", description="The IRI of the activity this generation or invalidation belongs to.")
+    at_time: datetime  = Field(default=..., title="At time", description="The time of the generation or invalidation, the end of its activity.")
+    entity: str = Field(default=..., title="Entity", description="The IRI of the entity whose version was generated or invalidated.")
+    entity_class: Optional[str] = Field(default=None, title="Entity class", description="The IRI of the entity\u0027s class, when it had one.")
+    entity_version: str = Field(default=..., title="Entity version", description="The version token of the entity that was generated or invalidated.")
+
+
+class Invalidation(ConfiguredBaseModel):
+    "The invalidation of one version of an entity by an activity."
+    activity: str = Field(default=..., title="Activity", description="The IRI of the activity this generation or invalidation belongs to.")
+    at_time: datetime  = Field(default=..., title="At time", description="The time of the generation or invalidation, the end of its activity.")
+    entity: str = Field(default=..., title="Entity", description="The IRI of the entity whose version was generated or invalidated.")
+    entity_class: Optional[str] = Field(default=None, title="Entity class", description="The IRI of the entity\u0027s class, when it had one.")
+    entity_version: str = Field(default=..., title="Entity version", description="The version token of the entity that was generated or invalidated.")
+
+
+class Add(Activity):
+    "An activity that added an aggregate."
+    id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    was_associated_with: Optional[list[str]] = Field(default=None, title="Was associated with", description="A principal that carried out the activity.")
+    started_at_time: Optional[datetime ] = Field(default=None, title="Started at time", description="The time the activity started.")
+    ended_at_time: Optional[datetime ] = Field(default=None, title="Ended at time", description="The time the activity ended.")
+    generations: Optional[list[Generation]] = Field(default=None, title="Generations", description="The versions of entities the activity generated.")
+    invalidations: Optional[list[Invalidation]] = Field(default=None, title="Invalidations", description="The versions of entities the activity invalidated.")
+
+
+class Replace(Activity):
+    "An activity that replaced an aggregate with a new version."
+    id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    was_associated_with: Optional[list[str]] = Field(default=None, title="Was associated with", description="A principal that carried out the activity.")
+    started_at_time: Optional[datetime ] = Field(default=None, title="Started at time", description="The time the activity started.")
+    ended_at_time: Optional[datetime ] = Field(default=None, title="Ended at time", description="The time the activity ended.")
+    generations: Optional[list[Generation]] = Field(default=None, title="Generations", description="The versions of entities the activity generated.")
+    invalidations: Optional[list[Invalidation]] = Field(default=None, title="Invalidations", description="The versions of entities the activity invalidated.")
+
+
+class Remove(Activity):
+    "An activity that removed an aggregate."
+    id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    was_associated_with: Optional[list[str]] = Field(default=None, title="Was associated with", description="A principal that carried out the activity.")
+    started_at_time: Optional[datetime ] = Field(default=None, title="Started at time", description="The time the activity started.")
+    ended_at_time: Optional[datetime ] = Field(default=None, title="Ended at time", description="The time the activity ended.")
+    generations: Optional[list[Generation]] = Field(default=None, title="Generations", description="The versions of entities the activity generated.")
+    invalidations: Optional[list[Invalidation]] = Field(default=None, title="Invalidations", description="The versions of entities the activity invalidated.")
 
 
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 Provenanced.model_rebuild()
 Activity.model_rebuild()
+Generation.model_rebuild()
+Invalidation.model_rebuild()
+Add.model_rebuild()
+Replace.model_rebuild()
+Remove.model_rebuild()

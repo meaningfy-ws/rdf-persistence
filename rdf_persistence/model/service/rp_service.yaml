@@ -76,7 +76,7 @@ classes:
       specifications of tenant and object ids. Every slot defaults to today's shape, so an empty
       policy is the default one. A template fills the variables allowed for its kind; the tenant,
       aggregate, part, loaded graph and principal templates end in their id variable, the access,
-      meta and registry templates contain the tenant, and the aggregate, part and loaded graph
+      meta, registry and provenance templates contain the tenant, and the aggregate, part and loaded graph
       templates name their tenant or, for the last two, their root.
     class_uri: rp:IriPolicy
     slots:
@@ -85,6 +85,7 @@ classes:
       - access_template
       - meta_template
       - registry_template
+      - provenance_template
       - aggregate_template
       - part_template
       - loaded_graph_template
@@ -102,6 +103,8 @@ classes:
         ifabsent: string({tenant}/meta)
       registry_template:
         ifabsent: string({tenant}/registry)
+      provenance_template:
+        ifabsent: string({tenant}/provenance)
       aggregate_template:
         ifabsent: string({tenant}/{rp_path}/{id})
       part_template:
@@ -510,6 +513,12 @@ slots:
     title: Registry template
     description: The template of the IRI of a tenant's registry graph; contains `{tenant}` or `{tenant_id}`.
     slot_uri: rp:registryTemplate
+    range: string
+    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*\{tenant(?:_id)?\}(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*$'
+  provenance_template:
+    title: Provenance template
+    description: The template of the IRI of a tenant's provenance graph; contains `{tenant}` or `{tenant_id}`.
+    slot_uri: rp:provenanceTemplate
     range: string
     pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*\{tenant(?:_id)?\}(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*$'
   aggregate_template:

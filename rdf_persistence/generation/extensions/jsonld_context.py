@@ -19,7 +19,13 @@ from rdf_persistence.generation.exceptions import SchemaGenerationError
 from rdf_persistence.generation.generated.rp_generation import Frame, FramePart, GeneratedFile
 from rdf_persistence.services.artifacts import CONTEXT_FILE, CONTEXT_KEY, FRAME_SUFFIX, TYPE_KEY
 from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import is_internal, is_owned, json_name, root_classes
+from rdf_persistence.services.schema_structure import (
+    ACTIVITY,
+    is_internal,
+    is_owned,
+    json_name,
+    root_classes,
+)
 
 # JSON carries these natively: a datatype tag would turn them into strings when framed back.
 NATIVE_JSON_DATATYPES = ("xsd:integer", "xsd:boolean")
@@ -118,13 +124,28 @@ def render_frame(view: SchemaView, cls: ClassDefinition) -> str:
     return json.dumps(body, indent=2, ensure_ascii=False) + "\n"
 
 
+def framed_classes(view: SchemaView, folder: Path) -> list[ClassDefinition]:
+    """The classes that get a frame: the roots of ``folder``, then ``Activity`` and every descendant in the closure.
+
+    An activity is read from the store and sent as a message without being a root, and the
+    toolkit's own activity classes belong to every target's closure (message-bus PD-4).
+    """
+    classes = root_classes(view, folder)
+    named = {cls.name for cls in classes}
+    if ACTIVITY in view.all_classes():
+        classes += [
+            view.get_class(name) for name in view.class_descendants(ACTIVITY) if name not in named
+        ]
+    return classes
+
+
 def render(schema_path: Path) -> list[GeneratedFile]:
-    """``context.jsonld`` and ``<Class>.frame.jsonld`` for every aggregate type."""
+    """``context.jsonld`` and ``<Class>.frame.jsonld`` for every aggregate type and every activity."""
     view = load_schema(schema_path)
     return [
         GeneratedFile(name=CONTEXT_FILE, text=render_context(schema_path)),
         *(
             GeneratedFile(name=f"{cls.name}{FRAME_SUFFIX}", text=render_frame(view, cls))
-            for cls in root_classes(view, schema_path.parent)
+            for cls in framed_classes(view, schema_path.parent)
         ),
     ]

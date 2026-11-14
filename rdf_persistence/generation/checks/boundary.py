@@ -10,6 +10,7 @@ from rdf_persistence.domain.generated.rp_core import ModuleKind, RpAnnotation
 from rdf_persistence.generation.generated.rp_generation import BoundaryRule, CheckProblem
 from rdf_persistence.generation.problems import rule_problem
 from rdf_persistence.services.schema_structure import (
+    ACTIVITY,
     AGGREGATE_ROOT,
     aggregate_roots,
     annotation,
@@ -23,7 +24,7 @@ from rdf_persistence.services.schema_structure import (
 )
 
 # Classes reached by IRI, never owned (PD-23).
-REFERENCE_CLASSES = ("Principal", "Activity")
+REFERENCE_CLASSES = ("Principal", ACTIVITY)
 FORBIDDEN_FOR_DOMAIN = (ModuleKind.TECHNICAL.value, ModuleKind.ACCESS.value)
 
 

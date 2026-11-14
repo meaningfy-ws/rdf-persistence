@@ -71,6 +71,8 @@ ALLOWED_ANNOTATIONS = {
     RpAnnotation.INTERNAL: BOOLEAN,
     RpAnnotation.RP_UNLABELLED: BOOLEAN,
     RpAnnotation.BOOKKEEPING: BOOLEAN,
+    RpAnnotation.TOOLKIT_FILLED: BOOLEAN,
+    RpAnnotation.PAYLOAD: BOOLEAN,
     RpAnnotation.RP_UNIQUE_SCOPE: tuple(scope.value for scope in UniqueScope),
 }
 
