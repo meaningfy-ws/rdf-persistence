@@ -72,6 +72,11 @@ TENANT_STATE_IRIS = meanings(TenantState)
 HAD_MEMBER = predicate("had_member")
 MEMBERSHIP_RULE = predicate("membership_rule")
 
+# A comment is a Web Annotation: its class, the aggregate it targets and the aggregates it refers to (PD-12).
+ANNOTATION = URIRef(metamodel().get_uri(metamodel().get_class("Comment"), expand=True))
+HAS_TARGET = predicate("has_target")
+COMMENT_REFERENCES = predicate("comment_references")
+
 GRANTS = predicate("grants")
 PROHIBITIONS = predicate("prohibitions")
 ASSIGNEE = predicate("assignee")

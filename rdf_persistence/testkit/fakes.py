@@ -29,7 +29,14 @@ from rdf_persistence.domain.generated.service.rp_service import AccountSummary
 from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.domain.media import N_QUADS
 from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.session import Clock, Session, WriteGuard, open_session, utc_now
+from rdf_persistence.services.session import (
+    Clock,
+    Dependents,
+    Session,
+    WriteGuard,
+    open_session,
+    utc_now,
+)
 
 FAKE_DATABASE = "fake"
 FAKE_TENANT = "https://example.org/tenants/fake"
@@ -345,6 +352,7 @@ async def fake_session(
     listings: Listings | None = None,
     keys: Sequence[AggregateKey] = (),
     guards: WriteGuard | None = None,
+    dependents: Dependents = (),
 ) -> AsyncIterator[Session]:
     """A real ``Session`` over a ``FakeStore``, for unit tests of domain services.
 
@@ -365,5 +373,6 @@ async def fake_session(
         listings=listings,
         keys=keys,
         guards=guards,
+        dependents=dependents,
     ) as session:
         yield session

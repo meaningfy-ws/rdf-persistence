@@ -11,7 +11,7 @@ import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
-from rdflib import Literal, URIRef
+from rdflib import RDF, Literal, URIRef
 
 from rdf_persistence import Problem
 from rdf_persistence.domain.exceptions import InvalidBody, InvalidRoleDefinition, NotFound
@@ -19,6 +19,7 @@ from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.entrypoints.service import install_service
+from rdf_persistence.services.vocabulary import ANNOTATION, HAS_TARGET
 from rdf_persistence.testkit import FakeStore
 from tests.fixtures.library import generated
 from tests.toy import ROLES, SETTINGS, TOY_SCHEMA
@@ -444,7 +445,18 @@ async def test_a_collaboration_opens_for_the_authorised_caller_with_its_global_r
     assert authorised.global_roles == ["admin"], "the roles the collaboration is rebuilt from"
 
 
-async def test_a_collaboration_opens_on_the_answer_of_require_aggregate(service, client) -> None:
+async def test_the_kit_sessions_drop_the_comments_of_a_removed_aggregate(service, client) -> None:
+    headers = service.bearer("ada")
+    path = (await client.post("/libraries", json=TENANT_BODY, headers=headers)).headers["location"]
+    tenant = service.kit.tenant_iri(path.rsplit("/", 1)[1])
+    book = (await client.post(f"{path}/books", json=DUNE_BODY, headers=headers)).json()["id"]
+    comment = str(service.kit.iris.mint_aggregate(tenant, "rp-comment", "rp-comments"))
+    ours = [(URIRef(comment), RDF.type, ANNOTATION), (URIRef(comment), HAS_TARGET, URIRef(book))]
+    async with service.kit.session(tenant, "ada") as session:
+        await session.add_graph(comment, ours)
+        await session.remove(book, (await session.get_graph(book))[2])
+        with pytest.raises(NotFound):
+            await session.get_graph(comment)
     headers = service.bearer("ada")
     path = (await client.post("/libraries", json=TENANT_BODY, headers=headers)).headers["location"]
     tenant_id = path.rsplit("/", 1)[1]

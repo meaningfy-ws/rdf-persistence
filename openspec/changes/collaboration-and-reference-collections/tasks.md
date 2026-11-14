@@ -158,7 +158,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-47 | an own class with `rp_path: rp-notes` | hard problem `RESERVED_SEGMENT` |
 | TC-48 | the toy service's router | no `/rp-comments` route |
 
-- [ ] 3.3 `comment`, `thread`, the transaction pieces `_require_present` and `_DROP_DEPENDENTS`
+- [x] 3.3 `comment`, `thread`, the transaction pieces `_require_present` and `_DROP_DEPENDENTS`
   (PD-12 to PD-15); the dependent pair `(oa:Annotation, oa:hasTarget)` excluded from `referrers`
   and comment referrers filtered by target readability and the thread rule (PD-3). Test first in
   `tests/unit/services/test_collaboration_discussion.py` and `tests/unit/services/test_session_transaction.py`.
