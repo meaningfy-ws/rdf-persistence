@@ -384,6 +384,7 @@ class ReferenceCollections:
             if collection_class(self._collection_classes, root, graph) is None:
                 continue  # a stray rule triple on another aggregate is no collection
             collection = self._decoded(root, graph)
+            self._require_served(root, collection)  # a class the schema no longer has: no IRI
             exact = self._view.get_uri(collection.member_class, expand=True)
             if exact in types and await self._meets(root, collection, iri):
                 held.add(root)

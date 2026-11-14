@@ -516,6 +516,15 @@ delivers.
   13. Small: the `Forbidden` text built with a plain `if`; the misformatted `except`; a comment
       that the match guard's suffix is the guard's index.
 
+  14. From the checker (2026-11-14): a stored rule collection of a class the schema no longer
+      has is `StoredDataInvalid` for `collections_of` too, not an `AttributeError`; the spec and
+      the how-to say that a member another writer removed during the cascade is skipped or
+      refuses it, depending on the moment (replaced is always a refusal); message-less and
+      chained asserts in the stage's three small test files. Not built: the test that a cascade
+      over a stored-file member leaves its blob (the fixer judged the existing fakes need more
+      than a short test); the how-to's sentence rests on the code, where only
+      `services/file_removal.py` deletes blobs.
+
   Rejected: making `_require_match` public (L3 S1, L4/L5 W5: private is PD-15; recorded here
   that the collaboration-side modules of `services` are its only callers); narrowing the
   rule-collection read by member class, one plan shared by `find`, the cascade and `matches`,

@@ -32,8 +32,10 @@ async def test_each_aggregate_with_the_predicate_comes_back_as_its_own_graph(toy
 async def test_an_object_narrows_the_aggregates(toy_session):
     await put(toy_session, shelf(S1))
     await put(toy_session, dune(B1, chapters=1))
-    assert sorted(await toy_session.graphs_with(RDF.type, SHELF_CLASS)) == [S1]
-    assert sorted(await toy_session.graphs_with(RDF.type, BOOK_CLASS)) == [B1]
+    shelves = await toy_session.graphs_with(RDF.type, SHELF_CLASS)
+    books = await toy_session.graphs_with(RDF.type, BOOK_CLASS)
+    assert sorted(shelves) == [S1], "only the aggregate typed as a shelf"
+    assert sorted(books) == [B1], "only the aggregate typed as a book"
 
 
 async def test_triples_about_another_subject_stay_in_the_graph_that_holds_them(toy_session):

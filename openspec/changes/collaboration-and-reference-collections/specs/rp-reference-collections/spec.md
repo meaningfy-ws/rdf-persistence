@@ -59,7 +59,8 @@ Deleting a collection SHALL delete only the collection. A delete with an explici
 also delete every member as resolved at that moment (explicit, and by rule those the caller may
 `read`; a nested collection is deleted as a member, its own members kept), and only if the caller
 may `delete` every one of them,
-none changed after its version was read for the cascade, and each member that only matches the
+none was replaced after its version was read for the cascade (one that another writer removed
+meanwhile is skipped or refuses the cascade, and is gone either way), and each member that only matches the
 rule still matches it when the delete is applied; otherwise nothing SHALL be deleted. A refusal
 for the right to delete SHALL name the members that caused it which the caller may read and count
 the other named members. An aggregate that only matches the rule and that the caller may not

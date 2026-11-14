@@ -217,7 +217,7 @@ The errors of a cascade, all raised before anything is deleted:
 |`BadQuery` |The aggregate is not a collection.
 |`StoredDataInvalid` |The collection cannot be read back, its member class is not a served root, its rule is no longer accepted, or it names an aggregate that is not of its member class.
 |`CommitTooLarge` |The collection and its members are more than 500 roots, the limit of one commit (see xref:howto/commits.adoc[How commits and conflicts work]). The message gives the limit, not how many members there are.
-|`Conflict` |The collection is not at `if_version`, or a member changed after its version was read (it is named), or a rule member stopped meeting the rule (no member is named).
+|`Conflict` |The collection is not at `if_version`, or another writer replaced a member after its version was read (it is named), or a rule member stopped meeting the rule (no member is named). A member that another writer removed meanwhile is either skipped or named in a `Conflict`, depending on the moment; it is gone either way.
 |`DatabaseGone` |The tenant database does not exist.
 |===
 

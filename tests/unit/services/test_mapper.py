@@ -198,7 +198,8 @@ def test_a_shelf_with_members_and_a_rule_round_trips_and_is_typed_by_its_own_cla
     mapper = toy_mapper()
     graph = mapper.to_graph(on)
     rules = list(graph.objects(URIRef(iri), URIRef(f"{RP}membershipRule")))
-    assert len(rules) == 1 and isinstance(rules[0], BNode), "the rule is a part of the shelf"
+    assert len(rules) == 1, "the shelf has one rule"
+    assert isinstance(rules[0], BNode), "and the rule is a part of the shelf, with no IRI yet"
     skolem = skolemised(graph, iri)
     assert (URIRef(iri), RDF.type, URIRef(f"{LIB}Shelf")) in skolem, "the shelf's own class"
     assert (URIRef(iri), RDF.type, URIRef(f"{PROV}Collection")) not in skolem, "a mixin: no type"

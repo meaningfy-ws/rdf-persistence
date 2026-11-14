@@ -403,6 +403,15 @@ async def test_an_unknown_member_class_is_stored_data_invalid_not_an_attribute_e
         await as_ada(collaboration, toy_session).members(S1, deep=True)
 
 
+async def test_a_rule_collection_of_an_unknown_class_is_stored_data_invalid_for_collections_of(
+    toy_session, collaboration
+):
+    await put_book(toy_session, B1)
+    await put(toy_session, a_shelf(S1, member_class="NoSuchClass", membership_rule=poetry()))
+    with pytest.raises(StoredDataInvalid, match=S1):
+        await as_ada(collaboration, toy_session).collections_of(B1)
+
+
 async def test_a_deep_read_names_the_nested_collection_whose_rule_is_bad(
     toy_session, collaboration
 ):
