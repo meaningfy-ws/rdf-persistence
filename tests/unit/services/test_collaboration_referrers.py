@@ -35,7 +35,7 @@ async def put(session, model) -> None:
 
 
 async def put_book(session, iri: str, **slots: str) -> Book:
-    book = dune(iri, chapters=1).model_copy(update=slots)
+    book = dune(iri, chapters=1, **slots)
     await put(session, book)
     return book
 
@@ -75,14 +75,50 @@ async def test_a_referrer_the_caller_may_not_read_is_counted_and_not_named(
     assert B2 not in found.model_dump_json(), "and never named"
 
 
-async def test_a_slot_narrows_the_referrers(toy_session, collaboration):
+B2_ABOUT, B3_SEQUEL = (B2, "Book", "about"), (B3, "Book", "sequel_of")
+
+
+@pytest.mark.parametrize(
+    ("narrow", "expected"),
+    [
+        ({"slot": "sequel_of"}, [B3_SEQUEL]),
+        ({"slot": "about"}, [B2_ABOUT]),
+        ({"slot": "shelf"}, []),
+        ({"class_name": "Book"}, [B2_ABOUT, B3_SEQUEL]),
+        ({"class_name": "Shelf"}, []),
+        ({"class_name": "Book", "slot": "sequel_of"}, [B3_SEQUEL]),
+    ],
+    ids=[
+        "slot kept",
+        "slot of a part kept",
+        "slot nobody uses",
+        "class kept",
+        "class nobody has",
+        "class and slot",
+    ],
+)
+async def test_a_class_and_a_slot_keep_only_the_referrers_that_match(
+    toy_session, collaboration, narrow, expected
+):
     await put_book(toy_session, B1)
     await put_book(toy_session, B3, sequel_of=B1)
     b2 = dune(B2, chapters=1)
     b2.chapters[0].notes[0].about = B1
     await put(toy_session, b2)
-    found = await as_ada(collaboration).referrers(B1, slot="sequel_of")
-    assert refs(found) == [(B3, "Book", "sequel_of")], "the note's about is left out"
+    found = await as_ada(collaboration).referrers(B1, **narrow)
+    assert refs(found) == expected, "the rows of that class and slot, sorted"
+    assert found.hidden_count == 0, "ada may read all"
+
+
+@pytest.mark.parametrize(
+    "narrow", [{}, {"slot": "sequel_of"}, {"class_name": "Shelf"}], ids=["none", "slot", "class"]
+)
+async def test_narrowing_never_changes_the_hidden_count(toy_session, collaboration, narrow):
+    await put_book(toy_session, B1, shelf=S1)
+    await put_book(toy_session, B2, shelf=S1)
+    found = await as_bob(collaboration).referrers(S1, **narrow)
+    assert found.hidden_count == 1, "b2 is hidden, whatever the call asks for"
+    assert B2 not in found.model_dump_json(), "and never named"
 
 
 async def test_without_narrowing_a_part_that_refers_names_its_aggregate(toy_session, collaboration):
@@ -95,28 +131,25 @@ async def test_without_narrowing_a_part_that_refers_names_its_aggregate(toy_sess
     assert refs(found) == [(B2, "Book", "about"), (B3, "Book", "sequel_of")], "sorted by referrer"
 
 
-async def test_a_class_with_no_referrer_gives_an_empty_result(toy_session, collaboration):
-    await put_book(toy_session, B1)
-    await put_book(toy_session, B3, sequel_of=B1)
-    found = await as_ada(collaboration).referrers(B1, class_name="Shelf")
-    assert refs(found) == [], "no shelf refers to b1"
-    assert found.hidden_count == 0, "nothing hidden"
-
-
 async def test_a_referrer_that_refers_by_two_slots_is_listed_twice_and_hidden_once(
     toy_session, collaboration
 ):
-    await put_book(toy_session, B4, shelf=S1, sequel_of=S1)
-    mine = await as_ada(collaboration).referrers(S1)
-    assert refs(mine) == [(B4, "Book", "sequel_of"), (B4, "Book", "shelf")], "one item per slot"
-    theirs = await as_bob(collaboration, hidden=B4).referrers(S1)
-    assert (refs(theirs), theirs.hidden_count) == ([], 1), "counted once, whatever its slots"
+    await put_book(toy_session, B1)
+    b4 = dune(B4, chapters=1, sequel_of=B1)
+    b4.chapters[0].notes[0].about = B1
+    await put(toy_session, b4)
+    mine = await as_ada(collaboration).referrers(B1)
+    assert refs(mine) == [(B4, "Book", "about"), (B4, "Book", "sequel_of")], "one item per slot"
+    theirs = await as_bob(collaboration, hidden=B4).referrers(B1)
+    assert refs(theirs) == [], "b4 is hidden"
+    assert theirs.hidden_count == 1, "counted once, whatever its slots"
 
 
 async def test_an_unused_resource_gives_an_empty_result(toy_session, collaboration):
     await put_book(toy_session, B1, shelf=S1)
     found = await as_ada(collaboration).referrers(S9)
-    assert (refs(found), found.hidden_count) == ([], 0), "nothing refers to s9"
+    assert refs(found) == [], "nothing refers to s9"
+    assert found.hidden_count == 0, "and nothing is hidden"
 
 
 async def test_referrers_work_for_a_schema_that_does_not_import_the_collection_module(
@@ -154,7 +187,8 @@ async def test_the_tracking_statements_of_a_graph_are_not_referrers(collaboratio
     async with fake_session(tenant_iri=TENANT, principal=Principal(id=S1)) as session:
         await put_book(session, B1)  # its graph names s1 as its creator
         found = await as_ada(collaboration, session).referrers(S1)
-    assert (refs(found), found.hidden_count) == ([], 0), "dcterms:creator is about the graph"
+    assert refs(found) == [], "dcterms:creator is about the graph"
+    assert found.hidden_count == 0, "and not a hidden referrer either"
 
 
 async def test_a_link_is_dropped_only_for_the_class_a_dependent_pair_names(toy_session):

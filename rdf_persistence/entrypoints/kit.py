@@ -124,12 +124,7 @@ class ServiceKit:
         """
         caller = await self.gate.caller(authorization)
         access = await self.gate.tenant_access(caller, tenant_id, action)
-        return Authorised(
-            principal=caller.principal,
-            caller_access=access,
-            checked_target=access.tenant,
-            global_roles=caller.global_roles,
-        )
+        return self.gate.authorised(caller, access, access.tenant)
 
     async def require_aggregate(
         self,
@@ -254,7 +249,9 @@ class ServiceKit:
     async def collaboration(self, authorised: Authorised) -> AsyncIterator[Collaboration]:
         """A collaboration on the tenant of ``authorised``, acting as its principal with its global roles.
 
-        ``authorised`` is the answer of ``require`` or ``require_aggregate``.
+        ``authorised`` must be the answer of ``require`` or ``require_aggregate``, never one built by
+        hand: the collaboration trusts its principal and global roles, and checks access itself on
+        every call.
         """
         caller = VerifiedCaller(
             principal=authorised.principal, global_roles=authorised.global_roles

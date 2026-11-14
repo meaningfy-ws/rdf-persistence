@@ -67,7 +67,7 @@ def collaboration(session: Session) -> Callable[[VerifiedCaller, CallerAccess], 
 
 
 async def put_book(session: Session, iri: str, **slots: str) -> Book:
-    book = dune(iri, chapters=1).model_copy(update=slots)
+    book = dune(iri, chapters=1, **slots)
     await session.add_graph(iri, toy_mapper().to_triples(book))
     return book
 
@@ -105,3 +105,12 @@ async def test_a_slot_narrows_the_referrers(session, collaboration):
         B1, slot="sequel_of"
     )
     assert refs(found) == [(B3, "Book", "sequel_of")], "the note's about is left out"
+
+
+async def test_narrowing_does_not_change_the_hidden_count(session, collaboration):
+    await put_book(session, B1, shelf=S1)
+    await put_book(session, B2, shelf=S1)
+    access = held(role("reader", who=BOB), bans=[ban(Action.READ, graph_of(B2), BOB)])
+    found = await collaboration(caller(principal=BOB), access).referrers(S1, slot="sequel_of")
+    assert refs(found) == [], "no readable referrer holds s1 by that slot"
+    assert found.hidden_count == 1, "b2 is still counted, so the slot it uses stays unknown"

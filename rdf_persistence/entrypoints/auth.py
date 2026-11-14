@@ -68,6 +68,11 @@ class Gate:
         tenant = self._kit.tenant_iri(t)
         target = self._kit.aggregates.iri_of(tenant, rp_path, aggregate_id)
         access = await self.check(caller, tenant, target, action)
+        return self.authorised(caller, access, target)
+
+    @staticmethod
+    def authorised(caller: VerifiedCaller, access: CallerAccess, target: str) -> Authorised:
+        """The one place an ``Authorised`` is built, so the caller's global roles are never left out."""
         return Authorised(
             principal=caller.principal,
             caller_access=access,

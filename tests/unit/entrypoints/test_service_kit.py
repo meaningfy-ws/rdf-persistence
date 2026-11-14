@@ -442,3 +442,19 @@ async def test_a_collaboration_opens_for_the_authorised_caller_with_its_global_r
         (book.json()["id"], "shelf")
     ], "the tenant of the caller's access, read as its principal"
     assert authorised.global_roles == ["admin"], "the roles the collaboration is rebuilt from"
+
+
+async def test_a_collaboration_opens_on_the_answer_of_require_aggregate(service, client) -> None:
+    headers = service.bearer("ada")
+    path = (await client.post("/libraries", json=TENANT_BODY, headers=headers)).headers["location"]
+    tenant_id = path.rsplit("/", 1)[1]
+    shelf = f"{service.kit.tenant_iri(tenant_id)}/shelves/{A_UUID}"
+    book = await client.post(f"{path}/books", json={**DUNE_BODY, "shelf": shelf}, headers=headers)
+    checked = await service.kit.require_aggregate(
+        headers["Authorization"], tenant_id, "shelves", A_UUID, Action.READ
+    )
+    async with service.kit.collaboration(checked) as collaboration:
+        found = await collaboration.referrers(checked.checked_target)
+    assert [(r.referrer, r.referrer_slot) for r in found.referrers or []] == [
+        (book.json()["id"], "shelf")
+    ], "the aggregate that was checked is the one asked about"

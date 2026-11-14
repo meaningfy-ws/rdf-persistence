@@ -128,18 +128,17 @@ READ_VERSIONS = (
 
 
 # Every aggregate whose graph holds a statement with $iri as its object (PD-3): the referrer, its
-# class, the class of the statement's subject (a part, or the referrer itself) and the predicate.
-# The bookkeeping about the graph itself and rdf:type are not references.
+# class, the class of the statement's subject when that is a part (none when it is the referrer
+# itself) and the predicate. The bookkeeping about the graph itself and rdf:type are not references.
+# The reference pattern comes first, so the store starts from the triples that hold $iri.
 READ_REFERRERS = """
 SELECT DISTINCT ?referrer ?class ?subject_class ?p WHERE {
+  GRAPH ?g { ?s ?p $iri . ?referrer a ?class . OPTIONAL { ?s a ?subject_class FILTER (?s != ?referrer) } }
   GRAPH $registry { ?g $p_kind $aggregate ; $p_owned_by ?referrer }
-  GRAPH ?g { ?s ?p $iri . ?referrer a ?class . OPTIONAL { ?s a ?subject_class } }
-  FILTER (?s != ?g && ?p != $rdf_type $narrow)
+  FILTER (?s != ?g && ?p != $rdf_type)
   $dependents
 }
 """
-_NARROW_CLASS = "&& ?class = $value"
-_NARROW_SLOT = "&& ?p = $value"
 # A link of a dependent record (a comment's target) is dropped only for the record's class (PD-3).
 _NOT_DEPENDENT = (
     "FILTER NOT EXISTS { VALUES (?dt ?dl) { $pairs } FILTER (?p = ?dl && ?class = ?dt) }"
@@ -486,24 +485,16 @@ class Session:
         self,
         iri: str,
         *,
-        class_iri: URIRef | None = None,
-        slot_iri: URIRef | None = None,
         dependents: Sequence[tuple[URIRef, URIRef]] = (),
     ) -> list[ReferrerRow]:
-        """What the tenant's aggregate graphs say that refers to ``iri``, one row per referrer and link.
+        """What the tenant's aggregate graphs say that refers to ``iri``, one row per referrer, type and link.
 
-        ``class_iri`` and ``slot_iri`` keep only the referrers of that class and the links by that
-        predicate. A link whose predicate and referrer class equal a pair of ``dependents`` is left
-        out. No access is checked: the caller decides what to show.
+        A link whose predicate and referrer class equal a pair of ``dependents`` is left out. No
+        access is checked, and nothing is narrowed: the caller decides what to show.
 
         Raises:
             DatabaseGone: The tenant database does not exist.
         """
-        narrow = [
-            fragment(part, value=term(value))
-            for part, value in ((_NARROW_CLASS, class_iri), (_NARROW_SLOT, slot_iri))
-            if value is not None
-        ]
         text = fill(
             READ_REFERRERS,
             registry=term(self._registry),
@@ -512,7 +503,6 @@ class Session:
             p_owned_by=term(v.REGISTRY_OWNED_BY),
             iri=term(URIRef(iri)),
             rdf_type=term(RDF.type),
-            narrow=join(narrow),
             dependents=_without_dependents(dependents),
         )
         rows = [

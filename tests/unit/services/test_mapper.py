@@ -173,7 +173,9 @@ def test_a_book_keeps_its_shelf_and_its_prequel_as_plain_references():
     book = dune(book_iri(2)).model_copy(update={"shelf": on, "sequel_of": prequel})
     mapper = toy_mapper()
     graph = mapper.to_graph(book)
-    assert (URIRef(book.id), URIRef(f"{LIB}shelf"), URIRef(on)) in graph
+    assert (URIRef(book.id), URIRef(f"{LIB}shelf"), URIRef(on)) in graph, (
+        "the shelf is a plain link"
+    )
     assert (URIRef(on), RDF.type, None) not in graph, "the shelf is not described here"
     back = mapper.from_graph(Book, book.id, graph, graph_iri(book.id))
     assert (back.shelf, back.sequel_of) == (on, prequel), "the same IRIs come back"

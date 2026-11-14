@@ -370,6 +370,46 @@ delivers.
      additions stay additive (own methods, own templates), the branch is rebased on `develop`
      before every PR (rule P-0002), both sides are kept in `services/session.py`, and a conflict
      in a generated file is resolved in the sources and regenerated (rule P-0003).
+- **PD-26** (stage 1 challenge, 2026-11-14; four review passes and the adversarial tester on
+  PR #95). Accepted, and fixed before the merge:
+  1. **The hidden count never follows the narrowing** (L1 W1, L4/L5 no. 1; replaces PD-3 step 2's
+     `$narrow` and the how-to's "the narrowing applies to the count too"). With the narrowing in
+     the query, a caller could probe class by class and slot by slot and learn the class and slot
+     of a referrer it may not read, which the spec forbids. `Session.referrer_rows` takes no
+     class or slot; `Collaboration` computes `hidden_count` over every distinct referrer the
+     caller may not read, then keeps the readable items of the asked class and slot. The spec
+     says so in words. As built, the narrowing compares the names shown on each item, so an
+     item whose class or slot is shown as an IRI (the schema does not know it) matches no name.
+  2. **`Authorised` is built in one place**, a `Gate` method both `require` and
+     `aggregate_access` use, so `global_roles` cannot be forgotten (L4/L5 no. 2).
+     `kit.collaboration`'s docstring says `authorised` must be the answer of `require` or
+     `require_aggregate`, never one built by hand (L1 S1; the signature stays PD-1's).
+  3. **The reference pattern comes first in `READ_REFERRERS`**, before the registry pattern, so
+     the store starts from the triples that hold `iri` and not from every aggregate of the
+     tenant (L4/L5 no. 3; not measured, the result must not change).
+  4. **A referrer with several types** (tester's failing test, L4/L5 no. 4): a root's own link
+     is named against the root's class, not against each of its types in turn (the `OPTIONAL`
+     subject class binds only for a part); a type the schema does not know is listed only when
+     the referrer has no type it knows. So a book that also carries an unknown type is one item
+     `(book, Book, shelf)`.
+  5. The descriptions of `referrer_class` and `referrer_slot` say the IRI is given when the
+     schema does not know the class or slot (L4/L5 no. 5); regenerate.
+  6. Tests (L2 W1 to W3, S1, S2; the tester's file is kept): a positive row for `class_name`
+     and for `slot`; the tenant root is not a referrer; a self-reference is listed; an unknown
+     class or slot comes back as its IRI; `require_aggregate` → `kit.collaboration` →
+     `referrers` (the how-to's snippet); TC-08's data made valid (two slots that both may hold
+     a book) and books built through validation; one assert per idea. The tester's two
+     "narrowing narrows the hidden count" tests are turned round to assert item 1.
+  7. `architecture/data-flows.adoc`: one sentence in the gate section naming
+     `kit.collaboration` as the third way in, which checks access itself (L3's note).
+
+  Rejected: `ReferrerRow` as a `NamedTuple` (the model guard refuses hand-written models in
+  services); folding `_class_iri`/`_slot_iri` (falls away with item 1 or stays trivial); moving
+  `MemberList`/`AggregateHead` to stage 2 (PD-2 and task 1.1 place them); `referrers` defaulting
+  to an empty list (every generated list is optional; one convention); a `NotFound` row and an
+  other-tenant row in the unit file (the tester's file has both); TC-02 reading the manifest.
+  Pinned by the tester and confirmed as intended: a triple in a loaded graph is not a
+  reference; the tenant root is never a referrer but may be the target.
 
 ## Delivery decisions
 

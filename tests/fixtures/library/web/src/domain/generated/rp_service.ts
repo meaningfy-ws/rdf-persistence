@@ -286,9 +286,9 @@ export interface AccountSummary {
 export interface Referrer {
   /** The IRI of the aggregate that holds the reference. */
   referrer: string;
-  /** The name of the schema class of the aggregate that holds the reference. */
+  /** The name of the schema class of the aggregate that holds the reference; its IRI when the schema does not know the class. */
   referrer_class: string;
-  /** The name of the slot that holds the reference. */
+  /** The name of the slot that holds the reference; its IRI when the schema does not know the slot. */
   referrer_slot: string;
 }
 

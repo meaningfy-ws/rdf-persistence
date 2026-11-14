@@ -771,11 +771,11 @@
           "type": "string"
         },
         "referrer_class": {
-          "description": "The name of the schema class of the aggregate that holds the reference.",
+          "description": "The name of the schema class of the aggregate that holds the reference; its IRI when the schema does not know the class.",
           "type": "string"
         },
         "referrer_slot": {
-          "description": "The name of the slot that holds the reference.",
+          "description": "The name of the slot that holds the reference; its IRI when the schema does not know the slot.",
           "type": "string"
         }
       },

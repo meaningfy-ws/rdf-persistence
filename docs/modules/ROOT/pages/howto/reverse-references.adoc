@@ -80,8 +80,9 @@ Say books b1 and b2 stand on shelf s1, and Bob is prohibited from reading b2. Bo
 b1, and a `hidden_count` of 1. A hidden referrer counts once, however many of its slots refer.
 
 The count is there so that you can warn the caller that other uses exist ("one more item uses this
-shelf") without telling what they are. The narrowing applies to the count too: it counts the hidden
-referrers of that class and slot. How a read is decided is in
+shelf") without telling what they are. The count is the same whatever you narrow by. If it followed
+the narrowing, a caller could ask class by class and slot by slot and learn the class and slot of a
+referrer it may not read. How a read is decided is in
 xref:architecture/access-control.adoc[Access control and identity].
 
 == Errors

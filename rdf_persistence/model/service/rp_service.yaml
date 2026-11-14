@@ -741,12 +741,16 @@ slots:
     range: uri
   referrer_class:
     title: Referrer class
-    description: The name of the schema class of the aggregate that holds the reference.
+    description: >-
+      The name of the schema class of the aggregate that holds the reference; its IRI when the
+      schema does not know the class.
     slot_uri: rp:referrerClass
     range: string
   referrer_slot:
     title: Referrer slot
-    description: The name of the slot that holds the reference.
+    description: >-
+      The name of the slot that holds the reference; its IRI when the schema does not know the
+      slot.
     slot_uri: rp:referrerSlot
     range: string
   referrers:

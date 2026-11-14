@@ -83,8 +83,10 @@ def held(
     return CallerAccess(tenant=TENANT, state=state, grants=list(grants) or None, prohibitions=bans)
 
 
-def dune(iri: str, *, chapters: int = 2) -> Book:
-    """A book with ``chapters`` chapters of one note each; every part gets a minted IRI."""
+def dune(iri: str, *, chapters: int = 2, **slots: str) -> Book:
+    """A book with ``chapters`` chapters of one note each; every part gets a minted IRI.
+
+    ``slots`` are more slots of the book, validated with it (for example ``shelf=...``)."""
     parts = [
         new_part(
             Chapter,
@@ -101,6 +103,7 @@ def dune(iri: str, *, chapters: int = 2) -> Book:
         genre=Genre.FICTION,
         authors=["Herbert"],
         chapters=parts or None,
+        **slots,
     )
 
 

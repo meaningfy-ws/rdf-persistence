@@ -570,8 +570,8 @@ class AccountSummary(ConfiguredBaseModel):
 class Referrer(ConfiguredBaseModel):
     "One aggregate that points at another: its IRI, its schema class and the slot that holds the reference."
     referrer: str = Field(default=..., title="Referrer", description="The IRI of the aggregate that holds the reference.")
-    referrer_class: str = Field(default=..., title="Referrer class", description="The name of the schema class of the aggregate that holds the reference.")
-    referrer_slot: str = Field(default=..., title="Referrer slot", description="The name of the slot that holds the reference.")
+    referrer_class: str = Field(default=..., title="Referrer class", description="The name of the schema class of the aggregate that holds the reference; its IRI when the schema does not know the class.")
+    referrer_slot: str = Field(default=..., title="Referrer slot", description="The name of the slot that holds the reference; its IRI when the schema does not know the slot.")
 
 
 class ReferrerList(ConfiguredBaseModel):

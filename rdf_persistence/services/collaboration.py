@@ -6,7 +6,6 @@ unit of work, which bypass this class, are unaffected.
 """
 
 from linkml_runtime.utils.schemaview import SchemaView
-from rdflib import URIRef
 
 from rdf_persistence.domain.exceptions import BadQuery, InvalidIri
 from rdf_persistence.domain.generated.rp_access import Action
@@ -48,8 +47,10 @@ class Collaboration:
         referrer and slot, sorted by IRI and slot; ``hidden_count`` is the number of other referring
         aggregates, each counted once and never named.
 
-        ``class_name`` and ``slot`` keep only the referrers of that schema class and the links by that
-        slot. The links of a comment or a transition record to what they were made on do not count.
+        ``class_name`` and ``slot`` keep only the listed referrers of that schema class and the links
+        by that slot. The hidden count ignores them: it counts every referrer the caller may not
+        read, so narrowing cannot show the class or slot of one. The links of a comment or a
+        transition record to what they were made on do not count.
 
         Raises:
             InvalidIri: ``iri`` is not an aggregate IRI the policy mints for the tenant.
@@ -61,32 +62,25 @@ class Collaboration:
         if not self._iris.is_aggregate(self._access.tenant, iri):
             raise InvalidIri(f"{iri} is not an aggregate of the tenant")
         self._rules.require(self._caller, self._access, iri, Action.READ)
-        rows = await self._session.referrer_rows(
-            iri, class_iri=self._class_iri(class_name), slot_iri=self._slot_iri(slot)
-        )
-        return self._readable(self._named(rows))
+        self._require_names(class_name, slot)
+        named = self._named(await self._session.referrer_rows(iri))
+        return self._readable(named, class_name, slot)
 
-    def _class_iri(self, name: str | None) -> URIRef | None:
-        if name is None:
-            return None
-        found = self._view.get_class(name)
-        if found is None:
-            raise BadQuery(f"the schema has no class {name!r}")
-        return URIRef(self._view.get_uri(found, expand=True))
-
-    def _slot_iri(self, name: str | None) -> URIRef | None:
-        if name is None:
-            return None
-        found = self._view.get_slot(name)
-        if found is None:
-            raise BadQuery(f"the schema has no slot {name!r}")
-        return URIRef(self._view.get_uri(found, expand=True))
+    def _require_names(self, class_name: str | None, slot: str | None) -> None:
+        if class_name is not None and self._view.get_class(class_name) is None:
+            raise BadQuery(f"the schema has no class {class_name!r}")
+        if slot is not None and self._view.get_slot(slot) is None:
+            raise BadQuery(f"the schema has no slot {slot!r}")
 
     def _named(self, rows: list[ReferrerRow]) -> set[tuple[str, str, str]]:
-        """``(referrer, class name, slot name)`` of each row; an IRI the schema does not know stays as it is."""
+        """``(referrer, class name, slot name)`` of each row; an IRI the schema does not know stays as it is.
+
+        A referrer with a type the schema knows is not also listed under the types it does not.
+        """
         classes = {
             self._view.get_uri(c, expand=True): name for name, c in self._view.all_classes().items()
         }
+        typed = {referrer for referrer, cls, _, _ in rows if cls in classes}
         return {
             (
                 referrer,
@@ -94,6 +88,7 @@ class Collaboration:
                 self._slot_name(classes.get(subject or cls), predicate),
             )
             for referrer, cls, subject, predicate in rows
+            if cls in classes or referrer not in typed
         }
 
     def _slot_name(self, class_name: str | None, predicate: str) -> str:
@@ -103,8 +98,10 @@ class Collaboration:
             (s.name for s in slots if self._view.get_uri(s, expand=True) == predicate), predicate
         )
 
-    def _readable(self, named: set[tuple[str, str, str]]) -> ReferrerList:
-        """The items the caller may read, sorted, and the number of other referrers (PD-3 step 4)."""
+    def _readable(
+        self, named: set[tuple[str, str, str]], class_name: str | None, slot: str | None
+    ) -> ReferrerList:
+        """The items the caller may read, narrowed and sorted, and the number of other referrers (PD-26)."""
         referrers = {referrer for referrer, _, _ in named}
         readable = {
             r for r in referrers if self._rules.may(self._caller, self._access, r, Action.READ)
@@ -112,6 +109,6 @@ class Collaboration:
         items = [
             Referrer(referrer=r, referrer_class=c, referrer_slot=s)
             for r, c, s in sorted(named)
-            if r in readable
+            if r in readable and class_name in (None, c) and slot in (None, s)
         ]
         return ReferrerList(referrers=items or None, hidden_count=len(referrers - readable))
