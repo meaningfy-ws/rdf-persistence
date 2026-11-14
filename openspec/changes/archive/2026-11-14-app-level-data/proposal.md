@@ -133,7 +133,7 @@ None.
 
 ## As built (2026-11-14)
 
-Delivered in one stage, one PR into `develop`; the solution outline and every DEC held. Where the
+Delivered in #102, in one stage, and archived in #105; the solution outline and every DEC held. Where the
 result differs from the text above, or adds to it (each is a recorded decision in
 [design.md](design.md), and the spec deltas say the same):
 
