@@ -4,8 +4,8 @@ The tenant ``T`` (Ghent) has a book ``B``, a graph ``g`` loaded for ``B``, a gra
 ``S`` with one blob. The file store is the fake or Garage, as everywhere in the tenancy tests.
 """
 
-import copy
 import io
+from collections.abc import AsyncIterator
 from types import SimpleNamespace
 
 import pytest
@@ -14,24 +14,50 @@ from rdflib.compare import isomorphic
 
 from rdf_persistence.domain.exceptions import InvalidBody
 from rdf_persistence.domain.generated.rp_files import RdfFormat
+from rdf_persistence.domain.generated.service.rp_service import TenantDump
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
+from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.services.tenant_dump import dump, restore
 from tests.fixtures.library.generated.books import Book
+from tests.fixtures.library.generated.library import Library
+from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.fixtures.library.generated.scans import Scan
 from tests.toy import SETTINGS, dune, library_slots, toy_mapper
-from tests.toy_service import SCAN_BODY
+from tests.toy_service import SCAN_BODY, drop_buckets, drop_databases
 from tests.unit.services.test_tenant_dump import (
+    BASE_STAMPS,
     BLOB_BYTES,
+    MANIFEST,
     MAX_BYTES,
     RESTORER,
+    TOY_CHAINS,
     VIEW,
+    edited,
     iris_of,
     moved,
 )
 from tests.unit.services.test_tenant_sweep import BOOK_TYPE, CREATOR, TURTLE
 
 SCAN_TYPE = "scan"
+
+
+@pytest.fixture
+async def tenancy(store, files, settings) -> AsyncIterator[Tenancy]:
+    """The tenancy of the conftest, its tenants stamped as the toy kit stamps them: a dump of an unstamped one has no version."""
+    made = Tenancy(
+        store,
+        files,
+        settings,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
+        stamps=BASE_STAMPS,
+    )
+    await made.ensure_system_database()
+    yield made
+    await drop_databases(store, settings.prefix)
+    await drop_buckets(files, settings.prefix)
 
 
 @pytest.fixture
@@ -92,6 +118,7 @@ async def test_it01_a_tenant_restored_from_its_dump_answers_like_the_original(wo
         io.BytesIO(out.getvalue()),
         RESTORER,
         max_bytes=MAX_BYTES,
+        chains=TOY_CHAINS,
     )
 
     new = summary.id
@@ -115,24 +142,26 @@ async def test_it01_a_tenant_restored_from_its_dump_answers_like_the_original(wo
 
 
 async def test_it02_a_dump_of_another_schema_version_is_refused_and_creates_nothing(world):
-    older = copy.deepcopy(VIEW)
-    older.schema.version = "1.0.0"
-    newer = copy.deepcopy(VIEW)
-    newer.schema.version = "1.1.0"
+    def other_version(payload: bytes) -> bytes:
+        found = TenantDump.model_validate_json(payload)
+        return found.model_copy(update={"schema_version": "1.0.0"}).model_dump_json().encode()
+
     out = io.BytesIO()
-    await dump(world.tenancy, world.store, world.files, world.iris, older, world.tenant, out)
+    await dump(world.tenancy, world.store, world.files, world.iris, VIEW, world.tenant, out)
+    data = edited(out.getvalue(), MANIFEST, other_version)
     before = await stores_state(world)
 
     with pytest.raises(InvalidBody) as caught:
         await restore(
             world.tenancy,
             world.iris,
-            newer,
-            io.BytesIO(out.getvalue()),
+            VIEW,
+            io.BytesIO(data),
             RESTORER,
             max_bytes=MAX_BYTES,
+            chains=TOY_CHAINS,
         )
 
     assert "1.0.0" in str(caught.value), "the dump's version"
-    assert "1.1.0" in str(caught.value), "the service's version"
+    assert "'1'" in str(caught.value), "the version the service has"
     assert await stores_state(world) == before, "no database, bucket or record created"
