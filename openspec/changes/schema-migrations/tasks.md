@@ -71,7 +71,7 @@ runs right after task 2.2, the riskiest (write order, atomicity, concurrency). G
   that build a `Tenancy` pass the toy stamps;
   `check_graphs` (`domain/tenant_move.py`) accepts the stamps graph (PD-15). **Adversarial tester
   right after this task.**
-- [ ] 2.3 Service. Test first, in `tests/unit/entrypoints/` and `tests/feature/` (a new
+- [x] 2.3 Service. Test first, in `tests/unit/entrypoints/` and `tests/feature/` (a new
   `schema_migrations.feature`, written with `bdd-gherkin`: the toy service runs version `1` with a
   chain of one version, so only "a tenant behind the schema" (TC-37, `T` stamped `9` before
   start-up) and "a new tenant" (TC-34) run at feature level; the other spec scenarios are covered

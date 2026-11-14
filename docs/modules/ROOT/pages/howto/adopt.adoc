@@ -1411,6 +1411,7 @@ def keep_an_owner(old: GrantSet, new: GrantSet, who: Principal) -> None:
 install_service(
     app,
     grant_validators=[keep_an_owner],
+    migrations=Path("migrations"),
     # ... and the other keyword arguments of step 12
 )
 ----
@@ -1459,6 +1460,7 @@ from library.domain import generated
 
 SCHEMA = Path("models/library.yaml")
 ROLES = Path("models/library_roles.yaml")
+MIGRATIONS = Path("migrations")  # the folder `rp-generate` keeps the lock and the migration files in
 
 
 def build_library_app(
@@ -1480,6 +1482,7 @@ def build_library_app(
         verifier=verifier,
         rules=AccessRules(load_role_definitions(ROLES)),
         settings=settings,
+        migrations=MIGRATIONS,
     )
     path = f"/{settings.tenant_segment}/{{t}}/scan-files/{{scan_id}}"
 
@@ -1502,6 +1505,10 @@ def build_library_app(
 
     return app
 ----
+
+`migrations` is the folder of your migration files. At start-up the service brings every database
+to the version the schema runs, before it serves. A tenant whose migration failed is set aside:
+its requests answer 503 with the problem `tenant-behind`, and the other tenants are served.
 
 The adapters and the settings come from the deployment. The adapters of the store, the identity
 provider and the token verifier are async context managers, so open them for the life of the app:
@@ -1645,7 +1652,7 @@ from fastapi import FastAPI
 from rdf_persistence import AccessRules, JwksTokenVerifier, install_service, load_role_definitions
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
 
-# SCHEMA, ROLES, generated and settings as in the composition root; TENANT_BODY as in step 9
+# SCHEMA, ROLES, MIGRATIONS, generated and settings as in the composition root; TENANT_BODY as in step 9
 signer = TokenSigner()
 settings = settings.model_copy(update={"roles_claim": signer.roles_claim})
 verifier = JwksTokenVerifier(
@@ -1662,9 +1669,10 @@ kit = install_service(
     verifier=verifier,
     rules=AccessRules(load_role_definitions(ROLES)),
     settings=settings,
+    migrations=MIGRATIONS,
 )
 headers = {"Authorization": f"Bearer {signer.issue(sub='ada', roles=[])}"}
-async with app.router.lifespan_context(app):     # start-up: the system database, the policy guard and the sweep
+async with app.router.lifespan_context(app):     # start-up: the system database, the policy guard, the migrations and the sweep
     transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         created = await client.post("/libraries", json=TENANT_BODY, headers=headers)

@@ -19,6 +19,7 @@ from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.iri_policy_guard import guard_iri_policy
+from rdf_persistence.services.migration_runner import migrate_shared, migrate_tenants
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import GrantValidator, RootValidator
@@ -36,6 +37,7 @@ def install_service(
     verifier: TokenVerifier,
     rules: AccessRules | Path,
     settings: ServiceSettings,
+    migrations: Path,
     prefix: str = "",
     id_source: IdSource = draw_id,
     grant_validators: Sequence[GrantValidator] = (),
@@ -49,8 +51,16 @@ def install_service(
     of the role definitions file to build them from. The routes are those of the schema now, so a
     class added to it is served after a restart. Start-up creates the system database if it is
     missing, records the IRI policy or refuses to start when it differs from the recorded one
-    (``IriPolicyChanged``), then runs the sweep, before the app serves. The policy comes first: the
-    sweep reads the access records through it.
+    (``IriPolicyChanged``), creates the application database, migrates the shared databases
+    (``MigrationFailed`` stops the start), runs the sweep, then migrates the tenants, before the app
+    serves. The policy comes first: the sweep reads the access records through it. The shared
+    databases are migrated before the sweep, which decodes the access records in their current shape.
+    A tenant whose migration fails is set aside: its requests answer ``503`` (``tenant-behind``) and
+    the other tenants are served.
+
+    ``migrations`` is the folder of the application's migration files, one chain for the schema's
+    ``version``; the toolkit's own chain ships in the package. Both are checked here, so a bad chain
+    stops the service before it serves.
 
     ``prefix`` is the path the routes are mounted under; the ``Link`` header names the context at
     ``settings.base`` plus that prefix, never at the ``Host`` the request came with. A request body
@@ -75,7 +85,10 @@ def install_service(
             the message names the entry.
         InvalidWorkflow: A workflow file is not valid, or a class of the schema names a workflow no
             file defines; the message names the file or the workflow and the element.
+        InvalidMigration: A chain of migration files is not valid (a fork, a gap, a file that does not
+            load); the message names the files.
         IriPolicyChanged: (at start-up) ``settings.iri_policy`` differs from the recorded policy.
+        MigrationFailed: (at start-up) a migration of the system or the application database failed.
         LookupError: The schema has no tenant root class, or no (or several) access record classes.
         OSError: The generated folder lacks the context, the shapes, a frame or the OpenAPI components.
     """
@@ -90,6 +103,7 @@ def install_service(
         verifier=verifier,
         rules=rules,
         settings=settings,
+        migrations=migrations,
         prefix=prefix,
         id_source=id_source,
         grant_validators=grant_validators,
@@ -116,7 +130,7 @@ def _require_same_principals(kit: ServiceKit) -> None:
 
 
 def _run_at_startup(app: FastAPI, kit: ServiceKit) -> None:
-    """Make the app's lifespan create the system database, guard the IRI policy, create the application database and sweep, then run the app's own."""
+    """Make the app's lifespan create the system database, guard the IRI policy, create the application database, migrate the shared databases, sweep and migrate the tenants (PD-9), then run the app's own."""
     inner = app.router.lifespan_context
 
     @asynccontextmanager
@@ -124,7 +138,9 @@ def _run_at_startup(app: FastAPI, kit: ServiceKit) -> None:
         await kit.tenancy.ensure_system_database()
         await guard_iri_policy(kit.store, kit.tenancy, kit.settings)
         await kit.tenancy.ensure_application_database()
+        await migrate_shared(kit.tenancy, kit.store, kit.chains)
         await sweep(kit.tenancy, kit.store, kit.files, kit.settings)
+        await migrate_tenants(kit.tenancy, kit.store, kit.chains)
         async with inner(scope_app) as state:
             yield state
 
