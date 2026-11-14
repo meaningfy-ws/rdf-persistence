@@ -54,11 +54,34 @@ graph TB
     FP(["FileStore:<br/>S3"])
     MAP["Mapper"]
     SP(["Store:<br/>Fuseki"])
+    subgraph COLL["Collaboration services"]
+        COL["Collaboration<br/>(the public face)"]
+        TR["Transitions"]
+        RC["Reference<br/>collections"]
+        DIS["Discussion"]
+        WF["Workflows"]
+    end
+    WG["Write guards"]
     KIT --> TV
     KIT --> POL
     KIT --> TEN
     KIT --> IP
     KIT --> SES
+    KIT --> COL
+    KIT --> WF
+    KIT --> WG
+    COL --> TR
+    COL --> RC
+    COL --> DIS
+    TR --> DIS
+    TR --> WF
+    WG --> RC
+    WG --> WF
+    WG --> SES
+    COLL --> POL
+    COLL --> SES
+    COLL --> MAP
+    WG --> MAP
     TEN --> UOW
     TEN --> SES
     TEN --> FP
@@ -73,7 +96,21 @@ Ports (rounded) are interfaces owned by the toolkit (`Store`, `FileStore`, `Iden
 kit reaches the store through the session and tenancy, and the access check reads the system
 database directly (one `CONSTRUCT` per request). Graph loading is `Session.load_graph`. The
 consumer calls only the public API (<<public-api>>): `install_service` and the `ServiceKit` it
-returns, `open_session`, `UnitOfWork` and `Mapper`, the ports and the adapters.
+returns (with `kit.collaboration`), `open_session`, `UnitOfWork` and `Mapper`, the ports and the
+adapters.
+
+*Collaboration* is the one public face of what a caller may ask of a tenant beyond one aggregate
+at a time: who refers to a resource, the members of a collection, comments, and moves through a
+workflow. It holds one session and the caller it acts for, and hands the work to three classes
+behind it; `Workflows` holds the workflow files and the rule that keeps a state. The session knows
+no schema and checks no access, so these classes carry both: each asks the access rules and reads
+or writes through the session (the arrows that leave the box: access rules, mapper, session). They are kept out of the session so that the generic routes and the
+unit of work, which do not pass through them, stay as they were. *Write guards* are the checks a
+session runs on every add and replace (a collection's members, a state that only a transition
+changes). The kit builds them once and hands them to every session it opens; the session calls
+them through a protocol of its own (`WriteGuard`) and imports none of them. An import contract
+(`collaboration-layers` in `.importlinter`) fixes the order: collaboration, then transitions and
+write guards, then discussion, reference collections and workflows, then access, then the session.
 
 == Building blocks
 
@@ -143,6 +180,11 @@ and buckets, and the sweep inside a live tenant is the next building block (belo
 |v1
 |A route dependency in the service kit: each route declares its action; the check evaluates the toolkit's ODRL subset (`rp_access`): the caller's global roles (token), their Permissions and Prohibitions on the tenant and on the aggregate (`graph_iri(root)`), and the consumer's role definitions. In order: 404 for a target outside the tenant or a tenant that is not `active`, 403 for a matching Prohibition, 404 when the caller's grants and global roles permit nothing, 403 when they do not permit the action (`AccessRules.require` in `services/access.py`). Tenant isolation comes from N-3, so queries are not rewritten. See xref:architecture/access-control.adoc[access control].
 |N-8
+
+|Collaboration
+|v1
+|`Collaboration` (`services/collaboration.py`), opened with `kit.collaboration(authorised)` for a caller the gate has authorised; it checks access itself on every call. Eight methods and no route: `referrers` (itself); `members`, `collections_of` and `delete_cascade` (`services/reference_collections.py`); `comment` and `thread` (`services/discussion.py`); `transition` and `transitions` (`services/transitions.py`). `Workflows` (`services/workflows.py`, `kit.workflows`) loads the workflow files given to `install_service(workflows=…)` and refuses a bad one before the service serves (`InvalidWorkflow`). `WriteGuards` (`services/write_guards.py`) composes the rules of a write. What a caller may not read is counted and never named (xref:architecture/access-control.adoc#collaboration[access control]). The session gained only generic reads for them (`referrer_rows`, `heads`, `matches`, `graphs_with`, `root_values`, `not_aggregates`), `principal`, `now()`, optional `guards` and `dependents`, and three private pieces of a transaction (xref:architecture/data-flows.adoc#private-pieces[the three, side by side]). A comment and a transition record are aggregates the toolkit writes itself; a delete through the kit takes them with their aggregate. How to use each: xref:howto/reverse-references.adoc[reverse references], xref:howto/reference-collections.adoc[reference collections], xref:howto/discussion.adoc[discussion], xref:howto/workflow.adoc[workflow].
+|
 
 |Service kit
 |v1
@@ -234,24 +276,28 @@ _What may a consumer import?_
 |`RpModel`; `Iris`, `DEFAULT_IRIS`, `mint_aggregate_iri`; `AggregateRoot`, `Described`, `Tracked`,
 `Provenanced`, `Activity`, `Principal`, `RegistryEntry`, `StoredFile`, `RdfFormat`; `Policy`,
 `Rule`, `Grant`, `Prohibition`, `RoleDefinition`, `RoleLevel`, `Action`; `TenantAccess`,
-`TenantLabelled`, `TenantState`, `TenantSweepReport`, `BlobEntry`, `PendingLoad`; the annotation enums (`RpAnnotation`, `ModuleKind`, `DatabaseKind`,
-`GraphKind`, `RegistryKind`); the service records (`ServiceSettings`, `IriPolicy`, `IdSpec`,
+`TenantLabelled`, `TenantState`, `TenantSweepReport`, `BlobEntry`, `PendingLoad`; the collaboration
+classes (`ReferenceCollection`, `MembershipRule`, `SlotEquality`; `Comment`, `Motivation`; `UnderWorkflow`,
+`Workflow`, `WorkflowTransition`, `TransitionRecord`); the annotation enums (`RpAnnotation`, `ModuleKind`, `DatabaseKind`,
+`GraphKind`, `RegistryKind`, `WritesKind`); the service records (`ServiceSettings`, `IriPolicy`, `IdSpec`,
 `IdKind`, `TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`, `Problem`,
-`ProblemKind`, `VerifiedCaller`, `CallerAccess`, `Authorised`, `AccountSummary`); the errors
+`ProblemKind`, `VerifiedCaller`, `CallerAccess`, `Authorised`, `AccountSummary`, `Referrer`,
+`ReferrerList`, `MemberList`); the errors
 (`PersistenceError` and its subclasses: `Conflict`, `NotFound`, `DatabaseGone`, `TenantGone`,
-`Forbidden`, `InvalidBody`, `InvalidIri`, `InvalidToken`, …)
+`Forbidden`, `InvalidBody`, `InvalidIri`, `InvalidToken`, `InvalidWorkflow`, `StoredDataInvalid`, …)
 |`rdf_persistence.services`
-|session and unit of work, mapper, tenancy, access check, sweep; the ports
+|session and unit of work, mapper, tenancy, access check, collaboration, workflows, sweep; the ports
 |`open_session`, `Session`, `UnitOfWork`, `Mapper`, `generated_models`, `new_part`, `load_schema`,
 `Tenancy`, `sweep`, `sweep_tenant`, `remove_with_files`, `AccessRules` (with `with_iris`), `load_role_definitions`, `load_caller_access`;
+`Collaboration` (opened with `kit.collaboration`), `Workflows`;
 the ports `Store`, `FileStore` (with `list_blobs`), `Identity`, `TokenVerifier`; `Session.named_file_keys`
 |`rdf_persistence.adapters` |Fuseki, S3 and Zitadel adapters; JWKS token verification |`FusekiStore`, `S3FileStore`, `ZitadelIdentity`, `zitadel_roles_claim`, `JwksTokenVerifier`
-|`rdf_persistence.entrypoints` |service kit (generic router, FastAPI dependencies, problem handlers, ETags, OpenAPI hook, start-up) |`install_service`, `ServiceKit`, `limited_body`
+|`rdf_persistence.entrypoints` |service kit (generic router, FastAPI dependencies, problem handlers, ETags, OpenAPI hook, start-up) |`install_service` (with `workflows=`, the paths of the workflow files), `ServiceKit` (with `collaboration(authorised)` and `workflows`), `limited_body`
 |`rdf_persistence.testkit` |fakes, token signer, Zitadel provisioning, container fixtures, the
 waiting helpers (`wait_until`, `wait_until_async`), the three conformance suites, freshness plugin,
 guards, round-trip strategies |`rdf_persistence.testkit` (a second public module, for tests only)
 |`rdf_persistence.generation` |`rp-generate` (build time; lint config, boundary check, templates) |the `rp-generate` command
-|`rdf_persistence/model/` |the metamodel modules (`rp_core`, `rp_annotations`, `rp_provenance`, `rp_access`, `rp_tenancy`, `rp_files`) and `rp.yaml`, shipped as package data |resolved through the import map
+|`rdf_persistence/model/` |the nine metamodel modules (`rp_core`, `rp_annotations`, `rp_provenance`, `rp_access`, `rp_tenancy`, `rp_files`, `rp_collections`, `rp_discussion`, `rp_workflow`) and `rp.yaml`, shipped as package data |resolved through the import map
 |===
 
 The adapters, services and entrypoints are loaded on first use, so importing

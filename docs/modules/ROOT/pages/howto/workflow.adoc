@@ -285,6 +285,10 @@ asks for aggregates that hold all of them. It ignores Prohibitions, so check eac
 `kit.require_aggregate` before showing it. A book with no stored state is in none of them: it is
 not found by its initial state.
 
+Over HTTP the generic listing takes the same filter, which is all a review queue needs:
+`GET /libraries/{t}/books?workflow_status=<the state's IRI, URL-encoded>` lists the books in that
+state that the caller may read.
+
 == Errors
 
 Of `transition`; a refused transition stores nothing:
