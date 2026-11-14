@@ -51,6 +51,7 @@ ROWS = [
     (exceptions.IdentityUnavailable, 503, "unavailable"),
     (exceptions.InvalidRoleDefinition, 503, "unavailable"),
     (exceptions.InvalidWorkflow, 503, "unavailable"),
+    (exceptions.InvalidMigration, 503, "unavailable"),
 ]
 TITLES = {
     "invalid-token": "Invalid token",

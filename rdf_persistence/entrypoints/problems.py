@@ -65,6 +65,7 @@ NOT_ACCEPTABLE = _kind(ProblemSlug.NOT_ACCEPTABLE)
 UNSUPPORTED_MEDIA_TYPE = _kind(ProblemSlug.UNSUPPORTED_MEDIA_TYPE)
 BAD_QUERY = _kind(ProblemSlug.BAD_QUERY)
 UNAVAILABLE = _kind(ProblemSlug.UNAVAILABLE)
+TENANT_BEHIND = _kind(ProblemSlug.TENANT_BEHIND)
 PAYLOAD_TOO_LARGE = _kind(ProblemSlug.PAYLOAD_TOO_LARGE)
 METHOD_NOT_ALLOWED = _kind(ProblemSlug.METHOD_NOT_ALLOWED)
 INTERNAL_ERROR = _kind(ProblemSlug.INTERNAL_ERROR)
@@ -108,6 +109,7 @@ ERROR_KINDS: tuple[tuple[type[PersistenceError], ProblemKind], ...] = (
         UNAVAILABLE,
     ),  # raised at start-up; a service that kept going would be unusable
     (errors.InvalidWorkflow, UNAVAILABLE),  # raised at start-up, for the same reason
+    (errors.InvalidMigration, UNAVAILABLE),  # raised at start-up, for the same reason
 )
 # The statuses the framework raises on its own, which have a kind of their own.
 _OF_THE_FRAMEWORK = {

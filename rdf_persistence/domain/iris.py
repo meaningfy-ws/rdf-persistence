@@ -29,6 +29,7 @@ APPLICATION_SUFFIX = "-app"
 TOOLKIT_SEGMENT = "toolkit"
 # The graph, under the base, that records the effective IRI policy of the deployment (PD-9, PD-14b).
 POLICY_SEGMENT = f"{TOOLKIT_SEGMENT}/iri-policy"
+STAMPS_SEGMENT = f"{TOOLKIT_SEGMENT}/schema-stamps"
 GENID = "/.well-known/genid/"
 
 
@@ -116,6 +117,11 @@ def toolkit_principal_iri(base: str) -> URIRef:
 def policy_record_iri(base: str) -> URIRef:
     """The graph, and the subject in it, that record the effective IRI policy: ``{base}toolkit/iri-policy``."""
     return URIRef(f"{base}{POLICY_SEGMENT}")
+
+
+def stamps_graph_iri(base: str) -> URIRef:
+    """The graph of a database that records the schema versions its data follows: ``{base}toolkit/schema-stamps``."""
+    return URIRef(f"{base}{STAMPS_SEGMENT}")
 
 
 def is_inside_tenant(tenant_iri: str, iri: str) -> bool:

@@ -8,6 +8,7 @@ from rdf_persistence.domain.iris import (
     Iris,
     policy_differences,
     policy_record_iri,
+    stamps_graph_iri,
 )
 from tests.toy import SETTINGS
 
@@ -51,3 +52,8 @@ def test_differences_are_dotted_field_names():
 @pytest.mark.parametrize("base", ["https://a.example/", "https://b.example/"])
 def test_the_record_iri_is_under_the_toolkit_segment(base):
     assert str(policy_record_iri(base)) == f"{base}toolkit/iri-policy"
+
+
+@pytest.mark.parametrize("base", ["https://a.example/", "https://b.example/"])
+def test_the_stamps_graph_is_under_the_toolkit_segment(base):
+    assert str(stamps_graph_iri(base)) == f"{base}toolkit/schema-stamps"

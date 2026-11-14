@@ -96,6 +96,10 @@ class InvalidWorkflow(PersistenceError, ValueError):
     """A workflow file cannot be read, is not a workflow, or contradicts itself, the role definitions or the schema."""
 
 
+class InvalidMigration(PersistenceError, ValueError):
+    """A migration file cannot be read, is not a migration, or holds a step that is a draft or fails the checks."""
+
+
 class UnknownRole(PersistenceError, ValueError):
     """A grant names a role that no tenant-level or aggregate-level role definition defines."""
 

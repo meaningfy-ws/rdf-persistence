@@ -15,6 +15,7 @@ ERRORS = [
 INPUT_ERRORS = [
     exceptions.InvalidRoleDefinition,
     exceptions.InvalidWorkflow,
+    exceptions.InvalidMigration,
     exceptions.UnknownRole,
     exceptions.InvalidGrant,
     exceptions.InvalidIri,
