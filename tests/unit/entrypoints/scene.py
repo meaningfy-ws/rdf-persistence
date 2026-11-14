@@ -42,6 +42,7 @@ class Scene:
     async def set_up(cls, service: ToyService, http: httpx.AsyncClient) -> "Scene":
         scene = cls(service, http)
         made = await http.post("/libraries", json=TENANT_BODY, headers=scene.headers("ada"))
+        assert made.status_code == 201, made.text  # say why, if the tenant was not made
         scene.tenant, scene.tenant_iri = made.headers["location"], made.json()["id"]
         book = await http.post(
             f"{scene.tenant}/books", json=DUNE_BODY, headers=scene.headers("ada")

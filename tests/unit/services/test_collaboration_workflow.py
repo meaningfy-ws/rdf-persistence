@@ -582,9 +582,9 @@ async def test_two_moves_from_one_version_store_the_first_and_refuse_the_second(
     assert await comments_on(session, B1) == [], "the loser left no comment"
 
 
-async def test_the_records_are_not_referrers_of_the_book(session, ada, books):  # TC-96
-    await go(ada, session, "in_review")
-    assert (await ada.referrers(B1)).referrers is None, "no record is listed"
+async def test_the_records_are_not_referrers_of_the_book(session, ada, books):  # TC-96, TC-47
+    await go(ada, session, "in_review", comment="ready")
+    assert (await ada.referrers(B1)).referrers is None, "neither the move nor its comment is listed"
 
 
 async def test_a_record_takes_no_comment(rules, session, ada, books):
