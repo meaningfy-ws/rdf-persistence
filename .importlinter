@@ -90,3 +90,21 @@ source_modules =
     rdf_persistence.services.provenance
 forbidden_modules =
     rdf_persistence.services.mapper
+
+[importlinter:contract:migrations-below-the-runner]
+name = the migration files and the request import neither the tenancy, the runner nor the dump (PD-24.2, PD-25.6)
+type = forbidden
+source_modules =
+    rdf_persistence.services.migrations
+forbidden_modules =
+    rdf_persistence.services.tenancy
+    rdf_persistence.services.migration_runner
+    rdf_persistence.services.tenant_dump
+
+[importlinter:contract:tenancy-without-the-runner]
+name = the tenancy never imports the runner, which imports the tenancy (PD-24.2, PD-25.6)
+type = forbidden
+source_modules =
+    rdf_persistence.services.tenancy
+forbidden_modules =
+    rdf_persistence.services.migration_runner

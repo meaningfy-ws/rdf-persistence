@@ -42,24 +42,52 @@ from rdf_persistence.domain.iris import Iris, stamps_graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.migrations import SchemaChain
+from rdf_persistence.services.migrations import chain_of as chain_of_schema
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.services.tenant_dump import dump, restore
+from rdf_persistence.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
-from tests.toy import ADA, BOB, SETTINGS, TOY_SCHEMA, dune, library, role, template, toy_mapper
-from tests.unit.services.test_migration_runner import chain_of, migration, rename
+from tests.toy import (
+    ADA,
+    BOB,
+    SETTINGS,
+    TOY_MIGRATIONS,
+    TOY_SCHEMA,
+    dune,
+    library,
+    role,
+    template,
+    toy_mapper,
+)
+from tests.unit.services.migration_helpers import chain_of, migration, rename
 from tests.unit.services.test_tenant_sweep import (
     BOOK_TYPE,
     FLAT,
     TURTLE,
-    make_world,
 )
+from tests.unit.services.test_tenant_sweep import make_world as sweep_world
 
 VIEW = load_schema(TOY_SCHEMA)
+RUNNING = copy.deepcopy(
+    VIEW
+)  # the schema of a service that runs version 2 (the ``chains`` fixture)
+RUNNING.schema.version = "2"
+TOOLKIT_SCHEMA = "https://meaningfy.ws/ns/rdf-persistence"
+LIBRARY_SCHEMA = "https://example.org/ns/library"
+BASE_STAMPS = (
+    (TOOLKIT_SCHEMA, "1"),
+    (LIBRARY_SCHEMA, "1"),
+)  # what the toy kit stamps a tenant with
+# the chains of the toy kit: both schemas have the one version "1" (no migration file)
+TOY_CHAINS = [
+    chain_of_schema(metamodel(), TOOLKIT_MIGRATIONS),
+    chain_of_schema(VIEW, TOY_MIGRATIONS),
+]
 RESTORER = Principal(id=BOB)
 SCAN_TYPE = "scan"
 MANIFEST, GRAPHS, END = "manifest.json", "graphs.nq", "end"
@@ -85,6 +113,13 @@ FLAT_SETTINGS = ServiceSettings(
 
 def iris_of(settings: ServiceSettings) -> Iris:
     return Iris(settings, *iri_types(VIEW))
+
+
+async def make_world(
+    iris: Iris, settings: ServiceSettings, stamps: Sequence[tuple[str, str]] = BASE_STAMPS
+) -> SimpleNamespace:
+    """The sweep test's world, its tenant stamped as the toy kit stamps one (a dump of an unstamped tenant has no version)."""
+    return await sweep_world(iris, settings, stamps)
 
 
 async def populated(world: SimpleNamespace, title: str | None = None) -> SimpleNamespace:
@@ -119,7 +154,7 @@ async def restored(
     tenancy: Tenancy | None = None,
     view=VIEW,
     max_bytes: int = MAX_BYTES,
-    chains: Sequence[SchemaChain] = (),
+    chains: Sequence[SchemaChain] = TOY_CHAINS,
 ):
     return await restore(
         tenancy or world.tenancy,
@@ -195,11 +230,7 @@ async def world() -> SimpleNamespace:
 
 # -- schema-migrations TC-34, TC-35: the stamps travel with a dump -------------------------------
 
-TOOLKIT_SCHEMA = "https://meaningfy.ws/ns/rdf-persistence"
-LIBRARY_SCHEMA = "https://example.org/ns/library"
 STAMPS = ((TOOLKIT_SCHEMA, "1"), (LIBRARY_SCHEMA, "2"))
-RUNNING = copy.deepcopy(VIEW)  # the schema of a service whose stamps are ``STAMPS``
-RUNNING.schema.version = "2"
 ALL_STAMPS = "SELECT ?s ?v WHERE {{ GRAPH <{graph}> {{ ?s ?p ?v }} }}"
 
 
@@ -210,10 +241,10 @@ async def stamps_held(world: SimpleNamespace, tenant: str) -> dict[str, str]:
     return {str(row.s): str(row.v) for row in rows}  # type: ignore[union-attr]
 
 
-async def test_tc34_a_stamped_tenant_dumps_and_restores_at_the_same_version():
+async def test_tc34_a_stamped_tenant_dumps_and_restores_at_the_same_version(chains):
     world = await populated(await make_world(iris_of(SETTINGS), SETTINGS, stamps=STAMPS))
     assert await stamps_held(world, world.tenant) == dict(STAMPS), "create stamped the tenant"
-    summary = await restored(world, await dumped(world, view=RUNNING), view=RUNNING)
+    summary = await restored(world, await dumped(world, view=RUNNING), view=RUNNING, chains=chains)
     assert await stamps_held(world, summary.id) == dict(STAMPS), (
         "the restored tenant holds the stamps"
     )
@@ -249,13 +280,15 @@ async def stamped() -> SimpleNamespace:
     return await populated(await make_world(iris_of(SETTINGS), SETTINGS, stamps=STAMPS))
 
 
-async def test_a_dump_with_the_stamps_the_service_runs_is_restored_with_exactly_them(stamped):
+async def test_a_dump_with_the_stamps_the_service_runs_is_restored_with_exactly_them(
+    stamped, chains
+):
     data = with_stamps(
         await dumped(stamped, view=RUNNING),
         stamp_line(TOOLKIT_SCHEMA, "1"),
         stamp_line(LIBRARY_SCHEMA, "2"),
     )
-    summary = await restored(stamped, data, view=RUNNING)
+    summary = await restored(stamped, data, view=RUNNING, chains=chains)
     assert await stamps_held(stamped, summary.id) == dict(STAMPS), "the restored tenant holds them"
 
 
@@ -277,24 +310,76 @@ async def test_a_dump_with_the_stamps_the_service_runs_is_restored_with_exactly_
     ],
 )
 async def test_a_dump_whose_stamps_graph_differs_is_refused_before_anything_is_created(
-    stamped, statements, named
+    stamped, chains, statements, named
 ):
     ids = {"TOOLKIT": TOOLKIT_SCHEMA, "LIBRARY": LIBRARY_SCHEMA}
     lines = [stamp_line(ids.get(schema, schema), *rest) for schema, *rest in statements]
     data = with_stamps(await dumped(stamped, view=RUNNING), *lines)
-    reason = await refused(stamped, data, view=RUNNING)
+    reason = await refused(stamped, data, view=RUNNING, chains=chains)
     for text in named:
         assert text in reason, f"the reason names {text}"
 
 
-async def test_a_dump_with_a_stamp_is_refused_by_a_service_that_configures_none(world):
-    reason = await refused(world, with_stamps(await dumped(world), stamp_line(LIBRARY_SCHEMA, "2")))
-    assert LIBRARY_SCHEMA in reason, "the stamp no one asked for is named"
+def stamp_graph_with(tenancy_data: bytes, library_stamp: str) -> Dataset:
+    """The quads of a dump of the toy tenant, its library stamp replaced by the N-Quads text ``library_stamp``."""
+    data = with_stamps(tenancy_data, stamp_line(TOOLKIT_SCHEMA, "1"), library_stamp)
+    parsed = Dataset()
+    parsed.parse(data=dict(unpack(data))[GRAPHS], format="nquads")
+    return parsed
 
 
-async def test_a_dump_with_no_stamp_is_restored_by_a_service_that_configures_none(world):
-    summary = await restored(world, await dumped(world))
-    assert await stamps_held(world, summary.id) == {}, "the restored tenant holds no stamp"
+@pytest.mark.parametrize(
+    "literal",
+    [
+        '"1"@en',
+        '"1"^^<http://www.w3.org/2001/XMLSchema#string>',
+        '"1"^^<http://www.w3.org/2001/XMLSchema#integer>',
+    ],
+    ids=["a language tag", "xsd:string", "another datatype"],
+)
+async def test_tenancy_restore_refuses_a_stamp_that_is_not_a_plain_literal(world, literal):
+    """PD-25.1: the runner's guard is a plain literal, so a tagged or typed stamp could never match it again."""
+    line = f"<{LIBRARY_SCHEMA}> <{v.DATA_SCHEMA_VERSION}> {literal} <{STAMPS_GRAPH}> .\n"
+    parsed = stamp_graph_with(await dumped(world), line)
+    before = await state_of(world)
+    with pytest.raises(InvalidBody, match="not a stamp"):
+        await world.tenancy.restore(
+            parsed, world.iris.tenant_id_of(world.tenant), iter(()), RESTORER
+        )
+    assert await state_of(world) == before, "checked before any create"
+
+
+async def test_a_tenancy_that_configures_no_stamp_refuses_a_dump_that_has_one(world):
+    plain = Tenancy(
+        world.store, world.files, SETTINGS, mapper=toy_mapper(), root_class=Library,
+        access_class=LibraryAccess, iris=world.iris,
+    )  # fmt: skip
+    parsed = stamp_graph_with(await dumped(world), stamp_line(LIBRARY_SCHEMA, "1"))
+    with pytest.raises(InvalidBody, match=LIBRARY_SCHEMA):
+        await plain.restore(parsed, world.iris.tenant_id_of(world.tenant), iter(()), RESTORER)
+
+
+async def test_a_tenant_with_no_stamp_dumps_with_no_version_and_that_dump_is_refused_on_restore():
+    """PD-25.7: an unstamped database follows the first version (PD-10), but a dump does not guess it (PD-15)."""
+    unstamped = await populated(await make_world(iris_of(SETTINGS), SETTINGS, stamps=()))
+    data = await dumped(unstamped)
+    assert manifest_of(data).schema_version is None, "no stamp, no version: not the running one"
+    reason = await refused(unstamped, data)
+    assert "None" in reason, "the reason names the missing version"
+    assert "'1'" in reason, "and the versions the chain has"
+
+
+async def test_a_manifest_version_that_is_not_the_dumps_own_stamp_is_refused_naming_both(
+    stamped, chains
+):
+    def older(payload: bytes) -> bytes:
+        found = TenantDump.model_validate_json(payload)
+        return found.model_copy(update={"schema_version": "1"}).model_dump_json().encode()
+
+    data = edited(await dumped(stamped, view=RUNNING), MANIFEST, older)
+    reason = await refused(stamped, data, view=RUNNING, chains=chains)
+    assert "'1'" in reason, "the manifest's version is named"
+    assert "'2'" in reason, "the stamp's version is named"
 
 
 # -- schema-migrations TC-50 to TC-53: a dump carries its version, a restore migrates an older one ------
@@ -370,18 +455,13 @@ async def token_of(world: SimpleNamespace, tenant: str, iri: str, who: Principal
 
 
 async def test_tc50_a_dump_carries_the_version_its_data_follows(aged):
-    manifest = manifest_of(await dumped(aged, view=at_version("2")))
+    manifest = manifest_of(await dumped(aged, view=RUNNING))
     assert manifest.schema_version == "1", "the tenant's stamp, not the version the service runs"
 
 
-async def test_a_tenant_with_no_stamp_dumps_the_version_the_service_runs(world):
-    manifest = manifest_of(await dumped(world, view=at_version("5")))
-    assert manifest.schema_version == "5", "no stamp to read: the running version"
-
-
 async def test_tc51_an_older_dump_is_migrated_and_restored_at_the_running_version(aged, chains):
-    data = await dumped(aged, view=at_version("2"))
-    summary = await restored(aged, data, tenancy=aged.running, view=at_version("2"), chains=chains)
+    data = await dumped(aged, view=RUNNING)
+    summary = await restored(aged, data, tenancy=aged.running, view=RUNNING, chains=chains)
     assert await stamps_held(aged, summary.id) == dict(STAMPS), "the new tenant is at version 2"
     book = await read_book(aged, summary.id, moved(aged, aged.book, summary.id))
     assert book.description == "A planet.", "the book's description is in its current shape"
@@ -392,8 +472,8 @@ async def test_tc51_an_older_dump_is_migrated_and_restored_at_the_running_versio
 
 
 async def test_tc51_the_restored_graphs_get_new_version_tokens(aged, chains):
-    data = await dumped(aged, view=at_version("2"))
-    summary = await restored(aged, data, tenancy=aged.running, view=at_version("2"), chains=chains)
+    data = await dumped(aged, view=RUNNING)
+    summary = await restored(aged, data, tenancy=aged.running, view=RUNNING, chains=chains)
     new_book = moved(aged, aged.book, summary.id)
     before = await token_of(aged, aged.tenant, aged.book, OWNER)
     assert await token_of(aged, summary.id, new_book, RESTORER) != before, (
@@ -402,10 +482,9 @@ async def test_tc51_the_restored_graphs_get_new_version_tokens(aged, chains):
 
 
 async def test_a_dump_at_the_running_version_restores_exactly_as_before(stamped, chains):
-    view = at_version("2")
-    data = await dumped(stamped, view=view)
+    data = await dumped(stamped, view=RUNNING)
     assert manifest_of(data).schema_version == "2", "the tenant is at the running version"
-    summary = await restored(stamped, data, view=view, chains=chains)
+    summary = await restored(stamped, data, view=RUNNING, chains=chains)
     new_book = moved(stamped, stamped.book, summary.id)
     before = await token_of(stamped, stamped.tenant, stamped.book, OWNER)
     assert await token_of(stamped, summary.id, new_book, RESTORER) == before, (
@@ -414,23 +493,28 @@ async def test_a_dump_at_the_running_version_restores_exactly_as_before(stamped,
 
 
 @pytest.mark.parametrize(
-    "version", [None, "9"], ids=["no version", "a version the chain does not have"]
+    ("version", "named"),
+    [(None, "None"), ("9", "'9'")],
+    ids=["no version", "a version the chain does not have"],
 )
-async def test_tc52_a_manifest_with_no_version_or_an_unknown_one_is_refused(aged, chains, version):
+async def test_tc52_a_manifest_with_no_version_or_an_unknown_one_is_refused(
+    aged, chains, version, named
+):
     def change(payload: bytes) -> bytes:
         found = TenantDump.model_validate_json(payload)
         return found.model_copy(update={"schema_version": version}).model_dump_json().encode()
 
-    data = edited(await dumped(aged, view=at_version("2")), MANIFEST, change)
-    reason = await refused(aged, data, tenancy=aged.running, view=at_version("2"), chains=chains)
+    data = edited(await dumped(aged, view=RUNNING), MANIFEST, change)
+    reason = await refused(aged, data, tenancy=aged.running, view=RUNNING, chains=chains)
+    assert named in reason, "the reason names the version the dump carries"
     assert "'1', '2'" in reason, "the reason names the chain's versions"
 
 
 async def test_tc52_a_manifest_of_another_schema_is_refused(aged, chains):
-    other = at_version("2")
+    other = copy.deepcopy(RUNNING)
     other.schema.id = "https://example.org/other-schema"
     data = await dumped(aged, view=other)
-    reason = await refused(aged, data, tenancy=aged.running, view=at_version("2"), chains=chains)
+    reason = await refused(aged, data, tenancy=aged.running, view=RUNNING, chains=chains)
     assert "https://example.org/other-schema" in reason, "the reason names the dump's schema"
 
 
@@ -446,8 +530,8 @@ async def test_tc52_a_dump_whose_stamps_are_not_versions_of_the_chains_is_refuse
     aged, chains, statements, named
 ):
     lines = [stamp_line(schema, version) for schema, version in statements]
-    data = with_stamps(await dumped(aged, view=at_version("2")), *lines)
-    reason = await refused(aged, data, tenancy=aged.running, view=at_version("2"), chains=chains)
+    data = with_stamps(await dumped(aged, view=RUNNING), *lines)
+    reason = await refused(aged, data, tenancy=aged.running, view=RUNNING, chains=chains)
     for text in named:
         assert text in reason, f"the reason names {text}"
 
@@ -473,8 +557,8 @@ async def test_tc53_a_migration_that_fails_on_the_dump_is_refused_and_creates_no
             ),
         ),
     ]
-    data = await dumped(aged, view=at_version("2"))
-    reason = await refused(aged, data, tenancy=aged.running, view=at_version("2"), chains=bad)
+    data = await dumped(aged, view=RUNNING)
+    reason = await refused(aged, data, tenancy=aged.running, view=RUNNING, chains=bad)
     assert f"1__2 of {LIBRARY_SCHEMA}" in reason, "the reason names the migration"
 
 
@@ -658,19 +742,20 @@ async def refused(world: SimpleNamespace, data: bytes, **keywords) -> str:
 
 
 def at_version(version: str):
+    """The toy schema at another ``version``; a dump and a restore read the schema id from it, not the version."""
     other = copy.deepcopy(VIEW)
     other.schema.version = version
     return other
 
 
 async def test_tc17_another_schema_version_is_refused_naming_both(world):
-    out = io.BytesIO()
-    await dump(
-        world.tenancy, world.store, world.files, world.iris, at_version("1.0.0"), world.tenant, out
-    )
-    reason = await refused(world, out.getvalue(), view=at_version("1.1.0"))
+    def other_version(payload: bytes) -> bytes:
+        found = TenantDump.model_validate_json(payload)
+        return found.model_copy(update={"schema_version": "1.0.0"}).model_dump_json().encode()
+
+    reason = await refused(world, edited(await dumped(world), MANIFEST, other_version))
     assert "1.0.0" in reason, "the dump's version"
-    assert "1.1.0" in reason, "the service's version"
+    assert "'1'" in reason, "the version the service has"
 
 
 async def test_tc17_another_schema_id_is_refused(world):
@@ -840,6 +925,7 @@ async def test_tc20_a_root_validator_that_refuses_stops_the_restore():
         root_class=Library,
         access_class=LibraryAccess,
         iris=world.iris,
+        stamps=BASE_STAMPS,
         root_validators=[refuse],
     )
     assert "no more libraries" in await refused(world, await dumped(world), tenancy=strict)

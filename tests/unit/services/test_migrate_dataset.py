@@ -7,17 +7,18 @@ registry. Chains are files in ``tmp_path``; the request is the very text the sto
 from pathlib import Path
 
 import pytest
-from rdflib import Dataset, Literal, URIRef
+from rdflib import XSD, Dataset, Literal, URIRef
 
-from rdf_persistence.domain.exceptions import InvalidBody
+from rdf_persistence.domain.exceptions import InvalidBody, SparqlError
 from rdf_persistence.domain.generated.rp_core import RegistryKind
 from rdf_persistence.domain.generated.service.rp_service import MigrationStep
 from rdf_persistence.domain.iris import stamps_graph_iri
+from rdf_persistence.services import migration_runner
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.migration_runner import migrate_dataset
 from rdf_persistence.services.migrations import Chain
 from tests.toy import SETTINGS
-from tests.unit.services.test_migration_runner import (
+from tests.unit.services.migration_helpers import (
     ISBN,
     LIB,
     MID_ISBN,
@@ -183,3 +184,89 @@ def test_a_migration_that_fails_on_the_dataset_is_refused_naming_it(tmp_path, to
     with pytest.raises(InvalidBody) as caught:
         migrate_dataset(data, [(RP, toolkit_chain), (LIB, chain)], STAMPS)
     assert f"1__2 of {LIB}" in str(caught.value), "the reason names the migration"
+
+
+# -- PD-25: what a stamp is, how a refusal reads, what escapes ---------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "stamp_literal",
+    [Literal("1", lang="en"), Literal("1", datatype=XSD.string), Literal(1)],
+    ids=["a language tag", "xsd:string", "another datatype"],
+)
+def test_a_stamp_that_is_not_a_plain_literal_is_refused(lib_chain, toolkit_chain, stamp_literal):
+    """The runner's guard is a plain literal: rdflib reads ``"1"`` and ``"1"^^xsd:string`` as two terms (PD-25.1)."""
+    data = dataset(stamp(RP, "1"))
+    data.graph(STAMPS).add((URIRef(LIB), STAMP, stamp_literal))
+    with pytest.raises(InvalidBody, match="not a stamp"):
+        migrate_dataset(data, [(RP, toolkit_chain), (LIB, lib_chain)], STAMPS)
+
+
+def test_a_long_value_from_the_dump_is_cut_in_the_reason(lib_chain, toolkit_chain):
+    long = "urn:" + "x" * 500
+    data = dataset(stamp(RP, "1"), stamp(LIB, "1"))
+    data.graph(STAMPS).add((URIRef(long), URIRef(long), URIRef(long)))
+    with pytest.raises(InvalidBody) as caught:
+        migrate_dataset(data, [(RP, toolkit_chain), (LIB, lib_chain)], STAMPS)
+    assert "x" * 300 not in str(caught.value), "the subject, predicate and value are cut (PD-25.3)"
+    assert "..." in str(caught.value), "and the cut is marked"
+
+
+NOTHING = "INSERT DATA { GRAPH <urn:g> { <urn:a> <urn:b> <urn:c> } }"
+DROP_STAMPS = f"DELETE WHERE {{ GRAPH <{STAMPS}> {{ ?s ?p ?o }} }}"
+
+
+def test_a_request_that_leaves_the_stamp_where_it_was_is_refused_as_going_backwards(
+    lib_chain, toolkit_chain, monkeypatch
+):
+    """The forward-only rule of the store (PD-23) holds in memory: the stamp read back is not ``to`` or later."""
+    monkeypatch.setattr(migration_runner, "migration_request", lambda *_: NOTHING)
+    data = dataset(stamp(RP, "1"), stamp(LIB, "1"))
+    with pytest.raises(InvalidBody) as caught:
+        migrate_dataset(data, [(RP, toolkit_chain), (LIB, lib_chain)], STAMPS)
+    assert "went backwards" in str(caught.value), "the reason says the stamp did not move forward"
+    assert f"1__2 of {LIB}" in str(caught.value), "the reason names the migration"
+
+
+def test_a_request_that_removes_the_stamp_is_refused_as_leaving_none(
+    lib_chain, toolkit_chain, monkeypatch
+):
+    monkeypatch.setattr(migration_runner, "migration_request", lambda *_: DROP_STAMPS)
+    data = dataset(stamp(RP, "1"), stamp(LIB, "1"))
+    with pytest.raises(InvalidBody, match="there is no stamp") as caught:
+        migrate_dataset(data, [(RP, toolkit_chain), (LIB, lib_chain)], STAMPS)
+    assert "None" not in str(caught.value), "a missing stamp is not the version 'None' (PD-25.8)"
+
+
+class Failing(Dataset):
+    """A dataset whose update fails as the named exception does."""
+
+    def __init__(self, error: BaseException) -> None:
+        super().__init__()
+        self.error = error
+
+    def update(self, *_, **__) -> None:
+        raise self.error
+
+
+@pytest.mark.parametrize(
+    "error", [RecursionError("deep"), MemoryError("full")], ids=["recursion", "memory"]
+)
+def test_what_is_not_the_requests_fault_escapes_as_it_is(lib_chain, toolkit_chain, error):
+    data = Failing(error)
+    for statement in (stamp(RP, "1"), stamp(LIB, "1")):
+        data.graph(STAMPS).add(statement)
+    with pytest.raises(type(error)):
+        migrate_dataset(data, [(RP, toolkit_chain), (LIB, lib_chain)], STAMPS)
+
+
+def test_a_defect_in_our_own_request_text_escapes_and_is_not_blamed_on_the_dump(
+    lib_chain, toolkit_chain, monkeypatch
+):
+    def broken(*_):
+        raise SparqlError("a template of ours is wrong")
+
+    monkeypatch.setattr(migration_runner, "migration_request", broken)
+    data = dataset(stamp(RP, "1"), stamp(LIB, "1"))
+    with pytest.raises(SparqlError):
+        migrate_dataset(data, [(RP, toolkit_chain), (LIB, lib_chain)], STAMPS)

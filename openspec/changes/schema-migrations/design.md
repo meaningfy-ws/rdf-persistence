@@ -563,6 +563,28 @@ None.
       no longer true (L2).
   **Not accepted:** TC-40 rebuilt on the text of a real migration request (Fuseki commits a whole
   request as one transaction; TC-41 and TC-42 already run real requests).
+- **PD-26 The adversarial tester's finding on restore across versions (2026-11-15; 42 tests, 1
+  failing), accepted.** The in-memory migration of a dump grew faster than the square of its size
+  (a one-predicate rename: 200 graphs 30 s, 400 graphs 122 s). Diagnosis (`superpowers:systematic-
+  debugging`, probes kept out of the repository): the loaded-graph exclusion of PD-5,
+  `FILTER NOT EXISTS { GRAPH ?rp_registry { ... } }` with `?rp_registry` unbound, makes rdflib
+  walk every graph once per solution row; and rdflib's hash of a solution row collides when a
+  subject equals its graph IRI (an aggregate root), which degrades its join. Decided: the
+  exclusion is written `MINUS { GRAPH ?rp_registry { ?rp_graph rp:kind <loaded-graph kind> } }`,
+  the same meaning (`?rp_graph` is always bound and shared, and a step cannot bind an `rp_`
+  variable), the same text for the store and the dump, still one operation per step; measured
+  with identical results on every kind of graph. The test is structural (the number of full scans
+  of the dataset does not grow with the number of graphs) and replaces the tester's time ceiling,
+  which depends on the machine's load. **Not done here:** the row-hash collision is rdflib's; the
+  toolkit does not patch an external library (it would change rdflib for the whole process). The
+  lead recommends an upstream report to rdflib and leaves filing it to the developer (an
+  outward-facing act). After the rewrite a 400-graph dump of roots takes about 11 s CPU, about
+  3 s without the collision (RISK-12).
+- **RISK-12 Restoring a very large tenant across versions is slow on rdflib** (PD-26: after the
+  fix, roughly 3 s per 400 graphs of 12 triples, more when subjects are graph IRIs). Likelihood
+  low today (no data anywhere), impact medium (a restore holds a worker thread). Accepted; the
+  upgrade paths are an rdflib fix upstream or a restore that migrates in the store after import.
+  Jena's behaviour on large tenants is expected to be near-linear (quad indexes) but not measured.
 - **RISK-11 Rolling a release back after it migrated the shared databases (found by the docs
   writer, stage 3).** PD-12 said a tenant whose migration failed keeps its data and stamp, "so
   the previous release serves it". True for that tenant, but the new release has already moved

@@ -35,7 +35,7 @@ from rdf_persistence.services.migrations import (
 )
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.tenancy import Tenancy
-from rdf_persistence.services.yaml_files import SHOWN
+from rdf_persistence.services.yaml_files import SHOWN, shown
 
 log = logging.getLogger(__name__)
 
@@ -116,26 +116,30 @@ def _migrate_in_memory(
 ) -> None:
     version = _held(dataset, schema_id, stamps_graph)
     # a later version each round, as in the store (PD-23); the stamp is a version of the chain, checked above
-    while pending := pending_from(chain, version):
+    while version is not None and (pending := pending_from(chain, version)):
         migration = pending[0]
+        request = migration_request(migration, stamps_graph)  # a defect in our own text escapes
         try:
-            dataset.update(migration_request(migration, stamps_graph))
-        except RecursionError:
+            dataset.update(request)
+        except (RecursionError, MemoryError):
             raise
-        except Exception as error:  # rdflib raises a bare Exception at run time
+        except (
+            Exception
+        ) as error:  # rdflib raises bare Exception, re.error, TypeError, ValueError at run time
             raise _refused(schema_id, migration, error) from error
         version = _held(dataset, schema_id, stamps_graph)
         if problem := _not_forward(version, migration, versions(chain)):
             raise _refused(schema_id, migration, f"after the request {problem}")
 
 
-def _held(dataset: Dataset, schema_id: str, stamps_graph: URIRef) -> str:
-    return str(dataset.graph(stamps_graph).value(URIRef(schema_id), v.DATA_SCHEMA_VERSION))
+def _held(dataset: Dataset, schema_id: str, stamps_graph: URIRef) -> str | None:
+    value = dataset.graph(stamps_graph).value(URIRef(schema_id), v.DATA_SCHEMA_VERSION)
+    return None if value is None else str(value)
 
 
 def _refused(schema_id: str, migration: Migration, cause: object) -> InvalidBody:
     return InvalidBody(
-        f"the dump cannot be migrated: {_name(schema_id, migration)}: {str(cause)[:SHOWN]}"
+        f"the dump cannot be migrated: {_name(schema_id, migration)}: {shown(str(cause))}"
     )
 
 

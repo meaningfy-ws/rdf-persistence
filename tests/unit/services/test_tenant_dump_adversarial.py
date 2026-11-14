@@ -26,6 +26,7 @@ from rdf_persistence.domain.exceptions import (
     StoreUnavailable,
 )
 from rdf_persistence.domain.generated.service.rp_service import IriPolicy, TenantDump
+from rdf_persistence.domain.iris import stamps_graph_iri
 from rdf_persistence.domain.media import N_QUADS
 from rdf_persistence.domain.tenant_move import rewrite
 from rdf_persistence.services.sweep import sweep
@@ -41,6 +42,7 @@ from tests.unit.services.test_tenant_dump import (
     dumped,
     edited,
     iris_of,
+    make_world,
     manifest_of,
     moved,
     pack,
@@ -51,7 +53,6 @@ from tests.unit.services.test_tenant_dump import (
     state_of,
     unpack,
 )
-from tests.unit.services.test_tenant_sweep import make_world
 
 BLOCK = 512
 
@@ -357,22 +358,23 @@ async def test_a_format_version_given_as_the_string_one_is_refused_or_read_as_on
     assert summary.id != world.tenant
 
 
-async def test_a_schema_without_version_round_trips_and_refuses_a_schema_that_has_one(world):
+async def test_a_schema_without_version_dumps_the_tenants_stamp_and_round_trips(world):
+    """PD-25.7: the dump's version is the tenant's stamp; the version of the schema file is not read."""
     bare = at_version(None)  # type: ignore[arg-type]
     out = io.BytesIO()
     await dump(world.tenancy, world.store, world.files, world.iris, bare, world.tenant, out)
-    assert manifest_of(out.getvalue()).schema_version is None
+    assert manifest_of(out.getvalue()).schema_version == "1"
     assert (await restored(world, out.getvalue(), view=bare)).id != world.tenant
-    assert "1.0.0" in await refused(world, out.getvalue(), view=at_version("1.0.0"))
 
 
 async def test_an_empty_schema_version_is_not_a_missing_one(world):
-    """RISK-4: version '' in the dump against none in the service. The two must not be taken as one."""
-    out = io.BytesIO()
-    await dump(
-        world.tenancy, world.store, world.files, world.iris, at_version(""), world.tenant, out
-    )
-    await refused(world, out.getvalue(), view=at_version(None))  # type: ignore[arg-type]
+    """RISK-4: version '' in a manifest is a version the chain does not have, not an absent one."""
+
+    def empty(payload: bytes) -> bytes:
+        found = TenantDump.model_validate_json(payload)
+        return found.model_copy(update={"schema_version": ""}).model_dump_json().encode()
+
+    assert "''" in await refused(world, edited(await dumped(world), MANIFEST, empty))
 
 
 # -- write order and cleanup --------------------------------------------------------------------------
@@ -608,8 +610,8 @@ async def test_restoring_one_archive_twice_gives_two_tenants_that_share_no_iri(w
                 str(t)
                 for q in dataset.quads()
                 for t in (q[0], q[3])
-                if str(t).startswith(SETTINGS.base)
-            }
+                if str(t).startswith(SETTINGS.base) and t != stamps_graph_iri(SETTINGS.base)
+            }  # the stamps graph has one IRI under the base in every tenant database
         )
     assert not (exported[0] & exported[1]) and not (exported[0] & exported[2])
     assert not (exported[1] & exported[2])

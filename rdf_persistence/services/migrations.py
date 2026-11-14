@@ -360,16 +360,24 @@ def _stamp_difference(
 ) -> str | None:
     """How one statement of a dump's stamps graph differs from ``wanted``, or None."""
     subject, predicate, value = triple
-    text = shown(str(value))
-    if predicate != v.DATA_SCHEMA_VERSION or not isinstance(value, Literal):
-        return f"<{subject}> <{predicate}> {text} is not a stamp"
+    text, schema = shown(str(value)), shown(str(subject))
+    if predicate != v.DATA_SCHEMA_VERSION or not _is_plain_literal(value):
+        return f"{schema} {shown(str(predicate))} {text} is not a stamp"
     if str(subject) not in wanted:
-        return f"<{subject}>, a schema this service does not run, is at {text}"
+        return f"{schema}, a schema this service does not run, is at {text}"
     accepted = wanted[str(subject)]
     if str(value) not in accepted:
         listed = ", ".join(repr(version) for version in accepted)
-        return f"<{subject}> is at {text}, not {'one of ' if len(accepted) > 1 else ''}{listed}"
+        return f"{schema} is at {text}, not {'one of ' if len(accepted) > 1 else ''}{listed}"
     return None
+
+
+def _is_plain_literal(value: Node) -> bool:
+    """A stamp is a string literal with no language tag and no datatype: the one the runner's guard matches.
+
+    rdflib parses ``"1"`` to no datatype and ``"1"^^xsd:string`` to ``xsd:string``, and the two are unequal.
+    """
+    return isinstance(value, Literal) and value.language is None and value.datatype is None
 
 
 SELECT_STAMPS = "SELECT ?schema ?version WHERE { GRAPH $graph { ?schema $p_stamp ?version } }"
