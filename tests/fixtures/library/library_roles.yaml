@@ -1,3 +1,4 @@
 - {role: admin, level: system, actions: [read]}
 - {role: librarian, level: tenant, actions: [read, modify, delete, administer]}
 - {role: reader, level: tenant, actions: [read]}
+- {role: app-editor, level: system, actions: [read, modify]}

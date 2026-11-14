@@ -27,10 +27,12 @@ from tests.fixtures.library.generated import (
     library_access,
     library_tenant,
     scans,
+    templates,
 )
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note, Shelf
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.fixtures.library.generated.templates import Template
 
 SCANS = "scans"  # the rp_path of the scan roots
 TOY_SCHEMA = Path(__file__).parent / "fixtures" / "library" / "library.yaml"
@@ -45,6 +47,7 @@ MODULES = (
     library_access,
     library_tenant,
     scans,
+    templates,
     rp_access,
     rp_core,
     rp_collections,
@@ -120,6 +123,11 @@ def dune(iri: str, *, chapters: int = 2, **slots: str) -> Book:
 def shelf(iri: str) -> Shelf:
     """A shelf of books with the given IRI."""
     return Shelf(id=iri, label="Shelf", description="A shelf.", member_class="Book")
+
+
+def template(iri: str) -> Template:
+    """An application-level report template."""
+    return Template(id=iri, label="Quarterly report", description="A report template.")
 
 
 def access(

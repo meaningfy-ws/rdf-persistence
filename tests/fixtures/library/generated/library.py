@@ -75,6 +75,7 @@ from .books import (
 from .library_access import LibraryAccess
 from .library_tenant import Library
 from .scans import Scan
+from .templates import Template
 
 
 metamodel_version = "1.12.0"

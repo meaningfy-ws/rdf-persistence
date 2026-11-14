@@ -46,7 +46,7 @@ and `make clean-code` unless it names others.
 | TC-10 | hard check of a valid application root with `rp_path`, and of an abstract class annotated `application` | no problem |
 | TC-11 | hard check of `database: elsewhere` | the existing "is not one of" problem, now listing three values |
 
-- [ ] 1.3 PD-12: `tests/fixtures/library/templates.yaml`, the import in `library.yaml`, the role in
+- [x] 1.3 PD-12: `tests/fixtures/library/templates.yaml`, the import in `library.yaml`, the role in
   `library_roles.yaml`; `make generate`; a builder `template(iri)` in `tests/toy.py`. Fix the tests
   the new class or role breaks (counts of classes or roles). Gates: `make test-fast`,
   `make check-quality`, `make check-generated` (after the lead's commit).

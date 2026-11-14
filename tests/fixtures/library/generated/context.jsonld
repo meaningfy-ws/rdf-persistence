@@ -393,6 +393,9 @@
       "StoredFile": {
          "@id": "rp:StoredFile"
       },
+      "Template": {
+         "@id": "Template"
+      },
       "TenantAccess": {
          "@id": "rp:TenantAccess"
       },

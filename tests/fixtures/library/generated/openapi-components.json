@@ -904,6 +904,32 @@
       "title": "StoredFile",
       "type": "object"
     },
+    "Template": {
+      "additionalProperties": false,
+      "description": "A report template shared by every library.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Template",
+      "type": "object"
+    },
     "TenantAccess": {
       "additionalProperties": false,
       "description": "The access record of a tenant: its label, state and database name, with the grants and prohibitions that say who may do what in it.",

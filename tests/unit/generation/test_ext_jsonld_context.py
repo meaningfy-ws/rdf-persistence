@@ -62,6 +62,7 @@ def test_one_frame_per_aggregate_type_and_the_tenant_root(staged: Path) -> None:
         "LibraryAccess.frame.jsonld",
         "Scan.frame.jsonld",
         "Shelf.frame.jsonld",
+        "Template.frame.jsonld",
     ], "a frame per class with AggregateRoot ancestry, and the tenant root"
 
 

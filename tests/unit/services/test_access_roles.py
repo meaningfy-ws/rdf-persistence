@@ -25,7 +25,8 @@ def test_the_toy_librarys_role_definitions_load_as_the_design_lists_them():
             [Action.READ, Action.MODIFY, Action.DELETE, Action.ADMINISTER],
         ),
         ("reader", RoleLevel.TENANT, [Action.READ]),
-    ], "the three roles of PD-9, in file order"
+        ("app-editor", RoleLevel.SYSTEM, [Action.READ, Action.MODIFY]),
+    ], "the roles of PD-9 and the application editor of app-level-data PD-12, in file order"
 
 
 # (id, file text, what the error must name)

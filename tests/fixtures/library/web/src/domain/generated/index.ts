@@ -10,3 +10,4 @@ export * from "./rp_files";
 export * from "./rp_service";
 export * from "./rp_tenancy";
 export * from "./scans";
+export * from "./templates";

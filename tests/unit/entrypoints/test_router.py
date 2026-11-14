@@ -1068,3 +1068,9 @@ async def test_a_stale_replace_that_also_clashes_is_a_version_conflict(scene) ->
     assert (response.status_code, problem_of(response).type) == (409, f"{PROBLEMS}conflict"), (
         "stale data is re-read before a key clash means anything"
     )
+
+
+async def test_an_application_class_has_no_tenant_route(scene) -> None:
+    """TC-13: ``Template`` is an application class; the tenant router has no such path."""
+    response = await scene.http.get(f"{scene.tenant}/templates", headers=scene.headers("ada"))
+    assert response.status_code == 404, "the router serves tenant classes only"
