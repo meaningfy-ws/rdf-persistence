@@ -13,18 +13,20 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, suppress
 from typing import Any
 
+from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel, ValidationError
-from rdflib import Dataset, Graph, URIRef
+from rdflib import RDF, Dataset, Graph, URIRef
 
 from rdf_persistence.domain.exceptions import (
     Conflict,
     InvalidBody,
+    InvalidIri,
     NotFound,
     PersistenceError,
     StoredDataInvalid,
 )
 from rdf_persistence.domain.generated.rp_access import Action, Grant
-from rdf_persistence.domain.generated.rp_core import DatabaseKind, Principal
+from rdf_persistence.domain.generated.rp_core import DatabaseKind, Principal, RpAnnotation
 from rdf_persistence.domain.generated.rp_tenancy import TenantAccess, TenantState
 from rdf_persistence.domain.generated.service.rp_service import (
     CallerAccess,
@@ -52,9 +54,12 @@ from rdf_persistence.services.mapper import Mapper, UnitOfWork
 from rdf_persistence.services.schema_structure import (
     LABEL,
     aggregate_keys,
+    annotation_text,
     internal_predicates,
+    iri_type_of,
     refuse_internal,
     root_class_iris,
+    tenant_root_class,
 )
 from rdf_persistence.services.session import (
     Clock,
@@ -82,6 +87,16 @@ GrantValidator = Callable[[GrantSet, GrantSet, Principal], None]  # old, new, wh
 RootValidator = Callable[
     [BaseModel | None, BaseModel, Principal], None
 ]  # old (None on create), new, who
+
+
+def _other_database_types(view: SchemaView) -> frozenset[URIRef]:
+    """The class IRIs of the roots of the tenant and system databases, and of the tenant root (D-6 c)."""
+    tenant_root = URIRef(view.get_uri(tenant_root_class(view), expand=True))
+    return (
+        root_class_iris(view, DatabaseKind.TENANT)
+        | root_class_iris(view, DatabaseKind.SYSTEM)
+        | {tenant_root}
+    )
 
 
 class Tenancy:
@@ -117,6 +132,9 @@ class Tenancy:
         self._keys = aggregate_keys(mapper.view)
         self._application_types = root_class_iris(mapper.view, DatabaseKind.APPLICATION)
         self._application_listings = Listings(mapper.view, DatabaseKind.APPLICATION)
+        self._other_types = (
+            _other_database_types(mapper.view) if self._application_types else frozenset()
+        )
         self._root_class = root_class
         self._access_class = access_class
         self._clock = clock
@@ -131,7 +149,11 @@ class Tenancy:
         tenant: str,
         principal: Principal,
         refused_types: frozenset[URIRef] = frozenset(),
+        *,
+        listings: Listings | None = None,
+        allowed_types: frozenset[URIRef] | None = None,
     ) -> AbstractAsyncContextManager[Session]:
+        """A session on ``database``; ``listings`` default to the tenant ones, the type sets are PD-6's."""
         return open_session(
             self._store,
             database=database,
@@ -139,11 +161,12 @@ class Tenancy:
             principal=principal,
             clock=self._clock,
             iris=self._iris,
-            listings=self._listings,
+            listings=self._listings if listings is None else listings,
             keys=self._keys,
             guards=self._guards,
             dependents=self._dependents,
             refused_types=refused_types,
+            allowed_types=allowed_types,
         )
 
     def tenant_session(
@@ -157,24 +180,38 @@ class Tenancy:
     def application_session(self, principal: Principal) -> AbstractAsyncContextManager[Session]:
         """A session on the application database for ``principal``; it takes application classes only (PD-7).
 
+        The session checks no right: ``principal`` may do whatever the caller lets through, so call
+        ``AccessRules.require_application`` (or the kit's) first. It also refuses a root that carries a
+        class of the tenant or system databases beside an application class (D-6 c).
+
         Raises:
             LookupError: The schema declares no application class.
         """
         if not self._application_types:
             raise LookupError("the schema declares no application class")
-        return open_session(
-            self._store,
-            database=application_database_name(self._settings.prefix),
-            tenant_iri=str(self._iris.application),
-            principal=principal,
-            clock=self._clock,
-            iris=self._iris,
+        return self._session(
+            application_database_name(self._settings.prefix),
+            str(self._iris.application),
+            principal,
+            self._other_types,
             listings=self._application_listings,
-            keys=self._keys,
-            guards=self._guards,
-            dependents=self._dependents,
             allowed_types=self._application_types,
         )
+
+    def application_iri(self, cls: type[BaseModel]) -> str:
+        """A new aggregate IRI of the application for the application class ``cls``.
+
+        Raises:
+            InvalidIri: ``cls`` is not an application class, a class served from the application database.
+        """
+        try:
+            root = self._application_listings.served_root(cls.__name__)
+        except ValueError as error:
+            raise InvalidIri(f"{cls.__name__} is not an application class") from error
+        path = annotation_text(root, RpAnnotation.RP_PATH)
+        if not path:
+            raise InvalidIri(f"{cls.__name__} has no {RpAnnotation.RP_PATH.value}")
+        return str(self._iris.mint_aggregate(str(self._iris.application), iri_type_of(root), path))
 
     async def _add_root(
         self, database: str, tenant: str, principal: Principal, obj: BaseModel
@@ -206,13 +243,19 @@ class Tenancy:
         result = await self._store.query(self._system, fill(ASK_RECORDS, p_state=term(v.STATE)))
         return bool(result.askAnswer)
 
-    async def ensure_system_database(self) -> bool:
-        """Create the system database unless it exists (start-up); True if this call created it."""
-        if self._system in await self._store.list_datasets():
+    async def _ensure_dataset(self, name: str) -> bool:
+        """Create the database ``name`` unless it exists; True only if this call's own create succeeded."""
+        if name in await self._store.list_datasets():
             return False
-        with suppress(Conflict):  # another worker created it first
-            await self._store.create_dataset(self._system)
+        try:
+            await self._store.create_dataset(name)
+        except Conflict:  # another worker created it first
+            return False
         return True
+
+    async def ensure_system_database(self) -> bool:
+        """Create the system database unless it exists (start-up); True only if this call created it."""
+        return await self._ensure_dataset(self._system)
 
     async def ensure_application_database(self) -> bool:
         """Create the application database unless it exists (start-up); True only if this call created it.
@@ -221,14 +264,7 @@ class Tenancy:
         """
         if not self._application_types:
             return False
-        name = application_database_name(self._settings.prefix)
-        if name in await self._store.list_datasets():
-            return False
-        try:
-            await self._store.create_dataset(name)
-        except Conflict:  # another worker created it first
-            return False
-        return True
+        return await self._ensure_dataset(application_database_name(self._settings.prefix))
 
     async def create(
         self, label: str, root_slots: Mapping[str, Any], creator: Principal
@@ -297,8 +333,8 @@ class Tenancy:
         record is written after that: if its write fails, the database and the bucket stay for the start-up sweep.
 
         Raises:
-            InvalidBody: A quad is in the default graph or a foreign graph, or the root does not decode or a root
-                validator refuses it; or ``blobs`` raises it.
+            InvalidBody: A quad is in the default graph or a foreign graph, a subject is typed with an application
+                class, or the root does not decode or a root validator refuses it; or ``blobs`` raises it.
             Conflict: The drawn tenant id was taken between the draw and the create; retry.
             PersistenceError: No free tenant id, or the new database or bucket was dropped (a start-up sweep
                 elsewhere) before the record.
@@ -308,6 +344,7 @@ class Tenancy:
             parsed, self._settings.base, source_tenant_id, self._iris.tenant_id_of(tenant)
         )
         check_graphs(data, tenant, self._iris)
+        self._refuse_application_objects(data)
         label = self._vet_restored_root(tenant, data.graph(self._iris.meta(tenant)), creator)
         name = self._iris.resource_name(tenant)
         record = self._new_record(tenant, name, label, creator)
@@ -332,6 +369,12 @@ class Tenancy:
         await self._add_root(self._system, tenant, creator, record)
         _log_step("create-record", tenant, name)
         return TenantSummary(id=tenant, label=label, state=TenantState.ACTIVE)
+
+    def _refuse_application_objects(self, data: Dataset) -> None:
+        """Refuse a dump that types a subject with an application class: no tenant database holds one (D-6 b)."""
+        for _, _, cls, _ in data.quads((None, RDF.type, None, None)):
+            if cls in self._application_types:
+                raise InvalidBody(f"the dump holds an object of the application class {cls}")
 
     async def _drop_restored(self, tenant: str, name: str) -> None:
         """Best effort: drop what a failed restore created; what stays is the start-up sweep's."""

@@ -478,22 +478,25 @@ class Session:
 
     def _graph(self, iri: str) -> URIRef:
         """The graph of the aggregate ``iri``, or the meta graph for the tenant root."""
-        if str(iri) == self._tenant:
-            return self._iris.meta(self._tenant)
         if not self._iris.is_aggregate(self._tenant, iri):
             raise InvalidIri(f"{iri!r} is not an aggregate IRI of the tenant {self._tenant!r}")
+        if str(iri) == self._tenant:
+            return self._iris.meta(self._tenant)
         return graph_iri(iri)
 
     def _refuse_foreign(self, iri: str, triples: Iterable[Triple]) -> list[Triple]:
         """``triples`` as a list, once the root's classes pass the session's type sets (PD-6)."""
         kept = list(triples)
         types = {t[2] for t in kept if t[0] == URIRef(iri) and t[1] == RDF.type}
-        if types & self._refused_types:
+        if self._allowed_types is None:
+            if types & self._refused_types:
+                raise InvalidIri(
+                    f"{iri!r} is an application aggregate and does not belong in a tenant database"
+                )
+        elif not types & self._allowed_types or types & self._refused_types:
             raise InvalidIri(
-                f"{iri!r} is an application aggregate and does not belong in a tenant database"
-            )
-        if self._allowed_types is not None and not types & self._allowed_types:
-            raise InvalidIri(f"{iri!r} is not an application aggregate")
+                f"{iri!r} is not an application aggregate"
+            )  # D-6 c: no other root class
         return kept
 
     def _entries(
@@ -977,7 +980,6 @@ class Transaction:
         triples = session._refuse_foreign(iri, triples)
         graph = self._claim(iri)
         await session._check_commit(iri, loaded_graphs)
-        triples = list(triples)
         if session._write_guards is not None:
             triples = await session._write_guards.prepare(session, iri, triples, None)
         key_claims = claims_of(session._keys, iri, triples)
@@ -1009,7 +1011,6 @@ class Transaction:
         graph = self._claim(iri)
         await session._check_commit(iri, loaded_graphs or [])
         _, stored = await session._stored(graph)
-        triples = list(triples)
         if session._write_guards is not None:
             triples = await session._write_guards.prepare(session, iri, triples, stored)
         key_claims = claims_of(session._keys, iri, triples)

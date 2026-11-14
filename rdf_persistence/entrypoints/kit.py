@@ -9,7 +9,6 @@ from typing import BinaryIO, cast
 
 from pydantic import BaseModel
 
-from rdf_persistence.domain.exceptions import InvalidIri
 from rdf_persistence.domain.generated import (
     rp_access,
     rp_collections,
@@ -18,7 +17,7 @@ from rdf_persistence.domain.generated import (
     rp_tenancy,
 )
 from rdf_persistence.domain.generated.rp_access import Action
-from rdf_persistence.domain.generated.rp_core import DatabaseKind, Principal, RpAnnotation
+from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import (
     TenantAccess,
     TenantState,
@@ -47,10 +46,7 @@ from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, generated_models_of
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import (
-    annotation_text,
-    iri_type_of,
     iri_types,
-    served_roots,
     tenant_access_class,
 )
 from rdf_persistence.services.session import Session
@@ -311,7 +307,8 @@ class ServiceKit:
         application data; ``checked_target`` is the application IRI.
 
         The application is no tenant: no grant is read and the store is not called. A role defined at
-        level ``system`` permits its actions here as it does in every tenant (PD-9).
+        level ``system`` permits its actions here as it does in every tenant (PD-9). The answer is for
+        ``application_session`` only: it is not an authorisation on any tenant.
 
         Raises:
             InvalidToken: No bearer token, or one the verifier refuses.
@@ -326,6 +323,9 @@ class ServiceKit:
     def application_session(self, principal: str) -> AbstractAsyncContextManager[Session]:
         """A session on the application database for ``principal``; it takes application classes only.
 
+        The session checks no right: call ``require_application`` first and pass it the principal it
+        answers.
+
         Raises:
             LookupError: The schema declares no application class.
         """
@@ -337,10 +337,4 @@ class ServiceKit:
         Raises:
             InvalidIri: ``cls`` is not an application class, a class served from the application database.
         """
-        served = {root.name: root for root in served_roots(self.view, DatabaseKind.APPLICATION)}
-        if cls.__name__ not in served:
-            raise InvalidIri(f"{cls.__name__} is not an application class")
-        root = served[cls.__name__]
-        path = annotation_text(root, RpAnnotation.RP_PATH)
-        assert path, "a served root has a path"
-        return str(self.iris.mint_aggregate(str(self.iris.application), iri_type_of(root), path))
+        return self.tenancy.application_iri(cls)

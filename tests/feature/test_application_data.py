@@ -15,10 +15,11 @@ from rdf_persistence import (
     UnitOfWork,
     load_role_definitions,
 )
-from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.domain.generated.rp_core import DatabaseKind, Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantAccess
-from rdf_persistence.domain.iris import application_database_name
+from rdf_persistence.domain.iris import application_database_name, graph_iri
 from rdf_persistence.services.access import _access_mapper
+from rdf_persistence.services.schema_structure import served_roots
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
@@ -49,7 +50,8 @@ class Run:
         self.application = str(self.kit.iris.application)
         self.template_iri = ""
         self.updates_before: list[Any] = []
-        self.listed: list[str] = []
+        self.held_by_tenant: bool | None = None
+        self.tenant_find: BaseException | None = None
         self.read: Template | None = None
         self.outcomes: list[BaseException | None] = []
         self.refusal: BaseException | None = None
@@ -95,7 +97,7 @@ def _service(run: Run) -> None:
         run.tenant = record.id
 
     run_async(start())
-    assert APP_DATABASE in run_async(run.store.list_datasets())
+    assert APP_DATABASE in run_async(run.store.list_datasets()), "the application database exists"
 
 
 # -- an application aggregate is not in any tenant ----------------------------------------------
@@ -110,23 +112,32 @@ def _an_aggregate(run: Run) -> None:
     "the tenant's aggregates are listed and the application's aggregate is read through an application session"
 )
 def _list_and_read(run: Run) -> None:
-    async def list_tenant() -> list[str]:
+    async def ask_tenant() -> None:
+        record, _ = await run.kit.tenancy.get(run.tenant)
+        asked = await run.store.query(
+            record.database_name, f"ASK {{ GRAPH <{graph_iri(run.template_iri)}> {{ ?s ?p ?o }} }}"
+        )
+        run.held_by_tenant = bool(asked.askAnswer)
         async with run.kit.session(run.tenant, run.principal) as session:
-            return await session.find(Book)  # a tenant lists tenant classes only
+            try:
+                await session.find(Template)  # a tenant lists tenant classes only
+            except ValueError as error:
+                run.tenant_find = error
 
-    run.listed = run_async(list_tenant())
+    run_async(ask_tenant())
     run.read = run.read_template()
 
 
 @then("the listing does not include it")
 def _not_listed(run: Run) -> None:
-    assert run.template_iri not in run.listed
+    assert run.held_by_tenant is False, "the tenant's database holds no graph of the template"
+    assert isinstance(run.tenant_find, ValueError), "the tenant cannot list the template class"
 
 
 @then("the read returns it")
 def _read_returns(run: Run) -> None:
-    assert run.read is not None
-    assert run.read.id == run.template_iri
+    assert run.read is not None, "the application session read something"
+    assert run.read.id == run.template_iri, "and it is the template"
 
 
 # -- application writes are versioned -----------------------------------------------------------
@@ -166,12 +177,12 @@ def _two_replace(run: Run) -> None:
 
 @then("the first succeeds")
 def _first_succeeds(run: Run) -> None:
-    assert run.outcomes[0] is None
+    assert run.outcomes[0] is None, f"the first commit raised {run.outcomes[0]!r}"
 
 
 @then("the second is refused as a conflict")
 def _second_conflicts(run: Run) -> None:
-    assert isinstance(run.outcomes[1], Conflict)
+    assert isinstance(run.outcomes[1], Conflict), f"the second commit gave {run.outcomes[1]!r}"
 
 
 # -- a class in the wrong space -----------------------------------------------------------------
@@ -183,9 +194,11 @@ def _second_conflicts(run: Run) -> None:
     )
 )
 def _spaces(run: Run, tenant_class: str, application_class: str) -> None:
-    served = {cls.__name__ for cls in (Template,)}
-    assert application_class in served
-    assert tenant_class not in served
+    application = {root.name for root in served_roots(run.kit.view, DatabaseKind.APPLICATION)}
+    tenant = {root.name for root in served_roots(run.kit.view)}
+    assert application_class in application, f"{application_class} is served from the application"
+    assert tenant_class in tenant, f"{tenant_class} is served from the tenants"
+    assert tenant_class not in application, f"{tenant_class} is not an application class"
     with pytest.raises(InvalidIri):
         run.kit.application_iri(CLASSES[tenant_class])
 
@@ -215,12 +228,12 @@ def _commit_wrong(run: Run, name: str, session: str) -> None:
 
 @then("the session raises InvalidIri")
 def _invalid_iri(run: Run) -> None:
-    assert isinstance(run.refusal, InvalidIri)
+    assert isinstance(run.refusal, InvalidIri), f"the session raised {run.refusal!r}"
 
 
 @then("nothing is written")
 def _nothing_written(run: Run) -> None:
-    assert run.sent_updates() == run.updates_before
+    assert run.sent_updates() == run.updates_before, "the store was sent no update since the check"
 
 
 # -- the sweep leaves the application database alone --------------------------------------------
@@ -235,17 +248,20 @@ def _app_with_aggregates(run: Run) -> None:
 
 @when("the start-up sweep runs")
 def _sweep(run: Run) -> None:
+    """Regression guard: this scenario passes on the code before this change too."""
     run_async(sweep(run.kit.tenancy, run.store, run.toy.files, run.toy.settings))
 
 
 @then("the application database is unchanged")
 def _database_unchanged(run: Run) -> None:
-    assert APP_DATABASE in run_async(run.store.list_datasets())
+    after = sorted(run_async(run.store.list_datasets()))
+    assert APP_DATABASE in after, "the application database is still there"
+    assert after == run.databases_before, "and the sweep dropped no other database"
 
 
 @then("its aggregates are unchanged")
 def _aggregates_unchanged(run: Run) -> None:
-    assert run.read_template() == run.read
+    assert run.read_template() == run.read, "the template reads as it did before the sweep"
 
 
 # -- a schema without application classes -------------------------------------------------------
@@ -253,7 +269,7 @@ def _aggregates_unchanged(run: Run) -> None:
 
 @given(parsers.parse('a schema with no class annotated "{annotation}"'))
 def _no_application_class(run: Run, annotation: str) -> None:
-    assert annotation == "database: application"
+    assert annotation == "database: application", "the scenario names the annotation it leaves out"
     run.store = FakeStore()
     run.tenancy_without_application = Tenancy(
         run.store,
@@ -267,14 +283,14 @@ def _no_application_class(run: Run, annotation: str) -> None:
 
 @when("the service starts")
 def _starts(run: Run) -> None:
-    assert run.tenancy_without_application is not None
+    assert run.tenancy_without_application is not None, "the scenario's schema was set up"
     run.started = run_async(run.tenancy_without_application.ensure_application_database())
 
 
 @then("no application database is created")
 def _none_created(run: Run) -> None:
-    assert run.started is False
-    assert run.store.sent("create_dataset") == []
+    assert run.started is False, "the start-up answered that it created nothing"
+    assert run.store.sent("create_dataset") == [], "and the store was asked to create no database"
 
 
 # -- application data is decided by global roles ------------------------------------------------
@@ -287,7 +303,9 @@ def _none_created(run: Run) -> None:
 )
 def _role_definitions(run: Run, role: str, first: str, second: str, level: str) -> None:
     defined = {d.role: d for d in load_role_definitions(ROLES)}[role]
-    assert (defined.level, defined.actions) == (level, [first, second])
+    assert (defined.level, defined.actions) == (level, [first, second]), (
+        f"the roles file defines {role} as {defined.level} with {defined.actions}"
+    )
 
 
 @when(parsers.parse('a caller whose token carries "{role}" modifies an application aggregate'))
@@ -298,13 +316,14 @@ def _editor_modifies(run: Run, role: str) -> None:
 
 @then("the change is allowed")
 def _allowed(run: Run) -> None:
-    assert run.access.checked_target == run.application
+    assert run.access.checked_target == run.application, "the check answers for the application"
 
 
 @given(parsers.parse('a caller with the "{role}" role on a tenant and no global role'))
 def _tenant_owner(run: Run, role: str) -> None:
-    assert role == "owner"  # the tenant's creator, who holds the toy's creator role "librarian"
-    assert SETTINGS.creator_role == "librarian"
+    """The scenario's "owner" is the tenant's creator, who holds the toy's creator role ``librarian``."""
+    assert role == "owner", "the scenario speaks of a tenant owner"
+    assert SETTINGS.creator_role == "librarian", "the toy's creator role is librarian"
     run.principal = principal_of("ada")
 
 
@@ -320,4 +339,4 @@ def _owner_modifies(run: Run) -> None:
 
 @then("the check answers Forbidden")
 def _forbidden(run: Run) -> None:
-    assert isinstance(run.refusal, Forbidden)
+    assert isinstance(run.refusal, Forbidden), f"the check gave {run.refusal!r}"

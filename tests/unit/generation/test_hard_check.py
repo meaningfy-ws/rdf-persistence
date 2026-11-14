@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence.generation import steps
+from rdf_persistence.generation.checks.application import ROWS
 from rdf_persistence.generation.checks.hard import hard_problems
 from rdf_persistence.generation.cli import main
 from rdf_persistence.generation.generated.rp_generation import GenerationTarget, HardRule
@@ -502,7 +503,11 @@ def test_an_application_class_that_breaks_a_row_gets_that_rows_problem(
 
 
 def test_every_application_row_has_a_case() -> None:
-    assert len(APPLICATION_ROWS) == 6, "the five rows of PD-5 and the mixin row"
+    endings = [row.ending for row in APPLICATION_ROWS]
+    for message in ROWS:
+        cases = [ending for ending in endings if ending.startswith(message)]
+        assert len(cases) == 1, f"one case for the row {message!r}, found {cases}"
+    assert len(endings) == len(ROWS), "and no case for a row the check does not define"
 
 
 def test_a_valid_application_root_passes(tmp_path: Path) -> None:

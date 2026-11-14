@@ -38,10 +38,10 @@ from rdf_persistence.services.schema_structure import (
     is_scoped,
     is_tenant_root,
     is_toolkit_schema,
+    keyed_roots,
     own_classes,
     own_schemas,
     owned_classes,
-    tenant_database_roots,
 )
 
 # The metaslot each element rule requires: a rule id is not an attribute name.
@@ -265,9 +265,9 @@ def _reserved_segment_problems(cls: ClassDefinition) -> Iterator[CheckProblem]:
 
 def _class_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[CheckProblem]:
     roots = aggregate_roots(view, classes)
-    tenant_roots = tenant_database_roots(view, classes)
+    keyed = keyed_roots(view, classes)
     for cls in classes:
-        yield from _key_problems(view, cls, tenant_roots)
+        yield from _key_problems(view, cls, keyed)
         yield from _reserved_segment_problems(cls)
     yield from _path_problems(view, roots)
     yield from application_problems(view, classes, roots)

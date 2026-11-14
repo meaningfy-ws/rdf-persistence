@@ -97,7 +97,7 @@ hour by default), so work still waiting for its commit survives.
 _Who talks to whom?_ A client gets a token from the identity provider and calls the consumer's
 application. Every route, the toolkit's generic ones and the consumer's own, goes through the
 service kit, which reads access from the system database, the tenant's data from its own
-database, and files from its own bucket.
+database, the application-wide data from the application database, and files from its own bucket.
 
 [mermaid]
 ....
@@ -115,6 +115,7 @@ flowchart LR
   subgraph TS["Triple store (Fuseki)"]
     SYS[("lib-system<br/>access records")]
     TDB[("lib-t-…<br/>one per tenant")]
+    ADB[("lib-app<br/>application data")]
   end
   OS[("Object store (S3)<br/>bucket lib-t-… per tenant")]
   C -- "token" --> IDP
@@ -122,6 +123,7 @@ flowchart LR
   KIT -- "public keys (JWKS)" --> IDP
   KIT -- "SPARQL: who may do what" --> SYS
   KIT -- "SPARQL: the tenant's data" --> TDB
+  KIT -- "SPARQL: application-wide data" --> ADB
   KIT -- "S3: blobs" --> OS
 ....
 
@@ -143,11 +145,16 @@ flowchart LR
   subgraph SYSDB["system database lib-system"]
     ACC["T/access/graph<br/>access record of T:<br/>state, grants, database name"]
   end
+  subgraph APPDB["application database lib-app"]
+    AREG["A/registry<br/>entries and load markers"]
+    AG["X/graph<br/>an application aggregate X<br/>and its loaded graphs"]
+  end
   BUCKET[("bucket lib-t-…<br/>blob under key k")]
   ACC -. "database name<br/>(the bucket has the same)" .-> TDB
   REG -- "B/graph ownedBy B<br/>kind Aggregate" --> BG
   REG -- "B/content/id ownedBy B<br/>kind LoadedGraph" --> LG
   BG -. "rp:fileKey k<br/>(file aggregates)" .-> BUCKET
+  AREG -- "ownedBy<br/>kind Aggregate, LoadedGraph" --> AG
 ....
 
 With `T = https://example.org/library/libraries/<tenant uuid>` and a book `B = T/books/<id>`:
@@ -184,6 +191,12 @@ update request, also a `rp:CommitMarker` (see <<commit>>).
 |
 |`B/content/<id>`
 |The triples of one loaded RDF file, as parsed.
+
+|Application database `lib-app` (`{prefix}-app`)
+|`A/registry` (`A` is the application IRI), and `X/graph`, one per application aggregate `X` (with its loaded graphs)
+|The aggregates of the classes the schema marks `database: application`, their registry and their loaded graphs, with the
+same bookkeeping as in a tenant database. No bucket, no access record. It is created at start-up when the schema has such a class.
+See xref:howto/application-data.adoc[Keep data that belongs to no project].
 
 |Bucket `lib-t-…` (same name as the database)
 |any key the consumer picks

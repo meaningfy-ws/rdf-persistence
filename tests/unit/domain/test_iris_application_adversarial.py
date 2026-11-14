@@ -17,6 +17,7 @@ from hypothesis import strategies as st
 from pydantic import ValidationError
 from rdflib import URIRef
 
+from rdf_persistence.domain import iris as iris_module
 from rdf_persistence.domain.exceptions import InvalidIri, NotFound
 from rdf_persistence.domain.generated.service.rp_service import (
     IdKind,
@@ -224,16 +225,33 @@ def _shaped_like_a_tenant() -> Iris:
     return _iris(policy, _seeded(3))
 
 
-def test_a_tenant_is_not_an_aggregate_of_an_application_that_is_its_parent_path() -> None:
-    """Fails if ``A = {base}tenants`` and the aggregate template ``{tenant}/{id}`` are accepted: a tenant would be an aggregate of ``A`` (D-4)."""
+def test_an_application_that_is_the_tenants_parent_path_with_a_tenant_shaped_aggregate_is_refused() -> (
+    None
+):
+    """Fails if ``A = {base}tenants`` with the aggregate template ``{tenant}/{id}`` is accepted: an aggregate
+    of ``A`` may read as a tenant, and a tenant as an aggregate of ``A`` (D-4)."""
     with pytest.raises(InvalidIri, match="read as a tenant's"):
         _shaped_like_a_tenant()
 
 
-def test_an_aggregate_of_the_application_is_no_tenant_when_shaped_like_one() -> None:
-    """Fails if an aggregate of ``A`` (``{tenant}/{id}`` under ``{base}{tenant_segment}``) may read as a tenant (D-4)."""
-    with pytest.raises(InvalidIri, match="read as a tenant's"):
-        _shaped_like_a_tenant()
+def test_a_tenant_read_as_an_aggregate_of_the_application_is_refused_on_its_own(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Fails if the probe tenant is not asked of ``is_aggregate(A, tenant)`` (D-4 b), the refusal that
+    stays when no aggregate of ``A`` reads as a tenant: the probes draw ids that no tenant id can spell."""
+    tenant_ids = IdSpec(kind=IdKind.RANDOM, length=8, alphabet="ab")
+    policy = IriPolicy(
+        application_template="{base}{tenant_segment}",
+        aggregate_template=TENANT_SHAPED_AGGREGATE,
+        tenant_id=tenant_ids,
+        object_id=IdSpec(kind=IdKind.RANDOM, length=8),
+    )
+    # the probes draw with ``secrets``: pin them, so refusal (a) cannot fire first by chance
+    monkeypatch.setattr(
+        iris_module, "draw_id", lambda spec: "abababab" if spec.alphabet == "ab" else "zzzzzzzz"
+    )
+    with pytest.raises(InvalidIri, match="is one of its aggregates"):
+        _iris(policy, _seeded(3))
 
 
 SHAPED = "{tenant}/{id}"

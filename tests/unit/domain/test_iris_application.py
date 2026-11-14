@@ -1,5 +1,6 @@
 """``Iris`` mints and matches the application's IRIs and never calls the application a tenant (PD-2, PD-3)."""
 
+import re
 from collections.abc import Callable, Iterator
 from uuid import uuid4
 
@@ -65,8 +66,9 @@ def test_tc15_default_policy_mints_under_the_application_iri() -> None:
     iris = _iris()
     assert iris.application == URIRef(APPLICATION), "the default application IRI is {base}app"
     minted = str(iris.mint_aggregate(iris.application, "template", "templates"))
-    assert minted.startswith(f"{APPLICATION}/templates/"), "the aggregate is under the application"
-    assert minted.removeprefix(f"{APPLICATION}/templates/") != "", "and ends in an id"
+    assert re.fullmatch(f"{re.escape(APPLICATION)}/templates/{UUID_TAIL}", minted), (
+        f"the aggregate is under the application and ends in a UUID: {minted}"
+    )
 
 
 def test_tc16_flat_policy_mints_the_application_as_a_tenant_id() -> None:
@@ -89,6 +91,16 @@ def test_tc17_matching_accepts_the_application_and_refuses_a_tenant(iris: Iris) 
     assert iris.is_loaded_graph(None, g), "a loaded graph is recognised with no tenant given"
     assert not iris.is_aggregate(tenant, x), "an application aggregate is not a tenant's"
     assert not iris.is_loaded_graph(tenant, g), "an application loaded graph is not a tenant's"
+
+
+def test_the_application_is_no_aggregate_of_itself_and_has_no_access_record(iris: Iris) -> None:
+    """D-6 a: the application has no root object and no access record to write."""
+    a = str(iris.application)
+    assert not iris.is_aggregate(a, a), "A is no aggregate of A"
+    assert not iris.is_aggregate(a, str(iris.access(a))), "access(A) is no aggregate of A"
+    tenant = str(iris.mint_tenant())
+    assert iris.is_aggregate(tenant, tenant), "a tenant's root is still an aggregate of it"
+    assert iris.is_aggregate(tenant, str(iris.access(tenant))), "and so is its access record"
 
 
 def test_tc18_a_tenant_aggregate_is_not_the_applications(iris: Iris) -> None:
@@ -119,6 +131,13 @@ def test_tc20_no_tenant_is_drawn_as_app() -> None:
     wanted = str(uuid4())
     iris = _iris(id_source=_scripted(APPLICATION_ID, wanted))
     assert str(iris.mint_tenant()).endswith(wanted), "the reserved draw is replaced by the next"
+
+
+def test_an_application_template_that_needs_a_deployment_slug_is_refused_without_one() -> None:
+    """Error matrix: ``{deployment}`` with no ``deployment`` setting is an ``InvalidIri`` when ``Iris`` is built."""
+    policy = IriPolicy(application_template="{base}{deployment}/app")
+    with pytest.raises(InvalidIri, match="deployment"):
+        _iris(policy)
 
 
 def test_tc21_flat_policy_starts_and_app_is_no_tenant() -> None:

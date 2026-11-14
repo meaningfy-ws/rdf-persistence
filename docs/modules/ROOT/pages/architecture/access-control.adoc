@@ -162,6 +162,10 @@ flowchart LR
   definitions) form one set. An empty set is 404, so a hidden tenant answers like a missing one.
 . *Action missing.* An action not in the set is 403; `read` passes when any other action is in it.
 
+* *Application data.* Access to application data is decided by `AccessRules.require_application`
+  from the caller's global roles at level `system` alone. No grant and no prohibition is read. The
+  answer is `Forbidden` (403), never `NotFound`. A role at level `system` permits its actions in every
+  tenant as well, so there is no role for application data only.
 * A *global role* from the token (an administrator) that the rules allow passes without a grant.
   A role name in a token counts only if the roles file defines it at system level: for a comment's
   audience too, so a token role named like a tenant role opens nothing.

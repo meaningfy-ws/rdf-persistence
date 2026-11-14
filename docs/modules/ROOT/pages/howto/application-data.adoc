@@ -36,16 +36,19 @@ classes:
       database: application
 ----
 
-Then run `make generate`. The class is application-level only through this annotation. Generation
-refuses an application class that:
+Then run `make generate`. The annotation is inherited along `is_a`: a subclass of an application
+class is an application class too. It is never inherited through a mixin. Generation refuses:
 
-* is the tenant root;
-* is owned by another class (the owner decides the database);
-* is a stored file (the application space has no bucket);
-* shares its class IRI with another class.
+* an application class that is the tenant root;
+* an application class that is owned by another class (the owner decides the database);
+* an application class that is not an aggregate root;
+* an application class that is a stored file (the application space has no bucket);
+* an application class that shares its class IRI with a root of another database;
+* a mixin that carries the annotation.
 
-A tenant session refuses an application class, and the application session refuses a tenant class,
-both with `InvalidIri` before anything is sent to the store.
+A tenant session refuses an application class, and the application session refuses a tenant class
+and the application IRI itself as an aggregate IRI, all with `InvalidIri` before anything is sent
+to the store.
 
 [#calls]
 == 3. The three kit calls
@@ -78,6 +81,10 @@ async with kit.application_session(authorised.principal) as session:
   `InvalidIri` for a class that is not an application class.
 * *`application_session(principal)`* opens a session on the application database. It takes
   application classes only. It raises `LookupError` when the schema declares no application class.
+
+NOTE: `application_session` checks no right. Your route must call `require_application` first and
+pass the principal it returned. The `Authorised` that `require_application` answers is for the
+application session only; do not use it for calls on a tenant.
 
 The toolkit has no HTTP route for application data. You write the route and call these three.
 
@@ -121,7 +128,10 @@ need an application-only editor, that is a change to the toolkit, not a setting.
 Tenant data may refer to an application aggregate, and application data to a tenant aggregate, by
 plain IRI value. The toolkit does not check that the target exists, and it cannot read across the
 two databases: a query never joins them. A tenant dump keeps such an IRI unchanged, because it
-holds no tenant id. Read the referred aggregate yourself, through the other session.
+holds no tenant id. This holds for UUID tenant ids; with short random tenant ids a restore rewrites
+any delimited token equal to the old tenant id, so an application IRI that holds that token would be
+rewritten. A restore also refuses a dump that holds an object typed as an application class.
+Read the referred aggregate yourself, through the other session.
 
 [#moving]
 == 7. Move a class that already has data

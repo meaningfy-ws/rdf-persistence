@@ -45,7 +45,7 @@ from rdf_persistence.services.tenant_dump import dump, restore
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
-from tests.toy import ADA, BOB, SETTINGS, TOY_SCHEMA, dune, role, toy_mapper
+from tests.toy import ADA, BOB, SETTINGS, TOY_SCHEMA, dune, role, template, toy_mapper
 from tests.unit.services.test_tenant_sweep import (
     BOOK_TYPE,
     FLAT,
@@ -838,3 +838,28 @@ async def test_tenancy_restore_vets_the_graphs_itself_and_creates_nothing_for_a_
             foreign, world.iris.tenant_id_of(world.tenant), iter(()), RESTORER
         )
     assert await state_of(world) == before, "checked before any create"
+
+
+async def test_a_dump_that_holds_an_application_class_is_refused_and_creates_nothing(world):
+    """D-6 b: a ``Template`` put into the tenant's database directly must not be restored there."""
+    template_iri = str(world.iris.mint_aggregate(world.tenant, "template", "templates"))
+    async with world.session() as opened:  # no refused types: the way a stray graph gets there
+        await opened.add_graph(template_iri, toy_mapper().to_triples(template(template_iri)))
+    data = await dumped(world)
+    before = await state_of(world)
+    with pytest.raises(InvalidBody, match="the dump holds an object of the application class"):
+        await restored(world, data)
+    assert await state_of(world) == before, "no database, bucket or access record was created"
+
+
+async def test_a_manifest_that_names_the_application_as_its_source_tenant_is_refused(world):
+    """The application is no tenant, so a dump cannot claim to come from it."""
+    application = str(world.iris.application)
+
+    def from_the_application(payload: bytes) -> bytes:
+        manifest = TenantDump.model_validate_json(payload)
+        manifest.source_tenant, manifest.source_tenant_id = application, "app"
+        return manifest.model_dump_json().encode()
+
+    reason = await refused(world, edited(await dumped(world), MANIFEST, from_the_application))
+    assert application in reason, "the reason names the application IRI"

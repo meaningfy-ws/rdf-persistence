@@ -710,10 +710,11 @@ class Iris:
     def is_aggregate(self, tenant: str, iri: str) -> bool:
         """True for what the toolkit mints as an aggregate of ``tenant``, or its root or access record.
 
+        The application has no root object and no access record: for it, only an aggregate.
         Anything else could alias another graph.
         """
         tenant, iri = str(tenant), str(iri)  # a URIRef never equals the str of the same text
-        if iri in (tenant, str(self.access(tenant))):
+        if tenant != str(self.application) and iri in (tenant, str(self.access(tenant))):
             return True
         found = self._aggregate_re.fullmatch(iri)
         return found is not None and self._belongs(found, tenant)

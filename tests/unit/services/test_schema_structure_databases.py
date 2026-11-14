@@ -4,16 +4,23 @@ from pathlib import Path
 
 import pytest
 from linkml_runtime.utils.schemaview import SchemaView
-from rdflib import URIRef
+from rdflib import RDF, URIRef
 
-from rdf_persistence.domain.generated.rp_core import DatabaseKind
+from rdf_persistence.domain.exceptions import InvalidIri
+from rdf_persistence.domain.generated.rp_core import DatabaseKind, Principal
+from rdf_persistence.domain.iris import Iris, graph_iri
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import (
     database_of,
+    iri_type_of,
+    iri_types,
     root_class_iris,
     served_roots,
 )
+from rdf_persistence.services.session import open_session
+from rdf_persistence.testkit import FakeStore
+from tests.toy import ADA, SETTINGS
 
 APPLICATION = DatabaseKind.APPLICATION
 TENANT = DatabaseKind.TENANT
@@ -142,3 +149,47 @@ def test_listings_refuse_a_class_of_the_other_database(
 
 def test_listings_serve_a_tenant_class_by_default(view: SchemaView) -> None:
     assert Listings(view).served_root("Book").name == "Book", "today's behaviour"
+
+
+# -- a subclass of an application class, committed through a session (D-6 j) ---------------------
+
+
+async def test_a_subclass_of_an_application_class_is_committed_by_the_application_session_only(
+    view: SchemaView,
+) -> None:
+    """The ``database`` annotation is inherited, so ``ReportTpl`` is an application root for both sessions."""
+    iris = Iris(SETTINGS, *iri_types(view))
+    report = iri_type_of(view.get_class("ReportTpl"))
+    application, tenant = str(iris.application), str(iris.mint_tenant())
+    store = FakeStore()
+    await store.create_dataset("app-db")
+    await store.create_dataset("tenant-db")
+    app_iri = str(iris.mint_aggregate(application, report, "reports"))
+    tenant_iri = str(iris.mint_aggregate(tenant, report, "reports"))
+
+    def typed(iri: str) -> list:
+        return [(URIRef(iri), RDF.type, URIRef(NS + "ReportTpl"))]
+
+    async with open_session(
+        store,
+        database="app-db",
+        tenant_iri=application,
+        principal=Principal(id=ADA),
+        iris=iris,
+        allowed_types=root_class_iris(view, APPLICATION),
+    ) as session:
+        await session.add_graph(app_iri, typed(app_iri))
+    stored = await store.query("app-db", f"ASK {{ GRAPH <{graph_iri(app_iri)}> {{ ?s ?p ?o }} }}")
+    assert stored.askAnswer, "the application session stored it in the application database"
+    sent = list(store.sent("update"))
+    with pytest.raises(InvalidIri, match="application aggregate"):
+        async with open_session(
+            store,
+            database="tenant-db",
+            tenant_iri=tenant,
+            principal=Principal(id=ADA),
+            iris=iris,
+            refused_types=root_class_iris(view, APPLICATION),
+        ) as session:
+            await session.add_graph(tenant_iri, typed(tenant_iri))
+    assert store.sent("update") == sent, "the tenant session sent nothing"

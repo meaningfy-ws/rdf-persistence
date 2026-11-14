@@ -7,10 +7,11 @@ application IRI, ``Tpl`` a ``Template`` (an application class), ``B`` a ``Book``
 from types import SimpleNamespace
 
 import pytest
-from rdflib import Dataset, Graph, Literal, URIRef
+from rdflib import RDF, Dataset, Graph, Literal, URIRef
 from rdflib.compare import isomorphic
 
 from rdf_persistence import Conflict, InvalidIri, NotFound
+from rdf_persistence.domain.exceptions import DatabaseGone
 from rdf_persistence.domain.generated.rp_access import Grant
 from rdf_persistence.domain.generated.rp_annotations import Tracked
 from rdf_persistence.domain.generated.rp_core import Principal
@@ -200,6 +201,32 @@ async def test_a_root_with_no_type_is_refused_by_the_application_session(world):
     assert world.store.sent("update") == sent, "no update was sent"
 
 
+@pytest.mark.parametrize("other", [Book, "tenant root"])
+async def test_a_root_typed_with_an_application_and_a_tenant_class_is_refused(world, other):
+    """D-6 c: a class of another database beside an application class is not an application aggregate."""
+    iri = world.tpl_iri()
+    stray = dune(iri) if other is Book else library(iri=iri)
+    foreign = [t for t in triples_typed(stray) if t[1] == RDF.type]
+    sent = list(world.store.sent("update"))
+    with pytest.raises(InvalidIri, match=EXPECTED_REFUSAL_APPLICATION):
+        async with world.app() as session:
+            await session.add_graph(iri, [*triples_typed(template(iri)), *foreign])
+    assert world.store.sent("update") == sent, "no update was sent"
+
+
+@pytest.mark.parametrize("where", ["application", "access"])
+async def test_an_application_class_at_the_application_or_its_access_record_is_refused(
+    world, where
+):
+    """D-6 a: the application has no root object and no access record, whatever the root's type."""
+    iri = world.app_iri if where == "application" else str(world.iris.access(world.app_iri))
+    sent = list(world.store.sent("update"))
+    with pytest.raises(InvalidIri, match="not an aggregate IRI"):
+        async with world.app() as session:
+            await session.add_graph(iri, triples_typed(template(iri)))
+    assert world.store.sent("update") == sent, "no update was sent"
+
+
 @pytest.mark.parametrize("through", ["commit", "add_graph"])
 @pytest.mark.parametrize(("kind", "make"), ACCEPTED)
 async def test_a_class_of_its_own_space_is_accepted(world, through, kind, make):
@@ -244,6 +271,20 @@ async def test_a_replacement_typed_as_a_tenant_class_is_refused(world):
             await session.replace_graph(iri, triples_typed(dune(iri)), version)
         after, _, _ = await session.get_graph(iri)
     assert isomorphic(before, after), "the stored graph is unchanged"
+
+
+# -- TC-46 at the tenancy: the IRI of a new application aggregate (D-6 g) ----------------------------
+
+
+def test_the_tenancy_mints_an_application_aggregate_iri_for_an_application_class(world):
+    iri = world.tenancy.application_iri(Template)
+    assert world.iris.is_aggregate(world.app_iri, iri), "A accepts it as its aggregate"
+    assert world.tenancy.application_iri(Template) != iri, "each call mints a new one"
+
+
+def test_the_tenancy_refuses_an_application_iri_for_a_tenant_class(world):
+    with pytest.raises(InvalidIri, match="Book is not an application class"):
+        world.tenancy.application_iri(Book)
 
 
 # -- TC-34: loaded graphs ----------------------------------------------------------------------
@@ -291,6 +332,16 @@ async def test_the_application_database_is_created_once(world):
     assert names == [APP_DATABASE], "there is one application database"
 
 
+async def test_an_application_session_on_a_database_never_created_fails_at_its_first_commit():
+    made = await make_world(Iris(SETTINGS), SETTINGS)  # no ensure_application_database
+    iri = str(made.iris.mint_aggregate(str(made.iris.application), "Template", "templates"))
+    with pytest.raises(DatabaseGone):
+        async with made.tenancy.application_session(CREATOR) as session:
+            work = UnitOfWork(session, toy_mapper())
+            work.add(template(iri))
+            await work.commit()
+
+
 async def test_a_conflict_on_create_is_suppressed_and_answers_false():
     store, files = FakeStore(), FakeFileStore()
     tenancy = Tenancy(
@@ -336,6 +387,7 @@ def test_a_schema_with_no_application_class_has_no_application_session():
 
 
 async def test_the_start_up_sweep_leaves_the_application_database_alone(world):
+    """Regression guard (TC-38): passes on the code before this change too; it keeps the sweep honest."""
     iri = await add_tpl(world)
     await sweep(world.tenancy, world.store, world.files, SETTINGS)
     async with world.app() as session:
@@ -348,6 +400,7 @@ async def test_the_start_up_sweep_leaves_the_application_database_alone(world):
 
 
 async def test_a_schema_with_no_application_class_refuses_nothing():
+    """Regression guard (TC-39): passes on the code before this change too."""
     store, tenancy = _without_application()
     tenant = str(tenancy._iris.mint_tenant())
     name = tenancy._iris.resource_name(tenant)
@@ -368,6 +421,7 @@ async def test_a_schema_with_no_application_class_refuses_nothing():
 
 
 async def test_the_sessions_tenancy_opens_for_itself_refuse_nothing(world):
+    """Regression guard (TC-40): passes on the code before this change too."""
     created = await world.tenancy.create("Antwerp", {}, CREATOR)
     record, version = await world.tenancy.get(created.id)
     grants = GrantSet(grants=[Grant(assignee=ADA, target=created.id, role="librarian")])
