@@ -373,3 +373,30 @@ None.
   `http://purl.org/ontology/bibo/Book`; the worked example's `lib:Book` stands for it).
   `Tenancy`'s `stamps` argument is optional and empty by default (about twenty tests build a
   `Tenancy`); only the kit passes it, and with none `create` stamps nothing.
+
+## Accepted findings
+
+- **PD-21 The adversarial tester's findings on stage 1 (2026-11-14), each accepted unless said.**
+  1. *A step could hide `GRAPH`, `SERVICE`, a reserved variable or a blank node from the text scan*
+     (a `\u` escape, which SPARQL expands before it parses; or `FILTER(?o<3)…(?o>1)` read as an
+     IRI), and then delete from a loaded graph or write into graphs it did not match. PD-6 changes:
+     the checks read what the parser understood, not the text. Each pattern is parsed alone and its
+     algebra walked: no graph or service pattern; no variable starting `rp_` other than `rp_graph`;
+     in a delete or insert template no blank node. A pattern, a version or a schema id containing a
+     codepoint escape (`\u`, `\U`) is refused outright. The text scan stays only for prefixed names.
+  2. *A version holding `"` is stored as another text by rdflib.* Closed by the refusal of 1.
+  3. *A YAML key given twice was accepted, the last winning.* Refused: a reviewer must read what
+     runs.
+  4. *A where pattern of more than about a hundred triple patterns was refused as "does not
+     parse"* (rdflib's recursion limit). Still refused; the message says the step is too long to
+     check and to split it.
+  5. *The lock missed or misordered some changes.* A root's database (`tenant`, `application`,
+     `system`) is recorded, and its change is "not migratable". Slots are sorted by all their
+     fields, so two slots sharing an IRI give one lock in either order. Classes sharing one class
+     IRI (a subclass keeping its parent's) are recorded as one class with the union of their
+     slots: stored data cannot tell them apart. **Not accepted:** recording the IRI type of an
+     owned part; it matters only under a part template that writes `{type}`, a runtime setting
+     `rp-generate` does not know. RISK-8 covers it and the how-to says so.
+  6. *A step's `?s ?p ?o` also matches a registry graph* (the tester's "not checked"). PD-5 gains
+     a third filter: a graph that holds registry statements (`?x rp:kind ?k`) is not a step's to
+     change, as the stamps graph and loaded graphs are not.
