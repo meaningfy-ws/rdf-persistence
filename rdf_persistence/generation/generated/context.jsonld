@@ -50,6 +50,12 @@
       "endpoint": {
          "@id": "endpoint"
       },
+      "enum_name": {
+         "@id": "lockChangeEnum"
+      },
+      "enum_value": {
+         "@id": "lockChangeValue"
+      },
       "enum_values": {
          "@container": "@set",
          "@id": "lockedEnumValues"
@@ -377,6 +383,9 @@
       },
       "GenerationTarget": {
          "@id": "GenerationTarget"
+      },
+      "LockChange": {
+         "@id": "LockChange"
       },
       "LockedClass": {
          "@id": "LockedClass"

@@ -82,6 +82,18 @@ class HardRule(str, Enum):
     "The `workflow` annotation is on an aggregate root that is not the tenant root and includes `UnderWorkflow`, and every concrete root that includes `UnderWorkflow` has the annotation, its own or inherited."
 
 
+class LockRule(str, Enum):
+    "How a change between two locks is treated."
+    SAFE = "safe"
+    "Nothing stored is lost or left invalid; the lock is rewritten."
+    DESTRUCTIVE = "destructive"
+    "Stored data would be deleted; needs a new version and a drop step."
+    NEEDS_STEP = "needs_step"
+    "Stored data may no longer fit; needs a new version and a step the developer writes."
+    NOT_MIGRATABLE = "not_migratable"
+    "An IRI would change or data would move between graphs; no step can do it."
+
+
 class BoundaryRule(str, Enum):
     "The rules of the boundary check; a problem line starts with its rule."
     OWNERSHIP = "ownership"
@@ -263,6 +275,16 @@ class LockedEnum(ConfiguredBaseModel):
     "An enum used as a range, with the `meaning` IRI of each value (its text when it has none)."
     name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
     enum_values: Optional[list[str]] = Field(default=None, title="Enum values", description="The `meaning` IRI of each value of an enum, or its text when it has none; sorted.")
+
+
+class LockChange(ConfiguredBaseModel):
+    "One difference between two locks: the rule that treats it, a sentence, and what it is about (a class and a slot, or an enum and a value)."
+    rule: LockRule = Field(default=..., title="Rule", description="How the change is treated, by the table of the schema lock.")
+    what: str = Field(default=..., title="What", description="What changed, as a sentence.")
+    class_uri: Optional[str] = Field(default=None, title="Class IRI", description="The IRI of a stored class.")
+    slot_uri: Optional[str] = Field(default=None, title="Slot IRI", description="The IRI of a slot.")
+    enum_name: Optional[str] = Field(default=None, title="Enum name", description="The name of the enum a lock change is about.")
+    enum_value: Optional[str] = Field(default=None, title="Enum value", description="The `meaning` IRI, or the text, of the enum value a lock change is about.")
 
 
 class ManifestEntry(ConfiguredBaseModel):
@@ -522,6 +544,7 @@ SchemaLock.model_rebuild()
 LockedClass.model_rebuild()
 LockedSlot.model_rebuild()
 LockedEnum.model_rebuild()
+LockChange.model_rebuild()
 ManifestEntry.model_rebuild()
 GenerationManifest.model_rebuild()
 ConstraintCase.model_rebuild()

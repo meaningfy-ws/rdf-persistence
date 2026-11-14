@@ -90,6 +90,10 @@
       "sha256": "cb8cc09f27924f7955af6ef8e8dda0302fa2866e07c3f79accbaf5557010bee5"
     },
     {
+      "path": "rdf_persistence/generation/lock.py",
+      "sha256": "1e0ae424fe2729f3a33e0cdb39fd6ca0d6c10e745fda52fea293e38033569ff4"
+    },
+    {
       "path": "rdf_persistence/generation/manifest.py",
       "sha256": "dddf3f4046d3e844e1d267644b56a3e29ae322932ae0b4673786b6e89b9cfa12"
     },
