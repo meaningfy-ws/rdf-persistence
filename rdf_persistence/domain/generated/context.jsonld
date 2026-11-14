@@ -84,6 +84,9 @@
          "@type": "@id",
          "@id": "dcterms:creator"
       },
+      "data_schema_version": {
+         "@id": "dataSchemaVersion"
+      },
       "description": {
          "@id": "dcterms:description"
       },

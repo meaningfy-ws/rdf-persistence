@@ -42,6 +42,7 @@ _ROWS = {
     ),
     ProblemSlug.BAD_QUERY: ("Bad query", HTTPStatus.BAD_REQUEST),
     ProblemSlug.UNAVAILABLE: ("Service unavailable", HTTPStatus.SERVICE_UNAVAILABLE),
+    ProblemSlug.TENANT_BEHIND: ("Tenant behind its schema", HTTPStatus.SERVICE_UNAVAILABLE),
     ProblemSlug.PAYLOAD_TOO_LARGE: ("Payload too large", HTTPStatus.REQUEST_ENTITY_TOO_LARGE),
     ProblemSlug.METHOD_NOT_ALLOWED: ("Method not allowed", HTTPStatus.METHOD_NOT_ALLOWED),
     ProblemSlug.INTERNAL_ERROR: ("Internal error", HTTPStatus.INTERNAL_SERVER_ERROR),

@@ -7,7 +7,7 @@
     },
     {
       "path": "library.yaml",
-      "sha256": "0c38e72e9340459ea46b43a658c0171d7b79a2cc547668baa6d4a8a7d48fb06e"
+      "sha256": "0128d88c58861198432a26c8164d2eb52a0322c9247406b42ba462ec0077b2bb"
     },
     {
       "path": "library_access.yaml",
@@ -163,7 +163,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "ebd0f0f12891985889bd21fcc67dadb2311a1cbca41b092d68edcf2c43747412"
+      "sha256": "f58df84b07a426eed9701b8d8b1449a67f824d7730fd6f77efb08bf3392be3cb"
     },
     {
       "path": "rdf_persistence/model/rp_discussion.yaml",
@@ -187,7 +187,7 @@
     },
     {
       "path": "rdf_persistence/model/service/rp_service.yaml",
-      "sha256": "bcc35c360c3e9c1c9bc37dc0a016e4cff6cd3f4b563f55d77cd1291dcc5f0080"
+      "sha256": "9c645097d4a186177faa976797661a70cf00f17175df6216e59b8c9a8d106121"
     },
     {
       "path": "rdf_persistence/services/schema.py",
@@ -261,7 +261,7 @@
     },
     {
       "path": "generated/context.jsonld",
-      "sha256": "b915dc49a175a5d8c6b36fca408a56c743eb3049b3f029db0a91c0e7db01cf5d"
+      "sha256": "ebd4b5b3af7d6a78bf92ae2ead61a54f6e09b5e956b20bfc2ba50bc4c9600ab0"
     },
     {
       "path": "generated/diagrams/books.mmd",
@@ -285,7 +285,7 @@
     },
     {
       "path": "generated/library.py",
-      "sha256": "c618022322cec5809fa5caab104ccb97bbd039c34d7a32995acb55ace875f875"
+      "sha256": "7772926142a812f1bf1d734d73e36a7d30be18a3b0c137422646919eeb8aac4a"
     },
     {
       "path": "generated/library_access.py",
@@ -305,7 +305,7 @@
     },
     {
       "path": "generated/shapes.ttl",
-      "sha256": "cbb37f1ce46905f90936bcd46945d0d30aecbe539c9fbc87bd9d089719aaabd3"
+      "sha256": "8b1f33a7b414eb41bf9a64309e8a8456e5fc61534015f267fcc1280a9bbf999c"
     },
     {
       "path": "generated/templates.py",
@@ -353,7 +353,7 @@
     },
     {
       "path": "web/src/domain/generated/rp_service.ts",
-      "sha256": "b3bc96e20f395dd93546f8298b10b8925530a35fb6fda1578a553070b76f2148"
+      "sha256": "dd6c278caa77e2bbcf9fdef647f6cbf6b1676d6d08b7f65daa14380773c19455"
     },
     {
       "path": "web/src/domain/generated/rp_tenancy.ts",

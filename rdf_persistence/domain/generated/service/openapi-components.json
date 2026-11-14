@@ -640,6 +640,74 @@
       "title": "MemberList",
       "type": "object"
     },
+    "Migration": {
+      "additionalProperties": false,
+      "description": "The reviewed file that moves the data of a database from one version of a schema to the next: the schema's id, the two versions and the steps, in order.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "from_version": {
+          "description": "The version of the schema that the data follows before the migration.",
+          "type": "string"
+        },
+        "schema_id": {
+          "description": "The id of the schema whose data the migration moves.",
+          "format": "uri",
+          "type": "string"
+        },
+        "steps": {
+          "description": "The steps of a migration, in the order they run.",
+          "items": {
+            "$ref": "#/components/schemas/MigrationStep"
+          },
+          "type": "array"
+        },
+        "to_version": {
+          "description": "The version of the schema that the data follows after the migration.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_id",
+        "from_version",
+        "to_version"
+      ],
+      "title": "Migration",
+      "type": "object"
+    },
+    "MigrationStep": {
+      "additionalProperties": false,
+      "description": "One step of a migration: three group graph patterns, as text, that the toolkit wraps into one update request over the graphs of a database. A step with `unresolved` is a draft and does not load.",
+      "properties": {
+        "delete_pattern": {
+          "description": "The group graph pattern, as text, of the triples a migration step removes.",
+          "type": "string"
+        },
+        "insert_pattern": {
+          "description": "The group graph pattern, as text, of the triples a migration step adds.",
+          "type": "string"
+        },
+        "title": {
+          "description": "A short name for what a record describes.",
+          "type": "string"
+        },
+        "unresolved": {
+          "description": "Text saying what a draft step still needs from the developer; a step that has it does not load.",
+          "type": "string"
+        },
+        "where_pattern": {
+          "description": "The group graph pattern, as text, that selects what a migration step changes.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "MigrationStep",
+      "type": "object"
+    },
     "ModuleKind": {
       "description": "The kinds of schema module, the values of the module_kind annotation.",
       "enum": [
@@ -808,6 +876,7 @@
         "unsupported_media_type",
         "bad_query",
         "unavailable",
+        "tenant_behind",
         "payload_too_large",
         "method_not_allowed",
         "internal_error"

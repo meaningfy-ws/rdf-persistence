@@ -30,10 +30,70 @@ classes:
       - diagrams
       - openapi
       - regenerate_command
+      - migrations
     slot_usage:
       schema_file:
         required: true
       package:
+        required: true
+
+  SchemaLock:
+    title: Schema lock
+    description: >-
+      The RDF-facing summary of what a target stores, at one schema version: its stored classes and
+      the enums they use. Committed as `schema.lock.json` in the target's migrations folder, so a
+      change to what is stored is compared with it.
+    class_uri: rp:SchemaLock
+    slots:
+      - schema_id
+      - schema_version
+      - locked_classes
+      - locked_enums
+    slot_usage:
+      schema_id:
+        required: true
+      schema_version:
+        required: true
+
+  LockedClass:
+    title: Locked class
+    description: A stored class as the lock records it, with its IRI, the type and path of a root, and its slots.
+    class_uri: rp:LockedClass
+    slots:
+      - class_uri
+      - iri_type
+      - root_path
+      - locked_slots
+    slot_usage:
+      class_uri:
+        required: true
+
+  LockedSlot:
+    title: Locked slot
+    description: A slot of a stored class as the lock records it, by its IRI.
+    class_uri: rp:LockedSlot
+    slots:
+      - slot_uri
+      - range
+      - required
+      - multivalued
+      - inlined
+    slot_usage:
+      slot_uri:
+        required: true
+      range:
+        required: true
+        description: The IRI of the slot's range; the name of the enum when the range is an enum.
+
+  LockedEnum:
+    title: Locked enum
+    description: An enum used as a range, with the `meaning` IRI of each value (its text when it has none).
+    class_uri: rp:LockedEnum
+    slots:
+      - name
+      - enum_values
+    slot_usage:
+      name:
         required: true
 
   ManifestEntry:
@@ -546,6 +606,72 @@ slots:
     slot_uri: rp:regenerateCommand
     range: string
     pattern: "^[^`\\r\\n]*[^`\\s][^`\\r\\n]*$"
+  migrations:
+    is_a: relative_path
+    title: Migrations folder
+    description: >-
+      The folder of the target's migration files and schema lock, relative to the folder of the
+      `pyproject.toml`; absent for a target that stores nothing of its own.
+    slot_uri: rp:migrationsFolder
+  schema_id:
+    title: Schema id
+    description: The id of the schema a lock describes.
+    slot_uri: rp:lockSchemaId
+    range: uri
+  schema_version:
+    title: Schema version
+    description: The `version` of the schema when the lock was written.
+    slot_uri: rp:lockSchemaVersion
+    range: string
+  locked_classes:
+    title: Locked classes
+    description: The stored classes of a lock, sorted by class IRI.
+    slot_uri: rp:lockedClasses
+    range: LockedClass
+    multivalued: true
+    inlined_as_list: true
+  locked_enums:
+    title: Locked enums
+    description: The enums a lock records, sorted by name.
+    slot_uri: rp:lockedEnums
+    range: LockedEnum
+    multivalued: true
+    inlined_as_list: true
+  locked_slots:
+    title: Locked slots
+    description: The slots of a locked class, sorted by slot IRI.
+    slot_uri: rp:lockedSlots
+    range: LockedSlot
+    multivalued: true
+    inlined_as_list: true
+  class_uri:
+    title: Class IRI
+    description: The IRI of a stored class.
+    slot_uri: rp:lockedClassIri
+    range: uri
+  slot_uri:
+    title: Slot IRI
+    description: The IRI of a slot.
+    slot_uri: rp:lockedSlotIri
+    range: uri
+  iri_type:
+    title: IRI type
+    description: The `rp_iri_type` of a root class, the type segment of its aggregates' IRIs.
+    slot_uri: rp:lockedIriType
+  root_path:
+    title: Root path
+    description: The `rp_path` of a root class, the route segment of its aggregates.
+    slot_uri: rp:lockedRootPath
+  inlined:
+    title: Inlined
+    description: Whether the slot's values are stored inside the aggregate's graph.
+    slot_uri: rp:inlined
+    range: boolean
+  enum_values:
+    title: Enum values
+    description: The `meaning` IRI of each value of an enum, or its text when it has none; sorted.
+    slot_uri: rp:lockedEnumValues
+    multivalued: true
   path:
     is_a: relative_path
     title: Path

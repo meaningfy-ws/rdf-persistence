@@ -64,6 +64,7 @@ TITLES = {
     "unsupported-media-type": "Unsupported media type",
     "bad-query": "Bad query",
     "unavailable": "Service unavailable",
+    "tenant-behind": "Tenant behind its schema",
     "payload-too-large": "Payload too large",
     "method-not-allowed": "Method not allowed",
     "internal-error": "Internal error",

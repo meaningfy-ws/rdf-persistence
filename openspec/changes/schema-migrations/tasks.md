@@ -12,7 +12,7 @@ runs right after task 2.2, the riskiest (write order, atomicity, concurrency). G
 
 ## 1. The lock and the rules (stage 1, PR 1)
 
-- [ ] 1.1 Models. In `rdf_persistence/model/rp_core.yaml`: the slot `data_schema_version` (PD-2).
+- [x] 1.1 Models. In `rdf_persistence/model/rp_core.yaml`: the slot `data_schema_version` (PD-2).
   In `rdf_persistence/model/service/rp_service.yaml`: `Migration`, `MigrationStep` (PD-4, PD-5) and
   `ProblemSlug` `tenant_behind`. In `rdf_persistence/generation/model/rp_generation.yaml`:
   `SchemaLock`, `LockedClass`, `LockedSlot`, `LockedEnum` (PD-3) and the `migrations` slot of

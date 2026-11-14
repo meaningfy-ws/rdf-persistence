@@ -124,6 +124,8 @@ class ProblemSlug(str, Enum):
     "The query string is not one the route takes."
     UNAVAILABLE = "unavailable"
     "A store, the identity provider or the role definitions are not usable."
+    TENANT_BEHIND = "tenant_behind"
+    "The tenant\u0027s data follows an older schema version than the service runs; it is not served until migrated."
     PAYLOAD_TOO_LARGE = "payload_too_large"
     "The body is larger than the service takes."
     METHOD_NOT_ALLOWED = "method_not_allowed"
@@ -626,6 +628,24 @@ class AggregateHead(ConfiguredBaseModel):
     head_version: Optional[str] = Field(default=None, title="Head version", description="The version token of the stored aggregate\u0027s graph.")
 
 
+class MigrationStep(ConfiguredBaseModel):
+    "One step of a migration: three group graph patterns, as text, that the toolkit wraps into one update request over the graphs of a database. A step with `unresolved` is a draft and does not load."
+    title: str = Field(default=..., title="Title", description="A short name for what a record describes.")
+    where_pattern: Optional[str] = Field(default=None, title="Where pattern", description="The group graph pattern, as text, that selects what a migration step changes.")
+    delete_pattern: Optional[str] = Field(default=None, title="Delete pattern", description="The group graph pattern, as text, of the triples a migration step removes.")
+    insert_pattern: Optional[str] = Field(default=None, title="Insert pattern", description="The group graph pattern, as text, of the triples a migration step adds.")
+    unresolved: Optional[str] = Field(default=None, title="Unresolved", description="Text saying what a draft step still needs from the developer; a step that has it does not load.")
+
+
+class Migration(ConfiguredBaseModel):
+    "The reviewed file that moves the data of a database from one version of a schema to the next: the schema\u0027s id, the two versions and the steps, in order."
+    schema_id: str = Field(default=..., title="Schema id", description="The id of the schema whose data the migration moves.")
+    from_version: str = Field(default=..., title="From version", description="The version of the schema that the data follows before the migration.")
+    to_version: str = Field(default=..., title="To version", description="The version of the schema that the data follows after the migration.")
+    description: Optional[str] = Field(default=None, title="Description", description="A free-text description of the object.")
+    steps: Optional[list[MigrationStep]] = Field(default=None, title="Steps", description="The steps of a migration, in the order they run.")
+
+
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 ServiceSettings.model_rebuild()
@@ -651,3 +671,5 @@ Referrer.model_rebuild()
 ReferrerList.model_rebuild()
 MemberList.model_rebuild()
 AggregateHead.model_rebuild()
+MigrationStep.model_rebuild()
+Migration.model_rebuild()

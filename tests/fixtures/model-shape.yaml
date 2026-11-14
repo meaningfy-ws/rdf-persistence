@@ -637,6 +637,50 @@
     required: false
     multivalued: true
     range: SlotEquality
+- class_name: Migration
+  slots:
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: from_version
+    required: true
+    multivalued: false
+    range: string
+  - name: schema_id
+    required: true
+    multivalued: false
+    range: uri
+  - name: steps
+    required: false
+    multivalued: true
+    range: MigrationStep
+  - name: to_version
+    required: true
+    multivalued: false
+    range: string
+- class_name: MigrationStep
+  slots:
+  - name: delete_pattern
+    required: false
+    multivalued: false
+    range: string
+  - name: insert_pattern
+    required: false
+    multivalued: false
+    range: string
+  - name: title
+    required: true
+    multivalued: false
+    range: string
+  - name: unresolved
+    required: false
+    multivalued: false
+    range: string
+  - name: where_pattern
+    required: false
+    multivalued: false
+    range: string
 - class_name: Note
   slots:
   - name: about
