@@ -34,6 +34,7 @@ from rdf_persistence.domain.generated.rp_core import (
 from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.generated.service.rp_service import (
     AggregateHead,
+    Condition,
     Filter,
     ListPlan,
     ListRequest,
@@ -51,12 +52,20 @@ from rdf_persistence.domain.sparql import (
     fill,
     fragment,
     join,
+    match_patterns,
     term,
     term_list,
     triples_block,
 )
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.listing import PAGE, Listings, items_of, listing_query, total_of
+from rdf_persistence.services.listing import (
+    PAGE,
+    Listings,
+    condition_pairs,
+    items_of,
+    listing_query,
+    total_of,
+)
 from rdf_persistence.services.loading import parse_graph
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.unique_keys import (
@@ -147,6 +156,16 @@ SELECT ?m ?type ?version WHERE {
   GRAPH ?g { ?m a ?type . ?g $p_version ?version }
 }
 """
+# Every graph of a registered aggregate whose root has a membership rule: the collections that hold
+# members by a rule (PD-7). Whole graphs, so the caller can decode each with the mapper.
+READ_RULE_COLLECTIONS = """
+CONSTRUCT { ?s ?p ?o } WHERE {
+  GRAPH $registry { ?g $p_kind $aggregate ; $p_owned_by ?root }
+  GRAPH ?g { ?root $p_rule ?rule . ?s ?p ?o }
+}
+"""
+# Is $iri an aggregate of class $type whose graph holds every statement of $patterns (PD-7)?
+MATCHES = "ASK { GRAPH $graph { ?root a $type . $patterns FILTER (?root = $iri) } }"
 READ_VERSIONS = (
     "SELECT ?g ?version WHERE { VALUES ?g { $graphs } "
     "OPTIONAL { GRAPH ?g { ?g $p_version ?version } } }"
@@ -593,6 +612,42 @@ class Session:
             AggregateHead(head_iri=iri, head_types=sorted(types), head_version=version)
             for iri, (types, version) in sorted(found.items())
         ]
+
+    async def rule_collections(self) -> Graph:
+        """The graphs of the tenant's aggregates whose root has a membership rule, as one graph.
+
+        No access is checked and no schema name is known: the caller decodes each collection.
+
+        Raises:
+            DatabaseGone: The tenant database does not exist.
+        """
+        text = fill(
+            READ_RULE_COLLECTIONS,
+            registry=term(self._registry),
+            p_kind=term(v.REGISTRY_KIND),
+            aggregate=term(v.REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
+            p_owned_by=term(v.REGISTRY_OWNED_BY),
+            p_rule=term(v.MEMBERSHIP_RULE),
+        )
+        return (await self._store.query(self._database, text)).graph or Graph()
+
+    async def matches(self, iri: str, class_iri: str, conditions: Sequence[Condition]) -> bool:
+        """Whether the aggregate ``iri`` is of exactly the class ``class_iri`` and holds every condition.
+
+        The conditions are those of a ``ListPlan``, so this agrees with what ``find`` lists. No
+        access is checked.
+
+        Raises:
+            InvalidIri: ``iri`` is not an aggregate IRI the policy mints for the tenant.
+            DatabaseGone: The tenant database does not exist.
+        """
+        return await self._ask(
+            MATCHES,
+            graph=term(self._graph(iri)),
+            type=term(URIRef(class_iri)),
+            patterns=match_patterns("root", condition_pairs(conditions)),
+            iri=term(URIRef(iri)),
+        )
 
     async def find(self, cls: type[BaseModel], **equals: object) -> list[str]:
         """The IRIs of the tenant's aggregates of ``cls`` whose slots equal ``equals``, in IRI order.

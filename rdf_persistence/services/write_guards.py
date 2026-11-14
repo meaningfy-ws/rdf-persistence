@@ -11,6 +11,7 @@ one hidden from it (RISK-8, accepted).
 from typing import cast
 
 from linkml_runtime.linkml_model.meta import ClassDefinition
+from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import RDF, Graph, URIRef
 
 from rdf_persistence.domain.exceptions import BadQuery, InvalidBody, InvalidIri
@@ -26,6 +27,35 @@ from rdf_persistence.services.session import Session
 COLLECTION_MIXIN = "ReferenceCollection"
 
 
+def collection_classes(view: SchemaView) -> dict[URIRef, str]:
+    """The schema name of each class with ``ReferenceCollection`` among its ancestors, by class IRI.
+
+    Empty for a schema that does not import the collection module.
+    """
+    return {
+        URIRef(view.get_uri(name, expand=True)): name
+        for name in view.all_classes()
+        if COLLECTION_MIXIN in view.class_ancestors(name)
+    }
+
+
+def decode_collection(
+    mapper: Mapper, models: GeneratedModels, name: str, iri: str, graph: Graph
+) -> ReferenceCollection:
+    """The collection of class ``name`` stored at ``iri`` in ``graph``, whose tracking is about ``graph_iri(iri)``."""
+    model = models.named(name)
+    return cast(ReferenceCollection, mapper.from_graph(model, iri, graph, graph_iri(iri)))
+
+
+def rule_filters(collection: ReferenceCollection) -> list[Filter]:
+    """The listing filters of the collection's rule: one per equality, none for no rule."""
+    rule = collection.membership_rule
+    return [
+        Filter(slot=e.equals_slot, value=e.equals_value)
+        for e in (rule.rule_equalities or [] if rule else [])
+    ]
+
+
 class WriteGuards:
     """The checks of the writes of one schema, built once and shared by every session."""
 
@@ -33,12 +63,7 @@ class WriteGuards:
         self._mapper = mapper
         self._models = models
         self._listings = listings
-        view = mapper.view
-        self._collections = {  # class IRI -> schema name; empty without the collection module
-            URIRef(view.get_uri(name, expand=True)): name
-            for name in view.all_classes()
-            if COLLECTION_MIXIN in view.class_ancestors(name)
-        }
+        self._collections = collection_classes(mapper.view)
 
     async def prepare(
         self, session: Session, iri: str, triples: list[Triple], stored: Tracked | None
@@ -70,8 +95,7 @@ class WriteGuards:
         graph = Graph()
         for triple in triples:
             graph.add(triple)
-        model = self._models.named(name)
-        return cast(ReferenceCollection, self._mapper.from_graph(model, iri, graph, graph_iri(iri)))
+        return decode_collection(self._mapper, self._models, name, iri, graph)
 
     async def _check_collection(self, session: Session, collection: ReferenceCollection) -> None:
         member_class = self._served(collection.member_class)
@@ -100,11 +124,7 @@ class WriteGuards:
             raise InvalidBody(f"not stored aggregates of {member_class}: {wrong}")
 
     def _check_rule(self, collection: ReferenceCollection, member_class: ClassDefinition) -> None:
-        rule = collection.membership_rule
-        filters = [
-            Filter(slot=e.equals_slot, value=e.equals_value)
-            for e in (rule.rule_equalities or [] if rule else [])
-        ]
+        filters = rule_filters(collection)
         try:
             self._listings.plan(member_class, ListRequest(filters=filters or None))
         except BadQuery as error:

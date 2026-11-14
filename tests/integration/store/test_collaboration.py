@@ -5,18 +5,20 @@ from collections.abc import AsyncIterator, Callable
 
 import pytest
 
-from rdf_persistence import Action, CallerAccess, VerifiedCaller
+from rdf_persistence import Action, CallerAccess, VerifiedCaller, generated_models
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.service.rp_service import ReferrerList
 from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
+from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import Session, open_session
 from tests.fixtures.library.generated.books import Book
 from tests.toy import (
     ADA,
     BOB,
+    MODULES,
     ROLES,
     TENANT,
     TOY_SCHEMA,
@@ -60,7 +62,15 @@ def collaboration(session: Session) -> Callable[[VerifiedCaller, CallerAccess], 
 
     def build(who: VerifiedCaller, access: CallerAccess) -> Collaboration:
         return Collaboration(
-            session, view=view, rules=rules, iris=DEFAULT_IRIS, caller=who, access=access
+            session,
+            view=view,
+            rules=rules,
+            iris=DEFAULT_IRIS,
+            mapper=toy_mapper(),
+            models=generated_models(*MODULES),
+            listings=Listings(view),
+            caller=who,
+            access=access,
         )
 
     return build

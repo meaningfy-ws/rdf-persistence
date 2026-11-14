@@ -84,7 +84,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-21 | the generic API `POST /shelves` with a wrong member (router test, `tests/unit/entrypoints/test_router.py`) | 422-class problem; nothing stored |
 | TC-22 | session opened without guards saves TC-16 | stored (documented) |
 
-- [ ] 2.3 `members`, `collections_of` (explicit holders through `referrers(iri, slot="had_member")`),
+- [x] 2.3 `members`, `collections_of` (explicit holders through `referrers(iri, slot="had_member")`),
   `Session.matches`, `Session.heads` (PD-6, PD-7). Test first in
   `tests/unit/services/test_collaboration_collections.py`.
 

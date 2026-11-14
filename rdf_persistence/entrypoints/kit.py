@@ -92,6 +92,7 @@ class ServiceKit:
         self.documents.require_frames()
         models = generated_models_of(generated, rp_access, rp_core, rp_tenancy, rp_collections)
         mapper = Mapper(view, models)
+        self.mapper, self.models = mapper, models
         access_class = cast(type[TenantAccess], models.named(tenant_access_class(view).name))
         self.tenancy = Tenancy(
             self.store,
@@ -271,6 +272,9 @@ class ServiceKit:
                 view=self.view,
                 rules=self.rules,
                 iris=self.iris,
+                mapper=self.mapper,
+                models=self.models,
+                listings=self.listings,
                 caller=caller,
                 access=access,
             )
