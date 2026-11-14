@@ -459,10 +459,14 @@ class Session:
         keys: Sequence[AggregateKey] = (),
         guards: WriteGuard | None = None,
         dependents: Dependents = (),
+        refused_types: frozenset[URIRef] = frozenset(),
+        allowed_types: frozenset[URIRef] | None = None,
     ) -> None:
         self._dependents = tuple(dependents)  # (class, link) pairs a remove also drops (PD-15)
         self._keys = tuple(keys)
         self._write_guards = guards
+        self._refused_types = refused_types
+        self._allowed_types = allowed_types
         self._listings = listings
         self._iris = iris
         self._store = store
@@ -479,6 +483,18 @@ class Session:
         if not self._iris.is_aggregate(self._tenant, iri):
             raise InvalidIri(f"{iri!r} is not an aggregate IRI of the tenant {self._tenant!r}")
         return graph_iri(iri)
+
+    def _refuse_foreign(self, iri: str, triples: Iterable[Triple]) -> list[Triple]:
+        """``triples`` as a list, once the root's classes pass the session's type sets (PD-6)."""
+        kept = list(triples)
+        types = {t[2] for t in kept if t[0] == URIRef(iri) and t[1] == RDF.type}
+        if types & self._refused_types:
+            raise InvalidIri(
+                f"{iri!r} is an application aggregate and does not belong in a tenant database"
+            )
+        if self._allowed_types is not None and not types & self._allowed_types:
+            raise InvalidIri(f"{iri!r} is not an application aggregate")
+        return kept
 
     def _entries(
         self, iri: str, graph: URIRef, loaded_graphs: Sequence[URIRef]
@@ -958,6 +974,7 @@ class Transaction:
         aggregate has a change in this transaction already.
         """
         session = self._session
+        triples = session._refuse_foreign(iri, triples)
         graph = self._claim(iri)
         await session._check_commit(iri, loaded_graphs)
         triples = list(triples)
@@ -988,6 +1005,7 @@ class Transaction:
         """Collect the replacement of the aggregate if it still has ``if_version``; returns the new
         version. ``loaded_graphs`` is as in ``Session.replace_graph``."""
         session = self._session
+        triples = session._refuse_foreign(iri, triples)
         graph = self._claim(iri)
         await session._check_commit(iri, loaded_graphs or [])
         _, stored = await session._stored(graph)
@@ -1195,6 +1213,8 @@ async def open_session(
     keys: Sequence[AggregateKey] = (),
     guards: WriteGuard | None = None,
     dependents: Dependents = (),
+    refused_types: frozenset[URIRef] = frozenset(),
+    allowed_types: frozenset[URIRef] | None = None,
 ) -> AsyncIterator[Session]:
     """Open a session on the tenant database ``database`` for ``principal``; ``iris`` is the IRI policy
     (default: the default policy); ``listings`` lets the session ``find`` aggregates.
@@ -1203,7 +1223,8 @@ async def open_session(
     of the schema). With none, no key is enforced: a consumer opening sessions itself passes them.
     ``guards`` vet each add and replace (none: nothing is checked). ``dependents`` are the
     ``(class IRI, predicate)`` pairs whose records a remove drops with the aggregate they point at
-    (none: a remove drops only the aggregate).
+    (none: a remove drops only the aggregate). A root typed with one of ``refused_types``, or with
+    none of ``allowed_types`` when that is set, is refused (app-level-data PD-6).
     """
     yield Session(
         store,
@@ -1216,4 +1237,6 @@ async def open_session(
         keys=keys,
         guards=guards,
         dependents=dependents,
+        refused_types=refused_types,
+        allowed_types=allowed_types,
     )

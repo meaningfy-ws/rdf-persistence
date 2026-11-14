@@ -283,7 +283,9 @@ session. Start-up refusals are logged at `ERROR` by the code that raises them, a
   in a generated file take `develop`'s version and run `make generate`.
 - **RISK-5, application and tenant IRIs under one path.** A policy may put `A` where it is a
   prefix of tenant IRIs (`{base}tenants`). The two never share a database, and `Iris._belongs`
-  compares the tenant exactly, so no check confuses them. Accepted without a further rule.
+  compares the tenant exactly, so no check confuses them. Accepted only for the policies the
+  check of D-4 lets through: it refuses those under which an IRI of the application reads as a
+  tenant's.
 - **RISK-6, the application template is fixed from the first start.** "Absent means the default"
   (DEC-5, the `rp-iri-policy` delta) means a deployment that already has a policy record cannot
   choose another application template, even before it has application data; and one whose

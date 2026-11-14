@@ -84,7 +84,7 @@ and `make clean-code` unless it names others.
 
 ## 3. The sessions
 
-- [ ] 3.1 PD-6, PD-7, PD-8: the two type sets in `services/session.py`; `tenant_session`,
+- [x] 3.1 PD-6, PD-7, PD-8: the two type sets in `services/session.py`; `tenant_session`,
   `application_session`, `ensure_application_database` in `services/tenancy.py`. Tests in
   `tests/unit/services/test_application_session.py`, on a world like `make_world` of
   `tests/unit/services/test_tenant_sweep.py` with one tenant `T`. "No update sent" is

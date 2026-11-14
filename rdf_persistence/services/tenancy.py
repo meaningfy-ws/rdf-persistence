@@ -24,7 +24,7 @@ from rdf_persistence.domain.exceptions import (
     StoredDataInvalid,
 )
 from rdf_persistence.domain.generated.rp_access import Action, Grant
-from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.domain.generated.rp_core import DatabaseKind, Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantAccess, TenantState
 from rdf_persistence.domain.generated.service.rp_service import (
     CallerAccess,
@@ -36,6 +36,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
 )
 from rdf_persistence.domain.iris import (
     Iris,
+    application_database_name,
     graph_iri,
     system_database_name,
     toolkit_principal_iri,
@@ -53,6 +54,7 @@ from rdf_persistence.services.schema_structure import (
     aggregate_keys,
     internal_predicates,
     refuse_internal,
+    root_class_iris,
 )
 from rdf_persistence.services.session import (
     Clock,
@@ -113,6 +115,8 @@ class Tenancy:
         self._mapper = mapper
         self._internal = internal_predicates(mapper.view)
         self._keys = aggregate_keys(mapper.view)
+        self._application_types = root_class_iris(mapper.view, DatabaseKind.APPLICATION)
+        self._application_listings = Listings(mapper.view, DatabaseKind.APPLICATION)
         self._root_class = root_class
         self._access_class = access_class
         self._clock = clock
@@ -122,7 +126,11 @@ class Tenancy:
         self._toolkit = Principal(id=str(toolkit_principal_iri(settings.base)))
 
     def _session(
-        self, database: str, tenant: str, principal: Principal
+        self,
+        database: str,
+        tenant: str,
+        principal: Principal,
+        refused_types: frozenset[URIRef] = frozenset(),
     ) -> AbstractAsyncContextManager[Session]:
         return open_session(
             self._store,
@@ -135,13 +143,38 @@ class Tenancy:
             keys=self._keys,
             guards=self._guards,
             dependents=self._dependents,
+            refused_types=refused_types,
         )
 
     def tenant_session(
         self, tenant: str, principal: Principal
     ) -> AbstractAsyncContextManager[Session]:
-        """A session on the database of ``tenant`` for ``principal``."""
-        return self._session(self._iris.resource_name(tenant), tenant, principal)
+        """A session on the database of ``tenant`` for ``principal``; it refuses application classes (PD-6)."""
+        return self._session(
+            self._iris.resource_name(tenant), tenant, principal, self._application_types
+        )
+
+    def application_session(self, principal: Principal) -> AbstractAsyncContextManager[Session]:
+        """A session on the application database for ``principal``; it takes application classes only (PD-7).
+
+        Raises:
+            LookupError: The schema declares no application class.
+        """
+        if not self._application_types:
+            raise LookupError("the schema declares no application class")
+        return open_session(
+            self._store,
+            database=application_database_name(self._settings.prefix),
+            tenant_iri=str(self._iris.application),
+            principal=principal,
+            clock=self._clock,
+            iris=self._iris,
+            listings=self._application_listings,
+            keys=self._keys,
+            guards=self._guards,
+            dependents=self._dependents,
+            allowed_types=self._application_types,
+        )
 
     async def _add_root(
         self, database: str, tenant: str, principal: Principal, obj: BaseModel
@@ -179,6 +212,22 @@ class Tenancy:
             return False
         with suppress(Conflict):  # another worker created it first
             await self._store.create_dataset(self._system)
+        return True
+
+    async def ensure_application_database(self) -> bool:
+        """Create the application database unless it exists (start-up); True only if this call created it.
+
+        False, with no store call, when the schema declares no application class (PD-8).
+        """
+        if not self._application_types:
+            return False
+        name = application_database_name(self._settings.prefix)
+        if name in await self._store.list_datasets():
+            return False
+        try:
+            await self._store.create_dataset(name)
+        except Conflict:  # another worker created it first
+            return False
         return True
 
     async def create(
