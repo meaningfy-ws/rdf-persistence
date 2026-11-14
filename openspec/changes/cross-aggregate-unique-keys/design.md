@@ -407,3 +407,11 @@ PD-11 (operator report instead of generation).
   374 lines against `develop` (limit 600), and its risk is low: a read-only report, two SPARQL
   helpers, tests and docs; nothing in the write path changes. A cold reader reads the how-to
   sections, since a how-to page changed.
+- **D-8** (leader, 2026-11-14; the cold reader of the how-to, accepted): the two how-to sections
+  also say: what to do after a `KeyConflict` (do not retry; change the value or tell the user)
+  and that a clash can also arrive as a plain `Conflict`; that the scope is per type, at the
+  declaration; that numbers compare by exact term only when canonical; how to run the report
+  before the key is enforced (from a script with the new code, the service not yet deployed) and
+  to run it again just before deploying; and that every root but one of a duplicate must change.
+  Not taken: explaining terms the page defines in its earlier steps (bookkeeping, owned part,
+  shape, `kit`, `work`), which the reader was not given.

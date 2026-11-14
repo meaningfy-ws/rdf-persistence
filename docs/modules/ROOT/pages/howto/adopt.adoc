@@ -197,8 +197,8 @@ toolkit's repository:
       isbn_key:
         unique_key_slots: [isbn]            # one or more single-valued slots of the root
         annotations:
-          rp_unique_scope: tenant           # the only scope; without it the key is checked
-                                            # inside one aggregate, as before
+          rp_unique_scope: tenant           # unique among the books of one tenant; a
+                                            # subclass of Book is a scope of its own
 ----
 
 `rp-generate` refuses a key on a class that is not an aggregate root, or one whose slot is
@@ -822,17 +822,24 @@ except KeyConflict as conflict:
 
 `iris` and `keys` name your own roots and the keys, never the aggregate that holds the value, which
 the caller may not be allowed to see. What is guaranteed: of two concurrent writers of one value at
-most one commits, and a refused commit writes nothing. What is not: when the refusal comes from the
-store, `KeyConflict` is a diagnosis read after it, as `Conflict.iris` is. It can name a root too
-many or miss one, and if the holder was removed in between, the commit raises a plain `Conflict`
-with no `iris` (read as a lost race); retry it. A clash between two changes of one commit is exact.
+most one commits, and a refused commit writes nothing. What is not: which roots the error names.
+When the value is held by a stored aggregate, the toolkit finds out what clashed by reading the
+store after the refusal, as it does for `Conflict.iris`, and another writer can change things in
+between. So `iris` can name a root too many or miss one, and if the holder was removed in between,
+the commit raises a plain `Conflict` with an empty `iris` instead. Only a clash between two changes
+of one commit is reported exactly.
+
+After a `KeyConflict`, do not retry the commit as it is: it fails until the value changes or its
+holder goes. Change the value, or tell the user which of their values is taken (the error names
+the root and the key; read the value from your own object). After a plain `Conflict`, read again
+and retry, as in <<handle-a-conflict>>; if the value is still taken, the retry raises the `KeyConflict`.
 
 How a key behaves:
 
-* Values are compared as exact RDF terms: no change of case, whitespace or language
-  (`"Dune"@en` differs from `"Dune"`), and a number in its canonical form. A number written with
-  another lexical form (`"07"^^xsd:integer`) is the same value on Fuseki and a different one on the
-  fake; the mapper and the router write canonical forms.
+* Values are compared as exact RDF terms: case, whitespace and language all count (`"dune"`,
+  `"Dune"` and `"Dune"@en` are three values). Write numbers in their canonical form, as the
+  mapper and the router do: one written otherwise (`"07"^^xsd:integer`) equals `7` on Fuseki but
+  not on the fake store of the testkit.
 * An aggregate with a slot of the key absent claims nothing, so any number of books may lack an
   ISBN. A key over several slots claims only when all have a value.
 * The scope is the tenant and the type: the root's own class. A subclass that inherits the key is
@@ -851,12 +858,15 @@ _A tenant already has two books with one ISBN. How do I add the key?_ Until the 
 fixed, an edit of one of them that keeps its ISBN is refused with `KeyConflict`; removing it or
 changing the ISBN passes. So order the steps:
 
-. Declare the key and regenerate (`make generate`). Do not deploy yet.
-. For every tenant, run `Session.key_duplicates()`. It returns a list of `KeyDuplicate`, one per
-  value held by two aggregates or more: `key_name`, `root_class`, `key_values` (the lexical forms,
-  in the key's slot order) and `key_roots` (the roots, sorted). It only reads.
-. Fix each duplicate: change or remove one of the roots.
-. Deploy.
+. Declare the key and regenerate (`make generate`). Do not deploy the service yet.
+. With the new code, from a script or a shell beside the running service, call
+  `key_duplicates()` on a session of every tenant (below). It only reads, and it counts every
+  aggregate whatever the principal may see. It returns a list of `KeyDuplicate`, one per value
+  held by two aggregates or more: `key_name`, `root_class`, `key_values` (the lexical forms, in the
+  key's slot order) and `key_roots` (the roots, sorted).
+. Fix each duplicate: change the value of, or remove, every root but one.
+. Run the report once more, since the service still running accepts new duplicates; when it is
+  empty, deploy.
 
 [source,python]
 ----
