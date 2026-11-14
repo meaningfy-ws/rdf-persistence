@@ -124,6 +124,6 @@ a `KeyConflict` from the store is a diagnosis). Lists of IRIs in the tables are 
 
 ## 3. Close
 
-- [ ] 3.1 `make check-all`, `make test-containers`; `openspec validate cross-aggregate-unique-keys
+- [x] 3.1 `make check-all`, `make test-containers`; `openspec validate cross-aggregate-unique-keys
   --strict`; PR 2 into `develop` (`Refs: cross-aggregate-unique-keys PD-11`); merge on green CI;
   archive the change.
