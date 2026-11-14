@@ -6,6 +6,8 @@ has no registry entry, while the graphs loaded for the root are registered like 
 Every commit writes a fresh version token and is confirmed by an ``ASK`` for it. Several commits
 can be made in one ``Transaction`` (``Session.transaction()``): one update request, all or nothing,
 and ``request_text`` builds that request from the guards and operations of its changes (PD-2, PD-5).
+A session opened with ``keys`` (unique keys across aggregates, see ``services.unique_keys``) adds one
+guard per key a change claims, so the check and the write are one request; a clash is a ``KeyConflict``.
 """
 
 import uuid
@@ -21,6 +23,7 @@ from rdflib.query import ResultRow
 from rdf_persistence.domain.exceptions import Conflict, InvalidIri, NotFound
 from rdf_persistence.domain.generated.rp_annotations import Tracked
 from rdf_persistence.domain.generated.rp_core import (
+    AggregateKey,
     CommitMarker,
     PendingLoad,
     Principal,
@@ -50,6 +53,14 @@ from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.listing import PAGE, Listings, items_of, listing_query, total_of
 from rdf_persistence.services.loading import parse_graph
 from rdf_persistence.services.store import Store
+from rdf_persistence.services.unique_keys import (
+    KeyClaim,
+    claims,
+    diagnosis,
+    guard,
+    key_conflict,
+    same_value,
+)
 
 Clock = Callable[[], datetime]
 # What a read of an aggregate answers: its triples with the bookkeeping, the graph that holds them
@@ -360,7 +371,9 @@ class Session:
         clock: Clock,
         iris: Iris = DEFAULT_IRIS,
         listings: Listings | None = None,
+        keys: Sequence[AggregateKey] = (),
     ) -> None:
+        self._keys = tuple(keys)
         self._listings = listings
         self._iris = iris
         self._store = store
@@ -525,7 +538,8 @@ class Session:
         duplicate is still a duplicate; check each IRI with ``require_aggregate`` before showing it.
 
         Not a snapshot: the pages are separate queries, so a concurrent write can slip past a
-        uniqueness check made with it. With no filters it reads every aggregate of the class, so
+        uniqueness check made with it; declare a unique key across aggregates instead, which the
+        commit enforces (``keys``, ``open_session``). With no filters it reads every aggregate of the class, so
         never pass caller input unfiltered.
 
         Raises:
@@ -559,6 +573,8 @@ class Session:
                 graph is not one it mints for ``iri`` or is owned by another aggregate; nothing is
                 written.
             Conflict: The aggregate already has a graph.
+            KeyConflict: Another aggregate of the tenant holds a value of a key the aggregate claims.
+            InvalidBody: A key slot has two values or more; nothing is written.
         """
         async with self.transaction() as transaction:
             return await transaction.add_graph(iri, triples, loaded_graphs)
@@ -581,6 +597,8 @@ class Session:
                 written.
             NotFound: The aggregate has no graph.
             Conflict: Its version is not ``if_version``; nothing changed.
+            KeyConflict: Another aggregate of the tenant holds a value of a key the aggregate claims.
+            InvalidBody: A key slot has two values or more; nothing is written.
         """
         async with self.transaction() as transaction:
             return await transaction.replace_graph(iri, triples, if_version, loaded_graphs)
@@ -676,6 +694,9 @@ class Session:
             ValueError: (from a change) The aggregate already has a change in this transaction.
             RuntimeError: (from a change) The block has ended, so the change would be dropped.
             Conflict: A guard failed, so nothing changed; ``iris`` names the roots found conflicting.
+            KeyConflict: (a ``Conflict``) A value of a key is claimed twice, or held by another
+                aggregate; ``iris`` and ``keys`` name the roots and keys. The store's side of it is
+                a diagnosis, like ``Conflict.iris``.
         """
         transaction = Transaction(self)
         try:
@@ -713,6 +734,7 @@ class Transaction:
         self._roots: dict[URIRef, str] = {}
         self._read_at: dict[URIRef, str | None] = {}
         self._wrote: dict[URIRef, str] = {}
+        self._key_claims: list[KeyClaim] = []  # what the changes claim of the session's keys (PD-6)
 
     def _end(self) -> None:
         """Refuse every later change: the block is over, so a change would be dropped."""
@@ -771,6 +793,8 @@ class Transaction:
         session = self._session
         graph = self._claim(iri)
         await session._check_commit(iri, loaded_graphs)
+        triples = list(triples)
+        key_claims = claims(session._keys, iri, triples)
         version = str(uuid.uuid4())
         tracking = Tracked(created=session._clock(), creator=session._principal.id)
         parts = add_parts(
@@ -782,6 +806,7 @@ class Transaction:
             session._entries(iri, graph, loaded_graphs),
         )
         self._collect(iri, graph, None, version, parts, self._holds(graph, version))
+        self._key_claims += key_claims
         return version
 
     async def replace_graph(
@@ -797,6 +822,8 @@ class Transaction:
         graph = self._claim(iri)
         await session._check_commit(iri, loaded_graphs or [])
         _, stored = await session._stored(graph)
+        triples = list(triples)
+        key_claims = claims(session._keys, iri, triples)
         if loaded_graphs is None:
             loaded_graphs = await session._registered_loaded(iri)
         tracking = Tracked(
@@ -816,6 +843,7 @@ class Transaction:
             session._entries(iri, graph, loaded_graphs),
         )
         self._collect(iri, graph, if_version, version, parts, self._holds(graph, version))
+        self._key_claims += key_claims
         return version
 
     async def remove(self, iri: str, if_version: str) -> None:
@@ -835,17 +863,42 @@ class Transaction:
         """Send the request and confirm it (PD-2, PD-3); nothing is sent if there is no change.
 
         Raises:
+            KeyConflict: Two changes claim one value of a key (nothing is sent), or another
+                aggregate holds a value a change claims; nothing changed. The second kind is a
+                diagnosis read after the refusal (PD-15).
             Conflict: A guard failed; nothing changed, and ``iris`` names the roots found conflicting.
         """
         if not self._roots:
             return
         session = self._session
+        if clash := same_value(self._key_claims):
+            raise key_conflict(clash, within_commit=True)
+        key_guards = [guard(c, session._registry, self._excluded()) for c in self._key_claims]
         await session._store.update(
             session._database,
-            request_text(session._registry, self._marker, self._guards, self._operations),
+            request_text(
+                session._registry, self._marker, [*self._guards, *key_guards], self._operations
+            ),
         )
         if not await session._ask(CONFIRM, patterns=join(self._confirm)):
             await self._diagnose()
+
+    def _excluded(self) -> list[URIRef]:
+        """The roots the transaction replaces or removes: their stored state is going away (PD-6)."""
+        return [
+            URIRef(root) for graph, root in self._roots.items() if self._read_at[graph] is not None
+        ]
+
+    async def _claims_held(self) -> list[KeyClaim]:
+        """The claims of the transaction that another aggregate holds now (PD-9)."""
+        session = self._session
+        text = diagnosis(self._key_claims, session._registry, self._excluded())
+        rows = [
+            r
+            for r in await session._store.query(session._database, text)
+            if isinstance(r, ResultRow)
+        ]
+        return [self._key_claims[int(r.claim)] for r in rows]
 
     async def _versions_found(self) -> dict[URIRef, str | None]:
         """The version each graph of the transaction holds now, ``None`` for a graph with none."""
@@ -883,6 +936,8 @@ class Transaction:
         for graph in sorted(self._roots, key=self._roots.__getitem__):
             if (reason := self._refused(graph, found.get(graph))) is not None:
                 reasons[self._roots[graph]] = reason
+        if not reasons and self._key_claims and (held := await self._claims_held()):
+            raise key_conflict(held, within_commit=False)
         raise Conflict(
             "; ".join(reasons.values())
             or "the commit lost a race with another writer; read again and retry",
@@ -922,9 +977,14 @@ async def open_session(
     clock: Clock = utc_now,
     iris: Iris = DEFAULT_IRIS,
     listings: Listings | None = None,
+    keys: Sequence[AggregateKey] = (),
 ) -> AsyncIterator[Session]:
     """Open a session on the tenant database ``database`` for ``principal``; ``iris`` is the IRI policy
-    (default: the default policy); ``listings`` lets the session ``find`` aggregates."""
+    (default: the default policy); ``listings`` lets the session ``find`` aggregates.
+
+    ``keys`` are the keys across aggregates the commits enforce (``schema_structure.aggregate_keys``
+    of the schema). With none, no key is enforced: a consumer opening sessions itself passes them.
+    """
     yield Session(
         store,
         database=database,
@@ -933,4 +993,5 @@ async def open_session(
         clock=clock,
         iris=iris,
         listings=listings,
+        keys=keys,
     )

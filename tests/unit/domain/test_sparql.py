@@ -19,6 +19,7 @@ from rdf_persistence.domain.sparql import (
     term,
     term_list,
     triples_block,
+    union,
 )
 
 EX = "http://example.org/"
@@ -275,6 +276,24 @@ def test_join_of_nothing_is_an_empty_term():
 def test_join_refuses_a_raw_string():
     with pytest.raises(SparqlError, match="SparqlTerm"):
         join([term(SUBJECT), "raw"])  # type: ignore[list-item]
+
+
+def test_union_makes_one_term_of_the_alternatives_that_fill_accepts():
+    one, two = fragment("{ $s ?p ?o }", s=term(SUBJECT)), fragment("{ $s ?q ?o }", s=term(SUBJECT))
+    united = union([one, two])
+    assert isinstance(united, SparqlTerm), "fill() accepts it"
+    assert united == f"{one} UNION {two}", "in order, joined by UNION"
+    prepareQuery(fill("SELECT * WHERE { $alternatives }", alternatives=united))
+
+
+def test_union_of_one_part_is_that_part():
+    only = fragment("{ $s ?p ?o }", s=term(SUBJECT))
+    assert union([only]) == only, "nothing to join"
+
+
+def test_union_refuses_a_raw_string():
+    with pytest.raises(SparqlError, match="SparqlTerm"):
+        union([term(SUBJECT), "raw"])  # type: ignore[list-item]
 
 
 def test_a_fragment_is_a_filled_template_that_can_be_joined_and_filled_again():

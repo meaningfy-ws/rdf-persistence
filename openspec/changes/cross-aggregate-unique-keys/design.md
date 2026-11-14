@@ -333,3 +333,17 @@ PD-11 (operator report instead of generation).
   with no key declared the request text and the diagnosis are as before. The guard for it is
   the existing session, mapper, tenancy and router suites, which must stay green unchanged, and
   the adversarial tester right after task 1.2.
+- **D-2** (leader, 2026-11-14, reading task 1.2's diff; changes PD-5; the developer may overrule):
+  `KeyClaim` is a plain private class with `__slots__`, not a `NamedTuple`. The model guard
+  (`testkit/guards.py`, PD-28) refuses a hand-written `NamedTuple` in `services`, and PD-5 asked
+  for one; the guard is not changed and gets no allow-list entry. The class holds rdflib terms
+  for the length of one transaction and never leaves `services/session.py` and
+  `services/unique_keys.py`: local, encapsulated logic, not a model. A generated model was
+  rejected for the reason PD-5 gives (its fields would be strings, read back into terms).
+- **D-3** (leader, 2026-11-14, reading task 1.2's diff):
+  (a) `value_patterns` and `value_variables` (PD-12) are not added in stage 1: nothing there
+  needs them (`match_patterns` covers the claimed values). Task 2.1 adds them if the report does.
+  (b) The diagnosis joins its branches with a new `union` helper of `domain/sparql.py`, beside
+  `join`, so no SPARQL text is assembled outside that module (DEC-3).
+  (c) A blank-node object of a key predicate is no value and claims nothing: in a pattern it
+  would act as a variable and match any holder.

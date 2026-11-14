@@ -34,7 +34,7 @@ a `KeyConflict` from the store is a diagnosis). Lists of IRIs in the tables are 
 | TC-08 | scoped key with `consider_nulls_inequal: false` | fails; with `true` or unset, passes |
 | TC-08a | abstract mixin with an unscoped key over `title`, used by `Book` (root) and `Chapter` (owned) | passes; the key stays an in-aggregate key on `Chapter`; no cross-aggregate key for `Book` (PD-2) |
 
-- [ ] 1.2 Enforcement. Test first, in a new `tests/unit/services/test_session_unique_keys.py`
+- [x] 1.2 Enforcement. Test first, in a new `tests/unit/services/test_session_unique_keys.py`
   (fake store, toy mapper) and `tests/unit/domain/test_sparql.py`. Then: `domain/sparql.py`
   `value_patterns`, `value_variables` (PD-12); `domain/exceptions.py` `KeyConflict` (PD-8); new
   `services/unique_keys.py` (`KeyClaim`, `KEY_HELD`, `claims`, `same_value`, `guard`, `diagnosis`;
@@ -66,7 +66,7 @@ a `KeyConflict` from the store is a diagnosis). Lists of IRIs in the tables are 
 | TC-26 | `A` stored with isbn `"1"` (plain); raw `add_graph(B)` with `"1"^^xsd:string` | `KeyConflict(iris=[B])` (PD-5 normalisation) |
 | TC-27 | `max_roots=2`; batch commit of `C` "5", `D` "6", `E` "5" | `KeyConflict(iris=[E], keys=["isbn_key"])` from the second batch; message says 1 batch committed |
 
-- [ ] 1.3 The problem. Test first, in `tests/unit/entrypoints/test_problems.py`,
+- [x] 1.3 The problem. Test first, in `tests/unit/entrypoints/test_problems.py`,
   `tests/unit/entrypoints/test_router.py`, `tests/unit/entrypoints/test_openapi.py`. Then the
   `ERROR_KINDS` row and `KEY_CONFLICT` in `entrypoints/problems.py` (PD-8). Gates:
   `make test-changed`, `make check-quality`, `make clean-code`.

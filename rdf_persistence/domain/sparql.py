@@ -102,6 +102,18 @@ def join(parts: Iterable[SparqlTerm]) -> SparqlTerm:
     return SparqlTerm(" ".join(items))
 
 
+def union(parts: Iterable[SparqlTerm]) -> SparqlTerm:
+    """Join ``SparqlTerm``s, each a group pattern, into the alternatives of one ``UNION``.
+
+    Raises:
+        SparqlError: A part is not a ``SparqlTerm``.
+    """
+    items = list(parts)
+    if raw := [type(p).__name__ for p in items if not isinstance(p, SparqlTerm)]:
+        raise SparqlError(f"union() takes only SparqlTerm parts; got {raw}")
+    return SparqlTerm(" UNION ".join(items))
+
+
 Triple = tuple[URIRef | BNode, URIRef, URIRef | Literal | BNode]
 
 

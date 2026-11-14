@@ -2,7 +2,7 @@
 
 import re
 from collections import defaultdict
-from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Sequence
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import ClassVar, cast
@@ -22,7 +22,7 @@ from rdf_persistence.domain.exceptions import (
     PersistenceError,
     TenantGone,
 )
-from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.domain.generated.rp_core import AggregateKey, Principal
 from rdf_persistence.domain.generated.rp_files import BlobEntry
 from rdf_persistence.domain.generated.service.rp_service import AccountSummary
 from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
@@ -327,12 +327,13 @@ async def fake_session(
     clock: Clock = utc_now,
     iris: Iris = DEFAULT_IRIS,
     listings: Listings | None = None,
+    keys: Sequence[AggregateKey] = (),
 ) -> AsyncIterator[Session]:
     """A real ``Session`` over a ``FakeStore``, for unit tests of domain services.
 
     Pass the same ``store`` to several sessions to share their data; the tenant database is created
     on the store if it is not there yet. ``iris`` is the IRI policy of the code under test (default: the
-    default policy).
+    default policy). ``keys`` are the keys across aggregates the session enforces (default: none).
     """
     store = store or FakeStore()
     if FAKE_DATABASE not in await store.list_datasets():
@@ -345,5 +346,6 @@ async def fake_session(
         clock=clock,
         iris=iris,
         listings=listings,
+        keys=keys,
     ) as session:
         yield session
