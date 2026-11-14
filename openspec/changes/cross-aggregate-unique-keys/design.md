@@ -321,3 +321,15 @@ FILTER NOT EXISTS {
 None. The decisions for the developer to review are PD-2 (unscoped root keys fail generation),
 PD-8 (no holder IRIs in the conflict), PD-9 (version conflict reported before a key clash) and
 PD-11 (operator report instead of generation).
+
+## Delivery decisions
+
+- **D-1** (leader, 2026-11-14, before task 1.2): GitNexus rates `open_session` CRITICAL (2 direct
+  callers, 27 flows: every router and tenancy flow opens a session) and `Transaction` MEDIUM
+  (10 direct). The rule sends a HIGH or CRITICAL risk to the developer. The lead goes on and
+  reports it instead of stopping, because the developer reviewed this very change (PD-10: an
+  optional `keys=()` on `Session` and `open_session`) and asked for an independent run; the
+  rating counts the flows through the function, and the change keeps every existing call valid:
+  with no key declared the request text and the diagnosis are as before. The guard for it is
+  the existing session, mapper, tenancy and router suites, which must stay green unchanged, and
+  the adversarial tester right after task 1.2.
