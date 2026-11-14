@@ -259,8 +259,9 @@ async with kit.collaboration(checked) as collab:
 
 `transitions` needs `read` on a stored aggregate and returns its `Transition` models, oldest
 first (two records of the same time go by IRI). An aggregate that is not stored is `NotFound`:
-no call returns the transitions of a deleted aggregate, though its records stay in the provenance
-graph:
+no collaboration call returns the transitions of a deleted aggregate, though its records stay in
+the provenance graph. Code that holds a session can read any activity of that graph with
+`Session.activities`, which checks no access:
 
 [cols="1,3",options="header"]
 |===
@@ -334,8 +335,9 @@ At start: `InvalidWorkflow`, from `install_service` or `ServiceKit`, for the fau
   Guard such a route as you would guard a transition.
 * *Two transitions racing from one version:* one wins; the other gets `Conflict` and stores
   nothing, neither record nor comment.
-* *The history outlives the aggregate, but nothing returns it.* The records stay in the tenant's
-  provenance graph when the aggregate is deleted, and `transitions` needs a stored aggregate. A
+* *The history outlives the aggregate, but no collaboration call returns it.* The records stay in the
+  tenant's provenance graph when the aggregate is deleted, and `transitions` needs a stored
+  aggregate; `Session.activities` still reads them and checks no access. A
   kept record may name, in `transition_comment`, a comment that was deleted with the aggregate.
 * *Two stored states.* An aggregate that holds two states (raw triples the toolkit would not
   write, for example from a direct write to the store) cannot be moved: `transition` answers
@@ -347,7 +349,8 @@ At start: `InvalidWorkflow`, from `install_service` or `ServiceKit`, for the fau
   provenance graph) come back as they were dumped.
 * *Records of an earlier version are not read.* A `rp:TransitionRecord` graph stored before this
   change stays a registered aggregate that `transitions` ignores, and a delete no longer drops it.
-  Each is an aggregate like any other, so a session removes it as it removes any aggregate.
+  Each is an aggregate like any other: `referrers` of its aggregate lists it under the class IRI
+  `rp:TransitionRecord`, and a session removes it as it removes any aggregate.
   `transitions` of an aggregate that is not stored is `NotFound`.
 * *No route for a transition.* As for the other collaboration calls, you write your own, with the
   kit.

@@ -12,8 +12,15 @@ change is of that kind, and a plain `Activity` otherwise. The activity SHALL car
 and principal, and for each aggregate it touched one `prov:Generation` (added, or the new version of
 a replaced one) or `prov:Invalidation` (removed, or the old version of a replaced one), each naming
 the aggregate, its class when it has one, and its version token. The record SHALL carry references
-only, never the aggregate's content. A refused commit SHALL record no activity. A commit to the
-system database SHALL record none.
+only, never the aggregate's content. The activity SHALL be typed with its class and every ancestor
+class up to `prov:Activity`, and its IRI SHALL be a `urn:uuid:` IRI. A refused commit SHALL record
+no activity; a commit with no change SHALL record none, and a batched commit SHALL record one
+activity per batch. A commit the caller sees refused only because another writer overwrote every
+graph it wrote before the confirmation (the false conflict of `rp-aggregate-store`) SHALL keep its
+recorded activity. A commit to the system database SHALL record none. A session opened with
+`record_activities=False` SHALL record no activity and SHALL NOT refuse a reused activity IRI; the
+toolkit SHALL open such sessions only on the system database. A comment removed with its target
+SHALL get no invalidation of its own.
 
 #### Scenario: a generic replace
 - **GIVEN** a stored book
@@ -36,7 +43,7 @@ system database SHALL record none.
 
 An activity record SHALL stay in the provenance graph when an aggregate it names is removed. The
 provenance graph SHALL NOT be listed, counted as a referrer or swept, and a dump and a restore SHALL
-carry it. An activity's IRI SHALL identify one record: a commit serving a command whose IRI is
+carry it, and a restore SHALL keep the activity IRIs of the dump. An activity's IRI SHALL identify one record: a commit serving a command whose IRI is
 already recorded SHALL be refused and write nothing.
 
 #### Scenario: a removed book
@@ -51,9 +58,13 @@ already recorded SHALL be refused and write nothing.
 
 ### Requirement: One message per commit reaches observers along the class hierarchy
 
-After a successful commit the bus SHALL hand the completed activity, with its generations and
-invalidations, as one message to every observer registered for the activity's class or an ancestor
-of it, the nearest class first. An observer's error SHALL be logged and the other observers SHALL
+After a commit whose confirmation held the bus SHALL hand the completed activity, with its
+generations and invalidations, as one message to every observer registered for the activity's class
+or an ancestor of it, the nearest class first. A commit reported as a false conflict is recorded
+and SHALL NOT be handed over. A session opened with a hook that does not record SHALL hand over an
+activity that is stored nowhere. A session opened with a hook SHALL await it after each commit
+whose confirmation held, with the completed activity and the session, and an error of the hook
+SHALL be logged and SHALL NOT fail the commit. An observer's error SHALL be logged and the other observers SHALL
 still run; it SHALL NOT undo or fail the commit. With no bus the activity SHALL still be recorded.
 
 #### Scenario: a specialised transition
@@ -65,6 +76,11 @@ still run; it SHALL NOT undo or fail the commit. With no bus the activity SHALL 
 - **GIVEN** two observers of `Activity`, the first of which raises an error
 - **WHEN** any command commits
 - **THEN** the error is logged and the second observer still runs
+
+#### Scenario: a false conflict
+- **GIVEN** a commit that applied, and an observer of `Activity`
+- **WHEN** another writer overwrote every graph it wrote before the confirmation, so the caller sees a conflict
+- **THEN** the activity is recorded and the observer receives nothing
 
 ### Requirement: A command goes to the nearest handler
 
@@ -94,6 +110,30 @@ no aggregate root.
 #### Scenario: a forged principal
 - **WHEN** a command naming another principal as its agent is handled
 - **THEN** it is refused and nothing is written
+
+### Requirement: A command's record carries only its own statements
+
+A command's record (a `Served`) SHALL carry only statements about its own activity or about blank
+nodes, and SHALL be refused when it carries a statement about another subject that is not a blank
+node, a type, a slot the session fills, an IRI that is not a `urn:uuid:` UUID, or a class the schema
+does not have. A `Served` SHALL serve one commit and SHALL be spent by a refused or an empty one; a
+second commit serving it SHALL be refused. A unit of work in batch mode SHALL record one activity
+per batch.
+
+#### Scenario: a statement about another resource
+- **GIVEN** a `ShelveBooks` record that also states a title for a book that is not a blank node
+- **WHEN** a commit serves it
+- **THEN** it is refused and nothing is written
+
+#### Scenario: a spent record
+- **GIVEN** a `ShelveBooks` record that ada's commit served and that was refused as a conflict
+- **WHEN** a second commit serves the same record
+- **THEN** it is refused
+
+#### Scenario: a batched unit of work
+- **GIVEN** a unit of work in batch mode that adds two batches of books, with no command
+- **WHEN** it commits
+- **THEN** two activities are recorded, one per batch
 
 ### Requirement: Messages raised while handling stay bounded
 

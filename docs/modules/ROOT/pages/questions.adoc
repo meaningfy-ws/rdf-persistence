@@ -142,8 +142,9 @@ A comment is an aggregate of its own, about one aggregate. Every delete through 
 (`session.remove`, `UnitOfWork.remove`, the generic `DELETE`, `kit.remove_with_files`, each member
 of a `delete_cascade`) drops the comments on that aggregate with it, in the same request. A comment
 that only references the deleted aggregate stays. The history stays too: a transition is an
-activity in the provenance graph, kept when its aggregate goes, though no call returns it for an
-aggregate that is no longer stored. A session opened directly with `open_session` and no
+activity in the provenance graph, kept when its aggregate goes. No collaboration call returns it
+for an aggregate that is no longer stored; code that holds a session can read any activity with
+`Session.activities`, which checks no access. A session opened directly with `open_session` and no
 `dependents` deletes only the aggregate. See xref:howto/discussion.adoc#delete[Delete] and
 xref:howto/workflow.adoc#read-the-history[Read the history]; the request itself is in
 xref:architecture/data-flows.adoc#commit[Committing several aggregates at once].

@@ -673,8 +673,8 @@ is empty", then the marked operations, then the marked insert of `R`, then the r
 cannot both land: the second finds no `v7`. The comment is an aggregate of its own, so `B`'s graph
 holds only its new state, and no route serves it (`rp_writes: toolkit`).
 
-*Reading it back.* `Collaboration.transitions(iri)` first reads `B` (an aggregate that is not
-stored is `NotFound`), then reads the activities of the provenance graph typed `rp:Transition`
+*Reading it back.* `Collaboration.transitions(iri)` first checks that `B` is stored (it does not
+read its graph; an aggregate that is not stored is `NotFound`), then reads the activities of the provenance graph typed `rp:Transition`
 that used `B` and generated a new version of it, oldest first, each with only the generations and
 invalidations of `B`. A delete of `B` leaves them where they are, so an aggregate added
 again at the same IRI shows the old history, and a record may name a comment that went with `B`.
