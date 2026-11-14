@@ -66,6 +66,20 @@ SESSION_FILLED = (
     "invalidations",
 )
 
+# The stored shape of an activity: its slots, and its parts' class and slots (message-bus PD-3).
+ACTIVITY_STARTED = predicate("started_at_time")
+ACTIVITY_ENDED = predicate("ended_at_time")
+ASSOCIATED_WITH = predicate("was_associated_with")
+HAS_GENERATION = predicate("generations")
+HAS_INVALIDATION = predicate("invalidations")
+GENERATION = URIRef(metamodel().get_uri(metamodel().get_class("Generation"), expand=True))
+INVALIDATION = URIRef(metamodel().get_uri(metamodel().get_class("Invalidation"), expand=True))
+PART_ACTIVITY = predicate("activity")
+AT_TIME = predicate("at_time")
+ENTITY = predicate("entity")
+ENTITY_CLASS = predicate("entity_class")
+ENTITY_VERSION = predicate("entity_version")
+
 REGISTRY_GRAPH = predicate("graph")
 REGISTRY_KIND = predicate("kind")
 REGISTRY_OWNED_BY = predicate("owned_by")

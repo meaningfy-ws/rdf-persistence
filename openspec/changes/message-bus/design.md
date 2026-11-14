@@ -312,6 +312,15 @@ aggregate (DEC-13).
   schema, so the toy's activity classes and the checks that let them generate (PD-20, PD-21) are
   built in stage 3, before the bus is wired; stage 4 keeps the comment and file commands, the
   testkit, the feature scenarios and the docs. The headings above keep the decisions by topic.
+- **PD-24 A framed activity carries compact IRIs** (lead, 2026-11-14, from task 1.3). Framing
+  compacts the value of an IRI slot to a CURIE when the context has a prefix for its namespace, as
+  it does for every IRI slot of every framed class today; `entity_class` is the first slot whose
+  value is always under a consumer prefix (`lib:Book`). The round trip of TC-13 therefore holds
+  after the compact IRIs are expanded with the context, which is the same IRI in JSON-LD. Nothing
+  in this EPIC reads an activity through a frame: the message is the model built by the session
+  and the records are read through the mapper. Not changed here: the context generator (it would
+  change every consumer's context) and `Documents.frame`. `aggregate-events` publishes the model's
+  own JSON (full IRIs), not the framed form.
 
 ## Delivery decisions
 

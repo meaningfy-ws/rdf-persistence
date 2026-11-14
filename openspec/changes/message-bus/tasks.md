@@ -16,7 +16,7 @@ green CI.
 
 ## 1. The model and the PROV shape (stage 1)
 
-- [ ] 1.1 Schema (PD-2; RISK-8). `rp_provenance.yaml`: the four `Activity` slots, `Generation`,
+- [x] 1.1 Schema (PD-2; RISK-8). `rp_provenance.yaml`: the four `Activity` slots, `Generation`,
   `Invalidation`, `Add`, `Replace`, `Remove`, the moved `used_resource` and `started_at_time`. The
   annotations `toolkit_filled` and `payload`: the `RpAnnotation` enum
   (`rdf_persistence/model/rp_core.yaml`) and `generation/checks/hard.py` `ALLOWED_ANNOTATIONS`.
@@ -35,7 +35,7 @@ green CI.
 | TC-03 | `Generation(activity=…, at_time=…, entity=…)` without `entity_version`; the same with it and no `entity_class` | a validation error; valid |
 | TC-04 | `TransitionRecord` after the slot move | same generated fields and stored triples as before (`test_mapper.py`'s round trip stays green unchanged) |
 
-- [ ] 1.2 The provenance graph in the IRI policy (PD-5). `rp_service.yaml` `IriPolicy.provenance_template`;
+- [x] 1.2 The provenance graph in the IRI policy (PD-5). `rp_service.yaml` `IriPolicy.provenance_template`;
   `make generate`; `domain/iris.py` `Iris.provenance`, the fourth probe; `domain/tenant_move.py`
   `check_graphs`. Tests first beside the existing tests of `Iris`, `check_graphs`/`rewrite` and
   `guard_iri_policy` (find them with `ast-grep`; `tests/unit/domain/`, `tests/unit/services/`).
@@ -48,7 +48,7 @@ green CI.
 | TC-08 | `check_graphs` on quads in `<TENANT>/provenance` | accepted |
 | TC-09 | `rewrite` of a provenance quad `<urn:uuid:a> rp:entity <old tenant>/books/1` to a new tenant | graph name and object carry the new tenant; the subject is unchanged |
 
-- [ ] 1.3 The shape and its round trip (PD-3, PD-4; RISK-7). After 1.1. `services/session.py`:
+- [x] 1.3 The shape and its round trip (PD-3, PD-4; RISK-7). After 1.1. `services/session.py`:
   `activity_triples(activity, types) -> list[Triple]` (the subject's types, the filled slots, the
   parts as blank nodes) from vocabulary constants (new constants in `services/vocabulary.py`), not
   called by the commit yet. `generation/extensions/jsonld_context.py` (`build_frame`, `render_frame`) and
@@ -63,7 +63,7 @@ green CI.
 | TC-10 | a `Replace` with one generation and one invalidation; `activity_triples(model, [rp:Replace, prov:Activity])` | isomorphic to the Turtle of design.md PD-3 (parts as blank nodes) |
 | TC-11 | the same model through `toy_mapper.to_graph` | isomorphic to TC-10's graph minus `(a, rdf:type, prov:Activity)` |
 | TC-12 | the same model → `model_dump(mode="json")` → expanded with the generated context | isomorphic to TC-11's graph |
-| TC-13 | TC-12's graph framed with the generated `Replace` frame and compacted | equals the model |
+| TC-13 | TC-12's graph framed with the generated `Replace` frame and compacted | equals the model once the compact IRI of `entity_class` is expanded with the context (PD-24) |
 | TC-14 | TC-10's graph read with `mapper.from_graph(Replace, …)` | equals the model (the ancestor type is ignored) |
 | TC-15 | an `Add`, a `Remove`, and a bare `Activity` with two generations and one invalidation (for it `types` is `[prov:Activity]` and TC-11 removes nothing) | TC-10 to TC-14 hold for each (parametrized) |
 | TC-16 | the generated frame files of the metamodel | one for `Activity`, `Add`, `Replace`, `Remove`; the root frames unchanged |
@@ -257,7 +257,7 @@ green CI.
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · PR 1 · [ ] 2.1 · [ ] 2.2 · (adversarial tester) · [ ] 2.3 ·
+- [x] 1.1 · [ ] 1.2 · [ ] 1.3 · PR 1 · [ ] 2.1 · [ ] 2.2 · (adversarial tester) · [ ] 2.3 ·
   [ ] 2.4 · [ ] 2.5 · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · PR 3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · PR 4
 
 1.1 then 1.3; 1.2 touches other files than 1.1 except the generated ones, so it runs after 1.1 too.

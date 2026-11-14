@@ -63,7 +63,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/jsonld_context.py",
-      "sha256": "1019afc6c1d50ce9097fa97f2caf5d08ff0dc553125be6b1f145da500cb2664d"
+      "sha256": "84a4f45a6ed647cc207544afb5153c6cda3f46ad5cb1892c0f1f9522a488dedd"
     },
     {
       "path": "rdf_persistence/generation/extensions/mermaid.py",
@@ -208,6 +208,14 @@
   ],
   "outputs": [
     {
+      "path": "generated/Activity.frame.jsonld",
+      "sha256": "c85cb03b6246271cf1fd87f9b4bc4093e2acd27308e4af971330ca572addd1f9"
+    },
+    {
+      "path": "generated/Add.frame.jsonld",
+      "sha256": "1d607fa57a487089c2bc7eaddc8e42ccfa7db1d46bb14546ad33d7d1e0d0ecac"
+    },
+    {
       "path": "generated/Book.frame.jsonld",
       "sha256": "6141f098715ede7f2b36d396db64bede6e2d216c99b94eacd6392b7bdab56c93"
     },
@@ -220,6 +228,14 @@
       "sha256": "f0e6febd62d6e0b20ef12f7826839107223dcf52b75bcf5f699d2670d20d7b15"
     },
     {
+      "path": "generated/Remove.frame.jsonld",
+      "sha256": "9f0be40601b5cf509e93bf10eff5c334905062c6c63647b0651d97d8fda124fc"
+    },
+    {
+      "path": "generated/Replace.frame.jsonld",
+      "sha256": "abf81280ba313c5953ff7ea7461a135d614cd25e6a6dcb1b2b13b6bc25b50222"
+    },
+    {
       "path": "generated/Scan.frame.jsonld",
       "sha256": "7f676a1d101c6218e457b3b723be433493264f8316d62fe85769613a1f02f0f2"
     },
@@ -230,6 +246,10 @@
     {
       "path": "generated/Template.frame.jsonld",
       "sha256": "b344157b6e134ad4b489c5b3974be070e6610033b1bd92da7e012f2eba9b25bb"
+    },
+    {
+      "path": "generated/TransitionRecord.frame.jsonld",
+      "sha256": "644bce799891f537b5232f54cc14f9e1952cc97ce06af97423c7148f66e446e3"
     },
     {
       "path": "generated/__init__.py",

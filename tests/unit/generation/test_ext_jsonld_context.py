@@ -7,8 +7,9 @@ import pytest
 from pyld import jsonld
 
 from rdf_persistence.generation.exceptions import SchemaGenerationError
-from rdf_persistence.generation.extensions.jsonld_context import render_context
+from rdf_persistence.generation.extensions.jsonld_context import render, render_context
 from rdf_persistence.generation.steps import CONTEXT_STEP
+from rdf_persistence.services.schema import PACKAGE_DIR
 
 from .golden import TOY_TARGET, assert_matches_toy, run_toy
 
@@ -54,16 +55,44 @@ def test_the_output_equals_the_committed_tree(rendered: Path) -> None:
     assert_matches_toy(rendered, "generated/context.jsonld", "generated/*.frame.jsonld")
 
 
-def test_one_frame_per_aggregate_type_and_the_tenant_root(staged: Path) -> None:
+ACTIVITY_FRAMES = [
+    "Activity.frame.jsonld",
+    "Add.frame.jsonld",
+    "Remove.frame.jsonld",
+    "Replace.frame.jsonld",
+]
+
+
+def test_one_frame_per_aggregate_type_the_tenant_root_and_each_activity(staged: Path) -> None:
     frames = sorted(p.name for p in staged.glob("*.frame.jsonld"))
-    assert frames == [
-        "Book.frame.jsonld",
-        "Library.frame.jsonld",
-        "LibraryAccess.frame.jsonld",
-        "Scan.frame.jsonld",
-        "Shelf.frame.jsonld",
-        "Template.frame.jsonld",
-    ], "a frame per class with AggregateRoot ancestry, and the tenant root"
+    assert frames == sorted(
+        [
+            "Book.frame.jsonld",
+            "Library.frame.jsonld",
+            "LibraryAccess.frame.jsonld",
+            "Scan.frame.jsonld",
+            "Shelf.frame.jsonld",
+            "Template.frame.jsonld",
+            "TransitionRecord.frame.jsonld",
+            *ACTIVITY_FRAMES,
+        ]
+    ), "a frame per root, the tenant root, and Activity with every descendant of the closure"
+
+
+def test_the_metamodel_has_a_frame_per_activity_class_and_its_root_frames_stay() -> None:
+    names = sorted(f.name for f in render(PACKAGE_DIR / "model" / "rp.yaml") if "frame" in f.name)
+    assert names == sorted(
+        ["Comment.frame.jsonld", "TenantAccess.frame.jsonld", "TransitionRecord.frame.jsonld"]
+        + ACTIVITY_FRAMES
+    ), "one frame for Activity, Add, Replace and Remove beside the three root frames"
+
+
+def test_the_replace_frame_nests_the_generations_and_invalidations(staged: Path) -> None:
+    frame = read(staged, "Replace.frame.jsonld")
+    assert frame["@type"] == "Replace", "a Replace has no subclass"
+    assert frame["generations"]["@type"] == "Generation", "generations nest"
+    assert frame["invalidations"]["@type"] == "Invalidation", "invalidations nest"
+    assert frame["was_associated_with"]["@embed"] == "@never", "principals stay IRIs"
 
 
 def test_id_and_type_are_aliased(staged: Path) -> None:

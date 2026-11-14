@@ -47,7 +47,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/jsonld_context.py",
-      "sha256": "1019afc6c1d50ce9097fa97f2caf5d08ff0dc553125be6b1f145da500cb2664d"
+      "sha256": "84a4f45a6ed647cc207544afb5153c6cda3f46ad5cb1892c0f1f9522a488dedd"
     },
     {
       "path": "rdf_persistence/generation/extensions/mermaid.py",
@@ -184,8 +184,24 @@
   ],
   "outputs": [
     {
+      "path": "rdf_persistence/domain/generated/Activity.frame.jsonld",
+      "sha256": "3af71b51165f08f8211c24d903a6d9eea7d62ea72858356509ae37feb1004bf4"
+    },
+    {
+      "path": "rdf_persistence/domain/generated/Add.frame.jsonld",
+      "sha256": "1d607fa57a487089c2bc7eaddc8e42ccfa7db1d46bb14546ad33d7d1e0d0ecac"
+    },
+    {
       "path": "rdf_persistence/domain/generated/Comment.frame.jsonld",
       "sha256": "b9b02925f426aa362d44d5a6a868b2c205136bbf484ce5fd854cf2835d50d7f9"
+    },
+    {
+      "path": "rdf_persistence/domain/generated/Remove.frame.jsonld",
+      "sha256": "9f0be40601b5cf509e93bf10eff5c334905062c6c63647b0651d97d8fda124fc"
+    },
+    {
+      "path": "rdf_persistence/domain/generated/Replace.frame.jsonld",
+      "sha256": "abf81280ba313c5953ff7ea7461a135d614cd25e6a6dcb1b2b13b6bc25b50222"
     },
     {
       "path": "rdf_persistence/domain/generated/TenantAccess.frame.jsonld",

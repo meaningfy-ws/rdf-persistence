@@ -47,7 +47,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/jsonld_context.py",
-      "sha256": "1019afc6c1d50ce9097fa97f2caf5d08ff0dc553125be6b1f145da500cb2664d"
+      "sha256": "84a4f45a6ed647cc207544afb5153c6cda3f46ad5cb1892c0f1f9522a488dedd"
     },
     {
       "path": "rdf_persistence/generation/extensions/mermaid.py",
