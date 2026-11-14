@@ -114,6 +114,7 @@ green CI.
 | TC-40 | dump then restore of a tenant with three activities | the restored tenant's provenance graph holds the three, entity IRIs under the new tenant |
 | TC-40a | an add of a root with no `rdf:type` | the generation has no `rp:entityClass`; `on_commit` gets a valid model |
 | TC-40b | a replace that changes the root's class from Book to Shelf | invalidation class Book, generation class Shelf |
+| TC-40d | an add of a `Template` through `kit.application_session` | one `rp:Add` in the application database's provenance graph (`iris.provenance(iris.application)`) |
 | TC-40c | a stale replace served with a fresh id | `Conflict` naming the book, not the activity IRI (existing reasons first) |
 
 - [ ] 2.3 `Transition` replaces `TransitionRecord`, kept on delete (PD-11; DEC-13).

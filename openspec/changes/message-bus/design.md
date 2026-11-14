@@ -173,6 +173,9 @@ aggregate (DEC-13).
   (No-gos: tenancy activities). The tenant root's writes in the tenant database are recorded like any
   commit, with the principal of the session that makes them (the creator for `Tenancy.create`). `load_graph`, the sweeps and restore's import are not commits and record
   nothing; the commit that registers a loaded graph records its add or replace.
+  The application database (`app-level-data`, merged 2026-11-14) is no system database: its
+  sessions record, in `iris.provenance(iris.application)`, and get the `on_commit` hook like a
+  tenant's (the session's `tenant_iri` is the application IRI, so nothing special is needed).
 - **PD-10 After the commit** (DEC-6, DEC-9). `Session(on_commit=None)`: after the confirming `ASK`
   holds, `commit` builds the message (PD-4) and awaits `on_commit(activity, session)`. An exception
   from it is logged and swallowed: the commit stands. No hook: nothing is built.
