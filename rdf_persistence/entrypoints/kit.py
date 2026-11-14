@@ -41,6 +41,7 @@ from rdf_persistence.services.session import Session
 from rdf_persistence.services.store import Store, ToolkitStore
 from rdf_persistence.services.tenancy import GrantValidator, RootValidator, Tenancy
 from rdf_persistence.services.tokens import TokenVerifier
+from rdf_persistence.services.write_guards import WriteGuards
 
 
 class ServiceKit:
@@ -90,16 +91,18 @@ class ServiceKit:
         self.documents = Documents(view, self.generated_folder, self.iris)
         self.documents.require_frames()
         models = generated_models_of(generated, rp_access, rp_core, rp_tenancy, rp_collections)
+        mapper = Mapper(view, models)
         access_class = cast(type[TenantAccess], models.named(tenant_access_class(view).name))
         self.tenancy = Tenancy(
             self.store,
             files,
             settings,
-            mapper=Mapper(view, models),
+            mapper=mapper,
             root_class=models.named(self.documents.tenant_root.name),
             access_class=access_class,
             iris=self.iris,
             listings=self.listings,
+            guards=WriteGuards(mapper, models, self.listings),
             grant_validators=grant_validators,
             root_validators=root_validators,
         )

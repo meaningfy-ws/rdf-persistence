@@ -54,7 +54,7 @@ from rdf_persistence.services.schema_structure import (
     internal_predicates,
     refuse_internal,
 )
-from rdf_persistence.services.session import Clock, Session, open_session, utc_now
+from rdf_persistence.services.session import Clock, Session, WriteGuard, open_session, utc_now
 from rdf_persistence.services.store import Store
 
 log = logging.getLogger(__name__)
@@ -90,12 +90,14 @@ class Tenancy:
         clock: Clock = utc_now,
         iris: Iris | None = None,
         listings: Listings | None = None,
+        guards: WriteGuard | None = None,
         grant_validators: Sequence[GrantValidator] = (),
         root_validators: Sequence[RootValidator] = (),
     ) -> None:
         # not DEFAULT_IRIS: resource names need the settings' prefix, which DEFAULT_IRIS lacks (PD-12j)
         self._iris = iris or Iris(settings)
         self._listings = listings
+        self._guards = guards
         self._store = store
         self._files = files
         self._settings = settings
@@ -122,6 +124,7 @@ class Tenancy:
             iris=self._iris,
             listings=self._listings,
             keys=self._keys,
+            guards=self._guards,
         )
 
     def tenant_session(

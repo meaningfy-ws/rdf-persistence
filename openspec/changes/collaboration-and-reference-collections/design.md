@@ -433,6 +433,16 @@ delivers.
      `Session.replace_graph` HIGH, `Tenancy` MEDIUM. Reported to the developer. The change is
      PD-6's: an optional `guards=None`, so a session opened without guards behaves as before;
      the session tests, the store conformance suite and the full gates are the safety net.
+- **D-5** (2026-11-14, the lead, task 2.2): `Session.heads` and TC-32 move from task 2.3 to
+  task 2.2, because the collection guard (PD-6 step 3) is its first caller.
+  `WriteGuards.prepare` takes `(session, iri, triples, stored)` in stage 2; `allowed_state`
+  arrives with the workflow rule in task 4.3, its first use. `testkit.fake_session` gains the
+  same optional `guards` as `open_session`, so the guard tests run on the fake store.
+- **D-6** (2026-11-14, the lead, task 2.2 as built): the collection guard reads the store when
+  the collection is collected, so a collection cannot be saved in the same commit as members
+  that are not stored yet: they have no head and the save is refused (`InvalidBody`). Members
+  are saved first. The how-to says so (task 2.6). The guard asks the session which IRIs are not
+  aggregates of the tenant (`Session.not_aggregates`), so it reads no private state.
 
 ## Algorithm / approach
 

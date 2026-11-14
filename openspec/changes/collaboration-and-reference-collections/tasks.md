@@ -69,7 +69,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 |---|---|---|
 | TC-14 | `Shelf(member_class="Book", had_member=[b1], membership_rule=MembershipRule(rule_equalities=[SlotEquality(equals_slot="genre", equals_value="poetry")]))` round-trip | equal object; the rule is a skolem node in s1's graph; `rdf:type prov:Collection` is not written (mixin), `lib:Shelf` is |
 
-- [ ] 2.2 `WriteGuards` with the collection rule (PD-6); `Session(…, guards=)`,
+- [x] 2.2 `WriteGuards` with the collection rule (PD-6); `Session(…, guards=)`,
   `open_session(…, guards=)`, `Tenancy(…, guards=)`, the kit builds it; `Transaction.add_graph`
   and `replace_graph` call it. Test first in `tests/unit/services/test_write_guards.py`.
 
