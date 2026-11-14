@@ -189,8 +189,9 @@ application database is created after the policy guard and before the migrations
 databases are migrated before the sweep, which decodes the access records in their current shape. A
 failed migration of a shared database stops the start with `MigrationFailed`. A tenant whose migration
 failed is set aside: its requests for data (its aggregates, files and listings) answer `503` with the
-problem `tenant-behind`. Its record, its grants and its deletion are still served, and so are a dump
-and the live sweep. The other tenants are served.
+problem `tenant-behind`. Its record can still be read, its grants changed and the tenant deleted. A rename answers `503`
+too, because it writes the tenant's root. A dump and the live sweep still work. The other tenants
+are served.
 `install_service` returns a `ServiceKit` (its tenancy, store, files and
 identity, and `bucket_of` for a tenant's bucket) for the application's own routes. Such a route
 checks its caller through the kit, so the toolkit's access rules apply to it too:

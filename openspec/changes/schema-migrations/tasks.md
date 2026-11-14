@@ -146,7 +146,7 @@ an unknown version TC-52; `rp-service-api`: a chain that forks TC-38, a tenant s
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 2.1 · PR 1 (#109) · [x] 2.2 · adversarial tester · [x] 2.3 · [x] 3.2 · PR 2 ·
-  #102 merged · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · PR 3
+  (#112) · [ ] 3.1 · [ ] 3.3 · [ ] 3.4 · PR 3
 
 ## Verification
 

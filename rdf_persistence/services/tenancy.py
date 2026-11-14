@@ -383,7 +383,8 @@ class Tenancy:
         record is written after that: if its write fails, the database and the bucket stay for the start-up sweep.
 
         Raises:
-            InvalidBody: A quad is in the default graph or a foreign graph, a subject is typed with an application
+            InvalidBody: A quad is in the default graph or a foreign graph, the stamps graph does not hold
+                exactly the versions the service runs, a subject is typed with an application
                 class, or the root does not decode or a root validator refuses it; or ``blobs`` raises it.
             Conflict: The drawn tenant id was taken between the draw and the create; retry.
             PersistenceError: No free tenant id, or the new database or bucket was dropped (a start-up sweep
