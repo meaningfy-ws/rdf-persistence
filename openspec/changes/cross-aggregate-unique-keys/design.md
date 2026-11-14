@@ -347,3 +347,8 @@ PD-11 (operator report instead of generation).
   `join`, so no SPARQL text is assembled outside that module (DEC-3).
   (c) A blank-node object of a key predicate is no value and claims nothing: in a pattern it
   would act as a variable and match any holder.
+- **D-4** (leader, 2026-11-14; adversarial tester, accepted): `same_value` (PD-6a) counts a
+  clash only between claims of **different roots**. With one `AggregateKey` given twice in
+  `keys` (the public `open_session` accepts it), one root's two equal claims were taken for two
+  roots and a single add raised `KeyConflict`. The test is
+  `test_a_key_given_twice_does_not_clash_a_root_with_itself`.

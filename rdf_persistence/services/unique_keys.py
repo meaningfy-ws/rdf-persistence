@@ -91,11 +91,13 @@ def _identity(claim: KeyClaim) -> tuple[str, str, tuple[Value, ...]]:
 
 
 def same_value(claims: Sequence[KeyClaim]) -> list[KeyClaim]:
-    """The claims another claim repeats: the same key and the same values for two roots (PD-6a)."""
-    groups: defaultdict[tuple, list[KeyClaim]] = defaultdict(list)
+    """The claims another claim repeats: the same key and the same values for two roots (PD-6a).
+
+    Two equal claims of one root (a key given twice) are no clash (D-4)."""
+    roots: defaultdict[tuple, set[str]] = defaultdict(set)
     for claim in claims:
-        groups[_identity(claim)].append(claim)
-    return [claim for claim in claims if len(groups[_identity(claim)]) > 1]
+        roots[_identity(claim)].add(claim.root)
+    return [claim for claim in claims if len(roots[_identity(claim)]) > 1]
 
 
 def _held(
