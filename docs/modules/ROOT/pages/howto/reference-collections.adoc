@@ -78,7 +78,7 @@ nothing.
 
 * *Store the members first.* The check reads the store, so a member saved in the same commit as
   the collection is not there yet and the save is refused. Commit the books, then the shelf.
-* A named member may be of a subclass of the member class.
+* A named member may be of the member class or a class derived from it.
 * The check runs in the sessions the kit opens (`kit.session`, the generic API). A session you
   open yourself with `open_session` and no `guards` checks nothing.
 
@@ -114,8 +114,8 @@ The rest of this page reads this shelf: it names b1 and b2, and b3 is a poetry b
   nothing is written to the shelf.
 * The members of a collection are those it names together with those that meet its rule. A book
   that is both is listed once.
-* A rule member is of exactly the member class, as with `find`; a book of a subclass of `Book`
-  does not match.
+* A rule member is of exactly the member class, as with `find`; a member of a class derived from
+  it is not matched by the rule, though the collection may name it.
 * A rule with no row (`MembershipRule()`) means every aggregate of the member class. A shelf of
   shelves with such a rule holds itself too: `members` lists it, and a cascade deletes it once.
 
@@ -135,13 +135,21 @@ print(found.hidden_count)    # 0
 
 `members` returns a `MemberList`, a generated model: `member_iris`, the sorted IRIs of the members
 the caller may read (`None` when there is none, so read it as `found.member_iris or []`), and
-`hidden_count`, the number of the other members.
+`hidden_count`, the number of the other members that the collection *names*.
+
+A member that only meets the rule and that the caller may not read is dropped: it is neither
+listed nor counted. Whoever may change a collection chooses its rule, so a count of the hidden
+members the rule matches would let that person count, by slot value, the aggregates they may not
+read. The members a collection names are counted, because whoever saved the collection already
+held their IRIs. A member both named and matched is counted once, as named.
 
 *Deep reads.* `collab.members(iri, deep=True)` also reads the members that are collections. Say
 shelf A names shelf B and B names book b1: `members(A)` gives B; `members(A, deep=True)` gives B
 and b1. Each collection is read once, so two shelves that name each other end the read instead of
-repeating it. A nested collection the caller may not read is counted in `hidden_count` and not
-read further.
+repeating it. A nested collection the caller may not read is not read further; it is counted in
+`hidden_count` if the collection above names it. A stored collection whose member class is not an
+aggregate root the schema serves makes a deep read fail with `StoredDataInvalid` naming that
+collection, as a rule that cannot be read does.
 
 == Find the collections of a resource
 
@@ -174,15 +182,26 @@ async with kit.collaboration(checked) as collab:
 
 `if_version` is the version token of the collection as the caller read it, here from
 `work.version` (see the version token in xref:howto/commits.adoc[How commits and conflicts work]).
-The cascade deletes the collection and its members, named and by rule, as they are at that moment,
-in one request. *All or nothing* means: the collection and every member that is still stored are
+The cascade deletes the collection and its members as they are at that moment, in one request:
+those the collection names, and those that meet the rule and that the caller may read. An
+aggregate that only meets the rule and that the caller may not read is left where it is, for the
+reason given under `members`: no answer of the cascade may tell the author of a rule that
+something hidden matches it. *All or nothing* means: the collection and every member that is still stored are
 deleted together, or none is and the call raises. A member that is already gone is skipped, and a
 book that starts to meet the rule during the cascade is not deleted.
 
 * The cascade is not deep. A member that is a collection is deleted; its own members stay.
-* A named member must be of the member class. A stored collection (written without the guard) that
-  names another aggregate, such as the tenant's access record, makes the cascade refuse with
-  `StoredDataInvalid` naming the collection, not that aggregate; nothing is deleted.
+* A named member must be of the member class, and the member class must be an aggregate root the
+  schema serves. A stored collection (written without the guard) that names another aggregate,
+  such as the tenant's access record, or whose member class is not a served root (even the access
+  class itself), makes the cascade refuse with `StoredDataInvalid` naming the collection, not that
+  aggregate; nothing is deleted.
+* The tenant root is never cascaded: asking for it raises `InvalidIri`, as does any IRI the IRI
+  policy does not mint for the tenant.
+* Each member's version is guarded from the moment the cascade reads it. A member that changed
+  after that is a `Conflict` that names it. A member that only meets the rule and stopped meeting
+  it is also a `Conflict`, but one that names no member (`Conflict.iris` is empty). A named member
+  changed *before* the cascade read its version is deleted at its new version.
 * For a member that is a stored file, the cascade removes its graph only and leaves its blob;
   `kit.sweep_tenant` removes it later (see xref:howto/adopt.adoc#sweep-live-tenant[Sweep a live tenant]).
 
@@ -193,11 +212,12 @@ The errors of a cascade, all raised before anything is deleted:
 |Error |When
 |`LookupError` |The schema does not import `rp_collections`.
 |`NotFound` |The caller can see nothing of the collection, or it is not stored.
-|`Forbidden` |The caller may not delete the collection or a member. The message names the refused members the caller may read and counts the others.
+|`InvalidIri` |The collection is the tenant root or an IRI the IRI policy does not mint for the tenant.
+|`Forbidden` |The caller may not delete the collection or a member. The message names the refused members the caller may read and counts the others, which the collection names. An aggregate that only matches the rule and that the caller may not read is no member for that caller: it is not deleted and it refuses nothing.
 |`BadQuery` |The aggregate is not a collection.
-|`StoredDataInvalid` |The collection cannot be read back, its member class or rule is no longer accepted, or it names an aggregate that is not of its member class.
-|`CommitTooLarge` |The collection and its members are more than 500 roots, the limit of one commit (see xref:howto/commits.adoc[How commits and conflicts work]).
-|`Conflict` |The collection is not at `if_version`, or a member changed, or stopped meeting the rule, after the cascade read it.
+|`StoredDataInvalid` |The collection cannot be read back, its member class is not a served root, its rule is no longer accepted, or it names an aggregate that is not of its member class.
+|`CommitTooLarge` |The collection and its members are more than 500 roots, the limit of one commit (see xref:howto/commits.adoc[How commits and conflicts work]). The message gives the limit, not how many members there are.
+|`Conflict` |The collection is not at `if_version`, or a member changed after its version was read (it is named), or a rule member stopped meeting the rule (no member is named).
 |`DatabaseGone` |The tenant database does not exist.
 |===
 
@@ -205,7 +225,8 @@ The errors of a cascade, all raised before anything is deleted:
 
 `members` and `collections_of` list only what the caller may read. The rest is counted in
 `hidden_count` and never named, as for referrers: see
-xref:howto/reverse-references.adoc#hidden[Referrers the caller may not read].
+xref:howto/reverse-references.adoc#hidden[Referrers the caller may not read]. The one difference
+is a member that only meets a rule: `members` drops it without counting it (see <<Read the members>>).
 
 == Errors of the reads
 
@@ -216,7 +237,7 @@ xref:howto/reverse-references.adoc#hidden[Referrers the caller may not read].
 |`NotFound` |The caller can see nothing of the resource, or the collection is not stored.
 |`Forbidden` |The caller may see the resource but not read it.
 |`BadQuery` |`members` is given an aggregate that is not a collection.
-|`InvalidIri` |`collections_of` is given an IRI the IRI policy does not mint for the tenant.
+|`InvalidIri` |`members` or `collections_of` is given an IRI the IRI policy does not mint for the tenant.
 |`StoredDataInvalid` |A stored collection cannot be read back, or the schema no longer accepts its member class or rule. `collections_of` names the collection only if the caller may read it; otherwise the message says that one collection of the tenant cannot be read.
 |`DatabaseGone` |The tenant database does not exist.
 |===
@@ -231,6 +252,10 @@ xref:howto/reverse-references.adoc#hidden[Referrers the caller may not read].
   it, until you take it out of `had_member`.
 * *`collections_of` asks the store once per rule collection* of the resource's class. That is
   fine for hundreds of rule collections.
+* *One bad stored rule collection breaks `collections_of` for a whole class.* A rule collection
+  the schema no longer accepts (a slot or value it dropped) fails `collections_of` with
+  `StoredDataInvalid` for every resource of its member class until the collection is fixed or
+  deleted.
 * *No unique names.* Two collections may carry the same label; the toolkit does not check it.
 * *Saving a collection tells whether an IRI is a member-class aggregate.* Whoever may modify a
   collection learns, from a save that is accepted or refused, whether an IRI it names is a stored

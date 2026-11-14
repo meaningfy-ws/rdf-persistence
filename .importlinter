@@ -70,3 +70,14 @@ forbidden_modules =
     linkml
 ignore_imports =
     rdf_persistence.generation.cli -> rdf_persistence.generation.steps
+
+[importlinter:contract:session-below-the-collaboration-modules]
+name = the session is generic: it imports none of the access-aware or collection modules (PD-28)
+type = forbidden
+source_modules =
+    rdf_persistence.services.session
+forbidden_modules =
+    rdf_persistence.services.access
+    rdf_persistence.services.collaboration
+    rdf_persistence.services.reference_collections
+    rdf_persistence.services.write_guards

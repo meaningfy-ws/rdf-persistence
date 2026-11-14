@@ -492,6 +492,12 @@ before the commit that names it. The kit builds the write guards once and gives 
 session it opens; a session opened with `open_session` and no `guards` checks nothing. A `remove`
 is not guarded.
 
+*A content guard.* A cascading delete of a collection (`ReferenceCollections.delete_cascade`)
+adds, besides the version tokens, one guard for each member that only meets the collection's rule:
+the member must still be of the member class and still meet the rule when the request is applied
+(`Transaction._require_match`, the test of `Session.matches`). When only such a guard fails, no
+version moved, so the `Conflict` names no root (`iris` is empty).
+
 *Limits.* One tenant only: nothing spans two tenants, or a tenant and the system database. Files
 are not part of it: a blob keeps its write order and its sweep (<<files>>). Nothing is read inside
 the request; the guards are the version tokens the caller read. A store must apply a multi-operation

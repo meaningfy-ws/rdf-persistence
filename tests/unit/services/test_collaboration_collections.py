@@ -1,12 +1,14 @@
 """Collaboration.members and collections_of: what a reference collection holds (PD-7, #79)."""
 
 import pytest
+from rdflib import RDF, URIRef
 
 from rdf_persistence import Action, StoredDataInvalid, generated_models
-from rdf_persistence.domain.exceptions import Forbidden, InvalidBody
+from rdf_persistence.domain.exceptions import Forbidden, InvalidBody, InvalidIri
 from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
 from rdf_persistence.domain.generated.service.rp_service import Filter, ListRequest, MemberList
 from rdf_persistence.domain.iris import DEFAULT_IRIS
+from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.listing import Listings
@@ -109,14 +111,16 @@ async def test_a_member_a_caller_may_not_read_is_counted_and_not_named(
 async def test_a_collection_of_a_member_who_matches_both_ways_lists_it_once(guarded, collaboration):
     await put_book(guarded, B3, Genre.POETRY)
     await put(guarded, a_shelf(S1, had_member=[B3], membership_rule=poetry()))
-    assert (await as_ada(collaboration, guarded).members(S1)).member_iris == [B3]
+    found = await as_ada(collaboration, guarded).members(S1)
+    assert found.member_iris == [B3], "named and matched, listed once"
 
 
 async def test_a_rule_with_no_equality_means_every_aggregate_of_the_class(guarded, collaboration):
     await put_book(guarded, B1)
     await put_book(guarded, B3, Genre.POETRY)
     await put(guarded, a_shelf(S1, membership_rule=MembershipRule()))
-    assert (await as_ada(collaboration, guarded).members(S1)).member_iris == [B1, B3]
+    found = await as_ada(collaboration, guarded).members(S1)
+    assert found.member_iris == [B1, B3], "both books, whatever their genre"
 
 
 async def test_a_deep_read_goes_into_the_members_that_are_collections(
@@ -158,7 +162,8 @@ async def test_a_member_collection_that_is_gone_is_a_leaf_of_a_deep_read(guarded
     await put(guarded, a_shelf(B, member_class="Book"))
     await put(guarded, a_shelf(A, member_class="Shelf", had_member=[B]))
     await guarded.remove(B, (await guarded.get_graph(B))[2])
-    assert (await as_ada(collaboration, guarded).members(A, deep=True)).member_iris == [B]
+    found = await as_ada(collaboration, guarded).members(A, deep=True)
+    assert found.member_iris == [B], "b is still named, and has no members of its own"
 
 
 async def test_a_stored_collection_the_schema_no_longer_accepts_is_stored_data_invalid(
@@ -212,7 +217,7 @@ async def test_the_collections_that_hold_a_member_are_those_that_list_it_or_matc
     found = await as_ada(collaboration, guarded).collections_of(B3)
     assert isinstance(found, MemberList), "a generated model"
     assert found.member_iris == [S1, S2], "s1 lists it, s2 matches it"
-    assert found.hidden_count == 0
+    assert found.hidden_count == 0, "ada may read both"
 
 
 async def test_a_collection_that_holds_a_member_both_ways_is_counted_once(guarded, collaboration):
@@ -226,7 +231,8 @@ async def test_a_collection_that_holds_a_member_both_ways_is_counted_once(guarde
 async def test_a_rule_that_the_member_does_not_meet_is_not_a_holder(guarded, collaboration):
     await put_book(guarded, B1)
     await put(guarded, a_shelf(S1, membership_rule=poetry()))
-    assert (await as_ada(collaboration, guarded).collections_of(B1)).member_iris is None
+    found = await as_ada(collaboration, guarded).collections_of(B1)
+    assert found.member_iris is None, "b1 is fiction, the rule asks for poetry"
 
 
 async def test_a_collection_of_another_member_class_is_not_tested(guarded, collaboration):  # TC-30
@@ -326,3 +332,122 @@ async def test_the_matching_of_one_aggregate_is_asked_of_the_store(toy_session):
     assert not await toy_session.matches(B2, verse.target, verse.conditions or []), (
         "b2 is not stored"
     )
+
+
+def as_bob_without(collaboration, session, *hidden: str):
+    bans = [ban(Action.READ, graph_of(h), BOB) for h in hidden]
+    return collaboration(caller(principal=BOB), held(role("reader", who=BOB), bans=bans), session)
+
+
+async def test_a_rule_does_not_count_what_its_author_may_not_read(guarded, collaboration):
+    await put_book(guarded, B3, Genre.POETRY)
+    await put_book(guarded, B5, Genre.POETRY)
+    await put(guarded, a_shelf(S1, membership_rule=poetry()))
+    found = await as_bob_without(collaboration, guarded, B5).members(S1)
+    assert found.member_iris == [B3], "the poetry book bob may read"
+    assert found.hidden_count == 0, "the one he may not read is dropped, not counted"
+
+
+async def test_a_hidden_named_member_is_counted_and_a_hidden_rule_member_is_not(
+    guarded, collaboration
+):
+    for iri in (B1, B2):
+        await put_book(guarded, iri)
+    await put_book(guarded, B3, Genre.POETRY)
+    await put(guarded, a_shelf(S1, had_member=[B1, B2], membership_rule=poetry()))
+    found = await as_bob_without(collaboration, guarded, B2, B3).members(S1)
+    assert found.member_iris == [B1], "bob may read b1 only"
+    assert found.hidden_count == 1, "b2 is named, so counted; b3 only matches, so it is not"
+
+
+async def test_a_deep_read_does_not_count_a_hidden_rule_member_of_a_nested_collection(
+    guarded, collaboration
+):
+    await put_book(guarded, B3, Genre.POETRY)
+    await put(guarded, a_shelf(B, member_class="Book", membership_rule=poetry()))
+    await put(guarded, a_shelf(A, member_class="Shelf", had_member=[B]))
+    found = await as_bob_without(collaboration, guarded, B3).members(A, deep=True)
+    assert found.member_iris == [B], "the nested shelf"
+    assert found.hidden_count == 0, "b3 matches b's rule and is hidden: not counted"
+
+
+async def test_a_collection_that_is_not_an_aggregate_of_the_tenant_is_an_invalid_iri(
+    guarded, collaboration
+):
+    with pytest.raises(InvalidIri):
+        await as_ada(collaboration, guarded).members("https://elsewhere.org/shelf")
+
+
+async def test_a_deep_read_refuses_a_stored_member_class_that_is_no_served_root(
+    toy_session, collaboration
+):
+    """A collection written without guards, naming a class a cascade must never delete."""
+    await put(toy_session, a_shelf(S1, member_class="LibraryAccess"))
+    with pytest.raises(StoredDataInvalid, match=S1):
+        await as_ada(collaboration, toy_session).members(S1, deep=True)
+
+
+async def test_a_plain_read_lists_what_a_collection_of_no_served_class_names(
+    toy_session, collaboration
+):
+    await put(toy_session, a_shelf(S1, member_class="LibraryAccess"))
+    found = await as_ada(collaboration, toy_session).members(S1)
+    assert found.member_iris is None, "it names none"
+
+
+async def test_an_unknown_member_class_is_stored_data_invalid_not_an_attribute_error(
+    toy_session, collaboration
+):
+    await put(toy_session, a_shelf(S1, member_class="NoSuchClass"))
+    with pytest.raises(StoredDataInvalid, match=S1):
+        await as_ada(collaboration, toy_session).members(S1, deep=True)
+
+
+async def test_a_deep_read_names_the_nested_collection_whose_rule_is_bad(
+    toy_session, collaboration
+):
+    await put(toy_session, a_shelf(B, member_class="Book", membership_rule=poetry("colour", "red")))
+    await put(toy_session, a_shelf(A, member_class="Shelf", had_member=[B]))
+    with pytest.raises(StoredDataInvalid) as refused:
+        await as_ada(collaboration, toy_session).members(A, deep=True)
+    assert B in str(refused.value), "b is the broken one"
+    assert A not in str(refused.value), "not the shelf the caller asked about"
+
+
+async def test_a_collection_is_decoded_from_its_own_graph_only(toy_session, collaboration):
+    """a holds a fiction rule and, inside its graph, the triples of a collection b with another rule."""
+    await put_book(toy_session, B3, Genre.POETRY)
+    foreign = toy_mapper().to_triples(a_shelf(B, membership_rule=poetry("genre", "fiction")))
+    own = toy_mapper().to_triples(a_shelf(A, membership_rule=poetry("genre", "fiction")))
+    await toy_session.add_graph(A, [*own, *foreign])
+    found = await as_ada(collaboration, toy_session).collections_of(B3)
+    assert found.member_iris is None, "b is no holder: its triples in a's graph make no collection"
+    await put(toy_session, a_shelf(B, membership_rule=poetry()))
+    found = await as_ada(collaboration, toy_session).collections_of(B3)
+    assert found.member_iris == [B], "the real b holds b3; a's foreign copy does not corrupt it"
+
+
+async def test_a_referrer_by_had_member_that_is_no_collection_is_not_a_holder(
+    toy_session, collaboration
+):
+    await put_book(toy_session, B1)
+    stray = [
+        (URIRef(B2), RDF.type, URIRef("http://purl.org/ontology/bibo/Book")),
+        (URIRef(B2), v.HAD_MEMBER, URIRef(B1)),
+    ]
+    await toy_session.add_graph(B2, stray)
+    found = await as_ada(collaboration, toy_session).collections_of(B1)
+    assert found.member_iris is None, "a book that names b1 as a member is no collection"
+    assert found.hidden_count == 0, "and is not counted"
+
+
+async def test_a_member_that_is_no_longer_a_collection_is_a_leaf_of_a_deep_read(
+    guarded, collaboration
+):
+    await put(guarded, a_shelf(B, member_class="Book"))
+    await put(guarded, a_shelf(A, member_class="Shelf", had_member=[B]))
+    stored_b = (await guarded.get_graph(B))[2]
+    await guarded.remove(B, stored_b)
+    await put_book(guarded, B)  # the IRI of a shelf now holds a book
+    found = await as_ada(collaboration, guarded).members(A, deep=True)
+    assert found.member_iris == [B], "the shelf it names; what is stored there is no collection"

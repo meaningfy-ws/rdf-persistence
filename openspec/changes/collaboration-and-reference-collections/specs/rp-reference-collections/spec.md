@@ -23,6 +23,14 @@ not mint for the tenant, SHALL be refused and nothing SHALL be stored.
 A collection SHALL accept, instead of or beside explicit members, a stored rule made of a class
 and slot equalities, the same shape `session.find` takes. Its members SHALL be computed on every
 read as the aggregates of the tenant that match the rule, together with the explicit members.
+A member the caller may not `read` SHALL NOT be listed: one named explicitly SHALL be counted as
+hidden; one that only matches the rule SHALL NOT be counted either, so that a rule cannot be used
+to count the aggregates hidden from its author.
+
+#### Scenario: a rule does not count what its author may not read
+- **GIVEN** a collection whose rule matches two books, and a principal holding `read` on only one of them
+- **WHEN** that principal reads the members of the collection
+- **THEN** it gets the one book it may read and a hidden count of zero
 
 #### Scenario: a new matching book appears
 - **GIVEN** a collection whose rule is class `Book` with `genre` equal to `poetry`
@@ -48,10 +56,17 @@ collection once, so that a cycle ends the walk instead of repeating it.
 ### Requirement: Deleting a collection keeps its members unless a cascade is asked for
 
 Deleting a collection SHALL delete only the collection. A delete with an explicit cascade SHALL
-also delete every member as resolved at that moment (explicit and by rule; a nested collection is
-deleted as a member, its own members kept), and only if the caller may `delete` every one of them
-and none changed since it was resolved; otherwise nothing SHALL be deleted and the refusal SHALL
-name the members that caused it which the caller may read, and count the others.
+also delete every member as resolved at that moment (explicit, and by rule those the caller may
+`read`; a nested collection is deleted as a member, its own members kept), and only if the caller
+may `delete` every one of them,
+none changed after its version was read for the cascade, and each member that only matches the
+rule still matches it when the delete is applied; otherwise nothing SHALL be deleted. A refusal
+for the right to delete SHALL name the members that caused it which the caller may read and count
+the other named members. An aggregate that only matches the rule and that the caller may not
+`read` SHALL NOT be deleted and SHALL NOT cause a refusal, so that a refusal cannot tell the
+author of a rule that something hidden matches it. A refusal because a member changed SHALL name it; one because a member stopped matching the rule
+MAY name no member. A cascade SHALL delete only stored aggregates of the collection's member
+class, and SHALL refuse the tenant root.
 
 #### Scenario: a plain delete
 - **GIVEN** a collection with two books

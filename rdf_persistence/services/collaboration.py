@@ -2,49 +2,27 @@
 
 A ``Collaboration`` holds one ``Session`` and the caller it acts for. The session knows no schema and
 checks no access; the schema's names and the access filter live here, so the generic API and the
-unit of work, which bypass this class, are unaffected.
+unit of work, which bypass this class, are unaffected. The reads and the cascade of reference
+collections are ``ReferenceCollections``'s; this class hands them over, so the public face is one.
 """
 
-from collections.abc import Iterator
-from contextlib import contextmanager, suppress
-from functools import cached_property
-
 from linkml_runtime.utils.schemaview import SchemaView
-from rdflib import RDF, Graph, URIRef
 
-from rdf_persistence.domain.exceptions import (
-    BadQuery,
-    CommitTooLarge,
-    Forbidden,
-    InvalidIri,
-    NotFound,
-    StoredDataInvalid,
-)
+from rdf_persistence.domain.exceptions import BadQuery, InvalidIri
 from rdf_persistence.domain.generated.rp_access import Action
-from rdf_persistence.domain.generated.rp_collections import ReferenceCollection
 from rdf_persistence.domain.generated.service.rp_service import (
-    AggregateHead,
     CallerAccess,
-    ListPlan,
-    ListRequest,
     MemberList,
     Referrer,
     ReferrerList,
     VerifiedCaller,
 )
 from rdf_persistence.domain.iris import Iris
-from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.mapper import DEFAULT_MAX_ROOTS, GeneratedModels, Mapper
+from rdf_persistence.services.mapper import GeneratedModels, Mapper
+from rdf_persistence.services.reference_collections import ReferenceCollections
 from rdf_persistence.services.session import ReferrerRow, Session
-from rdf_persistence.services.write_guards import (
-    COLLECTION_MIXIN,
-    collection_classes,
-    decode_collection,
-    member_class_iris,
-    rule_filters,
-)
 
 
 class Collaboration:
@@ -65,13 +43,21 @@ class Collaboration:
     ) -> None:
         self._session = session
         self._view = view
-        self._mapper = mapper
-        self._models = models
-        self._listings = listings
         self._rules = rules
         self._iris = iris
         self._caller = caller
         self._access = access
+        self._collections = ReferenceCollections(
+            session,
+            view=view,
+            rules=rules,
+            iris=iris,
+            mapper=mapper,
+            models=models,
+            listings=listings,
+            caller=caller,
+            access=access,
+        )
 
     async def referrers(
         self, iri: str, *, class_name: str | None = None, slot: str | None = None
@@ -103,39 +89,17 @@ class Collaboration:
 
         The members are those the collection names and those that meet its rule. ``deep`` also reads
         the members that are collections the caller may read, each collection once, so a cycle ends.
-
-        Raises:
-            LookupError: The schema does not import the collection module.
-            NotFound: The caller can see nothing of ``collection``, or it has no graph.
-            Forbidden: The caller may see ``collection`` but not read it.
-            BadQuery: ``collection`` is not a reference collection.
-            StoredDataInvalid: A collection read cannot be decoded, or its member class or rule is
-                no longer one the schema accepts.
-            DatabaseGone: The tenant database does not exist.
+        The ``Raises`` are those of ``ReferenceCollections.members``.
         """
-        self._require_collections()
-        self._rules.require(self._caller, self._access, collection, Action.READ)
-        return self._listed(await self._gather(collection, deep))
+        return await self._collections.members(collection, deep=deep)
 
     async def collections_of(self, iri: str) -> MemberList:
         """The collections that hold ``iri``, by name or by rule, that the caller may read, sorted
         in ``member_iris``; ``hidden_count`` is the number of other collections that hold it.
 
-        Raises:
-            LookupError: The schema does not import the collection module.
-            InvalidIri: ``iri`` is not an aggregate IRI the policy mints for the tenant.
-            NotFound: The caller can see nothing of ``iri``.
-            Forbidden: The caller may see ``iri`` but not read it.
-            StoredDataInvalid: A stored collection cannot be decoded, or its member class or rule is
-                no longer one the schema accepts; the message names the collection only if the
-                caller may read it.
-            DatabaseGone: The tenant database does not exist.
+        The ``Raises`` are those of ``ReferenceCollections.collections_of``.
         """
-        self._require_collections()
-        self._require_readable(iri)
-        rows = await self._session.referrer_rows(iri)
-        named = {referrer for referrer, _, _, predicate in rows if predicate == str(v.HAD_MEMBER)}
-        return self._listed(named | await self._rule_holders(iri))
+        return await self._collections.collections_of(iri)
 
     async def delete_cascade(self, collection: str, if_version: str) -> None:
         """Delete the collection and each of its members, in one request, all or nothing.
@@ -143,194 +107,14 @@ class Collaboration:
         The members are those the collection names and those that meet its rule, resolved now: not
         deep (a member that is a collection is deleted, its own members stay) and not the collection
         itself. A member that is already gone is skipped. A plain delete of the collection keeps its
-        members.
-
-        Raises:
-            LookupError: The schema does not import the collection module.
-            NotFound: The caller can see nothing of ``collection``, or it has no graph.
-            Forbidden: The caller may not delete ``collection``, or a member; the message names the
-                members it may read and counts the others.
-            BadQuery: ``collection`` is not a reference collection.
-            StoredDataInvalid: The collection cannot be decoded, or its member class or rule is no
-                longer one the schema accepts, or it names a stored aggregate that is not of its
-                member class (the message names the collection, not that aggregate).
-            CommitTooLarge: The collection and its members are more than ``DEFAULT_MAX_ROOTS``.
-            Conflict: ``collection`` is not at ``if_version``, or a member changed, or no longer
-                meets the rule, since it was read; nothing is deleted.
-            DatabaseGone: The tenant database does not exist.
+        members. The ``Raises`` are those of ``ReferenceCollections.delete_cascade``.
         """
-        self._require_collections()
-        self._rules.require(self._caller, self._access, collection, Action.DELETE)
-        stored = await self._collection(collection)
-        members = await self._direct(collection, stored) - {collection}
-        self._require_room(members)
-        self._require_deletable(members)
-        heads = await self._session.heads(sorted(members))
-        self._require_of_member_class(collection, stored, heads)
-        by_rule = members - set(stored.had_member or [])
-        plan = self._plan(stored) if by_rule else None
-        async with self._session.transaction() as transaction:
-            await transaction.remove(collection, if_version)
-            for head in heads:
-                iri, version = str(head.head_iri), str(head.head_version)
-                with suppress(NotFound):  # went since the heads were read: nothing left to delete
-                    await transaction.remove(iri, version)
-                    if plan is not None and iri in by_rule:
-                        transaction._require_match(iri, plan.target, plan.conditions or [])
-
-    def _require_of_member_class(
-        self, collection: str, stored: ReferenceCollection, heads: list[AggregateHead]
-    ) -> None:
-        """A stored collection is not trusted: a cascade deletes only aggregates of its member class."""
-        accepted = member_class_iris(self._view, stored.member_class)
-        if any(not accepted.intersection(h.head_types or []) for h in heads):
-            raise StoredDataInvalid(
-                f"the collection {collection} names an aggregate that is not of its member class "
-                f"{stored.member_class}"
-            )
-
-    def _require_room(self, members: set[str]) -> None:
-        """Only ``UnitOfWork.commit`` enforces the limit, so a cascade counts before it reads more."""
-        if len(members) + 1 > DEFAULT_MAX_ROOTS:
-            raise CommitTooLarge(
-                f"the collection and its {len(members)} members are more than the {DEFAULT_MAX_ROOTS} "
-                "roots one commit holds"
-            )
-
-    def _require_deletable(self, members: set[str]) -> None:
-        refused = {
-            m for m in members if not self._rules.may(self._caller, self._access, m, Action.DELETE)
-        }
-        named = sorted(
-            m for m in refused if self._rules.may(self._caller, self._access, m, Action.READ)
-        )
-        if refused:
-            hidden = [f"{len(refused) - len(named)} not readable"] * (len(refused) > len(named))
-            raise Forbidden(f"delete is not permitted on {', '.join([*named, *hidden])}")
+        await self._collections.delete_cascade(collection, if_version)
 
     def _require_readable(self, iri: str) -> None:
         if not self._iris.is_aggregate(self._access.tenant, iri):
             raise InvalidIri(f"{iri} is not an aggregate of the tenant")
         self._rules.require(self._caller, self._access, iri, Action.READ)
-
-    def _require_collections(self) -> None:
-        if self._view.get_class(COLLECTION_MIXIN) is None:
-            raise LookupError("the schema does not import the module rp_collections")
-
-    @cached_property
-    def _collection_classes(self) -> dict[URIRef, str]:
-        return collection_classes(self._view)
-
-    def _listed(self, found: set[str]) -> MemberList:
-        """The IRIs of ``found`` the caller may read, sorted, and the number of the others."""
-        readable = {i for i in found if self._rules.may(self._caller, self._access, i, Action.READ)}
-        return MemberList(member_iris=sorted(readable) or None, hidden_count=len(found - readable))
-
-    async def _gather(self, root: str, deep: bool) -> set[str]:
-        """The members of ``root``, and with ``deep`` of the collections among them, breadth first."""
-        found: set[str] = set()
-        visited = {root}
-        queue = [await self._collection(root)]
-        while queue:
-            collection = queue.pop(0)
-            direct = await self._direct(root, collection)
-            found |= direct
-            if deep and COLLECTION_MIXIN in self._view.class_ancestors(collection.member_class):
-                queue += await self._nested(direct, visited)
-        return found
-
-    async def _nested(self, members: set[str], visited: set[str]) -> list[ReferenceCollection]:
-        """The collections among ``members`` that the caller may read and that are not visited yet."""
-        unseen = {
-            m
-            for m in members - visited
-            if self._rules.may(self._caller, self._access, m, Action.READ)
-        }
-        visited |= unseen
-        nested = []
-        for iri in sorted(unseen):
-            with suppress(NotFound):  # a member that is gone has no members
-                nested.append(await self._collection(iri))
-        return nested
-
-    async def _direct(self, iri: str, collection: ReferenceCollection) -> set[str]:
-        """The members ``collection`` names and those that meet its rule."""
-        found = set(collection.had_member or [])
-        if collection.membership_rule is not None:
-            equals: dict[str, list[str]] = {}
-            for f in rule_filters(collection):
-                equals.setdefault(f.slot, []).append(f.value)
-            with self._stored_valid(iri):
-                member_class = self._models.named(collection.member_class)
-                found.update(await self._session.find(member_class, **equals))
-        return found
-
-    async def _collection(self, iri: str) -> ReferenceCollection:
-        graph, _, _ = await self._session.get_graph(iri)
-        return self._decoded(iri, graph)
-
-    def _collection_name(self, iri: str, graph: Graph) -> str | None:
-        """The schema name of the collection class ``iri`` is typed with in ``graph``, if any."""
-        return next(
-            (
-                self._collection_classes[t]
-                for t in graph.objects(URIRef(iri), RDF.type)
-                if isinstance(t, URIRef) and t in self._collection_classes
-            ),
-            None,
-        )
-
-    def _decoded(self, iri: str, graph: Graph) -> ReferenceCollection:
-        name = self._collection_name(iri, graph)
-        if name is None:
-            raise BadQuery(f"{iri} is not a reference collection")
-        with self._stored_valid(iri):
-            return decode_collection(self._mapper, self._models, name, iri, graph)
-
-    @contextmanager
-    def _stored_valid(self, iri: str) -> Iterator[None]:
-        """Turns what a stored collection that the schema does not accept raises into ``StoredDataInvalid``.
-
-        The message names the collection, and why, only if the caller may read it.
-        """
-        try:
-            yield
-        except (BadQuery, ValueError, LookupError) as error:  # a decode error is a ValueError
-            if not self._rules.may(self._caller, self._access, iri, Action.READ):
-                raise StoredDataInvalid("one collection of the tenant cannot be read") from error
-            raise StoredDataInvalid(f"the collection {iri} cannot be read: {error}") from error
-
-    async def _rule_holders(self, iri: str) -> set[str]:
-        """The collections whose rule ``iri`` meets, of the class ``iri`` is (exactly, as ``find``)."""
-        classes = self._classes_by_iri()
-        heads = await self._session.heads([iri])
-        types = (
-            {classes[t] for t in (heads[0].head_types or []) if t in classes} if heads else set()
-        )
-        if not types:
-            return set()
-        graph = await self._session.rule_collections()
-        held = set()
-        for root in self._ruled_collections(graph):
-            collection = self._decoded(root, graph)
-            if collection.member_class in types and await self._meets(root, collection, iri):
-                held.add(root)
-        return held
-
-    def _ruled_collections(self, graph: Graph) -> list[str]:
-        """The collections of ``graph`` that carry a rule; a stray rule triple on another aggregate is no collection."""
-        roots = sorted({str(r) for r in graph.subjects(v.MEMBERSHIP_RULE, None)})
-        return [r for r in roots if self._collection_name(r, graph) is not None]
-
-    async def _meets(self, iri: str, collection: ReferenceCollection, member: str) -> bool:
-        """Whether ``member`` meets the rule of the collection ``iri``, by the conditions ``find`` uses."""
-        with self._stored_valid(iri):
-            plan = self._plan(collection)
-        return await self._session.matches(member, plan.target, plan.conditions or [])
-
-    def _plan(self, collection: ReferenceCollection) -> ListPlan:
-        root = self._listings.served_root(collection.member_class)
-        return self._listings.plan(root, ListRequest(filters=rule_filters(collection) or None))
 
     def _require_names(self, class_name: str | None, slot: str | None) -> None:
         if class_name is not None and self._view.get_class(class_name) is None:

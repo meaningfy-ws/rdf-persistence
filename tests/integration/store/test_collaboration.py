@@ -16,7 +16,7 @@ from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.mapper import UnitOfWork
+from rdf_persistence.services.mapper import DEFAULT_MAX_ROOTS, UnitOfWork
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import Session, open_session
 from rdf_persistence.services.write_guards import WriteGuards
@@ -178,7 +178,9 @@ def as_ada(collaboration):
     return collaboration(caller(principal=ADA), held(role("librarian")))
 
 
-async def test_a_shelf_of_stored_books_is_saved_and_the_books_are_untouched(session):  # TC-15
+async def test_a_shelf_of_stored_books_is_saved_and_the_books_are_untouched(
+    session, collaboration
+):  # TC-15
     await put_genre_book(session, B1)
     await put_genre_book(session, B2)
     before = [await version_of(session, i) for i in (B1, B2)]
@@ -186,6 +188,7 @@ async def test_a_shelf_of_stored_books_is_saved_and_the_books_are_untouched(sess
     work.add(a_shelf(S1, had_member=[B1, B2]))
     await work.commit()
     assert await stored(session, S1), "the shelf is stored"
+    assert (await as_ada(collaboration).members(S1)).member_iris == [B1, B2], "and holds both"
     assert before == [await version_of(session, i) for i in (B1, B2)], "the books are untouched"
 
 
@@ -250,7 +253,7 @@ async def test_a_rule_member_regenred_before_the_heads_fails_the_match_guard(
 
     async def another_writer_first(dataset: str, text: str):
         nonlocal done
-        if not done and "?m IN" in text:  # the query that reads the heads of the members
+        if not done and "VALUES ?m" in text:  # the query that reads the heads of the members
             done = True
             model = dune(B3, chapters=1).model_copy(update={"genre": Genre.FICTION.value})
             await session.replace_graph(
@@ -262,7 +265,8 @@ async def test_a_rule_member_regenred_before_the_heads_fails_the_match_guard(
     with pytest.raises(Conflict) as refused:
         await as_ada(collaboration).delete_cascade(S1, ver)
     assert refused.value.iris == (), "only the rule no longer holds, no version moved"
-    assert await stored(session, S1) and await stored(session, B3), "nothing is deleted"
+    assert await stored(session, S1), "the shelf is kept"
+    assert await stored(session, B3), "and b3: nothing is deleted"
 
 
 async def test_a_member_the_caller_may_not_delete_refuses_the_cascade(session, collaboration):
@@ -274,8 +278,37 @@ async def test_a_member_the_caller_may_not_delete_refuses_the_cascade(session, c
     )
     with pytest.raises(Forbidden) as refused:
         await collaboration(caller(), access).delete_cascade(S1, await version_of(session, S1))
-    assert B2 in str(refused.value) and B1 not in str(refused.value), "names b2 only"  # TC-35
-    assert await stored(session, S1) and await stored(session, B1), "nothing is deleted"
+    assert B2 in str(refused.value), "names b2"  # TC-35
+    assert B1 not in str(refused.value), "and not b1, which the caller may delete"
+    assert await stored(session, S1), "the shelf is kept"
+    assert await stored(session, B1), "and b1: nothing is deleted"
+
+
+@pytest.mark.slow
+async def test_a_cascade_of_the_most_members_a_commit_holds_is_one_request(
+    store, session, collaboration, monkeypatch
+):  # PD-28 item 12: the real limit, on stored books
+    books = [book_iri(1000 + n) for n in range(DEFAULT_MAX_ROOTS - 1)]
+    for start in range(0, len(books), 100):
+        work = UnitOfWork(session, toy_mapper())
+        for iri in books[start : start + 100]:
+            work.add(dune(iri, chapters=0))
+        await work.commit()
+    await put(session, a_shelf(S1, had_member=books))
+    sent: list[str] = []
+    original = store.update
+
+    async def counting(dataset: str, text: str) -> None:
+        sent.append(text)
+        await original(dataset, text)
+
+    monkeypatch.setattr(store, "update", counting)
+    started = time.perf_counter()
+    await as_ada(collaboration).delete_cascade(S1, await version_of(session, S1))
+    elapsed = time.perf_counter() - started
+    print(f"cascade of a shelf and {len(books)} stored books: {elapsed:.1f} s")
+    assert len(sent) == 1, "one update request"
+    assert not await session.heads([S1, *books]), "the shelf and every book are gone"
 
 
 async def test_the_collections_of_a_book_among_fifty_rule_shelves(session, collaboration):  # IT-05

@@ -151,22 +151,25 @@ _HOLDS_TOKEN = "GRAPH $graph { $graph $p_version $new }"
 # The registered aggregates among $members: each one's types and version (PD-6).
 READ_HEADS = """
 SELECT ?m ?type ?version WHERE {
+  VALUES ?m { $members }
   GRAPH $registry { ?g $p_kind $aggregate ; $p_owned_by ?m }
-  FILTER (?m IN ($members))
   GRAPH ?g { ?m a ?type . ?g $p_version ?version }
 }
 """
-# Every graph of a registered aggregate whose root has a membership rule: the collections that hold
-# members by a rule (PD-7). Whole graphs, so the caller can decode each with the mapper.
-READ_RULE_COLLECTIONS = """
-CONSTRUCT { ?s ?p ?o } WHERE {
+# The whole graph of every registered aggregate whose root has $predicate (with the object $object,
+# or any), one row per triple and root (PD-28). The predicate pattern comes first, so the store
+# starts from the triples that hold it and not from every aggregate.
+READ_GRAPHS_WITH = """
+SELECT DISTINCT ?root ?s ?p ?o WHERE {
+  GRAPH ?g { ?root $predicate $object }
   GRAPH $registry { ?g $p_kind $aggregate ; $p_owned_by ?root }
-  GRAPH ?g { ?root $p_rule ?rule . ?s ?p ?o }
+  GRAPH ?g { ?s ?p ?o }
 }
 """
 # Is $iri an aggregate of class $type whose graph holds every statement of $patterns (PD-7)?
 MATCHES = "ASK { GRAPH $graph { ?root a $type . $patterns FILTER (?root = $iri) } }"
-# The same as a guard of a transaction: its variables carry $n, so the guards never join.
+# The same as a guard of a transaction: its variables carry $n, the guard's index in the transaction,
+# so the guards never join.
 _MATCH_GUARD = "GRAPH $graph { ?root$n a $type . $patterns FILTER (?root$n = $iri) }"
 READ_VERSIONS = (
     "SELECT ?g ?version WHERE { VALUES ?g { $graphs } "
@@ -601,7 +604,7 @@ class Session:
             aggregate=term(v.REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
             p_owned_by=term(v.REGISTRY_OWNED_BY),
             p_version=term(v.VERSION),
-            members=term_list(URIRef(i) for i in iris),
+            members=join(term(URIRef(i)) for i in iris),
         )
         rows = [
             r for r in await self._store.query(self._database, text) if isinstance(r, ResultRow)
@@ -615,23 +618,30 @@ class Session:
             for iri, (types, version) in sorted(found.items())
         ]
 
-    async def rule_collections(self) -> Graph:
-        """The graphs of the tenant's aggregates whose root has a membership rule, as one graph.
+    async def graphs_with(self, predicate: URIRef, obj: URIRef | None = None) -> dict[str, Graph]:
+        """The stored triples of each registered aggregate whose root has ``predicate`` (with
+        ``obj`` as its object, when given), one ``Graph`` per root, keyed by the root's IRI.
 
-        No access is checked and no schema name is known: the caller decodes each collection.
+        Triples about another subject inside an aggregate's graph stay in that aggregate's graph.
+        No access is checked and no schema name is known: the caller decodes each graph.
 
         Raises:
             DatabaseGone: The tenant database does not exist.
         """
         text = fill(
-            READ_RULE_COLLECTIONS,
+            READ_GRAPHS_WITH,
             registry=term(self._registry),
             p_kind=term(v.REGISTRY_KIND),
             aggregate=term(v.REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
             p_owned_by=term(v.REGISTRY_OWNED_BY),
-            p_rule=term(v.MEMBERSHIP_RULE),
+            predicate=term(predicate),
+            object=SparqlTerm("?any") if obj is None else term(obj),
         )
-        return (await self._store.query(self._database, text)).graph or Graph()
+        graphs: dict[str, Graph] = {}
+        for row in await self._store.query(self._database, text):
+            if isinstance(row, ResultRow):
+                graphs.setdefault(str(row.root), Graph()).add((row.s, row.p, row.o))
+        return graphs
 
     async def matches(self, iri: str, class_iri: str, conditions: Sequence[Condition]) -> bool:
         """Whether the aggregate ``iri`` is of exactly the class ``class_iri`` and holds every condition.

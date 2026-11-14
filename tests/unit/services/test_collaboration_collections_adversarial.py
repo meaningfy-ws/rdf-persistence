@@ -31,7 +31,7 @@ from rdf_persistence.domain.generated.rp_collections import MembershipRule, Slot
 from rdf_persistence.domain.generated.service.rp_service import Filter, ListRequest, MemberList
 from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.domain.sparql import term
-from rdf_persistence.services import collaboration as collaboration_module
+from rdf_persistence.services import reference_collections as collections_module
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import DEFAULT_MAX_ROOTS, UnitOfWork
@@ -640,8 +640,8 @@ LIMIT = 6  # the limit the three tests below lower the cascade's to: the fake st
 
 @pytest.fixture
 def small_limit(monkeypatch):
-    """The cascade counts against ``services.collaboration.DEFAULT_MAX_ROOTS``; the fake store takes minutes at 500."""
-    monkeypatch.setattr(collaboration_module, "DEFAULT_MAX_ROOTS", LIMIT)
+    """The cascade counts against ``services.reference_collections.DEFAULT_MAX_ROOTS``; the fake store takes minutes at 500."""
+    monkeypatch.setattr(collections_module, "DEFAULT_MAX_ROOTS", LIMIT)
 
 
 async def test_rule_members_that_make_the_collection_and_members_exactly_the_limit_are_deleted(
@@ -1172,7 +1172,7 @@ async def test_a_bad_collection_the_caller_may_not_read_is_not_named_when_collec
     assert "one collection of the tenant cannot be read" in str(refused.value)
 
 
-async def test_an_undecodable_rule_collection_of_another_class_does_not_fail_collections_of(
+async def test_a_collection_of_another_class_with_a_bad_rule_does_not_fail_collections_of(
     toy_session, collaboration
 ):
     await put_book(toy_session, B1, Genre.POETRY)
@@ -1351,7 +1351,7 @@ async def test_matches_of_a_hostile_class_iri_raises_a_sparql_error(guarded, hos
     assert await stored(guarded, B1), "nothing was dropped"
 
 
-async def test_matches_with_the_class_of_a_subclass_instance_is_exact(guarded):
+async def test_matches_is_false_for_an_aggregate_of_another_class(guarded):
     await put(guarded, a_shelf(S1))
     assert not await guarded.matches(S1, str(BOOK_CLASS), []), "a shelf is not a book"
 
