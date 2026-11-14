@@ -71,7 +71,7 @@ green CI.
 
 ## 2. The activity on every commit (stage 2)
 
-- [ ] 2.1 `Served` and `Mapper.served` (PD-8). `services/session.py`: the `Served` dataclass;
+- [ ] 2.1 `Served` and `Mapper.served` (PD-8). `services/provenance.py` (D-3 b): the `Served` dataclass;
   `services/mapper.py`: `served(command)`. Test first in `tests/unit/services/test_mapper.py`.
   Payload stripping is tested in 2.3 on `Transition`.
 

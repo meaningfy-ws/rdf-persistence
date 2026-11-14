@@ -132,7 +132,9 @@ def test_a_replace_with_one_generation_round_trips_through_the_mapper() -> None:
     part = Generation(activity=iri, at_time=AT, entity=book_iri(1), entity_version="v2")
     replace = Replace(id=iri, generations=[part])
     mapper = toy_mapper()
-    assert mapper.from_graph(Replace, iri, mapper.to_graph(replace), None) == replace
+    assert mapper.from_graph(Replace, iri, mapper.to_graph(replace), None) == replace, (
+        "the same model"
+    )
 
 
 def test_a_transition_record_keeps_its_fields_after_the_slot_move() -> None:

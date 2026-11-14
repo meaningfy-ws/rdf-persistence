@@ -33,7 +33,6 @@ from rdf_persistence.domain.generated.rp_core import (
     RegistryKind,
 )
 from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.generated.rp_provenance import Activity, Generation, Invalidation
 from rdf_persistence.domain.generated.service.rp_service import (
     AggregateHead,
     Condition,
@@ -308,46 +307,6 @@ def commit_marker_triples(marker: CommitMarker) -> list[Triple]:
         (subject, RDF.type, v.COMMIT_MARKER),
         (subject, v.STARTED_AT, Literal(marker.started_at)),
     ]
-
-
-def _part_triples(
-    activity: URIRef, link: URIRef, kind: URIRef, parts: Iterable[Generation | Invalidation]
-) -> list[Triple]:
-    """One blank node per part, linked from ``activity`` by ``link``, with its class and slots (PD-3)."""
-    triples: list[Triple] = []
-    for part in parts:
-        node = BNode()
-        triples += [
-            (activity, link, node),
-            (node, RDF.type, kind),
-            (node, v.PART_ACTIVITY, URIRef(part.activity)),
-            (node, v.AT_TIME, Literal(part.at_time)),
-            (node, v.ENTITY, URIRef(part.entity)),
-            (node, v.ENTITY_VERSION, Literal(part.entity_version)),
-        ]
-        if part.entity_class is not None:
-            triples.append((node, v.ENTITY_CLASS, URIRef(part.entity_class)))
-    return triples
-
-
-def activity_triples(activity: Activity, types: Iterable[URIRef]) -> list[Triple]:
-    """The statements of one completed activity: its types, times, principals and parts (PD-3).
-
-    ``types`` are the activity's own class and every ancestor up to ``prov:Activity``; the session
-    cannot know a consumer's subclasses, so the caller names them. The parts are blank nodes.
-    """
-    subject = URIRef(activity.id)
-    triples: list[Triple] = [(subject, RDF.type, t) for t in types]
-    triples += [
-        (subject, v.ACTIVITY_STARTED, Literal(activity.started_at_time)),
-        (subject, v.ACTIVITY_ENDED, Literal(activity.ended_at_time)),
-        *((subject, v.ASSOCIATED_WITH, URIRef(who)) for who in activity.was_associated_with or []),
-    ]
-    triples += _part_triples(subject, v.HAS_GENERATION, v.GENERATION, activity.generations or [])
-    triples += _part_triples(
-        subject, v.HAS_INVALIDATION, v.INVALIDATION, activity.invalidations or []
-    )
-    return triples
 
 
 def request_text(

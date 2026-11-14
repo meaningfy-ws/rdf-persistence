@@ -3,7 +3,7 @@ name: rp_provenance
 title: RDF persistence provenance module
 description: >-
   The provenance mixin of the metamodel, on PROV-O: where an entity came from. The application writes
-  it, about the entity.
+  it, about the entity; the toolkit also writes an activity record on every commit.
 prefixes:
   rp: https://meaningfy.ws/ns/rdf-persistence#
   linkml: https://w3id.org/linkml/

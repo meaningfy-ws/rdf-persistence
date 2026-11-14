@@ -16,7 +16,7 @@ from rdf_persistence.domain.generated.rp_provenance import (
     Replace,
 )
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.session import activity_triples
+from rdf_persistence.services.provenance import activity_triples
 from rdf_persistence.testkit.conformance import Conformance
 from rdf_persistence.testkit.roundtrip import assert_isomorphic, without_framing
 from tests.toy import ADA, BOB, TENANT, TOY_SCHEMA, book_iri, toy_mapper
@@ -116,7 +116,7 @@ def stored(model: Activity) -> Graph:
 
 
 def mapped(model: Activity) -> Graph:
-    """The mapper's graph, plus the ancestor type the session adds (TC-11 removes it again)."""
+    """The mapper's graph: the activity's own class only, without the ancestor types the session adds (TC-11)."""
     return toy_mapper().to_graph(model)
 
 
@@ -189,7 +189,7 @@ def test_tc13_the_framed_graph_compacts_to_the_model_once_compact_iris_are_expan
     model: Activity,
 ) -> None:
     back = type(model).model_validate(with_class_iris_expanded(framed(model)))
-    assert unordered(back) == unordered(model)
+    assert unordered(back) == unordered(model), "the framed graph reads back as the model"
 
 
 @EVERY_ACTIVITY
@@ -197,12 +197,12 @@ def test_tc14_the_mapper_reads_the_stored_graph_and_ignores_the_ancestor_type(
     model: Activity,
 ) -> None:
     back = toy_mapper().from_graph(type(model), model.id, stored(model), PROVENANCE_GRAPH)
-    assert unordered(back) == unordered(model)
+    assert unordered(back) == unordered(model), "the mapper reads back the model"
 
 
 def test_tc17_a_generation_without_an_entity_class_has_no_such_triple() -> None:
     graph = stored(CASES["no_entity_class"])
-    assert list(graph.triples((None, URIRef(f"{RP}entityClass"), None))) == []
+    assert list(graph.triples((None, URIRef(f"{RP}entityClass"), None))) == [], "no entityClass"
 
 
 def test_the_vocabulary_names_the_pd3_terms() -> None:
@@ -235,4 +235,11 @@ def test_the_vocabulary_names_the_pd3_terms() -> None:
         f"{RP}entityVersion",
         str(PROV.Generation),
         str(PROV.Invalidation),
-    }
+    }, "each constant is the IRI of PD-3"
+
+
+@pytest.mark.parametrize("missing", ["started_at_time", "ended_at_time"])
+def test_an_activity_without_a_start_or_an_end_time_is_refused_naming_its_id(missing: str) -> None:
+    incomplete = CASES["add"].model_copy(update={missing: None})
+    with pytest.raises(ValueError, match=A):
+        activity_triples(incomplete, types_of(Add))

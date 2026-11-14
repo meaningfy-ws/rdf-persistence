@@ -32,6 +32,12 @@ def predicate(slot: str, view: SchemaView | None = None) -> URIRef:
     return URIRef(view.get_uri(view.get_slot(slot), expand=True))
 
 
+def class_iri(name: str) -> URIRef:
+    """The IRI of the class ``name`` of the metamodel: its ``class_uri``, expanded."""
+    view = metamodel()
+    return URIRef(view.get_uri(view.get_class(name), expand=True))
+
+
 def meanings[E: Enum](members: type[E]) -> Mapping[E, URIRef]:
     """The meaning IRI of each member of a generated enum, as the metamodel declares it."""
     view = metamodel()
@@ -72,8 +78,8 @@ ACTIVITY_ENDED = predicate("ended_at_time")
 ASSOCIATED_WITH = predicate("was_associated_with")
 HAS_GENERATION = predicate("generations")
 HAS_INVALIDATION = predicate("invalidations")
-GENERATION = URIRef(metamodel().get_uri(metamodel().get_class("Generation"), expand=True))
-INVALIDATION = URIRef(metamodel().get_uri(metamodel().get_class("Invalidation"), expand=True))
+GENERATION = class_iri("Generation")
+INVALIDATION = class_iri("Invalidation")
 PART_ACTIVITY = predicate("activity")
 AT_TIME = predicate("at_time")
 ENTITY = predicate("entity")
@@ -86,7 +92,7 @@ REGISTRY_OWNED_BY = predicate("owned_by")
 # The time a load put a graph: the one statement of its marker in the registry (live-tenant-sweep PD-2).
 LOADED_AT = predicate("loaded_at")
 # A transaction's commit marker: its class and the time it started (atomic-commit PD-1).
-COMMIT_MARKER = URIRef(metamodel().get_uri(metamodel().get_class("CommitMarker"), expand=True))
+COMMIT_MARKER = class_iri("CommitMarker")
 STARTED_AT = predicate("started_at")
 # A graph naming a blob of the tenant's bucket by its key (PD-3 of the live-tenant sweep).
 FILE_KEY = predicate("file_key")
@@ -102,7 +108,7 @@ HAD_MEMBER = predicate("had_member")
 MEMBERSHIP_RULE = predicate("membership_rule")
 
 # A comment is a Web Annotation: its class, the aggregate it targets and the aggregates it refers to (PD-12).
-ANNOTATION = URIRef(metamodel().get_uri(metamodel().get_class("Comment"), expand=True))
+ANNOTATION = class_iri("Comment")
 HAS_TARGET = predicate("has_target")
 COMMENT_REFERENCES = predicate("comment_references")
 
@@ -110,9 +116,7 @@ COMMENT_REFERENCES = predicate("comment_references")
 WORKFLOW_STATUS = predicate("workflow_status")
 
 # A transition leaves a record: its class and the aggregate it moved, by prov:used (PD-15).
-TRANSITION_RECORD = URIRef(
-    metamodel().get_uri(metamodel().get_class("TransitionRecord"), expand=True)
-)
+TRANSITION_RECORD = class_iri("TransitionRecord")
 USED = predicate("used_resource")
 
 GRANTS = predicate("grants")

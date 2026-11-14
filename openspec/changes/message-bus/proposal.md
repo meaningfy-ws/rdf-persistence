@@ -179,7 +179,7 @@ the toolkit's features needs no layer 3.
 
 ### Modified Capabilities
 
-None as deltas here; the commit writing an activity is stated in `rp-messages`.
+`rp-workflow`, `rp-reverse-references` and `rp-iri-policy` (design.md PD-11 and PD-5); the commit writing an activity is stated in `rp-messages`.
 
 ## Impact
 

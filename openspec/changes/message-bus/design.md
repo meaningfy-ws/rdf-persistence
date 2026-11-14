@@ -139,7 +139,7 @@ aggregate (DEC-13).
 - **PD-6 One more marked operation** (DEC-9). `Transaction.commit` appends
   `INSERT { GRAPH $provenance { $triples } } WHERE { <marked> }` before the release, so a refused
   commit records nothing by the mechanism that already makes it write nothing. The triples are
-  built in `session.py` from vocabulary constants, like `registry_triples` and
+  built in `services/provenance.py` (D-3 b; the session imports it) from vocabulary constants, like `registry_triples` and
   `commit_marker_triples` (the session has no mapper and `mapper.py` imports it); task 1.3's
   round trip pins them against the mapper.
 - **PD-7 What the session fills.** Start: the transaction's marker time. End and every
@@ -335,6 +335,37 @@ aggregate (DEC-13).
   minor findings, all folded in: PD-23 and the PDs, test cases and error-matrix rows they touch)
   and then gated by another fresh reviewer: 8.4 on the first run, 9.1/10 after its eight gaps were
   closed.
+- **D-3** (lead, 2026-11-14) Review of stage 1 (PR #107; L1, L2, L3 and L4+L5 as one pass; nothing
+  blocking). Accepted, fixed in the stage:
+  - a. `activity_triples` raises `ValueError` for an activity without a start or an end time
+    (`Literal(None)` would store the text "None"), with a test (L1, L2, L4).
+  - b. The activity shape moves from `services/session.py` to a new `services/provenance.py`
+    (`activity_triples`, its part helper with keyword-only `link` and `kind`); the session imports
+    it. Stage 2 adds the types, the id guard and the events there. `.importlinter` gains a
+    contract: `services.session` and `services.provenance` never import `services.mapper` (PD-6
+    was held only by an import cycle) (L3, L4).
+  - c. `vocabulary.class_iri(name)` replaces the five copies of the class-IRI expression; the
+    class name `Activity` has one home, `services/schema_structure.py`, beside `AGGREGATE_ROOT`,
+    used by `jsonld_context.py` and `checks/boundary.py` (L3, L4, L5).
+  - d. Tests: `iris.provenance(tenant)` joins `minted_graphs` in `test_tenant_move.py` (the
+    negative case: another tenant's provenance graph is refused); a message on each new assert;
+    TC-09 uses `v.ENTITY`; the docstring of `mapped`; a restore of a dump whose manifest has no
+    `provenance_template` (L2).
+  - e. Spec: a delta `specs/rp-iri-policy/spec.md` (the minted IRIs, the template list, the
+    distinct-graphs rule now name the provenance graph). The proposal's "None as deltas" is
+    superseded by this and the two deltas of PD-11 (L2).
+  - f. Docs: `howto/adopt.adoc` (the reserved words, the distinct-graphs rule, and an "upgrading"
+    note: `provenance` is a reserved class IRI type; five frames appear in a consumer's generated
+    folder, so `make generate` once; a deployment whose recorded policy already uses
+    `{tenant}/provenance` for another graph cannot start and has no way out but a new policy
+    record), `questions.adoc`, and the description of `rp_provenance.yaml` (L2, L3, L5).
+  Rejected: reading a missing `provenance_template` of a recorded policy as the configured value
+  (L5 item 2): it would let a policy change pass the guard unseen; the case is documented (f).
+  Carried to stage 2 (task 2.2): the IRIs of a `Served` are checked where it is built (the id is
+  a `urn:uuid:`, PD-3; principals come from the session), so no unchecked caller text reaches
+  `URIRef` (L1); `Transition` is no aggregate root and inherits the parts as an activity, which is
+  what PD-11 intends (L3). TC-16's "root frames unchanged" has one known exception:
+  `TransitionRecord`'s frame gains the two part slots until stage 2 removes the class.
 
 ## Algorithm / approach
 

@@ -19,12 +19,17 @@ from rdf_persistence.generation.exceptions import SchemaGenerationError
 from rdf_persistence.generation.generated.rp_generation import Frame, FramePart, GeneratedFile
 from rdf_persistence.services.artifacts import CONTEXT_FILE, CONTEXT_KEY, FRAME_SUFFIX, TYPE_KEY
 from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import is_internal, is_owned, json_name, root_classes
+from rdf_persistence.services.schema_structure import (
+    ACTIVITY,
+    is_internal,
+    is_owned,
+    json_name,
+    root_classes,
+)
 
 # JSON carries these natively: a datatype tag would turn them into strings when framed back.
 NATIVE_JSON_DATATYPES = ("xsd:integer", "xsd:boolean")
 JSON_LD_VERSION = 1.1  # property-scoped contexts are a JSON-LD 1.1 feature
-ACTIVITY = "Activity"  # the metamodel's class of the things that happened (rp_provenance)
 ALWAYS = "@always"
 NEVER = "@never"
 

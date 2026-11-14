@@ -88,10 +88,10 @@ def test_a_default_policy_names_the_tenant_graphs_and_resource_as_today(default)
 def test_the_provenance_graph_is_minted_and_is_not_an_aggregate_or_a_loaded_graph(default):
     """message-bus PD-5, TC-05."""
     graph = default.provenance(DEFAULT_TENANT)
-    assert graph == URIRef(f"{DEFAULT_TENANT}/provenance")
-    assert not default.is_aggregate(DEFAULT_TENANT, str(graph))
-    assert not default.is_aggregate_graph(DEFAULT_TENANT, str(graph))
-    assert not default.is_loaded_graph(DEFAULT_TENANT, str(graph))
+    assert graph == URIRef(f"{DEFAULT_TENANT}/provenance"), "the default template"
+    assert not default.is_aggregate(DEFAULT_TENANT, str(graph)), "not an aggregate"
+    assert not default.is_aggregate_graph(DEFAULT_TENANT, str(graph)), "not an aggregate graph"
+    assert not default.is_loaded_graph(DEFAULT_TENANT, str(graph)), "not a loaded graph"
 
 
 def test_a_provenance_template_equal_to_the_registry_template_is_refused():
@@ -102,7 +102,9 @@ def test_a_provenance_template_equal_to_the_registry_template_is_refused():
 
 def test_a_provenance_template_of_its_own_is_accepted():
     iris = Iris(_settings(IriPolicy(provenance_template="{tenant}/prov")))
-    assert iris.provenance(DEFAULT_TENANT) == URIRef(f"{DEFAULT_TENANT}/prov")
+    assert iris.provenance(DEFAULT_TENANT) == URIRef(f"{DEFAULT_TENANT}/prov"), (
+        "the configured template"
+    )
 
 
 def test_a_default_policy_accepts_the_tenant_its_access_record_and_minted_roots(default):
