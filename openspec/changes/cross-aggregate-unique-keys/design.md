@@ -393,3 +393,8 @@ PD-11 (operator report instead of generation).
     document list the type; a route option per schema key is more machinery than it is worth.
   - L2 S3: TC-33 is read as "the 409 answer names the key conflict"; the document lists no
     problem slug for any kind.
+- **D-6** (leader, 2026-11-14; the stage 1 checker, accepted; changes the mechanism of PD-2): a
+  scope other than `tenant` is a `HardRule.UNIQUE_KEY` problem naming the class and the key,
+  raised with the other key checks (`_scoped_key_reasons`), not an annotation problem naming
+  only the key: the spec says "naming the class and the key", and a `UniqueKey` does not know
+  its class. `_annotated_elements` yields schema elements only, as before this change.

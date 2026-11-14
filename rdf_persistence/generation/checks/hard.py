@@ -111,6 +111,9 @@ def _scoped_key_reasons(
     view: SchemaView, key: UniqueKey, below: list[ClassDefinition]
 ) -> Iterator[str]:
     """Why the scoped ``key`` cannot be enforced across the aggregates of the roots ``below`` its class."""
+    scope, allowed = RpAnnotation.RP_UNIQUE_SCOPE, ALLOWED_ANNOTATIONS[RpAnnotation.RP_UNIQUE_SCOPE]
+    if (value := annotation_text(key, scope)) not in allowed:
+        yield f"{scope.value}: {value!r} is not one of {allowed}"
     if not below:
         yield "it is on a class that is neither a tenant-database aggregate root nor an ancestor of one"
     if key.consider_nulls_inequal is False:
@@ -160,12 +163,11 @@ def _value_problems(enum: str, value: PermissibleValue) -> Iterator[CheckProblem
             yield rule_problem(rule, name, f"permissible value of {enum} has no {metaslot}")
 
 
-def _annotated_elements(schema: SchemaDefinition) -> Iterator[Element | UniqueKey]:
+def _annotated_elements(schema: SchemaDefinition) -> Iterator[Element]:
     yield schema
     for cls in schema.classes.values():
         yield cls
         yield from cls.attributes.values()
-        yield from cls.unique_keys.values()
     yield from schema.slots.values()
     yield from schema.enums.values()
 
@@ -178,7 +180,7 @@ def _segment_pattern() -> str:
 
 def _annotation_problems(schema: SchemaDefinition, segment_pattern: str) -> Iterator[CheckProblem]:
     for element in _annotated_elements(schema):
-        name = str(element.unique_key_name if isinstance(element, UniqueKey) else element.name)
+        name = str(element.name)
         for tag, allowed in ALLOWED_ANNOTATIONS.items():
             value = annotation(element, tag)
             if value is not None and value not in allowed:

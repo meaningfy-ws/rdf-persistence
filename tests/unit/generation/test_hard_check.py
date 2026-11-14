@@ -317,10 +317,8 @@ def test_a_scope_other_than_tenant_is_refused_naming_the_value_and_the_allowed_o
     problems = _planted(
         break_toy, "books.yaml", "rp_unique_scope: tenant", "rp_unique_scope: world"
     )
-    assert any(
-        p.startswith(f"[{HardRule.ANNOTATION.value}]") and "world" in p and "tenant" in p
-        for p in problems
-    ), problems
+    named = f"[{HardRule.UNIQUE_KEY.value}] Book: unique key 'isbn_key': "
+    assert any(p.startswith(named) and "'world'" in p and "tenant" in p for p in problems), problems
 
 
 @pytest.mark.parametrize(
