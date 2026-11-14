@@ -112,6 +112,15 @@ or not of `member_class`, is refused. Read with `collab.members(iri)` and
 its members, all or nothing. See
 xref:howto/reference-collections.adoc[Group resources you do not own].
 
+*Can a reviewer comment without editing?*::
+Yes. Import the module `rp_discussion` and give the reviewer's role the action `annotate`, which
+is not `modify` and does not imply it. `collab.comment(iri, text)` stores a comment as an
+aggregate of its own and leaves the target and its version untouched; `collab.thread(iri)` reads
+the comments the caller sees, oldest first. A comment may be limited to an audience of roles,
+answer another comment, and reference other aggregates. Deleting an aggregate deletes the
+comments on it. See
+xref:howto/discussion.adoc[Comment on a resource without editing it].
+
 *How do I make my own IRIs?*::
 Describe their shape as an `IriPolicy`: a template for the tenant, the aggregates, the owned parts
 and the loaded graphs (for example `{base}{tenant_id}/{type}/{id}`) and the rule for each id (a

@@ -100,7 +100,7 @@ classDiagram
 |`Principal` |`odrl:Party`, `prov:Agent` |A user or service account of the identity provider, by IRI.
 |`Role` |`rp:role` on a grant |A role a principal holds in a tenant. In v1 the assignee is always a principal; roles as ODRL party collections are later.
 |Target |`odrl:target` |An IRI: a tenant, or an aggregate's graph (`graph_iri(root)`). The level follows from the IRI. The system level comes only from global roles in the token.
-|`Action` (enum) |`odrl:read`, `odrl:modify` (at tenant scope, also create), `odrl:delete`, and `rp:administer` (change a tenant's grants, or delete the tenant) |What is done. The set is fixed by the toolkit; an application cannot add an action.
+|`Action` (enum) |`odrl:read`, `odrl:modify` (at tenant scope, also create), `odrl:delete`, `rp:administer` (change a tenant's grants, or delete the tenant), and `odrl:annotate` (add a comment to an object without changing it; `modify` does not imply it) |What is done. The set is fixed by the toolkit; an application cannot add an action.
 |`RoleDefinition` |`rp:RoleDefinition` |Which `actions` (`rp:permits`) a `role` permits at which `level` (`RoleLevel`: `system`, `tenant`, `aggregate`): the application's permission matrix, supplied as a YAML file and never stored (need N-8). A `system` role comes from the token's global roles and cannot be granted.
 |===
 
