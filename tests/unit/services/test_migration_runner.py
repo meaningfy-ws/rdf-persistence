@@ -568,3 +568,21 @@ async def test_the_toolkits_chain_runs_first_in_every_database(world, lib_chain,
     await migrate_tenants(world.tenancy, world.store, [(RP, rp_chain), (LIB, lib_chain)])
     order = ["rp" if f"<{RP}>" in text else "lib" for text in world.store.sent("update")[sent:]]
     assert order == ["rp", "lib", "rp", "lib"], "in each database the toolkit's request is first"
+
+
+async def test_a_stamp_unknown_to_the_chain_after_a_request_names_the_stamp(world, three):
+    """schema-migrations PD-23: the read-back must be ``to`` or later; an unknown version is a failure."""
+
+    async def to_nine() -> None:
+        world.store.after_update = None
+        await world.store.update(
+            world.database,
+            f"DELETE WHERE {{ GRAPH <{STAMPS}> {{ <{LIB}> <{v.DATA_SCHEMA_VERSION}> ?o }} }}; "
+            f'INSERT DATA {{ GRAPH <{STAMPS}> {{ <{LIB}> <{v.DATA_SCHEMA_VERSION}> "9" }} }}',
+        )
+
+    world.store.after_update = to_nine
+    with pytest.raises(MigrationFailed) as failed:
+        await migrate_database(world.store, world.database, [(LIB, three)], STAMPS)
+    assert '"9"' in failed.value.cause, "the stamp read back is named"
+    assert "not one of the chain" in failed.value.cause, "and said to be unknown"

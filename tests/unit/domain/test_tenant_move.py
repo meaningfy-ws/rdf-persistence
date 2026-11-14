@@ -305,3 +305,10 @@ def test_a_quad_in_the_default_graph_is_refused():
     source.default_graph.add((URIRef("urn:x:s"), DCTERMS.relation, Literal("x")))
     with pytest.raises(InvalidBody, match="default graph"):
         check_graphs(source, str(iris.tenant(NEW)), iris)
+
+
+def test_a_stamps_graph_quad_holding_the_old_id_is_copied_unchanged():
+    """schema-migrations PD-23: a schema id is not a tenant IRI, so a restore leaves the stamps as they are."""
+    schema = URIRef(f"{SETTINGS.base}{OLD}")
+    stamp = (schema, v.DATA_SCHEMA_VERSION, schema, stamps_graph_iri(SETTINGS.base))
+    assert quads_of(rewrite(dataset_of(stamp), SETTINGS.base, OLD, NEW)) == {stamp}

@@ -27,17 +27,23 @@ def rewrite(dataset: Dataset, base: str, old_id: str, new_id: str) -> Dataset:
     start with ``base``. In the text after ``base``, every ``old_id`` that has no ``[a-z0-9]`` character on
     either side (or the IRI's end) is replaced. Predicates, datatypes, literals and blank nodes stay as
     they are. A principal IRI under ``base`` whose subject equals ``old_id`` is rewritten too (RISK-3).
+    The quads of the stamps graph are copied as they are: a schema id there is not a tenant IRI (PD-23).
     """
     token = re.compile(rf"(?<!{_WORD}){re.escape(old_id)}(?!{_WORD})")
+    stamps = stamps_graph_iri(base)
 
     def move(term: Node | None) -> Node | None:
         if isinstance(term, URIRef) and term.startswith(base):
             return URIRef(base + token.sub(new_id, term[len(base) :]))
         return term
 
+    def moved(subject: Node, obj: Node, graph: Node | None) -> tuple[Node | None, ...]:
+        return (graph, subject, obj) if graph == stamps else (move(graph), move(subject), move(obj))
+
     result = Dataset()
     for subject, predicate, obj, graph in dataset.quads():
-        result.graph(move(graph)).add((move(subject), predicate, move(obj)))  # type: ignore[arg-type]
+        into, subject_, object_ = moved(subject, obj, graph)
+        result.graph(into).add((subject_, predicate, object_))  # type: ignore[arg-type]
     return result
 
 

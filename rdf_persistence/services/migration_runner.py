@@ -158,7 +158,8 @@ async def _migrate_schema(
             )
         if not pending:
             return
-        version = await _apply(store, database, schema_id, pending[0], stamps_graph)
+        # Each round ends at a later version of the finite chain or fails, so the loop ends (PD-23).
+        version = await _apply(store, database, schema_id, pending[0], chain, stamps_graph)
 
 
 async def _stamp_of(
@@ -191,22 +192,40 @@ async def _read_stamp(
 
 
 async def _apply(
-    store: Store, database: str, schema_id: str, migration: Migration, stamps_graph: URIRef
+    store: Store,
+    database: str,
+    schema_id: str,
+    migration: Migration,
+    chain: Chain,
+    stamps_graph: URIRef,
 ) -> str:
-    """Send the request of ``migration`` and answer the stamp read back; it must have moved (PD-7)."""
+    """Send the request of ``migration`` and answer the stamp read back: ``to`` or a later version (PD-7, PD-23)."""
     try:
         await store.update(database, migration_request(migration, stamps_graph))
     except PersistenceError as error:
         raise _failed(database, schema_id, migration, error) from error
     version = await _read_stamp(store, database, schema_id, stamps_graph, migration)
-    if version is None or version == migration.from_version:
-        after = "no stamp" if version is None else f'the stamp is still "{version}"'
-        raise _failed(database, schema_id, migration, f"after the request {after}")
+    problem = _not_forward(version, migration, chain[0])
+    if version is None or problem is not None:
+        raise _failed(database, schema_id, migration, f"after the request {problem}")
     log.info(
         "migrated a database",
         extra={"step": "migrate", "database": database, "migration": _name(schema_id, migration)},
     )
     return version
+
+
+def _not_forward(version: str | None, migration: Migration, versions: Sequence[str]) -> str | None:
+    """What is wrong with the stamp read back, or None when it is ``to`` or a later version of the chain."""
+    if version is None:
+        return "no stamp"
+    if version not in versions:
+        return f'the stamp "{version}" is not one of the chain\'s versions'
+    if versions.index(version) < versions.index(migration.to_version):
+        return (
+            f'the stamp "{version}" went backwards (the migration ends at "{migration.to_version}")'
+        )
+    return None
 
 
 def _name(schema_id: str, migration: Migration | None) -> str:
