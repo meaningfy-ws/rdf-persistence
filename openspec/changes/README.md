@@ -32,7 +32,7 @@ after an attack; until then it is the planner's own score.
 | 1 | `boundary-owned-hint` | TINY | #72 | delivered 2026-11-13 (#85) | none | the REFERENCE problem's fix text |
 | 2 | `release-pipeline` | SMALL | none | delivered 2026-11-13 (#86, v0.2.0) | none | versioning, release notes, the 0.2.0 cut |
 | 3 | `atomic-commit` | MEDIUM (2 stages) | #83, #76 | delivered 2026-11-13 (#91, #93, #94) | none | `Session.transaction()`: one guarded update request for many aggregates; `UnitOfWork.remove`/`version`; the root limit and batch mode; the tenant-root comparison |
-| 4 | `collaboration-and-reference-collections` | LARGE (4 stages) | #78, #79, #80, #81 | yes | 3 | reverse references, reference collections, discussion, workflow, the `annotate` action |
+| 4 | `collaboration-and-reference-collections` | LARGE (4 stages) | #78, #79, #80, #81 | delivered 2026-11-14 (#95, #98, #99, #100, #101) | 3 | reverse references, reference collections, discussion, workflow, the `annotate` action |
 | 5 | `cross-aggregate-unique-keys` | MEDIUM | none | yes | 3 | key guards added to the transaction; `KeyConflict` |
 | 6 | `tenant-dump-restore` | MEDIUM | none | delivered 2026-11-13 (#89) | none | the dump format (manifest with schema version), restore into a new tenant |
 | 7 | `app-level-data` | MEDIUM | none | no | none | the application database and its aggregates |
@@ -87,7 +87,7 @@ review items are decisions the lead took on the developer's behalf and the devel
 | `atomic-commit` | 8 → 8.5 → fixed | delivered, archived | DEC-4: default limit 500 roots and batch mode built now; the all-or-nothing behaviour change ships without a flag; #76 folded in |
 | `cross-aggregate-unique-keys` | 8 → 9 | ready (`atomic-commit` is delivered) | PD-2: an unscoped `unique_keys` declared on a root now fails generation; PD-11: duplicates are found by an operator call `key_duplicates()`, not by generation (generation never sees data); PD-8/PD-9: 409 `key-conflict`, version conflicts reported first |
 | `tenant-dump-restore` | 7.5 → 9 | delivered, archived | DEC-1: restore always into a new tenant; DEC-2: the tenant id is rewritten in every IRI, policies that glue the id to other characters are refused; DEC-4: grants not dumped, the restorer is the only grantee |
-| `collaboration-and-reference-collections` | 8 → 8.5 → fixed | ready (`atomic-commit` is delivered) | a `Collaboration` service opened from the kit (not `session.*` methods); comments and transition records are toolkit-written aggregates no generic route serves; replies target the aggregate; undefined transition → `Conflict`, state changed by a plain write → `Forbidden`; deleting a resource deletes its comments and records |
+| `collaboration-and-reference-collections` | 8 → 8.5 → fixed | delivered, archived | a `Collaboration` service opened from the kit (not `session.*` methods); comments and transition records are toolkit-written aggregates no generic route serves; replies target the aggregate; undefined transition → `Conflict`, state changed by a plain write → `Forbidden`; deleting a resource deletes its comments and records |
 
 Shaped, not planned (PLAN at the start of their epic session): `app-level-data`, `tenant-stores`,
 `second-store`, `message-bus`, `aggregate-events`, `schema-migrations`, `typescript-client`,
