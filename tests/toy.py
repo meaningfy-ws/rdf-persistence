@@ -43,6 +43,7 @@ from tests.fixtures.library.generated.templates import Template
 
 SCANS = "scans"  # the rp_path of the scan roots
 TOY_SCHEMA = Path(__file__).parent / "fixtures" / "library" / "library.yaml"
+TOY_MIGRATIONS = Path(__file__).parent / "fixtures" / "library" / "migrations"
 TENANT = "https://example.org/libraries/6f1c0c1e"
 ADA = "https://example.org/people/ada"
 BOB = "https://example.org/people/bob"

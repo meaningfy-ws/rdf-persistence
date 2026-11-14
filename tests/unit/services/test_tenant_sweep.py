@@ -6,6 +6,7 @@ hours ago; blob k3 uploaded a minute ago. Time is a clock the tests move; nothin
 """
 
 import logging
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from uuid import UUID
@@ -74,8 +75,10 @@ class EventFiles(FakeFileStore):
         return await super().list_blobs(bucket)
 
 
-async def make_world(iris: Iris, settings: ServiceSettings) -> SimpleNamespace:
-    """A tenant over the fakes, with helpers that act at a chosen age."""
+async def make_world(
+    iris: Iris, settings: ServiceSettings, stamps: Sequence[tuple[str, str]] = ()
+) -> SimpleNamespace:
+    """A tenant over the fakes, with helpers that act at a chosen age; ``stamps`` as ``Tenancy`` takes them."""
     events: list[str] = []
     stamp = SimpleNamespace(at=NOW)
     store, files = Events(events), EventFiles(events, lambda: stamp.at)
@@ -87,6 +90,7 @@ async def make_world(iris: Iris, settings: ServiceSettings) -> SimpleNamespace:
         root_class=Library,
         access_class=LibraryAccess,
         iris=iris,
+        stamps=stamps,
     )
     await tenancy.ensure_system_database()
     tenant = (await tenancy.create("Ghent", library_slots(), CREATOR)).id

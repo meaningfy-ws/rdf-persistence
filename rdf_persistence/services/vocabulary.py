@@ -18,6 +18,7 @@ from rdf_persistence.services.schema import PACKAGE_DIR, SERVICE_SCHEMA, load_sc
 from rdf_persistence.services.schema_structure import flag, is_bookkeeping
 
 METAMODEL = PACKAGE_DIR / "model" / "rp.yaml"
+TOOLKIT_MIGRATIONS = PACKAGE_DIR / "model" / "migrations"  # the toolkit's own chain (PD-13)
 
 
 @cache

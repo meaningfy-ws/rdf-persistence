@@ -15,7 +15,8 @@ from typing import Any
 
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel, ValidationError
-from rdflib import RDF, Dataset, Graph, URIRef
+from rdflib import RDF, Dataset, Graph, Literal, URIRef
+from rdflib.term import Node
 
 from rdf_persistence.domain.exceptions import (
     Conflict,
@@ -24,6 +25,7 @@ from rdf_persistence.domain.exceptions import (
     NotFound,
     PersistenceError,
     StoredDataInvalid,
+    TenantBehind,
 )
 from rdf_persistence.domain.generated.rp_access import Action, Grant
 from rdf_persistence.domain.generated.rp_core import DatabaseKind, Principal, RpAnnotation
@@ -40,6 +42,7 @@ from rdf_persistence.domain.iris import (
     Iris,
     application_database_name,
     graph_iri,
+    stamps_graph_iri,
     system_database_name,
     toolkit_principal_iri,
 )
@@ -51,6 +54,7 @@ from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
+from rdf_persistence.services.migrations import stamp_if_none
 from rdf_persistence.services.schema_structure import (
     LABEL,
     aggregate_keys,
@@ -70,6 +74,7 @@ from rdf_persistence.services.session import (
     utc_now,
 )
 from rdf_persistence.services.store import Store
+from rdf_persistence.services.yaml_files import MOST_PROBLEMS, shown
 
 log = logging.getLogger(__name__)
 
@@ -118,8 +123,13 @@ class Tenancy:
         grant_validators: Sequence[GrantValidator] = (),
         root_validators: Sequence[RootValidator] = (),
         dependents: Dependents = (),
+        stamps: Sequence[tuple[str, str]] = (),
     ) -> None:
         self._dependents = dependents
+        # (schema id, current version) of each chain, written to a new database (PD-10)
+        self._stamps = tuple(stamps)
+        # the tenants whose migration failed at start-up (PD-11)
+        self._behind: frozenset[str] = frozenset()
         # not DEFAULT_IRIS: resource names need the settings' prefix, which DEFAULT_IRIS lacks (PD-12j)
         self._iris = iris or Iris(settings)
         self._listings = listings
@@ -172,7 +182,13 @@ class Tenancy:
     def tenant_session(
         self, tenant: str, principal: Principal
     ) -> AbstractAsyncContextManager[Session]:
-        """A session on the database of ``tenant`` for ``principal``; it refuses application classes (PD-6)."""
+        """A session on the database of ``tenant`` for ``principal``; it refuses application classes (PD-6).
+
+        Raises:
+            TenantBehind: The tenant's migration failed at start-up (``behind``).
+        """
+        if tenant in self.behind:
+            raise TenantBehind(f"the tenant {tenant} is behind its schema: its migration failed")
         return self._session(
             self._iris.resource_name(tenant), tenant, principal, self._application_types
         )
@@ -238,6 +254,36 @@ class Tenancy:
         """The name of the system database."""
         return self._system
 
+    @property
+    def application_database(self) -> str | None:
+        """The name of the application database; None when the schema declares no application class."""
+        if not self._application_types:
+            return None
+        return application_database_name(self._settings.prefix)
+
+    @property
+    def behind(self) -> frozenset[str]:
+        """The tenants whose migration failed at start-up: their requests for data are refused (PD-11)."""
+        return self._behind
+
+    def set_aside(self, tenants: Iterable[str]) -> None:
+        """Replace the set of tenants set aside by ``tenants``; the one writer of ``behind`` (PD-24.4)."""
+        self._behind = frozenset(tenants)
+
+    @property
+    def stamps_graph(self) -> URIRef:
+        """The graph of each database that records the schema versions its data follows (PD-2)."""
+        return stamps_graph_iri(self._settings.base)
+
+    def database_of(self, tenant: str) -> str:
+        """The name of the database of ``tenant``."""
+        return self._iris.resource_name(tenant)
+
+    async def _stamp(self, database: str) -> None:
+        """Stamp ``database``, which this call just created, with every pair of ``stamps`` (PD-10)."""
+        for schema_id, version in self._stamps:
+            await stamp_if_none(self._store, database, self.stamps_graph, schema_id, version)
+
     async def has_access_records(self) -> bool:
         """True when any graph of the system database holds an access record, found by type and not through the IRI policy."""
         result = await self._store.query(self._system, fill(ASK_RECORDS, p_state=term(v.STATE)))
@@ -251,6 +297,7 @@ class Tenancy:
             await self._store.create_dataset(name)
         except Conflict:  # another worker created it first
             return False
+        await self._stamp(name)
         return True
 
     async def ensure_system_database(self) -> bool:
@@ -262,9 +309,11 @@ class Tenancy:
 
         False, with no store call, when the schema declares no application class (PD-8).
         """
-        if not self._application_types:
+        database = self.application_database
+        if database is None:
             return False
-        return await self._ensure_dataset(application_database_name(self._settings.prefix))
+        # stamped when created
+        return await self._ensure_dataset(database)
 
     async def create(
         self, label: str, root_slots: Mapping[str, Any], creator: Principal
@@ -293,6 +342,7 @@ class Tenancy:
         refuse_internal(self._mapper.to_graph(tenant_root), self._internal)
         _run_validators(self._root_validators, None, tenant_root, creator)
         await self._store.create_dataset(name)
+        await self._stamp(name)  # before the root: a database found with data has its stamp (PD-10)
         _log_step("create-database", tenant, name)
         await self._files.create_bucket(name)
         _log_step("create-bucket", tenant, name)
@@ -333,7 +383,8 @@ class Tenancy:
         record is written after that: if its write fails, the database and the bucket stay for the start-up sweep.
 
         Raises:
-            InvalidBody: A quad is in the default graph or a foreign graph, a subject is typed with an application
+            InvalidBody: A quad is in the default graph or a foreign graph, the stamps graph does not hold
+                exactly the versions the service runs, a subject is typed with an application
                 class, or the root does not decode or a root validator refuses it; or ``blobs`` raises it.
             Conflict: The drawn tenant id was taken between the draw and the create; retry.
             PersistenceError: No free tenant id, or the new database or bucket was dropped (a start-up sweep
@@ -344,6 +395,7 @@ class Tenancy:
             parsed, self._settings.base, source_tenant_id, self._iris.tenant_id_of(tenant)
         )
         check_graphs(data, tenant, self._iris)
+        self._refuse_other_stamps(data)
         self._refuse_application_objects(data)
         label = self._vet_restored_root(tenant, data.graph(self._iris.meta(tenant)), creator)
         name = self._iris.resource_name(tenant)
@@ -369,6 +421,30 @@ class Tenancy:
         await self._add_root(self._system, tenant, creator, record)
         _log_step("create-record", tenant, name)
         return TenantSummary(id=tenant, label=label, state=TenantState.ACTIVE)
+
+    def _refuse_other_stamps(self, data: Dataset) -> None:
+        """Refuse a dump whose stamps graph is not exactly one stamp per configured pair (PD-24.1).
+
+        Until a dump can be migrated (stage 3) the restored database must follow the versions this service
+        runs, and the runner trusts the graph: no other version, schema or statement may come in with it.
+        """
+        wanted = dict(self._stamps)
+        held = sorted(data.graph(self.stamps_graph), key=str)
+        stamped = {str(s) for s, p, _ in held if p == v.DATA_SCHEMA_VERSION}
+        differences = [
+            f"the stamp of {schema} at {version!r} is missing"
+            for schema, version in wanted.items()
+            if schema not in stamped
+        ]
+        differences += [d for triple in held if (d := _stamp_difference(triple, wanted))]
+        if differences:
+            more = len(differences) - MOST_PROBLEMS
+            listed = "; ".join(differences[:MOST_PROBLEMS]) + (
+                f"; +{more} more" if more > 0 else ""
+            )
+            raise InvalidBody(
+                f"the dump's stamps graph is not the versions this service runs: {listed}"
+            )
 
     def _refuse_application_objects(self, data: Dataset) -> None:
         """Refuse a dump that types a subject with an application class: no tenant database holds one (D-6 b)."""
@@ -643,6 +719,19 @@ class Tenancy:
     async def database_names(self) -> set[str]:
         """The database (and bucket) names the access records store, for every tenant."""
         return {record.database_name for record in await self._records()}
+
+
+def _stamp_difference(triple: tuple[Node, Node, Node], wanted: Mapping[str, str]) -> str | None:
+    """How one statement of a dump's stamps graph differs from ``wanted`` (schema id to version), or None."""
+    subject, predicate, value = triple
+    text = shown(str(value))
+    if predicate != v.DATA_SCHEMA_VERSION or not isinstance(value, Literal):
+        return f"<{subject}> <{predicate}> {text} is not a stamp"
+    if str(subject) not in wanted:
+        return f"<{subject}>, a schema this service does not run, is at {text}"
+    if value != Literal(wanted[str(subject)]):
+        return f"<{subject}> is at {text}, not {wanted[str(subject)]!r}"
+    return None
 
 
 def _plain(validators: Sequence[Callable[..., None]]) -> tuple[Callable[..., None], ...]:

@@ -228,6 +228,37 @@ async def test_the_access_record_is_written_after_the_bucket_and_the_root(tenanc
     ), "root first, access record second"
 
 
+async def test_create_stamps_the_new_database_before_it_writes_the_root(store, files):
+    """schema-migrations PD-10, TC-34: every pair of ``stamps``, right after the database is made."""
+    made = Tenancy(
+        store, files, SETTINGS, mapper=toy_mapper(), root_class=Library,
+        access_class=LibraryAccess, stamps=(("urn:schema:a", "1"), ("urn:schema:b", "7")),
+    )  # fmt: skip
+    await made.ensure_system_database()
+    before = len(store.sent("update"))
+    summary = await made.create("Ghent", library_slots(), CREATOR)
+    updates = store.sent("update")[before:]
+    stamped = [i for i, text in enumerate(updates) if "schema-stamps" in text]
+    root = next(i for i, text in enumerate(updates) if f"{summary.id}/meta" in text)
+    assert len(stamped) == 2, "one stamp per pair"
+    assert max(stamped) < root, "every stamp comes before the first update of the root's graph"
+    assert '"1"' in updates[stamped[0]], "the first pair is stamped first"
+    assert '"7"' in updates[stamped[1]], "the second pair is stamped second"
+
+
+def test_set_aside_replaces_the_set_and_behind_answers_a_frozenset(tenancy):
+    assert tenancy.behind == frozenset(), "no tenant is set aside at first"
+    tenancy.set_aside(["urn:t:a", "urn:t:b"])
+    tenancy.set_aside(iter(["urn:t:b", "urn:t:c"]))
+    assert tenancy.behind == frozenset({"urn:t:b", "urn:t:c"}), "the second call replaces the first"
+    assert isinstance(tenancy.behind, frozenset), "and the answer cannot be changed by the caller"
+
+
+async def test_without_stamps_nothing_is_stamped(tenancy, store):
+    await tenancy.create("Ghent", library_slots(), CREATOR)
+    assert not any("schema-stamps" in text for text in store.sent("update")), "no stamp is written"
+
+
 async def test_tenants_lists_every_record_with_its_state(tenancy):
     first = await tenancy.create("Ghent", library_slots(), CREATOR)
     second = await tenancy.create("Bruges", library_slots(), CREATOR)

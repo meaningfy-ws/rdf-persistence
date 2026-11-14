@@ -32,7 +32,15 @@ from tests.fixtures.library import generated
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.scans import Scan
-from tests.toy import REVIEW_WORKFLOW, ROLES, SCANS, SETTINGS, TOY_SCHEMA, toy_mapper
+from tests.toy import (
+    REVIEW_WORKFLOW,
+    ROLES,
+    SCANS,
+    SETTINGS,
+    TOY_MIGRATIONS,
+    TOY_SCHEMA,
+    toy_mapper,
+)
 
 BASE_URL = "http://test"
 LIBRARIAN, READER, OUTSIDER = "librarian", "reader", "outsider"
@@ -130,6 +138,7 @@ class ToyService:
         grant_validators: Sequence[GrantValidator] = (),
         root_validators: Sequence[RootValidator] = (),
         workflows: Sequence[Path] = (REVIEW_WORKFLOW,),
+        migrations: Path = TOY_MIGRATIONS,
     ) -> None:
         self.signer = TokenSigner(key=toy_key())
         self.store = store or FakeStore()
@@ -166,6 +175,7 @@ class ToyService:
             grant_validators=grant_validators,
             root_validators=root_validators,
             workflows=workflows,
+            migrations=migrations,
         )
 
     def client(self) -> httpx.AsyncClient:

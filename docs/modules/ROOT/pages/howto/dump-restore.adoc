@@ -48,7 +48,9 @@ with open("library.rpdump", "rb") as src:
   restore.
 * The new tenant has a *new id and new IRIs*: every IRI of the old tenant that holds its id is
   rewritten to hold the new one (minted by the xref:howto/adopt.adoc#iri-policy[IRI policy]), so the
-  copy can live beside the original. Anything outside your data that points at an old IRI, a link in
+  copy can live beside the original. The one exception is the record of the schema versions the
+  data follows: it is copied as it is, and a restore refuses a dump whose record is not exactly the
+  versions the service runs. Anything outside your data that points at an old IRI, a link in
   an e-mail or another system, points at the original, not the copy.
 * `creator` is the only grantee of the new tenant, with the settings' `creator_role`
   (see xref:howto/adopt.adoc#tenancy[Create tenants]), as when you create a tenant.
@@ -268,8 +270,11 @@ a member that is not a regular file; a member name that is not UTF-8
 |A manifest whose `source_tenant_id` is not the id of its `source_tenant`
 |Nothing created.
 
-|A quad in the default graph or in a graph the policy does not mint for a tenant; a root that is
-missing, does not decode, or that a root validator refuses
+|A quad in the default graph or in a graph the policy does not mint for a tenant (the record of
+schema versions apart); a root that is missing, does not decode, or that a root validator refuses
+|Nothing created.
+
+|A record of schema versions that is not exactly the versions the service runs
 |Nothing created.
 
 |More decompressed bytes than `max_restore_bytes`, found before the blobs

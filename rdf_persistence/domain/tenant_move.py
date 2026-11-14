@@ -12,7 +12,7 @@ from rdflib.term import Node
 
 from rdf_persistence.domain.exceptions import InvalidBody
 from rdf_persistence.domain.generated.service.rp_service import IriPolicy
-from rdf_persistence.domain.iris import Iris
+from rdf_persistence.domain.iris import Iris, stamps_graph_iri
 
 # A character that would make the id part of a longer word; the ids of a policy are drawn from [a-z0-9].
 _WORD = "[a-z0-9]"
@@ -27,17 +27,23 @@ def rewrite(dataset: Dataset, base: str, old_id: str, new_id: str) -> Dataset:
     start with ``base``. In the text after ``base``, every ``old_id`` that has no ``[a-z0-9]`` character on
     either side (or the IRI's end) is replaced. Predicates, datatypes, literals and blank nodes stay as
     they are. A principal IRI under ``base`` whose subject equals ``old_id`` is rewritten too (RISK-3).
+    The quads of the stamps graph are copied as they are: a schema id there is not a tenant IRI (PD-23).
     """
     token = re.compile(rf"(?<!{_WORD}){re.escape(old_id)}(?!{_WORD})")
+    stamps = stamps_graph_iri(base)
 
     def move(term: Node | None) -> Node | None:
         if isinstance(term, URIRef) and term.startswith(base):
             return URIRef(base + token.sub(new_id, term[len(base) :]))
         return term
 
+    def moved(subject: Node, obj: Node, graph: Node | None) -> tuple[Node | None, ...]:
+        return (graph, subject, obj) if graph == stamps else (move(graph), move(subject), move(obj))
+
     result = Dataset()
     for subject, predicate, obj, graph in dataset.quads():
-        result.graph(move(graph)).add((move(subject), predicate, move(obj)))  # type: ignore[arg-type]
+        into, subject_, object_ = moved(subject, obj, graph)
+        result.graph(into).add((subject_, predicate, object_))  # type: ignore[arg-type]
     return result
 
 
@@ -58,12 +64,17 @@ def glued_templates(policy: IriPolicy) -> list[str]:
 
 
 def check_graphs(data: Dataset, tenant: str, iris: Iris) -> None:
-    """Every quad of ``data`` is in a graph the policy mints for ``tenant``, none in the default graph.
+    """Every quad of ``data`` is in a graph the policy mints for ``tenant`` or in the stamps graph, none in the default graph.
 
     Raises:
         InvalidBody: A quad is in the default graph or in a graph that is not the tenant's.
     """
-    minted = {iris.meta(tenant), iris.registry(tenant), iris.provenance(tenant)}
+    minted = {
+        iris.meta(tenant),
+        iris.registry(tenant),
+        iris.provenance(tenant),
+        stamps_graph_iri(iris.settings.base),  # the schema versions the data follows (PD-15)
+    }
     for graph in sorted({str(graph) for *_, graph in data.quads()}):
         if graph == str(DATASET_DEFAULT_GRAPH_ID):
             raise InvalidBody("the dump has a quad in the default graph")

@@ -180,18 +180,23 @@ marks an answer the developer delegated (seed, 2026-11-06) and may overrule.
   (schema id, current version), which the kit builds from the two chains.
 - **PD-11 Failure: the shared databases stop start-up; a tenant is set aside (seed Q-4, developer
   2026-11-06 and 2026-11-14).** A failed migration of the system or application database raises
-  `MigrationFailed`. A failed tenant is logged (`log.error`, `extra={"step": "migrate-tenant", "tenant", "migration", "cause"}`;
-  a failed shared database the same with step `migrate-shared`; each applied migration `log.info`,
-  step `migrate`, with database and migration), added to
-  `Tenancy.behind` (a set in memory of this instance, emptied at the start of each
-  `migrate_tenants`), and the next tenant runs. A stamp unknown to the chain (data newer than the
+  `MigrationFailed`. A failed tenant is logged (`log.error`, `extra={"step": "migrate-tenant", "tenant", "schema", "migration", "cause"}`;
+  a failed shared database the same with step `migrate-shared` and `database` in place of `tenant`;
+  each applied migration `log.info`, step `migrate`, with database, schema and migration; the
+  `migration` field is `<from>__<to> of <schema id>`, or empty when the stamp itself failed), and
+  the next tenant runs. At the end of `migrate_tenants` the failed tenants become
+  `Tenancy.behind` (a set in memory of this instance, read-only, replaced by
+  `Tenancy.set_aside`; the set of the previous run stays in force while a run is in flight,
+  PD-24 item 4). A stamp unknown to the chain (data newer than the
   service) is the same failure. `Tenancy.tenant_session`, the one door of every tenant read and
   write, raises `TenantBehind` for a tenant in the set; the service answers `503` with the new
   problem `tenant-behind`, title "Tenant behind its schema" (a `503` carries no detail,
   `entrypoints/problems.py` `_EXPLAINED`; the exception's message names the tenant, for the log).
   `MigrationFailed`'s message names the database, the migration (`<from>__<to>` of which schema)
   and the cause. Other tenants are served. Dump and the live sweep use the store
-  directly and stay available for a tenant set aside (that is how an operator rescues it). A
+  directly and stay available for a tenant set aside (that is how an operator rescues it); its
+  record can be read, its grants changed and the tenant deleted (the system database); a rename
+  answers `503`, because it writes the tenant's root. A
   successful migration at a later start is the only way out, also when the failure was transient
   or another instance has migrated the tenant meanwhile (RISK-2).
 - **PD-12 No down-migrations (seed Q-5, leader's choice).** Rollback is: the failed tenant stays at
@@ -221,11 +226,15 @@ marks an answer the developer delegated (seed, 2026-11-06) and may overrule.
   (`InvalidBody`) before anything is created.
 - **PD-16 The application database is one more shared database (app-level-data).** Delivered in
   stage 3, after PR #102 is in `develop` (developer, 2026-11-14: this session brings #102 in).
-- **PD-17 Layers (as amended by PD-22).** `domain`: `stamps_graph_iri`, the exceptions;
-  `domain/sparql.py` builds SPARQL text and holds the one check of a step's pattern
-  (`checked_group`). `services/migrations.py`: `load_migration`, `load_chain`,
-  `migration_file_name`, the request text. `services/migration_runner.py`: the runner on the
-  `Store` port and `migrate_dataset`. `services/yaml_files.py`: reading a YAML file into a mapping,
+- **PD-17 Layers (as amended by PD-22 and PD-24 item 2).** `domain`: `stamps_graph_iri`, the
+  exceptions; `domain/sparql.py` builds SPARQL text and holds the one check of a step's pattern
+  (`checked_group`). `services/migrations.py`: `load_migration`, `load_chain`, `chain_of`,
+  `migration_file_name`, the request text, the stamp's read and conditional write (`stamps`,
+  `stamp_if_none`), the `SchemaChain` alias and the helpers `versions`, `first_version`,
+  `current_version`, `pending_from`; it imports neither `tenancy` nor the runner.
+  `services/vocabulary.py`: `TOOLKIT_MIGRATIONS`, beside the metamodel's path.
+  `services/migration_runner.py`: the runner on the `Store` port (`migrate_database`,
+  `migrate_shared`, `migrate_tenants`) and, in stage 3, `migrate_dataset`. `services/yaml_files.py`: reading a YAML file into a mapping,
   shared with the workflow loader. `generation/lock.py` and `lock_step.py`: the summary, the diff,
   the drafts, the two pipeline steps; `generation` imports `load_migration` and
   `migration_file_name` from `services/migrations.py` (`.importlinter` forbids the
@@ -298,7 +307,8 @@ migration file.
 | Two instances start at once, one or several migrations pending | a request matches nothing; the stamp read back is `to` or later | both serve; each migration applied once |
 | Tenant database gone (`DatabaseGone`) | exception | tenant set aside; the sweep or an operator deals with it |
 | Request for a tenant set aside | `Tenancy.tenant_session` | `TenantBehind`, `503` `tenant-behind` |
-| Restore of a dump with no version, an unknown version or stamp, or no stamps graph | `_check_manifest`, `migrate_dataset` | `InvalidBody` before anything is created |
+| Restore, as stage 2 ships it: a manifest version other than the running one, or a stamps graph that is not exactly the running versions and nothing else | `_check_manifest`, `Tenancy._refuse_other_stamps` (PD-24 item 1) | `InvalidBody` before anything is created |
+| Restore, from stage 3: a dump with no version, an unknown version or stamp, or no stamps graph | `_check_manifest`, `migrate_dataset` | `InvalidBody` before anything is created |
 | Restore whose migration fails on the parsed dataset | exception from `Dataset.update` | `InvalidBody` naming the migration; nothing created |
 | The live tenant sweep meets the stamps graph | — | it is not a policy-minted loaded graph and is left alone (TC-27) |
 
@@ -458,6 +468,55 @@ None.
   the refusal of such versions stays until it is closed. **For stage 2:** the runner goes in its
   own module, `services/migration_runner.py` (L3: `migrations.py` already has the file, the
   request and the chain).
+- **PD-23 The adversarial tester's findings on the runner (2026-11-14; 54 tests, 3 failing), all
+  accepted.**
+  1. *A stamp read back that is earlier in the chain than the migration's `to` was taken as
+     progress*, so a stamp moved backwards by another writer made the runner apply migrations
+     again, without a bound. PD-7 as written is now enforced: after a request the stamp must be
+     `to` or a later version of the chain; an earlier one, like an unknown one, is
+     `MigrationFailed`. So the loop always ends: each round moves forward in a finite chain or
+     fails.
+  2. *A restore rewrote a stamp whose schema id held the source tenant's id.* The IRI rewrite of a
+     restore leaves the stamps graph alone: its quads are copied as they are.
+- **PD-24 The review of stage 2 (four reviewers, 2026-11-14: L1, L2, L3, L4 with L5).** No
+  blocker. Accepted:
+  1. *A restore accepted whatever the dump's stamps graph held* (a wrong or doubled stamp, a stamp
+     of another schema, other triples, or none), and the runner trusts that graph. Until stage 3
+     migrates a dump, a restore refuses (`InvalidBody`, before anything is created) a dump whose
+     stamps graph does not hold exactly the versions the service runs, one statement per chain
+     and nothing else. Stage 3 relaxes "runs" to "a version of the chain" and keeps "nothing
+     else" (PD-15). Stamps read from a store are quoted with their escapes in messages and logs
+     (L1).
+  2. *`Tenancy` and the runner imported each other.* The stamp's read and its conditional write
+     move to `services/migrations.py`, with the `SchemaChain` alias and the helpers `versions`
+     and `current_version`; the runner imports `Tenancy` plainly; where the toolkit's own
+     migrations folder is and how a chain is built from a schema view move from the kit to
+     `services` (L3, L4). PD-17 is amended by this.
+  3. *A schema with no `version` became the version "None".* The kit refuses it
+     (`InvalidMigration`, naming the schema) (L4).
+  4. *The runner wrote into `Tenancy.behind`.* `Tenancy` owns it: `set_aside(tenants)` replaces
+     the set once, at the end of `migrate_tenants`; `behind` is read-only (L3, L4).
+  5. *A listing of a tenant set aside had no test* (the scenario of `rp-service-api`); the feature
+     had two behaviours in one scenario and a librarian where the spec says a reader. Two
+     scenarios, a reader, and a listing (L2).
+  6. *Two pages were wrong about restore*: the stamps graph is accepted and copied as it is
+     (`architecture/data-flows.adoc`, `howto/dump-restore.adoc`). Corrected now, with "requests
+     for its data" where the pages said every request of a tenant set aside answers 503 (L2).
+  7. Smaller ones, all accepted: `MigrationFailed` takes its data as `Conflict` does; the log's
+     `migration` field holds a migration's name or nothing; the stronger assertions the L2
+     reviewer lists (both files named for a fork; the tenant-level failure of TC-28; the order of
+     the IRI-policy record and the first stamp; one idea per assert).
+  **Not accepted:** reading the stamps once per database to halve the start-up queries (two per
+  database when nothing is pending; about 4 to 10 s for a thousand tenants: measured by L4, not a
+  need today); a generated `MigrationChain` class (a chain is never stored nor sent); a real race
+  in the fake store for TC-23 (the fake applies an update without yielding; TC-42 on Fuseki is the
+  check). The test helpers that build a `Tenancy` keep `stamps=()` by default (D-4), which task
+  2.2's text did not say.
+- **PD-20, added 2026-11-14.** The PD-23 fix also changed `rewrite` (`domain/tenant_move.py`),
+  rated HIGH (the restore path), and PD-24 item 1 adds a refusal in `Tenancy.restore`. Both were
+  built before the developer was asked, against the rule that a HIGH risk goes to the developer
+  first; the lead reported it to the developer the same day. Both only add: a graph left alone, a
+  dump refused.
 - **RISK-10 A template with a variable predicate (`?s ?p ?o`) can still delete a graph's version
   token or registry statement** (found while fixing PD-22 item 3, which refuses those predicates
   only when a template names them). Accepted: removing every triple of a class is a legitimate

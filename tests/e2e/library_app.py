@@ -29,7 +29,7 @@ from rdf_persistence import (
 from tests.fixtures.library import generated
 from tests.fixtures.library.generated import scans
 from tests.fixtures.library.generated.scans import Scan
-from tests.toy import REVIEW_WORKFLOW, ROLES, SCANS, SETTINGS, TOY_SCHEMA
+from tests.toy import REVIEW_WORKFLOW, ROLES, SCANS, SETTINGS, TOY_MIGRATIONS, TOY_SCHEMA
 
 SCAN_UPLOADS = "/{segment}/{{t}}/scan-files"
 SCAN_FILES = f"{SCAN_UPLOADS}/{{{{scan_id}}}}"
@@ -67,6 +67,7 @@ def build_library_app(
         rules=AccessRules(load_role_definitions(ROLES)),
         settings=settings,
         workflows=[REVIEW_WORKFLOW],
+        migrations=TOY_MIGRATIONS,
     )
     app.state.kit = kit  # for a test to look behind the API
     path = SCAN_FILES.format(segment=settings.tenant_segment)
