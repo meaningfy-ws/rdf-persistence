@@ -191,6 +191,12 @@ error; run it again.
 |`tests/integration/store/test_transaction.py::test_it06_…` (500 new books in one commit) |1 |Commit ≈ 4 s (3.8 s and 4.0 s in two runs); the file's 5 tests ≈ 17 to 32 s with container start-up |2026-11-13, atomic-commit stage 2
 |One `UnitOfWork` with the default `max_roots=500`, each book with 2 chapters and 2 notes, on real Fuseki. One update request of ≈ 2.9 MB. The limit is 30 s (PD-10). Marked `slow`.
 
+|`tests/integration/store/test_collaboration.py::test_the_collections_of_a_book_among_fifty_rule_shelves` (IT-05) |1 |`collections_of` ≈ 0.6 s (0.593 s, one run; 1.105 s in the first run, before the rule collections were read one graph per root); the file's 13 tests ≈ 26 s with container start-up |2026-11-14, collaboration-and-reference-collections stage 2 review round
+|50 rule shelves of `Book` in one dataset on real Fuseki; the one call asks the store whether the book meets each rule (one `MATCHES` query per shelf). Printed, not asserted.
+
+|`tests/integration/store/test_collaboration.py::test_a_cascade_of_the_most_members_a_commit_holds_is_one_request` |1 |Cascade ≈ 6.7 s (one run) |2026-11-14, collaboration-and-reference-collections stage 2 review round
+|A shelf naming 499 stored books (`DEFAULT_MAX_ROOTS` - 1, with the shelf exactly the limit), deleted in one update request on real Fuseki. Printed, not asserted. Marked `slow`.
+
 |`make typecheck-openapi-ts` |– |≈ 15 s |2026-11-09, mwb2-file-resources stage 1 |Part of `check-types`; `npx` downloads `openapi-typescript` and `typescript` on a first run.
 
 |`make test-perf` |3 |≈ 2.5 s |2026-11-08, delivery-friction |Measured alone, not under load.

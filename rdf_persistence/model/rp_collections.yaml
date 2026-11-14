@@ -1,0 +1,92 @@
+id: https://meaningfy.ws/ns/rdf-persistence/collections
+name: rp_collections
+title: RDF persistence collections module
+description: >-
+  The reference-collection mixin of the metamodel, on PROV-O: an aggregate that names other
+  aggregates of one class as its members, by an explicit list and a rule. The application writes it.
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+  prov: http://www.w3.org/ns/prov#
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+  - rp_core
+
+classes:
+  ReferenceCollection:
+    title: Reference collection
+    description: >-
+      A mixin for an aggregate that collects other aggregates of one class: the members it names, and
+      a rule that says which aggregates of that class belong. A collection of collections has the
+      collection class as its member class.
+    class_uri: prov:Collection
+    mixin: true
+    slots:
+      - member_class
+      - had_member
+      - membership_rule
+    slot_usage:
+      member_class:
+        required: true
+  MembershipRule:
+    title: Membership rule
+    description: >-
+      The rule of a collection, a part of its graph with no identifier of its own. An aggregate
+      belongs when it equals every equality; a rule with no equality means every aggregate of the
+      member class.
+    class_uri: rp:MembershipRule
+    slots:
+      - rule_equalities
+  SlotEquality:
+    title: Slot equality
+    description: One condition of a membership rule, a slot of the member class and the value it must equal.
+    class_uri: rp:SlotEquality
+    slots:
+      - equals_slot
+      - equals_value
+    slot_usage:
+      equals_slot:
+        required: true
+      equals_value:
+        required: true
+
+slots:
+  member_class:
+    title: Member class
+    description: The schema name of the class of the aggregates the collection collects.
+    slot_uri: rp:memberClass
+    range: string
+  had_member:
+    title: Had member
+    description: The IRIs of the aggregates the collection names as its members.
+    slot_uri: prov:hadMember
+    range: uri
+    multivalued: true
+  membership_rule:
+    title: Membership rule
+    description: The rule that says which aggregates of the member class belong to the collection.
+    slot_uri: rp:membershipRule
+    range: MembershipRule
+    annotations:
+      owned: true
+  rule_equalities:
+    title: Rule equalities
+    description: The conditions of the rule, all of which an aggregate must meet.
+    slot_uri: rp:ruleEquality
+    range: SlotEquality
+    multivalued: true
+    inlined_as_list: true
+    annotations:
+      owned: true
+  equals_slot:
+    title: Equals slot
+    description: The name of the slot of the member class the condition looks at.
+    slot_uri: rp:equalsSlot
+    range: string
+  equals_value:
+    title: Equals value
+    description: The value the slot must equal, in the lexical form a listing filter would send.
+    slot_uri: rp:equalsValue
+    range: string

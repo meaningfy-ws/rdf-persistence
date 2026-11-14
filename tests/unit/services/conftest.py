@@ -5,15 +5,16 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence import CallerAccess, VerifiedCaller
+from rdf_persistence import CallerAccess, VerifiedCaller, generated_models
 from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.documents import Documents
+from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import fake_session
-from tests.toy import ROLES, TENANT, TOY_SCHEMA
+from tests.toy import MODULES, ROLES, TENANT, TOY_SCHEMA, toy_mapper
 
 GENERATED = Path(__file__).parents[2] / "fixtures" / "library" / "generated"
 
@@ -36,7 +37,9 @@ def scan_class(documents: Documents):
 @pytest.fixture
 async def toy_session() -> AsyncIterator[Session]:
     """A session on the toy tenant's database, over the fake store."""
-    async with fake_session(tenant_iri=TENANT) as session:
+    async with fake_session(
+        tenant_iri=TENANT, listings=Listings(load_schema(TOY_SCHEMA))
+    ) as session:
         yield session
 
 
@@ -54,6 +57,9 @@ def collaboration(toy_session: Session) -> Callable[..., Collaboration]:
             view=view,
             rules=rules,
             iris=DEFAULT_IRIS,
+            mapper=toy_mapper(),
+            models=generated_models(*MODULES),
+            listings=Listings(view),
             caller=who,
             access=access,
         )

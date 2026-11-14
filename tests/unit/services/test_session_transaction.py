@@ -9,11 +9,12 @@ from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
 
 import pytest
-from rdflib import Graph, Literal, URIRef
+from rdflib import RDF, Graph, Literal, URIRef
 
 from rdf_persistence.domain.exceptions import Conflict, NotFound, StoreUnavailable
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_files import RdfFormat
+from rdf_persistence.domain.generated.service.rp_service import Condition
 from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
@@ -367,3 +368,69 @@ async def test_a_transaction_used_after_its_block_raised_raises_too(session, see
             raise KeyError("boom")
     with pytest.raises(RuntimeError, match="ended"):
         await t.add_graph(C, title(C, "late"))
+
+
+# -- _require_match: a guard that the aggregate still meets a rule (collaboration PD-15) ------------
+
+KIND = URIRef("https://example.org/Kind")
+
+
+def kind(iri: str, text: str) -> list:
+    return [(URIRef(iri), RDF.type, KIND), *title(iri, text)]
+
+
+def titled(text: str) -> list[Condition]:
+    return [Condition(predicate=str(TITLE), value=text)]
+
+
+@pytest.fixture
+async def typed(session) -> dict[str, str]:
+    """A titled "first" and B titled "second", both of ``KIND``."""
+    return {
+        A: await session.add_graph(A, kind(A, "first")),
+        B: await session.add_graph(B, kind(B, "second")),
+    }
+
+
+async def test_a_match_guard_that_holds_lets_the_commit_through(session, typed):
+    async with session.transaction() as t:
+        await t.remove(A, typed[A])
+        t._require_match(A, str(KIND), titled("first"))
+    assert not await stored(session, A)
+
+
+async def test_a_match_guard_that_fails_refuses_the_commit_and_writes_nothing(
+    store, session, typed
+):
+    with pytest.raises(Conflict) as refused:
+        async with session.transaction() as t:
+            await t.remove(A, typed[A])
+            t._require_match(A, str(KIND), titled("other"))
+    assert refused.value.iris == (), "a guard that only stopped holding names no one"
+    assert str(refused.value) == "the commit lost a race with another writer; read again and retry"
+    assert await stored(session, A)
+    assert not await a_marker_is_left(store)
+
+
+async def test_the_class_of_a_match_guard_must_be_the_class_of_the_aggregate(session, typed):
+    with pytest.raises(Conflict):
+        async with session.transaction() as t:
+            await t.remove(A, typed[A])
+            t._require_match(A, "https://example.org/Other", titled("first"))
+    assert await stored(session, A)
+
+
+async def test_two_match_guards_of_one_transaction_do_not_join(session, typed):
+    async with session.transaction() as t:
+        await t.remove(A, typed[A])
+        await t.remove(B, typed[B])
+        t._require_match(A, str(KIND), titled("first"))
+        t._require_match(B, str(KIND), titled("second"))
+    assert not await stored(session, A) and not await stored(session, B)
+
+
+async def test_a_match_guard_after_the_block_ended_raises(session, typed):
+    async with session.transaction() as t:
+        await t.remove(A, typed[A])
+    with pytest.raises(RuntimeError, match="ended"):
+        t._require_match(B, str(KIND), titled("second"))

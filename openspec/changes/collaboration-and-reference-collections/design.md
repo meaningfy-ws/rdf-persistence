@@ -410,6 +410,131 @@ delivers.
   other-tenant row in the unit file (the tester's file has both); TC-02 reading the manifest.
   Pinned by the tester and confirmed as intended: a triple in a loaded graph is not a
   reference; the tenant root is never a referrer but may be the target.
+- **PD-27** (stage 2, the adversarial tester after task 2.4 and the cold reader of the how-to,
+  2026-11-14; 171 tests, 7 failing). Accepted, fixed before the PR:
+  1. **A cascade deletes only members of the collection's member class** (tester nos. 2, 3).
+     `delete_cascade` trusted the stored `had_member`: a collection written without guards that
+     names the tenant's access record, or an aggregate of another class, had it deleted. Now a
+     head whose types hold neither the member class nor a descendant refuses the whole cascade
+     with `StoredDataInvalid` naming the collection, not the member; nothing is deleted. The
+     check uses the heads already read, so it costs no query.
+  2. **The write guard refuses triples that do not decode** (no. 4): a collection whose triples
+     the generated class refuses (no `member_class`) is `InvalidBody`, not a bare pydantic
+     `ValidationError`.
+  3. **A stray `rp:membershipRule` does not break `collections_of`** (no. 7): a root with the
+     rule predicate whose type is not a collection class is skipped, not `BadQuery` for every
+     caller.
+  4. **An unreadable collection is not named in `StoredDataInvalid`**: when a stored collection
+     the schema no longer accepts makes `collections_of` fail, the message names it only if the
+     caller may read it; otherwise it says one collection of the tenant cannot be read.
+  5. `Referrer`, `ReferrerList` and `MemberList` are exported from `rdf_persistence`, as `Page`
+     is: they are what the public reads return.
+  6. Tests: the failure branch of the match guard on Fuseki (TC-36b's form, in IT-04); a named
+     member of a subclass is accepted and a rule member of a subclass is not listed; the
+     vacuous assertion of the stage 1 test for a schema without `rp_collections` is replaced by
+     the fixture that really lacks the module (`partial.yaml`).
+  7. The how-to page, from the cold read: where `if_version` comes from; how a shelf is changed
+     (a replace, guarded like an add); what "all or nothing" covers beside skipped members and
+     left blobs; a deleted member stays named and the next save of the shelf is refused until
+     it is taken out; a shelf of shelves with an empty rule holds itself; the example's books
+     made consistent; one errors table for the cascade.
+
+  Rejected, the tests turned round to pin the behaviour: two cascades of one collection where
+  the loser reports success (no. 1: a removes-only commit whose roots another writer already
+  removed is a success, atomic-commit PD-17e; the collection is gone either way); a literal as
+  the rule, or two `member_class` values, written as raw triples (nos. 5, 6: the guard checks
+  the decoded model; the generic API validates the shape before it, and the mapper writes one
+  value). Pinned by the tester and confirmed: a named member changed before the versions are
+  read is deleted at its new version, and only a change after that is a `Conflict`; a member
+  removed after the versions are read is a `Conflict` naming it; `members` of a collection
+  that lists itself includes it.
+- **PD-28** (stage 2 challenge, 2026-11-14; four review passes on PR #98). Accepted, fixed
+  before the merge. Security first:
+  1. **A rule member the caller may not read is neither listed nor counted** (L1 C1; the lead's
+     decision, narrowing DEC-7 and PD-7 for rule members only; the developer may overrule). The
+     rule's equalities are chosen by whoever may modify a collection, so counting its hidden
+     matches let that caller count the aggregates it may not read by slot value, and with two
+     equalities learn a slot value of one of them. `members` (plain and deep) drops unreadable
+     rule members; `hidden_count` counts only unreadable **named** members, whose IRIs the
+     writer already held. In `delete_cascade` a rule member the caller may not read is no
+     member for that caller: it is not deleted and causes no refusal (the lead, after reading
+     the fix: a refusal "members matched by the rule may not be deleted" was still a yes-or-no
+     answer to "does something hidden match my rule"); `CommitTooLarge` gives the limit and no
+     member count. `collections_of` is unchanged: its hidden holders are not chosen by the
+     caller. The spec says so.
+  2. **A cascade checks the stored member class as the write guard does** (L1 W1; completes
+     PD-27 item 1). A collection written without guards with `member_class` set to a class that
+     is not a served root (the tenant's access class) could still have that aggregate deleted.
+     `delete_cascade`, and a deep read before it expands, require `member_class` to be a served
+     root, else `StoredDataInvalid` naming the collection; an unknown class is the same error,
+     not an `AttributeError`.
+  3. **The tenant root is never cascaded** (L1 W2): `delete_cascade` refuses the tenant IRI with
+     `InvalidIri`. On the tenant, deleting needs `administer`, which a cascade's `delete` check
+     would have bypassed for a tenant root class that mixes in `ReferenceCollection`.
+  4. RISK-8 reworded (L1 S1): the modifier of a collection learns the class of a hidden
+     aggregate it names, by trying member classes; still never its content.
+
+  Correctness:
+  5. **Each rule collection is decoded from its own graph** (L4/L5 W1, L3 W1). The read of rule
+     collections is a generic `Session.graphs_with(predicate, obj=None)`: the graphs of the
+     registered aggregates whose root has that predicate (and object), one `Graph` per root,
+     the predicate pattern first. `Session` no longer names the collection rule; stage 3's
+     thread uses the same read. Triples about another subject inside one collection's graph no
+     longer invent or corrupt a holder.
+  6. A deep read names the nested collection, not the root, when the nested one cannot be read
+     (L4/L5 W2, L2 no. 1); a nested member that is no longer a collection is skipped like one
+     that is gone (L4/L5 W3); the stored-data wrapper catches the errors each step documents,
+     not every `LookupError` (L4/L5 W4).
+  7. `READ_HEADS` starts from `VALUES` of the IRIs asked, not from the registry (L4/L5 W6).
+  8. An explicit holder in `collections_of` is a referrer by `prov:hadMember` **typed with a
+     collection class** (L4/L5 S9); `members` and `delete_cascade` refuse an IRI that is not an
+     aggregate of the tenant with `InvalidIri`, as `collections_of` does.
+
+  Structure:
+  9. **The collection code moves to `services/reference_collections.py`** (L3 W2, S2; L4/L5
+     S2): what a collection is (the helpers now in `write_guards.py`, with the three duplicated
+     checks made one each) and a `ReferenceCollections` class with `members`, `collections_of`
+     and `delete_cascade`. `Collaboration` keeps `referrers` and delegates the three, so PD-1's
+     public face is unchanged; `write_guards` imports the collection rule from the new module.
+     Stage 3 and 4 add their own modules the same way.
+  10. An import contract in `.importlinter`: `services.session` imports none of
+      `services.access`, `services.collaboration`, `services.reference_collections`,
+      `services.write_guards` (L3 S3).
+
+  Spec, tests and docs:
+  11. The spec's cascade requirement says what is built (L2 no. 2): member versions are guarded
+      from the moment they are read; a rule member that stopped matching refuses the cascade
+      without being named. The how-to says both, and that one bad stored rule collection fails
+      `collections_of` for the resources of its member class (L2 nos. 3, 4);
+      `data-flows.adoc` names the match guard and its empty `Conflict.iris` (L3 S4).
+  12. Tests (L2 nos. 5 to 7 and suggestions): one slow Fuseki cascade just under the root limit
+      with stored members; a shelf and its new books in one commit is refused; `delete_cascade`
+      without the module; TC-15 also reads the members back; a cascade over a stored-file member
+      leaves the blob, if the existing fakes make it a short test; `and`-chained and
+      message-less asserts split in the stage's main test files; two misnamed adversarial tests
+      renamed; the durations row's test count.
+  13. Small: the `Forbidden` text built with a plain `if`; the misformatted `except`; a comment
+      that the match guard's suffix is the guard's index.
+
+  14. From the checker (2026-11-14): a stored rule collection of a class the schema no longer
+      has is `StoredDataInvalid` for `collections_of` too, not an `AttributeError`; the spec and
+      the how-to say that a member another writer removed during the cascade is skipped or
+      refuses it, depending on the moment (replaced is always a refusal); message-less and
+      chained asserts in the stage's three small test files. Not built: the test that a cascade
+      over a stored-file member leaves its blob (the fixer judged the existing fakes need more
+      than a short test); the how-to's sentence rests on the code, where only
+      `services/file_removal.py` deletes blobs.
+
+  Rejected: making `_require_match` public (L3 S1, L4/L5 W5: private is PD-15; recorded here
+  that the collaboration-side modules of `services` are its only callers); narrowing the
+  rule-collection read by member class, one plan shared by `find`, the cascade and `matches`,
+  and building the schema lookup tables once in the kit (L4/L5 S1, S3, S4: optimisations with
+  no measurement behind them; RISK-2 stands); `deque` and the `visited` side effect (L4/L5 S6:
+  falls away or stays trivial with item 9). Marked untested, not built: a named member of a
+  subclass is accepted and a rule member of a subclass is not listed (the toy schema has no
+  aggregate-root subclass, and adding one ripples through every generated artefact; the shared
+  class helper is tested; the how-to says "the class or a class derived from it" without an
+  example).
 
 ## Delivery decisions
 
@@ -422,6 +547,27 @@ delivers.
   (PD-3 step 1 needs `is_aggregate`) and holds the mapper, models and listings only from the
   stage that first uses them. The cross-graph read is `Session.referrer_rows` (rows of IRIs, no
   access, no schema names); the names and the access filter stay in `Collaboration`.
+- **D-4** (2026-11-14, the lead, before stage 2): two consequences of PD-26 for PD-7 and the
+  impact gate.
+  1. `collections_of` cannot reuse the public `referrers(iri, slot="had_member")` for its hidden
+     count: since PD-26 that count covers every hidden referrer, not only hidden collections.
+     It uses the same rows (`Session.referrer_rows`) and keeps those whose predicate is
+     `prov:hadMember` before the access split. This narrowing is the toolkit's own, not a
+     caller's, so it reveals nothing a caller chose to probe.
+  2. Impact before task 2.2 (GitNexus, 2026-11-14): `open_session` CRITICAL (187 dependents),
+     `Session.replace_graph` HIGH, `Tenancy` MEDIUM. Reported to the developer. The change is
+     PD-6's: an optional `guards=None`, so a session opened without guards behaves as before;
+     the session tests, the store conformance suite and the full gates are the safety net.
+- **D-5** (2026-11-14, the lead, task 2.2): `Session.heads` and TC-32 move from task 2.3 to
+  task 2.2, because the collection guard (PD-6 step 3) is its first caller.
+  `WriteGuards.prepare` takes `(session, iri, triples, stored)` in stage 2; `allowed_state`
+  arrives with the workflow rule in task 4.3, its first use. `testkit.fake_session` gains the
+  same optional `guards` as `open_session`, so the guard tests run on the fake store.
+- **D-6** (2026-11-14, the lead, task 2.2 as built): the collection guard reads the store when
+  the collection is collected, so a collection cannot be saved in the same commit as members
+  that are not stored yet: they have no head and the save is refused (`InvalidBody`). Members
+  are saved first. The how-to says so (task 2.6). The guard asks the session which IRIs are not
+  aggregates of the tenant (`Session.not_aggregates`), so it reads no private state.
 
 ## Algorithm / approach
 
@@ -564,8 +710,9 @@ ada `comment(b1, "thanks", reply_to=c2)` → `c3`.
 - **RISK-7** — `Action.annotate` and the new slots appear in generated artefacts (OpenAPI,
   TypeScript, snapshots, golden files) (certain; low). Regenerate and refresh in each stage.
 - **RISK-8** — the collection guard reveals to a collection's modifier whether a hidden IRI is a
-  registered aggregate of the member class (certain; low). Accepted (PD-6): no content is shown,
-  and the modifier already holds the IRI.
+  registered aggregate of the member class, and so, by trying member classes, the class of a
+  hidden aggregate whose IRI it holds (certain; low). Accepted (PD-6, PD-28 item 4): no content
+  is shown, and the modifier already holds the IRI.
 - **Assumption** — aggregate graphs hold only slot predicates (checked: the mapper and the
   shape-validated generic API are the only writers).
 - **Assumption** — `atomic-commit` is merged with `Transaction`, its `guards`/`operations` lists,

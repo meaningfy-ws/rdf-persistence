@@ -11,5 +11,15 @@
   "contributor": {
     "@embed": "@never",
     "@omitDefault": true
+  },
+  "membership_rule": {
+    "@embed": "@always",
+    "@omitDefault": true,
+    "@type": "MembershipRule",
+    "rule_equalities": {
+      "@embed": "@always",
+      "@omitDefault": true,
+      "@type": "SlotEquality"
+    }
   }
 }

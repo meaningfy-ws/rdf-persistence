@@ -103,6 +103,15 @@ caller may not read are counted in `hidden_count` and never named. It only infor
 never refused because of referrers. See
 xref:howto/reverse-references.adoc[Find who points at a resource].
 
+*How do I group resources I do not own?*::
+Mix `ReferenceCollection` (module `rp_collections`) into an aggregate root of your schema. It then
+names its members by IRI in `had_member`, by a `membership_rule`, or both, and holds none of their
+triples. Store the members before the collection: a save that names a member which is not stored,
+or not of `member_class`, is refused. Read with `collab.members(iri)` and
+`collab.collections_of(iri)`; `collab.delete_cascade(iri, if_version)` deletes the collection with
+its members, all or nothing. See
+xref:howto/reference-collections.adoc[Group resources you do not own].
+
 *How do I make my own IRIs?*::
 Describe their shape as an `IriPolicy`: a template for the tenant, the aggregates, the owned parts
 and the loaded graphs (for example `{base}{tenant_id}/{type}/{id}`) and the rule for each id (a

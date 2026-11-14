@@ -68,6 +68,10 @@ REGISTRY_KIND_IRIS = meanings(RegistryKind)
 STATE = predicate("state")
 TENANT_STATE_IRIS = meanings(TenantState)
 
+# A collection names its members, and has a rule that says which others belong (PD-5, PD-7).
+HAD_MEMBER = predicate("had_member")
+MEMBERSHIP_RULE = predicate("membership_rule")
+
 GRANTS = predicate("grants")
 PROHIBITIONS = predicate("prohibitions")
 ASSIGNEE = predicate("assignee")

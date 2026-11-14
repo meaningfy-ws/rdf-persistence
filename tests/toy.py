@@ -18,7 +18,7 @@ from rdf_persistence import (
     generated_models,
     new_part,
 )
-from rdf_persistence.domain.generated import rp_access, rp_core
+from rdf_persistence.domain.generated import rp_access, rp_collections, rp_core
 from rdf_persistence.domain.iris import graph_iri
 from rdf_persistence.services.schema import load_schema
 from tests.fixtures.library.generated import (
@@ -39,7 +39,16 @@ ADA = "https://example.org/people/ada"
 BOB = "https://example.org/people/bob"
 ROLES = Path(__file__).parent / "fixtures" / "library" / "library_roles.yaml"
 DATABASE = "acme-t-" + "0" * 32
-MODULES = (books, library, library_access, library_tenant, scans, rp_access, rp_core)
+MODULES = (
+    books,
+    library,
+    library_access,
+    library_tenant,
+    scans,
+    rp_access,
+    rp_core,
+    rp_collections,
+)
 
 
 @cache
@@ -108,8 +117,8 @@ def dune(iri: str, *, chapters: int = 2, **slots: str) -> Book:
 
 
 def shelf(iri: str) -> Shelf:
-    """A shelf with the given IRI."""
-    return Shelf(id=iri, label="Shelf", description="A shelf.")
+    """A shelf of books with the given IRI."""
+    return Shelf(id=iri, label="Shelf", description="A shelf.", member_class="Book")
 
 
 def access(

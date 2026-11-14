@@ -15,6 +15,7 @@ from collections.abc import AsyncIterator, Callable, Iterable, Sequence
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from enum import Enum
+from typing import Protocol
 
 from pydantic import BaseModel
 from rdflib import RDF, BNode, Graph, Literal, URIRef
@@ -31,7 +32,13 @@ from rdf_persistence.domain.generated.rp_core import (
     RegistryKind,
 )
 from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.generated.service.rp_service import Filter, ListPlan, ListRequest
+from rdf_persistence.domain.generated.service.rp_service import (
+    AggregateHead,
+    Condition,
+    Filter,
+    ListPlan,
+    ListRequest,
+)
 from rdf_persistence.domain.iris import (
     DEFAULT_IRIS,
     Iris,
@@ -45,12 +52,20 @@ from rdf_persistence.domain.sparql import (
     fill,
     fragment,
     join,
+    match_patterns,
     term,
     term_list,
     triples_block,
 )
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.listing import PAGE, Listings, items_of, listing_query, total_of
+from rdf_persistence.services.listing import (
+    PAGE,
+    Listings,
+    condition_pairs,
+    items_of,
+    listing_query,
+    total_of,
+)
 from rdf_persistence.services.loading import parse_graph
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.unique_keys import (
@@ -133,6 +148,29 @@ REMOVE = ";\n".join((_DROP_ALL_LOADED, _DROP_ENTRIES, _DROP_GRAPH))
 # What the transaction wrote, in one ASK (PD-3), and which graph holds what, for the diagnosis (PD-4).
 CONFIRM = "ASK { $patterns }"
 _HOLDS_TOKEN = "GRAPH $graph { $graph $p_version $new }"
+# The registered aggregates among $members: each one's types and version (PD-6).
+READ_HEADS = """
+SELECT ?m ?type ?version WHERE {
+  VALUES ?m { $members }
+  GRAPH $registry { ?g $p_kind $aggregate ; $p_owned_by ?m }
+  GRAPH ?g { ?m a ?type . ?g $p_version ?version }
+}
+"""
+# The whole graph of every registered aggregate whose root has $predicate (with the object $object,
+# or any), one row per triple and root (PD-28). The predicate pattern comes first, so the store
+# starts from the triples that hold it and not from every aggregate.
+READ_GRAPHS_WITH = """
+SELECT DISTINCT ?root ?s ?p ?o WHERE {
+  GRAPH ?g { ?root $predicate $object }
+  GRAPH $registry { ?g $p_kind $aggregate ; $p_owned_by ?root }
+  GRAPH ?g { ?s ?p ?o }
+}
+"""
+# Is $iri an aggregate of class $type whose graph holds every statement of $patterns (PD-7)?
+MATCHES = "ASK { GRAPH $graph { ?root a $type . $patterns FILTER (?root = $iri) } }"
+# The same as a guard of a transaction: its variables carry $n, the guard's index in the transaction,
+# so the guards never join.
+_MATCH_GUARD = "GRAPH $graph { ?root$n a $type . $patterns FILTER (?root$n = $iri) }"
 READ_VERSIONS = (
     "SELECT ?g ?version WHERE { VALUES ?g { $graphs } "
     "OPTIONAL { GRAPH ?g { ?g $p_version ?version } } }"
@@ -359,6 +397,17 @@ def remove_parts(
     return _at_version(graph, old_version), operations
 
 
+class WriteGuard(Protocol):
+    """What a transaction asks before it collects an add or a replace (PD-6): the triples to write.
+
+    ``stored`` is ``None`` for an add, the stored tracking for a replace. It raises to refuse.
+    """
+
+    async def prepare(
+        self, session: "Session", iri: str, triples: list[Triple], stored: Tracked | None
+    ) -> list[Triple]: ...
+
+
 class Session:
     """Reads and commits whole graphs of one tenant database on behalf of one principal."""
 
@@ -373,8 +422,10 @@ class Session:
         iris: Iris = DEFAULT_IRIS,
         listings: Listings | None = None,
         keys: Sequence[AggregateKey] = (),
+        guards: WriteGuard | None = None,
     ) -> None:
         self._keys = tuple(keys)
+        self._write_guards = guards
         self._listings = listings
         self._iris = iris
         self._store = store
@@ -531,6 +582,84 @@ class Session:
             )
             for r in rows
         ]
+
+    def not_aggregates(self, iris: Iterable[str]) -> list[str]:
+        """The ``iris`` the policy does not mint for an aggregate of this tenant."""
+        return [i for i in iris if not self._iris.is_aggregate(self._tenant, i)]
+
+    async def heads(self, iris: Sequence[str]) -> list[AggregateHead]:
+        """The IRI, types and version of each of ``iris`` that is a registered aggregate, in IRI order.
+
+        An IRI with no stored aggregate has no head; no IRIs send no query. No access is checked.
+
+        Raises:
+            DatabaseGone: The tenant database does not exist.
+        """
+        if not iris:
+            return []
+        text = fill(
+            READ_HEADS,
+            registry=term(self._registry),
+            p_kind=term(v.REGISTRY_KIND),
+            aggregate=term(v.REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
+            p_owned_by=term(v.REGISTRY_OWNED_BY),
+            p_version=term(v.VERSION),
+            members=join(term(URIRef(i)) for i in iris),
+        )
+        rows = [
+            r for r in await self._store.query(self._database, text) if isinstance(r, ResultRow)
+        ]
+        found: dict[str, tuple[set[str], str]] = {}
+        for r in rows:
+            types, _ = found.setdefault(str(r.m), (set(), str(r.version)))
+            types.add(str(r.type))
+        return [
+            AggregateHead(head_iri=iri, head_types=sorted(types), head_version=version)
+            for iri, (types, version) in sorted(found.items())
+        ]
+
+    async def graphs_with(self, predicate: URIRef, obj: URIRef | None = None) -> dict[str, Graph]:
+        """The stored triples of each registered aggregate whose root has ``predicate`` (with
+        ``obj`` as its object, when given), one ``Graph`` per root, keyed by the root's IRI.
+
+        Triples about another subject inside an aggregate's graph stay in that aggregate's graph.
+        No access is checked and no schema name is known: the caller decodes each graph.
+
+        Raises:
+            DatabaseGone: The tenant database does not exist.
+        """
+        text = fill(
+            READ_GRAPHS_WITH,
+            registry=term(self._registry),
+            p_kind=term(v.REGISTRY_KIND),
+            aggregate=term(v.REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
+            p_owned_by=term(v.REGISTRY_OWNED_BY),
+            predicate=term(predicate),
+            object=SparqlTerm("?any") if obj is None else term(obj),
+        )
+        graphs: dict[str, Graph] = {}
+        for row in await self._store.query(self._database, text):
+            if isinstance(row, ResultRow):
+                graphs.setdefault(str(row.root), Graph()).add((row.s, row.p, row.o))
+        return graphs
+
+    async def matches(self, iri: str, class_iri: str, conditions: Sequence[Condition]) -> bool:
+        """Whether the aggregate ``iri`` is of exactly the class ``class_iri`` and holds every condition.
+
+        The conditions are those of a ``ListPlan``, so this agrees with what ``find`` lists. No
+        access is checked.
+
+        Raises:
+            InvalidIri: ``iri`` is not an aggregate IRI the policy mints for the tenant.
+            DatabaseGone: The tenant database does not exist.
+        """
+        return await self._ask(
+            MATCHES,
+            graph=term(self._graph(iri)),
+            type=term(URIRef(class_iri)),
+            patterns=match_patterns("root", condition_pairs(conditions)),
+            iri=term(URIRef(iri)),
+        )
 
     async def find(self, cls: type[BaseModel], **equals: object) -> list[str]:
         """The IRIs of the tenant's aggregates of ``cls`` whose slots equal ``equals``, in IRI order.
@@ -760,10 +889,13 @@ class Transaction:
         self._operations.append(parts[1])
         self._confirm.append(confirm)
 
-    def _claim(self, iri: str) -> URIRef:
-        """The graph of ``iri``; a second change on the same graph, whatever string type, is refused."""
+    def _require_open(self) -> None:
         if self._ended:
             raise RuntimeError("the transaction has ended; a change now would be dropped")
+
+    def _claim(self, iri: str) -> URIRef:
+        """The graph of ``iri``; a second change on the same graph, whatever string type, is refused."""
+        self._require_open()
         graph = self._session._graph(iri)
         if graph in self._roots:
             raise ValueError(f"{iri} already has a change in this transaction")
@@ -795,6 +927,8 @@ class Transaction:
         graph = self._claim(iri)
         await session._check_commit(iri, loaded_graphs)
         triples = list(triples)
+        if session._write_guards is not None:
+            triples = await session._write_guards.prepare(session, iri, triples, None)
         key_claims = claims_of(session._keys, iri, triples)
         version = str(uuid.uuid4())
         tracking = Tracked(created=session._clock(), creator=session._principal.id)
@@ -824,6 +958,8 @@ class Transaction:
         await session._check_commit(iri, loaded_graphs or [])
         _, stored = await session._stored(graph)
         triples = list(triples)
+        if session._write_guards is not None:
+            triples = await session._write_guards.prepare(session, iri, triples, stored)
         key_claims = claims_of(session._keys, iri, triples)
         if loaded_graphs is None:
             loaded_graphs = await session._registered_loaded(iri)
@@ -859,6 +995,24 @@ class Transaction:
         await session._stored(graph)
         parts = remove_parts(graph, session._registry, URIRef(iri), self._marker_iri, if_version)
         self._collect(iri, graph, if_version, None, parts, _absent(graph, len(self._roots)))
+
+    def _require_match(self, iri: str, class_iri: str, conditions: Sequence[Condition]) -> None:
+        """Guard the commit on ``iri`` being of exactly ``class_iri`` and holding every condition
+        when the request is applied (the test of ``Session.matches``). It collects no change and
+        names no one if it fails (PD-15)."""
+        self._require_open()
+        number = count(len(self._guards))
+        patterns = match_patterns(f"root{number}", condition_pairs(conditions))
+        self._guards.append(
+            fragment(
+                _MATCH_GUARD,
+                graph=term(self._session._graph(iri)),
+                type=term(URIRef(class_iri)),
+                patterns=patterns,
+                iri=term(URIRef(iri)),
+                n=number,
+            )
+        )
 
     async def commit(self) -> None:
         """Send the request and confirm it (PD-2, PD-3); nothing is sent if there is no change.
@@ -975,12 +1129,14 @@ async def open_session(
     iris: Iris = DEFAULT_IRIS,
     listings: Listings | None = None,
     keys: Sequence[AggregateKey] = (),
+    guards: WriteGuard | None = None,
 ) -> AsyncIterator[Session]:
     """Open a session on the tenant database ``database`` for ``principal``; ``iris`` is the IRI policy
     (default: the default policy); ``listings`` lets the session ``find`` aggregates.
 
     ``keys`` are the keys across aggregates the commits enforce (``schema_structure.aggregate_keys``
     of the schema). With none, no key is enforced: a consumer opening sessions itself passes them.
+    ``guards`` vet each add and replace (none: nothing is checked).
     """
     yield Session(
         store,
@@ -991,4 +1147,5 @@ async def open_session(
         iris=iris,
         listings=listings,
         keys=keys,
+        guards=guards,
     )

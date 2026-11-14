@@ -194,6 +194,11 @@ def _term(condition: Condition) -> URIRef | Literal:
     )
 
 
+def condition_pairs(conditions: Iterable[Condition]) -> list[tuple[URIRef, URIRef | Literal]]:
+    """The ``(predicate, value)`` each condition of a plan asks for."""
+    return [(URIRef(c.predicate), _term(c)) for c in conditions]
+
+
 class Listings:
     """Turns a ``ListRequest`` into a ``ListPlan`` against the classes of one schema."""
 
@@ -272,7 +277,6 @@ def listing_query(registry: URIRef, plan: ListPlan) -> str:
     page = _PAGE_BY_SLOT if by_slot else _PAGE_BY_IRI
     keys = (("key", descending), ("root", False)) if by_slot else (("root", descending),)
     terms = {"p_sort": term(URIRef(plan.sort_by))} if plan.sort_by is not None else {}
-    pairs = ((URIRef(c.predicate), _term(c)) for c in plan.conditions or [])
     return fill(
         _LISTING % (_COUNT, page),
         **terms,
@@ -281,7 +285,7 @@ def listing_query(registry: URIRef, plan: ListPlan) -> str:
         p_owned_by=term(v.REGISTRY_OWNED_BY),
         aggregate=term(v.REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
         **{"class": term(URIRef(plan.target))},
-        patterns=match_patterns("root", pairs),
+        patterns=match_patterns("root", condition_pairs(plan.conditions or [])),
         hidden=term_list(URIRef(graph) for graph in plan.hidden_graphs or []),
         p_listed_in=term(v.LISTED_IN),
         p_total=term(v.TOTAL),

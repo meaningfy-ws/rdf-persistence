@@ -61,7 +61,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 
 ## 2. Reference collections (#79)
 
-- [ ] 2.1 `model/rp_collections.yaml` (PD-5), imported by `rp.yaml`; the toy `Shelf` mixes in
+- [x] 2.1 `model/rp_collections.yaml` (PD-5), imported by `rp.yaml`; the toy `Shelf` mixes in
   `ReferenceCollection`; the kit's `generated_models_of` gains `rp_collections` (PD-1);
   `make generate`; snapshot; TC-02a re-run. Test first in `tests/unit/services/test_mapper.py`.
 
@@ -69,7 +69,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 |---|---|---|
 | TC-14 | `Shelf(member_class="Book", had_member=[b1], membership_rule=MembershipRule(rule_equalities=[SlotEquality(equals_slot="genre", equals_value="poetry")]))` round-trip | equal object; the rule is a skolem node in s1's graph; `rdf:type prov:Collection` is not written (mixin), `lib:Shelf` is |
 
-- [ ] 2.2 `WriteGuards` with the collection rule (PD-6); `Session(…, guards=)`,
+- [x] 2.2 `WriteGuards` with the collection rule (PD-6); `Session(…, guards=)`,
   `open_session(…, guards=)`, `Tenancy(…, guards=)`, the kit builds it; `Transaction.add_graph`
   and `replace_graph` call it. Test first in `tests/unit/services/test_write_guards.py`.
 
@@ -84,7 +84,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-21 | the generic API `POST /shelves` with a wrong member (router test, `tests/unit/entrypoints/test_router.py`) | 422-class problem; nothing stored |
 | TC-22 | session opened without guards saves TC-16 | stored (documented) |
 
-- [ ] 2.3 `members`, `collections_of` (explicit holders through `referrers(iri, slot="had_member")`),
+- [x] 2.3 `members`, `collections_of` (explicit holders through `referrers(iri, slot="had_member")`),
   `Session.matches`, `Session.heads` (PD-6, PD-7). Test first in
   `tests/unit/services/test_collaboration_collections.py`.
 
@@ -101,7 +101,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-31 | stored s1 whose rule slot the schema no longer has (write the graph without guards) | `StoredDataInvalid` naming s1 |
 | TC-32 | `Session.heads([b1, b9])` | one `AggregateHead` for b1 (type `bibo:Book`, its version); none for b9 |
 
-- [ ] 2.4 `delete_cascade` (PD-8). This is the riskiest task of the change: the adversarial tester
+- [x] 2.4 `delete_cascade` (PD-8). This is the riskiest task of the change: the adversarial tester
   runs after it. Includes `Transaction._require_match` (PD-15) and the `DEFAULT_MAX_ROOTS`
   constant in `services/mapper.py` if `atomic-commit` did not export it. Test first in
   `tests/unit/services/test_collaboration_cascade.py`.
@@ -120,7 +120,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-39 | stale `if_version` on s1 | `Conflict`; nothing deleted |
 | TC-40 | s1 lists b9 already deleted | s1 deleted; no error |
 
-- [ ] 2.5 On Fuseki: `tests/integration/store/test_collaboration.py`; gate as 1.3.
+- [x] 2.5 On Fuseki: `tests/integration/store/test_collaboration.py`; gate as 1.3.
 
 | ID | Input | Expected |
 |---|---|---|
@@ -128,7 +128,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | IT-04 | TC-34, TC-35 | as there |
 | IT-05 | 50 rule shelves of `Book`, `collections_of(b3)` | correct; time noted in `develop/index.adoc` |
 
-- [ ] 2.6 Docs: `howto/reference-collections.adoc`, nav, `questions.adoc` ("How do I group
+- [x] 2.6 Docs: `howto/reference-collections.adoc`, nav, `questions.adoc` ("How do I group
   resources I do not own?"); data-flows: the write guard. `make check-docs`. Close the stage.
 
 ## 3. Discussion (#81)

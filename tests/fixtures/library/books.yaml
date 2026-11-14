@@ -15,6 +15,7 @@ imports:
   - linkml:types
   - rdf_persistence/model/rp_core
   - rdf_persistence/model/rp_annotations
+  - rdf_persistence/model/rp_collections
 annotations:
   module_kind: domain
 
@@ -35,9 +36,9 @@ classes:
       database: tenant
   Shelf:
     title: Shelf
-    description: A shelf of the library; an aggregate root that books are placed on.
+    description: A shelf of the library; an aggregate root that books are placed on, and a collection of the books it names.
     class_uri: lib:Shelf
-    mixins: [AggregateRoot, Described, Tracked]
+    mixins: [AggregateRoot, Described, Tracked, ReferenceCollection]
     annotations:
       rp_path: shelves
       database: tenant

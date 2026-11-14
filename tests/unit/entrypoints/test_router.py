@@ -439,6 +439,23 @@ async def test_a_created_book_has_a_minted_iri_a_location_and_a_version(scene) -
     assert response.headers["etag"], "version"
 
 
+async def test_a_shelf_with_a_member_of_the_wrong_class_is_a_422_and_stores_nothing(scene) -> None:
+    """TC-21: the generic route passes the collection guard; the member is a book, not a shelf."""
+    body = {
+        "label": "Shelf",
+        "description": "A shelf.",
+        "member_class": "Shelf",
+        "had_member": [scene.book_iri],
+    }
+    response = await scene.http.post(
+        f"{scene.tenant}/shelves", json=body, headers=scene.headers("ada")
+    )
+    assert (response.status_code, problem_of(response).type) == (422, f"{PROBLEMS}invalid-body")
+    assert scene.book_iri in (problem_of(response).detail or ""), "the member is named"
+    listed = await scene.http.get(f"{scene.tenant}/shelves", headers=scene.headers("ada"))
+    assert listed.json()["total"] == 0, "nothing was stored"
+
+
 async def test_a_book_sent_with_an_iri_on_create_is_refused(scene) -> None:
     body = {**DUNE_BODY, "id": f"{SETTINGS.base}libraries/{NIL}1/books/{NIL}2"}
     response = await scene.http.post(

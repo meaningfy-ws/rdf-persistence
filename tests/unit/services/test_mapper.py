@@ -12,6 +12,7 @@ from rdflib import RDF, BNode, Graph, Literal, URIRef
 from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
+from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
 from rdf_persistence.domain.iris import (
     DEFAULT_IRIS,
     graph_iri,
@@ -30,6 +31,8 @@ from tests.toy import access as toy_access
 
 SCHEMA = URIRef("http://schema.org/")
 LIB = "https://example.org/ns/library#"
+RP = "https://meaningfy.ws/ns/rdf-persistence#"
+PROV = "http://www.w3.org/ns/prov#"
 ROOT_CLASSES = {"Book": Book, "Scan": Scan, "Library": Library, "LibraryAccess": LibraryAccess}
 
 
@@ -181,6 +184,30 @@ def test_a_book_keeps_its_shelf_and_its_prequel_as_plain_references():
     assert (back.shelf, back.sequel_of) == (on, prequel), "the same IRIs come back"
     path = mapper.view.get_class(Shelf.__name__).annotations["rp_path"].value
     assert path == "shelves", "the shelf is a root with its own collection path"
+
+
+def test_a_shelf_with_members_and_a_rule_round_trips_and_is_typed_by_its_own_class_only():
+    """TC-14: the rule is an owned part with no identifier; the mixin's class is not written."""
+    rule = MembershipRule(
+        rule_equalities=[SlotEquality(equals_slot="genre", equals_value="poetry")]
+    )
+    iri = shelf_iri(1)
+    on = shelf(iri).model_copy(
+        update={"member_class": "Book", "had_member": [book_iri(1)], "membership_rule": rule}
+    )
+    mapper = toy_mapper()
+    graph = mapper.to_graph(on)
+    rules = list(graph.objects(URIRef(iri), URIRef(f"{RP}membershipRule")))
+    assert len(rules) == 1, "the shelf has one rule"
+    assert isinstance(rules[0], BNode), "and the rule is a part of the shelf, with no IRI yet"
+    skolem = skolemised(graph, iri)
+    assert (URIRef(iri), RDF.type, URIRef(f"{LIB}Shelf")) in skolem, "the shelf's own class"
+    assert (URIRef(iri), RDF.type, URIRef(f"{PROV}Collection")) not in skolem, "a mixin: no type"
+    assert str(next(skolem.objects(URIRef(iri), URIRef(f"{RP}membershipRule")))).startswith(
+        f"{iri}/graph/.well-known/genid/"
+    ), "the rule is a skolem node in the shelf's graph"
+    back = mapper.from_graph(Shelf, iri, skolem, graph_iri(iri))
+    assert untracked(back) == untracked(on), "the same shelf comes back"
 
 
 def test_a_grant_assignee_that_is_an_iri_string_is_written_and_read_as_an_iri():

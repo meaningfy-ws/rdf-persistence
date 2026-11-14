@@ -7,7 +7,12 @@ from pathlib import Path
 from types import ModuleType
 from typing import BinaryIO, cast
 
-from rdf_persistence.domain.generated import rp_access, rp_core, rp_tenancy
+from rdf_persistence.domain.generated import (
+    rp_access,
+    rp_collections,
+    rp_core,
+    rp_tenancy,
+)
 from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantAccess, TenantSweepReport
@@ -36,6 +41,7 @@ from rdf_persistence.services.session import Session
 from rdf_persistence.services.store import Store, ToolkitStore
 from rdf_persistence.services.tenancy import GrantValidator, RootValidator, Tenancy
 from rdf_persistence.services.tokens import TokenVerifier
+from rdf_persistence.services.write_guards import WriteGuards
 
 
 class ServiceKit:
@@ -84,17 +90,20 @@ class ServiceKit:
         self.generated_folder = Path(next(iter(generated.__path__)))
         self.documents = Documents(view, self.generated_folder, self.iris)
         self.documents.require_frames()
-        models = generated_models_of(generated, rp_access, rp_core, rp_tenancy)
+        models = generated_models_of(generated, rp_access, rp_core, rp_tenancy, rp_collections)
+        mapper = Mapper(view, models)
+        self.mapper, self.models = mapper, models
         access_class = cast(type[TenantAccess], models.named(tenant_access_class(view).name))
         self.tenancy = Tenancy(
             self.store,
             files,
             settings,
-            mapper=Mapper(view, models),
+            mapper=mapper,
             root_class=models.named(self.documents.tenant_root.name),
             access_class=access_class,
             iris=self.iris,
             listings=self.listings,
+            guards=WriteGuards(mapper, models, self.listings),
             grant_validators=grant_validators,
             root_validators=root_validators,
         )
@@ -263,6 +272,9 @@ class ServiceKit:
                 view=self.view,
                 rules=self.rules,
                 iris=self.iris,
+                mapper=self.mapper,
+                models=self.models,
+                listings=self.listings,
                 caller=caller,
                 access=access,
             )
