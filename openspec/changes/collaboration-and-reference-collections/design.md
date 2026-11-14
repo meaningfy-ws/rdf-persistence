@@ -641,6 +641,53 @@ delivers.
   developer reviewed PD-13; comment IRIs are random, and item 1 and 2 close the paths that hand
   them out); one value for `keys`, `guards` and `dependents` (L3 S1: when a fourth appears);
   moving the validation of the text before the read of the target (L4/L5 S7: PD-13's order).
+- **PD-31** (stage 4, the adversarial tester after task 4.4 and the cold reader of the how-to,
+  2026-11-14; 274 tests, 23 failing, eight causes). Accepted, fixed before the PR:
+  1. **The state cannot be changed by hiding the class** (tester A; replaces task 4.3's choice
+     to read the workflow from the triples being written only). A replace through a session or
+     a transaction whose triples dropped the root's `rdf:type` carried any state past the
+     guard, and a second replace restored the type; an add of an untyped root in a state, then
+     a replace with the type, did the same. Now: a root that carries `adms:status` and is of
+     no class under a workflow is refused (`Forbidden`), on add and on replace; and on a
+     replace the workflow is that of the STORED root's class (or of the written one when the
+     stored root has none), so the stored state is kept whatever type the new triples name. A
+     guarded replace therefore costs one small read (the stored types and state together) in a
+     service that configures workflows, for every class; an add, and any write of a service
+     without workflows, costs none. TC-81 reads accordingly. The unit of work and the generic
+     API were never open to this (a model writes its class; a route fixes it).
+  2. A blank comment on a transition is no comment (tester B): `"  "` where none is required
+     stores none; where one is required it is refused, as before.
+  3. `transitions` sorts a time without a zone as UTC and a record without a time first, as a
+     thread does (tester C).
+  4. `load_workflow` answers `InvalidWorkflow` naming the file for a file that is not UTF-8 and
+     for one too deeply nested to parse (tester D).
+  5. A workflow file is refused when its `id` is not an absolute IRI free of spaces, angle
+     brackets, quotes and control characters, or ends with a slash; when two workflows share an
+     `id`; when a state is listed twice; when a transition names no role (tester E, F, pins 2
+     and 10). The state IRI is `id/state`, so a bad `id` makes bad state IRIs.
+  6. Every `InvalidWorkflow` raised while the kit starts names the file, the consistency
+     checks included (tester G).
+  7. An aggregate with two stored states (raw triples) is `StoredDataInvalid` for `transition`,
+     not a move from whichever state is read first (tester H).
+  8. The how-to page, from the cold read: the loaded workflows are on the kit
+     (`kit.workflows`), so an application derives its buttons from the definition and
+     `AccessRules.roles`; there is no call that lists the moves a caller may make; where
+     `if_version` comes from and that it is the token an ETag carries; `to` is a state's name
+     and a stored state is `id/name`; which edits of a file are always safe (adding a state or
+     a transition, changing roles or `comment_required`) and which strand aggregates; no query
+     by state beyond a listing filter if one exists (say only what the code does); a comment
+     given where none is required is stored, a blank one is not; terms explained or linked
+     ("hard rule", "Prohibition", "a token role defined at system level"); one workflow may
+     serve several classes, a class follows one.
+
+  Pinned by the tester and confirmed as intended: the edge is checked before the role, so a
+  caller who may read the aggregate learns which moves exist and which roles they need (that
+  is configuration, not tenant data), and a caller who may not read it learns nothing; a
+  self-edge is a move like any other; a subclass that names another workflow follows its own;
+  a record's agent is the session's principal; a record is a referrer of the comment it names,
+  to whoever may read it; a foreign aggregate typed `rp:TransitionRecord` that does not decode
+  is left out of `transitions` and goes with the aggregate it names; a status on a part is not
+  the root's state; a workflow file no class uses is accepted.
 
 ## Delivery decisions
 

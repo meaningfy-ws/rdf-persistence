@@ -1,5 +1,7 @@
 """Workflow files and their validation at start-up (PD-17, TC-69 to TC-75)."""
 
+from pathlib import Path
+
 import pytest
 
 from rdf_persistence import AccessRules, load_role_definitions
@@ -140,3 +142,43 @@ def test_a_kit_given_a_bad_workflow_file_refuses_to_start_naming_the_file(tmp_pa
 
 def test_the_kit_keeps_its_workflows():
     assert ToyService().kit.workflows.for_class("Book") is not None
+
+
+def test_two_workflows_with_one_id_are_refused_naming_both_files():  # PD-31 item 5
+    twin = review().model_copy(update={"workflow_name": "twin"})
+    with pytest.raises(InvalidWorkflow) as refused:
+        Workflows([review(), twin], VIEW, RULES, [Path("one.yaml"), Path("two.yaml")])
+    assert "one.yaml" in str(refused.value), "the first file"
+    assert "two.yaml" in str(refused.value), "the second file"
+
+
+FILE_OF_THE_FAULT = [  # PD-31 item 6: (id, the definitions, the index of the one at fault)
+    ("a-transition-end", [with_transitions(move("draft", "ghost"))], 0),
+    ("a-role", [with_transitions(move("draft", "in_review", "ghost"))], 0),
+    (
+        "a-transition-twice",
+        [with_transitions(move("draft", "in_review"), move("draft", "in_review"))],
+        0,
+    ),
+    ("a-name-twice", [review(), review()], 1),
+]
+
+
+@pytest.mark.parametrize(
+    ("definitions", "faulty"),
+    [(d, f) for _, d, f in FILE_OF_THE_FAULT],
+    ids=[i for i, _, _ in FILE_OF_THE_FAULT],
+)
+def test_a_check_of_the_workflows_names_the_file_of_the_workflow_at_fault(definitions, faulty):
+    files = [Path("first.yaml"), Path("second.yaml")][: len(definitions)]
+    with pytest.raises(InvalidWorkflow) as refused:
+        Workflows(definitions, VIEW, RULES, files)
+    assert str(files[faulty]) in str(refused.value), "the file of the workflow at fault"
+
+
+def test_a_class_naming_a_workflow_no_file_defines_names_the_class_and_the_files_given():
+    other = review().model_copy(update={"workflow_name": "other"})
+    with pytest.raises(InvalidWorkflow) as refused:
+        Workflows([other], VIEW, RULES, [Path("other.yaml")])
+    assert "Book" in str(refused.value), "the class"
+    assert "other.yaml" in str(refused.value), "the files given"

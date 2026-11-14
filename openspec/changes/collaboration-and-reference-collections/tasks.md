@@ -234,7 +234,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-79 | replace b1 without status (`label` changed) | stored; status draft |
 | TC-80 | a transaction holding `_allow_state(b1, accepted)` replaces with status accepted | stored |
 | TC-80a | `session.transaction()` without `_allow_state`, replace with status accepted | `Forbidden`; no public argument allows it (signature test) |
-| TC-81 | `Shelf` (no workflow) writes | unchanged behaviour; no extra query |
+| TC-81 | `Shelf` (no workflow) writes | unchanged behaviour; an add costs no extra query; a replace costs one small read when the service configures workflows, none otherwise (PD-31 item 1) |
 
 - [x] 4.4 `transition`, `transitions`; dependent link `prov:used` (PD-15, PD-20 to PD-22). The
   adversarial tester runs after it. Test first in
@@ -259,7 +259,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-95 | two transitions from one version (sequenced on the fake store) | first stored, second `Conflict` |
 | TC-96 | `referrers(b1)` after transitions | no records listed |
 
-- [ ] 4.5 On Fuseki; gate `make test-containers TEST_PATH="tests/integration/store/test_collaboration.py tests/integration/api/test_router.py"`.
+- [x] 4.5 On Fuseki; gate `make test-containers TEST_PATH="tests/integration/store/test_collaboration.py tests/integration/api/test_router.py"`.
 
 | ID | Input | Expected |
 |---|---|---|
@@ -267,7 +267,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | IT-09 | TC-78 through the generic `PUT` | refused; b1 in draft |
 | IT-10 | TC-90 | as there |
 
-- [ ] 4.6 Docs: `howto/workflow.adoc` (file format, the stable `id`, RISK-4), nav,
+- [x] 4.6 Docs: `howto/workflow.adoc` (file format, the stable `id`, RISK-4), nav,
   `questions.adoc` ("How do I put a resource through review?"); the adoption guide's kit
   arguments (`workflows=`). `make check-docs`. Close the stage and the change: archive it after
   the last merge.

@@ -3,6 +3,8 @@
 import inspect
 
 import pytest
+from linkml_runtime.linkml_model import SchemaDefinition
+from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence import (
     AccessRules,
@@ -335,13 +337,16 @@ async def rename_shelf(session) -> None:
     await work.commit()
 
 
-async def test_a_class_without_a_workflow_costs_no_extra_query():  # TC-81
+# TC-81. PD-31 item 1: the workflow of a replace is that of the stored root, so a replace of any
+# class costs one read in a service with workflows. Before, a shelf cost none (the class of the
+# written triples decided); an add cost none and a book's replace one, as now.
+async def test_a_replace_of_any_class_costs_one_more_read_when_workflows_are_configured():
     plain = await queries_of(guards(), a_shelf(), then=rename_shelf)
     flowing = await queries_of(guards(workflows=True), a_shelf(), then=rename_shelf)
-    assert flowing == plain, "a shelf is written as before"
+    assert flowing == plain + 1, "a shelf is read once more, for its stored types and state"
 
 
-async def test_an_add_costs_no_extra_query_and_a_replace_one_small_select():
+async def test_an_add_costs_no_extra_query_and_a_book_replace_one_small_select():
     assert await queries_of(guards(workflows=True), a_book()) == await queries_of(
         guards(), a_book()
     ), "an add reads nothing more"
@@ -349,4 +354,15 @@ async def test_an_add_costs_no_extra_query_and_a_replace_one_small_select():
     flowing = await queries_of(
         guards(workflows=True), a_book(), then=lambda s: save_over(s, label="x")
     )
-    assert flowing == plain + 1, "a replace reads the stored state once"
+    assert flowing == plain + 1, "a replace reads the stored types and state once"
+
+
+async def test_a_service_with_no_workflow_loaded_costs_no_extra_query():
+    rules = AccessRules(load_role_definitions(ROLES))
+    nothing = Workflows([], SchemaView(SchemaDefinition(id="https://x.org/s", name="s")), rules)
+    empty = WriteGuards(
+        toy_mapper(), generated_models(*MODULES), Listings(load_schema(TOY_SCHEMA)), nothing
+    )
+    unguarded = await queries_of(guards(), a_shelf(), then=rename_shelf)
+    for kept in (guards(), empty):
+        assert await queries_of(kept, a_shelf(), then=rename_shelf) == unguarded, "as with none"

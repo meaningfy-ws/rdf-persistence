@@ -10,7 +10,7 @@ import math
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from collections.abc import Set as AbstractSet
-from datetime import UTC
+from datetime import UTC, datetime
 
 from linkml_runtime.linkml_model.meta import ClassDefinition
 from linkml_runtime.utils.schemaview import SchemaView
@@ -96,11 +96,14 @@ def _climb(
         node = parent
 
 
+def moment_of(when: datetime | None) -> float:
+    """A time as a number to sort by: one without a zone is read as UTC, none comes first."""
+    return when.replace(tzinfo=when.tzinfo or UTC).timestamp() if when else -math.inf
+
+
 def _oldest_first(comment: Comment) -> tuple[float, str]:
-    """The sort key of a thread: the time (a naive one read as UTC, none first), then the IRI."""
-    created = comment.created
-    moment = created.replace(tzinfo=created.tzinfo or UTC).timestamp() if created else -math.inf
-    return moment, comment.id
+    """The sort key of a thread: the time, then the IRI."""
+    return moment_of(comment.created), comment.id
 
 
 class Discussion:

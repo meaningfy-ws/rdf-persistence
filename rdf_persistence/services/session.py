@@ -95,6 +95,7 @@ SELECT ?version ?created ?creator ?contributor WHERE {
 """
 READ_GRAPH = "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH $graph { ?s ?p ?o } }"
 READ_OBJECTS = "SELECT ?o WHERE { GRAPH $graph { $iri $predicate ?o } }"
+READ_ROOT_VALUES = "SELECT ?p ?o WHERE { GRAPH $graph { $iri ?p ?o FILTER (?p IN ($predicates)) } }"
 READ_NAMED_KEYS = (
     "SELECT DISTINCT ?key WHERE { GRAPH ?g { ?s $p_file_key ?key } FILTER (?key IN ($keys)) }"
 )
@@ -646,6 +647,28 @@ class Session:
         )
         rows = await self._store.query(self._database, text)
         return sorted(cast(URIRef | Literal | BNode, r.o) for r in rows if isinstance(r, ResultRow))
+
+    async def root_values(
+        self, iri: str, predicates: Sequence[URIRef]
+    ) -> dict[URIRef, set[URIRef | Literal | BNode]]:
+        """What the aggregate ``iri`` states of its root with each of ``predicates``, in one query.
+
+        Every predicate is a key, with no values when the aggregate does not state it or is not stored.
+
+        Raises:
+            DatabaseGone: The tenant database does not exist.
+        """
+        text = fill(
+            READ_ROOT_VALUES,
+            graph=term(self._graph(iri)),
+            iri=term(URIRef(iri)),
+            predicates=term_list(list(predicates)),
+        )
+        found: dict[URIRef, set[URIRef | Literal | BNode]] = {p: set() for p in predicates}
+        for row in await self._store.query(self._database, text):
+            if isinstance(row, ResultRow):
+                found[cast(URIRef, row.p)].add(cast(URIRef | Literal | BNode, row.o))
+        return found
 
     def not_aggregates(self, iris: Iterable[str]) -> list[str]:
         """The ``iris`` the policy does not mint for an aggregate of this tenant."""

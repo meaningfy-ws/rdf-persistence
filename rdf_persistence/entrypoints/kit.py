@@ -105,7 +105,9 @@ class ServiceKit:
         )
         mapper = Mapper(view, models)
         self.mapper, self.models = mapper, models
-        self.workflows = Workflows([load_workflow(path) for path in workflows], view, self.rules)
+        self.workflows = Workflows(
+            [load_workflow(path) for path in workflows], view, self.rules, workflows
+        )
         access_class = cast(type[TenantAccess], models.named(tenant_access_class(view).name))
         self.tenancy = Tenancy(
             self.store,

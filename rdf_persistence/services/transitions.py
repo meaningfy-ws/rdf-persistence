@@ -11,7 +11,7 @@ from typing import cast
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import RDF, Graph, URIRef
 
-from rdf_persistence.domain.exceptions import Conflict, Forbidden, InvalidBody
+from rdf_persistence.domain.exceptions import Conflict, Forbidden, InvalidBody, StoredDataInvalid
 from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_discussion import Comment, Motivation
 from rdf_persistence.domain.generated.rp_workflow import (
@@ -24,7 +24,7 @@ from rdf_persistence.domain.iris import Iris, graph_iri
 from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
-from rdf_persistence.services.discussion import mint_iri
+from rdf_persistence.services.discussion import mint_iri, moment_of
 from rdf_persistence.services.mapper import Mapper
 from rdf_persistence.services.session import Dependents, Session
 from rdf_persistence.services.workflows import Workflows, state_iri
@@ -85,6 +85,7 @@ class Transitions:
             Conflict: The workflow has no edge from the current state to ``to`` (a stored state the
                 file no longer lists has none); or the version is not ``if_version``, or ``iri`` was
                 removed meanwhile; nothing was stored.
+            StoredDataInvalid: ``iri`` holds more than one state; nothing was stored.
             DatabaseGone: The tenant database does not exist.
         """
         self._require_module()
@@ -95,7 +96,8 @@ class Transitions:
         workflow = self._workflow_of(iri, graph)
         current = _current(workflow, iri, graph)
         edge = self._edge(workflow, iri, current, to)
-        if edge.comment_required and not (comment or "").strip():
+        comment = comment if comment and comment.strip() else None  # a blank one is none
+        if edge.comment_required and comment is None:
             raise InvalidBody(f"the move to {to} needs a comment")
         return await self._store(iri, graph, workflow, current, to, comment, if_version)
 
@@ -113,7 +115,8 @@ class Transitions:
         found = await self._session.graphs_with(v.USED, URIRef(iri))
         decoded = (self._decode(root, graph) for root, graph in found.items())
         return sorted(
-            (r for r in decoded if r is not None), key=lambda r: (r.started_at_time, r.id)
+            (r for r in decoded if r is not None),
+            key=lambda r: (moment_of(r.started_at_time), r.id),
         )
 
     def _require_module(self) -> None:
@@ -203,8 +206,10 @@ class Transitions:
 
 def _current(workflow: Workflow, iri: str, graph: Graph) -> str:
     """The state IRI stored on ``iri``, or the initial state's when it has none (PD-22)."""
-    stored = graph.value(URIRef(iri), v.WORKFLOW_STATUS)
-    return str(stored) if stored is not None else state_iri(workflow, workflow.initial_state)
+    stored = set(graph.objects(URIRef(iri), v.WORKFLOW_STATUS))
+    if len(stored) > 1:
+        raise StoredDataInvalid(f"{iri} has more than one stored state")
+    return str(next(iter(stored))) if stored else state_iri(workflow, workflow.initial_state)
 
 
 def _moved(iri: str, graph: Graph, entered: str) -> list[Triple]:
