@@ -32,7 +32,7 @@ from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.services.artifacts import CONTEXT_FILE
 from rdf_persistence.services.collaboration import Collaboration
-from rdf_persistence.services.discussion import dependents
+from rdf_persistence.services.discussion import dependents as discussion_dependents
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.identity import Identity
@@ -44,6 +44,7 @@ from rdf_persistence.services.session import Session
 from rdf_persistence.services.store import Store, ToolkitStore
 from rdf_persistence.services.tenancy import GrantValidator, RootValidator, Tenancy
 from rdf_persistence.services.tokens import TokenVerifier
+from rdf_persistence.services.transitions import dependents as transition_dependents
 from rdf_persistence.services.workflows import Workflows, load_workflow
 from rdf_persistence.services.write_guards import WriteGuards
 
@@ -118,7 +119,7 @@ class ServiceKit:
             guards=WriteGuards(mapper, models, self.listings, self.workflows),
             grant_validators=grant_validators,
             root_validators=root_validators,
-            dependents=dependents(view),
+            dependents=(*discussion_dependents(view), *transition_dependents(view)),
         )
         self.aggregates = Aggregates(self.documents, self.tenancy, self.iris)
 
@@ -294,6 +295,7 @@ class ServiceKit:
                 listings=self.listings,
                 caller=caller,
                 access=access,
+                workflows=self.workflows,
             )
 
     def session(self, tenant: str, principal: str) -> AbstractAsyncContextManager[Session]:

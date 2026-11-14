@@ -479,6 +479,15 @@ class Session:
         self._clock = clock
         self._registry = iris.registry(tenant_iri)
 
+    @property
+    def principal(self) -> Principal:
+        """The principal this session writes for."""
+        return self._principal
+
+    def now(self) -> datetime:
+        """The time by this session's clock, the one its writes are stamped with."""
+        return self._clock()
+
     def _graph(self, iri: str) -> URIRef:
         """The graph of the aggregate ``iri``, or the meta graph for the tenant root."""
         if str(iri) == self._tenant:

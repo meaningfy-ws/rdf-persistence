@@ -80,6 +80,12 @@ COMMENT_REFERENCES = predicate("comment_references")
 # An aggregate under a workflow holds its current state, the IRI of one of the workflow's states (PD-16).
 WORKFLOW_STATUS = predicate("workflow_status")
 
+# A transition leaves a record: its class and the aggregate it moved, by prov:used (PD-15).
+TRANSITION_RECORD = URIRef(
+    metamodel().get_uri(metamodel().get_class("TransitionRecord"), expand=True)
+)
+USED = predicate("used_resource")
+
 GRANTS = predicate("grants")
 PROHIBITIONS = predicate("prohibitions")
 ASSIGNEE = predicate("assignee")

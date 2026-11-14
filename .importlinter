@@ -81,5 +81,6 @@ forbidden_modules =
     rdf_persistence.services.collaboration
     rdf_persistence.services.discussion
     rdf_persistence.services.reference_collections
+    rdf_persistence.services.transitions
     rdf_persistence.services.workflows
     rdf_persistence.services.write_guards

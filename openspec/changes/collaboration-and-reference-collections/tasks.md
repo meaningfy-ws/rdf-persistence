@@ -236,7 +236,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-80a | `session.transaction()` without `_allow_state`, replace with status accepted | `Forbidden`; no public argument allows it (signature test) |
 | TC-81 | `Shelf` (no workflow) writes | unchanged behaviour; no extra query |
 
-- [ ] 4.4 `transition`, `transitions`; dependent link `prov:used` (PD-15, PD-20 to PD-22). The
+- [x] 4.4 `transition`, `transitions`; dependent link `prov:used` (PD-15, PD-20 to PD-22). The
   adversarial tester runs after it. Test first in
   `tests/unit/services/test_collaboration_workflow.py`.
 

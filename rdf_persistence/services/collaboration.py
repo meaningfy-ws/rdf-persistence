@@ -13,6 +13,7 @@ from linkml_runtime.utils.schemaview import SchemaView
 from rdf_persistence.domain.exceptions import BadQuery, InvalidIri
 from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_discussion import Comment
+from rdf_persistence.domain.generated.rp_workflow import TransitionRecord
 from rdf_persistence.domain.generated.service.rp_service import (
     CallerAccess,
     MemberList,
@@ -27,6 +28,8 @@ from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.services.reference_collections import ReferenceCollections
 from rdf_persistence.services.session import ReferrerRow, Session
+from rdf_persistence.services.transitions import Transitions
+from rdf_persistence.services.workflows import Workflows
 
 
 class Collaboration:
@@ -44,6 +47,7 @@ class Collaboration:
         listings: Listings,
         caller: VerifiedCaller,
         access: CallerAccess,
+        workflows: Workflows | None = None,
     ) -> None:
         self._session = session
         self._view = view
@@ -70,6 +74,16 @@ class Collaboration:
             mapper=mapper,
             caller=caller,
             access=access,
+        )
+        self._transitions = Transitions(
+            session,
+            view=view,
+            rules=rules,
+            iris=iris,
+            mapper=mapper,
+            caller=caller,
+            access=access,
+            workflows=workflows,
         )
 
     async def referrers(
@@ -139,6 +153,23 @@ class Collaboration:
         The ``Raises`` are those of ``Discussion.thread``.
         """
         return await self._discussion.thread(iri)
+
+    async def transition(
+        self, iri: str, to: str, *, if_version: str, comment: str | None = None
+    ) -> str:
+        """Move the aggregate ``iri`` to the state named ``to`` and return its new version.
+
+        The state, a record of the move and the comment, if any, are stored in one request. The
+        ``Raises`` are those of ``Transitions.transition``.
+        """
+        return await self._transitions.transition(iri, to, if_version=if_version, comment=comment)
+
+    async def transitions(self, iri: str) -> list[TransitionRecord]:
+        """The records of the moves of ``iri``, oldest first.
+
+        The ``Raises`` are those of ``Transitions.transitions``.
+        """
+        return await self._transitions.transitions(iri)
 
     async def delete_cascade(self, collection: str, if_version: str) -> None:
         """Delete the collection and each of its members, in one request, all or nothing.

@@ -12,6 +12,7 @@ from collections.abc import Iterable, Sequence
 from collections.abc import Set as AbstractSet
 from datetime import UTC
 
+from linkml_runtime.linkml_model.meta import ClassDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import RDF, Graph, URIRef
 
@@ -24,7 +25,11 @@ from rdf_persistence.domain.iris import Iris, graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.mapper import Mapper
-from rdf_persistence.services.schema_structure import annotation_text, iri_type_of
+from rdf_persistence.services.schema_structure import (
+    annotation_text,
+    iri_type_of,
+    is_toolkit_written,
+)
 from rdf_persistence.services.session import Dependents, ReferrerRow, Session
 
 COMMENT = "Comment"
@@ -36,6 +41,18 @@ def dependents(view: SchemaView) -> Dependents:
     None for a schema that does not import the discussion module.
     """
     return ((v.ANNOTATION, v.HAS_TARGET),) if view.get_class(COMMENT) else ()
+
+
+def mint_iri(cls: ClassDefinition, iris: Iris, tenant: str) -> str:
+    """A fresh aggregate IRI in ``tenant`` for the toolkit-written class ``cls``, from its ``rp_path`` and type.
+
+    Raises:
+        LookupError: ``cls`` has no ``rp_path``.
+    """
+    path = annotation_text(cls, RpAnnotation.RP_PATH)
+    if path is None:
+        raise LookupError(f"the class {cls.name} has no rp_path")
+    return str(iris.mint_aggregate(tenant, iri_type_of(cls), path))
 
 
 def visible(comments: Iterable[Comment], roles: AbstractSet[str]) -> list[Comment]:
@@ -198,10 +215,20 @@ class Discussion:
             raise LookupError("the schema does not import the module rp_discussion")
 
     async def _require_commentable(self, iri: str) -> None:
-        """The aggregate exists and is not itself a comment: an annotation the application wrote takes one."""
+        """The aggregate exists and is not a comment or another toolkit-written aggregate (a transition
+        record): an annotation the application wrote takes one."""
         graph, _, _ = await self._session.get_graph(iri)
-        if self._decode(iri, graph) is not None:
-            raise InvalidIri(f"{iri} is a comment; it takes no comment")
+        if self._decode(iri, graph) is not None or self._toolkit_written(iri, graph):
+            raise InvalidIri(f"{iri} is written by the toolkit; it takes no comment")
+
+    def _toolkit_written(self, iri: str, graph: Graph) -> bool:
+        """True when the root is typed with a toolkit-written class other than the web annotation."""
+        written = {
+            self._view.get_uri(c, expand=True)
+            for c in self._view.all_classes().values()
+            if is_toolkit_written(c)
+        } - {str(v.ANNOTATION)}
+        return any(str(t) in written for t in graph.objects(URIRef(iri), RDF.type))
 
     def _require_valid(self, text: str, audience: Sequence[str], references: Sequence[str]) -> None:
         if not text.strip():
@@ -219,13 +246,7 @@ class Discussion:
         references: Sequence[str],
         reply_to: str | None,
     ) -> str:
-        comment_class = self._view.get_class(COMMENT)
-        path = annotation_text(comment_class, RpAnnotation.RP_PATH)
-        if path is None:
-            raise LookupError(f"the class {COMMENT} has no rp_path")
-        minted = str(
-            self._iris.mint_aggregate(self._access.tenant, iri_type_of(comment_class), path)
-        )
+        minted = mint_iri(self._view.get_class(COMMENT), self._iris, self._access.tenant)
         model = Comment(
             id=minted,
             has_target=iri,
