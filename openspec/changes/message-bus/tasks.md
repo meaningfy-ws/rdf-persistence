@@ -117,7 +117,7 @@ green CI.
 | TC-40d | an add of a `Template` through `kit.application_session` | one `rp:Add` in the application database's provenance graph (`iris.provenance(iris.application)`) |
 | TC-40c | a stale replace served with a fresh id | `Conflict` naming the book, not the activity IRI (existing reasons first) |
 
-- [ ] 2.3 `Transition` replaces `TransitionRecord`, kept on delete (PD-11; DEC-13).
+- [x] 2.3 `Transition` replaces `TransitionRecord`, kept on delete (PD-11; DEC-13).
   `rp_workflow.yaml` (the class, `expected_version`, the three `toolkit_filled` annotations,
   `to_state`/`expected_version`/`body_value` `payload: true` in `Transition`'s `slot_usage`);
   `make generate`; `services/transitions.py` (`_store`, `transitions`, no `dependents`);

@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from rdflib import URIRef
 
 from rdf_persistence.domain.generated.rp_provenance import Generation, Invalidation, Replace
-from rdf_persistence.domain.generated.rp_workflow import TransitionRecord
+from rdf_persistence.domain.generated.rp_workflow import Transition
 from rdf_persistence.services import vocabulary
 from rdf_persistence.services.schema import SERVICE_SCHEMA, load_schema
 from rdf_persistence.services.schema_structure import is_internal, is_owned
@@ -18,13 +18,17 @@ MODEL = Path(__file__).parents[3] / "rdf_persistence" / "model"
 LIBRARY = Path(__file__).parents[2] / "fixtures" / "library"
 AT = datetime(2026, 11, 14, tzinfo=UTC)
 PROV_ASSOCIATED = URIRef("http://www.w3.org/ns/prov#wasAssociatedWith")
-# The fields TransitionRecord had before the slot move, and whether each is required.
+# The fields of Transition (message-bus PD-11), and whether each is required: the three the toolkit
+# computes and the payload slots are optional, so that a command can be built without them.
 TRANSITION_FIELDS = {
     "used_resource": True,
-    "from_state_iri": True,
-    "to_state_iri": True,
-    "started_at_time": True,
+    "from_state_iri": False,
+    "to_state_iri": False,
+    "started_at_time": False,
     "transition_comment": False,
+    "to_state": False,
+    "expected_version": False,
+    "body_value": False,
     "id": True,
     "was_associated_with": False,
 }
@@ -68,12 +72,12 @@ def test_database_name_is_internal() -> None:
         (MODEL / "rp.yaml", "Comment", "replies_to", "rp:repliesTo"),
         (MODEL / "rp.yaml", "Comment", "from_state_iri", "rp:fromState"),
         (MODEL / "rp.yaml", "Comment", "to_state_iri", "rp:toState"),
-        (MODEL / "rp.yaml", "TransitionRecord", "from_state_iri", "rp:fromState"),
-        (MODEL / "rp.yaml", "TransitionRecord", "to_state_iri", "rp:toState"),
-        (MODEL / "rp.yaml", "TransitionRecord", "used_resource", "prov:used"),
-        (MODEL / "rp.yaml", "TransitionRecord", "started_at_time", "prov:startedAtTime"),
-        (MODEL / "rp.yaml", "TransitionRecord", "transition_comment", "rp:transitionComment"),
-        (MODEL / "rp.yaml", "TransitionRecord", "was_associated_with", "prov:wasAssociatedWith"),
+        (MODEL / "rp.yaml", "Transition", "from_state_iri", "rp:fromState"),
+        (MODEL / "rp.yaml", "Transition", "to_state_iri", "rp:toState"),
+        (MODEL / "rp.yaml", "Transition", "used_resource", "prov:used"),
+        (MODEL / "rp.yaml", "Transition", "started_at_time", "prov:startedAtTime"),
+        (MODEL / "rp.yaml", "Transition", "transition_comment", "rp:transitionComment"),
+        (MODEL / "rp.yaml", "Transition", "was_associated_with", "prov:wasAssociatedWith"),
         (MODEL / "rp.yaml", "UnderWorkflow", "workflow_status", "ADMS:status"),
         (LIBRARY / "library.yaml", "Book", "workflow_status", "ADMS:status"),
     ],
@@ -97,7 +101,7 @@ def test_an_activity_has_the_four_optional_slots_and_owns_its_parts() -> None:
         assert slot.multivalued and is_owned(slot), f"Activity.{name} is an owned list"
 
 
-def test_the_toolkit_filled_slots_are_the_five_the_session_writes() -> None:
+def test_the_session_writes_five_of_the_eight_toolkit_filled_slots() -> None:
     five = {
         "started_at_time",
         "ended_at_time",
@@ -105,8 +109,9 @@ def test_the_toolkit_filled_slots_are_the_five_the_session_writes() -> None:
         "generations",
         "invalidations",
     }
-    assert set(vocabulary.TOOLKIT_FILLED) == five, "annotated toolkit_filled"
-    assert set(vocabulary.SESSION_FILLED) == five, "the literal tuple"
+    computed = {"from_state_iri", "to_state_iri", "transition_comment"}  # a transition's (PD-11)
+    assert set(vocabulary.TOOLKIT_FILLED) == five | computed, "annotated toolkit_filled"
+    assert set(vocabulary.SESSION_FILLED) == five, "the literal tuple, a subset of those"
 
 
 def test_a_replace_with_an_agent_round_trips_with_one_associated_principal() -> None:
@@ -137,10 +142,10 @@ def test_a_replace_with_one_generation_round_trips_through_the_mapper() -> None:
     )
 
 
-def test_a_transition_record_keeps_its_fields_after_the_slot_move() -> None:
+def test_a_transition_has_its_fields_and_requires_only_the_aggregate_it_used() -> None:
     required = {
         name: field.is_required()
-        for name, field in TransitionRecord.model_fields.items()
+        for name, field in Transition.model_fields.items()
         if name in TRANSITION_FIELDS
     }
-    assert required == TRANSITION_FIELDS, "same fields, same required-ness"
+    assert required == TRANSITION_FIELDS, "these fields, so required"

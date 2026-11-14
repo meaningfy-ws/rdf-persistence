@@ -56,7 +56,6 @@ from rdf_persistence.services.session import Session
 from rdf_persistence.services.store import Store, ToolkitStore
 from rdf_persistence.services.tenancy import GrantValidator, RootValidator, Tenancy
 from rdf_persistence.services.tokens import TokenVerifier
-from rdf_persistence.services.transitions import dependents as transition_dependents
 from rdf_persistence.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
 from rdf_persistence.services.workflows import Workflows
 from rdf_persistence.services.write_guards import WriteGuards
@@ -148,7 +147,7 @@ class ServiceKit:
             guards=WriteGuards(mapper, models, self.listings, self.workflows),
             grant_validators=grant_validators,
             root_validators=root_validators,
-            dependents=(*discussion_dependents(view), *transition_dependents(view)),
+            dependents=discussion_dependents(view),
             stamps=[(schema_id, current_version(chain)) for schema_id, chain in self.chains],
         )
         self.aggregates = Aggregates(self.documents, self.tenancy, self.iris)

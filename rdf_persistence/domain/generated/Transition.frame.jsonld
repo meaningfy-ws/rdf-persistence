@@ -3,7 +3,7 @@
   "@omitGraph": true,
   "@embed": "@always",
   "@omitDefault": true,
-  "@type": "TransitionRecord",
+  "@type": "Transition",
   "was_associated_with": {
     "@embed": "@never",
     "@omitDefault": true

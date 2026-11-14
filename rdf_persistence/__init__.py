@@ -98,7 +98,7 @@ from rdf_persistence.domain.generated.rp_tenancy import (
     TenantSweepReport,
 )
 from rdf_persistence.domain.generated.rp_workflow import (
-    TransitionRecord,
+    Transition,
     UnderWorkflow,
     Workflow,
     WorkflowTransition,
@@ -306,7 +306,7 @@ __all__ = [
     "TenantSummary",
     "TokenVerifier",
     "Tracked",
-    "TransitionRecord",
+    "Transition",
     "UnderWorkflow",
     "UniqueScope",
     "UnitOfWork",

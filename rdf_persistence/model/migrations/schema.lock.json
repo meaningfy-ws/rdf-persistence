@@ -1,6 +1,6 @@
 {
   "schema_id": "https://meaningfy.ws/ns/rdf-persistence",
-  "schema_version": "1",
+  "schema_version": "2",
   "locked_classes": [
     {
       "class_uri": "http://www.w3.org/ns/oa#Annotation",
@@ -167,92 +167,6 @@
       ]
     },
     {
-      "class_uri": "http://www.w3.org/ns/prov#Generation",
-      "iri_type": null,
-      "root_path": null,
-      "root_database": null,
-      "locked_slots": [
-        {
-          "slot_uri": "http://www.w3.org/ns/prov#activity",
-          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
-          "required": true,
-          "multivalued": false,
-          "inlined": false
-        },
-        {
-          "slot_uri": "http://www.w3.org/ns/prov#atTime",
-          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
-          "required": true,
-          "multivalued": false,
-          "inlined": false
-        },
-        {
-          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#entity",
-          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
-          "required": true,
-          "multivalued": false,
-          "inlined": false
-        },
-        {
-          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#entityClass",
-          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
-          "required": false,
-          "multivalued": false,
-          "inlined": false
-        },
-        {
-          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#entityVersion",
-          "range": "http://www.w3.org/2001/XMLSchema#string",
-          "required": true,
-          "multivalued": false,
-          "inlined": false
-        }
-      ]
-    },
-    {
-      "class_uri": "http://www.w3.org/ns/prov#Invalidation",
-      "iri_type": null,
-      "root_path": null,
-      "root_database": null,
-      "locked_slots": [
-        {
-          "slot_uri": "http://www.w3.org/ns/prov#activity",
-          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
-          "required": true,
-          "multivalued": false,
-          "inlined": false
-        },
-        {
-          "slot_uri": "http://www.w3.org/ns/prov#atTime",
-          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
-          "required": true,
-          "multivalued": false,
-          "inlined": false
-        },
-        {
-          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#entity",
-          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
-          "required": true,
-          "multivalued": false,
-          "inlined": false
-        },
-        {
-          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#entityClass",
-          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
-          "required": false,
-          "multivalued": false,
-          "inlined": false
-        },
-        {
-          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#entityVersion",
-          "range": "http://www.w3.org/2001/XMLSchema#string",
-          "required": true,
-          "multivalued": false,
-          "inlined": false
-        }
-      ]
-    },
-    {
       "class_uri": "https://meaningfy.ws/ns/rdf-persistence#TenantAccess",
       "iri_type": "tenant-access",
       "root_path": "access",
@@ -304,84 +218,6 @@
           "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#state",
           "range": "TenantState",
           "required": true,
-          "multivalued": false,
-          "inlined": false
-        }
-      ]
-    },
-    {
-      "class_uri": "https://meaningfy.ws/ns/rdf-persistence#TransitionRecord",
-      "iri_type": "rp-transition",
-      "root_path": "rp-transitions",
-      "root_database": "tenant",
-      "locked_slots": [
-        {
-          "slot_uri": "http://purl.org/dc/terms/identifier",
-          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
-          "required": true,
-          "multivalued": false,
-          "inlined": false
-        },
-        {
-          "slot_uri": "http://www.w3.org/ns/prov#endedAtTime",
-          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
-          "required": false,
-          "multivalued": false,
-          "inlined": false
-        },
-        {
-          "slot_uri": "http://www.w3.org/ns/prov#startedAtTime",
-          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
-          "required": true,
-          "multivalued": false,
-          "inlined": false
-        },
-        {
-          "slot_uri": "http://www.w3.org/ns/prov#used",
-          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
-          "required": true,
-          "multivalued": false,
-          "inlined": false
-        },
-        {
-          "slot_uri": "http://www.w3.org/ns/prov#wasAssociatedWith",
-          "range": "http://www.w3.org/ns/prov#Agent",
-          "required": false,
-          "multivalued": true,
-          "inlined": false
-        },
-        {
-          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#fromState",
-          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
-          "required": true,
-          "multivalued": false,
-          "inlined": false
-        },
-        {
-          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#generation",
-          "range": "http://www.w3.org/ns/prov#Generation",
-          "required": false,
-          "multivalued": true,
-          "inlined": true
-        },
-        {
-          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#invalidation",
-          "range": "http://www.w3.org/ns/prov#Invalidation",
-          "required": false,
-          "multivalued": true,
-          "inlined": true
-        },
-        {
-          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#toState",
-          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
-          "required": true,
-          "multivalued": false,
-          "inlined": false
-        },
-        {
-          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#transitionComment",
-          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
-          "required": false,
           "multivalued": false,
           "inlined": false
         }

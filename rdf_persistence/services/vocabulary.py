@@ -66,7 +66,8 @@ TOOLKIT_FILLED = frozenset(
     for slot in metamodel().all_slots().values()
     if flag(slot, RpAnnotation.TOOLKIT_FILLED)
 )
-# The five the session itself writes in stage 1; a test pins it inside TOOLKIT_FILLED.
+# The five the session itself writes; a test pins it as a subset of TOOLKIT_FILLED (which, with the
+# three of a transition, has eight).
 SESSION_FILLED = (
     "started_at_time",
     "ended_at_time",
@@ -122,9 +123,13 @@ COMMENT_REFERENCES = predicate("comment_references")
 # An aggregate under a workflow holds its current state, the IRI of one of the workflow's states (PD-16).
 WORKFLOW_STATUS = predicate("workflow_status")
 
-# A transition leaves a record: its class and the aggregate it moved, by prov:used (PD-15).
-TRANSITION_RECORD = class_iri("TransitionRecord")
+# A transition is an activity: its class, the aggregate it moved by prov:used, the states and the comment
+# it names (message-bus PD-11).
+TRANSITION = class_iri("Transition")
 USED = predicate("used_resource")
+FROM_STATE = predicate("from_state_iri")
+TO_STATE = predicate("to_state_iri")
+TRANSITION_COMMENT = predicate("transition_comment")
 
 GRANTS = predicate("grants")
 PROHIBITIONS = predicate("prohibitions")

@@ -22,7 +22,7 @@ from rdf_persistence.domain.generated.rp_provenance import (
     Invalidation,
     Replace,
 )
-from rdf_persistence.domain.generated.rp_workflow import TransitionRecord, Workflow
+from rdf_persistence.domain.generated.rp_workflow import Transition, Workflow
 from rdf_persistence.domain.iris import (
     DEFAULT_IRIS,
     graph_iri,
@@ -295,10 +295,10 @@ def test_a_comment_names_the_states_of_the_transition_that_posted_it():
     assert untracked(back) == untracked(comment), "the same comment comes back"
 
 
-def test_a_transition_record_with_every_slot_round_trips_typed_rp_transition_record():
-    """The stored type is rp:TransitionRecord; prov:Activity is in the generated OWL and shapes only."""
-    iri = f"{TENANT}/rp-transitions/{UUID(int=1)}"
-    record = TransitionRecord(
+def test_a_transition_with_every_stored_slot_round_trips_typed_rp_transition():
+    """The stored type is rp:Transition; prov:Activity is in the generated OWL and shapes only."""
+    iri = f"urn:uuid:{UUID(int=1)}"
+    record = Transition(
         id=iri,
         used_resource=book_iri(1),
         from_state_iri=f"{REVIEW}/draft",
@@ -309,7 +309,7 @@ def test_a_transition_record_with_every_slot_round_trips_typed_rp_transition_rec
     )
     mapper = toy_mapper()
     graph = mapper.to_graph(record)
-    assert (URIRef(iri), RDF.type, URIRef(f"{RP}TransitionRecord")) in graph, "the stored type"
+    assert (URIRef(iri), RDF.type, URIRef(f"{RP}Transition")) in graph, "the stored type"
     assert (URIRef(iri), RDF.type, URIRef(f"{PROV}Activity")) not in graph, "not the superclass"
     assert (URIRef(iri), URIRef(f"{PROV}used"), URIRef(book_iri(1))) in graph, "the aggregate"
     assert (URIRef(iri), URIRef(f"{PROV}wasAssociatedWith"), URIRef(ADA)) in graph, "the agent"
@@ -321,7 +321,7 @@ def test_a_transition_record_with_every_slot_round_trips_typed_rp_transition_rec
     assert (URIRef(iri), URIRef(f"{RP}fromState"), URIRef(f"{REVIEW}/draft")) in graph, "from"
     assert (URIRef(iri), URIRef(f"{RP}toState"), URIRef(f"{REVIEW}/in_review")) in graph, "to"
     assert (URIRef(iri), URIRef(f"{PROV}startedAtTime"), None) in graph, "the time"
-    back = mapper.from_graph(TransitionRecord, iri, graph, graph_iri(iri))
+    back = mapper.from_graph(Transition, iri, graph, graph_iri(iri))
     assert untracked(back) == untracked(record), "the same record comes back"
 
 

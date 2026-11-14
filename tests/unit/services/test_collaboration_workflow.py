@@ -12,18 +12,19 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from rdflib import URIRef
+from rdflib import RDF, Graph, URIRef
+from rdflib.compare import isomorphic
 
 from rdf_persistence import Action, generated_models
 from rdf_persistence.domain.exceptions import (
     Conflict,
     Forbidden,
     InvalidBody,
-    InvalidIri,
     NotFound,
 )
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_discussion import Motivation
+from rdf_persistence.domain.generated.rp_workflow import Transition
 from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
@@ -32,7 +33,6 @@ from rdf_persistence.services.discussion import dependents as discussion_depende
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import Session
-from rdf_persistence.services.transitions import dependents as transition_dependents
 from rdf_persistence.services.workflows import Workflows, load_workflow, state_iri
 from rdf_persistence.services.write_guards import WriteGuards
 from rdf_persistence.testkit import FakeStore, fake_session
@@ -60,6 +60,9 @@ from tests.toy import (
 
 B1, B2 = book_iri(1), book_iri(2)
 S1 = shelf_iri(1)
+PROVENANCE = URIRef(DEFAULT_IRIS.provenance(TENANT))
+BOOK_CLASS = "http://purl.org/ontology/bibo/Book"
+COMMENT_CLASS = str(v.ANNOTATION)
 VIEW = load_schema(TOY_SCHEMA)
 T0 = datetime(2026, 11, 14, 9, tzinfo=UTC)
 REVIEW = load_workflow(REVIEW_WORKFLOW)
@@ -91,7 +94,8 @@ async def store() -> FakeStore:
 
 
 def combined(view=VIEW):
-    return discussion_dependents(view) + transition_dependents(view)
+    """What a remove drops with its aggregate: the comments (a transition's activity stays, PD-11)."""
+    return discussion_dependents(view)
 
 
 @asynccontextmanager
@@ -174,7 +178,22 @@ async def status_of(session: Session, iri: str) -> list[str]:
 
 
 async def records_of(session: Session, iri: str) -> list[str]:
-    return sorted(await session.graphs_with(v.USED, URIRef(iri)))
+    """The IRIs of the transition activities that used ``iri``, as the provenance graph holds them."""
+    return sorted(await session.activities(v.TRANSITION, v.USED, URIRef(iri)))
+
+
+async def provenance_of(store: FakeStore) -> Graph:
+    """The tenant's whole provenance graph."""
+    text = f"CONSTRUCT {{ ?s ?p ?o }} WHERE {{ GRAPH <{PROVENANCE}> {{ ?s ?p ?o }} }}"
+    return (await store.query(FAKE_DATABASE, text)).graph or Graph()
+
+
+def parts_of(graph: Graph, activity: str, link: URIRef) -> set[tuple[str, str]]:
+    """The ``(entity, class)`` of each generation or invalidation (by ``link``) of ``activity``."""
+    return {
+        (str(graph.value(p, v.ENTITY)), str(graph.value(p, v.ENTITY_CLASS)))
+        for p in graph.objects(URIRef(activity), link)
+    }
 
 
 async def comments_on(session: Session, iri: str) -> list[str]:
@@ -313,11 +332,150 @@ async def test_a_plain_replace_leaves_the_records_alone(session, ada, books):  #
     assert await status_of(session, B1) == [IN_REVIEW], "and so is the state"
 
 
-async def test_removing_the_book_removes_its_records_and_comments(session, ada, books):  # TC-90
+async def move_twice(store, now, rules, session, ada, books) -> None:
+    """ada moves b1 to in review with a comment, then accepts it a minute later."""
     await go(ada, session, "in_review", comment="ready")
+    now["t"] = T0 + timedelta(minutes=1)
+    await go(ada, session, "accepted")
+
+
+async def test_a_transition_is_one_activity_that_used_the_book(store, session, ada, books):  # TC-41
+    await go(ada, session, "in_review", comment="ready")
+    graph = await provenance_of(store)
+    [record] = graph.subjects(RDF.type, v.TRANSITION)
+    [ready] = await comments_on(session, B1)
+    assert (record, v.USED, URIRef(B1)) in graph, "it used b1"
+    assert (record, v.FROM_STATE, URIRef(DRAFT)) in graph, "from draft"
+    assert (record, v.TO_STATE, URIRef(IN_REVIEW)) in graph, "to in review"
+    assert (record, v.TRANSITION_COMMENT, URIRef(ready)) in graph, "with the comment it posted"
+    assert (record, RDF.type, v.ACTIVITY) in graph, "and it is an activity"
+    new_book = {(B1, BOOK_CLASS)}
+    assert parts_of(graph, str(record), v.HAS_GENERATION) == new_book | {(ready, COMMENT_CLASS)}, (
+        "it generated a version of b1 and the comment"
+    )
+    assert parts_of(graph, str(record), v.HAS_INVALIDATION) == new_book, (
+        "it invalidated b1's old one"
+    )
+    for payload in ("to_state", "expected_version", "body_value"):
+        assert (record, v.predicate(payload), None) not in graph, f"no {payload}"
+
+
+async def test_a_transition_has_no_aggregate_of_its_own(store, session, ada, books):  # TC-42
+    await go(ada, session, "in_review", comment="ready")
+    graphs = {
+        str(r.g)
+        for r in await store.query(FAKE_DATABASE, "SELECT DISTINCT ?g { GRAPH ?g { ?s ?p ?o } }")
+    }
+    assert not [g for g in graphs if "rp-transitions" in g], "no graph of a record"
+    [record] = await records_of(session, B1)
+    owned = f"ASK {{ GRAPH ?r {{ ?g <{v.REGISTRY_OWNED_BY}> <{record}> }} }}"
+    assert not (await store.query(FAKE_DATABASE, owned)).askAnswer, "no registry entry of a record"
+
+
+async def test_removing_the_book_keeps_its_transitions_and_removes_its_comments(
+    store, now, rules, session, ada, books
+):  # TC-44
+    await move_twice(store, now, rules, session, ada, books)
+    old = await records_of(session, B1)
     await session.remove(B1, await version(session, B1))
-    assert await records_of(session, B1) == [], "no record"
-    assert await comments_on(session, B1) == [], "no comment"
+    assert await records_of(session, B1) == old, "the two transitions are still stored"
+    graph = await provenance_of(store)
+    assert len(list(graph.subjects(RDF.type, v.REMOVE))) == 1, "and the remove is a third activity"
+    assert await comments_on(session, B1) == [], "the comment is gone"
+
+
+async def test_the_transitions_of_a_removed_book_are_not_found(
+    store, now, rules, session, ada, books
+):  # TC-45
+    await move_twice(store, now, rules, session, ada, books)
+    await session.remove(B1, await version(session, B1))
+    with pytest.raises(NotFound):
+        await ada.transitions(B1)
+
+
+async def test_a_book_added_again_shows_the_old_history(
+    store, now, rules, session, ada, books
+):  # TC-46: the old test asserted none
+    await move_twice(store, now, rules, session, ada, books)
+    before_remove = await ada.transitions(B1)
+    await session.remove(B1, await version(session, B1))
+    await put(session, dune(B1, chapters=1))
+    assert await ada.transitions(B1) == before_remove, "the two old transitions"
+
+
+@pytest.mark.parametrize("how", ["stale", "role"])
+async def test_a_refused_transition_leaves_no_activity(
+    store, session, ada, bob, books, how
+):  # TC-48
+    seen = await provenance_of(store)
+    with pytest.raises((Conflict, Forbidden)):
+        if how == "stale":
+            await ada.transition(B1, "in_review", if_version="stale", comment="ready")
+        else:
+            await go(bob, session, "in_review")
+    assert isomorphic(await provenance_of(store), seen), "the provenance graph is as it was"
+    assert await records_of(session, B1) == [], "no transition"
+
+
+async def test_a_transition_of_a_subclass_comes_back_as_a_transition(
+    store, session, ada, books
+):  # TC-49
+    kind = f"{v.TRANSITION.rsplit('#', 1)[0]}#ApproveBook"  # a class the schema does not know
+    foreign = "urn:uuid:5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c049"
+    await store.update(
+        FAKE_DATABASE,
+        f"INSERT DATA {{ GRAPH <{PROVENANCE}> {{ <{foreign}> a <{v.TRANSITION}>, <{kind}>, <{v.ACTIVITY}> ; "
+        f"<{v.USED}> <{B1}> }} }}",
+    )
+    [found] = await ada.transitions(B1)
+    assert (type(found), found.id, found.used_resource) == (Transition, foreign, B1)
+
+
+async def test_a_value_the_caller_set_for_a_computed_slot_is_overwritten(
+    store, session, ada, books
+):  # TC-49a
+    forged = Transition(
+        id="urn:uuid:5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c04a",
+        used_resource=B1,
+        from_state_iri=ACCEPTED,
+        to_state_iri=ACCEPTED,
+    )
+    await ada._transitions.transition(  # what a bus handler calls, with its command
+        B1,
+        "in_review",
+        if_version=await version(session, B1),
+        command=forged,
+    )
+    graph = await provenance_of(store)
+    assert list(graph.objects(URIRef(forged.id), v.FROM_STATE)) == [URIRef(DRAFT)], "computed, once"
+    assert list(graph.objects(URIRef(forged.id), v.TO_STATE)) == [URIRef(IN_REVIEW)], "and so is to"
+
+
+def test_the_toolkit_fills_eight_slots_and_the_session_five_of_them():  # TC-49b
+    computed = {"from_state_iri", "to_state_iri", "transition_comment"}
+    assert {*v.SESSION_FILLED, *computed} == v.TOOLKIT_FILLED, "the five and the three, no more"
+    assert set(v.SESSION_FILLED) < v.TOOLKIT_FILLED, "the session's five are a subset"
+
+
+def test_a_served_transition_drops_the_payload_and_keeps_the_computed_slots():  # TC-49c
+    command = Transition(
+        id="urn:uuid:5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c04c",
+        used_resource=B1,
+        to_state="in_review",
+        expected_version="v1",
+        body_value="x",
+        from_state_iri=DRAFT,
+    )
+    served = toy_mapper().served(command)
+    predicates = {p for _, p, _ in served.triples}
+    assert predicates == {v.USED, v.FROM_STATE}, "the statements of what the toolkit fills"
+    payload = (
+        served.activity.to_state,
+        served.activity.expected_version,
+        served.activity.body_value,
+    )
+    assert payload == (None, None, None), "the activity has no payload"
+    assert served.types == [v.TRANSITION, v.ACTIVITY]
 
 
 async def test_a_book_stored_before_its_class_named_the_workflow_starts_from_the_initial_state(
@@ -389,7 +547,9 @@ async def test_a_record_takes_no_comment(rules, session, ada, books):
     await go(ada, session, "in_review")
     [record] = await ada.transitions(B1)
     may_annotate = collab(rules, session, ADA, role("librarian"), direct(Action.ANNOTATE))
-    with pytest.raises(InvalidIri):
+    with pytest.raises(
+        NotFound
+    ):  # an activity of the provenance graph is no aggregate of the tenant
         await may_annotate.comment(record.id, "a remark")
     assert await comments_on(session, record.id) == [], "nothing was stored"
 
@@ -401,4 +561,3 @@ async def test_a_schema_without_the_module_has_no_transitions(rules, session, bo
         await bare.transition(B1, "in_review", if_version="x")
     with pytest.raises(LookupError, match="rp_workflow"):
         await bare.transitions(B1)
-    assert transition_dependents(view) == (), "and it has no records to drop"

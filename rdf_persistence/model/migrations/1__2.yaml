@@ -1,0 +1,10 @@
+schema_id: https://meaningfy.ws/ns/rdf-persistence
+from_version: '1'
+to_version: '2'
+description: >-
+  The record of a workflow transition is no longer an aggregate (rp:TransitionRecord, with its
+  generation and invalidation parts) but an activity in the tenant's provenance graph
+  (rp:Transition, message-bus DEC-13). No data is moved: the developer decided (message-bus
+  design.md PD-1 item 4) that stored rp:TransitionRecord graphs are not migrated. They stay
+  registered aggregates that the toolkit no longer reads; a session removes each like any aggregate.
+steps: []

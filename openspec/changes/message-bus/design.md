@@ -365,6 +365,25 @@ aggregate (DEC-13).
     record), `questions.adoc`, and the description of `rp_provenance.yaml` (L2, L3, L5).
   Rejected: reading a missing `provenance_template` of a recorded policy as the configured value
   (L5 item 2): it would let a policy change pass the guard unseen; the case is documented (f).
+- **D-5** (lead, 2026-11-14) The adversarial tester's run after task 2.2
+  (`tests/unit/services/test_session_activity_adversarial.py`: 46 tests, 5 findings kept as strict
+  xfail until fixed). All five accepted:
+  - a. A transaction of removes whose root another writer removed first: nothing is written, yet
+    the confirming `ASK` holds (the graph is gone) and the hook got a `Remove` that is not stored.
+    Fix: a recording commit also confirms its activity (`GRAPH $provenance { <id> a prov:Activity }`
+    joins the confirm patterns). When that fails the existing diagnosis decides as today (this
+    case stays a success, atomic-commit PD-17e), and nothing is published: only a commit whose
+    confirmation held publishes.
+  - b. A `Served` built by hand could carry statements about other subjects (a past activity, an
+    aggregate) and statements the session fills (a second principal, a second time). Fix: the
+    `Served` constructor refuses with `ValueError` a triple whose subject is neither the activity
+    IRI nor a blank node, and a triple of the activity whose predicate is `rdf:type` or one of the
+    `SESSION_FILLED` predicates.
+  - c. A clock that goes back gave a start after the end. Fix: the end is the later of the
+    session clock and the start.
+  - d. `Mapper.served` of a class the schema does not have raised `KeyError`. Fix: `ValueError`
+    naming the class.
+  The xfail markers are removed with the fixes.
 - **D-4** (developer, 2026-11-14: "reconcile the deviations between epic implementation and epic
   shape") The proposal gained the table "Where the PLAN and the code differ from the shape", and
   `specs/rp-messages/spec.md` was rewritten to say what this PLAN says (mixed commits, kept

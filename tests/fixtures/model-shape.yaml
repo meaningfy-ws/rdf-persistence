@@ -1314,14 +1314,22 @@
     required: false
     multivalued: false
     range: datetime
-- class_name: TransitionRecord
+- class_name: Transition
   slots:
+  - name: body_value
+    required: false
+    multivalued: false
+    range: string
   - name: ended_at_time
     required: false
     multivalued: false
     range: datetime
+  - name: expected_version
+    required: false
+    multivalued: false
+    range: string
   - name: from_state_iri
-    required: true
+    required: false
     multivalued: false
     range: uri
   - name: generations
@@ -1337,11 +1345,15 @@
     multivalued: true
     range: Invalidation
   - name: started_at_time
-    required: true
+    required: false
     multivalued: false
     range: datetime
+  - name: to_state
+    required: false
+    multivalued: false
+    range: string
   - name: to_state_iri
-    required: true
+    required: false
     multivalued: false
     range: uri
   - name: transition_comment

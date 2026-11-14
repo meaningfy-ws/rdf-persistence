@@ -69,36 +69,35 @@ classes:
     mixin: true
     slots:
       - workflow_status
-  TransitionRecord:
-    title: Transition record
+  Transition:
+    title: Transition
     description: >-
-      The record of one transition of an aggregate: which aggregate, from which state to which, when, by
-      whom and with which comment. The toolkit writes it in the update that changes the state and
-      deletes it with the aggregate. It is a prov:Activity in the generated vocabulary, and typed with
-      its own class when stored.
-    class_uri: rp:TransitionRecord
+      One transition of an aggregate, as an activity: which aggregate it used, from which state to which,
+      when, by whom and with which comment. The toolkit stores it as the activity of the commit that
+      moves the aggregate, in the provenance graph, and keeps it when the aggregate is deleted. The
+      payload slots belong to the command only: the stored record has none of them.
+    class_uri: rp:Transition
     is_a: Activity
-    mixins:
-      - AggregateRoot
     slots:
       - used_resource
       - from_state_iri
       - to_state_iri
-      - started_at_time
       - transition_comment
+      - to_state
+      - expected_version
+      - body_value
     slot_usage:
       used_resource:
         required: true
-      started_at_time:
-        required: true
-      from_state_iri:
-        required: true
-      to_state_iri:
-        required: true
-    annotations:
-      rp_path: rp-transitions
-      rp_iri_type: rp-transition
-      rp_writes: toolkit
+      to_state:
+        annotations:
+          payload: true
+      expected_version:
+        annotations:
+          payload: true
+      body_value:
+        annotations:
+          payload: true
 
 slots:
   workflow_name:
@@ -161,3 +160,10 @@ slots:
     description: The IRI of the comment the transition posted, when it had one.
     slot_uri: rp:transitionComment
     range: uri
+    annotations:
+      toolkit_filled: true
+  expected_version:
+    title: Expected version
+    description: The version of the aggregate the caller read; the move is made only if it still holds.
+    slot_uri: rp:expectedVersion
+    range: string

@@ -200,6 +200,18 @@ SELECT DISTINCT ?root ?s ?p ?o WHERE {
   GRAPH ?g { ?s ?p ?o }
 }
 """
+# Every activity of the provenance graph typed $type that has the statement ($predicate $object): its own
+# statements and those of its generations and invalidations, one row per triple and activity (PD-11).
+# The activity's pattern comes first, so the store starts from the activities of the type.
+READ_ACTIVITIES = """
+SELECT DISTINCT ?activity ?s ?p ?o WHERE {
+  GRAPH $provenance {
+    ?activity a $type ; $predicate $object .
+    { ?activity ?p ?o . BIND (?activity AS ?s) }
+    UNION { ?activity ?link ?s . ?s ?p ?o FILTER (?link IN ($generation, $invalidation)) }
+  }
+}
+"""
 # Is $iri an aggregate of class $type whose graph holds every statement of $patterns (PD-7)?
 MATCHES = "ASK { GRAPH $graph { ?root a $type . $patterns FILTER (?root = $iri) } }"
 # The same as a guard of a transaction: its variables carry $n, the guard's index in the transaction,
@@ -766,6 +778,33 @@ class Session:
         for row in await self._store.query(self._database, text):
             if isinstance(row, ResultRow):
                 graphs.setdefault(str(row.root), Graph()).add((row.s, row.p, row.o))
+        return graphs
+
+    async def activities(
+        self, type_iri: URIRef, predicate: URIRef, obj: URIRef
+    ) -> dict[str, Graph]:
+        """The activities of the provenance graph typed ``type_iri`` that have the statement
+        ``(activity, predicate, obj)``, each with all its own statements and those of its
+        generations and invalidations, one ``Graph`` per activity, keyed by its IRI.
+
+        No access is checked and no schema name is known: the caller decodes each graph.
+
+        Raises:
+            DatabaseGone: The tenant database does not exist.
+        """
+        text = fill(
+            READ_ACTIVITIES,
+            provenance=term(self._provenance),
+            type=term(type_iri),
+            predicate=term(predicate),
+            object=term(obj),
+            generation=term(v.HAS_GENERATION),
+            invalidation=term(v.HAS_INVALIDATION),
+        )
+        graphs: dict[str, Graph] = {}
+        for row in await self._store.query(self._database, text):
+            if isinstance(row, ResultRow):
+                graphs.setdefault(str(row.activity), Graph()).add((row.s, row.p, row.o))
         return graphs
 
     async def matches(self, iri: str, class_iri: str, conditions: Sequence[Condition]) -> bool:
