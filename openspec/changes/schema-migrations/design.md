@@ -351,3 +351,25 @@ None.
   9.1/10, pass**, no new gap.
 - **PD-20 Blast radius (GitNexus, 2026-11-14).** `Tenancy.tenant_session` is rated CRITICAL and
   `check_graphs` HIGH; both edits only add a branch. The developer answered "Go ahead" (2026-11-14).
+
+## Delivery decisions
+
+- **D-1 The application database moves to stage 2 (lead, 2026-11-14).** PR #102 was already
+  merged when delivery started (14:12; `develop` at `5ba0d49`), and the branch is rebased on it. So
+  `migrate_shared`, the lifespan order of PD-9 and the stamp of a new application database (task
+  3.2, TC-54) are built in tasks 2.2 and 2.3; task 3.2 is closed by them. RISK-7 no longer applies.
+- **D-2 Task 1.3 is cut in two so builders can run in parallel (developer, 2026-11-14: "if any
+  activities can be run in parallel then start subagents").** 1.3a: `stamps_graph_iri`,
+  `InvalidMigration`, the request text and `load_migration` (files in `domain`, `services`, their
+  tests), beside task 1.2 (`generation/lock.py`), on disjoint files. 1.3b: the pipeline steps, the
+  hard checks and the wiring, after both. The lead runs the task gates once both have reported.
+- **D-3 Names as built in task 1.1.** `SchemaLock.locked_classes`, `.locked_enums`;
+  `LockedClass.class_uri`, `.iri_type`, `.root_path`, `.locked_slots`; `LockedSlot.slot_uri`,
+  `.range`, `.required`, `.multivalued`, `.inlined`; `LockedEnum.name`, `.enum_values`.
+- **D-4 Details the how-to draft asked for (lead).** A pattern holds full IRIs in angle brackets;
+  the request has no `PREFIX`, so a prefixed name does not parse. A `FILTER`, `FILTER NOT EXISTS`,
+  `OPTIONAL` or `BIND` inside `where_pattern` is allowed (it parses as a group). The draft of a drop
+  uses the class's and slot's IRIs from the lock (the toy `Book` is `bibo:Book`,
+  `http://purl.org/ontology/bibo/Book`; the worked example's `lib:Book` stands for it).
+  `Tenancy`'s `stamps` argument is optional and empty by default (about twenty tests build a
+  `Tenancy`); only the kit passes it, and with none `create` stamps nothing.
