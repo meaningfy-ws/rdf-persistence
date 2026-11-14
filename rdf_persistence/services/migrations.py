@@ -45,7 +45,7 @@ _CHECKED_STAMPS = URIRef("urn:stamps")  # any graph IRI will do to check the sha
 _STEP = (
     "$delete $insert WHERE { GRAPH $stamps { $schema $p_stamp $from } "
     "GRAPH ?rp_graph { $where } FILTER (?rp_graph != $stamps) "
-    "FILTER NOT EXISTS { GRAPH ?rp_registry { ?rp_graph $p_kind $loaded } } "
+    "MINUS { GRAPH ?rp_registry { ?rp_graph $p_kind $loaded } } "  # not FILTER NOT EXISTS: rdflib walks every graph per row (PD-26)
     "FILTER NOT EXISTS { GRAPH ?rp_graph { ?rp_entry $p_kind ?rp_kind } } }"  # a registry graph (PD-21)
 )
 _CLAUSE = "$verb { GRAPH ?rp_graph { $pattern } }"

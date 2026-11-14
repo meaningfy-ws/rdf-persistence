@@ -215,7 +215,8 @@ def _parsed(text: str, template: bool) -> object:
         if template:
             return parseUpdate(f"INSERT {{ {text} }} WHERE {{}}")
         return parseQuery(f"ASK {{ {text} }}")
-    except RecursionError as error:
+    # near the recursion limit pyparsing fails with a TypeError on its own Suppress objects
+    except (RecursionError, TypeError) as error:
         raise SparqlError(_TOO_LONG) from error
     except ParseBaseException as error:
         raise SparqlError("does not parse alone as a group graph pattern") from error

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from rdflib import RDF, Literal, URIRef
+from rdflib import RDF, Dataset, Literal, URIRef
 from rdflib.plugins.sparql.parser import parseUpdate
 
 from rdf_persistence.domain.exceptions import InvalidMigration, SparqlError
@@ -328,10 +328,54 @@ def test_a_step_leaves_the_stamps_graph_alone():
 def test_a_step_leaves_loaded_graphs_alone():
     step_op = operations(migration_request(migration(rename()), STAMPS))[0]
     loaded = v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH]
-    guard = (
-        f"FILTER NOT EXISTS {{ GRAPH ?rp_registry {{ ?rp_graph <{v.REGISTRY_KIND}> <{loaded}> }} }}"
+    guard = f"MINUS {{ GRAPH ?rp_registry {{ ?rp_graph <{v.REGISTRY_KIND}> <{loaded}> }} }}"
+    assert guard in step_op, "a graph the registry calls loaded is excluded by MINUS (PD-26)"
+
+
+def test_the_loaded_graph_exclusion_gives_the_result_of_the_filter_it_replaced():
+    """PD-26: MINUS and the earlier FILTER NOT EXISTS agree on every kind of graph a dump can hold."""
+    loaded_kind = v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH]
+    minus = f"MINUS {{ GRAPH ?rp_registry {{ ?rp_graph <{v.REGISTRY_KIND}> <{loaded_kind}> }} }}"
+    old_filter = minus.replace("MINUS", "FILTER NOT EXISTS")
+    request = migration_request(migration(rename()), STAMPS)
+    assert minus in request, "the request holds the exclusion this test replaces"
+    other_registry, from_data_graph, pretender, loaded_two = (
+        URIRef(f"https://example.org/t/{name}")
+        for name in ("registry-b", "data-graph", "pretender", "loaded-two")
     )
-    assert guard in step_op, "a graph the registry calls loaded is filtered out"
+
+    def holding_every_kind_of_graph() -> Dataset:
+        data = Dataset()
+        data.graph(URIRef(STAMPS)).add((URIRef(SCHEMA), v.DATA_SCHEMA_VERSION, Literal("1")))
+        for graph in (
+            BOOK,
+            LOADED,
+            loaded_two,
+            pretender,
+            REGISTRY,
+            other_registry,
+            from_data_graph,
+        ):
+            data.graph(graph).add((BOOK, SHELF_IRI, Literal(f"on {graph}")))
+        data.graph(BOOK).add((BOOK, v.VERSION, OLD_TOKEN))
+        data.graph(REGISTRY).add((LOADED, v.REGISTRY_KIND, loaded_kind))
+        data.graph(other_registry).add((loaded_two, v.REGISTRY_KIND, loaded_kind))
+        data.graph(from_data_graph).add((from_data_graph, v.REGISTRY_KIND, Literal("other")))
+        data.graph(pretender).add((pretender, v.REGISTRY_KIND, Literal("anything")))
+        return data
+
+    with_minus, with_filter = holding_every_kind_of_graph(), holding_every_kind_of_graph()
+    with_minus.update(request)
+    with_filter.update(request.replace(minus, old_filter))
+    moved = {c for _, p, _, c in with_minus.quads() if p == PLACE_IRI}
+    assert moved == {BOOK}, "the step reached the data graph and no other kind of graph"
+
+    def without_tokens(data: Dataset) -> set:  # the rotated version token is random (STRUUID)
+        return {q for q in data.quads() if q[1] != v.VERSION}
+
+    assert without_tokens(with_minus) == without_tokens(with_filter), (
+        "the same quads after both texts"
+    )
 
 
 def test_a_step_leaves_registry_graphs_alone():

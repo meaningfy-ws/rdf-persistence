@@ -299,7 +299,7 @@ DELETE { GRAPH ?rp_graph { <delete_pattern> } } INSERT { GRAPH ?rp_graph { <inse
 WHERE { GRAPH <stamps> { <schema id> rp:dataSchemaVersion "<from>" }
         GRAPH ?rp_graph { <where_pattern> }
         FILTER (?rp_graph != <stamps>)
-        FILTER NOT EXISTS { GRAPH ?rp_registry { ?rp_graph rp:kind <loaded-graph kind> } }
+        MINUS { GRAPH ?rp_registry { ?rp_graph rp:kind <loaded-graph kind> } }
         FILTER NOT EXISTS { GRAPH ?rp_graph { ?rp_entry rp:kind ?rp_kind } } }
 ----
 

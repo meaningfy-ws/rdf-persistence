@@ -1,8 +1,6 @@
 """Adversarial tests of ``migrate_dataset``: a client's dump is the input (schema-migrations PD-15, PD-5, PD-23)."""
 # ruff: noqa: F811  (fixtures imported from the tests they extend are named again as test arguments)
 
-import time
-
 import pytest
 from rdflib import XSD, Dataset, Literal, URIRef
 
@@ -185,19 +183,29 @@ def many_graphs(count: int) -> Dataset:
     return data
 
 
-def seconds_to_migrate(count: int, chains: list[tuple[str, Chain]]) -> float:
+def full_scans_to_migrate(count: int, chains: list[tuple[str, Chain]], monkeypatch) -> int:
+    """How many times the migration walks every named graph of the dataset (``Dataset.contexts``)."""
+    scans = []
+    walk_all_graphs = Dataset.contexts
+
+    def counted(self, *args, **kwargs):
+        scans.append(1)
+        return walk_all_graphs(self, *args, **kwargs)
+
     data = many_graphs(count)
-    started = time.perf_counter()
-    migrate_dataset(data, chains, STAMPS)
-    return time.perf_counter() - started
+    with monkeypatch.context() as patch:
+        patch.setattr(Dataset, "contexts", counted)
+        migrate_dataset(data, chains, STAMPS)
+    return len(scans)
 
 
-def test_a_plain_rename_over_a_hundred_small_graphs_takes_seconds_not_more(
-    lib_chain, toolkit_chain
+def test_a_plain_rename_walks_the_graphs_a_number_of_times_that_does_not_grow_with_them(
+    lib_chain, toolkit_chain, monkeypatch
 ):
-    """400 triples. A rename is the commonest step; measured, the time grows faster than the square of the graphs
-    (100 graphs 5 s, 200 graphs 30 s), so a client's dump of a few thousand aggregates holds the process for hours."""
+    """PD-26: the loaded-graph exclusion walked every graph once per solution row (3N+6 walks), so a client's
+    dump of a few thousand aggregates held the process for hours. A count, not a time: the machine's load
+    does not change it."""
     chains = chains_of(toolkit_chain, lib_chain)
-    seconds_to_migrate(5, chains)  # warm the parser caches
-    elapsed = seconds_to_migrate(100, chains)
-    assert elapsed < 3, f"a rename over 100 graphs of 4 triples took {elapsed:.1f}s"
+    small = full_scans_to_migrate(20, chains, monkeypatch)
+    large = full_scans_to_migrate(80, chains, monkeypatch)
+    assert large == small, f"20 graphs took {small} full walks, 80 graphs took {large}"

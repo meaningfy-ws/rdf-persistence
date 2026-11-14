@@ -125,7 +125,7 @@ marks an answer the developer delegated (seed, 2026-11-06) and may overrule.
   WHERE { GRAPH <stamps> { <schema id> rp:dataSchemaVersion "<from>" }
           GRAPH ?rp_graph { <where_pattern> }
           FILTER (?rp_graph != <stamps>)
-          FILTER NOT EXISTS { GRAPH ?rp_registry { ?rp_graph rp:kind <loaded-graph kind> } }
+          MINUS { GRAPH ?rp_registry { ?rp_graph rp:kind <loaded-graph kind> } }
           FILTER NOT EXISTS { GRAPH ?rp_graph { ?rp_entry rp:kind ?rp_kind } } }
   ```
 
