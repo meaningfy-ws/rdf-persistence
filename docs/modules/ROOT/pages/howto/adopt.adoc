@@ -201,8 +201,9 @@ toolkit's repository:
                                             # subclass of Book is a scope of its own
 ----
 
-`rp-generate` refuses a key on a class that is not an aggregate root, or one whose slot is
-multivalued, the identifier, bookkeeping or an owned part. The toolkit enforces the key when a
+`rp-generate` refuses such a key unless it sits on an aggregate root of the tenant databases (or
+on a class those roots inherit from; not the tenant root, of which a tenant has one), and refuses
+one whose slot is multivalued, the identifier, bookkeeping or an owned part. The toolkit enforces the key when a
 session commits (xref:howto/adopt.adoc#key-conflict[step 8]); it generates no validator or shape
 for it.
 
