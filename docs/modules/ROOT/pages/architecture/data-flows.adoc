@@ -521,7 +521,8 @@ adds one guard on its target: the target must still have a version when the requ
 (`Transaction._require_present`). A comment that loses the race with the removal of its target is
 refused with a `Conflict` whose `iris` names the target, and nothing is stored.
 
-*Limits.* One tenant only: nothing spans two tenants, or a tenant and the system database. Files
+*Limits.* One tenant only: nothing spans two tenants, a tenant and the system database, or a
+tenant and the application database. Files
 are not part of it: a blob keeps its write order and its sweep (<<files>>). Nothing is read inside
 the request; the guards are the version tokens the caller read. A store must apply a multi-operation
 update as one transaction (Fuseki does); the store conformance suite checks it.

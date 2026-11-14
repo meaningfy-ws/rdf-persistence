@@ -150,6 +150,12 @@ new IRIs. The restorer alone gets the creator role; grants are not dumped. The a
 from the same schema version and IRI policy, and the graphs are held in memory. See
 xref:howto/dump-restore.adoc[Back up or copy a project].
 
+*Where does data that belongs to no project go?*::
+Into the application database, one per deployment. Mark the class `database: application` in the
+schema, check the caller with `kit.require_application`, mint IRIs with `kit.application_iri` and
+open `kit.application_session`. Access comes from global roles at level `system`, which also apply
+in every tenant. See xref:howto/application-data.adoc[Keep data that belongs to no project].
+
 *How do I test my application with the testkit?*::
 Use `FakeStore`, `FakeFileStore` and `FakeIdentity` in place of the adapters, `fake_session` for a
 domain service, and `TokenSigner` with `JwksTokenVerifier` for tokens, all from

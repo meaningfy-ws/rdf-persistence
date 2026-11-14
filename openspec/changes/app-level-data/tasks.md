@@ -132,12 +132,12 @@ and `make clean-code` unless it names others.
 
 ## 5. The proof and the docs
 
-- [ ] 5.1 `tests/feature/application_data.feature` with its steps in
+- [x] 5.1 `tests/feature/application_data.feature` with its steps in
   `tests/feature/test_application_data.py`, on the fakes: one scenario per scenario of the
   [rp-tenancy](specs/rp-tenancy/spec.md) and [rp-access](specs/rp-access/spec.md) deltas, in their
   words. The `rp-iri-policy` scenarios are covered by TC-15, TC-21, TC-22 and TC-48. Gates:
   `make test-changed`, `make check-quality`.
-- [ ] 5.2 `tests/integration/tenancy/test_application_data.py` on Fuseki, a fresh prefix per test
+- [x] 5.2 `tests/integration/tenancy/test_application_data.py` on Fuseki, a fresh prefix per test
   (`unique_prefix`), datasets dropped afterwards (`drop_databases`). Gates: `make test-containers
   TEST_PATH=tests/integration/tenancy/test_application_data.py`, `make check-quality`.
 
@@ -148,7 +148,7 @@ and `make clean-code` unless it names others.
 | IT-03 | create `T` and a `B`; add `Tpl`; list `T`'s books; run the start-up sweep | the listing holds only `B`; `{prefix}-app` and `Tpl` survive the sweep |
 | IT-04 | commit `B` through the application session | `InvalidIri`; `{prefix}-app` holds no graph of `B` |
 
-- [ ] 5.3 Docs: the how-to `docs/modules/ROOT/pages/howto/application-data.adoc` in the nav, with:
+- [x] 5.3 Docs: the how-to `docs/modules/ROOT/pages/howto/application-data.adoc` in the nav, with:
   when to use it; the schema annotation; `require_application`, `application_iri`,
   `application_session` in one example; the start-up call for a consumer without
   `install_service`; who may do what (PD-9 and RISK-1); references across the boundary (DEC-4);
