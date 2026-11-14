@@ -63,7 +63,8 @@ transition requires one, no Prohibition of `modify` applies to the principal on 
 or the tenant, no Prohibition of `annotate` applies when a comment is given, and the aggregate
 still has the version token `if_version` the caller read. Otherwise it SHALL be refused, with
 the reason, and nothing SHALL change. A transition asked at a version token that is no longer
-the aggregate's SHALL be refused as a conflict, whatever else would refuse it. A blank comment
+the aggregate's SHALL be refused as a conflict by a caller who may read the aggregate and is not prohibited,
+whatever the workflow, the roles or the comment would say. A blank comment
 is no comment.
 
 #### Scenario: an allowed transition

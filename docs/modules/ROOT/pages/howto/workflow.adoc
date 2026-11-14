@@ -198,7 +198,7 @@ checks, in this order:
   on the transition stands in for the right to comment, not for an explicit ban (`Forbidden`; the
   same call without a comment passes);
 . the aggregate still has the version `if_version`; if not, the answer is a `Conflict` about the
-  version, whatever else would refuse the call;
+  version, whatever the checks below would say;
 . the workflow has a transition from the current state to `to`; a `to` that is no state of the
   workflow is a `Conflict` that says so;
 . the caller holds one of that transition's roles: by a grant on the tenant or on the aggregate,
@@ -297,7 +297,7 @@ Of `transition`; a refused transition stores nothing:
 |`Forbidden` |The caller may see the aggregate but not read it; `modify` is prohibited on it; `annotate` is prohibited on it and a comment that is not blank is given; or the caller holds none of the transition's roles.
 |`InvalidBody` |The aggregate's class is under no workflow (the error the toolkit uses for a request that cannot be carried out as given); or the transition needs a comment and `comment` is `None` or blank.
 |`StoredDataInvalid` |The aggregate holds more than one state, or classes under more than one workflow (raw triples the toolkit would not write); nothing changes.
-|`Conflict` |The version is not `if_version` (checked before the rest, so it is the answer for a stale call whatever else is wrong), or the aggregate was removed meanwhile; or the workflow has no transition from the current state to `to` (the message names both; a stored state the file no longer lists has none), or `to` is no state of the workflow.
+|`Conflict` |The version is not `if_version` (checked after the access checks and before the workflow, role and comment checks, so a stale call by a caller who may read the aggregate gets this answer), or the aggregate was removed meanwhile; or the workflow has no transition from the current state to `to` (the message names both; a stored state the file no longer lists has none), or `to` is no state of the workflow.
 |`DatabaseGone` |The tenant database does not exist.
 |===
 
@@ -321,6 +321,10 @@ At start: `InvalidWorkflow`, from `install_service` or `ServiceKit`, for the fau
 * *No timers, parallel states, quorum approvals or automatic transitions.* An aggregate is in one
   state, and one caller moves it.
 * *No migration of states when a file changes.* See <<Change a file on a system that holds data>>.
+* *Deleting an aggregate deletes its history, and code that holds a session can store it again.*
+  The generic API mints a new IRI for every new aggregate, so a caller cannot bring a deleted book
+  back. Application code with a session can add an aggregate at the same IRI: it starts in the
+  initial state with no records. Guard such a route as you would guard a transition.
 * *Two transitions racing from one version:* one wins; the other gets `Conflict` and stores
   nothing, neither record nor comment.
 * *The history is deleted with the aggregate.* It is not an audit log that outlives it.

@@ -758,6 +758,17 @@ delivers.
       write to the store, L4/L5 W4); a class change of an aggregate under a workflow
       (`Forbidden`); a stale version on a plain write that would change the state (`Conflict`).
 
+  11. From the checker (2026-11-14): the stale-version answer of `transition` comes after the
+      access checks (read, the Prohibitions of `modify` and `annotate`) and before the workflow,
+      role and comment checks; the spec and the how-to said "whatever else would refuse it" and
+      now say this. The three-write path of item 1 is tested through a session and a
+      transaction, not through the generic routes: the toy library serves no superclass
+      without a workflow above a class with one, and a new toy class for it alone is not worth
+      its ripple; the generic API writes through the same guarded session. Not a decision of
+      this EPIC, said in the how-to: code that holds a session can remove an aggregate and add
+      it again at the same IRI, in the initial state with no records; the generic API cannot,
+      since it mints the IRI.
+
   Rejected: letting a plain replace narrow two stored states to one (L4/L5 W4: that state
   comes from raw writes, and choosing between two states is a state change); making the
   `workflows` argument required everywhere (L3 S4, L4/L5 S4: test churn, the kit always passes
