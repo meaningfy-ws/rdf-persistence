@@ -41,6 +41,12 @@ def test_database_name_is_internal() -> None:
         (MODEL / "rp.yaml", "Grant", "target", "ODRL:target"),
         (SERVICE_SCHEMA, "Page", "items", "rp:items"),
         (LIBRARY / "library.yaml", "Grant", "target", "ODRL:target"),
+        (MODEL / "rp.yaml", "Comment", "has_target", "oa:hasTarget"),
+        (MODEL / "rp.yaml", "Comment", "body_value", "oa:bodyValue"),
+        (MODEL / "rp.yaml", "Comment", "motivated_by", "oa:motivatedBy"),
+        (MODEL / "rp.yaml", "Comment", "comment_audience", "rp:audience"),
+        (MODEL / "rp.yaml", "Comment", "comment_references", "dcterms:references"),
+        (MODEL / "rp.yaml", "Comment", "replies_to", "rp:repliesTo"),
     ],
 )
 def test_a_slot_name_shared_across_the_imports_keeps_its_own_predicate(

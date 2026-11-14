@@ -15,7 +15,7 @@
     },
     {
       "path": "rdf_persistence/generation/checks/hard.py",
-      "sha256": "b8d5c98a20ab6459f8fc3a79b97ff131a895d3849c229447a39c03385a87916f"
+      "sha256": "7c4ba82e7cc778f2e3a70b0adbc79e6d67e0fb6ee78b575ee266609a060beb88"
     },
     {
       "path": "rdf_persistence/generation/checks/rules.py",
@@ -131,7 +131,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_access.yaml",
-      "sha256": "6886d4e61c95d3daebe616136389588652f55670fbb77fa322e1ae82a8de8f3d"
+      "sha256": "4bc4117cbd93d3049fa5372ee447522415a80a050102233559d9a59b1bc13288"
     },
     {
       "path": "rdf_persistence/model/rp_annotations.yaml",
@@ -139,7 +139,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "330048e7e2fbdab0d081c58e96ac1f80192dd4cc9c2ca98b36696149c9e7756b"
+      "sha256": "f9479354b0b83780b8f521e5f7ba2becca6b605b41936d1f9382a3f3230bedd2"
     },
     {
       "path": "rdf_persistence/model/rp_tenancy.yaml",
@@ -155,7 +155,7 @@
     },
     {
       "path": "rdf_persistence/services/schema_structure.py",
-      "sha256": "85094ecbc86e1b2318a29a6397edb05f5770a6bbb977894edb4b79a81949dcc9"
+      "sha256": "e65afd97714a401bfd63b52ff42f7dba227c730e755b777d4e9fdf9b9263ad72"
     }
   ],
   "outputs": [
@@ -165,11 +165,11 @@
     },
     {
       "path": "rdf_persistence/domain/generated/service/context.jsonld",
-      "sha256": "8f4ce48df06c5cc5a39acfe05fc93a85cfe57b44a516a31bb8de34f80d8a5536"
+      "sha256": "904374518ed3298678ff6458d9aa824eab0207209f51020e9fcb1ef58c57526e"
     },
     {
       "path": "rdf_persistence/domain/generated/service/openapi-components.json",
-      "sha256": "adc0ad2baf264f44092e1835d0cac16e344c76e6f75b8c93f4bbb334c4beb917"
+      "sha256": "79c45fada413586eae4adee87940a90934dab757b36d0256475f0e1ebd6968b5"
     },
     {
       "path": "rdf_persistence/domain/generated/service/rp_service.py",
@@ -177,7 +177,7 @@
     },
     {
       "path": "rdf_persistence/domain/generated/service/shapes.ttl",
-      "sha256": "18224d289bc538e90d296798bc32aaf367e641e4b6aaa61293f471ffdd97c2bb"
+      "sha256": "9112ede5dd10dacde2f43181a80a4c39827c6f203b3a242c4e764e500ee5027f"
     }
   ]
 }

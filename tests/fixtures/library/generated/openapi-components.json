@@ -6,7 +6,8 @@
         "read",
         "modify",
         "delete",
-        "administer"
+        "administer",
+        "annotate"
       ],
       "title": "Action",
       "type": "string"
@@ -151,6 +152,59 @@
         "id"
       ],
       "title": "Chapter",
+      "type": "object"
+    },
+    "Comment": {
+      "additionalProperties": false,
+      "description": "A remark on an aggregate, or a reply to another remark. Each comment is an aggregate root of its own, whose target is always the aggregate it is about; a reply also names the comment it answers. The toolkit writes and reads it, since its audience limits who may see it. The session writes its author and time as the tracking of its graph.",
+      "properties": {
+        "body_value": {
+          "description": "The text of the comment.",
+          "type": "string"
+        },
+        "comment_audience": {
+          "description": "The names of the roles that may see the comment; none means everyone who may read the aggregate.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "comment_references": {
+          "description": "The IRIs of other aggregates the comment points to.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "has_target": {
+          "description": "The IRI of the aggregate the comment is about.",
+          "format": "uri",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "motivated_by": {
+          "$ref": "#/components/schemas/Motivation",
+          "description": "Why the comment was made, a remark or a reply."
+        },
+        "replies_to": {
+          "description": "The IRI of the comment this one answers.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "has_target",
+        "body_value",
+        "motivated_by"
+      ],
+      "title": "Comment",
       "type": "object"
     },
     "CommitMarker": {
@@ -414,6 +468,15 @@
         "access"
       ],
       "title": "ModuleKind",
+      "type": "string"
+    },
+    "Motivation": {
+      "description": "Why a comment was made.",
+      "enum": [
+        "commenting",
+        "replying"
+      ],
+      "title": "Motivation",
       "type": "string"
     },
     "Note": {
@@ -985,7 +1048,8 @@
     "WritesKind": {
       "description": "How an aggregate root is written, the values of the rp_writes annotation.",
       "enum": [
-        "service"
+        "service",
+        "toolkit"
       ],
       "title": "WritesKind",
       "type": "string"

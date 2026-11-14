@@ -69,6 +69,8 @@ class Action(str, Enum):
     "Delete an object."
     ADMINISTER = "administer"
     "Change the grants of a tenant."
+    ANNOTATE = "annotate"
+    "Add a comment to an object without changing it."
 
 
 class RoleLevel(str, Enum):

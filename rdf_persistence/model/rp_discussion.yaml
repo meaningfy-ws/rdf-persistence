@@ -1,0 +1,97 @@
+id: https://meaningfy.ws/ns/rdf-persistence/discussion
+name: rp_discussion
+title: RDF persistence discussion module
+description: >-
+  The comment of the metamodel, on the Web Annotation vocabulary: a remark on an aggregate, written
+  by the toolkit and not by the application.
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+  oa: http://www.w3.org/ns/oa#
+  dcterms: http://purl.org/dc/terms/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+  - rp_core
+  - rp_annotations
+
+classes:
+  Comment:
+    title: Comment
+    description: >-
+      A remark on an aggregate, or a reply to another remark. Each comment is an aggregate root of its
+      own, whose target is always the aggregate it is about; a reply also names the comment it answers.
+      The toolkit writes and reads it, since its audience limits who may see it. The session writes its
+      author and time as the tracking of its graph.
+    class_uri: oa:Annotation
+    mixins:
+      - AggregateRoot
+      - Tracked
+    slots:
+      - id
+      - has_target
+      - body_value
+      - motivated_by
+      - comment_audience
+      - comment_references
+      - replies_to
+    slot_usage:
+      has_target:
+        required: true
+      body_value:
+        required: true
+      motivated_by:
+        required: true
+    annotations:
+      rp_path: rp-comments
+      rp_iri_type: rp-comment
+      rp_writes: toolkit
+
+slots:
+  has_target:
+    title: Has target
+    description: The IRI of the aggregate the comment is about.
+    slot_uri: oa:hasTarget
+    range: uri
+  body_value:
+    title: Body value
+    description: The text of the comment.
+    slot_uri: oa:bodyValue
+    range: string
+  motivated_by:
+    title: Motivated by
+    description: Why the comment was made, a remark or a reply.
+    slot_uri: oa:motivatedBy
+    range: Motivation
+  comment_audience:
+    title: Comment audience
+    description: The names of the roles that may see the comment; none means everyone who may read the aggregate.
+    slot_uri: rp:audience
+    range: string
+    multivalued: true
+  comment_references:
+    title: Comment references
+    description: The IRIs of other aggregates the comment points to.
+    slot_uri: dcterms:references
+    range: uri
+    multivalued: true
+  replies_to:
+    title: Replies to
+    description: The IRI of the comment this one answers.
+    slot_uri: rp:repliesTo
+    range: uri
+
+enums:
+  Motivation:
+    title: Motivation
+    description: Why a comment was made.
+    permissible_values:
+      commenting:
+        title: Commenting
+        description: A remark on the aggregate.
+        meaning: oa:commenting
+      replying:
+        title: Replying
+        description: An answer to another comment.
+        meaning: oa:replying

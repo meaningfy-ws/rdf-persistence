@@ -133,7 +133,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 
 ## 3. Discussion (#81)
 
-- [ ] 3.1 `annotate` (PD-9): `rp_access.yaml`; `AccessRules.roles`, `AccessRules.defines`;
+- [x] 3.1 `annotate` (PD-9): `rp_access.yaml`; `AccessRules.roles`, `AccessRules.defines`;
   `make generate`; snapshot, golden and OpenAPI files refreshed (RISK-7). `library_roles.yaml`
   is unchanged; a test role file adds `{role: reviewer, level: tenant, actions: [read, annotate]}`.
   Test first in `tests/unit/services/test_access.py`.
@@ -146,7 +146,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-44 | `roles` for tenant `reader` + aggregate-level role on b1 + global `admin` | {reader, the aggregate role, admin}; on b2 without the aggregate role |
 | TC-44a | `prohibits(…, b1, MODIFY)` with `ban(MODIFY, graph_of(b1))`; with `ban(MODIFY)` on the tenant; with none | True, True, False |
 
-- [ ] 3.2 `model/rp_discussion.yaml` (PD-10), `WritesKind.toolkit`, `served_roots` (PD-11), the
+- [x] 3.2 `model/rp_discussion.yaml` (PD-10), `WritesKind.toolkit`, `served_roots` (PD-11), the
   `RESERVED_SEGMENT` hard rule; the kit's `generated_models_of` gains `rp_discussion` (PD-1);
   `make generate`; TC-02a re-run. Test first in
   `tests/unit/services/test_schema_structure.py` and `tests/unit/generation/test_hard_checks.py`.

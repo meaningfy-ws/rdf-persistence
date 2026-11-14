@@ -15,7 +15,7 @@
     },
     {
       "path": "rdf_persistence/generation/checks/hard.py",
-      "sha256": "b8d5c98a20ab6459f8fc3a79b97ff131a895d3849c229447a39c03385a87916f"
+      "sha256": "7c4ba82e7cc778f2e3a70b0adbc79e6d67e0fb6ee78b575ee266609a060beb88"
     },
     {
       "path": "rdf_persistence/generation/checks/rules.py",
@@ -131,11 +131,11 @@
     },
     {
       "path": "rdf_persistence/model/rp.yaml",
-      "sha256": "17c0fa96695dff18e9f41a88150c2118d6235651e78436b2739df1c63c6d71d8"
+      "sha256": "f2ee1936556962f93ad160f98e6609b676ad6c3a05ef5a6ce48d6bf276136c15"
     },
     {
       "path": "rdf_persistence/model/rp_access.yaml",
-      "sha256": "6886d4e61c95d3daebe616136389588652f55670fbb77fa322e1ae82a8de8f3d"
+      "sha256": "4bc4117cbd93d3049fa5372ee447522415a80a050102233559d9a59b1bc13288"
     },
     {
       "path": "rdf_persistence/model/rp_annotations.yaml",
@@ -147,7 +147,11 @@
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "330048e7e2fbdab0d081c58e96ac1f80192dd4cc9c2ca98b36696149c9e7756b"
+      "sha256": "f9479354b0b83780b8f521e5f7ba2becca6b605b41936d1f9382a3f3230bedd2"
+    },
+    {
+      "path": "rdf_persistence/model/rp_discussion.yaml",
+      "sha256": "4df06399fc556bafd3f97138411884542319462b7aefe2a8984b9cdfb01c0a97"
     },
     {
       "path": "rdf_persistence/model/rp_files.yaml",
@@ -167,10 +171,14 @@
     },
     {
       "path": "rdf_persistence/services/schema_structure.py",
-      "sha256": "85094ecbc86e1b2318a29a6397edb05f5770a6bbb977894edb4b79a81949dcc9"
+      "sha256": "e65afd97714a401bfd63b52ff42f7dba227c730e755b777d4e9fdf9b9263ad72"
     }
   ],
   "outputs": [
+    {
+      "path": "rdf_persistence/domain/generated/Comment.frame.jsonld",
+      "sha256": "b9b02925f426aa362d44d5a6a868b2c205136bbf484ce5fd854cf2835d50d7f9"
+    },
     {
       "path": "rdf_persistence/domain/generated/TenantAccess.frame.jsonld",
       "sha256": "606ae580faa789b964142d18d54fbc732f352163e973d896b5de03eabe82836f"
@@ -181,15 +189,15 @@
     },
     {
       "path": "rdf_persistence/domain/generated/context.jsonld",
-      "sha256": "2c21f65b2de78f89b9d6fab94e40be3bdbb2e8bed69f257fddfb1687a2b8b55c"
+      "sha256": "42de9a65966dfc037584db29c012a0bc6d86225431fded98ad8f4703ba49dd74"
     },
     {
       "path": "rdf_persistence/domain/generated/rp.py",
-      "sha256": "4cc8b2395377a5df91f5f20b470b7f1ccd60ec2703cb09128cd60fec6ac9fe7a"
+      "sha256": "e32f662d93de9aebddb8a4747cfeb46d709e79bc0efb08237988fd6cf1a5b60d"
     },
     {
       "path": "rdf_persistence/domain/generated/rp_access.py",
-      "sha256": "e92ddb406f8ffa36f7c9cd7a55166330913614d7902c313933c187a89dce9334"
+      "sha256": "adeeca9453c1ce665aa8a77f64d839a5785b48bff549e3a2aa10959c2ac92175"
     },
     {
       "path": "rdf_persistence/domain/generated/rp_annotations.py",
@@ -201,7 +209,11 @@
     },
     {
       "path": "rdf_persistence/domain/generated/rp_core.py",
-      "sha256": "c02d0351a06cef34b2af2841ed291caba5bbeacd2d6e5666166fc5c6b1f6c2a8"
+      "sha256": "902b690d3b75e036d64d38471ca68d329b8bac2763fc678536551e3fab8b4db3"
+    },
+    {
+      "path": "rdf_persistence/domain/generated/rp_discussion.py",
+      "sha256": "bdd1d14674aaafbcbf4c031866c3aefe8f87a96fb5dd492d1e5cb4bc2e5c068d"
     },
     {
       "path": "rdf_persistence/domain/generated/rp_files.py",
@@ -217,7 +229,7 @@
     },
     {
       "path": "rdf_persistence/domain/generated/shapes.ttl",
-      "sha256": "9856bf80799022fe983b4b92d7ded5be03777588e7f13c50963bdd5733fd7554"
+      "sha256": "675345f80a7dbc6e7f4da2928847eb67552a96adf1e61efb9a60bbd65effb5bd"
     }
   ]
 }

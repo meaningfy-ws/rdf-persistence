@@ -5,6 +5,7 @@
       "dcterms": "http://purl.org/dc/terms/",
       "formats": "http://www.w3.org/ns/formats/",
       "linkml": "https://w3id.org/linkml/",
+      "oa": "http://www.w3.org/ns/oa#",
       "prov": "http://www.w3.org/ns/prov#",
       "rp": "https://meaningfy.ws/ns/rdf-persistence#",
       "schema": "http://schema.org/",
@@ -18,7 +19,8 @@
             "read": "http://www.w3.org/ns/odrl/2/read",
             "modify": "http://www.w3.org/ns/odrl/2/modify",
             "delete": "http://www.w3.org/ns/odrl/2/delete",
-            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer"
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer",
+            "annotate": "http://www.w3.org/ns/odrl/2/annotate"
          }
       },
       "actions": {
@@ -29,7 +31,8 @@
             "read": "http://www.w3.org/ns/odrl/2/read",
             "modify": "http://www.w3.org/ns/odrl/2/modify",
             "delete": "http://www.w3.org/ns/odrl/2/delete",
-            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer"
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer",
+            "annotate": "http://www.w3.org/ns/odrl/2/annotate"
          }
       },
       "assignee": {
@@ -40,8 +43,20 @@
          "@container": "@set",
          "@id": "sweptBlob"
       },
+      "body_value": {
+         "@id": "oa:bodyValue"
+      },
       "byte_size": {
          "@id": "byteSize"
+      },
+      "comment_audience": {
+         "@container": "@set",
+         "@id": "audience"
+      },
+      "comment_references": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "dcterms:references"
       },
       "id": "@id",
       "contributor": {
@@ -86,6 +101,10 @@
          "@type": "@id",
          "@container": "@set",
          "@id": "prov:hadMember"
+      },
+      "has_target": {
+         "@type": "@id",
+         "@id": "oa:hasTarget"
       },
       "key_name": {
          "@id": "keyName"
@@ -155,6 +174,14 @@
          "@type": "xsd:dateTime",
          "@id": "dcterms:modified"
       },
+      "motivated_by": {
+         "@id": "oa:motivatedBy",
+         "@type": "@vocab",
+         "@context": {
+            "commenting": "http://www.w3.org/ns/oa#commenting",
+            "replying": "http://www.w3.org/ns/oa#replying"
+         }
+      },
       "older_than_seconds": {
          "@id": "olderThanSeconds"
       },
@@ -172,6 +199,10 @@
       },
       "removed_loaded_graphs": {
          "@id": "removedLoadedGraphs"
+      },
+      "replies_to": {
+         "@type": "@id",
+         "@id": "repliesTo"
       },
       "role": {
          "@id": "role"
@@ -257,6 +288,9 @@
       },
       "BlobEntry": {
          "@id": "BlobEntry"
+      },
+      "Comment": {
+         "@id": "oa:Annotation"
       },
       "CommitMarker": {
          "@id": "CommitMarker"

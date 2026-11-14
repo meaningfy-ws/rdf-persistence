@@ -26,6 +26,8 @@ WHO: dict[str, tuple[str, tuple[str, ...]]] = {
     "admin": ("root", ("admin",)),
 }
 ALL = [a.value for a in ACTIONS]
+# annotate has no route to probe: a comment is posted through the discussion service, not the API
+ROUTED = [a for a in ALL if a != Action.ANNOTATE.value]
 
 
 def _as(scene: Scene, who: str, **extra: str) -> dict[str, str]:
@@ -99,7 +101,7 @@ async def _set_up(scene: Scene, case: str) -> str:
     return who
 
 
-@pytest.mark.parametrize("action", ALL)
+@pytest.mark.parametrize("action", ROUTED)
 @pytest.mark.parametrize("case", list(CASES))
 @pytest.mark.parametrize("on", ["book", "tenant"])
 async def test_a_listed_action_is_allowed_and_an_unlisted_one_is_refused(
@@ -133,7 +135,9 @@ async def test_deleting_the_tenant_is_allowed_exactly_when_the_tenant_read_lists
 async def test_the_actions_come_in_the_documented_order(scene) -> None:
     await _everyone_has_a_role(scene)
     listed = await _listed(await scene.http.get(scene.tenant, headers=_as(scene, "ada")))
-    assert listed == ALL, "read, modify, delete, administer"
+    assert listed == ROUTED, (
+        "read, modify, delete, administer; the librarian role names no annotate"
+    )
 
 
 async def test_the_header_never_repeats_or_invents_an_action(scene) -> None:
@@ -359,6 +363,8 @@ def test_tenant_summary_documents_allowed_actions_as_the_action_enum(service) ->
     assert slot["items"] == {"$ref": "#/components/schemas/Action"}, slot
     assert slot["type"] == "array", "a list"
     assert "allowed_actions" not in schemas["TenantSummary"].get("required", []), "optional"
-    assert schemas["Action"]["enum"] == ["read", "modify", "delete", "administer"], "the four"
+    assert schemas["Action"]["enum"] == ["read", "modify", "delete", "administer", "annotate"], (
+        "the five, annotate last (PD-9)"
+    )
     # the pages document their items as TenantSummary on the tenant listing
     assert "Action" in schemas, "the enum is a component"

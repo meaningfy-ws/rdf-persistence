@@ -105,6 +105,15 @@ FAULTS = (
         "rp_path: books\n      rp_iri_type: Bk",
         "Book",
     ),
+    # TC-47: the toolkit's own roots use the rp- prefix, so an application's may not
+    Fault(HardRule.RESERVED_SEGMENT, "books.yaml", "rp_path: books", "rp_path: rp-notes", "Book"),
+    Fault(
+        HardRule.RESERVED_SEGMENT,
+        "books.yaml",
+        "rp_path: books",
+        "rp_path: books\n      rp_iri_type: rp-book",
+        "Book",
+    ),
     # an owned class and a root with one type, and a reserved type
     Fault(
         HardRule.IRI_TYPE,
@@ -165,6 +174,16 @@ def test_a_planted_fault_is_reported_with_its_rule_and_element(
     problems = problems_of(root)
     expected = f"[{fault.rule.value}] {fault.element}:"
     assert any(expected in problem for problem in problems), f"{expected!r} not in {problems}"
+
+
+def test_a_reserved_segment_is_refused_with_the_fix_and_one_without_the_dash_passes(
+    break_toy: Breaker,
+) -> None:
+    """TC-47"""
+    reserved = problems_of(break_toy("books.yaml", "rp_path: books", "rp_path: rp-notes"))
+    named = f"[{HardRule.RESERVED_SEGMENT.value}] Book:"
+    assert any(named in p and "rp-notes" in p and "rename" in p for p in reserved), reserved
+    assert problems_of(break_toy("books.yaml", "rp_path: rp-notes", "rp_path: rpnotes")) == []
 
 
 def test_a_fault_names_only_the_broken_element(break_toy: Breaker) -> None:

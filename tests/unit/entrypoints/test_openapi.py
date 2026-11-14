@@ -104,6 +104,11 @@ def test_no_route_of_the_service_is_left_out_of_the_table(document) -> None:
     assert served == {(path, method) for path, method, _ in ROUTES}
 
 
+def test_the_service_has_no_route_for_comments(document) -> None:
+    """TC-48: the toolkit writes and reads them; a generic GET would leak their audience (PD-11)."""
+    assert not [path for path in document["paths"] if "rp-comments" in path]
+
+
 @pytest.mark.parametrize(("path", "method", "expected"), ROUTES, ids=IDS)
 def test_a_problem_response_is_an_rfc_9457_problem_with_the_fixed_title(
     document, path, method, expected

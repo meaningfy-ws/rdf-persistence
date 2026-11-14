@@ -141,6 +141,10 @@ enums:
         title: Administer
         description: Change the grants of a tenant.
         meaning: rp:administer
+      annotate:
+        title: Annotate
+        description: Add a comment to an object without changing it.
+        meaning: ODRL:annotate
   RoleLevel:
     title: Role level
     description: The levels at which a role applies.

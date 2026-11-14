@@ -15,7 +15,7 @@ from tests.unit.domain.builders import grant, tenant_access
     ("enum", "values"),
     [
         (TenantState, {"active", "deleting"}),
-        (Action, {"read", "modify", "delete", "administer"}),
+        (Action, {"read", "modify", "delete", "administer", "annotate"}),
         (RoleLevel, {"system", "tenant", "aggregate"}),
     ],
     ids=["TenantState", "Action", "RoleLevel"],

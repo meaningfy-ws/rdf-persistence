@@ -7,7 +7,7 @@
     },
     {
       "path": "library.yaml",
-      "sha256": "db7919d995681dde2685c90d11aff0160d1ddec8a37e10f7396ac946e5846727"
+      "sha256": "4b04d0ec29fc1ad612be9062f0a4006ffca0a71e96c4235a2e4137bfb29e18ee"
     },
     {
       "path": "library_access.yaml",
@@ -31,7 +31,7 @@
     },
     {
       "path": "rdf_persistence/generation/checks/hard.py",
-      "sha256": "b8d5c98a20ab6459f8fc3a79b97ff131a895d3849c229447a39c03385a87916f"
+      "sha256": "7c4ba82e7cc778f2e3a70b0adbc79e6d67e0fb6ee78b575ee266609a060beb88"
     },
     {
       "path": "rdf_persistence/generation/checks/rules.py",
@@ -147,7 +147,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_access.yaml",
-      "sha256": "6886d4e61c95d3daebe616136389588652f55670fbb77fa322e1ae82a8de8f3d"
+      "sha256": "4bc4117cbd93d3049fa5372ee447522415a80a050102233559d9a59b1bc13288"
     },
     {
       "path": "rdf_persistence/model/rp_annotations.yaml",
@@ -159,7 +159,11 @@
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "330048e7e2fbdab0d081c58e96ac1f80192dd4cc9c2ca98b36696149c9e7756b"
+      "sha256": "f9479354b0b83780b8f521e5f7ba2becca6b605b41936d1f9382a3f3230bedd2"
+    },
+    {
+      "path": "rdf_persistence/model/rp_discussion.yaml",
+      "sha256": "4df06399fc556bafd3f97138411884542319462b7aefe2a8984b9cdfb01c0a97"
     },
     {
       "path": "rdf_persistence/model/rp_files.yaml",
@@ -179,7 +183,7 @@
     },
     {
       "path": "rdf_persistence/services/schema_structure.py",
-      "sha256": "85094ecbc86e1b2318a29a6397edb05f5770a6bbb977894edb4b79a81949dcc9"
+      "sha256": "e65afd97714a401bfd63b52ff42f7dba227c730e755b777d4e9fdf9b9263ad72"
     },
     {
       "path": "scans.yaml",
@@ -217,7 +221,7 @@
     },
     {
       "path": "generated/context.jsonld",
-      "sha256": "45ab1efa24aef530db76d2c5da788de4fcef460ecede252f86aafa8195c34ed9"
+      "sha256": "40cd9e5305ae2eeb8c25881e8f58219e26515943c82026bad9043f481b6562c2"
     },
     {
       "path": "generated/diagrams/books.mmd",
@@ -237,7 +241,7 @@
     },
     {
       "path": "generated/library.py",
-      "sha256": "0631c9c5bf88c015ad1c97f3baf94560ac58ec15f02b778894ec3b772fe40b70"
+      "sha256": "9df76168dd792a73d8a47006281486c3f5705b1d9df4114047706fa2f9e7ea61"
     },
     {
       "path": "generated/library_access.py",
@@ -249,7 +253,7 @@
     },
     {
       "path": "generated/openapi-components.json",
-      "sha256": "110801a896e5efa472c63b59c11d117067e6a1ce87dca7dcc0a45d0b8499898c"
+      "sha256": "dbd1624d2f4545a068508abde6bd2693355c8478a96ab3dad98e56c751717980"
     },
     {
       "path": "generated/scans.py",
@@ -257,7 +261,7 @@
     },
     {
       "path": "generated/shapes.ttl",
-      "sha256": "5d85512e83ea687e06c3ebf418946d697a874e1d9cd242e14cc8d38627025be0"
+      "sha256": "d9c6cc8dc9e725f27a3d5d7ffae0f7a186029298200c1aef86c50beb3141a4db"
     },
     {
       "path": "web/src/domain/generated/books.ts",
@@ -265,7 +269,7 @@
     },
     {
       "path": "web/src/domain/generated/index.ts",
-      "sha256": "7764c1140c927766171ffb640002550b8e0048f509891e5bef1c65432946ec74"
+      "sha256": "80fcb0b6527a33797bf4b217f9afb9c44b4ad0cbe750ad405d227dc3da2c26f5"
     },
     {
       "path": "web/src/domain/generated/library_access.ts",
@@ -277,7 +281,7 @@
     },
     {
       "path": "web/src/domain/generated/rp_access.ts",
-      "sha256": "8a30f80d9d17b0db635f4ce31313b351dfba91a3758e80be070e1952b2c90841"
+      "sha256": "b61ccec91ece112d78c724e84fc99f9964c0fd0a726eb6429508ab940faf85e5"
     },
     {
       "path": "web/src/domain/generated/rp_collections.ts",
@@ -285,7 +289,11 @@
     },
     {
       "path": "web/src/domain/generated/rp_core.ts",
-      "sha256": "38a0326f74b31bd596db462557b5c1c45f7ba93f42c20a114d6f4963dd9d069d"
+      "sha256": "831c6c342ff14c2e7860002c3c2373045a1fa7001a603b07172f50e935f56c33"
+    },
+    {
+      "path": "web/src/domain/generated/rp_discussion.ts",
+      "sha256": "9d1e9a408b5ec4250becd6f7fde1245f6701dc2f8694c690066fa03e921aea1c"
     },
     {
       "path": "web/src/domain/generated/rp_files.ts",

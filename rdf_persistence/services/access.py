@@ -261,6 +261,34 @@ class AccessRules:
             return False
         return True
 
+    def roles(self, caller: VerifiedCaller, access: CallerAccess, target_iri: str) -> set[str]:
+        """The names of the roles ``caller`` holds on ``target_iri``: its role grants in scope and its global roles.
+
+        Raises:
+            NotFound: ``target_iri`` is not the tenant or one of its aggregates.
+        """
+        scope = self._scope(access.tenant, target_iri)
+        granted = {
+            g.role
+            for g in access.grants or []
+            if g.role and g.assignee == caller.principal and g.target in scope
+        }
+        return granted | set(caller.global_roles or [])
+
+    def defines(self, role: str) -> bool:
+        """True when a role of this name is defined at any level."""
+        return any(name == role for _, name in self._permits)
+
+    def prohibits(
+        self, caller: VerifiedCaller, access: CallerAccess, target_iri: str, action: Action
+    ) -> bool:
+        """True when a Prohibition forbids ``caller`` ``action`` on ``target_iri`` (a ban of ``read`` forbids all).
+
+        Raises:
+            NotFound: ``target_iri`` is not the tenant or one of its aggregates.
+        """
+        return self._prohibited(caller, access, self._scope(access.tenant, target_iri), action)
+
     def allowed_actions(
         self, caller: VerifiedCaller, access: CallerAccess, target_iri: str
     ) -> list[Action]:

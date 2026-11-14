@@ -62,6 +62,10 @@ from .rp_core import (
     UniqueScope,
     WritesKind
 )
+from .rp_discussion import (
+    Comment,
+    Motivation
+)
 from .rp_files import (
     BlobEntry,
     RdfFormat,

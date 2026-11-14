@@ -83,7 +83,7 @@ class RpAnnotation(str, Enum):
     RP_UNLABELLED = "rp_unlabelled"
     "Class annotation, `true` on an owned value class whose instances need no label of their own."
     RP_WRITES = "rp_writes"
-    "Class annotation, `service` (see WritesKind) on an aggregate root whose generic create, replace and delete are not served; the consumer writes it through a session. A root that mixes in StoredFile is service-written without it."
+    "Class annotation (see WritesKind). `service` marks an aggregate root whose generic create, replace and delete are not served; the consumer writes it through a session. A root that mixes in StoredFile is service-written without it. `toolkit` marks a root the toolkit writes and reads itself, which no route serves."
     BOOKKEEPING = "bookkeeping"
     "Slot annotation, `true` when the session writes the slot about a graph (its version, who created or contributed to it, when); closed shapes ignore the statement."
     RP_UNIQUE_SCOPE = "rp_unique_scope"
@@ -112,6 +112,8 @@ class WritesKind(str, Enum):
     "How an aggregate root is written, the values of the rp_writes annotation."
     SERVICE = "service"
     "The consumer writes the root through a session; the API serves no generic create, replace or delete."
+    TOOLKIT = "toolkit"
+    "The toolkit writes and reads the root itself; no route serves it, and the consumer does not write it."
 
 
 class GraphKind(str, Enum):

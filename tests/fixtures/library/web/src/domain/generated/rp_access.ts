@@ -9,7 +9,9 @@ export type Action =
   /** Delete an object. */
   | "delete"
   /** Change the grants of a tenant. */
-  | "administer";
+  | "administer"
+  /** Add a comment to an object without changing it. */
+  | "annotate";
 
 /** The levels at which a role applies. */
 export type RoleLevel =

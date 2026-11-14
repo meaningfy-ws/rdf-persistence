@@ -186,6 +186,52 @@
     required: false
     multivalued: false
     range: integer
+- class_name: Comment
+  slots:
+  - name: body_value
+    required: true
+    multivalued: false
+    range: string
+  - name: comment_audience
+    required: false
+    multivalued: true
+    range: string
+  - name: comment_references
+    required: false
+    multivalued: true
+    range: uri
+  - name: contributor
+    required: false
+    multivalued: true
+    range: Principal
+  - name: created
+    required: false
+    multivalued: false
+    range: datetime
+  - name: creator
+    required: false
+    multivalued: false
+    range: Principal
+  - name: has_target
+    required: true
+    multivalued: false
+    range: uri
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: modified
+    required: false
+    multivalued: false
+    range: datetime
+  - name: motivated_by
+    required: true
+    multivalued: false
+    range: Motivation
+  - name: replies_to
+    required: false
+    multivalued: false
+    range: uri
 - class_name: CommitMarker
   slots:
   - name: id

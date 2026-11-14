@@ -281,9 +281,10 @@ enums:
       rp_writes:
         title: Writes
         description: >-
-          Class annotation, `service` (see WritesKind) on an aggregate root whose generic create, replace
-          and delete are not served; the consumer writes it through a session. A root that mixes in
-          StoredFile is service-written without it.
+          Class annotation (see WritesKind). `service` marks an aggregate root whose generic create,
+          replace and delete are not served; the consumer writes it through a session. A root that
+          mixes in StoredFile is service-written without it. `toolkit` marks a root the toolkit
+          writes and reads itself, which no route serves.
         meaning: rp:AnnotationWrites
       bookkeeping:
         title: Bookkeeping
@@ -334,6 +335,12 @@ enums:
         title: Service
         description: The consumer writes the root through a session; the API serves no generic create, replace or delete.
         meaning: rp:WritesService
+      toolkit:
+        title: Toolkit
+        description: >-
+          The toolkit writes and reads the root itself; no route serves it, and the consumer does not
+          write it.
+        meaning: rp:WritesToolkit
   GraphKind:
     title: Graph kind
     description: The special graphs a class can live in, the values of the graph annotation.

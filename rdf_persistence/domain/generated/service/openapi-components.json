@@ -43,7 +43,8 @@
         "read",
         "modify",
         "delete",
-        "administer"
+        "administer",
+        "annotate"
       ],
       "title": "Action",
       "type": "string"
@@ -1337,7 +1338,8 @@
     "WritesKind": {
       "description": "How an aggregate root is written, the values of the rp_writes annotation.",
       "enum": [
-        "service"
+        "service",
+        "toolkit"
       ],
       "title": "WritesKind",
       "type": "string"

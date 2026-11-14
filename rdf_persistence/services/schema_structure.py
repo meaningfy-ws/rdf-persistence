@@ -221,10 +221,16 @@ def root_classes(view: SchemaView, folder: Path) -> list[ClassDefinition]:
 def served_roots(view: SchemaView) -> list[ClassDefinition]:
     """The aggregate roots with a path that live in the tenant databases: what the generic router serves.
 
-    The tenant's access record lives in the system database and has its own routes, so it is left out.
+    The tenant's access record lives in the system database and has its own routes, so it is left out;
+    so is a root the toolkit writes itself (``rp_writes: toolkit``), which no route serves (PD-11).
     """
     roots = tenant_database_roots(view, list(view.all_classes().values()))
-    return [root for root in roots if annotation_text(root, RpAnnotation.RP_PATH)]
+    return [
+        root
+        for root in roots
+        if annotation_text(root, RpAnnotation.RP_PATH)
+        and annotation(root, RpAnnotation.RP_WRITES) != WritesKind.TOOLKIT.value
+    ]
 
 
 def _only(found: list[ClassDefinition], what: str) -> ClassDefinition:

@@ -69,6 +69,10 @@ from rdf_persistence.domain.generated.rp_core import (
     UniqueScope,
     WritesKind,
 )
+from rdf_persistence.domain.generated.rp_discussion import (
+    Comment,
+    Motivation,
+)
 from rdf_persistence.domain.generated.rp_files import (
     BlobEntry,
     RdfFormat,
@@ -190,6 +194,7 @@ __all__ = [
     "BadQuery",
     "BlobEntry",
     "CallerAccess",
+    "Comment",
     "CommitMarker",
     "CommitTooLarge",
     "Conflict",
@@ -226,6 +231,7 @@ __all__ = [
     "MemberList",
     "MembershipRule",
     "ModuleKind",
+    "Motivation",
     "NotAcceptable",
     "NotFound",
     "Page",

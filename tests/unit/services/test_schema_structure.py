@@ -402,6 +402,39 @@ classes:
 )
 
 
+def test_the_comment_is_a_root_the_generic_router_does_not_serve() -> None:
+    """TC-45: its audience would leak through a generic GET (PD-11)."""
+    assert "Comment" not in [root.name for root in served_roots(load_schema(TOY))]
+
+
+def test_the_comment_still_has_an_iri_type_the_policy_mints_and_recognises() -> None:
+    """TC-46"""
+    roots, _ = iri_types(load_schema(TOY))
+    assert "rp-comment" in roots
+
+
+TOOLKIT_WRITTEN = (
+    HEAD
+    + """
+classes:
+  AggregateRoot:
+    mixin: true
+  Note:
+    mixins: [AggregateRoot]
+    annotations: {rp_path: notes, rp_writes: toolkit}
+  Book:
+    mixins: [AggregateRoot]
+    annotations: {rp_path: books}
+"""
+)
+
+
+def test_a_root_the_toolkit_writes_is_no_served_root_but_keeps_its_iri_type() -> None:
+    view = SchemaView(TOOLKIT_WRITTEN)
+    assert [root.name for root in served_roots(view)] == ["Book"]
+    assert iri_types(view)[0] == {"note", "book"}
+
+
 def test_a_root_under_a_system_database_ancestor_is_no_served_root() -> None:
     """F-5: the database annotation is inherited, as in_system_database reads it."""
     view = SchemaView(SYSTEM_BASE)

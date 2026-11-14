@@ -52,6 +52,7 @@ BAD_BODY = [
     pytest.param({"had_member": [shelf_iri(2)]}, shelf_iri(2), id="TC-16-another-class"),
     pytest.param({"had_member": [book_iri(99)]}, book_iri(99), id="TC-17-never-stored"),
     pytest.param({"member_class": "Chapter"}, "Chapter", id="TC-19-not-a-served-root"),
+    pytest.param({"member_class": "Comment"}, "Comment", id="D-7-a-comment-is-no-member-class"),
     pytest.param({"membership_rule": rule("colour", "red")}, "colour", id="TC-20-unknown-slot"),
     pytest.param({"membership_rule": rule("genre", "haiku")}, "haiku", id="TC-20-bad-value"),
 ]

@@ -568,6 +568,36 @@ delivers.
   that are not stored yet: they have no head and the save is refused (`InvalidBody`). Members
   are saved first. The how-to says so (task 2.6). The guard asks the session which IRIs are not
   aggregates of the tenant (`Session.not_aggregates`), so it reads no private state.
+- **D-7** (2026-11-14, the lead, before stage 3): what stages 1 and 2 as built change for
+  stage 3, so the briefs follow the code and not the older text.
+  1. The discussion code lives in `services/discussion.py` (a `Discussion` class with `comment`
+     and `thread`, and the visibility function `referrers` also uses); `Collaboration`
+     delegates, as for collections (PD-28 item 9).
+  2. `thread` reads with `Session.graphs_with(oa:hasTarget, iri)` and keeps the roots typed
+     `oa:Annotation` (PD-28 item 5 in place of PD-14's own `CONSTRUCT`).
+  3. `Transaction._require_present` records its graph and root for the diagnosis (PD-25 item 2).
+  4. Removing an aggregate drops its dependents inside `Transaction.remove`, so a cascade's
+     member removes drop the members' comments too, with no extra code in the cascade.
+  5. A comment or a record is never a member a collection may name: its class is
+     `rp_writes: toolkit`, not a served root, which the write guard and the cascade refuse
+     (PD-28 item 2).
+  6. Tasks 3.1 and 3.2 go to one builder and one commit: both change the metamodel and
+     regenerate every artefact, and their code does not overlap.
+  7. Impact (GitNexus, before the build): the `Action` enum and `Transaction.remove` are hubs.
+     `annotate` is added last in the enum (PD-9) and the dependents operation is one more
+     marked operation of a remove; the access matrix tests, the session tests and the store
+     conformance suite are the safety net.
+- **D-8** (2026-11-14, the lead, tasks 3.1 and 3.2 as built):
+  1. An application imports `rp_discussion` to use discussion; the toy does so from
+     `library.yaml`. Without the import the view has no `Comment` and PD-1's `LookupError`
+     applies.
+  2. The toolkit's own generation still emits `Comment.frame.jsonld` and a `Comment` component
+     schema, with no path. PD-11's "no frame" is met where it matters: no route, listing or kit
+     code reads the frame, and `served_roots` leaves the class out. Not worth a generator rule.
+  3. `RESERVED_SEGMENT` checks every class of the application's own modules, roots or not.
+  4. Regenerating after adding a metamodel module that the package exports needs two passes
+     (the package cannot import before the generated module exists, and the hard check reads
+     the old generated `WritesKind`). A fresh clone is unaffected; task 4.1 will meet it again.
 
 ## Algorithm / approach
 
