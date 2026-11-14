@@ -1,0 +1,205 @@
+= Group resources you do not own
+:description: How to make an aggregate a reference collection, save it with named members and a membership rule, read its members and the collections of a resource, delete it with or without its members, the errors, and the limits.
+
+_How do I group resources I do not own? Can a shelf list its books without holding them? Can
+membership follow a rule? Which collections is this book in? How do I delete a shelf together with
+its books?_
+
+This page shows how to keep a collection of aggregates that live on their own. It describes
+`develop` as of 2026-11-14 (the change `collaboration-and-reference-collections`). The terms
+tenant, aggregate, kit, session and IRI policy, and the names `kit`, `t`, `session`, `mapper` and
+`Action` in the snippets, are those of xref:howto/adopt.adoc[Build an application]; a
+*collaboration* (`collab`) is opened as in
+xref:howto/reverse-references.adoc[Find who points at a resource]. `UnitOfWork`, `MembershipRule`,
+`SlotEquality` and the errors are imported from `rdf_persistence`.
+
+A *reference collection* is an aggregate of your own schema that names other aggregates of one
+class as its *members*. It holds their IRIs, never their triples: a member stays its own aggregate,
+with its own version and its own access rules. The running example is the toy library: a shelf is a
+collection of books.
+
+== Make a class a collection
+
+Import the module `rp_collections` and mix `ReferenceCollection` into an aggregate root, then
+regenerate (`make generate`):
+
+[source,yaml]
+----
+imports:
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+  - rdf_persistence/model/rp_collections
+
+classes:
+  Shelf:
+    mixins: [AggregateRoot, Described, Tracked, ReferenceCollection]
+    annotations:
+      rp_path: shelves
+      database: tenant
+----
+
+The mixin adds three slots:
+
+[cols="1,3",options="header"]
+|===
+|Slot |What it holds
+|`member_class` |Required. The schema name of the class of the members, here `"Book"`.
+|`had_member` |The IRIs of the members the collection names.
+|`membership_rule` |A rule that says which aggregates of the member class belong (see <<rule>>).
+|===
+
+A collection of collections is a shelf whose `member_class` is `"Shelf"`.
+
+[#save]
+== Save a collection
+
+Save it like any aggregate, with a `UnitOfWork` or through the generic API:
+
+[source,python]
+----
+shelf = Shelf(id=s1_iri, label="Shelf", description="A shelf.",
+              member_class="Book", had_member=[b1_iri, b2_iri])
+work = UnitOfWork(session, mapper)
+work.add(shelf)
+await work.commit()      # b1 and b2 keep their versions: nothing of theirs is written
+----
+
+Every add and every replace of a collection is checked before it is written. A refused save stores
+nothing.
+
+[cols="2,1",options="header"]
+|===
+|Refused when |Error
+|`member_class` is not an aggregate root the schema serves (for example `"Chapter"`, a part of a book) |`InvalidBody`
+|A member is not an aggregate IRI the IRI policy mints for the tenant |`InvalidIri`
+|A member is not stored, or is stored and is not of the member class (a shelf on a shelf of books); the message names every such member |`InvalidBody`
+|The rule names a slot a listing of the class cannot filter on, or a value that slot does not take |`InvalidBody`
+|===
+
+* *Store the members first.* The check reads the store, so a member saved in the same commit as
+  the collection is not there yet and the save is refused. Commit the books, then the shelf.
+* A named member may be of a subclass of the member class.
+* The check runs in the sessions the kit opens (`kit.session`, the generic API). A session you
+  open yourself with `open_session` and no `guards` checks nothing.
+
+[#rule]
+== Membership by rule
+
+A `MembershipRule` holds `SlotEquality` rows: a slot of the member class and the value it must
+equal. It is the shape `session.find` takes, and it accepts the slots and values a listing of the
+class accepts. An aggregate belongs when it meets every row.
+
+[source,python]
+----
+poetry = MembershipRule(rule_equalities=[SlotEquality(equals_slot="genre", equals_value="poetry")])
+shelf = Shelf(id=s1_iri, label="Poetry", description="All poetry, and b1.",
+              member_class="Book", had_member=[b1_iri], membership_rule=poetry)
+----
+
+* The rule is evaluated on every read. Save a new poetry book and it is a member at the next read;
+  nothing is written to the shelf.
+* The members of a collection are those it names together with those that meet its rule. A book
+  that is both is listed once.
+* A rule member is of exactly the member class, as with `find`; a book of a subclass of `Book`
+  does not match.
+* A rule with no row (`MembershipRule()`) means every aggregate of the member class.
+
+== Read the members
+
+[source,python]
+----
+checked = await kit.require_aggregate(
+    request.headers.get("authorization"), t, "shelves", shelf_id, Action.READ
+)
+async with kit.collaboration(checked) as collab:
+    found = await collab.members(checked.checked_target)
+
+print(found.member_iris)     # ['https://…/books/b1', 'https://…/books/b3'], sorted
+print(found.hidden_count)    # 0
+----
+
+`members` returns a `MemberList`, a generated model: `member_iris`, the sorted IRIs of the members
+the caller may read (`None` when there is none, so read it as `found.member_iris or []`), and
+`hidden_count`, the number of the other members.
+
+*Deep reads.* `collab.members(iri, deep=True)` also reads the members that are collections. Say
+shelf A names shelf B and B names book b1: `members(A)` gives B; `members(A, deep=True)` gives B
+and b1. Each collection is read once, so two shelves that name each other end the read instead of
+repeating it. A nested collection the caller may not read is counted in `hidden_count` and not
+read further.
+
+== Find the collections of a resource
+
+[source,python]
+----
+found = await collab.collections_of(b3_iri)
+print(found.member_iris)     # the shelves that name b3 or whose rule b3 meets, sorted
+----
+
+The answer is again a `MemberList`; here `member_iris` holds the IRIs of the collections. A
+collection that holds the resource both ways is listed once.
+
+== Delete a collection
+
+A plain delete (`session.remove`, `UnitOfWork.remove`, the generic `DELETE`) removes the collection
+and keeps its members. To delete the members too, ask for a cascade:
+
+[source,python]
+----
+checked = await kit.require_aggregate(
+    request.headers.get("authorization"), t, "shelves", shelf_id, Action.DELETE
+)
+async with kit.collaboration(checked) as collab:
+    await collab.delete_cascade(checked.checked_target, if_version)
+----
+
+`if_version` is the version token of the collection the caller read. The cascade deletes the
+collection and its members, named and by rule, as they are at that moment, in one request: all of
+it or nothing. It refuses, and deletes nothing, when:
+
+[cols="1,3",options="header"]
+|===
+|Error |When
+|`Forbidden` |The caller may not delete a member. The message names the refused members the caller may read and counts the others.
+|`Conflict` |The collection is not at `if_version`, or a member changed, or stopped meeting the rule, after the cascade read it.
+|`CommitTooLarge` |The collection and its members are more than 500 roots, the limit of one commit (see xref:howto/commits.adoc[How commits and conflicts work]).
+|===
+
+* The cascade is not deep. A member that is a collection is deleted; its own members stay.
+* A member that is already gone is skipped. A book that starts to meet the rule during the cascade
+  is not deleted.
+* For a member that is a stored file, the cascade removes its graph and leaves its blob to the
+  sweep (see xref:architecture/data-flows.adoc#files[Files and loaded graphs]).
+
+== Members and collections the caller may not read
+
+`members` and `collections_of` list only what the caller may read. The rest is counted in
+`hidden_count` and never named, as for referrers: see
+xref:howto/reverse-references.adoc#hidden[Referrers the caller may not read].
+
+== Errors of the reads
+
+[cols="1,3",options="header"]
+|===
+|Error |When
+|`LookupError` |The schema does not import `rp_collections`. Also raised by `delete_cascade`.
+|`NotFound` |The caller can see nothing of the resource, or the collection is not stored.
+|`Forbidden` |The caller may see the resource but not read it.
+|`BadQuery` |`members` or `delete_cascade` is given an aggregate that is not a collection.
+|`InvalidIri` |`collections_of` is given an IRI the IRI policy does not mint for the tenant.
+|`StoredDataInvalid` |A stored collection cannot be read back, or the schema no longer accepts its member class or rule.
+|`DatabaseGone` |The tenant database does not exist.
+|===
+
+== Limits
+
+* *No paging yet.* `members` and `collections_of` answer in one piece. They are meant for
+  hundreds of items, not more.
+* *No referential integrity.* A member deleted after the collection was saved stays in
+  `had_member` and is still listed by `members`. Deep reads and cascades skip it.
+* *`collections_of` asks the store once per rule collection* of the resource's class. That is
+  fine for hundreds of rule collections.
+* *No unique names.* Two collections may carry the same label; the toolkit does not check it.
+* *Saving a collection tells whether an IRI is a member-class aggregate.* Whoever may modify a
+  collection learns, from a save that is accepted or refused, whether an IRI it names is a stored
+  aggregate of the member class, even one it may not read. It never learns the content.

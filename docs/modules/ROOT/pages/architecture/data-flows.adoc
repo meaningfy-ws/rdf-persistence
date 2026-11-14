@@ -262,6 +262,10 @@ flowchart TB
 |yes
 |yes
 
+|Write guards on every add and replace (for a reference collection: its member class, its members, its rule)
+|yes
+|yes; a session opened with `open_session` and no `guards` checks nothing
+
 |Optimistic lock
 |yes, from `If-Match`
 |yes, with the version `get` read
@@ -475,6 +479,18 @@ own, the stored tracking. Giving one root twice (even once as a `str` and once a
 empty transaction sends nothing. The pre-checks are reads before the request, so they are one
 read per root and can race with other writers as before; the guards in the request are what
 protect the commit.
+
+*Write guards.* After these pre-checks and before the change is collected, each `add_graph` and
+`replace_graph` hands the triples to the session's *write guards* (`services/write_guards.py`,
+`WriteGuards.prepare`), which return the triples to write or raise. They are not the guards of the
+request: they are checks in Python that read the store. The one rule so far is for a root whose
+class mixes in `ReferenceCollection`: its member class is a served aggregate root (`InvalidBody`),
+every member is an aggregate IRI of the tenant (`InvalidIri`) and a stored aggregate of that class
+(`InvalidBody`), and its rule is one a listing of that class accepts (`InvalidBody`). A refused
+change is not collected, so nothing of the transaction is sent. A member must therefore be stored
+before the commit that names it. The kit builds the write guards once and gives them to every
+session it opens; a session opened with `open_session` and no `guards` checks nothing. A `remove`
+is not guarded.
 
 *Limits.* One tenant only: nothing spans two tenants, or a tenant and the system database. Files
 are not part of it: a blob keeps its write order and its sweep (<<files>>). Nothing is read inside

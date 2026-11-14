@@ -120,7 +120,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-39 | stale `if_version` on s1 | `Conflict`; nothing deleted |
 | TC-40 | s1 lists b9 already deleted | s1 deleted; no error |
 
-- [ ] 2.5 On Fuseki: `tests/integration/store/test_collaboration.py`; gate as 1.3.
+- [x] 2.5 On Fuseki: `tests/integration/store/test_collaboration.py`; gate as 1.3.
 
 | ID | Input | Expected |
 |---|---|---|
@@ -128,7 +128,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | IT-04 | TC-34, TC-35 | as there |
 | IT-05 | 50 rule shelves of `Book`, `collections_of(b3)` | correct; time noted in `develop/index.adoc` |
 
-- [ ] 2.6 Docs: `howto/reference-collections.adoc`, nav, `questions.adoc` ("How do I group
+- [x] 2.6 Docs: `howto/reference-collections.adoc`, nav, `questions.adoc` ("How do I group
   resources I do not own?"); data-flows: the write guard. `make check-docs`. Close the stage.
 
 ## 3. Discussion (#81)
