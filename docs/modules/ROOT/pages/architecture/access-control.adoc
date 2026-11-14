@@ -219,7 +219,8 @@ xref:howto/discussion.adoc#who-may-comment[Who may comment].
 *A transition* moves an aggregate along an edge of its workflow (a transition of the workflow
 file, from one state to another, with the roles that may make it). The roles on the edge decide
 who may make it, not `modify`: a reviewer moves a book to `accepted` without the right to edit it.
-`Transitions.transition` checks in this order:
+`Transitions.transition` checks in this order (a schema that does not import the workflow module
+raises `LookupError` before all of them):
 
 . `read` on the aggregate (404 or 403 as in <<check>>).
 . No Prohibition of `modify` on the aggregate or the tenant (`AccessRules.prohibits`): it freezes
@@ -230,10 +231,14 @@ who may make it, not `modify`: a reviewer moves a book to `accepted` without the
 . The aggregate is at the version the caller read (`Conflict`). This comes before everything
   about the workflow, so a caller on stale data is told to read again, not that its move is
   refused.
-. The workflow has an edge from the current state to the one asked for (`Conflict`).
+. The aggregate is under exactly one workflow and holds at most one state (`InvalidBody` if under
+  none; `StoredDataInvalid` if under two, or with two stored states).
+. The state asked for is a state of the workflow, and the workflow has an edge to it from the
+  current state (`Conflict`).
 . The caller holds one of the roles on that edge, by the same `AccessRules.roles` as an audience
   (`Forbidden`). The edge is looked up before the role: with no such edge the answer is a
   `Conflict`, whoever asks.
+. If the edge needs a comment, one that is not blank is given (`InvalidBody`).
 
 The how-to is xref:howto/workflow.adoc#make-a-transition[Make a transition].
 

@@ -80,6 +80,8 @@ graph TB
     WG --> SES
     COLL --> POL
     COLL --> SES
+    COLL --> MAP
+    WG --> MAP
     TEN --> UOW
     TEN --> SES
     TEN --> FP
@@ -102,7 +104,7 @@ at a time: who refers to a resource, the members of a collection, comments, and 
 workflow. It holds one session and the caller it acts for, and hands the work to three classes
 behind it; `Workflows` holds the workflow files and the rule that keeps a state. The session knows
 no schema and checks no access, so these classes carry both: each asks the access rules and reads
-or writes through the session (the two arrows that leave the box). They are kept out of the session so that the generic routes and the
+or writes through the session (the arrows that leave the box: access rules, mapper, session). They are kept out of the session so that the generic routes and the
 unit of work, which do not pass through them, stay as they were. *Write guards* are the checks a
 session runs on every add and replace (a collection's members, a state that only a transition
 changes). The kit builds them once and hands them to every session it opens; the session calls
@@ -181,7 +183,7 @@ and buckets, and the sweep inside a live tenant is the next building block (belo
 
 |Collaboration
 |v1
-|`Collaboration` (`services/collaboration.py`), opened with `kit.collaboration(authorised)` for a caller the gate has authorised; it checks access itself on every call. Eight methods and no route: `referrers` (itself); `members`, `collections_of` and `delete_cascade` (`services/reference_collections.py`); `comment` and `thread` (`services/discussion.py`); `transition` and `transitions` (`services/transitions.py`). `Workflows` (`services/workflows.py`, `kit.workflows`) loads the workflow files given to `install_service(workflows=…)` and refuses a bad one before the service serves (`InvalidWorkflow`). `WriteGuards` (`services/write_guards.py`) composes the rules of a write. What a caller may not read is counted and never named (xref:architecture/access-control.adoc#collaboration[access control]). The session gained only generic reads for them (`referrer_rows`, `heads`, `matches`, `graphs_with`, `root_values`), optional `guards` and `dependents`, and three private pieces of a transaction (xref:architecture/data-flows.adoc#private-pieces[the three, side by side]). A comment and a transition record are aggregates the toolkit writes itself; a delete through the kit takes them with their aggregate. How to use each: xref:howto/reverse-references.adoc[reverse references], xref:howto/reference-collections.adoc[reference collections], xref:howto/discussion.adoc[discussion], xref:howto/workflow.adoc[workflow].
+|`Collaboration` (`services/collaboration.py`), opened with `kit.collaboration(authorised)` for a caller the gate has authorised; it checks access itself on every call. Eight methods and no route: `referrers` (itself); `members`, `collections_of` and `delete_cascade` (`services/reference_collections.py`); `comment` and `thread` (`services/discussion.py`); `transition` and `transitions` (`services/transitions.py`). `Workflows` (`services/workflows.py`, `kit.workflows`) loads the workflow files given to `install_service(workflows=…)` and refuses a bad one before the service serves (`InvalidWorkflow`). `WriteGuards` (`services/write_guards.py`) composes the rules of a write. What a caller may not read is counted and never named (xref:architecture/access-control.adoc#collaboration[access control]). The session gained only generic reads for them (`referrer_rows`, `heads`, `matches`, `graphs_with`, `root_values`, `not_aggregates`), `principal`, `now()`, optional `guards` and `dependents`, and three private pieces of a transaction (xref:architecture/data-flows.adoc#private-pieces[the three, side by side]). A comment and a transition record are aggregates the toolkit writes itself; a delete through the kit takes them with their aggregate. How to use each: xref:howto/reverse-references.adoc[reverse references], xref:howto/reference-collections.adoc[reference collections], xref:howto/discussion.adoc[discussion], xref:howto/workflow.adoc[workflow].
 |
 
 |Service kit
@@ -275,7 +277,7 @@ _What may a consumer import?_
 `Provenanced`, `Activity`, `Principal`, `RegistryEntry`, `StoredFile`, `RdfFormat`; `Policy`,
 `Rule`, `Grant`, `Prohibition`, `RoleDefinition`, `RoleLevel`, `Action`; `TenantAccess`,
 `TenantLabelled`, `TenantState`, `TenantSweepReport`, `BlobEntry`, `PendingLoad`; the collaboration
-classes (`ReferenceCollection`, `MembershipRule`; `Comment`, `Motivation`; `UnderWorkflow`,
+classes (`ReferenceCollection`, `MembershipRule`, `SlotEquality`; `Comment`, `Motivation`; `UnderWorkflow`,
 `Workflow`, `WorkflowTransition`, `TransitionRecord`); the annotation enums (`RpAnnotation`, `ModuleKind`, `DatabaseKind`,
 `GraphKind`, `RegistryKind`, `WritesKind`); the service records (`ServiceSettings`, `IriPolicy`, `IdSpec`,
 `IdKind`, `TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`, `Problem`,

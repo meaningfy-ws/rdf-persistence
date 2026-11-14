@@ -892,6 +892,15 @@ delivers.
   lens (L2) and the structure lens (L3); the stage's CI is its check. The developer, the same
   day: of what is left open, only what has impact is closed (the listing by state over HTTP,
   tested); the rest is listed in "As built" and left.
+- **D-12** (2026-11-14, the lead, the review of the docs stage): all findings accepted, none
+  changes code. The transition's diagram shows its five reads where they happen; the list of a
+  transition's checks gains the workflow, unknown-state and required-comment checks; the
+  component diagram gains the mapper arrows; `SlotEquality` joins both tables; the date of
+  `data-flows.adoc` moves to 2026-11-14 (its `:page-revised:` stays the developer's). "As
+  built" gains three rows the review found missing: DEC-2's `oa:bodyValue` and
+  `rp:repliesTo`, DEC-3's reverse references of comments and records (PD-30 item 8), and the
+  targets a comment refuses (PD-13, PD-30 item 7). The same wrong read of `get_graph` in two
+  older places of `data-flows.adoc` is fixed too, since the page is open.
 
 ## Algorithm / approach
 

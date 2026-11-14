@@ -5,7 +5,8 @@
 _Where does the toolkit keep tenants, their data and its own bookkeeping? What happens, step by
 step, when an aggregate is created, read, listed, replaced or deleted, and when a tenant is?_
 
-This page describes the toolkit on `develop` as of 2026-11-10 (after `live-tenant-sweep`).
+This page describes the toolkit on `develop` as of 2026-11-14 (after
+`collaboration-and-reference-collections`).
 
 The examples use the toolkit's own toy library (`tests/toy.py`, `tests/fixtures/library/`):
 settings `base="https://example.org/library/"`, `prefix="lib"`, `tenant_segment="libraries"`,
@@ -329,7 +330,7 @@ sequenceDiagram
   Note over Cl,F: Read: GET …/books/{id}
   Cl->>G: token, access check (read on B)
   G->>S: get_graph(B)
-  S->>F: SELECT version and tracking, CONSTRUCT B/graph
+  S->>F: CONSTRUCT B/graph (version and tracking are in it)
   S-->>Cl: 200, body without bookkeeping, ETag
   end
   rect rgba(127,127,127,0.08)
@@ -367,7 +368,7 @@ is empty and writes the marker; then the triples and the version and tracking st
 
 |Read
 |`GET …/books/{id}` (`read` on the book)
-|`Session.get_graph`: a `SELECT` of the version and tracking, then a `CONSTRUCT` of `B/graph`.
+|`Session.get_graph`: one `CONSTRUCT` of `B/graph`, which holds the version and tracking too.
 Answered as framed JSON, JSON-LD or Turtle, without bookkeeping and `internal` values.
 |Nothing.
 
@@ -564,10 +565,11 @@ would hold and tell nothing.
 |Adds nothing to the request. It lets this transaction's write of `iri` set that one state: the
 transaction hands it to the write guards, which otherwise refuse a state other than the stored one.
 |`Transitions.transition` (`services/transitions.py`)
-|It cannot fail; a write that names any other state is still refused (`Forbidden`).
+|It refuses nothing (only a call after the block ends, `RuntimeError`, like every change); a write
+that names any other state is still refused (`Forbidden`).
 |===
 
-The first two are guards of the request, checked by the store with the version tokens. The third
+The first two are guards of the request, checked by the store when the request is applied. The third
 is a permit read in Python by the write guards, before the request is built.
 
 *Limits.* One tenant only: nothing spans two tenants, or a tenant and the system database. Files
@@ -597,13 +599,15 @@ sequenceDiagram
   participant F as Fuseki (lib-t-…)
   T->>T: access: read on B, no Prohibition of modify or annotate
   T->>S: get_graph(B)
-  S->>F: SELECT version and tracking, CONSTRUCT B/graph
+  S->>F: CONSTRUCT B/graph
   T->>T: B at v7? workflow of B's classes, current state,<br/>edge to accepted, the caller's role, comment if required
   T->>S: _allow_state(B, …/review/accepted)
   T->>S: replace_graph(B, triples with the new state, v7)
+  S->>F: SELECT version and tracking of B
   S->>W: prepare(B, triples, allowed state)
   W->>F: SELECT the stored classes and state of B
   W-->>S: triples (the new state is the allowed one)
+  S->>F: SELECT the loaded graphs B owns
   T->>S: add_graph(R, the record), add_graph(C, the comment)
   S->>F: one request of joined operations
   Note over F: 1 guard: B at v7, R/graph empty, C/graph empty → write the rp:CommitMarker<br/>2 the marked operations of B, R and C<br/>3 release: delete the marker
@@ -615,7 +619,9 @@ sequenceDiagram
   end
 ....
 
-*Before the request.* The access checks come first, then one read of `B`. A version other than
+*Before the request.* The access checks come first, then one read of `B`; the replace reads three
+more times (version and tracking, the stored classes and state, the loaded graphs `B` owns). With
+the check after the request that is five reads and one write (PD-32). A version other than
 the one the caller read is a `Conflict` at once, before anything is said about the workflow. The
 workflow is found from the classes of the stored root; the current state is the stored
 `adms:status`, or the initial state when the aggregate holds none (for example one stored before

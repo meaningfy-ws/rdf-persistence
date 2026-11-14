@@ -25,7 +25,7 @@ reviewed in their stages.
 
 ## How it runs
 
-After the acceptance verdict (accept → docs → archive): the lead loads `technical-writing`; one
+Per D-11, before the verdict (the archive still waits for it): the lead loads `technical-writing`; one
 writer revises the pages above from the code and the "As built" table; `make check-docs` and
 `make check-diagrams`; one PR into `develop` with the doc lens (L2 doc agreement) and the
 structure lens (L3: the pages must describe the structure truthfully). Then the archive.
