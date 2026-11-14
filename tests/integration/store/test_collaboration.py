@@ -23,12 +23,15 @@ from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import DEFAULT_MAX_ROOTS, UnitOfWork
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import Session, open_session
+from rdf_persistence.services.transitions import dependents as transition_dependents
+from rdf_persistence.services.workflows import Workflows, load_workflow, state_iri
 from rdf_persistence.services.write_guards import WriteGuards
 from tests.fixtures.library.generated.books import Book, Genre
 from tests.toy import (
     ADA,
     BOB,
     MODULES,
+    REVIEW_WORKFLOW,
     ROLES,
     TENANT,
     TOY_SCHEMA,
@@ -48,6 +51,8 @@ from tests.toy import (
 B1, B2, B3, B5 = (book_iri(n) for n in (1, 2, 3, 5))
 S1, S2 = shelf_iri(1), shelf_iri(2)
 A, B = shelf_iri(3), shelf_iri(4)
+REVIEW = load_workflow(REVIEW_WORKFLOW)
+DRAFT, IN_REVIEW, ACCEPTED = (state_iri(REVIEW, s) for s in ("draft", "in_review", "accepted"))
 
 
 @pytest.fixture
@@ -59,22 +64,6 @@ async def database(store) -> AsyncIterator[str]:
     await store.drop_dataset(name)
 
 
-@pytest.fixture
-async def session(store, database) -> AsyncIterator[Session]:
-    listings = Listings(load_schema(TOY_SCHEMA))
-    guards = WriteGuards(toy_mapper(), generated_models(*MODULES), listings)
-    async with open_session(
-        store,
-        database=database,
-        tenant_iri=TENANT,
-        principal=Principal(id=ADA),
-        listings=listings,
-        guards=guards,
-        dependents=dependents(load_schema(TOY_SCHEMA)),  # the pairs the kit passes through Tenancy
-    ) as opened:
-        yield opened
-
-
 @pytest.fixture(scope="module")
 def rules(tmp_path_factory: pytest.TempPathFactory) -> AccessRules:
     """The toy roles and a ``reviewer`` that reads and annotates."""
@@ -83,6 +72,30 @@ def rules(tmp_path_factory: pytest.TempPathFactory) -> AccessRules:
         ROLES.read_text() + "- {role: reviewer, level: tenant, actions: [read, annotate]}\n"
     )
     return AccessRules(load_role_definitions(path))
+
+
+def opened(store, database: str, who: str, rules: AccessRules):
+    """A session the way the kit opens one: guards with the workflows, the pairs dropped with an aggregate."""
+    view = load_schema(TOY_SCHEMA)
+    listings = Listings(view)
+    guards = WriteGuards(
+        toy_mapper(), generated_models(*MODULES), listings, Workflows([REVIEW], view, rules)
+    )
+    return open_session(
+        store,
+        database=database,
+        tenant_iri=TENANT,
+        principal=Principal(id=who),
+        listings=listings,
+        guards=guards,
+        dependents=(*dependents(view), *transition_dependents(view)),
+    )
+
+
+@pytest.fixture
+async def session(store, database, rules) -> AsyncIterator[Session]:
+    async with opened(store, database, ADA, rules) as ada:
+        yield ada
 
 
 @pytest.fixture
@@ -101,6 +114,7 @@ def collaboration(
             mapper=toy_mapper(),
             models=generated_models(*MODULES),
             listings=Listings(view),
+            workflows=Workflows([REVIEW], view, rules),
             caller=who,
             access=access,
         )
@@ -468,3 +482,114 @@ async def test_a_target_with_many_comments_is_removed_with_them_in_one_request(
     assert len(sent) == 1, "one update request"
     assert await session.heads(ids) == [], "no comment graph is left"
     assert await session.graphs_with(v.HAS_TARGET) == {}, "no stored root targets anything"
+
+
+def as_librarian(collaboration, who: str = ADA):
+    return collaboration(caller(principal=who), held(role("librarian", who=who)))
+
+
+async def status_of(session: Session, iri: str) -> list[str]:
+    return sorted(map(str, await session.objects_of(iri, v.WORKFLOW_STATUS)))
+
+
+async def records_of(session: Session, iri: str) -> list[str]:
+    return sorted(await session.graphs_with(v.USED, URIRef(iri)))
+
+
+async def go(who: Collaboration, session: Session, to: str, iri: str = B1, **more) -> str:
+    return await who.transition(iri, to, if_version=await version_of(session, iri), **more)
+
+
+async def test_a_librarian_moves_a_book_and_gets_the_new_version(session, collaboration):  # TC-82
+    await put_book(session, B1)
+    first = await version_of(session, B1)
+    new = await go(as_librarian(collaboration), session, "in_review")
+    assert await status_of(session, B1) == [IN_REVIEW], "the state is the new one"
+    assert new == await version_of(session, B1), "the version returned is the stored one"
+    assert new != first, "and it is a new one"
+
+
+async def test_two_principals_move_a_book_and_each_move_is_recorded(
+    store, database, rules, session, collaboration
+):  # TC-87
+    await put_book(session, B1)
+    async with opened(store, database, BOB, rules) as bob_session:
+        p1 = as_librarian(collaboration)
+        p2 = Collaboration(
+            bob_session,
+            view=load_schema(TOY_SCHEMA),
+            rules=rules,
+            iris=DEFAULT_IRIS,
+            mapper=toy_mapper(),
+            models=generated_models(*MODULES),
+            listings=Listings(load_schema(TOY_SCHEMA)),
+            workflows=Workflows([REVIEW], load_schema(TOY_SCHEMA), rules),
+            caller=caller(principal=BOB),
+            access=held(role("librarian", who=BOB)),
+        )
+        await go(p1, session, "in_review", comment="ready")
+        await go(p2, bob_session, "accepted")
+    first, second = await p1.transitions(B1)
+    [ready] = await p1.thread(B1)
+    assert (first.was_associated_with, second.was_associated_with) == ([ADA], [BOB]), "the agents"
+    assert first.started_at_time <= second.started_at_time, "in order"
+    assert (first.used_resource, first.from_state_iri, first.to_state_iri) == (B1, DRAFT, IN_REVIEW)
+    assert (second.from_state_iri, second.to_state_iri) == (IN_REVIEW, ACCEPTED), "the states"
+    assert first.transition_comment == ready.id, "the first names the comment of the thread"
+    assert ready.body_value == "ready", "which holds the text"
+    assert second.transition_comment is None, "the second has none"
+
+
+async def test_a_move_with_a_comment_is_one_request_and_the_comment_ends_the_thread(
+    store, session, collaboration, monkeypatch
+):  # TC-88
+    await put_book(session, B1)
+    build = as_librarian(collaboration)
+    await go(build, session, "in_review")
+    sent = counting_updates(store, monkeypatch)
+    await go(build, session, "accepted", comment="fine")
+    assert len(sent) == 1, "the state, the record and the comment: one request"
+    *_, fine = await as_reviewer(collaboration).thread(B1)  # bob only reads: no audience
+    assert fine.body_value == "fine", "the comment ends the thread"
+    assert fine.creator == ADA, "by ada"
+    assert (fine.from_state_iri, fine.to_state_iri) == (IN_REVIEW, ACCEPTED), "with both states"
+    assert fine.comment_audience is None, "for everyone who reads"
+
+
+async def test_a_stale_version_stores_no_state_no_record_and_no_comment(session, collaboration):
+    await put_book(session, B1)
+    with pytest.raises(Conflict):
+        await as_librarian(collaboration).transition(
+            B1, "in_review", if_version="stale", comment="ready"
+        )
+    assert await status_of(session, B1) == [DRAFT], "b1 stays in draft"
+    assert await records_of(session, B1) == [], "no record"
+    assert await comments_on(session, B1) == [], "no comment"
+
+
+async def test_a_plain_replace_cannot_change_the_state_on_a_guarded_session(session):
+    await put_book(session, B1)
+    moved = dune(B1, chapters=1, workflow_status=ACCEPTED)
+    with pytest.raises(Forbidden):
+        await session.replace_graph(
+            B1, toy_mapper().to_triples(moved), await version_of(session, B1)
+        )
+    assert await status_of(session, B1) == [DRAFT], "b1 stays in draft"
+
+
+async def test_removing_a_moved_book_removes_its_records_and_comments_in_one_request(
+    store, session, collaboration, monkeypatch
+):  # IT-10, TC-90
+    await put_book(session, B1)
+    await put_book(session, B2)
+    build = as_librarian(collaboration)
+    await go(build, session, "in_review", comment="ready")
+    await go(build, session, "in_review", iri=B2, comment="other")
+    [record] = await records_of(session, B1)
+    [ready] = await comments_on(session, B1)
+    sent = counting_updates(store, monkeypatch)
+    await session.remove(B1, await version_of(session, B1))
+    assert len(sent) == 1, "one update request"
+    assert await session.heads([B1, record, ready]) == [], "b1, its record and its comment are gone"
+    assert len(await records_of(session, B2)) == 1, "the record of b2 stays"
+    assert len(await comments_on(session, B2)) == 1, "and its comment"
