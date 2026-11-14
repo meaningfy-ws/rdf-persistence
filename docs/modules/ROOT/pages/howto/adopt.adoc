@@ -222,14 +222,19 @@ Declare where each artefact goes:
 [tool.rp-generate]
 schema = "models/library.yaml"
 package = "library.domain.generated"
+migrations = "migrations"
 typescript = "web/src/domain/generated"
 diagrams = "docs/model"
 regenerate-command = "make generate"  # optional
 ----
 
-Two keys are required: `schema` (the root LinkML file) and `package` (the Python import path of the
-generated package). Without one, `rp-generate` exits with code 2 and names the missing key. The
-others are optional:
+Two keys are always required: `schema` (the root LinkML file) and `package` (the Python import
+path of the generated package). Without one, `rp-generate` exits with code 2 and names the missing
+key. A schema that defines aggregate roots of its own needs a third, `migrations`: the folder for
+the schema lock and the migration files. The root schema then carries a quoted `version:`
+(`version: "1"`), since an unquoted `1.10` is read as a number and loses its zero. Without them the
+hard check fails. `rp-generate` keeps the lock, `schema.lock.json`, in that folder, and when the
+version changes it drafts a migration there for you to review. The other keys are optional:
 
 * `typescript` and `diagrams` are folders; nothing is written when they are absent.
 * `python` is the folder that receives every file listed below except the TypeScript and the

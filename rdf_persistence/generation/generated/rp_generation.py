@@ -80,6 +80,22 @@ class HardRule(str, Enum):
     "The `rp_path` and `rp_iri_type` of an application class do not start with `rp-`, the prefix of the toolkit\u0027s own roots."
     WORKFLOW = "workflow"
     "The `workflow` annotation is on an aggregate root that is not the tenant root and includes `UnderWorkflow`, and every concrete root that includes `UnderWorkflow` has the annotation, its own or inherited."
+    MIGRATIONS_FOLDER = "migrations_folder"
+    "A target whose own modules define a root class that the toolkit stores sets `migrations`, the folder of the schema lock and of its migration files, in its `[tool.rp-generate]` entry."
+    QUOTED_VERSION = "quoted_version"
+    "The root schema of a target that sets `migrations` has a `version`, written as a quoted string in the YAML source, since an unquoted `1.10` is read as the number 1.1."
+
+
+class LockRule(str, Enum):
+    "How a change between two locks is treated."
+    SAFE = "safe"
+    "Nothing stored is lost or left invalid; the lock is rewritten."
+    DESTRUCTIVE = "destructive"
+    "Stored data would be deleted; needs a new version and a drop step."
+    NEEDS_STEP = "needs_step"
+    "Stored data may no longer fit; needs a new version and a step the developer writes."
+    NOT_MIGRATABLE = "not_migratable"
+    "An IRI would change or data would move between graphs; no step can do it."
 
 
 class BoundaryRule(str, Enum):
@@ -140,6 +156,7 @@ class GenerationTarget(ConfiguredBaseModel):
     diagrams: Optional[str] = Field(default=None, title="Diagrams folder", description="The folder that receives one Mermaid file per module; none are written when absent.")
     openapi: Optional[bool] = Field(default=True, title="OpenAPI components", description="Whether the OpenAPI component schemas of the classes (`openapi-components.json`) are written next to the context. Only a schema whose classes a service serves needs them; on unless set to false.")
     regenerate_command: Optional[str] = Field(default=None, title="Regenerate command", description="The command that regenerates this entry, named in the hint of a failed freshness check (TOML key `regenerate-command`); `rp-generate` when absent.")
+    migrations: Optional[str] = Field(default=None, title="Migrations folder", description="The folder of the target\u0027s migration files and schema lock, relative to the folder of the `pyproject.toml`; absent for a target that stores nothing of its own.")
 
     @field_validator("schema_file")
     def pattern_schema_file(cls, v):
@@ -218,6 +235,61 @@ class GenerationTarget(ConfiguredBaseModel):
             err_msg = "Invalid regenerate_command format: " + str(v)
             raise ValueError(err_msg)
         return v
+
+    @field_validator("migrations")
+    def pattern_migrations(cls, v):
+        pattern=re.compile("^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid migrations format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid migrations format: " + str(v)
+            raise ValueError(err_msg)
+        return v
+
+
+class SchemaLock(ConfiguredBaseModel):
+    "The RDF-facing summary of what a target stores, at one schema version: its stored classes and the enums they use. Committed as `schema.lock.json` in the target\u0027s migrations folder, so a change to what is stored is compared with it."
+    schema_id: str = Field(default=..., title="Schema id", description="The id of the schema a lock describes.")
+    schema_version: str = Field(default=..., title="Schema version", description="The `version` of the schema when the lock was written.")
+    locked_classes: Optional[list[LockedClass]] = Field(default=None, title="Locked classes", description="The stored classes of a lock, sorted by class IRI.")
+    locked_enums: Optional[list[LockedEnum]] = Field(default=None, title="Locked enums", description="The enums a lock records, sorted by name.")
+
+
+class LockedClass(ConfiguredBaseModel):
+    "A stored class as the lock records it, with its IRI, the type and path of a root, and its slots."
+    class_uri: str = Field(default=..., title="Class IRI", description="The IRI of a stored class.")
+    iri_type: Optional[str] = Field(default=None, title="IRI type", description="The `rp_iri_type` of a root class, the type segment of its aggregates\u0027 IRIs.")
+    root_path: Optional[str] = Field(default=None, title="Root path", description="The `rp_path` of a root class, the route segment of its aggregates.")
+    root_database: Optional[str] = Field(default=None, title="Root database", description="The database of a root class (`tenant`, `application` or `system`), where its aggregates are read from.")
+    locked_slots: Optional[list[LockedSlot]] = Field(default=None, title="Locked slots", description="The slots of a locked class, sorted by slot IRI.")
+
+
+class LockedSlot(ConfiguredBaseModel):
+    "A slot of a stored class as the lock records it, by its IRI."
+    slot_uri: str = Field(default=..., title="Slot IRI", description="The IRI of a slot.")
+    range: str = Field(default=..., title="Range", description="The IRI of the slot\u0027s range; the name of the enum when the range is an enum.")
+    required: Optional[bool] = Field(default=None, title="Required", description="Whether a value is required.")
+    multivalued: Optional[bool] = Field(default=None, title="Multivalued", description="Whether the slot takes several values.")
+    inlined: Optional[bool] = Field(default=None, title="Inlined", description="Whether the slot\u0027s values are stored inside the aggregate\u0027s graph.")
+
+
+class LockedEnum(ConfiguredBaseModel):
+    "An enum used as a range, with the `meaning` IRI of each value (its text when it has none)."
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    enum_values: Optional[list[str]] = Field(default=None, title="Enum values", description="The `meaning` IRI of each value of an enum, or its text when it has none; sorted.")
+
+
+class LockChange(ConfiguredBaseModel):
+    "One difference between two locks: the rule that treats it, a sentence, and what it is about (a class and a slot, or an enum and a value)."
+    rule: LockRule = Field(default=..., title="Rule", description="How the change is treated, by the table of the schema lock.")
+    what: str = Field(default=..., title="What", description="What changed, as a sentence.")
+    class_uri: Optional[str] = Field(default=None, title="Class IRI", description="The IRI of a stored class.")
+    slot_uri: Optional[str] = Field(default=None, title="Slot IRI", description="The IRI of a slot.")
+    enum_name: Optional[str] = Field(default=None, title="Enum name", description="The name of the enum a lock change is about.")
+    enum_value: Optional[str] = Field(default=None, title="Enum value", description="The `meaning` IRI, or the text, of the enum value a lock change is about.")
 
 
 class ManifestEntry(ConfiguredBaseModel):
@@ -473,6 +545,11 @@ class ZitadelProject(ConfiguredBaseModel):
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 GenerationTarget.model_rebuild()
+SchemaLock.model_rebuild()
+LockedClass.model_rebuild()
+LockedSlot.model_rebuild()
+LockedEnum.model_rebuild()
+LockChange.model_rebuild()
 ManifestEntry.model_rebuild()
 GenerationManifest.model_rebuild()
 ConstraintCase.model_rebuild()

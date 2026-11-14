@@ -116,6 +116,12 @@
       "creator_role": {
          "@id": "creatorRole"
       },
+      "data_schema_version": {
+         "@id": "dataSchemaVersion"
+      },
+      "delete_pattern": {
+         "@id": "deletePattern"
+      },
       "deployment": {
          "@id": "deployment"
       },
@@ -142,6 +148,9 @@
       },
       "format_version": {
          "@id": "dumpFormatVersion"
+      },
+      "from_version": {
+         "@id": "fromVersion"
       },
       "global_roles": {
          "@container": "@set",
@@ -189,6 +198,9 @@
       },
       "length": {
          "@id": "idLength"
+      },
+      "insert_pattern": {
+         "@id": "insertPattern"
       },
       "iri_policy": {
          "@type": "@id",
@@ -318,7 +330,7 @@
          "@id": "problemStatus"
       },
       "title": {
-         "@id": "problemTitle"
+         "@id": "title"
       },
       "type": "@type",
       "prohibitions": {
@@ -369,7 +381,7 @@
       },
       "schema_id": {
          "@type": "@id",
-         "@id": "dumpSchemaId"
+         "@id": "schemaId"
       },
       "schema_version": {
          "@id": "dumpSchemaVersion"
@@ -400,6 +412,11 @@
             "deleting": "https://meaningfy.ws/ns/rdf-persistence#Deleting"
          }
       },
+      "steps": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "migrationSteps"
+      },
       "tenant": {
          "@type": "@id",
          "@id": "tenant"
@@ -414,11 +431,17 @@
       "tenant_template": {
          "@id": "tenantTemplate"
       },
+      "to_version": {
+         "@id": "toVersion"
+      },
       "toolkit_version": {
          "@id": "toolkitVersion"
       },
       "total": {
          "@id": "total"
+      },
+      "unresolved": {
+         "@id": "unresolved"
       },
       "url_segment": {
          "@id": "urlSegment"
@@ -428,6 +451,9 @@
       },
       "version": {
          "@id": "version"
+      },
+      "where_pattern": {
+         "@id": "wherePattern"
       },
       "@version": 1.1,
       "AccountSummary": {
@@ -489,6 +515,12 @@
       },
       "MemberList": {
          "@id": "MemberList"
+      },
+      "Migration": {
+         "@id": "Migration"
+      },
+      "MigrationStep": {
+         "@id": "MigrationStep"
       },
       "Page": {
          "@id": "Page"

@@ -23,6 +23,10 @@
       "class_name": {
          "@id": "className"
       },
+      "class_uri": {
+         "@type": "@id",
+         "@id": "lockedClassIri"
+      },
       "classes": {
          "@type": "@id",
          "@container": "@set",
@@ -45,6 +49,16 @@
       },
       "endpoint": {
          "@id": "endpoint"
+      },
+      "enum_name": {
+         "@id": "lockChangeEnum"
+      },
+      "enum_value": {
+         "@id": "lockChangeValue"
+      },
+      "enum_values": {
+         "@container": "@set",
+         "@id": "lockedEnumValues"
       },
       "enums": {
          "@type": "@id",
@@ -81,6 +95,9 @@
          "@container": "@set",
          "@id": "tsImports"
       },
+      "inlined": {
+         "@id": "inlined"
+      },
       "inputs": {
          "@type": "@id",
          "@container": "@set",
@@ -94,6 +111,9 @@
       "invalid": {
          "@container": "@set",
          "@id": "invalidInstances"
+      },
+      "iri_type": {
+         "@id": "lockedIriType"
       },
       "key_id": {
          "@id": "keyId"
@@ -132,6 +152,21 @@
       "literal": {
          "@id": "literal"
       },
+      "locked_classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "lockedClasses"
+      },
+      "locked_enums": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "lockedEnums"
+      },
+      "locked_slots": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "lockedSlots"
+      },
       "machine_users": {
          "@type": "@id",
          "@container": "@set",
@@ -142,6 +177,9 @@
       },
       "message": {
          "@id": "message"
+      },
+      "migrations": {
+         "@id": "migrationsFolder"
       },
       "module": {
          "@id": "moduleName"
@@ -221,11 +259,24 @@
       "required": {
          "@id": "required"
       },
+      "root_database": {
+         "@id": "lockedRootDatabase"
+      },
+      "root_path": {
+         "@id": "lockedRootPath"
+      },
       "rule": {
          "@id": "rule"
       },
       "schema_file": {
          "@id": "schemaFile"
+      },
+      "schema_id": {
+         "@type": "@id",
+         "@id": "lockSchemaId"
+      },
+      "schema_version": {
+         "@id": "lockSchemaVersion"
       },
       "secret": {
          "@id": "secret"
@@ -239,6 +290,10 @@
       },
       "slot_iri": {
          "@id": "slotIri"
+      },
+      "slot_uri": {
+         "@type": "@id",
+         "@id": "lockedSlotIri"
       },
       "slots": {
          "@type": "@id",
@@ -332,6 +387,18 @@
       "GenerationTarget": {
          "@id": "GenerationTarget"
       },
+      "LockChange": {
+         "@id": "LockChange"
+      },
+      "LockedClass": {
+         "@id": "LockedClass"
+      },
+      "LockedEnum": {
+         "@id": "LockedEnum"
+      },
+      "LockedSlot": {
+         "@id": "LockedSlot"
+      },
       "MachineUser": {
          "@id": "MachineUser"
       },
@@ -352,6 +419,9 @@
       },
       "RuleAlternative": {
          "@id": "RuleAlternative"
+      },
+      "SchemaLock": {
+         "@id": "SchemaLock"
       },
       "SlotShape": {
          "@id": "SlotShape"

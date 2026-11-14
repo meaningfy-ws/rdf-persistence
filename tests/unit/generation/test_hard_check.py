@@ -7,8 +7,9 @@ import pytest
 
 from rdf_persistence.generation import steps
 from rdf_persistence.generation.checks.application import ROWS
-from rdf_persistence.generation.checks.hard import hard_problems
+from rdf_persistence.generation.checks.hard import hard_problems, stored_schema_problems
 from rdf_persistence.generation.cli import main
+from rdf_persistence.generation.config import read_targets
 from rdf_persistence.generation.generated.rp_generation import GenerationTarget, HardRule
 from rdf_persistence.generation.pipeline import generate
 from rdf_persistence.generation.problems import format_problem
@@ -269,7 +270,8 @@ def test_a_fault_names_only_the_broken_element(break_toy: Breaker) -> None:
 
 
 def test_every_rule_has_a_row_in_the_table() -> None:
-    assert {f.rule for f in FAULTS} == set(HardRule), "a hard rule has no planted fault"
+    planted = {f.rule for f in FAULTS} | STORED_SCHEMA_RULES  # those two need the target's settings
+    assert planted == set(HardRule), "a hard rule has no planted fault"
 
 
 def test_an_unlabelled_class_still_needs_the_described_mixin(break_toy: Breaker) -> None:
@@ -294,7 +296,9 @@ ISBN_DESCRIPTION = "    description: The International Standard Book Number of t
 
 def test_the_step_reports_a_slot_without_a_description_by_name(break_toy: Breaker) -> None:
     root = break_toy("books.yaml", ISBN_DESCRIPTION, "")
-    target = GenerationTarget(schema_file=ROOT_SCHEMA, package="app.generated")
+    target = GenerationTarget(
+        schema_file=ROOT_SCHEMA, package="app.generated", migrations="migrations"
+    )
     found = generate([target], root.parent, (steps.HARD_STEP,), check=True)
     assert len(found) == 1, f"one broken slot, one line: {found}"
     line = format_problem(found[0])
@@ -598,3 +602,88 @@ def test_an_unknown_database_lists_the_three_kinds(tmp_path: Path) -> None:
     problems = _annotation_problems(tmp_path, classes)
     assert len(problems) == 1, problems
     assert "('tenant', 'system', 'application')" in problems[0], problems
+
+
+# ---- the migrations folder and the version (PD-1, PD-14, TC-10) -----------------------------------
+
+REPO = Path(__file__).parents[3]
+TOY_VERSION = 'version: "1"\n'
+
+
+STORED_SCHEMA_RULES = {HardRule.MIGRATIONS_FOLDER, HardRule.QUOTED_VERSION}
+
+
+def _stored_schema_problems(root: Path, migrations: str | None) -> list[str]:
+    target = GenerationTarget(
+        schema_file=ROOT_SCHEMA, package="app.generated", migrations=migrations
+    )
+    found = generate([target], root.parent, (steps.HARD_STEP,), check=True)
+    return [format_problem(p) for p in found]
+
+
+def test_a_target_with_root_classes_and_no_migrations_folder_is_refused(toy_copy: Path) -> None:
+    """TC-10"""
+    found = _stored_schema_problems(toy_copy / ROOT_SCHEMA, None)
+    assert len(found) == 1, found
+    line = found[0]
+    assert f"[{HardRule.MIGRATIONS_FOLDER.value}]" in line, "the rule is named"
+    assert "Book" in line, "the root is named"
+    assert "migrations" in line, "the setting is named"
+    assert ROOT_SCHEMA in line, "the schema of the target is named"
+
+
+def test_a_target_with_migrations_and_no_version_is_refused(break_toy: Breaker) -> None:
+    """TC-10"""
+    root = break_toy(ROOT_SCHEMA, TOY_VERSION, "")
+    found = _stored_schema_problems(root, "migrations")
+    assert len(found) == 1, found
+    assert f"[{HardRule.QUOTED_VERSION.value}]" in found[0], "the rule is named"
+    assert "version" in found[0], "the key is named"
+    assert ROOT_SCHEMA in found[0], "the schema is named"
+
+
+@pytest.mark.parametrize("written", ["1.10", "1", "true", "v1"])
+def test_an_unquoted_version_is_refused(break_toy: Breaker, written: str) -> None:
+    """TC-10: `version: 1.10` is read as 1.1, so every spelling is quoted."""
+    root = break_toy(ROOT_SCHEMA, TOY_VERSION, f"version: {written}\n")
+    found = _stored_schema_problems(root, "migrations")
+    assert len(found) == 1, found
+    assert f"[{HardRule.QUOTED_VERSION.value}]" in found[0], "the rule is named"
+    assert "quoted" in found[0], "the fix is named"
+    assert ROOT_SCHEMA in found[0], "the schema is named"
+
+
+@pytest.mark.parametrize("quote", ['"', "'"])
+@pytest.mark.parametrize("written", ["1.10", "1", "true", "v1"])
+def test_a_quoted_version_passes(break_toy: Breaker, written: str, quote: str) -> None:
+    root = break_toy(ROOT_SCHEMA, TOY_VERSION, f"version: {quote}{written}{quote}\n")
+    assert _stored_schema_problems(root, "migrations") == [], f"{quote}{written}{quote} is quoted"
+
+
+def test_a_root_schema_that_is_not_a_mapping_gives_a_problem(toy_copy: Path) -> None:
+    """PD-22.10: the view was loaded before the file changed; the check reads the file."""
+    view = load_schema(toy_copy / ROOT_SCHEMA)
+    (toy_copy / ROOT_SCHEMA).write_text("- a\n- list\n", encoding="utf-8")
+    [problem] = stored_schema_problems(view, toy_copy, Path("migrations"))
+    assert problem.rule == HardRule.QUOTED_VERSION.value, "the rule is named"
+    assert problem.element == ROOT_SCHEMA, "the schema is named"
+
+
+def test_a_schema_with_no_source_file_gives_a_problem(toy_copy: Path) -> None:
+    view = load_schema(toy_copy / ROOT_SCHEMA)
+    view.schema.source_file = None
+    [problem] = stored_schema_problems(view, toy_copy, Path("migrations"))
+    assert problem.rule == HardRule.QUOTED_VERSION.value, "the rule is named"
+    assert "source" in problem.message, "the missing file is the reason"
+
+
+def test_the_toy_with_migrations_and_a_quoted_version_passes(toy_copy: Path) -> None:
+    assert _stored_schema_problems(toy_copy / ROOT_SCHEMA, "migrations") == [], "the toy is stored"
+
+
+def test_the_toolkits_four_targets_pass_the_hard_check_with_their_own_settings() -> None:
+    """TC-10: rp_service, rp_wire and rp_generation need no migrations folder; rp.yaml has one."""
+    targets = read_targets(REPO / "pyproject.toml")
+    assert len(targets) == 4, [t.schema_file for t in targets]
+    found = generate(targets, REPO, (steps.HARD_STEP,), check=True)
+    assert [format_problem(p) for p in found] == []

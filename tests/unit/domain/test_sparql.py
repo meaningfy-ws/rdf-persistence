@@ -10,6 +10,7 @@ from rdflib.plugins.sparql import prepareQuery, prepareUpdate
 from rdf_persistence.domain.exceptions import SparqlError
 from rdf_persistence.domain.sparql import (
     SparqlTerm,
+    checked_group,
     count,
     fill,
     fragment,
@@ -336,3 +337,103 @@ def test_a_fragment_is_a_filled_template_that_can_be_joined_and_filled_again():
     both = fill("ASK { $guards }", guards=join([guard, guard]))
     prepareQuery(both)
     assert both.count(f"GRAPH {term(GRAPH)}") == 2, "both fragments are in the text"
+
+
+# -- checked_group: the one place a migration pattern's text becomes a SparqlTerm (PD-6, PD-21, PD-22) --
+
+RP_VERSION = URIRef("https://example.org/rp#version")
+STAMP = URIRef("https://example.org/rp#dataSchemaVersion")
+OWN = (RP_VERSION, STAMP)
+FINE = '?s <urn:p> ?o . OPTIONAL { ?s <urn:q> ?r } FILTER (?o != "GRAPH") # SERVICE\n'
+SPLIT = "?s ?p ?o } ; CLEAR ALL ; ASK { ?s ?p ?o"
+
+# Refused in a where and in a template alike: the text and the reason the error gives.
+REFUSED_ANYWHERE = {
+    "a prefixed name": ("?s rdf:type ?o .", "prefixed name"),
+    "an empty prefix": ("?s :p ?o .", "prefixed name"),
+    "GRAPH": ("GRAPH <urn:g> { ?s ?p ?o }", "GRAPH or SERVICE"),
+    "a reserved variable": ("?rp_x <urn:p> ?o .", "reserved variable"),
+    "a dollar reserved variable": ("$rp_x <urn:p> ?o .", "reserved variable"),
+    "a codepoint escape": ('?s <urn:p> "\\u0041" .', "codepoint escape"),
+    "a pattern that does not parse": ("?s <urn:p>", "does not parse"),
+    "a pattern that closes its group": (SPLIT, "does not parse"),
+}
+# Only a where has a filter or a service.
+REFUSED_IN_A_WHERE = {
+    "a prefixed name read by a text scan as an IRI": (
+        "?s ?p ?o FILTER(?o<rdf:x||?p>1)",
+        "prefixed name",
+    ),
+    "SERVICE": ("SERVICE <urn:g> { ?s ?p ?o }", "GRAPH or SERVICE"),
+    "GRAPH in a filter": (
+        "?s ?p ?o FILTER EXISTS { GRAPH <urn:g> { ?s ?p ?o } }",
+        "GRAPH or SERVICE",
+    ),
+}
+
+
+@pytest.mark.parametrize("template", [False, True], ids=["where", "template"])
+def test_a_pattern_that_is_fine_comes_back_as_a_term(template):
+    text = "?s <urn:p> ?o ." if template else FINE
+    assert isinstance(checked_group(text, template=template), SparqlTerm), "what fill() accepts"
+
+
+@pytest.mark.parametrize("template", [False, True], ids=["where", "template"])
+def test_a_pattern_that_is_fine_is_not_changed(template):
+    text = "?s <urn:p> ?o ." if template else FINE
+    assert str(checked_group(text, template=template)) == text, "the same text"
+
+
+def test_the_graph_variable_is_open_to_a_pattern():
+    assert checked_group("?rp_graph <urn:p> ?o .", template=False), "?rp_graph is allowed"
+
+
+@pytest.mark.parametrize("template", [False, True], ids=["where", "template"])
+@pytest.mark.parametrize(("text", "reason"), REFUSED_ANYWHERE.values(), ids=REFUSED_ANYWHERE)
+def test_a_pattern_the_parser_does_not_accept_as_a_group_is_refused(text, reason, template):
+    with pytest.raises(SparqlError, match=reason):
+        checked_group(text, template=template)
+
+
+@pytest.mark.parametrize(("text", "reason"), REFUSED_IN_A_WHERE.values(), ids=REFUSED_IN_A_WHERE)
+def test_a_where_with_a_filter_or_service_is_refused_for_what_the_parser_read(text, reason):
+    with pytest.raises(SparqlError, match=reason):
+        checked_group(text, template=False)
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["?s <urn:p> _:b .", "?s <urn:p> [ <urn:q> 1 ] .", "?s <urn:p> ( 1 2 ) .", "?s <urn:p> () ."],
+    ids=["labelled", "bracketed", "collection", "empty collection"],
+)
+def test_a_blank_node_or_a_collection_is_refused_in_a_template(text):
+    with pytest.raises(SparqlError, match="blank node"):
+        checked_group(text, template=True)
+
+
+@pytest.mark.parametrize("text", ["?s <urn:p> [ <urn:q> ?o ] .", "?s <urn:p> ( 1 ) ."])
+def test_a_blank_node_or_a_collection_is_allowed_in_a_where(text):
+    assert checked_group(text, template=False), "a where only matches"
+
+
+@pytest.mark.parametrize("own", OWN)
+def test_a_template_that_names_a_forbidden_predicate_is_refused(own):
+    with pytest.raises(SparqlError, match="the toolkit's own"):
+        checked_group(f"?s <{own}> ?o .", template=True, forbidden=OWN)
+
+
+@pytest.mark.parametrize("own", OWN)
+def test_a_where_may_read_a_forbidden_predicate(own):
+    assert checked_group(f"?s <{own}> ?o .", template=False, forbidden=OWN), "reading is fine"
+
+
+def test_a_template_may_name_a_predicate_that_is_not_forbidden():
+    assert checked_group("?s <urn:p> ?o .", template=True, forbidden=OWN), (
+        "only the list is refused"
+    )
+
+
+def test_a_pattern_too_long_for_the_parser_is_refused_with_the_advice_to_split():
+    text = " ".join(f"?s <urn:p{n}> ?o{n} ." for n in range(400))
+    with pytest.raises(SparqlError, match="too long to check"):
+        checked_group(text, template=False)

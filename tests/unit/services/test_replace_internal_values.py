@@ -25,11 +25,13 @@ PYPROJECT = """
 [tool.rp-generate]
 schema = "m.yaml"
 package = "app.generated"
+migrations = "migrations"
 """
 SCHEMA = """
 id: https://example.org/ns/m
 name: m
 title: Module
+version: "1"
 description: A module for the tests.
 prefixes:
   tst: https://example.org/ns/m#

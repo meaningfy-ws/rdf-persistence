@@ -102,6 +102,9 @@
          "@type": "@id",
          "@id": "dcterms:creator"
       },
+      "data_schema_version": {
+         "@id": "rp:dataSchemaVersion"
+      },
       "description": {
          "@id": "dcterms:description"
       },

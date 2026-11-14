@@ -51,6 +51,9 @@ ROWS = [
     (exceptions.IdentityUnavailable, 503, "unavailable"),
     (exceptions.InvalidRoleDefinition, 503, "unavailable"),
     (exceptions.InvalidWorkflow, 503, "unavailable"),
+    (exceptions.InvalidMigration, 503, "unavailable"),
+    (exceptions.MigrationFailed, 503, "unavailable"),
+    (exceptions.TenantBehind, 503, "tenant-behind"),
 ]
 TITLES = {
     "invalid-token": "Invalid token",
@@ -64,6 +67,7 @@ TITLES = {
     "unsupported-media-type": "Unsupported media type",
     "bad-query": "Bad query",
     "unavailable": "Service unavailable",
+    "tenant-behind": "Tenant behind its schema",
     "payload-too-large": "Payload too large",
     "method-not-allowed": "Method not allowed",
     "internal-error": "Internal error",

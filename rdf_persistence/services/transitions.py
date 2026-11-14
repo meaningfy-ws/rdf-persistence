@@ -27,7 +27,8 @@ from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.discussion import decode_typed, mint_iri, moment_of
 from rdf_persistence.services.mapper import Mapper
 from rdf_persistence.services.session import Dependents, Session, changed_text
-from rdf_persistence.services.workflows import SHOWN, Workflows, state_iri
+from rdf_persistence.services.workflows import Workflows, state_iri
+from rdf_persistence.services.yaml_files import SHOWN
 
 RECORD = "TransitionRecord"
 COMMENT = "Comment"

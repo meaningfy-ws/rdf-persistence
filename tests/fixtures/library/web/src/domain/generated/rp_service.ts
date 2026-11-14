@@ -33,6 +33,8 @@ export type ProblemSlug =
   | "bad_query"
   /** A store, the identity provider or the role definitions are not usable. */
   | "unavailable"
+  /** The tenant's data follows an older schema version than the service runs; it is not served until migrated. */
+  | "tenant_behind"
   /** The body is larger than the service takes. */
   | "payload_too_large"
   /** The route has no such method. */
@@ -322,4 +324,32 @@ export interface AggregateHead {
   head_types?: string[];
   /** The version token of the stored aggregate's graph. */
   head_version?: string;
+}
+
+/** One step of a migration: three group graph patterns, as text, that the toolkit wraps into one update request over the graphs of a database. A step with `unresolved` is a draft and does not load. */
+export interface MigrationStep {
+  /** A short name for what a record describes. */
+  title: string;
+  /** The group graph pattern, as text, that selects what a migration step changes. */
+  where_pattern?: string;
+  /** The group graph pattern, as text, of the triples a migration step removes. */
+  delete_pattern?: string;
+  /** The group graph pattern, as text, of the triples a migration step adds. */
+  insert_pattern?: string;
+  /** Text saying what a draft step still needs from the developer; a step that has it does not load. */
+  unresolved?: string;
+}
+
+/** The reviewed file that moves the data of a database from one version of a schema to the next: the schema's id, the two versions and the steps, in order. */
+export interface Migration {
+  /** The id of the schema whose data the migration moves. */
+  schema_id: string;
+  /** The version of the schema that the data follows before the migration. */
+  from_version: string;
+  /** The version of the schema that the data follows after the migration. */
+  to_version: string;
+  /** A free-text description of the object. */
+  description?: string;
+  /** The steps of a migration, in the order they run. */
+  steps?: MigrationStep[];
 }

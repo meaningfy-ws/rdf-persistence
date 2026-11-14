@@ -146,6 +146,15 @@ slots:
     range: string
     annotations:
       bookkeeping: true
+  data_schema_version:
+    title: Data schema version
+    description: >-
+      The version of a schema that the data of a database follows, stated about the schema's id in
+      the schema-stamps graph. The migration runner writes it; no domain class carries it.
+    slot_uri: rp:dataSchemaVersion
+    range: string
+    annotations:
+      bookkeeping: true
   loaded_graph:
     title: Loaded graph
     description: A graph whose lifecycle belongs to the aggregate, such as the triples of a loaded RDF file.

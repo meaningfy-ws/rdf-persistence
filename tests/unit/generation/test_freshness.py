@@ -22,10 +22,12 @@ NESTED = """
 [[tool.rp-generate]]
 schema = "m.yaml"
 package = "app.generated"
+migrations = "migrations"
 
 [[tool.rp-generate]]
 schema = "part.yaml"
 package = "app.generated.part"
+migrations = "part_migrations"
 """
 WITH_PART = SCHEMA.replace("  - linkml:types", "  - linkml:types\n  - part")
 
@@ -172,7 +174,10 @@ def test_a_second_run_deletes_what_it_no_longer_generates_and_keeps_foreign_file
     assert part.is_file(), "the first run did not write the imported module"
     foreign = tmp_path / "app/generated/notes.txt"
     foreign.write_text("mine", encoding="utf-8")
-    (tmp_path / "m.yaml").write_text(SCHEMA, encoding="utf-8")
+    # a class leaves with the part, so the schema needs a new version (PD-3)
+    (tmp_path / "m.yaml").write_text(
+        SCHEMA.replace('version: "1"', 'version: "2"'), encoding="utf-8"
+    )
     assert main(["--project", str(pyproject)]) == 0, "the second run failed"
     assert not part.exists(), "a file the schema no longer generates was kept"
     assert foreign.read_text() == "mine", "a file the manifest does not list was touched"
@@ -196,11 +201,13 @@ TWO_COMMANDS = """
 [[tool.rp-generate]]
 schema = "m.yaml"
 package = "app.generated"
+migrations = "migrations"
 regenerate-command = "make a"
 
 [[tool.rp-generate]]
 schema = "part.yaml"
 package = "app.generated.part"
+migrations = "part_migrations"
 regenerate-command = "make b"
 """
 

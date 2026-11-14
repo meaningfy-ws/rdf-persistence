@@ -42,6 +42,7 @@ _ROWS = {
     ),
     ProblemSlug.BAD_QUERY: ("Bad query", HTTPStatus.BAD_REQUEST),
     ProblemSlug.UNAVAILABLE: ("Service unavailable", HTTPStatus.SERVICE_UNAVAILABLE),
+    ProblemSlug.TENANT_BEHIND: ("Tenant behind its schema", HTTPStatus.SERVICE_UNAVAILABLE),
     ProblemSlug.PAYLOAD_TOO_LARGE: ("Payload too large", HTTPStatus.REQUEST_ENTITY_TOO_LARGE),
     ProblemSlug.METHOD_NOT_ALLOWED: ("Method not allowed", HTTPStatus.METHOD_NOT_ALLOWED),
     ProblemSlug.INTERNAL_ERROR: ("Internal error", HTTPStatus.INTERNAL_SERVER_ERROR),
@@ -64,6 +65,7 @@ NOT_ACCEPTABLE = _kind(ProblemSlug.NOT_ACCEPTABLE)
 UNSUPPORTED_MEDIA_TYPE = _kind(ProblemSlug.UNSUPPORTED_MEDIA_TYPE)
 BAD_QUERY = _kind(ProblemSlug.BAD_QUERY)
 UNAVAILABLE = _kind(ProblemSlug.UNAVAILABLE)
+TENANT_BEHIND = _kind(ProblemSlug.TENANT_BEHIND)
 PAYLOAD_TOO_LARGE = _kind(ProblemSlug.PAYLOAD_TOO_LARGE)
 METHOD_NOT_ALLOWED = _kind(ProblemSlug.METHOD_NOT_ALLOWED)
 INTERNAL_ERROR = _kind(ProblemSlug.INTERNAL_ERROR)
@@ -107,6 +109,9 @@ ERROR_KINDS: tuple[tuple[type[PersistenceError], ProblemKind], ...] = (
         UNAVAILABLE,
     ),  # raised at start-up; a service that kept going would be unusable
     (errors.InvalidWorkflow, UNAVAILABLE),  # raised at start-up, for the same reason
+    (errors.InvalidMigration, UNAVAILABLE),  # raised at start-up, for the same reason
+    (errors.MigrationFailed, UNAVAILABLE),  # raised at start-up, for the same reason
+    (errors.TenantBehind, TENANT_BEHIND),
 )
 # The statuses the framework raises on its own, which have a kind of their own.
 _OF_THE_FRAMEWORK = {

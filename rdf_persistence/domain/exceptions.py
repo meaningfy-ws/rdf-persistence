@@ -96,6 +96,21 @@ class InvalidWorkflow(PersistenceError, ValueError):
     """A workflow file cannot be read, is not a workflow, or contradicts itself, the role definitions or the schema."""
 
 
+class InvalidMigration(PersistenceError, ValueError):
+    """A migration file cannot be read, is not a migration, or holds a step that is a draft or fails the checks."""
+
+
+class MigrationFailed(PersistenceError):
+    """The system or application database could not be migrated at start-up: the store refused or
+    timed out, the stamp read back is behind, or the stamp is unknown to the chain (PD-11).
+    The message names the database, the migration and the cause."""
+
+
+class TenantBehind(PersistenceError):
+    """A request reached a tenant whose migration failed at start-up and that is set aside (PD-11).
+    The message names the tenant, for the log; the caller is told only that the tenant is behind."""
+
+
 class UnknownRole(PersistenceError, ValueError):
     """A grant names a role that no tenant-level or aggregate-level role definition defines."""
 

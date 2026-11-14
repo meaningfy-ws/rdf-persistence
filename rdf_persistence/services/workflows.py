@@ -9,7 +9,6 @@ import re
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 
-import yaml
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import ValidationError
 from rdflib import RDF, BNode, Literal, URIRef
@@ -23,19 +22,13 @@ from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.schema_structure import workflow_name_of
 from rdf_persistence.services.session import Session
+from rdf_persistence.services.yaml_files import SHOWN, problems_of, read_mapping, shown
 
 Object = URIRef | Literal | BNode  # what a triple's object can be
 CHANGED_BY_TRANSITION = "the state is changed only by a transition"
 KEEPS_A_CLASS = "an aggregate under a workflow keeps a class under it"
 TAKES_A_CLASS = "an aggregate that takes a class under a workflow holds no state"
 SEVERAL = "the classes of an aggregate name more than one workflow"
-SHOWN = 200  # how much of a rejected input an error text echoes
-
-
-def _shown(value: object) -> str:
-    """The text of ``value`` for an error message, cut to ``SHOWN`` characters."""
-    text = repr(value)
-    return text if len(text) <= SHOWN else f"{text[:SHOWN]}..."
 
 
 def load_workflow(path: Path) -> Workflow:
@@ -43,30 +36,15 @@ def load_workflow(path: Path) -> Workflow:
 
     Raises:
         InvalidWorkflow: The file cannot be read, is not UTF-8 or too deeply nested, is not YAML or
-            not a mapping, or is not a valid workflow (an ``id`` that is not an absolute IRI or ends
-            with a slash, a state listed twice, a transition with no roles included); the message
-            names the file and the element.
+            not a mapping, gives a key twice, or is not a valid workflow (an ``id`` that is not an
+            absolute IRI or ends with a slash, a state listed twice, a transition with no roles
+            included); the message names the file and the element.
     """
-    try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except OSError as error:
-        raise InvalidWorkflow(f"cannot read the workflow {path}: {error}") from error
-    except UnicodeDecodeError as error:
-        raise InvalidWorkflow(f"{path} is not UTF-8 text: {str(error)[:SHOWN]}") from error
-    except yaml.YAMLError as error:
-        raise InvalidWorkflow(f"{path} is not valid YAML: {str(error)[:SHOWN]}") from error
-    except RecursionError as error:
-        raise InvalidWorkflow(f"{path} is nested too deeply to read") from error
-    if not isinstance(data, dict):
-        raise InvalidWorkflow(f"{path} must hold one workflow, a mapping")
+    data = read_mapping(path, "workflow", InvalidWorkflow)
     try:
         workflow = Workflow.model_validate(data)
     except ValidationError as error:
-        problems = "; ".join(
-            f"{'.'.join(map(str, e['loc']))}: {str(e['msg'])[:SHOWN]} (got {_shown(e['input'])})"
-            for e in error.errors()
-        )
-        raise InvalidWorkflow(f"{path}: {problems}") from error
+        raise InvalidWorkflow(f"{path}: {problems_of(error, echo_input=True)}") from error
     if problem := _file_problem(workflow):
         raise InvalidWorkflow(f"{path}: {problem}")
     return workflow
@@ -83,13 +61,13 @@ def _file_problem(workflow: Workflow) -> str | None:
         or workflow.id.endswith(("/", "#"))
     ):
         return (
-            f"id {_shown(workflow.id)} must be an absolute IRI with none of the characters an IRI "
+            f"id {shown(workflow.id)} must be an absolute IRI with none of the characters an IRI "
             'may not hold (as in SPARQL: space, < > " { } | \\ ^ `, control characters), '
             "and no slash or hash at the end"
         )
     states = workflow.workflow_states
     if twice := sorted({s for s in states if states.count(s) > 1}):
-        return f"workflow_states lists {_shown(twice)} more than once"
+        return f"workflow_states lists {shown(twice)} more than once"
     for move in workflow.workflow_transitions or []:
         if not move.transition_roles:
             return f"transition {move.from_state} -> {move.to_state} has no transition_roles"
@@ -258,7 +236,7 @@ def _by_name(definitions: Sequence[Workflow], places: Sequence[str]) -> dict[str
         if workflow.workflow_name in named:
             raise InvalidWorkflow(f"{place} is defined twice")
         if workflow.id in ids:
-            raise InvalidWorkflow(f"{place} has the id {_shown(workflow.id)} of {ids[workflow.id]}")
+            raise InvalidWorkflow(f"{place} has the id {shown(workflow.id)} of {ids[workflow.id]}")
         named[workflow.workflow_name] = workflow
         ids[workflow.id] = place
     return named
@@ -268,7 +246,7 @@ def _check(workflow: Workflow, where: str, rules: AccessRules) -> None:
     states = set(workflow.workflow_states)
     if workflow.initial_state not in states:
         raise InvalidWorkflow(
-            f"{where}: initial_state {_shown(workflow.initial_state)} is not one of its states"
+            f"{where}: initial_state {shown(workflow.initial_state)} is not one of its states"
         )
     seen: set[tuple[str, str]] = set()
     for move in workflow.workflow_transitions or []:
@@ -277,7 +255,7 @@ def _check(workflow: Workflow, where: str, rules: AccessRules) -> None:
         for state in ends:
             if state not in states:
                 raise InvalidWorkflow(
-                    f"{label} names {_shown(state)}, which is not one of its states"
+                    f"{label} names {shown(state)}, which is not one of its states"
                 )
         if ends in seen:
             raise InvalidWorkflow(f"{label} is given twice")
@@ -285,7 +263,7 @@ def _check(workflow: Workflow, where: str, rules: AccessRules) -> None:
         for role in move.transition_roles:
             if not rules.defines(role):
                 raise InvalidWorkflow(
-                    f"{label} names role {_shown(role)}, which no role definition has"
+                    f"{label} names role {shown(role)}, which no role definition has"
                 )
 
 
@@ -300,7 +278,7 @@ def _by_class(
             continue
         if wanted not in named:
             raise InvalidWorkflow(
-                f"class {name} names workflow {_shown(wanted)}, which no file defines "
+                f"class {name} names workflow {shown(wanted)}, which no file defines "
                 f"(files given: {', '.join(files) or 'none'})"
             )
         found[name] = named[wanted]

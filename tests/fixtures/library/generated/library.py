@@ -90,7 +90,7 @@ from .templates import Template
 
 
 metamodel_version = "1.12.0"
-version = "None"
+version = "1"
 
 
 from rdf_persistence.domain.base import RpModel as ConfiguredBaseModel

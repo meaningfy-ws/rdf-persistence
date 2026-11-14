@@ -30,11 +30,94 @@ classes:
       - diagrams
       - openapi
       - regenerate_command
+      - migrations
     slot_usage:
       schema_file:
         required: true
       package:
         required: true
+
+  SchemaLock:
+    title: Schema lock
+    description: >-
+      The RDF-facing summary of what a target stores, at one schema version: its stored classes and
+      the enums they use. Committed as `schema.lock.json` in the target's migrations folder, so a
+      change to what is stored is compared with it.
+    class_uri: rp:SchemaLock
+    slots:
+      - schema_id
+      - schema_version
+      - locked_classes
+      - locked_enums
+    slot_usage:
+      schema_id:
+        required: true
+      schema_version:
+        required: true
+
+  LockedClass:
+    title: Locked class
+    description: A stored class as the lock records it, with its IRI, the type and path of a root, and its slots.
+    class_uri: rp:LockedClass
+    slots:
+      - class_uri
+      - iri_type
+      - root_path
+      - root_database
+      - locked_slots
+    slot_usage:
+      class_uri:
+        required: true
+
+  LockedSlot:
+    title: Locked slot
+    description: A slot of a stored class as the lock records it, by its IRI.
+    class_uri: rp:LockedSlot
+    slots:
+      - slot_uri
+      - range
+      - required
+      - multivalued
+      - inlined
+    slot_usage:
+      slot_uri:
+        required: true
+      range:
+        required: true
+        description: The IRI of the slot's range; the name of the enum when the range is an enum.
+
+  LockedEnum:
+    title: Locked enum
+    description: An enum used as a range, with the `meaning` IRI of each value (its text when it has none).
+    class_uri: rp:LockedEnum
+    slots:
+      - name
+      - enum_values
+    slot_usage:
+      name:
+        required: true
+
+  LockChange:
+    title: Lock change
+    description: >-
+      One difference between two locks: the rule that treats it, a sentence, and what it is about (a
+      class and a slot, or an enum and a value).
+    class_uri: rp:LockChange
+    slots:
+      - rule
+      - what
+      - class_uri
+      - slot_uri
+      - enum_name
+      - enum_value
+    slot_usage:
+      rule:
+        required: true
+        range: LockRule
+        description: How the change is treated, by the table of the schema lock.
+      what:
+        required: true
+        description: What changed, as a sentence.
 
   ManifestEntry:
     title: Manifest entry
@@ -546,6 +629,84 @@ slots:
     slot_uri: rp:regenerateCommand
     range: string
     pattern: "^[^`\\r\\n]*[^`\\s][^`\\r\\n]*$"
+  migrations:
+    is_a: relative_path
+    title: Migrations folder
+    description: >-
+      The folder of the target's migration files and schema lock, relative to the folder of the
+      `pyproject.toml`; absent for a target that stores nothing of its own.
+    slot_uri: rp:migrationsFolder
+  schema_id:
+    title: Schema id
+    description: The id of the schema a lock describes.
+    slot_uri: rp:lockSchemaId
+    range: uri
+  schema_version:
+    title: Schema version
+    description: The `version` of the schema when the lock was written.
+    slot_uri: rp:lockSchemaVersion
+    range: string
+  locked_classes:
+    title: Locked classes
+    description: The stored classes of a lock, sorted by class IRI.
+    slot_uri: rp:lockedClasses
+    range: LockedClass
+    multivalued: true
+    inlined_as_list: true
+  locked_enums:
+    title: Locked enums
+    description: The enums a lock records, sorted by name.
+    slot_uri: rp:lockedEnums
+    range: LockedEnum
+    multivalued: true
+    inlined_as_list: true
+  locked_slots:
+    title: Locked slots
+    description: The slots of a locked class, sorted by slot IRI.
+    slot_uri: rp:lockedSlots
+    range: LockedSlot
+    multivalued: true
+    inlined_as_list: true
+  class_uri:
+    title: Class IRI
+    description: The IRI of a stored class.
+    slot_uri: rp:lockedClassIri
+    range: uri
+  slot_uri:
+    title: Slot IRI
+    description: The IRI of a slot.
+    slot_uri: rp:lockedSlotIri
+    range: uri
+  iri_type:
+    title: IRI type
+    description: The `rp_iri_type` of a root class, the type segment of its aggregates' IRIs.
+    slot_uri: rp:lockedIriType
+  root_path:
+    title: Root path
+    description: The `rp_path` of a root class, the route segment of its aggregates.
+    slot_uri: rp:lockedRootPath
+  root_database:
+    title: Root database
+    description: The database of a root class (`tenant`, `application` or `system`), where its aggregates are read from.
+    slot_uri: rp:lockedRootDatabase
+  inlined:
+    title: Inlined
+    description: Whether the slot's values are stored inside the aggregate's graph.
+    slot_uri: rp:inlined
+    range: boolean
+  enum_values:
+    title: Enum values
+    description: The `meaning` IRI of each value of an enum, or its text when it has none; sorted.
+    slot_uri: rp:lockedEnumValues
+    multivalued: true
+  enum_name:
+    title: Enum name
+    description: The name of the enum a lock change is about.
+    slot_uri: rp:lockChangeEnum
+  enum_value:
+    title: Enum value
+    description: The `meaning` IRI, or the text, of the enum value a lock change is about.
+    slot_uri: rp:lockChangeValue
   path:
     is_a: relative_path
     title: Path
@@ -954,6 +1115,38 @@ enums:
           `UnderWorkflow`, and every concrete root that includes `UnderWorkflow` has the annotation,
           its own or inherited.
         meaning: rp:HardRuleWorkflow
+      migrations_folder:
+        title: Migrations folder
+        description: >-
+          A target whose own modules define a root class that the toolkit stores sets `migrations`,
+          the folder of the schema lock and of its migration files, in its `[tool.rp-generate]` entry.
+        meaning: rp:HardRuleMigrationsFolder
+      quoted_version:
+        title: Quoted version
+        description: >-
+          The root schema of a target that sets `migrations` has a `version`, written as a quoted
+          string in the YAML source, since an unquoted `1.10` is read as the number 1.1.
+        meaning: rp:HardRuleQuotedVersion
+  LockRule:
+    title: Lock rule
+    description: How a change between two locks is treated.
+    permissible_values:
+      safe:
+        title: Safe
+        description: Nothing stored is lost or left invalid; the lock is rewritten.
+        meaning: rp:LockRuleSafe
+      destructive:
+        title: Destructive
+        description: Stored data would be deleted; needs a new version and a drop step.
+        meaning: rp:LockRuleDestructive
+      needs_step:
+        title: Needs a step
+        description: Stored data may no longer fit; needs a new version and a step the developer writes.
+        meaning: rp:LockRuleNeedsStep
+      not_migratable:
+        title: Not migratable
+        description: An IRI would change or data would move between graphs; no step can do it.
+        meaning: rp:LockRuleNotMigratable
   BoundaryRule:
     title: Boundary rule
     description: The rules of the boundary check; a problem line starts with its rule.

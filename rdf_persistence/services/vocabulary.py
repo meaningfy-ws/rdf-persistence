@@ -48,6 +48,8 @@ def meanings[E: Enum](members: type[E]) -> Mapping[E, URIRef]:
 
 
 VERSION = predicate("version")
+# The version of a schema that a database's data follows, in the schema-stamps graph (PD-2).
+DATA_SCHEMA_VERSION = predicate("data_schema_version")
 CREATED = predicate("created")
 MODIFIED = predicate("modified")
 CREATOR = predicate("creator")

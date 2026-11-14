@@ -1,0 +1,710 @@
+{
+  "schema_id": "https://example.org/ns/library",
+  "schema_version": "1",
+  "locked_classes": [
+    {
+      "class_uri": "http://purl.org/ontology/bibo/Book",
+      "iri_type": "book",
+      "root_path": "books",
+      "root_database": "tenant",
+      "locked_slots": [
+        {
+          "slot_uri": "http://purl.org/dc/terms/contributor",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": true,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/created",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/creator",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/description",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/identifier",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/issued",
+          "range": "http://www.w3.org/2001/XMLSchema#date",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/modified",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/ontology/bibo/isbn",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://schema.org/author",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": true,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://schema.org/genre",
+          "range": "Genre",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/2004/02/skos/core#prefLabel",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/adms#status",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://example.org/ns/library#chapter",
+          "range": "http://purl.org/ontology/bibo/Chapter",
+          "required": false,
+          "multivalued": true,
+          "inlined": true
+        },
+        {
+          "slot_uri": "https://example.org/ns/library#sequelOf",
+          "range": "http://purl.org/ontology/bibo/Book",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://example.org/ns/library#shelf",
+          "range": "https://example.org/ns/library#Shelf",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    },
+    {
+      "class_uri": "http://purl.org/ontology/bibo/Chapter",
+      "iri_type": null,
+      "root_path": null,
+      "root_database": null,
+      "locked_slots": [
+        {
+          "slot_uri": "http://purl.org/dc/terms/description",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/identifier",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/ontology/bibo/chapter",
+          "range": "http://www.w3.org/2001/XMLSchema#integer",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/2004/02/skos/core#prefLabel",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://example.org/ns/library#note",
+          "range": "https://example.org/ns/library#Note",
+          "required": false,
+          "multivalued": true,
+          "inlined": true
+        }
+      ]
+    },
+    {
+      "class_uri": "http://schema.org/Library",
+      "iri_type": "library",
+      "root_path": null,
+      "root_database": "tenant",
+      "locked_slots": [
+        {
+          "slot_uri": "http://purl.org/dc/terms/contributor",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": true,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/created",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/creator",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/description",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/identifier",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/modified",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://schema.org/addressLocality",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/2004/02/skos/core#prefLabel",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    },
+    {
+      "class_uri": "http://www.w3.org/ns/odrl/2/Permission",
+      "iri_type": null,
+      "root_path": null,
+      "root_database": null,
+      "locked_slots": [
+        {
+          "slot_uri": "http://www.w3.org/ns/odrl/2/action",
+          "range": "Action",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/odrl/2/assignee",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/odrl/2/target",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#role",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    },
+    {
+      "class_uri": "http://www.w3.org/ns/odrl/2/Prohibition",
+      "iri_type": null,
+      "root_path": null,
+      "root_database": null,
+      "locked_slots": [
+        {
+          "slot_uri": "http://www.w3.org/ns/odrl/2/action",
+          "range": "Action",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/odrl/2/assignee",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/odrl/2/target",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    },
+    {
+      "class_uri": "https://example.org/ns/library#LibraryAccess",
+      "iri_type": "library-access",
+      "root_path": null,
+      "root_database": "system",
+      "locked_slots": [
+        {
+          "slot_uri": "http://purl.org/dc/terms/description",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/identifier",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/2004/02/skos/core#prefLabel",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#databaseName",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#grant",
+          "range": "http://www.w3.org/ns/odrl/2/Permission",
+          "required": false,
+          "multivalued": true,
+          "inlined": true
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#prohibition",
+          "range": "http://www.w3.org/ns/odrl/2/Prohibition",
+          "required": false,
+          "multivalued": true,
+          "inlined": true
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#state",
+          "range": "TenantState",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    },
+    {
+      "class_uri": "https://example.org/ns/library#Note",
+      "iri_type": null,
+      "root_path": null,
+      "root_database": null,
+      "locked_slots": [
+        {
+          "slot_uri": "http://purl.org/dc/terms/description",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/identifier",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://schema.org/text",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/2004/02/skos/core#prefLabel",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://example.org/ns/library#about",
+          "range": "http://purl.org/ontology/bibo/Book",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://example.org/ns/library#shade",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    },
+    {
+      "class_uri": "https://example.org/ns/library#Scan",
+      "iri_type": "scan",
+      "root_path": "scans",
+      "root_database": "tenant",
+      "locked_slots": [
+        {
+          "slot_uri": "http://purl.org/dc/terms/contributor",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": true,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/created",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/creator",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/dateSubmitted",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/description",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/identifier",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/modified",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://schema.org/exampleOfWork",
+          "range": "http://purl.org/ontology/bibo/Book",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/2004/02/skos/core#prefLabel",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#byteSize",
+          "range": "http://www.w3.org/2001/XMLSchema#integer",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#fileKey",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#fileName",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#mediaType",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#sha256",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#uploadedBy",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    },
+    {
+      "class_uri": "https://example.org/ns/library#Shelf",
+      "iri_type": "shelf",
+      "root_path": "shelves",
+      "root_database": "tenant",
+      "locked_slots": [
+        {
+          "slot_uri": "http://purl.org/dc/terms/contributor",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": true,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/created",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/creator",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/description",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/identifier",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/modified",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/2004/02/skos/core#prefLabel",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/prov#hadMember",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": false,
+          "multivalued": true,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#memberClass",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#membershipRule",
+          "range": "https://meaningfy.ws/ns/rdf-persistence#MembershipRule",
+          "required": false,
+          "multivalued": false,
+          "inlined": true
+        }
+      ]
+    },
+    {
+      "class_uri": "https://example.org/ns/library#Template",
+      "iri_type": "template",
+      "root_path": "templates",
+      "root_database": "application",
+      "locked_slots": [
+        {
+          "slot_uri": "http://purl.org/dc/terms/contributor",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": true,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/created",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/creator",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/description",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/identifier",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/modified",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/2004/02/skos/core#prefLabel",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    },
+    {
+      "class_uri": "https://meaningfy.ws/ns/rdf-persistence#MembershipRule",
+      "iri_type": null,
+      "root_path": null,
+      "root_database": null,
+      "locked_slots": [
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#ruleEquality",
+          "range": "https://meaningfy.ws/ns/rdf-persistence#SlotEquality",
+          "required": false,
+          "multivalued": true,
+          "inlined": true
+        }
+      ]
+    },
+    {
+      "class_uri": "https://meaningfy.ws/ns/rdf-persistence#SlotEquality",
+      "iri_type": null,
+      "root_path": null,
+      "root_database": null,
+      "locked_slots": [
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#equalsSlot",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#equalsValue",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    }
+  ],
+  "locked_enums": [
+    {
+      "name": "Action",
+      "enum_values": [
+        "http://www.w3.org/ns/odrl/2/annotate",
+        "http://www.w3.org/ns/odrl/2/delete",
+        "http://www.w3.org/ns/odrl/2/modify",
+        "http://www.w3.org/ns/odrl/2/read",
+        "https://meaningfy.ws/ns/rdf-persistence#administer"
+      ]
+    },
+    {
+      "name": "Genre",
+      "enum_values": [
+        "http://schema.org/Fiction",
+        "http://schema.org/NonFiction",
+        "http://schema.org/Poetry"
+      ]
+    },
+    {
+      "name": "TenantState",
+      "enum_values": [
+        "https://meaningfy.ws/ns/rdf-persistence#Active",
+        "https://meaningfy.ws/ns/rdf-persistence#Deleting"
+      ]
+    }
+  ]
+}

@@ -140,6 +140,7 @@ classes:
         required: true
       schema_id:
         required: true
+        description: The id of the LinkML schema whose data the dump holds; a restore checks it against its own.
       source_tenant:
         required: true
       source_tenant_id:
@@ -434,7 +435,87 @@ classes:
       - head_types
       - head_version
 
+  MigrationStep:
+    title: Migration step
+    description: >-
+      One step of a migration: three group graph patterns, as text, that the toolkit wraps into one
+      update request over the graphs of a database. A step with `unresolved` is a draft and does not
+      load.
+    class_uri: rp:MigrationStep
+    slots:
+      - title
+      - where_pattern
+      - delete_pattern
+      - insert_pattern
+      - unresolved
+    slot_usage:
+      title:
+        required: true
+
+  Migration:
+    title: Migration
+    description: >-
+      The reviewed file that moves the data of a database from one version of a schema to the next:
+      the schema's id, the two versions and the steps, in order.
+    class_uri: rp:Migration
+    slots:
+      - schema_id
+      - from_version
+      - to_version
+      - description
+      - steps
+    slot_usage:
+      schema_id:
+        required: true
+        description: The id of the schema whose data the migration moves.
+      from_version:
+        required: true
+      to_version:
+        required: true
+
 slots:
+  title:
+    title: Title
+    description: A short name for what a record describes.
+    slot_uri: rp:title
+    range: string
+  where_pattern:
+    title: Where pattern
+    description: The group graph pattern, as text, that selects what a migration step changes.
+    slot_uri: rp:wherePattern
+    range: string
+  delete_pattern:
+    title: Delete pattern
+    description: The group graph pattern, as text, of the triples a migration step removes.
+    slot_uri: rp:deletePattern
+    range: string
+  insert_pattern:
+    title: Insert pattern
+    description: The group graph pattern, as text, of the triples a migration step adds.
+    slot_uri: rp:insertPattern
+    range: string
+  unresolved:
+    title: Unresolved
+    description: Text saying what a draft step still needs from the developer; a step that has it does not load.
+    slot_uri: rp:unresolved
+    range: string
+  from_version:
+    title: From version
+    description: The version of the schema that the data follows before the migration.
+    slot_uri: rp:fromVersion
+    range: string
+  to_version:
+    title: To version
+    description: The version of the schema that the data follows after the migration.
+    slot_uri: rp:toVersion
+    range: string
+  steps:
+    title: Steps
+    description: The steps of a migration, in the order they run.
+    slot_uri: rp:migrationSteps
+    range: MigrationStep
+    multivalued: true
+    inlined_as_list: true
   base:
     title: Base
     description: The IRI under which the service mints identifiers and problem types, ending in a slash.
@@ -615,8 +696,8 @@ slots:
     range: string
   schema_id:
     title: Schema id
-    description: The id of the LinkML schema whose data the dump holds; a restore checks it against its own.
-    slot_uri: rp:dumpSchemaId
+    description: The id of the LinkML schema whose stored data a dump manifest or a migration is about.
+    slot_uri: rp:schemaId
     range: uri
   schema_version:
     title: Schema version
@@ -938,6 +1019,10 @@ enums:
         title: Service unavailable
         meaning: rp:unavailable
         description: A store, the identity provider or the role definitions are not usable.
+      tenant_behind:
+        title: Tenant behind its schema
+        meaning: rp:tenantBehind
+        description: The tenant's data follows an older schema version than the service runs; it is not served until migrated.
       payload_too_large:
         title: Payload too large
         meaning: rp:payloadTooLarge

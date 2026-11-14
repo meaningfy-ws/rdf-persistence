@@ -64,6 +64,7 @@ PYPROJECT = f"""
 schema = "library.yaml"
 package = "{PACKAGE}.generated"
 python = "generated"
+migrations = "migrations"
 """
 
 

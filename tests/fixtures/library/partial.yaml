@@ -1,6 +1,7 @@
 id: https://example.org/ns/library/partial
 name: partial
 title: Partial library schema
+version: "1"
 description: A schema that imports only the core and annotation modules of the metamodel.
 prefixes:
   lib: https://example.org/ns/library#

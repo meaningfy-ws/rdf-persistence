@@ -6,10 +6,13 @@ SPARQL text from a value, so injection is audited here only.
 """
 
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Collection, Iterable, Iterator, Sequence
 from string import Template
 
-from rdflib import BNode, Literal, URIRef
+from pyparsing import ParseBaseException, ParseResults
+from rdflib import RDF, BNode, Literal, URIRef, Variable
+from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
+from rdflib.plugins.sparql.parserutils import CompValue
 
 from rdf_persistence.domain.exceptions import SparqlError
 
@@ -164,3 +167,100 @@ def order_by(*keys: tuple[str, bool]) -> SparqlTerm:
         if not _VARIABLE.fullmatch(variable):
             raise SparqlError(f"not a plain variable name: {variable!r}")
     return SparqlTerm(" ".join(f"{'DESC' if down else 'ASC'}(?{name})" for name, down in keys))
+
+
+# -- the one check of untrusted pattern text (PD-6, PD-21, PD-22) -----------------------------------
+
+# SPARQL expands \uXXXX and \UXXXXXXXX before it reads a word, so the tree could differ from the text.
+CODEPOINT_ESCAPE = re.compile(r"\\[uU]")
+_GRAPH_VARIABLE = "rp_graph"
+_RESERVED_PREFIX = "rp_"
+# The parse-tree nodes, as rdflib's parser names them: a graph pattern, a service pattern, and the
+# GRAPH block of a template.
+_GRAPH_NODES = frozenset({"GraphGraphPattern", "ServiceGraphPattern", "QuadsNotTriples"})
+_PREFIXED_NAME = "pname"
+_TOO_LONG = (
+    "is too long to check; split the step into smaller steps"  # rdflib gives up at ~100 triples
+)
+
+
+def checked_group(text: str, *, template: bool, forbidden: Collection[URIRef] = ()) -> SparqlTerm:
+    """``text`` as a group graph pattern of a migration step, once the parser has read it alone.
+
+    ``template`` is False for a where pattern (read as ``ASK { text }``) and True for a delete or
+    insert pattern (read as ``INSERT { text } WHERE {}``). The checks read the parse tree, not the
+    text: no GRAPH or SERVICE, no variable starting ``rp_`` but ``?rp_graph``, no prefixed name,
+    no codepoint escape; in a template also no blank node or collection and no IRI of ``forbidden``
+    (the predicates the toolkit keeps for itself, which the caller names: a layer above knows them).
+
+    Raises:
+        SparqlError: The text breaks one check; the message says which, without naming the pattern.
+    """
+    if CODEPOINT_ESCAPE.search(text):
+        raise SparqlError("has a codepoint escape (\\u or \\U); write the character itself")
+    tree = _parsed(text, template)
+    try:
+        problems = (_node_problem(node, template, forbidden) for node in _nodes(tree))
+        problem = next(filter(None, problems), None)
+    except RecursionError as error:
+        raise SparqlError(_TOO_LONG) from error
+    if problem:
+        raise SparqlError(problem)
+    return SparqlTerm(text)
+
+
+def _parsed(text: str, template: bool) -> object:
+    """What rdflib's parser reads from ``text`` alone; names are not yet resolved against a prefix."""
+    try:
+        if template:
+            return parseUpdate(f"INSERT {{ {text} }} WHERE {{}}")
+        return parseQuery(f"ASK {{ {text} }}")
+    except RecursionError as error:
+        raise SparqlError(_TOO_LONG) from error
+    except ParseBaseException as error:
+        raise SparqlError("does not parse alone as a group graph pattern") from error
+
+
+def _nodes(node: object) -> Iterator[object]:
+    """``node`` and everything inside it: every nested parse node, list, tuple, set and dict value."""
+    yield node
+    if isinstance(node, dict):  # a CompValue is an ordered dict; the keys of a plain one are terms
+        children: Iterable[object] = [*node.keys(), *node.values()]
+    elif isinstance(node, list | tuple | set | frozenset | ParseResults):
+        children = node
+    else:
+        return
+    for child in children:
+        yield from _nodes(child)
+
+
+def _node_problem(node: object, template: bool, forbidden: Collection[URIRef]) -> str | None:
+    problem = _any_node_problem(node)
+    if problem or not template:
+        return problem
+    return _template_node_problem(node, forbidden)
+
+
+def _any_node_problem(node: object) -> str | None:
+    if isinstance(node, CompValue):
+        if node.name in _GRAPH_NODES:
+            return "contains GRAPH or SERVICE: a step works inside one graph"
+        if node.name == _PREFIXED_NAME:
+            return "has a prefixed name; write the full IRI in angle brackets"
+    is_reserved = (
+        isinstance(node, Variable)
+        and node.startswith(_RESERVED_PREFIX)
+        and str(node) != _GRAPH_VARIABLE
+    )
+    if is_reserved:
+        return f"uses the reserved variable ?{node}; only ?{_GRAPH_VARIABLE} is open to it"
+    return None
+
+
+def _template_node_problem(node: object, forbidden: Collection[URIRef]) -> str | None:
+    # rdf:nil is what ( ) parses to: a collection is a template's blank nodes, so the empty one goes too
+    if isinstance(node, BNode) or node == RDF.nil:
+        return "has a blank node (_:, [ ] or a collection), which a migration cannot mint"
+    if isinstance(node, URIRef) and node in forbidden:
+        return f"names {node}, one of the toolkit's own predicates, which a step may read but not write"
+    return None
