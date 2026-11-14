@@ -127,6 +127,38 @@ READ_VERSIONS = (
 )
 
 
+# Every aggregate whose graph holds a statement with $iri as its object (PD-3): the referrer, its
+# class, the class of the statement's subject (a part, or the referrer itself) and the predicate.
+# The bookkeeping about the graph itself and rdf:type are not references.
+READ_REFERRERS = """
+SELECT DISTINCT ?referrer ?class ?subject_class ?p WHERE {
+  GRAPH $registry { ?g $p_kind $aggregate ; $p_owned_by ?referrer }
+  GRAPH ?g { ?s ?p $iri . ?referrer a ?class . OPTIONAL { ?s a ?subject_class } }
+  FILTER (?s != ?g && ?p != $rdf_type $narrow)
+  $dependents
+}
+"""
+_NARROW_CLASS = "&& ?class = $value"
+_NARROW_SLOT = "&& ?p = $value"
+# A link of a dependent record (a comment's target) is dropped only for the record's class (PD-3).
+_NOT_DEPENDENT = (
+    "FILTER NOT EXISTS { VALUES (?dt ?dl) { $pairs } FILTER (?p = ?dl && ?class = ?dt) }"
+)
+
+
+# One link to a resource, as the store holds it: (referrer, referrer class, subject class or None,
+# predicate), all IRIs; the schema names are the caller's to find.
+ReferrerRow = tuple[str, str, str | None, str]
+
+
+def _without_dependents(pairs: Sequence[tuple[URIRef, URIRef]]) -> SparqlTerm:
+    """The clause that drops the links of ``(class, predicate)`` ``pairs``; none at all when there are none."""
+    if not pairs:
+        return SparqlTerm("")
+    listed = join(fragment("($cls $link)", cls=term(c), link=term(p)) for c, p in pairs)
+    return fragment(_NOT_DEPENDENT, pairs=listed)
+
+
 def utc_now() -> datetime:
     return datetime.now(UTC)
 
@@ -449,6 +481,52 @@ class Session:
         """
         result = await self._store.query(self._database, listing_query(self._registry, plan))
         return result.graph or Graph()
+
+    async def referrer_rows(
+        self,
+        iri: str,
+        *,
+        class_iri: URIRef | None = None,
+        slot_iri: URIRef | None = None,
+        dependents: Sequence[tuple[URIRef, URIRef]] = (),
+    ) -> list[ReferrerRow]:
+        """What the tenant's aggregate graphs say that refers to ``iri``, one row per referrer and link.
+
+        ``class_iri`` and ``slot_iri`` keep only the referrers of that class and the links by that
+        predicate. A link whose predicate and referrer class equal a pair of ``dependents`` is left
+        out. No access is checked: the caller decides what to show.
+
+        Raises:
+            DatabaseGone: The tenant database does not exist.
+        """
+        narrow = [
+            fragment(part, value=term(value))
+            for part, value in ((_NARROW_CLASS, class_iri), (_NARROW_SLOT, slot_iri))
+            if value is not None
+        ]
+        text = fill(
+            READ_REFERRERS,
+            registry=term(self._registry),
+            p_kind=term(v.REGISTRY_KIND),
+            aggregate=term(v.REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
+            p_owned_by=term(v.REGISTRY_OWNED_BY),
+            iri=term(URIRef(iri)),
+            rdf_type=term(RDF.type),
+            narrow=join(narrow),
+            dependents=_without_dependents(dependents),
+        )
+        rows = [
+            r for r in await self._store.query(self._database, text) if isinstance(r, ResultRow)
+        ]
+        return [
+            (
+                str(r.referrer),
+                str(r["class"]),
+                None if r.subject_class is None else str(r.subject_class),
+                str(r.p),
+            )
+            for r in rows
+        ]
 
     async def find(self, cls: type[BaseModel], **equals: object) -> list[str]:
         """The IRIs of the tenant's aggregates of ``cls`` whose slots equal ``equals``, in IRI order.

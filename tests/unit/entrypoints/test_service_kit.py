@@ -15,6 +15,7 @@ from rdflib import Literal, URIRef
 
 from rdf_persistence import Problem
 from rdf_persistence.domain.exceptions import InvalidBody, InvalidRoleDefinition, NotFound
+from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.entrypoints.service import install_service
@@ -423,3 +424,21 @@ async def test_the_kit_removes_an_aggregate_with_its_blobs(service, client) -> N
     async with service.kit.session(tenant, "ada") as session:
         with pytest.raises(NotFound):
             await session.get_graph(scan)
+
+
+async def test_a_collaboration_opens_for_the_authorised_caller_with_its_global_roles(
+    service, client
+) -> None:
+    headers = service.bearer("ada", "admin")
+    tenant = await client.post("/libraries", json=TENANT_BODY, headers=headers)
+    path = tenant.headers["location"]
+    tenant_id = path.rsplit("/", 1)[1]
+    shelf = f"{service.kit.tenant_iri(tenant_id)}/shelves/{A_UUID}"
+    book = await client.post(f"{path}/books", json={**DUNE_BODY, "shelf": shelf}, headers=headers)
+    authorised = await service.kit.require(headers["Authorization"], tenant_id, Action.READ)
+    async with service.kit.collaboration(authorised) as collaboration:
+        found = await collaboration.referrers(shelf)
+    assert [(r.referrer, r.referrer_slot) for r in found.referrers or []] == [
+        (book.json()["id"], "shelf")
+    ], "the tenant of the caller's access, read as its principal"
+    assert authorised.global_roles == ["admin"], "the roles the collaboration is rebuilt from"

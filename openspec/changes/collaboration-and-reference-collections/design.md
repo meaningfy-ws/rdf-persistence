@@ -375,6 +375,13 @@ delivers.
 
 - **D-1** (2026-11-14, the lead): the developer granted, for this EPIC, commit, push, PR and
   merge on green CI, one PR per stage, worked in a worktree until completion.
+- **D-2** (2026-11-14, the lead): TC-09a is split. Task 1.2 tests that `referrers` works on a
+  view without `rp_collections`; the `members` → `LookupError` half moves to task 2.3, where
+  `members` first exists. Reason: no stub methods for later stages.
+- **D-3** (2026-11-14, the lead, task 1.2 as built): `Collaboration` takes the kit's `Iris`
+  (PD-3 step 1 needs `is_aggregate`) and holds the mapper, models and listings only from the
+  stage that first uses them. The cross-graph read is `Session.referrer_rows` (rows of IRIs, no
+  access, no schema names); the names and the access filter stay in `Collaboration`.
 
 ## Algorithm / approach
 

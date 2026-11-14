@@ -1,7 +1,7 @@
 """What the routes share: the ports, the settings, and the pieces built from the application's schema (PD-13)."""
 
-from collections.abc import Sequence
-from contextlib import AbstractAsyncContextManager
+from collections.abc import AsyncIterator, Sequence
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from datetime import timedelta
 from pathlib import Path
 from types import ModuleType
@@ -16,6 +16,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     ServiceSettings,
     TenantDump,
     TenantSummary,
+    VerifiedCaller,
 )
 from rdf_persistence.domain.iris import IdSource, Iris, draw_id, system_database_name
 from rdf_persistence.entrypoints.auth import Gate
@@ -23,6 +24,7 @@ from rdf_persistence.services import file_removal, tenant_dump, tenant_sweep
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.services.artifacts import CONTEXT_FILE
+from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.identity import Identity
@@ -247,6 +249,26 @@ class ServiceKit:
         await file_removal.remove_with_files(
             self.tenancy, self.files, tenant, Principal(id=principal), iri, if_version
         )
+
+    @asynccontextmanager
+    async def collaboration(self, authorised: Authorised) -> AsyncIterator[Collaboration]:
+        """A collaboration on the tenant of ``authorised``, acting as its principal with its global roles.
+
+        ``authorised`` is the answer of ``require`` or ``require_aggregate``.
+        """
+        caller = VerifiedCaller(
+            principal=authorised.principal, global_roles=authorised.global_roles
+        )
+        access = authorised.caller_access
+        async with self.session(access.tenant, authorised.principal) as session:
+            yield Collaboration(
+                session,
+                view=self.view,
+                rules=self.rules,
+                iris=self.iris,
+                caller=caller,
+                access=access,
+            )
 
     def session(self, tenant: str, principal: str) -> AbstractAsyncContextManager[Session]:
         """A session on the tenant's database for ``principal``."""

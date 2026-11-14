@@ -29,7 +29,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-02 | `Book(shelf=s1, sequel_of=b0)` mapped and read back | the same IRIs; the generated `Shelf` has `rp_path` `shelves` |
 | TC-02a | `make generate` on the toy schema (imports `rp.yaml`'s modules) after each stage's schema change | no slot-name clash; `Grant.target` keeps `odrl:target` and `Page.items` keeps `rp:items` (assert through `metamodel().get_slot`) |
 
-- [ ] 1.2 `Collaboration` and `referrers` (PD-1, PD-3), `kit.collaboration`. Test first in
+- [x] 1.2 `Collaboration` and `referrers` (PD-1, PD-3), `kit.collaboration`. Test first in
   `tests/unit/services/test_collaboration_referrers.py`; files `services/collaboration.py`,
   `entrypoints/kit.py`, `services/vocabulary.py`.
 
