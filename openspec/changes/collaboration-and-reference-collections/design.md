@@ -410,6 +410,44 @@ delivers.
   other-tenant row in the unit file (the tester's file has both); TC-02 reading the manifest.
   Pinned by the tester and confirmed as intended: a triple in a loaded graph is not a
   reference; the tenant root is never a referrer but may be the target.
+- **PD-27** (stage 2, the adversarial tester after task 2.4 and the cold reader of the how-to,
+  2026-11-14; 171 tests, 7 failing). Accepted, fixed before the PR:
+  1. **A cascade deletes only members of the collection's member class** (tester nos. 2, 3).
+     `delete_cascade` trusted the stored `had_member`: a collection written without guards that
+     names the tenant's access record, or an aggregate of another class, had it deleted. Now a
+     head whose types hold neither the member class nor a descendant refuses the whole cascade
+     with `StoredDataInvalid` naming the collection, not the member; nothing is deleted. The
+     check uses the heads already read, so it costs no query.
+  2. **The write guard refuses triples that do not decode** (no. 4): a collection whose triples
+     the generated class refuses (no `member_class`) is `InvalidBody`, not a bare pydantic
+     `ValidationError`.
+  3. **A stray `rp:membershipRule` does not break `collections_of`** (no. 7): a root with the
+     rule predicate whose type is not a collection class is skipped, not `BadQuery` for every
+     caller.
+  4. **An unreadable collection is not named in `StoredDataInvalid`**: when a stored collection
+     the schema no longer accepts makes `collections_of` fail, the message names it only if the
+     caller may read it; otherwise it says one collection of the tenant cannot be read.
+  5. `Referrer`, `ReferrerList` and `MemberList` are exported from `rdf_persistence`, as `Page`
+     is: they are what the public reads return.
+  6. Tests: the failure branch of the match guard on Fuseki (TC-36b's form, in IT-04); a named
+     member of a subclass is accepted and a rule member of a subclass is not listed; the
+     vacuous assertion of the stage 1 test for a schema without `rp_collections` is replaced by
+     the fixture that really lacks the module (`partial.yaml`).
+  7. The how-to page, from the cold read: where `if_version` comes from; how a shelf is changed
+     (a replace, guarded like an add); what "all or nothing" covers beside skipped members and
+     left blobs; a deleted member stays named and the next save of the shelf is refused until
+     it is taken out; a shelf of shelves with an empty rule holds itself; the example's books
+     made consistent; one errors table for the cascade.
+
+  Rejected, the tests turned round to pin the behaviour: two cascades of one collection where
+  the loser reports success (no. 1: a removes-only commit whose roots another writer already
+  removed is a success, atomic-commit PD-17e; the collection is gone either way); a literal as
+  the rule, or two `member_class` values, written as raw triples (nos. 5, 6: the guard checks
+  the decoded model; the generic API validates the shape before it, and the mapper writes one
+  value). Pinned by the tester and confirmed: a named member changed before the versions are
+  read is deleted at its new version, and only a change after that is a `Conflict`; a member
+  removed after the versions are read is a `Conflict` naming it; `members` of a collection
+  that lists itself includes it.
 
 ## Delivery decisions
 

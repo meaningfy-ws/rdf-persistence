@@ -7,7 +7,7 @@ from rdf_persistence.domain.generated.rp_collections import MembershipRule, Slot
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.write_guards import WriteGuards
+from rdf_persistence.services.write_guards import WriteGuards, member_class_iris
 from rdf_persistence.testkit import FakeStore, fake_session
 from tests.toy import MODULES, TENANT, TOY_SCHEMA, book_iri, dune, shelf, shelf_iri, toy_mapper
 
@@ -133,3 +133,12 @@ async def test_the_guard_leaves_a_non_collection_untouched():
     triples = list(toy_mapper().to_triples(dune(book_iri(1))))
     async with fake_session(tenant_iri=TENANT) as session:
         assert await guards().prepare(session, book_iri(1), triples, None) == triples
+
+
+def test_the_classes_of_a_member_class_are_it_and_its_descendants():  # PD-27: no root subclass in the toy
+    view = load_schema(TOY_SCHEMA)
+    lib = "https://example.org/ns/library#"
+    assert member_class_iris(view, "Shelf") == {f"{lib}Shelf"}, "a class with no subclass"
+    assert f"{lib}LibraryAccess" in member_class_iris(view, "TenantAccess"), (
+        "a subclass is accepted"
+    )

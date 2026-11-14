@@ -3,17 +3,18 @@
 import pytest
 
 from rdf_persistence import Action, StoredDataInvalid, generated_models
-from rdf_persistence.domain.exceptions import Forbidden
+from rdf_persistence.domain.exceptions import Forbidden, InvalidBody
 from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
 from rdf_persistence.domain.generated.service.rp_service import Filter, ListRequest, MemberList
 from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.listing import Listings
+from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.write_guards import WriteGuards
 from rdf_persistence.testkit import fake_session
-from tests.fixtures.library.generated.books import Genre
+from tests.fixtures.library.generated.books import Genre, Shelf
 from tests.toy import (
     ADA,
     BOB,
@@ -177,9 +178,9 @@ async def test_members_of_a_caller_prohibited_from_reading_the_collection_are_fo
         await collaboration(caller(principal=BOB), access, guarded).members(S1)
 
 
-async def test_a_schema_without_the_collection_module_has_no_members_or_collections_of(
+async def test_a_schema_without_the_collection_module_has_no_members_or_collections_of_but_referrers(
     toy_session,
-):  # TC-09a, the members half
+):  # TC-09a, both halves
     view = load_schema(PARTIAL)
     rules = AccessRules(load_role_definitions(ROLES))
     build = Collaboration(
@@ -197,6 +198,9 @@ async def test_a_schema_without_the_collection_module_has_no_members_or_collecti
         await build.members(S1)
     with pytest.raises(LookupError, match="rp_collections"):
         await build.collections_of(B1)
+    await put(toy_session, dune(B1, chapters=1).model_copy(update={"shelf": S1}))
+    found = await build.referrers(S1)  # the referrers read needs no collection module
+    assert [r.referrer for r in found.referrers or []] == [B1], "it works all the same"
 
 
 async def test_the_collections_that_hold_a_member_are_those_that_list_it_or_match_it(
@@ -258,6 +262,53 @@ async def test_a_member_that_is_not_stored_has_only_its_explicit_holders(guarded
     await guarded.remove(B1, (await guarded.get_graph(B1))[2])
     found = await as_ada(collaboration, guarded).collections_of(B1)
     assert found.member_iris == [S1], "the shelf still lists it; no rule is asked about a gone book"
+
+
+async def test_a_deleted_member_stays_named_and_blocks_the_next_save_until_it_is_taken_out(
+    guarded, collaboration
+):  # the how-to: no referential integrity
+    await put_book(guarded, B1)
+    await put_book(guarded, B2)
+    await put(guarded, a_shelf(S1, had_member=[B1, B2]))
+    await guarded.remove(B1, (await guarded.get_graph(B1))[2])
+    build = as_ada(collaboration, guarded)
+    assert (await build.members(S1)).member_iris == [B1, B2], "the deleted book is still listed"
+    assert (await build.members(S1, deep=True)).member_iris == [B1, B2], "deep reads list it too"
+    work = UnitOfWork(guarded, toy_mapper())
+    stale = await work.get(Shelf, S1)
+    work.add(stale)
+    with pytest.raises(InvalidBody, match=B1):
+        await work.commit()
+    work = UnitOfWork(guarded, toy_mapper())
+    fresh = await work.get(Shelf, S1)
+    fresh.had_member = [B2]
+    work.add(fresh)
+    await work.commit()
+    assert (await build.members(S1)).member_iris == [B2], "taken out, the shelf is saved"
+
+
+async def test_a_shelf_is_changed_by_a_replace_and_its_token_deletes_it(guarded, collaboration):
+    await put_book(guarded, B1)
+    await put_book(guarded, B2)
+    await put(guarded, a_shelf(S1, had_member=[B1]))
+    work = UnitOfWork(guarded, toy_mapper())
+    edited = await work.get(Shelf, S1)
+    edited.had_member = [*(edited.had_member or []), B2]
+    work.add(edited)
+    await work.commit()
+    work = UnitOfWork(guarded, toy_mapper())
+    await work.get(Shelf, S1)
+    await as_ada(collaboration, guarded).delete_cascade(S1, work.version(S1))
+    assert not await guarded.heads([S1, B1, B2]), "the shelf and both books are gone"
+
+
+async def test_a_shelf_of_shelves_with_an_empty_rule_holds_itself(guarded, collaboration):
+    await put(guarded, a_shelf(S1, member_class="Shelf", membership_rule=MembershipRule()))
+    await put(guarded, a_shelf(S2))
+    build = as_ada(collaboration, guarded)
+    assert (await build.members(S1)).member_iris == [S1, S2], "every shelf, itself included"
+    await build.delete_cascade(S1, (await guarded.get_graph(S1))[2])
+    assert not await guarded.heads([S1, S2]), "the cascade deletes both, itself once"
 
 
 def genre_plan(value: str):

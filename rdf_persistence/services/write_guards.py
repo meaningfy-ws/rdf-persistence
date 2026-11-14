@@ -39,6 +39,11 @@ def collection_classes(view: SchemaView) -> dict[URIRef, str]:
     }
 
 
+def member_class_iris(view: SchemaView, member_class: str) -> set[str]:
+    """The IRIs of the classes whose aggregates are members of a collection of ``member_class``: it and its descendants."""
+    return {view.get_uri(c, expand=True) for c in view.class_descendants(member_class)}
+
+
 def decode_collection(
     mapper: Mapper, models: GeneratedModels, name: str, iri: str, graph: Graph
 ) -> ReferenceCollection:
@@ -71,8 +76,9 @@ class WriteGuards:
         """The triples to write for the root ``iri`` (``stored`` is ``None`` for an add).
 
         Raises:
-            InvalidBody: A collection names a member class that is not served, a member that is not
-                a stored aggregate of the class, or a rule a listing refuses.
+            InvalidBody: The triples of a collection do not decode, or it names a member class that
+                is not served, a member that is not a stored aggregate of the class, or a rule a
+                listing refuses.
             InvalidIri: A member is not an aggregate IRI of the tenant.
         """
         name = self._collection_class(iri, triples)
@@ -95,7 +101,12 @@ class WriteGuards:
         graph = Graph()
         for triple in triples:
             graph.add(triple)
-        return decode_collection(self._mapper, self._models, name, iri, graph)
+        try:
+            return decode_collection(self._mapper, self._models, name, iri, graph)
+        except (
+            ValueError
+        ) as error:  # the generated class refuses the triples; its text names internals
+            raise InvalidBody(f"the triples of {iri} are not those of a {name}") from error
 
     async def _check_collection(self, session: Session, collection: ReferenceCollection) -> None:
         member_class = self._served(collection.member_class)
@@ -112,8 +123,7 @@ class WriteGuards:
             raise InvalidBody(str(error)) from error
 
     async def _check_members(self, session: Session, member_class: str, members: list[str]) -> None:
-        view = self._mapper.view
-        accepted = {view.get_uri(c, expand=True) for c in view.class_descendants(member_class)}
+        accepted = member_class_iris(self._mapper.view, member_class)
         heads = {h.head_iri: h for h in await session.heads(members)}
         wrong = [
             m

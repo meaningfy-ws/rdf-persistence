@@ -8,7 +8,7 @@ from collections.abc import AsyncIterator, Callable
 import pytest
 
 from rdf_persistence import Action, CallerAccess, VerifiedCaller, generated_models
-from rdf_persistence.domain.exceptions import Forbidden
+from rdf_persistence.domain.exceptions import Conflict, Forbidden
 from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.service.rp_service import ReferrerList
@@ -237,6 +237,32 @@ async def test_a_cascade_deletes_the_shelf_and_its_members_in_one_request(
     assert len(sent) == 1, "one update request"
     assert not any([await stored(session, i) for i in (S1, B1, B3)]), "s1, b1 and b3 are gone"
     assert await stored(session, B2), "a fiction book that nothing names stays"
+
+
+async def test_a_rule_member_regenred_before_the_heads_fails_the_match_guard(
+    store, session, collaboration, monkeypatch
+):  # TC-36b on Fuseki: the version is current, but the rule no longer holds
+    await put_genre_book(session, B3, Genre.POETRY)
+    await put(session, a_shelf(S1, membership_rule=poetry()))
+    ver = await version_of(session, S1)
+    original = store.query
+    done = False
+
+    async def another_writer_first(dataset: str, text: str):
+        nonlocal done
+        if not done and "?m IN" in text:  # the query that reads the heads of the members
+            done = True
+            model = dune(B3, chapters=1).model_copy(update={"genre": Genre.FICTION.value})
+            await session.replace_graph(
+                B3, toy_mapper().to_triples(model), await version_of(session, B3)
+            )
+        return await original(dataset, text)
+
+    monkeypatch.setattr(store, "query", another_writer_first)
+    with pytest.raises(Conflict) as refused:
+        await as_ada(collaboration).delete_cascade(S1, ver)
+    assert refused.value.iris == (), "only the rule no longer holds, no version moved"
+    assert await stored(session, S1) and await stored(session, B3), "nothing is deleted"
 
 
 async def test_a_member_the_caller_may_not_delete_refuses_the_cascade(session, collaboration):

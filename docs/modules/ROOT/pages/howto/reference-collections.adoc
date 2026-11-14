@@ -11,7 +11,7 @@ tenant, aggregate, kit, session and IRI policy, and the names `kit`, `t`, `sessi
 `Action` in the snippets, are those of xref:howto/adopt.adoc[Build an application]; a
 *collaboration* (`collab`) is opened as in
 xref:howto/reverse-references.adoc[Find who points at a resource]. `UnitOfWork`, `MembershipRule`,
-`SlotEquality` and the errors are imported from `rdf_persistence`.
+`SlotEquality`, `MemberList` and the errors are imported from `rdf_persistence`.
 
 A *reference collection* is an aggregate of your own schema that names other aggregates of one
 class as its *members*. It holds their IRIs, never their triples: a member stays its own aggregate,
@@ -82,6 +82,18 @@ nothing.
 * The check runs in the sessions the kit opens (`kit.session`, the generic API). A session you
   open yourself with `open_session` and no `guards` checks nothing.
 
+*Change a shelf* (add a book, or drop one) with a replace: read it, edit it, add it back. The
+replace is checked like an add, so a book you add must be stored already.
+
+[source,python]
+----
+work = UnitOfWork(session, mapper)
+shelf = await work.get(Shelf, s1_iri)
+shelf.had_member = [*(shelf.had_member or []), b4_iri]    # or leave one out to drop it
+work.add(shelf)          # a root you read is replaced, at the version you read
+await work.commit()      # Conflict if someone else changed the shelf since
+----
+
 [#rule]
 == Membership by rule
 
@@ -92,9 +104,11 @@ class accepts. An aggregate belongs when it meets every row.
 [source,python]
 ----
 poetry = MembershipRule(rule_equalities=[SlotEquality(equals_slot="genre", equals_value="poetry")])
-shelf = Shelf(id=s1_iri, label="Poetry", description="All poetry, and b1.",
-              member_class="Book", had_member=[b1_iri], membership_rule=poetry)
+shelf = Shelf(id=s1_iri, label="Shelf", description="A shelf, and all poetry.",
+              member_class="Book", had_member=[b1_iri, b2_iri], membership_rule=poetry)
 ----
+
+The rest of this page reads this shelf: it names b1 and b2, and b3 is a poetry book.
 
 * The rule is evaluated on every read. Save a new poetry book and it is a member at the next read;
   nothing is written to the shelf.
@@ -102,7 +116,8 @@ shelf = Shelf(id=s1_iri, label="Poetry", description="All poetry, and b1.",
   that is both is listed once.
 * A rule member is of exactly the member class, as with `find`; a book of a subclass of `Book`
   does not match.
-* A rule with no row (`MembershipRule()`) means every aggregate of the member class.
+* A rule with no row (`MembershipRule()`) means every aggregate of the member class. A shelf of
+  shelves with such a rule holds itself too: `members` lists it, and a cascade deletes it once.
 
 == Read the members
 
@@ -114,7 +129,7 @@ checked = await kit.require_aggregate(
 async with kit.collaboration(checked) as collab:
     found = await collab.members(checked.checked_target)
 
-print(found.member_iris)     # ['https://…/books/b1', 'https://…/books/b3'], sorted
+print(found.member_iris)     # b1, b2 and b3 (https://…/books/…), sorted
 print(found.hidden_count)    # 0
 ----
 
@@ -133,7 +148,7 @@ read further.
 [source,python]
 ----
 found = await collab.collections_of(b3_iri)
-print(found.member_iris)     # the shelves that name b3 or whose rule b3 meets, sorted
+print(found.member_iris)     # [s1_iri]: the shelves that name b3 or whose rule b3 meets, sorted
 ----
 
 The answer is again a `MemberList`; here `member_iris` holds the IRIs of the collections. A
@@ -149,27 +164,42 @@ and keeps its members. To delete the members too, ask for a cascade:
 checked = await kit.require_aggregate(
     request.headers.get("authorization"), t, "shelves", shelf_id, Action.DELETE
 )
+async with kit.session(t, checked.principal) as session:
+    work = UnitOfWork(session, mapper)
+    await work.get(Shelf, checked.checked_target)
+    if_version = work.version(checked.checked_target)    # the token of the shelf you read
 async with kit.collaboration(checked) as collab:
     await collab.delete_cascade(checked.checked_target, if_version)
 ----
 
-`if_version` is the version token of the collection the caller read. The cascade deletes the
-collection and its members, named and by rule, as they are at that moment, in one request: all of
-it or nothing. It refuses, and deletes nothing, when:
+`if_version` is the version token of the collection as the caller read it, here from
+`work.version` (see the version token in xref:howto/commits.adoc[How commits and conflicts work]).
+The cascade deletes the collection and its members, named and by rule, as they are at that moment,
+in one request. *All or nothing* means: the collection and every member that is still stored are
+deleted together, or none is and the call raises. A member that is already gone is skipped, and a
+book that starts to meet the rule during the cascade is not deleted.
+
+* The cascade is not deep. A member that is a collection is deleted; its own members stay.
+* A named member must be of the member class. A stored collection (written without the guard) that
+  names another aggregate, such as the tenant's access record, makes the cascade refuse with
+  `StoredDataInvalid` naming the collection, not that aggregate; nothing is deleted.
+* For a member that is a stored file, the cascade removes its graph only and leaves its blob;
+  `kit.sweep_tenant` removes it later (see xref:howto/adopt.adoc#sweep-live-tenant[Sweep a live tenant]).
+
+The errors of a cascade, all raised before anything is deleted:
 
 [cols="1,3",options="header"]
 |===
 |Error |When
-|`Forbidden` |The caller may not delete a member. The message names the refused members the caller may read and counts the others.
-|`Conflict` |The collection is not at `if_version`, or a member changed, or stopped meeting the rule, after the cascade read it.
+|`LookupError` |The schema does not import `rp_collections`.
+|`NotFound` |The caller can see nothing of the collection, or it is not stored.
+|`Forbidden` |The caller may not delete the collection or a member. The message names the refused members the caller may read and counts the others.
+|`BadQuery` |The aggregate is not a collection.
+|`StoredDataInvalid` |The collection cannot be read back, its member class or rule is no longer accepted, or it names an aggregate that is not of its member class.
 |`CommitTooLarge` |The collection and its members are more than 500 roots, the limit of one commit (see xref:howto/commits.adoc[How commits and conflicts work]).
+|`Conflict` |The collection is not at `if_version`, or a member changed, or stopped meeting the rule, after the cascade read it.
+|`DatabaseGone` |The tenant database does not exist.
 |===
-
-* The cascade is not deep. A member that is a collection is deleted; its own members stay.
-* A member that is already gone is skipped. A book that starts to meet the rule during the cascade
-  is not deleted.
-* For a member that is a stored file, the cascade removes its graph and leaves its blob to the
-  sweep (see xref:architecture/data-flows.adoc#files[Files and loaded graphs]).
 
 == Members and collections the caller may not read
 
@@ -182,12 +212,12 @@ xref:howto/reverse-references.adoc#hidden[Referrers the caller may not read].
 [cols="1,3",options="header"]
 |===
 |Error |When
-|`LookupError` |The schema does not import `rp_collections`. Also raised by `delete_cascade`.
+|`LookupError` |The schema does not import `rp_collections`.
 |`NotFound` |The caller can see nothing of the resource, or the collection is not stored.
 |`Forbidden` |The caller may see the resource but not read it.
-|`BadQuery` |`members` or `delete_cascade` is given an aggregate that is not a collection.
+|`BadQuery` |`members` is given an aggregate that is not a collection.
 |`InvalidIri` |`collections_of` is given an IRI the IRI policy does not mint for the tenant.
-|`StoredDataInvalid` |A stored collection cannot be read back, or the schema no longer accepts its member class or rule.
+|`StoredDataInvalid` |A stored collection cannot be read back, or the schema no longer accepts its member class or rule. `collections_of` names the collection only if the caller may read it; otherwise the message says that one collection of the tenant cannot be read.
 |`DatabaseGone` |The tenant database does not exist.
 |===
 
@@ -196,7 +226,9 @@ xref:howto/reverse-references.adoc#hidden[Referrers the caller may not read].
 * *No paging yet.* `members` and `collections_of` answer in one piece. They are meant for
   hundreds of items, not more.
 * *No referential integrity.* A member deleted after the collection was saved stays in
-  `had_member` and is still listed by `members`. Deep reads and cascades skip it.
+  `had_member` and is still listed by `members`, plain and deep (a deep read has nothing to open
+  in it). A cascade skips it. The next save of the shelf is refused with `InvalidBody`, naming
+  it, until you take it out of `had_member`.
 * *`collections_of` asks the store once per rule collection* of the resource's class. That is
   fine for hundreds of rule collections.
 * *No unique names.* Two collections may carry the same label; the toolkit does not check it.

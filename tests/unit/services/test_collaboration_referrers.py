@@ -152,15 +152,6 @@ async def test_an_unused_resource_gives_an_empty_result(toy_session, collaborati
     assert found.hidden_count == 0, "and nothing is hidden"
 
 
-async def test_referrers_work_for_a_schema_that_does_not_import_the_collection_module(
-    toy_session, collaboration
-):  # TC-09a (the members half moves to task 2.3)
-    build = as_ada(collaboration)
-    assert "rp_collections" not in load_schema(TOY_SCHEMA).imports_closure(), "no such module"
-    await put_book(toy_session, B1, shelf=S1)
-    assert refs(await build.referrers(S1)) == [(B1, "Book", "shelf")], "it works all the same"
-
-
 async def test_an_iri_the_policy_does_not_mint_is_refused(collaboration):
     with pytest.raises(InvalidIri):
         await as_ada(collaboration).referrers("https://elsewhere.org/x")

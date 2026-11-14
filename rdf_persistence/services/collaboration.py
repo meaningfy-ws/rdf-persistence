@@ -23,6 +23,7 @@ from rdf_persistence.domain.exceptions import (
 from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_collections import ReferenceCollection
 from rdf_persistence.domain.generated.service.rp_service import (
+    AggregateHead,
     CallerAccess,
     ListPlan,
     ListRequest,
@@ -41,6 +42,7 @@ from rdf_persistence.services.write_guards import (
     COLLECTION_MIXIN,
     collection_classes,
     decode_collection,
+    member_class_iris,
     rule_filters,
 )
 
@@ -125,7 +127,8 @@ class Collaboration:
             NotFound: The caller can see nothing of ``iri``.
             Forbidden: The caller may see ``iri`` but not read it.
             StoredDataInvalid: A stored collection cannot be decoded, or its member class or rule is
-                no longer one the schema accepts.
+                no longer one the schema accepts; the message names the collection only if the
+                caller may read it.
             DatabaseGone: The tenant database does not exist.
         """
         self._require_collections()
@@ -149,7 +152,8 @@ class Collaboration:
                 members it may read and counts the others.
             BadQuery: ``collection`` is not a reference collection.
             StoredDataInvalid: The collection cannot be decoded, or its member class or rule is no
-                longer one the schema accepts.
+                longer one the schema accepts, or it names a stored aggregate that is not of its
+                member class (the message names the collection, not that aggregate).
             CommitTooLarge: The collection and its members are more than ``DEFAULT_MAX_ROOTS``.
             Conflict: ``collection`` is not at ``if_version``, or a member changed, or no longer
                 meets the rule, since it was read; nothing is deleted.
@@ -162,6 +166,7 @@ class Collaboration:
         self._require_room(members)
         self._require_deletable(members)
         heads = await self._session.heads(sorted(members))
+        self._require_of_member_class(collection, stored, heads)
         by_rule = members - set(stored.had_member or [])
         plan = self._plan(stored) if by_rule else None
         async with self._session.transaction() as transaction:
@@ -172,6 +177,17 @@ class Collaboration:
                     await transaction.remove(iri, version)
                     if plan is not None and iri in by_rule:
                         transaction._require_match(iri, plan.target, plan.conditions or [])
+
+    def _require_of_member_class(
+        self, collection: str, stored: ReferenceCollection, heads: list[AggregateHead]
+    ) -> None:
+        """A stored collection is not trusted: a cascade deletes only aggregates of its member class."""
+        accepted = member_class_iris(self._view, stored.member_class)
+        if any(not accepted.intersection(h.head_types or []) for h in heads):
+            raise StoredDataInvalid(
+                f"the collection {collection} names an aggregate that is not of its member class "
+                f"{stored.member_class}"
+            )
 
     def _require_room(self, members: set[str]) -> None:
         """Only ``UnitOfWork.commit`` enforces the limit, so a cascade counts before it reads more."""
@@ -253,8 +269,9 @@ class Collaboration:
         graph, _, _ = await self._session.get_graph(iri)
         return self._decoded(iri, graph)
 
-    def _decoded(self, iri: str, graph: Graph) -> ReferenceCollection:
-        name = next(
+    def _collection_name(self, iri: str, graph: Graph) -> str | None:
+        """The schema name of the collection class ``iri`` is typed with in ``graph``, if any."""
+        return next(
             (
                 self._collection_classes[t]
                 for t in graph.objects(URIRef(iri), RDF.type)
@@ -262,6 +279,9 @@ class Collaboration:
             ),
             None,
         )
+
+    def _decoded(self, iri: str, graph: Graph) -> ReferenceCollection:
+        name = self._collection_name(iri, graph)
         if name is None:
             raise BadQuery(f"{iri} is not a reference collection")
         with self._stored_valid(iri):
@@ -269,10 +289,15 @@ class Collaboration:
 
     @contextmanager
     def _stored_valid(self, iri: str) -> Iterator[None]:
-        """Turns what a stored collection that the schema does not accept raises into ``StoredDataInvalid``."""
+        """Turns what a stored collection that the schema does not accept raises into ``StoredDataInvalid``.
+
+        The message names the collection, and why, only if the caller may read it.
+        """
         try:
             yield
         except (BadQuery, ValueError, LookupError) as error:  # a decode error is a ValueError
+            if not self._rules.may(self._caller, self._access, iri, Action.READ):
+                raise StoredDataInvalid("one collection of the tenant cannot be read") from error
             raise StoredDataInvalid(f"the collection {iri} cannot be read: {error}") from error
 
     async def _rule_holders(self, iri: str) -> set[str]:
@@ -286,11 +311,16 @@ class Collaboration:
             return set()
         graph = await self._session.rule_collections()
         held = set()
-        for root in sorted({str(r) for r in graph.subjects(v.MEMBERSHIP_RULE, None)}):
+        for root in self._ruled_collections(graph):
             collection = self._decoded(root, graph)
             if collection.member_class in types and await self._meets(root, collection, iri):
                 held.add(root)
         return held
+
+    def _ruled_collections(self, graph: Graph) -> list[str]:
+        """The collections of ``graph`` that carry a rule; a stray rule triple on another aggregate is no collection."""
+        roots = sorted({str(r) for r in graph.subjects(v.MEMBERSHIP_RULE, None)})
+        return [r for r in roots if self._collection_name(r, graph) is not None]
 
     async def _meets(self, iri: str, collection: ReferenceCollection, member: str) -> bool:
         """Whether ``member`` meets the rule of the collection ``iri``, by the conditions ``find`` uses."""
