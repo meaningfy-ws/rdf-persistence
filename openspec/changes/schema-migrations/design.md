@@ -223,7 +223,12 @@ marks an answer the developer delegated (seed, 2026-11-06) and may overrule.
   pending migrations of both chains with the same request text (`migrate_dataset`, rdflib's
   `Dataset.update`), so the rest of restore sees current data and stamps. A manifest with no
   version, a version or a stamp unknown to a chain, or a dump with no stamps graph is refused
-  (`InvalidBody`) before anything is created.
+  (`InvalidBody`) before anything is created. As built (task 3.1): `services/tenant_dump.py`
+  `restore` calls `migrate_dataset` right after parsing and before `Tenancy.restore`, which is
+  unchanged; `Tenancy` cannot call the runner without bringing back the import cycle PD-24 item 2
+  removed. The stamps rule is written once, `stamp_problems` in `services/migrations.py`, used by
+  the stage 2 refusal (the running versions only) and by `migrate_dataset` (any version of the
+  chain).
 - **PD-16 The application database is one more shared database (app-level-data).** Delivered in
   stage 3, after PR #102 is in `develop` (developer, 2026-11-14: this session brings #102 in).
 - **PD-17 Layers (as amended by PD-22 and PD-24 item 2).** `domain`: `stamps_graph_iri`, the

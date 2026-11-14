@@ -9,11 +9,13 @@ import gzip
 import io
 import logging
 import tarfile
+from collections.abc import Sequence
 from datetime import UTC, datetime
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from rdflib import Dataset, URIRef
+from rdflib import Dataset, Literal, URIRef
 from rdflib.compare import isomorphic
 from rdflib.namespace import SKOS
 
@@ -32,12 +34,14 @@ from rdf_persistence.domain.generated.service.rp_service import (
     IdKind,
     IdSpec,
     IriPolicy,
+    MigrationStep,
     ServiceSettings,
     TenantDump,
 )
 from rdf_persistence.domain.iris import Iris, stamps_graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.mapper import UnitOfWork
+from rdf_persistence.services.migrations import SchemaChain
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
 from rdf_persistence.services.sweep import sweep
@@ -46,7 +50,8 @@ from rdf_persistence.services.tenant_dump import dump, restore
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
-from tests.toy import ADA, BOB, SETTINGS, TOY_SCHEMA, dune, role, template, toy_mapper
+from tests.toy import ADA, BOB, SETTINGS, TOY_SCHEMA, dune, library, role, template, toy_mapper
+from tests.unit.services.test_migration_runner import chain_of, migration, rename
 from tests.unit.services.test_tenant_sweep import (
     BOOK_TYPE,
     FLAT,
@@ -99,10 +104,10 @@ async def populated(world: SimpleNamespace, title: str | None = None) -> SimpleN
     return world
 
 
-async def dumped(world: SimpleNamespace, tenant: str | None = None) -> bytes:
+async def dumped(world: SimpleNamespace, tenant: str | None = None, view=VIEW) -> bytes:
     out = io.BytesIO()
     await dump(
-        world.tenancy, world.store, world.files, world.iris, VIEW, tenant or world.tenant, out
+        world.tenancy, world.store, world.files, world.iris, view, tenant or world.tenant, out
     )
     return out.getvalue()
 
@@ -114,6 +119,7 @@ async def restored(
     tenancy: Tenancy | None = None,
     view=VIEW,
     max_bytes: int = MAX_BYTES,
+    chains: Sequence[SchemaChain] = (),
 ):
     return await restore(
         tenancy or world.tenancy,
@@ -122,6 +128,7 @@ async def restored(
         io.BytesIO(data),
         RESTORER,
         max_bytes=max_bytes,
+        chains=chains,
     )
 
 
@@ -191,6 +198,8 @@ async def world() -> SimpleNamespace:
 TOOLKIT_SCHEMA = "https://meaningfy.ws/ns/rdf-persistence"
 LIBRARY_SCHEMA = "https://example.org/ns/library"
 STAMPS = ((TOOLKIT_SCHEMA, "1"), (LIBRARY_SCHEMA, "2"))
+RUNNING = copy.deepcopy(VIEW)  # the schema of a service whose stamps are ``STAMPS``
+RUNNING.schema.version = "2"
 ALL_STAMPS = "SELECT ?s ?v WHERE {{ GRAPH <{graph}> {{ ?s ?p ?v }} }}"
 
 
@@ -204,7 +213,7 @@ async def stamps_held(world: SimpleNamespace, tenant: str) -> dict[str, str]:
 async def test_tc34_a_stamped_tenant_dumps_and_restores_at_the_same_version():
     world = await populated(await make_world(iris_of(SETTINGS), SETTINGS, stamps=STAMPS))
     assert await stamps_held(world, world.tenant) == dict(STAMPS), "create stamped the tenant"
-    summary = await restored(world, await dumped(world))
+    summary = await restored(world, await dumped(world, view=RUNNING), view=RUNNING)
     assert await stamps_held(world, summary.id) == dict(STAMPS), (
         "the restored tenant holds the stamps"
     )
@@ -242,11 +251,11 @@ async def stamped() -> SimpleNamespace:
 
 async def test_a_dump_with_the_stamps_the_service_runs_is_restored_with_exactly_them(stamped):
     data = with_stamps(
-        await dumped(stamped),
+        await dumped(stamped, view=RUNNING),
         stamp_line(TOOLKIT_SCHEMA, "1"),
         stamp_line(LIBRARY_SCHEMA, "2"),
     )
-    summary = await restored(stamped, data)
+    summary = await restored(stamped, data, view=RUNNING)
     assert await stamps_held(stamped, summary.id) == dict(STAMPS), "the restored tenant holds them"
 
 
@@ -272,7 +281,8 @@ async def test_a_dump_whose_stamps_graph_differs_is_refused_before_anything_is_c
 ):
     ids = {"TOOLKIT": TOOLKIT_SCHEMA, "LIBRARY": LIBRARY_SCHEMA}
     lines = [stamp_line(ids.get(schema, schema), *rest) for schema, *rest in statements]
-    reason = await refused(stamped, with_stamps(await dumped(stamped), *lines))
+    data = with_stamps(await dumped(stamped, view=RUNNING), *lines)
+    reason = await refused(stamped, data, view=RUNNING)
     for text in named:
         assert text in reason, f"the reason names {text}"
 
@@ -285,6 +295,187 @@ async def test_a_dump_with_a_stamp_is_refused_by_a_service_that_configures_none(
 async def test_a_dump_with_no_stamp_is_restored_by_a_service_that_configures_none(world):
     summary = await restored(world, await dumped(world))
     assert await stamps_held(world, summary.id) == {}, "the restored tenant holds no stamp"
+
+
+# -- schema-migrations TC-50 to TC-53: a dump carries its version, a restore migrates an older one ------
+
+OLD_DESCRIPTION = URIRef("https://example.org/ns/library#oldDescription")
+OLD_CITY = URIRef("https://example.org/ns/library#oldCity")
+OWNER = Principal(id=ADA)
+
+
+def predicate_of(model, text: str) -> URIRef:
+    """The predicate under which the mapper stores the literal ``text`` of ``model``."""
+    return next(p for _, p, o in toy_mapper().to_triples(model) if o == Literal(text))
+
+
+BOOK_DESCRIPTION = predicate_of(dune("urn:book"), "A planet.")
+CITY = predicate_of(library(), "Ghent")
+
+
+@pytest.fixture
+def chains(tmp_path: Path) -> list[SchemaChain]:
+    """The toolkit's chain ``[1]`` and the library's ``[1, 2]``: ``1__2`` moves a book's description and the root's city."""
+    steps = [
+        rename(OLD_DESCRIPTION, BOOK_DESCRIPTION),
+        rename(OLD_CITY, CITY),
+    ]
+    return [
+        (TOOLKIT_SCHEMA, chain_of(tmp_path / "rp", TOOLKIT_SCHEMA, current="1")),
+        (
+            LIBRARY_SCHEMA,
+            chain_of(
+                tmp_path / "lib",
+                LIBRARY_SCHEMA,
+                migration(LIBRARY_SCHEMA, "1", "2", *steps),
+                current="2",
+            ),
+        ),
+    ]
+
+
+async def move_predicate(world: SimpleNamespace, subject: str, old: URIRef, new: URIRef) -> None:
+    """Store what ``subject`` holds under ``old`` as it was stored before the schema changed to ``new``."""
+    await world.store.update(
+        world.database,
+        f"DELETE {{ GRAPH ?g {{ <{subject}> <{old}> ?o }} }} INSERT {{ GRAPH ?g {{ <{subject}> <{new}> ?o }} }} "
+        f"WHERE {{ GRAPH ?g {{ <{subject}> <{old}> ?o }} }}",
+    )
+    kept = await world.store.query(
+        world.database, f"SELECT ?o WHERE {{ GRAPH ?g {{ <{subject}> <{old}> ?o }} }}"
+    )
+    assert not list(kept), f"{subject} holds nothing under {old}: the fixture is aged"
+
+
+@pytest.fixture
+async def aged() -> SimpleNamespace:
+    """A tenant stamped ``1`` whose book and root hold their description and city as version 1 stored them."""
+    world = await populated(
+        await make_world(
+            iris_of(SETTINGS), SETTINGS, stamps=((TOOLKIT_SCHEMA, "1"), (LIBRARY_SCHEMA, "1"))
+        )
+    )
+    await move_predicate(world, world.book, BOOK_DESCRIPTION, OLD_DESCRIPTION)
+    await move_predicate(world, world.tenant, CITY, OLD_CITY)
+    world.running = Tenancy(
+        world.store, world.files, SETTINGS, mapper=toy_mapper(), root_class=Library,
+        access_class=LibraryAccess, iris=world.iris, stamps=STAMPS,
+    )  # fmt: skip
+    return world
+
+
+async def token_of(world: SimpleNamespace, tenant: str, iri: str, who: Principal) -> str:
+    async with world.tenancy.tenant_session(tenant, who) as opened:
+        return (await opened.get_graph(iri))[2]
+
+
+async def test_tc50_a_dump_carries_the_version_its_data_follows(aged):
+    manifest = manifest_of(await dumped(aged, view=at_version("2")))
+    assert manifest.schema_version == "1", "the tenant's stamp, not the version the service runs"
+
+
+async def test_a_tenant_with_no_stamp_dumps_the_version_the_service_runs(world):
+    manifest = manifest_of(await dumped(world, view=at_version("5")))
+    assert manifest.schema_version == "5", "no stamp to read: the running version"
+
+
+async def test_tc51_an_older_dump_is_migrated_and_restored_at_the_running_version(aged, chains):
+    data = await dumped(aged, view=at_version("2"))
+    summary = await restored(aged, data, tenancy=aged.running, view=at_version("2"), chains=chains)
+    assert await stamps_held(aged, summary.id) == dict(STAMPS), "the new tenant is at version 2"
+    book = await read_book(aged, summary.id, moved(aged, aged.book, summary.id))
+    assert book.description == "A planet.", "the book's description is in its current shape"
+    async with aged.tenancy.tenant_session(summary.id, RESTORER) as opened:
+        root = await UnitOfWork(opened, toy_mapper()).get(Library, summary.id)
+    assert root.city == "Ghent", "the root is vetted and stored in its current shape"
+    assert summary.label == "Ghent", "the tenant's label is the root's"
+
+
+async def test_tc51_the_restored_graphs_get_new_version_tokens(aged, chains):
+    data = await dumped(aged, view=at_version("2"))
+    summary = await restored(aged, data, tenancy=aged.running, view=at_version("2"), chains=chains)
+    new_book = moved(aged, aged.book, summary.id)
+    before = await token_of(aged, aged.tenant, aged.book, OWNER)
+    assert await token_of(aged, summary.id, new_book, RESTORER) != before, (
+        "a migration with steps renews every token"
+    )
+
+
+async def test_a_dump_at_the_running_version_restores_exactly_as_before(stamped, chains):
+    view = at_version("2")
+    data = await dumped(stamped, view=view)
+    assert manifest_of(data).schema_version == "2", "the tenant is at the running version"
+    summary = await restored(stamped, data, view=view, chains=chains)
+    new_book = moved(stamped, stamped.book, summary.id)
+    before = await token_of(stamped, stamped.tenant, stamped.book, OWNER)
+    assert await token_of(stamped, summary.id, new_book, RESTORER) == before, (
+        "no update was applied: the token is the dumped one"
+    )
+
+
+@pytest.mark.parametrize(
+    "version", [None, "9"], ids=["no version", "a version the chain does not have"]
+)
+async def test_tc52_a_manifest_with_no_version_or_an_unknown_one_is_refused(aged, chains, version):
+    def change(payload: bytes) -> bytes:
+        found = TenantDump.model_validate_json(payload)
+        return found.model_copy(update={"schema_version": version}).model_dump_json().encode()
+
+    data = edited(await dumped(aged, view=at_version("2")), MANIFEST, change)
+    reason = await refused(aged, data, tenancy=aged.running, view=at_version("2"), chains=chains)
+    assert "'1', '2'" in reason, "the reason names the chain's versions"
+
+
+async def test_tc52_a_manifest_of_another_schema_is_refused(aged, chains):
+    other = at_version("2")
+    other.schema.id = "https://example.org/other-schema"
+    data = await dumped(aged, view=other)
+    reason = await refused(aged, data, tenancy=aged.running, view=at_version("2"), chains=chains)
+    assert "https://example.org/other-schema" in reason, "the reason names the dump's schema"
+
+
+@pytest.mark.parametrize(
+    ("statements", "named"),
+    [
+        ([], ["missing"]),
+        ([(TOOLKIT_SCHEMA, "9"), (LIBRARY_SCHEMA, "1")], [TOOLKIT_SCHEMA, "'9'"]),
+    ],
+    ids=["no stamps graph", "a toolkit stamp the chain does not know"],
+)
+async def test_tc52_a_dump_whose_stamps_are_not_versions_of_the_chains_is_refused(
+    aged, chains, statements, named
+):
+    lines = [stamp_line(schema, version) for schema, version in statements]
+    data = with_stamps(await dumped(aged, view=at_version("2")), *lines)
+    reason = await refused(aged, data, tenancy=aged.running, view=at_version("2"), chains=chains)
+    for text in named:
+        assert text in reason, f"the reason names {text}"
+
+
+async def test_tc53_a_migration_that_fails_on_the_dump_is_refused_and_creates_nothing(
+    aged, tmp_path
+):
+    failing = MigrationStep(
+        title="a pattern rdflib cannot run",
+        where_pattern=f'?s <{OLD_CITY}> ?o . FILTER(REGEX(?o, "["))',
+        delete_pattern=f"?s <{OLD_CITY}> ?o .",
+        insert_pattern=f"?s <{CITY}> ?o .",
+    )
+    bad = [
+        (TOOLKIT_SCHEMA, chain_of(tmp_path / "rp", TOOLKIT_SCHEMA, current="1")),
+        (
+            LIBRARY_SCHEMA,
+            chain_of(
+                tmp_path / "lib",
+                LIBRARY_SCHEMA,
+                migration(LIBRARY_SCHEMA, "1", "2", failing),
+                current="2",
+            ),
+        ),
+    ]
+    data = await dumped(aged, view=at_version("2"))
+    reason = await refused(aged, data, tenancy=aged.running, view=at_version("2"), chains=bad)
+    assert f"1__2 of {LIBRARY_SCHEMA}" in reason, "the reason names the migration"
 
 
 # -- TC-10, TC-13: a restored tenant answers like the original -----------------------------------

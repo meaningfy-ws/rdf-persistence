@@ -257,7 +257,8 @@ class ServiceKit:
         """Create a new tenant, with a new IRI, from the archive ``dump_tenant`` wrote, which ``src`` holds; ``creator``
         (a principal IRI) is granted the creator role in it and no one else is.
 
-        The archive must come from a service with the same schema and IRI policy, and may hold at most
+        The archive must come from a service with the same schema, at any version of its migration chain (an
+        older one is migrated to the running version before anything is created), and the same IRI policy, and may hold at most
         ``settings.max_restore_bytes`` once decompressed. Restore only an archive your own deployment wrote, or one
         from a party you trust as much as a tenant creator: the restore checks the archive's structure (its graph
         names, its root, its blob keys), not each object against its shapes, and not the workflow rule: the states
@@ -282,6 +283,7 @@ class ServiceKit:
             src,
             Principal(id=creator),
             max_bytes=self.max_restore_bytes,
+            chains=self.chains,
         )
 
     async def remove_with_files(

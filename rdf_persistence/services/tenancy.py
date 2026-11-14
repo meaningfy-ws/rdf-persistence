@@ -15,8 +15,7 @@ from typing import Any
 
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel, ValidationError
-from rdflib import RDF, Dataset, Graph, Literal, URIRef
-from rdflib.term import Node
+from rdflib import RDF, Dataset, Graph, URIRef
 
 from rdf_persistence.domain.exceptions import (
     Conflict,
@@ -54,7 +53,7 @@ from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
-from rdf_persistence.services.migrations import stamp_if_none
+from rdf_persistence.services.migrations import stamp_if_none, stamp_problems
 from rdf_persistence.services.schema_structure import (
     LABEL,
     aggregate_keys,
@@ -74,7 +73,6 @@ from rdf_persistence.services.session import (
     utc_now,
 )
 from rdf_persistence.services.store import Store
-from rdf_persistence.services.yaml_files import MOST_PROBLEMS, shown
 
 log = logging.getLogger(__name__)
 
@@ -426,25 +424,14 @@ class Tenancy:
     def _refuse_other_stamps(self, data: Dataset) -> None:
         """Refuse a dump whose stamps graph is not exactly one stamp per configured pair (PD-24.1).
 
-        Until a dump can be migrated (stage 3) the restored database must follow the versions this service
-        runs, and the runner trusts the graph: no other version, schema or statement may come in with it.
+        The restored database must follow the versions this service runs, and the runner trusts the graph: no
+        other version, schema or statement may come in with it. A dump of an older version is migrated first
+        (``migrate_dataset``, called by ``tenant_dump.restore``), so it passes here.
         """
-        wanted = dict(self._stamps)
-        held = sorted(data.graph(self.stamps_graph), key=str)
-        stamped = {str(s) for s, p, _ in held if p == v.DATA_SCHEMA_VERSION}
-        differences = [
-            f"the stamp of {schema} at {version!r} is missing"
-            for schema, version in wanted.items()
-            if schema not in stamped
-        ]
-        differences += [d for triple in held if (d := _stamp_difference(triple, wanted))]
-        if differences:
-            more = len(differences) - MOST_PROBLEMS
-            listed = "; ".join(differences[:MOST_PROBLEMS]) + (
-                f"; +{more} more" if more > 0 else ""
-            )
+        wanted = {schema: (version,) for schema, version in self._stamps}
+        if problems := stamp_problems(data.graph(self.stamps_graph), wanted):
             raise InvalidBody(
-                f"the dump's stamps graph is not the versions this service runs: {listed}"
+                f"the dump's stamps graph is not the versions this service runs: {problems}"
             )
 
     def _refuse_application_objects(self, data: Dataset) -> None:
@@ -720,19 +707,6 @@ class Tenancy:
     async def database_names(self) -> set[str]:
         """The database (and bucket) names the access records store, for every tenant."""
         return {record.database_name for record in await self._records()}
-
-
-def _stamp_difference(triple: tuple[Node, Node, Node], wanted: Mapping[str, str]) -> str | None:
-    """How one statement of a dump's stamps graph differs from ``wanted`` (schema id to version), or None."""
-    subject, predicate, value = triple
-    text = shown(str(value))
-    if predicate != v.DATA_SCHEMA_VERSION or not isinstance(value, Literal):
-        return f"<{subject}> <{predicate}> {text} is not a stamp"
-    if str(subject) not in wanted:
-        return f"<{subject}>, a schema this service does not run, is at {text}"
-    if value != Literal(wanted[str(subject)]):
-        return f"<{subject}> is at {text}, not {wanted[str(subject)]!r}"
-    return None
 
 
 def _plain(validators: Sequence[Callable[..., None]]) -> tuple[Callable[..., None], ...]:

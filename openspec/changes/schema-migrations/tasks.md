@@ -116,13 +116,13 @@ an unknown version TC-52; `rp-service-api`: a chain that forks TC-38, a tenant s
 
 ## 3. Dump, the application database, Fuseki, docs (stage 3, PR 3; after #102)
 
-- [ ] 3.1 Dump and restore (PD-15). Test first, in the existing dump and restore unit tests. Then
+- [x] 3.1 Dump and restore (PD-15). Test first, in the existing dump and restore unit tests. Then
   `migrate_dataset(dataset, chains)` in `services/migration_runner.py` (PD-17); `services/tenant_dump.py` (`dump`
   reads the stamp; `_check_manifest` takes the chain) and `Tenancy.restore` (migrate the parsed
   dataset first).
 - [x] 3.2 (closed by tasks 2.2 and 2.3, design D-1) The application database (PD-16). Test first. `migrate_shared` includes it when it
   exists; `ensure_application_database` stamps the one it creates (PD-10); the lifespan order of PD-9.
-- [ ] 3.3 Containers. In `tests/integration/store/`: the migration request against Fuseki.
+- [x] 3.3 Containers. In `tests/integration/store/`: the migration request against Fuseki.
 - [ ] 3.4 Docs. A new `howto/migrate.adoc` (the rules table, the five recipes of PD-5, what cannot
   be migrated, reworking an unmerged version, dump first, stop old instances, what a tenant set
   aside looks like and how to recover); in `docs/modules/ROOT/pages/howto/adopt.adoc`, section "7. Change the model" rewritten to point
