@@ -138,9 +138,8 @@ PD-5 to PD-11 answer questions the code raised that the EPIC did not cover; the 
   triples as a list, which the transaction uses from then on (an iterable can be read once). Nothing is sent to the store: a
   transaction sends only on `commit`. Not covered, on purpose: reads (nothing of the other space
   is stored, so `get_graph` is `NotFound`); `remove` (it needs a stored graph); `load_graph` (a
-  loaded graph has no class, and belongs to an aggregate the session accepts); and
-  `Tenancy.restore`, which imports quads after checking graph names only and already says it
-  checks structure, not objects (`ServiceKit.restore_tenant`'s docstring).
+  loaded graph has no class, and belongs to an aggregate the session accepts).
+  `Tenancy.restore` imports quads without a session, so it makes the same refusal itself (D-6 b).
 - **PD-7, the two sessions**, in `Tenancy` (`rdf_persistence/services/tenancy.py`), which already
   owns `_session` and the system database:
   - `tenant_session` passes `refused_types=root_class_iris(view, APPLICATION)`.
@@ -241,8 +240,9 @@ nothing here retries.
 
 The store and the token verifier are the only external services; their failures
 (`StoreUnavailable`, `DatabaseGone`, `InvalidToken`) pass through unchanged, as for a tenant
-session. Start-up refusals are logged at `ERROR` by the code that raises them, as
-`iri_policy_guard._require_same` does; a refused request is not logged by the toolkit.
+session. The policy guard logs its refusal at `ERROR`, as before; a refusal when `Iris` is
+built is raised, not logged (the service does not start, and the exception says why); a refused
+request is not logged by the toolkit.
 
 | Failure mode | How it is detected | Expected handling |
 |---|---|---|
@@ -323,6 +323,58 @@ field is a `str` (PD-9), and the how-to shows the correct call.
 - **D-1** (lead, 2026-11-14): one stage, one PR into `develop`. The full MEDIUM review set: lenses
   L1, L2, L3 and one pass for L4 with L5 (repository rule), a checker, and the adversarial tester
   right after task 2.1 (the `Iris` change adds the invariants every other task relies on).
+- **D-6** (lead, 2026-11-14; the review of PR #102 through L1, L2, L3 and L4 with L5: no critical
+  finding). Accepted, security first:
+  - **a** (L1). The application has no root object and no access record, so `Iris.is_aggregate(A, …)`
+    answers False for `A` itself and for `access(A)`, and `Session._graph` asks `is_aggregate`
+    before it maps the tenant IRI to the meta graph. An application session then refuses both IRIs
+    with `InvalidIri`. Nothing changes for a tenant.
+  - **b** (L1). `Tenancy.restore` refuses, with `InvalidBody` and before any database is created, a
+    dump that holds a subject typed with an application class. This replaces the exemption of
+    restore in PD-6; the spec sentence changes with it.
+  - **c** (L1). The application session also refuses a root that carries a root class of another
+    database beside an application class: it is given `refused_types` (the tenant and system root
+    classes) as well as `allowed_types`.
+  - **d** (L1, L5). `AccessRules` has one private helper for what a caller's system-level roles
+    permit and one for "permitted, or read implied"; `require`, `_permitted_actions` and
+    `require_application` use them.
+  - **e** (L5). The docstrings of `ServiceKit.application_session` and
+    `Tenancy.application_session`, and the how-to, say that the session checks no right:
+    `require_application` comes first. The docstring of `require_application` says its answer is
+    for `application_session` only.
+  - **f** (L3, L5). One rule for the database of a class: `in_system_database` is
+    `database_of(...) == SYSTEM`, and `tenant_database_roots` is renamed `keyed_roots` (the roots
+    outside the system database: the ones that can carry a key across aggregates), with its
+    docstring and that of `aggregate_keys` corrected. One helper lists the roots of a database for
+    `served_roots`, `root_class_iris` and the PD-5 check.
+  - **g** (L3, L5). `Tenancy.application_iri(cls)` mints through the cached application
+    `Listings`; `ServiceKit.application_iri` forwards. It still raises `InvalidIri` (PD-10), with
+    no `assert`.
+  - **h** (L3, L5). `Tenancy._session` takes `listings` and `allowed_types`, and
+    `application_session` calls it; one `_ensure_dataset(name) -> bool` serves both
+    `ensure_system_database` and `ensure_application_database`, so both answer True only when
+    their own call created the database.
+  - **i** (L3, L5). The redundant `list(triples)` in the two write methods goes; `_row_of` in
+    `generation/checks/application.py` takes `owned` and `others` by name.
+  - **j** (L2), tests: the default application IRI is asserted with its UUID; the second refusal of
+    D-4 (a tenant read as an aggregate of the application) gets a policy that reaches it alone
+    (tenant ids of 8 characters over `ab`, object ids of 8 characters over the default alphabet,
+    application `{base}{tenant_segment}`, aggregate `{tenant}/{id}`); a subclass of an application
+    class is committed through a session; the three error-matrix rows without a test get one (the
+    application database missing, `{deployment}` without a slug, a manifest naming `A`); the
+    feature's three vacuous steps assert something; its asserts carry messages; the regression
+    guards say so in their docstrings; the two identical adversarial tests become one.
+  - **k** (L2, L3), docs: the how-to says the annotation is inherited along `is_a` and lists the
+    six generation rows in the code's words, with the RISK-3 caveat on dumps;
+    `architecture/data-flows.adoc` shows the application database in its diagram and store table;
+    `architecture/access-control.adoc` gains a paragraph on application data (PD-9, RISK-1); the
+    durations table in `develop/index.adoc` is brought up to date.
+
+  Rejected: a `Gate.application_access` (one caller; the kit method is five lines); mapping
+  `LookupError` to an HTTP problem (it is a programming error of the consumer, and says so);
+  refusing abstract application classes in the type sets (the mapper never types a root with an
+  abstract class); moving the policy checks out of `Iris` (next time `Iris` is touched); a
+  `NamedTuple` for the hard check's context (by-name arguments do it); extending TC-35.
 - **D-5** (lead, 2026-11-14; the rebase on `develop` after sessions D and E merged reference
   collections, discussion and keys across aggregates). Choices made where their code met this
   change: `served_roots` filters by `database_of` and also leaves out the roots the toolkit writes

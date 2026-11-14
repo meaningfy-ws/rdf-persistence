@@ -11,8 +11,10 @@ mixin's annotation SHALL not count. A session SHALL never store such an aggregat
 database, nor a tenant class in the application database, and SHALL never write an access record
 through an application session: a tenant session SHALL refuse a root typed as an application
 class, and an application session SHALL refuse a root not typed as one, with `InvalidIri` and
-before anything is sent. Restoring a tenant dump is not such a write: it checks the dump's graph
-names, not its classes. Generation SHALL fail for an application class that is the tenant root, is
+before anything is sent. The application session SHALL also refuse the application IRI itself and
+the IRI of an access record as the IRI of an aggregate. Restoring a tenant dump SHALL refuse, with
+`InvalidBody` and before anything is created, a dump that holds an object typed as an application
+class. Generation SHALL fail for an application class that is the tenant root, is
 owned, is not an aggregate root, is a stored file, or shares its class IRI with a root of another
 database, and for a mixin that carries the annotation.
 
@@ -53,5 +55,15 @@ database, and for a mixin that carries the annotation.
 
 #### Scenario: a schema without application classes
 - **GIVEN** a schema with no class annotated `database: application`
-- **WHEN** the service starts
+- **WHEN** the start-up step that ensures the application database runs
 - **THEN** no application database is created
+
+#### Scenario: a dump that carries an application class
+- **GIVEN** a tenant dump in which an aggregate is typed as the application class `Template`
+- **WHEN** it is restored
+- **THEN** the restore is refused with `InvalidBody` and no tenant is created
+
+#### Scenario: the application IRI is not an aggregate
+- **GIVEN** an application session
+- **WHEN** a `Template` is added at the application IRI itself, or at the IRI an access record would have
+- **THEN** the session raises `InvalidIri` and nothing is written

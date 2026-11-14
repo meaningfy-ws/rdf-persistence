@@ -135,8 +135,11 @@ and `make clean-code` unless it names others.
 - [x] 5.1 `tests/feature/application_data.feature` with its steps in
   `tests/feature/test_application_data.py`, on the fakes: one scenario per scenario of the
   [rp-tenancy](specs/rp-tenancy/spec.md) and [rp-access](specs/rp-access/spec.md) deltas, in their
-  words. The `rp-iri-policy` scenarios are covered by TC-15, TC-21, TC-22 and TC-48. Gates:
-  `make test-changed`, `make check-quality`.
+  words. The `rp-iri-policy` scenarios are covered by TC-15, TC-21, TC-22 and TC-48. The scenarios
+  added when the specs were reconciled are proven by unit tests, named in D-6 j of design.md (a
+  subclass, a root with no class, a moved class, a dump with an application class, the
+  application IRI as an aggregate, the application's aggregates reading as tenants, an older
+  dump). Gates: `make test-changed`, `make check-quality`.
 - [x] 5.2 `tests/integration/tenancy/test_application_data.py` on Fuseki, a fresh prefix per test
   (`unique_prefix`), datasets dropped afterwards (`drop_databases`). Gates: `make test-containers
   TEST_PATH=tests/integration/tenancy/test_application_data.py`, `make check-quality`.
