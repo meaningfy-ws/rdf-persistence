@@ -110,7 +110,7 @@ def graph_of_json(documents: Documents, body: dict) -> Graph:
 
 
 def test_the_aggregate_types_are_the_roots_with_a_path_in_the_tenant_database(documents) -> None:
-    assert sorted(documents.aggregates) == ["books", "scans"], (
+    assert sorted(documents.aggregates) == ["books", "scans", "shelves"], (
         "the tenant root and the access record have no generic route"
     )
 

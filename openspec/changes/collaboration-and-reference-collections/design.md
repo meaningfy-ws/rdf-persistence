@@ -332,6 +332,97 @@ delivers.
   into `Session.heads`), a separate explicit-holder query (`collections_of` reuses `referrers`).
   Not cut: `RESERVED_SEGMENT` (PD-11 says why); nested collections (the EPIC's shape).
 
+- **PD-25** (PLAN revision 2026-11-14, before task 1; the lead's, on the developer's instruction
+  to check the PLAN against `atomic-commit` as built). Checked at `develop` `38f4a41` against the
+  "As built" table of `openspec/changes/archive/2026-11-13-atomic-commit/proposal.md`. Held as
+  written: `Session.transaction()`, `Transaction.add_graph/replace_graph/remove`, `Conflict.iris`
+  (a tuple of `str`), `UnitOfWork.version(iri)`, `CommitTooLarge`, the limit enforced by
+  `UnitOfWork.commit` only. Where this PLAN differs from the code, the code wins:
+  1. The transaction's lists are **private** (`Transaction._guards: list[SparqlTerm]`,
+     `_operations: list[str]`, `_confirm`; atomic-commit PD-18a), not `guards`/`operations`
+     (Context, RISK-5, the Assumption). This EPIC's pieces (`_require_present`, `_require_match`,
+     `_DROP_DEPENDENTS`, `_allow_state`, the call to `WriteGuards.prepare`) are private methods of
+     `Transaction` or code in `services/session.py`; `Collaboration` (also in `services`) calls
+     them. Nothing of it is exported or documented for consumers.
+  2. The diagnosis (`Transaction._diagnose`) names only the roots of collected changes
+     (`_roots`). So `_require_present(iri)` also records its graph and root in a private map the
+     diagnosis reads: a required graph found with no version is named "was removed by someone
+     else" (TC-62's `Conflict(iris=(b1,))`). `_require_match` records nothing: a member whose
+     version changed is named by its remove's guard (TC-36, TC-36a); a member that only stopped
+     matching (TC-36b) gives a `Conflict` with empty `iris` and the "lost a race" message.
+  3. A remove whose root another writer already removed is a success in a removes-only commit
+     (atomic-commit PD-17e); a cascade inherits this (TC-40 is the read-time form).
+  4. `DEFAULT_MAX_ROOTS` already exists in `services/mapper.py` (task 2.4's "if not exported"
+     falls away). `UnitOfWork.discard(iri)` exists (`38f4a41`); this PLAN does not need it.
+  5. An add has no stored state: `Transaction.add_graph` calls
+     `guards.prepare(session, iri, triples, None, allowed_state)`; `replace_graph` passes the
+     `Tracked` it read with `Session._stored`.
+  6. The fake store runs a request one operation at a time on rdflib (atomic-commit PD-17a), so
+     `READ_REFERRERS` and `_DROP_DEPENDENTS` must run there as on Fuseki. With no dependent pair
+     (stages 1 and 2) the `FILTER NOT EXISTS { VALUES … }` clause is left out of the query rather
+     than sent with an empty `VALUES`.
+  7. Names: `match_patterns` is in `domain/sparql.py`; minting is `Iris.mint_aggregate`; the
+     session fixture is `testkit.fakes.fake_session` (there are no session fixtures in
+     `tests/unit/services/conftest.py`; the `collaboration` fixture is new there); TC-01 goes in
+     `tests/unit/entrypoints/test_kit_require.py`; the hard-rule tests in
+     `tests/unit/generation/test_hard_check.py`; `tests/toy.py` `MODULES` gains each new module.
+  8. Session E (`cross-aggregate-unique-keys`) changes `Transaction` in parallel: this EPIC's
+     additions stay additive (own methods, own templates), the branch is rebased on `develop`
+     before every PR (rule P-0002), both sides are kept in `services/session.py`, and a conflict
+     in a generated file is resolved in the sources and regenerated (rule P-0003).
+- **PD-26** (stage 1 challenge, 2026-11-14; four review passes and the adversarial tester on
+  PR #95). Accepted, and fixed before the merge:
+  1. **The hidden count never follows the narrowing** (L1 W1, L4/L5 no. 1; replaces PD-3 step 2's
+     `$narrow` and the how-to's "the narrowing applies to the count too"). With the narrowing in
+     the query, a caller could probe class by class and slot by slot and learn the class and slot
+     of a referrer it may not read, which the spec forbids. `Session.referrer_rows` takes no
+     class or slot; `Collaboration` computes `hidden_count` over every distinct referrer the
+     caller may not read, then keeps the readable items of the asked class and slot. The spec
+     says so in words. As built, the narrowing compares the names shown on each item, so an
+     item whose class or slot is shown as an IRI (the schema does not know it) matches no name.
+  2. **`Authorised` is built in one place**, a `Gate` method both `require` and
+     `aggregate_access` use, so `global_roles` cannot be forgotten (L4/L5 no. 2).
+     `kit.collaboration`'s docstring says `authorised` must be the answer of `require` or
+     `require_aggregate`, never one built by hand (L1 S1; the signature stays PD-1's).
+  3. **The reference pattern comes first in `READ_REFERRERS`**, before the registry pattern, so
+     the store starts from the triples that hold `iri` and not from every aggregate of the
+     tenant (L4/L5 no. 3; not measured, the result must not change).
+  4. **A referrer with several types** (tester's failing test, L4/L5 no. 4): a root's own link
+     is named against the root's class, not against each of its types in turn (the `OPTIONAL`
+     subject class binds only for a part); a type the schema does not know is listed only when
+     the referrer has no type it knows. So a book that also carries an unknown type is one item
+     `(book, Book, shelf)`.
+  5. The descriptions of `referrer_class` and `referrer_slot` say the IRI is given when the
+     schema does not know the class or slot (L4/L5 no. 5); regenerate.
+  6. Tests (L2 W1 to W3, S1, S2; the tester's file is kept): a positive row for `class_name`
+     and for `slot`; the tenant root is not a referrer; a self-reference is listed; an unknown
+     class or slot comes back as its IRI; `require_aggregate` → `kit.collaboration` →
+     `referrers` (the how-to's snippet); TC-08's data made valid (two slots that both may hold
+     a book) and books built through validation; one assert per idea. The tester's two
+     "narrowing narrows the hidden count" tests are turned round to assert item 1.
+  7. `architecture/data-flows.adoc`: one sentence in the gate section naming
+     `kit.collaboration` as the third way in, which checks access itself (L3's note).
+
+  Rejected: `ReferrerRow` as a `NamedTuple` (the model guard refuses hand-written models in
+  services); folding `_class_iri`/`_slot_iri` (falls away with item 1 or stays trivial); moving
+  `MemberList`/`AggregateHead` to stage 2 (PD-2 and task 1.1 place them); `referrers` defaulting
+  to an empty list (every generated list is optional; one convention); a `NotFound` row and an
+  other-tenant row in the unit file (the tester's file has both); TC-02 reading the manifest.
+  Pinned by the tester and confirmed as intended: a triple in a loaded graph is not a
+  reference; the tenant root is never a referrer but may be the target.
+
+## Delivery decisions
+
+- **D-1** (2026-11-14, the lead): the developer granted, for this EPIC, commit, push, PR and
+  merge on green CI, one PR per stage, worked in a worktree until completion.
+- **D-2** (2026-11-14, the lead): TC-09a is split. Task 1.2 tests that `referrers` works on a
+  view without `rp_collections`; the `members` → `LookupError` half moves to task 2.3, where
+  `members` first exists. Reason: no stub methods for later stages.
+- **D-3** (2026-11-14, the lead, task 1.2 as built): `Collaboration` takes the kit's `Iris`
+  (PD-3 step 1 needs `is_aggregate`) and holds the mapper, models and listings only from the
+  stage that first uses them. The cross-graph read is `Session.referrer_rows` (rows of IRIs, no
+  access, no schema names); the names and the access filter stay in `Collaboration`.
+
 ## Algorithm / approach
 
 Toy library `T`; books `b1`, `b2`, `b3`; shelves `s1`, `s2`; principals ada (`librarian` on

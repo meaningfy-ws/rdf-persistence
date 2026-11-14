@@ -95,6 +95,14 @@ Call `session.find(Scan, file_name=name)` and answer 409 when the list is not em
 Prohibitions, so check each IRI with `require_aggregate` before you show it to anyone. See
 xref:howto/adopt.adoc#files[step 10].
 
+*Who points at this resource?*::
+Check the caller with `kit.require_aggregate(..., Action.READ)`, open `kit.collaboration(checked)`
+and call `collab.referrers(iri)`. It lists the aggregates whose slots hold that IRI, one item per
+referrer and slot, with the class and slot names; `class_name` and `slot` narrow it. Referrers the
+caller may not read are counted in `hidden_count` and never named. It only informs: a delete is
+never refused because of referrers. See
+xref:howto/reverse-references.adoc[Find who points at a resource].
+
 *How do I make my own IRIs?*::
 Describe their shape as an `IriPolicy`: a template for the tenant, the aggregates, the owned parts
 and the loaded graphs (for example `{base}{tenant_id}/{type}/{id}`) and the rule for each id (a

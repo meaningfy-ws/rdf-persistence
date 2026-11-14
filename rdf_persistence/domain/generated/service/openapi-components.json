@@ -48,6 +48,31 @@
       "title": "Action",
       "type": "string"
     },
+    "AggregateHead": {
+      "additionalProperties": false,
+      "description": "The IRI, the types and the version token of one stored aggregate, without its content.",
+      "properties": {
+        "head_iri": {
+          "description": "The IRI of the stored aggregate.",
+          "format": "uri",
+          "type": "string"
+        },
+        "head_types": {
+          "description": "The class IRIs the stored aggregate is typed with.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "head_version": {
+          "description": "The version token of the stored aggregate's graph.",
+          "type": "string"
+        }
+      },
+      "title": "AggregateHead",
+      "type": "object"
+    },
     "AggregateRoot": {
       "additionalProperties": false,
       "description": "A mixin for classes whose instances are aggregate roots. Each instance is one named graph, whose IRI is derived from the root's IRI; it is versioned, loaded and saved as a whole.",
@@ -68,7 +93,7 @@
     },
     "Authorised": {
       "additionalProperties": false,
-      "description": "What a route's access check settled: the caller's principal, its access to the tenant, and the IRI of the tenant or aggregate it was checked on, which the route then acts on.",
+      "description": "What a route's access check settled: the caller's principal, its access to the tenant, and the IRI of the tenant or aggregate it was checked on, which the route then acts on, and the global roles the token granted the caller.",
       "properties": {
         "caller_access": {
           "$ref": "#/components/schemas/CallerAccess",
@@ -78,6 +103,13 @@
           "description": "The IRI of the tenant or aggregate the access check was made on, which the route acts on.",
           "format": "uri",
           "type": "string"
+        },
+        "global_roles": {
+          "description": "The system-level roles the token grants the principal.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         "principal": {
           "description": "The user account the token identifies.",
@@ -504,6 +536,30 @@
       "title": "ListRequest",
       "type": "object"
     },
+    "MemberList": {
+      "additionalProperties": false,
+      "description": "The members of a collection that the caller may read, and the number of members left out because the caller may not read them.",
+      "properties": {
+        "hidden_count": {
+          "description": "The number of referrers or members the caller may not read, so are not listed.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "member_iris": {
+          "description": "The IRIs of the members of a collection.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "hidden_count"
+      ],
+      "title": "MemberList",
+      "type": "object"
+    },
     "ModuleKind": {
       "description": "The kinds of schema module, the values of the module_kind annotation.",
       "enum": [
@@ -703,6 +759,55 @@
         "action"
       ],
       "title": "Prohibition",
+      "type": "object"
+    },
+    "Referrer": {
+      "additionalProperties": false,
+      "description": "One aggregate that points at another: its IRI, its schema class and the slot that holds the reference.",
+      "properties": {
+        "referrer": {
+          "description": "The IRI of the aggregate that holds the reference.",
+          "format": "uri",
+          "type": "string"
+        },
+        "referrer_class": {
+          "description": "The name of the schema class of the aggregate that holds the reference; its IRI when the schema does not know the class.",
+          "type": "string"
+        },
+        "referrer_slot": {
+          "description": "The name of the slot that holds the reference; its IRI when the schema does not know the slot.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "referrer",
+        "referrer_class",
+        "referrer_slot"
+      ],
+      "title": "Referrer",
+      "type": "object"
+    },
+    "ReferrerList": {
+      "additionalProperties": false,
+      "description": "The aggregates that point at one resource and that the caller may read, and the number of referrers left out because the caller may not read them.",
+      "properties": {
+        "hidden_count": {
+          "description": "The number of referrers or members the caller may not read, so are not listed.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "referrers": {
+          "description": "The aggregates that point at the resource, ordered by IRI and slot.",
+          "items": {
+            "$ref": "#/components/schemas/Referrer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "hidden_count"
+      ],
+      "title": "ReferrerList",
       "type": "object"
     },
     "RegistryEntry": {

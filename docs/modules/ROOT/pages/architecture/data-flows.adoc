@@ -219,7 +219,9 @@ tenants check only the token.
 
 A consumer's own route calls the same gate through `kit.require(authorization, t, action)` or
 `kit.require_aggregate(...)`. Code that opens `kit.session(tenant, principal)` directly is not
-checked: the session trusts its caller.
+checked: the session trusts its caller. `kit.collaboration(authorised)` is a third way in: it opens
+for a caller the gate has authorised (the answer of `kit.require…`), and it checks access itself
+on every call.
 
 [#http-or-python]
 === Over HTTP or from Python

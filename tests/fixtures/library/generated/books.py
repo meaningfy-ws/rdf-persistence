@@ -80,6 +80,19 @@ class Book(Tracked, Described, AggregateRoot):
     published: Optional[date] = Field(default=None, title="Publication date", description="The date the book was published.")
     genre: Optional[Genre] = Field(default=None, title="Genre", description="The literary genre of the book.")
     chapters: Optional[list[Chapter]] = Field(default=None, title="Chapters", description="The chapters of the book; they live in the book\u0027s graph.")
+    shelf: Optional[str] = Field(default=None, title="Shelf", description="The shelf the book stands on, another aggregate, stored as its IRI.")
+    sequel_of: Optional[str] = Field(default=None, title="Sequel of", description="The book this one follows, another aggregate, stored as its IRI.")
+    id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    label: str = Field(default=..., title="Label", description="The preferred label of the object.")
+    description: Optional[str] = Field(default=None, title="Description", description="A free-text description of the object.")
+    created: Optional[datetime ] = Field(default=None, title="Created", description="The time the graph was first committed.")
+    modified: Optional[datetime ] = Field(default=None, title="Modified", description="The time the graph was last committed.")
+    creator: Optional[str] = Field(default=None, title="Creator", description="The principal that first committed the graph.")
+    contributor: Optional[list[str]] = Field(default=None, title="Contributor", description="A principal that committed a later version of the graph.")
+
+
+class Shelf(Tracked, Described, AggregateRoot):
+    "A shelf of the library; an aggregate root that books are placed on."
     id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
     label: str = Field(default=..., title="Label", description="The preferred label of the object.")
     description: Optional[str] = Field(default=None, title="Description", description="A free-text description of the object.")
@@ -101,6 +114,7 @@ class Chapter(Described):
 class Note(Described):
     "A short note on a chapter, with a label of its own."
     text: Optional[str] = Field(default=None, title="Text", description="The text of a note.")
+    about: Optional[str] = Field(default=None, title="About", description="The book a note is about, another aggregate, stored as its IRI.")
     shade: Optional[str] = Field(default=None, title="Shade", description="The colour of the note\u0027s paper.")
     id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
     label: str = Field(default=..., title="Label", description="The preferred label of the object.")
@@ -110,5 +124,6 @@ class Note(Described):
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 Book.model_rebuild()
+Shelf.model_rebuild()
 Chapter.model_rebuild()
 Note.model_rebuild()

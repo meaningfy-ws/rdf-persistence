@@ -30,6 +30,16 @@ async def test_a_caller_with_the_action_gets_its_access_to_the_tenant(scene) -> 
     assert access.principal == principal_of("ada"), "the caller, for a domain service"
 
 
+async def test_the_global_roles_of_the_token_are_carried_on_the_authorised_model(scene) -> None:
+    token = scene.headers("ada", "admin")["Authorization"]
+    access = await scene.service.kit.require(token, tenant_id(scene), Action.MODIFY)
+    assert access.global_roles == ["admin"], "a tenant check carries the token's global roles"
+    plain = await scene.service.kit.require(
+        authorization(scene, "ada"), tenant_id(scene), Action.MODIFY
+    )
+    assert not plain.global_roles, "a token without roles carries none"
+
+
 async def test_a_request_without_a_bearer_token_is_refused(scene) -> None:
     with pytest.raises(InvalidToken):
         await scene.service.kit.require(None, tenant_id(scene), Action.READ)
@@ -66,6 +76,15 @@ async def test_an_aggregate_is_checked_and_its_iri_is_the_one_to_act_on(scene) -
     assert checked.checked_target == iri, "the aggregate the check was made on"
     assert checked.caller_access.tenant == scene.tenant_iri, "and the access to its tenant"
     assert checked.principal == principal_of("rita"), "and the caller's principal"
+
+
+async def test_an_aggregate_check_carries_the_global_roles_too(scene) -> None:
+    _, scan_id = await scanned(scene)
+    token = scene.headers("rita", "admin")["Authorization"]
+    checked = await scene.service.kit.require_aggregate(
+        token, tenant_id(scene), "scans", scan_id, Action.READ
+    )
+    assert checked.global_roles == ["admin"], "an aggregate check carries the token's global roles"
 
 
 async def test_a_prohibition_on_the_aggregate_applies(scene) -> None:

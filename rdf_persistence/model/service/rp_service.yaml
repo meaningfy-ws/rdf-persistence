@@ -216,12 +216,14 @@ classes:
     title: Authorised
     description: >-
       What a route's access check settled: the caller's principal, its access to the tenant, and the
-      IRI of the tenant or aggregate it was checked on, which the route then acts on.
+      IRI of the tenant or aggregate it was checked on, which the route then acts on, and the global
+      roles the token granted the caller.
     class_uri: rp:Authorised
     slots:
       - principal
       - caller_access
       - checked_target
+      - global_roles
     slot_usage:
       principal:
         required: true
@@ -374,6 +376,57 @@ classes:
         required: true
       active:
         required: true
+  Referrer:
+    title: Referrer
+    description: >-
+      One aggregate that points at another: its IRI, its schema class and the slot that holds the
+      reference.
+    class_uri: rp:Referrer
+    slots:
+      - referrer
+      - referrer_class
+      - referrer_slot
+    slot_usage:
+      referrer:
+        required: true
+      referrer_class:
+        required: true
+      referrer_slot:
+        required: true
+  ReferrerList:
+    title: Referrer list
+    description: >-
+      The aggregates that point at one resource and that the caller may read, and the number of
+      referrers left out because the caller may not read them.
+    class_uri: rp:ReferrerList
+    slots:
+      - referrers
+      - hidden_count
+    slot_usage:
+      referrers:
+        inlined_as_list: true
+      hidden_count:
+        required: true
+  MemberList:
+    title: Member list
+    description: >-
+      The members of a collection that the caller may read, and the number of members left out because
+      the caller may not read them.
+    class_uri: rp:MemberList
+    slots:
+      - member_iris
+      - hidden_count
+    slot_usage:
+      hidden_count:
+        required: true
+  AggregateHead:
+    title: Aggregate head
+    description: The IRI, the types and the version token of one stored aggregate, without its content.
+    class_uri: rp:AggregateHead
+    slots:
+      - head_iri
+      - head_types
+      - head_version
 
 slots:
   base:
@@ -681,6 +734,59 @@ slots:
     slot_uri: rp:hiddenGraph
     range: uri
     multivalued: true
+  referrer:
+    title: Referrer
+    description: The IRI of the aggregate that holds the reference.
+    slot_uri: rp:referrer
+    range: uri
+  referrer_class:
+    title: Referrer class
+    description: >-
+      The name of the schema class of the aggregate that holds the reference; its IRI when the
+      schema does not know the class.
+    slot_uri: rp:referrerClass
+    range: string
+  referrer_slot:
+    title: Referrer slot
+    description: >-
+      The name of the slot that holds the reference; its IRI when the schema does not know the
+      slot.
+    slot_uri: rp:referrerSlot
+    range: string
+  referrers:
+    title: Referrers
+    description: The aggregates that point at the resource, ordered by IRI and slot.
+    slot_uri: rp:referrers
+    range: Referrer
+    multivalued: true
+  hidden_count:
+    title: Hidden count
+    description: The number of referrers or members the caller may not read, so are not listed.
+    slot_uri: rp:hiddenCount
+    range: integer
+    minimum_value: 0
+  member_iris:
+    title: Member IRIs
+    description: The IRIs of the members of a collection.
+    slot_uri: rp:memberIri
+    range: uri
+    multivalued: true
+  head_iri:
+    title: Head IRI
+    description: The IRI of the stored aggregate.
+    slot_uri: rp:headIri
+    range: uri
+  head_types:
+    title: Head types
+    description: The class IRIs the stored aggregate is typed with.
+    slot_uri: rp:headType
+    range: uri
+    multivalued: true
+  head_version:
+    title: Head version
+    description: The version token of the stored aggregate's graph.
+    slot_uri: rp:headVersion
+    range: string
   filter_slot:
     title: Filter slot
     description: The name of the slot the filter is on.

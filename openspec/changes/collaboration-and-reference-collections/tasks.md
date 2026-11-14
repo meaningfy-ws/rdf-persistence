@@ -17,7 +17,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 
 ## 1. Reverse references (#78)
 
-- [ ] 1.1 Models and fixture. `rp_service.yaml`: `Authorised.global_roles`, `Referrer`,
+- [x] 1.1 Models and fixture. `rp_service.yaml`: `Authorised.global_roles`, `Referrer`,
   `ReferrerList`, `MemberList`, `AggregateHead` (PD-1, PD-2; qualified slot names). `books.yaml`: `Shelf`, `shelf`, `sequel_of`, `about`
   (PD-4); `tests/toy.py` gains `shelf(iri)`. `make generate`; refresh the model-shape snapshot
   (`make refresh-snapshot`, review the diff). `Gate.aggregate_access` and `ServiceKit.require`
@@ -29,7 +29,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-02 | `Book(shelf=s1, sequel_of=b0)` mapped and read back | the same IRIs; the generated `Shelf` has `rp_path` `shelves` |
 | TC-02a | `make generate` on the toy schema (imports `rp.yaml`'s modules) after each stage's schema change | no slot-name clash; `Grant.target` keeps `odrl:target` and `Page.items` keeps `rp:items` (assert through `metamodel().get_slot`) |
 
-- [ ] 1.2 `Collaboration` and `referrers` (PD-1, PD-3), `kit.collaboration`. Test first in
+- [x] 1.2 `Collaboration` and `referrers` (PD-1, PD-3), `kit.collaboration`. Test first in
   `tests/unit/services/test_collaboration_referrers.py`; files `services/collaboration.py`,
   `entrypoints/kit.py`, `services/vocabulary.py`.
 
@@ -48,7 +48,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-12 | bob prohibited `read` on s1, `referrers(s1)` | `Forbidden` (as `require`) |
 | TC-13 | b1's own graph names s1 in the tracking (`dcterms:creator` is about the graph) | not a referrer row |
 
-- [ ] 1.3 On Fuseki: `tests/integration/store/test_collaboration.py`; gate
+- [x] 1.3 On Fuseki: `tests/integration/store/test_collaboration.py`; gate
   `make test-containers TEST_PATH=tests/integration/store/test_collaboration.py`.
 
 | ID | Input | Expected |
@@ -56,7 +56,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | IT-01 | TC-03 and TC-04 | as there |
 | IT-02 | TC-05 | as there |
 
-- [ ] 1.4 Docs (PD-23): `howto/reverse-references.adoc`, nav, `questions.adoc` ("Who points at
+- [x] 1.4 Docs (PD-23): `howto/reverse-references.adoc`, nav, `questions.adoc` ("Who points at
   this resource?"); `make check-docs`. Close the stage (header).
 
 ## 2. Reference collections (#79)

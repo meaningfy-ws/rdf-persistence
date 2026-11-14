@@ -30,6 +30,20 @@
     required: false
     multivalued: true
     range: Principal
+- class_name: AggregateHead
+  slots:
+  - name: head_iri
+    required: false
+    multivalued: false
+    range: uri
+  - name: head_types
+    required: false
+    multivalued: true
+    range: uri
+  - name: head_version
+    required: false
+    multivalued: false
+    range: string
 - class_name: AggregateRoot
   slots: []
 - class_name: Authorised
@@ -42,6 +56,10 @@
     required: true
     multivalued: false
     range: uri
+  - name: global_roles
+    required: false
+    multivalued: true
+    range: string
   - name: principal
     required: true
     multivalued: false
@@ -106,6 +124,14 @@
     required: false
     multivalued: false
     range: date
+  - name: sequel_of
+    required: false
+    multivalued: false
+    range: Book
+  - name: shelf
+    required: false
+    multivalued: false
+    range: Shelf
 - class_name: CallerAccess
   slots:
   - name: grants
@@ -411,8 +437,22 @@
     required: false
     multivalued: false
     range: string
+- class_name: MemberList
+  slots:
+  - name: hidden_count
+    required: true
+    multivalued: false
+    range: integer
+  - name: member_iris
+    required: false
+    multivalued: true
+    range: uri
 - class_name: Note
   slots:
+  - name: about
+    required: false
+    multivalued: false
+    range: Book
   - name: description
     required: false
     multivalued: false
@@ -545,6 +585,30 @@
     required: false
     multivalued: false
     range: Activity
+- class_name: Referrer
+  slots:
+  - name: referrer
+    required: true
+    multivalued: false
+    range: uri
+  - name: referrer_class
+    required: true
+    multivalued: false
+    range: string
+  - name: referrer_slot
+    required: true
+    multivalued: false
+    range: string
+- class_name: ReferrerList
+  slots:
+  - name: hidden_count
+    required: true
+    multivalued: false
+    range: integer
+  - name: referrers
+    required: false
+    multivalued: true
+    range: Referrer
 - class_name: RegistryEntry
   slots:
   - name: graph
@@ -687,6 +751,36 @@
     required: true
     multivalued: false
     range: string
+- class_name: Shelf
+  slots:
+  - name: contributor
+    required: false
+    multivalued: true
+    range: Principal
+  - name: created
+    required: false
+    multivalued: false
+    range: datetime
+  - name: creator
+    required: false
+    multivalued: false
+    range: Principal
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: modified
+    required: false
+    multivalued: false
+    range: datetime
 - class_name: StoredFile
   slots:
   - name: byte_size

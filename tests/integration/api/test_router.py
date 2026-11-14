@@ -22,12 +22,12 @@ from tests.toy_service import (
 )
 
 LIBRARY = TOY_SCHEMA.parent
-PACKAGE = "shelflib"
-SHELVES = """
-id: https://example.org/ns/library/shelves
-name: shelves
-title: Shelves module
-description: Shelves that hold books; the shelf is an aggregate root.
+PACKAGE = "magazinelib"
+MAGAZINES = """
+id: https://example.org/ns/library/magazines
+name: magazines
+title: Magazines module
+description: Magazines the library holds; the magazine is an aggregate root.
 prefixes:
   lib: https://example.org/ns/library#
   linkml: https://w3id.org/linkml/
@@ -42,21 +42,21 @@ annotations:
   module_kind: domain
 
 classes:
-  Shelf:
-    title: Shelf
-    description: A shelf of the library; an aggregate root.
-    class_uri: lib:Shelf
+  Magazine:
+    title: Magazine
+    description: A magazine of the library; an aggregate root.
+    class_uri: lib:Magazine
     mixins: [AggregateRoot, Described, Tracked]
-    slots: [capacity]
+    slots: [issues]
     annotations:
-      rp_path: shelves
+      rp_path: magazines
       database: tenant
 
 slots:
-  capacity:
-    title: Capacity
-    description: How many books the shelf holds.
-    slot_uri: lib:capacity
+  issues:
+    title: Issues
+    description: How many issues of the magazine the library holds.
+    slot_uri: lib:issues
     range: integer
 """
 PYPROJECT = f"""
@@ -67,8 +67,8 @@ python = "generated"
 """
 
 
-def with_a_shelf(root: Path) -> tuple[Path, ModuleType]:
-    """A copy of the toy library under ``root`` whose schema also has the aggregate root ``Shelf``, generated."""
+def with_a_magazine(root: Path) -> tuple[Path, ModuleType]:
+    """A copy of the toy library under ``root`` whose schema also has the aggregate root ``Magazine``, generated."""
     project = root / PACKAGE
     shutil.copytree(
         LIBRARY,
@@ -78,9 +78,9 @@ def with_a_shelf(root: Path) -> tuple[Path, ModuleType]:
         ),
     )
     (project / "__init__.py").write_text("")
-    (project / "shelves.yaml").write_text(SHELVES)
+    (project / "magazines.yaml").write_text(MAGAZINES)
     schema = (
-        (project / "library.yaml").read_text().replace("  - scans\n", "  - scans\n  - shelves\n")
+        (project / "library.yaml").read_text().replace("  - scans\n", "  - scans\n  - magazines\n")
     )
     (project / "library.yaml").write_text(schema)
     (project / "pyproject.toml").write_text(PYPROJECT)
@@ -93,7 +93,7 @@ def with_a_shelf(root: Path) -> tuple[Path, ModuleType]:
 @pytest.fixture
 def extended_model(tmp_path: Path):
     """The extended schema and its generated package; the import is undone afterwards."""
-    schema, package = with_a_shelf(tmp_path)
+    schema, package = with_a_magazine(tmp_path)
     yield schema, package
     sys.path.remove(str(tmp_path))
     for name in [n for n in sys.modules if n == PACKAGE or n.startswith(f"{PACKAGE}.")]:
@@ -104,15 +104,17 @@ async def test_a_new_class_in_the_model_is_served_after_a_restart_with_no_code_a
     store, extended_model
 ) -> None:
     schema, package = extended_model
-    shelf = {"label": "Fiction", "description": "Novels.", "capacity": 120}
+    magazine = {"label": "Fiction", "description": "Novels.", "issues": 120}
     before = ToyService(store, prefix=unique_prefix())
     async with before.app.router.lifespan_context(before.app), before.client() as http:
         tenant = (
             await http.post("/libraries", json=TENANT_BODY, headers=before.bearer("ada"))
         ).headers["location"]
-        missing = await http.post(f"{tenant}/shelves", json=shelf, headers=before.bearer("ada"))
+        missing = await http.post(
+            f"{tenant}/magazines", json=magazine, headers=before.bearer("ada")
+        )
     await drop_databases(store, before.settings.prefix)
-    assert missing.status_code == 404, "the model has no Shelf yet, so there is no route"
+    assert missing.status_code == 404, "the model has no Magazine yet, so there is no route"
 
     after = ToyService(store, schema=schema, package=package, prefix=unique_prefix())
     try:
@@ -120,13 +122,15 @@ async def test_a_new_class_in_the_model_is_served_after_a_restart_with_no_code_a
             tenant = (
                 await http.post("/libraries", json=TENANT_BODY, headers=after.bearer("ada"))
             ).headers["location"]
-            created = await http.post(f"{tenant}/shelves", json=shelf, headers=after.bearer("ada"))
+            created = await http.post(
+                f"{tenant}/magazines", json=magazine, headers=after.bearer("ada")
+            )
             read = await http.get(created.headers["location"], headers=after.bearer("ada"))
     finally:
         await drop_databases(store, after.settings.prefix)
     assert created.status_code == 201, created.text
-    assert "/shelves/" in created.json()["id"], "the IRI is minted below the new path"
-    assert (read.status_code, read.json()["capacity"]) == (200, 120), "and the shelf is served"
+    assert "/magazines/" in created.json()["id"], "the IRI is minted below the new path"
+    assert (read.status_code, read.json()["issues"]) == (200, 120), "and the magazine is served"
 
 
 async def test_a_stale_replace_is_a_409_problem_and_the_book_is_unchanged(toy, client) -> None:

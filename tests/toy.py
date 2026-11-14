@@ -28,7 +28,7 @@ from tests.fixtures.library.generated import (
     library_tenant,
     scans,
 )
-from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note
+from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note, Shelf
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 
@@ -49,6 +49,10 @@ def toy_mapper() -> Mapper:
 
 def book_iri(n: object) -> str:
     return f"{TENANT}/books/{UUID(int=int(n))}"  # a minted aggregate IRI ends in a UUID
+
+
+def shelf_iri(n: object) -> str:
+    return f"{TENANT}/shelves/{UUID(int=int(n))}"  # a minted aggregate IRI ends in a UUID
 
 
 def graph_of(iri: str) -> str:
@@ -79,8 +83,10 @@ def held(
     return CallerAccess(tenant=TENANT, state=state, grants=list(grants) or None, prohibitions=bans)
 
 
-def dune(iri: str, *, chapters: int = 2) -> Book:
-    """A book with ``chapters`` chapters of one note each; every part gets a minted IRI."""
+def dune(iri: str, *, chapters: int = 2, **slots: str) -> Book:
+    """A book with ``chapters`` chapters of one note each; every part gets a minted IRI.
+
+    ``slots`` are more slots of the book, validated with it (for example ``shelf=...``)."""
     parts = [
         new_part(
             Chapter,
@@ -97,7 +103,13 @@ def dune(iri: str, *, chapters: int = 2) -> Book:
         genre=Genre.FICTION,
         authors=["Herbert"],
         chapters=parts or None,
+        **slots,
     )
+
+
+def shelf(iri: str) -> Shelf:
+    """A shelf with the given IRI."""
+    return Shelf(id=iri, label="Shelf", description="A shelf.")
 
 
 def access(

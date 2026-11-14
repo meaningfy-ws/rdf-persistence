@@ -13,6 +13,10 @@
       "shex": "http://www.w3.org/ns/shex#",
       "skos": "http://www.w3.org/2004/02/skos/core#",
       "@vocab": "https://example.org/ns/library#",
+      "about": {
+         "@type": "@id",
+         "@id": "about"
+      },
       "action": {
          "@id": "ODRL:action",
          "@type": "@vocab",
@@ -182,8 +186,16 @@
          "@type": "@id",
          "@id": "schema:exampleOfWork"
       },
+      "sequel_of": {
+         "@type": "@id",
+         "@id": "sequelOf"
+      },
       "sha256": {
          "@id": "rp:sha256"
+      },
+      "shelf": {
+         "@type": "@id",
+         "@id": "shelf"
       },
       "skipped_blobs": {
          "@container": "@set",
@@ -281,6 +293,9 @@
       },
       "Scan": {
          "@id": "Scan"
+      },
+      "Shelf": {
+         "@id": "Shelf"
       },
       "StoredFile": {
          "@id": "rp:StoredFile"

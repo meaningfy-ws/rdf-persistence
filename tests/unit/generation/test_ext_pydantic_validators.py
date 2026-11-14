@@ -331,7 +331,7 @@ def test_a_unique_key_name_that_is_not_an_identifier_is_refused(tmp_path: Path) 
 
 SLOT_TEXT = "    slot_uri: schema:text\n    range: string\n"
 ATTRIBUTE_END = "        range: string\n        annotations:\n          owned: false\n"
-USAGE = "    slots: [text]\n    attributes:\n"
+USAGE = "    slots: [text, about]\n    attributes:\n"
 SLOT_RULES = {
     "all_of": "all_of:\n  - range: integer\n",
     "none_of": "none_of:\n  - range: integer\n",
@@ -351,7 +351,7 @@ def planted(where: str, snippet: str) -> tuple[str, str]:
         return SLOT_TEXT, SLOT_TEXT + indented(snippet, 4)
     if where == "attribute":
         return ATTRIBUTE_END, indented(snippet, 8) + ATTRIBUTE_END
-    return USAGE, "    slots: [text]\n    slot_usage:\n      text:\n" + indented(
+    return USAGE, "    slots: [text, about]\n    slot_usage:\n      text:\n" + indented(
         snippet, 8
     ) + "    attributes:\n"
 

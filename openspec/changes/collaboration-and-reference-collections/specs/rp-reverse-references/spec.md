@@ -32,7 +32,9 @@ refused as invalid; an IRI nothing refers to SHALL give an empty result.
 
 The result SHALL list only referrers the caller may `read`, as the access check decides for the
 session's principal, and SHALL report the number of the other referring aggregates (each counted
-once, whatever its slots) as a hidden count, without their IRIs, classes or slots. A comment is
+once, whatever its slots) as a hidden count, without their IRIs, classes or slots. The hidden
+count SHALL be the same whatever class or slot the call narrows by, so that narrowing cannot
+reveal the class or slot of a hidden referrer. A comment is
 readable as a referrer only when the caller may read its target and would see it in the
 target's thread.
 
@@ -40,3 +42,8 @@ target's thread.
 - **GIVEN** two books on shelf s, and a principal holding `read` on only one of them
 - **WHEN** that principal lists the referrers of s
 - **THEN** it gets the one book it may read and a hidden count of one
+
+#### Scenario: narrowing does not change the hidden count
+- **GIVEN** two books on shelf s, and a principal holding `read` on only one of them
+- **WHEN** that principal lists the referrers of s narrowed to a class or slot the hidden book does not have
+- **THEN** it gets no hidden book's class or slot, and the hidden count is still one

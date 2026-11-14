@@ -21,6 +21,28 @@ export interface Book {
   genre?: Genre;
   /** The chapters of the book; they live in the book's graph. */
   chapters?: Chapter[];
+  /** The shelf the book stands on, another aggregate, stored as its IRI. */
+  shelf?: string;
+  /** The book this one follows, another aggregate, stored as its IRI. */
+  sequel_of?: string;
+  /** The IRI that identifies the object. */
+  id: string;
+  /** The preferred label of the object. */
+  label: string;
+  /** A free-text description of the object. */
+  description?: string;
+  /** The time the graph was first committed. */
+  created?: string;
+  /** The time the graph was last committed. */
+  modified?: string;
+  /** The principal that first committed the graph. */
+  creator?: string;
+  /** A principal that committed a later version of the graph. */
+  contributor?: string[];
+}
+
+/** A shelf of the library; an aggregate root that books are placed on. */
+export interface Shelf {
   /** The IRI that identifies the object. */
   id: string;
   /** The preferred label of the object. */
@@ -55,6 +77,8 @@ export interface Chapter {
 export interface Note {
   /** The text of a note. */
   text?: string;
+  /** The book a note is about, another aggregate, stored as its IRI. */
+  about?: string;
   /** The colour of the note's paper. */
   shade?: string;
   /** The IRI that identifies the object. */

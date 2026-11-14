@@ -21,14 +21,15 @@ from rdf_persistence.services.mapper import new_part
 from rdf_persistence.services.schema_structure import is_bookkeeping, is_internal
 from rdf_persistence.testkit.conformance import Conformance
 from rdf_persistence.testkit.strategies import aggregate
-from tests.fixtures.library.generated.books import Book, Chapter, Genre
+from tests.fixtures.library.generated.books import Book, Chapter, Genre, Shelf
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.fixtures.library.generated.scans import Scan
-from tests.toy import ADA, TENANT, TOY_SCHEMA, book_iri, dune, toy_mapper
+from tests.toy import ADA, TENANT, TOY_SCHEMA, book_iri, dune, shelf, shelf_iri, toy_mapper
 from tests.toy import access as toy_access
 
 SCHEMA = URIRef("http://schema.org/")
+LIB = "https://example.org/ns/library#"
 ROOT_CLASSES = {"Book": Book, "Scan": Scan, "Library": Library, "LibraryAccess": LibraryAccess}
 
 
@@ -165,6 +166,21 @@ def test_a_reference_to_another_aggregate_is_an_iri_not_a_node_description():
     assert (URIRef(scan.id), URIRef(f"{SCHEMA}exampleOfWork"), target) in graph
     assert (target, RDF.type, None) not in graph, "the referenced book is not described here"
     assert mapper.from_graph(Scan, scan.id, graph, graph_iri(scan.id)).scan_of == book_iri(3)
+
+
+def test_a_book_keeps_its_shelf_and_its_prequel_as_plain_references():
+    on, prequel = shelf(shelf_iri(1)).id, book_iri(1)
+    book = dune(book_iri(2)).model_copy(update={"shelf": on, "sequel_of": prequel})
+    mapper = toy_mapper()
+    graph = mapper.to_graph(book)
+    assert (URIRef(book.id), URIRef(f"{LIB}shelf"), URIRef(on)) in graph, (
+        "the shelf is a plain link"
+    )
+    assert (URIRef(on), RDF.type, None) not in graph, "the shelf is not described here"
+    back = mapper.from_graph(Book, book.id, graph, graph_iri(book.id))
+    assert (back.shelf, back.sequel_of) == (on, prequel), "the same IRIs come back"
+    path = mapper.view.get_class(Shelf.__name__).annotations["rp_path"].value
+    assert path == "shelves", "the shelf is a root with its own collection path"
 
 
 def test_a_grant_assignee_that_is_an_iri_string_is_written_and_read_as_an_iri():

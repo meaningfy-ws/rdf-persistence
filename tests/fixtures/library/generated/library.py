@@ -61,7 +61,8 @@ from .books import (
     Book,
     Chapter,
     Genre,
-    Note
+    Note,
+    Shelf
 )
 from .library_access import LibraryAccess
 from .library_tenant import Library
