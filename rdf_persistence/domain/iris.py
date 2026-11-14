@@ -363,6 +363,7 @@ class Iris:
             object.__setattr__(self, name, value)
         self._require_application_iri()
         self._require_distinct_graphs()
+        self._require_application_apart()
 
     def __setattr__(self, name: str, value: object) -> None:
         raise AttributeError(f"Iris is frozen: cannot set {name!r}")
@@ -522,6 +523,54 @@ class Iris:
                     raise InvalidIri(
                         f"the {name} template mints an IRI that reads as an aggregate: {iri!r}"
                     )
+
+    def _require_application_apart(self) -> None:
+        """Refuse templates under which the application's IRIs read as a tenant's, or a tenant as the application's (D-4).
+
+        Raises:
+            InvalidIri: an aggregate, part or loaded graph of the application matches the tenant
+                template, or a tenant is taken as an aggregate or loaded graph of the application.
+        """
+        refusal = "the application's IRIs read as a tenant's under these templates"
+        for iri in self._application_probes():
+            if self._tenant_re.fullmatch(iri):
+                raise InvalidIri(f"{refusal}: {iri!r}")
+        tenant, application = self._probe_tenant(), str(self.application)
+        if tenant is not None and (
+            self.is_aggregate(application, tenant) or self.is_loaded_graph(application, tenant)
+        ):
+            raise InvalidIri(f"{refusal}: the tenant {str(tenant)!r} is one of its aggregates")
+
+    def _application_probes(self) -> list[str]:
+        """One aggregate, part and loaded graph of the application per type the templates write (ids from ``draw_id``, like ``_probe_tenant``)."""
+        application, spec = str(self.application), self._object_spec
+        aggregates = [
+            str(self._aggregate(application, kind, "probe", draw_id(spec)))
+            for kind in self._probe_types("aggregate_template", self.root_types)
+        ]
+        root = aggregates[0] if aggregates else application
+        parts = [
+            self._fill(
+                self._template("part_template"),
+                tenant=application,
+                root=root,
+                type=kind,
+                id=draw_id(spec),
+            )
+            for kind in self._probe_types("part_template", self.owned_types)
+        ]
+        loaded = self._fill(
+            self._template("loaded_graph_template"),
+            tenant=application,
+            root=root,
+            type=LOADED_GRAPH_TYPE,
+            id=draw_id(spec),
+        )
+        return [*aggregates, *map(str, parts), str(loaded)]
+
+    def _probe_types(self, slot: str, types: frozenset[str]) -> frozenset[str]:
+        """The ``{type}`` values a template is probed with: its class types, or one empty type when it writes none."""
+        return types if "{type}" in self._template(slot) else frozenset({""})
 
     def _probe_tenant(self) -> URIRef | None:
         for _ in range(_MAX_RESERVED_REDRAWS):

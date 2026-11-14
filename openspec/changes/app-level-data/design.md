@@ -321,6 +321,18 @@ field is a `str` (PD-9), and the how-to shows the correct call.
 - **D-1** (lead, 2026-11-14): one stage, one PR into `develop`. The full MEDIUM review set: lenses
   L1, L2, L3 and one pass for L4 with L5 (repository rule), a checker, and the adversarial tester
   right after task 2.1 (the `Iris` change adds the invariants every other task relies on).
+- **D-4** (lead, 2026-11-14; accepted finding of the adversarial tester after task 2.1). RISK-5 was
+  wrong for one family of policies: with `application_template: "{base}{tenant_segment}"` and
+  `aggregate_template: "{tenant}/{id}"`, an aggregate of `A` is `{base}tenants/<uuid>`, which
+  `tenant_id_of` accepts as a tenant, and a real tenant passes `is_aggregate(A, tenant)`. Decision,
+  an addition to PD-3: `Iris.__init__` runs one more check, last, `_require_application_apart`,
+  and raises `InvalidIri("the application's IRIs read as a tenant's under these templates: …")`
+  when (a) an aggregate, a part or a loaded graph minted for `A` (one probe each; for a template
+  that writes `{type}`, one probe per root or owned type, and none when there is no such type)
+  fully matches `_tenant_re`, or (b) the probe tenant of `_probe_tenant`, when one can be drawn, is
+  accepted by `is_aggregate(A, tenant)` or `is_loaded_graph(A, tenant)`. The three failing tests of
+  `tests/unit/domain/test_iris_application_adversarial.py` then expect the refusal. RISK-5 now
+  reads: accepted only for policies this check lets through.
 - **D-3** (developer, 2026-11-14): the impact check rates the change to `Iris._belongs` and
   `Iris._fill` CRITICAL (every route, dump and restore runs through them). Asked before the build,
   the developer answered "Build it": PD-3 as planned, the adversarial tester right after task 2.1.
