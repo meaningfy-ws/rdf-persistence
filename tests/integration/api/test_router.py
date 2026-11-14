@@ -161,6 +161,32 @@ async def test_one_isbn_is_free_in_each_tenant_and_taken_within_one(toy, client)
     assert answers[2].json()["type"].endswith("problems/key-conflict"), "its own problem type"
 
 
+REVIEW = "https://example.org/ns/library/workflows/review/"
+
+
+async def test_a_put_cannot_change_the_state_of_a_book_and_keeps_it_when_omitted(
+    toy, client
+) -> None:  # IT-09, TC-78
+    created = await make_book(toy, client)
+    book, etag = created.headers["location"], created.headers["etag"]
+    assert created.json()["workflow_status"] == f"{REVIEW}draft", "a new book is in draft"
+    refused = await client.put(
+        book,
+        json={**DUNE_BODY, "workflow_status": f"{REVIEW}accepted"},
+        headers={**toy.bearer("ada"), "If-Match": etag},
+    )
+    assert refused.status_code == 403, refused.text
+    reread = await client.get(book, headers=toy.bearer("ada"))
+    assert reread.json()["workflow_status"] == f"{REVIEW}draft", "the book is still in draft"
+    assert reread.headers["etag"] == etag, "and its version is unchanged"
+    kept = await client.put(
+        book,
+        json={**DUNE_BODY, "label": "Dune Messiah"},
+        headers={**toy.bearer("ada"), "If-Match": etag},
+    )
+    assert (kept.status_code, kept.json()["workflow_status"]) == (200, f"{REVIEW}draft"), kept.text
+
+
 async def test_two_replaces_in_flight_leave_exactly_one_winner(toy, client) -> None:
     created = await make_book(toy, client)
     book, etag = created.headers["location"], created.headers["etag"]

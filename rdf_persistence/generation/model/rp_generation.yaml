@@ -947,6 +947,13 @@ enums:
           The `rp_path` and `rp_iri_type` of an application class do not start with `rp-`, the prefix
           of the toolkit's own roots.
         meaning: rp:HardRuleReservedSegment
+      workflow:
+        title: Workflow
+        description: >-
+          The `workflow` annotation is on an aggregate root that is not the tenant root and includes
+          `UnderWorkflow`, and every concrete root that includes `UnderWorkflow` has the annotation,
+          its own or inherited.
+        meaning: rp:HardRuleWorkflow
   BoundaryRule:
     title: Boundary rule
     description: The rules of the boundary check; a problem line starts with its rule.

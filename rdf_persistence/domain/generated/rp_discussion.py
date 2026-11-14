@@ -80,6 +80,8 @@ class Comment(Tracked, AggregateRoot):
     comment_audience: Optional[list[str]] = Field(default=None, title="Comment audience", description="The names of the roles that may see the comment; none means everyone who may read the aggregate.")
     comment_references: Optional[list[str]] = Field(default=None, title="Comment references", description="The IRIs of other aggregates the comment points to.")
     replies_to: Optional[str] = Field(default=None, title="Replies to", description="The IRI of the comment this one answers.")
+    from_state_iri: Optional[str] = Field(default=None, title="From state IRI", description="The IRI of the state an aggregate left, on the comment a transition posted and on the transition\u0027s record. Defined here, so that the workflow module, which imports this one, uses it too. A state name in a workflow file is another thing: it has no IRI.")
+    to_state_iri: Optional[str] = Field(default=None, title="To state IRI", description="The IRI of the state an aggregate entered, on the comment a transition posted and on the transition\u0027s record. Defined here beside from_state_iri.")
     created: Optional[datetime ] = Field(default=None, title="Created", description="The time the graph was first committed.")
     modified: Optional[datetime ] = Field(default=None, title="Modified", description="The time the graph was last committed.")
     creator: Optional[str] = Field(default=None, title="Creator", description="The principal that first committed the graph.")

@@ -197,7 +197,7 @@ error; run it again.
 |`tests/integration/store/test_collaboration.py::test_a_cascade_of_the_most_members_a_commit_holds_is_one_request` |1 |Cascade ≈ 6.7 s (one run) |2026-11-14, collaboration-and-reference-collections stage 2 review round
 |A shelf naming 499 stored books (`DEFAULT_MAX_ROOTS` - 1, with the shelf exactly the limit), deleted in one update request on real Fuseki. Printed, not asserted. Marked `slow`.
 
-|`tests/integration/store/test_collaboration.py::test_a_target_with_many_comments_is_removed_with_them_in_one_request` (IT-07, TC-63) |1 |Remove ≈ 0.28 s (one run); the whole test ≈ 3 s with the 600 comments seeded in 6 commits of 100; the file's 20 tests ≈ 32 s with container start-up |2026-11-14, collaboration-and-reference-collections stage 3
+|`tests/integration/store/test_collaboration.py::test_a_target_with_many_comments_is_removed_with_them_in_one_request` (IT-07, TC-63) |1 |Remove ≈ 0.28 s (one run); the whole test ≈ 3 s with the 600 comments seeded in 6 commits of 100; the file's 26 tests ≈ 37 s with container start-up (20 tests ≈ 32 s before stage 4) |2026-11-14, collaboration-and-reference-collections stage 4
 |A book with 600 comments removed in one update request on real Fuseki, comments and registry entries included. Printed, not asserted. Marked `slow`.
 
 |`tests/integration/store/test_dependents_cost.py` (PD-30 item 6) |1 |Median remove of one of 5 000 books, no comment: without the drop of the dependents 0.051 s, 0.054 s, 0.058 s; with it, registry first (the old order) 0.075 s, 0.085 s, 0.079 s; link first (the new order) 0.057 s, 0.052 s, 0.060 s (three runs, five removes each); the test ≈ 15 s with container start-up |2026-11-14, collaboration-and-reference-collections stage 3 review round

@@ -966,6 +966,7 @@
         "rp_iri_type",
         "rp_unlabelled",
         "rp_writes",
+        "workflow",
         "bookkeeping",
         "rp_unique_scope"
       ],

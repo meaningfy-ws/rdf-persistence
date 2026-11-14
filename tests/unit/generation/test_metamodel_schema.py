@@ -47,6 +47,16 @@ def test_database_name_is_internal() -> None:
         (MODEL / "rp.yaml", "Comment", "comment_audience", "rp:audience"),
         (MODEL / "rp.yaml", "Comment", "comment_references", "dcterms:references"),
         (MODEL / "rp.yaml", "Comment", "replies_to", "rp:repliesTo"),
+        (MODEL / "rp.yaml", "Comment", "from_state_iri", "rp:fromState"),
+        (MODEL / "rp.yaml", "Comment", "to_state_iri", "rp:toState"),
+        (MODEL / "rp.yaml", "TransitionRecord", "from_state_iri", "rp:fromState"),
+        (MODEL / "rp.yaml", "TransitionRecord", "to_state_iri", "rp:toState"),
+        (MODEL / "rp.yaml", "TransitionRecord", "used_resource", "prov:used"),
+        (MODEL / "rp.yaml", "TransitionRecord", "started_at_time", "prov:startedAtTime"),
+        (MODEL / "rp.yaml", "TransitionRecord", "transition_comment", "rp:transitionComment"),
+        (MODEL / "rp.yaml", "TransitionRecord", "was_associated_with", "prov:wasAssociatedWith"),
+        (MODEL / "rp.yaml", "UnderWorkflow", "workflow_status", "ADMS:status"),
+        (LIBRARY / "library.yaml", "Book", "workflow_status", "ADMS:status"),
     ],
 )
 def test_a_slot_name_shared_across_the_imports_keeps_its_own_predicate(

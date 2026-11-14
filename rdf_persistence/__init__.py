@@ -23,6 +23,7 @@ from rdf_persistence.domain.exceptions import (
     InvalidIri,
     InvalidRoleDefinition,
     InvalidToken,
+    InvalidWorkflow,
     KeyConflict,
     NotAcceptable,
     NotFound,
@@ -88,6 +89,12 @@ from rdf_persistence.domain.generated.rp_tenancy import (
     TenantState,
     TenantSweepReport,
 )
+from rdf_persistence.domain.generated.rp_workflow import (
+    TransitionRecord,
+    UnderWorkflow,
+    Workflow,
+    WorkflowTransition,
+)
 from rdf_persistence.domain.generated.service.rp_service import (
     AccountSummary,
     Authorised,
@@ -124,6 +131,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
         load_caller_access,
         load_role_definitions,
     )
+    from rdf_persistence.services.collaboration import Collaboration
     from rdf_persistence.services.file_removal import remove_with_files
     from rdf_persistence.services.files import FileStore
     from rdf_persistence.services.identity import Identity
@@ -136,6 +144,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.services.tenancy import GrantValidator, RootValidator, Tenancy
     from rdf_persistence.services.tenant_sweep import sweep_tenant
     from rdf_persistence.services.tokens import TokenVerifier
+    from rdf_persistence.services.workflows import Workflows
 
 __version__ = version("rdf-persistence")
 
@@ -171,6 +180,8 @@ _LAZY_MODULES = {
     "Tenancy": f"{_SERVICES}.tenancy",
     "GrantValidator": f"{_SERVICES}.tenancy",
     "RootValidator": f"{_SERVICES}.tenancy",
+    "Collaboration": f"{_SERVICES}.collaboration",
+    "Workflows": f"{_SERVICES}.workflows",
 }
 
 
@@ -194,6 +205,7 @@ __all__ = [
     "BadQuery",
     "BlobEntry",
     "CallerAccess",
+    "Collaboration",
     "Comment",
     "CommitMarker",
     "CommitTooLarge",
@@ -221,6 +233,7 @@ __all__ = [
     "InvalidGrant",
     "InvalidRoleDefinition",
     "InvalidToken",
+    "InvalidWorkflow",
     "IriPolicy",
     "Iris",
     "JwksTokenVerifier",
@@ -277,11 +290,16 @@ __all__ = [
     "TenantSummary",
     "TokenVerifier",
     "Tracked",
+    "TransitionRecord",
+    "UnderWorkflow",
     "UniqueScope",
     "UnitOfWork",
     "UnknownRole",
     "UnsupportedMediaType",
     "VerifiedCaller",
+    "Workflow",
+    "WorkflowTransition",
+    "Workflows",
     "WritesKind",
     "ZitadelIdentity",
     "generated_models",

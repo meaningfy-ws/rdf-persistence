@@ -13,6 +13,7 @@ from rdf_persistence.domain.generated import (
     rp_core,
     rp_discussion,
     rp_tenancy,
+    rp_workflow,
 )
 from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_core import Principal
@@ -31,7 +32,7 @@ from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.services.artifacts import CONTEXT_FILE
 from rdf_persistence.services.collaboration import Collaboration
-from rdf_persistence.services.discussion import dependents
+from rdf_persistence.services.discussion import dependents as discussion_dependents
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.identity import Identity
@@ -43,6 +44,8 @@ from rdf_persistence.services.session import Session
 from rdf_persistence.services.store import Store, ToolkitStore
 from rdf_persistence.services.tenancy import GrantValidator, RootValidator, Tenancy
 from rdf_persistence.services.tokens import TokenVerifier
+from rdf_persistence.services.transitions import dependents as transition_dependents
+from rdf_persistence.services.workflows import Workflows
 from rdf_persistence.services.write_guards import WriteGuards
 
 
@@ -68,8 +71,13 @@ class ServiceKit:
         id_source: IdSource = draw_id,
         grant_validators: Sequence[GrantValidator] = (),
         root_validators: Sequence[RootValidator] = (),
+        workflows: Sequence[Path] = (),
     ) -> None:
-        """Build the kit; ``prefix``, ``id_source`` and the validators are ``install_service``'s arguments of those names."""
+        """Build the kit; ``prefix``, ``id_source``, the validators and ``workflows`` are ``install_service``'s arguments of those names.
+
+        Raises:
+            InvalidWorkflow: A workflow file is not valid, or a class names a workflow no file defines.
+        """
         view = load_schema(schema)
         self.view = view
         self.listings = Listings(view)
@@ -93,10 +101,11 @@ class ServiceKit:
         self.documents = Documents(view, self.generated_folder, self.iris)
         self.documents.require_frames()
         models = generated_models_of(
-            generated, rp_access, rp_core, rp_tenancy, rp_collections, rp_discussion
+            generated, rp_access, rp_core, rp_tenancy, rp_collections, rp_discussion, rp_workflow
         )
         mapper = Mapper(view, models)
         self.mapper, self.models = mapper, models
+        self.workflows = Workflows.from_files(workflows, view, self.rules)
         access_class = cast(type[TenantAccess], models.named(tenant_access_class(view).name))
         self.tenancy = Tenancy(
             self.store,
@@ -107,10 +116,10 @@ class ServiceKit:
             access_class=access_class,
             iris=self.iris,
             listings=self.listings,
-            guards=WriteGuards(mapper, models, self.listings),
+            guards=WriteGuards(mapper, models, self.listings, self.workflows),
             grant_validators=grant_validators,
             root_validators=root_validators,
-            dependents=dependents(view),
+            dependents=(*discussion_dependents(view), *transition_dependents(view)),
         )
         self.aggregates = Aggregates(self.documents, self.tenancy, self.iris)
 
@@ -222,7 +231,8 @@ class ServiceKit:
         The archive must come from a service with the same schema and IRI policy, and may hold at most
         ``settings.max_restore_bytes`` once decompressed. Restore only an archive your own deployment wrote, or one
         from a party you trust as much as a tenant creator: the restore checks the archive's structure (its graph
-        names, its root, its blob keys), not each object against its shapes. Nothing is created if it is refused,
+        names, its root, its blob keys), not each object against its shapes, and not the workflow rule: the states
+        of the aggregates and their transition records are restored as they were dumped. Nothing is created if it is refused,
         and nothing is left if the restore fails. There is no tenant yet, so ``require`` cannot guard it: verify the
         caller with ``gate.caller``, apply the consumer's own rule on who may create a tenant, and pass
         ``caller.principal`` as ``creator``. Reading ``src`` blocks (a synchronous file or buffer): run the call off
@@ -286,6 +296,7 @@ class ServiceKit:
                 listings=self.listings,
                 caller=caller,
                 access=access,
+                workflows=self.workflows,
             )
 
     def session(self, tenant: str, principal: str) -> AbstractAsyncContextManager[Session]:

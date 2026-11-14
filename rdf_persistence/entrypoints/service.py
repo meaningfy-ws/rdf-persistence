@@ -40,6 +40,7 @@ def install_service(
     id_source: IdSource = draw_id,
     grant_validators: Sequence[GrantValidator] = (),
     root_validators: Sequence[RootValidator] = (),
+    workflows: Sequence[Path] = (),
 ) -> ServiceKit:
     """Serve the application's schema on ``app``: its routes, its problem responses, its start-up.
 
@@ -59,6 +60,10 @@ def install_service(
     ``grant_validators`` and ``root_validators`` are the consumer's own rules on tenant writes: each
     refuses a write by raising ``InvalidBody`` (422), before anything is written (see ``Tenancy``).
 
+    ``workflows`` are the paths of the workflow files, one per workflow, that the classes of the schema
+    name with the ``workflow`` annotation. They are checked here, so a bad file stops the service
+    before it serves.
+
     Returns the kit the routes share, for the consumer's own routes: its ``tenancy``, ``store``,
     ``files`` and ``identity``, and ``require`` and ``require_aggregate``, the token and access check
     of the toolkit's routes.
@@ -68,6 +73,8 @@ def install_service(
             say (build it with ``iris=Iris(settings)``).
         InvalidRoleDefinition: ``rules`` is a file that is not a valid list of role definitions;
             the message names the entry.
+        InvalidWorkflow: A workflow file is not valid, or a class of the schema names a workflow no
+            file defines; the message names the file or the workflow and the element.
         IriPolicyChanged: (at start-up) ``settings.iri_policy`` differs from the recorded policy.
         LookupError: The schema has no tenant root class, or no (or several) access record classes.
         OSError: The generated folder lacks the context, the shapes, a frame or the OpenAPI components.
@@ -87,6 +94,7 @@ def install_service(
         id_source=id_source,
         grant_validators=grant_validators,
         root_validators=root_validators,
+        workflows=workflows,
     )
     _require_same_principals(kit)
     install_problem_handlers(app, settings.base)

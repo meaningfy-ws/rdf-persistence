@@ -81,6 +81,12 @@ from .rp_tenancy import (
     TenantState,
     TenantSweepReport
 )
+from .rp_workflow import (
+    TransitionRecord,
+    UnderWorkflow,
+    Workflow,
+    WorkflowTransition
+)
 
 
 metamodel_version = "1.12.0"

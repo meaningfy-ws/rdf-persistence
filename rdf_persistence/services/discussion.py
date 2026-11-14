@@ -10,9 +10,11 @@ import math
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from collections.abc import Set as AbstractSet
-from datetime import UTC
+from datetime import UTC, datetime
 
+from linkml_runtime.linkml_model.meta import ClassDefinition
 from linkml_runtime.utils.schemaview import SchemaView
+from pydantic import BaseModel
 from rdflib import RDF, Graph, URIRef
 
 from rdf_persistence.domain.exceptions import InvalidBody, InvalidIri, NotFound, UnknownRole
@@ -24,7 +26,11 @@ from rdf_persistence.domain.iris import Iris, graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.mapper import Mapper
-from rdf_persistence.services.schema_structure import annotation_text, iri_type_of
+from rdf_persistence.services.schema_structure import (
+    annotation_text,
+    iri_type_of,
+    is_toolkit_written,
+)
 from rdf_persistence.services.session import Dependents, ReferrerRow, Session
 
 COMMENT = "Comment"
@@ -36,6 +42,31 @@ def dependents(view: SchemaView) -> Dependents:
     None for a schema that does not import the discussion module.
     """
     return ((v.ANNOTATION, v.HAS_TARGET),) if view.get_class(COMMENT) else ()
+
+
+def mint_iri(cls: ClassDefinition, iris: Iris, tenant: str) -> str:
+    """A fresh aggregate IRI in ``tenant`` for the toolkit-written class ``cls``, from its ``rp_path`` and type.
+
+    Raises:
+        LookupError: ``cls`` has no ``rp_path``.
+    """
+    path = annotation_text(cls, RpAnnotation.RP_PATH)
+    if path is None:
+        raise LookupError(f"the class {cls.name} has no rp_path")
+    return str(iris.mint_aggregate(tenant, iri_type_of(cls), path))
+
+
+def decode_typed[M: BaseModel](
+    mapper: Mapper, model: type[M], type_iri: URIRef, iri: str, graph: Graph
+) -> M | None:
+    """The ``model`` at the root ``iri`` of ``graph``, or None when the root is not typed ``type_iri``
+    or the class refuses the triples (a foreign aggregate that borrows the type)."""
+    if (URIRef(iri), RDF.type, type_iri) not in graph:
+        return None
+    try:
+        return mapper.from_graph(model, iri, graph, graph_iri(iri))
+    except ValueError:  # pydantic's refusal of the triples
+        return None
 
 
 def visible(comments: Iterable[Comment], roles: AbstractSet[str]) -> list[Comment]:
@@ -79,11 +110,14 @@ def _climb(
         node = parent
 
 
+def moment_of(when: datetime | None) -> float:
+    """A time as a number to sort by: one without a zone is read as UTC, none comes first."""
+    return when.replace(tzinfo=when.tzinfo or UTC).timestamp() if when else -math.inf
+
+
 def _oldest_first(comment: Comment) -> tuple[float, str]:
-    """The sort key of a thread: the time (a naive one read as UTC, none first), then the IRI."""
-    created = comment.created
-    moment = created.replace(tzinfo=created.tzinfo or UTC).timestamp() if created else -math.inf
-    return moment, comment.id
+    """The sort key of a thread: the time, then the IRI."""
+    return moment_of(comment.created), comment.id
 
 
 class Discussion:
@@ -107,6 +141,12 @@ class Discussion:
         self._mapper = mapper
         self._caller = caller
         self._access = access
+        # the classes the toolkit writes, other than the web annotation an application may write too
+        self._written = {
+            view.get_uri(c, expand=True)
+            for c in view.all_classes().values()
+            if is_toolkit_written(c)
+        } - {str(v.ANNOTATION)}
 
     async def comment(
         self,
@@ -198,10 +238,15 @@ class Discussion:
             raise LookupError("the schema does not import the module rp_discussion")
 
     async def _require_commentable(self, iri: str) -> None:
-        """The aggregate exists and is not itself a comment: an annotation the application wrote takes one."""
+        """The aggregate exists and is not a comment or another toolkit-written aggregate (a transition
+        record): an annotation the application wrote takes one."""
         graph, _, _ = await self._session.get_graph(iri)
-        if self._decode(iri, graph) is not None:
-            raise InvalidIri(f"{iri} is a comment; it takes no comment")
+        if self._decode(iri, graph) is not None or self._toolkit_written(iri, graph):
+            raise InvalidIri(f"{iri} is written by the toolkit; it takes no comment")
+
+    def _toolkit_written(self, iri: str, graph: Graph) -> bool:
+        """True when the root is typed with a toolkit-written class other than the web annotation."""
+        return any(str(t) in self._written for t in graph.objects(URIRef(iri), RDF.type))
 
     def _require_valid(self, text: str, audience: Sequence[str], references: Sequence[str]) -> None:
         if not text.strip():
@@ -219,13 +264,7 @@ class Discussion:
         references: Sequence[str],
         reply_to: str | None,
     ) -> str:
-        comment_class = self._view.get_class(COMMENT)
-        path = annotation_text(comment_class, RpAnnotation.RP_PATH)
-        if path is None:
-            raise LookupError(f"the class {COMMENT} has no rp_path")
-        minted = str(
-            self._iris.mint_aggregate(self._access.tenant, iri_type_of(comment_class), path)
-        )
+        minted = mint_iri(self._view.get_class(COMMENT), self._iris, self._access.tenant)
         model = Comment(
             id=minted,
             has_target=iri,
@@ -243,9 +282,4 @@ class Discussion:
     def _decode(self, iri: str, graph: Graph) -> Comment | None:
         """The comment at ``iri``, or None for a root that is not one: not typed as a web annotation,
         or another's annotation that the comment class refuses (no text, no motivation; PD-29)."""
-        if (URIRef(iri), RDF.type, v.ANNOTATION) not in graph:
-            return None
-        try:
-            return self._mapper.from_graph(Comment, iri, graph, graph_iri(iri))
-        except ValueError:  # pydantic's refusal of the triples
-            return None
+        return decode_typed(self._mapper, Comment, v.ANNOTATION, iri, graph)

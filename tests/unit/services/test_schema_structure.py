@@ -37,6 +37,7 @@ from rdf_persistence.services.schema_structure import (
     keyed_slots,
     presence_alternatives,
     served_roots,
+    workflow_name_of,
 )
 
 ROOT = Path(__file__).parents[3]
@@ -414,6 +415,18 @@ def test_the_comment_still_has_an_iri_type_the_policy_mints_and_recognises() -> 
     assert "rp-comment" in roots, "the IRI policy mints and recognises comment IRIs"
 
 
+def test_the_transition_record_is_no_served_root() -> None:
+    """The record is written by the toolkit alone, so no route or listing serves it (PD-16)."""
+    served = [root.name for root in served_roots(load_schema(TOY))]
+    assert "TransitionRecord" not in served, "no generic route for a transition record"
+    assert "Book" in served, "the workflow mixin changes nothing for the book's route"
+
+
+def test_the_transition_record_has_an_iri_type_the_policy_mints_and_recognises() -> None:
+    roots, _ = iri_types(load_schema(TOY))
+    assert "rp-transition" in roots, "the IRI policy mints and recognises record IRIs"
+
+
 TOOLKIT_WRITTEN = (
     HEAD
     + """
@@ -434,6 +447,49 @@ def test_a_root_the_toolkit_writes_is_no_served_root_but_keeps_its_iri_type() ->
     view = SchemaView(TOOLKIT_WRITTEN)
     assert [root.name for root in served_roots(view)] == ["Book"], "the note is not served"
     assert iri_types(view)[0] == {"note", "book"}, "but its IRIs are minted and recognised"
+
+
+WORKFLOWS = (
+    HEAD
+    + """
+classes:
+  Item:
+    title: Item
+    description: A base that names a workflow.
+    annotations: {workflow: review}
+  Novel:
+    title: Novel
+    description: Inherits it.
+    is_a: Item
+  Essay:
+    title: Essay
+    description: Names its own.
+    is_a: Item
+    annotations: {workflow: other}
+  Blank:
+    title: Blank
+    description: A blank annotation counts for nothing.
+    is_a: Item
+    annotations: {workflow: ""}
+  Plain:
+    title: Plain
+    description: Names none.
+"""
+)
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("Item", "review"),
+        ("Novel", "review"),
+        ("Essay", "other"),
+        ("Blank", "review"),
+        ("Plain", None),
+    ],
+)
+def test_the_workflow_of_a_class_is_the_first_name_up_its_is_a_chain(name, expected) -> None:
+    assert workflow_name_of(SchemaView(WORKFLOWS), name) == expected, name
 
 
 def test_a_root_under_a_system_database_ancestor_is_no_served_root() -> None:

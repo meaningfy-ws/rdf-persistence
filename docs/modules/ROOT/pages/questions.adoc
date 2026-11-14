@@ -121,6 +121,15 @@ answer another comment, and reference other aggregates. Deleting an aggregate de
 comments on it. See
 xref:howto/discussion.adoc[Comment on a resource without editing it].
 
+*How do I put a resource through review?*::
+Give its class a workflow: a YAML file of states and transitions, each transition with the roles
+that may make it. Mix `UnderWorkflow` (module `rp_workflow`) into the aggregate root, name the
+workflow in the class annotation `workflow`, and pass the file to `install_service` with
+`workflows=`. A new aggregate starts in the initial state; a plain write cannot change the state.
+`collab.transition(iri, to, if_version=...)` moves it, if the caller holds one of the transition's
+roles, and records the move; `collab.transitions(iri)` reads the history. See
+xref:howto/workflow.adoc[Put a resource through review].
+
 *How do I make my own IRIs?*::
 Describe their shape as an `IriPolicy`: a template for the tenant, the aggregates, the owned parts
 and the loaded graphs (for example `{base}{tenant_id}/{type}/{id}`) and the rule for each id (a

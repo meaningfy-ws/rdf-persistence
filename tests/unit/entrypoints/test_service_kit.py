@@ -27,7 +27,7 @@ from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.services.vocabulary import ANNOTATION, HAS_TARGET
 from rdf_persistence.testkit import FakeStore
 from tests.fixtures.library import generated
-from tests.toy import ROLES, SETTINGS, TOY_SCHEMA
+from tests.toy import REVIEW_WORKFLOW, ROLES, SETTINGS, TOY_SCHEMA
 from tests.toy_service import CONSUMER_POLICY, DUNE_BODY, TENANT_BODY, ToyService, principal_of
 
 PROBLEMS = f"{SETTINGS.base}problems/"
@@ -245,6 +245,7 @@ def installed(app: FastAPI, toy: ToyService, **changes) -> FastAPI:
         "verifier": toy.kit.verifier,
         "rules": toy.kit.rules,
         "settings": toy.settings,
+        "workflows": [REVIEW_WORKFLOW],
     }
     install_service(app, **{**wiring, **changes})
     return app
@@ -544,3 +545,21 @@ async def test_a_reviewer_who_comments_is_still_refused_the_modify_of_the_book(s
         await scene.service.kit.require_aggregate(
             scene.headers("rita")["Authorization"], tenant_id, "books", book_id, Action.MODIFY
         )
+
+
+async def test_a_transition_through_the_kit_records_the_caller_as_its_agent(scene) -> None:
+    tenant_id = scene.tenant.rsplit("/", 1)[1]
+    authorised = await scene.service.kit.require(
+        scene.headers("ada")["Authorization"], tenant_id, Action.READ
+    )
+    async with scene.service.kit.session(scene.tenant_iri, "ada") as session:
+        version = (await session.get_graph(scene.book_iri))[2]
+    async with scene.service.kit.collaboration(authorised) as collaboration:
+        await collaboration.transition(
+            scene.book_iri, "in_review", if_version=version, comment="ready"
+        )
+        [record] = await collaboration.transitions(scene.book_iri)
+        [ready] = await collaboration.thread(scene.book_iri)
+    assert record.was_associated_with == [principal_of("ada")], "the caller is the agent"
+    assert record.transition_comment == ready.id, "the record names the comment of the thread"
+    assert record.to_state_iri.endswith("/in_review"), "the book moved to review"

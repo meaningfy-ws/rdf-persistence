@@ -195,7 +195,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 
 ## 4. Workflow (#80)
 
-- [ ] 4.1 `model/rp_workflow.yaml` (PD-16), `from_state_iri`/`to_state_iri` on `Comment`, the
+- [x] 4.1 `model/rp_workflow.yaml` (PD-16), `from_state_iri`/`to_state_iri` on `Comment`, the
   kit's `generated_models_of` gains `rp_workflow` (PD-1), TC-02a re-run,
   `RpAnnotation.workflow` and the `WORKFLOW` hard rule (PD-18); the toy `Book` mixes in
   `UnderWorkflow` and is annotated `workflow: review`; `tests/fixtures/library/review.workflow.yaml`
@@ -210,7 +210,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-68 | subclass of an annotated root | no problem (inherited) |
 | TC-68a | the tenant root class annotated `workflow: review` | hard problem `WORKFLOW` |
 
-- [ ] 4.2 `services/workflows.py` (PD-17), `InvalidWorkflow`, `ServiceKit(workflows=)`,
+- [x] 4.2 `services/workflows.py` (PD-17), `InvalidWorkflow`, `ServiceKit(workflows=)`,
   `install_service(workflows=)`. Test first in `tests/unit/services/test_workflows.py`.
 
 | ID | Input | Expected |
@@ -223,7 +223,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-74 | `Book` annotated, no workflow files given to the kit | kit construction raises `InvalidWorkflow` |
 | TC-75 | not YAML; a list instead of a mapping; `workflow_states` missing | `InvalidWorkflow` naming the file |
 
-- [ ] 4.3 The workflow rule of `WriteGuards` (PD-19). Test first in
+- [x] 4.3 The workflow rule of `WriteGuards` (PD-19). Test first in
   `tests/unit/services/test_write_guards.py`.
 
 | ID | Input | Expected |
@@ -234,9 +234,9 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-79 | replace b1 without status (`label` changed) | stored; status draft |
 | TC-80 | a transaction holding `_allow_state(b1, accepted)` replaces with status accepted | stored |
 | TC-80a | `session.transaction()` without `_allow_state`, replace with status accepted | `Forbidden`; no public argument allows it (signature test) |
-| TC-81 | `Shelf` (no workflow) writes | unchanged behaviour; no extra query |
+| TC-81 | `Shelf` (no workflow) writes | unchanged behaviour; an add costs no extra query; a replace costs one small read when the service configures workflows, none otherwise (PD-31 item 1) |
 
-- [ ] 4.4 `transition`, `transitions`; dependent link `prov:used` (PD-15, PD-20 to PD-22). The
+- [x] 4.4 `transition`, `transitions`; dependent link `prov:used` (PD-15, PD-20 to PD-22). The
   adversarial tester runs after it. Test first in
   `tests/unit/services/test_collaboration_workflow.py`.
 
@@ -259,7 +259,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | TC-95 | two transitions from one version (sequenced on the fake store) | first stored, second `Conflict` |
 | TC-96 | `referrers(b1)` after transitions | no records listed |
 
-- [ ] 4.5 On Fuseki; gate `make test-containers TEST_PATH="tests/integration/store/test_collaboration.py tests/integration/api/test_router.py"`.
+- [x] 4.5 On Fuseki; gate `make test-containers TEST_PATH="tests/integration/store/test_collaboration.py tests/integration/api/test_router.py"`.
 
 | ID | Input | Expected |
 |---|---|---|
@@ -267,7 +267,7 @@ changing `domain` or a port in `services`: `make test-fast`), `make check-qualit
 | IT-09 | TC-78 through the generic `PUT` | refused; b1 in draft |
 | IT-10 | TC-90 | as there |
 
-- [ ] 4.6 Docs: `howto/workflow.adoc` (file format, the stable `id`, RISK-4), nav,
+- [x] 4.6 Docs: `howto/workflow.adoc` (file format, the stable `id`, RISK-4), nav,
   `questions.adoc` ("How do I put a resource through review?"); the adoption guide's kit
   arguments (`workflows=`). `make check-docs`. Close the stage and the change: archive it after
   the last merge.

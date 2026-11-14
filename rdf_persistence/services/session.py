@@ -15,13 +15,13 @@ from collections.abc import AsyncIterator, Callable, Iterable, Sequence
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Protocol
+from typing import Protocol, cast
 
 from pydantic import BaseModel
 from rdflib import RDF, BNode, Graph, Literal, URIRef
 from rdflib.query import ResultRow
 
-from rdf_persistence.domain.exceptions import Conflict, InvalidIri, NotFound
+from rdf_persistence.domain.exceptions import Conflict, Forbidden, InvalidIri, NotFound
 from rdf_persistence.domain.generated.rp_annotations import Tracked
 from rdf_persistence.domain.generated.rp_core import (
     AggregateKey,
@@ -94,6 +94,7 @@ SELECT ?version ?created ?creator ?contributor WHERE {
 }
 """
 READ_GRAPH = "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH $graph { ?s ?p ?o } }"
+READ_ROOT_VALUES = "SELECT ?p ?o WHERE { GRAPH $graph { $iri ?p ?o FILTER (?p IN ($predicates)) } }"
 READ_NAMED_KEYS = (
     "SELECT DISTINCT ?key WHERE { GRAPH ?g { ?s $p_file_key ?key } FILTER (?key IN ($keys)) }"
 )
@@ -435,11 +436,17 @@ def remove_parts(
 class WriteGuard(Protocol):
     """What a transaction asks before it collects an add or a replace (PD-6): the triples to write.
 
-    ``stored`` is ``None`` for an add, the stored tracking for a replace. It raises to refuse.
+    ``stored`` is ``None`` for an add, the stored tracking for a replace. ``allowed_state`` is the one
+    state the transaction allows this root to take (PD-19), or ``None``. It raises to refuse.
     """
 
     async def prepare(
-        self, session: "Session", iri: str, triples: list[Triple], stored: Tracked | None
+        self,
+        session: "Session",
+        iri: str,
+        triples: list[Triple],
+        stored: Tracked | None,
+        allowed_state: str | None,
     ) -> list[Triple]: ...
 
 
@@ -471,6 +478,15 @@ class Session:
         self._principal = principal
         self._clock = clock
         self._registry = iris.registry(tenant_iri)
+
+    @property
+    def principal(self) -> Principal:
+        """The principal this session writes for."""
+        return self._principal
+
+    def now(self) -> datetime:
+        """The time by this session's clock, the one its writes are stamped with."""
+        return self._clock()
 
     def _graph(self, iri: str) -> URIRef:
         """The graph of the aggregate ``iri``, or the meta graph for the tenant root."""
@@ -616,6 +632,28 @@ class Session:
             for r in rows
         ]
 
+    async def root_values(
+        self, iri: str, predicates: Sequence[URIRef]
+    ) -> dict[URIRef, set[URIRef | Literal | BNode]]:
+        """What the aggregate ``iri`` states of its root with each of ``predicates``, in one query.
+
+        Every predicate is a key, with no values when the aggregate does not state it or is not stored.
+
+        Raises:
+            DatabaseGone: The tenant database does not exist.
+        """
+        text = fill(
+            READ_ROOT_VALUES,
+            graph=term(self._graph(iri)),
+            iri=term(URIRef(iri)),
+            predicates=term_list(list(predicates)),
+        )
+        found: dict[URIRef, set[URIRef | Literal | BNode]] = {p: set() for p in predicates}
+        for row in await self._store.query(self._database, text):
+            if isinstance(row, ResultRow):
+                found[cast(URIRef, row.p)].add(cast(URIRef | Literal | BNode, row.o))
+        return found
+
     def not_aggregates(self, iris: Iterable[str]) -> list[str]:
         """The ``iris`` the policy does not mint for an aggregate of this tenant."""
         return [i for i in iris if not self._iris.is_aggregate(self._tenant, i)]
@@ -759,7 +797,9 @@ class Session:
                 graph is not one it mints for ``iri`` or is owned by another aggregate; nothing is
                 written.
             NotFound: The aggregate has no graph.
-            Conflict: Its version is not ``if_version``; nothing changed.
+            Conflict: Its version is not ``if_version``; nothing changed. This also answers a write
+                the guards would refuse for its state when the version is not ``if_version``.
+            Forbidden: The write guards refuse the state or the class of an aggregate under a workflow.
             KeyConflict: Another aggregate of the tenant holds a value of a key the aggregate claims.
             InvalidBody: A key slot has two values or more; nothing is written.
         """
@@ -899,6 +939,7 @@ class Transaction:
         self._wrote: dict[URIRef, str] = {}
         self._required: dict[URIRef, str] = {}  # graph -> root of each ``_require_present`` (PD-25)
         self._key_claims: list[KeyClaim] = []  # what the changes claim of the session's keys (PD-6)
+        self._allowed: dict[str, str] = {}  # root -> the one state this transaction may set (PD-19)
 
     def _end(self) -> None:
         """Refuse every later change: the block is over, so a change would be dropped."""
@@ -962,7 +1003,9 @@ class Transaction:
         await session._check_commit(iri, loaded_graphs)
         triples = list(triples)
         if session._write_guards is not None:
-            triples = await session._write_guards.prepare(session, iri, triples, None)
+            triples = await session._write_guards.prepare(
+                session, iri, triples, None, self._allowed.get(str(iri))
+            )
         key_claims = claims_of(session._keys, iri, triples)
         version = str(uuid.uuid4())
         tracking = Tracked(created=session._clock(), creator=session._principal.id)
@@ -990,10 +1033,19 @@ class Transaction:
         session = self._session
         graph = self._claim(iri)
         await session._check_commit(iri, loaded_graphs or [])
-        _, stored = await session._stored(graph)
+        found, stored = await session._stored(graph)
         triples = list(triples)
         if session._write_guards is not None:
-            triples = await session._write_guards.prepare(session, iri, triples, stored)
+            try:
+                triples = await session._write_guards.prepare(
+                    session, iri, triples, stored, self._allowed.get(str(iri))
+                )
+            except Forbidden as refusal:
+                if (
+                    found != if_version
+                ):  # the client read an older state: a conflict, not a refusal (PD-32)
+                    raise Conflict(changed_text(str(iri), found), iris=(str(iri),)) from refusal
+                raise
         key_claims = claims_of(session._keys, iri, triples)
         if loaded_graphs is None:
             loaded_graphs = await session._registered_loaded(iri)
@@ -1050,6 +1102,13 @@ class Transaction:
             fragment(_PRESENT, graph=term(graph), p_version=term(v.VERSION), n=number)
         )
         self._required[graph] = str(iri)
+
+    def _allow_state(self, iri: str, state_iri: str) -> None:
+        """Let this transaction set the state of the aggregate ``iri`` to ``state_iri``: the one
+        thing a plain write may not do, which only a transition does (PD-15, PD-19). It collects
+        no change."""
+        self._require_open()
+        self._allowed[str(iri)] = str(state_iri)
 
     def _require_match(self, iri: str, class_iri: str, conditions: Sequence[Condition]) -> None:
         """Guard the commit on ``iri`` being of exactly ``class_iri`` and holding every condition
@@ -1127,10 +1186,7 @@ class Transaction:
         root, read_at = self._roots[graph], self._read_at[graph]
         if read_at is None:
             return None if found is None else f"{root} already exists"
-        if found == read_at:
-            return None
-        who = "changed" if found is not None else "removed"
-        return f"{root} was {who} by someone else since it was read"
+        return None if found == read_at else changed_text(root, found)
 
     def _reasons(self, found: dict[URIRef, str | None]) -> dict[str, str]:
         """Root -> why the commit was refused for it, in the order of the sorted roots: the changes
@@ -1158,6 +1214,12 @@ class Transaction:
             or "the commit lost a race with another writer; read again and retry",
             iris=tuple(reasons),
         )
+
+
+def changed_text(root: str, found: str | None) -> str:
+    """Why a write read at an older version is refused for ``root``, which now has version ``found`` (none: removed)."""
+    who = "changed" if found is not None else "removed"
+    return f"{root} was {who} by someone else since it was read"
 
 
 def _items(name: str, value: object) -> list[object]:

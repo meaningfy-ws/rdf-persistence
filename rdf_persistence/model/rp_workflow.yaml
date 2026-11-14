@@ -1,0 +1,171 @@
+id: https://meaningfy.ws/ns/rdf-persistence/workflow
+name: rp_workflow
+title: RDF persistence workflow module
+description: >-
+  The workflow of the metamodel: the definition an application keeps in a file (a set of states and the
+  transitions between them), the mixin that gives an aggregate its current state, and the record the
+  toolkit writes for every transition, on PROV-O.
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+  ADMS: http://www.w3.org/ns/adms#
+  prov: http://www.w3.org/ns/prov#
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+  - rp_core
+  - rp_provenance
+  - rp_discussion
+
+classes:
+  Workflow:
+    title: Workflow
+    description: >-
+      The definition of a workflow, read from a file when the service starts and never stored: its name,
+      its states, the state an aggregate starts in and the transitions between states. Its identifier is
+      the IRI of the scheme whose concepts are the states, and it must stay stable once aggregates have
+      states.
+    class_uri: rp:Workflow
+    slots:
+      - id
+      - workflow_name
+      - workflow_states
+      - initial_state
+      - workflow_transitions
+    slot_usage:
+      id:
+        required: true
+      workflow_name:
+        required: true
+      workflow_states:
+        required: true
+      initial_state:
+        required: true
+  WorkflowTransition:
+    title: Workflow transition
+    description: >-
+      One transition of a workflow, from one state to another, with the roles that may make it. The
+      states are named, not given as IRIs.
+    class_uri: rp:WorkflowTransition
+    slots:
+      - from_state
+      - to_state
+      - transition_roles
+      - comment_required
+    slot_usage:
+      from_state:
+        required: true
+      to_state:
+        required: true
+      transition_roles:
+        required: true
+  UnderWorkflow:
+    title: Under workflow
+    description: >-
+      A mixin for an aggregate root that follows a workflow, which its class names with the workflow
+      annotation. It gives the root its current state; only a transition changes it.
+    class_uri: rp:UnderWorkflow
+    mixin: true
+    slots:
+      - workflow_status
+  TransitionRecord:
+    title: Transition record
+    description: >-
+      The record of one transition of an aggregate: which aggregate, from which state to which, when, by
+      whom and with which comment. The toolkit writes it in the update that changes the state and
+      deletes it with the aggregate. It is a prov:Activity in the generated vocabulary, and typed with
+      its own class when stored.
+    class_uri: rp:TransitionRecord
+    is_a: Activity
+    mixins:
+      - AggregateRoot
+    slots:
+      - used_resource
+      - from_state_iri
+      - to_state_iri
+      - started_at_time
+      - transition_comment
+    slot_usage:
+      from_state_iri:
+        required: true
+      to_state_iri:
+        required: true
+    annotations:
+      rp_path: rp-transitions
+      rp_iri_type: rp-transition
+      rp_writes: toolkit
+
+slots:
+  workflow_name:
+    title: Workflow name
+    description: The name the workflow goes by, which the workflow annotation of a class refers to.
+    slot_uri: rp:workflowName
+    is_a: url_segment
+  workflow_states:
+    title: Workflow states
+    description: >-
+      The names of the states, lower case, starting with a letter, with digits, hyphens and underscores.
+      The IRI of a state is the workflow's identifier, a slash and its name.
+    slot_uri: rp:workflowState
+    range: string
+    multivalued: true
+    pattern: "^[a-z][a-z0-9_-]*$"
+  initial_state:
+    title: Initial state
+    description: The name of the state a new aggregate starts in, one of the states.
+    slot_uri: rp:initialState
+    range: string
+  workflow_transitions:
+    title: Workflow transitions
+    description: The transitions of the workflow; they are part of its definition.
+    slot_uri: rp:workflowTransition
+    range: WorkflowTransition
+    multivalued: true
+    inlined_as_list: true
+    annotations:
+      owned: true
+  from_state:
+    title: From state
+    description: The name of the state a transition leaves. A stored record gives an IRI in from_state_iri.
+    slot_uri: rp:fromStateName
+    range: string
+  to_state:
+    title: To state
+    description: The name of the state a transition enters. A stored record gives an IRI in to_state_iri.
+    slot_uri: rp:toStateName
+    range: string
+  transition_roles:
+    title: Transition roles
+    description: The names of the roles of which one is needed to make the transition.
+    slot_uri: rp:transitionRole
+    range: string
+    multivalued: true
+  comment_required:
+    title: Comment required
+    description: Whether the transition needs a comment; no by default.
+    slot_uri: rp:commentRequired
+    range: boolean
+    ifabsent: "false"
+  workflow_status:
+    title: Workflow status
+    description: The current state of the aggregate, the IRI of a state of its workflow.
+    slot_uri: ADMS:status
+    range: uri
+  used_resource:
+    title: Used resource
+    description: The IRI of the aggregate the transition moved.
+    slot_uri: prov:used
+    range: uri
+    required: true
+  started_at_time:
+    title: Started at time
+    description: The time the transition was made.
+    slot_uri: prov:startedAtTime
+    range: datetime
+    required: true
+  transition_comment:
+    title: Transition comment
+    description: The IRI of the comment the transition posted, when it had one.
+    slot_uri: rp:transitionComment
+    range: uri

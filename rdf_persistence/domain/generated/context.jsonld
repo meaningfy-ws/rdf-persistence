@@ -1,6 +1,7 @@
 {
    "@context": {
       "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "ADMS": "http://www.w3.org/ns/adms#",
       "ODRL": "http://www.w3.org/ns/odrl/2/",
       "dcterms": "http://purl.org/dc/terms/",
       "formats": "http://www.w3.org/ns/formats/",
@@ -58,6 +59,9 @@
          "@container": "@set",
          "@id": "dcterms:references"
       },
+      "comment_required": {
+         "@id": "commentRequired"
+      },
       "id": "@id",
       "contributor": {
          "@type": "@id",
@@ -84,6 +88,13 @@
       "file_name": {
          "@id": "fileName"
       },
+      "from_state": {
+         "@id": "fromStateName"
+      },
+      "from_state_iri": {
+         "@type": "@id",
+         "@id": "fromState"
+      },
       "generated_at_time": {
          "@type": "xsd:dateTime",
          "@id": "prov:generatedAtTime"
@@ -105,6 +116,9 @@
       "has_target": {
          "@type": "@id",
          "@id": "oa:hasTarget"
+      },
+      "initial_state": {
+         "@id": "initialState"
       },
       "key_name": {
          "@id": "keyName"
@@ -227,6 +241,10 @@
          "@type": "xsd:dateTime",
          "@id": "startedAt"
       },
+      "started_at_time": {
+         "@type": "xsd:dateTime",
+         "@id": "prov:startedAtTime"
+      },
       "state": {
          "@id": "state",
          "@type": "@vocab",
@@ -243,6 +261,21 @@
          "@type": "@id",
          "@id": "tenant"
       },
+      "to_state": {
+         "@id": "toStateName"
+      },
+      "to_state_iri": {
+         "@type": "@id",
+         "@id": "toState"
+      },
+      "transition_comment": {
+         "@type": "@id",
+         "@id": "transitionComment"
+      },
+      "transition_roles": {
+         "@container": "@set",
+         "@id": "transitionRole"
+      },
       "uploaded": {
          "@type": "xsd:dateTime",
          "@id": "dcterms:dateSubmitted"
@@ -253,6 +286,10 @@
       },
       "url_segment": {
          "@id": "urlSegment"
+      },
+      "used_resource": {
+         "@type": "@id",
+         "@id": "prov:used"
       },
       "version": {
          "@id": "version"
@@ -274,6 +311,22 @@
       "was_generated_by": {
          "@type": "@id",
          "@id": "prov:wasGeneratedBy"
+      },
+      "workflow_name": {
+         "@id": "workflowName"
+      },
+      "workflow_states": {
+         "@container": "@set",
+         "@id": "workflowState"
+      },
+      "workflow_status": {
+         "@type": "@id",
+         "@id": "ADMS:status"
+      },
+      "workflow_transitions": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "workflowTransition"
       },
       "@version": 1.1,
       "type": "@type",
@@ -351,6 +404,18 @@
       },
       "Tracked": {
          "@id": "Tracked"
+      },
+      "TransitionRecord": {
+         "@id": "TransitionRecord"
+      },
+      "UnderWorkflow": {
+         "@id": "UnderWorkflow"
+      },
+      "Workflow": {
+         "@id": "Workflow"
+      },
+      "WorkflowTransition": {
+         "@id": "WorkflowTransition"
       }
    }
 }

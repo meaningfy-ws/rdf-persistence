@@ -23,6 +23,10 @@ export interface Comment {
   comment_references?: string[];
   /** The IRI of the comment this one answers. */
   replies_to?: string;
+  /** The IRI of the state an aggregate left, on the comment a transition posted and on the transition's record. Defined here, so that the workflow module, which imports this one, uses it too. A state name in a workflow file is another thing: it has no IRI. */
+  from_state_iri?: string;
+  /** The IRI of the state an aggregate entered, on the comment a transition posted and on the transition's record. Defined here beside from_state_iri. */
+  to_state_iri?: string;
   /** The time the graph was first committed. */
   created?: string;
   /** The time the graph was last committed. */
