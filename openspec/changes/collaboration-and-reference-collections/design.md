@@ -882,6 +882,16 @@ delivers.
      is patterned but is no path segment.
   4. The `WORKFLOW` hard rule accepts an annotated abstract class that has `AggregateRoot`
      among its ancestors (a base whose concrete subclasses inherit the workflow).
+- **D-11** (2026-11-14, the lead, after the last build stage): the order accept, docs, archive
+  is kept for the archive only. The acceptance demo was run and recorded
+  (`evidence/acceptance.md`, verdict pending the developer); the docs stage was written before
+  the verdict, so the work did not wait, at the risk of revising pages after a rejection. The
+  docs stage and the EPIC's reconciliation ("As built" in proposal.md, asked by the developer
+  on 2026-11-14) go in one PR. It adds about 300 lines of docs, under the small-stage limit,
+  and changes no code but one test, so it takes the small review set as one pass over the doc
+  lens (L2) and the structure lens (L3); the stage's CI is its check. The developer, the same
+  day: of what is left open, only what has impact is closed (the listing by state over HTTP,
+  tested); the rest is listed in "As built" and left.
 
 ## Algorithm / approach
 

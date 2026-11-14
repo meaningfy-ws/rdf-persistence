@@ -62,6 +62,8 @@ PD-8a). Any other slot whose range is a class refers to another aggregate root, 
 |`internal` (slot annotation) |Only the service sets the slot (e.g. file keys, a tenant's database name): it never appears in the API contract or a response, a request body that sets it is refused (422), the tenant-create body included, and a replace keeps its stored value on the root and on the parts that persist, matched by IRI. The mapper writes it, so a domain service can set it.
 |`rp_path` (class annotation) |Required on every aggregate root: its path segment in the API and in its IRIs (`{tenant}/{rp_path}/{uuid}`).
 |`rp_writes: service` (class annotation) |An aggregate root the consumer writes through a session: the API serves its `GET` and listing but no `POST`, `PUT` or `DELETE`. A root that includes `StoredFile` is service-written without it. There is no value that turns this off.
+|`rp_writes: toolkit` (class annotation) |An aggregate root the toolkit writes and reads itself: a `Comment`, a `TransitionRecord`. No route serves it (`served_roots` in `schema_structure.py` leaves it out) and the consumer does not write it, because who may see or make one is decided by rules a generic route does not know. The two values are the enum `WritesKind`.
+|`workflow` (class annotation) |On an aggregate root that includes `UnderWorkflow`: the name of the workflow its instances follow. A subclass inherits it along `is_a` (`workflow_name_of` in `schema_structure.py`). The workflow itself is a file given to the service, not part of the schema; see xref:howto/workflow.adoc[Put a resource through review].
 |`rp_unlabelled` (class annotation) |An owned value class whose instances need no label of their own.
 |`Principal` |A reference to a user account in the identity provider, by IRI only.
 |`StoredFile` (mixin) |The current content of a kept file: `file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key` (internal).
@@ -69,13 +71,16 @@ PD-8a). Any other slot whose range is a class refers to another aggregate root, 
 |`TenantAccess`, `Grant`, `Prohibition` |The tenancy records of the system database (N-11): label, state (`TenantState`: `active`, `deleting`), database name, owned grants and prohibitions (ODRL). `TenantAccess` is a `Policy`; an application subclasses it once, in an access module. Role names come from the consumer's role definitions; an application may narrow `role` to an enum by subclassing (`is_a` with `slot_usage`), but need not.
 |`RoleDefinition` |One entry of the application's role definitions: a `role`, the `level` it applies at (`RoleLevel`: `system`, `tenant`, `aggregate`) and the `actions` it permits. Supplied as a YAML file, read by `load_role_definitions`, never stored.
 |`RegistryEntry` |An entry of a tenant's `registry` graph: the graph's IRI, its kind (`aggregate`, `loaded_graph`) and the aggregate that owns it. Written by the session, never by the application.
+|`ReferenceCollection` (mixin), `MembershipRule` |An aggregate that groups other aggregates of one class (`member_class`) without owning them: the members it names by IRI (`had_member`, `prov:hadMember`) and an owned rule of slot equalities. The application writes it. See xref:howto/reference-collections.adoc[Group resources you do not own].
+|`Comment` |A remark on an aggregate, or a reply to one: an aggregate root of its own (`oa:Annotation`, path `rp-comments`), `rp_writes: toolkit`. See xref:howto/discussion.adoc[Comment on a resource without editing it].
+|`UnderWorkflow` (mixin), `Workflow`, `WorkflowTransition`, `TransitionRecord` |`UnderWorkflow` gives an aggregate root its current state (`workflow_status`, `adms:status`, the IRI of a state). `Workflow` and `WorkflowTransition` are the definition read from a file at start-up and never stored. `TransitionRecord` (`is_a: Activity`, path `rp-transitions`, `rp_writes: toolkit`) is the record of one move. See xref:howto/workflow.adoc[Put a resource through review].
 |`version` (slot) |The version token of every aggregate, stated about its graph IRI (not the root), written by the session; not part of any domain class.
 |`module_kind` (schema annotation) |`domain`, `technical` or `access`: what a schema module holds; the boundary check uses it (<<toolchain>>).
 |`bookkeeping` (slot annotation) |The session writes the slot about a graph (`version`, `created`, `modified`, `creator`, `contributor`); closed shapes ignore it.
 |===
 
 The annotation names are the generated enum `RpAnnotation`, and their values the enums
-`ModuleKind`, `DatabaseKind` and `GraphKind`: a value outside them fails the hard check, so no code
+`ModuleKind`, `DatabaseKind`, `GraphKind` and `WritesKind`: a value outside them fails the hard check, so no code
 compares free strings. The rules that read a schema's aggregate structure (roots, the tenant root,
 owned, internal and bookkeeping slots, PD-11's defaults, the presence alternatives and keyed slots
 of a class) live once, in `rdf_persistence/services/schema_structure.py`, beside `load_schema` in
@@ -94,7 +99,7 @@ Slots of the metamodel (IRIs in the `rp:` namespace unless shown):
 |`assignee` |`odrl:assignee` |`Principal` (IRI), required (a grant is an `odrl:Permission`, D-5)
 |`target` |`odrl:target` |uri: the tenant IRI, or an aggregate's graph IRI; required
 |`role` |`rp:role` |string, matched against the consumer's role definitions; an application may narrow it to an enum by `slot_usage`; exactly one of `role` and `action`
-|`action` |`odrl:action` |`Action` (`read`, `modify`, `delete`, `administer`; fixed by the toolkit): for a direct permission, or the action a prohibition forbids (required there)
+|`action` |`odrl:action` |`Action` (`read`, `modify`, `delete`, `administer`, `annotate`; fixed by the toolkit): for a direct permission, or the action a prohibition forbids (required there)
 |`prohibitions` |`rp:prohibition` |`Prohibition`, multivalued, owned (blank nodes, skolemised like `grants`)
 |`level` |`rp:level` |`RoleLevel`, required, on `RoleDefinition`
 |`actions` |`rp:permits` |`Action`, multivalued, required (and not empty), on `RoleDefinition`
@@ -127,16 +132,35 @@ flowchart BT
     ACC["rp_access<br/>ODRL"]
     TEN["rp_tenancy"]
     FIL["rp_files"]
+    COL["rp_collections<br/>PROV-O"]
+    DIS["rp_discussion<br/>Web Annotation"]
+    WF["rp_workflow<br/>ADMS, PROV-O"]
     ANN --> CORE
-    PROV --> ANN
+    PROV --> CORE
     ACC --> CORE
     TEN --> ACC
+    TEN --> ANN
     FIL --> ANN
+    COL --> CORE
+    DIS --> ANN
+    WF --> PROV
+    WF --> DIS
 ....
+
+An arrow is an import; an import a module already gets through another one is not drawn
+(`rp_tenancy` reaches `rp_core` through `rp_access`).
 
 `rp.yaml` imports all nine modules (`rp_core`, `rp_annotations`, `rp_provenance`, `rp_access`,
 `rp_tenancy`, `rp_files`, `rp_collections`, `rp_discussion` and `rp_workflow`); an application
 imports `rp.yaml`, or only the modules it uses.
+
+The last three hold what a collaborative application needs beyond aggregates that own their parts:
+a group of aggregates it does not own (`rp_collections`), comments (`rp_discussion`) and review
+states (`rp_workflow`). Each is optional: a schema that does not import a module gets none of its
+behaviour, and the call that needs it raises `LookupError`. `rp_workflow` imports `rp_provenance`
+because a `TransitionRecord` is an `Activity`, and `rp_discussion` because a transition may post a
+comment: the two slots that say which state was left and which was entered (`from_state_iri`,
+`to_state_iri`) are defined once, in `rp_discussion`, and used by the comment and by the record.
 
 [#annotations]
 === Annotations: two layers that are easy to confuse
@@ -176,14 +200,22 @@ are the generated enum `HardRule`. It fails generation when:
 . an aggregate root or owned class does not include `Described`, so instances without IRI and label are refused by the generated classes and shapes; an owned value class without a label
   of its own (a chapter's number) opts out explicitly with `rp_unlabelled: true`;
 . an aggregate root has no `rp_path`, or an `rp_path` that is not a URL segment;
-. an annotation value is not one of its allowed values;
+. an annotation value is not one of its allowed values, or a `workflow` name is not a URL segment;
 . a `unique_keys` name is not an identifier (generated validators carry it);
 . a key annotated `rp_unique_scope` (a key across aggregates) has a scope other than `tenant`; sits
   on a class that is not a tenant-database aggregate root or an ancestor of one; names a slot that
   is not a slot of every such root, is multivalued, is the identifier, is bookkeeping or holds an
   owned part; or sets `consider_nulls_inequal: false`. An unscoped `unique_keys` declared on a
   tenant-database aggregate root class itself is refused too, since it would enforce nothing. Each
-  problem names the class, the key and, for a slot, the slot.
+  problem names the class, the key and, for a slot, the slot;
+. the `rp_path` or the `rp_iri_type` (the type segment of a class's IRIs) of a class starts with
+  `rp-` (rule `RESERVED_SEGMENT`). The prefix belongs to the toolkit's own roots (`rp-comments`,
+  `rp-transitions`), so a path or an IRI of an application never meets one of theirs;
+. the `workflow` annotation and the `UnderWorkflow` mixin do not come together (rule `WORKFLOW`):
+  a class names a workflow but is not an aggregate root, is the tenant root, or does not include
+  `UnderWorkflow`; or an aggregate root includes `UnderWorkflow` and neither it nor an `is_a`
+  ancestor names a workflow. The check knows the name only: that a file defines the workflow is
+  checked when the service starts (`InvalidWorkflow`).
 
 The checks cover the schema's own modules only; the metamodel's are exempt. The `module_kind`
 import rule belongs to the boundary check (<<toolchain>>, step 2).

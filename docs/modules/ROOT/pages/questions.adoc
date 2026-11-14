@@ -137,6 +137,16 @@ workflow in the class annotation `workflow`, and pass the file to `install_servi
 roles, and records the move; `collab.transitions(iri)` reads the history. See
 xref:howto/workflow.adoc[Put a resource through review].
 
+*Why does my delete take comments and history with it?*::
+A comment and a transition record are aggregates of their own, each about one aggregate. Every
+delete through the kit (`session.remove`, `UnitOfWork.remove`, the generic `DELETE`,
+`kit.remove_with_files`, each member of a `delete_cascade`) drops them with that aggregate, in the
+same request. A comment that only references the deleted aggregate stays. The history is not an
+audit log that outlives its aggregate. A session opened directly with `open_session` and no
+`dependents` deletes only the aggregate. See xref:howto/discussion.adoc#delete[Delete] and
+xref:howto/workflow.adoc#read-the-history[Read the history]; the request itself is in
+xref:architecture/data-flows.adoc#commit[Committing several aggregates at once].
+
 *How do I make my own IRIs?*::
 Describe their shape as an `IriPolicy`: a template for the tenant, the aggregates, the owned parts
 and the loaded graphs (for example `{base}{tenant_id}/{type}/{id}`) and the rule for each id (a

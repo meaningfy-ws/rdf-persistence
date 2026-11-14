@@ -187,6 +187,76 @@ the old and new objects, so they can only refuse. Any other exception, a toolkit
 `Forbidden` or an `HTTPException` included, is a bug and answers 500. Atomicity comes from the conditional write itself:
 two writes at one version cannot both land.
 
+[#collaboration]
+== Comments, transitions and what stays hidden
+
+_What does the check decide for a comment, a move through a workflow, and a list that holds things
+the caller may not read?_
+
+These calls have no route. They are methods of `Collaboration` (`kit.collaboration(authorised)`),
+which asks the same `AccessRules` on every call, with the caller and the access the gate loaded.
+
+*`annotate`* is the action that lets a caller comment on an aggregate without the right to change
+it. It is checked like any other action (`AccessRules.require` in `Discussion.comment`):
+
+* It implies `read`, as every action other than `read` does, so a Prohibition of `read` forbids it.
+* It is not `modify`, and `modify` does not permit it: a role comments only if its definition
+  names `annotate`, or by a direct grant of the action.
+* A Prohibition of `annotate` refuses a comment and leaves the thread readable.
+* Reading a thread needs `read` on the aggregate, nothing more.
+
+*A comment's audience* is a list of role names; a comment with none is for everyone who may read
+the aggregate. A caller sees a comment with an audience when it holds one of those roles on the
+aggregate (`AccessRules.roles`): a role granted to it on the tenant or on the aggregate, or a role
+of its token that the roles file defines at system level. A direct grant of an action gives no
+role name, and a token role named like a tenant role counts for nothing, because token roles are
+chosen by the identity provider's administrator, outside the roles file. A reply is
+seen only when its parent is. An audience narrows and never grants: the caller must first be able
+to read the aggregate. A role named in an audience must be defined in the roles file, at any level
+(`AccessRules.defines`, else `UnknownRole`). The how-to is
+xref:howto/discussion.adoc#who-may-comment[Who may comment].
+
+*A transition* moves an aggregate along an edge of its workflow (a transition of the workflow
+file, from one state to another, with the roles that may make it). The roles on the edge decide
+who may make it, not `modify`: a reviewer moves a book to `accepted` without the right to edit it.
+`Transitions.transition` checks in this order:
+
+. `read` on the aggregate (404 or 403 as in <<check>>).
+. No Prohibition of `modify` on the aggregate or the tenant (`AccessRules.prohibits`): it freezes
+  the aggregate, its state included (`Forbidden`).
+. With a comment that is not blank, no Prohibition of `annotate`. The comment of a transition
+  needs no `annotate` right, since the role on the edge stands in for it, but an explicit ban
+  still holds (`Forbidden`).
+. The aggregate is at the version the caller read (`Conflict`). This comes before everything
+  about the workflow, so a caller on stale data is told to read again, not that its move is
+  refused.
+. The workflow has an edge from the current state to the one asked for (`Conflict`).
+. The caller holds one of the roles on that edge, by the same `AccessRules.roles` as an audience
+  (`Forbidden`). The edge is looked up before the role: with no such edge the answer is a
+  `Conflict`, whoever asks.
+
+The how-to is xref:howto/workflow.adoc#make-a-transition[Make a transition].
+
+*Hidden things are counted, never named.* A list that would hold what the caller may not read
+leaves it out and says how many it left out, in `hidden_count`: no IRI, no class, no slot.
+
+[cols="2,3,3",options="header"]
+|===
+|Call |Counted in `hidden_count` |Neither listed nor counted
+|`referrers` |Every referrer the caller may not read, once each. The count is the same whatever class or slot the call narrows by; a count that followed the narrowing would tell the class and slot of a hidden referrer. A comment that references the resource counts here when the caller does not see it in its thread. |—
+|`members` |The members the collection names that the caller may not read. |An aggregate that only meets the collection's rule. The rule is written by whoever may modify the collection, so a count of its hidden matches would tell that caller, slot value by slot value, what it may not read.
+|`collections_of` |The collections that hold the resource, by name or by rule, that the caller may not read. |—
+|`thread` |— (it has no count) |The comments the caller does not see.
+|`delete_cascade` |The members the collection names that the caller may not delete and may not read: the refusal names the ones it may read and counts the others. |An aggregate that only meets the rule and that the caller may not read: it stays, and refuses nothing.
+|===
+
+One thing is accepted: a save of a collection is refused unless each member it names is a stored
+aggregate of the member class. Whoever may modify a collection can thus learn, by trying member
+classes, the class of a hidden aggregate whose IRI it already holds, never its content. The how-to
+pages are
+xref:howto/reverse-references.adoc#hidden[Referrers the caller may not read] and
+xref:howto/reference-collections.adoc#members-and-collections-the-caller-may-not-read[Members and collections the caller may not read].
+
 [#identity]
 == Identity: signing in from the browser and from the API
 
