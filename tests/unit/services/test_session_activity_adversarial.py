@@ -115,16 +115,18 @@ async def test_a_store_error_mid_request_records_nothing_and_the_command_is_spen
                 await transaction.replace_graph(B1, book(B1), v1)
         assert await quads(store) == before, "the store holds exactly what it held"
         assert len(hook.calls) == 1, "the hook ran for the add only"
-        with pytest.raises(RuntimeError, match=X):
-            async with session.transaction(served=command):
-                pass
+        with pytest.raises(RuntimeError, match=X):  # it reached the store, so it is spent (D-10 b)
+            async with session.transaction(served=command) as transaction:
+                await transaction.replace_graph(B1, book(B1), v1)
         async with session.transaction(served=served()) as transaction:
             await transaction.replace_graph(B1, book(B1), v1)
         assert [a.id for a in await activities(store)].count(X) == 1, "a new command records once"
 
 
-async def test_an_exception_in_the_block_records_nothing_and_spends_the_command(store, session):
-    # PD-8 as built: a served command is claimed when its transaction opens.
+async def test_an_exception_in_the_block_records_nothing_and_leaves_the_command_unspent(
+    store, session
+):
+    # D-10 b: a served command is claimed when its transaction sends its request; none was sent.
     command = served()
     with pytest.raises(ZeroDivisionError):
         async with session.transaction(served=command) as transaction:
@@ -132,9 +134,9 @@ async def test_an_exception_in_the_block_records_nothing_and_spends_the_command(
             1 / 0  # noqa: B018
     assert store.sent("update") == [], "nothing was sent"
     assert await activities(store) == [], "nothing was recorded"
-    with pytest.raises(RuntimeError, match=X):
-        async with session.transaction(served=command):
-            pass
+    async with session.transaction(served=command) as transaction:
+        await transaction.add_graph(B1, book(B1))
+    assert [a.id for a in await activities(store)] == [X], "the command still serves one commit"
 
 
 async def test_a_failed_guard_beside_a_real_change_records_no_activity(store, session):

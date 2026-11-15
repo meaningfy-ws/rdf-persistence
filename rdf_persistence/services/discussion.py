@@ -179,7 +179,8 @@ class Discussion:
             NotFound: The caller can see nothing of ``iri``, ``iri`` has no graph, or ``reply_to``
                 is not in the thread as this caller sees it.
             Forbidden: The caller may see ``iri`` but not annotate it.
-            InvalidBody: ``text`` is blank.
+            InvalidBody: ``text`` is blank, or ``command`` is a ``PostReply`` without ``reply_to``
+                or a post that is no reply with one.
             UnknownRole: An audience role is not defined by the roles file.
             Conflict: ``iri`` was removed meanwhile; nothing was stored (``iris`` names it).
             DatabaseGone: The tenant database does not exist.
@@ -274,6 +275,8 @@ class Discussion:
         reply_to: str | None,
         command: PostComment | None,
     ) -> str:
+        if command is not None and isinstance(command, PostReply) != (reply_to is not None):
+            raise InvalidBody("a reply command goes with a reply_to, and a comment command without")
         minted = mint_iri(self._view.get_class(COMMENT), self._iris, self._access.tenant)
         post = (
             command
@@ -282,11 +285,9 @@ class Discussion:
                 if reply_to is not None
                 else PostComment(id=new_activity_id(), used_resource=iri)
             )
-        ).model_copy(update={"used_resource": iri})
-        if (
-            isinstance(post, PostReply) and reply_to is not None
-        ):  # a forged parent is overwritten too
-            post = post.model_copy(update={"replies_to": reply_to})
+        ).model_copy(
+            update={"used_resource": iri, **({"replies_to": reply_to} if reply_to else {})}
+        )
         model = Comment(
             id=minted,
             has_target=iri,

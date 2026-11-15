@@ -163,8 +163,10 @@ aggregate (DEC-13).
     second command.
   - `Session.add_graph`, `replace_graph` and `remove` take `served=None` too and pass it to their
     one-change transaction.
-  - As built (task 2.2): a `Served` is claimed when its transaction opens, so a refused or failed
-    commit spends it too; a retry builds a new `Served` (`mapper.served(command)` again). `Served`
+  - As built (task 2.2, changed by D-10 b): a `Served` is claimed when its transaction sends its
+    request, so a refused commit, or one the store failed, spends it (it reached the store), and an
+    empty transaction or one whose block raised does not; a retry after a spent one builds a new
+    `Served` (`mapper.served(command)` again). `Served`
     is a plain class and the events are tuples, because the model guard forbids dataclasses in
     `services` and they are internal to one commit, never stored or sent as such.
   - Diagnosis after a failed confirmation (`_diagnose`): the existing reasons first, unchanged. Only
@@ -225,7 +227,8 @@ aggregate (DEC-13).
 
 ### The bus (stage 3)
 
-- **PD-13 `services/messagebus.py`** (DEC-5, DEC-11), about one screen:
+- **PD-13 `services/messagebus.py`** (DEC-5, DEC-11); planned at about one screen, built at about
+  300 lines holding the bus, `Work`, `bootstrap` and the toolkit handlers (cohesive; not split, D-11):
   - `MessageBus(commands: Mapping[type[Activity], Handler], observers: Mapping[type[Activity],
     Sequence[Observer]], *, limit: int = 100)`. A key that is not an `Activity` subclass, or a
     `limit` below 1, is a `ValueError` at construction.
@@ -240,7 +243,7 @@ aggregate (DEC-13).
     each class in the activity's `__mro__`, nearest class first, in registration order; each
     exception is logged with the observer's name and the rest still run.
   - The bus takes `mapper=None` at construction (`bootstrap(mapper=kit.mapper)`). `Collaboration`
-    exposes `session` and `mapper` as read-only properties.
+    exposes `session` as a read-only property (D-11 i: `mapper` was removed, nothing read it).
   - `Work` is what a handler or an observer gets: `work.session`; `work.collaboration` (None for a
     commit made outside `handle`); `work.unit_of_work()`, a `UnitOfWork` on the session with the
     bus's mapper (`RuntimeError` if the bus has none); `await work.send(command)`, which queues a
@@ -384,6 +387,47 @@ aggregate (DEC-13).
   - d. `Mapper.served` of a class the schema does not have raised `KeyError`. Fix: `ValueError`
     naming the class.
   The xfail markers are removed with the fixes.
+- **D-11** (lead, 2026-11-15) Review of stages 3 and 4 (commits `44f1314..5dfbafb`; L1, L2, L3 and
+  L4+L5 as one pass; nothing blocking). Accepted, code (with D-10, one fixer):
+  - a. **An observer gets the collaboration only of its own commit** (L1, L3). In `publish`, the
+    running `handle`'s collaboration is given only when the committing session is that
+    collaboration's session; otherwise `work.collaboration` is None and `send` raises the existing
+    `RuntimeError`. The queue holds `(command, collaboration)` pairs, so a command runs with the
+    collaboration it was sent under; a nested `handle` with another collaboration keeps its own.
+  - b. **A finished run cannot be fed** (L4). `_Run` gets `closed`, set in `handle`'s `finally`; `send`
+    on a closed run raises `RuntimeError`, and a `handle` that finds a closed run starts a new one.
+  - c. `MessageLimitExceeded` is logged at error level (class and id of the command) before it is
+    raised from `handle` (L4).
+  - d. `bootstrap` refuses with `ValueError` a handler or observer parameter after `(command, work)`
+    that has no default and no dependency (so a typo, or one of the names `bootstrap` keeps for
+    itself, fails at start, not at the first message) (L4).
+  - e. The `toolkit_filled` rule also refuses a consumer slot whose expanded `slot_uri` is that of a
+    toolkit-filled slot (an alias would let a caller write a second state or comment into a
+    record) (L1).
+  - f. `Discussion._store` builds its command as `Transitions._store` does; a `PostReply` without
+    `reply_to`, or a `PostComment` with one, is `InvalidBody` (L5).
+  - g. `remove_with_files(..., mapper=None)`: without a mapper it records a plain `Remove`.
+  - h. `.importlinter`: a `forbidden` contract keeps every other `services` module from importing
+    `services.messagebus` (L3).
+  - i. `Collaboration.mapper` is removed (no reader); `Collaboration.session`'s docstring says the
+    session checks no access and is there for the bus (L1, L3, L5).
+  - j. Tests: TC-81 also asserts the invalidation and both versions; TC-82 asserts the kit's hook
+    publishes nothing with no bus (not through a discarded observer); TC-79 matches the message;
+    TC-102 with `Transition`; a consumer `Comment` subclass with `slot_usage` on a state slot is
+    refused; TC-80a tagged; the real-session nested-limit test asserts what happens (L2).
+  Accepted, records and docs (a second writer, in parallel): the how-to (an observer has the
+  session's full reach and checks no access; a nested `handle`'s limit error is logged by the
+  commit's hook, not raised to the outer caller; the YAML exactly as the toy's file; a call through
+  the collaboration records the command only with `command=`; the four names `bootstrap` keeps; queued
+  commands dropped when the handler raises; free text and personal data belong in `payload` slots;
+  the overtaken commit as D-6 a says; the `install_service(bus=)` bus must be built with the kit's
+  mapper); a MODIFIED delta of `rp-generation` (activity classes are exempt from the ownership rule;
+  the two new rules); the reconciliation table, the checkboxes and PD-13's "about one screen".
+  Rejected: renaming the exported `command` (L4 nit: the name reads well at the call site); splitting
+  `messagebus.py` (L4 agrees it is cohesive); moving `POST_COMMENT` and kin out of `vocabulary.py`
+  (reference vocabulary, as `TRANSITION` is); reusing `vocabulary.TOOLKIT_FILLED` in the generator
+  rule (the rule must read the consumer's view, which carries the same annotations); a CHANGELOG
+  entry (release-please writes it from the commits, whose `BREAKING CHANGE:` lines say what changed).
 - **D-10** (lead, 2026-11-15) The adversarial tester's run after task 3.3
   (`tests/unit/services/test_messagebus_adversarial.py`: 54 tests, 4 findings kept as strict
   xfail until fixed). All accepted:

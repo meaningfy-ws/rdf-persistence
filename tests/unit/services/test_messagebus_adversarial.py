@@ -207,11 +207,6 @@ async def test_every_kind_of_callable_gets_its_dependency_as_handler_and_observe
     assert seen == [fake, fake], f"{kind}: the handler and the observer both got the dependency"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="FINDING 1: a dependency named like a *args parameter is accepted by bootstrap and "
-    "fails with TypeError at the first command, in production (PD-14: a typo must fail early)",
-)
 async def test_a_dependency_bound_to_a_var_positional_parameter_fails_at_bootstrap_or_works():
     async def handler(cmd: Activity, work: Work, *notifier: object) -> str:
         return "done"
@@ -351,12 +346,6 @@ async def test_an_empty_commit_of_a_unit_of_work_records_and_publishes_nothing()
         assert len(seen.activities) == published, "nothing is published"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="FINDING 2: an empty commit() spends the command's Served, so the handler's real "
-    "commit after it fails with RuntimeError (PD-8: the Served is claimed when the transaction "
-    "opens, though an empty one records nothing; D-5: an empty commit is no commit)",
-)
 async def test_an_empty_commit_does_not_spend_the_command_for_the_real_one_after_it():
     async def shelve(cmd: Activity, work: Work) -> None:
         unit = work.unit_of_work()
@@ -370,7 +359,9 @@ async def test_an_empty_commit_does_not_spend_the_command_for_the_real_one_after
 
         await w.bus.handle(shelved, w.collaboration)
 
-        assert await stored_ids(w) == [shelved.id], "the real commit is recorded as the command"
+        assert (await stored_ids(w)).count(shelved.id) == 1, (
+            "the real commit is recorded as the command"  # the world's seeds are stored too
+        )
 
 
 async def test_a_handler_that_commits_twice_unserved_makes_two_standard_activities():  # PD-8
@@ -637,12 +628,6 @@ async def test_an_observer_that_commits_in_a_loop_outside_handle_stops_with_a_re
         assert "message limit 5 reached" in caplog.text, "logged as the observer's error"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="FINDING 3: inside handle, an observer that commits on its session in a loop is not "
-    "bounded: publish counts its nesting only outside handle (PD-13), so it runs until the "
-    "recursion error (Error matrix row 'observer commits ... in a loop' says outside handle only)",
-)
 async def test_an_observer_that_commits_in_a_loop_inside_handle_is_stopped_by_the_limit():
     count = 0
 
@@ -663,7 +648,7 @@ async def test_an_observer_that_commits_in_a_loop_inside_handle_is_stopped_by_th
         assert count < RUNAWAY, "the observer was stopped before it ran away"
 
 
-async def test_a_nested_handle_loop_in_an_observer_is_bounded_with_a_real_session():  # TC-72a
+async def test_a_nested_handle_loop_in_an_observer_is_bounded_with_a_real_session(caplog):  # TC-72a
     count = 0
 
     async def nested(activity: Activity, work: Work) -> None:
@@ -675,10 +660,12 @@ async def test_a_nested_handle_loop_in_an_observer_is_bounded_with_a_real_sessio
     async with world(
         commands={ShelveBooks: shelving()}, observers={ShelveBooks: [nested]}, limit=4
     ) as w:
-        with contextlib.suppress(MessageLimitExceeded):
-            await w.bus.handle(command(ShelveBooks), w.collaboration)
+        with caplog.at_level(logging.ERROR):
+            await w.bus.handle(command(ShelveBooks), w.collaboration)  # D-10: not raised to us
 
-        assert await shelvings(w) <= 4, "no more commands than the limit committed"
+        assert await shelvings(w) == 4, "exactly the limit's commands committed"
+        assert count == 4, "the observer ran once for each"
+        assert "message limit 4 reached" in caplog.text, "the commit's hook logged the limit error"
 
 
 # -- the hook --------------------------------------------------------------------------------------------
@@ -747,11 +734,6 @@ async def test_a_slow_observer_does_not_hold_up_the_commit_of_another_session():
         )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="FINDING 4: every observer of a commit gets the same Activity object, so one that "
-    "mutates it changes what the next one sees (PD-13: observers are independent; low)",
-)
 async def test_an_observer_that_mutates_its_activity_does_not_change_what_the_next_one_gets():
     # PD-13: each exception is logged and the rest still run: observers are independent
     async def vandal(activity: Activity, work: Work) -> None:

@@ -164,7 +164,7 @@ green CI.
 
 ## 3. The bus, the checks, the toy (stage 3)
 
-- [ ] 3.1 `MessageBus`, `Work`, `command`, `MessageLimitExceeded` (PD-13). `services/messagebus.py`,
+- [x] 3.1 `MessageBus`, `Work`, `command`, `MessageLimitExceeded` (PD-13). `services/messagebus.py`,
   `domain/exceptions.py`, exports. Test first in `tests/unit/services/test_messagebus.py`, with
   test-local Python subclasses of the generated `Replace` and fake handlers: this task tests
   dispatch only and stores nothing.
@@ -189,7 +189,7 @@ green CI.
 | TC-72b | two `handle` calls in two asyncio tasks | each has its own count and its own `Work` |
 | TC-72c | `command(Replace)` twice | two ids, both `urn:uuid:` |
 
-- [ ] 3.2 The generator checks and the toy (PD-20, PD-21, PD-23). `generation/checks/boundary.py`,
+- [x] 3.2 The generator checks and the toy (PD-20, PD-21, PD-23). `generation/checks/boundary.py`,
   `hard.py`, `generation/model/rp_generation.yaml` (the rule values); `make generate`;
   `tests/fixtures/library/books_activities.yaml`, `library.yaml`; `tests/toy.py`. Tests first in
   `tests/unit/generation/test_boundary_check.py` and `test_hard_check.py` (planted-fault rows).
@@ -202,7 +202,7 @@ green CI.
 | TC-103 | planted: `ShelveBooks` gives `slot_usage` for `started_at_time` | `[toolkit_filled]` naming the class and the slot |
 | TC-103a | planted: `ShelveBooks`'s `slot_usage` makes `shelf_note` `payload: true` and required | `[toolkit_filled]` naming the slot |
 
-- [ ] 3.3 Wiring: `bootstrap`, the `Transition` handler, `UnitOfWork(served=)`, the kit (PD-14 to
+- [x] 3.3 Wiring: `bootstrap`, the `Transition` handler, `UnitOfWork(served=)`, the kit (PD-14 to
   PD-17). `services/messagebus.py`, `services/mapper.py`, `services/collaboration.py` (`session`,
   `mapper`, `command=`), `services/transitions.py`, `services/tenancy.py`, `entrypoints/kit.py`,
   `entrypoints/service.py`. Tests first in `tests/unit/services/test_messagebus_wiring.py` and
@@ -244,11 +244,11 @@ green CI.
 | TC-94 | `remove_with_files` of a stored file | one `rp:DeleteFile` (also `rp:Remove`, `prov:Activity`) with one invalidation |
 | TC-95 | `handle(command(DeleteFile, used_resource=f1), c)` with `bootstrap()` | `LookupError` (no handler, PD-1 item 2) |
 
-- [ ] 4.2 Testkit and feature scenarios. `testkit/`: `RecordingObserver` (PD-22), exported and
+- [x] 4.2 Testkit and feature scenarios. `testkit/`: `RecordingObserver` (PD-22), exported and
   covered in `tests/unit/testkit/`. `tests/feature/`: `messages.feature` with every scenario (ten since the reconciliation of 2026-11-14) of
   `specs/rp-messages/spec.md` on the toy classes, and its step module beside the existing ones.
 
-- [ ] 4.3 Docs. `architecture/index.adoc` (the building block; no consumer terms),
+- [x] 4.3 Docs. `architecture/index.adoc` (the building block; no consumer terms),
   `architecture/data-flows.adoc` (a commit with its activity; publish), a new
   `howto/event-driven.adoc` (bootstrap, a command, an observer, modelling use-case activities per
   P-0001, the limits: one command one commit, at most once, `send` outside `handle`, an observer
@@ -259,7 +259,7 @@ green CI.
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · PR 1 (#107) · [x] 2.1 · [x] 2.2 · (adversarial tester) · [x] 2.3 ·
-  [x] 2.4 · [x] 2.5 · PR 2 (#110) · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · PR 3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · PR 4
+  [x] 2.4 · [x] 2.5 · PR 2 (#110) · [x] 3.1 · [x] 3.2 · [x] 3.3 · PR 3 · [x] 4.1 · [x] 4.2 · [x] 4.3 · PR 4
 
 1.1 then 1.3; 1.2 touches other files than 1.1 except the generated ones, so it runs after 1.1 too.
 3.1 and 3.2 touch disjoint files and may run in parallel; so may 4.2 and 4.3 after 4.1. Everything

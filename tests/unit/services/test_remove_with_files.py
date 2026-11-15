@@ -54,6 +54,20 @@ async def test_the_removal_is_recorded_as_a_delete_file(world):  # TC-94
     assert list(graph.objects(deletion, v.HAS_GENERATION)) == [], "and generated nothing"
 
 
+async def test_without_a_mapper_the_removal_is_a_plain_remove(world):  # D-11 g
+    await remove_with_files(
+        world.tenancy, world.files, world.tenant, CREATOR, world.scan, world.version, None
+    )
+
+    graph = await stored_graph(
+        world.store, URIRef(world.iris.provenance(world.tenant)), world.database
+    )
+    assert list(graph.subjects(RDF.type, v.DELETE_FILE)) == [], "no file deletion"
+    [removal] = graph.subjects(RDF.type, v.REMOVE)
+    assert list(graph.objects(removal, v.USED)) == [], "the standard activity names no resource"
+    assert await world.blobs() == [], "the blob still goes"
+
+
 async def test_a_blob_another_aggregate_names_stays(world):
     await world.commit(world.other, keys=["k1"])
     await world.remove(world.scan, world.version)

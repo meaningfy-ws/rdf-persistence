@@ -147,6 +147,9 @@ PASSING = (
     pytest.param(  # TC-102: a toolkit activity class may be referred to (was_generated_by)
         book_slot_over("made_by", "Activity", imports_activities=False), id="toolkit-activity"
     ),
+    pytest.param(  # TC-102: and the workflow activity
+        book_slot_over("last_move", "Transition", imports_activities=True), id="toolkit-transition"
+    ),
     pytest.param(  # TC-102: so may an aggregate root that is also an activity
         (
             *book_slot_over("last_review", "Review", imports_activities=True),

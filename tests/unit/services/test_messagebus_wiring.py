@@ -255,6 +255,29 @@ async def test_a_dependency_no_handler_or_observer_names_is_a_value_error():  # 
         bootstrap(notifier=object())
 
 
+async def test_a_required_parameter_no_dependency_provides_fails_at_bootstrap():  # D-11 d
+    async def shelve(cmd: Activity, work: Work, notifer: object) -> None:  # a typo of notifier
+        return None
+
+    async def watch(activity: Activity, work: Work, mapper_: object) -> None:
+        return None
+
+    with pytest.raises(ValueError, match="notifer"):
+        bootstrap(commands={ShelveBooks: shelve})
+    with pytest.raises(ValueError, match="mapper_"):
+        bootstrap(observers={Activity: [watch]})
+
+
+async def test_a_parameter_with_a_default_needs_no_dependency():  # D-11 d
+    async def shelve(cmd: Activity, work: Work, retries: int = 3) -> int:
+        return retries
+
+    bus = bootstrap(commands={ShelveBooks: shelve})
+
+    result = await bus.handle(command(ShelveBooks), SimpleNamespace(session=object()))  # type: ignore[arg-type]
+    assert result == 3, "the default stands"
+
+
 async def test_a_command_handler_of_the_consumer_replaces_the_toolkits():  # TC-78
     async def mine(cmd: Activity, work: Work) -> str:
         return "mine"
@@ -313,7 +336,7 @@ async def test_a_second_commit_with_the_same_command_is_refused_and_the_first_st
     async with world(commands={ShelveBooks: shelving(twice=True)}) as w:
         shelve = command(ShelveBooks)
 
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError, match=f"{shelve.id} has served a commit already"):
             await w.bus.handle(shelve, w.collaboration)
 
         book = toy_mapper().from_graph(Book, B1, (await w.session.get_graph(B1))[0], None)

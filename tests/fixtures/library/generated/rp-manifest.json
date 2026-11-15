@@ -47,7 +47,7 @@
     },
     {
       "path": "rdf_persistence/generation/checks/toolkit_filled.py",
-      "sha256": "9eea593807ccc58cf7214a25404f4624b07a703f8daad7c56bcc596aaeeb0d3f"
+      "sha256": "8ae1248d0609d59decaeff7637242f21799ff87b3a2940f23218bf1a8e2f83c2"
     },
     {
       "path": "rdf_persistence/generation/cli.py",

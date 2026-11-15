@@ -30,6 +30,7 @@ from rdf_persistence.domain.iris import DEFAULT_IRIS, tenant_resource_name
 from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.entrypoints.service import install_service
+from rdf_persistence.services.messagebus import MessageBus
 from rdf_persistence.services.migrations import stamps
 from rdf_persistence.services.vocabulary import ANNOTATION, HAS_TARGET, metamodel
 from rdf_persistence.testkit import FakeStore, RecordingObserver
@@ -634,21 +635,34 @@ async def replace_the_book(scene) -> None:
 
 async def test_a_generic_replace_reaches_the_observers_of_the_kits_bus(scene) -> None:  # TC-81
     seen = observed(scene)
+    before = scene.book_etag.strip('"')
 
     await replace_the_book(scene)
 
+    async with scene.service.kit.session(scene.tenant_iri, "ada") as session:
+        after = (await session.get_graph(scene.book_iri))[2]
     [replace] = seen.of(Replace)
     assert replace.was_associated_with == [principal_of("ada")], "associated with the caller"
-    assert [g.entity for g in replace.generations or []] == [scene.book_iri], "the book"
+    assert [(g.entity, g.entity_version) for g in replace.generations or []] == [
+        (scene.book_iri, after)
+    ], "it generated the new version of the book"
+    assert [(i.entity, i.entity_version) for i in replace.invalidations or []] == [
+        (scene.book_iri, before)
+    ], "and invalidated the version the caller read"
 
 
-async def test_a_kit_with_no_bus_records_and_publishes_nothing(scene) -> None:  # TC-82
-    seen = observed(scene)
-    scene.service.kit.bus = None
+async def test_a_kit_with_no_bus_records_and_publishes_nothing(scene, monkeypatch) -> None:  # TC-82
+    published: list[Activity] = []
+
+    async def spy(self, activity: Activity, session: object) -> None:
+        published.append(activity)
+
+    monkeypatch.setattr(MessageBus, "publish", spy)
+    assert scene.service.kit.bus is None, "a kit starts with no bus"
 
     await replace_the_book(scene)
 
-    assert seen.activities == [], "nothing is published with no bus"
+    assert published == [], "the kit's hook handed nothing to any bus"
     prefix = scene.service.settings.prefix
     stored = await activities(
         scene.service.store,

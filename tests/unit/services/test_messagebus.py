@@ -350,7 +350,107 @@ def test_a_command_gets_a_fresh_urn_uuid_id():  # TC-72c
     assert one.id != other.id, "ids are fresh"
 
 
-async def test_unit_of_work_without_a_mapper_is_a_runtime_error():
+async def test_an_observer_of_another_sessions_commit_gets_no_collaboration(caplog):  # D-11 a
+    rec, (_, collaboration) = Recorder(), fakes()
+    other, _ = fakes()
+    bus: MessageBus
+
+    async def replace(cmd: Activity, work: Work) -> None:
+        await bus.publish(cmd, other)  # a commit of a session this collaboration does not hold
+
+    bus = MessageBus(
+        {Replace: replace, Remove: rec.handler("remove")},
+        {Replace: [sender(rec, "o", command(Remove))]},
+    )
+
+    with caplog.at_level(logging.ERROR):
+        await bus.handle(command(Replace), collaboration)
+
+    assert rec.names() == ["o"], "the queued command did not run"
+    assert rec.calls[0][2].collaboration is None, "the observer has no collaboration"
+    errors = [r.exc_info[1] for r in caplog.records if r.exc_info]
+    assert [type(e) for e in errors] == [RuntimeError], "its send is the observer's logged error"
+
+
+async def test_a_queued_command_runs_with_the_collaboration_it_was_sent_under():  # D-11 a
+    rec, (_, first), (_, second) = Recorder(), fakes(), fakes()
+    bus: MessageBus
+
+    async def publishing(cmd: Activity, work: Work) -> None:
+        await bus.publish(cmd, work.session)
+
+    async def nested(activity: Activity, work: Work) -> None:
+        await bus.handle(command(Add), second)  # another collaboration, in the same run
+
+    bus = MessageBus(
+        {Replace: publishing, Add: publishing, Remove: rec.handler("remove")},
+        {Replace: [nested], Add: [sender(rec, "o", command(Remove))]},
+    )
+
+    await bus.handle(command(Replace), first)
+
+    assert rec.names() == ["o", "remove"], "the nested commit's observer queued a command"
+    (_, _, observed), (_, _, removed) = rec.calls
+    assert observed.collaboration is second, "the observer has the collaboration of its commit"
+    assert removed.collaboration is second, (
+        "its command runs with the collaboration it was sent under"
+    )
+
+
+async def test_a_finished_run_cannot_be_fed():  # D-11 b
+    rec, (_, collaboration) = Recorder(), fakes()
+    bus = MessageBus({Replace: rec.handler("h")}, {})
+    await bus.handle(command(Replace), collaboration)
+    [(_, _, work)] = rec.calls
+
+    with pytest.raises(RuntimeError, match="finished"):
+        await work.send(command(Remove))
+
+
+async def test_a_handle_in_a_task_that_outlives_its_parent_starts_a_run_of_its_own():  # D-11 b
+    rec, (_, collaboration) = Recorder(), fakes()
+    tasks: list[asyncio.Task[object]] = []
+    bus: MessageBus
+
+    async def replace(cmd: Activity, work: Work) -> None:
+        tasks.append(asyncio.create_task(bus.handle(command(Remove), collaboration)))
+
+    async def remove(cmd: Activity, work: Work) -> str:
+        await work.send(command(Add))
+        return "removed"
+
+    bus = MessageBus({Replace: replace, Remove: remove, Add: rec.handler("add")}, {})
+
+    await bus.handle(command(Replace), collaboration)
+    [result] = await asyncio.gather(*tasks)
+
+    assert result == "removed", "the late handle ran"
+    assert rec.names() == ["add"], "what it queued ran, in its own run"
+
+
+async def test_the_limit_error_is_logged_with_the_command_before_it_is_raised(caplog):  # D-11 c
+    (_, collaboration), seen = fakes(), []
+    bus: MessageBus
+
+    async def replace(cmd: Activity, work: Work) -> None:
+        seen.append(cmd)
+        await bus.publish(cmd, work.session)
+
+    async def again(activity: Activity, work: Work) -> None:
+        await work.send(activity)
+
+    bus = MessageBus({Replace: replace}, {Replace: [again]}, limit=2)
+
+    with caplog.at_level(logging.ERROR), pytest.raises(MessageLimitExceeded):
+        await bus.handle(command(Replace), collaboration)
+
+    logged = [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR]
+    assert logged == [f"message limit 2 reached by Replace {seen[0].id}"], (
+        "class and id of the command"
+    )
+
+
+async def test_unit_of_work_without_a_mapper_is_a_runtime_error():  # TC-80a
     rec, (_, collaboration) = Recorder(), fakes()
     bus = MessageBus({Replace: rec.handler("h")}, {})
     await bus.handle(command(Replace), collaboration)

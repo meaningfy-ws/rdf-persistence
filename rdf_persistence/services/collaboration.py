@@ -89,13 +89,10 @@ class Collaboration:
 
     @property
     def session(self) -> Session:
-        """The session this collaboration writes through; the message bus gives it to handlers."""
+        """The session this collaboration writes through, for the message bus, which gives it to
+        handlers and observers. The session checks no access: a caller of ``session`` holds the
+        session's full reach."""
         return self._session
-
-    @property
-    def mapper(self) -> Mapper:
-        """The mapper of the application's models."""
-        return self._mapper
 
     async def referrers(
         self, iri: str, *, class_name: str | None = None, slot: str | None = None

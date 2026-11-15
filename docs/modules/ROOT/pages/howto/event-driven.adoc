@@ -46,12 +46,18 @@ bus.handle(command, collab) → handler → commit + activity record → observe
 
 Put each use case that changes state in a module of its own, `<domain>_activities.yaml`, that
 imports the domain module; the domain module never imports it, so the stored model stays free of
-process concerns (this is the rule P-0001 of this repository, `docs/rules/`). The toy's is `books_activities.yaml`:
+process concerns (this is the rule P-0001 of this repository, `docs/rules/`). The toy's is `books_activities.yaml`, shown as it is in the repository: a module also needs its `title`, `description`, `prefixes` and `module_kind`.
 
 [source,yaml]
 ----
 id: https://example.org/ns/library/books_activities
 name: books_activities
+title: Book activities module
+description: The use cases that change books, modelled as activities (rule P-0001); books.yaml never imports this module.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+  rp: https://meaningfy.ws/ns/rdf-persistence#
 default_prefix: lib
 default_range: string
 imports:
@@ -59,13 +65,17 @@ imports:
   - books
   - rdf_persistence/model/rp_provenance
   - rdf_persistence/model/rp_workflow
+annotations:
+  module_kind: domain
 
 classes:
   ApproveBook:
-    description: The command to approve a book, a workflow transition.
+    title: Approve book
+    description: The command to approve a book, a workflow transition the toolkit's own handler carries out.
     class_uri: lib:ApproveBook
     is_a: Transition
   ShelveBooks:
+    title: Shelve books
     description: The command to shelve a book, with a note on the shelf.
     class_uri: lib:ShelveBooks
     is_a: Activity
@@ -73,6 +83,8 @@ classes:
 
 slots:
   shelf_note:
+    title: Shelf note
+    description: A note the librarian leaves with the shelving.
     slot_uri: lib:shelfNote
     range: string
 ----
@@ -143,17 +155,21 @@ bus = bootstrap(
 kit.bus = bus
 ----
 
-* `commands` maps a class to its handler; `observers` maps a class to a list of observers.
+* `commands` maps a class to its handler; `observers` maps a class to a list of observers. These
+  two names, `limit` and `mapper` are `bootstrap`'s own, so a handler or observer cannot take a
+  dependency of those names.
 * Every parameter after `(command, work)` is a *dependency*, matched by its name to a keyword of
-  `bootstrap` (`shelf`, `mail`; the annotation plays no part). A dependency no handler or observer names is a `ValueError`, so a
-  typo does not pass silently.
+  `bootstrap` (`shelf`, `mail`; the annotation plays no part). A dependency no handler or observer names is a `ValueError`, and so is a
+  handler or observer parameter with no default and no dependency, so a typo fails when the bus
+  is built, not at the first message.
 * The toolkit's handlers for `Transition`, `PostComment` and `PostReply` are added unless you
   register your own for the class. That is why `ApproveBook` needs no handler here.
 * `mapper=kit.mapper` gives the bus the mapper that builds a command's record and the units of
   work. Without it `work.unit_of_work()` raises `RuntimeError`.
 * *Set `kit.bus`* after you build the bus. The kit is built first (a handler's dependencies are
   often parts of it), so the bus comes second; `install_service(..., bus=bus)` does the same when
-  you have the bus before the call. The kit hands every commit of a tenant database or the
+  you have the bus before the call, but the bus must be built with the kit's mapper, so the usual
+  way is `kit.bus = bootstrap(mapper=kit.mapper, ...)` after the kit exists. The kit hands every commit of a tenant database or the
   application database to `kit.bus`, so the generic HTTP routes reach your observers too. With no
   bus, commits are recorded and nothing is handed over.
 * A `limit` keyword (default 100) bounds the commands one `handle` call runs; see
@@ -184,12 +200,10 @@ raises `LookupError("no handler for DeleteFile")`; a command with a toolkit-fill
 raises `InvalidBody`. The bus checks no access: the handler's calls do, as the collaboration
 always does.
 
-An `ApproveBook` carries the transition's data; the toolkit's handler calls the same
-`collab.transition` as the page on workflows, and the record is an `ApproveBook`:
-
-`book` is the book's IRI and `version` its token, read as in
+In the next snippet `book` is the book's IRI and `version` its token, read as in
 xref:howto/workflow.adoc#make-a-transition[Make a transition]; `accepted` is a state of that
-workflow.
+workflow. An `ApproveBook` carries the transition's data; the toolkit's handler calls the same
+`collab.transition` as the page on workflows, and the record is an `ApproveBook`:
 
 [source,python]
 ----
@@ -211,7 +225,11 @@ A handler changes aggregates through `work.unit_of_work()` and commits once:
   all.
 * *Use the collaboration for what it owns.* `work.collaboration` is the caller's collaboration
   (`transition`, `comment`, `delete_cascade`); a handler that calls it instead of the unit of
-  work is also one command, one commit.
+  work is also one command, one commit. A call records the handled command only when you pass it
+  (`command=cmd`), which `transition` and `comment` take; another call, such as `delete_cascade`,
+  records a standard activity.
+* *Keep free text and personal data in `payload` slots.* The record keeps a command's other slots
+  for as long as the tenant exists, and is never removed.
 * *Return what the caller needs.* `handle` returns it.
 
 [#write-observer]
@@ -238,11 +256,16 @@ async def index_book(activity: Activity, work: Work) -> None:
   the generic ones.
 * *Its error is logged with its name* and the other observers still run. It never undoes the
   commit and the caller does not see it.
-* *It acts as the caller.* The session is the one that committed, with the caller's principal, and
-  a session checks no access. An observer can read and write what the caller could, and what it
-  commits is recorded as the caller's activity.
+* *It acts as the caller's principal, with the committing session's full reach.* The session is the
+  one that committed, and a session checks no access: an observer can read and write anything in
+  that database, not only what the caller could, and what it commits is recorded as the caller's
+  activity. Check anything beyond the aggregates the activity names yourself: through
+  `work.collaboration`, which checks access on every call, or through `kit.require`.
+  `work.collaboration` is set only inside `handle` and only for a commit of that collaboration's
+  session; for a commit made on another session it is `None`.
 * *It can send a command* with `await work.send(command(...))`: the command runs after the
-  current one, in the same `handle` call, with the caller's collaboration.
+  current one, in the same `handle` call, with the caller's collaboration. If the handler then
+  raises, the commands an observer queued are dropped; the commit and its publish stand.
 
 == Test it
 
@@ -293,16 +316,18 @@ when the thing to check is that it was called, and with what.
   the route to call `bus.handle`.
 * *The loop limit.* One `handle` call runs at most `limit` commands (default 100): the first, and
   every one an observer or handler queued. The next raises `MessageLimitExceeded` ("message limit
-  100 reached") from `handle`, and the commands still queued are dropped. An observer of a commit
-  made outside `handle` that commits again on its own session is stopped at the same limit; there
-  the error is logged. A queued command's own error is logged and the queue goes on, because the
+  100 reached") from `handle`, which also logs it at error level, and the commands still queued
+  are dropped. An observer that commits again on its own session is stopped at the same limit,
+  inside `handle` or not. When a `handle` that an observer calls itself joins the count and passes
+  the limit, its error is logged by the commit's hook and not raised to the outer caller. A queued command's own error is logged and the queue goes on, because the
   caller's command already succeeded.
 * *The false conflict.* A commit that applied, but whose graphs another writer overwrote before
   the toolkit could confirm it, is reported as a `Conflict` (see
   xref:howto/commits.adoc#conflict[what a conflict means]). Its activity is recorded and not
-  handed to the observers. Read again before retrying.
-* *Observers act as the caller.* There is no service account: an observer cannot do what the
-  caller could not, and cannot do more.
+  handed to the observers. A commit that applied but was overtaken in part is published once its
+  activity is stored. Read again before retrying.
+* *Observers have the session's full reach.* There is no service account: an observer acts as the
+  caller's principal, and the session checks no access (see <<write-observer>>).
 * *No handler for `Add`, `Replace`, `Remove`.* The toolkit records and publishes them but has no
   handler: they are what the generic routes and your own units of work produce. Register a
   handler of your own to send them as commands.

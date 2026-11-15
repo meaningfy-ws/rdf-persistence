@@ -264,6 +264,39 @@ def test_a_toolkit_filled_problem_names_the_class_and_the_slot(
     assert slot in found[0], f"the slot is not named in {found[0]}"
 
 
+def test_a_slot_that_aliases_a_toolkit_filled_slot_is_refused(break_toy: Breaker) -> None:
+    """D-11 e: another name for the slot the toolkit fills would let a caller write it too."""
+    root = break_toy(
+        ACTIVITIES,
+        "    slot_uri: lib:shelfNote\n",
+        "    slot_uri: http://www.w3.org/ns/prov#startedAtTime\n",
+    )
+    found = [p for p in problems_of(root) if f"[{HardRule.TOOLKIT_FILLED.value}]" in p]
+    assert len(found) == 1, f"one planted fault, one problem: {found}"
+    assert "ShelveBooks" in found[0], f"the class is not named in {found[0]}"
+    assert "shelf_note" in found[0], f"the slot is not named in {found[0]}"
+    assert "started_at_time" in found[0], f"the toolkit-filled slot is not named in {found[0]}"
+
+
+def test_a_comment_subclass_that_narrows_a_state_slot_is_refused(break_toy: Breaker) -> None:
+    """D-11 j: the slots a comment carries from a transition are the toolkit's too."""
+    break_toy(
+        ACTIVITIES,
+        "  - rdf_persistence/model/rp_workflow\n",
+        "  - rdf_persistence/model/rp_workflow\n  - rdf_persistence/model/rp_discussion\n",
+    )
+    root = break_toy(
+        ACTIVITIES,
+        "classes:\n",
+        "classes:\n  Remark:\n    title: Remark\n    description: A comment of this library.\n"
+        "    class_uri: lib:Remark\n    is_a: Comment\n    slot_usage:\n      from_state_iri:\n"
+        "        required: true\n",
+    )
+    found = [p for p in problems_of(root) if f"[{HardRule.TOOLKIT_FILLED.value}] Remark:" in p]
+    assert len(found) == 1, f"the narrowed state slot is the one problem of Remark: {found}"
+    assert "from_state_iri" in found[0], f"the slot is not named in {found[0]}"
+
+
 @pytest.mark.parametrize(
     "edit",
     [

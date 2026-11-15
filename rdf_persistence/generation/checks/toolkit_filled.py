@@ -32,15 +32,32 @@ def _required_payloads(view: SchemaView, cls: ClassDefinition) -> Iterator[Check
             )
 
 
+def _aliases(
+    view: SchemaView, cls: ClassDefinition, filled: dict[str, str]
+) -> Iterator[CheckProblem]:
+    """A slot of ``cls`` under another name with the IRI of a slot the toolkit fills."""
+    uris = {uri: name for name, uri in filled.items()}
+    for slot in view.class_induced_slots(cls.name):
+        uri = str(view.get_uri(slot, expand=True))
+        if slot.name not in filled and uri in uris:
+            yield rule_problem(
+                HardRule.TOOLKIT_FILLED,
+                cls.name,
+                f"the slot {slot.name} has the slot_uri of {uris[uri]}, which the toolkit fills: "
+                f"give {slot.name} a slot_uri of its own",
+            )
+
+
 def toolkit_filled_problems(
     view: SchemaView, classes: list[ClassDefinition]
 ) -> Iterator[CheckProblem]:
-    """One problem for each slot a class narrows or redeclares though the toolkit fills it, and each required payload slot."""
+    """One problem for each slot a class narrows, redeclares or aliases though the toolkit fills it, and each required payload slot."""
     filled = {
-        name
+        name: str(view.get_uri(slot, expand=True))
         for name, slot in view.all_slots(attributes=False).items()
         if flag(slot, RpAnnotation.TOOLKIT_FILLED)
     }
     for cls in classes:
-        yield from _redeclared(cls, filled)
+        yield from _redeclared(cls, set(filled))
+        yield from _aliases(view, cls, filled)
         yield from _required_payloads(view, cls)

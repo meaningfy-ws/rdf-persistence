@@ -24,7 +24,12 @@ from rdf_persistence.domain.exceptions import (
     UnknownRole,
 )
 from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_discussion import Comment, Motivation, PostComment
+from rdf_persistence.domain.generated.rp_discussion import (
+    Comment,
+    Motivation,
+    PostComment,
+    PostReply,
+)
 from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
@@ -242,6 +247,29 @@ async def test_a_given_command_is_stored_with_the_target_it_is_for(ada, books, s
     assert list(graph.objects(URIRef(NEW_ACTIVITY), v.USED)) == [URIRef(B1)], (
         "the target is the one commented on, whatever the command said"
     )
+
+
+async def test_a_reply_command_without_a_parent_is_refused_and_nothing_is_stored(
+    ada, books, store
+):  # D-11 f
+    before = await stored_graph(store, PROVENANCE)
+    forged = PostReply(id=NEW_ACTIVITY, used_resource=B1, replies_to=B2)
+
+    with pytest.raises(InvalidBody, match="reply"):
+        await ada.comment(B1, "hi", command=forged)
+
+    assert len(await stored_graph(store, PROVENANCE)) == len(before), "nothing was stored"
+    assert await ada.thread(B1) == [], "no comment"
+
+
+async def test_a_comment_command_for_a_reply_is_refused(ada, books):  # D-11 f
+    first = await ada.comment(B1, "hi")
+    plain = PostComment(id=NEW_ACTIVITY, used_resource=B1)
+
+    with pytest.raises(InvalidBody, match="reply"):
+        await ada.comment(B1, "hello", reply_to=first, command=plain)
+
+    assert [c.id for c in await ada.thread(B1)] == [first], "no reply was stored"
 
 
 async def test_a_comment_with_an_audience_is_seen_by_those_in_it_only(ada, bob, books):  # TC-52

@@ -30,12 +30,18 @@ Observer = Callable[[Activity, "Work"], Awaitable[None]]
 
 
 class _Run:
-    """One running ``handle``: its collaboration, the commands it started and the queue it still owes."""
+    """One running ``handle``: the collaborations it serves, the commands it started and the queue it
+    still owes, each command with the collaboration it was sent under. ``closed`` once it returned."""
 
-    def __init__(self, collaboration: Collaboration) -> None:
-        self.collaboration = collaboration
+    def __init__(self) -> None:
+        self.collaborations: list[Collaboration] = []
         self.started = 0
-        self.queue: list[Activity] = []
+        self.queue: list[tuple[Activity, Collaboration]] = []
+        self.closed = False
+
+    def of_session(self, session: Session) -> Collaboration | None:
+        """The collaboration of this run that writes through ``session``, if any."""
+        return next((c for c in self.collaborations if c.session is session), None)
 
 
 _run: ContextVar[_Run | None] = ContextVar("message_bus_run", default=None)
@@ -68,11 +74,13 @@ class Work:
 
     async def send(self, command: Activity) -> None:
         """Queue ``command``; ``handle`` runs it after the current one. ``RuntimeError`` outside ``handle``."""
-        if self._run is None:
+        if self._run is None or self.collaboration is None:
             raise RuntimeError(
                 "send needs a running handle: there is no collaboration to run it with"
             )
-        self._run.queue.append(command)
+        if self._run.closed:
+            raise RuntimeError("the handle that gave this work has finished: send queues nothing")
+        self._run.queue.append((command, self.collaboration))
 
 
 def command[A: Activity](cls: type[A], **slots: Any) -> A:
@@ -117,28 +125,34 @@ class MessageBus:
         A call made while another runs in the same context joins its count and its queue.
         """
         run = _run.get()
-        if run is not None:
+        if run is not None and not run.closed:
             return await self._start(run, command, collaboration)
-        run = _Run(collaboration)
+        run = _Run()
         token = _run.set(run)
         try:
             result = await self._start(run, command, collaboration)
             while run.queue:
-                queued = run.queue.pop(0)
+                queued, under = run.queue.pop(0)
                 try:
-                    await self._start(run, queued, collaboration)
+                    await self._start(run, queued, under)
                 except MessageLimitExceeded:
                     raise
                 except Exception:
                     log.exception("%s %s failed in the queue", type(queued).__name__, queued.id)
             return result
         finally:
+            run.closed = True
             _run.reset(token)
 
     async def _start(self, run: _Run, command: Activity, collaboration: Collaboration) -> object:
         run.started += 1
         if run.started > self._limit:
+            log.error(
+                "message limit %s reached by %s %s", self._limit, type(command).__name__, command.id
+            )
             raise MessageLimitExceeded(self._limit)
+        if not any(c is collaboration for c in run.collaborations):
+            run.collaborations.append(collaboration)
         _refuse_filled(command)
         handler = next(
             (self._commands[cls] for cls in type(command).__mro__ if cls in self._commands), None
@@ -161,12 +175,14 @@ class MessageBus:
         An observer's error is logged and the rest run; ``MessageLimitExceeded`` is not swallowed.
         """
         run = _run.get()
+        if run is not None and run.closed:
+            run = None
         depth = _depth.get()
-        if run is None and depth >= self._limit:
+        if depth >= self._limit:
             raise MessageLimitExceeded(self._limit)
         work = Work(
             session,
-            run.collaboration if run else None,
+            run.of_session(session) if run else None,
             mapper=self._mapper,
             run=run,
         )
@@ -175,7 +191,7 @@ class MessageBus:
             for cls in type(activity).__mro__:
                 for observer in self._observers.get(cls, ()):
                     try:
-                        await observer(activity, work)
+                        await observer(activity.model_copy(deep=True), work)
                     except MessageLimitExceeded:
                         raise
                     except Exception:
@@ -220,8 +236,21 @@ async def _comment(cmd: Activity, work: Work) -> str:
 def _bind(
     function: Callable[..., Any], dependencies: Mapping[str, Any], used: set[str]
 ) -> Callable[..., Any]:
-    """``function`` with the dependencies its parameters name, after the first two, bound by name."""
-    names = [n for n in list(inspect.signature(function).parameters)[2:] if n in dependencies]
+    """``function`` with the dependencies its parameters name, after the first two, bound by name.
+
+    Only a positional-or-keyword or keyword-only parameter takes one (``*args`` cannot be called by name).
+
+    Raises:
+        ValueError: A parameter after the first two has no default and no dependency.
+    """
+    named = list(inspect.signature(function).parameters.values())[2:]
+    takers = [p for p in named if p.kind in (p.POSITIONAL_OR_KEYWORD, p.KEYWORD_ONLY)]
+    for p in takers:
+        if p.name not in dependencies and p.default is p.empty:
+            raise ValueError(
+                f"{_name(function)} needs {p.name}, which no dependency provides and has no default"
+            )
+    names = [p.name for p in takers if p.name in dependencies]
     if not names:
         return function
     used.update(names)
