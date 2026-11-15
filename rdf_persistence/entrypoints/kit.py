@@ -20,6 +20,7 @@ from rdf_persistence.domain.generated import (
 )
 from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.domain.generated.rp_provenance import Activity
 from rdf_persistence.domain.generated.rp_tenancy import (
     TenantAccess,
     TenantState,
@@ -46,6 +47,7 @@ from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, generated_models_of
+from rdf_persistence.services.messagebus import MessageBus
 from rdf_persistence.services.migrations import chain_of, current_version
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import (
@@ -97,6 +99,9 @@ class ServiceKit:
         """
         view = load_schema(schema)
         self.view = view
+        # None at first, assignable: a handler's dependencies are often parts of this kit, so the bus
+        # is built after it (message-bus PD-17)
+        self.bus: MessageBus | None = None
         self.chains = (
             chain_of(metamodel(), TOOLKIT_MIGRATIONS),
             chain_of(view, migrations),
@@ -149,8 +154,14 @@ class ServiceKit:
             root_validators=root_validators,
             dependents=discussion_dependents(view),
             stamps=[(schema_id, current_version(chain)) for schema_id, chain in self.chains],
+            on_commit=self._publish,
         )
         self.aggregates = Aggregates(self.documents, self.tenancy, self.iris)
+
+    async def _publish(self, activity: Activity, session: Session) -> None:
+        """The sessions' ``on_commit``: hand the activity to the bus, if one is set by now (PD-17)."""
+        if self.bus is not None:
+            await self.bus.publish(activity, session)
 
     def tenant_iri(self, tenant_id: str) -> str:
         """The IRI of the tenant whose id is ``tenant_id`` in a path.

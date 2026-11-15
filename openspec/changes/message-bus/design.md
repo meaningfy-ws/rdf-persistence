@@ -384,6 +384,13 @@ aggregate (DEC-13).
   - d. `Mapper.served` of a class the schema does not have raised `KeyError`. Fix: `ValueError`
     naming the class.
   The xfail markers are removed with the fixes.
+- **D-9** (lead, 2026-11-15) GitNexus rates `Tenancy._session` CRITICAL (44 symbols, 26 flows:
+  every route that opens a session) and `UnitOfWork` MEDIUM before task 3.3. The change 3.3 makes
+  there is the one PD-17 plans and the developer accepted with the EPIC: `Tenancy._session` passes
+  an optional `on_commit` to tenant and application sessions (none to the system database), and
+  `UnitOfWork` takes an optional `served`; with no bus set, behaviour is unchanged. As with D-1,
+  delivery proceeds; the adversarial tester runs right after 3.3, and the stage's full container
+  run covers the routes.
 - **D-8** (lead, 2026-11-15; the developer: "continue as fast as possible towards complete
   implementation, use parallel subagents") Stages 3 and 4 are delivered as ONE PR: one review set,
   one fix round, one checker, one CI cycle. Each rebase of a stage cost a full CI run while

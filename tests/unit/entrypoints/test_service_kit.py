@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from rdflib import RDF, Literal, URIRef
 
-from rdf_persistence import GrantSet, Problem
+from rdf_persistence import GrantSet, Problem, bootstrap
 from rdf_persistence.domain.exceptions import (
     Forbidden,
     InvalidBody,
@@ -23,16 +23,20 @@ from rdf_persistence.domain.exceptions import (
     NotFound,
 )
 from rdf_persistence.domain.generated.rp_access import Action, Grant
+from rdf_persistence.domain.generated.rp_provenance import Activity, Replace
+from rdf_persistence.domain.generated.rp_workflow import Transition
 from rdf_persistence.domain.generated.service.rp_service import Migration
+from rdf_persistence.domain.iris import DEFAULT_IRIS, tenant_resource_name
 from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.services.migrations import stamps
 from rdf_persistence.services.vocabulary import ANNOTATION, HAS_TARGET, metamodel
-from rdf_persistence.testkit import FakeStore
+from rdf_persistence.testkit import FakeStore, RecordingObserver
 from tests.fixtures.library import generated
 from tests.toy import REVIEW_WORKFLOW, ROLES, SETTINGS, TOY_MIGRATIONS, TOY_SCHEMA
 from tests.toy_service import CONSUMER_POLICY, DUNE_BODY, TENANT_BODY, ToyService, principal_of
+from tests.unit.services.test_session_activity import activities
 
 PROBLEMS = f"{SETTINGS.base}problems/"
 FILE_KEY = URIRef("https://meaningfy.ws/ns/rdf-persistence#fileKey")
@@ -609,3 +613,64 @@ async def test_the_kit_restores_a_dump_of_an_older_version_and_migrates_it(
     assert held[TOOLKIT_SCHEMA] == metamodel().schema.version, (
         "and the toolkit's stamp is unchanged"
     )
+
+
+def observed(scene) -> RecordingObserver:
+    """An observer of every activity, on a bus the kit now publishes to (message-bus PD-17)."""
+    seen = RecordingObserver()
+    kit = scene.service.kit
+    kit.bus = bootstrap(observers={Activity: [seen]}, mapper=kit.mapper)
+    return seen
+
+
+async def replace_the_book(scene) -> None:
+    response = await scene.http.put(
+        scene.book,
+        json={**DUNE_BODY, "label": "Dune Messiah"},
+        headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
+    )
+    assert response.status_code == 200, response.text
+
+
+async def test_a_generic_replace_reaches_the_observers_of_the_kits_bus(scene) -> None:  # TC-81
+    seen = observed(scene)
+
+    await replace_the_book(scene)
+
+    [replace] = seen.of(Replace)
+    assert replace.was_associated_with == [principal_of("ada")], "associated with the caller"
+    assert [g.entity for g in replace.generations or []] == [scene.book_iri], "the book"
+
+
+async def test_a_kit_with_no_bus_records_and_publishes_nothing(scene) -> None:  # TC-82
+    seen = observed(scene)
+    scene.service.kit.bus = None
+
+    await replace_the_book(scene)
+
+    assert seen.activities == [], "nothing is published with no bus"
+    prefix = scene.service.settings.prefix
+    stored = await activities(
+        scene.service.store,
+        DEFAULT_IRIS.provenance(scene.tenant_iri),
+        tenant_resource_name(prefix, scene.tenant_iri),
+    )
+    assert [type(a) for a in stored if type(a) is Replace] == [Replace], "the commit is recorded"
+
+
+async def test_a_direct_transition_reaches_the_transition_observers(scene) -> None:  # TC-83
+    kit = scene.service.kit
+    seen = RecordingObserver()
+    kit.bus = bootstrap(observers={Transition: [seen]}, mapper=kit.mapper)
+    authorised = await kit.require(
+        scene.headers("ada")["Authorization"], scene.tenant.rsplit("/", 1)[1], Action.READ
+    )
+    async with kit.session(scene.tenant_iri, "ada") as session:
+        version = (await session.get_graph(scene.book_iri))[2]
+
+    async with kit.collaboration(authorised) as collaboration:
+        await collaboration.transition(scene.book_iri, "in_review", if_version=version)
+
+    [move] = seen.of(Transition)
+    assert move.to_state_iri.endswith("/in_review"), "the observer got the move"
+    assert move.was_associated_with == [principal_of("ada")], "made by the caller"

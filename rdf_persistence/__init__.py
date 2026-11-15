@@ -146,7 +146,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.services.identity import Identity
     from rdf_persistence.services.listing import Listings
     from rdf_persistence.services.mapper import Mapper, UnitOfWork, generated_models, new_part
-    from rdf_persistence.services.messagebus import MessageBus, Work, command
+    from rdf_persistence.services.messagebus import MessageBus, Work, bootstrap, command
     from rdf_persistence.services.schema import load_schema
     from rdf_persistence.services.session import Session, open_session
     from rdf_persistence.services.store import Store
@@ -195,6 +195,7 @@ _LAZY_MODULES = {
     "MessageBus": f"{_SERVICES}.messagebus",
     "Work": f"{_SERVICES}.messagebus",
     "command": f"{_SERVICES}.messagebus",
+    "bootstrap": f"{_SERVICES}.messagebus",
 }
 
 
@@ -327,6 +328,7 @@ __all__ = [
     "WritesKind",
     "ZitadelIdentity",
     "command",
+    "bootstrap",
     "generated_models",
     "install_service",
     "limited_body",

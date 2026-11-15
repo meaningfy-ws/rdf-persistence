@@ -50,6 +50,7 @@ class Collaboration:
         workflows: Workflows | None = None,
     ) -> None:
         self._session = session
+        self._mapper = mapper
         self._view = view
         self._rules = rules
         self._iris = iris
@@ -85,6 +86,16 @@ class Collaboration:
             access=access,
             workflows=workflows,
         )
+
+    @property
+    def session(self) -> Session:
+        """The session this collaboration writes through; the message bus gives it to handlers."""
+        return self._session
+
+    @property
+    def mapper(self) -> Mapper:
+        """The mapper of the application's models."""
+        return self._mapper
 
     async def referrers(
         self, iri: str, *, class_name: str | None = None, slot: str | None = None

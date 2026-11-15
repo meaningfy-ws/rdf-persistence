@@ -77,6 +77,7 @@ INDEXED_NAMES = [
     "MessageBus",
     "Work",
     "command",
+    "bootstrap",
     "MessageLimitExceeded",
 ]
 
