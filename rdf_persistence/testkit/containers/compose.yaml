@@ -36,6 +36,18 @@ services:
     ports:
       - "127.0.0.1:${RP_FUSEKI_PORT:-3030}:3030"
 
+  # A second Fuseki for the tests of tenants on two stores (tenant-stores PD-11): the image of
+  # `fuseki`, so nothing more is built. Only the tests that ask for `fuseki_b` start it.
+  fuseki-b:
+    image: rdf-persistence-test/fuseki:5.6.0
+    environment:
+      FUSEKI_BASE: /fuseki/databases
+      JAVA_OPTIONS: "-Xmx512m -Xms256m"
+    volumes:
+      - ./fuseki/shiro.ini:/fuseki/databases/shiro.ini:ro
+    ports:
+      - "127.0.0.1:${RP_FUSEKI_B_PORT:-3031}:3030"
+
   garage:
     # dxflrs/garage:v2.5.0
     image: dxflrs/garage@sha256:677e5b758e4425a325b811c425c026bf35a4bf42f7ddbaa773de3f4fd779a5a5
