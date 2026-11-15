@@ -16,7 +16,7 @@ unused; letters mark cases added by the PLAN's attack).
 
 ## 1. The outbox and the relay (stage 1)
 
-- [ ] 1.1 Spike (PD-4; RISK-1). No product code. In `temp/spike_faststream/` run, with
+- [x] 1.1 Spike (PD-4; RISK-1). No product code. In `temp/spike_faststream/` run, with
   `uv run --isolated --with 'faststream[redis]==0.7.8'` against `docker run redis:8`, a script
   that proves the four points of PD-4 with a generated model (`Replace` from
   `rdf_persistence.domain.generated`). Write
@@ -31,7 +31,7 @@ unused; letters mark cases added by the PLAN's attack).
 | TS-3 | a message older than the trim age (age set to 1 s for the spike) | gone after the trim |
 | TS-4 | the AsyncAPI generator over the app | a document naming the stream and the payload schema |
 
-- [ ] 1.2 The marks (PD-1, PD-2, PD-14). `services/vocabulary.py` `PENDING_SINCE`, `RELAYED_AT`,
+- [x] 1.2 The marks (PD-1, PD-2, PD-14). `services/vocabulary.py` `PENDING_SINCE`, `RELAYED_AT`,
   `PUBLICATION_FAILED`; `services/session.py` `_record` adds the pending mark with the store's
   `NOW()`; `services/tenant_dump.py` `restore` drops the three predicates before the import. Tests
   first in `tests/unit/services/test_pending_mark.py` (new) and beside the restore tests.
@@ -45,7 +45,7 @@ unused; letters mark cases added by the PLAN's attack).
 | TC-04 | a commit on the application database | its activity is pending in the application provenance graph |
 | TC-05 | dump a tenant holding one pending and one relayed activity; restore it | the restored provenance graph holds both activities, no mark, no `relayedAt` |
 
-- [ ] 1.3 The port, the envelope, the fake (PD-6, PD-7). `rp_service.yaml`: class `Envelope` and
+- [x] 1.3 The port, the envelope, the fake (PD-6, PD-7). `rp_service.yaml`: class `EventEnvelope` (D-4) and
   the optional `ServiceSettings.public_url`; `make generate`. `services/events.py`: `EventBus`,
   `Receive`, `context_link(settings) -> str`. `testkit/fakes.py`: `InMemoryEventBus`,
   `InMemoryBroker`. `testkit/event_bus_conformance.py`: TC-07 to TC-09 as a reusable suite taking a
@@ -61,7 +61,7 @@ unused; letters mark cases added by the PLAN's attack).
 | TC-08 | B's receiver raises; B is closed and started again | B receives the same message again; A's does not |
 | TC-09 | the bus told to fail the next publish (fake: a flag; Redis: the broker stopped) | `publish` raises; the next succeeds |
 
-- [ ] 1.4 Decoding (PD-16). `services/provenance.py` `activity_class_of`, `activity_class_named`,
+- [x] 1.4 Decoding (PD-16). `services/provenance.py` `activity_class_of`, `activity_class_named`,
   `decode_activity`; `services/session.py` the template `READ_PENDING` and
   `Session.pending_activities() -> list[tuple[str, Graph]]` (ordered per PD-5's first key), plus
   `Session.mark_relayed(iri)` and `Session.mark_failed(iri)` (one update each, the store's `NOW()`).
@@ -115,7 +115,7 @@ unused; letters mark cases added by the PLAN's attack).
 
 ## 2. The broker (stage 2)
 
-- [ ] 2.1 The Redis adapter (PD-8; Q7). `pyproject.toml` extra `events`; `uv lock`.
+- [x] 2.1 The Redis adapter (PD-8; Q7). `pyproject.toml` extra `events`; `uv lock`.
   `rdf_persistence/testkit/containers/compose.yaml` service `redis` (`redis:8`, its port);
   `containers/fixtures.py` fixture `redis` and its marker, as the other container fixtures.
   `adapters/redis_events.py` `RedisEventBus`, built on the spike's calls. The conformance suite of

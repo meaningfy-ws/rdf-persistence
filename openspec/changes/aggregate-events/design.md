@@ -102,15 +102,15 @@ broker port, this EPIC; `install_service(event_bus=)`).
 - **PD-6 The port.** `services/events.py`:
 
   ```python
-  Receive = Callable[[Envelope, bytes], Awaitable[None]]
+  Receive = Callable[[EventEnvelope, bytes], Awaitable[None]]
 
   class EventBus(Protocol):
-      async def publish(self, envelope: Envelope, body: Activity) -> None: ...
+      async def publish(self, envelope: EventEnvelope, body: Activity) -> None: ...
       async def start(self, receive: Receive) -> None: ...   # begins consuming
       async def close(self) -> None: ...
   ```
 
-  `Envelope` is a generated wire class (new, `rp_service.yaml`, all slots required): `tenant` (uri:
+  `EventEnvelope` (D-4) is a generated wire class (new, `rp_service.yaml`, all slots required): `tenant` (uri:
   the tenant IRI or the application IRI), `origin` (string: `settings.deployment`), `activity_class`
   (uri: the class IRI of the body), `context` (string: the context link, PD-7). The body is the
   activity's generated JSON (`model_dump_json(exclude_none=True)`), thin by construction (DEC-9). A
@@ -119,7 +119,7 @@ broker port, this EPIC; `install_service(event_bus=)`).
   `InMemoryBroker` (two "deployments" in one test), redelivers an unacked message (its `receive`
   raised) when that bus is started again, and can be told to fail the next `publish`.
 - **PD-7 The context link (Q6).** New optional settings slot `public_url` (uri, pattern
-  `^https?://.+[^/]$`). `Envelope.context` is `{public_url}/context.jsonld`, else the relative
+  `^https?://.+[^/]$`). `EventEnvelope.context` is `{public_url}/context.jsonld`, else the relative
   `/context.jsonld` (`context_link(settings)`). The SSE response carries the same link in a `Link`
   header with `rel="http://www.w3.org/ns/json-ld#context"` (the existing `CONTEXT_REL`).
 - **PD-8 The Redis adapter (DEC-6, Q7).** `adapters/redis_events.py` `RedisEventBus(url, *,
@@ -229,7 +229,7 @@ crash repeats it with the same id.
 
 | Don't | Do instead | Why |
 |---|---|---|
-| Build the message as a dict or hand-written JSON | `activity.model_dump_json()`; `Envelope` generated | Models, not dicts; LinkML single source (DEC-1) |
+| Build the message as a dict or hand-written JSON | `activity.model_dump_json()`; `EventEnvelope` generated | Models, not dicts; LinkML single source (DEC-1) |
 | Publish from `on_commit` directly to the broker | Only the relay publishes; `on_commit` wakes it | A crash between commit and send would lose the event |
 | Replace the mark before the send succeeds | Send, then replace | At least once, never at most once |
 | Order by the client's clock | The store's `NOW()` in the update (PD-1) | Client clocks are read before the update is applied |
@@ -323,3 +323,16 @@ None. Q1 to Q8 were answered on 2026-11-15 (inputs/seed.md).
   FastStream consumers read it (the how-to says so). `claim_min_idle_time` also retries a failing
   message within one run once it has been idle that long: that is the "not acked: redelivered"
   of PD-10, sooner than a restart.
+- **D-2 (stage 1, 2026-11-15, developer).** GitNexus `impact` on `ServiceSettings` was CRITICAL
+  (32 direct users). The developer approved adding the one optional slot `public_url` (PD-7); it
+  is added in task 1.6, where `install_service` passes `context_link(settings.public_url)` on.
+  Task 1.3 builds `context_link(public_url: str | None)` without the slot.
+- **D-3 (stage 1, 2026-11-15, the lead).** Task 2.1 (the Redis adapter) and the service half of
+  3.1 (`EventHub`, `visible_part`) touch no file of the relay chain (1.4 to 1.7), so they are built
+  in parallel with it. Stages 1 and 2 go into `develop` as one PR (as `message-bus` D-8 did);
+  stage 3 keeps its own PR. Impact: both are new symbols only; no existing symbol changes.
+- **D-4 (stage 1, 2026-11-15, the lead).** The task gate of 1.2 and 1.3 failed: the generator
+  refuses the class name `Envelope` in the `anyapi` conformance schema, where a consumer class of
+  that name exists ("reserved by rp_service.ts"). A toolkit wire class must not take a common
+  name a consumer may use: renamed `EventEnvelope` (`rp:EventEnvelope`) everywhere PD-6 says
+  `Envelope`.
