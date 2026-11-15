@@ -118,6 +118,31 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-7. The new ones:
   compose service `fuseki-b` and session fixture `fuseki_b` (`RP_FUSEKI_B_PORT`), started only by
   the tests that ask for it, so the container lane's other tests pay nothing.
 
+## Delivery decisions
+
+- **PD-12 A failed create cleans up after itself** (stage 1, from the adversarial tester's
+  FINDING-1). Two instances that draw the same id at the same moment, one creating on `client-a`
+  and one on `default`, both pass `_free_tenant`. The loser's database on `client-a` then carries
+  a name that the winner's record holds, so no sweep ever drops it (orphans are judged by name
+  across stores, DEC-7). With one store the second `create_dataset` raised `Conflict`, so nothing
+  was left. Fix: `Tenancy.create` drops the new database from its store, and the bucket if it
+  created it, on any failure after `create_dataset` and before the record is written. This is best
+  effort, logged at step `create-cleanup` like `_drop_restored`, and the original error is
+  re-raised. Rejected: judging orphans per store (it would drop RISK-4's second name's
+  databases).
+- **PD-14 A cleanup drops only what its own call made** (review L1, C1, Critical). In the same
+  race, a restore that loses gets `Conflict` from `create_bucket` (one object store), and
+  `_drop_restored` then deleted the **winner's** bucket and its files. Fix: `restore` and `create`
+  each record what they made (`database_made`, `bucket_made`), and their cleanup drops only those.
+  A unit test uses two `FakeStore`s and a `FileStore` whose `create_bucket` raises `Conflict`.
+- **PD-15 One routing rule, one source of stores** (review L3 W1, L4/L5 W1 and W2). The sweep takes
+  its stores from `tenancy.stores()`; its `store` argument stays for the signature, unused, as in
+  `migrate_tenants`. `store_name_in(record) -> str` beside `DEFAULT_STORE` in `tenancy.py` is the
+  one reading of PD-2, used by `Tenancy` and `sweep`.
+- **PD-13 One read of the records at start-up.** The sweep reads all records with one query
+  (`Tenancy.access_records()`, public, over `_records()`, which also fills the routing cache), not
+  one `get` per tenant.
+
 ## Algorithm / approach
 
 Worked example, a kit wired to `default` (D) and `client-a` (A), prefix `lib`:

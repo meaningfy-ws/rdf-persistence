@@ -25,7 +25,7 @@ its reach is wide). After the lead commits a schema change: `make check-generate
 | TC-03 | a record graph written today (no `rp:storeName`) through the toy mapper | decodes; `store_name is None` |
 | TC-04 | the toolkit's lock after `make generate` | `schema_version == "2"`; no migration file added |
 
-- [ ] 1.2 PD-3, PD-4, PD-5: `Tenancy(stores=)`, `DEFAULT_STORE`, `stores()`, `store_name_of`,
+- [x] 1.2 PD-3, PD-4, PD-5: `Tenancy(stores=)`, `DEFAULT_STORE`, `stores()`, `store_name_of`,
   `store_of`, the cache, `_session(..., store=)`, `tenant_session` resolving the store. Tests in
   `tests/unit/services/test_tenancy_stores.py`. Gate: `make test-fast check-quality`.
 
@@ -41,7 +41,7 @@ its reach is wide). After the lead commits a schema change: `make check-generate
 | TC-12 | `T` in `behind` | `TenantBehind` raised at the call of `tenant_session`, before any read (the two existing tests stay green) |
 | TC-38 | `T` on `A`; `set_grants`, then `rename`, then `delete` | after each rewrite the record still has `store_name="client-a"` |
 
-- [ ] 1.3 PD-2, PD-7, PD-8: `create(..., store=)`, `restore(..., store=)` (and the pass-through in
+- [x] 1.3 PD-2, PD-7, PD-8: `create(..., store=)`, `restore(..., store=)` (and the pass-through in
   `tenant_dump.restore`), `_free_tenant` on every store, cleanup of a failed restore on its store,
   `finish_deletion` on the record's store and dropping the cache entry, `delete` resolving the
   store before it marks. `store` is a required keyword of `_session`, `_add_root`,
@@ -64,7 +64,7 @@ its reach is wide). After the lead commits a schema change: `make check-generate
 | TC-40 | `A` raises `StoreUnavailable` on `list_datasets`; `create` on `D` | `StoreUnavailable`; nothing created on `D` |
 | TC-41 | a record naming `client-b` (unwired); `delete(T, version)` | `StoreNotWired`; the record is still `active` |
 
-- [ ] 1.4 PD-6: `sweep` (the DEC-6 check first, then the "no records" guard and the orphan drop on
+- [x] 1.4 PD-6: `sweep` (the DEC-6 check first, then the "no records" guard and the orphan drop on
   every wired store) and `migrate_tenants` per tenant store; `remove_with_files` and
   `sweep_tenant` covered through the routed session and an explicit store. Tests in
   `tests/unit/services/test_sweep.py`, `test_migration_runner.py`, `test_remove_with_files.py`,
@@ -125,7 +125,9 @@ separate; L4+L5 one pass), the fix pass, rebase on `develop`, PR 1, merge on gre
   restore, retiring a store, the deploy order of RISK-2, the prefix rule of RISK-1, one server
   under one name of RISK-4, no downgrade or mixed versions of RISK-5, checking a user's store
   choice in a consumer's own create route, and the anti-pattern of passing `kit.store` for a
-  tenant to `dump`, `sweep_tenant` or `database_of`), its entry in the nav and in `questions.adoc`, a paragraph in
+  tenant to `dump`, `sweep_tenant` or `database_of`); `architecture/index.adoc` (~154: the access
+  record names its store, the start-up sweep covers every wired store; architecture terms only);
+  `adopt.adoc` §12 (the start-up steps); the "as of" date of `questions.adoc`; its entry in the nav and in `questions.adoc`, a paragraph in
   `howto/application-data.adoc` (the start-up functions' `store` is the default store), and the
   rows of the durations table if a target's time moved. Gate: `make check-docs`.
 
@@ -136,7 +138,7 @@ routed through the session).
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · (tester) · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · (tester) · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 ·
   reconcile · PR 2
 
 ## Verification
