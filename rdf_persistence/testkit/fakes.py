@@ -25,9 +25,11 @@ from rdf_persistence.domain.exceptions import (
 )
 from rdf_persistence.domain.generated.rp_core import AggregateKey, Principal
 from rdf_persistence.domain.generated.rp_files import BlobEntry
-from rdf_persistence.domain.generated.service.rp_service import AccountSummary
+from rdf_persistence.domain.generated.rp_provenance import Activity
+from rdf_persistence.domain.generated.service.rp_service import AccountSummary, EventEnvelope
 from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.domain.media import N_QUADS
+from rdf_persistence.services.events import Receive
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.session import (
     Clock,
@@ -38,6 +40,8 @@ from rdf_persistence.services.session import (
     open_session,
     utc_now,
 )
+
+Message = tuple[EventEnvelope, bytes]
 
 FAKE_DATABASE = "fake"
 FAKE_TENANT = "https://example.org/tenants/fake"
@@ -382,3 +386,60 @@ async def fake_session(
         on_commit=on_commit,
     ) as session:
         yield session
+
+
+class InMemoryBroker:
+    """The broker the in-memory buses share: every message sent, as (envelope, JSON bytes)."""
+
+    def __init__(self) -> None:
+        self.messages: list[Message] = []
+        self._buses: list[InMemoryEventBus] = []
+
+
+class InMemoryEventBus:
+    """An ``EventBus`` that delivers to every started bus on its broker, itself included.
+
+    A message whose ``receive`` raised stays unacked for that bus and comes again when that bus is
+    started again. ``fail_next_publish`` makes the next ``publish`` raise.
+    """
+
+    def __init__(self, broker: InMemoryBroker) -> None:
+        self._broker = broker
+        self._receive: Receive | None = None
+        self._unacked: list[Message] = []
+        self._fail_next = False
+
+    def fail_next_publish(self) -> None:
+        self._fail_next = True
+
+    async def publish(self, envelope: EventEnvelope, body: Activity) -> None:
+        if self._fail_next:
+            self._fail_next = False
+            raise ConnectionError("the in-memory broker was told to fail")
+        message = (envelope, body.model_dump_json(exclude_none=True).encode())
+        self._broker.messages.append(message)
+        for bus in list(self._broker._buses):
+            await bus._deliver(message)
+
+    async def start(self, receive: Receive) -> None:
+        self._receive = receive
+        if self not in self._broker._buses:
+            self._broker._buses.append(self)
+        for message in list(self._unacked):
+            await self._deliver(message)
+
+    async def close(self) -> None:
+        self._receive = None
+        if self in self._broker._buses:
+            self._broker._buses.remove(self)
+
+    async def _deliver(self, message: Message) -> None:
+        assert self._receive is not None
+        try:
+            await self._receive(*message)
+        except Exception:
+            if message not in self._unacked:
+                self._unacked.append(message)
+        else:
+            if message in self._unacked:
+                self._unacked.remove(message)

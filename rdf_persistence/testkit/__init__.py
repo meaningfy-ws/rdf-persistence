@@ -10,7 +10,14 @@ from typing import TYPE_CHECKING, Any
 
 from rdf_persistence.testkit.bootstrap import wait_until, wait_until_async
 from rdf_persistence.testkit.exceptions import TokenRefusedError
-from rdf_persistence.testkit.fakes import FakeFileStore, FakeIdentity, FakeStore, fake_session
+from rdf_persistence.testkit.fakes import (
+    FakeFileStore,
+    FakeIdentity,
+    FakeStore,
+    InMemoryBroker,
+    InMemoryEventBus,
+    fake_session,
+)
 from rdf_persistence.testkit.guards import assert_models_generated
 from rdf_persistence.testkit.messages import RecordingObserver
 from rdf_persistence.testkit.model_shape import model_schema_diff, model_shape_diff
@@ -63,6 +70,8 @@ __all__ = [
     "FakeFileStore",
     "FakeIdentity",
     "FakeStore",
+    "InMemoryBroker",
+    "InMemoryEventBus",
     "RecordingObserver",
     "TokenRefusedError",
     "TokenSigner",

@@ -646,6 +646,14 @@ class Migration(ConfiguredBaseModel):
     steps: Optional[list[MigrationStep]] = Field(default=None, title="Steps", description="The steps of a migration, in the order they run.")
 
 
+class EventEnvelope(ConfiguredBaseModel):
+    "What travels beside an activity on the event bus: the tenant it happened in, the deployment that published it, the class of its body and where to find the JSON-LD context that reads it."
+    tenant: str = Field(default=..., title="Tenant", description="The IRI of the tenant, or of the application, the activity happened in.")
+    origin: str = Field(default=..., title="Origin", description="The deployment that published the message, as its `deployment` setting names it.")
+    activity_class: str = Field(default=..., title="Activity class", description="The IRI of the class of the activity the message carries.")
+    context: str = Field(default=..., title="Context", description="A link to the JSON-LD context that reads the message body.")
+
+
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 ServiceSettings.model_rebuild()
@@ -673,3 +681,4 @@ MemberList.model_rebuild()
 AggregateHead.model_rebuild()
 MigrationStep.model_rebuild()
 Migration.model_rebuild()
+EventEnvelope.model_rebuild()

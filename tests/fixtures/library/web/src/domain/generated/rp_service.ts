@@ -353,3 +353,15 @@ export interface Migration {
   /** The steps of a migration, in the order they run. */
   steps?: MigrationStep[];
 }
+
+/** What travels beside an activity on the event bus: the tenant it happened in, the deployment that published it, the class of its body and where to find the JSON-LD context that reads it. */
+export interface EventEnvelope {
+  /** The IRI of the tenant, or of the application, the activity happened in. */
+  tenant: string;
+  /** The deployment that published the message, as its `deployment` setting names it. */
+  origin: string;
+  /** The IRI of the class of the activity the message carries. */
+  activity_class: string;
+  /** A link to the JSON-LD context that reads the message body. */
+  context: string;
+}

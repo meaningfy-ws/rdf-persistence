@@ -83,6 +83,10 @@ INDEXED_NAMES = [
     "command",
     "bootstrap",
     "MessageLimitExceeded",
+    "EventEnvelope",
+    "EventBus",
+    "Receive",
+    "context_link",
 ]
 
 
