@@ -28,7 +28,7 @@ from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.services.migrations import stamps
-from rdf_persistence.services.vocabulary import ANNOTATION, HAS_TARGET
+from rdf_persistence.services.vocabulary import ANNOTATION, HAS_TARGET, metamodel
 from rdf_persistence.testkit import FakeStore
 from tests.fixtures.library import generated
 from tests.toy import REVIEW_WORKFLOW, ROLES, SETTINGS, TOY_MIGRATIONS, TOY_SCHEMA
@@ -606,4 +606,6 @@ async def test_the_kit_restores_a_dump_of_an_older_version_and_migrates_it(
     record, _ = await newer.kit.tenancy.get(summary.id)
     held = await stamps(newer.store, record.database_name, newer.kit.tenancy.stamps_graph)
     assert held[LIBRARY_SCHEMA] == "2", "the restored tenant is at the version the kit runs"
-    assert held[TOOLKIT_SCHEMA] == "1", "and the toolkit's stamp is unchanged"
+    assert held[TOOLKIT_SCHEMA] == metamodel().schema.version, (
+        "and the toolkit's stamp is unchanged"
+    )

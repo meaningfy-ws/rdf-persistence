@@ -38,6 +38,7 @@ from tests.unit.services.test_tenant_dump import (  # noqa: F401  (the fixtures)
     RESTORER,
     STAMPS,
     TOOLKIT_SCHEMA,
+    TOOLKIT_VERSION,
     VIEW,
     aged,
     chains,
@@ -60,6 +61,9 @@ from tests.unit.services.test_tenant_sweep import make_world
 
 STAMPS_GRAPH = stamps_graph_iri(SETTINGS.base)
 STAMP = str(v.DATA_SCHEMA_VERSION)
+NEXT_TOOLKIT_VERSION = str(
+    int(TOOLKIT_VERSION) + 1
+)  # what a toolkit migration of these tests moves to
 
 
 def at_version(version: str):
@@ -70,8 +74,8 @@ def at_version(version: str):
 
 
 def chain_pair(tmp_path: Path, *library, toolkit=(), last: str) -> list[SchemaChain]:
-    """The toolkit's chain (``toolkit`` migrations, ending at ``1`` or ``2``) and the library's, ending at ``last``."""
-    toolkit_last = "2" if toolkit else "1"
+    """The toolkit's chain (``toolkit`` migrations, ending at the toolkit's version, or the next one) and the library's, ending at ``last``."""
+    toolkit_last = NEXT_TOOLKIT_VERSION if toolkit else TOOLKIT_VERSION
     return [
         (TOOLKIT_SCHEMA, chain_of(tmp_path / "rp", TOOLKIT_SCHEMA, *toolkit, current=toolkit_last)),
         (LIBRARY_SCHEMA, chain_of(tmp_path / "lib", LIBRARY_SCHEMA, *library, current=last)),
@@ -145,36 +149,42 @@ async def test_a_manifest_with_no_version_over_a_stamped_dump_is_refused(aged, c
 
 BOGUS_STAMPS = {
     "two stamps for the schema": [
-        stamp_line(TOOLKIT_SCHEMA, "1"),
+        stamp_line(TOOLKIT_SCHEMA, TOOLKIT_VERSION),
         stamp_line(LIBRARY_SCHEMA, "1"),
         stamp_line(LIBRARY_SCHEMA, "2"),
     ],
     "the version an IRI": [
-        stamp_line(TOOLKIT_SCHEMA, "1"),
+        stamp_line(TOOLKIT_SCHEMA, TOOLKIT_VERSION),
         f"<{LIBRARY_SCHEMA}> <{STAMP}> <urn:version:1> <{STAMPS_GRAPH}> .\n",
     ],
     "the version typed": [
-        stamp_line(TOOLKIT_SCHEMA, "1"),
+        stamp_line(TOOLKIT_SCHEMA, TOOLKIT_VERSION),
         f'<{LIBRARY_SCHEMA}> <{STAMP}> "1"^^<{XSD.integer}> <{STAMPS_GRAPH}> .\n',
     ],
     "the version language-tagged": [
-        stamp_line(TOOLKIT_SCHEMA, "1"),
+        stamp_line(TOOLKIT_SCHEMA, TOOLKIT_VERSION),
         f'<{LIBRARY_SCHEMA}> <{STAMP}> "1"@en <{STAMPS_GRAPH}> .\n',
     ],
-    "an empty version": [stamp_line(TOOLKIT_SCHEMA, "1"), stamp_line(LIBRARY_SCHEMA, "")],
-    "a version with a space": [stamp_line(TOOLKIT_SCHEMA, "1"), stamp_line(LIBRARY_SCHEMA, "1 ")],
+    "an empty version": [
+        stamp_line(TOOLKIT_SCHEMA, TOOLKIT_VERSION),
+        stamp_line(LIBRARY_SCHEMA, ""),
+    ],
+    "a version with a space": [
+        stamp_line(TOOLKIT_SCHEMA, TOOLKIT_VERSION),
+        stamp_line(LIBRARY_SCHEMA, "1 "),
+    ],
     "a stamp of the tenant itself": [
-        stamp_line(TOOLKIT_SCHEMA, "1"),
+        stamp_line(TOOLKIT_SCHEMA, TOOLKIT_VERSION),
         stamp_line(LIBRARY_SCHEMA, "1"),
         f'<https://example.org/library/libraries/abc> <{STAMP}> "1" <{STAMPS_GRAPH}> .\n',
     ],
     "a statement that is not a stamp": [
-        stamp_line(TOOLKIT_SCHEMA, "1"),
+        stamp_line(TOOLKIT_SCHEMA, TOOLKIT_VERSION),
         stamp_line(LIBRARY_SCHEMA, "1"),
         stamp_line(LIBRARY_SCHEMA, "1", predicate="urn:other"),
     ],
     "the stamp in a graph that looks like the stamps graph": [
-        stamp_line(TOOLKIT_SCHEMA, "1"),
+        stamp_line(TOOLKIT_SCHEMA, TOOLKIT_VERSION),
         f'<{LIBRARY_SCHEMA}> <{STAMP}> "1" <{STAMPS_GRAPH}/extra> .\n',
     ],
 }
@@ -197,7 +207,9 @@ async def test_a_stamp_at_the_running_version_that_is_not_a_plain_literal_is_ref
     """Kept, it is a stamp no later migration of the restored tenant can move (its ``from`` guard is a plain literal)."""
     view = at_version("2")
     line = f"<{LIBRARY_SCHEMA}> <{STAMP}> {held} <{STAMPS_GRAPH}> .\n"
-    data = with_stamps(await dumped(stamped, view=view), stamp_line(TOOLKIT_SCHEMA, "1"), line)
+    data = with_stamps(
+        await dumped(stamped, view=view), stamp_line(TOOLKIT_SCHEMA, TOOLKIT_VERSION), line
+    )
     await refused(stamped, data, view=view, chains=chains)
 
 
@@ -242,11 +254,19 @@ async def test_a_chain_whose_second_migration_fails_creates_nothing_and_the_same
     fixed = chain_pair(tmp_path / "fixed", first, migration(LIBRARY_SCHEMA, "2", "3"), last="3")
     data = await dumped(aged, view=at_version("3"))
     reason = await refused(
-        aged, data, tenancy=running_at(aged, "1", "3"), view=at_version("3"), chains=broken
+        aged,
+        data,
+        tenancy=running_at(aged, TOOLKIT_VERSION, "3"),
+        view=at_version("3"),
+        chains=broken,
     )
     assert f"2__3 of {LIBRARY_SCHEMA}" in reason, "the reason names the migration that failed"
     summary = await restored(
-        aged, data, tenancy=running_at(aged, "1", "3"), view=at_version("3"), chains=fixed
+        aged,
+        data,
+        tenancy=running_at(aged, TOOLKIT_VERSION, "3"),
+        view=at_version("3"),
+        chains=fixed,
     )
     book = await read_book(aged, summary.id, moved(aged, aged.book, summary.id))
     assert book.description == "A planet.", "the archive was not half migrated by the failed try"
@@ -266,16 +286,28 @@ async def test_a_step_that_leaves_the_root_undecodable_is_refused_before_anythin
 
 
 async def test_the_toolkits_chain_runs_before_the_libraries_and_both_move_the_data(aged, tmp_path):
-    toolkit = [migration(TOOLKIT_SCHEMA, "1", "2", rename(OLD_DESCRIPTION, BOOK_DESCRIPTION))]
+    toolkit = [
+        migration(
+            TOOLKIT_SCHEMA,
+            TOOLKIT_VERSION,
+            NEXT_TOOLKIT_VERSION,
+            rename(OLD_DESCRIPTION, BOOK_DESCRIPTION),
+        )
+    ]
     library = migration(LIBRARY_SCHEMA, "1", "2", rename(OLD_CITY, CITY))
     both = chain_pair(tmp_path, library, toolkit=toolkit, last="2")
     data = await dumped(aged, view=at_version("2"))
     summary = await restored(
-        aged, data, tenancy=running_at(aged, "2", "2"), view=at_version("2"), chains=both
+        aged,
+        data,
+        tenancy=running_at(aged, NEXT_TOOLKIT_VERSION, "2"),
+        view=at_version("2"),
+        chains=both,
     )
-    assert await stamps_held(aged, summary.id) == {TOOLKIT_SCHEMA: "2", LIBRARY_SCHEMA: "2"}, (
-        "both stamps moved"
-    )
+    assert await stamps_held(aged, summary.id) == {
+        TOOLKIT_SCHEMA: NEXT_TOOLKIT_VERSION,
+        LIBRARY_SCHEMA: "2",
+    }, "both stamps moved"
     book = await read_book(aged, summary.id, moved(aged, aged.book, summary.id))
     assert book.description == "A planet.", "the toolkit's migration moved the description"
     assert summary.label == "Ghent", "the library's migration moved the root's city"

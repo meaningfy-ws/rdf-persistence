@@ -25,6 +25,7 @@ from rdf_persistence.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import ADA, BOB, SETTINGS, TENANT, TOY_SCHEMA, book_iri, dune, template, toy_mapper
+from tests.unit.services.test_tenant_dump import BASE_STAMPS, TOY_CHAINS
 from tests.unit.services.test_tenant_sweep import CREATOR, make_world
 
 B1, B2, B3 = (book_iri(n) for n in (1, 2, 3))
@@ -401,7 +402,7 @@ async def test_tc39_a_replace_of_the_tenant_root_records_the_tenant_iri_as_the_e
 
 
 async def test_tc40_a_restored_tenant_carries_the_activities_of_the_original():
-    world = await make_world(Iris(SETTINGS), SETTINGS)
+    world = await make_world(Iris(SETTINGS), SETTINGS, BASE_STAMPS)
     for _ in range(2):  # with the creation of the tenant, three activities
         iri = str(world.iris.mint_aggregate(world.tenant, "Book", "books"))
         async with world.session() as session:
@@ -412,7 +413,13 @@ async def test_tc40_a_restored_tenant_carries_the_activities_of_the_original():
     out = io.BytesIO()
     await dump(world.tenancy, world.store, world.files, world.iris, VIEW, world.tenant, out)
     summary = await restore(
-        world.tenancy, world.iris, VIEW, io.BytesIO(out.getvalue()), RESTORER, max_bytes=1 << 30
+        world.tenancy,
+        world.iris,
+        VIEW,
+        io.BytesIO(out.getvalue()),
+        RESTORER,
+        max_bytes=1 << 30,
+        chains=TOY_CHAINS,
     )
     record, _ = await world.tenancy.get(summary.id)
     found = await activities(world.store, world.iris.provenance(summary.id), record.database_name)

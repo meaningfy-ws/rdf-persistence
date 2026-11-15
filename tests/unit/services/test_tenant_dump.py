@@ -77,10 +77,11 @@ RUNNING = copy.deepcopy(
     VIEW
 )  # the schema of a service that runs version 2 (the ``chains`` fixture)
 RUNNING.schema.version = "2"
-TOOLKIT_SCHEMA = "https://meaningfy.ws/ns/rdf-persistence"
+TOOLKIT_SCHEMA = metamodel().schema.id
+TOOLKIT_VERSION = metamodel().schema.version  # the version the toolkit runs, whatever it moves to
 LIBRARY_SCHEMA = "https://example.org/ns/library"
 BASE_STAMPS = (
-    (TOOLKIT_SCHEMA, "1"),
+    (TOOLKIT_SCHEMA, TOOLKIT_VERSION),
     (LIBRARY_SCHEMA, "1"),
 )  # what the toy kit stamps a tenant with
 # the chains of the toy kit: both schemas have the one version "1" (no migration file)
@@ -230,7 +231,7 @@ async def world() -> SimpleNamespace:
 
 # -- schema-migrations TC-34, TC-35: the stamps travel with a dump -------------------------------
 
-STAMPS = ((TOOLKIT_SCHEMA, "1"), (LIBRARY_SCHEMA, "2"))
+STAMPS = ((TOOLKIT_SCHEMA, TOOLKIT_VERSION), (LIBRARY_SCHEMA, "2"))
 ALL_STAMPS = "SELECT ?s ?v WHERE {{ GRAPH <{graph}> {{ ?s ?p ?v }} }}"
 
 
@@ -285,7 +286,7 @@ async def test_a_dump_with_the_stamps_the_service_runs_is_restored_with_exactly_
 ):
     data = with_stamps(
         await dumped(stamped, view=RUNNING),
-        stamp_line(TOOLKIT_SCHEMA, "1"),
+        stamp_line(TOOLKIT_SCHEMA, TOOLKIT_VERSION),
         stamp_line(LIBRARY_SCHEMA, "2"),
     )
     summary = await restored(stamped, data, view=RUNNING, chains=chains)
@@ -295,11 +296,17 @@ async def test_a_dump_with_the_stamps_the_service_runs_is_restored_with_exactly_
 @pytest.mark.parametrize(
     ("statements", "named"),
     [
-        ([("TOOLKIT", "1")], [LIBRARY_SCHEMA, "missing"]),
-        ([("TOOLKIT", "1"), ("LIBRARY", "1")], ["'1'", "'2'"]),
-        ([("TOOLKIT", "1"), ("LIBRARY", "2"), ("LIBRARY", "3")], ["'3'", "'2'"]),
-        ([("TOOLKIT", "1"), ("LIBRARY", "2"), ("urn:schema:other", "1")], ["urn:schema:other"]),
-        ([("TOOLKIT", "1"), ("LIBRARY", "2"), ("LIBRARY", "x", "urn:p")], ["urn:p", "not a stamp"]),
+        ([("TOOLKIT", TOOLKIT_VERSION)], [LIBRARY_SCHEMA, "missing"]),
+        ([("TOOLKIT", TOOLKIT_VERSION), ("LIBRARY", "1")], ["'1'", "'2'"]),
+        ([("TOOLKIT", TOOLKIT_VERSION), ("LIBRARY", "2"), ("LIBRARY", "3")], ["'3'", "'2'"]),
+        (
+            [("TOOLKIT", TOOLKIT_VERSION), ("LIBRARY", "2"), ("urn:schema:other", "1")],
+            ["urn:schema:other"],
+        ),
+        (
+            [("TOOLKIT", TOOLKIT_VERSION), ("LIBRARY", "2"), ("LIBRARY", "x", "urn:p")],
+            ["urn:p", "not a stamp"],
+        ),
     ],
     ids=[
         "a stamp missing",
@@ -322,7 +329,7 @@ async def test_a_dump_whose_stamps_graph_differs_is_refused_before_anything_is_c
 
 def stamp_graph_with(tenancy_data: bytes, library_stamp: str) -> Dataset:
     """The quads of a dump of the toy tenant, its library stamp replaced by the N-Quads text ``library_stamp``."""
-    data = with_stamps(tenancy_data, stamp_line(TOOLKIT_SCHEMA, "1"), library_stamp)
+    data = with_stamps(tenancy_data, stamp_line(TOOLKIT_SCHEMA, TOOLKIT_VERSION), library_stamp)
     parsed = Dataset()
     parsed.parse(data=dict(unpack(data))[GRAPHS], format="nquads")
     return parsed
@@ -406,7 +413,7 @@ def chains(tmp_path: Path) -> list[SchemaChain]:
         rename(OLD_CITY, CITY),
     ]
     return [
-        (TOOLKIT_SCHEMA, chain_of(tmp_path / "rp", TOOLKIT_SCHEMA, current="1")),
+        (TOOLKIT_SCHEMA, chain_of(tmp_path / "rp", TOOLKIT_SCHEMA, current=TOOLKIT_VERSION)),
         (
             LIBRARY_SCHEMA,
             chain_of(
@@ -437,7 +444,9 @@ async def aged() -> SimpleNamespace:
     """A tenant stamped ``1`` whose book and root hold their description and city as version 1 stored them."""
     world = await populated(
         await make_world(
-            iris_of(SETTINGS), SETTINGS, stamps=((TOOLKIT_SCHEMA, "1"), (LIBRARY_SCHEMA, "1"))
+            iris_of(SETTINGS),
+            SETTINGS,
+            stamps=((TOOLKIT_SCHEMA, TOOLKIT_VERSION), (LIBRARY_SCHEMA, "1")),
         )
     )
     await move_predicate(world, world.book, BOOK_DESCRIPTION, OLD_DESCRIPTION)
@@ -546,7 +555,7 @@ async def test_tc53_a_migration_that_fails_on_the_dump_is_refused_and_creates_no
         insert_pattern=f"?s <{CITY}> ?o .",
     )
     bad = [
-        (TOOLKIT_SCHEMA, chain_of(tmp_path / "rp", TOOLKIT_SCHEMA, current="1")),
+        (TOOLKIT_SCHEMA, chain_of(tmp_path / "rp", TOOLKIT_SCHEMA, current=TOOLKIT_VERSION)),
         (
             LIBRARY_SCHEMA,
             chain_of(
