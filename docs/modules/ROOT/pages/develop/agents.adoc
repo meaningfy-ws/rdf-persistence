@@ -8,8 +8,8 @@ short) is owned by skillery's `epic-delivery` skill, installed with the `meaning
 (3.9.0 or later); shaping is `epic-planning`, and subagent dispatch and session hygiene are
 `guardrails` (`meaningfy-core`). The explanation for people is skillery's
 https://github.com/meaningfy-ws/skillery/blob/develop/docs/practice/ai-coding/working-with-agents.md[Working with agents].
-`AGENTS.md` at the repository root is the short form that agents load. This page keeps only what
-is specific to rdf-persistence.
+`AGENTS.md` at the repository root holds the rules agents load; this page gives the reasons
+behind the ones specific to rdf-persistence, and the gate reference with timings.
 
 == Common questions
 
@@ -21,7 +21,7 @@ developer, in the format the `epic-delivery` skill sets.
 Only when the developer grants it for a named epic, within the limits the `epic-delivery` skill
 sets. Commits and PRs carry no AI attribution.
 
-*What does a member's report prove?*::
+*What does a builder's report prove?*::
 Not enough on its own. The lead reads the diff and re-runs a gate on an `epic-delivery` trigger;
 `make check-all` before the PR catches a report that was wrong. See <<gates>>.
 
@@ -51,19 +51,20 @@ On top of the brief the `epic-delivery` skill sets, every brief names:
   xref:develop/testing.adoc[testing checklist] (the adversarial tester follows it too);
 * the report expected: files changed, tests added, each make target run with its time and test
   count;
-* how to work: search with `ast-grep run`, edit in place with the Edit tool, never with Python
-  heredocs or `sed -i`; run commands in the foreground or in the background with its notice, never
-  in a `sleep` loop (a hook denies it).
+* how to work: the Tools section of `AGENTS.md` (which tool answers which question, and Serena's
+  limits); builders do not re-index GitNexus or run impact.
 
-Each task is committed by the lead with why, what and `Refs: <change-id> <task>`.
+Each task is committed by the lead with why, what and `Refs: <change-id> <task>`, plus the
+decision ids it implements.
 
 [#gates]
 == The gates
 
-Before handing out a task the lead checks its blast radius with GitNexus `impact`, once per task;
-a HIGH or CRITICAL risk goes to the developer. The builder's task gate is one command:
-`make test-changed check-quality`, or `make test-fast check-quality` after changing `domain` or a
-port in `services`.
+The rules are in `AGENTS.md` (Delivery, Gates). In short: per task the lead runs GitNexus
+`impact` before the brief and the change check before the commit, and builders run neither, so
+each check runs once (#111: builders re-indexing and checking every symbol cost more than it
+found). The builder's task gate is one command, `make test-changed check-quality`, so every report
+has the same shape.
 
 [cols="2,1,3",options="header"]
 |===
@@ -77,24 +78,25 @@ reaches, or after changing `domain` or a port in `services`. It runs every unit 
 not marked `slow` (≈ 3 min)
 |`make check-quality` |builder |After every task (≈ 1 min); it holds `make check-architecture`,
 `make clean-code` and `make check-docs`
-|`make check-all` |lead |Once per stage, before the PR: it already holds `make test`, so never run
-both
-|`make test-containers` |lead |Once per stage, before the PR; never in a task
-|`make check-generated` |builder |After committing a schema change (it compares against the commit)
+|`make check-all` |lead |Once per stage before the PR, and again after the fix pass: it already
+holds `make test`, so never run both
+|`make test-containers` |lead |With `make check-all`; never in a task
+|`make check-generated` |lead |After committing a schema change (it compares against the commit)
 |`openspec validate --all --strict` |both |Part of `make check-quality`
 |The clarity gate (≥ 9/10) |lead |Before a PLAN's first task
 |===
 
-The builder owns the per-task gate and reports it; the lead reads the diff and the report and
-re-runs a gate only on one of the `epic-delivery` triggers (T1 to T3). After a red run, re-run only the failing tests until green, then the full run once.
+The builder owns the task gate and reports it; the lead reads the diff and the report and re-runs
+a gate only on one of the `epic-delivery` triggers (T1 to T3). After a red run, re-run only the
+failing tests until green, then the task gate once.
 
 [#challenge]
 == Keeping the challenge cheap
 
 _How do we keep review and checking from doubling the work?_
 
-The `epic-delivery` skill sets who challenges a stage. Here three adjustments apply to any work,
-measured on a large stage (2026-11-09):
+The `epic-delivery` skill sets who challenges a stage and groups the review lenses by appetite.
+Here three adjustments override it for any work, measured on a large stage (2026-11-09):
 
 * *The adversarial tester runs right after the riskiest task*, the one that adds an invariant, a
   write order or concurrent writes, and again at the end if the stage is large. Both real defects of
@@ -120,8 +122,9 @@ merges it; the steps are in xref:develop/index.adoc#release[Cutting a release].
   `run_in_background` and its notice, or wait on a condition with the Monitor tool; a hook
   (`.claude/hooks/no_polling.py`) denies `sleep` loops in Bash. It runs on plain `python3`,
   stdlib only, on purpose: it must not depend on the project's environment.
-* Re-index GitNexus once per stage, at its start, before the first impact check (≈ 20 s):
-  `gitnexus analyze --embeddings --skip-agents-md --skip-skills`.
+* Re-index GitNexus at the start of each stage, and again before an impact check on symbols an
+  earlier task of the stage added or moved (≈ 20 s), not after every commit: per-commit runs cost
+  151 re-indexes for 298 commits. The command and the recovery are in `AGENTS.md`.
 * Take check durations from ordinary runs and keep the
   xref:develop/index.adoc#how-long-the-checks-take[durations table] current; no profiling.
 * Open the docs with questions: when a page is added or changed, add or update the

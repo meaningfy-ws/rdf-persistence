@@ -4,8 +4,7 @@
 
 # CLAUDE.md — Claude Code binding
 
-**Read [`AGENTS.md`](AGENTS.md) first.** It is the canonical agent instruction file for this repo
-(skill routing, the spine, working conventions, project specifics). This file adds only Claude
-Code-specific guidance; do not duplicate `AGENTS.md` here.
+**Read [`AGENTS.md`](AGENTS.md) first.** It is the canonical agent instruction file for this repo.
+This file adds only Claude Code-specific guidance; do not duplicate `AGENTS.md` here.
 
 @AGENTS.md
