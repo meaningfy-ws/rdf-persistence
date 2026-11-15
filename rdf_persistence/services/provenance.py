@@ -9,7 +9,10 @@ invalidation of an entity at a version. The triples are built from the vocabular
 import uuid
 from collections.abc import Iterable, Sequence
 from datetime import datetime
+from typing import Protocol, cast
 
+from linkml_runtime.utils.schemaview import SchemaView
+from pydantic import BaseModel
 from rdflib import RDF, BNode, Literal, URIRef
 from rdflib.term import Node
 
@@ -89,6 +92,36 @@ def first_class(types: Iterable[Node]) -> str | None:
 def class_in(root: str, triples: Iterable[Triple]) -> str | None:
     """The class IRI of ``root`` among the ``triples`` a commit writes."""
     return first_class(o for s, p, o in triples if s == URIRef(root) and p == RDF.type)
+
+
+class ClassFinder(Protocol):
+    """What finds a generated class by its schema name: ``GeneratedModels``, which this module cannot
+    import (the mapper imports the session)."""
+
+    def named(self, schema_name: str) -> type[BaseModel]: ...
+
+
+def activity_class_of(
+    view: SchemaView, models: ClassFinder, types: Iterable[Node]
+) -> type[Activity]:
+    """The most specific generated class among the schema classes whose class IRI is one of ``types``
+    (the one with the most ancestors), so a consumer's subclass wins over its parent (PD-16).
+
+    Raises:
+        LookupError: No class of the schema has any of the ``types`` as its IRI, or its generated
+            class is missing.
+    """
+    wanted = {str(t) for t in types}
+    found = [name for name in view.all_classes() if view.get_uri(name, expand=True) in wanted]
+    if not found:
+        raise LookupError(f"no class of the schema has any of the IRIs {sorted(wanted)}")
+    best = max(found, key=lambda name: len(view.class_ancestors(name)))
+    return cast(type[Activity], models.named(best))
+
+
+def activity_class_named(view: SchemaView, models: ClassFinder, class_iri: str) -> type[Activity]:
+    """The generated class of the schema class whose IRI is ``class_iri``; ``LookupError`` if none."""
+    return activity_class_of(view, models, [URIRef(class_iri)])
 
 
 def _standard(changes: Sequence[Change]) -> type[Activity]:

@@ -1,8 +1,20 @@
 """What of an activity a caller may see (PD-11; DEC-3, DEC-5)."""
 
 from collections.abc import Callable
+from typing import Protocol
 
 from rdf_persistence.domain.generated.rp_provenance import Activity
+
+
+class Entity(Protocol):
+    """A generation or an invalidation: what both name is the entity."""
+
+    entity: str
+
+
+def _readable[T: Entity](parts: list[T] | None, may_read: Callable[[str], bool]) -> list[T]:
+    """The parts whose entity the caller may read."""
+    return [part for part in parts or [] if may_read(part.entity)]
 
 
 def visible_part(activity: Activity, may_read: Callable[[str], bool]) -> Activity | None:
@@ -11,8 +23,8 @@ def visible_part(activity: Activity, may_read: Callable[[str], bool]) -> Activit
     used = getattr(activity, "used_resource", None)  # only some activity classes use a resource
     if used is not None and not may_read(used):
         return None
-    generations = [g for g in activity.generations or [] if may_read(g.entity)]
-    invalidations = [i for i in activity.invalidations or [] if may_read(i.entity)]
+    generations = _readable(activity.generations, may_read)
+    invalidations = _readable(activity.invalidations, may_read)
     if not generations and not invalidations:
         return None
     return activity.model_copy(

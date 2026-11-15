@@ -229,6 +229,10 @@ async def restore(
         parsed = _parsed(tar, _member(members, GRAPHS), budget)
         _check_stamp_agrees(manifest, parsed, view, tenancy.stamps_graph)
         await asyncio.to_thread(migrate_dataset, parsed, chains, tenancy.stamps_graph)
+        # a restore never re-publishes the source's activities (PD-14)
+        for plumbing in v.RELAY_PLUMBING:
+            for s, p, o, _graph in list(parsed.quads((None, plumbing, None, None))):
+                parsed.remove((s, p, o))  # a triple, not a quad: dropped from every graph
         summary = await tenancy.restore(
             parsed,
             manifest.source_tenant_id,
