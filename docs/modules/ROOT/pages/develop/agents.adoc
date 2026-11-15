@@ -113,6 +113,9 @@ Here three adjustments override it for any work, measured on a large stage (2026
   whichever lenses the appetite's review set runs. About a third of the findings came from more
   than one lens, mostly L3, L4 and L5 together; L1, L2 and L3 each found something the others did
   not.
+* *For LARGE and above, the full review runs once* (developer, 2026-11-15, rule P-0005), at the
+  end of the epic or of a series of stages; each stage gets one pass of L2 and L3, which still
+  catches spec and structure drift while it is cheap to fix.
 * *The checker reads the lead's `make check-all` result* and checks the briefs and decisions against
   the diff; it does not run the tests again.
 

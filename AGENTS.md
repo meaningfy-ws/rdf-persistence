@@ -100,7 +100,9 @@ them only through it, by pull request.
   `CLAUDE.md` or `.claude/skills/`.
 - **Challenge, kept cheap (developer, 2026-11-09).** These override epic-delivery's review sets,
   and a brief cites this bullet as the authority: whichever lenses the appetite's review set runs,
-  L1, L2 and L3 are never combined with each other, and L4 and L5 run as one pass; the adversarial
+  L1, L2 and L3 are never combined with each other, and L4 and L5 run as one pass. For LARGE and
+  above, rule P-0005 (`docs/rules/`) sets when: one L2+L3 pass per stage, and the full review once,
+  at the end of the epic or of a series of stages. The adversarial
   tester runs right after the riskiest task (new invariants, write order, concurrency); the
   checker reads the lead's `make check-all` result and does not re-run tests.
 - **Never poll:** a hook denies `sleep` loops in Bash; wait in the foreground, on a background
