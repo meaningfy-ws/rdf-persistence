@@ -83,6 +83,10 @@ from .books import (
     Note,
     Shelf
 )
+from .books_activities import (
+    ApproveBook,
+    ShelveBooks
+)
 from .library_access import LibraryAccess
 from .library_tenant import Library
 from .scans import Scan

@@ -1127,6 +1127,12 @@ enums:
           The root schema of a target that sets `migrations` has a `version`, written as a quoted
           string in the YAML source, since an unquoted `1.10` is read as the number 1.1.
         meaning: rp:HardRuleQuotedVersion
+      toolkit_filled:
+        title: Toolkit filled
+        description: >-
+          A class of the application does not give `slot_usage`, `ifabsent` or an attribute of its own
+          to a slot annotated `toolkit_filled`, and has no slot that is both `payload` and required.
+        meaning: rp:HardRuleToolkitFilled
   LockRule:
     title: Lock rule
     description: How a change between two locks is treated.
@@ -1163,6 +1169,12 @@ enums:
         title: Module kind
         description: A domain module does not import a technical or an access module.
         meaning: rp:BoundaryRuleModuleKind
+      activity_direction:
+        title: Activity direction
+        description: >-
+          A slot of a class that is not an activity does not range over an application activity class
+          that is not an aggregate root: the stored model never refers to a use case.
+        meaning: rp:BoundaryRuleActivityDirection
   ConstraintKind:
     title: Constraint kind
     description: The constraint kinds of v1 that the generated classes and shapes must agree on.

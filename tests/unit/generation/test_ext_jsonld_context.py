@@ -74,6 +74,8 @@ def test_one_frame_per_aggregate_type_the_tenant_root_and_each_activity(staged: 
             "Scan.frame.jsonld",
             "Shelf.frame.jsonld",
             "Template.frame.jsonld",
+            "ApproveBook.frame.jsonld",
+            "ShelveBooks.frame.jsonld",
             *ACTIVITY_FRAMES,
         ]
     ), "a frame per root, the tenant root, and Activity with every descendant of the closure"

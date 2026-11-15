@@ -102,6 +102,60 @@
     range: uri
 - class_name: AggregateRoot
   slots: []
+- class_name: ApproveBook
+  slots:
+  - name: body_value
+    required: false
+    multivalued: false
+    range: string
+  - name: ended_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: expected_version
+    required: false
+    multivalued: false
+    range: string
+  - name: from_state_iri
+    required: false
+    multivalued: false
+    range: uri
+  - name: generations
+    required: false
+    multivalued: true
+    range: Generation
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: invalidations
+    required: false
+    multivalued: true
+    range: Invalidation
+  - name: started_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: to_state
+    required: false
+    multivalued: false
+    range: string
+  - name: to_state_iri
+    required: false
+    multivalued: false
+    range: uri
+  - name: transition_comment
+    required: false
+    multivalued: false
+    range: uri
+  - name: used_resource
+    required: true
+    multivalued: false
+    range: uri
+  - name: was_associated_with
+    required: false
+    multivalued: true
+    range: Principal
 - class_name: Authorised
   slots:
   - name: caller_access
@@ -1093,6 +1147,40 @@
     required: false
     multivalued: false
     range: datetime
+- class_name: ShelveBooks
+  slots:
+  - name: ended_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: generations
+    required: false
+    multivalued: true
+    range: Generation
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: invalidations
+    required: false
+    multivalued: true
+    range: Invalidation
+  - name: shelf_note
+    required: false
+    multivalued: false
+    range: string
+  - name: started_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: used_resource
+    required: false
+    multivalued: false
+    range: uri
+  - name: was_associated_with
+    required: false
+    multivalued: true
+    range: Principal
 - class_name: SlotEquality
   slots:
   - name: equals_slot

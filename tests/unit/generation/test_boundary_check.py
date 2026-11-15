@@ -13,7 +13,7 @@ from rdf_persistence.generation.pipeline import generate
 from rdf_persistence.generation.problems import format_problem
 from rdf_persistence.services.schema import load_schema
 
-from .conftest import ROOT_SCHEMA, Breaker
+from .conftest import ROOT_SCHEMA, TOY, Breaker
 
 MODEL_DIR = Path(__file__).parents[3] / "rdf_persistence"
 METAMODEL = MODEL_DIR / "model" / "rp.yaml"
@@ -50,7 +50,42 @@ class Fault:
     mentions: tuple[str, ...] = ()
 
 
+BOOK_ISBN_SLOT = "slots:\n  isbn:\n"
+WITH_ACTIVITIES = "  - rdf_persistence/model/rp_collections\n  - books_activities\nannotations:\n  module_kind: domain"
+REVIEW_ROOT = """  Review:
+    title: Review
+    description: A review of a book kept as a root that is also an activity.
+    class_uri: lib:Review
+    is_a: Activity
+    mixins: [AggregateRoot, Described, Tracked]
+    annotations:
+      rp_path: reviews
+      database: tenant
+slots:
+"""
+
+
+def book_slot_over(name: str, range_: str, *, imports_activities: bool) -> tuple[Edit, ...]:
+    """Edits that give ``Book`` the slot ``name`` with the range ``range_``; the book module imports the activities one if asked."""
+    slot = (
+        f"slots:\n  {name}:\n    title: {name}\n    description: A planted slot.\n"
+        f"    slot_uri: lib:{name}\n    range: {range_}\n  isbn:\n"
+    )
+    edits = (
+        Edit("books.yaml", BOOK_SLOTS, BOOK_SLOTS.replace("sequel_of]", f"sequel_of, {name}]")),
+        Edit("books.yaml", BOOK_ISBN_SLOT, slot),
+    )
+    imports = (Edit("books.yaml", BOOK_IMPORTS, WITH_ACTIVITIES),) if imports_activities else ()
+    return (*imports, *edits)
+
+
 FAULTS = (
+    Fault(
+        BoundaryRule.ACTIVITY_DIRECTION,  # TC-101: the stored model refers to a use case
+        book_slot_over("last_shelving", "ShelveBooks", imports_activities=True),
+        "last_shelving",
+        ("Book", "ShelveBooks"),
+    ),
     Fault(BoundaryRule.OWNERSHIP, (Edit("books.yaml", NOTES_OWNED, NOTES_REFERENCED),), "Note"),
     Fault(
         BoundaryRule.REFERENCE,
@@ -109,6 +144,16 @@ PASSING = (
         (Edit("scans.yaml", "slots: [scan_of]", "slots: [scan_of, chapters]"),),
         id="owned-by-two-roots",
     ),
+    pytest.param(  # TC-102: a toolkit activity class may be referred to (was_generated_by)
+        book_slot_over("made_by", "Activity", imports_activities=False), id="toolkit-activity"
+    ),
+    pytest.param(  # TC-102: so may an aggregate root that is also an activity
+        (
+            *book_slot_over("last_review", "Review", imports_activities=True),
+            Edit("books_activities.yaml", "slots:\n", REVIEW_ROOT),
+        ),
+        id="activity-root",
+    ),
 )
 
 
@@ -121,6 +166,18 @@ def plant(break_toy: Breaker, edits: tuple[Edit, ...]) -> Path:
 
 def test_the_toy_library_passes(toy_copy: Path) -> None:
     assert problems_of(toy_copy / ROOT_SCHEMA) == [], "the toy library must pass its boundary check"
+
+
+@pytest.mark.parametrize("name", ["ApproveBook", "ShelveBooks", "Activity", "Transition"])
+def test_the_toy_generates_a_frame_for_each_activity_class(generated_toy: Path, name: str) -> None:
+    """TC-100: the activities module generates, and each activity class gets its frame."""
+    assert (generated_toy / f"{name}.frame.jsonld").is_file(), f"no frame for {name}"
+
+
+def test_the_stored_module_does_not_import_the_activities_module() -> None:
+    """P-0001: the static module never imports the activities one."""
+    books = (TOY / "books.yaml").read_text(encoding="utf-8")
+    assert "books_activities" not in books, "books.yaml must not import its activities module"
 
 
 @pytest.mark.parametrize("root", [METAMODEL, GENERATION_MODEL], ids=["metamodel", "generation"])

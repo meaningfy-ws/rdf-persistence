@@ -25,6 +25,7 @@ from rdf_persistence.domain.generated.rp_core import (
 )
 from rdf_persistence.domain.iris import LAYOUT_WORDS
 from rdf_persistence.generation.checks.application import application_problems
+from rdf_persistence.generation.checks.toolkit_filled import toolkit_filled_problems
 from rdf_persistence.generation.generated.rp_generation import CheckProblem, HardRule
 from rdf_persistence.generation.problems import rule_problem
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
@@ -317,6 +318,7 @@ def _annotated_workflow_problems(
 def _class_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[CheckProblem]:
     roots = aggregate_roots(view, classes)
     keyed = keyed_roots(view, classes)
+    yield from toolkit_filled_problems(view, classes)
     for cls in classes:
         yield from _key_problems(view, cls, keyed)
         yield from _reserved_segment_problems(cls)

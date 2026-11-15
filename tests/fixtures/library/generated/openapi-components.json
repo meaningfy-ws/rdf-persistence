@@ -146,6 +146,88 @@
       "title": "AggregateRoot",
       "type": "object"
     },
+    "ApproveBook": {
+      "additionalProperties": false,
+      "description": "The command to approve a book, a workflow transition the toolkit's own handler carries out.",
+      "properties": {
+        "body_value": {
+          "description": "The text of the comment.",
+          "type": "string"
+        },
+        "ended_at_time": {
+          "description": "The time the activity ended.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "expected_version": {
+          "description": "The version of the aggregate the caller read; the move is made only if it still holds.",
+          "type": "string"
+        },
+        "from_state_iri": {
+          "description": "The IRI of the state an aggregate left, on the comment a transition posted and on the transition's record. Defined here, so that the workflow module, which imports this one, uses it too. A state name in a workflow file is another thing: it has no IRI.",
+          "format": "uri",
+          "type": "string"
+        },
+        "generations": {
+          "description": "The versions of entities the activity generated.",
+          "items": {
+            "$ref": "#/components/schemas/Generation"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "invalidations": {
+          "description": "The versions of entities the activity invalidated.",
+          "items": {
+            "$ref": "#/components/schemas/Invalidation"
+          },
+          "type": "array"
+        },
+        "started_at_time": {
+          "description": "The time the activity started.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "to_state": {
+          "description": "The name of the state a transition enters. A stored record gives an IRI in to_state_iri.",
+          "type": "string"
+        },
+        "to_state_iri": {
+          "description": "The IRI of the state an aggregate entered, on the comment a transition posted and on the transition's record. Defined here beside from_state_iri.",
+          "format": "uri",
+          "type": "string"
+        },
+        "transition_comment": {
+          "description": "The IRI of the comment the transition posted, when it had one.",
+          "format": "uri",
+          "type": "string"
+        },
+        "used_resource": {
+          "description": "The IRI of the aggregate the activity used.",
+          "format": "uri",
+          "type": "string"
+        },
+        "was_associated_with": {
+          "description": "A principal that carried out the activity.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "used_resource",
+        "id"
+      ],
+      "title": "ApproveBook",
+      "type": "object"
+    },
     "BlobEntry": {
       "additionalProperties": false,
       "description": "One object in a tenant's bucket, as a listing of the bucket reports it.",
@@ -1168,6 +1250,64 @@
         "member_class"
       ],
       "title": "Shelf",
+      "type": "object"
+    },
+    "ShelveBooks": {
+      "additionalProperties": false,
+      "description": "The command to shelve a book, with a note on the shelf.",
+      "properties": {
+        "ended_at_time": {
+          "description": "The time the activity ended.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "generations": {
+          "description": "The versions of entities the activity generated.",
+          "items": {
+            "$ref": "#/components/schemas/Generation"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "invalidations": {
+          "description": "The versions of entities the activity invalidated.",
+          "items": {
+            "$ref": "#/components/schemas/Invalidation"
+          },
+          "type": "array"
+        },
+        "shelf_note": {
+          "description": "A note the librarian leaves with the shelving.",
+          "type": "string"
+        },
+        "started_at_time": {
+          "description": "The time the activity started.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "used_resource": {
+          "description": "The IRI of the aggregate the activity used.",
+          "format": "uri",
+          "type": "string"
+        },
+        "was_associated_with": {
+          "description": "A principal that carried out the activity.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "ShelveBooks",
       "type": "object"
     },
     "SlotEquality": {

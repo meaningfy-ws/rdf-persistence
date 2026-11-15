@@ -15,15 +15,19 @@
     },
     {
       "path": "rdf_persistence/generation/checks/boundary.py",
-      "sha256": "d857d52df854f3ab1563ecc43425cb55d10848ac0c700290502f6b2df7ab601f"
+      "sha256": "6181b40b379d4ea8d4d81adf24a9f6380faa7c954a4e06ae0a08e1ba9f81b4d6"
     },
     {
       "path": "rdf_persistence/generation/checks/hard.py",
-      "sha256": "0b69cc6bc8e1b798b4da88d9e28caee4e72b3af42e489f4d98696741e8121d0c"
+      "sha256": "04239f01808a5871f4d1e60b3d3d8943ef26f6ea5003006ea78544b6aadd537f"
     },
     {
       "path": "rdf_persistence/generation/checks/rules.py",
       "sha256": "5370f0e0133cb60ce13e3d1167f9dd4e99fbbac6ee4036b5e8f8cb117cb0e20c"
+    },
+    {
+      "path": "rdf_persistence/generation/checks/toolkit_filled.py",
+      "sha256": "9eea593807ccc58cf7214a25404f4624b07a703f8daad7c56bcc596aaeeb0d3f"
     },
     {
       "path": "rdf_persistence/generation/cli.py",
@@ -87,7 +91,7 @@
     },
     {
       "path": "rdf_persistence/generation/model/rp_generation.yaml",
-      "sha256": "51ea582eac30a34d8cf7b8fe79ed62121e68e60c26a2183e53babcce27303f62"
+      "sha256": "81bb10c30d49616dd42be9873d11cdd01dc40e0481f9c1386ffe1e591cce3bda"
     },
     {
       "path": "rdf_persistence/generation/pipeline.py",
@@ -165,7 +169,7 @@
     },
     {
       "path": "rdf_persistence/generation/generated/rp_generation.py",
-      "sha256": "39e3fb149bdd9d9bb7ba98254919a5a5e650accafd3ca7e86ee49dadadfb6a93"
+      "sha256": "8bd32a7d80d7adefcb9637f86a9ee9cf140ba380c2a77d8fdc2d3601861ad363"
     },
     {
       "path": "rdf_persistence/generation/generated/shapes.ttl",

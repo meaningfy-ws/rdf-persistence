@@ -1,0 +1,37 @@
+id: https://example.org/ns/library/books_activities
+name: books_activities
+title: Book activities module
+description: The use cases that change books, modelled as activities (rule P-0001); books.yaml never imports this module.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - books
+  - rdf_persistence/model/rp_provenance
+  - rdf_persistence/model/rp_workflow
+annotations:
+  module_kind: domain
+
+classes:
+  ApproveBook:
+    title: Approve book
+    description: The command to approve a book, a workflow transition the toolkit's own handler carries out.
+    class_uri: lib:ApproveBook
+    is_a: Transition
+  ShelveBooks:
+    title: Shelve books
+    description: The command to shelve a book, with a note on the shelf.
+    class_uri: lib:ShelveBooks
+    is_a: Activity
+    slots: [used_resource, shelf_note]
+
+slots:
+  shelf_note:
+    title: Shelf note
+    description: A note the librarian leaves with the shelving.
+    slot_uri: lib:shelfNote
+    range: string

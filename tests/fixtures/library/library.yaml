@@ -13,6 +13,7 @@ imports:
   - linkml:types
   - library_tenant
   - books
+  - books_activities
   - scans
   - templates
   - library_access

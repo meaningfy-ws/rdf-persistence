@@ -3,7 +3,10 @@
   "@omitGraph": true,
   "@embed": "@always",
   "@omitDefault": true,
-  "@type": "Transition",
+  "@type": [
+    "Transition",
+    "ApproveBook"
+  ],
   "was_associated_with": {
     "@embed": "@never",
     "@omitDefault": true

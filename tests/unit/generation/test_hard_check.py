@@ -28,6 +28,15 @@ def problems_of(root: Path) -> list[str]:
     return [format_problem(p) for p in hard_problems(load_schema(root), root.parent)]
 
 
+ACTIVITIES = "books_activities.yaml"
+SHELVE_SLOTS = "    slots: [used_resource, shelf_note]\n"
+PAYLOAD_REQUIRED = (
+    "    slot_usage:\n      shelf_note:\n        required: true\n        annotations:\n"
+    "          payload: true\n"
+)
+PAYLOAD_OPTIONAL = PAYLOAD_REQUIRED.replace("        required: true\n", "")
+
+
 @dataclass(frozen=True)
 class Fault:
     """One planted fault: replace ``old`` by ``new`` in ``module``; ``rule`` must name ``element``."""
@@ -63,6 +72,36 @@ FAULTS = (
     ),
     Fault(HardRule.TITLE, "books.yaml", "    title: Book\n", "", "Book"),
     Fault(HardRule.TITLE, "books.yaml", "    title: Publication date\n", "", "published"),
+    # TC-103 and TC-103a: a use case does not fill the slots the toolkit fills, nor require a payload
+    Fault(
+        HardRule.TOOLKIT_FILLED,
+        ACTIVITIES,
+        SHELVE_SLOTS,
+        SHELVE_SLOTS + "    slot_usage:\n      started_at_time:\n        required: true\n",
+        "ShelveBooks",
+    ),
+    Fault(
+        HardRule.TOOLKIT_FILLED,
+        ACTIVITIES,
+        SHELVE_SLOTS,
+        SHELVE_SLOTS + "    slot_usage:\n      ended_at_time:\n        ifabsent: datetime(0)\n",
+        "ShelveBooks",
+    ),
+    Fault(
+        HardRule.TOOLKIT_FILLED,
+        ACTIVITIES,
+        SHELVE_SLOTS,
+        SHELVE_SLOTS
+        + "    attributes:\n      started_at_time:\n        description: Its own.\n        range: string\n",
+        "ShelveBooks",
+    ),
+    Fault(
+        HardRule.TOOLKIT_FILLED,
+        ACTIVITIES,
+        SHELVE_SLOTS,
+        SHELVE_SLOTS + PAYLOAD_REQUIRED,
+        "ShelveBooks",
+    ),
     Fault(HardRule.MEANING, "books.yaml", "        meaning: schema:Fiction\n", "", "fiction"),
     Fault(HardRule.IRI, "books.yaml", "default_prefix: lib\n", "", "Genre"),
     Fault(HardRule.RP_PATH, "books.yaml", "      rp_path: books\n", "", "Book"),
@@ -204,6 +243,41 @@ def test_a_planted_fault_is_reported_with_its_rule_and_element(
     problems = problems_of(root)
     expected = f"[{fault.rule.value}] {fault.element}:"
     assert any(expected in problem for problem in problems), f"{expected!r} not in {problems}"
+
+
+@pytest.mark.parametrize(
+    ("edit", "slot"),
+    [
+        ("    slot_usage:\n      started_at_time:\n        required: true\n", "started_at_time"),
+        (PAYLOAD_REQUIRED, "shelf_note"),
+    ],
+    ids=["slot_usage", "payload-and-required"],
+)
+def test_a_toolkit_filled_problem_names_the_class_and_the_slot(
+    break_toy: Breaker, edit: str, slot: str
+) -> None:
+    """TC-103, TC-103a"""
+    root = break_toy(ACTIVITIES, SHELVE_SLOTS, SHELVE_SLOTS + edit)
+    found = [p for p in problems_of(root) if f"[{HardRule.TOOLKIT_FILLED.value}]" in p]
+    assert len(found) == 1, f"one planted fault, one problem: {found}"
+    assert "ShelveBooks" in found[0], f"the class is not named in {found[0]}"
+    assert slot in found[0], f"the slot is not named in {found[0]}"
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        "    slot_usage:\n      used_resource:\n        required: true\n",
+        PAYLOAD_OPTIONAL,
+    ],
+    ids=["a slot the toolkit does not fill", "an optional payload"],
+)
+def test_a_use_case_may_narrow_its_own_slots_and_declare_an_optional_payload(
+    break_toy: Breaker, edit: str
+) -> None:
+    """TC-102's counterpart for the toolkit_filled rule."""
+    root = break_toy(ACTIVITIES, SHELVE_SLOTS, SHELVE_SLOTS + edit)
+    assert problems_of(root) == [], "this variant is allowed"
 
 
 def test_a_reserved_segment_is_refused_with_the_fix_and_one_without_the_dash_passes(

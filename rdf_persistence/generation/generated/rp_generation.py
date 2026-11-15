@@ -84,6 +84,8 @@ class HardRule(str, Enum):
     "A target whose own modules define a root class that the toolkit stores sets `migrations`, the folder of the schema lock and of its migration files, in its `[tool.rp-generate]` entry."
     QUOTED_VERSION = "quoted_version"
     "The root schema of a target that sets `migrations` has a `version`, written as a quoted string in the YAML source, since an unquoted `1.10` is read as the number 1.1."
+    TOOLKIT_FILLED = "toolkit_filled"
+    "A class of the application does not give `slot_usage`, `ifabsent` or an attribute of its own to a slot annotated `toolkit_filled`, and has no slot that is both `payload` and required."
 
 
 class LockRule(str, Enum):
@@ -106,6 +108,8 @@ class BoundaryRule(str, Enum):
     "A slot that is not owned points to a root or to a reference class."
     MODULE_KIND = "module_kind"
     "A domain module does not import a technical or an access module."
+    ACTIVITY_DIRECTION = "activity_direction"
+    "A slot of a class that is not an activity does not range over an application activity class that is not an aggregate root: the stored model never refers to a use case."
 
 
 class ConstraintKind(str, Enum):
