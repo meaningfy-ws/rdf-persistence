@@ -18,6 +18,7 @@ from rdf_persistence.domain.exceptions import (
     Conflict,
     MigrationFailed,
     StoredDataInvalid,
+    StoreNotWired,
     StoreUnavailable,
     TenantBehind,
 )
@@ -599,3 +600,47 @@ async def test_a_stamp_unknown_to_the_chain_after_a_request_names_the_stamp(worl
         await migrate_database(world.store, world.database, [(LIB, three)], STAMPS)
     assert "'9'" in failed.value.cause, "the stamp read back is named, quoted as repr does"
     assert "not one of the chain" in failed.value.cause, "and said to be unknown"
+
+
+# -- tenant-stores TC-26: each tenant is migrated on its own store -----------------------------------
+
+
+def _wired(d, files, **stores) -> Tenancy:
+    return Tenancy(
+        d,
+        files,
+        SETTINGS,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
+        stores=stores,
+    )
+
+
+async def test_tc26_each_tenant_is_migrated_on_its_own_store(lib_chain):
+    d, a, files = FakeStore(), FakeStore(), FakeFileStore()
+    tenancy = _wired(d, files, **{"client-a": a})
+    world = SimpleNamespace(tenancy=tenancy)
+    await tenancy.ensure_system_database()
+    await tenancy.ensure_application_database()
+    on_a = (await tenancy.create("Ghent", library_slots(), CREATOR, store="client-a")).id
+    on_d = (await tenancy.create("Bruges", library_slots(), CREATOR)).id
+    for tenant, store in ((on_a, a), (on_d, d)):
+        await put_stamp(store, tenancy.database_of(tenant), LIB, "1")
+        await old_book(world, tenant)
+    await put_stamp(d, tenancy.system_database, LIB, "2")
+    await migrate_shared(tenancy, d, [(LIB, lib_chain)])
+    assert await migrate_tenants(tenancy, d, [(LIB, lib_chain)]) == set()
+    assert await held(a, tenancy.database_of(on_a)) == {LIB: "2"}, "T on A is at 2"
+    assert await held(d, tenancy.database_of(on_d)) == {LIB: "2"}, "the other on D is at 2"
+    assert tenancy.system_database not in await a.list_datasets(), "A holds no system database"
+    assert tenancy.application_database not in await a.list_datasets(), "nor an application one"
+
+
+async def test_a_tenant_whose_store_is_not_wired_stops_the_migration():
+    d, a, files = FakeStore(), FakeStore(), FakeFileStore()
+    full = _wired(d, files, **{"client-a": a})
+    await full.ensure_system_database()
+    await full.create("Ghent", library_slots(), CREATOR, store="client-a")
+    with pytest.raises(StoreNotWired):
+        await migrate_tenants(_wired(d, files), d, [])

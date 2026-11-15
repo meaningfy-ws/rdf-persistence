@@ -73,6 +73,13 @@ async def migrate_tenants(
 ) -> set[str]:
     """Migrate every tenant but those ``deleting``, in IRI order; answers the tenants set aside (PD-11).
 
+    ``store`` is the default store; each tenant is migrated on the store its record names, routed
+    through ``tenancy`` (tenant-stores PD-6).
+
+    Raises:
+        StoreNotWired: A tenant's record names a store that is not wired; this is a configuration
+            fault, not a failed migration, so the tenant is not set aside and the run stops.
+
     The tenants whose migration failed are each logged at ERROR (step ``migrate-tenant``) and, once
     the run ends, replace ``tenancy.behind`` (``set_aside``): until then the previous set stays in
     force. The next tenant runs after a failure.
@@ -81,9 +88,12 @@ async def migrate_tenants(
     for tenant in await tenancy.tenants():
         if tenant.state == TenantState.DELETING:
             continue
+        home = await tenancy.store_of(
+            tenant.id
+        )  # outside the try: StoreNotWired is not a failed migration
         try:
             await migrate_database(
-                store, tenancy.database_of(tenant.id), chains, tenancy.stamps_graph
+                home, tenancy.database_of(tenant.id), chains, tenancy.stamps_graph
             )
         except MigrationFailed as error:
             log.error(str(error), extra=_failure("migrate-tenant", error, tenant=tenant.id))

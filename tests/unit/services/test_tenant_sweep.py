@@ -277,6 +277,45 @@ async def test_the_blob_of_a_scan_removed_through_the_session_is_swept(world):
     )
 
 
+async def test_tc28_the_sweep_of_a_tenant_on_another_store_acts_on_that_store():
+    d, a, files = FakeStore(), FakeStore(), FakeFileStore()
+    iris = Iris(SETTINGS)
+    tenancy = Tenancy(
+        d,
+        files,
+        SETTINGS,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
+        iris=iris,
+        stores={"client-a": a},
+    )
+    await tenancy.ensure_system_database()
+    tenant = (await tenancy.create("Ghent", library_slots(), CREATOR, store="client-a")).id
+    database = tenancy.database_of(tenant)
+    aggregate = f"{tenant}/books/{UUID(int=1)}"
+    async with open_session(
+        a,
+        database=database,
+        tenant_iri=tenant,
+        principal=CREATOR,
+        clock=lambda: NOW - 2 * HOUR,
+        iris=iris,
+    ) as opened:
+        orphan = await opened.load_graph(aggregate, TURTLE, rdf_format=RdfFormat.TURTLE)
+
+    async def held() -> bool:
+        return bool(
+            (await a.query(database, f"ASK {{ GRAPH <{orphan}> {{ ?s ?p ?o }} }}")).askAnswer
+        )
+
+    found = await sweep_tenant(tenancy, a, files, iris, tenant, clock=lambda: NOW)
+    assert found.loaded_graphs == [str(orphan)], "found on A"
+    assert await held(), "a dry run keeps it"
+    await sweep_tenant(tenancy, a, files, iris, tenant, remove=True, clock=lambda: NOW)
+    assert not await held(), "dropped on A"
+
+
 async def commit_root(world, loaded: list[URIRef]) -> None:
     """Commit the tenant root, which the world created, with ``loaded`` (tenant-root-loads)."""
     async with open_session(
