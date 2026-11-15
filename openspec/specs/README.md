@@ -3,8 +3,8 @@
 `openspec/specs/<capability>/spec.md` is the merged, machine-validated truth for RDF Persistence:
 the RFC-2119 SHALL requirements + Given/When/Then scenarios that survived `/opsx:archive`.
 
-- **This is authority.** Anything under `.claude/` is a regenerable index; if
-  it disagrees with these specs, the specs win.
+- **This is authority.** If any other note (an agent's memory, an index) disagrees with these
+  specs, the specs win.
 - Deltas in `openspec/changes/<id>/specs/` merge **here** on archive — never hand-edit a merged
   spec to diverge from the change that produced it.
 - Starts empty; fills as changes are archived. Validate shape with `openspec validate --strict`.

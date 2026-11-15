@@ -40,7 +40,8 @@ them only through it, by pull request.
   the schema and run `make generate`. Where a stock generator falls short, extend it in
   `rdf_persistence/generation/` (subclass or template) with its own test. Data goes through the
   generated models, not bare dicts. The freshness check, the conformance suite and the model
-  guards enforce this (design.md PD-24 to PD-28).
+  guards enforce this (PD-24 to PD-28 in
+  `openspec/changes/archive/2026-11-06-toolkit-v1-foundation/design.md`).
 - **Where work is planned (developer, 2026-11-05, D-12 in `architecture/open-decisions.adoc`).**
   In this repository's own spine, even when a consumer needs it. A consumer's change names the
   toolkit change id, and the toolkit change names the consumer need it serves.
@@ -54,11 +55,14 @@ them only through it, by pull request.
   `s.edit.replace_symbol_body` / `s.edit.insert_after_symbol`. One code shape in many files:
   `ast-grep run -p '<pattern>' --lang python` (look at the matches, then add `-r '<rewrite>' -U`).
   Text in docs, YAML, AsciiDoc or the Makefile: Grep. Blast radius: GitNexus `impact` (repo
-  `rdf-persistence`), run by the lead only (see Gates).
+  `rdf-persistence`): the lead runs it as a gate (see Gates); reviewers may run it read-only;
+  builders do not.
 - **Serena limits.** Use only `s.lsp` and `s.edit`. Never `s.shell` (shell commands go through
   Bash, where the hooks and permissions apply) and never `s.mem`: Serena memories are not used
-  (`.serena/` is git-ignored). Reviewers use only `s.lsp` and read-only GitNexus queries, never
-  `s.edit` or GitNexus `rename`.
+  (`.serena/` is git-ignored). Reviewers use only the read queries (`s.lsp.find_symbol`,
+  `get_symbols_overview`, `find_referencing_symbols`, `find_declaration`, `find_implementations`)
+  and read-only GitNexus queries; never `s.edit`, `s.lsp.rename_symbol`,
+  `s.lsp.safe_delete_symbol` or GitNexus `rename`.
 - **Edit in place** with the Edit tool or Serena; never rewrite files with Python heredocs or
   `sed -i`.
 - Temporary files go in `temp/` (git-ignored), not `/tmp` or the session scratchpad.
@@ -69,38 +73,34 @@ them only through it, by pull request.
   commit to it. A release comes last, so nothing is committed after the tag.
 - Commits and PRs follow **meaningfy-git-workflow**, with two additions: the body wraps at
   ~72 columns, and the Trace line also names the decisions implemented
-  (`Refs: <change-id> <task> DEC-3`; outside a change, `Refs: #<issue>`). **No AI attribution**
+  (`Refs: <change-id> <task> PD-24`, using the ids as the change's `design.md` spells them;
+  outside a change, `Refs: #<issue>`). **No AI attribution**
   (`.claude/settings.json` enforces it for Claude Code).
 
 ## Delivery: what this repo adds to epic-delivery
 
-- **Builders** (the `implementer` subagent) never stage or commit; the lead commits after each
-  task.
-- **Every brief carries the standing rules:** models, not dicts; LinkML is the single source; the
-  testing checklist; the Tools section above. The report names each make target run with its time
-  and test count.
-- **Gates.**
-  - The lead, per task: GitNexus `impact` before the brief (stop and report HIGH/CRITICAL), the
-    change check (`detect_changes`) before the commit. **Builders run neither**, and do not
-    re-index: a brief says so, and the report's impact field reads "lead's check".
-  - The builder's **task gate** is one command: `make test-changed check-quality`, or
+- **Builders** are the `implementer` subagent. The epic-delivery skill (3.15.0 or later) sets who
+  commits, who runs impact and the change check, and when gates are re-run; what this repo adds:
+  - **Every brief** carries the standing rules (models, not dicts; LinkML is the single source;
+    the testing checklist; the Tools section above) and overrides the implementer's own impact
+    step: builders do not re-index or run impact, and the report's impact field reads "lead's
+    check". The report names each make target run with its time and test count.
+  - **Task gate**, one command: `make test-changed check-quality`, or
     `make test-fast check-quality` after changing `domain` or a port in `services`, or when unsure
-    what the change reaches. After a red run, re-run only the failing tests until green, then the
-    task gate once.
-  - After the lead commits a schema change: `make check-generated` (it compares against the
-    commit).
-  - The lead reads the diff and the report and re-runs a gate only on an epic-delivery trigger
-    (T1 to T3).
-  - `make check-all` and `make test-containers`: by the lead, once per stage before the PR, and
-    again after the fix pass (T3); never in a task.
+    what the change reaches.
+  - **Full gates:** `make check-all` and `make test-containers`, by the lead; never in a task.
+    After the lead commits a schema change: `make check-generated`.
+  - **Worktrees:** a separate worktree only for overlapping parallel work, or when another session
+    holds this checkout.
 - **Re-index GitNexus** at the start of each stage, and again before an impact check on symbols an
   earlier task of the stage added or moved: `gitnexus analyze --embeddings --skip-agents-md
   --skip-skills` (≈ 20 s). If it errors (developer, 2026-11-09), do not retry or investigate: run
   `gitnexus clean --force`, then `gitnexus analyze --embeddings --force --skip-agents-md
   --skip-skills` (≈ 4 min, in the background), then revert anything it wrote to `AGENTS.md`,
   `CLAUDE.md` or `.claude/skills/`.
-- **Challenge, kept cheap (developer, 2026-11-09).** These override epic-delivery's review sets:
-  review lenses L1, L2 and L3 always run as separate passes, L4 and L5 as one; the adversarial
+- **Challenge, kept cheap (developer, 2026-11-09).** These override epic-delivery's review sets,
+  and a brief cites this bullet as the authority: whichever lenses the appetite's review set runs,
+  L1, L2 and L3 are never combined with each other, and L4 and L5 run as one pass; the adversarial
   tester runs right after the riskiest task (new invariants, write order, concurrency); the
   checker reads the lead's `make check-all` result and does not re-run tests.
 - **Never poll:** a hook denies `sleep` loops in Bash; wait in the foreground, on a background
