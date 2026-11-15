@@ -187,12 +187,25 @@ None as deltas here; the commit writing an activity is stated in `rp-messages`.
 - `aggregate-events` publishes these activity messages; it stores no other event kind.
 - The collaboration EPIC's `TransitionRecord` is adopted as layer 2 (Rabbit-holes).
 
-## Where the PLAN and the code differ from the shape (reconciled 2026-11-14)
+## As built (2026-11-15)
 
-The developer asked (2026-11-14) to reconcile the shape with what is planned and built. The text
-above stays as shaped; this table says where the PLAN (design.md) or the code departs from it or
-adds to it. Every DEC holds. "Built" means merged or in an open PR; "planned" means gated in the
-PLAN and not built yet. At the archive this table becomes the "As built" record.
+Delivered in #107 (stage 1: the model, the provenance graph, the PROV shape), #110 (stage 2: an
+activity on every commit, `Transition` kept on delete) and #114 (stages 3 and 4 as one PR, design.md
+D-8: the bus, its wiring, the comment and file commands, the generator rules, the testkit, the
+event-driven how-to). Accepted by the developer on 2026-11-15 after a demo
+(evidence/acceptance.md); docs current (evidence/docs-owed.md). Every DEC held. The text above
+stays as shaped; the table below, kept since the developer's reconciliation requests of 2026-11-14
+and 2026-11-15, says where the PLAN (design.md) or the code departs from it or adds to it. Every
+row is built: "built (stage N)" names the stage.
+
+Not built, as the No-gos say: no broker, outbox or server-sent events (`aggregate-events`); no
+event sourcing; no consumer event classes; no sagas, retries or scheduled commands; no tenancy
+activities; no DI library. Not built, by the developer's decision (PD-1): the layer-2 commands
+`Upload`, `AddMember`, `RemoveMember`, `Grant`, `Revoke`, `Prohibit` (the toolkit has no such
+operation, or it lives in the system database); toolkit handlers for layer 1 and `DeleteFile`; a
+migration of `rp:TransitionRecord` graphs written by an earlier `develop` build. Left open: a purge
+of a principal's records when a consumer needs erasure (DEC-13); a route that reads an aggregate's
+history.
 
 | Above | Now | Decision | State |
 |---|---|---|---|

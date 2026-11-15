@@ -3,16 +3,17 @@
 ## Purpose
 Listing the aggregates of a tenant that reference a given one, where what the caller may not read
 is counted and never named.
-
 ## Requirements
 ### Requirement: A session lists the referrers of a resource
 
 A collaboration SHALL return (a collaboration is the access-aware service the kit opens over a
 session for an authorised caller), through `referrers(iri)`, every aggregate of the tenant whose stored triples refer
 to `iri`, each with the referrer's IRI, its class and the slot that refers, read across the
-aggregate graphs of the tenant database by the toolkit. The links that make a comment or a
-transition record depend on `iri` (its target, the aggregate it was made on) SHALL NOT count:
-those records are deleted with `iri`. The caller SHALL need `read` on `iri`. A referrer that refers by
+aggregate graphs of the tenant database by the toolkit. The link that makes a comment depend on
+`iri` (its target) SHALL NOT count: a comment is deleted with `iri`. Activity records, a
+transition's among them, are not aggregates and SHALL NOT be listed; a transition record stored
+before this change (`rp:TransitionRecord`) is an ordinary aggregate and SHALL be listed like any
+other. The caller SHALL need `read` on `iri`. A referrer that refers by
 several slots SHALL be listed once per slot. The call SHALL accept an optional class and an
 optional slot that narrow the result. An IRI the IRI policy does not mint for the tenant SHALL be
 refused as invalid; an IRI nothing refers to SHALL give an empty result.

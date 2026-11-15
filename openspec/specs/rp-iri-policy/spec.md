@@ -11,7 +11,7 @@ When `ServiceSettings` sets no `iri_policy`, the toolkit SHALL mint and accept e
 resource names it minted before this capability: `{base}{tenant_segment}/{uuid4}` for a tenant,
 `{tenant}/{rp_path}/{uuid4}` for an aggregate root, `{root}/parts/{uuid4}` for an owned part,
 `{root}/content/{uuid4}` for a loaded graph, `{tenant}/access`, `{tenant}/meta`,
-`{tenant}/registry`, `{issuer}/users/{sub}` for a principal, and `{prefix}-t-{uuid hex}` for the
+`{tenant}/registry`, `{tenant}/provenance`, `{issuer}/users/{sub}` for a principal, and `{prefix}-t-{uuid hex}` for the
 tenant's database and bucket.
 
 #### Scenario: an application that sets nothing
@@ -22,7 +22,7 @@ tenant's database and bucket.
 
 ### Requirement: Each kind of IRI follows its configured template
 
-With an `iri_policy`, the toolkit SHALL mint each tenant, access record, meta and registry graph,
+With an `iri_policy`, the toolkit SHALL mint each tenant, access record, meta, registry and provenance graph,
 aggregate root, owned part, loaded graph and principal from its template, filling `{base}`,
 `{deployment}`, `{tenant_id}`, `{type}` and `{id}`. `{type}` SHALL be the class's `rp_iri_type`
 (default: the class name in kebab case), or `content` for a loaded graph. The aggregate graph SHALL
@@ -158,7 +158,7 @@ settings' policy.
 
 `ServiceSettings` SHALL refuse a policy whose template uses a variable not allowed for its kind,
 whose tenant, aggregate, part, loaded-graph or principal template does not end in its id variable,
-whose access, meta or registry template contains neither `{tenant}` nor `{tenant_id}`, whose
+whose access, meta, registry or provenance template contains neither `{tenant}` nor `{tenant_id}`, whose
 aggregate template contains neither `{tenant}` nor `{tenant_id}`, whose part or loaded-graph template
 contains none of `{tenant}`, `{tenant_id}` and `{root}`, or that contains a character outside
 `[a-z0-9/:.-]` around its variables. Two rules span fields, which the generated models cannot state:
@@ -166,8 +166,8 @@ a template that uses `{deployment}` when no deployment slug is set, and a `rando
 length. They SHALL be refused with `InvalidIri` by `check_iri_policy`, which the service's `Iris` runs when it
 is built and which a caller may run on the settings alone. A schema SHALL fail generation when two classes share an `rp_iri_type`
 or one equals a reserved word. Building the service's `Iris` SHALL refuse a policy whose access,
-meta or registry IRI, for the same tenant, equals another of them or the tenant IRI, or reads as an
-aggregate or loaded graph.
+meta, registry or provenance IRI, for the same tenant, equals another of them or the tenant IRI, or reads as an
+aggregate or loaded graph. The provenance template defaults to `{tenant}/provenance`.
 
 #### Scenario: a template without its id
 - **WHEN** settings are made with aggregate template `{base}{tenant_id}/{type}`
@@ -175,6 +175,10 @@ aggregate or loaded graph.
 
 #### Scenario: colliding graphs
 - **WHEN** an `Iris` is built with the same meta and registry template
+- **THEN** it fails with `InvalidIri` naming both
+
+#### Scenario: a provenance graph that collides
+- **WHEN** an `Iris` is built with a provenance template equal to the registry template
 - **THEN** it fails with `InvalidIri` naming both
 
 ### Requirement: The application space has its own IRI

@@ -85,7 +85,7 @@ class HardRule(str, Enum):
     QUOTED_VERSION = "quoted_version"
     "The root schema of a target that sets `migrations` has a `version`, written as a quoted string in the YAML source, since an unquoted `1.10` is read as the number 1.1."
     TOOLKIT_FILLED = "toolkit_filled"
-    "A class of the application does not give `slot_usage`, `ifabsent` or an attribute of its own to a slot annotated `toolkit_filled`, and has no slot that is both `payload` and required."
+    "A class of the application does not give `slot_usage`, `ifabsent` or an attribute of its own to a slot annotated `toolkit_filled`, gives no slot of its own the `slot_uri` of one, and has no slot that is both `payload` and required."
 
 
 class LockRule(str, Enum):
