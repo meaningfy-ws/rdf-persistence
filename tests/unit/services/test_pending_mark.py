@@ -228,6 +228,24 @@ async def test_pending_activities_are_ordered_by_the_mark_then_by_iri(store):
         assert [i for i, _ in await session.pending_activities()] == [c, a, b], "mark, then IRI"
 
 
+async def test_a_mark_that_is_not_a_zoned_time_is_ordered_after_every_valid_one(store):
+    async with opened(store) as session:
+        await three_commits(session)
+        a, b, c = sorted(a.id for a in await activities(store))
+        marks_by_hand = {  # a is the bad one and has the smallest IRI
+            a: '"yesterday"',
+            b: '"2026-01-02T00:00:00Z"^^<http://www.w3.org/2001/XMLSchema#dateTime>',
+            c: '"2026-01-01T00:00:00"^^<http://www.w3.org/2001/XMLSchema#dateTime>',
+        }
+        for iri, mark in marks_by_hand.items():
+            await store.update(
+                FAKE_DATABASE,
+                f"DELETE WHERE {{ GRAPH <{PROVENANCE}> {{ <{iri}> <{v.PENDING_SINCE}> ?o }} }};"
+                f"INSERT DATA {{ GRAPH <{PROVENANCE}> {{ <{iri}> <{v.PENDING_SINCE}> {mark} }} }}",
+            )
+        assert [i for i, _ in await session.pending_activities()] == [b, a, c], "valid, then bad"
+
+
 async def test_pending_activities_of_a_database_that_is_gone_raise_database_gone(store):
     async with opened(store) as session:
         await store.drop_dataset(FAKE_DATABASE)

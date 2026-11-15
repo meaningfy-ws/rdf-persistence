@@ -289,6 +289,14 @@ def _without_dependents(pairs: Dependents) -> SparqlTerm:
     return fragment(_NOT_DEPENDENT, pairs=_pair_values(pairs)) if pairs else SparqlTerm("")
 
 
+def _mark_key(mark: object, iri: str) -> tuple[int, datetime, str]:
+    """Total sort key of a pending mark: a zoned time by its value, any other mark (a string, a
+    naive time) after every valid one, so one bad mark never stalls the relay of a database."""
+    if isinstance(mark, datetime) and mark.tzinfo is not None:
+        return (0, mark, iri)
+    return (1, datetime.min.replace(tzinfo=UTC), iri)
+
+
 def utc_now() -> datetime:
     return datetime.now(UTC)
 
@@ -871,7 +879,7 @@ class Session:
             if isinstance(row, ResultRow):
                 graphs.setdefault(str(row.activity), Graph()).add((row.s, row.p, row.o))
                 since[str(row.activity)] = Literal(row.since).toPython()
-        return [(iri, graphs[iri]) for iri in sorted(graphs, key=lambda i: (since[i], i))]
+        return [(iri, graphs[iri]) for iri in sorted(graphs, key=lambda i: _mark_key(since[i], i))]
 
     async def mark_relayed(self, iri: str) -> None:
         """Replace the pending mark of the activity ``iri`` by ``rp:relayedAt`` at the store's

@@ -336,3 +336,9 @@ None. Q1 to Q8 were answered on 2026-11-15 (inputs/seed.md).
   that name exists ("reserved by rp_service.ts"). A toolkit wire class must not take a common
   name a consumer may use: renamed `EventEnvelope` (`rp:EventEnvelope`) everywhere PD-6 says
   `Envelope`.
+- **D-5 (stage 1, 2026-11-15, the lead; tester finding, accepted as Critical).** A pending mark
+  that is not a timezone-aware `xsd:dateTime` (a hand-edited store, a foreign import) made
+  `Session.pending_activities` raise `TypeError` while sorting, so the relay skipped that whole
+  database every round: PD-3's "a poison record never stalls its database" broke. Fixed: the sort
+  key is total; a mark that is not an aware datetime sorts after every valid one (then by IRI),
+  and the activity is relayed like any other.
