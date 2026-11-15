@@ -75,8 +75,8 @@ unused; letters mark cases added by the PLAN's attack).
 | TC-43 | `pending_activities` after three commits, one relayed | two, in `pendingSince` order, without the plumbing predicates |
 | TC-44 | `mark_relayed(a)` twice; `mark_failed(b)` | `a` relayed once, not pending; `b` failed, not pending |
 
-- [ ] 1.5 The relay (PD-3, PD-5). `services/relay.py` `Relay(tenancy, view, models, mapper,
-  bus: EventBus | None, hub: Offer | None, settings, interval=5.0)`, `wake()`, `run_once()`,
+- [x] 1.5 The relay (PD-3, PD-5). `services/relay.py` `Relay(tenancy, view, models, mapper,
+  bus: EventBus | None, hub: Offer | None, *, deployment, context, interval=5.0)`, `wake()`, `run_once()`,
   `run()`. Tests first in `tests/unit/services/test_relay.py`. The lead runs the adversarial tester
   after this task.
 
