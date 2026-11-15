@@ -22,6 +22,11 @@ headers included), refusing it from the header before the member is read.
 - **WHEN** the service restores it
 - **THEN** the dump is accepted and the new tenant's data follows version 2
 
+#### Scenario: another schema version
+- **GIVEN** a dump whose manifest records schema version 1.0.0, which the service's chain does not hold
+- **WHEN** a service whose schema is at version 1.1.0 restores it
+- **THEN** it is refused with `InvalidBody` naming the versions, and no database, bucket or access record is created
+
 #### Scenario: a schema version outside the chain
 - **GIVEN** a dump whose manifest records a schema version the service's chain does not hold, or none
 - **WHEN** the service restores it
