@@ -5,10 +5,15 @@
   "@omitDefault": true,
   "@type": [
     "Activity",
-    "Transition",
     "Add",
     "Replace",
-    "Remove"
+    "Remove",
+    "Transition",
+    "ShelveBooks",
+    "PostComment",
+    "PostReply",
+    "ApproveBook",
+    "DeleteFile"
   ],
   "was_associated_with": {
     "@embed": "@never",

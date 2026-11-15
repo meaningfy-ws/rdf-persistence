@@ -26,6 +26,7 @@ from rdf_persistence.domain.exceptions import (
     InvalidToken,
     InvalidWorkflow,
     KeyConflict,
+    MessageLimitExceeded,
     MigrationFailed,
     NotAcceptable,
     NotFound,
@@ -76,9 +77,12 @@ from rdf_persistence.domain.generated.rp_core import (
 from rdf_persistence.domain.generated.rp_discussion import (
     Comment,
     Motivation,
+    PostComment,
+    PostReply,
 )
 from rdf_persistence.domain.generated.rp_files import (
     BlobEntry,
+    DeleteFile,
     RdfFormat,
     StoredFile,
 )
@@ -145,6 +149,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.services.identity import Identity
     from rdf_persistence.services.listing import Listings
     from rdf_persistence.services.mapper import Mapper, UnitOfWork, generated_models, new_part
+    from rdf_persistence.services.messagebus import MessageBus, Work, bootstrap, command
     from rdf_persistence.services.schema import load_schema
     from rdf_persistence.services.session import Session, open_session
     from rdf_persistence.services.store import Store
@@ -190,6 +195,10 @@ _LAZY_MODULES = {
     "RootValidator": f"{_SERVICES}.tenancy",
     "Collaboration": f"{_SERVICES}.collaboration",
     "Workflows": f"{_SERVICES}.workflows",
+    "MessageBus": f"{_SERVICES}.messagebus",
+    "Work": f"{_SERVICES}.messagebus",
+    "command": f"{_SERVICES}.messagebus",
+    "bootstrap": f"{_SERVICES}.messagebus",
 }
 
 
@@ -223,6 +232,7 @@ __all__ = [
     "DatabaseGone",
     "DEFAULT_IRIS",
     "DatabaseKind",
+    "DeleteFile",
     "Described",
     "FileStore",
     "Forbidden",
@@ -255,6 +265,8 @@ __all__ = [
     "Mapper",
     "MemberList",
     "MembershipRule",
+    "MessageBus",
+    "MessageLimitExceeded",
     "MigrationFailed",
     "ModuleKind",
     "Motivation",
@@ -264,6 +276,8 @@ __all__ = [
     "PayloadTooLarge",
     "PendingLoad",
     "PersistenceError",
+    "PostComment",
+    "PostReply",
     "PreconditionRequired",
     "Policy",
     "Principal",
@@ -315,9 +329,12 @@ __all__ = [
     "VerifiedCaller",
     "Workflow",
     "WorkflowTransition",
+    "Work",
     "Workflows",
     "WritesKind",
     "ZitadelIdentity",
+    "command",
+    "bootstrap",
     "generated_models",
     "install_service",
     "limited_body",

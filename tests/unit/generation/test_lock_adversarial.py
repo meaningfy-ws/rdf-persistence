@@ -77,7 +77,9 @@ SHELF_LAST: Edits = (
     ("books.yaml", SHELF_BLOCK, ""),
     ("books.yaml", "\nslots:\n  isbn:", f"{SHELF_BLOCK}\nslots:\n  isbn:"),
 )
-IMPORTS_SWAPPED: Edits = (("library.yaml", "  - books\n  - scans\n", "  - scans\n  - books\n"),)
+IMPORTS_SWAPPED: Edits = (
+    ("library.yaml", "  - books\n  - books_activities\n", "  - books_activities\n  - books\n"),
+)
 VALUE_KEY_RENAMED: Edits = (("books.yaml", "      fiction:\n", "      fictional:\n"),)
 
 

@@ -33,6 +33,11 @@ from .rp_core import (
     AggregateRoot,
     Principal
 )
+from .rp_provenance import (
+    Activity,
+    Generation,
+    Invalidation
+)
 
 
 metamodel_version = "1.12.0"
@@ -71,6 +76,35 @@ class Motivation(str, Enum):
 
 
 
+class PostComment(Activity):
+    "The activity of posting a comment on an aggregate: the aggregate it used, and a generation of the comment. The text, the audience and the references belong to the command only; the comment holds them, and the stored record has none of them."
+    used_resource: str = Field(default=..., title="Used resource", description="The IRI of the aggregate the activity used.")
+    body_value: Optional[str] = Field(default=None, title="Body value", description="The text of the comment.")
+    comment_audience: Optional[list[str]] = Field(default=None, title="Comment audience", description="The names of the roles that may see the comment; none means everyone who may read the aggregate.")
+    comment_references: Optional[list[str]] = Field(default=None, title="Comment references", description="The IRIs of other aggregates the comment points to.")
+    id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    was_associated_with: Optional[list[str]] = Field(default=None, title="Was associated with", description="A principal that carried out the activity.")
+    started_at_time: Optional[datetime ] = Field(default=None, title="Started at time", description="The time the activity started.")
+    ended_at_time: Optional[datetime ] = Field(default=None, title="Ended at time", description="The time the activity ended.")
+    generations: Optional[list[Generation]] = Field(default=None, title="Generations", description="The versions of entities the activity generated.")
+    invalidations: Optional[list[Invalidation]] = Field(default=None, title="Invalidations", description="The versions of entities the activity invalidated.")
+
+
+class PostReply(PostComment):
+    "The activity of posting a reply to a comment: a post of a comment that also names the comment it answers."
+    replies_to: str = Field(default=..., title="Replies to", description="The IRI of the comment this one answers.")
+    used_resource: str = Field(default=..., title="Used resource", description="The IRI of the aggregate the activity used.")
+    body_value: Optional[str] = Field(default=None, title="Body value", description="The text of the comment.")
+    comment_audience: Optional[list[str]] = Field(default=None, title="Comment audience", description="The names of the roles that may see the comment; none means everyone who may read the aggregate.")
+    comment_references: Optional[list[str]] = Field(default=None, title="Comment references", description="The IRIs of other aggregates the comment points to.")
+    id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    was_associated_with: Optional[list[str]] = Field(default=None, title="Was associated with", description="A principal that carried out the activity.")
+    started_at_time: Optional[datetime ] = Field(default=None, title="Started at time", description="The time the activity started.")
+    ended_at_time: Optional[datetime ] = Field(default=None, title="Ended at time", description="The time the activity ended.")
+    generations: Optional[list[Generation]] = Field(default=None, title="Generations", description="The versions of entities the activity generated.")
+    invalidations: Optional[list[Invalidation]] = Field(default=None, title="Invalidations", description="The versions of entities the activity invalidated.")
+
+
 class Comment(Tracked, AggregateRoot):
     "A remark on an aggregate, or a reply to another remark. Each comment is an aggregate root of its own, whose target is always the aggregate it is about; a reply also names the comment it answers. The toolkit writes and reads it, since its audience limits who may see it. The session writes its author and time as the tracking of its graph."
     id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
@@ -90,4 +124,6 @@ class Comment(Tracked, AggregateRoot):
 
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
+PostComment.model_rebuild()
+PostReply.model_rebuild()
 Comment.model_rebuild()

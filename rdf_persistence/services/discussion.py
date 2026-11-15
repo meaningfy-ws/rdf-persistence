@@ -20,12 +20,18 @@ from rdflib import RDF, Graph, URIRef
 from rdf_persistence.domain.exceptions import InvalidBody, InvalidIri, NotFound, UnknownRole
 from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_core import RpAnnotation
-from rdf_persistence.domain.generated.rp_discussion import Comment, Motivation
+from rdf_persistence.domain.generated.rp_discussion import (
+    Comment,
+    Motivation,
+    PostComment,
+    PostReply,
+)
 from rdf_persistence.domain.generated.service.rp_service import CallerAccess, VerifiedCaller
 from rdf_persistence.domain.iris import Iris, graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.mapper import Mapper
+from rdf_persistence.services.provenance import new_activity_id
 from rdf_persistence.services.schema_structure import (
     annotation_text,
     iri_type_of,
@@ -156,13 +162,16 @@ class Discussion:
         audience: Sequence[str] = (),
         references: Sequence[str] = (),
         reply_to: str | None = None,
+        command: PostComment | None = None,
     ) -> str:
         """Post a comment on the aggregate ``iri``; returns the comment's IRI.
 
         ``audience`` names the roles that may see it (none: everyone who may read ``iri``);
         ``references`` are aggregates of the tenant it points to; ``reply_to`` is a comment of the
         thread of ``iri`` that this caller sees. The aggregate itself is not written, so its
-        version does not change. The author and the time are the session's.
+        version does not change. The author and the time are the session's. The request's activity
+        is the post: ``command`` (a ``PostReply`` for a reply; none: a new one), with its target
+        and, for a reply, its parent overwritten by ``iri`` and ``reply_to``.
 
         Raises:
             LookupError: The schema does not import the module rp_discussion.
@@ -170,7 +179,8 @@ class Discussion:
             NotFound: The caller can see nothing of ``iri``, ``iri`` has no graph, or ``reply_to``
                 is not in the thread as this caller sees it.
             Forbidden: The caller may see ``iri`` but not annotate it.
-            InvalidBody: ``text`` is blank.
+            InvalidBody: ``text`` is blank, or ``command`` is a ``PostReply`` without ``reply_to``
+                or a post that is no reply with one.
             UnknownRole: An audience role is not defined by the roles file.
             Conflict: ``iri`` was removed meanwhile; nothing was stored (``iris`` names it).
             DatabaseGone: The tenant database does not exist.
@@ -183,7 +193,7 @@ class Discussion:
         self._require_valid(text, audience, references)
         if reply_to is not None and reply_to not in {c.id for c in await self.thread(iri)}:
             raise NotFound(f"no comment {reply_to} in the thread of {iri}")
-        return await self._store(iri, text, audience, references, reply_to)
+        return await self._store(iri, text, audience, references, reply_to, command)
 
     async def thread(self, iri: str) -> list[Comment]:
         """The comments on the aggregate ``iri`` that the caller sees, oldest first, ties by IRI.
@@ -263,8 +273,21 @@ class Discussion:
         audience: Sequence[str],
         references: Sequence[str],
         reply_to: str | None,
+        command: PostComment | None,
     ) -> str:
+        if command is not None and isinstance(command, PostReply) != (reply_to is not None):
+            raise InvalidBody("a reply command goes with a reply_to, and a comment command without")
         minted = mint_iri(self._view.get_class(COMMENT), self._iris, self._access.tenant)
+        post = (
+            command
+            or (
+                PostReply(id=new_activity_id(), used_resource=iri, replies_to=reply_to)
+                if reply_to is not None
+                else PostComment(id=new_activity_id(), used_resource=iri)
+            )
+        ).model_copy(
+            update={"used_resource": iri, **({"replies_to": reply_to} if reply_to else {})}
+        )
         model = Comment(
             id=minted,
             has_target=iri,
@@ -274,7 +297,7 @@ class Discussion:
             comment_references=list(references) or None,
             replies_to=reply_to,
         )
-        async with self._session.transaction() as transaction:
+        async with self._session.transaction(served=self._mapper.served(post)) as transaction:
             transaction._require_present(iri)
             await transaction.add_graph(minted, self._mapper.to_triples(model))
         return minted

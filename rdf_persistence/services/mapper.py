@@ -304,10 +304,16 @@ class UnitOfWork:
     """
 
     def __init__(
-        self, session: Session, mapper: Mapper, max_roots: int = DEFAULT_MAX_ROOTS
+        self,
+        session: Session,
+        mapper: Mapper,
+        max_roots: int = DEFAULT_MAX_ROOTS,
+        *,
+        served: Served | None = None,
     ) -> None:
         if max_roots < 1:
             raise ValueError(f"max_roots must be at least 1, got {max_roots}")
+        self._served = served  # the command this unit of work commits for (message-bus PD-16)
         self._session = session
         self._mapper = mapper
         self._max_roots = max_roots
@@ -409,12 +415,18 @@ class UnitOfWork:
         duplicated). Replaces and removes are not idempotent; read the roots again.
 
         Raises:
+            ValueError: ``batches`` is set on a unit of work that serves a command (``served``): one
+                command is one commit; nothing was read or written.
             CommitTooLarge: More than ``max_roots`` roots were added, changed or removed, and
                 ``batches`` is not set; nothing was read or written.
             Conflict: A new root already exists, or a read one changed since it was read; nothing
                 was written (in batch mode: nothing of that batch) and the unit of work keeps the
                 roots not yet committed.
         """
+        if batches and self._served is not None:
+            raise ValueError(
+                "a unit of work that serves a command commits once: batches is not allowed"
+            )
         order = [i for i in self._objects if i in self._dirty or i in self._removed]
         if not batches:
             if len(order) > self._max_roots:
@@ -423,6 +435,10 @@ class UnitOfWork:
                 )
             await self._write(order)
             return
+        await self._write_batches(order)
+
+    async def _write_batches(self, order: list[str]) -> None:
+        """Commit ``order`` in batches of ``max_roots``; a failing batch says how many went before."""
         slices = [order[n : n + self._max_roots] for n in range(0, len(order), self._max_roots)]
         for done, batch in enumerate(slices):
             try:
@@ -455,7 +471,7 @@ class UnitOfWork:
 
     async def _write(self, order: list[str]) -> None:
         written: dict[str, str] = {}
-        async with self._session.transaction() as transaction:
+        async with self._session.transaction(served=self._served) as transaction:
             for iri in order:
                 if iri in self._removed:
                     await transaction.remove(iri, self._versions[iri])

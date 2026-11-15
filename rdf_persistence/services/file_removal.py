@@ -4,19 +4,29 @@ import logging
 
 from rdf_persistence.domain.exceptions import PersistenceError
 from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.domain.generated.rp_files import DeleteFile
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.files import FileStore
+from rdf_persistence.services.mapper import Mapper
+from rdf_persistence.services.provenance import new_activity_id
 from rdf_persistence.services.tenancy import Tenancy
 
 log = logging.getLogger(__name__)
 
 
 async def remove_with_files(
-    tenancy: Tenancy, files: FileStore, tenant: str, principal: Principal, iri: str, if_version: str
+    tenancy: Tenancy,
+    files: FileStore,
+    tenant: str,
+    principal: Principal,
+    iri: str,
+    if_version: str,
+    mapper: Mapper | None = None,
 ) -> None:
     """Remove the aggregate ``iri`` at ``if_version``, then delete from the tenant's bucket the blobs
     it named in ``rp:fileKey`` that no other graph names. A blob that cannot be deleted is logged and
-    left for the live-tenant sweep.
+    left for the live-tenant sweep. The removal's activity is a ``DeleteFile``, built with ``mapper``;
+    without one it is the standard ``Remove``.
 
     Raises:
         NotFound: The aggregate has no graph, or the tenant has no access record.
@@ -26,7 +36,11 @@ async def remove_with_files(
     async with tenancy.tenant_session(tenant, principal) as session:
         graph, _, _ = await session.get_graph(iri)
         keys = {str(k) for k in graph.objects(predicate=v.FILE_KEY)}
-        await session.remove(iri, if_version)  # refuses a stale version with nothing changed
+        served = None
+        if mapper is not None:
+            served = mapper.served(DeleteFile(id=new_activity_id(), used_resource=iri))
+        # a stale version is refused with nothing changed
+        await session.remove(iri, if_version, served=served)
         orphans = keys - await session.named_file_keys(keys)
     for key in sorted(orphans):
         await _delete_blob(files, access.database_name, tenant, key)

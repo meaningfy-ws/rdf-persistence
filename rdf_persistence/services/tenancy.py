@@ -67,6 +67,7 @@ from rdf_persistence.services.schema_structure import (
 from rdf_persistence.services.session import (
     Clock,
     Dependents,
+    OnCommit,
     Session,
     WriteGuard,
     open_session,
@@ -122,8 +123,11 @@ class Tenancy:
         root_validators: Sequence[RootValidator] = (),
         dependents: Dependents = (),
         stamps: Sequence[tuple[str, str]] = (),
+        on_commit: OnCommit | None = None,
     ) -> None:
         self._dependents = dependents
+        # given to the sessions of tenant and application databases, never the system database's
+        self._on_commit = on_commit
         # (schema id, current version) of each chain, written to a new database (PD-10)
         self._stamps = tuple(stamps)
         # the tenants whose migration failed at start-up (PD-11)
@@ -176,6 +180,7 @@ class Tenancy:
             refused_types=refused_types,
             allowed_types=allowed_types,
             record_activities=database != self._system,  # no tenancy activities (message-bus PD-9)
+            on_commit=None if database == self._system else self._on_commit,
         )
 
     def tenant_session(

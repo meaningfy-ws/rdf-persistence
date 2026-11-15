@@ -209,6 +209,24 @@ domain service, and `TokenSigner` with `JwksTokenVerifier` for tokens, all from
 `rdf_persistence.testkit`. Add the freshness plugin and the model guards to your test suite. See
 xref:howto/adopt.adoc#guard[step 6] and xref:howto/adopt.adoc#test-service[step 13].
 
+*How do I run a use case as a command?*::
+Model it as a subclass of `Activity` in a sibling `<domain>_activities.yaml` (or of `Transition`,
+to specialise a workflow move), register a handler for it with `bootstrap`, set `kit.bus`, and
+send it with `bus.handle(command(ShelveBooks, ...), collab)`. The handler changes aggregates
+through `work.unit_of_work()`, one command and one commit. See
+xref:howto/event-driven.adoc[React to changes with commands and observers].
+
+*How do I run code after a commit?*::
+Register an observer for an activity class with `bootstrap(observers=...)`. After each commit it
+gets the completed activity (references to the aggregates it touched, never their content) and
+reads what it needs with `get_graph`. It also runs for commits the generic HTTP routes make. See
+xref:howto/event-driven.adoc#write-observer[Write an observer].
+
+*Is an observer guaranteed to run?*::
+No. Delivery is at most once and in process: if the process stops after the commit, the observer
+never runs, and nothing retries. The commit and its activity record are safe. Durable delivery is
+the later change `aggregate-events`. See xref:howto/event-driven.adoc#limits[the limits].
+
 == Developing the toolkit
 
 *How do I change a toolkit schema?*::

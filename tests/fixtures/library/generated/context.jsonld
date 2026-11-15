@@ -329,6 +329,9 @@
          "@type": "@id",
          "@id": "shelf"
       },
+      "shelf_note": {
+         "@id": "shelfNote"
+      },
       "skipped_blobs": {
          "@container": "@set",
          "@id": "rp:skippedBlob"
@@ -441,6 +444,9 @@
       "AggregateRoot": {
          "@id": "rp:AggregateRoot"
       },
+      "ApproveBook": {
+         "@id": "ApproveBook"
+      },
       "BlobEntry": {
          "@id": "rp:BlobEntry"
       },
@@ -455,6 +461,9 @@
       },
       "CommitMarker": {
          "@id": "rp:CommitMarker"
+      },
+      "DeleteFile": {
+         "@id": "rp:DeleteFile"
       },
       "Described": {
          "@id": "rp:Described"
@@ -489,6 +498,12 @@
       "Policy": {
          "@id": "ODRL:Set"
       },
+      "PostComment": {
+         "@id": "rp:PostComment"
+      },
+      "PostReply": {
+         "@id": "rp:PostReply"
+      },
       "Principal": {
          "@id": "prov:Agent"
       },
@@ -521,6 +536,9 @@
       },
       "Shelf": {
          "@id": "Shelf"
+      },
+      "ShelveBooks": {
+         "@id": "ShelveBooks"
       },
       "SlotEquality": {
          "@id": "rp:SlotEquality"

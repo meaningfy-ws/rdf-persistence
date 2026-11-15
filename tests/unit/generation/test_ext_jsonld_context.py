@@ -58,6 +58,9 @@ def test_the_output_equals_the_committed_tree(rendered: Path) -> None:
 ACTIVITY_FRAMES = [
     "Activity.frame.jsonld",
     "Add.frame.jsonld",
+    "DeleteFile.frame.jsonld",
+    "PostComment.frame.jsonld",
+    "PostReply.frame.jsonld",
     "Remove.frame.jsonld",
     "Replace.frame.jsonld",
     "Transition.frame.jsonld",
@@ -74,6 +77,8 @@ def test_one_frame_per_aggregate_type_the_tenant_root_and_each_activity(staged: 
             "Scan.frame.jsonld",
             "Shelf.frame.jsonld",
             "Template.frame.jsonld",
+            "ApproveBook.frame.jsonld",
+            "ShelveBooks.frame.jsonld",
             *ACTIVITY_FRAMES,
         ]
     ), "a frame per root, the tenant root, and Activity with every descendant of the closure"
@@ -83,7 +88,7 @@ def test_the_metamodel_has_a_frame_per_activity_class_and_its_root_frames_stay()
     names = sorted(f.name for f in render(PACKAGE_DIR / "model" / "rp.yaml") if "frame" in f.name)
     assert names == sorted(
         ["Comment.frame.jsonld", "TenantAccess.frame.jsonld"] + ACTIVITY_FRAMES
-    ), "one frame for Activity, Add, Replace, Remove and Transition beside the two root frames"
+    ), "one frame for each activity class of the toolkit beside the two root frames"
 
 
 def test_the_replace_frame_nests_the_generations_and_invalidations(staged: Path) -> None:

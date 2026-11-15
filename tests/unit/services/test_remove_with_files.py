@@ -4,11 +4,14 @@ import logging
 from datetime import timedelta
 
 import pytest
+from rdflib import RDF, URIRef
 
 from rdf_persistence.domain.exceptions import Conflict, NotFound, StoreUnavailable
 from rdf_persistence.domain.iris import Iris
+from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.file_removal import remove_with_files
-from tests.toy import SETTINGS
+from tests.toy import SETTINGS, toy_mapper
+from tests.unit.services.test_session_activity import stored_graph
 from tests.unit.services.test_tenant_sweep import CREATOR, book, make_world
 
 
@@ -19,7 +22,7 @@ async def world():
     made.version = await made.commit(made.scan, keys=["k1"])
     await made.blob("k1", timedelta())
     made.remove = lambda iri, version: remove_with_files(
-        made.tenancy, made.files, made.tenant, CREATOR, iri, version
+        made.tenancy, made.files, made.tenant, CREATOR, iri, version, toy_mapper()
     )
     made.blobs = lambda: _keys(made)
     return made
@@ -35,6 +38,34 @@ async def test_the_blob_goes_with_its_aggregate(world):
         with pytest.raises(NotFound):
             await s.get_graph(world.scan)
     assert await world.blobs() == []
+
+
+async def test_the_removal_is_recorded_as_a_delete_file(world):  # TC-94
+    await world.remove(world.scan, world.version)
+
+    graph = await stored_graph(
+        world.store, URIRef(world.iris.provenance(world.tenant)), world.database
+    )
+    [deletion] = graph.subjects(RDF.type, v.DELETE_FILE)
+    assert set(graph.objects(deletion, RDF.type)) == {v.DELETE_FILE, v.REMOVE, v.ACTIVITY}
+    assert list(graph.objects(deletion, v.USED)) == [URIRef(world.scan)], "it used the file"
+    [invalidation] = graph.objects(deletion, v.HAS_INVALIDATION)
+    assert list(graph.objects(invalidation, v.ENTITY)) == [URIRef(world.scan)], "and removed it"
+    assert list(graph.objects(deletion, v.HAS_GENERATION)) == [], "and generated nothing"
+
+
+async def test_without_a_mapper_the_removal_is_a_plain_remove(world):  # D-11 g
+    await remove_with_files(
+        world.tenancy, world.files, world.tenant, CREATOR, world.scan, world.version, None
+    )
+
+    graph = await stored_graph(
+        world.store, URIRef(world.iris.provenance(world.tenant)), world.database
+    )
+    assert list(graph.subjects(RDF.type, v.DELETE_FILE)) == [], "no file deletion"
+    [removal] = graph.subjects(RDF.type, v.REMOVE)
+    assert list(graph.objects(removal, v.USED)) == [], "the standard activity names no resource"
+    assert await world.blobs() == [], "the blob still goes"
 
 
 async def test_a_blob_another_aggregate_names_stays(world):

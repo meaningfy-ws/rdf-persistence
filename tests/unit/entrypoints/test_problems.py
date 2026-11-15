@@ -44,6 +44,7 @@ ROWS = [
     (exceptions.BadQuery, 400, "bad-query"),
     (exceptions.SparqlError, 500, "internal-error"),
     (exceptions.StoredDataInvalid, 500, "internal-error"),
+    (exceptions.MessageLimitExceeded, 500, "internal-error"),
     (exceptions.IriPolicyChanged, 503, "unavailable"),
     (exceptions.PayloadTooLarge, 413, "payload-too-large"),
     (exceptions.CommitTooLarge, 413, "payload-too-large"),

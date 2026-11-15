@@ -1,0 +1,11 @@
+classDiagram
+    class ApproveBook {
+    }
+    class ShelveBooks {
+        +uri used_resource
+        +string shelf_note
+    }
+    class Activity
+    class Transition
+    Transition <|-- ApproveBook
+    Activity <|-- ShelveBooks

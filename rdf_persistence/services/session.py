@@ -1037,7 +1037,8 @@ class Session:
         Raises:
             ValueError: ``served`` is given to a session that neither records activities nor has
                 a hook, which would drop its statements.
-            RuntimeError: ``served`` has served a commit already; nothing is sent.
+            RuntimeError: (at the commit) ``served`` has served a commit already; nothing is sent.
+                A ``Served`` is spent as the request is sent, so an empty block spends nothing.
             ValueError: (from a change) The aggregate already has a change in this transaction.
             RuntimeError: (from a change) The block has ended, so the change would be dropped.
             Conflict: A guard failed, so nothing changed; ``iris`` names the roots found conflicting.
@@ -1070,12 +1071,10 @@ class Transaction:
     """
 
     def __init__(self, session: Session, served: Served | None = None) -> None:
-        if served is not None:
-            if not (session._record_activities or session._on_commit):
-                raise ValueError(
-                    "a served command needs a session that records activities or has a hook"
-                )
-            served.claim()  # one command, one commit: refused before any request (PD-8)
+        if served is not None and not (session._record_activities or session._on_commit):
+            raise ValueError(
+                "a served command needs a session that records activities or has a hook"
+            )
         self._served = served
         self._changes: list[Change] = []  # what each change's event needs (PD-3)
         self._session = session
@@ -1321,12 +1320,18 @@ class Transaction:
             )
             if self._served is not None:
                 guards.append(fragment(_ID_FREE, provenance=provenance, id=id_term))
+        self._spend_served()
         await session._store.update(
             session._database, request_text(session._registry, self._marker, guards, operations)
         )
         activity = None if done is None else done[0]
         if await self._confirmed(confirm, activity) and activity is not None:
             await self._publish(activity)
+
+    def _spend_served(self) -> None:
+        """One command, one commit: the served command is spent as the request is sent (PD-8)."""
+        if self._served is not None:
+            self._served.claim()
 
     async def _confirmed(self, confirm: list[SparqlTerm], activity: Activity | None) -> bool:
         """Whether the commit took effect and its ``activity`` is to be published; else it is

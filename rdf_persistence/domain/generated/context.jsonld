@@ -390,6 +390,9 @@
       "CommitMarker": {
          "@id": "CommitMarker"
       },
+      "DeleteFile": {
+         "@id": "DeleteFile"
+      },
       "Described": {
          "@id": "Described"
       },
@@ -413,6 +416,12 @@
       },
       "Policy": {
          "@id": "ODRL:Set"
+      },
+      "PostComment": {
+         "@id": "PostComment"
+      },
+      "PostReply": {
+         "@id": "PostReply"
       },
       "Principal": {
          "@id": "prov:Agent"

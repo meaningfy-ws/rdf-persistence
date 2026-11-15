@@ -3,7 +3,10 @@
   "@omitGraph": true,
   "@embed": "@always",
   "@omitDefault": true,
-  "@type": "Remove",
+  "@type": [
+    "Remove",
+    "DeleteFile"
+  ],
   "was_associated_with": {
     "@embed": "@never",
     "@omitDefault": true

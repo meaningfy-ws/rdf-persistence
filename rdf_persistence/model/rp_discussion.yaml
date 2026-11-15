@@ -15,8 +15,46 @@ imports:
   - linkml:types
   - rp_core
   - rp_annotations
+  - rp_provenance
 
 classes:
+  PostComment:
+    title: Post comment
+    description: >-
+      The activity of posting a comment on an aggregate: the aggregate it used, and a generation of the
+      comment. The text, the audience and the references belong to the command only; the comment holds
+      them, and the stored record has none of them.
+    class_uri: rp:PostComment
+    is_a: Activity
+    slots:
+      - used_resource
+      - body_value
+      - comment_audience
+      - comment_references
+    slot_usage:
+      used_resource:
+        required: true
+      body_value:
+        annotations:
+          payload: true
+      comment_audience:
+        annotations:
+          payload: true
+      comment_references:
+        annotations:
+          payload: true
+  PostReply:
+    title: Post reply
+    description: >-
+      The activity of posting a reply to a comment: a post of a comment that also names the comment it
+      answers.
+    class_uri: rp:PostReply
+    is_a: PostComment
+    slots:
+      - replies_to
+    slot_usage:
+      replies_to:
+        required: true
   Comment:
     title: Comment
     description: >-

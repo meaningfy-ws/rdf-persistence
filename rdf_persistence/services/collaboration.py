@@ -12,7 +12,7 @@ from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.domain.exceptions import BadQuery, InvalidIri
 from rdf_persistence.domain.generated.rp_access import Action
-from rdf_persistence.domain.generated.rp_discussion import Comment
+from rdf_persistence.domain.generated.rp_discussion import Comment, PostComment
 from rdf_persistence.domain.generated.rp_workflow import Transition
 from rdf_persistence.domain.generated.service.rp_service import (
     CallerAccess,
@@ -86,6 +86,13 @@ class Collaboration:
             workflows=workflows,
         )
 
+    @property
+    def session(self) -> Session:
+        """The session this collaboration writes through, for the message bus, which gives it to
+        handlers and observers. The session checks no access: a caller of ``session`` holds the
+        session's full reach."""
+        return self._session
+
     async def referrers(
         self, iri: str, *, class_name: str | None = None, slot: str | None = None
     ) -> ReferrerList:
@@ -137,14 +144,21 @@ class Collaboration:
         audience: Sequence[str] = (),
         references: Sequence[str] = (),
         reply_to: str | None = None,
+        command: PostComment | None = None,
     ) -> str:
         """Post a comment on the aggregate ``iri`` and return its IRI.
 
-        The aggregate is not written, and deleting it deletes its comments. The ``Raises`` are those
-        of ``Discussion.comment``.
+        The aggregate is not written, and deleting it deletes its comments. The request's activity
+        is the post (``command``, if given, or a new ``PostComment``, a ``PostReply`` for a reply).
+        The ``Raises`` are those of ``Discussion.comment``.
         """
         return await self._discussion.comment(
-            iri, text, audience=audience, references=references, reply_to=reply_to
+            iri,
+            text,
+            audience=audience,
+            references=references,
+            reply_to=reply_to,
+            command=command,
         )
 
     async def thread(self, iri: str) -> list[Comment]:

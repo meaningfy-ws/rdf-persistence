@@ -1,0 +1,333 @@
+= React to changes with commands and observers
+:description: How to model a use case as a command, send it through the in-process message bus, write a handler that changes aggregates and an observer that reacts after the commit, test them with the real bus, the errors, and the limits.
+
+_What is a command? How do I make something happen after a book is approved? Where is the history of
+who did what? Why did my observer not run? Can an observer write?_
+
+This page shows how to build an event-driven application on the toolkit: a *command* asks for a
+change, a *handler* makes it, and an *observer* reacts to what was committed. It describes
+`develop` as of 2026-11-15 (the change `message-bus`). The terms tenant, aggregate, kit, session,
+unit of work and IRI policy, and the names `kit`, `t`, `mapper` and `Action` in the snippets, are
+those of xref:howto/adopt.adoc[Build an application]; a *collaboration* (`collab`) is opened as in
+xref:howto/reverse-references.adoc[Find who points at a resource]; a workflow is the one of
+xref:howto/workflow.adoc[Put a resource through review]. `MessageBus`, `bootstrap`, `command`,
+`Work`, `Activity`, `Transition`, `UnitOfWork` and the errors are imported from `rdf_persistence`.
+The running example is the toy library: a librarian approves a book and shelves books.
+
+== The parts
+
+A *command* is a request, written as a class of your model: a subclass of the toolkit's `Activity`.
+Its slots are the request's data (`used_resource`, the book it is about; `shelf_note`, a note). You
+build one with `command(ShelveBooks, used_resource=book, shelf_note="top shelf")`, which gives it
+a fresh id of the form `urn:uuid:…`.
+
+A *handler* is an async function that carries a command out. It gets the command and a `Work`
+(the session, the caller's collaboration, a unit of work). One command goes to one handler: the
+handler of its own class, or of the nearest ancestor class that has one.
+
+An *activity record* is what the toolkit stores for every commit, whether a command caused it or
+not: one `prov:Activity` in the tenant's provenance graph, with its start, its end, the principal
+and, for each aggregate it touched, a *generation* (a new version) or an *invalidation* (a removed
+or replaced version). It names the aggregates and their version tokens and never holds their
+content. A commit made by a command is stored as an instance of the command's class; a commit made
+without one is a plain `Add`, `Replace` or `Remove`, or an `Activity` when its changes are of more
+than one kind. A record is never removed, not even with the aggregate it names.
+
+An *observer* is an async function called after the commit with the completed activity. It is
+registered for a class and also receives the activity of every subclass, so an observer of
+`Transition` sees an `ApproveBook`, and an observer of `Activity` sees every commit.
+
+[source]
+----
+bus.handle(command, collab) → handler → commit + activity record → observers of the class and its ancestors
+----
+
+== Model the commands
+
+Put each use case that changes state in a module of its own, `<domain>_activities.yaml`, that
+imports the domain module; the domain module never imports it, so the stored model stays free of
+process concerns (this is the rule P-0001 of this repository, `docs/rules/`). The toy's is `books_activities.yaml`, shown as it is in the repository: a module also needs its `title`, `description`, `prefixes` and `module_kind`.
+
+[source,yaml]
+----
+id: https://example.org/ns/library/books_activities
+name: books_activities
+title: Book activities module
+description: The use cases that change books, modelled as activities (rule P-0001); books.yaml never imports this module.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - books
+  - rdf_persistence/model/rp_provenance
+  - rdf_persistence/model/rp_workflow
+annotations:
+  module_kind: domain
+
+classes:
+  ApproveBook:
+    title: Approve book
+    description: The command to approve a book, a workflow transition the toolkit's own handler carries out.
+    class_uri: lib:ApproveBook
+    is_a: Transition
+  ShelveBooks:
+    title: Shelve books
+    description: The command to shelve a book, with a note on the shelf.
+    class_uri: lib:ShelveBooks
+    is_a: Activity
+    slots: [used_resource, shelf_note]
+
+slots:
+  shelf_note:
+    title: Shelf note
+    description: A note the librarian leaves with the shelving.
+    slot_uri: lib:shelfNote
+    range: string
+----
+
+* *An extension specialises a standard command.* `ApproveBook is_a: Transition` has everything a
+  transition has (`used_resource`, the book; `to_state`, the state to move to; `expected_version`,
+  the version the caller read; `body_value`, an optional comment) and the toolkit's handler carries it
+  out. You add slots only if your use case needs more. The stored record is an `ApproveBook`, so
+  an observer can tell an approval from any other transition.
+* *A use case over several aggregates is a bare `Activity` subclass.* `used_resource` is one IRI.
+  If a command is about several books, declare a slot of your own for them, as `shelf_note` is a
+  slot of its own.
+* *Add the module to the root schema*: list `books_activities` under its `imports` (as for any
+  module, see xref:howto/adopt.adoc#model[step 3]), then regenerate (`make generate`). The module declares
+  no stored class, so it needs no generation target of its own.
+* *Model no event classes.* The events are the toolkit's fixed set of PROV generations and
+  invalidations; an observer reads them from the activity.
+
+=== What the generator refuses
+
+`rp-generate` stops, and names the class, when:
+
+* a consumer class gives `slot_usage`, `ifabsent` or an attribute of its own to a slot the
+  toolkit fills: the start, the end and the principal of an activity, its generations and
+  invalidations, and for a transition its two states and its comment. A command does not set
+  these; the bus refuses a command that arrives with one set (`InvalidBody`, before the handler
+  runs).
+* a command class has a slot that is both required and `payload`. A `payload` slot is data the
+  command carries and the record does not keep (the comment text of a transition, for one); it is
+  never required.
+* a slot of a class that is not an activity ranges over an activity class of yours that is not an
+  aggregate root. Stored data does not point at commands; the other way round is what the
+  activity's `used_resource` is for. A slot may range over a toolkit activity class (`Activity`,
+  `Transition`).
+
+== Wire the bus
+
+`bootstrap` builds the bus from your handlers and observers, each registered under a class, and
+from the dependencies they need:
+
+[source,python]
+----
+from rdf_persistence import bootstrap, Activity, Work
+
+from library.domain.generated.books import Book
+from library.domain.generated.books_activities import ApproveBook, ShelveBooks
+
+
+async def shelve_books(cmd: ShelveBooks, work: Work, shelf: str) -> None:
+    uow = work.unit_of_work()
+    book = await uow.get(Book, cmd.used_resource)
+    book.shelf = shelf
+    uow.add(book)
+    await uow.commit()
+
+
+async def notify_approval(activity: Activity, work: Work, mail: Mailer) -> None:
+    await mail.send(f"{activity.generations[0].entity} was approved")
+
+
+bus = bootstrap(
+    mapper=kit.mapper,
+    commands={ShelveBooks: shelve_books},
+    observers={ApproveBook: [notify_approval]},
+    shelf=SHELF_IRI,
+    mail=mailer,
+)
+kit.bus = bus
+----
+
+* `commands` maps a class to its handler; `observers` maps a class to a list of observers. These
+  two names, `limit` and `mapper` are `bootstrap`'s own, so a handler or observer cannot take a
+  dependency of those names.
+* Every parameter after `(command, work)` is a *dependency*, matched by its name to a keyword of
+  `bootstrap` (`shelf`, `mail`; the annotation plays no part). A dependency no handler or observer names is a `ValueError`, and so is a
+  handler or observer parameter with no default and no dependency, so a typo fails when the bus
+  is built, not at the first message.
+* The toolkit's handlers for `Transition`, `PostComment` and `PostReply` are added unless you
+  register your own for the class. That is why `ApproveBook` needs no handler here.
+* `mapper=kit.mapper` gives the bus the mapper that builds a command's record and the units of
+  work. Without it `work.unit_of_work()` raises `RuntimeError`.
+* *Set `kit.bus`* after you build the bus. The kit is built first (a handler's dependencies are
+  often parts of it), so the bus comes second; `install_service(..., bus=bus)` does the same when
+  you have the bus before the call, but the bus must be built with the kit's mapper, so the usual
+  way is `kit.bus = bootstrap(mapper=kit.mapper, ...)` after the kit exists. The kit hands every commit of a tenant database or the
+  application database to `kit.bus`, so the generic HTTP routes reach your observers too. With no
+  bus, commits are recorded and nothing is handed over.
+* A `limit` keyword (default 100) bounds the commands one `handle` call runs; see
+  <<limits>>. `SHELF_IRI` is the IRI of a stored shelf and `Mailer` stands for any class of yours;
+  `Book.shelf` is the toy's slot that holds a shelf's IRI.
+
+== Send a command
+
+In a route of your own (`request`, `t` and `book_id` come from it, as in
+xref:howto/discussion.adoc#post-a-comment[Post a comment]), check the caller as for any write, open the collaboration, build the command and hand it to the
+bus:
+
+[source,python]
+----
+checked = await kit.require_aggregate(
+    request.headers.get("authorization"), t, "books", book_id, Action.MODIFY
+)
+async with kit.collaboration(checked) as collab:
+    result = await kit.bus.handle(
+        command(ShelveBooks, used_resource=checked.checked_target, shelf_note="top shelf"),
+        collab,
+    )
+----
+
+`handle` returns what the handler returns, and the handler's error reaches you unchanged
+(`Conflict`, `Forbidden` and the rest, all imported from `rdf_persistence`, as is `InvalidBody`). A command with no handler along its class hierarchy
+raises `LookupError("no handler for DeleteFile")`; a command with a toolkit-filled slot set
+raises `InvalidBody`. The bus checks no access: the handler's calls do, as the collaboration
+always does.
+
+In the next snippet `book` is the book's IRI and `version` its token, read as in
+xref:howto/workflow.adoc#make-a-transition[Make a transition]; `accepted` is a state of that
+workflow. An `ApproveBook` carries the transition's data; the toolkit's handler calls the same
+`collab.transition` as the page on workflows, and the record is an `ApproveBook`:
+
+[source,python]
+----
+await kit.bus.handle(
+    command(ApproveBook, used_resource=book, to_state="accepted", expected_version=version),
+    collab,
+)
+----
+
+== Write a handler
+
+A handler changes aggregates through `work.unit_of_work()` and commits once:
+
+* *One command, one commit.* The unit of work belongs to the command: its record carries the
+  command's class and slots. A second commit with it is an error (`RuntimeError`). If a use case
+  needs two commits, send a second command with `await work.send(...)` (see <<limits>>).
+* *Several aggregates are one commit.* Add and change all the roots in the one unit of work, as in
+  xref:howto/adopt.adoc#transaction[Save several aggregates at once]; one activity records them
+  all.
+* *Use the collaboration for what it owns.* `work.collaboration` is the caller's collaboration
+  (`transition`, `comment`, `delete_cascade`); a handler that calls it instead of the unit of
+  work is also one command, one commit. A call records the handled command only when you pass it
+  (`command=cmd`), which `transition` and `comment` take; another call, such as `delete_cascade`,
+  records a standard activity.
+* *Keep free text and personal data in `payload` slots.* The record keeps a command's other slots
+  for as long as the tenant exists, and is never removed.
+* *Return what the caller needs.* `handle` returns it.
+
+[#write-observer]
+== Write an observer
+
+An observer gets the completed activity and a `Work`. The activity is the generated model of the
+stored record: its class, `id`, `was_associated_with`, `started_at_time`, `ended_at_time`, your
+command's own slots, and `generations` and `invalidations`. It holds *references only*: the IRI of
+each aggregate it touched, its class and its version token. To see the content, read it:
+
+[source,python]
+----
+async def index_book(activity: Activity, work: Work) -> None:
+    for generation in activity.generations or []:
+        # get_graph returns the aggregate's triples (an rdflib Graph), its graph IRI and its version token
+        graph, graph_iri, version = await work.session.get_graph(generation.entity)
+        ...    # build whatever the observer builds from the graph
+----
+
+* *It runs after the commit*, in the same process, once per commit that the toolkit confirmed, with the
+  observers of the nearest class first and, within a class, in the order you registered them.
+* *It runs for every commit*, whatever caused it: a command, the generic `POST`, `PUT` and
+  `DELETE` routes, a `UnitOfWork` of your own. Register for `Add`, `Replace` or `Remove` to see
+  the generic ones.
+* *Its error is logged with its name* and the other observers still run. It never undoes the
+  commit and the caller does not see it.
+* *It acts as the caller's principal, with the committing session's full reach.* The session is the
+  one that committed, and a session checks no access: an observer can read and write anything in
+  that database, not only what the caller could, and what it commits is recorded as the caller's
+  activity. Check anything beyond the aggregates the activity names yourself: through
+  `work.collaboration`, which checks access on every call, or through `kit.require`.
+  `work.collaboration` is set only inside `handle` and only for a commit of that collaboration's
+  session; for a commit made on another session it is `None`.
+* *It can send a command* with `await work.send(command(...))`: the command runs after the
+  current one, in the same `handle` call, with the caller's collaboration. If the handler then
+  raises, the commands an observer queued are dropped; the commit and its publish stand.
+
+== Test it
+
+The bus is in process and has no I/O, so a test uses the real one on a fake store. The testkit's
+`RecordingObserver` keeps the activities it was handed:
+
+[source,python]
+----
+from rdf_persistence.testkit import RecordingObserver
+
+async def test_shelving_is_observed(kit_with_fakes, collab):
+    seen = RecordingObserver()
+    bus = bootstrap(
+        mapper=kit_with_fakes.mapper,
+        commands={ShelveBooks: shelve_books},
+        observers={ShelveBooks: [seen]},
+        shelf=SHELF_IRI,
+    )
+    kit_with_fakes.bus = bus
+
+    await bus.handle(command(ShelveBooks, used_resource=BOOK_IRI, shelf_note="top"), collab)
+
+    assert [type(a) for a in seen.activities] == [ShelveBooks]
+    assert seen.activities[0].generations[0].entity == BOOK_IRI
+----
+
+`kit_with_fakes` and `collab` are pytest fixtures you write: a kit built over `FakeStore` as in
+xref:howto/adopt.adoc#test-service[step 13] (the test is async, as there) and a collaboration
+opened on it. `BOOK_IRI` is a book you stored first. Test a handler by
+its stored result (read the book back) and an observer by what it does; use `RecordingObserver`
+when the thing to check is that it was called, and with what.
+
+[#limits]
+== Limits
+
+* *At most once, in process.* An observer runs in the process that committed, after the commit. If
+  the process stops between the commit and the observers, they never run, and nothing retries. The
+  record stays in the provenance graph, but nothing replays it. Durable delivery is the later
+  change `aggregate-events`; build nothing that needs it on this bus.
+* *One command, one commit.* A second commit with the same command is refused. A handler that
+  must change things in steps sends a command for each.
+* *An observer should not write the aggregate it observes.* Its commit is a new activity that
+  reaches the observers again, and two observers of one class can overwrite each other. Send a
+  command, or write another aggregate.
+* *`work.send` only works inside `handle`.* An observer of a commit made by a generic route (no
+  `handle` call, so no collaboration to run the command with) that calls `work.send` gets a
+  `RuntimeError`, which is logged as that observer's error. Do such work in the route, or write
+  the route to call `bus.handle`.
+* *The loop limit.* One `handle` call runs at most `limit` commands (default 100): the first, and
+  every one an observer or handler queued. The next raises `MessageLimitExceeded` ("message limit
+  100 reached") from `handle`, which also logs it at error level, and the commands still queued
+  are dropped. An observer that commits again on its own session is stopped at the same limit,
+  inside `handle` or not. When a `handle` that an observer calls itself joins the count and passes
+  the limit, its error is logged by the commit's hook and not raised to the outer caller. A queued command's own error is logged and the queue goes on, because the
+  caller's command already succeeded.
+* *The false conflict.* A commit that applied, but whose graphs another writer overwrote before
+  the toolkit could confirm it, is reported as a `Conflict` (see
+  xref:howto/commits.adoc#conflict[what a conflict means]). Its activity is recorded and not
+  handed to the observers. A commit that applied but was overtaken in part is published once its
+  activity is stored. Read again before retrying.
+* *Observers have the session's full reach.* There is no service account: an observer acts as the
+  caller's principal, and the session checks no access (see <<write-observer>>).
+* *No handler for `Add`, `Replace`, `Remove`.* The toolkit records and publishes them but has no
+  handler: they are what the generic routes and your own units of work produce. Register a
+  handler of your own to send them as commands.

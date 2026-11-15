@@ -38,6 +38,15 @@ def _technical_classes(schemas: list[SchemaDefinition]) -> list[ClassDefinition]
     ]
 
 
+def _is_activity(view: SchemaView, class_name: str) -> bool:
+    return ACTIVITY in view.class_ancestors(class_name)
+
+
+def _use_cases(view: SchemaView, classes: list[ClassDefinition]) -> set[str]:
+    """A use case is a message, never stored by itself (PD-20), so it needs no owner."""
+    return {cls.name for cls in classes if _is_activity(view, cls.name)}
+
+
 def _ownership_problems(
     view: SchemaView, classes: list[ClassDefinition], technical: list[ClassDefinition]
 ) -> Iterator[CheckProblem]:
@@ -45,9 +54,9 @@ def _ownership_problems(
     exempt = {id(cls) for cls in technical}
     stored = [cls for cls in classes if id(cls) not in exempt]
     roots = {root.name for root in aggregate_roots(view, classes)}
-    owned = owned_classes(view, stored)
+    kept = roots | owned_classes(view, stored) | _use_cases(view, stored)
     for cls in stored:
-        if cls.mixin or cls.abstract or cls.name in roots | owned or is_tenant_root(cls):
+        if cls.mixin or cls.abstract or cls.name in kept or is_tenant_root(cls):
             continue
         yield rule_problem(
             BoundaryRule.OWNERSHIP, cls.name, "is neither an aggregate root nor owned by any root"
@@ -73,6 +82,29 @@ def _reference_problems(view: SchemaView, classes: list[ClassDefinition]) -> Ite
                     f"annotate the slot owned: true to hold {slot.range} inline, "
                     f"or make {slot.range} an aggregate root, "
                     "or point the slot at a root, Principal or Activity",
+                )
+
+
+def _direction_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[CheckProblem]:
+    """PD-20: the stored model never refers to a use case, so a slot of a class that is not an activity does not range over one."""
+    names = {cls.name for cls in classes}
+    use_cases = {
+        name
+        for name in names
+        if _is_activity(view, name) and AGGREGATE_ROOT not in view.class_ancestors(name)
+    }
+    for cls in classes:
+        if _is_activity(view, cls.name):
+            continue
+        induced = {slot.name: slot for slot in view.class_induced_slots(cls.name)}
+        for name in sorted(declared_slots(cls) & induced.keys()):
+            if induced[name].range in use_cases:
+                yield rule_problem(
+                    BoundaryRule.ACTIVITY_DIRECTION,
+                    name,
+                    f"of {cls.name} ranges over {induced[name].range}, a use case: the stored model "
+                    "does not refer to the activities module; "
+                    "range over Activity, or move the slot to the activity class",
                 )
 
 
@@ -113,5 +145,6 @@ def boundary_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
     return [
         *_ownership_problems(view, classes, _technical_classes(schemas)),
         *_reference_problems(view, classes),
+        *_direction_problems(view, classes),
         *_module_problems(view, schemas),
     ]

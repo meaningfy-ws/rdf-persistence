@@ -34,6 +34,7 @@ def test_one_diagram_per_module_of_the_application(staged: Path) -> None:
     names = sorted(p.name for p in staged.iterdir())
     assert names == [
         "books.mmd",
+        "books_activities.mmd",
         "library_access.mmd",
         "library_tenant.mmd",
         "scans.mmd",

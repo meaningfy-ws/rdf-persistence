@@ -12,7 +12,7 @@ from pathlib import Path
 from uuid import UUID
 
 import pytest
-from rdflib import RDF, URIRef
+from rdflib import RDF, Literal, URIRef
 
 from rdf_persistence import Action, generated_models
 from rdf_persistence.domain.exceptions import (
@@ -24,7 +24,12 @@ from rdf_persistence.domain.exceptions import (
     UnknownRole,
 )
 from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_discussion import Comment, Motivation
+from rdf_persistence.domain.generated.rp_discussion import (
+    Comment,
+    Motivation,
+    PostComment,
+    PostReply,
+)
 from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
@@ -58,12 +63,15 @@ from tests.toy import (
     shelf_iri,
     toy_mapper,
 )
+from tests.unit.services.test_session_activity import stored_graph
 
 B1, B2, B3 = (book_iri(n) for n in (1, 2, 3))
 S1 = shelf_iri(1)
 VIEW = load_schema(TOY_SCHEMA)
 T0 = datetime(2026, 11, 14, 9, tzinfo=UTC)
 ENTRY = "ASK { GRAPH $registry { $graph ?p ?o } }"
+PROVENANCE = URIRef(DEFAULT_IRIS.provenance(TENANT))
+NEW_ACTIVITY = "urn:uuid:5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c0aa"
 
 
 @pytest.fixture(scope="module")
@@ -198,6 +206,70 @@ async def test_a_reader_may_not_comment_and_nothing_is_stored(rules, session, bo
     with pytest.raises(Forbidden):
         await reader.comment(B1, "hello")
     assert await comments_on(session, B1) == [], "no comment graph was written"
+
+
+async def test_a_comment_is_recorded_as_a_post_comment(ada, books, store):  # TC-90
+    comment = await ada.comment(B1, "hi")
+
+    graph = await stored_graph(store, PROVENANCE)
+    [post] = graph.subjects(RDF.type, v.POST_COMMENT)
+    assert set(graph.objects(post, RDF.type)) == {v.POST_COMMENT, v.ACTIVITY}, (
+        "also a prov:Activity"
+    )
+    assert list(graph.objects(post, v.USED)) == [URIRef(B1)], "it used the aggregate"
+    [generation] = graph.objects(post, v.HAS_GENERATION)
+    assert list(graph.objects(generation, v.ENTITY)) == [URIRef(comment)], (
+        "it generated the comment"
+    )
+    assert list(graph.objects(post, v.HAS_INVALIDATION)) == [], "and invalidated nothing"
+    assert Literal("hi") not in set(graph.objects()), "the text stays in the comment"
+
+
+async def test_a_reply_is_recorded_as_a_post_reply(ada, books, store):  # TC-91
+    first = await ada.comment(B1, "hi")
+    reply = await ada.comment(B1, "hello", reply_to=first)
+
+    graph = await stored_graph(store, PROVENANCE)
+    [post] = graph.subjects(RDF.type, v.POST_REPLY)
+    assert set(graph.objects(post, RDF.type)) == {v.POST_REPLY, v.POST_COMMENT, v.ACTIVITY}
+    assert list(graph.objects(post, v.REPLIES_TO)) == [URIRef(first)], "it names the comment"
+    [generation] = graph.objects(post, v.HAS_GENERATION)
+    assert list(graph.objects(generation, v.ENTITY)) == [URIRef(reply)], "and generated the reply"
+    assert len(list(graph.subjects(RDF.type, v.POST_COMMENT))) == 2, "a reply is a post too"
+
+
+async def test_a_given_command_is_stored_with_the_target_it_is_for(ada, books, store):
+    forged = PostComment(id=NEW_ACTIVITY, used_resource=B2, body_value="not stored")
+
+    await ada.comment(B1, "hi", command=forged)
+
+    graph = await stored_graph(store, PROVENANCE)
+    assert list(graph.objects(URIRef(NEW_ACTIVITY), v.USED)) == [URIRef(B1)], (
+        "the target is the one commented on, whatever the command said"
+    )
+
+
+async def test_a_reply_command_without_a_parent_is_refused_and_nothing_is_stored(
+    ada, books, store
+):  # D-11 f
+    before = await stored_graph(store, PROVENANCE)
+    forged = PostReply(id=NEW_ACTIVITY, used_resource=B1, replies_to=B2)
+
+    with pytest.raises(InvalidBody, match="reply"):
+        await ada.comment(B1, "hi", command=forged)
+
+    assert len(await stored_graph(store, PROVENANCE)) == len(before), "nothing was stored"
+    assert await ada.thread(B1) == [], "no comment"
+
+
+async def test_a_comment_command_for_a_reply_is_refused(ada, books):  # D-11 f
+    first = await ada.comment(B1, "hi")
+    plain = PostComment(id=NEW_ACTIVITY, used_resource=B1)
+
+    with pytest.raises(InvalidBody, match="reply"):
+        await ada.comment(B1, "hello", reply_to=first, command=plain)
+
+    assert [c.id for c in await ada.thread(B1)] == [first], "no reply was stored"
 
 
 async def test_a_comment_with_an_audience_is_seen_by_those_in_it_only(ada, bob, books):  # TC-52

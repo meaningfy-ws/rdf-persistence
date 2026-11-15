@@ -37,6 +37,7 @@ from rdf_persistence import (
     Comment,
     CommitMarker,
     DatabaseKind,
+    DeleteFile,
     Described,
     Generation,
     Grant,
@@ -48,6 +49,8 @@ from rdf_persistence import (
     Motivation,
     PendingLoad,
     Policy,
+    PostComment,
+    PostReply,
     Principal,
     Prohibition,
     Provenanced,
@@ -82,6 +85,10 @@ from .books import (
     Genre,
     Note,
     Shelf
+)
+from .books_activities import (
+    ApproveBook,
+    ShelveBooks
 )
 from .library_access import LibraryAccess
 from .library_tenant import Library

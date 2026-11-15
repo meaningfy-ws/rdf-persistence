@@ -686,6 +686,61 @@ that used `B` and generated a new version of it, oldest first, each with only th
 invalidations of `B`. A delete of `B` leaves them where they are, so an aggregate added
 again at the same IRI shows the old history, and a record may name a comment that went with `B`.
 
+[#command]
+== A command through the bus
+
+_What happens between `bus.handle(command, collab)` and an observer being called?_ The bus
+(`services/messagebus.py`) runs the command's handler; the handler's commit records one activity;
+the session's hook hands it back to the bus. The caller's view is in
+xref:howto/event-driven.adoc[React to changes with commands and observers].
+
+The example: a `ShelveBooks` command for book `B`, with one observer of `Activity`.
+
+[mermaid]
+....
+sequenceDiagram
+  participant C as Caller
+  participant M as MessageBus
+  participant H as Handler
+  participant U as UnitOfWork / Session
+  participant F as Fuseki (lib-t-…)
+  participant O as Observer
+  C->>M: handle(ShelveBooks, collab)
+  M->>M: refuse a toolkit-filled slot (InvalidBody),<br/>find the handler of the nearest class (else LookupError),<br/>build the command's Served
+  M->>H: handler(command, work)
+  H->>U: get B, change it, commit
+  U->>F: one request: the guard, the marked operations of B,<br/>the marked insert of the activity, the release
+  U->>F: ASK B at its new token (and the activity stored)?
+  alt true
+    U->>M: on_commit(activity, session)
+    M->>O: observers of ShelveBooks, then of Activity
+    O-->>M: done (an error is logged, the rest still run)
+  else false
+    U-->>H: Conflict (an applied false conflict keeps its record, nothing is published)
+  end
+  H-->>M: the result
+  M-->>C: the result (after the commands the observers sent)
+....
+
+*Before the handler.* `handle` refuses a command that sets a slot the toolkit fills, then looks for
+a handler on the command's class and on each ancestor in turn, and raises `LookupError` when none
+has one. It builds the command's `Served` (its own triples and class IRIs) once, and gives it to
+the handler's unit of work, so the commit stores an activity of the command's class, not a plain
+one. A second commit with that `Served` raises `RuntimeError`.
+
+*The commit* is the one of <<commit>>, with its marked insert of the activity (<<transition>>
+shows the same request for a transition). The activity is handed over only when the confirming
+`ASK` held, so what is published is what is recorded.
+
+*After the commit.* The session calls its `on_commit` hook, which the kit set to the bus's
+`publish` when `kit.bus` is set. `publish` calls the observers of each class in the activity's
+`__mro__`, nearest first. An observer gets the activity and a `Work` on the session that committed;
+a command it sends with `work.send` is queued, and `handle` runs the queue first in first out
+after the handler, each command through the same refusal and dispatch. A `handle` call starts at
+most `limit` commands; the next raises `MessageLimitExceeded` and drops the queue. A commit
+made outside `handle` (a generic route) is published the same way, with no collaboration, so its
+observers cannot send.
+
 [#files]
 == Files and loaded graphs
 

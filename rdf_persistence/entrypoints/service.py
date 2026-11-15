@@ -19,6 +19,7 @@ from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.iri_policy_guard import guard_iri_policy
+from rdf_persistence.services.messagebus import MessageBus
 from rdf_persistence.services.migration_runner import migrate_shared, migrate_tenants
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.sweep import sweep
@@ -43,6 +44,7 @@ def install_service(
     grant_validators: Sequence[GrantValidator] = (),
     root_validators: Sequence[RootValidator] = (),
     workflows: Sequence[Path] = (),
+    bus: MessageBus | None = None,
 ) -> ServiceKit:
     """Serve the application's schema on ``app``: its routes, its problem responses, its start-up.
 
@@ -73,6 +75,9 @@ def install_service(
     ``workflows`` are the paths of the workflow files, one per workflow, that the classes of the schema
     name with the ``workflow`` annotation. They are checked here, so a bad file stops the service
     before it serves.
+
+    ``bus`` is the message bus the commits of tenant and application databases are published to; it is
+    ``kit.bus``, which the consumer may also set later, once the handlers' dependencies exist.
 
     Returns the kit the routes share, for the consumer's own routes: its ``tenancy``, ``store``,
     ``files`` and ``identity``, and ``require`` and ``require_aggregate``, the token and access check
@@ -110,6 +115,7 @@ def install_service(
         root_validators=root_validators,
         workflows=workflows,
     )
+    kit.bus = bus
     _require_same_principals(kit)
     install_problem_handlers(app, settings.base)
     app.include_router(build_router(kit), prefix=prefix)

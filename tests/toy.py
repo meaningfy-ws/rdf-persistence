@@ -23,6 +23,7 @@ from rdf_persistence.domain.generated import (
     rp_collections,
     rp_core,
     rp_discussion,
+    rp_files,
     rp_provenance,
     rp_workflow,
 )
@@ -30,6 +31,7 @@ from rdf_persistence.domain.iris import graph_iri
 from rdf_persistence.services.schema import load_schema
 from tests.fixtures.library.generated import (
     books,
+    books_activities,
     library,
     library_access,
     library_tenant,
@@ -37,6 +39,10 @@ from tests.fixtures.library.generated import (
     templates,
 )
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note, Shelf
+from tests.fixtures.library.generated.books_activities import (
+    ApproveBook as ApproveBook,
+)  # exported for the bus tests
+from tests.fixtures.library.generated.books_activities import ShelveBooks as ShelveBooks
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.fixtures.library.generated.templates import Template
@@ -52,6 +58,7 @@ REVIEW_WORKFLOW = Path(__file__).parent / "fixtures" / "library" / "review.workf
 DATABASE = "acme-t-" + "0" * 32
 MODULES = (
     books,
+    books_activities,
     library,
     library_access,
     library_tenant,
@@ -61,6 +68,7 @@ MODULES = (
     rp_core,
     rp_collections,
     rp_discussion,
+    rp_files,
     rp_provenance,
     rp_workflow,
 )

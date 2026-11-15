@@ -74,6 +74,14 @@ INDEXED_NAMES = [
     "Add",
     "Replace",
     "Remove",
+    "PostComment",
+    "PostReply",
+    "DeleteFile",
+    "MessageBus",
+    "Work",
+    "command",
+    "bootstrap",
+    "MessageLimitExceeded",
 ]
 
 

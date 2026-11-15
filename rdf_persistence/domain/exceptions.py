@@ -151,3 +151,11 @@ class PayloadTooLarge(PersistenceError):
 
 class StoredDataInvalid(PersistenceError):
     """What the store holds cannot be decoded: a fault of the service or its data, never of the request."""
+
+
+class MessageLimitExceeded(PersistenceError):
+    """A message bus started or published more messages in one chain than its ``limit`` allows."""
+
+    def __init__(self, limit: int) -> None:
+        super().__init__(f"message limit {limit} reached")
+        self.limit = limit
