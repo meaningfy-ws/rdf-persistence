@@ -60,6 +60,8 @@ export interface ServiceSettings {
   max_restore_bytes?: number;
   /** A slug that names this deployment, for templates that use `{deployment}`; lower case letters and digits, at most 32. */
   deployment?: string;
+  /** The address this deployment is reachable at from outside, without a trailing slash; the event envelope's context link is absolute under it. Absent, the link is relative. */
+  public_url?: string;
   /** The IRI policy of the service; absent, the default policy applies. */
   iri_policy?: IriPolicy;
 }

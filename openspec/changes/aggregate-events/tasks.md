@@ -95,7 +95,7 @@ unused; letters mark cases added by the PLAN's attack).
 | TC-18 | bus `None`; one pending activity; a recording `Offer` | relayed; offered once |
 | TC-18a | `wake()` three times during a round | exactly one more round |
 
-- [ ] 1.6 Wiring (PD-15). `entrypoints/kit.py`: `kit.hub`, `kit.relay`; `_publish` calls
+- [x] 1.6 Wiring (PD-15). `entrypoints/kit.py`: `kit.hub`, `kit.relay`; `_publish` calls
   `relay.wake()` after the in-process bus. `entrypoints/service.py`: `install_service(event_bus=
   None)`, the deployment check, the lifespan starts the bus's consumer with `kit.receive` (a stub
   that logs at DEBUG and returns; 2.2 fills it), then the relay task, and stops both. Tests first

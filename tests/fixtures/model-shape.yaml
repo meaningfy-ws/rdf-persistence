@@ -1237,6 +1237,10 @@
     required: true
     multivalued: false
     range: string
+  - name: public_url
+    required: false
+    multivalued: false
+    range: uri
   - name: roles_claim
     required: true
     multivalued: false

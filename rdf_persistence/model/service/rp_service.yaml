@@ -38,6 +38,7 @@ classes:
       - max_body_bytes
       - max_restore_bytes
       - deployment
+      - public_url
       - iri_policy
     slot_usage:
       max_body_bytes:
@@ -695,6 +696,14 @@ slots:
     slot_uri: rp:deployment
     range: string
     pattern: "^[a-z0-9]{1,32}$"
+  public_url:
+    title: Public URL
+    description: >-
+      The address this deployment is reachable at from outside, without a trailing slash; the
+      event envelope's context link is absolute under it. Absent, the link is relative.
+    slot_uri: rp:publicUrl
+    range: uri
+    pattern: "^https?://.+[^/]$"
   origin:
     title: Origin
     description: The deployment that published the message, as its `deployment` setting names it.

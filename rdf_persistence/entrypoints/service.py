@@ -1,5 +1,6 @@
 """``install_service``: mounts the generic router on a consumer's FastAPI app (PD-13)."""
 
+import asyncio
 from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -16,6 +17,7 @@ from rdf_persistence.entrypoints.openapi import install_openapi
 from rdf_persistence.entrypoints.problems import install_problem_handlers
 from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.services.access import AccessRules, load_role_definitions
+from rdf_persistence.services.events import EventBus
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.iri_policy_guard import guard_iri_policy
@@ -46,6 +48,7 @@ def install_service(
     workflows: Sequence[Path] = (),
     bus: MessageBus | None = None,
     stores: Mapping[str, Store] = {},
+    event_bus: EventBus | None = None,
 ) -> ServiceKit:
     """Serve the application's schema on ``app``: its routes, its problem responses, its start-up.
 
@@ -86,13 +89,18 @@ def install_service(
     wired once. Start-up refuses (``StoreNotWired``) an access record that names a store not wired here,
     before any route is served.
 
+    ``event_bus`` carries the commits to the other deployments (aggregate-events). Its consumer starts
+    with the app, with ``kit.receive``, and stops with it. Every commit is relayed (to the live
+    subscribers too) whether or not there is an event bus.
+
     Returns the kit the routes share, for the consumer's own routes: its ``tenancy``, ``store``,
     ``files`` and ``identity``, and ``require`` and ``require_aggregate``, the token and access check
     of the toolkit's routes.
 
     Raises:
         ValueError: ``stores`` has the key ``default``, or one ``Store`` object is wired under two names
-            (the default included); the message names the key.
+            (the default included); the message names the key. Or ``event_bus`` is given and ``settings.deployment`` is empty: the deployments
+            could not tell their own messages from the others'.
         StoreNotWired: (at start-up) an access record names a store that is not wired.
         InvalidIri: the verifier mints principals by another ``principal_template`` than ``settings``
             say (build it with ``iris=Iris(settings)``).
@@ -107,6 +115,10 @@ def install_service(
         LookupError: The schema has no tenant root class, or no (or several) access record classes.
         OSError: The generated folder lacks the context, the shapes, a frame or the OpenAPI components.
     """
+    if event_bus is not None and not settings.deployment:
+        raise ValueError(
+            "an event bus needs settings.deployment: it names the origin of each message"
+        )
     if isinstance(rules, Path):
         rules = AccessRules(load_role_definitions(rules))
     kit = ServiceKit(
@@ -125,6 +137,7 @@ def install_service(
         root_validators=root_validators,
         workflows=workflows,
         stores=stores,
+        event_bus=event_bus,
     )
     kit.bus = bus
     _require_same_principals(kit)
@@ -158,7 +171,16 @@ def _run_at_startup(app: FastAPI, kit: ServiceKit) -> None:
         await migrate_shared(kit.tenancy, kit.store, kit.chains)
         await sweep(kit.tenancy, kit.store, kit.files, kit.settings)
         await migrate_tenants(kit.tenancy, kit.store, kit.chains)
-        async with inner(scope_app) as state:
-            yield state
+        if kit.event_bus is not None:
+            await kit.event_bus.start(kit.receive)
+        relay = asyncio.create_task(kit.relay.run())
+        try:
+            async with inner(scope_app) as state:
+                yield state
+        finally:
+            relay.cancel()
+            await asyncio.gather(relay, return_exceptions=True)
+            if kit.event_bus is not None:
+                await kit.event_bus.close()
 
     app.router.lifespan_context = lifespan

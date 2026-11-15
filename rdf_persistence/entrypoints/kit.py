@@ -1,5 +1,6 @@
 """What the routes share: the ports, the settings, and the pieces built from the application's schema (PD-13)."""
 
+import logging
 from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from datetime import timedelta
@@ -31,6 +32,7 @@ from rdf_persistence.domain.generated.rp_tenancy import (
 from rdf_persistence.domain.generated.service.rp_service import (
     Authorised,
     CallerAccess,
+    EventEnvelope,
     ServiceSettings,
     TenantDump,
     TenantSummary,
@@ -45,12 +47,15 @@ from rdf_persistence.services.artifacts import CONTEXT_FILE
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.discussion import dependents as discussion_dependents
 from rdf_persistence.services.documents import Documents
+from rdf_persistence.services.event_hub import EventHub
+from rdf_persistence.services.events import EventBus, context_link
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, generated_models_of
 from rdf_persistence.services.messagebus import MessageBus
 from rdf_persistence.services.migrations import chain_of, current_version
+from rdf_persistence.services.relay import Relay
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import (
     iri_types,
@@ -68,6 +73,8 @@ from rdf_persistence.services.tokens import TokenVerifier
 from rdf_persistence.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
 from rdf_persistence.services.workflows import Workflows
 from rdf_persistence.services.write_guards import WriteGuards
+
+log = logging.getLogger(__name__)
 
 
 class ServiceKit:
@@ -95,11 +102,14 @@ class ServiceKit:
         root_validators: Sequence[RootValidator] = (),
         workflows: Sequence[Path] = (),
         stores: Mapping[str, Store] = {},
+        event_bus: EventBus | None = None,
     ) -> None:
-        """Build the kit; ``migrations``, ``prefix``, ``id_source``, the validators, ``workflows`` and ``stores`` are ``install_service``'s arguments of those names.
+        """Build the kit; ``migrations``, ``prefix``, ``id_source``, the validators, ``workflows``, ``stores`` and ``event_bus`` are ``install_service``'s arguments of those names.
 
         ``store`` stays the default store as ``kit.store``; each of ``stores`` is wrapped in a ``ToolkitStore``
         for the tenancy (tenant-stores PD-3).
+
+        The relay is built here, with ``event_bus`` (a constructor argument: the relay holds it).
 
         ``chains`` holds the toolkit's chain of migrations and then the consumer's, each with its
         schema id, as the migration runner takes them.
@@ -176,11 +186,33 @@ class ServiceKit:
             stores={name: wrapped[id(other)] for name, other in stores.items()},
         )
         self.aggregates = Aggregates(self.documents, self.tenancy, self.iris)
+        self.event_bus = event_bus
+        self.hub = EventHub()
+        self.relay = Relay(
+            self.tenancy,
+            view,
+            models,
+            mapper,
+            event_bus,
+            self.hub,
+            deployment=settings.deployment or "",
+            context=context_link(settings.public_url),
+        )
 
     async def _publish(self, activity: Activity, session: Session) -> None:
-        """The sessions' ``on_commit``: hand the activity to the bus, if one is set by now (PD-17)."""
+        """The sessions' ``on_commit``: hand the activity to the bus, if one is set by now (PD-17), then wake the relay."""
         if self.bus is not None:
             await self.bus.publish(activity, session)
+        self.relay.wake()
+
+    async def receive(self, envelope: EventEnvelope, body: bytes) -> None:
+        """What the event bus delivers to this deployment; a stub until the apply step exists (task 2.2)."""
+        log.debug(
+            "received an event of %s from %s (%d bytes)",
+            envelope.tenant,
+            envelope.origin,
+            len(body),
+        )
 
     def tenant_iri(self, tenant_id: str) -> str:
         """The IRI of the tenant whose id is ``tenant_id`` in a path.

@@ -1152,6 +1152,12 @@
           "pattern": "^[a-z][a-z0-9]{0,19}$",
           "type": "string"
         },
+        "public_url": {
+          "description": "The address this deployment is reachable at from outside, without a trailing slash; the event envelope's context link is absolute under it. Absent, the link is relative.",
+          "format": "uri",
+          "pattern": "^https?://.+[^/]$",
+          "type": "string"
+        },
         "roles_claim": {
           "description": "The claim of the token that holds the caller's global roles, an object keyed by role name; for Zitadel, urn:zitadel:iam:org:project:{project_id}:roles of the consumer's project.",
           "pattern": "^.+$",

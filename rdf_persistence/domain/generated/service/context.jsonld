@@ -351,6 +351,10 @@
       "provenance_template": {
          "@id": "provenanceTemplate"
       },
+      "public_url": {
+         "@type": "@id",
+         "@id": "publicUrl"
+      },
       "referrer": {
          "@type": "@id",
          "@id": "referrer"

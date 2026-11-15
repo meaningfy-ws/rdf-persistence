@@ -145,6 +145,7 @@ class ServiceSettings(ConfiguredBaseModel):
     max_body_bytes: Optional[int] = Field(default=1048576, title="Maximum body size", description="The most bytes a request body may hold; a larger one is refused with 413 before it is read whole.", ge=1)
     max_restore_bytes: Optional[int] = Field(default=1073741824, title="Maximum restore size", description="The most bytes a restore archive may hold once decompressed, counting each member\u0027s size and its tar block; a larger archive is refused with `InvalidBody` as it is read, so a small hostile upload cannot fill the memory or the object store.", ge=1)
     deployment: Optional[str] = Field(default=None, title="Deployment", description="A slug that names this deployment, for templates that use `{deployment}`; lower case letters and digits, at most 32.")
+    public_url: Optional[str] = Field(default=None, title="Public URL", description="The address this deployment is reachable at from outside, without a trailing slash; the event envelope\u0027s context link is absolute under it. Absent, the link is relative.")
     iri_policy: Optional[IriPolicy] = Field(default=None, title="IRI policy", description="The IRI policy of the service; absent, the default policy applies.")
 
     @field_validator("base")
@@ -222,6 +223,19 @@ class ServiceSettings(ConfiguredBaseModel):
                     raise ValueError(err_msg)
         elif isinstance(v, str) and not pattern.fullmatch(v):
             err_msg = "Invalid deployment format: " + str(v)
+            raise ValueError(err_msg)
+        return v
+
+    @field_validator("public_url")
+    def pattern_public_url(cls, v):
+        pattern=re.compile("^https?://.+[^/]$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid public_url format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid public_url format: " + str(v)
             raise ValueError(err_msg)
         return v
 
