@@ -108,7 +108,7 @@ unused; letters mark cases added by the PLAN's attack).
 | TC-21 | app with no event bus; a `POST` | the activity is relayed (the relay runs) |
 | TC-21a | `install_service(event_bus=…)` with settings whose `deployment` is empty | `ValueError` |
 
-- [ ] 1.7 Feature (spec rp-events, first two requirements). `tests/feature/events.feature` and
+- [x] 1.7 Feature (spec rp-events, first two requirements). `tests/feature/events.feature` and
   `tests/feature/test_events.py`: "a stale write records nothing", "a restore publishes nothing
   again", "a crash between commit and publish", "events of one aggregate arrive in order", on the
   fake store and bus.
