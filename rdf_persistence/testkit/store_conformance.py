@@ -80,6 +80,17 @@ async def select_returns_rdflib_terms(store: Store, dataset: str) -> None:
     assert rows == [(A, Literal(7))]
 
 
+async def a_literal_with_codepoint_escape_text_is_stored_as_sent(
+    store: Store, dataset: str
+) -> None:
+    """SPARQL expands ``\\u`` escapes over the whole request; the text sent must come back (#108)."""
+    sent = {Literal("a\\u0041b"), Literal("q\\u0022"), Literal("w\\U00000041")}
+    for obj in sent:
+        await store.update(dataset, triple_text(INSERT, obj))
+    result = await store.query(dataset, "SELECT ?o WHERE { GRAPH ?g { ?s ?p ?o } }")
+    assert {row.o for row in cast(Iterable[ResultRow], result)} == sent
+
+
 async def construct_returns_a_graph(store: Store, dataset: str) -> None:
     await store.update(dataset, triple_text(INSERT, B))
     result = await store.query(dataset, "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH ?g { ?s ?p ?o } }")
@@ -236,6 +247,7 @@ CASES: tuple[Case, ...] = (
     drop_missing_is_not_found,
     update_then_ask,
     select_returns_rdflib_terms,
+    a_literal_with_codepoint_escape_text_is_stored_as_sent,
     construct_returns_a_graph,
     put_graph_replaces_the_named_graph_and_only_it,
     graph_iri_with_reserved_characters_is_one_graph,

@@ -21,6 +21,8 @@ _BLANK_LABEL = re.compile(r"[A-Za-z0-9_]([A-Za-z0-9_.-]*[A-Za-z0-9_-])?")  # may
 _LANGUAGE_TAG = re.compile(r"[A-Za-z]+(-[A-Za-z0-9]+)*")
 _STRING_ESCAPES = {"\\": "\\\\", '"': '\\"', "\n": "\\n", "\r": "\\r", "\t": "\\t"}
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+# Before the control escapes, a backslash in escaped text is only ever the second of "\\".
+_AFTER_BACKSLASH = re.compile(r"(?<=\\)[uU]")
 
 
 class SparqlTerm(str):
@@ -37,6 +39,9 @@ def _iri(value: str) -> str:
 
 def _string(value: str) -> str:
     escaped = "".join(_STRING_ESCAPES.get(c, c) for c in value)
+    # SPARQL expands \u and \U over the whole request first (#108); the u after an escaped
+    # backslash goes out as a codepoint escape, so both readings give the text back.
+    escaped = _AFTER_BACKSLASH.sub(lambda m: f"\\U{ord(m.group()):08X}", escaped)
     return '"' + _CONTROL.sub(lambda m: f"\\u{ord(m.group()):04x}", escaped) + '"'
 
 

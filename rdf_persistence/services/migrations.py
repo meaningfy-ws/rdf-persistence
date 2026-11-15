@@ -73,13 +73,12 @@ def load_migration(path: Path) -> Migration:
             has a codepoint escape, a prefixed name, or (in what the parser understood) a blank node
             or one of the toolkit's own predicates in a template, a graph or service pattern or a
             reserved variable, or the request built from the migration does not parse into the
-            expected operations; the file has a key twice, or a schema id or version has a codepoint
+            expected operations; the file has a key twice, or the schema id has a codepoint
             escape; the message names the file and the step.
     """
     migration = _validated(path, read_mapping(path, "migration", InvalidMigration))
-    for field in ("schema_id", "from_version", "to_version"):
-        if CODEPOINT_ESCAPE.search(getattr(migration, field)):
-            raise InvalidMigration(f"{path}: {field} has a codepoint escape (\\u or \\U)")
+    if CODEPOINT_ESCAPE.search(migration.schema_id):
+        raise InvalidMigration(f"{path}: schema_id has a codepoint escape (\\u or \\U)")
     for number, step in enumerate(migration.steps or [], start=1):
         if problem := _step_problem(step):
             raise InvalidMigration(f"{path}: step {number} ({shown(step.title)}): {problem}")

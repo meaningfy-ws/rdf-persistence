@@ -529,11 +529,7 @@ def hostile(version: str, steps=None) -> Migration:
     )
 
 
-LOADABLE_VERSIONS = {k: x for k, x in HOSTILE_VERSIONS.items() if BS + "u" not in x}
-
-
-# The escape-text version is left out: rdflib expands codepoint escapes before parsing; the loader refuses them.
-@pytest.mark.parametrize("version", LOADABLE_VERSIONS.values(), ids=LOADABLE_VERSIONS)
+@pytest.mark.parametrize("version", HOSTILE_VERSIONS.values(), ids=HOSTILE_VERSIONS)
 @pytest.mark.parametrize("with_step", [False, True], ids=["no-step", "a-step"])
 async def test_a_version_cannot_break_out_of_its_literal(store, version, with_step):
     steps = [rename()] if with_step else None
@@ -551,14 +547,7 @@ async def test_a_version_cannot_break_out_of_its_literal(store, version, with_st
         assert graph_of(after, untouched) == graph_of(before, untouched)
 
 
-def test_a_file_whose_version_holds_a_codepoint_escape_is_refused(tmp_path):
-    # rdflib expands codepoint escapes before parsing; the loader refuses them (PD-21 item 2).
-    path = write(tmp_path, hostile(HOSTILE_VERSIONS["a unicode escape text"], [rename()]))
-    with pytest.raises(InvalidMigration, match="codepoint escape"):
-        load_migration(path)
-
-
-@pytest.mark.parametrize("version", LOADABLE_VERSIONS.values(), ids=LOADABLE_VERSIONS)
+@pytest.mark.parametrize("version", HOSTILE_VERSIONS.values(), ids=HOSTILE_VERSIONS)
 def test_a_hostile_version_in_a_file_loads_and_builds_the_expected_operations(tmp_path, version):
     path = write(tmp_path, hostile(version, [rename()]))
     loaded = load_migration(path)
@@ -828,14 +817,22 @@ def test_a_codepoint_escape_in_any_pattern_is_refused_outright_even_in_a_literal
     assert clause in message and "codepoint escape" in message
 
 
-@pytest.mark.parametrize("field", ["schema_id", "from_version", "to_version"])
 @pytest.mark.parametrize("escape", [BS + "u0041", BS + "U00000041"])
-def test_a_codepoint_escape_in_the_ids_is_refused_naming_the_field(tmp_path, field, escape):
+def test_a_codepoint_escape_in_the_schema_id_is_refused_naming_the_field(tmp_path, escape):
+    fields = {"schema_id": SCHEMA + escape, "from_version": "1", "to_version": "2"}
+    path = tmp_path / FILE
+    path.write_text(yaml.safe_dump(fields), encoding="utf-8")
+    with pytest.raises(InvalidMigration, match=f"{FILE}.*schema_id has a codepoint escape"):
+        load_migration(path)
+
+
+@pytest.mark.parametrize("field", ["from_version", "to_version"])
+@pytest.mark.parametrize("escape", [BS + "u0041", BS + "U00000041"])
+def test_a_version_with_codepoint_escape_text_loads_as_typed(tmp_path, field, escape):  # 108
     fields = {"schema_id": SCHEMA, "from_version": "1", "to_version": "2", field: "a" + escape}
     path = tmp_path / FILE
     path.write_text(yaml.safe_dump(fields), encoding="utf-8")
-    with pytest.raises(InvalidMigration, match=f"{FILE}.*{field} has a codepoint escape"):
-        load_migration(path)
+    assert getattr(load_migration(path), field) == "a" + escape
 
 
 def test_a_key_given_twice_is_refused_naming_the_file_and_the_key(tmp_path):
