@@ -72,10 +72,11 @@ ignore_imports =
     rdf_persistence.generation.cli -> rdf_persistence.generation.steps
 
 [importlinter:contract:collaboration-layers]
-name = the collaboration modules layer above the session: collaboration > transitions | write_guards > discussion | reference_collections | workflows > access > session (PD-28, PD-32)
+name = the collaboration modules layer above the session: messagebus > collaboration > transitions | write_guards > discussion | reference_collections | workflows > access > session (PD-28, PD-32)
 ; access sits above session, not beside it: it reaches the session through the mapper (access -> mapper -> session).
 type = layers
 layers =
+    rdf_persistence.services.messagebus
     rdf_persistence.services.collaboration
     rdf_persistence.services.transitions | rdf_persistence.services.write_guards
     rdf_persistence.services.discussion | rdf_persistence.services.reference_collections | rdf_persistence.services.workflows

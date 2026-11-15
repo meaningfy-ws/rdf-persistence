@@ -93,6 +93,7 @@ ERROR_KINDS: tuple[tuple[type[PersistenceError], ProblemKind], ...] = (
     # caller input that SPARQL cannot carry is refused earlier (BadQuery, InvalidBody); one that gets here is ours
     (errors.SparqlError, INTERNAL_ERROR),
     (errors.StoredDataInvalid, INTERNAL_ERROR),
+    (errors.MessageLimitExceeded, INTERNAL_ERROR),  # a loop of the application's own handlers
     (
         errors.IriPolicyChanged,
         UNAVAILABLE,

@@ -74,6 +74,10 @@ INDEXED_NAMES = [
     "Add",
     "Replace",
     "Remove",
+    "MessageBus",
+    "Work",
+    "command",
+    "MessageLimitExceeded",
 ]
 
 
