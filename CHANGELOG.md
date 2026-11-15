@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-15
+
+### Added
+- **Atomic commits** (`atomic-commit`, #83): `session.transaction()` commits the writes to several
+  aggregates of one tenant as one guarded update request, all or nothing. `UnitOfWork` gained
+  `remove`, `version` and `discard`. A commit is limited to 500 roots by default (`CommitTooLarge`,
+  413); `commit(batches=True)` takes a larger one in several transactions.
+- **Unique keys across aggregates** (`cross-aggregate-unique-keys`): a scoped `unique_keys`
+  declaration is enforced at commit; a clash raises `KeyConflict` (409 `key-conflict`), and
+  `Session.key_duplicates()` reports the values a tenant's aggregates already repeat.
+- **Collaboration** (`collaboration-and-reference-collections`, #78–#81), through the
+  `Collaboration` service opened from the kit: the aggregates that refer to a resource
+  (`referrers`); reference collections by list or by rule (`ReferenceCollection`, `members`),
+  guarded on every write and deleted with their members; comments and replies on any aggregate
+  with the `annotate` action; workflows read from files, with a toolkit-owned state and recorded
+  transitions (`Workflows`, `transition`, `transitions`).
+- **Dump and restore a tenant** (`tenant-dump-restore`): `kit.dump_tenant` writes the tenant's
+  database as N-Quads with a `TenantDump` manifest; `kit.restore_tenant` restores it into a new
+  tenant, rewriting the tenant id in every IRI.
+- **Application data** (`app-level-data`): one application database, `{prefix}-app`, for data that
+  belongs to no tenant. A class annotated `database: application` lives there; open it with
+  `kit.application_session` after `kit.require_application`.
+- **Message bus and provenance** (`message-bus`): every commit records one PROV activity (`Add`,
+  `Replace`, `Remove`, or the toolkit's and the application's own commands) with a `Generation` or
+  `Invalidation` per aggregate, in the tenant's provenance graph. `MessageBus` and `bootstrap`
+  hand a command to its nearest handler and the committed activity to its observers along the
+  class hierarchy. `RecordingObserver` in the testkit.
+- **Schema migrations** (`schema-migrations`): `rp-generate` keeps a schema lock and writes
+  migration files; each database is stamped with its schema version and migrated at start-up
+  (`MigrationFailed`, `TenantBehind`); a restore migrates a dump from an older version of the
+  chain.
+
+### Changed
+- **BREAKING: commits are all or nothing.** A unit of work that touches several aggregates either
+  commits all of them or none; before, each aggregate committed on its own.
+- **BREAKING: every commit writes a provenance graph** (`<tenant>/provenance`). Tests that compare
+  a whole dataset will see it.
+- **BREAKING: `TransitionRecord` is replaced by `Transition`.** Records written by an earlier
+  `develop` build are no longer read by `transitions()` and are kept when their aggregate is
+  deleted.
+- **BREAKING: `install_service` and `ServiceKit` require `migrations`**, the folder of the
+  application's migration files.
+- **BREAKING: a restore refuses a dump whose schema stamps are outside the service's chain**; a dump
+  made before the stamps existed no longer restores.
+
+### Fixed
+- **The tenant root is found whatever string type its IRI has** (#76).
+
 ## [0.2.0] - 2026-11-13
 
 ### Added
@@ -90,6 +138,7 @@ capabilities in `openspec/specs/`.
 
 <!-- Release process: docs/modules/ROOT/pages/develop/index.adoc#release -->
 
-[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/meaningfy-ws/rdf-persistence/releases/tag/v0.1.0
