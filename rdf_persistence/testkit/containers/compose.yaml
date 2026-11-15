@@ -15,10 +15,21 @@ volumes:
   # Holds the admin token Zitadel writes at first start. It lives in Docker, never on the host.
   zitadel-bootstrap:
 
+# What `fuseki` and `fuseki-b` share.
+x-fuseki: &fuseki
+  # A fixed tag, so every session reuses one built image instead of leaving one per project.
+  image: rdf-persistence-test/fuseki:5.6.0
+  environment:
+    # The jar reads $FUSEKI_BASE/shiro.ini and needs the base writable. Of the directories the
+    # unmodified image creates for the fuseki user, /fuseki/databases is the one to use.
+    FUSEKI_BASE: /fuseki/databases
+    JAVA_OPTIONS: "-Xmx512m -Xms256m"
+  volumes:
+    - ./fuseki/shiro.ini:/fuseki/databases/shiro.ini:ro
+
 services:
   fuseki:
-    # A fixed tag, so every session reuses one built image instead of leaving one per project.
-    image: rdf-persistence-test/fuseki:5.6.0
+    <<: *fuseki
     build:
       context: ./fuseki
       args:
@@ -26,25 +37,13 @@ services:
         # alpine:3.21.2 (the Dockerfile's own default tag), pinned by digest. The Dockerfile builds
         # eclipse-temurin:${JAVA_VERSION}-alpine, so a digest cannot be passed for that image.
         ALPINE_VERSION: "3.21.2@sha256:56fa17d2a7e7f168a043a2712e63aed1f8543aeafdcee47c58dcffe38ed51099"
-    environment:
-      # The jar reads $FUSEKI_BASE/shiro.ini and needs the base writable. Of the directories the
-      # unmodified image creates for the fuseki user, /fuseki/databases is the one to use.
-      FUSEKI_BASE: /fuseki/databases
-      JAVA_OPTIONS: "-Xmx512m -Xms256m"
-    volumes:
-      - ./fuseki/shiro.ini:/fuseki/databases/shiro.ini:ro
     ports:
       - "127.0.0.1:${RP_FUSEKI_PORT:-3030}:3030"
 
   # A second Fuseki for the tests of tenants on two stores (tenant-stores PD-11): the image of
   # `fuseki`, so nothing more is built. Only the tests that ask for `fuseki_b` start it.
   fuseki-b:
-    image: rdf-persistence-test/fuseki:5.6.0
-    environment:
-      FUSEKI_BASE: /fuseki/databases
-      JAVA_OPTIONS: "-Xmx512m -Xms256m"
-    volumes:
-      - ./fuseki/shiro.ini:/fuseki/databases/shiro.ini:ro
+    <<: *fuseki
     ports:
       - "127.0.0.1:${RP_FUSEKI_B_PORT:-3031}:3030"
 

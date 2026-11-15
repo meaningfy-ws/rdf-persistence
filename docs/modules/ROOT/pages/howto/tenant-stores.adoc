@@ -197,7 +197,7 @@ with `store=`:
 with open(path, "wb") as out:
     await kit.dump_tenant(tenant, out)                                 # reads its own store
 with open(path, "rb") as src:
-    copy = await kit.restore_tenant(src, creator=principal, store="client-a")
+    copy = await kit.restore_tenant(src, creator=caller.principal, store="client-a")
 ----
 
 The copy is a *new* tenant: a new id and new IRIs, and the restorer alone holds the creator role.

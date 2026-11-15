@@ -50,14 +50,13 @@ CHAINS = [chain_of(metamodel(), TOOLKIT_MIGRATIONS), chain_of(VIEW, TOY_MIGRATIO
 ASK = "ASK { GRAPH $g { ?s ?p ?o } }"
 PREFIX = tenant_name_prefix(SETTINGS.prefix)
 OWNERS = {"Ada": Principal(id=ADA), "Bob": Principal(id=BOB)}
-MAIN = DEFAULT_STORE
 
 
 class Run:
     """The stores and the files the scenario shares across service starts, and what it has seen."""
 
     def __init__(self) -> None:
-        self.stores: dict[str, FakeStore] = {MAIN: FakeStore()}
+        self.stores: dict[str, FakeStore] = {DEFAULT_STORE: FakeStore()}
         self.files = FakeFileStore()
         self.tenancy: Tenancy
         self.tenants: dict[str, str] = {}
@@ -77,7 +76,7 @@ class Run:
         for name in names:
             self.stores.setdefault(name, FakeStore())
         self.tenancy = Tenancy(
-            self.stores[MAIN],
+            self.stores[DEFAULT_STORE],
             self.files,
             SETTINGS,
             mapper=toy_mapper(),
@@ -93,9 +92,8 @@ class Run:
         return self.tenancy
 
     async def create(self, owner: str, store: str) -> None:
-        kwargs = {} if store == MAIN else {"store": store}
         await self.tenancy.ensure_system_database()
-        summary = await self.tenancy.create("Ghent", library_slots(), OWNERS[owner], **kwargs)
+        summary = await self.tenancy.create("Ghent", library_slots(), OWNERS[owner], store=store)
         self.tenants[owner] = summary.id
 
     async def write_book(self, owner: str) -> None:
@@ -118,8 +116,11 @@ class Run:
         )
         return bool(answer.askAnswer)
 
-    def databases(self, store: str) -> list[str]:
-        return [name for name in self.stores[store]._datasets if name.startswith(PREFIX)]
+    async def databases(self, store: str) -> list[str]:
+        """The tenant databases on ``store`` (the system database is not one)."""
+        return [
+            name for name in await self.stores[store].list_datasets() if name.startswith(PREFIX)
+        ]
 
 
 @pytest.fixture
@@ -134,7 +135,7 @@ def _wired(run: Run, name: str) -> None:
 
 @given(parsers.parse("{owner}'s library is created on the main server"))
 def _created_on_main(run: Run, owner: str) -> None:
-    run.go(run.create(owner, MAIN))
+    run.go(run.create(owner, DEFAULT_STORE))
 
 
 @given(parsers.parse('{owner}\'s library is created on "{store}"'))
@@ -159,7 +160,7 @@ def _created_while_wired(run: Run, owner: str, store: str) -> None:
 @given(parsers.parse("{owner}'s library was recorded before servers had names"))
 def _recorded_before(run: Run, owner: str) -> None:
     # a library on the main server has no server name in its record: the record an old service wrote
-    run.go(run.create(owner, MAIN))
+    run.go(run.create(owner, DEFAULT_STORE))
 
 
 @given(parsers.parse('"{store}" holds a library that no one owns'))
@@ -183,7 +184,7 @@ def _write_books(run: Run) -> None:
 def _delete_bob(run: Run) -> None:
     async def delete() -> None:
         tenant = run.tenants["Bob"]
-        run.main_before = list(run.stores[MAIN]._datasets)
+        run.main_before = await run.stores[DEFAULT_STORE].list_datasets()
         run.database = run.tenancy.database_of(tenant)
         _, version = await run.tenancy.get(tenant)
         await run.tenancy.delete(tenant, version)
@@ -201,7 +202,7 @@ def _cold_read(run: Run) -> None:
 def _starts(run: Run) -> None:
     async def start() -> None:
         try:
-            await sweep(run.tenancy, run.stores[MAIN], run.files, SETTINGS)
+            await sweep(run.tenancy, run.stores[DEFAULT_STORE], run.files, SETTINGS)
         except StoreNotWired as refusal:
             run.refused = refusal
 
@@ -232,65 +233,83 @@ def _dump_restore(run: Run) -> None:
 
 @then("each book is stored only on its own library's server")
 def _stored_apart(run: Run) -> None:
-    ada, bob = run.tenants["Ada"], run.tenants["Bob"]
-    assert run.go(run.holds(MAIN, ada, run.books["Ada"]))
-    assert run.go(run.holds("client-a", bob, run.books["Bob"]))
-    assert run.databases(MAIN) == [run.tenancy.database_of(ada)]
-    assert run.databases("client-a") == [run.tenancy.database_of(bob)]
+    on = {"Ada": DEFAULT_STORE, "Bob": "client-a"}
+    for owner, store in on.items():
+        tenant = run.tenants[owner]
+        assert run.go(run.holds(store, tenant, run.books[owner])), f"{owner}'s book is on {store}"
+        assert run.go(run.databases(store)) == [run.tenancy.database_of(tenant)], (
+            f"{store} holds {owner}'s library and no other"
+        )
 
 
 @then("each book reads back from its own library")
 def _read_back(run: Run) -> None:
     for owner in ("Ada", "Bob"):
-        assert run.go(run.reads_back(run.tenants[owner], owner, run.books[owner]))
+        assert run.go(run.reads_back(run.tenants[owner], owner, run.books[owner])), (
+            f"{owner}'s book reads back"
+        )
 
 
 @then("the library opens on the main server")
 def _opens_on_main(run: Run) -> None:
-    assert run.opened is run.stores[MAIN]
+    assert run.opened is run.stores[DEFAULT_STORE], "the main server's store opened it"
 
 
 @then(parsers.parse('Bob\'s library is gone from "{store}"'))
 def _gone_from(run: Run, store: str) -> None:
-    assert run.database not in run.stores[store]._datasets
+    assert run.database not in run.go(run.stores[store].list_datasets()), f"gone from {store}"
 
 
 @then("nothing is removed from the main server")
 def _main_untouched(run: Run) -> None:
-    assert list(run.stores[MAIN]._datasets) == run.main_before
+    now = run.go(run.stores[DEFAULT_STORE].list_datasets())
+    assert now == run.main_before, "the main server's databases are as before"
 
 
 @then(parsers.parse('the library that no one owns is removed from "{store}"'))
 def _orphan_removed(run: Run, store: str) -> None:
-    assert run.orphan not in run.stores[store]._datasets
+    assert run.orphan not in run.go(run.stores[store].list_datasets()), f"gone from {store}"
 
 
-@then(parsers.parse('Bob\'s library is still on "{store}" with its book'))
+@then(parsers.parse('Bob\'s library is still on "{store}"'))
 def _bob_kept(run: Run, store: str) -> None:
-    assert run.tenancy.database_of(run.tenants["Bob"]) in run.stores[store]._datasets
-    assert run.go(run.holds(store, run.tenants["Bob"], run.books["Bob"]))
+    database = run.tenancy.database_of(run.tenants["Bob"])
+    assert database in run.go(run.stores[store].list_datasets()), f"still on {store}"
+
+
+@then("Bob's book is still in it")
+def _bob_book_kept(run: Run) -> None:
+    held = run.go(run.holds("client-a", run.tenants["Bob"], run.books["Bob"]))
+    assert held, "Bob's book is still in his library"
 
 
 @then(parsers.parse('the start-up is refused, naming "{store}"'))
 def _refused(run: Run, store: str) -> None:
     assert run.refused is not None, "the start-up was not refused"
-    assert store in str(run.refused)
+    assert store in str(run.refused), f"the refusal names {store}"
 
 
 @then(parsers.parse('the library that no one owns is still on "{store}"'))
 def _orphan_kept(run: Run, store: str) -> None:
-    assert run.orphan in run.stores[store]._datasets
+    assert run.orphan in run.go(run.stores[store].list_datasets()), f"still on {store}"
 
 
-@then("a new library with a new address lives on the main server")
+@then("a new library with a new address exists")
+def _copy_is_new(run: Run) -> None:
+    assert run.copy, "a library was restored"
+    assert run.copy != run.tenants["Bob"], "its address is not Bob's library's"
+
+
+@then("the new library lives on the main server")
 def _copy_on_main(run: Run) -> None:
-    assert run.copy
-    assert run.copy != run.tenants["Bob"]
-    assert run.go(run.tenancy.store_of(run.copy)) is run.stores[MAIN]
-    assert run.tenancy.database_of(run.copy) in run.stores[MAIN]._datasets
+    main = run.stores[DEFAULT_STORE]
+    assert run.go(run.tenancy.store_of(run.copy)) is main, "its tenancy routes to the main store"
+    assert run.tenancy.database_of(run.copy) in run.go(main.list_datasets()), (
+        "its database is there"
+    )
 
 
 @then("the book reads back from the new library")
 def _copy_reads(run: Run) -> None:
     moved = run.books["Bob"].replace(run.tenants["Bob"], run.copy)  # the book's address in the copy
-    assert run.go(run.reads_back(run.copy, "Bob", moved))
+    assert run.go(run.reads_back(run.copy, "Bob", moved)), "the book reads back from the copy"

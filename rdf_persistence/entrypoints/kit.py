@@ -9,6 +9,7 @@ from typing import BinaryIO, cast
 
 from pydantic import BaseModel
 
+from rdf_persistence.domain.exceptions import StoreNotWired
 from rdf_persistence.domain.generated import (
     rp_access,
     rp_collections,
@@ -69,23 +70,6 @@ from rdf_persistence.services.workflows import Workflows
 from rdf_persistence.services.write_guards import WriteGuards
 
 
-def _refuse_shared_stores(default: Store, others: Mapping[str, Store]) -> None:
-    """Refuse the key ``default`` and one raw store under two names, the default included.
-
-    Raises:
-        ValueError: Names the key.
-    """
-    seen = {id(default): DEFAULT_STORE}
-    for name, other in others.items():
-        if name == DEFAULT_STORE:
-            raise ValueError(f"the store {name!r} is the default store: pass it as ``store``")
-        if id(other) in seen:
-            raise ValueError(
-                f"the store {name!r} is the same object as the store {seen[id(other)]!r}"
-            )
-        seen[id(other)] = name
-
-
 class ServiceKit:
     """The collaborators of the routes. The consumer's composition root wires the ports in.
 
@@ -124,9 +108,8 @@ class ServiceKit:
             InvalidWorkflow: A workflow file is not valid, or a class names a workflow no file defines.
             InvalidMigration: A chain of migration files, the toolkit's or the consumer's, is not valid.
             ValueError: A name in ``stores`` is ``default``, or one raw store is wired under two names
-                (the default store included); the message names the key.
+                (the default store included); ``Tenancy`` raises it and the message names the key.
         """
-        _refuse_shared_stores(store, stores)  # on the raw objects, before wrapping hides them
         view = load_schema(schema)
         self.view = view
         # None at first, assignable: a handler's dependencies are often parts of this kit, so the bus
@@ -138,6 +121,10 @@ class ServiceKit:
         )
         self.listings = Listings(view)
         self.store = ToolkitStore(store)
+        # one wrapper per raw store, so Tenancy's identity check sees a store wired twice (PD-16)
+        wrapped = {id(store): self.store}
+        for other in stores.values():
+            wrapped.setdefault(id(other), ToolkitStore(other))
         self.files = files
         self.identity = identity
         self.verifier = verifier
@@ -186,7 +173,7 @@ class ServiceKit:
             dependents=discussion_dependents(view),
             stamps=[(schema_id, current_version(chain)) for schema_id, chain in self.chains],
             on_commit=self._publish,
-            stores={name: ToolkitStore(other) for name, other in stores.items()},
+            stores={name: wrapped[id(other)] for name, other in stores.items()},
         )
         self.aggregates = Aggregates(self.documents, self.tenancy, self.iris)
 
@@ -331,6 +318,10 @@ class ServiceKit:
                 database or bucket meanwhile, or ``store`` is not wired (``StoreNotWired``); nothing is left, except that a failed write of the access record
                 leaves an unnamed database and bucket for the start-up sweep.
         """
+        if store not in self.tenancy.stores():  # before anything reads ``src``
+            raise StoreNotWired(
+                f"the store {store!r} is not wired: {sorted(self.tenancy.stores())}"
+            )
         return await tenant_dump.restore(
             self.tenancy,
             self.iris,

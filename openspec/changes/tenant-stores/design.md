@@ -139,6 +139,14 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-7. The new ones:
   its stores from `tenancy.stores()`; its `store` argument stays for the signature, unused, as in
   `migrate_tenants`. `store_name_in(record) -> str` beside `DEFAULT_STORE` in `tenancy.py` is the
   one reading of PD-2, used by `Tenancy` and `sweep`.
+- **PD-16 The kit wraps each store once; the stage 2 review's items** (L3 S1, L4/L5 W1 and W2,
+  L1 S1, L2 W1 to W3). The kit wraps each raw store once, keyed by identity, so `Tenancy`'s own
+  check sees a store wired twice. `_refuse_shared_stores` goes, and `Tenancy` alone owns the
+  rules on store names. `restore_tenant` refuses an unwired store before it reads the archive.
+  `fuseki-b` shares `fuseki`'s settings through a YAML anchor. The tests prove `kit.sweep_tenant`
+  on a tenant off `default`, name the key per TC-33 case, and give every feature assert a message.
+  Under the floor, for later: resolving the store inside `tenant_dump.dump` and
+  `tenant_sweep.sweep_tenant` (signature change), and a shared `toy_tenancy` test helper.
 - **PD-13 One read of the records at start-up.** The sweep reads all records with one query
   (`Tenancy.access_records()`, public, over `_records()`, which also fills the routing cache), not
   one `get` per tenant.
