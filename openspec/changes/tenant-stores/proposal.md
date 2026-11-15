@@ -6,7 +6,8 @@
 
 > Shaped 2026-11-10; open questions answered by the leader on 2026-11-12 (inputs/seed.md, "Leader's
 > recommendations"); the developer may overrule any DEC marked "leader's choice". Third of the four
-> tenancy candidates. Not planned: the PLAN is derived at the start of its epic session.
+> tenancy candidates. Planned and delivered in epic session I (2026-11-15), in two stages; see
+> "As built" at the end.
 
 **Golden-thread parent:** capability `rp-tenancy` (a tenant is one database, named in its access
 record), and the developer's need (2026-11-10): "other databases under its governance ... which
@@ -91,15 +92,27 @@ async with kit.session(summary.id, principal) as session:     # opens on client-
 
 ## What Changes
 
-- `rdf_persistence/model/rp_tenancy.yaml`: `TenantAccess.store_name`; regenerated code.
-- `rdf_persistence/services/tenancy.py`: named stores, `create(..., store=)`, routing of sessions,
-  deletion and `finish_deletion`; `_free_tenant` checks every store.
-- `rdf_persistence/services/sweep.py`, `services/tenant_sweep.py`, `services/file_removal.py`: the
-  tenant's store.
-- `rdf_persistence/entrypoints/kit.py` and `install_service`: `stores=`; the start-up check of DEC-6;
-  `restore_tenant(..., store=)` when `tenant-dump-restore` has landed.
-- Tests: unit tests on two fake stores; one integration test with two Fuseki containers.
-- Docs: a how-to (wiring several stores, choosing one at create) and a `questions.adoc` entry.
+As delivered:
+
+- `rdf_persistence/model/rp_tenancy.yaml`: `TenantAccess.store_name`; regenerated code, shapes and
+  both locks (a `SAFE` change, metamodel version still `"2"`).
+- `rdf_persistence/domain/exceptions.py`: `StoreNotWired`, with its 500 row in
+  `entrypoints/problems.py`.
+- `rdf_persistence/services/tenancy.py`: named stores, `stores()`, `store_name_of`, `store_of`,
+  `store_name_in`, `access_records()`, the routing cache; `create(..., store=)` and
+  `restore(..., store=)`; sessions, deletion and `finish_deletion` on the tenant's store;
+  `_free_tenant` checks every store; a failed create or restore drops only what it made.
+- `rdf_persistence/services/sweep.py` and `services/migration_runner.py`: every wired store, the
+  DEC-6 check first. `services/tenant_dump.py`: `restore(store=)`. `services/tenant_sweep.py` and
+  `services/file_removal.py` are unchanged: the kit passes the tenant's store, and the session is
+  routed.
+- `rdf_persistence/entrypoints/kit.py` and `service.py`: `stores=`, `kit.store_of`, and
+  `restore_tenant(..., store=)`. `tenant-dump-restore` had already landed.
+- `rdf_persistence/testkit/containers/`: a second Fuseki (`fuseki-b`, fixture `fuseki_b`).
+- Tests: unit and adversarial tests on two fake stores, a feature file, and two integration tests on
+  two Fuseki containers.
+- Docs: `howto/tenant-stores.adoc` and a `questions.adoc` entry, plus `architecture/index.adoc`,
+  `adopt.adoc` §12 and `application-data.adoc`.
 
 ## Capabilities
 
@@ -118,3 +131,30 @@ None.
   consumer with one store.
 - `atomic-commit` (#83), `cross-aggregate-unique-keys` and `aggregate-events` work inside one tenant,
   so inside one store; nothing here crosses stores.
+- As delivered, also: `ServiceKit`/`Tenancy` refuse a store named `default`, a bad name, or one
+  store under two names (`ValueError`). `kit.store_of(tenant)` is new. The `store` argument of
+  `sweep` and `migrate_tenants` is kept and unused. A consumer that calls `Tenancy._session`,
+  `_add_root`, `_replace_root` or `_stamp` (private) must now pass `store=`. While any wired store
+  is down, every create and restore answers 503.
+
+## As built (2026-11-15)
+
+Delivered in two stages, #122 (stage 1, services) and PR-2 (stage 2, kit, tests on two servers,
+docs). The bet held: the problem, the appetite (MEDIUM) and the no-gos stand. Where the result
+differs from or adds to the text above:
+
+| The shape said | What was built | Why | Decision | State |
+|---|---|---|---|---|
+| Open questions answered by the leader | The developer confirmed them and answered four more on 2026-11-15: the application database stays on `default`; the start-up functions keep their signatures; `kit.store_of`; the shared-prefix risk is accepted and documented | The brief said every store holds the application database; the code keeps one application database | inputs/questions-2026-11-15.md, PD-6, PD-9, RISK-1 | built |
+| DEC-5: absent `store_name` means `default` | Also never written for `default`: a single-store consumer's records, dumps and snapshots are unchanged | One shape per fact | PD-2 | built (#122) |
+| Rabbit-hole: per-request cost | A cache from tenant to store, filled from the records at start-up, at create and restore, and on a miss by one read per tenant per instance | The store never changes (DEC-2) | PD-4 | built (#122) |
+| DEC-6: refuse to start | In the sweep, before anything is finished or dropped, after every wired store is listed; `migrate_tenants` and `delete` refuse an unwired store too, so a consumer with its own start-up is covered | Nothing touched before the check | PD-6, PD-8 | built (#122) |
+| DEC-7: ids unique across stores | Holds. A race between two instances could still let two creates on two stores take one id; the loser now drops its own database, and a losing restore no longer deletes the winner's bucket | Found by the adversarial tester and review L1 (Critical) | PD-12, PD-14 | built (#122) |
+| Not in the shape | A record that lost `store_name` (an older toolkit rewriting it) is logged at ERROR, `misplaced-tenant`, and left alone | The weakest assumption behind DEC-2, found by the PLAN's attack | RISK-5 | built (#122); no downgrade, documented |
+| Not in the shape | `StoreNotWired` (500); while one wired store is down, creates and restores elsewhere answer 503 | DEC-7 needs the id checked on every store | PD-10, error matrix | built, accepted |
+| Not in the shape | `tenant_dump.dump` and `tenant_sweep.sweep_tenant` still take the store from their caller; the kit passes the tenant's | Signature kept; a direct caller passing the wrong store gets `DatabaseGone`, never lost data | PD-9, PD-16 | accepted; resolving it inside is left for later |
+| Tests: one integration test with two Fuseki containers | Two (TC-36, TC-37), on a testkit fixture `fuseki_b` consumers can use | | PD-11 | built (PR-2) |
+
+Not built, as the No-gos say: moving a tenant or keeping its IRIs across stores, a store per
+bucket, queries across stores, store choice in the generic HTTP route, different products per
+store, serving while a wired store is unreachable.
