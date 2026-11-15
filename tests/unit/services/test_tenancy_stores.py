@@ -3,24 +3,29 @@
 ``D`` is the default ``FakeStore``, ``A`` the store wired as ``client-a``. Every test names its TC id.
 """
 
+import logging
 from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
 from rdflib import URIRef
 
+from rdf_persistence import TenantAccess
 from rdf_persistence.domain.exceptions import (
+    Conflict,
     NotFound,
     StoreNotWired,
     StoreUnavailable,
     TenantBehind,
 )
+from rdf_persistence.domain.generated import rp_core, rp_tenancy
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.domain.generated.service.rp_service import GrantSet
 from rdf_persistence.domain.iris import Iris, graph_iri, system_database_name
 from rdf_persistence.domain.sparql import fill, term
-from rdf_persistence.services.mapper import UnitOfWork
+from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.mapper import Mapper, UnitOfWork, generated_models
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
 from rdf_persistence.services.tenancy import DEFAULT_STORE, Tenancy
@@ -29,6 +34,7 @@ from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.toy import ADA, SETTINGS, TOY_SCHEMA, dune, library_slots, toy_mapper
+from tests.unit.domain.builders import TENANT, tenant_access
 
 CREATOR = Principal(id=ADA)
 SYSTEM = system_database_name(SETTINGS.prefix)
@@ -92,6 +98,16 @@ async def made_on(world: SimpleNamespace, store: str | None = None) -> str:
     return (await world.tenancy.create("Ghent", library_slots(), CREATOR, **kwargs)).id
 
 
+# -- PD-1, PD-2: the record's store name ---------------------------------------------------------------
+
+
+def test_tc03_a_record_written_without_a_store_name_decodes_with_none() -> None:
+    mapper = Mapper(v.metamodel(), generated_models(rp_tenancy, rp_core))
+    graph = mapper.to_graph(tenant_access())
+    decoded = mapper.from_graph(TenantAccess, TENANT, graph, graph_iri(TENANT))
+    assert decoded.store_name is None, "no store name decodes to None, which means default"
+
+
 # -- PD-3: what the constructor refuses ------------------------------------------------------------
 
 
@@ -125,7 +141,7 @@ def test_tc06_the_stores_are_every_wired_name_with_default_first(world):
     assert list(world.tenancy.stores().items()) == [
         (DEFAULT_STORE, world.d),
         (CLIENT_A, world.a),
-    ]
+    ], "every wired name, default first"
 
 
 # -- PD-4: routing a tenant ------------------------------------------------------------------------
@@ -135,16 +151,16 @@ async def test_tc07_a_record_without_a_store_name_is_on_default_and_costs_one_qu
     tenant = await made_on(world)
     other = cold(world)
     before = operations(world.d)
-    assert await other.store_of(tenant) is world.d
+    assert await other.store_of(tenant) is world.d, "a record with no store name is on D"
     assert operations(world.d) == before + 1, "one query for the record"
 
 
 async def test_tc08_a_tenant_on_another_store_is_found_once_then_from_the_cache(world):
     tenant = await made_on(world, CLIENT_A)
     other = cold(world, **{CLIENT_A: world.a})
-    assert await other.store_of(tenant) is world.a
+    assert await other.store_of(tenant) is world.a, "found from its record"
     before = (operations(world.d), operations(world.a))
-    assert await other.store_of(tenant) is world.a
+    assert await other.store_of(tenant) is world.a, "found again"
     assert (operations(world.d), operations(world.a)) == before, "the second call reads nothing"
 
 
@@ -179,7 +195,8 @@ async def test_tc11_a_session_writes_on_the_store_of_its_tenant(world):
     assert await holds(world.a, database, graph_iri(book)), "the book's graph is on A"
     assert (len(world.d.sent("update")), len(world.d.sent("put_graph"))) == before, "D untouched"
     async with world.tenancy.tenant_session(tenant, CREATOR) as session:
-        assert isinstance(await UnitOfWork(session, toy_mapper()).get(Book, book), Book)
+        read = await UnitOfWork(session, toy_mapper()).get(Book, book)
+        assert isinstance(read, Book), "the book reads back through the session"
 
 
 async def test_tc12_a_tenant_behind_is_refused_at_the_call_before_any_read(world):
@@ -188,7 +205,7 @@ async def test_tc12_a_tenant_behind_is_refused_at_the_call_before_any_read(world
     before = (operations(world.d), operations(world.a))
     with pytest.raises(TenantBehind, match=tenant):
         world.tenancy.tenant_session(tenant, CREATOR)  # not entered
-    assert (operations(world.d), operations(world.a)) == before
+    assert (operations(world.d), operations(world.a)) == before, "no store was asked"
 
 
 async def test_tc38_a_record_keeps_its_store_name_through_every_rewrite(world):
@@ -218,8 +235,8 @@ async def test_tc13_a_tenant_made_without_a_store_is_on_default_and_its_record_n
     record, _ = await world.tenancy.get(tenant)
     name = record.database_name
     iris = Iris(SETTINGS, *TYPES)
-    assert name in world.d._datasets
-    assert tenant_databases(world.a) == []
+    assert name in world.d._datasets, "the database is on D"
+    assert tenant_databases(world.a) == [], "A has no tenant database"
     assert await holds(world.d, name, world.tenancy.stamps_graph), "stamped on D"
     assert await holds(world.d, name, iris.meta(tenant)), "the root is on D"
     assert record.store_name is None, "default is never written (PD-2)"
@@ -232,37 +249,38 @@ async def test_tc14_a_tenant_made_on_a_store_has_its_database_there_and_its_reco
     record, _ = await world.tenancy.get(tenant)
     name = record.database_name
     iris = Iris(SETTINGS, *TYPES)
-    assert name in world.a._datasets
+    assert name in world.a._datasets, "the database is on A"
     assert await holds(world.a, name, world.tenancy.stamps_graph), "stamped on A"
     assert await holds(world.a, name, iris.meta(tenant)), "the root is on A"
     assert tenant_databases(world.d) == [], "D has no tenant database"
     assert await holds(world.d, SYSTEM, graph_iri(str(iris.access(tenant)))), "the record is on D"
-    assert record.store_name == CLIENT_A
+    assert record.store_name == CLIENT_A, "the record names the store"
 
 
 async def test_tc15_a_store_that_is_not_wired_refuses_before_anything_is_drawn_or_made():
-    d, files = FakeStore(), FakeFileStore()
-    tenancy = wired(d, files)  # no id to draw: a draw would fail
+    d, a, files = FakeStore(), FakeStore(), FakeFileStore()
+    tenancy = wired(d, files, **{CLIENT_A: a})  # no id to draw: a draw would fail
     await tenancy.ensure_system_database()
     with pytest.raises(StoreNotWired, match="client-b"):
         await tenancy.create("Ghent", library_slots(), CREATOR, store="client-b")
-    assert tenant_databases(d) == []
-    assert files.sent("create_bucket") == []
-    assert await tenancy.tenants() == []
+    assert tenant_databases(d) == [], "no tenant database on D"
+    assert tenant_databases(a) == [], "no tenant database on client-a"
+    assert files.sent("create_bucket") == [], "no bucket"
+    assert await tenancy.tenants() == [], "no record"
 
 
 async def test_tc16_an_id_whose_database_exists_on_another_store_is_drawn_again(world):
     await world.a.create_dataset(PREFIX + IDS[0].replace("-", ""))
     tenant = await made_on(world)
-    assert tenant.endswith(IDS[1])
+    assert tenant.endswith(IDS[1]), "the first id is taken on A, so the second is drawn"
 
 
 async def test_tc40_a_store_that_is_down_stops_a_create_on_another_before_it_makes_anything(world):
     world.a.on("list_datasets", StoreUnavailable("down"))
     with pytest.raises(StoreUnavailable):
         await made_on(world)
-    assert tenant_databases(world.d) == []
-    assert world.files.sent("create_bucket") == []
+    assert tenant_databases(world.d) == [], "no tenant database on D"
+    assert world.files.sent("create_bucket") == [], "no bucket"
 
 
 # -- PD-8: deletion --------------------------------------------------------------------------------
@@ -275,7 +293,7 @@ async def test_tc17_a_tenant_is_dropped_from_its_own_store_and_forgotten(world):
 
     await world.tenancy.delete(tenant, version)
 
-    assert record.database_name not in world.a._datasets
+    assert record.database_name not in world.a._datasets, "dropped from A"
     assert list(world.d._datasets) == on_d, "D's databases are unchanged"
     with pytest.raises(NotFound):
         await world.tenancy.store_name_of(tenant)
@@ -288,8 +306,8 @@ async def test_tc18_a_deletion_whose_database_is_already_gone_finishes(world):
 
     await world.tenancy.delete(tenant, version)
 
-    assert record.database_name not in await world.files.list_buckets(PREFIX)
-    assert await world.tenancy.tenants() == []
+    assert record.database_name not in await world.files.list_buckets(PREFIX), "bucket dropped"
+    assert await world.tenancy.tenants() == [], "record removed"
 
 
 async def test_tc41_a_delete_on_a_store_that_is_not_wired_changes_nothing(world):
@@ -300,4 +318,61 @@ async def test_tc41_a_delete_on_a_store_that_is_not_wired_changes_nothing(world)
     with pytest.raises(StoreNotWired, match=CLIENT_A):
         await narrow.delete(tenant, version)
 
-    assert (await world.tenancy.get(tenant))[0].state == TenantState.ACTIVE
+    assert (await world.tenancy.get(tenant))[0].state == TenantState.ACTIVE, "not marked deleting"
+
+
+# -- PD-12, PD-14: a failed create drops only what its own call made -----------------------------------
+
+
+def drawn_name(world: SimpleNamespace, tenant_id: str) -> str:
+    """The database and bucket name of the tenant that draws ``tenant_id``."""
+    return world.tenancy.database_of(
+        str(Iris(SETTINGS, *TYPES, id_source=_drawing(tenant_id)).mint_tenant())
+    )
+
+
+async def test_pd14_a_create_that_conflicts_on_the_bucket_keeps_the_other_tenants_bucket_and_files(
+    world,
+):
+    name = drawn_name(world, IDS[0])
+    await world.files.create_bucket(name)  # the winner's, made between this draw and its create
+    await world.files.put(name, "scan.pdf", b"%PDF")
+
+    with pytest.raises(Conflict):
+        await made_on(world, CLIENT_A)
+
+    assert tenant_databases(world.a) == [], "the database it made is dropped from A"
+    assert await world.files.list_buckets(PREFIX) == [name], "the winner's bucket is kept"
+    assert await world.files.get(name, "scan.pdf") == b"%PDF", "and its files"
+    assert world.files.sent("delete_bucket") == [], "no bucket drop was sent"
+
+
+async def test_pd12_a_create_that_fails_after_the_database_drops_it_and_the_bucket_it_made(
+    world, caplog
+):
+    world.a.on("update", StoreUnavailable("down"), after=1)  # the root, after the stamp
+    with (
+        caplog.at_level(logging.WARNING, logger="rdf_persistence.services.tenancy"),
+        pytest.raises(StoreUnavailable, match="down"),
+    ):
+        await made_on(world, CLIENT_A)
+    assert tenant_databases(world.a) == [], "no database is left on A"
+    assert await world.files.list_buckets(PREFIX) == [], "no bucket is left"
+    steps = [r.__dict__.get("step") for r in caplog.records]
+    assert "create-cleanup" not in steps, "a drop that worked is not warned about"
+
+
+async def test_pd12_a_create_cleanup_that_fails_too_is_logged_and_the_original_error_is_raised(
+    world, caplog
+):
+    world.a.on("update", StoreUnavailable("the root failed"), after=1)
+    world.a.on("drop_dataset", StoreUnavailable("the drop failed"))
+    with (
+        caplog.at_level(logging.WARNING, logger="rdf_persistence.services.tenancy"),
+        pytest.raises(StoreUnavailable, match="the root failed"),
+    ):
+        await made_on(world, CLIENT_A)
+    [logged] = [r for r in caplog.records if r.__dict__.get("step") == "create-cleanup"]
+    assert logged.__dict__["resource"] in world.a._datasets, (
+        "the logged database is left to the sweep"
+    )

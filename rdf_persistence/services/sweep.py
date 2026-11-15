@@ -23,7 +23,7 @@ from rdf_persistence.domain.generated.service.rp_service import ServiceSettings
 from rdf_persistence.domain.iris import tenant_name_prefix
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.store import Store
-from rdf_persistence.services.tenancy import DEFAULT_STORE, Tenancy
+from rdf_persistence.services.tenancy import Tenancy, store_name_in
 
 log = logging.getLogger(__name__)
 
@@ -33,16 +33,18 @@ async def sweep(
 ) -> None:
     """Finish the deletions that stopped and drop the databases and buckets no tenant owns.
 
-    ``store`` is the default store; the tenants are routed to their stores through ``tenancy``.
+    The tenants are routed to their stores through ``tenancy``, whose wired stores are the ones swept
+    (``tenancy.stores()``). ``store`` is unused, kept for compatibility.
 
     Raises:
         StoreNotWired: Records name stores that are not wired (all named, sorted); nothing was changed.
         StoreUnavailable: A wired store cannot list its databases; nothing was changed.
     """
     created = await tenancy.ensure_system_database()
-    tenants = await tenancy.tenants()
-    records = {t.id: (await tenancy.get(t.id))[0] for t in tenants}
-    stores = {**tenancy.stores(), DEFAULT_STORE: store}
+    # one query for every record (PD-13), by tenant IRI in order
+    found = {tenancy.tenant_of(record): record for record in await tenancy.access_records()}
+    records = dict(sorted(found.items()))
+    stores = tenancy.stores()
     _refuse_unwired(records, stores)
     listed = {name: await wired.list_datasets() for name, wired in stores.items()}
     _report_misplaced(records, listed)
@@ -55,30 +57,26 @@ async def sweep(
                 extra={"step": "skip-sweep", "system_created": created, "resources": present},
             )
             return
-    for tenant in tenants:
-        if tenant.state == TenantState.DELETING:
+    for tenant, record in records.items():
+        if record.state == TenantState.DELETING:
             log.info(
                 "finishing the interrupted deletion of a tenant",
-                extra={"step": "finish-deletion", "tenant": tenant.id},
+                extra={"step": "finish-deletion", "tenant": tenant},
             )
-            await tenancy.finish_deletion(tenant.id)
+            await tenancy.finish_deletion(tenant)
     named = {record.database_name for record in records.values()}
     await _drop_orphans(stores, listed, files, prefix, named)
 
 
-def _store_of(record: TenantAccess) -> str:
-    return record.store_name or DEFAULT_STORE
-
-
 def _refuse_unwired(records: dict[str, TenantAccess], stores: dict[str, Store]) -> None:
-    unwired = sorted({_store_of(r) for r in records.values()} - stores.keys())
+    unwired = sorted({store_name_in(r) for r in records.values()} - stores.keys())
     if unwired:
         raise StoreNotWired(f"the records name stores that are not wired: {', '.join(unwired)}")
 
 
 def _report_misplaced(records: dict[str, TenantAccess], listed: dict[str, list[str]]) -> None:
     for tenant, record in records.items():
-        if record.database_name in listed[_store_of(record)]:
+        if record.database_name in listed[store_name_in(record)]:
             continue
         for found, names in listed.items():
             if record.database_name in names:
@@ -87,7 +85,7 @@ def _report_misplaced(records: dict[str, TenantAccess], listed: dict[str, list[s
                     extra={
                         "step": "misplaced-tenant",
                         "tenant": tenant,
-                        "recorded_store": _store_of(record),
+                        "recorded_store": store_name_in(record),
                         "found_store": found,
                     },
                 )

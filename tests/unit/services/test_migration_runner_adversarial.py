@@ -468,7 +468,7 @@ async def test_an_access_record_that_does_not_decode_stops_the_run_and_sends_no_
 
 
 @pytest.mark.parametrize("failing_stamp", [0, 1], ids=["first-stamp", "second-stamp"])
-async def test_a_create_whose_stamp_write_fails_leaves_a_database_the_start_up_sweep_removes(
+async def test_a_create_whose_stamp_write_fails_drops_the_database_it_made(
     failing_stamp,
 ):
     made = await make_world(Iris(SETTINGS), SETTINGS, stamps=((RP, "1"), (LIB, "2")))
@@ -476,9 +476,9 @@ async def test_a_create_whose_stamp_write_fails_leaves_a_database_the_start_up_s
     made.store.on("update", DOWN, after=failing_stamp)
     with pytest.raises(StoreUnavailable):
         await made.tenancy.create("Bruges", {"city": "Bruges"}, CREATOR)
-    assert len(await made.store.list_datasets()) == len(before) + 1, "an orphan database is left"
+    assert sorted(await made.store.list_datasets()) == before, "the create dropped its database"
     await sweep(made.tenancy, made.store, made.files, SETTINGS)
-    assert sorted(await made.store.list_datasets()) == before, "the sweep removed it"
+    assert sorted(await made.store.list_datasets()) == before, "and the sweep has nothing to do"
     assert [t.id for t in await made.tenancy.tenants()] == [made.tenant], "no half tenant"
 
 

@@ -73,8 +73,8 @@ async def migrate_tenants(
 ) -> set[str]:
     """Migrate every tenant but those ``deleting``, in IRI order; answers the tenants set aside (PD-11).
 
-    ``store`` is the default store; each tenant is migrated on the store its record names, routed
-    through ``tenancy`` (tenant-stores PD-6).
+    Each tenant is migrated on the store its record names, routed through ``tenancy`` (tenant-stores
+    PD-6). ``store`` is unused, kept for compatibility.
 
     Raises:
         StoreNotWired: A tenant's record names a store that is not wired; this is a configuration
@@ -88,9 +88,8 @@ async def migrate_tenants(
     for tenant in await tenancy.tenants():
         if tenant.state == TenantState.DELETING:
             continue
-        home = await tenancy.store_of(
-            tenant.id
-        )  # outside the try: StoreNotWired is not a failed migration
+        # outside the try: StoreNotWired is not a failed migration
+        home = await tenancy.store_of(tenant.id)
         try:
             await migrate_database(
                 home, tenancy.database_of(tenant.id), chains, tenancy.stamps_graph

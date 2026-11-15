@@ -1,7 +1,7 @@
 """Tenants routed by store, attacked: failure mid-write, a second instance, erased records, limits (tenant-stores stage 1).
 
 ``D`` is the default ``FakeStore``, ``A`` the store wired as ``client-a``. A failing test is a FINDING and is kept
-``xfail(strict=True)`` with its evidence in the reason, for the lead to decide.
+``xfail(strict=True)`` with its evidence in the reason, for the lead to decide (none is open).
 """
 
 import logging
@@ -87,19 +87,15 @@ async def erase_store_name(world: SimpleNamespace, tenant: str) -> None:
 
 
 @pytest.mark.parametrize("failing_update", [0, 1], ids=["the stamp", "the root"])
-async def test_a_create_on_a_that_fails_after_the_database_leaves_no_record_and_the_sweep_drops_it_from_a(
+async def test_a_create_on_a_that_fails_after_the_database_leaves_no_record_and_drops_it_from_a(
     world, failing_update
 ):
-    survivor = await made_on(world)  # with no record on file the sweep drops nothing (PD-8c)
+    survivor = await made_on(world)
     world.a.on("update", DOWN, after=failing_update)
     with pytest.raises(StoreUnavailable):
         await made_on(world, CLIENT_A)
-    assert len(tenant_databases(world.a)) == 1, "the database is left on A"
+    assert tenant_databases(world.a) == [], "the create dropped its database from A (PD-12)"
     assert [t.id for t in await world.tenancy.tenants()] == [survivor], "no record for it"
-
-    await swept(world)
-
-    assert tenant_databases(world.a) == [], "the sweep dropped it from A"
     assert len(await world.files.list_buckets(PREFIX)) == 1, "only the survivor's bucket is left"
 
 
@@ -133,11 +129,6 @@ async def test_a_failed_create_is_retried_on_the_same_instance_and_lands_on_the_
     assert tenant_databases(world.a) == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="FINDING-1: X's database on A is named like Y's recorded database on D; the sweep judges orphans "
-    "by name across stores (RISK-4), so it is never dropped",
-)
 async def test_a_create_that_loses_the_race_for_an_id_leaves_no_database_on_a_that_the_sweep_keeps():
     """Two instances draw the same id before either creates (X on A, Y on D); X loses on the shared bucket."""
     d, a, files = FakeStore(), Racing(), FakeFileStore()

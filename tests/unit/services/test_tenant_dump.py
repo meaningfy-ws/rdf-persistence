@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from uuid import UUID
 
 import pytest
 from rdflib import Dataset, Literal, URIRef
@@ -24,6 +25,7 @@ from rdf_persistence.domain.exceptions import (
     InvalidBody,
     NotFound,
     PersistenceError,
+    StoreNotWired,
     StoreUnavailable,
 )
 from rdf_persistence.domain.generated.rp_core import Principal
@@ -1282,7 +1284,7 @@ class VanishingStore(FakeStore):
         await self.drop_dataset(dataset)
 
 
-def beside(world: SimpleNamespace, other: FakeStore) -> Tenancy:
+def beside(world: SimpleNamespace, other: FakeStore, iris: Iris | None = None) -> Tenancy:
     """A tenancy over the world's default store and files, with ``other`` wired as ``client-a``."""
     return Tenancy(
         world.store,
@@ -1291,7 +1293,7 @@ def beside(world: SimpleNamespace, other: FakeStore) -> Tenancy:
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
-        iris=world.iris,
+        iris=iris or world.iris,
         stamps=BASE_STAMPS,
         stores={CLIENT_A: other},
     )
@@ -1338,3 +1340,47 @@ async def test_tc39_the_vanished_check_reads_the_store_of_the_restore(world):
     assert after == (before[0] + 1, before[1] + 2), (
         "default: the id draw; client-a: the draw and the check"
     )
+
+
+async def test_tc19_the_restored_book_reads_back_through_a_session_on_the_new_tenant(world):
+    tenancy = beside(world, FakeStore())
+    summary = await restored(world, await dumped(world), tenancy=tenancy, store=CLIENT_A)
+
+    async with tenancy.tenant_session(summary.id, RESTORER) as opened:
+        book = await UnitOfWork(opened, toy_mapper()).get(
+            Book, moved(world, world.book, summary.id)
+        )
+
+    assert book.label == "Dune", "the book is on the new tenant's store"
+
+
+async def test_a_restore_on_a_store_that_is_not_wired_is_refused_naming_it_and_makes_nothing(world):
+    data = await dumped(world)
+    before = await state_of(world)
+
+    with pytest.raises(StoreNotWired, match="client-b"):
+        await restored(world, data, store="client-b")
+
+    assert await state_of(world) == before, "no database, bucket or record, on any store"
+
+
+async def test_pd14_a_restore_that_conflicts_on_the_bucket_keeps_the_other_tenants_bucket_and_files(
+    world,
+):
+    other = FakeStore()
+    drawn = str(UUID(int=7))
+    iris = Iris(SETTINGS, *iri_types(VIEW), id_source=lambda spec: drawn)
+    tenancy = beside(
+        world, other, iris
+    )  # the tenant it draws is known: the winner's bucket is named
+    name = iris.resource_name(str(iris.mint_tenant()))
+    data = await dumped(world)
+    await world.files.create_bucket(name)  # the winner's, made between this draw and its create
+    await world.files.put(name, "scan.pdf", b"%PDF")
+
+    with pytest.raises(Conflict):
+        await restored(world, data, tenancy=tenancy, store=CLIENT_A)
+
+    assert await other.list_datasets() == [], "the database it made is dropped from client-a"
+    assert await world.files.get(name, "scan.pdf") == b"%PDF", "the winner's bucket and file stay"
+    assert world.files.sent("delete_bucket") == [], "no bucket drop was sent"

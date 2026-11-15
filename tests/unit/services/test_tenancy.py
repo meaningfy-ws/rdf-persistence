@@ -199,8 +199,8 @@ async def test_a_retry_after_a_failure_creates_a_new_tenant(tenancy, store):
     ("failing", "operation", "after", "databases", "buckets"),
     [
         ("store", "create_dataset", 0, 0, 0),
-        ("files", "create_bucket", 0, 1, 0),
-        ("store", "update", 0, 1, 1),  # the root object
+        ("files", "create_bucket", 0, 0, 0),  # the cleanup drops the database (PD-12)
+        ("store", "update", 0, 0, 0),  # the root object: the cleanup drops both
         ("store", "update", 1, 1, 1),  # the access record
     ],
     ids=["no database", "no bucket", "no root object", "no access record"],

@@ -247,7 +247,7 @@ async def test_tc22_unwired_stores_stop_the_sweep_before_anything_is_dropped(two
     assert deleting in await two.a.list_datasets(), "the deleting tenant's database is still there"
     assert ORPHAN_D in await two.d.list_datasets(), "the orphan is still there"
     assert two.a.sent("drop_dataset") == [deleting], "only the failed attempt of the setup"
-    assert two.d.sent("drop_dataset") == []
+    assert two.d.sent("drop_dataset") == [], "D was sent no drop"
 
 
 async def test_tc23_a_new_system_database_skips_the_sweep_across_stores(caplog):
@@ -256,9 +256,10 @@ async def test_tc23_a_new_system_database_skips_the_sweep_across_stores(caplog):
     await a.create_dataset(ORPHAN_A)
     with caplog.at_level(logging.WARNING):
         await sweep(made, d, files, SETTINGS)
-    assert ORPHAN_A in await a.list_datasets()
-    assert a.sent("drop_dataset") == [] and d.sent("drop_dataset") == []
-    assert "no access records" in caplog.text
+    assert ORPHAN_A in await a.list_datasets(), "the orphan on A is kept"
+    assert a.sent("drop_dataset") == [], "A was sent no drop"
+    assert d.sent("drop_dataset") == [], "D was sent no drop"
+    assert "no access records" in caplog.text, "the operator is told why"
 
 
 async def test_tc24_a_deletion_is_finished_on_the_store_of_the_tenant(two):
@@ -277,7 +278,7 @@ async def test_tc25_a_store_that_is_down_stops_the_sweep_before_anything_is_fini
     two.a.on("list_datasets", StoreUnavailable("down"))
     with pytest.raises(StoreUnavailable):
         await sweep(two.tenancy, two.d, two.files, SETTINGS)
-    assert {deleting, ORPHAN_D} <= set(await two.d.list_datasets())
+    assert {deleting, ORPHAN_D} <= set(await two.d.list_datasets()), "nothing was dropped from D"
 
 
 async def test_tc42_an_orphan_dropped_meanwhile_does_not_stop_the_sweep(two):
@@ -287,7 +288,7 @@ async def test_tc42_an_orphan_dropped_meanwhile_does_not_stop_the_sweep(two):
     two.d.on("drop_dataset", NotFound("dropped meanwhile"))  # the fake leaves `first` in place
     await sweep(two.tenancy, two.d, two.files, SETTINGS)
     assert two.d.sent("drop_dataset") == [first, second], "the sweep went on to the next orphan"
-    assert second not in await two.d.list_datasets()
+    assert second not in await two.d.list_datasets(), "the second orphan is gone"
 
 
 async def test_tc43_a_tenant_database_on_another_store_is_reported_and_left_alone(caplog):
@@ -306,6 +307,21 @@ async def test_tc43_a_tenant_database_on_another_store_is_reported_and_left_alon
         summary.id,
         "default",
         CLIENT_A,
-    )
+    ), "the log names the tenant, the recorded store and the one it was found on"
     assert (len(d.sent("drop_dataset")), len(a.sent("drop_dataset"))) == before, "nothing dropped"
-    assert name in await a.list_datasets()
+    assert name in await a.list_datasets(), "the database on A is left alone"
+
+
+async def test_pd13_the_sweep_reads_the_records_in_one_query_however_many_tenants_there_are(
+    tenancy, store, files, kept
+):
+    before = len(store.sent("query"))
+    await sweep(tenancy, store, files, SETTINGS)
+    with_one = len(store.sent("query")) - before
+    for label in ("Bruges", "Ypres"):
+        await tenancy.create(label, library_slots(), CREATOR)
+    before = len(store.sent("query"))
+
+    await sweep(tenancy, store, files, SETTINGS)
+
+    assert len(store.sent("query")) - before == with_one, "three tenants cost what one costs"
