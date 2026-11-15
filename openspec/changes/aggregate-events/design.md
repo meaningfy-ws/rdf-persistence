@@ -346,3 +346,26 @@ None. Q1 to Q8 were answered on 2026-11-15 (inputs/seed.md).
   application database does when this deployment's schema has no application class
   (`application_session` raises `LookupError`): it is logged at WARNING and acked, like a tenant
   this deployment lacks. The receiver probes the store through `Session.is_recorded` (one `ASK`).
+- **D-7 (stage 1, 2026-11-16, the lead; review W8).** `decode_activity` lives in a new module
+  `services/decoding.py`, not in `provenance.py` as PD-16 says: an import contract
+  (`session-and-provenance-without-mapper`) keeps `provenance` free of the mapper. `provenance.py`
+  holds `activity_class_of` and `activity_class_named` behind a small `ClassFinder` protocol.
+- **D-8 (stage 1, 2026-11-16, the lead; review W1, re-labelled Critical).** `kit.receive` caught
+  `LookupError` around the whole hand-over, so any `KeyError` while opening, probing or handing the
+  activity to the bus acked the message and lost it for that deployment, breaking the at-least-once
+  promise of DEC-7. Fixed: only the opening of the application session (D-6) is a skip; the rest
+  raises (not acked, redelivered). D-6 gets its test (review W5).
+
+### Stage 1+2 review (PR #124), under the floor
+
+One L2+L3 pass (P-0005). Critical: W1 (re-labelled, D-8). Rejected under the floor, each listed
+once, to be weighed again by the full review at the end of the epic:
+W2 (no test fails without `relay.wake()`), W3 (a plumbing-IRI test built like the code), W4 (the
+plumbing IRIs derived by `removesuffix`), W6 (the Redis `failing` hook closes the bus rather than
+the broker), W7 (a poison record logged without its traceback), W9 (`receive` lives in
+`entrypoints`; a `services` receiver would mirror the relay), S1 (a failed trim after a sent entry
+re-publishes it), S2 (an invalid envelope dropped and acked, not in the matrix), S3 (the test
+directory `integration/adapters/` maps to `events` only), S4 (an un-awaited cancel; a test on the
+fake's private state), S5 (a step that does more than its text; an unasserted PUT), S7
+(`visible_part` has no caller until stage 3), S8 (the gate report without its SHA). W10 (three doc
+pages name only Fuseki, Garage and Zitadel) goes to task 3.3; S6 (Roadmap boxes) is fixed now.

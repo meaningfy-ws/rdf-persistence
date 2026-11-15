@@ -179,9 +179,8 @@ unused; letters mark cases added by the PLAN's attack).
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 (then the adversarial tester) · [ ] 1.6 ·
-  [ ] 1.7 — PR 1
-- [ ] 2.1 · [ ] 2.2 — PR 2
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 (then the adversarial tester) · [x] 1.6 ·
+  [x] 1.7 · [x] 2.1 · [x] 2.2 — PR #124 (stages 1 and 2 as one PR, D-3)
 - [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 — PR 3 (the last merge)
 
 1.1, 1.2 and 1.3 touch disjoint files and may run in parallel; 1.4 after 1.2 (both in

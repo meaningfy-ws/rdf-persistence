@@ -20,6 +20,7 @@ from rdf_persistence.domain.exceptions import (
 from rdf_persistence.domain.generated.rp_provenance import Activity, Add, Replace
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.messagebus import Work
+from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import (
     FakeStore,
     InMemoryBroker,
@@ -210,3 +211,33 @@ async def test_an_observer_that_exceeds_the_message_limit_is_logged_at_error_and
     assert [r.levelno for r in caplog.records if r.name == LOGGER] == [logging.ERROR]
     await restarted(world)
     assert [r.levelno for r in caplog.records if r.name == LOGGER] == [logging.ERROR], "acked"
+
+
+async def test_a_key_error_while_handing_over_leaves_the_message_unacked(
+    world, monkeypatch
+) -> None:  # D-8
+    async def broken(self, activity_iri: str) -> bool:
+        raise KeyError("a lookup that is not a missing tenant")
+
+    monkeypatch.setattr(Session, "is_recorded", broken)
+    await sent(world)
+    assert len(world.there.activities) == 1, "not handed over"
+    monkeypatch.undo()
+    await restarted(world)
+    assert len(world.there.activities) == 2, "redelivered: the failure was not a skip"
+
+
+async def test_an_application_activity_without_an_application_class_is_logged_and_acked(
+    world, caplog, monkeypatch
+) -> None:  # D-6
+    def no_application(principal: str):
+        raise LookupError("the schema declares no application class")
+
+    monkeypatch.setattr(world.cat.kit, "application_session", no_application)
+    caplog.set_level(logging.DEBUG, LOGGER)
+    await sent(world, tenant=world.cat.kit.tenancy.application)
+    assert len(world.there.activities) == 1
+    assert [r.levelno for r in caplog.records if r.levelno > logging.DEBUG] == [logging.WARNING]
+    monkeypatch.undo()
+    await restarted(world)
+    assert len(world.there.activities) == 1, "acked"

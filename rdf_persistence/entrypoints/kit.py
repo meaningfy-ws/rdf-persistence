@@ -248,16 +248,22 @@ class ServiceKit:
         """Publish ``activity`` to ``bus`` in a session of the toolkit on ``tenant``, once the store answers."""
         toolkit = self.tenancy.toolkit.id
         try:
-            async with (
+            # only a schema with no application class is a skip (D-6); a LookupError later is a failure
+            opening = (
                 self.application_session(toolkit)
                 if tenant == self.tenancy.application
                 else self.session(tenant, toolkit)
-            ) as session:
+            )
+        except LookupError as error:
+            log.warning("skipped %s: %s", activity.id, error)
+            return
+        try:
+            async with opening as session:
                 await session.is_recorded(
                     activity.id
                 )  # the probe: the database is there, the store answers
                 await bus.publish(activity, session)
-        except (DatabaseGone, NotFound, LookupError) as error:
+        except (DatabaseGone, NotFound) as error:
             log.warning(
                 "skipped %s: this deployment has no tenant %s (%s)", activity.id, tenant, error
             )
