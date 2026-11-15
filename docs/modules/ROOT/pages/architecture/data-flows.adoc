@@ -201,6 +201,13 @@ update request, also a `rp:CommitMarker` (see <<commit>>).
 same bookkeeping as in a tenant database. No bucket, no access record. It is created at start-up when the schema has such a class.
 See xref:howto/application-data.adoc[Keep data that belongs to no project].
 
+|Every database (system, application, tenant)
+|`{base}toolkit/schema-stamps`, one graph
+|The *stamp*: one statement per schema, `<schema id> rp:dataSchemaVersion "<version>"`, the version
+the database's data follows. A database holds two: the toolkit's own metamodel and the consumer's
+root schema. It is not a tenant's graph: a step of a migration never changes it, and a restore copies
+it without rewriting its IRIs, after the in-memory migration has moved the stamps forward. See <<migrations>>.
+
 |Bucket `lib-t-…` (same name as the database)
 |any key the consumer picks
 |The bytes of a file. The toy library uses the scan's id as the key and stores it in the scan's
@@ -885,6 +892,7 @@ sequenceDiagram
   C->>D: restore
   D->>D: read manifest.json, check format, schema, IRI policy
   D->>D: read graphs.nq, parse the N-Quads
+  D->>D: migrate the parsed quads in memory to the running versions
   D->>T: restore(parsed quads, blob iterator)
   T->>T: draw T2, unused (private)
   T->>T: rewrite the IRIs from T to T2, check the graphs and the root
@@ -917,14 +925,18 @@ dumped. A dump that fails half-way has no `end`, so a restore refuses it.
 |Restore, checks
 |`kit.restore_tenant(src, creator)`
 |Before anything is created: the first member is `manifest.json` (at most 64 KiB) and the second
-`graphs.nq`, both regular files with UTF-8 names; the manifest's format, schema id and version and
-effective IRI policy equal the service's, and its `source_tenant_id` is the id of its
+`graphs.nq`, both regular files with UTF-8 names; the manifest's format, schema id and effective IRI policy equal the
+service's, its version is one of the versions of the service's chain for that schema and agrees with the
+dump's own stamp, and its `source_tenant_id` is the id of its
 `source_tenant`; the policy does not glue the tenant id to a letter, digit or variable. Mint `T2`
 (`Conflict` later if a concurrent create takes it first). Rewrite each IRI term of the graph names,
 subjects and objects under the base, replacing the old tenant id between delimiters with the new one
 (predicates, datatypes and literals are untouched). The schema-stamps graph is the one exception: its
-quads are copied as they are, and the dump is refused unless its stamps are exactly the versions the
-service runs, one statement per schema and nothing else. Every other quad must be in a graph the
+quads are copied without a rewrite. Right after the dump is parsed, and before the rewrite and the
+checks on its graphs, the pending migrations are applied to it in memory (`migrate_dataset`), so the
+rest of restore sees current data. The dump is refused
+unless its stamps graph holds one plain-string stamp per schema, each at a version of that schema's
+chain, and nothing else; after the migration the stamps are the versions the service runs. Every other quad must be in a graph the
 policy mints for `T2`, none in the default graph; the root must decode and pass the root validators. Restore
 checks this structure, not each aggregate against its shapes, so it trusts the graph content (only
 restore archives a deployment you trust wrote). The size budget: before each member is read, its size
@@ -951,6 +963,65 @@ which the existence check turns into a `PersistenceError`.
 |===
 
 The graphs are held in memory during both calls; blobs are streamed one at a time.
+
+[#migrations]
+== Start-up migrations
+
+_What does the service do at start-up when the schema has changed? What happens when a migration
+fails?_
+
+`install_service` makes the lifespan bring every database to the version of the running schema
+before it serves (`entrypoints/service.py`, `services/migration_runner.py`). The page
+xref:howto/migrate.adoc[Change a schema that has stored data] says what a developer writes; this
+section says what runs.
+
+[mermaid]
+....
+flowchart TD
+  A["system database: create if missing,<br/>guard the IRI policy"] --> B["application database:<br/>create if the schema needs it"]
+  B --> C["migrate the system database,<br/>then the application database"]
+  C -->|a migration fails| STOP["MigrationFailed:<br/>start-up stops"]
+  C --> D["sweep"]
+  D --> E["migrate each tenant,<br/>in order of IRI,<br/>not those being deleted"]
+  E -->|a migration fails| ASIDE["log the tenant,<br/>go on with the next one"]
+  E --> F["tenants that failed are set aside:<br/>Tenancy.behind"]
+  ASIDE --> E
+  F --> G["the app serves"]
+....
+
+The order is fixed. The shared databases come before the sweep because the sweep decodes the
+access records, and they must be in the shape the current model reads.
+
+For one database, the runner takes each schema in turn, the toolkit's first and the consumer's
+second, and does this:
+
+. Read the stamp of the schema in the database's `{base}toolkit/schema-stamps` graph. When there is
+  none, write the first version of the chain as the stamp, with a conditional insert (so two writers
+  leave one stamp), and read it back.
+. Find the pending migrations of the chain from that version. A stamp that is not a version of the
+  chain, or two stamps for one schema, is a failure.
+. For the first pending migration, send *one* SPARQL update request to that database: every step
+  in order; when there is at least one step, the replacement of the version token of every graph
+  that has one; last, the move of the stamp from `from` to `to`. Every operation matches only under
+  the `from` stamp, and the store applies the request atomically.
+. Read the stamp back. `to`, or a later version of the chain, means the migration is done, whoever
+  did it, and the runner goes on from the stamp it read. A stamp that is missing, unknown or earlier
+  than `to` is a failure.
+
+Because the stamp is the guard, a second start, or a second instance starting at the same time,
+sends a request that matches nothing. No lock is used. A failure leaves the data and the stamp as
+they were, because the request was atomic.
+
+*What a failure does.* A failed migration of the system or application database raises
+`MigrationFailed`, is logged, and stops start-up. A failed migration of a tenant is logged and the
+next tenant runs. At the end, `Tenancy.set_aside` replaces the set `Tenancy.behind`, held in the
+memory of this instance. `Tenancy.tenant_session` raises `TenantBehind` for a tenant in the set, and
+the service answers `503` with the problem `tenant-behind`. What does not go through
+`tenant_session` is unchanged: the tenant's access record can be read, its grants changed and the
+tenant deleted; a dump and the live sweep use the store directly. A rename writes the tenant's root,
+so it answers `503`. The tenant leaves the set only at a later start, when its migration succeeds.
+
+A restore (see <<dump-restore>>) also meets the stamps: it migrates the parsed dump in memory, then copies the stamps graph without rewriting its IRIs.
 
 [#rules]
 == Rules and checks
@@ -1018,6 +1089,12 @@ from the templates; a create body may not name an `id` or a part
 |The access check
 |A `deleting` or missing tenant (`NotFound`)
 |404
+
+|*Tenant behind its schema.* A tenant whose migration failed at start-up is set aside until a later
+start migrates it
+|`Tenancy.tenant_session`, the one door of every read and write of a tenant's data
+|`TenantBehind`
+|503 (`tenant-behind`)
 
 |*No live sweep of a dying tenant*
 |`kit.sweep_tenant` (a Python call, no HTTP route)

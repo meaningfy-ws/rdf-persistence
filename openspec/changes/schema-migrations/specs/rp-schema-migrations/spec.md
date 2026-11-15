@@ -3,9 +3,11 @@
 ### Requirement: Each database records the schema version its data follows
 
 Every database (the system database, the application database and each tenant's) SHALL record, per
-schema, the version of that schema its stored data follows, and the service SHALL not serve a
-tenant's aggregates while that version is behind the schema it runs. A new tenant SHALL record the
-running versions when it is created.
+schema, the version of that schema its stored data follows, as one plain-string statement in the
+database's schema-stamps graph. A service instance SHALL not read or write the aggregates of a
+tenant whose migration failed at that instance's start-up; it SHALL still let the tenant's record
+be read, its grants be changed, the tenant be deleted or dumped. A tenant, system or application
+database created by a service SHALL record the versions that service runs.
 
 #### Scenario: a new tenant
 - **GIVEN** a library service whose schema is at version 2
@@ -54,8 +56,9 @@ version and a migrations folder.
 
 At start-up the toolkit SHALL apply each pending migration to each database once, in the order of
 the chain of versions, the toolkit's own before the consumer's, changing the data and the recorded
-version in one atomic request, and a migration that fails SHALL leave that database's data and
-recorded version as they were before it. A failing tenant SHALL not stop the other tenants; a
+version in one atomic request per migration, and a migration that fails SHALL leave that
+database's data and recorded version as they were before that migration (migrations of the chain
+that succeeded before it stay applied). A failing tenant SHALL not stop the other tenants; a
 failing system or application database SHALL stop the service from starting.
 
 #### Scenario: a renamed slot
@@ -85,9 +88,16 @@ failing system or application database SHALL stop the service from starting.
 
 ### Requirement: A dump carries the version of its data and a restore migrates it
 
-A dump's manifest SHALL record the schema version the tenant's data follows, and a restore SHALL
-accept a dump of the service's schema at any version of its chain, migrate the restored tenant to
-the running version before it is served, and refuse a dump with no version or an unknown one.
+A dump's manifest SHALL record the schema version the tenant's data follows (its stamp; none when
+the tenant has no stamp), and a restore SHALL accept a dump of the service's schema at any version
+of its chain, migrate it to the running versions in memory before its graphs and root are checked and imported, and
+refuse, creating nothing, a dump with no version, an unknown one, or one whose manifest version
+differs from the stamp the dump holds.
+
+#### Scenario: a dump whose manifest disagrees with its stamp
+- **GIVEN** a dump whose manifest records version 2 while its stamps graph holds version 1
+- **WHEN** it is restored
+- **THEN** the service refuses it, naming both versions, and creates nothing
 
 #### Scenario: restoring an older dump
 - **GIVEN** a dump of a library tenant taken at version 1 and a service at version 2 with its migration

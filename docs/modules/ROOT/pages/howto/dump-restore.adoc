@@ -49,8 +49,8 @@ with open("library.rpdump", "rb") as src:
 * The new tenant has a *new id and new IRIs*: every IRI of the old tenant that holds its id is
   rewritten to hold the new one (minted by the xref:howto/adopt.adoc#iri-policy[IRI policy]), so the
   copy can live beside the original. The one exception is the record of the schema versions the
-  data follows: it is copied as it is, and a restore refuses a dump whose record is not exactly the
-  versions the service runs. Anything outside your data that points at an old IRI, a link in
+  data follows: it is copied as it is, after any migration, and a restore refuses a dump whose
+  record holds anything but one stamp per schema at a version of its chain. Anything outside your data that points at an old IRI, a link in
   an e-mail or another system, points at the original, not the copy.
 * `creator` is the only grantee of the new tenant, with the settings' `creator_role`
   (see xref:howto/adopt.adoc#tenancy[Create tenants]), as when you create a tenant.
@@ -126,8 +126,10 @@ The manifest holds:
 |The installed `rdf-persistence` version, or `unknown` when run from an uninstalled source tree.
 
 |`schema_id`, `schema_version`
-|The schema the data conforms to. `schema_version` is absent (`null`) when the schema declares no
-`version`. A LinkML schema declares it in its top-level `version:` key.
+|The schema the data conforms to. `schema_version` is the version the tenant's own data follows,
+read from the tenant's stamp, not the version the running service has. It is absent (`null`) when
+the tenant holds no stamp, and a restore refuses such a dump. A LinkML schema declares it in
+its top-level `version:` key.
 
 |`source_tenant`, `source_tenant_id`
 |The IRI and the id of the tenant that was dumped.
@@ -160,10 +162,15 @@ The format is a contract: a change to it raises `format_version`.
 slug, templates, id rules) and names the fields that differ. A dump restores into the deployment that
 made it, or into one that shares its policy.
 
-*Same schema id and version.* Restore refuses a dump of another schema id or version. *Declare a
-`version` in your schema's top-level `version:` key*: without one, two versions of the schema cannot
-be told apart, and a dump of an older one restores without complaint and fails later, when a replace
-breaks its shapes.
+*Same schema id; any version of the chain.* Restore refuses a dump of another schema id. It accepts
+a dump at any version of your migration chain: it applies the pending migrations to the restored
+data, before its graphs and root are checked and imported, so the new tenant follows the running
+version (see xref:howto/migrate.adoc#dump[Change a schema that has stored data]). The manifest and
+the stamps are checked before the migration. It refuses, with `InvalidBody`
+and before it creates anything: a dump with no `schema_version`, a version or a stamp that no chain
+knows, a manifest whose `schema_version` differs from the dump's own stamp, a dump with no stamps graph, a stamps graph that holds anything but stamps, and a dump whose
+migration fails. Your schema must declare a quoted `version:` (its top-level `version:` key), which
+`rp-generate` requires when you use a `migrations` folder.
 
 *No template that glues the tenant id to a letter or digit.* The rewrite replaces the old id where
 it stands between delimiters (a character other than a letter or digit, or the end of the IRI). It
@@ -264,7 +271,8 @@ a member that is not a regular file; a member name that is not UTF-8
 |A manifest over 64 KiB, or one that does not validate
 |Nothing created.
 
-|Another format version, schema id or version, or IRI policy; a policy that glues the id
+|Another format version, schema id or IRI policy; a manifest with no `schema_version`, or one that
+is not a version of the chain; a policy that glues the id
 |Nothing created.
 
 |A manifest whose `source_tenant_id` is not the id of its `source_tenant`
@@ -274,7 +282,9 @@ a member that is not a regular file; a member name that is not UTF-8
 schema versions apart); a root that is missing, does not decode, or that a root validator refuses
 |Nothing created.
 
-|A record of schema versions that is not exactly the versions the service runs
+|A record of schema versions that is missing, holds a stamp no chain knows, holds a stamp that
+differs from the manifest's `schema_version`, or holds anything but stamps; a migration of the dump
+that fails
 |Nothing created.
 
 |More decompressed bytes than `max_restore_bytes`, found before the blobs

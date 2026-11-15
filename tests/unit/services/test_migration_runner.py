@@ -7,12 +7,10 @@ store is the fake, which applies a request atomically.
 
 import asyncio
 import logging
-from pathlib import Path
 from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
-import yaml
 from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import DCTERMS
 
@@ -24,7 +22,6 @@ from rdf_persistence.domain.exceptions import (
     TenantBehind,
 )
 from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.service.rp_service import Migration, MigrationStep
 from rdf_persistence.domain.iris import Iris, graph_iri, skolem_iri, stamps_graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.documents import Documents
@@ -36,7 +33,6 @@ from rdf_persistence.services.migration_runner import (
 )
 from rdf_persistence.services.migrations import (
     Chain,
-    load_chain,
     migration_request,
     stamp_if_none,
     stamps,
@@ -50,41 +46,24 @@ from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.toy import ADA, SETTINGS, TOY_SCHEMA, dune, library_slots, toy_mapper
 from tests.unit.services.conftest import GENERATED
+from tests.unit.services.migration_helpers import (
+    ISBN,
+    LIB,
+    MID_ISBN,
+    OLD_ISBN,
+    RP,
+    chain_of,
+    migration,
+    rename,
+)
 from tests.unit.services.test_tenant_sweep import HOUR, make_world
 
-LIB = "https://example.org/ns/library"
-RP = "https://meaningfy.ws/ns/rdf-persistence"
 STAMPS = stamps_graph_iri(SETTINGS.base)
-ISBN = URIRef("http://purl.org/ontology/bibo/isbn")
-OLD_ISBN = URIRef("https://example.org/ns/library#oldIsbn")
-MID_ISBN = URIRef("https://example.org/ns/library#midIsbn")
 CREATOR = Principal(id=ADA)
 ALL = "SELECT ?g ?s ?p ?o WHERE { GRAPH ?g { ?s ?p ?o } }"
 
 
 # -- chains ---------------------------------------------------------------------------------------
-
-
-def rename(old: URIRef, new: URIRef) -> MigrationStep:
-    return MigrationStep(
-        title=f"rename {old}",
-        where_pattern=f"?s <{old}> ?o .",
-        delete_pattern=f"?s <{old}> ?o .",
-        insert_pattern=f"?s <{new}> ?o .",
-    )
-
-
-def migration(schema: str, old: str, new: str, *steps: MigrationStep) -> Migration:
-    return Migration(schema_id=schema, from_version=old, to_version=new, steps=list(steps) or None)
-
-
-def chain_of(folder: Path, schema: str, *migrations: Migration, current: str) -> Chain:
-    """The chain of the migration files written to ``folder``, ending at ``current``."""
-    folder.mkdir(parents=True, exist_ok=True)
-    for one in migrations:
-        name = f"{one.from_version}__{one.to_version}.yaml"
-        (folder / name).write_text(yaml.safe_dump(one.model_dump(exclude_none=True)), "utf-8")
-    return load_chain(folder, schema, current)
 
 
 @pytest.fixture

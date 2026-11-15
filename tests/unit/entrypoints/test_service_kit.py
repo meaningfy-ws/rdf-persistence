@@ -2,6 +2,7 @@
 
 import io
 import re
+import shutil
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -9,6 +10,7 @@ from datetime import timedelta
 
 import httpx
 import pytest
+import yaml
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from rdflib import RDF, Literal, URIRef
@@ -21,10 +23,12 @@ from rdf_persistence.domain.exceptions import (
     NotFound,
 )
 from rdf_persistence.domain.generated.rp_access import Action, Grant
+from rdf_persistence.domain.generated.service.rp_service import Migration
 from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.entrypoints.service import install_service
-from rdf_persistence.services.vocabulary import ANNOTATION, HAS_TARGET
+from rdf_persistence.services.migrations import stamps
+from rdf_persistence.services.vocabulary import ANNOTATION, HAS_TARGET, metamodel
 from rdf_persistence.testkit import FakeStore
 from tests.fixtures.library import generated
 from tests.toy import REVIEW_WORKFLOW, ROLES, SETTINGS, TOY_MIGRATIONS, TOY_SCHEMA
@@ -33,6 +37,8 @@ from tests.toy_service import CONSUMER_POLICY, DUNE_BODY, TENANT_BODY, ToyServic
 PROBLEMS = f"{SETTINGS.base}problems/"
 FILE_KEY = URIRef("https://meaningfy.ws/ns/rdf-persistence#fileKey")
 A_UUID = "6f1c0c1e-0000-4000-8000-000000000001"
+LIBRARY_SCHEMA = "https://example.org/ns/library"
+TOOLKIT_SCHEMA = "https://meaningfy.ws/ns/rdf-persistence"
 
 
 async def made(client: httpx.AsyncClient, headers: dict[str, str]) -> tuple[str, str, str]:
@@ -564,3 +570,42 @@ async def test_a_transition_through_the_kit_records_the_caller_as_its_agent(scen
     assert record.was_associated_with == [principal_of("ada")], "the caller is the agent"
     assert record.transition_comment == ready.id, "the record names the comment of the thread"
     assert record.to_state_iri.endswith("/in_review"), "the book moved to review"
+
+
+async def test_the_kit_restores_a_dump_of_an_older_version_and_migrates_it(
+    service, client, tmp_path
+) -> None:
+    """PD-25.10: the dump is of the schema at version 1; the kit that restores it runs version 2 and has its migration."""
+    headers = {"Authorization": f"Bearer {service.signer.issue(sub='ada')}"}
+    path = (await client.post("/libraries", json=TENANT_BODY, headers=headers)).headers["location"]
+    tenant = service.kit.tenant_iri(path.rsplit("/", 1)[1])
+    archive = io.BytesIO()
+    await service.kit.dump_tenant(tenant, archive)
+
+    schema_folder, migrations = tmp_path / "library", tmp_path / "migrations"
+    shutil.copytree(
+        TOY_SCHEMA.parent,
+        schema_folder,
+        ignore=shutil.ignore_patterns("generated", "golden", "web"),
+    )
+    library = schema_folder / TOY_SCHEMA.name
+    library.write_text(
+        library.read_text("utf-8").replace('version: "1"', 'version: "2"', 1), "utf-8"
+    )
+    migrations.mkdir()
+    step = Migration(schema_id=LIBRARY_SCHEMA, from_version="1", to_version="2")
+    (migrations / "1__2.yaml").write_text(
+        yaml.safe_dump(step.model_dump(exclude_none=True)), "utf-8"
+    )
+    newer = ToyService(service.store, service.files, schema=library, migrations=migrations)
+
+    summary = await newer.kit.restore_tenant(
+        io.BytesIO(archive.getvalue()), "https://example.org/people/bob"
+    )
+
+    record, _ = await newer.kit.tenancy.get(summary.id)
+    held = await stamps(newer.store, record.database_name, newer.kit.tenancy.stamps_graph)
+    assert held[LIBRARY_SCHEMA] == "2", "the restored tenant is at the version the kit runs"
+    assert held[TOOLKIT_SCHEMA] == metamodel().schema.version, (
+        "and the toolkit's stamp is unchanged"
+    )

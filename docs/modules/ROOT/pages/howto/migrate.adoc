@@ -1,0 +1,715 @@
+= Change a schema that has stored data
+:description: How to change a LinkML schema once data is stored: set a new version, review the migration that rp-generate drafts, deploy it, and recover a tenant that is set aside.
+
+_My schema changed and I have stored data: what do I do? What does the toolkit do for me, and what
+must I write myself?_
+
+Every example uses the toy library of the toolkit's repository (`tests/fixtures/library/`): the
+classes `Book`, `Chapter`, `Note` and `Shelf`, in the namespace `https://example.org/ns/library#`.
+`Book` has the class IRI `http://purl.org/ontology/bibo/Book` (`class_uri: bibo:Book`). The page is
+about data that is already stored. For a schema with no data yet, see
+xref:howto/adopt.adoc[Build an application, step 4]. How the lock and its rules are built is
+on xref:architecture/generation.adoc[Model to code]; where the stamp lives and what start-up does is
+on xref:architecture/data-flows.adoc#migrations[Where data lives and what each operation does].
+
+[#terms]
+== Terms
+
+Words this page introduces:
+
+*The lock*:: `schema.lock.json`, a file `rp-generate` writes in your `migrations` folder. It records
+what your schema stores. `rp-generate` compares the schema with it to see what changed.
+*A migration file*:: A YAML file `<from>__<to>.yaml` that moves stored data from one schema version
+to the next.
+*A step*:: One entry in a migration file. It is a rewrite of stored triples: a rename, a delete, a
+new value.
+*The chain*:: The migration files of one schema, in order, from its first version to the one that
+runs. Two chains run: the toolkit's own (for its metamodel, shipped with the toolkit) and yours. At
+start-up the toolkit's chain runs first, then yours.
+*The stamp*:: The version a database records for a schema: its data follows that version. Every
+database has one stamp per chain.
+*A tenant set aside*:: A tenant whose migration failed at start-up. Its data requests answer `503`
+until a later start-up migrates it (<<behind>>).
+
+Terms the adoption guide explains; read there if one is new to you:
+
+* tenant, and the access record: xref:howto/adopt.adoc#tenancy[Create tenants];
+* aggregate, root class, owned part, `rp_path`, `rp_iri_type`:
+  xref:howto/adopt.adoc#model[Write the model];
+* version token (`ETag`) and the conflict a stale one causes:
+  xref:howto/adopt.adoc#handle-a-conflict[Handle a conflict];
+* loaded graph and registry:
+  xref:howto/adopt.adoc#files[Keep files];
+* sweep: xref:howto/adopt.adoc#sweep-live-tenant[Sweep a live tenant];
+* grants and principal: xref:howto/adopt.adoc#access[Control access].
+
+== Common questions
+
+*What do I do when I change a schema that has stored data?*::
+Set a new quoted `version:` in the root schema, run `make generate`, and read what it says.
+See <<change>>.
+
+*Which changes need nothing, and which need me?*::
+Adding a class, an optional slot or an enum value needs nothing. Removing or renaming a slot, or
+making a slot required, needs a migration file. See <<rules>>.
+
+*How do I rename a slot without losing its data?*::
+Turn the drafted `drop` step into a rename by adding an `insert_pattern`. See <<rename>>.
+
+*What can I not migrate?*::
+A root class's IRI type, path or database, and whether a slot's values are owned parts. See
+<<cannot>>.
+
+*When does a migration run?*::
+At start-up, once per database, in order, in one atomic request. See <<startup>>.
+
+*What do I do before I deploy?*::
+Dump every tenant, try the migration by restoring that dump into the new release, and stop the old
+instances before you start the new ones. See <<deploy>>.
+
+*A tenant answers 503 `tenant-behind`. What now?*::
+Its migration failed at start-up. Read the log, fix the cause, ship the fix and restart every
+instance. Rolling back the shared databases needs a backup of the store taken before you deployed;
+a restore of dumps makes new tenants and does not change their stamps. See <<behind>>.
+
+*Can I undo a migration?*::
+No. There are no down-migrations. Restore a dump taken before it. See <<no-down>>.
+
+*I do not use `install_service`. Do I still migrate?*::
+Yes. See xref:howto/application-data.adoc[Keep data that belongs to no project].
+
+[#change]
+== 1. What you do when the schema changes
+
+. Edit the schema, for example rename the slot `lib:shelf` of `Book` to `lib:shelfMark`.
+. Raise the `version:` of the root schema. Write it as a *quoted* string:
++
+[source,yaml]
+----
+id: https://example.org/ns/library
+name: library
+version: "2"
+----
++
+An unquoted `version: 2` is refused. YAML reads `1.10` as the number `1.1` and drops the zero, so
+the quotes keep the version as you wrote it. The versions are names, not numbers: their order is
+the order of the migration files (<<file>>).
+. Run `make generate` (it runs `rp-generate`). Read what it prints.
+. Review the migration file it drafted in your `migrations` folder, finish it, and commit the
+schema, the generated code, `schema.lock.json` and the migration together.
+
+`rp-generate` keeps a lock, `<migrations>/schema.lock.json`, next to the migrations. It records what
+the schema stores: per stored class its IRI, IRI type, path and database, and per slot its IRI,
+range, `required`, `multivalued` and `inlined`; per enum the IRI of each value. On each run it
+compares the schema with the lock. Never edit the lock by hand: it is generated.
+
+The folder is named in `[tool.rp-generate]`:
+
+[source,toml]
+----
+# pyproject.toml
+[tool.rp-generate]
+schema = "library.yaml"
+package = "library.domain.generated"
+migrations = "migrations"
+----
+
+`install_service` takes the same folder as its required argument `migrations`.
+
+=== What `rp-generate` prints
+
+A problem is printed on stderr, one line each, and the run exits with 1. The line starts with the
+schema file and the name of the check. The messages below are the toolkit's own words.
+
+*A draft was written.* The run succeeds and prints one line. Open the file, finish it, commit it:
+
+----
+rp-generate: drafted <migrations>/1__2.yaml: review it before you commit
+----
+
+*The change needs a new version, and you did not raise it.* Nothing is written. Each change is
+named, then the fix:
+
+----
+library.yaml: lock check: slot removed (deletes data): <https://example.org/ns/library#shelf> of <http://purl.org/ontology/bibo/Book>: set a new `version:` in the root schema, then regenerate
+----
+
+The words before the first colon after `lock check:` say what changed. Others you may meet: `slot
+became required`, `slot added` (when the new slot is required), `multivalued became single`, `range
+changed from <old> to <new>`, `class removed`, `enum value removed`.
+
+*The change cannot be migrated.* Raising the version does not help. Nothing is written:
+
+----
+library.yaml: lock check: not migratable, inlined changed (data would move between graphs): <https://example.org/ns/library#chapters> of <http://purl.org/ontology/bibo/Book>
+----
+
+The other two not-migratable messages begin `not migratable, IRI type or path changed from ...` and
+`not migratable, database changed from ...`. See <<cannot>>.
+
+*A migration file still holds a draft step.* The next run, and `rp-generate --check`, print the
+file, the step and what the step needs:
+
+----
+library.yaml: lock check: migrations/1__2.yaml: step 1 (<title>): is a draft, unresolved: Write the step for this change, or remove it if no data needs moving: <the change>
+----
+
+*The root schema has no `version:`, or an unquoted one, or the target has root classes and no
+`migrations` folder.* `rp-generate` fails in its hard check, with these messages:
+
+----
+library.yaml: hard check: [quoted_version] library.yaml: a target with migrations needs a root `version:`
+library.yaml: hard check: [quoted_version] library.yaml: `version: 2` must be a quoted string (`version: "2"`): an unquoted number loses its zeros
+library.yaml: hard check: [migrations_folder] Book: a target that stores its own root classes needs a `migrations` folder in its [tool.rp-generate] entry
+----
+
+`rp-generate` never overwrites a migration file that exists.
+
+*Run the check in CI.* `rp-generate --check` (or your project's own check target that runs it)
+writes nothing. It fails on a step still marked `unresolved`, on a change that needs a new version,
+on a change that cannot be migrated, and on a lock or generated file that is out of date. Without
+it, a half-written migration can reach `develop`, and the service refuses to start with it.
+
+[#rules]
+== 2. The rules: what a change needs
+
+[cols="3,2,4",options="header"]
+|===
+|Change to the schema |Rule |What `rp-generate` does
+
+|Nothing stored changed, version unchanged
+|nothing
+|Nothing.
+
+|Nothing stored changed, version raised
+|safe
+|Rewrites the lock and writes a migration with no steps.
+
+|First run, no lock yet
+|bootstrap
+|Writes the lock. No migration.
+
+|A class added; a slot added that is not required; `required` removed; a slot made multivalued;
+an enum value added
+|safe
+|Rewrites the lock. With a new version, writes a migration with no steps.
+
+|A slot removed from a class (a rename shows this way too)
+|destructive
+|Needs a new version. Drafts a `drop` step that deletes the data of the slot.
+
+|A class IRI gone; a new slot that is `required`; `required` set on an existing slot; a slot made
+single-valued; the range of a slot changed; an enum value gone
+|needs a step
+|Needs a new version. Drafts a step marked `unresolved`, naming the change. You write the step.
+
+|A root class's IRI type (`rp_iri_type`), `rp_path` or database changed; a slot's `inlined`
+changed
+|not migratable
+|Fails. A step cannot change an IRI or move data between graphs or databases. See <<cannot>>.
+
+|Any change that is not safe, version unchanged
+|refused
+|Fails, naming the changes: set a new `version:`.
+
+|The lock has another schema id; the new version is one the chain already left; the lock is
+unreadable
+|refused
+|Fails.
+|===
+
+A rename looks like a slot gone plus a slot added. `rp-generate` never guesses a rename. It drafts
+a drop, and you turn the drop into a rename (<<rename>>).
+
+If the renamed slot is required, `rp-generate` shows two changes: the old slot removed (a drafted
+`drop` step) and the new slot added as required (an `unresolved` step). Replace both steps with the
+one rename step of <<rename>>. It gives every book the new slot with the old value, so the
+`unresolved` step has nothing left to do. If the old slot was optional and the new one is required,
+books that never had a value still lack one: add the step of <<required>> for them.
+
+Why some changes are safe and the reverse is not:
+
+* *Single to multivalued is safe.* A stored single value is already a valid list of one value.
+* *Multivalued to single needs a step.* A graph may hold several values for the slot, and the
+  toolkit cannot choose one. The step must keep one value per subject and delete the others, by a
+  rule you write.
+* *Range changed needs a step.* The stored values are of the old range. The step must rewrite each
+  value into the new range, or delete it.
+
+[#file]
+== 3. The migration file
+
+One file per version step, in the `migrations` folder, named `<from>__<to>.yaml`. The toy library
+going from version `"1"` to `"2"` has `1__2.yaml`. In a file name, every character outside
+`A-Z a-z 0-9 . -` is written as `_`. The fields inside the file are the truth, and a file whose
+name does not match its fields is refused.
+
+The files of one schema must form one line that ends at the schema's current version: no fork, no
+gap, no cycle, no two files for one step. With no file, the chain is the current version alone.
+The lock sits in the same folder and is not part of the chain.
+
+A file has these fields:
+
+[cols="2,5",options="header"]
+|===
+|Field |Meaning
+
+|`schema_id`
+|The id of the schema the migration belongs to.
+
+|`from_version`, `to_version`
+|The two versions, quoted.
+
+|`description`
+|A sentence for the reviewer.
+
+|`steps`
+|A list of steps. It may be empty.
+|===
+
+A step has one form:
+
+[cols="2,5",options="header"]
+|===
+|Field |Meaning
+
+|`title`
+|A short name, shown in the log and in errors. Required.
+
+|`where_pattern`
+|Which triples to match. Required, unless the step is `unresolved`.
+
+|`delete_pattern`
+|The triples to delete.
+
+|`insert_pattern`
+|The triples to insert. A step needs at least one of `delete_pattern` and `insert_pattern`.
+
+|`unresolved`
+|Text that `rp-generate` puts on a step it could not write for you. While a step has it, the file
+does not load: `rp-generate` and the service refuse it. To finish the step, delete the `unresolved`
+line and write `where_pattern` and the patterns. If no data needs to change, delete the whole step.
+|===
+
+Each pattern is the text of a SPARQL group graph pattern, the part between the braces. The toolkit
+builds the request around your patterns:
+
+[source,sparql]
+----
+DELETE { GRAPH ?rp_graph { <delete_pattern> } } INSERT { GRAPH ?rp_graph { <insert_pattern> } }
+WHERE { GRAPH <stamps> { <schema id> rp:dataSchemaVersion "<from>" }
+        GRAPH ?rp_graph { <where_pattern> }
+        FILTER (?rp_graph != <stamps>)
+        MINUS { GRAPH ?rp_registry { ?rp_graph rp:kind <loaded-graph kind> } }
+        FILTER NOT EXISTS { GRAPH ?rp_graph { ?rp_entry rp:kind ?rp_kind } } }
+----
+
+So a step:
+
+* works inside one graph at a time and never moves data between graphs;
+* never touches a loaded graph (loaded files follow their own vocabularies), a registry graph or
+  the stamps graph;
+* does nothing once the database has moved past the `from` version.
+
+`?rp_graph` is the IRI of the graph a step is working in. You may use it in a pattern.
+
+A pattern takes full IRIs in angle brackets (`<https://example.org/ns/library#shelf>`). A prefixed
+name such as `lib:shelf` is refused: the request has no `PREFIX` lines. A `FILTER`,
+`FILTER NOT EXISTS`, `OPTIONAL` or `BIND` inside `where_pattern` is allowed.
+
+A pattern may not contain:
+
+* a blank node (`_:`, `[`, or a collection `(`) in `delete_pattern` or `insert_pattern`: insert IRIs
+  and literals instead;
+* `GRAPH` or `SERVICE`;
+* a variable that starts with `?rp_`, other than `?rp_graph`;
+* a codepoint escape (`\u` or `\U`): write the character itself;
+* in `delete_pattern` or `insert_pattern`, one of the toolkit's own predicates: `rp:version`,
+  `rp:kind` and the predicate of the stamp (`rp:dataSchemaVersion`). A step may read them, not
+  write them.
+
+Each pattern must parse on its own as a group. A pattern of more than about a hundred triple
+patterns is refused as too long to check: split the step into smaller steps. A key given twice in
+the YAML is refused too. A failure is an `InvalidMigration` that names the file and the step.
+
+*If you write `?s ?p ?o`, add `FILTER (?s != ?rp_graph)`.* A pattern that matches every predicate
+can match what the toolkit keeps in the graph: its version token, and registry statements. Without
+the filter the step may delete them, and nothing warns you. The toolkit allows such a step because
+removing every triple of a class is a legitimate thing to do, and it cannot tell the two apart. The
+filter leaves the graph's own statements alone:
+
+[source,yaml]
+----
+steps:
+  - title: DROP every statement of lib:Note
+    where_pattern: "?s a <https://example.org/ns/library#Note> . ?s ?p ?o . FILTER (?s != ?rp_graph)"
+    delete_pattern: "?s ?p ?o"
+----
+
+Never edit a migration that has been deployed. A database that is already stamped does not run it
+again. Add a new version and a new migration instead.
+
+== 4. Five recipes
+
+Each recipe is a complete step. Put it in the `steps` list of the file. The patterns match every
+triple in a graph, so an owned part (a chapter, a note) is migrated with its book, in the book's
+graph.
+
+[#rename]
+=== Rename a slot's IRI
+
+`Book` had `lib:shelf`; it now has `lib:shelfMark`. Schema version `"1"` to `"2"`.
+`rp-generate` drafts the drop below (the title and the first two patterns), with the class IRI and
+the slot IRI taken from the lock. Add `insert_pattern` to keep the data:
+
+[source,yaml]
+----
+# migrations/1__2.yaml
+schema_id: https://example.org/ns/library
+from_version: "1"
+to_version: "2"
+description: Rename lib:shelf to lib:shelfMark on Book.
+steps:
+  - title: RENAME lib:shelf to lib:shelfMark on Book
+    where_pattern: "?s a <http://purl.org/ontology/bibo/Book> ; <https://example.org/ns/library#shelf> ?o"
+    delete_pattern: "?s <https://example.org/ns/library#shelf> ?o"
+    insert_pattern: "?s <https://example.org/ns/library#shelfMark> ?o"
+----
+
+[#retype]
+=== Retype a class whose IRI changed
+
+`Book` moves from `class_uri: bibo:Book` to `class_uri: schema:Book`. Its stored `rdf:type`
+statements carry the old class. `rp-generate` drafts an `unresolved` step for "class IRI gone".
+Replace it with:
+
+[source,yaml]
+----
+steps:
+  - title: RETYPE bibo:Book to schema:Book
+    where_pattern: "?s a <http://purl.org/ontology/bibo/Book>"
+    delete_pattern: "?s a <http://purl.org/ontology/bibo/Book>"
+    insert_pattern: "?s a <http://schema.org/Book>"
+----
+
+This changes the class IRI, not the IRI of any stored book. A change to the IRI type or the path of
+a root class is another matter (<<cannot>>).
+
+[#drop]
+=== Drop a slot
+
+`Book` loses `lib:shelf`, and you do not want the data. This is exactly what `rp-generate` drafts.
+Its title says it deletes data. Check that it is what you mean, then keep it:
+
+[source,yaml]
+----
+steps:
+  - title: DROP <https://example.org/ns/library#shelf> of <http://purl.org/ontology/bibo/Book> (deletes data)
+    where_pattern: "?s a <http://purl.org/ontology/bibo/Book> ; <https://example.org/ns/library#shelf> ?o"
+    delete_pattern: "?s <https://example.org/ns/library#shelf> ?o"
+----
+
+The drafted file's `description` reads "Drafted by rp-generate from the schema change. Review every
+step." Replace it with your own sentence.
+
+[#required]
+=== Give a new required slot a value
+
+`Book` gains the required slot `lib:language`. Books already stored have none, so they would fail
+to read. `rp-generate` drafts a step with an `unresolved` line that names the change. Replace that
+step: delete the `unresolved` line and write the patterns.
+
+Choosing the value is your decision. It can be one default for every book, as below, or a value
+derived from other data of the same book, read in the `where_pattern`. `FILTER NOT EXISTS` in the
+`where_pattern` finds the books without one:
+
+[source,yaml]
+----
+steps:
+  - title: GIVE lib:language "en" to every Book without one
+    where_pattern: >-
+      ?s a <http://purl.org/ontology/bibo/Book> .
+      FILTER NOT EXISTS { ?s <https://example.org/ns/library#language> ?l }
+    insert_pattern: '?s <https://example.org/ns/library#language> "en"'
+----
+
+[#replace]
+=== Replace a value
+
+*An enum value.* The enum `Genre` loses `poetry` and gains `verse`. The stored value is the
+`meaning` IRI of the enum value, so the step swaps one IRI for the other (`poetry` has the meaning
+`schema:Poetry`; `verse` here has the meaning `lib:Verse`):
+
+[source,yaml]
+----
+steps:
+  - title: REPLACE genre schema:Poetry with lib:Verse
+    where_pattern: "?s <http://schema.org/genre> <http://schema.org/Poetry>"
+    delete_pattern: "?s <http://schema.org/genre> <http://schema.org/Poetry>"
+    insert_pattern: "?s <http://schema.org/genre> <https://example.org/ns/library#Verse>"
+----
+
+*A workflow state.* A workflow file that drops a state is not detected. Nothing in the toolkit
+warns you, and a transition from the dropped state conflicts. Migrate the data with a step on the
+status predicate, and carry it by a new schema version. The IRI of a state is the workflow's `id`,
+a slash and the state's name. The toy workflow `review` has the id
+`https://example.org/ns/library/workflows/review` and the states `draft`, `in_review` and
+`accepted`. The status predicate is `adms:status`, written as the full IRI
+`http://www.w3.org/ns/adms#status`. If `in_review` is dropped and its books go back to `draft`:
+
+[source,yaml]
+----
+steps:
+  - title: REPLACE state in_review with draft on adms:status
+    where_pattern: "?s <http://www.w3.org/ns/adms#status> <https://example.org/ns/library/workflows/review/in_review>"
+    delete_pattern: "?s <http://www.w3.org/ns/adms#status> <https://example.org/ns/library/workflows/review/in_review>"
+    insert_pattern: "?s <http://www.w3.org/ns/adms#status> <https://example.org/ns/library/workflows/review/draft>"
+----
+
+[#cannot]
+== 5. What cannot be migrated, and how to avoid it
+
+A step cannot change an IRI and cannot move data between graphs or databases. `rp-generate` fails
+on these changes, naming them:
+
+* *A root class's IRI type or `rp_path`.* The IRI of a stored book contains both, so every stored
+  IRI would change.
+* *A root class's database* (`tenant`, `application` or `system`). The data would be read from
+  another database.
+* *Whether a slot's values are owned parts* (`inlined`). It decides whether a value is a part in
+  the same graph or an object in its own graph. There is no migration for it in this version. The
+  change is refused at generation.
+
+To avoid the first, keep `rp_iri_type` and `rp_path` when you rename a root class. Rename `Book` to
+`Volume` and keep the IRI of its books by giving the new class the old values (the default IRI
+type is the class name, so `Volume` would otherwise give `volume`). Keep the `class_uri` too,
+unless you also write the retype step (<<retype>>):
+
+[source,yaml]
+----
+classes:
+  Volume:
+    class_uri: bibo:Book
+    mixins: [AggregateRoot, Described, Tracked]
+    annotations:
+      rp_path: books
+      rp_iri_type: book
+----
+
+A migration that changes IRIs is not supported in this version. The lock does not record the IRI
+type of an owned part. It matters only under a part template that writes the type, a setting
+`rp-generate` does not know, so check it yourself when you rename a class that is an owned part.
+
+[#rework]
+== 6. Reworking a version that is not merged yet
+
+You raised the version, `rp-generate` drafted a file, and you want to start again. Put the lock back
+from `develop`, delete the draft, and regenerate:
+
+[source,shell]
+----
+git checkout develop -- migrations/schema.lock.json
+rm migrations/1__2.yaml
+make generate
+----
+
+Do not rework a version that has been merged and deployed: add the next version instead.
+
+[#startup]
+== 7. What happens at start-up
+
+`install_service` builds both chains when the kit is built: the toolkit's own and yours. A bad chain
+stops the service with `InvalidMigration`, before it serves. Then the lifespan runs, in this order:
+
+. the system database is created if it is missing, and the IRI policy is guarded;
+. the application database is created if the schema has an application class and it is missing;
+. the system database, then the application database, are migrated. A failure here stops start-up
+  with `MigrationFailed`;
+. the sweep runs;
+. every tenant is migrated, in order of IRI, except tenants being deleted.
+
+The shared databases come before the sweep because the sweep reads the access records, and those
+must already be in the shape the current model reads.
+
+For each database, the toolkit's chain runs first and yours second. A database that holds no stamp
+for a schema is stamped with the first version of that chain, then migrated. For each pending
+migration, the toolkit sends one atomic request to the database: every step in order, then (when the
+migration has a step) a new version token for every graph that has one, then the move of the
+stamp from `from` to `to`. It then reads the stamp back. A failure leaves the database as it was
+before that migration. Migrations of the chain that already succeeded stay, each one was its own
+request.
+
+What follows from this:
+
+* *Once.* Every operation matches only under the `from` stamp. A second start, or a second instance
+  that starts at the same time, applies nothing twice.
+* *Clients re-read.* After a migration with at least one step, every graph has a new version
+  token (`ETag`), so every copy a client holds is stale. The client's next save of that copy fails
+  with a conflict. The client reads the graph again and retries. A migration with no steps leaves
+  the tokens alone. `dcterms:modified` and the contributors stay: a migration is not a user's edit.
+* *Loaded graphs untouched.* A step never changes a loaded graph, a registry graph or the stamps
+  graph.
+
+A database that a service creates is stamped with the current versions when it is created: the
+system database, the application database and each new tenant.
+
+*What it costs.* Each pending migration is one request per database. When nothing is pending,
+start-up still reads the stamps of every database: two queries per database (one per chain), about
+4 to 10 seconds for a thousand tenants, measured in review. A tenant with a very large amount of data may need a longer store
+timeout than the toolkit's. If the request outlasts the timeout, the tenant is set aside, and the
+store may still finish the request; the next start-up reads the stamp, finds it moved and serves
+the tenant. The toolkit has no separate timeout setting for migrations yet.
+
+[#deploy]
+== 8. Deploying a migration
+
+`kit` is the `ServiceKit` that `install_service` returns. The two calls below are Python only; the
+toolkit has no HTTP route for them. How to route and guard them is on
+xref:howto/dump-restore.adoc[Back up or copy a project].
+
+. *Dump every tenant first.* Do it before you deploy a migration with steps. There is no automatic
+  backup, and a wrong step changes the data in one clean transaction. The call is:
++
+[source,python]
+----
+with open("library.rpdump", "wb") as out:
+    manifest = await kit.dump_tenant(tenant, out)    # tenant is the tenant IRI: kit.tenant_iri(tenant_id)
+----
++
+`out` is a binary file object. The call blocks while it writes, so run it off the event loop. The
+call answers the manifest; `manifest.schema_version` is the version the tenant's data follows.
+. *Try the migration on a copy.* Build a service from the new release (a local one will do: same
+  schema, same IRI policy, a store and an object store of its own) and restore the dump into it:
++
+[source,python]
+----
+with open("library.rpdump", "rb") as src:
+    copy = await new_kit.restore_tenant(src, creator=principal)    # -> TenantSummary
+----
++
+`creator` is a principal IRI (a string). That principal gets the creator role in the new tenant and
+no one else gets a grant. A restore always creates a *new* tenant, with a new id and new IRIs. It
+never writes over an existing one, so the dump of the live tenant stays untouched.
++
+What success looks like: the call returns a `TenantSummary`, and the new tenant serves its data
+under the new schema (read a few aggregates, save one). What failure looks like: the call raises
+`InvalidBody` and creates nothing; for a failing step the message begins `the dump cannot be
+migrated: <from>__<to> of <schema id>:` and gives the cause.
++
+The restore applies the steps to the dump in memory, with the same request text the store would get.
+It does not run them on your store. A problem that only the store has (a timeout on a large tenant)
+does not show up here.
+. *Stop the old instances, then start the new ones.* An old instance that is still running writes
+  data in the old shape. Do not roll a deployment instance by instance.
+
+[#behind]
+== 9. A tenant set aside
+
+If a tenant's migration fails, the service logs it, sets that tenant aside and migrates the next
+one. A failure in the system or application database stops start-up instead.
+
+A tenant set aside keeps its previous data and stamp. A request for its data answers `503` with the
+problem `tenant-behind` (title "Tenant behind its schema"). A `503` carries no detail. Other tenants
+are served. A stamp that the chain does not know (data newer than the service), or two stamps for
+one schema, is the same failure.
+
+A tenant set aside still serves what does not read or write its data in the tenant's database:
+
+* its access record can be read, and its grants changed;
+* the tenant can be deleted;
+* a dump and the live tenant sweep work, because they use the store directly. That is how you
+  rescue its data.
+
+A rename answers `503` too, because it writes the tenant's root.
+
+*See it in the log.* The logger is `rdf_persistence.services.migration_runner`. Every record has the
+extra fields `step`, `schema` and `migration`:
+
+[cols="2,1,4",options="header"]
+|===
+|Record |`step` |Fields besides `step`
+
+|`error`: a tenant's migration failed
+|`migrate-tenant`
+|`tenant`, `schema`, `migration`, `cause`
+
+|`error`: a migration of the system or application database failed
+|`migrate-shared`
+|`database`, `schema`, `migration`, `cause`
+
+|`info`: a migration was applied
+|`migrate`
+|`database`, `schema`, `migration`
+|===
+
+`migration` reads `<from>__<to> of <schema id>`, for example `1__2 of https://example.org/ns/library`.
+It is empty when the stamp itself failed, for instance when no stamp could be written or the stamp
+is not one of the chain's versions. The `error` message reads `cannot migrate <database>: <migration>:
+<cause>`. Filter the log on the logger name and the `step` field to find these records.
+
+*Recover.* A tenant leaves the set aside only when a migration of it succeeds at a start-up. The set
+lives in the memory of each instance. So an operator does this, in order:
+
+. Read the log (above) and find the cause for the tenant.
+. Fix it: a migration with a wrong step, data the step cannot handle, or a store that was down.
+. If a migration needed fixing, ship it in a new release, then restart.
+. Restart every instance that set the tenant aside, also when the cause was passing (a store that
+  was down for a minute). Restarting migrates the tenant again. An instance that is not restarted
+  keeps answering `503` for it.
+. Check that the tenant answers.
+
+*Rolling back the release* is possible only with care. The tenant that failed still holds its old
+data and stamp, but the new release has already moved the system database, and the application
+database if there is one, to the new version. An older release does not know that stamp. For a
+tenant it sets the tenant aside, and for the system or application database it stops start-up with
+`MigrationFailed`. The same holds for the tenants the new release migrated: their stamp is new, and
+the older release sets them aside. A restore of dumps does not undo this: it makes new tenants and
+does not change the stamps of the shared databases. So roll back only with a backup of the store
+taken before the deployment, or do not roll back.
+The toolkit has no dump of the system database or of the application database. If a migration
+of your schema changes data there, or you may want to roll back, back up the store itself before
+you deploy, with the store's own backup (Fuseki's, for example), and restore that backup to roll
+back. Without such a backup, fix forward: release a corrected migration.
+
+[#see]
+=== See which version a database is at
+
+What exists:
+
+* Each migration that is applied writes one `info` record from the logger
+  `rdf_persistence.services.migration_runner`, message `migrated a database`, with `step`
+  `migrate` and the fields `database`, `schema` and `migration`. The log of a start-up lists the
+  steps taken.
+* A failed migration writes an `error` record (the table above) with the cause.
+* In code, `kit.tenancy.behind` is the set of tenants this instance set aside. It is in memory,
+  one instance's view.
+
+What does not exist yet:
+
+* no endpoint, no `kit` call and no command that answers "which version is this database at";
+* no list of tenants set aside outside the instance's memory and the log;
+* the log is the only history of which migrations ran, and the stamp holds only the latest version.
+
+[#dump]
+== 10. Dump and restore across versions
+
+A dump records the schema version the tenant's data follows (`schema_version` in the manifest).
+A restore accepts a dump of your schema at any version of the chain, migrates the restored data to
+the running version (in memory, with the pending migrations of both chains) before its graphs and
+root are checked and imported, and then the new tenant serves it. The manifest and the stamps are
+checked first. The migration runs in a worker thread, and its cost is bounded only by the steps: a
+step that joins a pattern with itself can grow the data, and a large dump is slow on rdflib
+(design RISK-12). For the toy library, a dump taken at `"1"`
+restores into a service at `"2"`, with `1__2` applied. The restore creates a new tenant every time.
+
+`kit.restore_tenant` refuses, with `InvalidBody` and nothing created: a dump with no version, a
+version or stamp that the chain does not know, a manifest whose version differs from the dump's own
+stamp, a dump with no stamps graph, a stamps graph with anything but one stamp per schema, and a
+dump whose migration fails.
+
+[#no-down]
+== 11. No down-migrations
+
+A migration has no reverse. If it failed, the tenant stays at its old data and stamp (see <<behind>>
+for what a rollback needs). If it succeeded and was wrong, restore a dump taken before it, which is
+why <<deploy>> asks for one. The restore makes a new tenant; the wrong one is deleted by you.

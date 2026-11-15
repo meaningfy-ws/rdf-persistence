@@ -125,7 +125,7 @@ marks an answer the developer delegated (seed, 2026-11-06) and may overrule.
   WHERE { GRAPH <stamps> { <schema id> rp:dataSchemaVersion "<from>" }
           GRAPH ?rp_graph { <where_pattern> }
           FILTER (?rp_graph != <stamps>)
-          FILTER NOT EXISTS { GRAPH ?rp_registry { ?rp_graph rp:kind <loaded-graph kind> } }
+          MINUS { GRAPH ?rp_registry { ?rp_graph rp:kind <loaded-graph kind> } }
           FILTER NOT EXISTS { GRAPH ?rp_graph { ?rp_entry rp:kind ?rp_kind } } }
   ```
 
@@ -202,10 +202,12 @@ marks an answer the developer delegated (seed, 2026-11-06) and may overrule.
 - **PD-12 No down-migrations (seed Q-5, leader's choice).** Rollback is: the failed tenant stays at
   its previous data and stamp, so the previous release serves it; for a migration that succeeded and
   was wrong, restore a dump taken before it. The how-to says to dump before deploying a migration
-  with steps.
+  with steps. RISK-11 narrows this: a previous release cannot start once the shared databases were
+  migrated, so a rollback needs a backup of the store taken before the deployment.
 - **PD-13 The toolkit's metamodel uses the same mechanism (seed Q-7, leader's choice).** `rp.yaml`
-  declares `version: "1"`; its target sets `migrations = "rdf_persistence/model/migrations"`; the
-  folder ships in the wheel, with a lock and no migration yet. A later change to an `rp_*` module
+  declares a `version:` (stage 1 set `"1"`; message-bus stage 2, #110, raised it to `"2"` with
+  `1__2.yaml`, no steps); its target sets `migrations = "rdf_persistence/model/migrations"`; the
+  folder ships in the wheel, with a lock. A later change to an `rp_*` module
   that stored data must follow adds a file there, in the same PR. A workflow file that drops a state
   is migrated by the consumer with a "replace a value" step on `adms:status`, carried by a new
   schema version; nothing detects it (as today: a transition from the dropped state conflicts).
@@ -223,14 +225,19 @@ marks an answer the developer delegated (seed, 2026-11-06) and may overrule.
   pending migrations of both chains with the same request text (`migrate_dataset`, rdflib's
   `Dataset.update`), so the rest of restore sees current data and stamps. A manifest with no
   version, a version or a stamp unknown to a chain, or a dump with no stamps graph is refused
-  (`InvalidBody`) before anything is created.
+  (`InvalidBody`) before anything is created. As built (task 3.1): `services/tenant_dump.py`
+  `restore` checks the manifest and the stamps, then calls `migrate_dataset` before `Tenancy.restore`,
+  whose stamps check now calls `stamp_problems`; `Tenancy` cannot call the runner without bringing back the import cycle PD-24 item 2
+  removed. The stamps rule is written once, `stamp_problems` in `services/migrations.py`, used by
+  the stage 2 refusal (the running versions only) and by `migrate_dataset` (any version of the
+  chain).
 - **PD-16 The application database is one more shared database (app-level-data).** Delivered in
-  stage 3, after PR #102 is in `develop` (developer, 2026-11-14: this session brings #102 in).
+  stage 2 (D-1), after PR #102 is in `develop` (developer, 2026-11-14: this session brings #102 in).
 - **PD-17 Layers (as amended by PD-22 and PD-24 item 2).** `domain`: `stamps_graph_iri`, the
   exceptions; `domain/sparql.py` builds SPARQL text and holds the one check of a step's pattern
   (`checked_group`). `services/migrations.py`: `load_migration`, `load_chain`, `chain_of`,
   `migration_file_name`, the request text, the stamp's read and conditional write (`stamps`,
-  `stamp_if_none`), the `SchemaChain` alias and the helpers `versions`, `first_version`,
+  `stamp_if_none`, `stamp_problems`), the `SchemaChain` alias and the helpers `versions`, `first_version`,
   `current_version`, `pending_from`; it imports neither `tenancy` nor the runner.
   `services/vocabulary.py`: `TOOLKIT_MIGRATIONS`, beside the metamodel's path.
   `services/migration_runner.py`: the runner on the `Store` port (`migrate_database`,
@@ -516,7 +523,79 @@ None.
   rated HIGH (the restore path), and PD-24 item 1 adds a refusal in `Tenancy.restore`. Both were
   built before the developer was asked, against the rule that a HIGH risk goes to the developer
   first; the lead reported it to the developer the same day. Both only add: a graph left alone, a
-  dump refused.
+  dump refused. The developer answered "Keep both" (2026-11-14). Asked before stage 3 about its
+  changes to the same path (`tenant_dump.restore` and its manifest check, `Tenancy.restore`
+  migrating the parsed dump, `dump` writing the tenant's own version), the developer answered
+  "Go ahead" (2026-11-14).
+- **PD-25 The review of stage 3 (four reviewers, 2026-11-14: L1, L2, L3, L4 with L5).** No
+  blocker. Accepted:
+  1. *The stamps rule compared a stamp's text only*, so an archive could plant a stamp with a
+     language tag or a datatype that passed every check and that the runner's guard (a plain
+     literal) could never match again. A stamp is a plain string literal; anything else is "not
+     a stamp" (L1).
+  2. *The in-memory migration blamed every error on the client.* `RecursionError` and
+     `MemoryError` escape; the request is built outside the `try`, so a defect in our own text
+     escapes too; only rdflib's update is caught (it raises bare exceptions at run time) (L1, L4).
+  3. *Messages echoed archive text without a cap.* Every value from the archive or the manifest
+     in a message (subjects, predicates, schema id, version, rdflib's message) goes through
+     `shown()` (L1, L4).
+  4. *The migration of a parsed dump ran on the event loop.* It runs in a worker thread
+     (`asyncio.to_thread`); `restore`'s docstring says reading and migrating block that thread.
+     Its cost is bounded only by the steps (a step joining a pattern with itself can grow the
+     data); the how-to says so. **Not accepted:** a size guard on the migrated dataset (a restore
+     is called by a party trusted as a tenant creator, `kit.py`; no need today) (L1, L4).
+  5. *A second restore mode no production path takes.* `chains` is required in `restore` and
+     `_check_manifest`; the exact-version branch goes (L3, L4).
+  6. *Nothing kept the import cycle of PD-24 item 2 from coming back.* `.importlinter` forbids
+     `services.migrations` to import `services.tenancy`, `services.migration_runner` or
+     `services.tenant_dump`, and `services.tenancy` to import `services.migration_runner` (L3).
+  7. *`dump` fell back to the running version for an unstamped tenant*, against PD-10 (an
+     unstamped database follows the first version). It writes the tenant's stamp or no version;
+     a dump with no version is refused on restore (PD-15) (L3).
+  8. *A missing stamp read back as the version "None".* Reported as "there is no stamp" (L3, L4).
+  9. *Nothing checked that the manifest's version agrees with the dump's stamp.* A restore
+     refuses a dump where they differ (L1).
+  10. *Tests:* a kit-level restore of an older dump (the spec says "the service kit"); TC-52
+      asserts the version is named; the forward-only refusal of the in-memory migration is
+      tested; helpers the dump and migration tests import from `test_migration_runner.py` move to
+      a shared test helper module (L2, L4).
+  11. *Docs wrong after stage 3:* the restore checks and the stamps graph in
+      `architecture/data-flows.adoc` (and its restore diagram gains the migration step); the
+      start-up order in `architecture/index.adoc`; the stage note in the `rp-tenancy` spec delta,
+      no longer true (L2).
+  **Not accepted:** TC-40 rebuilt on the text of a real migration request (Fuseki commits a whole
+  request as one transaction; TC-41 and TC-42 already run real requests).
+- **PD-26 The adversarial tester's finding on restore across versions (2026-11-15; 42 tests, 1
+  failing), accepted.** The in-memory migration of a dump grew faster than the square of its size
+  (a one-predicate rename: 200 graphs 30 s, 400 graphs 122 s). Diagnosis (`superpowers:systematic-
+  debugging`, probes kept out of the repository): the loaded-graph exclusion of PD-5,
+  `FILTER NOT EXISTS { GRAPH ?rp_registry { ... } }` with `?rp_registry` unbound, makes rdflib
+  walk every graph once per solution row; and rdflib's hash of a solution row collides when a
+  subject equals its graph IRI (an aggregate root), which degrades its join. Decided: the
+  exclusion is written `MINUS { GRAPH ?rp_registry { ?rp_graph rp:kind <loaded-graph kind> } }`,
+  the same meaning (`?rp_graph` is always bound and shared, and a step cannot bind an `rp_`
+  variable), the same text for the store and the dump, still one operation per step; measured
+  with identical results on every kind of graph. The test is structural (the number of full scans
+  of the dataset does not grow with the number of graphs) and replaces the tester's time ceiling,
+  which depends on the machine's load. **Not done here:** the row-hash collision is rdflib's; the
+  toolkit does not patch an external library (it would change rdflib for the whole process). The
+  lead recommends an upstream report to rdflib and leaves filing it to the developer (an
+  outward-facing act). After the rewrite a 400-graph dump of roots takes about 11 s CPU, about
+  3 s without the collision (RISK-12).
+- **RISK-12 Restoring a very large tenant across versions is slow on rdflib** (PD-26: after the
+  fix, roughly 3 s per 400 graphs of 12 triples, more when subjects are graph IRIs). Likelihood
+  low today (no data anywhere), impact medium (a restore holds a worker thread). Accepted; the
+  upgrade paths are an rdflib fix upstream or a restore that migrates in the store after import.
+  Jena's behaviour on large tenants is expected to be near-linear (quad indexes) but not measured.
+- **RISK-11 Rolling a release back after it migrated the shared databases (found by the docs
+  writer, stage 3).** PD-12 said a tenant whose migration failed keeps its data and stamp, "so
+  the previous release serves it". True for that tenant, but the new release has already moved
+  the stamps of the system and application databases, and the previous release refuses to start
+  on a stamp its chain does not know (`MigrationFailed`), and sets aside every tenant the new
+  release migrated. So a rollback needs the shared databases restored too, and the toolkit has no
+  dump of them. Accepted: the how-to says to back up the store itself before deploying a migration
+  and restore it to roll back, or to fix forward. A dump of the shared databases is a later
+  change. PD-12 is narrowed by this.
 - **RISK-10 A template with a variable predicate (`?s ?p ?o`) can still delete a graph's version
   token or registry statement** (found while fixing PD-22 item 3, which refuses those predicates
   only when a template names them). Accepted: removing every triple of a class is a legitimate

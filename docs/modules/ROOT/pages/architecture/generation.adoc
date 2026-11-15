@@ -424,7 +424,7 @@ flowchart TB
 |5b OpenAPI components |`gen-json-schema`, trimmed by `rdf_persistence/generation/components.py` (<<extensions>>), into `openapi-components.json` (skipped when the entry sets `openapi = false`); the service's OpenAPI document (xref:architecture/api.adoc#serving[API]) reads it |generation fails
 |6 TypeScript types |`gen-typescript` with the toolkit's template: interfaces only, one file per module and an `index.ts`, into the client package the application names |generation fails
 |7 Diagrams |`gen-mermaid-class-diagram`, one `.mmd` file per schema module, each showing one module's classes and their links to other modules |generation fails
-|8 Lock |Writes `schema.lock.json` into the `migrations` folder, as an output of the manifest. When the `version` differs from the lock's and no file for that step exists, it drafts the migration beside the lock: created once, never overwritten, never an output of the manifest. Last, so a run that failed earlier drafts nothing |the folder cannot be written
+|8 Lock |Writes `schema.lock.json` into the `migrations` folder, as an output of the manifest. When the `version` differs from the lock's and no file for that step exists, it drafts the migration beside the lock: created once, never overwritten, never an output of the manifest. Last, so a run that failed earlier drafts nothing. How to review a draft and what to do with it: xref:howto/migrate.adoc[Change a schema that has stored data] |the folder cannot be written
 |===
 
 Each step writes to a temporary file and moves it into place only on success, so a failed run leaves

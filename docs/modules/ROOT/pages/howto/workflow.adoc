@@ -57,7 +57,8 @@ that describe the state; read it as a `skos:Concept` of the scheme the `id` name
 
 === Change a file on a system that holds data
 
-There is no migration, and the files are read when the service starts (the kit loads them in its
+Nothing migrates stored states when a file changes. To move the aggregates out of a dropped
+state, use the recipe in xref:howto/migrate.adoc#replace[Replace a value]. The files are read when the service starts (the kit loads them in its
 constructor), so a change takes effect with a restart.
 
 [cols="2,3",options="header"]
@@ -327,7 +328,8 @@ At start: `InvalidWorkflow`, from `install_service` or `ServiceKit`, for the fau
 * *No workflow editor, and no workflow stored as tenant data.* A workflow is a file.
 * *No timers, parallel states, quorum approvals or automatic transitions.* An aggregate is in one
   state, and one caller moves it.
-* *No migration of states when a file changes.* See <<Change a file on a system that holds data>>.
+* *No migration of states when a file changes.* See <<Change a file on a system that holds data>>;
+  for a dropped state, the recipe is in xref:howto/migrate.adoc#replace[Replace a value].
 * *Deleting an aggregate keeps its history, and code that holds a session can store it again.*
   The generic API mints a new IRI for every new aggregate, so a caller cannot bring a deleted book
   back. Application code with a session can add an aggregate at the same IRI: it starts in the

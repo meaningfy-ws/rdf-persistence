@@ -16,11 +16,12 @@ import logging
 from collections.abc import Sequence
 from typing import cast
 
-from rdflib import URIRef
+from rdflib import Dataset, URIRef
 
-from rdf_persistence.domain.exceptions import MigrationFailed, PersistenceError
+from rdf_persistence.domain.exceptions import InvalidBody, MigrationFailed, PersistenceError
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.domain.generated.service.rp_service import Migration
+from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.migrations import (
     Chain,
     SchemaChain,
@@ -28,12 +29,13 @@ from rdf_persistence.services.migrations import (
     migration_request,
     pending_from,
     stamp_if_none,
+    stamp_problems,
     stamps,
     versions,
 )
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.tenancy import Tenancy
-from rdf_persistence.services.yaml_files import SHOWN
+from rdf_persistence.services.yaml_files import SHOWN, shown
 
 log = logging.getLogger(__name__)
 
@@ -88,6 +90,57 @@ async def migrate_tenants(
             failed.add(tenant.id)
     tenancy.set_aside(failed)
     return failed
+
+
+def migrate_dataset(dataset: Dataset, chains: Sequence[SchemaChain], stamps_graph: URIRef) -> None:
+    """Bring a parsed dump to the last version of every chain, in memory, in the order given (PD-15).
+
+    The migrations are the store's: each is ``migration_request``'s text, applied through ``Dataset.update``,
+    and the stamp read back must have moved forward as it must in the store. ``dataset`` is changed in place;
+    on a refusal it may be half migrated, so a caller drops it.
+
+    Raises:
+        InvalidBody: The stamps graph is not one stamp per schema of ``chains``, each a version of its chain
+            (``stamp_problems``), or a migration's request fails on the dataset or leaves the stamp behind;
+            the message names the migration.
+    """
+    wanted = {schema_id: versions(chain) for schema_id, chain in chains}
+    if problems := stamp_problems(dataset.graph(stamps_graph), wanted):
+        raise InvalidBody(f"the dump's stamps graph is not a version of each schema: {problems}")
+    for schema_id, chain in chains:
+        _migrate_in_memory(dataset, schema_id, chain, stamps_graph)
+
+
+def _migrate_in_memory(
+    dataset: Dataset, schema_id: str, chain: Chain, stamps_graph: URIRef
+) -> None:
+    version = _held(dataset, schema_id, stamps_graph)
+    # a later version each round, as in the store (PD-23); the stamp is a version of the chain, checked above
+    while version is not None and (pending := pending_from(chain, version)):
+        migration = pending[0]
+        request = migration_request(migration, stamps_graph)  # a defect in our own text escapes
+        try:
+            dataset.update(request)
+        except (RecursionError, MemoryError):
+            raise
+        except (
+            Exception
+        ) as error:  # rdflib raises bare Exception, re.error, TypeError, ValueError at run time
+            raise _refused(schema_id, migration, error) from error
+        version = _held(dataset, schema_id, stamps_graph)
+        if problem := _not_forward(version, migration, versions(chain)):
+            raise _refused(schema_id, migration, f"after the request {problem}")
+
+
+def _held(dataset: Dataset, schema_id: str, stamps_graph: URIRef) -> str | None:
+    value = dataset.graph(stamps_graph).value(URIRef(schema_id), v.DATA_SCHEMA_VERSION)
+    return None if value is None else str(value)
+
+
+def _refused(schema_id: str, migration: Migration, cause: object) -> InvalidBody:
+    return InvalidBody(
+        f"the dump cannot be migrated: {_name(schema_id, migration)}: {shown(str(cause))}"
+    )
 
 
 def _failure(step: str, error: MigrationFailed, **where: str) -> dict[str, str]:

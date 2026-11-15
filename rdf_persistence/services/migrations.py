@@ -6,13 +6,15 @@ while the database's stamp is still ``from_version``, so a second sender changes
 """
 
 import re
+from collections.abc import Collection, Mapping
 from pathlib import Path
 
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import ValidationError
 from pyparsing import ParseBaseException
-from rdflib import Literal, URIRef
+from rdflib import Graph, Literal, URIRef
 from rdflib.plugins.sparql.parser import parseUpdate
+from rdflib.term import Node
 
 from rdf_persistence.domain.exceptions import InvalidMigration, SparqlError, StoredDataInvalid
 from rdf_persistence.domain.generated.rp_core import RegistryKind
@@ -27,7 +29,13 @@ from rdf_persistence.domain.sparql import (
 )
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.store import Store
-from rdf_persistence.services.yaml_files import SHOWN, problems_of, read_mapping, shown
+from rdf_persistence.services.yaml_files import (
+    MOST_PROBLEMS,
+    SHOWN,
+    problems_of,
+    read_mapping,
+    shown,
+)
 
 # The toolkit's own predicates: a step may read them, never write them (PD-22 item 3).
 _OWN_PREDICATES = (v.VERSION, v.REGISTRY_KIND, v.DATA_SCHEMA_VERSION)
@@ -37,7 +45,7 @@ _CHECKED_STAMPS = URIRef("urn:stamps")  # any graph IRI will do to check the sha
 _STEP = (
     "$delete $insert WHERE { GRAPH $stamps { $schema $p_stamp $from } "
     "GRAPH ?rp_graph { $where } FILTER (?rp_graph != $stamps) "
-    "FILTER NOT EXISTS { GRAPH ?rp_registry { ?rp_graph $p_kind $loaded } } "
+    "MINUS { GRAPH ?rp_registry { ?rp_graph $p_kind $loaded } } "  # not FILTER NOT EXISTS: rdflib walks every graph per row (PD-26)
     "FILTER NOT EXISTS { GRAPH ?rp_graph { ?rp_entry $p_kind ?rp_kind } } }"  # a registry graph (PD-21)
 )
 _CLAUSE = "$verb { GRAPH ?rp_graph { $pattern } }"
@@ -314,6 +322,62 @@ def _request_problem(migration: Migration) -> str | None:
     if found != expected:
         return f"the request parses into {found} operations, not the {expected} a migration makes"
     return None
+
+
+def stamp_problems(graph: Graph, wanted: Mapping[str, Collection[str]]) -> str | None:
+    """How a dump's stamps ``graph`` differs from one stamp per schema of ``wanted`` (schema id to the versions
+    it may be at), or None: the one rule behind a restore's stamps check and ``migrate_dataset`` (PD-24.1).
+
+    A schema with no stamp, a second stamp, a stamp of another schema or at another version, and a statement
+    that is not a stamp are each a problem; the first ``MOST_PROBLEMS`` are listed.
+    """
+    held = sorted(graph, key=str)
+    found = _stamps_by_schema(held)
+    problems = [f"the stamp of {schema} is missing" for schema in wanted if schema not in found]
+    problems += [d for triple in held if (d := _stamp_difference(triple, wanted))]
+    problems += [
+        f"<{schema}> has more than one stamp: {', '.join(texts)}"
+        for schema, texts in found.items()
+        if schema in wanted and len(texts) > 1
+    ]
+    more = len(problems) - MOST_PROBLEMS
+    if not problems:
+        return None
+    return "; ".join(problems[:MOST_PROBLEMS]) + (f"; +{more} more" if more > 0 else "")
+
+
+def _stamps_by_schema(held: list[tuple[Node, Node, Node]]) -> dict[str, list[str]]:
+    """The versions, as shown, that each schema is stamped with in ``held``."""
+    found: dict[str, list[str]] = {}
+    for subject, predicate, value in held:
+        if predicate == v.DATA_SCHEMA_VERSION:
+            found.setdefault(str(subject), []).append(shown(str(value)))
+    return found
+
+
+def _stamp_difference(
+    triple: tuple[Node, Node, Node], wanted: Mapping[str, Collection[str]]
+) -> str | None:
+    """How one statement of a dump's stamps graph differs from ``wanted``, or None."""
+    subject, predicate, value = triple
+    text, schema = shown(str(value)), shown(str(subject))
+    if predicate != v.DATA_SCHEMA_VERSION or not _is_plain_literal(value):
+        return f"{schema} {shown(str(predicate))} {text} is not a stamp"
+    if str(subject) not in wanted:
+        return f"{schema}, a schema this service does not run, is at {text}"
+    accepted = wanted[str(subject)]
+    if str(value) not in accepted:
+        listed = ", ".join(repr(version) for version in accepted)
+        return f"{schema} is at {text}, not {'one of ' if len(accepted) > 1 else ''}{listed}"
+    return None
+
+
+def _is_plain_literal(value: Node) -> bool:
+    """A stamp is a string literal with no language tag and no datatype: the one the runner's guard matches.
+
+    rdflib parses ``"1"`` to no datatype and ``"1"^^xsd:string`` to ``xsd:string``, and the two are unequal.
+    """
+    return isinstance(value, Literal) and value.language is None and value.datatype is None
 
 
 SELECT_STAMPS = "SELECT ?schema ?version WHERE { GRAPH $graph { ?schema $p_stamp ?version } }"

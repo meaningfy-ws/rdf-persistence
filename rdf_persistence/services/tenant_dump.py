@@ -12,18 +12,19 @@ memory while it is read or written, and the N-Quads are one ``bytes``; stream th
 off the event loop once a tenant outgrows memory or the loop's latency.
 """
 
+import asyncio
 import gzip
 import io
 import logging
 import tarfile
 import zlib
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from importlib.metadata import PackageNotFoundError, version
 from typing import BinaryIO
 
 from linkml_runtime.utils.schemaview import SchemaView
-from rdflib import Dataset
+from rdflib import Dataset, URIRef
 from rdflib.exceptions import ParserError
 
 from rdf_persistence.domain.blob_keys import checked_blob_key
@@ -34,10 +35,14 @@ from rdf_persistence.domain.generated.service.rp_service import TenantDump, Tena
 from rdf_persistence.domain.iris import Iris, effective_policy, policy_differences
 from rdf_persistence.domain.media import N_QUADS
 from rdf_persistence.domain.tenant_move import glued_templates
+from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.files import FileStore
+from rdf_persistence.services.migration_runner import migrate_dataset
+from rdf_persistence.services.migrations import SchemaChain, stamps, versions
 from rdf_persistence.services.session import Clock, utc_now
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.tenancy import Tenancy
+from rdf_persistence.services.yaml_files import shown
 
 log = logging.getLogger(__name__)
 
@@ -90,7 +95,7 @@ async def dump(
         created_at=stamp,
         toolkit_version=_toolkit_version(),
         schema_id=view.schema.id,
-        schema_version=view.schema.version,
+        schema_version=await _recorded_version(tenancy, store, database, view),
         source_tenant=tenant,
         source_tenant_id=iris.tenant_id_of(tenant),
         label=record.label,
@@ -114,6 +119,14 @@ async def dump(
         _add(tar, END, b"", stamp.timestamp())
     log.info("dump", extra={"step": "dump", "tenant": tenant, "blobs": written})
     return manifest
+
+
+async def _recorded_version(
+    tenancy: Tenancy, store: Store, database: str, view: SchemaView
+) -> str | None:
+    """The version of the consumer's schema the tenant's data follows (its stamp, PD-15); None with no stamp (PD-10, PD-25.7)."""
+    held = await stamps(store, database, tenancy.stamps_graph)
+    return held.get(str(view.schema.id))
 
 
 def _toolkit_version() -> str:
@@ -184,17 +197,24 @@ async def restore(
     creator: Principal,
     *,
     max_bytes: int,
+    chains: Sequence[SchemaChain],
 ) -> TenantSummary:
     """Create a new tenant out of the dump archive in ``src``; ``creator`` is granted the creator role in it.
 
     The manifest and the quads are read and checked first and nothing is created if they are refused; then
     ``Tenancy.restore`` moves them to the new tenant and writes it, with the blobs read from the stream and stored
     one at a time. ``max_bytes`` bounds what the archive may hold once decompressed (``max_restore_bytes``).
-    Reading ``src`` blocks. One line is logged (step ``restore``, the source and the new tenant), no content.
+    ``chains`` (the kit's, the toolkit's first) are required: the dump may follow any version of them, and its
+    quads are migrated in memory to the last versions (``migrate_dataset``, in a worker thread) before anything
+    else looks at them. Reading ``src`` and migrating block that thread, and what a step costs on an archive is
+    bounded only by the step (one that joins a pattern with itself can grow the data). One line is logged
+    (step ``restore``, the source and the new tenant), no content.
 
     Raises:
-        InvalidBody: The archive is not a dump of this service (its layout, format version, schema, IRI policy,
-            graphs or root), is larger than ``max_bytes`` decompressed, or a member among the blobs is not a blob.
+        InvalidBody: The archive is not a dump of this service (its layout, format version, schema, a schema
+            version that is not one of the chain's or differs from its stamp, IRI policy, stamps, graphs or
+            root), a migration fails on it, it is larger than ``max_bytes`` decompressed, or a member among the
+            blobs is not a blob.
         Conflict: The drawn tenant id was taken at the same moment; retry.
         PersistenceError: The tenant could not be created; see ``Tenancy.restore``.
     """
@@ -202,8 +222,10 @@ async def restore(
     with _opened(src, max_bytes + HEADER_ALLOWANCE) as (tar, stream):
         members = iter(tar)
         manifest = _manifest(tar, members, budget)
-        _check_manifest(manifest, view, iris)
+        _check_manifest(manifest, view, iris, chains=chains)
         parsed = _parsed(tar, _member(members, GRAPHS), budget)
+        _check_stamp_agrees(manifest, parsed, view, tenancy.stamps_graph)
+        await asyncio.to_thread(migrate_dataset, parsed, chains, tenancy.stamps_graph)
         summary = await tenancy.restore(
             parsed, manifest.source_tenant_id, _blobs(tar, members, stream, budget), creator
         )
@@ -291,20 +313,46 @@ def _parsed(tar: tarfile.TarFile, member: tarfile.TarInfo, budget: _Budget) -> D
     return parsed
 
 
-def _check_manifest(manifest: TenantDump, view: SchemaView, iris: Iris) -> None:
+def _check_schema(manifest: TenantDump, view: SchemaView, chains: Sequence[SchemaChain]) -> None:
+    """The dump's schema is the service's and its version is one of the chain's (PD-15)."""
+    own = view.schema.id
+    if manifest.schema_id != own:
+        raise InvalidBody(
+            f"the dump is of schema {shown(manifest.schema_id)}, this service has {own}"
+        )
+    chain = dict(chains)[str(own)]
+    if manifest.schema_version not in versions(chain):
+        known = ", ".join(repr(version) for version in versions(chain))
+        raise InvalidBody(
+            f"the dump is of schema {own} version {shown(manifest.schema_version)}, which this service does not have: its versions are {known}"
+        )
+
+
+def _check_stamp_agrees(
+    manifest: TenantDump, parsed: Dataset, view: SchemaView, stamps_graph: URIRef
+) -> None:
+    """The manifest's version is the dump's own stamp of the consumer's schema (PD-25.9).
+
+    A missing or doubled stamp is left to ``migrate_dataset``, which names it.
+    """
+    held = set(
+        parsed.graph(stamps_graph).objects(URIRef(str(view.schema.id)), v.DATA_SCHEMA_VERSION)
+    )
+    if len(held) == 1 and (stamp := str(next(iter(held)))) != manifest.schema_version:
+        raise InvalidBody(
+            f"the manifest says version {shown(manifest.schema_version)}, the dump's stamp of {view.schema.id} is {shown(stamp)}"
+        )
+
+
+def _check_manifest(
+    manifest: TenantDump, view: SchemaView, iris: Iris, *, chains: Sequence[SchemaChain]
+) -> None:
     """PD-5, first half: what the manifest alone tells (the service's policy and schema against the dump's)."""
     if manifest.format_version != FORMAT_VERSION:
         raise InvalidBody(
             f"the dump has format version {manifest.format_version}, this service reads {FORMAT_VERSION}"
         )
-    dumped, own = (
-        (manifest.schema_id, manifest.schema_version),
-        (view.schema.id, view.schema.version),
-    )
-    if dumped != own:
-        raise InvalidBody(
-            f"the dump is of schema {dumped[0]} version {dumped[1]}, this service has {own[0]} version {own[1]}"
-        )
+    _check_schema(manifest, view, chains)
     # an older dump has no application_template: it reads as the default, as a recorded policy does (PD-11)
     dumped_policy = effective_policy(manifest.iri_policy, iris.settings)
     if differing := policy_differences(dumped_policy, iris.effective_policy):
