@@ -41,7 +41,7 @@ from rdf_persistence.services.migration_runner import migrate_dataset
 from rdf_persistence.services.migrations import SchemaChain, stamps, versions
 from rdf_persistence.services.session import Clock, utc_now
 from rdf_persistence.services.store import Store
-from rdf_persistence.services.tenancy import Tenancy
+from rdf_persistence.services.tenancy import DEFAULT_STORE, Tenancy
 from rdf_persistence.services.yaml_files import shown
 
 log = logging.getLogger(__name__)
@@ -198,8 +198,11 @@ async def restore(
     *,
     max_bytes: int,
     chains: Sequence[SchemaChain],
+    store: str = DEFAULT_STORE,
 ) -> TenantSummary:
     """Create a new tenant out of the dump archive in ``src``; ``creator`` is granted the creator role in it.
+
+    The new tenant's database is on the wired store named ``store`` (``Tenancy.restore``).
 
     The manifest and the quads are read and checked first and nothing is created if they are refused; then
     ``Tenancy.restore`` moves them to the new tenant and writes it, with the blobs read from the stream and stored
@@ -227,7 +230,11 @@ async def restore(
         _check_stamp_agrees(manifest, parsed, view, tenancy.stamps_graph)
         await asyncio.to_thread(migrate_dataset, parsed, chains, tenancy.stamps_graph)
         summary = await tenancy.restore(
-            parsed, manifest.source_tenant_id, _blobs(tar, members, stream, budget), creator
+            parsed,
+            manifest.source_tenant_id,
+            _blobs(tar, members, stream, budget),
+            creator,
+            store=store,
         )
     log.info(
         "restore",

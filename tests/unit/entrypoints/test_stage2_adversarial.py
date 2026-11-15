@@ -124,7 +124,9 @@ async def _outcome_of_a_root_put_on_a_deleting_tenant(**validators) -> str:
         record.state = TenantState.DELETING
         toolkit = kit.tenancy._toolkit
         system = kit.tenancy.system_database
-        await kit.tenancy._replace_root(system, scene.tenant_iri, toolkit, record, version)
+        await kit.tenancy._replace_root(
+            system, scene.tenant_iri, toolkit, record, version, store=scene.service.store
+        )
         prefix = scene.service.settings.prefix
         await scene.service.store.drop_dataset(tenant_resource_name(prefix, scene.tenant_iri))
         body = b'{"label": "Ghent", "description": "Books for all.", "city": "Bruges"}'

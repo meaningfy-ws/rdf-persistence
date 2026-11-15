@@ -626,11 +626,11 @@ async def test_a_global_role_sees_every_tenant(tenancy):
     assert page.total == 1, "the system-level reader reads all"
 
 
-async def test_a_tenant_being_deleted_is_not_visible(tenancy):
+async def test_a_tenant_being_deleted_is_not_visible(tenancy, store):
     made = await tenancy.create("Ghent", library_slots(), CREATOR)
     record, version = await tenancy.get(made.id)
     record.state = TenantState.DELETING
-    await tenancy._replace_root(SYSTEM, made.id, CREATOR, record, version)
+    await tenancy._replace_root(SYSTEM, made.id, CREATOR, record, version, store=store)
     assert (await tenancy.visible_tenants(caller(), rules(), limit=50, offset=0)).total == 0
 
 
