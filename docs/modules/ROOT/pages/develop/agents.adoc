@@ -5,11 +5,12 @@ The method agents follow here (the shaping and epic sessions, the team and its b
 a stage scaled by appetite, the lead's authority, how questions are put to the developer,
 verification and validation, and what to do when one of our own or an external library falls
 short) is owned by skillery's `epic-delivery` skill, installed with the `meaningfy-building` bundle
-(3.9.0 or later); shaping is `epic-planning`, and subagent dispatch and session hygiene are
+(3.15.0 or later: the gate triggers and "builders run neither impact nor the change check" come
+from that version); shaping is `epic-planning`, and subagent dispatch and session hygiene are
 `guardrails` (`meaningfy-core`). The explanation for people is skillery's
 https://github.com/meaningfy-ws/skillery/blob/develop/docs/practice/ai-coding/working-with-agents.md[Working with agents].
-`AGENTS.md` at the repository root is the short form that agents load. This page keeps only what
-is specific to rdf-persistence.
+`AGENTS.md` at the repository root holds the rules agents load; this page gives the reasons
+behind the ones specific to rdf-persistence, and the gate reference with timings.
 
 == Common questions
 
@@ -21,9 +22,9 @@ developer, in the format the `epic-delivery` skill sets.
 Only when the developer grants it for a named epic, within the limits the `epic-delivery` skill
 sets. Commits and PRs carry no AI attribution.
 
-*What does a member's report prove?*::
-Not enough on its own. The lead re-runs `make check-quality` and reads the diff; `make check-all`
-before the PR catches a report that was wrong. See <<gates>>.
+*What does a builder's report prove?*::
+Not enough on its own. The lead reads the diff and re-runs a gate on an `epic-delivery` trigger;
+`make check-all` before the PR catches a report that was wrong. See <<gates>>.
 
 *What must every brief here say?*::
 The standing rules and the report in <<brief>>.
@@ -51,18 +52,30 @@ On top of the brief the `epic-delivery` skill sets, every brief names:
   xref:develop/testing.adoc[testing checklist] (the adversarial tester follows it too);
 * the report expected: files changed, tests added, each make target run with its time and test
   count;
-* how to work: search with `ast-grep run`, edit in place with the Edit tool, never with Python
-  heredocs or `sed -i`; run commands in the foreground or in the background with its notice, never
-  in a `sleep` loop (a hook denies it).
+* how to work: the Tools section of `AGENTS.md` (which tool answers which question, and Serena's
+  limits);
+* that the builder skips its own impact step: the `implementer` agent's definition still tells it
+  to re-index and run impact before every edit, which epic-delivery's stage loop and this repo
+  give to the lead (skillery issue #254). Until that is fixed, only the brief stops it.
 
-Each task is committed by the lead with why, what and `Refs: <change-id> <task>`.
+The commit trace is in `AGENTS.md` (Branches, commits, PRs).
 
 [#gates]
 == The gates
 
-Before handing out a task the lead checks the blast radius with GitNexus (re-indexing it if stale);
-a HIGH or CRITICAL risk goes to the developer. Only the lead can: subagents have no GitNexus tools,
-so a brief never asks a builder or a reviewer for an impact check.
+The rules are in `AGENTS.md` (Delivery). Why they are shaped this way (#111, measured over two
+weeks of sessions):
+
+* The lead runs impact and the change check once per task and builders run neither: builders
+  re-indexing and checking every symbol cost more than it found, and was followed for about 5 to
+  7 % of edits anyway.
+* The builder's task gate is one command (`make test-changed check-quality`, or the `test-fast`
+  variant), so every report has the same shape and the lead does not re-run it without a trigger;
+  re-running `make check-quality` after every task cost 61 runs for 21 PRs.
+* `make test-containers` stays out of tasks: builders ran it 65 times, although the full suite is
+  meant to run once before the PR.
+
+The table is the reference for what each gate runs.
 
 [cols="2,1,3",options="header"]
 |===
@@ -73,34 +86,33 @@ worker count), slow tests included. It falls back to `make test-fast` by itself 
 a change to tests
 |`make test-fast` |builder |Instead of `make test-changed` when you are unsure what a change
 reaches, or after changing `domain` or a port in `services`. It runs every unit and feature test
-not marked `slow` (≈ 3 min)
-|`make check-quality` |builder |After every task (≈ 1 min)
-|`make check-quality` |lead |After every task, after reading the diff
-|`make check-all` |lead |Once, before the PR: it already holds `make test`, so never run both
-|`make test-containers` |lead |Once, before the PR; and when adapters or containers change
-|`make check-generated` |builder |After committing a schema change (it compares against the commit)
-|`make check-architecture`, `make clean-code`, `make check-docs` |builder |With every task; they
-take seconds
+not marked `slow` (time: see the
+xref:develop/index.adoc#how-long-the-checks-take[durations table])
+|`make check-quality` |builder |After every task (≈ 1 min); it holds `make check-architecture`,
+`make clean-code` and `make check-docs`
+|`make check-all` |lead |Once per stage before the PR, and again after the fix pass: it already
+holds `make test`, so never run both
+|`make test-containers` |lead |With `make check-all`; never in a task
+|`make check-generated` |lead |After committing a schema change (it compares against the commit)
 |`openspec validate --all --strict` |both |Part of `make check-quality`
 |The clarity gate (≥ 9/10) |lead |Before a PLAN's first task
 |===
-
-The builder owns the per-task gates and reports them; the lead re-runs only `make check-quality`.
-After a red run, re-run only the failing tests until green, then the full run once.
 
 [#challenge]
 == Keeping the challenge cheap
 
 _How do we keep review and checking from doubling the work?_
 
-The `epic-delivery` skill sets who challenges a stage. Here three adjustments apply to any work,
-measured on a large stage (2026-11-09):
+The `epic-delivery` skill sets who challenges a stage and groups the review lenses by appetite.
+Here three adjustments override it for any work, measured on a large stage (2026-11-09):
 
 * *The adversarial tester runs right after the riskiest task*, the one that adds an invariant, a
   write order or concurrent writes, and again at the end if the stage is large. Both real defects of
   that stage sat in one task, and finding them at the end meant one large late fix.
-* *Review lenses L4 and L5 are one pass.* About a third of the findings came from more than one lens,
-  mostly L3, L4 and L5 together. L1, L2 and L3 stay separate: each found something the others did not.
+* *Review lenses L4 and L5 are one pass; L1, L2 and L3 are never combined with each other*,
+  whichever lenses the appetite's review set runs. About a third of the findings came from more
+  than one lens, mostly L3, L4 and L5 together; L1, L2 and L3 each found something the others did
+  not.
 * *The checker reads the lead's `make check-all` result* and checks the briefs and decisions against
   the diff; it does not run the tests again.
 
@@ -116,14 +128,11 @@ merges it; the steps are in xref:develop/index.adoc#release[Cutting a release].
 == Habits that keep sessions consistent
 
 [#never-poll]
-* *Never poll.* Run long commands in the foreground (timeout up to 10 min), with
-  `run_in_background` and its notice, or wait on a condition with the Monitor tool; a hook
-  (`.claude/hooks/no_polling.py`) denies `sleep` loops in Bash. It runs on plain `python3`,
-  stdlib only, on purpose: it must not depend on the project's environment.
-* Re-index GitNexus after each commit (≈ 20 s):
-  `gitnexus analyze --embeddings --skip-agents-md --skip-skills`.
-* Take check durations from ordinary runs and keep the
-  xref:develop/index.adoc#how-long-the-checks-take[durations table] current; no profiling.
-* Open the docs with questions: when a page is added or changed, add or update the
-  xref:questions.adoc[common question] it answers.
-* Temporary files go in `temp/`; commits and PRs carry no AI attribution.
+The habits themselves are in `AGENTS.md`; the reasons:
+
+* *Never poll:* the hook that denies `sleep` loops (`.claude/hooks/no_polling.py`) runs on plain
+  `python3`, stdlib only, on purpose: it must not depend on the project's environment.
+* *Re-index per stage, not per commit:* per-commit runs cost 151 re-indexes for 298 commits.
+* *Durations from ordinary runs:* the
+  xref:develop/index.adoc#how-long-the-checks-take[durations table] stays honest without the cost
+  of profiling.
