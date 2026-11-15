@@ -342,6 +342,7 @@ def _http_replace(run: Run) -> None:
     headers = {"If-Match": run.held_versions["etag"]}
     response = run.run(_call(run, "PUT", run.book_url, json=changed, headers=headers))
     assert response.status_code == 200, response.text
+    run.held_versions["new"] = response.headers["etag"]
 
 
 @when("the librarian replaces the book with that old version")
@@ -469,7 +470,9 @@ def _invalidated(run: Run) -> None:
 @then("the generated version is not the invalidated one")
 def _versions_differ(run: Run) -> None:
     [(replace, _)] = _replacement(run)
-    assert replace.generations[0].entity_version != replace.invalidations[0].entity_version
+    old, new = (run.held_versions[k].strip('"') for k in ("etag", "new"))  # an ETag is quoted
+    assert replace.invalidations[0].entity_version == old, "the old version is invalidated"
+    assert replace.generations[0].entity_version == new, "the new version is generated"
 
 
 @then("the change is refused as a conflict")

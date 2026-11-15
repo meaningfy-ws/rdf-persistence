@@ -591,7 +591,7 @@ new version.
 | The handler raises | — | The exception reaches the caller; commits it already made stand and were published |
 | An observer raises | `publish` catches | Logged with the observer's name; the others run; the commit stands |
 | An observer sends the command it observes | The count passes `limit` | `MessageLimitExceeded` from `handle`; earlier commits stand |
-| An observer commits on its session outside `handle`, in a loop | The nesting count passes `limit` | Logged as the observer's error (`MessageLimitExceeded`); the loop ends |
+| An observer commits on its session in a loop, inside `handle` or outside it | The publish nesting count passes `limit` (D-10 a) | `MessageLimitExceeded` from `publish`, logged by the session hook as `on_commit failed on <id>`; the loop ends; the commits made stand |
 | `work.send` outside `handle` | `Work` has no queue | `RuntimeError`, logged as the observer's error |
 | A queued command fails | `handle`'s loop catches | Logged; the queue goes on; `handle` returns the first command's result |
 | The process stops between the commit and an observer | Not detected | The activity is stored; the observer never runs (DEC-11) |

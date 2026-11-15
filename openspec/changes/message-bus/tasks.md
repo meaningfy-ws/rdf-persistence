@@ -185,7 +185,7 @@ green CI.
 | TC-70 | a queued command whose handler raises | logged; later queued commands run; `handle` returns the first result |
 | TC-71 | a key that is not an `Activity` subclass; `limit=0` | `ValueError` at construction |
 | TC-72 | outside `handle`: an observer that calls `publish` again on every activity; `limit=5` | `publish` raises `MessageLimitExceeded` at depth 6; the observer ran 5 times |
-| TC-72a | an observer inside `handle` that calls `bus.handle` with the observed command; `limit=5` | the outer `handle` raises `MessageLimitExceeded` (the nested call joins the count) |
+| TC-72a | an observer inside `handle` that calls `bus.handle` with the observed command; `limit=5` | the outer `handle` raises `MessageLimitExceeded` (the nested call joins the count). With `publish` called directly; through a real session the hook logs it instead (D-10 a; `test_messagebus_adversarial.py`) |
 | TC-72b | two `handle` calls in two asyncio tasks | each has its own count and its own `Work` |
 | TC-72c | `command(Replace)` twice | two ids, both `urn:uuid:` |
 
@@ -204,7 +204,7 @@ green CI.
 
 - [x] 3.3 Wiring: `bootstrap`, the `Transition` handler, `UnitOfWork(served=)`, the kit (PD-14 to
   PD-17). `services/messagebus.py`, `services/mapper.py`, `services/collaboration.py` (`session`,
-  `mapper`, `command=`), `services/transitions.py`, `services/tenancy.py`, `entrypoints/kit.py`,
+  `command=`; `mapper` dropped by D-11 i), `services/transitions.py`, `services/tenancy.py`, `entrypoints/kit.py`,
   `entrypoints/service.py`. Tests first in `tests/unit/services/test_messagebus_wiring.py` and
   `tests/unit/entrypoints/test_service_kit.py`.
 
@@ -245,7 +245,7 @@ green CI.
 | TC-95 | `handle(command(DeleteFile, used_resource=f1), c)` with `bootstrap()` | `LookupError` (no handler, PD-1 item 2) |
 
 - [x] 4.2 Testkit and feature scenarios. `testkit/`: `RecordingObserver` (PD-22), exported and
-  covered in `tests/unit/testkit/`. `tests/feature/`: `messages.feature` with every scenario (ten since the reconciliation of 2026-11-14) of
+  covered in `tests/unit/testkit/`. `tests/feature/`: `messages.feature` with every scenario (fifteen after the reconciliation of 2026-11-14) of
   `specs/rp-messages/spec.md` on the toy classes, and its step module beside the existing ones.
 
 - [x] 4.3 Docs. `architecture/index.adoc` (the building block; no consumer terms),

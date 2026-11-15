@@ -50,7 +50,6 @@ class Collaboration:
         workflows: Workflows | None = None,
     ) -> None:
         self._session = session
-        self._mapper = mapper
         self._view = view
         self._rules = rules
         self._iris = iris

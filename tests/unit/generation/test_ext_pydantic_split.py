@@ -22,6 +22,7 @@ from .golden import assert_matches_toy, run_toy
 TOY_MODULES = [
     "__init__.py",
     "books.py",
+    "books_activities.py",
     "library.py",
     "library_access.py",
     "library_tenant.py",
