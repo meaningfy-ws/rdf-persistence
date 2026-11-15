@@ -1,6 +1,6 @@
 """What the routes share: the ports, the settings, and the pieces built from the application's schema (PD-13)."""
 
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from datetime import timedelta
 from pathlib import Path
@@ -57,11 +57,33 @@ from rdf_persistence.services.schema_structure import (
 )
 from rdf_persistence.services.session import Session
 from rdf_persistence.services.store import Store, ToolkitStore
-from rdf_persistence.services.tenancy import GrantValidator, RootValidator, Tenancy
+from rdf_persistence.services.tenancy import (
+    DEFAULT_STORE,
+    GrantValidator,
+    RootValidator,
+    Tenancy,
+)
 from rdf_persistence.services.tokens import TokenVerifier
 from rdf_persistence.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
 from rdf_persistence.services.workflows import Workflows
 from rdf_persistence.services.write_guards import WriteGuards
+
+
+def _refuse_shared_stores(default: Store, others: Mapping[str, Store]) -> None:
+    """Refuse the key ``default`` and one raw store under two names, the default included.
+
+    Raises:
+        ValueError: Names the key.
+    """
+    seen = {id(default): DEFAULT_STORE}
+    for name, other in others.items():
+        if name == DEFAULT_STORE:
+            raise ValueError(f"the store {name!r} is the default store: pass it as ``store``")
+        if id(other) in seen:
+            raise ValueError(
+                f"the store {name!r} is the same object as the store {seen[id(other)]!r}"
+            )
+        seen[id(other)] = name
 
 
 class ServiceKit:
@@ -88,8 +110,12 @@ class ServiceKit:
         grant_validators: Sequence[GrantValidator] = (),
         root_validators: Sequence[RootValidator] = (),
         workflows: Sequence[Path] = (),
+        stores: Mapping[str, Store] = {},
     ) -> None:
-        """Build the kit; ``migrations``, ``prefix``, ``id_source``, the validators and ``workflows`` are ``install_service``'s arguments of those names.
+        """Build the kit; ``migrations``, ``prefix``, ``id_source``, the validators, ``workflows`` and ``stores`` are ``install_service``'s arguments of those names.
+
+        ``store`` stays the default store as ``kit.store``; each of ``stores`` is wrapped in a ``ToolkitStore``
+        for the tenancy (tenant-stores PD-3).
 
         ``chains`` holds the toolkit's chain of migrations and then the consumer's, each with its
         schema id, as the migration runner takes them.
@@ -97,7 +123,10 @@ class ServiceKit:
         Raises:
             InvalidWorkflow: A workflow file is not valid, or a class names a workflow no file defines.
             InvalidMigration: A chain of migration files, the toolkit's or the consumer's, is not valid.
+            ValueError: A name in ``stores`` is ``default``, or one raw store is wired under two names
+                (the default store included); the message names the key.
         """
+        _refuse_shared_stores(store, stores)  # on the raw objects, before wrapping hides them
         view = load_schema(schema)
         self.view = view
         # None at first, assignable: a handler's dependencies are often parts of this kit, so the bus
@@ -157,6 +186,7 @@ class ServiceKit:
             dependents=discussion_dependents(view),
             stamps=[(schema_id, current_version(chain)) for schema_id, chain in self.chains],
             on_commit=self._publish,
+            stores={name: ToolkitStore(other) for name, other in stores.items()},
         )
         self.aggregates = Aggregates(self.documents, self.tenancy, self.iris)
 
@@ -220,6 +250,15 @@ class ServiceKit:
         record, _ = await self.tenancy.get(tenant)
         return record.database_name
 
+    async def store_of(self, tenant: str) -> Store:
+        """The store that holds the database of ``tenant``: its default store or a wired one (tenant-stores PD-9).
+
+        Raises:
+            NotFound: The tenant has no access record.
+            StoreNotWired: The record names a store this service does not wire.
+        """
+        return await self.tenancy.store_of(tenant)
+
     async def sweep_tenant(
         self,
         tenant: str,
@@ -240,7 +279,7 @@ class ServiceKit:
         """
         return await tenant_sweep.sweep_tenant(
             self.tenancy,
-            self.store,
+            await self.store_of(tenant),
             self.files,
             self.iris,
             tenant,
@@ -263,12 +302,15 @@ class ServiceKit:
             Conflict: The tenant is being deleted; nothing is written.
         """
         return await tenant_dump.dump(
-            self.tenancy, self.store, self.files, self.iris, self.view, tenant, out
+            self.tenancy, await self.store_of(tenant), self.files, self.iris, self.view, tenant, out
         )
 
-    async def restore_tenant(self, src: BinaryIO, creator: str) -> TenantSummary:
+    async def restore_tenant(
+        self, src: BinaryIO, creator: str, *, store: str = DEFAULT_STORE
+    ) -> TenantSummary:
         """Create a new tenant, with a new IRI, from the archive ``dump_tenant`` wrote, which ``src`` holds; ``creator``
-        (a principal IRI) is granted the creator role in it and no one else is.
+        (a principal IRI) is granted the creator role in it and no one else is. The new tenant's database is on the
+        wired store named ``store``, ``default`` unless given.
 
         The archive must come from a service with the same schema, at any version of its migration chain (an
         older one is migrated to the running version before anything is created), and the same IRI policy, and may hold at most
@@ -286,7 +328,7 @@ class ServiceKit:
                 ``max_restore_bytes`` decompressed.
             Conflict: The new tenant's id was taken at the same moment; retry the call.
             PersistenceError: The store or the object store failed, or a start-up sweep dropped the new
-                database or bucket meanwhile; nothing is left, except that a failed write of the access record
+                database or bucket meanwhile, or ``store`` is not wired (``StoreNotWired``); nothing is left, except that a failed write of the access record
                 leaves an unnamed database and bucket for the start-up sweep.
         """
         return await tenant_dump.restore(
@@ -297,6 +339,7 @@ class ServiceKit:
             Principal(id=creator),
             max_bytes=self.max_restore_bytes,
             chains=self.chains,
+            store=store,
         )
 
     async def remove_with_files(
