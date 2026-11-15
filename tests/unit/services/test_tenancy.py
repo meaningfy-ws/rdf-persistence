@@ -199,8 +199,8 @@ async def test_a_retry_after_a_failure_creates_a_new_tenant(tenancy, store):
     ("failing", "operation", "after", "databases", "buckets"),
     [
         ("store", "create_dataset", 0, 0, 0),
-        ("files", "create_bucket", 0, 1, 0),
-        ("store", "update", 0, 1, 1),  # the root object
+        ("files", "create_bucket", 0, 0, 0),  # the cleanup drops the database (PD-12)
+        ("store", "update", 0, 0, 0),  # the root object: the cleanup drops both
         ("store", "update", 1, 1, 1),  # the access record
     ],
     ids=["no database", "no bucket", "no root object", "no access record"],
@@ -626,11 +626,11 @@ async def test_a_global_role_sees_every_tenant(tenancy):
     assert page.total == 1, "the system-level reader reads all"
 
 
-async def test_a_tenant_being_deleted_is_not_visible(tenancy):
+async def test_a_tenant_being_deleted_is_not_visible(tenancy, store):
     made = await tenancy.create("Ghent", library_slots(), CREATOR)
     record, version = await tenancy.get(made.id)
     record.state = TenantState.DELETING
-    await tenancy._replace_root(SYSTEM, made.id, CREATOR, record, version)
+    await tenancy._replace_root(SYSTEM, made.id, CREATOR, record, version, store=store)
     assert (await tenancy.visible_tenants(caller(), rules(), limit=50, offset=0)).total == 0
 
 

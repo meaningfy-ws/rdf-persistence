@@ -113,6 +113,7 @@ ERROR_KINDS: tuple[tuple[type[PersistenceError], ProblemKind], ...] = (
     (errors.InvalidMigration, UNAVAILABLE),  # raised at start-up, for the same reason
     (errors.MigrationFailed, UNAVAILABLE),  # raised at start-up, for the same reason
     (errors.TenantBehind, TENANT_BEHIND),
+    (errors.StoreNotWired, INTERNAL_ERROR),
 )
 # The statuses the framework raises on its own, which have a kind of their own.
 _OF_THE_FRAMEWORK = {

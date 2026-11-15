@@ -9,8 +9,8 @@ Work the toolkit does on its own behalf is attributed to ``{base}toolkit``.
 
 import inspect
 import logging
-from collections.abc import Callable, Iterable, Mapping, Sequence
-from contextlib import AbstractAsyncContextManager, suppress
+from collections.abc import AsyncIterator, Callable, Iterable, Mapping, Sequence
+from contextlib import AbstractAsyncContextManager, asynccontextmanager, suppress
 from typing import Any
 
 from linkml_runtime.utils.schemaview import SchemaView
@@ -24,6 +24,7 @@ from rdf_persistence.domain.exceptions import (
     NotFound,
     PersistenceError,
     StoredDataInvalid,
+    StoreNotWired,
     TenantBehind,
 )
 from rdf_persistence.domain.generated.rp_access import Action, Grant
@@ -84,6 +85,14 @@ CONSTRUCT_RECORDS = (
 )
 RECORD_DESCRIPTION = "Who may do what in the tenant {label}."
 MAX_TENANT_CLASH_DRAWS = 5  # PD-5
+# the store of the system database; a record never names it (tenant-stores PD-2)
+DEFAULT_STORE = "default"
+
+
+def store_name_in(record: TenantAccess) -> str:
+    """The name of the store ``record`` routes its tenant to: its ``store_name``, else ``default`` (PD-2)."""
+    return record.store_name or DEFAULT_STORE
+
 
 # A consumer's rule on a tenant write: it refuses by raising ``InvalidBody`` (422, the message is the detail) and
 # returns otherwise. Run in order before the write; the first refusal stops it and nothing is written.
@@ -124,7 +133,14 @@ class Tenancy:
         dependents: Dependents = (),
         stamps: Sequence[tuple[str, str]] = (),
         on_commit: OnCommit | None = None,
+        stores: Mapping[str, Store] = {},
     ) -> None:
+        """``store`` is the ``default`` store, which holds the system database; ``stores`` are the others by name.
+
+        Raises:
+            ValueError: A name is ``default`` or one a record's ``store_name`` refuses, or one ``Store`` object
+                is wired under two names (the default one included).
+        """
         self._dependents = dependents
         # given to the sessions of tenant and application databases, never the system database's
         self._on_commit = on_commit
@@ -137,6 +153,9 @@ class Tenancy:
         self._listings = listings
         self._guards = guards
         self._store = store
+        self._stores = _checked_stores(store, stores, access_class)
+        # tenant IRI -> store name (PD-4); a tenant never moves
+        self._store_names: dict[str, str] = {}
         self._files = files
         self._settings = settings
         self._mapper = mapper
@@ -162,12 +181,13 @@ class Tenancy:
         principal: Principal,
         refused_types: frozenset[URIRef] = frozenset(),
         *,
+        store: Store,
         listings: Listings | None = None,
         allowed_types: frozenset[URIRef] | None = None,
     ) -> AbstractAsyncContextManager[Session]:
-        """A session on ``database``; ``listings`` default to the tenant ones, the type sets are PD-6's."""
+        """A session on ``database`` of ``store``; ``listings`` default to the tenant ones, the type sets are PD-6's."""
         return open_session(
-            self._store,
+            store,
             database=database,
             tenant_iri=tenant,
             principal=principal,
@@ -188,14 +208,29 @@ class Tenancy:
     ) -> AbstractAsyncContextManager[Session]:
         """A session on the database of ``tenant`` for ``principal``; it refuses application classes (PD-6).
 
+        The session is on the store that holds the tenant's database, found on entry (``store_of``).
+
         Raises:
-            TenantBehind: The tenant's migration failed at start-up (``behind``).
+            TenantBehind: The tenant's migration failed at start-up (``behind``); raised here, at the call.
+            NotFound: On entry: the tenant has no access record.
+            StoreNotWired: On entry: the record names a store this service does not wire.
         """
         if tenant in self.behind:
             raise TenantBehind(f"the tenant {tenant} is behind its schema: its migration failed")
-        return self._session(
-            self._iris.resource_name(tenant), tenant, principal, self._application_types
-        )
+        return self._routed_session(tenant, principal)
+
+    @asynccontextmanager
+    async def _routed_session(self, tenant: str, principal: Principal) -> AsyncIterator[Session]:
+        """The tenant's session on its own store; ``NotFound`` and ``StoreNotWired`` come on entry."""
+        store = await self.store_of(tenant)
+        async with self._session(
+            self._iris.resource_name(tenant),
+            tenant,
+            principal,
+            self._application_types,
+            store=store,
+        ) as session:
+            yield session
 
     def application_session(self, principal: Principal) -> AbstractAsyncContextManager[Session]:
         """A session on the application database for ``principal``; it takes application classes only (PD-7).
@@ -214,6 +249,7 @@ class Tenancy:
             str(self._iris.application),
             principal,
             self._other_types,
+            store=self._store,
             listings=self._application_listings,
             allowed_types=self._application_types,
         )
@@ -234,19 +270,26 @@ class Tenancy:
         return str(self._iris.mint_aggregate(str(self._iris.application), iri_type_of(root), path))
 
     async def _add_root(
-        self, database: str, tenant: str, principal: Principal, obj: BaseModel
+        self, database: str, tenant: str, principal: Principal, obj: BaseModel, *, store: Store
     ) -> None:
-        """Store ``obj`` as a new root."""
-        async with self._session(database, tenant, principal) as session:
+        """Store ``obj`` as a new root in ``database`` of ``store``."""
+        async with self._session(database, tenant, principal, store=store) as session:
             work = UnitOfWork(session, self._mapper)
             work.add(obj)
             await work.commit()
 
     async def _replace_root(
-        self, database: str, tenant: str, principal: Principal, obj: BaseModel, if_version: str
+        self,
+        database: str,
+        tenant: str,
+        principal: Principal,
+        obj: BaseModel,
+        if_version: str,
+        *,
+        store: Store,
     ) -> str:
-        """Store ``obj`` over the root already there, if it still has ``if_version``; answers the new version."""
-        async with self._session(database, tenant, principal) as session:
+        """Store ``obj`` over the root already there in ``database`` of ``store``, if it still has ``if_version``; answers the new version."""
+        async with self._session(database, tenant, principal, store=store) as session:
             return await session.replace_graph(
                 str(getattr(obj, "id")),  # noqa: B009 - a root always has an id
                 self._mapper.to_triples(obj),
@@ -283,10 +326,39 @@ class Tenancy:
         """The name of the database of ``tenant``."""
         return self._iris.resource_name(tenant)
 
-    async def _stamp(self, database: str) -> None:
-        """Stamp ``database``, which this call just created, with every pair of ``stamps`` (PD-10)."""
+    def stores(self) -> dict[str, Store]:
+        """Every wired store by name, the ``default`` one first."""
+        return dict(self._stores)
+
+    async def store_name_of(self, tenant: str) -> str:
+        """The name of the store that holds the database of ``tenant``: from the cache, else from its record.
+
+        Raises:
+            NotFound: The tenant has no access record.
+        """
+        if tenant not in self._store_names:
+            record, _ = await self.get(tenant)
+            self._store_names[tenant] = store_name_in(record)
+        return self._store_names[tenant]
+
+    async def store_of(self, tenant: str) -> Store:
+        """The store that holds the database of ``tenant``.
+
+        Raises:
+            NotFound: The tenant has no access record.
+            StoreNotWired: The record names a store this service does not wire.
+        """
+        return self._wired(await self.store_name_of(tenant))
+
+    def _wired(self, name: str) -> Store:
+        if name not in self._stores:
+            raise StoreNotWired(f"the store {name!r} is not wired: {sorted(self._stores)}")
+        return self._stores[name]
+
+    async def _stamp(self, database: str, *, store: Store) -> None:
+        """Stamp ``database`` of ``store``, which this call just created, with every pair of ``stamps`` (PD-10)."""
         for schema_id, version in self._stamps:
-            await stamp_if_none(self._store, database, self.stamps_graph, schema_id, version)
+            await stamp_if_none(store, database, self.stamps_graph, schema_id, version)
 
     async def has_access_records(self) -> bool:
         """True when any graph of the system database holds an access record, found by type and not through the IRI policy."""
@@ -301,7 +373,7 @@ class Tenancy:
             await self._store.create_dataset(name)
         except Conflict:  # another worker created it first
             return False
-        await self._stamp(name)
+        await self._stamp(name, store=self._store)
         return True
 
     async def ensure_system_database(self) -> bool:
@@ -320,44 +392,71 @@ class Tenancy:
         return await self._ensure_dataset(database)
 
     async def create(
-        self, label: str, root_slots: Mapping[str, Any], creator: Principal
+        self,
+        label: str,
+        root_slots: Mapping[str, Any],
+        creator: Principal,
+        *,
+        store: str = DEFAULT_STORE,
     ) -> TenantSummary:
         """Create a tenant: its database and bucket, its root object, and last its access record.
+
+        The database, its stamp and the root are on the wired store ``store``; the record is always in the
+        system database, on ``default``, and names ``store`` unless that is ``default`` (PD-2, PD-7).
 
         ``root_slots`` are the slots of the tenant's root object, whose ``id`` is the tenant IRI
         minted here and whose ``label`` is the tenant's: the slots may leave it out or repeat it. The record gives
         ``creator`` the settings' ``creator_role`` on the tenant. Both objects are built and
-        validated before anything is created, so a refused request leaves nothing (PD-8c).
+        validated before anything is created, so a refused request leaves nothing (PD-8c). Once the database
+        exists, a failure up to the end of the root's write drops the database and, if this call created it,
+        the bucket (a failed drop is logged, step ``create-cleanup``, and left to the start-up sweep) and
+        raises the original error; a ``Conflict`` from the bucket leaves the other tenant's bucket alone
+        (tenant-stores PD-12, PD-14). The record is written after that: if its write fails, the database and
+        the bucket stay for the start-up sweep.
 
         Raises:
             InvalidBody: ``root_slots`` names an ``id`` or sets an ``internal`` slot: the service assigns those;
                 or gives a ``label`` other than ``label``: a tenant has one label (PD-3); or a root
                 validator refuses the new root.
             ValueError: ``label`` or ``root_slots`` is not valid (pydantic's ``ValidationError``).
+            StoreNotWired: ``store`` is not wired; nothing is drawn or made.
+            StoreUnavailable: A wired store could not be listed (an id is free on every store).
         """
+        target = self._wired(store)
         if "id" in root_slots:
             raise InvalidBody("the service assigns the IRI of a new tenant")
         if root_slots.get(LABEL, label) != label:
             raise InvalidBody("the label of a tenant's root is the tenant's")
         tenant = await self._free_tenant()
         name = self._iris.resource_name(tenant)
-        record = self._new_record(tenant, name, label, creator)
+        record = self._new_record(tenant, name, label, creator, store)
         tenant_root = self._root_class.model_validate({**root_slots, LABEL: label, "id": tenant})
         refuse_internal(self._mapper.to_graph(tenant_root), self._internal)
         _run_validators(self._root_validators, None, tenant_root, creator)
-        await self._store.create_dataset(name)
-        await self._stamp(name)  # before the root: a database found with data has its stamp (PD-10)
+        await target.create_dataset(name)  # a Conflict here made nothing: there is nothing to drop
         _log_step("create-database", tenant, name)
-        await self._files.create_bucket(name)
-        _log_step("create-bucket", tenant, name)
-        await self._add_root(name, tenant, creator, tenant_root)
-        await self._add_root(self._system, tenant, creator, record)
+        bucket_made = False
+        try:
+            # before the root: a database found with data has its stamp (PD-10)
+            await self._stamp(name, store=target)
+            await self._files.create_bucket(name)
+            bucket_made = True
+            _log_step("create-bucket", tenant, name)
+            await self._add_root(name, tenant, creator, tenant_root, store=target)
+        except Exception:
+            await self._drop_made(tenant, name, target, "create-cleanup", bucket_made=bucket_made)
+            raise
+        await self._add_root(self._system, tenant, creator, record, store=self._store)
+        self._store_names[tenant] = store
         _log_step("create-record", tenant, name)
         return TenantSummary(id=tenant, label=label, state=TenantState.ACTIVE)
 
-    def _new_record(self, tenant: str, name: str, label: str, creator: Principal) -> TenantAccess:
-        """The access record of a new tenant: active, granting ``creator`` the settings' ``creator_role`` and no one else."""
+    def _new_record(
+        self, tenant: str, name: str, label: str, creator: Principal, store: str
+    ) -> TenantAccess:
+        """The access record of a new tenant on ``store``: active, granting ``creator`` the settings' ``creator_role`` and no one else; it names ``store`` unless that is ``default`` (PD-2)."""
         return self._access_class(
+            store_name=None if store == DEFAULT_STORE else store,
             id=str(self._iris.access(tenant)),
             label=label,
             description=RECORD_DESCRIPTION.format(
@@ -374,16 +473,22 @@ class Tenancy:
         source_tenant_id: str,
         blobs: Iterable[tuple[str, bytes]],
         creator: Principal,
+        *,
+        store: str = DEFAULT_STORE,
     ) -> TenantSummary:
         """Create a new tenant out of a dump: its database holding the quads of ``parsed``, its bucket holding
         ``blobs``, and last its access record, which grants ``creator`` the creator role (tenant-dump-restore PD-6, PD-13).
+
+        The database is on the wired store ``store`` (the import, the vanished check and the cleanup too); the
+        record is on ``default`` and names ``store`` unless that is ``default`` (tenant-stores PD-7).
 
         ``parsed`` holds the dumped tenant ``source_tenant_id``'s quads. This draws the new tenant, moves the quads
         to it (``tenant_move.rewrite``), refuses graphs the IRI policy does not mint for it and a root that does not
         decode or that a root validator refuses, all before anything is created. The new tenant's label is the
         root's. ``blobs`` is read one item at a time, as each is put. Once the database exists, any failure up to
-        the vanished check (``blobs`` raising included) drops the database and the bucket as far as it can (a failed
-        drop is logged, step ``restore-cleanup``, and left to the start-up sweep) and raises the original error. The
+        the vanished check (``blobs`` raising included) drops the database and, if this call created it, the bucket as
+        far as it can (a failed drop is logged, step ``restore-cleanup``, and left to the start-up sweep) and raises
+        the original error. The
         record is written after that: if its write fails, the database and the bucket stay for the start-up sweep.
 
         Raises:
@@ -393,7 +498,9 @@ class Tenancy:
             Conflict: The drawn tenant id was taken between the draw and the create; retry.
             PersistenceError: No free tenant id, or the new database or bucket was dropped (a start-up sweep
                 elsewhere) before the record.
+            StoreNotWired: ``store`` is not wired; nothing is drawn or made.
         """
+        target = self._wired(store)
         tenant = await self._free_tenant()
         data = rewrite(
             parsed, self._settings.base, source_tenant_id, self._iris.tenant_id_of(tenant)
@@ -403,26 +510,29 @@ class Tenancy:
         self._refuse_application_objects(data)
         label = self._vet_restored_root(tenant, data.graph(self._iris.meta(tenant)), creator)
         name = self._iris.resource_name(tenant)
-        record = self._new_record(tenant, name, label, creator)
-        await self._store.create_dataset(name)
+        record = self._new_record(tenant, name, label, creator, store)
+        await target.create_dataset(name)
         _log_step("create-database", tenant, name)
+        bucket_made = False
         try:
             await self._files.create_bucket(name)
+            bucket_made = True
             _log_step("create-bucket", tenant, name)
-            await self._store.import_quads(name, data.serialize(format=N_QUADS).encode())
+            await target.import_quads(name, data.serialize(format=N_QUADS).encode())
             for key, payload in blobs:
                 await self._files.put(name, key, payload)
             if (
-                name not in await self._store.list_datasets()
+                name not in await target.list_datasets()
                 or name not in await self._files.list_buckets(name)
             ):
                 raise PersistenceError(
                     "the new tenant's database or bucket vanished during the restore"
                 )
         except Exception:
-            await self._drop_restored(tenant, name)
+            await self._drop_made(tenant, name, target, "restore-cleanup", bucket_made=bucket_made)
             raise
-        await self._add_root(self._system, tenant, creator, record)
+        await self._add_root(self._system, tenant, creator, record, store=self._store)
+        self._store_names[tenant] = store
         _log_step("create-record", tenant, name)
         return TenantSummary(id=tenant, label=label, state=TenantState.ACTIVE)
 
@@ -445,19 +555,27 @@ class Tenancy:
             if cls in self._application_types:
                 raise InvalidBody(f"the dump holds an object of the application class {cls}")
 
-    async def _drop_restored(self, tenant: str, name: str) -> None:
-        """Best effort: drop what a failed restore created; what stays is the start-up sweep's."""
-        for drop in (self._store.drop_dataset, self._files.delete_bucket):
+    async def _drop_made(
+        self, tenant: str, name: str, store: Store, step: str, *, bucket_made: bool
+    ) -> None:
+        """Best effort: drop what a failed create or restore made, the database from ``store``, the bucket only
+        if this call created it (another tenant's bucket of the same name is not ours to drop, PD-14).
+
+        What stays, a failed drop, is logged under ``step`` and left to the start-up sweep.
+        """
+        drops = [store.drop_dataset, *([self._files.delete_bucket] if bucket_made else [])]
+        for drop in drops:
             try:
                 await drop(name)
-            except NotFound:  # never created, or already dropped
+            except NotFound:  # already dropped
                 pass
             except Exception:
                 log.warning(
-                    "a failed restore could not drop %s",
+                    "a failed %s could not drop %s",
+                    step,
                     name,
                     exc_info=True,
-                    extra={"step": "restore-cleanup", "tenant": tenant, "resource": name},
+                    extra={"step": step, "tenant": tenant, "resource": name},
                 )
 
     def _vet_restored_root(self, tenant: str, graph: Graph, restorer: Principal) -> str:
@@ -480,7 +598,9 @@ class Tenancy:
         Raises:
             PersistenceError: Every one of ``MAX_TENANT_CLASH_DRAWS`` draws clashed.
         """
-        datasets = set(await self._store.list_datasets())
+        datasets: set[str] = set()
+        for store in self._stores.values():  # an id is free on every store (DEC-7)
+            datasets.update(await store.list_datasets())
         for _ in range(MAX_TENANT_CLASH_DRAWS):
             tenant = str(self._iris.mint_tenant())
             if self._iris.resource_name(tenant) not in datasets and not (
@@ -502,7 +622,7 @@ class Tenancy:
         Raises:
             NotFound: The tenant has no access record.
         """
-        async with self._session(self._system, tenant, self._toolkit) as session:
+        async with self._session(self._system, tenant, self._toolkit, store=self._store) as session:
             return await self._read(session, tenant)
 
     async def _read(self, session: Session, tenant: str) -> tuple[TenantAccess, str]:
@@ -530,7 +650,19 @@ class Tenancy:
         if stored is None:
             return []
         record_iris = sorted({str(record) for record in stored.subjects(v.STATE, None)})
-        return [self._decoded(iri, stored, graph_iri(iri)) for iri in record_iris]
+        records = [self._decoded(iri, stored, graph_iri(iri)) for iri in record_iris]
+        for record in records:
+            tenant = str(self._iris.tenant_of_access(record.id))
+            self._store_names[tenant] = store_name_in(record)
+        return records
+
+    def tenant_of(self, record: TenantAccess) -> str:
+        """The IRI of the tenant that ``record`` is the access record of."""
+        return str(self._iris.tenant_of_access(record.id))
+
+    async def access_records(self) -> list[TenantAccess]:
+        """Every access record, in one query, ordered by IRI; it also fills the routing cache of each tenant."""
+        return await self._records()
 
     async def rename(self, tenant: str, label: str, if_version: str, principal: Principal) -> str:
         """Give the tenant a new label, in its root and in its access record, whose description follows; answers the record's new version.
@@ -617,7 +749,9 @@ class Tenancy:
     async def _replaced(
         self, tenant: str, principal: Principal, record: TenantAccess, if_version: str
     ) -> str:
-        return await self._replace_root(self._system, tenant, principal, record, if_version)
+        return await self._replace_root(
+            self._system, tenant, principal, record, if_version, store=self._store
+        )
 
     async def tenants(self) -> list[TenantSummary]:
         """Every tenant that has an access record, in any state."""
@@ -680,26 +814,32 @@ class Tenancy:
         Raises:
             NotFound: The tenant has no access record.
             Conflict: The record is active and is no longer at ``if_version``; nothing changed.
+            StoreNotWired: The record names a store this service does not wire; nothing changed.
         """
         record, _ = await self.get(tenant)
+        self._wired(store_name_in(record))  # refuse before marking (PD-8)
         if record.state == TenantState.ACTIVE:
             record.state = TenantState.DELETING
-            await self._replace_root(self._system, tenant, self._toolkit, record, if_version)
+            await self._replaced(tenant, self._toolkit, record, if_version)
         await self.finish_deletion(tenant)
 
     async def finish_deletion(self, tenant: str) -> None:
         """Drop the database and the bucket the record names, then remove the record.
 
+        The database is dropped from the store the record names; the tenant's cache entry goes last.
+
         Raises:
             NotFound: The tenant has no access record.
             Conflict: The record is not ``deleting``; nothing is dropped.
+            StoreNotWired: The record names a store this service does not wire; nothing is dropped.
         """
-        async with self._session(self._system, tenant, self._toolkit) as session:
+        async with self._session(self._system, tenant, self._toolkit, store=self._store) as session:
             record, version = await self._read(session, tenant)
             if record.state != TenantState.DELETING:
                 raise Conflict(f"{tenant} is not deleting: it is {record.state}")
+            store = self._wired(store_name_in(record))
             drops = (
-                ("drop-database", self._store.drop_dataset),
+                ("drop-database", store.drop_dataset),
                 ("drop-bucket", self._files.delete_bucket),
             )
             for step, drop in drops:
@@ -708,10 +848,44 @@ class Tenancy:
                 _log_step(step, tenant, record.database_name)
             await session.remove(record.id, version)
             _log_step("remove-record", tenant, record.database_name)
+        self._store_names.pop(tenant, None)
 
     async def database_names(self) -> set[str]:
         """The database (and bucket) names the access records store, for every tenant."""
         return {record.database_name for record in await self._records()}
+
+
+def _checked_stores(
+    default: Store, others: Mapping[str, Store], access_class: type[TenantAccess]
+) -> dict[str, Store]:
+    """Every wired store by name, ``default`` first.
+
+    Raises:
+        ValueError: A name is ``default`` or one the record's ``store_name`` refuses (the generated model
+            decides), or a ``Store`` object is under two names.
+    """
+    wired = {DEFAULT_STORE: default}
+    for name, store in others.items():
+        if name == DEFAULT_STORE:
+            raise ValueError(
+                f"the store {name!r} is the default store: pass it as the first argument"
+            )
+        _refuse_bad_store_name(name, access_class)
+        twin = next((key for key, other in wired.items() if other is store), None)
+        if twin is not None:
+            raise ValueError(f"the store {name!r} is the same object as the store {twin!r}")
+        wired[name] = store
+    return wired
+
+
+def _refuse_bad_store_name(name: str, access_class: type[TenantAccess]) -> None:
+    """Refuse a ``name`` the record's ``store_name`` would refuse; pydantic's validator is the one place that holds the pattern, so it is asked in place of a copy of the regex."""
+    try:
+        access_class.__pydantic_validator__.validate_assignment(
+            access_class.model_construct(), "store_name", name
+        )
+    except ValidationError as error:
+        raise ValueError(f"the store name {name!r} is not valid: {error}") from error
 
 
 def _plain(validators: Sequence[Callable[..., None]]) -> tuple[Callable[..., None], ...]:

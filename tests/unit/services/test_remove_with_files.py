@@ -2,17 +2,22 @@
 
 import logging
 from datetime import timedelta
+from uuid import UUID
 
 import pytest
-from rdflib import RDF, URIRef
+from rdflib import RDF, Literal, URIRef
 
 from rdf_persistence.domain.exceptions import Conflict, NotFound, StoreUnavailable
 from rdf_persistence.domain.iris import Iris
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.file_removal import remove_with_files
-from tests.toy import SETTINGS, toy_mapper
+from rdf_persistence.services.tenancy import Tenancy
+from rdf_persistence.testkit import FakeFileStore, FakeStore
+from tests.fixtures.library.generated.library import Library
+from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.toy import SETTINGS, library_slots, toy_mapper
 from tests.unit.services.test_session_activity import stored_graph
-from tests.unit.services.test_tenant_sweep import CREATOR, book, make_world
+from tests.unit.services.test_tenant_sweep import CREATOR, FILE_KEY, book, make_world
 
 
 @pytest.fixture
@@ -102,6 +107,35 @@ async def test_a_stale_version_changes_nothing(world):
 async def test_a_missing_aggregate_is_not_found(world):
     with pytest.raises(NotFound):
         await world.remove(world.other, world.version)
+
+
+async def test_tc27_a_tenant_on_another_store_is_removed_there_with_its_blobs():
+    d, a, files = FakeStore(), FakeStore(), FakeFileStore()
+    iris = Iris(SETTINGS)
+    tenancy = Tenancy(
+        d,
+        files,
+        SETTINGS,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
+        iris=iris,
+        stores={"client-a": a},
+    )
+    await tenancy.ensure_system_database()
+    tenant = (await tenancy.create("Ghent", library_slots(), CREATOR, store="client-a")).id
+    scan = f"{tenant}/scans/{UUID(int=2)}"
+    async with tenancy.tenant_session(tenant, CREATOR) as session:
+        version = await session.add_graph(scan, [(URIRef(scan), FILE_KEY, Literal("k1"))])
+    bucket = tenancy.database_of(tenant)
+    await files.put(bucket, "k1", b"bytes")
+    updates_on_d = len(d.sent("update"))
+    await remove_with_files(tenancy, files, tenant, CREATOR, scan, version, toy_mapper())
+    async with tenancy.tenant_session(tenant, CREATOR) as session:
+        with pytest.raises(NotFound):
+            await session.get_graph(scan)
+    assert [b.file_key for b in await files.list_blobs(bucket)] == [], "its blob is deleted"
+    assert len(d.sent("update")) == updates_on_d, "nothing was written on D"
 
 
 async def test_an_aggregate_without_a_file_key_deletes_nothing(world):

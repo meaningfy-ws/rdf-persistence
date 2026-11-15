@@ -195,7 +195,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_tenancy.yaml",
-      "sha256": "c20223db84ae8373e72e513e3abbd2fe9de1c918be2a7339e67acfe761d536a8"
+      "sha256": "2ef6df033f9dda432e61478c584f4b0533d53a8f49a1daad17d3dff16a5af31d"
     },
     {
       "path": "rdf_persistence/model/rp_workflow.yaml",
@@ -333,7 +333,7 @@
     },
     {
       "path": "generated/library_access.py",
-      "sha256": "e5da004d06535ba2d39639b81029337f65735ae891ba9d6987e4ff00172f0522"
+      "sha256": "7b24fa1429aab4915237a865046272aa06b045ddd662d25b672aaf6edd30d137"
     },
     {
       "path": "generated/library_tenant.py",
@@ -349,7 +349,7 @@
     },
     {
       "path": "generated/shapes.ttl",
-      "sha256": "c1f4cae7a04a4f379bd0a66ded18ab778e7f4e848a51886de79a473a0c8a5d1a"
+      "sha256": "ac667e32db6d57d1eb0ee1aab43258ddd820daf8a0767ae45e5ef5b7c1d24d32"
     },
     {
       "path": "generated/templates.py",
@@ -357,7 +357,7 @@
     },
     {
       "path": "migrations/schema.lock.json",
-      "sha256": "b248092f2aad471429ab2b82ebc686b3e5765874050cde5049d4e1406cd58263"
+      "sha256": "55bfaac70a96df87b121472c27cc8e78e35ca27c1bdf95de18fb0d676dc488eb"
     },
     {
       "path": "web/src/domain/generated/books.ts",

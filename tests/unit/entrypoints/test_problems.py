@@ -55,6 +55,7 @@ ROWS = [
     (exceptions.InvalidMigration, 503, "unavailable"),
     (exceptions.MigrationFailed, 503, "unavailable"),
     (exceptions.TenantBehind, 503, "tenant-behind"),
+    (exceptions.StoreNotWired, 500, "internal-error"),
 ]
 TITLES = {
     "invalid-token": "Invalid token",

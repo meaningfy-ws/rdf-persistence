@@ -404,7 +404,6 @@ async def test_a_schema_with_no_application_class_refuses_nothing():
     store, tenancy = _without_application()
     tenant = str(tenancy._iris.mint_tenant())
     name = tenancy._iris.resource_name(tenant)
-    await store.create_dataset(name)
     record = TenantAccess(
         id=str(tenancy._iris.access(tenant)),
         label="Access",
@@ -412,6 +411,10 @@ async def test_a_schema_with_no_application_class_refuses_nothing():
         state=TenantState.ACTIVE,
         database_name=name,
     )
+    # the session finds the tenant's store in its access record, kept in the system database
+    await tenancy.ensure_system_database()
+    await tenancy._add_root(tenancy.system_database, tenant, CREATOR, record, store=store)
+    await store.create_dataset(name)
     async with tenancy.tenant_session(tenant, CREATOR) as session:
         work = UnitOfWork(session, _access_mapper())
         work.add(record)

@@ -17,7 +17,11 @@ FOREIGN = "other-t-" + "c" * 32
 
 
 class CrashAfterBucket:
-    """A file store that creates the bucket and then fails: the process died at that step."""
+    """A file store that creates the bucket and then fails: the process died at that step.
+
+    A dead process cleans up nothing (PD-12 makes a failed create drop what it made, a live
+    process's job), so after the crash the bucket cannot be deleted either.
+    """
 
     def __init__(self, inner):
         self._inner = inner
@@ -27,6 +31,9 @@ class CrashAfterBucket:
 
     async def create_bucket(self, name: str) -> None:
         await self._inner.create_bucket(name)
+        raise StoreUnavailable("the process died")
+
+    async def delete_bucket(self, name: str) -> None:
         raise StoreUnavailable("the process died")
 
 
@@ -47,8 +54,10 @@ async def test_a_crash_during_creation_leaves_orphans_that_the_next_start_up_dro
     tenancy, store, files, settings
 ):
     kept = await tenancy.create("Ghent", library_slots(), CREATOR)
+    # PD-12: create drops what it made when a step raises. A real crash runs no cleanup, so both
+    # the store and the file store refuse to drop, and the orphans stay for the sweep.
     crashing = Tenancy(
-        store,
+        CannotDrop(store),
         CrashAfterBucket(files),
         settings,
         mapper=toy_mapper(),

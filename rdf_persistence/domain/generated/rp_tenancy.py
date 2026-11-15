@@ -96,6 +96,7 @@ class TenantAccess(TenantLabelled, Described, AggregateRoot, Policy):
     "The access record of a tenant: its label, state and database name, with the grants and prohibitions that say who may do what in it."
     state: TenantState = Field(default=..., title="State", description="Where the tenant is in its life.")
     database_name: str = Field(default=..., title="Database name", description="The name of the tenant\u0027s database, the prefix, \"-t-\" and the tenant id (hyphens left out); the prefix is lower case, at most 20 characters, the tenant id 4 to 32 lower case letters and digits.", json_schema_extra = { "rp_internal": True })
+    store_name: Optional[str] = Field(default=None, title="Store name", description="The name of the wired store that holds the tenant\u0027s database; absent means the store named \"default\". It is lower case, starts with a letter and is at most 32 characters long.", json_schema_extra = { "rp_internal": True })
     grants: Optional[list[Grant]] = Field(default=None, title="Grants", description="The permissions given in the tenant, by role or as direct actions; they live in the access record\u0027s graph.")
     prohibitions: Optional[list[Prohibition]] = Field(default=None, title="Prohibitions", description="The actions forbidden in the tenant; they live in the access record\u0027s graph.")
     id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
@@ -112,6 +113,19 @@ class TenantAccess(TenantLabelled, Described, AggregateRoot, Policy):
                     raise ValueError(err_msg)
         elif isinstance(v, str) and not pattern.fullmatch(v):
             err_msg = "Invalid database_name format: " + str(v)
+            raise ValueError(err_msg)
+        return v
+
+    @field_validator("store_name")
+    def pattern_store_name(cls, v):
+        pattern=re.compile("^[a-z][a-z0-9-]{0,31}$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid store_name format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid store_name format: " + str(v)
             raise ValueError(err_msg)
         return v
 

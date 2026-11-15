@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from uuid import UUID
 
 import pytest
 from rdflib import Dataset, Literal, URIRef
@@ -24,6 +25,7 @@ from rdf_persistence.domain.exceptions import (
     InvalidBody,
     NotFound,
     PersistenceError,
+    StoreNotWired,
     StoreUnavailable,
 )
 from rdf_persistence.domain.generated.rp_core import Principal
@@ -46,9 +48,10 @@ from rdf_persistence.services.migrations import chain_of as chain_of_schema
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
 from rdf_persistence.services.sweep import sweep
-from rdf_persistence.services.tenancy import Tenancy
+from rdf_persistence.services.tenancy import DEFAULT_STORE, Tenancy
 from rdf_persistence.services.tenant_dump import dump, restore
 from rdf_persistence.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
+from rdf_persistence.testkit import FakeStore
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
@@ -156,6 +159,7 @@ async def restored(
     view=VIEW,
     max_bytes: int = MAX_BYTES,
     chains: Sequence[SchemaChain] = TOY_CHAINS,
+    store: str = DEFAULT_STORE,
 ):
     return await restore(
         tenancy or world.tenancy,
@@ -165,6 +169,7 @@ async def restored(
         RESTORER,
         max_bytes=max_bytes,
         chains=chains,
+        store=store,
     )
 
 
@@ -1264,3 +1269,118 @@ async def test_a_manifest_that_names_the_application_as_its_source_tenant_is_ref
 
     reason = await refused(world, edited(await dumped(world), MANIFEST, from_the_application))
     assert application in reason, "the reason names the application IRI"
+
+
+# -- tenant-stores PD-7: a restore on a store beside ``default`` ---------------------------------------
+
+CLIENT_A = "client-a"
+
+
+class VanishingStore(FakeStore):
+    """A store whose database disappears once the quads are imported: a sweep elsewhere dropped it."""
+
+    async def import_quads(self, dataset: str, data: bytes) -> None:
+        await super().import_quads(dataset, data)
+        await self.drop_dataset(dataset)
+
+
+def beside(world: SimpleNamespace, other: FakeStore, iris: Iris | None = None) -> Tenancy:
+    """A tenancy over the world's default store and files, with ``other`` wired as ``client-a``."""
+    return Tenancy(
+        world.store,
+        world.files,
+        SETTINGS,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
+        iris=iris or world.iris,
+        stamps=BASE_STAMPS,
+        stores={CLIENT_A: other},
+    )
+
+
+async def test_tc19_a_dump_restored_on_another_store_makes_its_tenant_there(world):
+    other = FakeStore()
+    tenancy = beside(world, other)
+    on_default = sorted(await world.store.list_datasets())
+
+    summary = await restored(world, await dumped(world), tenancy=tenancy, store=CLIENT_A)
+
+    record, _ = await tenancy.get(summary.id)
+    assert summary.id != world.tenant, "a new IRI"
+    assert record.store_name == CLIENT_A
+    assert await other.list_datasets() == [record.database_name], "the database is on client-a"
+    assert sorted(await world.store.list_datasets()) == on_default, "default gained none"
+
+
+async def test_tc20_a_restore_that_fails_on_another_store_drops_the_database_there(world):
+    other = FakeStore()
+    other.on("import_quads", StoreUnavailable("down"))
+    tenancy = beside(world, other)
+    data = await dumped(world)
+    before = await state_of(world)
+
+    with pytest.raises(StoreUnavailable, match="down"):
+        await restored(world, data, tenancy=tenancy, store=CLIENT_A)
+
+    assert await other.list_datasets() == [], "dropped from client-a"
+    assert await state_of(world) == before, "nothing on default, no bucket, no record"
+
+
+async def test_tc39_the_vanished_check_reads_the_store_of_the_restore(world):
+    other = VanishingStore()
+    tenancy = beside(world, other)
+    data = await dumped(world)
+    before = (len(world.store.sent("list_datasets")), len(other.sent("list_datasets")))
+
+    with pytest.raises(PersistenceError, match="vanished"):
+        await restored(world, data, tenancy=tenancy, store=CLIENT_A)
+
+    after = (len(world.store.sent("list_datasets")), len(other.sent("list_datasets")))
+    assert after == (before[0] + 1, before[1] + 2), (
+        "default: the id draw; client-a: the draw and the check"
+    )
+
+
+async def test_tc19_the_restored_book_reads_back_through_a_session_on_the_new_tenant(world):
+    tenancy = beside(world, FakeStore())
+    summary = await restored(world, await dumped(world), tenancy=tenancy, store=CLIENT_A)
+
+    async with tenancy.tenant_session(summary.id, RESTORER) as opened:
+        book = await UnitOfWork(opened, toy_mapper()).get(
+            Book, moved(world, world.book, summary.id)
+        )
+
+    assert book.label == "Dune", "the book is on the new tenant's store"
+
+
+async def test_a_restore_on_a_store_that_is_not_wired_is_refused_naming_it_and_makes_nothing(world):
+    data = await dumped(world)
+    before = await state_of(world)
+
+    with pytest.raises(StoreNotWired, match="client-b"):
+        await restored(world, data, store="client-b")
+
+    assert await state_of(world) == before, "no database, bucket or record, on any store"
+
+
+async def test_pd14_a_restore_that_conflicts_on_the_bucket_keeps_the_other_tenants_bucket_and_files(
+    world,
+):
+    other = FakeStore()
+    drawn = str(UUID(int=7))
+    iris = Iris(SETTINGS, *iri_types(VIEW), id_source=lambda spec: drawn)
+    tenancy = beside(
+        world, other, iris
+    )  # the tenant it draws is known: the winner's bucket is named
+    name = iris.resource_name(str(iris.mint_tenant()))
+    data = await dumped(world)
+    await world.files.create_bucket(name)  # the winner's, made between this draw and its create
+    await world.files.put(name, "scan.pdf", b"%PDF")
+
+    with pytest.raises(Conflict):
+        await restored(world, data, tenancy=tenancy, store=CLIENT_A)
+
+    assert await other.list_datasets() == [], "the database it made is dropped from client-a"
+    assert await world.files.get(name, "scan.pdf") == b"%PDF", "the winner's bucket and file stay"
+    assert world.files.sent("delete_bucket") == [], "no bucket drop was sent"
