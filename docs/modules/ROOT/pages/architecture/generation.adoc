@@ -66,6 +66,9 @@ PD-8a). Any other slot whose range is a class refers to another aggregate root, 
 |`workflow` (class annotation) |On an aggregate root that includes `UnderWorkflow`: the name of the workflow its instances follow. A subclass inherits it along `is_a` (`workflow_name_of` in `schema_structure.py`). The workflow itself is a file given to the service, not part of the schema; see xref:howto/workflow.adoc[Put a resource through review].
 |`rp_unlabelled` (class annotation) |An owned value class whose instances need no label of their own.
 |`Principal` |A reference to a user account in the identity provider, by IRI only.
+|`Activity`, `Generation`, `Invalidation`, `Add`, `Replace`, `Remove` |The record of a use case that changed the store (`rp_provenance`, PROV-O). An `Activity` has a start, an end, a principal, and the `generations` and `invalidations` it caused. `Generation` and `Invalidation` name the entity versions an activity produced or ended; `Add`, `Replace` and `Remove` are the three kinds of change to an aggregate. An activity is no aggregate root: the toolkit stores it in the tenant's provenance graph. A consumer's use-case activity descends from `Activity` and lives in a sibling module `<domain>_activities.yaml`; see xref:howto/event-driven.adoc[the event-driven how-to].
+|`toolkit_filled` (slot annotation) |The toolkit sets the slot of an activity's record (who, when, which versions). A caller's value is refused or overwritten.
+|`payload` (slot annotation, in a command class's `slot_usage`) |The command carries the slot, but the stored record does not. A payload slot is never required.
 |`StoredFile` (mixin) |The current content of a kept file: `file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key` (internal).
 |`loaded_graph` (slot) |A graph whose lifecycle belongs to the aggregate (e.g. the triples of a loaded RDF file).
 |`TenantAccess`, `Grant`, `Prohibition` |The tenancy records of the system database (N-11): label, state (`TenantState`: `active`, `deleting`), database name, owned grants and prohibitions (ODRL). `TenantAccess` is a `Policy`; an application subclasses it once, in an access module. Role names come from the consumer's role definitions; an application may narrow `role` to an enum by subclassing (`is_a` with `slot_usage`), but need not.
@@ -143,6 +146,8 @@ flowchart BT
     FIL --> ANN
     COL --> CORE
     DIS --> ANN
+    DIS --> PROV
+    FIL --> PROV
     WF --> PROV
     WF --> DIS
 ....
@@ -152,7 +157,12 @@ An arrow is an import; an import a module already gets through another one is no
 
 `rp.yaml` imports all nine modules (`rp_core`, `rp_annotations`, `rp_provenance`, `rp_access`,
 `rp_tenancy`, `rp_files`, `rp_collections`, `rp_discussion` and `rp_workflow`); an application
-imports `rp.yaml`, or only the modules it uses.
+imports `rp.yaml`, or only the modules it uses. The toolkit's own schema is at version `"2"`;
+`rdf_persistence/model/migrations/1__2.yaml` is the step from version 1 and has no operations.
+
+`rp_provenance` holds the activity classes (`Activity`, `Generation`, `Invalidation`, `Add`,
+`Replace`, `Remove`). `rp_discussion` (`PostComment`, `PostReply`) and `rp_files` (`DeleteFile`)
+hold the commands of their area as activities, so both import it.
 
 The last three hold what a collaborative application needs beyond aggregates that own their parts:
 a group of aggregates it does not own (`rp_collections`), comments (`rp_discussion`) and review
@@ -211,6 +221,9 @@ are the generated enum `HardRule`. It fails generation when:
 . the `rp_path` or the `rp_iri_type` (the type segment of a class's IRIs) of a class starts with
   `rp-` (rule `RESERVED_SEGMENT`). The prefix belongs to the toolkit's own roots (`rp-comments`), so a
   path or an IRI of an application never meets one of theirs;
+. a class of the application breaks the activity contract (rule `TOOLKIT_FILLED`): it gives a
+  `toolkit_filled` slot a `slot_usage`, an `ifabsent`, an attribute of its own or a `slot_uri` alias,
+  or it has a slot that is both `payload` and required;
 . the `workflow` annotation and the `UnderWorkflow` mixin do not come together (rule `WORKFLOW`):
   a class names a workflow but is not an aggregate root, is the tenant root, or does not include
   `UnderWorkflow`; or an aggregate root includes `UnderWorkflow` and neither it nor an `is_a`
@@ -243,7 +256,7 @@ not the toy keeps a golden folder, rewritten by `make refresh-golden`. Each exte
 |`rdf_persistence/generation/extensions/typescript.py` |TypeScript types |`gen-typescript` |a subclass with our own template (the stock one is fixed and has no split mode): one file per module and an index, plus the toolkit's own `rp_service.ts` (the classes of `rp_service.yaml`, among them the API's wire types `TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page` and `Problem`) when the schema is not `rp_service.yaml` itself, whose module and type names a schema may not reuse; an inlined class is its interface; `linkml:Any` is `unknown`; enums as string-literal unions, dates as ISO strings, owned parts nested and any other class an IRI string, `internal` slots left out |the frontend package, `src/domain/generated/` |M
 |`rdf_persistence/generation/extensions/shacl.py` |SHACL shapes |`gen-shacl` |a subclass: the `bookkeeping` predicates added to the ignored list of closed shapes; a shape per class, named by its own IRI (classes may share a `class_uri`); a reference to another aggregate checked as an IRI only, so a graph validates on its own; an `internal` slot optional; a `pattern` matched against the whole value, as the classes do |the backend package |S
 |`rdf_persistence/generation/extensions/shacl_constraints.py` |Shape constraints for declared rules |`gen-shacl` |the stock generator translates neither rule: `exactly_one_of` becomes `sh:xone`, `any_of` becomes `sh:or`, `unique_keys` becomes a SPARQL constraint on the owning class (absent values treated as in the validators); a key annotated `rp_unique_scope: tenant` gets no shape, since one graph cannot see another |with the shapes |M
-|`rdf_persistence/generation/extensions/jsonld_context.py` |JSON-LD context and frames |`gen-jsonld-context` |`id`/`type` aliases, `internal` slots left out, integers and booleans kept as native JSON, a `uri` read as an IRI and an enum as its meaning IRI (as the shapes expect), one frame per aggregate type |the backend package; copied to the frontend when needed |S
+|`rdf_persistence/generation/extensions/jsonld_context.py` |JSON-LD context and frames |`gen-jsonld-context` |`id`/`type` aliases, `internal` slots left out, integers and booleans kept as native JSON, a `uri` read as an IRI and an enum as its meaning IRI (as the shapes expect), one frame per aggregate type, and one for `Activity` and each of its descendants in the target's closure (an activity is read from the store without being a root) |the backend package; copied to the frontend when needed |S
 |`rdf_persistence/generation/extensions/mermaid.py` |Diagrams, one per module |`gen-mermaid-class-diagram` (D-8) |a template marking aggregate roots and owned parts, and keeping each diagram small (one module, its links to other modules shown as names only) |the docs, next to the model pages |S
 |`rdf_persistence/generation/components.py` |OpenAPI component schemas |`gen-json-schema` |not under `extensions/`, since it adds no subclass or template: it trims the stock output to what the API shows (bookkeeping and `internal` slots dropped, the identifier read-only, since the service assigns it) and points its references into `#/components/schemas` (PD-24). It runs at generation time because the generators are an extra (PD-2): the running service only reads the file |`openapi-components.json`, beside the context |S
 |`rdf_persistence/generation/checks/` |Boundary, hard and rules checks |`linkml-lint` + `rp-generate` |not a generator extension: three checks over `SchemaView` (`boundary.py`, `hard.py`, `rules.py`) |— |S
@@ -416,11 +429,11 @@ flowchart TB
 |===
 |Step |What it does |Fails when
 |1 Lint |`linkml-lint` with `rdf_persistence/generation/lint.yaml` (<<hard-check>>), on the schema and each of its own modules; the metamodel is opened through the toolkit's import map |the schema has lint errors
-|2 Checks |Over LinkML's `SchemaView`. *Boundary* (`BoundaryRule`): roots are the classes whose induced ancestors include `AggregateRoot`; every other non-mixin class, except those of a `module_kind: technical` module, is reachable only through `owned` slots of classes that are not technical (a request shape is never stored, so what it owns is not either) (it may be owned by several root classes, e.g. a reusable value class); a non-owned slot whose range is a class must point to a root or to a reference class (`Principal`, `Activity`). *Hard*: <<hard-check>>. *Rules*: <<extensions>> |a class is owned by nothing, or reached through a non-owned slot without being a root; a module annotated `module_kind: domain` imports one annotated `technical` or `access`; a hard-check rule fails; a schema uses a rule the generated code would ignore
+|2 Checks |Over LinkML's `SchemaView`. *Boundary* (`BoundaryRule`): roots are the classes whose induced ancestors include `AggregateRoot`; every other non-mixin class, except those of a `module_kind: technical` module and those that descend from `Activity`, is reachable only through `owned` slots of classes that are not technical (a request shape is never stored, so what it owns is not either) (it may be owned by several root classes, e.g. a reusable value class); a non-owned slot whose range is a class must point to a root or to a reference class (`Principal`, `Activity`). *Hard*: <<hard-check>>. *Rules*: <<extensions>> |a class is owned by nothing, or reached through a non-owned slot without being a root; a module annotated `module_kind: domain` imports one annotated `technical` or `access`; a slot of a class that is not an activity ranges over an application activity class that is not a root (rule `ACTIVITY_DIRECTION`: the stored model never refers to a use case); a hard-check rule fails; a schema uses a rule the generated code would ignore
 |2b Lock check |Loads the migration files of the `migrations` folder, reads the committed `schema.lock.json` and compares it with the schema as it is now. A change that needs a new `version:`, a step or neither is told from one that no step can do. Writes nothing, so `--check` runs it; skipped when the entry sets no `migrations` |a migration file does not load; the lock cannot be read or is another schema's; a change needs a new `version:` and the schema has none; a root changes its IRI type, path or database, or a part changes its graph; the version is one the chain already left
 |3 Domain classes |`gen-pydantic` in split mode with the toolkit's template directory: `base_model.py.jinja` makes every class inherit the toolkit's strict base `RpModel` (no extra fields, validation on assignment); metadata off; metamodel classes imported from the top-level `rdf_persistence` in an application's run; model validators for `exactly_one_of`, `any_of` and `unique_keys` |generation fails
 |4 Shapes |`gen-shacl` through `RpShaclGenerator`. Shapes are closed (`sh:closed true`), and the version token sits on the graph IRI, not the root, so the domain triples validate on their own |generation fails
-|5 JSON-LD context |`gen-jsonld-context`, with `id` and `type` aliased to `@id` and `@type`, and one frame per aggregate type (`<Class>.frame.jsonld`, with `@omitDefault`); served by the service kit (O-2). Known gaps (no `@language` containers, inlined collections keyed by `@index`) need template fixes before a schema uses those features |generation fails
+|5 JSON-LD context |`gen-jsonld-context`, with `id` and `type` aliased to `@id` and `@type`, and one frame per aggregate type and per activity class (`<Class>.frame.jsonld`, with `@omitDefault`); served by the service kit (O-2). Known gaps (no `@language` containers, inlined collections keyed by `@index`) need template fixes before a schema uses those features |generation fails
 |5b OpenAPI components |`gen-json-schema`, trimmed by `rdf_persistence/generation/components.py` (<<extensions>>), into `openapi-components.json` (skipped when the entry sets `openapi = false`); the service's OpenAPI document (xref:architecture/api.adoc#serving[API]) reads it |generation fails
 |6 TypeScript types |`gen-typescript` with the toolkit's template: interfaces only, one file per module and an `index.ts`, into the client package the application names |generation fails
 |7 Diagrams |`gen-mermaid-class-diagram`, one `.mmd` file per schema module, each showing one module's classes and their links to other modules |generation fails

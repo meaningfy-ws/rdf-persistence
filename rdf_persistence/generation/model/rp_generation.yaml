@@ -1131,7 +1131,8 @@ enums:
         title: Toolkit filled
         description: >-
           A class of the application does not give `slot_usage`, `ifabsent` or an attribute of its own
-          to a slot annotated `toolkit_filled`, and has no slot that is both `payload` and required.
+          to a slot annotated `toolkit_filled`, gives no slot of its own the `slot_uri` of one, and has
+          no slot that is both `payload` and required.
         meaning: rp:HardRuleToolkitFilled
   LockRule:
     title: Lock rule
