@@ -45,6 +45,7 @@ classes:
     slots:
       - state
       - database_name
+      - store_name
       - grants
       - prohibitions
     slot_usage:
@@ -137,6 +138,16 @@ slots:
     slot_uri: rp:databaseName
     range: string
     pattern: "^[a-z][a-z0-9]{0,19}-t-[a-z0-9]{4,32}$"
+    annotations:
+      internal: true
+  store_name:
+    title: Store name
+    description: >-
+      The name of the wired store that holds the tenant's database; absent means the store named "default".
+      It is lower case, starts with a letter and is at most 32 characters long.
+    slot_uri: rp:storeName
+    range: string
+    pattern: "^[a-z][a-z0-9-]{0,31}$"
     annotations:
       internal: true
   grants:

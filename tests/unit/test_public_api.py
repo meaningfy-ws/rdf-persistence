@@ -37,6 +37,7 @@ INDEXED_NAMES = [
     "DatabaseGone",
     "StoreUnavailable",
     "MigrationFailed",
+    "StoreNotWired",
     "TenantBehind",
     "NotFound",
     "Conflict",

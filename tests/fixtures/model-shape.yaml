@@ -655,6 +655,10 @@
     required: true
     multivalued: false
     range: TenantState
+  - name: store_name
+    required: false
+    multivalued: false
+    range: string
 - class_name: ListPlan
   slots:
   - name: conditions
@@ -1399,6 +1403,10 @@
     required: true
     multivalued: false
     range: TenantState
+  - name: store_name
+    required: false
+    multivalued: false
+    range: string
 - class_name: TenantCreate
   slots:
   - name: label

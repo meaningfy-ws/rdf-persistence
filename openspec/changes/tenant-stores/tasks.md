@@ -11,7 +11,7 @@ its reach is wide). After the lead commits a schema change: `make check-generate
 
 ## Stage 1: tenants routed by store, in `services` (PR 1)
 
-- [ ] 1.1 PD-1, PD-10: `store_name` on `TenantAccess` in `model/rp_tenancy.yaml`; `make generate`
+- [x] 1.1 PD-1, PD-10: `store_name` on `TenantAccess` in `model/rp_tenancy.yaml`; `make generate`
   (the lock changes `SAFE`, version stays `"2"`); `make refresh-snapshot` and read its diff.
   `StoreNotWired(PersistenceError, ValueError)` in `domain/exceptions.py`, exported where the
   others are, with its `INTERNAL_ERROR` row in `entrypoints/problems.py::ERROR_KINDS` and in

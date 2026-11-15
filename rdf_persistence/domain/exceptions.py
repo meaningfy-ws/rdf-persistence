@@ -120,6 +120,10 @@ class TenantBehind(PersistenceError):
     The message names the tenant, for the log; the caller is told only that the tenant is behind."""
 
 
+class StoreNotWired(PersistenceError, ValueError):
+    """A tenant's record names a store that the service does not wire."""
+
+
 class UnknownRole(PersistenceError, ValueError):
     """A grant names a role that no tenant-level or aggregate-level role definition defines."""
 

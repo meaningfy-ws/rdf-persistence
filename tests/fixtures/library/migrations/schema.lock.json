@@ -341,6 +341,13 @@
           "required": true,
           "multivalued": false,
           "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#storeName",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
         }
       ]
     },
