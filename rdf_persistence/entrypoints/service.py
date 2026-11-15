@@ -1,6 +1,6 @@
 """``install_service``: mounts the generic router on a consumer's FastAPI app (PD-13)."""
 
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
 from types import ModuleType
@@ -45,6 +45,7 @@ def install_service(
     root_validators: Sequence[RootValidator] = (),
     workflows: Sequence[Path] = (),
     bus: MessageBus | None = None,
+    stores: Mapping[str, Store] = {},
 ) -> ServiceKit:
     """Serve the application's schema on ``app``: its routes, its problem responses, its start-up.
 
@@ -79,11 +80,20 @@ def install_service(
     ``bus`` is the message bus the commits of tenant and application databases are published to; it is
     ``kit.bus``, which the consumer may also set later, once the handlers' dependencies exist.
 
+    ``store`` is the ``default`` store, which holds the system database and the tenants the generic
+    ``POST`` creates (DEC-1). ``stores`` are further stores by name; a consumer creates a tenant on one
+    with ``kit.tenancy.create(..., store=name)``. A name is never ``default``, and one ``Store`` object is
+    wired once. Start-up refuses (``StoreNotWired``) an access record that names a store not wired here,
+    before any route is served.
+
     Returns the kit the routes share, for the consumer's own routes: its ``tenancy``, ``store``,
     ``files`` and ``identity``, and ``require`` and ``require_aggregate``, the token and access check
     of the toolkit's routes.
 
     Raises:
+        ValueError: ``stores`` has the key ``default``, or one ``Store`` object is wired under two names
+            (the default included); the message names the key.
+        StoreNotWired: (at start-up) an access record names a store that is not wired.
         InvalidIri: the verifier mints principals by another ``principal_template`` than ``settings``
             say (build it with ``iris=Iris(settings)``).
         InvalidRoleDefinition: ``rules`` is a file that is not a valid list of role definitions;
@@ -114,6 +124,7 @@ def install_service(
         grant_validators=grant_validators,
         root_validators=root_validators,
         workflows=workflows,
+        stores=stores,
     )
     kit.bus = bus
     _require_same_principals(kit)

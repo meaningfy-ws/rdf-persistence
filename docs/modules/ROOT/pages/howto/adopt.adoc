@@ -1556,7 +1556,7 @@ check opaque ones.
 
 `install_service` mounts the routes (<<routes>>), the problem responses and the OpenAPI document.
 On start-up, before your own lifespan, it creates the system database if it is missing, guards the
-IRI policy (see "The policy cannot change", below) and runs the sweep. It stops with `OSError` if the generated folder lacks the context, the shapes, a frame or
+IRI policy (see "The policy cannot change", below), creates the application database if the schema has an application class, migrates the system and application databases, runs the sweep (on every wired store, see xref:howto/tenant-stores.adoc#startup[Put tenants on several stores]), and migrates the tenants, each on its own store. It stops with `OSError` if the generated folder lacks the context, the shapes, a frame or
 `openapi-components.json`, and with `LookupError` if the schema has no tenant root or not exactly
 one access record class. `rules` may also be the path of the roles file.
 

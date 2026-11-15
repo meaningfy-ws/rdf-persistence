@@ -19,6 +19,7 @@
 ** xref:howto/event-driven.adoc[React to changes with commands and observers]
 * xref:howto/dump-restore.adoc[Back up or copy a project]
 * xref:howto/application-data.adoc[Keep data that belongs to no project]
+* xref:howto/tenant-stores.adoc[Put tenants on several stores]
 
 * xref:develop/index.adoc[Working on the toolkit]
 ** xref:develop/agents.adoc[Working with agents]

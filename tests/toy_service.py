@@ -2,7 +2,7 @@
 
 import functools
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import httpx
@@ -139,6 +139,7 @@ class ToyService:
         root_validators: Sequence[RootValidator] = (),
         workflows: Sequence[Path] = (REVIEW_WORKFLOW,),
         migrations: Path = TOY_MIGRATIONS,
+        stores: Mapping[str, Store] = {},
     ) -> None:
         self.signer = TokenSigner(key=toy_key())
         self.store = store or FakeStore()
@@ -176,6 +177,7 @@ class ToyService:
             root_validators=root_validators,
             workflows=workflows,
             migrations=migrations,
+            stores=stores,
         )
 
     def client(self) -> httpx.AsyncClient:

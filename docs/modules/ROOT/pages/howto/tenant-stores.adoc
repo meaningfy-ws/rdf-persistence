@@ -1,0 +1,329 @@
+= Put tenants on several stores
+:description: How to wire several triple stores into one service, create a tenant on one of them, reach a tenant's store from your own code, copy a tenant to another store, retire a store, deploy safely, and what the start-up does with several stores.
+
+_Can a project's data live on another server? How do I choose the server when I create a project?
+How do I copy a project to another server, or stop using one?_
+
+A tenant (a project) is one database. By default every tenant database lives on the one triple store
+you give `install_service`. You can also wire *named stores* beside it, for example a server that
+holds one client's projects, and create a tenant on one of them. The toolkit records the store's
+name in the tenant's access record and from then on reads, writes, sweeps, migrates, dumps and
+deletes that tenant only on its own store. This page shows how to wire the stores, how to choose
+one, what follows the tenant, and the rules a deployment with several stores must keep. It
+describes `develop` as of 2026-11-15 (the change `tenant-stores`).
+
+Every store runs the same product (Fuseki). The files of every tenant stay in the one object store
+you wire, whatever triple store its database is on.
+
+[#wire]
+== 1. Wire the stores
+
+Pass the extra stores to `install_service` (or to `ServiceKit`) as `stores`, a mapping from a name
+to a store. The `store` argument you already pass is the store named `default`:
+
+[source,python]
+----
+from rdf_persistence import FusekiStore, install_service
+
+async with (
+    FusekiStore(fuseki_url, fuseki_user, fuseki_password) as store,
+    FusekiStore(client_a_url, client_a_user, client_a_password) as client_a,
+    # identity and verifier as in step 12 of the adoption guide
+):
+    kit = install_service(
+        app,
+        store=store,                    # the store named "default"
+        stores={"client-a": client_a},  # the other stores, by name
+        # ... the other keyword arguments of step 12
+    )
+----
+
+The composition root is described in xref:howto/adopt.adoc#serve[Serve the application]. A
+service with one store passes no `stores` and sees no change.
+
+A store name:
+
+* matches `^[a-z][a-z0-9-]{0,31}$`: a lower-case letter, then up to 31 lower-case letters, digits
+  or hyphens (`client-a`, `archive2`);
+* is not `default`, which is the name of the `store` argument;
+* names one store object: the same object twice, or the `store` object again under a name, is
+  refused.
+
+A name that breaks one of these makes `install_service` or `ServiceKit` raise `ValueError`, naming
+the key, before the app is built.
+
+*One server, one name.* Do not wire the same server twice, under two names or as `default` and a
+name: the toolkit cannot tell that two `FusekiStore` objects with the same URL are one server.
+Nothing is lost if you do (an orphan is judged by its database name across every store, and a
+second drop of it that finds nothing is ignored), but nothing guards the setup either: it is
+outside what the toolkit is tested for.
+
+*A prefix belongs to one deployment on every store it wires.* The start-up sweep drops every
+database whose name starts with `{prefix}-t-` and that no access record of *this* deployment names,
+on *every* wired store (see <<startup>>). If another deployment uses the same `prefix` (a
+`ServiceSettings` field) on a server you wire, its tenant databases are dropped at your next start.
+This is the same rule as for the default store today; with several stores it reaches further.
+Give each deployment its own prefix, and never wire a server another deployment owns unless the
+prefixes differ.
+
+[#create]
+== 2. Choose a store when you create a tenant
+
+In Python, name the store at create:
+
+[source,python]
+----
+summary = await kit.tenancy.create("Client A library", root_slots, creator, store="client-a")
+async with kit.session(summary.id, principal) as session:     # opens on client-a
+    ...
+----
+
+`store` defaults to `"default"`. A tenant created on `default` gets an access record with no store
+name, exactly as before; a record with no store name means `default`, so records written before
+this change need no migration. The access record itself always lives in the system database, on
+`default`.
+
+*The generic HTTP create route always uses `default`.* `POST /{tenant_segment}` takes no store,
+and no response shows a store name: server names are not the client's business. If your users
+choose a store, write your own create route and call `kit.tenancy.create(..., store=name)` from it.
+
+*Check a user's choice yourself.* Your route knows which names it wired; check the user's choice
+against them before you create:
+
+[source,python]
+----
+STORES = {"client-a": client_a}          # the mapping you pass as stores=
+
+if choice != "default" and choice not in STORES:
+    raise InvalidBody(f"unknown store {choice!r}")   # 422, nothing created
+summary = await kit.tenancy.create(label, root_slots, caller.principal, store=choice)
+----
+
+*A failed create cleans up after itself.* If `create` fails after the database exists and before
+the access record is written (for example when two instances draw the same id at the same moment),
+it drops the database, and the bucket if it made it, from the store it created them on, then
+re-raises the error. It drops only what its own call made, never another tenant's bucket. The
+cleanup is best effort and logged at step `create-cleanup`.
+
+A name that is not wired makes `create` raise `StoreNotWired` before anything is drawn or created.
+Over HTTP the toolkit answers it 500 `internal-error`: reaching it from a request is a bug in your
+route, which should have refused the name with 422. `kit.tenancy.stores()` answers every wired
+name, `default` included, if you prefer to check against it.
+
+*A new tenant id is free on every store.* The toolkit draws the tenant id once and checks its
+database name against every wired store, so two tenants on two stores never share a database
+name. That check lists the databases of every wired store: while one wired store is unreachable,
+every create and restore answers 503 (`StoreUnavailable`), on whatever store it was meant for, and
+creates nothing.
+
+[#routing]
+== 3. What follows the tenant
+
+Once created, a tenant never moves. Everything the toolkit does to a tenant runs on its own store:
+
+[cols="2,3",options="header"]
+|===
+|Operation |Where it runs
+
+|`kit.session`, `kit.collaboration`, the generic routes
+|The tenant's store. The first request for a tenant on an instance reads its access record once to
+learn the store; later requests use a cache.
+
+|Rename, grants, `delete`
+|The access record on `default`; the database is dropped from the tenant's store.
+
+|`kit.remove_with_files`
+|The tenant's store (through the routed session); the blobs in the one object store.
+
+|`kit.sweep_tenant`
+|The tenant's store.
+
+|`kit.dump_tenant`
+|Reads from the tenant's store.
+
+|`kit.restore_tenant(src, creator, store=name)`
+|Creates the new tenant on `name` (`default` when left out).
+
+|Start-up sweep, `migrate_tenants`
+|Each tenant on its own store (<<startup>>).
+|===
+
+[#store-of]
+== 4. Reach a tenant's store from your own code
+
+When your code sends its own SPARQL to a tenant's database, take the store from the kit:
+
+[source,python]
+----
+store = await kit.store_of(tenant)                    # the tenant's store
+result = await store.query(kit.tenancy.database_of(tenant), sparql)
+----
+
+`kit.store_of(tenant)` is to the triple store what `kit.bucket_of(tenant)` is to the object store.
+It raises `NotFound` for a tenant with no access record, and `StoreNotWired` when the record names a
+store this instance does not wire. `kit.store` is still there, and is always the `default` store:
+the system and application databases live on it.
+
+*Do not pass `kit.store` where a tenant's store is meant.* These calls take a store and a tenant,
+and trust you to pair them:
+
+[cols="3,3",options="header"]
+|===
+|Don't |Do instead
+
+|`tenant_dump.dump(kit.tenancy, kit.store, ...)` for a tenant
+|`kit.dump_tenant(tenant, out)`, or pass `await kit.store_of(tenant)`
+
+|`tenant_sweep.sweep_tenant(kit.tenancy, kit.store, ...)` for a tenant
+|`kit.sweep_tenant(tenant)`, or pass `await kit.store_of(tenant)`
+
+|`kit.store.query(kit.tenancy.database_of(tenant), ...)`
+|`(await kit.store_of(tenant)).query(kit.tenancy.database_of(tenant), ...)`
+|===
+
+`tenancy.database_of(tenant)` answers only the database *name*; it does not say which store holds
+it. Sent to the wrong store, these calls find no such database: they fail (`DatabaseGone`, 404), and
+no data is lost, but a tenant off `default` looks empty or missing. The kit's own methods route for
+you; prefer them.
+
+[#copy]
+== 5. Copy a tenant to another store
+
+A tenant never moves, but you can make a copy on another store: dump it, then restore the dump
+with `store=`:
+
+[source,python]
+----
+with open(path, "wb") as out:
+    await kit.dump_tenant(tenant, out)                                 # reads its own store
+with open(path, "rb") as src:
+    copy = await kit.restore_tenant(src, creator=caller.principal, store="client-a")
+----
+
+The copy is a *new* tenant: a new id and new IRIs, and the restorer alone holds the creator role.
+Grant the others again, and delete the original if the copy replaces it. Everything else about
+dump and restore, the archive and its limits, is on
+xref:howto/dump-restore.adoc[Back up or copy a project].
+
+[#retire]
+== 6. Retire a store
+
+The service *refuses to start* when an access record names a store it does not wire: the start-up
+sweep raises `StoreNotWired`, naming every such store, before it finishes or drops anything. So
+before you remove a store from `stores`:
+
+. List the tenants on it (your own record of where you created them, or
+  `await kit.store_of(t)` for each tenant you know).
+. For each one, delete it, or copy it to another store (<<copy>>) and then delete it. Do this while
+  the store is still wired: `delete` refuses, with nothing changed, a tenant whose store this
+  instance does not wire.
+. Remove the store from `stores` on every instance and restart.
+
+The toolkit never touches a server that is not wired: databases left on a retired server stay
+there.
+
+[#deploy]
+== 7. Deploy
+
+*Wire a new store on every instance, and restart them all, before you create a tenant on it.* An
+instance that does not wire a tenant's store cannot serve it: each request for that tenant answers
+500 `internal-error` (logged at ERROR, `StoreNotWired`) until that instance restarts with the store
+wired. In a rolling deploy, finish the deploy that adds the store first; create on it afterwards.
+
+*No downgrade, and no mixed toolkit versions, once a tenant lives off `default`.* An older toolkit
+does not know the store name in the access record. If it rewrites the record (a rename, a change of
+grants, a delete), the store name is lost: the tenant then routes to `default` and answers 404. Its
+database is not dropped, because the sweep judges orphans by name across every store, but it is out
+of reach until an operator puts the store name back. So upgrade every instance before the first
+create on another store, and do not roll back afterwards.
+
+The start-up sweep reports such a tenant: when a record's database is missing from its own store
+but present on another wired store, it logs at ERROR with step `misplaced-tenant`, naming the
+tenant and both stores, and leaves the tenant alone.
+
+[#default]
+== 8. What stays on `default`
+
+* The system database (the access records and the IRI policy record).
+* The application database (see xref:howto/application-data.adoc[Keep data that belongs to no
+  project]).
+* Both are created and migrated on `default` only. Another store holds tenant databases and
+  nothing else.
+
+The start-up functions you may call yourself (`migrate_shared`, `sweep`, `migrate_tenants`) keep
+their signatures. `migrate_shared` uses the `store` you pass (the `default` store, `kit.store`).
+`sweep` and `migrate_tenants` take their stores from `kit.tenancy`; their `store` argument is kept
+for compatibility and unused, so pass `kit.store` as before.
+
+[#startup]
+== 9. What the start-up does
+
+`install_service` runs these steps before the app serves, in this order. A consumer with its own
+start-up calls the same functions in the same order (see
+xref:howto/application-data.adoc#startup[Start-up]).
+
+. *Create the system database* on `default` if it is missing.
+. *Guard the IRI policy* (`IriPolicyChanged` stops the start).
+. *Create the application database* on `default`, if the schema has an application class.
+. *Migrate the shared databases* on `default` (`MigrationFailed` stops the start).
+. *Sweep* (`sweep`):
+.. read every access record;
+.. raise `StoreNotWired`, naming every unwired store the records name, sorted, if there is one;
+   nothing has been changed yet;
+.. list the databases of *every* wired store; a store that cannot be reached raises
+   `StoreUnavailable` here, and the start stops before anything is changed on any store;
+.. log `misplaced-tenant` for each record whose database is on another store than its own;
+.. if the system database was just created and tenant databases already exist on a store, skip the
+   rest with a warning, as before;
+.. finish each interrupted deletion on the tenant's own store;
+.. drop each `{prefix}-t-…` database, on any wired store, that no access record names; then the
+   orphan buckets, as before.
+. *Migrate the tenants* (`migrate_tenants`), each on its own store. A tenant whose migration fails
+  is set aside and answers 503 (`tenant-behind`), as before; a tenant whose store is not wired
+  stops the start with `StoreNotWired`, even when your own start-up skipped the sweep.
+
+Before any of this, building the kit refuses a bad `stores` mapping with `ValueError` (<<wire>>).
+
+[#errors]
+== 10. What a caller sees
+
+[cols="1,1,4",options="header"]
+|===
+|Error |Status |When
+
+|`ValueError`
+|-
+|Building the kit: a store name that breaks the rules of <<wire>>.
+
+|`StoreNotWired`
+|500
+|`create` or `restore_tenant` with a name not wired (nothing created); a request reaching an
+instance that does not wire the tenant's store (<<deploy>>); at start-up, a record naming an
+unwired store (the service does not start).
+
+|`StoreUnavailable`
+|503
+|A wired store cannot be reached: at start-up the service does not start; at run time every create
+and restore fails, and requests for the tenants on that store fail.
+
+|`NotFound`
+|404
+|`kit.store_of` for a tenant with no access record.
+
+|`DatabaseGone`
+|404
+|A tenant's database looked up on the wrong store (<<store-of>>), or a record that lost its store
+name (<<deploy>>).
+|===
+
+[#limits]
+== 11. Limits
+
+* A tenant never moves between stores; a copy gets new IRIs (<<copy>>).
+* Every store runs the same product. Files stay in the one object store.
+* No query reaches across tenants or stores.
+* The generic HTTP routes cannot choose a store, and no response shows one.
+* The service does not serve while a wired store is unreachable at start-up.
+* A deleted tenant's id drawn again for a new tenant on another store, while another instance still
+  caches the old store, sends that instance's requests to the wrong store until it restarts. With
+  random ids of at least four characters this is negligible.

@@ -89,7 +89,7 @@ separate; L4+L5 one pass), the fix pass, rebase on `develop`, PR 1, merge on gre
 
 ## Stage 2: the kit, two Fuseki servers, BDD and docs (PR 2)
 
-- [ ] 2.1 PD-9: `ServiceKit(stores=)`, `install_service(stores=)`, `kit.store_of`, and `dump_tenant`,
+- [x] 2.1 PD-9: `ServiceKit(stores=)`, `install_service(stores=)`, `kit.store_of`, and `dump_tenant`,
   `sweep_tenant`, `restore_tenant(store=)` routed. Tests in `tests/unit/entrypoints/`. Gate:
   `make test-changed check-quality`.
 
@@ -103,7 +103,7 @@ separate; L4+L5 one pass), the fix pass, rebase on `develop`, PR 1, merge on gre
 | TC-34 | the app's start-up with a record naming an unwired store | start-up raises `StoreNotWired`; no route served |
 | TC-35 | the response bodies of `GET` and `PUT` on the access record and of `GET /tenants` | no `storeName` in any of them |
 
-- [ ] 2.2 PD-11: compose service `fuseki-b` (the same `image:` tag as `fuseki`, no `build:`, so
+- [x] 2.2 PD-11: compose service `fuseki-b` (the same `image:` tag as `fuseki`, no `build:`, so
   no second image is built) and session fixture `fuseki_b` in
   `rdf_persistence/testkit/containers/`; `tests/integration/tenancy/test_tenant_stores.py`. Gate:
   `make test-containers TEST_PATH=tests/integration/tenancy/test_tenant_stores.py`, then
@@ -114,14 +114,14 @@ separate; L4+L5 one pass), the fix pass, rebase on `develop`, PR 1, merge on gre
 | TC-36 | two Fuseki containers, a tenant on each, a book in each | each book on its own server only (`list_datasets` and a query on the other server) |
 | TC-37 | an orphan `{prefix}-t-…` database made on the second server, and an active tenant there; `sweep` | the orphan dropped; the tenant's database and its book unchanged |
 
-- [ ] 2.3 BDD: `tests/feature/tenant_stores.feature` with the spec delta's scenarios (two tenants on
+- [x] 2.3 BDD: `tests/feature/tenant_stores.feature` with the spec delta's scenarios (two tenants on
   two stores, an existing record, deletion on the tenant's store, an orphan on another store, a
   store no longer wired, copy by dump and restore) and its steps in
   `tests/feature/test_tenant_stores.py` on two `FakeStore`s. The spec's other three scenarios are
   covered by unit tests: "not wired at create" by TC-15, "id free on every store" by TC-16,
   "migrations on each store" by TC-26. Gate: `make test-changed check-quality`.
 
-- [ ] 2.4 Docs: `howto/tenant-stores.adoc` (wiring, choosing a store at create, copying by dump and
+- [x] 2.4 Docs: `howto/tenant-stores.adoc` (wiring, choosing a store at create, copying by dump and
   restore, retiring a store, the deploy order of RISK-2, the prefix rule of RISK-1, one server
   under one name of RISK-4, no downgrade or mixed versions of RISK-5, checking a user's store
   choice in a consumer's own create route, and the anti-pattern of passing `kit.store` for a
@@ -138,8 +138,8 @@ routed through the session).
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · (tester) · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 ·
-  reconcile · PR 2
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · (tester) · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 ·
+  [x] reconcile · PR 2 (#123)
 
 ## Verification
 

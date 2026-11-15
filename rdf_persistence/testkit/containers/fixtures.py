@@ -43,6 +43,7 @@ from rdf_persistence.testkit.zitadel import provision_project
 
 COMPOSE_DIR = Path(__file__).parent
 COMPOSE_FILE = "compose.yaml"
+FUSEKI_B = "fuseki-b"
 POSTGRES = "postgres"
 ZITADEL_FILES = "zitadel-files"  # holds the volume the first-instance setup writes the PAT to
 
@@ -130,12 +131,10 @@ def _exec(compose: DockerCompose, service: str, command: list[str]) -> ExecResul
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture(scope="session")
-def fuseki(_compose_project: None) -> Iterator[FusekiServer]:
-    """Fuseki, answering ``/$/ping`` for the test user."""
+def _fuseki_answering(service: str, port_var: str) -> Iterator[FusekiServer]:
     # No build=True: compose builds only when the tag is missing, so the image `make fuseki-image`
     # loaded is used as is. After editing fuseki/, run `make fuseki-image` to rebuild and reload it.
-    with _running(FUSEKI, port_var="RP_FUSEKI_PORT") as (_, port):
+    with _running(service, port_var=port_var) as (_, port):
         server = FusekiServer(
             url=f"http://localhost:{port}", user=FUSEKI_USER, password=FUSEKI_PASSWORD
         )
@@ -143,10 +142,22 @@ def fuseki(_compose_project: None) -> Iterator[FusekiServer]:
             lambda: (
                 httpx.get(f"{server.url}/$/ping", auth=(server.user, server.password)).is_success
             ),
-            "Fuseki",
+            service,
             retry_on=HTTP_ERRORS,
         )
         yield server
+
+
+@pytest.fixture(scope="session")
+def fuseki(_compose_project: None) -> Iterator[FusekiServer]:
+    """Fuseki, answering ``/$/ping`` for the test user."""
+    yield from _fuseki_answering(FUSEKI, "RP_FUSEKI_PORT")
+
+
+@pytest.fixture(scope="session")
+def fuseki_b(_compose_project: None) -> Iterator[FusekiServer]:
+    """A second Fuseki, started only by the tests that ask for it (tenant-stores PD-11)."""
+    yield from _fuseki_answering(FUSEKI_B, "RP_FUSEKI_B_PORT")
 
 
 # ---------------------------------------------------------------------------

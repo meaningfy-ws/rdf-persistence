@@ -111,6 +111,12 @@ that order, after the IRI policy guard and this call. Both are in
 databases keep the stamps they were created with, and a schema change is never applied. See
 xref:howto/migrate.adoc#startup[Change a schema that has stored data].
 
+The `store` argument of these start-up functions is the `default` store, `kit.store`, which holds
+the system and application databases. A service that wires other stores (`stores=`) passes the
+same `kit.store`: tenants on the other stores are found through `kit.tenancy`, which sweeps and
+migrates each one on its own store. See xref:howto/tenant-stores.adoc#startup[Put tenants on
+several stores].
+
 [#access]
 == 5. Who may do what
 
