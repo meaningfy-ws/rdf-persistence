@@ -310,3 +310,16 @@ traceback) for a failed round or a poison record.
 ## Open Questions
 
 None. Q1 to Q8 were answered on 2026-11-15 (inputs/seed.md).
+
+## Delivery decisions
+
+- **D-1 (stage 1, after the spike; evidence/spike-faststream.md).** All four points of PD-4 held
+  with FastStream 0.7.8. PD-8 is built as the spike found: redelivery of an unacked message uses
+  `StreamSub(..., group=deployment, consumer=..., claim_min_idle_time=<seconds, as ms>)`, which
+  needs Redis 8.4 or later (the compose service runs `redis:8`; an older server stops the
+  subscriber with `StreamClaimUnsupportedError`, stated in the how-to); the age trim is
+  `xtrim(stream, minid=…)` through the broker's client after each publish (RISK-1's fallback),
+  since `publish` has no `minid`; a stream entry holds FastStream's binary envelope, so only
+  FastStream consumers read it (the how-to says so). `claim_min_idle_time` also retries a failing
+  message within one run once it has been idle that long: that is the "not acked: redelivered"
+  of PD-10, sooner than a restart.
