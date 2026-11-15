@@ -22,6 +22,32 @@ A record without a store name SHALL mean `default`. The system database SHALL st
 - **WHEN** it is deleted
 - **THEN** its database is dropped from `client-a` and nothing is dropped on `default`
 
+#### Scenario: a store that is not wired at create
+- **GIVEN** a kit wired to `default` and `client-a`
+- **WHEN** a tenant is created on `client-b`
+- **THEN** the creation is refused, naming `client-b`, and nothing is created on any store
+
+#### Scenario: a new tenant id is free on every store
+- **GIVEN** a database on `client-a` with the name of the first id drawn
+- **WHEN** a tenant is created on `default`
+- **THEN** the id is drawn again and the tenant gets a name no wired store holds
+
+#### Scenario: a copy on another store
+- **GIVEN** a tenant on `client-a` with a book
+- **WHEN** it is dumped and the dump is restored on `default`
+- **THEN** a new tenant with a new IRI lives on `default` and its book reads back there
+
+### Requirement: The system and application databases stay on the default store
+
+The system database and the application database SHALL live only on the `default` store, and the
+start-up SHALL migrate them there. Each tenant database SHALL be stamped when created and migrated
+at start-up on its own store. The store name SHALL NOT appear in any response.
+
+#### Scenario: migrations on each store
+- **GIVEN** a tenant on `default` and one on `client-a`, and a schema migration with a step
+- **WHEN** the service starts
+- **THEN** each tenant database is migrated on its own store, and no system or application database exists on `client-a`
+
 ### Requirement: The start-up sweep covers every wired store
 
 The start-up sweep SHALL drop a tenant-prefixed database on any wired store only when no access
