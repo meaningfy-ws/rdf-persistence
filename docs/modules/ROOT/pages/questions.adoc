@@ -2,7 +2,7 @@
 :description: Short answers to the questions people ask about rdf-persistence, each with a link to the page that goes deeper.
 
 Each answer is short and points to the page with the details. The answers describe the toolkit
-on `develop` as of 2026-11-06 (the change `toolkit-v1-foundation`, stages 1 to 5).
+on `develop` as of 2026-11-15.
 
 == Using the toolkit
 
@@ -194,6 +194,16 @@ Into the application database, one per deployment. Mark the class `database: app
 schema, check the caller with `kit.require_application`, mint IRIs with `kit.application_iri` and
 open `kit.application_session`. Access comes from global roles at level `system`, which also apply
 in every tenant. See xref:howto/application-data.adoc[Keep data that belongs to no project].
+
+
+*Can a project's data live on another server?*::
+Yes. Wire the other triple stores by name with `install_service(..., stores={"client-a": ...})`
+and create the tenant on one with `kit.tenancy.create(..., store="client-a")`; the generic `POST`
+route always uses the `default` store. From then on the tenant's sessions, sweeps, migrations,
+dumps and deletion run on its own store, and `kit.store_of(tenant)` answers it for your own SPARQL.
+A tenant never moves: copy it with `kit.dump_tenant` and `kit.restore_tenant(..., store=)`. Wire a
+new store on every instance before creating on it, and do not downgrade once a tenant lives off
+`default`. See xref:howto/tenant-stores.adoc[Put tenants on several stores].
 
 *My schema changed and I have stored data: what do I do?*::
 Set a new quoted `version:` in the root schema and run `make generate`. `rp-generate` compares the
