@@ -904,6 +904,18 @@ class Session:
         )
         await self._store.update(self._database, text)
 
+    async def is_recorded(self, activity_iri: str) -> bool:
+        """Whether the provenance graph holds a statement about ``activity_iri``: one cheap ``ASK``
+        that also shows the tenant database is there and the store answers. No access is checked.
+
+        Raises:
+            DatabaseGone: The tenant database does not exist.
+            StoreUnavailable: The store does not answer.
+        """
+        return await self._ask(
+            ID_TAKEN, provenance=term(self._provenance), id=term(URIRef(activity_iri))
+        )
+
     async def matches(self, iri: str, class_iri: str, conditions: Sequence[Condition]) -> bool:
         """Whether the aggregate ``iri`` is of exactly the class ``class_iri`` and holds every condition.
 

@@ -128,10 +128,11 @@ unused; letters mark cases added by the PLAN's attack).
 | TC-23 | `retention=timedelta(seconds=1)`; publish; wait past it (`wait_until`); publish again | the first entry is gone |
 | TC-31 | a subprocess `python -c "import rdf_persistence, rdf_persistence.testkit, sys; assert 'faststream' not in sys.modules and 'redis' not in sys.modules"` | exits 0 |
 
-- [ ] 2.2 Incoming messages (PD-10). `entrypoints/kit.py` `receive(envelope, body)`. Tests first in
+- [x] 2.2 Incoming messages (PD-10). `entrypoints/kit.py` `receive(envelope, body)`. Tests first in
   `tests/unit/entrypoints/test_receive.py` with two kits sharing one `InMemoryBroker` and one fake
   store, deployments `lib` and `cat`, and a `RecordingObserver` on each. The feature scenario
-  "another deployment's commit" in `tests/feature/events.feature`.
+  "another deployment's commit" in `tests/feature/incoming_events.feature` (its own file, so 1.7
+  and 2.2 could run in parallel).
 
 | ID | Input | Expected |
 |---|---|---|

@@ -342,3 +342,7 @@ None. Q1 to Q8 were answered on 2026-11-15 (inputs/seed.md).
   database every round: PD-3's "a poison record never stalls its database" broke. Fixed: the sort
   key is total; a mark that is not an aware datetime sorts after every valid one (then by IRI),
   and the activity is relayed like any other.
+- **D-6 (stage 2, 2026-11-16, the lead).** PD-10 did not say what an incoming message of the
+  application database does when this deployment's schema has no application class
+  (`application_session` raises `LookupError`): it is logged at WARNING and acked, like a tenant
+  this deployment lacks. The receiver probes the store through `Session.is_recorded` (one `ASK`).
