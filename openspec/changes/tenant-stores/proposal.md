@@ -139,7 +139,7 @@ None.
 
 ## As built (2026-11-15)
 
-Delivered in two stages, #122 (stage 1, services) and PR-2 (stage 2, kit, tests on two servers,
+Delivered in two stages, #122 (stage 1, services) and #123 (stage 2, kit, tests on two servers,
 docs). The bet held: the problem, the appetite (MEDIUM) and the no-gos stand. Where the result
 differs from or adds to the text above:
 
@@ -153,7 +153,7 @@ differs from or adds to the text above:
 | Not in the shape | A record that lost `store_name` (an older toolkit rewriting it) is logged at ERROR, `misplaced-tenant`, and left alone | The weakest assumption behind DEC-2, found by the PLAN's attack | RISK-5 | built (#122); no downgrade, documented |
 | Not in the shape | `StoreNotWired` (500); while one wired store is down, creates and restores elsewhere answer 503 | DEC-7 needs the id checked on every store | PD-10, error matrix | built, accepted |
 | Not in the shape | `tenant_dump.dump` and `tenant_sweep.sweep_tenant` still take the store from their caller; the kit passes the tenant's | Signature kept; a direct caller passing the wrong store gets `DatabaseGone`, never lost data | PD-9, PD-16 | accepted; resolving it inside is left for later |
-| Tests: one integration test with two Fuseki containers | Two (TC-36, TC-37), on a testkit fixture `fuseki_b` consumers can use | | PD-11 | built (PR-2) |
+| Tests: one integration test with two Fuseki containers | Two (TC-36, TC-37), on a testkit fixture `fuseki_b` consumers can use | | PD-11 | built (#123) |
 
 Not built, as the No-gos say: moving a tenant or keeping its IRIs across stores, a store per
 bucket, queries across stores, store choice in the generic HTTP route, different products per

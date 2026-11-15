@@ -139,7 +139,7 @@ routed through the session).
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · (tester) · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 ·
-  reconcile · PR 2
+  [x] reconcile · PR 2 (#123)
 
 ## Verification
 
