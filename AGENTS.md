@@ -1,190 +1,97 @@
 <!-- meaningfy-template-version: 3.0.0 -->
 <!-- CANONICAL, CLI-agnostic agent instruction file (opencode reads AGENTS.md natively; Claude Code
-     reads it through the @AGENTS.md import in CLAUDE.md). Edit THIS file. CLAUDE.md is a thin
-     pointer that adds only Claude-specific guidance — never a symlink, never a copy. This file
-     ROUTES to skills and to the global standard; it never restates that standard (DEC-12 —
-     global vs repo split). -->
+     reads it through the @AGENTS.md import in CLAUDE.md). Edit THIS file. It records only what is
+     specific to this repository; the company standard, the skill routing and the spine conventions
+     come from the global agent instructions and the installed skills (DEC-12). -->
 
 # Project: RDF Persistence
 
-Meaningfy project. Build clean, layered, well-tested code; minimise WTFs-per-minute. The
-company-wide standard (Clean Code, Clean Architecture, testing, tooling) lives in your **global
-agent instructions** (`~/.claude/CLAUDE.md` on Claude Code, `~/.config/opencode/AGENTS.md` on
-opencode) — this file does **not** repeat it; it ROUTES to it and to the
-installed skills, and records only what is specific to **this** repo.
+The company-wide standard, the skill routing and the spine conventions (EPIC, PLAN, golden thread,
+`/opsx:*`) live in your **global agent instructions** and the installed skills; this file does not
+repeat them. Delivery follows skillery's **epic-delivery** skill; the page for people is
+[`develop/agents.adoc`](docs/modules/ROOT/pages/develop/agents.adoc), and every test follows
+[`develop/testing.adoc`](docs/modules/ROOT/pages/develop/testing.adoc). Rules for agents are in
+`docs/rules/`: load them with the rulebook skill at the start of an activity; change them only
+through it, by pull request.
 
-## Skill routing (use the skill for the task)
+## Code and layers
 
-- Structuring Python code (domain/adapters/services/entrypoints, SOLID, CI) → **cosmic-python**
-- Keeping code minimal — YAGNI, avoid over-engineering, simplest working approach → **ponytail**
-  (`/ponytail` to set intensity; `/ponytail-review` for a delete-list on the diff)
-- System / solution design (C4, ADRs, contracts) → **architecture**
-- Modelling the domain / generating code from a model (`make generate-models`) → **conceptual-modelling**
-  (product repos only)
-- Any new feature or non-trivial change → start by exploring options (**superpowers:brainstorming**)
-- Any feature or bugfix implementation → **superpowers:test-driven-development** (tests first)
-- Debugging → **superpowers:systematic-debugging**
-- Shaping an EPIC + deriving its PLAN → **epic-planning** + the opsx workflow commands
-  (`/opsx:*` on Claude Code, `opsx-*` on opencode)
-- Spec readiness (the PLAN clarity gate, ≥9/10) → **clarity-gate**
-- BDD features → **bdd-gherkin**
-- Commits / branches / PRs → **meaningfy-git-workflow** (mechanics via **commit-commands**)
-- Pre-PR review → **meaningfy-code-review** (+ external **code-review**)
-- Deploy / release / versioned image (deployable repos) → **ci-cd-delivery**
-- Docs → **technical-writing**
+- Top-level package `rdf_persistence/` (no `/src`). The innermost layer is **`domain`** (the
+  book's `models/`). Direction: `entrypoints | adapters → services → domain`. The ports live in
+  `services`, their implementations in `adapters`; `entrypoints` and `adapters` never import each
+  other (the consumer's composition root wires them). `domain` imports nothing upward and no I/O
+  library; `generation` and `testkit` sit outside the layers. `make check-architecture` enforces it.
+- **LinkML is the single source of specification (developer, 2026-11-05).** Every model artefact
+  (domain and data classes, shapes, JSON-LD context and frames, TypeScript types, API and JSON
+  schemas, diagrams) is generated from the LinkML schemas; never write or edit one by hand. Change
+  the schema and run `make generate`. Where a stock generator falls short, extend it in
+  `rdf_persistence/generation/` (subclass or template) with its own test. Data goes through the
+  generated models, not bare dicts (design.md PD-24 to PD-28).
+- **Where work is planned (developer, 2026-11-05, D-12).** In this repository's own spine,
+  `openspec/changes/`, even when a consumer needs it. A consumer's change names the toolkit change
+  id, and the toolkit change names the consumer need it serves.
 
-If a request conflicts with these, flag it before proceeding.
+## Tools
 
-## The spine — where work is shaped and remembered
+- Run everything through `make` (Python through uv); never bare `python`/`pytest`.
+- **One tool per question.** Blast radius of a task: GitNexus `impact` (repo `rdf-persistence`).
+  Outline of a file or a symbol's body: Serena's `serena_repl` tool with
+  `s.lsp.get_symbols_overview` / `s.lsp.find_symbol` (with the body), not `Read` on a whole file.
+  Who calls it: `s.lsp.find_referencing_symbols`. Replace or add a whole function:
+  `s.edit.replace_symbol_body` / `s.edit.insert_after_symbol`. One code shape in many files:
+  `ast-grep run -p '<pattern>' --lang python` (look at the matches, then add `-r '<rewrite>' -U`).
+  Text in docs, YAML, AsciiDoc or the Makefile: Grep. The implementer and code-reviewer subagents
+  have Serena, ast-grep and GitNexus too.
+- **Edit in place** with the Edit tool or Serena; never rewrite files with Python heredocs or
+  `sed -i`.
+- Serena memories and `.claude/memory/` are not authority; the truth is `openspec/specs/`.
+- Temporary files go in `temp/` (git-ignored), not `/tmp` or the session scratchpad.
 
-This repo carries the Meaningfy **spine** under `openspec/` (OpenSpec, schema `meaningfy`):
+## Branches, commits, PRs
 
-- **EPIC ≡ `openspec/changes/<id>/proposal.md`** (the Shape-Up work shape: appetite, why, solution,
-  key decisions, rabbit-holes, no-gos).
-- **PLAN ≡ `openspec/changes/<id>/design.md` + `tasks.md`** (the clarity gate scores the pair ≥9/10).
-- **Normative requirements ≡ `openspec/changes/<id>/specs/<cap>/spec.md`** (RFC-2119 SHALL +
-  Given/When/Then; no EARS). They merge into **`openspec/specs/`** — the durable truth — on archive.
-- **Seed inputs** (briefs, notes) live in `openspec/changes/<id>/inputs/` — preserved, never groomed.
-- **Orientation** is `openspec/config.yaml`'s `context:` field (the native index) — **not** a
-  hand-curated MEMORY.md. The truth is `openspec/specs/`.
+- Default branch **`develop`**, the PR target and what consumers install. Branch off it; never
+  commit to it. One PR per stage, merged only on green CI; a release comes last, so nothing is
+  committed after the tag.
+- **No AI attribution** in commits or PRs (`.claude/settings.json` enforces it for Claude Code).
+- **Commit messages give the why and the what.** Subject: Conventional Commit, imperative, no
+  trailing period. Body, wrapped at ~72 columns: **Why** first (the diff cannot show it), then
+  **What** (one bullet per concern, naming the main files), then **Trace**
+  (`Refs: <change-id> DEC-3`, and any `BREAKING CHANGE:` line). A one-line body only for trivial
+  changes.
 
-Drive it with the opsx workflow commands (`/opsx:*` on Claude Code, `opsx-*` on opencode): `propose`,
-`explore`, `apply`, `sync`, `archive` — core profile.
+## Delivery: what this repo adds to epic-delivery
 
-**External method skills land in the spine (binding).** `superpowers` provides *disciplines*, not a
-parallel spec system — its artifacts MUST land in `openspec/changes/<id>/`, never a `docs/superpowers/`
-tree. A **brainstorming** design feeds the **EPIC** (`proposal.md`); **writing-plans is SUPERSEDED** by
-the **PLAN** (`design.md`+`tasks.md`); execution uses superpowers TDD, tracked via the opsx `apply`
-command.
-
-**Golden thread (cite your parent).** Each artifact cites the one above it: the PLAN (`tasks.md`)
-cites its EPIC id on the first line; specs cite their capability; commits reference the change. This
-is how any commit traces up to the requirement that justifies it.
-
-## Working conventions
-
-- The innermost layer is **`domain`** (the book's `models/`). Direction:
-  `entrypoints | adapters → services → domain`. The ports live in `services`, their
-  implementations in `adapters`; `entrypoints` and `adapters` never import each other (the
-  consumer's composition root wires them). `domain` imports nothing upward and no I/O library;
-  `generation` and `testkit` sit outside the layers. Enforced by `.importlinter`; checked via
-  `make check-architecture`.
-- Default branch is **`develop`** (the PR target). Branch off it; never commit to it directly.
-- Run Python tooling through uv (`uv run pytest`, `uv run ruff`, …). Never invoke
-  bare `python`/`pytest` — prefer the `make` targets below.
-- **Subagents** — before spawning one, follow *Subagent dispatch* in the `guardrails` skill: spawn
-  only when it pays, brief it fresh, take the base report back, and have finished work checked by a
-  second subagent.
-- **Subagents share this checkout and branch.** Implementers run one after another; the lead
-  commits after each task. Run writers in parallel only on tasks with disjoint files, and they
-  never stage or commit. Read-only agents (reviewers, Explore) may run in parallel freely. Use a
-  separate worktree (`isolation: "worktree"`) only for overlapping parallel work or when another
-  session holds this checkout.
-- **Run checks through make** (`make test`, `make check-all`); don't hand-roll pytest pipelines.
-- **Navigating and editing code: one tool per question.** Blast radius before a task: GitNexus
-  `impact` (the lead's gate). Read a symbol or a file's outline: Serena `get_symbols_overview`
-  and `find_symbol` with its body, not `Read` on a whole file. Who calls it: Serena
-  `find_referencing_symbols`. Replace or add a whole function: Serena `replace_symbol_body` /
-  `insert_after_symbol`. One code shape in many files: `ast-grep run -p '<pattern>' --lang
-  python` (look at the matches, then add `-r '<rewrite>' -U`). Text in docs, YAML, AsciiDoc or
-  the Makefile: Grep. Subagents without Serena use `ast-grep`, Grep and Read with a line range.
-- **Edit in place.** Use the Edit tool or Serena; never rewrite source files with Python
-  heredocs (`s.replace(...)`) or `sed -i`.
-- **Serena memories are not used**; the truth is `openspec/specs/` (`.serena/` is git-ignored).
-- **Temporary files** go in `temp/` (git-ignored), not `/tmp` or the session scratchpad.
-- **Commits and PRs carry no AI attribution** (no `Co-Authored-By`, no "Generated with" line).
-  Enforced for Claude Code by `.claude/settings.json` (`attribution` empty); other agents follow
-  this rule by hand.
-- **Commit messages are descriptive and give the why and the what.** Subject: Conventional
-  Commit, imperative, no trailing period (`feat(store): add named-graph upsert`). Body,
-  after one blank line, wrapped at ~72 columns:
-  1. **Why** — the problem, motivation or constraint; the diff cannot show it, so it comes first.
-  2. **What** — the changes in plain words, one bullet per concern, naming the main files or
-     modules, so a reviewer knows what to look for without reading the diff first.
-  3. **Trace** — the change id and decisions it implements (`Refs: <change-id> DEC-3`),
-     and any BREAKING change on its own `BREAKING CHANGE:` line.
-  A one-line body is fine only for trivial changes (typo, formatting). No AI attribution.
-
-## How work runs here — sessions, the team, the stage loop (developer, 2026-11-08)
-
-The method (shaping and epic sessions, the team and its briefs, the six-step stage loop scaled by
-appetite, the lead's authority, the question format, verification vs validation, the rule for our
-own and external libraries such as rdflib, LinkML or pydantic) is skillery's **epic-delivery**
-skill (bundle `meaningfy-building` >= 3.9.0); shaping is **epic-planning**; subagent dispatch and
-session hygiene are **guardrails** (`meaningfy-core`). Work that way every time. The page for
-people is [`develop/agents.adoc`](docs/modules/ROOT/pages/develop/agents.adoc); every test follows
-[`develop/testing.adoc`](docs/modules/ROOT/pages/develop/testing.adoc). What this repo adds:
-
+- **Subagents share this checkout and branch.** Builders run one after another and never stage or
+  commit; the lead commits after each task. Writers run in parallel only on disjoint files;
+  read-only agents may run in parallel freely. A worktree only for overlapping parallel work or
+  when another session holds the checkout.
 - **Every brief carries the standing rules:** models, not dicts; LinkML is the single source; the
-  testing checklist; how to work (see `develop/agents.adoc`). The report names each make target
-  run with its time and test count.
-- **Gates.** Before a task is handed out, the lead runs gitnexus impact (stop and report
-  HIGH/CRITICAL; subagents have no gitnexus tools, so briefs never ask for it). Per task the
-  builder runs the gates listed in `develop/agents.adoc` (`make test-changed`, which falls back to
-  `make test-fast`; after changing `domain` or a port in `services`, `make test-fast`;
-  `make check-quality`, `make clean-code`) and reports each with its time and test count; the
-  lead re-runs `make check-quality` and reads the diff. After a red run, re-run only the failing
-  tests until green, then the full run once. The full suite (`make check-all`,
-  `make test-containers`) runs once, before the PR.
-- **Challenge, scaled to keep it cheap** (developer, 2026-11-09). The adversarial tester runs right
-  after the riskiest task (new invariants, write order, concurrency), not only at the end; review
-  lenses L4 and L5 are one pass; the checker reads the lead's `make check-all` result and does not
-  re-run tests. Details and reasons: `develop/agents.adoc`.
-- **Merge and release.** One PR per stage into `develop`, merged only on green CI; a release comes
-  last, so nothing is committed after the tag.
-- **Habits.** **Never poll.** Run long commands in the foreground (timeout up to 10 min), with
-  `run_in_background` and its notice, or wait on a condition with the Monitor tool; a hook denies
-  `sleep` loops in Bash (it runs on plain `python3`, stdlib only, on purpose: it must not
-  depend on the project's environment). Re-index gitnexus after each commit (`gitnexus analyze --embeddings
-  --skip-agents-md --skip-skills`, ≈ 20 s). If it errors (developer, 2026-11-09), do not retry or
-  investigate: run `gitnexus clean --force` and the same `analyze` again (≈ 4 min, in the
-  background), then revert anything it wrote to `AGENTS.md`, `CLAUDE.md` or `.claude/skills/`.
-  Keep the durations table in `develop/index.adoc` from ordinary runs (no
-  profiling); docs open with questions (`questions.adoc`) — add the question a new page answers.
+  testing checklist; how to work (see `develop/agents.adoc`). The report names each make target run
+  with its time and test count.
+- **Gates.** Before handing out a task, the lead runs GitNexus `impact` once for it (stop and report
+  HIGH/CRITICAL). The builder's task gate is one command, `make test-changed check-quality`
+  (`make test-fast check-quality` after changing `domain` or a port in `services`). The lead reads
+  the diff and the report and re-runs a gate only on an epic-delivery trigger (T1 to T3). After a
+  red run, re-run only the failing tests until green, then the gate once. `make check-all` and
+  `make test-containers` run once per stage, by the lead, before the PR; never in a task.
+- **Challenge, kept cheap (developer, 2026-11-09).** The adversarial tester runs right after the
+  riskiest task (new invariants, write order, concurrency); review lenses L4 and L5 are one pass;
+  the checker reads the lead's `make check-all` result and does not re-run tests.
+- **Re-index GitNexus once per stage**, at its start, before the first impact check:
+  `gitnexus analyze --embeddings --skip-agents-md --skip-skills` (≈ 20 s). If it errors
+  (developer, 2026-11-09), do not retry or investigate: run `gitnexus clean --force` and the same
+  `analyze` again (≈ 4 min, in the background), then revert anything it wrote to `AGENTS.md`,
+  `CLAUDE.md` or `.claude/skills/`.
+- **Never poll.** Run long commands in the foreground (timeout up to 10 min), in the background
+  with its notice, or wait with the Monitor tool; a hook denies `sleep` loops in Bash.
+
+## Docs
+
+- `make check-docs`: no consumer terms in `docs/modules/ROOT/pages/architecture/`; every page in
+  the nav.
+- Docs open with questions: add the question a new page answers to `questions.adoc`. Keep the
+  durations table in `develop/index.adoc` from ordinary runs (no profiling).
 - **Pages the developer revised (developer, 2026-11-10).** When the developer says they revised a
-  docs page, add `:page-revised: <date> by the developer` under its `:description:` line, or move
-  the date forward if the page already has one. Only the developer's word sets or moves it; an
-  agent's edit never does. The marked pages are the reviewed baseline for hardening the docs later:
-  list them with `grep -rl ':page-revised:' docs/`; what changed since the review is
-  `git log --since=<date> -- <page>`.
-
-## `.claude/` is a regenerable index — the truth is `openspec/specs/`
-
-`.claude/memory/MEMORY.md` is a cheap orientation note (≤200 lines; stable patterns only). It is an
-**index, not authority** — if it disagrees with `openspec/specs/`, `specs/` wins. The legacy
-`.claude/memory/epics/EPIC.md`+`PLAN.md`+`task.md` model is **superseded** by the spine's native
-artifacts above; do not reintroduce parallel epic files under `.claude/`.
-
-## Project specifics
-
-- **Where work is planned (developer, 2026-11-05, decision D-12).** Work on this toolkit is planned
-  in this repository's own spine, `openspec/changes/`, even when a consumer needs it. A consumer's
-  change that depends on toolkit work names the toolkit change id, and the toolkit change names the
-  consumer need it serves. Commits cite the change id (`Refs: <change-id> ...`); PRs target
-  `develop`, which consumers install.
-- **LinkML is the single source of specification (developer, 2026-11-05).** Model-driven, DDD:
-  every model artefact (domain and data classes, shapes, JSON-LD context and frames, TypeScript
-  types, API and JSON schemas, diagrams) is generated from the LinkML schemas. Never write or edit
-  one by hand. To change a model, change the schema and regenerate (`make generate`). Where a stock
-  LinkML generator falls short, extend it here, in `rdf_persistence/generation/` (subclass or
-  template), with its own test. Data is handled through these generated models, not bare dicts.
-  The freshness check, the conformance suite and the model guards enforce this (design.md PD-24
-  to PD-28).
-- **Docs check:** `make check-docs` (no consumer terms in `docs/modules/ROOT/pages/architecture/`;
-  every page in the nav).
-
-<!-- Fill these in for this repository. Delete the guidance comments once resolved. -->
-
-- **Archetype:** <!-- product | library | doc-only -->
-- **Top-level package(s):** `rdf_persistence/` (no `/src`). Multiple deployable units → multiple
-  top-level packages.
-- **Modules / bounded contexts:** <!-- e.g. billing, notifications, commons -->
-- **Domain model:** <!-- product only — model/ (LinkML); `make generate-models` regenerates targets -->
-- **Datastores / external systems:** <!-- e.g. MongoDB, Redis, the ERE engine, an OpenAPI client -->
-- **Deployable?** <!-- yes/no — if yes, see ci-cd-delivery; CD stub pending DevOps ratification -->
-- **Make targets:** <!-- the dev UX — e.g. make install, make check-all, make test, make build-docs -->
-- **GitNexus repo name:** <!-- the name this repo is indexed under (gitnexus_*) -->
-
-See `docs/` for methodology (ai-coding), standards (engineering-standards), and philosophy.
-
-- **Rules:** this repository's rules for agents are in `docs/rules/`. At the start of an activity, load them with the rulebook skill; change them only through it, by pull request.
+  page, add `:page-revised: <date> by the developer` under its `:description:` line, or move the
+  date forward. Only the developer's word sets or moves it. List them with
+  `grep -rl ':page-revised:' docs/`.

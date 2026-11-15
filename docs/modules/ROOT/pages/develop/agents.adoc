@@ -22,8 +22,8 @@ Only when the developer grants it for a named epic, within the limits the `epic-
 sets. Commits and PRs carry no AI attribution.
 
 *What does a member's report prove?*::
-Not enough on its own. The lead re-runs `make check-quality` and reads the diff; `make check-all`
-before the PR catches a report that was wrong. See <<gates>>.
+Not enough on its own. The lead reads the diff and re-runs a gate on an `epic-delivery` trigger;
+`make check-all` before the PR catches a report that was wrong. See <<gates>>.
 
 *What must every brief here say?*::
 The standing rules and the report in <<brief>>.
@@ -60,9 +60,10 @@ Each task is committed by the lead with why, what and `Refs: <change-id> <task>`
 [#gates]
 == The gates
 
-Before handing out a task the lead checks the blast radius with GitNexus (re-indexing it if stale);
-a HIGH or CRITICAL risk goes to the developer. Only the lead can: subagents have no GitNexus tools,
-so a brief never asks a builder or a reviewer for an impact check.
+Before handing out a task the lead checks its blast radius with GitNexus `impact`, once per task;
+a HIGH or CRITICAL risk goes to the developer. The builder's task gate is one command:
+`make test-changed check-quality`, or `make test-fast check-quality` after changing `domain` or a
+port in `services`.
 
 [cols="2,1,3",options="header"]
 |===
@@ -74,19 +75,18 @@ a change to tests
 |`make test-fast` |builder |Instead of `make test-changed` when you are unsure what a change
 reaches, or after changing `domain` or a port in `services`. It runs every unit and feature test
 not marked `slow` (≈ 3 min)
-|`make check-quality` |builder |After every task (≈ 1 min)
-|`make check-quality` |lead |After every task, after reading the diff
-|`make check-all` |lead |Once, before the PR: it already holds `make test`, so never run both
-|`make test-containers` |lead |Once, before the PR; and when adapters or containers change
+|`make check-quality` |builder |After every task (≈ 1 min); it holds `make check-architecture`,
+`make clean-code` and `make check-docs`
+|`make check-all` |lead |Once per stage, before the PR: it already holds `make test`, so never run
+both
+|`make test-containers` |lead |Once per stage, before the PR; never in a task
 |`make check-generated` |builder |After committing a schema change (it compares against the commit)
-|`make check-architecture`, `make clean-code`, `make check-docs` |builder |With every task; they
-take seconds
 |`openspec validate --all --strict` |both |Part of `make check-quality`
 |The clarity gate (≥ 9/10) |lead |Before a PLAN's first task
 |===
 
-The builder owns the per-task gates and reports them; the lead re-runs only `make check-quality`.
-After a red run, re-run only the failing tests until green, then the full run once.
+The builder owns the per-task gate and reports it; the lead reads the diff and the report and
+re-runs a gate only on one of the `epic-delivery` triggers (T1 to T3). After a red run, re-run only the failing tests until green, then the full run once.
 
 [#challenge]
 == Keeping the challenge cheap
@@ -120,7 +120,7 @@ merges it; the steps are in xref:develop/index.adoc#release[Cutting a release].
   `run_in_background` and its notice, or wait on a condition with the Monitor tool; a hook
   (`.claude/hooks/no_polling.py`) denies `sleep` loops in Bash. It runs on plain `python3`,
   stdlib only, on purpose: it must not depend on the project's environment.
-* Re-index GitNexus after each commit (≈ 20 s):
+* Re-index GitNexus once per stage, at its start, before the first impact check (≈ 20 s):
   `gitnexus analyze --embeddings --skip-agents-md --skip-skills`.
 * Take check durations from ordinary runs and keep the
   xref:develop/index.adoc#how-long-the-checks-take[durations table] current; no profiling.
