@@ -9,14 +9,15 @@ from typing import Protocol
 
 from rdf_persistence.generation.generated.rp_generation import ContainerMarker
 
-STORE, FILES, IDENTITY = "store", "files", "identity"
-FUSEKI, GARAGE, ZITADEL = "fuseki", "garage", "zitadel"
+STORE, FILES, IDENTITY, EVENTS = "store", "files", "identity", "events"
+FUSEKI, GARAGE, ZITADEL, REDIS = "fuseki", "garage", "zitadel", "redis"
 
 
 CONTAINER_MARKERS = (
     ContainerMarker(marker=STORE, container=FUSEKI, help="needs the Fuseki container"),
     ContainerMarker(marker=FILES, container=GARAGE, help="needs the Garage container"),
     ContainerMarker(marker=IDENTITY, container=ZITADEL, help="needs the Zitadel container"),
+    ContainerMarker(marker=EVENTS, container=REDIS, help="needs the Redis container"),
 )
 
 

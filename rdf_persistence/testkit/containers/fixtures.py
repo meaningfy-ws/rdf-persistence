@@ -35,6 +35,7 @@ from rdf_persistence.testkit.bootstrap import (
 from rdf_persistence.testkit.markers import (
     FUSEKI,
     GARAGE,
+    REDIS,
     ZITADEL,
     containers_for,
     register_markers,
@@ -158,6 +159,26 @@ def fuseki(_compose_project: None) -> Iterator[FusekiServer]:
 def fuseki_b(_compose_project: None) -> Iterator[FusekiServer]:
     """A second Fuseki, started only by the tests that ask for it (tenant-stores PD-11)."""
     yield from _fuseki_answering(FUSEKI_B, "RP_FUSEKI_B_PORT")
+
+
+# ---------------------------------------------------------------------------
+# Redis
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def redis(_compose_project: None) -> Iterator[str]:
+    """Redis, answering PING; yields its URL."""
+    with _running(REDIS, port_var="RP_REDIS_PORT") as (_, port):
+        url = f"redis://localhost:{port}"
+        wait_until(lambda: _redis_ping(port), "Redis", retry_on=(OSError,))
+        yield url
+
+
+def _redis_ping(port: int) -> bool:
+    with socket.create_connection(("127.0.0.1", port), timeout=2) as sock:
+        sock.sendall(b"PING\r\n")
+        return sock.recv(16).startswith(b"+PONG")
 
 
 # ---------------------------------------------------------------------------

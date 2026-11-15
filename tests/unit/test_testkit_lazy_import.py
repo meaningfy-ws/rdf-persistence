@@ -79,3 +79,12 @@ def test_the_guard_api_is_in_all(name: str) -> None:
     import rdf_persistence.testkit as testkit
 
     assert name in testkit.__all__, "the name is exported"
+
+
+def test_the_package_and_the_testkit_do_not_import_the_event_bus_libraries() -> None:
+    """TC-31: faststream and redis load only with `rdf_persistence.adapters.redis_events`."""
+    code = (
+        "import rdf_persistence, rdf_persistence.testkit, sys; "
+        "assert 'faststream' not in sys.modules and 'redis' not in sys.modules"
+    )
+    assert subprocess.run([sys.executable, "-I", "-c", code], check=False).returncode == 0
