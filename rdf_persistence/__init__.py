@@ -77,9 +77,12 @@ from rdf_persistence.domain.generated.rp_core import (
 from rdf_persistence.domain.generated.rp_discussion import (
     Comment,
     Motivation,
+    PostComment,
+    PostReply,
 )
 from rdf_persistence.domain.generated.rp_files import (
     BlobEntry,
+    DeleteFile,
     RdfFormat,
     StoredFile,
 )
@@ -229,6 +232,7 @@ __all__ = [
     "DatabaseGone",
     "DEFAULT_IRIS",
     "DatabaseKind",
+    "DeleteFile",
     "Described",
     "FileStore",
     "Forbidden",
@@ -272,6 +276,8 @@ __all__ = [
     "PayloadTooLarge",
     "PendingLoad",
     "PersistenceError",
+    "PostComment",
+    "PostReply",
     "PreconditionRequired",
     "Policy",
     "Principal",

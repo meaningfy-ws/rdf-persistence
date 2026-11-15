@@ -228,7 +228,7 @@ green CI.
 
 ## 4. The comment and file commands, the testkit, the docs (stage 4)
 
-- [ ] 4.1 `PostComment`, `PostReply`, `DeleteFile` (PD-18, PD-19, PD-15). `rp_discussion.yaml`,
+- [x] 4.1 `PostComment`, `PostReply`, `DeleteFile` (PD-18, PD-19, PD-15). `rp_discussion.yaml`,
   `rp_files.yaml`; `make generate`; add `rp_files` to the model sets if missing;
   `services/discussion.py`, `services/collaboration.py`, `services/file_removal.py` and its caller
   in `entrypoints/kit.py` (the mapper), `services/messagebus.py` (the two handlers); exports. Tests

@@ -372,6 +372,36 @@
     multivalued: false
     range: string
     alias: value
+- class_name: DeleteFile
+  slots:
+  - name: ended_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: generations
+    required: false
+    multivalued: true
+    range: Generation
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: invalidations
+    required: false
+    multivalued: true
+    range: Invalidation
+  - name: started_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: used_resource
+    required: false
+    multivalued: false
+    range: uri
+  - name: was_associated_with
+    required: false
+    multivalued: true
+    range: Principal
 - class_name: Described
   slots:
   - name: description
@@ -791,6 +821,94 @@
     range: datetime
 - class_name: Policy
   slots: []
+- class_name: PostComment
+  slots:
+  - name: body_value
+    required: false
+    multivalued: false
+    range: string
+  - name: comment_audience
+    required: false
+    multivalued: true
+    range: string
+  - name: comment_references
+    required: false
+    multivalued: true
+    range: uri
+  - name: ended_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: generations
+    required: false
+    multivalued: true
+    range: Generation
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: invalidations
+    required: false
+    multivalued: true
+    range: Invalidation
+  - name: started_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: used_resource
+    required: true
+    multivalued: false
+    range: uri
+  - name: was_associated_with
+    required: false
+    multivalued: true
+    range: Principal
+- class_name: PostReply
+  slots:
+  - name: body_value
+    required: false
+    multivalued: false
+    range: string
+  - name: comment_audience
+    required: false
+    multivalued: true
+    range: string
+  - name: comment_references
+    required: false
+    multivalued: true
+    range: uri
+  - name: ended_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: generations
+    required: false
+    multivalued: true
+    range: Generation
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: invalidations
+    required: false
+    multivalued: true
+    range: Invalidation
+  - name: replies_to
+    required: true
+    multivalued: false
+    range: uri
+  - name: started_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: used_resource
+    required: true
+    multivalued: false
+    range: uri
+  - name: was_associated_with
+    required: false
+    multivalued: true
+    range: Principal
 - class_name: Principal
   slots:
   - name: id

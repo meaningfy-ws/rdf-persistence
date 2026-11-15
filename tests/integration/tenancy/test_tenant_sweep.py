@@ -121,7 +121,7 @@ async def test_removing_with_files_deletes_only_the_keys_no_other_aggregate_name
     for key in ("own", "shared"):
         await shelf.blob(key)
     remove = lambda iri, version: remove_with_files(  # noqa: E731
-        shelf.tenancy, shelf.files, shelf.tenant, CREATOR, iri, version
+        shelf.tenancy, shelf.files, shelf.tenant, CREATOR, iri, version, toy_mapper()
     )
 
     await remove(own, own_version)

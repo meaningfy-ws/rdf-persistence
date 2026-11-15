@@ -16,7 +16,10 @@ from rdflib.namespace import PROV
 
 from rdf_persistence import bootstrap, generated_models
 from rdf_persistence.domain.exceptions import NotFound
+from rdf_persistence.domain.generated.rp_access import Action, RoleDefinition, RoleLevel
 from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.domain.generated.rp_discussion import Comment, PostComment, PostReply
+from rdf_persistence.domain.generated.rp_files import DeleteFile
 from rdf_persistence.domain.generated.rp_provenance import Activity, Add
 from rdf_persistence.domain.generated.rp_workflow import Transition
 from rdf_persistence.domain.iris import DEFAULT_IRIS
@@ -83,7 +86,12 @@ async def world(
     mapper=True,
     **dependencies,
 ) -> AsyncIterator[World]:
-    rules = AccessRules(load_role_definitions(ROLES))
+    rules = AccessRules(
+        [
+            *load_role_definitions(ROLES),
+            RoleDefinition(role="reviewer", level=RoleLevel.TENANT, actions=[Action.ANNOTATE]),
+        ]
+    )
     bus = bootstrap(
         commands=commands,
         observers=observers,
@@ -113,7 +121,7 @@ async def world(
             listings=listings,
             workflows=Workflows([REVIEW], VIEW, rules),
             caller=caller(principal=ADA),
-            access=held(role("librarian")),
+            access=held(role("librarian"), role("reviewer")),
         )
         for iri in (B1, B2):
             await session.add_graph(iri, toy_mapper().to_triples(dune(iri, chapters=1)))
@@ -345,3 +353,48 @@ async def test_a_unit_of_work_with_a_command_refuses_batches_and_writes_nothing(
 
         with pytest.raises(NotFound):
             await w.session.get_graph(B3)
+
+
+async def test_the_toolkit_handler_posts_a_comment_and_returns_its_iri():  # TC-92
+    async with world() as w:
+        post = command(
+            PostComment,
+            used_resource=B1,
+            body_value="hi",
+            comment_audience=["reviewer"],
+            comment_references=[B2],
+        )
+
+        iri = await w.bus.handle(post, w.collaboration)
+
+        [stored] = await w.collaboration.thread(B1)
+        assert (stored.id, stored.body_value) == (iri, "hi"), (
+            "the comment is stored, its IRI returned"
+        )
+        assert (stored.comment_audience, stored.comment_references) == (["reviewer"], [B2])
+        assert [str(s) for s in (await provenance(w)).subjects(RDF.type, v.POST_COMMENT)] == [
+            post.id
+        ], "the activity's IRI is the command's id"
+
+
+async def test_an_observer_of_posts_gets_the_reply_that_was_posted():  # TC-93
+    seen = RecordingObserver()
+    async with world(observers={PostComment: [seen]}) as w:
+        first = await w.bus.handle(
+            command(PostComment, used_resource=B1, body_value="hi"), w.collaboration
+        )
+        reply = command(PostReply, used_resource=B1, body_value="re", replies_to=first)
+
+        iri = await w.bus.handle(reply, w.collaboration)
+
+        [got] = seen.of(PostReply)
+        assert (got.id, got.replies_to, got.used_resource) == (reply.id, first, B1)
+        assert (got.body_value, got.comment_audience) == (None, None), "the payload is not stored"
+        [stored] = [c for c in await w.collaboration.thread(B1) if c.id == iri]
+        assert isinstance(stored, Comment) and stored.replies_to == first, "a reply to the comment"
+
+
+async def test_a_file_deletion_has_no_toolkit_handler():  # TC-95
+    async with world() as w:
+        with pytest.raises(LookupError, match="DeleteFile"):
+            await w.bus.handle(command(DeleteFile, used_resource=B1), w.collaboration)

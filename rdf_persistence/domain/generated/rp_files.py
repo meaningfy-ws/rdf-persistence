@@ -29,6 +29,11 @@ from pydantic import (
 )
 
 from .rp_core import Principal
+from .rp_provenance import (
+    Generation,
+    Invalidation,
+    Remove
+)
 
 
 metamodel_version = "1.12.0"
@@ -71,6 +76,17 @@ class RdfFormat(str, Enum):
 
 
 
+class DeleteFile(Remove):
+    "The activity of removing a stored file, with the file aggregate it used and an invalidation of it."
+    used_resource: Optional[str] = Field(default=None, title="Used resource", description="The IRI of the aggregate the activity used.")
+    id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    was_associated_with: Optional[list[str]] = Field(default=None, title="Was associated with", description="A principal that carried out the activity.")
+    started_at_time: Optional[datetime ] = Field(default=None, title="Started at time", description="The time the activity started.")
+    ended_at_time: Optional[datetime ] = Field(default=None, title="Ended at time", description="The time the activity ended.")
+    generations: Optional[list[Generation]] = Field(default=None, title="Generations", description="The versions of entities the activity generated.")
+    invalidations: Optional[list[Invalidation]] = Field(default=None, title="Invalidations", description="The versions of entities the activity invalidated.")
+
+
 class StoredFile(ConfiguredBaseModel):
     "A mixin for the current content of a kept file; the bytes live in the tenant\u0027s bucket under the file key."
     file_name: Optional[str] = Field(default=None, title="File name", description="The name of the file as uploaded.")
@@ -103,5 +119,6 @@ class BlobEntry(ConfiguredBaseModel):
 
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
+DeleteFile.model_rebuild()
 StoredFile.model_rebuild()
 BlobEntry.model_rebuild()

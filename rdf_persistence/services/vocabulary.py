@@ -149,6 +149,12 @@ FROM_STATE = predicate("from_state_iri")
 TO_STATE = predicate("to_state_iri")
 TRANSITION_COMMENT = predicate("transition_comment")
 
+# Posting a comment, replying to one and deleting a file are activities too (message-bus PD-18, PD-19).
+POST_COMMENT = class_iri("PostComment")
+POST_REPLY = class_iri("PostReply")
+DELETE_FILE = class_iri("DeleteFile")
+REPLIES_TO = predicate("replies_to")
+
 GRANTS = predicate("grants")
 PROHIBITIONS = predicate("prohibitions")
 ASSIGNEE = predicate("assignee")

@@ -64,10 +64,13 @@ from .rp_core import (
 )
 from .rp_discussion import (
     Comment,
-    Motivation
+    Motivation,
+    PostComment,
+    PostReply
 )
 from .rp_files import (
     BlobEntry,
+    DeleteFile,
     RdfFormat,
     StoredFile
 )

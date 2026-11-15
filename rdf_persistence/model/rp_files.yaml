@@ -14,8 +14,16 @@ imports:
   - linkml:types
   - rp_core
   - rp_annotations
+  - rp_provenance
 
 classes:
+  DeleteFile:
+    title: Delete file
+    description: The activity of removing a stored file, with the file aggregate it used and an invalidation of it.
+    class_uri: rp:DeleteFile
+    is_a: Remove
+    slots:
+      - used_resource
   StoredFile:
     title: Stored file
     description: A mixin for the current content of a kept file; the bytes live in the tenant's bucket under the file key.

@@ -14,6 +14,7 @@ from rdf_persistence.domain.generated import (
     rp_collections,
     rp_core,
     rp_discussion,
+    rp_files,
     rp_provenance,
     rp_tenancy,
     rp_workflow,
@@ -133,6 +134,7 @@ class ServiceKit:
             rp_tenancy,
             rp_collections,
             rp_discussion,
+            rp_files,
             rp_provenance,
             rp_workflow,
         )
@@ -312,7 +314,13 @@ class ServiceKit:
             Conflict: The aggregate is not at ``if_version``; nothing changed.
         """
         await file_removal.remove_with_files(
-            self.tenancy, self.files, tenant, Principal(id=principal), iri, if_version
+            self.tenancy,
+            self.files,
+            tenant,
+            Principal(id=principal),
+            iri,
+            if_version,
+            self.mapper,
         )
 
     @asynccontextmanager

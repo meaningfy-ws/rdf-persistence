@@ -14,6 +14,7 @@ from contextvars import ContextVar
 from typing import Any
 
 from rdf_persistence.domain.exceptions import InvalidBody, MessageLimitExceeded
+from rdf_persistence.domain.generated.rp_discussion import PostComment, PostReply
 from rdf_persistence.domain.generated.rp_provenance import Activity
 from rdf_persistence.domain.generated.rp_workflow import Transition
 from rdf_persistence.services import vocabulary as v
@@ -202,6 +203,20 @@ async def _transition(cmd: Activity, work: Work) -> str:
     )
 
 
+async def _comment(cmd: Activity, work: Work) -> str:
+    """The toolkit's handler of ``PostComment`` and ``PostReply`` (PD-15): the IRI of the comment."""
+    assert isinstance(cmd, PostComment), "registered for PostComment and PostReply only"
+    assert work.collaboration is not None, "a handler always has the caller's collaboration"
+    return await work.collaboration.comment(
+        cmd.used_resource,
+        cmd.body_value or "",
+        audience=cmd.comment_audience or (),
+        references=cmd.comment_references or (),
+        reply_to=cmd.replies_to if isinstance(cmd, PostReply) else None,
+        command=cmd,
+    )
+
+
 def _bind(
     function: Callable[..., Any], dependencies: Mapping[str, Any], used: set[str]
 ) -> Callable[..., Any]:
@@ -223,7 +238,8 @@ def bootstrap(
     mapper: Mapper | None = None,
     **dependencies: Any,
 ) -> MessageBus:
-    """A bus with the toolkit's ``Transition`` handler (unless ``commands`` names it) and the handlers
+    """A bus with the toolkit's ``Transition``, ``PostComment`` and ``PostReply`` handlers (each unless
+    ``commands`` names its class; there is none for ``DeleteFile``) and the handlers
     and observers given, each with the ``dependencies`` its parameters name bound (PD-14).
 
     Raises:
@@ -232,6 +248,8 @@ def bootstrap(
     used: set[str] = set()
     handlers: dict[type[Activity], Callable[..., Awaitable[object]]] = {
         Transition: _transition,
+        PostComment: _comment,
+        PostReply: _comment,
         **(commands or {}),
     }
     bound_commands = {cls: _bind(h, dependencies, used) for cls, h in handlers.items()}

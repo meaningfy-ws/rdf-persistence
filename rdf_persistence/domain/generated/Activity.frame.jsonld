@@ -8,7 +8,10 @@
     "Add",
     "Replace",
     "Remove",
-    "Transition"
+    "PostComment",
+    "Transition",
+    "PostReply",
+    "DeleteFile"
   ],
   "was_associated_with": {
     "@embed": "@never",

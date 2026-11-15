@@ -23,6 +23,7 @@ from rdf_persistence.domain.generated import (
     rp_collections,
     rp_core,
     rp_discussion,
+    rp_files,
     rp_provenance,
     rp_workflow,
 )
@@ -67,6 +68,7 @@ MODULES = (
     rp_core,
     rp_collections,
     rp_discussion,
+    rp_files,
     rp_provenance,
     rp_workflow,
 )

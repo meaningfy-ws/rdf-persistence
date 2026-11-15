@@ -384,6 +384,24 @@ aggregate (DEC-13).
   - d. `Mapper.served` of a class the schema does not have raised `KeyError`. Fix: `ValueError`
     naming the class.
   The xfail markers are removed with the fixes.
+- **D-10** (lead, 2026-11-15) The adversarial tester's run after task 3.3
+  (`tests/unit/services/test_messagebus_adversarial.py`: 54 tests, 4 findings kept as strict
+  xfail until fixed). All accepted:
+  - a. An observer that commits in a loop INSIDE `handle` was not bounded (the publish nesting was
+    counted only outside `handle`). Fix: `publish` counts its nesting in every context, against the
+    same `limit`; past it `MessageLimitExceeded`, logged by the session hook as today.
+  - b. An empty commit spent the command's one commit (PD-8 "As built"). Fix: a `Served` is claimed
+    when a transaction sends its request, not when it opens: a refused commit still spends it (it
+    reached the store), an empty one does not. This replaces "a refused or failed commit spends it
+    too" for the empty case only.
+  - c. Observers of one commit shared one activity object. Fix: each observer gets its own copy
+    (`model_copy(deep=True)`).
+  - d. `bootstrap` bound a dependency to a `*args` or `**kwargs` parameter, which failed at the
+    first call. Fix: only positional-or-keyword and keyword-only parameters take dependencies; a
+    dependency only such a parameter could take is "named by nobody", the `ValueError` at bootstrap.
+  Noted for the how-to, not changed: `bootstrap` consumes the names `commands`, `observers`,
+  `limit` and `mapper`, so a handler cannot take a dependency of those names; commands an observer
+  queued are dropped when the handler then raises (the commit and its publish stand).
 - **D-9** (lead, 2026-11-15) GitNexus rates `Tenancy._session` CRITICAL (44 symbols, 26 flows:
   every route that opens a session) and `UnitOfWork` MEDIUM before task 3.3. The change 3.3 makes
   there is the one PD-17 plans and the developer accepted with the EPIC: `Tenancy._session` passes

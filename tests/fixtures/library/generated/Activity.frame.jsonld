@@ -10,7 +10,10 @@
     "Remove",
     "Transition",
     "ShelveBooks",
-    "ApproveBook"
+    "PostComment",
+    "PostReply",
+    "ApproveBook",
+    "DeleteFile"
   ],
   "was_associated_with": {
     "@embed": "@never",
