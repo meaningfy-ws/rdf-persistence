@@ -1565,6 +1565,9 @@ If a class of your schema follows a workflow, pass the workflow files too, as a 
 here, and a bad or missing file stops the service with `InvalidWorkflow`. See
 xref:howto/workflow.adoc[Put a resource through review].
 
+To react to commits (run a use case as a command, or call code after every commit), build a bus
+and set `kit.bus`; see xref:howto/event-driven.adoc[React to changes with commands and observers].
+
 It returns the *`ServiceKit`*, for your own routes and domain services:
 
 [cols="2,3",options="header"]

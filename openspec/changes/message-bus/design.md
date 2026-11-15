@@ -384,6 +384,13 @@ aggregate (DEC-13).
   - d. `Mapper.served` of a class the schema does not have raised `KeyError`. Fix: `ValueError`
     naming the class.
   The xfail markers are removed with the fixes.
+- **D-8** (lead, 2026-11-15; the developer: "continue as fast as possible towards complete
+  implementation, use parallel subagents") Stages 3 and 4 are delivered as ONE PR: one review set,
+  one fix round, one checker, one CI cycle. Each rebase of a stage cost a full CI run while
+  `develop` moved under it. Tasks that touch disjoint files run in parallel: 3.1 and 3.2; the
+  how-to (4.3) and `RecordingObserver` (part of 4.2) beside them; 3.3, then 4.1, then the feature
+  scenarios, in that order (they share `collaboration.py`, `messagebus.py` and `kit.py`). The
+  adversarial tester runs once, after 3.3, the riskiest task of the two stages.
 - **D-7** (lead, 2026-11-14) `schema-migrations` merged into `develop` (#109) while stage 2 was in
   review, and brought a schema lock: a changed model needs a new `version:` in the root schema and
   a reviewed migration. Stage 2 removes the class `rp:TransitionRecord` (and with it the
