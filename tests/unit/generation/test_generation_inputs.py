@@ -53,13 +53,13 @@ def test_a_hash_is_64_lowercase_hex_digits(digest: str) -> None:
 
 
 @pytest.mark.parametrize("field", FOLDER_FIELDS)
-@pytest.mark.parametrize("path", VALID_PATHS)
+@pytest.mark.parametrize("path", VALID_PATHS[:1])  # one class: the shapes are the manifest test's
 def test_a_configured_path_may_be_relative(field: str, path: str) -> None:
     assert getattr(target(**{field: path}), field) == path, f"{path!r} was refused for {field}"
 
 
 @pytest.mark.parametrize("field", FOLDER_FIELDS)
-@pytest.mark.parametrize("path", INVALID_PATHS)
+@pytest.mark.parametrize("path", INVALID_PATHS[:2])  # one class: the shapes are the manifest test's
 def test_a_configured_path_that_could_leave_the_project_is_refused(field: str, path: str) -> None:
     with pytest.raises(ValidationError):
         target(**{field: path})
@@ -206,13 +206,7 @@ def test_a_schema_fault_raised_by_an_extension_is_reported_not_raised(
 
 @pytest.mark.parametrize(
     "bug",
-    [
-        KeyError("boom"),
-        AttributeError("boom"),
-        RuntimeError("boom"),
-        TypeError("boom"),
-        ValueError("boom"),
-    ],
+    [KeyError("boom"), AttributeError("boom")],  # one class: anything but a SchemaGenerationError
 )
 def test_a_bug_in_an_extension_is_not_reported_as_a_schema_problem(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bug: Exception

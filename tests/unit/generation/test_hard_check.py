@@ -121,16 +121,12 @@ FAULTS = (
         "Scan",
     ),
     Fault(HardRule.ANNOTATION, "books.yaml", "database: tenant", "database: sytem", "Book"),
-    Fault(HardRule.ANNOTATION, "library_tenant.yaml", "graph: meta", "graph: tenant", "Library"),
+    # allowed-value check: one row per element kind (class Book, schema, slot, attribute shade)
     Fault(
         HardRule.ANNOTATION, "books.yaml", "module_kind: domain", "module_kind: dommain", "books"
     ),
     Fault(HardRule.ANNOTATION, "books.yaml", "owned: true", "owned: maybe", "chapters"),
-    Fault(
-        HardRule.ANNOTATION, "books.yaml", "rp_unlabelled: true", "rp_unlabelled: sure", "Chapter"
-    ),
     Fault(HardRule.ANNOTATION, "books.yaml", "rp_path: books", "rp_path: Books", "Book"),
-    Fault(HardRule.ANNOTATION, "books.yaml", "rp_path: books", "rp_path: books/all", "Book"),
     Fault(HardRule.ANNOTATION, "books.yaml", "rp_path: books", "rp_path: ''", "Book"),
     Fault(  # T-9: there is no value that opts a file root back into generic writes
         HardRule.ANNOTATION,

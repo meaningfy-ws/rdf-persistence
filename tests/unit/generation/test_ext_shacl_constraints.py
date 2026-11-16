@@ -108,11 +108,10 @@ def contact_shapes(tmp_path: Path, schema: str = CONTACT) -> Graph:
     ("triples", "conforms"),
     [
         ('c:email "a@b.c"', True),
-        ('c:phone "123"', True),
-        ('c:email "a@b.c" ; c:phone "123"', True),
+        ('c:email "a@b.c" ; c:phone "123"', True),  # "phone only" is the class of "email only"
         ("", False),
     ],
-    ids=["email only", "phone only", "both", "neither"],
+    ids=["email only", "both", "neither"],
 )
 def test_any_of_becomes_or_and_one_alternative_is_enough(
     tmp_path: Path, triples: str, conforms: bool

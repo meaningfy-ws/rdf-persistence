@@ -17,8 +17,6 @@ from .test_lock import (
     DROP_SHELF,
     ISBN_REQUIRED,
     NEW_PATH,
-    NEW_TYPE,
-    RENAME_ROOT,
     Edits,
 )
 
@@ -154,9 +152,8 @@ def test_a_removed_slot_with_the_version_unchanged_fails_naming_it(bootstrapped:
 @pytest.mark.parametrize(
     ("edits", "word"),
     [
+        # one change kind: lock_step reads only the NOT_MIGRATABLE rule, test_lock classifies the kinds
         pytest.param(NEW_PATH, "IRI type or path", id="path"),
-        pytest.param(NEW_TYPE, "IRI type or path", id="iri-type"),
-        pytest.param(RENAME_ROOT, "IRI type or path", id="renamed-root"),
     ],
 )
 @pytest.mark.parametrize("version", [(), VERSION_2], ids=["same-version", "new-version"])

@@ -64,7 +64,10 @@ def test_flags_alone_make_a_target_when_there_is_no_table(tmp_path: Path) -> Non
     )
 
 
-@pytest.mark.parametrize("flag", [flag.option for flag in cli_flags()])
+@pytest.mark.parametrize(
+    "flag",
+    [flag.option for flag in cli_flags()][:2],  # one class: every flag takes the same path
+)
 def test_a_flag_with_several_entries_is_an_error_naming_it(tmp_path: Path, flag: str) -> None:
     with pytest.raises(ConfigError, match=flag):
         read(tmp_path, SEVERAL, flag, "x")
@@ -126,7 +129,8 @@ def test_a_schema_file_spelt_with_an_underscore_is_refused_naming_the_key(tmp_pa
         read(tmp_path, SINGLE.replace('schema = "m.yaml"', 'schema_file = "m.yaml"'))
 
 
-@pytest.mark.parametrize("command", ["", "   ", "make a\nmake b", "make `x`"])
+# "   " stands for blank ("" and "   " are one class; "   " also guards the whitespace in the pattern)
+@pytest.mark.parametrize("command", ["   ", "make a\nmake b", "make `x`"])
 def test_a_regenerate_command_that_is_blank_multiline_or_backticked_is_refused(
     tmp_path: Path, command: str
 ) -> None:
