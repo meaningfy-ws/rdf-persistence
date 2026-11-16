@@ -166,17 +166,22 @@ PLAN, where the clarity gate scored 7.0.
 | `project-setup` | The scaffold's `example.feature` should be flagged by a layout check once real features exist | Trace §8.10 |
 | `epic-planning` / `clarity-gate` | A PLAN derived from an audit must decide each "or" before scoring | Trace §9 |
 
-## Part 3. Before and after (placeholder)
+## Part 3. Before and after
 
-Filled by the lead after stage 6 (PD-15) from `tests/audit/report-<date>-after.md`.
+From `tests/audit/report-2026-11-17-after.md` (the full table and the commands are there).
 
-| Measure | Before (2026-11-16) | After |
+| Measure | Before (2026-11-16) | After (2026-11-17) |
 |---|---|---|
-| Unit + feature cases | 7,357 passed, 18 skipped | |
-| `make test` wall (with coverage) | ≈ 214 s | |
-| Run A wall / set-up share | 123 s / 0.46 | |
-| Container tier | 267 passed, 311 s | |
-| Wrong `slow` markers | 27 | |
-| Mutation of `domain/` killed | 974 of 1,085 | |
-| Coverage | 95.6 % | |
-| Broken-rule rows (rule 11 asserts) | 96 rows (≈ 1,120) | |
+| Unit + feature cases | 7,357 passed, 18 skipped | 6,790 passed, 0 skipped |
+| `make test` wall (with coverage) | ≈ 214 s | 127 s |
+| Run A wall / set-up share | 123 s / 0.46 | 72 s / 0.42 |
+| `make check-all` | 3 min 59 s | 2 min 28 s |
+| Container tier | 267 passed, 311 s | 257 passed, 297 s |
+| Wrong `slow` markers | 27 | 0 at the thresholds |
+| Mutation of `domain/` | 974 of 1,085 killed | the identical surviving set |
+| Coverage | 95.6 % | 95.6 % |
+| Asserts without a message (rule 11) | 1,301 | 0 |
+
+The suite is about 8 % smaller and 41 % faster, with the same coverage and the same mutation
+result: the shape the skill promises (cost removed, effectiveness kept) held, but only because
+measurement overruled three estimates and review overruled four merges.

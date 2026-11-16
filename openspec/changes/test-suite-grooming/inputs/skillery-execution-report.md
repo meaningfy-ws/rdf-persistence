@@ -12,15 +12,15 @@ and bad, is `session-trace.md` beside this file; the owner's view of the decisio
 
 | Measure | Before | After |
 |---|---|---|
-| Unit + feature cases | 7,357 | AFTER_CASES |
-| Container cases | 267 | AFTER_CONTAINERS |
-| `make check-all` | 3 min 59 s | AFTER_CHECKALL |
-| Run A wall (unit + feature, no coverage) | 123 s | AFTER_RUNA |
-| Set-up share of summed unit time | 0.46 | AFTER_SETUP |
-| Coverage | 95.59 % | AFTER_COVERAGE |
-| Domain mutants caught (of 1,085) | 974 | AFTER_MUTATION |
+| Unit + feature cases | 7,357 | 6,790 |
+| Container cases | 267 | 257 |
+| `make check-all` | 3 min 59 s | 2 min 28 s |
+| Run A wall (unit + feature, no coverage) | 123 s | 72 s |
+| Set-up share of summed unit time | 0.46 | 0.42 (summed time about equal; the gain is the tail and distribution) |
+| Coverage | 95.59 % | 95.60 % |
+| Domain mutants caught (of 1,085) | 974 | 974, the identical surviving set |
 | Asserts without a message | 1,301 (counted by an ast scan; the audit's "~1,120" summed only the findings files) | 0 |
-| Wrong `slow` markers | 27 | AFTER_SLOW |
+| Wrong `slow` markers | 27 | 0 at the thresholds |
 | CI job timeout / hung-test timeout | none / none | 30 min / 120 s |
 
 ## What worked (keep)
@@ -73,4 +73,5 @@ and bad, is `session-trace.md` beside this file; the owner's view of the decisio
 - Subagents: about 45 (9 mappers, 1 fixture reader, 1 library reviewer, 1 consolidator, 1 drafter,
   2 clarity scorers' passes, 1 L2+L3 reviewer, ~27 builders and fixers, final reviewers).
 - Wall time: about 9 hours, owner away for the last part.
-- Commits on the change branch: AFTER_COMMITS_COUNT.
+- Commits on the change branch after the gated PLAN: about 45 (one pull request).
+- The before/after report: `tests/audit/report-2026-11-17-after.md`.

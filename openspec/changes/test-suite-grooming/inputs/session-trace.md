@@ -705,3 +705,68 @@ results in the change's inputs/ folder; do not stop")
   unit+feature, run A containers, perf, mutation; container run B skipped to save ~6 min).
 - Full review launched: L1, L2, L3 separate, L4+L5 one (P-0005), shared brief REVIEW-BRIEF.md,
   told never to touch the main checkout.
+- Final review L1 (~2 min, 98k tokens): 0 Critical, 1 Warning (poll_seconds unvalidated: 0 or
+  negative busy-spins up to 180 s), 3 Suggestions (shared_key docstring warning; shelf teardown
+  ignores grants; refresh_map non-atomic write and malformed-row tracebacks).
+- Final review L4+L5 (~4 min, 134k tokens): 0 Critical, 9 Warnings: tasks unticked; reconciliation
+  table's stage-2 range wrong and F-8 missing in design; `make test-changed` lacks
+  `--dist loadgroup` (xdist flags written 6 times in the Makefile); perf lane's Docker need and
+  a moved path undocumented; new_key docstring "0.5 s" vs docs "0.03-0.06 s"; spec says every CI
+  job has a 30-min limit but release.yaml's two jobs have none; rp-testkit delta lacks
+  assert_isomorphic; execution report cited missing files; decisions doc lacked undo lines and
+  had a wrong claim. 6 Suggestions.
+  [GOOD] the spine audit found the lead's own records out of step: the lead's ticking discipline
+  slipped under parallel load. [SKILL epic-delivery] a "spine sync" step before the final review
+  (ticks, reconciliation table from git log) would save a review round.
+- Lead fixed the spine items itself in a separate worktree (temp/wt/close) while the gates ran in
+  temp/wt/lead: tasks ticked (+5.3), reconciliation stage-2 commits, F-8 recorded, stale Debt and
+  Docs owed closed, decisions-to-validate rewritten with an undo line per item, session trace and
+  strategy review copied into inputs/.
+- Final review L3 (~6 min, 167k tokens): 0 Critical; W1 unit lanes load the container plugin via
+  the new perf/store conftest; W2 five NEW cross-test-module imports (+ an inventory of ~25 older
+  ones); W3 rule 1 has no automated guard (import-linter contract on tests.unit.domain). 9 S.
+- Final review L2 (~7 min, 204k tokens): parsed every assert before/after the three rule-11
+  commits: 3,773 asserts, NO condition changed (42 splits, 11 `is` forms); every assert under
+  tests/ has a message (5,972). 0 Critical; lead re-labelled W3 (JSON-LD context refusal left CI),
+  W4 (import half weaker), W5 (413 test lost its order proof) as Critical. W1 spec delta lacks
+  assert_isomorphic; W2 serial-run scenario untested; W6 145 tuple asserts remain (rule decided:
+  one idea stays one assert); W7 docs. 7 S.
+  [GOOD] an exhaustive AST before/after comparison is the right check for a mechanical rule-11
+  pass; it found zero condition changes in 1,301 edits.
+  [BAD] two of the lead's stage-4 decisions (moving the network tests to a non-CI lane; dropping a
+  wall-clock bound) each removed a guard; the PLAN reviewer did not catch it, the final L2 did.
+  [SKILL test-suite-care / epic-planning] moving a test to a lane CI does not run is a guard loss:
+  the PLAN should list, per moved test, the lane that still runs it in CI.
+- Two final fixers (A: infra/testkit/docs/spec/tooling; B: test files + rule-1 contract) in
+  parallel worktrees at ee82b8c, from temp/grooming/FINAL-FINDINGS.md. Accepted findings recorded
+  in design.md (close worktree).
+- Final gates + after-measurements on ee82b8c (all exit 0): check-all 3m40s, 6,760 passed, 0
+  skipped (the 18 skips were the R4-1 combinations, now removed), coverage 95.55 %; check-generated
+  ok; run A (unit+feature, no coverage) 96.8 s pytest / 1m38s wall; run B 162 s; containers run A
+  257 passed in 280 s; perf 10 passed 24 s; mutation 1m32s: 92 survived (94 before), but 80 "no
+  tests" (17 before) - 63 of them domain/tenant_move.py, whose tests moved to tests/unit/services
+  in task 4.1 (right tier; outside the domain-only selection). Fixer A adds that test file to
+  setup.cfg's selection; the lead re-runs mutation after the fixes.
+  [SKILL test-suite-care] a per-layer mutation selection silently loses tests that move tiers;
+  the report must compare like with like.
+- Fixer A done (~8 min, 146k tokens): all A items test-first; PARALLEL/NOT_QUARANTINE variables;
+  refresh_map atomic + 3 exit codes; release timeouts; rp-testkit delta MODIFIED requirement;
+  serial-run timeout test; docs; mutation selection += moved tenant-move tests. Used perl/python
+  in-place rewrites again (reported); lead read the Makefile diff. Committed 98fc263.
+  [SKILL implementer] in-place rewrite scripts were used by 11 of ~27 builders despite an explicit
+  rule; the rule is not holding under volume. Either allow a reviewed append-only script for
+  mechanical edits, or give builders a better mass-edit tool than per-call Edit.
+- Fixer B done (~10 min, 182k tokens): the three Critical guards restored, each proven by a hand
+  regression that makes the test fail (refusal disabled -> 9 cases fail on no_network; stray graph
+  -> import test fails; _bound after typing -> 413 test fails); assert_problem for stage-4 tuples;
+  helper modules sessions.py, tenant_requests.py, collaboration_data.py; .importlinter contract
+  for tests.unit.domain (needs allow_indirect_imports because the package facade imports every
+  layer; a planted import broke it). One sed -i (reported). Committed 8bab938.
+- Spine sync from the close worktree cherry-picked (02d402a). All agents idle.
+- Final gates + clean measurements on the final code launched alone (run A first, quiet machine).
+- FINAL gates + clean measurements on the final code, alone (all exit 0): run A 72 s wall
+  (70.6 s pytest, 6,790 passed); check-all 2m28s (make test 126.6 s, coverage 95.60 %);
+  check-generated ok; containers 257 passed, 297 s; perf 10 passed, 20 s; test-fast 6,683 passed,
+  55 s; mutation 58 s: 94 survived, 17 untested, the IDENTICAL set to the audit's (diff empty).
+  Summed per-test time about equal (before 966 s, after 998 s): the wall-time gain is the tail and
+  distribution, not cheaper tests. After report: tests/audit/report-2026-11-17-after.md.
