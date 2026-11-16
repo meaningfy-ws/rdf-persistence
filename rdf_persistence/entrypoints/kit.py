@@ -50,6 +50,7 @@ from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.services.artifacts import CONTEXT_FILE
 from rdf_persistence.services.collaboration import Collaboration
+from rdf_persistence.services.decoding import error_text
 from rdf_persistence.services.discussion import dependents as discussion_dependents
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.event_hub import EventHub
@@ -241,7 +242,7 @@ class ServiceKit:
                 "skipped an event of %s from %s: %s",
                 envelope.activity_class,
                 envelope.origin,
-                error,
+                error_text(error),
             )
             return None
 

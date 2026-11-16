@@ -1,4 +1,4 @@
-"""``GET {prefix}/{tenant_segment}/{t}/events``: a tenant's activities as server-sent events (aggregate-events PD-11, PD-12).
+"""``GET {prefix}/{tenant_segment}/{t}/rp-events``: a tenant's activities as server-sent events (aggregate-events PD-11, PD-12).
 
 The route checks ``read`` on the tenant and adapts ``services.event_stream`` to the wire: ``id`` is the
 activity's IRI, ``event`` its class's name, ``data`` its JSON. The stream is the service's; this module

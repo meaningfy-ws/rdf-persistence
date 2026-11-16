@@ -360,6 +360,7 @@ async def test_a_last_event_id_that_is_no_activity_id_sends_a_reset_and_the_stre
         assert bob.status == 200
         [reset] = await bob.take(1)
         assert reset.event == "reset" and reset.id is None
+        assert reset.data == "", "an empty data line, or an EventSource client drops it (D-10)"
         await listening(settled.service.kit.hub)
         await replace(settled, settled.book, settled.book_etag, "Live")
         [live] = await bob.take(1)

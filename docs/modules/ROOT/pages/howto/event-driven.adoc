@@ -407,6 +407,10 @@ kit = install_service(
 )
 ----
 
+* *The URL above has no password and no TLS*, which suits a broker on the deployment's private
+  network only. Elsewhere, give Redis a password and TLS and say so in the URL
+  (`rediss://:<password>@<host>:6380`); every deployment on the broker reads every message (see
+  <<relay-limits>>).
 * *`deployment` is required with an event bus* (`install_service` raises `ValueError` without it)
   and *must be unique on a broker*. It is passed twice, and the two must be equal. In
   `RedisEventBus(deployment=...)` it names the deployment's consumer group; in the settings it is
@@ -495,6 +499,9 @@ What the two must share:
 
 Each message also names the JSON-LD context that reads it, at the sender's `public_url`.
 
+* A message whose headers are not a valid envelope (no tenant, origin or class) is dropped by the
+  event bus before `receive`: logged at WARNING and acknowledged, since no deployment could handle
+  it.
 * A message whose origin is this deployment is skipped: its observers saw it at commit.
 * A message the deployment cannot use is logged at WARNING and skipped, and the broker is told it
   is handled: an unknown class, a body that does not fit the class, a tenant this deployment does
@@ -652,7 +659,7 @@ const url = "https://library.example.org/api/tenants/t1/rp-events";
 const seen = new Set<string>();          // ids already handled
 let lastId: string | undefined;          // where to resume
 
-// The server ends a stream after 5 minutes: call follow again with a fresh token. lastId carries over.
+// One stream; it resolves when the server ends it (after 5 minutes at most).
 function follow(token: string, show: (activity: unknown) => void, reload: () => Promise<void>) {
   return fetchEventSource(url, {
     headers: {
@@ -672,10 +679,21 @@ function follow(token: string, show: (activity: unknown) => void, reload: () => 
     },
   });
 }
+
+// Keep following: each new stream takes a fresh token and resumes from lastId, so nothing is missed.
+async function keepFollowing(
+  freshToken: () => Promise<string>,
+  show: (activity: unknown) => void,
+  reload: () => Promise<void>,
+) {
+  for (;;) await follow(await freshToken(), show, reload);
+}
 ----
 
-The library sends `Last-Event-ID` again on its own reconnects. The `lastId` above is for a new
-call after the page reloads; keep it where the page can read it back.
+The server ends each stream after 5 minutes so that it never outlives its token; `keepFollowing`
+opens the next one. The library itself retries a dropped connection with the same token and sends
+`Last-Event-ID` again. The `lastId` above is also for a new call after the page reloads; keep it
+where the page can read it back.
 
 [#relay-limits]
 === Limits of the relay

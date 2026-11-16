@@ -260,6 +260,17 @@ async def test_a_malformed_pending_activity_is_given_up_and_the_database_goes_on
     assert await pending(world, world.tenant) == []
 
 
+async def test_a_malformed_pending_activity_is_logged_without_its_values(world, caplog):  # #125
+    await insert_in_provenance(
+        world, world.tenant, poison("bad", f"<{v.ACTIVITY_STARTED}> 'secret-tenant-text'")
+    )
+    with caplog.at_level(logging.ERROR, logger=LOGGER):
+        await world.relay().run_once()
+    assert [r.levelno for r in caplog.records] == [logging.ERROR]
+    assert "urn:a:bad" in caplog.text
+    assert "secret-tenant-text" not in caplog.text, "a tenant's data never reaches the log"
+
+
 @pytest.mark.parametrize("typing", ["", "a 'Add' ;", "a <https://example.org/ns/library#Book> ;"])
 async def test_a_pending_record_of_no_activity_type_is_given_up_not_published(world, typing):
     await insert_in_provenance(

@@ -120,8 +120,12 @@ source_modules =
     rdf_persistence.services.artifacts
     rdf_persistence.services.collaboration
     rdf_persistence.services.components
+    rdf_persistence.services.decoding
     rdf_persistence.services.discussion
     rdf_persistence.services.documents
+    rdf_persistence.services.event_hub
+    rdf_persistence.services.event_stream
+    rdf_persistence.services.events
     rdf_persistence.services.file_removal
     rdf_persistence.services.files
     rdf_persistence.services.identity
@@ -133,6 +137,7 @@ source_modules =
     rdf_persistence.services.migrations
     rdf_persistence.services.provenance
     rdf_persistence.services.reference_collections
+    rdf_persistence.services.relay
     rdf_persistence.services.schema
     rdf_persistence.services.schema_structure
     rdf_persistence.services.session
@@ -144,6 +149,7 @@ source_modules =
     rdf_persistence.services.tokens
     rdf_persistence.services.transitions
     rdf_persistence.services.unique_keys
+    rdf_persistence.services.visible_part
     rdf_persistence.services.vocabulary
     rdf_persistence.services.workflows
     rdf_persistence.services.write_guards
