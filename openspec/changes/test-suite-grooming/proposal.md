@@ -60,6 +60,42 @@ some workers, and the testing checklist is broken in 14 of its rules.
 
 ## Capabilities
 
-- `rp-developer-checks` (modified): the timeout, the quarantine marker, the mutation target,
-  the Hypothesis profile.
-- `rp-testkit` (modified): `shared_key()` and the `poll_seconds` of the waits.
+- `rp-developer-checks` (modified): the timeout (parallel lanes), the quarantine marker, the
+  mutation target, the Hypothesis profile.
+- `rp-testkit` (modified): `shared_key()`, the `poll_seconds` of the waits, and
+  `assert_isomorphic` as a public name.
+
+## Reconciliation (as delivered)
+
+Delivered as one pull request (PR_NUMBER) with each stage as a commit group (design.md D-1).
+
+| Shape item | Final state | Where |
+|---|---|---|
+| Stage 1, P-1 (`bootstrapped` template) | delivered; `test_lock_step.py` alone 93 s → ~50 s | 193e798 |
+| Stage 1, P-2 (shared schema view) | built, measured no saving, **not landed** | design.md PD-2 |
+| Stage 1, P-3 (shared read-only listing) | delivered; 44 tests' set-up ~25-30 s → 1.35 s | 05cd3d0 |
+| Stage 1, P-4 (shared book triples) | built, measured no saving, **not landed** | design.md PD-4 |
+| Stage 1, P-5 (`shared_key()`) | delivered; 6.05 s → 4.09 s on its two files | 75912ca |
+| Stage 1, P-6 (slow markers) | delivered, re-timed after the merges | task 1.10 |
+| Stage 1, P-7 (dist mode) | delivered: `loadgroup` | f9d9aee |
+| Stage 1, P-8 (`poll_seconds`) | delivered; 25.9 s → 20.2 s on five files | 4276740 |
+| Stage 1, libraries | pytest-timeout, quarantine marker, Hypothesis profile, `make mutation`, polyfactory dropped, **pytest-randomly adopted** | aa2d6f9, c0a8143 |
+| Stage 2, P-20 to P-34 | delivered: 639 cases merged, survivors chosen by mutation (D-3); P-31's unit half under Debt | 066f54b … 64bb1c8 |
+| Stage 3, P-40 to P-45, P-49 to P-51 | delivered: 10 tests dropped; two P-51 pins kept (D-4) | d6fe7c0, ffb4671 |
+| Stage 4, rules 1, 3, 5-7, 9, 10, 12-15, 17, 21 | delivered; rule-5 and rule-12 items with no fake or clock under Debt | 20ba2ed … f3aefd5 |
+| Stage 4, review fixes F-1 to F-8 | delivered | d89ba44 |
+| Stage 5, rule 11 | delivered: 1,301 asserts given a message; 0 left | b7d7c82, d069ad3, 9109048 |
+| Close | the after report and the full review | AFTER_COMMITS |
+
+**Differences from the shape, with the reason:**
+
+- **No-gos, "no new test library beyond pytest-timeout and mutmut":** `pytest-randomly` was
+  adopted. PD-9 planned its trial and the adopt-on-green branch, which contradicted this no-go;
+  the trial ran green on two seeds.
+- **No-gos, allowed API additions:** the testkit also exports `assert_isomorphic` (finding F-8:
+  a consumer test may use only public names). `ServiceKit`/`install_service` do NOT accept a
+  `SchemaView`: P-2 was not landed.
+- **DEC-2 and DEC-3:** one pull request, not five (D-1; the owner asked for local-first work,
+  then for the whole change to be completed while away).
+- **The perf lane needs Docker** (D-5), a cost the shape did not foresee.
+- **Spec deltas:** the timeout requirement is narrowed to the parallel lanes (F-5).
