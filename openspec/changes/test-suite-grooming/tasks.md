@@ -10,7 +10,7 @@ infrastructure). The lead runs `make check-all` and `make test-containers` once 
 - [x] 1.2 PD-9: the pytest-randomly trial (two seeds); adopt, or delete the dead flags and fill *Order dependence*. Gate: TF.
 - [ ] 1.3 PD-7: the six timed runs; the dist mode adopted; times recorded in design.md. Gate: TF.
 - [x] 1.4 PD-1: `bootstrapped_template`. Gate: TG, then the file twice and reversed.
-- [ ] 1.5 PD-2: `ServiceKit` / `install_service` accept a `SchemaView`, test first; `toy_view()`. Gate: TF. Then the adversarial tester on 1.5 (PD-14).
+- [x] 1.5 (built, measured: no saving; not landed, see PD-2) PD-2: `ServiceKit` / `install_service` accept a `SchemaView`, test first; `toy_view()`. Gate: TF. Then the adversarial tester on 1.5 (PD-14).
 - [ ] 1.6 PD-3 (skipped if 1.3 chose `worksteal`): `TestReadOnlyListing`. Gate: TG, then the file twice and reversed.
 - [x] 1.7 PD-4: module-scoped book triples in the four named files. Gate: TG, then each file reversed. (Built, measured: no saving; not landed, see PD-4.)
 - [ ] 1.8 PD-5: testkit `shared_key()` with the rp-testkit scenario test; `signer` fixtures. Gate: TF.

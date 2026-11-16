@@ -81,7 +81,12 @@ PD-3 depends on; PD-6 re-times after PD-1).
   over `toy_copy` (`shutil.copytree(..., dirs_exist_ok=True)`) and returns the same `Toy`. Check:
   run the file twice, then its node ids in reverse order (`pytest $(pytest --collect-only -qq … |
   tac)`).
-- **PD-2 (P-2)**: `ServiceKit(schema=...)` (`rdf_persistence/entrypoints/kit.py`) and
+- **PD-2 (P-2) — not landed (lead, 2026-11-16, measured):** built test-first and green in task
+  1.5, but the summed set-up of `tests/unit/entrypoints` did not move (220.7 s → 224.5 s, no
+  xdist, noisy machine): loading the schema is not what makes `ToyService()` costly. A public
+  API change for no saving is discarded; finding the real cost needs a profile of `ToyService()`
+  (mapper, documents, router build), listed under *Debt*. Original decision kept below.
+  `ServiceKit(schema=...)` (`rdf_persistence/entrypoints/kit.py`) and
   `install_service(app, schema=...)` (`service.py`) accept `Path | SchemaView`; a view is used
   as given, a path is loaded as today. Test first in `tests/unit/entrypoints/`: a kit built from a
   view holds that view (`kit.view is view`); one built from the path holds an equal schema.
@@ -237,3 +242,8 @@ None found. PD-9's `pytest-randomly==5.1.0` trial ran green on `--randomly-seed=
 ## Debt
 
 Filled during stage 4 (rule 5 items without a fake).
+
+- Profile `ToyService()` set-up (≈ 0.24 s per test, 410 tests) to find what dominates; PD-2's
+  schema-view sharing did not (task 1.5).
+- `testkit/event_bus_conformance.py` waits with the default 1 s poll for both the in-memory and
+  the Redis run; a `poll_seconds` parameter would speed the in-memory run (task 1.9).
