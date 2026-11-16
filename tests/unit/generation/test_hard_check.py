@@ -322,7 +322,9 @@ def test_a_reserved_segment_is_refused_with_the_fix_and_one_without_the_dash_pas
     reserved = problems_of(break_toy("books.yaml", "rp_path: books", "rp_path: rp-notes"))
     named = f"[{HardRule.RESERVED_SEGMENT.value}] Book:"
     assert any(named in p and "rp-notes" in p and "rename" in p for p in reserved), reserved
-    assert problems_of(break_toy("books.yaml", "rp_path: rp-notes", "rp_path: rpnotes")) == []
+    assert problems_of(break_toy("books.yaml", "rp_path: rp-notes", "rp_path: rpnotes")) == [], (
+        "a path without the dash raises no problem"
+    )
 
 
 SUBCLASS = """  Novel:
@@ -487,13 +489,17 @@ def test_a_reserved_type_is_refused(tmp_path: Path, word: str) -> None:
 
 
 def test_a_class_named_like_a_reserved_word_is_refused(tmp_path: Path) -> None:
-    assert len(_iri_type_problems(_bare_schema(tmp_path, {"Graph": None}))) == 1
+    assert len(_iri_type_problems(_bare_schema(tmp_path, {"Graph": None}))) == 1, (
+        "a class named like a reserved word gives exactly one problem"
+    )
 
 
 def test_distinct_types_pass(tmp_path: Path) -> None:
     root = _bare_schema(tmp_path, {"OntologyFile": None, "Alpha": "alpha-1"})
     kinds = (HardRule.IRI_TYPE.value, HardRule.ANNOTATION.value)
-    assert [p for p in problems_of(root) if p.startswith(tuple(f"[{k}]" for k in kinds))] == []
+    assert [p for p in problems_of(root) if p.startswith(tuple(f"[{k}]" for k in kinds))] == [], (
+        "distinct types raise no problem of these kinds"
+    )
 
 
 def test_a_bad_iri_type_pattern_is_refused_when_the_schema_does_not_import_the_metamodel(
@@ -573,7 +579,7 @@ def test_a_key_that_counts_missing_values_as_equal_is_refused(break_toy: Breaker
 def test_a_key_with_consider_nulls_inequal_true_passes(break_toy: Breaker) -> None:
     """TC-08"""
     root = break_toy("books.yaml", KEY_SCOPE, KEY_SCOPE + "        consider_nulls_inequal: true\n")
-    assert problems_of(root) == []
+    assert problems_of(root) == [], "a key with consider-nulls inequal true raises no problem"
 
 
 MIXIN = """  Keyed:
@@ -822,4 +828,4 @@ def test_the_toolkits_four_targets_pass_the_hard_check_with_their_own_settings()
     targets = read_targets(REPO / "pyproject.toml")
     assert len(targets) == 4, [t.schema_file for t in targets]
     found = generate(targets, REPO, (steps.HARD_STEP,), check=True)
-    assert [format_problem(p) for p in found] == []
+    assert [format_problem(p) for p in found] == [], "the toolkit's four targets raise no problem"

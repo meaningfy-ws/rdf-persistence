@@ -23,9 +23,9 @@ async def test_a_listing_never_shows_the_books_of_another_tenant(shelf, client, 
     await client.post(
         f"{other.headers['location']}/books", json=DUNE_BODY, headers=shelf.headers("bob")
     )
-    assert len(await shelf.labels()) == 5
+    assert len(await shelf.labels()) == 5, "the caller sees the five books of the own tenant"
     theirs = await client.get(f"{other.headers['location']}/books", headers=shelf.headers("bob"))
-    assert theirs.json()["total"] == 1
+    assert theirs.json()["total"] == 1, "the other tenant's listing counts only its own book"
 
 
 async def test_a_permission_on_one_book_alone_does_not_list_books(shelf) -> None:
@@ -49,7 +49,9 @@ async def test_a_book_the_caller_is_prohibited_from_reading_is_not_listed_or_cou
         ]
     )
     page = Page.model_validate((await shelf.page_of("limit=2", who="rita")).json())
-    assert "Emma" not in [i["label"] for i in page.items]
+    assert "Emma" not in [i["label"] for i in page.items], (
+        "the prohibited book is left out of the listing"
+    )
     assert page.total == 4, "the total leaves it out as well"
     assert len(await shelf.labels(who="ada")) == 5, "the librarian is not prohibited"
 
@@ -61,7 +63,9 @@ async def test_a_prohibition_of_modify_leaves_the_book_in_the_listing(shelf) -> 
             Prohibition(assignee=principal_of("rita"), target=f"{book}/graph", action=Action.MODIFY)
         ]
     )
-    assert len(await shelf.labels(who="rita")) == 5
+    assert len(await shelf.labels(who="rita")) == 5, (
+        "a modify prohibition leaves all five books listed"
+    )
 
 
 async def test_the_tenant_listing_is_paged_by_iri_like_any_other(shelf, client) -> None:
@@ -75,5 +79,9 @@ async def test_the_tenant_listing_is_paged_by_iri_like_any_other(shelf, client) 
         (await client.get("/libraries?limit=2&offset=1", headers=shelf.headers())).json()
     )
     assert ids == sorted(ids), "ordered by IRI"
-    assert (page.total, page.limit, page.offset) == (3, 2, 1)
-    assert [t["id"] for t in page.items] == ids[1:3]
+    assert page.total == 3, "the total counts every library"
+    assert page.limit == 2, "the page keeps the requested limit"
+    assert page.offset == 1, "the page keeps the requested offset"
+    assert [t["id"] for t in page.items] == ids[1:3], (
+        "the page holds the libraries at the requested offset, in IRI order"
+    )

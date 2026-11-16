@@ -70,8 +70,10 @@ async def test_a_graph_that_reads_as_another_tenants_loaded_graph_is_kept(world)
     foreign = world.iris.mint_loaded_graph(other, f"{other}/books/{UUID(int=9)}")
     await plant(world, foreign, at(5 * HOUR))
     report = await world.sweep(remove=True)
-    assert str(foreign) not in report.loaded_graphs
-    assert await world.holds(foreign)
+    assert str(foreign) not in report.loaded_graphs, (
+        "the other tenant's look-alike graph is not reported"
+    )
+    assert await world.holds(foreign), "that graph is still in the store"
 
 
 @pytest.mark.parametrize("which", ["not-a-uuid", "meta"])
@@ -83,8 +85,10 @@ async def test_a_loaded_graph_of_something_that_is_no_aggregate_is_kept(world, w
     graph = world.iris.mint_loaded_graph(world.tenant, roots[which])
     await plant(world, graph, at(5 * HOUR))
     report = await world.sweep(remove=True)
-    assert str(graph) not in report.loaded_graphs
-    assert await world.holds(graph)
+    assert str(graph) not in report.loaded_graphs, (
+        "the graph of something that is no aggregate is not reported"
+    )
+    assert await world.holds(graph), "that graph is still in the store"
 
 
 async def test_old_markers_on_the_tenants_own_graphs_do_not_make_them_candidates(world):
@@ -102,8 +106,10 @@ async def test_old_markers_on_the_tenants_own_graphs_do_not_make_them_candidates
     report = await world.sweep(remove=True, remove_blobs=True)
     removed = before - await quads(world)
     registry = str(world.iris.registry(world.tenant))
-    assert {g for g, *_ in removed if g != registry} == {str(world.g2)}
-    assert report.loaded_graphs == [str(world.g2)]
+    assert {g for g, *_ in removed if g != registry} == {str(world.g2)}, (
+        "only the stale graph is removed, not the ones with old markers"
+    )
+    assert report.loaded_graphs == [str(world.g2)], "only the stale graph is reported"
 
 
 # -- (f) odd markers and keys ------------------------------------------------------------------
@@ -123,9 +129,11 @@ async def test_a_marker_another_tool_wrote_badly_does_not_crash_the_sweep(world,
         world, world.iris.mint_loaded_graph(world.tenant, world.book), UNREADABLE[kind]
     )
     report = await world.sweep(remove=remove)
-    assert str(world.g2) in report.loaded_graphs
-    assert await world.holds(world.g1)
-    assert await world.holds(world.g3)
+    assert str(world.g2) in report.loaded_graphs, (
+        "the stale graph is reported despite the badly written marker"
+    )
+    assert await world.holds(world.g1), "the first kept graph is still in the store"
+    assert await world.holds(world.g3), "the second kept graph is still in the store"
     assert await world.holds(odd) or remove, "a dry run removes nothing"
 
 
@@ -133,8 +141,8 @@ async def test_two_markers_for_one_graph_count_as_young_when_either_is_young(wor
     graph = await plant(world, world.iris.mint_loaded_graph(world.tenant, world.book), at(5 * HOUR))
     await mark(world, graph, at(timedelta(minutes=1)))
     report = await world.sweep(remove=True)
-    assert str(graph) not in report.loaded_graphs
-    assert await world.holds(graph)
+    assert str(graph) not in report.loaded_graphs, "the graph with a young marker is not reported"
+    assert await world.holds(graph), "that graph is still in the store"
 
 
 async def test_a_two_hour_old_marker_written_with_an_offset_is_old(world):
@@ -150,10 +158,12 @@ async def test_what_is_exactly_as_old_as_the_grace_period_is_kept(world):
     graph = await plant(world, world.iris.mint_loaded_graph(world.tenant, world.book), at(HOUR))
     await world.blob("edge", HOUR)
     report = await world.sweep(older_than=HOUR, remove=True, remove_blobs=True)
-    assert str(graph) not in report.loaded_graphs
-    assert "edge" not in report.blobs
-    assert await world.holds(graph)
-    assert "edge" in await blob_keys(world)
+    assert str(graph) not in report.loaded_graphs, (
+        "the graph as old as the grace period is not reported"
+    )
+    assert "edge" not in report.blobs, "its blob is not reported"
+    assert await world.holds(graph), "that graph is still in the store"
+    assert "edge" in await blob_keys(world), "its blob is still in the store"
 
 
 async def test_with_no_grace_period_what_was_just_written_is_kept(world):
@@ -162,8 +172,8 @@ async def test_with_no_grace_period_what_was_just_written_is_kept(world):
     )
     await world.blob("now", timedelta())
     report = await world.sweep(older_than=timedelta(), remove=True, remove_blobs=True)
-    assert str(now_graph) not in report.loaded_graphs
-    assert "now" not in report.blobs
+    assert str(now_graph) not in report.loaded_graphs, "what was just written is not reported"
+    assert "now" not in report.blobs, "its blob is not reported"
     assert str(world.g3) in report.loaded_graphs, "a minute-old orphan is old enough then"
 
 
@@ -177,10 +187,12 @@ async def test_blob_keys_with_odd_characters_are_matched_exactly(world, key):
     await world.blob(key + "-orphan", 3 * HOUR)
     await world.commit(book(world, 7, "scans"), keys=[key])
     report = await world.sweep(remove_blobs=True)
-    assert report.blobs == sorted(["k2", key + "-orphan"])
-    assert report.skipped_blobs == []
-    assert key in await blob_keys(world)
-    assert key + "-orphan" not in await blob_keys(world)
+    assert report.blobs == sorted(["k2", key + "-orphan"]), (
+        "the report lists the orphan blobs, matched exactly"
+    )
+    assert report.skipped_blobs == [], "no blob is skipped"
+    assert key in await blob_keys(world), "the blob with odd characters is kept"
+    assert key + "-orphan" not in await blob_keys(world), "its look-alike orphan is deleted"
 
 
 async def test_a_key_named_as_an_iri_is_kept(world):
@@ -191,8 +203,8 @@ async def test_a_key_named_as_an_iri_is_kept(world):
         _one((SUBJECT, FILE_KEY, URIRef("urn:key:iri"))),
     )
     report = await world.sweep(remove_blobs=True)
-    assert "urn:key:iri" not in report.blobs
-    assert "urn:key:iri" in await blob_keys(world)
+    assert "urn:key:iri" not in report.blobs, "a key named as an IRI is not reported"
+    assert "urn:key:iri" in await blob_keys(world), "that blob is still in the store"
 
 
 def _one(triple) -> Graph:
@@ -210,10 +222,10 @@ async def test_a_blob_named_only_inside_a_loaded_graph_is_kept_even_as_that_grap
         extra=[(SUBJECT, FILE_KEY, Literal("inside"))],
     )
     report = await world.sweep(remove=True, remove_blobs=True)
-    assert str(inside) in report.loaded_graphs
-    assert "inside" not in report.blobs
-    assert not await world.holds(inside)
-    assert "inside" in await blob_keys(world)
+    assert str(inside) in report.loaded_graphs, "the graph that goes is reported"
+    assert "inside" not in report.blobs, "its blob is not reported"
+    assert not await world.holds(inside), "the graph is gone"
+    assert "inside" in await blob_keys(world), "its blob is still in the store"
     assert "inside" in (await world.sweep(remove_blobs=True)).blobs, "next run: no graph names it"
 
 
@@ -226,8 +238,8 @@ async def test_a_commit_that_names_a_blob_between_the_listing_and_the_key_read_k
 
     world.store.after = (str(FILE_KEY), name_k2)
     report = await world.sweep(remove_blobs=True)
-    assert "k2" not in report.blobs
-    assert "k2" in await blob_keys(world)
+    assert "k2" not in report.blobs, "a blob named by a late commit is not reported"
+    assert "k2" in await blob_keys(world), "that blob is still in the store"
 
 
 async def test_a_commit_between_the_listing_and_the_owner_read_makes_the_graph_owned(world):
@@ -238,8 +250,10 @@ async def test_a_commit_between_the_listing_and_the_owner_read_makes_the_graph_o
 
     world.store.after = (str(OWNED_BY), commit_g2)
     report = await world.sweep(remove=True)
-    assert str(world.g2) not in report.loaded_graphs
-    assert await world.holds(world.g2)
+    assert str(world.g2) not in report.loaded_graphs, (
+        "a graph owned by a late commit is not reported"
+    )
+    assert await world.holds(world.g2), "that graph is still in the store"
 
 
 async def test_a_graph_loaded_after_the_listing_is_never_judged(world):
@@ -250,18 +264,24 @@ async def test_a_graph_loaded_after_the_listing_is_never_judged(world):
 
     world.store.after = (str(OWNED_BY), load_late)
     report = await world.sweep(remove=True)
-    assert str(late[0]) not in report.loaded_graphs
-    assert await world.holds(late[0])
+    assert str(late[0]) not in report.loaded_graphs, (
+        "a graph loaded after the listing is not reported"
+    )
+    assert await world.holds(late[0]), "that graph is still in the store"
 
 
 async def test_two_sweeps_at_once_remove_each_orphan_once_and_keep_the_rest(world):
     first, second = await asyncio.gather(
         world.sweep(remove=True, remove_blobs=True), world.sweep(remove=True, remove_blobs=True)
     )
-    assert first.loaded_graphs == [str(world.g2)]
-    assert second.loaded_graphs in ([str(world.g2)], [])
-    assert [await world.holds(g) for g in (world.g1, world.g2, world.g3)] == [True, False, True]
-    assert await blob_keys(world) == ["k1", "k3"]
+    assert first.loaded_graphs == [str(world.g2)], "the first sweep reports the stale graph"
+    assert second.loaded_graphs in ([str(world.g2)], []), (
+        "the second sweep reports the stale graph or nothing, never another"
+    )
+    assert [await world.holds(g) for g in (world.g1, world.g2, world.g3)] == [True, False, True], (
+        "only the stale graph is gone"
+    )
+    assert await blob_keys(world) == ["k1", "k3"], "only the stale blobs are gone"
 
 
 # -- (d) (c) (e) what is touched and what is said ----------------------------------------------
@@ -270,20 +290,21 @@ async def test_two_sweeps_at_once_remove_each_orphan_once_and_keep_the_rest(worl
 async def test_a_dry_run_sends_no_update_and_no_delete(world):
     updates, deletes = len(world.store.sent("update")), len(world.files.sent("delete"))
     report = await world.sweep()
-    assert (len(world.store.sent("update")), len(world.files.sent("delete"))) == (updates, deletes)
-    assert report.loaded_graphs
-    assert report.blobs
-    assert report.skipped_blobs == []
+    assert len(world.store.sent("update")) == updates, "a dry run sent no update"
+    assert len(world.files.sent("delete")) == deletes, "a dry run sent no delete"
+    assert report.loaded_graphs, "the dry run still reports the stale graphs"
+    assert report.blobs, "the dry run still reports the stale blobs"
+    assert report.skipped_blobs == [], "the dry run skipped no blob"
 
 
 async def test_removing_graphs_alone_deletes_no_blob_and_removing_blobs_alone_updates_nothing(
     world,
 ):
     await world.sweep(remove=True)
-    assert world.files.sent("delete") == []
+    assert world.files.sent("delete") == [], "removing graphs alone deletes no blob"
     updates = len(world.store.sent("update"))
     await world.sweep(remove_blobs=True)
-    assert len(world.store.sent("update")) == updates
+    assert len(world.store.sent("update")) == updates, "removing blobs alone sends no update"
 
 
 async def test_the_sweep_reads_and_deletes_only_in_the_tenants_bucket(world):
@@ -292,15 +313,25 @@ async def test_the_sweep_reads_and_deletes_only_in_the_tenants_bucket(world):
     world.stamp.at = NOW - 5 * HOUR
     await world.files.put(theirs, "k2", b"same key, other tenant")
     await world.sweep(remove=True, remove_blobs=True)
-    assert world.files.sent("list_blobs")[-1] == world.database
-    assert all(sent.startswith(f"{world.database}/") for sent in world.files.sent("delete"))
-    assert await world.files.get(theirs, "k2") == b"same key, other tenant"
+    assert world.files.sent("list_blobs")[-1] == world.database, (
+        "the blobs are listed in the tenant's own bucket"
+    )
+    assert all(sent.startswith(f"{world.database}/") for sent in world.files.sent("delete")), (
+        "every delete stays in the tenant's own bucket"
+    )
+    assert await world.files.get(theirs, "k2") == b"same key, other tenant", (
+        "the other tenant's blob with the same key is untouched"
+    )
 
 
 async def test_a_remove_blobs_report_says_nothing_was_skipped_when_nothing_was(world):
     report = await world.sweep(remove=True)
-    assert (report.removed_blobs, report.skipped_blobs, report.blobs) == (False, [], ["k2"])
-    assert await blob_keys(world) == ["k1", "k2", "k3"]
+    assert report.removed_blobs is False, "the report says no blob was removed"
+    assert report.skipped_blobs == [], "the report says no blob was skipped"
+    assert report.blobs == ["k2"], "the report names the one stale blob"
+    assert await blob_keys(world) == ["k1", "k2", "k3"], (
+        "without the remove flag no blob is deleted"
+    )
 
 
 # -- (f) failures mid-sweep ---------------------------------------------------------------------
@@ -310,8 +341,8 @@ async def test_a_gone_database_stops_the_sweep_before_any_blob_is_deleted(world)
     await world.store.drop_dataset(world.database)
     with pytest.raises(DatabaseGone):
         await world.sweep(remove=True, remove_blobs=True)
-    assert world.files.sent("delete") == []
-    assert await blob_keys(world) == ["k1", "k2", "k3"]
+    assert world.files.sent("delete") == [], "no blob is deleted once the database is gone"
+    assert await blob_keys(world) == ["k1", "k2", "k3"], "every blob is still there"
 
 
 async def test_a_failing_graph_delete_leaves_the_rest_for_the_next_run(world):
@@ -328,8 +359,8 @@ async def test_a_failing_graph_delete_leaves_the_rest_for_the_next_run(world):
         False,
         True,
         True,
-    ]
-    assert await blob_keys(world) == ["k1", "k3"]
+    ], "the failing delete leaves the later graphs in place"
+    assert await blob_keys(world) == ["k1", "k3"], "the blobs are untouched"
 
 
 async def test_a_failing_blob_delete_stops_the_sweep_and_a_second_run_finishes(world):
@@ -337,8 +368,8 @@ async def test_a_failing_blob_delete_stops_the_sweep_and_a_second_run_finishes(w
     world.files.on("delete", StoreUnavailable("down"), after=1)
     with pytest.raises(StoreUnavailable):
         await world.sweep(remove=True, remove_blobs=True)
-    assert not await world.holds(world.g2)
-    assert await world.holds(world.g1)
+    assert not await world.holds(world.g2), "the graph that remained is removed"
+    assert await world.holds(world.g1), "the untouched graph is still in the store"
     report = await world.sweep(remove=True, remove_blobs=True)
-    assert report.blobs == ["k5"]
-    assert await blob_keys(world) == ["k1", "k3"]
+    assert report.blobs == ["k5"], "the report names the blob left for the next run"
+    assert await blob_keys(world) == ["k1", "k3"], "the blobs that were not stale remain"

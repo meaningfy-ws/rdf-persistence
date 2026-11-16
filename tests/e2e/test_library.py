@@ -227,13 +227,17 @@ async def test_deleting_the_book_and_the_library_removes_the_database_and_the_bu
 
     gone = await http.delete(shelf.book, headers=callers.as_(LIBRARIAN, **{"If-Match": shelf.etag}))
     assert gone.status_code == 204, gone.text
-    assert (await http.get(shelf.book, headers=callers.as_(LIBRARIAN))).status_code == 404
+    assert (await http.get(shelf.book, headers=callers.as_(LIBRARIAN))).status_code == 404, (
+        "the librarian can no longer read the deleted book"
+    )
 
     _, record_etag = await grants_of(world, shelf.path)
     dropped = await http.delete(
         shelf.path, headers=callers.as_(LIBRARIAN, **{"If-Match": record_etag})
     )
     assert dropped.status_code == 204, dropped.text
-    assert (await http.get(shelf.path, headers=callers.as_(READER))).status_code == 404
+    assert (await http.get(shelf.path, headers=callers.as_(READER))).status_code == 404, (
+        "the reader can no longer read the deleted library"
+    )
     assert len(await own_databases()) == 2, "the system and the application database remain"
     assert await world.files.list_buckets(prefix) == [], "the bucket is gone"

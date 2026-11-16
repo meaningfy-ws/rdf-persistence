@@ -65,14 +65,17 @@ class TestReadOnlyListing:
         self, shelf: Shelf
     ) -> None:
         page = Page.model_validate((await shelf.page_of()).json())
-        assert (page.limit, page.offset, page.total) == (50, 0, 5)
+        assert page.limit == 50, "the default page size is 50"
+        assert page.offset == 0, "the default offset is 0"
+        assert page.total == 5, "the total counts every book"
         assert [i["label"] for i in page.items] == shelf.by_iri(*shelf.books), "ordered by IRI"
 
     async def test_an_offset_past_the_end_is_an_empty_page_that_still_counts(
         self, shelf: Shelf
     ) -> None:
         page = Page.model_validate((await shelf.page_of("offset=9")).json())
-        assert (page.items, page.total) == ([], 5)
+        assert page.items == [], "a page past the end has no items"
+        assert page.total == 5, "the total still counts every book"
 
     async def test_an_item_is_what_a_read_of_the_same_book_returns(self, shelf: Shelf) -> None:
         page = (await shelf.page_of("limit=1")).json()
@@ -100,13 +103,16 @@ class TestReadOnlyListing:
     async def test_filters_and_a_sort_key_select_and_order_the_page(
         self, shelf, query, expected
     ) -> None:
-        assert await shelf.labels(query) == expected
+        assert await shelf.labels(query) == expected, (
+            "the filters and the sort key give the expected labels"
+        )
 
     async def test_the_total_of_a_filtered_listing_counts_the_matches_only(
         self, shelf: Shelf
     ) -> None:
         page = Page.model_validate((await shelf.page_of("genre=fiction&limit=1")).json())
-        assert (len(page.items), page.total) == (1, 3)
+        assert len(page.items) == 1, "the limit caps the page at one item"
+        assert page.total == 3, "the total counts every match, not just the page"
 
     # --- representations ----------------------------------------------------------------------------
 
@@ -114,14 +120,18 @@ class TestReadOnlyListing:
         self, shelf: Shelf
     ) -> None:
         response = await shelf.page_of("limit=1")
-        assert response.headers["content-type"].startswith(JSON)
+        assert response.headers["content-type"].startswith(JSON), (
+            "the plain JSON listing has a JSON content type"
+        )
         assert "context.jsonld" in response.headers["link"], "as for a read"
-        assert "@context" not in response.json()["items"][0]
+        assert "@context" not in response.json()["items"][0], "the JSON items carry no context"
 
     async def test_json_ld_items_carry_their_context(self, shelf: Shelf) -> None:
         response = await shelf.page_of("limit=2", **{"Accept": JSON_LD})
         items = response.json()["items"]
-        assert response.headers["content-type"].startswith(JSON_LD)
+        assert response.headers["content-type"].startswith(JSON_LD), (
+            "the JSON-LD listing has a JSON-LD content type"
+        )
         assert all("@context" in item for item in items), "each item is a document on its own"
 
     async def test_a_listing_cannot_be_turtle(self, shelf: Shelf) -> None:
@@ -166,7 +176,8 @@ class TestReadOnlyListing:
     async def test_a_hostile_filter_value_is_just_a_value(self, shelf: Shelf) -> None:
         response = await shelf.page_of("label=%22%7D+%3B+DROP+ALL+%3B+%23")
         assert response.status_code == 200, response.text
-        assert (response.json()["items"], response.json()["total"]) == ([], 0)
+        assert response.json()["items"] == [], "the hostile value matches no item"
+        assert response.json()["total"] == 0, "the hostile value matches nothing"
         assert len(await shelf.labels()) == 5, "the store is unchanged"
 
     # --- who sees what ------------------------------------------------------------------------------
@@ -174,21 +185,25 @@ class TestReadOnlyListing:
     async def test_a_reader_lists_and_an_outsider_does_not_see_the_tenant(
         self, shelf: Shelf
     ) -> None:
-        assert len(await shelf.labels(who="rita")) == 5
-        assert (await shelf.page_of(who="omar")).status_code == 404
+        assert len(await shelf.labels(who="rita")) == 5, "the reader lists all five books"
+        assert (await shelf.page_of(who="omar")).status_code == 404, (
+            "an outsider gets 404 for the tenant"
+        )
 
     async def test_a_global_reader_lists_the_books_of_any_tenant(self, shelf: Shelf) -> None:
         response = await shelf.http.get(shelf.path, headers=shelf.headers("root", "admin"))
-        assert response.json()["total"] == 5
+        assert response.json()["total"] == 5, "the global reader sees the five books of the tenant"
 
     async def test_a_listing_without_a_token_is_a_401(self, shelf: Shelf) -> None:
-        assert (await shelf.http.get(shelf.path)).status_code == 401
+        assert (await shelf.http.get(shelf.path)).status_code == 401, (
+            "a listing without a token is refused with 401"
+        )
 
     async def test_a_listing_of_a_tenant_that_does_not_exist_is_a_404(self, shelf: Shelf) -> None:
         response = await shelf.http.get(
             "/libraries/00000000-0000-4000-8000-000000000000/books", headers=shelf.headers()
         )
-        assert response.status_code == 404
+        assert response.status_code == 404, "a listing of a missing tenant is 404"
 
     # --- the tenants --------------------------------------------------------------------------------
 

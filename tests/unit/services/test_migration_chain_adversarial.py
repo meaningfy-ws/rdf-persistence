@@ -42,30 +42,38 @@ ODD = {
 def test_odd_versions_form_a_chain_in_order(tmp_path, versions):
     chain_of(tmp_path, versions)
     chain = load_chain(tmp_path, SCHEMA, versions[-1])
-    assert chain[0] == tuple(versions)
-    assert first_version(chain) == versions[0]
-    assert [m.to_version for m in pending_from(chain, versions[0])] == versions[1:]
-    assert pending_from(chain, versions[-1]) == ()
+    assert chain[0] == tuple(versions), "the chain lists the versions in order"
+    assert first_version(chain) == versions[0], (
+        "the first version of the chain is the first one given"
+    )
+    assert [m.to_version for m in pending_from(chain, versions[0])] == versions[1:], (
+        "the pending migrations after the first version lead through the rest"
+    )
+    assert pending_from(chain, versions[-1]) == (), "nothing is pending from the last version"
 
 
 def test_versions_that_collide_after_the_file_name_mapping_are_still_told_apart(tmp_path):
     """``1/0`` and ``1_0`` are two versions with one spelling in a file name; the fields are the truth."""
     chain_of(tmp_path, ["1_0", "1/0", "2"])
     chain = load_chain(tmp_path, SCHEMA, "2")
-    assert chain[0] == ("1_0", "1/0", "2")
+    assert chain[0] == ("1_0", "1/0", "2"), (
+        "versions that collide after the file name mapping stay apart"
+    )
 
 
 def test_two_files_whose_versions_collide_in_the_name_cannot_both_exist_and_none_is_lost(tmp_path):
     put(tmp_path, "1/0", "2", name="1_0__2.yaml")
     put(tmp_path, "1_0", "2", name="1_0__2_b.yaml")
     message = refused(tmp_path, "2")
-    assert "1_0__2.yaml" in message
-    assert "1_0__2_b.yaml" in message
+    assert "1_0__2.yaml" in message, "the refusal names the first file of the collision"
+    assert "1_0__2_b.yaml" in message, "the refusal names the second file of the collision"
 
 
 def test_a_file_named_for_another_spelling_of_the_same_versions_is_refused(tmp_path):
     put(tmp_path, "1/0", "2", name="1.0__2.yaml")
-    assert "1.0__2.yaml" in refused(tmp_path, "2")
+    assert "1.0__2.yaml" in refused(tmp_path, "2"), (
+        "the refusal names the file with the other spelling"
+    )
 
 
 @pytest.fixture
@@ -93,13 +101,19 @@ def test_the_migrations_pending_from_the_empty_version_are_the_one_step(empty_fi
 @pytest.mark.parametrize("version", ["", "1 "])
 def test_a_version_not_in_the_chain_has_no_pending_migrations(tmp_path, version):
     chain_of(tmp_path, ["1", "2", "3"])
-    assert pending_from(load_chain(tmp_path, SCHEMA, "3"), version) is None
+    assert pending_from(load_chain(tmp_path, SCHEMA, "3"), version) is None, (
+        "a version outside the chain has no pending list"
+    )
 
 
 def test_a_current_version_that_is_not_an_exact_spelling_of_the_last_file_is_a_gap(tmp_path):
     chain_of(tmp_path, ["1", "2"])
-    assert "1__2.yaml" in refused(tmp_path, "2 ")
-    assert "1__2.yaml" in refused(tmp_path, "02")
+    assert "1__2.yaml" in refused(tmp_path, "2 "), (
+        "a current version with a stray space is refused, naming the file"
+    )
+    assert "1__2.yaml" in refused(tmp_path, "02"), (
+        "a current version with a leading zero is refused, naming the file"
+    )
 
 
 # -- from == to, cycles, forks -------------------------------------------------------------------
@@ -108,14 +122,16 @@ def test_a_current_version_that_is_not_an_exact_spelling_of_the_last_file_is_a_g
 def test_a_file_that_goes_from_a_version_to_itself_is_refused_whatever_current_is(tmp_path):
     put(tmp_path, "1", "1")
     for current in ("1", "2", ""):
-        assert "1__1.yaml" in refused(tmp_path, current)
+        assert "1__1.yaml" in refused(tmp_path, current), (
+            "the self-step file is refused whatever the current version is"
+        )
 
 
 def test_a_self_step_in_the_middle_of_a_line_is_refused(tmp_path):
     chain_of(tmp_path, ["1", "2"])
     put(tmp_path, "2", "2")
     put(tmp_path, "2", "3")
-    assert "2__2.yaml" in refused(tmp_path, "3")
+    assert "2__2.yaml" in refused(tmp_path, "3"), "the refusal names the self-step file"
 
 
 def test_a_long_cycle_beside_a_line_is_refused_and_the_loop_ends(tmp_path):
@@ -123,8 +139,8 @@ def test_a_long_cycle_beside_a_line_is_refused_and_the_loop_ends(tmp_path):
     cycle = ["a", "b", "c", "d", "a"]
     chain_of(tmp_path, cycle)
     message = refused(tmp_path, "3")
-    assert "a__b.yaml" in message
-    assert "d__a.yaml" in message
+    assert "a__b.yaml" in message, "the refusal names the first file of the cycle"
+    assert "d__a.yaml" in message, "the refusal names the last file of the cycle"
 
 
 def test_a_cycle_through_the_current_version_is_refused_and_the_loop_ends(tmp_path):
@@ -147,7 +163,9 @@ def test_a_sub_folder_with_migrations_is_not_read(tmp_path):
     sub.mkdir()
     put(sub, "0", "1")
     put(sub, "9", "10")
-    assert load_chain(tmp_path, SCHEMA, "2")[0] == ("1", "2")
+    assert load_chain(tmp_path, SCHEMA, "2")[0] == ("1", "2"), (
+        "the sub-folder adds no migration to the chain"
+    )
 
 
 def test_a_folder_named_like_a_migration_is_refused_naming_it(tmp_path):
@@ -165,13 +183,17 @@ def test_other_extensions_are_not_migrations(tmp_path):
     put(tmp_path, "3", "4", name="3__4.YAML")
     put(tmp_path, "4", "5", name="4__5.yaml.bak")
     put(tmp_path, "5", "6", name="5__6")
-    assert load_chain(tmp_path, SCHEMA, "2")[0] == ("1", "2")
+    assert load_chain(tmp_path, SCHEMA, "2")[0] == ("1", "2"), (
+        "a file with another extension adds no migration to the chain"
+    )
 
 
 def test_a_skipped_file_leaves_a_visible_gap_when_the_chain_needs_it(tmp_path):
     chain_of(tmp_path, ["1", "2"])
     put(tmp_path, "2", "3", name="2__3.yml")
-    assert "1__2.yaml" in refused(tmp_path, "3")
+    assert "1__2.yaml" in refused(tmp_path, "3"), (
+        "the refusal names the file whose absence leaves the gap"
+    )
 
 
 def test_a_hidden_file_named_yaml_is_read(tmp_path):
@@ -183,8 +205,8 @@ def test_a_link_to_a_migration_is_a_second_file_for_the_same_step(tmp_path):
     original = put(tmp_path, "1", "2")
     os.symlink(original, tmp_path / "1__2_link.yaml")
     message = refused(tmp_path, "2")
-    assert "1__2.yaml" in message
-    assert "1__2_link.yaml" in message
+    assert "1__2.yaml" in message, "the refusal names the migration file"
+    assert "1__2_link.yaml" in message, "the refusal names its link"
 
 
 def test_a_link_to_a_migration_outside_the_folder_is_read(tmp_path):
@@ -194,20 +216,22 @@ def test_a_link_to_a_migration_outside_the_folder_is_read(tmp_path):
     folder.mkdir()
     target = put(outside, "1", "2")
     os.symlink(target, folder / "1__2.yaml")
-    assert load_chain(folder, SCHEMA, "2")[0] == ("1", "2")
+    assert load_chain(folder, SCHEMA, "2")[0] == ("1", "2"), (
+        "a link to a file outside the folder is read as a migration"
+    )
 
 
 @pytest.mark.parametrize("kind", ["broken", "loop"])
 def test_a_link_that_leads_nowhere_is_refused_naming_it(tmp_path, kind):
     link = tmp_path / "1__2.yaml"
     os.symlink(tmp_path / ("gone.yaml" if kind == "broken" else "1__2.yaml"), link)
-    assert "1__2.yaml" in refused(tmp_path, "2")
+    assert "1__2.yaml" in refused(tmp_path, "2"), "the refusal names the link that leads nowhere"
 
 
 def test_a_folder_that_is_a_file_is_refused_naming_it(tmp_path):
     path = tmp_path / "migrations"
     path.write_text("x", encoding="utf-8")
-    assert "migrations" in refused(path, "1")
+    assert "migrations" in refused(path, "1"), "the refusal names the folder that is a file"
 
 
 # equivalence class: bytes that do not decode as UTF-8 (one read, one except clause)
@@ -216,27 +240,29 @@ def test_a_file_that_is_not_utf8_is_refused_naming_it(tmp_path, content):
     chain_of(tmp_path, ["1", "2"])
     (tmp_path / "2__3.yaml").write_bytes(content)
     message = refused(tmp_path, "3")
-    assert "2__3.yaml" in message
+    assert "2__3.yaml" in message, "the refusal names the file that is not UTF-8"
 
 
 def test_an_empty_yaml_file_is_refused_naming_it(tmp_path):
     chain_of(tmp_path, ["1", "2"])
     (tmp_path / "2__3.yaml").write_text("", encoding="utf-8")
-    assert "2__3.yaml" in refused(tmp_path, "3")
+    assert "2__3.yaml" in refused(tmp_path, "3"), "the refusal names the empty file"
 
 
 def test_a_file_for_another_schema_poisons_the_folder_whatever_its_name(tmp_path):
     chain_of(tmp_path, ["1", "2"])
     data = {"schema_id": "https://example.org/ns/other", "from_version": "7", "to_version": "8"}
     (tmp_path / "7__8.yaml").write_text(yaml.safe_dump(data), encoding="utf-8")
-    assert "7__8.yaml" in refused(tmp_path, "2")
+    assert "7__8.yaml" in refused(tmp_path, "2"), "the refusal names the file of another schema"
 
 
 def test_the_same_files_give_the_same_chain_whatever_the_order_they_are_listed(tmp_path):
     versions = [str(i) for i in range(1, 12)]
     for old, new in reversed(list(zip(versions, versions[1:], strict=False))):
         put(tmp_path, old, new)
-    assert load_chain(tmp_path, SCHEMA, versions[-1])[0] == tuple(versions)
+    assert load_chain(tmp_path, SCHEMA, versions[-1])[0] == tuple(versions), (
+        "the listing order does not change the chain"
+    )
 
 
 # -- length --------------------------------------------------------------------------------------
@@ -247,9 +273,11 @@ def test_a_chain_of_several_hundred_files_loads_in_order_without_recursion(tmp_p
     versions = [f"v{i}" for i in range(count + 1)]
     chain_of(tmp_path, versions)
     chain = load_chain(tmp_path, SCHEMA, versions[-1])
-    assert chain[0] == tuple(versions)
-    assert len(chain[1]) == count
-    assert [m.from_version for m in pending_from(chain, "v290")] == versions[290:-1]
+    assert chain[0] == tuple(versions), "the long chain keeps the versions in order"
+    assert len(chain[1]) == count, "the long chain holds every migration"
+    assert [m.from_version for m in pending_from(chain, "v290")] == versions[290:-1], (
+        "the pending migrations from the middle lead to the end"
+    )
 
 
 def test_a_long_cycle_of_several_hundred_files_ends_in_a_refusal(tmp_path):
@@ -262,6 +290,6 @@ def test_pending_from_does_not_mutate_or_alias_the_chain(tmp_path):
     chain_of(tmp_path, ["1", "2", "3"])
     chain = load_chain(tmp_path, SCHEMA, "3")
     first = pending_from(chain, "1")
-    assert first == pending_from(chain, "1")
-    assert isinstance(first, tuple)
-    assert chain[0] == ("1", "2", "3")
+    assert first == pending_from(chain, "1"), "a second call gives the same pending list"
+    assert isinstance(first, tuple), "the pending list is a tuple"
+    assert chain[0] == ("1", "2", "3"), "asking for pending migrations leaves the chain unchanged"
