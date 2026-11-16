@@ -3,9 +3,10 @@
 [run]
 branch = True
 source = rdf_persistence
-# Exercised only by `make test-containers` (PD-16), so outside the unit/feature floor.
+# The adapters are under the floor: their unit tests use fakes of the remote side. Only the two
+# modules that need a real container (PD-16) stay outside it; `make test-containers` covers them.
 omit =
-    rdf_persistence/adapters/*
+    rdf_persistence/adapters/redis_events.py
     rdf_persistence/testkit/containers/*
 
 [report]
