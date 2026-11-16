@@ -1,0 +1,12 @@
+= Reference
+:description: Placeholder. The look-up pages of rdf-persistence: the public Python API, the generated service API, the rp-generate CLI and the configuration.
+
+NOTE: Placeholder, to be written. Reference pages are generated, not hand-written: the service API
+from its OpenAPI document, the Python API from the docstrings of the public names.
+
+This section will hold:
+
+* the public Python API (`rdf_persistence.__all__` and the testkit's names);
+* the generic service API, generated from the OpenAPI document;
+* the `rp-generate` command: its options, its `[[tool.rp-generate]]` entries and its exit codes;
+* the configuration a consumer sets.

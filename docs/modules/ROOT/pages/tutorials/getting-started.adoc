@@ -1,0 +1,9 @@
+= Getting started
+:description: Placeholder. A first walk from an empty folder to one aggregate stored and read back with rdf-persistence.
+
+NOTE: Placeholder, to be written. Until then, xref:howto/adopt.adoc[Build an application] covers
+the same ground step by step.
+
+This tutorial will take a newcomer from an empty folder to an application that stores one
+aggregate and reads it back: install, write a one-class LinkML model, generate, start the test
+store, commit and read.
