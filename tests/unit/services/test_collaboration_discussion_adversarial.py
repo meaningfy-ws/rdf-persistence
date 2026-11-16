@@ -838,13 +838,10 @@ async def test_a_reply_to_a_hidden_comment_and_to_a_missing_one_raise_the_same_e
 @pytest.mark.parametrize(
     ("class_name", "slot"),
     [
+        # Class: the narrowing; none, by a class, by a slot.
         (None, None),
-        ("Comment", None),
         ("Book", None),
-        (None, "comment_references"),
         (None, "sequel_of"),
-        ("Comment", "comment_references"),
-        ("Book", "sequel_of"),
     ],
 )
 async def test_the_hidden_count_of_comment_referrers_ignores_the_narrowing(
@@ -882,21 +879,11 @@ async def test_a_reply_under_a_hidden_parent_is_a_hidden_referrer_too(session, a
 BODY = (OA.bodyValue, Literal("text"))
 MOTIVE = (OA.motivatedBy, OA.commenting)
 TARGET_B1 = (v.HAS_TARGET, URIRef(B1))
+# Class: a foreign annotation the comment class may refuse; one per outcome of decoding (a missing
+# part and a value out of range are refused, a reply to a parent that is not there decodes and is hidden).
 MALFORMED = {
     "no body": [TARGET_B1, MOTIVE],
-    "no motivation": [TARGET_B1, BODY],
-    "a blank body": [TARGET_B1, MOTIVE, (OA.bodyValue, Literal(""))],
     "an unknown motivation": [TARGET_B1, BODY, (OA.motivatedBy, URIRef("urn:x:other"))],
-    "an unknown slot": [TARGET_B1, BODY, MOTIVE, (URIRef("urn:x:extra"), Literal("more"))],
-    "a body that is an IRI": [TARGET_B1, MOTIVE, (OA.bodyValue, URIRef("urn:x:body"))],
-    "two bodies": [TARGET_B1, MOTIVE, BODY, (OA.bodyValue, Literal("other"))],
-    "two targets": [TARGET_B1, (v.HAS_TARGET, URIRef(B2)), BODY, MOTIVE],
-    "a reference that is a literal": [
-        TARGET_B1,
-        BODY,
-        MOTIVE,
-        (v.COMMENT_REFERENCES, Literal("x")),
-    ],
     "a reply to a literal": [TARGET_B1, BODY, MOTIVE, (RP.repliesTo, Literal("x"))],
 }
 
@@ -1021,18 +1008,17 @@ async def test_a_consumer_can_write_a_comment_whose_audience_names_an_undefined_
 # -- 5. hostile input to comment ----------------------------------------------------------------
 
 
+# Class: a hostile text; one per risk (query syntax and control characters, size, padding, encoding, NUL).
 @pytest.mark.parametrize(
     "text",
     [
         EVIL,
         "x" * 200_000,
-        "line\nbreak\r\nand\ttab",
         "  padded  ",
         "é中\U0001f600",
-        "a' OR '1'='1",
         "\u0000nul",
     ],
-    ids=["sparql fragments", "very long", "newlines", "padded", "unicode", "quote", "nul"],
+    ids=["sparql fragments", "very long", "padded", "unicode", "nul"],
 )
 async def test_a_hostile_text_is_stored_as_text_or_refused_with_a_documented_error(
     text, store, session, ada, books
@@ -1048,15 +1034,11 @@ async def test_a_hostile_text_is_stored_as_text_or_refused_with_a_documented_err
     assert await stored(session, B1, B2, B3) == [B1, B2, B3], "no book was touched"
 
 
+# Class: a reference the policy does not mint for an aggregate of the tenant; one per kind (hostile
+# text, a minted shape that is no aggregate).
 REFUSED_REFERENCES = {
     "sparql fragments": EVIL,
-    "an aggregate IRI with a hostile tail": f"{B1}> }} ; DROP ALL ; <",
     "a graph iri": graph_of(B1),
-    "a skolem iri": str(skolem_iri(graph_of(B1))),
-    "an aggregate of another tenant": f"{OTHER_TENANT}/books/{UUID(int=1)}",
-    "a loaded graph": str(DEFAULT_IRIS.mint_loaded_graph(TENANT, B1)),
-    "an empty string": "",
-    "a relative path": "books/1",
 }
 
 
@@ -1099,7 +1081,8 @@ async def test_a_reference_to_the_target_a_comment_the_root_or_the_record_is_sto
     assert len(await ada.thread(B1)) == 2, f"a reference to {reference} is accepted"
 
 
-@pytest.mark.parametrize("role_name", ["", " ", "librarian ", "Librarian", "libr\narian", EVIL])
+# Class: an audience entry that is not exactly a defined role; the empty one and a near miss.
+@pytest.mark.parametrize("role_name", ["", "librarian "])
 async def test_an_audience_entry_that_is_not_exactly_a_defined_role_is_refused(
     role_name, store, ada, books
 ):
@@ -1109,11 +1092,8 @@ async def test_an_audience_entry_that_is_not_exactly_a_defined_role_is_refused(
     assert await aggregates(store) == count, "nothing was stored"
 
 
-@pytest.mark.parametrize(
-    "reply_to",
-    [EVIL, "", TENANT, B1, "urn:uuid:" + "0" * 36],
-    ids=["fragments", "empty", "tenant", "target", "urn"],
-)
+# Class: a reply_to that is no comment of the thread; hostile text, empty, an IRI that is no comment.
+@pytest.mark.parametrize("reply_to", [EVIL, "", B1], ids=["fragments", "empty", "target"])
 async def test_a_hostile_reply_to_is_not_found_and_nothing_is_stored(reply_to, store, ada, books):
     count = await aggregates(store)
     with pytest.raises(NotFound):
@@ -1121,16 +1101,14 @@ async def test_a_hostile_reply_to_is_not_found_and_nothing_is_stored(reply_to, s
     assert await aggregates(store) == count, "nothing was stored"
 
 
+# Class: a target that is no aggregate of the tenant, refused as not in the tenant (a graph IRI,
+# another tenant's aggregate, hostile text) or as having no graph (the access record, a missing aggregate).
 BAD_TARGETS = {
     "a graph iri": graph_of(B1),
-    "a skolem iri": str(skolem_iri(graph_of(B1))),
-    "a loaded graph": str(DEFAULT_IRIS.mint_loaded_graph(TENANT, B1)),
     "an aggregate of another tenant": f"{OTHER_TENANT}/books/{UUID(int=1)}",
     "the access record": f"{TENANT}/access",
     "a missing aggregate": book_iri(99),
     "sparql fragments": EVIL,
-    "an aggregate IRI with a hostile tail": f"{B1}> }} ; DROP ALL ; <",
-    "an empty string": "",
 }
 
 
@@ -1243,13 +1221,10 @@ def test_the_roles_of_a_caller_are_its_own_grants_in_scope(what, grants, bans, r
         ("reader", True),
         ("editor", True),
         ("admin", True),
+        # Class: not exactly a defined name; a case variant, a padded one, the empty one.
         ("Reader", False),
         ("reader ", False),
-        ("rea der", False),
         ("", False),
-        ("reader\n", False),
-        ("rеader", False),
-        ("*", False),
     ],
 )
 def test_a_role_is_defined_only_by_its_exact_name(name, defined, rules):

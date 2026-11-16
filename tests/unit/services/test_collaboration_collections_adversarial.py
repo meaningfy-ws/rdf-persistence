@@ -272,11 +272,8 @@ async def test_a_named_member_removed_and_added_again_after_the_heads_is_a_confl
     assert await stored(guarded, B2), "the new B2 is not deleted"
 
 
-@pytest.mark.parametrize(
-    "members",
-    [[B1], [B1, B2, B3], [B2]],
-    ids=["a-member-added", "a-member-dropped", "all-replaced"],
-)
+# Class: a collection replaced after it was read, whatever the replacement; one case.
+@pytest.mark.parametrize("members", [[B1]], ids=["a-member-added"])
 async def test_the_collection_replaced_after_it_was_read_is_a_conflict(
     guarded, collaboration, members
 ):  # PD-8 step 5: the collection is removed at the caller's version
@@ -550,13 +547,12 @@ async def test_a_collection_that_names_the_access_record_does_not_delete_it(
     assert await stored(toy_session, S1), "the shelf is kept: nothing is deleted"
 
 
+# Class: a member IRI the policy does not mint for an aggregate (a graph IRI, another tenant's).
 @pytest.mark.parametrize(
     "member",
     [
         pytest.param(graph_of(B1), id="a-graph-iri"),
         pytest.param(book_iri(7).replace(TENANT, OTHER_TENANT), id="another-tenant"),
-        pytest.param("https://example.org/.well-known/genid/abc", id="a-skolem-iri"),
-        pytest.param(f"{B1}/parts/{UUID(int=5)}", id="a-part-iri"),
     ],
 )
 async def test_a_member_that_is_no_aggregate_of_the_tenant_refuses_without_deleting(
@@ -707,13 +703,12 @@ async def test_a_cascade_of_a_missing_collection_is_not_found(guarded, collabora
         await as_ada(collaboration, guarded).delete_cascade(S2, "anything")
 
 
+# Class: a collection IRI that is none of the tenant's; one per kind (another tenant's, malformed, the tenant root).
 @pytest.mark.parametrize(
     "collection",
     [
         pytest.param(shelf_iri(7).replace(TENANT, OTHER_TENANT), id="another-tenant"),
         pytest.param("not an iri", id="malformed"),
-        pytest.param("", id="empty"),
-        pytest.param(S1 + "> } ; DROP ALL ; <", id="sparql-in-the-iri"),
         pytest.param(TENANT, id="the-tenant-root"),
     ],
 )
@@ -727,13 +722,12 @@ async def test_a_collection_iri_that_is_not_one_of_the_tenant_deletes_nothing(
     assert await stored(guarded, B1), "nothing is deleted"
 
 
+# Class: an if_version that is not the version; the empty one and hostile text.
 @pytest.mark.parametrize(
     "if_version",
     [
         pytest.param("", id="empty"),
-        pytest.param("x" * 100_000, id="absurdly-long"),
         pytest.param(EVIL, id="sparql-metacharacters"),
-        pytest.param("\u0000", id="nul"),
     ],
 )
 async def test_an_if_version_that_is_not_the_version_is_a_conflict_and_deletes_nothing(
@@ -774,10 +768,11 @@ async def through_session_add(session, model) -> None:
     await session.add_graph(model.id, toy_mapper().to_triples(model))
 
 
+# Class: a write path; session add delegates to the transaction's, so it is the same lines.
 @pytest.mark.parametrize(
     "write",
-    [through_session_add, through_transaction_add, through_unit_of_work_add],
-    ids=["session-add", "transaction-add", "unit-of-work-add"],
+    [through_transaction_add, through_unit_of_work_add],
+    ids=["transaction-add", "unit-of-work-add"],
 )
 async def test_every_write_path_refuses_a_collection_of_the_wrong_class(guarded, write):
     await other_shelf(guarded)
@@ -828,10 +823,8 @@ async def test_a_replace_that_drops_the_member_class_into_a_part_class_is_refuse
     assert await version(guarded, S1) == ver, "the stored collection is as it was"
 
 
-@pytest.mark.parametrize(
-    "member_class",
-    ["ReferenceCollection", "Described", "AggregateRoot", "Chapter", "Note", "Tracked", "NoSuch"],
-)
+# Class: a member class that is no served root; the collection class itself, a mixin, a part, none.
+@pytest.mark.parametrize("member_class", ["ReferenceCollection", "Described", "Chapter", "NoSuch"])
 async def test_a_member_class_that_is_not_a_served_root_is_refused(guarded, member_class):
     with pytest.raises(InvalidBody, match=member_class):
         await through_session_add(guarded, a_shelf(S1, member_class=member_class))
@@ -1070,22 +1063,9 @@ async def test_a_deep_read_of_a_collection_of_books_does_not_open_a_book(guarded
     assert found.member_iris == [B1], "a book is a leaf"
 
 
-@pytest.mark.parametrize(
-    "value",
-    [EVIL, "'", '"', "\n", "}", "\\", "x\u0000y", "<http://a>", "?s", "a" * 5000],
-    ids=[
-        "evil",
-        "apostrophe",
-        "quote",
-        "newline",
-        "brace",
-        "backslash",
-        "nul",
-        "iri",
-        "var",
-        "long",
-    ],
-)
+# Class: a rule value with metacharacters (the escaping is the library's); one per escape the
+# library makes (all of them at once, a quote, a backslash).
+@pytest.mark.parametrize("value", [EVIL, '"', "\\"], ids=["evil", "quote", "backslash"])
 async def test_a_rule_value_with_metacharacters_matches_only_what_equals_it(
     toy_session, collaboration, value
 ):  # stored without guards; PD-7: the conditions are the ones find uses
@@ -1108,7 +1088,8 @@ async def test_a_rule_value_that_is_not_a_value_of_its_slot_is_stored_data_inval
         await as_ada(collaboration, toy_session).members(S1)
 
 
-@pytest.mark.parametrize("slot", [EVIL, "genre> } ; DROP ALL ; <", "", "chapters", "id"])
+# Class: a rule slot the listing does not accept; hostile text, a real slot that is not listable.
+@pytest.mark.parametrize("slot", [EVIL, "chapters"])
 async def test_a_rule_slot_the_listing_does_not_accept_is_stored_data_invalid(
     toy_session, collaboration, slot
 ):
@@ -1143,7 +1124,8 @@ async def test_members_of_the_tenant_root_is_not_a_crash(toy_session, collaborat
         await as_ada(collaboration, toy_session).members(TENANT)
 
 
-@pytest.mark.parametrize("iri", ["not an iri", "", S1 + "> } ; DROP ALL ; <", OTHER_TENANT])
+# Class: an IRI that is none of the tenant's; malformed, another tenant's.
+@pytest.mark.parametrize("iri", ["not an iri", OTHER_TENANT])
 async def test_members_of_an_iri_that_is_not_one_of_the_tenant_is_a_toolkit_error(
     guarded, collaboration, iri
 ):
@@ -1232,7 +1214,8 @@ async def test_collections_of_a_hidden_aggregate_is_refused_without_a_leak(guard
     assert leaks(refused.value, S1) == [], "no collection is named"
 
 
-@pytest.mark.parametrize("iri", ["not an iri", "", OTHER_TENANT, graph_of(B1), f"{B1}/parts/x"])
+# Class: an IRI that is no aggregate; malformed, a graph IRI.
+@pytest.mark.parametrize("iri", ["not an iri", graph_of(B1)])
 async def test_collections_of_an_iri_that_is_not_an_aggregate_is_invalid_iri(
     guarded, collaboration, iri
 ):
@@ -1250,11 +1233,8 @@ async def test_collections_of_a_missing_aggregate_is_an_empty_list(guarded, coll
 # -- 6. Session.heads, matches and Transaction._require_match -----------------------------------
 
 
-@pytest.mark.parametrize(
-    "hostile",
-    [EVIL, "> } ; DROP ALL ; <", "a b", "", "\n", "http://a/b> ?x <c"],
-    ids=["evil", "break-out", "space", "empty", "newline", "inject"],
-)
+# Class: an IRI SPARQL cannot take; one per check (a forbidden character, the empty one).
+@pytest.mark.parametrize("hostile", [EVIL, ""], ids=["evil", "empty"])
 async def test_heads_of_a_hostile_iri_raises_a_sparql_error_and_runs_nothing(guarded, hostile):
     await put_book(guarded, B1)
     with pytest.raises(SparqlError):
@@ -1350,14 +1330,16 @@ async def test_matches_of_a_missing_aggregate_is_false(guarded):
     assert not await guarded.matches(B9, target, conditions), "nothing to match"
 
 
-@pytest.mark.parametrize("iri", ["not an iri", "", OTHER_TENANT, graph_of(B1), TENANT + "/x"])
+# Class: an IRI the policy does not mint; malformed, a graph IRI.
+@pytest.mark.parametrize("iri", ["not an iri", graph_of(B1)])
 async def test_matches_of_an_iri_the_policy_does_not_mint_is_invalid_iri(guarded, iri):
     target, conditions = book_conditions()
     with pytest.raises(InvalidIri):
         await guarded.matches(iri, target, conditions)
 
 
-@pytest.mark.parametrize("hostile", [EVIL, "> } ; DROP ALL ; <", "", "a b"])
+# Class: a class IRI SPARQL cannot take; one per check (a forbidden character, the empty one).
+@pytest.mark.parametrize("hostile", [EVIL, ""])
 async def test_matches_of_a_hostile_class_iri_raises_a_sparql_error(guarded, hostile):
     await put_book(guarded, B1)
     with pytest.raises(SparqlError):

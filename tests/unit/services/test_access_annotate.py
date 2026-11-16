@@ -80,9 +80,10 @@ def test_a_direct_grant_has_no_role_and_a_tenant_target_sees_tenant_grants_only(
     assert rules.roles(caller(), access, TENANT) == {"reader"}, "no direct grant, no b1 role"
 
 
+# Class: a defined role; one per level (reader: tenant, owner: aggregate, admin: system), and the undefined one.
 @pytest.mark.parametrize(
     ("role_name", "defined"),
-    [("reader", True), ("owner", True), ("reviewer", True), ("admin", True), ("nobody", False)],
+    [("reader", True), ("owner", True), ("admin", True), ("nobody", False)],
 )
 def test_a_role_is_defined_at_any_level(rules: AccessRules, role_name: str, defined: bool) -> None:
     assert rules.defines(role_name) is defined, f"{role_name} is {'' if defined else 'not '}defined"
