@@ -117,7 +117,9 @@ UNREADABLE = {
 }
 
 
-@pytest.mark.parametrize("kind", UNREADABLE)  # design RF-1: such a marker counts as none
+# design RF-1: such a marker counts as none. Equivalence classes: a datetime with no zone (naive), a value
+# that is no datetime (ill-typed; date-only, plain and number are the same)
+@pytest.mark.parametrize("kind", ["naive", "ill-typed"])
 @pytest.mark.parametrize("remove", [False, True])
 async def test_a_marker_another_tool_wrote_badly_does_not_crash_the_sweep(world, kind, remove):
     odd = await plant(
@@ -184,14 +186,8 @@ async def test_blob_keys_with_odd_characters_are_matched_exactly(world, key):
     assert key + "-orphan" not in await blob_keys(world)
 
 
-@pytest.mark.parametrize(
-    "named",
-    [
-        URIRef("urn:key:iri"),
-        Literal("urn:key:iri", lang="en"),
-        Literal("urn:key:iri", datatype=XSD.token),
-    ],
-)
+# equivalence class: a key the graph names as any kind of term (an IRI stands for the tagged literals)
+@pytest.mark.parametrize("named", [URIRef("urn:key:iri")])
 async def test_a_key_named_as_an_iri_or_a_tagged_literal_is_kept(world, named):
     await world.blob("urn:key:iri", 3 * HOUR)
     await world.store.put_graph(

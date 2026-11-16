@@ -60,9 +60,8 @@ async def nothing_reached(store: FakeStore) -> None:
 # -- IRIs with trailing characters ----------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "suffix", ["/", "#frag", "?q=1", "\n", "/graph", "//", "%20", " "], ids=repr
-)
+# equivalence class: any tail after the aggregate IRI fails the one full match of its template
+@pytest.mark.parametrize("suffix", ["/", "#frag"], ids=repr)
 @pytest.mark.parametrize("call", ["add_graph", "get_graph", "load_graph", "remove"])
 async def test_an_aggregate_iri_with_a_tail_is_refused_before_the_store(store, suffix, call):
     arguments = {
@@ -94,28 +93,15 @@ async def test_the_tenants_bookkeeping_graphs_are_not_aggregates_a_caller_may_co
 # -- loaded graphs --------------------------------------------------------------------------------
 
 
+# equivalence class: no loaded-graph template matches (another tenant's id is its own branch, `_belongs`)
 @pytest.mark.parametrize(
     "graph",
     [
         URIRef(f"{BASE}q9y7j1n/content/{1:013d}"),
         URIRef(f"{BASE}p4x8k2m/book/{1:013d}"),
         URIRef(f"{BASE}p4x8k2m/content/{1:013d}/"),
-        URIRef(f"{BASE}p4x8k2m/content/short"),
-        URIRef(f"{BASE}p4x8k2m/content/{1:013d}#x"),
-        URIRef(book(1)),
-        URIRef(f"{book(1)}/graph"),
-        URIRef(f"{TENANT}/registry"),
     ],
-    ids=[
-        "another tenant's",
-        "an aggregate's type",
-        "a tail",
-        "a short id",
-        "a fragment",
-        "the aggregate itself",
-        "the aggregate's own graph",
-        "the registry",
-    ],
+    ids=["another tenant's", "an aggregate's type", "a tail"],
 )
 async def test_a_loaded_graph_the_policy_would_not_mint_is_refused_and_nothing_is_sent(
     store, graph

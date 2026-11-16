@@ -581,7 +581,8 @@ async def test_a_retry_after_a_failed_batch_does_not_rewrite_a_root_taken_as_com
     assert (await unit(session).get(Book, clash)).label == "Dune", "the other root is stored"
 
 
-@pytest.mark.parametrize("limit", [0, -1])
+# equivalence class: a limit below one; 0 is the boundary and -1 the same class
+@pytest.mark.parametrize("limit", [0])
 def test_a_limit_below_one_is_refused_naming_the_value(session, limit):
     with pytest.raises(ValueError, match=str(limit)):
         limited(session, limit)

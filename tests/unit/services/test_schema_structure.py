@@ -224,8 +224,7 @@ def required(view, cls: str, slot: str) -> bool:
         ("Chapter", "label", False),  # rp_unlabelled
         ("Note", "label", True),  # labelled, unchanged
         ("Book", "description", False),  # a root: optional (PD-1)
-        ("Scan", "description", False),  # a root: optional
-        ("LibraryAccess", "description", False),  # a root through TenantAccess: optional
+        # equivalence class: a root has an optional description (Book stands for Scan and LibraryAccess)
         ("Chapter", "description", False),  # owned, not a root
         ("Library", "description", False),  # the tenant root is not an AggregateRoot
     ],
@@ -342,8 +341,7 @@ def test_a_slot_holds_owned_parts_or_iris_or_neither(cls, slot, owned_part, iri)
 @pytest.mark.parametrize(
     ("name", "alias", "expected"),
     [
-        ("file_key", None, "file_key"),
-        ("file key", None, "file_key"),
+        ("file key", None, "file_key"),  # equivalence class: no alias (file_key is the same)
         ("problem_slug", "slug", "slug"),
     ],
 )

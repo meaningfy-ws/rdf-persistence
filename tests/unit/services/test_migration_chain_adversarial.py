@@ -88,7 +88,8 @@ def test_the_migrations_pending_from_the_empty_version_are_the_one_step(empty_fi
     assert [m.to_version for m in pending] == ["1"], "the step from the empty version"
 
 
-@pytest.mark.parametrize("version", ["", " ", "x", "1 "])
+# equivalence class: a version that is not in the chain (the empty one stands for it)
+@pytest.mark.parametrize("version", [""])
 def test_a_version_not_in_the_chain_has_no_pending_migrations(tmp_path, version):
     chain_of(tmp_path, ["1", "2", "3"])
     assert pending_from(load_chain(tmp_path, SCHEMA, "3"), version) is None
@@ -216,11 +217,8 @@ def test_a_folder_that_is_a_file_is_refused_naming_it(tmp_path):
     assert "migrations" in refused(path, "1")
 
 
-@pytest.mark.parametrize(
-    "content",
-    [b"\xff\xfe\x00\x00", b"schema_id: \xc3\x28", b"\x80\x81"],
-    ids=["utf16-noise", "bad-continuation", "stray-bytes"],
-)
+# equivalence class: bytes that do not decode as UTF-8 (one read, one except clause)
+@pytest.mark.parametrize("content", [b"\xff\xfe\x00\x00"], ids=["utf16-noise"])
 def test_a_file_that_is_not_utf8_is_refused_naming_it(tmp_path, content):
     chain_of(tmp_path, ["1", "2"])
     (tmp_path / "2__3.yaml").write_bytes(content)

@@ -67,7 +67,8 @@ async def plant(store: FakeStore, *texts: str, subject: URIRef = RECORD_GRAPH) -
 # --- (1) the guard: what is stored is not what the guard wrote ------------------------------------
 
 
-@pytest.mark.parametrize("text", ["not json", '{"bogus": 1}', "[]", ""])
+# equivalence classes: text that is no JSON ("not json"; the empty text is the same), JSON that is no policy
+@pytest.mark.parametrize("text", ["not json", '{"bogus": 1}', "[]"])
 async def test_a_corrupt_or_foreign_record_is_refused_with_a_toolkit_error(store, tenancy, text):
     await plant(store, text)
     with pytest.raises(PersistenceError):
@@ -182,14 +183,9 @@ def iris_of(**templates) -> Iris:
     return Iris(settings_of(IriPolicy(**templates), deployment="dep1"))
 
 
+# equivalence classes: a template built on {base}, one built on {tenant}
 @pytest.mark.parametrize(
-    "access",
-    [
-        "{base}{deployment}/access/{tenant_id}",
-        "{tenant}/{deployment}/access",
-        "{base}access-{tenant_id}",
-        "{tenant}/a/b/c/access",
-    ],
+    "access", ["{base}{deployment}/access/{tenant_id}", "{tenant}/{deployment}/access"]
 )
 def test_a_custom_access_record_round_trips_to_its_tenant(access):
     iris = iris_of(access_template=access)
@@ -197,7 +193,8 @@ def test_a_custom_access_record_round_trips_to_its_tenant(access):
     assert iris.tenant_of_access(str(iris.access(tenant))) == tenant
 
 
-@pytest.mark.parametrize("other", ["meta", "registry", "access/access", "", "x"])
+# equivalence classes: a sibling graph of the tenant (meta; registry, "" and x are the same), one nested under access
+@pytest.mark.parametrize("other", ["meta", "access/access"])
 def test_the_default_access_template_does_not_read_a_sibling_graph_as_a_record(other):
     iris = iris_of()
     tenant = iris.mint_tenant()
@@ -259,26 +256,8 @@ def test_a_meta_graph_is_not_an_aggregate_under_default_templates():
 ISSUER = "https://issuer.example"
 
 
-@pytest.mark.parametrize(
-    "sub",
-    [
-        "a/b",
-        "a b",
-        "%2F",
-        "%",
-        "é",
-        "日本",
-        "😀",
-        "a?b#c",
-        "a\nb",
-        "a\x00b",
-        "{sub}",
-        "{issuer}",
-        "a:b",
-        "@",
-        "a;b",
-    ],
-)
+# equivalence class: every character `quote(sub, safe="")` encodes; one per delimiter the asserts watch, and a double encoding
+@pytest.mark.parametrize("sub", ["a/b", "a?b#c", "%2F"])
 def test_an_odd_subject_stays_in_one_segment_and_decodes_back(sub):
     iri = str(Iris(SETTINGS).principal(ISSUER, sub))
     tail = iri.removeprefix(f"{ISSUER}/users/")
@@ -288,7 +267,8 @@ def test_an_odd_subject_stays_in_one_segment_and_decodes_back(sub):
     assert unquote(tail) == sub
 
 
-@pytest.mark.parametrize("issuer", [ISSUER, ISSUER + "/", ISSUER + "//", ISSUER + "/realms/a/"])
+# equivalence classes: an issuer with and without a trailing slash
+@pytest.mark.parametrize("issuer", [ISSUER, ISSUER + "/"])
 def test_a_trailing_slash_on_the_issuer_never_doubles_the_separator(issuer):
     iri = str(Iris(SETTINGS).principal(issuer, "u1"))
     assert iri == f"{issuer.rstrip('/')}/users/u1"

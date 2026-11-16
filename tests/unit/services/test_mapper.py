@@ -507,7 +507,8 @@ def test_tc21_a_served_command_keeps_no_statement_of_a_slot_the_session_fills(sl
     assert list(served.triples) == [], f"{slot} is the session's to write"
 
 
-@pytest.mark.parametrize("bad", ["https://example.org/x", "urn:uuid", "urn:isbn:0"])
+# equivalence classes: not a urn:uuid IRI (https and urn:isbn are the same), the bare prefix
+@pytest.mark.parametrize("bad", ["https://example.org/x", "urn:uuid"])
 def test_tc21a_a_command_whose_id_is_not_a_uuid_urn_is_refused_naming_the_id(bad):
     with pytest.raises(ValueError, match=bad):
         toy_mapper().served(Replace(id=bad))

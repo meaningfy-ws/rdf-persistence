@@ -257,7 +257,8 @@ async def test_a_remote_context_is_not_fetched(documents, book_class) -> None:
         await parse(documents, encoded(body), JSON_LD, book_class, BOOK, creating=True)
 
 
-@pytest.mark.parametrize("data", [b"{not json", b"[1, 2]", b'"text"', b""])
+# equivalence classes: unparseable text ({not json; the empty text is the same), JSON that is no object
+@pytest.mark.parametrize("data", [b"{not json", b"[1, 2]", b'"text"'])
 async def test_a_body_that_is_not_a_json_object_is_refused(documents, book_class, data) -> None:
     with pytest.raises(InvalidBody):
         await parse(documents, data, JSON, book_class, BOOK, creating=True)

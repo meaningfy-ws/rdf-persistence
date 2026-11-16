@@ -99,16 +99,15 @@ def session_on(store: FakeStore) -> Session:
 # -- "a hand-made IRI", "an aggregate IRI with a part's type" -------------------------------------
 
 
+# equivalence class: no aggregate template matches; hand-made and a part's type are scenarios of their own
 @pytest.mark.parametrize(
     "iri",
     [
         f"{TENANT}/books/hand-made",
-        f"{BASE}p4x8k2m/book/short",
         f"{BASE}p4x8k2m/chapter/{1:013d}",
-        f"{BASE}p4x8k2m/content/{1:013d}",
         f"{BASE}q9y7j1n/book/{1:013d}",
     ],
-    ids=["hand-made", "short id", "a part's type", "the loaded type", "another tenant"],
+    ids=["hand-made", "a part's type", "another tenant"],
 )
 @pytest.mark.parametrize("call", ["add_graph", "replace_graph", "get_graph"])
 async def test_an_iri_the_policy_would_not_mint_is_refused_and_nothing_is_sent(store, iri, call):

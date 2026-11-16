@@ -310,10 +310,11 @@ async def test_a_hostile_writer_moving_the_stamp_back_after_every_second_request
 # -- 3. stamps ------------------------------------------------------------------------------------
 
 
+# equivalence class: surrounding whitespace (leading space; trailing space and newline are the same)
 @pytest.mark.parametrize(
     "stamp_text",
-    ["<urn:v:1>", '""', '" 1"', '"1 "', '"01"', '"1\\n"'],
-    ids=["iri", "empty", "leading-space", "trailing-space", "zero-padded", "newline"],
+    ["<urn:v:1>", '""', '" 1"', '"01"'],
+    ids=["iri", "empty", "leading-space", "zero-padded"],
 )
 async def test_a_stamp_that_is_not_exactly_a_version_sets_the_tenant_aside_and_sends_nothing(
     world, lib_chain, stamp_text

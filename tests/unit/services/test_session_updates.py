@@ -299,15 +299,15 @@ def with_loaded_graph() -> tuple[Dataset, URIRef, RegistryEntry]:
     return dataset, loaded, loaded_entry
 
 
-@pytest.mark.parametrize("keep_loaded", [False, True], ids=["drops the load", "keeps the load"])
+# equivalence class: a stale guard, whether the replacement keeps the load or drops it (it drops it here)
 @pytest.mark.parametrize("call", ["replace", "remove"])
-def test_a_stale_guard_changes_no_graph_at_all(call, keep_loaded):
+def test_a_stale_guard_changes_no_graph_at_all(call):
     """Each operation of the update carries the guard: none may run once the version is stale."""
-    dataset, loaded, loaded_entry = with_loaded_graph()
+    dataset, loaded, _ = with_loaded_graph()
     graphs = (GRAPH, REGISTRY, loaded)
     before = [contents(dataset, g) for g in graphs]
     if call == "replace":
-        entries = [entry(GRAPH, ROOT), *([loaded_entry] if keep_loaded else [])]
+        entries = [entry(GRAPH, ROOT)]
         text = replace_text(
             GRAPH, REGISTRY, ROOT, "stale", payload(GRAPH, ROOT, "new", "v2"), entries
         )

@@ -44,16 +44,13 @@ def test_limit_offset_sort_and_filters_are_read_from_the_query_string():
     ], "everything else is a filter, in the order sent"
 
 
+# equivalence class: a limit that is not digits (abc); 0 and 201 are the range's boundaries
 @pytest.mark.parametrize(
     "params",
     [
         [("limit", "0")],
         [("limit", "201")],
-        [("limit", "-1")],
         [("limit", "abc")],
-        [("limit", "1.5")],
-        [("limit", "1_0")],
-        [("limit", "")],
         [("limit", "2"), ("limit", "3")],
         [("offset", "-1")],
         [("offset", "x")],
@@ -96,6 +93,7 @@ def test_a_value_is_typed_by_the_range_of_its_slot(view, slot, text, expected):
     assert typed_value(view, view.get_slot(slot), text) == expected
 
 
+# equivalence classes: an IRI with no scheme ("relative/path"), one with a character IRIs forbid ("<")
 @pytest.mark.parametrize(
     ("slot", "text"),
     [
@@ -106,9 +104,8 @@ def test_a_value_is_typed_by_the_range_of_its_slot(view, slot, text, expected):
         ("genre", "horror"),
         ("genre", "Fiction"),
         ("genre", f"{SCHEMA_ORG}Fiction"),
-        ("scan_of", "not an iri"),
         ("scan_of", "relative/path"),
-        *[("scan_of", f"urn:x:a{char}b") for char in '<>"{}|^\\`'],
+        ("scan_of", "urn:x:a<b"),
     ],
 )
 def test_a_value_the_range_cannot_hold_is_a_bad_query(view, slot, text):

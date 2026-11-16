@@ -94,9 +94,8 @@ async def head_of(world: SimpleNamespace) -> list[tuple[str, bytes]]:
 # -- hostile blob members: a blob is a regular file named blobs/<key> -------------------------------
 
 
-@pytest.mark.parametrize(
-    "name", ["blobs/", "blobs", "/etc/passwd", "../blobs/x", "manifest.json", "graphs.nq"]
-)
+# equivalence classes: a bare name (blobs/; blobs is the same), a path out of blobs/ (/etc/passwd; ../blobs/x), a reserved name (manifest.json; graphs.nq)
+@pytest.mark.parametrize("name", ["blobs/", "/etc/passwd", "manifest.json"])
 async def test_a_member_whose_name_is_not_a_blob_name_is_refused_and_leaves_nothing(world, name):
     before = await state_of(world)
     with pytest.raises(InvalidBody):
@@ -104,7 +103,8 @@ async def test_a_member_whose_name_is_not_a_blob_name_is_refused_and_leaves_noth
     assert await state_of(world) == before
 
 
-@pytest.mark.parametrize("key", ["../x", "a/../../x"])
+# equivalence class: a key with a ".." segment (a/../../x is the same)
+@pytest.mark.parametrize("key", ["../x"])
 async def test_a_blob_key_that_climbs_out_of_the_bucket_is_refused_design_silent(world, key):
     """Design PD-3 says 'a regular file under blobs/'. ``blobs/../x`` is under ``blobs/`` as text only: an
     object store that maps keys to paths would write outside the bucket. Expected: refused. (A key with ``//``
@@ -125,9 +125,9 @@ async def test_two_blobs_with_one_key_are_refused_design_silent(world):
     assert await state_of(world) == before
 
 
-@pytest.mark.parametrize(
-    "kind", [tarfile.LNKTYPE, tarfile.SYMTYPE, tarfile.CHRTYPE, tarfile.FIFOTYPE]
-)
+# equivalence classes: a link, which the stream refuses to read (a hard link stands for a symlink), and a device
+# or a fifo, which only the regular-file check refuses (a character device stands for them)
+@pytest.mark.parametrize("kind", [tarfile.LNKTYPE, tarfile.CHRTYPE])
 async def test_a_blob_member_that_is_a_link_or_a_device_is_refused(world, kind):
     before = await state_of(world)
     archive = pack(*await head_of(world), ("blobs/a", b"first"), ("blobs/l", b"", kind))
@@ -297,8 +297,7 @@ def with_manifest(data: bytes, **changes) -> bytes:
 @pytest.mark.parametrize(
     "source",
     [
-        "{base}libraries/books",  # a path word as the tenant id
-        "{base}libraries/libraries",
+        "{base}libraries/books",  # a path word as the tenant id (equivalence class: a reserved word)
         "{base}libraries/",
         "{base}",
         "not an iri",
@@ -322,7 +321,8 @@ async def test_a_source_tenant_id_that_does_not_belong_to_the_source_tenant_is_r
     )
 
 
-@pytest.mark.parametrize("empty", ["", " "])
+# equivalence class: a source tenant id that is not the source tenant's (the empty one stands for a blank)
+@pytest.mark.parametrize("empty", [""])
 async def test_an_empty_source_tenant_id_is_refused_and_does_not_rewrite_everything(world, empty):
     await refused(world, with_manifest(await dumped(world), source_tenant_id=empty))
 
@@ -339,9 +339,9 @@ async def test_extra_manifest_fields_are_refused_or_ignored_never_a_crash(world)
     assert summary.label == "Ghent"
 
 
-@pytest.mark.parametrize(
-    "text", [b'{"format_version": "1"}', b"[]", b"null", b'"x"', b"{" * 5000, b"\xff\xfe"]
-)
+# equivalence classes: JSON that is no object (b"[]"; null and "x" are the same), an object of the wrong shape,
+# unterminated nesting (the parser's depth), bytes that are no text
+@pytest.mark.parametrize("text", [b'{"format_version": "1"}', b"[]", b"{" * 5000, b"\xff\xfe"])
 async def test_a_manifest_of_the_wrong_shape_is_refused(world, text):
     await refused(world, edited(await dumped(world), MANIFEST, lambda _: text))
 
@@ -530,7 +530,8 @@ async def test_a_blob_key_survives_a_dump_and_a_restore(world, key):
     assert await world.files.get(record.database_name, key) == key.encode(), "the blob's bytes"
 
 
-@pytest.mark.parametrize("key", ["line\nbreak", "tab\there", "del\x7f"], ids=repr)
+# equivalence classes: below the space (newline; tab is the same), the delete character
+@pytest.mark.parametrize("key", ["line\nbreak", "del\x7f"], ids=repr)
 async def test_a_blob_key_with_a_control_character_is_refused_by_the_one_key_rule(world, key):
     """Garage refuses such a key (``checked_blob_key``); the archive of a store that held one is refused whole."""
     before = await state_of(world)

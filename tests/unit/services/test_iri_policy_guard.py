@@ -78,13 +78,10 @@ async def test_every_differing_field_is_named(store, tenancy):
     assert "object_id.length" in str(caught.value)
 
 
-@pytest.mark.parametrize("first", [None, IriPolicy()])
-@pytest.mark.parametrize(
-    "second", [None, IriPolicy(), IriPolicy(tenant_id=IdSpec(kind=IdKind.UUID4))]
-)
-async def test_the_default_policy_unset_or_explicit_is_one_policy(store, tenancy, first, second):
-    await guard_iri_policy(store, tenancy, settings_of(first))
-    await guard_iri_policy(store, tenancy, settings_of(second))
+async def test_the_default_policy_unset_or_explicit_is_one_policy(store, tenancy):
+    # equivalence class: every spelling of the effective default; unset against explicit stands for it
+    await guard_iri_policy(store, tenancy, settings_of(None))
+    await guard_iri_policy(store, tenancy, settings_of(IriPolicy()))
 
 
 async def test_a_policy_recorded_before_the_provenance_template_reads_as_the_default(

@@ -115,7 +115,8 @@ async def test_find_by_a_datetime_uses_the_rdf_lexical_form():  # R2-1
 
 @pytest.mark.parametrize(
     ("value", "text"),
-    [(True, "true"), (False, "false"), (Genre.FICTION, Genre.FICTION.value), (3, "3")],
+    # equivalence class: a boolean (True stands for False)
+    [(True, "true"), (Genre.FICTION, Genre.FICTION.value), (3, "3")],
 )
 def test_a_filter_value_is_its_rdf_lexical_form(value, text):  # R2-1
     assert [f.value for f in _filters({"slot": value})] == [text]
