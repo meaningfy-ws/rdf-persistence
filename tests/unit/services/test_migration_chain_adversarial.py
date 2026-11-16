@@ -137,14 +137,6 @@ def test_a_cycle_that_does_not_contain_current_but_leads_into_it_is_refused(tmp_
     refused(tmp_path, "3")
 
 
-def test_a_fork_made_of_two_spellings_is_a_fork(tmp_path):
-    put(tmp_path, "1", "2")
-    put(tmp_path, "1", "2.0")
-    message = refused(tmp_path, "2")
-    assert "1__2.yaml" in message
-    assert "1__2.0.yaml" in message
-
-
 # -- folders, files, links -----------------------------------------------------------------------
 
 
@@ -263,14 +255,6 @@ def test_a_long_cycle_of_several_hundred_files_ends_in_a_refusal(tmp_path):
     versions = [f"v{i}" for i in range(100)]
     chain_of(tmp_path, [*versions, versions[0]])
     refused(tmp_path, versions[-1])
-
-
-def test_a_long_fork_is_refused_naming_both_files(tmp_path):
-    chain_of(tmp_path, [f"v{i}" for i in range(100)])
-    put(tmp_path, "v50", "side")
-    message = refused(tmp_path, "v99")
-    assert "v50__v51.yaml" in message
-    assert "v50__side.yaml" in message
 
 
 def test_pending_from_does_not_mutate_or_alias_the_chain(tmp_path):

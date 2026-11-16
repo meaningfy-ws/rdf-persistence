@@ -53,12 +53,19 @@ def test_a_missing_folder_is_refused_naming_it(tmp_path):
     assert "nowhere" in refused(tmp_path / "nowhere", "1"), "the folder is named"
 
 
-def test_a_fork_is_refused_naming_both_files(tmp_path):  # TC-21
-    put(tmp_path, "1", "2")
-    put(tmp_path, "1", "3")
-    message = refused(tmp_path, "3")
-    assert "1__2.yaml" in message, "the first file is named"
-    assert "1__3.yaml" in message, "the second file is named"
+@pytest.mark.parametrize(
+    ("first", "second", "current"),
+    [
+        pytest.param("2", "3", "3", id="two-versions"),
+        pytest.param("2", "2.0", "2", id="two-spellings-stay-two-versions"),
+    ],
+)
+def test_a_fork_is_refused_naming_both_files(tmp_path, first, second, current):  # TC-21
+    put(tmp_path, "1", first)
+    put(tmp_path, "1", second)
+    message = refused(tmp_path, current)
+    assert f"1__{first}.yaml" in message, "the first file is named"
+    assert f"1__{second}.yaml" in message, "the second file is named"
 
 
 def test_two_files_reaching_one_version_are_refused(tmp_path):  # TC-21

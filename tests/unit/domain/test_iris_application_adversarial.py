@@ -12,7 +12,7 @@ from collections.abc import Callable
 from uuid import UUID
 
 import pytest
-from hypothesis import HealthCheck, assume, given, settings
+from hypothesis import HealthCheck, assume, example, given, settings
 from hypothesis import strategies as st
 from pydantic import ValidationError
 from rdflib import URIRef
@@ -329,6 +329,7 @@ def test_a_tenant_whose_id_starts_like_the_application_is_not_the_application() 
 
 
 @INVARIANTS
+@example((FLAT, 0))  # the flat policy is always drawn, whatever the derandomised draws hold
 @given(ACCEPTED)
 def test_the_application_is_never_a_tenant_under_any_accepted_policy(
     case: tuple[IriPolicy, int],
@@ -349,15 +350,15 @@ def test_the_application_is_never_a_tenant_under_any_accepted_policy(
         iris.tenant(APPLICATION_ID)
 
 
-@pytest.mark.parametrize("as_text", [str, URIRef], ids=["str", "URIRef"])
-def test_the_application_is_no_tenant_whichever_type_carries_it(as_text: type) -> None:
-    """Fails if the refusal compares a ``URIRef`` where it must compare the text."""
+def test_the_application_is_no_tenant_when_the_text_carries_it() -> None:
+    """Fails if the refusal compares a ``URIRef`` where it must compare the text. The ``URIRef`` case
+    is that of ``test_the_application_is_never_a_tenant_under_any_accepted_policy``."""
     iris = _iris(FLAT)
-    a = as_text(str(iris.application))
+    a = str(iris.application)
     with pytest.raises(InvalidIri):
         iris.tenant_id_of(a)
     with pytest.raises(InvalidIri):
-        iris.tenant_of_access(as_text(str(iris.access(iris.application))))
+        iris.tenant_of_access(str(iris.access(iris.application)))
 
 
 def test_a_tenant_id_of_three_characters_is_not_in_the_schema() -> None:

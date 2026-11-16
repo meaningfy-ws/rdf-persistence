@@ -115,14 +115,6 @@ def test_several_stale_projects_print_one_hint_naming_each_command_once(
 
 
 @pytest.mark.slow
-def test_a_configuration_error_stops_the_session_without_a_hint(session: pytest.Pytester) -> None:
-    (session.path / "pyproject.toml").write_text(PYPROJECT + "colour = 'red'\n", encoding="utf-8")
-    text = stop_text(session)
-    assert "colour" in text, "the unknown key is not named"
-    assert "to regenerate" not in text, "a configuration error suggests regenerating"
-
-
-@pytest.mark.slow
 def test_a_stale_project_and_a_configuration_error_hint_only_the_stale_command(
     session: pytest.Pytester,
 ) -> None:

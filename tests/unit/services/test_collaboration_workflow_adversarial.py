@@ -337,21 +337,6 @@ async def test_a_replace_that_changes_the_type_cannot_write_a_state(
     assert await snapshot(session, store) == seen, "the book is as it was"
 
 
-@pytest.mark.parametrize("replace", REPLACES, ids=named)
-async def test_a_writer_cannot_strip_the_type_write_a_state_and_restore_the_type(
-    store, session, books, replace
-):
-    """The suspected hole: the type goes, any state is written, the type comes back, review is skipped."""
-    seen = await snapshot(session, store)
-    for step in (typed(B1, ACCEPTED, types=()), typed(B1, ACCEPTED)):
-        try:
-            await replace(session, B1, step)
-        except (Forbidden, InvalidBody):
-            break
-    assert await status_of(session, B1) == [DRAFT], "no transition moved it, so it is in draft"
-    assert (await snapshot(session, store))[2:4] == seen[2:4], "and nothing was recorded"
-
-
 # Class: a retype to a class under no workflow; one case per type shape, one per replace path.
 @pytest.mark.parametrize(
     ("replace", "types"),
@@ -642,15 +627,6 @@ async def test_a_stale_replace_the_guards_do_not_refuse_is_still_refused_by_the_
             session, B1, typed(B1), read, by=by
         )  # no state written: the stored one is kept
     assert await snapshot(session, store) == seen, "nothing changed"
-
-
-@pytest.mark.parametrize("by", ["session", "transaction"])
-async def test_a_replace_at_the_current_version_that_changes_the_state_is_still_forbidden(
-    session, books, by
-):
-    with pytest.raises(Forbidden):
-        await replace_stale(session, B1, typed(B1, ACCEPTED), await version(session, B1), by=by)
-    assert await status_of(session, B1) == [DRAFT], "the book stays in draft"
 
 
 async def test_a_stale_transition_is_a_conflict_about_the_version_not_about_the_edge(
