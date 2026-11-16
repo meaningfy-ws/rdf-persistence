@@ -21,16 +21,30 @@ the fixtures plugin (``--strict-markers`` is on, so an unregistered marker is an
 (see ``develop/testing.adoc``).
 """
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+from hypothesis import HealthCheck, settings
 
 from rdf_persistence.testkit.markers import EVENTS, FILES, IDENTITY, STORE, register_markers
 
 # Path constants — single source of truth for the test directory structure.
 TESTS_ROOT_DIR = Path(__file__).parent
 TEST_DATA_DIR = TESTS_ROOT_DIR / "test_data"
+
+# CI runs the same examples every time (checklist 8); locally Hypothesis explores. Registered and
+# loaded at import of this root conftest, so every xdist worker has them.
+settings.register_profile(
+    "ci", derandomize=True, max_examples=20, deadline=None, suppress_health_check=list(HealthCheck)
+)
+settings.register_profile(
+    "default", max_examples=40, deadline=None, suppress_health_check=list(HealthCheck)
+)
+settings.load_profile(
+    os.environ.get("HYPOTHESIS_PROFILE", "ci" if os.environ.get("CI") else "default")
+)
 
 # Freshness of the generated code (PD-26) is checked at the start of every session; pytester runs
 # the plugin's own tests.

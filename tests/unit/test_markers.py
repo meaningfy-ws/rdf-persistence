@@ -68,3 +68,40 @@ def test_the_slow_marker_is_registered_and_not_slow_deselects_it(pytester: pytes
     )
     result = pytester.runpytest("--strict-markers", "-m", "not slow", "-p", "no:randomly")
     result.assert_outcomes(passed=1, deselected=1)
+
+
+def test_a_test_past_its_timeout_fails_naming_itself_and_the_next_test_runs(
+    pytester: pytest.Pytester,
+) -> None:
+    """Under the repo's pytest.ini (thread method), a hung test kills its xdist worker, which
+    reports the test as failed and is replaced; the next test runs."""
+    ini = (TESTS_ROOT_DIR.parent / "pytest.ini").read_text(encoding="utf-8")
+    pytester.makefile(".ini", pytest=ini)
+    pytester.makepyfile(
+        test_x="import time\nimport pytest\n\n"
+        "@pytest.mark.timeout(1)\ndef test_hangs():\n    time.sleep(30)\n\n"
+        "def test_after():\n    pass\n"
+    )
+    result = pytester.runpytest_subprocess("-n", "1", "-p", "no:randomly", "-p", "no:cacheprovider")
+    outcomes = result.parseoutcomes()
+    assert outcomes.get("failed") == 1, f"the hung test must fail once: {outcomes}"
+    assert outcomes.get("passed") == 1, f"the next test must still run: {outcomes}"
+    result.stdout.fnmatch_lines(["*FAILED*test_hangs*"])
+
+
+def test_the_hypothesis_profile_is_derandomized_under_ci(
+    pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The root conftest loads the `ci` profile at import, so every xdist worker has it."""
+    monkeypatch.setenv("CI", "1")
+    monkeypatch.delenv("HYPOTHESIS_PROFILE", raising=False)
+    monkeypatch.setenv("PYTHONPATH", str(TESTS_ROOT_DIR.parent))
+    pytester.makeconftest("import tests.conftest  # noqa: F401\n")
+    pytester.makepyfile(
+        test_x="from hypothesis import settings\n\n"
+        "def test_derandomized():\n"
+        "    assert settings.default.derandomize, 'the profile is not derandomized'\n"
+        "    assert settings.default.max_examples == 20, 'the repo ci profile is not loaded'\n"
+    )
+    result = pytester.runpytest_subprocess("-p", "no:randomly", "-p", "no:cacheprovider")
+    result.assert_outcomes(passed=1)

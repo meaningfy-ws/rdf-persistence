@@ -22,6 +22,8 @@ _What makes a test acceptable here?_
   times)`, `sent`), over `MagicMock`.
 . Build model objects with small builder functions, through the generated models, never bare
   dicts. Shared read-only data is session-scoped; mutable state is function-scoped (`tmp_path`).
+  Deviation from the checklist's rule 6 (a factory library): model objects come from the named
+  builders of `tests/toy.py`, validated by the models.
 
 == Assertions
 

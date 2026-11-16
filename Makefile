@@ -173,12 +173,12 @@ check-spec: ## Validate the OpenSpec spine (pinned CLI, strict)
 
 test: ## Run the unit and feature tests, with the coverage floor
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit and feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -m "unit or feature" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -m "(unit or feature) and not quarantine" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Unit and feature tests passed$(END_BUILD_PRINT)"
 
 test-containers: ## Run the integration and e2e tests against Docker containers (no coverage floor)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running container tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) -m "integration or e2e" $(COV_FLAGS) --cov-report=xml:$(REPO_ROOT)/coverage-containers.xml --cov-fail-under=0 --junitxml=$(REPO_ROOT)/test-results-containers.xml
+	@ uv run pytest $(TEST_PATH) -m "(integration or e2e) and not quarantine" $(COV_FLAGS) --cov-report=xml:$(REPO_ROOT)/coverage-containers.xml --cov-fail-under=0 --junitxml=$(REPO_ROOT)/test-results-containers.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Container tests passed$(END_BUILD_PRINT)"
 
 $(FUSEKI_IMAGE_TAR): $(FUSEKI_COMPOSE) $(shell find $(dir $(FUSEKI_COMPOSE))fuseki -type f)
@@ -193,12 +193,12 @@ fuseki-image: $(FUSEKI_IMAGE_TAR) ## Load the Fuseki test image from its tar, bu
 
 test-unit: ## Run the unit tests in parallel, with the 80 % coverage floor (CI job "unit")
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -m "unit" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -m "unit and not quarantine" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Unit tests passed$(END_BUILD_PRINT)"
 
 test-feature: ## Run the BDD feature tests in parallel, with a 50 % coverage floor (CI job "feature")
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -m "feature" $(COV_FLAGS) --cov-report=xml:$(REPO_ROOT)/coverage-feature.xml --cov-fail-under=50
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -m "feature and not quarantine" $(COV_FLAGS) --cov-report=xml:$(REPO_ROOT)/coverage-feature.xml --cov-fail-under=50
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Feature tests passed$(END_BUILD_PRINT)"
 
 test-perf: ## Run the wall-clock budget tests alone (no coverage, no xdist); not part of check-all
@@ -209,7 +209,7 @@ test-perf: ## Run the wall-clock budget tests alone (no coverage, no xdist); not
 # Developer lanes (test-lanes): no coverage; the floors are checked by test, test-unit, test-feature.
 test-fast: ## Run the unit and feature tests not marked slow, in parallel, without coverage (developer lane)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running the fast unit and feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -m "(unit or feature) and not slow"
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -m "(unit or feature) and not slow and not quarantine"
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Fast tests passed$(END_BUILD_PRINT)"
 
 test-changed: ## Run the tests of the files changed against BASE (default develop), slow ones included, without coverage; PYTEST_N overrides the worker count
@@ -218,17 +218,17 @@ test-changed: ## Run the tests of the files changed against BASE (default develo
 	  if [ $$status -eq 3 ]; then $(MAKE) --no-print-directory test-fast; \
 	  elif [ $$status -ne 0 ]; then exit $$status; \
 	  elif [ -n "$$args" ]; then set -f; IFS=$$'\n'; \
-	    uv run pytest $$args $(UNIT_LANE) -m "unit or feature" \
+	    uv run pytest $$args $(UNIT_LANE) -m "(unit or feature) and not quarantine" \
 	    && echo -e "$(BUILD_PRINT)$(ICON_DONE) Changed-file tests passed$(END_BUILD_PRINT)"; fi
 
 profile-tests: ## Print the 15 slowest unit and feature tests, set-up and call apart, without coverage (PROFILE_MARK narrows)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Profiling the unit and feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -q -p no:randomly -m "$(PROFILE_MARK)" --durations=15
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -q -p no:randomly -m "($(PROFILE_MARK)) and not quarantine" --durations=15
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Profile complete$(END_BUILD_PRINT)"
 
 test-e2e: ## Run end-to-end tests only
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running e2e tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) -m "e2e"
+	@ uv run pytest $(TEST_PATH) -m "e2e and not quarantine"
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) E2e tests passed$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------
@@ -267,12 +267,18 @@ check-all: check-quality test ## Full suite: quality + unit and feature tests (c
 # Note: radon (and xenon, which uses it) cannot read a pyproject.toml whose [[tool.*]] is an array of
 # tables (the rp-generate entries), so they run from inside the package, away from it.
 #-----------------------------------------------------------------------------
-.PHONY: coverage-report quality-report
+.PHONY: coverage-report quality-report mutation
+
+mutation: ## Mutate the domain layer and print the killed, survived and untested counts (selection in setup.cfg; slow)
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running mutmut (see setup.cfg for the selection)$(END_BUILD_PRINT)"
+	@ uv run mutmut run
+	@ uv run mutmut results
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Mutation run complete$(END_BUILD_PRINT)"
 
 coverage-report: ## Generate HTML coverage report in reports/
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating coverage report$(END_BUILD_PRINT)"
 	@ mkdir -p $(REPO_ROOT)/reports
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) $(COV_FLAGS) --cov-report=html:$(REPO_ROOT)/reports/htmlcov -m "unit or feature"
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) $(COV_FLAGS) --cov-report=html:$(REPO_ROOT)/reports/htmlcov -m "(unit or feature) and not quarantine"
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Coverage report at reports/htmlcov/index.html$(END_BUILD_PRINT)"
 
 quality-report: ## Generate Radon quality report in reports/

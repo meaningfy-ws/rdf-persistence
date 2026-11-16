@@ -60,6 +60,9 @@ PD-3 depends on; PD-6 re-times after PD-1).
     3.8.1 reads its selection only from the config file) runs `mutmut run` then `mutmut results`;
     another layer is audited by editing the two selection lines locally. The spec delta's
     scenario is worded for the domain defaults.
+    `make mutation` run on 2026-11-16 (task 1.1, 1 m 13 s): 1,085 mutants, **974 killed**, **94
+    survived**, **17 untested** (no test reaches them); no timeouts or suspicious mutants.
+    Same figures as the audit's before-count (974 of 1,085).
   - `polyfactory` leaves the `test` group (DEC-4); `uv lock`. The deviation from checklist rule 6
     is written as one line in `docs/modules/ROOT/pages/develop/testing.adoc` (model objects come
     from the named builders of `tests/toy.py`, validated by the models).

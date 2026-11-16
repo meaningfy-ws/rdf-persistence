@@ -6,7 +6,7 @@ infrastructure). The lead runs `make check-all` and `make test-containers` once 
 
 ## 1. Stage 1: set-up and libraries (PR 1)
 
-- [ ] 1.1 PD-9: pytest-timeout (+ its pytester test), quarantine marker in every listed lane (+ its Makefile test), Hypothesis profiles in the root conftest (+ its test), mutmut `setup.cfg` and `make mutation`, polyfactory dropped and the rule-6 line in `testing.adoc`; `make mutation` run once, its killed/survived/untested summary pasted in design.md. Gate: TF.
+- [x] 1.1 PD-9: pytest-timeout (+ its pytester test), quarantine marker in every listed lane (+ its Makefile test), Hypothesis profiles in the root conftest (+ its test), mutmut `setup.cfg` and `make mutation`, polyfactory dropped and the rule-6 line in `testing.adoc`; `make mutation` run once, its killed/survived/untested summary pasted in design.md. Gate: TF.
 - [ ] 1.2 PD-9: the pytest-randomly trial (two seeds); adopt, or delete the dead flags and fill *Order dependence*. Gate: TF.
 - [ ] 1.3 PD-7: the six timed runs; the dist mode adopted; times recorded in design.md. Gate: TF.
 - [ ] 1.4 PD-1: `bootstrapped_template`. Gate: TG, then the file twice and reversed.
@@ -55,7 +55,7 @@ infrastructure). The lead runs `make check-all` and `make test-containers` once 
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · [ ] 4.4 · [ ] 4.5 · [ ] 4.6 · [ ] 5.1 · [ ] 5.2 · [ ] 6.1 · [ ] 6.2
+- [x] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · [ ] 4.4 · [ ] 4.5 · [ ] 4.6 · [ ] 5.1 · [ ] 5.2 · [ ] 6.1 · [ ] 6.2
 
 ## Verification
 
