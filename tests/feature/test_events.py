@@ -1,7 +1,7 @@
 """Steps of ``events.feature``: the toy library and its relay over the fakes (aggregate-events 1.7).
 
 Scenario to requirement of ``rp-events``: the first two scenarios are "A committed change is pending
-publication atomically", the last two "Events reach the bus at least once, in order per aggregate"; the last two (aggregate-events 3.2) are
+publication atomically", the next two "Events reach the bus at least once, in order per aggregate"; the last two (aggregate-events 3.2) are
 "Server-sent events respect access", run through the real route on the toy service.
 Nothing sleeps: the relay is driven by ``run_once``.
 """

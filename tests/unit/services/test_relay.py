@@ -331,6 +331,7 @@ async def test_tc15a_a_poison_record_is_given_up_and_the_next_one_is_published(w
         await world.relay().run_once()
     assert classes(world, world.tenant) == [str(v.ADD)]
     assert [r.levelno for r in caplog.records] == [logging.ERROR]
+    assert caplog.records[0].exc_info, "logged with its traceback (#125)"
     failed = await world.store.query(
         world.database,
         f"ASK {{ GRAPH <{world.iris.provenance(world.tenant)}> {{ <urn:a:poison> <{v.PUBLICATION_FAILED}> ?t }} }}",

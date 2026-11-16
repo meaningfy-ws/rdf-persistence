@@ -153,6 +153,18 @@ async def test_a_message_of_an_unknown_class_or_a_bad_body_is_logged_and_acked(
     assert len(world.there.activities) == 1, "acked: not delivered again"
 
 
+async def test_a_body_that_does_not_validate_is_logged_without_its_values(
+    world, caplog
+) -> None:  # #125
+    caplog.set_level(logging.DEBUG, LOGGER)
+    body = b'{"id": "urn:a:x", "started_at_time": "secret-tenant-text"}'
+    await world.cat_bus._deliver((world.envelope, body))
+    assert "started_at_time" in caplog.text, "the field at fault is named"
+    assert "secret-tenant-text" not in caplog.text, (
+        "another deployment's data never reaches the log"
+    )
+
+
 async def test_a_message_naming_a_class_that_is_not_an_activity_is_logged_and_acked(
     world, caplog
 ) -> None:  # D-19

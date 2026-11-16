@@ -12,13 +12,14 @@ from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 
 from linkml_runtime.utils.schemaview import SchemaView
+from pydantic import ValidationError
 from rdflib import Graph
 
 from rdf_persistence.domain.exceptions import DatabaseGone
 from rdf_persistence.domain.generated.rp_provenance import Activity
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.domain.generated.service.rp_service import EventEnvelope
-from rdf_persistence.services.decoding import decode_activity
+from rdf_persistence.services.decoding import decode_activity, error_text
 from rdf_persistence.services.event_hub import Offer
 from rdf_persistence.services.events import EventBus
 from rdf_persistence.services.mapper import GeneratedModels, Mapper
@@ -155,7 +156,14 @@ class Relay:
     async def _drain(self, session: Session, tenant: str, offers: bool) -> None:
         for iri, activity in chain_order(self._decoded(await session.pending_activities())):
             if isinstance(activity, Exception):
-                log.error("the pending activity %s cannot be decoded: %s", iri, activity)
+                # a validation error's traceback would print the record's values
+                trace = None if isinstance(activity, ValidationError) else activity
+                log.error(
+                    "the pending activity %s cannot be decoded: %s",
+                    iri,
+                    error_text(activity),
+                    exc_info=trace,
+                )
                 await session.mark_failed(iri)
             elif not await self._publish(tenant, activity):
                 return

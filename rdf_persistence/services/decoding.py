@@ -4,6 +4,7 @@ Apart from ``provenance`` because it needs the mapper, which imports the session
 """
 
 from linkml_runtime.utils.schemaview import SchemaView
+from pydantic import ValidationError
 from rdflib import RDF, Graph, URIRef
 
 from rdf_persistence.domain.generated.rp_provenance import Activity
@@ -22,3 +23,11 @@ def decode_activity(
     """
     cls = activity_class_of(view, models, graph.objects(URIRef(iri), RDF.type))
     return mapper.from_graph(cls, iri, graph, None)
+
+
+def error_text(error: Exception) -> str:
+    """``error`` for a log: a validation error names each field at fault and the fault, never the value."""
+    if isinstance(error, ValidationError):
+        faults = error.errors(include_url=False, include_input=False, include_context=False)
+        return "; ".join(f"{'.'.join(map(str, f['loc']))}: {f['msg']}" for f in faults)
+    return str(error)
