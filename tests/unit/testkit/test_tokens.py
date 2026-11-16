@@ -3,7 +3,7 @@
 import httpx
 import jwt
 
-from rdf_persistence.testkit.tokens import ISSUER, TokenSigner, new_key
+from rdf_persistence.testkit.tokens import ISSUER, TokenSigner, new_key, shared_key
 
 
 async def get(signer: TokenSigner, url: str) -> httpx.Response:
@@ -73,6 +73,15 @@ async def test_two_signers_from_one_key_verify_each_others_tokens() -> None:
     first, second = TokenSigner(key=key), TokenSigner(key=key)
     assert await verifies(first.issue(), second), "the second's JWKS verifies the first's token"
     assert await verifies(second.issue(), first), "the first's JWKS verifies the second's token"
+
+
+def test_shared_key_returns_the_same_key_object_on_every_call() -> None:
+    assert shared_key() is shared_key(), "one key per process: two calls, one object"
+
+
+async def test_signers_built_on_the_shared_key_verify_each_others_tokens() -> None:
+    first, second = TokenSigner(key=shared_key()), TokenSigner(key=shared_key())
+    assert await verifies(first.issue(), second), "the shared key signs for both signers"
 
 
 async def test_two_signers_without_a_key_do_not_share_one() -> None:

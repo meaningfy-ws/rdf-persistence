@@ -9,7 +9,7 @@ from rdf_persistence.adapters.jwks import DISCOVERY_PATH, JWKS_TTL_SECONDS, Jwks
 from rdf_persistence.domain.exceptions import IdentityUnavailable, InvalidToken
 from rdf_persistence.domain.generated.service.rp_service import IriPolicy, ServiceSettings
 from rdf_persistence.domain.iris import Iris
-from rdf_persistence.testkit.tokens import ISSUER, TokenSigner
+from rdf_persistence.testkit.tokens import ISSUER, TokenSigner, shared_key
 
 PAST_COOLDOWN = 11.0
 WITHIN_COOLDOWN = 1.0
@@ -32,7 +32,7 @@ def clock() -> ManualClock:
 
 @pytest.fixture
 def signer(clock: ManualClock) -> TokenSigner:
-    return TokenSigner(clock=clock)
+    return TokenSigner(clock=clock, key=shared_key())
 
 
 def verifier_for(signer: TokenSigner, clock: ManualClock, **kwargs: object) -> JwksTokenVerifier:

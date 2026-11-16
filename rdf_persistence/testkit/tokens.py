@@ -3,6 +3,7 @@
 Pass ``signer.transport`` as the ``transport`` of a ``JwksTokenVerifier``; no network is involved.
 """
 
+import functools
 import time
 from collections.abc import Mapping, Sequence
 from http import HTTPStatus
@@ -29,6 +30,12 @@ KEYS_PATH = "/keys"
 def new_key() -> rsa.RSAPrivateKey:
     """A fresh 2048-bit RSA signing key (≈ 0.5 s)."""
     return rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+
+@functools.cache
+def shared_key() -> rsa.RSAPrivateKey:
+    """One signing key per process, for tests that need a key but not a distinct one."""
+    return new_key()
 
 
 class TokenSigner:

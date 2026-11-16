@@ -1,6 +1,5 @@
 """The toy library served over the API with fakes, for the router's tests (task 5.2)."""
 
-import functools
 import uuid
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -28,7 +27,7 @@ from rdf_persistence.services.events import EventBus
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.tenancy import GrantValidator, RootValidator
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
-from rdf_persistence.testkit.tokens import ISSUER, new_key
+from rdf_persistence.testkit.tokens import ISSUER, shared_key
 from tests.fixtures.library import generated
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note
 from tests.fixtures.library.generated.library import Library
@@ -59,10 +58,9 @@ CONSUMER_POLICY = IriPolicy(
 )
 
 
-@functools.cache
 def toy_key() -> rsa.RSAPrivateKey:
-    """One signing key per process (each xdist worker is one): generating one per test costs ≈ 0.5 s."""
-    return new_key()
+    """The process's shared signing key (each xdist worker is one process)."""
+    return shared_key()
 
 
 def principal_of(sub: str) -> str:
