@@ -30,7 +30,10 @@ from rdf_persistence.services.event_stream import (
 )
 from rdf_persistence.services.session import utc_now
 
-EVENTS_ROUTE = "events"
+EVENTS_ROUTE = (
+    "rp-events"  # under the toolkit's reserved prefix, so no aggregate can shadow it (D-15)
+)
+MAX_LIFETIME = timedelta(minutes=5)
 ACCESS_TTL = timedelta(seconds=1)
 KEEP_ALIVE_SECONDS = 15.0
 RESUME_WINDOW = timedelta(days=7)
@@ -55,13 +58,15 @@ def add_events_route(
     access_ttl: timedelta = ACCESS_TTL,
     keep_alive: float = KEEP_ALIVE_SECONDS,
     resume_window: timedelta = RESUME_WINDOW,
+    max_lifetime: timedelta = MAX_LIFETIME,
     clock: Callable[[], datetime] = utc_now,
 ) -> None:
     """Add the events route of a tenant to ``router``.
 
     ``access_ttl`` is how old the caller's access may be before it is read again, ``keep_alive`` the
     seconds of silence before a comment is sent, ``resume_window`` how far back a ``Last-Event-ID``
-    may be resumed from, and ``clock`` where "now" comes from.
+    may be resumed from, ``max_lifetime`` how long a stream lives before the client must reconnect
+    with a fresh token (D-20), and ``clock`` where "now" comes from.
     """
     gate = kit.gate
     path = f"/{kit.settings.tenant_segment}/{{t}}/{EVENTS_ROUTE}"
@@ -96,6 +101,7 @@ def add_events_route(
             window=resume_window,
             access_ttl=access_ttl,
             keep_alive=keep_alive,
+            max_lifetime=max_lifetime,
             clock=clock,
         )
         async for item in stream:

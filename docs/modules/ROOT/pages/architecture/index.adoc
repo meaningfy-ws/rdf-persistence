@@ -253,7 +253,7 @@ and buckets, and the sweep inside a live tenant is the next building block (belo
 
 |Server-sent events
 |built
-|`GET /tenants/{tenant}/events`, filtered to what the reader may read, resumable with `Last-Event-ID`. See xref:howto/event-driven.adoc#sse[Follow a tenant in the browser].
+|`GET /tenants/{tenant}/rp-events`, filtered to what the reader may read, resumable with `Last-Event-ID`. See xref:howto/event-driven.adoc#sse[Follow a tenant in the browser].
 |
 
 |Annotation sets, forms from shapes

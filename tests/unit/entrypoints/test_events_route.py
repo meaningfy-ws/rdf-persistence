@@ -177,7 +177,7 @@ async def settled(scene: Scene) -> Scene:
 
 
 def events_of(scene: Scene, prefix: str = "/fast") -> str:
-    return f"{prefix}{scene.tenant}/events"
+    return f"{prefix}{scene.tenant}/rp-events"
 
 
 def follow(scene: Scene, who: str = "rita", prefix: str = "/fast", **headers: str) -> Follow:
@@ -308,6 +308,63 @@ async def test_a_full_queue_ends_the_stream_of_the_route(
         for n in range(3):  # three in a row: the stream has not read
             hub.offer(settled.tenant_iri, Activity(id=f"urn:uuid:a{n}", generations=[part]))
         assert len(await bob.ends()) < 3, "ended by the hub, not at a keep-alive"
+
+
+async def test_a_reader_whose_queue_filled_resumes_and_gets_every_missed_activity_once(
+    settled: Scene, fast: str
+) -> None:  # TC-36, D-14
+    hub = settled.service.kit.hub
+    hub._max_queue = 2
+    async with follow(settled) as listener:
+        await listening(hub)
+        etag = settled.book_etag
+        for label in ("One", "Two", "Three", "Four"):
+            etag = await replace(settled, settled.book, etag, label)
+        made = [Replace.model_validate_json(e.data) for e in await listener.take(4)]
+    a1, *missed = made
+    async with follow(settled) as bob:
+        await listening(hub)
+        hub.offer(settled.tenant_iri, a1)
+        assert [e.id for e in await bob.take(1)] == [a1.id]
+        for activity in missed:  # in a row: the stream has not read, the queue of two fills
+            hub.offer(settled.tenant_iri, activity)
+        assert await bob.ends() == [], "it got a1, then the stream ended"
+    async with follow(settled, **{"Last-Event-ID": a1.id}) as again:
+        assert [e.id for e in await again.take(3)] == [a.id for a in missed]
+
+
+async def test_a_stream_ends_after_its_lifetime_and_a_resume_gets_what_came_after(
+    settled: Scene, service: ToyService
+) -> None:  # D-20
+    now = [datetime.now(UTC)]
+    mount(service, "/short", max_lifetime=timedelta(minutes=5), clock=lambda: now[0])
+    async with follow(settled, prefix="/short") as bob:
+        await listening(service.kit.hub)
+        etag = await replace(settled, settled.book, settled.book_etag, "In time")
+        [first] = await bob.take(1)
+        now[0] += timedelta(minutes=6)
+        etag = await replace(settled, settled.book, etag, "Too late")
+        assert await bob.ends() == [], "the stream is over at the next wake, and sends nothing more"
+    async with follow(settled, prefix="/short", **{"Last-Event-ID": first.id}) as again:
+        [late] = await again.take(1)
+    assert late.id != first.id and late.event == "Replace"
+
+
+@pytest.mark.parametrize(
+    "bad", ["a b", "<x>", "", "x" * 300], ids=["space", "angle", "empty", "long"]
+)
+async def test_a_last_event_id_that_is_no_activity_id_sends_a_reset_and_the_stream_goes_on(
+    settled: Scene, fast: str, bad: str, caplog: pytest.LogCaptureFixture
+) -> None:  # D-21
+    async with follow(settled, **{"Last-Event-ID": bad}) as bob:
+        assert bob.status == 200
+        [reset] = await bob.take(1)
+        assert reset.event == "reset" and reset.id is None
+        await listening(settled.service.kit.hub)
+        await replace(settled, settled.book, settled.book_etag, "Live")
+        [live] = await bob.take(1)
+    assert live.event == "Replace"
+    assert not [r for r in caplog.records if r.levelname in ("ERROR", "CRITICAL")]
 
 
 async def test_a_resume_sends_what_was_relayed_after_the_id_then_live_events_none_twice(
@@ -441,7 +498,7 @@ async def test_the_follower_of_another_tenant_hears_nothing(
     other = await settled.http.post("/libraries", json=TENANT_BODY, headers=settled.headers("ada"))
     elsewhere = other.headers["location"]
     async with Follow(
-        settled.service.app, f"/fast{elsewhere}/events", settled.headers("ada")
+        settled.service.app, f"/fast{elsewhere}/rp-events", settled.headers("ada")
     ) as ada:
         await listening(settled.service.kit.hub)
         await replace(settled, settled.book, settled.book_etag, "Not for you")

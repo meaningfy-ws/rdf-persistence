@@ -29,7 +29,7 @@ from rdf_persistence.testkit import (
 )
 from tests.fixtures.library.generated.templates import Template
 from tests.toy import toy_mapper
-from tests.toy_service import DUNE_BODY, ToyService, principal_of
+from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 from tests.unit.entrypoints.test_service_kit import made
 
 LOGGER = "rdf_persistence.entrypoints.kit"
@@ -153,6 +153,31 @@ async def test_a_message_of_an_unknown_class_or_a_bad_body_is_logged_and_acked(
     assert len(world.there.activities) == 1, "acked: not delivered again"
 
 
+async def test_a_message_naming_a_class_that_is_not_an_activity_is_logged_and_acked(
+    world, caplog
+) -> None:  # D-19
+    caplog.set_level(logging.DEBUG, LOGGER)
+    generation = world.cat.kit.view.get_uri("Generation", expand=True)
+    await world.cat_bus._deliver(
+        (world.envelope.model_copy(update={"activity_class": generation}), b"{}")
+    )
+    assert [r.levelno for r in caplog.records if r.levelno > logging.DEBUG] == [logging.WARNING]
+    await restarted(world)
+    assert len(world.there.activities) == 1, "acked: not delivered again"
+
+
+async def test_a_message_for_a_tenant_that_is_not_an_iri_is_logged_and_acked(
+    world, caplog
+) -> None:  # D-19
+    caplog.set_level(logging.DEBUG, LOGGER)
+    await sent(world, tenant="not an iri")
+    assert len(world.there.activities) == 1
+    kit_logs = [r.levelno for r in caplog.records if r.name == LOGGER and r.levelno > logging.DEBUG]
+    assert kit_logs == [logging.WARNING]
+    await restarted(world)
+    assert len(world.there.activities) == 1, "acked: not delivered again"
+
+
 async def test_a_message_for_a_tenant_this_deployment_lacks_is_logged_and_acked(
     world, caplog
 ) -> None:  # TC-26
@@ -241,3 +266,24 @@ async def test_an_application_activity_without_an_application_class_is_logged_an
     monkeypatch.undo()
     await restarted(world)
     assert len(world.there.activities) == 1, "acked"
+
+
+@pytest.mark.parametrize(
+    ("public_url", "link"),
+    [
+        ("https://lib.example", "https://lib.example/api/context.jsonld"),
+        (None, "/api/context.jsonld"),
+    ],
+)
+async def test_the_envelope_links_the_context_under_the_mount_prefix(
+    public_url, link
+) -> None:  # D-16
+    broker = InMemoryBroker()
+    lib = ToyService(
+        event_bus=InMemoryEventBus(broker), deployment="lib", mount="/api", public_url=public_url
+    )
+    async with lib.app.router.lifespan_context(lib.app), lib.client() as http:
+        created = await http.post("/api/libraries", json=TENANT_BODY, headers=lib.bearer("ada"))
+        assert created.status_code == 201, created.text
+        await lib.kit.relay.run_once()
+    assert {envelope.context for envelope, _ in broker.messages} == {link}

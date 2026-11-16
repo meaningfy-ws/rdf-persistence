@@ -54,9 +54,15 @@ class RedisEventBus:
             headers=envelope.model_dump(),
         )
         # publish has no MINID; trimming through the broker's client is D-1's fallback (RISK-1).
-        client = self._broker.config.broker_config.connection.client
-        minid = int(time.time() * 1000) - int(self._retention.total_seconds() * 1000)
-        await client.xtrim(self._stream, minid=f"{minid}-0", approximate=False)
+        # best effort (D-17): the entry is sent, so a failed trim must not make the relay send it again
+        try:
+            client = self._broker.config.broker_config.connection.client
+            minid = int(time.time() * 1000) - int(self._retention.total_seconds() * 1000)
+            await client.xtrim(self._stream, minid=f"{minid}-0", approximate=True)
+        except Exception:
+            logger.warning(
+                "trimming %s failed; the entry was published", self._stream, exc_info=True
+            )
 
     async def start(self, receive: Receive) -> None:
         broker = RedisBroker(self._url)

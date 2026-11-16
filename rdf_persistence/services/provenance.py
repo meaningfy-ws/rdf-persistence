@@ -9,7 +9,7 @@ invalidation of an entity at a version. The triples are built from the vocabular
 import uuid
 from collections.abc import Iterable, Sequence
 from datetime import datetime
-from typing import Protocol, cast
+from typing import Protocol
 
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel
@@ -36,7 +36,7 @@ def new_activity_id() -> str:
     return f"{ID_PREFIX}{uuid.uuid4()}"
 
 
-def _is_activity_id(text: str) -> bool:
+def is_activity_id(text: str) -> bool:
     """Whether ``text`` is ``urn:uuid:`` and a UUID in its canonical form."""
     tail = text.removeprefix(ID_PREFIX)
     try:
@@ -57,7 +57,7 @@ class Served:
     """
 
     def __init__(self, activity: Activity, triples: list[Triple], types: list[URIRef]) -> None:
-        if not _is_activity_id(activity.id):
+        if not is_activity_id(activity.id):
             raise ValueError(f"the activity id {activity.id!r} is not a {ID_PREFIX}<uuid> IRI")
         own = URIRef(activity.id)
         for s, p, _ in triples:
@@ -108,15 +108,18 @@ def activity_class_of(
     (the one with the most ancestors), so a consumer's subclass wins over its parent (PD-16).
 
     Raises:
-        LookupError: No class of the schema has any of the ``types`` as its IRI, or its generated
-            class is missing.
+        LookupError: No class of the schema has any of the ``types`` as its IRI, its generated
+            class is missing, or it is not an ``Activity`` or a descendant (D-19).
     """
     wanted = {str(t) for t in types}
     found = [name for name in view.all_classes() if view.get_uri(name, expand=True) in wanted]
     if not found:
         raise LookupError(f"no class of the schema has any of the IRIs {sorted(wanted)}")
     best = max(found, key=lambda name: len(view.class_ancestors(name)))
-    return cast(type[Activity], models.named(best))
+    generated = models.named(best)
+    if not issubclass(generated, Activity):
+        raise LookupError(f"the class {best} is not an activity")
+    return generated
 
 
 def activity_class_named(view: SchemaView, models: ClassFinder, class_iri: str) -> type[Activity]:

@@ -91,6 +91,14 @@ def test_a_class_named_by_its_iri_is_the_same_as_one_by_its_types():
     assert activity_class_named(VIEW, MODELS, str(APPROVE_BOOK)) is ApproveBook
 
 
+def test_a_schema_class_that_is_not_an_activity_is_a_lookup_error() -> None:  # D-19
+    generation = VIEW.get_uri("Generation", expand=True)
+    with pytest.raises(LookupError, match="not an activity"):
+        activity_class_named(VIEW, MODELS, generation)
+    with pytest.raises(LookupError, match="not an activity"):
+        activity_class_of(VIEW, MODELS, {URIRef(generation)})
+
+
 async def test_a_decode_of_a_class_the_schema_lacks_is_a_lookup_error(store):
     async with opened(store) as session:
         await session.add_graph(B1, book(B1))

@@ -243,7 +243,7 @@ xref:howto/event-driven.adoc#relay[the relay].
 Install `rdf-persistence[events]` (Redis 8.4 or later), set `settings.deployment` (unique on the
 broker) and pass `event_bus=RedisEventBus(url, deployment=...)` to `install_service`; the relay then
 publishes every commit and the other deployments' observers receive it, at least once. A browser
-reads `GET /tenants/{tenant}/events` as server-sent events, resumable with `Last-Event-ID` for
+reads `GET /tenants/{tenant}/rp-events` as server-sent events, resumable with `Last-Event-ID` for
 7 days, and needs tenant `read`. See xref:howto/event-driven.adoc#relay[Carry commits to other
 deployments and to browsers].
 

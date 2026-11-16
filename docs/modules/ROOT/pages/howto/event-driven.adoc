@@ -417,10 +417,11 @@ kit = install_service(
   deployment's makes the two split the stream between them, and each misses what the other took.
   Pass `settings.deployment` to both, as above, and keep the name unique on the broker.
 * `public_url` is the address of the deployment seen from outside, without a trailing slash. A
-  message carries a link to the JSON-LD context at `{public_url}/context.jsonld`; with no
-  `public_url` the link is relative (`/context.jsonld`), which a consumer on another host cannot
-  follow. Set it when other deployments read the messages. The server-sent events route sends the
-  same link in a `Link` header.
+  message carries a link to the JSON-LD context at `{public_url}{prefix}/context.jsonld`, where
+  `prefix` is the path the service is mounted under (`install_service(prefix=...)`); with no
+  `public_url` the link is relative (`{prefix}/context.jsonld`), which a consumer on another host
+  cannot follow. Set it when other deployments read the messages. The server-sent events route
+  sends the service's own context link in a `Link` header, as every other route does.
 * `RedisEventBus` also takes `stream` (default `rp-events`), `retention` (default 7 days; older
   entries are trimmed after each publish) and `claim_idle` (default 30 s, how long a failed message
   waits before it comes again).
@@ -576,7 +577,7 @@ process only. Make an observer react only to the kinds of activity it does not i
 [#sse]
 === Follow a tenant in the browser
 
-The route `GET {prefix}/tenants/{tenant}/events` answers `text/event-stream`. `{prefix}` is the
+The route `GET {prefix}/tenants/{tenant}/rp-events` answers `text/event-stream`. `{prefix}` is the
 `prefix` argument of `install_service` (empty by default), and `tenants` is
 `settings.tenant_segment`. The route needs no broker and no extra: the relay feeds it.
 
@@ -585,8 +586,11 @@ The route `GET {prefix}/tenants/{tenant}/events` answers `text/event-stream`. `{
 # the sender above mounted its routes under prefix="/api"
 curl -N -H "Authorization: Bearer $TOKEN" \
      -H "Last-Event-ID: urn:uuid:3f2c0b6e-5a1d-4c7e-9b8a-1d2e3f4a5b6c" \
-     https://library.example.org/api/tenants/t1/events
+     https://library.example.org/api/tenants/t1/rp-events
 ----
+
+The segment `rp-events` is under the toolkit's reserved `rp-` prefix, which the generator's
+reserved-segment check keeps an aggregate from taking, so no aggregate's path can shadow it.
 
 One event, as the stream sends it (the `data` is on one line in the stream; it is wrapped here):
 
@@ -622,7 +626,13 @@ data: {"id":"urn:uuid:3f2c0b6e-5a1d-4c7e-9b8a-1d2e3f4a5b6c",
   store (when the activity was relayed), so it holds with no broker and does not depend on the
   broker's `retention`. An id the server does not know, one from before this feature, or one older
   than the window gets one `event: reset` with an empty `data:` line (an `EventSource`-style client
-  does dispatch it). The client reloads what it shows, then keeps reading.
+  does dispatch it). The client reloads what it shows, then keeps reading. A `Last-Event-ID` that
+  is not an activity id (not `urn:uuid:` and a UUID) is treated as unknown: one `reset`, then live
+  events; it is not an error.
+* *A stream lasts 5 minutes.* The server ends it then (the `max_lifetime` argument of
+  `add_events_route`), so a token that expired or was revoked is not outlived. The client
+  reconnects with a fresh token and its last `Last-Event-ID`, and misses nothing. The stream ends
+  at the first activity or keep-alive after the 5 minutes, so it can be up to 15 seconds longer.
 * *A slow reader* is closed when 1000 events are queued for it; it reconnects with `Last-Event-ID`.
 * *Repeated ids.* A client can get an id twice (a replay overlapping live events, or the relay
   offering an activity again after a crash). It drops ids it has already handled.
@@ -638,10 +648,11 @@ leak into access logs.
 ----
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 
-const url = "https://library.example.org/api/tenants/t1/events";
+const url = "https://library.example.org/api/tenants/t1/rp-events";
 const seen = new Set<string>();          // ids already handled
 let lastId: string | undefined;          // where to resume
 
+// The server ends a stream after 5 minutes: call follow again with a fresh token. lastId carries over.
 function follow(token: string, show: (activity: unknown) => void, reload: () => Promise<void>) {
   return fetchEventSource(url, {
     headers: {

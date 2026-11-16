@@ -22,7 +22,7 @@ TIMEOUT = 2.0
 
 
 def activity(n: int, entity: str = DUNE) -> Activity:
-    iri = f"https://lib.example/activity/a{n}"
+    iri = f"urn:uuid:00000000-0000-4000-8000-{n:012d}"
     part = Generation(activity=iri, at_time=AT, entity=entity, entity_version=f"{entity}#{n}")
     return Activity(id=iri, generations=[part])
 
@@ -92,6 +92,7 @@ def streaming(hub: EventHub, **given):
         "window": WEEK,
         "access_ttl": timedelta(seconds=1),
         "keep_alive": 30.0,
+        "max_lifetime": timedelta(hours=1),
         "clock": Clock(),
     }
     return event_stream(hub, TENANT, **{**wiring, **given})
@@ -221,12 +222,39 @@ async def test_a_full_queue_ends_the_stream():  # TC-36 (the hub's own test show
     for n in (1, 2, 3):  # three in a row: the reader has not run
         hub.offer(TENANT, activity(n))
 
-    async def rest() -> list:
-        return [await waiting] + [item async for item in stream]
+    with pytest.raises(StopAsyncIteration):  # it ends by itself, not at the keep-alive
+        await waiting
+    got = [item async for item in stream]
+    assert got == [], "none of what it missed is sent, so its last id precedes all of it (D-14)"
 
-    got = await asyncio.wait_for(rest(), TIMEOUT)  # it ends by itself, not at the keep-alive
-    assert all(isinstance(item, Activity) for item in got)
-    assert len(got) < 3, "what it missed is not sent: it resumes with Last-Event-ID"
+
+async def test_a_stream_ends_after_its_lifetime_at_the_next_wake():  # D-20
+    hub = EventHub()
+    clock = Clock()
+    stream = streaming(hub, max_lifetime=timedelta(minutes=5), keep_alive=0.01, clock=clock)
+    assert await next_of(stream) == KEEP_ALIVE
+    clock.now += timedelta(minutes=5)
+    assert [item async for item in stream] == []
+
+
+async def test_an_activity_after_the_lifetime_is_not_sent():  # D-20
+    hub = EventHub()
+    clock = Clock()
+    stream = streaming(hub, max_lifetime=timedelta(minutes=5), clock=clock)
+    waiting = await first_of(stream, hub)
+    clock.now += timedelta(minutes=6)
+    hub.offer(TENANT, activity(1))
+    with pytest.raises(StopAsyncIteration):
+        await waiting
+
+
+async def test_an_id_that_is_not_an_activity_id_sends_a_reset_and_opens_no_session():  # D-21
+    hub = EventHub()
+    session = FakeSession([])
+    stream = streaming(hub, open_session=opener(session), last_event_id="a b", keep_alive=0.01)
+    assert await next_of(stream) == RESET
+    assert session.asked == []
+    await stream.aclose()
 
 
 async def test_the_stream_without_a_last_event_id_opens_no_session():
@@ -247,14 +275,14 @@ async def test_a_resume_sends_what_was_relayed_since_then_the_live_events_none_t
         hub,
         open_session=opener(session),
         decode=decoding(a2, a3, a4),
-        last_event_id="https://lib.example/activity/a1",
+        last_event_id=activity(1).id,
         clock=clock,
     )
     assert (await next_of(stream)).id == a2.id
     assert (await next_of(stream)).id == a3.id
     hub.offer(TENANT, a4)
     assert (await next_of(stream)).id == a4.id, "a3 is not repeated from the buffer"
-    assert session.asked == [("https://lib.example/activity/a1", WEEK, AT)]
+    assert session.asked == [(activity(1).id, WEEK, AT)]
     await stream.aclose()
 
 
@@ -262,7 +290,7 @@ async def test_an_activity_relayed_during_the_read_but_not_found_by_it_is_sent_o
     hub = EventHub()
     a0 = activity(0)
     session = FakeSession([], during=lambda: hub.offer(TENANT, a0))
-    stream = streaming(hub, open_session=opener(session), last_event_id="x")
+    stream = streaming(hub, open_session=opener(session), last_event_id=activity(9).id)
     assert (await next_of(stream)).id == a0.id
     await stream.aclose()
 
@@ -276,7 +304,7 @@ async def test_a_resume_filters_what_it_sends_and_does_not_send_it_live_either()
         may_read=all_but(DUNE),
         open_session=opener(session),
         decode=decoding(a2, a3),
-        last_event_id="x",
+        last_event_id=activity(9).id,
     )
     assert (await next_of(stream)).id == a3.id, "a2 is about a book the caller may not read"
     await stream.aclose()
@@ -284,7 +312,7 @@ async def test_a_resume_filters_what_it_sends_and_does_not_send_it_live_either()
 
 async def test_an_unknown_or_expired_id_sends_a_reset_then_the_live_events():  # TC-38
     hub = EventHub()
-    stream = streaming(hub, open_session=opener(FakeSession(None)), last_event_id="gone")
+    stream = streaming(hub, open_session=opener(FakeSession(None)), last_event_id=activity(9).id)
     assert await next_of(stream) == RESET
     waiting = asyncio.ensure_future(next_of(stream))
     await asyncio.sleep(0)

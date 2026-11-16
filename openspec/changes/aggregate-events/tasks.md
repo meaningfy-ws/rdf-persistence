@@ -147,7 +147,7 @@ unused; letters mark cases added by the PLAN's attack).
 
 - [x] 3.1 The hub and the route (PD-9, PD-11, PD-12). `services/event_hub.py` `Offer`, `EventHub`;
   `services/` `visible_part`; `Session.relayed_since(iri, window, now)` with its template beside
-  `READ_ACTIVITIES`; `entrypoints/router.py` the route on `fastapi.sse.EventSourceResponse`. Tests
+  `READ_ACTIVITIES`; `entrypoints/router.py` the route `/{tenant}/rp-events` on `fastapi.sse.EventSourceResponse`. Tests
   first in `tests/unit/services/test_event_hub.py`, `tests/unit/services/test_visible_part.py` and
   `tests/unit/entrypoints/test_events_route.py` (the app with the fake bus and `EventHub(max_queue=
   2)` where TC-36 needs it; the stream read with `httpx` until N events; a fixed clock).

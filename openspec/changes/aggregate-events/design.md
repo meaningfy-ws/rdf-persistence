@@ -119,9 +119,10 @@ broker port, this EPIC; `install_service(event_bus=)`).
   `InMemoryBroker` (two "deployments" in one test), redelivers an unacked message (its `receive`
   raised) when that bus is started again, and can be told to fail the next `publish`.
 - **PD-7 The context link (Q6).** New optional settings slot `public_url` (uri, pattern
-  `^https?://.+[^/]$`). `EventEnvelope.context` is `{public_url}/context.jsonld`, else the relative
-  `/context.jsonld` (`context_link(settings)`). The SSE response carries the same link in a `Link`
-  header with `rel="http://www.w3.org/ns/json-ld#context"` (the existing `CONTEXT_REL`).
+  `^https?://.+[^/]$`). `EventEnvelope.context` is `{public_url}{prefix}/context.jsonld`, else the relative
+  `{prefix}/context.jsonld` (`context_link(public_url, prefix)`, D-16). The SSE response carries
+  the service's own context link in a `Link` header with `rel="http://www.w3.org/ns/json-ld#context"`
+  (the existing `CONTEXT_REL`), as every other route does.
 - **PD-8 The Redis adapter (DEC-6, Q7).** `adapters/redis_events.py` `RedisEventBus(url, *,
   deployment, stream="rp-events", retention=timedelta(days=7))` on FastStream's `RedisBroker`:
   publishes to one stream, trimmed to `retention` (the mechanism PD-4 proves); consumes with
@@ -152,7 +153,7 @@ broker port, this EPIC; `install_service(event_bus=)`).
      message is acked (RISK-9); `MessageLimitExceeded` is logged at ERROR and acked.
   Skipped messages are acked. Observers are idempotent by activity id (DEC-7); the toolkit does not
   de-duplicate.
-- **PD-11 Server-sent events (Q3, Q5).** `GET {prefix}/tenants/{tenant}/events`, media type
+- **PD-11 Server-sent events (Q3, Q5).** `GET {prefix}/tenants/{tenant}/rp-events`, media type
   `text/event-stream`, requires `read` on the tenant (`kit.require`; RISK-5). Each event: `id` = the
   activity IRI, `event` = the class's name, `data` = the filtered activity's JSON. Filtering is
   `visible_part(activity, may_read) -> Activity | None` (`services`), applied to live and resumed
@@ -161,7 +162,7 @@ broker port, this EPIC; `install_service(event_bus=)`).
   not sent. The caller's access is re-read (`load_caller_access`) before an event or a keep-alive is
   sent when the last read is older than `access_ttl` (default 1 s); a re-read that raises
   (`Forbidden`, `NotFound`) ends the stream. A keep-alive comment every `keep_alive` (default 15 s).
-  `access_ttl`, `keep_alive` and the clock are arguments of the route builder, defaulted by the kit.
+  The stream ends after `max_lifetime` (default 5 minutes; D-20). `access_ttl`, `keep_alive`, `max_lifetime` and the clock are arguments of the route builder, defaulted by the kit.
 - **PD-12 Resume (DEC-10, Q3).** With `Last-Event-ID` = an activity IRI, the route subscribes to the
   hub first (buffering), then reads from the provenance graph the activities whose `rp:relayedAt`
   is no earlier than the named one's and no earlier than `resume_window` (default 7 days) ago, the
