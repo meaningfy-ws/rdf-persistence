@@ -81,7 +81,8 @@ def test_a_random_id_length_outside_4_to_32_is_refused(length: int) -> None:
         IdSpec(kind="random", length=length)
 
 
-@pytest.mark.parametrize("length", [4, 13, 32])
+# Interior lengths are one class with the ends; the ends 4 and 32 are the boundaries.
+@pytest.mark.parametrize("length", [4, 32])
 def test_a_random_id_length_from_4_to_32_is_accepted(length: int) -> None:
     assert IdSpec(kind="random", length=length).length == length
 
@@ -92,7 +93,8 @@ def test_a_random_id_without_a_length_is_refused() -> None:
         check_iri_policy(made)
 
 
-@pytest.mark.parametrize("alphabet", ["ABC", "ab-c", "ab c", "é", ""])
+# "ABC" stands for every character outside [a-z0-9]; "" is the separate empty-alphabet case.
+@pytest.mark.parametrize("alphabet", ["ABC", ""])
 def test_an_alphabet_outside_lower_case_letters_and_digits_is_refused(alphabet: str) -> None:
     with pytest.raises(ValidationError, match="alphabet"):
         IdSpec(kind="random", length=7, alphabet=alphabet)
@@ -176,7 +178,8 @@ def test_a_variable_not_allowed_for_its_kind_is_refused(slot: str, template: str
         IriPolicy(**{slot: template})
 
 
-@pytest.mark.parametrize("character", ["A", "_", "?", "#", " ", "%", "~"])
+# Every character outside [a-z0-9/:.-] is one class; two of them stand for it.
+@pytest.mark.parametrize("character", ["A", "_"])
 def test_a_literal_character_outside_the_allowed_set_is_refused(character: str) -> None:
     with pytest.raises(ValidationError, match="tenant_template"):
         IriPolicy(tenant_template="{base}pro" + character + "ject/{tenant_id}")

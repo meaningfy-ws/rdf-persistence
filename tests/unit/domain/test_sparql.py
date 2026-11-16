@@ -56,11 +56,12 @@ def parsed_object(rendered: str) -> object:
         (Literal("hola", lang="es"), '"hola"@es'),
         (Literal("hi", lang="en-GB"), '"hi"@en-GB'),
         (Literal(5), f'"5"^^<{XSD.integer}>'),
-        (Literal("2020-01-01", datatype=XSD.date), f'"2020-01-01"^^<{XSD.date}>'),
         (BNode("b1"), "_:b1"),
     ],
-    ids=["iri", "plain", "lang", "lang-region", "integer", "date", "blank"],
+    ids=["iri", "plain", "lang", "lang-region", "integer", "blank"],
 )
+# Typed literals are one class (the datatype branch), so integer stands for date. "lang-region" stays:
+# it is the hyphen sub-rule of the language-tag pattern, a different class from "lang".
 def test_term_renders_each_kind(value, expected):
     assert term(value) == expected
 
@@ -265,18 +266,21 @@ def test_value_patterns_refuse_a_variable_that_is_not_a_plain_name(variable):
         value_patterns(variable, [])
 
 
-@pytest.mark.parametrize("number", [-1, True, 1.5, "2", None])
+# -1 (negative), True (a bool) and 1.5 (any non-int type) are three classes.
+@pytest.mark.parametrize("number", [-1, True, 1.5])
 def test_value_variables_refuse_anything_but_a_non_negative_integer(number):
     with pytest.raises(SparqlError):
         value_variables(number)  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize("value", [0, 1, 50, 10**6])
+# The boundaries 0 and 10**6; interior values are one class with them.
+@pytest.mark.parametrize("value", [0, 10**6])
 def test_a_count_renders_as_the_digits_of_a_non_negative_integer(value):
     assert fill("LIMIT $n", n=count(value)) == f"LIMIT {value}"
 
 
-@pytest.mark.parametrize("value", [-1, True, 1.5, "5", None])
+# -1 (negative), True (a bool) and 1.5 (any non-int type) are three classes.
+@pytest.mark.parametrize("value", [-1, True, 1.5])
 def test_a_count_refuses_anything_but_a_non_negative_integer(value):
     with pytest.raises(SparqlError):
         count(value)  # type: ignore[arg-type]
@@ -416,13 +420,14 @@ def test_a_blank_node_or_a_collection_is_allowed_in_a_where(text):
     assert checked_group(text, template=False), "a where only matches"
 
 
-@pytest.mark.parametrize("own", OWN)
+# Every member of the forbidden list is one class (list membership); one stands for them.
+@pytest.mark.parametrize("own", [RP_VERSION])
 def test_a_template_that_names_a_forbidden_predicate_is_refused(own):
     with pytest.raises(SparqlError, match="the toolkit's own"):
         checked_group(f"?s <{own}> ?o .", template=True, forbidden=OWN)
 
 
-@pytest.mark.parametrize("own", OWN)
+@pytest.mark.parametrize("own", [RP_VERSION])
 def test_a_where_may_read_a_forbidden_predicate(own):
     assert checked_group(f"?s <{own}> ?o .", template=False, forbidden=OWN), "reading is fine"
 

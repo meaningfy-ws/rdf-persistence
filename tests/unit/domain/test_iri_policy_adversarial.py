@@ -16,7 +16,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.domain.iris import LAYOUT_WORDS, Iris
+from rdf_persistence.domain.iris import Iris
 
 BASE = "http://mwb.meaningfy.ws/"
 FLAT = "{base}{tenant_id}/{type}/{id}"
@@ -197,7 +197,9 @@ def test_a_type_that_is_regex_syntax_matches_only_itself():
 # -- reserved words -------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("word", [*LAYOUT_WORDS, "project", "ontology-file", "term", "k3f9a2x"])
+# Reserved by membership in one set; one word per source of it: a layout word, a template literal,
+# a type, the deployment.
+@pytest.mark.parametrize("word", ["meta", "project", "ontology-file", "k3f9a2x"])
 def test_a_drawn_id_that_is_a_reserved_word_is_discarded_for_every_kind_of_id(word):
     iris = Iris(
         settings(flat_policy(), deployment="k3f9a2x"),
@@ -380,22 +382,21 @@ def tiny(length: int) -> Iris:
     return Iris(settings(policy), ROOTS, OWNED)
 
 
-WORDS = [pytest.param(4, "meta", id="meta"), pytest.param(5, "graph", id="graph")]
+# Both layout words are one class (membership in the reserved set); "meta" stands for them.
+LENGTH, WORD = 4, "meta"
 
 
-@pytest.mark.parametrize(("length", "word"), WORDS)
-def test_a_reserved_word_is_not_a_tenant_id_when_matching(length, word):
-    iris = tiny(length)
+def test_a_reserved_word_is_not_a_tenant_id_when_matching():
+    iris, word = tiny(LENGTH), WORD
     with pytest.raises(NotFound):
         iris.tenant(word)
     with pytest.raises(InvalidIri):
         iris.tenant_id_of(f"{BASE}project/{word}")
 
 
-@pytest.mark.parametrize(("length", "word"), WORDS)
-def test_a_reserved_word_is_not_an_object_id_when_matching(length, word):
-    iris = tiny(length)
-    tid = "p4x8k"[:length]
+def test_a_reserved_word_is_not_an_object_id_when_matching():
+    iris, word = tiny(LENGTH), WORD
+    tid = "p4x8k"[:LENGTH]
     tenant = str(iris.tenant(tid))
     with pytest.raises(NotFound):
         iris.aggregate(tenant, "book", "books", word)

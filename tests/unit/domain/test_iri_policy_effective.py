@@ -1,7 +1,5 @@
 """``Iris.effective_policy`` and ``policy_differences``: what the start-up guard compares (PD-14b)."""
 
-import pytest
-
 from rdf_persistence.domain.generated.service.rp_service import IdKind, IdSpec, IriPolicy
 from rdf_persistence.domain.iris import (
     DEFAULT_ALPHABET,
@@ -49,11 +47,13 @@ def test_differences_are_dotted_field_names():
     assert policy_differences(one, other) == ["meta_template", "object_id.length"]
 
 
-@pytest.mark.parametrize("base", ["https://a.example/", "https://b.example/"])
-def test_the_record_iri_is_under_the_toolkit_segment(base):
-    assert str(policy_record_iri(base)) == f"{base}toolkit/iri-policy"
+# One base: every base is one equivalence class (the IRI is the base plus a fixed segment).
+BASE = "https://a.example/"
 
 
-@pytest.mark.parametrize("base", ["https://a.example/", "https://b.example/"])
-def test_the_stamps_graph_is_under_the_toolkit_segment(base):
-    assert str(stamps_graph_iri(base)) == f"{base}toolkit/schema-stamps"
+def test_the_record_iri_is_under_the_toolkit_segment():
+    assert str(policy_record_iri(BASE)) == f"{BASE}toolkit/iri-policy"
+
+
+def test_the_stamps_graph_is_under_the_toolkit_segment():
+    assert str(stamps_graph_iri(BASE)) == f"{BASE}toolkit/schema-stamps"

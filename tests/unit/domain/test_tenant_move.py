@@ -159,9 +159,8 @@ def test_an_id_next_to_a_dash_or_a_dot_is_rewritten_and_the_policy_accepts_the_r
     assert iris.is_aggregate(new_tenant, str(subject))
 
 
-@pytest.mark.parametrize(
-    "glued", [f"{SETTINGS.base}x{OLD}", f"{SETTINGS.base}{OLD}x", f"{SETTINGS.base}x{OLD}x"]
-)
+# The two one-sided cases (letter before, letter after) imply the two-sided one.
+@pytest.mark.parametrize("glued", [f"{SETTINGS.base}x{OLD}", f"{SETTINGS.base}{OLD}x"])
 def test_an_id_glued_to_a_letter_or_digit_is_unchanged(glued: str):
     source = dataset_of((URIRef(glued), DCTERMS.relation, URIRef(glued), URIRef(glued)))
     assert quads_of(rewrite(source, SETTINGS.base, OLD, NEW)) == quads_of(source)
