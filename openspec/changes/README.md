@@ -36,7 +36,7 @@ after an attack; until then it is the planner's own score.
 | 5 | `cross-aggregate-unique-keys` | MEDIUM | none | yes | 3 | key guards added to the transaction; `KeyConflict` |
 | 6 | `tenant-dump-restore` | MEDIUM | none | delivered 2026-11-13 (#89) | none | the dump format (manifest with schema version), restore into a new tenant |
 | 7 | `app-level-data` | MEDIUM | none | delivered 2026-11-14 (#102) | none | the application database and its aggregates |
-| 8 | `tenant-stores` | MEDIUM | none | no | 6 (copies are dump + restore) | several wired stores; the access record names a tenant's store |
+| 8 | `tenant-stores` | MEDIUM (2 stages) | none | delivered 2026-11-16 (#122, #123), accepted, archived | 6 (copies are dump + restore) | several wired stores; the access record names a tenant's store |
 | 9 | `message-bus` | LARGE (4 stages) | none | delivered 2026-11-15 (#107, #110, #114), accepted | 3 (the activity is one more transaction operation), 4 (its `TransitionRecord` became the `Transition` activity, stage 2) | commands as `prov:Activity` subclasses in three layers, activity records on every commit, the fixed PROV events (`Generation`, `Invalidation`), `MessageBus` with hierarchy dispatch (in process) |
 | 10 | `aggregate-events` | LARGE | none | no | 3, 9 (publishes 9's one message per commit) | outbox, relay, `EventBus` port on FastStream (Redis Streams first), incoming messages into the bus, SSE |
 | 11 | `schema-migrations` | LARGE (3 stages) | none | delivered 2026-11-15 (#109, #112, #113), accepted, archived | 6 (reads the dump's schema version), 7 (its last stage reaches the application database) | schema version per database, the schema lock and its rules in `rp-generate`, migrations applied at start-up |
