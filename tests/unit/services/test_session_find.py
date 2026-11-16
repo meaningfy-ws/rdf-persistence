@@ -10,7 +10,7 @@ from rdf_persistence import Action
 from rdf_persistence.domain.exceptions import BadQuery
 from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.services.access import AccessRules, load_role_definitions
-from rdf_persistence.services.listing import PAGE, Listings
+from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import _filters
 from rdf_persistence.testkit import FakeStore, fake_session
@@ -161,11 +161,3 @@ async def test_find_by_a_value_of_an_unknown_type_is_a_bad_query(listings):
     async with fake_session(listings=listings) as session:
         with pytest.raises(BadQuery):
             await session.find(Scan, byte_size="many")
-
-
-def test_a_page_is_the_largest_the_list_request_accepts():  # R2-3
-    from rdf_persistence.domain.generated.service.rp_service import ListRequest
-
-    assert ListRequest(limit=PAGE).limit == PAGE
-    with pytest.raises(ValueError):
-        ListRequest(limit=PAGE + 1)

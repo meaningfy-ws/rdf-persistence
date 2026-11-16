@@ -333,10 +333,6 @@ def test_a_uriref_and_a_str_of_one_iri_are_checked_alike(consumer):
     assert consumer.is_aggregate(URIRef(TENANT), URIRef(TENANT)), "the tenant root as URIRefs"
 
 
-def test_the_patterns_are_compiled_once_per_iris(consumer):
-    assert consumer._aggregate_re is consumer._aggregate_re, "a cached pattern"
-
-
 def test_an_iris_is_frozen(consumer):
     with pytest.raises(AttributeError, match="frozen"):
         consumer.root_types = frozenset()

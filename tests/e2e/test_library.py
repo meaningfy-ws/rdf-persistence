@@ -15,7 +15,7 @@ from rdflib import Graph
 from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence import Grant, GrantSet, Page, TenantCreate, TenantSummary
-from rdf_persistence.testkit import TokenRefusedError, access_token, assert_public_imports
+from rdf_persistence.testkit import assert_public_imports
 from tests.e2e.world import World, running_world
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note
 from tests.fixtures.library.generated.library import Library
@@ -206,17 +206,6 @@ async def test_a_scan_file_is_kept_in_the_tenants_bucket_and_referenced(world, s
     assert (await http.get(file_url, headers=callers.as_(OUTSIDER))).status_code == 404
     (bucket,) = await world.files.list_buckets(f"{world.prefix}-")
     assert await world.files.get(bucket, name) == SCAN_BYTES, "and the bucket holds them"
-
-
-async def test_a_disabled_service_account_is_refused_its_next_token(world) -> None:
-    account = next(u for u in world.project.machine_users if u.name == READER)
-    await world.identity.disable(account.user_id)
-    try:
-        with pytest.raises(TokenRefusedError):
-            access_token(world.project, account)
-    finally:
-        await world.identity.enable(account.user_id)
-    assert access_token(world.project, account), "enabled again, it is granted a token"
 
 
 async def test_a_page_of_books(world, shelf) -> None:

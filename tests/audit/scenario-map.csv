@@ -1,5 +1,4 @@
 test,level,capability,requirement,scenario,confidence,evidence
-tests/e2e/test_library.py::test_a_disabled_service_account_is_refused_its_next_token,scenario,rp-identity,Accounts are administered through the identity port,disable an account,high,name; covered code (adapters/zitadel)
 tests/e2e/test_library.py::test_a_global_admin_reads_but_cannot_modify,requirement,rp-access,Access is decided per tenant and per aggregate,,high,"name (global role); covered code (services/access, adapters/jwks)"
 tests/e2e/test_library.py::test_a_page_of_books,scenario,rp-service-api,Listings are filtered and paged,a page of books,high,"name; covered code (services/listing, entrypoints/router)"
 tests/e2e/test_library.py::test_a_reader_may_not_delete_the_book,requirement,rp-access,Access is decided per tenant and per aggregate,,high,name; covered code (services/access)
@@ -519,7 +518,6 @@ tests/unit/domain/test_iris_policy.py::test_parts_are_nested_under_their_root_on
 tests/unit/domain/test_iris_policy.py::test_settings_the_schema_cannot_refuse_alone_are_refused_when_iris_is_built,requirement,rp-iri-policy,Policies are checked when settings are made,,high,name; covered code
 tests/unit/domain/test_iris_policy.py::test_the_api_path_does_not_enter_the_iri,scenario,rp-iri-policy,Each kind of IRI follows its configured template,"the API path changes, the IRIs do not",high,name; covered code
 tests/unit/domain/test_iris_policy.py::test_the_consumers_tenant_is_the_project_path_and_a_short_id,scenario,rp-iri-policy,Each kind of IRI follows its configured template,the consumer's tenant,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_the_patterns_are_compiled_once_per_iris,none,,,,none,none
 tests/unit/domain/test_iris_policy.py::test_the_provenance_graph_is_minted_and_is_not_an_aggregate_or_a_loaded_graph,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,high,"spec id (message-bus PD-5, TC-05); covered code"
 tests/unit/domain/test_iris_policy.py::test_the_tenant_of_a_default_access_record_is_the_iri_above_it,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
 tests/unit/domain/test_iris_policy.py::test_the_tenant_of_an_access_record_comes_back_through_the_templates,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,high,name; covered code
@@ -2765,7 +2763,6 @@ tests/unit/services/test_session_activity_adversarial.py::test_the_start_of_an_a
 tests/unit/services/test_session_activity_adversarial.py::test_the_types_of_an_activity_class_come_from_the_metamodel,requirement,rp-messages,Every commit records one activity with its PROV events,,high,covered code; spec id
 tests/unit/services/test_session_activity_adversarial.py::test_two_served_commits_with_one_id_at_once_let_exactly_one_win,requirement,rp-messages,Activity records are kept,,high,name; covered code; spec id
 tests/unit/services/test_session_find.py::test_a_filter_value_is_its_rdf_lexical_form,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
-tests/unit/services/test_session_find.py::test_a_page_is_the_largest_the_list_request_accepts,requirement,rp-aggregate-store,A session finds aggregates by slot values,,medium,spec id
 tests/unit/services/test_session_find.py::test_find_by_a_datetime_uses_the_rdf_lexical_form,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
 tests/unit/services/test_session_find.py::test_find_by_a_value_of_an_unknown_type_is_a_bad_query,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
 tests/unit/services/test_session_find.py::test_find_by_an_unknown_slot_is_a_bad_query_naming_slot_and_class,scenario,rp-aggregate-store,A session finds aggregates by slot values,an unknown slot,high,name; covered code; spec id
@@ -3439,8 +3436,6 @@ tests/unit/test_public_api.py::test_all_lists_no_name_twice,requirement,rp-packa
 tests/unit/test_public_api.py::test_every_exported_name_imports_from_the_top_level,requirement,rp-package-boundaries,Consumers use the public API only,,high,"name,spec id DEC-6"
 tests/unit/test_public_api.py::test_every_generated_public_class_and_enum_is_exported,requirement,rp-package-boundaries,Consumers use the public API only,,high,"name,spec id DEC-6"
 tests/unit/test_public_api.py::test_every_name_in_the_architecture_index_is_exported,requirement,rp-package-boundaries,Consumers use the public API only,,high,"name,spec id DEC-6"
-tests/unit/test_smoke.py::test_package_exposes_version,requirement,rp-release,The version lives in one file and the release matches the tag,,medium,name
-tests/unit/test_smoke.py::test_package_imports,none,,,,none,
 tests/unit/test_smoke.py::test_version_matches_pyproject,requirement,rp-release,The version lives in one file and the release matches the tag,,high,"name,spec id TC-01"
 tests/unit/test_testkit_bootstrap.py::test_async_and_sync_timeout_messages_are_identical,requirement,rp-testkit,Tests wait on a condition with a deadline through the public test module,,high,"name,covered code"
 tests/unit/test_testkit_bootstrap.py::test_async_sync_probe_raising_a_retried_error_is_not_masked,requirement,rp-testkit,Tests wait on a condition with a deadline through the public test module,,high,"name,covered code"
