@@ -173,7 +173,7 @@ check-spec: ## Validate the OpenSpec spine (pinned CLI, strict)
 
 test: ## Run the unit and feature tests, with the coverage floor
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit and feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -m "(unit or feature) and not quarantine" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto --dist loadgroup -m "(unit or feature) and not quarantine" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Unit and feature tests passed$(END_BUILD_PRINT)"
 
 test-containers: ## Run the integration and e2e tests against Docker containers (no coverage floor)
@@ -193,12 +193,12 @@ fuseki-image: $(FUSEKI_IMAGE_TAR) ## Load the Fuseki test image from its tar, bu
 
 test-unit: ## Run the unit tests in parallel, with the 80 % coverage floor (CI job "unit")
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -m "unit and not quarantine" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto --dist loadgroup -m "unit and not quarantine" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Unit tests passed$(END_BUILD_PRINT)"
 
 test-feature: ## Run the BDD feature tests in parallel, with a 50 % coverage floor (CI job "feature")
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -m "feature and not quarantine" $(COV_FLAGS) --cov-report=xml:$(REPO_ROOT)/coverage-feature.xml --cov-fail-under=50
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto --dist loadgroup -m "feature and not quarantine" $(COV_FLAGS) --cov-report=xml:$(REPO_ROOT)/coverage-feature.xml --cov-fail-under=50
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Feature tests passed$(END_BUILD_PRINT)"
 
 test-perf: ## Run the wall-clock budget tests alone (no coverage, no xdist); not part of check-all
@@ -209,7 +209,7 @@ test-perf: ## Run the wall-clock budget tests alone (no coverage, no xdist); not
 # Developer lanes (test-lanes): no coverage; the floors are checked by test, test-unit, test-feature.
 test-fast: ## Run the unit and feature tests not marked slow, in parallel, without coverage (developer lane)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running the fast unit and feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -m "(unit or feature) and not slow and not quarantine"
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto --dist loadgroup -m "(unit or feature) and not slow and not quarantine"
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Fast tests passed$(END_BUILD_PRINT)"
 
 test-changed: ## Run the tests of the files changed against BASE (default develop), slow ones included, without coverage; PYTEST_N overrides the worker count
@@ -223,7 +223,7 @@ test-changed: ## Run the tests of the files changed against BASE (default develo
 
 profile-tests: ## Print the 15 slowest unit and feature tests, set-up and call apart, without coverage (PROFILE_MARK narrows)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Profiling the unit and feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto -q -p no:randomly -m "($(PROFILE_MARK)) and not quarantine" --durations=15
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) -n auto --dist loadgroup -q -p no:randomly -m "($(PROFILE_MARK)) and not quarantine" --durations=15
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Profile complete$(END_BUILD_PRINT)"
 
 test-e2e: ## Run end-to-end tests only

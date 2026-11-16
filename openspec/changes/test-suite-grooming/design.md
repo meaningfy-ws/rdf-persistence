@@ -75,6 +75,20 @@ PD-3 depends on; PD-6 re-times after PD-1).
   loadgroup` and twice with `--dist worksteal` (through `PYTEST_ADDOPTS`). Adopt the fastest mean
   in the Makefile's `-n auto` lanes; record the six times here. If `worksteal` wins, PD-3 is
   skipped (it needs `loadgroup`) and recorded as such.
+  **Measured (task 1.3, 2026-11-16, `make test-fast`, nothing else running, 6714 passed, 18
+  skipped in every run):**
+
+  | Mode | Run 1 | Run 2 | Mean |
+  |------|-------|-------|------|
+  | `load` (default) | 68.0 s | 67.8 s | 67.9 s |
+  | `loadgroup` | 65.2 s | 66.2 s | 65.7 s |
+  | `worksteal` | 66.6 s | 62.5 s | 64.6 s |
+
+  `worksteal` is 1.7 % under `loadgroup`, inside the 3 % band, so `loadgroup` is adopted (it keeps
+  `xdist_group` usable): `--dist loadgroup` is now next to `-n auto` in `test`, `test-unit`,
+  `test-feature`, `test-fast` and `profile-tests` (`coverage-report` has no `-n auto`). PD-3
+  stays. (Two earlier attempts were discarded because a detached loop of runs overlapped a later
+  one; the `load` pair above predates the overlap.)
 - **PD-1 (P-1)**: In `tests/unit/generation/test_lock_step.py`, a session-scoped fixture
   `bootstrapped_template` copies the toy fixture tree into `tmp_path_factory`, removes the lock
   and runs the generator once (what `bootstrapped` does today); `bootstrapped` copies the template
