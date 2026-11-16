@@ -18,6 +18,7 @@ import copy
 from collections.abc import Callable, Iterable
 from enum import Enum
 from http import HTTPMethod, HTTPStatus
+from typing import Any, cast
 
 from fastapi import APIRouter, FastAPI
 from fastapi.openapi.models import (
@@ -55,7 +56,10 @@ from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.negotiation import (
     ALLOWED_ACTIONS,
     ETAG,
+    EVENT_STREAM,
     IF_MATCH,
+    LAST_EVENT_ID,
+    LINK,
     LOCATION,
     RECORD_ETAG,
     allowed_actions_value,
@@ -98,12 +102,18 @@ class RouteDocs(Operation):
     status_code: HTTPStatus = Field(exclude=True)
 
     def add_to(
-        self, router: APIRouter, path: str, method: HTTPMethod, endpoint: Callable[..., object]
+        self,
+        router: APIRouter,
+        path: str,
+        method: HTTPMethod,
+        endpoint: Callable[..., object],
+        **route: Any,
     ) -> None:
         """Register ``endpoint`` on ``router`` at ``path``, documented as this says.
 
         The answers are declared whole, with a ``default``, which keeps FastAPI from adding its own
         422; the parameters, the request body and the security go in as the operation's extras.
+        ``route`` holds any more of ``add_api_route``'s arguments (a ``response_class``).
         """
         documented = self.model_dump(by_alias=True, exclude_none=True, mode="json")
         router.add_api_route(
@@ -116,6 +126,7 @@ class RouteDocs(Operation):
             tags=list[str | Enum](self.tags or []),
             responses=documented["responses"],
             openapi_extra={k: v for k, v in documented.items() if k in _OPERATION_PARTS},
+            **route,
         )
 
 
@@ -332,6 +343,28 @@ class TenantOpenApi:
             (*_AUTHENTICATED, *_IN_A_TENANT),
         )
 
+    def events(self) -> RouteDocs:
+        """The stream of a tenant's activities: server-sent events, resumed with ``Last-Event-ID``."""
+        stream = Response(
+            description="The activities of the tenant, as server-sent events, until the client leaves",
+            headers={LINK: Header(description="The JSON-LD context", schema=Schema(type="string"))},
+            content=_media(Schema(type="string"), EVENT_STREAM),
+        )
+        resume = _parameter(
+            LAST_EVENT_ID,
+            ParameterInType.header,
+            Schema(type="string"),
+            required=False,
+            description="The IRI of the last activity received: the stream continues after it.",
+        )
+        return route_options(
+            "Follow the activities of a tenant",
+            self.TAG,
+            (HTTPStatus.OK, stream),
+            (*_AUTHENTICATED, *_IN_A_TENANT),
+            parameters=[resume],
+        )
+
     def set_grants(self) -> RouteDocs:
         replaced = _success(_media(_ref(GrantSet.__name__), JSON), versioned=True)
         return route_options(
@@ -473,6 +506,19 @@ def _inline_property_refs(document: OpenAPI, raw: dict[str, JsonSchema]) -> None
                     parameter["schema"] = _target_in(raw, pointer)
 
 
+def _without_item_schemas(document: dict[str, object]) -> dict[str, object]:
+    """``document`` less the ``itemSchema`` FastAPI puts on a stream: it is OpenAPI 3.2's, this document is 3.1.
+
+    The routes declare their stream as a ``schema`` of their own, which stays.
+    """
+    for operations in cast(dict[str, dict[str, dict]], document.get("paths", {})).values():
+        for operation in operations.values():
+            for response in operation.get("responses", {}).values():
+                for media in response.get("content", {}).values():
+                    media.pop("itemSchema", None)
+    return document
+
+
 def install_openapi(app: FastAPI, kit: ServiceKit) -> None:
     """Make ``app`` publish the component schemas of the routes and the bearer scheme in its document.
 
@@ -488,7 +534,7 @@ def install_openapi(app: FastAPI, kit: ServiceKit) -> None:
 
     def openapi() -> dict[str, object]:
         if app.openapi_schema is None:
-            document = OpenAPI.model_validate(build())
+            document = OpenAPI.model_validate(_without_item_schemas(build()))
             components = document.components or Components()
             components.schemas = dict(sorted({**(components.schemas or {}), **schemas}.items()))
             components.securitySchemes = {BEARER_AUTH: HTTPBearer(scheme=BEARER_SCHEME)}

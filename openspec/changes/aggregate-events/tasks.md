@@ -145,7 +145,7 @@ unused; letters mark cases added by the PLAN's attack).
 
 ## 3. Server-sent events (stage 3)
 
-- [ ] 3.1 The hub and the route (PD-9, PD-11, PD-12). `services/event_hub.py` `Offer`, `EventHub`;
+- [x] 3.1 The hub and the route (PD-9, PD-11, PD-12). `services/event_hub.py` `Offer`, `EventHub`;
   `services/` `visible_part`; `Session.relayed_since(iri, window, now)` with its template beside
   `READ_ACTIVITIES`; `entrypoints/router.py` the route on `fastapi.sse.EventSourceResponse`. Tests
   first in `tests/unit/services/test_event_hub.py`, `tests/unit/services/test_visible_part.py` and
