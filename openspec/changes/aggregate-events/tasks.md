@@ -145,9 +145,9 @@ unused; letters mark cases added by the PLAN's attack).
 
 ## 3. Server-sent events (stage 3)
 
-- [ ] 3.1 The hub and the route (PD-9, PD-11, PD-12). `services/event_hub.py` `Offer`, `EventHub`;
+- [x] 3.1 The hub and the route (PD-9, PD-11, PD-12). `services/event_hub.py` `Offer`, `EventHub`;
   `services/` `visible_part`; `Session.relayed_since(iri, window, now)` with its template beside
-  `READ_ACTIVITIES`; `entrypoints/router.py` the route on `fastapi.sse.EventSourceResponse`. Tests
+  `READ_ACTIVITIES`; `entrypoints/router.py` the route `/{tenant}/rp-events` on `fastapi.sse.EventSourceResponse`. Tests
   first in `tests/unit/services/test_event_hub.py`, `tests/unit/services/test_visible_part.py` and
   `tests/unit/entrypoints/test_events_route.py` (the app with the fake bus and `EventHub(max_queue=
   2)` where TC-36 needs it; the stream read with `httpx` until N events; a fixed clock).
@@ -166,22 +166,22 @@ unused; letters mark cases added by the PLAN's attack).
 | TC-39 | a caller without `read` on T | `403` problem response, no stream |
 | TC-40 | a follower of T2 when T commits; a commit on the application database | gets nothing |
 
-- [ ] 3.2 Feature: "a hidden aggregate" and "resuming a stream" in `tests/feature/events.feature`.
-- [ ] 3.3 Docs. `howto/event-driven.adoc`: the relay, the `events` extra,
+- [x] 3.2 Feature: "a hidden aggregate" and "resuming a stream" in `tests/feature/events.feature`.
+- [x] 3.3 Docs. `howto/event-driven.adoc`: the relay, the `events` extra,
   `install_service(event_bus=RedisEventBus(...))`, `deployment` (required, unique per broker) and
   `public_url`, incoming messages, idempotency by id, the two guarantees (RISK-9), loops (RISK-8),
   the SSE route and `Last-Event-ID`, a reader needs tenant `read` (RISK-5), single instance
   (RISK-4), what a message reveals (RISK-6). `architecture/index.adoc`: "Outbox, event bus and
   relay" and "server-sent events" built. `questions.adoc`: the question the section answers. The
   durations table in `develop/index.adoc` from the stage's ordinary runs. `make check-docs`.
-- [ ] 3.4 Reconcile `proposal.md` with what was built (P-0004): an "As built" table, What Changes,
+- [x] 3.4 Reconcile `proposal.md` with what was built (P-0004): an "As built" table, What Changes,
   Capabilities, Impact; the spec delta true of the code.
 
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 (then the adversarial tester) · [x] 1.6 ·
   [x] 1.7 · [x] 2.1 · [x] 2.2 — PR #124 (stages 1 and 2 as one PR, D-3)
-- [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 — PR 3 (the last merge)
+- [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 — PR 3 (the last merge)
 
 1.1, 1.2 and 1.3 touch disjoint files and may run in parallel; 1.4 after 1.2 (both in
 `session.py`); 2.1 and 3.1 depend only on stage 1.

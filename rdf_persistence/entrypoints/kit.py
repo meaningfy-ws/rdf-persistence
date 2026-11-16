@@ -2,7 +2,7 @@
 
 import logging
 from collections.abc import AsyncIterator, Mapping, Sequence
-from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from datetime import timedelta
 from pathlib import Path
 from types import ModuleType
@@ -202,7 +202,7 @@ class ServiceKit:
             event_bus,
             self.hub,
             deployment=settings.deployment or "",
-            context=context_link(settings.public_url),
+            context=context_link(settings.public_url, prefix),
         )
 
     async def _publish(self, activity: Activity, session: Session) -> None:
@@ -216,8 +216,9 @@ class ServiceKit:
 
         Returning acks the message; what is raised is not acked and comes again at the next start.
         Skipped, logged and acked: a message of this deployment's own origin, one received with no
-        bus, one of an unknown class or whose body does not validate, one for a tenant this
-        deployment lacks, and one over the bus's message limit.
+        bus, one of an unknown class (or of a class that is not an activity) or whose body does not
+        validate, one for a tenant this deployment lacks or whose id is no IRI, and one over the
+        bus's message limit.
 
         Raises:
             TenantBehind: The tenant's migration failed at start-up.
@@ -254,14 +255,20 @@ class ServiceKit:
                 if tenant == self.tenancy.application
                 else self.session(tenant, toolkit)
             )
-        except LookupError as error:
+        except (LookupError, ValueError) as error:
             log.warning("skipped %s: %s", activity.id, error)
             return
         try:
-            async with opening as session:
-                await session.is_recorded(
-                    activity.id
-                )  # the probe: the database is there, the store answers
+            async with AsyncExitStack() as stack:
+                try:
+                    session = await stack.enter_async_context(opening)
+                    # the probe: the database is there, the store answers
+                    await session.is_recorded(activity.id)
+                except ValueError as error:  # a tenant that is no IRI (D-19); never the observers'
+                    log.warning(
+                        "skipped %s: the tenant %s is invalid: %s", activity.id, tenant, error
+                    )
+                    return
                 await bus.publish(activity, session)
         except (DatabaseGone, NotFound) as error:
             log.warning(

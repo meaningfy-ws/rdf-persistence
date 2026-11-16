@@ -10,8 +10,7 @@ from typing import Protocol
 
 from rdf_persistence.domain.generated.rp_provenance import Activity
 from rdf_persistence.domain.generated.service.rp_service import EventEnvelope
-
-CONTEXT_PATH = "/context.jsonld"
+from rdf_persistence.services.artifacts import CONTEXT_FILE
 
 Receive = Callable[[EventEnvelope, bytes], Awaitable[None]]
 
@@ -28,6 +27,8 @@ class EventBus(Protocol):
     async def close(self) -> None: ...
 
 
-def context_link(public_url: str | None) -> str:
-    """The JSON-LD context link of an envelope: absolute under a public URL, else relative."""
-    return f"{public_url or ''}{CONTEXT_PATH}"
+def context_link(public_url: str | None, prefix: str = "") -> str:
+    """The JSON-LD context link of an envelope: ``{public_url}{prefix}/context.jsonld``, relative
+    (``{prefix}/context.jsonld``) without a public URL (D-16)."""
+    mounted = prefix.strip("/")
+    return f"{public_url or ''}{'/' + mounted if mounted else ''}/{CONTEXT_FILE}"

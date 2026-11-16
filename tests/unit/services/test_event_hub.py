@@ -55,6 +55,17 @@ def test_a_full_queue_is_closed_and_a_reader_of_another_gets_all_of_them():
     assert len(fast) == 4
 
 
+def test_a_closed_queue_holds_only_the_sentinel():  # D-14
+    async def scenario():
+        hub = EventHub(max_queue=2)
+        async with hub.subscribe(TENANT) as queue:
+            for n in range(3):
+                hub.offer(TENANT, _activity(n))
+            return _drain(queue)
+
+    assert asyncio.run(scenario()) == [CLOSED], "no activity after a gap the reader cannot see"
+
+
 def test_a_closed_queue_ends_its_reader_even_when_it_was_full():
     async def scenario():
         hub = EventHub(max_queue=1)

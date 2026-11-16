@@ -47,7 +47,8 @@ class EventHub:
 
     def _close(self, tenant: str, queue: asyncio.Queue) -> None:
         self._discard(tenant, queue)
-        while queue.full():  # make room: the reader is told the stream ended, not what it missed
+        # drop all: a reader's last id then precedes everything it missed (D-14)
+        while not queue.empty():
             queue.get_nowait()
         queue.put_nowait(CLOSED)
 

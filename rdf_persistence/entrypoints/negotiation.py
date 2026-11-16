@@ -22,6 +22,8 @@ RECORD_ETAG = "Record-ETag"  # the access record's version, on the root read (PD
 ALLOWED_ACTIONS = "Allowed-Actions"  # what the caller may do, on the reads (PD-10)
 LOCATION = "Location"
 LINK = "Link"
+LAST_EVENT_ID = "Last-Event-ID"  # where a follower of the events resumes (aggregate-events PD-12)
+EVENT_STREAM = "text/event-stream"
 VARY = "Vary"
 ANY = "*/*"
 # How exactly a range names a media type: the most exact range that matches decides its quality.

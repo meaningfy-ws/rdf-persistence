@@ -119,9 +119,10 @@ broker port, this EPIC; `install_service(event_bus=)`).
   `InMemoryBroker` (two "deployments" in one test), redelivers an unacked message (its `receive`
   raised) when that bus is started again, and can be told to fail the next `publish`.
 - **PD-7 The context link (Q6).** New optional settings slot `public_url` (uri, pattern
-  `^https?://.+[^/]$`). `EventEnvelope.context` is `{public_url}/context.jsonld`, else the relative
-  `/context.jsonld` (`context_link(settings)`). The SSE response carries the same link in a `Link`
-  header with `rel="http://www.w3.org/ns/json-ld#context"` (the existing `CONTEXT_REL`).
+  `^https?://.+[^/]$`). `EventEnvelope.context` is `{public_url}{prefix}/context.jsonld`, else the relative
+  `{prefix}/context.jsonld` (`context_link(public_url, prefix)`, D-16). The SSE response carries
+  the service's own context link in a `Link` header with `rel="http://www.w3.org/ns/json-ld#context"`
+  (the existing `CONTEXT_REL`), as every other route does.
 - **PD-8 The Redis adapter (DEC-6, Q7).** `adapters/redis_events.py` `RedisEventBus(url, *,
   deployment, stream="rp-events", retention=timedelta(days=7))` on FastStream's `RedisBroker`:
   publishes to one stream, trimmed to `retention` (the mechanism PD-4 proves); consumes with
@@ -152,7 +153,7 @@ broker port, this EPIC; `install_service(event_bus=)`).
      message is acked (RISK-9); `MessageLimitExceeded` is logged at ERROR and acked.
   Skipped messages are acked. Observers are idempotent by activity id (DEC-7); the toolkit does not
   de-duplicate.
-- **PD-11 Server-sent events (Q3, Q5).** `GET {prefix}/tenants/{tenant}/events`, media type
+- **PD-11 Server-sent events (Q3, Q5).** `GET {prefix}/tenants/{tenant}/rp-events`, media type
   `text/event-stream`, requires `read` on the tenant (`kit.require`; RISK-5). Each event: `id` = the
   activity IRI, `event` = the class's name, `data` = the filtered activity's JSON. Filtering is
   `visible_part(activity, may_read) -> Activity | None` (`services`), applied to live and resumed
@@ -161,7 +162,7 @@ broker port, this EPIC; `install_service(event_bus=)`).
   not sent. The caller's access is re-read (`load_caller_access`) before an event or a keep-alive is
   sent when the last read is older than `access_ttl` (default 1 s); a re-read that raises
   (`Forbidden`, `NotFound`) ends the stream. A keep-alive comment every `keep_alive` (default 15 s).
-  `access_ttl`, `keep_alive` and the clock are arguments of the route builder, defaulted by the kit.
+  The stream ends after `max_lifetime` (default 5 minutes; D-20). `access_ttl`, `keep_alive`, `max_lifetime` and the clock are arguments of the route builder, defaulted by the kit.
 - **PD-12 Resume (DEC-10, Q3).** With `Last-Event-ID` = an activity IRI, the route subscribes to the
   hub first (buffering), then reads from the provenance graph the activities whose `rp:relayedAt`
   is no earlier than the named one's and no earlier than `resume_window` (default 7 days) ago, the
@@ -374,3 +375,61 @@ pages name only Fuseki, Garage and Zitadel) goes to task 3.3; S6 (Roadmap boxes)
   failure is the adapter's own `RuntimeError`, not one from FastStream or Redis. Accepted for this
   PR: the relay treats every exception of `publish` alike (TC-14 on the fake proves the handling);
   the full review at the end of the epic weighs a broker-down hook again.
+- **D-10 (stage 3, 2026-11-16, the lead).** `reset` is sent as `event: reset` with an empty
+  `data:` line: an `EventSource`-style client dispatches no event without data (PD-12 said "no
+  data").
+- **D-11 (stage 3, the lead).** The route uses the router's gate dependencies (`gate.caller`,
+  `gate.tenant(Action.READ)`), as the other tenant routes do, not `kit.require`; the access re-read
+  is `gate.check`, which applies the rules to the freshly loaded access record (a revoked grant is
+  noticed; `load_caller_access` alone would not raise).
+- **D-12 (stage 3, the lead).** FastAPI adds an `itemSchema` (OpenAPI 3.2) to an SSE response; the
+  served document is 3.1, so `install_openapi` strips it and the route is documented with a plain
+  `text/event-stream` schema. A workaround of an external library in one place (epic-delivery).
+- **D-13 (stage 3, the lead; cold read).** The route takes the bearer token in the
+  `Authorization` header only. The browser's built-in `EventSource` cannot send headers: a browser
+  uses a fetch-based SSE client. No token in the query string: it would reach access logs.
+
+### End-of-epic review (P-0005: L1, L2, L3, L4+L5), decided by the lead
+
+The branch-base finding (L2 C1, L3 C1) is resolved by rebasing stage 3 on PR #124. Critical,
+each fixed in one fix pass:
+
+- **D-14 (L2 C2).** `EventHub._close` dropped the oldest queued activity to make room for
+  `CLOSED`, so a resumed reader never got it. The queue is emptied before `CLOSED`: the reader's
+  last id precedes every activity it did not get, and its resume sends them all.
+- **D-15 (L3 W2, L2 S-e; re-labelled Critical).** The route segment `events` shadowed a consumer
+  aggregate with `rp_path: events` (same lesson as D-4). The route is `/{tenant}/rp-events`,
+  under the toolkit's reserved prefix; changing it after release would break clients.
+- **D-16 (L2 W-a, L3 W3; re-labelled Critical).** The envelope's context link ignored the mount
+  prefix, so every published message linked to a 404 under a prefix. The envelope carries
+  `{public_url}{prefix}/context.jsonld` (relative `{prefix}/context.jsonld` without `public_url`),
+  computed once in the kit; the SSE `Link` stays the service's own context link, as on every
+  other route (PD-7 corrected: the two agree on the path; the envelope's host is `public_url`).
+- **D-17 (L4 W2; S1 of stage 1+2 raised).** A failed trim made `publish` raise after the entry was
+  sent, so the relay re-sent it forever and its database stalled. The trim is best effort
+  (logged at WARNING, never raised) and approximate.
+- **D-18 (L4 W8).** A publish that hangs (no socket timeout) froze the relay and every stream. The
+  relay bounds each publish (`publish_timeout`, default 10 s); a timeout is a failed publish.
+- **D-19 (L4 W3).** An incoming envelope naming a class that is not an activity, or a tenant that
+  is not a valid IRI, raised outside the skip list and was redelivered forever. Class lookup
+  accepts only `Activity` and its descendants (`LookupError` otherwise), and a `SparqlError` or
+  `ValueError` from the envelope's tenant is a skip (WARNING, acked).
+- **D-20 (L1 W1, L4 W7; re-labelled Critical, security).** A stream outlived its token: expiry and
+  a revocation at the identity provider were never seen. A stream ends after `max_lifetime`
+  (default 5 minutes); the client reconnects with a fresh token and `Last-Event-ID`, so it misses
+  nothing. The how-to says so.
+- **D-21 (L1 W2, L4 W4; validation at a trust boundary).** A `Last-Event-ID` that is not an
+  activity id (`urn:uuid:`) raised inside the stream after the 200, so the client reconnected in a
+  loop and each request logged an error. Such an id is treated as unknown: one `reset`.
+
+Rejected under the floor (each listed once): L4 W1 (a broker outage re-decodes the backlog every
+round; no backoff), L4 W5 / L1 S1 (a resume is not paged), L4 W6 (no cap on open streams), L2 W-b
+(no test fails without `relay.wake()`), L2 W-c (no test of D-10's empty data line), L2 W-d / D-9
+(the Redis failing hook), L2 W-f (no test of the claim within one run), L3 W1 (`receive` in
+`entrypoints`), L3 W4 (the six new services modules are not in the bus-isolation contract), L3 S1
+and L4 S6 (timing knobs not exposed), L3 S2 / L2 S-b / L4 S1 (plumbing IRIs by `removesuffix`), L3
+S3 and L4 S4 (outbox queries in `Session`), L3 S4 / L2 S-c (invalid envelope not in the matrix), L3
+S5 (`integration/adapters/`), L2 S-a (no traceback for a poison record), L2 S-d (tests read
+private state), L2 S-f (the browser sample stops on a normal close), L2 S-g (a durations count),
+L1 S2 / L4 S11 (validation errors logged with input values), L1 S3 (Redis examples without TLS),
+L4 S2, S3, S5, S7 to S10, S12, S13. They go to a follow-up issue.

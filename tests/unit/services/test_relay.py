@@ -261,6 +261,31 @@ async def test_tc14_a_failed_publish_stops_that_database_only_and_order_is_kept(
     assert classes(world, world.tenant) == [str(v.ADD), str(v.REPLACE), str(v.REMOVE)]
 
 
+class HangingBus(InMemoryEventBus):
+    """A bus whose publish for ``tenant`` never returns."""
+
+    def __init__(self, broker: InMemoryBroker, tenant: str) -> None:
+        super().__init__(broker)
+        self._tenant = tenant
+
+    async def publish(self, envelope, body) -> None:
+        if envelope.tenant == self._tenant:
+            await asyncio.Event().wait()
+        await super().publish(envelope, body)
+
+
+async def test_d18_a_publish_that_hangs_times_out_and_stops_that_database_only(world, caplog):
+    await add_one(world, world.tenant)
+    await add_one(world, world.second)
+    relay = world.relay(HangingBus(world.broker, world.tenant), publish_timeout=0.05)
+    with caplog.at_level(logging.WARNING, logger=LOGGER):
+        await asyncio.wait_for(relay.run_once(), 5)
+    assert classes(world, world.tenant) == [], "nothing went out, nothing marked"
+    assert classes(world, world.second) == [str(v.ADD)], "the other tenant went on"
+    assert len(await pending(world, world.tenant)) == 1, "retried next round"
+    assert [r.levelno for r in caplog.records] == [logging.WARNING]
+
+
 async def _deleting(world):
     access, version = await world.tenancy.get(world.tenant)
     await world.tenancy.delete(world.tenant, version)

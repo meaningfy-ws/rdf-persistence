@@ -54,6 +54,7 @@ from rdf_persistence.entrypoints.responses import (
     model_response,
     page_response,
 )
+from rdf_persistence.entrypoints.sse import add_events_route
 from rdf_persistence.services.artifacts import CONTEXT_FILE, CONTEXT_KEY
 from rdf_persistence.services.listing import items_of, list_request, total_of
 from rdf_persistence.services.schema_structure import is_service_written
@@ -411,6 +412,7 @@ def build_router(kit: ServiceKit) -> APIRouter:
     gate = kit.gate
     add_context_route(router, kit)
     add_tenant_routes(router, kit, gate)
+    add_events_route(router, kit)  # before the aggregates: a path named ``events`` is this route's
     for rp_path, cls in kit.documents.aggregates.items():
         add_aggregate_routes(router, kit, gate, rp_path, cls)
     return router

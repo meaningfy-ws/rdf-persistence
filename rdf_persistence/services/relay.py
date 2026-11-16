@@ -87,6 +87,7 @@ class Relay:
         deployment: str,
         context: str,
         interval: float = 5.0,
+        publish_timeout: float = 10.0,
     ) -> None:
         self._tenancy = tenancy
         self._view = view
@@ -97,6 +98,7 @@ class Relay:
         self._deployment = deployment
         self._context = context
         self._interval = interval
+        self._publish_timeout = publish_timeout
         self._wake = asyncio.Event()
         self._lock = asyncio.Lock()
 
@@ -184,7 +186,10 @@ class Relay:
             context=self._context,
         )
         try:
-            await self._bus.publish(envelope, activity)
+            async with asyncio.timeout(
+                self._publish_timeout
+            ):  # a hung broker must not freeze the relay (D-18)
+                await self._bus.publish(envelope, activity)
         except Exception:
             log.warning("publishing %s failed; retried next round", activity.id, exc_info=True)
             return False

@@ -1,5 +1,6 @@
 """The Redis event bus: the conformance suite (TC-22), the trim (TC-23) and the claim (TC-08)."""
 
+import logging
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -45,6 +46,8 @@ async def test_an_entry_older_than_the_retention_is_trimmed_on_the_next_publish(
     inbox = Inbox()
     await pair.a.start(inbox)
     async with Redis.from_url(redis) as client:
+        # the trim is approximate (D-17): it drops whole nodes, so one entry per node makes it exact here
+        await client.config_set("stream-node-max-entries", 1)
         await pair.a.publish(ENVELOPE, BODY)
         [(first_id, _)] = await client.xrange(pair.stream)
         first_ms = int(first_id.decode().split("-")[0])
@@ -59,3 +62,20 @@ async def test_an_entry_older_than_the_retention_is_trimmed_on_the_next_publish(
     await pair.a.close()
     assert first_id not in ids
     assert len(ids) == 1
+
+
+async def test_a_trim_that_fails_does_not_fail_the_publish(redis, monkeypatch, caplog):  # D-17
+    pair = RedisPair(redis)
+    await pair.a.start(Inbox())
+    client = pair.a._broker.config.broker_config.connection.client
+
+    async def refused(*args, **kwargs):
+        raise ConnectionError("the trim was refused")
+
+    monkeypatch.setattr(type(client), "xtrim", refused)
+    with caplog.at_level(logging.WARNING, logger="rdf_persistence.adapters.redis_events"):
+        await pair.a.publish(ENVELOPE, BODY)  # the entry is sent; only the trim fails
+    async with Redis.from_url(redis) as reader:
+        assert len(await reader.xrange(pair.stream)) == 1
+    await pair.a.close()
+    assert [r.levelno for r in caplog.records] == [logging.WARNING]

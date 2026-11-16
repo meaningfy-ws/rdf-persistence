@@ -14,7 +14,7 @@ import logging
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Sequence
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Protocol, cast
 
@@ -228,6 +228,21 @@ READ_PENDING = """
 SELECT DISTINCT ?activity ?since ?s ?p ?o WHERE {
   GRAPH $provenance {
     ?activity $pending_since ?since .
+    { ?activity ?p ?o . BIND (?activity AS ?s) }
+    UNION { VALUES ?link { $generation $invalidation } ?activity ?link ?s . ?s ?p ?o }
+    FILTER (?p NOT IN ($plumbing))
+  }
+}
+"""
+# When the activity $id was relayed.
+READ_RELAYED_AT = "SELECT ?at WHERE { GRAPH $provenance { $id $relayed_at ?at } }"
+# Every activity relayed at or after $since (a mark that is no timestamp does not compare, so it drops
+# out), except $id: its own statements, its parts' and the mark's value, as READ_PENDING (PD-12).
+READ_RELAYED = """
+SELECT DISTINCT ?activity ?at ?s ?p ?o WHERE {
+  GRAPH $provenance {
+    ?activity $relayed_at ?at .
+    FILTER (?at >= $since && ?activity != $id)
     { ?activity ?p ?o . BIND (?activity AS ?s) }
     UNION { VALUES ?link { $generation $invalidation } ?activity ?link ?s . ?s ?p ?o }
     FILTER (?p NOT IN ($plumbing))
@@ -880,6 +895,52 @@ class Session:
                 graphs.setdefault(str(row.activity), Graph()).add((row.s, row.p, row.o))
                 since[str(row.activity)] = Literal(row.since).toPython()
         return [(iri, graphs[iri]) for iri in sorted(graphs, key=lambda i: _mark_key(since[i], i))]
+
+    async def relayed_since(
+        self, iri: str, window: timedelta, now: datetime
+    ) -> list[tuple[str, Graph]] | None:
+        """The activities relayed no earlier than the activity ``iri`` and no earlier than ``now - window``,
+        ``iri`` itself left out, each with its own statements and those of its parts (the relay plumbing
+        left out), by ``relayedAt`` and then by IRI; ``None`` when ``iri`` is unknown, was never relayed
+        (or its mark is no timestamp), or was relayed before the window. No access is checked.
+
+        Raises:
+            DatabaseGone: The tenant database does not exist.
+        """
+        named = URIRef(iri)
+        marks = [
+            Literal(row.at).toPython()
+            for row in await self._store.query(
+                self._database,
+                fill(
+                    READ_RELAYED_AT,
+                    provenance=term(self._provenance),
+                    id=term(named),
+                    relayed_at=term(v.RELAYED_AT),
+                ),
+            )
+            if isinstance(row, ResultRow)
+        ]
+        at = marks[0] if marks else None
+        if not isinstance(at, datetime) or at.tzinfo is None or at < now - window:
+            return None
+        text = fill(
+            READ_RELAYED,
+            provenance=term(self._provenance),
+            id=term(named),
+            relayed_at=term(v.RELAYED_AT),
+            since=term(Literal(at)),
+            generation=term(v.HAS_GENERATION),
+            invalidation=term(v.HAS_INVALIDATION),
+            plumbing=term_list(v.RELAY_PLUMBING),
+        )
+        graphs: dict[str, Graph] = {}
+        relayed: dict[str, object] = {}
+        for row in await self._store.query(self._database, text):
+            if isinstance(row, ResultRow):
+                graphs.setdefault(str(row.activity), Graph()).add((row.s, row.p, row.o))
+                relayed[str(row.activity)] = Literal(row.at).toPython()
+        return [(i, graphs[i]) for i in sorted(graphs, key=lambda i: _mark_key(relayed[i], i))]
 
     async def mark_relayed(self, iri: str) -> None:
         """Replace the pending mark of the activity ``iri`` by ``rp:relayedAt`` at the store's
