@@ -95,7 +95,11 @@ PD-3 depends on; PD-6 re-times after PD-1).
   `shelf` fixtures (`loop_scope="class"`). Class decorators, not a module `pytestmark` (pytest.ini
   forbids per-file `pytestmark`). The 5 writers stay. The class's last test asserts the shared
   store still holds the five books and one tenant.
-- **PD-4 (P-4)**: The `books` fixtures of `tests/unit/services/test_collaboration_discussion.py`,
+- **PD-4 (P-4) — not landed (lead, 2026-11-16, measured):** built and green in task 1.7, but
+  the summed set-up was unchanged within noise (11.35 → 11.36 s, 1.66 → 1.63 s, 0.91 → 0.91 s):
+  the per-test `add_graph` writes PD-4 keeps are nearly all of it. The change added a fixture and
+  a cross-module re-binding for no saving, so it was discarded. Original decision kept below for
+  the record. The `books` fixtures of `tests/unit/services/test_collaboration_discussion.py`,
   `test_collaboration_discussion_adversarial.py` and `test_collaboration_workflow.py` (lead,
   during 1.7: `test_collaboration_collections_adversarial.py` has no `books` fixture and is out
   of scope) build the books' triples in a module-scoped

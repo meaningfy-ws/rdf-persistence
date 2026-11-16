@@ -12,7 +12,7 @@ infrastructure). The lead runs `make check-all` and `make test-containers` once 
 - [x] 1.4 PD-1: `bootstrapped_template`. Gate: TG, then the file twice and reversed.
 - [ ] 1.5 PD-2: `ServiceKit` / `install_service` accept a `SchemaView`, test first; `toy_view()`. Gate: TF. Then the adversarial tester on 1.5 (PD-14).
 - [ ] 1.6 PD-3 (skipped if 1.3 chose `worksteal`): `TestReadOnlyListing`. Gate: TG, then the file twice and reversed.
-- [ ] 1.7 PD-4: module-scoped book triples in the four named files. Gate: TG, then each file reversed.
+- [x] 1.7 PD-4: module-scoped book triples in the four named files. Gate: TG, then each file reversed. (Built, measured: no saving; not landed, see PD-4.)
 - [ ] 1.8 PD-5: testkit `shared_key()` with the rp-testkit scenario test; `signer` fixtures. Gate: TF.
 - [ ] 1.9 PD-8: `poll_seconds` with the rp-testkit scenario test; in-process callers pass 0.01. Gate: TF.
 - [ ] 1.10 PD-6: re-time and change the slow markers; update `tests/audit/slow-markers.md`. Gate: TG.
