@@ -233,9 +233,19 @@ reads what it needs with `get_graph`. It also runs for commits the generic HTTP 
 xref:howto/event-driven.adoc#write-observer[Write an observer].
 
 *Is an observer guaranteed to run?*::
-No. Delivery is at most once and in process: if the process stops after the commit, the observer
-never runs, and nothing retries. The commit and its activity record are safe. Durable delivery is
-the later change `aggregate-events`. See xref:howto/event-driven.adoc#limits[the limits].
+Not in the process that committed: delivery there is at most once, and if the process stops after
+the commit, the observer never runs. The commit and its activity record are safe. Observers in
+another deployment get at least once through the relay. See
+xref:howto/event-driven.adoc#limits[the limits] and
+xref:howto/event-driven.adoc#relay[the relay].
+
+*How do other deployments, or a browser, follow my commits?*::
+Install `rdf-persistence[events]` (Redis 8.4 or later), set `settings.deployment` (unique on the
+broker) and pass `event_bus=RedisEventBus(url, deployment=...)` to `install_service`; the relay then
+publishes every commit and the other deployments' observers receive it, at least once. A browser
+reads `GET /tenants/{tenant}/events` as server-sent events, resumable with `Last-Event-ID` for
+7 days, and needs tenant `read`. See xref:howto/event-driven.adoc#relay[Carry commits to other
+deployments and to browsers].
 
 == Developing the toolkit
 

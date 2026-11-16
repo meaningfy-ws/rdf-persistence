@@ -1693,7 +1693,8 @@ lifespan, so the test enters it itself; without it the system database does not 
 Before you rely on an adapter of your own, run the testkit's conformance suites against it:
 `store_conformance`, `file_store_conformance` and `identity_conformance` under
 `rdf_persistence.testkit`. Each has `CASES` and a `run_case` to run one of them on your adapter.
-The toolkit runs the same suites on its fakes and on Fuseki, Garage and Zitadel in containers.
+The toolkit runs the same suites on its fakes and on Fuseki, Garage, Zitadel and Redis in
+containers; the fourth suite, `event_bus_conformance`, is for an event bus and runs on Redis.
 
 [#iri-policy]
 == 14. Configure the IRI policy

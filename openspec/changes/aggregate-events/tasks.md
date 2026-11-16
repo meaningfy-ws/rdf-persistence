@@ -167,7 +167,7 @@ unused; letters mark cases added by the PLAN's attack).
 | TC-40 | a follower of T2 when T commits; a commit on the application database | gets nothing |
 
 - [x] 3.2 Feature: "a hidden aggregate" and "resuming a stream" in `tests/feature/events.feature`.
-- [ ] 3.3 Docs. `howto/event-driven.adoc`: the relay, the `events` extra,
+- [x] 3.3 Docs. `howto/event-driven.adoc`: the relay, the `events` extra,
   `install_service(event_bus=RedisEventBus(...))`, `deployment` (required, unique per broker) and
   `public_url`, incoming messages, idempotency by id, the two guarantees (RISK-9), loops (RISK-8),
   the SSE route and `Last-Event-ID`, a reader needs tenant `read` (RISK-5), single instance
