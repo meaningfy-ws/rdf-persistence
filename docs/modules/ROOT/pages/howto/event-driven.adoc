@@ -122,9 +122,11 @@ slots:
   activity's `used_resource` is for. A slot may range over a toolkit activity class (`Activity`,
   `Transition`).
 
-== Wire the bus
+== Wire the message bus
 
-`bootstrap` builds the bus from your handlers and observers, each registered under a class, and
+The *message bus* is `kit.bus`, the in-process one of this page: it runs handlers and observers. (The
+*event bus* of <<relay>> is another thing: the adapter that carries commits through a broker to other
+deployments.) `bootstrap` builds the message bus from your handlers and observers, each registered under a class, and
 from the dependencies they need:
 
 [source,python]
@@ -337,35 +339,54 @@ when the thing to check is that it was called, and with what.
 [#relay]
 == Carry commits to other deployments and to browsers
 
-The bus above reaches observers in the process that committed. The *relay* reaches the rest: other
-deployments of the toolkit over a broker, and browsers over server-sent events. Both are built on
-the activity record, so what they carry is the same thin activity an observer receives
+The message bus above reaches observers in the process that committed. The *relay* reaches the
+rest: other deployments of the toolkit through a broker, and browsers over server-sent events. Both
+are built on the activity record, so what they carry is the same thin activity an observer receives
 (references, never content).
+
+Terms used below:
+
+* *Event bus*: the toolkit's port to a broker (`EventBus`); `RedisEventBus` is its Redis
+  implementation. Not to be confused with the message bus, `kit.bus`.
+* *Pending mark*: a statement written on an activity record in the same update that stores the
+  record, with the store's own clock. It says "not yet relayed"; the relay replaces it by a
+  "relayed" time.
+* *Application database*: the database for data that belongs to no tenant (see
+  xref:howto/adopt.adoc[Build an application]). It has a relay mark too, but no browser follows it.
+* *Consumer group*: a Redis Streams name under which a reader shares the position in the stream.
+  Each deployment reads the stream as one group, so it gets every entry once and the entries of
+  one deployment are not split across others.
+* *Toolkit principal*: the toolkit's own identity (not a person), used for work that no person's
+  request started, such as handing a received message to the observers.
 
 === How the relay works
 
-* The commit that records an activity also writes a *pending mark* on it, in the same update, with
-  the store's own clock. The relay is one task the service starts after its migrations. It visits
-  the application database and every active tenant, reads the marked activities in order, publishes
-  each to the event bus, replaces the mark by a "relayed" time, and offers the activity to the
-  server-sent-events hub. A round runs every 5 seconds and right after each commit.
+* The commit that records an activity also writes a pending mark on it. The relay is one task the
+  service starts after its migrations. It visits the application database and every active tenant,
+  reads the marked activities in order, publishes each to the event bus, replaces the mark by a
+  "relayed" time, and offers the activity to the server-sent-events hub of <<sse>>.
+* *When a round runs.* A commit made in this process wakes the relay at once. Otherwise a round
+  runs every 5 seconds: that is the `interval` argument of the relay's constructor, and
+  `install_service` does not expose it. So a commit made in another process waits up to 5 seconds
+  to be relayed.
 * *At least once.* A mark is replaced only after the publish succeeded, so a crash between the two
   publishes the activity again at the next start. A failed publish stops that database for the
   round and is retried in the next, so no later activity of the database overtakes it.
-* *Order per aggregate*, not across aggregates: the activities of one database leave in the order
-  the store applied them, and two changes to one aggregate keep their order. Nothing is promised
-  between two aggregates.
+* *Order.* The relay keeps one order, stated here once: *per aggregate*, the activities leave in
+  the order the store applied the commits. Nothing is promised across aggregates, and a store clock
+  stepped back can misorder one pair of changes.
 * *Crash safety.* The mark is in the store with the record, so a commit is never lost to the relay:
   a process that stops after the commit is caught up by the next one. Only records marked by this
   version are relayed; history from before is not published.
 * A record that cannot be decoded is marked as failed and logged at ERROR; the relay goes on with
   the next one.
 * With no event bus the relay still runs: it feeds the server-sent events of <<sse>>.
+* *One instance.* The relay assumes it is the only one for the stores. See <<relay-limits>>.
 
-=== Install the extra and wire the bus
+=== Install the extra and wire the event bus
 
-The Redis bus needs the extra `rdf-persistence[events]` (FastStream, pinned) and *Redis 8.4 or
-later*: redelivery uses a command older servers lack, and the consumer stops at start-up with
+The Redis event bus needs the extra `rdf-persistence[events]` (FastStream, pinned) and *Redis 8.4
+or later*: redelivery uses a command older servers lack, and the consumer stops at start-up with
 `StreamClaimUnsupportedError` on one. A consumer without the extra imports the toolkit unchanged;
 only `rdf_persistence.adapters.redis_events` needs it.
 
@@ -387,9 +408,14 @@ kit = install_service(
 ----
 
 * *`deployment` is required with an event bus* (`install_service` raises `ValueError` without it)
-  and *must be unique on a broker*. It is the origin of every message this deployment publishes and
-  the name of its consumer group, so two deployments that share a name would each miss the other's
-  messages. Use the same value in `RedisEventBus(deployment=...)`.
+  and *must be unique on a broker*. It is passed twice, and the two must be equal. In
+  `RedisEventBus(deployment=...)` it names the deployment's consumer group; in the settings it is
+  the origin written on each message this deployment publishes, which `receive` compares to skip
+  its own messages. Nothing in the code checks that they are equal. A mismatch does not break the
+  skipping of own messages (both sides of that comparison come from the settings), but the
+  consumer group would then carry a different name from the origin: a group named like another
+  deployment's makes the two split the stream between them, and each misses what the other took.
+  Pass `settings.deployment` to both, as above, and keep the name unique on the broker.
 * `public_url` is the address of the deployment seen from outside, without a trailing slash. A
   message carries a link to the JSON-LD context at `{public_url}/context.jsonld`; with no
   `public_url` the link is relative (`/context.jsonld`), which a consumer on another host cannot
@@ -407,82 +433,248 @@ kit = install_service(
 === Receive what other deployments committed
 
 A message from another deployment reaches `kit.bus` as if it were a commit here: the observers
-registered for its class run, in a session of the *toolkit principal* on that tenant, a principal of
-the toolkit and not the person who made the change (the activity names the person). So the usual
-caution of <<write-observer>> applies with the whole reach of that session.
+registered for its class run, in a session of the toolkit principal on that tenant. That principal
+is the toolkit's own identity, not the person who made the change (the activity's
+`was_associated_with` names the person). So the usual caution of <<write-observer>> applies with the
+whole reach of that session. Because no collaboration is open for such a message,
+`work.collaboration` is `None` and `work.send` raises `RuntimeError` (logged as that observer's
+error): an observer of a received message cannot send a command.
+
+==== Two deployments, end to end
+
+The sender `library` commits; the receiver `catalogue` reacts. Both run `install_service` with an
+event bus on the same Redis.
+
+[source,python]
+----
+# --- deployment "library" (the sender) ---
+sender_settings = ServiceSettings(
+    # ... the settings of step 12
+    deployment="library",
+    public_url="https://library.example.org",
+)
+install_service(
+    app,
+    # ... the other keyword arguments of step 12
+    prefix="/api",
+    settings=sender_settings,
+    event_bus=RedisEventBus("redis://redis:6379", deployment=sender_settings.deployment),
+)
+
+# --- deployment "catalogue" (the receiver) ---
+async def reindex(activity: Activity, work: Work) -> None:
+    # work.collaboration is None here, and work.send would raise RuntimeError
+    for generation in activity.generations or []:
+        graph, _, version = await work.session.get_graph(generation.entity)
+        ...    # update the catalogue's own index
+
+receiver_settings = ServiceSettings(
+    # ... the settings of step 12, with the same tenant IRIs as the sender
+    deployment="catalogue",
+)
+kit = install_service(
+    app,
+    # ... the other keyword arguments of step 12
+    settings=receiver_settings,
+    event_bus=RedisEventBus("redis://redis:6379", deployment=receiver_settings.deployment),
+)
+kit.bus = bootstrap(mapper=kit.mapper, observers={ApproveBook: [reindex]})
+----
+
+What the two must share:
+
+* *The Redis URL and the `stream`* (the default `rp-events` on both, or the same value of `stream=`).
+* *The tenant IRIs.* A message names its tenant by IRI. The receiver skips a message for a tenant it
+  has not got, so both deployments must mint the same IRI for the same tenant (the same IRI policy
+  and tenant ids).
+* *The class.* The receiver's schema must know the sender's activity class (`ApproveBook` here, from
+  the same generated models). A toolkit class (`Add`, `Replace`, `Remove`, `Transition`) is always
+  known; one the receiver lacks is skipped with a WARNING.
+* *Different `deployment` names*, as above.
+
+Each message also names the JSON-LD context that reads it, at the sender's `public_url`.
 
 * A message whose origin is this deployment is skipped: its observers saw it at commit.
 * A message the deployment cannot use is logged at WARNING and skipped, and the broker is told it
   is handled: an unknown class, a body that does not fit the class, a tenant this deployment does
-  not have, or an application database with no application class.
+  not have, or an application database with no application class. A message over the message bus's
+  limit is logged at ERROR and skipped.
 * *Which errors redeliver.* A tenant that is behind (its migration failed at start-up) and a store
   that does not answer are raised, so the message is not acknowledged and comes again after
   `claim_idle`, or at the next start. An error an *observer* raises is logged and acknowledged, as
-  on the in-process bus.
+  on the message bus.
 * With no `kit.bus`, messages are skipped.
 
 *Make observers idempotent by activity id.* At least once means a message may arrive twice (a crash
 after the observer ran, before the acknowledgement). The toolkit does not de-duplicate; keep the
 `id` of the activities you handled, or make the effect repeatable.
 
-=== The two guarantees
+=== The guarantees, and every case that loses or repeats a delivery
+
+Two guarantees, then the cases. *Ordering*, stated once: per aggregate, in the order the store
+applied the commits; nothing is promised across aggregates.
 
 [cols="2,2,3"]
 |===
-|Observer |Guarantee |A delivery is lost when
+|Observer |Guarantee |Lost or repeated when
 
 |In the process that committed (<<limits>>)
 |At most once
-|the process stops before the observers run, the commit was overtaken (the false conflict) or the observer raised
+|Lost: the process stops before the observers run, the commit was overtaken (the false conflict), or the observer raised.
 
 |In another deployment, through the broker
 |At least once
-|never by a crash or a failure of the store; the observer's own error is logged and the message is acknowledged
+|Repeated: a crash after the observer ran and before the acknowledgement, or after the publish and before the mark is replaced. Lost: see the cases below.
+|===
+
+[cols="2,1,3"]
+|===
+|Case |Result |What happens and what to do
+
+|An observer raises
+|Lost
+|Logged with the observer's name and acknowledged. Not retried, on the message bus and in a receiving deployment. Make the observer catch what it can recover from.
+
+|A received message is unusable (unknown class, a body that does not fit, a tenant this deployment lacks)
+|Lost
+|Logged at WARNING, skipped and acknowledged. After you fix the schema or the tenant, the skipped activities are not replayed.
+
+|A receiver is down for longer than the stream's `retention` (7 days)
+|Lost
+|The broker trims entries older than that after each publish. A receiver that comes back later misses them, and nothing republishes them. Keep the outage shorter, or read the provenance graph.
+
+|Records from before this version
+|Lost
+|They have no pending mark, so the relay never publishes them and no browser can resume to them.
+
+|The process stops between the commit and the observers
+|Lost in process, kept for others
+|The in-process observers never run. The pending mark is in the store, so the next start relays the activity to the broker and the browsers, and other deployments get it.
+
+|A server-sent events reader gets an id again
+|Repeated
+|Within one connection the route sends an activity read from history once, not again from the live buffer. But a reconnect that resumes before it, or a relay re-offer after a crash, can repeat an id. The client drops ids it has seen.
+
+|A slow server-sent events reader
+|Lost, then resumed
+|The connection is closed when 1000 events are queued for it; it reconnects with `Last-Event-ID` and gets what it missed (inside the window).
+
+|Several instances of one deployment
+|Repeated and missed
+|Each instance runs a relay, so each publishes every activity: the broker carries it twice (RISK-4). A browser sees only the activities relayed by the instance it is connected to. Run one instance: see <<relay-limits>>.
 |===
 
 A change that applied but returned the false `Conflict` is relayed anyway (the change happened),
 though the in-process observers did not see it. If you need at-least-once for your own commits,
-observe them through another deployment, or read the provenance graph.
+observe them through another deployment (a second deployment on the same broker that receives what
+the first one commits), or read the provenance graph.
 
-*Loops across deployments.* An observer in deployment `cat` that commits on a message from `lib`
-makes a message `lib` may react to, and the bus's message limit counts inside one process only.
-Make an observer react only to the kinds of activity it does not itself produce.
+*Loops across deployments.* An observer in deployment `catalogue` that commits on a message from
+`library` makes a message `library` may react to, and the message bus's limit counts inside one
+process only. Make an observer react only to the kinds of activity it does not itself produce.
 
 [#sse]
 === Follow a tenant in the browser
 
-The route `GET {prefix}/tenants/{tenant}/events` (the segment is `settings.tenant_segment`) answers
-`text/event-stream`. It needs no broker and no extra.
+The route `GET {prefix}/tenants/{tenant}/events` answers `text/event-stream`. `{prefix}` is the
+`prefix` argument of `install_service` (empty by default), and `tenants` is
+`settings.tenant_segment`. The route needs no broker and no extra: the relay feeds it.
 
 [source,bash]
 ----
+# the sender above mounted its routes under prefix="/api"
 curl -N -H "Authorization: Bearer $TOKEN" \
      -H "Last-Event-ID: urn:uuid:3f2c0b6e-5a1d-4c7e-9b8a-1d2e3f4a5b6c" \
-     https://library.example.org/tenants/t1/events
+     https://library.example.org/api/tenants/t1/events
 ----
 
-* Each event has `id` (the activity's IRI), `event` (the activity class's name) and `data` (the
-  activity as JSON). A comment line is sent every 15 seconds so a proxy does not close the stream.
+One event, as the stream sends it (the `data` is on one line in the stream; it is wrapped here):
+
+[source]
+----
+id: urn:uuid:3f2c0b6e-5a1d-4c7e-9b8a-1d2e3f4a5b6c
+event: Replace
+data: {"id":"urn:uuid:3f2c0b6e-5a1d-4c7e-9b8a-1d2e3f4a5b6c",
+       "was_associated_with":["https://library.example.org/principals/ada"],
+       "started_at_time":"2026-11-16T09:30:00.120Z","ended_at_time":"2026-11-16T09:30:00.180Z",
+       "generations":[{"activity":"urn:uuid:3f2c0b6e-5a1d-4c7e-9b8a-1d2e3f4a5b6c",
+         "at_time":"2026-11-16T09:30:00.180Z","entity":"https://library.example.org/tenants/t1/books/emma",
+         "entity_version":"W/\"7\""}],
+       "invalidations":[{"activity":"urn:uuid:3f2c0b6e-5a1d-4c7e-9b8a-1d2e3f4a5b6c",
+         "at_time":"2026-11-16T09:30:00.180Z","entity":"https://library.example.org/tenants/t1/books/emma",
+         "entity_version":"W/\"6\""}]}
+----
+
+* *`id`* is the activity's IRI. *`event`* is the activity class's bare name (`Replace`,
+  `ApproveBook`). *`data`* is the activity's generated JSON (the model's `model_dump_json`), not
+  compacted JSON-LD: the field names are the model's (`was_associated_with`, `generations`). The
+  response's `Link` header names the JSON-LD context that reads it (the context of `settings.base`
+  plus the prefix). The IRIs and version tokens above are made up.
+* A comment line is sent every 15 seconds so a proxy does not close the stream.
 * *The reader needs tenant `read`.* A person with grants on single aggregates and no tenant `read`
   is refused; they cannot follow the tenant. Inside the stream, the activity is *filtered* to what
-  the reader may read: the aggregates they cannot read are removed from it, and an activity left
-  with nothing, or about a resource they cannot read, is not sent. Their access is re-read at most
-  once a second, and the stream ends when it is withdrawn.
+  the reader may read: the aggregates they cannot read are removed from it. An activity is not sent
+  when nothing is left of it, or when its `used_resource` (the resource a command names) is one
+  the reader cannot read. Their access is re-read at most once a second, and the stream ends when
+  it is withdrawn.
 * *Resume with `Last-Event-ID`.* Send the `id` of the last event you got and the route sends what
-  was relayed after it, then live events. The window is 7 days. An id the server does not know, one
-  from before the feature, or one older than the window gets one `event: reset` with no data: reload
-  what you show, then keep reading. A reader too slow to keep up is disconnected and resumes the
-  same way.
+  was relayed after it, then live events. The 7-day window is counted from the relay marks in the
+  store (when the activity was relayed), so it holds with no broker and does not depend on the
+  broker's `retention`. An id the server does not know, one from before this feature, or one older
+  than the window gets one `event: reset` with an empty `data:` line (an `EventSource`-style client
+  does dispatch it). The client reloads what it shows, then keeps reading.
+* *A slow reader* is closed when 1000 events are queued for it; it reconnects with `Last-Event-ID`.
+* *Repeated ids.* A client can get an id twice (a replay overlapping live events, or the relay
+  offering an activity again after a crash). It drops ids it has already handled.
 
+==== In the browser
+
+The route takes the bearer token in the `Authorization` header only. The built-in `EventSource`
+cannot send headers, so a browser uses a fetch-based client: `fetch` with a `ReadableStream`, or a
+small library that does that. There is deliberately no token in the query string, where it would
+leak into access logs.
+
+[source,typescript]
+----
+import { fetchEventSource } from "@microsoft/fetch-event-source";
+
+const url = "https://library.example.org/api/tenants/t1/events";
+const seen = new Set<string>();          // ids already handled
+let lastId: string | undefined;          // where to resume
+
+function follow(token: string, show: (activity: unknown) => void, reload: () => Promise<void>) {
+  return fetchEventSource(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(lastId ? { "Last-Event-ID": lastId } : {}),
+    },
+    async onmessage(event) {
+      if (event.event === "reset") {     // too old or unknown: reload, then keep reading
+        seen.clear();
+        await reload();
+        return;
+      }
+      if (!event.data || seen.has(event.id)) return;   // keep-alive, or a repeated id
+      seen.add(event.id);
+      lastId = event.id;
+      show(JSON.parse(event.data));      // the activity: event.event is its class name
+    },
+  });
+}
+----
+
+The library sends `Last-Event-ID` again on its own reconnects. The `lastId` above is for a new
+call after the page reloads; keep it where the page can read it back.
+
+[#relay-limits]
 === Limits of the relay
 
-* *One instance.* Run one instance of a deployment. Two relays would publish every activity twice,
-  and each browser would see only the activities its own instance relayed.
+* *One instance.* Run one instance of a deployment: one process running the service (one uvicorn
+  worker, one pod). Several workers or pods each run a relay, and each would publish every
+  activity (RISK-4); each browser would also see only the activities its own instance relayed.
 * *What a message reveals.* It names the IRIs of the aggregates, their versions, the principal, the
   time and the command's own slots that are not `payload`. Every deployment on the broker sees all
   of it, so the broker is inside your trust boundary. On server-sent events the filter removes the
   aggregates a reader may not see; an IRI that a slot names (a comment's) stays, as a reference.
 * *No history before the feature*, no replay of old records, and a restore never re-publishes the
   source's activities.
-* *No ordering across aggregates*, and a store clock stepped back can misorder one pair of
-  changes.
