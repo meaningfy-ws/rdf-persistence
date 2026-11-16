@@ -25,7 +25,7 @@ done, why, and how to undo it.
    counts (D-4). Undo: delete `test_the_plumbing_predicates_are_the_toolkit_namespace_ones` and
    `test_every_value_set_of_the_vocabulary_has_members` if you disagree.
 6. **P-31 landed for the container tier only** (9 tests, not the report's "~25"); its unit half is
-   under *Debt*. Undo: restore `[fake, garage]` with `git revert 64bb1c8`.
+   under *Debt*. Undo: restore `[fake, garage]` with `git revert 4ad11f3`.
 7. **Class 2 survivors chosen by mutation, not by "first N"** where they differed (D-3). Undo:
    none sensible; the dropped cases are in each commit's diff.
 

@@ -71,21 +71,21 @@ Delivered as one pull request (PR_NUMBER) with each stage as a commit group (des
 
 | Shape item | Final state | Where |
 |---|---|---|
-| Stage 1, P-1 (`bootstrapped` template) | delivered; `test_lock_step.py` alone 93 s → ~50 s | 193e798 |
+| Stage 1, P-1 (`bootstrapped` template) | delivered; `test_lock_step.py` alone 93 s → ~50 s | eb75194 |
 | Stage 1, P-2 (shared schema view) | built, measured no saving, **not landed** | design.md PD-2 |
-| Stage 1, P-3 (shared read-only listing) | delivered; 44 tests' set-up ~25-30 s → 1.35 s | 05cd3d0 |
+| Stage 1, P-3 (shared read-only listing) | delivered; 44 tests' set-up ~25-30 s → 1.35 s | 446c6a9 |
 | Stage 1, P-4 (shared book triples) | built, measured no saving, **not landed** | design.md PD-4 |
-| Stage 1, P-5 (`shared_key()`) | delivered; 6.05 s → 4.09 s on its two files | 75912ca |
-| Stage 1, P-6 (slow markers) | delivered, re-timed after the merges | task 1.10 |
-| Stage 1, P-7 (dist mode) | delivered: `loadgroup` | f9d9aee |
-| Stage 1, P-8 (`poll_seconds`) | delivered; 25.9 s → 20.2 s on five files | 4276740 |
-| Stage 1, libraries | pytest-timeout, quarantine marker, Hypothesis profile, `make mutation`, polyfactory dropped, **pytest-randomly adopted** | aa2d6f9, c0a8143 |
-| Stage 2, P-20 to P-34 | delivered: 639 cases merged, survivors chosen by mutation (D-3); P-31's unit half under Debt | 6be25ef, 1612496, 17c1834, d011341, 066f54b, 3c28f7d, 64bb1c8 |
-| Stage 3, P-40 to P-45, P-49 to P-51 | delivered: 10 tests dropped; two P-51 pins kept (D-4) | d6fe7c0, ffb4671 |
-| Stage 4, rules 1, 3, 5-7, 9, 10, 12-15, 17, 21 | delivered; rule-5 and rule-12 items with no fake or clock under Debt | 20ba2ed … f3aefd5 |
-| Stage 4, review fixes F-1 to F-8 | delivered | d89ba44 |
-| Stage 5, rule 11 | delivered: 1,301 asserts given a message; 0 left | b7d7c82, d069ad3, 9109048 |
-| Close | the after report and the full review | AFTER_COMMITS |
+| Stage 1, P-5 (`shared_key()`) | delivered; 6.05 s → 4.09 s on its two files | 3973823 |
+| Stage 1, P-6 (slow markers) | delivered, re-timed alone after the merges (17 added, 1 removed) | d4ab453 |
+| Stage 1, P-7 (dist mode) | delivered: `loadgroup` | da1876e |
+| Stage 1, P-8 (`poll_seconds`) | delivered; 25.9 s → 20.2 s on five files | 6cfe4ab |
+| Stage 1, libraries | pytest-timeout, quarantine marker, Hypothesis profile, `make mutation`, polyfactory dropped, **pytest-randomly adopted** | 0f0e1c6, 09570eb |
+| Stage 2, P-20 to P-34 | delivered: 639 cases merged, survivors chosen by mutation (D-3); P-31's unit half under Debt | 5195044, 32f8dab, 36eae7c, 36c0781, 6260687, 5123a37, 4ad11f3 |
+| Stage 3, P-40 to P-45, P-49 to P-51 | delivered: 10 tests dropped; two P-51 pins kept (D-4) | c8e58e7, 7c68159 |
+| Stage 4, rules 1, 3, 5-7, 9, 10, 12-15, 17, 21 | delivered; rule-5 and rule-12 items with no fake or clock under Debt | 88d5688, e990aa7, fddd20a, a281aad |
+| Stage 4, review fixes F-1 to F-8 | delivered | 1c96c27 |
+| Stage 5, rule 11 | delivered: 1,301 asserts given a message; 0 left | 8d80a72, 99b4497, 5d89fd3 |
+| Close | the full review's fixes (three restored guards, the rule-1 contract), the after report (6,790 cases, run A 72 s, `check-all` 2 min 28 s, identical mutation set) | 084db9f, 9057edf, 8aed6ed |
 
 **Differences from the shape, with the reason:**
 

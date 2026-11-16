@@ -363,7 +363,7 @@ Filled during stage 4 (rule 5 items without a fake).
 
 ## Docs owed
 
-All three were written in task 4.1 (f3aefd5); the perf lane's Docker need and the moved
+All three were written in task 4.1 (a281aad); the perf lane's Docker need and the moved
 dependents-cost path are fixed by the final-review fixer (task 6.2).
 
 - `howto/adopt.adoc` (the signing-key passage, near "cache `new_key()`"): point consumers at

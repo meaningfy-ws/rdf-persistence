@@ -53,12 +53,12 @@ The stages land as commit groups of one pull request (design.md D-1).
 
 ## 6. Close
 
-- [ ] 6.1 PD-15: the after-measurements and `tests/audit/report-<date>-after.md`.
-- [ ] 6.2 The full review (PD-14), its Critical findings fixed; proposal reconciled (P-0004); archive the change.
+- [x] 6.1 PD-15: the after-measurements and `tests/audit/report-<date>-after.md`.
+- [x] 6.2 The full review (PD-14), its Critical findings fixed; proposal reconciled (P-0004); archive the change.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6 · [x] 2.7 · [x] 2.8 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 4.1 · [x] 4.2 · [x] 4.3 · [x] 4.4 · [x] 4.5 · [x] 4.6 · [x] 4.7 · [x] 5.1 · [x] 5.2 · [x] 5.3 · [ ] 6.1 · [ ] 6.2
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6 · [x] 2.7 · [x] 2.8 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 4.1 · [x] 4.2 · [x] 4.3 · [x] 4.4 · [x] 4.5 · [x] 4.6 · [x] 4.7 · [x] 5.1 · [x] 5.2 · [x] 5.3 · [x] 6.1 · [x] 6.2
 
 ## Verification
 
