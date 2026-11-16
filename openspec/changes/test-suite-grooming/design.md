@@ -93,8 +93,9 @@ PD-3 depends on; PD-6 re-times after PD-1).
   forbids per-file `pytestmark`). The 5 writers stay. The class's last test asserts the shared
   store still holds the five books and one tenant.
 - **PD-4 (P-4)**: The `books` fixtures of `tests/unit/services/test_collaboration_discussion.py`,
-  `test_collaboration_discussion_adversarial.py`, `test_collaboration_workflow.py` and
-  `test_collaboration_collections_adversarial.py` build the books' triples in a module-scoped
+  `test_collaboration_discussion_adversarial.py` and `test_collaboration_workflow.py` (lead,
+  during 1.7: `test_collaboration_collections_adversarial.py` has no `books` fixture and is out
+  of scope) build the books' triples in a module-scoped
   fixture and keep the `add_graph` writes per test; a test that asserts on a part IRI minted by
   `dune()` reads it from the shared triples.
 - **PD-5 (P-5)**: `rdf_persistence.testkit` gains `shared_key()` (process-cached RSA key, moved
