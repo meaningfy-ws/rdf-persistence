@@ -67,7 +67,8 @@ some workers, and the testing checklist is broken in 14 of its rules.
 
 ## Reconciliation (as delivered)
 
-Delivered as one pull request (PR_NUMBER) with each stage as a commit group (design.md D-1).
+Delivered as one pull request (#132, merged 2026-11-17 on green local gates; CI ran on the merge
+commit) with each stage as a commit group (design.md D-1).
 
 | Shape item | Final state | Where |
 |---|---|---|
