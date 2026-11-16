@@ -1,5 +1,6 @@
 """What ``rp-generate`` does with the schema lock and the migration files (task 1.3b, PD-3, PD-4)."""
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,7 @@ from rdf_persistence.generation.lock_step import _write_draft
 from rdf_persistence.generation.manifest import MANIFEST_NAME
 from rdf_persistence.services.migrations import load_migration
 
-from .conftest import Breaker
+from .conftest import TOY, Breaker
 from .test_lock import (
     BOOK_SLOTS,
     DROP_SHELF,
@@ -88,10 +89,20 @@ def toy(toy_copy: Path, break_toy: Breaker, capsys: pytest.CaptureFixture[str]) 
     return Toy(toy_copy, break_toy, capsys)
 
 
+@pytest.fixture(scope="session")
+def bootstrapped_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """The toy generated once per session at version 1, with its lock written; never changed."""
+    folder = tmp_path_factory.mktemp("bootstrapped") / "library"
+    shutil.copytree(TOY, folder, ignore=shutil.ignore_patterns("__pycache__", "generated"))
+    (folder / "migrations" / LOCK_NAME).unlink(missing_ok=True)
+    assert main(["--project", str(folder / "pyproject.toml")]) == 0, "the toy must generate"
+    return folder
+
+
 @pytest.fixture
-def bootstrapped(toy: Toy) -> Toy:
-    """The toy generated once at version 1: its lock is written."""
-    assert toy.run()[0] == 0, "the toy must generate"
+def bootstrapped(toy: Toy, bootstrapped_template: Path) -> Toy:
+    """The toy generated once at version 1: its lock is written (a copy of the session template)."""
+    shutil.copytree(bootstrapped_template, toy.folder, dirs_exist_ok=True)
     return toy
 
 
