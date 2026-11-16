@@ -346,7 +346,8 @@ async def test_two_handles_in_two_tasks_each_have_their_own_count_and_work():  #
 def test_a_command_gets_a_fresh_urn_uuid_id():  # TC-72c
     one, other = command(Replace), command(Replace)
 
-    assert one.id.startswith("urn:uuid:") and other.id.startswith("urn:uuid:"), "ids are urn:uuid:"
+    assert one.id.startswith("urn:uuid:"), "ids are urn:uuid:"
+    assert other.id.startswith("urn:uuid:"), "ids are urn:uuid:"
     assert one.id != other.id, "ids are fresh"
 
 
@@ -469,7 +470,8 @@ async def test_unit_of_work_is_on_the_works_session_with_the_buss_mapper():
     unit = rec.calls[0][2].unit_of_work()
 
     assert isinstance(unit, UnitOfWork), "a UnitOfWork"
-    assert unit._session is session and unit._mapper is mapper, "on the work's session and mapper"
+    assert unit._session is session, "on the work's session and mapper"
+    assert unit._mapper is mapper, "on the work's session and mapper"
 
 
 async def test_every_served_of_a_handlers_work_is_the_one_built_once():

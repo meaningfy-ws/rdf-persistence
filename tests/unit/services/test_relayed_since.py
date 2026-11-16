@@ -104,7 +104,8 @@ async def test_the_window_edge_is_inside(store):
         a, b, _ = await three_ids(store, session)
         await relay_marks(store, {a: "2026-11-09T12:00:00Z", b: "2026-11-15T10:00:00Z"})
         found = await session.relayed_since(a, WEEK, NOW)
-    assert found is not None and [iri for iri, _ in found] == [b], "exactly seven days ago counts"
+    assert found is not None, "exactly seven days ago counts"
+    assert [iri for iri, _ in found] == [b], "exactly seven days ago counts"
 
 
 async def test_a_bad_mark_never_fails_the_read_and_sorts_after_every_valid_one(store):
@@ -116,7 +117,8 @@ async def test_a_bad_mark_never_fails_the_read_and_sorts_after_every_valid_one(s
         found = await session.relayed_since(a, WEEK, NOW)
     assert found is not None
     ids = [iri for iri, _ in found]  # a store may compare "later" with a time or drop it
-    assert ids[0] == c and set(ids) <= {b, c}, "the valid one first; the bad one, if any, last"
+    assert ids[0] == c, "the valid one first; the bad one, if any, last"
+    assert set(ids) <= {b, c}, "the valid one first; the bad one, if any, last"
 
 
 async def test_a_database_that_is_gone_raises_database_gone(store):

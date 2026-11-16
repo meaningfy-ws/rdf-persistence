@@ -194,7 +194,8 @@ def test_the_mapper_and_the_listing_hold_a_value_as_the_same_term(view):
 
 def test_the_sort_keys_are_the_identifier_and_the_listable_slots_up_and_down(view):
     keys = sort_keys(view, view.get_class("Book"))
-    assert keys[0] == "id" and "-id" in keys, "the identifier orders by IRI"
+    assert keys[0] == "id", "the identifier orders by IRI"
+    assert "-id" in keys, "the identifier orders by IRI"
     assert {"label", "published", "-label", "-published"} <= set(keys)
     assert not {"chapters", "-chapters", "created"} & set(keys), "no owned part, no bookkeeping"
     assert (

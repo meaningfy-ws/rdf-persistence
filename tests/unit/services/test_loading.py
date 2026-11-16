@@ -100,7 +100,8 @@ async def test_a_broken_file_is_refused_with_the_parsers_message_and_nothing_is_
         await session.load_graph(AGGREGATE, BROKEN[fmt], rdf_format=fmt)
     assert str(raised.value), "the parser's message is carried"
     assert store.sent("put_graph") == [], "no graph written"
-    assert store.sent("update") == [] and store.sent("query") == [], "the store was not touched"
+    assert store.sent("update") == [], "the store was not touched"
+    assert store.sent("query") == [], "the store was not touched"
 
 
 async def test_parsing_runs_in_a_worker_thread(store, session, monkeypatch):
@@ -113,7 +114,8 @@ async def test_parsing_runs_in_a_worker_thread(store, session, monkeypatch):
 
     monkeypatch.setattr(Graph, "parse", spy)
     await session.load_graph(AGGREGATE, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE)
-    assert seen and seen[0] != threading.main_thread().name, "not on the event-loop thread"
+    assert seen, "not on the event-loop thread"
+    assert seen[0] != threading.main_thread().name, "not on the event-loop thread"
 
 
 async def test_an_aggregate_outside_the_tenant_is_refused_before_any_request(session, store):
@@ -372,7 +374,8 @@ async def test_the_marker_holds_the_session_clock_as_a_date_time():
             AGGREGATE, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE
         )
     ((_, stamp),) = await _marker_triples(store, loaded)
-    assert stamp.datatype == XSD.dateTime and stamp.toPython() == MARKER_TIME
+    assert stamp.datatype == XSD.dateTime
+    assert stamp.toPython() == MARKER_TIME
 
 
 async def test_a_failed_put_leaves_the_marker():
@@ -398,4 +401,5 @@ async def test_a_commit_of_the_loaded_graph_keeps_its_registry_entry_and_listing
         await session.add_graph(AGGREGATE, [], loaded_graphs=[loaded])
         assert await session.loaded_graphs(AGGREGATE) == [loaded], "still registered and listed"
     properties = {p for p, _ in await _marker_triples(store, loaded)}
-    assert v.REGISTRY_OWNED_BY in properties and v.REGISTRY_KIND in properties
+    assert v.REGISTRY_OWNED_BY in properties
+    assert v.REGISTRY_KIND in properties

@@ -59,7 +59,7 @@ class RedisEventBus:
             client = self._broker.config.broker_config.connection.client
             minid = int(time.time() * 1000) - int(self._retention.total_seconds() * 1000)
             await client.xtrim(self._stream, minid=f"{minid}-0", approximate=True)
-        except Exception:
+        except Exception:  # noqa: BLE001 -- best effort (D-17): a failed trim is logged, never raised
             logger.warning(
                 "trimming %s failed; the entry was published", self._stream, exc_info=True
             )

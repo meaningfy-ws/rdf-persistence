@@ -1,0 +1,9 @@
+= Architecture decision records
+:description: Placeholder. Where rdf-persistence's settled architecture decisions will be kept, one record each.
+
+NOTE: Placeholder, to be written. Today the decisions live in each change's `design.md` (`PD-` ids,
+archived under `openspec/changes/archive/`) and in
+xref:architecture/open-decisions.adoc[Open decisions]; a decision that outlives its change moves
+here as one record.
+
+Each record will say the context, the decision, its status and its consequences.

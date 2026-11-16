@@ -3,7 +3,10 @@
 # Every TOOL is configured in its own dedicated root file:
 #   ruff.toml · mypy.ini · pytest.ini · .coveragerc · .importlinter
 #   .pre-commit-config.yaml · sonar-project.properties
-# The version lives here alone; release-please bumps it (never edit it by hand).
+# The version's one source is the root VERSION file. uv_build reads no dynamic version, so
+# release-please writes VERSION and mirrors it here and into uv.lock; `make check-version` fails on
+# drift. The package reads it back with importlib.metadata (`rdf_persistence.__version__`).
+# Never edit either by hand.
 
 [project]
 name = "rdf-persistence"

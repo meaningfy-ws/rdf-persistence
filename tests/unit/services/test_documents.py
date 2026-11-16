@@ -141,14 +141,16 @@ async def test_a_part_without_an_iri_gets_one_under_its_root_by_the_default_poli
     default_documents, book_class
 ) -> None:
     parts = await minted_parts(default_documents, book_class)
-    assert parts and all(str(p).startswith(f"{BOOK}/parts/") for p in parts)
+    assert parts
+    assert all(str(p).startswith(f"{BOOK}/parts/") for p in parts)
 
 
 async def test_a_part_without_an_iri_gets_one_beside_its_root_by_a_flat_policy(
     flat_documents, book_class
 ) -> None:
     parts = await minted_parts(flat_documents, book_class)
-    assert parts and all(str(p).startswith("https://example.org/") for p in parts)
+    assert parts
+    assert all(str(p).startswith("https://example.org/") for p in parts)
     assert not any(str(p).startswith(f"{BOOK}/") for p in parts)
 
 
@@ -371,7 +373,8 @@ def test_expanding_refuses_a_key_the_class_has_no_slot_for(documents, book_class
 def test_framing_gives_back_the_body_that_was_expanded(documents, book_class) -> None:
     graph = documents.expand({"id": BOOK, **BOOK_JSON}, book_class)
     framed = documents.frame(graph, book_class)
-    assert framed["label"] == "Dune" and framed["chapters"][0]["notes"][0]["text"] == "t"
+    assert framed["label"] == "Dune"
+    assert framed["chapters"][0]["notes"][0]["text"] == "t"
 
 
 def test_the_internal_values_of_the_nodes_a_replacement_keeps_are_kept(documents) -> None:

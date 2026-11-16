@@ -198,7 +198,7 @@ class Relay:
                 self._publish_timeout
             ):  # a hung broker must not freeze the relay (D-18)
                 await self._bus.publish(envelope, activity)
-        except Exception:
+        except Exception:  # noqa: BLE001 -- the relay must outlive a failed publish: logged, retried next round
             log.warning("publishing %s failed; retried next round", activity.id, exc_info=True)
             return False
         return True

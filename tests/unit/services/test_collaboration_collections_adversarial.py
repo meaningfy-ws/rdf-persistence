@@ -212,7 +212,8 @@ async def test_a_named_member_removed_before_the_heads_is_skipped(guarded, colla
     ver = await shelve(guarded, B1, B2)
     before(guarded._store, "query", lambda: gone(guarded._store, B2), when=HEADS)
     await as_ada(collaboration, guarded).delete_cascade(S1, ver)
-    assert not await stored(guarded, S1) and not await stored(guarded, B1), "the rest is deleted"
+    assert not await stored(guarded, S1), "the rest is deleted"
+    assert not await stored(guarded, B1), "the rest is deleted"
 
 
 async def test_a_named_member_replaced_before_the_heads_is_deleted_at_its_new_version(
@@ -221,7 +222,8 @@ async def test_a_named_member_replaced_before_the_heads_is_deleted_at_its_new_ve
     ver = await shelve(guarded, B1, B2)
     before(guarded._store, "query", lambda: regenre(guarded._store, B2, Genre.FICTION), when=HEADS)
     await as_ada(collaboration, guarded).delete_cascade(S1, ver)
-    assert not await stored(guarded, S1) and not await stored(guarded, B2), "it went with the shelf"
+    assert not await stored(guarded, S1), "it went with the shelf"
+    assert not await stored(guarded, B2), "it went with the shelf"
 
 
 async def test_a_named_member_removed_and_added_again_before_the_heads_is_deleted(
@@ -308,7 +310,8 @@ async def test_a_rule_member_regenred_back_and_forth_is_a_conflict_though_it_sti
     with pytest.raises(Conflict) as refused:
         await as_ada(collaboration, guarded).delete_cascade(S1, ver)
     assert refused.value.iris == (B3,), "its version changed"
-    assert await stored(guarded, S1) and await stored(guarded, B3), "nothing is deleted"
+    assert await stored(guarded, S1), "nothing is deleted"
+    assert await stored(guarded, B3), "nothing is deleted"
 
 
 async def test_a_rule_member_regenred_back_and_forth_before_the_heads_is_deleted(
@@ -340,7 +343,8 @@ async def test_a_rule_member_removed_before_the_heads_is_skipped(guarded, collab
     ver = await shelve(guarded, B3, B5, rule=poetry())
     before(guarded._store, "query", lambda: gone(guarded._store, B5), when=HEADS)
     await as_ada(collaboration, guarded).delete_cascade(S1, ver)
-    assert not await stored(guarded, S1) and not await stored(guarded, B3), "the rest is deleted"
+    assert not await stored(guarded, S1), "the rest is deleted"
+    assert not await stored(guarded, B3), "the rest is deleted"
 
 
 async def test_a_new_rule_match_during_the_cascade_is_not_deleted(guarded, collaboration):
@@ -352,7 +356,8 @@ async def test_a_new_rule_match_during_the_cascade_is_not_deleted(guarded, colla
 
     before(guarded._store, "update", another_poetry_book)
     await as_ada(collaboration, guarded).delete_cascade(S1, ver)
-    assert not await stored(guarded, S1) and not await stored(guarded, B3), "resolved ones go"
+    assert not await stored(guarded, S1), "resolved ones go"
+    assert not await stored(guarded, B3), "resolved ones go"
     assert await stored(guarded, B6), "the new match survives (Error matrix: resolved at the call)"
 
 
@@ -374,7 +379,8 @@ async def test_a_cascade_racing_a_plain_delete_of_the_collection_is_a_conflict(
     with pytest.raises(Conflict) as refused:
         await as_ada(collaboration, guarded).delete_cascade(S1, ver)
     assert refused.value.iris == (S1,), "the collection went"
-    assert await stored(guarded, B1) and await stored(guarded, B2), "the members stay"
+    assert await stored(guarded, B1), "the members stay"
+    assert await stored(guarded, B2), "the members stay"
 
 
 async def test_a_cascade_whose_every_member_is_already_gone_deletes_the_collection(
@@ -417,9 +423,8 @@ async def test_a_caller_who_may_delete_the_collection_and_no_member_is_told_the_
     access_ = held(role("reader"), direct(Action.DELETE, graph_of(S1)))
     with pytest.raises(Forbidden) as refused:
         await collaboration(caller(), access_, guarded).delete_cascade(S1, ver)
-    assert B1 in str(refused.value) and B2 in str(refused.value), (
-        "both are named: they are readable"
-    )
+    assert B1 in str(refused.value), "both are named: they are readable"
+    assert B2 in str(refused.value), "both are named: they are readable"
     assert await stored(guarded, S1), "nothing is deleted"
 
 
@@ -491,7 +496,8 @@ async def test_a_prohibition_of_delete_on_one_member_refuses_the_cascade_even_fo
     with pytest.raises(Forbidden) as refused:
         await collaboration(caller(), access_, guarded).delete_cascade(S1, ver)
     assert B2 in str(refused.value), "b2 is readable and refused: named"
-    assert await stored(guarded, B1) and await stored(guarded, S1), "nothing is deleted"
+    assert await stored(guarded, B1), "nothing is deleted"
+    assert await stored(guarded, S1), "nothing is deleted"
 
 
 async def test_a_caller_who_sees_nothing_of_the_collection_is_told_it_is_not_found(
@@ -513,7 +519,8 @@ async def test_a_caller_prohibited_from_reading_the_collection_learns_nothing_of
         await collaboration(caller(), access_, guarded).delete_cascade(S1, ver)
     assert isinstance(refused.value, (Forbidden, NotFound)), "a refusal of access"
     assert leaks(refused.value, B1) == [], "nothing of the members"
-    assert await stored(guarded, S1) and await stored(guarded, B1), "nothing is deleted"
+    assert await stored(guarded, S1), "nothing is deleted"
+    assert await stored(guarded, B1), "nothing is deleted"
 
 
 # -- 3. the cascade: odd shapes -----------------------------------------------------------------
@@ -568,7 +575,8 @@ async def test_a_member_listed_twice_is_deleted_once(toy_session, collaboration)
     await put_book(toy_session, B1)
     await put(toy_session, a_shelf(S1, had_member=[B1, B1]))
     await as_ada(collaboration, toy_session).delete_cascade(S1, await version(toy_session, S1))
-    assert not await stored(toy_session, S1) and not await stored(toy_session, B1), "both gone"
+    assert not await stored(toy_session, S1), "both gone"
+    assert not await stored(toy_session, B1), "both gone"
 
 
 async def test_a_member_that_is_both_named_and_matched_is_deleted_and_not_guarded_twice(
@@ -609,7 +617,8 @@ async def test_a_collection_listing_itself_among_collections_is_deleted_once_wit
     await put(toy_session, a_shelf(A, member_class="Shelf", had_member=[S1]))
     await put(toy_session, a_shelf(S1, member_class="Shelf", had_member=[S1, A]))
     await as_ada(collaboration, toy_session).delete_cascade(S1, await version(toy_session, S1))
-    assert not await stored(toy_session, S1) and not await stored(toy_session, A), "both gone"
+    assert not await stored(toy_session, S1), "both gone"
+    assert not await stored(toy_session, A), "both gone"
 
 
 async def test_a_nested_collection_that_lists_the_outer_does_not_loop_or_delete_more(
@@ -622,7 +631,8 @@ async def test_a_nested_collection_that_lists_the_outer_does_not_loop_or_delete_
     reverse = toy_mapper().to_triples(a_shelf(A, member_class="Shelf", had_member=[S1]))
     await guarded.replace_graph(A, reverse, stored_a[2])
     await as_ada(collaboration, guarded).delete_cascade(S1, await version(guarded, S1))
-    assert not await stored(guarded, S1) and not await stored(guarded, A), "both shelves go"
+    assert not await stored(guarded, S1), "both shelves go"
+    assert not await stored(guarded, A), "both shelves go"
     assert await stored(guarded, B1), "the book that a replaced shelf no longer names stays"
 
 
@@ -713,7 +723,8 @@ async def test_a_collection_iri_that_is_not_one_of_the_tenant_deletes_nothing(
     ver = await shelve(guarded, B1)
     with pytest.raises(PersistenceError):
         await as_ada(collaboration, guarded).delete_cascade(collection, ver)
-    assert await stored(guarded, S1) and await stored(guarded, B1), "nothing is deleted"
+    assert await stored(guarded, S1), "nothing is deleted"
+    assert await stored(guarded, B1), "nothing is deleted"
 
 
 @pytest.mark.parametrize(
@@ -731,7 +742,8 @@ async def test_an_if_version_that_is_not_the_version_is_a_conflict_and_deletes_n
     await shelve(guarded, B1)
     with pytest.raises(Conflict):
         await as_ada(collaboration, guarded).delete_cascade(S1, if_version)
-    assert await stored(guarded, S1) and await stored(guarded, B1), "nothing is deleted"
+    assert await stored(guarded, S1), "nothing is deleted"
+    assert await stored(guarded, B1), "nothing is deleted"
     assert await stored(guarded, B1), "and no injected statement ran"
 
 
@@ -1083,7 +1095,8 @@ async def test_a_rule_value_with_metacharacters_matches_only_what_equals_it(
     await put(toy_session, a_shelf(S1, membership_rule=rule))
     found = await as_ada(collaboration, toy_session).members(S1)
     assert found.member_iris == [B1], "the book whose isbn is exactly that text, and no other"
-    assert await stored(toy_session, B2) and await stored(toy_session, S1), "nothing was dropped"
+    assert await stored(toy_session, B2), "nothing was dropped"
+    assert await stored(toy_session, S1), "nothing was dropped"
 
 
 async def test_a_rule_value_that_is_not_a_value_of_its_slot_is_stored_data_invalid(
@@ -1230,7 +1243,8 @@ async def test_collections_of_an_iri_that_is_not_an_aggregate_is_invalid_iri(
 async def test_collections_of_a_missing_aggregate_is_an_empty_list(guarded, collaboration):
     # pinned: like referrers, only access is checked, not existence
     found = await as_ada(collaboration, guarded).collections_of(B9)
-    assert found.member_iris is None and found.hidden_count == 0, "no holder, none hidden"
+    assert found.member_iris is None, "no holder, none hidden"
+    assert found.hidden_count == 0, "no holder, none hidden"
 
 
 # -- 6. Session.heads, matches and Transaction._require_match -----------------------------------

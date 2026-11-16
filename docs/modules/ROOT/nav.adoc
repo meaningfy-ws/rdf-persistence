@@ -2,6 +2,8 @@
 
 * xref:questions.adoc[Common questions]
 
+* xref:tutorials/getting-started.adoc[Getting started]
+
 * xref:architecture/index.adoc[Architecture v1]
 ** xref:architecture/data-flows.adoc[Where data lives and what each operation does]
 ** xref:architecture/open-decisions.adoc[Open decisions (2026-11-05)]
@@ -20,6 +22,14 @@
 * xref:howto/dump-restore.adoc[Back up or copy a project]
 * xref:howto/application-data.adoc[Keep data that belongs to no project]
 * xref:howto/tenant-stores.adoc[Put tenants on several stores]
+
+* xref:user-guide/index.adoc[User guide]
+
+* xref:reference/index.adoc[Reference]
+
+* xref:requirements/index.adoc[Requirements]
+
+* xref:adr/index.adoc[Architecture decision records]
 
 * xref:develop/index.adoc[Working on the toolkit]
 ** xref:develop/agents.adoc[Working with agents]

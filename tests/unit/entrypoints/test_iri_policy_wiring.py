@@ -99,7 +99,8 @@ def test_with_iris_keeps_the_permits_and_changes_the_policy() -> None:
     other = Iris(DEFAULT_IRIS.settings.model_copy(update={"base": "https://other.invalid/"}))
     rebound = rules.with_iris(other)
     assert rebound is not rules
-    assert rebound._iris is other and rules._iris is DEFAULT_IRIS, "the original is unchanged"
+    assert rebound._iris is other, "the original is unchanged"
+    assert rules._iris is DEFAULT_IRIS, "the original is unchanged"
     assert rebound._permits == rules._permits
 
 

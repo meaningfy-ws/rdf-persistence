@@ -90,6 +90,7 @@ class _Instrumented:
 # start the closing three), so an unterminated one is scanned in linear time.
 # shortcut: a splitter of our own for the fake, since rdflib's update parser recurses once per
 # operation and fails from about 50 to 100 (rdflib#3710); drop it when a fixed rdflib is pinned.
+_OPEN_BRACE, _CLOSE_BRACE, _SEMICOLON = "{", "}", ";"
 _SPARQL_TOKENS = re.compile(
     r"""<[^<>"{}|^`\\\s]*>|\"\"\"(?:[^"\\]|\\.|"(?!""))*\"\"\"|'''(?:[^'\\]|\\.|'(?!''))*'''"""
     r"""|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|#[^\n]*|([;{}])""",
@@ -104,8 +105,8 @@ def _operations(request: str) -> list[str]:
     parts, start, depth = [], 0, 0
     for token in _SPARQL_TOKENS.finditer(request):
         mark = token.group(1)
-        depth += (mark == "{") - (mark == "}")
-        if mark == ";" and depth == 0:
+        depth += (mark == _OPEN_BRACE) - (mark == _CLOSE_BRACE)
+        if mark == _SEMICOLON and depth == 0:
             parts.append(request[start : token.start()])
             start = token.end()
     return [part for part in [*parts, request[start:]] if part.strip()]
@@ -437,7 +438,7 @@ class InMemoryEventBus:
         assert self._receive is not None
         try:
             await self._receive(*message)
-        except Exception:
+        except Exception:  # noqa: BLE001 -- a failing receiver is a nack, as the real broker treats it
             if message not in self._unacked:
                 self._unacked.append(message)
         else:

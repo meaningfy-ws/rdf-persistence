@@ -98,7 +98,8 @@ def test_an_activity_has_the_four_optional_slots_and_owns_its_parts() -> None:
         assert not view.induced_slot(name, "Activity").required, f"Activity.{name} is optional"
     for name in ("generations", "invalidations"):
         slot = view.induced_slot(name, "Activity")
-        assert slot.multivalued and is_owned(slot), f"Activity.{name} is an owned list"
+        assert slot.multivalued, f"Activity.{name} is an owned list"
+        assert is_owned(slot), f"Activity.{name} is an owned list"
 
 
 def test_the_session_writes_five_of_the_eight_toolkit_filled_slots() -> None:

@@ -39,6 +39,7 @@ from rdf_persistence.services.schema_structure import (
     ABSENT,
     ANY_OF,
     EXACTLY_ONE_OF,
+    TRUE_TEXT,
     annotation_text,
     declared_slots,
     keyed_slots,
@@ -184,7 +185,7 @@ def with_validators(result: ClassResult, view: SchemaView) -> ClassResult:
         **_presence_validators(view, cls, attributes),
         **_unique_keys_validators(view, cls, attributes),
     }
-    allows_extra = annotation_text(cls, GenerationAnnotation.ALLOWS_EXTRA) == "true"
+    allows_extra = annotation_text(cls, GenerationAnnotation.ALLOWS_EXTRA) == TRUE_TEXT
     if not validators and not allows_extra:
         return result
     fields = {name: getattr(result.cls, name) for name in PydanticClass.model_fields}

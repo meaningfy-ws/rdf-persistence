@@ -457,9 +457,8 @@ async def test_rename_keeps_the_description_in_step_with_the_label(tenancy):
     _, version = await tenancy.get(summary.id)
     await tenancy.rename(summary.id, "Bruges", version, BEN)
     record, _ = await tenancy.get(summary.id)
-    assert "Bruges" in record.description and "Ghent" not in record.description, (
-        "the description is derived from the label"
-    )
+    assert "Bruges" in record.description, "the description is derived from the label"
+    assert "Ghent" not in record.description, "the description is derived from the label"
 
 
 async def test_rename_with_a_stale_version_conflicts_and_changes_nothing(tenancy):

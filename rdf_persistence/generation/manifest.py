@@ -31,6 +31,7 @@ TEMPLATES_DIR = GENERATION_DIR / "templates"
 SERVICES_DIR = PACKAGE_DIR / "services"
 SCHEMA_READERS = "schema*.py"  # the modules that decide how a schema is read (PD-26)
 LINKML_TYPES_PREFIX = "linkml:"
+BYTECODE_DIR = "__pycache__"
 
 
 def linkml_version() -> str | None:
@@ -64,7 +65,7 @@ def _toolkit_files() -> Iterator[Path]:
     for module in GENERATION_DIR.rglob("*.py"):
         if not module.is_relative_to(GENERATED_DIR):
             yield module
-    yield from (p for p in TEMPLATES_DIR.rglob("*") if p.is_file() and "__pycache__" not in p.parts)
+    yield from (p for p in TEMPLATES_DIR.rglob("*") if p.is_file() and BYTECODE_DIR not in p.parts)
 
 
 def _schema_files(schema_path: Path) -> Iterator[Path]:

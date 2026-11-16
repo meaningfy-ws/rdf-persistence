@@ -7,6 +7,7 @@ import json
 import re
 import sys
 
+BASH_TOOL = "Bash"
 POLLING = re.compile(r"\b(?:until|while|for)\b.*?\bdo\b.*?\bsleep\b.*?\bdone\b", re.DOTALL)
 
 REASON = (
@@ -20,7 +21,7 @@ REASON = (
 def reason_to_deny(payload: dict[str, object]) -> str | None:
     """The reason to deny this tool call, or None to let it run."""
     tool_input = payload.get("tool_input")
-    if payload.get("tool_name") != "Bash" or not isinstance(tool_input, dict):
+    if payload.get("tool_name") != BASH_TOOL or not isinstance(tool_input, dict):
         return None
     command = tool_input.get("command")
     if isinstance(command, str) and POLLING.search(command):
@@ -42,5 +43,5 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except Exception:  # any failure lets the command run (DEC-3)
+    except Exception:  # noqa: BLE001 -- a hook must never crash: any failure lets the command run (DEC-3)
         sys.exit(1)

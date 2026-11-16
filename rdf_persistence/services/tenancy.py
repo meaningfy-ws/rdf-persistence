@@ -87,6 +87,7 @@ RECORD_DESCRIPTION = "Who may do what in the tenant {label}."
 MAX_TENANT_CLASH_DRAWS = 5  # PD-5
 # the store of the system database; a record never names it (tenant-stores PD-2)
 DEFAULT_STORE = "default"
+ID_SLOT = "id"  # the slot of a root object that holds its IRI
 
 
 def store_name_in(record: TenantAccess) -> str:
@@ -433,14 +434,14 @@ class Tenancy:
             StoreUnavailable: A wired store could not be listed (an id is free on every store).
         """
         target = self._wired(store)
-        if "id" in root_slots:
+        if ID_SLOT in root_slots:
             raise InvalidBody("the service assigns the IRI of a new tenant")
         if root_slots.get(LABEL, label) != label:
             raise InvalidBody("the label of a tenant's root is the tenant's")
         tenant = await self._free_tenant()
         name = self._iris.resource_name(tenant)
         record = self._new_record(tenant, name, label, creator, store)
-        tenant_root = self._root_class.model_validate({**root_slots, LABEL: label, "id": tenant})
+        tenant_root = self._root_class.model_validate({**root_slots, LABEL: label, ID_SLOT: tenant})
         refuse_internal(self._mapper.to_graph(tenant_root), self._internal)
         _run_validators(self._root_validators, None, tenant_root, creator)
         await target.create_dataset(name)  # a Conflict here made nothing: there is nothing to drop
@@ -579,7 +580,7 @@ class Tenancy:
                 await drop(name)
             except NotFound:  # already dropped
                 pass
-            except Exception:
+            except Exception:  # noqa: BLE001 -- best-effort rollback: a failed drop is logged and left to the sweep
                 log.warning(
                     "a failed %s could not drop %s",
                     step,

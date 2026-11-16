@@ -9,8 +9,9 @@ short) is owned by skillery's `epic-delivery` skill, installed with the `meaning
 from that version); shaping is `epic-planning`, and subagent dispatch and session hygiene are
 `guardrails` (`meaningfy-core`). The explanation for people is skillery's
 https://github.com/meaningfy-ws/skillery/blob/develop/docs/practice/ai-coding/working-with-agents.md[Working with agents].
-`AGENTS.md` at the repository root holds the rules agents load; this page gives the reasons
-behind the ones specific to rdf-persistence, and the gate reference with timings.
+`AGENTS.md` at the repository root says what the project is, how it is developed and its
+principles; this page holds what the lead and the builders need beyond it here, with the reasons,
+and the gate reference with timings.
 
 == Common questions
 
@@ -52,19 +53,44 @@ On top of the brief the `epic-delivery` skill sets, every brief names:
   xref:develop/testing.adoc[testing checklist] (the adversarial tester follows it too);
 * the report expected: files changed, tests added, each make target run with its time and test
   count;
-* how to work: the Tools section of `AGENTS.md` (which tool answers which question, and Serena's
-  limits);
+* how to work: <<tools>> (which tool answers which question, and Serena's limits);
 * that the builder skips its own impact step: the `implementer` agent's definition still tells it
   to re-index and run impact before every edit, which epic-delivery's stage loop and this repo
   give to the lead (skillery issue #254). Until that is fixed, only the brief stops it.
 
-The commit trace is in `AGENTS.md` (Branches, commits, PRs).
+The commit trace is in `AGENTS.md` (Working here).
+
+[#tools]
+== Which tool answers which question
+
+One tool per question:
+
+* Outline of a file, or a symbol's body: Serena's `serena_repl` with `s.lsp.get_symbols_overview`
+  or `s.lsp.find_symbol` (with the body), not `Read` on a whole file. Who calls it:
+  `s.lsp.find_referencing_symbols`. Replace or add a whole function: `s.edit.replace_symbol_body`
+  or `s.edit.insert_after_symbol`.
+* One code shape in many files: `ast-grep run -p '<pattern>' --lang python`; look at the matches,
+  then add `-r '<rewrite>' -U`.
+* Text in docs, YAML, AsciiDoc or the Makefile: Grep.
+* Blast radius: GitNexus `impact` (repo `rdf-persistence`). The lead runs it as a gate; reviewers
+  may run it read-only; builders do not.
+
+Serena's limits: use only `s.lsp` and `s.edit`. Never `s.shell` (shell commands go through Bash,
+where the hooks and permissions apply) and never `s.mem` (Serena memories are not used; `.serena/`
+is git-ignored). Reviewers use only the read queries (`find_symbol`, `get_symbols_overview`,
+`find_referencing_symbols`, `find_declaration`, `find_implementations`) and read-only GitNexus
+queries; never `s.edit`, `rename_symbol`, `safe_delete_symbol` or GitNexus `rename`.
 
 [#gates]
 == The gates
 
-The rules are in `AGENTS.md` (Delivery). Why they are shaped this way (#111, measured over two
-weeks of sessions):
+The builder's task gate is one command, `make test-changed check-quality`, or
+`make test-fast check-quality` after changing `domain` or a port in `services`, or when unsure what
+the change reaches. The full gates, `make check-all` and `make test-containers`, are the lead's and
+never run in a task; after the lead commits a schema change, `make check-generated`. A builder gets
+a separate worktree only for overlapping parallel work, or when another session holds the checkout.
+
+Why they are shaped this way (#111, measured over two weeks of sessions):
 
 * The lead runs impact and the change check once per task and builders run neither: builders
   re-indexing and checking every symbol cost more than it found, and was followed for about 5 to
@@ -131,11 +157,24 @@ merges it; the steps are in xref:develop/index.adoc#release[Cutting a release].
 == Habits that keep sessions consistent
 
 [#never-poll]
-The habits themselves are in `AGENTS.md`; the reasons:
+* *Never poll:* wait in the foreground, on a background notice or with the Monitor tool. The hook
+  that denies `sleep` loops (`.claude/hooks/no_polling.py`) runs on plain `python3`, stdlib only,
+  on purpose: it must not depend on the project's environment.
 
-* *Never poll:* the hook that denies `sleep` loops (`.claude/hooks/no_polling.py`) runs on plain
-  `python3`, stdlib only, on purpose: it must not depend on the project's environment.
-* *Re-index per stage, not per commit:* per-commit runs cost 151 re-indexes for 298 commits.
+[#reindex]
+* *Re-index GitNexus per stage, not per commit:* at the start of each stage, and again before an
+  impact check on symbols an earlier task of the stage added or moved:
+  `gitnexus analyze --embeddings --skip-agents-md --skip-skills` (≈ 20 s). Per-commit runs cost 151
+  re-indexes for 298 commits. If it errors (developer, 2026-11-09), do not retry or investigate:
+  run `gitnexus clean --force`, then `gitnexus analyze --embeddings --force --skip-agents-md
+  --skip-skills` (≈ 4 min, in the background), then revert anything it wrote to `AGENTS.md`,
+  `CLAUDE.md` or `.claude/skills/`.
 * *Durations from ordinary runs:* the
   xref:develop/index.adoc#how-long-the-checks-take[durations table] stays honest without the cost
   of profiling.
+
+[#revised]
+* *Pages the developer revised* (developer, 2026-11-10): when the developer says they revised a
+  page, add `:page-revised: <date> by the developer` under its `:description:` line, or move the
+  date forward. Only the developer's word sets or moves it. List them with
+  `grep -rl ':page-revised:' docs/`; what changed since is `git log --since=<date> -- <page>`.

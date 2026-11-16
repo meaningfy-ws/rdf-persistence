@@ -48,7 +48,8 @@ def test_the_waiting_helpers_are_exported_from_the_public_module():
     import rdf_persistence.testkit as testkit
 
     assert {"wait_until", "wait_until_async"} <= set(testkit.__all__)
-    assert callable(testkit.wait_until) and callable(testkit.wait_until_async)
+    assert callable(testkit.wait_until)
+    assert callable(testkit.wait_until_async)
 
 
 @pytest.mark.parametrize("source", REFUSED)

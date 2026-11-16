@@ -496,7 +496,7 @@ def test_a_policy_with_colliding_application_graphs_is_refused_with_invalid_iri(
         _iris(policy)
     except InvalidIri:
         return
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 -- any other exception is the failure the test reports
         pytest.fail(f"{name}: {type(error).__name__} instead of InvalidIri: {error}")
     pytest.fail(f"{name}: the policy was accepted")
 

@@ -247,7 +247,8 @@ def test_presence_alternatives_list_each_slot_present_or_absent(tmp_path: Path) 
         "required means present; value_presence is read as written"
     )
     assert all(isinstance(s, PresenceEnum) for a in found for _, s in a), "LinkML's PresenceEnum"
-    assert found[0][0][1] == PRESENT and found[1][0][1] == ABSENT, "comparable to the constants"
+    assert found[0][0][1] == PRESENT, "comparable to the constants"
+    assert found[1][0][1] == ABSENT, "comparable to the constants"
 
 
 def test_a_rule_is_read_from_the_class_that_declares_it(tmp_path: Path) -> None:

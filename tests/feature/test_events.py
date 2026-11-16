@@ -326,6 +326,7 @@ def _reconnect(following):
 @then("the reader receives the two later events, each once, then live events")
 def _resumed(following):
     ids = [e.id for e in following.heard]
-    assert len(ids) == 3 and len(set(ids)) == 3, "two later events and a live one, none twice"
+    assert len(ids) == 3, "two later events and a live one, none twice"
+    assert len(set(ids)) == 3, "two later events and a live one, none twice"
     assert following.first_id not in ids
     assert [e.event for e in following.heard] == ["Replace"] * 3

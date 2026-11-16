@@ -127,7 +127,7 @@ class _BoundedCall[T]:
     def _run(self) -> None:
         try:
             self._outcome.append((self._probe(), None))
-        except BaseException as error:  # handed to the caller's thread in __call__
+        except BaseException as error:  # noqa: BLE001 -- handed to the caller's thread in __call__, which re-raises it
             self._outcome.append((None, error))
 
 

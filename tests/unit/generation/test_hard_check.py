@@ -462,20 +462,26 @@ def _iri_type_problems(root: Path) -> list[str]:
 
 def test_two_classes_with_one_explicit_type_are_refused_naming_both(tmp_path: Path) -> None:
     problems = _iri_type_problems(_bare_schema(tmp_path, {"Alpha": "thing", "Beta": "thing"}))
-    assert len(problems) == 1 and "Alpha" in problems[0] and "Beta" in problems[0], problems
+    assert len(problems) == 1, problems
+    assert "Alpha" in problems[0], problems
+    assert "Beta" in problems[0], problems
 
 
 def test_a_type_equal_to_another_classes_kebab_name_is_refused(tmp_path: Path) -> None:
     problems = _iri_type_problems(
         _bare_schema(tmp_path, {"OntologyFile": None, "Other": "ontology-file"})
     )
-    assert len(problems) == 1 and "OntologyFile" in problems[0] and "Other" in problems[0], problems
+    assert len(problems) == 1, problems
+    assert "OntologyFile" in problems[0], problems
+    assert "Other" in problems[0], problems
 
 
 @pytest.mark.parametrize("word", ["content", "graph", "parts", "access", "meta", "registry"])
 def test_a_reserved_type_is_refused(tmp_path: Path, word: str) -> None:
     problems = _iri_type_problems(_bare_schema(tmp_path, {"Alpha": word}))
-    assert len(problems) == 1 and "Alpha" in problems[0] and word in problems[0], problems
+    assert len(problems) == 1, problems
+    assert "Alpha" in problems[0], problems
+    assert word in problems[0], problems
 
 
 def test_a_class_named_like_a_reserved_word_is_refused(tmp_path: Path) -> None:
@@ -610,7 +616,9 @@ def test_a_run_with_a_bad_key_exits_1_naming_the_slot_and_writes_nothing(
     before = sorted(p.name for p in root.parent.iterdir())
     assert main(["--project", str(root.parent / "pyproject.toml")]) == 1, "wrong exit code"
     err = capsys.readouterr().err
-    assert "Book" in err and "isbn_key" in err and "chapters" in err, err
+    assert "Book" in err, err
+    assert "isbn_key" in err, err
+    assert "chapters" in err, err
     assert sorted(p.name for p in root.parent.iterdir()) == before, "outputs were touched"
 
 

@@ -152,4 +152,5 @@ def _read(run: Run, path: str) -> None:
 
 @then(parsers.parse("the answer is {status:d}"))
 def _answer(run: Run, status: int) -> None:
-    assert run.last is not None and run.last.status_code == status
+    assert run.last is not None
+    assert run.last.status_code == status

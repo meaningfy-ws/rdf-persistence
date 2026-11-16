@@ -55,7 +55,8 @@ async def test_a_book_with_chapters_and_notes_comes_back_equal_with_its_tracking
     )
     assert sorted(c.number for c in back.chapters) == [1, 2], "the chapters nest back"
     assert [len(c.notes) for c in back.chapters] == [1, 1], "each chapter keeps its note"
-    assert back.creator == ADA and back.created is not None, "tracking is read from the graph IRI"
+    assert back.creator == ADA, "tracking is read from the graph IRI"
+    assert back.created is not None, "tracking is read from the graph IRI"
 
 
 async def test_a_scan_keeps_its_reference_to_a_book_as_an_iri(session):

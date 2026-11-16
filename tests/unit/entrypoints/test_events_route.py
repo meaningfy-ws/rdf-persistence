@@ -347,7 +347,8 @@ async def test_a_stream_ends_after_its_lifetime_and_a_resume_gets_what_came_afte
         assert await bob.ends() == [], "the stream is over at the next wake, and sends nothing more"
     async with follow(settled, prefix="/short", **{"Last-Event-ID": first.id}) as again:
         [late] = await again.take(1)
-    assert late.id != first.id and late.event == "Replace"
+    assert late.id != first.id
+    assert late.event == "Replace"
 
 
 @pytest.mark.parametrize(
@@ -359,7 +360,8 @@ async def test_a_last_event_id_that_is_no_activity_id_sends_a_reset_and_the_stre
     async with follow(settled, **{"Last-Event-ID": bad}) as bob:
         assert bob.status == 200
         [reset] = await bob.take(1)
-        assert reset.event == "reset" and reset.id is None
+        assert reset.event == "reset"
+        assert reset.id is None
         assert reset.data == "", "an empty data line, or an EventSource client drops it (D-10)"
         await listening(settled.service.kit.hub)
         await replace(settled, settled.book, settled.book_etag, "Live")
@@ -433,7 +435,8 @@ async def test_an_id_that_cannot_anchor_a_resume_sends_one_reset_then_the_live_e
 ) -> None:  # TC-38
     async with follow(settled, **{"Last-Event-ID": "urn:uuid:nobody"}) as bob:
         [reset] = await bob.take(1)
-        assert reset.event == "reset" and reset.id is None
+        assert reset.event == "reset"
+        assert reset.id is None
         await listening(settled.service.kit.hub)
         await replace(settled, settled.book, settled.book_etag, "Live")
         [live] = await bob.take(1)

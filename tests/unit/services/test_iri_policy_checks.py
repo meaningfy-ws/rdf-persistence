@@ -116,7 +116,8 @@ async def test_an_iri_the_policy_would_not_mint_is_refused_and_nothing_is_sent(s
     arguments = {"add_graph": ([],), "replace_graph": ([], "v"), "get_graph": ()}[call]
     with pytest.raises(InvalidIri):
         await getattr(session, call)(iri, *arguments)
-    assert store.sent("update") == [] and store.sent("query") == [], "the store was not reached"
+    assert store.sent("update") == [], "the store was not reached"
+    assert store.sent("query") == [], "the store was not reached"
 
 
 async def test_a_flat_aggregate_is_accepted_though_it_is_not_under_the_tenant_iri(store):
@@ -248,7 +249,8 @@ async def test_a_replace_may_add_a_part_without_naming_it(aggregates):
     iri = await create(aggregates, body({"number": 1}))
     (own,) = chapter_ids(await aggregates.read(TENANT, ADA, iri, BOOK_CLASS))
     stored = await replace(aggregates, iri, body({"id": own, "number": 1}, {"number": 2}))
-    assert len(chapter_ids(stored)) == 2 and own in chapter_ids(stored)
+    assert len(chapter_ids(stored)) == 2
+    assert own in chapter_ids(stored)
 
 
 # -- the part rule of the default policy stays nested ---------------------------------------------

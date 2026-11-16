@@ -92,7 +92,7 @@ async def other(store) -> AsyncIterator[Session]:
 async def stored(session: Session, iri: str) -> bool:
     try:
         await session.get_graph(iri)
-    except Exception:
+    except Exception:  # noqa: BLE001 -- "stored" means the read succeeds: any failure is not stored
         return False
     return True
 
@@ -130,10 +130,12 @@ async def test_tc10_the_message_names_roots_and_keys_in_words(session):
     with pytest.raises(KeyConflict) as refused:
         await session.add_graph(B, book(B, LONG_ISBN))
     text = str(refused.value)
-    assert B in text and "isbn_key" in text, "it names the root and the key"
+    assert B in text, "it names the root and the key"
+    assert "isbn_key" in text, "it names the root and the key"
     assert LONG_ISBN not in text, "it gives no key value"
     assert A not in text, "it gives no holder"
-    assert graph_of(B) not in text and "urn:uuid" not in text, "it gives no graph or token"
+    assert graph_of(B) not in text, "it gives no graph or token"
+    assert "urn:uuid" not in text, "it gives no graph or token"
 
 
 async def test_a_key_conflict_is_a_conflict(session):
@@ -203,7 +205,8 @@ async def test_tc16_two_changes_of_one_key_in_one_transaction_send_nothing(store
 async def test_tc17_books_without_isbn_never_clash(session):
     await session.add_graph(A, book(A))
     await session.add_graph(B, book(B))
-    assert await stored(session, A) and await stored(session, B), "both stored"
+    assert await stored(session, A), "both stored"
+    assert await stored(session, B), "both stored"
 
 
 async def test_tc18_a_stale_replace_that_also_clashes_is_a_plain_conflict(session, other):
@@ -467,7 +470,7 @@ def test_the_report_query_parses_and_names_the_registry_and_the_class():
     registry = DEFAULT_IRIS.registry(TENANT)
     text = duplicates_query(KEYS[0], registry)
     prepareQuery(text)
-    assert "HAVING" in text and "GROUP BY" in text, (
-        "a group per value, kept when two roots share it"
-    )
-    assert str(registry) in text and str(BOOK) in text, "it names the registry and the key's class"
+    assert "HAVING" in text, "a group per value, kept when two roots share it"
+    assert "GROUP BY" in text, "a group per value, kept when two roots share it"
+    assert str(registry) in text, "it names the registry and the key's class"
+    assert str(BOOK) in text, "it names the registry and the key's class"

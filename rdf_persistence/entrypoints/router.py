@@ -237,7 +237,8 @@ class TenantApi:
         paging = list_request(request.query_params.multi_items())
         if paging.filters or paging.sort:
             raise BadQuery("tenants are listed by IRI; only limit and offset are taken")
-        assert paging.limit is not None and paging.offset is not None, "ListRequest defaults"
+        assert paging.limit is not None, "ListRequest defaults"
+        assert paging.offset is not None, "ListRequest defaults"
         page = await self._kit.tenancy.visible_tenants(
             caller, self._kit.rules, limit=paging.limit, offset=paging.offset
         )

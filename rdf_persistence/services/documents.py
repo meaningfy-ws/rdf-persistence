@@ -288,7 +288,7 @@ class Documents:
         try:
             expanded = jsonld.expand({CONTEXT_KEY: self.context, key: 0}, LOADER)
             predicates = {URIRef(p) for node in expanded for p in node}
-        except Exception:
+        except Exception:  # noqa: BLE001 -- the key is already refused: any expansion failure only loses the hint
             predicates = set()
         for predicate in predicates:
             if predicate in self._internal:

@@ -118,7 +118,7 @@ class Run:
         """Run ``work`` and keep its error, if any, for the Then steps."""
         try:
             self.answer = self.run(work)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 -- any failure is the outcome the Then steps assert on
             self.error = error
 
     def close(self) -> None:
@@ -516,7 +516,8 @@ def _holds_remove(run: Run) -> None:
 
 @then("the change is refused as a conflict naming that identity")
 def _conflict_naming(run: Run) -> None:
-    assert isinstance(run.error, Conflict) and COMMAND_ID in str(run.error), repr(run.error)
+    assert isinstance(run.error, Conflict), repr(run.error)
+    assert COMMAND_ID in str(run.error), repr(run.error)
 
 
 # -- Then: observing -----------------------------------------------------------------------------
@@ -589,7 +590,8 @@ def _stored_approval(run: Run) -> None:
 
 @then("the command is refused with an error naming the file deletion")
 def _refused_by_name(run: Run) -> None:
-    assert isinstance(run.error, LookupError) and "DeleteFile" in str(run.error), repr(run.error)
+    assert isinstance(run.error, LookupError), repr(run.error)
+    assert "DeleteFile" in str(run.error), repr(run.error)
 
 
 # -- Then: provenance ----------------------------------------------------------------------------
@@ -625,6 +627,5 @@ def _two_batches(run: Run) -> None:
 
 @then(parsers.parse("the call stops with an error naming the limit of {limit:d}"))
 def _limit_error(run: Run, limit: int) -> None:
-    assert isinstance(run.error, MessageLimitExceeded) and str(limit) in str(run.error), repr(
-        run.error
-    )
+    assert isinstance(run.error, MessageLimitExceeded), repr(run.error)
+    assert str(limit) in str(run.error), repr(run.error)

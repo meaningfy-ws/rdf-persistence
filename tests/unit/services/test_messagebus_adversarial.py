@@ -790,7 +790,8 @@ async def test_the_observer_of_an_extension_gets_it_whole_and_the_transition_obs
         assert got.id.startswith("urn:uuid:"), "the command's id"
         assert (got.from_state_iri, got.to_state_iri) == (DRAFT, IN_REVIEW), "the states"
         assert got.used_resource == B1, "the resource"
-        assert got.started_at_time and got.ended_at_time, "the times"
+        assert got.started_at_time, "the times"
+        assert got.ended_at_time, "the times"
         assert got.was_associated_with == [ADA], "the principal"
         assert (got.to_state, got.expected_version, got.body_value) == (None, None, None), (
             "no payload"

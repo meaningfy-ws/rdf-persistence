@@ -127,7 +127,8 @@ async def test_a_manifest_ahead_of_the_stamp_is_refused_so_no_migration_can_be_s
     """Manifest ``2``, stamp ``1`` (PD-25.9): the version the check accepts is not the one the data follows."""
     data = with_manifest_version(await dumped(aged, view=at_version("2")), "2")
     reason = await refused(aged, data, tenancy=aged.running, view=at_version("2"), chains=chains)
-    assert "'2'" in reason and "'1'" in reason, "the reason names both versions"
+    assert "'2'" in reason, "the reason names both versions"
+    assert "'1'" in reason, "the reason names both versions"
 
 
 async def test_a_manifest_behind_the_stamp_is_refused_so_no_migration_can_run_twice(
@@ -137,7 +138,8 @@ async def test_a_manifest_behind_the_stamp_is_refused_so_no_migration_can_run_tw
     view = at_version("2")
     data = with_manifest_version(await dumped(stamped, view=view), "1")
     reason = await refused(stamped, data, view=view, chains=chains)
-    assert "'2'" in reason and "'1'" in reason, "the reason names both versions"
+    assert "'2'" in reason, "the reason names both versions"
+    assert "'1'" in reason, "the reason names both versions"
 
 
 async def test_a_manifest_with_no_version_over_a_stamped_dump_is_refused(aged, chains):

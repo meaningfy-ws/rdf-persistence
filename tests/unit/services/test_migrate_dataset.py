@@ -96,7 +96,8 @@ def test_a_pending_migration_moves_the_data_the_stamp_and_the_tokens(lib_chain, 
     assert isbns(data, BOOK) == {"A3"}, "the ISBN is under the book's predicate"
     assert stamped(data) == {RP: "1", LIB: "2"}, "the consumer's stamp moved, the toolkit's did not"
     tokens = {str(o) for _, _, o in data.graph(BOOK).triples((BOOK, v.VERSION, None))}
-    assert len(tokens) == 1 and str(TOKEN) not in tokens, "a migration with steps renews the token"
+    assert len(tokens) == 1, "a migration with steps renews the token"
+    assert str(TOKEN) not in tokens, "a migration with steps renews the token"
 
 
 def test_a_chain_of_two_pending_migrations_applies_both_in_order(three, toolkit_chain):

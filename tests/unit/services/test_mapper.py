@@ -412,7 +412,8 @@ def test_tracking_is_read_from_the_statements_about_the_graph_iri_not_the_root()
     back = mapper.from_graph(Book, iri, graph, about)
     assert back.creator == ADA, "the creator is the one the graph IRI names"
     assert back.contributor == [f"{ADA}2"], "contributors come from the graph IRI too"
-    assert back.created is not None and back.created.year == 2026, "created is a date-time"
+    assert back.created is not None, "created is a date-time"
+    assert back.created.year == 2026, "created is a date-time"
 
 
 def test_the_tenant_root_reads_its_tracking_from_the_meta_graph():

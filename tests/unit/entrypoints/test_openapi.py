@@ -160,7 +160,8 @@ def test_the_filters_of_a_book_are_typed_by_the_schema(document) -> None:
     assert params["genre"]["schema"] == {"$ref": f"{COMPONENT}Genre"}
     assert params["authors"]["schema"] == {"type": "string"}
     limit = params["limit"]["schema"]
-    assert limit["type"] == "integer" and limit["maximum"] == 200
+    assert limit["type"] == "integer"
+    assert limit["maximum"] == 200
     assert properties(document, "ListRequest")["limit"]["maximum"] == 200, "the bounds of PD-15"
     assert "-label" in params["sort"]["schema"]["enum"], "descending is the name with a minus sign"
     assert not {"creator", "chapters", "id"} & set(params), (

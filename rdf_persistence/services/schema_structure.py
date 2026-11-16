@@ -48,7 +48,7 @@ EXACTLY_ONE_OF = "exactly_one_of"
 ANY_OF = "any_of"
 PRESENT = PresenceEnum(PresenceEnum.PRESENT)
 ABSENT = PresenceEnum(PresenceEnum.ABSENT)
-_TRUE = "true"
+TRUE_TEXT = "true"  # an annotation switched on, as written
 URI_TYPES = frozenset({"uri", "uriorcurie"})
 _SUPPORTED_CONDITION_FIELDS = {"name", "required", "value_presence"}
 
@@ -94,7 +94,7 @@ def workflow_name_of(view: SchemaView, class_name: str) -> str | None:
 
 def flag(element: object, tag: RpAnnotation) -> bool:
     """True when the element's annotation ``tag`` is ``true``."""
-    return annotation(element, tag) == _TRUE
+    return annotation(element, tag) == TRUE_TEXT
 
 
 def is_owned(slot: object) -> bool:

@@ -151,9 +151,9 @@ async def test_a_hidden_referrer_leaves_no_trace_beside_a_listed_one(toy_session
     found = await as_bob(collaboration, bob_reading_all_but(B2)).referrers(S1)
     assert refs(found) == [(B1, "Book", "shelf")], "only what he may read"
     text = found.model_dump_json()
-    assert B2 not in text and "Secret" not in text and "hiddenSlot" not in text, (
-        "neither IRI, class nor slot of the hidden one"
-    )
+    assert B2 not in text, "neither IRI, class nor slot of the hidden one"
+    assert "Secret" not in text, "neither IRI, class nor slot of the hidden one"
+    assert "hiddenSlot" not in text, "neither IRI, class nor slot of the hidden one"
 
 
 async def test_a_caller_with_no_access_to_the_tenant_learns_nothing_from_the_error(
@@ -163,9 +163,8 @@ async def test_a_caller_with_no_access_to_the_tenant_learns_nothing_from_the_err
     stranger = collaboration(caller(principal=BOB), held())
     with pytest.raises(NotFound) as raised:
         await stranger.referrers(S1)
-    assert B2 not in str(raised.value) and "Book" not in str(raised.value), (
-        "no referrer in the text"
-    )
+    assert B2 not in str(raised.value), "no referrer in the text"
+    assert "Book" not in str(raised.value), "no referrer in the text"
 
 
 async def test_a_caller_with_no_access_gets_the_same_refusal_whether_or_not_anything_refers(
@@ -355,9 +354,8 @@ async def test_a_referrer_of_an_unknown_class_is_hidden_like_any_other(toy_sessi
     await put_raw(toy_session, B3, f"{LIB}Magazine", (SHELF_P, S1))
     found = await as_bob(collaboration, bob_reading_all_but(B3)).referrers(S1)
     assert (found.referrers, found.hidden_count) == (None, 1), "counted"
-    assert B3 not in found.model_dump_json() and "Magazine" not in found.model_dump_json(), (
-        "unnamed"
-    )
+    assert B3 not in found.model_dump_json(), "unnamed"
+    assert "Magazine" not in found.model_dump_json(), "unnamed"
 
 
 async def test_an_aggregate_with_two_types_names_a_known_slot_by_its_name(

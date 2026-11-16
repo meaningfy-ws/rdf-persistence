@@ -65,6 +65,7 @@ CONSTRUCT { $record ?p ?o . ?rule ?rule_p ?rule_o } WHERE {
 # Every action other than read implies read at the same scope (PD-9).
 _IMPLY_READ = frozenset(Action) - {Action.READ}
 ACTIONS = tuple(Action)  # the schema's order, which is the order a read lists them in
+_ROLE_KEY = "role"  # the key of a role definition that names the role
 
 
 def load_role_definitions(path: Path) -> list[RoleDefinition]:
@@ -98,7 +99,7 @@ def load_role_definitions(path: Path) -> list[RoleDefinition]:
 def _definition(path: Path, number: int, entry: object) -> RoleDefinition:
     if not isinstance(entry, dict):
         raise InvalidRoleDefinition(f"{path}: entry {number} is not a mapping: {entry!r}")
-    named = f" (role {entry['role']!r})" if "role" in entry else ""
+    named = f" (role {entry[_ROLE_KEY]!r})" if _ROLE_KEY in entry else ""
     try:
         definition = RoleDefinition.model_validate(entry)
     except ValidationError as error:

@@ -701,9 +701,8 @@ async def test_json_ld_is_served_on_request_with_its_context(scene) -> None:
 async def test_turtle_is_served_on_request(scene) -> None:
     response = await scene.http.get(scene.book, headers=scene.headers("ada", Accept=TURTLE))
     graph = Graph().parse(data=response.text, format="turtle")
-    assert response.headers["content-type"].startswith(TURTLE) and len(graph) > 5, (
-        "the book as triples"
-    )
+    assert response.headers["content-type"].startswith(TURTLE), "the book as triples"
+    assert len(graph) > 5, "the book as triples"
 
 
 async def test_the_json_ld_of_a_book_is_accepted_back_as_a_replace(scene) -> None:

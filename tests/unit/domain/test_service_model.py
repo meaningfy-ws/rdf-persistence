@@ -152,7 +152,8 @@ def test_a_grant_set_builds_grants_from_data() -> None:
     body = GrantSet.model_validate(
         {"grants": [{"assignee": ALICE, "target": TENANT, "role": "editor"}]}
     )
-    assert body.grants and body.grants[0].role == "editor", "the grant must be built from the data"
+    assert body.grants, "the grant must be built from the data"
+    assert body.grants[0].role == "editor", "the grant must be built from the data"
 
 
 def test_a_page_keeps_any_items_and_refuses_negative_positions() -> None:

@@ -73,7 +73,8 @@ def test_ids_at_the_ends_of_the_allowed_length_round_trip_through_every_matcher(
     tenant = str(iris.mint_tenant())
     assert len(iris.tenant_id_of(tenant)) == length
     root = str(iris.mint_aggregate(tenant, "book", "books"))
-    assert iris.is_aggregate(tenant, root) and iris.is_aggregate_graph(tenant, f"{root}/graph")
+    assert iris.is_aggregate(tenant, root)
+    assert iris.is_aggregate_graph(tenant, f"{root}/graph")
     loaded = str(iris.mint_loaded_graph(tenant, root))
     assert iris.is_loaded_graph(tenant, loaded, root=root)
     assert str(iris.mint_part(tenant, root, "chapter")).count("/") == root.count("/")
@@ -166,9 +167,11 @@ def test_another_tenants_objects_are_not_this_tenants():
     iris = flat()
     mine, other = (str(iris.tenant(i)) for i in (TENANT_ID, "q9y7j1n"))
     theirs = str(iris.aggregate(other, "book", "books", OBJECT_ID))
-    assert iris.is_aggregate(other, theirs) and not iris.is_aggregate(mine, theirs)
+    assert iris.is_aggregate(other, theirs)
+    assert not iris.is_aggregate(mine, theirs)
     loaded = str(iris.mint_loaded_graph(other, theirs))
-    assert iris.is_loaded_graph(other, loaded) and not iris.is_loaded_graph(mine, loaded)
+    assert iris.is_loaded_graph(other, loaded)
+    assert not iris.is_loaded_graph(mine, loaded)
     assert not iris.is_loaded_graph(mine, loaded, root=theirs)
 
 
@@ -278,7 +281,8 @@ def test_an_access_iri_of_another_tenant_is_not_this_tenants_record():
 def test_a_subject_never_leaves_its_path_segment(sub):
     iri = str(flat().principal("https://id.example.org/realm/", sub))
     prefix = "https://id.example.org/realm/users/"
-    assert iri.startswith(prefix) and "/" not in iri[len(prefix) :]
+    assert iri.startswith(prefix)
+    assert "/" not in iri[len(prefix) :]
     assert not any(c in iri[len(prefix) :] for c in "#? \n")
 
 

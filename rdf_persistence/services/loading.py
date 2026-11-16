@@ -19,6 +19,7 @@ _RDFLIB_FORMATS = {
 }
 
 
+IMPORT_KEY = "@import"  # the JSON-LD keyword that pulls in another context
 NOT_INLINE = "a JSON-LD context must be inline: remote, file and relative contexts are not followed"
 
 
@@ -29,7 +30,7 @@ def _refers_outside(node: Any) -> bool:
     if not isinstance(node, dict):
         return False
     for key, value in node.items():
-        if key == "@import" or (key == CONTEXT_KEY and not _inline(value)):
+        if key == IMPORT_KEY or (key == CONTEXT_KEY and not _inline(value)):
             return True
         if _refers_outside(value):
             return True

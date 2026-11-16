@@ -42,6 +42,7 @@ from rdf_persistence.generation.generated.rp_generation import (
 )
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema, metamodel_importmap
 from rdf_persistence.services.schema_structure import (
+    TRUE_TEXT,
     annotation_text,
     apply_defaults,
     is_internal,
@@ -130,13 +131,13 @@ class SplitPydanticGenerator(PydanticGenerator):
         fields = {name: getattr(slot.attribute, name) for name in PydanticAttribute.model_fields}
         fields["description"] = slot.source.description  # the raw text, as for classes
         internal = is_internal(slot.source)
-        secret = annotation_text(slot.source, GenerationAnnotation.SECRET) == "true"
+        secret = annotation_text(slot.source, GenerationAnnotation.SECRET) == TRUE_TEXT
         slot.attribute = InternalAttribute(
             **fields,
             internal=internal,
             loosens=_loosens_a_base_slot(slot.source, sv),
             secret=secret,
-            strict=annotation_text(slot.source, GenerationAnnotation.STRICT) == "true",
+            strict=annotation_text(slot.source, GenerationAnnotation.STRICT) == TRUE_TEXT,
         )
         return slot
 

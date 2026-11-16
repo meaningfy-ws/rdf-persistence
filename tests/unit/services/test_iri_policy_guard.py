@@ -74,7 +74,8 @@ async def test_every_differing_field_is_named(store, tenancy):
     changed = changed.model_copy(update={"object_id": TWELVE.object_id})
     with pytest.raises(IriPolicyChanged) as caught:
         await guard_iri_policy(store, tenancy, settings_of(changed))
-    assert "meta_template" in str(caught.value) and "object_id.length" in str(caught.value)
+    assert "meta_template" in str(caught.value)
+    assert "object_id.length" in str(caught.value)
 
 
 @pytest.mark.parametrize("first", [None, IriPolicy()])

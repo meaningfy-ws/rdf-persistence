@@ -125,7 +125,8 @@ async def test_a_marker_another_tool_wrote_badly_does_not_crash_the_sweep(world,
     )
     report = await world.sweep(remove=remove)
     assert str(world.g2) in report.loaded_graphs
-    assert await world.holds(world.g1) and await world.holds(world.g3)
+    assert await world.holds(world.g1)
+    assert await world.holds(world.g3)
     assert await world.holds(odd) or remove, "a dry run removes nothing"
 
 
@@ -150,8 +151,10 @@ async def test_what_is_exactly_as_old_as_the_grace_period_is_kept(world):
     graph = await plant(world, world.iris.mint_loaded_graph(world.tenant, world.book), at(HOUR))
     await world.blob("edge", HOUR)
     report = await world.sweep(older_than=HOUR, remove=True, remove_blobs=True)
-    assert str(graph) not in report.loaded_graphs and "edge" not in report.blobs
-    assert await world.holds(graph) and "edge" in await blob_keys(world)
+    assert str(graph) not in report.loaded_graphs
+    assert "edge" not in report.blobs
+    assert await world.holds(graph)
+    assert "edge" in await blob_keys(world)
 
 
 async def test_with_no_grace_period_what_was_just_written_is_kept(world):
@@ -160,7 +163,8 @@ async def test_with_no_grace_period_what_was_just_written_is_kept(world):
     )
     await world.blob("now", timedelta())
     report = await world.sweep(older_than=timedelta(), remove=True, remove_blobs=True)
-    assert str(now_graph) not in report.loaded_graphs and "now" not in report.blobs
+    assert str(now_graph) not in report.loaded_graphs
+    assert "now" not in report.blobs
     assert str(world.g3) in report.loaded_graphs, "a minute-old orphan is old enough then"
 
 
@@ -174,8 +178,10 @@ async def test_blob_keys_with_odd_characters_are_matched_exactly(world, key):
     await world.blob(key + "-orphan", 3 * HOUR)
     await world.commit(book(world, 7, "scans"), keys=[key])
     report = await world.sweep(remove_blobs=True)
-    assert report.blobs == sorted(["k2", key + "-orphan"]) and report.skipped_blobs == []
-    assert key in await blob_keys(world) and key + "-orphan" not in await blob_keys(world)
+    assert report.blobs == sorted(["k2", key + "-orphan"])
+    assert report.skipped_blobs == []
+    assert key in await blob_keys(world)
+    assert key + "-orphan" not in await blob_keys(world)
 
 
 @pytest.mark.parametrize(
@@ -192,7 +198,8 @@ async def test_a_key_named_as_an_iri_or_a_tagged_literal_is_kept(world, named):
         world.database, URIRef(f"{world.book}/graph2"), _one((SUBJECT, FILE_KEY, named))
     )
     report = await world.sweep(remove_blobs=True)
-    assert "urn:key:iri" not in report.blobs and "urn:key:iri" in await blob_keys(world)
+    assert "urn:key:iri" not in report.blobs
+    assert "urn:key:iri" in await blob_keys(world)
 
 
 def _one(triple) -> Graph:
@@ -210,8 +217,10 @@ async def test_a_blob_named_only_inside_a_loaded_graph_is_kept_even_as_that_grap
         extra=[(SUBJECT, FILE_KEY, Literal("inside"))],
     )
     report = await world.sweep(remove=True, remove_blobs=True)
-    assert str(inside) in report.loaded_graphs and "inside" not in report.blobs
-    assert not await world.holds(inside) and "inside" in await blob_keys(world)
+    assert str(inside) in report.loaded_graphs
+    assert "inside" not in report.blobs
+    assert not await world.holds(inside)
+    assert "inside" in await blob_keys(world)
     assert "inside" in (await world.sweep(remove_blobs=True)).blobs, "next run: no graph names it"
 
 
@@ -224,7 +233,8 @@ async def test_a_commit_that_names_a_blob_between_the_listing_and_the_key_read_k
 
     world.store.after = (str(FILE_KEY), name_k2)
     report = await world.sweep(remove_blobs=True)
-    assert "k2" not in report.blobs and "k2" in await blob_keys(world)
+    assert "k2" not in report.blobs
+    assert "k2" in await blob_keys(world)
 
 
 async def test_a_commit_between_the_listing_and_the_owner_read_makes_the_graph_owned(world):
@@ -268,7 +278,9 @@ async def test_a_dry_run_sends_no_update_and_no_delete(world):
     updates, deletes = len(world.store.sent("update")), len(world.files.sent("delete"))
     report = await world.sweep()
     assert (len(world.store.sent("update")), len(world.files.sent("delete"))) == (updates, deletes)
-    assert report.loaded_graphs and report.blobs and report.skipped_blobs == []
+    assert report.loaded_graphs
+    assert report.blobs
+    assert report.skipped_blobs == []
 
 
 async def test_removing_graphs_alone_deletes_no_blob_and_removing_blobs_alone_updates_nothing(
@@ -332,7 +344,8 @@ async def test_a_failing_blob_delete_stops_the_sweep_and_a_second_run_finishes(w
     world.files.on("delete", StoreUnavailable("down"), after=1)
     with pytest.raises(StoreUnavailable):
         await world.sweep(remove=True, remove_blobs=True)
-    assert not await world.holds(world.g2) and await world.holds(world.g1)
+    assert not await world.holds(world.g2)
+    assert await world.holds(world.g1)
     report = await world.sweep(remove=True, remove_blobs=True)
     assert report.blobs == ["k5"]
     assert await blob_keys(world) == ["k1", "k3"]

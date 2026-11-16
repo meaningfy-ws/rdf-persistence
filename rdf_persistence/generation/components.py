@@ -59,9 +59,12 @@ def _identifier_properties(view: SchemaView, class_name: str) -> set[str]:
     return {json_name(slot) for slot in view.class_induced_slots(class_name) if slot.identifier}
 
 
+PROPERTIES_KEY = "properties"  # the key of a JSON Schema definition that holds its slots
+
+
 def _trimmed(view: SchemaView, name: str, definition: JsonSchema) -> JsonSchema:
     """The definition without the slots the API does not show, its identifier read-only."""
-    if name not in view.all_classes() or "properties" not in definition:
+    if name not in view.all_classes() or PROPERTIES_KEY not in definition:
         return definition
     hidden = _hidden_properties(view, name)
     identifiers = _identifier_properties(view, name)

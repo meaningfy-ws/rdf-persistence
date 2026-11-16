@@ -137,7 +137,8 @@ def test_a_consumer_class_named_like_a_service_type_is_refused_naming_the_clash(
     import_module(toy_copy, "mine", module_body("mine", "technical", simple_class(clash)))
     assert main(["--project", str(toy_copy / "pyproject.toml")]) == 1, "a clash must fail"
     error = capsys.readouterr().err
-    assert clash in error and "rp_service" in error, f"the clash is not named: {error}"
+    assert clash in error, f"the clash is not named: {error}"
+    assert "rp_service" in error, f"the clash is not named: {error}"
     assert "Traceback" not in error, f"a clash is a problem line, not a traceback: {error}"
 
 
@@ -163,7 +164,8 @@ def test_a_consumer_module_named_rp_service_is_refused_naming_the_module(
     )
     assert main(["--project", str(toy_copy / "pyproject.toml")]) == 1, "the module name is reserved"
     error = capsys.readouterr().err
-    assert "rp_service" in error and "reserved" in error, f"the reason is not given: {error}"
+    assert "rp_service" in error, f"the reason is not given: {error}"
+    assert "reserved" in error, f"the reason is not given: {error}"
 
 
 @pytest.mark.slow
