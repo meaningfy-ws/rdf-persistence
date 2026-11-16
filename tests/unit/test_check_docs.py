@@ -8,7 +8,8 @@ import pytest
 _SPEC = importlib.util.spec_from_file_location(
     "check_docs", Path(__file__).resolve().parents[2] / "docs/tools/check_docs.py"
 )
-assert _SPEC and _SPEC.loader
+assert _SPEC
+assert _SPEC.loader
 check_docs = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(check_docs)
 

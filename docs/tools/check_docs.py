@@ -14,6 +14,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 MODULE = ROOT / "docs/modules/ROOT"
 CODE_DIRS = ["rdf_persistence", "tests"]
+BYTECODE_DIR = "__pycache__"
+ALL_NAME = "__all__"
+MERMAID_PIN = "mermaid@"
 CODE_SUFFIXES = {
     ".py",
     ".yaml",
@@ -48,7 +51,7 @@ def code_files() -> list[Path]:
         f
         for d in CODE_DIRS
         for f in (ROOT / d).rglob("*")
-        if f.suffix in CODE_SUFFIXES and "__pycache__" not in f.parts
+        if f.suffix in CODE_SUFFIXES and BYTECODE_DIR not in f.parts
     )
 
 
@@ -79,7 +82,7 @@ def testkit_exports(testkit: Path) -> set[str] | None:
     init = testkit / "__init__.py"
     for node in ast.parse(init.read_text()).body:
         if isinstance(node, ast.Assign) and any(
-            isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets
+            isinstance(t, ast.Name) and t.id == ALL_NAME for t in node.targets
         ):
             return set(ast.literal_eval(node.value))
     return None
@@ -111,7 +114,7 @@ def check_mermaid_pin() -> list[str]:
     return [
         f"{book.relative_to(ROOT)}: serves another mermaid than {pin.group(1)}"
         for book in sorted((ROOT / "docs").glob("antora-playbook*.yml"))
-        if "mermaid@" in book.read_text() and wanted not in book.read_text()
+        if MERMAID_PIN in book.read_text() and wanted not in book.read_text()
     ]
 
 

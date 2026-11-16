@@ -740,7 +740,8 @@ async def test_a_dump_and_a_restore_each_log_one_line_without_content(world, cap
     assert lines[0].__dict__["blobs"] == 1, "the dump line counts the blobs"
     assert lines[1].__dict__["source"] == world.tenant, "the restore line names the source"
     text = " ".join(r.getMessage() for r in lines)
-    assert "Dune" not in text and "k1" not in text, "no graph or blob content in the log"
+    assert "Dune" not in text, "no graph or blob content in the log"
+    assert "k1" not in text, "no graph or blob content in the log"
 
 
 # -- TC-17 to TC-21: a restore refuses a dump it cannot trust ----------------------------------------
@@ -1129,7 +1130,8 @@ async def test_a_manifest_larger_than_its_cap_is_refused_whatever_the_budget(wor
         return manifest.model_copy(update={"label": "x" * 70_000}).model_dump_json().encode()
 
     reason = await refused(world, edited(await dumped(world), MANIFEST, padded))
-    assert MANIFEST in reason and "64" in reason, "the reason names the manifest and its cap"
+    assert MANIFEST in reason, "the reason names the manifest and its cap"
+    assert "64" in reason, "the reason names the manifest and its cap"
 
 
 async def test_the_gzip_stream_after_the_end_marker_is_bounded_by_the_budget(world):

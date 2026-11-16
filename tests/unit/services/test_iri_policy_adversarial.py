@@ -53,7 +53,8 @@ def aggregates(store) -> Aggregates:
 
 
 async def nothing_reached(store: FakeStore) -> None:
-    assert store.sent("update") == [] and store.sent("query") == [], "the store was reached"
+    assert store.sent("update") == [], "the store was reached"
+    assert store.sent("query") == [], "the store was reached"
 
 
 # -- IRIs with trailing characters ----------------------------------------------------------------
@@ -270,7 +271,8 @@ async def test_the_create_of_a_blank_node_part_mints_beside_the_root_in_the_tena
     chapters = chapter_ids(await aggregates.read(TENANT, ADA, iri, BOOK_CLASS))
     assert len(chapters) == 2
     for chapter in chapters:
-        assert chapter.startswith(f"{BASE}p4x8k2m/chapter/") and not chapter.startswith(iri)
+        assert chapter.startswith(f"{BASE}p4x8k2m/chapter/")
+        assert not chapter.startswith(iri)
 
 
 # -- with_iris ------------------------------------------------------------------------------------
@@ -284,7 +286,8 @@ def test_rules_bound_to_a_policy_leave_the_original_rules_on_the_default_policy(
     rebound.validate_grants(grants, TENANT)
     with pytest.raises(InvalidGrant):
         original.validate_grants(grants, TENANT)
-    assert rebound is not original and original._iris is DEFAULT_IRIS
+    assert rebound is not original
+    assert original._iris is DEFAULT_IRIS
 
 
 def test_rebinding_twice_does_not_stack_and_does_not_reach_back():

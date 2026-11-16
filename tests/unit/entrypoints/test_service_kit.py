@@ -372,7 +372,8 @@ async def test_the_kit_sweeps_a_tenant_with_its_own_store_files_and_iris(service
 
     report = await service.kit.sweep_tenant(tenant, older_than=timedelta(seconds=-1))
 
-    assert report.tenant == tenant and report.older_than_seconds == -1
+    assert report.tenant == tenant
+    assert report.older_than_seconds == -1
     assert report.blobs == ["left-behind"], "found through the kit's own file store"
     assert report.removed_loaded_graphs is False, "a dry run, as by default"
     await service.kit.sweep_tenant(tenant, remove_blobs=True, older_than=timedelta(seconds=-1))
@@ -397,7 +398,8 @@ async def test_the_kit_dumps_a_tenant_and_restores_it_for_another_principal(
     )
 
     assert manifest.source_tenant == tenant, "the manifest names the tenant it came from"
-    assert summary.id != tenant and summary.label == manifest.label, "a new tenant with the label"
+    assert summary.id != tenant, "a new tenant with the label"
+    assert summary.label == manifest.label, "a new tenant with the label"
     record, _ = await service.kit.tenancy.get(summary.id)
     assert [g.assignee for g in record.grants] == ["https://example.org/people/bob"], (
         "the restorer only"

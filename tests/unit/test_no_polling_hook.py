@@ -13,7 +13,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 HOOK = REPO_ROOT / ".claude" / "hooks" / "no_polling.py"
 
 _spec = importlib.util.spec_from_file_location("no_polling", HOOK)
-assert _spec is not None and _spec.loader is not None
+assert _spec is not None
+assert _spec.loader is not None
 no_polling = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(no_polling)
 

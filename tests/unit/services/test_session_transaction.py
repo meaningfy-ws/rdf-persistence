@@ -427,7 +427,8 @@ async def test_two_match_guards_of_one_transaction_do_not_join(session, typed):
         await t.remove(B, typed[B])
         t._require_match(A, str(KIND), titled("first"))
         t._require_match(B, str(KIND), titled("second"))
-    assert not await stored(session, A) and not await stored(session, B)
+    assert not await stored(session, A)
+    assert not await stored(session, B)
 
 
 async def test_a_match_guard_after_the_block_ended_raises(session, typed):

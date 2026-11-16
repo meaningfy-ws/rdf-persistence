@@ -82,7 +82,8 @@ def test_every_hand_written_type_in_the_allow_list_still_exists_and_is_flagged_w
         )
     for entry in HAND_WRITTEN:
         path, name = entry.split(":")
-        assert f"{path}:" in str(err.value) and f"class {name} " in str(err.value), (
+        assert f"{path}:" in str(err.value), f"{entry} is allowed but the guard does not flag it"
+        assert f"class {name} " in str(err.value), (
             f"{entry} is allowed but the guard does not flag it"
         )
 

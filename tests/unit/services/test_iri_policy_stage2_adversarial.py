@@ -282,7 +282,9 @@ ISSUER = "https://issuer.example"
 def test_an_odd_subject_stays_in_one_segment_and_decodes_back(sub):
     iri = str(Iris(SETTINGS).principal(ISSUER, sub))
     tail = iri.removeprefix(f"{ISSUER}/users/")
-    assert "/" not in tail and "?" not in tail and "#" not in tail
+    assert "/" not in tail
+    assert "?" not in tail
+    assert "#" not in tail
     assert unquote(tail) == sub
 
 

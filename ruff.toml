@@ -20,6 +20,15 @@ select = [
     "C90",    # mccabe complexity
     "N",      # pep8-naming conventions
     "RUF100", # unused noqa directives
+    "S113",   # request without a timeout (hygiene; httpx has a default, requests.Session is a known gap)
+    "DTZ",    # naive datetime: constructor, utcnow(), now(), strptime() without %z (hygiene)
+    "BLE001", # blind except: Exception or BaseException (hygiene; a bare except is E722)
+    "TID251", # banned API: env reads outside the config class (cosmic-python:PR-CONFIG-DECOUPLED)
+    "PLR2004", # magic value in a comparison (cosmic-python:BP-CONSTANTS-ENUMS, AP-FREESTR-ANYLAYER)
+    "PLR0912", # too many branches, default 12 (clean code: small functions)
+    "PLR0913", # too many arguments, default 5 (clean code: small functions)
+    "PLR0915", # too many statements, default 50 (clean code: small functions)
+    "PT018",  # composite assertion `assert a and b` (testing checklist item 11)
 ]
 ignore = [
     "E501",   # line length is enforced by the formatter; avoid double-flagging
@@ -28,11 +37,49 @@ ignore = [
 [lint.mccabe]
 max-complexity = 10
 
+[lint.pylint]
+allow-magic-value-types = ["bytes"]
+
+[lint.flake8-tidy-imports.banned-api]
+"os.getenv".msg = "Read configuration through the typed config class (cosmic-python:PR-CONFIG-DECOUPLED)."
+"os.environ".msg = "Read configuration through the typed config class (cosmic-python:PR-CONFIG-DECOUPLED)."
+
 [lint.per-file-ignores]
-# Justified, scoped exceptions only. Example: a config module whose method names
-# are UPPER_SNAKE_CASE to mirror environment-variable names.
-# "rdf_persistence/__init__.py" = ["N802"]
-# "tests/**/*.py" = ["N802"]
+"tests/**/*.py" = [
+    "PLR2004", # literal expected values are the point of a test
+    "PLR0913", # pytest fixtures arrive as arguments
+    "TID251",  # tests set, restore and read the environment to exercise configuration and tooling
+]
+
+# PLR0913 debt: parameter objects, tracked in the issue the lead opens; drop a file once clean
+"rdf_persistence/adapters/jwks.py" = ["PLR0913"]
+"rdf_persistence/entrypoints/kit.py" = ["PLR0913"]
+"rdf_persistence/entrypoints/openapi.py" = ["PLR0913"]
+"rdf_persistence/entrypoints/responses.py" = ["PLR0913"]
+"rdf_persistence/entrypoints/service.py" = ["PLR0913"]
+"rdf_persistence/entrypoints/sse.py" = ["PLR0913"]
+"rdf_persistence/generation/extensions/shacl_constraints.py" = ["PLR0913"]
+"rdf_persistence/services/aggregates.py" = ["PLR0913"]
+"rdf_persistence/services/collaboration.py" = ["PLR0913"]
+"rdf_persistence/services/discussion.py" = ["PLR0913"]
+"rdf_persistence/services/documents.py" = ["PLR0913"]
+"rdf_persistence/services/event_stream.py" = ["PLR0913"]
+"rdf_persistence/services/file_removal.py" = ["PLR0913"]
+"rdf_persistence/services/migration_runner.py" = ["PLR0913"]
+"rdf_persistence/services/reference_collections.py" = ["PLR0913"]
+"rdf_persistence/services/relay.py" = ["PLR0913"]
+"rdf_persistence/services/session.py" = ["PLR0913"]
+"rdf_persistence/services/tenancy.py" = ["PLR0913"]
+"rdf_persistence/services/tenant_dump.py" = ["PLR0913"]
+"rdf_persistence/services/tenant_sweep.py" = ["PLR0913"]
+"rdf_persistence/services/transitions.py" = ["PLR0913"]
+"rdf_persistence/services/workflows.py" = ["PLR0913"]
+# bootstrap.py also holds the one library function that touches the environment: `environment()`
+# sets variables for a block and restores them (TID251).
+"rdf_persistence/testkit/bootstrap.py" = ["PLR0913", "TID251"]
+"rdf_persistence/testkit/fakes.py" = ["PLR0913"]
+"rdf_persistence/testkit/tokens.py" = ["PLR0913"]
+"rdf_persistence/testkit/zitadel.py" = ["PLR0913"]
 
 [format]
 quote-style = "double"

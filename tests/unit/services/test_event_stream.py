@@ -135,7 +135,8 @@ async def test_an_activity_with_no_visible_part_is_not_sent():  # TC-33
     hub.offer(TENANT, activity(1, DUNE))
     hub.offer(TENANT, activity(2, EMMA))
     sent = await waiting
-    assert isinstance(sent, Activity) and sent.id == activity(2).id, "the other book's only"
+    assert isinstance(sent, Activity), "the other book's only"
+    assert sent.id == activity(2).id, "the other book's only"
     await stream.aclose()
 
 
@@ -174,7 +175,8 @@ async def test_what_the_caller_may_read_follows_the_latest_read_of_the_access():
     hub.offer(TENANT, activity(1, DUNE))
     hub.offer(TENANT, activity(2, EMMA))
     sent = await waiting
-    assert isinstance(sent, Activity) and sent.id == activity(2).id
+    assert isinstance(sent, Activity)
+    assert sent.id == activity(2).id
     await stream.aclose()
 
 

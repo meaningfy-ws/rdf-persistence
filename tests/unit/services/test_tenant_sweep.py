@@ -213,7 +213,8 @@ async def test_removing_blobs_leaves_the_loaded_graphs(world):
 
 async def test_removing_both_keeps_what_a_commit_names_or_will_name(world):
     report = await world.sweep(remove=True, remove_blobs=True)
-    assert report.loaded_graphs == [str(world.g2)] and report.blobs == ["k2"]
+    assert report.loaded_graphs == [str(world.g2)]
+    assert report.blobs == ["k2"]
     assert not await world.holds(world.g2)
     assert [await world.holds(g) for g in (world.g1, world.g3)] == [True, True]
     assert [b.file_key for b in await world.files.list_blobs(world.database)] == ["k1", "k3"]
@@ -236,7 +237,8 @@ async def test_the_grace_period_is_the_one_asked_for(world):
 async def test_a_sweep_twice_removes_nothing_the_second_time(world):
     await world.sweep(remove=True, remove_blobs=True)
     again = await world.sweep(remove=True, remove_blobs=True)
-    assert again.loaded_graphs == [] and again.blobs == []
+    assert again.loaded_graphs == []
+    assert again.blobs == []
 
 
 # -- what is never a candidate -----------------------------------------------------------------
@@ -355,16 +357,20 @@ async def root_world(world) -> tuple[URIRef, URIRef]:
 async def test_tc11_a_root_load_is_swept_only_when_no_commit_owns_it(world):
     kept, orphan = await root_world(world)
     report = await world.sweep(remove=True)
-    assert str(orphan) in report.loaded_graphs and str(kept) not in report.loaded_graphs
-    assert not await world.holds(orphan) and await world.holds(kept)
+    assert str(orphan) in report.loaded_graphs
+    assert str(kept) not in report.loaded_graphs
+    assert not await world.holds(orphan)
+    assert await world.holds(kept)
     assert await root_loads(world) == [kept]
 
 
 async def test_tc12_a_dry_run_reports_an_old_root_load_and_keeps_it(world):
     kept, orphan = await root_world(world)
     report = await world.sweep()
-    assert str(orphan) in report.loaded_graphs and not report.removed_loaded_graphs
-    assert await world.holds(orphan) and await world.holds(kept)
+    assert str(orphan) in report.loaded_graphs
+    assert not report.removed_loaded_graphs
+    assert await world.holds(orphan)
+    assert await world.holds(kept)
 
 
 async def test_tc13_a_young_root_load_is_kept(world):
@@ -514,8 +520,10 @@ async def test_under_a_template_without_root_an_old_orphan_is_still_found():
     root_kept, root_orphan = await root_world(world)
     report = await world.sweep(remove=True)
     assert report.loaded_graphs == sorted([str(orphan), str(root_orphan)])
-    assert not await world.holds(orphan) and await world.holds(kept)
-    assert not await world.holds(root_orphan) and await world.holds(root_kept)
+    assert not await world.holds(orphan)
+    assert await world.holds(kept)
+    assert not await world.holds(root_orphan)
+    assert await world.holds(root_kept)
 
 
 # -- the order of the reads (PD-7) --------------------------------------------------------------
@@ -541,9 +549,11 @@ async def test_a_blob_the_store_refuses_is_skipped_and_the_sweep_goes_on(world, 
     world.files.on("delete", ValueError("a key the adapter refuses"))
     with caplog.at_level(logging.INFO):
         report = await world.sweep(remove_blobs=True)
-    assert report.blobs == ["k2", "k5"] and report.skipped_blobs == ["k2"]
+    assert report.blobs == ["k2", "k5"]
+    assert report.skipped_blobs == ["k2"]
     keys = [b.file_key for b in await world.files.list_blobs(world.database)]
-    assert "k5" not in keys and "k2" in keys
+    assert "k5" not in keys
+    assert "k2" in keys
     assert any(r.__dict__.get("step") == "sweep-blob-skipped" for r in caplog.records)
 
 

@@ -36,10 +36,13 @@ def allowed_actions_value(actions: Iterable[Action]) -> str:
     return ", ".join(action.value for action in actions)
 
 
+_QUALITY_PARAMETER = "q"
+
+
 def _quality(parameters: list[str]) -> float:
     for parameter in parameters:
         name, _, value = parameter.partition("=")
-        if name.strip().lower() == "q":
+        if name.strip().lower() == _QUALITY_PARAMETER:
             try:
                 return float(value)
             except ValueError:

@@ -98,18 +98,22 @@ async def test_the_sweep_gives_the_worked_examples_outcome_on_real_stores(shelf)
 
     dry = await sweep()
     assert (dry.loaded_graphs, dry.blobs) == ([str(g2)], ["k2"]), "found"
-    assert not (dry.removed_loaded_graphs or dry.removed_blobs)
+    assert not dry.removed_loaded_graphs
+    assert not dry.removed_blobs
     assert await shelf.blobs() == ["k1", "k2"], "a dry run changes nothing"
 
     graphs_only = await sweep(remove=True)
-    assert graphs_only.removed_loaded_graphs and not graphs_only.removed_blobs
+    assert graphs_only.removed_loaded_graphs
+    assert not graphs_only.removed_blobs
     assert not await shelf.holds(g2), "the orphan graph goes with remove"
     assert await shelf.blobs() == ["k1", "k2"], "but the blobs stay without remove_blobs"
 
     both = await sweep(remove=True, remove_blobs=True)
-    assert both.removed_blobs and both.blobs == ["k2"]
+    assert both.removed_blobs
+    assert both.blobs == ["k2"]
     assert await shelf.blobs() == ["k1"], "the orphan blob goes; the named blob stays"
-    assert await shelf.holds(g1) and await shelf.holds(g3), "committed and young graphs stay"
+    assert await shelf.holds(g1), "committed and young graphs stay"
+    assert await shelf.holds(g3), "committed and young graphs stay"
 
 
 async def test_removing_with_files_deletes_only_the_keys_no_other_aggregate_names(shelf):
@@ -146,6 +150,7 @@ async def test_it02_a_root_load_is_swept_only_when_no_commit_owns_it(shelf):
         remove=True,
     )
     assert report.loaded_graphs == [str(orphan)]
-    assert not await shelf.holds(orphan) and await shelf.holds(kept)
+    assert not await shelf.holds(orphan)
+    assert await shelf.holds(kept)
     async with shelf.session(now) as opened:
         assert await opened.loaded_graphs(shelf.tenant) == [kept]

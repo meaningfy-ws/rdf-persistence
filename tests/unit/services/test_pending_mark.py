@@ -5,7 +5,7 @@ The mark is ``<activity> rp:pendingSince ?now``, written in the activity's own `
 """
 
 import io
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 from rdflib import RDF, Literal, URIRef
@@ -133,7 +133,7 @@ async def test_a_served_activity_is_pending_like_any_other(store):
 
 
 async def test_the_mark_is_written_by_the_stores_clock_not_the_sessions(store):
-    async with opened(store, clock=lambda: datetime(2001, 1, 1)) as session:
+    async with opened(store, clock=lambda: datetime(2001, 1, 1, tzinfo=UTC)) as session:
         await session.add_graph(B1, book(B1))
     (stamped,) = (await marks(store)).values()
     assert Literal(stamped).toPython().year >= 2026, "NOW() of the store, not the session clock"

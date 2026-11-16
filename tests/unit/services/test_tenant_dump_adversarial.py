@@ -617,7 +617,8 @@ async def test_restoring_one_archive_twice_gives_two_tenants_that_share_no_iri(w
                 if str(t).startswith(SETTINGS.base) and t != stamps_graph_iri(SETTINGS.base)
             }  # the stamps graph has one IRI under the base in every tenant database
         )
-    assert not (exported[0] & exported[1]) and not (exported[0] & exported[2])
+    assert not (exported[0] & exported[1])
+    assert not (exported[0] & exported[2])
     assert not (exported[1] & exported[2])
     assert len({(await world.tenancy.get(t))[0].database_name for t in (one, two)}) == 2
     for tenant in (one, two):

@@ -15,6 +15,10 @@ PUBLIC_SUBPACKAGE = "testkit"
 TESTKIT = f"{PACKAGE}.{PUBLIC_SUBPACKAGE}"
 # The one module of the testkit a test file names: pytest loads the container fixtures by its path.
 PLUGIN_MODULE = "containers"
+BYTECODE_DIR = "__pycache__"
+SOURCE_SUFFIX = ".py"
+# In rdf_persistence.testkit.<module>, the dotted-name part that names the module.
+TESTKIT_MODULE_INDEX = 2
 
 
 def _submodules(package: str) -> frozenset[str]:
@@ -26,7 +30,7 @@ def _submodules(package: str) -> frozenset[str]:
 
 
 def _is_module(entry: Path) -> bool:
-    return (entry.is_dir() and entry.name != "__pycache__") or entry.suffix == ".py"
+    return (entry.is_dir() and entry.name != BYTECODE_DIR) or entry.suffix == SOURCE_SUFFIX
 
 
 def _imported_names(node: ast.stmt) -> Iterator[str]:
@@ -52,7 +56,8 @@ def _is_private(name: str, submodules: frozenset[str], testkit_modules: frozense
     if parts[0] != PACKAGE or len(parts) == 1:
         return False
     if parts[1] == PUBLIC_SUBPACKAGE:
-        return len(parts) > 2 and parts[2] in testkit_modules and parts[2] != PLUGIN_MODULE
+        module = parts[TESTKIT_MODULE_INDEX] if len(parts) > TESTKIT_MODULE_INDEX else None
+        return module in testkit_modules and module != PLUGIN_MODULE
     return parts[1] in submodules
 
 

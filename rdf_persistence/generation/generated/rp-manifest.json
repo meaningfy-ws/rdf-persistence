@@ -19,7 +19,7 @@
     },
     {
       "path": "rdf_persistence/generation/checks/hard.py",
-      "sha256": "04239f01808a5871f4d1e60b3d3d8943ef26f6ea5003006ea78544b6aadd537f"
+      "sha256": "db5767102579d022324f7371f95ea8334dd6ff3efe7b7e03a90a3727a38381c1"
     },
     {
       "path": "rdf_persistence/generation/checks/rules.py",
@@ -31,11 +31,11 @@
     },
     {
       "path": "rdf_persistence/generation/cli.py",
-      "sha256": "982838dc928b659219817100c1cf9f0d60e62b55fbf44b3c411c32a0a8a3bf7f"
+      "sha256": "6b534c6a59d911080eec60f5a30912abcb0ca84e99abadd1c152b5cf4f538136"
     },
     {
       "path": "rdf_persistence/generation/components.py",
-      "sha256": "f605eccb99b8767973309750f8c67106abce5615a916ecaab22858a0ce130c41"
+      "sha256": "2c2ec6a58c088d397acad832b849cdf0ffb2f37b480ee35619a06053c8a2bbd3"
     },
     {
       "path": "rdf_persistence/generation/config.py",
@@ -59,11 +59,11 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/pydantic_split.py",
-      "sha256": "7a86e5ced002cf89a7909ec6f19579a002c544731a3d0761cfaaadb0b40734c5"
+      "sha256": "684db104072547bdd0d66c69c8c80c19d5f521b2e129e2f351911d5097e74a5f"
     },
     {
       "path": "rdf_persistence/generation/extensions/pydantic_validators.py",
-      "sha256": "06a7ecf291b80173ed2b8128c3dd6dbbc1d69e4f8244eb0de331e566127a6518"
+      "sha256": "2ad6c77c15defe210d4b500759e054d09d736ae9f1b52b77fedc08acbdcc93f9"
     },
     {
       "path": "rdf_persistence/generation/extensions/shacl.py",
@@ -87,7 +87,7 @@
     },
     {
       "path": "rdf_persistence/generation/manifest.py",
-      "sha256": "dddf3f4046d3e844e1d267644b56a3e29ae322932ae0b4673786b6e89b9cfa12"
+      "sha256": "f7162e1f353deae508e44a3272096f4552019fe835d30289fe5cf86ad07cadf8"
     },
     {
       "path": "rdf_persistence/generation/model/rp_generation.yaml",
@@ -95,7 +95,7 @@
     },
     {
       "path": "rdf_persistence/generation/pipeline.py",
-      "sha256": "5ac69758f39340d64578dd15206f4713b262e111b9e8515da043faebf3b48c0a"
+      "sha256": "1162f601647e43b55d3462e5116aca87e83de955a6816522d8e4833265b89f5a"
     },
     {
       "path": "rdf_persistence/generation/problems.py",
@@ -155,7 +155,7 @@
     },
     {
       "path": "rdf_persistence/services/schema_structure.py",
-      "sha256": "f911e13a724a55873f220882781eb6d4de4f92c2bbb983d95a275e1068859233"
+      "sha256": "1c631a15e0377f09845cadeadeede54b392bc7159f733047b3807e4af78edff3"
     }
   ],
   "outputs": [

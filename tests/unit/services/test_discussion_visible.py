@@ -74,7 +74,7 @@ def test_a_reply_whose_parent_is_missing_is_hidden() -> None:
 
 
 def test_a_naive_time_and_a_missing_time_do_not_break_the_order() -> None:
-    naive = comment(2, created=datetime(2026, 11, 14, 8))
+    naive = comment(2, created=datetime(2026, 11, 14, 8))  # noqa: DTZ001 -- a naive time is the case under test
     aware = comment(3, created=T0)
     untimed = comment(1, created=None)
     assert [c.id for c in visible([aware, naive, untimed], SEEN)] == [

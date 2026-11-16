@@ -190,7 +190,8 @@ async def test_a_served_command_with_no_change_sends_nothing_and_records_nothing
     hook = Hook()
     async with opened(store, on_commit=hook) as hooked, hooked.transaction(served=served()):
         pass
-    assert store.sent("update") == [] and not hook.calls, "no request, no hook call"
+    assert store.sent("update") == [], "no request, no hook call"
+    assert not hook.calls, "no request, no hook call"
     assert await activities(store) == [], "no record of a command that changed nothing"
 
 
@@ -301,12 +302,13 @@ async def test_a_commit_serving_an_id_taken_while_the_first_request_ran_writes_n
             store.after_update = None
             try:
                 await other.add_graph(B2, book(B2), served=served(Add(id=X)))
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 -- the race outcome is whichever error comes back
                 raced.append(error)
 
         store.after_update = second
         await session.replace_graph(B1, book(B1), v1, served=served())
-        assert len(raced) == 1 and isinstance(raced[0], Conflict), "the second is refused"
+        assert len(raced) == 1, "the second is refused"
+        assert isinstance(raced[0], Conflict), "the second is refused"
         assert X in str(raced[0]), "naming the activity"
         with pytest.raises(NotFound):
             await other.get_graph(B2)
@@ -426,7 +428,9 @@ async def test_the_parts_of_two_commits_never_share_an_iri_even_from_one_blank_l
     stored = await stored_graph(store, PROVENANCE)
     first = {*stored.objects(URIRef(X), forged[1])}
     second = {*stored.objects(URIRef(Y), forged[1])}
-    assert len(first) == 1 and len(second) == 1 and first != second, "two different parts"
+    assert len(first) == 1, "two different parts"
+    assert len(second) == 1, "two different parts"
+    assert first != second, "two different parts"
     assert all(str(n).startswith(f"{PROVENANCE}/") for n in first | second), "under the graph"
 
 
@@ -484,7 +488,8 @@ async def test_the_session_overwrites_the_slots_it_fills_on_a_command_that_carri
     found = await only_activity(store)
     assert found.was_associated_with == [ADA], "the session's principal, not EVE"
     assert [g.entity for g in found.generations] == [B1], "the session's parts, not the forged one"
-    assert found.started_at_time.year == 2026 and found.ended_at_time.year == 2026, "its times"
+    assert found.started_at_time.year == 2026, "its times"
+    assert found.ended_at_time.year == 2026, "its times"
 
 
 async def test_a_served_with_statements_about_another_subject_writes_none_of_them(store, session):

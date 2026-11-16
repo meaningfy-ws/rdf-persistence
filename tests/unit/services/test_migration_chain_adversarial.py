@@ -59,7 +59,8 @@ def test_two_files_whose_versions_collide_in_the_name_cannot_both_exist_and_none
     put(tmp_path, "1/0", "2", name="1_0__2.yaml")
     put(tmp_path, "1_0", "2", name="1_0__2_b.yaml")
     message = refused(tmp_path, "2")
-    assert "1_0__2.yaml" in message and "1_0__2_b.yaml" in message
+    assert "1_0__2.yaml" in message
+    assert "1_0__2_b.yaml" in message
 
 
 def test_a_file_named_for_another_spelling_of_the_same_versions_is_refused(tmp_path):
@@ -120,7 +121,8 @@ def test_a_long_cycle_beside_a_line_is_refused_and_the_loop_ends(tmp_path):
     cycle = ["a", "b", "c", "d", "a"]
     chain_of(tmp_path, cycle)
     message = refused(tmp_path, "3")
-    assert "a__b.yaml" in message and "d__a.yaml" in message
+    assert "a__b.yaml" in message
+    assert "d__a.yaml" in message
 
 
 def test_a_cycle_through_the_current_version_is_refused_and_the_loop_ends(tmp_path):
@@ -138,7 +140,8 @@ def test_a_fork_made_of_two_spellings_is_a_fork(tmp_path):
     put(tmp_path, "1", "2")
     put(tmp_path, "1", "2.0")
     message = refused(tmp_path, "2")
-    assert "1__2.yaml" in message and "1__2.0.yaml" in message
+    assert "1__2.yaml" in message
+    assert "1__2.0.yaml" in message
 
 
 # -- folders, files, links -----------------------------------------------------------------------
@@ -186,7 +189,8 @@ def test_a_link_to_a_migration_is_a_second_file_for_the_same_step(tmp_path):
     original = put(tmp_path, "1", "2")
     os.symlink(original, tmp_path / "1__2_link.yaml")
     message = refused(tmp_path, "2")
-    assert "1__2.yaml" in message and "1__2_link.yaml" in message
+    assert "1__2.yaml" in message
+    assert "1__2_link.yaml" in message
 
 
 def test_a_link_to_a_migration_outside_the_folder_is_read(tmp_path):
@@ -267,7 +271,8 @@ def test_a_long_fork_is_refused_naming_both_files(tmp_path):
     chain_of(tmp_path, [f"v{i}" for i in range(100)])
     put(tmp_path, "v50", "side")
     message = refused(tmp_path, "v99")
-    assert "v50__v51.yaml" in message and "v50__side.yaml" in message
+    assert "v50__v51.yaml" in message
+    assert "v50__side.yaml" in message
 
 
 def test_pending_from_does_not_mutate_or_alias_the_chain(tmp_path):

@@ -140,7 +140,7 @@ async def _outcome_of_a_root_put_on_a_deleting_tenant(**validators) -> str:
                 JSON,
                 scene.root_etag.strip('"'),
             )
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 -- the test compares whichever exception type is raised
             return type(error).__name__
         return "replaced"
 

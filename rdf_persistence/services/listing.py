@@ -259,7 +259,8 @@ class Listings:
             for slot in [self._slot(cls, f.slot)]
         ]
         sort, descending = self._sort(cls, request.sort)
-        assert request.limit is not None and request.offset is not None, "ListRequest defaults"
+        assert request.limit is not None, "ListRequest defaults"
+        assert request.offset is not None, "ListRequest defaults"
         return ListPlan(
             target=self._view.get_uri(cls, expand=True),
             conditions=conditions or None,

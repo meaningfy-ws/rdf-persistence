@@ -13,6 +13,7 @@ from rdf_persistence.generation.pipeline import Step, generate
 from rdf_persistence.generation.problems import format_problem
 
 EXIT_OK, EXIT_FAILED, EXIT_USAGE = 0, 1, 2
+LINKML_PACKAGE = "linkml"  # the top-level package the `generate` extra installs
 EXTRA_HINT = "rp-generate needs LinkML's generators: install rdf-persistence[generate]"
 
 
@@ -39,7 +40,7 @@ def _pipeline_steps() -> tuple[Step, ...] | None:
     try:
         from rdf_persistence.generation import steps  # lazy: needs the `generate` extra
     except ModuleNotFoundError as error:
-        if (error.name or "").split(".")[0] != "linkml":
+        if (error.name or "").split(".")[0] != LINKML_PACKAGE:
             raise
         return None
     return steps.STEPS

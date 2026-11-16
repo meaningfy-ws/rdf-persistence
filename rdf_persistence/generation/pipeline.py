@@ -21,6 +21,8 @@ from rdf_persistence.generation.generated.rp_generation import (
 from rdf_persistence.services.schema import LOAD_ERRORS, load_schema
 
 STAGING_PREFIX = ".rp-generate-"
+NOT_PLAIN_NAMES = ("", ".", "..")  # what a path component can be without naming a file
+PATH_SEPARATORS = ("/", "\\")
 
 
 @contextmanager
@@ -84,7 +86,7 @@ def stage(run: Run, folder: Path, files: Iterable[GeneratedFile]) -> None:
         StepError: When a name, which may come from the schema, is not a plain file name.
     """
     for file in files:
-        if file.name in ("", ".", "..") or "/" in file.name or "\\" in file.name:
+        if file.name in NOT_PLAIN_NAMES or any(sep in file.name for sep in PATH_SEPARATORS):
             problem = CheckProblem(
                 element=repr(file.name), message="an output name must be a plain file name"
             )

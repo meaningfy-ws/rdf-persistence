@@ -710,7 +710,8 @@ def test_an_anchor_reused_in_two_steps_loads_as_two_checked_steps(tmp_path):
         + "  - *s\n"
     )
     loaded = load_migration(raw(tmp_path, text))
-    assert loaded.steps and len(loaded.steps) == 2
+    assert loaded.steps
+    assert len(loaded.steps) == 2
     assert len(parseUpdate(migration_request(loaded, STAMPS)).request) == 4
 
 
@@ -730,7 +731,8 @@ def test_a_step_too_long_for_the_parser_is_refused_with_its_own_message(tmp_path
     with pytest.raises(InvalidMigration) as error:
         load(tmp_path, where_pattern=triples, delete_pattern="?s <urn:p0> ?o0 .")
     message = str(error.value)
-    assert "too long to check" in message and "split" in message
+    assert "too long to check" in message
+    assert "split" in message
     assert "does not parse" not in message
 
 
@@ -782,7 +784,8 @@ LEGIT = {
 @pytest.mark.parametrize(("clause", "text"), LEGIT.values(), ids=LEGIT)
 def test_a_legitimate_pattern_is_not_refused(tmp_path, clause, text):
     loaded = load(tmp_path, **fields_with(clause, text))
-    assert loaded.steps and len(parseUpdate(migration_request(loaded, STAMPS)).request) == 3
+    assert loaded.steps
+    assert len(parseUpdate(migration_request(loaded, STAMPS)).request) == 3
 
 
 # -- PD-21: what the parser understood, escapes, a key twice, a registry graph -----------------------
@@ -814,7 +817,8 @@ def test_a_codepoint_escape_in_any_pattern_is_refused_outright_even_in_a_literal
     tmp_path, clause, text
 ):
     message = refused(tmp_path, **fields_with(clause, text))
-    assert clause in message and "codepoint escape" in message
+    assert clause in message
+    assert "codepoint escape" in message
 
 
 @pytest.mark.parametrize("escape", [BS + "u0041", BS + "U00000041"])

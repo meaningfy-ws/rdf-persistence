@@ -101,7 +101,8 @@ def test_root_class_iris_of_the_application(view: SchemaView) -> None:
 
 def test_root_class_iris_of_the_tenant_leave_the_application_out(view: SchemaView) -> None:
     iris = root_class_iris(view, TENANT)
-    assert URIRef(NS + "Book") in iris and URIRef(NS + "Shelf") in iris, "tenant roots are in"
+    assert URIRef(NS + "Book") in iris, "tenant roots are in"
+    assert URIRef(NS + "Shelf") in iris, "tenant roots are in"
     assert not iris & {URIRef(NS + "Tpl"), URIRef(NS + "Access")}, "other databases' roots are out"
 
 

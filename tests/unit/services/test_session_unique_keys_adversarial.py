@@ -218,7 +218,8 @@ async def test_a_part_holding_the_key_predicate_is_no_holder_and_claims_nothing(
     await session.add_graph(A, [*isbn_book(A, "7"), *root(part_a, (ISBN, Literal("9")))])
     await session.add_graph(B, isbn_book(B, "9"))
     await session.add_graph(C, [*root(C), *root(part_c, (ISBN, Literal("9")))])
-    assert await stored(session, B) and await stored(session, C), "parts claim and hold nothing"
+    assert await stored(session, B), "parts claim and hold nothing"
+    assert await stored(session, C), "parts claim and hold nothing"
     with pytest.raises(KeyConflict):
         await session.add_graph(D, isbn_book(D, "7"))
 
@@ -375,7 +376,8 @@ async def test_a_refused_commit_writes_nothing_and_the_session_works_after(store
     assert await quads(store) == before, "no graph, no entry, no marker"
     await session.add_graph(B, isbn_book(B, "2"))
     await session.add_graph(C, isbn_book(C, "3"))
-    assert await stored(session, B) and await stored(session, C), "the same session goes on"
+    assert await stored(session, B), "the same session goes on"
+    assert await stored(session, C), "the same session goes on"
 
 
 async def test_a_clash_inside_the_commit_writes_nothing_and_the_session_works_after(store, session):
@@ -431,8 +433,10 @@ async def test_a_key_conflict_carries_sorted_tuples_of_str(session):
     error = refused.value
     assert isinstance(error, Conflict), "it is a Conflict"
     assert error.iris == (C, D, E), "roots sorted, whatever the order of the changes"
-    assert isinstance(error.iris, tuple) and all(type(i) is str for i in error.iris), "str tuple"
-    assert isinstance(error.keys, tuple) and all(type(k) is str for k in error.keys), "str tuple"
+    assert isinstance(error.iris, tuple), "str tuple"
+    assert all(type(i) is str for i in error.iris), "str tuple"
+    assert isinstance(error.keys, tuple), "str tuple"
+    assert all(type(k) is str for k in error.keys), "str tuple"
     assert "urn:uuid" not in str(error), "no version token"
 
 

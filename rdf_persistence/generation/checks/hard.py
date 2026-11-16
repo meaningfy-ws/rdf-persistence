@@ -59,6 +59,7 @@ DESCRIBED = "Described"
 CORE_MODEL = PACKAGE_DIR / "model" / "rp_core.yaml"
 URL_SEGMENT = "url_segment"  # the slot of rp_core whose pattern every route segment follows
 BOOLEAN = ("true", "false")
+VERSION_KEY = "version"  # the root key of a schema's YAML source that holds its version
 RESERVED_PREFIX = "rp-"  # the segments of the toolkit's own roots, such as rp-comments
 SEGMENT_ANNOTATIONS = (
     RpAnnotation.RP_PATH,
@@ -343,7 +344,7 @@ def _version_problems(view: SchemaView) -> Iterator[CheckProblem]:
     if not isinstance(root, yaml.MappingNode):
         yield rule_problem(rule, name, "must be a YAML mapping with a root `version:`")
         return
-    version = next((value for key, value in root.value if key.value == "version"), None)
+    version = next((value for key, value in root.value if key.value == VERSION_KEY), None)
     if version is None:
         yield rule_problem(rule, name, "a target with migrations needs a root `version:`")
     elif version.style not in QUOTES:

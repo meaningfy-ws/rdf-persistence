@@ -196,7 +196,8 @@ async def test_the_observers_get_the_command_as_it_was_stored():  # TC-75
             assert (got.from_state_iri, got.to_state_iri) == (DRAFT, IN_REVIEW), (
                 f"{name}: the states"
             )
-            assert got.started_at_time and got.ended_at_time, f"{name}: the times"
+            assert got.started_at_time, f"{name}: the times"
+            assert got.ended_at_time, f"{name}: the times"
             assert got.was_associated_with == [ADA], f"{name}: the principal"
             assert [g.entity for g in got.generations or []] == [B1], f"{name}: the generation"
             assert [i.entity for i in got.invalidations or []] == [B1], f"{name}: the invalidation"
@@ -414,7 +415,8 @@ async def test_an_observer_of_posts_gets_the_reply_that_was_posted():  # TC-93
         assert (got.id, got.replies_to, got.used_resource) == (reply.id, first, B1)
         assert (got.body_value, got.comment_audience) == (None, None), "the payload is not stored"
         [stored] = [c for c in await w.collaboration.thread(B1) if c.id == iri]
-        assert isinstance(stored, Comment) and stored.replies_to == first, "a reply to the comment"
+        assert isinstance(stored, Comment), "a reply to the comment"
+        assert stored.replies_to == first, "a reply to the comment"
 
 
 async def test_a_file_deletion_has_no_toolkit_handler():  # TC-95

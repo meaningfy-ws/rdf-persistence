@@ -31,6 +31,13 @@ TOOLKIT_SEGMENT = "toolkit"
 POLICY_SEGMENT = f"{TOOLKIT_SEGMENT}/iri-policy"
 STAMPS_SEGMENT = f"{TOOLKIT_SEGMENT}/schema-stamps"
 GENID = "/.well-known/genid/"
+# The template placeholders and regex group names the matching code tests for.
+_OPEN_BRACE = "{"
+_TYPE_PLACEHOLDER = "{type}"
+_TENANT_ID_PLACEHOLDER = "{tenant_id}"
+_DEPLOYMENT_PLACEHOLDER = "{deployment}"
+_TENANT_GROUP = "tenant"
+_TENANT_ID_GROUP = "tenant_id"
 
 
 def _segment(value: str) -> str:
@@ -228,7 +235,7 @@ def check_iri_policy(settings: ServiceSettings) -> None:
 
 def _check_template(name: str, template: str, settings: ServiceSettings) -> None:
     """Refuse one template of ``check_iri_policy``: ``{deployment}`` without a slug."""
-    if "{deployment}" in template and not settings.deployment:
+    if _DEPLOYMENT_PLACEHOLDER in template and not settings.deployment:
         raise InvalidIri(f"{name} uses {{deployment}} but the settings set no deployment")
 
 
@@ -395,7 +402,7 @@ class Iris:
 
     def part_needs_type(self) -> bool:
         """True when the part template writes the class's ``{type}``, so a part of no known class has no IRI."""
-        return "{type}" in self._template("part_template")
+        return _TYPE_PLACEHOLDER in self._template("part_template")
 
     @cached_property
     def _tenant_spec(self) -> IdSpec:
@@ -434,7 +441,7 @@ class Iris:
             APPLICATION_ID,
         }
         for template in _templates(self._policy).values():
-            literals = (piece for piece in _VARIABLE.split(template) if piece[:1] != "{")
+            literals = (piece for piece in _VARIABLE.split(template) if piece[:1] != _OPEN_BRACE)
             words.update(word for literal in literals for word in _WORD.findall(literal))
         return frozenset(words - {""})
 
@@ -577,7 +584,7 @@ class Iris:
 
     def _probe_types(self, slot: str, types: frozenset[str]) -> frozenset[str]:
         """The ``{type}`` values a template is probed with: its class types, or one empty type when it writes none."""
-        return types if "{type}" in self._template(slot) else frozenset({""})
+        return types if _TYPE_PLACEHOLDER in self._template(slot) else frozenset({""})
 
     def _probe_tenant(self) -> URIRef | None:
         for _ in range(_MAX_RESERVED_REDRAWS):
@@ -596,13 +603,13 @@ class Iris:
         raise InvalidIri(f"no id that is not a reserved word after {_MAX_RESERVED_REDRAWS} draws")
 
     def _fill(self, template: str, **values: str) -> URIRef:
-        if "{tenant_id}" in template and "tenant_id" not in values:
-            values["tenant_id"] = self._id_of(values["tenant"])
+        if _TENANT_ID_PLACEHOLDER in template and _TENANT_ID_GROUP not in values:
+            values[_TENANT_ID_GROUP] = self._id_of(values[_TENANT_GROUP])
         return URIRef(template.format(**self._fixed, **values))
 
     @staticmethod
     def _allow(template: str, cls_type: str, allowed: frozenset[str]) -> None:
-        if "{type}" in template and cls_type not in allowed:
+        if _TYPE_PLACEHOLDER in template and cls_type not in allowed:
             raise InvalidIri(f"type {cls_type!r} is not one of {sorted(allowed)}")
 
     def mint_tenant(self) -> URIRef:
@@ -716,7 +723,7 @@ class Iris:
             return True
         if groups.get("tenant", tenant) != tenant:
             return False
-        return "tenant_id" not in groups or groups["tenant_id"] == self._id_of(tenant)
+        return _TENANT_ID_GROUP not in groups or groups[_TENANT_ID_GROUP] == self._id_of(tenant)
 
     def is_aggregate(self, tenant: str, iri: str) -> bool:
         """True for what the toolkit mints as an aggregate of ``tenant``, or its root or access record.
@@ -761,7 +768,9 @@ class Iris:
         groups = found.groupdict()
         try:
             tenant = (
-                URIRef(groups["tenant"]) if "tenant" in groups else self.tenant(groups["tenant_id"])
+                URIRef(groups[_TENANT_GROUP])
+                if _TENANT_GROUP in groups
+                else self.tenant(groups[_TENANT_ID_GROUP])
             )
         except NotFound as error:  # a reserved word where the tenant id stands
             raise InvalidIri(f"not an access record IRI: {access_record_iri!r}") from error

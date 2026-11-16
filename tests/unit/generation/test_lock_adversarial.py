@@ -574,7 +574,8 @@ def test_a_draft_with_unresolved_steps_is_refused_and_loads_once_they_are_remove
 def test_a_draft_with_nothing_to_write_loads_as_a_migration_without_steps(tmp_path: Path) -> None:
     old = lock(klass(BOOK, slot()))
     new = lock(klass(BOOK, slot(), slot("urn:opt")), klass(SHELF), version="2")
-    assert changes(old, new) and not not_safe(changes(old, new))
+    assert changes(old, new)
+    assert not not_safe(changes(old, new))
     loaded = load_migration(written(tmp_path, old, new))
     assert not loaded.steps
     assert (loaded.from_version, loaded.to_version) == ("1", "2")

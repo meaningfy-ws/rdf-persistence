@@ -14,6 +14,7 @@ from pathlib import Path
 from rdf_persistence.generation.generated.rp_generation import Violation
 
 GENERATED = "generated"
+INIT_MODULE = "__init__"
 SCANNED_LAYERS = ("domain", "services", "entrypoints")
 DEFAULT_ALLOW = ("rdf_persistence/domain/base.py:RpModel",)
 
@@ -120,7 +121,7 @@ def _module_violations(
     path: Path, relative: Path, allowed: frozenset[str], exports: dict[str, str]
 ) -> Iterator[Violation]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    names = _import_names(tree, _module_name(relative), is_package=path.name == "__init__.py")
+    names = _import_names(tree, _module_name(relative), is_package=path.name == f"{INIT_MODULE}.py")
     for node in ast.walk(tree):
         if not isinstance(node, ast.ClassDef) or f"{relative.as_posix()}:{node.name}" in allowed:
             continue
@@ -147,7 +148,7 @@ def _reason(node: ast.ClassDef, names: dict[str, str], exports: dict[str, str]) 
 
 def _module_name(relative: Path) -> str:
     parts = list(relative.with_suffix("").parts)
-    return ".".join(parts[:-1] if parts[-1] == "__init__" else parts)
+    return ".".join(parts[:-1] if parts[-1] == INIT_MODULE else parts)
 
 
 def _import_names(tree: ast.Module, module: str, *, is_package: bool) -> dict[str, str]:
