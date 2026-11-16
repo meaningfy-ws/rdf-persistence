@@ -68,6 +68,35 @@ A test is slow when its set-up and its call add up to 2 s or more, run alone
 * A module or session fixture that is slow to build is not a reason to mark: the tests that share
   it pay for it once. Mark a test only for its own time.
 
+[#run-rules]
+== Quarantine, timeouts, order and shared fixtures
+
+_What does the runner do to my test, and what do I do about a test that breaks one of these?_
+
+* *Quarantine.* A test that passes and fails on unchanged code (rule 14) is marked
+  `@pytest.mark.quarantine` and carries a link to its issue in a comment. Every lane that selects
+  `unit`, `feature` or `unit or feature` adds `and not quarantine`, so a quarantined test blocks
+  nothing; nobody quarantines a test to hide a real failure. A skip that stands for a parameter
+  combination that cannot happen is not a quarantine: remove the combination.
+* *Timeout.* `pytest.ini` sets `timeout = 120` (seconds, `thread` method, fixture set-up not
+  counted, so a container start is free). In the parallel lanes (`pytest -n auto`) a hung test is
+  killed with its worker, xdist replaces the worker, and the test fails by name. In a serial run
+  (`-n 0`, or plain `pytest`) there is no worker to replace: a thread timeout ends the whole
+  session, so run a test you suspect of hanging in a parallel lane, or under a smaller
+  `--timeout=<seconds>`.
+* *Random order.* `pytest-randomly` shuffles the order of tests and reseeds the random generators
+  before every test, so a test that depends on another's leftovers fails soon. The seed is the
+  first line of a run's output; replay a failing order with
+  `uv run pytest -p randomly --randomly-seed=<n> <paths>`. `-p no:randomly` switches the shuffle
+  off, which timing runs need (see <<slow,Slow tests>>).
+* *Shared fixtures.* The parallel lanes run `--dist loadgroup`: tests with the same
+  `@pytest.mark.xdist_group("<name>")` run on one worker, in one process. A fixture shared by the
+  tests of a class (class scope) is built once per worker, so tests that all use it must be
+  in one group, or each worker builds its own copy; mark the class
+  (`@pytest.mark.xdist_group("listing_read")` in `test_listing_routes_read.py` is the model). A
+  group serialises its tests: use it only for class-shared state, never to hide an order
+  dependency.
+
 == The report
 
 Every member that runs tests reports, for each make target it ran, the approximate wall-clock

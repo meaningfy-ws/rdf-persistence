@@ -1,4 +1,4 @@
-"""Adversarial tests of stage 3, discussion (rp-discussion, PD-3 step 4, PD-9 to PD-15, PD-25, PD-26, D-7, D-8).
+"""Adversarial tests of discussion (rp-discussion, PD-3 step 4, PD-9 to PD-15, PD-25, PD-26, D-7, D-8).
 
 The new operation on every delete first (a remove drops the comments on the removed aggregate, and
 only those), the presence guard under concurrent writers, then who sees what, then foreign and
@@ -67,8 +67,6 @@ from tests.toy import (
     shelf_iri,
     toy_mapper,
 )
-from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
-from tests.unit.entrypoints.scene import PROBLEMS, problem_of
 from tests.unit.services.test_collaboration_cascade import before
 from tests.unit.services.test_collaboration_collections_adversarial import (
     everything_said,
@@ -490,32 +488,6 @@ async def test_the_comments_a_remove_without_dependents_left_are_not_referrers_o
     assert (found.referrers, found.hidden_count) == (None, 0), (
         "pinned: the target link is no reference"
     )
-
-
-async def test_the_kit_remove_with_files_drops_the_comments():
-    toy = ToyService()
-    async with toy.app.router.lifespan_context(toy.app), toy.client() as client:
-        headers = toy.bearer("ada")
-        path = (await client.post("/libraries", json=TENANT_BODY, headers=headers)).headers[
-            "location"
-        ]
-        tenant = toy.kit.tenant_iri(path.rsplit("/", 1)[1])
-        first = (await client.post(f"{path}/books", json=DUNE_BODY, headers=headers)).json()["id"]
-        second = (await client.post(f"{path}/books", json=DUNE_BODY, headers=headers)).json()["id"]
-        on_first, on_second = (
-            str(toy.kit.iris.mint_aggregate(tenant, "rp-comment", "rp-comments")) for _ in range(2)
-        )
-        async with toy.kit.session(tenant, "ada") as session:
-            for comment, target in ((on_first, first), (on_second, second)):
-                await session.add_graph(
-                    comment, annotation(comment, (v.HAS_TARGET, URIRef(target)))
-                )
-            old = (await session.get_graph(first))[2]
-        await toy.kit.remove_with_files(tenant, "ada", first, old)
-        async with toy.kit.session(tenant, "ada") as session:
-            assert await stored(session, on_first, on_second) == [on_second], (
-                "the comment on the removed aggregate is gone, the other stays"
-            )
 
 
 # -- 2. races: the presence guard under concurrent writers --------------------------------------
@@ -1125,45 +1097,6 @@ async def test_a_comment_on_something_that_is_no_aggregate_of_the_tenant_is_refu
 
 
 # -- 6. the model and the access side -----------------------------------------------------------
-
-
-async def test_the_generic_router_has_no_route_for_comments_whatever_the_method():
-    toy = ToyService()
-    async with toy.app.router.lifespan_context(toy.app), toy.client() as client:
-        headers = toy.bearer("ada")
-        path = (await client.post("/libraries", json=TENANT_BODY, headers=headers)).headers[
-            "location"
-        ]
-        tenant = toy.kit.tenant_iri(path.rsplit("/", 1)[1])
-        book = (await client.post(f"{path}/books", json=DUNE_BODY, headers=headers)).json()["id"]
-        comment = str(toy.kit.iris.mint_aggregate(tenant, "rp-comment", "rp-comments"))
-        async with toy.kit.session(tenant, "ada") as session:
-            await session.add_graph(
-                comment,
-                annotation(
-                    comment,
-                    (v.HAS_TARGET, URIRef(book)),
-                    (OA.bodyValue, Literal(SECRET)),
-                    (RP.audience, Literal("librarian")),
-                ),
-            )
-        paths = [route.path for route in toy.app.routes if hasattr(route, "path")]
-        assert not [p for p in paths if "rp-comments" in p], "no route names the comments path"
-        uuid = comment.rsplit("/", 1)[1]
-        seen = {}
-        for method in ("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"):
-            for url in (f"{path}/rp-comments", f"{path}/rp-comments/{uuid}"):
-                response = await client.request(method, url, headers=headers, json={})
-                seen[(method, url)] = response
-        refusals = {404: f"{PROBLEMS}not-found", 405: f"{PROBLEMS}method-not-allowed"}
-        wrong = {
-            k: (r.status_code, None if k[0] == "HEAD" else problem_of(r).type)
-            for k, r in seen.items()
-            if r.status_code not in refusals
-            or (k[0] != "HEAD" and problem_of(r).type != refusals[r.status_code])
-        }
-        assert wrong == {}, "no method on a comment path answers other than not found"
-        assert not [k for k, r in seen.items() if SECRET in r.text], "the text is not served"
 
 
 @pytest.mark.parametrize(

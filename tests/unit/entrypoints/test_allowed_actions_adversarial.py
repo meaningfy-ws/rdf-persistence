@@ -1,4 +1,4 @@
-"""Stage 4 of mwb2-adoption-fixes, attacked at the route: what a read says the caller may do (PD-10)."""
+"""What a read says the caller may do (PD-10), attacked at the route."""
 
 from collections.abc import Callable
 from typing import Any

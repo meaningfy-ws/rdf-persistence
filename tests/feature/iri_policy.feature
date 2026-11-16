@@ -6,6 +6,7 @@ Feature: A service under its own IRI policy
   Background:
     Given the library service runs under the project policy
 
+  # spec: none
   Scenario: A tenant and a book with a chapter live and die under the policy
     When Ada creates a library
     Then the library IRI is under "project/" and ends in a 7-character id
@@ -21,6 +22,7 @@ Feature: A service under its own IRI policy
     When Ada deletes the book
     Then reading the book answers 404
 
+  # spec: rp-iri-policy / a path id of the wrong form
   Scenario Outline: A path id of the wrong form is not found
     When Ada reads "<path>"
     Then the answer is 404

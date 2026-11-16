@@ -6,18 +6,21 @@ Feature: Data that belongs to the application, not to a tenant
   Background:
     Given the library service has a tenant and an application database
 
+  # spec: rp-tenancy / an application aggregate is not in any tenant
   Scenario: An application aggregate is not in any tenant
     Given an application aggregate
     When the tenant's aggregates are listed and the application's aggregate is read through an application session
     Then the listing does not include it
     And the read returns it
 
+  # spec: rp-tenancy / application writes are versioned
   Scenario: Application writes are versioned
     Given an application aggregate at version v1
     When two application sessions replace it at v1
     Then the first succeeds
     And the second is refused as a conflict
 
+  # spec: rp-tenancy / a class in the wrong space
   Scenario Outline: A class in the wrong space
     Given "<tenant class>" is a tenant class and "<application class>" an application class
     When a "<class>" is committed through <session>
@@ -29,22 +32,26 @@ Feature: Data that belongs to the application, not to a tenant
       | Book         | Template          | Book     | an application session  |
       | Book         | Template          | Template | a tenant session        |
 
+  # spec: rp-tenancy / the sweep leaves the application database alone
   Scenario: The sweep leaves the application database alone
     Given an application database with aggregates and no access record naming it
     When the start-up sweep runs
     Then the application database is unchanged
     And its aggregates are unchanged
 
+  # spec: rp-tenancy / a schema without application classes
   Scenario: A schema without application classes
     Given a schema with no class annotated "database: application"
     When the service starts
     Then no application database is created
 
+  # spec: rp-access / a global role permits
   Scenario: A global role permits
     Given role definitions where the global role "app-editor" permits "read" and "modify" at level "system"
     When a caller whose token carries "app-editor" modifies an application aggregate
     Then the change is allowed
 
+  # spec: rp-access / a tenant owner is not an application editor
   Scenario: A tenant owner is not an application editor
     Given a caller with the "owner" role on a tenant and no global role
     When it modifies an application aggregate

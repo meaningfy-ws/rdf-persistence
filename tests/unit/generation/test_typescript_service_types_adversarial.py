@@ -1,4 +1,4 @@
-"""Adversarial tests of mwb2 stage 3: service types in the TypeScript output (PD-8), technical exemption (PD-9)."""
+"""Adversarial tests of the service types in the TypeScript output (PD-8), technical exemption (PD-9)."""
 
 import re
 from pathlib import Path

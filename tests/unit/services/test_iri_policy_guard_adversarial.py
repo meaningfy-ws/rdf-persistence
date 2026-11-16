@@ -1,5 +1,5 @@
-"""Adversarial tests of iri-policy stage 2: the start-up guard (PD-9, PD-13), custom access, meta and
-registry templates, and the principal template. A test that exposes a real defect is a strict xfail."""
+"""Adversarial tests of the IRI policy start-up guard (PD-9, PD-13), custom access, meta and
+registry templates, and the principal template."""
 
 from urllib.parse import unquote
 
@@ -77,7 +77,7 @@ async def test_a_corrupt_or_foreign_record_is_refused_with_a_toolkit_error(store
 
 async def test_a_corrupt_record_never_starts_the_service(store, tenancy):
     await plant(store, "not json")
-    with pytest.raises(Exception):  # noqa: B017 - any refusal; the class is the xfail above
+    with pytest.raises(IriPolicyChanged):
         await guard_iri_policy(store, tenancy, settings_of(None))
     assert len(store.sent("put_graph")) == 1, "the planted record is not overwritten"
 

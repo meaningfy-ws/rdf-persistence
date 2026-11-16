@@ -13,6 +13,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 
 
+@pytest.mark.slow
 def test_the_wheel_ships_the_py_typed_marker(tmp_path: Path) -> None:
     subprocess.run(
         ["uv", "build", "--wheel", "--no-build-isolation", "--out-dir", str(tmp_path)],

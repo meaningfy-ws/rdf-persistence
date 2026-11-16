@@ -1,4 +1,4 @@
-"""Adversarial tests of stage 2, reference collections (rp-reference-collections, PD-5 to PD-8, PD-15, PD-25).
+"""Adversarial tests of reference collections (rp-reference-collections, PD-5 to PD-8, PD-15, PD-25).
 
 The cascade delete first (a new invariant on the write path, all or nothing under concurrent writers),
 then the write guard, the reads, and ``Session.heads`` / ``matches`` / ``_require_match``. Each test

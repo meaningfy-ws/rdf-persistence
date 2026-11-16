@@ -358,7 +358,7 @@ async def test_removing_a_comment_keeps_its_replies_stored_and_hidden(session, a
 async def test_an_annotation_the_application_wrote_takes_a_comment_but_a_comment_does_not(
     session, ada, books
 ):
-    """PD-30 item 7: only what decodes as a toolkit comment refuses one; stage 4 adds the records."""
+    """PD-30 item 7: only what decodes as a toolkit comment refuses one; the workflow records add to that."""
     theirs = (
         f"{TENANT}/rp-comments/{UUID(int=7)}"  # typed oa:Annotation, with no text and no motivation
     )
