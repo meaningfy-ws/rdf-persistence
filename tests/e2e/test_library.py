@@ -14,8 +14,7 @@ import pytest
 from rdflib import Graph
 
 from rdf_persistence import Grant, GrantSet, Page, TenantCreate, TenantSummary
-from rdf_persistence.testkit import assert_public_imports
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
+from rdf_persistence.testkit import assert_isomorphic, assert_public_imports
 from tests.e2e.world import World, running_world
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note
 from tests.fixtures.library.generated.library import Library

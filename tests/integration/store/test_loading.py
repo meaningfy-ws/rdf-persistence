@@ -21,7 +21,7 @@ from rdf_persistence.domain.iris import (
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.session import Session
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
+from rdf_persistence.testkit import assert_isomorphic
 
 TENANT = "https://example.org/libraries/6f1c0c1e"
 BOOK = f"{TENANT}/books/{UUID(int=1)}"

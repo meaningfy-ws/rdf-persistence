@@ -33,7 +33,7 @@ from rdf_persistence.testkit.shape_snapshot import (
 if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.testkit.conformance import Conformance
     from rdf_persistence.testkit.conformance import run as conformance_problems
-    from rdf_persistence.testkit.roundtrip import round_trip
+    from rdf_persistence.testkit.roundtrip import assert_isomorphic, round_trip
     from rdf_persistence.testkit.strategies import aggregate
     from rdf_persistence.testkit.tokens import TokenSigner, new_key, shared_key
     from rdf_persistence.testkit.zitadel import access_token, create_machine_user, provision_project
@@ -49,6 +49,7 @@ _LAZY_NAMES = {
     "provision_project": ("rdf_persistence.testkit.zitadel", "provision_project"),
     "Conformance": ("rdf_persistence.testkit.conformance", "Conformance"),
     "conformance_problems": ("rdf_persistence.testkit.conformance", "run"),
+    "assert_isomorphic": ("rdf_persistence.testkit.roundtrip", "assert_isomorphic"),
     "round_trip": ("rdf_persistence.testkit.roundtrip", "round_trip"),
     "aggregate": ("rdf_persistence.testkit.strategies", "aggregate"),
 }
@@ -66,6 +67,7 @@ def __getattr__(name: str) -> Any:
 
 __all__ = [
     "Conformance",
+    "assert_isomorphic",
     "assert_models_generated",
     "assert_public_imports",
     "FakeFileStore",

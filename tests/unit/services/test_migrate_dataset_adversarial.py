@@ -115,8 +115,9 @@ def test_a_stamp_at_the_last_version_that_the_next_migration_could_never_match_i
         migrate_dataset(data, chains_of(toolkit_chain, lib_chain), STAMPS)
 
 
-# equivalence class: a stamp that is not the exact text of a version of the chain; the empty one stands for it
-@pytest.mark.parametrize("version", [""])
+# equivalence class: a stamp that is not the exact text of a version of the chain; the empty one
+# and a padded " 1" (which only an exact-text comparison tells from "1") stand for it
+@pytest.mark.parametrize("version", ["", " 1"])
 def test_a_version_that_only_looks_like_one_of_the_chain_is_refused(
     lib_chain, toolkit_chain, version
 ):

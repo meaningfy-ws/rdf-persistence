@@ -5,9 +5,15 @@ from pathlib import Path
 
 import pytest
 
+from rdf_persistence.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.generation import steps
 from rdf_persistence.generation.checks.application import ROWS
-from rdf_persistence.generation.checks.hard import hard_problems, stored_schema_problems
+from rdf_persistence.generation.checks.hard import (
+    ALLOWED_ANNOTATIONS,
+    PATTERNED_ANNOTATIONS,
+    hard_problems,
+    stored_schema_problems,
+)
 from rdf_persistence.generation.cli import main
 from rdf_persistence.generation.config import read_targets
 from rdf_persistence.generation.generated.rp_generation import GenerationTarget, HardRule
@@ -697,6 +703,25 @@ def test_every_application_row_has_a_case() -> None:
         cases = [ending for ending in endings if ending.startswith(message)]
         assert len(cases) == 1, f"one case for the row {message!r}, found {cases}"
     assert len(endings) == len(ROWS), "and no case for a row the check does not define"
+
+
+@pytest.mark.parametrize("tag", list(ALLOWED_ANNOTATIONS), ids=lambda t: t.value)
+def test_a_value_outside_the_allowed_ones_is_refused_for_every_annotation_the_toolkit_reads(
+    tmp_path: Path, tag: RpAnnotation
+) -> None:
+    classes = f"  Probe:\n    annotations:\n      {tag.value}: not-a-value\n"
+
+    problems = _annotation_problems(tmp_path, classes)
+
+    assert [p for p in problems if f"Probe: {tag.value}: 'not-a-value' is not one of" in p], (
+        f"a bad {tag.value} value is not refused: {problems}"
+    )
+
+
+def test_every_annotation_the_toolkit_reads_has_an_allowed_value_rule_or_a_pattern() -> None:
+    checked = set(ALLOWED_ANNOTATIONS) | set(PATTERNED_ANNOTATIONS)
+
+    assert checked == set(RpAnnotation), "an annotation has neither allowed values nor a pattern"
 
 
 def test_a_valid_application_root_passes(tmp_path: Path) -> None:

@@ -18,7 +18,7 @@ from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.services.tenant_dump import dump, restore
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
+from rdf_persistence.testkit import assert_isomorphic
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess

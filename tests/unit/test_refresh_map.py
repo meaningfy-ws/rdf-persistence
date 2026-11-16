@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from tests.audit.refresh_map import (
+    EXIT_COLLECTION_FAILED,
     EXIT_NEW_IDS,
     EXIT_OK,
     function_ids,
@@ -65,6 +66,11 @@ def test_refresh_of_a_complete_map_changes_nothing() -> None:
     assert (result.text, result.removed, result.new) == (text, [], []), "nothing to remove or map"
 
 
+PADDING_IDS = tuple(f"tests/unit/test_pad.py::test_pad_{n}" for n in range(4))
+PADDING_ROWS = tuple(f"{test_id},scenario,cap,Req P,sc,high,name" for test_id in PADDING_IDS)
+PADDING_COLLECTED = "".join(f"{test_id}\n" for test_id in PADDING_IDS)
+
+
 @pytest.mark.parametrize(
     ("collected", "code"),
     [
@@ -77,15 +83,15 @@ def test_main_exits_one_only_when_ids_are_unmapped(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], collected: str, code: int
 ) -> None:
     csv_path = tmp_path / "map.csv"
-    csv_path.write_text(_map_text(KEPT_FIRST, GONE))
+    csv_path.write_text(_map_text(KEPT_FIRST, GONE, *PADDING_ROWS))
     collect_path = tmp_path / "collect.txt"
-    collect_path.write_text(collected)
+    collect_path.write_text(collected + PADDING_COLLECTED)
 
     status = main(["--map", str(csv_path), "--collect", str(collect_path)])
 
     out = capsys.readouterr().out
     assert status == code, "exit code follows the presence of unmapped ids"
-    assert csv_path.read_text() == _map_text(KEPT_FIRST), (
+    assert csv_path.read_text() == _map_text(KEPT_FIRST, *PADDING_ROWS), (
         "the map is rewritten without the gone row"
     )
     assert "test_gone" in out, "removed ids are printed"
@@ -100,3 +106,36 @@ def test_refresh_keeps_the_line_endings_of_the_map() -> None:
     assert result.text == _map_text(KEPT_FIRST).replace("\n", "\r\n"), (
         "CRLF must survive the rewrite"
     )
+
+
+COLLECT_ERROR_OUTPUT = "ERROR: file or directory not found: tests\n\nno tests ran in 0.01s\n"
+
+
+def _run_main(tmp_path: Path, rows: tuple[str, ...], collected: str) -> tuple[int, Path, str]:
+    csv_path = tmp_path / "map.csv"
+    original = _map_text(*rows)
+    csv_path.write_text(original)
+    collect_path = tmp_path / "collect.txt"
+    collect_path.write_text(collected)
+    status = main(["--map", str(csv_path), "--collect", str(collect_path)])
+    return status, csv_path, original
+
+
+def test_a_collection_with_an_error_and_no_node_ids_leaves_the_map_untouched(
+    tmp_path: Path,
+) -> None:
+    status, csv_path, original = _run_main(
+        tmp_path, (KEPT_FIRST, GONE, KEPT_LAST), COLLECT_ERROR_OUTPUT
+    )
+
+    assert status == EXIT_COLLECTION_FAILED, "a failed collection must exit non-zero"
+    assert csv_path.read_text() == original, "a failed collection must not erase the map"
+
+
+def test_more_than_a_fifth_of_the_rows_going_refuses_the_rewrite(tmp_path: Path) -> None:
+    status, csv_path, original = _run_main(
+        tmp_path, (KEPT_FIRST, GONE, KEPT_LAST), "tests/unit/test_a.py::test_kept_first\n"
+    )
+
+    assert status == EXIT_COLLECTION_FAILED, "removing 2 of 3 rows must be refused"
+    assert csv_path.read_text() == original, "a refused rewrite must leave the map as it was"

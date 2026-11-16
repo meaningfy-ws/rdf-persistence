@@ -3,7 +3,9 @@
 Standard library only. It reads `pytest --collect-only -qq` output (from a file, stdin or by
 running pytest), reduces each node id to its function id (the `[case]` suffix dropped), removes
 the map rows whose function is gone, and lists the function ids that have no row yet, for a
-person to map. Exit status: 0 when no id is unmapped, 1 otherwise.
+person to map. Exit status: 0 when no id is unmapped, 1 otherwise, 2 (map untouched) when the
+collection failed (pytest status other than 0 or 5, or no node ids) or more than 20 % of the rows
+would be removed.
 """
 
 import argparse
@@ -17,6 +19,11 @@ from pathlib import Path
 
 EXIT_OK = 0
 EXIT_NEW_IDS = 1
+EXIT_COLLECTION_FAILED = 2
+PYTEST_OK = 0
+PYTEST_NO_TESTS = 5
+COLLECT_STATUSES = (PYTEST_OK, PYTEST_NO_TESTS)
+MAX_REMOVED_SHARE = 0.2
 
 CRLF = "\r\n"
 LF = "\n"
@@ -35,6 +42,7 @@ class Refresh:
     text: str
     removed: list[str]
     new: list[str]
+    total: int
 
 
 def function_ids(collect_output: str) -> set[str]:
@@ -60,15 +68,17 @@ def refresh(map_text: str, collected: set[str]) -> Refresh:
     writer = csv.writer(out, lineterminator=CRLF if CRLF in map_text else LF)
     writer.writerow(header)
     writer.writerows(kept)
-    return Refresh(out.getvalue(), removed, sorted(collected - mapped))
+    return Refresh(out.getvalue(), removed, sorted(collected - mapped), len(rows))
 
 
-def _collect(source: str | None) -> str:
+def _collect(source: str | None) -> tuple[str, int]:
+    """The collect output and the pytest exit status (OK when read from a file or stdin)."""
     if source == STDIN_MARKER:
-        return sys.stdin.read()
+        return sys.stdin.read(), PYTEST_OK
     if source:
-        return Path(source).read_text()
-    return subprocess.run(COLLECT_COMMAND, capture_output=True, text=True, check=False).stdout
+        return Path(source).read_text(), PYTEST_OK
+    run = subprocess.run(COLLECT_COMMAND, capture_output=True, text=True, check=False)
+    return run.stdout, run.returncode
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -82,7 +92,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     with args.map.open(newline="") as handle:
         map_text = handle.read()
-    result = refresh(map_text, function_ids(_collect(args.collect)))
+    collect_output, pytest_status = _collect(args.collect)
+    collected = function_ids(collect_output)
+    if pytest_status not in COLLECT_STATUSES or not collected:
+        print(f"Collection failed (pytest status {pytest_status}, {len(collected)} ids): map kept")
+        return EXIT_COLLECTION_FAILED
+    result = refresh(map_text, collected)
+    if len(result.removed) > MAX_REMOVED_SHARE * result.total:
+        print(f"Refused: {len(result.removed)} of {result.total} rows would go: map kept")
+        return EXIT_COLLECTION_FAILED
     with args.map.open("w", newline="") as handle:
         handle.write(result.text)
     print(f"Removed rows ({len(result.removed)}):")

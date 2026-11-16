@@ -251,9 +251,11 @@ BAD_STATES = [
 
 
 # Class: a state the add may not carry; one case per branch of the check (another state, a literal, a blank node).
-BAD_STATES_OF_AN_ADD = [
-    p for p in BAD_STATES if p.id in {"another-state", "a-literal", "a-blank-node"}
-]
+IDS_OF_AN_ADD = ("another-state", "a-literal", "a-blank-node")
+BAD_STATES_OF_AN_ADD = [p for p in BAD_STATES if p.id in IDS_OF_AN_ADD]
+assert len(BAD_STATES_OF_AN_ADD) == len(IDS_OF_AN_ADD), (
+    "a bad-state id of an add is not in BAD_STATES"
+)
 
 
 @pytest.mark.parametrize("states", BAD_STATES_OF_AN_ADD)

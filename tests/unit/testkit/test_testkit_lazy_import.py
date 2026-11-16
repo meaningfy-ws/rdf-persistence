@@ -44,6 +44,13 @@ def test_the_token_and_provisioning_names_load_on_first_use(name: str) -> None:
     assert callable(getattr(testkit, name))
 
 
+def test_assert_isomorphic_is_a_public_testkit_name() -> None:
+    import rdf_persistence.testkit as testkit
+
+    assert "assert_isomorphic" in testkit.__all__, "a consumer test may use only public names"
+    assert callable(testkit.assert_isomorphic), "the name loads on first use"
+
+
 def test_an_unknown_testkit_name_is_an_attribute_error() -> None:
     import rdf_persistence.testkit as testkit
 

@@ -14,8 +14,8 @@ import pytest_asyncio
 from rdf_persistence import Page
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from tests.toy_service import ToyService
+from tests.unit.entrypoints.listing_shelf import BOOKS, PROBLEM_BAD_QUERY, Shelf, unordered
 from tests.unit.entrypoints.scene import PROBLEMS, problem_of
-from tests.unit.entrypoints.test_listing_routes import BOOKS, PROBLEM_BAD_QUERY, Shelf, _unordered
 
 CLASS_LOOP = "class"
 
@@ -35,16 +35,15 @@ class TestReadOnlyListing:
             yield http
 
     @pytest_asyncio.fixture(scope="class", loop_scope=CLASS_LOOP)
-    async def shelf(self, service: ToyService, client: httpx.AsyncClient) -> Shelf:
-        return await Shelf.set_up(service, client)
-
-    async def test_the_shared_store_still_holds_the_five_books_and_one_tenant(
-        self, shelf: Shelf, client: httpx.AsyncClient
-    ) -> None:
-        """Valid at any position: random order may run it first, last or between."""
+    async def shelf(self, service: ToyService, client: httpx.AsyncClient) -> AsyncIterator[Shelf]:
+        shelf = await Shelf.set_up(service, client)
+        yield shelf
+        # the class shares one store: no test of the class may have written to it
         tenants = (await client.get("/libraries", headers=shelf.headers())).json()
-        assert tenants["total"] == 1, "no test of the class added a tenant"
-        assert sorted(await shelf.labels()) == sorted(label for label, *_ in BOOKS), "five books"
+        assert tenants["total"] == 1, "a test of the class added a tenant"
+        assert sorted(await shelf.labels()) == sorted(label for label, *_ in BOOKS), (
+            "a test of the class changed the five books"
+        )
 
     # --- the page -----------------------------------------------------------------------------------
 
@@ -81,7 +80,7 @@ class TestReadOnlyListing:
         read = await shelf.http.get(
             item["id"].replace(shelf.tenant_iri, shelf.tenant), headers=shelf.headers()
         )
-        assert _unordered(item) == _unordered(read.json()), "framed the same way, parts nested"
+        assert unordered(item) == unordered(read.json()), "framed the same way, parts nested"
 
     @pytest.mark.parametrize(
         ("query", "expected"),

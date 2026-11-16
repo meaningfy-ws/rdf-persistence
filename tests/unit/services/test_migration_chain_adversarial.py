@@ -88,8 +88,9 @@ def test_the_migrations_pending_from_the_empty_version_are_the_one_step(empty_fi
     assert [m.to_version for m in pending] == ["1"], "the step from the empty version"
 
 
-# equivalence class: a version that is not in the chain (the empty one stands for it)
-@pytest.mark.parametrize("version", [""])
+# equivalence class: a version that is not in the chain (the empty one and a padded "1 ", which
+# only an exact-text comparison tells from "1")
+@pytest.mark.parametrize("version", ["", "1 "])
 def test_a_version_not_in_the_chain_has_no_pending_migrations(tmp_path, version):
     chain_of(tmp_path, ["1", "2", "3"])
     assert pending_from(load_chain(tmp_path, SCHEMA, "3"), version) is None

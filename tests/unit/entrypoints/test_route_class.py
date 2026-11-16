@@ -18,7 +18,6 @@ from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
 
 FLAT_POLICY = IriPolicy(aggregate_template="{tenant}/{id}")
 JSON_LD = "application/ld+json"
-TURTLE = "text/turtle"
 SHELF_BODY = {"label": "Shelf", "description": "A shelf.", "member_class": "Book"}
 
 

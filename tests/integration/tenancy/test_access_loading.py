@@ -17,9 +17,10 @@ from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.integration.tenancy.file_stores import FAKE_FILES_ONLY
 from tests.toy import ADA, BOB, ban, direct, graph_of, library_slots, toy_mapper
 
-pytestmark = FAKE_FILES_ONLY  # the access load reads the system database; no test touches files
+# FAKE_FILES_ONLY on each test: the access load reads the system database; no test touches files
 
 
+@FAKE_FILES_ONLY
 async def test_the_creator_loads_the_librarian_grant_on_an_active_tenant(tenancy, store, settings):
     summary = await tenancy.create("Ghent", library_slots(), Principal(id=ADA))
     loaded = await load_caller_access(store, system_database_name(settings.prefix), summary.id, ADA)
@@ -28,6 +29,7 @@ async def test_the_creator_loads_the_librarian_grant_on_an_active_tenant(tenancy
     assert loaded.prohibitions is None, "no prohibitions"
 
 
+@FAKE_FILES_ONLY
 async def test_another_principal_loads_the_state_and_no_rules(tenancy, store, settings):
     summary = await tenancy.create("Ghent", library_slots(), Principal(id=ADA))
     loaded = await load_caller_access(store, system_database_name(settings.prefix), summary.id, BOB)
@@ -38,6 +40,7 @@ async def test_another_principal_loads_the_state_and_no_rules(tenancy, store, se
     ), "an outsider sees the state and nothing else"
 
 
+@FAKE_FILES_ONLY
 async def test_a_tenant_that_was_never_created_is_not_found(tenancy, store, settings):
     with pytest.raises(NotFound):
         await load_caller_access(
@@ -48,6 +51,7 @@ async def test_a_tenant_that_was_never_created_is_not_found(tenancy, store, sett
         )
 
 
+@FAKE_FILES_ONLY
 async def test_a_direct_grant_and_a_prohibition_of_the_caller_load_and_another_principals_do_not(
     tenancy, store, settings
 ):

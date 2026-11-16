@@ -111,15 +111,12 @@ async def test_old_markers_on_the_tenants_own_graphs_do_not_make_them_candidates
 UNREADABLE = {
     "naive": Literal("2026-11-10T09:00:00", datatype=XSD.dateTime),
     "ill-typed": Literal("not a time", datatype=XSD.dateTime),
-    "date-only": Literal("2026-11-10", datatype=XSD.date),
-    "plain": Literal("yesterday"),
-    "number": Literal(3),
 }
 
 
 # design RF-1: such a marker counts as none. Equivalence classes: a datetime with no zone (naive), a value
-# that is no datetime (ill-typed; date-only, plain and number are the same)
-@pytest.mark.parametrize("kind", ["naive", "ill-typed"])
+# that is no datetime (ill-typed; a date-only, a plain and a number literal are the same)
+@pytest.mark.parametrize("kind", UNREADABLE)
 @pytest.mark.parametrize("remove", [False, True])
 async def test_a_marker_another_tool_wrote_badly_does_not_crash_the_sweep(world, kind, remove):
     odd = await plant(
@@ -186,12 +183,12 @@ async def test_blob_keys_with_odd_characters_are_matched_exactly(world, key):
     assert key + "-orphan" not in await blob_keys(world)
 
 
-# equivalence class: a key the graph names as any kind of term (an IRI stands for the tagged literals)
-@pytest.mark.parametrize("named", [URIRef("urn:key:iri")])
-async def test_a_key_named_as_an_iri_or_a_tagged_literal_is_kept(world, named):
+async def test_a_key_named_as_an_iri_is_kept(world):
     await world.blob("urn:key:iri", 3 * HOUR)
     await world.store.put_graph(
-        world.database, URIRef(f"{world.book}/graph2"), _one((SUBJECT, FILE_KEY, named))
+        world.database,
+        URIRef(f"{world.book}/graph2"),
+        _one((SUBJECT, FILE_KEY, URIRef("urn:key:iri"))),
     )
     report = await world.sweep(remove_blobs=True)
     assert "urn:key:iri" not in report.blobs
