@@ -103,23 +103,67 @@ tenant over server-sent events, seeing only events about what it may read.
 
 ## What Changes
 
-- `rdf_persistence/model/`: an event class (a new module or `rp_core`; open question).
-- `rdf_persistence/services/session.py`: the commit writes the outbox entry in its update.
-- `rdf_persistence/services/`: a relay and an event-bus port; `adapters/`: a bus adapter.
-- `rdf_persistence/entrypoints/`: a server-sent-events route under the tenant.
-- `rdf_persistence/testkit/`: a fake bus; a container for the bus if one is chosen.
+As delivered (the shaped text was: an event class, the outbox entry in the commit, a relay and a
+port, a bus adapter, an SSE route, a fake bus and a bus container).
+
+- `rdf_persistence/model/service/rp_service.yaml`: the wire class `EventEnvelope` and the optional
+  setting `public_url`. No new event class: the message is `message-bus`'s activity (DEC-5).
+- `services/session.py`: the commit's record marks the activity `rp:pendingSince` with the store's
+  `NOW()`; reads and marks for the relay and the resume; `services/tenant_dump.py`: a restore drops
+  the marks.
+- `services/`: `events.py` (the `EventBus` port), `relay.py`, `decoding.py`, `event_hub.py`,
+  `visible_part.py`, `event_stream.py`.
+- `adapters/redis_events.py`: `RedisEventBus` on FastStream, in the new extra `events`.
+- `entrypoints/`: `install_service(event_bus=)`, the relay in the lifespan, `kit.receive`
+  (incoming events), the route `GET /{tenant}/rp-events` (`sse.py`).
+- `testkit/`: `InMemoryEventBus`, `InMemoryBroker`, `event_bus_conformance`, a `redis` compose
+  service and fixture.
+- Docs: `howto/event-driven.adoc` (the relay, the event bus, server-sent events), the
+  architecture page, the durations table, the questions.
 
 ## Capabilities
 
 ### New Capabilities
 
-- `rp-events`: the outbox, the relay, the bus port and the server-sent-events route.
+- `rp-events`: the outbox, the relay, the bus port, incoming events and the server-sent-events
+  route.
 
 ### Modified Capabilities
 
-None.
+None as deltas. One behaviour of `message-bus` changes, stated in the `rp-events` delta: an
+overtaken commit (atomic-commit PD-4) is now published by the relay (PD-2).
 
 ## Impact
 
-- Every commit writes more; the cost is measured.
-- `install_service` gains a background relay and the route; a bus may become a deployment dependency.
+- Every recorded commit writes one more triple (the mark); the relay writes one update per
+  activity. Not re-measured: `message-bus` measured the record at no cost above noise (RISK-2,
+  accepted).
+- `install_service` runs a background relay with or without an event bus; a broker (Redis 8.4+)
+  is a deployment dependency only for a consumer that passes `event_bus`, and installs the extra.
+- New public route `GET /{tenant}/rp-events`; new optional setting `public_url`.
+
+## As built (2026-11-16)
+
+Delivered in #124 (stages 1 and 2 as one PR, D-3) and in the stage 3 PR. The text above the
+reconciled sections stays as shaped; this table says where the PLAN or the code departs from it
+or adds to it. Every DEC held.
+
+Not built, as the No-gos and the PLAN say: several relay instances or a lease (DEC-10, RISK-4),
+RabbitMQ (DEC-6 "if time allows"), tenant-level events, server-sent events of the application
+database, a hop limit across deployments (RISK-8). Left to issue #125: the review findings under
+the floor (backoff and paging, stream caps, test and structure clean-ups).
+
+| Shaped | Now | Decision | State |
+|---|---|---|---|
+| Solution outline: "an event exists if and only if the change does" | The commit marks its activity pending in the same update; records from before this EPIC are never pending, so no history is replayed | PD-1, PD-2 | built (#124) |
+| DEC-10: a "published" mark | A pending mark, replaced by `rp:relayedAt` after the publish; a record that cannot be decoded is marked `rp:publicationFailed` | PD-1, PD-3 | built (#124) |
+| DEC-5: order per aggregate follows from the versions | The store's `NOW()` at apply time orders a database's activities; the version chain settles ties; a malformed mark sorts last | PD-5, D-5 | built (#124) |
+| DEC-6: FastStream, Redis Streams first | `RedisEventBus` on FastStream 0.7.8, redelivery by `claim_min_idle_time` (Redis 8.4+), a best-effort trim to 7 days, each publish bounded | PD-8, D-1, D-17, D-18 | built (#124; D-17, D-18 in stage 3) |
+| DEC-7: incoming events go to the message bus | `kit.receive`: own origin skipped, the toolkit principal, a probe; unusable messages are acked, a store or migration failure redelivers | PD-10, D-6, D-8, D-19 | built (#124; D-19 in stage 3) |
+| DEC-9, DEC-10: the generated JSON with a context link | `EventEnvelope` headers beside the activity's JSON; the link is `{public_url}{prefix}/context.jsonld` | PD-6, PD-7, D-4, D-16 | built (#124; D-16 in stage 3) |
+| DEC-3: a subscriber sees only what it may read | Generations and invalidations of hidden aggregates removed; an activity about a hidden resource, or with nothing left, not sent; access re-read every second | PD-11, D-11 | built (stage 3) |
+| DEC-10: SSE resume within 7 days | `Last-Event-ID` replays from `rp:relayedAt`; an unknown, malformed or expired id gets `reset` (with an empty data line); a closed slow reader resumes without loss | PD-12, D-10, D-14, D-21 | built (stage 3) |
+| (not said) the stream's path and auth | `/{tenant}/rp-events` under the reserved prefix; bearer header only (a fetch-based client in browsers); a stream lasts 5 minutes, so a stale token cannot keep it open | D-13, D-15, D-20 | built (stage 3) |
+| Rabbit-holes, "Outbox growth" | Nothing is deleted: the records are `message-bus`'s history; only the mark changes; the stream is trimmed | PD-13 | built (#124) |
+| Impact: "the cost is measured" | Not re-measured; `message-bus` measured the record | RISK-2 | accepted |
+| What Changes: "an event class" | None: the message is the activity (DEC-5) | DEC-5 | as decided |

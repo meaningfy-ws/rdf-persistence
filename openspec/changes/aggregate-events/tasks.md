@@ -174,14 +174,14 @@ unused; letters mark cases added by the PLAN's attack).
   (RISK-4), what a message reveals (RISK-6). `architecture/index.adoc`: "Outbox, event bus and
   relay" and "server-sent events" built. `questions.adoc`: the question the section answers. The
   durations table in `develop/index.adoc` from the stage's ordinary runs. `make check-docs`.
-- [ ] 3.4 Reconcile `proposal.md` with what was built (P-0004): an "As built" table, What Changes,
+- [x] 3.4 Reconcile `proposal.md` with what was built (P-0004): an "As built" table, What Changes,
   Capabilities, Impact; the spec delta true of the code.
 
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 (then the adversarial tester) · [x] 1.6 ·
   [x] 1.7 · [x] 2.1 · [x] 2.2 — PR #124 (stages 1 and 2 as one PR, D-3)
-- [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 — PR 3 (the last merge)
+- [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 — PR 3 (the last merge)
 
 1.1, 1.2 and 1.3 touch disjoint files and may run in parallel; 1.4 after 1.2 (both in
 `session.py`); 2.1 and 3.1 depend only on stage 1.
