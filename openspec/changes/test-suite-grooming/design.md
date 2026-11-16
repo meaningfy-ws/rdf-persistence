@@ -264,6 +264,14 @@ PD-3 depends on; PD-6 re-times after PD-1).
   the report's "~25" did not hold on reading); its unit-tier half (`test_documents.py` policy
   fixtures, `test_listing_query.py` policy parameter) is under *Debt*.
 
+- **D-5 (task 4.2):** the perf lane now needs Docker: the store budget asserts moved from the
+  integration tier to `tests/perf/store/` (a `perf` + `store` marker row). `make test-perf` stays
+  out of `check-all` and CI, so only a local run needs a Fuseki container.
+- **D-6 (task 4.2, PD-12 corrected by the code):** `ServiceSettings` is not frozen, so the
+  settings test asserts the assignment goes through and the minted IRI does not change (not a
+  refusal); `dump()` already takes a clock, so the manifest test injects one and asserts
+  equality (not a "taken before" bound, which cannot hold).
+
 ## Accepted findings (stage 1-3 review, L2+L3, 18 findings)
 
 The lead re-labels six Warnings as Critical (each can lose a guard or data) and gives them, with
@@ -311,6 +319,9 @@ Filled during stage 4 (rule 5 items without a fake).
   branch; `auth.py`'s scheme and empty-token checks give the same 401 as the verifier.
 - `TURTLE` in `tests/unit/entrypoints/test_route_class.py` is unused after 2.1 (ruff does not
   flag module constants): remove in stage 4.
+- Rule 12 waits with no injectable clock (task 4.2): the three `test_events_route.py` absence
+  waits and the grant-removed keep-alive (0.05 s), `test_relay.py`'s d18 hanging publish.
+  Accepted exception: the testkit's `probe_timeout` test keeps its 0.01 s wait (a real probe).
 - Rule 5 monkeypatches with no fitting fake (task 4.4): `test_receive.py` (`Session.is_recorded`,
   `kit.application_session`: a `KeyError`/`LookupError` from toolkit code is needed),
   `test_events_route.py` (`kit.relay.run_once`: the testkit has no relay fake),
