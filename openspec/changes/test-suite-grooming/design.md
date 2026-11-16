@@ -248,6 +248,49 @@ PD-3 depends on; PD-6 re-times after PD-1).
   container runs and the domain mutation run, and adds `tests/audit/report-<date>-after.md`
   (before/after), then archives the change.
 
+## Delivery decisions
+
+- **D-1 (lead, owner's grant):** the owner asked for local-first work, then (away) for the whole
+  change to be completed, committed, pushed and merged without questions. The stages were built in
+  parallel worktrees on one branch, so the change lands as ONE pull request with each stage as a
+  commit group, not five.
+- **D-2:** set-up proposals are measured before landing; PD-2 and PD-4 measured no saving and
+  were not landed (recorded under each). PD-3, PD-1, PD-5, PD-8 measured savings and landed.
+- **D-3:** class 2 merges keep the case that fails under its branch's mutation, not the first
+  listed one, wherever they differ (builders' reports, tasks 2.1-2.7); the domain merges were
+  confirmed by an unchanged `make mutation` survivor set.
+- **D-4:** P-51 kept two of its three pins: no other test pins the namespace IRIs or the enum
+  member counts (task 3.2). P-31 landed for the container tier only (9 tests that touch no file;
+  the report's "~25" did not hold on reading); its unit-tier half (`test_documents.py` policy
+  fixtures, `test_listing_query.py` policy parameter) is under *Debt*.
+
+## Accepted findings (stage 1-3 review, L2+L3, 18 findings)
+
+The lead re-labels six Warnings as Critical (each can lose a guard or data) and gives them, with
+the cheap ones, to one fixer (task 4.7):
+
+- **F-1 (W1, Critical):** `tests/audit/refresh_map.py` erases the map when collection fails:
+  fail on a pytest exit status other than 0 or 5, refuse to write on an empty collection or when
+  more than 20 % of rows would go; add the test.
+- **F-2 (W2, Critical):** `test_migrate_dataset_adversarial.py`'s look-alike-version survivor
+  `""` misses the exact-text comparison: keep `" 1"` (and `""`); same for
+  `test_migration_chain_adversarial.py` (`"1 "`).
+- **F-3 (W3, Critical):** `test_iri_policy_guard.py` keeps `(None, IriPolicy(tenant_id=IdSpec(kind=IdKind.UUID4)))`.
+- **F-4 (W4, Critical):** `test_hard_check.py` restores one negative row per `ALLOWED_ANNOTATIONS`
+  key, or one test that plants a bad value for every key (rule 8).
+- **F-5 (W7, Critical):** the timeout requirement is narrowed to the xdist lanes in the spec delta
+  and said in `testing.adoc` (thread timeouts end a serial session).
+- **F-6 (W8, Critical):** the shared-store check moves into the class-scoped `shelf` fixture's
+  teardown.
+- **F-7 (W9, W10, S1, S2, S3, S6):** decorators instead of `pytestmark` in `test_access_loading.py`;
+  the listing shelf helpers move to a helper module; the id-filtered parameter lists use named
+  constants or assert their length; dead `UNREADABLE` entries and `TURTLE` go; the sweep test's
+  name matches its case; the two map rows are corrected.
+
+Under the floor (not fixed here): S4 comment pointers and vocabulary, S5 weak representatives,
+S7 a stale module docstring, S8 the network guard during class set-up. W5 and W6 (records and
+docs) are the lead's: recorded in D-4, *Docs owed* and `tasks.md`.
+
 ## Order dependence
 
 None found. PD-9's `pytest-randomly==5.1.0` trial ran green on `--randomly-seed=1` and
@@ -268,9 +311,24 @@ Filled during stage 4 (rule 5 items without a fake).
   branch; `auth.py`'s scheme and empty-token checks give the same 401 as the verifier.
 - `TURTLE` in `tests/unit/entrypoints/test_route_class.py` is unused after 2.1 (ruff does not
   flag module constants): remove in stage 4.
+- Rule 5 monkeypatches with no fitting fake (task 4.4): `test_receive.py` (`Session.is_recorded`,
+  `kit.application_session`: a `KeyError`/`LookupError` from toolkit code is needed),
+  `test_events_route.py` (`kit.relay.run_once`: the testkit has no relay fake),
+  `test_service_kit.py` (a `MessageBus.publish` spy: no recording bus fake),
+  `test_migrate_dataset.py` x3 (`migration_runner.migration_request`),
+  `test_migrate_dataset_adversarial.py` (rdflib `Dataset.contexts`, not toolkit code),
+  `test_generation_inputs.py`, `test_freshness.py` (module seams; owner call). A relay fake and a
+  recording message bus in the testkit would retire most of them.
+- P-31's unit-tier half: `tests/unit/services/test_documents.py` still runs its `documents`
+  fixture under both IRI policies, and `test_listing_query.py`'s hostile-filter test still takes
+  the `policy` parameter (review W5).
 
 ## Docs owed
 
 - `howto/adopt.adoc` (the signing-key passage, near "cache `new_key()`"): point consumers at
   `testkit.shared_key()` and re-measure the "≈ 0.5 s" key-generation figure (0.057 s measured,
   task 1.8). Written in stage 4 with the rule-15 docs work.
+- `develop/index.adoc`: a `make mutation` row in the targets table (review W6).
+- `develop/testing.adoc`: the `quarantine` marker (rule 14), the 120 s timeout and where it
+  stops a session, random order (pytest-randomly; how to replay a seed), `--dist loadgroup` and
+  `xdist_group` for class-shared fixtures (review W6).
