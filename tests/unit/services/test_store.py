@@ -57,8 +57,8 @@ async def test_everything_else_passes_through_unchanged(store):
     await store.update(DATASET, "INSERT DATA { GRAPH <urn:g> { <urn:a> <urn:b> <urn:c> } }")
     assert (
         await store.query(DATASET, "ASK { GRAPH <urn:g> { <urn:a> <urn:b> <urn:c> } }")
-    ).askAnswer
-    assert DATASET in await store.list_datasets()
+    ).askAnswer, "the query passes through unchanged"
+    assert DATASET in await store.list_datasets(), "the dataset listing passes through unchanged"
     with pytest.raises(DatabaseGone):
         await store.query("missing", "ASK { ?s ?p ?o }")
     await store.drop_dataset(DATASET)

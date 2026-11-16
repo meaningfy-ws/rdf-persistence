@@ -42,7 +42,7 @@ async def test_the_blob_goes_with_its_aggregate(world):
     async with world.session() as s:
         with pytest.raises(NotFound):
             await s.get_graph(world.scan)
-    assert await world.blobs() == []
+    assert await world.blobs() == [], "the blob is removed with its aggregate"
 
 
 async def test_the_removal_is_recorded_as_a_delete_file(world):  # TC-94
@@ -52,7 +52,9 @@ async def test_the_removal_is_recorded_as_a_delete_file(world):  # TC-94
         world.store, URIRef(world.iris.provenance(world.tenant)), world.database
     )
     [deletion] = graph.subjects(RDF.type, v.DELETE_FILE)
-    assert set(graph.objects(deletion, RDF.type)) == {v.DELETE_FILE, v.REMOVE, v.ACTIVITY}
+    assert set(graph.objects(deletion, RDF.type)) == {v.DELETE_FILE, v.REMOVE, v.ACTIVITY}, (
+        "the removal is recorded as a file deletion"
+    )
     assert list(graph.objects(deletion, v.USED)) == [URIRef(world.scan)], "it used the file"
     [invalidation] = graph.objects(deletion, v.HAS_INVALIDATION)
     assert list(graph.objects(invalidation, v.ENTITY)) == [URIRef(world.scan)], "and removed it"
@@ -76,7 +78,7 @@ async def test_without_a_mapper_the_removal_is_a_plain_remove(world):  # D-11 g
 async def test_a_blob_another_aggregate_names_stays(world):
     await world.commit(world.other, keys=["k1"])
     await world.remove(world.scan, world.version)
-    assert await world.blobs() == ["k1"]
+    assert await world.blobs() == ["k1"], "the blob another aggregate names stays"
 
 
 async def test_a_failing_blob_delete_still_removes_the_aggregate_and_logs(world, caplog):
@@ -86,22 +88,26 @@ async def test_a_failing_blob_delete_still_removes_the_aggregate_and_logs(world,
     async with world.session() as s:
         with pytest.raises(NotFound):
             await s.get_graph(world.scan)
-    assert await world.blobs() == ["k1"]
-    assert [r.step for r in caplog.records] == ["remove-blob-failed"]
+    assert await world.blobs() == ["k1"], "the blob stays when its delete fails"
+    assert [r.step for r in caplog.records] == ["remove-blob-failed"], "the failed delete is logged"
 
 
 async def test_a_deleted_blob_is_logged(world, caplog):
     with caplog.at_level(logging.INFO):
         await world.remove(world.scan, world.version)
-    assert [r.step for r in caplog.records if hasattr(r, "step")] == ["remove-blob"]
+    assert [r.step for r in caplog.records if hasattr(r, "step")] == ["remove-blob"], (
+        "the deleted blob is logged"
+    )
 
 
 async def test_a_stale_version_changes_nothing(world):
     with pytest.raises(Conflict):
         await world.remove(world.scan, "stale")
     async with world.session() as s:
-        assert (await s.get_graph(world.scan))[2] == world.version
-    assert await world.blobs() == ["k1"]
+        assert (await s.get_graph(world.scan))[2] == world.version, (
+            "the stale version leaves the aggregate stored"
+        )
+    assert await world.blobs() == ["k1"], "the stale version leaves the blob"
 
 
 async def test_a_missing_aggregate_is_not_found(world):
@@ -141,4 +147,4 @@ async def test_tc27_a_tenant_on_another_store_is_removed_there_with_its_blobs():
 async def test_an_aggregate_without_a_file_key_deletes_nothing(world):
     version = await world.commit(world.other)
     await world.remove(world.other, version)
-    assert await world.blobs() == ["k1"]
+    assert await world.blobs() == ["k1"], "the aggregate without a file key deletes no blob"

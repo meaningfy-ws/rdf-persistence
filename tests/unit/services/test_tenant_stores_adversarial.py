@@ -80,7 +80,9 @@ async def erase_store_name(world: SimpleNamespace, tenant: str) -> None:
     await world.d.update(
         SYSTEM, f"DELETE WHERE {{ GRAPH <{graph}> {{ ?s <{RP_STORE_NAME}> ?o }} }}"
     )
-    assert (await cold(world, **{CLIENT_A: world.a}).get(tenant))[0].store_name is None
+    assert (await cold(world, **{CLIENT_A: world.a}).get(tenant))[0].store_name is None, (
+        "the cold instance reads the record without a store name"
+    )
 
 
 # -- a failure in the middle of a create on A ------------------------------------------------------
@@ -106,7 +108,9 @@ async def test_a_create_whose_record_write_fails_on_d_leaves_a_database_on_a_tha
     world.d.on("update", DOWN)
     with pytest.raises(StoreUnavailable):
         await world.tenancy.create("Bruges", library_slots(), CREATOR, store=CLIENT_A)
-    assert len(tenant_databases(world.a)) == 1
+    assert len(tenant_databases(world.a)) == 1, (
+        "the failed create leaves one database on the other store"
+    )
     with pytest.raises(NotFound):
         await world.tenancy.store_name_of(
             str(Iris(SETTINGS, *TYPES, id_source=lambda spec: IDS[1]).mint_tenant())
@@ -114,7 +118,7 @@ async def test_a_create_whose_record_write_fails_on_d_leaves_a_database_on_a_tha
 
     await swept(world)
 
-    assert tenant_databases(world.a) == []
+    assert tenant_databases(world.a) == [], "the sweep drops the database on the other store"
     assert [t.id for t in await world.tenancy.tenants()] == [survivor], (
         "the live tenant is untouched"
     )
@@ -125,8 +129,10 @@ async def test_a_failed_create_is_retried_on_the_same_instance_and_lands_on_the_
     with pytest.raises(StoreUnavailable):
         await made_on(world, CLIENT_A)
     tenant = await made_on(world)  # a fresh draw, on D
-    assert (await world.tenancy.store_name_of(tenant)) == DEFAULT_STORE
-    assert tenant_databases(world.a) == []
+    assert (await world.tenancy.store_name_of(tenant)) == DEFAULT_STORE, (
+        "the retried create lands on the default store"
+    )
+    assert tenant_databases(world.a) == [], "the other store keeps no database"
 
 
 async def test_a_create_that_loses_the_race_for_an_id_leaves_no_database_on_a_that_the_sweep_keeps():
@@ -158,17 +164,19 @@ async def test_a_cold_instance_serves_and_deletes_what_another_created_on_a(worl
     other = cold(world, **{CLIENT_A: world.a})
     record, version = await other.get(tenant)
     async with other.tenant_session(tenant, CREATOR) as session:
-        assert session is not None
+        assert session is not None, "the cold instance serves the session"
     await other.delete(tenant, version)
-    assert tenant_databases(world.a) == []
-    assert await other.tenants() == []
+    assert tenant_databases(world.a) == [], "the other store keeps no database"
+    assert await other.tenants() == [], "no tenant is listed"
 
 
 async def test_an_instance_that_cached_a_tenant_deleted_by_another_answers_database_gone_and_writes_nowhere(
     world,
 ):
     tenant = await made_on(world, CLIENT_A)
-    assert await world.tenancy.store_name_of(tenant) == CLIENT_A  # cached
+    assert await world.tenancy.store_name_of(tenant) == CLIENT_A, (
+        "the instance cached the store the tenant was created on"
+    )  # cached
     other = cold(world, **{CLIENT_A: world.a})
     _, version = await other.get(tenant)
     await other.delete(tenant, version)
@@ -176,7 +184,9 @@ async def test_an_instance_that_cached_a_tenant_deleted_by_another_answers_datab
     with pytest.raises(DatabaseGone):
         async with world.tenancy.tenant_session(tenant, CREATOR) as session:
             await session.get_graph(tenant)
-    assert tenant_databases(world.a) == tenant_databases(world.d) == []
+    assert tenant_databases(world.a) == tenant_databases(world.d) == [], (
+        "no database is left on either store"
+    )
 
 
 async def test_the_sweep_of_a_cold_instance_finishes_a_deletion_another_instance_stopped_on_a(
@@ -187,13 +197,15 @@ async def test_the_sweep_of_a_cold_instance_finishes_a_deletion_another_instance
     world.a.on("drop_dataset", DOWN)
     with pytest.raises(StoreUnavailable):
         await world.tenancy.delete(tenant, version)
-    assert (await world.tenancy.get(tenant))[0].state == TenantState.DELETING
+    assert (await world.tenancy.get(tenant))[0].state == TenantState.DELETING, (
+        "the record is still being deleted"
+    )
 
     await swept(world)
 
-    assert tenant_databases(world.a) == []
-    assert await world.files.list_buckets(PREFIX) == []
-    assert await world.tenancy.tenants() == []
+    assert tenant_databases(world.a) == [], "the other store keeps no database"
+    assert await world.files.list_buckets(PREFIX) == [], "no bucket is left"
+    assert await world.tenancy.tenants() == [], "no tenant is listed"
 
 
 async def test_a_finish_deletion_on_an_instance_that_lost_the_store_changes_nothing_and_keeps_the_record(
@@ -209,9 +221,11 @@ async def test_a_finish_deletion_on_an_instance_that_lost_the_store_changes_noth
     with pytest.raises(StoreNotWired, match=CLIENT_A):
         await narrow.finish_deletion(tenant)
 
-    assert len(tenant_databases(world.a)) == 1
+    assert len(tenant_databases(world.a)) == 1, "the failed finish leaves the database"
     assert len(await world.files.list_buckets(PREFIX)) == 1, "the bucket is not dropped either"
-    assert (await narrow.get(tenant))[0].state == TenantState.DELETING
+    assert (await narrow.get(tenant))[0].state == TenantState.DELETING, (
+        "the failed finish keeps the record deleting"
+    )
 
 
 async def test_the_sweep_of_an_instance_that_does_not_wire_a_store_stops_before_changing_anything(
@@ -229,8 +243,10 @@ async def test_the_sweep_of_an_instance_that_does_not_wire_a_store_stops_before_
     with pytest.raises(StoreNotWired, match=CLIENT_A):
         await swept(world, cold(world))
 
-    assert (len(world.d.sent("drop_dataset")), len(world.a.sent("drop_dataset"))) == before
-    assert orphan in world.d._datasets
+    assert (len(world.d.sent("drop_dataset")), len(world.a.sent("drop_dataset"))) == before, (
+        "the sweep dropped nothing on either store"
+    )
+    assert orphan in world.d._datasets, "the orphan is not dropped"
 
 
 # -- RISK-5: a record that lost its store name -------------------------------------------------------
@@ -252,7 +268,9 @@ async def test_a_record_that_lost_its_store_name_is_reported_and_its_database_on
         for r in caplog.records
         if hasattr(r, "step")
     ]
-    assert ("misplaced-tenant", tenant, DEFAULT_STORE, CLIENT_A) in steps
+    assert ("misplaced-tenant", tenant, DEFAULT_STORE, CLIENT_A) in steps, (
+        "the misplaced tenant is reported with both store names"
+    )
 
 
 async def test_a_tenant_whose_store_name_was_erased_answers_not_found_on_a_session(world):
@@ -280,7 +298,9 @@ async def test_a_deleting_record_that_lost_its_store_name_is_finished_on_d_and_i
     await swept(
         world
     )  # first sweep: the record is finished on D; the name was recorded when it began
-    assert [t.id for t in await world.tenancy.tenants()] == [survivor]
+    assert [t.id for t in await world.tenancy.tenants()] == [survivor], (
+        "only the survivor is listed"
+    )
     await swept(world)  # second sweep: no record names the survivor on A any more
 
     assert name not in world.a._datasets, "the second sweep drops it as an orphan"
@@ -297,7 +317,7 @@ async def test_the_no_records_guard_sees_a_tenant_resource_that_is_only_on_a(wor
     await swept(world)
 
     assert leftover in world.a._datasets, "no record on file: nothing is judged an orphan"
-    assert len(world.a.sent("drop_dataset")) == before
+    assert len(world.a.sent("drop_dataset")) == before, "nothing is dropped on the other store"
 
 
 async def test_a_database_without_the_tenant_prefix_is_never_dropped_on_any_store(world):
@@ -312,9 +332,11 @@ async def test_a_database_without_the_tenant_prefix_is_never_dropped_on_any_stor
 
     await swept(world)
 
-    assert orphan not in world.a._datasets
+    assert orphan not in world.a._datasets, "the database without the prefix is never dropped"
     for store in (world.d, world.a):
-        assert {"someone-elses", "lib-x-111111"} <= set(store._datasets)
+        assert {"someone-elses", "lib-x-111111"} <= set(store._datasets), (
+            "the other databases are kept"
+        )
 
 
 async def test_an_orphan_that_shares_the_name_of_a_recorded_database_on_the_other_store_is_kept(
@@ -328,8 +350,8 @@ async def test_an_orphan_that_shares_the_name_of_a_recorded_database_on_the_othe
 
     await swept(world)
 
-    assert name in world.a._datasets
-    assert name in world.d._datasets
+    assert name in world.a._datasets, "the orphan with a recorded name on the other store is kept"
+    assert name in world.d._datasets, "the recorded database on the default store is kept"
 
 
 async def test_the_sweep_drops_an_orphan_on_each_store_and_only_the_orphans(world):
@@ -340,7 +362,9 @@ async def test_the_sweep_drops_an_orphan_on_each_store_and_only_the_orphans(worl
 
     await swept(world)
 
-    assert set(tenant_databases(world.d)) | set(tenant_databases(world.a)) == names
+    assert set(tenant_databases(world.d)) | set(tenant_databases(world.a)) == names, (
+        "the orphans of both stores are dropped"
+    )
 
 
 async def test_a_sweep_whose_store_is_down_changes_nothing_on_the_other_store(world):
@@ -352,8 +376,8 @@ async def test_a_sweep_whose_store_is_down_changes_nothing_on_the_other_store(wo
     with pytest.raises(StoreUnavailable):
         await swept(world)
 
-    assert orphan in world.d._datasets
-    assert world.d.sent("drop_dataset") == []
+    assert orphan in world.d._datasets, "the orphan on the working store is kept"
+    assert world.d.sent("drop_dataset") == [], "nothing is dropped on the working store"
 
 
 # -- the constructor and the wiring ------------------------------------------------------------------
@@ -373,7 +397,9 @@ def stores_of(name: str) -> Tenancy:
 
 @pytest.mark.parametrize("name", ["a", "a" * 32, "a-", "a-b-c", "z9", "a" + "0" * 31])
 def test_a_store_name_at_the_limits_of_the_pattern_is_wired(name):
-    assert list(stores_of(name).stores()) == [DEFAULT_STORE, name]
+    assert list(stores_of(name).stores()) == [DEFAULT_STORE, name], (
+        "a store name at the limit is wired"
+    )
 
 
 # equivalence classes: uppercase (A; Default), punctuation (a_b; a.b, a/b), whitespace (a b; a\n, " a");
@@ -397,7 +423,9 @@ def test_a_caller_that_changes_the_stores_it_was_given_does_not_change_the_wirin
     )
     given["client-b"] = FakeStore()
     given.pop("client-a")
-    assert list(tenancy.stores()) == [DEFAULT_STORE, "client-a"]
+    assert list(tenancy.stores()) == [DEFAULT_STORE, "client-a"], (
+        "changing the given stores does not change the wiring"
+    )
 
 
 def test_a_caller_that_changes_what_stores_answers_does_not_change_the_wiring():
@@ -405,7 +433,9 @@ def test_a_caller_that_changes_what_stores_answers_does_not_change_the_wiring():
     answered = tenancy.stores()
     answered["client-b"] = FakeStore()
     answered.pop("client-a")
-    assert list(tenancy.stores()) == [DEFAULT_STORE, "client-a"]
+    assert list(tenancy.stores()) == [DEFAULT_STORE, "client-a"], (
+        "changing what stores answers does not change the wiring"
+    )
 
 
 # -- restore and migrate -----------------------------------------------------------------------------
@@ -422,9 +452,9 @@ async def test_migrate_tenants_sets_aside_the_tenant_on_a_store_that_is_down_and
 
     aside = await migrate_tenants(world.tenancy, world.d, [(LIBRARY_SCHEMA, chain)])
 
-    assert aside == {on_a}
-    assert on_d not in aside
-    assert world.tenancy.behind == {on_a}
+    assert aside == {on_a}, "the tenant on the store that is down is set aside"
+    assert on_d not in aside, "the tenant on the working store is not set aside"
+    assert world.tenancy.behind == {on_a}, "the instance remembers the set-aside tenant"
 
 
 async def test_migrate_tenants_on_an_instance_that_does_not_wire_a_store_stops_with_the_tenant_not_set_aside(
@@ -435,7 +465,7 @@ async def test_migrate_tenants_on_an_instance_that_does_not_wire_a_store_stops_w
     narrow = cold(world)
     with pytest.raises(StoreNotWired, match=CLIENT_A):
         await migrate_tenants(narrow, world.d, [(LIBRARY_SCHEMA, chain)])
-    assert tenant not in narrow.behind
+    assert tenant not in narrow.behind, "the tenant is not set aside when the store is not wired"
 
 
 async def test_every_tenant_is_migrated_on_its_own_store_and_not_on_the_other(world, tmp_path):
@@ -443,7 +473,9 @@ async def test_every_tenant_is_migrated_on_its_own_store_and_not_on_the_other(wo
     await made_on(world, CLIENT_A)
     chain = chain_of(tmp_path, LIBRARY_SCHEMA, current="1")
     before = (operations(world.d), operations(world.a))
-    assert await migrate_tenants(world.tenancy, world.d, [(LIBRARY_SCHEMA, chain)]) == set()
+    assert await migrate_tenants(world.tenancy, world.d, [(LIBRARY_SCHEMA, chain)]) == set(), (
+        "no tenant is left to migrate on the other store"
+    )
     after = (operations(world.d), operations(world.a))
     assert after[1] > before[1], "A is read"
     assert not [q for q in world.a.sent("query") if SYSTEM in q], "A never sees the system database"

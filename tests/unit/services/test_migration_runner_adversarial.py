@@ -346,7 +346,9 @@ async def test_versions_that_differ_only_by_case_are_different_versions(world, t
         tmp_path / "letters", LIB, migration(LIB, "a", "b", rename(OLD_ISBN, ISBN)), current="b"
     )
     await set_stamp(world.store, world.database, LIB, '"A"')
-    assert await migrate_tenants(world.tenancy, world.store, [(LIB, letters)]) == {world.tenant}
+    assert await migrate_tenants(world.tenancy, world.store, [(LIB, letters)]) == {world.tenant}, (
+        "a version differing only by case is migrated"
+    )
 
 
 async def test_a_stamp_of_a_schema_the_chains_do_not_know_is_left_alone(world, lib_chain):

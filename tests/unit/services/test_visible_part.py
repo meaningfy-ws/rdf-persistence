@@ -35,7 +35,9 @@ def test_a_hidden_generation_is_dropped_and_the_other_kept():
 
     seen = visible_part(activity, _except(DUNE))
 
-    assert [g.entity for g in seen.generations] == [EMMA]
+    assert [g.entity for g in seen.generations] == [EMMA], (
+        "the hidden generation is dropped and the other kept"
+    )
 
 
 def test_a_hidden_invalidation_is_dropped_and_the_other_kept():
@@ -43,17 +45,23 @@ def test_a_hidden_invalidation_is_dropped_and_the_other_kept():
 
     seen = visible_part(activity, _except(DUNE))
 
-    assert [i.entity for i in seen.invalidations] == [EMMA]
+    assert [i.entity for i in seen.invalidations] == [EMMA], (
+        "the hidden invalidation is dropped and the other kept"
+    )
 
 
 def test_an_activity_with_every_part_hidden_is_not_sent():
     activity = _activity(generations=[_gen(DUNE)], invalidations=[_inv(DUNE)])
 
-    assert visible_part(activity, _except(DUNE)) is None
+    assert visible_part(activity, _except(DUNE)) is None, (
+        "an activity with every part hidden is not sent"
+    )
 
 
 def test_an_activity_with_no_parts_is_not_sent():
-    assert visible_part(_activity(), lambda _: True) is None
+    assert visible_part(_activity(), lambda _: True) is None, (
+        "an activity with no parts is not sent"
+    )
 
 
 def test_a_hidden_used_resource_hides_the_activity():
@@ -61,7 +69,9 @@ def test_a_hidden_used_resource_hides_the_activity():
         id="https://lib.example/activity/2", used_resource=DUNE, generations=[_gen(EMMA)]
     )
 
-    assert visible_part(comment, _except(DUNE)) is None
+    assert visible_part(comment, _except(DUNE)) is None, (
+        "the activity whose used resource is hidden is not sent"
+    )
 
 
 def test_a_readable_used_resource_keeps_the_activity():
@@ -69,7 +79,7 @@ def test_a_readable_used_resource_keeps_the_activity():
         id="https://lib.example/activity/2", used_resource=DUNE, generations=[_gen(EMMA)]
     )
 
-    assert visible_part(comment, lambda _: True) == comment
+    assert visible_part(comment, lambda _: True) == comment, "the readable activity is kept"
 
 
 def test_the_input_is_left_unchanged():
@@ -78,4 +88,4 @@ def test_the_input_is_left_unchanged():
 
     visible_part(activity, _except(DUNE))
 
-    assert activity == before
+    assert activity == before, "the input activity is left unchanged"

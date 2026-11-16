@@ -33,8 +33,10 @@ def test_an_offer_reaches_every_subscriber_of_the_tenant_and_no_other():
 
     first, second, elsewhere = asyncio.run(scenario())
 
-    assert [a.id for a in first] == [a.id for a in second] == ["https://lib.example/activity/1"]
-    assert elsewhere == []
+    assert [a.id for a in first] == [a.id for a in second] == ["https://lib.example/activity/1"], (
+        "every subscriber of the tenant gets the offered activity"
+    )
+    assert elsewhere == [], "a subscriber of another tenant gets nothing"
 
 
 def test_a_full_queue_is_closed_and_a_reader_of_another_gets_all_of_them():
@@ -50,9 +52,9 @@ def test_a_full_queue_is_closed_and_a_reader_of_another_gets_all_of_them():
 
     slow, fast = asyncio.run(scenario())
 
-    assert slow[-1] is CLOSED
-    assert CLOSED not in fast
-    assert len(fast) == 4
+    assert slow[-1] is CLOSED, "the full queue ends with the closing marker"
+    assert CLOSED not in fast, "the reader that kept up gets no closing marker"
+    assert len(fast) == 4, "the reader that kept up gets every activity"
 
 
 def test_a_closed_queue_holds_only_the_sentinel():  # D-14
@@ -74,7 +76,9 @@ def test_a_closed_queue_ends_its_reader_even_when_it_was_full():
             hub.offer(TENANT, _activity(2))
             return await asyncio.wait_for(queue.get(), timeout=1)
 
-    assert asyncio.run(scenario()) is CLOSED
+    assert asyncio.run(scenario()) is CLOSED, (
+        "the full queue still ends its reader with the closing marker"
+    )
 
 
 def test_a_subscriber_is_removed_on_exit():
@@ -87,8 +91,8 @@ def test_a_subscriber_is_removed_on_exit():
 
     empty, hub = asyncio.run(scenario())
 
-    assert empty
-    assert not hub._queues.get(TENANT)
+    assert empty, "an offer after the exit does not reach the subscriber's queue"
+    assert not hub._queues.get(TENANT), "the subscriber is removed on exit"
 
 
 def test_a_subscriber_is_removed_when_the_reader_fails():
@@ -101,4 +105,6 @@ def test_a_subscriber_is_removed_when_the_reader_fails():
             pass
         return hub
 
-    assert not asyncio.run(scenario())._queues.get(TENANT)
+    assert not asyncio.run(scenario())._queues.get(TENANT), (
+        "the subscriber is removed when its reader fails"
+    )

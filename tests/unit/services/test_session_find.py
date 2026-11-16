@@ -62,7 +62,9 @@ async def test_find_returns_exactly_the_aggregate_with_the_value(listings):  # T
     async with fake_session(listings=listings) as session:
         first = await put_scan(session, 1, "a")
         await put_scan(session, 2, "b")
-        assert await session.find(Scan, file_name="a") == [first]
+        assert await session.find(Scan, file_name="a") == [first], (
+            "find returns exactly the aggregate with the value"
+        )
 
 
 async def test_find_leaves_out_other_tenants_and_other_classes(listings):  # T-17
@@ -72,7 +74,9 @@ async def test_find_leaves_out_other_tenants_and_other_classes(listings):  # T-1
     async with fake_session(store, listings=listings) as session:
         await put_book(session, 4, ["X"], label="a")
         mine = await put_scan(session, 1, "x", label="a")
-        assert await session.find(Scan, label="a") == [mine]
+        assert await session.find(Scan, label="a") == [mine], (
+            "find leaves out the other tenant and the other class"
+        )
 
 
 async def test_find_by_an_unknown_slot_is_a_bad_query_naming_slot_and_class(listings):  # T-18
@@ -86,7 +90,9 @@ async def test_find_by_several_values_of_a_slot_needs_them_all(listings):  # T-1
         both = await put_book(session, 1, ["X", "Y"])
         await put_book(session, 2, ["X"])
         await put_book(session, 3, ["Y", "Z"])
-        assert await session.find(Book, authors=["X", "Y"]) == [both]
+        assert await session.find(Book, authors=["X", "Y"]) == [both], (
+            "find by several values needs them all"
+        )
 
 
 @pytest.mark.slow
@@ -94,7 +100,7 @@ async def test_find_pages_until_every_match_is_collected(listings):  # T-20
     async with fake_session(listings=listings) as session:
         expected = [await put_scan(session, n, "same") for n in range(1, 202)]
         found = await session.find(Scan, file_name="same")
-        assert found == sorted(expected)
+        assert found == sorted(expected), "find pages until every match is collected"
 
 
 async def test_find_refuses_a_class_that_is_not_an_aggregate_root(listings):
@@ -110,7 +116,9 @@ async def test_find_by_a_datetime_uses_the_rdf_lexical_form():  # R2-1
     async with fake_session(listings=Listings(load_schema(TOY_SCHEMA))) as session:
         first = await put_scan(session, 1, "a", uploaded=when)
         await put_scan(session, 2, "a")
-        assert await session.find(Scan, uploaded=when) == [first]
+        assert await session.find(Scan, uploaded=when) == [first], (
+            "find by a datetime matches its lexical form"
+        )
 
 
 @pytest.mark.parametrize(
@@ -119,7 +127,9 @@ async def test_find_by_a_datetime_uses_the_rdf_lexical_form():  # R2-1
     [(True, "true"), (Genre.FICTION, Genre.FICTION.value), (3, "3")],
 )
 def test_a_filter_value_is_its_rdf_lexical_form(value, text):  # R2-1
-    assert [f.value for f in _filters({"slot": value})] == [text]
+    assert [f.value for f in _filters({"slot": value})] == [text], (
+        "the filter value is the lexical form"
+    )
 
 
 async def test_find_refuses_an_empty_list_instead_of_dropping_the_filter(listings):  # R2-7
@@ -153,7 +163,9 @@ async def test_find_returns_an_aggregate_the_principal_may_not_read(listings):  
         iri = await put_scan(session, 1, "a")
         rules = AccessRules(load_role_definitions(ROLES))
         banned = held(role("reader"), bans=[ban(Action.READ, graph_of(iri))])
-        assert rules.hidden_graphs(caller(principal=ADA), banned) == [graph_of(iri)]
+        assert rules.hidden_graphs(caller(principal=ADA), banned) == [graph_of(iri)], (
+            "the aggregate the principal may not read is found, and hidden by the rules"
+        )
         assert await session.find(Scan, file_name="a") == [iri], "the session ignores prohibitions"
 
 

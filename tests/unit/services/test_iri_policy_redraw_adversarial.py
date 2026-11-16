@@ -35,7 +35,7 @@ async def made(store, files, *ids: str):
 async def test_the_last_permitted_draw_may_be_the_free_one(store, files):
     tenancy = await made(store, files, *[TAKEN] * (MAX_TENANT_CLASH_DRAWS - 1), FREE)
     created = await tenancy.create("Ghent", library_slots(), CREATOR)
-    assert created.id.endswith(FREE)
+    assert created.id.endswith(FREE), "the last permitted draw may be the free one"
 
 
 async def test_five_clashes_fail_without_a_sixth_draw(store, files):
@@ -51,11 +51,11 @@ async def test_reserved_words_do_not_use_up_the_draws_of_the_clash_budget(store,
         store, files, "meta", *[TAKEN] * (MAX_TENANT_CLASH_DRAWS - 1), "access", FREE
     )
     created = await tenancy.create("Ghent", library_slots(), CREATOR)
-    assert created.id.endswith(FREE)
+    assert created.id.endswith(FREE), "reserved words do not use up the draws"
 
 
 async def test_a_clash_with_a_live_tenants_access_record_alone_is_drawn_again(store, files):
     tenancy = await made(store, files, FREE, FREE, str(UUID(int=3)))
     first = await tenancy.create("Ghent", library_slots(), CREATOR)
     second = await tenancy.create("Bruges", library_slots(), CREATOR)
-    assert first.id != second.id
+    assert first.id != second.id, "a clash with a live access record is drawn again"

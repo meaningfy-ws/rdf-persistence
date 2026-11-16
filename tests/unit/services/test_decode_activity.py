@@ -77,7 +77,9 @@ async def test_tc41_each_stored_activity_decodes_into_its_own_class(store):
     ],
 )
 def test_tc42_the_most_specific_class_among_the_types_wins(types, expected):
-    assert activity_class_of(VIEW, MODELS, types) is expected
+    assert activity_class_of(VIEW, MODELS, types) is expected, (
+        "the most specific class among the types is chosen"
+    )
 
 
 def test_tc42_a_type_of_no_class_of_the_schema_is_a_lookup_error():
@@ -88,7 +90,9 @@ def test_tc42_a_type_of_no_class_of_the_schema_is_a_lookup_error():
 
 
 def test_a_class_named_by_its_iri_is_the_same_as_one_by_its_types():
-    assert activity_class_named(VIEW, MODELS, str(APPROVE_BOOK)) is ApproveBook
+    assert activity_class_named(VIEW, MODELS, str(APPROVE_BOOK)) is ApproveBook, (
+        "a class named by its IRI is the class named by its types"
+    )
 
 
 def test_a_schema_class_that_is_not_an_activity_is_a_lookup_error() -> None:  # D-19

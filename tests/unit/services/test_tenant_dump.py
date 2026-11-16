@@ -648,8 +648,12 @@ async def test_tc11_the_restored_tenant_accepts_a_replace_and_the_original_is_un
         book.label = "Dune Messiah"
         work.add(book)
         await work.commit()
-    assert (await read_book(world, new, iri)).label == "Dune Messiah"
-    assert (await read_book(world, world.tenant, world.book, Principal(id=ADA))).label == "Dune"
+    assert (await read_book(world, new, iri)).label == "Dune Messiah", (
+        "the restored tenant holds the replaced label"
+    )
+    assert (await read_book(world, world.tenant, world.book, Principal(id=ADA))).label == "Dune", (
+        "the original tenant is unchanged"
+    )
 
 
 async def test_tc12_only_the_restorer_is_granted_the_creator_role(world):
@@ -706,7 +710,7 @@ async def test_tc16_a_blob_gone_before_its_read_is_skipped_and_logged(world, cap
         "k1 is not in the dump"
     )
     steps = [(r.__dict__.get("step"), r.__dict__.get("resource")) for r in caplog.records]
-    assert steps == [("dump-blob-gone", "k1")]
+    assert steps == [("dump-blob-gone", "k1")], "the missing blob is logged and skipped"
 
 
 async def test_a_dump_holds_the_manifest_the_graphs_the_blobs_and_the_end_marker_in_that_order(
@@ -800,7 +804,9 @@ async def test_a_format_version_other_than_one_is_refused_naming_it(world):
             .encode()
         )
 
-    assert "2" in await refused(world, edited(await dumped(world), MANIFEST, bump))
+    assert "2" in await refused(world, edited(await dumped(world), MANIFEST, bump)), (
+        "the refusal names the format version"
+    )
 
 
 @pytest.mark.parametrize(
@@ -893,7 +899,9 @@ async def test_a_policy_that_glues_the_tenant_id_to_a_letter_is_refused_naming_t
         iri_policy=IriPolicy(tenant_template="{base}libraries/t{tenant_id}"),
     )
     world = await populated(await make_world(iris_of(glued), glued))
-    assert "tenant_template" in await refused(world, await dumped(world))
+    assert "tenant_template" in await refused(world, await dumped(world)), (
+        "the refusal names the tenant template"
+    )
 
 
 async def test_tc19_a_quad_in_a_foreign_graph_is_refused_naming_it(world):
@@ -953,7 +961,9 @@ async def test_tc20_a_root_validator_that_refuses_stops_the_restore():
         stamps=BASE_STAMPS,
         root_validators=[refuse],
     )
-    assert "no more libraries" in await refused(world, await dumped(world), tenancy=strict)
+    assert "no more libraries" in await refused(world, await dumped(world), tenancy=strict), (
+        "the refusal carries the validator's message"
+    )
     assert seen == [(None, RESTORER)], "old is None and who is the restorer"
 
 
@@ -1086,7 +1096,9 @@ async def test_tc25_the_restored_tenant_takes_the_roots_label_not_the_manifests(
     record, _ = await world.tenancy.get(summary.id)
     async with world.tenancy.tenant_session(summary.id, RESTORER) as opened:
         root = await UnitOfWork(opened, toy_mapper()).get(Library, summary.id)
-    assert (summary.label, record.label, root.label) == ("New", "New", "New")
+    assert summary.label == "New", "the summary takes the root's label"
+    assert record.label == "New", "the access record takes the root's label"
+    assert root.label == "New", "the root keeps its label"
 
 
 # -- PD-13: the decompression budget, the end marker, the record write ------------------------------------
@@ -1178,7 +1190,9 @@ async def test_a_pax_header_larger_than_the_budget_is_refused_and_creates_nothin
 async def test_a_header_inside_the_budget_does_not_stop_a_restore(world):
     data = await dumped(world)
     small = with_header_on_the_manifest(data, {"comment": "x" * 1_000}, tarfile.PAX_FORMAT)
-    assert (await restored(world, small, max_bytes=charged(data) + 10_000)).id != world.tenant
+    assert (await restored(world, small, max_bytes=charged(data) + 10_000)).id != world.tenant, (
+        "the restore within the budget makes a new tenant"
+    )
 
 
 async def test_a_dump_of_a_tenant_with_no_blob_still_ends_with_an_empty_regular_end_member():
@@ -1320,7 +1334,7 @@ async def test_tc19_a_dump_restored_on_another_store_makes_its_tenant_there(worl
 
     record, _ = await tenancy.get(summary.id)
     assert summary.id != world.tenant, "a new IRI"
-    assert record.store_name == CLIENT_A
+    assert record.store_name == CLIENT_A, "the restored tenant is made on the other store"
     assert await other.list_datasets() == [record.database_name], "the database is on client-a"
     assert sorted(await world.store.list_datasets()) == on_default, "default gained none"
 

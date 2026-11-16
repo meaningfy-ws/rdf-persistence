@@ -146,7 +146,7 @@ async def test_a_deployment_slug_the_policy_does_not_use_may_change(store, tenan
 async def test_an_empty_system_database_with_no_dataset_fails_loudly_and_records_nothing(store):
     with pytest.raises(DatabaseGone):
         await guard_iri_policy(store, new_tenancy(store), settings_of(None))
-    assert store.sent("update") == []
+    assert store.sent("update") == [], "the failed start records nothing"
 
 
 async def test_an_empty_system_database_records_the_policy_once(store, tenancy):
@@ -172,8 +172,10 @@ async def test_a_refused_start_over_data_names_every_field_and_records_nothing(s
     with pytest.raises(IriPolicyChanged) as caught:
         await guard_iri_policy(store, tenancy, settings_of(changed))
     for field in ("meta_template", "principal_template", "tenant_id.kind", "tenant_id.length"):
-        assert field in str(caught.value)
-    assert not [t for t in store.sent("update") if POLICY_SEGMENT in t]
+        assert field in str(caught.value), "the refusal names the field"
+    assert not [t for t in store.sent("update") if POLICY_SEGMENT in t], (
+        "the refused start-over data records nothing"
+    )
 
 
 # --- (2) custom access, meta and registry templates -----------------------------------------------
@@ -190,7 +192,9 @@ def iris_of(**templates) -> Iris:
 def test_a_custom_access_record_round_trips_to_its_tenant(access):
     iris = iris_of(access_template=access)
     tenant = iris.mint_tenant()
-    assert iris.tenant_of_access(str(iris.access(tenant))) == tenant
+    assert iris.tenant_of_access(str(iris.access(tenant))) == tenant, (
+        "a custom access record round-trips to its tenant"
+    )
 
 
 # equivalence classes: a sibling graph of the tenant (meta; registry, "" and x are the same), one nested under access
@@ -234,21 +238,29 @@ def test_two_kinds_of_iri_of_one_tenant_may_not_coincide(templates):
     with pytest.raises(InvalidIri):
         iris = iris_of(**templates)
         tenant = iris.mint_tenant()
-        assert len({iris.access(tenant), iris.meta(tenant), iris.registry(tenant), tenant}) == 4
+        assert len({iris.access(tenant), iris.meta(tenant), iris.registry(tenant), tenant}) == 4, (
+            "the four kinds of IRI of one tenant are distinct"
+        )
         raise InvalidIri("distinct")  # reached only if they are distinct, which they are not here
 
 
 def test_distinct_default_templates_mint_distinct_iris():
     iris = iris_of()
     tenant = iris.mint_tenant()
-    assert len({iris.access(tenant), iris.meta(tenant), iris.registry(tenant), tenant}) == 4
+    assert len({iris.access(tenant), iris.meta(tenant), iris.registry(tenant), tenant}) == 4, (
+        "the four kinds of IRI of one tenant are distinct"
+    )
 
 
 def test_a_meta_graph_is_not_an_aggregate_under_default_templates():
     iris = iris_of()
     tenant = iris.mint_tenant()
-    assert not iris.is_aggregate(str(tenant), str(iris.meta(tenant)))
-    assert not iris.is_aggregate(str(tenant), str(iris.registry(tenant)))
+    assert not iris.is_aggregate(str(tenant), str(iris.meta(tenant))), (
+        "the meta graph is not an aggregate graph"
+    )
+    assert not iris.is_aggregate(str(tenant), str(iris.registry(tenant))), (
+        "the registry graph is not an aggregate graph"
+    )
 
 
 # --- (3) the principal template -------------------------------------------------------------------
@@ -261,43 +273,55 @@ ISSUER = "https://issuer.example"
 def test_an_odd_subject_stays_in_one_segment_and_decodes_back(sub):
     iri = str(Iris(SETTINGS).principal(ISSUER, sub))
     tail = iri.removeprefix(f"{ISSUER}/users/")
-    assert "/" not in tail
-    assert "?" not in tail
-    assert "#" not in tail
-    assert unquote(tail) == sub
+    assert "/" not in tail, "the subject tail has no slash"
+    assert "?" not in tail, "the subject tail has no question mark"
+    assert "#" not in tail, "the subject tail has no hash"
+    assert unquote(tail) == sub, "the subject tail decodes back to the subject"
 
 
 # equivalence classes: an issuer with and without a trailing slash
 @pytest.mark.parametrize("issuer", [ISSUER, ISSUER + "/"])
 def test_a_trailing_slash_on_the_issuer_never_doubles_the_separator(issuer):
     iri = str(Iris(SETTINGS).principal(issuer, "u1"))
-    assert iri == f"{issuer.rstrip('/')}/users/u1"
-    assert "//users" not in iri
+    assert iri == f"{issuer.rstrip('/')}/users/u1", (
+        "the issuer's trailing slash is dropped from the principal IRI"
+    )
+    assert "//users" not in iri, "the principal IRI has no doubled separator"
 
 
 def test_an_issuer_with_and_without_a_trailing_slash_name_one_principal():
     iris = Iris(SETTINGS)
-    assert iris.principal(ISSUER, "u1") == iris.principal(ISSUER + "/", "u1")
+    assert iris.principal(ISSUER, "u1") == iris.principal(ISSUER + "/", "u1"), (
+        "the issuer names one principal with or without a trailing slash"
+    )
 
 
 def test_a_subject_and_its_encoding_stay_two_principals_even_with_a_custom_template():
     iris = Iris(settings_of(IriPolicy(principal_template="{base}people/{sub}")))
-    assert iris.principal(ISSUER, "a/b") != iris.principal(ISSUER, "a%2Fb")
-    assert str(iris.principal(ISSUER, "a/b")) == f"{SETTINGS.base}people/a%2Fb"
+    assert iris.principal(ISSUER, "a/b") != iris.principal(ISSUER, "a%2Fb"), (
+        "a subject and its encoding stay two principals"
+    )
+    assert str(iris.principal(ISSUER, "a/b")) == f"{SETTINGS.base}people/a%2Fb", (
+        "the slash in the subject is encoded under the custom template"
+    )
 
 
 def test_a_template_without_the_issuer_gives_one_principal_for_two_issuers():
     iris = Iris(settings_of(IriPolicy(principal_template="{base}people/{sub}")))
-    assert iris.principal("https://a.example", "u1") == iris.principal("https://b.example", "u1")
+    assert iris.principal("https://a.example", "u1") == iris.principal("https://b.example", "u1"), (
+        "a template without the issuer gives one principal for two issuers"
+    )
 
 
 def test_an_issuer_with_braces_is_written_in_verbatim_not_formatted_again():
     iri = str(Iris(SETTINGS).principal("https://x.example/{sub}", "u1"))
-    assert iri == "https://x.example/{sub}/users/u1"
+    assert iri == "https://x.example/{sub}/users/u1", "braces in the issuer are written verbatim"
 
 
 @pytest.mark.parametrize("issuer", [ISSUER, ISSUER + "/"])
 def test_the_verifier_mints_the_principal_by_the_policy_of_its_iris(issuer):
     iris = Iris(settings_of(IriPolicy(principal_template="{issuer}/u/{sub}")))
     verifier = JwksTokenVerifier(issuer, "aud", "roles", iris=iris)
-    assert verifier._principal("a/b") == f"{ISSUER}/u/a%2Fb"
+    assert verifier._principal("a/b") == f"{ISSUER}/u/a%2Fb", (
+        "the verifier mints the principal by the policy of its IRIs"
+    )

@@ -125,11 +125,9 @@ async def test_the_system_database_is_created_once_and_the_call_says_whether_it_
     made = Tenancy(
         store, files, SETTINGS, mapper=toy_mapper(), root_class=Library, access_class=LibraryAccess
     )
-    assert (await made.ensure_system_database(), await made.ensure_system_database()) == (
-        True,
-        False,
-    )
-    assert await store.list_datasets() == [SYSTEM]
+    assert await made.ensure_system_database() is True, "the first call creates the system database"
+    assert await made.ensure_system_database() is False, "the second call finds it already there"
+    assert await store.list_datasets() == [SYSTEM], "the system database is the only dataset"
 
 
 async def test_create_makes_a_database_and_a_bucket_named_after_the_tenant(tenancy, store, files):
@@ -141,7 +139,8 @@ async def test_create_makes_a_database_and_a_bucket_named_after_the_tenant(tenan
 
 async def test_create_answers_an_active_summary_under_the_consumers_base(tenancy):
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
-    assert (summary.label, summary.state) == ("Ghent", TenantState.ACTIVE.value)
+    assert summary.label == "Ghent", "the summary carries the label"
+    assert summary.state == TenantState.ACTIVE.value, "the summary is active"
     assert summary.id.startswith(f"{SETTINGS.base}{SETTINGS.tenant_segment}/"), "a minted IRI"
 
 
@@ -158,12 +157,12 @@ async def test_create_stores_the_root_object_under_the_tenant_iri(tenancy, store
 async def test_create_grants_the_creator_role_on_the_tenant_to_the_creator(tenancy):
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
     record, _ = await tenancy.get(summary.id)
-    assert record.grants == [Grant(assignee=ADA, target=summary.id, role="librarian")]
-    assert (record.state, record.label, record.id) == (
-        TenantState.ACTIVE.value,
-        "Ghent",
-        f"{summary.id}/access",
+    assert record.grants == [Grant(assignee=ADA, target=summary.id, role="librarian")], (
+        "the creator is granted the creator role on the tenant"
     )
+    assert record.state == TenantState.ACTIVE.value, "the record is active"
+    assert record.label == "Ghent", "the record carries the label"
+    assert record.id == f"{summary.id}/access", "the record sits at the access IRI of the tenant"
 
 
 @pytest.mark.parametrize(
@@ -178,13 +177,15 @@ async def test_create_grants_the_creator_role_on_the_tenant_to_the_creator(tenan
 async def test_the_record_description_ends_in_one_period(tenancy, label, description):
     summary = await tenancy.create(label, library_slots(), CREATOR)
     record, _ = await tenancy.get(summary.id)
-    assert record.description == description
+    assert record.description == description, "the record description is the one given"
 
 
 async def test_the_record_names_the_database(tenancy):
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
     record, _ = await tenancy.get(summary.id)
-    assert record.database_name == tenant_resource_name(SETTINGS.prefix, summary.id)
+    assert record.database_name == tenant_resource_name(SETTINGS.prefix, summary.id), (
+        "the record names its database"
+    )
 
 
 async def test_a_retry_after_a_failure_creates_a_new_tenant(tenancy, store):
@@ -220,8 +221,10 @@ async def test_a_failure_at_any_step_leaves_no_access_record(
 async def test_the_access_record_is_written_after_the_bucket_and_the_root(tenancy, store, files):
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
     name = tenant_resource_name(SETTINGS.prefix, summary.id)
-    assert files.sent("create_bucket") == [name]
-    assert store.sent("create_dataset") == [SYSTEM, name]
+    assert files.sent("create_bucket") == [name], "the bucket is created"
+    assert store.sent("create_dataset") == [SYSTEM, name], (
+        "the datasets are created in order, the system one first"
+    )
     updates = store.sent("update")
     assert (f"{summary.id}/meta" in updates[0], f"{summary.id}/access/graph" in updates[1]) == (
         True,
@@ -266,7 +269,7 @@ async def test_tenants_lists_every_record_with_its_state(tenancy):
     listed = await tenancy.tenants()
     assert sorted((t.id, t.label, t.state) for t in listed) == sorted(
         (t.id, t.label, TenantState.ACTIVE.value) for t in (first, second)
-    )
+    ), "each record is listed with its label and state"
 
 
 async def test_delete_drops_the_database_the_bucket_and_the_record(tenancy, store, files):
@@ -300,8 +303,9 @@ async def test_a_later_delete_finishes_a_deleting_tenant_even_with_a_stale_versi
     with pytest.raises(StoreUnavailable):
         await tenancy.delete(summary.id, version)
     await tenancy.delete(summary.id, version)  # the version moved when it was marked
-    assert (await tenant_databases(store), await files.list_buckets(PREFIX)) == ([], [])
-    assert await tenancy.tenants() == []
+    assert await tenant_databases(store) == [], "no tenant database is left"
+    assert await files.list_buckets(PREFIX) == [], "no tenant bucket is left"
+    assert await tenancy.tenants() == [], "the deleted tenant is no longer listed"
 
 
 async def test_delete_finishes_when_the_database_or_the_bucket_is_already_gone(
@@ -313,7 +317,7 @@ async def test_delete_finishes_when_the_database_or_the_bucket_is_already_gone(
     await files.delete_bucket(name)
     _, version = await tenancy.get(summary.id)
     await tenancy.delete(summary.id, version)
-    assert await tenancy.tenants() == []
+    assert await tenancy.tenants() == [], "the deleted tenant is no longer listed"
 
 
 async def test_delete_with_a_stale_version_conflicts_and_changes_nothing(tenancy, store):
@@ -321,8 +325,8 @@ async def test_delete_with_a_stale_version_conflicts_and_changes_nothing(tenancy
     with pytest.raises(Conflict):
         await tenancy.delete(summary.id, "not-the-version")
     record, _ = await tenancy.get(summary.id)
-    assert record.state == TenantState.ACTIVE.value
-    assert len(await tenant_databases(store)) == 1
+    assert record.state == TenantState.ACTIVE.value, "the record stays active"
+    assert len(await tenant_databases(store)) == 1, "the database stays"
 
 
 async def test_delete_of_an_unknown_tenant_is_not_found(tenancy):
@@ -335,7 +339,7 @@ async def test_a_label_the_record_refuses_creates_nothing(tenancy, store, files)
         await tenancy.create("x" * 201, library_slots(), CREATOR)
     assert store.sent("create_dataset") == [SYSTEM], "no tenant database was asked for"
     assert files.sent("create_bucket") == [], "no bucket was asked for"
-    assert await tenancy.tenants() == []
+    assert await tenancy.tenants() == [], "no tenant is created"
 
 
 async def test_finish_deletion_refuses_a_tenant_that_is_not_deleting_and_drops_nothing(
@@ -355,7 +359,7 @@ async def test_finish_deletion_of_an_unknown_tenant_is_not_found_and_drops_nothi
         await tenancy.finish_deletion(
             f"{SETTINGS.base}libraries/00000000-0000-4000-8000-000000000000"
         )
-    assert store.sent("drop_dataset") == []
+    assert store.sent("drop_dataset") == [], "nothing is dropped"
 
 
 STORED = "lib-t-" + "d" * 32
@@ -386,7 +390,9 @@ async def test_delete_drops_the_database_and_bucket_the_record_names_and_not_a_d
     assert STORED not in await store.list_datasets(), "the recorded database is dropped"
     assert STORED not in await files.list_buckets(PREFIX), "and its bucket"
     assert derived in await store.list_datasets(), "the derived name is not the record's business"
-    assert derived in await files.list_buckets(PREFIX)
+    assert derived in await files.list_buckets(PREFIX), (
+        "the bucket the record names is the one kept"
+    )
 
 
 @pytest.mark.filterwarnings(
@@ -428,7 +434,7 @@ async def test_each_create_and_drop_step_is_logged_with_the_tenant_and_resource_
         ("drop-database", summary.id, name),
         ("drop-bucket", summary.id, name),
         ("remove-record", summary.id, name),
-    ]
+    ], "each step is logged with the tenant and resource"
 
 
 # --- changing the access record: the label and the grants (task 5.2) ---------------------------
@@ -625,7 +631,9 @@ async def test_a_tenant_being_deleted_is_not_visible(tenancy, store):
     record, version = await tenancy.get(made.id)
     record.state = TenantState.DELETING
     await tenancy._replace_root(SYSTEM, made.id, CREATOR, record, version, store=store)
-    assert (await tenancy.visible_tenants(caller(), rules(), limit=50, offset=0)).total == 0
+    assert (await tenancy.visible_tenants(caller(), rules(), limit=50, offset=0)).total == 0, (
+        "the deleting tenant is not visible"
+    )
 
 
 async def test_a_record_that_cannot_be_decoded_is_a_stored_data_fault_not_a_bad_request(
@@ -699,8 +707,9 @@ async def test_a_tenant_id_that_has_an_access_record_is_drawn_again(store, files
     await made.ensure_system_database()
     first = await made.create("Ghent", library_slots(), CREATOR)
     second = await made.create("Bruges", library_slots(), CREATOR)
-    assert (first.id.endswith(A_ID), second.id.endswith(B_ID)) == (True, True)
-    assert len(await tenant_databases(store)) == 2
+    assert first.id.endswith(A_ID), "the first tenant is drawn with the first free id"
+    assert second.id.endswith(B_ID), "the second tenant is drawn again with the next free id"
+    assert len(await tenant_databases(store)) == 2, "both tenants have a database"
 
 
 async def test_a_tenant_id_that_only_an_orphan_database_uses_is_drawn_again(store, files):
@@ -708,7 +717,7 @@ async def test_a_tenant_id_that_only_an_orphan_database_uses_is_drawn_again(stor
     await made.ensure_system_database()
     await store.create_dataset(PREFIX + A_HEX)
     created = await made.create("Ghent", library_slots(), CREATOR)
-    assert created.id.endswith(B_ID)
+    assert created.id.endswith(B_ID), "the tenant is drawn again"
 
 
 async def test_five_clashing_draws_fail_and_create_nothing(store, files):
@@ -718,8 +727,8 @@ async def test_five_clashing_draws_fail_and_create_nothing(store, files):
     with pytest.raises(PersistenceError, match="no free tenant id"):
         await made.create("Ghent", library_slots(), CREATOR)
     assert await tenant_databases(store) == [PREFIX + A_HEX], "only the orphan"
-    assert await made.tenants() == []
-    assert await files.list_buckets(PREFIX) == []
+    assert await made.tenants() == [], "no tenant is created"
+    assert await files.list_buckets(PREFIX) == [], "no bucket is created"
 
 
 async def test_the_consumers_tenant_is_minted_by_its_policy(store, files):
@@ -740,12 +749,14 @@ async def test_the_consumers_tenant_is_minted_by_its_policy(store, files):
     )
     await made.ensure_system_database()
     created = await made.create("Ghent", library_slots(), CREATOR)
-    assert re.fullmatch(r"http://mwb\.meaningfy\.ws/project/[a-z0-9]{7}", created.id)
+    assert re.fullmatch(r"http://mwb\.meaningfy\.ws/project/[a-z0-9]{7}", created.id), (
+        "the tenant IRI is minted by the policy"
+    )
     tenant_id = created.id.rsplit("/", 1)[1]
     record, _ = await made.get(created.id)
-    assert record.database_name == f"mwb-t-{tenant_id}"
-    assert f"mwb-t-{tenant_id}" in await store.list_datasets()
-    assert await files.list_buckets("mwb-t-") == [f"mwb-t-{tenant_id}"]
+    assert record.database_name == f"mwb-t-{tenant_id}", "the database is named by the policy"
+    assert f"mwb-t-{tenant_id}" in await store.list_datasets(), "the database was created"
+    assert await files.list_buckets("mwb-t-") == [f"mwb-t-{tenant_id}"], "the bucket was created"
 
 
 # -- consumer validators on tenant writes (mwb2-adoption-fixes PD-7, DEC-6) --

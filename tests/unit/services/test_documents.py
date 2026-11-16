@@ -139,17 +139,23 @@ async def test_a_part_without_an_iri_gets_one_under_its_root_by_the_default_poli
     default_documents, book_class
 ) -> None:
     parts = await minted_parts(default_documents, book_class)
-    assert parts
-    assert all(str(p).startswith(f"{BOOK}/parts/") for p in parts)
+    assert parts, "parts were minted"
+    assert all(str(p).startswith(f"{BOOK}/parts/") for p in parts), (
+        "each minted part sits under its root"
+    )
 
 
 async def test_a_part_without_an_iri_gets_one_beside_its_root_by_a_flat_policy(
     flat_documents, book_class
 ) -> None:
     parts = await minted_parts(flat_documents, book_class)
-    assert parts
-    assert all(str(p).startswith("https://example.org/") for p in parts)
-    assert not any(str(p).startswith(f"{BOOK}/") for p in parts)
+    assert parts, "parts were minted"
+    assert all(str(p).startswith("https://example.org/") for p in parts), (
+        "each minted part sits beside its root"
+    )
+    assert not any(str(p).startswith(f"{BOOK}/") for p in parts), (
+        "no minted part sits under the root"
+    )
 
 
 async def test_a_json_ld_body_and_the_same_json_body_give_the_same_triples(
@@ -239,7 +245,7 @@ async def test_a_part_outside_the_aggregate_is_reported_as_named_when_parts_are_
     _, named = await parse(
         flat_documents, encoded(OUTSIDE_BODY), JSON, book_class, BOOK, creating=True
     )
-    assert named == {URIRef(OUTSIDE)}
+    assert named == {URIRef(OUTSIDE)}, "the part outside the aggregate is reported as named"
 
 
 async def test_a_part_cannot_take_the_iri_of_its_aggregates_graph(documents, book_class) -> None:
@@ -372,8 +378,10 @@ def test_expanding_refuses_a_key_the_class_has_no_slot_for(documents, book_class
 def test_framing_gives_back_the_body_that_was_expanded(documents, book_class) -> None:
     graph = documents.expand({"id": BOOK, **BOOK_JSON}, book_class)
     framed = documents.frame(graph, book_class)
-    assert framed["label"] == "Dune"
-    assert framed["chapters"][0]["notes"][0]["text"] == "t"
+    assert framed["label"] == "Dune", "the framed body gives back the label that was expanded"
+    assert framed["chapters"][0]["notes"][0]["text"] == "t", (
+        "the framed body gives back the nested note text that was expanded"
+    )
 
 
 def test_the_internal_values_of_the_nodes_a_replacement_keeps_are_kept(documents) -> None:

@@ -1164,7 +1164,9 @@ async def test_a_bad_collection_the_caller_may_not_read_is_not_named_when_collec
     with pytest.raises(StoredDataInvalid) as refused:
         await as_bob(collaboration, toy_session, S2).collections_of(B1)
     assert S2 not in everything_said(refused.value), "the hidden collection is not named"
-    assert "one collection of the tenant cannot be read" in str(refused.value)
+    assert "one collection of the tenant cannot be read" in str(refused.value), (
+        "the refusal says one collection cannot be read, without naming it"
+    )
 
 
 async def test_a_collection_of_another_class_with_a_bad_rule_does_not_fail_collections_of(

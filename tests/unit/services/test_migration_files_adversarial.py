@@ -120,7 +120,7 @@ def test_a_reserved_variable_is_refused_in_every_clause(tmp_path, clause, variab
 @pytest.mark.parametrize("variable", ["?rp_graph", "$rp_graph"])
 def test_the_graph_variable_alone_is_open_to_a_step(tmp_path, clause, variable):
     loaded = load(tmp_path, **fields_with(clause, f"{variable} {SHELF} ?o ."))
-    assert loaded.steps
+    assert loaded.steps, "the file loads with its step"
 
 
 @pytest.mark.parametrize("clause", ["delete_pattern", "insert_pattern"])
@@ -140,7 +140,9 @@ def test_a_trailing_comment_that_would_swallow_the_template_is_refused(tmp_path)
 
 def test_a_trailing_comment_with_a_newline_loads_and_the_request_keeps_its_shape(tmp_path):
     loaded = load(tmp_path, where_pattern=f"?s {SHELF} ?o . # note\n", insert_pattern=INSERT)
-    assert len(parseUpdate(migration_request(loaded, STAMPS)).request) == 3
+    assert len(parseUpdate(migration_request(loaded, STAMPS)).request) == 3, (
+        "the request keeps three operations"
+    )
 
 
 @pytest.mark.parametrize("clause", CLAUSES)
@@ -335,14 +337,14 @@ async def test_every_operation_is_inert_when_the_stamp_is_not_the_from_version(s
     await with_stamps(store, stamps)
     before = await quads(store)
     await store.update(DATABASE, migration_request(migration(rename(), rename()), STAMPS))
-    assert await quads(store) == before
+    assert await quads(store) == before, "an unarmed request leaves the data as it was"
 
 
 async def test_no_stamp_at_all_leaves_the_data_alone(store):
     await with_stamps(store, [])
     before = await quads(store)
     await store.update(DATABASE, migration_request(migration(rename()), STAMPS))
-    assert await quads(store) == before
+    assert await quads(store) == before, "a request with no stamp leaves the data as it was"
 
 
 async def test_the_stamp_of_another_schema_or_another_graph_does_not_arm_the_request(store):
@@ -355,7 +357,9 @@ async def test_the_stamp_of_another_schema_or_another_graph_does_not_arm_the_req
     )
     before = await quads(store)
     await store.update(DATABASE, migration_request(migration(rename()), STAMPS))
-    assert await quads(store) == before
+    assert await quads(store) == before, (
+        "a stamp of another schema or graph leaves the data as it was"
+    )
 
 
 async def test_two_requests_in_a_row_move_the_data_once(store):
@@ -363,7 +367,7 @@ async def test_two_requests_in_a_row_move_the_data_once(store):
     await store.update(DATABASE, request)
     once = await quads(store)
     await store.update(DATABASE, request)
-    assert await quads(store) == once
+    assert await quads(store) == once, "the second request leaves the data where the first moved it"
 
 
 # -- (b) a step cannot change the stamps graph, a loaded graph, or another database ----------------
@@ -374,8 +378,10 @@ async def test_a_step_that_matches_everything_leaves_stamps_and_loaded_graphs_al
     everything = step(where_pattern="?s ?p ?o .", delete_pattern="?s ?p ?o .")
     await store.update(DATABASE, migration_request(migration(everything), STAMPS))
     after = await quads(store)
-    assert graph_of(after, LOADED) == graph_of(before, LOADED)
-    assert graph_of(after, STAMPS) == {(URIRef(SCHEMA), v.DATA_SCHEMA_VERSION, Literal("2"))}
+    assert graph_of(after, LOADED) == graph_of(before, LOADED), "the loaded graphs are left alone"
+    assert graph_of(after, STAMPS) == {(URIRef(SCHEMA), v.DATA_SCHEMA_VERSION, Literal("2"))}, (
+        "the stamp moved to the new version"
+    )
     assert await quads(store, "other") == before, "another database is another dataset"
 
 
@@ -393,8 +399,10 @@ async def test_a_where_that_names_a_protected_graph_as_the_graph_variable_change
     )
     await store.update(DATABASE, migration_request(migration(named), STAMPS))
     after = await quads(store)
-    assert graph_of(after, LOADED) == graph_of(before, LOADED)
-    assert graph_of(after, STAMPS) == {(URIRef(SCHEMA), v.DATA_SCHEMA_VERSION, Literal("2"))}
+    assert graph_of(after, LOADED) == graph_of(before, LOADED), "the loaded graphs are left alone"
+    assert graph_of(after, STAMPS) == {(URIRef(SCHEMA), v.DATA_SCHEMA_VERSION, Literal("2"))}, (
+        "the stamp moved to the new version"
+    )
 
 
 async def test_a_step_can_write_the_graph_variable_to_the_graphs_data_only_there(store):
@@ -406,8 +414,12 @@ async def test_a_step_can_write_the_graph_variable_to_the_graphs_data_only_there
     await store.update(DATABASE, migration_request(migration(using), STAMPS))
     after = await quads(store)
     for graph, value in ((A, "a"), (B, "b"), (C, "c")):
-        assert (graph, PLACE_IRI, Literal(value)) in graph_of(after, graph)
-        assert not any(p == PLACE_IRI for _, p, _ in graph_of(after, LOADED))
+        assert (graph, PLACE_IRI, Literal(value)) in graph_of(after, graph), (
+            "the value is written into the graph of the data"
+        )
+        assert not any(p == PLACE_IRI for _, p, _ in graph_of(after, LOADED)), (
+            "the value is not written into a loaded graph"
+        )
 
 
 # -- (d) a where that binds ?rp_graph to a constant IRI stays inside that graph ---------------------
@@ -450,9 +462,13 @@ async def test_the_richer_constructs_a_step_may_use_keep_to_the_graphs_the_templ
     loaded = load(tmp_path, where_pattern=construct, delete_pattern=f"?s <{SHELF_IRI}> ?o .")
     await store.update(DATABASE, migration_request(loaded, STAMPS))
     after = await quads(store)
-    assert graph_of(after, LOADED) == graph_of(before, LOADED)
-    assert graph_of(after, REGISTRY) == graph_of(before, REGISTRY)
-    assert graph_of(after, STAMPS) == {(URIRef(SCHEMA), v.DATA_SCHEMA_VERSION, Literal("2"))}
+    assert graph_of(after, LOADED) == graph_of(before, LOADED), "the loaded graphs are left alone"
+    assert graph_of(after, REGISTRY) == graph_of(before, REGISTRY), (
+        "the registry graph is left alone"
+    )
+    assert graph_of(after, STAMPS) == {(URIRef(SCHEMA), v.DATA_SCHEMA_VERSION, Literal("2"))}, (
+        "the stamp moved to the new version"
+    )
 
 
 # -- (c) the token rotation -------------------------------------------------------------------------
@@ -476,7 +492,7 @@ async def test_each_graph_gets_its_own_new_token_and_a_graph_without_one_gets_no
     assert C not in after, "a graph with no token stays without"
     assert all(after[g] != before[g] for g in before), "every token changed"
     assert len(set(after.values())) == len(after), "no two graphs share a new token"
-    assert all(str(t) for t in after.values())
+    assert all(str(t) for t in after.values()), "every graph with a token got a new one"
 
 
 async def test_a_step_that_matches_nothing_still_rotates_the_tokens_and_moves_the_stamp(store):
@@ -484,9 +500,13 @@ async def test_a_step_that_matches_nothing_still_rotates_the_tokens_and_moves_th
     before = await quads(store)
     await store.update(DATABASE, migration_request(migration(miss), STAMPS))
     after = await quads(store)
-    assert tokens_of(after)[A] != tokens_of(before)[A]
-    assert graph_of(after, STAMPS) == {(URIRef(SCHEMA), v.DATA_SCHEMA_VERSION, Literal("2"))}
-    assert without_tokens(graph_of(after, A)) == without_tokens(graph_of(before, A))
+    assert tokens_of(after)[A] != tokens_of(before)[A], "the token of the graph rotated"
+    assert graph_of(after, STAMPS) == {(URIRef(SCHEMA), v.DATA_SCHEMA_VERSION, Literal("2"))}, (
+        "the stamp moved to the new version"
+    )
+    assert without_tokens(graph_of(after, A)) == without_tokens(graph_of(before, A)), (
+        "the graph is unchanged apart from its tokens"
+    )
 
 
 async def test_a_graph_holding_a_foreign_subject_with_a_version_keeps_that_triple(store):
@@ -496,7 +516,9 @@ async def test_a_graph_holding_a_foreign_subject_with_a_version_keeps_that_tripl
         f'INSERT DATA {{ GRAPH <{A}> {{ <urn:thing> <{v.VERSION}> "mine" }} }}',
     )
     await store.update(DATABASE, migration_request(migration(rename()), STAMPS))
-    assert (URIRef("urn:thing"), v.VERSION, Literal("mine")) in graph_of(await quads(store), A)
+    assert (URIRef("urn:thing"), v.VERSION, Literal("mine")) in graph_of(await quads(store), A), (
+        "the foreign subject keeps its version triple"
+    )
 
 
 # -- (e) injection through the file's own fields ----------------------------------------------------
@@ -533,7 +555,9 @@ def hostile(version: str, steps=None) -> Migration:
 async def test_a_version_cannot_break_out_of_its_literal(store, version, with_step):
     steps = [rename()] if with_step else None
     request = migration_request(hostile(version, steps), STAMPS)
-    assert len(parseUpdate(request).request) == (3 if with_step else 1)
+    assert len(parseUpdate(request).request) == (3 if with_step else 1), (
+        "the request has the expected number of operations"
+    )
     await with_stamps(store, [Literal(version)])
     before = await quads(store)
     await store.update(DATABASE, request)
@@ -543,15 +567,20 @@ async def test_a_version_cannot_break_out_of_its_literal(store, version, with_st
     }, "the stamp is exactly the to_version, as typed"
     assert {g for g, *_ in after} == {g for g, *_ in before}, "no graph was added or dropped"
     for untouched in (LOADED, REGISTRY):
-        assert graph_of(after, untouched) == graph_of(before, untouched)
+        assert graph_of(after, untouched) == graph_of(before, untouched), (
+            "the untouched graph is left alone"
+        )
 
 
 @pytest.mark.parametrize("version", HOSTILE_VERSIONS.values(), ids=HOSTILE_VERSIONS)
 def test_a_hostile_version_in_a_file_loads_and_builds_the_expected_operations(tmp_path, version):
     path = write(tmp_path, hostile(version, [rename()]))
     loaded = load_migration(path)
-    assert (loaded.from_version, loaded.to_version) == (version, version + "-next")
-    assert len(parseUpdate(migration_request(loaded, STAMPS)).request) == 3
+    assert loaded.from_version == version, "the from-version is carried as written"
+    assert loaded.to_version == version + "-next", "the to-version is carried as written"
+    assert len(parseUpdate(migration_request(loaded, STAMPS)).request) == 3, (
+        "the request has three operations"
+    )
 
 
 # equivalence classes: a character IRIREF forbids (two stand for them), the empty id
@@ -576,8 +605,8 @@ def test_a_schema_id_with_odd_but_legal_characters_is_carried_as_one_iri(schema_
     request = migration_request(
         Migration(schema_id=schema_id, from_version="1", to_version="2"), STAMPS
     )
-    assert f"<{schema_id}>" in request
-    assert len(parseUpdate(request).request) == 1
+    assert f"<{schema_id}>" in request, "the schema id is carried as one IRI"
+    assert len(parseUpdate(request).request) == 1, "the request is one operation"
 
 
 # -- the file itself -------------------------------------------------------------------------------
@@ -694,9 +723,11 @@ def test_an_anchor_reused_in_two_steps_loads_as_two_checked_steps(tmp_path):
         + "  - *s\n"
     )
     loaded = load_migration(raw(tmp_path, text))
-    assert loaded.steps
-    assert len(loaded.steps) == 2
-    assert len(parseUpdate(migration_request(loaded, STAMPS)).request) == 4
+    assert loaded.steps, "the file loads with its steps"
+    assert len(loaded.steps) == 2, "both steps are loaded"
+    assert len(parseUpdate(migration_request(loaded, STAMPS)).request) == 4, (
+        "the request has four operations"
+    )
 
 
 def test_an_alias_cannot_smuggle_a_graph_past_the_check(tmp_path):
@@ -715,9 +746,9 @@ def test_a_step_too_long_for_the_parser_is_refused_with_its_own_message(tmp_path
     with pytest.raises(InvalidMigration) as error:
         load(tmp_path, where_pattern=triples, delete_pattern="?s <urn:p0> ?o0 .")
     message = str(error.value)
-    assert "too long to check" in message
-    assert "split" in message
-    assert "does not parse" not in message
+    assert "too long to check" in message, "the message says the step is too long to check"
+    assert "split" in message, "the message tells to split the step"
+    assert "does not parse" not in message, "the message does not claim the step does not parse"
 
 
 @pytest.mark.parametrize("depth", [20, 400, 5000])
@@ -771,8 +802,10 @@ LEGIT = {
 @pytest.mark.parametrize(("clause", "text"), LEGIT.values(), ids=LEGIT)
 def test_a_legitimate_pattern_is_not_refused(tmp_path, clause, text):
     loaded = load(tmp_path, **fields_with(clause, text))
-    assert loaded.steps
-    assert len(parseUpdate(migration_request(loaded, STAMPS)).request) == 3
+    assert loaded.steps, "the file loads with its step"
+    assert len(parseUpdate(migration_request(loaded, STAMPS)).request) == 3, (
+        "the request has three operations"
+    )
 
 
 # -- PD-21: what the parser understood, escapes, a key twice, a registry graph -----------------------
@@ -804,8 +837,8 @@ def test_a_codepoint_escape_in_any_pattern_is_refused_outright_even_in_a_literal
     tmp_path, clause, text
 ):
     message = refused(tmp_path, **fields_with(clause, text))
-    assert clause in message
-    assert "codepoint escape" in message
+    assert clause in message, "the message names the offending clause"
+    assert "codepoint escape" in message, "the message says it is a codepoint escape"
 
 
 @pytest.mark.parametrize("escape", [BS + "u0041", BS + "U00000041"])
@@ -823,7 +856,9 @@ def test_a_version_with_codepoint_escape_text_loads_as_typed(tmp_path, field, es
     fields = {"schema_id": SCHEMA, "from_version": "1", "to_version": "2", field: "a" + escape}
     path = tmp_path / FILE
     path.write_text(yaml.safe_dump(fields), encoding="utf-8")
-    assert getattr(load_migration(path), field) == "a" + escape
+    assert getattr(load_migration(path), field) == "a" + escape, (
+        "the version text is carried as typed"
+    )
 
 
 def test_a_key_given_twice_is_refused_naming_the_file_and_the_key(tmp_path):
@@ -833,7 +868,7 @@ def test_a_key_given_twice_is_refused_naming_the_file_and_the_key(tmp_path):
 
 def test_a_collection_that_is_empty_is_refused_in_a_template(tmp_path):
     message = refused(tmp_path, **fields_with("insert_pattern", f"?s {PLACE} () ."))
-    assert "blank node" in message
+    assert "blank node" in message, "the message says the collection is a blank node"
 
 
 async def test_a_delete_of_everything_leaves_the_registry_graph_alone(store):
@@ -842,5 +877,7 @@ async def test_a_delete_of_everything_leaves_the_registry_graph_alone(store):
     everything = step(where_pattern="?s ?p ?o .", delete_pattern="?s ?p ?o .")
     await store.update(DATABASE, migration_request(migration(everything), STAMPS))
     after = await quads(store)
-    assert graph_of(after, REGISTRY) == graph_of(before, REGISTRY)
+    assert graph_of(after, REGISTRY) == graph_of(before, REGISTRY), (
+        "the registry graph is left alone"
+    )
     assert graph_of(after, A) == set(), "an ordinary graph is still the step's"

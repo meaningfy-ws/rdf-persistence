@@ -14,11 +14,15 @@ def _unanchored(pattern: str) -> str:
 
 def test_the_prefix_rule_is_the_pattern_of_the_service_settings_prefix():
     declared = VIEW.induced_slot("prefix", "ServiceSettings").pattern
-    assert iris._PREFIX.pattern == _unanchored(declared)
+    assert iris._PREFIX.pattern == _unanchored(declared), (
+        "the prefix rule is the pattern the schema declares"
+    )
 
 
 def test_the_segment_rule_is_the_pattern_of_url_segment():
-    assert iris._SEGMENT.pattern == _unanchored(VIEW.get_slot("url_segment").pattern)
+    assert iris._SEGMENT.pattern == _unanchored(VIEW.get_slot("url_segment").pattern), (
+        "the segment rule is the pattern the schema declares"
+    )
 
 
 @pytest.mark.parametrize("prefix", ["li-b", "1lib", "Lib", "a" * 21])

@@ -456,7 +456,9 @@ async def test_a_transition_of_a_subclass_comes_back_as_a_transition(
         f'<{v.ENTITY}> <{B1}> ; <{v.ENTITY_VERSION}> "v" }} }}',
     )
     [found] = await ada.transitions(B1)
-    assert (type(found), found.id, found.used_resource) == (Transition, foreign, B1)
+    assert type(found) is Transition, "the found activity is a transition"
+    assert found.id == foreign, "the found transition keeps its id"
+    assert found.used_resource == B1, "the found transition keeps its used resource"
 
 
 async def test_a_value_the_caller_set_for_a_computed_slot_is_overwritten(
@@ -519,7 +521,7 @@ def test_a_served_transition_drops_the_payload_and_keeps_the_computed_slots():  
         served.activity.body_value,
     )
     assert payload == (None, None, None), "the activity has no payload"
-    assert served.types == [v.TRANSITION, v.ACTIVITY]
+    assert served.types == [v.TRANSITION, v.ACTIVITY], "the served transition keeps its types"
 
 
 async def test_a_book_stored_before_its_class_named_the_workflow_starts_from_the_initial_state(

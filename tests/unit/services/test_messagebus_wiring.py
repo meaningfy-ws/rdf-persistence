@@ -395,7 +395,8 @@ async def test_the_toolkit_handler_posts_a_comment_and_returns_its_iri():  # TC-
         assert (stored.id, stored.body_value) == (iri, "hi"), (
             "the comment is stored, its IRI returned"
         )
-        assert (stored.comment_audience, stored.comment_references) == (["reviewer"], [B2])
+        assert stored.comment_audience == ["reviewer"], "the comment keeps its audience"
+        assert stored.comment_references == [B2], "the comment keeps its references"
         assert [str(s) for s in (await provenance(w)).subjects(RDF.type, v.POST_COMMENT)] == [
             post.id
         ], "the activity's IRI is the command's id"
@@ -412,7 +413,9 @@ async def test_an_observer_of_posts_gets_the_reply_that_was_posted():  # TC-93
         iri = await w.bus.handle(reply, w.collaboration)
 
         [got] = seen.of(PostReply)
-        assert (got.id, got.replies_to, got.used_resource) == (reply.id, first, B1)
+        assert got.id == reply.id, "the observer gets the reply that was posted"
+        assert got.replies_to == first, "the reply answers the first post"
+        assert got.used_resource == B1, "the reply names the resource it was posted on"
         assert (got.body_value, got.comment_audience) == (None, None), "the payload is not stored"
         [stored] = [c for c in await w.collaboration.thread(B1) if c.id == iri]
         assert isinstance(stored, Comment), "a reply to the comment"

@@ -630,7 +630,9 @@ async def test_tc26_each_tenant_is_migrated_on_its_own_store(lib_chain):
         await old_book(world, tenant)
     await put_stamp(d, tenancy.system_database, LIB, "2")
     await migrate_shared(tenancy, d, [(LIB, lib_chain)])
-    assert await migrate_tenants(tenancy, d, [(LIB, lib_chain)]) == set()
+    assert await migrate_tenants(tenancy, d, [(LIB, lib_chain)]) == set(), (
+        "no tenant is left behind when each is migrated on its own store"
+    )
     assert await held(a, tenancy.database_of(on_a)) == {LIB: "2"}, "T on A is at 2"
     assert await held(d, tenancy.database_of(on_d)) == {LIB: "2"}, "the other on D is at 2"
     assert tenancy.system_database not in await a.list_datasets(), "A holds no system database"

@@ -231,7 +231,9 @@ async def test_a_reply_is_recorded_as_a_post_reply(ada, books, store):  # TC-91
 
     graph = await stored_graph(store, PROVENANCE)
     [post] = graph.subjects(RDF.type, v.POST_REPLY)
-    assert set(graph.objects(post, RDF.type)) == {v.POST_REPLY, v.POST_COMMENT, v.ACTIVITY}
+    assert set(graph.objects(post, RDF.type)) == {v.POST_REPLY, v.POST_COMMENT, v.ACTIVITY}, (
+        "the reply is typed as a reply, a comment and an activity"
+    )
     assert list(graph.objects(post, v.REPLIES_TO)) == [URIRef(first)], "it names the comment"
     [generation] = graph.objects(post, v.HAS_GENERATION)
     assert list(graph.objects(generation, v.ENTITY)) == [URIRef(reply)], "and generated the reply"

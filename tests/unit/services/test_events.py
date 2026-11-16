@@ -19,4 +19,6 @@ from rdf_persistence.services.events import context_link
 def test_context_link_carries_the_mount_prefix_and_is_absolute_only_under_a_public_url(
     public_url, prefix, link
 ):
-    assert context_link(public_url, prefix) == link
+    assert context_link(public_url, prefix) == link, (
+        "the context link carries the prefix and is absolute only under a public URL"
+    )

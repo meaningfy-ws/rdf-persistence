@@ -136,7 +136,9 @@ def rdflib_message(data: bytes, fmt: RdfFormat) -> str:
 async def test_the_message_of_a_refused_file_is_the_parsers_own(fmt):
     with pytest.raises(InvalidGraph) as raised:
         await parse_graph(BROKEN[fmt], fmt)
-    assert str(raised.value) == rdflib_message(BROKEN[fmt], fmt)
+    assert str(raised.value) == rdflib_message(BROKEN[fmt], fmt), (
+        "the refusal message is the parser's own"
+    )
 
 
 async def test_a_format_the_toolkit_does_not_know_is_a_bug_and_not_an_invalid_graph():
@@ -213,7 +215,9 @@ async def test_after_a_replace_only_the_new_loaded_graph_is_listed(store, sessio
     _, _, version = await session.get_graph(AGGREGATE)
     new = await session.load_graph(AGGREGATE, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE)
     version = await session.replace_graph(AGGREGATE, [], version, [new])
-    assert await listed_by_a_new_session(store, AGGREGATE) == [new]
+    assert await listed_by_a_new_session(store, AGGREGATE) == [new], (
+        "only the new loaded graph is listed after a replace"
+    )
     await session.replace_graph(AGGREGATE, [], version)
     assert await listed_by_a_new_session(store, AGGREGATE) == [new], "None keeps the registered"
 
@@ -224,7 +228,9 @@ async def test_several_loaded_graphs_are_listed_sorted_by_iri(store, session):
         for _ in range(3)
     ]
     await session.add_graph(AGGREGATE, [], graphs)
-    assert await listed_by_a_new_session(store, AGGREGATE) == sorted(graphs)
+    assert await listed_by_a_new_session(store, AGGREGATE) == sorted(graphs), (
+        "the loaded graphs are listed sorted by IRI"
+    )
 
 
 async def test_an_aggregate_without_loaded_graphs_lists_none(store, session):
@@ -233,7 +239,9 @@ async def test_an_aggregate_without_loaded_graphs_lists_none(store, session):
         SECOND, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE
     )
     await session.add_graph(SECOND, [])
-    assert await listed_by_a_new_session(store, AGGREGATE) == []
+    assert await listed_by_a_new_session(store, AGGREGATE) == [], (
+        "an aggregate without loaded graphs lists none"
+    )
     assert unregistered not in await listed_by_a_new_session(store, SECOND), "loaded, not committed"
 
 
@@ -317,8 +325,8 @@ async def test_the_marker_holds_the_session_clock_as_a_date_time():
             AGGREGATE, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE
         )
     ((_, stamp),) = await _marker_triples(store, loaded)
-    assert stamp.datatype == XSD.dateTime
-    assert stamp.toPython() == MARKER_TIME
+    assert stamp.datatype == XSD.dateTime, "the marker holds a date-time"
+    assert stamp.toPython() == MARKER_TIME, "the marker holds the session clock"
 
 
 async def test_a_failed_put_leaves_the_marker():
@@ -344,5 +352,5 @@ async def test_a_commit_of_the_loaded_graph_keeps_its_registry_entry_and_listing
         await session.add_graph(AGGREGATE, [], loaded_graphs=[loaded])
         assert await session.loaded_graphs(AGGREGATE) == [loaded], "still registered and listed"
     properties = {p for p, _ in await _marker_triples(store, loaded)}
-    assert v.REGISTRY_OWNED_BY in properties
-    assert v.REGISTRY_KIND in properties
+    assert v.REGISTRY_OWNED_BY in properties, "the commit keeps the owner in the registry entry"
+    assert v.REGISTRY_KIND in properties, "the commit keeps the kind in the registry entry"

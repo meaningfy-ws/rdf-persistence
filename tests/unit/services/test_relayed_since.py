@@ -49,7 +49,7 @@ async def test_the_activities_relayed_after_the_named_one_come_ordered_by_time_t
             {a: "2026-11-15T10:00:00Z", c: "2026-11-15T10:00:01Z", b: "2026-11-15T10:00:01Z"},
         )
         found = await session.relayed_since(a, WEEK, NOW)
-    assert found is not None
+    assert found is not None, "the named activity is found"
     assert [iri for iri, _ in found] == [b, c], "the named one excluded; time, then IRI"
     assert all((URIRef(i), RDF.type, v.ACTIVITY) in g for i, g in found), "each with its activity"
     assert [t for _, g in found for p in PLUMBING for t in g.triples((None, p, None))] == [], (
@@ -65,7 +65,7 @@ async def test_an_activity_relayed_at_the_same_time_as_the_named_one_is_included
             {a: "2026-11-15T10:00:00Z", b: "2026-11-15T10:00:00Z", c: "2026-11-14T10:00:00Z"},
         )
         found = await session.relayed_since(a, WEEK, NOW)
-    assert found is not None
+    assert found is not None, "the named activity is found"
     assert [iri for iri, _ in found] == [b], "later or the same instant; never earlier"
 
 
@@ -74,7 +74,7 @@ async def test_an_activity_applied_early_but_relayed_late_is_found(store):  # TC
         a, b, c = await three_ids(store, session)  # the order of the IRIs is not the order applied
         await relay_marks(store, {c: "2026-11-15T10:00:00Z", a: "2026-11-15T10:05:00Z"})
         found = await session.relayed_since(c, WEEK, NOW)
-    assert found is not None
+    assert found is not None, "the named activity is found"
     assert [iri for iri, _ in found] == [a], "the one relayed after the named one, whenever applied"
 
 
@@ -115,7 +115,7 @@ async def test_a_bad_mark_never_fails_the_read_and_sorts_after_every_valid_one(s
             store, {a: "2026-11-15T10:00:00Z", b: '"later"', c: "2026-11-15T10:00:02Z"}
         )
         found = await session.relayed_since(a, WEEK, NOW)
-    assert found is not None
+    assert found is not None, "the named activity is found"
     ids = [iri for iri, _ in found]  # a store may compare "later" with a time or drop it
     assert ids[0] == c, "the valid one first; the bad one, if any, last"
     assert set(ids) <= {b, c}, "the valid one first; the bad one, if any, last"

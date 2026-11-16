@@ -108,7 +108,9 @@ async def test_replace_without_a_list_leaves_the_loaded_graphs_of_another_aggreg
     await session.add_graph(OTHER, [], loaded_graphs=[OTHER_LOADED])
     version = await session.add_graph(ROOT, [], loaded_graphs=LOADED)
     await session.replace_graph(ROOT, [], version)
-    assert await registered_loaded(store) == {*LOADED, OTHER_LOADED}
+    assert await registered_loaded(store) == {*LOADED, OTHER_LOADED}, (
+        "the replace leaves the other aggregate's registered loaded graphs"
+    )
 
 
 OUTSIDE_THE_CONTENT = [
@@ -300,25 +302,29 @@ async def test_tc01_a_root_load_comes_back_in_a_new_session(store):
         loaded = await _load(first, TENANT)
         await _root_with(first, [loaded])
     async with fake_session(store, tenant_iri=TENANT) as later:
-        assert await later.loaded_graphs(TENANT) == [loaded]
+        assert await later.loaded_graphs(TENANT) == [loaded], (
+            "the root load comes back in a new session"
+        )
         content = await later.loaded_graph(TENANT, str(loaded))
-    assert set(content) == set(Graph().parse(data=LOADED_TTL, format="turtle"))
+    assert set(content) == set(Graph().parse(data=LOADED_TTL, format="turtle")), (
+        "the loaded graph keeps its content"
+    )
 
 
 async def test_tc03_a_root_replace_with_an_empty_list_empties_its_load(session, store):
     loaded = await _load(session, TENANT)
     version = await _root_with(session, [loaded])
     await session.replace_graph(TENANT, ROOT_TRIPLES, version, loaded_graphs=[])
-    assert await session.loaded_graphs(TENANT) == []
-    assert not await has_triples(store, loaded)
+    assert await session.loaded_graphs(TENANT) == [], "the root replace empties the loaded graphs"
+    assert not await has_triples(store, loaded), "the emptied loaded graph holds no triples"
 
 
 async def test_tc04_removing_the_root_empties_its_loads_and_their_entries(session, store):
     loaded = await _load(session, TENANT)
     version = await _root_with(session, [loaded])
     await session.remove(TENANT, version)
-    assert not await has_triples(store, loaded)
-    assert await registered_loaded(store) == set()
+    assert not await has_triples(store, loaded), "the removed root's loaded graph holds no triples"
+    assert await registered_loaded(store) == set(), "the removed root's registry entries are gone"
 
 
 async def _root_and_book(session) -> tuple[URIRef, URIRef, str, str]:
@@ -332,23 +338,23 @@ async def _root_and_book(session) -> tuple[URIRef, URIRef, str, str]:
 async def test_tc05_a_root_replace_with_an_empty_list_leaves_a_books_loads(session, store):
     _, theirs, root_version, _ = await _root_and_book(session)
     await session.replace_graph(TENANT, ROOT_TRIPLES, root_version, loaded_graphs=[])
-    assert await session.loaded_graphs(ROOT) == [theirs]
-    assert await has_triples(store, theirs)
+    assert await session.loaded_graphs(ROOT) == [theirs], "the book's loaded graph stays"
+    assert await has_triples(store, theirs), "the book's loaded graph still holds its triples"
 
 
 async def test_tc06_a_books_replace_and_remove_leave_the_roots_loads(session, store):
     mine, _, _, book_version = await _root_and_book(session)
     book_version = await session.replace_graph(ROOT, [], book_version, loaded_graphs=[])
     await session.remove(ROOT, book_version)
-    assert await session.loaded_graphs(TENANT) == [mine]
-    assert await has_triples(store, mine)
+    assert await session.loaded_graphs(TENANT) == [mine], "the root's loaded graph stays"
+    assert await has_triples(store, mine), "the root's loaded graph still holds its triples"
 
 
 async def test_tc07_a_root_replace_without_a_list_keeps_both_sets(session, store):
     mine, theirs, root_version, _ = await _root_and_book(session)
     await session.replace_graph(TENANT, ROOT_TRIPLES, root_version)
-    assert await session.loaded_graphs(TENANT) == [mine]
-    assert await session.loaded_graphs(ROOT) == [theirs]
+    assert await session.loaded_graphs(TENANT) == [mine], "the root keeps its own loaded graph"
+    assert await session.loaded_graphs(ROOT) == [theirs], "the book keeps its own loaded graph"
 
 
 async def test_tc08_a_root_commit_cannot_claim_a_books_load_under_a_flat_policy(store):
@@ -377,7 +383,7 @@ async def test_tc08_a_root_commit_cannot_claim_a_books_load_under_a_flat_policy(
         with pytest.raises(InvalidIri, match="owned by another aggregate"):
             await session.replace_graph(tenant, root_triples, version, loaded_graphs=[theirs])
         assert len(store.sent("update")) == before, "nothing written"
-        assert await session.loaded_graphs(book) == [theirs]
+        assert await session.loaded_graphs(book) == [theirs], "the book keeps its own loaded graph"
 
 
 async def test_tc10_the_root_gets_no_aggregate_entry_and_joins_no_listing(store):
@@ -386,11 +392,13 @@ async def test_tc10_the_root_gets_no_aggregate_entry_and_joins_no_listing(store)
         loaded = await _load(session, TENANT)
         await _root_with(session, [loaded])
         await session.add_graph(ROOT, [(URIRef(ROOT), RDF.type, BOOK)])
-        assert await session.find(Book) == [ROOT]
+        assert await session.find(Book) == [ROOT], "the root gets no aggregate entry"
     text = fill(
         "ASK { GRAPH $r { $meta ?p $aggregate } }",
         r=term(DEFAULT_IRIS.registry(TENANT)),
         meta=term(DEFAULT_IRIS.meta(TENANT)),
         aggregate=term(AGGREGATE),
     )
-    assert not (await store.query(FAKE_DATABASE, text)).askAnswer
+    assert not (await store.query(FAKE_DATABASE, text)).askAnswer, (
+        "the root is not registered as an aggregate"
+    )

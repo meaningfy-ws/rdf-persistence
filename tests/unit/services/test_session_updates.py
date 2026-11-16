@@ -214,7 +214,9 @@ def test_payload_drops_incoming_bookkeeping_about_the_graph_iri(predicate):
 
 def test_payload_keeps_other_statements_about_the_graph_iri():
     own = (GRAPH, TITLE, Literal("kept"))
-    assert own in payload_triples(GRAPH, "v1", Tracked(created=NOW, creator=ME), [own])
+    assert own in payload_triples(GRAPH, "v1", Tracked(created=NOW, creator=ME), [own]), (
+        "the payload keeps the other statements about the graph IRI"
+    )
 
 
 def skolem_prefix(graph: URIRef) -> str:

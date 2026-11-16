@@ -126,13 +126,17 @@ async def created(
 
 async def test_a_flat_root_is_minted_under_the_tenant_by_its_class_type():
     iri, _ = await created(FLAT_DOCUMENTS, FLAT_IRIS, FLAT_TENANT)
-    assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/book/{OBJECT_ID}", iri)
+    assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/book/{OBJECT_ID}", iri), (
+        "the flat root is minted under the tenant by its class segment"
+    )
 
 
 def test_a_flat_part_is_minted_beside_the_root_not_under_it():
     root = str(FLAT_IRIS.aggregate(FLAT_TENANT, "book", "books", "a" * 13))
     part = new_part(Chapter, root, iris=FLAT_IRIS, tenant=FLAT_TENANT, number=1)
-    assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/chapter/{OBJECT_ID}", part.id)
+    assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/chapter/{OBJECT_ID}", part.id), (
+        "the flat part is minted beside the root by its class segment"
+    )
 
 
 async def test_a_flat_object_is_stored_beside_its_part_and_its_loaded_graph():
@@ -158,14 +162,20 @@ async def test_a_flat_object_is_stored_beside_its_part_and_its_loaded_graph():
         FLAT_TENANT, ADA, FLAT_DOCUMENTS.aggregates["books"], "books", encoded(body), JSON
     )
     (part,) = {str(s) for s in triples.subjects(RDF.type, URIRef(CHAPTER_TYPE))}
-    assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/book/{OBJECT_ID}", iri)
-    assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/chapter/{OBJECT_ID}", part)
+    assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/book/{OBJECT_ID}", iri), (
+        "the flat root is minted by its class segment"
+    )
+    assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/chapter/{OBJECT_ID}", part), (
+        "the flat part is minted beside the root"
+    )
     loaded = await session.load_graph(
         iri,
         b'<https://e.org/b> <https://e.org/p> "x" .',
         rdf_format=RdfFormat.NTRIPLES,
     )
-    assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/content/{OBJECT_ID}", str(loaded))
+    assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/content/{OBJECT_ID}", str(loaded)), (
+        "the loaded graph is minted under the content segment"
+    )
     await session.replace_graph(iri, list(triples), version, loaded_graphs=[loaded])
 
 
@@ -179,8 +189,10 @@ async def test_a_part_of_a_body_is_minted_by_the_class_its_type_names():
     parts = {str(s) for s, p, _ in triples if p == RDF.type and str(s) != iri}
     assert {
         re.fullmatch(f"{re.escape(iri)}/(chapter|note)/{OBJECT_ID}", s) is not None for s in parts
-    } == {True}
-    assert sorted(s.split("/")[-2] for s in parts) == ["chapter", "note"]
+    } == {True}, "each part is minted by the class its type names"
+    assert sorted(s.split("/")[-2] for s in parts) == ["chapter", "note"], (
+        "the parts are one chapter and one note"
+    )
 
 
 # -- "the API path changes, the IRIs do not" -------------------------------------------------------
@@ -189,7 +201,7 @@ async def test_a_part_of_a_body_is_minted_by_the_class_its_type_names():
 @pytest.mark.parametrize("rp_path", ["files", "ontology-files"])
 async def test_the_api_path_does_not_change_the_type_segment_of_the_iris(rp_path):
     iri, _ = await created(FLAT_DOCUMENTS, FLAT_IRIS, FLAT_TENANT, rp_path=rp_path)
-    assert iri.split("/")[-2] == "book"
+    assert iri.split("/")[-2] == "book", "the API path does not change the type segment"
 
 
 async def test_under_the_default_policy_the_api_path_is_the_segment_and_parts_are_nested():
@@ -197,9 +209,9 @@ async def test_under_the_default_policy_the_api_path_is_the_segment_and_parts_ar
     iri, triples = await created(
         DEFAULT_DOCUMENTS, DEFAULT_IRIS, TENANT, rp_path="files", body=body
     )
-    assert iri.startswith(f"{TENANT}/files/")
+    assert iri.startswith(f"{TENANT}/files/"), "the default policy puts the API path in the segment"
     (part,) = {str(s) for s, p, _ in triples if p == RDF.type and str(s) != iri}
-    assert part.startswith(f"{iri}/parts/")
+    assert part.startswith(f"{iri}/parts/"), "the default policy nests the part under the root"
 
 
 # -- PD-7a: the type of a new part ---------------------------------------------------------------------
@@ -253,7 +265,9 @@ async def test_a_typed_part_is_named_by_its_class():
     root = f"{BASE}p4x8k2m/book/{'a' * 13}"
     graph = await parsed(TYPED_DOCUMENTS, {"@type": CHAPTER_TYPE, "number": 1}, root, FLAT_TENANT)
     (chapter,) = graph.subjects(RDF.type, URIRef(CHAPTER_TYPE))
-    assert re.fullmatch(f"{root}/chapter/{OBJECT_ID}", str(chapter))
+    assert re.fullmatch(f"{root}/chapter/{OBJECT_ID}", str(chapter)), (
+        "the typed part is named by its class"
+    )
 
 
 # -- new_part --------------------------------------------------------------------------------------
@@ -261,12 +275,14 @@ async def test_a_typed_part_is_named_by_its_class():
 
 def test_new_part_without_a_policy_mints_under_the_root_as_before():
     root = book_iri(7)
-    assert new_part(Chapter, root, number=1).id.startswith(f"{root}/parts/")
+    assert new_part(Chapter, root, number=1).id.startswith(f"{root}/parts/"), (
+        "a new part without a policy is minted under the root"
+    )
 
 
 def test_new_part_with_a_policy_keeps_the_fields():
     part = new_part(Chapter, "irrelevant", iris=FLAT_IRIS, tenant=FLAT_TENANT, number=3)
-    assert part.number == 3
+    assert part.number == 3, "a new part with a policy keeps its fields"
 
 
 def test_new_part_of_a_class_the_policy_does_not_own_is_refused():

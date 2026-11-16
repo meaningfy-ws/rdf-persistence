@@ -162,7 +162,9 @@ def test_the_tenant_root_is_the_class_in_the_meta_graph() -> None:
     view = load_schema(TOY)
     assert is_tenant_root(view.get_class("Library")), "Library lives in the meta graph"
     assert not is_tenant_root(view.get_class("Book")), "Book has a graph of its own"
-    assert annotation(view.get_class("Library"), RpAnnotation.GRAPH) == GraphKind.META.value
+    assert annotation(view.get_class("Library"), RpAnnotation.GRAPH) == GraphKind.META.value, (
+        "the tenant root is in the meta graph"
+    )
 
 
 SERVICE_WRITTEN = (
@@ -348,7 +350,9 @@ def test_a_slot_holds_owned_parts_or_iris_or_neither(cls, slot, owned_part, iri)
 def test_the_json_name_of_a_slot_is_its_alias_or_its_name_in_snake_case(
     name, alias, expected
 ) -> None:
-    assert json_name(SlotDefinition(name=name, alias=alias)) == expected
+    assert json_name(SlotDefinition(name=name, alias=alias)) == expected, (
+        "the JSON name of the slot is the one expected"
+    )
 
 
 def test_the_iri_types_of_the_toy_library_are_its_roots_and_its_owned_classes() -> None:
@@ -494,4 +498,4 @@ def test_the_workflow_of_a_class_is_the_first_name_up_its_is_a_chain(name, expec
 def test_a_root_under_a_system_database_ancestor_is_no_served_root() -> None:
     """F-5: the database annotation is inherited, as in_system_database reads it."""
     view = SchemaView(SYSTEM_BASE)
-    assert [root.name for root in served_roots(view)] == ["Book"]
+    assert [root.name for root in served_roots(view)] == ["Book"], "only the book is a served root"

@@ -36,8 +36,12 @@ async def test_a_stale_replace_keeps_the_stored_triples(store):
         with pytest.raises(Conflict):
             await session.replace_graph(iri, title(iri, "Changed"), "a-stale-version")
         stored, _, _ = await session.get_graph(iri)
-    assert (URIRef(iri), TITLE, Literal("Dune")) in stored
-    assert (URIRef(iri), TITLE, Literal("Changed")) not in stored
+    assert (URIRef(iri), TITLE, Literal("Dune")) in stored, (
+        "the stale replace keeps the stored title"
+    )
+    assert (URIRef(iri), TITLE, Literal("Changed")) not in stored, (
+        "the stale replace does not store the changed title"
+    )
 
 
 @pytest.mark.parametrize("call", ["replace_graph", "remove"])

@@ -61,7 +61,7 @@ def test_a_commit_marker_is_an_id_and_the_time_the_transaction_started():
 
     started = datetime(2026, 11, 13, tzinfo=UTC)
     marker = CommitMarker(id="urn:uuid:00000000-0000-0000-0000-000000000001", started_at=started)
-    assert marker.started_at == started
+    assert marker.started_at == started, "the marker holds the start time"
     with pytest.raises(ValueError, match="started_at"):
         CommitMarker(id="urn:uuid:00000000-0000-0000-0000-000000000001")
 
@@ -86,4 +86,6 @@ def test_each_enum_member_maps_to_the_meaning_the_schema_declares(view, enum, ma
 
 def test_the_total_of_a_listing_is_the_predicate_of_the_page_slot_of_that_name():
     service = load_schema(SERVICE_SCHEMA)
-    assert URIRef(service.expand_curie(service.get_slot("total").slot_uri)) == vocabulary.TOTAL
+    assert URIRef(service.expand_curie(service.get_slot("total").slot_uri)) == vocabulary.TOTAL, (
+        "the listing total is the predicate of the page slot"
+    )

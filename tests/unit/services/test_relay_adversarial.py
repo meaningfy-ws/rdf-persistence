@@ -91,8 +91,8 @@ async def test_a_commit_made_while_a_round_publishes_is_published_once_by_the_ne
     assert len(await pending(world, world.tenant)) == 1, "its mark was not replaced unseen"
     await relay.run_once()
     await relay.run_once()
-    assert len(ids(world)) == len(set(ids(world))) == 2
-    assert await pending(world, world.tenant) == []
+    assert len(ids(world)) == len(set(ids(world))) == 2, "each commit is published once"
+    assert await pending(world, world.tenant) == [], "nothing is left pending"
 
 
 async def test_a_tenant_created_while_a_round_publishes_is_visited_by_the_next_round(world):
@@ -131,7 +131,7 @@ async def test_wake_from_inside_a_publish_makes_exactly_one_more_round(world):
         )
         for _ in range(10):
             await asyncio.sleep(0)
-        assert len(rounds) == 2
+        assert len(rounds) == 2, "the wake from inside a publish makes one more round"
     finally:
         task.cancel()
 
@@ -159,11 +159,11 @@ async def test_a_round_cancelled_mid_publish_loses_nothing_and_a_restart_publish
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
-    assert world.broker.messages == []
+    assert world.broker.messages == [], "the cancelled round published nothing"
     assert len(await pending(world, world.tenant)) == 1, "still pending"
     await relay.run_once()  # the lock was released by the cancel
-    assert len(ids(world)) == 1
-    assert await pending(world, world.tenant) == []
+    assert len(ids(world)) == 1, "the restart publishes the activity once"
+    assert await pending(world, world.tenant) == [], "nothing is left pending"
 
 
 async def test_a_cancel_after_publish_before_the_mark_publishes_again_with_the_same_id(world):
@@ -186,7 +186,7 @@ async def test_a_cancel_after_publish_before_the_mark_publishes_again_with_the_s
         await task
     world.store.update = real
     await world.relay().run_once()
-    assert len(ids(world)) == 2
+    assert len(ids(world)) == 2, "the activity is published again with the same id"
     assert len(set(ids(world))) == 1, "at least once, the same id"
 
 
@@ -200,10 +200,12 @@ async def test_a_tenant_whose_stream_is_down_forever_never_holds_back_the_others
         await add_one(world, world.second)
         with caplog.at_level(logging.WARNING, logger=LOGGER):
             await relay.run_once()
-    assert sent(world, world.tenant) == []
-    assert len(ids(world, world.second)) == 3
-    assert len(await pending(world, world.tenant)) == 3
-    assert {r.levelno for r in caplog.records} == {logging.WARNING}
+    assert sent(world, world.tenant) == [], "the tenant whose stream is down gets nothing"
+    assert len(ids(world, world.second)) == 3, "the other tenant gets all three"
+    assert len(await pending(world, world.tenant)) == 3, "the down tenant keeps all three pending"
+    assert {r.levelno for r in caplog.records} == {logging.WARNING}, (
+        "every failure is logged as a warning"
+    )
 
 
 async def test_the_messages_of_an_aggregate_keep_their_order_across_rounds_after_a_failure(world):
@@ -213,14 +215,16 @@ async def test_the_messages_of_an_aggregate_keep_their_order_across_rounds_after
     world.bus.fail_next_publish()
     relay = world.relay()
     await relay.run_once()
-    assert world.broker.messages == []
+    assert world.broker.messages == [], "the failed round published nothing"
     async with commit(world, world.tenant) as session:
         version = await session.replace_graph(iri, triples(iri), version)
     await relay.run_once()
     async with commit(world, world.tenant) as session:
         await session.remove(iri, version)
     await relay.run_once()
-    assert classes(world, world.tenant) == [str(v.ADD), str(v.REPLACE), str(v.REMOVE)]
+    assert classes(world, world.tenant) == [str(v.ADD), str(v.REPLACE), str(v.REMOVE)], (
+        "the later round keeps the order"
+    )
 
 
 # -- a long backlog ------------------------------------------------------------------------------
@@ -230,10 +234,10 @@ async def test_a_long_backlog_goes_out_in_one_round_in_store_order_each_once(wor
     made = [await add_one(world, world.tenant) for _ in range(40)]
     await world.relay().run_once()
     out = ids(world, world.tenant)
-    assert len(out) == len(set(out)) == 40
-    assert await pending(world, world.tenant) == []
+    assert len(out) == len(set(out)) == 40, "the backlog goes out once each"
+    assert await pending(world, world.tenant) == [], "nothing is left pending"
     bodies = [json.loads(b) for e, b in world.broker.messages if e.tenant == world.tenant]
-    assert len(made) == len(bodies)
+    assert len(made) == len(bodies), "every activity of the backlog was made"
 
 
 # -- poison records ------------------------------------------------------------------------------
@@ -258,8 +262,8 @@ async def test_a_malformed_pending_activity_is_given_up_and_the_database_goes_on
     await add_one(world, world.tenant)
     await world.relay().run_once()
     assert len(ids(world, world.tenant)) == 1, "the sound activity went out"
-    assert "urn:a:bad" not in ids(world)
-    assert await pending(world, world.tenant) == []
+    assert "urn:a:bad" not in ids(world), "the malformed activity is not published"
+    assert await pending(world, world.tenant) == [], "nothing is left pending"
 
 
 async def test_a_malformed_pending_activity_is_logged_without_its_values(world, caplog):  # #125
@@ -268,8 +272,10 @@ async def test_a_malformed_pending_activity_is_logged_without_its_values(world, 
     )
     with caplog.at_level(logging.ERROR, logger=LOGGER):
         await world.relay().run_once()
-    assert [r.levelno for r in caplog.records] == [logging.ERROR]
-    assert "urn:a:bad" in caplog.text
+    assert [r.levelno for r in caplog.records] == [logging.ERROR], (
+        "the malformed activity is logged as an error"
+    )
+    assert "urn:a:bad" in caplog.text, "the log names the malformed activity"
     assert "secret-tenant-text" not in caplog.text, "a tenant's data never reaches the log"
 
 
@@ -281,8 +287,8 @@ async def test_a_pending_record_of_no_activity_type_is_given_up_not_published(wo
     await add_one(world, world.tenant)
     await world.relay().run_once()
     assert "urn:a:odd" not in ids(world), "a record that is no activity is never published"
-    assert len(ids(world, world.tenant)) == 1
-    assert await pending(world, world.tenant) == []
+    assert len(ids(world, world.tenant)) == 1, "only the typed activity is published"
+    assert await pending(world, world.tenant) == [], "nothing is left pending"
 
 
 @pytest.mark.parametrize(
@@ -310,8 +316,8 @@ async def test_an_activity_marked_pending_twice_is_published_once_and_fully_unma
     relay = world.relay()
     await relay.run_once()
     await relay.run_once()
-    assert len(ids(world, world.tenant)) == 1
-    assert await pending(world, world.tenant) == []
+    assert len(ids(world, world.tenant)) == 1, "the activity is published once"
+    assert await pending(world, world.tenant) == [], "nothing is left pending"
 
 
 def test_a_cycle_in_the_version_chain_still_returns_every_activity_once():
@@ -330,7 +336,9 @@ def test_a_cycle_in_the_version_chain_still_returns_every_activity_once():
         ("b", replace("b", "v1", "v2")),
         ("self", replace("self", "s", "s")),
     ]
-    assert sorted(i for i, _ in chain_order(items)) == ["a", "b", "self"]
+    assert sorted(i for i, _ in chain_order(items)) == ["a", "b", "self"], (
+        "each activity of the cycle comes back once"
+    )
 
 
 # -- consumer subclass ---------------------------------------------------------------------------
@@ -343,8 +351,10 @@ async def test_a_consumer_subclass_is_published_in_its_own_class_with_its_own_sl
         await session.add_graph(iri, triples(iri), served=command)
     await world.relay().run_once()
     [(envelope, body)] = [m for m in world.broker.messages if json.loads(m[1])["id"] == APPROVE]
-    assert envelope.activity_class == "https://example.org/ns/library#ApproveBook"
-    assert json.loads(body)["used_resource"] == iri
+    assert envelope.activity_class == "https://example.org/ns/library#ApproveBook", (
+        "the envelope names the consumer class"
+    )
+    assert json.loads(body)["used_resource"] == iri, "the body carries the used resource"
 
 
 async def test_a_served_transition_is_published_in_its_class(world):
@@ -354,7 +364,7 @@ async def test_a_served_transition_is_published_in_its_class(world):
         await session.add_graph(iri, triples(iri), served=command)
     await world.relay().run_once()
     [envelope] = [e for e, b in world.broker.messages if json.loads(b)["id"] == APPROVE]
-    assert envelope.activity_class == str(v.TRANSITION)
+    assert envelope.activity_class == str(v.TRANSITION), "the envelope names the transition class"
 
 
 # -- who is visited, who is marked ---------------------------------------------------------------
@@ -379,8 +389,10 @@ async def test_the_system_database_is_listed_from_but_never_asked_for_pending_ac
     world.store.query, world.store.update = query, update
     await world.relay().run_once()
     world.store.query, world.store.update = real_query, real_update
-    assert world.tenancy.system_database not in asked | written
-    assert world.database in asked
+    assert world.tenancy.system_database not in asked | written, (
+        "the system database is never asked for pending activities"
+    )
+    assert world.database in asked, "the tenant database is asked"
 
 
 async def test_a_session_that_does_not_record_leaves_nothing_for_the_relay(world):
@@ -395,7 +407,9 @@ async def test_a_session_that_does_not_record_leaves_nothing_for_the_relay(world
     ) as session:
         await session.add_graph(iri, triples(iri))
     await world.relay().run_once()
-    assert sent(world, world.tenant) == []
+    assert sent(world, world.tenant) == [], (
+        "the session that does not record leaves nothing to relay"
+    )
 
 
 async def test_a_hub_that_raises_after_the_mark_delays_the_rest_but_loses_nothing(world, caplog):
@@ -411,7 +425,9 @@ async def test_a_hub_that_raises_after_the_mark_delays_the_rest_but_loses_nothin
     with caplog.at_level(logging.ERROR, logger=LOGGER):
         await relay.run_once()
     await relay.run_once()
-    assert classes(world, world.tenant) == [str(v.ADD), str(v.REPLACE), str(v.REMOVE)]
+    assert classes(world, world.tenant) == [str(v.ADD), str(v.REPLACE), str(v.REMOVE)], (
+        "the later rounds publish everything in order"
+    )
     assert len(set(ids(world))) == 3, "no activity twice"
 
 
@@ -422,4 +438,4 @@ async def test_a_plumbing_triple_planted_in_a_data_graph_is_not_an_activity_to_r
     stray = f"<urn:a:stray> <{v.PENDING_SINCE}> {LONG_AGO} ."
     await world.store.update(world.database, f"INSERT DATA {{ GRAPH <urn:g:other> {{ {stray} }} }}")
     await world.relay().run_once()
-    assert "urn:a:stray" not in ids(world)
+    assert "urn:a:stray" not in ids(world), "the stray plumbing triple is not published"
