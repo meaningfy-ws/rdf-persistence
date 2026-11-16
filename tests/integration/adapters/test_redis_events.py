@@ -20,6 +20,8 @@ from rdf_persistence.testkit.event_bus_conformance import (
     run_case,
 )
 
+NODE_MAX_ENTRIES = "stream-node-max-entries"
+
 
 class RedisPair:
     """Two deployments on one stream; Redis fails a bus by closing it, and starts it again after."""
@@ -47,18 +49,23 @@ async def test_an_entry_older_than_the_retention_is_trimmed_on_the_next_publish(
     await pair.a.start(inbox)
     async with Redis.from_url(redis) as client:
         # the trim is approximate (D-17): it drops whole nodes, so one entry per node makes it exact here
-        await client.config_set("stream-node-max-entries", 1)
-        await pair.a.publish(ENVELOPE, BODY)
-        [(first_id, _)] = await client.xrange(pair.stream)
-        first_ms = int(first_id.decode().split("-")[0])
+        # the server is shared by the session: put its setting back whatever the test does (rule 13)
+        previous = (await client.config_get(NODE_MAX_ENTRIES))[NODE_MAX_ENTRIES]
+        await client.config_set(NODE_MAX_ENTRIES, 1)
+        try:
+            await pair.a.publish(ENVELOPE, BODY)
+            [(first_id, _)] = await client.xrange(pair.stream)
+            first_ms = int(first_id.decode().split("-")[0])
 
-        async def retention_has_passed() -> bool:
-            seconds, micros = await client.time()
-            return seconds * 1000 + micros // 1000 > first_ms + 1000
+            async def retention_has_passed() -> bool:
+                seconds, micros = await client.time()
+                return seconds * 1000 + micros // 1000 > first_ms + 1000
 
-        await wait_until_async(retention_has_passed, "the retention to pass")
-        await pair.a.publish(ENVELOPE, OTHER_BODY)
-        ids = [entry_id for entry_id, _ in await client.xrange(pair.stream)]
+            await wait_until_async(retention_has_passed, "the retention to pass")
+            await pair.a.publish(ENVELOPE, OTHER_BODY)
+            ids = [entry_id for entry_id, _ in await client.xrange(pair.stream)]
+        finally:
+            await client.config_set(NODE_MAX_ENTRIES, previous)
     await pair.a.close()
     assert first_id not in ids
     assert len(ids) == 1
@@ -72,7 +79,7 @@ async def test_a_trim_that_fails_does_not_fail_the_publish(redis, monkeypatch, c
     async def refused(*args, **kwargs):
         raise ConnectionError("the trim was refused")
 
-    monkeypatch.setattr(type(client), "xtrim", refused)
+    monkeypatch.setattr(client, "xtrim", refused)  # this client only, not the class
     with caplog.at_level(logging.WARNING, logger="rdf_persistence.adapters.redis_events"):
         await pair.a.publish(ENVELOPE, BODY)  # the entry is sent; only the trim fails
     async with Redis.from_url(redis) as reader:

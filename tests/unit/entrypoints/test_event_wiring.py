@@ -7,7 +7,7 @@ from fastapi import FastAPI
 
 from rdf_persistence.domain.generated.service.rp_service import ServiceSettings
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus, wait_until_async
-from tests.toy_service import ToyService
+from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
 from tests.unit.entrypoints.test_service_kit import installed, made
 
 
@@ -43,18 +43,19 @@ async def test_leaving_the_lifespan_ends_the_relay_and_closes_the_bus() -> None:
 
 async def test_with_no_event_bus_the_activity_is_still_relayed_to_the_hub() -> None:  # TC-21
     toy = ToyService()
-    seen: list[tuple[str, object]] = []
-
-    class Spy:
-        def offer(self, tenant: str, activity: object) -> None:
-            seen.append((tenant, activity))
-
-    toy.kit.hub.offer = Spy().offer  # type: ignore[method-assign]
     async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
-        await made(http, toy.bearer("ada"))
-        await wait_until_async(
-            lambda: _async(seen), "the relay to offer the activity", poll_seconds=0.01
-        )
+        headers = toy.bearer("ada")
+        tenant = await http.post("/libraries", json=TENANT_BODY, headers=headers)
+        tenant_iri = toy.kit.tenant_iri(tenant.headers["location"].rsplit("/", 1)[1])
+        async with toy.kit.hub.subscribe(tenant_iri) as queue:
+            await http.post(f"{tenant.headers['location']}/books", json=DUNE_BODY, headers=headers)
+            await wait_until_async(
+                lambda: _async(not queue.empty()),
+                "the relay to offer the activity",
+                poll_seconds=0.01,
+            )
+            activity = queue.get_nowait()
+    assert activity is not None, "the relay offered the hub an activity of the tenant"
 
 
 def test_an_event_bus_without_a_deployment_is_refused() -> None:  # TC-21a

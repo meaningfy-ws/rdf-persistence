@@ -21,6 +21,7 @@ ROOT = TESTS_ROOT_DIR.as_posix()
         ("integration/tenancy", {"integration", "store", "files"}),
         ("integration/files", {"integration", "files"}),
         ("integration/identity", {"integration", "identity"}),
+        ("integration/network", {"integration"}),
         ("e2e", {"e2e", "store", "files", "identity"}),
         ("perf", {"perf"}),
     ],

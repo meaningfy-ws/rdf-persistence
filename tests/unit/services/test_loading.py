@@ -3,9 +3,8 @@
 import io
 import json
 import threading
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
-from http.server import BaseHTTPRequestHandler, HTTPServer
 from uuid import UUID
 
 import pytest
@@ -145,66 +144,10 @@ async def test_a_format_the_toolkit_does_not_know_is_a_bug_and_not_an_invalid_gr
         await parse_graph(b"", "not-a-format")  # type: ignore[arg-type]
 
 
-class _Recorder(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.server.requests.append(self.path)  # type: ignore[attr-defined]
-        self.send_response(200)
-        self.send_header("Content-Type", "application/ld+json")
-        self.end_headers()
-        self.wfile.write(b'{"@context": {"title": "http://purl.org/dc/terms/title"}}')
-
-    def log_message(self, *args):  # silence
-        pass
-
-
-@pytest.fixture
-def context_server() -> Iterator[HTTPServer]:
-    """A local server that records every request made to it."""
-    server = HTTPServer(("127.0.0.1", 0), _Recorder)
-    server.requests = []  # type: ignore[attr-defined]
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    yield server
-    server.shutdown()
-    server.server_close()
-
-
 def jsonld(context: object) -> bytes:
     return json.dumps(
         {"@context": context, "@id": "https://example.org/b", "title": "Dune"}
     ).encode()
-
-
-NON_INLINE = {
-    "iri": lambda url: jsonld(url),
-    "iri in an array": lambda url: jsonld([{"x": "http://example.org/x"}, url]),
-    "file iri": lambda _: jsonld("file:///etc/hostname"),
-    "bare path": lambda _: jsonld("/etc/hostname"),
-    "relative path": lambda _: jsonld("context.jsonld"),
-    "nested in a node": lambda url: json.dumps(
-        {
-            "@id": "https://example.org/b",
-            "http://example.org/p": {"@context": url, "@id": "https://example.org/c"},
-        }
-    ).encode(),
-    "in a graph array": lambda url: json.dumps(
-        [{"@context": url, "@id": "https://example.org/b"}]
-    ).encode(),
-    "scoped in a term": lambda url: jsonld(
-        {"title": {"@id": "http://purl.org/dc/terms/title", "@context": url}}
-    ),
-    "@import": lambda url: jsonld({"@import": url}),
-}
-
-
-@pytest.mark.parametrize("make", NON_INLINE.values(), ids=NON_INLINE.keys())
-async def test_a_jsonld_context_that_is_not_inline_is_refused_and_nothing_is_fetched(
-    context_server, make
-):
-    url = f"http://127.0.0.1:{context_server.server_port}/context.jsonld"
-    with pytest.raises(InvalidGraph, match="inline"):
-        await parse_graph(make(url), RdfFormat.JSONLD)
-    assert context_server.requests == [], "the server was never asked"
 
 
 @pytest.mark.parametrize(
