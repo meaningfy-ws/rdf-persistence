@@ -482,7 +482,10 @@ The others: `chapter-ok.yaml` adds `number: 1`, `chapter-number-text.yaml` has `
 `round_trip` takes an object, turns it into RDF, frames the RDF back into JSON and builds an object
 from it. It fails with an `AssertionError`, `the objects differ after the round trip` or `the two
 graphs differ` with the triples on each side, when the object that comes back is not equal to the
-one that went in. `aggregate(conformed, "Book")` draws random valid books for it.
+one that went in. `aggregate(conformed, "Book")` draws random valid books for it. The graph
+comparison it ends with is also public: `assert_isomorphic(before, after)` (from
+`rdf_persistence.testkit`) fails, with the triples only one side has, when two `rdflib` graphs
+differ; use it for your own two graphs.
 
 Each kind of constraint comes from one construct of the schema:
 

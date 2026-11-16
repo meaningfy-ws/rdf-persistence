@@ -290,6 +290,21 @@ async def test_async_wait_refuses_a_probe_timeout_that_is_not_positive(probe_tim
         await _bounded_wait_async(probe, AsyncFakeClock(), probe_timeout=probe_timeout)
 
 
+@pytest.mark.parametrize("poll_seconds", [0, -1])
+def test_wait_refuses_a_poll_interval_that_is_not_positive(poll_seconds) -> None:
+    with pytest.raises(ValueError, match="poll_seconds"):
+        _bounded_wait(lambda: True, FakeClock(), poll_seconds=poll_seconds)
+
+
+@pytest.mark.parametrize("poll_seconds", [0, -1])
+async def test_async_wait_refuses_a_poll_interval_that_is_not_positive(poll_seconds) -> None:
+    async def probe():
+        return True
+
+    with pytest.raises(ValueError, match="poll_seconds"):
+        await _wait_async(probe, AsyncFakeClock(), poll_seconds=poll_seconds)
+
+
 def test_wait_propagates_a_non_retry_error_from_the_bounded_call() -> None:
     calls = []
 

@@ -219,7 +219,7 @@ tests/integration/tenancy/test_tenant_stores.py::test_tc37_a_sweep_drops_the_orp
 tests/integration/tenancy/test_tenant_sweep.py::test_it02_a_root_load_is_swept_only_when_no_commit_owns_it,scenario,rp-tenancy,Orphans inside a live tenant are removed,a root load is swept only when no commit owns it,high,name (the scenario's title); spec id (IT-02)
 tests/integration/tenancy/test_tenant_sweep.py::test_removing_with_files_deletes_only_the_keys_no_other_aggregate_names,scenario,rp-tenancy,A file aggregate can be removed with its blobs,a shared blob stays,high,name; covered code (services/file_removal)
 tests/integration/tenancy/test_tenant_sweep.py::test_the_sweep_gives_the_worked_examples_outcome_on_real_stores,requirement,rp-tenancy,Orphans inside a live tenant are removed,,high,name; spec id (live-tenant-sweep 5.2); covered code (services/tenant_sweep)
-tests/perf/store/test_dependents_cost.py::test_removing_a_book_of_a_tenant_without_comments_with_and_without_the_drop,capability,rp-discussion,,,medium,"spec id (PD-30 item 6); measures a cost, asserts nothing"
+tests/perf/store/test_dependents_cost.py::test_removing_a_book_of_a_tenant_without_comments_with_and_without_the_drop,capability,rp-discussion,,,medium,"spec id (PD-30 item 6); asserts the dependents-cost bound"
 tests/perf/store/test_store_budgets.py::test_a_commit_of_the_default_limit_of_new_books_stays_within_30_s,requirement,rp-aggregate-store,A commit has a size limit and an explicit batch mode,,high,"name; spec id (PD-10, PD-11, RISK-2)"
 tests/perf/store/test_store_budgets.py::test_a_keyed_add_stays_under_half_a_second_in_a_tenant_of_a_thousand_books,requirement,rp-aggregate-store,Unique keys hold across the aggregates of a tenant,,high,"name; spec id (IT-06, RISK-1)"
 tests/perf/store/test_store_budgets.py::test_replace_and_remove_cost_the_size_of_the_graphs_not_their_product,capability,rp-aggregate-store,,,medium,name; docstring (no spec or decision id)
@@ -3411,13 +3411,19 @@ tests/unit/test_check_docs.py::test_forbidden_in_reports_whole_word_terms,requir
 tests/unit/test_check_docs.py::test_mermaid_markdown_holds_every_block_of_every_page,requirement,rp-developer-checks,The docs' diagrams render with the site's mermaid,,high,"name,spec text"
 tests/unit/test_check_docs.py::test_playbooks_serving_the_pinned_mermaid_pass,requirement,rp-developer-checks,The docs' diagrams render with the site's mermaid,,high,"name,spec text"
 tests/unit/test_check_docs.py::test_testkit_names_must_be_exported_or_a_submodule,scenario,rp-developer-checks,The testing checklist names only public helpers,a helper the testkit does not export,high,"name,spec text"
+tests/unit/test_lanes.py::test_a_lane_that_names_workers_is_in_the_parallel_list,requirement,rp-developer-checks,The unit and feature tests run in parallel,,high,name+open change
+tests/unit/test_lanes.py::test_every_parallel_lane_distributes_by_group,requirement,rp-developer-checks,The unit and feature tests run in parallel,,high,name+open change
+tests/unit/test_lanes.py::test_expanded_replaces_a_defined_variable_and_leaves_an_unknown_one,capability,rp-developer-checks,,,medium,name (helper of the lane tests)
 tests/unit/test_lanes.py::test_lane_selection_excludes_quarantine,requirement,rp-developer-checks,"A flaky test is quarantined, not retried",,high,name+open change
 tests/unit/test_lanes.py::test_quarantine_marker_is_registered,requirement,rp-developer-checks,"A flaky test is quarantined, not retried",,high,name+open change
 tests/unit/test_lanes.py::test_recipe_stays_within_the_line_budget,requirement,rp-developer-checks,"A flaky test is quarantined, not retried",,high,name+open change
+tests/unit/test_lanes.py::test_the_perf_lane_selects_perf_tests_not_in_quarantine,requirement,rp-developer-checks,"A flaky test is quarantined, not retried",,high,name+open change
+tests/unit/test_lanes.py::test_the_refresh_map_target_runs_the_refresher,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16)"
 tests/unit/test_lazy_exports.py::test_a_lazy_name_is_loaded_on_first_use_and_then_kept,capability,rp-package-boundaries,,,medium,spec id PD-8c
 tests/unit/test_lazy_exports.py::test_an_unknown_top_level_name_is_an_attribute_error,capability,rp-package-boundaries,,,medium,spec id PD-8c
 tests/unit/test_lazy_exports.py::test_importing_the_domain_or_a_generated_module_loads_nothing_heavy,capability,rp-package-boundaries,,,medium,spec id PD-8c
-tests/unit/test_markers.py::test_a_test_past_its_timeout_fails_naming_itself_and_the_next_test_runs,scenario,rp-developer-checks,A test cannot hang the checks,a test that never returns,high,name+open change
+tests/unit/test_markers.py::test_a_serial_run_ends_the_session_naming_the_test_past_its_timeout,scenario,rp-developer-checks,A test cannot hang the checks,"a test that never returns, in a serial run",high,name+open change
+tests/unit/test_markers.py::test_a_test_past_its_timeout_fails_naming_itself_and_the_next_test_runs,scenario,rp-developer-checks,A test cannot hang the checks,"a test that never returns, in a parallel lane",high,name+open change
 tests/unit/test_markers.py::test_checkout_under_a_directory_named_like_a_row_is_not_matched,capability,rp-developer-checks,,,medium,spec id PD-16
 tests/unit/test_markers.py::test_directory_row_gives_every_marker,capability,rp-developer-checks,,,medium,spec id PD-16
 tests/unit/test_markers.py::test_hook_adds_each_marker_to_the_item,capability,rp-developer-checks,,,medium,spec id PD-16
@@ -3445,6 +3451,9 @@ tests/unit/test_refresh_map.py::test_more_than_a_fifth_of_the_rows_going_refuses
 tests/unit/test_refresh_map.py::test_refresh_keeps_the_line_endings_of_the_map,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16)"
 tests/unit/test_refresh_map.py::test_refresh_lists_collected_ids_that_have_no_row,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16)"
 tests/unit/test_refresh_map.py::test_refresh_of_a_complete_map_changes_nothing,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16)"
+tests/unit/test_refresh_map.py::test_a_failed_replace_leaves_the_map_whole_and_no_temporary_file,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16)"
+tests/unit/test_refresh_map.py::test_a_malformed_map_exits_with_a_message_and_stays_as_it_was,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16)"
+tests/unit/test_refresh_map.py::test_the_two_ways_to_keep_the_map_have_their_own_exit_codes,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16)"
 tests/unit/test_refresh_map.py::test_refresh_removes_vanished_rows_and_keeps_the_rest_in_order,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16)"
 tests/unit/test_smoke.py::test_version_matches_pyproject,requirement,rp-release,The version lives in one file and the release matches the tag,,high,"name,spec id TC-01"
 tests/unit/testkit/test_adopt_step6.py::test_a_testkit_module_import_is_refused_naming_file_line_and_module,scenario,rp-testkit,The model guards are public names of the testkit,an undocumented testkit module is still refused,high,"name,covered code,spec id PD-4 T-15"
@@ -3575,6 +3584,8 @@ tests/unit/testkit/test_testkit_bootstrap.py::test_async_wait_goes_on_after_a_sl
 tests/unit/testkit/test_testkit_bootstrap.py::test_async_wait_keeps_polling_on_falsy_results_until_timeout,requirement,rp-testkit,Tests wait on a condition with a deadline through the public test module,,high,"name,covered code"
 tests/unit/testkit/test_testkit_bootstrap.py::test_async_wait_polls_every_default_interval_when_none_is_given,requirement,rp-testkit,Tests share one signing key and poll in-process fakes quickly,,high,name+open change
 tests/unit/testkit/test_testkit_bootstrap.py::test_async_wait_propagates_a_non_retry_error_from_the_bounded_call,scenario,rp-testkit,A waiting helper can bound one probe call,an error inside the bounded call,high,"name,covered code"
+tests/unit/testkit/test_testkit_bootstrap.py::test_async_wait_refuses_a_poll_interval_that_is_not_positive,scenario,rp-testkit,Tests share one signing key and poll in-process fakes quickly,a poll interval that is not positive,high,"name,covered code"
+tests/unit/testkit/test_testkit_bootstrap.py::test_wait_refuses_a_poll_interval_that_is_not_positive,scenario,rp-testkit,Tests share one signing key and poll in-process fakes quickly,a poll interval that is not positive,high,"name,covered code"
 tests/unit/testkit/test_testkit_bootstrap.py::test_async_wait_refuses_a_probe_timeout_that_is_not_positive,scenario,rp-testkit,A waiting helper can bound one probe call,a probe timeout that is not positive,high,"name,covered code"
 tests/unit/testkit/test_testkit_bootstrap.py::test_async_wait_retries_a_subclass_of_a_listed_error,requirement,rp-testkit,Tests wait on a condition with a deadline through the public test module,,high,"name,covered code"
 tests/unit/testkit/test_testkit_bootstrap.py::test_async_wait_retries_the_listed_errors_and_propagates_others,scenario,rp-testkit,Tests wait on a condition with a deadline through the public test module,"an error that is not ""not ready yet""",high,"name,covered code"

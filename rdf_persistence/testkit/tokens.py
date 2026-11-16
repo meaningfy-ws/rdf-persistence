@@ -28,13 +28,18 @@ KEYS_PATH = "/keys"
 
 
 def new_key() -> rsa.RSAPrivateKey:
-    """A fresh 2048-bit RSA signing key (≈ 0.5 s)."""
+    """A fresh 2048-bit RSA signing key; generating it takes noticeable time, so share one
+    where distinctness does not matter (see :func:`shared_key`)."""
     return rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
 
 @functools.cache
 def shared_key() -> rsa.RSAPrivateKey:
-    """One signing key per process, for tests that need a key but not a distinct one."""
+    """One signing key per process, for tests that need a key but not a distinct one.
+
+    Never use it for a key the verifier must not trust (a forged or foreign signature): every
+    caller gets the same key, so it would be trusted. Use :func:`new_key` there.
+    """
     return new_key()
 
 

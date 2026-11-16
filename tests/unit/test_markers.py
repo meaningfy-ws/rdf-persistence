@@ -96,6 +96,29 @@ def test_a_test_past_its_timeout_fails_naming_itself_and_the_next_test_runs(
     result.stdout.fnmatch_lines(["*FAILED*test_hangs*"])
 
 
+def test_a_serial_run_ends_the_session_naming_the_test_past_its_timeout(
+    pytester: pytest.Pytester,
+) -> None:
+    """Without xdist the thread method cannot fail one test: it ends the whole session, and the
+    dumped stack names the hung test."""
+    ini = (TESTS_ROOT_DIR.parent / "pytest.ini").read_text(encoding="utf-8")
+    pytester.makefile(".ini", pytest=ini)
+    pytester.makepyfile(
+        test_x="import time\n\n"
+        "def test_hangs():\n    time.sleep(30)\n\n"
+        "def test_after():\n    pass\n"
+    )
+    result = pytester.runpytest_subprocess(
+        "-p", "no:xdist", "--timeout=1", "-p", "no:randomly", "-p", "no:cacheprovider"
+    )
+    output = result.stdout.str() + result.stderr.str()
+    assert result.ret != 0, f"the session must end non-zero: {output}"
+    assert "test_hangs" in output, f"the session must name the hung test: {output}"
+    assert "test_x.py::test_after" not in output, (
+        "the session ends at the hung test, so the next test never starts"
+    )
+
+
 def test_the_hypothesis_profile_is_derandomized_under_ci(
     pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch
 ) -> None:

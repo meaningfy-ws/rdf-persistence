@@ -11,9 +11,12 @@ _What makes a test acceptable here?_
 == Where tests live
 
 . A test lives in the tier folder of the layer it tests (`tests/unit/`, `tests/feature/`,
-  `tests/integration/`, `tests/e2e/`); the folder also gives the marker. Domain tests import no
-  adapter, service or fake.
-. Nothing outside the container and e2e tests touches the network (`testkit.no_network`).
+  `tests/integration/`, `tests/e2e/`, and `tests/perf/` for the wall-clock budgets run by
+  `make test-perf`); the folder also gives the marker. Domain tests import no adapter, service or
+  fake.
+. Nothing outside the container and e2e tests touches the network (`testkit.no_network`). The
+  exception in `tests/integration/network/` talks to a loopback server the test starts itself
+  (a real listener on 127.0.0.1): it needs no container, and `make test-containers` runs it.
 
 == Test doubles and data
 
@@ -85,9 +88,9 @@ _What does the runner do to my test, and what do I do about a test that breaks o
   session, so run a test you suspect of hanging in a parallel lane, or under a smaller
   `--timeout=<seconds>`.
 * *Random order.* `pytest-randomly` shuffles the order of tests and reseeds the random generators
-  before every test, so a test that depends on another's leftovers fails soon. The seed is the
-  first line of a run's output; replay a failing order with
-  `uv run pytest -p randomly --randomly-seed=<n> <paths>`. `-p no:randomly` switches the shuffle
+  before every test, so a test that depends on another's leftovers fails soon. The seed is
+  printed in the header of a run's output (`Using --randomly-seed=<n>`); replay a failing order
+  with `uv run pytest --randomly-seed=<n> <paths>`. `-p no:randomly` switches the shuffle
   off, which timing runs need (see <<slow,Slow tests>>).
 * *Shared fixtures.* The parallel lanes run `--dist loadgroup`: tests with the same
   `@pytest.mark.xdist_group("<name>")` run on one worker, in one process. A fixture shared by the

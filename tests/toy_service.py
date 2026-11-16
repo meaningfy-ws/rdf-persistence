@@ -144,7 +144,7 @@ class ToyService:
         deployment: str | None = None,
         public_url: str | None = None,
     ) -> None:
-        self.signer = TokenSigner(key=toy_key())
+        self.signer = TokenSigner(key=shared_key())
         self.store = store or FakeStore()
         self.files = files or FakeFileStore()
         self.mount = mount

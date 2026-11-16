@@ -1,7 +1,7 @@
 """Map the files changed against a base branch to the test folders that cover them.
 
 Run as ``uv run python -m tests.changed``. Prints the pytest arguments, one per line (paths, then
-``-n`` and its value); nothing when no test is to run. Reasons and hints go to stderr. Exit 3 means
+``-n`` and its value, then ``--dist loadgroup``); nothing when no test is to run. Reasons and hints go to stderr. Exit 3 means
 "run make test-fast"; see openspec/changes/archive/2026-11-09-test-lanes/design.md (PD-1 to PD-5).
 """
 
@@ -17,6 +17,8 @@ LAYERS = frozenset({"domain", "services", "adapters", "entrypoints", "generation
 NO_TEST_ROOTS = frozenset({"openspec", ".claude", "temp"})
 SHARED_FILES = frozenset({"pytest.ini", "pyproject.toml", "uv.lock", "Makefile", ".coveragerc"})
 DOMAIN_FOLDER = "tests/unit/domain/"
+# The same distribution as the Makefile's PARALLEL: tests in one xdist_group share a worker.
+DIST = ("--dist", "loadgroup")
 
 
 @dataclass(frozen=True)
@@ -112,7 +114,7 @@ def pytest_arguments(paths: Sequence[str], pytest_n: str | None) -> list[str]:
     if not paths:
         return []
     one_process = all(not p.endswith("/") for p in paths) or list(paths) == [DOMAIN_FOLDER]
-    return [*paths, "-n", pytest_n or ("0" if one_process else "auto")]
+    return [*paths, "-n", pytest_n or ("0" if one_process else "auto"), *DIST]
 
 
 def _git(*args: str) -> str:

@@ -20,6 +20,7 @@ from tests.changed import (
 REPO = Path(__file__).resolve().parents[2]
 CONTAINER_TEST = "tests/integration/api/test_routes.py"
 ROOT_TESTS = ("tests/unit/test_a.py", "tests/unit/test_b.py")
+LOADGROUP = ("--dist", "loadgroup")
 
 SELECTS = [
     (1, "openspec/changes/x/design.md", ()),
@@ -125,9 +126,12 @@ def test_the_worked_example_selects_one_folder_and_hints_at_the_container_test()
 
     assert selection.paths == ("tests/unit/services/",), "one folder, not two"
     assert selection.hints == (f"{CONTAINER_TEST}: run make test-containers",), "the container hint"
-    assert pytest_arguments(selection.paths, None) == ["tests/unit/services/", "-n", "auto"], (
-        "the arguments"
-    )
+    assert pytest_arguments(selection.paths, None) == [
+        "tests/unit/services/",
+        "-n",
+        "auto",
+        *LOADGROUP,
+    ], "the arguments"
 
 
 def test_a_changed_container_test_alone_gives_no_arguments():
@@ -197,7 +201,9 @@ def test_fallback_wins_over_selected_paths():
     ],
 )
 def test_one_process_is_chosen_for_files_only_or_the_domain_folder_only(paths, expected_n):
-    assert pytest_arguments(paths, None) == [*paths, "-n", expected_n], f"workers for {paths}"
+    assert pytest_arguments(paths, None) == [*paths, "-n", expected_n, *LOADGROUP], (
+        f"workers for {paths}"
+    )
 
 
 def test_pytest_n_overrides_the_choice_of_workers():
@@ -205,6 +211,7 @@ def test_pytest_n_overrides_the_choice_of_workers():
         "tests/unit/services/",
         "-n",
         "4",
+        *LOADGROUP,
     ], "PYTEST_N wins"
 
 

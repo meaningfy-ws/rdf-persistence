@@ -47,9 +47,10 @@ def wait_until[T](
 
     Raises:
         TimeoutError: If the probe did not succeed in time.
-        ValueError: If ``probe_timeout`` is not positive.
+        ValueError: If ``probe_timeout`` or ``poll_seconds`` is not positive.
     """
-    _require_positive(probe_timeout)
+    _require_positive("probe_timeout", probe_timeout)
+    _require_positive("poll_seconds", poll_seconds)
     bounded = _BoundedCall(probe, probe_timeout)
     deadline = monotonic() + timeout
     while monotonic() < deadline:
@@ -82,9 +83,10 @@ async def wait_until_async[T](
 
     Raises:
         TimeoutError: If the probe did not succeed in time.
-        ValueError: If ``probe_timeout`` is not positive.
+        ValueError: If ``probe_timeout`` or ``poll_seconds`` is not positive.
     """
-    _require_positive(probe_timeout)
+    _require_positive("probe_timeout", probe_timeout)
+    _require_positive("poll_seconds", poll_seconds)
     deadline = monotonic() + timeout
     while monotonic() < deadline:
         try:
@@ -97,9 +99,9 @@ async def wait_until_async[T](
     raise TimeoutError(_timed_out(what, timeout))
 
 
-def _require_positive(probe_timeout: float | None) -> None:
-    if probe_timeout is not None and probe_timeout <= 0:
-        raise ValueError(f"probe_timeout must be positive, got {probe_timeout:g}")
+def _require_positive(name: str, value: float | None) -> None:
+    if value is not None and value <= 0:
+        raise ValueError(f"{name} must be positive, got {value:g}")
 
 
 class _BoundedCall[T]:
