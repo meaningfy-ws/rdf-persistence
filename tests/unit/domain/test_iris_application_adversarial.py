@@ -182,7 +182,7 @@ TENANT_SHAPED_AGGREGATE = (
 def _tenant_iris_are_not_the_applications(policy: IriPolicy, seed: int) -> None:
     iris = _built(policy, seed)
     assume(iris is not None)
-    assert iris is not None
+    assert iris is not None, "the policy was accepted so tenant IRIs can be built"
     tenant = str(iris.mint_tenant())
     for name, iri in _owned(iris, tenant).items():
         assert _accepted_by(iris, str(iris.application), iri) == [], (
@@ -193,7 +193,7 @@ def _tenant_iris_are_not_the_applications(policy: IriPolicy, seed: int) -> None:
 def _application_iris_are_not_a_tenants(policy: IriPolicy, seed: int) -> None:
     iris = _built(policy, seed)
     assume(iris is not None)
-    assert iris is not None
+    assert iris is not None, "the policy was accepted so application IRIs can be built"
     tenant = str(iris.mint_tenant())
     for name, iri in _owned(iris, str(iris.application)).items():
         assert _accepted_by(iris, tenant, iri) == [], (
@@ -296,7 +296,7 @@ def test_a_tenant_still_round_trips_whatever_the_application_template(
     policy, seed = case
     iris = _built(policy, seed)
     assume(iris is not None)
-    assert iris is not None
+    assert iris is not None, "the policy was accepted so a tenant can be built"
     tenant = str(iris.mint_tenant())
     owned = _owned(iris, tenant)
     assert iris.tenant_of_access(owned["access"]) == URIRef(tenant), "access gives the tenant back"
@@ -338,7 +338,7 @@ def test_the_application_is_never_a_tenant_under_any_accepted_policy(
     policy, seed = case
     iris = _built(policy, seed)
     assume(iris is not None)
-    assert iris is not None
+    assert iris is not None, "the policy was accepted so IRIs can be built"
     a = iris.application
     with pytest.raises(InvalidIri):
         iris.tenant_id_of(a)
@@ -450,7 +450,7 @@ def test_an_accepted_policy_keeps_the_applications_graphs_apart(
     policy, seed = case
     iris = _built(policy, seed)
     assume(iris is not None)
-    assert iris is not None
+    assert iris is not None, "the policy was accepted so graphs can be built"
     a = str(iris.application)
     graphs = {
         "A": a,
@@ -540,7 +540,7 @@ def test_what_is_minted_for_the_application_is_accepted_for_it(
     policy, seed = case
     iris = _built(policy, seed)
     assume(iris is not None)
-    assert iris is not None
+    assert iris is not None, "the policy was accepted so application IRIs can be minted"
     a = as_text(str(iris.application))
     x = as_text(str(iris.mint_aggregate(a, "template", "templates")))
     part = iris.mint_part(a, x, "chapter")
@@ -705,7 +705,9 @@ def test_a_policy_without_the_application_template_is_the_default_one() -> None:
     spelled = IriPolicy.model_validate_json('{"application_template": "{base}app"}')
     literal = IriPolicy.model_validate_json('{"application_template": "https://ex.org/app"}')
     cfg = _settings()
-    assert policy_differences(effective_policy(stored, cfg), effective_policy(spelled, cfg)) == []
+    assert (
+        policy_differences(effective_policy(stored, cfg), effective_policy(spelled, cfg)) == []
+    ), "a policy without the application template differs from none of its default spellings"
     assert policy_differences(effective_policy(None, cfg), effective_policy(literal, cfg)) == [], (
         "the written-out default is the default"
     )
@@ -719,7 +721,9 @@ def test_another_application_template_differs_in_that_field_alone() -> None:
     template = "{base}application"
     cfg = _settings()
     other = effective_policy(IriPolicy(application_template=template), cfg)
-    assert policy_differences(effective_policy(None, cfg), other) == ["application_template"]
+    assert policy_differences(effective_policy(None, cfg), other) == ["application_template"], (
+        "another application template differs in that field alone"
+    )
 
 
 @pytest.mark.parametrize(
@@ -760,5 +764,5 @@ def test_the_effective_application_template_is_the_iri_that_is_minted(
     policy, seed = case
     iris = _built(policy, seed)
     assume(iris is not None)
-    assert iris is not None
+    assert iris is not None, "the policy was accepted so IRIs can be minted"
     assert iris.effective_policy.application_template == str(iris.application), "one spelling"

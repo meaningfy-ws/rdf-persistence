@@ -130,7 +130,9 @@ async def test_the_apps_post_writes_the_record_through_a_session_and_the_bytes_t
     record = await http.get(created.headers["location"], headers=world.as_("ada"))
     assert record.json()["byte_size"] == len(BYTES), "the record, read over the generic route"
     (bucket,) = await world.files.list_buckets("lib-t-")
-    assert await world.files.get(bucket, created.headers["location"].rsplit("/", 1)[-1]) == BYTES
+    assert await world.files.get(bucket, created.headers["location"].rsplit("/", 1)[-1]) == BYTES, (
+        "the bytes posted are in the bucket under the record's name"
+    )
 
 
 async def test_a_body_over_the_limit_is_a_413_and_stores_nothing(world, http, shelf) -> None:
@@ -192,8 +194,12 @@ async def test_a_read_prohibition_on_the_scan_stops_the_file_too(world, http, sh
 async def test_a_reader_cannot_write_the_file_and_an_outsider_cannot_see_it(
     world, http, shelf
 ) -> None:
-    assert (await http.put(shelf.file, content=b"x", headers=world.as_("rita"))).status_code == 403
-    assert (await http.get(shelf.file, headers=world.as_("omar"))).status_code == 404
+    assert (
+        await http.put(shelf.file, content=b"x", headers=world.as_("rita"))
+    ).status_code == 403, "a reader is refused the write"
+    assert (await http.get(shelf.file, headers=world.as_("omar"))).status_code == 404, (
+        "an outsider cannot see the file"
+    )
 
 
 @pytest.mark.parametrize(

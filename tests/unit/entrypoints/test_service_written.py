@@ -89,7 +89,9 @@ async def test_the_generic_writes_of_a_scan_answer_405_and_leave_it_unchanged(
 
 async def test_a_scan_and_the_scan_listing_are_still_read(scene: Scene) -> None:
     member = await scan_path(scene)
-    assert (await scene.http.get(member, headers=scene.headers("ada"))).status_code == 200
+    assert (await scene.http.get(member, headers=scene.headers("ada"))).status_code == 200, (
+        "the scan listing is still readable"
+    )
     listing = await scene.http.get(f"{scene.tenant}/scans", headers=scene.headers("ada"))
     assert listing.status_code == 200, listing.text
     assert listing.json()["total"] == 1, "the stored scan is listed"

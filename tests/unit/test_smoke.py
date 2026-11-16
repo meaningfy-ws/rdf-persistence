@@ -16,5 +16,5 @@ def test_version_matches_pyproject() -> None:
     pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
     declared = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
     module = importlib.import_module("rdf_persistence")
-    assert module.__version__ == declared
-    assert declared
+    assert module.__version__ == declared, "the package version is the declared one"
+    assert declared, "a version is declared"

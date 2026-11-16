@@ -98,7 +98,7 @@ async def test_get_returns_the_body_bytes(s3):
     stubber.add_response(
         "get_object", {"Body": StreamingBody(BytesIO(b"abc"), 3)}, {"Bucket": BUCKET, "Key": KEY}
     )
-    assert await files.get(BUCKET, KEY) == b"abc"
+    assert await files.get(BUCKET, KEY) == b"abc", "a blob comes back as its body bytes"
 
 
 async def test_a_bucket_is_created_with_the_regions_location_constraint(s3):
@@ -117,7 +117,9 @@ async def test_buckets_are_listed_by_prefix_in_name_order(s3):
     stubber.add_response(
         "list_buckets", {"Buckets": [{"Name": n} for n in ("p-2", "other", "p-1")]}
     )
-    assert await files.list_buckets("p-") == ["p-1", "p-2"]
+    assert await files.list_buckets("p-") == ["p-1", "p-2"], (
+        "buckets with the prefix come back in name order"
+    )
 
 
 async def test_deleting_a_bucket_deletes_every_page_of_its_blobs_then_the_bucket(s3):
@@ -221,7 +223,8 @@ async def test_a_bucket_name_boto_refuses_is_the_callers_error_not_an_outage(no_
 
 def test_the_timeouts_are_five_seconds_to_connect_and_thirty_to_read():
     config = S3FileStore("http://s3.test", "id", "secret", REGION)._client.meta.config
-    assert (config.connect_timeout, config.read_timeout) == (5, 30)
+    assert config.connect_timeout == 5, "connecting waits five seconds"
+    assert config.read_timeout == 30, "reading waits thirty seconds"
 
 
 async def test_list_blobs_follows_every_page_and_keeps_the_modified_time(s3):
@@ -244,7 +247,7 @@ async def test_list_blobs_follows_every_page_and_keeps_the_modified_time(s3):
     assert await files.list_blobs(BUCKET) == [
         BlobEntry(file_key="a", modified=first),
         BlobEntry(file_key="b", modified=second),
-    ]
+    ], "every page is followed and each blob keeps its modified time"
     stubber.assert_no_pending_responses()
 
 
@@ -253,14 +256,16 @@ async def test_a_truncated_page_without_a_token_ends_the_listing(s3):
     first = datetime(2026, 1, 1, tzinfo=UTC)
     page = {"IsTruncated": True, "Contents": [{"Key": "a", "LastModified": first}]}
     stubber.add_response("list_objects_v2", page, {"Bucket": BUCKET})
-    assert await files.list_blobs(BUCKET) == [BlobEntry(file_key="a", modified=first)]
+    assert await files.list_blobs(BUCKET) == [BlobEntry(file_key="a", modified=first)], (
+        "a truncated page with no token ends the listing"
+    )
     stubber.assert_no_pending_responses()
 
 
 async def test_list_blobs_of_an_empty_bucket_is_empty(s3):
     files, stubber = s3
     stubber.add_response("list_objects_v2", {"IsTruncated": False}, {"Bucket": BUCKET})
-    assert await files.list_blobs(BUCKET) == []
+    assert await files.list_blobs(BUCKET) == [], "an empty bucket lists nothing"
 
 
 async def test_list_blobs_of_a_missing_bucket_is_tenant_gone(s3):

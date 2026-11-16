@@ -123,7 +123,7 @@ def _refused(lib):
 def _nothing_new(lib):
     after = lib.run(pending(lib.world, lib.world.tenant))
     assert len(lib.before) == 2, "the add and the replace that applied are pending"
-    assert after == lib.before
+    assert after == lib.before, "nothing new was committed since the last look"
 
 
 @given("a tenant dump holding a pending activity")
@@ -161,9 +161,13 @@ def _restore(lib):
 
 @then("the restored activity is not pending")
 def _restored_not_pending(lib):
-    assert lib.run(pending(lib.world, lib.restored)) == []
+    assert lib.run(pending(lib.world, lib.restored)) == [], (
+        "the restored tenant has nothing pending"
+    )
     lib.run(lib.relay().run_once())
-    assert [e for e, _ in lib.broker.messages if e.tenant == lib.restored] == []
+    assert [e for e, _ in lib.broker.messages if e.tenant == lib.restored] == [], (
+        "the restored tenant's messages were not sent again"
+    )
 
 
 @given("a book commit whose activity is pending")
@@ -183,8 +187,10 @@ def _restart(lib):
 
 @then("a subscriber receives that activity")
 def _received(lib):
-    assert [e.activity_class.rsplit("#", 1)[-1] for e, _ in lib.received] == ["Add"]
-    assert lib.iri in lib.received[0][1].decode()
+    assert [e.activity_class.rsplit("#", 1)[-1] for e, _ in lib.received] == ["Add"], (
+        "the received message is an Add"
+    )
+    assert lib.iri in lib.received[0][1].decode(), "the received message names the library's IRI"
 
 
 @given("two replaces of one book, both pending")
@@ -214,7 +220,9 @@ def _older_first(lib):
         for e, body in lib.received
         if e.activity_class.endswith("Replace")
     ]
-    assert [r.generations[0].entity_version for r in replaces] == lib.versions
+    assert [r.generations[0].entity_version for r in replaces] == lib.versions, (
+        "the replaces arrive oldest version first"
+    )
 
 
 class Following:
@@ -292,7 +300,7 @@ def _only_the_other(following):
     event = following.run(go())
     assert [g.entity for g in Replace.model_validate_json(event.data).generations] == [
         following.other_iri
-    ]
+    ], "the reader hears only the other book"
 
 
 @given("a reader whose stream ended after event A, and two later commits")
@@ -328,5 +336,7 @@ def _resumed(following):
     ids = [e.id for e in following.heard]
     assert len(ids) == 3, "two later events and a live one, none twice"
     assert len(set(ids)) == 3, "two later events and a live one, none twice"
-    assert following.first_id not in ids
-    assert [e.event for e in following.heard] == ["Replace"] * 3
+    assert following.first_id not in ids, "the resumed stream does not repeat the first event"
+    assert [e.event for e in following.heard] == ["Replace"] * 3, (
+        "the resumed stream carries the three later replaces"
+    )

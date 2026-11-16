@@ -27,26 +27,32 @@ ROOT = TESTS_ROOT_DIR.as_posix()
     ],
 )
 def test_directory_row_gives_every_marker(directory: str, expected: set[str]) -> None:
-    assert set(markers_for_path(f"{ROOT}/{directory}/test_x.py")) == expected
+    assert set(markers_for_path(f"{ROOT}/{directory}/test_x.py")) == expected, (
+        "a directory row gives its markers"
+    )
 
 
 def test_path_outside_the_table_gets_no_marker() -> None:
-    assert markers_for_path(f"{ROOT}/test_x.py") == ()
+    assert markers_for_path(f"{ROOT}/test_x.py") == (), "a path outside the table gets no marker"
 
 
 def test_checkout_under_a_directory_named_like_a_row_is_not_matched(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(conftest, "TESTS_ROOT_DIR", Path("/work/unit/repo/tests"))
-    assert markers_for_path("/work/unit/repo/tests/test_x.py") == ()
+    assert markers_for_path("/work/unit/repo/tests/test_x.py") == (), (
+        "a directory named like a row above the checkout gets no marker"
+    )
     assert set(markers_for_path("/work/unit/repo/tests/integration/files/test_x.py")) == {
         "integration",
         "files",
-    }
+    }, "only the real rows of the path give markers"
 
 
 def test_path_outside_the_tests_tree_gets_no_marker() -> None:
-    assert markers_for_path("/elsewhere/unit/test_x.py") == ()
+    assert markers_for_path("/elsewhere/unit/test_x.py") == (), (
+        "a path outside the tests tree gets no marker"
+    )
 
 
 def test_hook_adds_each_marker_to_the_item() -> None:
@@ -56,7 +62,7 @@ def test_hook_adds_each_marker_to_the_item() -> None:
         add_marker=lambda marker: added.append(marker.name),
     )
     pytest_collection_modifyitems([item])
-    assert added == ["integration", "store", "files"]
+    assert added == ["integration", "store", "files"], "the hook adds each marker to the item"
 
 
 def test_the_slow_marker_is_registered_and_not_slow_deselects_it(pytester: pytest.Pytester) -> None:

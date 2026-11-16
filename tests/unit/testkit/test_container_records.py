@@ -27,9 +27,13 @@ def test_a_secret_field_does_not_appear_in_repr_or_str(record: object) -> None:
 
 
 def test_the_public_fields_of_a_record_do_appear_in_repr() -> None:
-    assert "http://h" in repr(ZitadelServer(url="http://h", admin_pat=SECRET))
+    assert "http://h" in repr(ZitadelServer(url="http://h", admin_pat=SECRET)), (
+        "a public field shows in the record's text"
+    )
 
 
 def test_a_command_result_keeps_its_output_and_exit_code() -> None:
     result = ExecResult(stdout="o", stderr="e", exit_code=3)
-    assert (result.stdout, result.stderr, result.exit_code) == ("o", "e", 3)
+    assert result.stdout == "o", "the result keeps its standard output"
+    assert result.stderr == "e", "the result keeps its standard error"
+    assert result.exit_code == 3, "the result keeps its exit code"

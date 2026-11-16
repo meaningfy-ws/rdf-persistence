@@ -8,8 +8,8 @@ import pytest
 _SPEC = importlib.util.spec_from_file_location(
     "check_docs", Path(__file__).resolve().parents[2] / "docs/tools/check_docs.py"
 )
-assert _SPEC
-assert _SPEC.loader
+assert _SPEC, "the check script was found"
+assert _SPEC.loader, "the check script has a loader"
 check_docs = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(check_docs)
 
@@ -44,7 +44,9 @@ def test_code_files_scans_the_package_and_the_tests(tmp_path, monkeypatch):
 
     found = {f.relative_to(tmp_path).as_posix() for f in check_docs.code_files()}
 
-    assert found == {"rdf_persistence/a.py", "tests/b.yaml"}
+    assert found == {"rdf_persistence/a.py", "tests/b.yaml"}, (
+        "both the package and the test files are found"
+    )
 
 
 def _testkit_with_page(tmp_path, monkeypatch, page_text):
@@ -76,7 +78,7 @@ def test_testkit_names_must_be_exported_or_a_submodule(tmp_path, monkeypatch, te
     errors = check_docs.check_testkit_names()
 
     assert len(errors) == expected, errors
-    assert all("some_helper" in e for e in errors)
+    assert all("some_helper" in e for e in errors), "each error names the helper"
 
 
 def test_a_testkit_without_all_is_reported_as_such_not_as_every_name_unexported(
@@ -88,8 +90,8 @@ def test_a_testkit_without_all_is_reported_as_such_not_as_every_name_unexported(
     errors = check_docs.check_testkit_names()
 
     assert len(errors) == 1, errors
-    assert "__all__" in errors[0]
-    assert "not exported" not in errors[0]
+    assert "__all__" in errors[0], "the error says there is no __all__"
+    assert "not exported" not in errors[0], "the error does not say names are unexported"
 
 
 def _repo_with_pin(tmp_path, monkeypatch, pinned: str, served: list[str]):
@@ -105,21 +107,23 @@ def _repo_with_pin(tmp_path, monkeypatch, pinned: str, served: list[str]):
 def test_playbooks_serving_the_pinned_mermaid_pass(tmp_path, monkeypatch):
     _repo_with_pin(tmp_path, monkeypatch, "12.3.0", ["12.3.0", "12.3.0"])
 
-    assert check_docs.check_mermaid_pin() == []
+    assert check_docs.check_mermaid_pin() == [], "pinned playbooks pass"
 
 
 @pytest.mark.parametrize("other", ["10", "12.3.1", "12"])
 def test_a_playbook_serving_another_mermaid_fails(tmp_path, monkeypatch, other):
     _repo_with_pin(tmp_path, monkeypatch, "12.3.0", ["12.3.0", other])
 
-    assert len(check_docs.check_mermaid_pin()) == 1
+    assert len(check_docs.check_mermaid_pin()) == 1, "exactly one playbook is reported"
 
 
 def test_a_makefile_without_a_mermaid_pin_fails(tmp_path, monkeypatch):
     _repo_with_pin(tmp_path, monkeypatch, "12.3.0", ["12.3.0"])
     (tmp_path / "Makefile").write_text("all:\n")
 
-    assert check_docs.check_mermaid_pin() == ["Makefile: no MERMAID_VERSION"]
+    assert check_docs.check_mermaid_pin() == ["Makefile: no MERMAID_VERSION"], (
+        "a Makefile with no pin is reported"
+    )
 
 
 def test_mermaid_markdown_holds_every_block_of_every_page(tmp_path, monkeypatch):
@@ -133,6 +137,6 @@ def test_mermaid_markdown_holds_every_block_of_every_page(tmp_path, monkeypatch)
 
     markdown = check_docs.mermaid_markdown()
 
-    assert markdown.count("```mermaid\n") == 2
-    assert "flowchart LR\n  X --> Y\n```" in markdown
-    assert "sequenceDiagram\n  A->>B: hi\n```" in markdown
+    assert markdown.count("```mermaid\n") == 2, "both mermaid blocks are in the markdown"
+    assert "flowchart LR\n  X --> Y\n```" in markdown, "the flowchart block is in the markdown"
+    assert "sequenceDiagram\n  A->>B: hi\n```" in markdown, "the sequence block is in the markdown"

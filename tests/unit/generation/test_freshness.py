@@ -282,7 +282,7 @@ def test_fix_hint_dedupes_commands_in_entry_order() -> None:
     assert (
         manifest_module.fix_hint(targets)
         == "run `make b` or `rp-generate` or `make a` to regenerate, then commit the result"
-    )
+    ), "the hint lists each command once in entry order"
 
 
 @pytest.mark.slow

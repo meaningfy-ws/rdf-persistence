@@ -93,7 +93,7 @@ async def test_it01_replace_add_and_remove_commit_together(store, database, sess
     async with session.transaction() as t:
         a2 = await t.replace_graph(A, title(A, "second"), seeded[A])
         c1 = await t.add_graph(C, title(C, "new"))
-        assert await t.remove(B, seeded[B]) is None
+        assert await t.remove(B, seeded[B]) is None, "the removal returns nothing"
     assert (await session.get_graph(A))[2] == a2, "A holds the replace's token"
     assert (await session.get_graph(C))[2] == c1, "C holds the add's token"
     assert await stored_title(session, A) == "second", "A was replaced"
@@ -113,11 +113,13 @@ async def test_it02_a_replaced_root_changed_meanwhile_refuses_everything(
             await t.add_graph(C, title(C, "new"))
             await t.remove(B, seeded[B])
             await other.replace_graph(A, title(A, "theirs"), seeded[A])
-    assert refused.value.iris == (A,)
-    assert await stored_title(session, A) == "theirs"
-    assert not await stored(session, C)
-    assert await stored(session, B)
-    assert not await a_marker_is_left(store, database)
+    assert refused.value.iris == (A,), "the conflict names the root that changed"
+    assert await stored_title(session, A) == "theirs", (
+        "the root changed meanwhile keeps the other party's title"
+    )
+    assert not await stored(session, C), "the unrelated new root was not stored"
+    assert await stored(session, B), "the root already stored stays"
+    assert not await a_marker_is_left(store, database), "no marker is left behind"
 
 
 async def test_it04_of_twenty_concurrent_transactions_exactly_one_commits(
@@ -137,11 +139,11 @@ async def test_it04_of_twenty_concurrent_transactions_exactly_one_commits(
 
     outcomes = await asyncio.gather(*(attempt(own) for own in new_books))
     assert sum(outcome is None for outcome in outcomes) == 1, "exactly one transaction wins"
-    assert all(isinstance(o, Conflict) for o in outcomes if o is not None)
+    assert all(isinstance(o, Conflict) for o in outcomes if o is not None), "every loser conflicted"
     present = [own for own in new_books if await stored(session, own)]
     assert len(present) == 1, "exactly one new book is stored"
     assert await stored_title(session, A) == present[0], "and it is the winner's replacement"
-    assert not await a_marker_is_left(store, database)
+    assert not await a_marker_is_left(store, database), "no marker is left behind"
 
 
 async def test_it03_a_unit_of_work_that_changes_a_and_adds_b_refuses_both_when_b_changed_meanwhile(

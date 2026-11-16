@@ -71,7 +71,9 @@ def test_a_run_writes_the_classes_to_the_package_folder(tmp_path: Path) -> None:
 
 def test_a_run_leaves_no_staging_folder_behind(tmp_path: Path) -> None:
     main(["--project", str(project(tmp_path))])
-    assert sorted(p.name for p in tmp_path.iterdir()) == PROJECT_FILES
+    assert sorted(p.name for p in tmp_path.iterdir()) == PROJECT_FILES, (
+        "only the project files remain after a run"
+    )
 
 
 def test_a_missing_extra_exits_2_naming_the_extra(
@@ -138,11 +140,11 @@ def test_a_lint_problem_in_an_imported_module_fails_the_run(tmp_path: Path, caps
 
 def test_a_failed_lint_leaves_the_previous_output_byte_identical(tmp_path: Path) -> None:
     pyproject = project(tmp_path)
-    assert main(["--project", str(pyproject)]) == 0
+    assert main(["--project", str(pyproject)]) == 0, "the first run succeeds"
     before = tree(tmp_path)
     (tmp_path / "m.yaml").write_text(SCHEMA.replace("Thing:", "thing_one:"), encoding="utf-8")
     broken = tree(tmp_path)
-    assert main(["--project", str(pyproject)]) == 1
+    assert main(["--project", str(pyproject)]) == 1, "the run with a failed lint fails"
     assert tree(tmp_path) == broken, "a failed run changed a file"
     assert broken[OUTPUT] == before[OUTPUT], "the previous output was touched"
 
@@ -179,7 +181,9 @@ def test_a_successful_pipeline_moves_every_staged_file(tmp_path: Path) -> None:
     pyproject = project(tmp_path)
     ok = Step("ok", lambda run: None)
     targets = read_targets(pyproject, build_parser().parse_args([]))
-    assert generate(targets, tmp_path, write_then(ok), check=False) == []
+    assert generate(targets, tmp_path, write_then(ok), check=False) == [], (
+        "a successful pipeline reports no problems"
+    )
     assert (tmp_path / "app/generated/new.py").read_text() == "new", (
         "the staged file did not arrive"
     )
@@ -191,7 +195,9 @@ def test_check_writes_nothing(tmp_path: Path) -> None:
     before = tree(tmp_path)
     assert main(["--project", str(pyproject), "--check"]) == 0, "a fresh project failed --check"
     assert tree(tmp_path) == before, "--check wrote files"
-    assert sorted(p.name for p in tmp_path.iterdir()) == PROJECT_FILES
+    assert sorted(p.name for p in tmp_path.iterdir()) == PROJECT_FILES, (
+        "a check leaves only the project files"
+    )
 
 
 def test_check_fails_on_a_lint_problem(tmp_path: Path) -> None:

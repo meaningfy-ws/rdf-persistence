@@ -81,4 +81,6 @@ def test_the_testkit_and_the_round_trip_do_not_import_hypothesis() -> None:
         "import sys, rdf_persistence.testkit, rdf_persistence.testkit.roundtrip\n"
         "sys.exit('hypothesis' in sys.modules)"
     )
-    assert subprocess.run([sys.executable, "-I", "-c", code], check=False).returncode == 0
+    assert subprocess.run([sys.executable, "-I", "-c", code], check=False).returncode == 0, (
+        "the testkit and the round trip import without hypothesis"
+    )

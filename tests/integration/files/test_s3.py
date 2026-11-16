@@ -29,8 +29,10 @@ async def test_a_multi_megabyte_blob_comes_back_with_the_same_digest(files):
     async def round_trip(files, bucket):
         await files.put(bucket, "big", payload)
         back = await files.get(bucket, "big")
-        assert len(back) == len(payload)
-        assert hashlib.sha256(back).digest() == hashlib.sha256(payload).digest()
+        assert len(back) == len(payload), "the body comes back at its full length"
+        assert hashlib.sha256(back).digest() == hashlib.sha256(payload).digest(), (
+            "the body comes back byte for byte"
+        )
 
     await run_case(round_trip, files)
 

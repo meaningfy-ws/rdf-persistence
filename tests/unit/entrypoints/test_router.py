@@ -532,7 +532,10 @@ async def test_a_shelf_with_a_member_of_the_wrong_class_is_a_422_and_stores_noth
     response = await scene.http.post(
         f"{scene.tenant}/shelves", json=body, headers=scene.headers("ada")
     )
-    assert (response.status_code, problem_of(response).type) == (422, f"{PROBLEMS}invalid-body")
+    assert response.status_code == 422, "a wrong-class member is unprocessable"
+    assert problem_of(response).type == f"{PROBLEMS}invalid-body", (
+        "the problem is the invalid-body kind"
+    )
     assert scene.book_iri in (problem_of(response).detail or ""), "the member is named"
     listed = await scene.http.get(f"{scene.tenant}/shelves", headers=scene.headers("ada"))
     assert listed.json()["total"] == 0, "nothing was stored"

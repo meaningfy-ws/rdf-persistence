@@ -47,7 +47,9 @@ async def test_a_page_holds_the_third_and_fourth_books_by_iri_and_the_total(toy,
 async def test_sort_filters_and_paging_work_against_fuseki(toy, client, query, expected) -> None:
     path = await library_of(toy, client, "ada", LABELS)
     page = (await client.get(f"{path}?{query}", headers=toy.bearer("ada"))).json()
-    assert [book["label"] for book in page["items"]] == expected
+    assert [book["label"] for book in page["items"]] == expected, (
+        "the page holds the expected labels in order"
+    )
 
 
 @pytest.mark.parametrize("value", INJECTIONS, ids=range(len(INJECTIONS)))
@@ -60,7 +62,7 @@ async def test_an_injection_through_a_filter_matches_nothing_and_changes_nothing
     response = await client.get(mine, params={"label": value}, headers=toy.bearer("ada"))
     assert response.status_code == 200, response.text
     assert response.json()["items"] == [], "no book matches, and no foreign data comes back"
-    assert response.json()["total"] == 0
+    assert response.json()["total"] == 0, "an injected filter matches nothing"
     after = await client.get(mine, headers=toy.bearer("ada"))
     other = await client.get(theirs, headers=toy.bearer("bob"))
     assert after.json()["total"] == 5, "every book is still there"
@@ -78,4 +80,6 @@ async def test_an_injection_through_a_reference_filter_is_a_bad_query(toy, clien
         headers=toy.bearer("ada"),
     )
     assert_problem(response, 400, "bad-query")
-    assert (await client.get(mine, headers=toy.bearer("ada"))).json()["total"] == 1
+    assert (await client.get(mine, headers=toy.bearer("ada"))).json()["total"] == 1, (
+        "the injected reference filter changed nothing"
+    )

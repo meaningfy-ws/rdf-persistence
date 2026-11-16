@@ -34,8 +34,12 @@ def test_an_error_caused_by_the_callers_input_is_also_a_value_error(error):
 
 
 def test_a_conflict_names_the_roots_that_conflict_and_defaults_to_none():
-    assert exceptions.Conflict("lost").iris == ()
-    assert str(exceptions.Conflict("lost")) == "lost"
+    assert exceptions.Conflict("lost").iris == (), (
+        "a conflict with no roots named carries an empty tuple of IRIs"
+    )
+    assert str(exceptions.Conflict("lost")) == "lost", (
+        "a conflict's text is the message it was raised with"
+    )
     named = exceptions.Conflict("lost", iris=("urn:a", "urn:b"))
-    assert named.iris == ("urn:a", "urn:b")
-    assert str(named) == "lost"
+    assert named.iris == ("urn:a", "urn:b"), "a conflict carries the roots it was given"
+    assert str(named) == "lost", "naming roots does not change the conflict's text"

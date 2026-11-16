@@ -66,7 +66,9 @@ async def test_a_scan_keeps_its_reference_to_a_book_as_an_iri(session):
     work = unit(session)
     work.add(scan)
     await work.commit()
-    assert (await unit(session).get(Scan, scan.id)).scan_of == book_iri(1)
+    assert (await unit(session).get(Scan, scan.id)).scan_of == book_iri(1), (
+        "a scan keeps its reference to the book as an IRI"
+    )
 
 
 async def test_grants_and_prohibitions_round_trip_through_skolem_iris(session):
@@ -78,14 +80,17 @@ async def test_grants_and_prohibitions_round_trip_through_skolem_iris(session):
     work.add(record)
     await work.commit()
     back = await unit(session).get(LibraryAccess, record.id)
-    assert (back.grants, back.prohibitions) == (record.grants, record.prohibitions)
+    assert back.grants == record.grants, "the grants survive the round trip"
+    assert back.prohibitions == record.prohibitions, "the prohibitions survive the round trip"
 
 
 async def test_the_tenant_root_lives_in_the_meta_graph(session):
     work = unit(session)
     work.add(Library(id=TENANT, label="City library", description="d", city="Ghent"))
     await work.commit()
-    assert (await unit(session).get(Library, TENANT)).city == "Ghent"
+    assert (await unit(session).get(Library, TENANT)).city == "Ghent", (
+        "the tenant root is read back from the meta graph"
+    )
 
 
 async def test_the_part_iris_survive_an_edit_and_a_second_editor_conflicts(session):
@@ -103,7 +108,9 @@ async def test_the_part_iris_survive_an_edit_and_a_second_editor_conflicts(sessi
     two.add(second)
     with pytest.raises(Conflict):
         await two.commit()
-    assert sorted(c.id for c in (await unit(session).get(Book, iri)).chapters) == before
+    assert sorted(c.id for c in (await unit(session).get(Book, iri)).chapters) == before, (
+        "the parts keep their IRIs after an edit"
+    )
 
 
 async def test_editing_the_root_keeps_the_loaded_graphs_and_their_entries(session, store, database):

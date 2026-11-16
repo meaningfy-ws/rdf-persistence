@@ -127,14 +127,16 @@ async def test_it01_a_tenant_restored_from_its_dump_answers_like_the_original(wo
     book_new = moved(world, world.book, new)
     original = await read_book(world, world.tenant, world.book, CREATOR)
     copied_book = await read_book(world, new, book_new, RESTORER)
-    assert copied_book.id == book_new
+    assert copied_book.id == book_new, "the restored book has the new id"
     assert copied_book.model_dump(exclude={"id", "chapters"}) == original.model_dump(
         exclude={"id", "chapters"}
     ), "the same slot values"
     async with world.tenancy.tenant_session(new, RESTORER) as opened, world.session() as old:
         for owner, load in ((world.book, world.g), (world.tenant, world.r)):
             owner_new, load_new = moved(world, owner, new), moved(world, str(load), new)
-            assert await opened.loaded_graphs(owner_new) == [URIRef(load_new)]
+            assert await opened.loaded_graphs(owner_new) == [URIRef(load_new)], (
+                "the restored tenant lists the loaded graph"
+            )
             copied = await opened.loaded_graph(owner_new, load_new)
             assert_isomorphic(copied, await old.loaded_graph(owner, str(load)))
     record, _ = await world.tenancy.get(new)

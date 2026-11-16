@@ -67,8 +67,8 @@ async def test_an_entry_older_than_the_retention_is_trimmed_on_the_next_publish(
         finally:
             await client.config_set(NODE_MAX_ENTRIES, previous)
     await pair.a.close()
-    assert first_id not in ids
-    assert len(ids) == 1
+    assert first_id not in ids, "the old entry was trimmed"
+    assert len(ids) == 1, "one entry remains after the trim"
 
 
 async def test_a_trim_that_fails_does_not_fail_the_publish(redis, monkeypatch, caplog):  # D-17
@@ -83,6 +83,8 @@ async def test_a_trim_that_fails_does_not_fail_the_publish(redis, monkeypatch, c
     with caplog.at_level(logging.WARNING, logger="rdf_persistence.adapters.redis_events"):
         await pair.a.publish(ENVELOPE, BODY)  # the entry is sent; only the trim fails
     async with Redis.from_url(redis) as reader:
-        assert len(await reader.xrange(pair.stream)) == 1
+        assert len(await reader.xrange(pair.stream)) == 1, "the publish still wrote its entry"
     await pair.a.close()
-    assert [r.levelno for r in caplog.records] == [logging.WARNING]
+    assert [r.levelno for r in caplog.records] == [logging.WARNING], (
+        "a failed trim is logged once as a warning"
+    )

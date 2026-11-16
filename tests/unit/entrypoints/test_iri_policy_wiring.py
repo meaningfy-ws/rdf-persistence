@@ -28,7 +28,7 @@ async def test_a_wrong_form_tenant_id_is_a_404_and_the_store_is_untouched_by_def
 ) -> None:
     asked = len(service.store.sent("query"))
     response = await client.get("/libraries/P4X8K2M", headers=service.bearer("ada"))
-    assert response.status_code == 404
+    assert response.status_code == 404, "a tenant id of the wrong form is not found"
     assert len(service.store.sent("query")) == asked, "no query went to the store"
 
 
@@ -40,7 +40,7 @@ async def test_a_wrong_form_aggregate_id_is_a_404_and_the_store_is_untouched_by_
     response = await client.get(
         f"{tenant.headers['location']}/books/not-a-uuid", headers=service.bearer("ada")
     )
-    assert response.status_code == 404
+    assert response.status_code == 404, "an aggregate id of the wrong form is not found"
     assert len(service.store.sent("query")) == asked, "no query went to the store"
 
 
@@ -53,7 +53,9 @@ async def test_a_wrong_form_tenant_id_is_a_404_under_the_consumers_policy(
     async with consumer.client() as http:
         asked = len(consumer.store.sent("query"))
         response = await http.get(f"/libraries/{tenant_id}", headers=consumer.bearer("ada"))
-    assert response.status_code == 404
+    assert response.status_code == 404, (
+        "a tenant id of the wrong form is not found under the consumer's policy"
+    )
     assert len(consumer.store.sent("query")) == asked, "no query went to the store"
 
 
@@ -64,14 +66,18 @@ async def test_a_wrong_form_aggregate_id_is_a_404_under_the_consumers_policy(con
         response = await http.get(
             f"{made.headers['location']}/books/NOT-AN-ID", headers=consumer.bearer("ada")
         )
-    assert response.status_code == 404
+    assert response.status_code == 404, (
+        "an aggregate id of the wrong form is not found under the consumer's policy"
+    )
     assert len(consumer.store.sent("query")) == asked, "no query went to the store"
 
 
 async def test_the_kit_hands_one_policy_to_every_service_it_wires(consumer) -> None:
     kit = consumer.kit
-    assert kit.iris.settings.iri_policy == CONSUMER_POLICY
-    assert str(kit.tenant_iri("p4x8k2m")) == f"{CONSUMER_BASE}project/p4x8k2m"
+    assert kit.iris.settings.iri_policy == CONSUMER_POLICY, "the kit holds the consumer's policy"
+    assert str(kit.tenant_iri("p4x8k2m")) == f"{CONSUMER_BASE}project/p4x8k2m", (
+        "the kit mints tenant IRIs from the consumer's policy"
+    )
     assert kit.rules._iris is kit.iris, (
         "the rules the consumer built are rebound to the kit's policy"
     )
@@ -98,10 +104,10 @@ def test_with_iris_keeps_the_permits_and_changes_the_policy() -> None:
     rules = AccessRules(load_role_definitions(ROLES))
     other = Iris(DEFAULT_IRIS.settings.model_copy(update={"base": "https://other.invalid/"}))
     rebound = rules.with_iris(other)
-    assert rebound is not rules
+    assert rebound is not rules, "rebinding gives a new rules object"
     assert rebound._iris is other, "the original is unchanged"
     assert rules._iris is DEFAULT_IRIS, "the original is unchanged"
-    assert rebound._permits == rules._permits
+    assert rebound._permits == rules._permits, "rebinding keeps the permits"
 
 
 async def test_start_up_refuses_a_changed_policy_over_the_same_store() -> None:
@@ -120,7 +126,7 @@ async def test_start_up_names_a_changed_access_template_before_the_sweep_reads_t
     first = ToyService()
     async with first.app.router.lifespan_context(first.app), first.client() as http:
         made = await http.post("/libraries", json=TENANT_BODY, headers=first.bearer("ada"))
-    assert made.status_code == 201
+    assert made.status_code == 201, "the write that precedes the start-up check succeeded"
     second = ToyService(
         first.store, first.files, iri_policy=IriPolicy(access_template="{tenant}/acc")
     )

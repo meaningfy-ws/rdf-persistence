@@ -54,8 +54,8 @@ async def test_async_wait_returns_the_value_of_the_third_call_without_real_sleep
     async def probe():
         return next(answers)
 
-    assert await _wait_async(probe, clock) == ["a.csv"]
-    assert len(clock.sleeps) == 2
+    assert await _wait_async(probe, clock) == ["a.csv"], "the third call's value is returned"
+    assert len(clock.sleeps) == 2, "two sleeps happened between the three calls"
 
 
 async def test_a_fast_poll_returns_before_one_default_poll_interval_has_passed() -> None:
@@ -86,7 +86,7 @@ def test_a_fast_sync_poll_sleeps_the_given_interval_between_polls() -> None:
             monotonic=clock.monotonic,
         )
         == "node-1"
-    )
+    ), "a fast poll returns the value found after sleeping"
     assert clock.sleeps == [0.01, 0.01], f"each sleep is the given interval: {clock.sleeps}"
 
 
@@ -119,7 +119,9 @@ async def test_async_wait_retries_the_listed_errors_and_propagates_others() -> N
             raise ConnectionError("not yet")
         return True
 
-    assert await _wait_async(flaky, AsyncFakeClock(), retry_on=(OSError,)) is True
+    assert await _wait_async(flaky, AsyncFakeClock(), retry_on=(OSError,)) is True, (
+        "a listed error is retried until the probe succeeds"
+    )
 
     bug_calls = []
 
@@ -130,8 +132,8 @@ async def test_async_wait_retries_the_listed_errors_and_propagates_others() -> N
     clock = AsyncFakeClock()
     with pytest.raises(ValueError):
         await _wait_async(bug, clock, retry_on=(OSError,))
-    assert bug_calls == [1]
-    assert clock.sleeps == []
+    assert bug_calls == [1], "an error not listed is raised on the first call"
+    assert clock.sleeps == [], "an error not listed causes no sleep"
 
 
 def _wait(probe, clock: FakeClock, **kwargs):
@@ -143,8 +145,10 @@ def _wait(probe, clock: FakeClock, **kwargs):
 def test_wait_retries_a_probe_that_fails_twice_then_returns_its_value() -> None:
     clock = FakeClock()
     answers = iter([False, "", "node-1"])
-    assert _wait(lambda: next(answers), clock) == "node-1"
-    assert len(clock.sleeps) == 2
+    assert _wait(lambda: next(answers), clock) == "node-1", (
+        "the value of the third call is returned"
+    )
+    assert len(clock.sleeps) == 2, "two sleeps happened between the three calls"
 
 
 def test_wait_retries_the_listed_errors_only() -> None:
@@ -157,7 +161,9 @@ def test_wait_retries_the_listed_errors_only() -> None:
             raise ConnectionError("not yet")
         return True
 
-    assert _wait(probe, clock, retry_on=(OSError,)) is True
+    assert _wait(probe, clock, retry_on=(OSError,)) is True, (
+        "a listed error is retried until the probe succeeds"
+    )
     with pytest.raises(ValueError):
         _wait(lambda: (_ for _ in ()).throw(ValueError("bug")), clock, retry_on=(OSError,))
 
@@ -235,8 +241,8 @@ def test_wait_returns_the_answer_of_a_slow_call_once_it_finishes() -> None:
         sleep=sleep_then_release,
         monotonic=clock.monotonic,
     )
-    assert result == ["a.csv"]
-    assert calls == [1]
+    assert result == ["a.csv"], "the answer of a slow call is returned once it finishes"
+    assert calls == [1], "the slow call was made once"
 
 
 def test_wait_calls_again_when_a_slow_call_finishes_with_nothing() -> None:
@@ -265,8 +271,8 @@ def test_wait_calls_again_when_a_slow_call_finishes_with_nothing() -> None:
         sleep=sleep_then_release,
         monotonic=clock.monotonic,
     )
-    assert result == ["a.csv"]
-    assert calls == [1, 1]
+    assert result == ["a.csv"], "a call that finishes with nothing is called again"
+    assert calls == [1, 1], "the probe was called twice"
 
 
 @pytest.mark.parametrize("probe_timeout", [0, -1])
@@ -293,7 +299,7 @@ def test_wait_propagates_a_non_retry_error_from_the_bounded_call() -> None:
 
     with pytest.raises(ValueError, match="bug"):
         _bounded_wait(probe, FakeClock(), probe_timeout=1.0, retry_on=(OSError,))
-    assert calls == [1]
+    assert calls == [1], "an error not listed is raised on the first call"
 
 
 def test_wait_retries_a_retry_on_error_from_the_bounded_call() -> None:
@@ -305,7 +311,9 @@ def test_wait_retries_a_retry_on_error_from_the_bounded_call() -> None:
             raise ConnectionError("not yet")
         return True
 
-    assert _bounded_wait(probe, FakeClock(), probe_timeout=1.0, retry_on=(OSError,)) is True
+    assert _bounded_wait(probe, FakeClock(), probe_timeout=1.0, retry_on=(OSError,)) is True, (
+        "a listed error from the bounded call is retried"
+    )
 
 
 async def test_async_wait_times_out_naming_what_when_a_probe_call_never_returns() -> None:
@@ -327,7 +335,7 @@ async def test_async_wait_goes_on_after_a_slow_call_and_returns_the_next_answer(
 
     assert await _bounded_wait_async(probe, AsyncFakeClock(), probe_timeout=PROBE_TIMEOUT) == [
         "a.csv"
-    ]
+    ], "after a slow call the next answer is returned"
 
 
 async def test_async_wait_propagates_a_non_retry_error_from_the_bounded_call() -> None:
@@ -339,7 +347,7 @@ async def test_async_wait_propagates_a_non_retry_error_from_the_bounded_call() -
 
     with pytest.raises(ValueError, match="bug"):
         await _bounded_wait_async(probe, AsyncFakeClock(), probe_timeout=1.0, retry_on=(OSError,))
-    assert calls == [1]
+    assert calls == [1], "an error not listed is raised on the first call"
 
 
 async def test_async_wait_treats_a_timeout_raised_by_the_probe_like_any_retry_error() -> None:
@@ -356,7 +364,7 @@ async def test_async_wait_treats_a_timeout_raised_by_the_probe_like_any_retry_er
             probe, AsyncFakeClock(), probe_timeout=1.0, retry_on=(TimeoutError,)
         )
         is True
-    )
+    ), "a timeout raised by the probe is retried like any listed error"
 
     async def raises_own_timeout():
         raise TimeoutError("probe's own")
@@ -371,21 +379,23 @@ OUTPUT = "==== KEY INFORMATION ====\nKey name: rp\nKey ID: GK123\nSecret key: s3
 
 
 def test_value_after_reads_the_labelled_line() -> None:
-    assert value_after("key id", OUTPUT) == "GK123"
-    assert value_after("secret key", OUTPUT) == "s3cr3t"
+    assert value_after("key id", OUTPUT) == "GK123", "the key id is read from its labelled line"
+    assert value_after("secret key", OUTPUT) == "s3cr3t", (
+        "the secret key is read from its labelled line"
+    )
 
 
 def test_value_after_names_the_missing_label_but_not_the_output() -> None:
     with pytest.raises(ValueError) as error:
         value_after("bucket", OUTPUT)
-    assert "bucket" in str(error.value)
-    assert "s3cr3t" not in str(error.value)
+    assert "bucket" in str(error.value), "a missing label is named in the error"
+    assert "s3cr3t" not in str(error.value), "the output's secret is not in the error"
 
 
 def test_redact_secrets_drops_the_secret_line() -> None:
     redacted = redact_secrets(OUTPUT)
-    assert "s3cr3t" not in redacted
-    assert "GK123" in redacted
+    assert "s3cr3t" not in redacted, "the secret line is dropped"
+    assert "GK123" in redacted, "the other lines are kept"
 
 
 def test_environment_sets_variables_and_restores_every_one(
@@ -394,8 +404,8 @@ def test_environment_sets_variables_and_restores_every_one(
     monkeypatch.setenv("RP_TEST_KEPT", "before")
     monkeypatch.delenv("RP_TEST_NEW", raising=False)
     with pytest.raises(RuntimeError), environment(RP_TEST_KEPT="during", RP_TEST_NEW="x"):
-        assert os.environ["RP_TEST_KEPT"] == "during"
-        assert os.environ["RP_TEST_NEW"] == "x"
+        assert os.environ["RP_TEST_KEPT"] == "during", "the variable is set during the block"
+        assert os.environ["RP_TEST_NEW"] == "x", "a new variable is set during the block"
         raise RuntimeError("boom")
     assert os.environ["RP_TEST_KEPT"] == "before", "a changed variable was not restored"
     assert "RP_TEST_NEW" not in os.environ, "a new variable was not removed"
@@ -416,8 +426,8 @@ async def test_async_wait_with_zero_timeout_never_calls_the_probe_and_times_out(
         await wait_until_async(
             probe, "the file listing", timeout=0, sleep=clock.asleep, monotonic=clock.monotonic
         )
-    assert calls == []
-    assert clock.sleeps == []
+    assert calls == [], "the probe is never called when there is no time"
+    assert clock.sleeps == [], "no sleep happens when there is no time"
 
 
 # Class: falsy result; the code tests truthiness once (`if result:`), so one falsy value stands for 0, "", [], False, None.
@@ -432,7 +442,9 @@ async def test_async_wait_keeps_polling_on_falsy_results_until_timeout(falsy) ->
     clock = AsyncFakeClock()
     with pytest.raises(TimeoutError):
         await _wait_async(probe, clock)
-    assert len(calls) == len(clock.sleeps) == 10  # truthy is the contract, not "not None"
+    assert len(calls) == len(clock.sleeps) == 10, (
+        "falsy results are polled until the timeout, one sleep per call"
+    )  # truthy is the contract, not "not None"
 
 
 async def test_async_wait_with_empty_retry_on_lets_oserror_propagate() -> None:
@@ -455,7 +467,9 @@ async def test_async_wait_retries_a_subclass_of_a_listed_error() -> None:
             raise RefusedError("not yet")
         return "up"
 
-    assert await _wait_async(probe, AsyncFakeClock(), retry_on=(ConnectionError,)) == "up"
+    assert await _wait_async(probe, AsyncFakeClock(), retry_on=(ConnectionError,)) == "up", (
+        "a subclass of a listed error is retried"
+    )
 
 
 async def test_async_wait_does_not_swallow_cancellation_even_when_retry_on_is_broad() -> None:
@@ -467,7 +481,7 @@ async def test_async_wait_does_not_swallow_cancellation_even_when_retry_on_is_br
     clock = AsyncFakeClock()
     with pytest.raises(asyncio.CancelledError):
         await _wait_async(probe, clock, retry_on=(Exception,))
-    assert clock.sleeps == []
+    assert clock.sleeps == [], "cancellation propagates without any sleep"
 
 
 async def test_async_wait_cancelled_during_sleep_propagates() -> None:
@@ -521,7 +535,9 @@ async def test_async_and_sync_timeout_messages_are_identical(timeout) -> None:
         wait_until(
             probe, "the store", timeout=timeout, sleep=sclock.sleep, monotonic=sclock.monotonic
         )
-    assert str(async_error.value) == str(sync_error.value)
+    assert str(async_error.value) == str(sync_error.value), (
+        "the async and sync timeout messages are the same"
+    )
 
 
 async def test_async_timeout_message_renders_a_fractional_timeout_plainly() -> None:

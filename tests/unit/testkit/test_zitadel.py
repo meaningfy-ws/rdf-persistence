@@ -76,7 +76,8 @@ def test_the_assertion_lives_for_a_minute_from_the_given_time(user, key_pair):
         audience=ISSUER,
         options={"verify_exp": False, "verify_iat": False},
     )
-    assert (claims["iat"], claims["exp"]) == (int(NOW), int(NOW) + 60)
+    assert claims["iat"] == int(NOW), "the assertion is issued at the given time"
+    assert claims["exp"] == int(NOW) + 60, "the assertion expires a minute later"
 
 
 def test_the_scopes_ask_for_the_project_audience_and_the_roles(project):
@@ -84,7 +85,7 @@ def test_the_scopes_ask_for_the_project_audience_and_the_roles(project):
         "openid",
         "urn:zitadel:iam:org:project:id:p1:aud",
         "urn:zitadel:iam:org:projects:roles",
-    ]
+    ], "the scopes ask for openid, the project audience and the roles"
 
 
 def test_the_token_request_is_a_jwt_profile_grant_with_the_scopes(project, user):
@@ -95,10 +96,10 @@ def test_the_token_request_is_a_jwt_profile_grant_with_the_scopes(project, user)
         return httpx.Response(200, json={"access_token": "the-token"})
 
     token = access_token(project, user, transport=httpx.MockTransport(handler))
-    assert token == "the-token"
+    assert token == "the-token", "the token is the one the server returned"
     form = dict(httpx.QueryParams(sent[0].content.decode()))
-    assert sent[0].url.path == "/oauth/v2/token"
-    assert form["grant_type"] == JWT_BEARER_GRANT
+    assert sent[0].url.path == "/oauth/v2/token", "the request goes to the token endpoint"
+    assert form["grant_type"] == JWT_BEARER_GRANT, "the request is a JWT-bearer grant"
     assert form["scope"] == token_scopes("p1"), "the project audience and roles"
     assert "assertion" in form, "the signed assertion"
 
@@ -107,7 +108,7 @@ def test_a_refused_token_request_raises_without_the_users_key(project, user):
     refusal = httpx.MockTransport(lambda request: httpx.Response(400, json={"error": "invalid"}))
     with pytest.raises(TokenRefusedError) as caught:
         access_token(project, user, transport=refusal)
-    assert caught.value.status_code == 400
+    assert caught.value.status_code == 400, "the refusal carries the server's status"
     assert "BEGIN" not in str(caught.value), "the key stayed out of the message"
 
 
@@ -154,25 +155,34 @@ def serving(monkeypatch: pytest.MonkeyPatch):
 def test_a_machine_user_is_created_with_a_key_and_its_roles(serving, project):
     zitadel = serving(Zitadel(USER_ROUTES))
     made = create_machine_user(project, "bot-9", roles=[ADMIN_ROLE])
-    assert (made.name, made.user_id, made.key_id, made.private_key) == ("bot-9", "u9", "k9", "PEM")
+    assert made.name == "bot-9", "the machine user keeps its name"
+    assert made.user_id == "u9", "the machine user carries the id the server gave"
+    assert made.key_id == "k9", "the machine user carries its key id"
+    assert made.private_key == "PEM", "the machine user carries its private key"
     assert zitadel.body("/management/v1/users/machine") == {
         "userName": "bot-9",
         "name": "bot-9",
         "accessTokenType": "ACCESS_TOKEN_TYPE_JWT",
-    }
-    assert zitadel.body("/management/v1/users/u9/keys") == {"type": "KEY_TYPE_JSON"}
+    }, "the machine user is created with its name and a JWT access token"
+    assert zitadel.body("/management/v1/users/u9/keys") == {"type": "KEY_TYPE_JSON"}, (
+        "the key is requested as a JSON key"
+    )
     assert zitadel.body("/management/v1/users/u9/grants") == {
         "projectId": "p1",
         "roleKeys": [ADMIN_ROLE],
-    }
+    }, "the admin role is granted on the project"
     assert all(r.headers["x-zitadel-orgid"] == "o1" for r in zitadel.sent), "in the organisation"
-    assert all(r.headers["authorization"] == "Bearer pat" for r in zitadel.sent)
+    assert all(r.headers["authorization"] == "Bearer pat" for r in zitadel.sent), (
+        "every request carries the bearer token"
+    )
 
 
 def test_a_machine_user_without_roles_is_not_granted_any(serving, project):
     zitadel = serving(Zitadel(USER_ROUTES))
     create_machine_user(project, "bot-9")
-    assert "/management/v1/users/u9/grants" not in [r.url.path for r in zitadel.sent]
+    assert "/management/v1/users/u9/grants" not in [r.url.path for r in zitadel.sent], (
+        "no grant is requested when there are no roles"
+    )
 
 
 @pytest.mark.parametrize(
@@ -213,13 +223,18 @@ def test_the_project_is_provisioned_with_the_admin_role_and_a_user_per_principal
     )
     server = ZitadelServer(url=ISSUER, admin_pat="pat")
     provisioned = provision_project(server, [ADMIN_ROLE, "reader"])
-    assert (provisioned.organisation_id, provisioned.project_id) == ("o1", "p1")
-    assert [u.name for u in provisioned.machine_users] == [ADMIN_ROLE, "reader"]
-    assert zitadel.body("/management/v1/projects") == {"name": "rp-test"}
+    assert provisioned.organisation_id == "o1", "the organisation is the server's"
+    assert provisioned.project_id == "p1", "the project is the server's"
+    assert [u.name for u in provisioned.machine_users] == [ADMIN_ROLE, "reader"], (
+        "a machine user is made per principal"
+    )
+    assert zitadel.body("/management/v1/projects") == {"name": "rp-test"}, (
+        "the project is created with the given name"
+    )
     assert zitadel.body("/management/v1/projects/p1/roles") == {
         "roleKey": ADMIN_ROLE,
         "displayName": ADMIN_ROLE,
-    }
+    }, "the admin role is created on the project"
     grants = [r for r in zitadel.sent if r.url.path == "/management/v1/users/u9/grants"]
     assert len(grants) == 1, "only the admin principal is granted a role"
 

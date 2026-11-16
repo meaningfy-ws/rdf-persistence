@@ -8,5 +8,5 @@ def test_zitadel_answers_an_authenticated_management_call(zitadel) -> None:
         f"{zitadel.url}/management/v1/orgs/me",
         headers={"Authorization": f"Bearer {zitadel.admin_pat}"},
     )
-    assert response.status_code == 200
-    assert response.json()["org"]["id"]
+    assert response.status_code == 200, "the management call is answered"
+    assert response.json()["org"]["id"], "the answer names an organisation"

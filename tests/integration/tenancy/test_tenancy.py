@@ -82,7 +82,9 @@ async def test_the_access_record_owns_the_grant(tenancy, store, settings):
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
     graph = await access_graph(store, settings, summary.id)
     permission = next(graph.subjects(RDF.type, ODRL.Permission))
-    assert (URIRef(DEFAULT_IRIS.access(summary.id)), RP.grant, permission) in graph
+    assert (URIRef(DEFAULT_IRIS.access(summary.id)), RP.grant, permission) in graph, (
+        "the access record holds the grant"
+    )
 
 
 ASK_CITY = "ASK { GRAPH ?g { ?s <http://schema.org/addressLocality> '%s' } }"

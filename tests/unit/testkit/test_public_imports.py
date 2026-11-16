@@ -47,9 +47,11 @@ def test_a_public_import_is_accepted(tmp_path, source):
 def test_the_waiting_helpers_are_exported_from_the_public_module():
     import rdf_persistence.testkit as testkit
 
-    assert {"wait_until", "wait_until_async"} <= set(testkit.__all__)
-    assert callable(testkit.wait_until)
-    assert callable(testkit.wait_until_async)
+    assert {"wait_until", "wait_until_async"} <= set(testkit.__all__), (
+        "both waiting helpers are in the public list"
+    )
+    assert callable(testkit.wait_until), "the sync waiting helper is callable"
+    assert callable(testkit.wait_until_async), "the async waiting helper is callable"
 
 
 @pytest.mark.parametrize("source", REFUSED)

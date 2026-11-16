@@ -63,7 +63,7 @@ def parsed_object(rendered: str) -> object:
 # Typed literals are one class (the datatype branch), so integer stands for date. "lang-region" stays:
 # it is the hyphen sub-rule of the language-tag pattern, a different class from "lang".
 def test_term_renders_each_kind(value, expected):
-    assert term(value) == expected
+    assert term(value) == expected, "each kind of term renders to its SPARQL form"
 
 
 @pytest.mark.parametrize("text", HOSTILE)
@@ -73,15 +73,19 @@ def test_a_literal_with_hostile_characters_parses_back_to_itself(text):
 
 @pytest.mark.parametrize("text", HOSTILE)
 def test_hostile_literals_with_a_language_or_datatype_parse_back(text):
-    assert parsed_object(term(Literal(text, lang="en"))) == Literal(text, lang="en")
+    assert parsed_object(term(Literal(text, lang="en"))) == Literal(text, lang="en"), (
+        "a literal with a language parses back unchanged"
+    )
     assert parsed_object(term(Literal(text, datatype=URIRef(f"{EX}dt")))) == Literal(
         text, datatype=URIRef(f"{EX}dt")
-    )
+    ), "a literal with a datatype parses back unchanged"
 
 
 @given(st.text())
 def test_any_string_literal_round_trips(text):
-    assert parsed_object(term(Literal(text))) == Literal(text)
+    assert parsed_object(term(Literal(text))) == Literal(text), (
+        "any string literal parses back unchanged"
+    )
 
 
 @pytest.mark.parametrize(
@@ -153,7 +157,9 @@ def test_an_injection_attempt_matches_nothing_and_changes_nothing():
 
 def test_a_rendered_term_is_not_substituted_again():
     out = fill("SELECT * WHERE { $a $b ?o }", a=term(Literal("$b")), b=term(URIRef(f"{EX}b")))
-    assert out == f'SELECT * WHERE {{ "$b" <{EX}b> ?o }}'
+    assert out == f'SELECT * WHERE {{ "$b" <{EX}b> ?o }}', (
+        "a rendered term is not substituted a second time"
+    )
 
 
 def test_fill_refuses_a_raw_string():
@@ -172,7 +178,7 @@ def test_fill_refuses_an_extra_name():
 
 
 def test_term_returns_the_type_fill_accepts():
-    assert isinstance(term(SUBJECT), SparqlTerm)
+    assert isinstance(term(SUBJECT), SparqlTerm), "a rendered term is the type that fill accepts"
 
 
 def test_a_triples_block_renders_each_triple_through_term():
@@ -276,7 +282,7 @@ def test_value_variables_refuse_anything_but_a_non_negative_integer(number):
 # The boundaries 0 and 10**6; interior values are one class with them.
 @pytest.mark.parametrize("value", [0, 10**6])
 def test_a_count_renders_as_the_digits_of_a_non_negative_integer(value):
-    assert fill("LIMIT $n", n=count(value)) == f"LIMIT {value}"
+    assert fill("LIMIT $n", n=count(value)) == f"LIMIT {value}", "a count renders as its digits"
 
 
 # -1 (negative), True (a bool) and 1.5 (any non-int type) are three classes.

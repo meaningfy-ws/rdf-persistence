@@ -54,7 +54,7 @@ def models(tmp_path_factory: pytest.TempPathFactory) -> Iterator[ModuleType]:
 
 def test_an_annotated_class_keeps_an_undeclared_field(models: ModuleType) -> None:
     answer = models.Answer.model_validate_json('{"name": "n", "details": {"x": 1}}')
-    assert answer.name == "n"
+    assert answer.name == "n", "an annotated class keeps an undeclared field"
     assert answer.model_extra == {"details": {"x": 1}}, "the unread field is kept, not lost"
 
 

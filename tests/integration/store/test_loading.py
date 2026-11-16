@@ -175,7 +175,7 @@ async def test_a_later_session_lists_the_loaded_graph_and_reads_it(store, databa
     await session.add_graph(BOOK, [], [loaded])
     later = Session(store, database=database, tenant_iri=TENANT, principal=ADA, clock=lambda: NOW)
     (graph_iri,) = await later.loaded_graphs(BOOK)
-    assert graph_iri == loaded
+    assert graph_iri == loaded, "the later session lists the loaded graph"
     expected = Graph().parse(data=TURTLE, format="turtle")
     read = await later.loaded_graph(BOOK, graph_iri)
     assert_isomorphic(read, expected)
@@ -197,7 +197,7 @@ async def test_it01_a_root_load_comes_back_in_a_later_session(store, database, s
     loaded = await session.load_graph(TENANT, TURTLE, rdf_format=RdfFormat.TURTLE)
     await _root_with(session, [loaded])
     later = Session(store, database=database, tenant_iri=TENANT, principal=ADA, clock=lambda: NOW)
-    assert await later.loaded_graphs(TENANT) == [loaded]
+    assert await later.loaded_graphs(TENANT) == [loaded], "the later session lists the root's load"
     expected = Graph().parse(data=TURTLE, format="turtle")
     read = await later.loaded_graph(TENANT, str(loaded))
     assert_isomorphic(read, expected)
@@ -207,5 +207,7 @@ async def test_it03_a_root_replace_with_an_empty_list_empties_its_load(store, da
     loaded = await session.load_graph(TENANT, TURTLE, rdf_format=RdfFormat.TURTLE)
     version = await _root_with(session, [loaded])
     await session.replace_graph(TENANT, ROOT_TRIPLES, version, loaded_graphs=[])
-    assert await session.loaded_graphs(TENANT) == []
-    assert str(loaded) not in await graphs_in(store, database)
+    assert await session.loaded_graphs(TENANT) == [], "an emptied root lists no load"
+    assert str(loaded) not in await graphs_in(store, database), (
+        "the emptied load is gone from the store"
+    )

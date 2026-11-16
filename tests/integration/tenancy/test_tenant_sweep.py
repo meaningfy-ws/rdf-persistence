@@ -99,19 +99,19 @@ async def test_the_sweep_gives_the_worked_examples_outcome_on_real_stores(shelf)
 
     dry = await sweep()
     assert (dry.loaded_graphs, dry.blobs) == ([str(g2)], ["k2"]), "found"
-    assert not dry.removed_loaded_graphs
-    assert not dry.removed_blobs
+    assert not dry.removed_loaded_graphs, "a dry run removes no loaded graph"
+    assert not dry.removed_blobs, "a dry run removes no blob"
     assert await shelf.blobs() == ["k1", "k2"], "a dry run changes nothing"
 
     graphs_only = await sweep(remove=True)
-    assert graphs_only.removed_loaded_graphs
-    assert not graphs_only.removed_blobs
+    assert graphs_only.removed_loaded_graphs, "graphs only removes the loaded graphs"
+    assert not graphs_only.removed_blobs, "graphs only removes no blob"
     assert not await shelf.holds(g2), "the orphan graph goes with remove"
     assert await shelf.blobs() == ["k1", "k2"], "but the blobs stay without remove_blobs"
 
     both = await sweep(remove=True, remove_blobs=True)
-    assert both.removed_blobs
-    assert both.blobs == ["k2"]
+    assert both.removed_blobs, "both removes the blobs"
+    assert both.blobs == ["k2"], "both keeps the younger blob"
     assert await shelf.blobs() == ["k1"], "the orphan blob goes; the named blob stays"
     assert await shelf.holds(g1), "committed and young graphs stay"
     assert await shelf.holds(g3), "committed and young graphs stay"
@@ -151,8 +151,8 @@ async def test_it02_a_root_load_is_swept_only_when_no_commit_owns_it(shelf):
         clock=lambda: now + 2 * HOUR,
         remove=True,
     )
-    assert report.loaded_graphs == [str(orphan)]
-    assert not await shelf.holds(orphan)
-    assert await shelf.holds(kept)
+    assert report.loaded_graphs == [str(orphan)], "the report names the orphan load"
+    assert not await shelf.holds(orphan), "the orphan load is gone"
+    assert await shelf.holds(kept), "the load a commit owns is kept"
     async with shelf.session(now) as opened:
-        assert await opened.loaded_graphs(shelf.tenant) == [kept]
+        assert await opened.loaded_graphs(shelf.tenant) == [kept], "only the kept load remains"

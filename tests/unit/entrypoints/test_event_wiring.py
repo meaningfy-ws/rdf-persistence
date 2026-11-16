@@ -25,8 +25,8 @@ async def test_a_post_reaches_the_broker_within_the_wait() -> None:  # TC-19
             lambda: _async(relayed_book(broker)), "the book's Add", poll_seconds=0.01
         )
     envelope, _ = sent[0]
-    assert envelope.origin == "here"
-    assert envelope.activity_class.endswith("Add")
+    assert envelope.origin == "here", "the envelope carries this deployment as its origin"
+    assert envelope.activity_class.endswith("Add"), "the envelope names the activity class"
 
 
 async def test_leaving_the_lifespan_ends_the_relay_and_closes_the_bus() -> None:  # TC-20
@@ -36,7 +36,7 @@ async def test_leaving_the_lifespan_ends_the_relay_and_closes_the_bus() -> None:
     async with toy.app.router.lifespan_context(toy.app):
         assert bus in broker._buses, "the bus consumes while the app serves"
         (task,) = [t for t in asyncio.all_tasks() if t.get_coro().__qualname__ == "Relay.run"]  # type: ignore[union-attr]
-        assert not task.done()
+        assert not task.done(), "the relay is still running while the lifespan is open"
     assert task.done(), "the relay task ended"
     assert bus not in broker._buses, "close() was called on the bus"
 
@@ -75,7 +75,9 @@ async def test_a_public_url_makes_the_context_of_the_envelope_absolute() -> None
         sent = await wait_until_async(
             lambda: _async(relayed_book(broker)), "the book's Add", poll_seconds=0.01
         )
-    assert sent[0][0].context == "https://lib.example.org/context.jsonld"
+    assert sent[0][0].context == "https://lib.example.org/context.jsonld", (
+        "a public URL makes the envelope's context absolute"
+    )
 
 
 async def test_without_a_public_url_the_context_is_relative() -> None:
@@ -86,7 +88,9 @@ async def test_without_a_public_url_the_context_is_relative() -> None:
         sent = await wait_until_async(
             lambda: _async(relayed_book(broker)), "the book's Add", poll_seconds=0.01
         )
-    assert sent[0][0].context == "/context.jsonld"
+    assert sent[0][0].context == "/context.jsonld", (
+        "without a public URL the context stays relative"
+    )
 
 
 def test_a_public_url_with_a_trailing_slash_is_not_a_valid_setting() -> None:

@@ -36,7 +36,9 @@ async def test_a_domain_service_runs_over_the_fake_session_with_no_network(no_ne
         work.add(dune(book_iri(1)))
         await work.commit()
         await rename(session, book_iri(1), "Dune Messiah")
-        assert (await read(session, book_iri(1))).label == "Dune Messiah"
+        assert (await read(session, book_iri(1))).label == "Dune Messiah", (
+            "the service reads the book through the fake session"
+        )
     with pytest.raises(RuntimeError, match="network"):
         socket.create_connection(("127.0.0.1", 9))
 
@@ -60,7 +62,9 @@ async def test_two_fake_sessions_over_one_store_see_the_same_data(no_network):  
         work.add(dune(book_iri(1)))
         await work.commit()
     async with fake_session(store, tenant_iri=TENANT, principal=Principal(id=BEN)) as ben:
-        assert (await read(ben, book_iri(1))).creator == ADA
+        assert (await read(ben, book_iri(1))).creator == ADA, (
+            "two sessions over one store see the same data"
+        )
 
 
 # --- fake_session under a consumer's IRI policy (iri-policy task 3.4) -------------------------------
@@ -79,7 +83,9 @@ async def test_the_fake_session_takes_the_iris_a_consumer_policy_mints(no_networ
         work = UnitOfWork(session, toy_mapper())
         work.add(dune(flat_book))
         await work.commit()
-        assert (await read(session, flat_book)).label == "Dune"
+        assert (await read(session, flat_book)).label == "Dune", (
+            "the fake session takes the IRIs the consumer's policy mints"
+        )
 
 
 async def test_the_fake_session_without_iris_refuses_what_only_a_consumer_policy_mints(
@@ -121,7 +127,9 @@ async def test_a_request_that_succeeds_is_applied_whole():
     store = FakeStore()
     await store.create_dataset(NAME)
     await store.update(NAME, TWO_INSERTS)
-    assert (await store.query(NAME, SEEN)).askAnswer
+    assert (await store.query(NAME, SEEN)).askAnswer, (
+        "an applied request is visible to a later query"
+    )
 
 
 async def test_the_after_update_hook_runs_after_a_successful_update_and_before_the_return():
@@ -149,7 +157,7 @@ async def test_the_after_update_hook_does_not_run_when_the_update_fails():
     store.after_update = hook
     with pytest.raises(BadQuery):
         await store.update(NAME, INSERT_THEN_CREATE_EXISTING)
-    assert ran == []
+    assert ran == [], "the hook does not run when the update fails"
 
 
 # --- the fake store splits a request at its top-level semicolons (atomic-commit PD-17a) -------------
@@ -190,7 +198,7 @@ async def test_a_semicolon_that_is_not_an_operation_separator_does_not_split_the
     store = FakeStore()
     await store.create_dataset(NAME)
     await store.update(NAME, request_text)
-    assert await count_split(store) == 2
+    assert await count_split(store) == 2, "a semicolon inside a literal does not split the request"
 
 
 MANY = 120  # rdflib's update parser recurses once per operation and fails from about 50 to 100
@@ -242,7 +250,7 @@ async def test_a_prologue_applies_to_every_operation():
         "PREFIX ex: <urn:> INSERT DATA { GRAPH ex:g:split { ex:a ex:p ex:o } } ;"
         " INSERT DATA { GRAPH ex:g:split { ex:c ex:p ex:o } }",
     )
-    assert await count_split(store) == 2
+    assert await count_split(store) == 2, "a prologue applies to every operation"
 
 
 async def test_a_semicolon_joining_a_predicate_list_inside_braces_does_not_split_the_request():
@@ -253,4 +261,6 @@ async def test_a_semicolon_joining_a_predicate_list_inside_braces_does_not_split
         "INSERT DATA { GRAPH <urn:g:split> { <urn:a> <urn:p> <urn:o> ; <urn:q> <urn:o> } } ;"
         f" {insert('urn:c')}",
     )
-    assert await count_split(store) == 3
+    assert await count_split(store) == 3, (
+        "a semicolon in a predicate list does not split the request"
+    )

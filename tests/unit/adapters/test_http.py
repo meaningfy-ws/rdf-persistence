@@ -33,8 +33,8 @@ async def test_a_request_goes_through_the_given_transport() -> None:
 
     async with probe_answering(handler) as probe:
         response = await probe.request("GET", "/ping")
-    assert response.status_code == 204
-    assert str(seen[0].url) == "http://probe.test/ping"
+    assert response.status_code == 204, "the response comes through the given transport"
+    assert str(seen[0].url) == "http://probe.test/ping", "the request went to the URL asked for"
 
 
 async def test_a_transport_error_becomes_the_adapters_unavailable_error() -> None:
@@ -49,11 +49,15 @@ async def test_a_transport_error_becomes_the_adapters_unavailable_error() -> Non
 async def test_the_timeouts_are_explicit() -> None:
     async with probe_answering(lambda _r: httpx.Response(200)) as probe:
         timeout = probe.client.timeout
-    assert (timeout.connect, timeout.read) == (CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS)
-    assert (CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS) == (5.0, 30.0)
+    assert timeout.connect == CONNECT_TIMEOUT_SECONDS, (
+        "the client's connect timeout is the named constant"
+    )
+    assert timeout.read == READ_TIMEOUT_SECONDS, "the client's read timeout is the named constant"
+    assert CONNECT_TIMEOUT_SECONDS == 5.0, "connecting waits five seconds"
+    assert READ_TIMEOUT_SECONDS == 30.0, "reading waits thirty seconds"
 
 
 async def test_leaving_the_context_closes_the_client() -> None:
     async with probe_answering(lambda _r: httpx.Response(200)) as probe:
         pass
-    assert probe.client.is_closed
+    assert probe.client.is_closed, "the client is closed on leaving the context"

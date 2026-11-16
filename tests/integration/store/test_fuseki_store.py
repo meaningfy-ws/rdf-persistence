@@ -55,15 +55,21 @@ async def test_dropping_a_missing_dataset_is_not_found(store):
 
 async def test_update_then_ask(store, dataset):
     obj = Literal('a "quoted"\nvalue\\')
-    assert (await store.query(dataset, triple_text(ASK_TRIPLE, obj))).askAnswer is False
+    assert (await store.query(dataset, triple_text(ASK_TRIPLE, obj))).askAnswer is False, (
+        "the triple is absent before the update"
+    )
     await store.update(dataset, triple_text(INSERT, obj))
-    assert (await store.query(dataset, triple_text(ASK_TRIPLE, obj))).askAnswer is True
+    assert (await store.query(dataset, triple_text(ASK_TRIPLE, obj))).askAnswer is True, (
+        "the triple is present after the update"
+    )
 
 
 async def test_select_returns_rdflib_terms(store, dataset):
     await store.update(dataset, triple_text(INSERT, Literal(7)))
     result = await store.query(dataset, "SELECT ?s ?o WHERE { GRAPH ?g { ?s ?p ?o } }")
-    assert [(row.s, row.o) for row in result] == [(A, Literal(7))]
+    assert [(row.s, row.o) for row in result] == [(A, Literal(7))], (
+        "the select returns the bound RDF terms"
+    )
 
 
 async def test_construct_returns_a_graph(store, dataset):
@@ -81,11 +87,15 @@ async def test_put_graph_replaces_the_named_graph_and_only_it(store, dataset):
     replacement = Graph()
     replacement.add((A, P, Literal("new")))
     await store.put_graph(dataset, G, replacement)
-    assert (await store.query(dataset, triple_text(ASK_TRIPLE, Literal("new")))).askAnswer
-    assert not (await store.query(dataset, triple_text(ASK_TRIPLE, Literal("old")))).askAnswer
+    assert (await store.query(dataset, triple_text(ASK_TRIPLE, Literal("new")))).askAnswer, (
+        "the replaced graph holds the new value"
+    )
+    assert not (await store.query(dataset, triple_text(ASK_TRIPLE, Literal("old")))).askAnswer, (
+        "the replaced graph no longer holds the old value"
+    )
     assert (
         await store.query(dataset, triple_text(ASK_TRIPLE, Literal("elsewhere"), graph=other))
-    ).askAnswer
+    ).askAnswer, "the other graph is untouched"
 
 
 async def test_a_graph_iri_with_reserved_characters_is_one_graph(store, dataset):
@@ -95,7 +105,7 @@ async def test_a_graph_iri_with_reserved_characters_is_one_graph(store, dataset)
     await store.put_graph(dataset, graph_iri, replacement)
     assert (
         await store.query(dataset, triple_text(ASK_TRIPLE, Literal("v"), graph=graph_iri))
-    ).askAnswer
+    ).askAnswer, "a graph IRI with reserved characters names one graph"
 
 
 async def test_a_malformed_query_is_bad_query(store, dataset):

@@ -38,13 +38,15 @@ TENANT = URIRef(f"{BASE}libraries/12345678-1234-4234-8234-123456789abc")
 
 def test_graph_iri_appends_graph():
     root = f"{BASE}libraries/t/books/b"
-    assert graph_iri(root) == URIRef(f"{root}/graph")
+    assert graph_iri(root) == URIRef(f"{root}/graph"), "a graph IRI is its root plus slash graph"
     assert graph_iri(root) != URIRef(root), "never the root IRI itself"
 
 
 def test_root_of_graph_is_the_inverse_of_graph_iri():
     root = f"{BASE}libraries/t/books/b"
-    assert root_of_graph(graph_iri(root)) == URIRef(root)
+    assert root_of_graph(graph_iri(root)) == URIRef(root), (
+        "the root of a graph IRI is the root it was made from"
+    )
 
 
 @pytest.mark.parametrize(
@@ -68,14 +70,24 @@ def test_mint_aggregate_iri_sits_under_the_tenant():
 
 def test_loaded_graph_iri_sits_under_the_aggregate():
     aggregate = mint_aggregate_iri(TENANT, "books")
-    assert re.fullmatch(f"{re.escape(aggregate)}/content/{UUID_RE}", loaded_graph_iri(aggregate))
+    assert re.fullmatch(f"{re.escape(aggregate)}/content/{UUID_RE}", loaded_graph_iri(aggregate)), (
+        "a loaded graph sits under its aggregate with a uuid"
+    )
 
 
 def test_meta_registry_and_access_iris():
-    assert DEFAULT_IRIS.meta(TENANT) == URIRef(f"{TENANT}/meta")
-    assert DEFAULT_IRIS.registry(TENANT) == URIRef(f"{TENANT}/registry")
-    assert DEFAULT_IRIS.access(TENANT) == URIRef(f"{TENANT}/access")
-    assert graph_iri(DEFAULT_IRIS.access(TENANT)) == URIRef(f"{TENANT}/access/graph")
+    assert DEFAULT_IRIS.meta(TENANT) == URIRef(f"{TENANT}/meta"), (
+        "the meta graph hangs under the tenant"
+    )
+    assert DEFAULT_IRIS.registry(TENANT) == URIRef(f"{TENANT}/registry"), (
+        "the registry graph hangs under the tenant"
+    )
+    assert DEFAULT_IRIS.access(TENANT) == URIRef(f"{TENANT}/access"), (
+        "the access record hangs under the tenant"
+    )
+    assert graph_iri(DEFAULT_IRIS.access(TENANT)) == URIRef(f"{TENANT}/access/graph"), (
+        "the access record's graph is its slash graph"
+    )
 
 
 @pytest.mark.parametrize("segment", ["", "a/b", "a b", "a>b", "../x", "a?b", "a#b"])
@@ -87,14 +99,22 @@ def test_a_segment_that_is_not_a_path_segment_is_refused(segment):
 
 
 def test_names_follow_pd_6a():
-    assert system_database_name("lib") == "lib-system"
-    assert tenant_name_prefix("lib") == "lib-t-"
-    assert tenant_resource_name("lib", TENANT) == "lib-t-12345678123442348234123456789abc"
+    assert system_database_name("lib") == "lib-system", (
+        "the system database is named after the deployment"
+    )
+    assert tenant_name_prefix("lib") == "lib-t-", (
+        "the tenant prefix is the deployment plus the tenant marker"
+    )
+    assert tenant_resource_name("lib", TENANT) == "lib-t-12345678123442348234123456789abc", (
+        "a tenant resource is the prefix plus its id in hex"
+    )
 
 
 def test_tenant_name_starts_with_the_sweep_prefix_and_fits_a_bucket_name():
     name = tenant_resource_name("a" * 20, mint_tenant_iri(BASE, "libraries"))
-    assert name.startswith(tenant_name_prefix("a" * 20))
+    assert name.startswith(tenant_name_prefix("a" * 20)), (
+        "a tenant resource name starts with the sweep prefix"
+    )
     assert re.fullmatch("[a-z0-9-]{3,63}", name), name
 
 
@@ -113,7 +133,7 @@ def test_tenant_name_needs_a_uuid_last_segment():
 
 def test_minted_ids_are_uuid4():
     last = mint_tenant_iri(BASE, "libraries").rsplit("/", 1)[1]
-    assert uuid.UUID(last).version == 4
+    assert uuid.UUID(last).version == 4, "a minted id is a version 4 uuid"
 
 
 def test_mint_part_iri_sits_under_the_root_and_is_fresh():
@@ -126,7 +146,9 @@ def test_mint_part_iri_sits_under_the_root_and_is_fresh():
 def test_the_tenant_of_an_access_record_is_the_iri_it_hangs_under():
     # the shim answers for the default policy, whose base is DEFAULT_IRIS's (PD-12n)
     tenant = URIRef(f"{DEFAULT_IRIS.settings.base}tenants/12345678-1234-4234-8234-123456789abc")
-    assert DEFAULT_IRIS.tenant_of_access(DEFAULT_IRIS.access(tenant)) == tenant
+    assert DEFAULT_IRIS.tenant_of_access(DEFAULT_IRIS.access(tenant)) == tenant, (
+        "the tenant is recovered from its access record"
+    )
 
 
 def test_an_iri_that_is_not_an_access_record_has_no_tenant():
@@ -171,7 +193,9 @@ def test_is_skolem_of_tells_the_skolem_iris_of_a_graph_from_everything_else():
 
 
 def test_the_toolkit_principal_is_toolkit_under_the_base():
-    assert toolkit_principal_iri(BASE) == URIRef(f"{BASE}toolkit")
+    assert toolkit_principal_iri(BASE) == URIRef(f"{BASE}toolkit"), (
+        "the toolkit principal is toolkit under the base"
+    )
 
 
 @pytest.mark.parametrize(
@@ -235,7 +259,9 @@ def test_an_aggregate_graph_iri_is_the_graph_of_a_tenants_aggregate(iri, accepte
 
 
 def test_every_minted_aggregate_iri_is_an_aggregate_iri():
-    assert is_aggregate_iri(str(TENANT), str(mint_aggregate_iri(TENANT, "books")))
+    assert is_aggregate_iri(str(TENANT), str(mint_aggregate_iri(TENANT, "books"))), (
+        "a minted aggregate IRI is recognised as an aggregate of its tenant"
+    )
 
 
 @pytest.mark.parametrize(
@@ -283,11 +309,13 @@ UUID_A = "12345678-1234-4234-8234-123456789abc"
     ],
 )
 def test_only_a_lower_case_hyphenated_uuid_is_canonical(text, canonical):
-    assert is_canonical_uuid(text) is canonical
+    assert is_canonical_uuid(text) is canonical, "only a lower-case hyphenated uuid is canonical"
 
 
 def test_a_tenant_iri_is_the_base_the_segment_and_the_id():
-    assert tenant_iri(BASE, "libraries", UUID_A) == URIRef(f"{BASE}libraries/{UUID_A}")
+    assert tenant_iri(BASE, "libraries", UUID_A) == URIRef(f"{BASE}libraries/{UUID_A}"), (
+        "a tenant IRI is the base, the segment and the id"
+    )
 
 
 @pytest.mark.parametrize("tenant_id", ["nope", UUID_A.upper(), f"{UUID_A}/books", "..", ""])
@@ -303,7 +331,9 @@ def test_a_tenant_segment_that_breaks_the_rule_is_an_invalid_iri():
 
 def test_an_aggregate_iri_is_the_tenant_the_path_and_the_id():
     tenant = f"{BASE}libraries/{UUID_A}"
-    assert aggregate_iri(tenant, "books", UUID_A) == URIRef(f"{tenant}/books/{UUID_A}")
+    assert aggregate_iri(tenant, "books", UUID_A) == URIRef(f"{tenant}/books/{UUID_A}"), (
+        "an aggregate IRI is the tenant, the path and the id"
+    )
     assert is_aggregate_iri(tenant, aggregate_iri(tenant, "books", UUID_A)), (
         "what it builds is what is accepted"
     )

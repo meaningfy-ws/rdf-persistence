@@ -254,7 +254,9 @@ async def test_requests_after_the_expiry_during_an_outage_make_one_provider_call
     await let_tasks_run()
     provider.release.set()
     results = await asyncio.gather(*requests, return_exceptions=True)
-    assert all(isinstance(result, IdentityUnavailable) for result in results)
+    assert all(isinstance(result, IdentityUnavailable) for result in results), (
+        "every request during the outage answers identity unavailable"
+    )
     assert provider.calls == 1, "one refresh is made; the rest share its outcome"
 
 
@@ -324,7 +326,9 @@ def test_an_issuer_that_is_not_https_is_refused() -> None:
 
 
 def test_an_insecure_issuer_is_allowed_when_the_caller_opts_out() -> None:
-    assert JwksTokenVerifier("http://idp.test", "aud", "roles", allow_insecure_issuer=True)
+    assert JwksTokenVerifier("http://idp.test", "aud", "roles", allow_insecure_issuer=True), (
+        "a verifier that opts out of the secure-issuer rule is built"
+    )
 
 
 @pytest.mark.parametrize("field", ["issuer", "audience", "roles_claim"])
@@ -392,4 +396,6 @@ def test_the_verifier_exposes_the_iris_it_mints_with(
             roles_claim="r",
         )
     )
-    assert verifier_for(signer, clock, iris=iris).iris is iris
+    assert verifier_for(signer, clock, iris=iris).iris is iris, (
+        "the verifier exposes the IRI policy it was given"
+    )

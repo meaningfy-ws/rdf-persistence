@@ -23,7 +23,7 @@ async def files(no_network) -> FakeFileStore:  # noqa: F811
 
 async def test_a_blob_comes_back_byte_for_byte(files):
     await files.put("b", "k", b"\x00\xffbytes")
-    assert await files.get("b", "k") == b"\x00\xffbytes"
+    assert await files.get("b", "k") == b"\x00\xffbytes", "a blob comes back byte for byte"
 
 
 async def test_a_deleted_blob_is_gone_and_deleting_it_again_is_harmless(files):
@@ -42,7 +42,9 @@ async def test_a_bucket_is_created_once(files):
 async def test_buckets_are_listed_by_prefix_in_name_order(files):
     for name in ("lib-t-2", "lib-t-1", "other-1"):
         await files.create_bucket(name)
-    assert await files.list_buckets("lib-t-") == ["lib-t-1", "lib-t-2"]
+    assert await files.list_buckets("lib-t-") == ["lib-t-1", "lib-t-2"], (
+        "buckets with the prefix come back in name order"
+    )
 
 
 async def test_deleting_a_bucket_removes_its_blobs_and_the_bucket(files):
@@ -80,7 +82,9 @@ async def test_an_injected_error_is_raised_once_and_sent_records_the_failed_call
     with pytest.raises(StoreUnavailable):
         await files.create_bucket("c")
     await files.create_bucket("c")
-    assert files.sent("create_bucket") == ["b", "c", "c"]
+    assert files.sent("create_bucket") == ["b", "c", "c"], (
+        "the failed call is recorded along with the others"
+    )
 
 
 async def test_an_injected_error_can_wait_for_later_calls(files):
@@ -88,7 +92,7 @@ async def test_an_injected_error_can_wait_for_later_calls(files):
     await files.create_bucket("c")
     with pytest.raises(StoreUnavailable):
         await files.create_bucket("d")
-    assert await files.list_buckets("") == ["b", "c"]
+    assert await files.list_buckets("") == ["b", "c"], "an injected error can wait for later calls"
 
 
 @pytest.mark.parametrize("call", ["on", "sent"])

@@ -92,7 +92,9 @@ def test_the_document_is_openapi_3_1_and_valid(document) -> None:
 def test_every_route_is_listed_with_its_success_and_problem_responses(
     document, path, method, expected
 ) -> None:
-    assert statuses(operation(document, path, method)) == expected
+    assert statuses(operation(document, path, method)) == expected, (
+        "each route lists the statuses its table row expects"
+    )
 
 
 def test_no_route_of_the_service_is_left_out_of_the_table(document) -> None:
@@ -102,12 +104,16 @@ def test_no_route_of_the_service_is_left_out_of_the_table(document) -> None:
         for method in operations
         if path != "/context.jsonld"
     }
-    assert served == {(path, method) for path, method, _ in ROUTES}
+    assert served == {(path, method) for path, method, _ in ROUTES}, (
+        "the table lists every route the service serves"
+    )
 
 
 def test_the_service_has_no_route_for_comments(document) -> None:
     """TC-48: the toolkit writes and reads them; a generic GET would leak their audience (PD-11)."""
-    assert not [path for path in document["paths"] if "rp-comments" in path]
+    assert not [path for path in document["paths"] if "rp-comments" in path], (
+        "no comments route is published"
+    )
 
 
 @pytest.mark.parametrize(("path", "method", "expected"), ROUTES, ids=IDS)
@@ -140,8 +146,12 @@ def test_a_write_that_a_unique_key_can_refuse_lists_the_key_conflict(
 
 
 def test_fastapis_own_validation_error_is_not_published(document) -> None:
-    assert "HTTPValidationError" not in document["components"]["schemas"]
-    assert "ValidationError" not in document["components"]["schemas"]
+    assert "HTTPValidationError" not in document["components"]["schemas"], (
+        "FastAPI's own validation error is not published"
+    )
+    assert "ValidationError" not in document["components"]["schemas"], (
+        "FastAPI's own validation detail is not published"
+    )
 
 
 @pytest.mark.parametrize("rp_path", ["books", "scans", "shelves"])
@@ -151,17 +161,23 @@ def test_a_listing_takes_a_parameter_per_slot_of_the_type_and_the_paging_ones(
     cls = toy.kit.documents.aggregates[rp_path]
     op = operation(document, f"{TENANT}/{rp_path}", "get")
     queries = {p["name"] for p in op["parameters"] if p["in"] == "query"}
-    assert queries == {*listable_slots(toy.kit.view, cls), "limit", "offset", "sort"}
+    assert queries == {*listable_slots(toy.kit.view, cls), "limit", "offset", "sort"}, (
+        "a listing takes a parameter per slot plus the paging ones"
+    )
 
 
 def test_the_filters_of_a_book_are_typed_by_the_schema(document) -> None:
     op = operation(document, f"{TENANT}/books", "get")
     params = {p["name"]: p for p in op["parameters"] if p["in"] == "query"}
-    assert params["genre"]["schema"] == {"$ref": f"{COMPONENT}Genre"}
-    assert params["authors"]["schema"] == {"type": "string"}
+    assert params["genre"]["schema"] == {"$ref": f"{COMPONENT}Genre"}, (
+        "an enum filter points at the enum component"
+    )
+    assert params["authors"]["schema"] == {"type": "string"}, (
+        "a list-valued filter is typed as a string"
+    )
     limit = params["limit"]["schema"]
-    assert limit["type"] == "integer"
-    assert limit["maximum"] == 200
+    assert limit["type"] == "integer", "the limit parameter is an integer"
+    assert limit["maximum"] == 200, "the limit parameter is capped at 200"
     assert properties(document, "ListRequest")["limit"]["maximum"] == 200, "the bounds of PD-15"
     assert "-label" in params["sort"]["schema"]["enum"], "descending is the name with a minus sign"
     assert not {"creator", "chapters", "id"} & set(params), (
@@ -177,36 +193,46 @@ def test_no_parameter_points_into_a_property(document) -> None:
         for p in op.get("parameters", [])
         if "/properties/" in json.dumps(p["schema"])
     ]
-    assert pointing == []
+    assert pointing == [], "no parameter points into a property"
 
 
 def test_a_listing_answers_a_page_of_the_type(document) -> None:
     ok = operation(document, f"{TENANT}/books", "get")["responses"]["200"]["content"]
     page = schema_of(ok[JSON])
-    assert page["allOf"] == [{"$ref": f"{COMPONENT}Page"}]
-    assert page["properties"]["items"]["items"] == {"$ref": f"{COMPONENT}Book"}
+    assert page["allOf"] == [{"$ref": f"{COMPONENT}Page"}], "a listing answers a page"
+    assert page["properties"]["items"]["items"] == {"$ref": f"{COMPONENT}Book"}, (
+        "the page's items are of the listed type"
+    )
     assert JSON_LD in ok, "and the same page as JSON-LD"
     assert TURTLE not in ok, "never Turtle"
 
 
 def test_the_tenant_listing_answers_a_page_of_tenant_summaries(document) -> None:
     ok = operation(document, TENANTS, "get")["responses"]["200"]["content"][JSON]
-    assert schema_of(ok)["properties"]["items"]["items"] == {"$ref": f"{COMPONENT}TenantSummary"}
+    assert schema_of(ok)["properties"]["items"]["items"] == {"$ref": f"{COMPONENT}TenantSummary"}, (
+        "the tenant listing answers a page of summaries"
+    )
 
 
 def test_a_book_is_created_and_replaced_with_the_json_or_json_ld_body(document) -> None:
     for method, path in (("post", f"{TENANT}/books"), ("put", f"{TENANT}/books/{{aggregate_id}}")):
         body = operation(document, path, method)["requestBody"]
         assert body["required"], f"{method} needs a body"
-        assert schema_of(body["content"][JSON]) == {"$ref": f"{COMPONENT}Book"}
-        assert JSON_LD in body["content"]
+        assert schema_of(body["content"][JSON]) == {"$ref": f"{COMPONENT}Book"}, (
+            "a book body is declared in JSON"
+        )
+        assert JSON_LD in body["content"], "a book body is declared in JSON-LD"
 
 
 def test_a_read_answers_every_representation_and_the_version(document) -> None:
     ok = operation(document, f"{TENANT}/books/{{aggregate_id}}", "get")["responses"]["200"]
-    assert set(ok["content"]) == {JSON, JSON_LD, TURTLE}
-    assert schema_of(ok["content"][JSON]) == {"$ref": f"{COMPONENT}Book"}
-    assert "ETag" in ok["headers"]
+    assert set(ok["content"]) == {JSON, JSON_LD, TURTLE}, (
+        "a read answers in JSON, JSON-LD and Turtle"
+    )
+    assert schema_of(ok["content"][JSON]) == {"$ref": f"{COMPONENT}Book"}, (
+        "the JSON answer is the type's component"
+    )
+    assert "ETag" in ok["headers"], "a read returns its version"
 
 
 @pytest.mark.parametrize("path", [TENANT, f"{TENANT}/books/{{aggregate_id}}"])
@@ -218,7 +244,9 @@ def test_a_read_documents_the_allowed_actions_header(document, path) -> None:
 
 def test_a_create_answers_the_location_and_the_version(document) -> None:
     created = operation(document, f"{TENANT}/books", "post")["responses"]["201"]
-    assert {"Location", "ETag"} <= set(created["headers"])
+    assert {"Location", "ETag"} <= set(created["headers"]), (
+        "a create returns its location and version"
+    )
 
 
 @pytest.mark.parametrize(
@@ -228,12 +256,14 @@ def test_a_create_answers_the_location_and_the_version(document) -> None:
 def test_an_update_carries_its_expected_version_in_if_match(document, path) -> None:
     op = operation(document, path, "put")
     headers = [p for p in op["parameters"] if p["in"] == "header" and p["name"] == "If-Match"]
-    assert [h["required"] for h in headers] == [True]
+    assert [h["required"] for h in headers] == [True], "an update requires its expected version"
 
 
 def test_a_delete_carries_its_expected_version_in_if_match(document) -> None:
     op = operation(document, f"{TENANT}/books/{{aggregate_id}}", "delete")
-    assert [p["required"] for p in op["parameters"] if p["name"] == "If-Match"] == [True]
+    assert [p["required"] for p in op["parameters"] if p["name"] == "If-Match"] == [True], (
+        "a delete requires its expected version"
+    )
 
 
 @pytest.mark.parametrize(
@@ -247,20 +277,28 @@ def test_a_delete_carries_its_expected_version_in_if_match(document) -> None:
 )
 def test_the_bodies_of_the_tenant_routes_are_declared(document, path, method, body) -> None:
     content = operation(document, path, method)["requestBody"]["content"]
-    assert schema_of(content[JSON]) == {"$ref": f"{COMPONENT}{body}"}
+    assert schema_of(content[JSON]) == {"$ref": f"{COMPONENT}{body}"}, (
+        "each tenant route declares its body component"
+    )
 
 
 def test_the_tenant_routes_answer_their_models(document) -> None:
     created = operation(document, TENANTS, "post")["responses"]["201"]["content"][JSON]
     grants = operation(document, f"{TENANT}/grants", "get")["responses"]["200"]["content"][JSON]
     root = operation(document, TENANT, "get")["responses"]["200"]["content"][JSON]
-    assert schema_of(created) == {"$ref": f"{COMPONENT}TenantSummary"}
-    assert schema_of(grants) == {"$ref": f"{COMPONENT}GrantSet"}
-    assert schema_of(root) == {"$ref": f"{COMPONENT}Library"}
+    assert schema_of(created) == {"$ref": f"{COMPONENT}TenantSummary"}, (
+        "a tenant create answers its summary"
+    )
+    assert schema_of(grants) == {"$ref": f"{COMPONENT}GrantSet"}, (
+        "a grant read answers the grant set"
+    )
+    assert schema_of(root) == {"$ref": f"{COMPONENT}Library"}, "the root answers the library"
 
 
 def test_every_route_but_the_context_asks_for_a_bearer_token(document) -> None:
-    assert document["components"]["securitySchemes"]["bearerAuth"]["scheme"] == "bearer"
+    assert document["components"]["securitySchemes"]["bearerAuth"]["scheme"] == "bearer", (
+        "the bearer scheme is declared"
+    )
     for path, method, _ in ROUTES:
         assert operation(document, path, method)["security"] == [{"bearerAuth": []}], path
 
@@ -277,7 +315,7 @@ def test_the_schemas_of_every_type_and_of_the_toolkit_bodies_are_components(docu
     assert {
         "Book", "Scan", "Library", "Genre", "Chapter", "Note", "Page", "Problem", "TenantCreate",
         "TenantSummary", "LabelUpdate", "GrantSet", "ListRequest", "Filter",
-    } <= schemas  # fmt: skip
+    } <= schemas, "every type and toolkit body is a component"  # fmt: skip
 
 
 def test_no_bookkeeping_slot_is_in_a_component_schema(document) -> None:
@@ -287,13 +325,13 @@ def test_no_bookkeeping_slot_is_in_a_component_schema(document) -> None:
         for prop in schema.get("properties", {})
         if prop in BOOKKEEPING
     }
-    assert not leaked
+    assert not leaked, "no bookkeeping slot is published"
 
 
 def test_no_internal_slot_is_in_a_component_schema(document, toy) -> None:
     internal = {s.name for s in toy.kit.view.class_induced_slots("Scan") if is_internal(s)}
     assert internal, "the toy's scan keeps a stored file, whose slots are internal"
-    assert not internal & set(properties(document, "Scan"))
+    assert not internal & set(properties(document, "Scan")), "no internal slot is published"
 
 
 def test_the_iri_of_a_document_is_read_only(document) -> None:
@@ -304,29 +342,41 @@ def test_the_components_reference_only_components_that_exist(document) -> None:
     text = json.dumps(document)
     refs = {part.split('"')[0] for part in text.split(COMPONENT)[1:]}
     names = set(document["components"]["schemas"])
-    assert {r.split("/")[0] for r in refs} <= names
+    assert {r.split("/")[0] for r in refs} <= names, (
+        "every reference points at a component that exists"
+    )
 
 
 def test_the_document_is_the_same_each_time_it_is_built(document) -> None:
     again = ToyService().app.openapi()
-    assert json.dumps(again) == json.dumps(document)
+    assert json.dumps(again) == json.dumps(document), (
+        "the document is identical each time it is built"
+    )
 
 
 async def test_the_document_is_served_where_fastapi_serves_it(toy) -> None:
     async with toy.client() as http:
         served = await http.get("/openapi.json")
-    assert served.status_code == 200
-    assert served.json() == json.loads(json.dumps(toy.app.openapi()))
+    assert served.status_code == 200, "the document is served"
+    assert served.json() == json.loads(json.dumps(toy.app.openapi())), (
+        "the served document is the built one"
+    )
 
 
 def test_every_status_the_document_names_has_a_problem_kind_or_is_a_success() -> None:
     kinds = {k.status for k in KINDS}
     named = set().union(*(s for _, _, s in ROUTES)) - SUCCESS
     assert named <= kinds, f"unknown problem statuses {named - kinds}"
-    assert all(HTTPStatus(s) for s in named)
+    assert all(HTTPStatus(s) for s in named), (
+        "every status the document names is a real HTTP status"
+    )
 
 
 def test_an_application_class_has_no_path_and_no_component(document) -> None:
     """TC-12: ``Template`` lives in the application database, so the tenant routes leave it out."""
-    assert not [path for path in document["paths"] if "templates" in path]
-    assert "Template" not in document["components"]["schemas"]
+    assert not [path for path in document["paths"] if "templates" in path], (
+        "an application class has no path"
+    )
+    assert "Template" not in document["components"]["schemas"], (
+        "an application class has no component"
+    )

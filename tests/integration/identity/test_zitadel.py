@@ -56,7 +56,9 @@ async def test_a_live_token_is_verified_to_the_principal_of_its_account(
     verifier, zitadel_project, account
 ):
     caller = await verifier.verify(access_token(zitadel_project, account))
-    assert caller.principal == f"{zitadel_project.server.url}/users/{account.user_id}"
+    assert caller.principal == f"{zitadel_project.server.url}/users/{account.user_id}", (
+        "the token's principal is the issuer and the account's id"
+    )
     assert caller.global_roles == [], "an account without grants holds no role"
 
 
@@ -65,7 +67,7 @@ async def test_the_admin_principal_holds_the_admin_role_in_its_verified_token(
 ):
     admin = next(user for user in zitadel_project.machine_users if user.name == ADMIN_ROLE)
     caller = await verifier.verify(access_token(zitadel_project, admin))
-    assert caller.global_roles == [ADMIN_ROLE]
+    assert caller.global_roles == [ADMIN_ROLE], "the admin principal holds the admin role"
 
 
 async def test_a_token_for_another_audience_is_refused_by_the_live_issuers_keys(
@@ -92,8 +94,8 @@ async def test_disabling_twice_is_harmless_and_shows_in_the_listing(identity, ac
     await identity.disable(account.user_id)
     await identity.disable(account.user_id)
     listed = {a.account_id: a for a in await identity.list_accounts()}
-    assert listed[account.user_id].active is False
-    assert listed[account.user_id].user_name == account.name
+    assert listed[account.user_id].active is False, "the disabled account shows as inactive"
+    assert listed[account.user_id].user_name == account.name, "the listed account keeps its name"
 
 
 async def test_a_global_role_shows_in_a_fresh_token_until_it_is_removed(
@@ -104,7 +106,7 @@ async def test_a_global_role_shows_in_a_fresh_token_until_it_is_removed(
     await identity.grant_global_role(account.user_id, ADMIN_ROLE)
     assert ADMIN_ROLE in await roles_in(verifier, zitadel_project, account), "granted"
     listed = {a.account_id: a for a in await identity.list_accounts()}
-    assert listed[account.user_id].global_roles == [ADMIN_ROLE]
+    assert listed[account.user_id].global_roles == [ADMIN_ROLE], "the granted role is listed"
     await identity.remove_global_role(account.user_id, ADMIN_ROLE)
     assert ADMIN_ROLE not in await roles_in(verifier, zitadel_project, account), "removed"
 
@@ -143,6 +145,8 @@ async def test_a_person_is_found_by_exact_email(identity, zitadel_project):
     )
     created.raise_for_status()
     found = await _found_once_indexed(identity, email)
-    assert (found.account_id, found.email, found.active) == (created.json()["userId"], email, True)
+    assert found.account_id == created.json()["userId"], "the found account is the created one"
+    assert found.email == email, "the found account has the email searched"
+    assert found.active is True, "the found account is active"
     with pytest.raises(NotFound):
         await identity.find_by_email(email.upper())

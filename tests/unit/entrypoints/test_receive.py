@@ -116,7 +116,9 @@ async def test_a_commit_of_another_deployment_reaches_the_observer_once_with_the
     world,
 ) -> None:  # TC-24
     assert len(world.there.activities) == 1, "cat's observer got it once"
-    assert world.there.activities[0].id == world.replace.id
+    assert world.there.activities[0].id == world.replace.id, (
+        "the observer got the other deployment's commit once"
+    )
     assert world.there.principals == [world.cat.kit.tenancy.toolkit.id], "a session of the toolkit"
     assert len(world.here.activities) == 1, "lib's observer got it once, in process, not again"
 
@@ -124,8 +126,12 @@ async def test_a_commit_of_another_deployment_reaches_the_observer_once_with_the
 async def test_a_message_of_the_own_origin_is_not_handed_again(world, caplog) -> None:  # TC-24
     caplog.set_level(logging.DEBUG, LOGGER)
     await world.lib.kit.receive(world.envelope, world.replace.model_dump_json().encode())
-    assert len(world.here.activities) == 1
-    assert not [r for r in caplog.records if r.levelno > logging.DEBUG]
+    assert len(world.here.activities) == 1, (
+        "a message of the own origin is not handed to the observer again"
+    )
+    assert not [r for r in caplog.records if r.levelno > logging.DEBUG], (
+        "skipping an own message logs nothing above debug"
+    )
 
 
 async def test_a_kit_without_a_bus_skips_the_message(world, caplog) -> None:
@@ -133,7 +139,9 @@ async def test_a_kit_without_a_bus_skips_the_message(world, caplog) -> None:
     caplog.set_level(logging.DEBUG, LOGGER)
     await sent(world)
     assert len(world.there.activities) == 1, "no more than before"
-    assert not [r for r in caplog.records if r.levelno > logging.DEBUG]
+    assert not [r for r in caplog.records if r.levelno > logging.DEBUG], (
+        "a kit without a bus logs nothing above debug"
+    )
 
 
 @pytest.mark.parametrize(
@@ -152,7 +160,9 @@ async def test_a_message_of_an_unknown_class_or_a_bad_body_is_logged_and_acked(
     payload = body or world.replace.model_dump_json().encode()
     await world.cat_bus._deliver((envelope, payload))
     assert len(world.there.activities) == 1, "no observer ran"
-    assert [r.levelno for r in caplog.records if r.levelno > logging.DEBUG] == [logging.WARNING]
+    assert [r.levelno for r in caplog.records if r.levelno > logging.DEBUG] == [logging.WARNING], (
+        "a bad message is logged once as a warning"
+    )
     await restarted(world)
     assert len(world.there.activities) == 1, "acked: not delivered again"
 
@@ -177,7 +187,9 @@ async def test_a_message_naming_a_class_that_is_not_an_activity_is_logged_and_ac
     await world.cat_bus._deliver(
         (world.envelope.model_copy(update={"activity_class": generation}), b"{}")
     )
-    assert [r.levelno for r in caplog.records if r.levelno > logging.DEBUG] == [logging.WARNING]
+    assert [r.levelno for r in caplog.records if r.levelno > logging.DEBUG] == [logging.WARNING], (
+        "a message naming a non-activity class is logged once as a warning"
+    )
     await restarted(world)
     assert len(world.there.activities) == 1, "acked: not delivered again"
 
@@ -187,9 +199,9 @@ async def test_a_message_for_a_tenant_that_is_not_an_iri_is_logged_and_acked(
 ) -> None:  # D-19
     caplog.set_level(logging.DEBUG, LOGGER)
     await sent(world, tenant="not an iri")
-    assert len(world.there.activities) == 1
+    assert len(world.there.activities) == 1, "only the first message reached the observer"
     kit_logs = [r.levelno for r in caplog.records if r.name == LOGGER and r.levelno > logging.DEBUG]
-    assert kit_logs == [logging.WARNING]
+    assert kit_logs == [logging.WARNING], "the skipped message is logged once as a warning"
     await restarted(world)
     assert len(world.there.activities) == 1, "acked: not delivered again"
 
@@ -199,8 +211,10 @@ async def test_a_message_for_a_tenant_this_deployment_lacks_is_logged_and_acked(
 ) -> None:  # TC-26
     caplog.set_level(logging.DEBUG, LOGGER)
     await sent(world, tenant=world.cat.kit.tenant_iri(str(uuid.uuid4())))
-    assert len(world.there.activities) == 1
-    assert [r.levelno for r in caplog.records if r.levelno > logging.DEBUG] == [logging.WARNING]
+    assert len(world.there.activities) == 1, "only the first message reached the observer"
+    assert [r.levelno for r in caplog.records if r.levelno > logging.DEBUG] == [logging.WARNING], (
+        "the skipped message is logged once as a warning"
+    )
     await restarted(world)
     assert len(world.there.activities) == 1, "acked"
 
@@ -216,7 +230,7 @@ async def test_a_store_that_is_unavailable_leaves_the_message_unacked(world) -> 
 async def test_a_tenant_that_is_behind_leaves_the_message_unacked(world) -> None:  # TC-27a
     world.cat.kit.tenancy.set_aside([world.tenant])
     await sent(world)
-    assert len(world.there.activities) == 1
+    assert len(world.there.activities) == 1, "only the first message reached the observer"
     with pytest.raises(TenantBehind):
         await world.cat.kit.receive(world.envelope, world.replace.model_dump_json().encode())
     world.cat.kit.tenancy.set_aside([])
@@ -239,7 +253,9 @@ async def test_an_application_activity_reaches_the_observer_with_an_application_
         lambda: _async(seen.activities), "cat's observer of Add", poll_seconds=0.01
     )
     assert len(seen.activities) == 1, "the application's Add; the tenant's were relayed before"
-    assert seen.principals == [world.cat.kit.tenancy.toolkit.id]
+    assert seen.principals == [world.cat.kit.tenancy.toolkit.id], (
+        "the observer saw the toolkit principal"
+    )
     assert seen.templates == [[iri]], "a session on the application database"
 
 
@@ -251,7 +267,9 @@ async def test_an_observer_that_exceeds_the_message_limit_is_logged_at_error_and
 
     world.cat.kit.bus = bootstrap(observers={Replace: [runaway]}, mapper=world.cat.kit.mapper)
     await sent(world)
-    assert [r.levelno for r in caplog.records if r.name == LOGGER] == [logging.ERROR]
+    assert [r.levelno for r in caplog.records if r.name == LOGGER] == [logging.ERROR], (
+        "an observer over the limit is logged once at error"
+    )
     await restarted(world)
     assert [r.levelno for r in caplog.records if r.name == LOGGER] == [logging.ERROR], "acked"
 
@@ -279,8 +297,10 @@ async def test_an_application_activity_without_an_application_class_is_logged_an
     monkeypatch.setattr(world.cat.kit, "application_session", no_application)
     caplog.set_level(logging.DEBUG, LOGGER)
     await sent(world, tenant=world.cat.kit.tenancy.application)
-    assert len(world.there.activities) == 1
-    assert [r.levelno for r in caplog.records if r.levelno > logging.DEBUG] == [logging.WARNING]
+    assert len(world.there.activities) == 1, "only the first message reached the observer"
+    assert [r.levelno for r in caplog.records if r.levelno > logging.DEBUG] == [logging.WARNING], (
+        "the skipped message is logged once as a warning"
+    )
     monkeypatch.undo()
     await restarted(world)
     assert len(world.there.activities) == 1, "acked"
@@ -304,4 +324,6 @@ async def test_the_envelope_links_the_context_under_the_mount_prefix(
         created = await http.post("/api/libraries", json=TENANT_BODY, headers=lib.bearer("ada"))
         assert created.status_code == 201, created.text
         await lib.kit.relay.run_once()
-    assert {envelope.context for envelope, _ in broker.messages} == {link}
+    assert {envelope.context for envelope, _ in broker.messages} == {link}, (
+        "every envelope links the context under the mount prefix"
+    )

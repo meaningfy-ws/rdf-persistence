@@ -374,8 +374,8 @@ async def test_the_kit_sweeps_a_tenant_with_its_own_store_files_and_iris(service
 
     report = await service.kit.sweep_tenant(tenant, older_than=timedelta(seconds=-1))
 
-    assert report.tenant == tenant
-    assert report.older_than_seconds == -1
+    assert report.tenant == tenant, "the report names the swept tenant"
+    assert report.older_than_seconds == -1, "the report keeps the age limit it was asked for"
     assert report.blobs == ["left-behind"], "found through the kit's own file store"
     assert report.removed_loaded_graphs is False, "a dry run, as by default"
     await service.kit.sweep_tenant(tenant, remove_blobs=True, older_than=timedelta(seconds=-1))
