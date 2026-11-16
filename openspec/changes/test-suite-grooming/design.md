@@ -247,3 +247,16 @@ Filled during stage 4 (rule 5 items without a fake).
   schema-view sharing did not (task 1.5).
 - `testkit/event_bus_conformance.py` waits with the default 1 s poll for both the in-memory and
   the Redis run; a `poll_seconds` parameter would speed the in-memory run (task 1.9).
+- P-20's rows in `tests/unit/services/test_token_verifier.py` (~9 cases) and
+  `tests/unit/testkit/test_fake_identity.py` (~3) were outside task 2.1's folders and not merged.
+- Production redundancy found by mutation (task 2.1), for a later decision: the Fuseki
+  `_raise_for_status` `status >= 500` branch has the same outcome as the final `not is_success`
+  branch; `auth.py`'s scheme and empty-token checks give the same 401 as the verifier.
+- `TURTLE` in `tests/unit/entrypoints/test_route_class.py` is unused after 2.1 (ruff does not
+  flag module constants): remove in stage 4.
+
+## Docs owed
+
+- `howto/adopt.adoc` (the signing-key passage, near "cache `new_key()`"): point consumers at
+  `testkit.shared_key()` and re-measure the "≈ 0.5 s" key-generation figure (0.057 s measured,
+  task 1.8). Written in stage 4 with the rule-15 docs work.

@@ -13,18 +13,18 @@ infrastructure). The lead runs `make check-all` and `make test-containers` once 
 - [x] 1.5 (built, measured: no saving; not landed, see PD-2) PD-2: `ServiceKit` / `install_service` accept a `SchemaView`, test first; `toy_view()`. Gate: TF. Then the adversarial tester on 1.5 (PD-14).
 - [ ] 1.6 PD-3 (skipped if 1.3 chose `worksteal`): `TestReadOnlyListing`. Gate: TG, then the file twice and reversed.
 - [x] 1.7 PD-4: module-scoped book triples in the four named files. Gate: TG, then each file reversed. (Built, measured: no saving; not landed, see PD-4.)
-- [ ] 1.8 PD-5: testkit `shared_key()` with the rp-testkit scenario test; `signer` fixtures. Gate: TF.
-- [ ] 1.9 PD-8: `poll_seconds` with the rp-testkit scenario test; in-process callers pass 0.01. Gate: TF.
+- [x] 1.8 PD-5: testkit `shared_key()` with the rp-testkit scenario test; `signer` fixtures. Gate: TF.
+- [x] 1.9 PD-8: `poll_seconds` with the rp-testkit scenario test; in-process callers pass 0.01. Gate: TF.
 - [ ] 1.10 PD-6: re-time and change the slow markers; update `tests/audit/slow-markers.md`. Gate: TG.
 
 ## 2. Stage 2: merged cases (PR 2)
 
-- [ ] 2.1 PD-10: P-20, P-21 (adapters, entrypoints). Gate: TG.
-- [ ] 2.2 PD-10: P-22, P-23 (domain). Gate: TF.
-- [ ] 2.3 PD-10: P-24, P-25 (generation). Gate: TG.
-- [ ] 2.4 PD-10: P-26 (testkit). Gate: TF.
-- [ ] 2.5 PD-10: P-27, P-28, P-29 (collaboration adversarial files; survivors of P-40/P-41 untouched). Gate: TG.
-- [ ] 2.6 PD-10: P-30, P-32, P-33 (other services files). Gate: TG.
+- [x] 2.1 PD-10: P-20, P-21 (adapters, entrypoints). Gate: TG.
+- [x] 2.2 PD-10: P-22, P-23 (domain). Gate: TF.
+- [x] 2.3 PD-10: P-24, P-25 (generation). Gate: TG.
+- [x] 2.4 PD-10: P-26 (testkit). Gate: TF.
+- [x] 2.5 PD-10: P-27, P-28, P-29 (collaboration adversarial files; survivors of P-40/P-41 untouched). Gate: TG.
+- [x] 2.6 PD-10: P-30, P-32, P-33 (other services files). Gate: TG.
 - [ ] 2.7 PD-10: P-31, P-34 (container tier). Gate: the lead's `make test-containers`.
 - [ ] 2.8 PD-16: write `tests/audit/refresh_map.py` and refresh the map. Gate: it reports no unknown id.
 
@@ -55,7 +55,7 @@ infrastructure). The lead runs `make check-all` and `make test-containers` once 
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [ ] 1.3 · [x] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · [ ] 4.4 · [ ] 4.5 · [ ] 4.6 · [ ] 5.1 · [ ] 5.2 · [ ] 6.1 · [ ] 6.2
+- [x] 1.1 · [x] 1.2 · [ ] 1.3 · [x] 1.4 · [x] 1.5 · [ ] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [ ] 1.10 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6 · [ ] 2.7 · [ ] 2.8 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · [ ] 4.4 · [ ] 4.5 · [ ] 4.6 · [ ] 5.1 · [ ] 5.2 · [ ] 6.1 · [ ] 6.2
 
 ## Verification
 
