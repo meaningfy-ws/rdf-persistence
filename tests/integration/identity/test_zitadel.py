@@ -7,6 +7,7 @@ import pytest
 from rdf_persistence.adapters.jwks import JwksTokenVerifier
 from rdf_persistence.adapters.zitadel import ZitadelIdentity, zitadel_roles_claim
 from rdf_persistence.domain.exceptions import InvalidToken, NotFound
+from rdf_persistence.testkit.bootstrap import wait_until_async
 from rdf_persistence.testkit.exceptions import TokenRefusedError
 from rdf_persistence.testkit.identity_conformance import CASES, run_case
 from rdf_persistence.testkit.zitadel import ADMIN_ROLE, access_token, create_machine_user
@@ -115,16 +116,15 @@ async def test_an_unknown_role_or_account_is_not_found(identity, account):
         await identity.disable("1")
 
 
-async def _found_once_indexed(identity, email, attempts=30):
+async def _found_once_indexed(identity, email, timeout=15.0):
     """Zitadel indexes a new user for search asynchronously, so a search right after a create can miss it."""
-    import anyio
-
-    for _ in range(attempts - 1):
-        try:
-            return await identity.find_by_email(email)
-        except NotFound:
-            await anyio.sleep(0.5)
-    return await identity.find_by_email(email)
+    return await wait_until_async(
+        lambda: identity.find_by_email(email),
+        f"the account {email} to be indexed for search",
+        timeout=timeout,
+        poll_seconds=0.5,
+        retry_on=(NotFound,),
+    )
 
 
 async def test_a_person_is_found_by_exact_email(identity, zitadel_project):

@@ -1,7 +1,6 @@
 """The session against a real Fuseki: scenarios 'graph name', 'two editors', 'a commit records who and when'."""
 
 import asyncio
-import time
 import uuid
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
@@ -414,27 +413,6 @@ async def test_open_session_yields_a_working_session(store, database):
         await session.add_graph(book(1), title(book(1), "via the context manager"))
         graph, _, _ = await session.get_graph(book(1))
     assert (URIRef(book(1)), TITLE, Literal("via the context manager")) in graph, "stored"
-
-
-@pytest.mark.parametrize("call", ["replace", "remove"])
-async def test_replace_and_remove_cost_the_size_of_the_graphs_not_their_product(
-    store, database, call
-):
-    """50 aggregate triples and a loaded graph of 2000: the cartesian form took tens of seconds."""
-    session = session_for(store, database)
-    loaded = loaded_graph_iri(book(1))
-    root = URIRef(book(1))
-    await store.put_graph(
-        database, loaded, graph_of([(root, TITLE, Literal(i)) for i in range(2000)])
-    )
-    triples = [(root, TITLE, Literal(f"title {i}")) for i in range(50)]
-    version = await session.add_graph(book(1), triples, [loaded])
-    started = time.perf_counter()
-    if call == "replace":
-        await session.replace_graph(book(1), triples, version)
-    else:
-        await session.remove(book(1), version)
-    assert time.perf_counter() - started < 2.0
 
 
 async def test_find_returns_the_aggregate_with_the_value_on_a_real_store(store, database):

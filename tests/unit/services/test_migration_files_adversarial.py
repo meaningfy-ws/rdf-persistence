@@ -5,7 +5,6 @@ blank node, never run more operations than the template has, and do nothing once
 Each test below plants one hostile file or database and asserts what the design promises.
 """
 
-import contextlib
 from pathlib import Path
 
 import pytest
@@ -724,8 +723,11 @@ def test_a_step_too_long_for_the_parser_is_refused_with_its_own_message(tmp_path
 @pytest.mark.parametrize("depth", [20, 400, 5000])
 def test_deeply_nested_braces_are_loaded_or_refused_never_a_crash(tmp_path, depth):
     nested = "{" * depth + f"?s {SHELF} ?o" + "}" * depth
-    with contextlib.suppress(InvalidMigration):
-        load(tmp_path, where_pattern=nested, delete_pattern=DELETE)
+    try:
+        loaded = load(tmp_path, where_pattern=nested, delete_pattern=DELETE)
+    except InvalidMigration:
+        return  # a refusal is one of the two allowed outcomes
+    assert isinstance(loaded, Migration), f"depth {depth}: neither loaded nor refused"
 
 
 # -- legitimate files that must load -------------------------------------------------------------

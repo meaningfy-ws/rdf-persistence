@@ -306,11 +306,12 @@ def test_iris_cannot_be_changed_after_it_is_built():
 def test_the_settings_an_iris_was_built_from_cannot_change_what_it_mints():
     built = settings(flat_policy())
     iris = Iris(built, ROOTS, OWNED)
-    try:
-        built.base = "http://evil.example/"
-    except (ValidationError, TypeError, AttributeError):
-        return
-    assert str(iris.tenant(TENANT_ID)).startswith(BASE)
+    minted = iris.tenant(TENANT_ID)
+    # ServiceSettings is not frozen: the assignment goes through, and Iris holds its own copy (PD-12f).
+    built.base = "http://evil.example/"
+    assert built.base == "http://evil.example/", "the caller's own settings did change"
+    assert iris.tenant(TENANT_ID) == minted, "assigning to the settings changed the minted IRI"
+    assert str(minted).startswith(BASE), "the minted IRI left the configured base"
 
 
 def test_building_an_iris_checks_the_policy_even_for_a_random_id_without_a_length():

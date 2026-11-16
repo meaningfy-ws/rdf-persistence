@@ -47,6 +47,7 @@ from rdf_persistence.services.migrations import SchemaChain
 from rdf_persistence.services.migrations import chain_of as chain_of_schema
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
+from rdf_persistence.services.session import Clock, utc_now
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import DEFAULT_STORE, Tenancy
 from rdf_persistence.services.tenant_dump import dump, restore
@@ -143,10 +144,19 @@ async def populated(world: SimpleNamespace, title: str | None = None) -> SimpleN
     return world
 
 
-async def dumped(world: SimpleNamespace, tenant: str | None = None, view=VIEW) -> bytes:
+async def dumped(
+    world: SimpleNamespace, tenant: str | None = None, view=VIEW, clock: Clock = utc_now
+) -> bytes:
     out = io.BytesIO()
     await dump(
-        world.tenancy, world.store, world.files, world.iris, view, tenant or world.tenant, out
+        world.tenancy,
+        world.store,
+        world.files,
+        world.iris,
+        view,
+        tenant or world.tenant,
+        out,
+        clock=clock,
     )
     return out.getvalue()
 
@@ -708,15 +718,15 @@ async def test_a_dump_holds_the_manifest_the_graphs_the_blobs_and_the_end_marker
 
 
 async def test_a_dump_manifest_names_the_source_the_policy_and_the_schema(world):
-    manifest = manifest_of(await dumped(world))
+    taken = datetime(2026, 11, 16, 9, 30, tzinfo=UTC)
+    manifest = manifest_of(await dumped(world, clock=lambda: taken))
     assert manifest.format_version == 1, "format version"
     assert manifest.source_tenant == world.tenant, "source tenant"
     assert manifest.source_tenant_id == world.iris.tenant_id_of(world.tenant), "source tenant id"
     assert manifest.label == "Ghent", "the record's label"
     assert manifest.iri_policy == world.iris.effective_policy, "the effective policy"
     assert manifest.schema_id == VIEW.schema.id, "the schema id"
-    assert manifest.created_at.tzinfo is not None, "an aware timestamp"
-    assert manifest.created_at <= datetime.now(UTC), "taken in the past"
+    assert manifest.created_at == taken, "the manifest carries the clock's reading"
 
 
 async def test_a_dump_changes_nothing_in_the_tenant(world):

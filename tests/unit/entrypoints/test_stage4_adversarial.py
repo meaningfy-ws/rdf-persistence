@@ -101,16 +101,22 @@ async def _set_up(scene: Scene, case: str) -> str:
     return who
 
 
-@pytest.mark.parametrize("action", ROUTED)
+# Left out: tenant delete (the test below covers it) and book administer (no aggregate route needs it).
+TARGET_ACTIONS = [
+    (on, action)
+    for on in ("book", "tenant")
+    for action in ROUTED
+    if (on, action) not in {("tenant", "delete"), ("book", "administer")}
+]
+
+
+@pytest.mark.parametrize(("on", "action"), TARGET_ACTIONS)
 @pytest.mark.parametrize("case", list(CASES))
-@pytest.mark.parametrize("on", ["book", "tenant"])
 async def test_a_listed_action_is_allowed_and_an_unlisted_one_is_refused(
     scene, case, on, action
 ) -> None:
     who = await _set_up(scene, case)
     target = scene.book if on == "book" else scene.tenant
-    if (on, action) in {("tenant", "delete"), ("book", "administer")}:
-        pytest.skip("R4-1: tenant delete is the test below; no aggregate route needs administer")
     listed = await _listed(await scene.http.get(target, headers=_as(scene, who)))
     status = await _probe(scene, who, target, action)
     expected_ok = action in listed

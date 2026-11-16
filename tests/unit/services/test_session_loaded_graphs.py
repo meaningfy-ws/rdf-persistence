@@ -3,7 +3,7 @@
 import asyncio
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import pytest
 from rdflib import RDF, BNode, Graph, Literal, URIRef
@@ -233,10 +233,12 @@ async def test_two_concurrent_adds_of_one_iri_give_one_success_and_one_conflict(
     assert len(list(stored.objects(None, v.VERSION))) == 1, "one version token was written"
 
 
+UPPER_CASE_UUID = UUID("9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d")  # hex letters, so .upper() differs
+
 NOT_MINTED = [
     pytest.param(f"{ROOT}/content/x", id="a path below an aggregate"),
     pytest.param(f"{TENANT}/books/1", id="not a UUID"),
-    pytest.param(f"{TENANT}/books/{str(uuid4()).upper()}", id="not a canonical UUID"),
+    pytest.param(f"{TENANT}/books/{str(UPPER_CASE_UUID).upper()}", id="not a canonical UUID"),
     pytest.param(f"{ROOT}/graph", id="an aggregate's graph IRI"),
 ]
 
@@ -267,8 +269,8 @@ async def test_an_aggregate_cannot_pose_as_a_loaded_graph_of_another_and_be_remo
     "bad",
     [
         pytest.param(URIRef(f"{ROOT}/content/x"), id="not a UUID"),
-        pytest.param(URIRef(f"{ROOT}/content/{uuid4().hex}"), id="a UUID without hyphens"),
-        pytest.param(URIRef(f"{ROOT}/content/{uuid4()}/more"), id="a longer path"),
+        pytest.param(URIRef(f"{ROOT}/content/{UUID(int=21).hex}"), id="a UUID without hyphens"),
+        pytest.param(URIRef(f"{ROOT}/content/{UUID(int=22)}/more"), id="a longer path"),
     ],
 )
 async def test_a_loaded_graph_must_be_exactly_the_minted_form(session, store, bad):

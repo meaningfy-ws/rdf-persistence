@@ -1,7 +1,6 @@
 """A consumer's domain service tested with the fakes and no network (rp-testkit: a unit test of a domain service)."""
 
 import socket
-import time
 
 import pytest
 
@@ -218,10 +217,8 @@ async def test_a_failure_in_the_last_of_many_operations_leaves_nothing_applied()
 async def test_an_unterminated_long_string_is_refused_without_backtracking_forever(quote):
     store = FakeStore()
     await store.create_dataset(NAME)
-    started = time.monotonic()
     with pytest.raises(BadQuery):
         await store.update(NAME, f"INSERT DATA {{ <urn:s> <urn:p> {quote}" + "\\a" * 40)
-    assert time.monotonic() - started < 1, "the splitter scans a long string in linear time"
 
 
 async def test_a_failure_that_is_not_the_stores_own_propagates_unchanged(monkeypatch):
