@@ -1,7 +1,7 @@
 # Hand-over: aggregate-events, after stage 3
 
 ## Done
-Stages 1 and 2, PR #124 (merged); stage 3 and the end-of-epic review's fix pass, this PR
+Stages 1 and 2, PR #124 (merged); stage 3 and the end-of-epic review's fix pass, PR #126
 (merged by the watch-and-merge command after this note). `proposal.md` is reconciled (P-0004).
 
 ## Decided since the PLAN

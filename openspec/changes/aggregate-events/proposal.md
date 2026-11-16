@@ -144,7 +144,7 @@ overtaken commit (atomic-commit PD-4) is now published by the relay (PD-2).
 
 ## As built (2026-11-16)
 
-Delivered in #124 (stages 1 and 2 as one PR, D-3) and in the stage 3 PR. The text above the
+Delivered in #124 (stages 1 and 2 as one PR, D-3) and in #126 (stage 3 and the end-of-epic review's fixes; "stage 3" in the table below). The text above the
 reconciled sections stays as shaped; this table says where the PLAN or the code departs from it
 or adds to it. Every DEC held.
 
