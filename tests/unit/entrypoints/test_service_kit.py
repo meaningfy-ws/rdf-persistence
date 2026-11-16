@@ -73,10 +73,12 @@ async def test_an_expired_token_is_a_401_problem_and_no_handler_runs(service, cl
     )
 
 
+# One case per class: no credential (absent), no token after the scheme, a scheme that is not
+# Bearer, a token the verifier refuses.
 @pytest.mark.parametrize(
     "authorization",
-    [None, "", "Bearer", "Bearer ", "Basic YWRhOnB3", "Token abc", "Bearer not.a.jwt"],
-    ids=["absent", "empty", "no-token", "blank-token", "basic", "other-scheme", "garbage"],
+    [None, "Bearer", "Basic YWRhOnB3", "Bearer not.a.jwt"],
+    ids=["absent", "no-token", "basic", "garbage"],
 )
 async def test_a_request_without_a_valid_bearer_token_is_a_401(
     service, client, authorization

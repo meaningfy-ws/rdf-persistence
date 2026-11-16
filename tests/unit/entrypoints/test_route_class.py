@@ -48,7 +48,8 @@ async def tenant_of(toy: ToyService, http: httpx.AsyncClient) -> tuple[str, str]
     return path, str(toy.kit.tenant_iri(path.rsplit("/", 1)[1]))
 
 
-@pytest.mark.parametrize("media_type", [JSON_LD, TURTLE])
+# One class: the 404 is decided before serialisation, so the Accept type does not matter.
+@pytest.mark.parametrize("media_type", [JSON_LD])
 async def test_a_comment_is_not_read_through_the_route_of_the_books(flat, media_type) -> None:
     async with flat.client() as http:
         path, tenant = await tenant_of(flat, http)

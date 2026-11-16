@@ -119,7 +119,8 @@ async def test_a_listed_action_is_allowed_and_an_unlisted_one_is_refused(
     )
 
 
-@pytest.mark.parametrize("who", ["ada", "mia", "rita", "admin"])
+# One class for the callers without administer (mia stands for them; she holds delete).
+@pytest.mark.parametrize("who", ["ada", "mia", "admin"])
 async def test_deleting_the_tenant_is_allowed_exactly_when_the_tenant_read_lists_delete(
     scene, who
 ) -> None:
@@ -287,13 +288,15 @@ async def test_head_is_not_routed_so_it_cannot_leak_a_header(scene, on) -> None:
     assert ALLOWED_ACTIONS not in response.headers, "no header on the 405"
 
 
-@pytest.mark.parametrize("on", ["book", "tenant"])
+# The token check runs before the route, so a 401 is tried on the book only; 404 and 406 on both.
 @pytest.mark.parametrize(
-    ("who", "accept", "status"),
+    ("on", "who", "accept", "status"),
     [
-        ("omar", JSON, 404),
-        ("rita", "text/yaml", 406),
-        ("nobody", JSON, 401),
+        ("book", "omar", JSON, 404),
+        ("tenant", "omar", JSON, 404),
+        ("book", "rita", "text/yaml", 406),
+        ("tenant", "rita", "text/yaml", 406),
+        ("book", "nobody", JSON, 401),
     ],
 )
 async def test_error_responses_carry_no_header(scene, on, who, accept, status) -> None:

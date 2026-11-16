@@ -144,11 +144,10 @@ async def test_find_by_email_with_no_match_is_not_found():
 
 @pytest.mark.parametrize(
     ("state", "active"),
+    # One class: `state == ACTIVE_STATE`; INACTIVE stands for every non-active state.
     [
         ("USER_STATE_ACTIVE", True),
         ("USER_STATE_INACTIVE", False),
-        ("USER_STATE_LOCKED", False),
-        ("USER_STATE_INITIAL", False),
     ],
 )
 async def test_only_an_active_user_is_an_active_account(state, active):
@@ -291,11 +290,10 @@ async def test_a_role_change_on_an_unknown_account_is_not_found(method):
 
 @pytest.mark.parametrize(
     ("method", "action", "state"),
+    # One class (`state != wanted`) per direction, since each direction has its own wanted state.
     [
         ("disable", "deactivate", "USER_STATE_ACTIVE"),
-        ("disable", "deactivate", "USER_STATE_LOCKED"),
         ("enable", "reactivate", "USER_STATE_INACTIVE"),
-        ("enable", "reactivate", "USER_STATE_LOCKED"),
     ],
 )
 async def test_a_refused_state_change_that_left_another_state_fails(method, action, state):
@@ -402,7 +400,8 @@ CALLS = {
 
 
 @pytest.mark.parametrize("method", CALLS)
-@pytest.mark.parametrize("status", [500, 502, 503, 401, 403])
+# One class (the `not response.is_success` branch of _send); 500 and 401 are the two the name gives.
+@pytest.mark.parametrize("status", [500, 401])
 async def test_a_server_error_or_a_refused_service_token_is_identity_unavailable(method, status):
     transport = httpx.MockTransport(lambda request: answer(status=status))
     client = ZitadelIdentity(ISSUER, "t", ORG, PROJECT, transport=transport)

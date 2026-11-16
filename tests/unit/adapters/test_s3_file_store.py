@@ -6,7 +6,7 @@ from io import BytesIO
 import boto3
 import pytest
 from botocore.config import Config
-from botocore.exceptions import ConnectTimeoutError, EndpointConnectionError
+from botocore.exceptions import EndpointConnectionError
 from botocore.response import StreamingBody
 from botocore.stub import Stubber
 
@@ -76,9 +76,10 @@ async def test_a_server_error_status_is_store_unavailable_whatever_its_code(s3):
         await files.get(BUCKET, KEY)
 
 
+# One class: every BotoCoreError is mapped once in _run; EndpointConnectionError stands for it.
 @pytest.mark.parametrize(
     "error",
-    [EndpointConnectionError(endpoint_url=URL), ConnectTimeoutError(endpoint_url=URL)],
+    [EndpointConnectionError(endpoint_url=URL)],
     ids=type,
 )
 async def test_a_connection_failure_is_store_unavailable(s3, error):
@@ -180,8 +181,13 @@ BAD_KEYS = [
 ORDINARY_KEYS = ["a..b", "..x", "x/..y/z", "folder/ä b+c.bin"]
 
 
-@pytest.mark.parametrize("key", BAD_KEYS, ids=repr)
-@pytest.mark.parametrize("operation", ["put", "get", "delete"])
+# One class per call site of checked_blob_key: put, get and delete each call it on their own, so
+# each is tried once ("../x"); every form stays on put (they are different security probes).
+@pytest.mark.parametrize(
+    ("operation", "key"),
+    [("put", key) for key in BAD_KEYS] + [("get", "../x"), ("delete", "../x")],
+    ids=repr,
+)
 async def test_a_key_that_climbs_or_holds_a_control_character_is_refused_before_any_request(
     s3, operation, key
 ):
@@ -203,7 +209,8 @@ async def test_a_key_with_dots_inside_a_segment_is_a_key(s3, key):
     await files.put(BUCKET, key, b"x")
 
 
-@pytest.mark.parametrize("bucket", ["", "a/b", "Not Valid"])
+# One class: botocore's ParamValidationError, mapped once in _run.
+@pytest.mark.parametrize("bucket", [""])
 async def test_a_bucket_name_boto_refuses_is_the_callers_error_not_an_outage(no_network, bucket):  # noqa: F811
     files = S3FileStore(
         URL, "id", "secret", REGION

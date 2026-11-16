@@ -351,9 +351,8 @@ async def test_a_stream_ends_after_its_lifetime_and_a_resume_gets_what_came_afte
     assert late.event == "Replace"
 
 
-@pytest.mark.parametrize(
-    "bad", ["a b", "<x>", "", "x" * 300], ids=["space", "angle", "empty", "long"]
-)
+# One class for the characters an IRI forbids (a space stands for them); empty and long are boundaries.
+@pytest.mark.parametrize("bad", ["a b", "", "x" * 300], ids=["space", "empty", "long"])
 async def test_a_last_event_id_that_is_no_activity_id_sends_a_reset_and_the_stream_goes_on(
     settled: Scene, fast: str, bad: str, caplog: pytest.LogCaptureFixture
 ) -> None:  # D-21

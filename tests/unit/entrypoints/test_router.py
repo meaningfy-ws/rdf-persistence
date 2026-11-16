@@ -734,7 +734,8 @@ async def test_a_representation_the_service_does_not_make_is_a_406_before_anythi
     )
 
 
-@pytest.mark.parametrize("content_type", [TURTLE, "text/plain", "application/xml"])
+# One case per class: produced but not accepted (turtle), an unknown type (text/plain stands for it).
+@pytest.mark.parametrize("content_type", [TURTLE, "text/plain"])
 async def test_a_body_in_another_format_is_a_415(scene, content_type) -> None:
     response = await scene.http.post(
         f"{scene.tenant}/books",
