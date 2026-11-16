@@ -369,3 +369,8 @@ directory `integration/adapters/` maps to `events` only), S4 (an un-awaited canc
 fake's private state), S5 (a step that does more than its text; an unasserted PUT), S7
 (`visible_part` has no caller until stage 3), S8 (the gate report without its SHA). W10 (three doc
 pages name only Fuseki, Garage and Zitadel) goes to task 3.3; S6 (Roadmap boxes) is fixed now.
+- **D-9 (stage 1, 2026-11-16, the lead; checker's unmet item, review W6).** TC-09 says the Redis
+  bus fails because "the broker stopped"; its conformance hook closes the bus instead, so the
+  failure is the adapter's own `RuntimeError`, not one from FastStream or Redis. Accepted for this
+  PR: the relay treats every exception of `publish` alike (TC-14 on the fake proves the handling);
+  the full review at the end of the epic weighs a broker-down hook again.
