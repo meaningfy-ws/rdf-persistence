@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-16
+
+### Added
+- **Several stores** (`tenant-stores`): `install_service(..., stores={name: store})` wires named
+  stores beside the default one; each tenant's access record names its store, and the kit routes
+  the tenant's sessions, sweep and migrations there. A record naming a store the service does not
+  wire raises `StoreNotWired`.
+- **Events across deployments** (`aggregate-events`): every recorded activity is the outbox entry;
+  a relay that runs with the service publishes it, as the generated JSON with a JSON-LD context
+  link (`context_link`), to an `EventBus` (`install_service(..., event_bus=...)`). Incoming events
+  of other deployments go to the message bus (`Receive`). The Redis Streams bus on FastStream is
+  the optional extra `events` (`rdf-persistence[events]`). A tenant's events can be followed over
+  server-sent events, resuming with `Last-Event-ID` within 7 days; the stream shows only what the
+  caller may read. Exported: `EventBus`, `EventEnvelope`, `Receive`, `context_link`.
+
+### Fixed
+- **A literal holding `\u` is stored as sent** (#108): a backslash followed by `u` or `U` was
+  read by the store as a code-point escape.
+- **A failed tenant create or restore cleans up only what it made.**
+- **Event logs carry no tenant values** (#125).
+
 ## [0.3.0] - 2026-11-15
 
 ### Added
@@ -138,7 +159,8 @@ capabilities in `openspec/specs/`.
 
 <!-- Release process: docs/modules/ROOT/pages/develop/index.adoc#release -->
 
-[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/meaningfy-ws/rdf-persistence/releases/tag/v0.1.0
