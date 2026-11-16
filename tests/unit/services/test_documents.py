@@ -21,7 +21,7 @@ from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
+from rdf_persistence.testkit import assert_isomorphic
 from tests.toy import TENANT, TOY_SCHEMA, book_iri, dune, toy_mapper
 from tests.unit.services.conftest import GENERATED
 

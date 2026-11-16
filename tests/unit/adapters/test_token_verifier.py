@@ -12,7 +12,8 @@ from cryptography.hazmat.primitives import serialization
 from rdf_persistence.adapters.jwks import JwksTokenVerifier
 from rdf_persistence.domain.exceptions import InvalidToken
 from rdf_persistence.services.tokens import TokenVerifier
-from rdf_persistence.testkit.tokens import ISSUER, TokenSigner, shared_key
+from rdf_persistence.testkit import TokenSigner, shared_key
+from rdf_persistence.testkit.tokens import ISSUER
 
 NOW = 1_700_000_000.0
 

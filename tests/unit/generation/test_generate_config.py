@@ -101,7 +101,7 @@ def test_the_regenerate_command_is_read_from_its_toml_key(tmp_path: Path) -> Non
     (named,) = read(tmp_path, SINGLE + 'regenerate-command = "make generate-models"\n')
     (unnamed,) = read(tmp_path, SINGLE)
     assert named.regenerate_command == "make generate-models", "the key was not read"
-    assert unnamed.regenerate_command is None, "an absent key is not None"
+    assert unnamed.regenerate_command is None, "an absent key leaves the command unset"
 
 
 def test_a_regenerate_command_that_is_not_a_string_is_an_error_naming_the_toml_key(

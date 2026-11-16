@@ -1,4 +1,6 @@
-"""A JSON-LD file whose context is not inline is refused before any fetch (needs a local server).
+"""A JSON-LD file whose context is not inline never reaches a server (needs a local server).
+
+The refusal itself, with its message, is tested in tests/unit/services/test_loading.py.
 
 rdflib fetches a remote context through ``urllib``, which ``httpx.MockTransport`` cannot catch, so
 the proof that nothing is fetched needs a real listener on 127.0.0.1. No container is started.
@@ -69,10 +71,9 @@ NON_INLINE = {
 
 
 @pytest.mark.parametrize("make", NON_INLINE.values(), ids=NON_INLINE.keys())
-async def test_a_jsonld_context_that_is_not_inline_is_refused_and_nothing_is_fetched(
-    context_server, make
-):
+async def test_a_jsonld_context_that_is_not_inline_never_reaches_the_server(context_server, make):
+    """The refusal and its message are proved in the unit lane; here only that the server is not asked."""
     url = f"http://127.0.0.1:{context_server.server_port}/context.jsonld"
-    with pytest.raises(InvalidGraph, match="inline"):
+    with pytest.raises(InvalidGraph):
         await parse_graph(make(url), RdfFormat.JSONLD)
     assert context_server.requests == [], "the server was never asked"

@@ -11,9 +11,14 @@ from rdf_persistence import FusekiStore
 from rdf_persistence.domain.iris import loaded_graph_iri
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import Session
-from tests.integration.store.test_session import TITLE, book, graph_of, session_for
-from tests.integration.store.test_unique_keys import book as keyed_book
-from tests.integration.store.test_unique_keys import book_iri, session_of
+from tests.integration.store.sessions import (
+    TITLE,
+    book,
+    graph_of,
+    keyed_book,
+    session_for,
+    session_of,
+)
 from tests.toy import dune, toy_mapper
 
 REPLACE_REMOVE_SECONDS = 2.0  # the cartesian form took tens of seconds
@@ -82,10 +87,10 @@ async def test_a_keyed_add_stays_under_half_a_second_in_a_tenant_of_a_thousand_b
     for first in range(0, BOOKS, BATCH):  # 10 transactions of 100 books, unkeyed: only the load
         async with unkeyed.transaction() as load:
             for n in range(first, first + BATCH):
-                iri = book_iri(10_000 + n)
+                iri = book(10_000 + n)
                 await load.add_graph(iri, keyed_book(iri, f"load-{n}"))
     keyed = await mean_seconds(
         session.add_graph(iri, keyed_book(iri, f"new-{n}"))
-        for n, iri in enumerate(book_iri(20_000 + n) for n in range(ROUNDS))
+        for n, iri in enumerate(book(20_000 + n) for n in range(ROUNDS))
     )
     assert keyed < KEYED_ADD_SECONDS, f"mean keyed add {keyed:.3f} s over {ROUNDS} adds"

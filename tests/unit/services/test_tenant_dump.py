@@ -51,8 +51,7 @@ from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import DEFAULT_STORE, Tenancy
 from rdf_persistence.services.tenant_dump import dump, restore
 from rdf_persistence.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
-from rdf_persistence.testkit import FakeStore
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
+from rdf_persistence.testkit import FakeStore, assert_isomorphic
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess

@@ -17,7 +17,7 @@ from rdf_persistence.domain.exceptions import (
     NotFound,
     StoreUnavailable,
 )
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
+from rdf_persistence.testkit import assert_isomorphic
 
 URL = "http://fuseki.test:3030"
 EX = "http://example.org/"

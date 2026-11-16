@@ -1291,7 +1291,7 @@ async def test_heads_in_iri_order_whatever_the_order_asked(guarded):
 
 async def test_heads_with_no_iris_sends_no_query(guarded):
     queries = len(guarded._store.sent("query"))
-    assert await guarded.heads([]) == [], "none"
+    assert await guarded.heads([]) == [], "asking for no IRIs finds no heads"
     assert len(guarded._store.sent("query")) == queries, "and no query"
 
 

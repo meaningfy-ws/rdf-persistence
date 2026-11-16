@@ -17,8 +17,9 @@ from rdf_persistence.domain.generated.rp_provenance import (
 )
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.provenance import activity_triples
+from rdf_persistence.testkit import assert_isomorphic
 from rdf_persistence.testkit.conformance import Conformance
-from rdf_persistence.testkit.roundtrip import assert_isomorphic, without_framing
+from rdf_persistence.testkit.roundtrip import without_framing
 from tests.toy import ADA, BOB, TENANT, TOY_SCHEMA, book_iri, toy_mapper
 
 RP = "https://meaningfy.ws/ns/rdf-persistence#"

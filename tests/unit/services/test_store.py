@@ -5,8 +5,7 @@ from rdflib import Dataset, Graph, URIRef
 
 from rdf_persistence.domain.exceptions import BadQuery, DatabaseGone, SparqlError
 from rdf_persistence.services.store import ToolkitStore
-from rdf_persistence.testkit import FakeStore
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
+from rdf_persistence.testkit import FakeStore, assert_isomorphic
 
 DATASET = "d"
 GRAPH = URIRef("https://example.org/g")
@@ -43,6 +42,9 @@ async def test_the_dataset_level_export_and_import_pass_through_unchanged(store)
     await store.create_dataset("copy")
     await store.import_quads("copy", exported)
     imported = Dataset().parse(data=await store.export_quads("copy"), format="nquads")
+    assert {graph.identifier for graph in imported.graphs() if len(graph)} == {GRAPH}, (
+        "the import added no graph beyond the one named graph"
+    )
     assert_isomorphic(imported.graph(GRAPH), put)
     with pytest.raises(DatabaseGone):
         await store.export_quads("missing")

@@ -18,7 +18,7 @@ from rdf_persistence.services.session import (
     request_text,
     without_bookkeeping,
 )
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
+from rdf_persistence.testkit import assert_isomorphic
 
 EX = "http://example.org/t/"
 ROOT, OTHER_ROOT = URIRef(f"{EX}books/1"), URIRef(f"{EX}books/2")

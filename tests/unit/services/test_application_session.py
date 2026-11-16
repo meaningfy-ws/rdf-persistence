@@ -24,8 +24,7 @@ from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session, payload_triples
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
-from rdf_persistence.testkit import FakeFileStore, FakeStore
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
+from rdf_persistence.testkit import FakeFileStore, FakeStore, assert_isomorphic
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.templates import Template
 from tests.toy import ADA, SETTINGS, access, dune, library, template, toy_mapper

@@ -5,13 +5,7 @@ from rdflib import Literal, URIRef
 from rdf_persistence.services import vocabulary as v
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
 from tests.unit.entrypoints.scene import PROBLEMS, problem_of
-from tests.unit.services.test_collaboration_discussion_adversarial import (
-    OA,
-    RP,
-    SECRET,
-    annotation,
-    stored,
-)
+from tests.unit.services.collaboration_data import OA, RP, SECRET, annotation, stored
 
 
 async def test_the_kit_remove_with_files_drops_the_comments():

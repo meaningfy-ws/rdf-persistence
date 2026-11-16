@@ -31,7 +31,7 @@ from rdf_persistence.domain.tenant_move import rewrite
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenant_dump import dump
 from rdf_persistence.services.vocabulary import RELAY_PLUMBING
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
+from rdf_persistence.testkit import assert_isomorphic
 from tests.toy import SETTINGS
 from tests.unit.services.test_tenant_dump import (
     BLOB_BYTES,

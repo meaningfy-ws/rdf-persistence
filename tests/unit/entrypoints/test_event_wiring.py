@@ -5,9 +5,10 @@ import asyncio
 import pytest
 from fastapi import FastAPI
 
+from rdf_persistence.domain.generated.rp_provenance import Add
 from rdf_persistence.domain.generated.service.rp_service import ServiceSettings
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus, wait_until_async
-from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
+from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 from tests.unit.entrypoints.test_service_kit import installed, made
 
 
@@ -55,7 +56,13 @@ async def test_with_no_event_bus_the_activity_is_still_relayed_to_the_hub() -> N
                 poll_seconds=0.01,
             )
             activity = queue.get_nowait()
-    assert activity is not None, "the relay offered the hub an activity of the tenant"
+    assert isinstance(activity, Add), "the relay offered the hub an Add"
+    entities = [g.entity for g in activity.generations or []]
+    assert entities, "the Add generated something"
+    assert all(e.startswith(tenant_iri) for e in entities), (
+        "and everything it generated is the tenant's"
+    )
+    assert activity.was_associated_with == [principal_of("ada")], "carried out by the caller"
 
 
 def test_an_event_bus_without_a_deployment_is_refused() -> None:  # TC-21a

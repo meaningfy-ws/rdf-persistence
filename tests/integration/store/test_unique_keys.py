@@ -8,46 +8,27 @@ import uuid
 from collections.abc import AsyncIterator
 
 import pytest
-from rdflib import RDF, Literal, URIRef
+from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
 
 from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.domain.exceptions import Conflict, KeyConflict, NotFound
-from rdf_persistence.domain.generated.rp_core import KeyDuplicate, Principal
+from rdf_persistence.domain.generated.rp_core import KeyDuplicate
 from rdf_persistence.domain.sparql import fill, term
-from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import aggregate_keys
 from rdf_persistence.services.session import Session
-from tests.integration.store.test_session import ADA, BEN, TENANT, Ticker
-from tests.integration.store.test_session import book as book_iri
-from tests.toy import TOY_SCHEMA
+from tests.integration.store.sessions import (
+    BEN,
+    BOOK,
+    ISBN,
+    session_of,
+)
+from tests.integration.store.sessions import book as book_iri
+from tests.integration.store.sessions import keyed_book as book
 
 A, B = book_iri(1), book_iri(2)
-BIBO = "http://purl.org/ontology/bibo/"
-BOOK, ISBN = URIRef(BIBO + "Book"), URIRef(BIBO + "isbn")
-KEYS = aggregate_keys(load_schema(TOY_SCHEMA))
 ROUNDS = 20
 WITH_ISBN = "SELECT DISTINCT ?g WHERE { GRAPH ?g { ?root $isbn $value } }"
 HAS_ISBN = "ASK { GRAPH ?g { $root $isbn $value } }"
-
-
-def book(iri: str, isbn: str | Literal) -> list:
-    root = URIRef(iri)
-    return [
-        (root, RDF.type, BOOK),
-        (root, ISBN, isbn if isinstance(isbn, Literal) else Literal(isbn)),
-    ]
-
-
-def session_of(store: FusekiStore, database: str, principal: Principal = ADA, keys=KEYS) -> Session:
-    return Session(
-        store,
-        database=database,
-        tenant_iri=TENANT,
-        principal=principal,
-        clock=Ticker(),
-        keys=keys,
-    )
 
 
 async def graphs_holding(store: FusekiStore, database: str, isbn: str) -> int:

@@ -3,7 +3,7 @@
 import pytest
 
 from tests.toy_service import DUNE_BODY, TENANT_BODY
-from tests.unit.entrypoints.test_router import _put_root, _rename
+from tests.unit.entrypoints.tenant_requests import put_root, rename
 
 ROOT = {"description": "Books for all.", "city": "Ghent"}
 
@@ -31,7 +31,7 @@ async def test_a_rename_of_an_unknown_tenant_is_404_and_creates_nothing(scene) -
 # One class: a blank label ("" stands for "   ", which the same validator refuses).
 @pytest.mark.parametrize("label", [""])
 async def test_an_invalid_label_is_422_and_the_root_keeps_its_label(scene, label) -> None:
-    response = await _rename(scene, label, scene.access_etag)
+    response = await rename(scene, label, scene.access_etag)
     assert response.status_code == 422, response.text
     root = await scene.http.get(scene.tenant, headers=scene.headers("ada"))
     assert root.json()["label"] == "Ghent", "the root keeps its label"
@@ -56,19 +56,19 @@ async def test_a_root_put_with_two_labels_is_refused(scene) -> None:
 
 
 async def test_a_root_put_with_a_stale_if_match_conflicts_even_with_the_right_label(scene) -> None:
-    first = await _put_root(scene, "Ghent", scene.root_etag)
+    first = await put_root(scene, "Ghent", scene.root_etag)
     assert first.status_code == 200, "the first PUT is fresh"
-    stale = await _put_root(scene, "Ghent", scene.root_etag)
+    stale = await put_root(scene, "Ghent", scene.root_etag)
     assert stale.status_code == 409, "the second PUT used a spent ETag"
 
 
 async def test_a_root_put_with_a_wrong_label_and_a_stale_if_match_is_refused_without_a_write(
     scene,
 ) -> None:
-    assert (await _put_root(scene, "Ghent", scene.root_etag)).status_code == 200, (
+    assert (await put_root(scene, "Ghent", scene.root_etag)).status_code == 200, (
         "the first PUT is fresh"
     )
-    refused = await _put_root(scene, "Other", scene.root_etag)
+    refused = await put_root(scene, "Other", scene.root_etag)
     assert refused.status_code in (409, 422), "the second PUT is refused"
     root = await scene.http.get(scene.tenant, headers=scene.headers("ada"))
     assert root.json()["label"] == "Ghent", "the root keeps its label"
@@ -104,7 +104,7 @@ async def test_a_root_put_in_another_tenant_checks_that_tenants_record(scene) ->
     )
     assert renamed.status_code == 200, "the other tenant was renamed"
     # the first tenant still wants "Ghent": the other's rename must not leak across tenants
-    assert (await _put_root(scene, "Ghent", scene.root_etag)).status_code == 200, (
+    assert (await put_root(scene, "Ghent", scene.root_etag)).status_code == 200, (
         "the other tenant's rename did not reach this one"
     )
     assert other_root.status_code == 200, "the other tenant still reads"

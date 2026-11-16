@@ -17,6 +17,7 @@ from rdf_persistence.entrypoints.problems import (
     install_problem_handlers,
     kind_of,
 )
+from tests.toy_service import assert_problem
 
 BASE = "https://example.org/library/"
 ERRORS = [
@@ -153,10 +154,7 @@ async def test_an_outage_hides_where_the_store_or_the_provider_is(
 
 async def test_a_rejected_body_says_why() -> None:
     response = await get(app_raising(exceptions.InvalidBody("label: Field required")))
-    problem = Problem.model_validate(response.json())
-    assert (response.status_code, problem.type) == (422, f"{BASE}problems/invalid-body"), (
-        "a rejected body is a 422 of the invalid-body type"
-    )
+    problem = assert_problem(response, 422, "invalid-body")  # the base is checked by the table test
     assert problem.detail == "label: Field required", (
         "a 422 carries the messages the caller needs to fix the body"
     )
@@ -172,8 +170,7 @@ async def test_a_pydantic_validation_error_is_an_invalid_body_naming_the_field()
         LabelUpdate(label="")
     except ValidationError as error:
         response = await get(app_raising(error))
-    problem = Problem.model_validate(response.json())
-    assert (response.status_code, problem.type) == (422, f"{BASE}problems/invalid-body"), "status"
+    problem = assert_problem(response, 422, "invalid-body")
     assert "label" in (problem.detail or ""), "the field is named"
 
 

@@ -50,9 +50,10 @@ settings.load_profile(
 # the plugin's own tests.
 pytest_plugins = ["pytester", "rdf_persistence.testkit.freshness"]
 
-# The container fixtures plugin (PD-16). Only tests/integration/ and tests/e2e/ load it, so the
-# unit lane runs without testcontainers. pytest allows `pytest_plugins` only in the rootdir
-# conftest, so those two conftests call `load_container_plugin` from `pytest_configure`.
+# The container fixtures plugin (PD-16). Only tests/integration/, tests/e2e/ and tests/perf/store/
+# load it, so the unit lane runs without testcontainers. pytest allows `pytest_plugins` only in
+# the rootdir conftest, so those three conftests call `load_container_plugin` from
+# `pytest_configure`.
 CONTAINER_PLUGIN = "rdf_persistence.testkit.containers.fixtures"
 
 

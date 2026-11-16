@@ -32,16 +32,14 @@ from rdf_persistence.services.discussion import dependents as discussion_depende
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import Session
-from rdf_persistence.services.workflows import Workflows, load_workflow, state_iri
+from rdf_persistence.services.workflows import Workflows
 from rdf_persistence.services.write_guards import WriteGuards
-from rdf_persistence.testkit import FakeStore, fake_session
+from rdf_persistence.testkit import FakeStore, assert_isomorphic, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
 from tests.toy import (
     ADA,
     BOB,
     MODULES,
-    REVIEW_WORKFLOW,
     ROLES,
     TENANT,
     TOY_SCHEMA,
@@ -57,6 +55,13 @@ from tests.toy import (
     shelf_iri,
     toy_mapper,
 )
+from tests.unit.services.collaboration_data import (
+    ACCEPTED,
+    DRAFT,
+    IN_REVIEW,
+    RETIRED,
+    REVIEW,
+)
 
 B1, B2 = book_iri(1), book_iri(2)
 S1 = shelf_iri(1)
@@ -65,9 +70,6 @@ BOOK_CLASS = "http://purl.org/ontology/bibo/Book"
 COMMENT_CLASS = str(v.ANNOTATION)
 VIEW = load_schema(TOY_SCHEMA)
 T0 = datetime(2026, 11, 14, 9, tzinfo=UTC)
-REVIEW = load_workflow(REVIEW_WORKFLOW)
-DRAFT, IN_REVIEW, ACCEPTED = (state_iri(REVIEW, s) for s in ("draft", "in_review", "accepted"))
-RETIRED = state_iri(REVIEW, "retired")  # a state the file does not list
 
 
 @pytest.fixture(scope="module")

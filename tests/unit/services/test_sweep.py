@@ -13,8 +13,7 @@ from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
-from rdf_persistence.testkit import FakeFileStore, FakeStore
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
+from rdf_persistence.testkit import FakeFileStore, FakeStore, assert_isomorphic
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.toy import ADA, SETTINGS, library_slots, toy_mapper

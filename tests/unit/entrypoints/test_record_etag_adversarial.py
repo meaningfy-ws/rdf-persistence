@@ -7,7 +7,7 @@ from rdf_persistence.domain.generated.rp_access import Action, Grant
 from rdf_persistence.domain.media import JSON, TURTLE
 from rdf_persistence.entrypoints.negotiation import RECORD_ETAG
 from tests.toy_service import principal_of
-from tests.unit.entrypoints.test_router import _rename
+from tests.unit.entrypoints.tenant_requests import rename
 
 
 async def test_the_record_etag_moves_when_the_grants_are_replaced(scene) -> None:
@@ -32,7 +32,7 @@ async def test_the_record_etag_moves_when_the_grants_are_replaced(scene) -> None
 
 async def test_the_record_etag_moves_after_a_rename(scene) -> None:
     before = await scene.http.get(scene.tenant, headers=scene.headers("ada"))
-    renamed = await _rename(scene, "B", before.headers[RECORD_ETAG])
+    renamed = await rename(scene, "B", before.headers[RECORD_ETAG])
     after = await scene.http.get(scene.tenant, headers=scene.headers("ada"))
     assert after.headers[RECORD_ETAG] == renamed.headers["etag"], (
         "the root read shows the rename's version"

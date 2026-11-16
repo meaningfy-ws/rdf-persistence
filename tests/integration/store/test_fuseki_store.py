@@ -15,7 +15,7 @@ from rdf_persistence.domain.exceptions import (
     StoreUnavailable,
 )
 from rdf_persistence.domain.sparql import fill, term
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
+from rdf_persistence.testkit import assert_isomorphic
 
 EX = "http://example.org/"
 A, B, P, G = (URIRef(f"{EX}{n}") for n in "abpg")

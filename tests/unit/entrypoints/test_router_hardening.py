@@ -13,6 +13,7 @@ from rdf_persistence.domain.exceptions import BadQuery, SparqlError
 from rdf_persistence.domain.iris import system_database_name
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.documents import MAX_NODES, Documents
 from tests.toy import SETTINGS
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of, store_scan
 from tests.unit.entrypoints.scene import PROBLEMS, Scene, problem_of
@@ -121,14 +122,28 @@ async def test_a_model_body_over_the_bound_is_a_413_too(small) -> None:
     assert await slug_of(response, 413) == "payload-too-large", response.text
 
 
-async def test_a_body_of_too_many_objects_is_a_413(scene) -> None:
-    chapters = [{"number": n} for n in range(10_001)]
+async def test_a_body_of_too_many_objects_is_a_413_before_it_is_typed_or_expanded(
+    scene, monkeypatch
+) -> None:
+    reached: list[str] = []
+
+    def spied(name: str, original):
+        def wrapper(*args, **kwargs):
+            reached.append(name)
+            return original(*args, **kwargs)
+
+        return wrapper
+
+    monkeypatch.setattr(Documents, "_plain_document", spied("typed", Documents._plain_document))
+    monkeypatch.setattr(Documents, "_triples", staticmethod(spied("expanded", Documents._triples)))
+    chapters = [{"number": n} for n in range(MAX_NODES + 1)]
     response = await scene.http.post(
         f"{scene.tenant}/books",
         json={**DUNE_BODY, "chapters": chapters},
         headers=scene.headers("ada"),
     )
     assert await slug_of(response, 413) == "payload-too-large", response.text
+    assert reached == [], "the size bound is checked before the body is typed or expanded"
 
 
 # --- every error is a problem -----------------------------------------------------------------

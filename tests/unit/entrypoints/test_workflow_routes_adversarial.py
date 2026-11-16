@@ -12,11 +12,11 @@ from rdf_persistence.domain.generated.service.rp_service import (
 )
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.collaboration import Collaboration
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
+from rdf_persistence.testkit import assert_isomorphic
 from tests.toy import caller
-from tests.toy_service import DUNE_BODY, ToyService, principal_of
+from tests.toy_service import DUNE_BODY, ToyService, assert_problem, principal_of
 from tests.unit.entrypoints.scene import PROBLEMS, Scene, problem_of
-from tests.unit.services.test_collaboration_workflow import ACCEPTED, DRAFT, IN_REVIEW
+from tests.unit.services.collaboration_data import ACCEPTED, DRAFT, IN_REVIEW
 
 
 @pytest.fixture
@@ -38,9 +38,7 @@ async def test_the_generic_put_cannot_set_a_state(toy, state):
         json={**DUNE_BODY, "workflow_status": state},
         headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
     )
-    assert (response.status_code, problem_of(response).type) == (403, f"{PROBLEMS}forbidden"), (
-        response.text
-    )
+    assert_problem(response, 403, "forbidden")
     stored = await scene.http.get(scene.book, headers=scene.headers("ada"))
     assert (stored.json()["workflow_status"], stored.headers["etag"]) == (DRAFT, scene.book_etag), (
         "the book is in draft and unchanged"
@@ -56,9 +54,7 @@ async def test_the_generic_put_cannot_change_the_type_of_a_book(toy, extra):
         json={**DUNE_BODY, "workflow_status": ACCEPTED, **extra},
         headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
     )
-    assert (response.status_code, problem_of(response).type) == (422, f"{PROBLEMS}invalid-body"), (
-        response.text
-    )
+    assert_problem(response, 422, "invalid-body")
     stored = await scene.http.get(scene.book, headers=scene.headers("ada"))
     assert stored.json()["workflow_status"] == DRAFT, "the book is in draft"
 
@@ -78,9 +74,7 @@ async def test_the_generic_put_of_a_body_read_before_a_transition_is_a_409(toy):
         json={**DUNE_BODY, "workflow_status": DRAFT},
         headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
     )
-    assert (response.status_code, problem_of(response).type) == (409, f"{PROBLEMS}conflict"), (
-        response.text
-    )
+    assert_problem(response, 409, "conflict")
     stored = await scene.http.get(scene.book, headers=scene.headers("ada"))
     assert stored.json()["workflow_status"] == IN_REVIEW, "the book is where the transition left it"
 
@@ -94,9 +88,7 @@ async def test_the_generic_post_cannot_create_a_book_with_two_states(toy):
         json={**DUNE_BODY, "workflow_status": [DRAFT, ACCEPTED]},
         headers=scene.headers("ada"),
     )
-    assert (response.status_code, problem_of(response).type) == (422, f"{PROBLEMS}invalid-body"), (
-        response.text
-    )
+    assert_problem(response, 422, "invalid-body")
     after = (await scene.http.get(listed, headers=scene.headers("ada"))).json()["total"]
     assert after == total, "nothing was stored"
 

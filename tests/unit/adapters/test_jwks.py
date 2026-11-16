@@ -9,7 +9,8 @@ from rdf_persistence.adapters.jwks import DISCOVERY_PATH, JWKS_TTL_SECONDS, Jwks
 from rdf_persistence.domain.exceptions import IdentityUnavailable, InvalidToken
 from rdf_persistence.domain.generated.service.rp_service import IriPolicy, ServiceSettings
 from rdf_persistence.domain.iris import Iris
-from rdf_persistence.testkit.tokens import ISSUER, TokenSigner, shared_key
+from rdf_persistence.testkit import TokenSigner, shared_key
+from rdf_persistence.testkit.tokens import ISSUER
 
 PAST_COOLDOWN = 11.0
 WITHIN_COOLDOWN = 1.0

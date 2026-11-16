@@ -7,7 +7,7 @@ from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.iris import system_database_name, tenant_resource_name
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
+from rdf_persistence.testkit import assert_isomorphic
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.toy import ADA, library_slots, toy_mapper

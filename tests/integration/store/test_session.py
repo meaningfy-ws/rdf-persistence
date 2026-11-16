@@ -3,15 +3,12 @@
 import asyncio
 import uuid
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime, timedelta
-from uuid import UUID
 
 import pytest
 from rdflib import Graph, Literal, URIRef
 
 from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.domain.exceptions import Conflict, DatabaseGone, InvalidIri, NotFound
-from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.iris import (
     DEFAULT_IRIS,
     graph_iri,
@@ -21,30 +18,19 @@ from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.session import Session, open_session
 from rdf_persistence.testkit import assert_isomorphic
+from tests.integration.store.sessions import (
+    ADA,
+    BEN,
+    CY,
+    TENANT,
+    TITLE,
+    Ticker,
+    book,
+    graph_of,
+    session_for,
+)
 
-TENANT = "https://example.org/libraries/6f1c0c1e"
-TITLE = URIRef("http://purl.org/dc/terms/title")
-START = datetime(2026, 11, 5, 9, 0, tzinfo=UTC)
-ADA, BEN, CY = (Principal(id=f"https://example.org/people/{n}") for n in ("ada", "ben", "cy"))
 SELECT_GRAPHS = "SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }"
-
-
-class Ticker:
-    """A clock that moves one minute on each reading and keeps the readings it gave."""
-
-    def __init__(self) -> None:
-        self.now = START
-        self.readings: list[datetime] = []
-
-    def __call__(self) -> datetime:
-        self.now += timedelta(minutes=1)
-        self.readings.append(self.now)
-        return self.now
-
-    @property
-    def tracked(self) -> datetime:
-        """The last commit's tracking time: a recording commit reads the clock once more, for its activity's end."""
-        return self.readings[-2]
 
 
 class RendezvousStore(FusekiStore):
@@ -56,10 +42,6 @@ class RendezvousStore(FusekiStore):
         if self.barrier is not None:
             await self.barrier.wait()
         await super().update(dataset, sparql)
-
-
-def book(n: int) -> str:
-    return f"{TENANT}/books/{UUID(int=n)}"
 
 
 def title(root: str, text: str) -> list:
@@ -74,13 +56,6 @@ def without_bookkeeping(graph: Graph) -> Graph:
     return plain
 
 
-def graph_of(triples: list) -> Graph:
-    graph = Graph()
-    for triple in triples:
-        graph.add(triple)
-    return graph
-
-
 @pytest.fixture
 async def store(fuseki) -> AsyncIterator[RendezvousStore]:
     async with RendezvousStore(fuseki.url, fuseki.user, fuseki.password) as client:
@@ -93,12 +68,6 @@ async def database(store: RendezvousStore) -> AsyncIterator[str]:
     await store.create_dataset(name)
     yield name
     await store.drop_dataset(name)
-
-
-def session_for(store, database, principal=ADA, clock=None) -> Session:
-    return Session(
-        store, database=database, tenant_iri=TENANT, principal=principal, clock=clock or Ticker()
-    )
 
 
 async def graphs_in(store, database) -> set[str]:

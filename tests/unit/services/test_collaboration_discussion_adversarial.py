@@ -18,7 +18,7 @@ from pathlib import Path
 from uuid import UUID
 
 import pytest
-from rdflib import RDF, Literal, Namespace, URIRef
+from rdflib import Literal, Namespace, URIRef
 
 from rdf_persistence import Action, generated_models
 from rdf_persistence.domain.exceptions import (
@@ -67,6 +67,7 @@ from tests.toy import (
     shelf_iri,
     toy_mapper,
 )
+from tests.unit.services.collaboration_data import OA, RP, SECRET, annotation, stored
 from tests.unit.services.test_collaboration_cascade import before
 from tests.unit.services.test_collaboration_collections_adversarial import (
     everything_said,
@@ -77,10 +78,7 @@ from tests.unit.services.test_collaboration_discussion import has_entry
 B1, B2, B3 = (book_iri(n) for n in (1, 2, 3))
 S1 = shelf_iri(1)
 VIEW = load_schema(TOY_SCHEMA)
-OA = Namespace("http://www.w3.org/ns/oa#")
-RP = Namespace("https://meaningfy.ws/ns/rdf-persistence#")
 LIB = Namespace("https://example.org/ns/library#")
-SECRET = "SECRET-9f3a-do-not-show"
 EVIL = 'x" } . ?s ?p ?o } ; DROP ALL ; # \n\r\t\\ <a> {'
 OTHER_TENANT = "https://example.org/libraries/00000000"
 COUNT = "SELECT (COUNT(DISTINCT ?g) AS ?n) WHERE { GRAPH $registry { ?g $p_kind ?k } }"
@@ -194,10 +192,6 @@ def a_comment(n: int, target: str, text: str = "remark", **slots) -> Comment:
     return Comment(id=comment_iri(n), has_target=target, body_value=text, **slots)
 
 
-async def stored(session: Session, *iris: str) -> list[str]:
-    return [str(h.head_iri) for h in await session.heads(list(iris))]
-
-
 async def roots_targeting(session: Session, iri: str) -> list[str]:
     return sorted(await session.graphs_with(v.HAS_TARGET, URIRef(iri)))
 
@@ -210,12 +204,6 @@ async def aggregates(store: FakeStore) -> int:
 async def has_triples(store: FakeStore, iri: str) -> bool:
     text = fill(ANY_TRIPLE, graph=term(URIRef(graph_of(iri))))
     return bool((await store.query(FAKE_DATABASE, text)).askAnswer)
-
-
-def annotation(iri: str, *pairs: tuple[URIRef, object], types=(v.ANNOTATION,)) -> list:
-    """The triples of a root typed as a web annotation, written as the test says (raw, maybe invalid)."""
-    node = URIRef(iri)
-    return [*((node, RDF.type, t) for t in types), *((node, p, o) for p, o in pairs)]
 
 
 def another(store: FakeStore, rules: AccessRules, action: Callable) -> Callable[[], Awaitable]:

@@ -29,8 +29,8 @@ from rdf_persistence.domain.iris import (
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.mapper import new_part
 from rdf_persistence.services.schema_structure import is_bookkeeping, is_internal
+from rdf_persistence.testkit import assert_isomorphic
 from rdf_persistence.testkit.conformance import Conformance
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
 from rdf_persistence.testkit.strategies import aggregate
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Shelf
 from tests.fixtures.library.generated.library import Library

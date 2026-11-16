@@ -17,11 +17,15 @@ from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.loading import _RDFLIB_FORMATS, parse_graph
+from rdf_persistence.services.loading import _RDFLIB_FORMATS, NOT_INLINE, parse_graph
 from rdf_persistence.services.session import Session
-from rdf_persistence.testkit import FakeStore, fake_session
+from rdf_persistence.testkit import (  # noqa: F401  (no_network is a fixture)
+    FakeStore,
+    assert_isomorphic,
+    fake_session,
+    no_network,
+)
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
 
 TENANT = "https://example.org/libraries/6f1c"
 AGGREGATE = f"{TENANT}/books/{UUID(int=1)}"
@@ -150,6 +154,42 @@ def jsonld(context: object) -> bytes:
     return json.dumps(
         {"@context": context, "@id": "https://example.org/b", "title": "Dune"}
     ).encode()
+
+
+UNREACHABLE = (
+    "http://context.invalid/context.jsonld"  # nothing listens there; no_network blocks it too
+)
+
+NON_INLINE = {
+    "iri": lambda url: jsonld(url),
+    "iri in an array": lambda url: jsonld([{"x": "http://example.org/x"}, url]),
+    "file iri": lambda _: jsonld("file:///etc/hostname"),
+    "bare path": lambda _: jsonld("/etc/hostname"),
+    "relative path": lambda _: jsonld("context.jsonld"),
+    "nested in a node": lambda url: json.dumps(
+        {
+            "@id": "https://example.org/b",
+            "http://example.org/p": {"@context": url, "@id": "https://example.org/c"},
+        }
+    ).encode(),
+    "in a graph array": lambda url: json.dumps(
+        [{"@context": url, "@id": "https://example.org/b"}]
+    ).encode(),
+    "scoped in a term": lambda url: jsonld(
+        {"title": {"@id": "http://purl.org/dc/terms/title", "@context": url}}
+    ),
+    "@import": lambda url: jsonld({"@import": url}),
+}
+
+
+@pytest.mark.usefixtures("no_network")
+@pytest.mark.parametrize("make", NON_INLINE.values(), ids=NON_INLINE.keys())
+async def test_a_jsonld_context_that_is_not_inline_is_refused_before_any_fetch(make):
+    """Refused by the toolkit's own check: were the context followed, the blocked network would raise
+    ``RuntimeError`` (not ``InvalidGraph``) or the fetch would fail with another message."""
+    with pytest.raises(InvalidGraph, match="inline") as raised:
+        await parse_graph(make(UNREACHABLE), RdfFormat.JSONLD)
+    assert str(raised.value) == NOT_INLINE, "the refusal is the toolkit's, not a fetch failure"
 
 
 @pytest.mark.parametrize(

@@ -11,13 +11,19 @@ import httpx
 import pytest
 import pytest_asyncio
 
-from rdf_persistence import Page
+from rdf_persistence import GrantSet, Page
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
-from tests.toy_service import ToyService
+from tests.toy_service import ToyService, assert_problem
 from tests.unit.entrypoints.listing_shelf import BOOKS, PROBLEM_BAD_QUERY, Shelf, unordered
-from tests.unit.entrypoints.scene import PROBLEMS, problem_of
 
 CLASS_LOOP = "class"
+
+
+async def granted_by(shelf: Shelf) -> GrantSet:
+    """The grants of the shelf's tenant as the router serves them now."""
+    answer = await shelf.http.get(f"{shelf.tenant}/grants", headers=shelf.headers())
+    assert answer.status_code == 200, answer.text
+    return GrantSet.model_validate(answer.json())
 
 
 @pytest.mark.xdist_group("listing_read")
@@ -37,10 +43,12 @@ class TestReadOnlyListing:
     @pytest_asyncio.fixture(scope="class", loop_scope=CLASS_LOOP)
     async def shelf(self, service: ToyService, client: httpx.AsyncClient) -> AsyncIterator[Shelf]:
         shelf = await Shelf.set_up(service, client)
+        granted = await granted_by(shelf)
         yield shelf
         # the class shares one store: no test of the class may have written to it
         tenants = (await client.get("/libraries", headers=shelf.headers())).json()
         assert tenants["total"] == 1, "a test of the class added a tenant"
+        assert await granted_by(shelf) == granted, "a test of the class changed the grants"
         assert sorted(await shelf.labels()) == sorted(label for label, *_ in BOOKS), (
             "a test of the class changed the five books"
         )
@@ -136,10 +144,7 @@ class TestReadOnlyListing:
 
     async def test_a_listing_cannot_be_turtle(self, shelf: Shelf) -> None:
         response = await shelf.page_of(**{"Accept": TURTLE})
-        problem = problem_of(response)
-        assert (response.status_code, problem.type) == (406, f"{PROBLEMS}not-acceptable"), (
-            "a listing is not a document: Turtle is a 406 of the not-acceptable type"
-        )
+        problem = assert_problem(response, 406, "not-acceptable")  # a listing is not a document
         assert problem.title == "Not acceptable", "the fixed title"
 
     # --- a bad query --------------------------------------------------------------------------------
@@ -166,10 +171,7 @@ class TestReadOnlyListing:
     )
     async def test_a_bad_query_is_a_400_problem_and_changes_nothing(self, shelf, query) -> None:
         response = await shelf.page_of(query)
-        problem = problem_of(response)
-        assert (response.status_code, problem.type) == (400, f"{PROBLEMS}bad-query"), (
-            f"{query}: {response.text}"
-        )
+        problem = assert_problem(response, 400, "bad-query")
         assert problem.title == PROBLEM_BAD_QUERY, "the fixed title"
         assert len(await shelf.labels()) == 5, "the store is unchanged"
 
@@ -214,8 +216,5 @@ class TestReadOnlyListing:
         self, shelf, client, query
     ) -> None:
         response = await client.get(f"/libraries?{query}", headers=shelf.headers())
-        problem = problem_of(response)
-        assert (response.status_code, problem.type) == (400, f"{PROBLEMS}bad-query"), (
-            f"{query}: {response.text}"
-        )
+        problem = assert_problem(response, 400, "bad-query")
         assert problem.title == PROBLEM_BAD_QUERY, "the fixed title"

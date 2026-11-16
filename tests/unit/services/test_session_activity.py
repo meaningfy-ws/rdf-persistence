@@ -21,9 +21,8 @@ from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import Session
 from rdf_persistence.services.tenant_dump import dump, restore
-from rdf_persistence.testkit import FakeStore, fake_session
+from rdf_persistence.testkit import FakeStore, assert_isomorphic, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from rdf_persistence.testkit.roundtrip import assert_isomorphic
 from tests.toy import ADA, BOB, SETTINGS, TENANT, TOY_SCHEMA, book_iri, dune, template, toy_mapper
 from tests.unit.services.test_tenant_dump import BASE_STAMPS, TOY_CHAINS
 from tests.unit.services.test_tenant_sweep import CREATOR, make_world
