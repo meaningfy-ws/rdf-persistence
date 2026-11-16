@@ -18,9 +18,9 @@ TEST_PATH    = $(REPO_ROOT)/tests
 PYTHON_PATHS = $(PACKAGE_NAME) $(TEST_PATH) $(REPO_ROOT)/docs/tools $(REPO_ROOT)/.claude/hooks
 BUILD_PATH   = $(REPO_ROOT)/dist
 
-# Docker / infra (activate the Docker section below once infra/ exists).
-COMPOSE_FILE = $(REPO_ROOT)/infra/compose.yaml
-ENV_FILE     = $(REPO_ROOT)/infra/.env
+# The release version: VERSION is the one source; release-please writes it and mirrors it into
+# pyproject.toml and uv.lock, and check-version fails when they drift.
+VERSION = $(shell cat $(REPO_ROOT)/VERSION)
 
 # The Fuseki test image: built from the compose file and the fuseki/ files next to it, saved as a
 # tar (CI caches the tar).
@@ -99,9 +99,6 @@ build: generate ## Build the package distribution (generates first)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Building package$(END_BUILD_PRINT)"
 	@ uv build
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Package built successfully$(END_BUILD_PRINT)"
-
-run: ## Run the application (python -m <package>; tailor per archetype)
-	@ uv run python -m $(PACKAGE_NAME)
 
 #-----------------------------------------------------------------------------
 # Code quality — mutating targets
@@ -237,7 +234,7 @@ test-e2e: ## Run end-to-end tests only
 #-----------------------------------------------------------------------------
 # Groups — one per CI job (.github/workflows/ci.yaml), each runnable alone
 #-----------------------------------------------------------------------------
-.PHONY: check-spec check-style check-types check-spec-docs check-generation check-quality check-all
+.PHONY: check-spec check-style check-types check-spec-docs check-generation check-version check-quality check-all
 
 check-style: format-check lint clean-code ## Formatting, lint and the complexity thresholds (CI job "style")
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Style checks passed$(END_BUILD_PRINT)"
@@ -245,11 +242,16 @@ check-style: format-check lint clean-code ## Formatting, lint and the complexity
 check-types: typecheck typecheck-generated typecheck-ts typecheck-openapi-ts ## mypy on the code and the generated code, tsc on the generated TypeScript and on that of the OpenAPI document (CI job "types")
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Type checks passed$(END_BUILD_PRINT)"
 
-check-spec-docs: check-spec check-docs ## The OpenSpec spine and the docs checks (CI job "spec, docs and generation")
+check-spec-docs: check-spec check-docs check-version ## The OpenSpec spine and the docs checks (CI job "spec, docs and generation")
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Spec and docs checks passed$(END_BUILD_PRINT)"
 
 check-generation: check-freshness check-generated ## Generated code is fresh and regenerates unchanged (CI job "spec, docs and generation")
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generation checks passed$(END_BUILD_PRINT)"
+
+check-version: ## pyproject.toml carries the version in VERSION (CI job "spec, docs and generation")
+	@ grep -qx 'version = "$(VERSION)"' $(REPO_ROOT)/pyproject.toml \
+	  || { echo -e "$(ICON_ERROR) pyproject.toml's version differs from VERSION ($(VERSION))"; exit 1; }
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Version $(VERSION) in sync$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------
 # Aggregates — run locally before a PR
@@ -337,30 +339,6 @@ check-diagrams: ## Render every [mermaid] block of the docs with the site's merm
 
 clean-docs: ## Remove built docs + node_modules
 	@ rm -rf $(DOCS_DIR)/build $(DOCS_DIR)/node_modules
-
-#-----------------------------------------------------------------------------
-# Docker / infra — see references/ci-and-infra.md. Remove this block if --no-infra.
-# .env lives at infra/.env; compose targets pass --env-file explicitly (D11).
-#-----------------------------------------------------------------------------
-.PHONY: check-env up down rebuild logs watch
-
-check-env:
-	@ test -f $(ENV_FILE) || (echo -e "$(ICON_ERROR) Missing $(ENV_FILE). Run: cp infra/.env.example infra/.env" && exit 1)
-
-up: check-env ## Start services (docker compose up -d)
-	@ docker compose -f $(COMPOSE_FILE) --env-file $(ENV_FILE) up -d
-
-down: check-env ## Stop services (docker compose down)
-	@ docker compose -f $(COMPOSE_FILE) --env-file $(ENV_FILE) down
-
-rebuild: check-env ## Rebuild and start services
-	@ docker compose -f $(COMPOSE_FILE) --env-file $(ENV_FILE) up -d --build
-
-logs: check-env ## Follow service logs
-	@ docker compose -f $(COMPOSE_FILE) --env-file $(ENV_FILE) logs -f
-
-watch: check-env ## Start services with file watching (hot-reload)
-	@ docker compose -f $(COMPOSE_FILE) --env-file $(ENV_FILE) watch
 
 #-----------------------------------------------------------------------------
 # Utilities
