@@ -13,4 +13,6 @@ def test_garage_lists_buckets_with_the_created_key(garage) -> None:
         region_name=garage.region,
         config=Config(s3={"addressing_style": "path"}),
     )
-    assert s3.list_buckets()["ResponseMetadata"]["HTTPStatusCode"] == 200
+    assert s3.list_buckets()["ResponseMetadata"]["HTTPStatusCode"] == 200, (
+        "listing buckets with the created key succeeds"
+    )

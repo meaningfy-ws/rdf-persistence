@@ -8,6 +8,7 @@ import pytest
 from rdf_persistence.generation.cli import main
 
 from .conftest import TOY
+from .terms import terms_of
 
 LEAKED = ("TenantAccess", "Grant", "StoredFile", "Provenanced")
 OUTPUTS = {
@@ -42,5 +43,8 @@ def test_the_application_class_is_generated(partial: Path) -> None:
 def test_no_class_of_a_module_the_schema_does_not_import_is_in_any_artefact(
     partial: Path, artefact: str, absent: str
 ) -> None:
-    text = (partial / OUTPUTS[artefact]).read_text()
-    assert absent not in text, f"{absent} leaked into the {artefact} from a module not imported"
+    path = partial / OUTPUTS[artefact]
+    leaked_in = [term for term in terms_of(path) if absent in term]
+    assert leaked_in == [], (
+        f"{absent} leaked into the {artefact} from a module not imported: {leaked_in[:3]}"
+    )

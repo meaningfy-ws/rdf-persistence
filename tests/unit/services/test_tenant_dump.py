@@ -17,7 +17,6 @@ from uuid import UUID
 
 import pytest
 from rdflib import Dataset, Literal, URIRef
-from rdflib.compare import isomorphic
 from rdflib.namespace import SKOS
 
 from rdf_persistence.domain.exceptions import (
@@ -47,11 +46,12 @@ from rdf_persistence.services.migrations import SchemaChain
 from rdf_persistence.services.migrations import chain_of as chain_of_schema
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
+from rdf_persistence.services.session import Clock, utc_now
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import DEFAULT_STORE, Tenancy
 from rdf_persistence.services.tenant_dump import dump, restore
 from rdf_persistence.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
-from rdf_persistence.testkit import FakeStore
+from rdf_persistence.testkit import FakeStore, assert_isomorphic
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
@@ -143,10 +143,19 @@ async def populated(world: SimpleNamespace, title: str | None = None) -> SimpleN
     return world
 
 
-async def dumped(world: SimpleNamespace, tenant: str | None = None, view=VIEW) -> bytes:
+async def dumped(
+    world: SimpleNamespace, tenant: str | None = None, view=VIEW, clock: Clock = utc_now
+) -> bytes:
     out = io.BytesIO()
     await dump(
-        world.tenancy, world.store, world.files, world.iris, view, tenant or world.tenant, out
+        world.tenancy,
+        world.store,
+        world.files,
+        world.iris,
+        view,
+        tenant or world.tenant,
+        out,
+        clock=clock,
     )
     return out.getvalue()
 
@@ -602,7 +611,7 @@ async def assert_answers_like_the_original(world: SimpleNamespace, summary) -> N
                 URIRef(moved(world, str(load), new))
             ], "the same load, under the new id"
             copied = await opened.loaded_graph(owner_new, moved(world, str(load), new))
-            assert isomorphic(copied, await old.loaded_graph(owner, str(load))), "the same triples"
+            assert_isomorphic(copied, await old.loaded_graph(owner, str(load)))
     assert book_new == restored_book.id, "the book is where the rewrite put it"
     record, _ = await world.tenancy.get(new)
     assert await world.files.get(record.database_name, "k1") == BLOB_BYTES, "the blob byte for byte"
@@ -638,8 +647,12 @@ async def test_tc11_the_restored_tenant_accepts_a_replace_and_the_original_is_un
         book.label = "Dune Messiah"
         work.add(book)
         await work.commit()
-    assert (await read_book(world, new, iri)).label == "Dune Messiah"
-    assert (await read_book(world, world.tenant, world.book, Principal(id=ADA))).label == "Dune"
+    assert (await read_book(world, new, iri)).label == "Dune Messiah", (
+        "the restored tenant holds the replaced label"
+    )
+    assert (await read_book(world, world.tenant, world.book, Principal(id=ADA))).label == "Dune", (
+        "the original tenant is unchanged"
+    )
 
 
 async def test_tc12_only_the_restorer_is_granted_the_creator_role(world):
@@ -696,7 +709,7 @@ async def test_tc16_a_blob_gone_before_its_read_is_skipped_and_logged(world, cap
         "k1 is not in the dump"
     )
     steps = [(r.__dict__.get("step"), r.__dict__.get("resource")) for r in caplog.records]
-    assert steps == [("dump-blob-gone", "k1")]
+    assert steps == [("dump-blob-gone", "k1")], "the missing blob is logged and skipped"
 
 
 async def test_a_dump_holds_the_manifest_the_graphs_the_blobs_and_the_end_marker_in_that_order(
@@ -708,15 +721,15 @@ async def test_a_dump_holds_the_manifest_the_graphs_the_blobs_and_the_end_marker
 
 
 async def test_a_dump_manifest_names_the_source_the_policy_and_the_schema(world):
-    manifest = manifest_of(await dumped(world))
+    taken = datetime(2026, 11, 16, 9, 30, tzinfo=UTC)
+    manifest = manifest_of(await dumped(world, clock=lambda: taken))
     assert manifest.format_version == 1, "format version"
     assert manifest.source_tenant == world.tenant, "source tenant"
     assert manifest.source_tenant_id == world.iris.tenant_id_of(world.tenant), "source tenant id"
     assert manifest.label == "Ghent", "the record's label"
     assert manifest.iri_policy == world.iris.effective_policy, "the effective policy"
     assert manifest.schema_id == VIEW.schema.id, "the schema id"
-    assert manifest.created_at.tzinfo is not None, "an aware timestamp"
-    assert manifest.created_at <= datetime.now(UTC), "taken in the past"
+    assert manifest.created_at == taken, "the manifest carries the clock's reading"
 
 
 async def test_a_dump_changes_nothing_in_the_tenant(world):
@@ -790,7 +803,9 @@ async def test_a_format_version_other_than_one_is_refused_naming_it(world):
             .encode()
         )
 
-    assert "2" in await refused(world, edited(await dumped(world), MANIFEST, bump))
+    assert "2" in await refused(world, edited(await dumped(world), MANIFEST, bump)), (
+        "the refusal names the format version"
+    )
 
 
 @pytest.mark.parametrize(
@@ -883,7 +898,9 @@ async def test_a_policy_that_glues_the_tenant_id_to_a_letter_is_refused_naming_t
         iri_policy=IriPolicy(tenant_template="{base}libraries/t{tenant_id}"),
     )
     world = await populated(await make_world(iris_of(glued), glued))
-    assert "tenant_template" in await refused(world, await dumped(world))
+    assert "tenant_template" in await refused(world, await dumped(world)), (
+        "the refusal names the tenant template"
+    )
 
 
 async def test_tc19_a_quad_in_a_foreign_graph_is_refused_naming_it(world):
@@ -943,7 +960,9 @@ async def test_tc20_a_root_validator_that_refuses_stops_the_restore():
         stamps=BASE_STAMPS,
         root_validators=[refuse],
     )
-    assert "no more libraries" in await refused(world, await dumped(world), tenancy=strict)
+    assert "no more libraries" in await refused(world, await dumped(world), tenancy=strict), (
+        "the refusal carries the validator's message"
+    )
     assert seen == [(None, RESTORER)], "old is None and who is the restorer"
 
 
@@ -1076,7 +1095,9 @@ async def test_tc25_the_restored_tenant_takes_the_roots_label_not_the_manifests(
     record, _ = await world.tenancy.get(summary.id)
     async with world.tenancy.tenant_session(summary.id, RESTORER) as opened:
         root = await UnitOfWork(opened, toy_mapper()).get(Library, summary.id)
-    assert (summary.label, record.label, root.label) == ("New", "New", "New")
+    assert summary.label == "New", "the summary takes the root's label"
+    assert record.label == "New", "the access record takes the root's label"
+    assert root.label == "New", "the root keeps its label"
 
 
 # -- PD-13: the decompression budget, the end marker, the record write ------------------------------------
@@ -1168,7 +1189,9 @@ async def test_a_pax_header_larger_than_the_budget_is_refused_and_creates_nothin
 async def test_a_header_inside_the_budget_does_not_stop_a_restore(world):
     data = await dumped(world)
     small = with_header_on_the_manifest(data, {"comment": "x" * 1_000}, tarfile.PAX_FORMAT)
-    assert (await restored(world, small, max_bytes=charged(data) + 10_000)).id != world.tenant
+    assert (await restored(world, small, max_bytes=charged(data) + 10_000)).id != world.tenant, (
+        "the restore within the budget makes a new tenant"
+    )
 
 
 async def test_a_dump_of_a_tenant_with_no_blob_still_ends_with_an_empty_regular_end_member():
@@ -1310,7 +1333,7 @@ async def test_tc19_a_dump_restored_on_another_store_makes_its_tenant_there(worl
 
     record, _ = await tenancy.get(summary.id)
     assert summary.id != world.tenant, "a new IRI"
-    assert record.store_name == CLIENT_A
+    assert record.store_name == CLIENT_A, "the restored tenant is made on the other store"
     assert await other.list_datasets() == [record.database_name], "the database is on client-a"
     assert sorted(await world.store.list_datasets()) == on_default, "default gained none"
 

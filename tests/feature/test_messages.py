@@ -458,13 +458,17 @@ def _by_ada(run: Run) -> None:
 @then("the replacement generated the book")
 def _generated(run: Run) -> None:
     [(replace, _)] = _replacement(run)
-    assert [g.entity for g in replace.generations] == [run.book_iri]
+    assert [g.entity for g in replace.generations] == [run.book_iri], (
+        "the replace generated the book"
+    )
 
 
 @then("the replacement invalidated the book")
 def _invalidated(run: Run) -> None:
     [(replace, _)] = _replacement(run)
-    assert [i.entity for i in replace.invalidations] == [run.book_iri]
+    assert [i.entity for i in replace.invalidations] == [run.book_iri], (
+        "the replace invalidated the book"
+    )
 
 
 @then("the generated version is not the invalidated one")
@@ -482,7 +486,7 @@ def _conflict(run: Run) -> None:
 
 @then("the records are as they were")
 def _unchanged(run: Run) -> None:
-    assert run.quads() == run.before
+    assert run.quads() == run.before, "the store is unchanged"
 
 
 @then("one plain activity is recorded for it")
@@ -493,12 +497,14 @@ def _plain(run: Run) -> None:
 
 @then("the activity generated the second book")
 def _gen_second(run: Run) -> None:
-    assert run.generating(B2)
+    assert run.generating(B2), "the second book was generated"
 
 
 @then("the activity invalidated the first book")
 def _inv_first(run: Run) -> None:
-    assert [i.entity for i in run.generating(B2).invalidations] == [B1]
+    assert [i.entity for i in run.generating(B2).invalidations] == [B1], (
+        "the first book was invalidated"
+    )
 
 
 # -- Then: keeping -------------------------------------------------------------------------------
@@ -506,12 +512,16 @@ def _inv_first(run: Run) -> None:
 
 @then("the records hold the addition of the book")
 def _holds_add(run: Run) -> None:
-    assert [[g.entity for g in a.generations] for a in run.of_kind(v.ADD)] == [[B1]]
+    assert [[g.entity for g in a.generations] for a in run.of_kind(v.ADD)] == [[B1]], (
+        "the Add holds the first book"
+    )
 
 
 @then("the records hold a removal naming the book")
 def _holds_remove(run: Run) -> None:
-    assert [[i.entity for i in a.invalidations] for a in run.of_kind(v.REMOVE)] == [[B1]]
+    assert [[i.entity for i in a.invalidations] for a in run.of_kind(v.REMOVE)] == [[B1]], (
+        "the Remove holds the first book"
+    )
 
 
 @then("the change is refused as a conflict naming that identity")
@@ -529,19 +539,21 @@ def _first_observer(run: Run, cls: type[Activity]) -> RecordingObserver:
 
 @then("the observer receives one message")
 def _one_message(run: Run) -> None:
-    assert len(_first_observer(run, Transition).activities) == 1
+    assert len(_first_observer(run, Transition).activities) == 1, "the observer got one message"
 
 
 @then("the message is the approval")
 def _is_approval(run: Run) -> None:
     [seen] = _first_observer(run, Transition).activities
-    assert isinstance(seen, ApproveBook)
+    assert isinstance(seen, ApproveBook), "the observer saw an approval"
 
 
 @then("the message carries the generation of the book")
 def _carries_generation(run: Run) -> None:
     [seen] = _first_observer(run, Transition).activities
-    assert [g.entity for g in seen.generations] == [B1]
+    assert [g.entity for g in seen.generations] == [B1], (
+        "the approval carries the book it generated"
+    )
 
 
 @then("the failure is logged")
@@ -549,12 +561,14 @@ def _failure_logged(run: Run, caplog: pytest.LogCaptureFixture) -> None:
     assert any(
         r.levelno >= logging.ERROR and "fails" in r.getMessage() + str(r.exc_info)
         for r in caplog.records
-    )
+    ), "the failure was logged at error level"
 
 
 @then("the second observer still receives the approval")
 def _second_ran(run: Run) -> None:
-    assert [type(a) for a in run.observers[Activity][1].of(ApproveBook)] == [ApproveBook]
+    assert [type(a) for a in run.observers[Activity][1].of(ApproveBook)] == [ApproveBook], (
+        "the second observer still ran"
+    )
 
 
 @then("the librarian sees a conflict")
@@ -571,7 +585,7 @@ def _replacement_recorded(run: Run) -> None:
 def _no_replacement(run: Run) -> None:
     from rdf_persistence.domain.generated.rp_provenance import Replace
 
-    assert _first_observer(run, Activity).of(Replace) == []
+    assert _first_observer(run, Activity).of(Replace) == [], "no replacement was sent"
 
 
 # -- Then: handling ------------------------------------------------------------------------------
@@ -580,12 +594,12 @@ def _no_replacement(run: Run) -> None:
 @then("the book is in review")
 def _in_review(run: Run) -> None:
     status = run.run(run.session.root_values(B1, [v.WORKFLOW_STATUS]))[v.WORKFLOW_STATUS]
-    assert [str(s) for s in status] == [IN_REVIEW]
+    assert [str(s) for s in status] == [IN_REVIEW], "the book is in review"
 
 
 @then("the stored activity is an approval")
 def _stored_approval(run: Run) -> None:
-    assert len(run.of_kind(APPROVE_BOOK)) == 1
+    assert len(run.of_kind(APPROVE_BOOK)) == 1, "one approval was stored"
 
 
 @then("the command is refused with an error naming the file deletion")
@@ -604,7 +618,7 @@ def _invalid(run: Run) -> None:
 
 @then("nothing is written")
 def _nothing_written(run: Run) -> None:
-    assert run.quads() == run.before
+    assert run.quads() == run.before, "nothing was written"
 
 
 @then("the change is refused")
@@ -619,7 +633,7 @@ def _second_refused(run: Run) -> None:
 
 @then("two activities are recorded, one per batch")
 def _two_batches(run: Run) -> None:
-    assert len(run.records()) == 2
+    assert len(run.records()) == 2, "two batches were recorded"
 
 
 # -- Then: bounds --------------------------------------------------------------------------------

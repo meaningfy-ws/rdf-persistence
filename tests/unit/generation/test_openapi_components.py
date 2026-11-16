@@ -33,16 +33,18 @@ def test_the_output_equals_the_committed_tree(rendered: Path) -> None:
 
 def test_every_class_of_the_schema_has_a_component_schema(schemas: dict) -> None:
     view = load_schema(TOY / ROOT_SCHEMA)
-    assert {"Book", "Chapter", "Note", "Scan", "Library", "Genre"} <= set(schemas)
+    assert {"Book", "Chapter", "Note", "Scan", "Library", "Genre"} <= set(schemas), (
+        "every class has a component schema"
+    )
     assert set(view.all_classes()) <= set(schemas), "a schema for every class"
 
 
 def test_the_references_point_into_the_components_of_an_openapi_document(schemas: dict) -> None:
     text = json.dumps(schemas)
-    assert "#/$defs/" not in text
+    assert "#/$defs/" not in text, "no reference points into the JSON-schema definitions"
     assert schemas["Book"]["properties"]["chapters"]["items"] == {
         "$ref": "#/components/schemas/Chapter"
-    }
+    }, "the references point into the components"
 
 
 def test_no_bookkeeping_slot_is_in_any_schema(schemas: dict) -> None:
@@ -65,19 +67,25 @@ def test_the_bookkeeping_and_internal_slots_of_every_class_are_left_out(schemas:
 
 
 def test_a_required_slot_that_is_left_out_is_no_longer_required(schemas: dict) -> None:
-    assert not BOOKKEEPING & set(schemas["Book"].get("required", []))
-    assert schemas["Book"]["required"] == ["id", "label"]
+    assert not BOOKKEEPING & set(schemas["Book"].get("required", [])), (
+        "no bookkeeping slot is required"
+    )
+    assert schemas["Book"]["required"] == ["id", "label"], (
+        "the required slots are the identifier and the label"
+    )
 
 
 def test_the_identifier_is_read_only_because_the_service_assigns_it(schemas: dict) -> None:
-    assert schemas["Book"]["properties"]["id"]["readOnly"] is True
-    assert "readOnly" not in schemas["Book"]["properties"]["label"]
+    assert schemas["Book"]["properties"]["id"]["readOnly"] is True, "the identifier is read-only"
+    assert "readOnly" not in schemas["Book"]["properties"]["label"], "the label is not read-only"
 
 
 def test_the_output_is_reproducible(rendered: Path, tmp_path: Path) -> None:
     again = run_toy(COMPONENTS_STEP, tmp_path)
     name = Path(str(TOY_TARGET.python)) / COMPONENTS_FILE
-    assert (again / name).read_bytes() == (rendered / name).read_bytes()
+    assert (again / name).read_bytes() == (rendered / name).read_bytes(), (
+        "the output is the same each time"
+    )
 
 
 def test_a_target_that_serves_nothing_gets_no_components_file(tmp_path: Path) -> None:

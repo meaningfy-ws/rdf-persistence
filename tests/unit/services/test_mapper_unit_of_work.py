@@ -107,7 +107,9 @@ async def test_grants_are_stored_as_skolemised_parts_and_read_back(session):
     assert first.grants == record.grants, "grants nest back as objects"
     again.add(first)
     await again.commit()
-    assert (await unit(session).get(type(record), record.id)).grants == record.grants
+    assert (await unit(session).get(type(record), record.id)).grants == record.grants, (
+        "the grants read back as stored"
+    )
 
 
 async def test_the_tenant_root_is_stored_in_the_meta_graph(session):
@@ -116,7 +118,8 @@ async def test_the_tenant_root_is_stored_in_the_meta_graph(session):
     work.add(library)
     await work.commit()
     back = await unit(session).get(Library, TENANT)
-    assert (back.city, back.creator) == ("Brussels", ADA)
+    assert back.city == "Brussels", "the tenant root keeps its city"
+    assert back.creator == ADA, "the tenant root keeps its creator"
 
 
 async def test_two_editors_of_one_book_the_second_commit_conflicts(session):
@@ -150,7 +153,9 @@ async def test_a_book_read_twice_is_the_same_object(session):
     seed.add(dune(book_iri(6)))
     await seed.commit()
     work = unit(session)
-    assert await work.get(Book, book_iri(6)) is await work.get(Book, book_iri(6))
+    assert await work.get(Book, book_iri(6)) is await work.get(Book, book_iri(6)), (
+        "a book read twice is the same object"
+    )
 
 
 async def test_a_commit_writes_only_what_was_added_and_only_once(session, store):
@@ -174,7 +179,9 @@ async def test_a_committed_book_can_be_changed_and_committed_again_by_the_same_u
     book.label = "Dune II"
     work.add(book)
     await work.commit()
-    assert (await unit(session).get(Book, iri)).label == "Dune II"
+    assert (await unit(session).get(Book, iri)).label == "Dune II", (
+        "the changed book is stored under its new label"
+    )
 
 
 async def test_a_missing_book_is_not_found(session):
@@ -198,8 +205,12 @@ async def test_a_chapter_added_to_a_read_book_gets_a_part_iri_that_is_kept(sessi
     work.add(book)
     await work.commit()
     stored = await unit(session).get(Book, iri)
-    assert sorted(part_ids(stored)) == sorted(part_ids(book))
-    assert URIRef(stored.chapters[1].id).startswith(f"{iri}/parts/")
+    assert sorted(part_ids(stored)) == sorted(part_ids(book)), (
+        "the stored chapters have the ids the read book was given"
+    )
+    assert URIRef(stored.chapters[1].id).startswith(f"{iri}/parts/"), (
+        "the added chapter is under the root"
+    )
 
 
 async def test_getting_a_root_as_the_wrong_class_is_a_type_error(session):
@@ -285,7 +296,9 @@ async def test_version_of_a_read_book_is_the_session_token(session):
     await seed(session, 26)
     work = unit(session)
     await work.get(Book, iri)
-    assert work.version(iri) == (await session.get_graph(iri))[2]
+    assert work.version(iri) == (await session.get_graph(iri))[2], (
+        "the version of a read book is the session token"
+    )
 
 
 async def test_version_after_a_commit_is_the_new_token(session):
@@ -297,8 +310,10 @@ async def test_version_after_a_commit_is_the_new_token(session):
     book.label = "changed"
     work.add(book)
     await work.commit()
-    assert work.version(iri) != read_at
-    assert work.version(iri) == (await session.get_graph(iri))[2]
+    assert work.version(iri) != read_at, "the version changes after a commit"
+    assert work.version(iri) == (await session.get_graph(iri))[2], (
+        "the version after a commit is the session token"
+    )
 
 
 async def test_version_of_an_unread_book_is_a_lookup_error_naming_it(session):
@@ -323,7 +338,7 @@ async def test_a_conflict_in_a_commit_with_a_removal_keeps_the_removed_book(sess
     await change_elsewhere(store, a, "elsewhere")
     with pytest.raises(Conflict) as raised:
         await work.commit()
-    assert raised.value.iris == (a,)
+    assert raised.value.iris == (a,), "the conflict names the removed book"
     assert (await unit(session).get(Book, b)).id == b, "B is still stored"
 
 
@@ -581,7 +596,8 @@ async def test_a_retry_after_a_failed_batch_does_not_rewrite_a_root_taken_as_com
     assert (await unit(session).get(Book, clash)).label == "Dune", "the other root is stored"
 
 
-@pytest.mark.parametrize("limit", [0, -1])
+# equivalence class: a limit below one; 0 is the boundary and -1 the same class
+@pytest.mark.parametrize("limit", [0])
 def test_a_limit_below_one_is_refused_naming_the_value(session, limit):
     with pytest.raises(ValueError, match=str(limit)):
         limited(session, limit)

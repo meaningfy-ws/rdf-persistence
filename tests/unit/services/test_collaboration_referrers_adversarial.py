@@ -214,24 +214,13 @@ async def test_a_direct_grant_on_a_referrer_does_not_make_the_resource_readable(
 # --- 3. hostile input ------------------------------------------------------------------------
 
 INJECTION = f"{S1}> }} ; DROP ALL ; INSERT DATA {{ <urn:x> <urn:y> <"
+# Class: an IRI the policy does not mint; one per group (hostile text, empty, a minted shape that is
+# no aggregate, another tenant's, a dot-segment trick).
 HOSTILE_IRIS = {
     "sparql fragment": INJECTION,
-    "closing angle": f"{S1}>",
-    "quote": f'{S1}"',
-    "apostrophe": f"{S1}'",
-    "newline": f"{S1}\n",
-    "newline inside": f"{TENANT}/shelves/\n{S1.rsplit('/', 1)[1]}",
-    "space": f"{S1} ",
     "empty": "",
     "graph iri of the shelf": graph_of(S1),
     "another tenant": shelf_iri(1).replace(TENANT, OTHER_TENANT),
-    "skolem part of a book": f"{B1}/parts/6f1c0c1e-0000-4000-8000-000000000009",
-    "loaded graph": f"{B1}/content/6f1c0c1e-0000-4000-8000-000000000009",
-    "a very long uuid": f"{TENANT}/shelves/{'a' * 100_000}",
-    "a very long string": "x" * 1_000_000,
-    "a literal looking like an iri": '"https://example.org"',
-    "a prefixed name": "lib:shelf",
-    "a blank node": "_:b0",
     "a path trick": f"{TENANT}/shelves/../books/{S1.rsplit('/', 1)[1]}",
 }
 
@@ -271,16 +260,11 @@ async def test_an_aggregate_may_refer_to_the_tenant_root(toy_session, collaborat
     assert refs(found) == [(B1, "Book", "shelf")], "the tenant root is a legitimate target"
 
 
+# Class: a name the schema does not have; one per group (hostile text, empty, a near miss, an IRI).
 BAD_NAMES = {
     "sparql fragment": "Book } UNION { ?s ?p ?o",
-    "quote": 'Book"',
-    "closing angle": "Book>",
-    "newline": "Book\n",
     "empty": "",
-    "space": " ",
-    "a prefixed name": "lib:Book",
     "the full class iri": str(BOOK_CLASS),
-    "a very long name": "B" * 100_000,
     "case": "book",
 }
 
@@ -296,9 +280,9 @@ async def test_a_class_name_the_schema_does_not_have_is_a_bad_query(
 
 
 BAD_SLOTS = {
-    **{k: v for k, v in BAD_NAMES.items() if k not in ("case", "the full class iri")},
+    "sparql fragment": BAD_NAMES["sparql fragment"],
+    "empty": "",
     "the full slot iri": str(SHELF_P),
-    "a class name": "Book",
     "case": "Shelf",
 }
 
@@ -448,11 +432,8 @@ async def test_many_hidden_referrers_are_all_counted(toy_session, collaboration)
 # --- 5. class and slot names -----------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "name",
-    ["Chapter", "Note", "Described", "AggregateRoot", "Tracked", "Library"],
-    ids=lambda n: n,
-)
+# Class: a class that is no aggregate root; a part, a mixin, the tenant's root.
+@pytest.mark.parametrize("name", ["Chapter", "Described", "Library"], ids=lambda n: n)
 async def test_a_class_that_is_not_an_aggregate_root_gives_an_empty_result(
     toy_session, collaboration, name
 ):

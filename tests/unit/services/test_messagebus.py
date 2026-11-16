@@ -329,7 +329,7 @@ async def test_two_handles_in_two_tasks_each_have_their_own_count_and_work():  #
     async def replace(cmd: Activity, work: Work) -> None:
         seen.append(work)
         await asyncio.sleep(0)  # let the other task run
-        assert work is not None
+        assert work is not None, "the handler got a unit of work"
 
     bus = MessageBus({Replace: replace}, {}, limit=1)
     (_, one), (_, other) = fakes(), fakes()

@@ -61,7 +61,7 @@ def test_the_plumbing_predicates_are_the_toolkit_namespace_ones():
         f"{prefix}pendingSince",
         f"{prefix}relayedAt",
         f"{prefix}publicationFailed",
-    ]
+    ], "the plumbing predicates are the toolkit ones"
 
 
 async def test_tc01_each_commit_is_pending_once_in_commit_order(store):
@@ -280,4 +280,4 @@ async def test_a_mark_of_an_activity_that_is_not_pending_adds_nothing(store):
         await session.mark_relayed(only)  # failed already: no longer pending
     stored = await stored_graph(store, PROVENANCE)
     assert (None, v.RELAYED_AT, None) not in stored, "a failed activity is not relayed after"
-    assert (None, v.PENDING_SINCE, None) not in stored
+    assert (None, v.PENDING_SINCE, None) not in stored, "the unmarked activity adds no pending mark"

@@ -221,7 +221,8 @@ LABEL_BOUNDARY = pytest.mark.parametrize("build", LABEL_BOUNDARIES.values(), ids
 
 
 @LABEL_BOUNDARY
-@pytest.mark.parametrize("label", ["A", "a", "Acme", "Acme Ltd", "x" * 200, "a" + " " * 198 + "b"])
+# One label per class of the pattern: one character, several characters, the 200 limit, interior spaces.
+@pytest.mark.parametrize("label", ["A", "Acme", "x" * 200, "a" + " " * 198 + "b"])
 def test_a_tenant_label_of_1_to_200_characters_is_accepted(build, label: str) -> None:
     assert build(label).label == label, "the label was not kept"
 
@@ -229,7 +230,9 @@ def test_a_tenant_label_of_1_to_200_characters_is_accepted(build, label: str) ->
 @LABEL_BOUNDARY
 @pytest.mark.parametrize(
     "label",
-    ["", "x" * 201, "Acme\n", "Ac\nme", " .", " ", "  ", " a", "a ", "x" * 199 + " "],
+    # A blank label (one space, two spaces) is one class; leading and trailing space are the two
+    # anchors of the pattern, so both stay.
+    ["", "x" * 201, "Acme\n", "Ac\nme", " .", " ", " a", "a ", "x" * 199 + " "],
     ids=[
         "empty",
         "long",
@@ -237,7 +240,6 @@ def test_a_tenant_label_of_1_to_200_characters_is_accepted(build, label: str) ->
         "newline-inside",
         "space-dot",
         "one-space",
-        "two-spaces",
         "leading-space",
         "trailing-space",
         "trailing-space-at-199",

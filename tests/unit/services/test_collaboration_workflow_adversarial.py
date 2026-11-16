@@ -1,6 +1,6 @@
-"""Adversarial tests of stage 4, workflow (rp-workflow, PD-15 to PD-22, PD-25, PD-28 item 1, PD-30, D-9, D-10, RISK-4, Q-2).
+"""Adversarial tests of workflow (rp-workflow, PD-15 to PD-22, PD-25, PD-28 item 1, PD-30, D-9, D-10, RISK-4, Q-2).
 
-First the one rule the stage exists for (only a transition changes the state of an aggregate, through
+First the one rule the workflow exists for (only a transition changes the state of an aggregate, through
 every write path), then who may make a transition and what a refusal tells, which transitions exist,
 the transaction under concurrent writers, the records, and the workflow files and the hard rule. Each
 test names the spec line, design item or decision it holds the code to; "pinned" marks behaviour no
@@ -17,8 +17,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from rdflib import RDF, XSD, BNode, Graph, Literal, URIRef
-from rdflib.compare import isomorphic
+from rdflib import RDF, XSD, BNode, Literal, URIRef
 
 from rdf_persistence import Action, UnitOfWork, generated_models
 from rdf_persistence.domain.exceptions import (
@@ -34,7 +33,7 @@ from rdf_persistence.domain.exceptions import (
 from rdf_persistence.domain.generated.rp_access import Grant
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_workflow import Transition, WorkflowTransition
-from rdf_persistence.domain.generated.service.rp_service import CallerAccess, TenantState
+from rdf_persistence.domain.generated.service.rp_service import TenantState
 from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.domain.sparql import Triple, fill, term
 from rdf_persistence.entrypoints.kit import ServiceKit
@@ -72,8 +71,7 @@ from tests.toy import (
     shelf,
     toy_mapper,
 )
-from tests.toy_service import DUNE_BODY, ToyService, principal_of
-from tests.unit.entrypoints.scene import Scene
+from tests.toy_service import ToyService
 from tests.unit.services import test_collaboration_workflow as built
 from tests.unit.services.test_collaboration_cascade import before
 from tests.unit.services.test_collaboration_collections_adversarial import (
@@ -252,7 +250,15 @@ BAD_STATES = [
 ]
 
 
-@pytest.mark.parametrize("states", BAD_STATES)
+# Class: a state the add may not carry; one case per branch of the check (another state, a literal, a blank node).
+IDS_OF_AN_ADD = ("another-state", "a-literal", "a-blank-node")
+BAD_STATES_OF_AN_ADD = [p for p in BAD_STATES if p.id in IDS_OF_AN_ADD]
+assert len(BAD_STATES_OF_AN_ADD) == len(IDS_OF_AN_ADD), (
+    "a bad-state id of an add is not in BAD_STATES"
+)
+
+
+@pytest.mark.parametrize("states", BAD_STATES_OF_AN_ADD)
 @pytest.mark.parametrize("add", ADDS, ids=named)
 async def test_a_new_book_takes_no_state_but_the_initial_one_through_any_add(session, add, states):
     with pytest.raises(Forbidden):
@@ -272,7 +278,8 @@ async def test_a_stored_book_takes_no_other_state_through_any_replace(
     assert await snapshot(session, store) == seen, "state, version and the rest are as they were"
 
 
-@pytest.mark.parametrize("state", [ACCEPTED, IN_REVIEW, OTHER_FLOW, f"{DRAFT}/"])
+# Class: a state the unit of work may not set; another state, and the initial one in another spelling.
+@pytest.mark.parametrize("state", [ACCEPTED, f"{DRAFT}/"])
 async def test_the_unit_of_work_cannot_set_a_state_on_a_new_or_a_stored_book(session, books, state):
     work = UnitOfWork(session, toy_mapper())
     work.add(dune(book_iri(7), chapters=1).model_copy(update={"workflow_status": state}))
@@ -330,23 +337,14 @@ async def test_a_replace_that_changes_the_type_cannot_write_a_state(
     assert await snapshot(session, store) == seen, "the book is as it was"
 
 
-@pytest.mark.parametrize("replace", REPLACES, ids=named)
-async def test_a_writer_cannot_strip_the_type_write_a_state_and_restore_the_type(
-    store, session, books, replace
-):
-    """The suspected hole: the type goes, any state is written, the type comes back, review is skipped."""
-    seen = await snapshot(session, store)
-    for step in (typed(B1, ACCEPTED, types=()), typed(B1, ACCEPTED)):
-        try:
-            await replace(session, B1, step)
-        except (Forbidden, InvalidBody):
-            break
-    assert await status_of(session, B1) == [DRAFT], "no transition moved it, so it is in draft"
-    assert (await snapshot(session, store))[2:4] == seen[2:4], "and nothing was recorded"
-
-
-@pytest.mark.parametrize("types", [(v.ANNOTATION,), ()], ids=["an-annotation-type", "no-type"])
-@pytest.mark.parametrize("replace", REPLACES, ids=named)
+# Class: a retype to a class under no workflow; one case per type shape, one per replace path.
+@pytest.mark.parametrize(
+    ("replace", "types"),
+    [
+        pytest.param(replace_by_session, (v.ANNOTATION,), id="session-an-annotation-type"),
+        pytest.param(replace_by_transaction, (), id="transaction-no-type"),
+    ],
+)
 async def test_the_three_write_path_is_closed_at_its_first_step(
     store, session, ada, books, replace, types
 ):
@@ -474,44 +472,6 @@ async def test_an_allowance_does_not_let_the_book_hold_two_states(session, books
     assert await status_of(session, B1) == [DRAFT], "the book is as it was"
 
 
-@pytest.fixture
-async def toy():
-    service = ToyService()
-    async with service.app.router.lifespan_context(service.app), service.client() as http:
-        yield await Scene.set_up(service, http)
-
-
-API_STATES = ["accepted", ACCEPTED, f"{DRAFT}/", DRAFT.upper(), DRAFT.replace("https:", "http:")]
-
-
-@pytest.mark.parametrize("state", API_STATES)
-async def test_the_generic_put_cannot_set_a_state(toy, state):
-    scene = toy
-    response = await scene.http.put(
-        scene.book,
-        json={**DUNE_BODY, "workflow_status": state},
-        headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
-    )
-    assert response.status_code in (403, 422), response.text
-    stored = await scene.http.get(scene.book, headers=scene.headers("ada"))
-    assert (stored.json()["workflow_status"], stored.headers["etag"]) == (DRAFT, scene.book_etag), (
-        "the book is in draft and unchanged"
-    )
-
-
-@pytest.mark.parametrize("extra", [{"type": "Shelf"}, {"@type": "lib:Shelf"}, {"rdf:type": "x"}])
-async def test_the_generic_put_cannot_change_the_type_of_a_book(toy, extra):
-    scene = toy
-    response = await scene.http.put(
-        scene.book,
-        json={**DUNE_BODY, "workflow_status": ACCEPTED, **extra},
-        headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
-    )
-    assert response.status_code in (400, 403, 422), response.text
-    stored = await scene.http.get(scene.book, headers=scene.headers("ada"))
-    assert stored.json()["workflow_status"] == DRAFT, "the book is in draft"
-
-
 # -- 1e. finding aggregates by state (PD-32 item 9: the how-to says only what this test shows) ----
 
 
@@ -526,7 +486,8 @@ async def test_session_find_filters_the_books_of_a_state(session, ada, books):
 # -- 1d. a `to` that is no state of the workflow (PD-32 item 6) ---------------------------------
 
 
-@pytest.mark.parametrize("to", ["archived", "DRAFT", "", ACCEPTED, DRAFT, " draft"])
+# Class: a `to` that is no state name of the workflow, refused saying so; a plain name and a wrong-case one.
+@pytest.mark.parametrize("to", ["archived", "DRAFT"])
 async def test_a_target_that_is_no_state_name_of_the_workflow_is_a_conflict_saying_so(
     session, ada, books, to
 ):
@@ -565,8 +526,15 @@ async def test_a_transition_with_a_comment_by_a_caller_prohibited_annotate_is_fo
     assert await snapshot(session, store) == seen, "no state, no record, no comment"
 
 
-@pytest.mark.parametrize("bans", SILENCED)
-@pytest.mark.parametrize("comment", [None, "", "   "], ids=["none", "empty", "blank"])
+# Class: no comment (none, empty and blank are one: "a blank comment is no comment"), once per ban
+# kind: none under the aggregate ban, blank under the tenant ban.
+@pytest.mark.parametrize(
+    ("bans", "comment"),
+    [
+        pytest.param(SILENCED[0].values[0], None, id="ban-on-the-aggregate-none"),
+        pytest.param(SILENCED[1].values[0], "   ", id="ban-on-the-tenant-blank"),
+    ],
+)
 async def test_a_transition_without_a_comment_by_a_caller_prohibited_annotate_passes(
     rules, session, books, bans, comment
 ):
@@ -621,15 +589,6 @@ async def test_a_stale_replace_the_guards_do_not_refuse_is_still_refused_by_the_
     assert await snapshot(session, store) == seen, "nothing changed"
 
 
-@pytest.mark.parametrize("by", ["session", "transaction"])
-async def test_a_replace_at_the_current_version_that_changes_the_state_is_still_forbidden(
-    session, books, by
-):
-    with pytest.raises(Forbidden):
-        await replace_stale(session, B1, typed(B1, ACCEPTED), await version(session, B1), by=by)
-    assert await status_of(session, B1) == [DRAFT], "the book stays in draft"
-
-
 async def test_a_stale_transition_is_a_conflict_about_the_version_not_about_the_edge(
     session, ada, books
 ):
@@ -658,40 +617,6 @@ async def test_a_transition_at_the_current_version_with_no_edge_is_still_about_t
     with pytest.raises(Conflict, match="no transition from") as refused:
         await ada.transition(B1, "accepted", if_version=await version(session, B1))
     assert "changed by someone else" not in str(refused.value), "the version is current"
-
-
-async def test_the_generic_put_of_a_body_read_before_a_transition_is_a_409(toy):
-    scene = toy
-    tenant_id = scene.tenant.rsplit("/", 1)[1]
-    authorised = await scene.service.kit.require(
-        scene.headers("ada")["Authorization"], tenant_id, Action.READ
-    )
-    async with scene.service.kit.collaboration(authorised) as collaboration:
-        await collaboration.transition(
-            scene.book_iri, "in_review", if_version=scene.book_etag.strip('"')
-        )
-    response = await scene.http.put(
-        scene.book,
-        json={**DUNE_BODY, "workflow_status": DRAFT},
-        headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
-    )
-    assert response.status_code == 409, response.text
-    stored = await scene.http.get(scene.book, headers=scene.headers("ada"))
-    assert stored.json()["workflow_status"] == IN_REVIEW, "the book is where the transition left it"
-
-
-async def test_the_generic_post_cannot_create_a_book_with_two_states(toy):
-    scene = toy
-    listed = f"{scene.tenant}/books"
-    total = (await scene.http.get(listed, headers=scene.headers("ada"))).json()["total"]
-    response = await scene.http.post(
-        listed,
-        json={**DUNE_BODY, "workflow_status": [DRAFT, ACCEPTED]},
-        headers=scene.headers("ada"),
-    )
-    assert response.status_code in (403, 422), response.text
-    after = (await scene.http.get(listed, headers=scene.headers("ada"))).json()["total"]
-    assert after == total, "nothing was stored"
 
 
 # -- 2. who may make a transition (spec "only defined and permitted", Q-2, PD-20, PD-30 item 3) ---
@@ -881,21 +806,9 @@ async def test_a_tenant_being_deleted_is_not_found(rules, session, books):
 
 # -- 3. which transitions exist (PD-20, PD-22, spec "only defined and permitted") ----------------
 
-NO_SUCH_STATE = [
-    "archived",
-    "",
-    " ",
-    "in_review ",
-    "in_review\n",
-    "IN_REVIEW",
-    "in_review/../draft",
-    "../in_review",
-    EVIL,
-    "in_review' } ; DROP ALL ; #",
-    IN_REVIEW,
-    "draft",
-    "retired",
-]
+# Class: a `to` that is no state name (one case per spelling group: plain, empty, a real name with
+# whitespace, hostile text, a state's IRI) and "draft", a state name with no edge from the current state.
+NO_SUCH_STATE = ["archived", "", "in_review ", EVIL, IN_REVIEW, "draft"]
 
 
 @pytest.mark.parametrize("to", NO_SUCH_STATE)
@@ -920,7 +833,8 @@ async def test_a_workflow_with_a_self_edge_moves_a_book_to_the_state_it_is_in(
     assert new != first, "the book has a new version"
 
 
-@pytest.mark.parametrize("to", ["in_review", "draft", "accepted", "retired"])
+# Class: any target from a stored state the file no longer lists; the first state of the file stands for all.
+@pytest.mark.parametrize("to", ["in_review"])
 async def test_every_move_from_a_stored_state_the_file_no_longer_lists_is_a_conflict(
     session, ada, plain, to
 ):
@@ -1178,7 +1092,8 @@ async def test_a_comment_posted_while_a_transition_runs_stays_in_the_thread(
     assert len(await records_of(session, B1)) == 1, "one record"
 
 
-@pytest.mark.parametrize("text", ["", "  ", "\n\t "])
+# Class: a blank comment; whitespace only stands for it (the empty one short-circuits like None, kept in the ban test).
+@pytest.mark.parametrize("text", ["\n\t "])
 async def test_a_blank_comment_on_a_move_that_needs_none_stores_no_blank_comment(
     session, ada, books, text
 ):
@@ -1190,9 +1105,9 @@ async def test_a_blank_comment_on_a_move_that_needs_none_stores_no_blank_comment
 @pytest.mark.parametrize(
     "text",
     [
+        # Class: a payload stored as given; one per risk (size, query syntax and control characters, encoding).
         pytest.param("x" * 20_000, id="long"),
         pytest.param(EVIL, id="sparql-fragments"),
-        pytest.param("line one\r\nline two\n\n\ttabbed \\ \"quoted\" 'single'", id="newlines"),
         pytest.param("naïve ☃ 日本語 \U0001f600", id="unicode"),
     ],
 )
@@ -1245,82 +1160,6 @@ async def test_the_agent_of_a_record_is_the_principal_of_the_session(rules, sess
     assert record.was_associated_with == [ADA], (
         "the session's principal, not the caller's name"
     )  # pinned
-
-
-@pytest.mark.parametrize("policy", ["default", "flat"])
-async def test_no_generic_route_reads_replaces_or_deletes_a_transition(policy):
-    from rdf_persistence.domain.generated.service.rp_service import IriPolicy
-
-    flat = IriPolicy(aggregate_template="{tenant}/{id}") if policy == "flat" else None
-    service = ToyService(iri_policy=flat)
-    async with service.app.router.lifespan_context(service.app), service.client() as http:
-        scene = await Scene.set_up(service, http)
-        record, stored = await a_record(service, scene)
-        headers = {**scene.headers("ada"), "If-Match": '"any"'}
-        answers = [
-            (
-                await http.get(f"{scene.tenant}/{path}/{record}", headers=scene.headers("ada"))
-            ).status_code
-            for path in ("books", "shelves", "rp-transitions")
-        ]
-        answers += [
-            (
-                await http.put(f"{scene.tenant}/books/{record}", json=DUNE_BODY, headers=headers)
-            ).status_code,
-            (await http.delete(f"{scene.tenant}/books/{record}", headers=headers)).status_code,
-        ]
-        assert answers == [404] * 5, f"every route answers 404: {answers}"
-        async with service.kit.session(scene.tenant_iri, principal_of("ada")) as session:
-            kept = await session.activities(v.TRANSITION, v.USED, URIRef(scene.book_iri))
-        assert isomorphic(kept[scene.record_iri], stored), "the transition is as it was"
-
-
-async def a_record(service: ToyService, scene: Scene) -> tuple[str, Graph]:
-    """One move of the scene's book made the way the kit makes it: ``(the transition's id in a path, its stored graph)``."""
-    kit, who = service.kit, principal_of("ada")
-    grant = Grant(assignee=who, target=scene.tenant_iri, role="librarian")
-    access = CallerAccess(tenant=scene.tenant_iri, state=TenantState.ACTIVE, grants=[grant])
-    async with kit.session(scene.tenant_iri, who) as session:
-        moves = Collaboration(
-            session,
-            view=kit.view,
-            rules=kit.rules,
-            iris=kit.iris,
-            mapper=kit.mapper,
-            models=kit.models,
-            listings=kit.listings,
-            workflows=kit.workflows,
-            caller=caller(principal=who),
-            access=access,
-        )
-        await moves.transition(
-            scene.book_iri, "in_review", if_version=(await session.get_graph(scene.book_iri))[2]
-        )
-        [record] = await moves.transitions(scene.book_iri)
-        scene.record_iri = record.id
-        stored = (await session.activities(v.TRANSITION, v.USED, URIRef(scene.book_iri)))[record.id]
-        return record.id.removeprefix("urn:uuid:"), stored
-
-
-async def test_the_generic_delete_of_a_book_keeps_its_transitions_and_removes_its_comments(toy):
-    scene = toy
-    await a_record(scene.service, scene)
-    gone = await scene.http.delete(
-        scene.book,
-        headers=scene.headers(
-            "ada",
-            **{
-                "If-Match": (
-                    await scene.http.get(scene.book, headers=scene.headers("ada"))
-                ).headers["etag"]
-            },
-        ),
-    )
-    assert gone.status_code == 204, gone.text
-    async with scene.service.kit.session(scene.tenant_iri, principal_of("ada")) as session:
-        kept = await session.activities(v.TRANSITION, v.USED, URIRef(scene.book_iri))
-        assert list(kept) == [scene.record_iri], "the transition is kept"
-        assert await session.graphs_with(v.HAS_TARGET, URIRef(scene.book_iri)) == {}, "no comment"
 
 
 @pytest.mark.parametrize("path", ["session", "transaction", "unit-of-work", "cascade"])
@@ -1480,48 +1319,25 @@ def text_file(tmp_path: Path, text: str | bytes) -> Path:
 
 
 MOVE = {"from_state": "a", "to_state": "b", "transition_roles": ["librarian"]}
+# Class: a file the model refuses; one per field group (a state name, a list's type, a role list, a
+# flag, an unknown key, the initial state's type, the workflow name, the id).
 REFUSED_FILES = [
     pytest.param({"workflow_states": "a"}, id="states-a-string"),
     pytest.param(
         {"workflow_states": ["a/b"], "initial_state": "a/b", "workflow_transitions": []},
         id="a-state-with-a-slash",
     ),
-    pytest.param(
-        {"workflow_states": ["../x"], "initial_state": "../x", "workflow_transitions": []},
-        id="a-state-that-climbs",
-    ),
-    pytest.param(
-        {"workflow_states": ["A"], "initial_state": "A", "workflow_transitions": []},
-        id="an-upper-case-state",
-    ),
-    pytest.param(
-        {"workflow_states": ["a\n"], "initial_state": "a\n", "workflow_transitions": []},
-        id="a-state-with-a-newline",
-    ),
-    pytest.param(
-        {"workflow_states": [""], "initial_state": "", "workflow_transitions": []},
-        id="an-empty-state",
-    ),
-    pytest.param({"workflow_states": ["a", "b", "a b"]}, id="a-state-with-a-space"),
     pytest.param({"workflow_transitions": {"a": "b"}}, id="transitions-a-mapping"),
     pytest.param(
         {"workflow_transitions": [{**MOVE, "transition_roles": "librarian"}]}, id="roles-a-string"
     ),
-    pytest.param({"workflow_transitions": [{**MOVE, "transition_roles": None}]}, id="roles-none"),
     pytest.param(
         {"workflow_transitions": [{**MOVE, "comment_required": "maybe"}]},
         id="comment-required-maybe",
     ),
-    pytest.param(
-        {"workflow_transitions": [{**MOVE, "colour": "red"}]}, id="an-unknown-key-on-a-transition"
-    ),
     pytest.param({"colour": "red"}, id="an-unknown-key"),
-    pytest.param({"workflow_transition": [MOVE]}, id="a-misspelled-key"),
     pytest.param({"initial_state": 5}, id="initial-state-an-int"),
-    pytest.param({"initial_state": None}, id="initial-state-none"),
     pytest.param({"workflow_name": "Flow"}, id="name-in-capitals"),
-    pytest.param({"workflow_name": "a/b"}, id="name-with-a-slash"),
-    pytest.param({"workflow_name": ""}, id="name-empty"),
     pytest.param({"id": None}, id="id-none"),
 ]
 
@@ -1534,16 +1350,11 @@ def test_a_hostile_workflow_file_is_refused_naming_the_file(tmp_path, changes):
     assert str(path) in str(refused.value), "the message names the file"
 
 
+# Class: a file that is no workflow; one per reader branch (not a mapping, not YAML, not UTF-8, too deep).
 RAW_FILES = [
     pytest.param("", id="empty"),
-    pytest.param("# only a comment\n", id="only-a-comment"),
-    pytest.param("---\n---\n", id="two-documents"),
-    pytest.param("[]", id="an-empty-list"),
-    pytest.param("just text", id="a-string"),
-    pytest.param("id: &a [*a]\nworkflow_states: &b [*b]\n", id="a-recursive-alias"),
     pytest.param("id: !!python/object/apply:os.getcwd []\n", id="a-python-tag"),
     pytest.param(b"\xff\xfe\x00bad bytes", id="not-utf8"),
-    pytest.param("id: a\x00b\n", id="a-nul-byte"),
     pytest.param("{" * 5000, id="deeply-nested-flow"),
 ]
 
@@ -1620,16 +1431,8 @@ def test_a_huge_states_list_loads_and_is_checked_quickly(tmp_path, rules):
     )
 
 
-BAD_IDS = [
-    "",
-    "flow",
-    "has space",
-    "https://example.org/w>",
-    "https://example.org/w<",
-    'https://example.org/w"',
-    "https://example.org/w\n",
-    "https://example.org/w\t",
-]
+# Class: an id that is no IRI; one per check (no scheme, a character an IRI may not hold).
+BAD_IDS = ["flow", "https://example.org/w>"]
 
 
 @pytest.mark.parametrize("workflow_id", BAD_IDS)

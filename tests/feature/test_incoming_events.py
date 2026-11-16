@@ -55,7 +55,9 @@ class Run:
             headers = self.first.bearer("ada")
             _, book, etag = await made(http, headers)
             await http.put(book, json=DUNE_BODY, headers={**headers, "If-Match": etag})
-        await wait_until_async(self._second_heard, "the second deployment's observer")
+        await wait_until_async(
+            self._second_heard, "the second deployment's observer", poll_seconds=0.01
+        )
 
     async def _second_heard(self) -> list:
         return self.second_saw.of(Replace)
@@ -87,9 +89,9 @@ def _replace(run: Run) -> None:
 
 @then("the second deployment's observer receives the replacement once")
 def _second_once(run: Run) -> None:
-    assert len(run.second_saw.of(Replace)) == 1
+    assert len(run.second_saw.of(Replace)) == 1, "the second observer saw the replace once"
 
 
 @then("the first deployment's own observer received it once")
 def _first_once(run: Run) -> None:
-    assert len(run.first_saw.of(Replace)) == 1
+    assert len(run.first_saw.of(Replace)) == 1, "the first observer saw the replace once"

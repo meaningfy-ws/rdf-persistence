@@ -148,7 +148,9 @@ async def test_tc11_a_replace_keeps_its_own_key_or_changes_it(session):
     version = await session.add_graph(A, book(A, "1"))
     version = await session.replace_graph(A, book(A, "1", title="again"), version)
     await session.replace_graph(A, book(A, "2"), version)
-    assert (await session.get_graph(A))[0].value(URIRef(A), ISBN) == Literal("2")
+    assert (await session.get_graph(A))[0].value(URIRef(A), ISBN) == Literal("2"), (
+        "the replace keeps its own key"
+    )
 
 
 async def test_tc12_a_replace_taking_another_key_is_refused_and_changes_nothing(store, session):

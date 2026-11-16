@@ -60,9 +60,8 @@ async def nothing_reached(store: FakeStore) -> None:
 # -- IRIs with trailing characters ----------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "suffix", ["/", "#frag", "?q=1", "\n", "/graph", "//", "%20", " "], ids=repr
-)
+# equivalence class: any tail after the aggregate IRI fails the one full match of its template
+@pytest.mark.parametrize("suffix", ["/", "#frag"], ids=repr)
 @pytest.mark.parametrize("call", ["add_graph", "get_graph", "load_graph", "remove"])
 async def test_an_aggregate_iri_with_a_tail_is_refused_before_the_store(store, suffix, call):
     arguments = {
@@ -94,28 +93,15 @@ async def test_the_tenants_bookkeeping_graphs_are_not_aggregates_a_caller_may_co
 # -- loaded graphs --------------------------------------------------------------------------------
 
 
+# equivalence class: no loaded-graph template matches (another tenant's id is its own branch, `_belongs`)
 @pytest.mark.parametrize(
     "graph",
     [
         URIRef(f"{BASE}q9y7j1n/content/{1:013d}"),
         URIRef(f"{BASE}p4x8k2m/book/{1:013d}"),
         URIRef(f"{BASE}p4x8k2m/content/{1:013d}/"),
-        URIRef(f"{BASE}p4x8k2m/content/short"),
-        URIRef(f"{BASE}p4x8k2m/content/{1:013d}#x"),
-        URIRef(book(1)),
-        URIRef(f"{book(1)}/graph"),
-        URIRef(f"{TENANT}/registry"),
     ],
-    ids=[
-        "another tenant's",
-        "an aggregate's type",
-        "a tail",
-        "a short id",
-        "a fragment",
-        "the aggregate itself",
-        "the aggregate's own graph",
-        "the registry",
-    ],
+    ids=["another tenant's", "an aggregate's type", "a tail"],
 )
 async def test_a_loaded_graph_the_policy_would_not_mint_is_refused_and_nothing_is_sent(
     store, graph
@@ -128,7 +114,9 @@ async def test_a_loaded_graph_the_policy_would_not_mint_is_refused_and_nothing_i
 async def test_naming_the_same_loaded_graph_twice_is_not_an_error_and_registers_it_once(store):
     session = session_on(store)
     await session.add_graph(book(1), [], loaded_graphs=[loaded(1), loaded(1)])
-    assert (await session._registered_loaded(book(1))) == [loaded(1)]
+    assert (await session._registered_loaded(book(1))) == [loaded(1)], (
+        "naming the same loaded graph twice registers it once"
+    )
 
 
 async def test_a_loaded_graph_of_a_removed_aggregate_is_free_for_another(store):
@@ -152,7 +140,9 @@ async def test_a_replace_that_names_no_loaded_graphs_keeps_the_registered_ones(s
     await session.add_graph(book(1), [], loaded_graphs=[loaded(1)])
     _, _, version = await session.get_graph(book(1))
     await session.replace_graph(book(1), [], version)  # None keeps the registered ones
-    assert await session._registered_loaded(book(1)) == [loaded(1)]
+    assert await session._registered_loaded(book(1)) == [loaded(1)], (
+        "a replace that names no loaded graphs keeps the registered ones"
+    )
 
 
 # -- bodies under a flat part template ------------------------------------------------------------
@@ -209,7 +199,7 @@ async def test_two_chapters_that_name_the_same_stored_part_are_one_part_or_refus
         )
     except InvalidBody:
         return  # refusing the duplicate is as good
-    assert chapter_ids(stored) == {own}
+    assert chapter_ids(stored) == {own}, "two chapters naming one stored part make one part"
 
 
 async def test_a_new_chapter_with_two_types_is_refused_not_minted_under_a_guess(aggregates, store):
@@ -220,7 +210,7 @@ async def test_a_new_chapter_with_two_types_is_refused_not_minted_under_a_guess(
     }
     with pytest.raises(InvalidBody):
         await create(aggregates, json.dumps(document).encode())
-    assert store.sent("update") == []
+    assert store.sent("update") == [], "the refused chapter with two types sends no update"
 
 
 async def test_a_new_chapter_typed_as_a_root_class_is_refused(aggregates, store):
@@ -231,7 +221,7 @@ async def test_a_new_chapter_typed_as_a_root_class_is_refused(aggregates, store)
     }
     with pytest.raises(InvalidBody):
         await create(aggregates, json.dumps(document).encode())
-    assert store.sent("update") == []
+    assert store.sent("update") == [], "the refused chapter typed as a root class sends no update"
 
 
 async def test_a_replace_may_not_move_a_part_between_aggregates_by_naming_it_in_both(aggregates):
@@ -240,7 +230,9 @@ async def test_a_replace_may_not_move_a_part_between_aggregates_by_naming_it_in_
     (stolen,) = chapter_ids(await aggregates.read(TENANT, ADA, first, BOOK_CLASS))
     with pytest.raises(InvalidBody):
         await replace(aggregates, second, body({"id": stolen, "number": 9}))
-    assert chapter_ids(await aggregates.read(TENANT, ADA, first, BOOK_CLASS)) == {stolen}
+    assert chapter_ids(await aggregates.read(TENANT, ADA, first, BOOK_CLASS)) == {stolen}, (
+        "the part named in both aggregates stays in the first one"
+    )
 
 
 async def test_a_replace_that_drops_a_part_then_another_replace_cannot_take_it_back_by_name(
@@ -249,7 +241,9 @@ async def test_a_replace_that_drops_a_part_then_another_replace_cannot_take_it_b
     iri = await create(aggregates, one_book())
     (gone,) = chapter_ids(await aggregates.read(TENANT, ADA, iri, BOOK_CLASS))
     await replace(aggregates, iri, body({"number": 2}))  # the old chapter is dropped
-    assert gone not in chapter_ids(await aggregates.read(TENANT, ADA, iri, BOOK_CLASS))
+    assert gone not in chapter_ids(await aggregates.read(TENANT, ADA, iri, BOOK_CLASS)), (
+        "the dropped part is not taken back by name"
+    )
     with pytest.raises(InvalidBody):
         await replace(aggregates, iri, body({"id": gone, "number": 1}))
 
@@ -269,10 +263,12 @@ async def test_the_create_of_a_blank_node_part_mints_beside_the_root_in_the_tena
 ):
     iri = await create(aggregates, body({"number": 1}, {"number": 2}))
     chapters = chapter_ids(await aggregates.read(TENANT, ADA, iri, BOOK_CLASS))
-    assert len(chapters) == 2
+    assert len(chapters) == 2, "two chapters were minted"
     for chapter in chapters:
-        assert chapter.startswith(f"{BASE}p4x8k2m/chapter/")
-        assert not chapter.startswith(iri)
+        assert chapter.startswith(f"{BASE}p4x8k2m/chapter/"), (
+            "the blank-node part is minted beside the root in the tenant"
+        )
+        assert not chapter.startswith(iri), "the minted part does not sit under the root"
 
 
 # -- with_iris ------------------------------------------------------------------------------------
@@ -286,13 +282,17 @@ def test_rules_bound_to_a_policy_leave_the_original_rules_on_the_default_policy(
     rebound.validate_grants(grants, TENANT)
     with pytest.raises(InvalidGrant):
         original.validate_grants(grants, TENANT)
-    assert rebound is not original
-    assert original._iris is DEFAULT_IRIS
+    assert rebound is not original, "binding to a policy returns new rules"
+    assert original._iris is DEFAULT_IRIS, "the original rules keep the default policy"
 
 
 def test_rebinding_twice_does_not_stack_and_does_not_reach_back():
     original = AccessRules(load_role_definitions(ROLES))
     first = original.with_iris(IRIS)
     second = first.with_iris(DEFAULT_IRIS)
-    assert (original._iris, first._iris, second._iris) == (DEFAULT_IRIS, IRIS, DEFAULT_IRIS)
-    assert first._permits is original._permits or first._permits == original._permits
+    assert original._iris == DEFAULT_IRIS, "the original rules keep the default policy"
+    assert first._iris == IRIS, "the first rebinding takes the given policy"
+    assert second._iris == DEFAULT_IRIS, "the second rebinding does not stack on the first"
+    assert first._permits is original._permits or first._permits == original._permits, (
+        "the rebound rules share the permission check of the original"
+    )

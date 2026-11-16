@@ -48,6 +48,7 @@ jobs:
   style:
     name: Style (format, lint, complexity)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -56,6 +57,7 @@ jobs:
   types:
     name: Types (mypy, generated code, TypeScript)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -67,6 +69,7 @@ jobs:
   architecture:
     name: Architecture (import-linter)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -75,6 +78,7 @@ jobs:
   spec-docs-generation:
     name: Spec, docs and generated code
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -87,6 +91,7 @@ jobs:
   unit:
     name: Unit tests (coverage floor)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -113,6 +118,7 @@ jobs:
   feature:
     name: Feature tests (BDD)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup

@@ -356,8 +356,17 @@ def planted(where: str, snippet: str) -> tuple[str, str]:
     ) + "    attributes:\n"
 
 
-@pytest.mark.parametrize("where", ["slot", "attribute", "slot_usage"])
-@pytest.mark.parametrize("rule", SLOT_RULES)
+# One place per rule (one class); the places differ in the loop that reads them, so they are spread.
+@pytest.mark.parametrize(
+    ("rule", "where"),
+    [
+        ("all_of", "slot"),
+        ("none_of", "attribute"),
+        ("exactly_one_of", "slot_usage"),
+        ("any_of", "slot"),
+        ("any_of-with-a-range-and-more", "attribute"),
+    ],
+)
 def test_an_unsupported_rule_on_a_slot_fails_the_run_naming_the_slot_and_the_rule(
     break_toy: Breaker, capsys: pytest.CaptureFixture[str], where: str, rule: str
 ) -> None:

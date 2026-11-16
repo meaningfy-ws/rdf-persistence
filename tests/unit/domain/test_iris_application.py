@@ -93,8 +93,12 @@ def test_tc17_matching_accepts_the_application_and_refuses_a_tenant(iris: Iris) 
     assert not iris.is_loaded_graph(tenant, g), "an application loaded graph is not a tenant's"
 
 
-def test_the_application_is_no_aggregate_of_itself_and_has_no_access_record(iris: Iris) -> None:
-    """D-6 a: the application has no root object and no access record to write."""
+def test_the_application_is_no_aggregate_of_itself_and_has_no_access_record() -> None:
+    """D-6 a: the application has no root object and no access record to write.
+
+    Default and flat policy are one class here (identical lines); flat stays covered by tc21.
+    """
+    iris = _iris()
     a = str(iris.application)
     assert not iris.is_aggregate(a, a), "A is no aggregate of A"
     assert not iris.is_aggregate(a, str(iris.access(a))), "access(A) is no aggregate of A"
@@ -121,10 +125,11 @@ def test_tc18_a_tenant_aggregate_is_not_the_applications(iris: Iris) -> None:
     ids=["tenant_id_of", "tenant", "resource_name", "tenant_of_access"],
 )
 def test_tc19_tc27_the_application_is_never_a_tenant(
-    iris: Iris, ask: Callable[[Iris], object], expected: type[Exception]
+    ask: Callable[[Iris], object], expected: type[Exception]
 ) -> None:
+    # Default and flat policy are one class per method (identical lines); flat stays covered by tc21.
     with pytest.raises(expected):
-        ask(iris)
+        ask(_iris())
 
 
 def test_tc20_no_tenant_is_drawn_as_app() -> None:
@@ -185,9 +190,8 @@ def test_tc24_the_application_iri_stays_under_the_base_and_off_the_toolkit(
             _iris(policy)
 
 
-@pytest.mark.parametrize(
-    ("prefix", "expected"), [("lib", "lib-app"), ("Lib", InvalidIri), ("a-b", InvalidIri)]
-)
+# "Lib" stands for every invalid prefix (one class: the prefix pattern; test_service_model has more).
+@pytest.mark.parametrize(("prefix", "expected"), [("lib", "lib-app"), ("Lib", InvalidIri)])
 def test_tc25_application_database_name(prefix: str, expected: str | type[Exception]) -> None:
     assert APPLICATION_SUFFIX == "-app", "the suffix is the one the design names"
     if isinstance(expected, str):

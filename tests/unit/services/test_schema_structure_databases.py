@@ -132,7 +132,9 @@ def test_database_of_follows_is_a_and_never_a_mixin(
 
 
 def test_a_subclass_of_an_application_class_is_listed_for_the_application(view: SchemaView) -> None:
-    assert Listings(view, APPLICATION).served_root("ReportTpl").name == "ReportTpl"
+    assert Listings(view, APPLICATION).served_root("ReportTpl").name == "ReportTpl", (
+        "the subclass is listed under the application"
+    )
 
 
 @pytest.mark.parametrize(

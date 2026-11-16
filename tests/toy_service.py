@@ -1,6 +1,5 @@
 """The toy library served over the API with fakes, for the router's tests (task 5.2)."""
 
-import functools
 import uuid
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -14,6 +13,7 @@ from rdf_persistence import (
     AccessRules,
     IdSource,
     JwksTokenVerifier,
+    Problem,
     ServiceKit,
     ServiceSettings,
     Store,
@@ -28,7 +28,7 @@ from rdf_persistence.services.events import EventBus
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.tenancy import GrantValidator, RootValidator
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
-from rdf_persistence.testkit.tokens import ISSUER, new_key
+from rdf_persistence.testkit.tokens import ISSUER, shared_key
 from tests.fixtures.library import generated
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note
 from tests.fixtures.library.generated.library import Library
@@ -59,10 +59,9 @@ CONSUMER_POLICY = IriPolicy(
 )
 
 
-@functools.cache
 def toy_key() -> rsa.RSAPrivateKey:
-    """One signing key per process (each xdist worker is one): generating one per test costs ≈ 0.5 s."""
-    return new_key()
+    """The process's shared signing key (each xdist worker is one process)."""
+    return shared_key()
 
 
 def principal_of(sub: str) -> str:
@@ -145,7 +144,7 @@ class ToyService:
         deployment: str | None = None,
         public_url: str | None = None,
     ) -> None:
-        self.signer = TokenSigner(key=toy_key())
+        self.signer = TokenSigner(key=shared_key())
         self.store = store or FakeStore()
         self.files = files or FakeFileStore()
         self.mount = mount
@@ -196,6 +195,14 @@ class ToyService:
     def bearer(self, sub: str, *global_roles: str) -> dict[str, str]:
         """The ``Authorization`` header of a caller with ``sub`` and the given global roles."""
         return {"Authorization": f"Bearer {self.signer.issue(sub=sub, roles=list(global_roles))}"}
+
+
+def assert_problem(response: httpx.Response, status: int, slug: str) -> Problem:
+    """Assert ``response`` is a problem of ``status`` whose ``type`` ends with ``problems/<slug>``; return it."""
+    assert response.status_code == status, response.text
+    problem = Problem.model_validate(response.json())
+    assert problem.type.endswith(f"problems/{slug}"), f"the problem type: {problem.type}"
+    return problem
 
 
 def unique_prefix() -> str:

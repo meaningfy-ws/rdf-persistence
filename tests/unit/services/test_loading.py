@@ -3,14 +3,12 @@
 import io
 import json
 import threading
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
-from http.server import BaseHTTPRequestHandler, HTTPServer
 from uuid import UUID
 
 import pytest
 from rdflib import XSD, Graph, Literal, URIRef
-from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence import InvalidGraph
 from rdf_persistence.domain.exceptions import DatabaseGone, InvalidIri, NotFound, StoreUnavailable
@@ -19,9 +17,14 @@ from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.loading import _RDFLIB_FORMATS, parse_graph
+from rdf_persistence.services.loading import _RDFLIB_FORMATS, NOT_INLINE, parse_graph
 from rdf_persistence.services.session import Session
-from rdf_persistence.testkit import FakeStore, fake_session
+from rdf_persistence.testkit import (  # noqa: F401  (no_network is a fixture)
+    FakeStore,
+    assert_isomorphic,
+    fake_session,
+    no_network,
+)
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 
 TENANT = "https://example.org/libraries/6f1c"
@@ -82,7 +85,7 @@ async def test_the_loaded_triples_are_those_of_the_file(store, session):
     )
     query = fill("CONSTRUCT { ?s ?p ?o } WHERE { GRAPH $g { ?s ?p ?o } }", g=term(loaded))
     held = (await store.query(FAKE_DATABASE, query)).graph
-    assert isomorphic(held, EXPECTED), graph_diff(held, EXPECTED)
+    assert_isomorphic(held, EXPECTED)
 
 
 async def test_each_load_gets_its_own_graph(store, session):
@@ -137,7 +140,9 @@ def rdflib_message(data: bytes, fmt: RdfFormat) -> str:
 async def test_the_message_of_a_refused_file_is_the_parsers_own(fmt):
     with pytest.raises(InvalidGraph) as raised:
         await parse_graph(BROKEN[fmt], fmt)
-    assert str(raised.value) == rdflib_message(BROKEN[fmt], fmt)
+    assert str(raised.value) == rdflib_message(BROKEN[fmt], fmt), (
+        "the refusal message is the parser's own"
+    )
 
 
 async def test_a_format_the_toolkit_does_not_know_is_a_bug_and_not_an_invalid_graph():
@@ -145,35 +150,15 @@ async def test_a_format_the_toolkit_does_not_know_is_a_bug_and_not_an_invalid_gr
         await parse_graph(b"", "not-a-format")  # type: ignore[arg-type]
 
 
-class _Recorder(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.server.requests.append(self.path)  # type: ignore[attr-defined]
-        self.send_response(200)
-        self.send_header("Content-Type", "application/ld+json")
-        self.end_headers()
-        self.wfile.write(b'{"@context": {"title": "http://purl.org/dc/terms/title"}}')
-
-    def log_message(self, *args):  # silence
-        pass
-
-
-@pytest.fixture
-def context_server() -> Iterator[HTTPServer]:
-    """A local server that records every request made to it."""
-    server = HTTPServer(("127.0.0.1", 0), _Recorder)
-    server.requests = []  # type: ignore[attr-defined]
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    yield server
-    server.shutdown()
-    server.server_close()
-
-
 def jsonld(context: object) -> bytes:
     return json.dumps(
         {"@context": context, "@id": "https://example.org/b", "title": "Dune"}
     ).encode()
 
+
+UNREACHABLE = (
+    "http://context.invalid/context.jsonld"  # nothing listens there; no_network blocks it too
+)
 
 NON_INLINE = {
     "iri": lambda url: jsonld(url),
@@ -197,14 +182,14 @@ NON_INLINE = {
 }
 
 
+@pytest.mark.usefixtures("no_network")
 @pytest.mark.parametrize("make", NON_INLINE.values(), ids=NON_INLINE.keys())
-async def test_a_jsonld_context_that_is_not_inline_is_refused_and_nothing_is_fetched(
-    context_server, make
-):
-    url = f"http://127.0.0.1:{context_server.server_port}/context.jsonld"
-    with pytest.raises(InvalidGraph, match="inline"):
-        await parse_graph(make(url), RdfFormat.JSONLD)
-    assert context_server.requests == [], "the server was never asked"
+async def test_a_jsonld_context_that_is_not_inline_is_refused_before_any_fetch(make):
+    """Refused by the toolkit's own check: were the context followed, the blocked network would raise
+    ``RuntimeError`` (not ``InvalidGraph``) or the fetch would fail with another message."""
+    with pytest.raises(InvalidGraph, match="inline") as raised:
+        await parse_graph(make(UNREACHABLE), RdfFormat.JSONLD)
+    assert str(raised.value) == NOT_INLINE, "the refusal is the toolkit's, not a fetch failure"
 
 
 @pytest.mark.parametrize(
@@ -221,7 +206,7 @@ async def test_an_inline_jsonld_context_still_parses(context):
     if context is None:
         data = data.replace(b'"title"', b'"http://purl.org/dc/terms/title"')
     graph = await parse_graph(data, RdfFormat.JSONLD)
-    assert isomorphic(graph, EXPECTED), graph_diff(graph, EXPECTED)
+    assert_isomorphic(graph, EXPECTED)
 
 
 SECOND = f"{TENANT}/books/{UUID(int=2)}"
@@ -237,7 +222,7 @@ async def loaded_for(session, iri):
 async def test_a_loaded_graph_reads_back_as_the_file_that_was_loaded(session):
     loaded = await loaded_for(session, AGGREGATE)
     read = await session.loaded_graph(AGGREGATE, str(loaded))
-    assert isomorphic(read, EXPECTED), graph_diff(read, EXPECTED)
+    assert_isomorphic(read, EXPECTED)
 
 
 async def test_a_graph_of_another_aggregate_or_an_unknown_one_is_not_found(session):
@@ -262,7 +247,7 @@ async def test_a_later_session_finds_the_loaded_graph_and_reads_it(store, sessio
     async with fake_session(store, tenant_iri=TENANT) as later:
         (graph_iri,) = await later.loaded_graphs(AGGREGATE)
         read = await later.loaded_graph(AGGREGATE, graph_iri)
-    assert isomorphic(read, EXPECTED), graph_diff(read, EXPECTED)
+    assert_isomorphic(read, EXPECTED)
 
 
 async def test_after_a_replace_only_the_new_loaded_graph_is_listed(store, session):
@@ -270,7 +255,9 @@ async def test_after_a_replace_only_the_new_loaded_graph_is_listed(store, sessio
     _, _, version = await session.get_graph(AGGREGATE)
     new = await session.load_graph(AGGREGATE, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE)
     version = await session.replace_graph(AGGREGATE, [], version, [new])
-    assert await listed_by_a_new_session(store, AGGREGATE) == [new]
+    assert await listed_by_a_new_session(store, AGGREGATE) == [new], (
+        "only the new loaded graph is listed after a replace"
+    )
     await session.replace_graph(AGGREGATE, [], version)
     assert await listed_by_a_new_session(store, AGGREGATE) == [new], "None keeps the registered"
 
@@ -281,7 +268,9 @@ async def test_several_loaded_graphs_are_listed_sorted_by_iri(store, session):
         for _ in range(3)
     ]
     await session.add_graph(AGGREGATE, [], graphs)
-    assert await listed_by_a_new_session(store, AGGREGATE) == sorted(graphs)
+    assert await listed_by_a_new_session(store, AGGREGATE) == sorted(graphs), (
+        "the loaded graphs are listed sorted by IRI"
+    )
 
 
 async def test_an_aggregate_without_loaded_graphs_lists_none(store, session):
@@ -290,7 +279,9 @@ async def test_an_aggregate_without_loaded_graphs_lists_none(store, session):
         SECOND, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE
     )
     await session.add_graph(SECOND, [])
-    assert await listed_by_a_new_session(store, AGGREGATE) == []
+    assert await listed_by_a_new_session(store, AGGREGATE) == [], (
+        "an aggregate without loaded graphs lists none"
+    )
     assert unregistered not in await listed_by_a_new_session(store, SECOND), "loaded, not committed"
 
 
@@ -374,8 +365,8 @@ async def test_the_marker_holds_the_session_clock_as_a_date_time():
             AGGREGATE, GOOD[RdfFormat.TURTLE], rdf_format=RdfFormat.TURTLE
         )
     ((_, stamp),) = await _marker_triples(store, loaded)
-    assert stamp.datatype == XSD.dateTime
-    assert stamp.toPython() == MARKER_TIME
+    assert stamp.datatype == XSD.dateTime, "the marker holds a date-time"
+    assert stamp.toPython() == MARKER_TIME, "the marker holds the session clock"
 
 
 async def test_a_failed_put_leaves_the_marker():
@@ -401,5 +392,5 @@ async def test_a_commit_of_the_loaded_graph_keeps_its_registry_entry_and_listing
         await session.add_graph(AGGREGATE, [], loaded_graphs=[loaded])
         assert await session.loaded_graphs(AGGREGATE) == [loaded], "still registered and listed"
     properties = {p for p, _ in await _marker_triples(store, loaded)}
-    assert v.REGISTRY_OWNED_BY in properties
-    assert v.REGISTRY_KIND in properties
+    assert v.REGISTRY_OWNED_BY in properties, "the commit keeps the owner in the registry entry"
+    assert v.REGISTRY_KIND in properties, "the commit keeps the kind in the registry entry"

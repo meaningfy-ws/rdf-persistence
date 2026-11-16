@@ -42,7 +42,7 @@ async def test_an_injected_error_is_raised_once_then_the_call_works():
     with pytest.raises(StoreUnavailable):
         await store.create_dataset("d")
     await store.create_dataset("d")
-    assert await store.list_datasets() == ["d"]
+    assert await store.list_datasets() == ["d"], "after the one injected error the call works"
 
 
 async def test_an_injected_error_can_repeat_and_is_per_operation():
@@ -62,8 +62,10 @@ async def test_sent_records_each_call_payload_including_failed_ones():
     with pytest.raises(StoreUnavailable):
         await store.update("d", "CLEAR ALL")
     await store.update("d", "CLEAR DEFAULT")
-    assert store.sent("update") == ["CLEAR ALL", "CLEAR DEFAULT"]
-    assert store.sent("query") == []
+    assert store.sent("update") == ["CLEAR ALL", "CLEAR DEFAULT"], (
+        "every update is recorded, including the failed one"
+    )
+    assert store.sent("query") == [], "no query was recorded"
 
 
 async def test_an_injected_error_can_wait_for_later_calls():
@@ -72,7 +74,7 @@ async def test_an_injected_error_can_wait_for_later_calls():
     await store.create_dataset("first")
     with pytest.raises(StoreUnavailable):
         await store.create_dataset("second")
-    assert await store.list_datasets() == ["first"]
+    assert await store.list_datasets() == ["first"], "an injected error can wait for later calls"
 
 
 @pytest.mark.parametrize("call", ["on", "sent"])

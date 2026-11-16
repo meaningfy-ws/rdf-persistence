@@ -3,6 +3,7 @@ Feature: A change made in one deployment reaches the observers of another
   I want the second deployment to hear of each change the first one commits
   So that it can react to it, and never hears of its own changes twice
 
+  # spec: rp-events / another deployment's commit
   Scenario: Another deployment's commit
     Given two deployments share one broker and one library store
     And the second deployment has an observer of replacements

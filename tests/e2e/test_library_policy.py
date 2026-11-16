@@ -49,10 +49,12 @@ async def test_a_library_and_a_book_live_and_die_under_the_policy(world: World) 
     )
     assert created.status_code == 201, created.text
     tenant = TenantSummary.model_validate(created.json()).id
-    assert re.fullmatch(f"{re.escape(BASE)}project/{ID}{{7}}", tenant)
+    assert re.fullmatch(f"{re.escape(BASE)}project/{ID}{{7}}", tenant), (
+        "the tenant IRI is the project path and a short id"
+    )
     tenant_id = tenant[-7:]
     path = created.headers["location"]
-    assert path == f"/libraries/{tenant_id}"
+    assert path == f"/libraries/{tenant_id}", "the library path is its tenant id"
 
     name = f"{world.prefix}-t-{tenant_id}"
     assert name in await world.store.list_datasets(), "the tenant's database is named by its id"
@@ -62,16 +64,22 @@ async def test_a_library_and_a_book_live_and_die_under_the_policy(world: World) 
     assert added.status_code == 201, added.text
     book = added.json()
     flat = f"{re.escape(BASE)}{tenant_id}/%s/{ID}{{13}}"
-    assert re.fullmatch(flat % "book", book["id"])
-    assert re.fullmatch(flat % "chapter", book["chapters"][0]["id"])
+    assert re.fullmatch(flat % "book", book["id"]), "the book IRI has the flat shape of the policy"
+    assert re.fullmatch(flat % "chapter", book["chapters"][0]["id"]), (
+        "the chapter IRI has the flat shape of the policy"
+    )
     book_path = added.headers["location"]
-    assert book_path == f"{path}/books/{book['id'][-13:]}"
+    assert book_path == f"{path}/books/{book['id'][-13:]}", (
+        "the book path is the library path and the book's short id"
+    )
 
     read = await http.get(book_path, headers=headers)
     assert read.status_code == 200, read.text
-    assert read.json()["id"] == book["id"]
+    assert read.json()["id"] == book["id"], "reading the book returns its IRI"
     listing = await http.get(f"{path}/books", headers=headers)
-    assert [item["id"] for item in listing.json()["items"]] == [book["id"]]
+    assert [item["id"] for item in listing.json()["items"]] == [book["id"]], (
+        "the listing holds the one book"
+    )
 
     replaced = await http.put(
         book_path,
@@ -79,7 +87,9 @@ async def test_a_library_and_a_book_live_and_die_under_the_policy(world: World) 
         headers={**headers, "If-Match": read.headers["etag"]},
     )
     assert replaced.status_code == 200, replaced.text
-    assert (await http.get(book_path, headers=headers)).json()["label"] == "Dune Messiah"
+    assert (await http.get(book_path, headers=headers)).json()["label"] == "Dune Messiah", (
+        "the replaced label is read back"
+    )
 
     principal = world.callers.principals[LIBRARIAN]
     async with world.kit.session(tenant, principal) as session:
@@ -93,5 +103,7 @@ async def test_a_library_and_a_book_live_and_die_under_the_policy(world: World) 
     etag = (await http.get(book_path, headers=headers)).headers["etag"]
     gone = await http.delete(book_path, headers={**headers, "If-Match": etag})
     assert gone.status_code == 204, gone.text
-    assert (await http.get(book_path, headers=headers)).status_code == 404
+    assert (await http.get(book_path, headers=headers)).status_code == 404, (
+        "the deleted book is gone"
+    )
     assert not (await world.store.query(name, held)).askAnswer, "the loaded graph goes with it"

@@ -9,7 +9,6 @@ from types import ModuleType
 
 import pytest
 
-from rdf_persistence import Problem
 from rdf_persistence.generation.cli import main as generate
 from tests.integration.api.conftest import make_book, make_tenant
 from tests.toy import TOY_SCHEMA
@@ -17,6 +16,7 @@ from tests.toy_service import (
     DUNE_BODY,
     TENANT_BODY,
     ToyService,
+    assert_problem,
     drop_databases,
     unique_prefix,
 )
@@ -141,9 +141,9 @@ async def test_a_stale_replace_is_a_409_problem_and_the_book_is_unchanged(toy, c
     won = await client.put(book, json={**DUNE_BODY, "label": "First"}, headers=headers)
     lost = await client.put(book, json={**DUNE_BODY, "label": "Second"}, headers=headers)
     assert won.status_code == 200, won.text
-    assert lost.status_code == 409, lost.text
+    problem = assert_problem(lost, 409, "conflict")
     assert lost.headers["content-type"] == "application/problem+json", "a problem response"
-    assert Problem.model_validate(lost.json()).title == "Version conflict", "the fixed title"
+    assert problem.title == "Version conflict", "the fixed title"
     reread = await client.get(book, headers=toy.bearer("ada"))
     assert reread.json()["label"] == "First", "the book is unchanged by the stale replace"
     assert reread.headers["etag"] == won.headers["etag"], "and so is its version"
@@ -176,7 +176,7 @@ async def test_a_put_cannot_change_the_state_of_a_book_and_keeps_it_when_omitted
         json={**DUNE_BODY, "workflow_status": f"{REVIEW}accepted"},
         headers={**toy.bearer("ada"), "If-Match": etag},
     )
-    assert refused.status_code == 403, refused.text
+    assert_problem(refused, 403, "forbidden")
     reread = await client.get(book, headers=toy.bearer("ada"))
     assert reread.json()["workflow_status"] == f"{REVIEW}draft", "the book is still in draft"
     assert reread.headers["etag"] == etag, "and its version is unchanged"
@@ -201,3 +201,5 @@ async def test_two_replaces_in_flight_leave_exactly_one_winner(toy, client) -> N
     assert sorted(a.status_code for a in answers) == [200, 409], (
         "one wins, the other is told to re-read"
     )
+    (lost,) = (a for a in answers if a.status_code == 409)
+    assert_problem(lost, 409, "conflict")

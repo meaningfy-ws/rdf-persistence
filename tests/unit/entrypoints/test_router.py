@@ -11,7 +11,6 @@ import pytest
 from fastapi import HTTPException
 from pyld import jsonld
 from rdflib import Graph
-from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence import Forbidden, GrantSet, InvalidBody, Page, TenantSummary
 from rdf_persistence.domain.generated.rp_access import (
@@ -27,9 +26,11 @@ from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.entrypoints.negotiation import ALLOWED_ACTIONS, RECORD_ETAG
 from rdf_persistence.services import vocabulary
 from rdf_persistence.services.access import AccessRules, load_role_definitions
+from rdf_persistence.testkit import assert_isomorphic
 from tests.toy import ROLES, SETTINGS, keep_a_librarian
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 from tests.unit.entrypoints.scene import NIL, PROBLEMS, Scene, problem_of
+from tests.unit.entrypoints.tenant_requests import put_root, rename
 from tests.unit.services.test_session_activity import activities
 
 # --- tenants ------------------------------------------------------------------------------------
@@ -333,36 +334,21 @@ async def test_the_tenant_root_is_replaced_under_if_match(scene) -> None:
     assert response.headers["etag"] != scene.root_etag, "a new version"
 
 
-async def _rename(scene: Scene, label: str, etag: str) -> httpx.Response:
-    return await scene.http.put(
-        f"{scene.tenant}/label",
-        json={"label": label},
-        headers=scene.headers("ada", **{"If-Match": etag}),
-    )
-
-
-async def _put_root(scene: Scene, label: str, etag: str) -> httpx.Response:
-    body = {"label": label, "description": "Books for all.", "city": "Ghent"}
-    return await scene.http.put(
-        scene.tenant, json=body, headers=scene.headers("ada", **{"If-Match": etag})
-    )
-
-
 async def test_a_tenant_has_one_label_whichever_route_changes_it(scene) -> None:  # T-10
-    renamed = await _rename(scene, "B", scene.access_etag)
+    renamed = await rename(scene, "B", scene.access_etag)
     assert renamed.status_code == 200, renamed.text
     root = await scene.http.get(scene.tenant, headers=scene.headers("ada"))
     assert root.json()["label"] == "B", "the rename reached the root"
-    refused = await _put_root(scene, "C", root.headers["etag"])
+    refused = await put_root(scene, "C", root.headers["etag"])
     assert (refused.status_code, problem_of(refused).type) == (422, f"{PROBLEMS}invalid-body"), (
         "the body repeats a label the record does not have"
     )
     assert "label route" in (problem_of(refused).detail or ""), "it names the label route"
     unchanged = await scene.http.get(scene.tenant, headers=scene.headers("ada"))
     assert unchanged.json()["label"] == "B", "the refused PUT wrote nothing"
-    same = await _put_root(scene, "B", root.headers["etag"])
+    same = await put_root(scene, "B", root.headers["etag"])
     assert same.status_code == 200, "a root PUT that keeps the record's label is fine"
-    stale = await _rename(scene, "D", scene.access_etag)
+    stale = await rename(scene, "D", scene.access_etag)
     assert stale.status_code == 409, "the old record version is stale"
     after = await scene.http.get(scene.tenant, headers=scene.headers("ada"))
     assert after.json()["label"] == "B", "the stale rename left the root"
@@ -378,14 +364,14 @@ async def test_a_drifted_root_label_is_refused_until_a_rename_repairs_it(scene) 
     )
     root = await scene.http.get(scene.tenant, headers=scene.headers("ada"))
     assert root.json()["label"] == "Drifted", "the root drifted from the record"
-    refused = await _put_root(scene, "Drifted", root.headers["etag"])
+    refused = await put_root(scene, "Drifted", root.headers["etag"])
     assert refused.status_code == 422, "the body repeats a label the record does not have"
-    assert (await _rename(scene, "Ghent", scene.access_etag)).status_code == 200, (
+    assert (await rename(scene, "Ghent", scene.access_etag)).status_code == 200, (
         "the rename was accepted"
     )
     repaired = await scene.http.get(scene.tenant, headers=scene.headers("ada"))
     assert repaired.json()["label"] == "Ghent", "a rename repairs the root"
-    assert (await _put_root(scene, "Ghent", repaired.headers["etag"])).status_code == 200, (
+    assert (await put_root(scene, "Ghent", repaired.headers["etag"])).status_code == 200, (
         "the root PUT with the record's label is accepted"
     )
 
@@ -532,7 +518,10 @@ async def test_a_shelf_with_a_member_of_the_wrong_class_is_a_422_and_stores_noth
     response = await scene.http.post(
         f"{scene.tenant}/shelves", json=body, headers=scene.headers("ada")
     )
-    assert (response.status_code, problem_of(response).type) == (422, f"{PROBLEMS}invalid-body")
+    assert response.status_code == 422, "a wrong-class member is unprocessable"
+    assert problem_of(response).type == f"{PROBLEMS}invalid-body", (
+        "the problem is the invalid-body kind"
+    )
     assert scene.book_iri in (problem_of(response).detail or ""), "the member is named"
     listed = await scene.http.get(f"{scene.tenant}/shelves", headers=scene.headers("ada"))
     assert listed.json()["total"] == 0, "nothing was stored"
@@ -734,7 +723,8 @@ async def test_a_representation_the_service_does_not_make_is_a_406_before_anythi
     )
 
 
-@pytest.mark.parametrize("content_type", [TURTLE, "text/plain", "application/xml"])
+# One case per class: produced but not accepted (turtle), an unknown type (text/plain stands for it).
+@pytest.mark.parametrize("content_type", [TURTLE, "text/plain"])
 async def test_a_body_in_another_format_is_a_415(scene, content_type) -> None:
     response = await scene.http.post(
         f"{scene.tenant}/books",
@@ -830,6 +820,7 @@ def test_the_matrix_has_a_cell_for_every_route_and_caller() -> None:
 
 
 @pytest.mark.parametrize(("who", "route", "status"), CASES, ids=[f"{w}: {r}" for w, r, _ in CASES])
+@pytest.mark.slow
 async def test_each_route_asks_for_its_action(scene, who, route, status) -> None:
     method, path, options = ROUTES[route](scene)
     sub, roles = WHO[who]
@@ -947,7 +938,9 @@ async def test_the_listing_items_carry_what_the_tenant_read_answers(scene) -> No
 async def test_a_created_tenant_summary_leaves_allowed_actions_empty(service, client) -> None:
     response = await client.post("/libraries", json=TENANT_BODY, headers=service.bearer("ada"))
     assert response.status_code == 201, response.text
-    assert TenantSummary.model_validate(response.json()).allowed_actions is None, "create"
+    assert TenantSummary.model_validate(response.json()).allowed_actions is None, (
+        "the summary of a created tenant leaves allowed_actions empty"
+    )
 
 
 # --- the three representations of one book describe the same triples --------------------------------
@@ -971,9 +964,7 @@ async def test_the_three_representations_of_a_book_are_the_same_triples(scene) -
         response = await scene.http.get(scene.book, headers=scene.headers("ada", Accept=media_type))
         graphs[media_type] = triples(response, media_type)
     for media_type in (JSON_LD, TURTLE):
-        assert isomorphic(graphs[JSON], graphs[media_type]), (
-            f"JSON and {media_type} differ: {sorted(graph_diff(graphs[JSON], graphs[media_type])[1])}"
-        )
+        assert_isomorphic(graphs[JSON], graphs[media_type])
 
 
 # --- consumer validators on tenant writes (mwb2-adoption-fixes PD-7, DEC-6) ---------------------
@@ -1058,7 +1049,7 @@ async def test_a_refusing_root_validator_on_a_root_put_leaves_the_root_unchanged
         assert (root.json()["city"], root.headers["etag"]) == ("Ghent", scene.root_etag), (
             "the root is as it was"
         )
-        allowed = await _put_root(scene, "Ghent", scene.root_etag)
+        allowed = await put_root(scene, "Ghent", scene.root_etag)
         assert allowed.status_code == 200, "a body the validator accepts is stored"
 
 

@@ -46,7 +46,9 @@ async def test_replace_stays_within_the_budget(aggregate_size, loaded_size, keep
         await session.replace_graph(
             iri, titles(URIRef(iri), aggregate_size), version, [loaded] if keep_loaded else []
         )
-        assert time.perf_counter() - started < BUDGET_SECONDS
+        assert time.perf_counter() - started < BUDGET_SECONDS, (
+            "a replace finishes within the time budget"
+        )
 
 
 @pytest.mark.parametrize(("aggregate_size", "loaded_size"), SIZES)
@@ -56,4 +58,6 @@ async def test_remove_stays_within_the_budget(aggregate_size, loaded_size):
         iri, _, version = await committed(session, store, aggregate_size, loaded_size)
         started = time.perf_counter()
         await session.remove(iri, version)
-        assert time.perf_counter() - started < BUDGET_SECONDS
+        assert time.perf_counter() - started < BUDGET_SECONDS, (
+            "a remove finishes within the time budget"
+        )

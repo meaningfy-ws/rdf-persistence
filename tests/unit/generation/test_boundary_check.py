@@ -172,6 +172,7 @@ def test_the_toy_library_passes(toy_copy: Path) -> None:
 
 
 @pytest.mark.parametrize("name", ["ApproveBook", "ShelveBooks", "Activity", "Transition"])
+@pytest.mark.slow
 def test_the_toy_generates_a_frame_for_each_activity_class(generated_toy: Path, name: str) -> None:
     """TC-100: the activities module generates, and each activity class gets its frame."""
     assert (generated_toy / f"{name}.frame.jsonld").is_file(), f"no frame for {name}"

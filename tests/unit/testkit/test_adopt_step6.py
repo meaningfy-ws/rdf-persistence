@@ -69,6 +69,7 @@ def guide_namespace(tmp_path: Path) -> dict[str, Any]:
         "test_the_generated_classes_follow_the_schema",
     ],
 )
+@pytest.mark.slow
 def test_the_guides_checks_pass_on_the_toy_library(
     guide_namespace: dict[str, Any], check: str
 ) -> None:

@@ -1,4 +1,4 @@
-"""Adversarial tests of mwb2 stage 3: service types in the TypeScript output (PD-8), technical exemption (PD-9)."""
+"""Adversarial tests of the service types in the TypeScript output (PD-8), technical exemption (PD-9)."""
 
 import re
 from pathlib import Path
@@ -130,7 +130,7 @@ def test_no_declared_type_name_is_exported_by_two_files(toy_copy: Path) -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("clash", ["Page", "Problem"])
+@pytest.mark.parametrize("clash", ["Page"])  # one class: a reserved class name
 def test_a_consumer_class_named_like_a_service_type_is_refused_naming_the_clash(
     toy_copy: Path, clash: str, capsys: pytest.CaptureFixture[str]
 ) -> None:

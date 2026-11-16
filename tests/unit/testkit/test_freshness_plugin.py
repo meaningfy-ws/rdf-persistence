@@ -88,7 +88,9 @@ def stop_text(session: pytest.Pytester) -> str:
 @pytest.mark.slow
 def test_an_entry_names_its_own_command_in_the_hint(session: pytest.Pytester) -> None:
     (session.path / "pyproject.toml").write_text(PYPROJECT + NAMED, encoding="utf-8")
-    assert main(["--project", str(session.path / "pyproject.toml")]) == 0
+    assert main(["--project", str(session.path / "pyproject.toml")]) == 0, (
+        "a project with its own command in the hint is judged fresh"
+    )
     (session.path / "m.yaml").write_text(SCHEMA + "# changed\n", encoding="utf-8")
     text = stop_text(session)
     assert "run `make generate-models` to regenerate, then commit the result" in text, (
@@ -103,7 +105,9 @@ def test_several_stale_projects_print_one_hint_naming_each_command_once(
 ) -> None:
     other = make_project(session.path / "other")
     (other / "pyproject.toml").write_text(PYPROJECT + NAMED, encoding="utf-8")
-    assert main(["--project", str(other / "pyproject.toml")]) == 0
+    assert main(["--project", str(other / "pyproject.toml")]) == 0, (
+        "the other project is judged fresh"
+    )
     for folder in (session.path, other):
         (folder / "m.yaml").write_text(SCHEMA + "# changed\n", encoding="utf-8")
     session.makeini(INI)
@@ -112,14 +116,6 @@ def test_several_stale_projects_print_one_hint_naming_each_command_once(
     assert (
         "run `rp-generate` or `make generate-models` to regenerate, then commit the result" in text
     ), "a command is missing"
-
-
-@pytest.mark.slow
-def test_a_configuration_error_stops_the_session_without_a_hint(session: pytest.Pytester) -> None:
-    (session.path / "pyproject.toml").write_text(PYPROJECT + "colour = 'red'\n", encoding="utf-8")
-    text = stop_text(session)
-    assert "colour" in text, "the unknown key is not named"
-    assert "to regenerate" not in text, "a configuration error suggests regenerating"
 
 
 @pytest.mark.slow

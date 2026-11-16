@@ -8,7 +8,6 @@ from types import SimpleNamespace
 
 import pytest
 from rdflib import RDF, Dataset, Graph, Literal, URIRef
-from rdflib.compare import isomorphic
 
 from rdf_persistence import Conflict, InvalidIri, NotFound
 from rdf_persistence.domain.exceptions import DatabaseGone
@@ -25,7 +24,7 @@ from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session, payload_triples
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
-from rdf_persistence.testkit import FakeFileStore, FakeStore
+from rdf_persistence.testkit import FakeFileStore, FakeStore, assert_isomorphic
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.templates import Template
 from tests.toy import ADA, SETTINGS, access, dune, library, template, toy_mapper
@@ -270,7 +269,7 @@ async def test_a_replacement_typed_as_a_tenant_class_is_refused(world):
         with pytest.raises(InvalidIri, match=EXPECTED_REFUSAL_APPLICATION):
             await session.replace_graph(iri, triples_typed(dune(iri)), version)
         after, _, _ = await session.get_graph(iri)
-    assert isomorphic(before, after), "the stored graph is unchanged"
+    assert_isomorphic(before, after)
 
 
 # -- TC-46 at the tenancy: the IRI of a new application aggregate (D-6 g) ----------------------------
@@ -319,7 +318,8 @@ async def test_the_system_database_is_unchanged_by_application_work(world):
             await session.add_graph(world.book_at(world.app_iri), triples_typed(dune(iri)))
     after = await graphs_of(world.store, world.tenancy.system_database)
     assert before.keys() == after.keys(), "the same graphs are there"
-    assert all(isomorphic(before[name], after[name]) for name in before), "each is as it was"
+    for name in before:
+        assert_isomorphic(before[name], after[name])
 
 
 # -- TC-36, TC-37: the application database ------------------------------------------------------

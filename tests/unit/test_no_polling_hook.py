@@ -13,8 +13,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 HOOK = REPO_ROOT / ".claude" / "hooks" / "no_polling.py"
 
 _spec = importlib.util.spec_from_file_location("no_polling", HOOK)
-assert _spec is not None
-assert _spec.loader is not None
+assert _spec is not None, "the hook module spec was found"
+assert _spec.loader is not None, "the hook module has a loader"
 no_polling = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(no_polling)
 
@@ -55,19 +55,21 @@ def bash(command: object) -> dict[str, object]:
 
 @pytest.mark.parametrize("command", DENIED)
 def test_a_sleep_loop_is_denied_with_the_alternatives(command: str) -> None:
-    assert no_polling.reason_to_deny(bash(command)) == no_polling.REASON
+    assert no_polling.reason_to_deny(bash(command)) == no_polling.REASON, (
+        "a sleep loop is denied with the reason"
+    )
 
 
 @pytest.mark.parametrize(
     "alternative", ["foreground", "600000", "run_in_background", "completion notice", "Monitor"]
 )
 def test_the_reason_names_every_alternative(alternative: str) -> None:
-    assert alternative in no_polling.REASON
+    assert alternative in no_polling.REASON, "the reason names the alternative"
 
 
 @pytest.mark.parametrize("command", ALLOWED)
 def test_any_other_command_runs(command: str) -> None:
-    assert no_polling.reason_to_deny(bash(command)) is None
+    assert no_polling.reason_to_deny(bash(command)) is None, "any other command runs"
 
 
 @pytest.mark.parametrize(
@@ -80,7 +82,7 @@ def test_any_other_command_runs(command: str) -> None:
     ],
 )
 def test_a_payload_that_is_not_a_bash_command_runs(payload: dict[str, object]) -> None:
-    assert no_polling.reason_to_deny(payload) is None
+    assert no_polling.reason_to_deny(payload) is None, "a payload that is not a Bash command runs"
 
 
 def run(
@@ -94,17 +96,20 @@ def test_the_hook_prints_a_json_deny_and_exits_0() -> None:
     allowed = run([sys.executable, str(HOOK)], json.dumps(bash(ALLOWED[0])))
 
     decision = json.loads(denied.stdout)["hookSpecificOutput"]
-    assert denied.returncode == 0
-    assert decision["permissionDecision"] == "deny"
-    assert "run_in_background" in decision["permissionDecisionReason"]
-    assert (allowed.returncode, allowed.stdout) == (0, "")
+    assert denied.returncode == 0, "the hook exits 0"
+    assert decision["permissionDecision"] == "deny", "the hook's decision is deny"
+    assert "run_in_background" in decision["permissionDecisionReason"], (
+        "the reason names background running"
+    )
+    assert allowed.returncode == 0, "an allowed command exits 0"
+    assert allowed.stdout == "", "an allowed command prints no decision"
 
 
 def test_unreadable_input_never_exits_2() -> None:
     result = run([sys.executable, str(HOOK)], "not json")
 
-    assert result.returncode != 2
-    assert result.returncode != 0 or result.stdout == ""
+    assert result.returncode != 2, "unreadable input never exits 2"
+    assert result.returncode != 0 or result.stdout == "", "unreadable input prints no decision"
 
 
 def test_the_settings_wrapper_lets_the_command_run_when_the_hook_is_missing(tmp_path: Path) -> None:
@@ -119,5 +124,8 @@ def test_the_settings_wrapper_lets_the_command_run_when_the_hook_is_missing(tmp_
         ["bash", "-c", command], payload, {**os.environ, "CLAUDE_PROJECT_DIR": str(REPO_ROOT)}
     )
 
-    assert (missing.returncode, missing.stdout) == (0, "")
-    assert json.loads(present.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny"
+    assert missing.returncode == 0, "a missing hook exits 0"
+    assert missing.stdout == "", "a missing hook prints no decision"
+    assert json.loads(present.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny", (
+        "with the hook present the command is denied"
+    )

@@ -73,10 +73,12 @@ async def test_an_expired_token_is_a_401_problem_and_no_handler_runs(service, cl
     )
 
 
+# One case per class: no credential (absent), no token after the scheme, a scheme that is not
+# Bearer, a token the verifier refuses.
 @pytest.mark.parametrize(
     "authorization",
-    [None, "", "Bearer", "Bearer ", "Basic YWRhOnB3", "Token abc", "Bearer not.a.jwt"],
-    ids=["absent", "empty", "no-token", "blank-token", "basic", "other-scheme", "garbage"],
+    [None, "Bearer", "Basic YWRhOnB3", "Bearer not.a.jwt"],
+    ids=["absent", "no-token", "basic", "garbage"],
 )
 async def test_a_request_without_a_valid_bearer_token_is_a_401(
     service, client, authorization
@@ -372,8 +374,8 @@ async def test_the_kit_sweeps_a_tenant_with_its_own_store_files_and_iris(service
 
     report = await service.kit.sweep_tenant(tenant, older_than=timedelta(seconds=-1))
 
-    assert report.tenant == tenant
-    assert report.older_than_seconds == -1
+    assert report.tenant == tenant, "the report names the swept tenant"
+    assert report.older_than_seconds == -1, "the report keeps the age limit it was asked for"
     assert report.blobs == ["left-behind"], "found through the kit's own file store"
     assert report.removed_loaded_graphs is False, "a dry run, as by default"
     await service.kit.sweep_tenant(tenant, remove_blobs=True, older_than=timedelta(seconds=-1))

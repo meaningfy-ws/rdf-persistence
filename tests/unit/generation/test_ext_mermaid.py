@@ -75,7 +75,9 @@ def test_a_class_of_another_module_is_shown_by_name_only(staged: Path) -> None:
 
 
 def test_an_internal_slot_is_not_drawn(staged: Path) -> None:
-    assert "file_key" not in "".join(p.read_text(encoding="utf-8") for p in staged.iterdir())
+    assert "file_key" not in "".join(p.read_text(encoding="utf-8") for p in staged.iterdir()), (
+        "an internal slot is not drawn"
+    )
 
 
 def test_an_unconfigured_target_writes_nothing(tmp_path: Path) -> None:

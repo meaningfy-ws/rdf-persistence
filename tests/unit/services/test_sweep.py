@@ -5,7 +5,6 @@ from types import SimpleNamespace
 
 import pytest
 from rdflib import Graph
-from rdflib.compare import isomorphic
 
 from rdf_persistence.domain.exceptions import NotFound, StoreNotWired, StoreUnavailable
 from rdf_persistence.domain.generated.rp_core import Principal
@@ -14,7 +13,7 @@ from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
-from rdf_persistence.testkit import FakeFileStore, FakeStore
+from rdf_persistence.testkit import FakeFileStore, FakeStore, assert_isomorphic
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.toy import ADA, SETTINGS, library_slots, toy_mapper
@@ -82,11 +81,12 @@ async def test_an_active_tenant_is_left_unchanged(tenancy, store, files, kept):
     before = (await root_graph(store, kept.id), await tenancy.get(kept.id))
     await store.create_dataset(ORPHAN)
     await sweep(tenancy, store, files, SETTINGS)
-    assert (await tenancy.tenants(), name in await store.list_datasets()) == ([kept], True)
-    assert await files.list_buckets("lib-t-") == [name]
+    assert await tenancy.tenants() == [kept], "the active tenant is still listed"
+    assert name in await store.list_datasets(), "the active tenant keeps its database"
+    assert await files.list_buckets("lib-t-") == [name], "the active tenant keeps its bucket"
     after = (await root_graph(store, kept.id), await tenancy.get(kept.id))
     assert len(before[0]) > 0, "the root object was there to compare"
-    assert isomorphic(after[0], before[0]), "the root graph is the same"
+    assert_isomorphic(after[0], before[0])
     assert after[1][1] == before[1][1], "the access record is at the same version"
     assert await files.get(name, "scan.pdf") == b"%PDF", "the blob is the same"
 
@@ -135,7 +135,7 @@ async def test_the_sweep_drops_nothing_when_there_is_no_access_record_at_all(
     assert ORPHAN in await store.list_datasets(), "database"
     assert ORPHAN in await files.list_buckets(""), "bucket"
     assert files.sent("delete_bucket") == [], "no bucket was deleted"
-    assert "no access records" in caplog.text
+    assert "no access records" in caplog.text, "the sweep says it found no access records"
 
 
 @pytest.mark.parametrize("name", FOREIGN)
@@ -164,7 +164,9 @@ async def test_the_sweep_creates_the_system_database_on_a_first_start(store, fil
         store, files, SETTINGS, mapper=toy_mapper(), root_class=Library, access_class=LibraryAccess
     )
     await sweep(made, store, files, SETTINGS)
-    assert await store.list_datasets() == ["lib-system"]
+    assert await store.list_datasets() == ["lib-system"], (
+        "the first start creates the system database"
+    )
 
 
 async def test_a_second_sweep_changes_nothing(tenancy, store, files, kept):
@@ -172,7 +174,9 @@ async def test_a_second_sweep_changes_nothing(tenancy, store, files, kept):
     await sweep(tenancy, store, files, SETTINGS)
     once = sorted(await store.list_datasets())
     await sweep(tenancy, store, files, SETTINGS)
-    assert sorted(await store.list_datasets()) == once
+    assert sorted(await store.list_datasets()) == once, (
+        "a second sweep leaves the datasets as they were"
+    )
 
 
 async def test_each_orphan_drop_is_logged_with_the_name_as_structured_data(
@@ -183,7 +187,9 @@ async def test_each_orphan_drop_is_logged_with_the_name_as_structured_data(
     with caplog.at_level(logging.INFO):
         await sweep(tenancy, store, files, SETTINGS)
     dropped = {(r.step, r.resource) for r in caplog.records if hasattr(r, "step")}
-    assert dropped == {("drop-orphan-database", ORPHAN), ("drop-orphan-bucket", ORPHAN)}
+    assert dropped == {("drop-orphan-database", ORPHAN), ("drop-orphan-bucket", ORPHAN)}, (
+        "each orphan drop is logged with its name"
+    )
 
 
 # -- tenants on several stores (tenant-stores PD-6): ``D`` is the default store, ``A`` is ``client-a`` --

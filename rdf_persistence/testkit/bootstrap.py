@@ -22,6 +22,7 @@ def wait_until[T](
     *,
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
     probe_timeout: float | None = None,
+    poll_seconds: float = POLL_SECONDS,
     retry_on: tuple[type[Exception], ...] = (OSError,),
     sleep: Callable[[float], None] = time.sleep,
     monotonic: Callable[[], float] = time.monotonic,
@@ -38,15 +39,18 @@ def wait_until[T](
             thread that cannot be stopped: a hung call is joined again on each later poll (no
             second call starts while it runs) and is left behind if it never ends. So probes
             should be read-only; a late call may still finish.
+        poll_seconds: Seconds to sleep between polls (default 1 s; a wait on an in-process fake
+            can pass less).
         retry_on: Errors that mean "not ready yet"; any other error propagates.
         sleep: Injected so tests need no real sleeping.
         monotonic: Injected clock.
 
     Raises:
         TimeoutError: If the probe did not succeed in time.
-        ValueError: If ``probe_timeout`` is not positive.
+        ValueError: If ``probe_timeout`` or ``poll_seconds`` is not positive.
     """
-    _require_positive(probe_timeout)
+    _require_positive("probe_timeout", probe_timeout)
+    _require_positive("poll_seconds", poll_seconds)
     bounded = _BoundedCall(probe, probe_timeout)
     deadline = monotonic() + timeout
     while monotonic() < deadline:
@@ -56,7 +60,7 @@ def wait_until[T](
             result = None
         if result:
             return result
-        sleep(POLL_SECONDS)
+        sleep(poll_seconds)
     raise TimeoutError(_timed_out(what, timeout))
 
 
@@ -66,6 +70,7 @@ async def wait_until_async[T](
     *,
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
     probe_timeout: float | None = None,
+    poll_seconds: float = POLL_SECONDS,
     retry_on: tuple[type[Exception], ...] = (OSError,),
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     monotonic: Callable[[], float] = time.monotonic,
@@ -78,9 +83,10 @@ async def wait_until_async[T](
 
     Raises:
         TimeoutError: If the probe did not succeed in time.
-        ValueError: If ``probe_timeout`` is not positive.
+        ValueError: If ``probe_timeout`` or ``poll_seconds`` is not positive.
     """
-    _require_positive(probe_timeout)
+    _require_positive("probe_timeout", probe_timeout)
+    _require_positive("poll_seconds", poll_seconds)
     deadline = monotonic() + timeout
     while monotonic() < deadline:
         try:
@@ -89,13 +95,13 @@ async def wait_until_async[T](
             result = None
         if result:
             return result
-        await sleep(POLL_SECONDS)
+        await sleep(poll_seconds)
     raise TimeoutError(_timed_out(what, timeout))
 
 
-def _require_positive(probe_timeout: float | None) -> None:
-    if probe_timeout is not None and probe_timeout <= 0:
-        raise ValueError(f"probe_timeout must be positive, got {probe_timeout:g}")
+def _require_positive(name: str, value: float | None) -> None:
+    if value is not None and value <= 0:
+        raise ValueError(f"{name} must be positive, got {value:g}")
 
 
 class _BoundedCall[T]:

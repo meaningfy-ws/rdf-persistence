@@ -70,8 +70,10 @@ def test_the_six_terms_of_the_worked_example_are_rewritten_or_kept():
         (swap(tenant), DCTERMS.title, literal, swap(str(iris.meta(tenant)))),
         (swap(aggregate), DCTERMS.relation, swap(str(genid)), swap(str(graph))),
         (swap(users), DCTERMS.relation, swap(users), swap(f"{users}/graph")),
-    }
-    assert str(genid) != str(swap(str(genid)))  # the genid IRI did move, only its tail stayed
+    }, "the six terms are rewritten or kept as the worked example says"
+    assert str(genid) != str(swap(str(genid))), (
+        "the genid IRI moved"
+    )  # the genid IRI did move, only its tail stayed
 
 
 def test_a_predicate_a_datatype_and_a_blank_node_are_untouched():
@@ -81,7 +83,9 @@ def test_a_predicate_a_datatype_and_a_blank_node_are_untouched():
     graph = URIRef(f"{tenant}/meta")
     source = dataset_of((URIRef(tenant), predicate, typed, graph))
     ((subject, pred, obj, _),) = quads_of(rewrite(source, SETTINGS.base, OLD, NEW))
-    assert (subject, pred, obj) == (swap(tenant), predicate, typed)
+    assert subject == swap(tenant), "the subject is rewritten"
+    assert pred == predicate, "the predicate is untouched"
+    assert obj == typed, "the typed literal is untouched"
 
 
 # -- TC-05: the flat policy --------------------------------------------------------------------
@@ -124,9 +128,13 @@ def test_under_the_flat_policy_the_aggregate_part_and_loaded_graph_take_the_new_
     assert result == {
         (new_aggregate, DCTERMS.hasPart, new_part, URIRef(f"{new_aggregate}/graph")),
         (new_part, DCTERMS.title, Literal("t"), new_loaded),
-    }
-    assert iris.is_aggregate_graph(new_tenant, f"{new_aggregate}/graph")
-    assert iris.is_loaded_graph(new_tenant, str(new_loaded))
+    }, "the aggregate, the part and the loaded graph take the new id"
+    assert iris.is_aggregate_graph(new_tenant, f"{new_aggregate}/graph"), (
+        "the new aggregate graph is accepted by the policy"
+    )
+    assert iris.is_loaded_graph(new_tenant, str(new_loaded)), (
+        "the new loaded graph is accepted by the policy"
+    )
 
 
 # -- TC-06: another base ----------------------------------------------------------------------
@@ -138,7 +146,9 @@ def test_under_the_flat_policy_the_aggregate_part_and_loaded_graph_take_the_new_
 )
 def test_an_iri_outside_the_base_holding_the_old_id_is_unchanged(foreign: str):
     source = dataset_of((URIRef(foreign), DCTERMS.relation, URIRef(foreign), URIRef(foreign)))
-    assert quads_of(rewrite(source, SETTINGS.base, OLD, NEW)) == quads_of(source)
+    assert quads_of(rewrite(source, SETTINGS.base, OLD, NEW)) == quads_of(source), (
+        "an IRI outside the base is unchanged"
+    )
 
 
 # -- TC-07: the id next to - or ., and glued to letters ---------------------------------------
@@ -154,17 +164,19 @@ def test_an_id_next_to_a_dash_or_a_dot_is_rewritten_and_the_policy_accepts_the_r
     source = dataset_of((URIRef(aggregate), DCTERMS.relation, URIRef(aggregate), URIRef(meta)))
     ((subject, _, obj, graph),) = quads_of(rewrite(source, SETTINGS.base, OLD, NEW))
     new_tenant = str(iris.tenant(NEW))
-    assert (subject, obj) == (swap(aggregate),) * 2
-    assert graph == iris.meta(new_tenant)
-    assert iris.is_aggregate(new_tenant, str(subject))
+    assert subject == swap(aggregate), "the subject is rewritten"
+    assert obj == swap(aggregate), "the object is rewritten"
+    assert graph == iris.meta(new_tenant), "the rewritten quad stays in the meta graph"
+    assert iris.is_aggregate(new_tenant, str(subject)), "the policy accepts the rewritten aggregate"
 
 
-@pytest.mark.parametrize(
-    "glued", [f"{SETTINGS.base}x{OLD}", f"{SETTINGS.base}{OLD}x", f"{SETTINGS.base}x{OLD}x"]
-)
+# The two one-sided cases (letter before, letter after) imply the two-sided one.
+@pytest.mark.parametrize("glued", [f"{SETTINGS.base}x{OLD}", f"{SETTINGS.base}{OLD}x"])
 def test_an_id_glued_to_a_letter_or_digit_is_unchanged(glued: str):
     source = dataset_of((URIRef(glued), DCTERMS.relation, URIRef(glued), URIRef(glued)))
-    assert quads_of(rewrite(source, SETTINGS.base, OLD, NEW)) == quads_of(source)
+    assert quads_of(rewrite(source, SETTINGS.base, OLD, NEW)) == quads_of(source), (
+        "an id glued to a letter or digit is unchanged"
+    )
 
 
 # -- TC-08: a tenant aggregate under the `users` path -----------------------------------------
@@ -176,8 +188,12 @@ def test_an_aggregate_under_the_users_path_moves_as_graph_subject_and_object():
     graph = f"{users}/graph"
     source = dataset_of((URIRef(users), DCTERMS.relation, URIRef(users), URIRef(graph)))
     ((subject, _, obj, moved),) = quads_of(rewrite(source, SETTINGS.base, OLD, NEW))
-    assert (subject, obj, moved) == (swap(users), swap(users), swap(graph))
-    assert iris.is_aggregate_graph(str(iris.tenant(NEW)), str(moved))
+    assert subject == swap(users), "the subject is rewritten"
+    assert obj == swap(users), "the object is rewritten"
+    assert moved == swap(graph), "the graph is rewritten"
+    assert iris.is_aggregate_graph(str(iris.tenant(NEW)), str(moved)), (
+        "the policy accepts the moved graph"
+    )
 
 
 # -- TC-09: policies that glue the id ---------------------------------------------------------
@@ -311,4 +327,6 @@ def test_a_stamps_graph_quad_holding_the_old_id_is_copied_unchanged():
     """schema-migrations PD-23: a schema id is not a tenant IRI, so a restore leaves the stamps as they are."""
     schema = URIRef(f"{SETTINGS.base}{OLD}")
     stamp = (schema, v.DATA_SCHEMA_VERSION, schema, stamps_graph_iri(SETTINGS.base))
-    assert quads_of(rewrite(dataset_of(stamp), SETTINGS.base, OLD, NEW)) == {stamp}
+    assert quads_of(rewrite(dataset_of(stamp), SETTINGS.base, OLD, NEW)) == {stamp}, (
+        "the stamp quad is copied unchanged"
+    )

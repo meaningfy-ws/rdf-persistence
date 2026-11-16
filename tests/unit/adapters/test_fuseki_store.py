@@ -8,7 +8,6 @@ from collections.abc import Callable
 import httpx
 import pytest
 from rdflib import Graph, Literal, URIRef
-from rdflib.compare import isomorphic
 
 from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.domain.exceptions import (
@@ -18,6 +17,7 @@ from rdf_persistence.domain.exceptions import (
     NotFound,
     StoreUnavailable,
 )
+from rdf_persistence.testkit import assert_isomorphic
 
 URL = "http://fuseki.test:3030"
 EX = "http://example.org/"
@@ -54,11 +54,16 @@ async def test_select_posts_the_query_and_returns_rows():
     store, recorder = store_answering(reply(content=body, content_type=RESULTS_JSON))
     result = await store.query("books", "SELECT ?s ?n WHERE { ?s ?p ?n }")
     request = recorder.sent[0]
-    assert (request.method, request.url.path) == ("POST", "/books/query")
-    assert request.headers["content-type"] == "application/sparql-query"
-    assert request.content == b"SELECT ?s ?n WHERE { ?s ?p ?n }"
+    assert request.method == "POST", "a query is posted"
+    assert request.url.path == "/books/query", "a query goes to the dataset's query endpoint"
+    assert request.headers["content-type"] == "application/sparql-query", (
+        "the query is sent as SPARQL query text"
+    )
+    assert request.content == b"SELECT ?s ?n WHERE { ?s ?p ?n }", "the query text is sent unchanged"
     rows = list(result)
-    assert [(r.s, r.n) for r in rows] == [(URIRef(f"{EX}a"), Literal(5))]
+    assert [(r.s, r.n) for r in rows] == [(URIRef(f"{EX}a"), Literal(5))], (
+        "each row carries its bound values"
+    )
 
 
 async def test_ask_returns_the_boolean():
@@ -66,7 +71,7 @@ async def test_ask_returns_the_boolean():
         reply(content=b'{"head":{},"boolean":true}', content_type=RESULTS_JSON)
     )
     result = await store.query("books", "ASK { ?s ?p ?o }")
-    assert result.askAnswer is True
+    assert result.askAnswer is True, "an ask returns its boolean answer"
 
 
 async def test_construct_returns_a_graph():
@@ -75,7 +80,7 @@ async def test_construct_returns_a_graph():
     result = await store.query("books", "CONSTRUCT WHERE { ?s ?p ?o }")
     expected = Graph()
     expected.add((URIRef(f"{EX}a"), URIRef(f"{EX}p"), URIRef(f"{EX}b")))
-    assert isomorphic(result.graph, expected)
+    assert_isomorphic(result.graph, expected)
 
 
 async def test_requests_carry_basic_auth():
@@ -84,16 +89,21 @@ async def test_requests_carry_basic_auth():
     )
     await store.query("books", "ASK {}")
     expected = "Basic " + base64.b64encode(b"u:p").decode()
-    assert recorder.sent[0].headers["authorization"] == expected
+    assert recorder.sent[0].headers["authorization"] == expected, (
+        "requests carry the basic-auth header"
+    )
 
 
 async def test_update_posts_sparql_update():
     store, recorder = store_answering(reply(204))
     await store.update("books", "CLEAR ALL")
     request = recorder.sent[0]
-    assert (request.method, request.url.path) == ("POST", "/books/update")
-    assert request.headers["content-type"] == "application/sparql-update"
-    assert request.content == b"CLEAR ALL"
+    assert request.method == "POST", "an update is posted"
+    assert request.url.path == "/books/update", "an update goes to the dataset's update endpoint"
+    assert request.headers["content-type"] == "application/sparql-update", (
+        "the update is sent as SPARQL update text"
+    )
+    assert request.content == b"CLEAR ALL", "the update text is sent unchanged"
 
 
 async def test_put_graph_sends_turtle_to_the_graph_store_endpoint():
@@ -102,41 +112,49 @@ async def test_put_graph_sends_turtle_to_the_graph_store_endpoint():
     graph.add((URIRef(f"{EX}a"), URIRef(f"{EX}p"), Literal("v")))
     await store.put_graph("books", URIRef(f"{EX}g?x=1&y"), graph)
     request = recorder.sent[0]
-    assert (request.method, request.url.path) == ("PUT", "/books/data")
+    assert request.method == "PUT", "a graph is replaced with PUT"
+    assert request.url.path == "/books/data", "a graph goes to the dataset's graph-store endpoint"
     assert request.url.params["graph"] == f"{EX}g?x=1&y", "the graph IRI is one encoded parameter"
-    assert request.headers["content-type"].startswith("text/turtle")
+    assert request.headers["content-type"].startswith("text/turtle"), "the graph is sent as Turtle"
     sent = Graph().parse(data=request.content.decode(), format="turtle")
-    assert isomorphic(sent, graph)
+    assert_isomorphic(sent, graph)
 
 
 async def test_create_dataset_posts_a_tdb2_name():
     store, recorder = store_answering(reply(200))
     await store.create_dataset("books")
     request = recorder.sent[0]
-    assert (request.method, request.url.path) == ("POST", "/$/datasets")
+    assert request.method == "POST", "a dataset is created with POST"
+    assert request.url.path == "/$/datasets", "a dataset is created at the admin endpoint"
     assert urllib.parse.parse_qs(request.content.decode()) == {
         "dbName": ["books"],
         "dbType": ["tdb2"],
-    }
+    }, "the dataset is created as a tdb2 database with the given name"
 
 
 async def test_drop_dataset_deletes_by_name():
     store, recorder = store_answering(reply(200))
     await store.drop_dataset("books")
-    assert (recorder.sent[0].method, recorder.sent[0].url.path) == ("DELETE", "/$/datasets/books")
+    assert recorder.sent[0].method == "DELETE", "a dataset is dropped with DELETE"
+    assert recorder.sent[0].url.path == "/$/datasets/books", "a dataset is dropped by its name"
 
 
 async def test_list_datasets_returns_names_without_the_slash():
     body = b'{"datasets":[{"ds.name":"/a","ds.state":true},{"ds.name":"/b","ds.state":true}]}'
     store, recorder = store_answering(reply(content=body, content_type="application/json"))
-    assert await store.list_datasets() == ["a", "b"]
-    assert (recorder.sent[0].method, recorder.sent[0].url.path) == ("GET", "/$/datasets")
+    assert await store.list_datasets() == ["a", "b"], (
+        "datasets are listed by name without the leading slash"
+    )
+    assert recorder.sent[0].method == "GET", "datasets are listed with GET"
+    assert recorder.sent[0].url.path == "/$/datasets", "datasets are listed at the admin endpoint"
 
 
 async def test_a_dataset_name_cannot_change_the_path():
     store, recorder = store_answering(reply(204))
     await store.update("a/../$/datasets", "CLEAR ALL")
-    assert recorder.sent[0].url.raw_path.decode() == "/a%2F..%2F%24%2Fdatasets/update"
+    assert recorder.sent[0].url.raw_path.decode() == "/a%2F..%2F%24%2Fdatasets/update", (
+        "a dataset name cannot change the request path"
+    )
 
 
 # (operation, call) pairs: every data-plane operation maps a missing dataset the same way.
@@ -150,12 +168,13 @@ DATA_PLANE = {
 @pytest.mark.parametrize("operation", DATA_PLANE)
 @pytest.mark.parametrize(
     ("status", "error"),
+    # One case per branch of _raise_for_status; 500 stands for the whole `>= 500` class
+    # (503 is the same branch), 404 and 405 are the explicit pair.
     [
         (405, DatabaseGone),
         (404, DatabaseGone),
         (400, BadQuery),
         (500, StoreUnavailable),
-        (503, StoreUnavailable),
     ],
 )
 async def test_data_plane_statuses_map_to_errors(operation, status, error):
@@ -165,7 +184,8 @@ async def test_data_plane_statuses_map_to_errors(operation, status, error):
 
 
 @pytest.mark.parametrize("operation", DATA_PLANE)
-@pytest.mark.parametrize("failure", [httpx.ConnectError("refused"), httpx.ReadTimeout("slow")])
+# One class: every httpx.TransportError is mapped once in _http; ConnectError stands for it.
+@pytest.mark.parametrize("failure", [httpx.ConnectError("refused")])
 async def test_an_unreachable_store_is_unavailable(operation, failure):
     def refuse(request):
         raise failure
@@ -222,7 +242,8 @@ ADMIN_PLANE = {
 
 
 @pytest.mark.parametrize("operation", [*DATA_PLANE, *ADMIN_PLANE])
-@pytest.mark.parametrize("status", [301, 401, 403, 415, 422])
+# One class: every other non-success status falls to the one `not response.is_success` branch.
+@pytest.mark.parametrize("status", [301])
 async def test_any_other_unsuccessful_status_is_unavailable(operation, status):
     store, _ = store_answering(reply(status, b"nope"))
     call = {**DATA_PLANE, **ADMIN_PLANE}[operation]

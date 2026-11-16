@@ -534,6 +534,7 @@ async def test_a_served_with_odd_types_still_records_the_standard_class_it_names
     assert {*stored.objects(URIRef(X), RDF.type)} == set(types), "exactly the types named"
 
 
+@pytest.mark.slow
 async def test_a_huge_served_triple_list_commits_whole_or_not_at_all(store, session):
     triples = [(URIRef(X), URIRef("https://example.org/x/n"), Literal(n)) for n in range(1500)]
     await session.add_graph(B1, book(B1), served=Served(Add(id=X), triples, [v.ADD, v.ACTIVITY]))

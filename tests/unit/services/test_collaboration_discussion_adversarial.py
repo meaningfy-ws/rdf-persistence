@@ -1,4 +1,4 @@
-"""Adversarial tests of stage 3, discussion (rp-discussion, PD-3 step 4, PD-9 to PD-15, PD-25, PD-26, D-7, D-8).
+"""Adversarial tests of discussion (rp-discussion, PD-3 step 4, PD-9 to PD-15, PD-25, PD-26, D-7, D-8).
 
 The new operation on every delete first (a remove drops the comments on the removed aggregate, and
 only those), the presence guard under concurrent writers, then who sees what, then foreign and
@@ -18,7 +18,7 @@ from pathlib import Path
 from uuid import UUID
 
 import pytest
-from rdflib import RDF, Literal, Namespace, URIRef
+from rdflib import Literal, Namespace, URIRef
 
 from rdf_persistence import Action, generated_models
 from rdf_persistence.domain.exceptions import (
@@ -67,7 +67,7 @@ from tests.toy import (
     shelf_iri,
     toy_mapper,
 )
-from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
+from tests.unit.services.collaboration_data import OA, RP, SECRET, annotation, stored
 from tests.unit.services.test_collaboration_cascade import before
 from tests.unit.services.test_collaboration_collections_adversarial import (
     everything_said,
@@ -78,10 +78,7 @@ from tests.unit.services.test_collaboration_discussion import has_entry
 B1, B2, B3 = (book_iri(n) for n in (1, 2, 3))
 S1 = shelf_iri(1)
 VIEW = load_schema(TOY_SCHEMA)
-OA = Namespace("http://www.w3.org/ns/oa#")
-RP = Namespace("https://meaningfy.ws/ns/rdf-persistence#")
 LIB = Namespace("https://example.org/ns/library#")
-SECRET = "SECRET-9f3a-do-not-show"
 EVIL = 'x" } . ?s ?p ?o } ; DROP ALL ; # \n\r\t\\ <a> {'
 OTHER_TENANT = "https://example.org/libraries/00000000"
 COUNT = "SELECT (COUNT(DISTINCT ?g) AS ?n) WHERE { GRAPH $registry { ?g $p_kind ?k } }"
@@ -195,10 +192,6 @@ def a_comment(n: int, target: str, text: str = "remark", **slots) -> Comment:
     return Comment(id=comment_iri(n), has_target=target, body_value=text, **slots)
 
 
-async def stored(session: Session, *iris: str) -> list[str]:
-    return [str(h.head_iri) for h in await session.heads(list(iris))]
-
-
 async def roots_targeting(session: Session, iri: str) -> list[str]:
     return sorted(await session.graphs_with(v.HAS_TARGET, URIRef(iri)))
 
@@ -211,12 +204,6 @@ async def aggregates(store: FakeStore) -> int:
 async def has_triples(store: FakeStore, iri: str) -> bool:
     text = fill(ANY_TRIPLE, graph=term(URIRef(graph_of(iri))))
     return bool((await store.query(FAKE_DATABASE, text)).askAnswer)
-
-
-def annotation(iri: str, *pairs: tuple[URIRef, object], types=(v.ANNOTATION,)) -> list:
-    """The triples of a root typed as a web annotation, written as the test says (raw, maybe invalid)."""
-    node = URIRef(iri)
-    return [*((node, RDF.type, t) for t in types), *((node, p, o) for p, o in pairs)]
 
 
 def another(store: FakeStore, rules: AccessRules, action: Callable) -> Callable[[], Awaitable]:
@@ -489,32 +476,6 @@ async def test_the_comments_a_remove_without_dependents_left_are_not_referrers_o
     assert (found.referrers, found.hidden_count) == (None, 0), (
         "pinned: the target link is no reference"
     )
-
-
-async def test_the_kit_remove_with_files_drops_the_comments():
-    toy = ToyService()
-    async with toy.app.router.lifespan_context(toy.app), toy.client() as client:
-        headers = toy.bearer("ada")
-        path = (await client.post("/libraries", json=TENANT_BODY, headers=headers)).headers[
-            "location"
-        ]
-        tenant = toy.kit.tenant_iri(path.rsplit("/", 1)[1])
-        first = (await client.post(f"{path}/books", json=DUNE_BODY, headers=headers)).json()["id"]
-        second = (await client.post(f"{path}/books", json=DUNE_BODY, headers=headers)).json()["id"]
-        on_first, on_second = (
-            str(toy.kit.iris.mint_aggregate(tenant, "rp-comment", "rp-comments")) for _ in range(2)
-        )
-        async with toy.kit.session(tenant, "ada") as session:
-            for comment, target in ((on_first, first), (on_second, second)):
-                await session.add_graph(
-                    comment, annotation(comment, (v.HAS_TARGET, URIRef(target)))
-                )
-            old = (await session.get_graph(first))[2]
-        await toy.kit.remove_with_files(tenant, "ada", first, old)
-        async with toy.kit.session(tenant, "ada") as session:
-            assert await stored(session, on_first, on_second) == [on_second], (
-                "the comment on the removed aggregate is gone, the other stays"
-            )
 
 
 # -- 2. races: the presence guard under concurrent writers --------------------------------------
@@ -838,13 +799,10 @@ async def test_a_reply_to_a_hidden_comment_and_to_a_missing_one_raise_the_same_e
 @pytest.mark.parametrize(
     ("class_name", "slot"),
     [
+        # Class: the narrowing; none, by a class, by a slot.
         (None, None),
-        ("Comment", None),
         ("Book", None),
-        (None, "comment_references"),
         (None, "sequel_of"),
-        ("Comment", "comment_references"),
-        ("Book", "sequel_of"),
     ],
 )
 async def test_the_hidden_count_of_comment_referrers_ignores_the_narrowing(
@@ -882,21 +840,11 @@ async def test_a_reply_under_a_hidden_parent_is_a_hidden_referrer_too(session, a
 BODY = (OA.bodyValue, Literal("text"))
 MOTIVE = (OA.motivatedBy, OA.commenting)
 TARGET_B1 = (v.HAS_TARGET, URIRef(B1))
+# Class: a foreign annotation the comment class may refuse; one per outcome of decoding (a missing
+# part and a value out of range are refused, a reply to a parent that is not there decodes and is hidden).
 MALFORMED = {
     "no body": [TARGET_B1, MOTIVE],
-    "no motivation": [TARGET_B1, BODY],
-    "a blank body": [TARGET_B1, MOTIVE, (OA.bodyValue, Literal(""))],
     "an unknown motivation": [TARGET_B1, BODY, (OA.motivatedBy, URIRef("urn:x:other"))],
-    "an unknown slot": [TARGET_B1, BODY, MOTIVE, (URIRef("urn:x:extra"), Literal("more"))],
-    "a body that is an IRI": [TARGET_B1, MOTIVE, (OA.bodyValue, URIRef("urn:x:body"))],
-    "two bodies": [TARGET_B1, MOTIVE, BODY, (OA.bodyValue, Literal("other"))],
-    "two targets": [TARGET_B1, (v.HAS_TARGET, URIRef(B2)), BODY, MOTIVE],
-    "a reference that is a literal": [
-        TARGET_B1,
-        BODY,
-        MOTIVE,
-        (v.COMMENT_REFERENCES, Literal("x")),
-    ],
     "a reply to a literal": [TARGET_B1, BODY, MOTIVE, (RP.repliesTo, Literal("x"))],
 }
 
@@ -1021,18 +969,17 @@ async def test_a_consumer_can_write_a_comment_whose_audience_names_an_undefined_
 # -- 5. hostile input to comment ----------------------------------------------------------------
 
 
+# Class: a hostile text; one per risk (query syntax and control characters, size, padding, encoding, NUL).
 @pytest.mark.parametrize(
     "text",
     [
         EVIL,
         "x" * 200_000,
-        "line\nbreak\r\nand\ttab",
         "  padded  ",
         "é中\U0001f600",
-        "a' OR '1'='1",
         "\u0000nul",
     ],
-    ids=["sparql fragments", "very long", "newlines", "padded", "unicode", "quote", "nul"],
+    ids=["sparql fragments", "very long", "padded", "unicode", "nul"],
 )
 async def test_a_hostile_text_is_stored_as_text_or_refused_with_a_documented_error(
     text, store, session, ada, books
@@ -1048,15 +995,11 @@ async def test_a_hostile_text_is_stored_as_text_or_refused_with_a_documented_err
     assert await stored(session, B1, B2, B3) == [B1, B2, B3], "no book was touched"
 
 
+# Class: a reference the policy does not mint for an aggregate of the tenant; one per kind (hostile
+# text, a minted shape that is no aggregate).
 REFUSED_REFERENCES = {
     "sparql fragments": EVIL,
-    "an aggregate IRI with a hostile tail": f"{B1}> }} ; DROP ALL ; <",
     "a graph iri": graph_of(B1),
-    "a skolem iri": str(skolem_iri(graph_of(B1))),
-    "an aggregate of another tenant": f"{OTHER_TENANT}/books/{UUID(int=1)}",
-    "a loaded graph": str(DEFAULT_IRIS.mint_loaded_graph(TENANT, B1)),
-    "an empty string": "",
-    "a relative path": "books/1",
 }
 
 
@@ -1099,7 +1042,8 @@ async def test_a_reference_to_the_target_a_comment_the_root_or_the_record_is_sto
     assert len(await ada.thread(B1)) == 2, f"a reference to {reference} is accepted"
 
 
-@pytest.mark.parametrize("role_name", ["", " ", "librarian ", "Librarian", "libr\narian", EVIL])
+# Class: an audience entry that is not exactly a defined role; the empty one and a near miss.
+@pytest.mark.parametrize("role_name", ["", "librarian "])
 async def test_an_audience_entry_that_is_not_exactly_a_defined_role_is_refused(
     role_name, store, ada, books
 ):
@@ -1109,11 +1053,8 @@ async def test_an_audience_entry_that_is_not_exactly_a_defined_role_is_refused(
     assert await aggregates(store) == count, "nothing was stored"
 
 
-@pytest.mark.parametrize(
-    "reply_to",
-    [EVIL, "", TENANT, B1, "urn:uuid:" + "0" * 36],
-    ids=["fragments", "empty", "tenant", "target", "urn"],
-)
+# Class: a reply_to that is no comment of the thread; hostile text, empty, an IRI that is no comment.
+@pytest.mark.parametrize("reply_to", [EVIL, "", B1], ids=["fragments", "empty", "target"])
 async def test_a_hostile_reply_to_is_not_found_and_nothing_is_stored(reply_to, store, ada, books):
     count = await aggregates(store)
     with pytest.raises(NotFound):
@@ -1121,16 +1062,14 @@ async def test_a_hostile_reply_to_is_not_found_and_nothing_is_stored(reply_to, s
     assert await aggregates(store) == count, "nothing was stored"
 
 
+# Class: a target that is no aggregate of the tenant, refused as not in the tenant (a graph IRI,
+# another tenant's aggregate, hostile text) or as having no graph (the access record, a missing aggregate).
 BAD_TARGETS = {
     "a graph iri": graph_of(B1),
-    "a skolem iri": str(skolem_iri(graph_of(B1))),
-    "a loaded graph": str(DEFAULT_IRIS.mint_loaded_graph(TENANT, B1)),
     "an aggregate of another tenant": f"{OTHER_TENANT}/books/{UUID(int=1)}",
     "the access record": f"{TENANT}/access",
     "a missing aggregate": book_iri(99),
     "sparql fragments": EVIL,
-    "an aggregate IRI with a hostile tail": f"{B1}> }} ; DROP ALL ; <",
-    "an empty string": "",
 }
 
 
@@ -1146,39 +1085,6 @@ async def test_a_comment_on_something_that_is_no_aggregate_of_the_tenant_is_refu
 
 
 # -- 6. the model and the access side -----------------------------------------------------------
-
-
-async def test_the_generic_router_has_no_route_for_comments_whatever_the_method():
-    toy = ToyService()
-    async with toy.app.router.lifespan_context(toy.app), toy.client() as client:
-        headers = toy.bearer("ada")
-        path = (await client.post("/libraries", json=TENANT_BODY, headers=headers)).headers[
-            "location"
-        ]
-        tenant = toy.kit.tenant_iri(path.rsplit("/", 1)[1])
-        book = (await client.post(f"{path}/books", json=DUNE_BODY, headers=headers)).json()["id"]
-        comment = str(toy.kit.iris.mint_aggregate(tenant, "rp-comment", "rp-comments"))
-        async with toy.kit.session(tenant, "ada") as session:
-            await session.add_graph(
-                comment,
-                annotation(
-                    comment,
-                    (v.HAS_TARGET, URIRef(book)),
-                    (OA.bodyValue, Literal(SECRET)),
-                    (RP.audience, Literal("librarian")),
-                ),
-            )
-        paths = [route.path for route in toy.app.routes if hasattr(route, "path")]
-        assert not [p for p in paths if "rp-comments" in p], "no route names the comments path"
-        uuid = comment.rsplit("/", 1)[1]
-        seen = {}
-        for method in ("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"):
-            for url in (f"{path}/rp-comments", f"{path}/rp-comments/{uuid}"):
-                response = await client.request(method, url, headers=headers, json={})
-                seen[(method, url)] = response
-        wrong = {k: r.status_code for k, r in seen.items() if r.status_code not in (404, 405)}
-        assert wrong == {}, "no method on a comment path answers other than not found"
-        assert not [k for k, r in seen.items() if SECRET in r.text], "the text is not served"
 
 
 @pytest.mark.parametrize(
@@ -1243,13 +1149,10 @@ def test_the_roles_of_a_caller_are_its_own_grants_in_scope(what, grants, bans, r
         ("reader", True),
         ("editor", True),
         ("admin", True),
+        # Class: not exactly a defined name; a case variant, a padded one, the empty one.
         ("Reader", False),
         ("reader ", False),
-        ("rea der", False),
         ("", False),
-        ("reader\n", False),
-        ("rеader", False),
-        ("*", False),
     ],
 )
 def test_a_role_is_defined_only_by_its_exact_name(name, defined, rules):

@@ -154,23 +154,29 @@ async def insert_in_provenance(world: SimpleNamespace, tenant: str, body: str) -
 async def test_tc10_each_commit_is_published_in_order_with_its_envelope_then_marked(world):
     await add_replace_remove(world, world.tenant)
     await world.relay().run_once()
-    assert classes(world, world.tenant) == [str(v.ADD), str(v.REPLACE), str(v.REMOVE)]
+    assert classes(world, world.tenant) == [str(v.ADD), str(v.REPLACE), str(v.REMOVE)], (
+        "the commits are published in order"
+    )
     assert {(e.tenant, e.origin, e.context) for e, _ in world.broker.messages} == {
         (world.tenant, DEPLOYMENT, CONTEXT)
-    }
+    }, "every message carries the tenant, the origin and the context"
     assert await pending(world, world.tenant) == [], "none is pending"
     relayed = await world.store.query(
         world.database,
         f"SELECT ?a WHERE {{ GRAPH <{world.iris.provenance(world.tenant)}> {{ ?a <{v.RELAYED_AT}> ?t }} }}",
     )
-    assert {i for _, _, i in sent(world)} <= {str(row[0]) for row in relayed}
+    assert {i for _, _, i in sent(world)} <= {str(row[0]) for row in relayed}, (
+        "every published activity was marked relayed"
+    )
 
 
 async def test_tc11_equal_marks_are_settled_by_the_version_chain(world):
     await add_replace_remove(world, world.tenant)
     await pin_equal_marks(world, world.tenant)
     await world.relay().run_once()
-    assert classes(world, world.tenant) == [str(v.ADD), str(v.REPLACE), str(v.REMOVE)]
+    assert classes(world, world.tenant) == [str(v.ADD), str(v.REPLACE), str(v.REMOVE)], (
+        "equal marks are settled by the version chain"
+    )
 
 
 def test_tc11_a_replace_goes_after_the_activity_that_generated_the_version_it_invalidated():
@@ -199,7 +205,9 @@ def test_a_long_chain_in_reverse_is_ordered_without_recursion():
         )
 
     reversed_chain = [(str(n), link(n)) for n in reversed(range(3000))]
-    assert [iri for iri, _ in chain_order(reversed_chain)] == [str(n) for n in range(3000)]
+    assert [iri for iri, _ in chain_order(reversed_chain)] == [str(n) for n in range(3000)], (
+        "the long reversed chain is put in order"
+    )
 
 
 async def test_tc11a_store_order_wins_over_the_clients_clock(world):
@@ -222,14 +230,18 @@ async def test_tc11a_store_order_wins_over_the_clients_clock(world):
     async with at(10) as session:  # the add read its clock before the remove's: earlier
         await session.add_graph(iri, triples(iri))
     await world.relay().run_once()
-    assert classes(world, world.tenant) == [str(v.ADD), str(v.REMOVE), str(v.ADD)]
+    assert classes(world, world.tenant) == [str(v.ADD), str(v.REMOVE), str(v.ADD)], (
+        "the store order wins over the client's clock"
+    )
 
 
 async def test_tc12_a_fresh_relay_publishes_what_an_earlier_one_never_got_to(world):
     await add_one(world, world.tenant)
     world.relay()  # the one that "crashed" before its first round
     await world.relay().run_once()
-    assert classes(world, world.tenant) == [str(v.ADD)]
+    assert classes(world, world.tenant) == [str(v.ADD)], (
+        "the fresh relay publishes the activity the earlier one never reached"
+    )
 
 
 async def test_tc13_a_lost_mark_publishes_the_activity_again_with_the_same_id(world):
@@ -238,9 +250,9 @@ async def test_tc13_a_lost_mark_publishes_the_activity_again_with_the_same_id(wo
     await world.relay().run_once()  # published, then the mark's update fails
     await world.relay().run_once()
     ids = [i for _, _, i in sent(world, world.tenant)]
-    assert len(ids) == 2
-    assert ids[0] == ids[1]
-    assert await pending(world, world.tenant) == []
+    assert len(ids) == 2, "the activity was published twice"
+    assert ids[0] == ids[1], "both publications carry the same id"
+    assert await pending(world, world.tenant) == [], "nothing is left pending"
 
 
 # -- TC-14, TC-15, TC-15a: a failing broker, tenants not visited, a poison record ----------------
@@ -253,12 +265,18 @@ async def test_tc14_a_failed_publish_stops_that_database_only_and_order_is_kept(
     relay = world.relay(world.bus)
     with caplog.at_level(logging.WARNING, logger=LOGGER):
         await relay.run_once()
-    assert classes(world, world.tenant) == [str(v.ADD)]
+    assert classes(world, world.tenant) == [str(v.ADD)], (
+        "only the first activity went out before the failure"
+    )
     assert classes(world, world.second) == [str(v.ADD)], "the other tenant went on"
-    assert len(await pending(world, world.tenant)) == 2
-    assert [r.levelno for r in caplog.records] == [logging.WARNING]
+    assert len(await pending(world, world.tenant)) == 2, "both activities stay pending"
+    assert [r.levelno for r in caplog.records] == [logging.WARNING], (
+        "the failure is logged as a warning"
+    )
     await relay.run_once()
-    assert classes(world, world.tenant) == [str(v.ADD), str(v.REPLACE), str(v.REMOVE)]
+    assert classes(world, world.tenant) == [str(v.ADD), str(v.REPLACE), str(v.REMOVE)], (
+        "the later round publishes all in order"
+    )
 
 
 class HangingBus(InMemoryEventBus):
@@ -283,7 +301,9 @@ async def test_d18_a_publish_that_hangs_times_out_and_stops_that_database_only(w
     assert classes(world, world.tenant) == [], "nothing went out, nothing marked"
     assert classes(world, world.second) == [str(v.ADD)], "the other tenant went on"
     assert len(await pending(world, world.tenant)) == 1, "retried next round"
-    assert [r.levelno for r in caplog.records] == [logging.WARNING]
+    assert [r.levelno for r in caplog.records] == [logging.WARNING], (
+        "the timeout is logged as a warning"
+    )
 
 
 async def _deleting(world):
@@ -308,16 +328,20 @@ async def test_tc15_a_tenant_not_to_be_visited_is_skipped_and_the_others_go_on(
     await setup(world)
     with caplog.at_level(logging.DEBUG, logger=LOGGER):
         await world.relay().run_once()
-    assert sent(world, world.tenant) == []
-    assert classes(world, world.second) == [str(v.ADD)]
-    assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+    assert sent(world, world.tenant) == [], "the skipped tenant gets nothing"
+    assert classes(world, world.second) == [str(v.ADD)], "the other tenant is published"
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING], (
+        "the skipped tenant is not logged as a failure"
+    )
 
 
 async def test_tc15_a_database_that_is_gone_is_logged_at_debug(world, caplog):
     await _gone(world)
     with caplog.at_level(logging.DEBUG, logger=LOGGER):
         await world.relay().run_once()
-    assert [r.levelno for r in caplog.records] == [logging.DEBUG]
+    assert [r.levelno for r in caplog.records] == [logging.DEBUG], (
+        "the gone database is logged at debug"
+    )
 
 
 async def test_tc15a_a_poison_record_is_given_up_and_the_next_one_is_published(world, caplog):
@@ -329,15 +353,19 @@ async def test_tc15a_a_poison_record_is_given_up_and_the_next_one_is_published(w
     await add_one(world, world.tenant)
     with caplog.at_level(logging.ERROR, logger=LOGGER):
         await world.relay().run_once()
-    assert classes(world, world.tenant) == [str(v.ADD)]
-    assert [r.levelno for r in caplog.records] == [logging.ERROR]
+    assert classes(world, world.tenant) == [str(v.ADD)], (
+        "the poison record is skipped and the next one is published"
+    )
+    assert [r.levelno for r in caplog.records] == [logging.ERROR], (
+        "the poison record is logged as an error"
+    )
     assert caplog.records[0].exc_info, "logged with its traceback (#125)"
     failed = await world.store.query(
         world.database,
         f"ASK {{ GRAPH <{world.iris.provenance(world.tenant)}> {{ <urn:a:poison> <{v.PUBLICATION_FAILED}> ?t }} }}",
     )
-    assert failed.askAnswer
-    assert await pending(world, world.tenant) == []
+    assert failed.askAnswer, "the poison record is given up in the store"
+    assert await pending(world, world.tenant) == [], "nothing is left pending"
 
 
 # -- TC-16: one database failing, a round failing ------------------------------------------------
@@ -359,10 +387,10 @@ async def test_tc16_a_store_that_fails_for_one_tenant_does_not_stop_the_others(
     monkeypatch.setattr(world.store, "query", query)
     with caplog.at_level(logging.DEBUG, logger=LOGGER):
         await world.relay().run_once()
-    assert sent(world, world.tenant) == []
-    assert classes(world, world.second) == [str(v.ADD)]
+    assert sent(world, world.tenant) == [], "the failing tenant gets nothing"
+    assert classes(world, world.second) == [str(v.ADD)], "the other tenant is published"
     [record] = caplog.records
-    assert record.levelno == logging.ERROR
+    assert record.levelno == logging.ERROR, "the failure is logged as an error"
     assert record.exc_info, "with the traceback"
 
 
@@ -385,10 +413,14 @@ async def test_tc16_the_loop_survives_a_failed_round_and_publishes_after_a_wake(
     try:
         with caplog.at_level(logging.ERROR, logger=LOGGER):
             relay.wake()
-            await wait_until_async(lambda: _truth(len(caplog.records) == 1), "the failed round")
-        assert caplog.records[0].exc_info
+            await wait_until_async(
+                lambda: _truth(len(caplog.records) == 1), "the failed round", poll_seconds=0.01
+            )
+        assert caplog.records[0].exc_info, "the failure carries its exception"
         relay.wake()
-        await wait_until_async(lambda: _truth(len(world.broker.messages) == 1), "a publication")
+        await wait_until_async(
+            lambda: _truth(len(world.broker.messages) == 1), "a publication", poll_seconds=0.01
+        )
     finally:
         task.cancel()
     with pytest.raises(asyncio.CancelledError):
@@ -410,7 +442,7 @@ async def test_tc17_an_activity_recorded_without_a_mark_is_never_published(world
         f"DELETE WHERE {{ GRAPH <{graph}> {{ ?a <{v.PENDING_SINCE}> ?t }} }}",
     )
     await world.relay().run_once()
-    assert world.broker.messages == []
+    assert world.broker.messages == [], "an activity without a mark is never published"
 
 
 async def test_tc18_with_no_bus_the_activity_is_relayed_and_offered_once(world):
@@ -419,8 +451,10 @@ async def test_tc18_with_no_bus_the_activity_is_relayed_and_offered_once(world):
     relay = world.relay(None, hub)
     await relay.run_once()
     await relay.run_once()
-    assert await pending(world, world.tenant) == []
-    assert [t for t, _ in hub.offered] == [world.tenant]
+    assert await pending(world, world.tenant) == [], "the activity is no longer pending"
+    assert [t for t, _ in hub.offered] == [world.tenant], (
+        "the hub is offered the tenant's activity once"
+    )
 
 
 async def test_an_application_activity_is_published_under_the_application_and_never_offered(
@@ -431,17 +465,25 @@ async def test_an_application_activity_is_published_under_the_application_and_ne
     async with world.tenancy.application_session(CREATOR) as session:
         await session.add_graph(iri, list(toy_mapper().to_triples(template(iri))))
     await world.relay(world.bus, hub).run_once()
-    assert [(t, c) for t, c, _ in sent(world)] == [(world.app_iri, str(v.ADD))]
-    assert hub.offered == []
-    assert await pending(world, world.app_iri, application=True) == []
+    assert [(t, c) for t, c, _ in sent(world)] == [(world.app_iri, str(v.ADD))], (
+        "the application activity is published under the application"
+    )
+    assert hub.offered == [], "the hub is not offered the application activity"
+    assert await pending(world, world.app_iri, application=True) == [], (
+        "the application activity is no longer pending"
+    )
 
 
 async def test_a_hub_is_offered_each_published_tenant_activity_in_order(world):
     hub = RecordingOffer()
     await add_replace_remove(world, world.tenant)
     await world.relay(world.bus, hub).run_once()
-    assert [i for _, i in hub.offered] == [i for _, _, i in sent(world)]
-    assert {t for t, _ in hub.offered} == {world.tenant}
+    assert [i for _, i in hub.offered] == [i for _, _, i in sent(world)], (
+        "the hub is offered each published activity in order"
+    )
+    assert {t for t, _ in hub.offered} == {world.tenant}, (
+        "the hub is offered only the tenant's activities"
+    )
 
 
 # -- TC-18a: wakes and rounds --------------------------------------------------------------------
@@ -467,10 +509,12 @@ async def test_tc18a_wakes_during_a_round_cause_exactly_one_more_round(world, mo
         for _ in range(3):
             relay.wake()
         release.set()
-        await wait_until_async(lambda: _truth(len(rounds) == 2), "the second round")
+        await wait_until_async(
+            lambda: _truth(len(rounds) == 2), "the second round", poll_seconds=0.01
+        )
         for _ in range(10):
             await asyncio.sleep(0)  # let a third round happen, if one would
-        assert len(rounds) == 2
+        assert len(rounds) == 2, "the wakes during a round cause one more round"
     finally:
         task.cancel()
 
@@ -492,4 +536,4 @@ async def test_rounds_never_overlap(world, monkeypatch):
     monkeypatch.setattr(world.tenancy, "tenants", tenants)
     relay = world.relay()
     await asyncio.gather(relay.run_once(), relay.run_once(), relay.run_once())
-    assert peak == 1
+    assert peak == 1, "two rounds never overlap"

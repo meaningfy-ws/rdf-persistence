@@ -53,7 +53,9 @@ async def tenancy(store) -> Tenancy:
 
 async def test_the_first_start_records_the_policy(store, tenancy):
     await guard_iri_policy(store, tenancy, settings_of(THIRTEEN))
-    assert len(store.sent("update")) == 1
+    assert len(store.sent("update")) == 1, (
+        "the first start sends exactly one update, recording the policy"
+    )
 
 
 async def test_a_restart_with_the_same_policy_starts(store, tenancy):
@@ -74,16 +76,21 @@ async def test_every_differing_field_is_named(store, tenancy):
     changed = changed.model_copy(update={"object_id": TWELVE.object_id})
     with pytest.raises(IriPolicyChanged) as caught:
         await guard_iri_policy(store, tenancy, settings_of(changed))
-    assert "meta_template" in str(caught.value)
-    assert "object_id.length" in str(caught.value)
+    assert "meta_template" in str(caught.value), "the refusal names the differing meta template"
+    assert "object_id.length" in str(caught.value), (
+        "the refusal names the differing object id length"
+    )
 
 
-@pytest.mark.parametrize("first", [None, IriPolicy()])
 @pytest.mark.parametrize(
-    "second", [None, IriPolicy(), IriPolicy(tenant_id=IdSpec(kind=IdKind.UUID4))]
+    "second",
+    [IriPolicy(), IriPolicy(tenant_id=IdSpec(kind=IdKind.UUID4))],
+    ids=["explicit-default", "explicit-uuid4-tenant-id"],
 )
-async def test_the_default_policy_unset_or_explicit_is_one_policy(store, tenancy, first, second):
-    await guard_iri_policy(store, tenancy, settings_of(first))
+async def test_the_default_policy_unset_or_explicit_is_one_policy(store, tenancy, second):
+    # equivalence class: every spelling of the effective default; the spelled-out UUID4 tenant id
+    # is the one that fails when the id specs are not made canonical
+    await guard_iri_policy(store, tenancy, settings_of(None))
     await guard_iri_policy(store, tenancy, settings_of(second))
 
 
@@ -102,14 +109,16 @@ async def test_a_non_default_policy_over_data_without_a_record_is_refused(store,
     await tenancy.create("Ghent", library_slots(), Principal(id=ADA))
     with pytest.raises(IriPolicyChanged, match="default policy") as caught:
         await guard_iri_policy(store, tenancy, settings_of(THIRTEEN))
-    assert "object_id" in str(caught.value)
+    assert "object_id" in str(caught.value), "the refusal names the object id field"
     assert recording_updates(store) == [], "nothing is recorded"
 
 
 async def test_the_default_policy_over_data_without_a_record_is_recorded(store, tenancy):
     await tenancy.create("Ghent", library_slots(), Principal(id=ADA))
     await guard_iri_policy(store, tenancy, settings_of(None))
-    assert len(recording_updates(store)) == 1
+    assert len(recording_updates(store)) == 1, (
+        "the default policy is recorded with exactly one update"
+    )
     with pytest.raises(IriPolicyChanged):
         await guard_iri_policy(store, tenancy, settings_of(THIRTEEN))
 
@@ -118,7 +127,9 @@ async def test_a_refusal_is_logged_with_its_step(store, tenancy, caplog):
     await guard_iri_policy(store, tenancy, settings_of(THIRTEEN))
     with caplog.at_level(logging.ERROR), pytest.raises(IriPolicyChanged):
         await guard_iri_policy(store, tenancy, settings_of(TWELVE))
-    assert [r.step for r in caplog.records if hasattr(r, "step")] == ["iri-policy"]
+    assert [r.step for r in caplog.records if hasattr(r, "step")] == ["iri-policy"], (
+        "the refusal is logged with the iri-policy step"
+    )
 
 
 class RacingStore(FakeStore):

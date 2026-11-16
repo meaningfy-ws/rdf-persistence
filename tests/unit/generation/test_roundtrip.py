@@ -1,13 +1,12 @@
 """An aggregate survives JSON, RDF and a frame unchanged (PD-27 item 4, PD-12)."""
 
-import os
 import subprocess
 import sys
 from functools import cache
 from pathlib import Path
 
 import pytest
-from hypothesis import HealthCheck, given, settings
+from hypothesis import given
 from hypothesis import strategies as st
 from linkml_runtime.linkml_model.meta import ClassDefinition
 from rdflib import Graph
@@ -20,17 +19,6 @@ ROOT = Path(__file__).parents[3]
 TOY_SCHEMA = ROOT / "tests" / "fixtures" / "library" / "library.yaml"
 METAMODEL_SCHEMA = ROOT / "rdf_persistence" / "model" / "rp.yaml"
 TOY_AGGREGATES = ["Book", "Scan", "Library", "LibraryAccess"]
-
-# CI runs the same examples every time (checklist 8); locally Hypothesis explores.
-settings.register_profile(
-    "ci", derandomize=True, max_examples=20, deadline=None, suppress_health_check=list(HealthCheck)
-)
-settings.register_profile(
-    "default", max_examples=40, deadline=None, suppress_health_check=list(HealthCheck)
-)
-settings.load_profile(
-    os.environ.get("HYPOTHESIS_PROFILE", "ci" if os.environ.get("CI") else "default")
-)
 
 
 @cache
@@ -93,4 +81,6 @@ def test_the_testkit_and_the_round_trip_do_not_import_hypothesis() -> None:
         "import sys, rdf_persistence.testkit, rdf_persistence.testkit.roundtrip\n"
         "sys.exit('hypothesis' in sys.modules)"
     )
-    assert subprocess.run([sys.executable, "-I", "-c", code], check=False).returncode == 0
+    assert subprocess.run([sys.executable, "-I", "-c", code], check=False).returncode == 0, (
+        "the testkit and the round trip import without hypothesis"
+    )

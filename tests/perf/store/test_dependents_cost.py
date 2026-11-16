@@ -2,7 +2,8 @@
 
 A tenant of 5 000 stored books and no comment: the median time of removing one book, in a session
 without dependents, and in one with them under the order of the old template (the registry first)
-and the new one (the link first). The figures are printed, not asserted: a timing is no test.
+and the new one (the link first). Both variants must complete, and the drop variant's median
+(link first) may be at most three times the median without the drop.
 """
 
 import statistics
@@ -25,6 +26,7 @@ from tests.toy import ADA, MODULES, TENANT, TOY_SCHEMA, book_iri, dune, toy_mapp
 
 BOOKS = 5000
 REMOVES = 5
+MAX_RATIO = 3
 MARKED = session_module._MARKED
 DELETE = "DELETE { GRAPH ?d { ?s ?p ?o } GRAPH $registry { ?d ?ep ?eo } }"
 REGISTRY = "GRAPH $registry { ?d $p_kind $aggregate ; $p_owned_by ?c }"
@@ -95,7 +97,8 @@ async def test_removing_a_book_of_a_tenant_without_comments_with_and_without_the
         old = await median_remove(with_pairs, second)
         monkeypatch.setattr(session_module, "_DROP_DEPENDENTS", LINK_FIRST)
         new = await median_remove(with_pairs, third)
-    print(
+    assert new <= MAX_RATIO * without, (
         f"median remove of one of {BOOKS} books, no comment: without the drop {without:.3f} s, "
-        f"registry first {old:.3f} s, link first {new:.3f} s"
+        f"registry first {old:.3f} s, link first {new:.3f} s; the drop must cost at most "
+        f"{MAX_RATIO} times the plain remove"
     )

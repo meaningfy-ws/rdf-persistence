@@ -117,14 +117,14 @@ async def corrupt(store: FakeStore, predicate: URIRef, *values: URIRef | Literal
 STATE_IRIS = v.TENANT_STATE_IRIS
 
 
+# Class: a record with no usable state; an unknown one, and a count other than one (two stands for none too).
 @pytest.mark.parametrize(
     "states",
     [
         (URIRef("https://example.org/not-a-state"),),
         (STATE_IRIS[TenantState.ACTIVE], STATE_IRIS[TenantState.DELETING]),
-        (),
     ],
-    ids=["unknown-state", "two-states", "no-state"],
+    ids=["unknown-state", "two-states"],
 )
 async def test_a_record_with_an_unusable_state_is_not_found_and_never_a_key_error(store, states):
     await corrupt(store, v.STATE, *states)

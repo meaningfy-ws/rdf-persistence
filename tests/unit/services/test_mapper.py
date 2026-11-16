@@ -11,7 +11,6 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from pydantic import BaseModel
 from rdflib import RDF, BNode, Graph, Literal, URIRef
-from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
@@ -30,6 +29,7 @@ from rdf_persistence.domain.iris import (
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.mapper import new_part
 from rdf_persistence.services.schema_structure import is_bookkeeping, is_internal
+from rdf_persistence.testkit import assert_isomorphic
 from rdf_persistence.testkit.conformance import Conformance
 from rdf_persistence.testkit.strategies import aggregate
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Shelf
@@ -98,13 +98,6 @@ def canonical(value: object) -> object:
     return value
 
 
-def assert_same_graph(actual: Graph, expected: Graph) -> None:
-    assert isomorphic(actual, expected), (
-        f"only actual: {sorted(graph_diff(actual, expected)[1])}\n"
-        f"only expected: {sorted(graph_diff(actual, expected)[2])}"
-    )
-
-
 def skolemised(graph: Graph, root: str) -> Graph:
     """What the session does to blank nodes before it writes (PD-8a)."""
     return graph.skolemize(
@@ -157,7 +150,7 @@ def test_the_graph_is_the_one_the_generated_context_gives(name: str, data: st.Da
     for s, p, o in toy_mapper().to_graph(obj):
         if p not in internal:
             actual.add((s, p, o))
-    assert_same_graph(actual, expected)
+    assert_isomorphic(actual, expected)
 
 
 def test_owned_parts_are_nested_and_typed():
@@ -167,7 +160,7 @@ def test_owned_parts_are_nested_and_typed():
     assert len(chapters) == 2, "each chapter hangs from the root"
     assert all(
         (c, RDF.type, URIRef("http://purl.org/ontology/bibo/Chapter")) in graph for c in chapters
-    )
+    ), "every chapter is stored typed"
     assert all(str(c).startswith(f"{iri}/parts/") for c in chapters), "minted under the root"
     note = next(graph.objects(chapters[0], URIRef("https://example.org/ns/library#note")))
     assert (note, URIRef("http://schema.org/text"), Literal("a note")) in graph, "notes nest too"
@@ -191,8 +184,12 @@ def test_an_enum_is_stored_as_its_meaning_iri_and_read_back_as_its_value():
     iri = book_iri(2)
     mapper = toy_mapper()
     graph = mapper.to_graph(dune(iri))
-    assert (URIRef(iri), URIRef(f"{SCHEMA}genre"), URIRef(f"{SCHEMA}Fiction")) in graph
-    assert mapper.from_graph(Book, iri, graph, graph_iri(iri)).genre == Genre.FICTION.value
+    assert (URIRef(iri), URIRef(f"{SCHEMA}genre"), URIRef(f"{SCHEMA}Fiction")) in graph, (
+        "the enum is stored as its meaning IRI"
+    )
+    assert mapper.from_graph(Book, iri, graph, graph_iri(iri)).genre == Genre.FICTION.value, (
+        "the enum reads back as its value"
+    )
 
 
 def test_a_reference_to_another_aggregate_is_an_iri_not_a_node_description():
@@ -202,9 +199,13 @@ def test_a_reference_to_another_aggregate_is_an_iri_not_a_node_description():
     mapper = toy_mapper()
     graph = mapper.to_graph(scan)
     target = URIRef(book_iri(3))
-    assert (URIRef(scan.id), URIRef(f"{SCHEMA}exampleOfWork"), target) in graph
+    assert (URIRef(scan.id), URIRef(f"{SCHEMA}exampleOfWork"), target) in graph, (
+        "the reference is stored as an IRI"
+    )
     assert (target, RDF.type, None) not in graph, "the referenced book is not described here"
-    assert mapper.from_graph(Scan, scan.id, graph, graph_iri(scan.id)).scan_of == book_iri(3)
+    assert mapper.from_graph(Scan, scan.id, graph, graph_iri(scan.id)).scan_of == book_iri(3), (
+        "the reference reads back as the other aggregate's IRI"
+    )
 
 
 def test_a_book_keeps_its_shelf_and_its_prequel_as_plain_references():
@@ -262,9 +263,15 @@ def test_a_comment_with_every_slot_round_trips_typed_as_a_web_annotation():
     graph = mapper.to_graph(comment)
     assert (URIRef(iri), RDF.type, URIRef(f"{OA}Annotation")) in graph, "the stored type"
     assert (URIRef(iri), URIRef(f"{OA}motivatedBy"), URIRef(f"{OA}replying")) in graph, "an IRI"
-    assert (URIRef(iri), URIRef(f"{OA}hasTarget"), URIRef(book_iri(1))) in graph
-    assert (URIRef(iri), URIRef(f"{RP}repliesTo"), URIRef(comment.replies_to)) in graph
-    assert len(list(graph.objects(URIRef(iri), URIRef(f"{RP}audience")))) == 2
+    assert (URIRef(iri), URIRef(f"{OA}hasTarget"), URIRef(book_iri(1))) in graph, (
+        "the comment is stored as a target"
+    )
+    assert (URIRef(iri), URIRef(f"{RP}repliesTo"), URIRef(comment.replies_to)) in graph, (
+        "the comment is stored with its reply link"
+    )
+    assert len(list(graph.objects(URIRef(iri), URIRef(f"{RP}audience")))) == 2, (
+        "the comment keeps both audiences"
+    )
     back = mapper.from_graph(Comment, iri, graph, graph_iri(iri))
     assert untracked(back) == untracked(comment), "the same comment comes back"
 
@@ -371,7 +378,7 @@ def test_a_grant_assignee_that_is_an_iri_string_is_written_and_read_as_an_iri():
     back = mapper.from_graph(
         LibraryAccess, access.id, skolemised(graph, access.id), graph_iri(access.id)
     )
-    assert canonical(back) == canonical(access)
+    assert canonical(back) == canonical(access), "the grant round-trips to the same access"
 
 
 def test_parts_without_an_identifier_are_blank_nodes_that_nest_back_when_skolemised():
@@ -387,7 +394,7 @@ def test_parts_without_an_identifier_are_blank_nodes_that_nest_back_when_skolemi
     assert (
         mapper.from_graph(LibraryAccess, access.id, skolem, graph_iri(access.id)).grants
         == access.grants
-    )
+    ), "the skolemised grants nest back as the original grants"
 
 
 def test_tracking_is_read_from_the_statements_about_the_graph_iri_not_the_root():
@@ -421,7 +428,9 @@ def test_the_tenant_root_reads_its_tracking_from_the_meta_graph():
     library = Library(id=TENANT, label="City library", description="d", city="Brussels")
     graph = mapper.to_graph(library)
     graph.add((DEFAULT_IRIS.meta(TENANT), v.CREATOR, URIRef(ADA)))
-    assert mapper.from_graph(Library, TENANT, graph, DEFAULT_IRIS.meta(TENANT)).creator == ADA
+    assert mapper.from_graph(Library, TENANT, graph, DEFAULT_IRIS.meta(TENANT)).creator == ADA, (
+        "the tenant root reads its creator from the meta graph"
+    )
 
 
 def test_tracking_is_not_written_by_the_mapper():
@@ -441,7 +450,7 @@ def test_new_part_mints_an_iri_under_the_root_and_keeps_the_fields():
     one, two = new_part(Chapter, root, number=1), new_part(Chapter, root, number=1)
     assert one.id.startswith(f"{root}/parts/"), "minted under the root"
     assert one.id != two.id, "each part is fresh"
-    assert one.number == 1
+    assert one.number == 1, "the new part keeps its number"
 
 
 def test_a_part_that_arrives_without_an_identifier_cannot_be_built_so_the_helper_is_the_way():
@@ -507,7 +516,8 @@ def test_tc21_a_served_command_keeps_no_statement_of_a_slot_the_session_fills(sl
     assert list(served.triples) == [], f"{slot} is the session's to write"
 
 
-@pytest.mark.parametrize("bad", ["https://example.org/x", "urn:uuid", "urn:isbn:0"])
+# equivalence classes: not a urn:uuid IRI (https and urn:isbn are the same), the bare prefix
+@pytest.mark.parametrize("bad", ["https://example.org/x", "urn:uuid"])
 def test_tc21a_a_command_whose_id_is_not_a_uuid_urn_is_refused_naming_the_id(bad):
     with pytest.raises(ValueError, match=bad):
         toy_mapper().served(Replace(id=bad))

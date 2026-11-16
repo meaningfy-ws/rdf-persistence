@@ -18,4 +18,4 @@
 
 ## 4. Close
 
-- [ ] 4.1 `make check-all` green; archive the change.
+- [x] 4.1 `make check-all` green (PR #131, merged); archive the change.

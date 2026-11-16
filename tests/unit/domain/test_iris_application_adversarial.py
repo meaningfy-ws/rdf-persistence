@@ -12,7 +12,7 @@ from collections.abc import Callable
 from uuid import UUID
 
 import pytest
-from hypothesis import HealthCheck, assume, given, settings
+from hypothesis import HealthCheck, assume, example, given, settings
 from hypothesis import strategies as st
 from pydantic import ValidationError
 from rdflib import URIRef
@@ -182,7 +182,7 @@ TENANT_SHAPED_AGGREGATE = (
 def _tenant_iris_are_not_the_applications(policy: IriPolicy, seed: int) -> None:
     iris = _built(policy, seed)
     assume(iris is not None)
-    assert iris is not None
+    assert iris is not None, "the policy was accepted so tenant IRIs can be built"
     tenant = str(iris.mint_tenant())
     for name, iri in _owned(iris, tenant).items():
         assert _accepted_by(iris, str(iris.application), iri) == [], (
@@ -193,7 +193,7 @@ def _tenant_iris_are_not_the_applications(policy: IriPolicy, seed: int) -> None:
 def _application_iris_are_not_a_tenants(policy: IriPolicy, seed: int) -> None:
     iris = _built(policy, seed)
     assume(iris is not None)
-    assert iris is not None
+    assert iris is not None, "the policy was accepted so application IRIs can be built"
     tenant = str(iris.mint_tenant())
     for name, iri in _owned(iris, str(iris.application)).items():
         assert _accepted_by(iris, tenant, iri) == [], (
@@ -296,7 +296,7 @@ def test_a_tenant_still_round_trips_whatever_the_application_template(
     policy, seed = case
     iris = _built(policy, seed)
     assume(iris is not None)
-    assert iris is not None
+    assert iris is not None, "the policy was accepted so a tenant can be built"
     tenant = str(iris.mint_tenant())
     owned = _owned(iris, tenant)
     assert iris.tenant_of_access(owned["access"]) == URIRef(tenant), "access gives the tenant back"
@@ -329,6 +329,7 @@ def test_a_tenant_whose_id_starts_like_the_application_is_not_the_application() 
 
 
 @INVARIANTS
+@example((FLAT, 0))  # the flat policy is always drawn, whatever the derandomised draws hold
 @given(ACCEPTED)
 def test_the_application_is_never_a_tenant_under_any_accepted_policy(
     case: tuple[IriPolicy, int],
@@ -337,7 +338,7 @@ def test_the_application_is_never_a_tenant_under_any_accepted_policy(
     policy, seed = case
     iris = _built(policy, seed)
     assume(iris is not None)
-    assert iris is not None
+    assert iris is not None, "the policy was accepted so IRIs can be built"
     a = iris.application
     with pytest.raises(InvalidIri):
         iris.tenant_id_of(a)
@@ -349,15 +350,15 @@ def test_the_application_is_never_a_tenant_under_any_accepted_policy(
         iris.tenant(APPLICATION_ID)
 
 
-@pytest.mark.parametrize("as_text", [str, URIRef], ids=["str", "URIRef"])
-def test_the_application_is_no_tenant_whichever_type_carries_it(as_text: type) -> None:
-    """Fails if the refusal compares a ``URIRef`` where it must compare the text."""
+def test_the_application_is_no_tenant_when_the_text_carries_it() -> None:
+    """Fails if the refusal compares a ``URIRef`` where it must compare the text. The ``URIRef`` case
+    is that of ``test_the_application_is_never_a_tenant_under_any_accepted_policy``."""
     iris = _iris(FLAT)
-    a = as_text(str(iris.application))
+    a = str(iris.application)
     with pytest.raises(InvalidIri):
         iris.tenant_id_of(a)
     with pytest.raises(InvalidIri):
-        iris.tenant_of_access(as_text(str(iris.access(iris.application))))
+        iris.tenant_of_access(str(iris.access(iris.application)))
 
 
 def test_a_tenant_id_of_three_characters_is_not_in_the_schema() -> None:
@@ -372,8 +373,8 @@ def test_a_tenant_id_of_three_characters_is_not_in_the_schema() -> None:
 
 @pytest.mark.parametrize(
     "policy",
-    [None, FLAT, FLAT.model_copy(update={"application_template": "{base}application"})],
-    ids=["default", "flat", "flat-other-template"],
+    [None, FLAT],  # another application template is one class with flat: the same reserved set
+    ids=["default", "flat"],
 )
 def test_no_id_is_minted_as_app_whatever_the_id_source_answers(policy: IriPolicy | None) -> None:
     """Fails if ``APPLICATION_ID`` is dropped from ``_reserved`` or checked only for tenants."""
@@ -449,7 +450,7 @@ def test_an_accepted_policy_keeps_the_applications_graphs_apart(
     policy, seed = case
     iris = _built(policy, seed)
     assume(iris is not None)
-    assert iris is not None
+    assert iris is not None, "the policy was accepted so graphs can be built"
     a = str(iris.application)
     graphs = {
         "A": a,
@@ -466,9 +467,8 @@ def test_an_accepted_policy_keeps_the_applications_graphs_apart(
 
 
 COLLIDING = {
+    # One graph template minting A is one class (the `iri in taken` branch); "meta is A" stands for it.
     "meta is A": {"meta_template": "{base}{tenant_id}"},
-    "registry is A": {"registry_template": "{base}{tenant_id}"},
-    "access is A": {"access_template": "{base}{tenant_id}"},
     "meta is access": {
         "meta_template": "{base}{tenant_id}/x",
         "access_template": "{base}{tenant_id}/x",
@@ -501,10 +501,12 @@ def test_a_policy_with_colliding_application_graphs_is_refused_with_invalid_iri(
     pytest.fail(f"{name}: the policy was accepted")
 
 
-@pytest.mark.parametrize("length", [4, 11])
-def test_an_application_iri_that_the_tenant_pattern_matches_is_refused(length: int) -> None:
-    """Fails if ``reads as a tenant`` looks at the default id spec and not at the policy's."""
-    template = {4: "{base}apps", 11: "{base}application"}[length]
+def test_an_application_iri_that_the_tenant_pattern_matches_is_refused() -> None:
+    """Fails if ``reads as a tenant`` looks at the default id spec and not at the policy's.
+
+    One id length is one class with another (the tenant pattern is built from the policy's spec).
+    """
+    length, template = 4, "{base}apps"
     policy = FLAT.model_copy(
         update={
             "tenant_id": IdSpec(kind=IdKind.RANDOM, length=length),
@@ -538,7 +540,7 @@ def test_what_is_minted_for_the_application_is_accepted_for_it(
     policy, seed = case
     iris = _built(policy, seed)
     assume(iris is not None)
-    assert iris is not None
+    assert iris is not None, "the policy was accepted so application IRIs can be minted"
     a = as_text(str(iris.application))
     x = as_text(str(iris.mint_aggregate(a, "template", "templates")))
     part = iris.mint_part(a, x, "chapter")
@@ -553,9 +555,12 @@ def test_what_is_minted_for_the_application_is_accepted_for_it(
         assert not iris.is_loaded_graph(a, g, str(x) + "-other"), "and not of another root"
 
 
-@pytest.mark.parametrize("cls_type", ["template", "book"])
-def test_every_root_type_round_trips_for_the_application(cls_type: str) -> None:
-    """Fails if only some root types are matched under ``A``."""
+def test_every_root_type_round_trips_for_the_application() -> None:
+    """Fails if the root types are not matched under ``A``.
+
+    One root type stands for all: they share one alternation in the aggregate pattern.
+    """
+    cls_type = "template"
     iris = _iris(FLAT, _seeded(1))
     x = iris.mint_aggregate(iris.application, cls_type, "things")
     assert iris.is_aggregate(iris.application, x), f"{cls_type} is matched"
@@ -593,8 +598,13 @@ def _hostile_variants(a: str) -> list[str]:
     ]
 
 
-@pytest.mark.parametrize("policy", [None, FLAT], ids=["default", "flat"])
-@pytest.mark.parametrize("tail", ["templates", "template", "content", "graph"])
+# Per policy one tail of the aggregate / loaded-graph class (the one its template writes: the
+# route segment by default, the type when flat), and "graph", which also checks the graph suffix.
+@pytest.mark.parametrize(
+    ("policy", "tail"),
+    [(None, "templates"), (FLAT, "template"), (None, "graph"), (FLAT, "graph")],
+    ids=["default-templates", "flat-template", "default-graph", "flat-graph"],
+)
 def test_an_iri_that_only_starts_like_the_application_is_not_the_applications(
     policy: IriPolicy | None, tail: str
 ) -> None:
@@ -695,21 +705,25 @@ def test_a_policy_without_the_application_template_is_the_default_one() -> None:
     spelled = IriPolicy.model_validate_json('{"application_template": "{base}app"}')
     literal = IriPolicy.model_validate_json('{"application_template": "https://ex.org/app"}')
     cfg = _settings()
-    assert policy_differences(effective_policy(stored, cfg), effective_policy(spelled, cfg)) == []
+    assert (
+        policy_differences(effective_policy(stored, cfg), effective_policy(spelled, cfg)) == []
+    ), "a policy without the application template differs from none of its default spellings"
     assert policy_differences(effective_policy(None, cfg), effective_policy(literal, cfg)) == [], (
         "the written-out default is the default"
     )
 
 
-@pytest.mark.parametrize(
-    "template",
-    ["{base}application", "{base}{tenant_segment}", "{base}{deployment}/app", "{base}tenants/app"],
-)
-def test_another_application_template_differs_in_that_field_alone(template: str) -> None:
-    """Fails if the application template leaks into another field of the effective policy."""
+def test_another_application_template_differs_in_that_field_alone() -> None:
+    """Fails if the application template leaks into another field of the effective policy.
+
+    Any other template is one class (one field-by-field comparison); one stands for them.
+    """
+    template = "{base}application"
     cfg = _settings()
     other = effective_policy(IriPolicy(application_template=template), cfg)
-    assert policy_differences(effective_policy(None, cfg), other) == ["application_template"]
+    assert policy_differences(effective_policy(None, cfg), other) == ["application_template"], (
+        "another application template differs in that field alone"
+    )
 
 
 @pytest.mark.parametrize(
@@ -750,5 +764,5 @@ def test_the_effective_application_template_is_the_iri_that_is_minted(
     policy, seed = case
     iris = _built(policy, seed)
     assume(iris is not None)
-    assert iris is not None
+    assert iris is not None, "the policy was accepted so IRIs can be minted"
     assert iris.effective_policy.application_template == str(iris.application), "one spelling"

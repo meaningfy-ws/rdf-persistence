@@ -11,7 +11,9 @@
 ; outside the contract. Parenthesised layers are optional until they exist.
 
 [importlinter]
-root_package = rdf_persistence
+root_packages =
+    rdf_persistence
+    tests
 include_external_packages = True
 
 [importlinter:contract:layers]
@@ -167,3 +169,19 @@ forbidden_modules =
     redis
 ignore_imports =
     rdf_persistence.adapters.redis_events -> faststream
+
+[importlinter:contract:domain-tests-stay-in-the-domain]
+name = the domain tests import nothing above the domain: no services, adapters, entrypoints, testkit or toy service
+; Direct imports only: the package's public names (`from rdf_persistence import ...`) reach the upper layers in
+; the package's own __init__, which the domain tests may use.
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    tests.unit.domain
+forbidden_modules =
+    rdf_persistence.services
+    rdf_persistence.adapters
+    rdf_persistence.entrypoints
+    rdf_persistence.testkit
+    tests.toy
+    tests.toy_service

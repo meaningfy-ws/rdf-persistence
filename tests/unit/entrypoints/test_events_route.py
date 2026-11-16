@@ -239,21 +239,27 @@ async def test_a_reader_hears_the_replace_of_a_book_with_its_id_class_and_json(
         await listening(settled.service.kit.hub)
         await replace(settled, settled.book, settled.book_etag, "Dune Messiah")
         [event] = await bob.take(1)
-    assert bob.status == 200
-    assert bob.headers["content-type"].startswith("text/event-stream")
-    assert bob.headers["link"] == f'<{settled.service.kit.context_url}>; rel="{CONTEXT_REL}"'
+    assert bob.status == 200, "the stream is served with 200"
+    assert bob.headers["content-type"].startswith("text/event-stream"), (
+        "the stream is an event stream"
+    )
+    assert bob.headers["link"] == f'<{settled.service.kit.context_url}>; rel="{CONTEXT_REL}"', (
+        "the stream links to the JSON-LD context"
+    )
     assert event.event == "Replace", "the class's name"
     sent = Replace.model_validate_json(event.data)
     assert event.id == sent.id, "the activity's IRI"
-    assert [g.entity for g in sent.generations] == [settled.book_iri]
+    assert [g.entity for g in sent.generations] == [settled.book_iri], (
+        "the event names the replaced book only"
+    )
 
 
 async def test_the_default_route_is_served_with_the_link_and_no_event_before_a_commit(
     settled: Scene,
 ) -> None:
     async with follow(settled, prefix="") as bob:
-        assert bob.status == 200
-        assert "link" in bob.headers
+        assert bob.status == 200, "the default route is served"
+        assert "link" in bob.headers, "the stream links to the context"
         with pytest.raises(TimeoutError):
             await bob.take(1, timeout=0.2)
 
@@ -268,7 +274,9 @@ async def test_a_reader_barred_from_one_book_hears_only_the_other_books_event(
         await replace(settled, settled.book, settled.book_etag, "Dune Messiah")
         await replace(settled, emma, emma_etag, "Emma 2")
         [event] = await carol.take(1)
-    assert [g.entity for g in Replace.model_validate_json(event.data).generations] == [emma_iri]
+    assert [g.entity for g in Replace.model_validate_json(event.data).generations] == [emma_iri], (
+        "a barred book's event is not heard"
+    )
 
 
 async def test_a_grant_removed_while_following_ends_the_stream_at_the_next_event(
@@ -325,12 +333,14 @@ async def test_a_reader_whose_queue_filled_resumes_and_gets_every_missed_activit
     async with follow(settled) as bob:
         await listening(hub)
         hub.offer(settled.tenant_iri, a1)
-        assert [e.id for e in await bob.take(1)] == [a1.id]
+        assert [e.id for e in await bob.take(1)] == [a1.id], "the first event is the first activity"
         for activity in missed:  # in a row: the stream has not read, the queue of two fills
             hub.offer(settled.tenant_iri, activity)
         assert await bob.ends() == [], "it got a1, then the stream ended"
     async with follow(settled, **{"Last-Event-ID": a1.id}) as again:
-        assert [e.id for e in await again.take(3)] == [a.id for a in missed]
+        assert [e.id for e in await again.take(3)] == [a.id for a in missed], (
+            "a resume gets every missed activity in order"
+        )
 
 
 async def test_a_stream_ends_after_its_lifetime_and_a_resume_gets_what_came_after(
@@ -347,27 +357,28 @@ async def test_a_stream_ends_after_its_lifetime_and_a_resume_gets_what_came_afte
         assert await bob.ends() == [], "the stream is over at the next wake, and sends nothing more"
     async with follow(settled, prefix="/short", **{"Last-Event-ID": first.id}) as again:
         [late] = await again.take(1)
-    assert late.id != first.id
-    assert late.event == "Replace"
+    assert late.id != first.id, "a resumed stream sends a new activity, not the old one"
+    assert late.event == "Replace", "the resumed event is a replace"
 
 
-@pytest.mark.parametrize(
-    "bad", ["a b", "<x>", "", "x" * 300], ids=["space", "angle", "empty", "long"]
-)
+# One class for the characters an IRI forbids (a space stands for them); empty and long are boundaries.
+@pytest.mark.parametrize("bad", ["a b", "", "x" * 300], ids=["space", "empty", "long"])
 async def test_a_last_event_id_that_is_no_activity_id_sends_a_reset_and_the_stream_goes_on(
     settled: Scene, fast: str, bad: str, caplog: pytest.LogCaptureFixture
 ) -> None:  # D-21
     async with follow(settled, **{"Last-Event-ID": bad}) as bob:
-        assert bob.status == 200
+        assert bob.status == 200, "a stream with an unknown last event id is still served"
         [reset] = await bob.take(1)
-        assert reset.event == "reset"
-        assert reset.id is None
+        assert reset.event == "reset", "an unknown last event id gets a reset event"
+        assert reset.id is None, "a reset event carries no id"
         assert reset.data == "", "an empty data line, or an EventSource client drops it (D-10)"
         await listening(settled.service.kit.hub)
         await replace(settled, settled.book, settled.book_etag, "Live")
         [live] = await bob.take(1)
-    assert live.event == "Replace"
-    assert not [r for r in caplog.records if r.levelname in ("ERROR", "CRITICAL")]
+    assert live.event == "Replace", "the live event after a reset is a replace"
+    assert not [r for r in caplog.records if r.levelname in ("ERROR", "CRITICAL")], (
+        "the reset logs no error"
+    )
 
 
 async def test_a_resume_sends_what_was_relayed_after_the_id_then_live_events_none_twice(
@@ -380,10 +391,12 @@ async def test_a_resume_sends_what_was_relayed_after_the_id_then_live_events_non
         etag = await replace(settled, settled.book, etag, "Three")
         a1, a2, a3 = [e.id for e in await listener.take(3)]
         async with follow(settled, **{"Last-Event-ID": a1}) as bob:
-            assert [e.id for e in await bob.take(2)] == [a2, a3]
+            assert [e.id for e in await bob.take(2)] == [a2, a3], (
+                "a resume sends what was relayed after the id"
+            )
             await replace(settled, settled.book, etag, "Four")
             [a4] = await bob.take(1)
-    assert a4.id not in (a1, a2, a3)
+    assert a4.id not in (a1, a2, a3), "a resume does not repeat an activity already sent"
 
 
 async def test_an_activity_relayed_after_the_named_one_is_sent_though_applied_before(
@@ -409,7 +422,7 @@ async def test_an_activity_relayed_after_the_named_one_is_sent_though_applied_be
         await session.mark_relayed(first)  # relayed last
     async with follow(settled, **{"Last-Event-ID": second}) as bob:
         [event] = await bob.take(1)
-    assert event.id == first
+    assert event.id == first, "the event sent is the one relayed after the named id"
 
 
 async def test_a_resume_does_not_send_what_the_caller_may_not_read(
@@ -424,10 +437,10 @@ async def test_a_resume_does_not_send_what_the_caller_may_not_read(
         a2, a3 = [e.id for e in await witness.take(2)]
         async with follow(settled, "carol", **{"Last-Event-ID": a2}) as carol:
             [event] = await carol.take(1)
-            assert event.id == a3
+            assert event.id == a3, "the event sent is the one the caller may read"
             with pytest.raises(TimeoutError):
                 await carol.take(1, timeout=0.2)
-    assert etag
+    assert etag, "the write that produced the activity returned a version"
 
 
 async def test_an_id_that_cannot_anchor_a_resume_sends_one_reset_then_the_live_events(
@@ -435,12 +448,12 @@ async def test_an_id_that_cannot_anchor_a_resume_sends_one_reset_then_the_live_e
 ) -> None:  # TC-38
     async with follow(settled, **{"Last-Event-ID": "urn:uuid:nobody"}) as bob:
         [reset] = await bob.take(1)
-        assert reset.event == "reset"
-        assert reset.id is None
+        assert reset.event == "reset", "an unanchored resume gets a reset event"
+        assert reset.id is None, "a reset event carries no id"
         await listening(settled.service.kit.hub)
         await replace(settled, settled.book, settled.book_etag, "Live")
         [live] = await bob.take(1)
-    assert live.event == "Replace"
+    assert live.event == "Replace", "the live event after the reset is a replace"
 
 
 async def test_an_id_relayed_before_the_window_sends_a_reset(
@@ -474,7 +487,7 @@ async def test_an_id_never_relayed_sends_a_reset(
         [(pending, _)] = await session.pending_activities()
     async with follow(settled, **{"Last-Event-ID": pending}) as bob:
         [reset] = await bob.take(1)
-    assert reset.event == "reset"
+    assert reset.event == "reset", "an unknown id gets a reset event"
 
 
 async def test_a_caller_barred_from_reading_the_tenant_gets_a_403_problem_and_no_stream(
@@ -486,14 +499,14 @@ async def test_a_caller_barred_from_reading_the_tenant_gets_a_403_problem_and_no
         settled, lambda held: GrantSet(grants=[*held.grants, reader], prohibitions=[ban])
     )
     response = await settled.http.get(events_of(settled), headers=settled.headers("dan"))
-    assert response.status_code == 403
-    assert response.headers["content-type"] == PROBLEM_JSON
+    assert response.status_code == 403, "a caller barred from the tenant gets 403"
+    assert response.headers["content-type"] == PROBLEM_JSON, "the refusal is a problem document"
 
 
 async def test_no_token_is_a_401_problem(settled: Scene, fast: str) -> None:
     response = await settled.http.get(events_of(settled))
-    assert response.status_code == 401
-    assert response.headers["content-type"] == PROBLEM_JSON
+    assert response.status_code == 401, "a call without a token gets 401"
+    assert response.headers["content-type"] == PROBLEM_JSON, "the refusal is a problem document"
 
 
 async def test_the_follower_of_another_tenant_hears_nothing(

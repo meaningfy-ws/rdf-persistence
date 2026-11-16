@@ -21,10 +21,12 @@ the fixtures plugin (``--strict-markers`` is on, so an unregistered marker is an
 (see ``develop/testing.adoc``).
 """
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+from hypothesis import HealthCheck, settings
 
 from rdf_persistence.testkit.markers import EVENTS, FILES, IDENTITY, STORE, register_markers
 
@@ -32,13 +34,26 @@ from rdf_persistence.testkit.markers import EVENTS, FILES, IDENTITY, STORE, regi
 TESTS_ROOT_DIR = Path(__file__).parent
 TEST_DATA_DIR = TESTS_ROOT_DIR / "test_data"
 
+# CI runs the same examples every time (checklist 8); locally Hypothesis explores. Registered and
+# loaded at import of this root conftest, so every xdist worker has them.
+settings.register_profile(
+    "ci", derandomize=True, max_examples=20, deadline=None, suppress_health_check=list(HealthCheck)
+)
+settings.register_profile(
+    "default", max_examples=40, deadline=None, suppress_health_check=list(HealthCheck)
+)
+settings.load_profile(
+    os.environ.get("HYPOTHESIS_PROFILE", "ci" if os.environ.get("CI") else "default")
+)
+
 # Freshness of the generated code (PD-26) is checked at the start of every session; pytester runs
 # the plugin's own tests.
 pytest_plugins = ["pytester", "rdf_persistence.testkit.freshness"]
 
-# The container fixtures plugin (PD-16). Only tests/integration/ and tests/e2e/ load it, so the
-# unit lane runs without testcontainers. pytest allows `pytest_plugins` only in the rootdir
-# conftest, so those two conftests call `load_container_plugin` from `pytest_configure`.
+# The container fixtures plugin (PD-16). Only tests/integration/, tests/e2e/ and tests/perf/store/
+# load it, so the unit lane runs without testcontainers. pytest allows `pytest_plugins` only in
+# the rootdir conftest, so those three conftests call `load_container_plugin` from
+# `pytest_configure`.
 CONTAINER_PLUGIN = "rdf_persistence.testkit.containers.fixtures"
 
 
@@ -71,7 +86,9 @@ _MARKERS_BY_DIR = (
     DirectoryMarkers("integration/files/", ("integration", FILES)),
     DirectoryMarkers("integration/identity/", ("integration", IDENTITY)),
     DirectoryMarkers("integration/adapters/", ("integration", EVENTS)),
+    DirectoryMarkers("integration/network/", ("integration",)),
     DirectoryMarkers("e2e/", ("e2e", STORE, FILES, IDENTITY)),
+    DirectoryMarkers("perf/store/", ("perf", STORE)),
     DirectoryMarkers("perf/", ("perf",)),
 )
 

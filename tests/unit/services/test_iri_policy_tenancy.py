@@ -79,13 +79,15 @@ async def test_the_consumers_tenant_is_created_read_listed_and_deleted_by_the_po
     tenant_id = summary.id.rsplit("/", 1)[-1]
     record, version = await tenancy.get(summary.id)
     assert record.id == f"{BASE}k3f9a2x/project/{tenant_id}", "the access record"
-    assert record.database_name == f"mwb-t-{tenant_id}"
+    assert record.database_name == f"mwb-t-{tenant_id}", (
+        "the tenant database is named by the policy"
+    )
     page = await tenancy.visible_tenants(caller(), rules, limit=10, offset=0)
     assert [item.id for item in page.items] == [summary.id], "listed through tenant_of_access"
-    assert await tenancy.tenants() == [summary]
+    assert await tenancy.tenants() == [summary], "the created tenant is listed"
 
     await tenancy.delete(summary.id, version)
-    assert await tenancy.tenants() == []
+    assert await tenancy.tenants() == [], "the deleted tenant is no longer listed"
     assert not await holds(store, SYSTEM, URIRef(f"{record.id}/graph")), "the record is gone"
 
 
@@ -96,9 +98,15 @@ async def test_a_callers_access_is_found_at_the_policys_access_iri():
 
     found = await load_caller_access(store, SYSTEM, summary.id, ADA, iris=iris)
 
-    assert found.state == TenantState.ACTIVE
-    assert [grant.assignee for grant in found.grants or []] == [ADA]
-    assert (await load_caller_access(store, SYSTEM, summary.id, BOB, iris=iris)).grants is None
+    assert found.state == TenantState.ACTIVE, (
+        "the access record is found active at the policy's IRI"
+    )
+    assert [grant.assignee for grant in found.grants or []] == [ADA], (
+        "the found access record names the grant of the creator"
+    )
+    assert (await load_caller_access(store, SYSTEM, summary.id, BOB, iris=iris)).grants is None, (
+        "another caller finds no grants"
+    )
 
 
 async def test_the_root_and_the_registry_sit_in_the_graphs_the_policy_names():
@@ -110,10 +118,16 @@ async def test_the_root_and_the_registry_sit_in_the_graphs_the_policy_names():
     async with tenancy.tenant_session(summary.id, CREATOR) as session:
         graph, _, _ = await session.get_graph(summary.id)
     assert graph, "the root reads back"
-    assert await holds(store, database, iris.meta(summary.id))
-    assert not await holds(store, database, URIRef(f"{summary.id}/meta"))
+    assert await holds(store, database, iris.meta(summary.id)), (
+        "the root sits in the meta graph the policy names"
+    )
+    assert not await holds(store, database, URIRef(f"{summary.id}/meta")), (
+        "the root is not in the default meta graph"
+    )
 
     async with tenancy.tenant_session(summary.id, CREATOR) as session:
         await session.add_graph(str(iris.aggregate(summary.id, "", "books", str(uuid4()))), [])
     assert await holds(store, database, iris.registry(summary.id)), "the entry is in the registry"
-    assert not await holds(store, database, URIRef(f"{summary.id}/registry"))
+    assert not await holds(store, database, URIRef(f"{summary.id}/registry")), (
+        "the registry is not in the default registry graph"
+    )

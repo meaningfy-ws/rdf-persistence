@@ -17,6 +17,7 @@ from rdf_persistence.entrypoints.problems import (
     install_problem_handlers,
     kind_of,
 )
+from tests.toy_service import assert_problem
 
 BASE = "https://example.org/library/"
 ERRORS = [
@@ -128,10 +129,10 @@ def test_the_kinds_are_exactly_the_slugs_and_titles_of_pd_15() -> None:
 
 def test_a_key_conflict_has_its_own_kind_and_a_version_conflict_keeps_its_own() -> None:  # TC-30
     key = kind_of(exceptions.KeyConflict("x", iris=("i",), keys=("k",)))
-    assert key is not None
+    assert key is not None, "the key conflict was raised"
     assert (key.slug, key.title, key.status) == ("key-conflict", "Key conflict", 409), "own kind"
     version = kind_of(exceptions.Conflict("x"))
-    assert version is not None
+    assert version is not None, "the version conflict was raised"
     assert (version.slug, version.title) == ("conflict", "Version conflict"), "unchanged"
 
 
@@ -153,7 +154,8 @@ async def test_an_outage_hides_where_the_store_or_the_provider_is(
 
 async def test_a_rejected_body_says_why() -> None:
     response = await get(app_raising(exceptions.InvalidBody("label: Field required")))
-    assert Problem.model_validate(response.json()).detail == "label: Field required", (
+    problem = assert_problem(response, 422, "invalid-body")  # the base is checked by the table test
+    assert problem.detail == "label: Field required", (
         "a 422 carries the messages the caller needs to fix the body"
     )
 
@@ -168,8 +170,7 @@ async def test_a_pydantic_validation_error_is_an_invalid_body_naming_the_field()
         LabelUpdate(label="")
     except ValidationError as error:
         response = await get(app_raising(error))
-    problem = Problem.model_validate(response.json())
-    assert (response.status_code, problem.type) == (422, f"{BASE}problems/invalid-body"), "status"
+    problem = assert_problem(response, 422, "invalid-body")
     assert "label" in (problem.detail or ""), "the field is named"
 
 
@@ -184,11 +185,15 @@ async def test_an_unknown_path_is_a_not_found_problem() -> None:
 async def test_an_unmapped_failure_is_an_internal_error_problem_without_its_text() -> None:
     response = await get(app_raising(RuntimeError("fuseki bug")))
     problem = Problem.model_validate(response.json())
-    assert (response.status_code, problem.type) == (500, f"{BASE}problems/internal-error")
+    assert response.status_code == 500, "an unmapped failure is a server error"
+    assert problem.type == f"{BASE}problems/internal-error", (
+        "an unmapped failure is the internal-error kind"
+    )
     assert "fuseki" not in response.text, "a fault of the service tells the caller nothing of it"
 
 
-@pytest.mark.parametrize("error", [exceptions.SparqlError, exceptions.StoredDataInvalid])
+# One class: both are the internal-error 500 of one handler (test_router_hardening covers both by routes).
+@pytest.mark.parametrize("error", [exceptions.SparqlError])
 async def test_a_fault_of_the_service_hides_its_text(error: type[PersistenceError]) -> None:
     assert "fuseki" not in (await get(app_raising(error(SECRET)))).text, "no detail"
 
@@ -198,16 +203,17 @@ async def test_a_method_the_route_lacks_is_a_problem_that_keeps_the_allow_header
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post("/boom")
     problem = Problem.model_validate(response.json())
-    assert (response.status_code, problem.type, problem.title) == (
-        405,
-        f"{BASE}problems/method-not-allowed",
-        TITLES["method-not-allowed"],
+    assert response.status_code == 405, "a missing method is refused with 405"
+    assert problem.type == f"{BASE}problems/method-not-allowed", (
+        "the problem has the method-not-allowed kind"
     )
+    assert problem.title == TITLES["method-not-allowed"], "the problem has the kind's title"
     assert response.headers["allow"] == "GET", "the header the standard asks for"
 
 
 async def test_an_http_exception_is_a_problem_with_a_title_from_its_status() -> None:
     response = await get(app_raising(HTTPException(status_code=418, detail="fuseki")))
     problem = Problem.model_validate(response.json())
-    assert (response.status_code, problem.type) == (418, f"{BASE}problems/im-a-teapot")
+    assert response.status_code == 418, "the exception's own status is kept"
+    assert problem.type == f"{BASE}problems/im-a-teapot", "the kind is named after the status"
     assert "fuseki" not in response.text, "its text is not for the caller"

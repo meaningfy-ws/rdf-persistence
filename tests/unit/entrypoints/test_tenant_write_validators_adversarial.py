@@ -1,4 +1,4 @@
-"""Stage 2 of mwb2-adoption-fixes, attacked at the route: validators on tenant writes (PD-7)."""
+"""Validators on tenant writes (PD-7), attacked at the route."""
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager

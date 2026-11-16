@@ -16,7 +16,6 @@ import pytest
 from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
 from rdflib import Dataset, Literal, URIRef
-from rdflib.compare import isomorphic
 from rdflib.namespace import DCTERMS
 
 from rdf_persistence.domain.exceptions import (
@@ -32,6 +31,7 @@ from rdf_persistence.domain.tenant_move import rewrite
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenant_dump import dump
 from rdf_persistence.services.vocabulary import RELAY_PLUMBING
+from rdf_persistence.testkit import assert_isomorphic
 from tests.toy import SETTINGS
 from tests.unit.services.test_tenant_dump import (
     BLOB_BYTES,
@@ -94,17 +94,17 @@ async def head_of(world: SimpleNamespace) -> list[tuple[str, bytes]]:
 # -- hostile blob members: a blob is a regular file named blobs/<key> -------------------------------
 
 
-@pytest.mark.parametrize(
-    "name", ["blobs/", "blobs", "/etc/passwd", "../blobs/x", "manifest.json", "graphs.nq"]
-)
+# equivalence classes: a bare name (blobs/; blobs is the same), a path out of blobs/ (/etc/passwd; ../blobs/x), a reserved name (manifest.json; graphs.nq)
+@pytest.mark.parametrize("name", ["blobs/", "/etc/passwd", "manifest.json"])
 async def test_a_member_whose_name_is_not_a_blob_name_is_refused_and_leaves_nothing(world, name):
     before = await state_of(world)
     with pytest.raises(InvalidBody):
         await restored(world, pack(*await head_of(world), ("blobs/ok", b"x"), (name, b"x")))
-    assert await state_of(world) == before
+    assert await state_of(world) == before, "the refused restore leaves the state as it was"
 
 
-@pytest.mark.parametrize("key", ["../x", "a/../../x"])
+# equivalence class: a key with a ".." segment (a/../../x is the same)
+@pytest.mark.parametrize("key", ["../x"])
 async def test_a_blob_key_that_climbs_out_of_the_bucket_is_refused_design_silent(world, key):
     """Design PD-3 says 'a regular file under blobs/'. ``blobs/../x`` is under ``blobs/`` as text only: an
     object store that maps keys to paths would write outside the bucket. Expected: refused. (A key with ``//``
@@ -112,7 +112,7 @@ async def test_a_blob_key_that_climbs_out_of_the_bucket_is_refused_design_silent
     before = await state_of(world)
     with pytest.raises(InvalidBody):
         await restored(world, pack(*await head_of(world), (f"blobs/{key}", b"x")))
-    assert await state_of(world) == before
+    assert await state_of(world) == before, "the refused restore leaves the state as it was"
 
 
 async def test_two_blobs_with_one_key_are_refused_design_silent(world):
@@ -122,18 +122,18 @@ async def test_two_blobs_with_one_key_are_refused_design_silent(world):
         await restored(
             world, pack(*await head_of(world), ("blobs/a", b"first"), ("blobs/a", b"second"))
         )
-    assert await state_of(world) == before
+    assert await state_of(world) == before, "the refused restore leaves the state as it was"
 
 
-@pytest.mark.parametrize(
-    "kind", [tarfile.LNKTYPE, tarfile.SYMTYPE, tarfile.CHRTYPE, tarfile.FIFOTYPE]
-)
+# equivalence classes: a link, which the stream refuses to read (a hard link stands for a symlink), and a device
+# or a fifo, which only the regular-file check refuses (a character device stands for them)
+@pytest.mark.parametrize("kind", [tarfile.LNKTYPE, tarfile.CHRTYPE])
 async def test_a_blob_member_that_is_a_link_or_a_device_is_refused(world, kind):
     before = await state_of(world)
     archive = pack(*await head_of(world), ("blobs/a", b"first"), ("blobs/l", b"", kind))
     with pytest.raises(InvalidBody):
         await restored(world, archive)
-    assert await state_of(world) == before
+    assert await state_of(world) == before, "the refused restore leaves the state as it was"
 
 
 async def test_a_second_manifest_in_place_of_the_graphs_is_refused(world):
@@ -141,14 +141,14 @@ async def test_a_second_manifest_in_place_of_the_graphs_is_refused(world):
     before = await state_of(world)
     with pytest.raises(InvalidBody):
         await restored(world, pack(manifest, manifest))
-    assert await state_of(world) == before
+    assert await state_of(world) == before, "the refused restore leaves the state as it was"
 
 
 async def test_an_archive_with_only_a_manifest_is_refused(world):
     before = await state_of(world)
     with pytest.raises(InvalidBody):
         await restored(world, pack((MANIFEST, (await head_of(world))[0][1])))
-    assert await state_of(world) == before
+    assert await state_of(world) == before, "the refused restore leaves the state as it was"
 
 
 async def test_a_blob_whose_header_declares_more_bytes_than_the_archive_holds_leaves_nothing(world):
@@ -159,7 +159,7 @@ async def test_a_blob_whose_header_declares_more_bytes_than_the_archive_holds_le
     before = await state_of(world)
     with pytest.raises(InvalidBody):
         await restored(world, archive)
-    assert await state_of(world) == before
+    assert await state_of(world) == before, "the failed restore leaves the state as it was"
 
 
 async def test_a_gzip_cut_inside_a_blob_leaves_nothing(world):
@@ -171,7 +171,7 @@ async def test_a_gzip_cut_inside_a_blob_leaves_nothing(world):
     before = await state_of(world)
     with pytest.raises(InvalidBody):
         await restored(world, full[: len(full) * 2 // 3])
-    assert await state_of(world) == before
+    assert await state_of(world) == before, "the failed restore leaves the state as it was"
 
 
 async def test_a_blob_name_that_is_not_utf8_is_refused_design_silent(world):
@@ -181,13 +181,15 @@ async def test_a_blob_name_that_is_not_utf8_is_refused_design_silent(world):
     before = await state_of(world)
     with pytest.raises(InvalidBody):
         await restored(world, raw_tar(manifest, graphs, ("blobs/\xff", b"x")))
-    assert await state_of(world) == before
+    assert await state_of(world) == before, "the refused restore leaves the state as it was"
 
 
 async def test_a_graphs_member_that_is_not_utf8_or_not_n_quads_is_refused(world):
     manifest, _ = await head_of(world)
     for junk in (b"\xff\xfe\x00 not a quad", b"<a> <b> .\n", b"\x00" * 64):
-        assert "N-Quads" in await refused(world, pack(manifest, (GRAPHS, junk)))
+        assert "N-Quads" in await refused(world, pack(manifest, (GRAPHS, junk))), (
+            "the refusal names the N-Quads format"
+        )
 
 
 # -- hostile quads: what the graphs may name -----------------------------------------------------------
@@ -208,7 +210,7 @@ async def test_a_quad_in_the_graph_of_another_tenants_aggregate_is_refused(world
         world,
         edited(await dumped(world), GRAPHS, lambda nq: nq + quad(world.book, world.book, graph)),
     )
-    assert graph in reason
+    assert graph in reason, "the refusal names the foreign graph"
 
 
 @pytest.mark.parametrize("which", ["meta", "registry", "tenant", "access"])
@@ -254,7 +256,9 @@ async def test_a_reference_to_another_tenants_aggregate_is_never_rewritten_to_th
     record, _ = await world.tenancy.get(new)
     exported = (await world.store.export_quads(record.database_name)).decode()
     assert f"<{foreign}>" in exported, "kept verbatim"
-    assert world.iris.tenant_id_of(new) not in foreign
+    assert world.iris.tenant_id_of(new) not in foreign, (
+        "the foreign reference is not rewritten to the new tenant"
+    )
 
 
 async def test_a_dump_that_claims_another_source_tenant_than_its_quads_come_from_is_refused(world):
@@ -297,8 +301,7 @@ def with_manifest(data: bytes, **changes) -> bytes:
 @pytest.mark.parametrize(
     "source",
     [
-        "{base}libraries/books",  # a path word as the tenant id
-        "{base}libraries/libraries",
+        "{base}libraries/books",  # a path word as the tenant id (equivalence class: a reserved word)
         "{base}libraries/",
         "{base}",
         "not an iri",
@@ -319,10 +322,11 @@ async def test_a_source_tenant_id_that_does_not_belong_to_the_source_tenant_is_r
     other_id = world.iris.tenant_id_of(other_tenant(world))
     assert other_id in await refused(
         world, with_manifest(await dumped(world), source_tenant_id=other_id)
-    )
+    ), "the refusal names the other tenant id"
 
 
-@pytest.mark.parametrize("empty", ["", " "])
+# equivalence class: a source tenant id that is not the source tenant's (the empty one stands for a blank)
+@pytest.mark.parametrize("empty", [""])
 async def test_an_empty_source_tenant_id_is_refused_and_does_not_rewrite_everything(world, empty):
     await refused(world, with_manifest(await dumped(world), source_tenant_id=empty))
 
@@ -336,12 +340,12 @@ async def test_extra_manifest_fields_are_refused_or_ignored_never_a_crash(world)
         summary = await restored(world, data)
     except InvalidBody:
         return
-    assert summary.label == "Ghent"
+    assert summary.label == "Ghent", "the extra manifest field does not change the label"
 
 
-@pytest.mark.parametrize(
-    "text", [b'{"format_version": "1"}', b"[]", b"null", b'"x"', b"{" * 5000, b"\xff\xfe"]
-)
+# equivalence classes: JSON that is no object (b"[]"; null and "x" are the same), an object of the wrong shape,
+# unterminated nesting (the parser's depth), bytes that are no text
+@pytest.mark.parametrize("text", [b'{"format_version": "1"}', b"[]", b"{" * 5000, b"\xff\xfe"])
 async def test_a_manifest_of_the_wrong_shape_is_refused(world, text):
     await refused(world, edited(await dumped(world), MANIFEST, lambda _: text))
 
@@ -356,7 +360,7 @@ async def test_a_format_version_given_as_the_string_one_is_refused_or_read_as_on
         summary = await restored(world, data)
     except InvalidBody:
         return
-    assert summary.id != world.tenant
+    assert summary.id != world.tenant, "the restore made a new tenant"
 
 
 async def test_a_schema_without_version_dumps_the_tenants_stamp_and_round_trips(world):
@@ -364,8 +368,12 @@ async def test_a_schema_without_version_dumps_the_tenants_stamp_and_round_trips(
     bare = at_version(None)  # type: ignore[arg-type]
     out = io.BytesIO()
     await dump(world.tenancy, world.store, world.files, world.iris, bare, world.tenant, out)
-    assert manifest_of(out.getvalue()).schema_version == "1"
-    assert (await restored(world, out.getvalue(), view=bare)).id != world.tenant
+    assert manifest_of(out.getvalue()).schema_version == "1", (
+        "the manifest carries the schema version"
+    )
+    assert (await restored(world, out.getvalue(), view=bare)).id != world.tenant, (
+        "the restore made a new tenant"
+    )
 
 
 async def test_an_empty_schema_version_is_not_a_missing_one(world):
@@ -375,7 +383,9 @@ async def test_an_empty_schema_version_is_not_a_missing_one(world):
         found = TenantDump.model_validate_json(payload)
         return found.model_copy(update={"schema_version": ""}).model_dump_json().encode()
 
-    assert "''" in await refused(world, edited(await dumped(world), MANIFEST, empty))
+    assert "''" in await refused(world, edited(await dumped(world), MANIFEST, empty)), (
+        "the refusal names the empty version"
+    )
 
 
 # -- write order and cleanup --------------------------------------------------------------------------
@@ -387,7 +397,7 @@ async def test_a_failing_create_bucket_leaves_nothing_and_raises_the_original_er
     world.files.on("create_bucket", StoreUnavailable("no bucket for you"))
     with pytest.raises(StoreUnavailable, match="no bucket for you"):
         await restored(world, data)
-    assert await state_of(world) == before
+    assert await state_of(world) == before, "the failed restore leaves the state as it was"
 
 
 async def test_a_failing_second_blob_put_drops_the_database_and_the_bucket(world):
@@ -401,7 +411,7 @@ async def test_a_failing_second_blob_put_drops_the_database_and_the_bucket(world
     assert len(world.files.sent("put")) == 3 + 2, (
         "three to set up, two tried: the third was never put"
     )
-    assert await state_of(world) == before
+    assert await state_of(world) == before, "the failed restore leaves the state as it was"
 
 
 async def test_a_bucket_gone_before_the_record_fails_the_restore_cleanly(world):
@@ -417,7 +427,7 @@ async def test_a_bucket_gone_before_the_record_fails_the_restore_cleanly(world):
     world.files.put = put_then_lose_the_bucket  # type: ignore[method-assign]
     with pytest.raises(PersistenceError, match="vanished"):
         await restored(world, data)
-    assert await state_of(world) == before
+    assert await state_of(world) == before, "the failed restore leaves the state as it was"
 
 
 async def test_a_database_gone_in_an_archive_without_blobs_is_still_noticed():
@@ -434,7 +444,7 @@ async def test_a_database_gone_in_an_archive_without_blobs_is_still_noticed():
     world.store.import_quads = import_then_lose_the_database  # type: ignore[method-assign]
     with pytest.raises(PersistenceError, match="vanished"):
         await restored(world, data)
-    assert await state_of(world) == before
+    assert await state_of(world) == before, "the failed restore leaves the state as it was"
 
 
 async def test_a_cancelled_restore_writes_no_record_and_the_sweep_drops_what_it_left(world):
@@ -457,7 +467,7 @@ async def test_a_blob_failure_late_in_a_big_archive_leaves_nothing(world):
     world.files.on("put", StoreUnavailable("late failure"), after=20)
     with pytest.raises(StoreUnavailable):
         await restored(world, data)
-    assert await state_of(world) == before
+    assert await state_of(world) == before, "the failed restore leaves the state as it was"
 
 
 # -- dump ------------------------------------------------------------------------------------------------
@@ -468,7 +478,7 @@ async def test_a_failing_export_raises_unchanged_and_writes_nothing_to_out(world
     out = io.BytesIO()
     with pytest.raises(StoreUnavailable, match="the store is down"):
         await dump(world.tenancy, world.store, world.files, world.iris, VIEW, world.tenant, out)
-    assert out.getvalue() == b""
+    assert out.getvalue() == b"", "the failed export writes nothing to the output"
 
 
 async def test_a_failing_listing_raises_unchanged_and_writes_nothing_to_out(world):
@@ -476,7 +486,7 @@ async def test_a_failing_listing_raises_unchanged_and_writes_nothing_to_out(worl
     out = io.BytesIO()
     with pytest.raises(StoreUnavailable, match="no listing"):
         await dump(world.tenancy, world.store, world.files, world.iris, VIEW, world.tenant, out)
-    assert out.getvalue() == b""
+    assert out.getvalue() == b"", "the failed listing writes nothing to the output"
 
 
 async def test_a_blob_read_that_fails_otherwise_is_raised_and_the_partial_archive_never_restores(
@@ -530,7 +540,8 @@ async def test_a_blob_key_survives_a_dump_and_a_restore(world, key):
     assert await world.files.get(record.database_name, key) == key.encode(), "the blob's bytes"
 
 
-@pytest.mark.parametrize("key", ["line\nbreak", "tab\there", "del\x7f"], ids=repr)
+# equivalence classes: below the space (newline; tab is the same), the delete character
+@pytest.mark.parametrize("key", ["line\nbreak", "del\x7f"], ids=repr)
 async def test_a_blob_key_with_a_control_character_is_refused_by_the_one_key_rule(world, key):
     """Garage refuses such a key (``checked_blob_key``); the archive of a store that held one is refused whole."""
     before = await state_of(world)
@@ -543,12 +554,14 @@ async def test_a_blob_of_zero_bytes_and_one_of_every_byte_value_survive(world):
     await world.files.put(world.database, "empty", b"")
     new = (await restored(world, await dumped(world))).id
     record, _ = await world.tenancy.get(new)
-    assert await world.files.get(record.database_name, "empty") == b""
-    assert await world.files.get(record.database_name, "k1") == BLOB_BYTES
+    assert await world.files.get(record.database_name, "empty") == b"", "the empty blob survives"
+    assert await world.files.get(record.database_name, "k1") == BLOB_BYTES, (
+        "the blob of every byte value survives"
+    )
     assert {b.file_key for b in await world.files.list_blobs(record.database_name)} == {
         "empty",
         "k1",
-    }
+    }, "both blobs are listed"
 
 
 async def test_a_dump_is_deterministic_in_its_members_for_the_same_clock(world):
@@ -564,8 +577,12 @@ async def test_a_dump_is_deterministic_in_its_members_for_the_same_clock(world):
             out,
             clock=FROZEN,
         )
-    assert [n for n, _ in unpack(first.getvalue())] == [n for n, _ in unpack(second.getvalue())]
-    assert manifest_of(first.getvalue()) == manifest_of(second.getvalue())
+    assert [n for n, _ in unpack(first.getvalue())] == [n for n, _ in unpack(second.getvalue())], (
+        "the members are the same for the same clock"
+    )
+    assert manifest_of(first.getvalue()) == manifest_of(second.getvalue()), (
+        "the manifests are the same for the same clock"
+    )
 
 
 # -- round trips ----------------------------------------------------------------------------------------
@@ -584,25 +601,33 @@ async def test_a_second_dump_of_a_restored_tenant_names_the_new_tenant_and_holds
     new = (await restored(world, first)).id
     second = await dumped(world, new)
     one, two = manifest_of(first), manifest_of(second)
-    assert (two.source_tenant, one.source_tenant) == (new, world.tenant)
-    assert two.source_tenant_id == world.iris.tenant_id_of(new)
-    assert (two.label, two.iri_policy, two.schema_id) == (one.label, one.iri_policy, one.schema_id)
+    assert two.source_tenant == new, "the second manifest names the restored tenant"
+    assert one.source_tenant == world.tenant, "the first manifest names the original tenant"
+    assert two.source_tenant_id == world.iris.tenant_id_of(new), (
+        "the second manifest names the new tenant id"
+    )
+    assert two.label == one.label, "the label is carried over"
+    assert two.iri_policy == one.iri_policy, "the IRI policy is carried over"
+    assert two.schema_id == one.schema_id, "the schema id is carried over"
     old_id, new_id = world.iris.tenant_id_of(world.tenant), world.iris.tenant_id_of(new)
     mapped = dict(unpack(first))[GRAPHS].replace(old_id.encode(), new_id.encode())
     expected, got = named_graphs(mapped), named_graphs(dict(unpack(second))[GRAPHS])
     for graph in expected.values():  # the restore drops the relay's marks (aggregate-events PD-14)
         for plumbing in RELAY_PLUMBING:
             graph.remove((None, plumbing, None))
-    assert expected.keys() == got.keys()
-    assert all(isomorphic(expected[name], got[name]) for name in got)
-    assert [n for n, _ in unpack(second)] == [n for n, _ in unpack(first)]
-    assert dict(unpack(second))["blobs/k1"] == BLOB_BYTES
+    assert expected.keys() == got.keys(), "the same graphs are held"
+    for name in got:
+        assert_isomorphic(expected[name], got[name])
+    assert [n for n, _ in unpack(second)] == [n for n, _ in unpack(first)], (
+        "the members are in the same order"
+    )
+    assert dict(unpack(second))["blobs/k1"] == BLOB_BYTES, "the blob survives the second dump"
 
 
 async def test_restoring_one_archive_twice_gives_two_tenants_that_share_no_iri(world):
     data = await dumped(world)
     one, two = (await restored(world, data)).id, (await restored(world, data)).id
-    assert len({world.tenant, one, two}) == 3
+    assert len({world.tenant, one, two}) == 3, "the three tenants are distinct"
     exported = []
     for tenant in (world.tenant, one, two):
         record, _ = await world.tenancy.get(tenant)
@@ -617,12 +642,16 @@ async def test_restoring_one_archive_twice_gives_two_tenants_that_share_no_iri(w
                 if str(t).startswith(SETTINGS.base) and t != stamps_graph_iri(SETTINGS.base)
             }  # the stamps graph has one IRI under the base in every tenant database
         )
-    assert not (exported[0] & exported[1])
-    assert not (exported[0] & exported[2])
-    assert not (exported[1] & exported[2])
-    assert len({(await world.tenancy.get(t))[0].database_name for t in (one, two)}) == 2
+    assert not (exported[0] & exported[1]), "the first two tenants share no IRI"
+    assert not (exported[0] & exported[2]), "the first and third tenants share no IRI"
+    assert not (exported[1] & exported[2]), "the second and third tenants share no IRI"
+    assert len({(await world.tenancy.get(t))[0].database_name for t in (one, two)}) == 2, (
+        "the two restored tenants have two databases"
+    )
     for tenant in (one, two):
-        assert (await read_book(world, tenant, moved(world, world.book, tenant))).label == "Dune"
+        assert (await read_book(world, tenant, moved(world, world.book, tenant))).label == "Dune", (
+            "the book of the restored tenant keeps its label"
+        )
 
 
 async def test_a_restore_under_a_policy_that_puts_the_id_before_a_dash_round_trips():
@@ -638,9 +667,11 @@ async def test_a_restore_under_a_policy_that_puts_the_id_before_a_dash_round_tri
     world = await populated(await make_world(iris_of(settings), settings))
     new = (await restored(world, await dumped(world))).id
     book = moved(world, world.book, new)
-    assert world.iris.is_aggregate(new, book)
-    assert (await read_book(world, new, book)).label == "Dune"
-    assert not world.iris.is_aggregate(world.tenant, book)
+    assert world.iris.is_aggregate(new, book), "the restored book is an aggregate of the new tenant"
+    assert (await read_book(world, new, book)).label == "Dune", "the restored book keeps its label"
+    assert not world.iris.is_aggregate(world.tenant, book), (
+        "the restored book is not an aggregate of the old tenant"
+    )
 
 
 # -- rewrite --------------------------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-"""Stage 4 of mwb2-adoption-fixes, attacked at the route: what a read says the caller may do (PD-10)."""
+"""What a read says the caller may do (PD-10), attacked at the route."""
 
 from collections.abc import Callable
 from typing import Any
@@ -101,16 +101,22 @@ async def _set_up(scene: Scene, case: str) -> str:
     return who
 
 
-@pytest.mark.parametrize("action", ROUTED)
+# Left out: tenant delete (the test below covers it) and book administer (no aggregate route needs it).
+TARGET_ACTIONS = [
+    (on, action)
+    for on in ("book", "tenant")
+    for action in ROUTED
+    if (on, action) not in {("tenant", "delete"), ("book", "administer")}
+]
+
+
+@pytest.mark.parametrize(("on", "action"), TARGET_ACTIONS)
 @pytest.mark.parametrize("case", list(CASES))
-@pytest.mark.parametrize("on", ["book", "tenant"])
 async def test_a_listed_action_is_allowed_and_an_unlisted_one_is_refused(
     scene, case, on, action
 ) -> None:
     who = await _set_up(scene, case)
     target = scene.book if on == "book" else scene.tenant
-    if (on, action) in {("tenant", "delete"), ("book", "administer")}:
-        pytest.skip("R4-1: tenant delete is the test below; no aggregate route needs administer")
     listed = await _listed(await scene.http.get(target, headers=_as(scene, who)))
     status = await _probe(scene, who, target, action)
     expected_ok = action in listed
@@ -119,7 +125,8 @@ async def test_a_listed_action_is_allowed_and_an_unlisted_one_is_refused(
     )
 
 
-@pytest.mark.parametrize("who", ["ada", "mia", "rita", "admin"])
+# One class for the callers without administer (mia stands for them; she holds delete).
+@pytest.mark.parametrize("who", ["ada", "mia", "admin"])
 async def test_deleting_the_tenant_is_allowed_exactly_when_the_tenant_read_lists_delete(
     scene, who
 ) -> None:
@@ -287,13 +294,15 @@ async def test_head_is_not_routed_so_it_cannot_leak_a_header(scene, on) -> None:
     assert ALLOWED_ACTIONS not in response.headers, "no header on the 405"
 
 
-@pytest.mark.parametrize("on", ["book", "tenant"])
+# The token check runs before the route, so a 401 is tried on the book only; 404 and 406 on both.
 @pytest.mark.parametrize(
-    ("who", "accept", "status"),
+    ("on", "who", "accept", "status"),
     [
-        ("omar", JSON, 404),
-        ("rita", "text/yaml", 406),
-        ("nobody", JSON, 401),
+        ("book", "omar", JSON, 404),
+        ("tenant", "omar", JSON, 404),
+        ("book", "rita", "text/yaml", 406),
+        ("tenant", "rita", "text/yaml", 406),
+        ("book", "nobody", JSON, 401),
     ],
 )
 async def test_error_responses_carry_no_header(scene, on, who, accept, status) -> None:

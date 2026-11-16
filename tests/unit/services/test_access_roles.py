@@ -77,7 +77,9 @@ def test_a_role_may_be_defined_at_two_different_levels(tmp_path):
     path.write_text(
         "- {role: a, level: tenant, actions: [read]}\n- {role: a, level: aggregate, actions: [read]}\n"
     )
-    assert len(load_role_definitions(path)) == 2
+    assert len(load_role_definitions(path)) == 2, (
+        "both definitions of the role are kept, one per level"
+    )
 
 
 def grant_set(*grants: Grant, bans: list[Prohibition] | None = None) -> GrantSet:

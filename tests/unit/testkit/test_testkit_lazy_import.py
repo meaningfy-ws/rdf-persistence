@@ -11,7 +11,9 @@ CONTAINERS = "rdf_persistence.testkit.containers"
 
 def test_testkit_root_does_not_import_testcontainers() -> None:
     code = "import sys, rdf_persistence.testkit; sys.exit('testcontainers' in sys.modules)"
-    assert subprocess.run([sys.executable, "-I", "-c", code], check=False).returncode == 0
+    assert subprocess.run([sys.executable, "-I", "-c", code], check=False).returncode == 0, (
+        "importing the testkit root does not import testcontainers"
+    )
 
 
 def test_missing_extra_names_the_extra(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -24,16 +26,35 @@ def test_missing_extra_names_the_extra(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_testkit_root_does_not_import_the_token_or_provisioning_libraries() -> None:
     code = "import sys, rdf_persistence.testkit; sys.exit('jwt' in sys.modules or 'cryptography' in sys.modules)"
-    assert subprocess.run([sys.executable, "-I", "-c", code], check=False).returncode == 0
+    assert subprocess.run([sys.executable, "-I", "-c", code], check=False).returncode == 0, (
+        "importing the testkit root does not import the token or provisioning libraries"
+    )
 
 
 @pytest.mark.parametrize(
-    "name", ["TokenSigner", "new_key", "access_token", "create_machine_user", "provision_project"]
+    "name",
+    [
+        "TokenSigner",
+        "new_key",
+        "shared_key",
+        "access_token",
+        "create_machine_user",
+        "provision_project",
+    ],
 )
 def test_the_token_and_provisioning_names_load_on_first_use(name: str) -> None:
     import rdf_persistence.testkit as testkit
 
-    assert callable(getattr(testkit, name))
+    assert callable(getattr(testkit, name)), (
+        "each token or provisioning name is callable once loaded"
+    )
+
+
+def test_assert_isomorphic_is_a_public_testkit_name() -> None:
+    import rdf_persistence.testkit as testkit
+
+    assert "assert_isomorphic" in testkit.__all__, "a consumer test may use only public names"
+    assert callable(testkit.assert_isomorphic), "the name loads on first use"
 
 
 def test_an_unknown_testkit_name_is_an_attribute_error() -> None:
@@ -87,4 +108,6 @@ def test_the_package_and_the_testkit_do_not_import_the_event_bus_libraries() -> 
         "import rdf_persistence, rdf_persistence.testkit, sys; "
         "assert 'faststream' not in sys.modules and 'redis' not in sys.modules"
     )
-    assert subprocess.run([sys.executable, "-I", "-c", code], check=False).returncode == 0
+    assert subprocess.run([sys.executable, "-I", "-c", code], check=False).returncode == 0, (
+        "importing the package and the testkit does not import the event bus libraries"
+    )

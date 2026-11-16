@@ -482,7 +482,10 @@ The others: `chapter-ok.yaml` adds `number: 1`, `chapter-number-text.yaml` has `
 `round_trip` takes an object, turns it into RDF, frames the RDF back into JSON and builds an object
 from it. It fails with an `AssertionError`, `the objects differ after the round trip` or `the two
 graphs differ` with the triples on each side, when the object that comes back is not equal to the
-one that went in. `aggregate(conformed, "Book")` draws random valid books for it.
+one that went in. `aggregate(conformed, "Book")` draws random valid books for it. The graph
+comparison it ends with is also public: `assert_isomorphic(before, after)` (from
+`rdf_persistence.testkit`) fails, with the triples only one side has, when two `rdflib` graphs
+differ; use it for your own two graphs.
 
 Each kind of constraint comes from one construct of the schema:
 
@@ -1645,7 +1648,7 @@ _How do I test my application without servers?_
 |`FakeStore()` |a `Store` (a small in-memory SPARQL store)
 |`FakeFileStore()` |a `FileStore`
 |`FakeIdentity()` |an `Identity`
-|`TokenSigner()` |the identity provider's keys: `issue(sub=…, roles=[…])` signs a token, and `transport` serves the keys to a `JwksTokenVerifier`. Generating its RSA key takes ≈ 0.5 s; when many tests each build a signer, generate one key per process with `new_key()` (from `rdf_persistence.testkit`, cached, for example with `functools.cache`) and pass it as `TokenSigner(key=…)` (each signer still starts with its own state)
+|`TokenSigner()` |the identity provider's keys: `issue(sub=…, roles=[…])` signs a token, and `transport` serves the keys to a `JwksTokenVerifier`. Generating its RSA key takes ≈ 0.03 to 0.06 s (measured 2026-11-16, 2048 bits); when many tests each build a signer, take one key per process from `shared_key()` (from `rdf_persistence.testkit`, cached) and pass it as `TokenSigner(key=…)` (each signer still starts with its own state). Use `new_key()` only where a test needs a key of its own, for example to show that a token signed by another key is refused
 |`fake_session(store, *, tenant_iri, principal, clock, iris, listings)` |a real `Session` over a `FakeStore`,
 for a domain service's unit test; pass `iris` to test under your own IRI policy, and
 `listings=Listings(view)` (both from `rdf_persistence`) to use `find`

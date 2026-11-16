@@ -1,19 +1,14 @@
 """The session against a real Fuseki: scenarios 'graph name', 'two editors', 'a commit records who and when'."""
 
 import asyncio
-import time
 import uuid
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime, timedelta
-from uuid import UUID
 
 import pytest
 from rdflib import Graph, Literal, URIRef
-from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.domain.exceptions import Conflict, DatabaseGone, InvalidIri, NotFound
-from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.iris import (
     DEFAULT_IRIS,
     graph_iri,
@@ -22,30 +17,20 @@ from rdf_persistence.domain.iris import (
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.session import Session, open_session
+from rdf_persistence.testkit import assert_isomorphic
+from tests.integration.store.sessions import (
+    ADA,
+    BEN,
+    CY,
+    TENANT,
+    TITLE,
+    Ticker,
+    book,
+    graph_of,
+    session_for,
+)
 
-TENANT = "https://example.org/libraries/6f1c0c1e"
-TITLE = URIRef("http://purl.org/dc/terms/title")
-START = datetime(2026, 11, 5, 9, 0, tzinfo=UTC)
-ADA, BEN, CY = (Principal(id=f"https://example.org/people/{n}") for n in ("ada", "ben", "cy"))
 SELECT_GRAPHS = "SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }"
-
-
-class Ticker:
-    """A clock that moves one minute on each reading and keeps the readings it gave."""
-
-    def __init__(self) -> None:
-        self.now = START
-        self.readings: list[datetime] = []
-
-    def __call__(self) -> datetime:
-        self.now += timedelta(minutes=1)
-        self.readings.append(self.now)
-        return self.now
-
-    @property
-    def tracked(self) -> datetime:
-        """The last commit's tracking time: a recording commit reads the clock once more, for its activity's end."""
-        return self.readings[-2]
 
 
 class RendezvousStore(FusekiStore):
@@ -57,10 +42,6 @@ class RendezvousStore(FusekiStore):
         if self.barrier is not None:
             await self.barrier.wait()
         await super().update(dataset, sparql)
-
-
-def book(n: int) -> str:
-    return f"{TENANT}/books/{UUID(int=n)}"
 
 
 def title(root: str, text: str) -> list:
@@ -75,13 +56,6 @@ def without_bookkeeping(graph: Graph) -> Graph:
     return plain
 
 
-def graph_of(triples: list) -> Graph:
-    graph = Graph()
-    for triple in triples:
-        graph.add(triple)
-    return graph
-
-
 @pytest.fixture
 async def store(fuseki) -> AsyncIterator[RendezvousStore]:
     async with RendezvousStore(fuseki.url, fuseki.user, fuseki.password) as client:
@@ -94,12 +68,6 @@ async def database(store: RendezvousStore) -> AsyncIterator[str]:
     await store.create_dataset(name)
     yield name
     await store.drop_dataset(name)
-
-
-def session_for(store, database, principal=ADA, clock=None) -> Session:
-    return Session(
-        store, database=database, tenant_iri=TENANT, principal=principal, clock=clock or Ticker()
-    )
 
 
 async def graphs_in(store, database) -> set[str]:
@@ -136,9 +104,7 @@ async def test_get_graph_returns_what_was_added_and_its_version(store, database)
     graph, _, read = await session.get_graph(book(1))
     assert read == version, "the version read is the one returned by the commit"
     expected = graph_of(title(book(1), "Dune"))
-    assert isomorphic(without_bookkeeping(graph), expected), graph_diff(
-        without_bookkeeping(graph), expected
-    )
+    assert_isomorphic(without_bookkeeping(graph), expected)
 
 
 async def test_a_graph_read_can_be_written_back_as_it_is(store, database):
@@ -186,9 +152,7 @@ async def test_replacing_with_the_current_version_stores_the_new_triples_under_a
     graph, _, read = await session.get_graph(book(1))
     expected = graph_of(title(book(1), "new"))
     assert read == second != first, "a fresh token, never the old one"
-    assert isomorphic(without_bookkeeping(graph), expected), graph_diff(
-        without_bookkeeping(graph), expected
-    )
+    assert_isomorphic(without_bookkeeping(graph), expected)
 
 
 async def test_replacing_with_a_stale_version_is_a_conflict_and_changes_nothing(store, database):
@@ -200,7 +164,7 @@ async def test_replacing_with_a_stale_version_is_a_conflict_and_changes_nothing(
         await session.replace_graph(book(1), title(book(1), "loser"), first)
     after, _, version_after = await session.get_graph(book(1))
     assert version_after == version, "the version did not move"
-    assert isomorphic(after, before), graph_diff(after, before)
+    assert_isomorphic(after, before)
 
 
 async def test_replacing_a_missing_graph_is_not_found(store, database):
@@ -228,9 +192,7 @@ async def test_two_editors_who_read_the_same_version_get_one_commit_and_one_conf
     winning_title = "by ada" if isinstance(outcomes[0], str) else "by ben"
     expected = graph_of(title(book(1), winning_title))
     assert stored == winners[0], "the stored token is the winner's"
-    assert isomorphic(without_bookkeeping(graph), expected), (
-        "the stored book is the winner's, whole"
-    )
+    assert_isomorphic(without_bookkeeping(graph), expected)
     assert len(await registry(store, database)) == 3, "one registry entry, nothing half-written"
 
 
@@ -320,7 +282,7 @@ async def test_the_registry_entry_is_written_replaced_and_removed_with_the_aggre
     assert (entry, v.REGISTRY_KIND, v.REGISTRY_KIND_IRIS["aggregate"]) in after_add, "kind recorded"
     version = await session.replace_graph(book(1), title(book(1), "b"), version)
     after_replace = await registry(store, database)
-    assert isomorphic(after_replace, after_add), "replaced entry equals the first, not duplicated"
+    assert_isomorphic(after_replace, after_add)
     await session.remove(book(1), version)
     assert len(await registry(store, database)) == 0, "the entry goes with the aggregate"
 
@@ -355,7 +317,7 @@ async def test_other_aggregates_are_not_touched_by_a_commit(store, database):
     await session.replace_graph(book(1), title(book(1), "b"), version)
     await session.remove(book(1), (await session.get_graph(book(1)))[2])
     after, _, _ = await session.get_graph(book(2))
-    assert isomorphic(after, neighbour), graph_diff(after, neighbour)
+    assert_isomorphic(after, neighbour)
     assert len(await registry(store, database)) == 3, "the neighbour keeps its entry"
 
 
@@ -416,27 +378,6 @@ async def test_open_session_yields_a_working_session(store, database):
     assert (URIRef(book(1)), TITLE, Literal("via the context manager")) in graph, "stored"
 
 
-@pytest.mark.parametrize("call", ["replace", "remove"])
-async def test_replace_and_remove_cost_the_size_of_the_graphs_not_their_product(
-    store, database, call
-):
-    """50 aggregate triples and a loaded graph of 2000: the cartesian form took tens of seconds."""
-    session = session_for(store, database)
-    loaded = loaded_graph_iri(book(1))
-    root = URIRef(book(1))
-    await store.put_graph(
-        database, loaded, graph_of([(root, TITLE, Literal(i)) for i in range(2000)])
-    )
-    triples = [(root, TITLE, Literal(f"title {i}")) for i in range(50)]
-    version = await session.add_graph(book(1), triples, [loaded])
-    started = time.perf_counter()
-    if call == "replace":
-        await session.replace_graph(book(1), triples, version)
-    else:
-        await session.remove(book(1), version)
-    assert time.perf_counter() - started < 2.0
-
-
 async def test_find_returns_the_aggregate_with_the_value_on_a_real_store(store, database):
     from rdf_persistence.services.listing import Listings
     from rdf_persistence.services.schema import load_schema
@@ -458,4 +399,6 @@ async def test_find_returns_the_aggregate_with_the_value_on_a_real_store(store, 
         await session.add_graph(
             iri, toy_mapper().to_triples(Scan(id=iri, label="scan", file_name=name))
         )
-    assert await session.find(Scan, file_name="a") == [iris[0]]
+    assert await session.find(Scan, file_name="a") == [iris[0]], (
+        "find returns the aggregate with the value"
+    )

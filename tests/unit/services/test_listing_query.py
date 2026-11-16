@@ -191,7 +191,9 @@ async def listed(
 async def test_a_page_holds_the_aggregates_in_order_and_the_total_counts_the_whole_listing(
     shelf, view, policy, params, numbers, total
 ):
-    assert await listed(shelf, view, policy, *params) == (numbers, total)
+    assert await listed(shelf, view, policy, *params) == (numbers, total), (
+        "the page holds the aggregates in order and the total counts the whole listing"
+    )
 
 
 async def test_a_hostile_filter_value_matches_nothing_and_leaves_the_store_unchanged(
@@ -214,7 +216,7 @@ async def test_a_hidden_graph_is_left_out_of_the_page_and_of_the_total(shelf, vi
     assert [root for root, _ in items_of(answer, plan)] == [
         URIRef(policy.book_iri(2)),
         URIRef(policy.book_iri(3)),
-    ]
+    ], "the hidden graph is left out of the page"
     assert total_of(answer, plan) == 4, "the books the caller may not read are not counted either"
 
 
@@ -222,7 +224,7 @@ async def test_another_type_in_the_same_tenant_is_not_listed(shelf, view, policy
     scan = policy.aggregate_iri("scan", "scans", 9)
     stored = Scan(id=scan, label="Dune, scanned", description="A scanned copy.")
     await shelf.add_graph(scan, toy_mapper().to_triples(stored))
-    assert (await listed(shelf, view, policy))[1] == 5
+    assert (await listed(shelf, view, policy))[1] == 5, "the total counts only the listed type"
 
 
 async def test_the_triples_of_a_page_are_split_by_aggregate_with_their_parts(shelf, view, policy):
@@ -232,7 +234,7 @@ async def test_the_triples_of_a_page_are_split_by_aggregate_with_their_parts(she
     await shelf.add_graph(iri, triples)
     plan = Listings(view).plan(view.get_class("Book"), list_request([("label", "Zorro")]))
     items = items_of(await shelf.page(plan), plan)
-    assert [root for root, _ in items] == [URIRef(iri)]
+    assert [root for root, _ in items] == [URIRef(iri)], "the page is split by aggregate"
     chapter = next(o for s, p, o in triples if s == URIRef(iri) and p == CHAPTER)
     assert any(s == chapter for s, _, _ in items[0][1]), "the part travels with its book"
 
@@ -272,7 +274,9 @@ async def test_a_subject_stored_in_two_listed_graphs_goes_to_one_item_only(view)
     plan = Listings(view).plan(view.get_class("Book"), list_request([("label", "Zorro")]))
     items = items_of(await session.page(plan), plan)
     assert len(items) == 2, "both books are listed"
-    assert sum(shared in set(triples.subjects()) for _, triples in items) == 1
+    assert sum(shared in set(triples.subjects()) for _, triples in items) == 1, (
+        "a subject stored in two listed graphs goes to one item only"
+    )
 
 
 def test_the_query_is_one_construct_with_the_total_and_no_value_pasted_in(view):

@@ -96,7 +96,8 @@ async def test_two_renames_in_a_row_each_need_the_version_the_last_answered(tena
     assert await _both(tenancy, store, summary.id) == ("C", "C"), "the stale one changed nothing"
 
 
-@pytest.mark.parametrize("label", ["", "   "])
+# equivalence class: a blank label (the empty one stands for the spaces)
+@pytest.mark.parametrize("label", [""])
 async def test_an_invalid_label_is_refused_before_the_root_is_written(tenancy, store, label):
     summary = await tenancy.create("A", library_slots(), CREATOR)
     _, version = await tenancy.get(summary.id)

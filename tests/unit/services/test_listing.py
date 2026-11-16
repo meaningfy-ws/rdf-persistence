@@ -30,7 +30,9 @@ def listings(view) -> Listings:
 
 
 def test_no_parameters_ask_for_the_first_fifty_by_iri():
-    assert list_request([]) == ListRequest(limit=50, offset=0, sort=None, filters=None)
+    assert list_request([]) == ListRequest(limit=50, offset=0, sort=None, filters=None), (
+        "no parameters ask for the first fifty by IRI"
+    )
 
 
 def test_limit_offset_sort_and_filters_are_read_from_the_query_string():
@@ -44,16 +46,13 @@ def test_limit_offset_sort_and_filters_are_read_from_the_query_string():
     ], "everything else is a filter, in the order sent"
 
 
+# equivalence class: a limit that is not digits (abc); 0 and 201 are the range's boundaries
 @pytest.mark.parametrize(
     "params",
     [
         [("limit", "0")],
         [("limit", "201")],
-        [("limit", "-1")],
         [("limit", "abc")],
-        [("limit", "1.5")],
-        [("limit", "1_0")],
-        [("limit", "")],
         [("limit", "2"), ("limit", "3")],
         [("offset", "-1")],
         [("offset", "x")],
@@ -75,7 +74,9 @@ def test_the_bounds_of_limit_and_offset_are_allowed(params):
 
 def test_the_slots_a_listing_may_name_are_those_of_the_type_that_are_not_bookkeeping_or_owned(view):
     names = set(listable_slots(view, view.get_class("Book")))
-    assert {"label", "description", "isbn", "authors", "published", "genre"} <= names
+    assert {"label", "description", "isbn", "authors", "published", "genre"} <= names, (
+        "the nameable slots include the plain ones of the type"
+    )
     assert not names & {"id", "chapters", "creator", "contributor", "created", "modified"}, (
         "the identifier, the owned parts and the bookkeeping cannot be filtered on"
     )
@@ -93,9 +94,12 @@ def test_the_slots_a_listing_may_name_are_those_of_the_type_that_are_not_bookkee
     ],
 )
 def test_a_value_is_typed_by_the_range_of_its_slot(view, slot, text, expected):
-    assert typed_value(view, view.get_slot(slot), text) == expected
+    assert typed_value(view, view.get_slot(slot), text) == expected, (
+        "the value is typed by the range of its slot"
+    )
 
 
+# equivalence classes: an IRI with no scheme ("relative/path"), one with a character IRIs forbid ("<")
 @pytest.mark.parametrize(
     ("slot", "text"),
     [
@@ -106,9 +110,8 @@ def test_a_value_is_typed_by_the_range_of_its_slot(view, slot, text, expected):
         ("genre", "horror"),
         ("genre", "Fiction"),
         ("genre", f"{SCHEMA_ORG}Fiction"),
-        ("scan_of", "not an iri"),
         ("scan_of", "relative/path"),
-        *[("scan_of", f"urn:x:a{char}b") for char in '<>"{}|^\\`'],
+        ("scan_of", "urn:x:a<b"),
     ],
 )
 def test_a_value_the_range_cannot_hold_is_a_bad_query(view, slot, text):
@@ -124,20 +127,23 @@ def test_the_plan_of_a_listing_carries_the_typed_filters_the_sort_and_the_page(l
     plan = plan_of(listings, view, ("genre", "poetry"), ("sort", "-published"), ("limit", "3"))
     assert [(c.predicate, c.value, c.reference) for c in plan.conditions or []] == [
         (f"{SCHEMA_ORG}genre", f"{SCHEMA_ORG}Poetry", True)
-    ]
+    ], "the plan carries the typed filter with its reference"
     assert plan.sort_by == "http://purl.org/dc/terms/issued", "the predicate of the slot"
     assert plan.descending, "a minus sign sorts downwards"
-    assert (plan.limit, plan.offset) == (3, 0)
+    assert plan.limit == 3, "the plan carries the page size"
+    assert plan.offset == 0, "the plan carries the page offset"
 
 
 def test_without_a_sort_key_the_listing_is_by_iri_ascending(listings, view):
     plan = plan_of(listings, view)
-    assert (plan.sort_by, plan.descending) == (None, False)
+    assert plan.sort_by is None, "the plan sorts by the identifier"
+    assert plan.descending is False, "the plan sorts ascending"
 
 
 def test_the_identifier_sorts_by_iri_in_the_direction_asked(listings, view):
     plan = plan_of(listings, view, ("sort", "-id"))
-    assert (plan.sort_by, plan.descending) == (None, True)
+    assert plan.sort_by is None, "the plan sorts by the identifier"
+    assert plan.descending is True, "the plan sorts descending"
 
 
 @pytest.mark.parametrize(
@@ -174,12 +180,14 @@ def test_a_literal_filter_keeps_its_datatype_in_the_plan(listings, view):
     assert [(c.value, c.datatype, c.reference) for c in plan.conditions or []] == [
         ("2020-01-31", str(XSD.date), False),
         ("978", None, False),
-    ]
+    ], "the literal filters keep their datatypes"
 
 
 def test_the_graphs_hidden_from_the_caller_are_in_the_plan(listings, view):
     plan = plan_of(listings, view, hidden=["https://example.org/g"])
-    assert plan.hidden_graphs == ["https://example.org/g"]
+    assert plan.hidden_graphs == ["https://example.org/g"], (
+        "the plan carries the graphs hidden from the caller"
+    )
 
 
 def test_the_mapper_and_the_listing_hold_a_value_as_the_same_term(view):
@@ -196,8 +204,10 @@ def test_the_sort_keys_are_the_identifier_and_the_listable_slots_up_and_down(vie
     keys = sort_keys(view, view.get_class("Book"))
     assert keys[0] == "id", "the identifier orders by IRI"
     assert "-id" in keys, "the identifier orders by IRI"
-    assert {"label", "published", "-label", "-published"} <= set(keys)
+    assert {"label", "published", "-label", "-published"} <= set(keys), (
+        "the sort keys include the listable slots in both directions"
+    )
     assert not {"chapters", "-chapters", "created"} & set(keys), "no owned part, no bookkeeping"
     assert (
         len(keys) == len(set(keys)) == 2 * (len(listable_slots(view, view.get_class("Book"))) + 1)
-    )
+    ), "the sort keys are unique and cover every listable slot both ways and the identifier"

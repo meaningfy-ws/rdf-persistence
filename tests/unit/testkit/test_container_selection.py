@@ -17,4 +17,4 @@ from rdf_persistence.testkit.markers import containers_for
     ],
 )
 def test_markers_select_containers(markers: list[str], expected: list[str]) -> None:
-    assert containers_for(markers) == expected
+    assert containers_for(markers) == expected, "the markers select the expected containers"

@@ -1,5 +1,6 @@
 """What ``rp-generate`` does with the schema lock and the migration files (task 1.3b, PD-3, PD-4)."""
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -10,14 +11,12 @@ from rdf_persistence.generation.lock_step import _write_draft
 from rdf_persistence.generation.manifest import MANIFEST_NAME
 from rdf_persistence.services.migrations import load_migration
 
-from .conftest import Breaker
+from .conftest import TOY, Breaker
 from .test_lock import (
     BOOK_SLOTS,
     DROP_SHELF,
     ISBN_REQUIRED,
     NEW_PATH,
-    NEW_TYPE,
-    RENAME_ROOT,
     Edits,
 )
 
@@ -88,10 +87,20 @@ def toy(toy_copy: Path, break_toy: Breaker, capsys: pytest.CaptureFixture[str]) 
     return Toy(toy_copy, break_toy, capsys)
 
 
+@pytest.fixture(scope="session")
+def bootstrapped_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """The toy generated once per session at version 1, with its lock written; never changed."""
+    folder = tmp_path_factory.mktemp("bootstrapped") / "library"
+    shutil.copytree(TOY, folder, ignore=shutil.ignore_patterns("__pycache__", "generated"))
+    (folder / "migrations" / LOCK_NAME).unlink(missing_ok=True)
+    assert main(["--project", str(folder / "pyproject.toml")]) == 0, "the toy must generate"
+    return folder
+
+
 @pytest.fixture
-def bootstrapped(toy: Toy) -> Toy:
-    """The toy generated once at version 1: its lock is written."""
-    assert toy.run()[0] == 0, "the toy must generate"
+def bootstrapped(toy: Toy, bootstrapped_template: Path) -> Toy:
+    """The toy generated once at version 1: its lock is written (a copy of the session template)."""
+    shutil.copytree(bootstrapped_template, toy.folder, dirs_exist_ok=True)
     return toy
 
 
@@ -107,6 +116,7 @@ def test_the_first_run_writes_the_lock_and_no_migration(bootstrapped: Toy) -> No
     assert drafts(bootstrapped) == [], "no lock yet is a bootstrap: no migration"
 
 
+@pytest.mark.slow
 def test_the_lock_is_a_manifest_output_and_a_second_run_changes_nothing(bootstrapped: Toy) -> None:
     manifest = (bootstrapped.folder / "generated" / MANIFEST_NAME).read_text("utf-8")
     assert "migrations/schema.lock.json" in manifest, "the lock is listed like a generated file"
@@ -127,6 +137,7 @@ def test_a_hand_edited_lock_is_reported_stale(bootstrapped: Toy) -> None:
 # ---- the rules without a new version (TC-06, TC-05a, TC-09) --------------------------------------
 
 
+@pytest.mark.slow
 def test_a_removed_slot_with_the_version_unchanged_fails_naming_it(bootstrapped: Toy) -> None:
     """TC-06"""
     bootstrapped.edit(DROP_SHELF)
@@ -143,12 +154,12 @@ def test_a_removed_slot_with_the_version_unchanged_fails_naming_it(bootstrapped:
 @pytest.mark.parametrize(
     ("edits", "word"),
     [
+        # one change kind: lock_step reads only the NOT_MIGRATABLE rule, test_lock classifies the kinds
         pytest.param(NEW_PATH, "IRI type or path", id="path"),
-        pytest.param(NEW_TYPE, "IRI type or path", id="iri-type"),
-        pytest.param(RENAME_ROOT, "IRI type or path", id="renamed-root"),
     ],
 )
 @pytest.mark.parametrize("version", [(), VERSION_2], ids=["same-version", "new-version"])
+@pytest.mark.slow
 def test_a_change_that_cannot_be_migrated_fails_with_any_version(
     bootstrapped: Toy, edits: Edits, word: str, version: Edits
 ) -> None:
@@ -163,6 +174,7 @@ def test_a_change_that_cannot_be_migrated_fails_with_any_version(
 
 
 @pytest.mark.parametrize("version", [(), VERSION_2], ids=["same-version", "new-version"])
+@pytest.mark.slow
 def test_a_slot_that_was_inlined_when_the_lock_was_written_is_not_migratable(
     bootstrapped: Toy, version: Edits
 ) -> None:
@@ -179,6 +191,7 @@ def test_a_slot_that_was_inlined_when_the_lock_was_written_is_not_migratable(
     assert drafts(bootstrapped) == [], "nothing is drafted for a change no step can do"
 
 
+@pytest.mark.slow
 def test_safe_changes_with_the_version_unchanged_rewrite_the_lock_only(bootstrapped: Toy) -> None:
     """TC-09"""
     bootstrapped.edit(ADD_SUBTITLE)
@@ -190,6 +203,7 @@ def test_safe_changes_with_the_version_unchanged_rewrite_the_lock_only(bootstrap
     assert drafts(bootstrapped) == [], "no new version, no migration"
 
 
+@pytest.mark.slow
 def test_safe_changes_with_a_new_version_draft_a_migration_with_no_steps(
     bootstrapped: Toy,
 ) -> None:
@@ -203,6 +217,7 @@ def test_safe_changes_with_a_new_version_draft_a_migration_with_no_steps(
     assert migration.steps == [], "a safe change needs no step"
 
 
+@pytest.mark.slow
 def test_a_raised_version_with_no_change_drafts_a_migration_with_no_steps(
     bootstrapped: Toy,
 ) -> None:
@@ -216,6 +231,7 @@ def test_a_raised_version_with_no_change_drafts_a_migration_with_no_steps(
 # ---- the draft (TC-07, TC-08, TC-13) -------------------------------------------------------------
 
 
+@pytest.mark.slow
 def test_a_removed_slot_with_a_new_version_drafts_a_drop_and_prints_where(
     bootstrapped: Toy,
 ) -> None:
@@ -235,6 +251,7 @@ def test_a_removed_slot_with_a_new_version_drafts_a_drop_and_prints_where(
     bootstrapped.passes("--check")
 
 
+@pytest.mark.slow
 def test_an_edited_draft_is_kept_byte_for_byte(bootstrapped: Toy) -> None:
     """TC-08"""
     bootstrapped.edit((*DROP_SHELF, *VERSION_2))
@@ -249,6 +266,7 @@ def test_an_edited_draft_is_kept_byte_for_byte(bootstrapped: Toy) -> None:
     bootstrapped.passes("--check")
 
 
+@pytest.mark.slow
 def test_a_version_with_a_slash_is_written_with_an_underscore_in_the_file_name(
     toy: Toy,
 ) -> None:
@@ -265,6 +283,7 @@ def test_a_version_with_a_slash_is_written_with_an_underscore_in_the_file_name(
 # ---- an unresolved draft (TC-09a) and a file that does not load ----------------------------------
 
 
+@pytest.mark.slow
 def test_an_unresolved_draft_succeeds_once_then_fails_the_next_run_and_the_check(
     bootstrapped: Toy,
 ) -> None:
@@ -312,6 +331,7 @@ def test_a_run_that_fails_earlier_writes_no_draft(bootstrapped: Toy) -> None:
 # ---- the refusals of PD-3's last row (TC-14) -----------------------------------------------------
 
 
+@pytest.mark.slow
 def test_a_version_the_chain_already_left_is_refused(bootstrapped: Toy) -> None:
     """TC-14"""
     bootstrapped.edit(VERSION_2)

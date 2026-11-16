@@ -124,13 +124,13 @@ async def test_find_by_email_returns_the_account_with_its_roles_in_the_project()
         {USERS: users(human()), GRANTS: grants(grant("g1", "u1", "admin", "auditor"))}
     )
     account = await client.find_by_email("ann@example.org")
-    assert (account.account_id, account.user_name, account.email) == (
-        "u1",
-        "ann@example.org",
-        "ann@example.org",
-    )
+    assert account.account_id == "u1", "the account carries the server's id"
+    assert account.user_name == "ann@example.org", "the account carries its user name"
+    assert account.email == "ann@example.org", "the account carries its email"
     assert account.active is True, "active"
-    assert account.global_roles == ["admin", "auditor"]
+    assert account.global_roles == ["admin", "auditor"], (
+        "the account carries the roles granted in the project"
+    )
     grant_queries = recorder.body(1)["queries"]
     assert {"projectIdQuery": {"projectId": PROJECT}} in grant_queries, "this project's grants only"
     assert {"userIdQuery": {"userId": "u1"}} in grant_queries, "this account's grants only"
@@ -144,16 +144,17 @@ async def test_find_by_email_with_no_match_is_not_found():
 
 @pytest.mark.parametrize(
     ("state", "active"),
+    # One class: `state == ACTIVE_STATE`; INACTIVE stands for every non-active state.
     [
         ("USER_STATE_ACTIVE", True),
         ("USER_STATE_INACTIVE", False),
-        ("USER_STATE_LOCKED", False),
-        ("USER_STATE_INITIAL", False),
     ],
 )
 async def test_only_an_active_user_is_an_active_account(state, active):
     client, _ = identity_answering({USERS: users(human(state=state)), GRANTS: grants()})
-    assert (await client.find_by_email("ann@example.org")).active is active
+    assert (await client.find_by_email("ann@example.org")).active is active, (
+        "an account is active only when its user is active"
+    )
 
 
 async def test_list_accounts_joins_each_account_with_its_roles_and_has_no_email_for_a_service_account():
@@ -164,8 +165,10 @@ async def test_list_accounts_joins_each_account_with_its_roles_and_has_no_email_
     assert [(a.user_name, a.email, a.global_roles) for a in accounts] == [
         ("ann@example.org", "ann@example.org", None),
         ("bot", None, ["admin"]),
-    ]
-    assert recorder.calls() == ["POST /v2/users", "POST /management/v1/users/grants/_search"]
+    ], "each account is joined to its roles and a service account has no email"
+    assert recorder.calls() == ["POST /v2/users", "POST /management/v1/users/grants/_search"], (
+        "the roles are fetched with one search for all accounts"
+    )
 
 
 async def test_list_accounts_reads_every_page():
@@ -225,8 +228,12 @@ async def test_the_first_global_role_creates_the_project_grant():
         {USER_1: user_answer(), GRANTS: grants(), USER_1_GRANTS: answer()}
     )
     await client.grant_global_role("u1", "admin")
-    assert recorder.calls()[-1] == "POST /management/v1/users/u1/grants"
-    assert recorder.body(-1) == {"projectId": PROJECT, "roleKeys": ["admin"]}
+    assert recorder.calls()[-1] == "POST /management/v1/users/u1/grants", (
+        "the first role creates a project grant"
+    )
+    assert recorder.body(-1) == {"projectId": PROJECT, "roleKeys": ["admin"]}, (
+        "the grant names the project and the role"
+    )
 
 
 async def test_another_global_role_extends_the_existing_grant():
@@ -234,7 +241,9 @@ async def test_another_global_role_extends_the_existing_grant():
         {USER_1: user_answer(), GRANTS: grants(grant("g1", "u1", "admin")), GRANT_G1: answer()}
     )
     await client.grant_global_role("u1", "auditor")
-    assert recorder.body(-1) == {"roleKeys": ["admin", "auditor"]}
+    assert recorder.body(-1) == {"roleKeys": ["admin", "auditor"]}, (
+        "another role extends the existing grant"
+    )
 
 
 async def test_granting_a_role_the_account_holds_changes_nothing():
@@ -263,7 +272,9 @@ async def test_removing_one_of_several_roles_keeps_the_others():
         }
     )
     await client.remove_global_role("u1", "admin")
-    assert recorder.body(-1) == {"roleKeys": ["auditor"]}
+    assert recorder.body(-1) == {"roleKeys": ["auditor"]}, (
+        "removing one of several roles keeps the others"
+    )
 
 
 async def test_removing_the_last_role_deletes_the_grant():
@@ -271,7 +282,9 @@ async def test_removing_the_last_role_deletes_the_grant():
         {USER_1: user_answer(), GRANTS: grants(grant("g1", "u1", "admin")), GRANT_G1_GONE: answer()}
     )
     await client.remove_global_role("u1", "admin")
-    assert recorder.calls()[-1] == "DELETE /management/v1/users/u1/grants/g1"
+    assert recorder.calls()[-1] == "DELETE /management/v1/users/u1/grants/g1", (
+        "removing the last role deletes the grant"
+    )
 
 
 @pytest.mark.parametrize("held", [(), ("auditor",)], ids=["no grant", "other role only"])
@@ -291,11 +304,10 @@ async def test_a_role_change_on_an_unknown_account_is_not_found(method):
 
 @pytest.mark.parametrize(
     ("method", "action", "state"),
+    # One class (`state != wanted`) per direction, since each direction has its own wanted state.
     [
         ("disable", "deactivate", "USER_STATE_ACTIVE"),
-        ("disable", "deactivate", "USER_STATE_LOCKED"),
         ("enable", "reactivate", "USER_STATE_INACTIVE"),
-        ("enable", "reactivate", "USER_STATE_LOCKED"),
     ],
 )
 async def test_a_refused_state_change_that_left_another_state_fails(method, action, state):
@@ -366,7 +378,9 @@ async def test_the_listing_of_an_account_ignores_the_grants_of_others():
     client, _ = identity_answering(
         {USERS: users(human()), GRANTS: grants(grant("g9", "victim", "admin"))}
     )
-    assert (await client.find_by_email("ann@example.org")).global_roles is None
+    assert (await client.find_by_email("ann@example.org")).global_roles is None, (
+        "the grants of other users are ignored"
+    )
 
 
 # --- what stays out of messages and logs ------------------------------------
@@ -402,7 +416,8 @@ CALLS = {
 
 
 @pytest.mark.parametrize("method", CALLS)
-@pytest.mark.parametrize("status", [500, 502, 503, 401, 403])
+# One class (the `not response.is_success` branch of _send); 500 and 401 are the two the name gives.
+@pytest.mark.parametrize("status", [500, 401])
 async def test_a_server_error_or_a_refused_service_token_is_identity_unavailable(method, status):
     transport = httpx.MockTransport(lambda request: answer(status=status))
     client = ZitadelIdentity(ISSUER, "t", ORG, PROJECT, transport=transport)

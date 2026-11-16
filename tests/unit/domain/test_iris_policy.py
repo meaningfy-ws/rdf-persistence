@@ -72,17 +72,27 @@ def test_a_default_policy_mints_todays_shapes(default):
     assert re.fullmatch(f"{re.escape(BASE)}projects/{UUID_RE}", tenant), tenant
     root = default.mint_aggregate(tenant, "", "files")
     assert re.fullmatch(f"{re.escape(tenant)}/files/{UUID_RE}", root), root
-    assert re.fullmatch(f"{re.escape(root)}/parts/{UUID_RE}", default.mint_part(tenant, root, ""))
+    assert re.fullmatch(
+        f"{re.escape(root)}/parts/{UUID_RE}", default.mint_part(tenant, root, "")
+    ), "the default part IRI is the root plus parts plus a uuid"
     assert re.fullmatch(
         f"{re.escape(root)}/content/{UUID_RE}", default.mint_loaded_graph(tenant, root)
-    )
+    ), "the default loaded graph IRI is the root plus content plus a uuid"
 
 
 def test_a_default_policy_names_the_tenant_graphs_and_resource_as_today(default):
-    assert default.access(DEFAULT_TENANT) == URIRef(f"{DEFAULT_TENANT}/access")
-    assert default.meta(DEFAULT_TENANT) == URIRef(f"{DEFAULT_TENANT}/meta")
-    assert default.registry(DEFAULT_TENANT) == URIRef(f"{DEFAULT_TENANT}/registry")
-    assert default.resource_name(DEFAULT_TENANT) == "mwb-t-12345678123442348234123456789abc"
+    assert default.access(DEFAULT_TENANT) == URIRef(f"{DEFAULT_TENANT}/access"), (
+        "the default access record hangs under the tenant"
+    )
+    assert default.meta(DEFAULT_TENANT) == URIRef(f"{DEFAULT_TENANT}/meta"), (
+        "the default meta graph hangs under the tenant"
+    )
+    assert default.registry(DEFAULT_TENANT) == URIRef(f"{DEFAULT_TENANT}/registry"), (
+        "the default registry graph hangs under the tenant"
+    )
+    assert default.resource_name(DEFAULT_TENANT) == "mwb-t-12345678123442348234123456789abc", (
+        "the default resource name is the deployment, tenant marker and hex id"
+    )
 
 
 def test_the_provenance_graph_is_minted_and_is_not_an_aggregate_or_a_loaded_graph(default):
@@ -118,16 +128,22 @@ def test_a_default_policy_accepts_the_tenant_its_access_record_and_minted_roots(
 def test_a_principal_is_the_issuer_and_the_subject_in_one_segment(default):
     assert default.principal("https://id.example.org/", "a/b c") == URIRef(
         "https://id.example.org/users/a%2Fb%20c"
-    )
+    ), "a principal is the issuer and an encoded subject in one segment"
 
 
 # --- the consumer's policy (proposal table) -----------------------------------------------------
 
 
 def test_the_consumers_tenant_is_the_project_path_and_a_short_id(consumer):
-    assert re.fullmatch(f"{re.escape(BASE)}project/[a-z0-9]{{7}}", consumer.mint_tenant())
-    assert consumer.tenant("p4x8k2m") == URIRef(TENANT)
-    assert consumer.tenant_id_of(TENANT) == "p4x8k2m"
+    assert re.fullmatch(f"{re.escape(BASE)}project/[a-z0-9]{{7}}", consumer.mint_tenant()), (
+        "the consumer's minted tenant is the project path and a short id"
+    )
+    assert consumer.tenant("p4x8k2m") == URIRef(TENANT), (
+        "the consumer's tenant IRI is the project path and its id"
+    )
+    assert consumer.tenant_id_of(TENANT) == "p4x8k2m", (
+        "the tenant id is read back from the tenant IRI"
+    )
 
 
 def test_a_flat_object_is_not_nested_under_another(consumer):
@@ -136,9 +152,15 @@ def test_a_flat_object_is_not_nested_under_another(consumer):
     root = iris.mint_aggregate(TENANT, "ontology-file", "files")
     part = iris.mint_part(TENANT, root, "term")
     loaded = iris.mint_loaded_graph(TENANT, root)
-    assert root == URIRef(f"{BASE}p4x8k2m/ontology-file/a8f3k29dm4x1q")
-    assert part == URIRef(f"{BASE}p4x8k2m/term/b8f3k29dm4x1q")
-    assert loaded == URIRef(f"{BASE}p4x8k2m/content/c8f3k29dm4x1q")
+    assert root == URIRef(f"{BASE}p4x8k2m/ontology-file/a8f3k29dm4x1q"), (
+        "a flat root is not nested under another object"
+    )
+    assert part == URIRef(f"{BASE}p4x8k2m/term/b8f3k29dm4x1q"), (
+        "a flat part is not nested under another object"
+    )
+    assert loaded == URIRef(f"{BASE}p4x8k2m/content/c8f3k29dm4x1q"), (
+        "a flat loaded graph is not nested under another object"
+    )
 
 
 def test_parts_are_nested_under_their_root_only_when_the_part_template_starts_with_it(
@@ -151,7 +173,9 @@ def test_parts_are_nested_under_their_root_only_when_the_part_template_starts_wi
 def test_the_api_path_does_not_enter_the_iri(consumer):
     first = consumer.mint_aggregate(TENANT, "ontology-file", "files")
     second = consumer.mint_aggregate(TENANT, "ontology-file", "ontology-files")
-    assert first.split("/")[-2] == second.split("/")[-2] == "ontology-file"
+    assert first.split("/")[-2] == second.split("/")[-2] == "ontology-file", (
+        "the API path does not enter the aggregate IRI"
+    )
 
 
 def test_ids_have_the_configured_length_and_alphabet(consumer):
@@ -175,7 +199,9 @@ def test_a_type_the_deployment_or_a_layout_word_is_never_an_id(reserved):
         OWNED_TYPES,
         _scripted(reserved, "a8f3k29dm4x1q"),
     )
-    assert iris.mint_aggregate(TENANT, "ontology-file", "files").endswith("/a8f3k29dm4x1q")
+    assert iris.mint_aggregate(TENANT, "ontology-file", "files").endswith("/a8f3k29dm4x1q"), (
+        "a type the deployment or a layout word names is never an id"
+    )
 
 
 # --- only what the policy would mint is accepted ------------------------------------------------
@@ -216,8 +242,12 @@ def test_a_loaded_graph_is_only_what_the_policy_mints(consumer, iri, accepted):
 def test_a_nested_loaded_graph_belongs_to_the_named_root(default):
     root = default.mint_aggregate(DEFAULT_TENANT, "", "files")
     graph = default.mint_loaded_graph(DEFAULT_TENANT, root)
-    assert default.is_loaded_graph(DEFAULT_TENANT, graph)
-    assert default.is_loaded_graph(DEFAULT_TENANT, graph, root)
+    assert default.is_loaded_graph(DEFAULT_TENANT, graph), (
+        "a nested loaded graph belongs to its tenant"
+    )
+    assert default.is_loaded_graph(DEFAULT_TENANT, graph, root), (
+        "a nested loaded graph belongs to the named root"
+    )
     assert not default.is_loaded_graph(
         DEFAULT_TENANT, graph, default.mint_aggregate(DEFAULT_TENANT, "", "files")
     ), "another aggregate's graph"
@@ -232,11 +262,15 @@ def test_a_nested_loaded_graph_belongs_to_the_named_root(default):
     ],
 )
 def test_an_aggregate_graph_is_the_graph_of_a_tenants_aggregate(consumer, suffix, accepted):
-    assert consumer.is_aggregate_graph(TENANT, f"{BASE}p4x8k2m/{suffix}") is accepted
+    assert consumer.is_aggregate_graph(TENANT, f"{BASE}p4x8k2m/{suffix}") is accepted, (
+        "an aggregate graph is accepted exactly when the suffix is a tenant aggregate's graph"
+    )
 
 
 def test_the_tenant_root_has_no_aggregate_graph_of_its_own(consumer):
-    assert not consumer.is_aggregate_graph(TENANT, f"{TENANT}/graph")
+    assert not consumer.is_aggregate_graph(TENANT, f"{TENANT}/graph"), (
+        "the tenant root has no aggregate graph of its own"
+    )
 
 
 # --- path ids and malformed IRIs ----------------------------------------------------------------
@@ -256,7 +290,7 @@ def test_an_aggregate_path_id_of_the_wrong_form_is_not_found(consumer):
 def test_an_aggregate_path_id_of_the_right_form_gives_its_iri(consumer):
     assert consumer.aggregate(TENANT, "ontology-file", "files", "a8f3k29dm4x1q") == URIRef(
         f"{BASE}p4x8k2m/ontology-file/a8f3k29dm4x1q"
-    )
+    ), "a path id of the right form gives the aggregate IRI"
 
 
 @pytest.mark.parametrize("iri", [f"{BASE}project/P4X8K2M", f"{BASE}projects/p4x8k2m", "nope", ""])
@@ -284,12 +318,18 @@ def test_the_tenant_of_an_access_record_comes_back_through_the_templates():
     policy = _consumer_policy(access_template="{base}{deployment}/project/{tenant_id}")
     iris = Iris(_settings(policy, deployment="k3f9a2x"))
     access = iris.access(TENANT)
-    assert access == URIRef(f"{BASE}k3f9a2x/project/p4x8k2m")
-    assert iris.tenant_of_access(access) == URIRef(TENANT)
+    assert access == URIRef(f"{BASE}k3f9a2x/project/p4x8k2m"), (
+        "the access record is built through the templates"
+    )
+    assert iris.tenant_of_access(access) == URIRef(TENANT), (
+        "the tenant comes back from the access record through the templates"
+    )
 
 
 def test_the_tenant_of_a_default_access_record_is_the_iri_above_it(default):
-    assert default.tenant_of_access(f"{DEFAULT_TENANT}/access") == URIRef(DEFAULT_TENANT)
+    assert default.tenant_of_access(f"{DEFAULT_TENANT}/access") == URIRef(DEFAULT_TENANT), (
+        "the tenant comes back from a default access record"
+    )
 
 
 @pytest.mark.parametrize(
@@ -301,11 +341,15 @@ def test_an_iri_that_is_not_an_access_record_has_no_tenant(default, iri):
 
 
 def test_a_short_tenant_id_names_the_database_and_bucket(consumer):
-    assert consumer.resource_name(TENANT) == "mwb-t-p4x8k2m"
+    assert consumer.resource_name(TENANT) == "mwb-t-p4x8k2m", (
+        "a short tenant id names the database and bucket"
+    )
 
 
 def test_a_uuid_tenant_id_names_them_by_its_hex(default):
-    assert default.resource_name(DEFAULT_TENANT) == "mwb-t-12345678123442348234123456789abc"
+    assert default.resource_name(DEFAULT_TENANT) == "mwb-t-12345678123442348234123456789abc", (
+        "a uuid tenant id names them by its hex"
+    )
 
 
 @pytest.mark.parametrize(
@@ -331,10 +375,6 @@ def test_a_uriref_and_a_str_of_one_iri_are_checked_alike(consumer):
     assert consumer.is_aggregate(URIRef(TENANT), URIRef(iri)), "URIRef arguments"
     assert consumer.is_aggregate(TENANT, iri), "str arguments"
     assert consumer.is_aggregate(URIRef(TENANT), URIRef(TENANT)), "the tenant root as URIRefs"
-
-
-def test_the_patterns_are_compiled_once_per_iris(consumer):
-    assert consumer._aggregate_re is consumer._aggregate_re, "a cached pattern"
 
 
 def test_an_iris_is_frozen(consumer):

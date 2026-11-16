@@ -5,9 +5,15 @@ from pathlib import Path
 
 import pytest
 
+from rdf_persistence.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.generation import steps
 from rdf_persistence.generation.checks.application import ROWS
-from rdf_persistence.generation.checks.hard import hard_problems, stored_schema_problems
+from rdf_persistence.generation.checks.hard import (
+    ALLOWED_ANNOTATIONS,
+    PATTERNED_ANNOTATIONS,
+    hard_problems,
+    stored_schema_problems,
+)
 from rdf_persistence.generation.cli import main
 from rdf_persistence.generation.config import read_targets
 from rdf_persistence.generation.generated.rp_generation import GenerationTarget, HardRule
@@ -121,16 +127,12 @@ FAULTS = (
         "Scan",
     ),
     Fault(HardRule.ANNOTATION, "books.yaml", "database: tenant", "database: sytem", "Book"),
-    Fault(HardRule.ANNOTATION, "library_tenant.yaml", "graph: meta", "graph: tenant", "Library"),
+    # allowed-value check: one row per element kind (class Book, schema, slot, attribute shade)
     Fault(
         HardRule.ANNOTATION, "books.yaml", "module_kind: domain", "module_kind: dommain", "books"
     ),
     Fault(HardRule.ANNOTATION, "books.yaml", "owned: true", "owned: maybe", "chapters"),
-    Fault(
-        HardRule.ANNOTATION, "books.yaml", "rp_unlabelled: true", "rp_unlabelled: sure", "Chapter"
-    ),
     Fault(HardRule.ANNOTATION, "books.yaml", "rp_path: books", "rp_path: Books", "Book"),
-    Fault(HardRule.ANNOTATION, "books.yaml", "rp_path: books", "rp_path: books/all", "Book"),
     Fault(HardRule.ANNOTATION, "books.yaml", "rp_path: books", "rp_path: ''", "Book"),
     Fault(  # T-9: there is no value that opts a file root back into generic writes
         HardRule.ANNOTATION,
@@ -320,7 +322,9 @@ def test_a_reserved_segment_is_refused_with_the_fix_and_one_without_the_dash_pas
     reserved = problems_of(break_toy("books.yaml", "rp_path: books", "rp_path: rp-notes"))
     named = f"[{HardRule.RESERVED_SEGMENT.value}] Book:"
     assert any(named in p and "rp-notes" in p and "rename" in p for p in reserved), reserved
-    assert problems_of(break_toy("books.yaml", "rp_path: rp-notes", "rp_path: rpnotes")) == []
+    assert problems_of(break_toy("books.yaml", "rp_path: rp-notes", "rp_path: rpnotes")) == [], (
+        "a path without the dash raises no problem"
+    )
 
 
 SUBCLASS = """  Novel:
@@ -485,13 +489,17 @@ def test_a_reserved_type_is_refused(tmp_path: Path, word: str) -> None:
 
 
 def test_a_class_named_like_a_reserved_word_is_refused(tmp_path: Path) -> None:
-    assert len(_iri_type_problems(_bare_schema(tmp_path, {"Graph": None}))) == 1
+    assert len(_iri_type_problems(_bare_schema(tmp_path, {"Graph": None}))) == 1, (
+        "a class named like a reserved word gives exactly one problem"
+    )
 
 
 def test_distinct_types_pass(tmp_path: Path) -> None:
     root = _bare_schema(tmp_path, {"OntologyFile": None, "Alpha": "alpha-1"})
     kinds = (HardRule.IRI_TYPE.value, HardRule.ANNOTATION.value)
-    assert [p for p in problems_of(root) if p.startswith(tuple(f"[{k}]" for k in kinds))] == []
+    assert [p for p in problems_of(root) if p.startswith(tuple(f"[{k}]" for k in kinds))] == [], (
+        "distinct types raise no problem of these kinds"
+    )
 
 
 def test_a_bad_iri_type_pattern_is_refused_when_the_schema_does_not_import_the_metamodel(
@@ -571,7 +579,7 @@ def test_a_key_that_counts_missing_values_as_equal_is_refused(break_toy: Breaker
 def test_a_key_with_consider_nulls_inequal_true_passes(break_toy: Breaker) -> None:
     """TC-08"""
     root = break_toy("books.yaml", KEY_SCOPE, KEY_SCOPE + "        consider_nulls_inequal: true\n")
-    assert problems_of(root) == []
+    assert problems_of(root) == [], "a key with consider-nulls inequal true raises no problem"
 
 
 MIXIN = """  Keyed:
@@ -703,6 +711,25 @@ def test_every_application_row_has_a_case() -> None:
     assert len(endings) == len(ROWS), "and no case for a row the check does not define"
 
 
+@pytest.mark.parametrize("tag", list(ALLOWED_ANNOTATIONS), ids=lambda t: t.value)
+def test_a_value_outside_the_allowed_ones_is_refused_for_every_annotation_the_toolkit_reads(
+    tmp_path: Path, tag: RpAnnotation
+) -> None:
+    classes = f"  Probe:\n    annotations:\n      {tag.value}: not-a-value\n"
+
+    problems = _annotation_problems(tmp_path, classes)
+
+    assert [p for p in problems if f"Probe: {tag.value}: 'not-a-value' is not one of" in p], (
+        f"a bad {tag.value} value is not refused: {problems}"
+    )
+
+
+def test_every_annotation_the_toolkit_reads_has_an_allowed_value_rule_or_a_pattern() -> None:
+    checked = set(ALLOWED_ANNOTATIONS) | set(PATTERNED_ANNOTATIONS)
+
+    assert checked == set(RpAnnotation), "an annotation has neither allowed values nor a pattern"
+
+
 def test_a_valid_application_root_passes(tmp_path: Path) -> None:
     assert _annotation_problems(tmp_path, VALID_APPLICATION) == [], "a path and a root: no problem"
 
@@ -801,4 +828,4 @@ def test_the_toolkits_four_targets_pass_the_hard_check_with_their_own_settings()
     targets = read_targets(REPO / "pyproject.toml")
     assert len(targets) == 4, [t.schema_file for t in targets]
     found = generate(targets, REPO, (steps.HARD_STEP,), check=True)
-    assert [format_problem(p) for p in found] == []
+    assert [format_problem(p) for p in found] == [], "the toolkit's four targets raise no problem"

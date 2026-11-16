@@ -28,13 +28,17 @@ async def test_a_role_the_fake_does_not_know_is_not_found_when_it_is_given_its_r
 
 async def test_the_fake_accepts_any_role_when_it_is_not_given_roles(identity):
     await identity.grant_global_role("1", "anything")
-    assert (await identity.find_by_email("ann@example.org")).global_roles == ["anything"]
+    assert (await identity.find_by_email("ann@example.org")).global_roles == ["anything"], (
+        "the fake accepts any role when it is not given roles"
+    )
 
 
 async def test_the_last_role_removed_leaves_none_not_an_empty_list(identity):
     await identity.grant_global_role("1", "admin")
     await identity.remove_global_role("1", "admin")
-    assert (await identity.find_by_email("ann@example.org")).global_roles is None
+    assert (await identity.find_by_email("ann@example.org")).global_roles is None, (
+        "the last role removed leaves none"
+    )
 
 
 @pytest.fixture
@@ -43,7 +47,9 @@ def identity(no_network) -> FakeIdentity:  # noqa: F811
 
 
 async def test_an_account_is_found_by_its_exact_email(identity):
-    assert (await identity.find_by_email("ann@example.org")).account_id == "1"
+    assert (await identity.find_by_email("ann@example.org")).account_id == "1", (
+        "an account is found by its exact email"
+    )
 
 
 @pytest.mark.parametrize("email", ["ANN@example.org", "ann@example", "", "bot"])
@@ -53,7 +59,9 @@ async def test_no_account_answers_to_an_email_that_is_not_exact(identity, email)
 
 
 async def test_accounts_are_listed_in_the_order_they_were_added(identity):
-    assert [a.user_name for a in await identity.list_accounts()] == ["ann", "bot"]
+    assert [a.user_name for a in await identity.list_accounts()] == ["ann", "bot"], (
+        "accounts are listed in the order they were added"
+    )
 
 
 async def test_a_disabled_account_is_inactive_until_it_is_enabled(identity):
@@ -66,7 +74,9 @@ async def test_a_disabled_account_is_inactive_until_it_is_enabled(identity):
 async def test_disabling_twice_is_harmless(identity):
     await identity.disable("1")
     await identity.disable("1")
-    assert [a.active for a in await identity.list_accounts()] == [False, True]
+    assert [a.active for a in await identity.list_accounts()] == [False, True], (
+        "disabling twice changes nothing more"
+    )
 
 
 @pytest.mark.parametrize("operation", ["disable", "enable"])
@@ -78,14 +88,18 @@ async def test_disabling_or_enabling_an_unknown_account_is_not_found(identity, o
 async def test_a_global_role_is_granted_once_and_removed(identity):
     await identity.grant_global_role("1", "admin")
     await identity.grant_global_role("1", "admin")
-    assert (await identity.find_by_email("ann@example.org")).global_roles == ["admin"]
+    assert (await identity.find_by_email("ann@example.org")).global_roles == ["admin"], (
+        "a granted role is held once"
+    )
     await identity.remove_global_role("1", "admin")
     assert not (await identity.find_by_email("ann@example.org")).global_roles, "role removed"
 
 
 async def test_removing_a_role_the_account_lacks_changes_nothing(identity):
     await identity.remove_global_role("1", "admin")
-    assert [a.global_roles for a in await identity.list_accounts()] == [None, ["admin"]]
+    assert [a.global_roles for a in await identity.list_accounts()] == [None, ["admin"]], (
+        "removing a role the account lacks changes nothing"
+    )
 
 
 @pytest.mark.parametrize("operation", ["grant_global_role", "remove_global_role"])
@@ -105,13 +119,17 @@ async def test_an_injected_error_is_raised_once_and_sent_records_the_failed_call
     with pytest.raises(IdentityUnavailable):
         await identity.disable("1")
     await identity.disable("1")
-    assert identity.sent("disable") == ["1", "1"]
+    assert identity.sent("disable") == ["1", "1"], (
+        "the failed call is recorded along with the others"
+    )
     assert identity.sent("grant_global_role") == [], "other operations are untouched"
 
 
 async def test_the_role_operations_record_the_account_and_the_role(identity):
     await identity.grant_global_role("1", "admin")
-    assert identity.sent("grant_global_role") == ["1 admin"]
+    assert identity.sent("grant_global_role") == ["1 admin"], (
+        "a role operation records the account and the role"
+    )
 
 
 @pytest.mark.parametrize("call", ["on", "sent"])
@@ -137,5 +155,5 @@ async def test_an_error_message_names_no_email_and_no_account_id(identity):
         await identity.find_by_email(secret)
     with pytest.raises(NotFound) as by_id:
         await identity.disable("acct-secret-1")
-    assert secret not in str(by_email.value)
-    assert "acct-secret-1" not in str(by_id.value)
+    assert secret not in str(by_email.value), "an error message names no email"
+    assert "acct-secret-1" not in str(by_id.value), "an error message names no account id"

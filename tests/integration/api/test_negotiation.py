@@ -3,14 +3,13 @@
 import httpx
 from pyld import jsonld
 from rdflib import Graph
-from rdflib.compare import graph_diff, isomorphic
 
-from rdf_persistence import Problem
 from rdf_persistence.domain.iris import graph_iri
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.testkit import assert_isomorphic
 from tests.integration.api.conftest import make_book
-from tests.toy_service import ToyService, principal_of
+from tests.toy_service import ToyService, assert_problem, principal_of
 
 
 def triples_of(toy: ToyService, response: httpx.Response, media_type: str) -> Graph:
@@ -38,10 +37,7 @@ async def test_the_same_book_is_described_by_the_same_triples_in_json_json_ld_an
         )
         graphs[media_type] = triples_of(toy, response, media_type)
     for media_type in (JSON_LD, TURTLE):
-        only_json, only_other = graph_diff(graphs[JSON], graphs[media_type])[1:]
-        assert isomorphic(graphs[JSON], graphs[media_type]), (
-            f"JSON and {media_type} differ; only JSON: {sorted(only_json)}; only {media_type}: {sorted(only_other)}"
-        )
+        assert_isomorphic(graphs[JSON], graphs[media_type])
 
 
 async def test_the_triples_served_are_the_triples_stored(toy, client) -> None:
@@ -57,16 +53,14 @@ async def test_the_triples_served_are_the_triples_stored(toy, client) -> None:
     served = await client.get(
         created.headers["location"], headers={**toy.bearer("ada"), "Accept": TURTLE}
     )
-    assert isomorphic(content, Graph().parse(data=served.text, format="turtle")), (
-        "what the store holds, less its bookkeeping, is what a reader gets"
-    )
+    assert_isomorphic(content, Graph().parse(data=served.text, format="turtle"))
 
 
 async def test_an_accept_the_service_cannot_meet_is_a_406_problem(toy, client) -> None:
     book = (await make_book(toy, client)).headers["location"]
     response = await client.get(book, headers={**toy.bearer("ada"), "Accept": "application/xml"})
-    assert response.status_code == 406, response.text
-    assert Problem.model_validate(response.json()).title == "Not acceptable", "the fixed title"
+    problem = assert_problem(response, 406, "not-acceptable")
+    assert problem.title == "Not acceptable", "the fixed title"
 
 
 async def test_a_body_the_service_cannot_read_is_a_415_problem(toy, client) -> None:
@@ -76,4 +70,4 @@ async def test_a_body_the_service_cannot_read_is_a_415_problem(toy, client) -> N
         content="<book/>",
         headers={**toy.bearer("ada"), "Content-Type": "application/xml"},
     )
-    assert response.status_code == 415, response.text
+    assert_problem(response, 415, "unsupported-media-type")

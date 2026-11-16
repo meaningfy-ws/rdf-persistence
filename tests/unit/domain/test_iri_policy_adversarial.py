@@ -16,7 +16,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.domain.iris import LAYOUT_WORDS, Iris
+from rdf_persistence.domain.iris import Iris
 
 BASE = "http://mwb.meaningfy.ws/"
 FLAT = "{base}{tenant_id}/{type}/{id}"
@@ -71,13 +71,23 @@ OBJECT_ID = "a8f3k29dm4x1q"
 def test_ids_at_the_ends_of_the_allowed_length_round_trip_through_every_matcher(length):
     iris = flat(tenant_length=length, object_length=length)
     tenant = str(iris.mint_tenant())
-    assert len(iris.tenant_id_of(tenant)) == length
+    assert len(iris.tenant_id_of(tenant)) == length, (
+        "the tenant id keeps the length it was minted with"
+    )
     root = str(iris.mint_aggregate(tenant, "book", "books"))
-    assert iris.is_aggregate(tenant, root)
-    assert iris.is_aggregate_graph(tenant, f"{root}/graph")
+    assert iris.is_aggregate(tenant, root), (
+        "a root of the longest and shortest ids is still an aggregate"
+    )
+    assert iris.is_aggregate_graph(tenant, f"{root}/graph"), (
+        "a root's graph of any allowed id length is still its aggregate graph"
+    )
     loaded = str(iris.mint_loaded_graph(tenant, root))
-    assert iris.is_loaded_graph(tenant, loaded, root=root)
-    assert str(iris.mint_part(tenant, root, "chapter")).count("/") == root.count("/")
+    assert iris.is_loaded_graph(tenant, loaded, root=root), (
+        "a loaded graph of any allowed id length is still recognised under its root"
+    )
+    assert str(iris.mint_part(tenant, root, "chapter")).count("/") == root.count("/"), (
+        "a part IRI keeps the root's path depth whatever the id length"
+    )
 
 
 def test_a_32_character_tenant_id_under_a_20_character_prefix_fits_a_bucket_name():
@@ -85,12 +95,16 @@ def test_a_32_character_tenant_id_under_a_20_character_prefix_fits_a_bucket_name
     iris = Iris(settings(flat_policy(32, 32), prefix=longest))
     name = iris.resource_name(str(iris.mint_tenant()))
     assert len(name) <= 63, "S3 bucket names stop at 63 characters"
-    assert re.fullmatch(r"[a-z][a-z0-9-]*[a-z0-9]", name)
+    assert re.fullmatch(r"[a-z][a-z0-9-]*[a-z0-9]", name), (
+        "a long tenant id under a long prefix is a valid bucket name"
+    )
 
 
 def test_the_default_uuid_tenant_under_a_20_character_prefix_fits_a_bucket_name():
     iris = Iris(settings(prefix="b" * 20))
-    assert len(iris.resource_name(str(iris.mint_tenant()))) == 20 + len("-t-") + 32
+    assert len(iris.resource_name(str(iris.mint_tenant()))) == 20 + len("-t-") + 32, (
+        "the default tenant under a 20 character prefix is exactly the longest resource name"
+    )
 
 
 # -- hostile ids ----------------------------------------------------------------------------------
@@ -142,16 +156,22 @@ def test_an_aggregate_iri_with_anything_after_its_id_is_not_an_aggregate(suffix)
     iris = flat()
     tenant = str(iris.tenant(TENANT_ID))
     root = str(iris.aggregate(tenant, "book", "books", OBJECT_ID))
-    assert iris.is_aggregate(tenant, root)
-    assert not iris.is_aggregate(tenant, root + suffix)
-    assert not iris.is_loaded_graph(tenant, str(iris.mint_loaded_graph(tenant, root)) + suffix)
+    assert iris.is_aggregate(tenant, root), "an aggregate IRI is recognised as itself"
+    assert not iris.is_aggregate(tenant, root + suffix), (
+        "anything after the id makes the IRI not an aggregate"
+    )
+    assert not iris.is_loaded_graph(tenant, str(iris.mint_loaded_graph(tenant, root)) + suffix), (
+        "anything after a loaded graph's id makes it not a loaded graph"
+    )
 
 
 def test_an_aggregate_graph_is_only_the_roots_slash_graph():
     iris = flat()
     tenant = str(iris.tenant(TENANT_ID))
     root = str(iris.aggregate(tenant, "book", "books", OBJECT_ID))
-    assert iris.is_aggregate_graph(tenant, f"{root}/graph")
+    assert iris.is_aggregate_graph(tenant, f"{root}/graph"), (
+        "the root's slash graph is its aggregate graph"
+    )
     for not_a_graph in (
         root,
         f"{root}/graph/graph",
@@ -167,12 +187,14 @@ def test_another_tenants_objects_are_not_this_tenants():
     iris = flat()
     mine, other = (str(iris.tenant(i)) for i in (TENANT_ID, "q9y7j1n"))
     theirs = str(iris.aggregate(other, "book", "books", OBJECT_ID))
-    assert iris.is_aggregate(other, theirs)
-    assert not iris.is_aggregate(mine, theirs)
+    assert iris.is_aggregate(other, theirs), "a tenant owns its own aggregate"
+    assert not iris.is_aggregate(mine, theirs), "another tenant's aggregate is not mine"
     loaded = str(iris.mint_loaded_graph(other, theirs))
-    assert iris.is_loaded_graph(other, loaded)
-    assert not iris.is_loaded_graph(mine, loaded)
-    assert not iris.is_loaded_graph(mine, loaded, root=theirs)
+    assert iris.is_loaded_graph(other, loaded), "a tenant owns its own loaded graph"
+    assert not iris.is_loaded_graph(mine, loaded), "another tenant's loaded graph is not mine"
+    assert not iris.is_loaded_graph(mine, loaded, root=theirs), (
+        "another tenant's root does not claim my loaded graph"
+    )
 
 
 def test_a_part_type_is_not_an_aggregate_type_and_an_aggregate_type_is_not_a_part_type():
@@ -182,22 +204,32 @@ def test_a_part_type_is_not_an_aggregate_type_and_an_aggregate_type_is_not_a_par
         iris.mint_aggregate(tenant, "chapter", "chapters")
     with pytest.raises(InvalidIri):
         iris.mint_part(tenant, f"{BASE}{TENANT_ID}/book/{OBJECT_ID}", "book")
-    assert not iris.is_aggregate(tenant, f"{BASE}{TENANT_ID}/chapter/{OBJECT_ID}")
-    assert not iris.is_aggregate(tenant, f"{BASE}{TENANT_ID}/content/{OBJECT_ID}")
+    assert not iris.is_aggregate(tenant, f"{BASE}{TENANT_ID}/chapter/{OBJECT_ID}"), (
+        "a part type is not recognised as an aggregate"
+    )
+    assert not iris.is_aggregate(tenant, f"{BASE}{TENANT_ID}/content/{OBJECT_ID}"), (
+        "a loaded-graph segment is not recognised as an aggregate"
+    )
 
 
 def test_a_type_that_is_regex_syntax_matches_only_itself():
     iris = Iris(settings(flat_policy()), frozenset({"a.b", "c+d", "(x)"}), frozenset())
     tenant = str(iris.tenant(TENANT_ID))
     for impostor in ("axb", "ccd", "x"):
-        assert not iris.is_aggregate(tenant, f"{BASE}{TENANT_ID}/{impostor}/{OBJECT_ID}")
-    assert iris.is_aggregate(tenant, f"{BASE}{TENANT_ID}/a.b/{OBJECT_ID}")
+        assert not iris.is_aggregate(tenant, f"{BASE}{TENANT_ID}/{impostor}/{OBJECT_ID}"), (
+            "a regex-looking impostor type does not match"
+        )
+    assert iris.is_aggregate(tenant, f"{BASE}{TENANT_ID}/a.b/{OBJECT_ID}"), (
+        "a type spelled as regex syntax matches itself literally"
+    )
 
 
 # -- reserved words -------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("word", [*LAYOUT_WORDS, "project", "ontology-file", "term", "k3f9a2x"])
+# Reserved by membership in one set; one word per source of it: a layout word, a template literal,
+# a type, the deployment.
+@pytest.mark.parametrize("word", ["meta", "project", "ontology-file", "k3f9a2x"])
 def test_a_drawn_id_that_is_a_reserved_word_is_discarded_for_every_kind_of_id(word):
     iris = Iris(
         settings(flat_policy(), deployment="k3f9a2x"),
@@ -206,10 +238,16 @@ def test_a_drawn_id_that_is_a_reserved_word_is_discarded_for_every_kind_of_id(wo
         id_source=scripted(word, TENANT_ID, word, OBJECT_ID, word, OBJECT_ID, word, OBJECT_ID),
     )
     tenant = str(iris.mint_tenant())
-    assert tenant.endswith(f"/{TENANT_ID}")
-    assert iris.mint_aggregate(tenant, "book", "books").endswith(OBJECT_ID)
-    assert iris.mint_part(tenant, "x", "term").endswith(OBJECT_ID)
-    assert iris.mint_loaded_graph(tenant, "x").endswith(OBJECT_ID)
+    assert tenant.endswith(f"/{TENANT_ID}"), "the tenant id was redrawn after a reserved word"
+    assert iris.mint_aggregate(tenant, "book", "books").endswith(OBJECT_ID), (
+        "the aggregate id was redrawn after a reserved word"
+    )
+    assert iris.mint_part(tenant, "x", "term").endswith(OBJECT_ID), (
+        "the part id was redrawn after a reserved word"
+    )
+    assert iris.mint_loaded_graph(tenant, "x").endswith(OBJECT_ID), (
+        "the loaded graph id was redrawn after a reserved word"
+    )
 
 
 def test_a_source_that_only_answers_reserved_words_gives_up_after_100_draws_and_says_so():
@@ -222,7 +260,7 @@ def test_a_source_that_only_answers_reserved_words_gives_up_after_100_draws_and_
     iris = Iris(settings(), id_source=source)
     with pytest.raises(InvalidIri):
         iris.mint_tenant()
-    assert len(calls) == 100
+    assert len(calls) == 100, "the draw is retried exactly 100 times before giving up"
 
 
 def test_an_alphabet_that_can_only_spell_a_reserved_word_fails_loudly_not_forever():
@@ -236,7 +274,7 @@ def test_an_alphabet_that_can_only_spell_a_reserved_word_fails_loudly_not_foreve
 def test_the_deployment_slug_is_never_an_id_even_when_the_policy_has_no_template_for_it():
     free = "12345678-1234-4234-8234-123456789abc"
     iris = Iris(settings(deployment="k3f9a2x"), id_source=scripted("k3f9a2x", free))
-    assert str(iris.mint_tenant()).endswith(free)
+    assert str(iris.mint_tenant()).endswith(free), "the deployment slug is refused as a tenant id"
 
 
 # -- the access template with both tenant variables -----------------------------------------------
@@ -254,7 +292,9 @@ def both() -> Iris:
 def test_an_access_template_with_tenant_and_tenant_id_round_trips():
     iris = both()
     tenant = str(iris.tenant(TENANT_ID))
-    assert str(iris.tenant_of_access(str(iris.access(tenant)))) == tenant
+    assert str(iris.tenant_of_access(str(iris.access(tenant)))) == tenant, (
+        "the tenant comes back from its own access IRI"
+    )
 
 
 def test_an_access_iri_whose_two_tenant_variables_disagree_is_not_an_access_iri():
@@ -268,8 +308,12 @@ def test_an_access_iri_whose_two_tenant_variables_disagree_is_not_an_access_iri(
 def test_an_access_iri_of_another_tenant_is_not_this_tenants_record():
     iris = both()
     mine, other = str(iris.tenant(TENANT_ID)), str(iris.tenant("q9y7j1n"))
-    assert iris.is_aggregate(other, str(iris.access(other)))
-    assert not iris.is_aggregate(mine, str(iris.access(other)))
+    assert iris.is_aggregate(other, str(iris.access(other))), (
+        "a tenant's own access record is one of its aggregates"
+    )
+    assert not iris.is_aggregate(mine, str(iris.access(other))), (
+        "another tenant's access record is not mine"
+    )
 
 
 # -- principals ------------------------------------------------------------------------------------
@@ -281,14 +325,18 @@ def test_an_access_iri_of_another_tenant_is_not_this_tenants_record():
 def test_a_subject_never_leaves_its_path_segment(sub):
     iri = str(flat().principal("https://id.example.org/realm/", sub))
     prefix = "https://id.example.org/realm/users/"
-    assert iri.startswith(prefix)
-    assert "/" not in iri[len(prefix) :]
-    assert not any(c in iri[len(prefix) :] for c in "#? \n")
+    assert iri.startswith(prefix), "a subject's IRI stays under the principal prefix"
+    assert "/" not in iri[len(prefix) :], "a subject adds no path separator to its IRI"
+    assert not any(c in iri[len(prefix) :] for c in "#? \n"), (
+        "a subject adds no fragment, query or whitespace to its IRI"
+    )
 
 
 def test_a_subject_and_its_percent_encoding_are_two_principals():
     iris = flat()
-    assert iris.principal("https://i", "a/b") != iris.principal("https://i", "a%2Fb")
+    assert iris.principal("https://i", "a/b") != iris.principal("https://i", "a%2Fb"), (
+        "a subject and its percent-encoding are different principals"
+    )
 
 
 # -- the frozen object and the settings -----------------------------------------------------------
@@ -304,11 +352,12 @@ def test_iris_cannot_be_changed_after_it_is_built():
 def test_the_settings_an_iris_was_built_from_cannot_change_what_it_mints():
     built = settings(flat_policy())
     iris = Iris(built, ROOTS, OWNED)
-    try:
-        built.base = "http://evil.example/"
-    except (ValidationError, TypeError, AttributeError):
-        return
-    assert str(iris.tenant(TENANT_ID)).startswith(BASE)
+    minted = iris.tenant(TENANT_ID)
+    # ServiceSettings is not frozen: the assignment goes through, and Iris holds its own copy (PD-12f).
+    built.base = "http://evil.example/"
+    assert built.base == "http://evil.example/", "the caller's own settings did change"
+    assert iris.tenant(TENANT_ID) == minted, "assigning to the settings changed the minted IRI"
+    assert str(minted).startswith(BASE), "the minted IRI left the configured base"
 
 
 def test_building_an_iris_checks_the_policy_even_for_a_random_id_without_a_length():
@@ -342,7 +391,9 @@ def test_a_default_aggregate_iri_with_a_longer_nesting_is_not_an_aggregate():
     iris = Iris(settings())
     tenant = str(iris.tenant("12345678-1234-4234-8234-123456789abc"))
     nested = f"{tenant}/files/12345678-1234-4234-8234-123456789abc"
-    assert iris.is_aggregate(tenant, nested)
+    assert iris.is_aggregate(tenant, nested), (
+        "an aggregate nested deeper than the template is not an aggregate"
+    )
     for deeper in (
         f"{nested}/parts/12345678-1234-4234-8234-123456789abc",
         f"{nested}/content/12345678-1234-4234-8234-123456789abc",
@@ -367,12 +418,16 @@ def test_an_access_meta_registry_or_principal_template_of_its_own_is_accepted(sl
     made = Iris(
         settings(IriPolicy(tenant_id=IdSpec(kind=IdKind.RANDOM, length=7), **{slot: template}))
     )
-    assert getattr(made.settings.iri_policy, slot) == template
+    assert getattr(made.settings.iri_policy, slot) == template, (
+        "an accepted template is stored on the policy unchanged"
+    )
 
 
 @pytest.mark.parametrize("slot", ["access_template", "meta_template", "registry_template"])
 def test_the_default_value_of_an_access_meta_or_registry_template_is_accepted(slot):
-    assert Iris(settings(IriPolicy(**{slot: getattr(IriPolicy(), slot)})))
+    assert Iris(settings(IriPolicy(**{slot: getattr(IriPolicy(), slot)}))), (
+        "the default of each template slot is accepted"
+    )
 
 
 def tiny(length: int) -> Iris:
@@ -380,35 +435,40 @@ def tiny(length: int) -> Iris:
     return Iris(settings(policy), ROOTS, OWNED)
 
 
-WORDS = [pytest.param(4, "meta", id="meta"), pytest.param(5, "graph", id="graph")]
+# Both layout words are one class (membership in the reserved set); "meta" stands for them.
+LENGTH, WORD = 4, "meta"
 
 
-@pytest.mark.parametrize(("length", "word"), WORDS)
-def test_a_reserved_word_is_not_a_tenant_id_when_matching(length, word):
-    iris = tiny(length)
+def test_a_reserved_word_is_not_a_tenant_id_when_matching():
+    iris, word = tiny(LENGTH), WORD
     with pytest.raises(NotFound):
         iris.tenant(word)
     with pytest.raises(InvalidIri):
         iris.tenant_id_of(f"{BASE}project/{word}")
 
 
-@pytest.mark.parametrize(("length", "word"), WORDS)
-def test_a_reserved_word_is_not_an_object_id_when_matching(length, word):
-    iris = tiny(length)
-    tid = "p4x8k"[:length]
+def test_a_reserved_word_is_not_an_object_id_when_matching():
+    iris, word = tiny(LENGTH), WORD
+    tid = "p4x8k"[:LENGTH]
     tenant = str(iris.tenant(tid))
     with pytest.raises(NotFound):
         iris.aggregate(tenant, "book", "books", word)
-    assert not iris.is_aggregate(tenant, f"{BASE}{tid}/book/{word}")
-    assert not iris.is_loaded_graph(tenant, f"{BASE}{tid}/content/{word}")
+    assert not iris.is_aggregate(tenant, f"{BASE}{tid}/book/{word}"), (
+        "a reserved word is not an aggregate id"
+    )
+    assert not iris.is_loaded_graph(tenant, f"{BASE}{tid}/content/{word}"), (
+        "a reserved word is not a loaded graph id"
+    )
 
 
 def test_an_aggregate_graph_is_never_the_graph_of_the_access_record():
     iris = Iris(settings())
     tenant = str(iris.tenant("12345678-1234-4234-8234-123456789abc"))
     access = str(iris.access(tenant))
-    assert iris.is_aggregate(tenant, access)
-    assert not iris.is_aggregate_graph(tenant, f"{access}/graph")
+    assert iris.is_aggregate(tenant, access), "the access record is an aggregate of its tenant"
+    assert not iris.is_aggregate_graph(tenant, f"{access}/graph"), (
+        "the access record's graph is not an aggregate graph"
+    )
 
 
 def test_an_aggregate_template_must_name_its_tenant():
@@ -421,4 +481,6 @@ def test_a_part_or_loaded_graph_template_must_name_a_tenant_or_a_root(slot):
     with pytest.raises(ValidationError, match=slot):
         IriPolicy(**{slot: "{base}{type}/{id}"})
     for ok in ("{root}/x/{id}", "{base}{tenant}/{id}", "{base}{tenant_id}/{id}"):
-        assert getattr(IriPolicy(**{slot: ok}), slot) == ok
+        assert getattr(IriPolicy(**{slot: ok}), slot) == ok, (
+            "a template naming a tenant or a root is stored unchanged"
+        )

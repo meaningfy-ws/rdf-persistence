@@ -3,12 +3,14 @@ Feature: A service that keeps its data in step with its schema
   I want the service to know which version of the schema each library follows
   So that a library the service cannot bring up to date is kept away from readers, not served wrongly
 
+  # spec: rp-schema-migrations / a new tenant
   Scenario: A new library records the versions the service runs
     Given the library service runs the library schema at version 1
     When Ada creates a library
     Then the library records version 1 of the library schema
     And the library records version 2 of the toolkit's own schema
 
+  # spec: rp-schema-migrations / a tenant behind the schema
   Scenario: A reader cannot ask for a book of a library that is behind the schema
     Given Ada's library holds a book
     And Bob's library holds a book
@@ -19,6 +21,7 @@ Feature: A service that keeps its data in step with its schema
     Then the answer is 503
     And the problem is "tenant-behind"
 
+  # spec: rp-schema-migrations / a tenant behind the schema
   Scenario: A reader cannot list the books of a library that is behind the schema
     Given Ada's library holds a book
     And Bob's library holds a book
@@ -29,6 +32,7 @@ Feature: A service that keeps its data in step with its schema
     Then the answer is 503
     And the problem is "tenant-behind"
 
+  # spec: rp-schema-migrations / a tenant behind the schema
   Scenario: A reader is still served by a library that is up to date
     Given Ada's library holds a book
     And Bob's library holds a book

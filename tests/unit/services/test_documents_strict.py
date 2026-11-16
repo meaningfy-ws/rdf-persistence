@@ -109,7 +109,8 @@ async def test_an_internal_slot_is_refused_in_an_owned_part_of_a_json_ld_body(
         await parsed(documents, book_class, body, JSON_LD, iri=BOOK)
 
 
-@pytest.mark.parametrize("char", list('<>"{}|^\\`'))
+# equivalence classes: a character the N-Quads parser refuses first (< > "), one only the IRI check refuses ({ } | ^ \ `)
+@pytest.mark.parametrize("char", ["<", "{"])
 async def test_a_reference_that_is_not_a_valid_iri_is_an_invalid_body(
     documents, scan_class, char
 ) -> None:

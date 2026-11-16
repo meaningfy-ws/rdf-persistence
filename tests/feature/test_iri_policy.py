@@ -37,7 +37,7 @@ class Run:
 
     @property
     def book_path(self) -> str:
-        assert self.book is not None
+        assert self.book is not None, "the book was created"
         return self.book.headers["location"]
 
 
@@ -48,7 +48,9 @@ def run() -> Run:
 
 @given("the library service runs under the project policy")
 def _service(run: Run) -> None:
-    assert run.toy.kit.iris.settings.iri_policy == CONSUMER_POLICY
+    assert run.toy.kit.iris.settings.iri_policy == CONSUMER_POLICY, (
+        "the service runs under the consumer's policy"
+    )
 
 
 @when("Ada creates a library")
@@ -59,62 +61,74 @@ def _create_library(run: Run) -> None:
 
 @then(parsers.parse('the library IRI is under "{segment}" and ends in a 7-character id'))
 def _library_iri(run: Run, segment: str) -> None:
-    assert run.tenant is not None
-    assert re.fullmatch(f"{re.escape(BASE)}{segment}{ID}{{7}}", run.tenant.json()["id"])
+    assert run.tenant is not None, "the library was created"
+    assert re.fullmatch(f"{re.escape(BASE)}{segment}{ID}{{7}}", run.tenant.json()["id"]), (
+        "the library IRI is the project path and a short id"
+    )
 
 
 @then("its Location path ends in that id")
 def _library_location(run: Run) -> None:
-    assert run.tenant is not None
-    assert run.tenant.headers["location"] == "/libraries/" + run.tenant.json()["id"][-7:]
+    assert run.tenant is not None, "the library was created"
+    assert run.tenant.headers["location"] == "/libraries/" + run.tenant.json()["id"][-7:], (
+        "the library's location is its short id"
+    )
 
 
 @when("Ada adds a book with a chapter to it")
 def _add_book(run: Run) -> None:
-    assert run.tenant is not None
+    assert run.tenant is not None, "the library was created"
     run.book = run.call("POST", f"{run.tenant.headers['location']}/books", json=DUNE_BODY)
     assert run.book.status_code == 201, run.book.text
 
 
 def _tenant_id(run: Run) -> str:
-    assert run.tenant is not None
+    assert run.tenant is not None, "the library was created"
     return run.tenant.json()["id"][-7:]
 
 
 @then(parsers.parse('the book IRI is flat beside the library id under "{kind}"'))
 def _book_iri(run: Run, kind: str) -> None:
-    assert run.book is not None
+    assert run.book is not None, "the book was created"
     assert re.fullmatch(
         f"{re.escape(BASE)}{_tenant_id(run)}/{kind}/{ID}{{13}}", run.book.json()["id"]
-    )
+    ), "the book IRI has the flat shape of the policy"
 
 
 @then(parsers.parse('the chapter IRI is flat beside the library id under "{kind}"'))
 def _chapter_iri(run: Run, kind: str) -> None:
-    assert run.book is not None
+    assert run.book is not None, "the book was created"
     chapter = run.book.json()["chapters"][0]["id"]
-    assert re.fullmatch(f"{re.escape(BASE)}{_tenant_id(run)}/{kind}/{ID}{{13}}", chapter)
+    assert re.fullmatch(f"{re.escape(BASE)}{_tenant_id(run)}/{kind}/{ID}{{13}}", chapter), (
+        "the chapter IRI has the flat shape of the policy"
+    )
 
 
 @then("the book Location path ends in the book id")
 def _book_location(run: Run) -> None:
-    assert run.book is not None
-    assert run.book_path == f"/libraries/{_tenant_id(run)}/books/{run.book.json()['id'][-13:]}"
+    assert run.book is not None, "the book was created"
+    assert run.book_path == f"/libraries/{_tenant_id(run)}/books/{run.book.json()['id'][-13:]}", (
+        "the book's location is the library and its short id"
+    )
 
 
 @then("reading the book answers its IRI and its chapter")
 def _read_book(run: Run) -> None:
-    assert run.book is not None
+    assert run.book is not None, "the book was created"
     body = run.call("GET", run.book_path).json()
-    assert body["id"] == run.book.json()["id"]
-    assert [c["id"] for c in body["chapters"]] == [c["id"] for c in run.book.json()["chapters"]]
+    assert body["id"] == run.book.json()["id"], "the book read back has the same IRI"
+    assert [c["id"] for c in body["chapters"]] == [c["id"] for c in run.book.json()["chapters"]], (
+        "the book read back has the same chapters"
+    )
 
 
 @then("listing the books answers the book")
 def _list_books(run: Run) -> None:
-    assert run.book is not None
+    assert run.book is not None, "the book was created"
     listing = run.call("GET", run.book_path.rsplit("/", 1)[0]).json()
-    assert [item["id"] for item in listing["items"]] == [run.book.json()["id"]]
+    assert [item["id"] for item in listing["items"]] == [run.book.json()["id"]], (
+        "the listing holds the created book"
+    )
 
 
 @when("Ada replaces the book with a new label")
@@ -129,20 +143,24 @@ def _replace_book(run: Run) -> None:
 
 @then("reading the book answers the new label")
 def _read_new_label(run: Run) -> None:
-    assert run.call("GET", run.book_path).json()["label"] == "Dune Messiah"
+    assert run.call("GET", run.book_path).json()["label"] == "Dune Messiah", (
+        "the new label is read back"
+    )
 
 
 @when("Ada deletes the book")
 def _delete_book(run: Run) -> None:
     etag = run.call("GET", run.book_path).headers["etag"]
     run.headers = {**run.headers, "If-Match": etag}
-    assert run.call("DELETE", run.book_path).status_code == 204
+    assert run.call("DELETE", run.book_path).status_code == 204, (
+        "the delete is answered with no content"
+    )
     run.headers = {k: v for k, v in run.headers.items() if k != "If-Match"}
 
 
 @then("reading the book answers 404")
 def _book_gone(run: Run) -> None:
-    assert run.call("GET", run.book_path).status_code == 404
+    assert run.call("GET", run.book_path).status_code == 404, "the deleted book is gone"
 
 
 @when(parsers.parse('Ada reads "{path}"'))
@@ -152,5 +170,5 @@ def _read(run: Run, path: str) -> None:
 
 @then(parsers.parse("the answer is {status:d}"))
 def _answer(run: Run, status: int) -> None:
-    assert run.last is not None
-    assert run.last.status_code == status
+    assert run.last is not None, "a call was answered"
+    assert run.last.status_code == status, "the answer has the expected status"

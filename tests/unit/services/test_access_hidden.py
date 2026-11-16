@@ -32,4 +32,6 @@ ONE, TWO = graph_of(book_iri(1)), graph_of(book_iri(2))
     ],
 )
 def test_a_listing_leaves_out_the_aggregates_the_caller_is_prohibited_from_reading(bans, hidden):
-    assert RULES.hidden_graphs(caller(principal=ADA), held(role("reader"), bans=bans)) == hidden
+    assert RULES.hidden_graphs(caller(principal=ADA), held(role("reader"), bans=bans)) == hidden, (
+        "the hidden graphs are exactly those the caller is banned from reading"
+    )

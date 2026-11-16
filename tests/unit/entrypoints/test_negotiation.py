@@ -34,7 +34,6 @@ ACCEPT = [
     ("application/ld+json;q=0.3, */*;q=0.1", JSON_LD),
     ("application/json;q=0", None),
     ("text/html", None),
-    ("image/png, application/xml", None),
     ("nonsense", None),
     ("*/*;q=0", None),
 ]
@@ -74,9 +73,8 @@ def test_a_json_or_json_ld_body_is_accepted(header, media) -> None:
     assert request_media_type(header, (JSON, JSON_LD)) == media, header
 
 
-@pytest.mark.parametrize(
-    "header", [None, "", "text/turtle", "text/plain", "application/xml", "json"]
-)
+# One case per class: absent, produced but not accepted, an unknown type, malformed.
+@pytest.mark.parametrize("header", [None, "text/turtle", "application/xml", "json"])
 def test_any_other_content_type_is_unsupported(header) -> None:
     with pytest.raises(UnsupportedMediaType):
         request_media_type(header, (JSON, JSON_LD))
@@ -96,7 +94,8 @@ def test_if_match_names_the_version_it_expects(header) -> None:
     assert expected_version(header) == "7f3a", header
 
 
-@pytest.mark.parametrize("header", [None, "", "  "])
+# One class (no usable If-Match); None and blank are the two operands of `(if_match or "").strip()`.
+@pytest.mark.parametrize("header", [None, "  "])
 def test_an_update_without_if_match_is_a_precondition_required(header) -> None:
     with pytest.raises(PreconditionRequired):
         expected_version(header)

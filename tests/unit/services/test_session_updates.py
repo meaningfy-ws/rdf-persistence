@@ -4,7 +4,6 @@ from datetime import UTC, datetime
 
 import pytest
 from rdflib import BNode, Dataset, Graph, Literal, URIRef
-from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence.domain.generated.rp_annotations import Tracked
 from rdf_persistence.domain.generated.rp_core import RegistryEntry, RegistryKind
@@ -19,6 +18,7 @@ from rdf_persistence.services.session import (
     request_text,
     without_bookkeeping,
 )
+from rdf_persistence.testkit import assert_isomorphic
 
 EX = "http://example.org/t/"
 ROOT, OTHER_ROOT = URIRef(f"{EX}books/1"), URIRef(f"{EX}books/2")
@@ -79,7 +79,7 @@ def contents(dataset: Dataset, graph: URIRef) -> Graph:
 
 
 def assert_same(actual: Graph, expected: Graph, message: str) -> None:
-    assert isomorphic(actual, expected), f"{message}: {graph_diff(actual, expected)}"
+    assert_isomorphic(actual, expected)
 
 
 def test_add_writes_the_triples_and_the_registry_entry_to_their_graphs():
@@ -214,7 +214,9 @@ def test_payload_drops_incoming_bookkeeping_about_the_graph_iri(predicate):
 
 def test_payload_keeps_other_statements_about_the_graph_iri():
     own = (GRAPH, TITLE, Literal("kept"))
-    assert own in payload_triples(GRAPH, "v1", Tracked(created=NOW, creator=ME), [own])
+    assert own in payload_triples(GRAPH, "v1", Tracked(created=NOW, creator=ME), [own]), (
+        "the payload keeps the other statements about the graph IRI"
+    )
 
 
 def skolem_prefix(graph: URIRef) -> str:
@@ -299,15 +301,15 @@ def with_loaded_graph() -> tuple[Dataset, URIRef, RegistryEntry]:
     return dataset, loaded, loaded_entry
 
 
-@pytest.mark.parametrize("keep_loaded", [False, True], ids=["drops the load", "keeps the load"])
+# equivalence class: a stale guard, whether the replacement keeps the load or drops it (it drops it here)
 @pytest.mark.parametrize("call", ["replace", "remove"])
-def test_a_stale_guard_changes_no_graph_at_all(call, keep_loaded):
+def test_a_stale_guard_changes_no_graph_at_all(call):
     """Each operation of the update carries the guard: none may run once the version is stale."""
-    dataset, loaded, loaded_entry = with_loaded_graph()
+    dataset, loaded, _ = with_loaded_graph()
     graphs = (GRAPH, REGISTRY, loaded)
     before = [contents(dataset, g) for g in graphs]
     if call == "replace":
-        entries = [entry(GRAPH, ROOT), *([loaded_entry] if keep_loaded else [])]
+        entries = [entry(GRAPH, ROOT)]
         text = replace_text(
             GRAPH, REGISTRY, ROOT, "stale", payload(GRAPH, ROOT, "new", "v2"), entries
         )

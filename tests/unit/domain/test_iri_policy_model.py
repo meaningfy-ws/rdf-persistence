@@ -62,7 +62,9 @@ def test_an_absent_id_spec_is_the_default_uuid4(slot: str) -> None:
 
 
 def test_the_default_alphabet_is_lower_case_letters_and_digits() -> None:
-    assert IdSpec(kind="uuid4").alphabet == "0123456789abcdefghijklmnopqrstuvwxyz"
+    assert IdSpec(kind="uuid4").alphabet == "0123456789abcdefghijklmnopqrstuvwxyz", (
+        "the default alphabet is lower-case letters and digits"
+    )
 
 
 def test_settings_without_a_policy_hold_none_and_no_deployment() -> None:
@@ -81,9 +83,12 @@ def test_a_random_id_length_outside_4_to_32_is_refused(length: int) -> None:
         IdSpec(kind="random", length=length)
 
 
-@pytest.mark.parametrize("length", [4, 13, 32])
+# Interior lengths are one class with the ends; the ends 4 and 32 are the boundaries.
+@pytest.mark.parametrize("length", [4, 32])
 def test_a_random_id_length_from_4_to_32_is_accepted(length: int) -> None:
-    assert IdSpec(kind="random", length=length).length == length
+    assert IdSpec(kind="random", length=length).length == length, (
+        "a random id length from 4 to 32 is kept"
+    )
 
 
 def test_a_random_id_without_a_length_is_refused() -> None:
@@ -92,7 +97,8 @@ def test_a_random_id_without_a_length_is_refused() -> None:
         check_iri_policy(made)
 
 
-@pytest.mark.parametrize("alphabet", ["ABC", "ab-c", "ab c", "é", ""])
+# "ABC" stands for every character outside [a-z0-9]; "" is the separate empty-alphabet case.
+@pytest.mark.parametrize("alphabet", ["ABC", ""])
 def test_an_alphabet_outside_lower_case_letters_and_digits_is_refused(alphabet: str) -> None:
     with pytest.raises(ValidationError, match="alphabet"):
         IdSpec(kind="random", length=7, alphabet=alphabet)
@@ -105,7 +111,9 @@ def test_an_unknown_id_kind_is_refused() -> None:
 
 @pytest.mark.parametrize("deployment", ["k3f9a2x", "a", "a" * 32])
 def test_a_lower_case_deployment_of_at_most_32_characters_is_accepted(deployment: str) -> None:
-    assert settings(deployment=deployment).deployment == deployment
+    assert settings(deployment=deployment).deployment == deployment, (
+        "an accepted deployment is kept"
+    )
 
 
 @pytest.mark.parametrize("deployment", ["", "K3F", "a-b", "a" * 33])
@@ -148,7 +156,7 @@ def test_an_id_template_that_does_not_end_in_its_id_is_refused(slot: str) -> Non
     ],
 )
 def test_a_template_with_allowed_variables_is_accepted(slot: str, template: str) -> None:
-    assert getattr(IriPolicy(**{slot: template}), slot) == template
+    assert getattr(IriPolicy(**{slot: template}), slot) == template, "an accepted template is kept"
 
 
 @pytest.mark.parametrize("slot", ["access_template", "meta_template", "registry_template"])
@@ -176,7 +184,8 @@ def test_a_variable_not_allowed_for_its_kind_is_refused(slot: str, template: str
         IriPolicy(**{slot: template})
 
 
-@pytest.mark.parametrize("character", ["A", "_", "?", "#", " ", "%", "~"])
+# Every character outside [a-z0-9/:.-] is one class; two of them stand for it.
+@pytest.mark.parametrize("character", ["A", "_"])
 def test_a_literal_character_outside_the_allowed_set_is_refused(character: str) -> None:
     with pytest.raises(ValidationError, match="tenant_template"):
         IriPolicy(tenant_template="{base}pro" + character + "ject/{tenant_id}")
@@ -189,30 +198,38 @@ def test_a_deployment_variable_without_a_deployment_is_refused_naming_it() -> No
 
 
 def test_a_policy_without_a_deployment_variable_needs_no_deployment() -> None:
-    assert check_iri_policy(settings(iri_policy=IriPolicy())) is None
+    assert check_iri_policy(settings(iri_policy=IriPolicy())) is None, (
+        "a policy without a deployment variable needs no deployment"
+    )
 
 
 def test_no_policy_needs_no_check() -> None:
-    assert check_iri_policy(settings()) is None
+    assert check_iri_policy(settings()) is None, "no policy needs no check"
 
 
 @pytest.mark.parametrize("slot", ["part_template", "loaded_graph_template"])
 def test_the_default_part_and_loaded_graph_templates_need_neither_type_tenant_nor_base(slot):
     """The module functions mint them with no tenant and no class (PD-12j)."""
     variables = set(re.findall(r"\{[a-z_]+\}", getattr(IriPolicy(), slot)))
-    assert variables == {"{root}", "{id}"}
+    assert variables == {"{root}", "{id}"}, (
+        "the default part and loaded graph templates use only root and id"
+    )
 
 
 # app-level-data task 1.1 (PD-1): the application template
 
 
 def test_the_default_application_template_is_base_app() -> None:
-    assert IriPolicy().application_template == "{base}app"
+    assert IriPolicy().application_template == "{base}app", (
+        "the default application template is base followed by app"
+    )
 
 
 @pytest.mark.parametrize("template", ["{base}{deployment}/app", "{base}{tenant_segment}-app"])
 def test_an_application_template_of_the_allowed_placeholders_is_accepted(template: str) -> None:
-    assert IriPolicy(application_template=template).application_template == template
+    assert IriPolicy(application_template=template).application_template == template, (
+        "an accepted application template is kept"
+    )
 
 
 @pytest.mark.parametrize("template", ["{base}{tenant_id}", "{base}App", "", "{tenant}/app"])
@@ -226,7 +243,9 @@ def test_a_recorded_policy_without_the_field_holds_the_default_and_the_effective
 ):
     recorded = IriPolicy.model_validate_json('{"tenant_template": "{base}t/{tenant_id}"}')
     effective = IriPolicy.model_validate_json('{"application_template": "https://ex.org/app"}')
-    assert (recorded.application_template, effective.application_template) == (
-        "{base}app",
-        "https://ex.org/app",
+    assert recorded.application_template == "{base}app", (
+        "a recorded policy without the field holds the default"
+    )
+    assert effective.application_template == "https://ex.org/app", (
+        "an effective policy parses the stated template"
     )

@@ -36,4 +36,6 @@ async def test_the_broker_keeps_every_sent_message_as_envelope_and_json():
     )
     body = Activity(id="http://a")
     await InMemoryEventBus(broker).publish(envelope, body)
-    assert broker.messages == [(envelope, b'{"id":"http://a"}')]
+    assert broker.messages == [(envelope, b'{"id":"http://a"}')], (
+        "the broker keeps each message as envelope and JSON body"
+    )

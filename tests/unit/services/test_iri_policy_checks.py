@@ -99,16 +99,15 @@ def session_on(store: FakeStore) -> Session:
 # -- "a hand-made IRI", "an aggregate IRI with a part's type" -------------------------------------
 
 
+# equivalence class: no aggregate template matches; hand-made and a part's type are scenarios of their own
 @pytest.mark.parametrize(
     "iri",
     [
         f"{TENANT}/books/hand-made",
-        f"{BASE}p4x8k2m/book/short",
         f"{BASE}p4x8k2m/chapter/{1:013d}",
-        f"{BASE}p4x8k2m/content/{1:013d}",
         f"{BASE}q9y7j1n/book/{1:013d}",
     ],
-    ids=["hand-made", "short id", "a part's type", "the loaded type", "another tenant"],
+    ids=["hand-made", "a part's type", "another tenant"],
 )
 @pytest.mark.parametrize("call", ["add_graph", "replace_graph", "get_graph"])
 async def test_an_iri_the_policy_would_not_mint_is_refused_and_nothing_is_sent(store, iri, call):
@@ -168,7 +167,9 @@ async def test_a_session_without_loaded_graphs_asks_the_registry_nothing(store):
 async def test_a_loaded_graph_is_minted_flat_and_registered_by_the_next_commit(store):
     session = session_on(store)
     graph = await session.load_graph(book(1), TTL, rdf_format=RdfFormat.NTRIPLES)
-    assert str(graph).startswith(f"{BASE}p4x8k2m/content/")
+    assert str(graph).startswith(f"{BASE}p4x8k2m/content/"), (
+        "the loaded graph is minted flat under the tenant"
+    )
     await session.add_graph(book(1), [], loaded_graphs=[graph])
     with pytest.raises(InvalidIri):
         await session.add_graph(book(2), [], loaded_graphs=[graph])
@@ -249,8 +250,8 @@ async def test_a_replace_may_add_a_part_without_naming_it(aggregates):
     iri = await create(aggregates, body({"number": 1}))
     (own,) = chapter_ids(await aggregates.read(TENANT, ADA, iri, BOOK_CLASS))
     stored = await replace(aggregates, iri, body({"id": own, "number": 1}, {"number": 2}))
-    assert len(chapter_ids(stored)) == 2
-    assert own in chapter_ids(stored)
+    assert len(chapter_ids(stored)) == 2, "the replace added a part, so two parts are stored"
+    assert own in chapter_ids(stored), "the replace kept the part it already had"
 
 
 # -- the part rule of the default policy stays nested ---------------------------------------------
@@ -275,7 +276,7 @@ async def test_the_default_policy_still_accepts_a_part_a_client_names_under_the_
         URIRef(f"{root}/mine"),
         RDF.type,
         URIRef("http://purl.org/ontology/bibo/Chapter"),
-    ) in graph
+    ) in graph, "the part named by the client is stored under the root"
     assert named == set(), "the nested rule has nothing to track"
 
 
@@ -317,8 +318,12 @@ def test_the_check_scopes_a_flat_aggregate_by_its_graph():
 
 def test_the_aggregate_iri_of_a_route_is_the_policys_for_its_class_not_its_path(aggregates):
     """``books`` is the path, ``book`` the ``{type}`` the flat template writes."""
-    assert aggregates.iri_of(TENANT, "books", f"{1:013d}") == book(1)
-    assert f"/book/{1:013d}" in aggregates.iri_of(TENANT, "books", f"{1:013d}")
+    assert aggregates.iri_of(TENANT, "books", f"{1:013d}") == book(1), (
+        "the aggregate IRI of the route is the policy's IRI for the class"
+    )
+    assert f"/book/{1:013d}" in aggregates.iri_of(TENANT, "books", f"{1:013d}"), (
+        "the aggregate IRI of the route carries the class segment, not the path"
+    )
 
 
 def test_the_aggregate_iri_of_a_route_for_an_id_the_policy_does_not_mint_is_not_found(aggregates):

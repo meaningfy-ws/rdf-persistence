@@ -13,7 +13,6 @@ from pathlib import Path
 
 import pytest
 from rdflib import RDF, XSD, Graph, URIRef
-from rdflib.compare import isomorphic
 
 from rdf_persistence import Action, generated_models
 from rdf_persistence.domain.exceptions import (
@@ -33,15 +32,14 @@ from rdf_persistence.services.discussion import dependents as discussion_depende
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import Session
-from rdf_persistence.services.workflows import Workflows, load_workflow, state_iri
+from rdf_persistence.services.workflows import Workflows
 from rdf_persistence.services.write_guards import WriteGuards
-from rdf_persistence.testkit import FakeStore, fake_session
+from rdf_persistence.testkit import FakeStore, assert_isomorphic, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import (
     ADA,
     BOB,
     MODULES,
-    REVIEW_WORKFLOW,
     ROLES,
     TENANT,
     TOY_SCHEMA,
@@ -57,6 +55,13 @@ from tests.toy import (
     shelf_iri,
     toy_mapper,
 )
+from tests.unit.services.collaboration_data import (
+    ACCEPTED,
+    DRAFT,
+    IN_REVIEW,
+    RETIRED,
+    REVIEW,
+)
 
 B1, B2 = book_iri(1), book_iri(2)
 S1 = shelf_iri(1)
@@ -65,9 +70,6 @@ BOOK_CLASS = "http://purl.org/ontology/bibo/Book"
 COMMENT_CLASS = str(v.ANNOTATION)
 VIEW = load_schema(TOY_SCHEMA)
 T0 = datetime(2026, 11, 14, 9, tzinfo=UTC)
-REVIEW = load_workflow(REVIEW_WORKFLOW)
-DRAFT, IN_REVIEW, ACCEPTED = (state_iri(REVIEW, s) for s in ("draft", "in_review", "accepted"))
-RETIRED = state_iri(REVIEW, "retired")  # a state the file does not list
 
 
 @pytest.fixture(scope="module")
@@ -414,7 +416,7 @@ async def test_a_refused_transition_leaves_no_activity(
     else:
         with pytest.raises(Forbidden):
             await go(bob, session, "in_review")
-    assert isomorphic(await provenance_of(store), seen), "the provenance graph is as it was"
+    assert_isomorphic(await provenance_of(store), seen)
     assert await records_of(session, B1) == [], "no transition"
 
 
@@ -456,7 +458,9 @@ async def test_a_transition_of_a_subclass_comes_back_as_a_transition(
         f'<{v.ENTITY}> <{B1}> ; <{v.ENTITY_VERSION}> "v" }} }}',
     )
     [found] = await ada.transitions(B1)
-    assert (type(found), found.id, found.used_resource) == (Transition, foreign, B1)
+    assert type(found) is Transition, "the found activity is a transition"
+    assert found.id == foreign, "the found transition keeps its id"
+    assert found.used_resource == B1, "the found transition keeps its used resource"
 
 
 async def test_a_value_the_caller_set_for_a_computed_slot_is_overwritten(
@@ -519,7 +523,7 @@ def test_a_served_transition_drops_the_payload_and_keeps_the_computed_slots():  
         served.activity.body_value,
     )
     assert payload == (None, None, None), "the activity has no payload"
-    assert served.types == [v.TRANSITION, v.ACTIVITY]
+    assert served.types == [v.TRANSITION, v.ACTIVITY], "the served transition keeps its types"
 
 
 async def test_a_book_stored_before_its_class_named_the_workflow_starts_from_the_initial_state(

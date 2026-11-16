@@ -170,9 +170,11 @@ async def test_two_adds_where_only_one_exists_name_only_that_one_and_write_neith
             await t.add_graph(C, title(C, "new"))
             await t.add_graph(D, title(D, "new"))
             await other.add_graph(D, title(D, "theirs"))
-    assert refused.value.iris == (D,)
-    assert not await stored(session, C)
-    assert await stored_title(session, D) == "theirs"
+    assert refused.value.iris == (D,), "the conflict names only the existing root"
+    assert not await stored(session, C), "the other add is not written"
+    assert await stored_title(session, D) == "theirs", (
+        "the existing root keeps the other writer's title"
+    )
 
 
 async def test_every_existing_added_root_is_named_sorted(session, other, seeded):
@@ -182,7 +184,7 @@ async def test_every_existing_added_root_is_named_sorted(session, other, seeded)
             await t.add_graph(C, title(C, "new"))
             await other.add_graph(C, title(C, "theirs"))
             await other.add_graph(D, title(D, "theirs"))
-    assert refused.value.iris == (C, D)
+    assert refused.value.iris == (C, D), "the conflict names every existing root, sorted"
     assert str(refused.value) == f"{C} already exists; {D} already exists", "one clause per root"
 
 
@@ -191,7 +193,9 @@ async def test_adds_of_roots_with_overlapping_variables_in_a_big_transaction_all
     async with session.transaction() as t:
         for iri in roots:
             await t.add_graph(iri, title(iri, "new"))
-    assert [await stored_title(session, i) for i in roots] == ["new"] * 12
+    assert [await stored_title(session, i) for i in roots] == ["new"] * 12, (
+        "every added root is committed"
+    )
 
 
 # -- the diagnosis: gone, at another version, restored --------------------------------------------
@@ -202,9 +206,9 @@ async def test_a_replaced_root_removed_meanwhile_is_a_conflict(session, other, s
         async with session.transaction() as t:
             await t.replace_graph(A, title(A, "mine"), seeded[A])
             await other.remove(A, seeded[A])
-    assert refused.value.iris == (A,)
+    assert refused.value.iris == (A,), "the conflict names the root removed meanwhile"
     assert str(refused.value) == f"{A} was removed by someone else since it was read", "says gone"
-    assert not await stored(session, A)
+    assert not await stored(session, A), "the removed root is not stored"
 
 
 async def test_a_removed_root_removed_and_replaced_by_others_conflicts_with_a_second_change(
@@ -215,8 +219,8 @@ async def test_a_removed_root_removed_and_replaced_by_others_conflicts_with_a_se
             await t.remove(A, seeded[A])
             await t.replace_graph(B, title(B, "mine"), seeded[B])
             await other.remove(A, seeded[A])
-    assert refused.value.iris == (A,)
-    assert await stored_title(session, B) == "first"
+    assert refused.value.iris == (A,), "the conflict names the root removed meanwhile"
+    assert await stored_title(session, B) == "first", "the other root keeps its first title"
 
 
 async def test_an_added_root_added_by_another_session_meanwhile_conflicts(session, other, seeded):
@@ -225,9 +229,9 @@ async def test_an_added_root_added_by_another_session_meanwhile_conflicts(sessio
             await t.add_graph(C, title(C, "mine"))
             await t.replace_graph(A, title(A, "mine"), seeded[A])
             await other.add_graph(C, title(C, "theirs"))
-    assert refused.value.iris == (C,)
-    assert await stored_title(session, C) == "theirs"
-    assert await stored_title(session, A) == "first"
+    assert refused.value.iris == (C,), "the conflict names the root added meanwhile"
+    assert await stored_title(session, C) == "theirs", "the other session's root keeps its title"
+    assert await stored_title(session, A) == "first", "the first change is not stored"
 
 
 async def test_the_conflict_iris_are_plain_strings_of_the_roots_not_graph_iris(
@@ -237,8 +241,8 @@ async def test_the_conflict_iris_are_plain_strings_of_the_roots_not_graph_iris(
     with pytest.raises(Conflict) as refused:
         async with session.transaction() as t:
             await t.replace_graph(A, title(A, "mine"), seeded[A])
-    assert refused.value.iris == (A,)
-    assert graph_of(A) not in refused.value.iris
+    assert refused.value.iris == (A,), "the conflict names the root"
+    assert graph_of(A) not in refused.value.iris, "the conflict does not name the graph IRI"
 
 
 async def test_conflict_iris_are_equal_to_str_roots_when_the_caller_passed_urirefs(
@@ -249,8 +253,8 @@ async def test_conflict_iris_are_equal_to_str_roots_when_the_caller_passed_urire
         async with session.transaction() as t:
             await t.replace_graph(URIRef(A), title(A, "mine"), seeded[A])
     # PD-7: iris is tuple[str, ...]; a URIRef never equals a str, so a caller comparing with a str fails
-    assert refused.value.iris == (A,)
-    assert all(type(i) is str for i in refused.value.iris)
+    assert refused.value.iris == (A,), "the conflict names the roots"
+    assert all(type(i) is str for i in refused.value.iris), "the conflict IRIs are plain strings"
 
 
 # -- removes only ---------------------------------------------------------------------------------
@@ -264,9 +268,9 @@ async def test_removes_only_where_one_root_was_replaced_meanwhile_names_just_tha
             await t.remove(A, seeded[A])
             await t.remove(B, seeded[B])
             await other.replace_graph(B, title(B, "theirs"), seeded[B])
-    assert refused.value.iris == (B,)
+    assert refused.value.iris == (B,), "the conflict names only the root replaced meanwhile"
     assert await stored(session, A), "the guard failed, so A stays too"
-    assert await stored(session, B)
+    assert await stored(session, B), "the root stays stored"
 
 
 # -- loaded graphs --------------------------------------------------------------------------------
@@ -281,10 +285,10 @@ async def test_a_replace_keeping_its_loaded_graphs_and_an_add_with_a_new_one_in_
     async with session.transaction() as t:
         await t.replace_graph(A, title(A, "second"), a2)  # loaded_graphs None: keep the registered
         await t.add_graph(C, title(C, "new"), loaded_graphs=[loaded_c])
-    assert await has_triples(store, loaded_a)
-    assert await has_triples(store, loaded_c)
-    assert await session.loaded_graphs(A) == [loaded_a]
-    assert await session.loaded_graphs(C) == [loaded_c]
+    assert await has_triples(store, loaded_a), "the replaced root keeps its loaded graph"
+    assert await has_triples(store, loaded_c), "the added root has its loaded graph"
+    assert await session.loaded_graphs(A) == [loaded_a], "the replaced root lists its loaded graph"
+    assert await session.loaded_graphs(C) == [loaded_c], "the added root lists its loaded graph"
 
 
 async def test_a_replace_dropping_loaded_graphs_does_not_touch_the_other_roots_loaded_graph(
@@ -297,9 +301,11 @@ async def test_a_replace_dropping_loaded_graphs_does_not_touch_the_other_roots_l
     async with session.transaction() as t:
         await t.replace_graph(A, title(A, "second"), a2, loaded_graphs=[])
         await t.replace_graph(B, title(B, "second"), b2)
-    assert not await has_triples(store, loaded_a)
-    assert await has_triples(store, loaded_b)
-    assert await session.loaded_graphs(B) == [loaded_b]
+    assert not await has_triples(store, loaded_a), "the dropped loaded graph is empty"
+    assert await has_triples(store, loaded_b), "the other root's loaded graph is kept"
+    assert await session.loaded_graphs(B) == [loaded_b], (
+        "the other root still lists its loaded graph"
+    )
 
 
 async def test_removing_a_root_empties_its_loaded_graphs_and_leaves_the_others(
@@ -312,11 +318,11 @@ async def test_removing_a_root_empties_its_loaded_graphs_and_leaves_the_others(
     async with session.transaction() as t:
         await t.remove(A, a2)
         await t.add_graph(C, title(C, "new"))
-    assert not await has_triples(store, loaded_a)
-    assert await has_triples(store, loaded_b)
+    assert not await has_triples(store, loaded_a), "the removed root's loaded graph is empty"
+    assert await has_triples(store, loaded_b), "the other root's loaded graph is kept"
     assert not await ask(
         store, ENTRY, registry=term(DEFAULT_IRIS.registry(TENANT)), graph=term(loaded_a)
-    )
+    ), "the removed root's registry entry is gone"
 
 
 async def test_a_loaded_graph_of_a_root_removed_in_the_same_transaction_cannot_be_claimed_by_another(
@@ -329,8 +335,8 @@ async def test_a_loaded_graph_of_a_root_removed_in_the_same_transaction_cannot_b
         async with session.transaction() as t:
             await t.remove(A, a2)
             await t.replace_graph(B, title(B, "mine"), seeded[B], loaded_graphs=[loaded_a])
-    assert len(store.sent("update")) == sent
-    assert await has_triples(store, loaded_a)
+    assert len(store.sent("update")) == sent, "the refused transaction sent no update"
+    assert await has_triples(store, loaded_a), "the loaded graph is kept"
 
 
 # -- the marker -----------------------------------------------------------------------------------
@@ -341,7 +347,9 @@ async def test_two_transactions_of_one_session_use_two_markers(store, session, s
         async with session.transaction() as t:
             await t.add_graph(book_iri(500 + n), title(book_iri(500 + n), "new"))
     first, second = store.sent("update")[-2:]
-    assert set(URN_MARKER.findall(first)).isdisjoint(URN_MARKER.findall(second))
+    assert set(URN_MARKER.findall(first)).isdisjoint(URN_MARKER.findall(second)), (
+        "the two transactions use distinct markers"
+    )
     assert len(set(COMMIT_MARKER_IRI.findall(first))) == 1, "one marker per transaction"
 
 
@@ -351,9 +359,11 @@ async def test_two_open_transactions_of_one_session_use_two_markers(store, sessi
         async with session.transaction() as inner:
             await inner.add_graph(D, title(D, "inner"))
     first, second = store.sent("update")[-2:]
-    assert set(URN_MARKER.findall(first)).isdisjoint(URN_MARKER.findall(second))
-    assert await stored_title(session, C) == "outer"
-    assert await stored_title(session, D) == "inner"
+    assert set(URN_MARKER.findall(first)).isdisjoint(URN_MARKER.findall(second)), (
+        "the two transactions use distinct markers"
+    )
+    assert await stored_title(session, C) == "outer", "the outer transaction is committed"
+    assert await stored_title(session, D) == "inner", "the inner transaction is committed"
 
 
 async def test_a_stray_marker_does_not_stop_a_later_transaction_and_is_left_alone(
@@ -374,14 +384,14 @@ async def test_a_stray_marker_does_not_stop_a_later_transaction_and_is_left_alon
     async with session.transaction() as t:
         await t.replace_graph(A, title(A, "second"), seeded[A])
         await t.add_graph(C, title(C, "new"))
-    assert await stored_title(session, A) == "second"
+    assert await stored_title(session, A) == "second", "the later transaction commits"
     assert await ask(
         store,
         "ASK { GRAPH $registry { $m a $marker } }",
         registry=registry,
         m=term(stray),
         marker=term(v.COMMIT_MARKER),
-    )
+    ), "the stray marker is left alone"
 
 
 async def test_a_stray_marker_is_not_a_graph_owner_or_a_pending_load_for_the_sweep(
@@ -422,7 +432,9 @@ async def test_a_stray_marker_does_not_make_a_failed_guard_pass(store, session, 
             await t.add_graph(C, title(C, "mine"))
             await other.replace_graph(A, title(A, "theirs"), seeded[A])
     assert not await stored(session, C), "a stray marker must not let the operations run"
-    assert await stored_title(session, A) == "theirs"
+    assert await stored_title(session, A) == "theirs", (
+        "the failed guard leaves the other writer's title"
+    )
 
 
 # -- failures while collecting ------------------------------------------------------------------
@@ -434,8 +446,8 @@ async def test_a_not_found_inside_the_block_propagates_and_sends_nothing(store, 
         async with session.transaction() as t:
             await t.replace_graph(A, title(A, "mine"), seeded[A])
             await t.remove(C, "v")  # C was never stored
-    assert len(store.sent("update")) == sent
-    assert await stored_title(session, A) == "first"
+    assert len(store.sent("update")) == sent, "the not-found propagates and sends no update"
+    assert await stored_title(session, A) == "first", "the stored title is unchanged"
 
 
 async def test_a_not_found_caught_inside_the_block_leaves_the_others_to_commit(
@@ -446,9 +458,11 @@ async def test_a_not_found_caught_inside_the_block_leaves_the_others_to_commit(
         with pytest.raises(NotFound):
             await t.replace_graph(C, title(C, "mine"), "v")
         await t.add_graph(D, title(D, "new"))
-    assert await stored_title(session, A) == "mine"
-    assert not await stored(session, C)
-    assert await stored_title(session, D) == "new"
+    assert await stored_title(session, A) == "mine", (
+        "the caught not-found leaves the other change committed"
+    )
+    assert not await stored(session, C), "the not-found root is not stored"
+    assert await stored_title(session, D) == "new", "the added root is stored"
 
 
 async def test_a_refused_change_caught_inside_the_block_does_not_claim_its_root(session, seeded):
@@ -458,7 +472,7 @@ async def test_a_refused_change_caught_inside_the_block_does_not_claim_its_root(
         with pytest.raises(NotFound):
             await t.remove(C, "v")
         await t.add_graph(C, title(C, "new"))
-    assert await stored_title(session, C) == "new"
+    assert await stored_title(session, C) == "new", "the caught refusal does not claim the root"
 
 
 async def test_a_bad_loaded_graph_inside_the_block_sends_nothing(store, session, seeded):
@@ -467,7 +481,7 @@ async def test_a_bad_loaded_graph_inside_the_block_sends_nothing(store, session,
         async with session.transaction() as t:
             await t.replace_graph(A, title(A, "mine"), seeded[A])
             await t.add_graph(C, title(C, "new"), loaded_graphs=[URIRef("https://example.org/x")])
-    assert len(store.sent("update")) == sent
+    assert len(store.sent("update")) == sent, "the bad loaded graph sent no update"
 
 
 async def test_a_value_error_for_a_twice_claimed_root_caught_in_the_block_keeps_the_first_change(
@@ -477,7 +491,7 @@ async def test_a_value_error_for_a_twice_claimed_root_caught_in_the_block_keeps_
         await t.replace_graph(A, title(A, "first change"), seeded[A])
         with pytest.raises(ValueError):
             await t.replace_graph(A, title(A, "second change"), seeded[A])
-    assert await stored_title(session, A) == "first change"
+    assert await stored_title(session, A) == "first change", "the first change is kept"
 
 
 async def test_a_str_root_then_a_uriref_root_of_an_add_is_refused(session):
@@ -497,9 +511,9 @@ async def test_a_nested_transaction_that_commits_first_conflicts_the_outer_one(s
             await outer.add_graph(C, title(C, "outer"))
             async with session.transaction() as inner:
                 await inner.replace_graph(A, title(A, "inner"), seeded[A])
-    assert refused.value.iris == (A,)
-    assert await stored_title(session, A) == "inner"
-    assert not await stored(session, C)
+    assert refused.value.iris == (A,), "the nested commit makes the outer one conflict"
+    assert await stored_title(session, A) == "inner", "the inner commit is stored"
+    assert not await stored(session, C), "the outer add is not stored"
 
 
 async def test_a_sequence_of_transactions_each_uses_the_token_the_last_returned(session, seeded):
@@ -507,8 +521,10 @@ async def test_a_sequence_of_transactions_each_uses_the_token_the_last_returned(
     for n in range(5):
         async with session.transaction() as t:
             token = await t.replace_graph(A, title(A, f"v{n}"), token)
-    assert (await session.get_graph(A))[2] == token
-    assert await stored_title(session, A) == "v4"
+    assert (await session.get_graph(A))[2] == token, (
+        "each transaction uses the token the last one returned"
+    )
+    assert await stored_title(session, A) == "v4", "the last title is stored"
 
 
 # -- the tenant root ------------------------------------------------------------------------------
@@ -523,12 +539,16 @@ async def test_replacing_the_tenant_root_and_a_book_commit_together_and_conflict
             await t.replace_graph(TENANT, title(TENANT, "Bruges"), root_version)
             await t.replace_graph(A, title(A, "mine"), seeded[A])
             await other.replace_graph(A, title(A, "theirs"), seeded[A])
-    assert refused.value.iris == (A,)
-    assert str((await session.get_graph(TENANT))[0].value(URIRef(TENANT), TITLE)) == "Ghent"
+    assert refused.value.iris == (A,), "the conflict names the replaced root"
+    assert str((await session.get_graph(TENANT))[0].value(URIRef(TENANT), TITLE)) == "Ghent", (
+        "the tenant root is unchanged"
+    )
     async with session.transaction() as t:
         await t.replace_graph(TENANT, title(TENANT, "Bruges"), root_version)
         await t.replace_graph(B, title(B, "mine"), seeded[B])
-    assert str((await session.get_graph(TENANT))[0].value(URIRef(TENANT), TITLE)) == "Bruges"
+    assert str((await session.get_graph(TENANT))[0].value(URIRef(TENANT), TITLE)) == "Bruges", (
+        "the tenant root is replaced"
+    )
 
 
 async def test_a_conflict_on_the_tenant_root_names_the_tenant_iri(session, other):
@@ -537,7 +557,7 @@ async def test_a_conflict_on_the_tenant_root_names_the_tenant_iri(session, other
     with pytest.raises(Conflict) as refused:
         async with session.transaction() as t:
             await t.replace_graph(TENANT, title(TENANT, "Mine"), root_version)
-    assert refused.value.iris == (TENANT,)
+    assert refused.value.iris == (TENANT,), "the conflict names the tenant IRI"
 
 
 # -- single-root methods keep their messages ------------------------------------------------------
@@ -565,4 +585,4 @@ async def test_a_single_root_remove_of_a_missing_root_is_not_found_and_sends_not
     sent = len(store.sent("update"))
     with pytest.raises(NotFound):
         await session.remove(C, "v")
-    assert len(store.sent("update")) == sent
+    assert len(store.sent("update")) == sent, "the missing root sent no update"

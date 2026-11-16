@@ -98,7 +98,7 @@ def test_a_schema_written_in_another_order_or_with_other_names_has_the_same_lock
     toy_copy: Path, break_toy: Breaker, edits: Edits
 ) -> None:
     before, after = locks_after(toy_copy, break_toy, edits)
-    assert after == before
+    assert after == before, "the lock is the same after reordering and renaming"
 
 
 TWO_SLOTS_ONE_IRI = (
@@ -117,14 +117,16 @@ def test_two_slots_that_share_an_iri_give_the_same_lock_in_either_order(
     last = lock_of(toy_copy / ROOT_SCHEMA)
     break_toy("books.yaml", ALT_LAST, ALT_FIRST)
     first = lock_of(toy_copy / ROOT_SCHEMA)
-    assert first == last
+    assert first == last, "two slots sharing an IRI give the same lock in either order"
     assert changes(first, last) == [], "and no change shows between the two orders"
 
 
 def test_the_same_schema_gives_the_same_lock_every_time(toy_copy: Path) -> None:
     runs = [lock_of(toy_copy / ROOT_SCHEMA) for _ in range(3)]
-    assert runs[0] == runs[1] == runs[2]
-    assert runs[0].model_dump_json() == runs[2].model_dump_json()
+    assert runs[0] == runs[1] == runs[2], "the lock is the same on every run"
+    assert runs[0].model_dump_json() == runs[2].model_dump_json(), (
+        "the serialised lock is the same on every run"
+    )
 
 
 def test_the_lock_of_a_schema_does_not_depend_on_the_folder_it_is_kept_in(
@@ -132,7 +134,9 @@ def test_the_lock_of_a_schema_does_not_depend_on_the_folder_it_is_kept_in(
 ) -> None:
     elsewhere = tmp_path / "elsewhere" / "deeper"
     shutil.copytree(toy_copy, elsewhere)
-    assert lock_of(elsewhere / ROOT_SCHEMA) == lock_of(toy_copy / ROOT_SCHEMA)
+    assert lock_of(elsewhere / ROOT_SCHEMA) == lock_of(toy_copy / ROOT_SCHEMA), (
+        "the lock does not depend on where the schema is kept"
+    )
 
 
 # -- a change in what the schema stores must show in the lock ----------------------------------------
@@ -268,8 +272,10 @@ def test_the_database_of_a_subclass_is_the_one_it_inherits(
     """Read as the toolkit reads it (``database_of``), so a root without its own annotation is `tenant`."""
     before, after = locks_after(toy_copy, break_toy, OTHER_DATABASE)
     by_uri = {c.class_uri: c.root_database for c in after.locked_classes or []}
-    assert by_uri[SHELF] == "application"
-    assert {c.class_uri: c.root_database for c in before.locked_classes or []}[SHELF] == "tenant"
+    assert by_uri[SHELF] == "application", "a subclass's database is the one it inherits"
+    assert {c.class_uri: c.root_database for c in before.locked_classes or []}[SHELF] == "tenant", (
+        "the locked root database of the shelf is the tenant one"
+    )
 
 
 def test_a_change_of_the_iri_type_of_a_part_is_not_seen_by_the_lock(
@@ -277,7 +283,7 @@ def test_a_change_of_the_iri_type_of_a_part_is_not_seen_by_the_lock(
 ) -> None:
     # PD-21 item 5: a part's IRI type matters only under a part template that writes {type}, a runtime setting rp-generate does not know (RISK-8)
     before, after = locks_after(toy_copy, break_toy, PART_TYPE_CHANGED)
-    assert before == after
+    assert before == after, "the lock does not see the IRI type of a part change"
 
 
 def test_the_slot_a_class_inherits_from_a_mixin_is_named_on_the_class(
@@ -295,7 +301,7 @@ def test_a_slot_moved_between_classes_is_destructive_where_it_left(
     destructive = [c for c in changes(before, after) if c.rule == LockRule.DESTRUCTIVE]
     assert [(c.class_uri, c.slot_uri) for c in destructive] == [
         (BOOK, "https://example.org/ns/library#sequelOf")
-    ]
+    ], "a slot moved between classes is destructive for the class it left"
 
 
 # -- every row of the PD-3 table, from locks built by hand ---------------------------------------
@@ -439,18 +445,24 @@ def test_a_change_made_of_several_rows_reports_each_of_them() -> None:
         )
     )
     found = changes(old, new)
-    assert set(rules(found)) == {LockRule.NOT_MIGRATABLE, LockRule.NEEDS_STEP}
+    assert set(rules(found)) == {LockRule.NOT_MIGRATABLE, LockRule.NEEDS_STEP}, (
+        "a change of several rows reports each rule"
+    )
     assert len(found) == 4, seen(found)
 
 
 def test_an_absent_value_and_a_false_one_are_the_same_lock() -> None:
     bare = LockedSlot(slot_uri=ISBN, range=XSD_STRING)
     explicit = slot()
-    assert changes(lock(klass(BOOK, bare)), lock(klass(BOOK, explicit))) == []
+    assert changes(lock(klass(BOOK, bare)), lock(klass(BOOK, explicit))) == [], (
+        "an absent value and a false one are the same lock"
+    )
     no_slots = SchemaLock(
         schema_id=SCHEMA, schema_version="1", locked_classes=[LockedClass(class_uri=BOOK)]
     )
-    assert changes(no_slots, lock(klass(BOOK))) == []
+    assert changes(no_slots, lock(klass(BOOK))) == [], (
+        "a class with no slots and one with the default are the same lock"
+    )
 
 
 def test_the_order_of_the_lists_in_a_lock_does_not_change_what_is_found() -> None:
@@ -461,8 +473,10 @@ def test_the_order_of_the_lists_in_a_lock_does_not_change_what_is_found() -> Non
         klass(BOOK, slot("urn:b", required=True), slot(ISBN)),
         enums=[enum("B", "z"), enum("A", "y", "x")],
     )
-    assert changes(old, flipped) == []
-    assert changes(flipped, old) == []
+    assert changes(old, flipped) == [], "the order of lists does not change what is found"
+    assert changes(flipped, old) == [], (
+        "the order of lists does not change what is found the other way"
+    )
 
 
 def test_two_classes_with_one_iri_are_not_lost_by_the_comparison() -> None:
@@ -474,14 +488,18 @@ def test_two_classes_with_one_iri_are_not_lost_by_the_comparison() -> None:
 
 def test_two_classes_with_one_iri_give_no_change_when_only_their_order_differs() -> None:
     one, two = klass(BOOK, slot(ISBN)), klass(BOOK, slot("urn:b"))
-    assert changes(lock(one, two), lock(two, one)) == []
+    assert changes(lock(one, two), lock(two, one)) == [], (
+        "only the order of classes differing gives no change"
+    )
 
 
 def test_changes_are_sorted_so_the_draft_is_stable() -> None:
     old = lock(klass("urn:z", slot("urn:s1")), klass("urn:a", slot("urn:s2")), klass("urn:m"))
     new = lock(klass("urn:m"))
     found = changes(old, new)
-    assert [c.class_uri for c in found] == sorted(c.class_uri for c in found)
+    assert [c.class_uri for c in found] == sorted(c.class_uri for c in found), (
+        "changes are sorted by class"
+    )
 
 
 # -- the draft loads once its unresolved steps are gone ----------------------------------------------
@@ -520,8 +538,12 @@ def test_a_drop_draft_loads_whatever_legal_characters_the_iris_hold(
     old, new = dropped(class_uri, slot_uri)
     loaded = load_migration(written(tmp_path, old, new))
     (step,) = loaded.steps or []
-    assert f"<{slot_uri}>" in (step.delete_pattern or "")
-    assert f"<{class_uri}>" in (step.where_pattern or "")
+    assert f"<{slot_uri}>" in (step.delete_pattern or ""), (
+        "the delete pattern holds the slot's IRI whatever characters it has"
+    )
+    assert f"<{class_uri}>" in (step.where_pattern or ""), (
+        "the where pattern holds the class's IRI whatever characters it has"
+    )
 
 
 @pytest.mark.parametrize(
@@ -557,7 +579,7 @@ def test_a_draft_with_unresolved_steps_is_refused_and_loads_once_they_are_remove
     old = lock(klass(BOOK, slot(ISBN), slot("urn:gone")))
     new = lock(klass(BOOK, slot(ISBN, required=True), slot("urn:new", required=True)), version="2")
     drafted = draft(old, new)
-    assert any(s.unresolved for s in drafted.steps or [])
+    assert any(s.unresolved for s in drafted.steps or []), "the draft has an unresolved step"
     path = written(tmp_path, old, new)
     with pytest.raises(InvalidMigration, match="unresolved"):
         load_migration(path)
@@ -568,17 +590,18 @@ def test_a_draft_with_unresolved_steps_is_refused_and_loads_once_they_are_remove
     loaded = load_migration(path)
     assert [s.title for s in loaded.steps or []] == [
         "DROP <urn:gone> of <" + BOOK + "> (deletes data)"
-    ]
+    ], "the loaded draft keeps the unresolved drop step"
 
 
 def test_a_draft_with_nothing_to_write_loads_as_a_migration_without_steps(tmp_path: Path) -> None:
     old = lock(klass(BOOK, slot()))
     new = lock(klass(BOOK, slot(), slot("urn:opt")), klass(SHELF), version="2")
-    assert changes(old, new)
-    assert not not_safe(changes(old, new))
+    assert changes(old, new), "the schemas differ"
+    assert not not_safe(changes(old, new)), "the change is safe"
     loaded = load_migration(written(tmp_path, old, new))
-    assert not loaded.steps
-    assert (loaded.from_version, loaded.to_version) == ("1", "2")
+    assert not loaded.steps, "a draft with nothing to write has no steps"
+    assert loaded.from_version == "1", "the migration starts at the old version"
+    assert loaded.to_version == "2", "the migration ends at the new version"
 
 
 @pytest.mark.parametrize(
@@ -604,7 +627,8 @@ def test_a_draft_keeps_odd_versions_exactly_through_the_file(tmp_path: Path, ver
     path = tmp_path / "any.yaml"
     path.write_text(yaml.safe_dump(draft(old, new).model_dump(exclude_none=True)), encoding="utf-8")
     loaded = load_migration(path)
-    assert (loaded.from_version, loaded.to_version) == (version, version + "x")
+    assert loaded.from_version == version, "the old version is kept exactly"
+    assert loaded.to_version == version + "x", "the new version is kept exactly"
 
 
 def test_a_draft_names_the_schema_of_the_new_lock_and_nothing_of_the_old() -> None:
@@ -614,7 +638,9 @@ def test_a_draft_names_the_schema_of_the_new_lock_and_nothing_of_the_old() -> No
         schema_version="2",
         locked_classes=[klass(BOOK)],
     )
-    assert draft(old, new).schema_id == "https://example.org/ns/renamed"
+    assert draft(old, new).schema_id == "https://example.org/ns/renamed", (
+        "the draft names the schema of the new lock"
+    )
 
 
 def test_every_destructive_or_needs_a_step_change_gets_a_step_and_a_safe_one_gets_none() -> None:

@@ -29,7 +29,7 @@ async def test_it_records_the_activities_in_call_order() -> None:
     await observer(first, WORK)
     await observer(second, WORK)
 
-    assert observer.activities == [first, second]
+    assert observer.activities == [first, second], "activities are recorded in call order"
 
 
 async def test_of_keeps_the_instances_of_a_class_including_subclasses() -> None:
@@ -38,9 +38,11 @@ async def test_of_keeps_the_instances_of_a_class_including_subclasses() -> None:
     for item in (plain, shelved, added):
         await observer(item, WORK)
 
-    assert observer.of(Replace) == [plain, shelved]
-    assert observer.of(ShelvedReplace) == [shelved]
-    assert observer.of(Add) == [added]
+    assert observer.of(Replace) == [plain, shelved], (
+        "of a class keeps its instances and its subclasses'"
+    )
+    assert observer.of(ShelvedReplace) == [shelved], "of a subclass keeps only that subclass"
+    assert observer.of(Add) == [added], "of another class keeps only its own"
 
 
 async def test_a_bus_publish_reaches_it() -> None:
@@ -51,8 +53,10 @@ async def test_a_bus_publish_reaches_it() -> None:
 
     await bus.publish(shelved, session)
 
-    assert observer.activities == [shelved]
+    assert observer.activities == [shelved], "a bus publish reaches the observer"
 
 
 def test_its_name_in_a_log_is_readable() -> None:
-    assert "RecordingObserver" in _name(RecordingObserver())
+    assert "RecordingObserver" in _name(RecordingObserver()), (
+        "the observer's name is readable in a log"
+    )

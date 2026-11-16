@@ -70,11 +70,15 @@ def test_a_strict_number_refuses_what_is_not_a_number(models: ModuleType, value:
 
 @pytest.mark.parametrize("value", [1, 1.5])
 def test_a_strict_number_takes_integers_and_floats(models: ModuleType, value: float) -> None:
-    assert models.Claims(expires=value).expires == value
+    assert models.Claims(expires=value).expires == value, (
+        "a strict number takes the value unchanged"
+    )
 
 
 def test_a_slot_without_the_annotation_still_coerces(models: ModuleType) -> None:
-    assert models.Claims(expires=1, loose_expires="2").loose_expires == 2.0
+    assert models.Claims(expires=1, loose_expires="2").loose_expires == 2.0, (
+        "a slot without the annotation still coerces a string to a number"
+    )
 
 
 def test_a_strict_string_refuses_a_number(models: ModuleType) -> None:
