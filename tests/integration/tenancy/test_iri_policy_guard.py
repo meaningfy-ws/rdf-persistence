@@ -5,8 +5,10 @@ import pytest
 from rdf_persistence.domain.exceptions import IriPolicyChanged
 from rdf_persistence.domain.generated.service.rp_service import IdKind, IdSpec, IriPolicy
 from rdf_persistence.services.iri_policy_guard import guard_iri_policy
+from tests.integration.tenancy.file_stores import FAKE_FILES_ONLY
 
 
+@FAKE_FILES_ONLY
 async def test_a_restart_with_a_changed_policy_fails(tenancy, store, settings):
     first = settings.model_copy(
         update={"iri_policy": IriPolicy(object_id=IdSpec(kind=IdKind.RANDOM, length=13))}

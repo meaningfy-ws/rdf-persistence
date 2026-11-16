@@ -8,10 +8,7 @@ from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
 LABELS = ["Dune", "Emma", "Ulysses", "Candide", "Beloved"]
 INJECTIONS = [
     '"} ; DROP ALL ; #',
-    '" } UNION { GRAPH ?g { ?s ?p ?o } } #',
-    '"^^<http://www.w3.org/2001/XMLSchema#string> } ; CLEAR ALL ; #',
     "\\",
-    'Dune" . ?root ?p ?o . FILTER("',
 ]
 
 

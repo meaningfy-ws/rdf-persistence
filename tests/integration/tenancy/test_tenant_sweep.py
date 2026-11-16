@@ -19,6 +19,7 @@ from rdf_persistence.services.session import open_session
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.services.tenant_sweep import sweep_tenant
 from tests.fixtures.library.generated.scans import Scan
+from tests.integration.tenancy.file_stores import FAKE_FILES_ONLY
 from tests.toy import SETTINGS, library_slots, toy_mapper
 from tests.toy_service import SCAN_BODY
 from tests.unit.services.test_tenant_sweep import CREATOR, TURTLE
@@ -134,6 +135,7 @@ async def test_removing_with_files_deletes_only_the_keys_no_other_aggregate_name
     assert await shelf.blobs() == ["shared"], "a key another scan still names stays"
 
 
+@FAKE_FILES_ONLY
 async def test_it02_a_root_load_is_swept_only_when_no_commit_owns_it(shelf):
     now = datetime.now(UTC)
     kept, orphan = await shelf.load(shelf.tenant, now), await shelf.load(shelf.tenant, now)

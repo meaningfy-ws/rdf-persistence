@@ -14,7 +14,10 @@ from rdf_persistence.services.access import load_caller_access
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
 from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.integration.tenancy.file_stores import FAKE_FILES_ONLY
 from tests.toy import ADA, BOB, ban, direct, graph_of, library_slots, toy_mapper
+
+pytestmark = FAKE_FILES_ONLY  # the access load reads the system database; no test touches files
 
 
 async def test_the_creator_loads_the_librarian_grant_on_an_active_tenant(tenancy, store, settings):

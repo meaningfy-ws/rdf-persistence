@@ -11,6 +11,7 @@ from rdf_persistence.domain.iris import (
     tenant_resource_name,
 )
 from rdf_persistence.services.session import open_session
+from tests.integration.tenancy.file_stores import FAKE_FILES_ONLY
 from tests.toy import ADA, library_slots
 
 ODRL = Namespace("http://www.w3.org/ns/odrl/2/")
@@ -62,6 +63,7 @@ async def test_finish_deletion_leaves_an_active_tenant_whole(tenancy, store, fil
     assert await files.list_buckets(name) == [name], "bucket"
 
 
+@FAKE_FILES_ONLY
 async def test_a_grant_is_an_odrl_permission_of_the_creator_on_the_tenant(tenancy, store, settings):
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
     graph = await access_graph(store, settings, summary.id)
@@ -75,6 +77,7 @@ async def test_a_grant_is_an_odrl_permission_of_the_creator_on_the_tenant(tenanc
     }, "an odrl:Permission with the principal, the tenant and the role"
 
 
+@FAKE_FILES_ONLY
 async def test_the_access_record_owns_the_grant(tenancy, store, settings):
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
     graph = await access_graph(store, settings, summary.id)
@@ -85,6 +88,7 @@ async def test_the_access_record_owns_the_grant(tenancy, store, settings):
 ASK_CITY = "ASK { GRAPH ?g { ?s <http://schema.org/addressLocality> '%s' } }"
 
 
+@FAKE_FILES_ONLY
 async def test_a_tenant_database_holds_only_its_own_root_object(tenancy, store, settings):
     ghent = await tenancy.create("Ghent", library_slots("Ghent"), CREATOR)
     await tenancy.create("Bruges", library_slots("Bruges"), CREATOR)
