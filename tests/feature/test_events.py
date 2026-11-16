@@ -1,12 +1,14 @@
 """Steps of ``events.feature``: the toy library and its relay over the fakes (aggregate-events 1.7).
 
 Scenario to requirement of ``rp-events``: the first two scenarios are "A committed change is pending
-publication atomically", the last two "Events reach the bus at least once, in order per aggregate".
+publication atomically", the last two "Events reach the bus at least once, in order per aggregate"; the last two (aggregate-events 3.2) are
+"Server-sent events respect access", run through the real route on the toy service.
 Nothing sleeps: the relay is driven by ``run_once``.
 """
 
 import asyncio
 import io
+from contextlib import AsyncExitStack
 from types import SimpleNamespace
 
 import pytest
@@ -22,6 +24,19 @@ from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus
 from tests.toy import MODULES, SETTINGS, TOY_SCHEMA, toy_mapper
+from tests.toy_service import ToyService
+from tests.unit.entrypoints.scene import Scene
+from tests.unit.entrypoints.test_events_route import (
+    Block,
+    Follow,
+    another_book,
+    follow,
+    listening,
+    mount,
+    replace,
+    reshape_grants,
+    with_carol,
+)
 from tests.unit.services.test_pending_mark import RESTORER, TOY_CHAINS
 from tests.unit.services.test_relay import add_one, book, commit, pending, triples
 from tests.unit.services.test_tenant_dump import BASE_STAMPS
@@ -200,3 +215,117 @@ def _older_first(lib):
         if e.activity_class.endswith("Replace")
     ]
     assert [r.generations[0].entity_version for r in replaces] == lib.versions
+
+
+class Following:
+    """A scenario of the events route: the toy service, its scene, and the streams the steps hold open."""
+
+    def __init__(self) -> None:
+        self.loop = asyncio.new_event_loop()
+        self.stack = AsyncExitStack()
+        self.scene: Scene
+        self.stream: Follow
+        self.heard: list[Block] = []
+        self.first_id = ""
+        self.etag = ""
+        self.other_iri = self.other = self.other_etag = ""
+
+    def run(self, work):
+        return self.loop.run_until_complete(work)
+
+    def close(self) -> None:
+        self.run(self.stack.aclose())
+        self.loop.close()
+
+    async def open(self) -> None:
+        service = ToyService()
+        await self.stack.enter_async_context(service.app.router.lifespan_context(service.app))
+        http = await self.stack.enter_async_context(service.client())
+        mount(service, "/fast")
+        self.scene = await Scene.set_up(service, http)
+        await service.kit.relay.run_once()  # a follower hears only what follows
+
+    async def follow(self, who: str, **headers: str) -> Follow:
+        stream = follow(self.scene, who, **headers)
+        await self.stack.enter_async_context(stream)
+        return stream
+
+
+@pytest.fixture
+def following():
+    made = Following()
+    yield made
+    made.close()
+
+
+@given("a reader with a Prohibition of read on one book, following the tenant's events")
+def _barred_reader(following):
+    async def go():
+        await following.open()
+        scene = following.scene
+        following.other_iri, following.other, following.other_etag = await another_book(scene)
+        await reshape_grants(scene, with_carol(hide=scene.book_iri))
+        following.stream = await following.follow("carol")
+        await listening(scene.service.kit.hub)
+
+    following.run(go())
+
+
+@when("that book and another are replaced")
+def _replace_both(following):
+    async def go():
+        scene = following.scene
+        await replace(scene, scene.book, scene.book_etag, "Dune Messiah")
+        await replace(scene, following.other, following.other_etag, "Emma 2")
+
+    following.run(go())
+
+
+@then("the reader receives the other book's event only")
+def _only_the_other(following):
+    async def go():
+        [event] = await following.stream.take(1)
+        with pytest.raises(TimeoutError):
+            await following.stream.take(1, timeout=0.2)
+        return event
+
+    event = following.run(go())
+    assert [g.entity for g in Replace.model_validate_json(event.data).generations] == [
+        following.other_iri
+    ]
+
+
+@given("a reader whose stream ended after event A, and two later commits")
+def _ended_after_a(following):
+    async def go():
+        await following.open()
+        scene = following.scene
+        async with follow(scene) as first:
+            await listening(scene.service.kit.hub)
+            following.etag = await replace(scene, scene.book, scene.book_etag, "A")
+            [a] = await first.take(1)
+        following.first_id = a.id
+        following.etag = await replace(scene, scene.book, following.etag, "Later one")
+        following.etag = await replace(scene, scene.book, following.etag, "Later two")
+
+    following.run(go())
+
+
+@when("the reader reconnects with Last-Event-ID A within 7 days")
+def _reconnect(following):
+    async def go():
+        following.stream = await following.follow("rita", **{"Last-Event-ID": following.first_id})
+        following.heard = await following.stream.take(2)
+        scene = following.scene
+        await replace(scene, scene.book, following.etag, "Live")
+        following.heard += await following.stream.take(1)
+
+    following.run(go())
+
+
+@then("the reader receives the two later events, each once, then live events")
+def _resumed(following):
+    ids = [e.id for e in following.heard]
+    assert len(ids) == 3 and len(set(ids)) == 3, "two later events and a live one, none twice"
+    assert following.first_id not in ids
+    assert [e.event for e in following.heard] == ["Replace"] * 3
