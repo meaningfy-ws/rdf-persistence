@@ -145,15 +145,27 @@ def check(root: Path, **kwargs) -> None:
     assert_models_generated(root / PKG, **kwargs)
 
 
-@pytest.mark.parametrize("layer", ["domain", "services", "entrypoints"])
-@pytest.mark.parametrize(("case", "source", "name"), MODEL_CASES, ids=[c[0] for c in MODEL_CASES])
-def test_hand_written_model_is_named(tmp_path, layer, case, source, name):
+def assert_hand_written_model_is_named(tmp_path, layer, source, name):
     plant(tmp_path, f"{PKG}/{layer}/thing.py", source)
     with pytest.raises(AssertionError) as err:
         check(tmp_path)
     message = str(err.value)
     assert f"{PKG}/{layer}/thing.py:" in message, "the file is named with a line number"
     assert name in message, "the class is named"
+
+
+# Class: the form axis is a rule table (rule 8), kept whole on domain; the layer axis repeats
+# identical lines, so each other layer keeps one form below.
+@pytest.mark.parametrize(("case", "source", "name"), MODEL_CASES, ids=[c[0] for c in MODEL_CASES])
+def test_hand_written_model_is_named(tmp_path, case, source, name):
+    assert_hand_written_model_is_named(tmp_path, "domain", source, name)
+
+
+# Class: layer axis, one form per layer; the guard scans every layer in SCANNED_LAYERS.
+@pytest.mark.parametrize("layer", ["services", "entrypoints"])
+def test_hand_written_model_is_named_in_every_other_scanned_layer(tmp_path, layer):
+    _, source, name = MODEL_CASES[0]
+    assert_hand_written_model_is_named(tmp_path, layer, source, name)
 
 
 def test_violation_line_number_points_at_the_class(tmp_path):

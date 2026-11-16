@@ -420,7 +420,8 @@ async def test_async_wait_with_zero_timeout_never_calls_the_probe_and_times_out(
     assert clock.sleeps == []
 
 
-@pytest.mark.parametrize("falsy", [0, "", [], False, None])
+# Class: falsy result; the code tests truthiness once (`if result:`), so one falsy value stands for 0, "", [], False, None.
+@pytest.mark.parametrize("falsy", [0])
 async def test_async_wait_keeps_polling_on_falsy_results_until_timeout(falsy) -> None:
     calls = []
 
@@ -502,7 +503,8 @@ async def test_async_sync_probe_raising_a_retried_error_is_not_masked() -> None:
         await _wait_async(sync_probe, AsyncFakeClock())
 
 
-@pytest.mark.parametrize("timeout", [2.5, 0.5, 180, 1e-3])
+# Class: an integer (180) and a fraction (2.5); 0.5 and 1e-3 are fractions through the same `:g` format.
+@pytest.mark.parametrize("timeout", [2.5, 180])
 async def test_async_and_sync_timeout_messages_are_identical(timeout) -> None:
     async def aprobe():
         return None
