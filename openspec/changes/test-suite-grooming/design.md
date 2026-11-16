@@ -227,7 +227,8 @@ PD-3 depends on; PD-6 re-times after PD-1).
 
 ## Order dependence
 
-Filled by PD-9's `pytest-randomly` trial.
+None found. PD-9's `pytest-randomly==5.1.0` trial ran green on `--randomly-seed=1` and
+`--randomly-seed=2` (7379 passed, 18 skipped each); the plugin is adopted in the `test` group.
 
 ## Debt
 

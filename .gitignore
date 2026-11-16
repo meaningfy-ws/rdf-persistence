@@ -274,5 +274,8 @@ settings.local.json
 temp/
 .rp-generate-*/
 
+# mutmut work folder (left behind by `make mutation`)
+mutants/
+
 # Serena MCP state (its memories are not used; the truth is openspec/specs/)
 .serena/
