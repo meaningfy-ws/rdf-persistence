@@ -80,7 +80,7 @@ Delivered as one pull request (PR_NUMBER) with each stage as a commit group (des
 | Stage 1, P-7 (dist mode) | delivered: `loadgroup` | f9d9aee |
 | Stage 1, P-8 (`poll_seconds`) | delivered; 25.9 s → 20.2 s on five files | 4276740 |
 | Stage 1, libraries | pytest-timeout, quarantine marker, Hypothesis profile, `make mutation`, polyfactory dropped, **pytest-randomly adopted** | aa2d6f9, c0a8143 |
-| Stage 2, P-20 to P-34 | delivered: 639 cases merged, survivors chosen by mutation (D-3); P-31's unit half under Debt | 066f54b … 64bb1c8 |
+| Stage 2, P-20 to P-34 | delivered: 639 cases merged, survivors chosen by mutation (D-3); P-31's unit half under Debt | 6be25ef, 1612496, 17c1834, d011341, 066f54b, 3c28f7d, 64bb1c8 |
 | Stage 3, P-40 to P-45, P-49 to P-51 | delivered: 10 tests dropped; two P-51 pins kept (D-4) | d6fe7c0, ffb4671 |
 | Stage 4, rules 1, 3, 5-7, 9, 10, 12-15, 17, 21 | delivered; rule-5 and rule-12 items with no fake or clock under Debt | 20ba2ed … f3aefd5 |
 | Stage 4, review fixes F-1 to F-8 | delivered | d89ba44 |

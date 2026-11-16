@@ -16,7 +16,7 @@ The stages land as commit groups of one pull request (design.md D-1).
 - [x] 1.7 (built, measured: no saving; not landed, see PD-4) PD-4: module-scoped book triples. Gate: TG.
 - [x] 1.8 PD-5: testkit `shared_key()` with the rp-testkit scenario test; `signer` fixtures. Gate: TF.
 - [x] 1.9 PD-8: `poll_seconds` with the rp-testkit scenario test; in-process callers pass 0.01. Gate: TF.
-- [ ] 1.10 PD-6: re-time and change the slow markers; update `tests/audit/slow-markers.md` (runs last, alone on the machine, after stage 5). Gate: TG.
+- [x] 1.10 PD-6: re-time and change the slow markers; update `tests/audit/slow-markers.md` (runs last, alone on the machine, after stage 5). Gate: TG.
 
 ## 2. Stage 2: merged cases
 
@@ -37,18 +37,19 @@ The stages land as commit groups of one pull request (design.md D-1).
 
 ## 4. Stage 4: broken rules except 11
 
-- [ ] 4.1 PD-12: rule 21 renames and splits, rule 1 moves, rule 15 comments and `example.feature` deleted, the *Docs owed* pages. Gate: TF.
-- [ ] 4.2 PD-12: rules 17, 12 (perf moves included), 14, 10. Gate: TF; `make test-perf`.
-- [ ] 4.3 PD-12: rules 7, 9, 6. Gate: TF.
+- [x] 4.1 PD-12: rule 21 renames and splits, rule 1 moves, rule 15 comments and `example.feature` deleted, the *Docs owed* pages. Gate: TF.
+- [x] 4.2 PD-12: rules 17, 12 (perf moves included), 14, 10. Gate: TF; `make test-perf`.
+- [x] 4.3 PD-12: rules 7, 9, 6. Gate: TF.
 - [x] 4.4 PD-12: rules 3, 5, 13 (container tier). Gate: TF; the lead's `make test-containers`.
 - [x] 4.5 The order-dependence failures recorded by 1.2: none were found (*Order dependence*).
-- [ ] 4.6 PD-16: map refresh; out-of-scope report rows copied under *Debt* in design.md. Gate: as 2.8.
-- [ ] 4.7 The accepted findings F-1 to F-7 of the stage 1-3 review (design.md). Gate: TF.
+- [x] 4.6 PD-16: map refresh; out-of-scope report rows copied under *Debt* in design.md. Gate: as 2.8.
+- [x] 4.7 The accepted findings F-1 to F-8 of the stage 1-3 review and the lead's container gate (design.md). Gate: TF.
 
 ## 5. Stage 5: rule 11
 
-- [ ] 5.1 PD-13: messages in `tests/unit/services/`. Gate: TG.
-- [ ] 5.2 PD-13: messages in every other test folder. Gate: TF.
+- [x] 5.1 PD-13: messages in `tests/unit/services/`. Gate: TG.
+- [x] 5.2 PD-13: messages in every other test folder except the fixer's files. Gate: TF.
+- [x] 5.3 PD-13: messages in the nine files the fixer of 4.7 owned; a scan finds no assert without a message. Gate: TF.
 
 ## 6. Close
 
@@ -57,7 +58,7 @@ The stages land as commit groups of one pull request (design.md D-1).
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [ ] 1.10 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6 · [x] 2.7 · [x] 2.8 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · [x] 4.4 · [x] 4.5 · [ ] 4.6 · [ ] 4.7 · [ ] 5.1 · [ ] 5.2 · [ ] 6.1 · [ ] 6.2
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6 · [x] 2.7 · [x] 2.8 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 4.1 · [x] 4.2 · [x] 4.3 · [x] 4.4 · [x] 4.5 · [x] 4.6 · [x] 4.7 · [x] 5.1 · [x] 5.2 · [x] 5.3 · [ ] 6.1 · [ ] 6.2
 
 ## Verification
 

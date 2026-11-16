@@ -2,7 +2,7 @@
 
 What happened when skillery 3.19.0's skills drove one long session on `rdf-persistence`: a
 project-setup gap analysis, a slimming of the agent instructions, a `test-suite-care` audit, and the
-delivery of its 39 approved proposals as the change `test-suite-grooming` (epic-planning,
+delivery of its proposals (P-1 to P-8, P-20 to P-34 and P-40 to P-51: 35, of which the lead withdrew P-46 to P-48 as never W-5, leaving 32) as the change `test-suite-grooming` (epic-planning,
 clarity-gate, epic-delivery). Written for the skillery maintainers. The chronological record, good
 and bad, is `session-trace.md` beside this file; the owner's view of the decisions is
 `decisions-to-validate.md`; the testing-strategy advice and the skill review are
@@ -19,7 +19,7 @@ and bad, is `session-trace.md` beside this file; the owner's view of the decisio
 | Set-up share of summed unit time | 0.46 | AFTER_SETUP |
 | Coverage | 95.59 % | AFTER_COVERAGE |
 | Domain mutants caught (of 1,085) | 974 | AFTER_MUTATION |
-| Asserts without a message | ~1,120 (est.) | 0 (1,301 messages added) |
+| Asserts without a message | 1,301 (counted by an ast scan; the audit's "~1,120" summed only the findings files) | 0 |
 | Wrong `slow` markers | 27 | AFTER_SLOW |
 | CI job timeout / hung-test timeout | none / none | 30 min / 120 s |
 
@@ -27,7 +27,8 @@ and bad, is `session-trace.md` beside this file; the owner's view of the decisio
 
 1. **Measure, map, then propose** (`test-suite-care`). Run A and run B through the project's own
    `make` targets, with `PYTEST_ADDOPTS`, worked verbatim.
-2. **Mutation as the reduction proof.** `make mutation` on `domain/` ran in about 60 s; an identical
+2. **Mutation as the reduction proof.** `make mutation` on `domain/` ran in 56 s to 1 min 45 s
+   depending on machine load; an identical
    surviving-mutant set before and after a merge is the strongest evidence that nothing was lost.
    It was used for the domain merges and the class-3 domain drops.
 3. **Reading assertions refutes coverage containment.** Of 4,908 "contained" cases, the mapping

@@ -294,10 +294,39 @@ the cheap ones, to one fixer (task 4.7):
   the listing shelf helpers move to a helper module; the id-filtered parameter lists use named
   constants or assert their length; dead `UNREADABLE` entries and `TURTLE` go; the sweep test's
   name matches its case; the two map rows are corrected.
+- **F-8 (Critical, the lead's container gate):** the e2e test imported the private
+  `testkit.roundtrip`; `assert_isomorphic` becomes a public testkit name and the consumer-facing
+  tests import it from `rdf_persistence.testkit`.
 
 Under the floor (not fixed here): S4 comment pointers and vocabulary, S5 weak representatives,
 S7 a stale module docstring, S8 the network guard during class set-up. W5 and W6 (records and
 docs) are the lead's: recorded in D-4, *Docs owed* and `tasks.md`.
+
+## Accepted findings (final review: L1, L2, L3 apart; L4+L5 as one)
+
+No reviewer rated a finding Critical; the lead re-labels three as Critical because each loses a
+guard: **L2-W3** (the JSON-LD non-inline context refusal had left every CI lane), **L2-W4** (the
+N-Quads import half checked less), **L2-W5** (the 413 test lost its proof that the size bound
+comes before expansion). Two fixers (task 6.2) take every accepted item, split by file:
+
+- **Fixer A:** `poll_seconds` validated (L1-W1); `shared_key` and `new_key` docstrings (L1-S1,
+  L45-W5); `refresh_map` atomic write, malformed rows, two exit codes (L1-S3, L45-S2); one Makefile
+  variable for `-n auto --dist loadgroup` and the quarantine suffix, `test-changed` included
+  (L45-W3); the unit lanes ignore `tests/perf` (L3-W1); `test-perf` excludes quarantine (L3-S3);
+  `make refresh-map` (L3-S4); release jobs time out (L45-W6); `assert_isomorphic` in the rp-testkit
+  delta (L2-W1, L45-W7); a serial-run timeout test (L2-W2); docs for the perf lane, the network
+  folder and the seed (L2-W7, L45-W4, L45-S3); pytest.ini, setup.cfg and `toy_key` tidy-ups
+  (L3-S2, L3-S7).
+- **Fixer B:** the three Critical items; problem tuples through `assert_problem` (L2-W6); helper
+  modules for the five cross-test imports this change added (L3-W2); an import-linter contract for
+  rule 1 on `tests.unit.domain` (L3-W3); public import paths for the testkit names (L3-S8); the
+  event-wiring assert, three wrong messages, the shelf teardown's grants (L2-S4, L2-S6, L1-S2).
+
+Rule 11 as applied (L2-W6): a tuple assert that states ONE idea (status and problem type of one
+response) stays one assert; tuples of separate ideas were split.
+
+Under the floor: L3-S1, L3-S5, L3-S6, L3-S9, the cross-test imports that predate this change,
+L2-S2, L2-S3, L2-S7, L45-S4, L45-S5. L2-S5, L45-S1 and L45-S6 were fixed by the lead (spine).
 
 ## Order dependence
 
@@ -317,8 +346,6 @@ Filled during stage 4 (rule 5 items without a fake).
 - Production redundancy found by mutation (task 2.1), for a later decision: the Fuseki
   `_raise_for_status` `status >= 500` branch has the same outcome as the final `not is_success`
   branch; `auth.py`'s scheme and empty-token checks give the same 401 as the verifier.
-- `TURTLE` in `tests/unit/entrypoints/test_route_class.py` is unused after 2.1 (ruff does not
-  flag module constants): remove in stage 4.
 - Rule 12 waits with no injectable clock (task 4.2): the three `test_events_route.py` absence
   waits and the grant-removed keep-alive (0.05 s), `test_relay.py`'s d18 hanging publish.
   Accepted exception: the testkit's `probe_timeout` test keeps its 0.01 s wait (a real probe).
@@ -335,6 +362,9 @@ Filled during stage 4 (rule 5 items without a fake).
   the `policy` parameter (review W5).
 
 ## Docs owed
+
+All three were written in task 4.1 (f3aefd5); the perf lane's Docker need and the moved
+dependents-cost path are fixed by the final-review fixer (task 6.2).
 
 - `howto/adopt.adoc` (the signing-key passage, near "cache `new_key()`"): point consumers at
   `testkit.shared_key()` and re-measure the "≈ 0.5 s" key-generation figure (0.057 s measured,
