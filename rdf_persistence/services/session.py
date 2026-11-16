@@ -137,7 +137,10 @@ _MARKED = "GRAPH $registry { $marker a $commit_marker }"
 # The commit's activity (message-bus PD-6, PD-8, D-5 a): one more marked operation of the request,
 # the guard that no statement is made of its IRI yet, what confirms it is stored, and the question
 # about an IRI that is taken.
-_RECORD = "INSERT { GRAPH $provenance { $triples } } WHERE { $marked }"
+_RECORD = (
+    "INSERT { GRAPH $provenance { $triples $id $pending_since ?now } } "
+    "WHERE { $marked BIND (NOW() AS ?now) }"
+)
 _ID_FREE = "FILTER NOT EXISTS { GRAPH $provenance { $id ?taken_p ?taken_o } }"
 _RECORDED = "GRAPH $provenance { $id a $activity_class }"
 ID_TAKEN = "ASK { GRAPH $provenance { $id ?p ?o } }"
@@ -216,9 +219,27 @@ SELECT DISTINCT ?activity ?s ?p ?o WHERE {
     $of_entity
     { ?activity ?p ?o . BIND (?activity AS ?s) }
     UNION { VALUES ?link { $generation $invalidation } ?activity ?link ?s . ?s ?p ?o }
+    FILTER (?p NOT IN ($plumbing))
   }
 }
 """
+# Every activity with a pending mark, of any type: its own statements, its parts' and the mark's value.
+READ_PENDING = """
+SELECT DISTINCT ?activity ?since ?s ?p ?o WHERE {
+  GRAPH $provenance {
+    ?activity $pending_since ?since .
+    { ?activity ?p ?o . BIND (?activity AS ?s) }
+    UNION { VALUES ?link { $generation $invalidation } ?activity ?link ?s . ?s ?p ?o }
+    FILTER (?p NOT IN ($plumbing))
+  }
+}
+"""
+# Replace the pending mark of $id by $mark at the store's clock; nothing happens when it is not pending.
+MARK_ACTIVITY = (
+    "DELETE { GRAPH $provenance { $id $pending_since ?since } } "
+    "INSERT { GRAPH $provenance { $id $mark ?now } } "
+    "WHERE { GRAPH $provenance { $id $pending_since ?since } BIND (NOW() AS ?now) }"
+)
 _OF_ENTITY = "?activity $generation ?of_part . ?of_part $p_entity $entity ."
 # Is $iri an aggregate of class $type whose graph holds every statement of $patterns (PD-7)?
 MATCHES = "ASK { GRAPH $graph { ?root a $type . $patterns FILTER (?root = $iri) } }"
@@ -266,6 +287,14 @@ def _pair_values(pairs: Dependents) -> SparqlTerm:
 def _without_dependents(pairs: Dependents) -> SparqlTerm:
     """The clause that drops the links of ``(class, predicate)`` ``pairs``; none at all when there are none."""
     return fragment(_NOT_DEPENDENT, pairs=_pair_values(pairs)) if pairs else SparqlTerm("")
+
+
+def _mark_key(mark: object, iri: str) -> tuple[int, datetime, str]:
+    """Total sort key of a pending mark: a zoned time by its value, any other mark (a string, a
+    naive time) after every valid one, so one bad mark never stalls the relay of a database."""
+    if isinstance(mark, datetime) and mark.tzinfo is not None:
+        return (0, mark, iri)
+    return (1, datetime.min.replace(tzinfo=UTC), iri)
 
 
 def utc_now() -> datetime:
@@ -820,12 +849,72 @@ class Session:
             of_entity=of_entity,
             generation=term(v.HAS_GENERATION),
             invalidation=term(v.HAS_INVALIDATION),
+            plumbing=term_list(v.RELAY_PLUMBING),
         )
         graphs: dict[str, Graph] = {}
         for row in await self._store.query(self._database, text):
             if isinstance(row, ResultRow):
                 graphs.setdefault(str(row.activity), Graph()).add((row.s, row.p, row.o))
         return graphs
+
+    async def pending_activities(self) -> list[tuple[str, Graph]]:
+        """The activities of the provenance graph that wait to be relayed, each with its own
+        statements and those of its parts (the relay plumbing left out), by ``pendingSince`` and
+        then by IRI. No access is checked.
+
+        Raises:
+            DatabaseGone: The tenant database does not exist.
+        """
+        text = fill(
+            READ_PENDING,
+            provenance=term(self._provenance),
+            pending_since=term(v.PENDING_SINCE),
+            generation=term(v.HAS_GENERATION),
+            invalidation=term(v.HAS_INVALIDATION),
+            plumbing=term_list(v.RELAY_PLUMBING),
+        )
+        graphs: dict[str, Graph] = {}
+        since: dict[str, object] = {}
+        for row in await self._store.query(self._database, text):
+            if isinstance(row, ResultRow):
+                graphs.setdefault(str(row.activity), Graph()).add((row.s, row.p, row.o))
+                since[str(row.activity)] = Literal(row.since).toPython()
+        return [(iri, graphs[iri]) for iri in sorted(graphs, key=lambda i: _mark_key(since[i], i))]
+
+    async def mark_relayed(self, iri: str) -> None:
+        """Replace the pending mark of the activity ``iri`` by ``rp:relayedAt`` at the store's
+        clock; nothing happens if it is not pending, so a second call changes nothing.
+
+        Raises:
+            DatabaseGone: The tenant database does not exist.
+        """
+        await self._mark(iri, v.RELAYED_AT)
+
+    async def mark_failed(self, iri: str) -> None:
+        """As ``mark_relayed``, with ``rp:publicationFailed``: the activity is given up."""
+        await self._mark(iri, v.PUBLICATION_FAILED)
+
+    async def _mark(self, iri: str, mark: URIRef) -> None:
+        text = fill(
+            MARK_ACTIVITY,
+            provenance=term(self._provenance),
+            id=term(URIRef(iri)),
+            pending_since=term(v.PENDING_SINCE),
+            mark=term(mark),
+        )
+        await self._store.update(self._database, text)
+
+    async def is_recorded(self, activity_iri: str) -> bool:
+        """Whether the provenance graph holds a statement about ``activity_iri``: one cheap ``ASK``
+        that also shows the tenant database is there and the store answers. No access is checked.
+
+        Raises:
+            DatabaseGone: The tenant database does not exist.
+            StoreUnavailable: The store does not answer.
+        """
+        return await self._ask(
+            ID_TAKEN, provenance=term(self._provenance), id=term(URIRef(activity_iri))
+        )
 
     async def matches(self, iri: str, class_iri: str, conditions: Sequence[Condition]) -> bool:
         """Whether the aggregate ``iri`` is of exactly the class ``class_iri`` and holds every condition.
@@ -1387,6 +1476,8 @@ class Transaction:
             _RECORD,
             provenance=term(session._provenance),
             triples=triples_block(triples),
+            id=term(URIRef(activity.id)),
+            pending_since=term(v.PENDING_SINCE),
             marked=marked,
         )
 

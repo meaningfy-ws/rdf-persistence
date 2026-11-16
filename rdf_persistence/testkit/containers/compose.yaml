@@ -1,4 +1,4 @@
-# Test containers (PD-16): Fuseki, Garage and Zitadel with Postgres.
+# Test containers (PD-16): Fuseki, Garage, Redis and Zitadel with Postgres.
 #
 # The pytest fixtures (rdf_persistence.testkit.containers.fixtures) start only the services a test
 # needs, with free host ports passed in the RP_*_PORT variables. The defaults let you start the
@@ -54,6 +54,12 @@ services:
       - ./garage.toml:/etc/garage.toml:ro
     ports:
       - "127.0.0.1:${RP_GARAGE_PORT:-3900}:3900"
+
+  redis:
+    # The adapter's redelivery needs Redis 8.4 or later (XREADGROUP CLAIM).
+    image: redis:8
+    ports:
+      - "127.0.0.1:${RP_REDIS_PORT:-6379}:6379"
 
   postgres:
     # postgres:17-alpine

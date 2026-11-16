@@ -12,6 +12,7 @@ from rdf_persistence.testkit.markers import containers_for
         (["unit"], []),
         (["integration", "store"], ["fuseki"]),
         (["integration", "identity"], ["zitadel"]),
+        (["integration", "events"], ["redis"]),
         (["e2e", "store", "files", "identity"], ["fuseki", "garage", "zitadel"]),
     ],
 )

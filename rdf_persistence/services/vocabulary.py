@@ -120,6 +120,12 @@ LOADED_AT = predicate("loaded_at")
 # A transaction's commit marker: its class and the time it started (atomic-commit PD-1).
 COMMIT_MARKER = class_iri("CommitMarker")
 STARTED_AT = predicate("started_at")
+# The relay's plumbing on an activity (aggregate-events PD-1): not slots, so no model and no message
+# carries them; reads of an activity exclude them and a restore drops them (PD-14).
+PENDING_SINCE = URIRef(f"{STARTED_AT.removesuffix('startedAt')}pendingSince")
+RELAYED_AT = URIRef(f"{STARTED_AT.removesuffix('startedAt')}relayedAt")
+PUBLICATION_FAILED = URIRef(f"{STARTED_AT.removesuffix('startedAt')}publicationFailed")
+RELAY_PLUMBING = (PENDING_SINCE, RELAYED_AT, PUBLICATION_FAILED)
 # A graph naming a blob of the tenant's bucket by its key (PD-3 of the live-tenant sweep).
 FILE_KEY = predicate("file_key")
 # A listing states the graph it found each subject in (PD-7); the toolkit drops it before answering.

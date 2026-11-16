@@ -89,3 +89,40 @@ libraries/frameworks if necessary)"
 - An SSE client that reconnects with `Last-Event-ID` receives what it missed, within retention.
 - Published events are pruned according to the retention rule.
 - The fake bus and the real bus pass the same conformance cases.
+
+## Session J question round (2026-11-15)
+
+The lead checked the EPIC against `develop` (ae04865) and the "As built" table of the archived
+`message-bus` and asked one round. Findings: the activity record in `{tenant}/provenance` exists
+(the application database records too); nothing marks a record published; no background task
+exists; the generated models and `GET /context.jsonld` exist, with no setting for the service's
+public address; `MessageBus.publish(activity, session)` needs a session an incoming message lacks.
+
+Questions, each with the lead's recommendation:
+
+1. Published mark or pending mark? Recommended: the commit writes a pending mark; the relay
+   removes it once the broker accepts the message. Records from before this EPIC are never
+   pending, so nothing is replayed.
+2. An incoming message needs a session. Recommended: the message carries its tenant and its
+   origin (the deployment); the receiver opens a session on that tenant as the toolkit principal
+   and skips messages of its own origin (its observers saw them at commit).
+3. Where server-sent events come from. Recommended: the relay hands each event in process to the
+   open streams after it is published (or, with no broker, after its mark is removed);
+   `Last-Event-ID` gaps are read back from the provenance graph, up to 7 days.
+4. What is pruned. Recommended: never the activity records (the history kept by `message-bus`);
+   only the pending mark, and the Redis stream trimmed to 7 days.
+5. Access re-check on a live stream. Recommended: the caller's access is re-read before an event
+   is sent, at most once a second per connection; an activity with every part hidden is not sent.
+6. The context link. Recommended: an optional setting with the service's public base URL; the
+   link is `<base>/context.jsonld`, or relative when unset.
+7. Runtime dependencies (the developer's yes needed). Recommended: a new extra
+   `events = ["faststream[redis]==0.7.8"]` (brings redis-py 8.x); the test Redis runs as a
+   compose service, so the `testkit` extra is unchanged.
+8. Session I's rules, as the lead read them: commit, push, PR and merge on green CI, one PR per
+   stage; rebase on `develop` before each PR (P-0002); generated-file conflicts resolved in the
+   sources (P-0003); `make check-all` and `make test-containers` per stage before its PR;
+   reconcile `proposal.md` before the last merge (P-0004), stop after the last merge and report,
+   acceptance and archive left to the developer.
+
+Developer (2026-11-15): "continue towars the acomplishment of this". Read by the lead as accepting
+every recommendation, Q7 (the `events` extra) included; the developer may overrule any of them.

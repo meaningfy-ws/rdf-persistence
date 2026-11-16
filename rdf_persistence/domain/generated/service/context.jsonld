@@ -42,6 +42,10 @@
       "active": {
          "@id": "accountActive"
       },
+      "activity_class": {
+         "@type": "@id",
+         "@id": "activityClass"
+      },
       "aggregate_template": {
          "@id": "aggregateTemplate"
       },
@@ -99,6 +103,9 @@
          "@type": "@id",
          "@container": "@set",
          "@id": "condition"
+      },
+      "context": {
+         "@id": "contextLink"
       },
       "contributor": {
          "@type": "@id",
@@ -291,6 +298,9 @@
       "older_than_seconds": {
          "@id": "olderThanSeconds"
       },
+      "origin": {
+         "@id": "origin"
+      },
       "owned_by": {
          "@type": "@id",
          "@id": "ownedBy"
@@ -340,6 +350,10 @@
       },
       "provenance_template": {
          "@id": "provenanceTemplate"
+      },
+      "public_url": {
+         "@type": "@id",
+         "@id": "publicUrl"
       },
       "referrer": {
          "@type": "@id",
@@ -485,6 +499,9 @@
       },
       "Described": {
          "@id": "Described"
+      },
+      "EventEnvelope": {
+         "@id": "EventEnvelope"
       },
       "Filter": {
          "@id": "Filter"

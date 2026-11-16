@@ -145,6 +145,7 @@ class ServiceSettings(ConfiguredBaseModel):
     max_body_bytes: Optional[int] = Field(default=1048576, title="Maximum body size", description="The most bytes a request body may hold; a larger one is refused with 413 before it is read whole.", ge=1)
     max_restore_bytes: Optional[int] = Field(default=1073741824, title="Maximum restore size", description="The most bytes a restore archive may hold once decompressed, counting each member\u0027s size and its tar block; a larger archive is refused with `InvalidBody` as it is read, so a small hostile upload cannot fill the memory or the object store.", ge=1)
     deployment: Optional[str] = Field(default=None, title="Deployment", description="A slug that names this deployment, for templates that use `{deployment}`; lower case letters and digits, at most 32.")
+    public_url: Optional[str] = Field(default=None, title="Public URL", description="The address this deployment is reachable at from outside, without a trailing slash; the event envelope\u0027s context link is absolute under it. Absent, the link is relative.")
     iri_policy: Optional[IriPolicy] = Field(default=None, title="IRI policy", description="The IRI policy of the service; absent, the default policy applies.")
 
     @field_validator("base")
@@ -222,6 +223,19 @@ class ServiceSettings(ConfiguredBaseModel):
                     raise ValueError(err_msg)
         elif isinstance(v, str) and not pattern.fullmatch(v):
             err_msg = "Invalid deployment format: " + str(v)
+            raise ValueError(err_msg)
+        return v
+
+    @field_validator("public_url")
+    def pattern_public_url(cls, v):
+        pattern=re.compile("^https?://.+[^/]$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid public_url format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid public_url format: " + str(v)
             raise ValueError(err_msg)
         return v
 
@@ -646,6 +660,14 @@ class Migration(ConfiguredBaseModel):
     steps: Optional[list[MigrationStep]] = Field(default=None, title="Steps", description="The steps of a migration, in the order they run.")
 
 
+class EventEnvelope(ConfiguredBaseModel):
+    "What travels beside an activity on the event bus: the tenant it happened in, the deployment that published it, the class of its body and where to find the JSON-LD context that reads it."
+    tenant: str = Field(default=..., title="Tenant", description="The IRI of the tenant, or of the application, the activity happened in.")
+    origin: str = Field(default=..., title="Origin", description="The deployment that published the message, as its `deployment` setting names it.")
+    activity_class: str = Field(default=..., title="Activity class", description="The IRI of the class of the activity the message carries.")
+    context: str = Field(default=..., title="Context", description="A link to the JSON-LD context that reads the message body.")
+
+
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 ServiceSettings.model_rebuild()
@@ -673,3 +695,4 @@ MemberList.model_rebuild()
 AggregateHead.model_rebuild()
 MigrationStep.model_rebuild()
 Migration.model_rebuild()
+EventEnvelope.model_rebuild()

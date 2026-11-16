@@ -416,6 +416,24 @@
     required: true
     multivalued: false
     range: string
+- class_name: EventEnvelope
+  slots:
+  - name: activity_class
+    required: true
+    multivalued: false
+    range: uri
+  - name: context
+    required: true
+    multivalued: false
+    range: string
+  - name: origin
+    required: true
+    multivalued: false
+    range: string
+  - name: tenant
+    required: true
+    multivalued: false
+    range: uri
 - class_name: Filter
   slots:
   - name: filter_slot
@@ -1219,6 +1237,10 @@
     required: true
     multivalued: false
     range: string
+  - name: public_url
+    required: false
+    multivalued: false
+    range: uri
   - name: roles_claim
     required: true
     multivalued: false

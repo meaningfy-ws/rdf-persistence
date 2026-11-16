@@ -280,6 +280,38 @@
       "title": "Described",
       "type": "object"
     },
+    "EventEnvelope": {
+      "additionalProperties": false,
+      "description": "What travels beside an activity on the event bus: the tenant it happened in, the deployment that published it, the class of its body and where to find the JSON-LD context that reads it.",
+      "properties": {
+        "activity_class": {
+          "description": "The IRI of the class of the activity the message carries.",
+          "format": "uri",
+          "type": "string"
+        },
+        "context": {
+          "description": "A link to the JSON-LD context that reads the message body.",
+          "type": "string"
+        },
+        "origin": {
+          "description": "The deployment that published the message, as its `deployment` setting names it.",
+          "type": "string"
+        },
+        "tenant": {
+          "description": "The IRI of the tenant, or of the application, the activity happened in.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tenant",
+        "origin",
+        "activity_class",
+        "context"
+      ],
+      "title": "EventEnvelope",
+      "type": "object"
+    },
     "Filter": {
       "additionalProperties": false,
       "description": "One equality filter of a listing, the name of a slot of the listed type and the value it must have, as the text the caller sent.",
@@ -1118,6 +1150,12 @@
         "prefix": {
           "description": "The prefix of the database names of the service's tenants; lower case, at most 20 characters.",
           "pattern": "^[a-z][a-z0-9]{0,19}$",
+          "type": "string"
+        },
+        "public_url": {
+          "description": "The address this deployment is reachable at from outside, without a trailing slash; the event envelope's context link is absolute under it. Absent, the link is relative.",
+          "format": "uri",
+          "pattern": "^https?://.+[^/]$",
           "type": "string"
         },
         "roles_claim": {

@@ -60,6 +60,8 @@ export interface ServiceSettings {
   max_restore_bytes?: number;
   /** A slug that names this deployment, for templates that use `{deployment}`; lower case letters and digits, at most 32. */
   deployment?: string;
+  /** The address this deployment is reachable at from outside, without a trailing slash; the event envelope's context link is absolute under it. Absent, the link is relative. */
+  public_url?: string;
   /** The IRI policy of the service; absent, the default policy applies. */
   iri_policy?: IriPolicy;
 }
@@ -352,4 +354,16 @@ export interface Migration {
   description?: string;
   /** The steps of a migration, in the order they run. */
   steps?: MigrationStep[];
+}
+
+/** What travels beside an activity on the event bus: the tenant it happened in, the deployment that published it, the class of its body and where to find the JSON-LD context that reads it. */
+export interface EventEnvelope {
+  /** The IRI of the tenant, or of the application, the activity happened in. */
+  tenant: string;
+  /** The deployment that published the message, as its `deployment` setting names it. */
+  origin: string;
+  /** The IRI of the class of the activity the message carries. */
+  activity_class: string;
+  /** A link to the JSON-LD context that reads the message body. */
+  context: string;
 }

@@ -26,7 +26,7 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.testkit.markers import FILES, IDENTITY, STORE, register_markers
+from rdf_persistence.testkit.markers import EVENTS, FILES, IDENTITY, STORE, register_markers
 
 # Path constants — single source of truth for the test directory structure.
 TESTS_ROOT_DIR = Path(__file__).parent
@@ -70,6 +70,7 @@ _MARKERS_BY_DIR = (
     DirectoryMarkers("integration/tenancy/", ("integration", STORE, FILES)),
     DirectoryMarkers("integration/files/", ("integration", FILES)),
     DirectoryMarkers("integration/identity/", ("integration", IDENTITY)),
+    DirectoryMarkers("integration/adapters/", ("integration", EVENTS)),
     DirectoryMarkers("e2e/", ("e2e", STORE, FILES, IDENTITY)),
     DirectoryMarkers("perf/", ("perf",)),
 )

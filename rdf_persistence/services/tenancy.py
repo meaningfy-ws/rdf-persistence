@@ -309,6 +309,16 @@ class Tenancy:
         return application_database_name(self._settings.prefix)
 
     @property
+    def toolkit(self) -> Principal:
+        """The principal the toolkit acts as on its own behalf (the relay's)."""
+        return self._toolkit
+
+    @property
+    def application(self) -> str:
+        """The IRI of the application, the tenant of the application database's activities."""
+        return str(self._iris.application)
+
+    @property
     def behind(self) -> frozenset[str]:
         """The tenants whose migration failed at start-up: their requests for data are refused (PD-11)."""
         return self._behind

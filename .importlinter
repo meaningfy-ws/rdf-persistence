@@ -150,3 +150,14 @@ source_modules =
     rdf_persistence.services.yaml_files
 forbidden_modules =
     rdf_persistence.services.messagebus
+
+[importlinter:contract:event-bus-libraries-in-one-module]
+name = only the Redis adapter imports faststream or redis (aggregate-events PD-8)
+type = forbidden
+source_modules =
+    rdf_persistence
+forbidden_modules =
+    faststream
+    redis
+ignore_imports =
+    rdf_persistence.adapters.redis_events -> faststream

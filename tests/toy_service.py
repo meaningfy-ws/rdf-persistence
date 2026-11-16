@@ -24,6 +24,7 @@ from rdf_persistence import (
 from rdf_persistence.domain.generated.service.rp_service import IdKind, IdSpec, IriPolicy
 from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris, draw_id, principal_iri
 from rdf_persistence.entrypoints.service import install_service
+from rdf_persistence.services.events import EventBus
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.tenancy import GrantValidator, RootValidator
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
@@ -140,6 +141,9 @@ class ToyService:
         workflows: Sequence[Path] = (REVIEW_WORKFLOW,),
         migrations: Path = TOY_MIGRATIONS,
         stores: Mapping[str, Store] = {},
+        event_bus: EventBus | None = None,
+        deployment: str | None = None,
+        public_url: str | None = None,
     ) -> None:
         self.signer = TokenSigner(key=toy_key())
         self.store = store or FakeStore()
@@ -151,6 +155,8 @@ class ToyService:
                 "prefix": prefix or SETTINGS.prefix,
                 "max_body_bytes": max_body_bytes or SETTINGS.max_body_bytes,
                 "iri_policy": iri_policy,
+                "deployment": deployment,
+                "public_url": public_url,
             }
         )
         verifier = JwksTokenVerifier(
@@ -178,6 +184,7 @@ class ToyService:
             workflows=workflows,
             migrations=migrations,
             stores=stores,
+            event_bus=event_bus,
         )
 
     def client(self) -> httpx.AsyncClient:

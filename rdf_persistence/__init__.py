@@ -112,6 +112,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     AccountSummary,
     Authorised,
     CallerAccess,
+    EventEnvelope,
     GrantSet,
     IdKind,
     IdSpec,
@@ -145,6 +146,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
         load_role_definitions,
     )
     from rdf_persistence.services.collaboration import Collaboration
+    from rdf_persistence.services.events import EventBus, Receive, context_link
     from rdf_persistence.services.file_removal import remove_with_files
     from rdf_persistence.services.files import FileStore
     from rdf_persistence.services.identity import Identity
@@ -174,6 +176,9 @@ _LAZY_MODULES = {
     "ServiceKit": f"{_ENTRYPOINTS}.kit",
     "limited_body": f"{_ENTRYPOINTS}.router",
     "Identity": f"{_SERVICES}.identity",
+    "EventBus": f"{_SERVICES}.events",
+    "Receive": f"{_SERVICES}.events",
+    "context_link": f"{_SERVICES}.events",
     "AccessRules": f"{_SERVICES}.access",
     "load_caller_access": f"{_SERVICES}.access",
     "load_role_definitions": f"{_SERVICES}.access",
@@ -235,6 +240,8 @@ __all__ = [
     "DatabaseKind",
     "DeleteFile",
     "Described",
+    "EventEnvelope",
+    "EventBus",
     "FileStore",
     "Forbidden",
     "FusekiStore",
@@ -274,6 +281,7 @@ __all__ = [
     "NotAcceptable",
     "NotFound",
     "Page",
+    "Receive",
     "PayloadTooLarge",
     "PendingLoad",
     "PersistenceError",
@@ -336,6 +344,7 @@ __all__ = [
     "WritesKind",
     "ZitadelIdentity",
     "command",
+    "context_link",
     "bootstrap",
     "generated_models",
     "install_service",

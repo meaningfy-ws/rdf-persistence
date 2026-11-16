@@ -1,5 +1,6 @@
 """What the routes share: the ports, the settings, and the pieces built from the application's schema (PD-13)."""
 
+import logging
 from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from datetime import timedelta
@@ -7,9 +8,14 @@ from pathlib import Path
 from types import ModuleType
 from typing import BinaryIO, cast
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
-from rdf_persistence.domain.exceptions import StoreNotWired
+from rdf_persistence.domain.exceptions import (
+    DatabaseGone,
+    MessageLimitExceeded,
+    NotFound,
+    StoreNotWired,
+)
 from rdf_persistence.domain.generated import (
     rp_access,
     rp_collections,
@@ -31,6 +37,7 @@ from rdf_persistence.domain.generated.rp_tenancy import (
 from rdf_persistence.domain.generated.service.rp_service import (
     Authorised,
     CallerAccess,
+    EventEnvelope,
     ServiceSettings,
     TenantDump,
     TenantSummary,
@@ -45,12 +52,16 @@ from rdf_persistence.services.artifacts import CONTEXT_FILE
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.discussion import dependents as discussion_dependents
 from rdf_persistence.services.documents import Documents
+from rdf_persistence.services.event_hub import EventHub
+from rdf_persistence.services.events import EventBus, context_link
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, generated_models_of
 from rdf_persistence.services.messagebus import MessageBus
 from rdf_persistence.services.migrations import chain_of, current_version
+from rdf_persistence.services.provenance import activity_class_named
+from rdf_persistence.services.relay import Relay
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import (
     iri_types,
@@ -68,6 +79,8 @@ from rdf_persistence.services.tokens import TokenVerifier
 from rdf_persistence.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
 from rdf_persistence.services.workflows import Workflows
 from rdf_persistence.services.write_guards import WriteGuards
+
+log = logging.getLogger(__name__)
 
 
 class ServiceKit:
@@ -95,11 +108,14 @@ class ServiceKit:
         root_validators: Sequence[RootValidator] = (),
         workflows: Sequence[Path] = (),
         stores: Mapping[str, Store] = {},
+        event_bus: EventBus | None = None,
     ) -> None:
-        """Build the kit; ``migrations``, ``prefix``, ``id_source``, the validators, ``workflows`` and ``stores`` are ``install_service``'s arguments of those names.
+        """Build the kit; ``migrations``, ``prefix``, ``id_source``, the validators, ``workflows``, ``stores`` and ``event_bus`` are ``install_service``'s arguments of those names.
 
         ``store`` stays the default store as ``kit.store``; each of ``stores`` is wrapped in a ``ToolkitStore``
         for the tenancy (tenant-stores PD-3).
+
+        The relay is built here, with ``event_bus`` (a constructor argument: the relay holds it).
 
         ``chains`` holds the toolkit's chain of migrations and then the consumer's, each with its
         schema id, as the migration runner takes them.
@@ -176,11 +192,83 @@ class ServiceKit:
             stores={name: wrapped[id(other)] for name, other in stores.items()},
         )
         self.aggregates = Aggregates(self.documents, self.tenancy, self.iris)
+        self.event_bus = event_bus
+        self.hub = EventHub()
+        self.relay = Relay(
+            self.tenancy,
+            view,
+            models,
+            mapper,
+            event_bus,
+            self.hub,
+            deployment=settings.deployment or "",
+            context=context_link(settings.public_url),
+        )
 
     async def _publish(self, activity: Activity, session: Session) -> None:
-        """The sessions' ``on_commit``: hand the activity to the bus, if one is set by now (PD-17)."""
+        """The sessions' ``on_commit``: hand the activity to the bus, if one is set by now (PD-17), then wake the relay."""
         if self.bus is not None:
             await self.bus.publish(activity, session)
+        self.relay.wake()
+
+    async def receive(self, envelope: EventEnvelope, body: bytes) -> None:
+        """What the event bus delivers to this deployment: hand another deployment's activity to the bus (PD-10).
+
+        Returning acks the message; what is raised is not acked and comes again at the next start.
+        Skipped, logged and acked: a message of this deployment's own origin, one received with no
+        bus, one of an unknown class or whose body does not validate, one for a tenant this
+        deployment lacks, and one over the bus's message limit.
+
+        Raises:
+            TenantBehind: The tenant's migration failed at start-up.
+            StoreUnavailable: The store does not answer.
+        """
+        if envelope.origin == self.settings.deployment:
+            log.debug("skipped %s: this deployment published it", envelope.activity_class)
+        elif self.bus is None:
+            log.debug("skipped %s: the kit has no message bus", envelope.activity_class)
+        elif (activity := self._incoming(envelope, body)) is not None:
+            await self._hand_over(envelope.tenant, activity, self.bus)
+
+    def _incoming(self, envelope: EventEnvelope, body: bytes) -> Activity | None:
+        """The activity the message carries; None, logged, if its class is unknown here or its body invalid."""
+        try:
+            cls = activity_class_named(self.view, self.models, envelope.activity_class)
+            return cls.model_validate_json(body)
+        except (LookupError, ValidationError) as error:
+            log.warning(
+                "skipped an event of %s from %s: %s",
+                envelope.activity_class,
+                envelope.origin,
+                error,
+            )
+            return None
+
+    async def _hand_over(self, tenant: str, activity: Activity, bus: MessageBus) -> None:
+        """Publish ``activity`` to ``bus`` in a session of the toolkit on ``tenant``, once the store answers."""
+        toolkit = self.tenancy.toolkit.id
+        try:
+            # only a schema with no application class is a skip (D-6); a LookupError later is a failure
+            opening = (
+                self.application_session(toolkit)
+                if tenant == self.tenancy.application
+                else self.session(tenant, toolkit)
+            )
+        except LookupError as error:
+            log.warning("skipped %s: %s", activity.id, error)
+            return
+        try:
+            async with opening as session:
+                await session.is_recorded(
+                    activity.id
+                )  # the probe: the database is there, the store answers
+                await bus.publish(activity, session)
+        except (DatabaseGone, NotFound) as error:
+            log.warning(
+                "skipped %s: this deployment has no tenant %s (%s)", activity.id, tenant, error
+            )
+        except MessageLimitExceeded as error:
+            log.error("%s exceeded the message limit: %s", activity.id, error)
 
     def tenant_iri(self, tenant_id: str) -> str:
         """The IRI of the tenant whose id is ``tenant_id`` in a path.
