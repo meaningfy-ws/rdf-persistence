@@ -55,7 +55,9 @@ class Run:
             headers = self.first.bearer("ada")
             _, book, etag = await made(http, headers)
             await http.put(book, json=DUNE_BODY, headers={**headers, "If-Match": etag})
-        await wait_until_async(self._second_heard, "the second deployment's observer")
+        await wait_until_async(
+            self._second_heard, "the second deployment's observer", poll_seconds=0.01
+        )
 
     async def _second_heard(self) -> list:
         return self.second_saw.of(Replace)

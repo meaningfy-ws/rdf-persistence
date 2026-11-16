@@ -7,6 +7,7 @@ import threading
 import pytest
 
 from rdf_persistence.testkit.bootstrap import (
+    POLL_SECONDS,
     environment,
     redact_secrets,
     value_after,
@@ -55,6 +56,50 @@ async def test_async_wait_returns_the_value_of_the_third_call_without_real_sleep
 
     assert await _wait_async(probe, clock) == ["a.csv"]
     assert len(clock.sleeps) == 2
+
+
+async def test_a_fast_poll_returns_before_one_default_poll_interval_has_passed() -> None:
+    clock = AsyncFakeClock()
+    answers = iter([None, None, ["a.csv"]])
+
+    async def probe():
+        return next(answers)
+
+    result = await _wait_async(probe, clock, poll_seconds=0.01)
+
+    assert result == ["a.csv"], "the wait returns the value of the third poll"
+    assert clock.sleeps == [0.01, 0.01], f"each wait between polls is the fast one: {clock.sleeps}"
+    assert clock.now < POLL_SECONDS, f"{clock.now}s waited, not under one default poll interval"
+
+
+def test_a_fast_sync_poll_sleeps_the_given_interval_between_polls() -> None:
+    clock = FakeClock()
+    answers = iter([None, None, "node-1"])
+
+    assert (
+        wait_until(
+            lambda: next(answers),
+            "thing",
+            timeout=10,
+            poll_seconds=0.01,
+            sleep=clock.sleep,
+            monotonic=clock.monotonic,
+        )
+        == "node-1"
+    )
+    assert clock.sleeps == [0.01, 0.01], f"each sleep is the given interval: {clock.sleeps}"
+
+
+async def test_async_wait_polls_every_default_interval_when_none_is_given() -> None:
+    clock = AsyncFakeClock()
+    answers = iter([None, ["a.csv"]])
+
+    async def probe():
+        return next(answers)
+
+    await _wait_async(probe, clock)
+
+    assert clock.sleeps == [POLL_SECONDS], f"the default interval is used: {clock.sleeps}"
 
 
 async def test_async_wait_times_out_naming_what_it_waited_for() -> None:

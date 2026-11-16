@@ -78,8 +78,12 @@ async def world():
         path, book, etag = await made(http, headers)
         replaced = await http.put(book, json=DUNE_BODY, headers={**headers, "If-Match": etag})
         assert replaced.status_code == 200, replaced.text
-        sent = await wait_until_async(lambda: _replace_sent(broker), "lib's Replace on the broker")
-        await wait_until_async(lambda: _async(there.activities), "cat's observer to run")
+        sent = await wait_until_async(
+            lambda: _replace_sent(broker), "lib's Replace on the broker", poll_seconds=0.01
+        )
+        await wait_until_async(
+            lambda: _async(there.activities), "cat's observer to run", poll_seconds=0.01
+        )
         yield SimpleNamespace(
             store=store, broker=broker, lib=lib, cat=cat, lib_bus=lib_bus, cat_bus=cat_bus,
             here=here, there=there, tenant=sent[0].tenant, envelope=sent[0],
@@ -231,7 +235,9 @@ async def test_an_application_activity_reaches_the_observer_with_an_application_
         work = UnitOfWork(session, toy_mapper())
         work.add(Template(id=iri, label="a template"))
         await work.commit()
-    await wait_until_async(lambda: _async(seen.activities), "cat's observer of Add")
+    await wait_until_async(
+        lambda: _async(seen.activities), "cat's observer of Add", poll_seconds=0.01
+    )
     assert len(seen.activities) == 1, "the application's Add; the tenant's were relayed before"
     assert seen.principals == [world.cat.kit.tenancy.toolkit.id]
     assert seen.templates == [[iri]], "a session on the application database"

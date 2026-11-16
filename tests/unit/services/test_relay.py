@@ -385,10 +385,14 @@ async def test_tc16_the_loop_survives_a_failed_round_and_publishes_after_a_wake(
     try:
         with caplog.at_level(logging.ERROR, logger=LOGGER):
             relay.wake()
-            await wait_until_async(lambda: _truth(len(caplog.records) == 1), "the failed round")
+            await wait_until_async(
+                lambda: _truth(len(caplog.records) == 1), "the failed round", poll_seconds=0.01
+            )
         assert caplog.records[0].exc_info
         relay.wake()
-        await wait_until_async(lambda: _truth(len(world.broker.messages) == 1), "a publication")
+        await wait_until_async(
+            lambda: _truth(len(world.broker.messages) == 1), "a publication", poll_seconds=0.01
+        )
     finally:
         task.cancel()
     with pytest.raises(asyncio.CancelledError):
@@ -467,7 +471,9 @@ async def test_tc18a_wakes_during_a_round_cause_exactly_one_more_round(world, mo
         for _ in range(3):
             relay.wake()
         release.set()
-        await wait_until_async(lambda: _truth(len(rounds) == 2), "the second round")
+        await wait_until_async(
+            lambda: _truth(len(rounds) == 2), "the second round", poll_seconds=0.01
+        )
         for _ in range(10):
             await asyncio.sleep(0)  # let a third round happen, if one would
         assert len(rounds) == 2

@@ -22,6 +22,7 @@ def wait_until[T](
     *,
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
     probe_timeout: float | None = None,
+    poll_seconds: float = POLL_SECONDS,
     retry_on: tuple[type[Exception], ...] = (OSError,),
     sleep: Callable[[float], None] = time.sleep,
     monotonic: Callable[[], float] = time.monotonic,
@@ -38,6 +39,8 @@ def wait_until[T](
             thread that cannot be stopped: a hung call is joined again on each later poll (no
             second call starts while it runs) and is left behind if it never ends. So probes
             should be read-only; a late call may still finish.
+        poll_seconds: Seconds to sleep between polls (default 1 s; a wait on an in-process fake
+            can pass less).
         retry_on: Errors that mean "not ready yet"; any other error propagates.
         sleep: Injected so tests need no real sleeping.
         monotonic: Injected clock.
@@ -56,7 +59,7 @@ def wait_until[T](
             result = None
         if result:
             return result
-        sleep(POLL_SECONDS)
+        sleep(poll_seconds)
     raise TimeoutError(_timed_out(what, timeout))
 
 
@@ -66,6 +69,7 @@ async def wait_until_async[T](
     *,
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
     probe_timeout: float | None = None,
+    poll_seconds: float = POLL_SECONDS,
     retry_on: tuple[type[Exception], ...] = (OSError,),
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     monotonic: Callable[[], float] = time.monotonic,
@@ -89,7 +93,7 @@ async def wait_until_async[T](
             result = None
         if result:
             return result
-        await sleep(POLL_SECONDS)
+        await sleep(poll_seconds)
     raise TimeoutError(_timed_out(what, timeout))
 
 

@@ -126,7 +126,9 @@ async def test_wake_from_inside_a_publish_makes_exactly_one_more_round(world):
     task = asyncio.create_task(relay.run())
     try:
         relay.wake()
-        await wait_until_async(lambda: _truth(len(rounds) == 2), "the second round")
+        await wait_until_async(
+            lambda: _truth(len(rounds) == 2), "the second round", poll_seconds=0.01
+        )
         for _ in range(10):
             await asyncio.sleep(0)
         assert len(rounds) == 2

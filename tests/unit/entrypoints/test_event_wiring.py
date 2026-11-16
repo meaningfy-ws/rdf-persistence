@@ -21,7 +21,9 @@ async def test_a_post_reaches_the_broker_within_the_wait() -> None:  # TC-19
     toy = ToyService(event_bus=InMemoryEventBus(broker), deployment="here")
     async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
         await made(http, toy.bearer("ada"))
-        sent = await wait_until_async(lambda: _async(relayed_book(broker)), "the book's Add")
+        sent = await wait_until_async(
+            lambda: _async(relayed_book(broker)), "the book's Add", poll_seconds=0.01
+        )
     envelope, _ = sent[0]
     assert envelope.origin == "here"
     assert envelope.activity_class.endswith("Add")
@@ -50,7 +52,9 @@ async def test_with_no_event_bus_the_activity_is_still_relayed_to_the_hub() -> N
     toy.kit.hub.offer = Spy().offer  # type: ignore[method-assign]
     async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
         await made(http, toy.bearer("ada"))
-        await wait_until_async(lambda: _async(seen), "the relay to offer the activity")
+        await wait_until_async(
+            lambda: _async(seen), "the relay to offer the activity", poll_seconds=0.01
+        )
 
 
 def test_an_event_bus_without_a_deployment_is_refused() -> None:  # TC-21a
@@ -67,7 +71,9 @@ async def test_a_public_url_makes_the_context_of_the_envelope_absolute() -> None
     )
     async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
         await made(http, toy.bearer("ada"))
-        sent = await wait_until_async(lambda: _async(relayed_book(broker)), "the book's Add")
+        sent = await wait_until_async(
+            lambda: _async(relayed_book(broker)), "the book's Add", poll_seconds=0.01
+        )
     assert sent[0][0].context == "https://lib.example.org/context.jsonld"
 
 
@@ -76,7 +82,9 @@ async def test_without_a_public_url_the_context_is_relative() -> None:
     toy = ToyService(event_bus=InMemoryEventBus(broker), deployment="here")
     async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
         await made(http, toy.bearer("ada"))
-        sent = await wait_until_async(lambda: _async(relayed_book(broker)), "the book's Add")
+        sent = await wait_until_async(
+            lambda: _async(relayed_book(broker)), "the book's Add", poll_seconds=0.01
+        )
     assert sent[0][0].context == "/context.jsonld"
 
 
