@@ -14,7 +14,7 @@ import pytest_asyncio
 from rdf_persistence import Page
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from tests.toy_service import ToyService
-from tests.unit.entrypoints.scene import problem_of
+from tests.unit.entrypoints.scene import PROBLEMS, problem_of
 from tests.unit.entrypoints.test_listing_routes import BOOKS, PROBLEM_BAD_QUERY, Shelf, _unordered
 
 CLASS_LOOP = "class"
@@ -127,8 +127,11 @@ class TestReadOnlyListing:
 
     async def test_a_listing_cannot_be_turtle(self, shelf: Shelf) -> None:
         response = await shelf.page_of(**{"Accept": TURTLE})
-        assert response.status_code == 406
-        assert problem_of(response).title == "Not acceptable"
+        problem = problem_of(response)
+        assert (response.status_code, problem.type) == (406, f"{PROBLEMS}not-acceptable"), (
+            "a listing is not a document: Turtle is a 406 of the not-acceptable type"
+        )
+        assert problem.title == "Not acceptable", "the fixed title"
 
     # --- a bad query --------------------------------------------------------------------------------
 
@@ -154,9 +157,12 @@ class TestReadOnlyListing:
     )
     async def test_a_bad_query_is_a_400_problem_and_changes_nothing(self, shelf, query) -> None:
         response = await shelf.page_of(query)
-        assert response.status_code == 400, response.text
-        assert problem_of(response).title == PROBLEM_BAD_QUERY
-        assert len(await shelf.labels()) == 5
+        problem = problem_of(response)
+        assert (response.status_code, problem.type) == (400, f"{PROBLEMS}bad-query"), (
+            f"{query}: {response.text}"
+        )
+        assert problem.title == PROBLEM_BAD_QUERY, "the fixed title"
+        assert len(await shelf.labels()) == 5, "the store is unchanged"
 
     async def test_a_hostile_filter_value_is_just_a_value(self, shelf: Shelf) -> None:
         response = await shelf.page_of("label=%22%7D+%3B+DROP+ALL+%3B+%23")
@@ -194,5 +200,8 @@ class TestReadOnlyListing:
         self, shelf, client, query
     ) -> None:
         response = await client.get(f"/libraries?{query}", headers=shelf.headers())
-        assert response.status_code == 400, response.text
-        assert problem_of(response).title == PROBLEM_BAD_QUERY
+        problem = problem_of(response)
+        assert (response.status_code, problem.type) == (400, f"{PROBLEMS}bad-query"), (
+            f"{query}: {response.text}"
+        )
+        assert problem.title == PROBLEM_BAD_QUERY, "the fixed title"

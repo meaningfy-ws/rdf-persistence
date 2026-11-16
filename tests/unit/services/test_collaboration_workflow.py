@@ -13,7 +13,6 @@ from pathlib import Path
 
 import pytest
 from rdflib import RDF, XSD, Graph, URIRef
-from rdflib.compare import isomorphic
 
 from rdf_persistence import Action, generated_models
 from rdf_persistence.domain.exceptions import (
@@ -37,6 +36,7 @@ from rdf_persistence.services.workflows import Workflows, load_workflow, state_i
 from rdf_persistence.services.write_guards import WriteGuards
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 from tests.toy import (
     ADA,
     BOB,
@@ -414,7 +414,7 @@ async def test_a_refused_transition_leaves_no_activity(
     else:
         with pytest.raises(Forbidden):
             await go(bob, session, "in_review")
-    assert isomorphic(await provenance_of(store), seen), "the provenance graph is as it was"
+    assert_isomorphic(await provenance_of(store), seen)
     assert await records_of(session, B1) == [], "no transition"
 
 

@@ -11,7 +11,6 @@ import pytest
 from fastapi import HTTPException
 from pyld import jsonld
 from rdflib import Graph
-from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence import Forbidden, GrantSet, InvalidBody, Page, TenantSummary
 from rdf_persistence.domain.generated.rp_access import (
@@ -27,6 +26,7 @@ from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.entrypoints.negotiation import ALLOWED_ACTIONS, RECORD_ETAG
 from rdf_persistence.services import vocabulary
 from rdf_persistence.services.access import AccessRules, load_role_definitions
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 from tests.toy import ROLES, SETTINGS, keep_a_librarian
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 from tests.unit.entrypoints.scene import NIL, PROBLEMS, Scene, problem_of
@@ -972,9 +972,7 @@ async def test_the_three_representations_of_a_book_are_the_same_triples(scene) -
         response = await scene.http.get(scene.book, headers=scene.headers("ada", Accept=media_type))
         graphs[media_type] = triples(response, media_type)
     for media_type in (JSON_LD, TURTLE):
-        assert isomorphic(graphs[JSON], graphs[media_type]), (
-            f"JSON and {media_type} differ: {sorted(graph_diff(graphs[JSON], graphs[media_type])[1])}"
-        )
+        assert_isomorphic(graphs[JSON], graphs[media_type])
 
 
 # --- consumer validators on tenant writes (mwb2-adoption-fixes PD-7, DEC-6) ---------------------

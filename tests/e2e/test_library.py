@@ -12,14 +12,14 @@ from pathlib import Path
 
 import pytest
 from rdflib import Graph
-from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence import Grant, GrantSet, Page, TenantCreate, TenantSummary
 from rdf_persistence.testkit import assert_public_imports
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 from tests.e2e.world import World, running_world
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note
 from tests.fixtures.library.generated.library import Library
-from tests.toy_service import body_of
+from tests.toy_service import assert_problem, body_of
 
 JSON, JSON_LD, TURTLE = "application/json", "application/ld+json", "text/turtle"
 LIBRARIAN, READER, OUTSIDER, ADMIN = "librarian", "reader", "outsider", "admin"
@@ -110,13 +110,6 @@ async def triples(world: World, shelf: Shelf, who: str, media_type: str) -> Grap
     return Graph().parse(data=json.dumps(document), format="json-ld")
 
 
-def assert_same_triples(left: Graph, right: Graph, what: str) -> None:
-    only_left, only_right = graph_diff(left, right)[1:]
-    assert isomorphic(left, right), (
-        f"{what}: only left {sorted(only_left)}; only right {sorted(only_right)}"
-    )
-
-
 def test_this_file_and_the_composition_root_use_only_public_names() -> None:
     assert_public_imports(__file__)
     assert_public_imports(Path(__file__).with_name("library_app.py"))
@@ -124,15 +117,13 @@ def test_this_file_and_the_composition_root_use_only_public_names() -> None:
 
 async def test_the_book_is_the_same_three_ways(world, shelf) -> None:
     as_json = await triples(world, shelf, LIBRARIAN, JSON)
-    assert_same_triples(as_json, await triples(world, shelf, LIBRARIAN, JSON_LD), "JSON vs JSON-LD")
-    assert_same_triples(as_json, await triples(world, shelf, LIBRARIAN, TURTLE), "JSON vs Turtle")
+    assert_isomorphic(as_json, await triples(world, shelf, LIBRARIAN, JSON_LD))
+    assert_isomorphic(as_json, await triples(world, shelf, LIBRARIAN, TURTLE))
 
 
 async def test_a_reader_reads_the_book_the_librarian_made(world, shelf) -> None:
     reader = await triples(world, shelf, READER, TURTLE)
-    assert_same_triples(
-        reader, await triples(world, shelf, LIBRARIAN, TURTLE), "reader vs librarian"
-    )
+    assert_isomorphic(reader, await triples(world, shelf, LIBRARIAN, TURTLE))
 
 
 async def test_a_reader_may_not_modify_and_the_book_is_unchanged(world, shelf) -> None:
@@ -142,24 +133,24 @@ async def test_a_reader_may_not_modify_and_the_book_is_unchanged(world, shelf) -
         json=body_of(dune("Defaced")),
         headers=world.callers.as_(READER, **{"If-Match": shelf.etag}),
     )
-    assert refused.status_code == 403, refused.text
+    assert_problem(refused, 403, "forbidden")
     assert refused.headers["content-type"] == "application/problem+json", "a problem response"
     reread = await world.http.get(shelf.book, headers=world.callers.as_(LIBRARIAN))
     assert reread.headers["etag"] == shelf.etag, "the version is unchanged"
-    assert_same_triples(before, await triples(world, shelf, LIBRARIAN, TURTLE), "after the refusal")
+    assert_isomorphic(before, await triples(world, shelf, LIBRARIAN, TURTLE))
 
 
 async def test_a_reader_may_not_delete_the_book(world, shelf) -> None:
     refused = await world.http.delete(
         shelf.book, headers=world.callers.as_(READER, **{"If-Match": shelf.etag})
     )
-    assert refused.status_code == 403, refused.text
+    assert_problem(refused, 403, "forbidden")
 
 
 async def test_an_outsider_finds_neither_the_library_nor_its_book(world, shelf) -> None:
     for url in (shelf.path, shelf.book):
         answer = await world.http.get(url, headers=world.callers.as_(OUTSIDER))
-        assert answer.status_code == 404, f"{url}: {answer.text}"
+        assert_problem(answer, 404, "not-found")
 
 
 async def test_a_global_admin_reads_but_cannot_modify(world, shelf) -> None:
@@ -170,7 +161,7 @@ async def test_a_global_admin_reads_but_cannot_modify(world, shelf) -> None:
         json=body_of(dune("Defaced")),
         headers=world.callers.as_(ADMIN, **{"If-Match": shelf.etag}),
     )
-    assert refused.status_code == 403, refused.text
+    assert_problem(refused, 403, "forbidden")
 
 
 async def test_a_stale_replace_is_409_and_the_current_etag_replaces(world, shelf) -> None:
@@ -179,7 +170,7 @@ async def test_a_stale_replace_is_409_and_the_current_etag_replaces(world, shelf
     stale = await http.put(shelf.book, json=body_of(dune("Second")), headers=librarian)
     assert first.status_code == 200, first.text
     assert first.headers["etag"] != shelf.etag, "a new version"
-    assert stale.status_code == 409, stale.text
+    assert_problem(stale, 409, "conflict")
     current = world.callers.as_(LIBRARIAN, **{"If-Match": first.headers["etag"]})
     third = await http.put(shelf.book, json=body_of(dune("Third")), headers=current)
     assert third.status_code == 200, third.text
@@ -202,8 +193,10 @@ async def test_a_scan_file_is_kept_in_the_tenants_bucket_and_referenced(world, s
     assert record.json()["scan_of"] == shelf.book_iri, "refers to its book"
     as_reader = await http.get(file_url, headers=callers.as_(READER))
     assert as_reader.content == SCAN_BYTES, "the reader gets the exact bytes"
-    assert (await http.put(file_url, content=b"x", headers=callers.as_(READER))).status_code == 403
-    assert (await http.get(file_url, headers=callers.as_(OUTSIDER))).status_code == 404
+    assert_problem(
+        await http.put(file_url, content=b"x", headers=callers.as_(READER)), 403, "forbidden"
+    )
+    assert_problem(await http.get(file_url, headers=callers.as_(OUTSIDER)), 404, "not-found")
     (bucket,) = await world.files.list_buckets(f"{world.prefix}-")
     assert await world.files.get(bucket, name) == SCAN_BYTES, "and the bucket holds them"
 

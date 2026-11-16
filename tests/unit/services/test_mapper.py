@@ -11,7 +11,6 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from pydantic import BaseModel
 from rdflib import RDF, BNode, Graph, Literal, URIRef
-from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
@@ -31,6 +30,7 @@ from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.mapper import new_part
 from rdf_persistence.services.schema_structure import is_bookkeeping, is_internal
 from rdf_persistence.testkit.conformance import Conformance
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 from rdf_persistence.testkit.strategies import aggregate
 from tests.fixtures.library.generated.books import Book, Chapter, Genre, Shelf
 from tests.fixtures.library.generated.library import Library
@@ -98,13 +98,6 @@ def canonical(value: object) -> object:
     return value
 
 
-def assert_same_graph(actual: Graph, expected: Graph) -> None:
-    assert isomorphic(actual, expected), (
-        f"only actual: {sorted(graph_diff(actual, expected)[1])}\n"
-        f"only expected: {sorted(graph_diff(actual, expected)[2])}"
-    )
-
-
 def skolemised(graph: Graph, root: str) -> Graph:
     """What the session does to blank nodes before it writes (PD-8a)."""
     return graph.skolemize(
@@ -157,7 +150,7 @@ def test_the_graph_is_the_one_the_generated_context_gives(name: str, data: st.Da
     for s, p, o in toy_mapper().to_graph(obj):
         if p not in internal:
             actual.add((s, p, o))
-    assert_same_graph(actual, expected)
+    assert_isomorphic(actual, expected)
 
 
 def test_owned_parts_are_nested_and_typed():

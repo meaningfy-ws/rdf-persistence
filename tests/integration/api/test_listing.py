@@ -3,7 +3,7 @@
 import pytest
 
 from rdf_persistence import Page
-from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
+from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, assert_problem
 
 LABELS = ["Dune", "Emma", "Ulysses", "Candide", "Beloved"]
 INJECTIONS = [
@@ -77,5 +77,5 @@ async def test_an_injection_through_a_reference_filter_is_a_bad_query(toy, clien
         params={"scan_of": "https://example.org/b> } ; DROP ALL ; #"},
         headers=toy.bearer("ada"),
     )
-    assert response.status_code == 400, response.text
+    assert_problem(response, 400, "bad-query")
     assert (await client.get(mine, headers=toy.bearer("ada"))).json()["total"] == 1

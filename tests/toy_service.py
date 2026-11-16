@@ -13,6 +13,7 @@ from rdf_persistence import (
     AccessRules,
     IdSource,
     JwksTokenVerifier,
+    Problem,
     ServiceKit,
     ServiceSettings,
     Store,
@@ -194,6 +195,14 @@ class ToyService:
     def bearer(self, sub: str, *global_roles: str) -> dict[str, str]:
         """The ``Authorization`` header of a caller with ``sub`` and the given global roles."""
         return {"Authorization": f"Bearer {self.signer.issue(sub=sub, roles=list(global_roles))}"}
+
+
+def assert_problem(response: httpx.Response, status: int, slug: str) -> Problem:
+    """Assert ``response`` is a problem of ``status`` whose ``type`` ends with ``problems/<slug>``; return it."""
+    assert response.status_code == status, response.text
+    problem = Problem.model_validate(response.json())
+    assert problem.type.endswith(f"problems/{slug}"), f"the problem type: {problem.type}"
+    return problem
 
 
 def unique_prefix() -> str:

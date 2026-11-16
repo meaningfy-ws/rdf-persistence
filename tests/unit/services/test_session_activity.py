@@ -12,7 +12,6 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from rdflib import RDF, Graph, URIRef
-from rdflib.compare import isomorphic
 
 from rdf_persistence.domain.exceptions import Conflict
 from rdf_persistence.domain.generated.rp_core import Principal
@@ -24,6 +23,7 @@ from rdf_persistence.services.session import Session
 from rdf_persistence.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 from tests.toy import ADA, BOB, SETTINGS, TENANT, TOY_SCHEMA, book_iri, dune, template, toy_mapper
 from tests.unit.services.test_tenant_dump import BASE_STAMPS, TOY_CHAINS
 from tests.unit.services.test_tenant_sweep import CREATOR, make_world
@@ -204,7 +204,7 @@ async def test_tc27_a_refused_replace_leaves_the_provenance_graph_as_it_was(stor
     before = await stored_graph(store, PROVENANCE)
     with pytest.raises(Conflict):
         await session.replace_graph(B1, book(B1), v1)
-    assert isomorphic(await stored_graph(store, PROVENANCE), before), "no activity was added"
+    assert_isomorphic(await stored_graph(store, PROVENANCE), before)
 
 
 async def test_tc28_an_empty_transaction_sends_nothing_and_records_nothing(store, session):

@@ -1,11 +1,12 @@
 """The store the toolkit's own SPARQL goes through: a refusal of the text is the service's fault."""
 
 import pytest
-from rdflib import Graph, URIRef
+from rdflib import Dataset, Graph, URIRef
 
 from rdf_persistence.domain.exceptions import BadQuery, DatabaseGone, SparqlError
 from rdf_persistence.services.store import ToolkitStore
 from rdf_persistence.testkit import FakeStore
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 
 DATASET = "d"
 GRAPH = URIRef("https://example.org/g")
@@ -31,16 +32,18 @@ async def test_an_update_the_store_finds_malformed_is_a_sparql_error(store):
 
 
 async def test_the_dataset_level_export_and_import_pass_through_unchanged(store):
-    await store.put_graph(
-        DATASET, GRAPH, Graph().parse(data="<urn:x> <urn:y> <urn:z> .", format="nt")
-    )
+    put = Graph().parse(data="<urn:x> <urn:y> <urn:z> .", format="nt")
+    await store.put_graph(DATASET, GRAPH, put)
     exported = await store.export_quads(DATASET)
-    assert exported.strip() == b"<urn:x> <urn:y> <urn:z> <https://example.org/g> .", (
+    exported_dataset = Dataset().parse(data=exported, format="nquads")
+    assert {graph.identifier for graph in exported_dataset.graphs() if len(graph)} == {GRAPH}, (
         "the quads of the one named graph"
     )
+    assert_isomorphic(exported_dataset.graph(GRAPH), put)
     await store.create_dataset("copy")
     await store.import_quads("copy", exported)
-    assert await store.export_quads("copy") == exported, "imported as exported"
+    imported = Dataset().parse(data=await store.export_quads("copy"), format="nquads")
+    assert_isomorphic(imported.graph(GRAPH), put)
     with pytest.raises(DatabaseGone):
         await store.export_quads("missing")
     with pytest.raises(DatabaseGone):

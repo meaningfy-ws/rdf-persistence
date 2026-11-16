@@ -8,7 +8,6 @@ from collections.abc import Callable
 import httpx
 import pytest
 from rdflib import Graph, Literal, URIRef
-from rdflib.compare import isomorphic
 
 from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.domain.exceptions import (
@@ -18,6 +17,7 @@ from rdf_persistence.domain.exceptions import (
     NotFound,
     StoreUnavailable,
 )
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 
 URL = "http://fuseki.test:3030"
 EX = "http://example.org/"
@@ -75,7 +75,7 @@ async def test_construct_returns_a_graph():
     result = await store.query("books", "CONSTRUCT WHERE { ?s ?p ?o }")
     expected = Graph()
     expected.add((URIRef(f"{EX}a"), URIRef(f"{EX}p"), URIRef(f"{EX}b")))
-    assert isomorphic(result.graph, expected)
+    assert_isomorphic(result.graph, expected)
 
 
 async def test_requests_carry_basic_auth():
@@ -106,7 +106,7 @@ async def test_put_graph_sends_turtle_to_the_graph_store_endpoint():
     assert request.url.params["graph"] == f"{EX}g?x=1&y", "the graph IRI is one encoded parameter"
     assert request.headers["content-type"].startswith("text/turtle")
     sent = Graph().parse(data=request.content.decode(), format="turtle")
-    assert isomorphic(sent, graph)
+    assert_isomorphic(sent, graph)
 
 
 async def test_create_dataset_posts_a_tdb2_name():

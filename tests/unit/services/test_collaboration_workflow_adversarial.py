@@ -18,7 +18,6 @@ from pathlib import Path
 import pytest
 import yaml
 from rdflib import RDF, XSD, BNode, Graph, Literal, URIRef
-from rdflib.compare import isomorphic
 
 from rdf_persistence import Action, UnitOfWork, generated_models
 from rdf_persistence.domain.exceptions import (
@@ -53,6 +52,7 @@ from rdf_persistence.services.workflows import Workflows, load_workflow, state_i
 from rdf_persistence.services.write_guards import WriteGuards
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 from tests.toy import (
     ADA,
     BOB,
@@ -73,7 +73,7 @@ from tests.toy import (
     toy_mapper,
 )
 from tests.toy_service import DUNE_BODY, ToyService, principal_of
-from tests.unit.entrypoints.scene import Scene
+from tests.unit.entrypoints.scene import PROBLEMS, Scene, problem_of
 from tests.unit.services import test_collaboration_workflow as built
 from tests.unit.services.test_collaboration_cascade import before
 from tests.unit.services.test_collaboration_collections_adversarial import (
@@ -491,7 +491,9 @@ async def test_the_generic_put_cannot_set_a_state(toy, state):
         json={**DUNE_BODY, "workflow_status": state},
         headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
     )
-    assert response.status_code in (403, 422), response.text
+    assert (response.status_code, problem_of(response).type) == (403, f"{PROBLEMS}forbidden"), (
+        response.text
+    )
     stored = await scene.http.get(scene.book, headers=scene.headers("ada"))
     assert (stored.json()["workflow_status"], stored.headers["etag"]) == (DRAFT, scene.book_etag), (
         "the book is in draft and unchanged"
@@ -507,7 +509,9 @@ async def test_the_generic_put_cannot_change_the_type_of_a_book(toy, extra):
         json={**DUNE_BODY, "workflow_status": ACCEPTED, **extra},
         headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
     )
-    assert response.status_code in (400, 403, 422), response.text
+    assert (response.status_code, problem_of(response).type) == (422, f"{PROBLEMS}invalid-body"), (
+        response.text
+    )
     stored = await scene.http.get(scene.book, headers=scene.headers("ada"))
     assert stored.json()["workflow_status"] == DRAFT, "the book is in draft"
 
@@ -674,7 +678,9 @@ async def test_the_generic_put_of_a_body_read_before_a_transition_is_a_409(toy):
         json={**DUNE_BODY, "workflow_status": DRAFT},
         headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
     )
-    assert response.status_code == 409, response.text
+    assert (response.status_code, problem_of(response).type) == (409, f"{PROBLEMS}conflict"), (
+        response.text
+    )
     stored = await scene.http.get(scene.book, headers=scene.headers("ada"))
     assert stored.json()["workflow_status"] == IN_REVIEW, "the book is where the transition left it"
 
@@ -688,7 +694,9 @@ async def test_the_generic_post_cannot_create_a_book_with_two_states(toy):
         json={**DUNE_BODY, "workflow_status": [DRAFT, ACCEPTED]},
         headers=scene.headers("ada"),
     )
-    assert response.status_code in (403, 422), response.text
+    assert (response.status_code, problem_of(response).type) == (422, f"{PROBLEMS}invalid-body"), (
+        response.text
+    )
     after = (await scene.http.get(listed, headers=scene.headers("ada"))).json()["total"]
     assert after == total, "nothing was stored"
 
@@ -1246,22 +1254,19 @@ async def test_no_generic_route_reads_replaces_or_deletes_a_transition(policy):
         scene = await Scene.set_up(service, http)
         record, stored = await a_record(service, scene)
         headers = {**scene.headers("ada"), "If-Match": '"any"'}
-        answers = [
-            (
-                await http.get(f"{scene.tenant}/{path}/{record}", headers=scene.headers("ada"))
-            ).status_code
+        responses = [
+            await http.get(f"{scene.tenant}/{path}/{record}", headers=scene.headers("ada"))
             for path in ("books", "shelves", "rp-transitions")
         ]
-        answers += [
-            (
-                await http.put(f"{scene.tenant}/books/{record}", json=DUNE_BODY, headers=headers)
-            ).status_code,
-            (await http.delete(f"{scene.tenant}/books/{record}", headers=headers)).status_code,
+        responses += [
+            await http.put(f"{scene.tenant}/books/{record}", json=DUNE_BODY, headers=headers),
+            await http.delete(f"{scene.tenant}/books/{record}", headers=headers),
         ]
-        assert answers == [404] * 5, f"every route answers 404: {answers}"
+        answers = [(r.status_code, problem_of(r).type) for r in responses]
+        assert answers == [(404, f"{PROBLEMS}not-found")] * 5, f"every route answers 404: {answers}"
         async with service.kit.session(scene.tenant_iri, principal_of("ada")) as session:
             kept = await session.activities(v.TRANSITION, v.USED, URIRef(scene.book_iri))
-        assert isomorphic(kept[scene.record_iri], stored), "the transition is as it was"
+        assert_isomorphic(kept[scene.record_iri], stored)
 
 
 async def a_record(service: ToyService, scene: Scene) -> tuple[str, Graph]:

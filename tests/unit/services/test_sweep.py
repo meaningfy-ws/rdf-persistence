@@ -5,7 +5,6 @@ from types import SimpleNamespace
 
 import pytest
 from rdflib import Graph
-from rdflib.compare import isomorphic
 
 from rdf_persistence.domain.exceptions import NotFound, StoreNotWired, StoreUnavailable
 from rdf_persistence.domain.generated.rp_core import Principal
@@ -15,6 +14,7 @@ from rdf_persistence.services.session import open_session
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.toy import ADA, SETTINGS, library_slots, toy_mapper
@@ -86,7 +86,7 @@ async def test_an_active_tenant_is_left_unchanged(tenancy, store, files, kept):
     assert await files.list_buckets("lib-t-") == [name]
     after = (await root_graph(store, kept.id), await tenancy.get(kept.id))
     assert len(before[0]) > 0, "the root object was there to compare"
-    assert isomorphic(after[0], before[0]), "the root graph is the same"
+    assert_isomorphic(after[0], before[0])
     assert after[1][1] == before[1][1], "the access record is at the same version"
     assert await files.get(name, "scan.pdf") == b"%PDF", "the blob is the same"
 

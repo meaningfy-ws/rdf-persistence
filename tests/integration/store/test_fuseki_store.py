@@ -5,7 +5,6 @@ from collections.abc import AsyncIterator
 
 import pytest
 from rdflib import Graph, Literal, URIRef
-from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.domain.exceptions import (
@@ -16,6 +15,7 @@ from rdf_persistence.domain.exceptions import (
     StoreUnavailable,
 )
 from rdf_persistence.domain.sparql import fill, term
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 
 EX = "http://example.org/"
 A, B, P, G = (URIRef(f"{EX}{n}") for n in "abpg")
@@ -71,7 +71,7 @@ async def test_construct_returns_a_graph(store, dataset):
     result = await store.query(dataset, "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH ?g { ?s ?p ?o } }")
     expected = Graph()
     expected.add((A, P, B))
-    assert isomorphic(result.graph, expected), graph_diff(result.graph, expected)
+    assert_isomorphic(result.graph, expected)
 
 
 async def test_put_graph_replaces_the_named_graph_and_only_it(store, dataset):

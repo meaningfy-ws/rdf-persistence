@@ -153,7 +153,11 @@ async def test_an_outage_hides_where_the_store_or_the_provider_is(
 
 async def test_a_rejected_body_says_why() -> None:
     response = await get(app_raising(exceptions.InvalidBody("label: Field required")))
-    assert Problem.model_validate(response.json()).detail == "label: Field required", (
+    problem = Problem.model_validate(response.json())
+    assert (response.status_code, problem.type) == (422, f"{BASE}problems/invalid-body"), (
+        "a rejected body is a 422 of the invalid-body type"
+    )
+    assert problem.detail == "label: Field required", (
         "a 422 carries the messages the caller needs to fix the body"
     )
 

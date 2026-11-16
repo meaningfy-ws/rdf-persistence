@@ -4,7 +4,6 @@ from datetime import UTC, datetime
 
 import pytest
 from rdflib import BNode, Dataset, Graph, Literal, URIRef
-from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence.domain.generated.rp_annotations import Tracked
 from rdf_persistence.domain.generated.rp_core import RegistryEntry, RegistryKind
@@ -19,6 +18,7 @@ from rdf_persistence.services.session import (
     request_text,
     without_bookkeeping,
 )
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 
 EX = "http://example.org/t/"
 ROOT, OTHER_ROOT = URIRef(f"{EX}books/1"), URIRef(f"{EX}books/2")
@@ -79,7 +79,7 @@ def contents(dataset: Dataset, graph: URIRef) -> Graph:
 
 
 def assert_same(actual: Graph, expected: Graph, message: str) -> None:
-    assert isomorphic(actual, expected), f"{message}: {graph_diff(actual, expected)}"
+    assert_isomorphic(actual, expected)
 
 
 def test_add_writes_the_triples_and_the_registry_entry_to_their_graphs():

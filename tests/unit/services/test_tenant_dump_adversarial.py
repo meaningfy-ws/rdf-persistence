@@ -16,7 +16,6 @@ import pytest
 from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
 from rdflib import Dataset, Literal, URIRef
-from rdflib.compare import isomorphic
 from rdflib.namespace import DCTERMS
 
 from rdf_persistence.domain.exceptions import (
@@ -32,6 +31,7 @@ from rdf_persistence.domain.tenant_move import rewrite
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenant_dump import dump
 from rdf_persistence.services.vocabulary import RELAY_PLUMBING
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 from tests.toy import SETTINGS
 from tests.unit.services.test_tenant_dump import (
     BLOB_BYTES,
@@ -595,7 +595,8 @@ async def test_a_second_dump_of_a_restored_tenant_names_the_new_tenant_and_holds
         for plumbing in RELAY_PLUMBING:
             graph.remove((None, plumbing, None))
     assert expected.keys() == got.keys()
-    assert all(isomorphic(expected[name], got[name]) for name in got)
+    for name in got:
+        assert_isomorphic(expected[name], got[name])
     assert [n for n, _ in unpack(second)] == [n for n, _ in unpack(first)]
     assert dict(unpack(second))["blobs/k1"] == BLOB_BYTES
 

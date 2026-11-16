@@ -9,7 +9,6 @@ from uuid import UUID
 
 import pytest
 from rdflib import XSD, Graph, Literal, URIRef
-from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence import InvalidGraph
 from rdf_persistence.domain.exceptions import DatabaseGone, InvalidIri, NotFound, StoreUnavailable
@@ -22,6 +21,7 @@ from rdf_persistence.services.loading import _RDFLIB_FORMATS, parse_graph
 from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 
 TENANT = "https://example.org/libraries/6f1c"
 AGGREGATE = f"{TENANT}/books/{UUID(int=1)}"
@@ -81,7 +81,7 @@ async def test_the_loaded_triples_are_those_of_the_file(store, session):
     )
     query = fill("CONSTRUCT { ?s ?p ?o } WHERE { GRAPH $g { ?s ?p ?o } }", g=term(loaded))
     held = (await store.query(FAKE_DATABASE, query)).graph
-    assert isomorphic(held, EXPECTED), graph_diff(held, EXPECTED)
+    assert_isomorphic(held, EXPECTED)
 
 
 async def test_each_load_gets_its_own_graph(store, session):
@@ -164,7 +164,7 @@ async def test_an_inline_jsonld_context_still_parses(context):
     if context is None:
         data = data.replace(b'"title"', b'"http://purl.org/dc/terms/title"')
     graph = await parse_graph(data, RdfFormat.JSONLD)
-    assert isomorphic(graph, EXPECTED), graph_diff(graph, EXPECTED)
+    assert_isomorphic(graph, EXPECTED)
 
 
 SECOND = f"{TENANT}/books/{UUID(int=2)}"
@@ -180,7 +180,7 @@ async def loaded_for(session, iri):
 async def test_a_loaded_graph_reads_back_as_the_file_that_was_loaded(session):
     loaded = await loaded_for(session, AGGREGATE)
     read = await session.loaded_graph(AGGREGATE, str(loaded))
-    assert isomorphic(read, EXPECTED), graph_diff(read, EXPECTED)
+    assert_isomorphic(read, EXPECTED)
 
 
 async def test_a_graph_of_another_aggregate_or_an_unknown_one_is_not_found(session):
@@ -205,7 +205,7 @@ async def test_a_later_session_finds_the_loaded_graph_and_reads_it(store, sessio
     async with fake_session(store, tenant_iri=TENANT) as later:
         (graph_iri,) = await later.loaded_graphs(AGGREGATE)
         read = await later.loaded_graph(AGGREGATE, graph_iri)
-    assert isomorphic(read, EXPECTED), graph_diff(read, EXPECTED)
+    assert_isomorphic(read, EXPECTED)
 
 
 async def test_after_a_replace_only_the_new_loaded_graph_is_listed(store, session):

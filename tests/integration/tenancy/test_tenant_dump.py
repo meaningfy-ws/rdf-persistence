@@ -10,7 +10,6 @@ from types import SimpleNamespace
 
 import pytest
 from rdflib import URIRef
-from rdflib.compare import isomorphic
 
 from rdf_persistence.domain.exceptions import InvalidBody
 from rdf_persistence.domain.generated.rp_files import RdfFormat
@@ -19,6 +18,7 @@ from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.services.tenant_dump import dump, restore
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
@@ -136,7 +136,7 @@ async def test_it01_a_tenant_restored_from_its_dump_answers_like_the_original(wo
             owner_new, load_new = moved(world, owner, new), moved(world, str(load), new)
             assert await opened.loaded_graphs(owner_new) == [URIRef(load_new)]
             copied = await opened.loaded_graph(owner_new, load_new)
-            assert isomorphic(copied, await old.loaded_graph(owner, str(load))), "same triples"
+            assert_isomorphic(copied, await old.loaded_graph(owner, str(load)))
     record, _ = await world.tenancy.get(new)
     assert await world.files.get(record.database_name, "k1") == BLOB_BYTES, "byte for byte"
 

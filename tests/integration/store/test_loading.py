@@ -8,7 +8,6 @@ from uuid import UUID
 
 import pytest
 from rdflib import BNode, Graph, Literal, URIRef
-from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence import InvalidGraph
 from rdf_persistence.adapters.fuseki import FusekiStore
@@ -22,6 +21,7 @@ from rdf_persistence.domain.iris import (
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.session import Session
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 
 TENANT = "https://example.org/libraries/6f1c0c1e"
 BOOK = f"{TENANT}/books/{UUID(int=1)}"
@@ -85,7 +85,7 @@ async def test_a_good_file_lands_in_its_own_graph_under_the_aggregate(store, dat
     expected = Graph().parse(data=TURTLE, format="turtle")
     held = await contents(store, database, loaded)
     assert str(loaded).startswith(f"{BOOK}/content/"), "named under the aggregate"
-    assert isomorphic(held, expected), graph_diff(held, expected)
+    assert_isomorphic(held, expected)
     registry = str(DEFAULT_IRIS.registry(TENANT))  # holds the load's marker (PD-2)
     assert await graphs_in(store, database) == {str(loaded), registry}, "the graph and its marker"
 
@@ -165,7 +165,7 @@ async def test_a_loaded_graph_reads_back_and_one_of_another_aggregate_is_not_fou
     await session.add_graph(SECOND_BOOK, [], [second])
     expected = Graph().parse(data=TURTLE, format="turtle")
     read = await session.loaded_graph(BOOK, str(first))
-    assert isomorphic(read, expected), graph_diff(read, expected)
+    assert_isomorphic(read, expected)
     with pytest.raises(NotFound):
         await session.loaded_graph(BOOK, str(second))
 
@@ -178,7 +178,7 @@ async def test_a_later_session_lists_the_loaded_graph_and_reads_it(store, databa
     assert graph_iri == loaded
     expected = Graph().parse(data=TURTLE, format="turtle")
     read = await later.loaded_graph(BOOK, graph_iri)
-    assert isomorphic(read, expected), graph_diff(read, expected)
+    assert_isomorphic(read, expected)
     with pytest.raises(NotFound):
         await later.loaded_graphs(SECOND_BOOK)
 
@@ -200,7 +200,7 @@ async def test_it01_a_root_load_comes_back_in_a_later_session(store, database, s
     assert await later.loaded_graphs(TENANT) == [loaded]
     expected = Graph().parse(data=TURTLE, format="turtle")
     read = await later.loaded_graph(TENANT, str(loaded))
-    assert isomorphic(read, expected), graph_diff(read, expected)
+    assert_isomorphic(read, expected)
 
 
 async def test_it03_a_root_replace_with_an_empty_list_empties_its_load(store, database, session):

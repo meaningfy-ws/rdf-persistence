@@ -22,6 +22,8 @@ from rdf_persistence.testkit.conformance import (
     verdict_problems,
 )
 
+from .terms import terms_of
+
 ROOT = Path(__file__).parents[3]
 METAMODEL = ROOT / "rdf_persistence" / "model" / "rp.yaml"
 TOY = ROOT / "tests" / "fixtures" / "library" / "library.yaml"
@@ -227,7 +229,7 @@ def test_a_key_across_aggregates_is_no_keyed_slot_validator_or_shape() -> None:
     mentions = [
         p.name
         for p in generated.rglob("*")
-        if p.is_file() and p.suffix in TEXT and "isbn_key" in p.read_text()
+        if p.is_file() and p.suffix in TEXT and any("isbn_key" in term for term in terms_of(p))
     ]
     assert mentions == [], "no generated validator, shape or model names isbn_key"
     grants = load_schema(METAMODEL)

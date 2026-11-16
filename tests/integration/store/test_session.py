@@ -8,7 +8,6 @@ from uuid import UUID
 
 import pytest
 from rdflib import Graph, Literal, URIRef
-from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.domain.exceptions import Conflict, DatabaseGone, InvalidIri, NotFound
@@ -21,6 +20,7 @@ from rdf_persistence.domain.iris import (
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.session import Session, open_session
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 
 TENANT = "https://example.org/libraries/6f1c0c1e"
 TITLE = URIRef("http://purl.org/dc/terms/title")
@@ -135,9 +135,7 @@ async def test_get_graph_returns_what_was_added_and_its_version(store, database)
     graph, _, read = await session.get_graph(book(1))
     assert read == version, "the version read is the one returned by the commit"
     expected = graph_of(title(book(1), "Dune"))
-    assert isomorphic(without_bookkeeping(graph), expected), graph_diff(
-        without_bookkeeping(graph), expected
-    )
+    assert_isomorphic(without_bookkeeping(graph), expected)
 
 
 async def test_a_graph_read_can_be_written_back_as_it_is(store, database):
@@ -185,9 +183,7 @@ async def test_replacing_with_the_current_version_stores_the_new_triples_under_a
     graph, _, read = await session.get_graph(book(1))
     expected = graph_of(title(book(1), "new"))
     assert read == second != first, "a fresh token, never the old one"
-    assert isomorphic(without_bookkeeping(graph), expected), graph_diff(
-        without_bookkeeping(graph), expected
-    )
+    assert_isomorphic(without_bookkeeping(graph), expected)
 
 
 async def test_replacing_with_a_stale_version_is_a_conflict_and_changes_nothing(store, database):
@@ -199,7 +195,7 @@ async def test_replacing_with_a_stale_version_is_a_conflict_and_changes_nothing(
         await session.replace_graph(book(1), title(book(1), "loser"), first)
     after, _, version_after = await session.get_graph(book(1))
     assert version_after == version, "the version did not move"
-    assert isomorphic(after, before), graph_diff(after, before)
+    assert_isomorphic(after, before)
 
 
 async def test_replacing_a_missing_graph_is_not_found(store, database):
@@ -227,9 +223,7 @@ async def test_two_editors_who_read_the_same_version_get_one_commit_and_one_conf
     winning_title = "by ada" if isinstance(outcomes[0], str) else "by ben"
     expected = graph_of(title(book(1), winning_title))
     assert stored == winners[0], "the stored token is the winner's"
-    assert isomorphic(without_bookkeeping(graph), expected), (
-        "the stored book is the winner's, whole"
-    )
+    assert_isomorphic(without_bookkeeping(graph), expected)
     assert len(await registry(store, database)) == 3, "one registry entry, nothing half-written"
 
 
@@ -319,7 +313,7 @@ async def test_the_registry_entry_is_written_replaced_and_removed_with_the_aggre
     assert (entry, v.REGISTRY_KIND, v.REGISTRY_KIND_IRIS["aggregate"]) in after_add, "kind recorded"
     version = await session.replace_graph(book(1), title(book(1), "b"), version)
     after_replace = await registry(store, database)
-    assert isomorphic(after_replace, after_add), "replaced entry equals the first, not duplicated"
+    assert_isomorphic(after_replace, after_add)
     await session.remove(book(1), version)
     assert len(await registry(store, database)) == 0, "the entry goes with the aggregate"
 
@@ -354,7 +348,7 @@ async def test_other_aggregates_are_not_touched_by_a_commit(store, database):
     await session.replace_graph(book(1), title(book(1), "b"), version)
     await session.remove(book(1), (await session.get_graph(book(1)))[2])
     after, _, _ = await session.get_graph(book(2))
-    assert isomorphic(after, neighbour), graph_diff(after, neighbour)
+    assert_isomorphic(after, neighbour)
     assert len(await registry(store, database)) == 3, "the neighbour keeps its entry"
 
 

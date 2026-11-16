@@ -1,13 +1,13 @@
 """The start-up sweep against a real Fuseki and the parametrised file store: a crash during creation."""
 
 import pytest
-from rdflib.compare import isomorphic
 
 from rdf_persistence.domain.exceptions import StoreUnavailable
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.iris import system_database_name, tenant_resource_name
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.toy import ADA, library_slots, toy_mapper
@@ -136,6 +136,6 @@ async def test_an_active_tenant_keeps_its_root_graph_record_version_and_blob(
     root_after = (await store.query(name, query)).graph
     _, version_after = await tenancy.get(kept.id)
     assert len(root_before) > 0, "there was a root object to compare"
-    assert isomorphic(root_after, root_before), "the root graph is the same"
+    assert_isomorphic(root_after, root_before)
     assert version_after == version_before, "the access record is at the same version"
     assert await files.get(name, "scan.pdf") == b"%PDF", "the blob is the same"

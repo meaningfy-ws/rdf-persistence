@@ -17,7 +17,6 @@ from uuid import UUID
 
 import pytest
 from rdflib import Dataset, Literal, URIRef
-from rdflib.compare import isomorphic
 from rdflib.namespace import SKOS
 
 from rdf_persistence.domain.exceptions import (
@@ -53,6 +52,7 @@ from rdf_persistence.services.tenancy import DEFAULT_STORE, Tenancy
 from rdf_persistence.services.tenant_dump import dump, restore
 from rdf_persistence.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
 from rdf_persistence.testkit import FakeStore
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
@@ -612,7 +612,7 @@ async def assert_answers_like_the_original(world: SimpleNamespace, summary) -> N
                 URIRef(moved(world, str(load), new))
             ], "the same load, under the new id"
             copied = await opened.loaded_graph(owner_new, moved(world, str(load), new))
-            assert isomorphic(copied, await old.loaded_graph(owner, str(load))), "the same triples"
+            assert_isomorphic(copied, await old.loaded_graph(owner, str(load)))
     assert book_new == restored_book.id, "the book is where the rewrite put it"
     record, _ = await world.tenancy.get(new)
     assert await world.files.get(record.database_name, "k1") == BLOB_BYTES, "the blob byte for byte"

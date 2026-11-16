@@ -52,6 +52,7 @@ from tests.toy import (
     library_slots,
     toy_mapper,
 )
+from tests.toy_service import body_of, scan_of_dune
 
 ODRL = "http://www.w3.org/ns/odrl/2/"
 NOW = datetime(2026, 11, 5, 9, 0, tzinfo=UTC)
@@ -404,15 +405,9 @@ async def test_a_root_that_sets_an_internal_slot_creates_nothing(store, files):
     tenancy = Tenancy(
         store, files, SETTINGS, mapper=toy_mapper(), root_class=Scan, access_class=LibraryAccess
     )
-    slots = {
-        "description": "A scan.",
-        "file_name": "a.pdf",
-        "media_type": "application/pdf",
-        "byte_size": 1,
-        "sha256": "0" * 64,
-    }
+    root = scan_of_dune().model_copy(update={"label": "Ghent", "file_key": "SECRET"})
     with pytest.raises(InvalidBody, match="file_key"):
-        await tenancy.create("Ghent", {**slots, "file_key": "SECRET"}, CREATOR)
+        await tenancy.create("Ghent", body_of(root), CREATOR)
     assert files.sent("create_bucket") == [], "no bucket was asked for"
     assert store.sent("create_dataset") == [], "no database was asked for"
 

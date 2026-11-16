@@ -68,6 +68,7 @@ from tests.toy import (
     toy_mapper,
 )
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
+from tests.unit.entrypoints.scene import PROBLEMS, problem_of
 from tests.unit.services.test_collaboration_cascade import before
 from tests.unit.services.test_collaboration_collections_adversarial import (
     everything_said,
@@ -1154,7 +1155,13 @@ async def test_the_generic_router_has_no_route_for_comments_whatever_the_method(
             for url in (f"{path}/rp-comments", f"{path}/rp-comments/{uuid}"):
                 response = await client.request(method, url, headers=headers, json={})
                 seen[(method, url)] = response
-        wrong = {k: r.status_code for k, r in seen.items() if r.status_code not in (404, 405)}
+        refusals = {404: f"{PROBLEMS}not-found", 405: f"{PROBLEMS}method-not-allowed"}
+        wrong = {
+            k: (r.status_code, None if k[0] == "HEAD" else problem_of(r).type)
+            for k, r in seen.items()
+            if r.status_code not in refusals
+            or (k[0] != "HEAD" and problem_of(r).type != refusals[r.status_code])
+        }
         assert wrong == {}, "no method on a comment path answers other than not found"
         assert not [k for k, r in seen.items() if SECRET in r.text], "the text is not served"
 

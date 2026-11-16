@@ -7,7 +7,6 @@ from copy import deepcopy
 import pytest
 from pyld import jsonld
 from rdflib import RDF, BNode, Graph, Literal, URIRef
-from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence.domain.exceptions import InvalidBody
 from rdf_persistence.domain.generated.service.rp_service import (
@@ -22,6 +21,7 @@ from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
+from rdf_persistence.testkit.roundtrip import assert_isomorphic
 from tests.toy import TENANT, TOY_SCHEMA, book_iri, dune, toy_mapper
 from tests.unit.services.conftest import GENERATED
 
@@ -90,9 +90,7 @@ def with_context(documents: Documents, body: dict) -> dict:
 
 
 def assert_same_triples(left: Graph, right: Graph) -> None:
-    assert isomorphic(left, right), (
-        f"only left: {sorted(graph_diff(left, right)[1])}\nonly right: {sorted(graph_diff(left, right)[2])}"
-    )
+    assert_isomorphic(left, right)
 
 
 @pytest.fixture
