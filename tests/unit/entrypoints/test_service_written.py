@@ -153,6 +153,7 @@ def test_an_annotated_root_is_described_by_its_reads_only(shed_project) -> None:
 # --- T-8: the consumer's route writes it -----------------------------------------------------
 
 
+@pytest.mark.slow
 async def test_a_session_adds_replaces_and_removes_a_shed_each_with_a_new_version(
     shed_service: ToyService, shed_project: tuple[Path, Any]
 ) -> None:

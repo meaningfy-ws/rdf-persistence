@@ -834,6 +834,7 @@ def test_the_matrix_has_a_cell_for_every_route_and_caller() -> None:
 
 
 @pytest.mark.parametrize(("who", "route", "status"), CASES, ids=[f"{w}: {r}" for w, r, _ in CASES])
+@pytest.mark.slow
 async def test_each_route_asks_for_its_action(scene, who, route, status) -> None:
     method, path, options = ROUTES[route](scene)
     sub, roles = WHO[who]
