@@ -1,0 +1,61 @@
+= ADR-005: Seven representations for one aggregate
+:description: Which media types a route that answers one aggregate serves, which routes they are, and why a listing stays JSON.
+
+Status: *Accepted* (developer, 2026-11-17: serve more serialisations, N-Quads in
+particular). Which routes serve them is the leader's choice. It narrows research decision DEC-27
+and widens D-1 of xref:architecture/open-decisions.adoc[Decisions of 2026-11-05].
+
+== Context
+
+The research epic's DEC-27 promised content negotiation for Turtle and N-Triples. D-1 then narrowed
+the answer to JSON, JSON-LD and Turtle, and that is what the toolkit served. rdflib serialises more
+formats at no cost, and N-Quads matters most to the developer, because a consumer can then read an
+aggregate together with the name of its graph.
+
+No HTTP route returns a whole dataset. A read, a create, a replace and the tenant root each answer
+one aggregate, which is one named graph. A listing answers a page.
+
+== Decision
+
+Every route that answers *one aggregate* (read, create, replace, and the tenant root) serves seven
+representations:
+
+[cols="2,3",options="header"]
+|===
+|Media type |Form
+|`application/json` |Plain JSON, framed. The default.
+|`application/ld+json` |Compacted JSON-LD.
+|`text/turtle` |Turtle.
+|`application/n-triples` |N-Triples.
+|`application/n-quads` |N-Quads, in the aggregate's graph.
+|`application/trig` |TriG, in the aggregate's graph.
+|`application/rdf+xml` |RDF/XML.
+|===
+
+* N-Quads and TriG name the graph the aggregate was read from. The others carry triples only.
+* On a tie, JSON wins, then JSON-LD, Turtle, N-Triples, N-Quads, TriG and RDF/XML.
+* A *listing* stays JSON and JSON-LD. A page carries its total and its paging, which no RDF
+  serialisation holds. A listing asked for in another type answers 406.
+* RDF/XML cannot write a predicate that has no XML local name. An aggregate with such a
+  predicate answers 406 for RDF/XML, naming the type; the other six still work.
+
+== Consequences
+
+* A consumer reads an aggregate as quads without a dump route.
+* The OpenAPI document lists every media type as a string response after JSON.
+* The tenant dump stays Python only (`kit.dump_tenant`).
+
+== Alternatives weighed
+
+N-Quads for listings::
+Not now. It is an open question to the developer; a page's total and paging have no place in it.
+
+A dump route over HTTP::
+Not asked. The tenant dump stays a Python call.
+
+Keep the three of D-1::
+Rejected by the developer's answer.
+
+== Sources
+
+The change `manual-revision-notes`, `inputs/analysis.md` §2.2 ("could be more") and §6 Q-5; its DEC-9.

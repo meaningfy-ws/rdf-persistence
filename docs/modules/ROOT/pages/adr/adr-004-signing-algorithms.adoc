@@ -1,0 +1,75 @@
+= ADR-004: Signing algorithms and clock leeway of the token verifier
+:description: Which signature algorithms the token verifier accepts by default, how a deployment changes them, how post-quantum signatures join, and the clock leeway.
+
+Status: *Accepted* (developer, 2026-11-17: keep the classical algorithms, and stay open to
+post-quantum ones).
+
+== Context
+
+The library only verifies tokens; the identity provider signs them, and the provider chooses the
+algorithm. An administrator of Zitadel picks the active web key: RS256, RS384, RS512, ES256, ES384,
+ES512 or EdDSA, with RS256 as the default. Zitadel offers no post-quantum key. A resource server
+can accept only a subset of what the provider signs with.
+
+Before this decision the allow-list was a constant, `RS256` and `ES256`. If an administrator
+switched the key to ES384, RS512 or EdDSA, every token was refused with 401. The verifier also
+had no clock leeway: a token whose `exp` was one second past was refused, so a small drift between
+two clocks refused valid tokens.
+
+The state of post-quantum signatures:
+
+* ML-DSA (FIPS 204, final) has a JOSE registration: key type `AKP`, algorithms `ML-DSA-44`, `-65`
+  and `-87`. The datatracker status was not confirmed.
+* FN-DSA (FIPS 206) is still a draft. SLH-DSA and composite signatures are IETF drafts.
+* The `cryptography` package already locked ships ML-DSA keys. PyJWT 2.15 has no ML-DSA or `AKP`.
+* Access tokens live minutes, so "harvest now, decrypt later" does not apply to signatures. The
+  post-quantum work that matters now is TLS (a hybrid ML-KEM key exchange) on the links to the
+  identity provider, the store and the object store. That is infrastructure, not this library.
+
+== Decision
+
+. *The allow-list is a parameter.* `JwksTokenVerifier(..., algorithms=...)` takes it. The default is
+  RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512 and EdDSA. `none` and every `HS*`
+  name are refused at construction, even when a deployment lists them, and so is a name the
+  pinned PyJWT does not implement.
+. *The clock leeway is a parameter.* `leeway_seconds=` is 30 seconds by default and applies to `exp`
+  and `nbf`. It is checked against the injected clock, not PyJWT's own `exp` check, so the testkit's
+  clock still drives it.
+. *Both are constructor parameters now.* `technical-models` moves them into the generated settings
+  with the other JWKS values.
+. *Post-quantum follows the provider.* ML-DSA joins the day the provider and PyJWT both ship it.
+  PyJWT is pinned exactly, so adding it needs a toolkit release that raises the pin, then a
+  configuration change. An algorithm the pinned PyJWT already implements joins by configuration
+  alone. No liboqs and no cryptography of our own.
+
+== Consequences
+
+* A deployment whose provider signs with ES384, RS512 or EdDSA works with the default.
+* A client that counted on an exact expiry now has 30 seconds more: this is a breaking change,
+  listed with the change.
+* TLS with a hybrid key exchange is raised with infrastructure, outside this repository.
+
+== Alternatives weighed
+
+Post-quantum signatures now::
+Rejected. The provider cannot sign them, so there would be nothing to verify.
+
+HS512::
+Rejected. It is the right family against a quantum attacker, but it is a shared secret: every
+service that verifies would hold the secret that signs, so any of them could mint tokens. The
+provider does not issue HS-signed access tokens either.
+
+No leeway::
+Rejected. Drift between the clocks of the provider and the service refuses valid tokens.
+
+PyJWT's own `exp` check::
+Rejected. It would bypass the injected clock the testkit relies on.
+
+A settings class now::
+Rejected for this change. The central settings home is the subject of `technical-models`; two
+homes would follow.
+
+== Sources
+
+The change `manual-revision-notes`, `inputs/analysis.md` §1.1 and §1.2 (the missing leeway), its
+DEC-1 to DEC-3 and the developer's answer to Q-6.

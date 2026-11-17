@@ -1,0 +1,58 @@
+= ADR-001: The toolkit's own async SPARQL client
+:description: Why the Fuseki adapter is a small client of our own over httpx, and not rdflib's SPARQLStore or SPARQLWrapper.
+
+Status: *Accepted* (developer, 2026-11-17). It supersedes the client clause of research decision
+DEC-4.
+
+== Context
+
+The research epic decided that the toolkit builds on rdflib, pyoxigraph and the existing SPARQL
+clients, and rejected "own RDF model, parser, store or SPARQL client" (DEC-4, 2026-11-03). The
+foundation epic then built `FusekiStore` on its own httpx client. The reasons were good, but no
+record said that DEC-4's client clause no longer held.
+
+The choice was never between rdflib and HTTP. A store shared by every worker, with one TDB2 dataset
+per tenant, is reached over HTTP whatever the library: rdflib's `SPARQLStore` and
+`SPARQLUpdateStore` call `urllib.request.urlopen`. The choice is whose HTTP client it is.
+
+== Decision
+
+The Fuseki adapter keeps its own async client over httpx. It sends the query and update POSTs and
+the Graph Store PUT, and it maps each status to a toolkit error. About thirty lines are
+hand-written; the rest reuses rdflib, which parses the results and the graphs and serialises the
+ones we send.
+
+== Consequences
+
+* The `Store` port stays async, and the adapter takes a `transport=` for a test double, with
+  explicit timeouts and no retry inside a request.
+* The guarded single-request commit (the rp-aggregate-store spec) stays expressible.
+* The adapter is half generic SPARQL 1.1 Protocol (query and update POST, Graph Store PUT, result
+  parsing) and half Fuseki (the `/{ds}/query|update|data` layout, the `/$/datasets` admin and
+  dataset-level N-Quads). A second store reuses the first half.
+* DEC-4 still holds for the RDF model, the parser and the store: the toolkit has none of its own.
+  `FakeStore` in the testkit is an rdflib `Dataset` per name.
+* rdflib 7.6 ships RDF4J and GraphDB clients; they are synchronous. They matter when a second
+  store is added, not here.
+
+== Alternatives weighed
+
+rdflib `SPARQLUpdateStore`::
+Rejected. It is synchronous and the port is async. It has no test transport. It has no Graph
+Store PUT, no dataset admin and no N-Quads export or import, which are four of the port's eight
+methods. Its errors are bare. Its buffered add-a-triple API cannot express the guarded
+single-request commit. Its `initBindings` rewrites query text with a regular expression, which its
+own docstring warns about.
+
+SPARQLWrapper::
+Rejected. It would replace about twenty lines. It is synchronous, its last release was in 2022 and it
+has no Graph Store, admin or binding support.
+
+pyoxigraph as the production store::
+Rejected. It is fast and strict and right for tests and development, but an embedded store
+conflicts with the decision that the store is a server shared by every worker.
+
+== Sources
+
+The change `manual-revision-notes`, `inputs/analysis.md` §2.1 and §4.4 (the process gap, and DEC-4
+as drifted); the foundation epic's PD-28a, which records the adapter's behaviour.

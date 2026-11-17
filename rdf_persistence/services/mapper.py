@@ -5,9 +5,13 @@ Domain services work on the generated classes; the router works on whole graphs 
 mapper serves the first: ``to_graph`` writes an aggregate root and its owned parts as triples,
 ``from_graph`` builds the object back, nesting owned parts whether their nodes are IRIs or skolem
 IRIs. It is driven by ``SchemaView`` and writes rdflib terms directly, not through linkml's
-``rdflib_dumper``/``rdflib_loader``: those take linkml's own dataclass classes, not the generated
-pydantic ones, and they fail on a slot that ranges over a class but holds an IRI string
-(``Grant.assignee``). Predicates and types are those of the generated context, which a test checks.
+``rdflib_dumper``/``rdflib_loader``. Both accept pydantic classes (checked against linkml-runtime
+1.12.1), so that is not the reason. The reasons are three. The loader reads ``class_class_uri`` from
+the class, which the generated classes do not carry (they keep no ``linkml_meta``). The dumper
+writes every slot that holds a value, the tracking slots (``bookkeeping``) too, where the session
+writes them as statements about the graph IRI. And the dumper fails on a slot that ranges over a
+class but holds an IRI string (``Grant.assignee``). Predicates and types are those of the generated
+context, which a test checks.
 
 What a value becomes: an owned part, a node; a class-ranged slot that is not owned, or a ``uri``
 slot, the IRI; an enum value, its meaning IRI when it has one; anything else, a literal. Internal

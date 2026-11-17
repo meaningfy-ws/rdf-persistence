@@ -1189,9 +1189,12 @@ turns it off.
 *RDF*, parsed into a graph of its own. `Session.load_graph(iri, data, rdf_format=RdfFormat.TURTLE)`
 parses the data in a worker thread and puts it into a new named graph, by default
 `{iri}/content/{uuid4}` (the loaded-graph template of the IRI policy; `Session` takes the policy
-as `iris=`). Before it puts the graph, it writes a *load marker*, one triple in the tenant's
-registry graph that records when the graph was loaded; the sweep uses it to leave young graphs alone.
-Data that does not parse raises `InvalidGraph`, and nothing is written. A JSON-LD file is also
+as `iris=`). `data` is the file's `bytes`, and the return is the new graph's IRI as an rdflib
+`URIRef`. Before it puts the graph, it writes a *load marker*, one triple in the tenant's
+registry graph that records when the graph was loaded; the sweep (the check that finds loaded graphs
+no commit has registered, <<sweep-live-tenant>>) uses it to leave young graphs alone.
+Data that does not parse raises `InvalidGraph` (`from rdf_persistence import InvalidGraph`), and
+nothing is written. A route that lets it out answers 422 `invalid-body`. A JSON-LD file is also
 refused with `InvalidGraph`, nothing written, and `str(error)` is the message quoted here, when:
 
 * the document declares a graph of its own (a `@graph` with an `@id`). The loader puts the triples
@@ -1220,7 +1223,9 @@ async with kit.session(tenant, principal) as session:
 
 `replace_graph` with `loaded_graphs=None` keeps the loaded graphs already registered; a list
 replaces them, and the graphs left out are emptied. `remove` empties every loaded graph of the
-aggregate. Formats: `turtle`, `rdfxml`, `ntriples` and `jsonld`.
+aggregate. The formats are the members of `RdfFormat`: `RdfFormat.TURTLE` (`"turtle"`),
+`RdfFormat.RDFXML` (`"rdfxml"`), `RdfFormat.NTRIPLES` (`"ntriples"`) and `RdfFormat.JSONLD`
+(`"jsonld"`).
 
 *Reading a loaded graph back.* `Session.loaded_graph(iri, graph_iri)` returns the triples of a graph
 loaded for the aggregate as an rdflib `Graph`. A later request finds the graph's IRI with
@@ -1577,6 +1582,26 @@ refuses an issuer that is not `https` unless you pass `allow_insecure_issuer=Tru
 test containers only. In Zitadel, set each application to JWT access tokens: the verifier cannot
 check opaque ones.
 
+[#verifier-options]
+Two more parameters have defaults (xref:adr/adr-004-signing-algorithms.adoc[ADR-004]):
+
+* `algorithms=`, the signature algorithms it accepts. The default is RS256, RS384, RS512, PS256,
+  PS384, PS512, ES256, ES384, ES512 and EdDSA, which covers every key Zitadel can sign with. Pass a
+  shorter collection to accept fewer. `ValueError` at construction for an empty collection, `none`,
+  an `HS*` name in any case, or a name the pinned PyJWT does not implement. A post-quantum
+  algorithm is not accepted until the identity provider and PyJWT both ship it.
+* `leeway_seconds=`, the clock skew allowed on `exp` and `nbf`: 30 seconds by default, a number from
+  0 to 300 (`ValueError` otherwise). A token that expired up to that long ago is still accepted, so
+  pass `leeway_seconds=0` if a client counts on an exact expiry.
+
+[source,python]
+----
+verifier = JwksTokenVerifier(
+    issuer, project_id, zitadel_roles_claim(project_id),
+    algorithms=("ES256", "ES384"), leeway_seconds=10,
+)
+----
+
 `install_service` mounts the routes (<<routes>>), the problem responses and the OpenAPI document.
 On start-up, before your own lifespan, it creates the system database if it is missing, guards the
 IRI policy (see "The policy cannot change", below), creates the application database if the schema has an application class, migrates the system and application databases, runs the sweep (on every wired store, see xref:howto/tenant-stores.adoc#startup[Put tenants on several stores]), and migrates the tenants, each on its own store. It stops with `OSError` if the generated folder lacks the context, the shapes, a frame or
@@ -1653,7 +1678,19 @@ RFC 9457 problem; the rules are on
 xref:architecture/api.adoc#serving[A lightweight API, Serving it], and the order of the checks on a
 `PUT` is in xref:architecture/api.adoc#anatomy[Anatomy of a request].
 
-The generated TypeScript types describe the plain JSON a client sends and receives.
+The generated TypeScript types describe the plain JSON a client sends and receives. A client that
+sends `Accept` with another type gets the aggregate as JSON-LD, Turtle, N-Triples, N-Quads, TriG or
+RDF/XML (see xref:architecture/api.adoc#representations[Representations]).
+
+[#etag-proxy]
+*A reverse proxy must not weaken the `ETag`.* A write compares the `ETag` the client echoes in
+`If-Match` with the stored version, and the comparison is strong: a weak tag (`W/"v7"`) never
+matches, so the write answers 409. Some proxies turn a strong `ETag` weak when they change the body;
+nginx does it when it compresses a response with gzip. Behind such a proxy every client that echoes
+the tag gets 409 on every write, and no write succeeds. Either do not let the proxy compress the
+service's responses (in nginx, `gzip off;` for the service's location), or make it pass the `ETag`
+through unchanged. Test it: read an aggregate through the proxy, then `PUT` it with the `ETag` you
+were given, and expect 200.
 
 [#test-service]
 == 13. Test the service

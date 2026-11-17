@@ -30,7 +30,7 @@ Decided with the request itself:
 |D-1
 |Which API contract? (xref:architecture/api.adoc[API])
 |A. JSON-LD documents from a generic router. B. Plain JSON, typed by classes, with the context by `Link` header. C. GraphQL with the JSON-LD context. D. JSON:API from configuration.
-|*A and B together*: one generic router driven by the schema, plain JSON by default, JSON-LD and Turtle by content negotiation. *C is the backup* for a later implementation.
+|*A and B together*: one generic router driven by the schema, plain JSON by default, JSON-LD and Turtle by content negotiation. *C is the backup* for a later implementation. The representations widened to seven in xref:adr/adr-005-representations.adoc[ADR-005].
 
 |D-2
 |Do we need generated Python classes and the mapper? (xref:architecture/api.adoc#mapper[API])

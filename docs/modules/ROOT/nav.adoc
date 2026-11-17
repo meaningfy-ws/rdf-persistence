@@ -31,6 +31,11 @@
 * xref:requirements/index.adoc[Requirements]
 
 * xref:adr/index.adoc[Architecture decision records]
+** xref:adr/adr-001-sparql-client.adoc[ADR-001: Own async SPARQL client]
+** xref:adr/adr-002-jwks-cache.adoc[ADR-002: Own JWKS cache over PyJWT]
+** xref:adr/adr-003-fastapi-not-connexion.adoc[ADR-003: FastAPI, not connexion]
+** xref:adr/adr-004-signing-algorithms.adoc[ADR-004: Signing algorithms and leeway]
+** xref:adr/adr-005-representations.adoc[ADR-005: Seven representations]
 
 * xref:develop/index.adoc[Working on the toolkit]
 ** xref:develop/agents.adoc[Working with agents]

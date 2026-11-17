@@ -236,8 +236,21 @@ in. See xref:howto/adopt.adoc#files[Keep files].
 A read of one object answers with its `ETag`; the read of a tenant's root also answers with `Record-ETag`, the version of its access record, to send as `If-Match` to the label route. The read of a tenant's root and of an aggregate also answers `Allowed-Actions`, the actions the caller may take on it (`read, modify, delete, administer`, in that order; on a tenant `delete` means deleting the tenant and needs `administer`, on an aggregate `administer` is not listed; no header on a refused read), and each item of the tenant listing carries the same list as `allowed_actions`. A root `PUT` whose label is not the tenant's gets 422: a tenant is renamed through its label route. Every `PUT` and `DELETE` needs `If-Match` (428 without it, 409 on a
 stale version); a create answers 201 with a `Location`. Plain JSON points at the context by a `Link`
 header, so it is also JSON-LD. The link is built from `settings.base` and the mount prefix, never
-from the request's `Host` header, so a deployment sets `base` to the address it is reached at; `Accept: application/ld+json` and `text/turtle` are served too (406
-for anything else, 415 for a body in another type).
+from the request's `Host` header, so a deployment sets `base` to the address it is reached at. The
+other representations are served by `Accept` (<<representations>>); 406 for a type that is not one of
+them, 415 for a body in another type.
+
+[#representations]
+*Representations* (ADR-005, xref:adr/adr-005-representations.adoc[the record]). A route that answers
+one aggregate (read, create, replace and the tenant root) serves seven media types:
+`application/json` (the default), `application/ld+json`, `text/turtle`, `application/n-triples`,
+`application/n-quads`, `application/trig` and `application/rdf+xml`. On a tie the order is that
+one. JSON and JSON-LD are framed as before. The other five serialise the aggregate's triples, and
+N-Quads and TriG name the aggregate's own graph, so a reader gets the triples together with the
+graph they came from. A listing stays JSON and JSON-LD: a page carries its total and paging, which
+no RDF serialisation holds, so any other type answers 406. RDF/XML cannot write a predicate that has
+no XML local name; an aggregate that holds one answers 406 naming the type, and the other six forms
+still work. The OpenAPI document lists each type as a string response.
 
 *Bodies are strict* (PD-14b). A body larger than `max_body_bytes`, or holding more than 10 000
 objects and list values together (a list of strings counts each string), is refused with 413. A plain-JSON body may use only its class's slot names and the JSON-LD
@@ -273,7 +286,7 @@ selects the page. The query states, for each subject, the graph it found it in (
 the toolkit gives each aggregate the subjects of its own graph; no IRI is read to find a subject's
 root, so parts beside their root are listed with it. A `read` prohibition on an aggregate hides it
 from that caller's listing and
-total. The tenant listing takes only `limit` and `offset`, and is paged in one query too. A listing has no Turtle form (406).
+total. The tenant listing takes only `limit` and `offset`, and is paged in one query too. A listing has only its JSON and JSON-LD forms (406 for an RDF type).
 
 *The OpenAPI document* is FastAPI's (`/openapi.json`), completed from the schema. It lists every
 aggregate type's routes with their request and response bodies, a query parameter per filterable
@@ -414,7 +427,7 @@ xref:architecture/data-flows.adoc#commit[Committing several aggregates at once])
 
 |14
 |Read the aggregate back and answer it in the negotiated type: framed JSON (with the context's
-`Link` header) or JSON-LD, or Turtle; the bookkeeping and `internal` values left out. The `ETag`
+`Link` header) or JSON-LD, or one of the five RDF forms (<<representations>>); the bookkeeping and `internal` values left out. The `ETag`
 is the new version token, in quotes; `Vary: Accept` is set.
 |`Session.get_graph`; `entrypoints/responses.py`, `document_response`, with `negotiation.py`,
 `etag_of`, and `Documents.render`
