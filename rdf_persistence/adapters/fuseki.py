@@ -155,4 +155,4 @@ class FusekiStore(HttpAdapter):
             listing = FusekiDatasetList.model_validate_json(response.content)
         except ValidationError as error:
             raise StoreUnavailable(UNREADABLE) from error
-        return [entry.ds_name.lstrip("/") for entry in listing.datasets]
+        return [entry.fuseki_dataset_name.lstrip("/") for entry in listing.datasets]

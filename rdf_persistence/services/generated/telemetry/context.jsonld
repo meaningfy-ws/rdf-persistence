@@ -1,0 +1,101 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "linkml": "https://w3id.org/linkml/",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "rp.activity.class": {
+         "@id": "activityClass"
+      },
+      "rp.activity.class_iri": {
+         "@id": "activityClassIri"
+      },
+      "rp.activity.id": {
+         "@id": "activityId"
+      },
+      "rp.blob.count": {
+         "@id": "blobCount"
+      },
+      "db.namespace": {
+         "@id": "dbNamespace"
+      },
+      "db.operation.name": {
+         "@id": "dbOperationName"
+      },
+      "db.response.status_code": {
+         "@id": "dbResponseStatusCode"
+      },
+      "db.system.name": {
+         "@id": "dbSystemName"
+      },
+      "rp.error.detail": {
+         "@id": "errorDetail"
+      },
+      "error.type": {
+         "@id": "errorType"
+      },
+      "rp.event.origin": {
+         "@id": "eventOrigin"
+      },
+      "rp.store.found_name": {
+         "@id": "foundStoreName"
+      },
+      "http.response.status_code": {
+         "@id": "httpResponseStatusCode"
+      },
+      "rp.message.limit": {
+         "@id": "messageLimit"
+      },
+      "messaging.destination.name": {
+         "@id": "messagingDestinationName"
+      },
+      "messaging.system.name": {
+         "@id": "messagingSystemName"
+      },
+      "rp.migration.name": {
+         "@id": "migrationName"
+      },
+      "rp.observer.name": {
+         "@id": "observerName"
+      },
+      "rp.iri_policy.fields": {
+         "@container": "@set",
+         "@id": "policyFields"
+      },
+      "rp.resource": {
+         "@id": "resource"
+      },
+      "rp.sweep.resources": {
+         "@container": "@set",
+         "@id": "resources"
+      },
+      "rp.store.response_body": {
+         "@id": "responseBody"
+      },
+      "rp.schema.id": {
+         "@id": "schemaId"
+      },
+      "rp.restore.source_tenant.id": {
+         "@id": "sourceTenantId"
+      },
+      "rp.step": {
+         "@id": "step"
+      },
+      "rp.store.name": {
+         "@id": "storeName"
+      },
+      "rp.sweep.system_created": {
+         "@id": "systemCreated"
+      },
+      "rp.tenant.id": {
+         "@id": "tenantId"
+      },
+      "@version": 1.1,
+      "type": "@type",
+      "LogContext": {
+         "@id": "LogContext"
+      }
+   }
+}

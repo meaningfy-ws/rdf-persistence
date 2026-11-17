@@ -277,3 +277,54 @@ def test_a_type_with_only_one_of_repr_and_python_import_yields_no_broken_import(
     modules = {str(n.module) for n in ast.walk(ast.parse(text)) if isinstance(n, ast.ImportFrom)}
     assert "None" not in modules, "no import of the object None"
     assert "rdf_persistence.domain.sparql" not in modules, "an import needs both halves"
+
+
+ALIAS_MODULE = """\
+id: https://example.org/aliases
+name: aliases
+prefixes:
+  ex: https://example.org/
+  linkml: https://w3id.org/linkml/
+default_prefix: ex
+default_range: string
+imports:
+  - linkml:types
+slots:
+  step: {alias: rp.step, required: true}
+  tenant_id: {alias: rp.tenant.id}
+  wire_name: {alias: wireName}
+  plain: {}
+classes:
+  Aliased:
+    slots: [step, tenant_id, wire_name, plain]
+"""
+
+
+def _aliased_fields(tmp_path: Path) -> dict[str, str | None]:
+    (tmp_path / "aliases.yaml").write_text(ALIAS_MODULE, encoding="utf-8")
+    text = {f.name: f.text for f in render_modules(tmp_path / "aliases.yaml")}["aliases.py"]
+    cls = next(
+        n for n in ast.parse(text).body if isinstance(n, ast.ClassDef) and n.name == "Aliased"
+    )
+    fields: dict[str, str | None] = {}
+    for node in cls.body:
+        if isinstance(node, ast.AnnAssign) and isinstance(node.value, ast.Call):
+            alias = next((k.value for k in node.value.keywords if k.arg == "alias"), None)
+            fields[ast.unparse(node.target)] = ast.literal_eval(alias) if alias else None
+    return fields
+
+
+def test_a_slot_with_a_dotted_alias_is_named_after_the_slot_and_keeps_the_alias(
+    tmp_path: Path,
+) -> None:
+    fields = _aliased_fields(tmp_path)
+
+    assert fields["step"] == "rp.step"
+    assert fields["tenant_id"] == "rp.tenant.id"
+
+
+def test_a_slot_with_an_identifier_alias_keeps_the_alias_as_its_name(tmp_path: Path) -> None:
+    fields = _aliased_fields(tmp_path)
+
+    assert fields["wireName"] is None
+    assert "wire_name" not in fields

@@ -81,6 +81,7 @@ test = [
     "pytest-randomly==5.1.0",
     # The round-trip invariants of the conformance suite (PD-27 item 4).
     "hypothesis==6.170.14",
+    "opentelemetry-sdk==1.45.2",
 ]
 lint = [
     "ruff==0.15.11",
@@ -117,6 +118,13 @@ kind = "technical"
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/templates/rp_templates.yaml"
 package = "rdf_persistence.services.generated.templates"
+regenerate-command = "make generate"
+openapi = false
+kind = "technical"
+
+[[tool.rp-generate]]
+schema = "rdf_persistence/model/technical/telemetry/rp_telemetry.yaml"
+package = "rdf_persistence.services.generated.telemetry"
 regenerate-command = "make generate"
 openapi = false
 kind = "technical"
