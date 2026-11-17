@@ -487,6 +487,15 @@ overrule any of them. D-1 to D-7 agreed by the developer, 2026-11-17.
   `REPRESENTATIONS`. `openapi._document_media` (not in the index; read by text) has 7 call
   sites, all in `openapi.py`, so its `turtle=` → `rdf=` rename stays in one file. The two tests the PLAN names are the only existing tests that may change;
   any other edit to an existing test stops the task.
+- **D-16 Builder departures in 3.1 and 3.3 accepted.** 3.1: the refusal-by-name test is in the
+  unit `tests/unit/entrypoints/test_negotiation.py`, not the integration file the PLAN named; four
+  new `ACCEPT` rows are additions; TC-62 is held by the existing wildcard rows; TC-58 is tested on
+  the unit router only; the builder edited with python string replaces and one `sed -i`, so the
+  lead read every changed site and re-ran its gate (T1: its last `test-fast` ran before a fix in
+  `documents.py`). 3.3: ADR-001 to ADR-003 are *Accepted* by the developer's "I agree with all
+  improvement suggestions" (`inputs/answers-2026-11-17.md`); the docstring keeps three reasons,
+  the re-check showed the blank-node and language-tag reasons do not hold. `tests/audit/scenario-map.csv`
+  names the renamed requirement by its old title in 38 rows; it follows the RENAMED delta at archive.
 
 ### Stage 1 review findings (L2, L3)
 
