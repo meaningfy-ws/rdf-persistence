@@ -48,7 +48,8 @@ bundles of D-1 and the IRI template variables of D-2), both in `rdf_persistence/
 A fifth group, `testkit` (`model/technical/testkit/rp_testkit.yaml`), holds the records the
 library's testkit uses (D-4), today declared in the generator's `rp_generation.yaml`; it generates
 into `rdf_persistence/testkit/generated/`, beside its only users, so the library never imports the
-generator for them (`generator-package` DEC-3 relies on this).
+generator for them (`generator-package` DEC-3 relies on this). As built, a sixth group,
+`telemetry`, arrived from `otel-observability` stage 1 (#149) by the same rule.
 
 The domain layer then imports no technical model. Two hand-written domain modules use the service
 models today, so `domain/iris.py` splits: its policy-free layout functions stay in `domain`, and
@@ -188,16 +189,28 @@ install_service(app, ..., settings=service_settings, toolkit=settings)
   `ConstraintCase`, `ConstraintKind` and the slot `kind` stay (only the conformance suite uses
   them, and `generator-package` moves it to the generator).
 - `generation/`: the `kind` check; `pydantic_split` imports the Python type a LinkML type's
-  `repr` names; `config.py` drops `FIELD_OF_TOML_KEY`.
+  `repr` names, defaults a slot annotated `default_instance` to a new instance of its class, gives
+  a multivalued `ifabsent: string(a, b)` its list default (design D-31, a LinkML work-around), and
+  names a field annotated `field_name: slot` after its slot with the alias apart (D-48, D-52), so `config.py` drops
+  `FIELD_OF_TOML_KEY`. The hard check refuses a `default_instance` it cannot honour (D-32); the
+  class rules (root, owned, reference) skip the classes of a technical module (D-49).
 - `domain/sparql.py`: `SparqlTerm`'s pydantic schema and `fill_terms`. `services/unique_keys.py`,
   `session.py`, `listing.py`, `migrations.py`: term models. `services/iris.py`: `IriTemplateVariables`,
   `IriParts`.
 - **BREAKING** constructors: `HttpAdapter`, `FusekiStore`, `JwksTokenVerifier`, `ZitadelIdentity`,
   `S3FileStore`, `RedisEventBus`, `Relay`, `EventHub`, `MessageBus`/`bootstrap`, `Mapper` and
   `UnitOfWork` (the roots limit), `add_events_route`, `ServiceKit`/`install_service` (`toolkit=`).
-  New `settings_from_env`, `settings` extra.
+  New `settings_from_env`, `settings` extra (it overrides pydantic-settings' private
+  `_load_env_vars`, D-34). Nineteen public constants and four Zitadel slugs are removed or moved
+  (the changelog lists each, D-42).
+- `testkit/`: imports its records from `rdf_persistence.testkit.generated.rp_testkit`; three
+  `model_copy(update=)` sites use `replaced()`; `TokenSigner` builds its claims from `JwtClaims`.
 - `.importlinter`: one contract, `domain-never-imports-technical-models`; `layers` unchanged.
-- Docs: `architecture/generation.adoc`, `architecture/index.adoc`, a how-to on settings, `questions.adoc`.
+- Docs: `architecture/generation.adoc`, `architecture/index.adoc` (the layer map rewritten),
+  `architecture/data-flows.adoc`, the new `howto/settings.adoc` (with every removed keyword and
+  its replacement), `howto/adopt.adoc` (the `kind` key, a technical target),
+  `howto/event-driven.adoc`, `develop/index.adoc`, `questions.adoc`, the nav.
+- Tests: `tests/feature/technical_models.feature`, one scenario per delta scenario.
 
 ## Capabilities
 
@@ -208,7 +221,9 @@ install_service(app, ..., settings=service_settings, toolkit=settings)
 
 ### Modified Capabilities
 
-- `rp-generation`: technical models are generated apart from domain models; a target declares its kind.
+- `rp-generation`: technical models are generated apart from domain models; a target declares its
+  kind; a generated field can hold a toolkit type; a slot can default to an instance of its class
+  (added at stage 4 with the developer's sign-off, design D-33, D-44).
 - `rp-package-boundaries`: a technical model sits in the `generated/` folder of the lowest layer
   every user may import; the domain layer imports none.
 
@@ -217,5 +232,23 @@ install_service(app, ..., settings=service_settings, toolkit=settings)
 - A consumer that imports the top package sees no change except the constructors of DEC-5.
 - A consumer that imported `rdf_persistence.domain.generated.service`, `rdf_persistence.domain.iris`
   or `rdf_persistence.domain.tenant_move` directly must import from `rdf_persistence`.
-- A consumer's `[[tool.rp-generate]]` table is unchanged; `kind` is optional.
+- A consumer's `[[tool.rp-generate]]` table is unchanged; `kind` is optional. A consumer's
+  technical module may hold nested classes and `default_instance` (D-49).
+- A consumer that imported a testkit record (`ClassShape`, `FusekiServer`, ...) from
+  `rdf_persistence.generation.generated.rp_generation` imports it from
+  `rdf_persistence.testkit.generated.rp_testkit` (**BREAKING**, no shim).
+- External libraries: two work-arounds, each in one place and recorded: LinkML's scalar default
+  for a multivalued `ifabsent` (D-31, commented on linkml#4160) and pydantic-settings'
+  environment loading (D-34). LinkML's alias handling (D-48) is met by an opt-in annotation in our generator (D-52).
 - New optional dependency `pydantic-settings==2.16.2` (already in `uv.lock`) in the `settings` extra.
+
+## As built
+
+Reconciled at the close of the change (P-0004).
+
+| Stage | PR | As shaped | As built |
+|---|---|---|---|
+| 1 the split | #144 | DEC-1 to DEC-4, DEC-9 | Delivered as shaped: `service` moved into `services/generated/service/`, `wire` under `model/technical/`, `domain/iris.py` split into `domain/layout.py` and `services/iris.py`, `tenant_move.py` into `services/`, the `kind` check and the contract `domain-never-imports-technical-models`. The review re-labelled four findings Critical, fixed before the merge: the release notes for the moved paths (D-10), the scenario map (D-11), docs that disagreed with the code (D-12), an untested scenario (D-13). Delivery decisions D-1 to D-13 |
+| 2 templates | #145, #146 | DEC-7, D-1, D-2 | Delivered: `SparqlTerm`'s own pydantic schema, the `templates` group with the term bundles and `IriTemplateVariables`, `IriParts`. One field named `schema_id`, not as planned (D-19). The admin merge of #145 left `develop`'s manifests stale; #146 regenerated them, and every rebase now ends with `make generate` (D-27). Delivery decisions D-14 to D-27 |
+| 3 settings | #150 | DEC-5, DEC-6, DEC-8 | Delivered: six settings groups with today's defaults (every `*_seconds` a float, D-32), the constructors migrated, `settings_from_env` behind the `settings` extra, `ZitadelUserState`. Two external work-arounds (D-31 LinkML list defaults, D-34 pydantic-settings). Rebased onto `otel-observability` stage 1, which added the `telemetry` group (D-37). Two pages still described removed keywords; fixed on the developer's decision (D-43). Delivery decisions D-28 to D-43 |
+| 4 testkit, BDD, docs | this PR | D-4, PD-10, PD-11 | Delivered: the `testkit` target with PD-11's ten records and `FieldFlags`; the TOML keys as aliases, by extending our generator once LinkML's alias handling blocked the schema-only form (D-48, the developer's decision); the BDD feature; the docs and the new settings how-to. The spec gained "A slot can default to an instance of its class" (D-33, D-44); its test found that a consumer's technical module could not hold a nested class, fixed (D-49). Accepted by the developer without a demo. Delivery decisions D-44 onwards |

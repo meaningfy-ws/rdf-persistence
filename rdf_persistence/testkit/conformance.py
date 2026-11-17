@@ -48,11 +48,9 @@ def load_cases(path: Path) -> list[ConstraintCase]:
     rows = yaml.safe_load(path.read_text(encoding="utf-8")) or []
     cases = [ConstraintCase.model_validate(row) for row in rows]
     return [
-        case.model_copy(
-            update={
-                "valid": [str(path.parent / p) for p in case.valid or []],
-                "invalid": [str(path.parent / p) for p in case.invalid or []],
-            }
+        case.replaced(
+            valid=[str(path.parent / p) for p in case.valid or []],
+            invalid=[str(path.parent / p) for p in case.invalid or []],
         )
         for case in cases
     ]

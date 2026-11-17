@@ -23,8 +23,9 @@ types are allowed only where a field holds a run-time object LinkML cannot expre
 [cols="2,4",options="header"]
 |===
 |Path |What it holds
-|`rdf_persistence/model/` |The metamodel schemas (`rp_core.yaml`, `rp_annotations.yaml`, `rp_provenance.yaml`, `rp_access.yaml`, `rp_tenancy.yaml`, `rp_files.yaml`, imported together by `rp.yaml`) and `service/rp_service.yaml`
-|`rdf_persistence/domain/generated/` |The metamodel's generated classes, shapes and context; `service/` holds the service records
+|`rdf_persistence/model/` |The metamodel schemas (`rp_core.yaml`, `rp_annotations.yaml`, `rp_provenance.yaml`, `rp_access.yaml`, `rp_tenancy.yaml`, `rp_files.yaml`, imported together by `rp.yaml`), flat, and `technical/<group>/rp_<group>.yaml`, the schemas of the technical models (`service`, `wire`, `settings`, `templates`, `telemetry`, `testkit`)
+|`rdf_persistence/domain/generated/` |The metamodel's generated classes, shapes and context
+|`rdf_persistence/services/generated/`, `adapters/generated/`, `testkit/generated/` |The generated technical models, each in the lowest layer whose code may import them: `service/`, `settings/`, `templates/` and `telemetry/` in `services/generated/`, the wire shapes in `adapters/generated/`, the testkit's records in `testkit/generated/` (xref:architecture/generation.adoc#kinds[Two kinds of model])
 |`rdf_persistence/domain/base.py` |`RpModel`, the strict base class of every generated class
 |`rdf_persistence/services/schema.py`, `schema_structure.py` |`load_schema` (with the metamodel import map) and the rules that read a schema's aggregate structure, used by every other part
 |`rdf_persistence/generation/` |`rp-generate`: `cli.py`, `config.py` (the `[tool.rp-generate]` table), `steps.py` (the steps, in order), `pipeline.py` (staging and running them), `manifest.py` (freshness), `lint.yaml`
@@ -76,7 +77,7 @@ xref:develop/testing.adoc#slow[the testing checklist].
 
 _How do I change a toolkit schema?_
 
-This applies to the metamodel, `rp_service.yaml` and `rp_generation.yaml`.
+This applies to the metamodel, the technical schemas under `model/technical/` and `rp_generation.yaml`.
 
 . Edit the schema. Every element needs a `title`, a `description` and an IRI; every permissible
   value needs a `meaning`.
@@ -87,9 +88,13 @@ This applies to the metamodel, `rp_service.yaml` and `rp_generation.yaml`.
   `tests/fixtures/conformance/cases.yaml`. The coverage test names any kind that lacks one.
 . Run `make check-all`.
 
-To add a record the toolchain or testkit needs (a view-model, a problem, a settings object), declare
-it in `rp_generation.yaml`, regenerate, and import it from
-`rdf_persistence.generation.generated.rp_generation`. Use enums for value sets, never free strings.
+To add a record, declare it in the schema of the layer that uses it, regenerate, and import it from
+the generated package (xref:architecture/generation.adoc#kinds[Two kinds of model]): a record of the
+toolchain (a view-model, a problem) in `rp_generation.yaml`
+(`rdf_persistence.generation.generated`), a record the testkit's own modules use in
+`model/technical/testkit/rp_testkit.yaml` (`rdf_persistence.testkit.generated`), a deployment value in
+`rp_settings.yaml` (xref:howto/settings.adoc[Configure the toolkit's deployment values]), a request
+or response body in `rp_service.yaml`. Use enums for value sets, never free strings.
 
 [#hand-written]
 == Add a hand-written type
@@ -191,7 +196,7 @@ loaded (`make fuseki-image`). Earlier, one run in four failed at start-up on a D
 error; run it again.
 
 |`tests/integration/store/test_transaction.py::test_it06_…` (500 new books in one commit) |1 |Commit ≈ 4 s (3.8 s and 4.0 s in two runs); the file's 5 tests ≈ 17 to 32 s with container start-up |2026-11-13, atomic-commit stage 2
-|One `UnitOfWork` with the default `max_roots=500`, each book with 2 chapters and 2 notes, on real Fuseki. One update request of ≈ 2.9 MB. The limit is 30 s (PD-10). Marked `slow`.
+|One `UnitOfWork` on a mapper with the default `LimitSettings().max_roots` (500), each book with 2 chapters and 2 notes, on real Fuseki. One update request of ≈ 2.9 MB. The limit is 30 s (PD-10). Marked `slow`.
 
 |`tests/integration/store/test_collaboration.py::test_the_collections_of_a_book_among_fifty_rule_shelves` (IT-05) |1 |`collections_of` ≈ 0.6 s (0.593 s, one run; 1.105 s in the first run, before the rule collections were read one graph per root); the file's 13 tests ≈ 26 s with container start-up (20 tests after stage 3, see below) |2026-11-14, collaboration-and-reference-collections stage 2 review round
 |50 rule shelves of `Book` in one dataset on real Fuseki; the one call asks the store whether the book meets each rule (one `MATCHES` query per shelf). Printed, not asserted.

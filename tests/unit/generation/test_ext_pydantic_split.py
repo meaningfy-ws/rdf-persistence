@@ -396,10 +396,11 @@ slots:
   step: {alias: rp.step, required: true}
   tenant_id: {alias: rp.tenant.id}
   wire_name: {alias: wireName}
+  schema_file: {alias: schema, annotations: {field_name: slot}}
   plain: {}
 classes:
   Aliased:
-    slots: [step, tenant_id, wire_name, plain]
+    slots: [step, tenant_id, wire_name, schema_file, plain]
 """
 
 
@@ -431,3 +432,13 @@ def test_a_slot_with_an_identifier_alias_keeps_the_alias_as_its_name(tmp_path: P
 
     assert fields["wireName"] is None
     assert "wire_name" not in fields
+
+
+def test_a_slot_annotated_field_name_slot_is_named_after_the_slot_and_keeps_the_alias(
+    tmp_path: Path,
+) -> None:
+    """D-52: the opt-in rule: the field is the slot's name, ``alias=`` carries the wire name."""
+    fields = _aliased_fields(tmp_path)
+
+    assert fields["schema_file"] == "schema", "the annotated slot must keep its alias"
+    assert "schema" not in fields, "the alias named the field"

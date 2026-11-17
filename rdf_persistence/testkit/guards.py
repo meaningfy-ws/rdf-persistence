@@ -11,7 +11,7 @@ from collections.abc import Iterable, Iterator
 from fnmatch import fnmatch
 from pathlib import Path
 
-from rdf_persistence.generation.generated.rp_generation import Violation
+from rdf_persistence.testkit.generated.rp_testkit import Violation
 
 GENERATED = "generated"
 INIT_MODULE = "__init__"

@@ -599,6 +599,141 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   `TypeError`; `bootstrap(limit=)` raises `ValueError` (tester F-3). Fixed now: one fixer, one
   full-gates run. The checker's F-3 (a kept tester test repeats TC-25's property) is under the
   floor.
+- **D-44 (stage 4, Prepare, the developer's answers 2026-11-17)** D-33: yes. The `rp-generation`
+  delta gains the requirement "A slot can default to an instance of its class" with four
+  scenarios (a group defaults to its own defaults; a slot that cannot default to an instance; a
+  list default; a list default in another form), written by the lead; task 4.2 covers them and
+  remaps the stage 3 tests from `rp-settings` to it. D-31: yes, file it. The defect was already
+  reported upstream (linkml/linkml#4160, open, same reproduction), so the lead added a comment
+  instead of a duplicate: confirmed on linkml 1.12.1 with pydantic 2.14.2, and the case of a
+  default of several values, which #4160's option (b) would make inexpressible
+  (issuecomment-6960813182). The work-around of D-31 stays until #4160 is settled.
+- **D-45 (stage 4, Prepare)** GitNexus rated `ClassShape` and `FusekiServer` CRITICAL (30
+  direct, the importers of `generation/generated/rp_generation.py`, as D-14) and `read_targets`
+  HIGH (the conformance and freshness flows). Not taken to the developer: the move is RISK-7,
+  accepted at the PLAN gate; `read_targets`' messages are pinned by TC-46 and TC-47; the release
+  notes list the moved records' new path (as D-42).
+- **D-46 (stage 4, Prepare: parallel tasks, R-0004 and the developer's instruction)** Tasks 4.1,
+  4.2 and 4.3 run in parallel, each in its own worktree: 4.1 owns `rdf_persistence/` and the unit
+  tests of the moved records, and edits no docs page; 4.2 owns `tests/feature/technical_models.feature`
+  and its steps; 4.3 owns every docs page of its list and writes the `testkit` group from PD-11 as
+  planned (the checker compares it with 4.1 as built). All three append to
+  `tests/audit/scenario-map.csv`; the lead merges them and re-runs the task gate (T2).
+- **D-47 (stage 4, review set)** Stage 4 closes the change, so it takes the full review once, as
+  P-0005 and `tasks.md` say: L1, L2 and L3 as separate passes, L4 and L5 as one, over the whole
+  change (`36f5b25..`, the four stages), plus the adversarial tester on stage 4's own diff (D-2)
+  after the three tasks are merged, and a checker. Then the reconciliation of `proposal.md`
+  (P-0004) in PR 4.
+- **D-48 (stage 4, task 4.1, the developer's decision 2026-11-17: PD-10)** LinkML 1.12.1
+  (external) refuses an `alias` in `slot_usage`, and its pydantic generator names a field after an
+  alias that is a Python identifier (`alias: schema` makes a field `schema`, `alias: kind` renames
+  `target_kind`). Task 4.1 made `regenerate-command` an alias and kept `schema` and `kind` in the
+  key map of `config.py`, with a strict xfail on TC-45. The developer chose to extend our generator
+  instead: `SplitPydanticGenerator` names every field after its slot and keeps the alias apart (as
+  it already does for a non-identifier alias), so `schema` and `kind` become slot aliases and the
+  key map goes, as PD-10 planned. The field names of every generated class with an identifier
+  alias are checked by `check-generated` and the suite. Both LinkML behaviours are reported
+  upstream: linkml/linkml#4256 (a field named after an identifier alias) and #4257 (`alias` in
+  `slot_usage` refused by the `SchemaLoader` generators only).
+- **D-49 (stage 4, task 4.2's finding; Critical against `rp-generation`)** A consumer's
+  technical module cannot use a slot ranging over a class, so neither `default_instance` nor any
+  nested technical record: the boundary check refuses the reference (`[reference]`, asks for
+  `owned`) and the hard check then asks the owned class to include `Described`. The toolkit's own
+  schemas escape both only through the PD-23 exemption. A technical class is never stored, so the
+  root, owned and reference rules do not apply to the classes of a module annotated
+  `module_kind: technical`; the fix exempts them, as `_technical_classes` already does for
+  ownership. 4.2's `default_instance` scenarios then run through `rp-generate` end to end.
+- **D-50 (stage 4, task 4.1)** `TokenSigner.issue` builds `JwtClaims` with `model_construct`, not
+  validation: the testkit must make tokens that lack `sub` or `exp`, or carry a refused subject, for
+  the verifier to refuse. Accepted: the testkit is outside the layers and its purpose is that.
+- **D-51 (stage 4, T1 after the merge)** 4.3 ran `check-docs` and `check-quality`, not the suite:
+  `test_no_live_file_still_names_an_old_path` fails on the deep-import breaks that
+  `architecture/index.adoc` and `howto/settings.adoc` list by their old path. The pages point to
+  the changelog for the old paths instead (the guard's exemption, D-10). Fixed with the cold
+  reader's Criticals and Warnings on `howto/settings.adoc` and `howto/adopt.adoc` in one docs
+  fixer; the code fixer takes D-48 and D-49.
+- **D-52 (stage 4, D-48 as built; the lead's choice under the developer's "do not ask")** Naming
+  every field after its slot, as D-48 wrote it, renames 80 generated fields: the wire and service
+  schemas give a slot an identifier alias on purpose, to name the field (`IdSpec.kind`,
+  `ProblemDetails.title`, the Zitadel wire names), and every user of them breaks. So the rule is
+  opt-in: a slot annotated `field_name: slot` (a `GenerationAnnotation`) is named after the slot and
+  keeps its alias; every other field keeps today's name. `schema_file` (alias `schema`) and
+  `target_kind` (alias `kind`) carry it, and `FIELD_OF_TOML_KEY` goes, as PD-10 planned. The fixer's
+  first attempt is kept as a patch in the session scratchpad, not in the repository. D-49 as built
+  also skips the other hard class rules (key, reserved segment, workflow, application, `iri_type`)
+  for a technical class, as PD-23 does for the toolkit's own; the direction rule still runs.
+- **D-53 (stage 4, the developer's instruction 2026-11-17)** Merge the fixes, skip the demo (the
+  developer accepts the change), open PR 4, merge it as admin and close the change without asking.
+  The review set of D-47 still runs, in parallel with the D-52 fixer; the checker covers the fix
+  pass. The two LinkML issues of D-48 were filed on the developer's later instruction
+  (linkml/linkml#4256, #4257).
+- **D-54 (stage 4, L2 W1, re-labelled Critical; the lead's slip)** The rebase onto #152 met a
+  whole-file conflict in `tests/audit/scenario-map.csv` at task 4.1's commit, and the lead's union
+  script kept both sides: every row twice (3,794 ids). Rebuilt by a row-wise three-way merge of the
+  stage's own map changes (3,820 rows, no duplicate id); the renamed reference test's old row
+  dropped. A union script must refuse a hunk that spans the file, as D-37's refused any non-import
+  hunk.
+- **D-55 (stage 4, the full review's decision)** Re-labelled Critical and fixed in one fix pass:
+  1. **Non-finite and unbounded durations** (L1 W1, L2 W2, L4+L5 W1, tester F-4; stage 3 tester
+     F-1, worse than recorded): `inf` or `1e309` passes every `*_seconds` slot but the leeway. An
+     infinite JWKS cooldown stops authentication about ten minutes after start; `timedelta` of a
+     huge value raises `OverflowError`, so the events route answers 500. Fix: every duration slot
+     gets a finite `maximum_value` (one year, 31,536,000 s, generous enough to change no deployment
+     and small enough for `timedelta`), and a test per group.
+  2. **The JWKS cooldown** (L1 W2, L4+L5 W2): its floor goes from 0.001 to 1 s (it was a fixed
+     10 s; it is what holds forged key ids off the identity provider), and `JwksTokenVerifier`
+     refuses a cooldown longer than the TTL (the verifier would refuse every token for the
+     difference, each cycle), as `_checked_algorithms` refuses a bad list.
+  3. **Secrets in `settings_from_env`'s errors** (L4+L5 W3, L1 S1, reproduced): the synthetic
+     class sets `hide_input_in_errors=True`.
+  4. **D-49's holes** (tester F-1, F-2): a module with no `module_kind` that imports a technical
+     module and holds its class passes; a technical class with `AggregateRoot` escapes the root
+     rules yet `root_classes` returns it. Fix: the import rule refuses any non-technical module
+     holding a technical class, and a technical module may declare no root.
+  5. **`default_instance: true` unquoted is ignored** (tester F-3, with stage 3 tester F-4): the
+     spec writes `true`; YAML's boolean and `'True'` silently generate no default. Fix: the flag is
+     read case-blind from either form, and a value that is not a boolean is refused, naming the slot.
+  6. **Docs that disagree with the code** (L3 W1, W2, S1, S2): `architecture/generation.adoc` still
+     asks a nested technical class for `owned: true`; it and `rp_testkit.yaml` say the testkit never
+     imports the generator's models (`freshness.py`, `conformance.py` do, until `generator-package`
+     F-1); `.importlinter` says `testkit.generated` does not exist; `architecture/index.adoc`
+     overstates what the `layers` contract covers.
+  7. **Release notes** (L4+L5 S3, as D-42): `CHANGELOG.md` gains stage 2's `fill_terms`,
+     `fragment_terms` and the `SparqlTerm` field that refuses a raw `str`, and moves
+     `ZitadelUserState` under Changed with its consequence (an unknown state makes the answer
+     unreadable).
+  8. **Scenario steps that cannot fail** (L2 S1, S2, as D-25): "no token verifier is built" asserts
+     a list nothing fills; "is refused" imports a path that never existed. Fix both steps.
+  9. **D-52's JSON-LD context** (the D-52 fixer's finding): the generated context of
+     `rp_generation` takes a slot's alias as its term, so `schema` now shadows the `schema:` prefix
+     and `kind` names two slots (`target_kind`, and the slot `kind` over `ConstraintKind`). A slot
+     annotated `field_name: slot` keeps its slot name as its JSON-LD term too, as it does in Python.
+  The fix pass's builder sorts the tester's 334 tests (keep, merge or drop) and the lead confirms.
+  D-52 as built: the testkit's `model_shape_diff` also matches a field named after its slot, so a
+  consumer's shape test follows the same rule.
+- **D-56 (stage 4, the fix pass as built)** Three fixers ran in parallel on disjoint files: A
+  generation (items 4, 5, 9), B settings (1, 2, 3), C docs, changelog and steps (6, 7, 8). As
+  built: (5) an unquoted `yes` is the flag, since YAML 1.1 loads it as `true` before LinkML sees
+  it; a quoted `'yes'`, `1`, `'on'` or `'maybe'` is refused. (9) The term `kind` is again the
+  `ConstraintKind` slot's, and `target_kind` and `schema_file` are terms of their own. (3) Only the
+  reading class hides its input: the final model validates the already validated dump, where a
+  `SecretStr` is masked. The tester's 334 tests: all kept, the token grids cut from 264 cases to 107
+  (near-duplicates), the two floor items (F-5, F-6) a strict `xfail`.
+
+Under the floor (not fixed in stage 4):
+
+- L2 S3: "the defaults" scenario reads 8 of about 20 slots through `ToyService`; TC-25 covers each.
+- L3 S3: TC-50's rule could be an import-linter contract; F-1 of `generator-package` removes it.
+- L4+L5 S1: one `Seconds` type for the eleven duration slots.
+- L4+L5 S2: `"RP_"` as a literal; a misspelt `RP_` group is ignored without a word (the how-to says
+  so).
+- L1 S2: `secret` is missing from the allowed annotation values (a misspelt value leaves a
+  testkit credential in a repr); `python_import` is not checked as a dotted name. Only a schema
+  author meets either.
+- L1 W1's tighter maxima (SSE lifetime, access TTL): a deployment choice; the bound of D-55 1 only
+  keeps the values finite.
+- Tester F-5: `ifabsent: string()` on a multivalued slot defaults to `['']`.
+- Tester F-6: `issue(sub=123)` emits a pydantic serialisation warning.
 
 Under the floor (not fixed in stage 3):
 

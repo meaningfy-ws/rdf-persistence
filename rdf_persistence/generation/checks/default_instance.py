@@ -11,7 +11,7 @@ from rdf_persistence.generation.generated.rp_generation import (
     HardRule,
 )
 from rdf_persistence.generation.problems import rule_problem
-from rdf_persistence.services.schema_structure import TRUE_TEXT, annotation_text
+from rdf_persistence.services.schema_structure import is_switched_on
 
 ANNOTATION = GenerationAnnotation.DEFAULT_INSTANCE
 RULE = HardRule.DEFAULT_INSTANCE
@@ -53,7 +53,7 @@ def _schema_problems(view: SchemaView, schema: SchemaDefinition) -> Iterator[Che
 
 
 def _flagged(slot: SlotDefinition) -> bool:
-    return annotation_text(slot, ANNOTATION) == TRUE_TEXT
+    return is_switched_on(slot, ANNOTATION)
 
 
 def _order_problems(view: SchemaView, schema: SchemaDefinition) -> Iterator[CheckProblem]:

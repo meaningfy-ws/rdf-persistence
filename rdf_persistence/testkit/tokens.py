@@ -7,13 +7,13 @@ import functools
 import time
 from collections.abc import Callable, Mapping, Sequence
 from http import HTTPStatus
-from typing import Final
+from typing import Any, Final
 
 import httpx
 import jwt
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
 
-from rdf_persistence.adapters.generated.rp_wire import DiscoveryDocument
+from rdf_persistence.adapters.generated.rp_wire import DiscoveryDocument, JwtClaims
 from rdf_persistence.adapters.jwks import DISCOVERY_PATH, RS256
 from rdf_persistence.adapters.zitadel import zitadel_roles_claim
 from rdf_persistence.services.tokens import EpochClock
@@ -119,13 +119,20 @@ class TokenSigner:
         otherwise with the current one. ``expires_in`` and ``not_before_in`` are seconds from the clock.
         """
         now = self._clock()
-        claims: dict[str, object] = {"iss": issuer, "aud": audience or self.audience, "iat": now}
-        if sub is not None:
-            claims["sub"] = sub
-        if expires_in is not None:
-            claims["exp"] = now + expires_in
-        if not_before_in is not None:
-            claims["nbf"] = now + not_before_in
+        # Built, not validated: a test token may leave out a claim the wire model requires, or
+        # carry a subject it refuses, to see the verifier refuse it.
+        fields: dict[str, Any] = {
+            "sub": sub,
+            "iss": issuer,
+            "aud": audience or self.audience,
+            "exp": None if expires_in is None else now + expires_in,
+            "nbf": None if not_before_in is None else now + not_before_in,
+        }
+        wire = JwtClaims.model_construct(**fields)
+        claims: dict[str, object] = {
+            "iat": now,
+            **wire.model_dump(by_alias=True, exclude_none=True),
+        }
         if roles is not None:
             claims[self.roles_claim] = {role: {ORG_ID: ORG_DOMAIN} for role in roles}
         claims.update(extra or {})

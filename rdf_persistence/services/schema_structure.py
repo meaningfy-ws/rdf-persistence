@@ -48,6 +48,7 @@ EXACTLY_ONE_OF = "exactly_one_of"
 ANY_OF = "any_of"
 PRESENT = PresenceEnum(PresenceEnum.PRESENT)
 ABSENT = PresenceEnum(PresenceEnum.ABSENT)
+FIELD_NAME_SLOT = "slot"  # the one value of the ``field_name`` annotation
 TRUE_TEXT = "true"  # an annotation switched on, as written
 URI_TYPES = frozenset({"uri", "uriorcurie"})
 _SUPPORTED_CONDITION_FIELDS = {"name", "required", "value_presence"}
@@ -90,6 +91,12 @@ def workflow_name_of(view: SchemaView, class_name: str) -> str | None:
         ),
         None,
     )
+
+
+def is_switched_on(element: object, tag: Enum) -> bool:
+    """True when the element's annotation ``tag`` is the boolean ``true``, as YAML's ``true``, ``'true'`` or ``'True'``."""
+    text = annotation_text(element, tag)
+    return text is not None and text.lower() == TRUE_TEXT
 
 
 def flag(element: object, tag: RpAnnotation) -> bool:

@@ -2,6 +2,7 @@
 
 import re
 from collections.abc import Iterator
+from enum import Enum
 from functools import cache
 from pathlib import Path
 
@@ -25,9 +26,14 @@ from rdf_persistence.domain.generated.rp_core import (
 )
 from rdf_persistence.domain.layout import LAYOUT_WORDS
 from rdf_persistence.generation.checks.application import application_problems
+from rdf_persistence.generation.checks.boundary import technical_classes
 from rdf_persistence.generation.checks.default_instance import default_instance_problems
 from rdf_persistence.generation.checks.toolkit_filled import toolkit_filled_problems
-from rdf_persistence.generation.generated.rp_generation import CheckProblem, HardRule
+from rdf_persistence.generation.generated.rp_generation import (
+    CheckProblem,
+    GenerationAnnotation,
+    HardRule,
+)
 from rdf_persistence.generation.problems import rule_problem
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 from rdf_persistence.services.schema_structure import (
@@ -83,6 +89,11 @@ ALLOWED_ANNOTATIONS = {
     RpAnnotation.TOOLKIT_FILLED: BOOLEAN,
     RpAnnotation.PAYLOAD: BOOLEAN,
     RpAnnotation.RP_UNIQUE_SCOPE: tuple(scope.value for scope in UniqueScope),
+}
+# The annotations of the generation metamodel the check reads, and their values (D-52).
+GENERATION_ALLOWED_ANNOTATIONS: dict[Enum, tuple[str, ...]] = {
+    GenerationAnnotation.FIELD_NAME: ("slot",),
+    GenerationAnnotation.DEFAULT_INSTANCE: ("true", "false"),  # a boolean, read case-blind (D-55)
 }
 
 
@@ -198,11 +209,17 @@ def _segment_pattern() -> str:
     return str(load_schema(CORE_MODEL).get_slot(URL_SEGMENT).pattern)
 
 
+def _lowered(element: object, tag: Enum) -> str | None:
+    """The lower-cased value of the element's annotation ``tag``, of either annotation enum."""
+    text = annotation_text(element, tag)
+    return None if text is None else text.lower()
+
+
 def _annotation_problems(schema: SchemaDefinition, segment_pattern: str) -> Iterator[CheckProblem]:
     for element in _annotated_elements(schema):
         name = str(element.name)
-        for tag, allowed in ALLOWED_ANNOTATIONS.items():
-            value = annotation(element, tag)
+        for tag, allowed in (*ALLOWED_ANNOTATIONS.items(), *GENERATION_ALLOWED_ANNOTATIONS.items()):
+            value = _lowered(element, tag)
             if value is not None and value not in allowed:
                 yield rule_problem(
                     HardRule.ANNOTATION, name, f"{tag.value}: {value!r} is not one of {allowed}"
@@ -382,15 +399,22 @@ def stored_schema_problems(
     ]
 
 
+def _stored_classes(schemas: list[SchemaDefinition], folder: Path) -> list[ClassDefinition]:
+    """The classes the root and owned-class rules apply to: none of the toolkit's own (PD-23), none of a technical module (D-49)."""
+    if is_toolkit_schema(folder):
+        return []
+    exempt = {id(cls) for cls in technical_classes(schemas)}
+    return [cls for cls in own_classes(schemas) if id(cls) not in exempt]
+
+
 def hard_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
     """Every problem of the schemas kept in ``folder``, in a stable order.
 
-    The toolkit's own schemas get the element rules but not the root and owned-class rules (PD-23).
+    The toolkit's own schemas get the element rules but not the root and owned-class rules (PD-23);
+    nor do the classes of a module annotated ``module_kind: technical``, which are never stored (D-49).
     """
     schemas = own_schemas(view, folder)
-    classes = (
-        [] if is_toolkit_schema(folder) else own_classes(schemas)
-    )  # PD-23: its roots are its own
+    classes = _stored_classes(schemas, folder)
     return [
         *(p for schema in schemas for p in _schema_problems(schema)),
         *(p for schema in schemas for p in _annotation_problems(schema, _segment_pattern())),

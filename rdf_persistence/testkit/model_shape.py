@@ -7,7 +7,7 @@ from linkml_runtime.utils.formatutils import underscore
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
-from rdf_persistence.generation.generated.rp_generation import ClassShape, SlotShape
+from rdf_persistence.testkit.generated.rp_testkit import ClassShape, FieldFlags, SlotShape
 
 
 def model_shape_diff(shapes: list[ClassShape], models: Iterable[type[BaseModel]]) -> list[str]:
@@ -53,7 +53,7 @@ def _required_lines(model: type[BaseModel], component: Mapping) -> list[str]:
 
 def _field_lines(shape: ClassShape, model: type[BaseModel]) -> list[str]:
     fields = model.model_fields
-    slots = {underscore(s.alias or s.name): s for s in shape.slots or []}
+    slots = {_field_key(s, fields): s for s in shape.slots or []}
     lines = [f"field without a slot: {shape.class_name}.{n}" for n in fields if n not in slots]
     for key, slot in slots.items():
         if key in fields:
@@ -63,13 +63,21 @@ def _field_lines(shape: ClassShape, model: type[BaseModel]) -> list[str]:
     return lines
 
 
+def _field_key(slot: SlotShape, fields: Mapping[str, FieldInfo]) -> str:
+    """The field of a slot: named after the alias (the stock rule), or after the slot when the slot
+    opted in with ``field_name: slot`` (D-52); the alias-form name when neither is a field."""
+    by_alias, by_name = str(underscore(slot.alias or slot.name)), str(underscore(slot.name))
+    return by_name if by_alias not in fields and by_name in fields else by_alias
+
+
 def _flag_lines(class_name: str, slot: SlotShape, field: FieldInfo) -> list[str]:
-    in_code = {"required": field.is_required(), "multivalued": _is_list(field)}
+    in_code = FieldFlags(required=field.is_required(), multivalued=_is_list(field))
+    in_schema = FieldFlags(required=slot.required, multivalued=slot.multivalued)
     return [
-        f"field differs: {class_name}.{slot.name}: {flag} {in_code[flag]} in code, "
-        f"{getattr(slot, flag)} in schema"
-        for flag in in_code
-        if in_code[flag] != getattr(slot, flag)
+        f"field differs: {class_name}.{slot.name}: {flag} {getattr(in_code, flag)} in code, "
+        f"{getattr(in_schema, flag)} in schema"
+        for flag in FieldFlags.model_fields
+        if getattr(in_code, flag) != getattr(in_schema, flag)
     ]
 
 

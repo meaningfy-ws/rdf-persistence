@@ -17,7 +17,11 @@ from rdf_persistence.generation.checks.hard import (
 )
 from rdf_persistence.generation.cli import main
 from rdf_persistence.generation.config import read_targets
-from rdf_persistence.generation.generated.rp_generation import GenerationTarget, HardRule
+from rdf_persistence.generation.generated.rp_generation import (
+    GenerationAnnotation,
+    GenerationTarget,
+    HardRule,
+)
 from rdf_persistence.generation.pipeline import generate
 from rdf_persistence.generation.problems import format_problem
 from rdf_persistence.services.schema import load_schema
@@ -340,6 +344,35 @@ def _default_instance_problems(
         encoding="utf-8",
     )
     return [p for p in problems_of(root) if f"[{HardRule.DEFAULT_INSTANCE.value}]" in p]
+
+
+def _class_rule_problems(tmp_path: Path, module_kind: str) -> list[str]:
+    """The root and owned-class rules on `Holder.group`, which ranges over `Group` and is `owned`."""
+    text = DEFAULT_INSTANCE_SCHEMA.format(name_required="false", name_default="").replace(
+        "imports: [linkml:types]\n",
+        f"imports: [linkml:types]\nannotations: {{module_kind: {module_kind}}}\n",
+        1,
+    )
+    root = tmp_path / "groups.yaml"
+    root.write_text(
+        text.replace(
+            "      default_instance: 'true'\n  label",
+            "      default_instance: 'true'\n      owned: 'true'\n  label",
+        ),
+        encoding="utf-8",
+    )
+    return [p for p in problems_of(root) if f"[{HardRule.DESCRIBED.value}]" in p]
+
+
+def test_the_class_rules_skip_the_classes_of_a_technical_module(tmp_path: Path) -> None:
+    """D-49: a technical class is never stored, so its owned class need not include `Described`."""
+    assert _class_rule_problems(tmp_path, "technical") == [], "a technical class is never stored"
+
+
+def test_the_class_rules_still_bind_the_classes_of_a_domain_module(tmp_path: Path) -> None:
+    """D-49's counterpart: a domain module keeps the rule, so the exemption is by module kind."""
+    found = _class_rule_problems(tmp_path, "domain")
+    assert any("Group" in p for p in found), f"a domain module lost the Described rule: {found}"
 
 
 def test_default_instance_on_a_slot_ranging_over_a_type_is_refused_naming_the_slot(
@@ -871,6 +904,18 @@ def test_a_value_outside_the_allowed_ones_is_refused_for_every_annotation_the_to
     )
 
 
+def test_a_field_name_annotation_other_than_slot_is_refused_naming_the_slot(tmp_path: Path) -> None:
+    """D-52: `field_name` takes the one value `slot`."""
+    tag = GenerationAnnotation.FIELD_NAME
+    classes = f"  Probe:\n    annotations:\n      {tag.value}: not-a-value\n"
+
+    problems = _annotation_problems(tmp_path, classes)
+
+    assert [
+        p for p in problems if f"Probe: {tag.value}: 'not-a-value' is not one of ('slot',)" in p
+    ], f"a bad field_name value is not refused: {problems}"
+
+
 def test_every_annotation_the_toolkit_reads_has_an_allowed_value_rule_or_a_pattern() -> None:
     checked = set(ALLOWED_ANNOTATIONS) | set(PATTERNED_ANNOTATIONS) | set(METAMODEL_ANNOTATIONS)
 
@@ -971,8 +1016,38 @@ def test_the_toy_with_migrations_and_a_quoted_version_passes(toy_copy: Path) -> 
 
 
 def test_the_toolkits_seven_targets_pass_the_hard_check_with_their_own_settings() -> None:
-    """TC-10: rp_service, rp_templates, rp_telemetry, rp_settings, rp_wire and rp_generation need no migrations folder; rp.yaml has one."""
+    """TC-10: rp_service, rp_templates, rp_telemetry, rp_settings, rp_wire, rp_testkit and rp_generation need no migrations folder; rp.yaml has one.
+
+    The name says seven; the eighth target is `rp_testkit` (PD-11).
+    """
     targets = read_targets(REPO / "pyproject.toml")
-    assert len(targets) == 7, [t.schema_file for t in targets]
+    assert len(targets) == 8, [t.schema_file for t in targets]
     found = generate(targets, REPO, (steps.HARD_STEP,), check=True)
-    assert [format_problem(p) for p in found] == [], "the toolkit's seven targets raise no problem"
+    assert [format_problem(p) for p in found] == [], "the toolkit's eight targets raise no problem"
+
+
+def _flag_problems(tmp_path: Path, written: str) -> list[str]:
+    """The problems about `group` when its `default_instance` annotation is written as ``written``."""
+    text = DEFAULT_INSTANCE_SCHEMA.format(name_required="false", name_default="").replace(
+        "default_instance: 'true'\n  label", f"default_instance: {written}\n  label", 1
+    )
+    root = tmp_path / "groups.yaml"
+    root.write_text(text, encoding="utf-8")
+    return [p for p in problems_of(root) if "group" in p]
+
+
+@pytest.mark.parametrize("written", ["true", "'true'", "'True'", "false", "'false'", "'False'"])
+def test_default_instance_reads_a_boolean_in_either_form_without_a_problem(
+    tmp_path: Path, written: str
+) -> None:
+    """D-55 (5): YAML `true`, `'true'` and `'True'` are the flag, `false` is off; none is refused."""
+    assert _flag_problems(tmp_path, written) == [], f"{written} is a boolean"
+
+
+@pytest.mark.parametrize("written", ["'yes'", "1", "'maybe'", "'on'"])
+def test_default_instance_that_is_not_a_boolean_is_refused_naming_the_slot(
+    tmp_path: Path, written: str
+) -> None:
+    """D-55 (5): a value that is not a boolean is no silent off; the problem names `group`."""
+    found = _flag_problems(tmp_path, written)
+    assert any("default_instance" in p and "group" in p for p in found), f"{written}: {found}"

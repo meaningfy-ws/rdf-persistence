@@ -1,6 +1,6 @@
 """gen-pydantic in split mode: one module per schema module, metadata off, the toolkit's templates (PD-24).
 
-The stock generator lacks five things the toolkit needs, and this module adds them:
+The stock generator lacks eleven things the toolkit needs, and this module adds them:
 
 * the metamodel's classes are imported from the toolkit's package, never regenerated: from
   ``rdf_persistence.domain.generated.<module>`` inside the toolkit's own runs and from the public
@@ -13,7 +13,16 @@ The stock generator lacks five things the toolkit needs, and this module adds th
 * a slot annotated ``secret: true`` (``GenerationAnnotation``) is declared ``repr=False``, so its value
   stays out of the repr of the class;
 * a slot annotated ``strict: true`` is declared ``strict=True``: pydantic then takes no coerced value
-  (``"123"`` or ``true`` for a number).
+  (``"123"`` or ``true`` for a number);
+* a LinkML type annotated ``python_import: <module>`` whose ``repr`` names a class (``SparqlTerm``)
+  generates ``from <module> import <repr>``, so a field ranging over the type has that class;
+* a slot annotated ``default_instance: 'true'`` is declared ``Field(default_factory=<Range>)``, so a group
+  of settings is never absent (the hard check refuses a slot whose range cannot be built with no argument);
+* the ``ifabsent: string(a, b, ...)`` of a multivalued slot is the default list ``['a', 'b']``; the
+  stock generator writes the one string ``"a, b"`` on a list field, and any other form is refused;
+* a slot whose alias is no Python name (``rp.step``) is named after the slot, and keeps the alias;
+* a slot annotated ``field_name: slot`` (``GenerationAnnotation``, D-52) with an identifier alias (``schema``) is
+  named after the slot too, and keeps the alias; every other field keeps the stock name.
 """
 
 import copy
@@ -50,10 +59,12 @@ from rdf_persistence.generation.generated.rp_generation import (
 )
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema, metamodel_importmap
 from rdf_persistence.services.schema_structure import (
+    FIELD_NAME_SLOT,
     TRUE_TEXT,
     annotation_text,
     apply_defaults,
     is_internal,
+    is_switched_on,
     is_toolkit_schema,
     own_schemas,
 )
@@ -153,8 +164,11 @@ class SplitPydanticGenerator(PydanticGenerator):
     def after_generate_slot(self, slot: SlotResult, sv: SchemaView) -> SlotResult:
         fields = {name: getattr(slot.attribute, name) for name in PydanticAttribute.model_fields}
         fields["description"] = slot.source.description  # the raw text, as for classes
-        if not _is_python_name(slot.attribute.alias):
+        if _named_after_slot(slot):
             fields["name"] = make_valid_python_identifier(underscore(slot.source.name))
+            fields["alias"] = (
+                slot.source.alias
+            )  # the stock generator names the field by it and drops it
         if slot.source.multivalued and slot.source.ifabsent is not None:
             fields["predefined"] = _list_default(slot.source)
         factory = _default_factory(slot.source)
@@ -171,6 +185,12 @@ class SplitPydanticGenerator(PydanticGenerator):
             default_factory=factory,
         )
         return slot
+
+
+def _named_after_slot(slot: SlotResult) -> bool:
+    """Whether the field is the slot's own name: the alias is no Python name, or the slot opts in (``field_name: slot``)."""
+    opted_in = annotation_text(slot.source, GenerationAnnotation.FIELD_NAME) == FIELD_NAME_SLOT
+    return opted_in or not _is_python_name(slot.attribute.alias)
 
 
 def _is_python_name(alias: str | None) -> bool:
@@ -200,7 +220,7 @@ def _default_factory(slot: SlotDefinition) -> str | None:
 
     The hard check (``checks/default_instance.py``) has already refused a slot whose range is no class.
     """
-    flagged = annotation_text(slot, GenerationAnnotation.DEFAULT_INSTANCE) == TRUE_TEXT
+    flagged = is_switched_on(slot, GenerationAnnotation.DEFAULT_INSTANCE)
     return camelcase(str(slot.range)) if flagged else None
 
 

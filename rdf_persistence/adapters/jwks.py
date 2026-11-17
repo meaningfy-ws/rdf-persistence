@@ -77,7 +77,7 @@ class JwksTokenVerifier(HttpAdapter):
 
         ``jwks`` holds the signature algorithms accepted (``allowed_algorithms``), the clock skew allowed
         on ``exp`` and ``nbf`` (``leeway_seconds``, within 0 to 300 by the settings model), and the key
-        cache's lifetime and refresh cooldown; ``ValueError`` for an algorithm list that is empty or holds
+        cache's lifetime and refresh cooldown; ``ValueError`` for a cooldown longer than the TTL, or an algorithm list that is empty or holds
         ``none``, an ``HS*`` name (any case) or a name PyJWT does not implement. ``http`` sets the client's
         timeouts. Each defaults to a fresh default instance.
         """
@@ -97,6 +97,11 @@ class JwksTokenVerifier(HttpAdapter):
         # Keys are refreshed at most this often (stale or unknown kid alike), so neither an outage nor a
         # burst of forged kids can hammer the provider; inside it the verifier answers at once.
         self._cooldown = jwks.unknown_kid_cooldown_seconds
+        if self._cooldown > self._ttl:
+            raise ValueError(
+                f"the refresh cooldown ({self._cooldown} s) must not be longer than the key cache "
+                f"TTL ({self._ttl} s): every token would be refused for the difference"
+            )
         super().__init__(transport=transport, http=http)
         self._issuer = issuer
         self._iris = iris

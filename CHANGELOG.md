@@ -29,13 +29,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rule: the range must be a class that can be built with no argument and be declared first); the
   `ifabsent: string(a, b, ...)` of a multivalued slot is generated as the list `['a', 'b']`, where
   the stock generator wrote the one string.
-- **`ZitadelUserState`**: the six user states of a Zitadel answer are a generated enum; a state
-  outside it makes the answer unreadable (`IdentityUnavailable`).
+- **`fill_terms` and `fragment_terms`** (`rdf_persistence.domain.sparql`): they fill a query
+  template from a bundle of `SparqlTerm` fields and render a fragment from one.
+- **Generation: `field_name: slot`** (`technical-models`): a slot annotated `field_name: slot` (a
+  `GenerationAnnotation`) is named after the slot in Python and in the JSON-LD context, and keeps its
+  alias. Every other field keeps its name.
 - **Generation: `python_import`** (`technical-models`): a LinkML type annotated `python_import`
   with a module name, together with `repr`, generates its field as the `repr` class imported from
   that module.
 
 ### Changed
+- **A `SparqlTerm` model field refuses a raw `str`** (`technical-models`): a field of that type
+  raises a `ValidationError` when built with a plain string, before any query text is made. Build
+  the term with the `domain.sparql` factories.
+- **`ZitadelUserState` is a generated enum** (`technical-models`): the six user states of a Zitadel
+  answer. A user state outside the six makes the directory answer unreadable
+  (`IdentityUnavailable`) where the adapter accepted any string before.
+- **`[[tool.rp-generate]]` keys are unchanged** (`technical-models`): the keys of a target are read
+  as before; `field_name: slot` (Added) is the only new way to name a field after its slot.
+- **BREAKING for a deployment that sets such a value: the settings are bounded tighter**
+  (`technical-models`). Every duration is at most one year (31,536,000 seconds; an infinite or
+  larger value is refused), `unknown_kid_cooldown_seconds` is at least 1 second (it was 0.001),
+  and `JwksTokenVerifier` refuses a cooldown longer than `ttl_seconds`. A deployment that keeps the
+  defaults is not affected. `settings_from_env` no longer repeats the input value in a
+  `ValidationError`.
+- **BREAKING: the testkit's records moved to `rdf_persistence.testkit.generated`**
+  (`technical-models`). `ClassShape`, `SlotShape`, `ContainerMarker`, `Violation`, `MachineUser`,
+  `ZitadelProject`, `ZitadelServer`, `ExecResult`, `FusekiServer` and `GarageServer` are generated
+  from `model/technical/testkit/rp_testkit.yaml` and are imported from
+  `rdf_persistence.testkit.generated.rp_testkit`, no longer from
+  `rdf_persistence.generation.generated.rp_generation`; there is no shim. A new `FieldFlags`
+  record (`required`, `multivalued`) is what the model-shape test compares. `ConstraintCase`,
+  `ConstraintKind` and `GenerationTarget` stay in `rp_generation`.
 - **BREAKING: the per-value keywords and constants the settings replace are removed**
   (`technical-models`). A caller that passes an old keyword gets a `TypeError` from every constructor, except `bootstrap`,
   which takes dependencies by keyword: `bootstrap(limit=...)` raises `ValueError` ("no handler or
@@ -63,8 +88,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `MAX_LEEWAY_SECONDS` (`adapters/jwks.py`), `POLLING_INTERVAL_MS` (`adapters/redis_events.py`),
     `PAGE_SIZE`, `ACTIVE_STATE` and `INACTIVE_STATE` (`adapters/zitadel.py`), `MAX_LIFETIME`,
     `ACCESS_TTL`, `KEEP_ALIVE_SECONDS` and `RESUME_WINDOW` (`entrypoints/sse.py`), `MAX_NODES`
-    (`services/documents.py`), `DEFAULT_MAX_ROOTS` (`services/mapper.py`) and `MAX_MANIFEST_BYTES`
-    (`services/tenant_dump.py`); their values are the defaults of the groups;
+    (`services/documents.py`), `DEFAULT_MAX_ROOTS` (`services/mapper.py`), `MAX_MANIFEST_BYTES`
+    (`services/tenant_dump.py`), `FIELD_OF_TOML_KEY` and `TOML_KEY_OF_FIELD`
+    (`generation/config.py`; the aliases of `GenerationTarget` replace them); their values are the defaults of the groups;
   - the Zitadel slugs `PROJECTS`, `MACHINE_USERS`, `OWN_ORGANISATION` and `TOKEN_PATH`, only the
     testkit used, moved from `rdf_persistence.adapters.zitadel` to `rdf_persistence.testkit.zitadel`.
 - **BREAKING: the technical models moved out of the domain layer** (`technical-models`). Every

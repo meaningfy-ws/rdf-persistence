@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel, Field
 
-from rdf_persistence.generation.generated.rp_generation import ClassShape, SlotShape
+from rdf_persistence.testkit.generated.rp_testkit import ClassShape, FieldFlags, SlotShape
 from rdf_persistence.testkit.model_shape import model_schema_diff, model_shape_diff
 from rdf_persistence.testkit.shape_snapshot import (
     class_shapes,
@@ -25,10 +25,12 @@ METAMODEL = ROOT / "rdf_persistence" / "model" / "rp.yaml"
 TOY = FIXTURES / "library" / "library.yaml"
 SERVICE = ROOT / "rdf_persistence" / "model" / "technical" / "service" / "rp_service.yaml"
 GENERATION = ROOT / "rdf_persistence" / "generation" / "model" / "rp_generation.yaml"
+TESTKIT = ROOT / "rdf_persistence" / "model" / "technical" / "testkit" / "rp_testkit.yaml"
 TOY_PACKAGE = "tests.fixtures.library.generated"
 METAMODEL_PACKAGE = "rdf_persistence.domain.generated"
 SERVICE_PACKAGE = "rdf_persistence.services.generated.service"
 GENERATION_PACKAGE = "rdf_persistence.generation.generated"
+TESTKIT_PACKAGE = "rdf_persistence.testkit.generated"
 REFRESH = "RP_REFRESH_SNAPSHOT"
 
 
@@ -196,6 +198,7 @@ def test_snapshot_diff_describes_each_kind_of_change(
         pytest.param(TOY, TOY_PACKAGE, id="toy"),
         pytest.param(SERVICE, SERVICE_PACKAGE, id="service"),
         pytest.param(GENERATION, GENERATION_PACKAGE, id="generation"),
+        pytest.param(TESTKIT, TESTKIT_PACKAGE, id="testkit"),
     ],
 )
 def test_generated_classes_match_the_induced_slots(schema: Path, package: str) -> None:
@@ -288,3 +291,11 @@ def test_a_field_absent_from_the_component_is_skipped() -> None:
 
 def test_an_unlabelled_class_does_not_require_its_label_in_the_json_schema() -> None:
     assert "label" not in toy_components()["Chapter"].get("required", []), "PD-8"
+
+
+def test_the_flags_a_field_is_compared_by_are_a_generated_record() -> None:
+    """PD-11: `FieldFlags` (required, multivalued) is generated, not a dict of two booleans."""
+    assert list(FieldFlags.model_fields) == ["required", "multivalued"], "the two flags, in order"
+    assert FieldFlags(required=True, multivalued=False) != FieldFlags(
+        required=True, multivalued=True
+    ), "a flag that differs makes the records differ"

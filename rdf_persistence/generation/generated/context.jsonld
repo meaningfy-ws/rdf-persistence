@@ -9,12 +9,6 @@
       "shex": "http://www.w3.org/ns/shex#",
       "skos": "http://www.w3.org/2004/02/skos/core#",
       "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
-      "admin_pat": {
-         "@id": "adminPat"
-      },
-      "alias": {
-         "@id": "alias"
-      },
       "attributes": {
          "@type": "@id",
          "@container": "@set",
@@ -32,9 +26,6 @@
          "@container": "@set",
          "@id": "mmdClasses"
       },
-      "container": {
-         "@id": "container"
-      },
       "description": {
          "@id": "descriptionText"
       },
@@ -46,9 +37,6 @@
       },
       "element": {
          "@id": "element"
-      },
-      "endpoint": {
-         "@id": "endpoint"
       },
       "enum_name": {
          "@id": "lockChangeEnum"
@@ -65,9 +53,6 @@
          "@container": "@set",
          "@id": "tsEnums"
       },
-      "exit_code": {
-         "@id": "exitCode"
-      },
       "externals": {
          "@container": "@set",
          "@id": "mmdExternals"
@@ -83,9 +68,6 @@
       "frame": {
          "@type": "@id",
          "@id": "partFrame"
-      },
-      "help": {
-         "@id": "help"
       },
       "holds": {
          "@id": "holds"
@@ -114,9 +96,6 @@
       },
       "iri_type": {
          "@id": "lockedIriType"
-      },
-      "key_id": {
-         "@id": "keyId"
       },
       "key_iris": {
          "@container": "@set",
@@ -167,14 +146,6 @@
          "@container": "@set",
          "@id": "lockedSlots"
       },
-      "machine_users": {
-         "@type": "@id",
-         "@container": "@set",
-         "@id": "machineUsers"
-      },
-      "marker": {
-         "@id": "marker"
-      },
       "message": {
          "@id": "message"
       },
@@ -206,9 +177,6 @@
       "optional": {
          "@id": "optional"
       },
-      "organisation_id": {
-         "@id": "organisationId"
-      },
       "outputs": {
          "@type": "@id",
          "@container": "@set",
@@ -222,17 +190,8 @@
          "@container": "@set",
          "@id": "frameParts"
       },
-      "password": {
-         "@id": "password"
-      },
       "path": {
          "@id": "path"
-      },
-      "private_key": {
-         "@id": "privateKey"
-      },
-      "project_id": {
-         "@id": "projectId"
       },
       "python": {
          "@id": "pythonFolder"
@@ -249,9 +208,6 @@
       },
       "regenerate_command": {
          "@id": "regenerateCommand"
-      },
-      "region": {
-         "@id": "region"
       },
       "relative_path": {
          "@id": "relativePath"
@@ -278,13 +234,6 @@
       "schema_version": {
          "@id": "lockSchemaVersion"
       },
-      "secret": {
-         "@id": "secret"
-      },
-      "server": {
-         "@type": "@id",
-         "@id": "server"
-      },
       "sha256": {
          "@id": "sha256"
       },
@@ -294,17 +243,6 @@
       "slot_uri": {
          "@type": "@id",
          "@id": "lockedSlotIri"
-      },
-      "slots": {
-         "@type": "@id",
-         "@container": "@set",
-         "@id": "slotShapes"
-      },
-      "stderr": {
-         "@id": "stderr"
-      },
-      "stdout": {
-         "@id": "stdout"
       },
       "step": {
          "@id": "step"
@@ -331,15 +269,6 @@
       "typescript": {
          "@id": "typescriptFolder"
       },
-      "url": {
-         "@id": "url"
-      },
-      "user": {
-         "@id": "user"
-      },
-      "user_id": {
-         "@id": "userId"
-      },
       "valid": {
          "@container": "@set",
          "@id": "validInstances"
@@ -352,15 +281,9 @@
       "what": {
          "@id": "what"
       },
-      "where": {
-         "@id": "where"
-      },
       "@version": 1.1,
       "CheckProblem": {
          "@id": "CheckProblem"
-      },
-      "ClassShape": {
-         "@id": "ClassShape"
       },
       "CliFlag": {
          "@id": "CliFlag"
@@ -368,23 +291,11 @@
       "ConstraintCase": {
          "@id": "ConstraintCase"
       },
-      "ContainerMarker": {
-         "@id": "ContainerMarker"
-      },
-      "ExecResult": {
-         "@id": "ExecResult"
-      },
       "Frame": {
          "@id": "Frame"
       },
       "FramePart": {
          "@id": "FramePart"
-      },
-      "FusekiServer": {
-         "@id": "FusekiServer"
-      },
-      "GarageServer": {
-         "@id": "GarageServer"
       },
       "GeneratedFile": {
          "@id": "GeneratedFile"
@@ -407,9 +318,6 @@
       "LockedSlot": {
          "@id": "LockedSlot"
       },
-      "MachineUser": {
-         "@id": "MachineUser"
-      },
       "ManifestEntry": {
          "@id": "ManifestEntry"
       },
@@ -431,9 +339,6 @@
       "SchemaLock": {
          "@id": "SchemaLock"
       },
-      "SlotShape": {
-         "@id": "SlotShape"
-      },
       "TsEnum": {
          "@id": "TsEnum"
       },
@@ -454,15 +359,6 @@
       },
       "UniqueKeyOn": {
          "@id": "UniqueKeyOn"
-      },
-      "Violation": {
-         "@id": "Violation"
-      },
-      "ZitadelProject": {
-         "@id": "ZitadelProject"
-      },
-      "ZitadelServer": {
-         "@id": "ZitadelServer"
       }
    }
 }

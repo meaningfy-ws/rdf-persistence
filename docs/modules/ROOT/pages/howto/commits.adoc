@@ -135,7 +135,7 @@ written, and the unit of work is unchanged:
 
 [source,python]
 ----
-work = UnitOfWork(session, mapper)           # max_roots=500
+work = UnitOfWork(session, mapper)           # the mapper's limit: 500 roots by default
 for row in rows:                             # 600 rows
     work.add(Book(id=book_iri(row), label=row.title, description=row.text, author=row.author))
 await work.commit()

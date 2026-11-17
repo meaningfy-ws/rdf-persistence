@@ -32,7 +32,7 @@ REFERENCE_CLASSES = ("Principal", ACTIVITY)
 FORBIDDEN_FOR_DOMAIN = (ModuleKind.TECHNICAL.value, ModuleKind.ACCESS.value)
 
 
-def _technical_classes(schemas: list[SchemaDefinition]) -> list[ClassDefinition]:
+def technical_classes(schemas: list[SchemaDefinition]) -> list[ClassDefinition]:
     """The classes of the modules annotated ``module_kind: technical``; a class is told apart by object, not by name."""
     return [
         cls
@@ -139,6 +139,56 @@ def _module_problems(view: SchemaView, schemas: list[SchemaDefinition]) -> Itera
                 )
 
 
+def _is_technical(schema: SchemaDefinition) -> bool:
+    return annotation(schema, RpAnnotation.MODULE_KIND) == ModuleKind.TECHNICAL.value
+
+
+def _held_technical_slots(
+    view: SchemaView, cls: ClassDefinition, homes: dict[str, str]
+) -> Iterator[tuple[str, str]]:
+    """The (slot, range) pairs of the slots ``cls`` declares that range over a technical class."""
+    induced = {slot.name: slot for slot in view.class_induced_slots(cls.name)}
+    for name in sorted(declared_slots(cls) & induced.keys()):
+        if str(induced[name].range) in homes:
+            yield name, str(induced[name].range)
+
+
+def _holding_problems(view: SchemaView, schemas: list[SchemaDefinition]) -> Iterator[CheckProblem]:
+    """D-55 (4): only a technical module may hold a class of a technical module, however it came to import it."""
+    homes = {
+        cls.name: schema.name
+        for schema in schemas
+        if _is_technical(schema)
+        for cls in schema.classes.values()
+    }
+    for schema in schemas:
+        kind = annotation(schema, RpAnnotation.MODULE_KIND) or "no"
+        for cls in [] if _is_technical(schema) else schema.classes.values():
+            for name, held in _held_technical_slots(view, cls, homes):
+                yield rule_problem(
+                    BoundaryRule.MODULE_KIND,
+                    schema.name,
+                    f"is a module of {kind} kind and holds {held}, a class of the technical "
+                    f"module {homes[held]}, in the slot {name} of {cls.name}: "
+                    "only a technical module holds a technical class",
+                )
+
+
+def _technical_root_problems(
+    view: SchemaView, technical: list[ClassDefinition]
+) -> Iterator[CheckProblem]:
+    """D-55 (4): a technical class is never stored, so it declares no root."""
+    roots = {root.name for root in aggregate_roots(view, technical)}
+    for cls in technical:
+        if cls.name in roots or is_tenant_root(cls):
+            yield rule_problem(
+                BoundaryRule.MODULE_KIND,
+                cls.name,
+                "is an aggregate root in a technical module: a technical class is never stored, "
+                "so it declares no root",
+            )
+
+
 def target_kind_problems(view: SchemaView, folder: Path, kind: TargetKind) -> list[CheckProblem]:
     """The modules of ``folder`` that do not match the ``kind`` the target declares (PD-9).
 
@@ -162,13 +212,19 @@ def target_kind_problems(view: SchemaView, folder: Path, kind: TargetKind) -> li
 def boundary_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
     """Every problem of the schemas kept in ``folder``, in a stable order.
 
-    The toolkit's own schemas get the import rule but not the class rules (PD-23).
+    The toolkit's own schemas get the import rule but not the class rules (PD-23), and neither do the
+    classes of a module annotated ``module_kind: technical``, which are never stored (D-49).
     """
     schemas = own_schemas(view, folder)
     classes = [] if is_toolkit_schema(folder) else own_classes(schemas)
+    technical = technical_classes(schemas)
+    exempt = {id(cls) for cls in technical}
+    stored = [cls for cls in classes if id(cls) not in exempt]
     return [
-        *_ownership_problems(view, classes, _technical_classes(schemas)),
-        *_reference_problems(view, classes),
+        *_ownership_problems(view, classes, technical),
+        *_reference_problems(view, stored),
         *_direction_problems(view, classes),
         *_module_problems(view, schemas),
+        *_holding_problems(view, schemas),
+        *_technical_root_problems(view, technical),
     ]

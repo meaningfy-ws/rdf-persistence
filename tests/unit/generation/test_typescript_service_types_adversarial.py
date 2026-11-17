@@ -293,7 +293,7 @@ def test_a_technical_class_used_as_the_range_of_a_domain_class_is_still_a_refere
     )
 
 
-def test_a_technical_class_with_a_bad_reference_is_still_reported(toy_copy: Path) -> None:
+def test_a_technical_class_pointing_at_a_class_has_no_reference_problem(toy_copy: Path) -> None:
     body = module_body(
         "tech",
         "technical",
@@ -304,8 +304,8 @@ def test_a_technical_class_with_a_bad_reference_is_still_reported(toy_copy: Path
     )
     root = import_module(toy_copy, "tech", body)
     found = problems_of(root)
-    assert any("[reference]" in p and "chapter" in p for p in found), (
-        f"the reference rule must still apply to technical classes: {found}"
+    assert not any("[reference]" in p for p in found), (
+        f"D-49: a technical class is never stored, so the reference rule skips it: {found}"
     )
 
 

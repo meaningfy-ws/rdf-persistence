@@ -2,7 +2,7 @@
 
 import pytest
 
-from rdf_persistence.generation.generated.rp_generation import (
+from rdf_persistence.testkit.generated.rp_testkit import (
     ExecResult,
     FusekiServer,
     GarageServer,

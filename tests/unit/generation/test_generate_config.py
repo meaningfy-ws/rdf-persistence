@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation import steps
+from rdf_persistence.generation import config, steps
 from rdf_persistence.generation.cli import build_parser
 from rdf_persistence.generation.config import cli_flags, read_targets
 from rdf_persistence.generation.exceptions import ConfigError
@@ -200,3 +200,41 @@ def test_each_row_of_several_entries_keeps_its_own_regenerate_command(tmp_path: 
         SEVERAL.replace('package = "app.a"', 'package = "app.a"\nregenerate-command = "x"'),
     )
     assert (first.regenerate_command, second.regenerate_command) == ("x", None), "rows mixed up"
+
+
+def test_a_row_with_the_aliased_keys_sets_the_fields(tmp_path: Path) -> None:
+    """TC-45: `regenerate-command` is the model's own alias; `schema` and `kind` too (D-52)."""
+    (target,) = read(tmp_path, SINGLE + 'regenerate-command = "make g"\n')
+    assert (target.schema_file, target.regenerate_command) == ("m.yaml", "make g"), (
+        "an aliased key did not set its field"
+    )
+    assert GenerationTarget.model_fields["regenerate_command"].alias == "regenerate-command", (
+        "the alias is not declared in the schema (PD-10)"
+    )
+
+
+def test_schema_and_kind_are_aliases_not_entries_of_a_key_map() -> None:
+    """TC-45: `schema` and `kind` are aliases of `schema_file` and `target_kind` (D-52), not a key map."""
+    aliases = {name: field.alias for name, field in GenerationTarget.model_fields.items()}
+    assert (aliases["schema_file"], aliases["target_kind"]) == ("schema", "kind"), "no such alias"
+    assert not hasattr(config, "FIELD_OF_TOML_KEY"), "the key map outlived the aliases"
+
+
+def test_a_row_naming_a_field_whose_alias_differs_is_refused_with_todays_text(
+    tmp_path: Path,
+) -> None:
+    """TC-46: `schema_file` is refused before validation, as an extra input."""
+    with pytest.raises(ConfigError) as refused:
+        read(tmp_path, SINGLE.replace('schema = "m.yaml"', 'schema_file = "a.yaml"'))
+    assert "invalid entry: schema_file: Extra inputs are not permitted" in str(refused.value), (
+        "the refusal changed its text"
+    )
+
+
+def test_a_bad_regenerate_command_names_the_alias_not_the_field(tmp_path: Path) -> None:
+    """TC-47: the message names the TOML key `regenerate-command`."""
+    with pytest.raises(ConfigError) as refused:
+        read(tmp_path, SINGLE + "regenerate-command = 3\n")
+    problem = str(refused.value).split("invalid entry:")[1]
+    assert "regenerate-command:" in problem, "the alias is not named"
+    assert "regenerate_command" not in problem, "the field name leaked into the message"

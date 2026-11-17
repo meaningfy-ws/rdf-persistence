@@ -285,12 +285,12 @@ top level too: `rp-generate`'s split pattern points at `rdf_persistence`.
 
 _What may a consumer import?_
 
-[cols="2,2,4",options="header"]
+[cols="2,3,3,4",options="header"]
 |===
-|Layer (module) |Blocks |Exported at top level
+|Layer (module) |Hand-written blocks |Generated models inside the layer |Exported at top level
 |`rdf_persistence.domain`
-|metamodel classes (generated from `model/rp.yaml`), the fixed IRI layout (`domain/layout.py`),
-the strict base model, the errors
+|the fixed IRI layout (`domain/layout.py`: graph and skolem IRIs, database and resource names, which no policy changes), SPARQL terms (`domain/sparql.py`), the strict base model, the errors
+|the metamodel's classes, shapes and context, generated from `model/rp.yaml` into `domain/generated/`; no technical model
 |`RpModel`; `AggregateRoot`, `Described`, `Tracked`,
 `Provenanced`, `Activity`, `Principal`, `RegistryEntry`, `StoredFile`, `RdfFormat`; `Policy`,
 `Rule`, `Grant`, `Prohibition`, `RoleDefinition`, `RoleLevel`, `Action`; `TenantAccess`,
@@ -302,37 +302,54 @@ classes (`ReferenceCollection`, `MembershipRule`, `SlotEquality`; `Comment`, `Mo
 `Forbidden`, `InvalidBody`, `InvalidIri`, `InvalidToken`, `InvalidWorkflow`, `StoredDataInvalid`, …)
 |`rdf_persistence.services`
 |session and unit of work, mapper, tenancy, access check, collaboration, workflows, sweep; the IRI
-policy and `Iris` (`services/iris.py`); the service records (generated from
-`model/technical/service/rp_service.yaml` into `rdf_persistence.services.generated.service`, loaded
-lazily); the settings groups (generated from `model/technical/settings/rp_settings.yaml` into
-`rdf_persistence.services.generated.settings`, loaded lazily); the SPARQL term bundles of the query templates (fields of `SparqlTerm`) and the IRI models
-`IriTemplateVariables` and `IriParts` (plain strings, read by `services/iris.py`)
-(`model/technical/templates/rp_templates.yaml` into `rdf_persistence.services.generated.templates`;
-the bundles are built by the factories of `services/vocabulary.py`); the ports
+policy and `Iris` (`services/iris.py`, with `tenant_move.py`); the factories that build the SPARQL
+term bundles (`services/vocabulary.py`); the message bus; the ports
+|the technical models of the services, loaded lazily from the top level, each group a folder of
+`services/generated/`: `service/` (from `model/technical/service/rp_service.yaml`: the service
+records), `settings/` (`rp_settings.yaml`: the deployment values), `templates/` (`rp_templates.yaml`:
+the SPARQL term bundles, fields of `SparqlTerm`, and the IRI models `IriTemplateVariables` and
+`IriParts`, plain strings read by `services/iris.py`) and `telemetry/` (`rp_telemetry.yaml`:
+`LogContext`)
 |`open_session`, `Session`, `Iris`, `DEFAULT_IRIS`, `IdSource`, `mint_aggregate_iri`; the service records
 (`ServiceSettings`, `IriPolicy`, `IdSpec`, `IdKind`, `TenantCreate`, `TenantSummary`, `LabelUpdate`,
 `GrantSet`, `Page`, `Problem`, `ProblemKind`, `VerifiedCaller`, `CallerAccess`, `Authorised`,
-`AccountSummary`, `Referrer`, `ReferrerList`, `MemberList`); the settings groups (`ToolkitSettings`,
+`AccountSummary`, `Referrer`, `ReferrerList`, `MemberList`, `TenantDump`, `EventEnvelope`); the settings groups (`ToolkitSettings`,
 `HttpSettings`, `JwksSettings`, `DirectorySettings`, `EventSettings`, `SseSettings`, `LimitSettings`); `UnitOfWork`, `Mapper`, `generated_models`, `new_part`, `load_schema`,
 `Tenancy`, `sweep`, `sweep_tenant`, `remove_with_files`, `AccessRules` (with `with_iris`), `load_role_definitions`, `load_caller_access`;
-`Collaboration` (opened with `kit.collaboration`), `Workflows`;
-the ports `Store`, `FileStore` (with `list_blobs`), `Identity`, `TokenVerifier`; `Session.named_file_keys`
-|`rdf_persistence.adapters` |Fuseki, S3 and Zitadel adapters; JWKS token verification |`FusekiStore`, `S3FileStore`, `ZitadelIdentity`, `zitadel_roles_claim`, `JwksTokenVerifier`
-|`rdf_persistence.entrypoints` |service kit (generic router, FastAPI dependencies, problem handlers, ETags, OpenAPI hook, start-up) |`install_service` (with `migrations=`, the folder of the migration files, and `workflows=`, the paths of the workflow files), `ServiceKit` (with `collaboration(authorised)` and `workflows`), `limited_body`, `settings_from_env` (reads a settings model such as `ToolkitSettings` from `RP_` environment variables; needs the `settings` extra)
+`Collaboration` (opened with `kit.collaboration`), `Workflows`, `Listings`; `MessageBus`, `bootstrap`, `command`, `Work`;
+the ports `Store`, `FileStore` (with `list_blobs`), `Identity`, `TokenVerifier`, `EventBus` (with `Receive`, `context_link`); `Session.named_file_keys`
+|`rdf_persistence.adapters` |Fuseki, S3, Zitadel and Redis Streams adapters; JWKS token verification |the wire shapes of the identity provider, Fuseki and the token, in `adapters/generated/` (from `model/technical/wire/rp_wire.yaml`); only the adapters and the testkit import them |`FusekiStore`, `S3FileStore`, `ZitadelIdentity`, `zitadel_roles_claim`, `JwksTokenVerifier`
+|`rdf_persistence.entrypoints` |service kit (generic router, FastAPI dependencies, problem handlers, ETags, OpenAPI hook, start-up), the events route, `settings_from_env` (`entrypoints/environment.py`) |none: it imports the technical models of the services |`install_service` (with `migrations=`, the folder of the migration files, and `workflows=`, the paths of the workflow files), `ServiceKit` (with `collaboration(authorised)` and `workflows`), `limited_body`, `settings_from_env` (reads a settings model such as `ToolkitSettings` from `RP_` environment variables; needs the `settings` extra)
 |`rdf_persistence.testkit` |fakes, token signer, Zitadel provisioning, container fixtures, the
 waiting helpers (`wait_until`, `wait_until_async`), the three conformance suites, freshness plugin,
-guards, round-trip strategies |`rdf_persistence.testkit` (a second public module, for tests only)
-|`rdf_persistence.generation` |`rp-generate` (build time; lint config, boundary check, templates) |the `rp-generate` command
-|`rdf_persistence/model/` |the nine metamodel modules (`rp_core`, `rp_annotations`, `rp_provenance`, `rp_access`, `rp_tenancy`, `rp_files`, `rp_collections`, `rp_discussion`, `rp_workflow`) and `rp.yaml`, shipped as package data |resolved through the import map
+guards, round-trip strategies |the records its modules use (the model-shape snapshot, the guards' `Violation`, the container and Zitadel records), generated from `model/technical/testkit/rp_testkit.yaml` into `testkit/generated/` |`rdf_persistence.testkit` (a second public module, for tests only)
+|`rdf_persistence.generation` |`rp-generate` (build time; lint config, boundary check, templates) |the generator's own records, from `generation/model/rp_generation.yaml` into `generation/generated/` |the `rp-generate` command
+|`rdf_persistence/model/` |the schemas, shipped as package data: the nine metamodel modules (`rp_core`, `rp_annotations`, `rp_provenance`, `rp_access`, `rp_tenancy`, `rp_files`, `rp_collections`, `rp_discussion`, `rp_workflow`) and `rp.yaml`, flat; the technical schemas, one folder for each group, `technical/<group>/rp_<group>.yaml` |none: it generates the packages above |the metamodel through the import map; a technical schema cannot be imported
 |===
 
 The adapters, services and entrypoints are loaded on first use, so importing
 `rdf_persistence.domain`, as every consumer's generated module does, loads no HTTP client or
 service. Graph loading has no function of its own: it is `Session.load_graph`.
 
+[#layering]
 Layers import downward only: entrypoints → services → domain; adapters → services' ports and
 domain; `testkit` and `generation` may import any layer. The consumer's composition root imports the
 adapters from the top level.
+
+*Technical models in the layers.* A model's kind shows in its path (xref:architecture/generation.adoc#kinds[Two kinds of model]):
+the metamodel is generated into `domain/generated/`, and each technical group into the `generated/`
+folder of the lowest layer whose code may import it, so the `layers` contract of import-linter orders
+the `generated` packages of the three runtime layers without a line of its own. `testkit.generated`
+is outside that contract: the contract `runtime-without-extras` keeps it out of the runtime. Four groups sit in `services/generated/`
+(`service`, `settings`, `templates` and `telemetry`), the `wire` group in `adapters/generated/`
+and the `testkit` group in `testkit/generated/`. The domain layer imports none of them:
+the contract `domain-never-imports-technical-models` forbids `rdf_persistence.domain` from importing
+any of the three `generated` packages, directly or through a chain, so a failure names the rule that
+broke. Two hand-written modules used the service records, so they moved to the services layer: the
+layout functions that no policy changes stay in `domain/layout.py`, and `Iris`, its policy, its
+templates and the functions over `DEFAULT_IRIS` are in `services/iris.py`, with `tenant_move.py`.
+Every name still imports from `rdf_persistence`; only a deep import of one of the old module paths
+breaks, and `CHANGELOG.md` lists them with their new ones.
 
 == Layering and boundaries
 

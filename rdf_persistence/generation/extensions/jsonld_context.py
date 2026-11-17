@@ -12,18 +12,24 @@ from pathlib import Path
 
 from linkml.generators.jsonldcontextgen import ContextGenerator
 from linkml_runtime.linkml_model.meta import ClassDefinition, EnumDefinition, SlotDefinition
-from linkml_runtime.utils.formatutils import camelcase
+from linkml_runtime.utils.formatutils import camelcase, underscore
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation.exceptions import SchemaGenerationError
-from rdf_persistence.generation.generated.rp_generation import Frame, FramePart, GeneratedFile
+from rdf_persistence.generation.generated.rp_generation import (
+    Frame,
+    FramePart,
+    GeneratedFile,
+    GenerationAnnotation,
+)
 from rdf_persistence.services.artifacts import CONTEXT_FILE, CONTEXT_KEY, FRAME_SUFFIX, TYPE_KEY
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import (
     ACTIVITY,
+    FIELD_NAME_SLOT,
+    annotation_text,
     is_internal,
     is_owned,
-    json_name,
     root_classes,
 )
 
@@ -34,6 +40,16 @@ ALWAYS = "@always"
 NEVER = "@never"
 
 
+def _term_of(aliased_slot_name: str, slot: SlotDefinition) -> str:
+    """The context term of a slot: its alias, except a slot annotated ``field_name: slot``, which keeps its name (D-55).
+
+    The alias of such a slot is the wire name of a service or settings key and may shadow a prefix
+    (``schema``) or another slot's term (``kind``).
+    """
+    opted_in = annotation_text(slot, GenerationAnnotation.FIELD_NAME) == FIELD_NAME_SLOT
+    return str(slot.name) if opted_in else aliased_slot_name
+
+
 class ToolkitContextGenerator(ContextGenerator):
     """``gen-jsonld-context`` with ``id``/``type`` aliases, no ``internal`` slots, native JSON scalars,
     ``uri`` values as IRIs and enum values as their meaning IRIs (PD-10)."""
@@ -41,8 +57,9 @@ class ToolkitContextGenerator(ContextGenerator):
     def visit_slot(self, aliased_slot_name: str, slot: SlotDefinition) -> None:
         if is_internal(slot):
             return
-        super().visit_slot(aliased_slot_name, slot)
-        definition = self.context_body.get(json_name(slot))
+        term = _term_of(aliased_slot_name, slot)
+        super().visit_slot(term, slot)
+        definition = self.context_body.get(str(underscore(term)))
         if not isinstance(definition, dict):
             return
         if definition.get(TYPE_KEY) in NATIVE_JSON_DATATYPES:
