@@ -1,7 +1,7 @@
 # rp-testkit Specification
 
 ## Purpose
-TBD - created by archiving change toolkit-v1-foundation. Update Purpose after archive.
+What the toolkit gives a consumer's tests: in-process fakes, real containers for adapter tests, deadline-bound waiting, model guards, and a token signer with shared keys.
 ## Requirements
 ### Requirement: Consumers test without servers
 

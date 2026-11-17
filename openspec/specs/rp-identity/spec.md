@@ -1,7 +1,7 @@
 # rp-identity Specification
 
 ## Purpose
-TBD - created by archiving change toolkit-v1-foundation. Update Purpose after archive.
+Authentication and accounts: every request carries a valid token, and accounts are administered through the identity port.
 ## Requirements
 ### Requirement: Every request carries a valid token
 

@@ -1,7 +1,7 @@
 # rp-metamodel Specification
 
 ## Purpose
-TBD - created by archiving change toolkit-v1-foundation. Update Purpose after archive.
+The toolkit's own LinkML metamodel that consumer schemas import: its separate modules, the description of roots and owned classes, write tracking stated about the graph, and access modelled with an ODRL subset.
 ## Requirements
 ### Requirement: The metamodel ships as separate modules
 

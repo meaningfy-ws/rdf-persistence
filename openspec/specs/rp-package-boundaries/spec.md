@@ -1,7 +1,7 @@
 # rp-package-boundaries Specification
 
 ## Purpose
-TBD - created by archiving change toolkit-v1-foundation. Update Purpose after archive.
+The shape of the package: no dependency on a consumer, layers that import downward only, a public API for consumers, and declared types.
 
 ## Requirements
 

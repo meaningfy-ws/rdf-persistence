@@ -1,7 +1,7 @@
 # rp-file-store Specification
 
 ## Purpose
-TBD - created by archiving change toolkit-v1-foundation. Update Purpose after archive.
+Files of a tenant kept byte for byte over S3, apart from the RDF they belong to.
 ## Requirements
 ### Requirement: Files are kept byte for byte, per tenant, over S3
 
