@@ -168,7 +168,7 @@ Stage 1 closes with the lead's `make check-all` and `make test-containers`, the 
 | TC-48 | `media_types(RdfFormat, view=...)` over a fixture copy of the metamodel whose `ntriples` lacks the annotation | `ValueError` naming `ntriples` |
 | TC-49 | the toolkit lock after `make generate` | version unchanged; change `SAFE` |
 
-- [ ] 2.5 PD-13 (B-7, DEC-8): `FakeStore` on pyoxigraph; `pyoxigraph==0.5.13` declared. Layer:
+- [x] 2.5 PD-13 (B-7, DEC-8): `FakeStore` on pyoxigraph; `pyoxigraph==0.5.13` declared. Layer:
   testkit. Run first: every `CASES` entry (`tests/unit/testkit/test_fake_store.py`) and
   `make test-fast` with **no test edited**. If both pass, delete `_operations`, `_SPARQL_TOKENS`,
   `_PROLOGUE`, `_plain_strings`. If not, revert the engine, keep rdflib, and add a PD to design.md
@@ -245,8 +245,8 @@ section), in PR 3 before it merges.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · PR 1 · [ ] 2.1 · [x] 2.2 · [ ] 2.3 ·
-  [x] 2.4 · [ ] 2.5 · (tester) · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] reconcile · PR 3
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · PR 1 · [x] 2.1 · [x] 2.2 · [ ] 2.3 ·
+  [x] 2.4 · [x] 2.5 (kept rdflib, PD-17) · (tester) · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] reconcile · PR 3
 
 ## Verification
 

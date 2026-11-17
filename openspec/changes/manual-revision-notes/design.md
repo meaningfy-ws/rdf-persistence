@@ -208,6 +208,24 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-12. The new ones:
   of analysis §4.3 item 3 with a throwaway script in `temp/`; the docstring states only the ones that
   hold, and removes "they take linkml's own dataclass classes".
 
+- **PD-17 `FakeStore` stays on rdflib** (task 2.5 gate, PD-13). With pyoxigraph 0.5.13 (already
+  locked through linkml-runtime) every `CASES` entry passed, but `make test-fast` failed 3 tests
+  with no test edited, each bound to the rdflib engine:
+  `tests/unit/testkit/test_fakes.py::test_a_failure_that_is_not_the_stores_own_propagates_unchanged`
+  (patches `fakes.prepareUpdate`);
+  `test_fakes.py::test_a_semicolon_that_is_not_an_operation_separator_does_not_split_the_request[empty-operations]`
+  (`A ; ; B ;`, which oxigraph's strict SPARQL 1.1 grammar refuses);
+  `tests/unit/services/test_iri_policy_guard_adversarial.py::test_two_records_that_disagree_refuse_whichever_policy_is_configured`
+  (reads `store._dataset(...).graph(...)`, rdflib's `Dataset` API). Reaching even those 3 took two
+  workarounds in the fake: a rewrite of `FILTER (?x NOT IN ())`, which oxigraph evaluates to an
+  error for a bound variable (the spec says true; `listing.py` and `unique_keys.py` emit it; 160
+  tests fail without it), and a `base_iri` for tests that write relative IRIs. The swap was
+  43-57 % faster (`make test-fast` 1m05s-1m26s against 2m30s) and ran the #142 quarantined test in
+  0.3 s. Per PD-13 the engine is reverted; nothing of 2.5 is merged, TC-51 and TC-53 are not
+  written. The attempt is kept in `evidence/spike-pyoxigraph-fakestore.patch` for a follow-up,
+  which needs the developer's call on the three test edits and on the `NOT IN ()` workaround (an
+  external-library shortcoming: contribute upstream, or work around it in the fake).
+
 ## Breaking changes
 
 Found by the attack; the EPIC's Impact now lists them (it first said "no breaking change"). Each commit that
@@ -418,6 +436,17 @@ overrule any of them. D-1 to D-7 agreed by the developer, 2026-11-17.
   tested with a JSON-LD body: a plain JSON body cannot carry `@graph` (`_typed` refuses unknown
   keys first). `services/jsonld.py` parses PyLD's output with the media type
   `application/n-quads` (PD-10), not rdflib's name `nquads`.
+- **D-11 Two existing tests change in task 2.4.** (a) `test_hard_check.py::
+  test_every_annotation_the_toolkit_reads_has_an_allowed_value_rule_or_a_pattern` requires each
+  `RpAnnotation` member in an allowed-value or a pattern group of `generation/checks/hard.py`. A
+  media type fits neither, and the hard check reads a consumer's classes, slots and schema, never
+  the toolkit metamodel's permissible values where `media_type` lives. So `hard.py` gains
+  `METAMODEL_ANNOTATIONS = (RpAnnotation.MEDIA_TYPE,)` (read from the toolkit's own metamodel;
+  `vocabulary.media_types` refuses a missing one at import, TC-46 to TC-48 pin the values) and
+  the test's union includes it. Rejected: a media-type pattern check over permissible values
+  (a new check for a tag no consumer writes). (b) `test_loading.py`'s `rdflib_message` helper read
+  `_RDFLIB_FORMATS`; it now reads `media_types(RdfFormat)`, so the table is deleted as PD-11 says.
+  Neither test's assertions change.
 
 ### Stage 1 review findings (L2, L3)
 
