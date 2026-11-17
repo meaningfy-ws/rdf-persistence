@@ -683,3 +683,14 @@ Under the floor (not fixed; for the hand-over note and later changes):
   size; "`@context` not given"; the missing `CommitTooLarge` import and `book_iri` arguments; what
   a token whose algorithm is outside `algorithms=` gets.
 - Stage 1 and stage 2 floor items not named above stay as they were listed.
+
+- **D-19 The fix pass's departures and its one new finding.** F-7: `Documents.require_form` checks
+  the graph to be stored for an RDF/XML form before any write (`Aggregates.create` and `replace`
+  take `represented_as`); the route tests use a control-character title, because the closed
+  shapes refuse an unknown predicate with 422 before any form is chosen, and the unit tests cover
+  the predicate case. F-10: one case per operation, the schema check apart from the other three.
+  Run apart, the events route also fails the schema check: it documents each SSE event as a
+  string and sends an object first. It is not #148; filed as #153 and marked `xfail(strict=True)`
+  naming it. The fixer used one `sed -i` for a two-call rename in `test_contract.py`; the lead read
+  the whole diff. An intermittent pyparsing error (`Param.postParse2()`) seen once under two
+  concurrent runs is SPARQL parsing's thread safety, not this change; noted for the hand-over.
