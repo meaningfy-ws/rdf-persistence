@@ -120,8 +120,9 @@ Settled in the EPIC and cited: DEC-1 to DEC-11. New:
   | `http_response_status_code` | `http.response.status_code` | integer | stable |
   | `messaging_system_name` | `messaging.system.name` | string | development |
   | `messaging_destination_name` | `messaging.destination.name` | string | development |
+  | `exception_type` | `exception.type` | string | stable (added by D-10, on a span's `exception` event) |
 
-  28 slots. Every range is one OpenTelemetry attribute value type (string, int, bool, or a list of
+  29 slots (28 shaped, `exception_type` added by D-10). Every range is one OpenTelemetry attribute value type (string, int, bool, or a list of
   one). `cause` goes: the exception travels in `exc_info` (DEC-8). Each slot is written by at least
   one row of PD-6 or PD-5; a slot no site writes is not added (`messaging.message.id` is left out:
   the kit's `receive` never sees the broker's message id).
@@ -430,9 +431,11 @@ DEC-9, and PD-4's fallback `"sparql"`.
 
 - **D-10 No exception text in a span** (full review, L1-C1 Critical, with L2-W6 and L4/L5-W1).
   `traced` used the API's defaults (`record_exception`, `set_status_on_exception`), which put
-  `str(exc)` and the chained traceback into an `exception` event and the status description:
-  rdflib's `BadSyntax` behind `StoreUnavailable` quotes Fuseki's answer, a pydantic
-  `ValidationError` quotes its input. That breaks DEC-6/DEC-8, the spec's SHALL and RISK-3.
+  `str(exc)` and the chained traceback into an `exception` event and the status description: a
+  pydantic `ValidationError` quotes its input, and any exception message or chained cause that
+  quotes data reaches the span (rdflib's `BadSyntax` quotes Fuseki's answer in `str()`, though
+  as a `SyntaxError` its formatted traceback shows no detail in rdflib 7; its test stays as a
+  guard). That breaks DEC-6/DEC-8, the spec's SHALL and RISK-3.
   Corrects PD-3: `traced` opens the span with both defaults off, catches `Exception` (as the API
   does; a cancellation is no failure), sets status ERROR with no description, sets `error.type`,
   and adds one `exception` event carrying only `exception.type`. TC-16 changes accordingly; TC-18

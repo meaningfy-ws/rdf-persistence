@@ -32,7 +32,7 @@ schema change the lead runs `make check-generated`.
 | TC-01 | `log_extra(LogContext(step="x", tenant_id="t"))` | `{"rp.step": "x", "rp.tenant.id": "t"}`; no `None` values |
 | TC-02 | `LogContext()`; `LogContext(step="x", tenant="t")` | each a `ValidationError` (missing `step`; unknown field) |
 | TC-03 | `LogContext(step="x", blob_count="many")`; `policy_fields="a"` | each a `ValidationError` |
-| TC-04 | every alias of `LogContext`; a `log.info("m", extra=log_extra(full))` with every slot set | each alias holds a dot and is not a `LogRecord` attribute; the record carries all 28 keys; no `KeyError` |
+| TC-04 | every alias of `LogContext`; a `log.info("m", extra=log_extra(full))` with every slot set | each alias holds a dot and is not a `LogRecord` attribute; the record carries all 29 keys (28 shaped, one by D-10); no `KeyError` |
 | TC-05 | the stable aliases of PD-2 | each equals its constant in `opentelemetry.semconv.attributes` |
 | TC-06 | the two development aliases of PD-2 | equal the v1.45.0 table in the test (`messaging.system.name`, `messaging.destination.name`) |
 | TC-38 | `error_type(NotFound("n"))`; `error_type(ValueError())` | `"rdf_persistence.domain.exceptions.NotFound"`; `"builtins.ValueError"` |

@@ -192,7 +192,7 @@ are `D-1` to `D-9` in [design.md](design.md#delivery-decisions).
 
 | Promised | Delivered | PR |
 |---|---|---|
-| `LogContext` generated from LinkML in the `telemetry` group | As shaped: 28 slots, `services/generated/telemetry/` | #149 |
+| `LogContext` generated from LinkML in the `telemetry` group | 28 slots as shaped, a 29th (`exception.type`) by D-10; `services/generated/telemetry/` | #149 |
 | Every log call in the DEC-8 style | 41 calls in 16 modules (the shape said 15; the `problems.py` record of `manual-revision-notes` is the 16th); a guard test over the package that also requires `extra=` on every call (D-6) | #149, PR 2 |
 | Spans at the six places of B-4 | Store port (`TracedStore`), commit, migrations, both sweeps, relay round and database, bus handler and observer, as PD-5 | PR 2 |
 | `opentelemetry-api>=1.44,<2`; SDK test-only, banned in the package | As shaped | PR 2 |
