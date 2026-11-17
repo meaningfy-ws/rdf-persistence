@@ -18,6 +18,7 @@ from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
 from rdflib.plugins.sparql.parserutils import CompValue
 
 from rdf_persistence.domain.exceptions import SparqlError
+from rdf_persistence.domain.sparql_parsing import SPARQL_PARSER_LOCK
 
 FORBIDDEN_IRI_CHARS = re.compile(r'[\x00-\x20<>"{}|\\^`\x7f]')
 _BLANK_LABEL = re.compile(r"[A-Za-z0-9_]([A-Za-z0-9_.-]*[A-Za-z0-9_-])?")  # may not end in "."
@@ -253,9 +254,10 @@ def checked_group(text: str, *, template: bool, forbidden: Collection[URIRef] = 
 def _parsed(text: str, template: bool) -> object:
     """What rdflib's parser reads from ``text`` alone; names are not yet resolved against a prefix."""
     try:
-        if template:
-            return parseUpdate(f"INSERT {{ {text} }} WHERE {{}}")
-        return parseQuery(f"ASK {{ {text} }}")
+        with SPARQL_PARSER_LOCK:
+            if template:
+                return parseUpdate(f"INSERT {{ {text} }} WHERE {{}}")
+            return parseQuery(f"ASK {{ {text} }}")
     # near the recursion limit pyparsing fails with a TypeError on its own Suppress objects
     except (RecursionError, TypeError) as error:
         raise SparqlError(_TOO_LONG) from error

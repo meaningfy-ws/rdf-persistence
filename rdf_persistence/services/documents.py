@@ -31,6 +31,7 @@ from rdf_persistence.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.domain.media import DATASET_REPRESENTATIONS, JSON, JSON_LD, RDF_XML
 from rdf_persistence.domain.sparql import FORBIDDEN_IRI_CHARS, Triple
+from rdf_persistence.domain.sparql_parsing import SPARQL_PARSER_LOCK
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.artifacts import (
     CONTEXT_FILE,
@@ -447,7 +448,8 @@ class Documents:
     def _check(self, graph: Graph) -> tuple[bool, Graph, str]:
         shapes = Graph()
         shapes += self.shapes  # pyshacl adds to the graph it is given, and requests share this one
-        conforms, report, text = validate(graph, shacl_graph=shapes, inference="none")
+        with SPARQL_PARSER_LOCK:  # pyshacl parses the SPARQL of the shapes, in a worker thread
+            conforms, report, text = validate(graph, shacl_graph=shapes, inference="none")
         assert isinstance(report, Graph)
         return bool(conforms), report, str(text)
 

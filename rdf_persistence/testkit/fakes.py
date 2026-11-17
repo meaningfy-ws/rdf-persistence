@@ -27,6 +27,7 @@ from rdf_persistence.domain.generated.rp_core import AggregateKey, Principal
 from rdf_persistence.domain.generated.rp_files import BlobEntry
 from rdf_persistence.domain.generated.rp_provenance import Activity
 from rdf_persistence.domain.media import N_QUADS
+from rdf_persistence.domain.sparql_parsing import SPARQL_PARSER_LOCK
 from rdf_persistence.services.events import Receive
 from rdf_persistence.services.generated.service.rp_service import AccountSummary, EventEnvelope
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
@@ -162,7 +163,9 @@ class FakeStore(_Instrumented):
         self._enter("query", sparql)
         data = self._dataset(dataset)
         try:
-            return data.query(prepareQuery(sparql))
+            with SPARQL_PARSER_LOCK:
+                prepared = prepareQuery(sparql)
+            return data.query(prepared)
         except ParseException as error:
             raise BadQuery(str(error)) from error
 
@@ -176,7 +179,9 @@ class FakeStore(_Instrumented):
         prologue = ""  # PREFIX and BASE declarations apply to the operations after them
         try:
             for operation in operations:
-                copy.update(prepareUpdate(prologue + operation))
+                with SPARQL_PARSER_LOCK:
+                    prepared = prepareUpdate(prologue + operation)
+                copy.update(prepared)
                 found = _PROLOGUE.match(operation)
                 prologue += found.group() if found else ""
         except RecursionError:
