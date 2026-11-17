@@ -88,8 +88,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `MAX_LEEWAY_SECONDS` (`adapters/jwks.py`), `POLLING_INTERVAL_MS` (`adapters/redis_events.py`),
     `PAGE_SIZE`, `ACTIVE_STATE` and `INACTIVE_STATE` (`adapters/zitadel.py`), `MAX_LIFETIME`,
     `ACCESS_TTL`, `KEEP_ALIVE_SECONDS` and `RESUME_WINDOW` (`entrypoints/sse.py`), `MAX_NODES`
-    (`services/documents.py`), `DEFAULT_MAX_ROOTS` (`services/mapper.py`) and `MAX_MANIFEST_BYTES`
-    (`services/tenant_dump.py`); their values are the defaults of the groups;
+    (`services/documents.py`), `DEFAULT_MAX_ROOTS` (`services/mapper.py`), `MAX_MANIFEST_BYTES`
+    (`services/tenant_dump.py`), `FIELD_OF_TOML_KEY` and `TOML_KEY_OF_FIELD`
+    (`generation/config.py`; the aliases of `GenerationTarget` replace them); their values are the defaults of the groups;
   - the Zitadel slugs `PROJECTS`, `MACHINE_USERS`, `OWN_ORGANISATION` and `TOKEN_PATH`, only the
     testkit used, moved from `rdf_persistence.adapters.zitadel` to `rdf_persistence.testkit.zitadel`.
 - **BREAKING: the technical models moved out of the domain layer** (`technical-models`). Every
