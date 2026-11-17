@@ -28,6 +28,7 @@ LINK = "Link"
 LAST_EVENT_ID = "Last-Event-ID"  # where a follower of the events resumes (aggregate-events PD-12)
 VARY = "Vary"
 ANY = "*/*"
+_SLASH, _WILDCARD = "/", "*"  # of a media range
 WEAK_PREFIX = "W/"
 _SEPARATOR, _QUOTE, ANY_VERSION = ",", '"', "*"  # of an If-Match list; ``*`` matches any version
 _QUOTES_ONLY = 2  # the length of ``""``, an entity tag without its version
@@ -38,23 +39,47 @@ def allowed_actions_value(actions: Iterable[Action]) -> str:
     return ", ".join(action.value for action in actions)
 
 
+def _quality(raw: str | None) -> str:
+    """The weight of a range from its ``q`` text: unreadable, empty or above 1 reads as 1, negative as 0 (F-3)."""
+    try:
+        weight = float(raw or "")
+    except ValueError:
+        return "1"
+    return "0" if weight < 0 else str(weight if weight <= 1 else 1)  # nan is neither: it reads as 1
+
+
+def _media_range(member: str) -> tuple[str, str, dict[str, str]] | None:
+    """A member of an ``Accept`` header as ``mimeparse`` reads it, ``q`` set; None when it is no media range.
+
+    Not a range (F-3): no ``/`` (``mimeparse`` would read ``*`` as ``*/*``), an empty type or subtype,
+    or ``*`` for the type with a subtype other than ``*``.
+    """
+    if _SLASH not in member.partition(";")[0]:
+        return None
+    try:
+        type_, subtype, params = mimeparse.parse_mime_type(member)
+    except mimeparse.MimeTypeParseException:
+        return None
+    if not type_ or not subtype or (type_ == _WILDCARD and subtype != _WILDCARD):
+        return None
+    params["q"] = _quality(params.get("q"))
+    return type_, subtype, params
+
+
 def _negotiate(accept: str | None, offered: tuple[str, ...], refusal: str) -> str:
     """The media type of ``offered`` an ``Accept`` header ranks highest, the first on a tie; none given is any.
 
-    The ranges are read by ``mimeparse`` and each offered type is scored with ``quality_parsed``
+    The header is split on commas outside quotes; a member that is no media range is skipped, and
+    the others are read by ``mimeparse`` and each offered type is scored with ``quality_parsed``
     (not ``best_match``, which breaks a quality tie by specificity, PD-5).
 
     Raises:
-        NotAcceptable: Nothing offered is acceptable to the client, or the header cannot be read;
+        NotAcceptable: Nothing offered is acceptable to the client, or no member is a media range;
             ``refusal`` is the message.
     """
     header = accept.lower() if accept is not None and accept.strip() else ANY
-    try:
-        ranges = [
-            mimeparse.parse_media_range(member) for member in header.split(",") if member.strip()
-        ]
-    except mimeparse.MimeTypeParseException as error:
-        raise NotAcceptable(refusal) from error
+    members = (_media_range(entry) for entry in _entries(header))
+    ranges = [member for member in members if member is not None]
     scored = [(mimeparse.quality_parsed(media_type, ranges), media_type) for media_type in offered]
     quality, media_type = max(scored, key=lambda pair: pair[0])  # max keeps the first on a tie
     if quality <= 0:

@@ -1,6 +1,8 @@
 """Content negotiation and the version headers (task 5.3, 5.1): Accept, Content-Type, ETag, If-Match."""
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from rdf_persistence.domain.exceptions import (
     Conflict,
@@ -8,7 +10,7 @@ from rdf_persistence.domain.exceptions import (
     PreconditionRequired,
     UnsupportedMediaType,
 )
-from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
+from rdf_persistence.domain.media import JSON, JSON_LD, REPRESENTATIONS, TURTLE
 from rdf_persistence.entrypoints.negotiation import (
     accepted_listing_type,
     accepted_media_type,
@@ -84,6 +86,85 @@ def test_a_quality_tie_goes_to_the_first_offered_not_the_most_specific(header) -
 
 def test_an_unreadable_quality_reads_as_one() -> None:  # TC-38c
     assert accepted_media_type("text/turtle;q=abc") == TURTLE, "mimeparse reads a bad q as 1"
+
+
+# F-3: a member that is no media range is skipped; the others still count; ``q`` reads as below
+F3_ACCEPT = [
+    ("text/turtle, foo", TURTLE),  # L2 W1: one malformed member does not refuse the header
+    ("/turtle, application/json", JSON),  # T-2: an empty type is skipped (as before PD-5)
+    ("*/turtle, application/ld+json", JSON_LD),  # T-2: ``*`` with a subtype is skipped, not ``*/*``
+    ('application/ld+json;profile="a,b"', JSON_LD),  # L2 W1: a comma in quotes does not split
+    ('text/turtle;q=0.1, application/ld+json;profile="a,b"', JSON_LD),  # the quoted member whole
+    ("text/turtle;q=2, application/json", JSON),  # L2 W1: q above 1 reads as 1, a tie, JSON first
+    ("text/turtle;q=, application/json;q=0.5", TURTLE),  # L2 W1: an empty q reads as 1
+    ("text/turtle;q=-1, application/json;q=0.1", JSON),  # T-3: a negative q is "not acceptable"
+]
+
+
+@pytest.mark.parametrize(("header", "served"), F3_ACCEPT, ids=[repr(a) for a, _ in F3_ACCEPT])
+def test_a_member_that_is_no_media_range_is_skipped_and_q_is_read_as_a_weight(
+    header, served
+) -> None:  # F-3
+    assert accepted_media_type(header) == served, f"Accept: {header!r}"
+
+
+@pytest.mark.parametrize(
+    "header", ["*", "*/json", "*/turtle;q=0.5", "/turtle", "text/", ",", " , "]
+)
+def test_a_header_with_no_usable_member_is_not_acceptable(header) -> None:  # F-3, T-2
+    with pytest.raises(NotAcceptable):
+        accepted_media_type(header)
+
+
+@pytest.mark.parametrize("header", ["text/turtle;q=0", "text/turtle ; q=0", "text/turtle;;q=0"])
+def test_a_type_refused_with_q_zero_alone_is_not_acceptable(header) -> None:  # F-3
+    with pytest.raises(NotAcceptable):
+        accepted_media_type(header)
+
+
+# whitespace, empty members and parameters do not change the choice
+BLANKS = [
+    (",,text/turtle,,", TURTLE),
+    ("  text/turtle  ", TURTLE),
+    ("text/turtle ,\t application/json;q=0.1", TURTLE),
+    (" , ,application/ld+json", JSON_LD),
+    ("text/turtle;", TURTLE),
+    ("text/turtle;level=1", TURTLE),
+    ("text/turtle;q=0.0001, application/json;q=0.00001", TURTLE),
+    ("TEXT/TURTLE;Q=0.5, APPLICATION/JSON;Q=0.5", JSON),
+]
+
+
+@pytest.mark.parametrize(("header", "served"), BLANKS, ids=[repr(a) for a, _ in BLANKS])
+def test_whitespace_empty_members_and_parameters_do_not_change_the_choice(header, served) -> None:
+    assert accepted_media_type(header) == served, f"Accept: {header!r}"
+
+
+def test_a_huge_header_is_read_in_bounded_time() -> None:
+    header = ", ".join(["text/html;q=0.5"] * 20_000 + [TURTLE])
+    assert accepted_media_type(header) == TURTLE, "the one acceptable member among 20 000"
+
+
+@given(
+    bad=st.sampled_from(["text", ";q=1", "a/b/c", "/", "text/", "/turtle", "*", "*/json", "\x00"]),
+    pad=st.sampled_from(["", " ", "  ", "\t"]),
+)
+def test_a_malformed_range_alone_is_not_acceptable_however_padded(bad, pad) -> None:  # TC-38
+    with pytest.raises(NotAcceptable):
+        accepted_media_type(f"{pad}{bad}{pad}")
+
+
+@given(header=st.text(max_size=80))
+def test_any_header_gives_an_offered_type_or_not_acceptable_and_nothing_else(header) -> None:
+    for negotiate, offered in (
+        (accepted_media_type, REPRESENTATIONS),
+        (accepted_listing_type, (JSON, JSON_LD)),
+    ):
+        try:
+            served = negotiate(header)
+        except NotAcceptable:
+            continue
+        assert served in offered, f"{negotiate.__name__}({header!r}) served {served!r}, not offered"
 
 
 CONTENT_TYPES = [
