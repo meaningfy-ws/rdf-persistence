@@ -170,6 +170,13 @@ PR 2 before it merges.
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 ·
   [x] 2.5 · [x] 2.6 · reconcile · PR 2
 
+## Close
+
+Stage 1 merged as PR #149, stage 2 as PR #152. Acceptance demo skipped by the developer
+([evidence/acceptance.md](evidence/acceptance.md)). Docs stage D-13 done
+([evidence/docs-owed.md](evidence/docs-owed.md)). Archived with `openspec archive
+otel-observability --yes`, in the close PR.
+
 ## Verification
 
 The TC tables as tests; `make check-all` and `make test-containers` before each PR;
