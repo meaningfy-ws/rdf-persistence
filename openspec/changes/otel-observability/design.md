@@ -361,3 +361,26 @@ new span, which is what it should show. No operation changes its result.
 
 None blocking. Leader's choices the developer may overrule: DEC-1, DEC-2, DEC-5, DEC-6, DEC-7,
 DEC-9, and PD-4's fallback `"sparql"`.
+
+## Delivery decisions
+
+- **D-1 Start before `technical-models` ends** (developer, 2026-11-17; deviation from the PLAN's
+  order). Stage 1 starts while `technical-models` stages 3–4 are in flight in another session.
+  What this change needs from it has landed: PR #144 (the `technical` target kind, DEC-2's groups),
+  PR #145 (stage 2); `manual-revision-notes` A-7 is merged (`messagebus.py:150` gone,
+  `problems.py:202` carries the `internal error answered` record). **RISK-4 checked against
+  `develop` at `dca21ae`:** the groups sit at `rdf_persistence/model/technical/<group>/rp_<group>.yaml`,
+  each its own `[[tool.rp-generate]]` target with `kind = "technical"`, generated into
+  `rdf_persistence/services/generated/<group>/` (`service`, `templates`) or
+  `adapters/generated` (`wire`); `technical-models` proposal DEC-2 names `telemetry` with PD-1's
+  exact paths. PD-1 holds unchanged. Residual overlap: its tasks 3.2 and 3.3 change the
+  constructors of `FusekiStore`, `ZitadelIdentity`, `S3FileStore`, `RedisEventBus`, `Relay` and
+  `MessageBus`, the files of our tasks 1.3, 1.4 and 2.2; its 3.1 adds a target beside ours in
+  `pyproject.toml`. Handling: rebase on `origin/develop` before each PR, resolve by P-0003 for
+  generated files, follow its paths if they move; PD-13's `middlewares=` is placed after its
+  settings group parameter in stage 2.
+- **D-2 Authority** (developer, 2026-11-17): the lead commits, pushes, opens one PR per stage and
+  merges after the local `make check-all` passes on the rebased branch and CI is green.
+- **D-3 Review set.** MEDIUM, no `## Invariants` section: no adversarial tester (stage loop,
+  Prepare). Per P-0005, stage 1 gets one L2+L3 pass and a checker; the full review (L1, L2, L3 as
+  separate passes, L4+L5 as one) runs once, on stage 2, the end of the epic.
