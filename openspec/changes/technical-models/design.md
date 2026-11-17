@@ -563,6 +563,58 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   be squashed here), and #149's new Redis test still built `RedisPair(redis)`, which 3.5 changed to
   take the `toolkit` fixture (a semantic conflict, fixed in the test). Both were caught by the
   stage's full gates before any push.
+- **D-38 (stage 3, L2 W1 with S2 and S3, re-labelled Critical)** The `rp-settings` scenario "a
+  timeout set by the consumer" has no test: nothing builds `JwksTokenVerifier` with a non-default
+  `HttpSettings`, so dropping `http=` at `jwks.py:100` passes the suite. Also unmapped: the RISK-2
+  test `test_the_states_of_a_live_zitadels_users_are_all_known_states` (S3); TC-60's verifier test
+  is mapped as a requirement, not as its scenario (S2). Re-labelled as D-11 and D-24: the map is
+  what the traceability check reads. Fix: one unit test, `FusekiStore` and `JwksTokenVerifier`
+  from `HttpSettings(read_timeout_seconds=60)`, both reading 60, mapped as the scenario; the S2 and
+  S3 rows.
+- **D-39 (stage 3, L2 W2, re-labelled Critical)** `RedisPair` builds its group with
+  `model_copy(update=...)`, which skips validation: an old option name (`claim_idle=`) passes
+  silently and the test runs on the 30 s default. Our library's validated `RpModel.replaced()`
+  exists for this (`manual-revision-notes` PD-8, PD-11, TC-49); not using it is a work-around of
+  our own library. Fix: `toolkit.events.replaced(...)` and the conftest docstring.
+- **D-40 (stage 3, L2+L3 W3, re-labelled Critical)** D-31 accepted the LinkML work-around on
+  AGENTS.md's condition "with its own test"; its refusal (a multivalued `ifabsent` not of the
+  form `string(a, b, ...)`) is untested, as is the `default_instance` refusal of a multivalued slot
+  (D-32 (3)). The accepted decision loses half its mitigation (as D-10). Fix: one test of each
+  refusal, naming the slot.
+- **D-41 (stage 3, L2 W4, re-labelled Critical)** `architecture/index.adoc`, edited by this
+  stage, does not list `rdf_persistence.services.generated.settings` nor the seven new top-level
+  names (as D-12, D-23). Fix: add them to the services row.
+- **D-42 (stage 3, L2 W5, re-labelled Critical)** `CHANGELOG.md` `[Unreleased]` names none of the
+  stage's BREAKING removals nor its additions; RISK-3's mitigation and the Error-matrix row
+  "Documented as BREAKING" depend on it (as D-10). Fix: under `[Unreleased]`, Changed (BREAKING:
+  each removed keyword and public constant with its group) and Added (the settings groups,
+  `ToolkitSettings`, `settings_from_env`, the `settings` extra, `default_instance`, the list
+  default), plus stage 2's owed `python_import` line (stage 2 floor, L2 W4), the same file and
+  section.
+
+Under the floor (not fixed in stage 3):
+
+- Tester F-1 (Warning): `+inf` accepted for every duration (`nan`, `-inf` refused). Only an
+  operator who sets `inf` reaches it; flagged for the full review after stage 4 (an infinite JWKS
+  TTL keeps a rotated-out key).
+- Tester F-2 (Warning): malformed JSON in an `RP_` variable raises pydantic-settings'
+  `SettingsError`, naming the group, not a `ValidationError`; start-up still fails loudly.
+- Tester F-3 (Suggestion): `bootstrap(limit=5)` raises `ValueError`, not `TypeError`; with a
+  handler that declares a `limit` dependency it binds there, which is `bootstrap`'s dependency
+  injection working as designed.
+- Tester F-4 (Warning): `default_instance` is missing from the hard check's allowed annotation
+  values, so a misspelt value (`'True'`) passes and generates no default; only a schema author
+  meets it, and the toolkit's schema is correct.
+- L2 S1: the `default_instance` check reads `slot_usage` only through the generator, so an
+  annotation given in `slot_usage` on a type-ranged slot is caught by `check-generated`'s mypy,
+  not by `rp-generate` naming the slot.
+- L2 S4: TC-39 needs no container but sits in `tests/integration/`.
+- L2 S5: `settings_from_env` validates twice (the synthetic settings class, then the model); the
+  docstring says once.
+- L2 S6: `pydantic_split.py`'s module docstring says "five things" and names neither
+  `default_instance` nor the list default. Task 4.3's docs pass.
+- L2 S8: `develop/index.adoc:194` writes "`max_roots=500`" like the removed keyword.
+- L2 S7 (fixed by the lead with this record): the roadmap line in `tasks.md` ticks 3.5.
 
 Under the floor (not fixed in stage 2):
 

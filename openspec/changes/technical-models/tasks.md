@@ -227,7 +227,7 @@ Stage 4 closes like stage 1, then the reconciliation of `proposal.md` (P-0004) i
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 · PR 2 · [x] 3.1 · [x] 3.2 · [x] 3.3 ·
-  (tester) · [x] 3.4 · [ ] 3.5 · PR 3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · reconcile · PR 4
+  (tester) · [x] 3.4 · [x] 3.5 · PR 3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · reconcile · PR 4
 
 ## Verification
 
