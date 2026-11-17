@@ -191,20 +191,20 @@ CI SHALL run both.
 
 ### Requirement: A test cannot hang the checks
 
-Every parallel (xdist) pytest run SHALL stop a test that runs longer than 120 s and name it, and
-every CI job SHALL stop after 30 minutes, except the unit-test job, which SHALL stop after 60
-minutes (it takes about 30 minutes on a hosted runner). A serial run (without xdist) cannot do so: the thread
-timeout ends the whole session, naming the test.
+Every pytest run, parallel (xdist) or serial, SHALL stop a test that runs longer than 120 s, fail
+it naming it, and run the next test (the worker survives), and every CI job SHALL stop after 30
+minutes, except the unit-test job, which SHALL stop after 60 minutes (it takes about 30 minutes on
+a hosted runner).
 
 #### Scenario: a test that never returns, in a parallel lane
 - **GIVEN** a unit test that awaits an event nobody sets
 - **WHEN** `make test` runs (parallel, `-n auto`)
-- **THEN** the test fails after 120 s naming itself, and the other tests still run
+- **THEN** the test fails after 120 s naming itself, the worker is not replaced, and the other tests still run
 
 #### Scenario: a test that never returns, in a serial run
 - **GIVEN** a unit test that awaits an event nobody sets
 - **WHEN** pytest runs it without xdist
-- **THEN** the session ends after 120 s naming the test
+- **THEN** the test fails after 120 s naming itself, and the next test still runs
 
 ### Requirement: A flaky test is quarantined, not retried
 

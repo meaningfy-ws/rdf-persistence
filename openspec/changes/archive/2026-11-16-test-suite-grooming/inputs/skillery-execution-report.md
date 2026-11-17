@@ -67,6 +67,8 @@ and bad, is `session-trace.md` beside this file; the owner's view of the decisio
 | 18 | project-setup | scaffold dry-run listed `commons/`, `infra/` and `MEMORY.md` for a library; ast-grep missing at hand-off; uv/npm caches read-only in the sandbox | archetype-aware dry-run; check tools at hand-off; document `UV_CACHE_DIR`/`npm_config_cache` |
 | 19 | cosmic-python · checklist rule 6 | mandates polyfactory; this repo's validated named builders meet the intent | allow validated builders; name `model_copy(update=)` as the smell |
 | 20 | rule-learner | drafted a rule from a one-off task instruction; marked a wanted rule REJECT | an instruction for the current task is not a preference |
+| 21 | project-setup · test-strategy (CI) | after the merge, CI hung twice: a 27 s test (120 s+ on a hosted runner) hit pytest-timeout's `thread` method, which killed the xdist worker; under `--dist loadgroup` its queued tests were never rescheduled; every local gate was green (20 cores) | pytest-timeout under xdist uses `timeout_method = signal`; a new CI time limit or dist mode is proven on a hosted-runner run of the PR before merge |
+| 22 | epic-delivery · authority | `gh pr merge --auto` merged at once (no required checks on `develop`), so CI never ran before the merge | the merge step checks that required checks exist, or waits for the PR's CI explicitly |
 
 ## Numbers of the session
 
