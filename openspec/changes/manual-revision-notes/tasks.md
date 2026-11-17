@@ -41,7 +41,7 @@ changes `domain` or a port, or its reach is wide). After a schema change: `make 
 | TC-06 | a JWKS whose only key has no `kty` | `IdentityUnavailable` at refresh, as today |
 | TC-06b | a JWKS of a key with no `kty` (`kid` `bad`) and a good RSA key (`kid` `k1`) | a token for `k1` accepted; one for `bad` `InvalidToken` "unknown to the issuer" |
 
-- [ ] 1.3 PD-4 (A-5, DEC-4): `matched_version`; `expected_version` kept, strict. The five callers
+- [x] 1.3 PD-4 (A-5, DEC-4): `matched_version`; `expected_version` kept, strict. The five callers
   in `entrypoints/router.py` (`DocumentApi.replace`, `remove`; `TenantApi.delete`, `set_grants`,
   `set_label`) call `matched_version` with `current` as PD-4 names it. `howto/workflow.adoc:189`
   says what `expected_version` now refuses. Layer: entrypoints, docs. Tests in

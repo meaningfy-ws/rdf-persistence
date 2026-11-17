@@ -324,6 +324,44 @@ async def test_deleting_a_tenant_needs_if_match_and_the_current_version(scene) -
     assert (missing.status_code, stale.status_code) == (428, 409), "428 without, 409 when stale"
 
 
+async def test_a_book_is_replaced_under_if_match_star(scene) -> None:  # TC-18
+    changed = {**DUNE_BODY, "label": "Dune Messiah"}
+    response = await scene.http.put(
+        scene.book, json=changed, headers=scene.headers("ada", **{"If-Match": "*"})
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["label"] == "Dune Messiah", "replaced"
+
+
+async def test_a_book_is_kept_when_if_match_lists_no_current_version(scene) -> None:  # TC-19
+    response = await scene.http.delete(
+        scene.book, headers=scene.headers("ada", **{"If-Match": '"v1", "v2"'})
+    )
+    assert response.status_code == 409, response.text
+    kept = await scene.http.get(scene.book, headers=scene.headers("ada"))
+    assert kept.status_code == 200, "nothing deleted"
+
+
+async def test_the_grants_are_replaced_under_if_match_star(scene) -> None:  # TC-20
+    grants = GrantSet.model_validate(
+        (await scene.http.get(f"{scene.tenant}/grants", headers=scene.headers("ada"))).json()
+    )
+    response = await scene.http.put(
+        f"{scene.tenant}/grants",
+        content=grants.model_dump_json(exclude_none=True),
+        headers=scene.headers("ada", **{"If-Match": "*", "Content-Type": JSON}),
+    )
+    assert response.status_code == 200, response.text
+
+
+async def test_a_weak_if_match_does_not_replace_a_book(scene) -> None:  # TC-21
+    weak = f"W/{scene.book_etag}"
+    response = await scene.http.put(
+        scene.book, json=DUNE_BODY, headers=scene.headers("ada", **{"If-Match": weak})
+    )
+    assert response.status_code == 409, "a weak tag never matches (RFC 9110 strong comparison)"
+
+
 async def test_the_tenant_root_is_replaced_under_if_match(scene) -> None:
     body = {"label": "Ghent", "description": "New description.", "city": "Bruges"}
     response = await scene.http.put(

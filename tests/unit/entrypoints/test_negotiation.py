@@ -3,6 +3,7 @@
 import pytest
 
 from rdf_persistence.domain.exceptions import (
+    Conflict,
     NotAcceptable,
     PreconditionRequired,
     UnsupportedMediaType,
@@ -13,6 +14,7 @@ from rdf_persistence.entrypoints.negotiation import (
     accepted_media_type,
     etag_of,
     expected_version,
+    matched_version,
     request_media_type,
 )
 
@@ -89,9 +91,76 @@ def test_the_etag_is_the_version_in_quotes() -> None:
     assert etag_of("7f3a") == '"7f3a"', "RFC 9110: an entity tag is a quoted string"
 
 
-@pytest.mark.parametrize("header", ['"7f3a"', 'W/"7f3a"', "7f3a", ' "7f3a" '])
+@pytest.mark.parametrize("header", ['"7f3a"', ' "7f3a" '])
 def test_if_match_names_the_version_it_expects(header) -> None:
     assert expected_version(header) == "7f3a", header
+
+
+def test_a_weak_tag_never_matches_in_expected_version() -> (
+    None
+):  # TC-13 (breaking: it was stripped)
+    with pytest.raises(Conflict):
+        expected_version('W/"7f3a"')
+
+
+@pytest.mark.parametrize("header", ["7f3a", "*", '"v1", "v3"'])  # TC-21b
+def test_expected_version_refuses_what_it_cannot_read_without_a_read(header) -> None:
+    with pytest.raises(PreconditionRequired, match="matched_version"):
+        expected_version(header)
+
+
+class Current:
+    """A ``current`` that counts its calls and answers one version."""
+
+    def __init__(self, version: str = "v3") -> None:
+        self.version, self.calls = version, 0
+
+    async def __call__(self) -> str:
+        self.calls += 1
+        return self.version
+
+
+async def test_a_single_strong_tag_is_the_version_and_nothing_is_read() -> None:  # TC-12
+    current = Current()
+    assert await matched_version('"v3"', current) == "v3"
+    assert current.calls == 0, "a single strong tag costs no read"
+
+
+async def test_a_weak_tag_names_no_version() -> None:  # TC-13
+    with pytest.raises(Conflict):
+        await matched_version('W/"v3"', Current())
+
+
+async def test_a_star_matches_the_current_version() -> None:  # TC-14
+    current = Current()
+    assert await matched_version("*", current) == "v3"
+    assert current.calls == 1
+
+
+@pytest.mark.parametrize("header", ['"v1", "v3"', '"v1",W/"v2" , "v3"', '"v1", , "v3"'])
+async def test_a_list_that_names_the_current_version_gives_it(header) -> None:  # TC-15, TC-21c
+    current = Current()
+    assert await matched_version(header, current) == "v3", header
+    assert current.calls == 1, "a list costs one read"
+
+
+async def test_a_list_that_does_not_name_the_current_version_is_a_conflict() -> None:  # TC-16
+    with pytest.raises(Conflict, match="not one If-Match names"):
+        await matched_version('"v1", "v2"', Current())
+
+
+async def test_a_comma_inside_a_quoted_tag_does_not_split_it() -> None:
+    current = Current()
+    assert await matched_version('"a,b"', current) == "a,b"
+    assert current.calls == 0
+
+
+@pytest.mark.parametrize("header", [None, "", "  ", "v3", '"v3', '*, "v3"'])
+async def test_a_missing_or_malformed_if_match_is_a_precondition_required(header) -> None:  # TC-17
+    current = Current()
+    with pytest.raises(PreconditionRequired):
+        await matched_version(header, current)
+    assert current.calls == 0, "refused before any read"
 
 
 # One class (no usable If-Match); None and blank are the two operands of `(if_match or "").strip()`.
