@@ -15,11 +15,11 @@ from fastapi import APIRouter
 from rdf_persistence import GrantSet
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.domain.generated.rp_provenance import Activity, Generation, Replace
-from rdf_persistence.domain.iris import graph_iri
 from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.responses import CONTEXT_REL
 from rdf_persistence.entrypoints.sse import add_events_route
 from rdf_persistence.services.event_hub import EventHub
+from rdf_persistence.services.iris import graph_iri
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 from tests.unit.entrypoints.scene import Scene
 

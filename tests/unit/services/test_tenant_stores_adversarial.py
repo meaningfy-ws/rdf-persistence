@@ -18,7 +18,7 @@ from rdf_persistence.domain.exceptions import (
     StoreUnavailable,
 )
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
-from rdf_persistence.domain.iris import Iris, graph_iri
+from rdf_persistence.services.iris import Iris, graph_iri
 from rdf_persistence.services.migration_runner import migrate_tenants
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import DEFAULT_STORE, Tenancy

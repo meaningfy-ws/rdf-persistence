@@ -40,9 +40,9 @@ from rdf_persistence.domain.generated.service.rp_service import (
     GrantSet,
     VerifiedCaller,
 )
-from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris, graph_iri
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.iris import DEFAULT_IRIS, Iris, graph_iri
 from rdf_persistence.services.mapper import Mapper, generated_models
 from rdf_persistence.services.store import Store
 

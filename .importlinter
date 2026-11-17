@@ -132,6 +132,7 @@ source_modules =
     rdf_persistence.services.files
     rdf_persistence.services.identity
     rdf_persistence.services.iri_policy_guard
+    rdf_persistence.services.iris
     rdf_persistence.services.listing
     rdf_persistence.services.loading
     rdf_persistence.services.mapper
@@ -147,6 +148,7 @@ source_modules =
     rdf_persistence.services.sweep
     rdf_persistence.services.tenancy
     rdf_persistence.services.tenant_dump
+    rdf_persistence.services.tenant_move
     rdf_persistence.services.tenant_sweep
     rdf_persistence.services.tokens
     rdf_persistence.services.transitions

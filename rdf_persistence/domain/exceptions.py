@@ -69,7 +69,7 @@ class InvalidGraph(PersistenceError):
 
 
 class InvalidIri(PersistenceError, ValueError):
-    """A value breaks an IRI, path-segment or resource-name rule of the toolkit (``domain.iris``)."""
+    """A value breaks an IRI, path-segment or resource-name rule of the toolkit (``services.iris``)."""
 
 
 class IriPolicyChanged(PersistenceError):

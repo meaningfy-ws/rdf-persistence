@@ -26,11 +26,11 @@ from rdf_persistence.domain.generated.rp_workflow import (
     WorkflowTransition,
 )
 from rdf_persistence.domain.generated.service.rp_service import CallerAccess, VerifiedCaller
-from rdf_persistence.domain.iris import Iris
 from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.discussion import mint_iri, moment_of
+from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.mapper import Mapper
 from rdf_persistence.services.provenance import new_activity_id
 from rdf_persistence.services.session import Session, changed_text

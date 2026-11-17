@@ -17,8 +17,8 @@ from rdf_persistence import (
 )
 from rdf_persistence.domain.generated.rp_core import DatabaseKind, Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantAccess
-from rdf_persistence.domain.iris import application_database_name, graph_iri
 from rdf_persistence.services.access import _access_mapper
+from rdf_persistence.services.iris import application_database_name, graph_iri
 from rdf_persistence.services.schema_structure import served_roots
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy

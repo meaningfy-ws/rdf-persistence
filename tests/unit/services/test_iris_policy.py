@@ -13,7 +13,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.domain.iris import Iris
+from rdf_persistence.services.iris import Iris
 
 BASE = "http://mwb.meaningfy.ws/"
 TENANT = f"{BASE}project/p4x8k2m"

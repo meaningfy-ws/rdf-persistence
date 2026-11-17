@@ -6,7 +6,7 @@ from rdflib.namespace import Namespace
 
 from rdf_persistence.domain.exceptions import Conflict, NotFound
 from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.iris import (
+from rdf_persistence.services.iris import (
     DEFAULT_IRIS,
     tenant_resource_name,
 )

@@ -22,10 +22,10 @@ from rdf_persistence import (
     load_role_definitions,
 )
 from rdf_persistence.domain.generated.service.rp_service import IdKind, IdSpec, IriPolicy
-from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris, draw_id, principal_iri
 from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.services.events import EventBus
 from rdf_persistence.services.files import FileStore
+from rdf_persistence.services.iris import DEFAULT_IRIS, Iris, draw_id, principal_iri
 from rdf_persistence.services.tenancy import GrantValidator, RootValidator
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
 from rdf_persistence.testkit.tokens import ISSUER, shared_key

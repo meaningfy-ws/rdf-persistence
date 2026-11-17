@@ -27,9 +27,9 @@ from rdf_persistence.domain.generated.rp_discussion import (
     PostReply,
 )
 from rdf_persistence.domain.generated.service.rp_service import CallerAccess, VerifiedCaller
-from rdf_persistence.domain.iris import Iris, graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
+from rdf_persistence.services.iris import Iris, graph_iri
 from rdf_persistence.services.mapper import Mapper
 from rdf_persistence.services.provenance import new_activity_id
 from rdf_persistence.services.schema_structure import (

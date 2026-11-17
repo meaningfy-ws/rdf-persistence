@@ -17,10 +17,10 @@ from rdflib.query import ResultRow
 
 from rdf_persistence.domain.exceptions import Conflict
 from rdf_persistence.domain.generated.rp_tenancy import TenantState, TenantSweepReport
-from rdf_persistence.domain.iris import Iris
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.files import FileStore
+from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.session import utc_now
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.tenancy import Tenancy

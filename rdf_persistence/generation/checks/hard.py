@@ -23,11 +23,11 @@ from rdf_persistence.domain.generated.rp_core import (
     UniqueScope,
     WritesKind,
 )
-from rdf_persistence.domain.iris import LAYOUT_WORDS
 from rdf_persistence.generation.checks.application import application_problems
 from rdf_persistence.generation.checks.toolkit_filled import toolkit_filled_problems
 from rdf_persistence.generation.generated.rp_generation import CheckProblem, HardRule
 from rdf_persistence.generation.problems import rule_problem
+from rdf_persistence.services.iris import LAYOUT_WORDS
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 from rdf_persistence.services.schema_structure import (
     AGGREGATE_ROOT,

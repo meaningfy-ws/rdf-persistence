@@ -39,9 +39,9 @@ from rdf_persistence.domain.base import RpModel
 from rdf_persistence.domain.exceptions import CommitTooLarge, NotFound, PersistenceError
 from rdf_persistence.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.domain.generated.rp_provenance import Activity
-from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris, is_skolem_of
 from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.iris import DEFAULT_IRIS, Iris, is_skolem_of
 from rdf_persistence.services.provenance import Served
 from rdf_persistence.services.schema_structure import (
     aggregate_roots,

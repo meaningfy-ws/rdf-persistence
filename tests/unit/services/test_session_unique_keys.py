@@ -18,8 +18,8 @@ from rdflib.plugins.sparql import prepareQuery, prepareUpdate
 from rdf_persistence.domain.exceptions import Conflict, InvalidBody, KeyConflict
 from rdf_persistence.domain.generated.rp_core import AggregateKey, KeyDuplicate, Principal
 from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.domain.sparql import fill, term
+from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import aggregate_keys

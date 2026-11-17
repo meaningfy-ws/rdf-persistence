@@ -4,7 +4,7 @@ import pytest
 
 from rdf_persistence.domain.exceptions import StoreUnavailable
 from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.iris import system_database_name, tenant_resource_name
+from rdf_persistence.services.iris import system_database_name, tenant_resource_name
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import assert_isomorphic

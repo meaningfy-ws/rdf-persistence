@@ -24,8 +24,8 @@ from rdf_persistence.domain.generated.service.rp_service import (
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.domain.iris import Iris
 from rdf_persistence.domain.sparql import fill, term
+from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
 from rdf_persistence.services.session import open_session

@@ -31,9 +31,9 @@ from rdf_persistence.domain.generated.service.rp_service import (
     Page,
     ServiceSettings,
 )
-from rdf_persistence.domain.iris import Iris, system_database_name, tenant_resource_name
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
+from rdf_persistence.services.iris import Iris, system_database_name, tenant_resource_name
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.tenancy import Tenancy

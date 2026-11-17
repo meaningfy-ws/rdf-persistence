@@ -15,9 +15,9 @@ from rdf_persistence.domain.exceptions import (
     InvalidIri,
 )
 from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
-from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
+from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import DEFAULT_MAX_ROOTS, UnitOfWork
 from rdf_persistence.services.schema import load_schema

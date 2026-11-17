@@ -5,7 +5,7 @@ import time
 import pytest
 from rdflib import Graph, Literal, URIRef
 
-from rdf_persistence.domain.iris import loaded_graph_iri, mint_aggregate_iri
+from rdf_persistence.services.iris import loaded_graph_iri, mint_aggregate_iri
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import TENANT

@@ -22,10 +22,10 @@ from rdf_persistence.domain.generated.service.rp_service import (
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.domain.media import JSON, JSON_LD
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.services.documents import Documents
+from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
 from rdf_persistence.services.session import Session

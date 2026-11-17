@@ -7,7 +7,7 @@ import pytest
 from rdflib import BNode, Literal, URIRef
 
 from rdf_persistence.domain.exceptions import InvalidIri, NotFound
-from rdf_persistence.domain.iris import (
+from rdf_persistence.services.iris import (
     DEFAULT_IRIS,
     aggregate_iri,
     graph_iri,

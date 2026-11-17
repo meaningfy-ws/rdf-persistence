@@ -22,8 +22,8 @@ from rdf_persistence.domain.exceptions import (
     StoreUnavailable,
     TenantBehind,
 )
-from rdf_persistence.domain.iris import Iris
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.migration_runner import (
     migrate_database,
     migrate_shared,

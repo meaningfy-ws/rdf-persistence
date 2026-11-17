@@ -4,9 +4,9 @@ import httpx
 from pyld import jsonld
 from rdflib import Graph
 
-from rdf_persistence.domain.iris import graph_iri
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.iris import graph_iri
 from rdf_persistence.testkit import assert_isomorphic
 from tests.integration.api.conftest import make_book
 from tests.toy_service import ToyService, assert_problem, principal_of

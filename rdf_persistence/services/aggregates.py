@@ -12,9 +12,9 @@ from rdflib import RDF, URIRef
 
 from rdf_persistence.domain.exceptions import InvalidBody, NotFound
 from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services.documents import Documents
+from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.schema_structure import iri_type_of
 from rdf_persistence.services.session import Stored
 from rdf_persistence.services.tenancy import Tenancy

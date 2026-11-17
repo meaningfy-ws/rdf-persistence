@@ -9,9 +9,9 @@ from rdflib import Graph, Literal, URIRef
 from rdf_persistence.domain.exceptions import IriPolicyChanged
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.service.rp_service import IdKind, IdSpec, IriPolicy
-from rdf_persistence.domain.iris import POLICY_SEGMENT, Iris
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.iri_policy_guard import guard_iri_policy
+from rdf_persistence.services.iris import POLICY_SEGMENT, Iris
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.library import Library

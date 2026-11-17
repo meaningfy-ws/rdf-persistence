@@ -24,11 +24,11 @@ from rdf_persistence.domain.exceptions import (
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_discussion import Motivation
 from rdf_persistence.domain.generated.rp_workflow import Transition
-from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.discussion import dependents as discussion_dependents
+from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import Session

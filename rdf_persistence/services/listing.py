@@ -25,7 +25,6 @@ from rdf_persistence.domain.generated.service.rp_service import (
     ListPlan,
     ListRequest,
 )
-from rdf_persistence.domain.iris import root_of_graph
 from rdf_persistence.domain.sparql import (
     FORBIDDEN_IRI_CHARS,
     count,
@@ -36,6 +35,7 @@ from rdf_persistence.domain.sparql import (
     term_list,
 )
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.iris import root_of_graph
 from rdf_persistence.services.schema_structure import (
     holds_iri,
     holds_owned_part,

@@ -1,6 +1,6 @@
 """The file-store port (PD-1): adapters implement it, tenancy and the file services use it.
 
-Every method is async. A bucket is one tenant's file space, named as in ``domain.iris``; a blob is
+Every method is async. A bucket is one tenant's file space, named as in ``services.iris``; a blob is
 kept byte for byte under a key the caller makes up (a random one, per the file-store spec).
 """
 

@@ -17,9 +17,9 @@ from rdf_persistence.domain.generated.service.rp_service import (
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.domain.iris import Iris, system_database_name
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services.access import AccessRules, load_caller_access, load_role_definitions
+from rdf_persistence.services.iris import Iris, system_database_name
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.library import Library

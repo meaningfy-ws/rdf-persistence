@@ -6,10 +6,10 @@ import pytest
 
 from rdf_persistence import Action, TenantState
 from rdf_persistence.domain.exceptions import Forbidden, NotFound
-from rdf_persistence.domain.iris import (
+from rdf_persistence.services.access import AccessRules, load_role_definitions
+from rdf_persistence.services.iris import (
     DEFAULT_IRIS,
 )
-from rdf_persistence.services.access import AccessRules, load_role_definitions
 from tests.toy import (
     BOB,
     ROLES,

@@ -15,9 +15,9 @@ import pytest
 
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_provenance import Generation, Invalidation, Replace
-from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.domain.sparql import fill, term, triples_block
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.provenance import ID_PREFIX, activity_triples
 from rdf_persistence.services.session import Session, open_session

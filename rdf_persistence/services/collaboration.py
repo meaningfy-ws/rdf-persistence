@@ -21,9 +21,9 @@ from rdf_persistence.domain.generated.service.rp_service import (
     ReferrerList,
     VerifiedCaller,
 )
-from rdf_persistence.domain.iris import Iris
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.discussion import Discussion
+from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.services.reference_collections import ReferenceCollections

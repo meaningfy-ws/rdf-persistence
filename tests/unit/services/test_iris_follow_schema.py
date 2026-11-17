@@ -1,8 +1,8 @@
-"""The IRI and name rules of ``domain.iris`` are the schema's patterns (PD-6a); ``domain`` cannot read the schema, so this test pins them."""
+"""The IRI and name rules of ``services.iris`` are the schema's patterns (PD-6a); ``domain`` cannot read the schema, so this test pins them."""
 
 import pytest
 
-from rdf_persistence.domain import iris
+from rdf_persistence.services import iris
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 
 VIEW = load_schema(PACKAGE_DIR / "model" / "service" / "rp_service.yaml")

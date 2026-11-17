@@ -39,8 +39,8 @@ from rdf_persistence.domain.generated.service.rp_service import (
     ServiceSettings,
     TenantDump,
 )
-from rdf_persistence.domain.iris import Iris, stamps_graph_iri
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.iris import Iris, stamps_graph_iri
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.migrations import SchemaChain
 from rdf_persistence.services.migrations import chain_of as chain_of_schema

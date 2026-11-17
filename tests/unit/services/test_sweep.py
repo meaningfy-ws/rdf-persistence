@@ -8,7 +8,7 @@ from rdflib import Graph
 
 from rdf_persistence.domain.exceptions import NotFound, StoreNotWired, StoreUnavailable
 from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.iris import system_database_name, tenant_resource_name
+from rdf_persistence.services.iris import system_database_name, tenant_resource_name
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.sweep import sweep

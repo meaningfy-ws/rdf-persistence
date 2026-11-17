@@ -35,9 +35,9 @@ from rdf_persistence.domain.generated.service.rp_service import (
     MemberList,
     VerifiedCaller,
 )
-from rdf_persistence.domain.iris import Iris, graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
+from rdf_persistence.services.iris import Iris, graph_iri
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.services.session import Session

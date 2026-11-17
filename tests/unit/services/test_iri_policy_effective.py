@@ -6,7 +6,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.domain.iris import (
+from rdf_persistence.services.iris import (
     DEFAULT_ALPHABET,
     Iris,
     policy_differences,

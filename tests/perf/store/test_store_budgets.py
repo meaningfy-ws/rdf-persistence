@@ -8,7 +8,7 @@ import pytest
 from rdflib import Literal, URIRef
 
 from rdf_persistence import FusekiStore
-from rdf_persistence.domain.iris import loaded_graph_iri
+from rdf_persistence.services.iris import loaded_graph_iri
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import Session
 from tests.integration.store.sessions import (
