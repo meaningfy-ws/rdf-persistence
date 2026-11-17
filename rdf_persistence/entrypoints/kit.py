@@ -56,6 +56,7 @@ from rdf_persistence.services.generated.service.rp_service import (
     TenantSummary,
     VerifiedCaller,
 )
+from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.iris import IdSource, Iris, draw_id
 from rdf_persistence.services.listing import Listings
@@ -71,6 +72,7 @@ from rdf_persistence.services.schema_structure import (
 )
 from rdf_persistence.services.session import Session
 from rdf_persistence.services.store import Store, ToolkitStore
+from rdf_persistence.services.telemetry import error_type, log_extra
 from rdf_persistence.services.tenancy import (
     DEFAULT_STORE,
     GrantValidator,
@@ -227,9 +229,19 @@ class ServiceKit:
             StoreUnavailable: The store does not answer.
         """
         if envelope.origin == self.settings.deployment:
-            log.debug("skipped %s: this deployment published it", envelope.activity_class)
+            log.debug(
+                "skipped an event this deployment published",
+                extra=log_extra(
+                    LogContext(step="receive-own-event", activity_class_iri=envelope.activity_class)
+                ),
+            )
         elif self.bus is None:
-            log.debug("skipped %s: the kit has no message bus", envelope.activity_class)
+            log.debug(
+                "skipped an event: the kit has no message bus",
+                extra=log_extra(
+                    LogContext(step="receive-no-bus", activity_class_iri=envelope.activity_class)
+                ),
+            )
         elif (activity := self._incoming(envelope, body)) is not None:
             await self._hand_over(envelope.tenant, activity, self.bus)
 
@@ -239,11 +251,18 @@ class ServiceKit:
             cls = activity_class_named(self.view, self.models, envelope.activity_class)
             return cls.model_validate_json(body)
         except (LookupError, ValidationError) as error:
+            # no exc_info: a validation error's traceback would print the body's values (PD-8)
             log.warning(
-                "skipped an event of %s from %s: %s",
-                envelope.activity_class,
-                envelope.origin,
-                error_text(error),
+                "skipped an event whose class is unknown or whose body is invalid",
+                extra=log_extra(
+                    LogContext(
+                        step="receive-invalid-event",
+                        activity_class_iri=envelope.activity_class,
+                        event_origin=envelope.origin,
+                        error_type=error_type(error),
+                        error_detail=error_text(error),
+                    )
+                ),
             )
             return None
 
@@ -258,7 +277,18 @@ class ServiceKit:
                 else self.session(tenant, toolkit)
             )
         except (LookupError, ValueError) as error:
-            log.warning("skipped %s: %s", activity.id, error)
+            log.warning(
+                "skipped an event whose tenant has no session here",
+                exc_info=error,
+                extra=log_extra(
+                    LogContext(
+                        step="receive-no-session",
+                        activity_id=activity.id,
+                        tenant_id=tenant,
+                        error_type=error_type(error),
+                    )
+                ),
+            )
             return
         try:
             async with AsyncExitStack() as stack:
@@ -268,16 +298,45 @@ class ServiceKit:
                     await session.is_recorded(activity.id)
                 except ValueError as error:  # a tenant that is no IRI (D-19); never the observers'
                     log.warning(
-                        "skipped %s: the tenant %s is invalid: %s", activity.id, tenant, error
+                        "skipped an event whose tenant is no IRI",
+                        exc_info=error,
+                        extra=log_extra(
+                            LogContext(
+                                step="receive-invalid-tenant",
+                                activity_id=activity.id,
+                                tenant_id=tenant,
+                                error_type=error_type(error),
+                            )
+                        ),
                     )
                     return
                 await bus.publish(activity, session)
         except (DatabaseGone, NotFound) as error:
             log.warning(
-                "skipped %s: this deployment has no tenant %s (%s)", activity.id, tenant, error
+                "skipped an event of a tenant this deployment lacks",
+                exc_info=error,
+                extra=log_extra(
+                    LogContext(
+                        step="receive-unknown-tenant",
+                        activity_id=activity.id,
+                        tenant_id=tenant,
+                        error_type=error_type(error),
+                    )
+                ),
             )
         except MessageLimitExceeded as error:
-            log.error("%s exceeded the message limit: %s", activity.id, error)
+            log.error(
+                "an incoming event exceeded the message limit",
+                exc_info=error,
+                extra=log_extra(
+                    LogContext(
+                        step="receive-message-limit",
+                        activity_id=activity.id,
+                        message_limit=error.limit,
+                        error_type=error_type(error),
+                    )
+                ),
+            )
 
     def tenant_iri(self, tenant_id: str) -> str:
         """The IRI of the tenant whose id is ``tenant_id`` in a path.

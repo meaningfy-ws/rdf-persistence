@@ -23,6 +23,7 @@ from rdf_persistence.services.relay import Relay, chain_order
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import open_session
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus, wait_until_async
+from tests.logs import attributes
 from tests.toy import MODULES, SETTINGS, TOY_SCHEMA, dune, library_slots, template, toy_mapper
 from tests.unit.services.test_tenant_sweep import CREATOR, make_world
 
@@ -270,9 +271,13 @@ async def test_tc14_a_failed_publish_stops_that_database_only_and_order_is_kept(
     )
     assert classes(world, world.second) == [str(v.ADD)], "the other tenant went on"
     assert len(await pending(world, world.tenant)) == 2, "both activities stay pending"
-    assert [r.levelno for r in caplog.records] == [logging.WARNING], (
-        "the failure is logged as a warning"
-    )
+    [record] = caplog.records
+    assert record.levelno == logging.WARNING, "the failure is logged as a warning"  # TC-13a
+    assert record.getMessage() == "publishing an activity failed; retried next round"
+    assert attributes(record)["rp.step"] == "relay-publish-failed", "the step"
+    assert attributes(record)["rp.tenant.id"] == world.tenant, "the tenant"
+    assert attributes(record)["rp.activity.id"], "the activity"
+    assert record.exc_info, "with its exception"
     await relay.run_once()
     assert classes(world, world.tenant) == [str(v.ADD), str(v.REPLACE), str(v.REMOVE)], (
         "the later round publishes all in order"
@@ -339,9 +344,11 @@ async def test_tc15_a_database_that_is_gone_is_logged_at_debug(world, caplog):
     await _gone(world)
     with caplog.at_level(logging.DEBUG, logger=LOGGER):
         await world.relay().run_once()
-    assert [r.levelno for r in caplog.records] == [logging.DEBUG], (
-        "the gone database is logged at debug"
-    )
+    [record] = caplog.records  # TC-13a
+    assert record.levelno == logging.DEBUG, "the gone database is logged at debug"
+    assert attributes(record)["rp.tenant.id"] == world.tenant, "the tenant"
+    assert attributes(record)["rp.step"] == "relay-database-gone", "the step"
+    assert world.tenant not in record.getMessage(), "the tenant is no part of the message"
 
 
 async def test_tc15a_a_poison_record_is_given_up_and_the_next_one_is_published(world, caplog):
@@ -392,6 +399,8 @@ async def test_tc16_a_store_that_fails_for_one_tenant_does_not_stop_the_others(
     [record] = caplog.records
     assert record.levelno == logging.ERROR, "the failure is logged as an error"
     assert record.exc_info, "with the traceback"
+    assert attributes(record)["rp.step"] == "relay-database-failed", "the step"
+    assert attributes(record)["rp.tenant.id"] == world.tenant, "the tenant"
 
 
 async def test_tc16_the_loop_survives_a_failed_round_and_publishes_after_a_wake(
@@ -417,6 +426,7 @@ async def test_tc16_the_loop_survives_a_failed_round_and_publishes_after_a_wake(
                 lambda: _truth(len(caplog.records) == 1), "the failed round", poll_seconds=0.01
             )
         assert caplog.records[0].exc_info, "the failure carries its exception"
+        assert attributes(caplog.records[0])["rp.step"] == "relay-round-failed", "the step"
         relay.wake()
         await wait_until_async(
             lambda: _truth(len(world.broker.messages) == 1), "a publication", poll_seconds=0.01

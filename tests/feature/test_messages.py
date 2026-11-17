@@ -40,6 +40,7 @@ from rdf_persistence.services.write_guards import WriteGuards
 from rdf_persistence.testkit import FakeStore, RecordingObserver, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.fixtures.library.generated.books import Book
+from tests.logs import attributes, records_of
 from tests.toy import (
     ADA,
     BOB,
@@ -559,9 +560,11 @@ def _carries_generation(run: Run) -> None:
 @then("the failure is logged")
 def _failure_logged(run: Run, caplog: pytest.LogCaptureFixture) -> None:
     assert any(
-        r.levelno >= logging.ERROR and "fails" in r.getMessage() + str(r.exc_info)
-        for r in caplog.records
-    ), "the failure was logged at error level"
+        r.levelno >= logging.ERROR
+        and "rp.observer.name" in attributes(r)
+        and "fails" in str(r.exc_info)
+        for r in records_of(caplog, "bus-observer-failed")
+    ), "the failure was logged at error level, naming the observer, with its exception"
 
 
 @then("the second observer still receives the approval")

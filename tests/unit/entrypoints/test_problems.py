@@ -18,6 +18,7 @@ from rdf_persistence.entrypoints.problems import (
     kind_of,
 )
 from rdf_persistence.services.generated.service.rp_service import ProblemSlug
+from tests.logs import attributes
 from tests.toy_service import assert_problem
 
 BASE = "https://example.org/library/"
@@ -235,9 +236,10 @@ async def test_a_mapped_500_is_logged_once_at_error_with_its_type(error, caplog)
     assert record.getMessage() == "internal error answered", "a constant message"
     assert record.exc_info, "the error travels with it"
     assert record.exc_info[1] is error, "the very error"
-    assert (
-        record.__dict__["error.type"] == f"{type(error).__module__}.{type(error).__qualname__}"
-    ), "the fully qualified class name"
+    assert attributes(record) == {
+        "rp.step": "answer-internal-error",
+        "error.type": f"{type(error).__module__}.{type(error).__qualname__}",
+    }, "the step and the fully qualified class name, nothing else"  # TC-13c
 
 
 async def test_an_unmapped_failure_is_left_to_the_server_to_log(caplog) -> None:  # TC-33b

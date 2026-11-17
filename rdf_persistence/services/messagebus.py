@@ -19,9 +19,11 @@ from rdf_persistence.domain.generated.rp_provenance import Activity
 from rdf_persistence.domain.generated.rp_workflow import Transition
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.collaboration import Collaboration
+from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
 from rdf_persistence.services.provenance import Served, new_activity_id
 from rdf_persistence.services.session import Session
+from rdf_persistence.services.telemetry import log_extra
 
 log = logging.getLogger(__name__)
 
@@ -138,7 +140,16 @@ class MessageBus:
                 except MessageLimitExceeded:
                     raise
                 except Exception:
-                    log.exception("%s %s failed in the queue", type(queued).__name__, queued.id)
+                    log.exception(
+                        "a queued command failed",
+                        extra=log_extra(
+                            LogContext(
+                                step="bus-queued-failed",
+                                activity_class=type(queued).__name__,
+                                activity_id=queued.id,
+                            )
+                        ),
+                    )
             return result
         finally:
             run.closed = True
@@ -192,7 +203,17 @@ class MessageBus:
                     except MessageLimitExceeded:
                         raise
                     except Exception:
-                        log.exception("%s failed on %s", _name(observer), activity.id)
+                        log.exception(
+                            "an observer failed",
+                            extra=log_extra(
+                                LogContext(
+                                    step="bus-observer-failed",
+                                    observer_name=_name(observer),
+                                    activity_class=type(activity).__name__,
+                                    activity_id=activity.id,
+                                )
+                            ),
+                        )
         finally:
             _depth.reset(token)
 

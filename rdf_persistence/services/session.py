@@ -57,6 +57,7 @@ from rdf_persistence.services.generated.service.rp_service import (
     ListPlan,
     ListRequest,
 )
+from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.generated.templates.rp_templates import OwnerTerms
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.listing import (
@@ -77,6 +78,7 @@ from rdf_persistence.services.provenance import (
     first_class,
 )
 from rdf_persistence.services.store import Store
+from rdf_persistence.services.telemetry import log_extra
 from rdf_persistence.services.unique_keys import (
     KeyClaim,
     claims_of,
@@ -1512,7 +1514,10 @@ class Transaction:
             return await session._ask(
                 ID_TAKEN, provenance=term(session._provenance), id=term(URIRef(activity.id))
             )
-        log.warning("%s applied but was overtaken; not handed to on_commit", activity.id)
+        log.warning(
+            "an activity was applied but overtaken; not handed to on_commit",
+            extra=log_extra(LogContext(step="commit-overtaken", activity_id=activity.id)),
+        )
         return False
 
     def _completed(self) -> tuple[Activity, list[URIRef]] | None:
@@ -1556,7 +1561,10 @@ class Transaction:
         try:
             await hook(activity, self._session)
         except Exception:
-            log.exception("on_commit failed on %s", activity.id)
+            log.exception(
+                "on_commit failed",
+                extra=log_extra(LogContext(step="commit-hook-failed", activity_id=activity.id)),
+            )
 
     def _excluded(self) -> list[URIRef]:
         """The roots the transaction replaces or removes: their stored state is going away (PD-6)."""

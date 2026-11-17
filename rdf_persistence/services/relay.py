@@ -22,8 +22,10 @@ from rdf_persistence.services.decoding import decode_activity, error_text
 from rdf_persistence.services.event_hub import Offer
 from rdf_persistence.services.events import EventBus
 from rdf_persistence.services.generated.service.rp_service import EventEnvelope
+from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.services.session import Session
+from rdf_persistence.services.telemetry import error_type, log_extra
 from rdf_persistence.services.tenancy import Tenancy
 
 log = logging.getLogger(__name__)
@@ -116,7 +118,9 @@ class Relay:
             try:
                 await self.run_once()
             except Exception:
-                log.exception("a relay round failed")
+                log.exception(
+                    "a relay round failed", extra=log_extra(LogContext(step="relay-round-failed"))
+                )
 
     async def run_once(self) -> None:
         """One round over every database, never overlapping another."""
@@ -149,9 +153,15 @@ class Relay:
             async with opener() as session:
                 await self._drain(session, tenant, offers)
         except DatabaseGone:
-            log.debug("the database of %s is gone; skipped this round", tenant)
+            log.debug(
+                "the database of a tenant is gone; skipped this round",
+                extra=log_extra(LogContext(step="relay-database-gone", tenant_id=tenant)),
+            )
         except Exception:
-            log.exception("the relay failed on the database of %s; skipped this round", tenant)
+            log.exception(
+                "the relay failed on the database of a tenant; skipped this round",
+                extra=log_extra(LogContext(step="relay-database-failed", tenant_id=tenant)),
+            )
 
     async def _drain(self, session: Session, tenant: str, offers: bool) -> None:
         for iri, activity in chain_order(self._decoded(await session.pending_activities())):
@@ -159,10 +169,16 @@ class Relay:
                 # a validation error's traceback would print the record's values
                 trace = None if isinstance(activity, ValidationError) else activity
                 log.error(
-                    "the pending activity %s cannot be decoded: %s",
-                    iri,
-                    error_text(activity),
+                    "a pending activity cannot be decoded; marked failed",
                     exc_info=trace,
+                    extra=log_extra(
+                        LogContext(
+                            step="relay-undecodable",
+                            activity_id=iri,
+                            error_type=error_type(activity),
+                            error_detail=error_text(activity),
+                        )
+                    ),
                 )
                 await session.mark_failed(iri)
             elif not await self._publish(tenant, activity):
@@ -199,6 +215,14 @@ class Relay:
             ):  # a hung broker must not freeze the relay (D-18)
                 await self._bus.publish(envelope, activity)
         except Exception:  # noqa: BLE001 -- the relay must outlive a failed publish: logged, retried next round
-            log.warning("publishing %s failed; retried next round", activity.id, exc_info=True)
+            log.warning(
+                "publishing an activity failed; retried next round",
+                exc_info=True,
+                extra=log_extra(
+                    LogContext(
+                        step="relay-publish-failed", activity_id=activity.id, tenant_id=tenant
+                    )
+                ),
+            )
             return False
         return True
