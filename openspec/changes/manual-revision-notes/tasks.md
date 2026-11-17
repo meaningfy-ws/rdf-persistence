@@ -129,7 +129,7 @@ Stage 1 closes with the lead's `make check-all` and `make test-containers`, the 
 | TC-38b | `text/turtle, */*` and `application/*, text/turtle` | JSON, both (a quality tie; `best_match` would give Turtle) |
 | TC-38c | `text/turtle;q=abc` | Turtle (mimeparse reads the bad `q` as 1; today 406), the one accepted change |
 
-- [ ] 2.2 PD-6 (B-2, DEC-6): `services/jsonld.py` (`LOADER`, `dataset_of`, `triples_of`); bodies
+- [x] 2.2 PD-6 (B-2, DEC-6): `services/jsonld.py` (`LOADER`, `dataset_of`, `triples_of`); bodies
   and loaded JSON-LD both through it; `_refers_outside` and its helpers deleted. Layer: services.
   Tests: `tests/unit/services/test_loading.py` and `test_documents.py` unchanged first, then the
   rows below in `tests/unit/services/test_jsonld.py`. Gate: `make test-changed check-quality`.
@@ -245,7 +245,7 @@ section), in PR 3 before it merges.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · PR 1 · [ ] 2.1 · [x] 2.2 · [ ] 2.3 ·
   [ ] 2.4 · [ ] 2.5 · (tester) · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] reconcile · PR 3
 
 ## Verification

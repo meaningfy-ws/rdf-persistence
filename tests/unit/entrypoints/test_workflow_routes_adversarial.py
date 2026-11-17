@@ -26,19 +26,23 @@ async def toy():
         yield await Scene.set_up(service, http)
 
 
-# Class: a state the generic put may not set (all refused 403 by the same check); a bare name and a near-miss spelling.
-API_STATES = ["accepted", DRAFT.replace("https:", "http:")]
+# Class: a state the generic put may not set. A near-miss IRI is refused 403 by the guard; a bare name
+# is a relative IRI, which the one JSON-LD path refuses first (PD-6, D-10).
+API_STATES = [
+    ("accepted", 422, "invalid-body"),
+    (DRAFT.replace("https:", "http:"), 403, "forbidden"),
+]
 
 
-@pytest.mark.parametrize("state", API_STATES)
-async def test_the_generic_put_cannot_set_a_state(toy, state):
+@pytest.mark.parametrize(("state", "status", "problem"), API_STATES)
+async def test_the_generic_put_cannot_set_a_state(toy, state, status, problem):
     scene = toy
     response = await scene.http.put(
         scene.book,
         json={**DUNE_BODY, "workflow_status": state},
         headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
     )
-    assert_problem(response, 403, "forbidden")
+    assert_problem(response, status, problem)
     stored = await scene.http.get(scene.book, headers=scene.headers("ada"))
     assert (stored.json()["workflow_status"], stored.headers["etag"]) == (DRAFT, scene.book_etag), (
         "the book is in draft and unchanged"

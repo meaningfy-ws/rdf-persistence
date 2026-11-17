@@ -22,7 +22,7 @@ from linkml_runtime.utils.formatutils import camelcase
 from linkml_runtime.utils.schemaview import SchemaView
 from pyld import jsonld
 from pyshacl import validate
-from rdflib import RDF, SH, XSD, BNode, Graph, Literal, URIRef
+from rdflib import RDF, SH, BNode, Graph, Literal, URIRef
 from rdflib.term import Node
 
 from rdf_persistence.domain.exceptions import InvalidBody, PayloadTooLarge
@@ -40,6 +40,15 @@ from rdf_persistence.services.artifacts import (
     TYPE_KEY,
 )
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.services.jsonld import (
+    ABSOLUTE_IRIS,
+    LOADER,
+    NamedGraphRefused,
+    RelativeIriRefused,
+    RemoteContextRefused,
+    dataset_of,
+    triples_of,
+)
 from rdf_persistence.services.schema_structure import (
     annotation_text,
     holds_owned_part,
@@ -52,50 +61,15 @@ from rdf_persistence.services.schema_structure import (
     tenant_root_class,
 )
 
-NQUADS = {"format": "application/n-quads"}
 NATIVE = {"useNativeTypes": True}
 NOT_INLINE = "a JSON-LD context must be inline: remote contexts are not followed"
+ONE_GRAPH = "a body describes one graph"
 MAX_MESSAGES = 5
 # Objects in a body; with the byte bound, it keeps one request from costing a minute.
 MAX_NODES = 10_000
 TYPE_KEYS = ("type", TYPE_KEY)
 VALUE_KEY = "@value"
 LANGUAGE_KEY = "@language"
-
-
-def _refuse_remote(url: str, _options: Any) -> Any:
-    raise InvalidBody(NOT_INLINE)
-
-
-# pyld fetches nothing: every context it needs is in the document or the frame.
-LOADER = {"documentLoader": _refuse_remote}
-
-
-def dataset_of(graph: Graph) -> dict:
-    """The triples of ``graph`` as the dataset ``jsonld.from_rdf`` takes.
-
-    pyld 3.3.0 reads backslash sequences in N-Quads text wrongly (a literal of a backslash and `r`
-    comes back as a backslash and a carriage return), so the text goes through rdflib instead. A
-    language-tagged literal carries its ``language`` and the datatype ``rdf:langString``.
-    """
-
-    def term(node: Node) -> dict:
-        if isinstance(node, URIRef):
-            return {"type": "IRI", "value": str(node)}
-        if isinstance(node, BNode):
-            return {"type": "blank node", "value": f"_:{node}"}
-        assert isinstance(node, Literal)
-        if node.language:
-            return {
-                "type": "literal",
-                "value": str(node),
-                "language": node.language,
-                "datatype": str(RDF.langString),
-            }
-        return {"type": "literal", "value": str(node), "datatype": str(node.datatype or XSD.string)}
-
-    triples = [{"subject": term(s), "predicate": term(p), "object": term(o)} for s, p, o in graph]
-    return {"@default": triples}
 
 
 class Documents:
@@ -309,12 +283,14 @@ class Documents:
     @staticmethod
     def _triples(document: dict) -> Graph:
         try:
-            nquads = jsonld.to_rdf(document, {**NQUADS, **LOADER})
-            return Graph().parse(data=nquads, format="nt")
+            return triples_of(document)
+        except RemoteContextRefused as error:
+            raise InvalidBody(NOT_INLINE) from error
+        except NamedGraphRefused as error:
+            raise InvalidBody(ONE_GRAPH) from error
+        except RelativeIriRefused as error:
+            raise InvalidBody(ABSOLUTE_IRIS) from error
         except Exception as error:  # pyld and the N-Quads parser raise their own types
-            refusal = _refusal_in(error)  # pyld wraps what the loader raised
-            if refusal is not None:
-                raise refusal from error
             raise InvalidBody(f"the body is not valid JSON-LD: {str(error)[:200]}") from error
 
     def _part_iri(self, graph: Graph, node: Node, root: URIRef, tenant: str) -> URIRef:
@@ -525,18 +501,6 @@ def _refuse_bad_iris(graph: Graph) -> None:
     for term in {t for triple in graph for t in triple if isinstance(t, URIRef)}:
         if FORBIDDEN_IRI_CHARS.search(term):
             raise InvalidBody(f"{str(term)[:100]!r} is not a valid IRI")
-
-
-def _refusal_in(error: BaseException) -> InvalidBody | None:
-    """The ``InvalidBody`` somewhere in the chain of causes of ``error``, if one is."""
-    seen: set[int] = set()
-    link: BaseException | None = error
-    while link is not None and id(link) not in seen:
-        if isinstance(link, InvalidBody):
-            return link
-        seen.add(id(link))
-        link = link.__cause__ or link.__context__
-    return None
 
 
 def _inside(root: URIRef, iri: URIRef) -> bool:
