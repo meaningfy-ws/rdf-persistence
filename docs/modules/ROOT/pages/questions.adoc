@@ -247,6 +247,16 @@ reads `GET /tenants/{tenant}/rp-events` as server-sent events, resumable with `L
 7 days, and needs tenant `read`. See xref:howto/event-driven.adoc#relay[Carry commits to other
 deployments and to browsers].
 
+*How do I see traces and structured logs from the toolkit?*::
+The toolkit uses the OpenTelemetry API only, so its spans are no-ops until the application installs
+the SDK, an exporter, FastAPI's native telemetry, the httpx instrumentation, FastStream's
+`RedisTelemetryMiddleware` (through `RedisEventBus(middlewares=[...])`) and a logging bridge. The
+log attributes were renamed (`step` is now `rp.step`, `tenant` is `rp.tenant.id`) and the messages
+are constant, which is breaking for queries on the old names. See
+xref:howto/observability.adoc[See what the toolkit is doing], with the span and attribute tables,
+xref:howto/observability.adoc#old-to-new[the old-to-new names], and
+xref:howto/observability.adoc#never[what never reaches telemetry].
+
 == Developing the toolkit
 
 *How do I change a toolkit schema?*::

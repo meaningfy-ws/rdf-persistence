@@ -22,6 +22,7 @@
 * xref:howto/dump-restore.adoc[Back up or copy a project]
 * xref:howto/application-data.adoc[Keep data that belongs to no project]
 * xref:howto/tenant-stores.adoc[Put tenants on several stores]
+* xref:howto/observability.adoc[See what the toolkit is doing]
 
 * xref:user-guide/index.adoc[User guide]
 
