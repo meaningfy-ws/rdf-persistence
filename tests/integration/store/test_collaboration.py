@@ -20,7 +20,7 @@ from rdf_persistence.services.discussion import dependents
 from rdf_persistence.services.generated.service.rp_service import ReferrerList
 from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.mapper import DEFAULT_MAX_ROOTS, UnitOfWork
+from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import Session, open_session
 from rdf_persistence.services.workflows import Workflows, load_workflow, state_iri
@@ -315,9 +315,9 @@ async def test_a_member_the_caller_may_not_delete_refuses_the_cascade(session, c
 
 @pytest.mark.slow
 async def test_a_cascade_of_the_most_members_a_commit_holds_is_one_request(
-    store, session, collaboration, monkeypatch
+    store, session, collaboration, monkeypatch, toolkit
 ):  # PD-28 item 12: the real limit, on stored books
-    books = [book_iri(1000 + n) for n in range(DEFAULT_MAX_ROOTS - 1)]
+    books = [book_iri(1000 + n) for n in range(toolkit.limits.max_roots - 1)]
     for start in range(0, len(books), 100):
         work = UnitOfWork(session, toy_mapper())
         for iri in books[start : start + 100]:

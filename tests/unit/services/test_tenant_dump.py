@@ -41,6 +41,7 @@ from rdf_persistence.services.generated.service.rp_service import (
     ServiceSettings,
     TenantDump,
 )
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.migrations import SchemaChain
@@ -171,6 +172,7 @@ async def restored(
     max_bytes: int = MAX_BYTES,
     chains: Sequence[SchemaChain] = TOY_CHAINS,
     store: str = DEFAULT_STORE,
+    limits: LimitSettings | None = None,
 ):
     return await restore(
         tenancy or world.tenancy,
@@ -181,6 +183,7 @@ async def restored(
         max_bytes=max_bytes,
         chains=chains,
         store=store,
+        limits=limits,
     )
 
 
@@ -1158,6 +1161,16 @@ async def test_a_manifest_larger_than_its_cap_is_refused_whatever_the_budget(wor
     reason = await refused(world, edited(await dumped(world), MANIFEST, padded))
     assert MANIFEST in reason, "the reason names the manifest and its cap"
     assert "64" in reason, "the reason names the manifest and its cap"
+
+
+async def test_a_restore_takes_its_manifest_cap_from_its_limits_group(world):  # PD-7
+    def padded(payload: bytes) -> bytes:
+        manifest = TenantDump.model_validate_json(payload)
+        return manifest.replaced(label="x" * 3_000).model_dump_json().encode()
+
+    data = edited(await dumped(world), MANIFEST, padded)  # under the default cap of 64 KiB
+    reason = await refused(world, data, limits=LimitSettings(max_manifest_bytes=2048))
+    assert "2 KiB" in reason, "the reason names the cap the group gave"
 
 
 async def test_the_gzip_stream_after_the_end_marker_is_bounded_by_the_budget(world):

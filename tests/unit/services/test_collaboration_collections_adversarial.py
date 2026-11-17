@@ -31,9 +31,10 @@ from rdf_persistence.domain.generated.rp_collections import MembershipRule, Slot
 from rdf_persistence.domain.sparql import term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import Filter, ListRequest, MemberList
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.mapper import DEFAULT_MAX_ROOTS, Mapper, UnitOfWork
+from rdf_persistence.services.mapper import Mapper, UnitOfWork
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.write_guards import WriteGuards
 from rdf_persistence.testkit import FakeStore, fake_session
@@ -177,7 +178,7 @@ async def test_a_conflicting_cascade_leaves_everything_and_no_marker(guarded, co
 
 
 async def test_a_cascade_too_large_leaves_everything_and_no_marker(toy_session, collaboration):
-    members = [book_iri(n) for n in range(1, DEFAULT_MAX_ROOTS + 1)]
+    members = [book_iri(n) for n in range(1, LimitSettings().max_roots + 1)]
     await put(toy_session, a_shelf(S1, had_member=members))
     old = await heads_of(toy_session, [S1])
     with pytest.raises(CommitTooLarge):

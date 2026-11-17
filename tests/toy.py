@@ -28,6 +28,7 @@ from rdf_persistence.domain.generated import (
     rp_workflow,
 )
 from rdf_persistence.domain.layout import graph_iri
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.schema import load_schema
 from tests.fixtures.library.generated import (
     books,
@@ -77,6 +78,15 @@ MODULES = (
 @cache
 def toy_mapper() -> Mapper:
     return Mapper(load_schema(TOY_SCHEMA), generated_models(*MODULES))
+
+
+def toy_mapper_limited(max_roots: int) -> Mapper:
+    """A toy mapper whose commits hold at most ``max_roots`` roots (``LimitSettings``, PD-7)."""
+    return Mapper(
+        load_schema(TOY_SCHEMA),
+        generated_models(*MODULES),
+        limits=LimitSettings(max_roots=max_roots),
+    )
 
 
 def book_iri(n: object) -> str:

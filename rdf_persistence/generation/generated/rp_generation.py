@@ -86,6 +86,8 @@ class HardRule(str, Enum):
     "The root schema of a target that sets `migrations` has a `version`, written as a quoted string in the YAML source, since an unquoted `1.10` is read as the number 1.1."
     TOOLKIT_FILLED = "toolkit_filled"
     "A class of the application does not give `slot_usage`, `ifabsent` or an attribute of its own to a slot annotated `toolkit_filled`, gives no slot of its own the `slot_uri` of one, and has no slot that is both `payload` and required."
+    DEFAULT_INSTANCE = "default_instance"
+    "A slot annotated `default_instance` ranges over a class, and every required slot of that class has an `ifabsent`, so the class can be built with no argument."
 
 
 class LockRule(str, Enum):
@@ -160,6 +162,8 @@ class GenerationAnnotation(str, Enum):
     "On a slot, `true` when its value must already be of its type: a string is not read as a number, and a boolean is not read as one either."
     PYTHON_IMPORT = "python_import"
     "On a type, the Python module its `repr` class is imported from: the generated module then reads `from \u003cmodule\u003e import \u003crepr\u003e`."
+    DEFAULT_INSTANCE = "default_instance"
+    "On a slot whose range is a class, `true` when the slot\u0027s default is a new instance of that class (`Field(default_factory=\u003cRange\u003e)`), so it is never absent. The hard check refuses it on a slot whose range is not a class, or whose range class has a required slot with no `ifabsent`."
 
 
 

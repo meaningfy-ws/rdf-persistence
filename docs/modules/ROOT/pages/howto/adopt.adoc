@@ -903,8 +903,10 @@ every root.
 ==== Save more than 500 aggregates
 
 _What if I commit more than 500 aggregates at once?_ By default `commit()` refuses. A unit of work
-holds at most `max_roots` changed roots (added, replaced or removed), 500 unless you pass another
-value: `UnitOfWork(session, mapper, max_roots=200)` (a value below 1 raises `ValueError`). Over the
+holds at most `max_roots` changed roots (added, replaced or removed), the limit of its mapper, 500
+unless you pass another: `Mapper(view, models, limits=LimitSettings(max_roots=200))` (a value below
+1 is refused by `LimitSettings`; `install_service(toolkit=...)` builds the kit's mapper from the
+same group). Over the
 limit, `commit()` raises `CommitTooLarge` before it reads or writes anything. The message names the
 count and the limit; over HTTP it is a 413.
 The unit of work is unchanged, so you can raise the limit or commit in batches.
@@ -913,7 +915,7 @@ For a large import, ask for batches:
 
 [source,python]
 ----
-work = UnitOfWork(session, mapper, max_roots=500)
+work = UnitOfWork(session, mapper)   # the mapper's max_roots, 500 by default
 for row in rows:
     work.add(Book(id=book_iri(row), label=row.title, description=row.text, author=row.author))
 try:

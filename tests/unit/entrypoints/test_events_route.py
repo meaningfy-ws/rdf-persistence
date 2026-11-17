@@ -20,6 +20,7 @@ from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.responses import CONTEXT_REL
 from rdf_persistence.entrypoints.sse import add_events_route
 from rdf_persistence.services.event_hub import EventHub
+from rdf_persistence.services.generated.settings.rp_settings import EventSettings, SseSettings
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 from tests.unit.entrypoints.scene import Scene
 
@@ -149,16 +150,22 @@ async def listening(hub: EventHub, n: int = 1) -> None:
     await asyncio.wait_for(subscribed(), TIMEOUT)
 
 
+def short_times(**changes) -> SseSettings:
+    """The settings of the route with the short times these tests need, ``changes`` on top."""
+    return SseSettings(
+        **{
+            "access_ttl_seconds": 0.001,
+            "keep_alive_seconds": KEEP_ALIVE,
+            "resume_window_seconds": WEEK.total_seconds(),
+            **changes,
+        }
+    )
+
+
 def mount(service: ToyService, prefix: str, **changes) -> str:
     """The route of the tenants' events again, under ``prefix``, with short times; its prefix."""
     router = APIRouter()
-    settings = {
-        "access_ttl": timedelta(0),
-        "keep_alive": KEEP_ALIVE,
-        "resume_window": WEEK,
-        "clock": lambda: datetime.now(UTC),
-        **changes,
-    }
+    settings = {"sse": short_times(), "clock": lambda: datetime.now(UTC), **changes}
     add_events_route(router, service.kit, **settings)
     service.app.include_router(router, prefix=prefix)
     return prefix
@@ -303,7 +310,7 @@ async def test_a_grant_removed_while_following_ends_the_stream_at_the_next_keep_
 async def test_a_full_queue_ends_the_stream_of_the_route(
     settled: Scene, fast: str
 ) -> None:  # TC-36
-    settled.service.kit.hub = EventHub(max_queue=2)
+    settled.service.kit.hub = EventHub(events=EventSettings(hub_queue_size=2))
     hub = settled.service.kit.hub
     part = Generation(
         activity="urn:uuid:a",
@@ -347,7 +354,12 @@ async def test_a_stream_ends_after_its_lifetime_and_a_resume_gets_what_came_afte
     settled: Scene, service: ToyService
 ) -> None:  # D-20
     now = [datetime.now(UTC)]
-    mount(service, "/short", max_lifetime=timedelta(minutes=5), clock=lambda: now[0])
+    mount(
+        service,
+        "/short",
+        sse=short_times(max_lifetime_seconds=timedelta(minutes=5).total_seconds()),
+        clock=lambda: now[0],
+    )
     async with follow(settled, prefix="/short") as bob:
         await listening(service.kit.hub)
         etag = await replace(settled, settled.book, settled.book_etag, "In time")

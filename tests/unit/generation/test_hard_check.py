@@ -109,6 +109,13 @@ FAULTS = (
         SHELVE_SLOTS + PAYLOAD_REQUIRED,
         "ShelveBooks",
     ),
+    Fault(
+        HardRule.DEFAULT_INSTANCE,
+        "books.yaml",
+        "        annotations:\n          owned: false\n",
+        "        annotations:\n          owned: false\n          default_instance: 'true'\n",
+        "shade",
+    ),
     Fault(HardRule.MEANING, "books.yaml", "        meaning: schema:Fiction\n", "", "fiction"),
     Fault(HardRule.IRI, "books.yaml", "default_prefix: lib\n", "", "Genre"),
     Fault(HardRule.RP_PATH, "books.yaml", "      rp_path: books\n", "", "Book"),
@@ -279,6 +286,145 @@ def test_a_slot_that_aliases_a_toolkit_filled_slot_is_refused(break_toy: Breaker
     assert "ShelveBooks" in found[0], f"the class is not named in {found[0]}"
     assert "shelf_note" in found[0], f"the slot is not named in {found[0]}"
     assert "started_at_time" in found[0], f"the toolkit-filled slot is not named in {found[0]}"
+
+
+DEFAULT_INSTANCE_SCHEMA = """
+id: https://example.org/ns/groups
+name: groups
+title: Groups
+description: A settings class that holds a group of its own.
+prefixes: {{g: "https://example.org/ns/g#", linkml: "https://w3id.org/linkml/"}}
+default_prefix: g
+default_range: string
+imports: [linkml:types]
+classes:
+  Group:
+    title: Group
+    description: A group of values.
+    slots: [size, name]
+    slot_usage:
+      size: {{ifabsent: "int(3)"}}
+      name: {{required: {name_required}{name_default}}}
+  Holder:
+    title: Holder
+    description: Holds a group.
+    slots: [group, label]
+slots:
+  size:
+    title: Size
+    description: A count.
+    range: integer
+  name:
+    title: Name
+    description: A name.
+  group:
+    title: Group slot
+    description: The group.
+    range: Group
+    annotations:
+      default_instance: 'true'
+  label:
+    title: Label
+    description: A label.
+    annotations:
+      default_instance: 'true'
+"""
+
+
+def _default_instance_problems(
+    tmp_path: Path, *, name_required: str = "false", name_default: str = ""
+) -> list[str]:
+    root = tmp_path / "groups.yaml"
+    root.write_text(
+        DEFAULT_INSTANCE_SCHEMA.format(name_required=name_required, name_default=name_default),
+        encoding="utf-8",
+    )
+    return [p for p in problems_of(root) if f"[{HardRule.DEFAULT_INSTANCE.value}]" in p]
+
+
+def test_default_instance_on_a_slot_ranging_over_a_type_is_refused_naming_the_slot(
+    tmp_path: Path,
+) -> None:
+    """TC-58: `label` ranges over string."""
+    found = _default_instance_problems(tmp_path)
+    assert len(found) == 1, f"one slot over a type, one problem: {found}"
+    assert "label" in found[0], f"the slot is not named in {found[0]}"
+
+
+def test_default_instance_on_a_class_with_a_required_slot_without_default_is_refused(
+    tmp_path: Path,
+) -> None:
+    """TC-58: `Group.name` is required and has no `ifabsent`."""
+    found = _default_instance_problems(tmp_path, name_required="true")
+    named = [p for p in found if "] group:" in p]
+    assert len(named) == 1, f"the slot `group` is the one to name: {found}"
+    assert "name" in named[0], f"the required slot is not named in {named[0]}"
+
+
+def test_default_instance_on_a_class_whose_required_slots_all_default_passes(
+    tmp_path: Path,
+) -> None:
+    """TC-58's counterpart: a required slot with an `ifabsent` does not block the default instance."""
+    found = _default_instance_problems(
+        tmp_path, name_required="true", name_default=', ifabsent: "string(x)"'
+    )
+    assert [p for p in found if "] group:" in p] == [], f"the group has defaults: {found}"
+
+
+def test_default_instance_on_a_multivalued_slot_is_refused_naming_the_slot(tmp_path: Path) -> None:
+    """D-32 (3): a list of groups has no one default instance; the check names the slot `groups`."""
+    text = DEFAULT_INSTANCE_SCHEMA.format(name_required="false", name_default="")
+    text = text.replace("slots: [group, label]", "slots: [group, label, groups]")
+    text += (
+        "  groups:\n    title: Groups\n    description: Many groups.\n    range: Group\n"
+        "    multivalued: true\n    annotations:\n      default_instance: 'true'\n"
+    )
+    root = tmp_path / "groups.yaml"
+    root.write_text(text, encoding="utf-8")
+    found = [p for p in problems_of(root) if f"[{HardRule.DEFAULT_INSTANCE.value}] groups:" in p]
+    assert len(found) == 1, f"the multivalued slot `groups` is the one to name: {found}"
+    assert "multivalued" in found[0], f"the reason is not given in {found[0]}"
+
+
+def test_default_instance_over_a_class_declared_after_the_holder_is_refused(
+    tmp_path: Path,
+) -> None:
+    """The generated module would name the range class before it exists, and fail on import."""
+    text = DEFAULT_INSTANCE_SCHEMA.format(name_required="false", name_default="")
+    group, holder = (
+        text.split("  Holder:\n")[0].split("  Group:\n")[1],
+        text.split("  Holder:\n")[1],
+    )
+    holder_block, slots = holder.split("slots:\n", 1)
+    swapped = (
+        text.split("classes:\n")[0]
+        + "classes:\n  Holder:\n"
+        + holder_block
+        + "  Group:\n"
+        + group
+        + "slots:\n"
+        + slots
+    )
+    root = tmp_path / "groups.yaml"
+    root.write_text(swapped, encoding="utf-8")
+    found = [p for p in problems_of(root) if f"[{HardRule.DEFAULT_INSTANCE.value}] group:" in p]
+    assert len(found) == 1, f"the slot `group` is the one to name: {found}"
+    assert "Holder" in found[0], f"the class that holds it is not named in {found[0]}"
+
+
+def test_a_run_with_a_default_instance_over_a_type_exits_1_naming_the_slot_and_writes_nothing(
+    break_toy: Breaker, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """TC-58: `rp-generate` itself fails."""
+    root = break_toy(
+        "books.yaml",
+        "        annotations:\n          owned: false\n",
+        "        annotations:\n          owned: false\n          default_instance: 'true'\n",
+    )
+    before = sorted(p.name for p in root.parent.iterdir())
+    assert main(["--project", str(root.parent / "pyproject.toml")]) == 1, "wrong exit code"
+    assert "shade" in capsys.readouterr().err, "the slot is not named"
+    assert sorted(p.name for p in root.parent.iterdir()) == before, "outputs were touched"
 
 
 def test_a_comment_subclass_that_narrows_a_state_slot_is_refused(break_toy: Breaker) -> None:
@@ -824,9 +970,9 @@ def test_the_toy_with_migrations_and_a_quoted_version_passes(toy_copy: Path) -> 
     assert _stored_schema_problems(toy_copy / ROOT_SCHEMA, "migrations") == [], "the toy is stored"
 
 
-def test_the_toolkits_six_targets_pass_the_hard_check_with_their_own_settings() -> None:
-    """TC-10: rp_service, rp_templates, rp_telemetry, rp_wire and rp_generation need no migrations folder; rp.yaml has one."""
+def test_the_toolkits_seven_targets_pass_the_hard_check_with_their_own_settings() -> None:
+    """TC-10: rp_service, rp_templates, rp_telemetry, rp_settings, rp_wire and rp_generation need no migrations folder; rp.yaml has one."""
     targets = read_targets(REPO / "pyproject.toml")
-    assert len(targets) == 6, [t.schema_file for t in targets]
+    assert len(targets) == 7, [t.schema_file for t in targets]
     found = generate(targets, REPO, (steps.HARD_STEP,), check=True)
-    assert [format_problem(p) for p in found] == [], "the toolkit's six targets raise no problem"
+    assert [format_problem(p) for p in found] == [], "the toolkit's seven targets raise no problem"

@@ -24,6 +24,7 @@ from rdf_persistence.domain.exceptions import (
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_provenance import Activity, Add, Remove, Replace
 from rdf_persistence.domain.generated.rp_workflow import Transition
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.messagebus import MessageBus, Work, command
@@ -470,7 +471,11 @@ async def test_many_queued_commands_run_up_to_the_limit_then_the_rest_is_dropped
         for _ in range(10):
             await work.send(command(Remove))
 
-    bus = MessageBus({Replace: first, Remove: rec.handler("remove")}, {}, limit=4)
+    bus = MessageBus(
+        {Replace: first, Remove: rec.handler("remove")},
+        {},
+        limits=LimitSettings(max_messages=4),
+    )
 
     with pytest.raises(MessageLimitExceeded, match="message limit 4 reached"):
         await bus.handle(command(Replace), collaboration)
@@ -486,7 +491,9 @@ async def test_a_limit_of_one_lets_a_command_that_sends_nothing_through_and_refu
         return "result"
 
     bus = MessageBus(
-        {Replace: rec.handler("replace", "ok"), Add: sends, Remove: rec.handler("r")}, {}, limit=1
+        {Replace: rec.handler("replace", "ok"), Add: sends, Remove: rec.handler("r")},
+        {},
+        limits=LimitSettings(max_messages=1),
     )
 
     assert await bus.handle(command(Replace), collaboration) == "ok", "one command fits"
@@ -600,7 +607,9 @@ async def test_an_observer_that_sends_a_command_each_time_stops_at_the_limit_wit
         await work.send(command(ShelveBooks))
 
     async with world(
-        commands={ShelveBooks: shelving()}, observers={ShelveBooks: [again]}, limit=3
+        commands={ShelveBooks: shelving()},
+        observers={ShelveBooks: [again]},
+        limits=LimitSettings(max_messages=3),
     ) as w:
         # the toy handler commits the same labels again: each run changes nothing but the version
         with pytest.raises(MessageLimitExceeded):
@@ -621,7 +630,7 @@ async def test_an_observer_that_commits_in_a_loop_outside_handle_stops_with_a_re
         iri = book_iri(100 + count)
         await work.session.add_graph(iri, toy_mapper().to_triples(dune(iri, chapters=1)))
 
-    async with world(observers={Add: [breed]}, limit=5) as w:
+    async with world(observers={Add: [breed]}, limits=LimitSettings(max_messages=5)) as w:
         with caplog.at_level(logging.ERROR):
             await w.session.add_graph(B3, toy_mapper().to_triples(dune(B3, chapters=1)))
 
@@ -641,7 +650,9 @@ async def test_an_observer_that_commits_in_a_loop_inside_handle_is_stopped_by_th
         await work.session.add_graph(iri, toy_mapper().to_triples(dune(iri, chapters=1)))
 
     async with world(
-        commands={ShelveBooks: shelving()}, observers={Activity: [breed]}, limit=5
+        commands={ShelveBooks: shelving()},
+        observers={Activity: [breed]},
+        limits=LimitSettings(max_messages=5),
     ) as w:
         with contextlib.suppress(MessageLimitExceeded):
             await w.bus.handle(command(ShelveBooks), w.collaboration)
@@ -659,7 +670,9 @@ async def test_a_nested_handle_loop_in_an_observer_is_bounded_with_a_real_sessio
             await w.bus.handle(command(ShelveBooks), work.collaboration)
 
     async with world(
-        commands={ShelveBooks: shelving()}, observers={ShelveBooks: [nested]}, limit=4
+        commands={ShelveBooks: shelving()},
+        observers={ShelveBooks: [nested]},
+        limits=LimitSettings(max_messages=4),
     ) as w:
         with caplog.at_level(logging.ERROR):
             await w.bus.handle(command(ShelveBooks), w.collaboration)  # D-10: not raised to us
@@ -691,7 +704,7 @@ async def test_a_cancelled_observer_leaves_no_nesting_count_behind():  # PD-13
         if state["cancel"]:
             raise asyncio.CancelledError
 
-    async with world(observers={Add: [sometimes]}, limit=2) as w:
+    async with world(observers={Add: [sometimes]}, limits=LimitSettings(max_messages=2)) as w:
         for n in range(5):
             state["cancel"] = n % 2 == 0
             iri = book_iri(50 + n)

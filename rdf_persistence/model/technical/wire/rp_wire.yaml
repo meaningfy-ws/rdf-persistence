@@ -631,9 +631,11 @@ slots:
   zitadel_state:
     title: Zitadel state
     description: >-
-      The state of the account; the active one is `USER_STATE_ACTIVE`.
+      The state of the account; the active one is `USER_STATE_ACTIVE`. A state outside the enum makes
+      the answer unreadable.
     slot_uri: rp:zitadelState
     alias: state
+    range: ZitadelUserState
   zitadel_username:
     title: Zitadel username
     description: >-
@@ -812,3 +814,32 @@ enums:
         title: Missing role
         description: The project has no such role.
         meaning: rp:BadRequestMeansMissingRole
+  ZitadelUserState:
+    title: Zitadel user state
+    description: >-
+      The state of a user in the Zitadel v2 user API. The wire value is the permissible value itself.
+    permissible_values:
+      USER_STATE_UNSPECIFIED:
+        title: Unspecified
+        description: The user has no state.
+        meaning: rp:ZitadelUserStateUnspecified
+      USER_STATE_ACTIVE:
+        title: Active
+        description: The user can sign in; the only state of an active account.
+        meaning: rp:ZitadelUserStateActive
+      USER_STATE_INACTIVE:
+        title: Inactive
+        description: The user was deactivated and cannot sign in until it is reactivated.
+        meaning: rp:ZitadelUserStateInactive
+      USER_STATE_DELETED:
+        title: Deleted
+        description: The user was deleted.
+        meaning: rp:ZitadelUserStateDeleted
+      USER_STATE_LOCKED:
+        title: Locked
+        description: The user was locked, for example after too many failed sign-ins.
+        meaning: rp:ZitadelUserStateLocked
+      USER_STATE_INITIAL:
+        title: Initial
+        description: The user was created and has not yet completed its first sign-in set-up.
+        meaning: rp:ZitadelUserStateInitial

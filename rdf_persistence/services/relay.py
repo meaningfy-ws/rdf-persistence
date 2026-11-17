@@ -22,6 +22,7 @@ from rdf_persistence.services.decoding import decode_activity, error_text
 from rdf_persistence.services.event_hub import Offer
 from rdf_persistence.services.events import EventBus
 from rdf_persistence.services.generated.service.rp_service import EventEnvelope
+from rdf_persistence.services.generated.settings.rp_settings import EventSettings
 from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.services.session import Session
@@ -89,9 +90,9 @@ class Relay:
         *,
         deployment: str,
         context: str,
-        interval: float = 5.0,
-        publish_timeout: float = 10.0,
+        events: EventSettings | None = None,
     ) -> None:
+        events = events or EventSettings()
         self._tenancy = tenancy
         self._view = view
         self._models = models
@@ -100,8 +101,8 @@ class Relay:
         self._hub = hub
         self._deployment = deployment
         self._context = context
-        self._interval = interval
-        self._publish_timeout = publish_timeout
+        self._interval = events.relay_interval_seconds
+        self._publish_timeout = events.publish_timeout_seconds
         self._wake = asyncio.Event()
         self._lock = asyncio.Lock()
 

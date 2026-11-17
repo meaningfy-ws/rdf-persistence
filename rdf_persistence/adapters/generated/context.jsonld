@@ -5,6 +5,7 @@
       "rp": "https://meaningfy.ws/ns/rdf-persistence#",
       "schema": "http://schema.org/",
       "shex": "http://www.w3.org/ns/shex#",
+      "skos": "http://www.w3.org/2004/02/skos/core#",
       "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
       "issuer": {
          "@id": "discoveryIssuer"
@@ -140,7 +141,16 @@
          "@id": "zitadelScope"
       },
       "state": {
-         "@id": "zitadelState"
+         "@id": "zitadelState",
+         "@type": "@vocab",
+         "@context": {
+            "USER_STATE_UNSPECIFIED": "https://meaningfy.ws/ns/rdf-persistence#ZitadelUserStateUnspecified",
+            "USER_STATE_ACTIVE": "https://meaningfy.ws/ns/rdf-persistence#ZitadelUserStateActive",
+            "USER_STATE_INACTIVE": "https://meaningfy.ws/ns/rdf-persistence#ZitadelUserStateInactive",
+            "USER_STATE_DELETED": "https://meaningfy.ws/ns/rdf-persistence#ZitadelUserStateDeleted",
+            "USER_STATE_LOCKED": "https://meaningfy.ws/ns/rdf-persistence#ZitadelUserStateLocked",
+            "USER_STATE_INITIAL": "https://meaningfy.ws/ns/rdf-persistence#ZitadelUserStateInitial"
+         }
       },
       "method": {
          "@id": "zitadelTextMethod"

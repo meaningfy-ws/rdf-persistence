@@ -120,7 +120,7 @@ Stage 2 closes like stage 1.
 
 ## Stage 3: central settings (PR 3)
 
-- [ ] 3.1 PD-6: `model/technical/settings/rp_settings.yaml` (target `kind = "technical"`,
+- [x] 3.1 PD-6: `model/technical/settings/rp_settings.yaml` (target `kind = "technical"`,
   `openapi = false`); the `default_instance` annotation in `GenerationAnnotation`,
   `SplitPydanticGenerator` and its generation check. Tests: `tests/unit/domain/test_settings_model.py`,
   `tests/unit/generation/test_ext_pydantic_split.py`. Gate: `make test-fast check-quality`.
@@ -135,7 +135,7 @@ Stage 2 closes like stage 1.
 | TC-57 | `JwksSettings(leeway_seconds=0)`, `(leeway_seconds=301)`, `(allowed_algorithms=[])` | valid; `ValidationError`; `ValidationError` |
 | TC-58 | a toy schema with `default_instance` on a slot ranging over `string` | `rp-generate` fails naming the slot |
 
-- [ ] 3.2 PD-7, PD-8 (C-2, C-3, C-4): `HttpAdapter`, `FusekiStore`, `JwksTokenVerifier`,
+- [x] 3.2 PD-7, PD-8 (C-2, C-3, C-4): `HttpAdapter`, `FusekiStore`, `JwksTokenVerifier`,
   `ZitadelIdentity`, `S3FileStore` take their groups; `_http.py`, `s3.py`, `jwks.py`, `zitadel.py`
   constants removed; `ZitadelUserState`; the four slugs in `testkit/zitadel.py`. Tests:
   `tests/unit/adapters/test_http.py`, `test_jwks.py`, `test_zitadel.py`, `test_s3_file_store.py`; the
@@ -152,7 +152,7 @@ Stage 2 closes like stage 1.
 | TC-33 | `ZitadelIdentity(..., directory=DirectorySettings(page_size=2))` over 5 users | 3 requests, 5 accounts |
 | TC-34 | `grep` for `PROJECTS`, `MACHINE_USERS`, `OWN_ORGANISATION`, `TOKEN_PATH` in `adapters/` | none |
 
-- [ ] 3.3 PD-7: `RedisEventBus`, `Relay`, `EventHub`, `MessageBus`/`bootstrap`, `Mapper` (the
+- [x] 3.3 PD-7: `RedisEventBus`, `Relay`, `EventHub`, `MessageBus`/`bootstrap`, `Mapper` (the
   roots limit A-2 put there; `UnitOfWork`'s `max_roots=` and `DEFAULT_MAX_ROOTS` deleted),
   `Documents`, `tenant_dump.restore`, `add_events_route` take their groups; `ServiceKit` and
   `install_service` take `toolkit=` and pass them on. Tests: the existing tests of each, moved to
@@ -167,7 +167,7 @@ Stage 2 closes like stage 1.
 | TC-38 | `EventHub(events=EventSettings(hub_queue_size=1))`, two activities unread | the existing overflow behaviour at the second |
 | TC-39 | `RedisEventBus(url, deployment="d", stream="x")` | `TypeError` (the keyword is gone) |
 
-- [ ] 3.4 PD-12 (B-8): `entrypoints/environment.py::settings_from_env`, the `settings` extra, the
+- [x] 3.4 PD-12 (B-8): `entrypoints/environment.py::settings_from_env`, the `settings` extra, the
   lazy export. Tests: `tests/unit/entrypoints/test_environment.py`, and
   `tests/unit/test_packaging.py` for the extra. Gate: `make test-changed check-quality`.
 
@@ -179,7 +179,7 @@ Stage 2 closes like stage 1.
 | TC-43 | `pydantic_settings` hidden (`sys.modules` patched to `None`) | `ImportError` naming `rdf-persistence[settings]` |
 | TC-44 | `settings_from_env(ServiceSettings, environ={...required fields...})` | a valid `ServiceSettings` (any generated settings model works) |
 
-- [ ] 3.5 The container lane over the new wiring: `tests/integration/` fixtures build every adapter
+- [x] 3.5 The container lane over the new wiring: `tests/integration/` fixtures build every adapter
   from `ToolkitSettings()`. Gate: `make test-containers`, then `make check-quality`.
 
 Stage 3 closes like stage 1. **The adversarial tester runs after 3.3** (an old keyword still
@@ -226,8 +226,8 @@ Stage 4 closes like stage 1, then the reconciliation of `proposal.md` (P-0004) i
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 ·
-  (tester) · [ ] 3.4 · [ ] 3.5 · PR 3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · reconcile · PR 4
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 · PR 2 · [x] 3.1 · [x] 3.2 · [x] 3.3 ·
+  (tester) · [x] 3.4 · [x] 3.5 · PR 3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · reconcile · PR 4
 
 ## Verification
 

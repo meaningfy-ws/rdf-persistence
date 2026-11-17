@@ -6,6 +6,7 @@ Refs: mwb2-adoption-fixes DEC-4 (#42), T-1.
 import re
 import subprocess
 import sys
+import tomllib
 import zipfile
 from pathlib import Path
 
@@ -64,4 +65,13 @@ def test_no_rdflib_short_format_name_and_no_retired_constant_is_left_in_the_pack
     ]
     assert not found, "rdflib takes media types, and the constants are gone (PD-10): " + "; ".join(
         found
+    )
+
+
+def test_tc43_the_settings_extra_pins_pydantic_settings() -> None:  # PD-12
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+
+    assert project["optional-dependencies"]["settings"] == ["pydantic-settings==2.16.2"]
+    assert not any("pydantic-settings" in name for name in project["dependencies"]), (
+        "the library stays out of the base dependencies"
     )

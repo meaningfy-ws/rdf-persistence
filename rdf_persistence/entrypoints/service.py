@@ -18,6 +18,7 @@ from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.events import EventBus
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.generated.service.rp_service import ServiceSettings
+from rdf_persistence.services.generated.settings.rp_settings import ToolkitSettings
 from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.iri_policy_guard import guard_iri_policy
 from rdf_persistence.services.iris import IdSource, draw_id
@@ -49,6 +50,7 @@ def install_service(
     bus: MessageBus | None = None,
     stores: Mapping[str, Store] = {},
     event_bus: EventBus | None = None,
+    toolkit: ToolkitSettings | None = None,
 ) -> ServiceKit:
     """Serve the application's schema on ``app``: its routes, its problem responses, its start-up.
 
@@ -92,6 +94,11 @@ def install_service(
     ``event_bus`` carries the commits to the other deployments (aggregate-events). Its consumer starts
     with the app, with ``kit.receive``, and stops with it. Every commit is relayed (to the live
     subscribers too) whether or not there is an event bus.
+
+    ``toolkit`` holds the deployment values of the toolkit's own pieces (a fresh ``ToolkitSettings``,
+    every default, unless given): the kit gives ``limits`` to its documents, mapper and restore,
+    ``events`` to its hub and relay, and the events route its ``sse``. The ``http``, ``jwks`` and
+    ``directory`` groups are for the adapters your composition root builds.
 
     Returns the kit the routes share, for the consumer's own routes: its ``tenancy``, ``store``,
     ``files`` and ``identity``, and ``require`` and ``require_aggregate``, the token and access check
@@ -138,6 +145,7 @@ def install_service(
         workflows=workflows,
         stores=stores,
         event_bus=event_bus,
+        toolkit=toolkit,
     )
     kit.bus = bus
     _require_same_principals(kit)

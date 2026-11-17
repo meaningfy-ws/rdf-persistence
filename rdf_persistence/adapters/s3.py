@@ -25,6 +25,7 @@ from rdf_persistence.domain.exceptions import (
     TenantGone,
 )
 from rdf_persistence.domain.generated.rp_files import BlobEntry
+from rdf_persistence.services.generated.settings.rp_settings import HttpSettings
 from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.telemetry import log_extra
 
@@ -32,7 +33,6 @@ NO_SUCH_BUCKET, NO_SUCH_KEY = "NoSuchBucket", "NoSuchKey"
 BUCKET_EXISTS = frozenset({"BucketAlreadyOwnedByYou", "BucketAlreadyExists"})
 DEFAULT_REGION = "us-east-1"  # the one region whose create_bucket takes no location constraint
 DELETE_BATCH = 1000  # DeleteObjects takes at most this many keys
-CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS, MAX_ATTEMPTS = 5, 30, 3
 
 log = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ def _translate(error: ClientError, *, bucket_missing: type[PersistenceError]) ->
 class S3FileStore:
     """A ``FileStore`` over an S3-compatible endpoint."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913 - the endpoint, the credentials and the settings group
         self,
         endpoint: str,
         access_key_id: str,
@@ -76,8 +76,13 @@ class S3FileStore:
         region: str,
         *,
         client: BaseClient | None = None,
+        http: HttpSettings | None = None,
     ) -> None:
-        """Connect lazily to ``endpoint``; ``client`` replaces the boto3 client (for tests)."""
+        """Connect lazily to ``endpoint``; ``client`` replaces the boto3 client (for tests).
+
+        ``http`` sets the client's timeouts and attempts (the defaults of ``HttpSettings`` if none).
+        """
+        http = http or HttpSettings()
         self._region = region
         self._client = client or boto3.client(
             "s3",
@@ -87,9 +92,9 @@ class S3FileStore:
             region_name=region,
             config=Config(
                 s3={"addressing_style": "path"},
-                connect_timeout=CONNECT_TIMEOUT_SECONDS,
-                read_timeout=READ_TIMEOUT_SECONDS,
-                retries={"max_attempts": MAX_ATTEMPTS},
+                connect_timeout=http.connect_timeout_seconds,
+                read_timeout=http.read_timeout_seconds,
+                retries={"max_attempts": http.max_attempts},
             ),
         )
 

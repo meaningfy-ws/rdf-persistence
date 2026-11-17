@@ -737,7 +737,7 @@ shows the same request for a transition). The activity is handed over only when 
 `__mro__`, nearest first. An observer gets the activity and a `Work` on the session that committed;
 a command it sends with `work.send` is queued, and `handle` runs the queue first in first out
 after the handler, each command through the same refusal and dispatch. A `handle` call starts at
-most `limit` commands; the next raises `MessageLimitExceeded` and drops the queue. A commit
+most `LimitSettings.max_messages` commands (the bus's `limits` group, default 100); the next raises `MessageLimitExceeded` and drops the queue. A commit
 made outside `handle` (a generic route) is published the same way, with no collaboration, so its
 observers cannot send.
 

@@ -34,7 +34,7 @@ from rdf_persistence.services.unique_keys import (
 )
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from tests.toy import TENANT, TOY_SCHEMA, book_iri, dune, graph_of, toy_mapper
+from tests.toy import TENANT, TOY_SCHEMA, book_iri, dune, graph_of, toy_mapper_limited
 
 A, B, C, D, E = (book_iri(n) for n in (1, 2, 3, 4, 5))
 OTHER_TENANT = "https://example.org/libraries/other"
@@ -357,7 +357,7 @@ async def test_held_reads_the_claims_a_diagnosis_found(store, session):
 
 
 async def test_tc27_a_key_conflict_of_a_later_batch_keeps_its_type_and_says_how_far_it_got(session):
-    unit = UnitOfWork(session, toy_mapper(), max_roots=2)
+    unit = UnitOfWork(session, toy_mapper_limited(2))
     for iri, isbn in ((C, "5"), (D, "6"), (E, "5")):
         unit.add(dune(iri, chapters=0).model_copy(update={"isbn": isbn}))
     with pytest.raises(KeyConflict) as refused:

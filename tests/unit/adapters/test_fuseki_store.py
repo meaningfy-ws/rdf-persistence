@@ -17,6 +17,7 @@ from rdf_persistence.domain.exceptions import (
     NotFound,
     StoreUnavailable,
 )
+from rdf_persistence.services.generated.settings.rp_settings import HttpSettings
 from rdf_persistence.testkit import assert_isomorphic
 from tests.logs import attributes, records_of
 
@@ -44,6 +45,21 @@ def store_answering(response) -> tuple[FusekiStore, Recorder]:
 
 def reply(status: int = 200, content: bytes = b"", content_type: str = "text/plain"):
     return httpx.Response(status, content=content, headers={"content-type": content_type})
+
+
+async def test_the_store_waits_as_its_http_settings_say():
+    """TC-28: a read timeout of 7 seconds, the connect timeout left at its default of 5."""
+    store = FusekiStore(
+        URL,
+        "u",
+        "p",
+        http=HttpSettings(read_timeout_seconds=7),
+        transport=httpx.MockTransport(lambda _r: reply()),
+    )
+    async with store:
+        timeout = store.client.timeout
+    assert timeout.read == 7.0, "the read timeout is the group's"
+    assert timeout.connect == 5.0, "the connect timeout is the group's default"
 
 
 async def test_select_posts_the_query_and_returns_rows():

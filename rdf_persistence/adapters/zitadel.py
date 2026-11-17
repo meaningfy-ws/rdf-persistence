@@ -27,10 +27,15 @@ from rdf_persistence.adapters.generated.rp_wire import (
     ZitadelUserGrant,
     ZitadelUserPage,
     ZitadelUserQuery,
+    ZitadelUserState,
     ZitadelWindow,
 )
 from rdf_persistence.domain.exceptions import IdentityUnavailable, NotFound
 from rdf_persistence.services.generated.service.rp_service import AccountSummary
+from rdf_persistence.services.generated.settings.rp_settings import (
+    DirectorySettings,
+    HttpSettings,
+)
 from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.telemetry import log_extra
 
@@ -38,12 +43,6 @@ ORG_HEADER = "x-zitadel-orgid"
 USERS = "/v2/users"
 MANAGEMENT = "/management/v1"
 USER_GRANT_SEARCH = f"{MANAGEMENT}/users/grants/_search"
-PROJECTS = f"{MANAGEMENT}/projects"
-MACHINE_USERS = f"{MANAGEMENT}/users/machine"
-OWN_ORGANISATION = f"{MANAGEMENT}/orgs/me"
-TOKEN_PATH = "/oauth/v2/token"
-PAGE_SIZE = 100
-ACTIVE_STATE, INACTIVE_STATE = "USER_STATE_ACTIVE", "USER_STATE_INACTIVE"
 UNREADABLE = "Zitadel answered with something unreadable"
 
 log = logging.getLogger(__name__)
@@ -60,7 +59,7 @@ def _summary(user: ZitadelUser, roles: list[str]) -> AccountSummary:
         account_id=user.userId,
         user_name=user.username,
         email=email,
-        active=user.state == ACTIVE_STATE,
+        active=user.state == ZitadelUserState.USER_STATE_ACTIVE,
         global_roles=roles or None,
     )
 
@@ -106,12 +105,14 @@ class ZitadelIdentity(HttpAdapter):
         service_token: A token of a machine user allowed to administer the organisation.
         organisation_id: The organisation whose accounts are administered.
         project_id: The project whose roles are the global roles.
+        http: The client's timeouts; the defaults of ``HttpSettings`` if none.
+        directory: How the user directory is paged; the defaults of ``DirectorySettings`` if none.
     """
 
     service = "Zitadel"
     unavailable = IdentityUnavailable
 
-    def __init__(
+    def __init__(  # noqa: PLR0913 - the instance, its organisation and project, and the settings groups
         self,
         issuer: str,
         service_token: str,
@@ -119,14 +120,18 @@ class ZitadelIdentity(HttpAdapter):
         project_id: str,
         *,
         transport: httpx.AsyncBaseTransport | None = None,
+        http: HttpSettings | None = None,
+        directory: DirectorySettings | None = None,
     ) -> None:
         super().__init__(
             base_url=issuer,
             headers={"Authorization": f"Bearer {service_token}", ORG_HEADER: organisation_id},
             transport=transport,
+            http=http,
         )
         self._organisation_id = organisation_id
         self._project_id = project_id
+        self._page_size = (directory or DirectorySettings()).page_size
 
     async def _send(
         self,
@@ -164,11 +169,11 @@ class ZitadelIdentity(HttpAdapter):
         """Every item the search finds, page by page."""
         found: list[T] = []
         while True:
-            window = ZitadelWindow(offset=len(found), limit=PAGE_SIZE)
+            window = ZitadelWindow(offset=len(found), limit=self._page_size)
             search = ZitadelSearch(query=window, queries=list(queries))
             page = items_in(await self._send(HTTPMethod.POST, path, search))
             found.extend(page)
-            if len(page) < PAGE_SIZE:
+            if len(page) < self._page_size:
                 return found
 
     def _in_organisation(self, *more: ZitadelQuery) -> list[ZitadelQuery]:
@@ -207,12 +212,12 @@ class ZitadelIdentity(HttpAdapter):
         return user
 
     async def disable(self, account_id: str) -> None:
-        await self._set_state(account_id, "deactivate", INACTIVE_STATE)
+        await self._set_state(account_id, "deactivate", ZitadelUserState.USER_STATE_INACTIVE)
 
     async def enable(self, account_id: str) -> None:
-        await self._set_state(account_id, "reactivate", ACTIVE_STATE)
+        await self._set_state(account_id, "reactivate", ZitadelUserState.USER_STATE_ACTIVE)
 
-    async def _set_state(self, account_id: str, action: str, wanted: str) -> None:
+    async def _set_state(self, account_id: str, action: str, wanted: ZitadelUserState) -> None:
         """Change the state; a 400 is "already done" only if the account is then in the wanted state."""
         await self._account(account_id)
         response = await self._send(

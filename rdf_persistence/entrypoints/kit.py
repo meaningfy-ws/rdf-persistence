@@ -56,6 +56,7 @@ from rdf_persistence.services.generated.service.rp_service import (
     TenantSummary,
     VerifiedCaller,
 )
+from rdf_persistence.services.generated.settings.rp_settings import ToolkitSettings
 from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.iris import IdSource, Iris, draw_id
@@ -113,8 +114,13 @@ class ServiceKit:
         workflows: Sequence[Path] = (),
         stores: Mapping[str, Store] = {},
         event_bus: EventBus | None = None,
+        toolkit: ToolkitSettings | None = None,
     ) -> None:
-        """Build the kit; ``migrations``, ``prefix``, ``id_source``, the validators, ``workflows``, ``stores`` and ``event_bus`` are ``install_service``'s arguments of those names.
+        """Build the kit; ``migrations``, ``prefix``, ``id_source``, the validators, ``workflows``, ``stores``, ``event_bus`` and ``toolkit`` are ``install_service``'s arguments of those names.
+
+        ``toolkit`` (a fresh ``ToolkitSettings`` unless given) is kept as ``kit.toolkit``; the kit hands its
+        ``limits`` to the documents, the mapper and the restore, its ``events`` to the hub and the relay, and
+        the router its ``sse`` to the events route.
 
         ``store`` stays the default store as ``kit.store``; each of ``stores`` is wrapped in a ``ToolkitStore``
         for the tenancy (tenant-stores PD-3).
@@ -132,6 +138,7 @@ class ServiceKit:
         """
         view = load_schema(schema)
         self.view = view
+        self.toolkit = toolkit or ToolkitSettings()
         # None at first, assignable: a handler's dependencies are often parts of this kit, so the bus
         # is built after it (message-bus PD-17)
         self.bus: MessageBus | None = None
@@ -161,7 +168,9 @@ class ServiceKit:
         self.gate = Gate(self)
         self.system_database = system_database_name(settings.prefix)
         self.generated_folder = Path(next(iter(generated.__path__)))
-        self.documents = Documents(view, self.generated_folder, self.iris)
+        self.documents = Documents(
+            view, self.generated_folder, self.iris, limits=self.toolkit.limits
+        )
         self.documents.require_frames()
         models = generated_models_of(
             generated,
@@ -174,7 +183,7 @@ class ServiceKit:
             rp_provenance,
             rp_workflow,
         )
-        mapper = Mapper(view, models)
+        mapper = Mapper(view, models, limits=self.toolkit.limits)
         self.mapper, self.models = mapper, models
         self.workflows = Workflows.from_files(workflows, view, self.rules)
         access_class = cast(type[TenantAccess], models.named(tenant_access_class(view).name))
@@ -197,7 +206,7 @@ class ServiceKit:
         )
         self.aggregates = Aggregates(self.documents, self.tenancy, self.iris)
         self.event_bus = event_bus
-        self.hub = EventHub()
+        self.hub = EventHub(events=self.toolkit.events)
         self.relay = Relay(
             self.tenancy,
             view,
@@ -207,6 +216,7 @@ class ServiceKit:
             self.hub,
             deployment=settings.deployment or "",
             context=context_link(settings.public_url, prefix),
+            events=self.toolkit.events,
         )
 
     async def _publish(self, activity: Activity, session: Session) -> None:
@@ -487,6 +497,7 @@ class ServiceKit:
             max_bytes=self.max_restore_bytes,
             chains=self.chains,
             store=store,
+            limits=self.toolkit.limits,
         )
 
     async def remove_with_files(

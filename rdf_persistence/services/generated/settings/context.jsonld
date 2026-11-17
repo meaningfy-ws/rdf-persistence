@@ -1,0 +1,140 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "linkml": "https://w3id.org/linkml/",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "access_ttl_seconds": {
+         "@type": "xsd:float",
+         "@id": "access_ttl_seconds"
+      },
+      "allowed_algorithms": {
+         "@container": "@set",
+         "@id": "allowed_algorithms"
+      },
+      "claim_idle_seconds": {
+         "@type": "xsd:float",
+         "@id": "claim_idle_seconds"
+      },
+      "connect_timeout_seconds": {
+         "@type": "xsd:float",
+         "@id": "connect_timeout_seconds"
+      },
+      "directory": {
+         "@type": "@id",
+         "@id": "directory"
+      },
+      "events": {
+         "@type": "@id",
+         "@id": "events"
+      },
+      "http": {
+         "@type": "@id",
+         "@id": "http"
+      },
+      "hub_queue_size": {
+         "@id": "hub_queue_size"
+      },
+      "jwks": {
+         "@type": "@id",
+         "@id": "jwks"
+      },
+      "keep_alive_seconds": {
+         "@type": "xsd:float",
+         "@id": "keep_alive_seconds"
+      },
+      "leeway_seconds": {
+         "@type": "xsd:float",
+         "@id": "leeway_seconds"
+      },
+      "limits": {
+         "@type": "@id",
+         "@id": "limits"
+      },
+      "max_attempts": {
+         "@id": "max_attempts"
+      },
+      "max_document_nodes": {
+         "@id": "max_document_nodes"
+      },
+      "max_lifetime_seconds": {
+         "@type": "xsd:float",
+         "@id": "max_lifetime_seconds"
+      },
+      "max_manifest_bytes": {
+         "@id": "max_manifest_bytes"
+      },
+      "max_messages": {
+         "@id": "max_messages"
+      },
+      "max_roots": {
+         "@id": "max_roots"
+      },
+      "page_size": {
+         "@id": "page_size"
+      },
+      "polling_interval_ms": {
+         "@id": "polling_interval_ms"
+      },
+      "publish_timeout_seconds": {
+         "@type": "xsd:float",
+         "@id": "publish_timeout_seconds"
+      },
+      "read_timeout_seconds": {
+         "@type": "xsd:float",
+         "@id": "read_timeout_seconds"
+      },
+      "relay_interval_seconds": {
+         "@type": "xsd:float",
+         "@id": "relay_interval_seconds"
+      },
+      "resume_window_seconds": {
+         "@type": "xsd:float",
+         "@id": "resume_window_seconds"
+      },
+      "retention_seconds": {
+         "@type": "xsd:float",
+         "@id": "retention_seconds"
+      },
+      "sse": {
+         "@type": "@id",
+         "@id": "sse"
+      },
+      "stream": {
+         "@id": "stream"
+      },
+      "ttl_seconds": {
+         "@type": "xsd:float",
+         "@id": "ttl_seconds"
+      },
+      "unknown_kid_cooldown_seconds": {
+         "@type": "xsd:float",
+         "@id": "unknown_kid_cooldown_seconds"
+      },
+      "@version": 1.1,
+      "type": "@type",
+      "DirectorySettings": {
+         "@id": "DirectorySettings"
+      },
+      "EventSettings": {
+         "@id": "EventSettings"
+      },
+      "HttpSettings": {
+         "@id": "HttpSettings"
+      },
+      "JwksSettings": {
+         "@id": "JwksSettings"
+      },
+      "LimitSettings": {
+         "@id": "LimitSettings"
+      },
+      "SseSettings": {
+         "@id": "SseSettings"
+      },
+      "ToolkitSettings": {
+         "@id": "ToolkitSettings"
+      }
+   }
+}

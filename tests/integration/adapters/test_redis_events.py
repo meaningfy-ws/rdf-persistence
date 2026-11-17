@@ -4,12 +4,12 @@ import logging
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import timedelta
 
 import pytest
 from faststream.redis import RedisBroker
 from redis.asyncio import Redis
 
+from rdf_persistence import ToolkitSettings
 from rdf_persistence.adapters.redis_events import RedisEventBus
 from rdf_persistence.testkit.bootstrap import wait_until_async
 from rdf_persistence.testkit.event_bus_conformance import (
@@ -28,10 +28,11 @@ NODE_MAX_ENTRIES = "stream-node-max-entries"
 class RedisPair:
     """Two deployments on one stream; Redis fails a bus by closing it, and starts it again after."""
 
-    def __init__(self, url: str, **options: timedelta) -> None:
+    def __init__(self, url: str, toolkit: ToolkitSettings, **options: float) -> None:
         self.stream = stream = f"rp-events-{uuid.uuid4().hex[:8]}"
-        self.a = RedisEventBus(url, deployment="lib", stream=stream, **options)
-        self.b = RedisEventBus(url, deployment="cat", stream=stream, **options)
+        events = toolkit.events.replaced(stream=stream, **options)
+        self.a = RedisEventBus(url, deployment="lib", events=events)
+        self.b = RedisEventBus(url, deployment="cat", events=events)
 
     @asynccontextmanager
     async def failing(self, bus: RedisEventBus) -> AsyncIterator[None]:
@@ -41,12 +42,17 @@ class RedisPair:
 
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.__name__)
-async def test_the_redis_bus_conforms(redis, case):
-    await run_case(case, RedisPair(redis, claim_idle=timedelta(milliseconds=500)))
+async def test_the_redis_bus_conforms(redis, toolkit, case):
+    await run_case(case, RedisPair(redis, toolkit, claim_idle_seconds=0.5))
 
 
-async def test_an_entry_older_than_the_retention_is_trimmed_on_the_next_publish(redis):
-    pair = RedisPair(redis, retention=timedelta(seconds=1))
+def test_the_redis_bus_takes_no_per_value_keyword_beside_its_events_group():  # TC-39, DEC-5
+    with pytest.raises(TypeError, match="stream"):
+        RedisEventBus("redis://localhost", deployment="d", stream="x")  # type: ignore[call-arg]
+
+
+async def test_an_entry_older_than_the_retention_is_trimmed_on_the_next_publish(redis, toolkit):
+    pair = RedisPair(redis, toolkit, retention_seconds=1)
     inbox = Inbox()
     await pair.a.start(inbox)
     async with Redis.from_url(redis) as client:
@@ -73,8 +79,10 @@ async def test_an_entry_older_than_the_retention_is_trimmed_on_the_next_publish(
     assert len(ids) == 1, "one entry remains after the trim"
 
 
-async def test_a_trim_that_fails_does_not_fail_the_publish(redis, monkeypatch, caplog):  # D-17
-    pair = RedisPair(redis)
+async def test_a_trim_that_fails_does_not_fail_the_publish(
+    redis, toolkit, monkeypatch, caplog
+):  # D-17
+    pair = RedisPair(redis, toolkit)
     await pair.a.start(Inbox())
     client = pair.a._broker.config.broker_config.connection.client
 
@@ -101,8 +109,10 @@ async def test_a_trim_that_fails_does_not_fail_the_publish(redis, monkeypatch, c
     )
 
 
-async def test_a_message_without_a_valid_envelope_is_dropped_with_a_warning(redis, caplog):  # TC-22
-    pair = RedisPair(redis)
+async def test_a_message_without_a_valid_envelope_is_dropped_with_a_warning(
+    redis, toolkit, caplog
+):  # TC-22
+    pair = RedisPair(redis, toolkit)
     inbox = Inbox()
     await pair.a.start(inbox)
     with caplog.at_level(logging.WARNING, logger="rdf_persistence.adapters.redis_events"):

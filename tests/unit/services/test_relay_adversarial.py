@@ -16,6 +16,7 @@ import pytest
 
 from rdf_persistence.domain.generated.rp_workflow import Transition
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.generated.settings.rp_settings import EventSettings
 from rdf_persistence.services.relay import chain_order
 from rdf_persistence.services.session import open_session
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus, wait_until_async
@@ -114,7 +115,7 @@ async def test_a_tenant_created_while_a_round_publishes_is_visited_by_the_next_r
 async def test_wake_from_inside_a_publish_makes_exactly_one_more_round(world):
     await add_one(world, world.tenant)
     rounds: list[int] = []
-    relay = world.relay(interval=3600)
+    relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
     real = world.tenancy.tenants
 
     async def tenants():
@@ -153,7 +154,9 @@ async def test_a_round_cancelled_mid_publish_loses_nothing_and_a_restart_publish
         await never.wait()
 
     await add_one(world, world.tenant)
-    relay = world.relay(HookedBus(world.broker, block), interval=3600)
+    relay = world.relay(
+        HookedBus(world.broker, block), events=EventSettings(relay_interval_seconds=3600)
+    )
     task = asyncio.create_task(relay.run())
     relay.wake()
     await inside.wait()
@@ -179,7 +182,7 @@ async def test_a_cancel_after_publish_before_the_mark_publishes_again_with_the_s
         return await real(dataset, sparql)
 
     world.store.update = update
-    relay = world.relay(interval=3600)
+    relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
     task = asyncio.create_task(relay.run_once())
     await inside.wait()
     task.cancel()

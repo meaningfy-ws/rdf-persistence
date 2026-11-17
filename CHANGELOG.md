@@ -12,8 +12,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `[[tool.rp-generate]]` entry is `domain` or `technical`; `rp-generate` fails, naming the target
   and the module, when a technical target holds a module not annotated `module_kind: technical`,
   or a domain target holds one annotated `technical`. A target without `kind` generates as before.
+- **The toolkit's deployment values are settings** (`technical-models`): `HttpSettings`,
+  `JwksSettings`, `DirectorySettings`, `EventSettings`, `SseSettings` and `LimitSettings`, held
+  together by `ToolkitSettings`, are generated from `model/technical/settings/rp_settings.yaml` into
+  `rdf_persistence.services.generated.settings` and exported from `rdf_persistence`. Every value
+  defaults to the one the toolkit used before, with bounds (a zero timeout, a shared-secret
+  algorithm or a leeway outside 0 to 300 seconds is refused). Each adapter and service takes its
+  group as a constructor argument; `ServiceKit` and `install_service` take `toolkit=` and hand each
+  object it builds its group.
+- **`settings_from_env`** reads any generated settings model, `ToolkitSettings` included, from
+  environment variables (`RP_HTTP__READ_TIMEOUT_SECONDS=60`), validated once through the model. It
+  needs the new `settings` extra (`rdf-persistence[settings]`, pydantic-settings); importing the
+  toolkit reads no variable and loads no dotenv file.
+- **Generation: `default_instance` and list defaults** (`technical-models`): a slot annotated
+  `default_instance: 'true'` defaults to a fresh instance of its range class (checked by a hard
+  rule: the range must be a class that can be built with no argument and be declared first); the
+  `ifabsent: string(a, b, ...)` of a multivalued slot is generated as the list `['a', 'b']`, where
+  the stock generator wrote the one string.
+- **`ZitadelUserState`**: the six user states of a Zitadel answer are a generated enum; a state
+  outside it makes the answer unreadable (`IdentityUnavailable`).
+- **Generation: `python_import`** (`technical-models`): a LinkML type annotated `python_import`
+  with a module name, together with `repr`, generates its field as the `repr` class imported from
+  that module.
 
 ### Changed
+- **BREAKING: the per-value keywords and constants the settings replace are removed**
+  (`technical-models`). A caller that passes an old keyword gets a `TypeError` from every constructor, except `bootstrap`,
+  which takes dependencies by keyword: `bootstrap(limit=...)` raises `ValueError` ("no handler or
+  observer names the dependency limit"), or binds to a handler that declares a `limit` dependency.
+  One that imports an old constant gets an `ImportError`. Pass the group instead:
+  - `JwksTokenVerifier(algorithms=, leeway_seconds=)` is now `jwks=JwksSettings(allowed_algorithms=,
+    leeway_seconds=, ...)`;
+  - `RedisEventBus(stream=, retention=, claim_idle=)` is now `events=EventSettings(stream=,
+    retention_seconds=, claim_idle_seconds=, ...)`;
+  - `Relay(interval=, publish_timeout=)` is now `events=` (`relay_interval_seconds`,
+    `publish_timeout_seconds`), and `EventHub(max_queue=)` is `events=` (`hub_queue_size`);
+  - `MessageBus(limit=)` and `bootstrap(limit=)` are now `limits=LimitSettings(max_messages=)`;
+  - `Mapper(max_roots=)` and `UnitOfWork(max_roots=)` are now `limits=LimitSettings(max_roots=)`
+    on the `Mapper`; `UnitOfWork` reads it from the mapper and takes no limit of its own;
+  - `add_events_route(access_ttl=, keep_alive=, resume_window=, max_lifetime=)` is now
+    `sse=SseSettings(access_ttl_seconds=, keep_alive_seconds=, resume_window_seconds=,
+    max_lifetime_seconds=)`;
+  - `FusekiStore`, `JwksTokenVerifier`, `ZitadelIdentity` and `S3FileStore` take `http=HttpSettings(...)`
+    (connect and read timeouts, attempts), and `ZitadelIdentity` also `directory=DirectorySettings(page_size=)`;
+  - `Documents` takes its node limit, and `tenant_dump.restore` its manifest cap, from
+    `limits=LimitSettings(max_document_nodes=, max_manifest_bytes=)`;
+  - removed constants: `CONNECT_TIMEOUT_SECONDS` and `READ_TIMEOUT_SECONDS` (`adapters/_http.py`,
+    `adapters/s3.py`), `MAX_ATTEMPTS` (`adapters/s3.py`), `JWKS_TTL_SECONDS`,
+    `UNKNOWN_KID_COOLDOWN_SECONDS`, `DEFAULT_ALGORITHMS`, `DEFAULT_LEEWAY_SECONDS` and
+    `MAX_LEEWAY_SECONDS` (`adapters/jwks.py`), `POLLING_INTERVAL_MS` (`adapters/redis_events.py`),
+    `PAGE_SIZE`, `ACTIVE_STATE` and `INACTIVE_STATE` (`adapters/zitadel.py`), `MAX_LIFETIME`,
+    `ACCESS_TTL`, `KEEP_ALIVE_SECONDS` and `RESUME_WINDOW` (`entrypoints/sse.py`), `MAX_NODES`
+    (`services/documents.py`), `DEFAULT_MAX_ROOTS` (`services/mapper.py`) and `MAX_MANIFEST_BYTES`
+    (`services/tenant_dump.py`); their values are the defaults of the groups;
+  - the Zitadel slugs `PROJECTS`, `MACHINE_USERS`, `OWN_ORGANISATION` and `TOKEN_PATH`, only the
+    testkit used, moved from `rdf_persistence.adapters.zitadel` to `rdf_persistence.testkit.zitadel`.
 - **BREAKING: the technical models moved out of the domain layer** (`technical-models`). Every
   name still imports from `rdf_persistence`; only a deep import of an old module path breaks, with
   `ModuleNotFoundError`:

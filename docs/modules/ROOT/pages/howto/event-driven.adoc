@@ -160,7 +160,7 @@ kit.bus = bus
 ----
 
 * `commands` maps a class to its handler; `observers` maps a class to a list of observers. These
-  two names, `limit` and `mapper` are `bootstrap`'s own, so a handler or observer cannot take a
+  two names, `limits` and `mapper` are `bootstrap`'s own, so a handler or observer cannot take a
   dependency of those names.
 * Every parameter after `(command, work)` is a *dependency*, matched by its name to a keyword of
   `bootstrap` (`shelf`, `mail`; the annotation plays no part). A dependency no handler or observer names is a `ValueError`, and so is a
@@ -176,7 +176,7 @@ kit.bus = bus
   way is `kit.bus = bootstrap(mapper=kit.mapper, ...)` after the kit exists. The kit hands every commit of a tenant database or the
   application database to `kit.bus`, so the generic HTTP routes reach your observers too. With no
   bus, commits are recorded and nothing is handed over.
-* A `limit` keyword (default 100) bounds the commands one `handle` call runs; see
+* A `limits=LimitSettings(max_messages=...)` keyword (default 100) bounds the commands one `handle` call runs; see
   <<limits>>. `SHELF_IRI` is the IRI of a stored shelf and `Mailer` stands for any class of yours;
   `Book.shelf` is the toy's slot that holds a shelf's IRI.
 
@@ -318,7 +318,7 @@ when the thing to check is that it was called, and with what.
   `handle` call, so no collaboration to run the command with) that calls `work.send` gets a
   `RuntimeError`, which is logged as that observer's error. Do such work in the route, or write
   the route to call `bus.handle`.
-* *The loop limit.* One `handle` call runs at most `limit` commands (default 100): the first, and
+* *The loop limit.* One `handle` call runs at most `limits.max_messages` commands (default 100): the first, and
   every one an observer or handler queued. The next raises `MessageLimitExceeded` ("message limit
   100 reached by <command class> <command id>") from `handle`, which does not log it, and the
   commands still queued are dropped. The place that handles the error logs it once: the kit's
@@ -367,9 +367,9 @@ Terms used below:
   reads the marked activities in order, publishes each to the event bus, replaces the mark by a
   "relayed" time, and offers the activity to the server-sent-events hub of <<sse>>.
 * *When a round runs.* A commit made in this process wakes the relay at once. Otherwise a round
-  runs every 5 seconds: that is the `interval` argument of the relay's constructor, and
-  `install_service` does not expose it. So a commit made in another process waits up to 5 seconds
-  to be relayed.
+  runs every 5 seconds by default: that is `EventSettings.relay_interval_seconds`, which you set with
+  `install_service(..., toolkit=ToolkitSettings(events=EventSettings(relay_interval_seconds=...)))`.
+  So a commit made in another process waits up to that interval to be relayed.
 * *At least once.* A mark is replaced only after the publish succeeded, so a crash between the two
   publishes the activity again at the next start. A failed publish stops that database for the
   round and is retried in the next, so no later activity of the database overtakes it.
@@ -427,9 +427,12 @@ kit = install_service(
   `public_url` the link is relative (`{prefix}/context.jsonld`), which a consumer on another host
   cannot follow. Set it when other deployments read the messages. The server-sent events route
   sends the service's own context link in a `Link` header, as every other route does.
-* `RedisEventBus` also takes `stream` (default `rp-events`), `retention` (default 7 days; older
-  entries are trimmed after each publish) and `claim_idle` (default 30 s, how long a failed message
-  waits before it comes again).
+* `RedisEventBus` also takes `events=EventSettings(...)`: `stream` (default `rp-events`),
+  `retention_seconds` (default 7 days; older entries are trimmed after each publish),
+  `claim_idle_seconds` (default 30, how long a failed message waits before it comes again) and
+  `polling_interval_ms` (default 100). The relay and the hub read the same group (`relay_interval_seconds`,
+  `publish_timeout_seconds`, `hub_queue_size`), which `install_service(toolkit=ToolkitSettings(events=...))`
+  gives them.
 * The service starts the bus's consumer with the app (receiving into `kit.receive`) and the relay
   after it, and stops both at shutdown.
 * *A stream entry is FastStream's binary envelope.* The headers (tenant, origin, activity class,
@@ -489,7 +492,7 @@ kit.bus = bootstrap(mapper=kit.mapper, observers={ApproveBook: [reindex]})
 
 What the two must share:
 
-* *The Redis URL and the `stream`* (the default `rp-events` on both, or the same value of `stream=`).
+* *The Redis URL and the `stream`* (the default `rp-events` on both, or the same `events.stream`).
 * *The tenant IRIs.* A message names its tenant by IRI. The receiver skips a message for a tenant it
   has not got, so both deployments must mint the same IRI for the same tenant (the same IRI policy
   and tenant ids).
@@ -510,7 +513,7 @@ Each message also names the JSON-LD context that reads it, at the sender's `publ
   limit is logged at ERROR and skipped.
 * *Which errors redeliver.* A tenant that is behind (its migration failed at start-up) and a store
   that does not answer are raised, so the message is not acknowledged and comes again after
-  `claim_idle`, or at the next start. An error an *observer* raises is logged and acknowledged, as
+  `events.claim_idle_seconds`, or at the next start. An error an *observer* raises is logged and acknowledged, as
   on the message bus.
 * With no `kit.bus`, messages are skipped.
 
@@ -548,7 +551,7 @@ applied the commits; nothing is promised across aggregates.
 |Lost
 |Logged at WARNING, skipped and acknowledged. After you fix the schema or the tenant, the skipped activities are not replayed.
 
-|A receiver is down for longer than the stream's `retention` (7 days)
+|A receiver is down for longer than the stream's retention (`events.retention_seconds`, 7 days)
 |Lost
 |The broker trims entries older than that after each publish. A receiver that comes back later misses them, and nothing republishes them. Keep the outage shorter, or read the provenance graph.
 
@@ -632,13 +635,13 @@ data: {"id":"urn:uuid:3f2c0b6e-5a1d-4c7e-9b8a-1d2e3f4a5b6c",
 * *Resume with `Last-Event-ID`.* Send the `id` of the last event you got and the route sends what
   was relayed after it, then live events. The 7-day window is counted from the relay marks in the
   store (when the activity was relayed), so it holds with no broker and does not depend on the
-  broker's `retention`. An id the server does not know, one from before this feature, or one older
+  broker's retention. An id the server does not know, one from before this feature, or one older
   than the window gets one `event: reset` with an empty `data:` line (an `EventSource`-style client
   does dispatch it). The client reloads what it shows, then keeps reading. A `Last-Event-ID` that
   is not an activity id (not `urn:uuid:` and a UUID) is treated as unknown: one `reset`, then live
   events; it is not an error.
-* *A stream lasts 5 minutes.* The server ends it then (the `max_lifetime` argument of
-  `add_events_route`), so a token that expired or was revoked is not outlived. The client
+* *A stream lasts 5 minutes.* The server ends it then (`sse.max_lifetime_seconds` of
+  the toolkit settings, the `sse` argument of `add_events_route`), so a token that expired or was revoked is not outlived. The client
   reconnects with a fresh token and its last `Last-Event-ID`, and misses nothing. The stream ends
   at the first activity or keep-alive after the 5 minutes, so it can be up to 15 seconds longer.
 * *A slow reader* is closed when 1000 events are queued for it; it reconnects with `Last-Event-ID`.

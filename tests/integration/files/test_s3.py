@@ -11,8 +11,10 @@ from rdf_persistence.testkit.file_store_conformance import CASES, run_case
 
 
 @pytest.fixture
-def files(garage) -> S3FileStore:
-    return S3FileStore(garage.endpoint, garage.key_id, garage.secret, garage.region)
+def files(garage, toolkit) -> S3FileStore:
+    return S3FileStore(
+        garage.endpoint, garage.key_id, garage.secret, garage.region, http=toolkit.http
+    )
 
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.__name__)
@@ -56,7 +58,7 @@ async def test_a_put_after_the_bucket_is_deleted_is_tenant_gone_and_creates_no_b
     await run_case(put_after_delete, files)
 
 
-async def test_an_unreachable_object_store_is_store_unavailable():
-    files = S3FileStore("http://127.0.0.1:1", "id", "secret", "garage")
+async def test_an_unreachable_object_store_is_store_unavailable(toolkit):
+    files = S3FileStore("http://127.0.0.1:1", "id", "secret", "garage", http=toolkit.http)
     with pytest.raises(StoreUnavailable):
         await files.list_buckets("")

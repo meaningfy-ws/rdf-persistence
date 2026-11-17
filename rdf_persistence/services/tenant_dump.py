@@ -35,6 +35,7 @@ from rdf_persistence.domain.media import N_QUADS
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.generated.service.rp_service import TenantDump, TenantSummary
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.iris import Iris, effective_policy, policy_differences
 from rdf_persistence.services.migration_runner import migrate_dataset
@@ -50,9 +51,6 @@ log = logging.getLogger(__name__)
 
 FORMAT_VERSION = 1
 MANIFEST, GRAPHS, BLOBS, END = "manifest.json", "graphs.nq", "blobs/", "end"
-MAX_MANIFEST_BYTES = (
-    64 * 1024
-)  # a manifest is a few hundred bytes plus the policy; this is generous
 # Beyond ``max_bytes`` the wrapper still lets through the tar's own overhead that the per-member charge does not
 # count: the long-name and extended header blocks, the two zero blocks and the record padding at the end (PD-13).
 HEADER_ALLOWANCE = 4 * tarfile.RECORDSIZE
@@ -206,8 +204,11 @@ async def restore(
     max_bytes: int,
     chains: Sequence[SchemaChain],
     store: str = DEFAULT_STORE,
+    limits: LimitSettings | None = None,
 ) -> TenantSummary:
     """Create a new tenant out of the dump archive in ``src``; ``creator`` is granted the creator role in it.
+
+    The manifest may hold ``limits.max_manifest_bytes`` (a fresh ``LimitSettings`` unless given).
 
     The new tenant's database is on the wired store named ``store`` (``Tenancy.restore``).
 
@@ -231,7 +232,7 @@ async def restore(
     budget = _Budget(max_bytes)
     with _opened(src, max_bytes + HEADER_ALLOWANCE) as (tar, stream):
         members = iter(tar)
-        manifest = _manifest(tar, members, budget)
+        manifest = _manifest(tar, members, budget, (limits or LimitSettings()).max_manifest_bytes)
         _check_manifest(manifest, view, iris, chains=chains)
         parsed = _parsed(tar, _member(members, GRAPHS), budget)
         _check_stamp_agrees(manifest, parsed, view, tenancy.stamps_graph)
@@ -315,9 +316,9 @@ def _read(
 
 
 def _manifest(
-    tar: tarfile.TarFile, members: Iterator[tarfile.TarInfo], budget: _Budget
+    tar: tarfile.TarFile, members: Iterator[tarfile.TarInfo], budget: _Budget, cap: int
 ) -> TenantDump:
-    text = _read(tar, _member(members, MANIFEST), MANIFEST, budget, cap=MAX_MANIFEST_BYTES)
+    text = _read(tar, _member(members, MANIFEST), MANIFEST, budget, cap=cap)
     try:
         return TenantDump.model_validate_json(text)
     except ValueError as error:  # pydantic's ValidationError, or bytes that are not JSON

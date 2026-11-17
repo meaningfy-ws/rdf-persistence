@@ -483,6 +483,146 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   through `IriParts` (P-0007). Fixed now (one fixer, one full-gates run) rather than left under
   the floor. On the same day the developer granted the lead push, PR and merge on green CI for
   `technical-models` until the change ends (epic-delivery, Authority).
+- **D-27 (stage 2 merge, the developer's decision 2026-11-17)** PR #145 and its follow-up #146
+  were merged as admin, before CI. The rebase onto #143 left the new templates target's manifest
+  with a stale input hash (`generation/checks/hard.py`, changed by #143), which stopped every test
+  target on `develop` until #146 regenerated it. Lesson for later stages: after a rebase, run
+  `make generate` and `make check-generated` before the PR's gates.
+- **D-28 (stage 3, Prepare)** RISK-6 re-checked on `dca21ae`, after `manual-revision-notes`
+  stage 2 (#143): `adapters/jwks.py` still holds A-3/A-4 as D-4 recorded
+  (`algorithms=DEFAULT_ALGORITHMS`, `leeway_seconds`, bounds 0 to 300), and `Mapper(max_roots=)`
+  with `DEFAULT_MAX_ROOTS` (A-2) as PD-7 expects; #143 touched `fuseki.py` and `documents.py`
+  (media types), which tasks 3.2 and 3.3 build on as they now are. `manual-revision-notes`
+  stage 3 is in progress in another session; the stage 3 PR rebases on it if it lands first.
+- **D-29 (stage 3, the developer's instruction: run in parallel, R-0004)** Task 3.1 runs alone
+  (every other task takes its groups). Then 3.2, 3.3 and 3.4 run in parallel, each in its own
+  worktree, because their files are disjoint: the kit builds only `Documents`, `Mapper`,
+  `EventHub`, `Relay`, `restore` and the SSE route (task 3.3), the adapters of 3.2 are built by a
+  consumer's composition root, and 3.4 owns `entrypoints/environment.py`, the `settings` extra and
+  its lazy export. The lead merges the three into the stage branch and re-runs the task gate (T2).
+  The tester runs after 3.3 (tasks.md); 3.5 last. GitNexus indexes the main checkout, which
+  another session holds on `change/manual-revision-notes-s3`; impact reads that state.
+- **D-30 (stage 3, Prepare)** GitNexus: `Mapper` MEDIUM (14 direct), `HttpAdapter` MEDIUM (7),
+  `ServiceKit` MEDIUM (6), `MessageBus` LOW, `JwksTokenVerifier` LOW, `FusekiStore` LOW;
+  `GenerationAnnotation` as D-14. None HIGH or CRITICAL; not taken to the developer.
+- **D-31 (stage 3, task 3.1, external library: LinkML 1.12.1)** The stock pydantic generator
+  writes `ifabsent: string(RS256)` on a multivalued slot as `Field(default="RS256")`, a scalar
+  default on a list field that pydantic does not validate; PD-6 assumed a list default. The lead's
+  choice among contribute / fork / work around: a work-around in the one place AGENTS.md names for
+  it, `SplitPydanticGenerator` (`generation/extensions/pydantic_split.py`, with its own test): a
+  multivalued `ifabsent: string(a, b, ...)` becomes the list `['a', 'b']`, anything else on a
+  multivalued slot is refused. An upstream issue to LinkML is offered to the developer (Open).
+- **D-32 (stage 3, task 3.1, as built, divergences from PD-6)** (1) Every scalar settings slot is
+  `required: true` as well as `ifabsent`, so `HttpSettings(read_timeout_seconds=None)` is refused
+  (without it the generator types the field `Optional`). (2) `polling_interval_ms` is an integer,
+  `minimum_value: 1`; every `*_seconds` slot is a float, `retention_seconds` and
+  `resume_window_seconds` included. (3) The `default_instance` check is the `HardRule`
+  `default_instance` (`checks/default_instance.py`) and also refuses a multivalued slot and a range
+  class declared after its holder in the same module (the generated `default_factory` would raise
+  `NameError` at import). (4) The settings tests are in `tests/unit/services/test_settings_model.py`:
+  `.importlinter`'s `domain-tests-stay-in-the-domain` forbids a domain test importing `services`.
+  (5) `test_hard_check.py` counts six targets (as D-20). Every default equals the code it replaces
+  (the builder compared all 25; only the type of `s3.py`'s ints differs).
+- **D-33 (stage 3, task 3.1, spec gap, for the developer)** The `rp-generation` delta has no
+  requirement for `default_instance` or the list default; their tests are mapped, at medium
+  confidence, to the `rp-settings` requirement "Deployment values are generated settings with
+  today's defaults". Adding a requirement changes a signed spec, so it waits for the developer
+  (Open): recommended, an `rp-generation` requirement "A slot can default to an instance of its
+  class" with the type-range, required-slot and declaration-order refusals as scenarios, in task 4.2.
+- **D-34 (stage 3, task 3.4, external library: pydantic-settings 2.16.2)** `BaseSettings` reads
+  only `os.environ`, so `settings_from_env(..., environ=)` injects the mapping by overriding
+  `EnvSettingsSource._load_env_vars`, a private method (the library's own dotenv, AWS and Azure
+  sources override it the same way), wired through `settings_customise_sources`, so no dotenv file
+  or secrets directory is read. The lead's choice: a work-around in this one module, pinned by
+  `==2.16.2` and covered by TC-40, so an upgrade that changes the method fails a test. Also exported
+  lazily from `rdf_persistence`: `ToolkitSettings` and its six groups (a consumer builds them).
+- **D-35 (stage 3, task 3.2, as built)** `generation/lint.yaml` excludes the six `USER_STATE_*`
+  values from `standard_naming`: they are Zitadel's wire values and cannot be snake_case. The
+  verifier's leeway bounds now come from `JwksSettings` alone; its `none`/`HS*`/empty-list refusal
+  stays as defence in depth beside the PyJWT check (TC-60). TC-30 also sets
+  `unknown_kid_cooldown_seconds=1`: the cooldown spaces the refresh of stale keys too, as before.
+  boto turns `max_attempts=N` into `total_max_attempts=N+1`, as today. `jwks.RS256` stays (the
+  testkit imports it).
+- **D-36 (stage 3, task 3.3, as built, and an incident)** TC-36 reads the events route in real
+  time (`keep_alive_seconds=0.05`, a comment within 3 s): `install_service` takes no clock. The
+  constructors' `limit < 1` / `max_roots < 1` checks are gone; `LimitSettings` refuses those values.
+  Incident: the builder's Serena `replace_content` resolved a relative path against the main
+  checkout (held by another session) and edited two test files there; it reverse-applied its own
+  diff and the lead confirmed the main checkout has no tracked change. A repo-wide `ruff --fix`
+  also touched four probe scripts of `test-debt-paydown`; the lead restored them. Briefs for later
+  tasks name absolute worktree paths for Serena. Parallel merge (D-29): the three tasks were
+  cherry-picked onto the stage branch; one conflict (`scenario-map.csv`, rows both appended)
+  resolved by keeping both.
+- **D-37 (stage 3, rebase onto `otel-observability` stage 1, #149)** `develop` moved 15 commits
+  while stage 3 was built. Every conflict was additive: `pyproject.toml` keeps both the telemetry
+  and the settings targets; `pydantic_split.py` keeps #149's field-name fix and 3.1's list
+  defaults; the rest were import lines, unioned by a script that refused any other hunk; the
+  generated manifests took `develop`'s side and `make generate` rewrote them (P-0003). Two slips,
+  both the lead's: `test_hard_check.py` was committed with its markers inside the 3.1 commit
+  (`e0b40fc`; fixed by its own commit, the toolkit now having seven targets, since history cannot
+  be squashed here), and #149's new Redis test still built `RedisPair(redis)`, which 3.5 changed to
+  take the `toolkit` fixture (a semantic conflict, fixed in the test). Both were caught by the
+  stage's full gates before any push.
+- **D-38 (stage 3, L2 W1 with S2 and S3, re-labelled Critical)** The `rp-settings` scenario "a
+  timeout set by the consumer" has no test: nothing builds `JwksTokenVerifier` with a non-default
+  `HttpSettings`, so dropping `http=` at `jwks.py:100` passes the suite. Also unmapped: the RISK-2
+  test `test_the_states_of_a_live_zitadels_users_are_all_known_states` (S3); TC-60's verifier test
+  is mapped as a requirement, not as its scenario (S2). Re-labelled as D-11 and D-24: the map is
+  what the traceability check reads. Fix: one unit test, `FusekiStore` and `JwksTokenVerifier`
+  from `HttpSettings(read_timeout_seconds=60)`, both reading 60, mapped as the scenario; the S2 and
+  S3 rows.
+- **D-39 (stage 3, L2 W2, re-labelled Critical)** `RedisPair` builds its group with
+  `model_copy(update=...)`, which skips validation: an old option name (`claim_idle=`) passes
+  silently and the test runs on the 30 s default. Our library's validated `RpModel.replaced()`
+  exists for this (`manual-revision-notes` PD-8, PD-11, TC-49); not using it is a work-around of
+  our own library. Fix: `toolkit.events.replaced(...)` and the conftest docstring.
+- **D-40 (stage 3, L2+L3 W3, re-labelled Critical)** D-31 accepted the LinkML work-around on
+  AGENTS.md's condition "with its own test"; its refusal (a multivalued `ifabsent` not of the
+  form `string(a, b, ...)`) is untested, as is the `default_instance` refusal of a multivalued slot
+  (D-32 (3)). The accepted decision loses half its mitigation (as D-10). Fix: one test of each
+  refusal, naming the slot.
+- **D-41 (stage 3, L2 W4, re-labelled Critical)** `architecture/index.adoc`, edited by this
+  stage, does not list `rdf_persistence.services.generated.settings` nor the seven new top-level
+  names (as D-12, D-23). Fix: add them to the services row.
+- **D-42 (stage 3, L2 W5, re-labelled Critical)** `CHANGELOG.md` `[Unreleased]` names none of the
+  stage's BREAKING removals nor its additions; RISK-3's mitigation and the Error-matrix row
+  "Documented as BREAKING" depend on it (as D-10). Fix: under `[Unreleased]`, Changed (BREAKING:
+  each removed keyword and public constant with its group) and Added (the settings groups,
+  `ToolkitSettings`, `settings_from_env`, the `settings` extra, `default_instance`, the list
+  default), plus stage 2's owed `python_import` line (stage 2 floor, L2 W4), the same file and
+  section.
+- **D-43 (stage 3, checker F-1 with F-2, the developer's decision 2026-11-17)** Two pages still
+  describe removed keywords: `howto/event-driven.adoc` (the relay interval as a constructor
+  argument `install_service` cannot set; it is `events.relay_interval_seconds` through
+  `install_service(toolkit=)`) and `architecture/data-flows.adoc` (`limit` commands per `handle`;
+  it is `limits.max_messages`). The new changelog line says every removed keyword raises
+  `TypeError`; `bootstrap(limit=)` raises `ValueError` (tester F-3). Fixed now: one fixer, one
+  full-gates run. The checker's F-3 (a kept tester test repeats TC-25's property) is under the
+  floor.
+
+Under the floor (not fixed in stage 3):
+
+- Tester F-1 (Warning): `+inf` accepted for every duration (`nan`, `-inf` refused). Only an
+  operator who sets `inf` reaches it; flagged for the full review after stage 4 (an infinite JWKS
+  TTL keeps a rotated-out key).
+- Tester F-2 (Warning): malformed JSON in an `RP_` variable raises pydantic-settings'
+  `SettingsError`, naming the group, not a `ValidationError`; start-up still fails loudly.
+- Tester F-3 (Suggestion): `bootstrap(limit=5)` raises `ValueError`, not `TypeError`; with a
+  handler that declares a `limit` dependency it binds there, which is `bootstrap`'s dependency
+  injection working as designed.
+- Tester F-4 (Warning): `default_instance` is missing from the hard check's allowed annotation
+  values, so a misspelt value (`'True'`) passes and generates no default; only a schema author
+  meets it, and the toolkit's schema is correct.
+- L2 S1: the `default_instance` check reads `slot_usage` only through the generator, so an
+  annotation given in `slot_usage` on a type-ranged slot is caught by `check-generated`'s mypy,
+  not by `rp-generate` naming the slot.
+- L2 S4: TC-39 needs no container but sits in `tests/integration/`.
+- L2 S5: `settings_from_env` validates twice (the synthetic settings class, then the model); the
+  docstring says once.
+- L2 S6: `pydantic_split.py`'s module docstring says "five things" and names neither
+  `default_instance` nor the list default. Task 4.3's docs pass.
+- L2 S8: `develop/index.adoc:194` writes "`max_roots=500`" like the removed keyword.
+- L2 S7 (fixed by the lead with this record): the roadmap line in `tasks.md` ticks 3.5.
 
 Under the floor (not fixed in stage 2):
 

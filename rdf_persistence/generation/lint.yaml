@@ -10,5 +10,14 @@ rules:
     level: error
   standard_naming:
     level: error
+    # The wire values of Zitadel's v2 user states (`ZitadelUserState`, technical-models PD-8): the
+    # permissible value is the text on the wire, so it cannot be snake_case.
+    exclude:
+      - USER_STATE_UNSPECIFIED
+      - USER_STATE_ACTIVE
+      - USER_STATE_INACTIVE
+      - USER_STATE_DELETED
+      - USER_STATE_LOCKED
+      - USER_STATE_INITIAL
   canonical_prefixes:
     level: error

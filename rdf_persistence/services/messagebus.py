@@ -19,6 +19,7 @@ from rdf_persistence.domain.generated.rp_provenance import Activity
 from rdf_persistence.domain.generated.rp_workflow import Transition
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.collaboration import Collaboration
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
 from rdf_persistence.services.provenance import Served, new_activity_id
@@ -101,24 +102,25 @@ def _name(observer: Callable[..., object]) -> str:
 
 
 class MessageBus:
-    """Dispatches commands to handlers (``handle``) and committed activities to observers (``publish``)."""
+    """Dispatches commands to handlers (``handle``) and committed activities to observers (``publish``).
+
+    ``limits.max_messages`` bounds one run (a fresh ``LimitSettings`` unless given).
+    """
 
     def __init__(
         self,
         commands: Mapping[type[Activity], Handler],
         observers: Mapping[type[Activity], Sequence[Observer]],
         *,
-        limit: int = 100,
+        limits: LimitSettings | None = None,
         mapper: Mapper | None = None,
     ) -> None:
         for key in (*commands, *observers):
             if not (isinstance(key, type) and issubclass(key, Activity)):
                 raise ValueError(f"{key!r} is not an Activity subclass")
-        if limit < 1:
-            raise ValueError(f"limit must be at least 1, got {limit}")
         self._commands = dict(commands)
         self._observers = {cls: list(each) for cls, each in observers.items()}
-        self._limit = limit
+        self._limit = (limits or LimitSettings()).max_messages
         self._mapper = mapper
 
     async def handle(self, command: Activity, collaboration: Collaboration) -> object:
@@ -281,7 +283,7 @@ def bootstrap(
     *,
     commands: Mapping[type[Activity], Callable[..., Awaitable[object]]] | None = None,
     observers: Mapping[type[Activity], Sequence[Callable[..., Awaitable[None]]]] | None = None,
-    limit: int = 100,
+    limits: LimitSettings | None = None,
     mapper: Mapper | None = None,
     **dependencies: Any,
 ) -> MessageBus:
@@ -305,4 +307,4 @@ def bootstrap(
     }
     if unused := sorted(set(dependencies) - used):
         raise ValueError(f"no handler or observer names the dependency {', '.join(unused)}")
-    return MessageBus(bound_commands, bound_observers, limit=limit, mapper=mapper)
+    return MessageBus(bound_commands, bound_observers, limits=limits, mapper=mapper)

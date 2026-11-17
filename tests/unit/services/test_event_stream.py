@@ -12,6 +12,7 @@ from rdf_persistence.domain.exceptions import Forbidden, NotFound
 from rdf_persistence.domain.generated.rp_provenance import Activity, Generation
 from rdf_persistence.services.event_hub import EventHub
 from rdf_persistence.services.event_stream import KEEP_ALIVE, RESET, event_stream
+from rdf_persistence.services.generated.settings.rp_settings import EventSettings
 
 TENANT = "https://lib.example/tenant/t"
 DUNE = "https://lib.example/book/dune"
@@ -218,7 +219,7 @@ async def test_an_idle_stream_sends_a_keep_alive():
 
 
 async def test_a_full_queue_ends_the_stream():  # TC-36 (the hub's own test shows another subscriber keeps all)
-    hub = EventHub(max_queue=2)
+    hub = EventHub(events=EventSettings(hub_queue_size=2))
     stream = streaming(hub)
     waiting = await first_of(stream, hub)
     for n in (1, 2, 3):  # three in a row: the reader has not run

@@ -16,7 +16,7 @@ import httpx
 import jwt
 from pydantic import BaseModel, ValidationError
 
-from rdf_persistence.adapters._http import READ_TIMEOUT_SECONDS, json_body
+from rdf_persistence.adapters._http import json_body
 from rdf_persistence.adapters.generated.rp_wire import (
     ZitadelAssertion,
     ZitadelCreated,
@@ -33,23 +33,23 @@ from rdf_persistence.adapters.generated.rp_wire import (
     ZitadelTokenRequest,
 )
 from rdf_persistence.adapters.jwks import RS256
-from rdf_persistence.adapters.zitadel import (
-    MACHINE_USERS,
-    MANAGEMENT,
-    ORG_HEADER,
-    OWN_ORGANISATION,
-    PROJECTS,
-    TOKEN_PATH,
-    user_grant_path,
-)
+from rdf_persistence.adapters.zitadel import MANAGEMENT, ORG_HEADER, user_grant_path
 from rdf_persistence.generation.generated.rp_generation import (
     MachineUser,
     ZitadelProject,
     ZitadelServer,
 )
+from rdf_persistence.services.generated.settings.rp_settings import HttpSettings
 from rdf_persistence.services.tokens import EpochClock
 from rdf_persistence.testkit.exceptions import ProvisioningError, TokenRefusedError
 
+# The endpoints only the test fixtures call (technical-models DEC-8); the adapter does not.
+PROJECTS = f"{MANAGEMENT}/projects"
+MACHINE_USERS = f"{MANAGEMENT}/users/machine"
+OWN_ORGANISATION = f"{MANAGEMENT}/orgs/me"
+TOKEN_PATH = "/oauth/v2/token"
+# The fixtures wait as long as the toolkit's HTTP clients do by default.
+READ_TIMEOUT_SECONDS = HttpSettings().read_timeout_seconds
 ADMIN_ROLE = "admin"
 PROJECT_NAME = "rp-test"
 ASSERTION_SECONDS = 60

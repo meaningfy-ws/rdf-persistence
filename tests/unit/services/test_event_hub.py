@@ -4,6 +4,7 @@ import asyncio
 
 from rdf_persistence.domain.generated.rp_provenance import Activity
 from rdf_persistence.services.event_hub import CLOSED, EventHub
+from rdf_persistence.services.generated.settings.rp_settings import EventSettings
 
 TENANT = "https://lib.example/tenant/a"
 OTHER = "https://lib.example/tenant/b"
@@ -41,7 +42,7 @@ def test_an_offer_reaches_every_subscriber_of_the_tenant_and_no_other():
 
 def test_a_full_queue_is_closed_and_a_reader_of_another_gets_all_of_them():
     async def scenario():
-        hub = EventHub(max_queue=2)
+        hub = EventHub(events=EventSettings(hub_queue_size=2))
         async with hub.subscribe(TENANT) as slow, hub.subscribe(TENANT) as fast:
             got = []
             for n in range(3):
@@ -59,7 +60,7 @@ def test_a_full_queue_is_closed_and_a_reader_of_another_gets_all_of_them():
 
 def test_a_closed_queue_holds_only_the_sentinel():  # D-14
     async def scenario():
-        hub = EventHub(max_queue=2)
+        hub = EventHub(events=EventSettings(hub_queue_size=2))
         async with hub.subscribe(TENANT) as queue:
             for n in range(3):
                 hub.offer(TENANT, _activity(n))
@@ -68,9 +69,9 @@ def test_a_closed_queue_holds_only_the_sentinel():  # D-14
     assert asyncio.run(scenario()) == [CLOSED], "no activity after a gap the reader cannot see"
 
 
-def test_a_closed_queue_ends_its_reader_even_when_it_was_full():
+def test_a_closed_queue_ends_its_reader_even_when_it_was_full():  # TC-38
     async def scenario():
-        hub = EventHub(max_queue=1)
+        hub = EventHub(events=EventSettings(hub_queue_size=1))
         async with hub.subscribe(TENANT) as queue:
             hub.offer(TENANT, _activity(1))
             hub.offer(TENANT, _activity(2))

@@ -13,9 +13,8 @@ from pydantic import BaseModel
 
 from rdf_persistence.domain.exceptions import PersistenceError
 from rdf_persistence.domain.media import CONTENT_TYPE, JSON
+from rdf_persistence.services.generated.settings.rp_settings import HttpSettings
 
-CONNECT_TIMEOUT_SECONDS = 5.0
-READ_TIMEOUT_SECONDS = 30.0
 EMPTY_JSON_OBJECT = "{}"
 
 
@@ -42,13 +41,16 @@ class HttpAdapter:
         auth: httpx.Auth | None = None,
         headers: dict[str, str] | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
+        http: HttpSettings | None = None,
     ) -> None:
+        """Open the client; ``http`` sets its timeouts (the defaults of ``HttpSettings`` if none)."""
+        http = http or HttpSettings()
         self.client = httpx.AsyncClient(
             base_url=base_url,
             auth=auth,
             headers=headers,
             transport=transport,
-            timeout=httpx.Timeout(READ_TIMEOUT_SECONDS, connect=CONNECT_TIMEOUT_SECONDS),
+            timeout=httpx.Timeout(http.read_timeout_seconds, connect=http.connect_timeout_seconds),
         )
 
     async def request(self, method: HTTPMethod | str, url: str, **kwargs: Any) -> httpx.Response:

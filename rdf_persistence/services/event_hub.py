@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 from typing import Protocol
 
 from rdf_persistence.domain.generated.rp_provenance import Activity
+from rdf_persistence.services.generated.settings.rp_settings import EventSettings
 
 CLOSED = object()  # the sentinel that ends a subscriber's stream
 
@@ -23,10 +24,13 @@ class Offer(Protocol):
 
 
 class EventHub:
-    """Fans each offered activity out to the queues subscribed to its tenant."""
+    """Fans each offered activity out to the queues subscribed to its tenant.
 
-    def __init__(self, max_queue: int = 1000) -> None:
-        self._max_queue = max_queue
+    A queue holds ``events.hub_queue_size`` activities (a fresh ``EventSettings`` unless given).
+    """
+
+    def __init__(self, events: EventSettings | None = None) -> None:
+        self._max_queue = (events or EventSettings()).hub_queue_size
         self._queues: dict[str, set[asyncio.Queue]] = defaultdict(set)
 
     @asynccontextmanager

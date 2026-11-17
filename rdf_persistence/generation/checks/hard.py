@@ -25,6 +25,7 @@ from rdf_persistence.domain.generated.rp_core import (
 )
 from rdf_persistence.domain.layout import LAYOUT_WORDS
 from rdf_persistence.generation.checks.application import application_problems
+from rdf_persistence.generation.checks.default_instance import default_instance_problems
 from rdf_persistence.generation.checks.toolkit_filled import toolkit_filled_problems
 from rdf_persistence.generation.generated.rp_generation import CheckProblem, HardRule
 from rdf_persistence.generation.problems import rule_problem
@@ -393,5 +394,6 @@ def hard_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
     return [
         *(p for schema in schemas for p in _schema_problems(schema)),
         *(p for schema in schemas for p in _annotation_problems(schema, _segment_pattern())),
+        *default_instance_problems(view, schemas),
         *_class_problems(view, classes),
     ]

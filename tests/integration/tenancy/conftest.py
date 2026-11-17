@@ -9,6 +9,7 @@ from collections.abc import AsyncIterator
 
 import pytest
 
+from rdf_persistence import ToolkitSettings
 from rdf_persistence.adapters.s3 import S3FileStore
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.generated.service.rp_service import ServiceSettings
@@ -22,10 +23,12 @@ from tests.toy_service import drop_buckets, drop_databases, unique_prefix
 
 
 @pytest.fixture(params=FILE_STORES)
-def files(request: pytest.FixtureRequest) -> FileStore:
+def files(request: pytest.FixtureRequest, toolkit: ToolkitSettings) -> FileStore:
     if request.param == GARAGE:
         server = request.getfixturevalue("garage")
-        return S3FileStore(server.endpoint, server.key_id, server.secret, server.region)
+        return S3FileStore(
+            server.endpoint, server.key_id, server.secret, server.region, http=toolkit.http
+        )
     return FakeFileStore()
 
 

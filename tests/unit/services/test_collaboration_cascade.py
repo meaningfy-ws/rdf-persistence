@@ -17,9 +17,10 @@ from rdf_persistence.domain.exceptions import (
 from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.mapper import DEFAULT_MAX_ROOTS, UnitOfWork
+from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.write_guards import WriteGuards
 from rdf_persistence.testkit import FakeStore, fake_session
@@ -45,6 +46,7 @@ from tests.toy import (
 )
 from tests.toy import access as access_record
 
+DEFAULT_MAX_ROOTS = LimitSettings().max_roots  # the limit of a default mapper
 B1, B2, B3, B4, B9 = (book_iri(n) for n in (1, 2, 3, 4, 9))
 S1, A = shelf_iri(1), shelf_iri(3)
 HEADS = "VALUES ?m"  # the text of the query that reads the heads of the members

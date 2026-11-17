@@ -18,8 +18,12 @@
       "sha256": "0649daaa9df18366f1a1d0d4cad2c80ab1113f69c1b4b8ffedb3c5e76441ee0f"
     },
     {
+      "path": "rdf_persistence/generation/checks/default_instance.py",
+      "sha256": "3b0f9ebfd289770f08c3647282360314d6436302561deabe94f9ddd7bf88b9b2"
+    },
+    {
       "path": "rdf_persistence/generation/checks/hard.py",
-      "sha256": "90e59a95e7f443c93960f7fe0a1a8e54133da29de8c148694c525d937801d5e8"
+      "sha256": "42e9a56aa2a049b0e7b4303fc228bbc19fcc10e8f0b2ae521daf35f9338c220c"
     },
     {
       "path": "rdf_persistence/generation/checks/rules.py",
@@ -59,7 +63,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/pydantic_split.py",
-      "sha256": "c5e70c440bf379566377500b999af3edf5f11b41d6c3227ef77cc5a87dc52243"
+      "sha256": "e577496723ad10d1e643031d86cf439125a7e25e89bacb0032958138b71ae6fc"
     },
     {
       "path": "rdf_persistence/generation/extensions/pydantic_validators.py",
@@ -107,7 +111,7 @@
     },
     {
       "path": "rdf_persistence/generation/templates/pydantic/attribute.py.jinja",
-      "sha256": "1623c7795be25563bc603b31a357a3dd37f0e72c64ed09cd1f293c02e3b86262"
+      "sha256": "cd2f67365ea69520f5ae6e86e109b921fbf99f88015782a52530a41234f7d475"
     },
     {
       "path": "rdf_persistence/generation/templates/pydantic/base_model.py.jinja",
@@ -147,7 +151,7 @@
     },
     {
       "path": "rdf_persistence/model/technical/wire/rp_wire.yaml",
-      "sha256": "99cb6317442ad01f3a60647532acb7c0850a2f61e6f6cd4bed1795321d9bb7bc"
+      "sha256": "0700f8acad02629f40db99f8f3b2b8a21a9de7b7f06e8680b666a7ea2e45d4da"
     },
     {
       "path": "rdf_persistence/services/schema.py",
@@ -165,15 +169,15 @@
     },
     {
       "path": "rdf_persistence/adapters/generated/context.jsonld",
-      "sha256": "be06c6a92743fd793a963e3b47d2bc5d6f770cf8f47d26472e8525bcf7bbd524"
+      "sha256": "9621c279ff318bc13b2a52f93fbeb150597a87d5fd426736df52e24245c44e07"
     },
     {
       "path": "rdf_persistence/adapters/generated/rp_wire.py",
-      "sha256": "cd2abd7959f15a9a70df11c8f0c33550bb66eb73d22ae4143bac34fa55f79ec0"
+      "sha256": "fce319d9d71fb58187cb96bf71db4a4845813f30231b02a09a9161ae76ea3158"
     },
     {
       "path": "rdf_persistence/adapters/generated/shapes.ttl",
-      "sha256": "a88b05abf06b584ce408b73bd73f7935336b4c5d96f8eea74f781e7459b3bb6a"
+      "sha256": "32a14ea738bd250678eb52f8105fa93385ddc63fbaf29c9fdd280de969263b16"
     }
   ]
 }
