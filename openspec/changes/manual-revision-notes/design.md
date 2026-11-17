@@ -474,6 +474,18 @@ overrule any of them. D-1 to D-7 agreed by the developer, 2026-11-17.
   headers (S3); `architecture/api.adoc` row 9 adds the invalid IRI (S4). Its commit carries the
   Accept footer, so no pushed commit is rewritten. One full-gates run, then CI. The developer also
   granted the lead the merge on green CI until this EPIC ends.
+- **D-14 Stage 3 team and order.** Base `8528251` (PR #143 merged). Builders in parallel on
+  disjoint files (R-0004), each in its own worktree: 3.1 (`domain/media.py`, `documents.py`,
+  `openapi.py`, their tests) beside 3.3 (docs pages and the mapper docstring only; 3.1 edits no
+  page under `docs/`); then 3.2 beside 3.4, both after 3.1 (the contract test reads the OpenAPI
+  document 3.1 widens; `representations.feature` needs the new types). Tester: no (MEDIUM, no
+  `## Invariants`, as D-2). Last stage, so the full review runs now (D-1, P-0005): L1, L2, L3
+  each its own reviewer, L4 with L5 one; then one checker; a cold reader for `howto/adopt.adoc`.
+- **D-15 Impact of task 3.1 read as low.** GitNexus rates `Documents.render` CRITICAL (60
+  processes, 2 direct callers): it sits on every document route, as `_negotiate` did (D-9). Its
+  signature stays; `domain/media.py` (MEDIUM, 12 importers) only gains constants and a longer
+  `REPRESENTATIONS`. The two tests the PLAN names are the only existing tests that may change;
+  any other edit to an existing test stops the task.
 
 ### Stage 1 review findings (L2, L3)
 
