@@ -90,7 +90,7 @@ separate and L4+L5 one pass, the fix pass, PR 1.
 | TC-17 | `fill_terms("$a $b", M(a=t1, b=None))` where the template names `b` | `SparqlError` "missing terms for ['b']" (None is left out, `fill`'s check holds) |
 | TC-55 | `fill_terms("$a $c", M(a=t1), c=t2)`; `fill_terms("$a", M(a=t1), a=t2)` | `"<t1> <t2>"`; `SparqlError` "term given twice: ['a']" |
 
-- [ ] 2.2 PD-5 (D-1): `model/technical/templates/rp_templates.yaml` (target `kind = "technical"`,
+- [x] 2.2 PD-5 (D-1): `model/technical/templates/rp_templates.yaml` (target `kind = "technical"`,
   `openapi = false`) with the term models; the factories in `services/vocabulary.py`;
   `unique_keys.py`, `session.py`, `listing.py`, `migrations.py` use them; the placeholders
   `$class` → `$target`, `$from` → `$from_version`. Tests: the existing

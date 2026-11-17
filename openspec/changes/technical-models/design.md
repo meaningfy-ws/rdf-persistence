@@ -116,7 +116,7 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-9. The new ones:
   - `ListingTerms` (`mixins: RegistryTerms`): `aggregate`, `target`, `patterns`, `hidden`,
     `p_listed_in`, `p_total`, `order`, `limit`, `offset`, optional `p_sort`. The template's
     `$class` becomes `$target` (`listing.py:281-293`, no more `**{"class": ...}`).
-  - `StampGuardTerms`: `stamps`, `schema`, `p_stamp`, `from_version`; the templates' `$from`
+  - `StampGuardTerms`: `stamps`, `schema_id` (D-19), `p_stamp`, `from_version`; the templates' `$schema` becomes `$schema_id` and `$from`
     becomes `$from_version` in `_STEP`, `_ROTATION` and `_STAMP_MOVE` (`migrations.py:45-63`), all
     internal (no consumer file names a placeholder). Replaces the `guard` dict (`:242-247`); the
     three operations add their own terms through `more`: `_STEP` `delete`, `insert`, `where`,
@@ -434,6 +434,18 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   (a field typed `str` still turns a `SparqlTerm` into a `str`, so `model_dump` stays unsafe). DEC-7
   holds either way: the hook is what lets the field exist and refuse a raw `str`. No code change;
   no upstream issue (pydantic behaves as documented).
+- **D-18 (stage 2, task 2.2)** GitNexus rated `session._owner_terms` HIGH (it reaches `remove`,
+  `replace_graph`, `replace_parts`, `remove_parts`); `unique_keys.py` and `migrations.py` MEDIUM,
+  `listing_query` LOW. Not taken to the developer: the query text must not change (TC-19's golden
+  strings, captured before the change, pin every template the task touches), and the existing
+  session, key, listing and migration tests stay unchanged.
+- **D-19 (stage 2, task 2.2, divergence from PD-5)** `StampGuardTerms`' field is `schema_id`, not
+  `schema`: a pydantic field named `schema` shadows `BaseModel.schema` and warns at import. The
+  placeholder in `_STEP`, `_ROTATION` and `_STAMP_MOVE` follows (`$schema_id`); `SELECT_STAMPS` and
+  the stamp insert keep `$schema` (not term models). The query text is unchanged: the lead ran
+  TC-19's goldens against the code before the change (all ten equal).
+- **D-20 (stage 2, task 2.2)** One existing test changed beyond the PLAN's list:
+  `test_hard_check.py` counted the toolkit's targets (`== 4`); the templates target makes five.
 
 Under the floor (not fixed in stage 1):
 
