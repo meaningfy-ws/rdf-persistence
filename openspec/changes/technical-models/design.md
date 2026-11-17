@@ -446,6 +446,17 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   TC-19's goldens against the code before the change (all ten equal).
 - **D-20 (stage 2, task 2.2)** One existing test changed beyond the PLAN's list:
   `test_hard_check.py` counted the toolkit's targets (`== 4`); the templates target makes five.
+- **D-21 (stage 2, task 2.3)** GitNexus rated `Iris` HIGH (22 direct); `effective_policy` LOW.
+  Not taken to the developer: the task changes `Iris`' internals (`_fixed`, the matchers), not its
+  public methods, and the `test_iris*` and `test_iri_policy*` tests stay unchanged. The tester
+  runs in its own worktree on 2.1 and 2.2 (`7968110`) while 2.3 is built (R-0004).
+- **D-22 (stage 2, task 2.3, as built)** `IriParts` forbids unknown keys through `RpModel`'s
+  `extra="forbid"`, with no annotation. `Iris._fixed` is the model, and it is dumped only at the
+  library boundaries (`str.format`, `_compile`). The helper is `iri_template_variables`. Two
+  readers now test `is None` where they tested a key's presence: `_belongs` (a `tenant` group that
+  did not take part in the match) and `tenant_of_access` (an access template with neither `tenant`
+  nor `tenant_id`, which used to raise `KeyError` and now reaches `self.tenant("None")`). The
+  builder holds that both paths need an invalid policy; the stage's review judges it.
 
 Under the floor (not fixed in stage 1):
 

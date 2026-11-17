@@ -105,7 +105,7 @@ separate and L4+L5 one pass, the fix pass, PR 1.
 | TC-20 | `KeyHeldTerms(values="raw", ...)` | `ValidationError` |
 | TC-21 | `ast-grep` for a dict literal whose keys are a template's placeholders in the four modules | no match |
 
-- [ ] 2.3 PD-5 (D-2): `IriTemplateVariables`, `IriParts` in `rp_templates.yaml`; `services/iris.py`
+- [x] 2.3 PD-5 (D-2): `IriTemplateVariables`, `IriParts` in `rp_templates.yaml`; `services/iris.py`
   (`effective_policy`, `Iris._fixed`, the matchers, today's `iris.py:636-747`). Tests: the
   `test_iris*.py` and `test_iri_policy*.py` that task 1.2 moved to `tests/unit/services/` stay
   green, plus TC rows in `tests/unit/services/test_iris.py`. Gate: `make test-fast check-quality`.
@@ -226,7 +226,7 @@ Stage 4 closes like stage 1, then the reconciliation of `proposal.md` (P-0004) i
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 ·
   (tester) · [ ] 3.4 · [ ] 3.5 · PR 3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · reconcile · PR 4
 
 ## Verification
