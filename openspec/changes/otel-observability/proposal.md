@@ -212,7 +212,14 @@ are `D-1` to `D-9` in [design.md](design.md#delivery-decisions).
 - **Order** (D-1, D-8): delivered while `technical-models` stages 3–4 were in flight; nothing in
   this change waited for them.
 
+- **No exception text in a span** (D-10, from the full review): `traced` records an exception's
+  type only, never its message or traceback; the 500 record drops `exc_info` where a stored
+  value could be quoted (D-11).
+
 Nothing the shape promised was dropped. The spec delta `rp-observability` is true of the code: each
 scenario is a feature test in `tests/feature/observability.feature`, except "no provider
-installed" (TC-14), "the package loads no SDK" (TC-17) and "a traced event" (TC-28, container),
-which the feature file names.
+installed" (TC-14, which shows a span is a no-op without a provider; no test commits without
+one), "the package loads no SDK" (TC-17) and "a traced event" (TC-28, container), which the
+feature file names. "A commit's store call" runs on the fake store (`rdflib`); its Fuseki spelling
+is covered by TC-26 (`system_name_of` gives `fuseki`) and TC-27 (the kit wraps every store), not by
+a container span (D-12).

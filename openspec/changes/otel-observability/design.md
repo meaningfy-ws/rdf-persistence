@@ -428,6 +428,49 @@ DEC-9, and PD-4's fallback `"sparql"`.
   guarantee, so RISK-3's residual gains it and the how-to recommends `"logs": False` where an
   exception message can carry tenant data.
 
+- **D-10 No exception text in a span** (full review, L1-C1 Critical, with L2-W6 and L4/L5-W1).
+  `traced` used the API's defaults (`record_exception`, `set_status_on_exception`), which put
+  `str(exc)` and the chained traceback into an `exception` event and the status description:
+  rdflib's `BadSyntax` behind `StoreUnavailable` quotes Fuseki's answer, a pydantic
+  `ValidationError` quotes its input. That breaks DEC-6/DEC-8, the spec's SHALL and RISK-3.
+  Corrects PD-3: `traced` opens the span with both defaults off, catches `Exception` (as the API
+  does; a cancellation is no failure), sets status ERROR with no description, sets `error.type`,
+  and adds one `exception` event carrying only `exception.type`. TC-16 changes accordingly; TC-18
+  extends to events; two failure-path tests carry the secret marker (malformed Turtle answering a
+  `query`; a handler raising a `ValidationError` that quotes it). The how-to's §10 follows.
+- **D-11 The 500 record keeps no tenant text** (L1-W1, re-labelled Critical: the same RISK-3
+  leak, in a call this epic rewrote under DEC-8). `StoredDataInvalid` is raised `from` the decode
+  error over stored values, and its message can quote them; `exc_info` sent both to the log
+  backend at ERROR. The `answer-internal-error` record logs `error.type` and, where the error or
+  its cause is a `ValidationError`, `rp.error.detail=error_text(...)` and no `exc_info`; other
+  mapped 500s keep `exc_info`. TC-13c changes accordingly; a test with the secret marker in an
+  undecodable stored collection.
+- **D-12 "As built" narrowed** (L2-W1, L2-W2). The Fuseki spelling of "a commit's store call" is
+  covered by TC-26 and TC-27, not a container span; "no provider installed" is TC-14 (a span, not
+  a commit). The proposal says so.
+- **D-13 Owed to the docs stage** (doc agreement, L2-W4, L2-W5, L2-S1): `rp.sweep.system_created`
+  described wrongly in the how-to and the schema; `event-driven.adoc` omits `middlewares=`; the
+  store-span table omits `rp.step`.
+
+**Stage 2, under the floor** (full review: L1 `findings=4`, L2 `12`, L3 `7`, L4+L5 `14`):
+
+- L1-S1 the testkit's TID251 exemption and TC-17 not importing the testkit; L1-S2 the
+  `relay-round-failed` record logs after the round span closed.
+- L2-W3 the scenario map lacks the new unit tests (`make refresh-map` already exits 1 on 51 older
+  ids); L2-W7 the gate report (now in the PR body); L2-S2 TC-34 says two databases, the application
+  database makes three; L2-S3 TC-23's wording; L2-S4 TC-25 lists the fake's methods; L2-S5
+  `testing.adoc` lacks the `spans` and `tests/logs.py` conventions.
+- L3-W1 telemetry slot IRIs reuse model IRIs (`rp:activityClass` with another meaning); L3-W2
+  `opentelemetry` not in `domain-pure`, the provider set-up calls not banned; L3-W3 = L4/L5-W5
+  `_sweep_tenant` positional bools; L3-W4 the generator change reaches consumer schemas with a
+  non-identifier alias (the PR body's BREAKING line names it); L3-S1 the `noqa: PLR0913`; L3-S2
+  the private FastStream type; L3-S3 `toolkit_store` in entrypoints.
+- L4/L5-W2 the `spans` provider records for the rest of the worker; W3 idle relay rounds dominate
+  span volume; W4 expected refusals (`Conflict`, `NotFound`, `BadQuery`) mark spans ERROR (a spec
+  decision, for the developer); W6 an S3 failure names no operation; S1–S8 overhead, duplicated
+  contexts, the IRI-policy reason, the commit span's activity, feature/unit overlap, stale step
+  messages, the guard's `GOOD` sample, the nesting of log calls.
+
 **Stage 1, under the floor** (L2+L3 pass, `findings=5 accepted=0`; W1 and S3 carried by D-6):
 
 - S1 `test_messagebus_adversarial.py:629,669,776` assert exception text through `caplog.text`
