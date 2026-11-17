@@ -400,3 +400,17 @@ DEC-9, and PD-4's fallback `"sparql"`.
   required fields, which the one bare `TenantAccess.model_construct()` in `tenancy.py`
   (`_refuse_bad_store_name`) breaks; that call is fixed in the same commit. Rejected: `# type:
   ignore` at 100+ sites; generating `validation_alias` instead (the wire models validate by alias).
+- **D-6 Carried to stage 2** (stage 1 review, no Critical). W1: the guard of PD-9 accepts a log
+  call with no `extra=`, while DEC-8 and the spec ask `rp.step` on every record; task 2.1 makes
+  the guard require `extra=log_extra(...)` on every call and corrects PD-9's wording ("any
+  `extra=`" → "every call's `extra=`"). S3: the `error_type` slot's description names only the
+  qualified class name; task 2.1 rewords it ("or the code a service answered with", PD-3) and
+  regenerates.
+
+**Stage 1, under the floor** (L2+L3 pass, `findings=5 accepted=0`; W1 and S3 carried by D-6):
+
+- S1 `test_messagebus_adversarial.py:629,669,776` assert exception text through `caplog.text`
+  (the traceback), not the record's `exc_info`. Correct today; style only.
+- S2 TC-12's second half raises `MessageLimitExceeded` from an observer instead of a real commit;
+  the real limit is covered at `test_receive.py:320-327`.
+- S4 `_is_python_name`'s keyword branch has no test (no schema uses a keyword alias).
