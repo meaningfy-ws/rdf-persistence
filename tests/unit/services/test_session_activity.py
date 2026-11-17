@@ -24,6 +24,7 @@ from rdf_persistence.services.session import Session
 from rdf_persistence.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import FakeStore, assert_isomorphic, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from tests.logs import attributes
 from tests.toy import ADA, BOB, SETTINGS, TENANT, TOY_SCHEMA, book_iri, dune, template, toy_mapper
 from tests.unit.services.test_tenant_dump import BASE_STAMPS, TOY_CHAINS
 from tests.unit.services.test_tenant_sweep import CREATOR, make_world
@@ -329,9 +330,14 @@ async def test_tc35_a_hook_that_raises_is_logged_and_the_commit_stands(store, ca
         with caplog.at_level(logging.ERROR, logger="rdf_persistence.services.session"):
             version = await session.add_graph(B1, book(B1))
     assert version, "the commit returned"
-    assert (await only_activity(store)).id in caplog.text, "the error names the activity"
-    assert "on_commit failed" in caplog.text, "and says what failed"
-    assert "hook broke" in caplog.text, "with the traceback"
+    [record] = caplog.records  # TC-13b
+    assert attributes(record)["rp.activity.id"] == (await only_activity(store)).id, (
+        "the error names the activity"
+    )
+    assert record.getMessage() == "on_commit failed", "and says what failed"
+    assert attributes(record)["rp.step"] == "commit-hook-failed", "at which step"
+    assert record.exc_info, "with the exception"
+    assert "hook broke" in str(record.exc_info[1]), "the hook's"
 
 
 async def test_tc36_a_refused_commit_does_not_call_the_hook(store):

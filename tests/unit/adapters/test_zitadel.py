@@ -9,6 +9,7 @@ import pytest
 
 from rdf_persistence.adapters.zitadel import ZitadelIdentity
 from rdf_persistence.domain.exceptions import IdentityUnavailable, NotFound
+from tests.logs import attributes, records_of
 
 ISSUER = "http://zitadel.test"
 ORG, PROJECT = "org-1", "prj-1"
@@ -399,8 +400,15 @@ async def test_a_failure_logs_the_status_and_no_body(caplog):
     )
     with caplog.at_level(logging.DEBUG), pytest.raises(IdentityUnavailable):
         await client.find_by_email("nobody@example.org")
-    assert "500" in caplog.text, "the status is logged"
-    assert "body-with-secrets" not in caplog.text, "the body is not"
+    [record] = records_of(caplog, "identity-error")  # TC-20
+    assert record.levelno == logging.DEBUG
+    assert record.getMessage() == "the identity provider answered an error"
+    assert attributes(record) == {
+        "rp.step": "identity-error",
+        "http.response.status_code": 500,
+    }, "the status is logged"
+    assert "body-with-secrets" not in caplog.text, "the body is in no record"
+    assert "body-with-secrets" not in str([vars(r) for r in caplog.records])
 
 
 # --- failures ----------------------------------------------------------------

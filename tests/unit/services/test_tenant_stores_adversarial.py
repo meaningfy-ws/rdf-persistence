@@ -26,6 +26,7 @@ from rdf_persistence.services.tenancy import DEFAULT_STORE, Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.logs import attributes
 from tests.toy import SETTINGS, library_slots, toy_mapper
 from tests.unit.services.migration_helpers import LIB, chain_of, migration, rename
 from tests.unit.services.test_tenancy_stores import (
@@ -265,9 +266,9 @@ async def test_a_record_that_lost_its_store_name_is_reported_and_its_database_on
 
     assert name in world.a._datasets, "the tenant's database is kept"
     steps = [
-        (r.step, r.tenant, r.recorded_store, r.found_store)
-        for r in caplog.records
-        if hasattr(r, "step")
+        (a["rp.step"], a["rp.tenant.id"], a["rp.store.name"], a["rp.store.found_name"])
+        for a in map(attributes, caplog.records)
+        if a.get("rp.step") == "misplaced-tenant"
     ]
     assert ("misplaced-tenant", tenant, DEFAULT_STORE, CLIENT_A) in steps, (
         "the misplaced tenant is reported with both store names"

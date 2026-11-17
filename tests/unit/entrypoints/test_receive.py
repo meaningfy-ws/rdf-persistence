@@ -28,6 +28,7 @@ from rdf_persistence.testkit import (
     wait_until_async,
 )
 from tests.fixtures.library.generated.templates import Template
+from tests.logs import attributes
 from tests.toy import toy_mapper
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 from tests.unit.entrypoints.test_service_kit import made
@@ -172,11 +173,19 @@ async def test_a_body_that_does_not_validate_is_logged_without_its_values(
 ) -> None:  # #125
     caplog.set_level(logging.DEBUG, LOGGER)
     body = b'{"id": "urn:a:x", "started_at_time": "secret-tenant-text"}'
-    await world.cat_bus._deliver((world.envelope, body))
-    assert "started_at_time" in caplog.text, "the field at fault is named"
+    await world.cat_bus._deliver((world.envelope, body))  # TC-11
+    [record] = [r for r in caplog.records if r.levelno > logging.DEBUG]
+    attrs = attributes(record)
+    assert record.levelno == logging.WARNING, "one warning"
+    assert record.getMessage() == "skipped an event whose class is unknown or whose body is invalid"
+    assert attrs["rp.step"] == "receive-invalid-event", "the step"
+    assert attrs["error.type"].endswith("ValidationError"), "the kind of failure"
+    assert "started_at_time" in str(attrs["rp.error.detail"]), "the field at fault is named"
+    assert record.exc_info is None, "no traceback: it would print the values (PD-8)"
     assert "secret-tenant-text" not in caplog.text, (
         "another deployment's data never reaches the log"
     )
+    assert "secret-tenant-text" not in f"{record.getMessage()}{attrs}", "nor a message or attribute"
 
 
 async def test_a_message_naming_a_class_that_is_not_an_activity_is_logged_and_acked(
@@ -210,11 +219,21 @@ async def test_a_message_for_a_tenant_this_deployment_lacks_is_logged_and_acked(
     world, caplog
 ) -> None:  # TC-26
     caplog.set_level(logging.DEBUG, LOGGER)
-    await sent(world, tenant=world.cat.kit.tenant_iri(str(uuid.uuid4())))
+    lacking = world.cat.kit.tenant_iri(str(uuid.uuid4()))
+    await sent(world, tenant=lacking)
     assert len(world.there.activities) == 1, "only the first message reached the observer"
-    assert [r.levelno for r in caplog.records if r.levelno > logging.DEBUG] == [logging.WARNING], (
+    [record] = [r for r in caplog.records if r.levelno > logging.DEBUG]
+    attrs = attributes(record)
+    assert record.levelno == logging.WARNING, (
         "the skipped message is logged once as a warning"
-    )
+    )  # TC-13d
+    assert record.getMessage() == "skipped an event of a tenant this deployment lacks"
+    assert attrs["rp.step"] == "receive-unknown-tenant", "the step"
+    assert attrs["rp.activity.id"] == world.replace.id, "the activity"
+    assert attrs["rp.tenant.id"] == lacking, "the tenant, as an attribute"
+    assert str(attrs["error.type"]).endswith(("DatabaseGone", "NotFound")), "the kind of failure"
+    assert lacking not in record.getMessage(), "the tenant IRI is in no message"
+    assert record.exc_info, "the error travels with it"
     await restarted(world)
     assert len(world.there.activities) == 1, "acked"
 
@@ -301,7 +320,35 @@ async def test_a_looping_observer_over_the_limit_leaves_one_error_record_in_the_
     assert [r.name for r in errors] == [LOGGER], (
         "one record in the run, from the kit that handled it"
     )
-    assert "message limit 3 reached by Replace" in errors[0].getMessage(), "the command is named"
+    assert errors[0].getMessage() == "an incoming event exceeded the message limit"
+    assert attributes(errors[0])["rp.message.limit"] == 3, "the limit"
+    assert "message limit 3 reached by Replace" in str(errors[0].exc_info[1]), (
+        "the command is named"
+    )
+
+
+async def test_a_failing_observer_and_then_the_limit_leave_one_record_each(
+    world, caplog
+) -> None:  # TC-12
+    async def broken(activity: Replace, work: Work) -> None:
+        raise RuntimeError("observer broke")
+
+    async def runaway(activity: Replace, work: Work) -> None:
+        raise MessageLimitExceeded(1)
+
+    world.cat.kit.bus = bootstrap(
+        observers={Replace: [broken, runaway]}, mapper=world.cat.kit.mapper
+    )
+    caplog.set_level(logging.DEBUG)
+    await sent(world)
+    [failed] = [r for r in caplog.records if r.levelno >= logging.ERROR and r.name != LOGGER]
+    [limit] = [r for r in caplog.records if r.levelno >= logging.ERROR and r.name == LOGGER]
+    assert failed.getMessage() == "an observer failed", "the bus's record, constant"
+    assert str(attributes(failed)["rp.observer.name"]).endswith("broken"), "the observer"
+    assert attributes(failed)["rp.activity.id"] == world.replace.id, "the activity"
+    assert failed.exc_info, "it carries its exception"
+    assert failed.exc_info[1].args == ("observer broke",), "the very one"
+    assert attributes(limit)["rp.message.limit"] == 1, "the limit record carries the limit"
 
 
 async def test_a_key_error_while_handing_over_leaves_the_message_unacked(

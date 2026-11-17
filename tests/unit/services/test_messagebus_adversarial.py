@@ -34,6 +34,7 @@ from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.fixtures.library.generated.templates import Template
+from tests.logs import records_of
 from tests.toy import (
     ADA,
     BOB,
@@ -570,7 +571,7 @@ async def test_a_nested_handle_that_fails_raises_into_its_caller_not_into_the_lo
 
     with caplog.at_level(logging.ERROR):
         assert await bus.handle(command(Replace), collaboration) == "caught", "raised to the caller"
-    assert "failed in the queue" not in caplog.text, "a nested call is not a queued one"
+    assert not records_of(caplog, "bus-queued-failed"), "a nested call is not a queued one"
 
 
 async def test_a_queued_command_that_fails_does_not_lose_the_one_behind_it_nor_the_result(caplog):
@@ -589,7 +590,7 @@ async def test_a_queued_command_that_fails_does_not_lose_the_one_behind_it_nor_t
     with caplog.at_level(logging.ERROR):
         assert await bus.handle(command(Replace), collaboration) == "first", "the first result"
     assert rec.names() == ["remove"], "the command after the failed one still ran"
-    assert caplog.text.count("failed in the queue") == 1, "the failure is logged once"
+    assert len(records_of(caplog, "bus-queued-failed")) == 1, "the failure is logged once"
 
 
 async def test_an_observer_that_sends_a_command_each_time_stops_at_the_limit_with_a_real_session():

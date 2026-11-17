@@ -41,6 +41,7 @@ from rdf_persistence.services.schema_structure import aggregate_keys
 from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from tests.logs import attributes
 from tests.toy import ADA, BOB, SETTINGS, TENANT, TOY_SCHEMA, Book, dune, toy_mapper
 from tests.unit.services.test_session_activity import (
     B1,
@@ -272,7 +273,11 @@ async def test_an_overtaken_commit_of_a_session_that_does_not_record_is_not_publ
     assert [a for a, _ in hook.calls if a.generations and len(a.generations) == 2] == [], (
         "not handed to the hook"
     )
-    assert "overtaken" in caplog.text, "and the log says so"
+    [record] = caplog.records  # TC-13b
+    assert record.levelno == logging.WARNING, "and the log says so, as a warning"
+    assert record.getMessage() == "an activity was applied but overtaken; not handed to on_commit"
+    assert attributes(record)["rp.step"] == "commit-overtaken", "at which step"
+    assert attributes(record)["rp.activity.id"], "naming the activity"
 
 
 async def test_a_served_commit_overwritten_before_the_ask_still_names_its_graph_or_activity(store):
@@ -667,7 +672,8 @@ async def test_a_hook_failure_is_logged_with_the_activity_iri_and_the_next_commi
         with caplog.at_level(logging.ERROR):
             await session.add_graph(B1, book(B1), served=served(Add(id=X)))
         await session.add_graph(B2, book(B2))
-    assert X in caplog.text, "the log names the activity"
+    [record] = caplog.records
+    assert attributes(record)["rp.activity.id"] == X, "the log names the activity"
     assert len(calls) == 2, "the second commit still reached the hook"
 
 

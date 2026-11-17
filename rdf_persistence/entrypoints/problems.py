@@ -22,6 +22,8 @@ from rdf_persistence.domain.exceptions import PersistenceError
 from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.auth import BEARER_SCHEME
 from rdf_persistence.services.generated.service.rp_service import Problem, ProblemKind, ProblemSlug
+from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
+from rdf_persistence.services.telemetry import error_type, log_extra
 
 WWW_AUTHENTICATE = "WWW-Authenticate"
 BEARER = BEARER_SCHEME.capitalize()
@@ -202,7 +204,9 @@ def install_problem_handlers(app: FastAPI, base: str) -> None:
             log.error(
                 "internal error answered",
                 exc_info=error,
-                extra={"error.type": f"{type(error).__module__}.{type(error).__qualname__}"},
+                extra=log_extra(
+                    LogContext(step="answer-internal-error", error_type=error_type(error))
+                ),
             )
         return problem_response(problem_for(base, kind, str(error)))
 

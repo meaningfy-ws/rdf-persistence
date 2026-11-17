@@ -23,6 +23,7 @@ from rdf_persistence.domain.generated.rp_provenance import (
 from rdf_persistence.domain.generated.rp_workflow import Transition
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.messagebus import MessageBus, Work, command
+from tests.logs import attributes
 from tests.toy import toy_mapper
 
 NOW = datetime(2026, 11, 14, 10, 0, tzinfo=UTC)
@@ -179,11 +180,14 @@ async def test_a_failing_observer_is_logged_and_the_others_run(caplog):  # TC-66
         await bus.publish(activity, session)
 
     assert rec.names() == ["o3", "o1"], "the observers after the failing one still run"
-    messages = [r.getMessage() for r in caplog.records if r.exc_info]
-    assert len(messages) == 1, "one error is logged, with its traceback"
-    assert f"{o2.__qualname__} failed on {activity.id}" == messages[0], (
-        "it names the observer and the activity"
-    )
+    [record] = [r for r in caplog.records if r.exc_info]  # TC-12
+    assert record.getMessage() == "an observer failed", "one error is logged, with its traceback"
+    assert attributes(record) == {
+        "rp.step": "bus-observer-failed",
+        "rp.observer.name": o2.__qualname__,
+        "rp.activity.class": "Replace",
+        "rp.activity.id": activity.id,
+    }, "it names the observer and the activity"
 
 
 def sender(rec: Recorder, name: str, *commands: Activity):
@@ -274,8 +278,13 @@ async def test_a_failing_queued_command_is_logged_and_the_queue_goes_on(caplog):
 
     assert result == "first", "handle returns the first result"
     assert rec.names() == ["o", "add"], "the command after the failing one ran"
-    messages = [r.getMessage() for r in caplog.records if r.exc_info]
-    assert messages == [f"Remove {bad.id} failed in the queue"], "the failure is logged"
+    [record] = [r for r in caplog.records if r.exc_info]
+    assert record.getMessage() == "a queued command failed", "the failure is logged"
+    assert attributes(record) == {
+        "rp.step": "bus-queued-failed",
+        "rp.activity.class": "Remove",
+        "rp.activity.id": bad.id,
+    }, "naming the command"
 
 
 def test_a_key_that_is_no_activity_or_a_limit_below_one_is_refused():  # TC-71

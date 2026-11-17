@@ -346,7 +346,7 @@ class FusekiDataset(ConfiguredBaseModel):
     "One dataset of the Fuseki dataset list."
     model_config = ConfigDict(extra="allow")
 
-    ds_name: str = Field(default=..., alias="ds.name", title="Fuseki dataset name", description="The name of the dataset, with a leading slash.")
+    fuseki_dataset_name: str = Field(default=..., alias="ds.name", title="Fuseki dataset name", description="The name of the dataset, with a leading slash.")
 
 
 class DiscoveryDocument(ConfiguredBaseModel):

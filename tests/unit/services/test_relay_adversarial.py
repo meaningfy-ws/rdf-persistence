@@ -19,6 +19,7 @@ from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.relay import chain_order
 from rdf_persistence.services.session import open_session
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus, wait_until_async
+from tests.logs import attributes
 from tests.toy import ApproveBook, library_slots, toy_mapper
 from tests.unit.services import test_relay
 from tests.unit.services.test_relay import (
@@ -275,8 +276,14 @@ async def test_a_malformed_pending_activity_is_logged_without_its_values(world, 
     assert [r.levelno for r in caplog.records] == [logging.ERROR], (
         "the malformed activity is logged as an error"
     )
-    assert "urn:a:bad" in caplog.text, "the log names the malformed activity"
+    [record] = caplog.records
+    assert attributes(record)["rp.activity.id"] == "urn:a:bad", (
+        "the log names the malformed activity"
+    )
+    assert attributes(record)["rp.step"] == "relay-undecodable", "the step"
+    assert "error.type" in attributes(record), "and the kind of failure"
     assert "secret-tenant-text" not in caplog.text, "a tenant's data never reaches the log"
+    assert "secret-tenant-text" not in str(attributes(record)), "nor an attribute"
 
 
 @pytest.mark.parametrize("typing", ["", "a 'Add' ;", "a <https://example.org/ns/library#Book> ;"])

@@ -15,6 +15,7 @@ from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.logs import attributes
 from tests.toy import SETTINGS, library_slots, toy_mapper
 from tests.unit.services.test_session_activity import stored_graph
 from tests.unit.services.test_tenant_sweep import CREATOR, FILE_KEY, book, make_world
@@ -89,15 +90,17 @@ async def test_a_failing_blob_delete_still_removes_the_aggregate_and_logs(world,
         with pytest.raises(NotFound):
             await s.get_graph(world.scan)
     assert await world.blobs() == ["k1"], "the blob stays when its delete fails"
-    assert [r.step for r in caplog.records] == ["remove-blob-failed"], "the failed delete is logged"
+    assert [attributes(r).get("rp.step") for r in caplog.records] == ["remove-blob-failed"], (
+        "the failed delete is logged"
+    )
 
 
 async def test_a_deleted_blob_is_logged(world, caplog):
     with caplog.at_level(logging.INFO):
         await world.remove(world.scan, world.version)
-    assert [r.step for r in caplog.records if hasattr(r, "step")] == ["remove-blob"], (
-        "the deleted blob is logged"
-    )
+    assert [attributes(r)["rp.step"] for r in caplog.records if "rp.step" in attributes(r)] == [
+        "remove-blob"
+    ], "the deleted blob is logged"
 
 
 async def test_a_stale_version_changes_nothing(world):

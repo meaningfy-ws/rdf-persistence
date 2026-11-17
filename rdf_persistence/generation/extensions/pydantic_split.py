@@ -17,6 +17,7 @@ The stock generator lacks five things the toolkit needs, and this module adds th
 """
 
 import copy
+import keyword
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -24,7 +25,11 @@ from pathlib import Path
 from linkml.generators.common.build import ClassResult
 from linkml.generators.pydanticgen import PydanticGenerator
 from linkml.generators.pydanticgen.build import SlotResult
-from linkml.generators.pydanticgen.pydanticgen import MetadataMode, SplitMode
+from linkml.generators.pydanticgen.pydanticgen import (
+    MetadataMode,
+    SplitMode,
+    make_valid_python_identifier,
+)
 from linkml.generators.pydanticgen.template import Import, Imports, ObjectImport, PydanticAttribute
 from linkml_runtime.linkml_model.meta import (
     ClassDefinition,
@@ -33,6 +38,7 @@ from linkml_runtime.linkml_model.meta import (
     SlotDefinition,
     TypeDefinition,
 )
+from linkml_runtime.utils.formatutils import underscore
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation.exceptions import SchemaGenerationError
@@ -142,6 +148,8 @@ class SplitPydanticGenerator(PydanticGenerator):
     def after_generate_slot(self, slot: SlotResult, sv: SchemaView) -> SlotResult:
         fields = {name: getattr(slot.attribute, name) for name in PydanticAttribute.model_fields}
         fields["description"] = slot.source.description  # the raw text, as for classes
+        if not _is_python_name(slot.attribute.alias):
+            fields["name"] = make_valid_python_identifier(underscore(slot.source.name))
         internal = is_internal(slot.source)
         secret = annotation_text(slot.source, GenerationAnnotation.SECRET) == TRUE_TEXT
         slot.attribute = InternalAttribute(
@@ -152,6 +160,15 @@ class SplitPydanticGenerator(PydanticGenerator):
             strict=annotation_text(slot.source, GenerationAnnotation.STRICT) == TRUE_TEXT,
         )
         return slot
+
+
+def _is_python_name(alias: str | None) -> bool:
+    """Whether the stock field name, which is the slot's alias when it has one, can stand as it is.
+
+    The stock generator names a field after the alias and sets ``alias=`` only when the two differ;
+    a dotted alias (``rp.step``) would become ``rp_step``. Such a slot is named after itself instead.
+    """
+    return alias is None or (alias.isidentifier() and not keyword.iskeyword(alias))
 
 
 def _python_module(definition: TypeDefinition) -> str | None:

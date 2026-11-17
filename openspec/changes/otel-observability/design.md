@@ -361,3 +361,62 @@ new span, which is what it should show. No operation changes its result.
 
 None blocking. Leader's choices the developer may overrule: DEC-1, DEC-2, DEC-5, DEC-6, DEC-7,
 DEC-9, and PD-4's fallback `"sparql"`.
+
+## Delivery decisions
+
+- **D-1 Start before `technical-models` ends** (developer, 2026-11-17; deviation from the PLAN's
+  order). Stage 1 starts while `technical-models` stages 3–4 are in flight in another session.
+  What this change needs from it has landed: PR #144 (the `technical` target kind, DEC-2's groups),
+  PR #145 (stage 2); `manual-revision-notes` A-7 is merged (`messagebus.py:150` gone,
+  `problems.py:202` carries the `internal error answered` record). **RISK-4 checked against
+  `develop` at `dca21ae`:** the groups sit at `rdf_persistence/model/technical/<group>/rp_<group>.yaml`,
+  each its own `[[tool.rp-generate]]` target with `kind = "technical"`, generated into
+  `rdf_persistence/services/generated/<group>/` (`service`, `templates`) or
+  `adapters/generated` (`wire`); `technical-models` proposal DEC-2 names `telemetry` with PD-1's
+  exact paths. PD-1 holds unchanged. Residual overlap: its tasks 3.2 and 3.3 change the
+  constructors of `FusekiStore`, `ZitadelIdentity`, `S3FileStore`, `RedisEventBus`, `Relay` and
+  `MessageBus`, the files of our tasks 1.3, 1.4 and 2.2; its 3.1 adds a target beside ours in
+  `pyproject.toml`. Handling: rebase on `origin/develop` before each PR, resolve by P-0003 for
+  generated files, follow its paths if they move; PD-13's `middlewares=` is placed after its
+  settings group parameter in stage 2.
+- **D-2 Authority** (developer, 2026-11-17): the lead commits, pushes, opens one PR per stage and
+  merges after the local `make check-all` passes on the rebased branch and CI is green.
+- **D-3 Review set.** MEDIUM, no `## Invariants` section: no adversarial tester (stage loop,
+  Prepare). Per P-0005, stage 1 gets one L2+L3 pass and a checker; the full review (L1, L2, L3 as
+  separate passes, L4+L5 as one) runs once, on stage 2, the end of the epic.
+- **D-4 A dotted alias names no field** (task 1.1; corrects PD-1's premise that the generator
+  "already renders" dotted aliases). linkml 1.12.1's `PydanticGenerator` names a field
+  `underscore(slot.alias or slot.name)`, so `alias: rp.step` gives `rp_step` (and `ds.name` gave
+  `rp_wire.py`'s `ds_name`). Extended in our generator (AGENTS.md principle 2):
+  `SplitPydanticGenerator.after_generate_slot` names the field after the slot when its alias is
+  not a Python identifier; the alias stays `Field(alias=…)`. Only `fuseki_dataset_name` changes
+  outside this change (`ds_name` → `fuseki_dataset_name`, one use in `adapters/fuseki.py`).
+  Camel-case wire aliases, valid identifiers, keep their present names. Rejected: the `rp_*`
+  names (every TC and call site would change), an opt-in annotation (a second way to name a field).
+- **D-5 mypy reads the field names** (tasks 1.2–1.4). Without a plugin mypy takes pydantic's
+  `alias` as the only constructor keyword (PEP 681), so every `LogContext(step=…)` is a `call-arg`
+  error although `validate_by_name` accepts it at run time. `mypy.ini` enables the stock
+  `pydantic.mypy` plugin (P-0008: reuse). The plugin also types `model_construct()` with the
+  required fields, which the one bare `TenantAccess.model_construct()` in `tenancy.py`
+  (`_refuse_bad_store_name`) breaks; that call is fixed in the same commit. Rejected: `# type:
+  ignore` at 100+ sites; generating `validation_alias` instead (the wire models validate by alias).
+- **D-6 Carried to stage 2** (stage 1 review, no Critical). W1: the guard of PD-9 accepts a log
+  call with no `extra=`, while DEC-8 and the spec ask `rp.step` on every record; task 2.1 makes
+  the guard require `extra=log_extra(...)` on every call and corrects PD-9's wording ("any
+  `extra=`" → "every call's `extra=`"). S3: the `error_type` slot's description names only the
+  qualified class name; task 2.1 rewords it ("or the code a service answered with", PD-3) and
+  regenerates.
+
+- **D-7 TC-22's input** (stage 1 container lane, red). The test wrote a raw `xadd {"data": "{}"}`;
+  FastStream decodes that body as JSON, so the handler's `raw: bytes` refuses it before
+  `RedisEventBus` reads the envelope, and no warning is logged. The test, not the adapter, is
+  wrong: it sends a bytes body with headers that are no valid envelope, so the adapter's own
+  check refuses it.
+
+**Stage 1, under the floor** (L2+L3 pass, `findings=5 accepted=0`; W1 and S3 carried by D-6):
+
+- S1 `test_messagebus_adversarial.py:629,669,776` assert exception text through `caplog.text`
+  (the traceback), not the record's `exc_info`. Correct today; style only.
+- S2 TC-12's second half raises `MessageLimitExceeded` from an observer instead of a real commit;
+  the real limit is covered at `test_receive.py:320-327`.
+- S4 `_is_python_name`'s keyword branch has no test (no schema uses a keyword alias).

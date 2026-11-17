@@ -46,6 +46,7 @@ from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.logs import attributes, records_of
 from tests.toy import ADA, SETTINGS, TOY_SCHEMA, dune, library_slots, toy_mapper
 from tests.unit.services.conftest import GENERATED
 from tests.unit.services.migration_helpers import (
@@ -349,12 +350,18 @@ async def test_a_failing_tenant_is_set_aside_and_the_next_one_runs(world, lib_ch
         "its data and stamp are as before"
     )
     assert await held(world.store, databases[healthy]) == {LIB: "2"}, "the other tenant is at 2"
-    record = next(r for r in caplog.records if getattr(r, "step", "") == "migrate-tenant")
-    assert record.tenant == failing, "the log names the tenant"  # type: ignore[attr-defined]
-    assert record.migration == f"1__2 of {LIB}", "the log names the migration"  # type: ignore[attr-defined]
-    assert record.schema == LIB, "the schema has its own field"  # type: ignore[attr-defined]
-    assert "down" in record.cause, "the log gives the cause"  # type: ignore[attr-defined]
-    assert record.levelno == logging.ERROR, "at error"
+    [record] = records_of(caplog, "migrate-tenant")
+    assert (record.levelno, record.getMessage()) == (
+        logging.ERROR,
+        "a tenant could not be migrated; set aside",
+    ), "one error record, its message constant (TC-08)"
+    logged = attributes(record)
+    assert logged["rp.tenant.id"] == failing, "the log names the tenant"
+    assert logged["rp.migration.name"] == f"1__2 of {LIB}", "the log names the migration"
+    assert logged["rp.schema.id"] == LIB, "the schema has its own attribute"
+    assert "cause" not in vars(record), "the cause travels in exc_info, not as an attribute"
+    assert record.exc_info is not None, "the exception is attached"
+    assert "down" in str(record.exc_info[1]), "and its text gives the cause"
     assert await migrate_tenants(world.tenancy, world.store, [(LIB, lib_chain)]) == set(), (
         "a run that succeeds sets nothing aside"
     )
@@ -371,9 +378,11 @@ async def test_a_tenant_whose_second_migration_fails_is_set_aside_and_the_log_na
     assert aside == {world.tenant}, "the tenant is the returned set"
     assert world.tenancy.behind == {world.tenant}, "and is set aside"
     assert await held(world.store, world.database) == {LIB: "2"}, "1__2 stays applied"
-    record = next(r for r in caplog.records if getattr(r, "step", "") == "migrate-tenant")
+    [record] = records_of(caplog, "migrate-tenant")
     assert record.levelno == logging.ERROR, "logged at error"
-    assert record.migration == f"2__3 of {LIB}", "the log names the second migration"  # type: ignore[attr-defined]
+    assert attributes(record)["rp.migration.name"] == f"2__3 of {LIB}", (
+        "the log names the second migration"
+    )
 
 
 async def test_a_failure_of_the_stamp_alone_names_no_migration(world, lib_chain):
@@ -389,9 +398,11 @@ async def test_a_failure_of_the_stamp_alone_names_no_migration(world, lib_chain)
 async def test_each_applied_migration_is_logged_at_info(world, lib_chain, caplog):
     with caplog.at_level(logging.INFO):
         await migrate_database(world.store, world.database, [(LIB, lib_chain)], STAMPS)
-    record = next(r for r in caplog.records if getattr(r, "step", "") == "migrate")
-    assert record.database == world.database, "the log names the database"  # type: ignore[attr-defined]
-    assert "1__2" in record.migration, "and the migration"  # type: ignore[attr-defined]
+    record = records_of(caplog, "migrate")[0]
+    logged = attributes(record)
+    assert logged["db.namespace"] == world.database, "the log names the database"
+    assert "1__2" in str(logged["rp.migration.name"]), "and the migration"
+    assert logged["rp.schema.id"] == LIB, "and the schema"
 
 
 async def test_a_stamp_that_stays_at_the_old_version_is_a_failure(world, lib_chain):
@@ -504,7 +515,7 @@ async def test_a_failing_system_database_stops_the_shared_migration(world, rp_ch
     world.store.on("update", StoreUnavailable("down"))
     with caplog.at_level(logging.ERROR), pytest.raises(MigrationFailed):
         await migrate_shared(world.tenancy, world.store, [(RP, rp_chain)])
-    record = next(r for r in caplog.records if getattr(r, "step", "") == "migrate-shared")
+    [record] = records_of(caplog, "migrate-shared")
     assert record.levelno == logging.ERROR, "logged at error"
 
 

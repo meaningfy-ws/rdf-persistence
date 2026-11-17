@@ -17,8 +17,10 @@ from rdf_persistence.domain.layout import policy_record_iri
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import IriPolicy, ServiceSettings
+from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.iris import effective_policy, policy_differences
 from rdf_persistence.services.store import Store
+from rdf_persistence.services.telemetry import log_extra
 from rdf_persistence.services.tenancy import Tenancy
 
 log = logging.getLogger(__name__)
@@ -61,7 +63,10 @@ def _require_same(stored: IriPolicy, configured: IriPolicy, reason: str) -> None
     if not fields:
         return
     message = f"{reason}: the IRI policy cannot change once there is data; differing fields: {', '.join(fields)}"
-    log.error(message, extra={"step": "iri-policy", "fields": fields})
+    log.error(
+        "the IRI policy cannot change once there is data",
+        extra=log_extra(LogContext(step="iri-policy", policy_fields=fields)),
+    )
     raise IriPolicyChanged(message)
 
 
@@ -84,7 +89,10 @@ async def _recorded(
 
 def _unreadable(why: str) -> IriPolicyChanged:
     message = f"the recorded IRI policy is unreadable: {why}"
-    log.error(message, extra={"step": "iri-policy"})
+    log.error(
+        "the recorded IRI policy is unreadable",
+        extra=log_extra(LogContext(step="iri-policy", error_detail=why)),
+    )
     return IriPolicyChanged(message)
 
 

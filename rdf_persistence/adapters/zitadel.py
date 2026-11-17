@@ -31,6 +31,8 @@ from rdf_persistence.adapters.generated.rp_wire import (
 )
 from rdf_persistence.domain.exceptions import IdentityUnavailable, NotFound
 from rdf_persistence.services.generated.service.rp_service import AccountSummary
+from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
+from rdf_persistence.services.telemetry import log_extra
 
 ORG_HEADER = "x-zitadel-orgid"
 USERS = "/v2/users"
@@ -144,7 +146,12 @@ class ZitadelIdentity(HttpAdapter):
         if status == HTTPStatus.BAD_REQUEST and bad_request == BadRequestMeans.MISSING_ROLE:
             raise NotFound("the project has no such role")
         if not response.is_success:
-            log.debug("Zitadel answered %s", status)
+            log.debug(
+                "the identity provider answered an error",
+                extra=log_extra(
+                    LogContext(step="identity-error", http_response_status_code=status)
+                ),
+            )
             raise IdentityUnavailable(f"Zitadel answered {status} for {path}")
         return response
 

@@ -18,6 +18,7 @@ from rdf_persistence.domain.exceptions import (
     StoreUnavailable,
 )
 from rdf_persistence.testkit import assert_isomorphic
+from tests.logs import attributes, records_of
 
 URL = "http://fuseki.test:3030"
 EX = "http://example.org/"
@@ -261,7 +262,31 @@ async def test_a_refused_query_carries_a_fixed_message_and_the_body_only_in_the_
         await store.query("d", "SELECT broken")
     assert "secret-token-in-the-query" not in str(raised.value), "the body is not in the error"
     assert str(raised.value), "but the error says something"
-    assert "secret-token-in-the-query" in caplog.text, "the body is in the log"
+    [record] = records_of(caplog, "store-bad-request")
+    assert "secret-token-in-the-query" not in record.getMessage(), "the message is constant"
+    assert "secret-token-in-the-query" in str(attributes(record)["rp.store.response_body"]), (
+        "the body is in the log, as an attribute"
+    )
+
+
+async def test_a_refused_query_logs_one_debug_record_with_the_status_and_the_body(caplog):  # TC-19
+    body = "Parse error: SELECT secret-token-in-the-query"
+    store, _ = store_answering(reply(400, body.encode()))
+    with (
+        caplog.at_level(logging.DEBUG, logger="rdf_persistence.adapters.fuseki"),
+        pytest.raises(BadQuery),
+    ):
+        await store.query("d", "SELECT broken")
+    [record] = records_of(caplog, "store-bad-request")
+    assert record.levelno == logging.DEBUG, "the body is written at DEBUG only"
+    assert record.getMessage() == "Fuseki refused a request with 400"
+    assert attributes(record) == {
+        "rp.step": "store-bad-request",
+        "db.system.name": "fuseki",
+        "db.response.status_code": "400",
+        "rp.store.response_body": body,
+    }
+    assert [r for r in caplog.records if r.levelno > logging.DEBUG] == [], "nothing above DEBUG"
 
 
 BAD_ANSWERS = {

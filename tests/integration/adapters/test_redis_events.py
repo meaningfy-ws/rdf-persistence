@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from datetime import timedelta
 
 import pytest
+from faststream.redis import RedisBroker
 from redis.asyncio import Redis
 
 from rdf_persistence.adapters.redis_events import RedisEventBus
@@ -19,6 +20,7 @@ from rdf_persistence.testkit.event_bus_conformance import (
     Inbox,
     run_case,
 )
+from tests.logs import attributes, records_of
 
 NODE_MAX_ENTRIES = "stream-node-max-entries"
 
@@ -85,6 +87,41 @@ async def test_a_trim_that_fails_does_not_fail_the_publish(redis, monkeypatch, c
     async with Redis.from_url(redis) as reader:
         assert len(await reader.xrange(pair.stream)) == 1, "the publish still wrote its entry"
     await pair.a.close()
+    [record] = records_of(caplog, "event-trim-failed")
+    assert record.levelno == logging.WARNING
+    assert record.getMessage() == "trimming the stream failed; the entry was published"
+    assert record.exc_info is not None, "the cause stays on the record"
+    assert attributes(record) == {
+        "rp.step": "event-trim-failed",
+        "messaging.system.name": "redis",
+        "messaging.destination.name": pair.stream,
+    }
     assert [r.levelno for r in caplog.records] == [logging.WARNING], (
         "a failed trim is logged once as a warning"
     )
+
+
+async def test_a_message_without_a_valid_envelope_is_dropped_with_a_warning(redis, caplog):  # TC-22
+    pair = RedisPair(redis)
+    inbox = Inbox()
+    await pair.a.start(inbox)
+    with caplog.at_level(logging.WARNING, logger="rdf_persistence.adapters.redis_events"):
+        # a text body, as RedisEventBus.publish sends it, with headers that hold no envelope (D-7)
+        async with RedisBroker(redis) as sender:
+            await sender.publish(
+                BODY.model_dump_json(exclude_none=True), stream=pair.stream, headers={}
+            )
+
+        async def warned() -> bool:
+            return bool(records_of(caplog, "event-invalid-envelope"))
+
+        await wait_until_async(warned, "the invalid envelope to be logged")
+    await pair.a.close()
+    [record] = records_of(caplog, "event-invalid-envelope")
+    assert record.levelno == logging.WARNING
+    assert record.getMessage() == "dropped a message with an invalid envelope"
+    assert attributes(record) == {
+        "rp.step": "event-invalid-envelope",
+        "messaging.system.name": "redis",
+        "messaging.destination.name": pair.stream,
+    }
