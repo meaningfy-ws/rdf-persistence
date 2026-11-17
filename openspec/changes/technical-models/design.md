@@ -591,6 +591,14 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   `ToolkitSettings`, `settings_from_env`, the `settings` extra, `default_instance`, the list
   default), plus stage 2's owed `python_import` line (stage 2 floor, L2 W4), the same file and
   section.
+- **D-43 (stage 3, checker F-1 with F-2, the developer's decision 2026-11-17)** Two pages still
+  describe removed keywords: `howto/event-driven.adoc` (the relay interval as a constructor
+  argument `install_service` cannot set; it is `events.relay_interval_seconds` through
+  `install_service(toolkit=)`) and `architecture/data-flows.adoc` (`limit` commands per `handle`;
+  it is `limits.max_messages`). The new changelog line says every removed keyword raises
+  `TypeError`; `bootstrap(limit=)` raises `ValueError` (tester F-3). Fixed now: one fixer, one
+  full-gates run. The checker's F-3 (a kept tester test repeats TC-25's property) is under the
+  floor.
 
 Under the floor (not fixed in stage 3):
 
