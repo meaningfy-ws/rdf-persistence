@@ -717,7 +717,7 @@ work in parallel"). One PR from `change/mrn-followups`, one builder per item in 
 - **D-21 The open items taken, and the one left.** Taken: #148 and #153 (their six strict xfails
   go), the RDF serialisations off the event loop (L4+L5 W3), keys published for encryption (L1
   S1), the pyparsing `postParse2` error (D-19) as a debugging task that changes nothing unless it
-  shows a cause, #142 made fast enough for CI and taken out of quarantine without pyoxigraph
+  shows a cause, #142 made fast enough to leave quarantine (it stays `slow`) without pyoxigraph
   (PD-17's follow-up stays the developer's), and the 55 unmapped otel-observability tests. Left:
   the `.worktrees/` line in `.gitignore`, which another session added and owns. The other floor
   items stay where `design.md` lists them.
@@ -740,3 +740,26 @@ work in parallel"). One PR from `change/mrn-followups`, one builder per item in 
   listing page). The quarantine marker goes; `slow` stays (≥ 2 s, `testing.adoc#slow`).
 - **D-25 The RDF writers run in a worker thread**, as framing does (L4+L5 W3); `require_form`
   stays synchronous, as it serialises RDF/XML only.
+- **D-26 The follow-up review** (L1 4, L2 9, L3 4 findings; none labelled Critical, the lead
+  re-labels three):
+  - **F-13** (L3 W1 W2 S1, L1 W1 W2 S1, L2 W4 W5) The parser lock misses
+    `testkit/conformance.py`'s `validate`, and it spans whole SHACL validations and migration
+    runs, so one slow validation queues every write and holds the shared worker-thread pool: an
+    availability defect the fix itself brought. Critical: D-23's purpose is unmet, and the fix
+    widened an attack surface. Fix: every rdflib SPARQL parse goes through wrapper functions
+    under the lock, and an import-linter contract forbids importing `rdflib.plugins.sparql` and
+    `pyshacl` anywhere else. SHACL validation warms the shapes' SPARQL once under the lock when
+    `Documents` is built, then validates without it (the race is only on a parse action's first
+    call). Migrations parse under the lock and evaluate outside it. The stress test's own timeout
+    goes below pytest's 120 s, and a deterministic test shows each wrapper takes the lock.
+  - **F-14** (L2 W3) The generator's `type` property and the SSE event schema have no direct unit
+    test; only the `slow` contract test covers them. Critical: AGENTS principle 2 (a generator
+    extension has its own test). Fix: one unit test each.
+  - **F-15** (L2 W1 W2 S1) The living `rp-identity` requirement does not state D-22's key rule;
+    `architecture/generation.adoc`'s `components.py` row omits the `type` property; the
+    architecture index does not name `domain/sparql_parsing.py`. Critical: doc agreement (as F-1,
+    F-5). Fix: the rule and two scenarios in the spec, one sentence in each page.
+  - Fixed by the lead in the spine: L2 S2 (Impact's `leeway_seconds=0`), L2 S4 (D-21's wording).
+  - Under the floor: L1 S2 `require_form` serialises RDF/XML on the event loop (a body is capped
+    by `max_body_bytes`); L3 S2 the SSE `data` could name its JSON schema (`contentSchema`); L2 S3
+    the #142 test's comment says about 3 s.

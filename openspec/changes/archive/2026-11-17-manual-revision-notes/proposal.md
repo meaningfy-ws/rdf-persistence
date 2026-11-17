@@ -213,8 +213,8 @@ None.
   forms but admits a wildcard is served one of the four new ones (3.1). As shaped: `If-Match` is strict (a weak tag `W/"v"` is 409, an unquoted
   value 428; both matched before); `expected_version` refuses `W/`, `*` and lists, which a
   consumer's own route may call; `jwks.ALLOWED_ALGORITHMS` and `jwks.ES256` are removed; a token
-  expired by less than the leeway (30 s by default) is accepted (`leeway_seconds=0` restores the
-  exact expiry); a loaded JSON-LD file that names a graph or uses a relative IRI is refused, and so
+  expired by less than the leeway (30 s by default) is accepted (a zero leeway restores the
+  exact expiry; as built, `JwksSettings(leeway_seconds=0)`, D-20); a loaded JSON-LD file that names a graph or uses a relative IRI is refused, and so
   is a body with a relative IRI; a language-tagged value is a value object in JSON-LD (plain JSON
   still shows the string); `REPRESENTATIONS` holds seven members. Otherwise: a consumer that builds
   `JwksTokenVerifier` gets the wider algorithm default without changing code, and `If-Match: *`
