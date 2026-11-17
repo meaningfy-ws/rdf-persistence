@@ -7,6 +7,8 @@ body the route takes; the version of an aggregate travels as a quoted ``ETag`` a
 
 from collections.abc import Awaitable, Callable, Iterable
 
+import mimeparse
+
 from rdf_persistence.domain.exceptions import (
     Conflict,
     NotAcceptable,
@@ -24,11 +26,9 @@ ALLOWED_ACTIONS = "Allowed-Actions"  # what the caller may do, on the reads (PD-
 LOCATION = "Location"
 LINK = "Link"
 LAST_EVENT_ID = "Last-Event-ID"  # where a follower of the events resumes (aggregate-events PD-12)
-EVENT_STREAM = "text/event-stream"
 VARY = "Vary"
 ANY = "*/*"
-# How exactly a range names a media type: the most exact range that matches decides its quality.
-_EXACT, _TYPE_WILDCARD, _ANY = 3, 2, 1
+_SLASH, _WILDCARD = "/", "*"  # of a media range
 WEAK_PREFIX = "W/"
 _SEPARATOR, _QUOTE, ANY_VERSION = ",", '"', "*"  # of an If-Match list; ``*`` matches any version
 _QUOTES_ONLY = 2  # the length of ``""``, an entity tag without its version
@@ -39,54 +39,48 @@ def allowed_actions_value(actions: Iterable[Action]) -> str:
     return ", ".join(action.value for action in actions)
 
 
-_QUALITY_PARAMETER = "q"
+def _quality(raw: str | None) -> str:
+    """The weight of a range from its ``q`` text: unreadable, empty or above 1 reads as 1, negative as 0 (F-3)."""
+    try:
+        weight = float(raw or "")
+    except ValueError:
+        return "1"
+    return "0" if weight < 0 else str(weight if weight <= 1 else 1)  # nan is neither: it reads as 1
 
 
-def _quality(parameters: list[str]) -> float:
-    for parameter in parameters:
-        name, _, value = parameter.partition("=")
-        if name.strip().lower() == _QUALITY_PARAMETER:
-            try:
-                return float(value)
-            except ValueError:
-                return 0.0
-    return 1.0
+def _media_range(member: str) -> tuple[str, str, dict[str, str]] | None:
+    """A member of an ``Accept`` header as ``mimeparse`` reads it, ``q`` set; None when it is no media range.
 
-
-def _ranges(accept: str) -> list[tuple[str, float]]:
-    """The ``(media range, quality)`` pairs of an ``Accept`` header, ranges in lower case."""
-    ranges = []
-    for part in accept.split(","):
-        media, *parameters = part.split(";")
-        if media.strip():
-            ranges.append((media.strip().lower(), _quality(parameters)))
-    return ranges
-
-
-def _specificity(media_range: str, media_type: str) -> int:
-    """How exactly ``media_range`` names ``media_type``; 0 when it does not match."""
-    if media_range == media_type:
-        return _EXACT
-    if media_range == f"{media_type.split('/')[0]}/*":
-        return _TYPE_WILDCARD
-    return _ANY if media_range == ANY else 0
-
-
-def _quality_of(ranges: list[tuple[str, float]], media_type: str) -> float:
-    """The quality the most exact matching range gives ``media_type``; 0 when none matches."""
-    matches = [(_specificity(r, media_type), q) for r, q in ranges]
-    best = max(matches, default=(0, 0.0), key=lambda match: match[0])
-    return best[1] if best[0] else 0.0
+    Not a range (F-3): no ``/`` (``mimeparse`` would read ``*`` as ``*/*``), an empty type or subtype,
+    or ``*`` for the type with a subtype other than ``*``.
+    """
+    if _SLASH not in member.partition(";")[0]:
+        return None
+    try:
+        type_, subtype, params = mimeparse.parse_mime_type(member)
+    except mimeparse.MimeTypeParseException:
+        return None
+    if not type_ or not subtype or (type_ == _WILDCARD and subtype != _WILDCARD):
+        return None
+    params["q"] = _quality(params.get("q"))
+    return type_, subtype, params
 
 
 def _negotiate(accept: str | None, offered: tuple[str, ...], refusal: str) -> str:
     """The media type of ``offered`` an ``Accept`` header ranks highest, the first on a tie; none given is any.
 
+    The header is split on commas outside quotes; a member that is no media range is skipped, and
+    the others are read by ``mimeparse`` and each offered type is scored with ``quality_parsed``
+    (not ``best_match``, which breaks a quality tie by specificity, PD-5).
+
     Raises:
-        NotAcceptable: Nothing offered is acceptable to the client; ``refusal`` is the message.
+        NotAcceptable: Nothing offered is acceptable to the client, or no member is a media range;
+            ``refusal`` is the message.
     """
-    ranges = _ranges(accept) if accept is not None and accept.strip() else [(ANY, 1.0)]
-    scored = [(_quality_of(ranges, media_type), media_type) for media_type in offered]
+    header = accept.lower() if accept is not None and accept.strip() else ANY
+    members = (_media_range(entry) for entry in _entries(header))
+    ranges = [member for member in members if member is not None]
+    scored = [(mimeparse.quality_parsed(media_type, ranges), media_type) for media_type in offered]
     quality, media_type = max(scored, key=lambda pair: pair[0])  # max keeps the first on a tie
     if quality <= 0:
         raise NotAcceptable(refusal)
@@ -132,7 +126,7 @@ def etag_of(version: str) -> str:
 
 
 def _entries(value: str) -> list[str]:
-    """The members of an ``If-Match`` list: split on commas outside quotes, empty members skipped (RFC 9110 5.6.1)."""
+    """The members of an ``If-Match`` list or an ``Accept`` header: split on commas outside quotes, empty members skipped (RFC 9110 5.6.1)."""
     entries, current, quoted = [], "", False
     for char in value:
         if char == _SEPARATOR and not quoted:

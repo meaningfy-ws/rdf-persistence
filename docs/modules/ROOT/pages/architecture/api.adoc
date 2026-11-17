@@ -372,8 +372,11 @@ it outgrows the limit.
 |9
 |For plain JSON: type every node by the schema and refuse any key that is not a slot of its class,
 and any `internal` slot. Then expand the document with the generated JSON-LD context into triples;
-a remote context is refused. A JSON-LD body is expanded with its own inline context.
-|`Documents._plain_document` and `_typed`; `Documents._triples` (pyld `to_rdf`)
+a remote context is refused. A JSON-LD body is expanded with its own inline context. A body, like a
+loaded JSON-LD file, goes through one function that refuses a remote context, a second graph, a
+relative IRI that has no `@base`, an IRI that is not valid and a document that is not an object or
+array.
+|`Documents._plain_document` and `_typed`; `Documents._triples` and `services/jsonld.py` (`triples_of`, pyld `to_rdf`)
 |422
 
 |10

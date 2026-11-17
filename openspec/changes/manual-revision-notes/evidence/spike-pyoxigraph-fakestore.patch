@@ -1,0 +1,188 @@
+diff --git a/pyproject.toml b/pyproject.toml
+index d5c4f73..399d66f 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -43,6 +43,7 @@ dependencies = [
+     "anyio==4.16.0",
+     "pyyaml==6.0.3",  # latest on 2026-11-06 (PD-2); reads the role definitions
+     "python-mimeparse==2.0.0",  # parses the Accept header (PD-5)
++    "pyoxigraph==0.5.13",  # the engine of the testkit's FakeStore (PD-13); linkml-runtime installs it too
+ ]
+ 
+ [project.scripts]
+diff --git a/rdf_persistence/testkit/fakes.py b/rdf_persistence/testkit/fakes.py
+index 86a7543..749d7d3 100644
+--- a/rdf_persistence/testkit/fakes.py
++++ b/rdf_persistence/testkit/fakes.py
+@@ -7,6 +7,17 @@ from contextlib import asynccontextmanager
+ from datetime import datetime
+ from typing import ClassVar, cast
+ 
++from io import BytesIO
++
++from pyoxigraph import (
++    NamedNode,
++    QueryBoolean,
++    QueryResultsFormat,
++    QuerySolutions,
++    QueryTriples,
++    RdfFormat,
++    Store,
++)
+ from pyparsing import ParseException
+ from rdflib import Dataset, Graph, Literal, URIRef
+ from rdflib.namespace import XSD
+@@ -121,14 +132,45 @@ def _plain_strings(data: Dataset) -> None:
+         graph.add((s, p, Literal(str(o))))
+ 
+ 
++# What a relative IRI in a request resolves against, as Fuseki resolves it against the server's base.
++BASE_IRI = "http://fake.invalid/"
++N_TRIPLES = "application/n-triples"
++RESULTS_JSON = "application/sparql-results+json"
++
++
++_NOT_IN_NOTHING = re.compile(r"\bNOT\s+IN\s*\(\s*\)", re.IGNORECASE)
++
++
++def _not_in_none(sparql: str) -> str:
++    # shortcut: pyoxigraph evaluates `?x NOT IN ()` as an error, so the filter drops every row; the
++    # SPARQL spec makes it true. An IRI nothing holds says the same. Drop it when pyoxigraph is fixed.
++    return _NOT_IN_NOTHING.sub("NOT IN (<urn:x-fake:nothing>)", sparql)
++
++
++def _format(media_type: str) -> RdfFormat:
++    found = RdfFormat.from_media_type(media_type)
++    assert found is not None, media_type
++    return found
++
++
++def _as_result(answer: QuerySolutions | QueryBoolean | QueryTriples) -> Result:
++    """An rdflib ``Result`` of a pyoxigraph answer, shaped as the Fuseki adapter reads it."""
++    if isinstance(answer, QueryTriples):
++        result = Result("CONSTRUCT")
++        result.graph = Graph().parse(data=answer.serialize(format=_format(N_TRIPLES)), format=N_TRIPLES)
++        return result
++    body = answer.serialize(format=QueryResultsFormat.JSON)
++    return Result.parse(BytesIO(body), format=RESULTS_JSON)
++
++
+ class FakeStore(_Instrumented):
+-    """A ``Store`` over one rdflib ``Dataset`` per dataset name, with failure injection.
++    """A ``Store`` over one in-memory pyoxigraph ``Store`` per dataset name, with failure injection.
+ 
+-    Data that enters the store reads an ``xsd:string`` literal as the plain literal of the same
+-    text, so a query compares them as Fuseki does (one term).
++    pyoxigraph reads an ``xsd:string`` literal and the plain literal of the same text as one term,
++    as Fuseki does.
+ 
+-    ``update`` applies a request to a copy of the dataset and keeps the copy only if every operation
+-    succeeds, so a request is atomic as on Fuseki; any failure is a ``BadQuery``. ``after_update``,
++    ``update`` is atomic per request, as on Fuseki; a request pyoxigraph refuses is a ``BadQuery``.
++    ``after_update``,
+     when set, is awaited after a successful update and before it returns, so a test can make another
+     writer act between an update and the caller's next read.
+     """
+@@ -148,66 +190,53 @@ class FakeStore(_Instrumented):
+ 
+     def __init__(self) -> None:
+         super().__init__()
+-        self._datasets: dict[str, Dataset] = {}
++        self._datasets: dict[str, Store] = {}
+         self.after_update: Callable[[], Awaitable[None]] | None = None
+ 
+-    def _dataset(self, name: str) -> Dataset:
++    def _dataset(self, name: str) -> Store:
+         if name not in self._datasets:
+             raise DatabaseGone(f"no dataset {name}")
+         return self._datasets[name]
+ 
+     async def query(self, dataset: str, sparql: str) -> Result:
+         self._enter("query", sparql)
+-        data = self._dataset(dataset)
++        store = self._dataset(dataset)
+         try:
+-            return data.query(prepareQuery(sparql))
+-        except ParseException as error:
++            return _as_result(store.query(_not_in_none(sparql), base_iri=BASE_IRI))
++        except (SyntaxError, ValueError) as error:
+             raise BadQuery(str(error)) from error
+ 
+     async def update(self, dataset: str, sparql: str) -> None:
+         self._enter("update", sparql)
+-        data = self._dataset(dataset)
+-        copy = Dataset()
+-        # rdflib's stubs type the graph of a quad as a Graph in addN, though quads() yields identifiers
+-        copy.addN(cast(Iterable[tuple[Node, Node, Node, Graph]], data.quads()))
+-        operations = _operations(sparql)  # our own code: a failure here is not the caller's query
+-        prologue = ""  # PREFIX and BASE declarations apply to the operations after them
++        store = self._dataset(dataset)
+         try:
+-            for operation in operations:
+-                copy.update(prepareUpdate(prologue + operation))
+-                found = _PROLOGUE.match(operation)
+-                prologue += found.group() if found else ""
+-        except RecursionError:
+-            raise
+-        except Exception as error:  # rdflib raises a bare Exception at run time (PD-13)
++            store.update(_not_in_none(sparql), base_iri=BASE_IRI)  # atomic per request
++        except (SyntaxError, ValueError, OSError, RuntimeError) as error:  # OSError: a LOAD that cannot be read
+             raise BadQuery(str(error)) from error
+-        _plain_strings(copy)
+-        self._datasets[dataset] = copy
+         if self.after_update is not None:
+             await self.after_update()
+ 
+     async def put_graph(self, dataset: str, graph_iri: URIRef, graph: Graph) -> None:
+         self._enter("put_graph", str(graph_iri))
+-        target = self._dataset(dataset).graph(graph_iri)
+-        target.remove((None, None, None))
+-        for triple in graph:
+-            target.add(triple)
+-        _plain_strings(self._dataset(dataset))
++        store = self._dataset(dataset)
++        name = NamedNode(str(graph_iri))
++        text = graph.serialize(format=N_TRIPLES)
++        store.clear_graph(name)
++        store.load(text.encode(), format=_format(N_TRIPLES), to_graph=name)
+ 
+     async def export_quads(self, dataset: str) -> bytes:
+         self._enter("export_quads", dataset)
+-        return self._dataset(dataset).serialize(format=N_QUADS).encode()
++        return self._dataset(dataset).dump(format=_format(N_QUADS)) or b""
+ 
+     async def import_quads(self, dataset: str, nquads: bytes) -> None:
+         self._enter("import_quads", dataset)
+-        self._dataset(dataset).parse(data=nquads, format=N_QUADS)
+-        _plain_strings(self._dataset(dataset))
++        self._dataset(dataset).load(nquads, format=_format(N_QUADS))
+ 
+     async def create_dataset(self, name: str) -> None:
+         self._enter("create_dataset", name)
+         if name in self._datasets:
+             raise Conflict(f"dataset {name} exists")
+-        self._datasets[name] = Dataset()
++        self._datasets[name] = Store()
+ 
+     async def drop_dataset(self, name: str) -> None:
+         self._enter("drop_dataset", name)
+diff --git a/uv.lock b/uv.lock
+index 19d4c6c..08d026b 100644
+--- a/uv.lock
++++ b/uv.lock
+@@ -2630,6 +2630,7 @@ dependencies = [
+     { name = "pydantic" },
+     { name = "pyjwt", extra = ["crypto"] },
+     { name = "pyld" },
++    { name = "pyoxigraph" },
+     { name = "pyshacl" },
+     { name = "python-mimeparse" },
+     { name = "pyyaml" },
+@@ -2683,6 +2684,7 @@ requires-dist = [
+     { name = "pydantic", specifier = "==2.14.2" },
+     { name = "pyjwt", extras = ["crypto"], specifier = "==2.15.1" },
+     { name = "pyld", specifier = "==3.3.0" },
++    { name = "pyoxigraph", specifier = "==0.5.13" },
+     { name = "pyshacl", specifier = "==0.40.2" },
+     { name = "python-mimeparse", specifier = "==2.0.0" },
+     { name = "pyyaml", specifier = "==6.0.3" },

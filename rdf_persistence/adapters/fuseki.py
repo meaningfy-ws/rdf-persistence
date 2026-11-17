@@ -31,8 +31,6 @@ ADMIN_DATASETS = "/$/datasets"
 # The form fields that create a dataset.
 FORM_DB_NAME, FORM_DB_TYPE, DATASET_TYPE = "dbName", "dbType", "tdb2"
 GRAPH_PARAM = "graph"
-# The names rdflib gives the formats Fuseki speaks.
-RDFLIB_JSON, RDFLIB_TURTLE = "json", "turtle"
 BAD_QUERY_MESSAGE = "Fuseki refused the SPARQL text as malformed"
 UNREADABLE = "Fuseki answered with something unreadable"
 
@@ -61,9 +59,9 @@ def _raise_for_status(response: httpx.Response, *, on_missing: type[PersistenceE
 
 def _read_result(response: httpx.Response) -> Result:
     if response.headers.get("content-type", "").startswith(RESULTS_JSON):
-        return Result.parse(BytesIO(response.content), format=RDFLIB_JSON)
+        return Result.parse(BytesIO(response.content), format=RESULTS_JSON)
     result = Result("CONSTRUCT")
-    result.graph = Graph().parse(data=response.content, format=RDFLIB_TURTLE)
+    result.graph = Graph().parse(data=response.content, format=TURTLE)
     return result
 
 
@@ -120,7 +118,7 @@ class FusekiStore(HttpAdapter):
             HTTPMethod.PUT,
             _dataset_path(dataset, DATA_ENDPOINT),
             params={GRAPH_PARAM: str(graph_iri)},
-            content=graph.serialize(format=RDFLIB_TURTLE).encode(),
+            content=graph.serialize(format=TURTLE).encode(),
             headers={CONTENT_TYPE: TURTLE},
         )
 

@@ -66,13 +66,13 @@ linkml_meta = None
 class RdfFormat(str, Enum):
     "The serialisations a file of RDF can be loaded from."
     TURTLE = "turtle"
-    "The Turtle serialisation, media type text/turtle."
+    "The Turtle serialisation."
     RDFXML = "rdfxml"
-    "The RDF/XML serialisation, media type application/rdf+xml."
+    "The RDF/XML serialisation."
     NTRIPLES = "ntriples"
-    "The N-Triples serialisation, media type application/n-triples."
+    "The N-Triples serialisation."
     JSONLD = "jsonld"
-    "The JSON-LD serialisation, media type application/ld+json."
+    "The JSON-LD serialisation."
 
 
 

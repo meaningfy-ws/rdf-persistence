@@ -99,16 +99,24 @@ enums:
       turtle:
         title: Turtle
         meaning: formats:Turtle
-        description: The Turtle serialisation, media type text/turtle.
+        description: The Turtle serialisation.
+        annotations:
+          media_type: text/turtle
       rdfxml:
         title: RDF/XML
         meaning: formats:RDF_XML
-        description: The RDF/XML serialisation, media type application/rdf+xml.
+        description: The RDF/XML serialisation.
+        annotations:
+          media_type: application/rdf+xml
       ntriples:
         title: N-Triples
         meaning: formats:N-Triples
-        description: The N-Triples serialisation, media type application/n-triples.
+        description: The N-Triples serialisation.
+        annotations:
+          media_type: application/n-triples
       jsonld:
         title: JSON-LD
         meaning: formats:JSON-LD
-        description: The JSON-LD serialisation, media type application/ld+json.
+        description: The JSON-LD serialisation.
+        annotations:
+          media_type: application/ld+json

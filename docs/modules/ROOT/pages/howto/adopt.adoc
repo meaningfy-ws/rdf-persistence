@@ -1189,7 +1189,21 @@ parses the data in a worker thread and puts it into a new named graph, by defaul
 `{iri}/content/{uuid4}` (the loaded-graph template of the IRI policy; `Session` takes the policy
 as `iris=`). Before it puts the graph, it writes a *load marker*, one triple in the tenant's
 registry graph that records when the graph was loaded; the sweep uses it to leave young graphs alone.
-Data that does not parse raises `InvalidGraph`, and nothing is written. The graph belongs to the
+Data that does not parse raises `InvalidGraph`, and nothing is written. A JSON-LD file is also
+refused with `InvalidGraph`, nothing written, and `str(error)` is the message quoted here, when:
+
+* the document declares a graph of its own (a `@graph` with an `@id`). The loader puts the triples
+  in the graph it mints and takes no other. Message: `a loaded file holds one graph`.
+* an IRI is relative. No base is applied, so every IRI must be absolute, unless the document's own
+  `@base` resolves it. Message: `a JSON-LD document must use absolute IRIs`.
+* an IRI is not valid (it holds a space or a control character). Message:
+  `a JSON-LD document holds an IRI that is not valid`.
+* its `@context` is not given in the document. The loader fetches nothing, so a context URL, alone
+  or in an array, is refused. Message: `a JSON-LD context must be inline: remote, file and relative
+  contexts are not followed`.
+* the document is not a JSON object or array. Message: `a JSON-LD document is an object or an array`.
+
+The graph belongs to the
 aggregate once a commit names it (a graph another aggregate owns is refused with `InvalidIri`):
 
 [source,python]

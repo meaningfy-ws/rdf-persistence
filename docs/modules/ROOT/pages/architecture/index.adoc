@@ -162,7 +162,10 @@ comes back as its parent: a known limit, lifted when a schema owns a class hiera
 |Graph loading
 |v1
 |`Session.load_graph`: parse an RDF file (Turtle, RDF/XML, N-Triples, JSON-LD) in a worker thread;
-refuse it with `InvalidGraph` if it does not parse, writing nothing; otherwise `PUT` it into a new
+refuse it with `InvalidGraph` if it does not parse, writing nothing (a JSON-LD file is also refused
+if it declares a graph of its own, holds a relative or invalid IRI, gives a `@context` that is not
+in the document, or is not an object or array; see xref:howto/adopt.adoc[the how-to] for each
+message); otherwise `PUT` it into a new
 named graph, by default `{root}/content/{uuid4}` (per the IRI policy). A later commit registers it
 by naming it in `loaded_graphs`; the commit is refused (`InvalidIri`, nothing written) if the policy
 would not mint that graph for the aggregate or if another aggregate already owns it, which one `ASK`

@@ -805,7 +805,9 @@ logged and left for the sweep.
 
 |Load an RDF file
 |`Session.load_graph(B, data, rdf_format=…)`: parse in a worker thread (nothing written if it does
-not parse); mint `B/content/<id>`. The graph belongs to `B` only once a commit names it in
+not parse, or if a JSON-LD file declares a graph of its own, holds a relative or invalid IRI, gives a
+`@context` that is not in the document, or is not an object or array: `InvalidGraph`, each message in
+xref:howto/adopt.adoc[the how-to]); mint `B/content/<id>`. The graph belongs to `B` only once a commit names it in
 `loaded_graphs`.
 |A load marker in `T/registry` first, then a Graph Store `PUT` of `B/content/<id>`.
 |===

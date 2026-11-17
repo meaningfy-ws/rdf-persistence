@@ -114,7 +114,7 @@ Stage 1 closes with the lead's `make check-all` and `make test-containers`, the 
 
 ## Stage 2: reuse (PR 2)
 
-- [ ] 2.1 PD-5 (B-1, DEC-5): `python-mimeparse==2.0.0` in `[project] dependencies` (`make lock`);
+- [x] 2.1 PD-5 (B-1, DEC-5): `python-mimeparse==2.0.0` in `[project] dependencies` (`make lock`);
   `_negotiate` over `mimeparse.parse_media_range` and `quality_parsed` (PD-5, not `best_match`);
   the old helpers deleted. Layer: entrypoints. Tests: the
   `ACCEPT` table and the other tests of `tests/unit/entrypoints/test_negotiation.py` run first
@@ -122,14 +122,14 @@ Stage 1 closes with the lead's `make check-all` and `make test-containers`, the 
 
 | ID | Input | Expected |
 |---|---|---|
-| TC-35 | the existing `ACCEPT` table, all 19 rows | as today |
+| TC-35 | the existing `ACCEPT` table, all 18 rows | as today |
 | TC-36 | `application/ld+json;profile="http://www.w3.org/ns/json-ld#compacted"` | JSON-LD |
 | TC-37 | `text/turtle;q=0.5, application/ld+json;q=0.5` | JSON-LD (first offered of the tie) |
 | TC-38 | `text`, `;q=1`, `a/b/c` | each `NotAcceptable` |
 | TC-38b | `text/turtle, */*` and `application/*, text/turtle` | JSON, both (a quality tie; `best_match` would give Turtle) |
-| TC-38c | `text/turtle;q=abc` | Turtle (mimeparse reads the bad `q` as 1; today 406), the one accepted change |
+| TC-38c | `text/turtle;q=abc` | Turtle (mimeparse reads the bad `q` as 1; today 406), an accepted change (F-3 adds an empty `q` and a `q` above 1) |
 
-- [ ] 2.2 PD-6 (B-2, DEC-6): `services/jsonld.py` (`LOADER`, `dataset_of`, `triples_of`); bodies
+- [x] 2.2 PD-6 (B-2, DEC-6): `services/jsonld.py` (`LOADER`, `dataset_of`, `triples_of`); bodies
   and loaded JSON-LD both through it; `_refers_outside` and its helpers deleted. Layer: services.
   Tests: `tests/unit/services/test_loading.py` and `test_documents.py` unchanged first, then the
   rows below in `tests/unit/services/test_jsonld.py`. Gate: `make test-changed check-quality`.
@@ -144,7 +144,7 @@ Stage 1 closes with the lead's `make check-all` and `make test-containers`, the 
 | TC-42c | a JSON-LD body whose reference slot holds a relative IRI | `InvalidBody`, same message (before: the triple was dropped) |
 | TC-43 | every good sample of `test_loading.py:68` in JSON-LD | isomorphic to what rdflib's parser gave (read before the swap and kept as a golden in the test) |
 
-- [ ] 2.3 PD-10 (B-3): media types as rdflib format names in `fuseki.py`, `documents.py`,
+- [x] 2.3 PD-10 (B-3): media types as rdflib format names in `fuseki.py`, `documents.py`,
   `loading.py`; `EVENT_STREAM` replaced by `EventSourceResponse.media_type`. Layer: adapters,
   services, entrypoints. Tests: `tests/unit/adapters/test_fuseki_store.py`,
   `tests/unit/entrypoints/test_openapi.py`, `tests/unit/entrypoints/test_events_route.py`
@@ -155,7 +155,7 @@ Stage 1 closes with the lead's `make check-all` and `make test-containers`, the 
 | TC-44 | `grep -rnE 'format="(nt|turtle|xml|json|json-ld|nquads)"'` and the names `RDFLIB_`, `EVENT_STREAM` in `rdf_persistence/` (a test in `tests/unit/test_packaging.py`) | no match |
 | TC-45 | the OpenAPI document's events route | content type `text/event-stream`, as today |
 
-- [ ] 2.4 PD-11 (C-5, DEC-7): the `media_type` tag in `RpAnnotation`, the four annotations on
+- [x] 2.4 PD-11 (C-5, DEC-7): the `media_type` tag in `RpAnnotation`, the four annotations on
   `RdfFormat`, `make generate`; `vocabulary.media_types`; `loading._parse` reads it,
   `_RDFLIB_FORMATS` deleted. Read the lock diff: if the change is not `SAFE`, stop and ask the lead.
   `make refresh-snapshot` and read its diff. Layer: model, services. Tests in
@@ -168,7 +168,7 @@ Stage 1 closes with the lead's `make check-all` and `make test-containers`, the 
 | TC-48 | `media_types(RdfFormat, view=...)` over a fixture copy of the metamodel whose `ntriples` lacks the annotation | `ValueError` naming `ntriples` |
 | TC-49 | the toolkit lock after `make generate` | version unchanged; change `SAFE` |
 
-- [ ] 2.5 PD-13 (B-7, DEC-8): `FakeStore` on pyoxigraph; `pyoxigraph==0.5.13` declared. Layer:
+- [x] 2.5 PD-13 (B-7, DEC-8): `FakeStore` on pyoxigraph; `pyoxigraph==0.5.13` declared. Layer:
   testkit. Run first: every `CASES` entry (`tests/unit/testkit/test_fake_store.py`) and
   `make test-fast` with **no test edited**. If both pass, delete `_operations`, `_SPARQL_TOKENS`,
   `_PROLOGUE`, `_plain_strings`. If not, revert the engine, keep rdflib, and add a PD to design.md
@@ -245,8 +245,8 @@ section), in PR 3 before it merges.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 ·
-  [ ] 2.4 · [ ] 2.5 · (tester) · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] reconcile · PR 3
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 ·
+  [x] 2.4 · [x] 2.5 (kept rdflib, PD-17) · (tester) · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] reconcile · PR 3
 
 ## Verification
 

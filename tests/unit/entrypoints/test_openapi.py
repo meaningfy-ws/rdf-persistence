@@ -83,6 +83,13 @@ def schema_of(media: dict) -> dict:
     return media["schema"]
 
 
+def test_the_events_route_answers_text_event_stream(document) -> None:  # TC-45
+    ok = operation(document, f"{TENANT}/rp-events", "get")["responses"]["200"]
+    assert list(ok["content"]) == ["text/event-stream"], (
+        "the events route streams server-sent events"
+    )
+
+
 def test_the_document_is_openapi_3_1_and_valid(document) -> None:
     assert document["openapi"].startswith("3.1"), document["openapi"]
     validate(document)

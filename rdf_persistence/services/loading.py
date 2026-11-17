@@ -2,60 +2,54 @@
 
 import io
 import json
-from typing import Any
 
 import anyio.to_thread
 from rdflib import Graph
 
 from rdf_persistence.domain.exceptions import InvalidGraph
 from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.services.artifacts import CONTEXT_KEY
+from rdf_persistence.services.jsonld import (
+    ABSOLUTE_IRIS,
+    INVALID_IRI,
+    OBJECT_OR_ARRAY,
+    InvalidIriRefused,
+    NamedGraphRefused,
+    NotADocumentRefused,
+    RelativeIriRefused,
+    RemoteContextRefused,
+    triples_of,
+)
+from rdf_persistence.services.vocabulary import media_types
 
-_RDFLIB_FORMATS = {
-    RdfFormat.TURTLE: "turtle",
-    RdfFormat.RDFXML: "xml",
-    RdfFormat.NTRIPLES: "nt",
-    RdfFormat.JSONLD: "json-ld",
-}
+# rdflib takes a media type as the name of its format; the schema declares them (PD-11).
+_MEDIA_TYPES = media_types(RdfFormat)
 
-
-IMPORT_KEY = "@import"  # the JSON-LD keyword that pulls in another context
 NOT_INLINE = "a JSON-LD context must be inline: remote, file and relative contexts are not followed"
+ONE_GRAPH = "a loaded file holds one graph"
 
 
-def _refers_outside(node: Any) -> bool:
-    """True if a ``@context`` anywhere in ``node`` is not an inline object (or array of them)."""
-    if isinstance(node, list):
-        return any(_refers_outside(item) for item in node)
-    if not isinstance(node, dict):
-        return False
-    for key, value in node.items():
-        if key == IMPORT_KEY or (key == CONTEXT_KEY and not _inline(value)):
-            return True
-        if _refers_outside(value):
-            return True
-    return False
-
-
-def _inline(context: Any) -> bool:
-    items = context if isinstance(context, list) else [context]
-    return all(item is None or isinstance(item, dict) for item in items)
-
-
-def _refuse_outside_contexts(data: bytes) -> None:
-    """Refuse JSON-LD whose contexts rdflib would fetch or read (PD-8c); bad JSON is the parser's to report."""
+def _parse_jsonld(data: bytes) -> Graph:
+    """The triples of a JSON-LD file, read by the one JSON-LD path (PD-6); the refusals are its own."""
     try:
-        document = json.loads(data)
-    except ValueError:
-        return
-    if _refers_outside(document):
-        raise InvalidGraph(NOT_INLINE)
+        return triples_of(json.loads(data))
+    except RemoteContextRefused as error:
+        raise InvalidGraph(NOT_INLINE) from error
+    except NamedGraphRefused as error:
+        raise InvalidGraph(ONE_GRAPH) from error
+    except RelativeIriRefused as error:
+        raise InvalidGraph(ABSOLUTE_IRIS) from error
+    except InvalidIriRefused as error:
+        raise InvalidGraph(INVALID_IRI) from error
+    except NotADocumentRefused as error:
+        raise InvalidGraph(OBJECT_OR_ARRAY) from error
+    except Exception as error:  # bad JSON, or what pyld and the N-Quads parser raise
+        raise InvalidGraph(str(error) or type(error).__name__) from error
 
 
 def _parse(data: bytes, rdf_format: RdfFormat) -> Graph:
-    rdflib_format = _RDFLIB_FORMATS[rdf_format]  # an unknown format is a bug, not an invalid graph
     if rdf_format == RdfFormat.JSONLD:
-        _refuse_outside_contexts(data)
+        return _parse_jsonld(data)
+    rdflib_format = _MEDIA_TYPES[rdf_format]  # an unknown format is a bug, not an invalid graph
     graph = Graph()
     try:
         graph.parse(io.BytesIO(data), format=rdflib_format)
@@ -68,6 +62,9 @@ async def parse_graph(data: bytes, rdf_format: RdfFormat) -> Graph:
     """Parse ``data`` in a worker thread.
 
     Raises:
-        InvalidGraph: The data does not parse as ``rdf_format``.
+        InvalidGraph: The data does not parse as ``rdf_format``, or a JSON-LD file declares a graph
+            of its own, holds a relative or invalid IRI, gives a ``@context`` that is not in the
+            document, or is not an object or array (the message is the reason; the adopt how-to
+            lists each).
     """
     return await anyio.to_thread.run_sync(_parse, data, rdf_format)

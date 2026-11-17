@@ -3,13 +3,13 @@ import type { Generation, Invalidation } from "./rp_provenance";
 
 /** The serialisations a file of RDF can be loaded from. */
 export type RdfFormat =
-  /** The Turtle serialisation, media type text/turtle. */
+  /** The Turtle serialisation. */
   | "turtle"
-  /** The RDF/XML serialisation, media type application/rdf+xml. */
+  /** The RDF/XML serialisation. */
   | "rdfxml"
-  /** The N-Triples serialisation, media type application/n-triples. */
+  /** The N-Triples serialisation. */
   | "ntriples"
-  /** The JSON-LD serialisation, media type application/ld+json. */
+  /** The JSON-LD serialisation. */
   | "jsonld";
 
 /** The activity of removing a stored file, with the file aggregate it used and an invalidation of it. */
