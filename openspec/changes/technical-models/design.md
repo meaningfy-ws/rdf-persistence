@@ -666,6 +666,59 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   The review set of D-47 still runs, in parallel with the D-52 fixer; the checker covers the fix
   pass. The two LinkML issues of D-48 are drafted, not filed: the permission check refused the
   filing and the instruction did not name it.
+- **D-54 (stage 4, L2 W1, re-labelled Critical; the lead's slip)** The rebase onto #152 met a
+  whole-file conflict in `tests/audit/scenario-map.csv` at task 4.1's commit, and the lead's union
+  script kept both sides: every row twice (3,794 ids). Rebuilt by a row-wise three-way merge of the
+  stage's own map changes (3,820 rows, no duplicate id); the renamed reference test's old row
+  dropped. A union script must refuse a hunk that spans the file, as D-37's refused any non-import
+  hunk.
+- **D-55 (stage 4, the full review's decision)** Re-labelled Critical and fixed in one fix pass:
+  1. **Non-finite and unbounded durations** (L1 W1, L2 W2, L4+L5 W1, tester F-4; stage 3 tester
+     F-1, worse than recorded): `inf` or `1e309` passes every `*_seconds` slot but the leeway. An
+     infinite JWKS cooldown stops authentication about ten minutes after start; `timedelta` of a
+     huge value raises `OverflowError`, so the events route answers 500. Fix: every duration slot
+     gets a finite `maximum_value` (one year, 31,536,000 s, generous enough to change no deployment
+     and small enough for `timedelta`), and a test per group.
+  2. **The JWKS cooldown** (L1 W2, L4+L5 W2): its floor goes from 0.001 to 1 s (it was a fixed
+     10 s; it is what holds forged key ids off the identity provider), and `JwksTokenVerifier`
+     refuses a cooldown longer than the TTL (the verifier would refuse every token for the
+     difference, each cycle), as `_checked_algorithms` refuses a bad list.
+  3. **Secrets in `settings_from_env`'s errors** (L4+L5 W3, L1 S1, reproduced): the synthetic
+     class sets `hide_input_in_errors=True`.
+  4. **D-49's holes** (tester F-1, F-2): a module with no `module_kind` that imports a technical
+     module and holds its class passes; a technical class with `AggregateRoot` escapes the root
+     rules yet `root_classes` returns it. Fix: the import rule refuses any non-technical module
+     holding a technical class, and a technical module may declare no root.
+  5. **`default_instance: true` unquoted is ignored** (tester F-3, with stage 3 tester F-4): the
+     spec writes `true`; YAML's boolean and `'True'` silently generate no default. Fix: the flag is
+     read case-blind from either form, and a value that is not a boolean is refused, naming the slot.
+  6. **Docs that disagree with the code** (L3 W1, W2, S1, S2): `architecture/generation.adoc` still
+     asks a nested technical class for `owned: true`; it and `rp_testkit.yaml` say the testkit never
+     imports the generator's models (`freshness.py`, `conformance.py` do, until `generator-package`
+     F-1); `.importlinter` says `testkit.generated` does not exist; `architecture/index.adoc`
+     overstates what the `layers` contract covers.
+  7. **Release notes** (L4+L5 S3, as D-42): `CHANGELOG.md` gains stage 2's `fill_terms`,
+     `fragment_terms` and the `SparqlTerm` field that refuses a raw `str`, and moves
+     `ZitadelUserState` under Changed with its consequence (an unknown state makes the answer
+     unreadable).
+  8. **Scenario steps that cannot fail** (L2 S1, S2, as D-25): "no token verifier is built" asserts
+     a list nothing fills; "is refused" imports a path that never existed. Fix both steps.
+  The fix pass's builder sorts the tester's 334 tests (keep, merge or drop) and the lead confirms.
+
+Under the floor (not fixed in stage 4):
+
+- L2 S3: "the defaults" scenario reads 8 of about 20 slots through `ToyService`; TC-25 covers each.
+- L3 S3: TC-50's rule could be an import-linter contract; F-1 of `generator-package` removes it.
+- L4+L5 S1: one `Seconds` type for the eleven duration slots.
+- L4+L5 S2: `"RP_"` as a literal; a misspelt `RP_` group is ignored without a word (the how-to says
+  so).
+- L1 S2: `secret` is missing from the allowed annotation values (a misspelt value leaves a
+  testkit credential in a repr); `python_import` is not checked as a dotted name. Only a schema
+  author meets either.
+- L1 W1's tighter maxima (SSE lifetime, access TTL): a deployment choice; the bound of D-55 1 only
+  keeps the values finite.
+- Tester F-5: `ifabsent: string()` on a multivalued slot defaults to `['']`.
+- Tester F-6: `issue(sub=123)` emits a pydantic serialisation warning.
 
 Under the floor (not fixed in stage 3):
 
