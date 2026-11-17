@@ -204,8 +204,8 @@ policy, and `assert Iris(settings_with(part_template="{root}/parts/{type}/{id}")
 
 ## Open Questions
 
-- **OQ-1:** wait for the PR's CI before merging? Default DEC-2/PD-14 (wait); the owner may
-  overrule before stage 3's merge.
+None open. OQ-1 (wait for the PR's CI before merging) was answered by the owner on 2026-11-17:
+"keep CI wait" (PD-14 holds).
 
 ## Delivery decisions
 

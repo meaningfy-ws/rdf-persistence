@@ -1,6 +1,11 @@
 # Hand-over: test-debt-paydown (2026-11-17)
 
-**State:** shaped, not planned. `proposal.md` (the EPIC) and the `rp-messages` spec delta are
+**State (2026-11-17, latest): PARKED by the owner** ("park the test-debt-paydown, not now").
+The PLAN is gated (9.2/10, `evidence/clarity-gate.md`), the scenarios are signed off and the CI
+wait is kept (PD-14). Nothing is built. Resume with "deliver test-debt-paydown (gated PLAN on
+develop)": skip steps 2-3 below, start at step 4 with stage 1.
+
+**Earlier state:** shaped, not planned. `proposal.md` (the EPIC) and the `rp-messages` spec delta are
 written; `design.md` and `tasks.md` (the PLAN) are not. Nothing is built.
 
 **Start here (next session, as lead, `epic-delivery`):**
