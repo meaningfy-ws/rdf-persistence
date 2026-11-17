@@ -320,8 +320,9 @@ when the thing to check is that it was called, and with what.
   the route to call `bus.handle`.
 * *The loop limit.* One `handle` call runs at most `limit` commands (default 100): the first, and
   every one an observer or handler queued. The next raises `MessageLimitExceeded` ("message limit
-  100 reached") from `handle`, which also logs it at error level, and the commands still queued
-  are dropped. An observer that commits again on its own session is stopped at the same limit,
+  100 reached by <command class> <command id>") from `handle`, which does not log it, and the
+  commands still queued are dropped. The place that handles the error logs it once: the kit's
+  queue handler, or, for an HTTP route, the problem handler (a 500, "internal error answered"). An observer that commits again on its own session is stopped at the same limit,
   inside `handle` or not. When a `handle` that an observer calls itself joins the count and passes
   the limit, its error is logged by the commit's hook and not raised to the outer caller. A queued command's own error is logged and the queue goes on, because the
   caller's command already succeeded.

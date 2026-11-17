@@ -342,6 +342,17 @@ async def test_a_book_is_kept_when_if_match_lists_no_current_version(scene) -> N
     assert kept.status_code == 200, "nothing deleted"
 
 
+async def test_a_book_is_deleted_when_if_match_lists_its_current_version(scene) -> None:
+    """rp-service-api, scenario "a list of versions": an old tag and the current one delete it."""
+    response = await scene.http.delete(
+        scene.book,
+        headers=scene.headers("ada", **{"If-Match": f'"v0", {scene.book_etag}'}),
+    )
+    assert response.status_code == 204, response.text
+    gone = await scene.http.get(scene.book, headers=scene.headers("ada"))
+    assert gone.status_code == 404, "the book is deleted"
+
+
 async def test_the_grants_are_replaced_under_if_match_star(scene) -> None:  # TC-20
     grants = GrantSet.model_validate(
         (await scene.http.get(f"{scene.tenant}/grants", headers=scene.headers("ada"))).json()
