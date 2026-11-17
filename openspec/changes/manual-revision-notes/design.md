@@ -361,7 +361,7 @@ recommendation):
 ## Delivery decisions
 
 Taken by the lead (R-0007), shown to the developer at the end of each stage; the developer may
-overrule any of them.
+overrule any of them. D-1 to D-7 agreed by the developer, 2026-11-17.
 
 - **D-1 Stage 1 review set.** Two read-only passes, L2 and L3, each its own reviewer (P-0005: one
   pass of L2 and L3 per stage; `develop/agents.adoc`: L1, L2 and L3 are never combined). The full
