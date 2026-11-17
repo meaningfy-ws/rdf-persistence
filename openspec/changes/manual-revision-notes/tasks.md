@@ -246,7 +246,7 @@ section), in PR 3 before it merges.
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 ·
-  [x] 2.4 · [x] 2.5 (kept rdflib, PD-17) · (tester) · PR 2 · [x] 3.1 · [x] 3.2 (whole run xfail, #148) · [x] 3.3 · [x] 3.4 · [x] reconcile · PR 3
+  [x] 2.4 · [x] 2.5 (kept rdflib, PD-17) · (tester) · PR 2 · [x] 3.1 · [x] 3.2 (schema xfail per operation, #148, #153) · [x] 3.3 · [x] 3.4 · [x] reconcile · PR 3
 
 ## Verification
 

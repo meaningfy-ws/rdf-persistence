@@ -694,3 +694,7 @@ Under the floor (not fixed; for the hand-over note and later changes):
   naming it. The fixer used one `sed -i` for a two-call rename in `test_contract.py`; the lead read
   the whole diff. An intermittent pyparsing error (`Param.postParse2()`) seen once under two
   concurrent runs is SPARQL parsing's thread safety, not this change; noted for the hand-over.
+- Checker W1 (the stage 3 As built row, What Changes and `tasks.md` after the fix pass) fixed by
+  the lead in the spine. Under the floor: checker S1 the F-9 test runs N-Quads only, not TriG; S2
+  `SSE_EVENT_SCHEMA` has no `raises=FailureGroup`; S3 `XML_FORBIDDEN` leaves out U+FFFE, U+FFFF and
+  lone surrogates (not probed: what rdflib's writer and the response do with one is unchecked).
