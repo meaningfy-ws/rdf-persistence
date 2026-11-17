@@ -8,7 +8,7 @@ from collections.abc import AsyncIterator
 
 import pytest
 
-from rdf_persistence import Conflict, FusekiStore, InvalidIri, UnitOfWork
+from rdf_persistence import Conflict, FusekiStore, InvalidIri, ToolkitSettings, UnitOfWork
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.layout import application_database_name, graph_iri
 from rdf_persistence.services.sweep import sweep
@@ -21,10 +21,10 @@ CREATOR = Principal(id=ADA)
 
 
 @pytest.fixture
-async def toy(store: FusekiStore) -> AsyncIterator[ToyService]:
+async def toy(store: FusekiStore, toolkit: ToolkitSettings) -> AsyncIterator[ToyService]:
     """The toy service started against Fuseki under a prefix of its own; its databases are dropped after."""
     prefix = unique_prefix()
-    service = ToyService(store, prefix=prefix)
+    service = ToyService(store, prefix=prefix, toolkit=toolkit)
     try:
         async with service.app.router.lifespan_context(service.app):
             yield service

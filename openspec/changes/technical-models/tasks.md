@@ -179,7 +179,7 @@ Stage 2 closes like stage 1.
 | TC-43 | `pydantic_settings` hidden (`sys.modules` patched to `None`) | `ImportError` naming `rdf-persistence[settings]` |
 | TC-44 | `settings_from_env(ServiceSettings, environ={...required fields...})` | a valid `ServiceSettings` (any generated settings model works) |
 
-- [ ] 3.5 The container lane over the new wiring: `tests/integration/` fixtures build every adapter
+- [x] 3.5 The container lane over the new wiring: `tests/integration/` fixtures build every adapter
   from `ToolkitSettings()`. Gate: `make test-containers`, then `make check-quality`.
 
 Stage 3 closes like stage 1. **The adversarial tester runs after 3.3** (an old keyword still

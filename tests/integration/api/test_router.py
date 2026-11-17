@@ -102,11 +102,11 @@ def extended_model(tmp_path: Path):
 
 
 async def test_a_new_class_in_the_model_is_served_after_a_restart_with_no_code_added(
-    store, extended_model
+    store, extended_model, toolkit
 ) -> None:
     schema, package = extended_model
     magazine = {"label": "Fiction", "description": "Novels.", "issues": 120}
-    before = ToyService(store, prefix=unique_prefix())
+    before = ToyService(store, prefix=unique_prefix(), toolkit=toolkit)
     async with before.app.router.lifespan_context(before.app), before.client() as http:
         tenant = (
             await http.post("/libraries", json=TENANT_BODY, headers=before.bearer("ada"))
@@ -117,7 +117,9 @@ async def test_a_new_class_in_the_model_is_served_after_a_restart_with_no_code_a
     await drop_databases(store, before.settings.prefix)
     assert missing.status_code == 404, "the model has no Magazine yet, so there is no route"
 
-    after = ToyService(store, schema=schema, package=package, prefix=unique_prefix())
+    after = ToyService(
+        store, schema=schema, package=package, prefix=unique_prefix(), toolkit=toolkit
+    )
     try:
         async with after.app.router.lifespan_context(after.app), after.client() as http:
             tenant = (

@@ -127,7 +127,9 @@ async def test_a_dropped_dataset_is_gone(store, operation):
         await calls[operation]()
 
 
-async def test_an_unreachable_store_is_unavailable(fuseki):
-    async with FusekiStore("http://127.0.0.1:9", fuseki.user, fuseki.password) as unreachable:
+async def test_an_unreachable_store_is_unavailable(fuseki, toolkit):
+    async with FusekiStore(
+        "http://127.0.0.1:9", fuseki.user, fuseki.password, http=toolkit.http
+    ) as unreachable:
         with pytest.raises(StoreUnavailable):
             await unreachable.list_datasets()

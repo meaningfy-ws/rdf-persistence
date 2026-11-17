@@ -9,7 +9,7 @@ from collections.abc import AsyncIterator
 import httpx
 import pytest
 
-from rdf_persistence import FusekiStore
+from rdf_persistence import FusekiStore, ToolkitSettings
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, drop_databases, unique_prefix
 
 
@@ -19,8 +19,10 @@ def prefix() -> str:
 
 
 @pytest.fixture
-async def toy(store: FusekiStore, prefix: str) -> AsyncIterator[ToyService]:
-    service = ToyService(store, prefix=prefix)
+async def toy(
+    store: FusekiStore, prefix: str, toolkit: ToolkitSettings
+) -> AsyncIterator[ToyService]:
+    service = ToyService(store, prefix=prefix, toolkit=toolkit)
     async with service.app.router.lifespan_context(service.app):
         yield service
     await drop_databases(store, prefix)

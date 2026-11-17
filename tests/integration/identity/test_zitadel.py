@@ -2,8 +2,17 @@
 
 import uuid
 
+import httpx
 import pytest
 
+from rdf_persistence.adapters.generated.rp_wire import (
+    ZitadelOrganisationQuery,
+    ZitadelQuery,
+    ZitadelSearch,
+    ZitadelUserPage,
+    ZitadelUserState,
+    ZitadelWindow,
+)
 from rdf_persistence.adapters.jwks import JwksTokenVerifier
 from rdf_persistence.adapters.zitadel import ZitadelIdentity, zitadel_roles_claim
 from rdf_persistence.domain.exceptions import InvalidToken, NotFound
@@ -14,13 +23,15 @@ from rdf_persistence.testkit.zitadel import ADMIN_ROLE, access_token, create_mac
 
 
 @pytest.fixture
-async def verifier(zitadel_project):
+async def verifier(zitadel_project, toolkit):
     """A verifier of the container's tokens; the container speaks http, so the https rule is opted out of."""
     async with JwksTokenVerifier(
         zitadel_project.server.url,
         zitadel_project.project_id,
         zitadel_roles_claim(zitadel_project.project_id),
         allow_insecure_issuer=True,
+        jwks=toolkit.jwks,
+        http=toolkit.http,
     ) as client:
         yield client
 
@@ -31,12 +42,14 @@ async def roles_in(verifier, project, account) -> set[str]:
 
 
 @pytest.fixture
-async def identity(zitadel_project):
+async def identity(zitadel_project, toolkit):
     async with ZitadelIdentity(
         zitadel_project.server.url,
         zitadel_project.server.admin_pat,
         zitadel_project.organisation_id,
         zitadel_project.project_id,
+        http=toolkit.http,
+        directory=toolkit.directory,
     ) as client:
         yield client
 
@@ -71,10 +84,15 @@ async def test_the_admin_principal_holds_the_admin_role_in_its_verified_token(
 
 
 async def test_a_token_for_another_audience_is_refused_by_the_live_issuers_keys(
-    zitadel_project, account
+    zitadel_project, account, toolkit
 ):
     async with JwksTokenVerifier(
-        zitadel_project.server.url, "another-project", "roles", allow_insecure_issuer=True
+        zitadel_project.server.url,
+        "another-project",
+        "roles",
+        allow_insecure_issuer=True,
+        jwks=toolkit.jwks,
+        http=toolkit.http,
     ) as other:
         with pytest.raises(InvalidToken):
             await other.verify(access_token(zitadel_project, account))
@@ -111,6 +129,36 @@ async def test_a_global_role_shows_in_a_fresh_token_until_it_is_removed(
     assert ADMIN_ROLE not in await roles_in(verifier, zitadel_project, account), "removed"
 
 
+async def test_the_states_of_a_live_zitadels_users_are_all_known_states(
+    identity, zitadel_project, account
+):  # RISK-2: an unknown state would make every account read answer 503
+    await identity.disable(account.user_id)
+    server = zitadel_project.server
+    search = ZitadelSearch(
+        query=ZitadelWindow(offset=0, limit=100),
+        queries=[
+            ZitadelQuery(
+                organizationIdQuery=ZitadelOrganisationQuery(
+                    organizationId=zitadel_project.organisation_id
+                )
+            )
+        ],
+    )
+    answer = httpx.post(
+        f"{server.url}/v2/users",
+        headers={"Authorization": f"Bearer {server.admin_pat}"},
+        content=search.model_dump_json(exclude_none=True),
+    )
+    answer.raise_for_status()
+    users = ZitadelUserPage.model_validate_json(answer.content).result or []
+    states = {user.state for user in users}
+    assert ZitadelUserState.USER_STATE_ACTIVE in states, (
+        "the machine users of the project are active"
+    )
+    assert ZitadelUserState.USER_STATE_INACTIVE in states, "the disabled account is inactive"
+    assert len(await identity.list_accounts()) == len(users), "the adapter reads the same users"
+
+
 async def test_an_unknown_role_or_account_is_not_found(identity, account):
     with pytest.raises(NotFound):
         await identity.grant_global_role(account.user_id, "nosuch")
@@ -130,8 +178,6 @@ async def _found_once_indexed(identity, email, timeout=15.0):
 
 
 async def test_a_person_is_found_by_exact_email(identity, zitadel_project):
-    import httpx
-
     email = f"ann-{uuid.uuid4().hex[:8]}@example.org"
     server = zitadel_project.server
     created = httpx.post(

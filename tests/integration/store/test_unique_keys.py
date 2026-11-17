@@ -52,8 +52,8 @@ async def stored(session: Session, root: str) -> bool:
 
 
 @pytest.fixture
-async def store(fuseki) -> AsyncIterator[FusekiStore]:
-    async with FusekiStore(fuseki.url, fuseki.user, fuseki.password) as client:
+async def store(fuseki, toolkit) -> AsyncIterator[FusekiStore]:
+    async with FusekiStore(fuseki.url, fuseki.user, fuseki.password, http=toolkit.http) as client:
         yield client
 
 

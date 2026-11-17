@@ -35,11 +35,13 @@ TYPES = iri_types(load_schema(TOY_SCHEMA))
 
 
 @pytest.fixture
-async def world(store, fuseki_b) -> AsyncIterator[SimpleNamespace]:
+async def world(store, fuseki_b, toolkit) -> AsyncIterator[SimpleNamespace]:
     """A tenancy with the session's Fuseki as default and the second one as ``client-a``."""
     settings = SETTINGS.model_copy(update={"prefix": unique_prefix()})
     files = FakeFileStore()
-    async with FusekiStore(fuseki_b.url, fuseki_b.user, fuseki_b.password) as other:
+    async with FusekiStore(
+        fuseki_b.url, fuseki_b.user, fuseki_b.password, http=toolkit.http
+    ) as other:
         tenancy = Tenancy(
             store,
             files,

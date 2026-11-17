@@ -18,7 +18,6 @@ from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.discussion import dependents
 from rdf_persistence.services.generated.service.rp_service import ReferrerList
-from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import UnitOfWork
@@ -316,9 +315,9 @@ async def test_a_member_the_caller_may_not_delete_refuses_the_cascade(session, c
 
 @pytest.mark.slow
 async def test_a_cascade_of_the_most_members_a_commit_holds_is_one_request(
-    store, session, collaboration, monkeypatch
+    store, session, collaboration, monkeypatch, toolkit
 ):  # PD-28 item 12: the real limit, on stored books
-    books = [book_iri(1000 + n) for n in range(LimitSettings().max_roots - 1)]
+    books = [book_iri(1000 + n) for n in range(toolkit.limits.max_roots - 1)]
     for start in range(0, len(books), 100):
         work = UnitOfWork(session, toy_mapper())
         for iri in books[start : start + 100]:
