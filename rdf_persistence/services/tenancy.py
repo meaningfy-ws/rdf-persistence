@@ -50,6 +50,7 @@ from rdf_persistence.services.generated.service.rp_service import (
     TenantSummary,
     VerifiedCaller,
 )
+from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
@@ -74,6 +75,7 @@ from rdf_persistence.services.session import (
     utc_now,
 )
 from rdf_persistence.services.store import Store
+from rdf_persistence.services.telemetry import log_extra
 from rdf_persistence.services.tenant_move import check_graphs, rewrite
 
 log = logging.getLogger(__name__)
@@ -582,11 +584,9 @@ class Tenancy:
                 pass
             except Exception:  # noqa: BLE001 -- best-effort rollback: a failed drop is logged and left to the sweep
                 log.warning(
-                    "a failed %s could not drop %s",
-                    step,
-                    name,
+                    "a failed step could not drop what it made; left to the sweep",
                     exc_info=True,
-                    extra={"step": step, "tenant": tenant, "resource": name},
+                    extra=log_extra(LogContext(step=step, tenant_id=tenant, resource=name)),
                 )
 
     def _vet_restored_root(self, tenant: str, graph: Graph, restorer: Principal) -> str:
@@ -937,4 +937,7 @@ def _run_validators(
 
 def _log_step(step: str, tenant: str, resource: str) -> None:
     """One step of creating or dropping a tenant's resources, as data an operator can query."""
-    log.info(step, extra={"step": step, "tenant": tenant, "resource": resource})
+    log.info(
+        "changed a resource of a tenant",
+        extra=log_extra(LogContext(step=step, tenant_id=tenant, resource=resource)),
+    )

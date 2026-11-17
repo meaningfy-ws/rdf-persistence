@@ -7,8 +7,10 @@ from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_files import DeleteFile
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.files import FileStore
+from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.mapper import Mapper
 from rdf_persistence.services.provenance import new_activity_id
+from rdf_persistence.services.telemetry import log_extra
 from rdf_persistence.services.tenancy import Tenancy
 
 log = logging.getLogger(__name__)
@@ -52,11 +54,11 @@ async def _delete_blob(files: FileStore, bucket: str, tenant: str, key: str) -> 
     except (PersistenceError, ValueError):
         log.warning(
             "a blob could not be deleted; the live-tenant sweep removes it later",
-            extra={"step": "remove-blob-failed", "tenant": tenant, "resource": key},
+            extra=log_extra(LogContext(step="remove-blob-failed", tenant_id=tenant, resource=key)),
             exc_info=True,
         )
     else:
         log.info(
             "removed the blob of a removed aggregate",
-            extra={"step": "remove-blob", "tenant": tenant, "resource": key},
+            extra=log_extra(LogContext(step="remove-blob", tenant_id=tenant, resource=key)),
         )

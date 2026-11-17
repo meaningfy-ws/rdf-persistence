@@ -38,6 +38,7 @@ from rdf_persistence.services.tenant_dump import dump
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.logs import attributes, records_of
 from tests.toy import SETTINGS, TOY_SCHEMA, toy_mapper
 from tests.unit.services.test_migration_runner import (
     CREATOR,
@@ -556,7 +557,10 @@ async def test_a_shared_failure_is_logged_with_its_database_migration_and_cause(
     world.store.on("update", DOWN)
     with caplog.at_level(logging.ERROR), pytest.raises(MigrationFailed):
         await migrate_shared(world.tenancy, world.store, [(LIB, lib_chain)])
-    record = next(r for r in caplog.records if getattr(r, "step", "") == "migrate-shared")
-    assert record.database == system, "the database"  # type: ignore[attr-defined]
-    assert "1__2" in record.migration, "the migration"  # type: ignore[attr-defined]
-    assert "down" in record.cause, "the cause"  # type: ignore[attr-defined]
+    [record] = records_of(caplog, "migrate-shared")
+    assert record.getMessage() == "a shared database could not be migrated", "constant message"
+    logged = attributes(record)
+    assert logged["db.namespace"] == system, "the database"
+    assert "1__2" in str(logged["rp.migration.name"]), "the migration"
+    assert record.exc_info is not None, "the exception is attached"
+    assert "down" in str(record.exc_info[1]), "the cause"

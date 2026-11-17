@@ -56,6 +56,7 @@ from rdf_persistence.testkit import FakeStore, assert_isomorphic
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.logs import attributes, records_of
 from tests.toy import (
     ADA,
     BOB,
@@ -709,8 +710,9 @@ async def test_tc16_a_blob_gone_before_its_read_is_skipped_and_logged(world, cap
     assert [n for n, _ in unpack(data)] == [MANIFEST, GRAPHS, "blobs/k2", END], (
         "k1 is not in the dump"
     )
-    steps = [(r.__dict__.get("step"), r.__dict__.get("resource")) for r in caplog.records]
-    assert steps == [("dump-blob-gone", "k1")], "the missing blob is logged and skipped"
+    [gone] = records_of(caplog, "dump-blob-gone")
+    assert [r for r in caplog.records if r is not gone] == [], "only the missing blob is logged"
+    assert attributes(gone)["rp.resource"] == "k1", "the missing blob is logged and skipped"
 
 
 async def test_a_dump_holds_the_manifest_the_graphs_the_blobs_and_the_end_marker_in_that_order(
@@ -746,13 +748,16 @@ async def test_a_dump_and_a_restore_each_log_one_line_without_content(world, cap
     with caplog.at_level(logging.INFO, logger="rdf_persistence.services.tenant_dump"):
         data = await dumped(world)
         new = (await restored(world, data)).id
-    lines = [r for r in caplog.records if r.__dict__.get("step") in ("dump", "restore")]
-    assert [(r.__dict__["step"], r.__dict__["tenant"]) for r in lines] == [
+    lines = [*records_of(caplog, "dump"), *records_of(caplog, "restore")]
+    assert [(attributes(r)["rp.step"], attributes(r)["rp.tenant.id"]) for r in lines] == [
         ("dump", world.tenant),
         ("restore", new),
     ], "one dump line for the source, one restore line for the new tenant"
-    assert lines[0].__dict__["blobs"] == 1, "the dump line counts the blobs"
-    assert lines[1].__dict__["source"] == world.tenant, "the restore line names the source"
+    assert [r.getMessage() for r in lines] == ["dumped a tenant", "restored a tenant"], "constant"
+    assert attributes(lines[0])["rp.blob.count"] == 1, "the dump line counts the blobs"
+    assert attributes(lines[1])["rp.restore.source_tenant.id"] == world.tenant, (
+        "the restore line names the source"
+    )
     text = " ".join(r.getMessage() for r in lines)
     assert "Dune" not in text, "no graph or blob content in the log"
     assert "k1" not in text, "no graph or blob content in the log"
@@ -1013,11 +1018,10 @@ async def test_tc23_a_cleanup_that_fails_too_is_logged_and_the_sweep_finishes_it
         pytest.raises(StoreUnavailable, match="the import failed"),
     ):
         await restored(world, data)
-    cleanup = [r for r in caplog.records if r.__dict__.get("step") == "restore-cleanup"]
-    assert [r.__dict__["resource"] for r in cleanup] == [cleanup[0].__dict__["resource"]], (
-        "one failed drop was logged, naming the database"
-    )
-    leftover = cleanup[0].__dict__["resource"]
+    cleanup = records_of(caplog, "restore-cleanup")
+    assert len(cleanup) == 1, "one failed drop was logged"
+    assert cleanup[0].getMessage() == "a failed step could not drop what it made; left to the sweep"
+    leftover = attributes(cleanup[0])["rp.resource"]
     datasets = set(await world.store.list_datasets())
     assert leftover in datasets, "the logged database is still there"
     assert leftover != world.database, "and it is the new one, not the source"

@@ -17,6 +17,7 @@ from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore, assert_isomorphic
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.logs import attributes, records_of
 from tests.toy import ADA, SETTINGS, library_slots, toy_mapper
 
 CREATOR = Principal(id=ADA)
@@ -187,10 +188,10 @@ async def test_each_orphan_drop_is_logged_with_the_name_as_structured_data(
     await files.create_bucket(ORPHAN)
     with caplog.at_level(logging.INFO):
         await sweep(tenancy, store, files, SETTINGS)
-    dropped = {(r.step, r.resource) for r in caplog.records if hasattr(r, "step")}
-    assert dropped == {("drop-orphan-database", ORPHAN), ("drop-orphan-bucket", ORPHAN)}, (
-        "each orphan drop is logged with its name"
-    )
+    [database] = records_of(caplog, "drop-orphan-database")
+    [bucket] = records_of(caplog, "drop-orphan-bucket")
+    assert attributes(database)["db.namespace"] == ORPHAN, "the database drop names the database"
+    assert attributes(bucket)["rp.resource"] == ORPHAN, "the bucket drop names the bucket"
 
 
 # -- tenants on several stores (tenant-stores PD-6): ``D`` is the default store, ``A`` is ``client-a`` --
@@ -239,6 +240,24 @@ async def test_tc21_an_orphan_is_dropped_from_whichever_store_holds_it(two):
     await sweep(two.tenancy, two.d, two.files, SETTINGS)
     assert await two.a.list_datasets() == [held], "A keeps T, drops its orphan"
     assert await two.d.list_datasets() == ["lib-system"], "D drops its orphan"
+
+
+async def test_tc07_an_orphan_database_drop_is_one_constant_info_record_with_its_attributes(
+    two, caplog
+):
+    await two.a.create_dataset(ORPHAN_A)
+    with caplog.at_level(logging.INFO):
+        await sweep(two.tenancy, two.d, two.files, SETTINGS)
+    [logged] = records_of(caplog, "drop-orphan-database")
+    assert (logged.levelno, logged.getMessage()) == (
+        logging.INFO,
+        "dropping an orphan database",
+    ), "the message is constant"
+    assert attributes(logged) == {
+        "rp.step": "drop-orphan-database",
+        "db.namespace": ORPHAN_A,
+        "rp.store.name": CLIENT_A,
+    }, "the name and the store are attributes, not text"
 
 
 async def test_tc22_unwired_stores_stop_the_sweep_before_anything_is_dropped(two):
@@ -309,8 +328,9 @@ async def test_tc43_a_tenant_database_on_another_store_is_reported_and_left_alon
     before = (len(d.sent("drop_dataset")), len(a.sent("drop_dataset")))
     with caplog.at_level(logging.ERROR):
         await sweep(made, d, files, SETTINGS)
-    [logged] = [r for r in caplog.records if getattr(r, "step", "") == "misplaced-tenant"]
-    assert (logged.tenant, logged.recorded_store, logged.found_store) == (
+    [logged] = records_of(caplog, "misplaced-tenant")
+    found = attributes(logged)
+    assert (found["rp.tenant.id"], found["rp.store.name"], found["rp.store.found_name"]) == (
         summary.id,
         "default",
         CLIENT_A,

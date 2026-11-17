@@ -34,6 +34,7 @@ from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.logs import attributes, records_of
 from tests.toy import ADA, SETTINGS, TOY_SCHEMA, dune, library_slots, toy_mapper
 from tests.unit.domain.builders import TENANT, tenant_access
 
@@ -359,7 +360,7 @@ async def test_pd12_a_create_that_fails_after_the_database_drops_it_and_the_buck
         await made_on(world, CLIENT_A)
     assert tenant_databases(world.a) == [], "no database is left on A"
     assert await world.files.list_buckets(PREFIX) == [], "no bucket is left"
-    steps = [r.__dict__.get("step") for r in caplog.records]
+    steps = [attributes(r).get("rp.step") for r in caplog.records]
     assert "create-cleanup" not in steps, "a drop that worked is not warned about"
 
 
@@ -373,7 +374,7 @@ async def test_pd12_a_create_cleanup_that_fails_too_is_logged_and_the_original_e
         pytest.raises(StoreUnavailable, match="the root failed"),
     ):
         await made_on(world, CLIENT_A)
-    [logged] = [r for r in caplog.records if r.__dict__.get("step") == "create-cleanup"]
-    assert logged.__dict__["resource"] in world.a._datasets, (
+    [logged] = records_of(caplog, "create-cleanup")
+    assert attributes(logged)["rp.resource"] in world.a._datasets, (
         "the logged database is left to the sweep"
     )

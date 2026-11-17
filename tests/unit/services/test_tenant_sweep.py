@@ -34,6 +34,7 @@ from rdf_persistence.services.tenant_sweep import sweep_tenant
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.logs import attributes, records_of
 from tests.toy import ADA, SETTINGS, TOY_SCHEMA, library_slots, toy_mapper
 
 NOW = datetime(2026, 11, 10, 12, 0, tzinfo=UTC)
@@ -588,17 +589,20 @@ async def test_a_blob_the_store_refuses_is_skipped_and_the_sweep_goes_on(world, 
     keys = [b.file_key for b in await world.files.list_blobs(world.database)]
     assert "k5" not in keys, "the removed blob is gone"
     assert "k2" in keys, "the refused blob stays"
-    assert any(r.__dict__.get("step") == "sweep-blob-skipped" for r in caplog.records), (
-        "the skipped blob is logged"
-    )
+    assert records_of(caplog, "sweep-blob-skipped"), "the skipped blob is logged"
 
 
 async def test_each_removal_is_logged_with_its_step(world, caplog):
     with caplog.at_level(logging.INFO, logger="rdf_persistence.services.tenant_sweep"):
         await world.sweep(remove=True, remove_blobs=True)
-    steps = [(r.__dict__.get("step"), r.__dict__.get("resource")) for r in caplog.records]
+    steps = [
+        (attributes(r).get("rp.step"), attributes(r).get("rp.resource")) for r in caplog.records
+    ]
     assert steps == [("sweep-loaded-graph", str(world.g2)), ("sweep-blob", "k2")], (
         "each removal is logged with its step"
+    )
+    assert {r.getMessage() for r in caplog.records} == {"removing an orphan of a live tenant"}, (
+        "one constant message"
     )
 
 

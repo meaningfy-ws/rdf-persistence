@@ -42,6 +42,7 @@ from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.fixtures.library.generated.scans import Scan
+from tests.logs import attributes
 from tests.toy import (
     ADA,
     BOB,
@@ -427,7 +428,14 @@ async def test_each_create_and_drop_step_is_logged_with_the_tenant_and_resource_
         _, version = await tenancy.get(summary.id)
         await tenancy.delete(summary.id, version)
     name = tenant_resource_name(SETTINGS.prefix, summary.id)
-    steps = [(r.step, r.tenant, r.resource) for r in caplog.records if hasattr(r, "step")]
+    logged = [r for r in caplog.records if "rp.step" in attributes(r)]
+    steps = [
+        (attributes(r)["rp.step"], attributes(r)["rp.tenant.id"], attributes(r)["rp.resource"])
+        for r in logged
+    ]
+    assert {r.getMessage() for r in logged} == {"changed a resource of a tenant"}, (
+        "one constant message, the step is an attribute"
+    )
     assert steps == [
         ("create-database", summary.id, name),
         ("create-bucket", summary.id, name),

@@ -22,6 +22,7 @@ from rdf_persistence.domain.exceptions import InvalidBody, MigrationFailed, Pers
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import Migration
+from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.migrations import (
     Chain,
     SchemaChain,
@@ -34,6 +35,7 @@ from rdf_persistence.services.migrations import (
     versions,
 )
 from rdf_persistence.services.store import Store
+from rdf_persistence.services.telemetry import log_extra
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.services.yaml_files import SHOWN, shown
 
@@ -64,7 +66,18 @@ async def migrate_shared(tenancy: Tenancy, store: Store, chains: Sequence[Schema
         try:
             await migrate_database(store, database, chains, tenancy.stamps_graph)
         except MigrationFailed as error:
-            log.error(str(error), extra=_failure("migrate-shared", error, database=database))
+            log.error(
+                "a shared database could not be migrated",
+                exc_info=error,
+                extra=log_extra(
+                    LogContext(
+                        step="migrate-shared",
+                        db_namespace=database,
+                        schema_id=error.schema,
+                        migration_name=error.migration,
+                    )
+                ),
+            )
             raise
 
 
@@ -95,7 +108,18 @@ async def migrate_tenants(
                 home, tenancy.database_of(tenant.id), chains, tenancy.stamps_graph
             )
         except MigrationFailed as error:
-            log.error(str(error), extra=_failure("migrate-tenant", error, tenant=tenant.id))
+            log.error(
+                "a tenant could not be migrated; set aside",
+                exc_info=error,
+                extra=log_extra(
+                    LogContext(
+                        step="migrate-tenant",
+                        tenant_id=tenant.id,
+                        schema_id=error.schema,
+                        migration_name=error.migration,
+                    )
+                ),
+            )
             failed.add(tenant.id)
     tenancy.set_aside(failed)
     return failed
@@ -150,16 +174,6 @@ def _refused(schema_id: str, migration: Migration, cause: object) -> InvalidBody
     return InvalidBody(
         f"the dump cannot be migrated: {_name(schema_id, migration)}: {shown(str(cause))}"
     )
-
-
-def _failure(step: str, error: MigrationFailed, **where: str) -> dict[str, str]:
-    return {
-        "step": step,
-        **where,
-        "schema": error.schema,
-        "migration": error.migration,
-        "cause": error.cause,
-    }
 
 
 async def _shared_databases(tenancy: Tenancy, store: Store) -> list[str]:
@@ -237,12 +251,14 @@ async def _apply(
         raise _failed(database, schema_id, migration, f"after the request {problem}")
     log.info(
         "migrated a database",
-        extra={
-            "step": "migrate",
-            "database": database,
-            "schema": schema_id,
-            "migration": _name(schema_id, migration),
-        },
+        extra=log_extra(
+            LogContext(
+                step="migrate",
+                db_namespace=database,
+                schema_id=schema_id,
+                migration_name=_name(schema_id, migration),
+            )
+        ),
     )
     return cast(str, version)  # _not_forward answered a problem for None
 

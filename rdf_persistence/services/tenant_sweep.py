@@ -20,9 +20,11 @@ from rdf_persistence.domain.generated.rp_tenancy import TenantState, TenantSweep
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.files import FileStore
+from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.session import utc_now
 from rdf_persistence.services.store import Store
+from rdf_persistence.services.telemetry import log_extra
 from rdf_persistence.services.tenancy import Tenancy
 
 log = logging.getLogger(__name__)
@@ -199,7 +201,9 @@ async def _delete_blobs(files: FileStore, bucket: str, tenant: str, keys: list[s
         except ValueError:  # a key written by another tool, which the adapter will not delete
             log.warning(
                 "the object store would not delete a blob; skipped",
-                extra={"step": "sweep-blob-skipped", "tenant": tenant, "resource": key},
+                extra=log_extra(
+                    LogContext(step="sweep-blob-skipped", tenant_id=tenant, resource=key)
+                ),
             )
             skipped.append(key)
         else:
@@ -210,5 +214,5 @@ async def _delete_blobs(files: FileStore, bucket: str, tenant: str, keys: list[s
 def _log_removal(step: str, tenant: str, resource: str) -> None:
     log.info(
         "removing an orphan of a live tenant",
-        extra={"step": step, "tenant": tenant, "resource": resource},
+        extra=log_extra(LogContext(step=step, tenant_id=tenant, resource=resource)),
     )

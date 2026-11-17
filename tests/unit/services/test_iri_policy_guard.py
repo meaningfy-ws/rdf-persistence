@@ -17,6 +17,7 @@ from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.logs import attributes, records_of
 from tests.toy import ADA, SETTINGS, library_slots, toy_mapper
 
 RECORD_GRAPH = URIRef(f"{SETTINGS.base}{POLICY_SEGMENT}")
@@ -124,13 +125,34 @@ async def test_the_default_policy_over_data_without_a_record_is_recorded(store, 
         await guard_iri_policy(store, tenancy, settings_of(THIRTEEN))
 
 
-async def test_a_refusal_is_logged_with_its_step(store, tenancy, caplog):
+async def test_tc09_a_refusal_is_one_constant_error_record_naming_the_fields(
+    store, tenancy, caplog
+):
     await guard_iri_policy(store, tenancy, settings_of(THIRTEEN))
-    with caplog.at_level(logging.ERROR), pytest.raises(IriPolicyChanged):
+    with caplog.at_level(logging.ERROR), pytest.raises(IriPolicyChanged) as caught:
         await guard_iri_policy(store, tenancy, settings_of(TWELVE))
-    assert [r.step for r in caplog.records if hasattr(r, "step")] == ["iri-policy"], (
-        "the refusal is logged with the iri-policy step"
-    )
+    [logged] = records_of(caplog, "iri-policy")
+    assert (logged.levelno, logged.getMessage()) == (
+        logging.ERROR,
+        "the IRI policy cannot change once there is data",
+    ), "the message is constant"
+    fields = attributes(logged)["rp.iri_policy.fields"]
+    assert isinstance(fields, list), "the fields are a list, not a joined text"
+    assert fields == ["object_id.length"], "the list names the field that differs"
+    assert all(name in str(caught.value) for name in fields), "the raised message names them too"
+
+
+async def test_an_unreadable_record_is_logged_with_a_constant_message_and_the_reason(
+    store, tenancy, caplog
+):
+    record = Graph()
+    record.add((RECORD_GRAPH, v.IRI_POLICY, Literal("not json")))
+    await store.put_graph(tenancy.system_database, RECORD_GRAPH, record)
+    with caplog.at_level(logging.ERROR), pytest.raises(IriPolicyChanged, match="unreadable"):
+        await guard_iri_policy(store, tenancy, settings_of(None))
+    [logged] = records_of(caplog, "iri-policy")
+    assert logged.getMessage() == "the recorded IRI policy is unreadable", "constant message"
+    assert attributes(logged)["rp.error.detail"] == "it cannot be parsed", "the reason is data"
 
 
 class RacingStore(FakeStore):

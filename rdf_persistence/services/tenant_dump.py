@@ -35,11 +35,13 @@ from rdf_persistence.domain.media import N_QUADS
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.generated.service.rp_service import TenantDump, TenantSummary
+from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.iris import Iris, effective_policy, policy_differences
 from rdf_persistence.services.migration_runner import migrate_dataset
 from rdf_persistence.services.migrations import SchemaChain, stamps, versions
 from rdf_persistence.services.session import Clock, utc_now
 from rdf_persistence.services.store import Store
+from rdf_persistence.services.telemetry import log_extra
 from rdf_persistence.services.tenancy import DEFAULT_STORE, Tenancy
 from rdf_persistence.services.tenant_move import glued_templates
 from rdf_persistence.services.yaml_files import shown
@@ -111,13 +113,18 @@ async def dump(
             except NotFound:
                 log.warning(
                     "a blob was deleted between listing and reading; left out of the dump",
-                    extra={"step": "dump-blob-gone", "tenant": tenant, "resource": blob.file_key},
+                    extra=log_extra(
+                        LogContext(step="dump-blob-gone", tenant_id=tenant, resource=blob.file_key)
+                    ),
                 )
                 continue
             _add(tar, BLOBS + blob.file_key, payload, stamp.timestamp())
             written += 1
         _add(tar, END, b"", stamp.timestamp())
-    log.info("dump", extra={"step": "dump", "tenant": tenant, "blobs": written})
+    log.info(
+        "dumped a tenant",
+        extra=log_extra(LogContext(step="dump", tenant_id=tenant, blob_count=written)),
+    )
     return manifest
 
 
@@ -241,8 +248,12 @@ async def restore(
             store=store,
         )
     log.info(
-        "restore",
-        extra={"step": "restore", "tenant": summary.id, "source": manifest.source_tenant},
+        "restored a tenant",
+        extra=log_extra(
+            LogContext(
+                step="restore", tenant_id=summary.id, source_tenant_id=manifest.source_tenant
+            )
+        ),
     )
     return summary
 

@@ -22,7 +22,9 @@ from rdf_persistence.domain.generated.rp_tenancy import TenantAccess, TenantStat
 from rdf_persistence.domain.layout import tenant_name_prefix
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.generated.service.rp_service import ServiceSettings
+from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.store import Store
+from rdf_persistence.services.telemetry import log_extra
 from rdf_persistence.services.tenancy import Tenancy, store_name_in
 
 log = logging.getLogger(__name__)
@@ -54,14 +56,16 @@ async def sweep(
         if present:
             log.warning(
                 "sweep skipped: no access records on file while tenant resources exist; nothing dropped",
-                extra={"step": "skip-sweep", "system_created": created, "resources": present},
+                extra=log_extra(
+                    LogContext(step="skip-sweep", system_created=created, resources=present)
+                ),
             )
             return
     for tenant, record in records.items():
         if record.state == TenantState.DELETING:
             log.info(
                 "finishing the interrupted deletion of a tenant",
-                extra={"step": "finish-deletion", "tenant": tenant},
+                extra=log_extra(LogContext(step="finish-deletion", tenant_id=tenant)),
             )
             await tenancy.finish_deletion(tenant)
     named = {record.database_name for record in records.values()}
@@ -82,12 +86,14 @@ def _report_misplaced(records: dict[str, TenantAccess], listed: dict[str, list[s
             if record.database_name in names:
                 log.error(
                     "the database of a tenant is on another store than its record names; left alone",
-                    extra={
-                        "step": "misplaced-tenant",
-                        "tenant": tenant,
-                        "recorded_store": store_name_in(record),
-                        "found_store": found,
-                    },
+                    extra=log_extra(
+                        LogContext(
+                            step="misplaced-tenant",
+                            tenant_id=tenant,
+                            store_name=store_name_in(record),
+                            found_store_name=found,
+                        )
+                    ),
                 )
 
 
@@ -110,13 +116,16 @@ async def _drop_orphans(
         for database in _orphans(listed[name], prefix, named):
             log.info(
                 "dropping an orphan database",
-                extra={"step": "drop-orphan-database", "resource": database, "store": name},
+                extra=log_extra(
+                    LogContext(step="drop-orphan-database", db_namespace=database, store_name=name)
+                ),
             )
             with suppress(NotFound):  # dropped meanwhile
                 await wired.drop_dataset(database)
     for bucket in _orphans(await files.list_buckets(prefix), prefix, named):
         log.info(
-            "dropping an orphan bucket", extra={"step": "drop-orphan-bucket", "resource": bucket}
+            "dropping an orphan bucket",
+            extra=log_extra(LogContext(step="drop-orphan-bucket", resource=bucket)),
         )
         with suppress(NotFound):
             await files.delete_bucket(bucket)
