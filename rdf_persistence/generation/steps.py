@@ -13,7 +13,7 @@ from linkml.linter.linter import Linter
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation import components
-from rdf_persistence.generation.checks.boundary import boundary_problems
+from rdf_persistence.generation.checks.boundary import boundary_problems, target_kind_problems
 from rdf_persistence.generation.checks.hard import hard_problems, stored_schema_problems
 from rdf_persistence.generation.checks.rules import rules_problems
 from rdf_persistence.generation.config import migrations_folder
@@ -93,7 +93,12 @@ def _rules_problems(run: Run) -> list[CheckProblem]:
 
 
 def _boundary_problems(run: Run) -> list[CheckProblem]:
-    return boundary_problems(run.view, run.schema_path.parent)
+    folder = run.schema_path.parent
+    kind = run.target.target_kind
+    return [
+        *boundary_problems(run.view, folder),
+        *(target_kind_problems(run.view, folder, kind) if kind else []),
+    ]
 
 
 def _hard_problems(run: Run) -> list[CheckProblem]:

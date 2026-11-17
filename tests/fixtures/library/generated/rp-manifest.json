@@ -35,7 +35,7 @@
     },
     {
       "path": "rdf_persistence/generation/checks/boundary.py",
-      "sha256": "6181b40b379d4ea8d4d81adf24a9f6380faa7c954a4e06ae0a08e1ba9f81b4d6"
+      "sha256": "0649daaa9df18366f1a1d0d4cad2c80ab1113f69c1b4b8ffedb3c5e76441ee0f"
     },
     {
       "path": "rdf_persistence/generation/checks/hard.py",
@@ -59,7 +59,7 @@
     },
     {
       "path": "rdf_persistence/generation/config.py",
-      "sha256": "bb549500000980812d423e31ffc323ad3c7367dc4aa725697dc865ffb9a20881"
+      "sha256": "0b0a64baf5683131e163d530bd769776c9f778900085848dd1e49052264698b5"
     },
     {
       "path": "rdf_persistence/generation/exceptions.py",
@@ -119,7 +119,7 @@
     },
     {
       "path": "rdf_persistence/generation/steps.py",
-      "sha256": "7dc3f9db93e5d55adf861f0ccafd3130bd2f43c3bd50ed771a962680de63d9ee"
+      "sha256": "057276c4964ad5a2eb07496d9d97308b0ced056b082de6813608d8ab9baf86c9"
     },
     {
       "path": "rdf_persistence/generation/templates/mermaid/module.mmd.jinja",

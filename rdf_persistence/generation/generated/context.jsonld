@@ -312,6 +312,14 @@
       "stereotype": {
          "@id": "stereotype"
       },
+      "target_kind": {
+         "@id": "targetKind",
+         "@type": "@vocab",
+         "@context": {
+            "domain": "https://meaningfy.ws/ns/rdf-persistence#TargetKindDomain",
+            "technical": "https://meaningfy.ws/ns/rdf-persistence#TargetKindTechnical"
+         }
+      },
       "text": {
          "@id": "text"
       },

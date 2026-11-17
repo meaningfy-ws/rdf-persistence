@@ -16,7 +16,7 @@ file differs from the committed one (`check-generated`).
 
 ## Stage 1: technical models in the layer that uses them (PR 1)
 
-- [ ] 1.1 PD-9: `TargetKind`, `GenerationTarget.target_kind` (TOML key `kind` through
+- [x] 1.1 PD-9: `TargetKind`, `GenerationTarget.target_kind` (TOML key `kind` through
   `FIELD_OF_TOML_KEY` until 4.1), the `BoundaryRule` value `target_kind` in
   `generation/model/rp_generation.yaml`; `target_kind_problems` in `generation/checks/boundary.py`,
   called from `steps.py::_boundary_problems`. Tests in `tests/unit/generation/test_boundary_check.py`

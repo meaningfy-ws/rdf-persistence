@@ -6,9 +6,13 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence.generation import steps
-from rdf_persistence.generation.checks.boundary import boundary_problems
+from rdf_persistence.generation.checks.boundary import boundary_problems, target_kind_problems
 from rdf_persistence.generation.cli import main
-from rdf_persistence.generation.generated.rp_generation import BoundaryRule, GenerationTarget
+from rdf_persistence.generation.generated.rp_generation import (
+    BoundaryRule,
+    GenerationTarget,
+    TargetKind,
+)
 from rdf_persistence.generation.pipeline import generate
 from rdf_persistence.generation.problems import format_problem
 from rdf_persistence.services.schema import load_schema
@@ -207,7 +211,9 @@ def test_an_allowed_variant_passes(break_toy: Breaker, edits: tuple[Edit, ...]) 
 
 
 def test_every_rule_has_a_row_in_the_table() -> None:
-    assert {f.rule for f in FAULTS} == set(BoundaryRule), "a boundary rule has no planted fault"
+    # target_kind needs a declared kind, which a planted edit cannot give: tested below by its own cases
+    rules = set(BoundaryRule) - {BoundaryRule.TARGET_KIND}
+    assert {f.rule for f in FAULTS} == rules, "a boundary rule has no planted fault"
 
 
 @pytest.mark.slow
@@ -389,3 +395,56 @@ def test_an_owned_slot_of_a_technical_module_has_no_reference_problem(toy_copy: 
     owned = "        annotations:\n          owned: true\n"
     found = [p for p in problems_of(add_terms_module(toy_copy, owned)) if "[reference]" in p]
     assert found == [], "an owned slot is held inline"
+
+
+SIDE_IMPORTS = "imports:\n  - linkml:types\n  - side\n"
+
+
+def kind_folder(tmp_path: Path, side_kind: str | None) -> Path:
+    """A folder with a technical ``api`` module, and a ``side`` module of ``side_kind`` it imports when given."""
+    api = API_MODULE.format(kind="technical")
+    if side_kind is not None:
+        api = api.replace("imports:\n  - linkml:types\n", SIDE_IMPORTS, 1)
+        side = (
+            API_MODULE.format(kind=side_kind)
+            .replace("Account", "Member")
+            .replace("account_id", "member_id")
+            .replace("/api\n", "/side\n", 1)
+            .replace("name: api", "name: side", 1)
+        )
+        (tmp_path / "side.yaml").write_text(side, encoding="utf-8")
+    (tmp_path / "api.yaml").write_text(api, encoding="utf-8")
+    return tmp_path
+
+
+def kind_problems_of(folder: Path, kind: TargetKind) -> list[str]:
+    view = load_schema(folder / "api.yaml")
+    return [format_problem(p) for p in target_kind_problems(view, folder, kind)]
+
+
+def test_a_technical_target_whose_only_module_is_technical_has_no_problem(tmp_path: Path) -> None:
+    folder = kind_folder(tmp_path, None)
+    assert kind_problems_of(folder, TargetKind.TECHNICAL) == [], "a technical module fits"
+
+
+def test_a_technical_target_refuses_a_domain_module_naming_it(tmp_path: Path) -> None:
+    folder = kind_folder(tmp_path, "domain")
+    found = kind_problems_of(folder, TargetKind.TECHNICAL)
+    assert len(found) == 1, f"one domain module, one problem: {found}"
+    assert found[0].startswith("[target_kind] side"), f"rule and module not named: {found[0]}"
+
+
+def test_a_domain_target_refuses_a_technical_module_naming_it(tmp_path: Path) -> None:
+    folder = kind_folder(tmp_path, "domain")
+    found = kind_problems_of(folder, TargetKind.DOMAIN)
+    assert len(found) == 1, f"one technical module, one problem: {found}"
+    assert found[0].startswith("[target_kind] api"), f"rule and module not named: {found[0]}"
+
+
+def test_the_boundary_step_checks_the_kind_of_its_target(toy_copy: Path) -> None:
+    target = GenerationTarget(
+        schema_file=ROOT_SCHEMA, package="app.generated", target_kind=TargetKind.TECHNICAL
+    )
+    found = generate([target], toy_copy, (steps.BOUNDARY_STEP,), check=True)
+    assert found, "the toy's domain modules must fail a technical target"
+    assert {p.rule for p in found} == {BoundaryRule.TARGET_KIND.value}, f"{found}"

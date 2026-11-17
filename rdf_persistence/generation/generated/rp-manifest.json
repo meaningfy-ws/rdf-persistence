@@ -15,7 +15,7 @@
     },
     {
       "path": "rdf_persistence/generation/checks/boundary.py",
-      "sha256": "6181b40b379d4ea8d4d81adf24a9f6380faa7c954a4e06ae0a08e1ba9f81b4d6"
+      "sha256": "0649daaa9df18366f1a1d0d4cad2c80ab1113f69c1b4b8ffedb3c5e76441ee0f"
     },
     {
       "path": "rdf_persistence/generation/checks/hard.py",
@@ -39,7 +39,7 @@
     },
     {
       "path": "rdf_persistence/generation/config.py",
-      "sha256": "bb549500000980812d423e31ffc323ad3c7367dc4aa725697dc865ffb9a20881"
+      "sha256": "0b0a64baf5683131e163d530bd769776c9f778900085848dd1e49052264698b5"
     },
     {
       "path": "rdf_persistence/generation/exceptions.py",
@@ -91,7 +91,7 @@
     },
     {
       "path": "rdf_persistence/generation/model/rp_generation.yaml",
-      "sha256": "da56985d90d0178db8bd8c3b6d7b9a0676101e4abb5488cb00b47ed03fd9d443"
+      "sha256": "4062e3c4d751e973a26f0c95c8af1815128a1c3aaffcd0a27d50204e5f12ebc0"
     },
     {
       "path": "rdf_persistence/generation/pipeline.py",
@@ -103,7 +103,7 @@
     },
     {
       "path": "rdf_persistence/generation/steps.py",
-      "sha256": "7dc3f9db93e5d55adf861f0ccafd3130bd2f43c3bd50ed771a962680de63d9ee"
+      "sha256": "057276c4964ad5a2eb07496d9d97308b0ced056b082de6813608d8ab9baf86c9"
     },
     {
       "path": "rdf_persistence/generation/templates/mermaid/module.mmd.jinja",
@@ -165,15 +165,15 @@
     },
     {
       "path": "rdf_persistence/generation/generated/context.jsonld",
-      "sha256": "20094a43af153b7861d961533ae4ec16c3cfb36c888cf264ba9e43d6474a7a9d"
+      "sha256": "e27c3e522673df8ed9e46599a53790df522fe312585ca4ebc8d4f9b44cc8a7be"
     },
     {
       "path": "rdf_persistence/generation/generated/rp_generation.py",
-      "sha256": "60b46f050103d21eada0b8e39521bc0f3421ef56e4119c42e14a32073e10156b"
+      "sha256": "33967ababed12f81a655a0c93a2e1155531a6db31b24e28ed82352c568a525ab"
     },
     {
       "path": "rdf_persistence/generation/generated/shapes.ttl",
-      "sha256": "4b9418ed9ba64152682ac0e78adb134fc904bfbd98fc1ef530df2afd8be66b25"
+      "sha256": "474438cab29dd74b5d9951946612d96def090f9ca4b093314b91021612731ecb"
     }
   ]
 }

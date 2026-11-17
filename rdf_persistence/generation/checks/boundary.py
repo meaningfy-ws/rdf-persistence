@@ -7,7 +7,11 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.domain.generated.rp_core import ModuleKind, RpAnnotation
-from rdf_persistence.generation.generated.rp_generation import BoundaryRule, CheckProblem
+from rdf_persistence.generation.generated.rp_generation import (
+    BoundaryRule,
+    CheckProblem,
+    TargetKind,
+)
 from rdf_persistence.generation.problems import rule_problem
 from rdf_persistence.services.schema_structure import (
     ACTIVITY,
@@ -133,6 +137,26 @@ def _module_problems(view: SchemaView, schemas: list[SchemaDefinition]) -> Itera
                     schema.name,
                     f"is a domain module and imports {imported.name}, a {kind} module",
                 )
+
+
+def target_kind_problems(view: SchemaView, folder: Path, kind: TargetKind) -> list[CheckProblem]:
+    """The modules of ``folder`` that do not match the ``kind`` the target declares (PD-9).
+
+    A technical target holds only modules annotated ``module_kind: technical``; a domain target holds none.
+    """
+    kind = TargetKind(kind)  # a validated model holds the value, a caller may pass the member
+    technical = ModuleKind.TECHNICAL.value
+    problems = []
+    for schema in own_schemas(view, folder):
+        is_technical = annotation(schema, RpAnnotation.MODULE_KIND) == technical
+        if kind == TargetKind.TECHNICAL and not is_technical:
+            message = f"is not annotated module_kind: {technical}, in a target of kind {kind.value}"
+        elif kind == TargetKind.DOMAIN and is_technical:
+            message = f"is a {technical} module in a target of kind {kind.value}"
+        else:
+            continue
+        problems.append(rule_problem(BoundaryRule.TARGET_KIND, schema.name, message))
+    return problems
 
 
 def boundary_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:

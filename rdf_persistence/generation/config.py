@@ -17,7 +17,11 @@ from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 from rdf_persistence.services.schema_structure import annotation_text
 
 # TOML key -> model field where they differ (`schema` would shadow a pydantic method)
-FIELD_OF_TOML_KEY = {"schema": "schema_file", "regenerate-command": "regenerate_command"}
+FIELD_OF_TOML_KEY = {
+    "schema": "schema_file",
+    "regenerate-command": "regenerate_command",
+    "kind": "target_kind",  # a global slot `kind` ranges over ConstraintKind
+}
 TOML_KEY_OF_FIELD = {field: key for key, field in FIELD_OF_TOML_KEY.items()}
 GENERATION_MODEL = PACKAGE_DIR / "generation" / "model" / "rp_generation.yaml"
 TARGET_CLASS = "GenerationTarget"
