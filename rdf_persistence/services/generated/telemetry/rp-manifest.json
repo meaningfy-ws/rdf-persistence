@@ -151,7 +151,7 @@
     },
     {
       "path": "rdf_persistence/model/technical/telemetry/rp_telemetry.yaml",
-      "sha256": "808672c43a697b13777da4fca5931744c2735b295387a173db47b14c5fe61d47"
+      "sha256": "b137a7daa4a250a7c033c4c43fe8529543681433ecf605c744e550682b847df5"
     },
     {
       "path": "rdf_persistence/services/schema.py",
@@ -173,11 +173,11 @@
     },
     {
       "path": "rdf_persistence/services/generated/telemetry/rp_telemetry.py",
-      "sha256": "068ac3bcf0cdaad48e700a7be40515a72621f8ea4c236788c7588174fcc66647"
+      "sha256": "9231d724323f379d0936a59f7efb85559a42beda8b828ff6be91be27b3329e26"
     },
     {
       "path": "rdf_persistence/services/generated/telemetry/shapes.ttl",
-      "sha256": "585b41b8d5b6bd58aea24b7d6c6fb11a9ba28986c1e4719df771f9f585185588"
+      "sha256": "e84703f62104a9db91622ccfdebabc0fea1f75ad8fdf68339ebbc81b7fcebff0"
     }
   ]
 }

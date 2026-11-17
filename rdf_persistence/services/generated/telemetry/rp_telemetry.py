@@ -69,7 +69,7 @@ class LogContext(ConfiguredBaseModel):
     blob_count: Optional[int] = Field(default=None, alias="rp.blob.count", title="Blob count", description="The number of blobs an operation removed or kept.")
     source_tenant_id: Optional[str] = Field(default=None, alias="rp.restore.source_tenant.id", title="Source tenant id", description="The id of the tenant a restore reads from.")
     policy_fields: Optional[list[str]] = Field(default=None, alias="rp.iri_policy.fields", title="Policy fields", description="The fields of the IRI policy that changed.")
-    system_created: Optional[bool] = Field(default=None, alias="rp.sweep.system_created", title="System created", description="Whether a sweep reached the resource as a system-created one.")
+    system_created: Optional[bool] = Field(default=None, alias="rp.sweep.system_created", title="System created", description="Whether this start-up just created the system database, so the sweep is skipped.")
     resources: Optional[list[str]] = Field(default=None, alias="rp.sweep.resources", title="Resources", description="The resources a sweep reached.")
     activity_id: Optional[str] = Field(default=None, alias="rp.activity.id", title="Activity id", description="The id of the activity a record concerns.")
     activity_class: Optional[str] = Field(default=None, alias="rp.activity.class", title="Activity class", description="The Python class name of the activity.")

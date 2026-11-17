@@ -206,12 +206,14 @@ and the trace and span ids of the span that was current.
 == 6. The spans the toolkit starts
 
 Span names are fixed: an identifier is an attribute, never part of a name, so a name stays low
-cardinality. An exception that leaves a span records it, sets the status ERROR and sets `error.type`
-to the exception's qualified class name.
+cardinality. An exception that leaves a span records its type only: an `exception` event with
+`exception.type`, the status ERROR with no description, and `error.type`, each the exception's
+qualified class name. The message and the stack trace stay out (see <<never>>).
 
 *Store spans.* `install_service` puts a traced wrapper around every store you give it: one CLIENT span per call of
 the `Store` port, named after the port method. They carry `db.system.name`, `db.operation.name`
-and, when the call names a dataset, `db.namespace`.
+and, when the call names a dataset, `db.namespace`. They also carry `rp.step`, the name of the port
+method.
 
 |===
 |Span name |Port call |Attributes
@@ -363,7 +365,7 @@ attributes that apply to it, and always `rp.step`.
 
 |`rp.sweep.system_created`
 |boolean
-|Whether the swept tenants were created by the system
+|Whether this start-up just created the system database, so the sweep is skipped
 |`rp`
 
 |`rp.sweep.resources`

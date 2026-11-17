@@ -10,20 +10,20 @@ rp:LogContext a sh:NodeShape ;
 	sh:ignoredProperties _:c14n15 ;
 	sh:property _:c14n0 , _:c14n1 , _:c14n10 , _:c14n11 , _:c14n12 , _:c14n13 , _:c14n14 , _:c14n16 , _:c14n17 , _:c14n18 , _:c14n19 , _:c14n2 , _:c14n20 , _:c14n21 , _:c14n22 , _:c14n23 , _:c14n24 , _:c14n25 , _:c14n26 , _:c14n27 , _:c14n28 , _:c14n29 , _:c14n3 , _:c14n4 , _:c14n5 , _:c14n6 , _:c14n7 , _:c14n8 , _:c14n9 ;
 	sh:targetClass rp:LogContext .
-_:c14n0 sh:datatype xsd:integer ;
+_:c14n0 sh:datatype xsd:boolean ;
+	sh:description "Whether this start-up just created the system database, so the sweep is skipped." ;
+	sh:maxCount 1 ;
+	sh:name "System created" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 10 ;
+	sh:path rp:systemCreated .
+_:c14n1 sh:datatype xsd:integer ;
 	sh:description "The number of blobs an operation removed or kept." ;
 	sh:maxCount 1 ;
 	sh:name "Blob count" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 7 ;
 	sh:path rp:blobCount .
-_:c14n1 sh:datatype xsd:string ;
-	sh:description "The database name, an OpenTelemetry stable attribute." ;
-	sh:maxCount 1 ;
-	sh:name "Db namespace" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 21 ;
-	sh:path rp:dbNamespace .
 _:c14n10 sh:datatype xsd:string ;
 	sh:description "The id of the schema a migration moves a tenant to." ;
 	sh:maxCount 1 ;
@@ -90,12 +90,12 @@ _:c14n19 sh:datatype xsd:string ;
 	sh:order 25 ;
 	sh:path rp:exceptionType .
 _:c14n2 sh:datatype xsd:string ;
-	sh:description "The detail of a validation error, free of the data that failed it." ;
+	sh:description "The database name, an OpenTelemetry stable attribute." ;
 	sh:maxCount 1 ;
-	sh:name "Error detail" ;
+	sh:name "Db namespace" ;
 	sh:nodeKind sh:Literal ;
-	sh:order 18 ;
-	sh:path rp:errorDetail .
+	sh:order 21 ;
+	sh:path rp:dbNamespace .
 _:c14n20 sh:datatype xsd:string ;
 	sh:description "The name of the migration step a record concerns." ;
 	sh:maxCount 1 ;
@@ -167,39 +167,39 @@ _:c14n29 sh:datatype xsd:string ;
 	sh:order 14 ;
 	sh:path rp:activityClassIri .
 _:c14n3 sh:datatype xsd:string ;
+	sh:description "The detail of a validation error, free of the data that failed it." ;
+	sh:maxCount 1 ;
+	sh:name "Error detail" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 18 ;
+	sh:path rp:errorDetail .
+_:c14n4 sh:datatype xsd:string ;
 	sh:description "The deployment that published an event." ;
 	sh:maxCount 1 ;
 	sh:name "Event origin" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 15 ;
 	sh:path rp:eventOrigin .
-_:c14n4 sh:datatype xsd:string ;
+_:c14n5 sh:datatype xsd:string ;
 	sh:description "The fields of the IRI policy that changed." ;
 	sh:name "Policy fields" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 9 ;
 	sh:path rp:policyFields .
-_:c14n5 sh:datatype xsd:integer ;
+_:c14n6 sh:datatype xsd:integer ;
 	sh:description "The HTTP status of a response, an OpenTelemetry stable attribute." ;
 	sh:maxCount 1 ;
 	sh:name "Http response status code" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 26 ;
 	sh:path rp:httpResponseStatusCode .
-_:c14n6 sh:datatype xsd:string ;
+_:c14n7 sh:datatype xsd:string ;
 	sh:description "The body a store answered with; written at DEBUG only." ;
 	sh:maxCount 1 ;
 	sh:name "Response body" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 19 ;
 	sh:path rp:responseBody .
-_:c14n7 sh:datatype xsd:boolean ;
-	sh:description "Whether a sweep reached the resource as a system-created one." ;
-	sh:maxCount 1 ;
-	sh:name "System created" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 10 ;
-	sh:path rp:systemCreated .
 _:c14n8 sh:datatype xsd:string ;
 	sh:description "The name of the store a record concerns, as the registry records it." ;
 	sh:maxCount 1 ;
