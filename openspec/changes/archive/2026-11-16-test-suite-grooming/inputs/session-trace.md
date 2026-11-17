@@ -803,3 +803,29 @@ results in the change's inputs/ folder; do not stop")
   [SKILL test-suite-care / project-setup] pytest-timeout under xdist must use `signal` (or the
   `thread` method's worker crash must be tested with the dist mode in use); a CI timeout change
   needs a hosted-runner run before merge.
+- PR #136 (signal timeout): CI GREEN on the PR before merging; the hosted unit job took 15m54s
+  (32 min before the grooming, so the hosted run is also ~2x faster). Merged.
+- The owner resumed builder 4.2's agent from its transcript view near the end (its worktree had
+  been removed by the lead's cleanup after its work was committed).
+
+## 11. Owner's validation of the decisions (2026-11-17)
+- Owner on decisions 15-17: "15. not sure; you must do what makes sense", "16. fix the debt, do what
+  is right", "17. do what is right, what was done was done, now build on top of this knowledge".
+  Decisions 1-14: no objection (taken as accepted).
+- Decision 15 settled by reading the code: Transaction's docstring says "a Served is spent as the
+  request is sent, so an empty block spends nothing", and the test agrees: the spec is wrong -> a
+  MODIFIED rp-messages requirement (DEC-1 of the new change).
+- New change `test-debt-paydown` (LARGE, 3 stages, one PR, CI green on the PR before merge):
+  stage 1 test structure (fakes, P-31 unit half, P-20 rows, cross imports, under-floor items),
+  stage 2 production seams (clock/interval injection, redundant branches, ToyService cost, spec),
+  stage 3 kill the 73 behaviour-changing domain survivors (38 message-only ones are equivalent).
+- A read-only fact-finding agent gathers per-item code facts and recommendations before the
+  lead writes design.md (lesson from the grooming's clarity gate: decide every "or" in the PLAN).
+- Owner asked where the decisions file is: GitHub develop path given; the main checkout is still on
+  the other session's branch.
+- Skillery feedback: 2 comments + 13 issues drafted (temp/grooming/skillery-issues.md), sanitized;
+  NOT filed: awaiting the owner's approval (public repository).
+- Owner approved the skillery feedback except C1. Filed with labels bug/enhancement (the forms'
+  defect/request labels do not exist, skillery #260): #307-#319 (13 issues); C2 posted as a comment
+  on #195; draft cross-references rewritten to the real numbers (#311 <-> #317). C1 (on #283) not
+  posted, as the owner asked.

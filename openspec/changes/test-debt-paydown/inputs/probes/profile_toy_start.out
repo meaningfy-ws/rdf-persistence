@@ -1,0 +1,40 @@
+warm mean: whole set-up 0.122s, of which ToyService() 0.103s, lifespan 0.019s
+         7283781 function calls (6969189 primitive calls) in 1.771 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1572 to 286 due to restriction <'rdf_persistence|tests/'>
+   List reduced from 286 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        5    0.000    0.000    1.530    0.306 tests/toy_service.py:125(__init__)
+        5    0.000    0.000    1.521    0.304 rdf_persistence/entrypoints/service.py:32(install_service)
+        5    0.000    0.000    1.382    0.276 rdf_persistence/entrypoints/kit.py:94(__init__)
+        5    0.000    0.000    0.759    0.152 rdf_persistence/services/schema_structure.py:348(iri_types)
+        5    0.001    0.000    0.565    0.113 rdf_persistence/services/documents.py:93(__init__)
+        5    0.000    0.000    0.315    0.063 rdf_persistence/services/schema_structure.py:324(owned_classes)
+       50    0.001    0.000    0.314    0.006 rdf_persistence/services/schema_structure.py:314(owned_slots)
+       15    0.000    0.000    0.257    0.017 rdf_persistence/entrypoints/service.py:166(lifespan)
+       25    0.000    0.000    0.136    0.005 rdf_persistence/services/store.py:83(update)
+       25    0.000    0.000    0.136    0.005 rdf_persistence/testkit/fakes.py:167(update)
+        5    0.000    0.000    0.133    0.027 rdf_persistence/entrypoints/router.py:410(build_router)
+       45    0.000    0.000    0.114    0.003 rdf_persistence/services/store.py:77(query)
+       45    0.000    0.000    0.113    0.003 rdf_persistence/testkit/fakes.py:159(query)
+      105    0.001    0.000    0.111    0.001 rdf_persistence/entrypoints/openapi.py:104(add_to)
+       15    0.000    0.000    0.110    0.007 rdf_persistence/services/tenancy.py:379(_ensure_dataset)
+       10    0.000    0.000    0.110    0.011 rdf_persistence/services/tenancy.py:369(_stamp)
+       20    0.000    0.000    0.110    0.005 rdf_persistence/services/migrations.py:407(stamp_if_none)
+       15    0.000    0.000    0.085    0.006 rdf_persistence/entrypoints/router.py:337(add_aggregate_routes)
+        5    0.000    0.000    0.064    0.013 rdf_persistence/services/iri_policy_guard.py:32(guard_iri_policy)
+       10    0.000    0.000    0.056    0.006 rdf_persistence/services/tenancy.py:390(ensure_system_database)
+        5    0.000    0.000    0.054    0.011 rdf_persistence/services/tenancy.py:394(ensure_application_database)
+        5    0.000    0.000    0.052    0.010 rdf_persistence/services/migration_runner.py:57(migrate_shared)
+       10    0.000    0.000    0.051    0.005 rdf_persistence/services/migration_runner.py:43(migrate_database)
+       20    0.000    0.000    0.051    0.003 rdf_persistence/services/migration_runner.py:173(_migrate_schema)
+       20    0.000    0.000    0.051    0.003 rdf_persistence/services/migration_runner.py:193(_stamp_of)
+       20    0.000    0.000    0.051    0.003 rdf_persistence/services/migration_runner.py:209(_read_stamp)
+       20    0.000    0.000    0.051    0.003 rdf_persistence/services/migrations.py:390(stamps)
+        5    0.000    0.000    0.040    0.008 rdf_persistence/entrypoints/router.py:280(add_tenant_routes)
+       10    0.000    0.000    0.030    0.003 rdf_persistence/services/tenancy.py:657(_records)
+        5    0.000    0.000    0.028    0.006 rdf_persistence/services/iri_policy_guard.py:90(_record_if_none)
+
+
