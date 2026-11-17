@@ -96,7 +96,7 @@ fix pass, rebase on `develop`, PR 1 (BREAKING in its body, DEC-10), merge on gre
 
 ## Stage 2: spans, the broker seam, BDD and docs (PR 2)
 
-- [ ] 2.1 DEC-4, DEC-5, PD-3 (`tracer`, `traced`), PD-10 (`spans` fixture), PD-11:
+- [x] 2.1 DEC-4, DEC-5, PD-3 (`tracer`, `traced`), PD-10 (`spans` fixture), PD-11:
   `opentelemetry-api>=1.44,<2` in `[project] dependencies`; the TID251 ban of
   `opentelemetry.sdk` in `ruff.toml`; `services.telemetry` in the `.importlinter` bus list;
   `tests/conftest.py` fixtures; `tests/unit/test_packaging.py` check. Tests in
@@ -109,7 +109,7 @@ fix pass, rebase on `develop`, PR 1 (BREAKING in its body, DEC-10), merge on gre
 | TC-16 | the block raises `NotFound("n")` | the same object re-raised; span status ERROR, one `exception` event, `error.type=rdf_persistence.domain.exceptions.NotFound` |
 | TC-17 | subprocess: import `rdf_persistence`, `rdf_persistence.entrypoints.kit`, `rdf_persistence.adapters.fuseki` | no key of `sys.modules` starts with `opentelemetry.sdk` |
 
-- [ ] 2.2 DEC-6, DEC-11, PD-4, PD-13: `TracedStore`, `system_name_of`, the kit's wrapping,
+- [x] 2.2 DEC-6, DEC-11, PD-4, PD-13: `TracedStore`, `system_name_of`, the kit's wrapping,
   `db_system_name` on `FusekiStore` and `FakeStore`, `RedisEventBus(middlewares=)`. Tests in
   `tests/unit/services/test_store.py`, `tests/unit/entrypoints/test_kit_stores.py`,
   `tests/integration/adapters/test_redis_events.py`. Layer: services, entrypoints, adapters,
@@ -124,7 +124,7 @@ fix pass, rebase on `develop`, PR 1 (BREAKING in its body, DEC-10), merge on gre
 | TC-18 | an update whose SPARQL holds the literal `secret-tenant-text` | no attribute of any span contains it; no `db.query.text` |
 | TC-28 | `RedisEventBus(..., middlewares=[RedisTelemetryMiddleware()])`; publish, then receive (container) | a PRODUCER and a CONSUMER span with one trace id; the envelope reads back unchanged |
 
-- [ ] 2.3 PD-5: spans in `Transaction.commit`, `migrate_shared`, `migrate_tenants`,
+- [x] 2.3 PD-5: spans in `Transaction.commit`, `migrate_shared`, `migrate_tenants`,
   `migrate_database`, `_apply`, `sweep`, `sweep_tenant`. Tests in
   `tests/unit/services/test_session_spans.py`, `test_migration_runner.py`, `test_sweep.py`,
   `test_tenant_sweep.py`. Layer: services. Gate: `make test-fast check-quality`.
@@ -137,7 +137,7 @@ fix pass, rebase on `develop`, PR 1 (BREAKING in its body, DEC-10), merge on gre
 | TC-32 | `migrate_tenants` with one pending migration on two tenants | `rp.migration.tenants` › 2 × `rp.migration.database` › `rp.migration.apply` with `rp.schema.id`, `rp.migration.name` |
 | TC-33 | `sweep` with one orphan; `sweep_tenant` on `T` | one `rp.sweep` span with the `drop_dataset` span inside; one `rp.tenant_sweep` with `rp.tenant.id` |
 
-- [ ] 2.4 PD-5: spans in `Relay.run_once`, `Relay._relay_database`, `MessageBus._start`,
+- [x] 2.4 PD-5: spans in `Relay.run_once`, `Relay._relay_database`, `MessageBus._start`,
   `MessageBus.publish`. Tests in `test_relay.py`, `test_messagebus.py`. Layer: services. Gate:
   `make test-fast check-quality`.
 
@@ -148,11 +148,11 @@ fix pass, rebase on `develop`, PR 1 (BREAKING in its body, DEC-10), merge on gre
 | TC-36 | a command whose handler queues a second command | two `rp.bus.handle` spans with `rp.activity.class`, `rp.activity.id` |
 | TC-37 | two observers, the first raising | two `rp.bus.observe` spans, the first ERROR; the second observer ran |
 
-- [ ] 2.5 BDD: `tests/feature/observability.feature` with the spec delta's scenarios, steps in
+- [x] 2.5 BDD: `tests/feature/observability.feature` with the spec delta's scenarios, steps in
   `tests/feature/test_observability.py` on the toy service with `FakeStore`. The scenario "no
   provider" is TC-14 and "no SDK in the package" is TC-17. Gate: `make test-changed check-quality`.
 
-- [ ] 2.6 DEC-10, DEC-11: `docs/modules/ROOT/pages/howto/observability.adoc` ("See what the toolkit
+- [x] 2.6 DEC-10, DEC-11: `docs/modules/ROOT/pages/howto/observability.adoc` ("See what the toolkit
   is doing"): installing the SDK and an exporter; FastAPI's native telemetry
   (`FastAPI(telemetry=…)`); `HTTPXClientInstrumentor` before the stores are built;
   `RedisTelemetryMiddleware` through `RedisEventBus(middlewares=)`; the logging bridge (the
@@ -167,8 +167,8 @@ PR 2 before it merges.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 ·
-  [ ] 2.5 · [ ] 2.6 · reconcile · PR 2
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 ·
+  [x] 2.5 · [x] 2.6 · reconcile · PR 2
 
 ## Verification
 

@@ -182,3 +182,37 @@ None.
 - A consumer's own `Store` works unchanged; it may add `db_system_name` to name its product.
 - `RedisEventBus` gains an optional argument; existing calls are unchanged.
 - One new declared runtime dependency, already installed transitively.
+
+---
+
+## As built
+
+Reconciled 2026-11-17 by the lead, before PR 2 merged (P-0004). Decisions taken during delivery
+are `D-1` to `D-9` in [design.md](design.md#delivery-decisions).
+
+| Promised | Delivered | PR |
+|---|---|---|
+| `LogContext` generated from LinkML in the `telemetry` group | As shaped: 28 slots, `services/generated/telemetry/` | #149 |
+| Every log call in the DEC-8 style | 41 calls in 16 modules (the shape said 15; the `problems.py` record of `manual-revision-notes` is the 16th); a guard test over the package that also requires `extra=` on every call (D-6) | #149, PR 2 |
+| Spans at the six places of B-4 | Store port (`TracedStore`), commit, migrations, both sweeps, relay round and database, bus handler and observer, as PD-5 | PR 2 |
+| `opentelemetry-api>=1.44,<2`; SDK test-only, banned in the package | As shaped | PR 2 |
+| `RedisEventBus(middlewares=)` | As shaped | PR 2 |
+| How-to "See what the toolkit is doing" | As shaped, cold-read and revised | PR 2 |
+
+**What differs from the shape, and why:**
+
+- **The generator changed** (D-4). The shape assumed a dotted alias already renders; linkml names
+  the field after the alias (`rp.step` → `rp_step`). Our pydantic generator now names a field after
+  its slot when the alias is no Python name. Side effect, BREAKING for a consumer that read it:
+  `FusekiDataset.ds_name` is now `fuseki_dataset_name`.
+- **mypy reads field names** (D-5): the `pydantic.mypy` plugin is enabled for the package.
+- **The logging bridge** (D-9): the SDK's own `LoggingHandler` is deprecated in 1.45.2; the how-to
+  names `opentelemetry-instrumentation-logging`'s. FastAPI's native telemetry logs exception
+  messages by default; RISK-3's residual and the how-to say so.
+- **Order** (D-1, D-8): delivered while `technical-models` stages 3–4 were in flight; nothing in
+  this change waited for them.
+
+Nothing the shape promised was dropped. The spec delta `rp-observability` is true of the code: each
+scenario is a feature test in `tests/feature/observability.feature`, except "no provider
+installed" (TC-14), "the package loads no SDK" (TC-17) and "a traced event" (TC-28, container),
+which the feature file names.
