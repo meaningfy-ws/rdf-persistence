@@ -763,3 +763,9 @@ work in parallel"). One PR from `change/mrn-followups`, one builder per item in 
   - Under the floor: L1 S2 `require_form` serialises RDF/XML on the event loop (a body is capped
     by `max_body_bytes`); L3 S2 the SSE `data` could name its JSON schema (`contentSchema`); L2 S3
     the #142 test's comment says about 3 s.
+- **D-27 F-13's two departures, accepted.** import-linter names a subpackage of an external
+  library only when that library is a root package, so `rdflib` joins `root_packages` for the
+  `sparql-parser-only-through-the-wrappers` contract; the other contracts still pass (13 kept).
+  The warm-up covers `sh:targetClass` shapes only; every generated shape uses it (84 of 84), and
+  the `services/shacl.py` docstring says a shape with another target needs `validate_locked`. The
+  fixer appended the contract with a heredoc once; the lead read the file.
