@@ -631,6 +631,47 @@ async def test_an_unusable_key_is_skipped_beside_a_good_one(clock: ManualClock) 
         await verifier.verify(_token(key, "RS256", "bad", clock))
 
 
+@pytest.mark.parametrize(
+    "restriction",
+    [{"use": "enc"}, {"key_ops": ["encrypt"]}, {"use": "enc", "key_ops": ["verify"]}],
+    ids=["use-enc", "key-ops-without-verify", "use-enc-beside-verify"],
+)
+async def test_a_key_not_meant_for_signatures_is_not_used_beside_the_signing_key(
+    clock: ManualClock, restriction: dict[str, object]
+) -> None:
+    key = shared_key()
+    other = new_key("RS256")
+    jwks = [_public_jwk(key, "RS256", "k1", **restriction), _public_jwk(other, "RS256", "k2")]
+    verifier = _jwks_verifier(jwks, clock)
+    with pytest.raises(InvalidToken, match="unknown to the issuer"):
+        await verifier.verify(_token(key, "RS256", "k1", clock))
+    assert (await verifier.verify(_token(other, "RS256", "k2", clock))).principal, (
+        "the signing key beside the skipped one was refused"
+    )
+
+
+async def test_a_jwks_whose_only_key_is_for_encryption_is_unavailable(clock: ManualClock) -> None:
+    key = shared_key()
+    verifier = _jwks_verifier([_public_jwk(key, "RS256", "k1", use="enc")], clock)
+    with pytest.raises(IdentityUnavailable):
+        await verifier.verify(_token(key, "RS256", "k1", clock))
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [{}, {"use": "sig"}, {"key_ops": ["verify"]}, {"use": "sig", "key_ops": ["verify", "sign"]}],
+    ids=["no-use", "use-sig", "key-ops-verify", "sig-and-verify"],
+)
+async def test_a_key_for_signatures_or_without_use_is_used(
+    clock: ManualClock, extra: dict[str, object]
+) -> None:
+    key = shared_key()
+    verifier = _jwks_verifier([_public_jwk(key, "RS256", "k1", **extra)], clock)
+    assert (await verifier.verify(_token(key, "RS256", "k1", clock))).principal, (
+        f"a key with {extra} was refused"
+    )
+
+
 @pytest.mark.parametrize("alg", [["RS256"], {"a": 1}], ids=["list", "dict"])
 async def test_a_token_whose_alg_is_not_a_string_is_refused(
     signer: TokenSigner, clock: ManualClock, alg: object

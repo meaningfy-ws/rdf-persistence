@@ -213,8 +213,8 @@ None.
   forms but admits a wildcard is served one of the four new ones (3.1). As shaped: `If-Match` is strict (a weak tag `W/"v"` is 409, an unquoted
   value 428; both matched before); `expected_version` refuses `W/`, `*` and lists, which a
   consumer's own route may call; `jwks.ALLOWED_ALGORITHMS` and `jwks.ES256` are removed; a token
-  expired by less than the leeway (30 s by default) is accepted (`leeway_seconds=0` restores the
-  exact expiry); a loaded JSON-LD file that names a graph or uses a relative IRI is refused, and so
+  expired by less than the leeway (30 s by default) is accepted (a zero leeway restores the
+  exact expiry; as built, `JwksSettings(leeway_seconds=0)`, D-20); a loaded JSON-LD file that names a graph or uses a relative IRI is refused, and so
   is a body with a relative IRI; a language-tagged value is a value object in JSON-LD (plain JSON
   still shows the string); `REPRESENTATIONS` holds seven members. Otherwise: a consumer that builds
   `JwksTokenVerifier` gets the wider algorithm default without changing code, and `If-Match: *`
@@ -225,7 +225,12 @@ None.
 - Metamodel: one enum value added to `RpAnnotation` and four annotations on `RdfFormat`; the lock
   change is expected `SAFE` (checked in task 2.4).
 - The later changes: `technical-models` takes DEC-3's parameters into settings; `otel-observability`
-  builds on DEC-12.
+  builds on DEC-12. As built: by the time stage 3 merged, `develop` had also taken DEC-1's
+  allow-list and DEC-2's leeway into the generated settings. A consumer now configures them as
+  `JwksTokenVerifier(..., jwks=JwksSettings(allowed_algorithms=[...], leeway_seconds=...))`, and the
+  root limit as `Mapper(..., limits=LimitSettings(max_roots=...))`; the `algorithms=`,
+  `leeway_seconds=` and `max_roots=` arguments named under What Changes are gone (design D-20).
+  DEC-1 and DEC-2 stand as decided; only where they are configured changed.
 
 ## As built
 
@@ -235,4 +240,5 @@ Kept in step with each stage's PR (P-0004); the full reconciliation closes PR 3.
 |---|---|---|---|
 | 1 defects | #141 | DEC-1 to DEC-4, DEC-12; six breaking changes | Delivered as shaped. Seven breaking changes: DEC-2's leeway is breaking for a client that counts on an exact expiry (design D-5). A language-tagged value changes shape in JSON-LD only, not in JSON. A token header whose `alg` is not a string is refused with 401; it raised a 500 for one commit of the stage. `entrypoints/kit.py` needed no change. Three docs pages corrected beyond the shaped ones (What Changes). One CI-only test timeout, present on develop, quarantined (#142, design D-7). Delivery decisions D-1 to D-7 agreed by the developer, 2026-11-17 |
 | 2 reuse | #143 | DEC-5 to DEC-8 | DEC-5 to DEC-7 delivered. DEC-8 not: `FakeStore` stays on rdflib, as its gate failed three engine-bound tests with no test edited (PD-17); the pyoxigraph attempt is kept as evidence and its follow-up needs the developer (three test edits, oxigraph's `NOT IN ()` defect); #142 stays quarantined. The review found the Accept swap changed more than PD-5 accepted, and PyLD dropped statements without a word: both fixed before the merge (F-3, F-4), with two more breaking changes. The load pages name each JSON-LD refusal and its message (F-5, D-13). Delivery decisions D-8 to D-13; the developer granted the lead the merge on green CI until the EPIC ends (D-13) |
-| 3 representations, contract, decisions | this PR | DEC-9 to DEC-11 | DEC-9 to DEC-11 delivered: seven representations on the routes that answer one aggregate (a listing stays JSON and JSON-LD; RDF/XML is 406 for a predicate with no XML local name or a value XML 1.0 cannot hold, and on a create or replace the 406 comes before anything is written, F-7, F-8), the schemathesis contract test, one case per operation, ADR-001 to ADR-005. The contract test found three defects: the context route's media type, fixed; the generated component schemas omit `type`, issue #148, and the events route documents each event as a string, issue #153; their schema checks are strict `xfail`s (D-17, F-10, D-19). The mapper docstring keeps three of its reasons; the re-check showed the others do not hold (PD-16, D-16). One more breaking change (Accept with a wildcard, 3.1). Full review F-7 to F-12; delivery decisions D-14 to D-19 |
+| 3 representations, contract, decisions | #151 | DEC-9 to DEC-11 | DEC-9 to DEC-11 delivered: seven representations on the routes that answer one aggregate (a listing stays JSON and JSON-LD; RDF/XML is 406 for a predicate with no XML local name or a value XML 1.0 cannot hold, and on a create or replace the 406 comes before anything is written, F-7, F-8), the schemathesis contract test, one case per operation, ADR-001 to ADR-005. The contract test found three defects: the context route's media type, fixed; the generated component schemas omit `type`, issue #148, and the events route documents each event as a string, issue #153; their schema checks are strict `xfail`s (D-17, F-10, D-19). The mapper docstring keeps three of its reasons; the re-check showed the others do not hold (PD-16, D-16). One more breaking change (Accept with a wildcard, 3.1). Full review F-7 to F-12; delivery decisions D-14 to D-19. Rebased before the merge onto `develop` with the settings model: the token-algorithm scenarios and three pages moved to `JwksSettings` (D-20). Acceptance demo skipped by the developer; no docs stage owed; archived in #160 with the scenario map brought up to date (D-18) |
+| follow-ups | #163 | the items left open at the close (D-21) | #148 and #153 fixed, so the contract test has no expected failure; the SPARQL parser race found (pyparsing's first-call arity state shared between threads, exposed in production) and closed by locked parse wrappers that an import-linter contract enforces, with SHACL validation warmed once and then unlocked (D-23, F-13); the RDF writers run in a worker thread (D-25); only signature keys verify a token, now stated in rp-identity (D-22, F-15); #142 out of quarantine without pyoxigraph (D-24); the scenario map complete. Review L1, L2, L3; F-13 to F-15 fixed (D-26) |

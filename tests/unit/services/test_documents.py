@@ -3,6 +3,7 @@
 import json
 import re
 import shutil
+import threading
 from copy import deepcopy
 
 import pytest
@@ -395,6 +396,27 @@ async def test_every_rdf_representation_holds_the_triples_of_the_aggregate(  # T
             data=await documents.render(stored, GRAPH, book_class, TURTLE), format="turtle"
         ),
     )
+
+
+@pytest.mark.parametrize("media_type", RDF_REPRESENTATIONS)
+async def test_an_rdf_representation_is_written_off_the_event_loop(  # L4+L5 W3
+    documents, book_class, stored, media_type, monkeypatch
+) -> None:
+    writers: list[threading.Thread] = []
+    graph_serialize, dataset_serialize = Graph.serialize, Dataset.serialize
+
+    def recording(original):
+        def serialize(self, *args, **kwargs):
+            writers.append(threading.current_thread())
+            return original(self, *args, **kwargs)
+
+        return serialize
+
+    monkeypatch.setattr(Graph, "serialize", recording(graph_serialize))
+    monkeypatch.setattr(Dataset, "serialize", recording(dataset_serialize))
+    await documents.render(stored, GRAPH, book_class, media_type)
+    assert writers, "the aggregate was serialised"
+    assert threading.current_thread() not in writers, "the event loop did not write it"
 
 
 @pytest.mark.parametrize("media_type", DATASET_REPRESENTATIONS)

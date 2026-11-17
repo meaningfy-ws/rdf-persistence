@@ -22,7 +22,6 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
 from linkml_runtime.utils.formatutils import camelcase
 from linkml_runtime.utils.schemaview import SchemaView
 from pyld import jsonld
-from pyshacl import validate
 from rdflib import RDF, SH, BNode, Dataset, Graph, Literal, URIRef
 from rdflib.term import Node
 
@@ -66,6 +65,7 @@ from rdf_persistence.services.schema_structure import (
     served_roots,
     tenant_root_class,
 )
+from rdf_persistence.services.shacl import validate_warm, warm_up
 
 NATIVE = {"useNativeTypes": True}
 NOT_INLINE = "a JSON-LD context must be inline: remote contexts are not followed"
@@ -102,6 +102,9 @@ class Documents:
             CONTEXT_KEY
         ]
         self.shapes = Graph().parse(folder / SHAPES_FILE)
+        warm_up(
+            self.shapes
+        )  # so that validation in worker threads needs no parser lock (services.shacl)
         self._class_of = {self._iri_of(c): c for c in view.all_classes().values()}
         self._slots = {
             name: {json_name(slot): slot for slot in view.class_induced_slots(name)}
@@ -447,9 +450,7 @@ class Documents:
     def _check(self, graph: Graph) -> tuple[bool, Graph, str]:
         shapes = Graph()
         shapes += self.shapes  # pyshacl adds to the graph it is given, and requests share this one
-        conforms, report, text = validate(graph, shacl_graph=shapes, inference="none")
-        assert isinstance(report, Graph)
-        return bool(conforms), report, str(text)
+        return validate_warm(graph, shapes)  # the shapes were warmed up when this was built
 
     # -- the representations -------------------------------------------------------------------
 
@@ -468,12 +469,13 @@ class Documents:
             NotAcceptable: The aggregate has no form in ``media_type``; RDF/XML cannot write a
                 predicate that ends where no XML name can start.
         """
-        shown = Graph()
+        whole = Dataset() if media_type in DATASET_REPRESENTATIONS else Graph()
+        shown = whole.graph(graph_iri) if isinstance(whole, Dataset) else whole
         for s, p, o in stored:
             if s != graph_iri and p not in self._internal:
                 shown.add((s, p, o))
         if media_type not in (JSON, JSON_LD):
-            return _serialised(shown, graph_iri, media_type)
+            return await anyio.to_thread.run_sync(_serialised, whole, media_type)
         framed = await anyio.to_thread.run_sync(self.frame, shown, cls)
         if media_type == JSON:
             framed.pop(CONTEXT_KEY, None)
@@ -494,7 +496,7 @@ class Documents:
             graph = Graph()
             for triple in triples:
                 graph.add(triple)
-            _serialised(graph, URIRef(""), media_type)
+            _serialised(graph, media_type)
 
     def frame(self, graph: Graph, cls: ClassDefinition) -> dict:
         """The aggregate of class ``cls`` in ``graph``, framed with the generated frame and compacted with the generated context."""
@@ -504,17 +506,11 @@ class Documents:
         return framed
 
 
-def _serialised(shown: Graph, graph_iri: URIRef, media_type: str) -> str:
-    """``shown`` as the RDF serialisation ``media_type``; a dataset type names ``graph_iri`` for it."""
-    rdf: Graph = shown
-    if media_type in DATASET_REPRESENTATIONS:
-        dataset = Dataset()
-        named = dataset.graph(graph_iri)
-        named += shown
-        rdf = dataset
+def _serialised(rdf: Graph, media_type: str) -> str:
+    """``rdf`` as the RDF serialisation ``media_type``; a dataset type takes a ``Dataset`` holding the named graph."""
     if media_type != RDF_XML:
         return str(rdf.serialize(format=media_type))
-    if any(isinstance(o, Literal) and XML_FORBIDDEN.search(str(o)) for o in shown.objects()):
+    if any(isinstance(o, Literal) and XML_FORBIDDEN.search(str(o)) for o in rdf.objects()):
         raise NotAcceptable(f"this aggregate has no {media_type} form: a value XML cannot hold")
     try:
         return str(rdf.serialize(format=media_type))

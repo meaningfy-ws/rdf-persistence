@@ -35,7 +35,10 @@ default RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512 and EdDSA,
 token only with a key bound to the token's algorithm. It SHALL refuse to be built when the allowed
 algorithms are empty, name `none` or any HMAC (HS*) algorithm, or name an algorithm its verification
 library does not implement. It SHALL tolerate a configurable clock skew, by default 30 seconds, on
-the token's expiry and not-before times.
+the token's expiry and not-before times. It SHALL NOT use a key to verify when the key's `use` is
+present and not `sig`, or its `key_ops` is present and lacks `verify`: such a key is as unknown as
+one that is not published, and a key set with no key left to verify with leaves the identity
+provider unavailable.
 
 #### Scenario: the provider rotates to another asymmetric key type
 - **GIVEN** a deployment with the default allowed algorithms
@@ -51,6 +54,16 @@ the token's expiry and not-before times.
 - **GIVEN** the provider publishes an RSA key that names RS256
 - **WHEN** a request carries a token with that key's id and the algorithm PS256
 - **THEN** the answer is 401 and no handler runs
+
+#### Scenario: a token whose key is published for encryption
+- **GIVEN** the provider publishes an RSA key with `use` set to `enc`, beside a signing key
+- **WHEN** a request carries a token with the encryption key's id
+- **THEN** the answer is 401 and no handler runs
+
+#### Scenario: a key set whose only key is for encryption
+- **GIVEN** the provider publishes a key set whose only key has `use` set to `enc`
+- **WHEN** a request carries a token with that key's id
+- **THEN** the identity provider is unavailable and no handler runs
 
 #### Scenario: a shared-secret algorithm in the configuration
 - **GIVEN** a deployment that lists HS512 among its allowed algorithms

@@ -14,6 +14,7 @@
 root_packages =
     rdf_persistence
     tests
+    rdflib
 include_external_packages = True
 
 [importlinter:contract:layers]
@@ -220,3 +221,19 @@ forbidden_modules =
     rdf_persistence.testkit
     tests.toy
     tests.toy_service
+
+[importlinter:contract:sparql-parser-only-through-the-wrappers]
+name = nothing imports rdflib.plugins.sparql or pyshacl but the wrappers
+; rdflib is a root package above, so its submodules can be named; indirect chains through rdflib itself
+; are fine, only a direct import counts.
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    rdf_persistence
+forbidden_modules =
+    rdflib.plugins.sparql
+    pyshacl
+ignore_imports =
+    rdf_persistence.domain.sparql_parsing -> rdflib.plugins.sparql
+    rdf_persistence.domain.sparql_parsing -> rdflib.plugins.sparql.**
+    rdf_persistence.services.shacl -> pyshacl

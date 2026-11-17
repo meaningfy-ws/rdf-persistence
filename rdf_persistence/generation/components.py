@@ -60,6 +60,14 @@ def _identifier_properties(view: SchemaView, class_name: str) -> set[str]:
 
 
 PROPERTIES_KEY = "properties"  # the key of a JSON Schema definition that holds its slots
+TYPE_PROPERTY = (
+    "type"  # a plain JSON read carries it, and a write may name it (services.documents.TYPE_KEYS)
+)
+TYPE_SCHEMA: JsonSchema = {
+    "type": "string",
+    "description": "The class of the node: its name or IRI. Set by the service on a read; "
+    "a write may name the class or one of its subclasses.",
+}
 
 
 def _trimmed(view: SchemaView, name: str, definition: JsonSchema) -> JsonSchema:
@@ -74,6 +82,7 @@ def _trimmed(view: SchemaView, name: str, definition: JsonSchema) -> JsonSchema:
         if prop not in hidden
     }
     required = [prop for prop in definition.get("required", []) if prop not in hidden]
+    kept.setdefault(TYPE_PROPERTY, TYPE_SCHEMA)
     trimmed = {**definition, "properties": kept}
     if required:
         trimmed["required"] = required

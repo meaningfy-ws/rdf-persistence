@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from rdf_persistence.generation.components import TYPE_SCHEMA, render
 from rdf_persistence.generation.steps import COMPONENTS_STEP
 from rdf_persistence.services.artifacts import COMPONENTS_FILE
 from rdf_persistence.services.schema import load_schema
@@ -92,3 +93,38 @@ def test_a_target_that_serves_nothing_gets_no_components_file(tmp_path: Path) ->
     quiet = TOY_TARGET.model_copy(update={"openapi": False})
     staged = run_toy(COMPONENTS_STEP, tmp_path, quiet)
     assert not list(staged.rglob(COMPONENTS_FILE)), "the target switched the step off"
+
+
+def test_every_class_schema_lists_an_optional_type_property(schemas: dict) -> None:  # #148
+    for name, schema in schemas.items():
+        if "properties" in schema:
+            assert schema["properties"]["type"] == TYPE_SCHEMA, name
+            assert "type" not in schema.get("required", []), f"{name}: the type is optional"
+
+
+OWN_TYPE_SCHEMA = """
+id: https://example.org/ns/typed
+name: typed
+title: Typed
+description: A class with a slot named type.
+prefixes: {v: "https://example.org/ns/v#", linkml: "https://w3id.org/linkml/"}
+default_prefix: v
+default_range: string
+imports: [linkml:types]
+classes:
+  Typed:
+    title: Typed
+    description: Has its own type slot.
+    slots: [id, type]
+slots:
+  id: {title: Id, description: The id., identifier: true, range: string}
+  type: {title: Type, description: Its own kind., range: integer}
+"""
+
+
+def test_a_class_with_its_own_type_slot_keeps_its_definition(tmp_path: Path) -> None:
+    (tmp_path / "typed.yaml").write_text(OWN_TYPE_SCHEMA, encoding="utf-8")
+    [file] = render(tmp_path / "typed.yaml")
+    prop = json.loads(file.text)["schemas"]["Typed"]["properties"]["type"]
+    assert prop["type"] == "integer", "its own definition stays, not the generic string"
+    assert "Its own kind." in prop.get("description", ""), "its own description stays"

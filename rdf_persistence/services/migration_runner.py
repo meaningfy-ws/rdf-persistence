@@ -20,6 +20,7 @@ from rdflib import Dataset, URIRef
 
 from rdf_persistence.domain.exceptions import InvalidBody, MigrationFailed, PersistenceError
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
+from rdf_persistence.domain.sparql_parsing import prepare_update
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import Migration
 from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
@@ -157,7 +158,8 @@ def _migrate_in_memory(
         migration = pending[0]
         request = migration_request(migration, stamps_graph)  # a defect in our own text escapes
         try:
-            dataset.update(request)
+            # parsed under the lock (a worker thread, from tenant_dump), evaluated outside it
+            dataset.update(prepare_update(request, dict(dataset.namespaces())))
         except (RecursionError, MemoryError):
             raise
         except (
