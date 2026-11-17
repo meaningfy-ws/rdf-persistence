@@ -20,9 +20,9 @@ Delivery decisions).
   event loop) and L1 S1 (a JWK with `use: enc` is kept).
 
 ## Next
-Archive the change (`spec-stewardship`). In the same PR, bring `tests/audit/scenario-map.csv` up to
-date: the 38 rows that name the renamed requirement (D-16) and a row for every test this EPIC added
-(D-18; `make refresh-map` exits 0). Read first: design.md D-16, D-18, the spec deltas.
+Closed in the archive PR: acceptance skipped by the developer, no docs stage owed, the scenario
+map brought up to date (D-16, D-18), the change archived. Nothing follows in this change; the open
+items above and the floor lists are candidates for later changes.
 
 ## Prompt
 Act as the team lead (epic-delivery). Archive openspec/changes/manual-revision-notes from
