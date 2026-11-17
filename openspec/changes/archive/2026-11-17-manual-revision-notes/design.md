@@ -708,3 +708,20 @@ Under the floor (not fixed; for the hand-over note and later changes):
   `algorithms=`; one fixer moves that step and the pages that name `algorithms=` and
   `leeway_seconds=` (questions, ADR-004, `howto/adopt.adoc#verifier-options`) to `JwksSettings`.
   ADR-004's decision stands; only where it is configured changed.
+
+### Follow-ups after the archive (2026-11-18)
+
+The developer asked for the items left open at the close to be fixed ("fix the still open ones,
+work in parallel"). One PR from `change/mrn-followups`, one builder per item in its own worktree.
+
+- **D-21 The open items taken, and the one left.** Taken: #148 and #153 (their six strict xfails
+  go), the RDF serialisations off the event loop (L4+L5 W3), keys published for encryption (L1
+  S1), the pyparsing `postParse2` error (D-19) as a debugging task that changes nothing unless it
+  shows a cause, #142 made fast enough for CI and taken out of quarantine without pyoxigraph
+  (PD-17's follow-up stays the developer's), and the 55 unmapped otel-observability tests. Left:
+  the `.worktrees/` line in `.gitignore`, which another session added and owns. The other floor
+  items stay where `design.md` lists them.
+- **D-22 Keys meant for signatures only.** `_usable_keys` skips a JWK whose `use` is present and
+  not `sig`, or whose `key_ops` is present and lacks `verify` (RFC 7517 §4.2, §4.3), as PyJWT's own
+  client does; a set left with no usable key is `IdentityUnavailable`, as before. No page
+  described which keys are used, so no docs change.
