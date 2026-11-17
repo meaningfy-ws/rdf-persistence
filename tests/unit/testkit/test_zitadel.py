@@ -9,12 +9,12 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from rdf_persistence.generation.generated.rp_generation import (
+from rdf_persistence.testkit.exceptions import ProvisioningError, TokenRefusedError
+from rdf_persistence.testkit.generated.rp_testkit import (
     MachineUser,
     ZitadelProject,
     ZitadelServer,
 )
-from rdf_persistence.testkit.exceptions import ProvisioningError, TokenRefusedError
 from rdf_persistence.testkit.zitadel import (
     ADMIN_ROLE,
     access_token,

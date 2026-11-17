@@ -34,14 +34,14 @@ from rdf_persistence.adapters.generated.rp_wire import (
 )
 from rdf_persistence.adapters.jwks import RS256
 from rdf_persistence.adapters.zitadel import MANAGEMENT, ORG_HEADER, user_grant_path
-from rdf_persistence.generation.generated.rp_generation import (
+from rdf_persistence.services.generated.settings.rp_settings import HttpSettings
+from rdf_persistence.services.tokens import EpochClock
+from rdf_persistence.testkit.exceptions import ProvisioningError, TokenRefusedError
+from rdf_persistence.testkit.generated.rp_testkit import (
     MachineUser,
     ZitadelProject,
     ZitadelServer,
 )
-from rdf_persistence.services.generated.settings.rp_settings import HttpSettings
-from rdf_persistence.services.tokens import EpochClock
-from rdf_persistence.testkit.exceptions import ProvisioningError, TokenRefusedError
 
 # The endpoints only the test fixtures call (technical-models DEC-8); the adapter does not.
 PROJECTS = f"{MANAGEMENT}/projects"
@@ -232,4 +232,4 @@ def provision_project(server: ZitadelServer, principals: Iterable[str]) -> Zitad
         create_machine_user(bare, name, roles=[ADMIN_ROLE] if name == ADMIN_ROLE else [])
         for name in principals
     ]
-    return bare.model_copy(update={"machine_users": users})
+    return bare.replaced(machine_users=users)

@@ -36,6 +36,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that module.
 
 ### Changed
+- **BREAKING: the testkit's records moved to `rdf_persistence.testkit.generated`**
+  (`technical-models`). `ClassShape`, `SlotShape`, `ContainerMarker`, `Violation`, `MachineUser`,
+  `ZitadelProject`, `ZitadelServer`, `ExecResult`, `FusekiServer` and `GarageServer` are generated
+  from `model/technical/testkit/rp_testkit.yaml` and are imported from
+  `rdf_persistence.testkit.generated.rp_testkit`, no longer from
+  `rdf_persistence.generation.generated.rp_generation`; there is no shim. A new `FieldFlags`
+  record (`required`, `multivalued`) is what the model-shape test compares. `ConstraintCase`,
+  `ConstraintKind` and `GenerationTarget` stay in `rp_generation`.
 - **BREAKING: the per-value keywords and constants the settings replace are removed**
   (`technical-models`). A caller that passes an old keyword gets a `TypeError` from every constructor, except `bootstrap`,
   which takes dependencies by keyword: `bootstrap(limit=...)` raises `ValueError` ("no handler or

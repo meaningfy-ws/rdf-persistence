@@ -19,18 +19,18 @@ import httpx
 import pytest
 from testcontainers.compose import DockerCompose
 
-from rdf_persistence.generation.generated.rp_generation import (
-    ExecResult,
-    FusekiServer,
-    GarageServer,
-    ZitadelProject,
-    ZitadelServer,
-)
 from rdf_persistence.testkit.bootstrap import (
     environment,
     redact_secrets,
     value_after,
     wait_until,
+)
+from rdf_persistence.testkit.generated.rp_testkit import (
+    ExecResult,
+    FusekiServer,
+    GarageServer,
+    ZitadelProject,
+    ZitadelServer,
 )
 from rdf_persistence.testkit.markers import (
     FUSEKI,

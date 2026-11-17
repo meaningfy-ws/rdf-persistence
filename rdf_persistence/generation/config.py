@@ -16,10 +16,12 @@ from rdf_persistence.generation.generated.rp_generation import (
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 from rdf_persistence.services.schema_structure import annotation_text
 
-# TOML key -> model field where they differ (`schema` would shadow a pydantic method)
+# TOML key -> model field for the keys that cannot be a LinkML alias (PD-10 diverges here): the
+# pydantic generator names a field by an alias that is a Python identifier, so `alias: schema` would
+# make a field `schema` that shadows a pydantic method, and `alias: kind` would rename `target_kind`.
+# `regenerate-command` is no identifier, so it is a true alias of `regenerate_command`.
 FIELD_OF_TOML_KEY = {
     "schema": "schema_file",
-    "regenerate-command": "regenerate_command",
     "kind": "target_kind",  # a global slot `kind` ranges over ConstraintKind
 }
 TOML_KEY_OF_FIELD = {field: key for key, field in FIELD_OF_TOML_KEY.items()}
@@ -80,7 +82,8 @@ def _refuse_unusable(rows: int, given: dict[str, str], project: Path) -> None:
 
 def _field(key: str) -> str:
     """The model field of a TOML row key; a field's own name is refused when its TOML spelling differs."""
-    if key in TOML_KEY_OF_FIELD:
+    aliased = key in GenerationTarget.model_fields and GenerationTarget.model_fields[key].alias
+    if key in TOML_KEY_OF_FIELD or aliased:
         raise ConfigError(f"invalid entry: {key}: Extra inputs are not permitted")
     return FIELD_OF_TOML_KEY.get(key, key)
 

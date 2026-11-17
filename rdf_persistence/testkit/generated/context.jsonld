@@ -1,0 +1,137 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "linkml": "https://w3id.org/linkml/",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "admin_pat": {
+         "@id": "adminPat"
+      },
+      "alias": {
+         "@id": "alias"
+      },
+      "class_name": {
+         "@id": "className"
+      },
+      "container": {
+         "@id": "container"
+      },
+      "endpoint": {
+         "@id": "endpoint"
+      },
+      "exit_code": {
+         "@id": "exitCode"
+      },
+      "help": {
+         "@id": "help"
+      },
+      "key_id": {
+         "@id": "keyId"
+      },
+      "machine_users": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "machineUsers"
+      },
+      "marker": {
+         "@id": "marker"
+      },
+      "multivalued": {
+         "@id": "multivalued"
+      },
+      "name": {
+         "@id": "slotName"
+      },
+      "organisation_id": {
+         "@id": "organisationId"
+      },
+      "password": {
+         "@id": "password"
+      },
+      "private_key": {
+         "@id": "privateKey"
+      },
+      "project_id": {
+         "@id": "projectId"
+      },
+      "range": {
+         "@id": "range"
+      },
+      "region": {
+         "@id": "region"
+      },
+      "required": {
+         "@id": "required"
+      },
+      "secret": {
+         "@id": "secret"
+      },
+      "server": {
+         "@type": "@id",
+         "@id": "server"
+      },
+      "slots": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "slotShapes"
+      },
+      "stderr": {
+         "@id": "stderr"
+      },
+      "stdout": {
+         "@id": "stdout"
+      },
+      "url": {
+         "@id": "url"
+      },
+      "user": {
+         "@id": "user"
+      },
+      "user_id": {
+         "@id": "userId"
+      },
+      "what": {
+         "@id": "what"
+      },
+      "where": {
+         "@id": "where"
+      },
+      "@version": 1.1,
+      "type": "@type",
+      "ClassShape": {
+         "@id": "ClassShape"
+      },
+      "ContainerMarker": {
+         "@id": "ContainerMarker"
+      },
+      "ExecResult": {
+         "@id": "ExecResult"
+      },
+      "FieldFlags": {
+         "@id": "FieldFlags"
+      },
+      "FusekiServer": {
+         "@id": "FusekiServer"
+      },
+      "GarageServer": {
+         "@id": "GarageServer"
+      },
+      "MachineUser": {
+         "@id": "MachineUser"
+      },
+      "SlotShape": {
+         "@id": "SlotShape"
+      },
+      "Violation": {
+         "@id": "Violation"
+      },
+      "ZitadelProject": {
+         "@id": "ZitadelProject"
+      },
+      "ZitadelServer": {
+         "@id": "ZitadelServer"
+      }
+   }
+}

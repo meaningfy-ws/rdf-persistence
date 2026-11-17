@@ -971,8 +971,11 @@ def test_the_toy_with_migrations_and_a_quoted_version_passes(toy_copy: Path) -> 
 
 
 def test_the_toolkits_seven_targets_pass_the_hard_check_with_their_own_settings() -> None:
-    """TC-10: rp_service, rp_templates, rp_telemetry, rp_settings, rp_wire and rp_generation need no migrations folder; rp.yaml has one."""
+    """TC-10: rp_service, rp_templates, rp_telemetry, rp_settings, rp_wire, rp_testkit and rp_generation need no migrations folder; rp.yaml has one.
+
+    The name says seven; the eighth target is `rp_testkit` (PD-11).
+    """
     targets = read_targets(REPO / "pyproject.toml")
-    assert len(targets) == 7, [t.schema_file for t in targets]
+    assert len(targets) == 8, [t.schema_file for t in targets]
     found = generate(targets, REPO, (steps.HARD_STEP,), check=True)
-    assert [format_problem(p) for p in found] == [], "the toolkit's seven targets raise no problem"
+    assert [format_problem(p) for p in found] == [], "the toolkit's eight targets raise no problem"

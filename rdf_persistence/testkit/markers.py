@@ -7,7 +7,7 @@ without ``rdf-persistence[testkit]`` can still use it.
 from collections.abc import Iterable
 from typing import Protocol
 
-from rdf_persistence.generation.generated.rp_generation import ContainerMarker
+from rdf_persistence.testkit.generated.rp_testkit import ContainerMarker
 
 STORE, FILES, IDENTITY, EVENTS = "store", "files", "identity", "events"
 FUSEKI, GARAGE, ZITADEL, REDIS = "fuseki", "garage", "zitadel", "redis"

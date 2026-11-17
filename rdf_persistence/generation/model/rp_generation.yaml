@@ -2,9 +2,9 @@ id: https://meaningfy.ws/ns/rdf-persistence/generation
 name: rp_generation
 title: RDF persistence generation module
 description: >-
-  The data of the generation toolchain and of the testkit: the configuration of one `rp-generate`
-  run, the manifest it writes, the files and problems it produces, the view-models its templates
-  render, the conformance cases, the reviewed shape of a class and a guard violation.
+  The data of the generation toolchain: the configuration of one `rp-generate` run, the manifest it
+  writes, the files and problems it produces, the view-models its templates render and the
+  conformance cases. The testkit's own records are in `rp_testkit.yaml`.
 prefixes:
   rp: https://meaningfy.ws/ns/rdf-persistence#
   linkml: https://w3id.org/linkml/
@@ -161,36 +161,6 @@ classes:
         required: true
       class_name:
         required: true
-  SlotShape:
-    title: Slot shape
-    description: The shape of one slot of a class, as the schema induces it.
-    class_uri: rp:SlotShape
-    slots:
-      - name
-      - required
-      - multivalued
-      - range
-      - alias
-    slot_usage:
-      name:
-        required: true
-      required:
-        required: true
-      multivalued:
-        required: true
-      range:
-        required: true
-  ClassShape:
-    title: Class shape
-    description: The reviewed shape of one class, its name and the shape of each of its slots.
-    class_uri: rp:ClassShape
-    slots:
-      - class_name
-      - slots
-    slot_usage:
-      class_name:
-        required: true
-
   CliFlag:
     title: Command-line flag
     description: A command-line flag of `rp-generate` and the GenerationTarget field it overrides.
@@ -435,135 +405,6 @@ classes:
         required: true
       externals:
         required: true
-  Violation:
-    title: Violation
-    description: A hand-written model or a generated artefact that a guard found out of place.
-    class_uri: rp:Violation
-    slots:
-      - where
-      - what
-    slot_usage:
-      where:
-        required: true
-      what:
-        required: true
-  ContainerMarker:
-    title: Container marker
-    description: A pytest marker of the container tests, the container it starts and its help text.
-    class_uri: rp:ContainerMarker
-    slots:
-      - marker
-      - container
-      - help
-    slot_usage:
-      marker:
-        required: true
-      container:
-        required: true
-      help:
-        required: true
-
-  ExecResult:
-    title: Exec result
-    description: What a command run inside a container printed, and how it ended.
-    class_uri: rp:ExecResult
-    slots:
-      - stdout
-      - stderr
-      - exit_code
-    slot_usage:
-      stdout:
-        required: true
-      stderr:
-        required: true
-      exit_code:
-        required: true
-  FusekiServer:
-    title: Fuseki server
-    description: Where the test Fuseki answers, and the one user it admits.
-    class_uri: rp:FusekiServer
-    slots:
-      - url
-      - user
-      - password
-    slot_usage:
-      url:
-        required: true
-      user:
-        required: true
-      password:
-        required: true
-  GarageServer:
-    title: Garage server
-    description: The S3 endpoint of the test Garage and the key bootstrapped on it.
-    class_uri: rp:GarageServer
-    slots:
-      - endpoint
-      - key_id
-      - secret
-      - region
-    slot_usage:
-      endpoint:
-        required: true
-      key_id:
-        required: true
-      secret:
-        required: true
-      region:
-        required: true
-  ZitadelServer:
-    title: Zitadel server
-    description: >-
-      Where the test Zitadel answers, and the admin machine user's personal access token, which
-      authenticates the management API for provisioning a project, an application and machine users.
-    class_uri: rp:ZitadelServer
-    slots:
-      - url
-      - admin_pat
-    slot_usage:
-      url:
-        required: true
-      admin_pat:
-        required: true
-
-  MachineUser:
-    title: Machine user
-    description: >-
-      A service account provisioned in the test Zitadel, with the private key it signs its
-      JWT-profile assertions with.
-    class_uri: rp:MachineUser
-    slots:
-      - name
-      - user_id
-      - key_id
-      - private_key
-    slot_usage:
-      name:
-        required: true
-      user_id:
-        required: true
-      key_id:
-        required: true
-      private_key:
-        required: true
-  ZitadelProject:
-    title: Zitadel project
-    description: >-
-      The project provisioned in the test Zitadel: the organisation and project ids, the machine
-      users of the test principals, and the server that holds them.
-    class_uri: rp:ZitadelProject
-    slots:
-      - server
-      - organisation_id
-      - project_id
-      - machine_users
-    slot_usage:
-      server:
-        required: true
-      organisation_id:
-        required: true
-      project_id:
-        required: true
 
 slots:
   relative_path:
@@ -628,6 +469,7 @@ slots:
       The command that regenerates this entry, named in the hint of a failed freshness check (TOML key
       `regenerate-command`); `rp-generate` when absent.
     slot_uri: rp:regenerateCommand
+    alias: regenerate-command
     range: string
     pattern: "^[^`\\r\\n]*[^`\\s][^`\\r\\n]*$"
   migrations:
@@ -780,18 +622,6 @@ slots:
     title: Range
     description: The name of the type, enum or class the slot's values belong to.
     slot_uri: rp:range
-  alias:
-    title: Alias
-    description: The name the slot's field carries in code and JSON when it differs from the slot's name; absent otherwise.
-    slot_uri: rp:alias
-  slots:
-    title: Slots
-    description: The shapes of a class's slots, in schema order.
-    slot_uri: rp:slotShapes
-    range: SlotShape
-    multivalued: true
-    inlined_as_list: true
-
   text:
     title: Text
     description: The text of a file.
@@ -964,107 +794,10 @@ slots:
     description: The names of the classes a diagram draws as a name only.
     slot_uri: rp:mmdExternals
     multivalued: true
-  marker:
-    title: Marker
-    description: The name of a pytest marker.
-    slot_uri: rp:marker
-  container:
-    title: Container
-    description: The name of a container the testkit starts.
-    slot_uri: rp:container
-  help:
-    title: Help
-    description: A line of help text.
-    slot_uri: rp:help
-  where:
-    title: Where
-    description: The place of a violation, a file and a line or a path.
-    slot_uri: rp:where
   what:
     title: What
     description: What is wrong at that place.
     slot_uri: rp:what
-  stdout:
-    title: Standard output
-    description: What the command wrote to its standard output.
-    slot_uri: rp:stdout
-  stderr:
-    title: Standard error
-    description: What the command wrote to its standard error.
-    slot_uri: rp:stderr
-  url:
-    title: URL
-    description: The base URL a server answers on.
-    slot_uri: rp:url
-  user:
-    title: User
-    description: The user name the server admits.
-    slot_uri: rp:user
-  password:
-    title: Password
-    description: The password of the user.
-    slot_uri: rp:password
-    annotations:
-      secret: 'true'
-  endpoint:
-    title: Endpoint
-    description: The URL of the S3 endpoint.
-    slot_uri: rp:endpoint
-  key_id:
-    title: Key id
-    description: The id of the access key.
-    slot_uri: rp:keyId
-  secret:
-    title: Secret
-    description: The secret of the access key.
-    slot_uri: rp:secret
-    annotations:
-      secret: 'true'
-  region:
-    title: Region
-    description: The region name the S3 client signs for.
-    slot_uri: rp:region
-  admin_pat:
-    title: Admin PAT
-    description: The personal access token of the admin machine user.
-    slot_uri: rp:adminPat
-    annotations:
-      secret: 'true'
-  exit_code:
-    title: Exit code
-    description: The exit code the command ended with.
-    slot_uri: rp:exitCode
-    range: integer
-  user_id:
-    title: User id
-    description: The id of a user in the identity provider.
-    slot_uri: rp:userId
-  private_key:
-    title: Private key
-    description: The PEM private key of a machine user's key pair.
-    slot_uri: rp:privateKey
-    annotations:
-      secret: 'true'
-  server:
-    title: Server
-    description: The test server a provisioned resource lives on.
-    slot_uri: rp:server
-    range: ZitadelServer
-  organisation_id:
-    title: Organisation id
-    description: The id of the organisation that owns the provisioned resources.
-    slot_uri: rp:organisationId
-  project_id:
-    title: Project id
-    description: The id of the provisioned project, whose audience scope puts it in a token.
-    slot_uri: rp:projectId
-  machine_users:
-    title: Machine users
-    description: The service accounts of the test principals.
-    slot_uri: rp:machineUsers
-    range: MachineUser
-    multivalued: true
-    inlined_as_list: true
 
 enums:
   HardRule:

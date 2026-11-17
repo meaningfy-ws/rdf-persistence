@@ -7,7 +7,7 @@ from linkml_runtime.utils.formatutils import underscore
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
-from rdf_persistence.generation.generated.rp_generation import ClassShape, SlotShape
+from rdf_persistence.testkit.generated.rp_testkit import ClassShape, FieldFlags, SlotShape
 
 
 def model_shape_diff(shapes: list[ClassShape], models: Iterable[type[BaseModel]]) -> list[str]:
@@ -64,12 +64,13 @@ def _field_lines(shape: ClassShape, model: type[BaseModel]) -> list[str]:
 
 
 def _flag_lines(class_name: str, slot: SlotShape, field: FieldInfo) -> list[str]:
-    in_code = {"required": field.is_required(), "multivalued": _is_list(field)}
+    in_code = FieldFlags(required=field.is_required(), multivalued=_is_list(field))
+    in_schema = FieldFlags(required=slot.required, multivalued=slot.multivalued)
     return [
-        f"field differs: {class_name}.{slot.name}: {flag} {in_code[flag]} in code, "
-        f"{getattr(slot, flag)} in schema"
-        for flag in in_code
-        if in_code[flag] != getattr(slot, flag)
+        f"field differs: {class_name}.{slot.name}: {flag} {getattr(in_code, flag)} in code, "
+        f"{getattr(in_schema, flag)} in schema"
+        for flag in FieldFlags.model_fields
+        if getattr(in_code, flag) != getattr(in_schema, flag)
     ]
 
 

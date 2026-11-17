@@ -3,7 +3,14 @@
 import httpx
 import jwt
 
-from rdf_persistence.testkit.tokens import ISSUER, TokenSigner, new_key, shared_key
+from rdf_persistence.testkit.tokens import (
+    ISSUER,
+    ORG_DOMAIN,
+    ORG_ID,
+    TokenSigner,
+    new_key,
+    shared_key,
+)
 
 
 async def get(signer: TokenSigner, url: str) -> httpx.Response:
@@ -97,3 +104,33 @@ async def test_rotate_after_a_given_key_generates_a_new_key_and_keeps_the_given_
     given = key.public_key().public_numbers()
     assert jwks["k1"].key.public_numbers() == given, "the given key stays in the JWKS"
     assert jwks["k2"].key.public_numbers() != given, "rotation generates a new key"
+
+
+def test_a_token_carries_exactly_the_claims_asked_for() -> None:
+    """TC-48: the claims are built through the wire model JwtClaims, key for key as before."""
+    signer = TokenSigner(clock=lambda: 1000.0)
+    claims = jwt.decode(
+        signer.issue(sub="u1", expires_in=60.0, roles=["admin"]),
+        options={"verify_signature": False},
+    )
+    assert claims == {
+        "iss": ISSUER,
+        "aud": signer.audience,
+        "iat": 1000.0,
+        "sub": "u1",
+        "exp": 1060.0,
+        signer.roles_claim: {"admin": {ORG_ID: ORG_DOMAIN}},
+    }, "the claims of the token changed"
+
+
+def test_a_claim_set_to_none_is_left_out_and_extra_wins() -> None:
+    """TC-48: a claim the wire model requires can still be left out (the verifier refuses it),
+    and `extra` overrides a claim, as before."""
+    signer = TokenSigner(clock=lambda: 1000.0)
+    claims = jwt.decode(
+        signer.issue(sub=None, expires_in=None, roles=None, not_before_in=5.0, extra={"iss": "x"}),
+        options={"verify_signature": False},
+    )
+    assert claims == {"iss": "x", "aud": signer.audience, "iat": 1000.0, "nbf": 1005.0}, (
+        "None leaves a claim out, extra overrides"
+    )

@@ -140,7 +140,7 @@ def _run_target(
             step.run(run)
         except StepError as failed:
             return [
-                problem.model_copy(update={"schema_file": target.schema_file, "step": step.name})
+                problem.replaced(schema_file=target.schema_file, step=step.name)
                 for problem in failed.problems
             ]
     return []

@@ -5,10 +5,12 @@ generated service models sit in ``services``, and the import contracts refuse th
 into them (PD-1, PD-2).
 """
 
+import ast
 import configparser
 import re
 import subprocess
 import sys
+import tomllib
 from importlib import import_module
 from pathlib import Path
 
@@ -286,3 +288,126 @@ def test_no_live_file_still_names_an_old_path():
         text = path.read_text(encoding="utf-8", errors="ignore")
         hits += [f"{path.relative_to(ROOT)}: {m.group(0)}" for m in OLD_PATH.finditer(text)]
     assert hits == [], "old paths still named:\n" + "\n".join(hits)
+
+
+# --- stage 4: the testkit's records get their own technical target (PD-11, TC-49..TC-51) -----------
+
+TESTKIT = PACKAGE / "testkit"
+GENERATION_SCHEMA = PACKAGE / "generation" / "model" / "rp_generation.yaml"
+TESTKIT_SCHEMA = TECHNICAL / "testkit" / "rp_testkit.yaml"
+MOVED_CLASSES = {
+    "ClassShape",
+    "SlotShape",
+    "ContainerMarker",
+    "Violation",
+    "MachineUser",
+    "ZitadelProject",
+    "ZitadelServer",
+    "ExecResult",
+    "FusekiServer",
+    "GarageServer",
+}
+# the slots only the moved classes use; `name`, `required`, `multivalued`, `range`, `class_name`
+# and `what` are shared with classes that stay, so they stay.
+MOVED_ONLY_SLOTS = {
+    "alias",
+    "slots",
+    "marker",
+    "container",
+    "help",
+    "where",
+    "stdout",
+    "stderr",
+    "url",
+    "user",
+    "password",
+    "endpoint",
+    "key_id",
+    "secret",
+    "region",
+    "admin_pat",
+    "exit_code",
+    "user_id",
+    "private_key",
+    "server",
+    "organisation_id",
+    "project_id",
+    "machine_users",
+}
+GENERATION_GENERATED = "rdf_persistence.generation.generated"
+KEEPS_THE_GENERATION_MODELS = {
+    "freshness.py",
+    "conformance.py",
+}  # F-1: generator-package moves them
+
+
+def _imported_modules(path: Path) -> set[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names |= {alias.name for alias in node.names}
+        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            names.add(node.module)
+            names |= {f"{node.module}.{alias.name}" for alias in node.names}
+    return names
+
+
+def test_the_testkit_target_is_technical_and_generates_into_the_testkit():  # PD-11
+    schema = yaml.safe_load(TESTKIT_SCHEMA.read_text(encoding="utf-8"))
+    assert set(schema["classes"]) >= MOVED_CLASSES | {"FieldFlags"}, (
+        "the ten records and FieldFlags"
+    )
+    rows = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"][
+        "rp-generate"
+    ]
+    (row,) = [r for r in rows if r["schema"] == TESTKIT_SCHEMA.relative_to(ROOT).as_posix()]
+    assert (row["package"], row["kind"], row["openapi"]) == (TESTKIT_MODELS, "technical", False), (
+        "the testkit target of PD-11"
+    )
+
+
+def test_no_testkit_module_but_freshness_and_conformance_imports_the_generation_models():  # TC-50
+    offenders = [
+        path.relative_to(ROOT).as_posix()
+        for path in sorted(TESTKIT.rglob("*.py"))
+        if path.name not in KEEPS_THE_GENERATION_MODELS
+        and "generated" not in path.relative_to(TESTKIT).parts
+        and any(m.startswith(GENERATION_GENERATED) for m in _imported_modules(path))
+    ]
+    assert offenders == [], f"testkit modules still importing {GENERATION_GENERATED}: {offenders}"
+
+
+def test_the_moved_records_come_from_the_testkit_package():  # TC-50
+    models = import_module(f"{TESTKIT_MODELS}.rp_testkit")
+    assert all(hasattr(models, name) for name in MOVED_CLASSES | {"FieldFlags"}), (
+        "a moved record is missing from the testkit package"
+    )
+
+
+def test_the_generation_schema_declares_none_of_the_moved_records_nor_their_own_slots():  # TC-51
+    schema = yaml.safe_load(GENERATION_SCHEMA.read_text(encoding="utf-8"))
+    assert MOVED_CLASSES & set(schema["classes"]) == set(), "a moved class is still declared"
+    assert MOVED_ONLY_SLOTS & set(schema["slots"]) == set(), (
+        "a slot only they used is still declared"
+    )
+    assert {"ConstraintCase", "GenerationTarget"} <= set(schema["classes"]), "the stayers"
+    assert "ConstraintKind" in schema["enums"], "ConstraintKind stays with ConstraintCase"
+    assert "kind" in schema["slots"], "the global slot `kind` stays"
+
+
+def test_no_testkit_or_generation_module_copies_a_model_with_model_copy_update():  # TC-49
+    hits = []
+    for folder in (TESTKIT, PACKAGE / "generation"):
+        for path in sorted(folder.rglob("*.py")):
+            if "generated" in path.relative_to(folder).parts:
+                continue
+            for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+                if (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "model_copy"
+                    and any(k.arg == "update" for k in node.keywords)
+                ):
+                    hits.append(f"{path.relative_to(ROOT)}:{node.lineno}")
+    assert hits == [], f"model_copy(update=...) skips validation; use replaced(): {hits}"

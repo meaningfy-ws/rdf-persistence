@@ -6,10 +6,14 @@ from pathlib import Path
 import pytest
 from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from rdflib import Graph
 
-from rdf_persistence.generation.generated.rp_generation import ConstraintCase, ConstraintKind
+from rdf_persistence.generation.generated.rp_generation import (
+    CheckProblem,
+    ConstraintCase,
+    ConstraintKind,
+)
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import keyed_slots
 from rdf_persistence.testkit.conformance import (
@@ -237,3 +241,22 @@ def test_a_key_across_aggregates_is_no_keyed_slot_validator_or_shape() -> None:
         key.unique_key_name == "grant_key"
         for _, key in keyed_slots(grants, grants.get_class("TenantAccess"))
     ), "Grant's key is still a keyed slot"
+
+
+def test_load_cases_makes_the_instance_paths_absolute_through_replaced(tmp_path: Path) -> None:
+    """TC-52: a row's `valid` and `invalid` paths are joined to the cases file's folder."""
+    cases = tmp_path / "cases.yaml"
+    cases.write_text(
+        "- {kind: pattern, class_name: Book, valid: [ok.yaml], invalid: [no.yaml]}\n",
+        encoding="utf-8",
+    )
+    (case,) = load_cases(cases)
+    assert case.valid == [str(tmp_path / "ok.yaml")], "the valid path is not absolute"
+    assert case.invalid == [str(tmp_path / "no.yaml")], "the invalid path is not absolute"
+
+
+def test_a_misspelt_field_given_to_replaced_is_refused() -> None:
+    """TC-52: `model_copy(update=...)` ignored it; `replaced` validates."""
+    problem = CheckProblem(schema_file="a.yaml", step="load", message="m")
+    with pytest.raises(ValidationError):
+        problem.replaced(schema_flie="b.yaml")

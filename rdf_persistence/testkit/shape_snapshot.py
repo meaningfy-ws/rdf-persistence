@@ -6,8 +6,8 @@ from pathlib import Path
 import yaml
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.generation.generated.rp_generation import ClassShape, SlotShape
 from rdf_persistence.services.schema_structure import generation_view
+from rdf_persistence.testkit.generated.rp_testkit import ClassShape, SlotShape
 
 _FLAGS = ("required", "multivalued", "range", "alias")
 ANY_URI = "linkml:Any"  # a class for it is typing.Any in code: no class, no shape
