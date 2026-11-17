@@ -448,3 +448,58 @@ def test_the_boundary_step_checks_the_kind_of_its_target(toy_copy: Path) -> None
     found = generate([target], toy_copy, (steps.BOUNDARY_STEP,), check=True)
     assert found, "the toy's domain modules must fail a technical target"
     assert {p.rule for p in found} == {BoundaryRule.TARGET_KIND.value}, f"{found}"
+
+
+def test_a_technical_target_refuses_an_access_module_naming_it(tmp_path: Path) -> None:
+    """Row 1: a module of kind access is not technical, so a technical target refuses it."""
+    found = kind_problems_of(kind_folder(tmp_path, "access"), TargetKind.TECHNICAL)
+    assert len(found) == 1, found
+    assert found[0].startswith("[target_kind] side"), found
+
+
+KIND_HEAD = '[tool.rp-generate]\nschema = "library.yaml"\npackage = "tests.fixtures.library.generated"\npython = "generated"\n'
+
+
+def files_of(folder: Path) -> set[str]:
+    return {p.relative_to(folder).as_posix() for p in folder.rglob("*") if p.is_file()}
+
+
+def declare_kind(toy: Path, kind: str) -> Path:
+    project = toy / "pyproject.toml"
+    project.write_text(f'{KIND_HEAD}kind = "{kind}"\n', encoding="utf-8")
+    return project
+
+
+def test_a_technical_target_over_domain_modules_fails_naming_target_and_module_and_writes_nothing(
+    toy_copy: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Row 1: probe of PD-9; the whole run is refused, no generated file, manifest or staging is left."""
+    project = declare_kind(toy_copy, "technical")
+    before = files_of(toy_copy)
+    code = main(["--project", str(project)])
+    captured = capsys.readouterr()
+    text = captured.out + captured.err
+    assert code != 0, "a technical target over domain modules must fail"
+    assert BoundaryRule.TARGET_KIND.value in text, f"the rule is not named: {text}"
+    assert ROOT_SCHEMA in text, f"the target (its schema) is not named: {text}"
+    assert "books" in text, f"the module is not named: {text}"
+    assert files_of(toy_copy) == before, "a failed run wrote a file"
+    assert not (toy_copy / "generated").exists(), "the output folder was created"
+    assert [p.name for p in toy_copy.iterdir() if p.name.startswith(".rp-generate")] == [], (
+        "a staging folder is left behind"
+    )
+
+
+def test_a_domain_target_holding_a_technical_module_fails_naming_it_and_writes_nothing(
+    toy_copy: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Row 2: probe of PD-9; a technical module in a domain target."""
+    add_api_module(toy_copy, "technical")
+    project = declare_kind(toy_copy, "domain")
+    before = files_of(toy_copy)
+    code = main(["--project", str(project)])
+    captured = capsys.readouterr()
+    text = captured.out + captured.err
+    assert code != 0, "a domain target holding a technical module must fail"
+    assert f"[{BoundaryRule.TARGET_KIND.value}] api" in text, f"rule and module not named: {text}"
+    assert files_of(toy_copy) == before, "a failed run wrote a file"

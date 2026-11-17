@@ -250,7 +250,7 @@ deployments and to browsers].
 == Developing the toolkit
 
 *How do I change a toolkit schema?*::
-Edit the schema under `rdf_persistence/model/` (or `rdf_persistence/model/service/rp_service.yaml` and
+Edit the schema under `rdf_persistence/model/` (or `rdf_persistence/model/technical/service/rp_service.yaml` and
 `rdf_persistence/generation/model/rp_generation.yaml`), run
 `make generate`, refresh the model-shape snapshot if a class changed, and commit the schema and the
 generated code together. See xref:develop/index.adoc#change-a-toolkit-schema[Change a toolkit

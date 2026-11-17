@@ -126,11 +126,26 @@ def test_the_toy_librarys_table_has_no_kind_and_passes_the_boundary_check() -> N
     assert generate([toy], TOY, (steps.BOUNDARY_STEP,), check=True) == [], "no kind, no kind check"
 
 
-def test_a_kind_that_is_not_domain_or_technical_is_an_error_naming_the_toml_key(
-    tmp_path: Path,
+@pytest.mark.parametrize(
+    "literal",
+    [
+        '"access"',
+        '"Technical"',
+        '"TECHNICAL"',
+        '" domain"',
+        '"technical\\n"',
+        '""',
+        "1",
+        "true",
+        "[]",
+    ],
+)
+def test_a_kind_that_is_not_exactly_domain_or_technical_is_an_error_naming_the_toml_key(
+    tmp_path: Path, literal: str
 ) -> None:
+    """Probe of PD-9: no case folding, no trimming, no coercion."""
     with pytest.raises(ConfigError, match="kind"):
-        read(tmp_path, SINGLE + 'kind = "access"\n')
+        read(tmp_path, SINGLE + f"kind = {literal}\n")
 
 
 def test_a_kind_spelt_target_kind_is_refused_naming_the_key(tmp_path: Path) -> None:

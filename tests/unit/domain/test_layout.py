@@ -9,6 +9,7 @@ from rdflib import BNode, Literal, URIRef
 from rdf_persistence.domain import layout
 from rdf_persistence.domain.exceptions import InvalidIri
 from rdf_persistence.domain.layout import (
+    application_database_name,
     graph_iri,
     is_canonical_uuid,
     is_inside_tenant,
@@ -90,6 +91,14 @@ def test_a_prefix_outside_pd_6a_is_refused(prefix):
         system_database_name(prefix)
     with pytest.raises(InvalidIri, match="prefix"):
         tenant_name_prefix(prefix)
+
+
+@pytest.mark.parametrize("prefix", ["a", "a" * 20, "a1b2"])
+def test_a_prefix_inside_pd_6a_gives_the_known_database_names(prefix):
+    """Probe of PD-6a: the 20-character prefix is the longest one accepted, by all three functions."""
+    assert system_database_name(prefix) == f"{prefix}-system"
+    assert application_database_name(prefix) == f"{prefix}-app"
+    assert tenant_name_prefix(prefix) == f"{prefix}-t-"
 
 
 def test_a_skolem_iri_lives_under_its_graph_and_is_fresh_each_time():

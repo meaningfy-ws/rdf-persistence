@@ -356,6 +356,46 @@ schemas changes manifests and generated paths only. Settings are values, built o
   pin (`manual-revision-notes` DEC-1, RISK-1); a misspelt name passes the settings model and fails
   at start-up, with the name in the message (TC-60).
 
+## Delivery decisions
+
+The lead's, recorded as taken (R-0007); the developer may overrule any of them.
+
+- **D-1 (stage 1, task 1.1)** GitNexus rated `GenerationTarget` CRITICAL (30 direct importers).
+  Not taken to the developer: the task adds one optional slot defaulting to `None`, so no importer
+  changes.
+- **D-2 (stage 1)** The adversarial tester runs in every stage: the PLAN has no `## Invariants`
+  section, and the appetite is LARGE (epic-delivery's tester condition). In stage 1 it runs after
+  task 1.3, the riskiest task (`develop/agents.adoc`, keeping the challenge cheap), over the `kind`
+  check and the new contract.
+- **D-3 (stage 1)** The review set is the one `tasks.md` names for stage 1: L1, L2, L3 as separate
+  passes, L4 and L5 as one. It is wider than P-0005's per-stage L2 and L3 pass; the PLAN is newer
+  and names it, and stage 1 carries RISK-1 and RISK-5.
+- **D-4 (stage 1, RISK-6)** After the rebase on `cc1b283` (PR #141), A-3 and A-4 sit in
+  `adapters/jwks.py` as `JwksTokenVerifier(algorithms=DEFAULT_ALGORITHMS, leeway_seconds=30.0)`,
+  the leeway finite and within 0 to 300, the ten asymmetric names as the default. They agree with
+  PD-6's defaults and bounds; task 3.2 moves them as planned.
+- **D-5 (stage 1, task 1.2)** GitNexus rated `domain/iris.py` HIGH (24 direct importers). This is
+  RISK-5, accepted at the PLAN gate; not taken to the developer again.
+- **D-6 (stage 1, task 1.3)** GitNexus rated the generated service package CRITICAL (36 direct
+  importers). This is RISK-1, accepted at the PLAN gate; every name stays top-level (DEC-9). The
+  service models moved from eager to lazy top-level imports, as `Iris` did in task 1.2, because
+  importing `rdf_persistence` must not load `services` (`test_lazy_exports.py`).
+- **D-7 (stage 1, tester finding 1, withdrawn)** Reported as: the model guard misses
+  `from rdf_persistence import Page; class P(Page)` in `services/` once D-6 made the service models
+  lazy. Not a defect: `_import_names` walks the whole `__init__`, so it reads the imports under
+  `if TYPE_CHECKING:` that declare `rdf_persistence`'s lazy names. The tester's fixture declared its
+  lazy name only in a dict, a shape the guard does not support and the toolkit does not use. The
+  fixture now has the standard form, the test stays as the probe of D-6, and `_top_level_exports`'
+  docstring says where lazy exports are read. Accepted residual: a package that declares lazy
+  names only in a dict is invisible to the guard.
+- **D-8 (stage 1, tester finding 2, re-labelled Critical)** `questions.adoc` and
+  `architecture/data-flows.adoc` still named `model/service/`. Re-labelled from a docs Warning:
+  task 1.3 owned the paths, and a reader following `questions.adoc` lands on a file that no
+  longer exists. Fixed before the PR.
+- **D-9 (stage 1)** The tester ran before the full gates, so its two findings are fixed, and its
+  tests sorted, in a fix pass before the PR. The review findings get the stage's one fix pass
+  after the PR, as the stage loop sets.
+
 ## Open Questions
 
 - Whether `ServiceSettings` should join `rp_settings.yaml` (one settings home) once E-1 can import
