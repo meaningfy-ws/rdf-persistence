@@ -391,6 +391,12 @@ overrule any of them.
   names it, and a real cascade of 600 members on the fake store is too slow. Builder 1.3 edited
   three files with a python string replace instead of Edit; the lead read every changed site.
 
+- **D-7 A CI timeout quarantined (#142).** `test_heads_of_hundreds_of_iris_is_one_query` times out
+  at 120 s on the CI runner on unchanged code (develop's run for #140 failed, #139's passed; PR #141
+  failed the same way) and passes locally. Per testing.adoc rule 14 it is marked `quarantine` with
+  the issue linked; not a stage 1 defect. Candidate fix: task 2.5's pyoxigraph `FakeStore`, or
+  `test-debt-paydown`.
+
 ### Stage 1 review findings (L2, L3)
 
 Accepted, re-labelled Critical (fixed in the one fix pass):

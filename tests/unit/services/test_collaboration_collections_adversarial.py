@@ -1272,6 +1272,9 @@ async def test_heads_of_a_graph_iri_a_part_and_a_loose_iri_are_none(guarded):
     assert await guarded.heads(asked) == [], "none is a registered aggregate"
 
 
+# Quarantined: times out on CI at 120 s, on unchanged develop too.
+# https://github.com/meaningfy-ws/rdf-persistence/issues/142
+@pytest.mark.quarantine
 @pytest.mark.slow
 async def test_heads_of_hundreds_of_iris_is_one_query(guarded):
     iris = await books_through_one_transaction(guarded, 400)
