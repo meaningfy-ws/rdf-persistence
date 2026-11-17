@@ -65,7 +65,7 @@ changes `domain` or a port, or its reach is wide). After a schema change: `make 
 | TC-21b | `expected_version` of `"v3"`; `W/"v3"`; `*`; `"v1", "v3"` | `v3`; `Conflict`; `PreconditionRequired` naming `matched_version`; the same |
 | TC-21c | `"v1", , "v3"`, current `v3` | `v3` (the empty member skipped) |
 
-- [ ] 1.4 PD-6 part (A-1): `dataset_of` emits `language` and `rdf:langString` for a tagged literal
+- [x] 1.4 PD-6 part (A-1): `dataset_of` emits `language` and `rdf:langString` for a tagged literal
   (still in `documents.py`; it moves in 2.2); `render` for plain JSON turns a language value object
   into its value. Layer: services. Tests in `tests/unit/services/test_documents.py`. Gate:
   `make test-changed check-quality`.

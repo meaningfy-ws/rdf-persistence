@@ -6,7 +6,7 @@ from copy import deepcopy
 
 import pytest
 from pyld import jsonld
-from rdflib import RDF, BNode, Graph, Literal, URIRef
+from rdflib import RDF, SKOS, XSD, BNode, Graph, Literal, URIRef
 
 from rdf_persistence.domain.exceptions import InvalidBody
 from rdf_persistence.domain.generated.service.rp_service import (
@@ -18,7 +18,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
 from rdf_persistence.domain.iris import Iris, graph_iri
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.documents import Documents
+from rdf_persistence.services.documents import Documents, dataset_of
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
 from rdf_persistence.testkit import assert_isomorphic
@@ -359,6 +359,79 @@ async def test_the_bookkeeping_of_the_stored_graph_is_not_shown(
     body = await documents.render(stored, GRAPH, book_class, TURTLE)
     assert "graph" not in body, "the version token is the ETag, not content"
     assert "urn:v" not in body, "the version token is the ETag, not content"
+
+
+# --- language tags and literals through the JSON-LD path -------------------------------------------
+
+
+def _with_label(graph: Graph, label: Literal) -> Graph:
+    """``graph`` with the label of the book ``label``, whatever it was."""
+    tagged = Graph()
+    for s, p, o in graph:
+        if not (s == URIRef(BOOK) and p == SKOS.prefLabel):
+            tagged.add((s, p, o))
+    tagged.add((URIRef(BOOK), SKOS.prefLabel, label))
+    return tagged
+
+
+def _objects_of(dataset: dict, literal: str) -> list[dict]:
+    return [t["object"] for t in dataset["@default"] if t["object"]["value"] == literal]
+
+
+def test_the_dataset_of_a_tagged_literal_holds_its_language_and_rdf_lang_string() -> None:
+    graph = Graph()
+    graph.add((URIRef(BOOK), SKOS.prefLabel, Literal("Dune", lang="en")))
+    assert _objects_of(dataset_of(graph), "Dune") == [
+        {"type": "literal", "value": "Dune", "language": "en", "datatype": str(RDF.langString)}
+    ]
+
+
+@pytest.mark.parametrize(
+    ("literal", "expected"),
+    [
+        (
+            Literal("a\\r"),
+            {"type": "literal", "value": "a\\r", "datatype": str(XSD.string)},
+        ),
+        (
+            Literal("7", datatype=XSD.integer),
+            {"type": "literal", "value": "7", "datatype": str(XSD.integer)},
+        ),
+    ],
+    ids=["backslash-r", "typed"],
+)
+def test_the_dataset_of_a_plain_or_typed_literal_has_no_language_and_keeps_its_text(
+    literal: Literal, expected: dict
+) -> None:
+    graph = Graph()
+    graph.add((URIRef(BOOK), SKOS.prefLabel, literal))
+    assert _objects_of(dataset_of(graph), str(literal)) == [expected]
+
+
+def test_a_backslash_and_r_survives_framing(documents, book_class, stored) -> None:
+    framed = documents.frame(_with_label(stored, Literal("a\\r")), book_class)
+    assert framed["label"] == "a\\r", "not a carriage return"
+
+
+def test_framing_a_tagged_label_keeps_the_language_and_reads_back_as_the_same_triples(
+    documents, book_class, stored
+) -> None:
+    tagged = _with_label(stored, Literal("Dune", lang="en"))
+    framed = documents.frame(tagged, book_class)
+    assert framed["label"] == {"@value": "Dune", "@language": "en"}
+    assert_same_triples(
+        graph_of_json(documents, {k: v for k, v in framed.items() if k != "@context"}), tagged
+    )
+
+
+async def test_a_tagged_label_is_plain_in_json_and_tagged_in_json_ld(
+    documents, book_class, stored
+) -> None:
+    tagged = _with_label(stored, Literal("Dune", lang="en"))
+    as_json = json.loads(await documents.render(tagged, GRAPH, book_class, JSON))
+    as_ld = json.loads(await documents.render(tagged, GRAPH, book_class, JSON_LD))
+    assert as_json["label"] == "Dune"
+    assert as_ld["label"] == {"@value": "Dune", "@language": "en"}
 
 
 # --- the one implementation of a body and of a frame ---------------------------------------------
