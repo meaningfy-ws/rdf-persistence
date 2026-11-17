@@ -393,3 +393,10 @@ DEC-9, and PD-4's fallback `"sparql"`.
   outside this change (`ds_name` → `fuseki_dataset_name`, one use in `adapters/fuseki.py`).
   Camel-case wire aliases, valid identifiers, keep their present names. Rejected: the `rp_*`
   names (every TC and call site would change), an opt-in annotation (a second way to name a field).
+- **D-5 mypy reads the field names** (tasks 1.2–1.4). Without a plugin mypy takes pydantic's
+  `alias` as the only constructor keyword (PEP 681), so every `LogContext(step=…)` is a `call-arg`
+  error although `validate_by_name` accepts it at run time. `mypy.ini` enables the stock
+  `pydantic.mypy` plugin (P-0008: reuse). The plugin also types `model_construct()` with the
+  required fields, which the one bare `TenantAccess.model_construct()` in `tenancy.py`
+  (`_refuse_bad_store_name`) breaks; that call is fixed in the same commit. Rejected: `# type:
+  ignore` at 100+ sites; generating `validation_alias` instead (the wire models validate by alias).
