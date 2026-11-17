@@ -88,17 +88,48 @@ jobs:
       - run: make check-spec-docs
       - run: make check-generation
 
+  # The fast unit lane in SPLITS duration-balanced shards (Makefile); slow tests run locally only
+  # (make test-unit, check-all). One shard is ~1/8 of the ~14 min the lane takes on one runner.
+  unit-shard:
+    name: Unit tests ${{ matrix.group }}/8
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: make test-unit-ci GROUP=${{ matrix.group }}
+
+      - name: Upload the shard's coverage data and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-shard-${{ matrix.group }}
+          retention-days: 1
+          include-hidden-files: true
+          path: |
+            .coverage.${{ matrix.group }}
+            test-results-${{ matrix.group }}.xml
+
+  # The floor and SonarCloud read the shards' union, so they run once, after every shard.
   unit:
     name: Unit tests (coverage floor)
+    needs: unit-shard
     runs-on: ubuntu-latest
-    # The unit lane takes ~30 min on a 4-core runner (70 s on 20 local cores): 60 min, not 30.
-    timeout-minutes: 60
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # SonarCloud reads the history
       - uses: ./.github/actions/setup
-      - run: make test-unit-ci  # slow tests run locally only (make test-unit, check-all)
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: unit-shard-*
+          merge-multiple: true
+      - run: make coverage-combine
 
       - name: Upload coverage report
         if: always()
@@ -108,7 +139,7 @@ jobs:
           retention-days: 14
           path: |
             coverage.xml
-            test-results.xml
+            test-results-*.xml
 
       - name: SonarCloud scan
         if: always() && vars.SONAR_ENABLED == 'true'

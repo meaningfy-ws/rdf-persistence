@@ -13,6 +13,7 @@ LANES = [
     "test",
     "test-unit",
     "test-unit-ci",
+    "test-durations",
     "test-feature",
     "test-fast",
     "test-changed",
@@ -26,6 +27,7 @@ PARALLEL_LANES = [
     "test",
     "test-unit",
     "test-unit-ci",
+    "test-durations",
     "test-feature",
     "test-fast",
     "profile-tests",
@@ -120,10 +122,32 @@ def test_only_the_ci_unit_lane_leaves_the_slow_tests_out() -> None:
         assert "slow" not in selection(lane), f"{lane} must keep running the slow tests"
 
 
-def test_the_ci_unit_job_runs_the_ci_unit_lane() -> None:
+def test_the_ci_unit_jobs_run_the_ci_unit_lane_in_shards_and_combine_their_coverage() -> None:
     ci = (TESTS_ROOT_DIR.parent / ".github" / "workflows" / "ci.yaml").read_text(encoding="utf-8")
 
-    assert "run: make test-unit-ci" in ci, "the CI unit job must run make test-unit-ci"
+    assert "run: make test-unit-ci GROUP=${{ matrix.group }}" in ci, "a CI shard runs one group"
+    assert "run: make coverage-combine" in ci, "a CI job must combine the shards' coverage"
+
+
+def test_a_shard_runs_one_balanced_group_without_the_floor() -> None:
+    shard = expanded(" ".join(recipe_of("test-unit-ci"))).replace("$(GROUP)", "3")
+
+    assert "--splits $(SPLITS)" not in shard, "SPLITS is expanded"
+    assert "--group 3" in shard, "GROUP picks one of the splits"
+    assert "--cov-fail-under=0" in shard, "one shard alone cannot reach the floor"
+
+
+def test_the_ci_matrix_has_one_job_per_split() -> None:
+    ci = (TESTS_ROOT_DIR.parent / ".github" / "workflows" / "ci.yaml").read_text(encoding="utf-8")
+    splits = int(dict(VARIABLE.findall(MAKEFILE))["SPLITS"])
+
+    assert f"group: {list(range(1, splits + 1))}" in ci, "the matrix must list every split"
+
+
+def test_the_combined_coverage_keeps_the_80_percent_floor() -> None:
+    assert any("--fail-under=80" in line for line in recipe_of("coverage-combine")), (
+        "make coverage-combine must check the 80 % floor"
+    )
 
 
 def test_the_refresh_map_target_runs_the_refresher() -> None:
