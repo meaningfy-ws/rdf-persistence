@@ -1,0 +1,150 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "linkml": "https://w3id.org/linkml/",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "aggregate": {
+         "@type": "rp:SparqlTerm",
+         "@id": "aggregate"
+      },
+      "base": {
+         "@id": "base"
+      },
+      "deployment": {
+         "@id": "deployment"
+      },
+      "excluded": {
+         "@type": "rp:SparqlTerm",
+         "@id": "excluded"
+      },
+      "from_version": {
+         "@type": "rp:SparqlTerm",
+         "@id": "from_version"
+      },
+      "hidden": {
+         "@type": "rp:SparqlTerm",
+         "@id": "hidden"
+      },
+      "id": {
+         "@id": "id"
+      },
+      "index": {
+         "@type": "rp:SparqlTerm",
+         "@id": "index"
+      },
+      "limit": {
+         "@type": "rp:SparqlTerm",
+         "@id": "limit"
+      },
+      "loaded": {
+         "@type": "rp:SparqlTerm",
+         "@id": "loaded"
+      },
+      "offset": {
+         "@type": "rp:SparqlTerm",
+         "@id": "offset"
+      },
+      "order": {
+         "@type": "rp:SparqlTerm",
+         "@id": "order"
+      },
+      "p_kind": {
+         "@type": "rp:SparqlTerm",
+         "@id": "p_kind"
+      },
+      "p_listed_in": {
+         "@type": "rp:SparqlTerm",
+         "@id": "p_listed_in"
+      },
+      "p_owned_by": {
+         "@type": "rp:SparqlTerm",
+         "@id": "p_owned_by"
+      },
+      "p_sort": {
+         "@type": "rp:SparqlTerm",
+         "@id": "p_sort"
+      },
+      "p_stamp": {
+         "@type": "rp:SparqlTerm",
+         "@id": "p_stamp"
+      },
+      "p_total": {
+         "@type": "rp:SparqlTerm",
+         "@id": "p_total"
+      },
+      "patterns": {
+         "@type": "rp:SparqlTerm",
+         "@id": "patterns"
+      },
+      "registry": {
+         "@type": "rp:SparqlTerm",
+         "@id": "registry"
+      },
+      "root": {
+         "@type": "rp:SparqlTerm",
+         "@id": "root"
+      },
+      "rp_path": {
+         "@id": "rp_path"
+      },
+      "schema_id": {
+         "@type": "rp:SparqlTerm",
+         "@id": "schema_id"
+      },
+      "stamps": {
+         "@type": "rp:SparqlTerm",
+         "@id": "stamps"
+      },
+      "target": {
+         "@type": "rp:SparqlTerm",
+         "@id": "target"
+      },
+      "tenant": {
+         "@id": "tenant"
+      },
+      "tenant_id": {
+         "@id": "tenant_id"
+      },
+      "tenant_segment": {
+         "@id": "tenant_segment"
+      },
+      "type": "@type",
+      "values": {
+         "@type": "rp:SparqlTerm",
+         "@id": "values"
+      },
+      "@version": 1.1,
+      "IriParts": {
+         "@id": "IriParts",
+         "@context": {
+            "root": {
+               "@id": "root"
+            }
+         }
+      },
+      "IriTemplateVariables": {
+         "@id": "IriTemplateVariables"
+      },
+      "KeyBranchTerms": {
+         "@id": "KeyBranchTerms"
+      },
+      "KeyHeldTerms": {
+         "@id": "KeyHeldTerms"
+      },
+      "ListingTerms": {
+         "@id": "ListingTerms"
+      },
+      "OwnerTerms": {
+         "@id": "OwnerTerms"
+      },
+      "RegistryTerms": {
+         "@id": "RegistryTerms"
+      },
+      "StampGuardTerms": {
+         "@id": "StampGuardTerms"
+      }
+   }
+}

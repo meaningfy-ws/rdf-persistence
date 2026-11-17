@@ -1,9 +1,11 @@
 """IRI derivation and minting, and the names of PD-6a."""
 
 import re
+import string
 import uuid
 
 import pytest
+from pydantic import ValidationError
 from rdflib import URIRef
 
 from rdf_persistence.domain.exceptions import InvalidIri, NotFound
@@ -12,9 +14,22 @@ from rdf_persistence.domain.layout import (
     system_database_name,
     tenant_name_prefix,
 )
+from rdf_persistence.services.generated.service.rp_service import (
+    IdKind,
+    IdSpec,
+    IriPolicy,
+    ServiceSettings,
+)
+from rdf_persistence.services.generated.templates.rp_templates import (
+    IriParts,
+    IriTemplateVariables,
+)
 from rdf_persistence.services.iris import (
     DEFAULT_IRIS,
+    Iris,
     aggregate_iri,
+    effective_policy,
+    iri_template_variables,
     is_aggregate_graph_iri,
     is_aggregate_iri,
     is_loaded_graph_of,
@@ -259,3 +274,65 @@ def test_an_aggregate_iri_is_the_tenant_the_path_and_the_id():
 def test_an_aggregate_id_that_is_not_a_canonical_uuid_is_not_found(aggregate_id):
     with pytest.raises(NotFound):
         aggregate_iri(f"{BASE}libraries/{UUID_A}", "books", aggregate_id)
+
+
+def _settings(deployment: str | None = None) -> ServiceSettings:
+    return ServiceSettings(
+        base="https://ex.org/",
+        deployment=deployment,
+        prefix="lib",
+        tenant_segment="t",
+        creator_role="owner",
+        roles_claim="roles",
+    )
+
+
+def test_tc22_one_helper_gives_the_template_variables_to_both_sites():
+    """TC-22: a missing deployment is the empty string, and the policy and ``Iris`` read the same variables."""
+    settings = _settings()
+    variables = iri_template_variables(settings)
+    assert variables == IriTemplateVariables(
+        base="https://ex.org/", deployment="", tenant_segment="t"
+    )
+    assert Iris(settings)._fixed == variables, "Iris reads the helper's variables"
+    assert effective_policy(None, settings).tenant_template == "https://ex.org/t/{tenant_id}", (
+        "the policy writes the helper's variables into its templates"
+    )
+
+
+def test_tc22_a_deployment_is_kept_as_it_is():
+    """TC-22: a set deployment is a variable of its own."""
+    assert iri_template_variables(_settings("blue")).deployment == "blue"
+
+
+def test_tc23_the_id_of_a_tenant_iri_is_the_id():
+    """TC-23: ``tenant_id_of`` reads the id out of what the tenant template mints."""
+    assert Iris(_settings()).tenant_id_of(f"https://ex.org/t/{UUID_A}") == UUID_A
+
+
+def _letter_tenants() -> Iris:
+    """An ``Iris`` whose tenant ids are five letters, so the id slot can spell a reserved word."""
+    policy = IriPolicy(
+        tenant_id=IdSpec(kind=IdKind.RANDOM, length=5, alphabet=string.ascii_lowercase)
+    )
+    settings = _settings().replaced(iri_policy=policy)
+    return Iris(settings, root_types=frozenset({"books"}))
+
+
+@pytest.mark.parametrize("word", ["books", "graph", "parts"])
+def test_tc23_a_reserved_word_in_the_place_of_the_id_is_refused(word):
+    """TC-23: a reserved word (a root type or a layout word) that fits the id spec is no tenant id."""
+    with pytest.raises(InvalidIri):
+        _letter_tenants().tenant_id_of(f"https://ex.org/t/{word}")
+
+
+def test_tc23_a_word_of_the_same_shape_that_is_not_reserved_is_the_id():
+    """TC-23: the refusal is the reserved word's, not the shape's."""
+    assert _letter_tenants().tenant_id_of("https://ex.org/t/shelf") == "shelf"
+
+
+def test_tc24_a_group_the_model_does_not_name_is_refused():
+    """TC-24: ``IriParts`` has no room for a regex group it does not name."""
+    assert IriParts.model_validate({"tenant_id": "x"}).tenant_id == "x"
+    with pytest.raises(ValidationError):
+        IriParts.model_validate({"tenant_id": "x", "unknown": "y"})

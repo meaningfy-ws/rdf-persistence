@@ -41,6 +41,7 @@ from rdf_persistence.domain.sparql import (
     Triple,
     count,
     fill,
+    fill_terms,
     fragment,
     join,
     match_patterns,
@@ -56,6 +57,7 @@ from rdf_persistence.services.generated.service.rp_service import (
     ListPlan,
     ListRequest,
 )
+from rdf_persistence.services.generated.templates.rp_templates import OwnerTerms
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.listing import (
     PAGE,
@@ -413,26 +415,33 @@ def request_text(
 
 
 def _fill_marked(
-    template: str, graph: URIRef, registry: URIRef, marker: URIRef, **terms: SparqlTerm
+    template: str,
+    graph: URIRef,
+    registry: URIRef,
+    marker: URIRef,
+    owner: OwnerTerms | None = None,
+    **more: SparqlTerm,
 ) -> str:
-    """``template`` with the terms every marked operation shares."""
-    return fill(
+    """``template`` with the terms every marked operation shares, the ``owner`` terms when it drops
+    what a root owns, and ``more``: the terms of this operation alone."""
+    if owner is None:
+        return fill(
+            template,
+            graph=term(graph),
+            registry=term(registry),
+            marker=term(marker),
+            commit_marker=term(v.COMMIT_MARKER),
+            **more,
+        )
+    return fill_terms(
         template,
+        owner,
         graph=term(graph),
         registry=term(registry),
         marker=term(marker),
         commit_marker=term(v.COMMIT_MARKER),
-        **terms,
+        **more,
     )
-
-
-def _owner_terms(root: URIRef) -> dict[str, SparqlTerm]:
-    return {
-        "root": term(root),
-        "p_owned_by": term(v.REGISTRY_OWNED_BY),
-        "p_kind": term(v.REGISTRY_KIND),
-        "loaded": term(v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH]),
-    }
 
 
 def add_parts(
@@ -486,7 +495,7 @@ def replace_parts(
         graph,
         registry,
         marker,
-        **_owner_terms(root),
+        v.owner_terms(root),
         p_version=term(v.VERSION),
         old=term(Literal(old_version)),
         kept=term_list(kept),
@@ -506,17 +515,15 @@ def remove_parts(
 ) -> tuple[SparqlTerm, str]:
     """The guard (``graph`` is at ``old_version``) and the marked operations that delete a graph and
     every registry entry the root owns, and the ``dependents`` that point at the root (none, none)."""
-    operations = _fill_marked(REMOVE, graph, registry, marker, **_owner_terms(root))
+    operations = _fill_marked(REMOVE, graph, registry, marker, v.owner_terms(root))
     if dependents:
-        operations += ";\n" + fill(
+        operations += ";\n" + fill_terms(
             _DROP_DEPENDENTS,
-            registry=term(registry),
+            v.registry_terms(registry),
             marker=term(marker),
             commit_marker=term(v.COMMIT_MARKER),
             root=term(root),
-            p_kind=term(v.REGISTRY_KIND),
             aggregate=term(v.REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
-            p_owned_by=term(v.REGISTRY_OWNED_BY),
             pairs=_pair_values(dependents),
         )
     return _at_version(graph, old_version), operations

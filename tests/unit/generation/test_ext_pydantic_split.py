@@ -210,3 +210,70 @@ def test_a_field_an_unlabelled_class_relaxes_carries_a_type_ignore(
     assert line.endswith("# type: ignore[assignment]") is ignored, (
         f"Chapter.{slot}: the ignore belongs on a field that loosens its base class's, and only there"
     )
+
+
+TERM_MODULE = """
+id: https://example.org/ns/terms
+name: terms
+title: Terms
+description: A module whose type is a Python class of the toolkit.
+prefixes: {t: "https://example.org/ns/t#", linkml: "https://w3id.org/linkml/"}
+default_prefix: t
+imports: [linkml:types]
+types:
+  sparql_term:
+    typeof: string
+    description: A rendered SPARQL term.
+    repr: SparqlTerm
+    annotations:
+      python_import: rdf_persistence.domain.sparql
+classes:
+  Bundle:
+    title: Bundle
+    description: A bundle of terms.
+    attributes:
+      subject: {range: sparql_term, required: true, title: Subject, description: A term.}
+"""
+
+
+def test_a_type_with_a_repr_and_a_python_import_is_imported_and_used_as_the_field_type(
+    tmp_path: Path,
+) -> None:
+    """TC-16 (RISK-4: the generator relies on the stock use of a type's ``repr``)."""
+    (tmp_path / "terms.yaml").write_text(TERM_MODULE, encoding="utf-8")
+    text = {f.name: f.text for f in render_modules(tmp_path / "terms.yaml")}["terms.py"]
+    tree = ast.parse(text)
+    compile(text, "terms.py", "exec")
+    assert "SparqlTerm" in imports_from(tree, "rdf_persistence.domain.sparql"), (
+        "the module must import SparqlTerm from the annotation's module"
+    )
+    field = next(
+        n
+        for n in ast.walk(tree)
+        if isinstance(n, ast.AnnAssign) and ast.unparse(n.target) == "subject"
+    )
+    assert ast.unparse(field.annotation) == "SparqlTerm", "the field is typed by the type's repr"
+
+
+_REPR_LINE = "    repr: SparqlTerm\n"
+_IMPORT_LINES = "    annotations:\n      python_import: rdf_persistence.domain.sparql\n"
+
+
+@pytest.mark.parametrize(
+    "half",
+    [
+        pytest.param(_IMPORT_LINES, id="a-repr-without-a-python_import"),
+        pytest.param(_REPR_LINE, id="a-python_import-without-a-repr"),
+    ],
+)
+def test_a_type_with_only_one_of_repr_and_python_import_yields_no_broken_import(
+    tmp_path: Path, half: str
+) -> None:
+    """Attacks the error-matrix row "``repr`` with no ``python_import``" and its mirror: no ``import None``."""
+    assert half in TERM_MODULE, "the fixture still holds the half this case removes"
+    (tmp_path / "terms.yaml").write_text(TERM_MODULE.replace(half, ""), encoding="utf-8")
+    text = {f.name: f.text for f in render_modules(tmp_path / "terms.yaml")}["terms.py"]
+    compile(text, "terms.py", "exec")
+    modules = {str(n.module) for n in ast.walk(ast.parse(text)) if isinstance(n, ast.ImportFrom)}
+    assert "None" not in modules, "no import of the object None"
+    assert "rdf_persistence.domain.sparql" not in modules, "an import needs both halves"

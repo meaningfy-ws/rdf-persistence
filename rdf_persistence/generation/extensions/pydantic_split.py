@@ -25,12 +25,13 @@ from linkml.generators.common.build import ClassResult
 from linkml.generators.pydanticgen import PydanticGenerator
 from linkml.generators.pydanticgen.build import SlotResult
 from linkml.generators.pydanticgen.pydanticgen import MetadataMode, SplitMode
-from linkml.generators.pydanticgen.template import Imports, PydanticAttribute
+from linkml.generators.pydanticgen.template import Import, Imports, ObjectImport, PydanticAttribute
 from linkml_runtime.linkml_model.meta import (
     ClassDefinition,
     EnumDefinition,
     SchemaDefinition,
     SlotDefinition,
+    TypeDefinition,
 )
 from linkml_runtime.utils.schemaview import SchemaView
 
@@ -90,8 +91,9 @@ class SplitPydanticGenerator(PydanticGenerator):
         return metamodel_module(module.lstrip("."), toolkit=self.toolkit)
 
     def _get_imports(self, element: ClassDefinition | SlotDefinition | None = None) -> Imports:
-        """The stock class imports, plus the enums of other modules that a slot ranges over."""
-        imports = super()._get_imports(element)
+        """The stock class imports, plus the enums of other modules that a slot ranges over, plus
+        the Python import of a type whose ``repr`` names a class (the ``python_import`` annotation)."""
+        imports = super()._get_imports(element) + self._python_imports(element)
         if not self.split or (self.split_mode == SplitMode.FULL and element is not None):
             return imports
         sv = self.schemaview
@@ -106,6 +108,16 @@ class SplitPydanticGenerator(PydanticGenerator):
             if name not in local:
                 imports += self._get_element_import(name)
         return imports
+
+    def _python_imports(self, element: ClassDefinition | SlotDefinition | None) -> Imports:
+        """``from <python_import> import <repr>`` for each type a slot ranges over that declares both."""
+        if not isinstance(element, SlotDefinition):
+            return Imports()
+        sv = self.schemaview
+        types = [
+            sv.get_type(name) for name in sv.slot_range_as_union(element) if name in sv.all_types()
+        ]
+        return Imports(imports=[_python_import(t) for t in types if t.repr and _python_module(t)])
 
     def before_generate_enums(
         self, enum: Iterable[EnumDefinition], sv: SchemaView
@@ -140,6 +152,16 @@ class SplitPydanticGenerator(PydanticGenerator):
             strict=annotation_text(slot.source, GenerationAnnotation.STRICT) == TRUE_TEXT,
         )
         return slot
+
+
+def _python_module(definition: TypeDefinition) -> str | None:
+    return annotation_text(definition, GenerationAnnotation.PYTHON_IMPORT)
+
+
+def _python_import(definition: TypeDefinition) -> Import:
+    return Import(
+        module=str(_python_module(definition)), objects=[ObjectImport(name=str(definition.repr))]
+    )
 
 
 def _loosens_a_base_slot(slot: SlotDefinition, sv: SchemaView) -> bool:

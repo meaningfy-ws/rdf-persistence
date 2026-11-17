@@ -59,7 +59,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/pydantic_split.py",
-      "sha256": "684db104072547bdd0d66c69c8c80c19d5f521b2e129e2f351911d5097e74a5f"
+      "sha256": "80f24c753df708a3f4feb53d3799f67ec4cc16b4e3df7205ac5ba1b5e45e7d6b"
     },
     {
       "path": "rdf_persistence/generation/extensions/pydantic_validators.py",
@@ -91,7 +91,7 @@
     },
     {
       "path": "rdf_persistence/generation/model/rp_generation.yaml",
-      "sha256": "4062e3c4d751e973a26f0c95c8af1815128a1c3aaffcd0a27d50204e5f12ebc0"
+      "sha256": "7735103fce7650221dabd1cd169c7e20a1515a2201a92a33d646c0246586117b"
     },
     {
       "path": "rdf_persistence/generation/pipeline.py",
@@ -169,7 +169,7 @@
     },
     {
       "path": "rdf_persistence/generation/generated/rp_generation.py",
-      "sha256": "33967ababed12f81a655a0c93a2e1155531a6db31b24e28ed82352c568a525ab"
+      "sha256": "d1094ac3ce61d1ce25cce4e6d504005ff7ea7543be6a565769930214a5e67984"
     },
     {
       "path": "rdf_persistence/generation/generated/shapes.ttl",

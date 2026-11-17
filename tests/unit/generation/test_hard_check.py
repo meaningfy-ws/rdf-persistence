@@ -824,9 +824,9 @@ def test_the_toy_with_migrations_and_a_quoted_version_passes(toy_copy: Path) -> 
     assert _stored_schema_problems(toy_copy / ROOT_SCHEMA, "migrations") == [], "the toy is stored"
 
 
-def test_the_toolkits_four_targets_pass_the_hard_check_with_their_own_settings() -> None:
-    """TC-10: rp_service, rp_wire and rp_generation need no migrations folder; rp.yaml has one."""
+def test_the_toolkits_five_targets_pass_the_hard_check_with_their_own_settings() -> None:
+    """TC-10: rp_service, rp_templates, rp_wire and rp_generation need no migrations folder; rp.yaml has one."""
     targets = read_targets(REPO / "pyproject.toml")
-    assert len(targets) == 4, [t.schema_file for t in targets]
+    assert len(targets) == 5, [t.schema_file for t in targets]
     found = generate(targets, REPO, (steps.HARD_STEP,), check=True)
-    assert [format_problem(p) for p in found] == [], "the toolkit's four targets raise no problem"
+    assert [format_problem(p) for p in found] == [], "the toolkit's five targets raise no problem"

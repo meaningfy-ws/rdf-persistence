@@ -116,7 +116,7 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-9. The new ones:
   - `ListingTerms` (`mixins: RegistryTerms`): `aggregate`, `target`, `patterns`, `hidden`,
     `p_listed_in`, `p_total`, `order`, `limit`, `offset`, optional `p_sort`. The template's
     `$class` becomes `$target` (`listing.py:281-293`, no more `**{"class": ...}`).
-  - `StampGuardTerms`: `stamps`, `schema`, `p_stamp`, `from_version`; the templates' `$from`
+  - `StampGuardTerms`: `stamps`, `schema_id` (D-19), `p_stamp`, `from_version`; the templates' `$schema` becomes `$schema_id` and `$from`
     becomes `$from_version` in `_STEP`, `_ROTATION` and `_STAMP_MOVE` (`migrations.py:45-63`), all
     internal (no consumer file names a placeholder). Replaces the `guard` dict (`:242-247`); the
     three operations add their own terms through `more`: `_STEP` `delete`, `insert`, `where`,
@@ -416,6 +416,87 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   schemas a consumer imports" has no test: a `glob` turned `rglob` in `metamodel_importmap` would
   expose the technical schemas unnoticed. A signed scenario without a test fails the traceability
   check. Fix: one unit test.
+- **D-14 (stage 2, task 2.1)** GitNexus rated `SparqlTerm` HIGH (17 direct) and
+  `GenerationAnnotation` CRITICAL (30 importers of `rp_generation.py`). Not taken to the
+  developer: the task adds a pydantic schema hook (validation only, no change for code that uses
+  `SparqlTerm` as a `str`) and one enum value, so no importer changes (as D-1).
+- **D-15 (stage 2)** The review set is P-0005's one L2 and L3 pass for the stage, as the
+  hand-over proposed. Stage 2 carries RISK-4 (`pydantic_split` relies on `repr`), which TC-16 pins;
+  likelihood low on the pinned linkml, so it does not call for the full set. The full review runs
+  after stage 4.
+- **D-16 (stage 2)** The adversarial tester runs once, after task 2.2, as `tasks.md` names it
+  (D-2: every stage). Task 2.1 adds a generator type (`python_import`), so its builder bootstraps
+  the generator (stub the new import, `make generate`, restore, `make generate` again; hand-over
+  of stage 1).
+- **D-17 (stage 2, task 2.1, upstream finding, external)** The Context row "pydantic turns a
+  `SparqlTerm` into a plain `str`" does not hold for a field typed `SparqlTerm` on pydantic
+  2.14.2: without the schema hook, building the model raises `PydanticSchemaGenerationError`
+  (a field typed `str` still turns a `SparqlTerm` into a `str`, so `model_dump` stays unsafe). DEC-7
+  holds either way: the hook is what lets the field exist and refuse a raw `str`. No code change;
+  no upstream issue (pydantic behaves as documented).
+- **D-18 (stage 2, task 2.2)** GitNexus rated `session._owner_terms` HIGH (it reaches `remove`,
+  `replace_graph`, `replace_parts`, `remove_parts`); `unique_keys.py` and `migrations.py` MEDIUM,
+  `listing_query` LOW. Not taken to the developer: the query text must not change (TC-19's golden
+  strings, captured before the change, pin every template the task touches), and the existing
+  session, key, listing and migration tests stay unchanged.
+- **D-19 (stage 2, task 2.2, divergence from PD-5)** `StampGuardTerms`' field is `schema_id`, not
+  `schema`: a pydantic field named `schema` shadows `BaseModel.schema` and warns at import. The
+  placeholder in `_STEP`, `_ROTATION` and `_STAMP_MOVE` follows (`$schema_id`); `SELECT_STAMPS` and
+  the stamp insert keep `$schema` (not term models). The query text is unchanged: the lead ran
+  TC-19's goldens against the code before the change (all ten equal).
+- **D-20 (stage 2, task 2.2)** One existing test changed beyond the PLAN's list:
+  `test_hard_check.py` counted the toolkit's targets (`== 4`); the templates target makes five.
+- **D-21 (stage 2, task 2.3)** GitNexus rated `Iris` HIGH (22 direct); `effective_policy` LOW.
+  Not taken to the developer: the task changes `Iris`' internals (`_fixed`, the matchers), not its
+  public methods, and the `test_iris*` and `test_iri_policy*` tests stay unchanged. The tester
+  runs in its own worktree on 2.1 and 2.2 (`7968110`) while 2.3 is built (R-0004).
+- **D-22 (stage 2, task 2.3, as built)** `IriParts` forbids unknown keys through `RpModel`'s
+  `extra="forbid"`, with no annotation. `Iris._fixed` is the model, and it is dumped only at the
+  library boundaries (`str.format`, `_compile`). The helper is `iri_template_variables`. Two
+  readers now test `is None` where they tested a key's presence: `_belongs` (a `tenant` group that
+  did not take part in the match) and `tenant_of_access` (an access template with neither `tenant`
+  nor `tenant_id`, which used to raise `KeyError` and now reaches `self.tenant("None")`). The
+  builder holds that both paths need an invalid policy; the stage's review judges it. The review
+  (S1) agrees: `_compile` makes every named group mandatory, so `_belongs` behaves as before for
+  any policy; `tenant_of_access` needs a policy built with `model_construct`, and then refuses
+  with `InvalidIri`. The review (S2) adds GitNexus ratings missing here: `Iris._belongs` CRITICAL
+  (3 direct, 37 processes), `session._fill_marked` CRITICAL (3 direct), `Iris.tenant_of_access`
+  HIGH (4 direct). Not taken to the developer: `_belongs` is behaviour-preserving (S1), and TC-19's
+  goldens pin `_fill_marked`'s text.
+- **D-23 (stage 2, L2 W1, re-labelled Critical)** `architecture/generation.adoc`,
+  `architecture/index.adoc` and `rp_templates.yaml`'s description (which flows into the generated
+  docstrings) say every field of the templates group is a `SparqlTerm`; task 2.3 added
+  `IriTemplateVariables` and `IriParts`, of plain strings. Re-labelled as D-12 was in stage 1: the
+  stage changed these pages and they now disagree with the code. Fix: name the IRI models in both
+  pages and reword the schema description; `make generate`.
+- **D-24 (stage 2, L2 W2, re-labelled Critical)** Five tests task 2.1 added to
+  `tests/unit/domain/test_sparql.py` (TC-14, TC-17, TC-55) have no row in
+  `tests/audit/scenario-map.csv`. Re-labelled as D-11 was: the map is what the traceability check
+  reads. Fix: map them; `make refresh-map` lists none of this stage's ids.
+- **D-25 (stage 2, L2 W3, re-labelled Critical)** TC-23's reserved-word test passes with the
+  reserved-word check deleted: the default UUID4 tenant id never matches `app` or `books`, so the
+  check is never reached. A PLAN TC that does not test its row is that brief item unmet. Fix: a
+  policy whose `tenant_id` spec can spell the word; assert `InvalidIri` when it is reserved and
+  acceptance when it is not.
+- **D-26 (stage 2, checker F-C1, the developer's decision 2026-11-17)** `Iris.tenant_id_of` still
+  reads the match by a string key (`found["tenant_id"]`), the one matcher of task 2.3 not read
+  through `IriParts` (P-0007). Fixed now (one fixer, one full-gates run) rather than left under
+  the floor. On the same day the developer granted the lead push, PR and merge on green CI for
+  `technical-models` until the change ends (epic-delivery, Authority).
+
+Under the floor (not fixed in stage 2):
+
+- L2 W4: `CHANGELOG.md` has no line for the `python_import` annotation. Owed to stage 4 with the
+  other release-note lines (task 4.3 or the PR 4 reconciliation).
+- L2 S1 (optional): an explicit `InvalidIri` in `tenant_of_access` when both parts are `None`.
+- L2 S3: no test of the error-matrix row "`repr` with no `python_import`"; the stage's tester
+  wrote one (`repr` alone adds no import), which the fix pass keeps.
+- L2 S4: TC-19's golden names an uncommitted capture script; the docstring should say the golden
+  is frozen.
+- Tester F-1: `model_json_schema()` fails on a term model (`is_instance_schema`). The templates
+  group is never served (`openapi = false`), and nothing asks for its JSON Schema.
+- Tester F-2: `fill_terms` given a plain dict raises `ValueError`, not `SparqlError`; the
+  parameter is typed `BaseModel`.
 
 Under the floor (not fixed in stage 1):
 
@@ -433,8 +514,8 @@ Under the floor (not fixed in stage 1):
 - L4+L5 S3: no `__dir__` for the lazy names.
 - L2 S1, S2, S3, S5: a parametrized kind table, the target named in the domain CLI test,
   `lint-imports` output naming both modules, assert messages.
-- L2 S4: TC-12 names `rdf_persistence.JwtClaims`, which was never top-level; the wire models are
-  adapters-only (PD-2).
+- L2 S4 (stage 1): TC-12 names `rdf_persistence.JwtClaims`, which was never top-level; the wire
+  models are adapters-only (PD-2).
 
 ## Open Questions
 
