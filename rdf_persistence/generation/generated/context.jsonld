@@ -5,9 +5,7 @@
          "@id": "linkmlVersion"
       },
       "rp": "https://meaningfy.ws/ns/rdf-persistence#",
-      "schema": {
-         "@id": "schemaFile"
-      },
+      "schema": "http://schema.org/",
       "shex": "http://www.w3.org/ns/shex#",
       "skos": "http://www.w3.org/2004/02/skos/core#",
       "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
@@ -107,11 +105,20 @@
          "@id": "keyName"
       },
       "kind": {
-         "@id": "targetKind",
+         "@id": "constraintKind",
          "@type": "@vocab",
          "@context": {
-            "domain": "https://meaningfy.ws/ns/rdf-persistence#TargetKindDomain",
-            "technical": "https://meaningfy.ws/ns/rdf-persistence#TargetKindTechnical"
+            "required": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindRequired",
+            "cardinality": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindCardinality",
+            "range_type": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindRangeType",
+            "range_enum": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindRangeEnum",
+            "pattern": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindPattern",
+            "value_bounds": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindValueBounds",
+            "identifier": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindIdentifier",
+            "closed": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindClosed",
+            "exactly_one_of": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindExactlyOneOf",
+            "any_of": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindAnyOf",
+            "unique_keys": "https://meaningfy.ws/ns/rdf-persistence#ConstraintKindUniqueKeys"
          }
       },
       "label": {
@@ -217,6 +224,9 @@
       "rule": {
          "@id": "rule"
       },
+      "schema_file": {
+         "@id": "schemaFile"
+      },
       "schema_id": {
          "@type": "@id",
          "@id": "lockSchemaId"
@@ -239,6 +249,14 @@
       },
       "stereotype": {
          "@id": "stereotype"
+      },
+      "target_kind": {
+         "@id": "targetKind",
+         "@type": "@vocab",
+         "@context": {
+            "domain": "https://meaningfy.ws/ns/rdf-persistence#TargetKindDomain",
+            "technical": "https://meaningfy.ws/ns/rdf-persistence#TargetKindTechnical"
+         }
       },
       "text": {
          "@id": "text"

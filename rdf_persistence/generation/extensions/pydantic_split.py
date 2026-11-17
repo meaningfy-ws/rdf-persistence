@@ -59,10 +59,12 @@ from rdf_persistence.generation.generated.rp_generation import (
 )
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema, metamodel_importmap
 from rdf_persistence.services.schema_structure import (
+    FIELD_NAME_SLOT,
     TRUE_TEXT,
     annotation_text,
     apply_defaults,
     is_internal,
+    is_switched_on,
     is_toolkit_schema,
     own_schemas,
 )
@@ -72,7 +74,6 @@ PUBLIC_PACKAGE = "rdf_persistence"
 TOOLKIT_PACKAGE = "rdf_persistence.domain.generated"
 METAMODEL_DIR = PACKAGE_DIR / "model"
 INIT = "__init__.py"
-FIELD_NAME_SLOT = "slot"  # the one value of the ``field_name`` annotation
 _LIST_DEFAULT = re.compile(
     r"string\((.*)\)"
 )  # the ifabsent of a multivalued slot: its names, comma-separated
@@ -219,7 +220,7 @@ def _default_factory(slot: SlotDefinition) -> str | None:
 
     The hard check (``checks/default_instance.py``) has already refused a slot whose range is no class.
     """
-    flagged = annotation_text(slot, GenerationAnnotation.DEFAULT_INSTANCE) == TRUE_TEXT
+    flagged = is_switched_on(slot, GenerationAnnotation.DEFAULT_INSTANCE)
     return camelcase(str(slot.range)) if flagged else None
 
 

@@ -92,7 +92,8 @@ ALLOWED_ANNOTATIONS = {
 }
 # The annotations of the generation metamodel the check reads, and their values (D-52).
 GENERATION_ALLOWED_ANNOTATIONS: dict[Enum, tuple[str, ...]] = {
-    GenerationAnnotation.FIELD_NAME: ("slot",)
+    GenerationAnnotation.FIELD_NAME: ("slot",),
+    GenerationAnnotation.DEFAULT_INSTANCE: ("true", "false"),  # a boolean, read case-blind (D-55)
 }
 
 

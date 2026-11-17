@@ -1024,3 +1024,30 @@ def test_the_toolkits_seven_targets_pass_the_hard_check_with_their_own_settings(
     assert len(targets) == 8, [t.schema_file for t in targets]
     found = generate(targets, REPO, (steps.HARD_STEP,), check=True)
     assert [format_problem(p) for p in found] == [], "the toolkit's eight targets raise no problem"
+
+
+def _flag_problems(tmp_path: Path, written: str) -> list[str]:
+    """The problems about `group` when its `default_instance` annotation is written as ``written``."""
+    text = DEFAULT_INSTANCE_SCHEMA.format(name_required="false", name_default="").replace(
+        "default_instance: 'true'\n  label", f"default_instance: {written}\n  label", 1
+    )
+    root = tmp_path / "groups.yaml"
+    root.write_text(text, encoding="utf-8")
+    return [p for p in problems_of(root) if "group" in p]
+
+
+@pytest.mark.parametrize("written", ["true", "'true'", "'True'", "false", "'false'", "'False'"])
+def test_default_instance_reads_a_boolean_in_either_form_without_a_problem(
+    tmp_path: Path, written: str
+) -> None:
+    """D-55 (5): YAML `true`, `'true'` and `'True'` are the flag, `false` is off; none is refused."""
+    assert _flag_problems(tmp_path, written) == [], f"{written} is a boolean"
+
+
+@pytest.mark.parametrize("written", ["'yes'", "1", "'maybe'", "'on'"])
+def test_default_instance_that_is_not_a_boolean_is_refused_naming_the_slot(
+    tmp_path: Path, written: str
+) -> None:
+    """D-55 (5): a value that is not a boolean is no silent off; the problem names `group`."""
+    found = _flag_problems(tmp_path, written)
+    assert any("default_instance" in p and "group" in p for p in found), f"{written}: {found}"

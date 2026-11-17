@@ -205,3 +205,52 @@ def test_an_enum_without_meanings_keeps_its_plain_values(tmp_path: Path) -> None
 def test_an_enum_with_some_meanings_only_is_refused(tmp_path: Path) -> None:
     with pytest.raises(SchemaGenerationError, match="every value a meaning"):
         render_enums(tmp_path, "meaning: s:Red", "")
+
+
+FIELD_NAME_SCHEMA = """id: https://example.org/ns/tiny
+name: tiny
+title: Tiny
+description: A module with a slot that keeps its name.
+prefixes: {tiny: "https://example.org/ns/tiny#", schema: "https://schema.org/", linkml: "https://w3id.org/linkml/"}
+default_prefix: tiny
+default_range: string
+imports: [linkml:types]
+classes:
+  Target:
+    title: Target
+    description: A target.
+    slots: [schema_file, plain]
+slots:
+  schema_file:
+    title: Schema file
+    description: The schema file, wired as `schema`.
+    alias: schema
+    annotations:
+      field_name: slot
+  plain:
+    title: Plain
+    description: A slot with an alias and no opt-in.
+    alias: other
+"""
+
+
+def test_a_slot_annotated_field_name_slot_keeps_its_slot_name_as_its_term(tmp_path: Path) -> None:
+    """D-55 (9): `schema_file` (alias `schema`) is the term `schema_file`; no term `schema` shadows the prefix."""
+    schema = tmp_path / "tiny.yaml"
+    schema.write_text(FIELD_NAME_SCHEMA, encoding="utf-8")
+    context = json.loads(render_context(schema))["@context"]
+    assert "schema_file" in context, f"the slot keeps its name: {sorted(context)}"
+    assert context.get("schema") == "https://schema.org/", f"`schema` is the prefix: {context}"
+    assert "other" in context, "a slot with an alias and no opt-in keeps its alias as its term"
+
+
+def test_the_generated_context_of_the_generation_model_keeps_its_prefix_and_kind_terms() -> None:
+    """D-55 (9): in `rp_generation`, `schema` is not a term over `schema_file`; `kind` is the slot over `ConstraintKind`."""
+    context_file = PACKAGE_DIR / "generation" / "generated" / "context.jsonld"
+    context = json.loads(context_file.read_text(encoding="utf-8"))["@context"]
+    assert not isinstance(context.get("schema"), dict), f"`schema` shadows the prefix: {context}"
+    assert "schema_file" in context, "the slot's name is its term"
+    assert "target_kind" in context, "the slot's name is its term"
+    assert context["kind"]["@id"] == "constraintKind", (
+        f"`kind` is not the slot `kind`'s: {context['kind']}"
+    )
