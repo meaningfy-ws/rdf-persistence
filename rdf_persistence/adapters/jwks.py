@@ -31,6 +31,8 @@ UNSIGNED_ALGORITHM = "none"
 SYMMETRIC_PREFIX = "HS"
 HTTPS_PREFIX = "https://"
 DISCOVERY_PATH = "/.well-known/openid-configuration"
+SIGNATURE_USE = "sig"
+VERIFY_OPERATION = "verify"
 REQUIRED_CLAIMS = ("exp", "sub")
 # A principal IRI ending in one of these is empty or a dot segment, which IRI normalisation resolves away (PD-14h).
 UNUSABLE_SUBJECTS = ("", ".", "..")
@@ -237,14 +239,18 @@ class JwksTokenVerifier(HttpAdapter):
 
     @staticmethod
     def _usable_keys(document: Mapping[str, object]) -> dict[str, Mapping[str, object]]:
-        """The JWKs of ``document`` by ``kid``: those that build into a ``PyJWK`` and name a ``kid``.
+        """The JWKs of ``document`` by ``kid``: those that build into a ``PyJWK``, name a ``kid`` and may verify.
 
         As ``PyJWKSet`` does, a key that does not build is skipped; no usable key is an error.
+        A key whose ``use`` is present and not ``sig``, or whose ``key_ops`` is present and lacks
+        ``verify``, is skipped (RFC 7517 sections 4.2 and 4.3).
         """
         usable: dict[str, Mapping[str, object]] = {}
         for jwk in document["keys"]:  # type: ignore[attr-defined]
             kid = jwk.get("kid") if isinstance(jwk, Mapping) else None
             if not isinstance(kid, str) or not kid:
+                continue
+            if not JwksTokenVerifier._may_verify(jwk):
                 continue
             try:
                 jwt.PyJWK(dict(jwk))
@@ -254,6 +260,14 @@ class JwksTokenVerifier(HttpAdapter):
         if not usable:
             raise jwt.PyJWKSetError("the key set has no usable key")
         return usable
+
+    @staticmethod
+    def _may_verify(jwk: Mapping[str, object]) -> bool:
+        """Whether the key's ``use`` and ``key_ops``, when present, allow verifying signatures."""
+        if jwk.get("use", SIGNATURE_USE) != SIGNATURE_USE:
+            return False
+        key_ops = jwk.get("key_ops")
+        return key_ops is None or (isinstance(key_ops, list) and VERIFY_OPERATION in key_ops)
 
     async def _discover(self) -> str:
         content = await self._fetch(self._issuer.rstrip("/") + DISCOVERY_PATH)
