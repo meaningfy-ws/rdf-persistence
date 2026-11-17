@@ -91,7 +91,8 @@ jobs:
   unit:
     name: Unit tests (coverage floor)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The unit lane takes ~30 min on a 4-core runner (70 s on 20 local cores): 60 min, not 30.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:

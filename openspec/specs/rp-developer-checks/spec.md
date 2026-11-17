@@ -192,7 +192,8 @@ CI SHALL run both.
 ### Requirement: A test cannot hang the checks
 
 Every parallel (xdist) pytest run SHALL stop a test that runs longer than 120 s and name it, and
-every CI job SHALL stop after 30 minutes. A serial run (without xdist) cannot do so: the thread
+every CI job SHALL stop after 30 minutes, except the unit-test job, which SHALL stop after 60
+minutes (it takes about 30 minutes on a hosted runner). A serial run (without xdist) cannot do so: the thread
 timeout ends the whole session, naming the test.
 
 #### Scenario: a test that never returns, in a parallel lane
