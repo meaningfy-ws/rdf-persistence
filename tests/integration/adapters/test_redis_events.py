@@ -109,8 +109,10 @@ async def test_a_trim_that_fails_does_not_fail_the_publish(
     )
 
 
-async def test_a_message_without_a_valid_envelope_is_dropped_with_a_warning(redis, caplog):  # TC-22
-    pair = RedisPair(redis)
+async def test_a_message_without_a_valid_envelope_is_dropped_with_a_warning(
+    redis, toolkit, caplog
+):  # TC-22
+    pair = RedisPair(redis, toolkit)
     inbox = Inbox()
     await pair.a.start(inbox)
     with caplog.at_level(logging.WARNING, logger="rdf_persistence.adapters.redis_events"):
