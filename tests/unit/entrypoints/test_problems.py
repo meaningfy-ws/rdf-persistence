@@ -1,6 +1,7 @@
 """Every toolkit error becomes an RFC 9457 problem response (task 5.1, PD-15, the error matrix)."""
 
 import inspect
+import logging
 
 import httpx
 import pytest
@@ -217,3 +218,39 @@ async def test_an_http_exception_is_a_problem_with_a_title_from_its_status() -> 
     assert response.status_code == 418, "the exception's own status is kept"
     assert problem.type == f"{BASE}problems/im-a-teapot", "the kind is named after the status"
     assert "fuseki" not in response.text, "its text is not for the caller"
+
+
+LOGGER = "rdf_persistence.entrypoints.problems"
+
+
+@pytest.mark.parametrize(
+    "error", [exceptions.MessageLimitExceeded(5), exceptions.StoredDataInvalid(SECRET)], ids=type
+)
+async def test_a_mapped_500_is_logged_once_at_error_with_its_type(error, caplog) -> None:  # TC-33
+    caplog.set_level(logging.DEBUG, LOGGER)
+    response = await get(app_raising(error))
+    [record] = [r for r in caplog.records if r.name == LOGGER]
+    assert response.status_code == 500, "a mapped fault of the service is a 500 problem"
+    assert record.levelno == logging.ERROR, "logged at error"
+    assert record.getMessage() == "internal error answered", "a constant message"
+    assert record.exc_info, "the error travels with it"
+    assert record.exc_info[1] is error, "the very error"
+    assert (
+        record.__dict__["error.type"] == f"{type(error).__module__}.{type(error).__qualname__}"
+    ), "the fully qualified class name"
+
+
+async def test_an_unmapped_failure_is_left_to_the_server_to_log(caplog) -> None:  # TC-33b
+    caplog.set_level(logging.DEBUG, LOGGER)
+    response = await get(app_raising(RuntimeError("fuseki bug")))
+    assert response.status_code == 500, "a 500 problem"
+    assert not [r for r in caplog.records if r.name == LOGGER], (
+        "Starlette re-raises and the server logs: no second log here"
+    )
+
+
+async def test_a_not_found_is_answered_without_an_error_record(caplog) -> None:  # TC-34
+    caplog.set_level(logging.DEBUG)
+    response = await get(app_raising(exceptions.NotFound("no such book")))
+    assert response.status_code == 404, "a refusal"
+    assert not [r for r in caplog.records if r.levelno >= logging.ERROR], "not a fault of ours"
