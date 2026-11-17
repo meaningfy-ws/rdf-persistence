@@ -254,6 +254,7 @@ OLD_PATH = re.compile(
 )
 SCANNED_SUFFIXES = {".py", ".adoc", ".toml", ".cfg", ".yaml", ".yml", ".md", ".importlinter", ".mk"}
 SCANNED_NAMES = {"Makefile", ".importlinter"}
+CHANGELOG = "CHANGELOG.md"  # the release notes name the old paths on purpose (D-10)
 SKIPPED_PARTS = {
     "__pycache__",
     ".git",
@@ -269,15 +270,17 @@ SKIPPED_PARTS = {
 def test_no_live_file_still_names_an_old_path():
     """Found: questions.adoc and data-flows.adoc still named model/service/ (D-8).
 
-    Code, tests, docs and configuration are scanned; the change's own history under openspec/ is exempt.
+    Code, tests, docs and configuration are scanned; the change's own history under openspec/ and the changelog are exempt.
     """
     this = Path(__file__).resolve()
     hits = []
     for path in sorted(ROOT.rglob("*")):
         if not path.is_file() or SKIPPED_PARTS & set(path.relative_to(ROOT).parts):
             continue
-        if path.resolve() == this or (
-            path.suffix not in SCANNED_SUFFIXES and path.name not in SCANNED_NAMES
+        if (
+            path.resolve() == this
+            or path.name == CHANGELOG
+            or (path.suffix not in SCANNED_SUFFIXES and path.name not in SCANNED_NAMES)
         ):
             continue
         text = path.read_text(encoding="utf-8", errors="ignore")
