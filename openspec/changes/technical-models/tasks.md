@@ -187,7 +187,7 @@ accepted somewhere, a default that drifted, a group not passed on by the kit).
 
 ## Stage 4: testkit records, BDD and docs (PR 4)
 
-- [ ] 4.1 PD-10, PD-11 (D-4): the `testkit` target and `model/technical/testkit/rp_testkit.yaml`,
+- [x] 4.1 PD-10, PD-11 (D-4): the `testkit` target and `model/technical/testkit/rp_testkit.yaml`,
   the ten records of PD-11 moved out of `rp_generation.yaml` with their slots (re-listed first by
   `grep` over `rdf_persistence/testkit/`, so a record added since joins them), their imports in `testkit/` and
   `generation/` updated; aliases in `rp_generation.yaml`; `config.py`; `FieldFlags` in
@@ -214,7 +214,7 @@ accepted somewhere, a default that drifted, a group not passed on by the kit).
   in `tests/feature/test_technical_models.py` (toy library, tmp copies). Gate:
   `make test-changed check-quality`.
 
-- [ ] 4.3 Docs: `architecture/generation.adoc` (the two kinds, the five groups and where each
+- [x] 4.3 Docs: `architecture/generation.adoc` (the two kinds, the five groups and where each
   generates, the `kind` key, the `python_import` annotation); `architecture/index.adoc` (the
   generated packages inside the layers, the `iris.py` split, the contract);
   `architecture/data-flows.adoc` (paths); a new `howto/settings.adoc` (the groups, the composition
@@ -227,7 +227,7 @@ Stage 4 closes like stage 1, then the reconciliation of `proposal.md` (P-0004) i
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 · PR 2 · [x] 3.1 · [x] 3.2 · [x] 3.3 ·
-  (tester) · [x] 3.4 · [x] 3.5 · PR 3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · reconcile · PR 4
+  (tester) · [x] 3.4 · [x] 3.5 · PR 3 · [x] 4.1 · [x] 4.2 · [x] 4.3 · [x] reconcile · PR 4
 
 ## Verification
 
