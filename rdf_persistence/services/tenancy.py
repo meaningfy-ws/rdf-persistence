@@ -891,10 +891,13 @@ def _checked_stores(
 
 def _refuse_bad_store_name(name: str, access_class: type[TenantAccess]) -> None:
     """Refuse a ``name`` the record's ``store_name`` would refuse; pydantic's validator is the one place that holds the pattern, so it is asked in place of a copy of the regex."""
+    # ``model_construct`` skips validation, so the required fields take placeholders: only
+    # ``store_name`` is under test.
+    probe = access_class.model_construct(
+        id="", label="", state=next(iter(TenantState)), database_name=""
+    )
     try:
-        access_class.__pydantic_validator__.validate_assignment(
-            access_class.model_construct(), "store_name", name
-        )
+        access_class.__pydantic_validator__.validate_assignment(probe, "store_name", name)
     except ValidationError as error:
         raise ValueError(f"the store name {name!r} is not valid: {error}") from error
 
