@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from openapi_spec_validator import validate
 
-from rdf_persistence.domain.media import JSON, JSON_LD, PROBLEM_JSON, TURTLE
+from rdf_persistence.domain.media import JSON, JSON_LD, PROBLEM_JSON, REPRESENTATIONS, TURTLE
 from rdf_persistence.entrypoints.problems import CONFLICT as VERSION_CONFLICT
 from rdf_persistence.entrypoints.problems import KEY_CONFLICT, KINDS
 from rdf_persistence.services.listing import listable_slots
@@ -233,8 +233,10 @@ def test_a_book_is_created_and_replaced_with_the_json_or_json_ld_body(document) 
 
 def test_a_read_answers_every_representation_and_the_version(document) -> None:
     ok = operation(document, f"{TENANT}/books/{{aggregate_id}}", "get")["responses"]["200"]
-    assert set(ok["content"]) == {JSON, JSON_LD, TURTLE}, (
-        "a read answers in JSON, JSON-LD and Turtle"
+    assert set(ok["content"]) == set(REPRESENTATIONS), "a read answers in the seven types"  # TC-61
+    assert len(REPRESENTATIONS) == 7, "seven"
+    assert all(schema_of(ok["content"][m]) == {"type": "string"} for m in REPRESENTATIONS[2:]), (
+        "each RDF serialisation is text"
     )
     assert schema_of(ok["content"][JSON]) == {"$ref": f"{COMPONENT}Book"}, (
         "the JSON answer is the type's component"

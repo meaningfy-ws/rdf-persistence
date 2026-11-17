@@ -246,6 +246,7 @@ lands one carries a `BREAKING CHANGE:` footer (before 1.0.0 it bumps the MINOR, 
 | `Accept`: an unparsable or empty `q` reads as 1 (it read as 0); a `q` above 1 reads as 1 (it outranked `q=1`) | a client sending such a `q` | 2.1, F-3 |
 | A language-tagged value is a plain string in JSON and a value object in JSON-LD (it lost its tag in both) | a JSON-LD client | 1.4 |
 | `REPRESENTATIONS` holds seven members | code that matches it exhaustively | 3.1 |
+| An `Accept` that refuses JSON, JSON-LD and Turtle but admits a wildcard or a range is served one of the four new forms (it was 406) | a client that relies on that 406 | 3.1 |
 
 ## Algorithm / approach
 
@@ -474,6 +475,37 @@ overrule any of them. D-1 to D-7 agreed by the developer, 2026-11-17.
   headers (S3); `architecture/api.adoc` row 9 adds the invalid IRI (S4). Its commit carries the
   Accept footer, so no pushed commit is rewritten. One full-gates run, then CI. The developer also
   granted the lead the merge on green CI until this EPIC ends.
+- **D-14 Stage 3 team and order.** Base `8528251` (PR #143 merged). Builders in parallel on
+  disjoint files (R-0004), each in its own worktree: 3.1 (`domain/media.py`, `documents.py`,
+  `openapi.py`, their tests) beside 3.3 (docs pages and the mapper docstring only; 3.1 edits no
+  page under `docs/`); then 3.2 beside 3.4, both after 3.1 (the contract test reads the OpenAPI
+  document 3.1 widens; `representations.feature` needs the new types). Tester: no (MEDIUM, no
+  `## Invariants`, as D-2). Last stage, so the full review runs now (D-1, P-0005): L1, L2, L3
+  each its own reviewer, L4 with L5 one; then one checker; a cold reader for `howto/adopt.adoc`.
+- **D-15 Impact of task 3.1 read as low.** GitNexus rates `Documents.render` CRITICAL (60
+  processes, 2 direct callers): it sits on every document route, as `_negotiate` did (D-9). Its
+  signature stays; `domain/media.py` (MEDIUM, 12 importers) only gains constants and a longer
+  `REPRESENTATIONS`. `openapi._document_media` (not in the index; read by text) has 7 call
+  sites, all in `openapi.py`, so its `turtle=` → `rdf=` rename stays in one file. The two tests the PLAN names are the only existing tests that may change;
+  any other edit to an existing test stops the task.
+- **D-16 Builder departures in 3.1 and 3.3 accepted.** 3.1: the refusal-by-name test is in the
+  unit `tests/unit/entrypoints/test_negotiation.py`, not the integration file the PLAN named; four
+  new `ACCEPT` rows are additions; TC-62 is held by the existing wildcard rows; TC-58 is tested on
+  the unit router only; the builder edited with python string replaces and one `sed -i`, so the
+  lead read every changed site and re-ran its gate (T1: its last `test-fast` ran before a fix in
+  `documents.py`). 3.3: ADR-001 to ADR-003 are *Accepted* by the developer's "I agree with all
+  improvement suggestions" (`inputs/answers-2026-11-17.md`); the docstring keeps three reasons,
+  the re-check showed the blank-node and language-tag reasons do not hold. `tests/audit/scenario-map.csv`
+  names the renamed requirement by its old title in 38 rows; it follows the RENAMED delta at archive.
+- **D-17 The contract run's two findings** (task 3.2, PD-15). schemathesis 4.33.4 resolved beside
+  the pins (RISK-10 did not occur). (1) `GET /context.jsonld` answered JSON-LD but was documented
+  as JSON: a small route fix, made (`JsonLdResponse`, guarded by its own contract test). (2) A
+  plain JSON read carries `type`, which the generated object component schemas
+  (`additionalProperties: false`) do not list: every aggregate read fails the response-schema
+  check. The fix is in the component generator, not a small change in `openapi.py` or a route, so
+  per PD-15 it is issue #148; TC-63 is `xfail(strict=True)` naming #148, so the fix removes the
+  marker by failing. TC-64 (an undocumented 418 fails the run) shows the check is live. A probe
+  adding `type` made every operation pass, so these are the only two findings.
 
 ### Stage 1 review findings (L2, L3)
 
@@ -577,3 +609,102 @@ Under the floor (not fixed in this stage; the full review after stage 3 weighs t
   change's; task 3.3 touches `howto/adopt.adoc` and may take them.
 - L2 S4 `test_hard_check.py:728`'s name and message do not mention the metamodel group.
 - L2 S5 TC-43's golden is one plain triple; richer samples would show where PyLD and rdflib differ.
+
+### Full review findings (L1, L2, L3, L4+L5; cold reader)
+
+The full review of the EPIC (D-1, P-0005) ran on PR #151 against the gate report of `f059d3d`.
+Reviewers: L1 (3 findings), L2 (9), L3 (8), L4+L5 (11); the cold reader read `howto/adopt.adoc`.
+Only L3 labelled one Critical; the lead re-labels the rest below, each with its reason.
+
+Accepted, Critical (fixed in the one fix pass):
+
+- **F-7** (L3 C1, L2 W2, L4+L5 W1, L1 note) A create or replace with `Accept: application/rdf+xml`
+  commits, then `render` refuses RDF/XML with 406. The client is told the write failed although it
+  was stored: a retried `POST` mints a second aggregate, a retried `PUT` gets 409. Critical: three
+  lenses found it on their own, and it is a write a consumer cannot see, which PD-12's "answered
+  406" never meant. Fix: the 406 comes before anything is written, on create, replace and the
+  tenant root; the route-level tests show 406 and that nothing was stored.
+- **F-8** (L1 W1) rdflib's RDF/XML writer passes characters XML 1.0 forbids (`\x00`–`\x08`, `\x0B`,
+  `\x0C`, `\x0E`–`\x1F`) through raw: a read answers 200 with a body no XML parser accepts.
+  Critical: the rp-service-api delta says an aggregate a serialisation cannot express SHALL be
+  answered 406; this one is answered 200 and broken. Fix: such a literal is refused with the same
+  `NotAcceptable` as a predicate with no XML local name, and the F-7 check covers it.
+- **F-9** (L4+L5 W2, L3 W2 in part) The `except ValueError` in `_serialised` wraps all five RDF
+  writers, so a defect in the Turtle, N-Triples, N-Quads or TriG path is answered 406 "no form"
+  instead of 500. Critical: the Error matrix sends our own defects to 500, and the 406 is for
+  RDF/XML only (PD-12). Fix: catch only for RDF/XML. The same lines change for F-7 and F-8.
+- **F-10** (L3 W1, L1 W2) TC-63 runs every operation in one loop under `xfail(strict=True)`; the
+  first #148 failure ends the loop, so no check (server error, status, content type, schema) runs
+  on the operations after it. Critical: PD-15's contract test, ADR-003's confirmation, checks
+  almost nothing until #148 is fixed. Fix: one case per operation; only the operations #148 hits
+  expect a failure, and only of `response_schema_conformance`; every other check of every
+  operation must pass. Still strict, so fixing #148 removes the markers by failing.
+- **F-11** (L2 W3) `architecture/data-flows.adoc:394`, `architecture/index.adoc:204` and
+  `questions.adoc:422` still name only JSON, JSON-LD and Turtle. Critical: doc agreement on what
+  this stage delivers (PD-16, as F-1 and F-5). Fix: name the seven types or link
+  `api.adoc#representations`.
+- **F-12** (cold reader) The `#etag-proxy` test in `howto/adopt.adoc` reads through the proxy
+  without `Accept-Encoding: gzip`, so nginx does not compress and the test passes behind the very
+  proxy RISK-9 warns of. Critical: this stage's own text, and the check it gives cannot fail. Fix:
+  the read sends `Accept-Encoding: gzip`, and the page says how to pass the `ETag` through
+  unchanged or names the nginx setting.
+
+- **D-18 The scenario map is mapped at archive** (L2 W1). `tests/audit/scenario-map.csv` has no row
+  for any test this EPIC added (stages 1 to 3). `make refresh-map` is not part of `check-all`, so
+  no gate is red; the map is brought up to date in the archive step, together with the 38 renamed
+  rows (D-16), and the hand-over note names it.
+
+Under the floor (not fixed; for the hand-over note and later changes):
+
+- L1 S1 `adapters/jwks.py` keeps a JWK whose `use` is `enc` (PyJWT's client drops it); low risk, a
+  provider that publishes an encryption key with a `kid`.
+- L2 W4 TC-57 does not assert which graph holds the tenant root's quads; L2 S4 TC-58 checks only
+  the replace response's media type.
+- L2 S1 `questions.adoc:319` and `howto/adopt.adoc:1588` drop "after a toolkit release raises the
+  PyJWT pin" from DEC-1's condition; L2 S2 `token_algorithms.feature:31` drops the spec's second
+  THEN without saying it cannot be tested.
+- L2 S3 only the read's 200 is asserted to list the seven types; F-10 covers the others once it
+  passes.
+- L2 S5 still open from stages 1 and 2: the class-level `Mapper.max_roots` patch,
+  `howto/commits.adoc:138`, `test_jsonld.py:61`'s name.
+- L3 W2 the broad `except Exception` around `triples_of` (`documents.py:301`, `loading.py:45`);
+  L3 S4 the refusal mappings written twice; L3 S3 / stage 2 L3 W1 `jsonld.py`'s own `N_QUADS`.
+- L3 S1, L4+L5 W4, L4+L5 S6 "the RDF serialisations" defined three ways (`REPRESENTATIONS[2:]`,
+  `not in (JSON, JSON_LD)`, the `rdf=` flag); an `RDF_REPRESENTATIONS` constant when next touched.
+- L3 S2, L4+L5 S7 the context route's OpenAPI entry and `JsonLdResponse` live in `router.py`.
+- L3 S5 `RpModel.replaced` can be shadowed by a consumer slot; rename before 1.0.
+- L4+L5 W3 the five RDF serialisations run on the event loop (framing runs in a worker); an
+  aggregate near `MAX_NODES` stalls the loop while it serialises.
+- L4+L5 S1 JSON-LD keywords in three modules; S2 positional `[2]`/`[1]` reads of `Stored`; S3
+  `PyJWKSetError` raised to reach an `except`; S4 algorithm names repeated in the testkit; S5 the
+  bare `"error.type"` string.
+- Cold reader, older text: `loaded_graphs=[loaded]` replaces earlier loaded graphs (the next
+  paragraph says so); the `rdf_format` table row versus the prose example; `max_roots` as the batch
+  size; "`@context` not given"; the missing `CommitTooLarge` import and `book_iri` arguments; what
+  a token whose algorithm is outside `algorithms=` gets.
+- Stage 1 and stage 2 floor items not named above stay as they were listed.
+
+- **D-19 The fix pass's departures and its one new finding.** F-7: `Documents.require_form` checks
+  the graph to be stored for an RDF/XML form before any write (`Aggregates.create` and `replace`
+  take `represented_as`); the route tests use a control-character title, because the closed
+  shapes refuse an unknown predicate with 422 before any form is chosen, and the unit tests cover
+  the predicate case. F-10: one case per operation, the schema check apart from the other three.
+  Run apart, the events route also fails the schema check: it documents each SSE event as a
+  string and sends an object first. It is not #148; filed as #153 and marked `xfail(strict=True)`
+  naming it. The fixer used one `sed -i` for a two-call rename in `test_contract.py`; the lead read
+  the whole diff. An intermittent pyparsing error (`Param.postParse2()`) seen once under two
+  concurrent runs is SPARQL parsing's thread safety, not this change; noted for the hand-over.
+- Checker W1 (the stage 3 As built row, What Changes and `tasks.md` after the fix pass) fixed by
+  the lead in the spine. Under the floor: checker S1 the F-9 test runs N-Quads only, not TriG; S2
+  `SSE_EVENT_SCHEMA` has no `raises=FailureGroup`; S3 `XML_FORBIDDEN` leaves out U+FFFE, U+FFFF and
+  lone surrogates (not probed: what rdflib's writer and the response do with one is unchecked).
+
+- **D-20 The rebase onto otel-observability** (P-0002). Before the merge, `develop` gained
+  otel-observability, which moved the verifier's options into the settings model:
+  `JwksTokenVerifier(..., jwks=JwksSettings(allowed_algorithms=[...], leeway_seconds=...))`, and the
+  mapper's limit into `LimitSettings(max_roots=)`. The rebase kept `develop`'s text for the mapper
+  (`howto/adopt.adoc`), took both test pins in `pyproject.toml` (`uv lock` unchanged). The full
+  gates on the rebased head failed two `token_algorithms.feature` scenarios that still passed
+  `algorithms=`; one fixer moves that step and the pages that name `algorithms=` and
+  `leeway_seconds=` (questions, ADR-004, `howto/adopt.adoc#verifier-options`) to `JwksSettings`.
+  ADR-004's decision stands; only where it is configured changed.

@@ -10,7 +10,7 @@ import httpx
 import pytest
 from fastapi import HTTPException
 from pyld import jsonld
-from rdflib import Graph
+from rdflib import Dataset, Graph
 
 from rdf_persistence import Forbidden, GrantSet, InvalidBody, Page, TenantSummary
 from rdf_persistence.domain.generated.rp_access import (
@@ -22,7 +22,15 @@ from rdf_persistence.domain.generated.rp_access import (
 )
 from rdf_persistence.domain.generated.rp_provenance import Replace
 from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
+from rdf_persistence.domain.media import (
+    DATASET_REPRESENTATIONS,
+    JSON,
+    JSON_LD,
+    N_QUADS,
+    RDF_XML,
+    REPRESENTATIONS,
+    TURTLE,
+)
 from rdf_persistence.entrypoints.negotiation import ALLOWED_ACTIONS, RECORD_ETAG
 from rdf_persistence.services import vocabulary
 from rdf_persistence.services.access import AccessRules, load_role_definitions
@@ -744,6 +752,65 @@ async def test_turtle_is_served_on_request(scene) -> None:
     assert len(graph) > 5, "the book as triples"
 
 
+@pytest.mark.parametrize("media_type", REPRESENTATIONS)
+async def test_a_book_is_served_in_each_representation_asked_for(
+    scene, media_type
+) -> None:  # TC-55
+    response = await scene.http.get(scene.book, headers=scene.headers("ada", Accept=media_type))
+    assert response.status_code == 200, response.text
+    assert response.headers["content-type"].split(";")[0] == media_type, "as asked"
+    if media_type in (JSON, JSON_LD):
+        return
+    served = Dataset()
+    served.parse(data=response.text, format=media_type)
+    turtle = await scene.http.get(scene.book, headers=scene.headers("ada", Accept=TURTLE))
+    triples = Graph()
+    for quad in served.quads():
+        triples.add(quad[:3])
+    assert_isomorphic(triples, Graph().parse(data=turtle.text, format="turtle"))
+
+
+@pytest.mark.parametrize("media_type", DATASET_REPRESENTATIONS)
+async def test_a_book_as_a_dataset_is_in_the_graph_of_the_book(scene, media_type) -> None:  # TC-56
+    response = await scene.http.get(scene.book, headers=scene.headers("ada", Accept=media_type))
+    quads = list(Dataset().parse(data=response.text, format=media_type).quads())
+    assert quads, "the book is shown"
+    assert {str(q[3]) for q in quads} == {str(graph_iri(scene.book_iri))}, "in the book's graph"
+    assert all(str(q[0]) != str(graph_iri(scene.book_iri)) for q in quads), "none about the graph"
+    assert str(vocabulary.VERSION) not in response.text, "no internal slot"
+
+
+async def test_the_tenant_root_as_n_quads_is_in_the_graph_it_was_read_from(scene) -> None:  # TC-57
+    response = await scene.http.get(scene.tenant, headers=scene.headers("ada", Accept=N_QUADS))
+    assert response.status_code == 200, response.text
+    graphs = {str(q[3]) for q in Dataset().parse(data=response.text, format=N_QUADS).quads()}
+    assert len(graphs) == 1, "one graph"
+    assert graphs != {str(graph_iri(scene.book_iri))}, "not the graph of a book"
+
+
+async def test_a_create_and_a_replace_answer_in_n_quads_when_asked(scene) -> None:  # TC-58
+    created = await scene.http.post(
+        f"{scene.tenant}/books", json=DUNE_BODY, headers=scene.headers("ada", Accept=N_QUADS)
+    )
+    assert created.status_code == 201, created.text
+    assert created.headers["content-type"].split(";")[0] == N_QUADS, "created, as N-Quads"
+    assert Dataset().parse(data=created.text, format=N_QUADS), "a dataset"
+    replaced = await scene.http.put(
+        scene.book,
+        json=DUNE_BODY,
+        headers=scene.headers("ada", **{"If-Match": scene.book_etag, "Accept": N_QUADS}),
+    )
+    assert replaced.status_code == 200, replaced.text
+    assert replaced.headers["content-type"].split(";")[0] == N_QUADS, "replaced, as N-Quads"
+
+
+async def test_a_listing_cannot_be_asked_for_in_n_quads(scene) -> None:  # TC-59
+    response = await scene.http.get(
+        f"{scene.tenant}/books", headers=scene.headers("ada", Accept=N_QUADS)
+    )
+    assert (response.status_code, problem_of(response).type) == (406, f"{PROBLEMS}not-acceptable")
+
+
 async def test_the_json_ld_of_a_book_is_accepted_back_as_a_replace(scene) -> None:
     current = (
         await scene.http.get(scene.book, headers=scene.headers("ada", Accept=JSON_LD))
@@ -771,6 +838,55 @@ async def test_a_representation_the_service_does_not_make_is_a_406_before_anythi
     assert len(scene.service.store.sent("update")) == writes, (
         "no book was created that the client cannot read"
     )
+
+
+# The shapes are closed, so a body cannot carry a predicate RDF/XML cannot name (the service tests
+# `require_form` on one); a literal XML 1.0 forbids is a valid body whose RDF/XML form cannot be written.
+UNWRITABLE_BOOK = {**DUNE_BODY, "label": "bad\u0001label"}
+
+
+async def test_a_create_as_rdf_xml_that_cannot_be_written_as_it_is_a_406_and_stores_nothing(
+    scene,
+) -> None:  # F-7
+    writes = len(scene.service.store.sent("update"))
+    response = await scene.http.post(
+        f"{scene.tenant}/books",
+        json=UNWRITABLE_BOOK,
+        headers=scene.headers("ada", Accept=RDF_XML),
+    )
+    assert (response.status_code, problem_of(response).type) == (
+        406,
+        f"{PROBLEMS}not-acceptable",
+    ), "406"
+    assert len(scene.service.store.sent("update")) == writes, "nothing was written"
+
+
+async def test_a_replace_as_rdf_xml_that_cannot_be_written_as_it_is_a_406_and_changes_nothing(
+    scene,
+) -> None:  # F-7
+    writes = len(scene.service.store.sent("update"))
+    response = await scene.http.put(
+        scene.book,
+        json=UNWRITABLE_BOOK,
+        headers=scene.headers("ada", Accept=RDF_XML, **{"If-Match": scene.book_etag}),
+    )
+    assert response.status_code == 406, response.text
+    assert len(scene.service.store.sent("update")) == writes, "nothing was written"
+    current = await scene.http.get(scene.book, headers=scene.headers("ada"))
+    assert current.headers["etag"] == scene.book_etag, "the version is unchanged"
+
+
+async def test_a_tenant_root_replace_as_rdf_xml_that_cannot_be_written_is_a_406(
+    scene,
+) -> None:  # F-7
+    writes = len(scene.service.store.sent("update"))
+    response = await scene.http.put(
+        scene.tenant,
+        json={"label": "Ghent", "description": "Books for \u0001all.", "city": "Ghent"},
+        headers=scene.headers("ada", Accept=RDF_XML, **{"If-Match": scene.root_etag}),
+    )
+    assert response.status_code == 406, response.text
+    assert len(scene.service.store.sent("update")) == writes, "nothing was written"
 
 
 # One case per class: produced but not accepted (turtle), an unknown type (text/plain stands for it).

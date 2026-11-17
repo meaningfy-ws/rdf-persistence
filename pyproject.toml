@@ -88,6 +88,8 @@ test = [
     "hypothesis==6.170.14",
     "opentelemetry-sdk==1.45.2",
     "pytest-split==0.11.0",
+    # The contract test: the service against its own /openapi.json (PD-15).
+    "schemathesis==4.33.4",
 ]
 lint = [
     "ruff==0.15.11",

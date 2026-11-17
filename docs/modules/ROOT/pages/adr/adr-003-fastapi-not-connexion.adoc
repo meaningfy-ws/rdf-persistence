@@ -1,0 +1,58 @@
+= ADR-003: FastAPI with a spec generated from LinkML, not connexion
+:description: Why the service API stays FastAPI with an OpenAPI document completed from the schema, and is not run by a spec-first library such as connexion.
+
+Status: *Accepted* (developer, 2026-11-17).
+
+== Context
+
+A spec-first library promises that the implementation obeys the spec. Connexion was never
+evaluated on record. The API today is neither spec-first nor derived from the routes: the router
+builds its routes at install time from the LinkML schema (a new class and a restart serve it, as
+the rp-service-api spec says), the component schemas are generated from LinkML, and `openapi.py`
+writes each operation as typed `fastapi.openapi.models` objects (the error matrix, the `ETag`,
+`If-Match` and `Location` headers, one filter per listable slot, the tenant routes).
+
+== Decision
+
+Keep FastAPI, with the OpenAPI document generated from the schema. Do not adopt connexion or
+openapi-core to run the API. The guarantee a spec-first library gives is bought with a contract test
+instead: schemathesis runs against `/openapi.json` in process.
+
+== Consequences
+
+* The access gate stays a FastAPI `Depends`; the events route stays `fastapi.sse`.
+* The error matrix and the operation templates can move into model data over time, which makes
+  `openapi.py` more spec-driven without a runtime framework.
+* The contract test is the check that the code obeys the document.
+
+== Alternatives weighed
+
+Connexion 3::
+Rejected, for six reasons:
+
+. It lacks full OpenAPI 3.1 support (its issue #1396, listed as unfunded), and our document is 3.1.
+. Wrapping FastAPI with its middleware gives two routing tables; dropping FastAPI loses `Depends`
+  (the whole access gate), `fastapi.sse` and native telemetry.
+. Its security is scheme- and scope-level. Our check is per tenant and aggregate, from the path
+  parameters, so it stays our code.
+. Its request validation is JSON Schema, while ours is SHACL over JSON-LD. It would duplicate the
+  validation, or be wrong for JSON-LD.
+. It wants a spec at start-up. We would still have to produce that spec from LinkML, which is
+  exactly what `openapi.py` does, so nothing is saved.
+. It adds werkzeug, requests and jinja2, and is maintained mostly by one person.
+
+openapi-core::
+Rejected. At the version checked it pins `fastapi` and `starlette` below the versions this toolkit
+pins, so it cannot be installed with them, and it duplicates validation.
+
+fastapi-code-generator, datamodel-code-generator, openapi-python-generator::
+Rejected. They generate one-shot code from a static spec, which conflicts with "no generated
+routes".
+
+apispec::
+Rejected. It adds nothing to FastAPI's builder.
+
+== Sources
+
+The change `manual-revision-notes`, `inputs/analysis.md` §3.2. The decision to write the OpenAPI
+hook ourselves is D-3 of xref:architecture/open-decisions.adoc[Decisions of 2026-11-05].

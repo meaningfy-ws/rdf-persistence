@@ -2,7 +2,7 @@
 :description: Short answers to the questions people ask about rdf-persistence, each with a link to the page that goes deeper.
 
 Each answer is short and points to the page with the details. The answers describe the toolkit
-on `develop` as of 2026-11-15.
+on `develop` as of 2026-11-17.
 
 == Using the toolkit
 
@@ -324,8 +324,40 @@ A hook denies `sleep` loops so agents stop waiting on their own background runs.
 the foreground, in the background with its notice, or use the Monitor tool. See
 xref:develop/agents.adoc#never-poll[Never poll].
 
+*Why does the toolkit have its own SPARQL client?*::
+The store is a server shared by every worker, so any client is an HTTP client, and rdflib's is
+synchronous while the store port is async, has no test transport and cannot express the guarded
+single-request commit. The Fuseki adapter is about thirty lines over httpx, and rdflib still parses
+what it returns. See xref:adr/adr-001-sparql-client.adoc[ADR-001].
+
+*Why does the token verifier fetch and cache the keys itself?*::
+PyJWT's `PyJWKClient` blocks the event loop, has no discovery and no transport or clock to inject,
+and counts its cooldown from the last success, so a failing provider is hit on every call. PyJWT
+still checks every signature. See xref:adr/adr-002-jwks-cache.adoc[ADR-002].
+
+*Why FastAPI with a generated OpenAPI document, and not a spec-first library such as connexion?*::
+The routes and the document both come from the LinkML schema, so a spec-first library would still
+need a spec we produce, and it would take FastAPI's access gate and SHACL validation from us.
+schemathesis checks that the code obeys the document instead. See
+xref:adr/adr-003-fastapi-not-connexion.adoc[ADR-003].
+
+*Which token signature algorithms does the verifier accept, and how do I change them?*::
+RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512 and EdDSA, with 30 seconds of clock
+leeway on `exp` and `nbf`. Set `allowed_algorithms` and `leeway_seconds` on `JwksSettings` and pass
+it as `jwks=` to `JwksTokenVerifier`; `none` and `HS*` are always refused. Post-quantum signatures join when the identity provider and PyJWT
+ship them. See xref:adr/adr-004-signing-algorithms.adoc[ADR-004] and
+xref:howto/adopt.adoc#verifier-options[the how-to].
+
+*Which representations can I ask for an aggregate in?*::
+JSON (the default), JSON-LD, Turtle, N-Triples, N-Quads, TriG and RDF/XML, on a read, a create, a
+replace and the tenant root. A listing stays JSON and JSON-LD. See
+xref:adr/adr-005-representations.adoc[ADR-005] and
+xref:architecture/api.adoc#representations[the API page].
+
 *Where are decisions recorded?*::
-Architecture decisions are on xref:architecture/open-decisions.adoc[Decisions of 2026-11-05] (D-1
+Settled decisions that outlive their change are the records on
+xref:adr/index.adoc[Architecture decision records] (ADR-001 to ADR-005). Earlier ones are on
+xref:architecture/open-decisions.adoc[Decisions of 2026-11-05] (D-1
 to D-13) and in xref:architecture/index.adoc#decisions-taken[architecture v1] (O-1, O-2). The
 decisions of the work in progress (PD-1 and on) are in `openspec/changes/<id>/design.md`; once a
 change is archived, its requirements live in `openspec/specs/` and the change itself, decisions
@@ -415,10 +447,11 @@ and clients ask for the project audience and roles scopes. `roles_claim` must ma
 file bytes: you write it, checked through the kit.
 |A bucket per tenant always; the bytes route is yours
 
-|JSON-LD or Turtle
+|JSON-LD or an RDF serialisation
 |Plain JSON is the easiest for clients and is JSON-LD through the `Link` header. A JSON-LD body
-brings its own inline context (a remote one is refused). Turtle is for reading one aggregate only:
-no body and no listing takes it.
+brings its own inline context (a remote one is refused). The five RDF serialisations (Turtle,
+N-Triples, N-Quads, TriG, RDF/XML) are for one aggregate only: no body and no listing takes them
+(xref:architecture/api.adoc#representations[the seven types]).
 |Plain JSON
 
 |The `openapi` switch

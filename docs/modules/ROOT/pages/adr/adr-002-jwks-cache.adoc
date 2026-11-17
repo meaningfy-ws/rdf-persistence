@@ -1,0 +1,53 @@
+= ADR-002: Our own JWKS cache over PyJWT
+:description: Why the token verifier fetches and caches the provider's keys itself, and does not use PyJWT's PyJWKClient.
+
+Status: *Accepted* (developer, 2026-11-17).
+
+== Context
+
+`JwksTokenVerifier` verifies the access tokens the identity provider signs. It does not implement
+cryptography: PyJWT parses the header, reads the key set, checks the signature, `iss`, `aud` and the
+required claims. What the toolkit writes is about sixty lines of key fetch and cache, and the local
+claim checks.
+
+The foundation epic's PD-28a records how the verifier behaves. It does not record why PyJWT's own
+`PyJWKClient` was not used.
+
+== Decision
+
+The verifier keeps its own JWKS fetch and cache over PyJWT's key set.
+
+== Consequences
+
+Where the two differ:
+
+[cols="2,3,3",options="header"]
+|===
+|Concern |Our cache |`PyJWKClient`
+
+|Cache with a time to live |600 s |300 s `lifespan`; equivalent
+|Refresh after an unknown `kid` |Cooldown counted from the last attempt, so an outage is not hammered |Counted from the last success, so a failing provider is hit on every call
+|Concurrency |Async, one refresh at a time (`asyncio.Lock`, checked twice) |Synchronous `urllib` and a lock; it blocks the event loop
+|Discovery and issuer match |Reads the discovery document and requires its `issuer` to equal the configured one |None
+|Test seams |A `transport=` and an injected clock; the testkit's identity provider uses both |Neither
+|===
+
+* The clock leeway was the one gap in our cache; it is a parameter now (xref:adr/adr-004-signing-algorithms.adoc[ADR-004]).
+* The cache values are constants in `adapters/jwks.py`. `technical-models` moves them, with the
+  algorithm list and the leeway, into generated settings.
+* The path to a post-quantum signature is to follow the identity provider, not to change the
+  cache (xref:adr/adr-004-signing-algorithms.adoc[ADR-004]).
+
+== Alternatives weighed
+
+PyJWT's `PyJWKClient`::
+Rejected for the four rows above that are not "equivalent": it blocks the event loop, has no
+discovery, has no transport or clock to inject, and keys its cooldown on success.
+
+joserfc and authlib::
+Rejected. Neither has an async JWKS client with caching or discovery, so switching would replace
+PyJWT and still leave the cache to us.
+
+== Sources
+
+The change `manual-revision-notes`, `inputs/analysis.md` §1.2; the foundation epic's PD-28a.

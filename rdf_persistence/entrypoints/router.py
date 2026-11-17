@@ -170,7 +170,13 @@ class DocumentApi:
         media_type = accepted_media_type(request.headers.get(ACCEPT))
         data, body_type = await self._body(request)
         iri, read = await self._kit.aggregates.create(
-            tenant, Principal(id=caller.principal), self._cls, rp_path, data, body_type
+            tenant,
+            Principal(id=caller.principal),
+            self._cls,
+            rp_path,
+            data,
+            body_type,
+            represented_as=media_type,
         )
         location = f"{request.url.path.rstrip('/')}/{_last_segment(iri)}"
         return await self._response(read, media_type, status=HTTPStatus.CREATED, location=location)
@@ -196,7 +202,7 @@ class DocumentApi:
         )
         data, body_type = await self._body(request)
         read = await self._kit.aggregates.replace(
-            tenant, principal, self._cls, iri, data, body_type, expected
+            tenant, principal, self._cls, iri, data, body_type, expected, represented_as=media_type
         )
         return await self._response(read, media_type)
 
@@ -421,12 +427,18 @@ def add_aggregate_routes(
     docs.remove().add_to(router, member, HTTPMethod.DELETE, remove)
 
 
+class JsonLdResponse(Response):
+    """A response of media type ``application/ld+json``: the class the document names for the route."""
+
+    media_type = JSON_LD
+
+
 def add_context_route(router: APIRouter, kit: ServiceKit) -> None:
     """``GET /context.jsonld``: the generated context, public, so the ``Link`` header leads somewhere."""
 
     async def context() -> Response:
         body = {CONTEXT_KEY: kit.documents.context}
-        return Response(json.dumps(body, ensure_ascii=False), media_type=JSON_LD)
+        return JsonLdResponse(json.dumps(body, ensure_ascii=False))
 
     router.add_api_route(
         f"/{CONTEXT_FILE}",
@@ -434,6 +446,8 @@ def add_context_route(router: APIRouter, kit: ServiceKit) -> None:
         methods=[HTTPMethod.GET],
         name=CONTEXT_ROUTE,
         response_model=None,
+        response_class=JsonLdResponse,
+        responses={HTTPStatus.OK: {"content": {JSON_LD: {"schema": {"type": "object"}}}}},
     )
 
 
