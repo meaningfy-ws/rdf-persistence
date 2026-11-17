@@ -28,9 +28,9 @@ from rdf_persistence.domain.exceptions import (
     StoreUnavailable,
 )
 from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
-from rdf_persistence.domain.generated.service.rp_service import Filter, ListRequest, MemberList
 from rdf_persistence.domain.sparql import term
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.generated.service.rp_service import Filter, ListRequest, MemberList
 from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import DEFAULT_MAX_ROOTS, Mapper, UnitOfWork

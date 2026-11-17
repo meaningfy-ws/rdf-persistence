@@ -5,7 +5,7 @@ from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import XSD, Literal, URIRef
 
 from rdf_persistence.domain.exceptions import BadQuery
-from rdf_persistence.domain.generated.service.rp_service import Filter, ListRequest
+from rdf_persistence.services.generated.service.rp_service import Filter, ListRequest
 from rdf_persistence.services.listing import (
     Listings,
     list_request,

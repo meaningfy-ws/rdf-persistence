@@ -13,10 +13,10 @@ from pydantic import ValidationError
 from rdflib import Literal, URIRef
 
 from rdf_persistence.domain.exceptions import IriPolicyChanged
-from rdf_persistence.domain.generated.service.rp_service import IriPolicy, ServiceSettings
 from rdf_persistence.domain.layout import policy_record_iri
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.generated.service.rp_service import IriPolicy, ServiceSettings
 from rdf_persistence.services.iris import effective_policy, policy_differences
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.tenancy import Tenancy

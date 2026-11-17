@@ -349,4 +349,6 @@ def test_a_change_to_the_service_schema_makes_a_typescript_target_stale(
     )
     code, error = check(pyproject, capsys)
     assert code == 1, "a changed rp_service.yaml left rp_service.ts looking fresh"
-    assert "stale input: rdf_persistence/model/service/rp_service.yaml (changed)" in error, error
+    assert (
+        "stale input: rdf_persistence/model/technical/service/rp_service.yaml (changed)" in error
+    ), error

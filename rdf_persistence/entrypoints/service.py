@@ -10,7 +10,6 @@ from typing import Any
 from fastapi import FastAPI
 
 from rdf_persistence.domain.exceptions import InvalidIri
-from rdf_persistence.domain.generated.service.rp_service import ServiceSettings
 from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.openapi import install_openapi
 from rdf_persistence.entrypoints.problems import install_problem_handlers
@@ -18,6 +17,7 @@ from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.events import EventBus
 from rdf_persistence.services.files import FileStore
+from rdf_persistence.services.generated.service.rp_service import ServiceSettings
 from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.iri_policy_guard import guard_iri_policy
 from rdf_persistence.services.iris import IdSource, draw_id

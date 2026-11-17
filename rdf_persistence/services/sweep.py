@@ -19,9 +19,9 @@ from contextlib import suppress
 
 from rdf_persistence.domain.exceptions import NotFound, StoreNotWired
 from rdf_persistence.domain.generated.rp_tenancy import TenantAccess, TenantState
-from rdf_persistence.domain.generated.service.rp_service import ServiceSettings
 from rdf_persistence.domain.layout import tenant_name_prefix
 from rdf_persistence.services.files import FileStore
+from rdf_persistence.services.generated.service.rp_service import ServiceSettings
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.tenancy import Tenancy, store_name_in
 

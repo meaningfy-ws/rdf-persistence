@@ -13,9 +13,9 @@ from rdflib.plugins.sparql.parser import parseUpdate
 
 from rdf_persistence.domain.exceptions import InvalidMigration, SparqlError
 from rdf_persistence.domain.generated.rp_core import RegistryKind
-from rdf_persistence.domain.generated.service.rp_service import Migration, MigrationStep
 from rdf_persistence.domain.layout import stamps_graph_iri
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.generated.service.rp_service import Migration, MigrationStep
 from rdf_persistence.services.migrations import load_migration, migration_request
 from rdf_persistence.testkit import FakeStore
 

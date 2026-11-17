@@ -15,7 +15,7 @@ from rdf_persistence.services.schema import SERVICE_SCHEMA, load_schema
 from .conftest import ROOT_SCHEMA
 from .test_boundary_check import add_api_module, problems_of
 
-SERVICE_INPUT = "rdf_persistence/model/service/rp_service.yaml"
+SERVICE_INPUT = "rdf_persistence/model/technical/service/rp_service.yaml"
 EXPORT = re.compile(r'export \* from "\./(\w+)";')
 IMPORT = re.compile(r'from "\./(\w+)";')
 DECLARED = re.compile(r"export (?:interface|type) (\w+)")

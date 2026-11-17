@@ -13,7 +13,7 @@ from rdflib import URIRef
 
 from rdf_persistence.domain.exceptions import InvalidBody
 from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.generated.service.rp_service import TenantDump
+from rdf_persistence.services.generated.service.rp_service import TenantDump
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.tenancy import Tenancy

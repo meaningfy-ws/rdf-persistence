@@ -20,8 +20,8 @@ from rdflib import Dataset, URIRef
 
 from rdf_persistence.domain.exceptions import InvalidBody, MigrationFailed, PersistenceError
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
-from rdf_persistence.domain.generated.service.rp_service import Migration
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.generated.service.rp_service import Migration
 from rdf_persistence.services.migrations import (
     Chain,
     SchemaChain,

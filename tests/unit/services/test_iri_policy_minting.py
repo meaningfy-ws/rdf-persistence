@@ -16,15 +16,15 @@ from rdf_persistence import new_part
 from rdf_persistence.domain.exceptions import InvalidBody, InvalidIri
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.generated.service.rp_service import (
+from rdf_persistence.domain.media import JSON, JSON_LD
+from rdf_persistence.services.aggregates import Aggregates
+from rdf_persistence.services.documents import Documents
+from rdf_persistence.services.generated.service.rp_service import (
     IdKind,
     IdSpec,
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.domain.media import JSON, JSON_LD
-from rdf_persistence.services.aggregates import Aggregates
-from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types

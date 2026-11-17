@@ -24,6 +24,19 @@ layers =
     (rdf_persistence.services)
     (rdf_persistence.domain)
 
+; Technical models (service settings, wire shapes) are generated outside the domain and the domain never
+; imports them, directly or through a chain (technical-models PD-2, Q-2). The `thematic-structure` change
+; replaces this contract with one over the thematic layout. `testkit.generated` does not exist yet.
+[importlinter:contract:domain-never-imports-technical-models]
+name = the domain never imports a technical model (service, wire or testkit)
+type = forbidden
+source_modules =
+    rdf_persistence.domain
+forbidden_modules =
+    rdf_persistence.services.generated
+    rdf_persistence.adapters.generated
+    rdf_persistence.testkit.generated
+
 [importlinter:contract:domain-pure]
 name = domain imports no I/O, web, token or validation library
 type = forbidden

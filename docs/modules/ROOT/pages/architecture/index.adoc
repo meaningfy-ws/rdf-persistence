@@ -286,8 +286,9 @@ _What may a consumer import?_
 |===
 |Layer (module) |Blocks |Exported at top level
 |`rdf_persistence.domain`
-|metamodel classes (generated from `model/rp.yaml`), the service records (generated from
-`model/service/rp_service.yaml`), the strict base model, the errors
+|metamodel classes (generated from `model/rp.yaml`; the service records, generated from
+`model/technical/service/rp_service.yaml`, live in `rdf_persistence.services.generated.service`),
+the strict base model, the errors
 |`RpModel`; `Iris`, `DEFAULT_IRIS`, `mint_aggregate_iri`; `AggregateRoot`, `Described`, `Tracked`,
 `Provenanced`, `Activity`, `Principal`, `RegistryEntry`, `StoredFile`, `RdfFormat`; `Policy`,
 `Rule`, `Grant`, `Prohibition`, `RoleDefinition`, `RoleLevel`, `Action`; `TenantAccess`,

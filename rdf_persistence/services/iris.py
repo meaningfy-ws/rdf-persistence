@@ -11,12 +11,6 @@ from uuid import uuid4
 from rdflib import URIRef
 
 from rdf_persistence.domain.exceptions import InvalidIri, NotFound
-from rdf_persistence.domain.generated.service.rp_service import (
-    IdKind,
-    IdSpec,
-    IriPolicy,
-    ServiceSettings,
-)
 from rdf_persistence.domain.layout import (
     _SEGMENT,
     APPLICATION_ID,
@@ -26,6 +20,12 @@ from rdf_persistence.domain.layout import (
     is_canonical_uuid,
     tenant_name_prefix,
     toolkit_principal_iri,
+)
+from rdf_persistence.services.generated.service.rp_service import (
+    IdKind,
+    IdSpec,
+    IriPolicy,
+    ServiceSettings,
 )
 
 # The template placeholders and regex group names the matching code tests for.

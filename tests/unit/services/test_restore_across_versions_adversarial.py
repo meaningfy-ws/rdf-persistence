@@ -16,9 +16,9 @@ from rdflib import XSD, URIRef
 from rdflib.namespace import SKOS
 
 from rdf_persistence.domain.exceptions import StoredDataInvalid
-from rdf_persistence.domain.generated.service.rp_service import MigrationStep, TenantDump
 from rdf_persistence.domain.layout import stamps_graph_iri
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.generated.service.rp_service import MigrationStep, TenantDump
 from rdf_persistence.services.migration_runner import migrate_database
 from rdf_persistence.services.migrations import SchemaChain
 from rdf_persistence.services.tenancy import Tenancy

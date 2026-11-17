@@ -6,7 +6,7 @@ from rdf_persistence.domain import layout
 from rdf_persistence.services import iris
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 
-VIEW = load_schema(PACKAGE_DIR / "model" / "service" / "rp_service.yaml")
+VIEW = load_schema(PACKAGE_DIR / "model" / "technical" / "service" / "rp_service.yaml")
 
 
 def _unanchored(pattern: str) -> str:

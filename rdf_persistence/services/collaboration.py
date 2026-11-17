@@ -14,15 +14,15 @@ from rdf_persistence.domain.exceptions import BadQuery, InvalidIri
 from rdf_persistence.domain.generated.rp_access import Action
 from rdf_persistence.domain.generated.rp_discussion import Comment, PostComment
 from rdf_persistence.domain.generated.rp_workflow import Transition
-from rdf_persistence.domain.generated.service.rp_service import (
+from rdf_persistence.services.access import AccessRules
+from rdf_persistence.services.discussion import Discussion
+from rdf_persistence.services.generated.service.rp_service import (
     CallerAccess,
     MemberList,
     Referrer,
     ReferrerList,
     VerifiedCaller,
 )
-from rdf_persistence.services.access import AccessRules
-from rdf_persistence.services.discussion import Discussion
 from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import GeneratedModels, Mapper

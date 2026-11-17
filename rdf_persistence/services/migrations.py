@@ -18,7 +18,6 @@ from rdflib.term import Node
 
 from rdf_persistence.domain.exceptions import InvalidMigration, SparqlError, StoredDataInvalid
 from rdf_persistence.domain.generated.rp_core import RegistryKind
-from rdf_persistence.domain.generated.service.rp_service import Migration, MigrationStep
 from rdf_persistence.domain.sparql import (
     CODEPOINT_ESCAPE,
     SparqlTerm,
@@ -28,6 +27,7 @@ from rdf_persistence.domain.sparql import (
     term,
 )
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.generated.service.rp_service import Migration, MigrationStep
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.yaml_files import (
     MOST_PROBLEMS,

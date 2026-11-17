@@ -19,8 +19,8 @@ from faststream.redis.annotations import RedisMessage
 from pydantic import ValidationError
 
 from rdf_persistence.domain.generated.rp_provenance import Activity
-from rdf_persistence.domain.generated.service.rp_service import EventEnvelope
 from rdf_persistence.services.events import Receive
+from rdf_persistence.services.generated.service.rp_service import EventEnvelope
 
 logger = logging.getLogger(__name__)
 

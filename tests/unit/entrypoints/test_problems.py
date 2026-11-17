@@ -11,13 +11,13 @@ from pydantic import ValidationError
 from rdf_persistence import LabelUpdate, Problem, ProblemKind
 from rdf_persistence.domain import exceptions
 from rdf_persistence.domain.exceptions import PersistenceError
-from rdf_persistence.domain.generated.service.rp_service import ProblemSlug
 from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.problems import (
     KINDS,
     install_problem_handlers,
     kind_of,
 )
+from rdf_persistence.services.generated.service.rp_service import ProblemSlug
 from tests.toy_service import assert_problem
 
 BASE = "https://example.org/library/"

@@ -7,7 +7,7 @@ identity).
 from collections.abc import Callable
 from typing import Protocol
 
-from rdf_persistence.domain.generated.service.rp_service import VerifiedCaller
+from rdf_persistence.services.generated.service.rp_service import VerifiedCaller
 from rdf_persistence.services.iris import Iris
 
 EpochClock = Callable[[], float]

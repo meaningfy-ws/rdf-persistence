@@ -12,7 +12,6 @@ from pathlib import Path
 import yaml
 
 from rdf_persistence.domain.exceptions import InvalidMigration
-from rdf_persistence.domain.generated.service.rp_service import Migration
 from rdf_persistence.generation.config import migrations_folder
 from rdf_persistence.generation.exceptions import refusing_unsupported_rules
 from rdf_persistence.generation.generated.rp_generation import (
@@ -24,6 +23,7 @@ from rdf_persistence.generation.generated.rp_generation import (
 )
 from rdf_persistence.generation.lock import changes, described, draft, summarise
 from rdf_persistence.generation.pipeline import Run, schema_faults, stage
+from rdf_persistence.services.generated.service.rp_service import Migration
 from rdf_persistence.services.migrations import load_migration, migration_file_name
 from rdf_persistence.services.schema_structure import generation_view
 

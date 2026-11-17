@@ -8,7 +8,7 @@ import pytest
 
 from rdf_persistence import AccessRules, load_role_definitions
 from rdf_persistence.domain.exceptions import InvalidIri, IriPolicyChanged, NotFound
-from rdf_persistence.domain.generated.service.rp_service import IriPolicy
+from rdf_persistence.services.generated.service.rp_service import IriPolicy
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from tests.toy import ROLES, SETTINGS
 from tests.toy_service import CONSUMER_POLICY, TENANT_BODY, ToyService

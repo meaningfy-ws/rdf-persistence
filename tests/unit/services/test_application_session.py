@@ -15,10 +15,10 @@ from rdf_persistence.domain.generated.rp_access import Grant
 from rdf_persistence.domain.generated.rp_annotations import Tracked
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantAccess, TenantState
-from rdf_persistence.domain.generated.service.rp_service import GrantSet
 from rdf_persistence.domain.layout import application_database_name, graph_iri
 from rdf_persistence.domain.media import N_QUADS
 from rdf_persistence.services.access import _access_mapper
+from rdf_persistence.services.generated.service.rp_service import GrantSet
 from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import UnitOfWork

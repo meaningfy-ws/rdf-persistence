@@ -11,8 +11,8 @@ from rdflib.graph import DATASET_DEFAULT_GRAPH_ID
 from rdflib.term import Node
 
 from rdf_persistence.domain.exceptions import InvalidBody
-from rdf_persistence.domain.generated.service.rp_service import IriPolicy
 from rdf_persistence.domain.layout import stamps_graph_iri
+from rdf_persistence.services.generated.service.rp_service import IriPolicy
 from rdf_persistence.services.iris import Iris
 
 # A character that would make the id part of a longer word; the ids of a policy are drawn from [a-z0-9].

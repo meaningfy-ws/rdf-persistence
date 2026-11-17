@@ -31,10 +31,10 @@ from rdf_persistence.domain.blob_keys import checked_blob_key
 from rdf_persistence.domain.exceptions import Conflict, InvalidBody, InvalidIri, NotFound
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
-from rdf_persistence.domain.generated.service.rp_service import TenantDump, TenantSummary
 from rdf_persistence.domain.media import N_QUADS
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.files import FileStore
+from rdf_persistence.services.generated.service.rp_service import TenantDump, TenantSummary
 from rdf_persistence.services.iris import Iris, effective_policy, policy_differences
 from rdf_persistence.services.migration_runner import migrate_dataset
 from rdf_persistence.services.migrations import SchemaChain, stamps, versions

@@ -7,7 +7,7 @@ import pytest
 from rdflib import URIRef
 
 from rdf_persistence.domain.exceptions import InvalidIri, NotFound
-from rdf_persistence.domain.generated.service.rp_service import (
+from rdf_persistence.services.generated.service.rp_service import (
     IdKind,
     IdSpec,
     IriPolicy,

@@ -108,13 +108,13 @@ openapi = false
 kind = "technical"
 
 [[tool.rp-generate]]
-schema = "rdf_persistence/model/service/rp_service.yaml"
-package = "rdf_persistence.domain.generated.service"
+schema = "rdf_persistence/model/technical/service/rp_service.yaml"
+package = "rdf_persistence.services.generated.service"
 regenerate-command = "make generate"
 kind = "technical"
 
 [[tool.rp-generate]]
-schema = "rdf_persistence/model/adapters/rp_wire.yaml"
+schema = "rdf_persistence/model/technical/wire/rp_wire.yaml"
 package = "rdf_persistence.adapters.generated"
 regenerate-command = "make generate"
 openapi = false
