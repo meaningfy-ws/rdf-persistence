@@ -356,3 +356,26 @@ recommendation):
 - **OQ-3** (from the attack) Match a weak tag after all, since a proxy may weaken the `ETag`
   (RISK-9)? Recommendation: keep strong comparison (DEC-4) and document the proxy rule; a version
   token is exact, so a weak match would hide nothing but the proxy's change.
+
+## Delivery decisions
+
+Taken by the lead (R-0007), shown to the developer at the end of each stage; the developer may
+overrule any of them.
+
+- **D-1 Stage 1 review set.** Two read-only passes, L2 and L3, each its own reviewer (P-0005: one
+  pass of L2 and L3 per stage; `develop/agents.adoc`: L1, L2 and L3 are never combined). The full
+  review (L1, L2, L3, L4+L5) runs once, after stage 3. Then one fresh checker (MEDIUM).
+- **D-2 Stage 1 tester: no.** The PLAN has no `## Invariants` section and the appetite is MEDIUM,
+  so the stage-loop condition is not met; the PLAN schedules the tester after task 2.5.
+- **D-3 Stage 1 builders in parallel** (R-0004). Five builders in their own worktrees from
+  `b196bb8`, on disjoint files: 1.1 then 1.2 (`jwks.py`, one after the other), 1.3, 1.4, 1.5, 1.6.
+  The lead commits each task in its worktree and cherry-picks it onto
+  `change/manual-revision-notes-s1`; `rdf_persistence/__init__.py` and
+  `tests/unit/test_public_api.py`, the only files two tasks may share, are merged by the lead and
+  the task gate is re-run (T2).
+- **D-4 Impact of task 1.6 read as low.** GitNexus rates `MessageLimitExceeded` CRITICAL (48
+  direct): it counts every importer of `domain/exceptions.py`. The change only adds an optional
+  `command=` keyword; the three call sites (`messagebus.py:153`, `:182`, `test_receive.py:266`)
+  keep working unchanged. The other tasks rate LOW (`JwksTokenVerifier`, `dataset_of`,
+  `install_problem_handlers`) or MEDIUM (`expected_version`, 5 direct; `Mapper`, 14 direct, all
+  keeping their signatures).
