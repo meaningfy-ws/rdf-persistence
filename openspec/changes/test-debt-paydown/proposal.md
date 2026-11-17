@@ -54,6 +54,10 @@ domain test kills. The `rp-messages` spec also contradicts the code on empty com
 - **DEC-4:** production changes are limited to what a test needs (an injected clock or interval, a
   redundant branch removed, a set-up cost cut) and keep every public behaviour.
 
+- **Superseded in the PLAN** (logged, not a re-shape): the waits need no clock and move to stage 1,
+  the services mutation widening is dropped, and `auth.py`'s empty-token check stays (a consumer's
+  verifier may accept an empty token); see design.md PD-3, PD-4, PD-6, PD-13.
+
 ## Rabbit-holes
 
 - A full mutation run of `services/` (hundreds of modules' worth of mutants): only its pure helper
