@@ -391,18 +391,22 @@ or later*: redelivery uses a command older servers lack, and the consumer stops 
 `StreamClaimUnsupportedError` on one. A consumer without the extra imports the toolkit unchanged;
 only `rdf_persistence.adapters.redis_events` needs it.
 
+In the examples, the `...` comments stand for what
+xref:howto/adopt.adoc#serve[Serve the application] in _Build an application_ passes to
+`ServiceSettings` and `install_service`.
+
 [source,python]
 ----
 from rdf_persistence.adapters.redis_events import RedisEventBus
 
 settings = ServiceSettings(
-    # ... the settings of step 12 of "Build an application", and:
+    # ... the settings of "Serve the application", and:
     deployment="library",                 # required with an event bus; lower case letters and digits
     public_url="https://library.example.org",
 )
 kit = install_service(
     app,
-    # ... the other keyword arguments of step 12
+    # ... the other keyword arguments of "Serve the application"
     settings=settings,
     event_bus=RedisEventBus("redis://redis:6379", deployment=settings.deployment),
 )
@@ -427,7 +431,10 @@ kit = install_service(
   `public_url` the link is relative (`{prefix}/context.jsonld`), which a consumer on another host
   cannot follow. Set it when other deployments read the messages. The server-sent events route
   sends the service's own context link in a `Link` header, as every other route does.
-* `RedisEventBus` also takes `events=EventSettings(...)`: `stream` (default `rp-events`),
+* `RedisEventBus` also takes two optional keyword arguments. `middlewares=` is a sequence of
+  FastStream broker middlewares, passed to its `RedisBroker` unchanged
+  (xref:howto/observability.adoc#redis[Trace the event broker] shows the telemetry middleware).
+  `events=EventSettings(...)` groups the bus's own settings: `stream` (default `rp-events`),
   `retention_seconds` (default 7 days; older entries are trimmed after each publish),
   `claim_idle_seconds` (default 30, how long a failed message waits before it comes again) and
   `polling_interval_ms` (default 100). The relay and the hub read the same group (`relay_interval_seconds`,
@@ -458,13 +465,13 @@ event bus on the same Redis.
 ----
 # --- deployment "library" (the sender) ---
 sender_settings = ServiceSettings(
-    # ... the settings of step 12
+    # ... the settings of "Serve the application"
     deployment="library",
     public_url="https://library.example.org",
 )
 install_service(
     app,
-    # ... the other keyword arguments of step 12
+    # ... the other keyword arguments of "Serve the application"
     prefix="/api",
     settings=sender_settings,
     event_bus=RedisEventBus("redis://redis:6379", deployment=sender_settings.deployment),
@@ -478,12 +485,12 @@ async def reindex(activity: Activity, work: Work) -> None:
         ...    # update the catalogue's own index
 
 receiver_settings = ServiceSettings(
-    # ... the settings of step 12, with the same tenant IRIs as the sender
+    # ... the settings of "Serve the application", with the same tenant IRIs as the sender
     deployment="catalogue",
 )
 kit = install_service(
     app,
-    # ... the other keyword arguments of step 12
+    # ... the other keyword arguments of "Serve the application"
     settings=receiver_settings,
     event_bus=RedisEventBus("redis://redis:6379", deployment=receiver_settings.deployment),
 )

@@ -83,7 +83,7 @@ slots:
   system_created:
     title: System created
     description: >-
-      Whether a sweep reached the resource as a system-created one.
+      Whether this start-up just created the system database, so the sweep is skipped.
     slot_uri: rp:systemCreated
     alias: rp.sweep.system_created
     range: boolean

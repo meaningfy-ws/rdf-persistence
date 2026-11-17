@@ -22,8 +22,9 @@ are the full review's accepted Critical findings (no exception text in a span; n
   with a non-identifier alias (D-4); MWBv2's change should name this one.
 
 ## Next
-After the merge: the acceptance record, the docs stage (D-13), then archive with `openspec archive
-otel-observability --yes` per `spec-stewardship`.
+Closed in the close PR: acceptance skipped by the developer, docs stage D-13 done, change
+archived. Nothing follows in this change; L4/L5-W4 above and the floor lists are candidates for a
+later change.
 
 ## Prompt
 Act as the team lead (epic-delivery); read docs/modules/ROOT/pages/develop/agents.adoc. Close
