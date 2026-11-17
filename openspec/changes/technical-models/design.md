@@ -711,6 +711,14 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   The fix pass's builder sorts the tester's 334 tests (keep, merge or drop) and the lead confirms.
   D-52 as built: the testkit's `model_shape_diff` also matches a field named after its slot, so a
   consumer's shape test follows the same rule.
+- **D-56 (stage 4, the fix pass as built)** Three fixers ran in parallel on disjoint files: A
+  generation (items 4, 5, 9), B settings (1, 2, 3), C docs, changelog and steps (6, 7, 8). As
+  built: (5) an unquoted `yes` is the flag, since YAML 1.1 loads it as `true` before LinkML sees
+  it; a quoted `'yes'`, `1`, `'on'` or `'maybe'` is refused. (9) The term `kind` is again the
+  `ConstraintKind` slot's, and `target_kind` and `schema_file` are terms of their own. (3) Only the
+  reading class hides its input: the final model validates the already validated dump, where a
+  `SecretStr` is masked. The tester's 334 tests: all kept, the token grids cut from 264 cases to 107
+  (near-duplicates), the two floor items (F-5, F-6) a strict `xfail`.
 
 Under the floor (not fixed in stage 4):
 
