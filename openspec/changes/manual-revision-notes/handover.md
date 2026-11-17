@@ -1,27 +1,31 @@
-# Hand-over: manual-revision-notes, after stage 1
+# Hand-over: manual-revision-notes, after stage 2
 
 ## Done
-Stage 1 (defects, tasks 1.1–1.6), PR #141 (merged by the watch-and-merge command after this note).
-It unblocks `technical-models` (A-3/A-4, `jwks.py`) and `otel-observability` (A-7). The EPIC is
-reconciled for stage 1 (proposal.md "As built"); stages 2 and 3 add their rows.
+Stage 2 (reuse, tasks 2.1–2.5), PR #143 (merged by the watch-and-merge command after this note).
+Task 2.5 kept `FakeStore` on rdflib (PD-17); the pyoxigraph attempt is in
+`evidence/spike-pyoxigraph-fakestore.patch`.
 
 ## Decided since the PLAN
-D-1 to D-7 (agreed by the developer), F-1, F-2, and the stage 1 findings under the floor
-(design.md, Delivery decisions).
+PD-17; D-8 to D-13; F-3 to F-6 and the stage 2 findings under the floor (design.md, Delivery
+decisions). The developer granted the lead the merge on green CI until this EPIC ends (D-13).
 
 ## Open
-- The full review (L1, L2, L3, L4+L5) runs once after stage 3 (D-1, P-0005); it weighs the findings
-  under the floor, first the `RpModel.replaced` naming (L3 W1).
-- #142: `test_heads_of_hundreds_of_iris_is_one_query` is quarantined (CI timeout, D-7); task 2.5's
-  pyoxigraph `FakeStore` may make it fast enough to lift the quarantine.
-- Fresh worktrees need `make install` (all extras) before a builder's gate, or `tests/unit/generation`
-  and mypy fail on missing extras.
-- GitNexus `analyze` must run outside the sandbox (`~/.gitnexus` is not writable inside it).
+- The full review (L1, L2, L3, L4+L5) runs once after stage 3 (D-1, P-0005); it weighs both
+  stages' findings under the floor, first `RpModel.replaced` (stage 1 L3 W1) and the broad
+  `except Exception` around `triples_of` (stage 2 L3 W2).
+- A follow-up for pyoxigraph (`make test-fast` about twice as fast, #142's test 0.3 s) needs the
+  developer: the three engine-bound test edits and oxigraph's `NOT IN ()` defect (contribute
+  upstream, or work around it in the fake) (PD-17). #142 stays quarantined.
+- Task 3.3 edits `howto/adopt.adoc`: the cold reader's older gaps in its load section are listed
+  under the floor.
+- Builders in worktrees: Serena's project is the main checkout, so they edit with Edit only; uv
+  needs the sandbox disabled; a fresh worktree needs `make install`. A new `RpAnnotation` member
+  needs a group in `generation/checks/hard.py`, and editing `hard.py` needs `make generate`.
 
 ## Next
-Stage 2, task 2.1. Read first: tasks.md §Stage 2, design.md PD-5, PD-6, PD-10, PD-11, PD-13 and the
-stage 1 findings, `inputs/keep.md`. The tester runs after task 2.5.
+Stage 3, task 3.1. Read first: tasks.md §Stage 3, design.md PD-12, PD-14, PD-15, PD-16, D-13 and
+the stage 2 findings, `specs/rp-service-api/spec.md`.
 
 ## Prompt
-Act as the team lead (epic-delivery). Deliver stage 2 of openspec/changes/manual-revision-notes
-from handover.md: one PR into develop from branch change/manual-revision-notes-s2.
+Act as the team lead (epic-delivery). Deliver stage 3 of openspec/changes/manual-revision-notes
+from handover.md: one PR into develop from branch change/manual-revision-notes-s3.
