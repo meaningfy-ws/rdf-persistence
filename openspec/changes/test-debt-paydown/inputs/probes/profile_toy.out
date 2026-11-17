@@ -1,0 +1,160 @@
+first construction 0.139s, warm mean 0.116s over 5
+         6230351 function calls (6128631 primitive calls) in 1.529 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1191 to 45 due to restriction <45>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        5    0.000    0.000    1.546    0.309 tests/toy_service.py:125(__init__)
+        5    0.000    0.000    1.537    0.307 rdf_persistence/entrypoints/service.py:32(install_service)
+        5    0.000    0.000    1.399    0.280 rdf_persistence/entrypoints/kit.py:94(__init__)
+        5    0.001    0.000    0.678    0.136 rdf_persistence/services/documents.py:93(__init__)
+        5    0.000    0.000    0.660    0.132 rdf_persistence/services/schema_structure.py:348(iri_types)
+        5    0.000    0.000    0.655    0.131 rdflib/graph.py:1527(parse)
+        5    0.000    0.000    0.654    0.131 rdflib/plugins/parsers/notation3.py:2014(parse)
+        5    0.000    0.000    0.651    0.130 rdflib/plugins/parsers/notation3.py:491(loadStream)
+        5    0.000    0.000    0.651    0.130 rdflib/plugins/parsers/notation3.py:494(loadBuf)
+        5    0.001    0.000    0.651    0.130 rdflib/plugins/parsers/notation3.py:501(feed)
+     3265    0.003    0.000    0.644    0.000 rdflib/plugins/parsers/notation3.py:529(directiveOrStatement)
+     3215    0.001    0.000    0.626    0.000 rdflib/plugins/parsers/notation3.py:785(statement)
+     3215    0.015    0.000    0.607    0.000 rdflib/plugins/parsers/notation3.py:1121(property_list)
+       10    0.000    0.000    0.349    0.035 linkml_runtime/utils/schemaview.py:690(all_classes)
+       15    0.000    0.000    0.349    0.023 linkml_runtime/utils/schemaview.py:419(_get_dict)
+        5    0.000    0.000    0.349    0.070 linkml_runtime/utils/schemaview.py:602(all_schema)
+        5    0.001    0.000    0.349    0.070 linkml_runtime/utils/schemaview.py:479(imports_closure)
+       85    0.000    0.000    0.348    0.004 linkml_runtime/utils/schemaview.py:208(load_schema_wrap)
+       85    0.001    0.000    0.348    0.004 linkml_runtime/loaders/loader_root.py:71(load)
+       85    0.000    0.000    0.347    0.004 linkml_runtime/loaders/yaml_loader.py:41(load_any)
+       80    0.000    0.000    0.346    0.004 linkml_runtime/utils/schemaview.py:447(_load_closure_import)
+       80    0.000    0.000    0.345    0.004 linkml_runtime/utils/schemaview.py:346(load_import)
+    14915    0.003    0.000    0.337    0.000 rdflib/plugins/parsers/notation3.py:780(makeStatement)
+    14915    0.011    0.000    0.334    0.000 rdflib/plugins/parsers/notation3.py:1898(makeStatement)
+        5    0.000    0.000    0.309    0.062 rdf_persistence/services/schema_structure.py:324(owned_classes)
+       50    0.001    0.000    0.308    0.006 rdf_persistence/services/schema_structure.py:314(owned_slots)
+      235    0.002    0.000    0.304    0.001 linkml_runtime/utils/schemaview.py:2017(class_induced_slots)
+     1320    0.097    0.000    0.303    0.000 linkml_runtime/utils/schemaview.py:1819(induced_slot)
+       85    0.001    0.000    0.272    0.003 linkml_runtime/loaders/loader_root.py:139(_construct_target_class)
+       85    0.001    0.000    0.254    0.003 linkml_runtime/linkml_model/meta.py:582(__post_init__)
+    14915    0.008    0.000    0.252    0.000 rdflib/graph.py:617(add)
+9730/1045    0.023    0.000    0.248    0.000 linkml_runtime/utils/yamlutils.py:111(_normalize_inlined)
+ 8175/955    0.004    0.000    0.248    0.000 linkml_runtime/utils/yamlutils.py:108(_normalize_inlined_as_dict)
+ 1455/900    0.005    0.000    0.228    0.000 linkml_runtime/utils/yamlutils.py:161(form_1)
+    14915    0.146    0.000    0.227    0.000 rdflib/plugins/stores/memory.py:313(add)
+689790/663865    0.152    0.000    0.226    0.000 jsonasobj2/_jsonobj.py:162(__setattr__)
+    31710    0.005    0.000    0.207    0.000 rdflib/plugins/parsers/notation3.py:889(item)
+    31710    0.007    0.000    0.202    0.000 rdflib/plugins/parsers/notation3.py:895(path)
+    31710    0.013    0.000    0.195    0.000 rdflib/plugins/parsers/notation3.py:1527(nodeOrLiteral)
+    31710    0.024    0.000    0.156    0.000 rdflib/plugins/parsers/notation3.py:925(node)
+        5    0.000    0.000    0.132    0.026 rdf_persistence/entrypoints/router.py:410(build_router)
+    18130    0.003    0.000    0.129    0.000 rdflib/plugins/parsers/notation3.py:1494(object)
+    18130    0.003    0.000    0.125    0.000 rdflib/plugins/parsers/notation3.py:797(subject)
+    13825    0.005    0.000    0.118    0.000 rdflib/plugins/parsers/notation3.py:1202(objectList)
+    13825    0.014    0.000    0.115    0.000 rdflib/plugins/parsers/notation3.py:800(verb)
+
+
+         6230351 function calls (6128631 primitive calls) in 1.529 seconds
+
+   Ordered by: internal time
+   List reduced from 1191 to 15 due to restriction <15>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+689790/663865    0.152    0.000    0.226    0.000 jsonasobj2/_jsonobj.py:162(__setattr__)
+    14915    0.146    0.000    0.227    0.000 rdflib/plugins/stores/memory.py:313(add)
+     1320    0.097    0.000    0.303    0.000 linkml_runtime/utils/schemaview.py:1819(induced_slot)
+  1580255    0.095    0.000    0.110    0.000 {built-in method builtins.isinstance}
+   155960    0.033    0.000    0.040    0.000 rdflib/plugins/parsers/notation3.py:552(tok)
+    31575    0.029    0.000    0.035    0.000 rdflib/plugins/parsers/notation3.py:1386(qname)
+    44745    0.026    0.000    0.070    0.000 rdflib/plugins/parsers/notation3.py:1924(normalise)
+   322275    0.025    0.000    0.026    0.000 {built-in method builtins.getattr}
+    31710    0.024    0.000    0.156    0.000 rdflib/plugins/parsers/notation3.py:925(node)
+   147855    0.024    0.000    0.037    0.000 rdflib/plugins/parsers/notation3.py:1305(skipSpace)
+    31525    0.023    0.000    0.105    0.000 rdflib/plugins/parsers/notation3.py:1229(uri_ref2)
+9730/1045    0.023    0.000    0.248    0.000 linkml_runtime/utils/yamlutils.py:111(_normalize_inlined)
+     9730    0.019    0.000    0.032    0.000 /home/lps/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/dataclasses.py:1308(fields)
+    74510    0.017    0.000    0.017    0.000 {method 'match' of 're.Pattern' objects}
+      100    0.016    0.000    0.085    0.001 yaml/constructor.py:47(get_single_data)
+
+
+=== callees of ServiceKit.__init__ / Documents.__init__ / install_service
+   Ordered by: cumulative time
+   List reduced from 1191 to 1 due to restriction <'kit.py:94\\(__init__\\)'>
+
+Function                                                                                                     called...
+                                                                                                                 ncalls  tottime  cumtime
+rdf_persistence/entrypoints/kit.py:94(__init__)  ->       5    0.000    0.000  /home/lps/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/pathlib/_local.py:498(__init__)
+                                                                                                                      5    0.000    0.000  /home/lps/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/pathlib/_local.py:505(__new__)
+                                                                                                                      5    0.000    0.000  /home/lps/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/typing.py:2383(cast)
+                                                                                                                      5    0.000    0.000  rdf_persistence/domain/iris.py:173(system_database_name)
+                                                                                                                      5    0.000    0.002  rdf_persistence/domain/iris.py:360(__init__)
+                                                                                                                      5    0.000    0.000  rdf_persistence/entrypoints/auth.py:29(__init__)
+                                                                                                                      5    0.000    0.000  rdf_persistence/services/access.py:191(with_iris)
+                                                                                                                      5    0.000    0.000  rdf_persistence/services/aggregates.py:26(__init__)
+                                                                                                                      5    0.000    0.000  rdf_persistence/services/discussion.py:45(dependents)
+                                                                                                                      5    0.001    0.678  rdf_persistence/services/documents.py:93(__init__)
+                                                                                                                      5    0.000    0.002  rdf_persistence/services/documents.py:142(require_frames)
+                                                                                                                      5    0.000    0.000  rdf_persistence/services/event_hub.py:28(__init__)
+                                                                                                                      5    0.000    0.000  rdf_persistence/services/events.py:30(context_link)
+                                                                                                                      5    0.000    0.000  rdf_persistence/services/listing.py:205(__init__)
+                                                                                                                     10    0.000    0.000  rdf_persistence/services/mapper.py:76(named)
+                                                                                                                      5    0.000    0.003  rdf_persistence/services/mapper.py:89(generated_models_of)
+                                                                                                                      5    0.000    0.001  rdf_persistence/services/mapper.py:122(__init__)
+                                                                                                                     10    0.000    0.031  rdf_persistence/services/migrations.py:156(chain_of)
+                                                                                                                     10    0.000    0.000  rdf_persistence/services/migrations.py:180(current_version)
+                                                                                                                      5    0.000    0.000  rdf_persistence/services/relay.py:79(__init__)
+                                                                                                                      5    0.000    0.005  rdf_persistence/services/schema.py:27(load_schema)
+                                                                                                                      5    0.000    0.000  rdf_persistence/services/schema_structure.py:300(tenant_access_class)
+                                                                                                                      5    0.000    0.660  rdf_persistence/services/schema_structure.py:348(iri_types)
+                                                                                                                      5    0.000    0.000  rdf_persistence/services/store.py:74(__init__)
+                                                                                                                      5    0.000    0.008  rdf_persistence/services/tenancy.py:119(__init__)
+                                                                                                                      5    0.000    0.010  rdf_persistence/services/workflows.py:113(from_files)
+                                                                                                                      5    0.000    0.000  rdf_persistence/services/write_guards.py:34(__init__)
+                                                                                                                      5    0.000    0.000  {built-in method builtins.id}
+                                                                                                                      5    0.000    0.000  {built-in method builtins.iter}
+                                                                                                                      5    0.000    0.000  {built-in method builtins.next}
+                                                                                                                      5    0.000    0.000  {method 'items' of 'dict' objects}
+                                                                                                                      5    0.000    0.000  {method 'strip' of 'str' objects}
+                                                                                                                      5    0.000    0.000  {method 'values' of 'dict' objects}
+
+
+   Ordered by: cumulative time
+   List reduced from 1191 to 1 due to restriction <'documents.py:93\\(__init__\\)'>
+
+Function                                                                                                        called...
+                                                                                                                    ncalls  tottime  cumtime
+rdf_persistence/services/documents.py:93(__init__)  ->       5    0.000    0.000  /home/lps/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/json/__init__.py:304(loads)
+                                                                                                                        10    0.000    0.000  /home/lps/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/pathlib/_local.py:148(__truediv__)
+                                                                                                                         5    0.000    0.000  /home/lps/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/pathlib/_local.py:539(read_text)
+                                                                                                                       940    0.000    0.000  linkml_runtime/utils/schemaview.py:326(__hash__)
+                                                                                                                       190    0.000    0.003  linkml_runtime/utils/schemaview.py:1026(class_descendants)
+                                                                                                                         5    0.000    0.000  rdflib/graph.py:520(__init__)
+                                                                                                                         5    0.000    0.655  rdflib/graph.py:1527(parse)
+                                                                                                                         5    0.000    0.007  rdf_persistence/services/documents.py:152(_part_predicates)
+                                                                                                                       690    0.000    0.005  rdf_persistence/services/documents.py:164(_iri_of)
+                                                                                                                      1315    0.001    0.002  rdf_persistence/services/schema_structure.py:104(json_name)
+                                                                                                                         5    0.000    0.004  rdf_persistence/services/schema_structure.py:150(internal_predicates)
+                                                                                                                         5    0.000    0.000  {method 'values' of 'dict' objects}
+
+
+   Ordered by: cumulative time
+   List reduced from 1191 to 1 due to restriction <'service.py:32\\(install_service\\)'>
+
+Function                                                                                                                called...
+                                                                                                                            ncalls  tottime  cumtime
+rdf_persistence/entrypoints/service.py:32(install_service)  ->       5    0.000    0.000  fastapi/applications.py:1483(include_router)
+                                                                                                                                 5    0.000    1.399  rdf_persistence/entrypoints/kit.py:94(__init__)
+                                                                                                                                 5    0.000    0.006  rdf_persistence/entrypoints/openapi.py:522(install_openapi)
+                                                                                                                                 5    0.000    0.000  rdf_persistence/entrypoints/problems.py:192(install_problem_handlers)
+                                                                                                                                 5    0.000    0.132  rdf_persistence/entrypoints/router.py:410(build_router)
+                                                                                                                                 5    0.000    0.000  rdf_persistence/entrypoints/service.py:151(_require_same_principals)
+                                                                                                                                 5    0.000    0.000  rdf_persistence/entrypoints/service.py:162(_run_at_startup)
+                                                                                                                                 5    0.000    0.000  {built-in method builtins.isinstance}
+
+
+   Ordered by: cumulative time
+   List reduced from 1191 to 1 due to restriction <'schemaview.py:479\\(imports_closure\\)'>
+
+Function                                                                                                                                                was called by...
+                                                                                                                                                            ncalls  tottime  cumtime
+linkml_runtime/utils/schemaview.py:479(imports_closure)  <-       5    0.001    0.349  linkml_runtime/utils/schemaview.py:602(all_schema)
+
+
