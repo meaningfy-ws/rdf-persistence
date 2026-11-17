@@ -35,6 +35,7 @@ from fastapi.openapi.models import (
     Response,
     Schema,
 )
+from fastapi.sse import EventSourceResponse
 from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import Field
@@ -46,7 +47,6 @@ from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.negotiation import (
     ALLOWED_ACTIONS,
     ETAG,
-    EVENT_STREAM,
     IF_MATCH,
     LAST_EVENT_ID,
     LINK,
@@ -348,7 +348,7 @@ class TenantOpenApi:
         stream = Response(
             description="The activities of the tenant, as server-sent events, until the client leaves",
             headers={LINK: Header(description="The JSON-LD context", schema=Schema(type="string"))},
-            content=_media(Schema(type="string"), EVENT_STREAM),
+            content=_media(Schema(type="string"), EventSourceResponse.media_type),
         )
         resume = _parameter(
             LAST_EVENT_ID,

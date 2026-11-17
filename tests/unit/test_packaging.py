@@ -3,6 +3,7 @@
 Refs: mwb2-adoption-fixes DEC-4 (#42), T-1.
 """
 
+import re
 import subprocess
 import sys
 import zipfile
@@ -45,3 +46,22 @@ def test_a_consumers_type_checker_reads_our_annotations(tmp_path: Path) -> None:
     )
     assert "import-untyped" not in done.stdout, f"the package is typed: {done.stdout}"
     assert "[arg-type]" in done.stdout, f"the wrong argument type is reported: {done.stdout}"
+
+
+SHORT_FORMAT = re.compile(r'format="(nt|turtle|xml|json|json-ld|nquads)"')
+RETIRED_NAMES = re.compile(r"RDFLIB_|EVENT_STREAM")
+
+
+def test_no_rdflib_short_format_name_and_no_retired_constant_is_left_in_the_package() -> (
+    None
+):  # TC-44
+    found = [
+        f"{path.relative_to(ROOT)}:{number}: {line.strip()}"
+        for path in sorted((ROOT / "rdf_persistence").rglob("*.py"))
+        if "generated" not in path.parts
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1)
+        if SHORT_FORMAT.search(line) or RETIRED_NAMES.search(line)
+    ]
+    assert not found, "rdflib takes media types, and the constants are gone (PD-10): " + "; ".join(
+        found
+    )

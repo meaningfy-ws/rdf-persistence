@@ -448,7 +448,7 @@ class Documents:
             if s != graph_iri and p not in self._internal:
                 shown.add((s, p, o))
         if media_type == TURTLE:
-            return str(shown.serialize(format="turtle"))
+            return str(shown.serialize(format=TURTLE))
         framed = await anyio.to_thread.run_sync(self.frame, shown, cls)
         if media_type == JSON:
             framed.pop(CONTEXT_KEY, None)

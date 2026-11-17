@@ -144,7 +144,7 @@ Stage 1 closes with the lead's `make check-all` and `make test-containers`, the 
 | TC-42c | a JSON-LD body whose reference slot holds a relative IRI | `InvalidBody`, same message (before: the triple was dropped) |
 | TC-43 | every good sample of `test_loading.py:68` in JSON-LD | isomorphic to what rdflib's parser gave (read before the swap and kept as a golden in the test) |
 
-- [ ] 2.3 PD-10 (B-3): media types as rdflib format names in `fuseki.py`, `documents.py`,
+- [x] 2.3 PD-10 (B-3): media types as rdflib format names in `fuseki.py`, `documents.py`,
   `loading.py`; `EVENT_STREAM` replaced by `EventSourceResponse.media_type`. Layer: adapters,
   services, entrypoints. Tests: `tests/unit/adapters/test_fuseki_store.py`,
   `tests/unit/entrypoints/test_openapi.py`, `tests/unit/entrypoints/test_events_route.py`
@@ -245,7 +245,7 @@ section), in PR 3 before it merges.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · PR 1 · [x] 2.1 · [x] 2.2 · [ ] 2.3 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 ·
   [x] 2.4 · [x] 2.5 (kept rdflib, PD-17) · (tester) · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] reconcile · PR 3
 
 ## Verification
