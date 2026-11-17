@@ -703,7 +703,13 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
      unreadable).
   8. **Scenario steps that cannot fail** (L2 S1, S2, as D-25): "no token verifier is built" asserts
      a list nothing fills; "is refused" imports a path that never existed. Fix both steps.
+  9. **D-52's JSON-LD context** (the D-52 fixer's finding): the generated context of
+     `rp_generation` takes a slot's alias as its term, so `schema` now shadows the `schema:` prefix
+     and `kind` names two slots (`target_kind`, and the slot `kind` over `ConstraintKind`). A slot
+     annotated `field_name: slot` keeps its slot name as its JSON-LD term too, as it does in Python.
   The fix pass's builder sorts the tester's 334 tests (keep, merge or drop) and the lead confirms.
+  D-52 as built: the testkit's `model_shape_diff` also matches a field named after its slot, so a
+  consumer's shape test follows the same rule.
 
 Under the floor (not fixed in stage 4):
 
