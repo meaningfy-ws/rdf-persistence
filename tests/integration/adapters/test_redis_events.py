@@ -7,10 +7,13 @@ from contextlib import asynccontextmanager
 
 import pytest
 from faststream.redis import RedisBroker
+from faststream.redis.opentelemetry import RedisTelemetryMiddleware
+from opentelemetry.trace import SpanKind
 from redis.asyncio import Redis
 
 from rdf_persistence import ToolkitSettings
 from rdf_persistence.adapters.redis_events import RedisEventBus
+from rdf_persistence.domain.generated.rp_provenance import Replace
 from rdf_persistence.testkit.bootstrap import wait_until_async
 from rdf_persistence.testkit.event_bus_conformance import (
     BODY,
@@ -107,6 +110,31 @@ async def test_a_trim_that_fails_does_not_fail_the_publish(
     assert [r.levelno for r in caplog.records] == [logging.WARNING], (
         "a failed trim is logged once as a warning"
     )
+
+
+async def test_tc28_the_broker_middleware_links_a_publish_to_its_receive(redis, toolkit, spans):
+    stream = f"rp-events-{uuid.uuid4().hex[:8]}"
+    bus = RedisEventBus(
+        redis,
+        deployment="lib",
+        events=toolkit.events.replaced(stream=stream),
+        middlewares=[RedisTelemetryMiddleware()],
+    )
+    inbox = Inbox()
+    await bus.start(inbox)
+    await bus.publish(ENVELOPE, BODY)
+    await inbox.has(1)
+    await bus.close()
+    kinds = {
+        span.kind: span for span in spans() if span.kind in (SpanKind.PRODUCER, SpanKind.CONSUMER)
+    }
+    assert set(kinds) == {SpanKind.PRODUCER, SpanKind.CONSUMER}, "one span of each kind"
+    assert kinds[SpanKind.PRODUCER].context.trace_id == kinds[SpanKind.CONSUMER].context.trace_id, (
+        "one trace"
+    )
+    [(envelope, body)] = inbox.got
+    assert envelope == ENVELOPE, "the envelope reads back unchanged"
+    assert Replace.model_validate_json(body) == BODY, "and the body"
 
 
 async def test_a_message_without_a_valid_envelope_is_dropped_with_a_warning(

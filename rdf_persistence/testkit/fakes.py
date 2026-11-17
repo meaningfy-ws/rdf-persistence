@@ -133,6 +133,8 @@ class FakeStore(_Instrumented):
     writer act between an update and the caller's next read.
     """
 
+    db_system_name = "rdflib"
+
     OPERATIONS = frozenset(
         {
             "query",

@@ -11,7 +11,9 @@ name ``deployment``, so run one consumer per deployment.
 
 import logging
 import time
+from collections.abc import Sequence
 from datetime import timedelta
+from typing import TYPE_CHECKING, Any
 
 from faststream import AckPolicy
 from faststream.redis import RedisBroker, StreamSub
@@ -24,6 +26,10 @@ from rdf_persistence.services.generated.service.rp_service import EventEnvelope
 from rdf_persistence.services.generated.settings.rp_settings import EventSettings
 from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.telemetry import log_extra
+
+if TYPE_CHECKING:
+    # FastStream exports no public name for the type of its broker middlewares
+    from faststream._internal.types import BrokerMiddleware
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +45,9 @@ class RedisEventBus:
         *,
         deployment: str,
         events: EventSettings | None = None,
+        middlewares: "Sequence[BrokerMiddleware[Any, Any]]" = (),
     ) -> None:
+        """``middlewares`` go to the broker as given, e.g. ``RedisTelemetryMiddleware()`` (PD-13)."""
         events = events or EventSettings()
         self._url = url
         self._deployment = deployment
@@ -47,6 +55,7 @@ class RedisEventBus:
         self._retention = timedelta(seconds=events.retention_seconds)
         self._claim_idle = timedelta(seconds=events.claim_idle_seconds)
         self._polling_interval_ms = events.polling_interval_ms
+        self._middlewares = middlewares
         self._broker: RedisBroker | None = None
 
     def _context(self, step: str) -> LogContext:
@@ -78,7 +87,7 @@ class RedisEventBus:
             )
 
     async def start(self, receive: Receive) -> None:
-        broker = RedisBroker(self._url)
+        broker = RedisBroker(self._url, middlewares=self._middlewares)
         subscription = StreamSub(
             self._stream,
             group=self._deployment,

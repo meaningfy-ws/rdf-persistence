@@ -83,6 +83,7 @@ class FusekiStore(HttpAdapter):
 
     service = "Fuseki"
     unavailable = StoreUnavailable
+    db_system_name = "fuseki"
 
     def __init__(
         self,
