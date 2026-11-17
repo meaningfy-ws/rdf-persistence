@@ -632,9 +632,9 @@ async def test_a_nested_collection_that_lists_the_outer_does_not_loop_or_delete_
     assert await stored(guarded, B1), "the book that a replaced shelf no longer names stays"
 
 
-async def books_through_one_transaction(session, count: int) -> list[str]:
-    """``count`` stored books (all fiction), in one request; ``Transaction`` itself has no root limit."""
-    iris = [book_iri(n) for n in range(1, count + 1)]
+async def books_through_one_transaction(session, count: int, first: int = 1) -> list[str]:
+    """``count`` stored books (all fiction), numbered from ``first``, in one request; ``Transaction`` itself has no root limit."""
+    iris = [book_iri(n) for n in range(first, first + count)]
     async with session.transaction() as transaction:
         for iri in iris:
             await transaction.add_graph(iri, toy_mapper().to_triples(dune(iri, chapters=0)))
@@ -1273,12 +1273,13 @@ async def test_heads_of_a_graph_iri_a_part_and_a_loose_iri_are_none(guarded):
     assert await guarded.heads(asked) == [], "none is a registered aggregate"
 
 
-# Quarantined: times out on CI at 120 s, on unchanged develop too.
-# https://github.com/meaningfy-ws/rdf-persistence/issues/142
-@pytest.mark.quarantine
-@pytest.mark.slow
 async def test_heads_of_hundreds_of_iris_is_one_query(guarded):
-    iris = await books_through_one_transaction(guarded, 400)
+    # 400 is twice the listing PAGE (200): one query still serves more IRIs than a page holds.
+    # The books go in 8 transactions of 50: the fake store's cost per commit grows with the roots
+    # in it (one of 400 took 16 s locally and over 120 s on CI), eight of 50 take about 3 s.
+    iris = []
+    for start in range(0, 400, 50):
+        iris += await books_through_one_transaction(guarded, 50, first=start + 1)
     queries = len(guarded._store.sent("query"))
     found = await guarded.heads(iris)
     assert len(found) == 400, "all are found"
