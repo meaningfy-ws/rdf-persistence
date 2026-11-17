@@ -1273,6 +1273,7 @@ async def test_heads_of_a_graph_iri_a_part_and_a_loose_iri_are_none(guarded):
     assert await guarded.heads(asked) == [], "none is a registered aggregate"
 
 
+@pytest.mark.slow
 async def test_heads_of_hundreds_of_iris_is_one_query(guarded):
     # 400 is twice the listing PAGE (200): one query still serves more IRIs than a page holds.
     # The books go in 8 transactions of 50: the fake store's cost per commit grows with the roots
