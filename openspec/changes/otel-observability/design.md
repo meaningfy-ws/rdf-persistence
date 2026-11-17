@@ -139,8 +139,10 @@ Settled in the EPIC and cited: DEC-1 to DEC-11. New:
     root from a services module); the API returns a proxy that follows a provider installed later.
   - `traced(name: str, context: LogContext, *, kind=SpanKind.INTERNAL, root: bool = False)`: a
     context manager over `tracer.start_as_current_span(name, kind=kind,
-    attributes=log_extra(context), context=Context() if root else None)`, whose own defaults record
-    the exception and set the ERROR status; `traced` adds `error.type` (`error_type`) and re-raises.
+    attributes=log_extra(context), context=Context() if root else None)`. *Corrected by D-10:* the
+    API's recording is off (`record_exception=False, set_status_on_exception=False`); on an
+    `Exception` `traced` sets status ERROR with no description, `error.type` (`error_type`) and one
+    `exception` event carrying only `exception.type`, then re-raises.
     `root=True` starts a new trace whatever span is current (PD-5, the relay round). A decorator
     form is not offered: each site builds its context from its arguments.
   - The module joins the `nothing-in-services-imports-the-bus` list in `.importlinter`.
@@ -453,7 +455,8 @@ DEC-9, and PD-4's fallback `"sparql"`.
   a commit). The proposal says so.
 - **D-13 Owed to the docs stage** (doc agreement, L2-W4, L2-W5, L2-S1): `rp.sweep.system_created`
   described wrongly in the how-to and the schema; `event-driven.adoc` omits `middlewares=`; the
-  store-span table omits `rp.step`.
+  store-span table omits `rp.step`; the how-to's §6 still says a span "records" an exception
+  without saying it records the type only (checker F2).
 
 **Stage 2, under the floor** (full review: L1 `findings=4`, L2 `12`, L3 `7`, L4+L5 `14`):
 

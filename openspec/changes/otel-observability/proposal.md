@@ -188,7 +188,7 @@ None.
 ## As built
 
 Reconciled 2026-11-17 by the lead, before PR 2 merged (P-0004). Decisions taken during delivery
-are `D-1` to `D-9` in [design.md](design.md#delivery-decisions).
+are `D-1` to `D-13` in [design.md](design.md#delivery-decisions).
 
 | Promised | Delivered | PR |
 |---|---|---|
