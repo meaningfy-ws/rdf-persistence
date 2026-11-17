@@ -120,7 +120,7 @@ Stage 2 closes like stage 1.
 
 ## Stage 3: central settings (PR 3)
 
-- [ ] 3.1 PD-6: `model/technical/settings/rp_settings.yaml` (target `kind = "technical"`,
+- [x] 3.1 PD-6: `model/technical/settings/rp_settings.yaml` (target `kind = "technical"`,
   `openapi = false`); the `default_instance` annotation in `GenerationAnnotation`,
   `SplitPydanticGenerator` and its generation check. Tests: `tests/unit/domain/test_settings_model.py`,
   `tests/unit/generation/test_ext_pydantic_split.py`. Gate: `make test-fast check-quality`.

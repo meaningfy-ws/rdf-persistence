@@ -483,6 +483,52 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   through `IriParts` (P-0007). Fixed now (one fixer, one full-gates run) rather than left under
   the floor. On the same day the developer granted the lead push, PR and merge on green CI for
   `technical-models` until the change ends (epic-delivery, Authority).
+- **D-27 (stage 2 merge, the developer's decision 2026-11-17)** PR #145 and its follow-up #146
+  were merged as admin, before CI. The rebase onto #143 left the new templates target's manifest
+  with a stale input hash (`generation/checks/hard.py`, changed by #143), which stopped every test
+  target on `develop` until #146 regenerated it. Lesson for later stages: after a rebase, run
+  `make generate` and `make check-generated` before the PR's gates.
+- **D-28 (stage 3, Prepare)** RISK-6 re-checked on `dca21ae`, after `manual-revision-notes`
+  stage 2 (#143): `adapters/jwks.py` still holds A-3/A-4 as D-4 recorded
+  (`algorithms=DEFAULT_ALGORITHMS`, `leeway_seconds`, bounds 0 to 300), and `Mapper(max_roots=)`
+  with `DEFAULT_MAX_ROOTS` (A-2) as PD-7 expects; #143 touched `fuseki.py` and `documents.py`
+  (media types), which tasks 3.2 and 3.3 build on as they now are. `manual-revision-notes`
+  stage 3 is in progress in another session; the stage 3 PR rebases on it if it lands first.
+- **D-29 (stage 3, the developer's instruction: run in parallel, R-0004)** Task 3.1 runs alone
+  (every other task takes its groups). Then 3.2, 3.3 and 3.4 run in parallel, each in its own
+  worktree, because their files are disjoint: the kit builds only `Documents`, `Mapper`,
+  `EventHub`, `Relay`, `restore` and the SSE route (task 3.3), the adapters of 3.2 are built by a
+  consumer's composition root, and 3.4 owns `entrypoints/environment.py`, the `settings` extra and
+  its lazy export. The lead merges the three into the stage branch and re-runs the task gate (T2).
+  The tester runs after 3.3 (tasks.md); 3.5 last. GitNexus indexes the main checkout, which
+  another session holds on `change/manual-revision-notes-s3`; impact reads that state.
+- **D-30 (stage 3, Prepare)** GitNexus: `Mapper` MEDIUM (14 direct), `HttpAdapter` MEDIUM (7),
+  `ServiceKit` MEDIUM (6), `MessageBus` LOW, `JwksTokenVerifier` LOW, `FusekiStore` LOW;
+  `GenerationAnnotation` as D-14. None HIGH or CRITICAL; not taken to the developer.
+- **D-31 (stage 3, task 3.1, external library: LinkML 1.12.1)** The stock pydantic generator
+  writes `ifabsent: string(RS256)` on a multivalued slot as `Field(default="RS256")`, a scalar
+  default on a list field that pydantic does not validate; PD-6 assumed a list default. The lead's
+  choice among contribute / fork / work around: a work-around in the one place AGENTS.md names for
+  it, `SplitPydanticGenerator` (`generation/extensions/pydantic_split.py`, with its own test): a
+  multivalued `ifabsent: string(a, b, ...)` becomes the list `['a', 'b']`, anything else on a
+  multivalued slot is refused. An upstream issue to LinkML is offered to the developer (Open).
+- **D-32 (stage 3, task 3.1, as built, divergences from PD-6)** (1) Every scalar settings slot is
+  `required: true` as well as `ifabsent`, so `HttpSettings(read_timeout_seconds=None)` is refused
+  (without it the generator types the field `Optional`). (2) `polling_interval_ms` is an integer,
+  `minimum_value: 1`; every `*_seconds` slot is a float, `retention_seconds` and
+  `resume_window_seconds` included. (3) The `default_instance` check is the `HardRule`
+  `default_instance` (`checks/default_instance.py`) and also refuses a multivalued slot and a range
+  class declared after its holder in the same module (the generated `default_factory` would raise
+  `NameError` at import). (4) The settings tests are in `tests/unit/services/test_settings_model.py`:
+  `.importlinter`'s `domain-tests-stay-in-the-domain` forbids a domain test importing `services`.
+  (5) `test_hard_check.py` counts six targets (as D-20). Every default equals the code it replaces
+  (the builder compared all 25; only the type of `s3.py`'s ints differs).
+- **D-33 (stage 3, task 3.1, spec gap, for the developer)** The `rp-generation` delta has no
+  requirement for `default_instance` or the list default; their tests are mapped, at medium
+  confidence, to the `rp-settings` requirement "Deployment values are generated settings with
+  today's defaults". Adding a requirement changes a signed spec, so it waits for the developer
+  (Open): recommended, an `rp-generation` requirement "A slot can default to an instance of its
+  class" with the type-range, required-slot and declaration-order refusals as scenarios, in task 4.2.
 
 Under the floor (not fixed in stage 2):
 
