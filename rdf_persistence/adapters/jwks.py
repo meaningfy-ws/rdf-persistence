@@ -119,7 +119,7 @@ class JwksTokenVerifier(HttpAdapter):
         self._roles_claim = roles_claim
         self._jwks_uri = jwks_uri
         self._clock = clock
-        self._keys: dict[str, jwt.PyJWK] = {}
+        self._keys: dict[str, Mapping[str, object]] = {}
         self._fetched_at: float | None = None
         self._attempted_at: float | None = None
         self._lock = asyncio.Lock()
@@ -132,8 +132,8 @@ class JwksTokenVerifier(HttpAdapter):
         if not token:
             raise InvalidToken("the token is missing")
         algorithm, kid = self._header(token)
-        key = await self._key_for(kid)
-        claims = self._decode(token, key, algorithm)
+        jwk = await self._key_for(kid)
+        claims = self._decode(token, self._bound_key(jwk, algorithm), algorithm)
         return VerifiedCaller(
             principal=self._principal(claims.sub), global_roles=self._roles(claims)
         )
@@ -144,11 +144,26 @@ class JwksTokenVerifier(HttpAdapter):
         except jwt.PyJWTError as error:
             raise InvalidToken("the token is malformed") from error
         algorithm, kid = header.get("alg"), header.get("kid")
-        if algorithm not in self._algorithms:
+        if not isinstance(algorithm, str) or algorithm not in self._algorithms:
             raise InvalidToken("the token's algorithm is not accepted")
         if not isinstance(kid, str) or not kid:
             raise InvalidToken("the token names no key (kid)")
         return algorithm, kid
+
+    @staticmethod
+    def _bound_key(jwk: Mapping[str, object], algorithm: str) -> jwt.PyJWK:
+        """The key of ``jwk`` bound to the token's (already allowed) ``algorithm``.
+
+        A JWK that names another ``alg`` is refused; one that names none is bound to the token's, since
+        PyJWT would otherwise infer ``RS256`` for every RSA key. A key type the algorithm cannot use is refused.
+        """
+        named = jwk.get("alg")
+        if named is not None and named != algorithm:
+            raise InvalidToken("the token's algorithm does not match its key")
+        try:
+            return jwt.PyJWK(dict(jwk), algorithm=algorithm)
+        except (jwt.InvalidKeyError, jwt.PyJWKError) as error:
+            raise InvalidToken("the token's key does not fit its algorithm") from error
 
     def _decode(self, token: str, key: jwt.PyJWK, algorithm: str) -> JwtClaims:
         now = self._clock()
@@ -191,7 +206,7 @@ class JwksTokenVerifier(HttpAdapter):
             return [str(role) for role in claim]
         return []
 
-    async def _key_for(self, kid: str) -> jwt.PyJWK:
+    async def _key_for(self, kid: str) -> Mapping[str, object]:
         if self._is_stale() or kid not in self._keys:
             await self._renew(kid)
         try:
@@ -226,12 +241,32 @@ class JwksTokenVerifier(HttpAdapter):
         self._attempted_at = self._clock()
         uri = self._jwks_uri or await self._discover()
         try:
-            keys = jwt.PyJWKSet.from_dict(json.loads(await self._fetch(uri))).keys
+            keys = self._usable_keys(json.loads(await self._fetch(uri)))
         except (ValueError, jwt.PyJWTError, TypeError, AttributeError) as error:
             raise IdentityUnavailable("the issuer's key set is unusable") from error
-        self._keys = {key.key_id: key for key in keys if key.key_id}
+        self._keys = keys
         self._fetched_at = self._clock()
         self._jwks_uri = uri
+
+    @staticmethod
+    def _usable_keys(document: Mapping[str, object]) -> dict[str, Mapping[str, object]]:
+        """The JWKs of ``document`` by ``kid``: those that build into a ``PyJWK`` and name a ``kid``.
+
+        As ``PyJWKSet`` does, a key that does not build is skipped; no usable key is an error.
+        """
+        usable: dict[str, Mapping[str, object]] = {}
+        for jwk in document["keys"]:  # type: ignore[attr-defined]
+            kid = jwk.get("kid") if isinstance(jwk, Mapping) else None
+            if not isinstance(kid, str) or not kid:
+                continue
+            try:
+                jwt.PyJWK(dict(jwk))
+            except jwt.PyJWTError:
+                continue
+            usable[kid] = jwk
+        if not usable:
+            raise jwt.PyJWKSetError("the key set has no usable key")
+        return usable
 
     async def _discover(self) -> str:
         content = await self._fetch(self._issuer.rstrip("/") + DISCOVERY_PATH)

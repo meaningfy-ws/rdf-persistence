@@ -29,7 +29,7 @@ changes `domain` or a port, or its reach is wide). After a schema change: `make 
 | TC-10 | `leeway_seconds=` -1, 301, `inf`, `nan` | each a `ValueError` |
 | TC-11 | `leeway_seconds=0`; `exp` 1000 at clock 1000 | refused (today's behaviour) |
 
-- [ ] 1.2 PD-2: the JWK mappings cached, the key bound to the token's algorithm. Layer: adapters.
+- [x] 1.2 PD-2: the JWK mappings cached, the key bound to the token's algorithm. Layer: adapters.
   Tests in `tests/unit/adapters/test_jwks.py` with a JWKS served by `httpx.MockTransport`. Gate:
   `make test-changed check-quality`.
 
@@ -245,7 +245,7 @@ section), in PR 3 before it merges.
 
 ## Roadmap
 
-- [x] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 ·
+- [x] 1.1 · [x] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 ·
   [ ] 2.4 · [ ] 2.5 · (tester) · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] reconcile · PR 3
 
 ## Verification

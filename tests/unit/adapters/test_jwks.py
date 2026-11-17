@@ -1,9 +1,12 @@
 """``JwksTokenVerifier``'s key handling: discovery, the cache, one refresh per unknown kid, an unreachable provider."""
 
 import asyncio
+import base64
+import json
 import math
 
 import httpx
+import jwt
 import pytest
 
 from rdf_persistence.adapters.jwks import DISCOVERY_PATH, JWKS_TTL_SECONDS, JwksTokenVerifier
@@ -11,7 +14,7 @@ from rdf_persistence.domain.exceptions import IdentityUnavailable, InvalidToken
 from rdf_persistence.domain.generated.service.rp_service import IriPolicy, ServiceSettings
 from rdf_persistence.domain.iris import Iris
 from rdf_persistence.testkit import TokenSigner, shared_key
-from rdf_persistence.testkit.tokens import ISSUER
+from rdf_persistence.testkit.tokens import ISSUER, new_key
 
 PAST_COOLDOWN = 11.0
 WITHIN_COOLDOWN = 1.0
@@ -512,3 +515,80 @@ def test_the_verifier_exposes_the_iris_it_mints_with(
     assert verifier_for(signer, clock, iris=iris).iris is iris, (
         "the verifier exposes the IRI policy it was given"
     )
+
+
+# --- keys bound to the token's algorithm (PD-2) -----------------------------------------------
+
+
+def _jwks_verifier(jwks: list[dict[str, object]], clock: ManualClock) -> JwksTokenVerifier:
+    """A verifier over a JWKS the test wrote by hand, served by a mock transport."""
+    transport = httpx.MockTransport(lambda _r: httpx.Response(200, json={"keys": jwks}))
+    return JwksTokenVerifier(
+        ISSUER, "aud", "roles", jwks_uri=f"{ISSUER}/keys", transport=transport, clock=clock
+    )
+
+
+def _public_jwk(key: object, algorithm: str, kid: str, **extra: object) -> dict[str, object]:
+    jwk = jwt.get_algorithm_by_name(algorithm).to_jwk(key.public_key(), as_dict=True)  # type: ignore[attr-defined]
+    return {**jwk, "kid": kid, **extra}
+
+
+def _token(key: object, algorithm: str, kid: str, clock: ManualClock) -> str:
+    claims = {"iss": ISSUER, "aud": "aud", "sub": "u1", "exp": clock.now + 300}
+    return jwt.encode(claims, key, algorithm=algorithm, headers={"kid": kid})  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("algorithm", ["PS256", "RS384"])
+async def test_an_rsa_key_without_alg_verifies_any_rsa_algorithm_the_token_names(
+    clock: ManualClock, algorithm: str
+) -> None:
+    key = shared_key()
+    verifier = _jwks_verifier([_public_jwk(key, "RS256", "k1")], clock)
+    caller = await verifier.verify(_token(key, algorithm, "k1", clock))
+    assert caller.principal.endswith("/u1"), f"a {algorithm} token on a key without alg was refused"
+
+
+async def test_a_key_naming_another_algorithm_than_the_token_is_refused(
+    clock: ManualClock,
+) -> None:
+    key = shared_key()
+    verifier = _jwks_verifier([_public_jwk(key, "RS256", "k1", alg="RS256")], clock)
+    with pytest.raises(InvalidToken, match="does not match its key"):
+        await verifier.verify(_token(key, "PS256", "k1", clock))
+
+
+async def test_a_key_of_a_type_that_does_not_fit_the_token_algorithm_is_refused(
+    clock: ManualClock,
+) -> None:
+    ec_key = new_key("ES256")
+    verifier = _jwks_verifier([_public_jwk(ec_key, "ES256", "k1")], clock)
+    with pytest.raises(InvalidToken):
+        await verifier.verify(_token(shared_key(), "RS256", "k1", clock))
+
+
+async def test_a_jwks_whose_only_key_has_no_kty_is_unavailable(clock: ManualClock) -> None:
+    verifier = _jwks_verifier([{"kid": "bad", "n": "AQAB", "e": "AQAB"}], clock)
+    with pytest.raises(IdentityUnavailable):
+        await verifier.verify(_token(shared_key(), "RS256", "bad", clock))
+
+
+async def test_an_unusable_key_is_skipped_beside_a_good_one(clock: ManualClock) -> None:
+    key = shared_key()
+    verifier = _jwks_verifier([{"kid": "bad"}, _public_jwk(key, "RS256", "k1")], clock)
+    assert (await verifier.verify(_token(key, "RS256", "k1", clock))).principal, (
+        "the good key was refused beside a bad one"
+    )
+    with pytest.raises(InvalidToken, match="unknown to the issuer"):
+        await verifier.verify(_token(key, "RS256", "bad", clock))
+
+
+@pytest.mark.parametrize("alg", [["RS256"], {"a": 1}], ids=["list", "dict"])
+async def test_a_token_whose_alg_is_not_a_string_is_refused(
+    signer: TokenSigner, clock: ManualClock, alg: object
+) -> None:
+    def segment(value: object) -> str:
+        return base64.urlsafe_b64encode(json.dumps(value).encode()).rstrip(b"=").decode()
+
+    token = f"{segment({'alg': alg, 'kid': 'k1'})}.{segment({'sub': 'u1'})}.c2ln"
+    with pytest.raises(InvalidToken, match="algorithm is not accepted"):
+        await verifier_for(signer, clock).verify(token)
