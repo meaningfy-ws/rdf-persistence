@@ -42,6 +42,12 @@ UNIT_LANE = --ignore=$(TEST_PATH)/integration --ignore=$(TEST_PATH)/e2e --ignore
 PARALLEL       = -n auto --dist loadgroup
 NOT_QUARANTINE = and not quarantine
 
+# CI runs the fast unit lane in SPLITS shards balanced by the durations in .test_durations
+# (pytest-split; `make test-durations` refreshes them). A shard keeps its coverage data and has no
+# floor; `make coverage-combine` checks the floor on the union. The CI matrix lists 1..SPLITS.
+SPLITS      = 8
+SHARD_FLAGS = --splits $(SPLITS) --group $(GROUP) --splitting-algorithm least_duration --cov-fail-under=0
+
 # The tests `make profile-tests` times; narrow it, e.g. to the lane without the slow tests.
 PROFILE_MARK ?= unit or feature
 
@@ -131,7 +137,7 @@ pre-commit: ## Run pre-commit hooks on all files
 #-----------------------------------------------------------------------------
 # Validation — non-mutating targets
 #-----------------------------------------------------------------------------
-.PHONY: format-check lint typecheck typecheck-generated typecheck-ts typecheck-openapi-ts check-architecture test test-unit test-feature test-containers fuseki-image test-e2e test-perf test-fast test-changed profile-tests
+.PHONY: format-check lint typecheck typecheck-generated typecheck-ts typecheck-openapi-ts check-architecture test test-unit test-feature test-containers fuseki-image test-e2e test-perf test-fast test-changed profile-tests test-unit-ci coverage-combine test-durations
 
 format-check: ## Check formatting with Ruff, without changing files
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking formatting$(END_BUILD_PRINT)"
@@ -199,10 +205,23 @@ fuseki-image: $(FUSEKI_IMAGE_TAR) ## Load the Fuseki test image from its tar, bu
 	@ docker load -i $<
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Fuseki image ready$(END_BUILD_PRINT)"
 
-test-unit: ## Run the unit tests in parallel, with the 80 % coverage floor (CI job "unit")
+test-unit: ## Run the unit tests in parallel, slow ones included, with the 80 % coverage floor
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit tests$(END_BUILD_PRINT)"
 	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) $(PARALLEL) -m "unit $(NOT_QUARANTINE)" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Unit tests passed$(END_BUILD_PRINT)"
+
+test-unit-ci: ## Run the unit tests not marked slow in parallel, with the 80 % floor; GROUP=i runs CI shard i of SPLITS, without it
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running the fast unit tests $(GROUP)$(END_BUILD_PRINT)"
+	@ COVERAGE_FILE=.coverage$(if $(GROUP),.$(GROUP)) uv run pytest $(TEST_PATH) $(UNIT_LANE) $(PARALLEL) -m "unit and not slow $(NOT_QUARANTINE)" $(COV_FLAGS) $(if $(GROUP),$(SHARD_FLAGS)) --junitxml=$(REPO_ROOT)/test-results$(if $(GROUP),-$(GROUP)).xml
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Fast unit tests passed$(END_BUILD_PRINT)"
+
+coverage-combine: ## Combine the coverage data of the CI unit shards and check the 80 % floor
+	@ uv run coverage combine
+	@ uv run coverage xml -o $(REPO_ROOT)/coverage.xml
+	@ uv run coverage report --fail-under=80
+
+test-durations: ## Record the fast unit tests' durations in .test_durations, which balance the CI shards
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) $(PARALLEL) -m "unit and not slow $(NOT_QUARANTINE)" --store-durations
 
 test-feature: ## Run the BDD feature tests in parallel, with a 50 % coverage floor (CI job "feature")
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running feature tests$(END_BUILD_PRINT)"

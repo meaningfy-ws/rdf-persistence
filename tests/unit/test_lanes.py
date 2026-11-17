@@ -12,6 +12,8 @@ MAX_RECIPE_LINES = 15
 LANES = [
     "test",
     "test-unit",
+    "test-unit-ci",
+    "test-durations",
     "test-feature",
     "test-fast",
     "test-changed",
@@ -21,7 +23,15 @@ LANES = [
     "test-e2e",
     "test-perf",
 ]
-PARALLEL_LANES = ["test", "test-unit", "test-feature", "test-fast", "profile-tests"]
+PARALLEL_LANES = [
+    "test",
+    "test-unit",
+    "test-unit-ci",
+    "test-durations",
+    "test-feature",
+    "test-fast",
+    "profile-tests",
+]
 WORKERS = re.compile(r"-n \S+")
 VARIABLE = re.compile(r"^(\w+)\s*\??=\s*(.*)$", re.MULTILINE)
 REFERENCE = re.compile(r"\$\((\w+)\)")
@@ -101,6 +111,43 @@ def test_the_perf_lane_selects_perf_tests_not_in_quarantine() -> None:
     selections = SELECTION.findall(expanded("\n".join(recipe_of("test-perf"))))
 
     assert selections == ["perf and not quarantine"], "test-perf must select perf, not quarantine"
+
+
+def test_only_the_ci_unit_lane_leaves_the_slow_tests_out() -> None:
+    def selection(lane: str) -> str:
+        return " ".join(SELECTION.findall(expanded("\n".join(recipe_of(lane)))))
+
+    assert "and not slow" in selection("test-unit-ci"), "CI must not run the slow tests"
+    for lane in ("test", "test-unit", "test-changed"):
+        assert "slow" not in selection(lane), f"{lane} must keep running the slow tests"
+
+
+def test_the_ci_unit_jobs_run_the_ci_unit_lane_in_shards_and_combine_their_coverage() -> None:
+    ci = (TESTS_ROOT_DIR.parent / ".github" / "workflows" / "ci.yaml").read_text(encoding="utf-8")
+
+    assert "run: make test-unit-ci GROUP=${{ matrix.group }}" in ci, "a CI shard runs one group"
+    assert "run: make coverage-combine" in ci, "a CI job must combine the shards' coverage"
+
+
+def test_a_shard_runs_one_balanced_group_without_the_floor() -> None:
+    shard = expanded(" ".join(recipe_of("test-unit-ci"))).replace("$(GROUP)", "3")
+
+    assert "--splits $(SPLITS)" not in shard, "SPLITS is expanded"
+    assert "--group 3" in shard, "GROUP picks one of the splits"
+    assert "--cov-fail-under=0" in shard, "one shard alone cannot reach the floor"
+
+
+def test_the_ci_matrix_has_one_job_per_split() -> None:
+    ci = (TESTS_ROOT_DIR.parent / ".github" / "workflows" / "ci.yaml").read_text(encoding="utf-8")
+    splits = int(dict(VARIABLE.findall(MAKEFILE))["SPLITS"])
+
+    assert f"group: {list(range(1, splits + 1))}" in ci, "the matrix must list every split"
+
+
+def test_the_combined_coverage_keeps_the_80_percent_floor() -> None:
+    assert any("--fail-under=80" in line for line in recipe_of("coverage-combine")), (
+        "make coverage-combine must check the 80 % floor"
+    )
 
 
 def test_the_refresh_map_target_runs_the_refresher() -> None:
