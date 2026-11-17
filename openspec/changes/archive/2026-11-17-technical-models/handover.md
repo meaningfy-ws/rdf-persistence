@@ -28,6 +28,8 @@ with a non-technical module refused for holding one and a technical module for d
   every rebase, `make generate` and the whole `git status` (D-27, D-37).
 
 ## Next
-Archive `technical-models` (spec-stewardship): the deltas of `rp-generation`,
-`rp-package-boundaries` and `rp-settings` into `openspec/specs/`, the change folder into
-`openspec/changes/archive/`. Then `otel-observability` continues from its own hand-over.
+Archived on 2026-11-17: the deltas merged into `openspec/specs/` (`rp-generation` + 4,
+`rp-package-boundaries` ~ 1, the new `rp-settings` + 2), the change folder in
+`openspec/changes/archive/2026-11-17-technical-models/` with its inputs and evidence. Nothing
+continues from this change; its floor items and the upstream issues above are open for later
+changes.
