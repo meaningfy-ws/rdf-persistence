@@ -725,3 +725,18 @@ work in parallel"). One PR from `change/mrn-followups`, one builder per item in 
   not `sig`, or whose `key_ops` is present and lacks `verify` (RFC 7517 §4.2, §4.3), as PyJWT's own
   client does; a set left with no usable key is `IdentityUnavailable`, as before. No page
   described which keys are used, so no docs change.
+- **D-23 One lock around rdflib's SPARQL parsing** (D-19's error, external library). pyparsing
+  3.3 finds a parse action's arity on its first call with state shared between threads; a race
+  there poisons the process for good. Production was exposed (concurrent SHACL validation, whose
+  generated shapes hold two `sh:sparql` constraints, and tenant-dump migrations), where it surfaced
+  as "too long to check". Settled by a workaround in one place, decided by the lead under the
+  developer's "fix the still open ones": `domain/sparql_parsing.py` `SPARQL_PARSER_LOCK` held at
+  the six call sites. Ceiling: it serialises SHACL validation, which costs little while the GIL
+  already does, and must be revisited on a free-threaded Python. No automated guard finds a new
+  unlocked call site; only the stress test does. An upstream report to pyparsing is recommended,
+  not filed (outside this repository).
+- **D-24 #142 without pyoxigraph.** The heads test's time went into building 400 books in one
+  transaction (super-linear); eight transactions of 50 bring it to about 4 s. 400 stays (twice a
+  listing page). The quarantine marker goes; `slow` stays (≥ 2 s, `testing.adoc#slow`).
+- **D-25 The RDF writers run in a worker thread**, as framing does (L4+L5 W3); `require_form`
+  stays synchronous, as it serialises RDF/XML only.
