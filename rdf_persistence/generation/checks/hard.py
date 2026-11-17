@@ -2,6 +2,7 @@
 
 import re
 from collections.abc import Iterator
+from enum import Enum
 from functools import cache
 from pathlib import Path
 
@@ -28,7 +29,11 @@ from rdf_persistence.generation.checks.application import application_problems
 from rdf_persistence.generation.checks.boundary import technical_classes
 from rdf_persistence.generation.checks.default_instance import default_instance_problems
 from rdf_persistence.generation.checks.toolkit_filled import toolkit_filled_problems
-from rdf_persistence.generation.generated.rp_generation import CheckProblem, HardRule
+from rdf_persistence.generation.generated.rp_generation import (
+    CheckProblem,
+    GenerationAnnotation,
+    HardRule,
+)
 from rdf_persistence.generation.problems import rule_problem
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 from rdf_persistence.services.schema_structure import (
@@ -84,6 +89,10 @@ ALLOWED_ANNOTATIONS = {
     RpAnnotation.TOOLKIT_FILLED: BOOLEAN,
     RpAnnotation.PAYLOAD: BOOLEAN,
     RpAnnotation.RP_UNIQUE_SCOPE: tuple(scope.value for scope in UniqueScope),
+}
+# The annotations of the generation metamodel the check reads, and their values (D-52).
+GENERATION_ALLOWED_ANNOTATIONS: dict[Enum, tuple[str, ...]] = {
+    GenerationAnnotation.FIELD_NAME: ("slot",)
 }
 
 
@@ -199,11 +208,17 @@ def _segment_pattern() -> str:
     return str(load_schema(CORE_MODEL).get_slot(URL_SEGMENT).pattern)
 
 
+def _lowered(element: object, tag: Enum) -> str | None:
+    """The lower-cased value of the element's annotation ``tag``, of either annotation enum."""
+    text = annotation_text(element, tag)
+    return None if text is None else text.lower()
+
+
 def _annotation_problems(schema: SchemaDefinition, segment_pattern: str) -> Iterator[CheckProblem]:
     for element in _annotated_elements(schema):
         name = str(element.name)
-        for tag, allowed in ALLOWED_ANNOTATIONS.items():
-            value = annotation(element, tag)
+        for tag, allowed in (*ALLOWED_ANNOTATIONS.items(), *GENERATION_ALLOWED_ANNOTATIONS.items()):
+            value = _lowered(element, tag)
             if value is not None and value not in allowed:
                 yield rule_problem(
                     HardRule.ANNOTATION, name, f"{tag.value}: {value!r} is not one of {allowed}"

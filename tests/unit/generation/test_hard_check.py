@@ -17,7 +17,11 @@ from rdf_persistence.generation.checks.hard import (
 )
 from rdf_persistence.generation.cli import main
 from rdf_persistence.generation.config import read_targets
-from rdf_persistence.generation.generated.rp_generation import GenerationTarget, HardRule
+from rdf_persistence.generation.generated.rp_generation import (
+    GenerationAnnotation,
+    GenerationTarget,
+    HardRule,
+)
 from rdf_persistence.generation.pipeline import generate
 from rdf_persistence.generation.problems import format_problem
 from rdf_persistence.services.schema import load_schema
@@ -898,6 +902,18 @@ def test_a_value_outside_the_allowed_ones_is_refused_for_every_annotation_the_to
     assert [p for p in problems if f"Probe: {tag.value}: 'not-a-value' is not one of" in p], (
         f"a bad {tag.value} value is not refused: {problems}"
     )
+
+
+def test_a_field_name_annotation_other_than_slot_is_refused_naming_the_slot(tmp_path: Path) -> None:
+    """D-52: `field_name` takes the one value `slot`."""
+    tag = GenerationAnnotation.FIELD_NAME
+    classes = f"  Probe:\n    annotations:\n      {tag.value}: not-a-value\n"
+
+    problems = _annotation_problems(tmp_path, classes)
+
+    assert [
+        p for p in problems if f"Probe: {tag.value}: 'not-a-value' is not one of ('slot',)" in p
+    ], f"a bad field_name value is not refused: {problems}"
 
 
 def test_every_annotation_the_toolkit_reads_has_an_allowed_value_rule_or_a_pattern() -> None:

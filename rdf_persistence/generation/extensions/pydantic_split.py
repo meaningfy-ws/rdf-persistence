@@ -1,6 +1,6 @@
 """gen-pydantic in split mode: one module per schema module, metadata off, the toolkit's templates (PD-24).
 
-The stock generator lacks ten things the toolkit needs, and this module adds them:
+The stock generator lacks eleven things the toolkit needs, and this module adds them:
 
 * the metamodel's classes are imported from the toolkit's package, never regenerated: from
   ``rdf_persistence.domain.generated.<module>`` inside the toolkit's own runs and from the public
@@ -20,7 +20,9 @@ The stock generator lacks ten things the toolkit needs, and this module adds the
   of settings is never absent (the hard check refuses a slot whose range cannot be built with no argument);
 * the ``ifabsent: string(a, b, ...)`` of a multivalued slot is the default list ``['a', 'b']``; the
   stock generator writes the one string ``"a, b"`` on a list field, and any other form is refused;
-* a slot whose alias is no Python name (``rp.step``) is named after the slot, and keeps the alias.
+* a slot whose alias is no Python name (``rp.step``) is named after the slot, and keeps the alias;
+* a slot annotated ``field_name: slot`` (``GenerationAnnotation``, D-52) with an identifier alias (``schema``) is
+  named after the slot too, and keeps the alias; every other field keeps the stock name.
 """
 
 import copy
@@ -70,6 +72,7 @@ PUBLIC_PACKAGE = "rdf_persistence"
 TOOLKIT_PACKAGE = "rdf_persistence.domain.generated"
 METAMODEL_DIR = PACKAGE_DIR / "model"
 INIT = "__init__.py"
+FIELD_NAME_SLOT = "slot"  # the one value of the ``field_name`` annotation
 _LIST_DEFAULT = re.compile(
     r"string\((.*)\)"
 )  # the ifabsent of a multivalued slot: its names, comma-separated
@@ -160,8 +163,11 @@ class SplitPydanticGenerator(PydanticGenerator):
     def after_generate_slot(self, slot: SlotResult, sv: SchemaView) -> SlotResult:
         fields = {name: getattr(slot.attribute, name) for name in PydanticAttribute.model_fields}
         fields["description"] = slot.source.description  # the raw text, as for classes
-        if not _is_python_name(slot.attribute.alias):
+        if _named_after_slot(slot):
             fields["name"] = make_valid_python_identifier(underscore(slot.source.name))
+            fields["alias"] = (
+                slot.source.alias
+            )  # the stock generator names the field by it and drops it
         if slot.source.multivalued and slot.source.ifabsent is not None:
             fields["predefined"] = _list_default(slot.source)
         factory = _default_factory(slot.source)
@@ -178,6 +184,12 @@ class SplitPydanticGenerator(PydanticGenerator):
             default_factory=factory,
         )
         return slot
+
+
+def _named_after_slot(slot: SlotResult) -> bool:
+    """Whether the field is the slot's own name: the alias is no Python name, or the slot opts in (``field_name: slot``)."""
+    opted_in = annotation_text(slot.source, GenerationAnnotation.FIELD_NAME) == FIELD_NAME_SLOT
+    return opted_in or not _is_python_name(slot.attribute.alias)
 
 
 def _is_python_name(alias: str | None) -> bool:

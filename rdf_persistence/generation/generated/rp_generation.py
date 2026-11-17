@@ -164,12 +164,14 @@ class GenerationAnnotation(str, Enum):
     "On a type, the Python module its `repr` class is imported from: the generated module then reads `from \u003cmodule\u003e import \u003crepr\u003e`."
     DEFAULT_INSTANCE = "default_instance"
     "On a slot whose range is a class, `true` when the slot\u0027s default is a new instance of that class (`Field(default_factory=\u003cRange\u003e)`), so it is never absent. The hard check refuses it on a slot whose range is not a class, or whose range class has a required slot with no `ifabsent`."
+    FIELD_NAME = "field_name"
+    "On a slot with an `alias`, `slot` when the generated field is named after the slot and keeps the alias as its pydantic alias. Without it the field is named after the alias when that is a Python identifier (the stock behaviour, which the wire and service schemas rely on)."
 
 
 
 class GenerationTarget(ConfiguredBaseModel):
     "One entry of the `[tool.rp-generate]` table of a `pyproject.toml`: a schema and the folders its generated artefacts are written to. Paths are relative to the folder of the `pyproject.toml`."
-    schema_file: str = Field(default=..., title="Schema file", description="The root LinkML schema file; the TOML key and the flag are `schema`, which the field name avoids because it would shadow a pydantic method.")
+    schema_file: str = Field(default=..., alias="schema", title="Schema file", description="The root LinkML schema file; the TOML key and the flag are `schema`, its alias: the field keeps the slot\u0027s name, which does not shadow a pydantic method.")
     package: str = Field(default=..., title="Package", description="The Python import path of the generated package, a dotted identifier.")
     python: Optional[str] = Field(default=None, title="Python folder", description="The folder that receives the classes, shapes, context, frames and the schema copy; the folder of `package` when absent.")
     typescript: Optional[str] = Field(default=None, title="TypeScript folder", description="The folder that receives the TypeScript types; none are written when absent.")
@@ -177,7 +179,7 @@ class GenerationTarget(ConfiguredBaseModel):
     openapi: Optional[bool] = Field(default=True, title="OpenAPI components", description="Whether the OpenAPI component schemas of the classes (`openapi-components.json`) are written next to the context. Only a schema whose classes a service serves needs them; on unless set to false.")
     regenerate_command: Optional[str] = Field(default=None, alias="regenerate-command", title="Regenerate command", description="The command that regenerates this entry, named in the hint of a failed freshness check (TOML key `regenerate-command`); `rp-generate` when absent.")
     migrations: Optional[str] = Field(default=None, title="Migrations folder", description="The folder of the target\u0027s migration files and schema lock, relative to the folder of the `pyproject.toml`; absent for a target that stores nothing of its own.")
-    target_kind: Optional[TargetKind] = Field(default=None, title="Target kind", description="What the target\u0027s modules are (TOML key `kind`): `technical` when every module of its folder is annotated `module_kind: technical`, `domain` when none is; absent, the kind is not checked.")
+    target_kind: Optional[TargetKind] = Field(default=None, alias="kind", title="Target kind", description="What the target\u0027s modules are (TOML key `kind`): `technical` when every module of its folder is annotated `module_kind: technical`, `domain` when none is; absent, the kind is not checked.")
 
     @field_validator("schema_file")
     def pattern_schema_file(cls, v):
@@ -377,7 +379,7 @@ class CheckProblem(ConfiguredBaseModel):
     rule: Optional[str] = Field(default=None, title="Rule", description="The id of the rule a problem breaks, a `HardRule` or `BoundaryRule` value or a lint rule name.")
     element: Optional[str] = Field(default=None, title="Element", description="The element of the schema, or the file, a problem is about.")
     message: str = Field(default=..., title="Message", description="What is wrong, in a line.")
-    schema_file: Optional[str] = Field(default=None, title="Schema file", description="The root LinkML schema file; the TOML key and the flag are `schema`, which the field name avoids because it would shadow a pydantic method.")
+    schema_file: Optional[str] = Field(default=None, alias="schema", title="Schema file", description="The root LinkML schema file; the TOML key and the flag are `schema`, its alias: the field keeps the slot\u0027s name, which does not shadow a pydantic method.")
     step: Optional[str] = Field(default=None, title="Step", description="The name of the pipeline step that found a problem.")
 
     @field_validator("schema_file")

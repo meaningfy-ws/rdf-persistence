@@ -8,7 +8,7 @@ rp:CheckProblem a sh:NodeShape ;
 	rdfs:label "Check problem" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n53 ;
-	sh:property _:c14n107 , _:c14n39 , _:c14n47 , _:c14n68 , _:c14n70 ;
+	sh:property _:c14n108 , _:c14n39 , _:c14n47 , _:c14n68 , _:c14n70 ;
 	sh:targetClass rp:CheckProblem .
 rp:CliFlag a sh:NodeShape ;
 	rdfs:comment "A command-line flag of `rp-generate` and the GenerationTarget field it overrides." ;
@@ -21,7 +21,7 @@ rp:ConstraintCase a sh:NodeShape ;
 	rdfs:comment "One row of the conformance table: a constraint kind, a class that declares it, and the instance files the generated class and shape must accept and refuse." ;
 	rdfs:label "Constraint case" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n94 ;
+	sh:ignoredProperties _:c14n95 ;
 	sh:property _:c14n132 , _:c14n33 , _:c14n58 , _:c14n7 ;
 	sh:targetClass rp:ConstraintCase .
 rp:Frame a sh:NodeShape ;
@@ -43,13 +43,13 @@ rp:GeneratedFile a sh:NodeShape ;
 	rdfs:label "Generated file" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n37 ;
-	sh:property _:c14n3 , _:c14n95 ;
+	sh:property _:c14n3 , _:c14n96 ;
 	sh:targetClass rp:GeneratedFile .
 rp:GenerationManifest a sh:NodeShape ;
 	rdfs:comment "What one generation run read and wrote: the installed `linkml` version, the files it read and the files it wrote. Written as `rp-manifest.json` in the target's Python folder." ;
 	rdfs:label "Generation manifest" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n93 ;
+	sh:ignoredProperties _:c14n94 ;
 	sh:property _:c14n43 , _:c14n50 , _:c14n54 ;
 	sh:targetClass rp:GenerationManifest .
 rp:GenerationTarget a sh:NodeShape ;
@@ -57,14 +57,14 @@ rp:GenerationTarget a sh:NodeShape ;
 	rdfs:label "Generation target" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n42 ;
-	sh:property _:c14n102 , _:c14n108 , _:c14n11 , _:c14n122 , _:c14n129 , _:c14n16 , _:c14n19 , _:c14n35 , _:c14n97 ;
+	sh:property _:c14n103 , _:c14n11 , _:c14n122 , _:c14n129 , _:c14n16 , _:c14n19 , _:c14n35 , _:c14n91 , _:c14n98 ;
 	sh:targetClass rp:GenerationTarget .
 rp:LockChange a sh:NodeShape ;
 	rdfs:comment "One difference between two locks: the rule that treats it, a sentence, and what it is about (a class and a slot, or an enum and a value)." ;
 	rdfs:label "Lock change" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n124 ;
-	sh:property _:c14n103 , _:c14n109 , _:c14n31 , _:c14n40 , _:c14n49 , _:c14n96 ;
+	sh:property _:c14n104 , _:c14n109 , _:c14n31 , _:c14n40 , _:c14n49 , _:c14n97 ;
 	sh:targetClass rp:LockChange .
 rp:LockedClass a sh:NodeShape ;
 	rdfs:comment "A stored class as the lock records it, with its IRI, the type and path of a root, and its slots." ;
@@ -85,7 +85,7 @@ rp:LockedSlot a sh:NodeShape ;
 	rdfs:label "Locked slot" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n83 ;
-	sh:property _:c14n126 , _:c14n51 , _:c14n60 , _:c14n84 , _:c14n99 ;
+	sh:property _:c14n100 , _:c14n126 , _:c14n51 , _:c14n60 , _:c14n84 ;
 	sh:targetClass rp:LockedSlot .
 rp:ManifestEntry a sh:NodeShape ;
 	rdfs:comment "A file and the SHA-256 of its bytes, as recorded by a generation run." ;
@@ -99,7 +99,7 @@ rp:MmdAttribute a sh:NodeShape ;
 	rdfs:label "Mermaid attribute" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n15 ;
-	sh:property _:c14n106 , _:c14n82 ;
+	sh:property _:c14n107 , _:c14n82 ;
 	sh:targetClass rp:MmdAttribute .
 rp:MmdClass a sh:NodeShape ;
 	rdfs:comment "One class box of a Mermaid diagram." ;
@@ -113,20 +113,20 @@ rp:MmdModule a sh:NodeShape ;
 	rdfs:label "Mermaid module" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n14 ;
-	sh:property _:c14n114 , _:c14n9 , _:c14n92 ;
+	sh:property _:c14n114 , _:c14n9 , _:c14n93 ;
 	sh:targetClass rp:MmdModule .
 rp:PresenceRule a sh:NodeShape ;
 	rdfs:comment "A class-level rule over alternatives, and when its validator refuses." ;
 	rdfs:label "Presence rule" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n104 ;
-	sh:property _:c14n131 , _:c14n61 , _:c14n98 ;
+	sh:ignoredProperties _:c14n105 ;
+	sh:property _:c14n131 , _:c14n61 , _:c14n99 ;
 	sh:targetClass rp:PresenceRule .
 rp:RuleAlternative a sh:NodeShape ;
 	rdfs:comment "One alternative of a rule, its readable label and the Python expression that tells it holds." ;
 	rdfs:label "Rule alternative" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n105 ;
+	sh:ignoredProperties _:c14n106 ;
 	sh:property _:c14n111 , _:c14n23 ;
 	sh:targetClass rp:RuleAlternative .
 rp:SchemaLock a sh:NodeShape ;
@@ -176,14 +176,14 @@ rp:TsModule a sh:NodeShape ;
 	rdfs:label "TypeScript module" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n27 ;
-	sh:property _:c14n48 , _:c14n63 , _:c14n77 , _:c14n91 ;
+	sh:property _:c14n48 , _:c14n63 , _:c14n77 , _:c14n92 ;
 	sh:targetClass rp:TsModule .
 rp:UniqueKeyOn a sh:NodeShape ;
 	rdfs:comment "A unique key that a class's multivalued slot is subject to, with the IRIs the constraint query needs." ;
 	rdfs:label "Unique key on a slot" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n6 ;
-	sh:property _:c14n1 , _:c14n100 , _:c14n18 , _:c14n46 , _:c14n75 ;
+	sh:property _:c14n1 , _:c14n101 , _:c14n18 , _:c14n46 , _:c14n75 ;
 	sh:targetClass rp:UniqueKeyOn .
 _:c14n0 rdf:first rp:TargetKindTechnical ;
 	rdf:rest rdf:nil .
@@ -202,7 +202,14 @@ _:c14n10 sh:description "The id of the schema a lock describes." ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path rp:lockSchemaId .
-_:c14n100 sh:datatype xsd:string ;
+_:c14n100 sh:datatype xsd:boolean ;
+	sh:description "Whether the slot takes several values." ;
+	sh:maxCount 1 ;
+	sh:name "Multivalued" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:multivalued .
+_:c14n101 sh:datatype xsd:string ;
 	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -210,9 +217,9 @@ _:c14n100 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:slotName .
-_:c14n101 rdf:first rp:ConstraintKindClosed ;
+_:c14n102 rdf:first rp:ConstraintKindClosed ;
 	rdf:rest _:c14n117 .
-_:c14n102 sh:datatype xsd:string ;
+_:c14n103 sh:datatype xsd:string ;
 	sh:description "The folder that receives the TypeScript types; none are written when absent." ;
 	sh:maxCount 1 ;
 	sh:name "TypeScript folder" ;
@@ -220,18 +227,18 @@ _:c14n102 sh:datatype xsd:string ;
 	sh:order 3 ;
 	sh:path rp:typescriptFolder ;
 	sh:pattern "^(?:^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$)(?![\\s\\S])" .
-_:c14n103 sh:datatype xsd:string ;
+_:c14n104 sh:datatype xsd:string ;
 	sh:description "The `meaning` IRI, or the text, of the enum value a lock change is about." ;
 	sh:maxCount 1 ;
 	sh:name "Enum value" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 5 ;
 	sh:path rp:lockChangeValue .
-_:c14n104 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
 _:c14n105 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n106 sh:datatype xsd:string ;
+_:c14n106 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n107 sh:datatype xsd:string ;
 	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -239,22 +246,13 @@ _:c14n106 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:slotName .
-_:c14n107 sh:datatype xsd:string ;
+_:c14n108 sh:datatype xsd:string ;
 	sh:description "The id of the rule a problem breaks, a `HardRule` or `BoundaryRule` value or a lint rule name." ;
 	sh:maxCount 1 ;
 	sh:name "Rule" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:rule .
-_:c14n108 sh:datatype xsd:string ;
-	sh:description "The root LinkML schema file; the TOML key and the flag are `schema`, which the field name avoids because it would shadow a pydantic method." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Schema file" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 0 ;
-	sh:path rp:schemaFile ;
-	sh:pattern "^(?:^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$)(?![\\s\\S])" .
 _:c14n109 sh:description "The IRI of a stored class." ;
 	sh:maxCount 1 ;
 	sh:name "Class IRI" ;
@@ -401,7 +399,7 @@ _:c14n16 sh:description "What the target's modules are (TOML key `kind`): `techn
 	sh:order 8 ;
 	sh:path rp:targetKind .
 _:c14n17 rdf:first rp:ConstraintKindIdentifier ;
-	rdf:rest _:c14n101 .
+	rdf:rest _:c14n102 .
 _:c14n18 sh:datatype xsd:string ;
 	sh:description "The expanded IRI of a slot." ;
 	sh:maxCount 1 ;
@@ -580,7 +578,7 @@ _:c14n46 sh:datatype xsd:string ;
 	sh:order 3 ;
 	sh:path rp:descriptionText .
 _:c14n47 sh:datatype xsd:string ;
-	sh:description "The root LinkML schema file; the TOML key and the flag are `schema`, which the field name avoids because it would shadow a pydantic method." ;
+	sh:description "The root LinkML schema file; the TOML key and the flag are `schema`, its alias: the field keeps the slot's name, which does not shadow a pydantic method." ;
 	sh:maxCount 1 ;
 	sh:name "Schema file" ;
 	sh:nodeKind sh:Literal ;
@@ -873,24 +871,33 @@ _:c14n90 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:slotName .
-_:c14n91 sh:description "The enums a TypeScript module declares." ;
+_:c14n91 sh:datatype xsd:string ;
+	sh:description "The root LinkML schema file; the TOML key and the flag are `schema`, its alias: the field keeps the slot's name, which does not shadow a pydantic method." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Schema file" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:schemaFile ;
+	sh:pattern "^(?:^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$)(?![\\s\\S])" .
+_:c14n92 sh:description "The enums a TypeScript module declares." ;
 	sh:minCount 1 ;
 	sh:name "Enums" ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 1 ;
 	sh:path rp:tsEnums .
-_:c14n92 sh:datatype xsd:string ;
+_:c14n93 sh:datatype xsd:string ;
 	sh:description "The names of the classes a diagram draws as a name only." ;
 	sh:minCount 1 ;
 	sh:name "Externals" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 2 ;
 	sh:path rp:mmdExternals .
-_:c14n93 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
 _:c14n94 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n95 sh:datatype xsd:string ;
+_:c14n95 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n96 sh:datatype xsd:string ;
 	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -898,13 +905,13 @@ _:c14n95 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:slotName .
-_:c14n96 sh:description "The IRI of a slot." ;
+_:c14n97 sh:description "The IRI of a slot." ;
 	sh:maxCount 1 ;
 	sh:name "Slot IRI" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 3 ;
 	sh:path rp:lockedSlotIri .
-_:c14n97 sh:datatype xsd:string ;
+_:c14n98 sh:datatype xsd:string ;
 	sh:description "The folder of the target's migration files and schema lock, relative to the folder of the `pyproject.toml`; absent for a target that stores nothing of its own." ;
 	sh:maxCount 1 ;
 	sh:name "Migrations folder" ;
@@ -912,7 +919,7 @@ _:c14n97 sh:datatype xsd:string ;
 	sh:order 7 ;
 	sh:path rp:migrationsFolder ;
 	sh:pattern "^(?:^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$)(?![\\s\\S])" .
-_:c14n98 sh:datatype xsd:string ;
+_:c14n99 sh:datatype xsd:string ;
 	sh:description "What a rule needs of its alternatives, in words." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -920,10 +927,3 @@ _:c14n98 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:need .
-_:c14n99 sh:datatype xsd:boolean ;
-	sh:description "Whether the slot takes several values." ;
-	sh:maxCount 1 ;
-	sh:name "Multivalued" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 3 ;
-	sh:path rp:multivalued .

@@ -419,11 +419,13 @@ slots:
     is_a: relative_path
     title: Schema file
     description: >-
-      The root LinkML schema file; the TOML key and the flag are `schema`, which the field name avoids
-      because it would shadow a pydantic method.
+      The root LinkML schema file; the TOML key and the flag are `schema`, its alias: the field keeps
+      the slot's name, which does not shadow a pydantic method.
     slot_uri: rp:schemaFile
+    alias: schema
     annotations:
       cli_flag: --schema
+      field_name: slot
   package:
     title: Package
     description: The Python import path of the generated package, a dotted identifier.
@@ -485,6 +487,9 @@ slots:
       What the target's modules are (TOML key `kind`): `technical` when every module of its folder is
       annotated `module_kind: technical`, `domain` when none is; absent, the kind is not checked.
     slot_uri: rp:targetKind
+    alias: kind
+    annotations:
+      field_name: slot
     range: TargetKind
   schema_id:
     title: Schema id
@@ -1028,3 +1033,10 @@ enums:
           class (`Field(default_factory=<Range>)`), so it is never absent. The hard check refuses it on
           a slot whose range is not a class, or whose range class has a required slot with no `ifabsent`.
         meaning: rp:GenerationAnnotationDefaultInstance
+      field_name:
+        title: Field name
+        description: >-
+          On a slot with an `alias`, `slot` when the generated field is named after the slot and keeps
+          the alias as its pydantic alias. Without it the field is named after the alias when that is a
+          Python identifier (the stock behaviour, which the wire and service schemas rely on).
+        meaning: rp:GenerationAnnotationFieldName

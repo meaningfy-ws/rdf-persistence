@@ -53,7 +53,7 @@ def _required_lines(model: type[BaseModel], component: Mapping) -> list[str]:
 
 def _field_lines(shape: ClassShape, model: type[BaseModel]) -> list[str]:
     fields = model.model_fields
-    slots = {underscore(s.alias or s.name): s for s in shape.slots or []}
+    slots = {_field_key(s, fields): s for s in shape.slots or []}
     lines = [f"field without a slot: {shape.class_name}.{n}" for n in fields if n not in slots]
     for key, slot in slots.items():
         if key in fields:
@@ -61,6 +61,13 @@ def _field_lines(shape: ClassShape, model: type[BaseModel]) -> list[str]:
         else:
             lines.append(f"slot without a field: {shape.class_name}.{slot.name}")
     return lines
+
+
+def _field_key(slot: SlotShape, fields: Mapping[str, FieldInfo]) -> str:
+    """The field of a slot: named after the alias (the stock rule), or after the slot when the slot
+    opted in with ``field_name: slot`` (D-52); the alias-form name when neither is a field."""
+    by_alias, by_name = str(underscore(slot.alias or slot.name)), str(underscore(slot.name))
+    return by_name if by_alias not in fields and by_name in fields else by_alias
 
 
 def _flag_lines(class_name: str, slot: SlotShape, field: FieldInfo) -> list[str]:
