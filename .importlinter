@@ -86,6 +86,25 @@ forbidden_modules =
 ignore_imports =
     rdf_persistence.generation.cli -> rdf_persistence.generation.steps
 
+; The testkit reaches the generator only through its freshness plugin and conformance suite, for
+; configuration and records (generator-package DEC-3). Stage 2 of generator-package replaces this contract.
+[importlinter:contract:testkit-imports-the-generator-only-for-configuration]
+name = the testkit imports the generator only for configuration
+type = forbidden
+source_modules =
+    rdf_persistence.testkit
+forbidden_modules =
+    rdf_persistence.generation
+ignore_imports =
+    rdf_persistence.testkit.freshness -> rdf_persistence.generation.config
+    rdf_persistence.testkit.freshness -> rdf_persistence.generation.exceptions
+    rdf_persistence.testkit.freshness -> rdf_persistence.generation.generated.rp_generation
+    rdf_persistence.testkit.freshness -> rdf_persistence.generation.manifest
+    rdf_persistence.testkit.freshness -> rdf_persistence.generation.problems
+    rdf_persistence.testkit.conformance -> rdf_persistence.generation.config
+    rdf_persistence.testkit.conformance -> rdf_persistence.generation.exceptions
+    rdf_persistence.testkit.conformance -> rdf_persistence.generation.generated.rp_generation
+
 [importlinter:contract:collaboration-layers]
 name = the collaboration modules layer above the session: messagebus > collaboration > transitions | write_guards > discussion | reference_collections | workflows > access > session (PD-28, PD-32)
 ; access sits above session, not beside it: it reaches the session through the mapper (access -> mapper -> session).

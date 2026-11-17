@@ -13,7 +13,7 @@ TC below or a generated diff. Every task is test first. Its gate is
 
 ## Stage 1: the testkit stops importing the generator, but for configuration (PR 1)
 
-- [ ] 1.1 PD-1: on `develop`, the import cut's test: list every name a module of
+- [x] 1.1 PD-1: on `develop`, the import cut's test: list every name a module of
   `rdf_persistence/testkit/` (other than `freshness.py` and `conformance.py`) imports from
   `rdf_persistence.generation`. `technical-models` task 4.1 moved every such record into
   `rdf_persistence.testkit.generated`, so the expected list is empty and the task is TC-01 to
@@ -28,7 +28,7 @@ TC below or a generated diff. Every task is test first. Its gate is
 | TC-03 | `rp_generation.yaml` | declares `ConstraintCase` and `ConstraintKind` (the conformance suite's, PD-1) and none of the records of `technical-models` PD-11 |
 | TC-04 | `make check-generated` | no diff; the `testkit` target's `kind` check passes |
 
-- [ ] 1.2 DEC-3, first half: contract `testkit-imports-the-generator-only-for-configuration` in
+- [x] 1.2 DEC-3, first half: contract `testkit-imports-the-generator-only-for-configuration` in
   `.importlinter` (forbidden: source `rdf_persistence.testkit`, forbidden
   `rdf_persistence.generation`; `ignore_imports` the edges from `testkit.freshness` and
   `testkit.conformance`). Stage 2 replaces it. Gate: `make test-changed check-quality`.

@@ -95,7 +95,7 @@
     },
     {
       "path": "rdf_persistence/generation/model/rp_generation.yaml",
-      "sha256": "066de7ce2f21f33254630e67497c489fc2221665e4a754cfe0c8c1db452dcc9e"
+      "sha256": "6e9d97cd57fa0c2e3ee14b35a0efe94ee6a4882f0ef9edd6d0ca7419e520deff"
     },
     {
       "path": "rdf_persistence/generation/pipeline.py",

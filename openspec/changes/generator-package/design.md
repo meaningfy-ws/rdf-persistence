@@ -297,3 +297,34 @@ gives the same tree. The shims warn once per process (module import).
 
 None that block. For the developer's round: the shim lifetime ("one minor release") and the
 package name are leader's choices (DEC-2, DEC-5).
+
+## Delivery decisions
+
+- **D-1 One session for both EPICs** (developer, 2026-11-17). `generator-package` and
+  `thematic-structure` are delivered in one autonomous session, every stage, overriding "one EPIC
+  per session, fresh session per stage". Mitigation: after each merge the lead re-reads this
+  change's `handover.md` and `tasks.md` before the next stage; after any compaction it re-reads
+  `handover.md` before acting.
+- **D-2 The acceptance demo is waived** (developer, 2026-11-17, before the autonomous run), although
+  LARGE makes it mandatory. Recorded in `evidence/acceptance.md`.
+- **D-3 Review set** (lead). Per P-0005 each stage gets one pass of L2 and L3, replacing the
+  per-stage sets in `tasks.md` (stage 1 L1+L3, stage 2 the five lenses, stage 3 L1+L3+L4); the
+  full review (L1, L2, L3 apart, L4+L5 one pass) runs once, on stage 4, over the whole EPIC's diff.
+- **D-4 Tester** (lead). The PLAN has no `## Invariants` section, so at LARGE the adversarial
+  tester runs on every stage that changes code; its probes are the PLAN's "adversarial tester,
+  reverted" rows (TC-06, TC-14a, TC-23, TC-24) plus the error matrix.
+- **D-5 Preconditions** (lead, 2026-11-17, on `develop` 14b3a86). `technical-models`,
+  `otel-observability` and `manual-revision-notes` are archived. RISK-8 did not occur: only
+  `testkit/freshness.py` and `testkit/conformance.py` import `rdf_persistence.generation`; every
+  other record is in `rdf_persistence.testkit.generated`, so task 1.1 moves nothing.
+- **D-6 Stage 1 is a small stage** (lead). About 100 added lines (one test file, one contract, a
+  description sentence), no production code: the one L2+L3 pass is the four-eyes pass and the full
+  gates with CI are the check, with no separate checker. The tester's probe (TC-06) was run by the
+  builder of task 1.2 and reverted.
+- Stage 1 review, under the floor (Warning and Suggestions, not fixed):
+  - W: `test_testkit_imports.py` skips relative imports; the import-linter contract still catches
+    them, and no testkit module uses one. Stage 2 rewrites the test for the new package.
+  - S: `architecture/generation.adoc` does not name the interim contract; stage 2 rewrites the
+    passage (task 2.5).
+  - S: the contract's comment says "configuration and records" while `freshness` also uses the
+    manifest logic; the name is fixed by task 1.2 and stage 2 replaces the contract.
