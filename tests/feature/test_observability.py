@@ -22,6 +22,7 @@ from rdf_persistence.domain.exceptions import StoreUnavailable
 from rdf_persistence.domain.generated.rp_provenance import Activity, Replace
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import EventEnvelope
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.messagebus import Work, command
 from rdf_persistence.testkit import FakeStore, RecordingObserver
@@ -409,7 +410,7 @@ def _runaway(run: Run) -> None:
     bus = bootstrap(
         commands={Replace: handle},
         observers={Replace: [again]},
-        limit=run.limit,
+        limits=LimitSettings(max_messages=run.limit),
         mapper=run.kit.mapper,
     )
     run.kit.bus = bus
