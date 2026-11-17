@@ -478,6 +478,11 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   check is never reached. A PLAN TC that does not test its row is that brief item unmet. Fix: a
   policy whose `tenant_id` spec can spell the word; assert `InvalidIri` when it is reserved and
   acceptance when it is not.
+- **D-26 (stage 2, checker F-C1, the developer's decision 2026-11-17)** `Iris.tenant_id_of` still
+  reads the match by a string key (`found["tenant_id"]`), the one matcher of task 2.3 not read
+  through `IriParts` (P-0007). Fixed now (one fixer, one full-gates run) rather than left under
+  the floor. On the same day the developer granted the lead push, PR and merge on green CI for
+  `technical-models` until the change ends (epic-delivery, Authority).
 
 Under the floor (not fixed in stage 2):
 
