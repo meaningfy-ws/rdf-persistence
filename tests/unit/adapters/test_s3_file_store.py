@@ -1,5 +1,6 @@
 """S3FileStore's calls and error mapping, against botocore's Stubber (no network)."""
 
+import logging
 from datetime import UTC, datetime
 from io import BytesIO
 
@@ -19,6 +20,7 @@ from rdf_persistence.domain.exceptions import (
 )
 from rdf_persistence.domain.generated.rp_files import BlobEntry
 from rdf_persistence.testkit import no_network  # noqa: F401  (fixture)
+from tests.logs import attributes, records_of
 
 REGION = "garage"
 BUCKET, KEY, URL = "b", "k", "http://s3.test"
@@ -67,6 +69,32 @@ async def test_an_s3_error_code_maps_to_the_toolkit_error(s3, operation, code, e
     stubber.add_client_error(api_call, service_error_code=code)
     with pytest.raises(expected):
         await call(files)
+
+
+async def test_a_code_the_adapter_does_not_map_is_logged_at_debug(s3, caplog):  # TC-21
+    files, stubber = s3
+    stubber.add_client_error("get_object", service_error_code="AccessDenied", http_status_code=403)
+    with (
+        caplog.at_level(logging.DEBUG, logger="rdf_persistence.adapters.s3"),
+        pytest.raises(StoreUnavailable),
+    ):
+        await files.get(BUCKET, KEY)
+    [record] = records_of(caplog, "file-store-refused")
+    assert record.levelno == logging.DEBUG
+    assert record.getMessage() == "the object store refused a request"
+    assert attributes(record) == {"rp.step": "file-store-refused", "error.type": "AccessDenied"}
+
+
+async def test_a_mapped_code_is_not_logged(s3, caplog):  # TC-21
+    files, stubber = s3
+    stubber.add_client_error("get_object", service_error_code="NoSuchBucket", http_status_code=404)
+    with (
+        caplog.at_level(logging.DEBUG, logger="rdf_persistence.adapters.s3"),
+        pytest.raises(TenantGone),
+    ):
+        await files.get(BUCKET, KEY)
+    assert records_of(caplog, "file-store-refused") == [], "NoSuchBucket is mapped before the log"
+    assert caplog.records == []
 
 
 async def test_a_server_error_status_is_store_unavailable_whatever_its_code(s3):

@@ -25,6 +25,8 @@ from rdf_persistence.domain.exceptions import (
     TenantGone,
 )
 from rdf_persistence.domain.generated.rp_files import BlobEntry
+from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
+from rdf_persistence.services.telemetry import log_extra
 
 NO_SUCH_BUCKET, NO_SUCH_KEY = "NoSuchBucket", "NoSuchKey"
 BUCKET_EXISTS = frozenset({"BucketAlreadyOwnedByYou", "BucketAlreadyExists"})
@@ -54,7 +56,12 @@ def _translate(error: ClientError, *, bucket_missing: type[PersistenceError]) ->
         return NotFound("no such blob")
     if code in BUCKET_EXISTS:
         return Conflict("the bucket exists")
-    log.debug("The object store refused a request: %s", error)
+    log.debug(
+        "the object store refused a request",
+        extra=log_extra(
+            LogContext(step="file-store-refused", error_type=code or str(_status(error)))
+        ),
+    )
     return StoreUnavailable(f"The object store answered {code or _status(error)}")
 
 

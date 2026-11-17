@@ -21,8 +21,12 @@ from pydantic import ValidationError
 from rdf_persistence.domain.generated.rp_provenance import Activity
 from rdf_persistence.services.events import Receive
 from rdf_persistence.services.generated.service.rp_service import EventEnvelope
+from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
+from rdf_persistence.services.telemetry import log_extra
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
+
+REDIS_SYSTEM = "redis"
 
 POLLING_INTERVAL_MS = 100
 ENVELOPE_FIELDS = tuple(EventEnvelope.model_fields)
@@ -45,6 +49,13 @@ class RedisEventBus:
         self._claim_idle = claim_idle
         self._broker: RedisBroker | None = None
 
+    def _context(self, step: str) -> LogContext:
+        return LogContext(
+            step=step,
+            messaging_system_name=REDIS_SYSTEM,
+            messaging_destination_name=self._stream,
+        )
+
     async def publish(self, envelope: EventEnvelope, body: Activity) -> None:
         if self._broker is None:
             raise RuntimeError("the Redis event bus is not started")
@@ -60,8 +71,10 @@ class RedisEventBus:
             minid = int(time.time() * 1000) - int(self._retention.total_seconds() * 1000)
             await client.xtrim(self._stream, minid=f"{minid}-0", approximate=True)
         except Exception:  # noqa: BLE001 -- best effort (D-17): a failed trim is logged, never raised
-            logger.warning(
-                "trimming %s failed; the entry was published", self._stream, exc_info=True
+            log.warning(
+                "trimming the stream failed; the entry was published",
+                extra=log_extra(self._context("event-trim-failed")),
+                exc_info=True,
             )
 
     async def start(self, receive: Receive) -> None:
@@ -82,7 +95,10 @@ class RedisEventBus:
                 )
             except ValidationError:
                 # shortcut: a message without a valid envelope is dropped (acked); no one could handle it.
-                logger.warning("dropped a message on %s with an invalid envelope", self._stream)
+                log.warning(
+                    "dropped a message with an invalid envelope",
+                    extra=log_extra(self._context("event-invalid-envelope")),
+                )
                 return
             await receive(envelope, raw)
 

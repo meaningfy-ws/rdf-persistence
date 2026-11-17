@@ -21,6 +21,8 @@ from rdf_persistence.domain.exceptions import (
     StoreUnavailable,
 )
 from rdf_persistence.domain.media import ACCEPT, CONTENT_TYPE, N_QUADS, TURTLE
+from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
+from rdf_persistence.services.telemetry import log_extra
 
 SPARQL_QUERY = "application/sparql-query"
 SPARQL_UPDATE = "application/sparql-update"
@@ -51,7 +53,17 @@ def _raise_for_status(response: httpx.Response, *, on_missing: type[PersistenceE
     if status == HTTPStatus.CONFLICT:
         raise Conflict(f"Fuseki answered {status} for {response.request.url.path}")
     if status == HTTPStatus.BAD_REQUEST:
-        log.debug("Fuseki refused a request with 400: %s", response.text)
+        log.debug(
+            "Fuseki refused a request with 400",
+            extra=log_extra(
+                LogContext(
+                    step="store-bad-request",
+                    db_system_name="fuseki",
+                    db_response_status_code="400",
+                    response_body=response.text,
+                )
+            ),
+        )
         raise BadQuery(BAD_QUERY_MESSAGE)
     if not response.is_success:  # 401, 403, 415, a redirect...: not the caller's to tell apart
         raise StoreUnavailable(f"Fuseki answered {status}")
