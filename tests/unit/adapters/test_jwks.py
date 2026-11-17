@@ -1,6 +1,7 @@
 """``JwksTokenVerifier``'s key handling: discovery, the cache, one refresh per unknown kid, an unreachable provider."""
 
 import asyncio
+import math
 
 import httpx
 import pytest
@@ -383,6 +384,117 @@ async def test_a_dot_or_empty_subject_is_refused(
     verifier = verifier_for(signer, clock)
     with pytest.raises(InvalidToken):
         await verifier.verify(signer.issue(sub=sub))
+
+
+# --- the algorithm allow-list (PD-1, DEC-1) and the clock leeway (PD-3, DEC-2) -----------------
+
+DEFAULT_ALGORITHM_NAMES = (
+    "RS256",
+    "RS384",
+    "RS512",
+    "PS256",
+    "PS384",
+    "PS512",
+    "ES256",
+    "ES384",
+    "ES512",
+    "EdDSA",
+)
+
+
+@pytest.mark.parametrize("algorithm", DEFAULT_ALGORITHM_NAMES)
+async def test_the_default_verifier_accepts_every_default_algorithm(
+    clock: ManualClock, algorithm: str
+) -> None:
+    signer = TokenSigner(clock=clock, algorithm=algorithm)
+    caller = await verifier_for(signer, clock).verify(signer.issue())
+    assert caller.principal.endswith("/user-1"), f"a {algorithm} token was not accepted"
+
+
+@pytest.mark.parametrize(
+    ("algorithms", "named"),
+    [
+        (["none"], "none"),
+        (["NONE"], "NONE"),
+        (["HS256"], "HS256"),
+        (["hs512"], "hs512"),
+        ([], "empty"),
+        (["ML-DSA-65"], "ML-DSA-65"),
+        (["RS256", "HS512"], "HS512"),
+    ],
+    ids=["none", "NONE", "HS256", "hs512", "empty", "unknown", "mixed"],
+)
+def test_an_unusable_algorithm_list_is_refused_naming_the_entry(
+    algorithms: list[str], named: str
+) -> None:
+    with pytest.raises(ValueError, match=named):
+        JwksTokenVerifier("https://idp.test", "aud", "roles", algorithms=algorithms)
+
+
+async def test_a_token_outside_the_instance_algorithms_is_refused_before_any_key_fetch(
+    signer: TokenSigner, clock: ManualClock
+) -> None:
+    verifier = verifier_for(signer, clock, algorithms=["ES256"])
+    with pytest.raises(InvalidToken, match="algorithm"):
+        await verifier.verify(signer.issue())
+    assert signer.jwks_requests == 0, "the key set was fetched for a refused algorithm"
+
+
+async def test_a_narrower_list_still_accepts_its_own_algorithm(clock: ManualClock) -> None:
+    signer = TokenSigner(clock=clock, algorithm="ES256")
+    caller = await verifier_for(signer, clock, algorithms=("ES256",)).verify(signer.issue())
+    assert caller.principal, "an ES256 token under algorithms=['ES256'] was refused"
+
+
+CLOCK_NOW = 1000.0
+
+
+@pytest.mark.parametrize(
+    ("exp", "accepted"),
+    [(990, True), (971, True), (970, False), (940, False)],
+)
+async def test_the_default_leeway_lets_an_expired_token_through_for_30_seconds(
+    signer: TokenSigner, clock: ManualClock, exp: float, accepted: bool
+) -> None:
+    clock.now = CLOCK_NOW
+    verifier = verifier_for(signer, clock)
+    token = signer.issue(expires_in=exp - CLOCK_NOW)
+    if accepted:
+        assert (await verifier.verify(token)).principal, f"exp {exp} should be within the leeway"
+    else:
+        with pytest.raises(InvalidToken, match="expired"):
+            await verifier.verify(token)
+
+
+@pytest.mark.parametrize(("nbf", "accepted"), [(1020, True), (1031, False)])
+async def test_the_default_leeway_lets_an_early_token_through_for_30_seconds(
+    signer: TokenSigner, clock: ManualClock, nbf: float, accepted: bool
+) -> None:
+    clock.now = CLOCK_NOW
+    verifier = verifier_for(signer, clock)
+    token = signer.issue(not_before_in=nbf - CLOCK_NOW)
+    if accepted:
+        assert (await verifier.verify(token)).principal, f"nbf {nbf} should be within the leeway"
+    else:
+        with pytest.raises(InvalidToken, match="not yet valid"):
+            await verifier.verify(token)
+
+
+@pytest.mark.parametrize(
+    "leeway", [-1, 301, math.inf, math.nan], ids=["negative", "above-300", "inf", "nan"]
+)
+def test_a_leeway_outside_zero_to_300_or_not_finite_is_refused(leeway: float) -> None:
+    with pytest.raises(ValueError, match="leeway"):
+        JwksTokenVerifier("https://idp.test", "aud", "roles", leeway_seconds=leeway)
+
+
+async def test_a_zero_leeway_refuses_a_token_expiring_now(
+    signer: TokenSigner, clock: ManualClock
+) -> None:
+    clock.now = CLOCK_NOW
+    verifier = verifier_for(signer, clock, leeway_seconds=0)
+    with pytest.raises(InvalidToken, match="expired"):
+        await verifier.verify(signer.issue(expires_in=0))
 
 
 def test_the_verifier_exposes_the_iris_it_mints_with(

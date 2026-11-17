@@ -9,13 +9,16 @@ import jwt
 import pytest
 from cryptography.hazmat.primitives import serialization
 
-from rdf_persistence.adapters.jwks import JwksTokenVerifier
+from rdf_persistence.adapters.jwks import DEFAULT_LEEWAY_SECONDS, JwksTokenVerifier
 from rdf_persistence.domain.exceptions import InvalidToken
 from rdf_persistence.services.tokens import TokenVerifier
 from rdf_persistence.testkit import TokenSigner, shared_key
 from rdf_persistence.testkit.tokens import ISSUER
 
 NOW = 1_700_000_000.0
+PAST_LEEWAY = (
+    DEFAULT_LEEWAY_SECONDS + 1
+)  # the default leeway forgives a token that expired a moment ago
 
 
 @pytest.fixture
@@ -156,10 +159,10 @@ def forge_hs256(signer: TokenSigner) -> str:
 def make_invalid(name: str, signer: TokenSigner) -> str:
     other = TokenSigner(kid=signer.kid, clock=lambda: NOW)
     builders = {
-        "expired": lambda: signer.issue(expires_in=-1),
+        "expired": lambda: signer.issue(expires_in=-PAST_LEEWAY),
         "not-yet-valid": lambda: signer.issue(not_before_in=60),
         "expired-a-minute-ago": lambda: signer.issue(expires_in=-60),
-        "expires-this-instant": lambda: signer.issue(expires_in=0),
+        "expires-this-instant": lambda: signer.issue(expires_in=-DEFAULT_LEEWAY_SECONDS),
         "exp-as-a-numeric-string": lambda: signer.issue(extra={"exp": str(int(NOW) + 600)}),
         "exp-as-a-bool": lambda: signer.issue(extra={"exp": True}),
         "nbf-as-a-numeric-string": lambda: signer.issue(extra={"nbf": "0"}),
@@ -208,7 +211,7 @@ async def test_an_invalid_token_is_refused(
 async def test_an_expired_token(signer: TokenSigner, verifier: TokenVerifier) -> None:
     """Spec scenario "an expired token": the request is refused as unauthenticated."""
     with pytest.raises(InvalidToken, match="expired"):
-        await verifier.verify(signer.issue(expires_in=-1))
+        await verifier.verify(signer.issue(expires_in=-PAST_LEEWAY))
 
 
 async def test_hs256_is_refused_for_its_algorithm(

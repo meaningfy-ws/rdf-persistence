@@ -11,7 +11,7 @@ changes `domain` or a port, or its reach is wide). After a schema change: `make 
 
 ## Stage 1: defects (PR 1)
 
-- [ ] 1.1 PD-1, PD-3 (A-3, A-4, DEC-1 to DEC-3): `algorithms=` and `leeway_seconds=` on
+- [x] 1.1 PD-1, PD-3 (A-3, A-4, DEC-1 to DEC-3): `algorithms=` and `leeway_seconds=` on
   `JwksTokenVerifier`, `DEFAULT_ALGORITHMS`, `DEFAULT_LEEWAY_SECONDS`; `TokenSigner(algorithm=...)`
   in `testkit/tokens.py`, generating an RSA, EC (P-256/384/521) or Ed25519 key to fit, the JWK
   naming `alg`; `jwks.RS256` stays (the testkit imports it), `ALLOWED_ALGORITHMS` and `ES256` go
@@ -245,7 +245,7 @@ section), in PR 3 before it merges.
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 ·
+- [x] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 ·
   [ ] 2.4 · [ ] 2.5 · (tester) · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] reconcile · PR 3
 
 ## Verification

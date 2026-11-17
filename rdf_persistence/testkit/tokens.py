@@ -5,13 +5,13 @@ Pass ``signer.transport`` as the ``transport`` of a ``JwksTokenVerifier``; no ne
 
 import functools
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from http import HTTPStatus
 from typing import Final
 
 import httpx
 import jwt
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
 
 from rdf_persistence.adapters.generated.rp_wire import DiscoveryDocument
 from rdf_persistence.adapters.jwks import DISCOVERY_PATH, RS256
@@ -27,10 +27,29 @@ ORG_ID, ORG_DOMAIN = "org-1", "org.test"
 KEYS_PATH = "/keys"
 
 
-def new_key() -> rsa.RSAPrivateKey:
-    """A fresh 2048-bit RSA signing key; generating it takes noticeable time, so share one
-    where distinctness does not matter (see :func:`shared_key`)."""
-    return rsa.generate_private_key(public_exponent=65537, key_size=2048)
+type SigningKey = rsa.RSAPrivateKey | ec.EllipticCurvePrivateKey | ed25519.Ed25519PrivateKey
+
+type PublicKey = rsa.RSAPublicKey | ec.EllipticCurvePublicKey | ed25519.Ed25519PublicKey
+
+EDDSA = "EdDSA"
+EC_CURVES: Final[Mapping[str, Callable[[], ec.EllipticCurve]]] = {
+    "ES256": ec.SECP256R1,
+    "ES384": ec.SECP384R1,
+    "ES512": ec.SECP521R1,
+}
+
+
+def new_key(algorithm: str = RS256) -> SigningKey:
+    """A fresh signing key that fits ``algorithm``: RSA 2048 (RS*, PS*), the curve of ES256, ES384
+    or ES512 (P-256, P-384, P-521), or Ed25519 (EdDSA). Generating an RSA key takes noticeable time,
+    so share one where distinctness does not matter (see :func:`shared_key`)."""
+    if algorithm in EC_CURVES:
+        return ec.generate_private_key(EC_CURVES[algorithm]())
+    if algorithm == EDDSA:
+        return ed25519.Ed25519PrivateKey.generate()
+    if algorithm.startswith(("RS", "PS")):
+        return rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    raise ValueError(f"no signing key for the algorithm {algorithm!r}")
 
 
 @functools.cache
@@ -40,11 +59,13 @@ def shared_key() -> rsa.RSAPrivateKey:
     Never use it for a key the verifier must not trust (a forged or foreign signature): every
     caller gets the same key, so it would be trusted. Use :func:`new_key` there.
     """
-    return new_key()
+    key = new_key()
+    assert isinstance(key, rsa.RSAPrivateKey)  # RS256 gives RSA
+    return key
 
 
 class TokenSigner:
-    """An identity provider for tests: RSA keys, tokens, and the endpoints a verifier reads."""
+    """An identity provider for tests: signing keys, tokens, and the endpoints a verifier reads."""
 
     def __init__(
         self,
@@ -53,9 +74,12 @@ class TokenSigner:
         audience: str = AUDIENCE,
         roles_claim: str = zitadel_roles_claim(PROJECT_ID),
         clock: EpochClock = time.time,
-        key: rsa.RSAPrivateKey | None = None,
+        key: SigningKey | None = None,
+        algorithm: str = RS256,
     ) -> None:
-        """``key`` is the first signing key, for tests that share one; without it, a fresh one."""
+        """``key`` is the first signing key, for tests that share one; without it, a fresh one that fits
+        ``algorithm``, the algorithm every token is signed with and every JWK names."""
+        self.algorithm = algorithm
         self.kid = kid
         self.audience = audience
         self.roles_claim = roles_claim
@@ -63,17 +87,17 @@ class TokenSigner:
         self.jwks_requests = 0
         self.discovery_requests = 0
         self._clock = clock
-        self._keys: dict[str, rsa.RSAPrivateKey] = {kid: new_key() if key is None else key}
+        self._keys: dict[str, SigningKey] = {kid: new_key(algorithm) if key is None else key}
         self.transport = httpx.MockTransport(self.handle)
 
     @property
-    def public_key(self) -> rsa.RSAPublicKey:
+    def public_key(self) -> PublicKey:
         """The public half of the current signing key."""
         return self._keys[self.kid].public_key()
 
     def rotate(self, kid: str) -> None:
         """Add a fresh key and sign with it from now on; earlier keys stay in the JWKS."""
-        self._keys[kid] = new_key()
+        self._keys[kid] = new_key(self.algorithm)
         self.kid = kid
 
     def issue(
@@ -108,7 +132,7 @@ class TokenSigner:
         header_kid = kid or self.kid
         key = self._keys.get(header_kid, self._keys[self.kid])
         return jwt.encode(
-            claims, key, algorithm=RS256, headers={"kid": header_kid} if with_kid else None
+            claims, key, algorithm=self.algorithm, headers={"kid": header_kid} if with_kid else None
         )
 
     def handle(self, request: httpx.Request) -> httpx.Response:
@@ -124,7 +148,6 @@ class TokenSigner:
             HTTPStatus.OK, json={"keys": [self._jwk(kid, key) for kid, key in self._keys.items()]}
         )
 
-    @staticmethod
-    def _jwk(kid: str, key: rsa.RSAPrivateKey) -> Mapping[str, object]:
-        jwk = jwt.algorithms.RSAAlgorithm.to_jwk(key.public_key(), as_dict=True)
-        return {**jwk, "kid": kid, "use": "sig", "alg": RS256}
+    def _jwk(self, kid: str, key: SigningKey) -> Mapping[str, object]:
+        jwk = jwt.get_algorithm_by_name(self.algorithm).to_jwk(key.public_key(), as_dict=True)
+        return {**jwk, "kid": kid, "use": "sig", "alg": self.algorithm}
