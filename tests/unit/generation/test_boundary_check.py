@@ -379,8 +379,20 @@ def add_terms_module(toy: Path, extra: str) -> Path:
     return root
 
 
-def test_the_reference_problem_names_its_fixes(toy_copy: Path) -> None:
+def test_a_class_slot_of_a_technical_module_has_no_reference_problem(toy_copy: Path) -> None:
+    """D-49: a technical class is never stored, so `Terms.items` ranging over `Term` is no reference."""
     found = [p for p in problems_of(add_terms_module(toy_copy, "")) if "[reference]" in p]
+    assert found == [], "the reference rule applies to stored classes only"
+
+
+def test_the_reference_problem_names_its_fixes(toy_copy: Path) -> None:
+    root = add_terms_module(toy_copy, "")
+    terms = toy_copy / "terms.yaml"
+    terms.write_text(
+        terms.read_text(encoding="utf-8").replace("module_kind: technical", "module_kind: domain"),
+        encoding="utf-8",
+    )
+    found = [p for p in problems_of(root) if "[reference]" in p]
     assert len(found) == 1, f"one not-owned slot, one reference problem: {found}"
     for fix in (
         "owned: true",

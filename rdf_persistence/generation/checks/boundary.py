@@ -32,7 +32,7 @@ REFERENCE_CLASSES = ("Principal", ACTIVITY)
 FORBIDDEN_FOR_DOMAIN = (ModuleKind.TECHNICAL.value, ModuleKind.ACCESS.value)
 
 
-def _technical_classes(schemas: list[SchemaDefinition]) -> list[ClassDefinition]:
+def technical_classes(schemas: list[SchemaDefinition]) -> list[ClassDefinition]:
     """The classes of the modules annotated ``module_kind: technical``; a class is told apart by object, not by name."""
     return [
         cls
@@ -162,13 +162,17 @@ def target_kind_problems(view: SchemaView, folder: Path, kind: TargetKind) -> li
 def boundary_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
     """Every problem of the schemas kept in ``folder``, in a stable order.
 
-    The toolkit's own schemas get the import rule but not the class rules (PD-23).
+    The toolkit's own schemas get the import rule but not the class rules (PD-23), and neither do the
+    classes of a module annotated ``module_kind: technical``, which are never stored (D-49).
     """
     schemas = own_schemas(view, folder)
     classes = [] if is_toolkit_schema(folder) else own_classes(schemas)
+    technical = technical_classes(schemas)
+    exempt = {id(cls) for cls in technical}
+    stored = [cls for cls in classes if id(cls) not in exempt]
     return [
-        *_ownership_problems(view, classes, _technical_classes(schemas)),
-        *_reference_problems(view, classes),
+        *_ownership_problems(view, classes, technical),
+        *_reference_problems(view, stored),
         *_direction_problems(view, classes),
         *_module_problems(view, schemas),
     ]

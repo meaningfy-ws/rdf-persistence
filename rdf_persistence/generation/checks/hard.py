@@ -25,6 +25,7 @@ from rdf_persistence.domain.generated.rp_core import (
 )
 from rdf_persistence.domain.layout import LAYOUT_WORDS
 from rdf_persistence.generation.checks.application import application_problems
+from rdf_persistence.generation.checks.boundary import technical_classes
 from rdf_persistence.generation.checks.default_instance import default_instance_problems
 from rdf_persistence.generation.checks.toolkit_filled import toolkit_filled_problems
 from rdf_persistence.generation.generated.rp_generation import CheckProblem, HardRule
@@ -382,15 +383,22 @@ def stored_schema_problems(
     ]
 
 
+def _stored_classes(schemas: list[SchemaDefinition], folder: Path) -> list[ClassDefinition]:
+    """The classes the root and owned-class rules apply to: none of the toolkit's own (PD-23), none of a technical module (D-49)."""
+    if is_toolkit_schema(folder):
+        return []
+    exempt = {id(cls) for cls in technical_classes(schemas)}
+    return [cls for cls in own_classes(schemas) if id(cls) not in exempt]
+
+
 def hard_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
     """Every problem of the schemas kept in ``folder``, in a stable order.
 
-    The toolkit's own schemas get the element rules but not the root and owned-class rules (PD-23).
+    The toolkit's own schemas get the element rules but not the root and owned-class rules (PD-23);
+    nor do the classes of a module annotated ``module_kind: technical``, which are never stored (D-49).
     """
     schemas = own_schemas(view, folder)
-    classes = (
-        [] if is_toolkit_schema(folder) else own_classes(schemas)
-    )  # PD-23: its roots are its own
+    classes = _stored_classes(schemas, folder)
     return [
         *(p for schema in schemas for p in _schema_problems(schema)),
         *(p for schema in schemas for p in _annotation_problems(schema, _segment_pattern())),

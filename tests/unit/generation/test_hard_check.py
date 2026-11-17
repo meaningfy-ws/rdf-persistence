@@ -342,6 +342,35 @@ def _default_instance_problems(
     return [p for p in problems_of(root) if f"[{HardRule.DEFAULT_INSTANCE.value}]" in p]
 
 
+def _class_rule_problems(tmp_path: Path, module_kind: str) -> list[str]:
+    """The root and owned-class rules on `Holder.group`, which ranges over `Group` and is `owned`."""
+    text = DEFAULT_INSTANCE_SCHEMA.format(name_required="false", name_default="").replace(
+        "imports: [linkml:types]\n",
+        f"imports: [linkml:types]\nannotations: {{module_kind: {module_kind}}}\n",
+        1,
+    )
+    root = tmp_path / "groups.yaml"
+    root.write_text(
+        text.replace(
+            "      default_instance: 'true'\n  label",
+            "      default_instance: 'true'\n      owned: 'true'\n  label",
+        ),
+        encoding="utf-8",
+    )
+    return [p for p in problems_of(root) if f"[{HardRule.DESCRIBED.value}]" in p]
+
+
+def test_the_class_rules_skip_the_classes_of_a_technical_module(tmp_path: Path) -> None:
+    """D-49: a technical class is never stored, so its owned class need not include `Described`."""
+    assert _class_rule_problems(tmp_path, "technical") == [], "a technical class is never stored"
+
+
+def test_the_class_rules_still_bind_the_classes_of_a_domain_module(tmp_path: Path) -> None:
+    """D-49's counterpart: a domain module keeps the rule, so the exemption is by module kind."""
+    found = _class_rule_problems(tmp_path, "domain")
+    assert any("Group" in p for p in found), f"a domain module lost the Described rule: {found}"
+
+
 def test_default_instance_on_a_slot_ranging_over_a_type_is_refused_naming_the_slot(
     tmp_path: Path,
 ) -> None:

@@ -23,10 +23,7 @@ from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.adapters.jwks import JwksTokenVerifier
 from rdf_persistence.domain.sparql import term
 from rdf_persistence.entrypoints.environment import settings_from_env
-from rdf_persistence.generation.checks.hard import hard_problems
 from rdf_persistence.generation.cli import main as generate
-from rdf_persistence.generation.extensions.pydantic_split import render as render_modules
-from rdf_persistence.generation.problems import format_problem
 from rdf_persistence.services.generated.settings.rp_settings import (
     HttpSettings,
     JwksSettings,
@@ -62,7 +59,6 @@ class Run:
         self.project: Path | None = None
         self.files_before: dict[str, bytes] = {}
         self.rule = ""
-        self.hard_only = False
         self.exit_code: int | None = None
         self.output = ""
         self.loaded = False
@@ -228,13 +224,6 @@ def _toy_without_kind(run: Run) -> None:
 @when("the models are generated")
 def _generate(run: Run, capsys: pytest.CaptureFixture[str]) -> None:
     assert run.project is not None, "a project was prepared"
-    if run.hard_only:
-        # A class range outside the toolkit's own schemas fails the boundary check first (see the
-        # report), so the check `rp-generate` runs on the schema is run on its own.
-        root = run.project.parent / "groups.yaml"
-        problems = [format_problem(p) for p in hard_problems(load_schema(root), root.parent)]
-        run.exit_code, run.output = int(bool(problems)), "\n".join(problems)
-        return
     run.exit_code = generate(["--project", str(run.project)])
     captured = capsys.readouterr()
     run.output = captured.out + captured.err
@@ -416,12 +405,9 @@ def _group_defaults(run: Run) -> None:
 
 @when("two objects of the class are built with no value for the group")
 def _two_holders(run: Run) -> None:
-    assert run.project is not None, "a project was prepared"
-    text = {f.name: f.text for f in render_modules(run.project.parent / "groups.yaml")}
-    namespace: dict[str, object] = {}
-    exec(compile(text["groups.py"], "groups.py", "exec"), namespace)
-    holder = namespace["Holder"]
-    run.built = [holder(), holder()]  # type: ignore[operator]
+    assert generate(["--project", str(run.project)]) == 0, "the schema generates"
+    holder = _generated_module(run).Holder
+    run.built = [holder(), holder()]
 
 
 @then("each holds a group with its defaults")
@@ -437,7 +423,7 @@ def _groups_distinct(run: Run) -> None:
 
 @given(parsers.parse("a slot that defaults to an instance but {fault}"))
 def _faulty_slot(run: Run, fault: str) -> None:
-    run.rule, run.hard_only = "[default_instance]", True
+    run.rule = "[default_instance]"
     _project(run, _groups_schema(**FAULTS[fault]))
 
 
