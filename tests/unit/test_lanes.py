@@ -12,6 +12,7 @@ MAX_RECIPE_LINES = 15
 LANES = [
     "test",
     "test-unit",
+    "test-unit-ci",
     "test-feature",
     "test-fast",
     "test-changed",
@@ -21,7 +22,14 @@ LANES = [
     "test-e2e",
     "test-perf",
 ]
-PARALLEL_LANES = ["test", "test-unit", "test-feature", "test-fast", "profile-tests"]
+PARALLEL_LANES = [
+    "test",
+    "test-unit",
+    "test-unit-ci",
+    "test-feature",
+    "test-fast",
+    "profile-tests",
+]
 WORKERS = re.compile(r"-n \S+")
 VARIABLE = re.compile(r"^(\w+)\s*\??=\s*(.*)$", re.MULTILINE)
 REFERENCE = re.compile(r"\$\((\w+)\)")
@@ -101,6 +109,21 @@ def test_the_perf_lane_selects_perf_tests_not_in_quarantine() -> None:
     selections = SELECTION.findall(expanded("\n".join(recipe_of("test-perf"))))
 
     assert selections == ["perf and not quarantine"], "test-perf must select perf, not quarantine"
+
+
+def test_only_the_ci_unit_lane_leaves_the_slow_tests_out() -> None:
+    def selection(lane: str) -> str:
+        return " ".join(SELECTION.findall(expanded("\n".join(recipe_of(lane)))))
+
+    assert "and not slow" in selection("test-unit-ci"), "CI must not run the slow tests"
+    for lane in ("test", "test-unit", "test-changed"):
+        assert "slow" not in selection(lane), f"{lane} must keep running the slow tests"
+
+
+def test_the_ci_unit_job_runs_the_ci_unit_lane() -> None:
+    ci = (TESTS_ROOT_DIR.parent / ".github" / "workflows" / "ci.yaml").read_text(encoding="utf-8")
+
+    assert "run: make test-unit-ci" in ci, "the CI unit job must run make test-unit-ci"
 
 
 def test_the_refresh_map_target_runs_the_refresher() -> None:

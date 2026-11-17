@@ -98,7 +98,7 @@ jobs:
         with:
           fetch-depth: 0  # SonarCloud reads the history
       - uses: ./.github/actions/setup
-      - run: make test-unit
+      - run: make test-unit-ci  # slow tests run locally only (make test-unit, check-all)
 
       - name: Upload coverage report
         if: always()

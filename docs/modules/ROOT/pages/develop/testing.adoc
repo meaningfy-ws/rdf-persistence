@@ -62,6 +62,7 @@ _When is a test slow, and what do I do about it?_
 A test is slow when its set-up and its call add up to 2 s or more, run alone
 (`uv run pytest <node id> -p no:randomly --durations=0 -n 0`). Session start-up does not count.
 `make test-fast` leaves slow tests out; `make test-changed` and `make check-all` run them.
+CI does not run slow tests: its unit job runs `make test-unit-ci`, so run them locally before a PR.
 
 * Mark the test itself: `@pytest.mark.slow` on the function or the class. Never a module
   `pytestmark`: it would hide the fast tests of the file, and `tests/conftest.py` stamps the other

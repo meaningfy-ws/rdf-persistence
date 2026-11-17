@@ -199,10 +199,15 @@ fuseki-image: $(FUSEKI_IMAGE_TAR) ## Load the Fuseki test image from its tar, bu
 	@ docker load -i $<
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Fuseki image ready$(END_BUILD_PRINT)"
 
-test-unit: ## Run the unit tests in parallel, with the 80 % coverage floor (CI job "unit")
+test-unit: ## Run the unit tests in parallel, slow ones included, with the 80 % coverage floor
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit tests$(END_BUILD_PRINT)"
 	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) $(PARALLEL) -m "unit $(NOT_QUARANTINE)" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Unit tests passed$(END_BUILD_PRINT)"
+
+test-unit-ci: ## Run the unit tests not marked slow in parallel, with the 80 % coverage floor (CI job "unit")
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running the fast unit tests$(END_BUILD_PRINT)"
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) $(PARALLEL) -m "unit and not slow $(NOT_QUARANTINE)" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Fast unit tests passed$(END_BUILD_PRINT)"
 
 test-feature: ## Run the BDD feature tests in parallel, with a 50 % coverage floor (CI job "feature")
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running feature tests$(END_BUILD_PRINT)"
