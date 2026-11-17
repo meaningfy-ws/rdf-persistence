@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
+from opentelemetry.trace import StatusCode
 
 from rdf_persistence.domain.exceptions import Conflict, InvalidBody, MessageLimitExceeded
 from rdf_persistence.domain.generated.rp_provenance import (
@@ -505,3 +506,50 @@ async def test_every_served_of_a_handlers_work_is_the_one_built_once():
     assert built == [cmd], "the Served is built once, by the mapper"
     assert seen[0] is seen[1] is not None, "the handler's work holds one Served, built once"
     assert seen[2] is None, "an observer's work serves none"
+
+
+async def test_tc36_each_command_run_is_a_handle_span_with_its_class_and_id(spans):  # PD-5
+    rec, (_, collaboration) = Recorder(), fakes()
+    first, second = command(Replace), command(Remove)
+
+    async def replace(cmd: Activity, work: Work) -> None:
+        await work.send(second)
+
+    bus = MessageBus({Replace: replace, Remove: rec.handler("remove")}, {})
+
+    await bus.handle(first, collaboration)
+
+    handles = [s for s in spans() if s.name == "rp.bus.handle"]
+    assert [dict(s.attributes) for s in handles] == [
+        {"rp.step": "bus-handle", "rp.activity.class": "Replace", "rp.activity.id": first.id},
+        {"rp.step": "bus-handle", "rp.activity.class": "Remove", "rp.activity.id": second.id},
+    ], "a span per command run, the queued one included"
+
+
+async def test_tc37_each_observer_is_an_observe_span_and_a_failing_one_is_error(spans):  # PD-5
+    rec, (session, _) = Recorder(), fakes()
+
+    async def failing(activity: Activity, work: Work) -> None:
+        raise ValueError("boom")
+
+    bus = MessageBus({}, {Replace: [failing, rec.observer("second")]})
+    activity = command(Replace)
+
+    await bus.publish(activity, session)
+
+    observes = [s for s in spans() if s.name == "rp.bus.observe"]
+    assert [s.attributes["rp.observer.name"] for s in observes] == [
+        failing.__qualname__,
+        "second",
+    ], "a span per observer"
+    assert [s.status.status_code for s in observes] == [StatusCode.ERROR, StatusCode.UNSET], (
+        "only the first failed"
+    )
+    assert dict(observes[0].attributes) == {
+        "rp.step": "bus-observe",
+        "rp.observer.name": failing.__qualname__,
+        "rp.activity.class": "Replace",
+        "rp.activity.id": activity.id,
+        "error.type": "builtins.ValueError",
+    }, "the step, the observer, the activity and the error type"
+    assert rec.names() == ["second"], "the second observer ran"

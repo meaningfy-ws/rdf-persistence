@@ -12,6 +12,8 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
+from opentelemetry import trace
+from opentelemetry.trace import StatusCode
 
 from rdf_persistence import generated_models
 from rdf_persistence.domain.exceptions import StoreUnavailable
@@ -551,3 +553,55 @@ async def test_rounds_never_overlap(world, monkeypatch):
     relay = world.relay()
     await asyncio.gather(relay.run_once(), relay.run_once(), relay.run_once())
     assert peak == 1, "two rounds never overlap"
+
+
+# -- TC-34, TC-35: the spans of a round (otel-observability PD-5) ---------------------------------
+
+
+async def test_tc34_a_round_is_a_root_span_with_a_database_span_per_database(world, spans):
+    with trace.get_tracer("test").start_as_current_span("outer") as outer:
+        await world.relay().run_once()
+
+    by_name: dict[str, list] = {}
+    for span in spans():
+        by_name.setdefault(span.name, []).append(span)
+    [round_span] = by_name["rp.relay.round"]
+    assert round_span.parent is None, "the round starts a trace of its own"
+    assert round_span.context.trace_id != outer.get_span_context().trace_id, "not outer's trace"
+    assert dict(round_span.attributes) == {"rp.step": "relay-round"}, "the round's step"
+    databases = by_name["rp.relay.database"]
+    assert {s.attributes["rp.tenant.id"] for s in databases} == {
+        world.app_iri,
+        world.tenant,
+        world.second,
+    }, "one span per database: the application's and each tenant's"
+    assert all(s.parent.span_id == round_span.context.span_id for s in databases), (
+        "round's children"
+    )
+    assert all(s.attributes["rp.step"] == "relay-database" for s in databases), "the step"
+
+
+async def test_tc35_a_failed_database_is_error_the_round_is_not_and_the_next_tenant_goes(
+    world, spans, monkeypatch
+):
+    await add_one(world, world.tenant)
+    await add_one(world, world.second)
+    bad = world.tenancy.database_of(world.tenant)
+    real = world.store.query
+
+    async def query(dataset, sparql):
+        if dataset == bad:
+            raise StoreUnavailable("the store fails for one tenant")
+        return await real(dataset, sparql)
+
+    monkeypatch.setattr(world.store, "query", query)
+    await world.relay().run_once()
+
+    finished = spans()
+    [round_span] = [s for s in finished if s.name == "rp.relay.round"]
+    assert round_span.status.status_code is StatusCode.UNSET, "the round swallowed the failure"
+    failed = [s for s in finished if s.status.status_code is StatusCode.ERROR]
+    assert [(s.name, s.attributes["rp.tenant.id"]) for s in failed] == [
+        ("rp.relay.database", world.tenant)
+    ], "only the failed database's span is ERROR"
+    assert classes(world, world.second) == [str(v.ADD)], "the next tenant is still relayed"

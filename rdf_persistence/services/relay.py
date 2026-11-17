@@ -26,7 +26,7 @@ from rdf_persistence.services.generated.settings.rp_settings import EventSetting
 from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.services.session import Session
-from rdf_persistence.services.telemetry import error_type, log_extra
+from rdf_persistence.services.telemetry import error_type, log_extra, traced
 from rdf_persistence.services.tenancy import Tenancy
 
 log = logging.getLogger(__name__)
@@ -126,8 +126,9 @@ class Relay:
     async def run_once(self) -> None:
         """One round over every database, never overlapping another."""
         async with self._lock:
-            for tenant, opener, offers in await self._targets():
-                await self._relay_database(tenant, opener, offers)
+            with traced("rp.relay.round", LogContext(step="relay-round"), root=True):
+                for tenant, opener, offers in await self._targets():
+                    await self._relay_database(tenant, opener, offers)
 
     async def _targets(self) -> list[tuple[str, Opener, bool]]:
         """(tenant IRI, how to open its session, whether the hub is offered its activities)."""
@@ -151,8 +152,9 @@ class Relay:
 
     async def _relay_database(self, tenant: str, opener: Opener, offers: bool) -> None:
         try:
-            async with opener() as session:
-                await self._drain(session, tenant, offers)
+            with traced("rp.relay.database", LogContext(step="relay-database", tenant_id=tenant)):
+                async with opener() as session:
+                    await self._drain(session, tenant, offers)
         except DatabaseGone:
             log.debug(
                 "the database of a tenant is gone; skipped this round",

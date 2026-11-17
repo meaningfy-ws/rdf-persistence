@@ -24,7 +24,7 @@ from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
 from rdf_persistence.services.provenance import Served, new_activity_id
 from rdf_persistence.services.session import Session
-from rdf_persistence.services.telemetry import log_extra
+from rdf_persistence.services.telemetry import log_extra, traced
 
 log = logging.getLogger(__name__)
 
@@ -177,7 +177,11 @@ class MessageBus:
             mapper=self._mapper,
             run=run,
         )
-        return await handler(command, work)
+        context = LogContext(
+            step="bus-handle", activity_class=type(command).__name__, activity_id=command.id
+        )
+        with traced("rp.bus.handle", context):
+            return await handler(command, work)
 
     async def publish(self, activity: Activity, session: Session) -> None:
         """Call the observers of the activity's classes, nearest first (the session's ``on_commit``).
@@ -201,7 +205,14 @@ class MessageBus:
             for cls in type(activity).__mro__:
                 for observer in self._observers.get(cls, ()):
                     try:
-                        await observer(activity.model_copy(deep=True), work)
+                        context = LogContext(
+                            step="bus-observe",
+                            observer_name=_name(observer),
+                            activity_class=type(activity).__name__,
+                            activity_id=activity.id,
+                        )
+                        with traced("rp.bus.observe", context):
+                            await observer(activity.model_copy(deep=True), work)
                     except MessageLimitExceeded:
                         raise
                     except Exception:
