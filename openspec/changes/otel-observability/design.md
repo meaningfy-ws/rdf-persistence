@@ -338,8 +338,8 @@ new span, which is what it should show. No operation changes its result.
 - **RISK-3 Tenant data reaches a telemetry backend.** Likelihood low after PD-8, impact high (data
   leaves the tenant boundary). Mitigation: no query text, no bodies above DEBUG, `error_text` for
   validation errors, TC-11 and TC-18 with a secret marker in logs and spans. Residual: an
-  exception message a consumer's validator writes with data in it reaches `exc_info`; the how-to
-  says so.
+  exception message a consumer's validator writes with data in it reaches `exc_info`; FastAPI's
+  native telemetry logs exception messages by default (D-9); the how-to says both.
 - **RISK-4 `technical-models` changes shape.** Likelihood medium (it is shaped in parallel),
   impact low: only the schema path and package name move (PD-1). If it is delayed, this change
   waits; it is third in the order.
@@ -419,6 +419,14 @@ DEC-9, and PD-4's fallback `"sparql"`.
   fixtures) runs first on `develop` at `7381b03`; before 2.2 the branch is rebased on
   `origin/develop` (with #150 if merged by then), so the span work is written against the settings
   parameters. Then 2.2 ∥ 2.4 ∥ 2.6 (disjoint files), then 2.3 (TC-29 needs `TracedStore`), then 2.5.
+
+- **D-9 Two facts of the installed packages** (task 2.6). The SDK 1.45.2's
+  `opentelemetry.sdk._logs.LoggingHandler` warns that it is deprecated in favour of
+  `opentelemetry-instrumentation-logging`'s `LoggingHandler`; the how-to names the latter (the
+  rabbit-hole "the logging bridge's home moves" came true). FastAPI 0.162's native telemetry has
+  `logs` on by default, which records exception messages and stack traces: outside the toolkit's
+  guarantee, so RISK-3's residual gains it and the how-to recommends `"logs": False` where an
+  exception message can carry tenant data.
 
 **Stage 1, under the floor** (L2+L3 pass, `findings=5 accepted=0`; W1 and S3 carried by D-6):
 
