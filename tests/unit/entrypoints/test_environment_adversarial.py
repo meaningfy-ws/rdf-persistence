@@ -6,6 +6,7 @@ Attacks: variables the prefix or the group names do not claim.
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from rdf_persistence.entrypoints.environment import settings_from_env
 from rdf_persistence.services.generated.settings.rp_settings import ToolkitSettings
@@ -36,3 +37,21 @@ def test_a_dotenv_file_in_the_working_directory_is_not_read(
     (tmp_path / ".env.local").write_text("RP_HTTP__MAX_ATTEMPTS=9\n")
     monkeypatch.chdir(tmp_path)
     assert settings_from_env(ToolkitSettings, environ={}) == ToolkitSettings()
+
+
+@pytest.mark.parametrize(
+    "variable",
+    [
+        "RP_HTTP__READ_TIMEOUT_SECONDS",
+        "RP_JWKS__UNKNOWN_KID_COOLDOWN_SECONDS",
+        "RP_EVENTS__RETENTION_SECONDS",
+        "RP_SSE__MAX_LIFETIME_SECONDS",
+    ],
+)
+@pytest.mark.parametrize("text", ["inf", "1e309", "31536001"])
+def test_a_duration_that_is_infinite_or_over_a_year_is_refused_from_the_environment(
+    variable: str, text: str
+) -> None:
+    """D-55 1: one duration of each group (and the bound) is refused as a ValidationError."""
+    with pytest.raises(ValidationError):
+        settings_from_env(ToolkitSettings, environ={variable: text})

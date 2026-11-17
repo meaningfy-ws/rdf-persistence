@@ -641,3 +641,12 @@ async def test_a_token_whose_alg_is_not_a_string_is_refused(
     token = f"{segment({'alg': alg, 'kid': 'k1'})}.{segment({'sub': 'u1'})}.c2ln"
     with pytest.raises(InvalidToken, match="algorithm is not accepted"):
         await verifier_for(signer, clock).verify(token)
+
+
+async def test_a_cooldown_longer_than_the_ttl_is_refused_naming_both(
+    signer: TokenSigner, clock: ManualClock
+) -> None:
+    """D-55 2: the verifier would refuse every token for the difference, each cycle."""
+    jwks = JwksSettings(ttl_seconds=5, unknown_kid_cooldown_seconds=10)
+    with pytest.raises(ValueError, match=r"cooldown.*10.*TTL.*5|TTL.*5.*cooldown.*10"):
+        verifier_for(signer, clock, jwks=jwks)

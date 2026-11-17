@@ -59,15 +59,15 @@ linkml_meta = None
 
 class HttpSettings(ConfiguredBaseModel):
     "The timeouts and the attempts of every HTTP client of the toolkit: the SPARQL store, the identity provider and the object store."
-    connect_timeout_seconds: float = Field(default=5.0, title="Connect timeout", description="The seconds an HTTP client waits to open a connection.", ge=0.001)
-    read_timeout_seconds: float = Field(default=30.0, title="Read timeout", description="The seconds an HTTP client waits for the answer.", ge=0.001)
+    connect_timeout_seconds: float = Field(default=5.0, title="Connect timeout", description="The seconds an HTTP client waits to open a connection.", ge=0.001, le=31536000)
+    read_timeout_seconds: float = Field(default=30.0, title="Read timeout", description="The seconds an HTTP client waits for the answer.", ge=0.001, le=31536000)
     max_attempts: int = Field(default=3, title="Maximum attempts", description="The most times the object store client tries a request.", ge=1)
 
 
 class JwksSettings(ConfiguredBaseModel):
     "How the token verifier caches the identity provider\u0027s keys and which signatures it accepts."
-    ttl_seconds: float = Field(default=600.0, title="Key cache lifetime", description="The seconds a fetched set of signing keys is used before it is fetched again.", ge=0.001)
-    unknown_kid_cooldown_seconds: float = Field(default=10.0, title="Key refresh cooldown", description="The most often, in seconds, that the keys are fetched again, whether they are stale or a token names a key id that is not in the cache.", ge=0.001)
+    ttl_seconds: float = Field(default=600.0, title="Key cache lifetime", description="The seconds a fetched set of signing keys is used before it is fetched again.", ge=0.001, le=31536000)
+    unknown_kid_cooldown_seconds: float = Field(default=10.0, title="Key refresh cooldown", description="The most often, in seconds, that the keys are fetched again, whether they are stale or a token names a key id that is not in the cache.", ge=1, le=31536000)
     allowed_algorithms: list[str] = Field(default=['RS256', 'RS384', 'RS512', 'PS256', 'PS384', 'PS512', 'ES256', 'ES384', 'ES512', 'EdDSA'], title="Allowed algorithms", description="The JWS algorithms a token may be signed with. Any name but `none` and the shared-secret `HS*` family is accepted here; the token verifier checks each name against the installed JWT library when it is built.", min_length=1)
     leeway_seconds: float = Field(default=30.0, title="Clock leeway", description="The seconds a token\u0027s expiry and not-before times may be off, to allow for clock drift.", ge=0, le=300)
 
@@ -93,20 +93,20 @@ class DirectorySettings(ConfiguredBaseModel):
 class EventSettings(ConfiguredBaseModel):
     "The event bus, the relay that publishes from the outbox, and the hub that fans events out."
     stream: str = Field(default="rp-events", title="Stream", description="The name of the event stream.")
-    retention_seconds: float = Field(default=604800, title="Retention", description="The seconds an event stays in the stream.", ge=0.001)
-    claim_idle_seconds: float = Field(default=30.0, title="Claim idle time", description="The seconds a delivered event may stay unacknowledged before it is delivered again.", ge=0.001)
+    retention_seconds: float = Field(default=604800, title="Retention", description="The seconds an event stays in the stream.", ge=0.001, le=31536000)
+    claim_idle_seconds: float = Field(default=30.0, title="Claim idle time", description="The seconds a delivered event may stay unacknowledged before it is delivered again.", ge=0.001, le=31536000)
     polling_interval_ms: int = Field(default=100, title="Polling interval", description="The milliseconds between two reads of the stream.", ge=1)
-    relay_interval_seconds: float = Field(default=5.0, title="Relay interval", description="The seconds the relay waits between two looks at the outbox.", ge=0.001)
-    publish_timeout_seconds: float = Field(default=10.0, title="Publish timeout", description="The seconds the relay waits for the bus to take one event.", ge=0.001)
+    relay_interval_seconds: float = Field(default=5.0, title="Relay interval", description="The seconds the relay waits between two looks at the outbox.", ge=0.001, le=31536000)
+    publish_timeout_seconds: float = Field(default=10.0, title="Publish timeout", description="The seconds the relay waits for the bus to take one event.", ge=0.001, le=31536000)
     hub_queue_size: int = Field(default=1000, title="Hub queue size", description="The events a subscriber of the hub may have waiting before it is reset.", ge=1)
 
 
 class SseSettings(ConfiguredBaseModel):
     "The lifetime, the access check, the keep-alive and the resume window of the events route."
-    max_lifetime_seconds: float = Field(default=300.0, title="Maximum lifetime", description="The seconds an events connection stays open before the client must reconnect.", ge=0.001)
-    access_ttl_seconds: float = Field(default=1.0, title="Access check lifetime", description="The seconds the result of an access check is kept.", ge=0.001)
-    keep_alive_seconds: float = Field(default=15.0, title="Keep-alive interval", description="The seconds of silence after which the events route sends a comment line.", ge=0.001)
-    resume_window_seconds: float = Field(default=604800, title="Resume window", description="The seconds back from now a client may resume from with its last event id.", ge=0.001)
+    max_lifetime_seconds: float = Field(default=300.0, title="Maximum lifetime", description="The seconds an events connection stays open before the client must reconnect.", ge=0.001, le=31536000)
+    access_ttl_seconds: float = Field(default=1.0, title="Access check lifetime", description="The seconds the result of an access check is kept.", ge=0.001, le=31536000)
+    keep_alive_seconds: float = Field(default=15.0, title="Keep-alive interval", description="The seconds of silence after which the events route sends a comment line.", ge=0.001, le=31536000)
+    resume_window_seconds: float = Field(default=604800, title="Resume window", description="The seconds back from now a client may resume from with its last event id.", ge=0.001, le=31536000)
 
 
 class LimitSettings(ConfiguredBaseModel):

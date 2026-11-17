@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, Field, SecretStr, ValidationError
 
 import rdf_persistence
 from rdf_persistence.entrypoints.environment import settings_from_env
@@ -136,3 +136,22 @@ def test_tc44_a_missing_required_field_is_a_validation_error_naming_it() -> None
 def test_the_function_and_the_groups_are_exported_from_the_top_level(name: str) -> None:
     assert name in rdf_persistence.__all__
     assert getattr(rdf_persistence, name) is not None
+
+
+class _Credentials(BaseModel):
+    token: SecretStr = SecretStr("x" * 20)
+    port: int = 1
+
+
+class _ConsumerSettings(BaseModel):
+    api_key: SecretStr = Field(default=SecretStr("k" * 20), min_length=20)
+    credentials: _Credentials = Field(default_factory=_Credentials)
+
+
+@pytest.mark.parametrize("variable", ["RP_API_KEY", "RP_CREDENTIALS__PORT"])
+def test_a_malformed_value_is_refused_without_echoing_it(variable: str) -> None:
+    """D-55 3: neither the reading class nor the final model puts the input in the error."""
+    secret = "hunter2-do-not-leak"
+    with pytest.raises(ValidationError) as caught:
+        settings_from_env(_ConsumerSettings, environ={variable: secret})
+    assert secret not in str(caught.value), "the error text echoed the input"

@@ -90,6 +90,7 @@ slots:
     required: true
     ifabsent: float(5.0)
     minimum_value: 0.001
+    maximum_value: 31536000
   read_timeout_seconds:
     title: Read timeout
     description: The seconds an HTTP client waits for the answer.
@@ -97,6 +98,7 @@ slots:
     required: true
     ifabsent: float(30.0)
     minimum_value: 0.001
+    maximum_value: 31536000
   max_attempts:
     title: Maximum attempts
     description: The most times the object store client tries a request.
@@ -111,6 +113,7 @@ slots:
     required: true
     ifabsent: float(600.0)
     minimum_value: 0.001
+    maximum_value: 31536000
   unknown_kid_cooldown_seconds:
     title: Key refresh cooldown
     description: >-
@@ -119,7 +122,8 @@ slots:
     range: float
     required: true
     ifabsent: float(10.0)
-    minimum_value: 0.001
+    minimum_value: 1
+    maximum_value: 31536000
   allowed_algorithms:
     title: Allowed algorithms
     description: >-
@@ -160,6 +164,7 @@ slots:
     required: true
     ifabsent: float(604800)
     minimum_value: 0.001
+    maximum_value: 31536000
   claim_idle_seconds:
     title: Claim idle time
     description: The seconds a delivered event may stay unacknowledged before it is delivered again.
@@ -167,6 +172,7 @@ slots:
     required: true
     ifabsent: float(30.0)
     minimum_value: 0.001
+    maximum_value: 31536000
   polling_interval_ms:
     title: Polling interval
     description: The milliseconds between two reads of the stream.
@@ -181,6 +187,7 @@ slots:
     required: true
     ifabsent: float(5.0)
     minimum_value: 0.001
+    maximum_value: 31536000
   publish_timeout_seconds:
     title: Publish timeout
     description: The seconds the relay waits for the bus to take one event.
@@ -188,6 +195,7 @@ slots:
     required: true
     ifabsent: float(10.0)
     minimum_value: 0.001
+    maximum_value: 31536000
   hub_queue_size:
     title: Hub queue size
     description: The events a subscriber of the hub may have waiting before it is reset.
@@ -202,6 +210,7 @@ slots:
     required: true
     ifabsent: float(300.0)
     minimum_value: 0.001
+    maximum_value: 31536000
   access_ttl_seconds:
     title: Access check lifetime
     description: The seconds the result of an access check is kept.
@@ -209,6 +218,7 @@ slots:
     required: true
     ifabsent: float(1.0)
     minimum_value: 0.001
+    maximum_value: 31536000
   keep_alive_seconds:
     title: Keep-alive interval
     description: The seconds of silence after which the events route sends a comment line.
@@ -216,6 +226,7 @@ slots:
     required: true
     ifabsent: float(15.0)
     minimum_value: 0.001
+    maximum_value: 31536000
   resume_window_seconds:
     title: Resume window
     description: The seconds back from now a client may resume from with its last event id.
@@ -223,6 +234,7 @@ slots:
     required: true
     ifabsent: float(604800)
     minimum_value: 0.001
+    maximum_value: 31536000
   max_messages:
     title: Maximum messages
     description: The most messages one run of the message bus handles.

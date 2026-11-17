@@ -7,7 +7,7 @@ rp:DirectorySettings a sh:NodeShape ;
 	rdfs:comment "How the user directory of the identity provider is read." ;
 	rdfs:label "Directory settings" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n12 ;
+	sh:ignoredProperties _:c14n11 ;
 	sh:property _:c14n29 ;
 	sh:targetClass rp:DirectorySettings .
 rp:EventSettings a sh:NodeShape ;
@@ -15,47 +15,48 @@ rp:EventSettings a sh:NodeShape ;
 	rdfs:label "Event settings" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n28 ;
-	sh:property _:c14n1 , _:c14n17 , _:c14n2 , _:c14n20 , _:c14n24 , _:c14n30 , _:c14n6 ;
+	sh:property _:c14n1 , _:c14n18 , _:c14n26 , _:c14n30 , _:c14n31 , _:c14n7 , _:c14n8 ;
 	sh:targetClass rp:EventSettings .
 rp:HttpSettings a sh:NodeShape ;
 	rdfs:comment "The timeouts and the attempts of every HTTP client of the toolkit: the SPARQL store, the identity provider and the object store." ;
 	rdfs:label "HTTP settings" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n3 ;
-	sh:property _:c14n0 , _:c14n33 , _:c14n8 ;
+	sh:property _:c14n0 , _:c14n33 , _:c14n34 ;
 	sh:targetClass rp:HttpSettings .
 rp:JwksSettings a sh:NodeShape ;
 	rdfs:comment "How the token verifier caches the identity provider's keys and which signatures it accepts." ;
 	rdfs:label "JWKS settings" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n4 ;
-	sh:property _:c14n19 , _:c14n21 , _:c14n31 , _:c14n35 ;
+	sh:property _:c14n14 , _:c14n2 , _:c14n20 , _:c14n22 ;
 	sh:targetClass rp:JwksSettings .
 rp:LimitSettings a sh:NodeShape ;
 	rdfs:comment "The most the toolkit takes in one message bus run, one commit, one body and one restore manifest." ;
 	rdfs:label "Limit settings" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n7 ;
-	sh:property _:c14n14 , _:c14n22 , _:c14n34 , _:c14n9 ;
+	sh:ignoredProperties _:c14n9 ;
+	sh:property _:c14n10 , _:c14n13 , _:c14n23 , _:c14n35 ;
 	sh:targetClass rp:LimitSettings .
 rp:SseSettings a sh:NodeShape ;
 	rdfs:comment "The lifetime, the access check, the keep-alive and the resume window of the events route." ;
 	rdfs:label "Server-sent events settings" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n5 ;
-	sh:property _:c14n10 , _:c14n11 , _:c14n26 , _:c14n27 ;
+	sh:ignoredProperties _:c14n6 ;
+	sh:property _:c14n15 , _:c14n21 , _:c14n24 , _:c14n5 ;
 	sh:targetClass rp:SseSettings .
 rp:ToolkitSettings a sh:NodeShape ;
 	rdfs:comment "Every group of settings; each group is a new instance of its class with its own defaults, never absent." ;
 	rdfs:label "Toolkit settings" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n32 ;
-	sh:property _:c14n13 , _:c14n15 , _:c14n16 , _:c14n18 , _:c14n23 , _:c14n25 ;
+	sh:property _:c14n12 , _:c14n16 , _:c14n17 , _:c14n19 , _:c14n25 , _:c14n27 ;
 	sh:targetClass rp:ToolkitSettings .
 _:c14n0 sh:datatype xsd:float ;
 	sh:defaultValue "5.0"^^xsd:float ;
 	sh:description "The seconds an HTTP client waits to open a connection." ;
 	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
 	sh:minCount 1 ;
 	sh:minInclusive "0.001"^^xsd:double ;
 	sh:name "Connect timeout" ;
@@ -63,44 +64,35 @@ _:c14n0 sh:datatype xsd:float ;
 	sh:order 0 ;
 	sh:path rp:connect_timeout_seconds .
 _:c14n1 sh:datatype xsd:float ;
-	sh:defaultValue "10.0"^^xsd:float ;
-	sh:description "The seconds the relay waits for the bus to take one event." ;
+	sh:defaultValue "30.0"^^xsd:float ;
+	sh:description "The seconds a delivered event may stay unacknowledged before it is delivered again." ;
 	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
 	sh:minCount 1 ;
 	sh:minInclusive "0.001"^^xsd:double ;
-	sh:name "Publish timeout" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 5 ;
-	sh:path rp:publish_timeout_seconds .
-_:c14n10 sh:datatype xsd:float ;
-	sh:defaultValue "300.0"^^xsd:float ;
-	sh:description "The seconds an events connection stays open before the client must reconnect." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:minInclusive "0.001"^^xsd:double ;
-	sh:name "Maximum lifetime" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 0 ;
-	sh:path rp:max_lifetime_seconds .
-_:c14n11 sh:datatype xsd:float ;
-	sh:defaultValue "15.0"^^xsd:float ;
-	sh:description "The seconds of silence after which the events route sends a comment line." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:minInclusive "0.001"^^xsd:double ;
-	sh:name "Keep-alive interval" ;
+	sh:name "Claim idle time" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 2 ;
-	sh:path rp:keep_alive_seconds .
-_:c14n12 rdf:first rdf:type ;
+	sh:path rp:claim_idle_seconds .
+_:c14n10 sh:datatype xsd:integer ;
+	sh:defaultValue 10000 ;
+	sh:description "The most objects and list values one JSON-LD body may hold." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:minInclusive 1 ;
+	sh:name "Maximum document nodes" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:max_document_nodes .
+_:c14n11 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n13 sh:description "The settings of the events route." ;
+_:c14n12 sh:description "The settings of the events route." ;
 	sh:maxCount 1 ;
 	sh:name "Server-sent events" ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 4 ;
 	sh:path rp:sse .
-_:c14n14 sh:datatype xsd:integer ;
+_:c14n13 sh:datatype xsd:integer ;
 	sh:defaultValue 500 ;
 	sh:description "The most aggregate roots one commit transaction holds." ;
 	sh:maxCount 1 ;
@@ -110,19 +102,41 @@ _:c14n14 sh:datatype xsd:integer ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:max_roots .
-_:c14n15 sh:description "The key cache and signature settings of the token verifier." ;
+_:c14n14 sh:datatype xsd:float ;
+	sh:defaultValue "10.0"^^xsd:float ;
+	sh:description "The most often, in seconds, that the keys are fetched again, whether they are stale or a token names a key id that is not in the cache." ;
+	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
+	sh:minCount 1 ;
+	sh:minInclusive 1 ;
+	sh:name "Key refresh cooldown" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:unknown_kid_cooldown_seconds .
+_:c14n15 sh:datatype xsd:float ;
+	sh:defaultValue "1.0"^^xsd:float ;
+	sh:description "The seconds the result of an access check is kept." ;
+	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
+	sh:minCount 1 ;
+	sh:minInclusive "0.001"^^xsd:double ;
+	sh:name "Access check lifetime" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:access_ttl_seconds .
+_:c14n16 sh:description "The key cache and signature settings of the token verifier." ;
 	sh:maxCount 1 ;
 	sh:name "JWKS" ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 1 ;
 	sh:path rp:jwks .
-_:c14n16 sh:description "The size and count limits." ;
+_:c14n17 sh:description "The size and count limits." ;
 	sh:maxCount 1 ;
 	sh:name "Limits" ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 5 ;
 	sh:path rp:limits .
-_:c14n17 sh:datatype xsd:string ;
+_:c14n18 sh:datatype xsd:string ;
 	sh:defaultValue "rp-events" ;
 	sh:description "The name of the event stream." ;
 	sh:maxCount 1 ;
@@ -131,13 +145,24 @@ _:c14n17 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:stream .
-_:c14n18 sh:description "The HTTP client settings." ;
+_:c14n19 sh:description "The HTTP client settings." ;
 	sh:maxCount 1 ;
 	sh:name "HTTP" ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 0 ;
 	sh:path rp:http .
-_:c14n19 sh:datatype xsd:float ;
+_:c14n2 sh:datatype xsd:float ;
+	sh:defaultValue "600.0"^^xsd:float ;
+	sh:description "The seconds a fetched set of signing keys is used before it is fetched again." ;
+	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
+	sh:minCount 1 ;
+	sh:minInclusive "0.001"^^xsd:double ;
+	sh:name "Key cache lifetime" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:ttl_seconds .
+_:c14n20 sh:datatype xsd:float ;
 	sh:defaultValue "30.0"^^xsd:float ;
 	sh:description "The seconds a token's expiry and not-before times may be off, to allow for clock drift." ;
 	sh:maxCount 1 ;
@@ -148,27 +173,18 @@ _:c14n19 sh:datatype xsd:float ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path rp:leeway_seconds .
-_:c14n2 sh:datatype xsd:float ;
-	sh:defaultValue "5.0"^^xsd:float ;
-	sh:description "The seconds the relay waits between two looks at the outbox." ;
+_:c14n21 sh:datatype xsd:float ;
+	sh:defaultValue "604800.0"^^xsd:float ;
+	sh:description "The seconds back from now a client may resume from with its last event id." ;
 	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
 	sh:minCount 1 ;
 	sh:minInclusive "0.001"^^xsd:double ;
-	sh:name "Relay interval" ;
+	sh:name "Resume window" ;
 	sh:nodeKind sh:Literal ;
-	sh:order 4 ;
-	sh:path rp:relay_interval_seconds .
-_:c14n20 sh:datatype xsd:float ;
-	sh:defaultValue "30.0"^^xsd:float ;
-	sh:description "The seconds a delivered event may stay unacknowledged before it is delivered again." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:minInclusive "0.001"^^xsd:double ;
-	sh:name "Claim idle time" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 2 ;
-	sh:path rp:claim_idle_seconds .
-_:c14n21 sh:datatype xsd:string ;
+	sh:order 3 ;
+	sh:path rp:resume_window_seconds .
+_:c14n22 sh:datatype xsd:string ;
 	sh:defaultValue "RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512, EdDSA" ;
 	sh:description "The JWS algorithms a token may be signed with. Any name but `none` and the shared-secret `HS*` family is accepted here; the token verifier checks each name against the installed JWT library when it is built." ;
 	sh:minCount 1 ;
@@ -177,7 +193,7 @@ _:c14n21 sh:datatype xsd:string ;
 	sh:order 2 ;
 	sh:path rp:allowed_algorithms ;
 	sh:pattern "^(?:(?i)^(?!none$|hs)\\S+$)(?![\\s\\S])" .
-_:c14n22 sh:datatype xsd:integer ;
+_:c14n23 sh:datatype xsd:integer ;
 	sh:defaultValue 65536 ;
 	sh:description "The most bytes the manifest of a tenant dump may hold." ;
 	sh:maxCount 1 ;
@@ -187,48 +203,40 @@ _:c14n22 sh:datatype xsd:integer ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path rp:max_manifest_bytes .
-_:c14n23 sh:description "The user directory settings." ;
+_:c14n24 sh:datatype xsd:float ;
+	sh:defaultValue "300.0"^^xsd:float ;
+	sh:description "The seconds an events connection stays open before the client must reconnect." ;
+	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
+	sh:minCount 1 ;
+	sh:minInclusive "0.001"^^xsd:double ;
+	sh:name "Maximum lifetime" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:max_lifetime_seconds .
+_:c14n25 sh:description "The user directory settings." ;
 	sh:maxCount 1 ;
 	sh:name "Directory" ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 2 ;
 	sh:path rp:directory .
-_:c14n24 sh:datatype xsd:float ;
+_:c14n26 sh:datatype xsd:float ;
 	sh:defaultValue "604800.0"^^xsd:float ;
 	sh:description "The seconds an event stays in the stream." ;
 	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
 	sh:minCount 1 ;
 	sh:minInclusive "0.001"^^xsd:double ;
 	sh:name "Retention" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:retention_seconds .
-_:c14n25 sh:description "The event bus, relay and hub settings." ;
+_:c14n27 sh:description "The event bus, relay and hub settings." ;
 	sh:maxCount 1 ;
 	sh:name "Events" ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 3 ;
 	sh:path rp:events .
-_:c14n26 sh:datatype xsd:float ;
-	sh:defaultValue "1.0"^^xsd:float ;
-	sh:description "The seconds the result of an access check is kept." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:minInclusive "0.001"^^xsd:double ;
-	sh:name "Access check lifetime" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 1 ;
-	sh:path rp:access_ttl_seconds .
-_:c14n27 sh:datatype xsd:float ;
-	sh:defaultValue "604800.0"^^xsd:float ;
-	sh:description "The seconds back from now a client may resume from with its last event id." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:minInclusive "0.001"^^xsd:double ;
-	sh:name "Resume window" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 3 ;
-	sh:path rp:resume_window_seconds .
 _:c14n28 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
 _:c14n29 sh:datatype xsd:integer ;
@@ -243,7 +251,18 @@ _:c14n29 sh:datatype xsd:integer ;
 	sh:path rp:page_size .
 _:c14n3 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n30 sh:datatype xsd:integer ;
+_:c14n30 sh:datatype xsd:float ;
+	sh:defaultValue "10.0"^^xsd:float ;
+	sh:description "The seconds the relay waits for the bus to take one event." ;
+	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
+	sh:minCount 1 ;
+	sh:minInclusive "0.001"^^xsd:double ;
+	sh:name "Publish timeout" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 5 ;
+	sh:path rp:publish_timeout_seconds .
+_:c14n31 sh:datatype xsd:integer ;
 	sh:defaultValue 1000 ;
 	sh:description "The events a subscriber of the hub may have waiting before it is reset." ;
 	sh:maxCount 1 ;
@@ -253,16 +272,6 @@ _:c14n30 sh:datatype xsd:integer ;
 	sh:nodeKind sh:Literal ;
 	sh:order 6 ;
 	sh:path rp:hub_queue_size .
-_:c14n31 sh:datatype xsd:float ;
-	sh:defaultValue "600.0"^^xsd:float ;
-	sh:description "The seconds a fetched set of signing keys is used before it is fetched again." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:minInclusive "0.001"^^xsd:double ;
-	sh:name "Key cache lifetime" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 0 ;
-	sh:path rp:ttl_seconds .
 _:c14n32 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
 _:c14n33 sh:datatype xsd:integer ;
@@ -275,7 +284,18 @@ _:c14n33 sh:datatype xsd:integer ;
 	sh:nodeKind sh:Literal ;
 	sh:order 2 ;
 	sh:path rp:max_attempts .
-_:c14n34 sh:datatype xsd:integer ;
+_:c14n34 sh:datatype xsd:float ;
+	sh:defaultValue "30.0"^^xsd:float ;
+	sh:description "The seconds an HTTP client waits for the answer." ;
+	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
+	sh:minCount 1 ;
+	sh:minInclusive "0.001"^^xsd:double ;
+	sh:name "Read timeout" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:read_timeout_seconds .
+_:c14n35 sh:datatype xsd:integer ;
 	sh:defaultValue 100 ;
 	sh:description "The most messages one run of the message bus handles." ;
 	sh:maxCount 1 ;
@@ -285,21 +305,33 @@ _:c14n34 sh:datatype xsd:integer ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:max_messages .
-_:c14n35 sh:datatype xsd:float ;
-	sh:defaultValue "10.0"^^xsd:float ;
-	sh:description "The most often, in seconds, that the keys are fetched again, whether they are stale or a token names a key id that is not in the cache." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:minInclusive "0.001"^^xsd:double ;
-	sh:name "Key refresh cooldown" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 1 ;
-	sh:path rp:unknown_kid_cooldown_seconds .
 _:c14n4 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n5 rdf:first rdf:type ;
+_:c14n5 sh:datatype xsd:float ;
+	sh:defaultValue "15.0"^^xsd:float ;
+	sh:description "The seconds of silence after which the events route sends a comment line." ;
+	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
+	sh:minCount 1 ;
+	sh:minInclusive "0.001"^^xsd:double ;
+	sh:name "Keep-alive interval" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:keep_alive_seconds .
+_:c14n6 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n6 sh:datatype xsd:integer ;
+_:c14n7 sh:datatype xsd:float ;
+	sh:defaultValue "5.0"^^xsd:float ;
+	sh:description "The seconds the relay waits between two looks at the outbox." ;
+	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
+	sh:minCount 1 ;
+	sh:minInclusive "0.001"^^xsd:double ;
+	sh:name "Relay interval" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:relay_interval_seconds .
+_:c14n8 sh:datatype xsd:integer ;
 	sh:defaultValue 100 ;
 	sh:description "The milliseconds between two reads of the stream." ;
 	sh:maxCount 1 ;
@@ -309,25 +341,5 @@ _:c14n6 sh:datatype xsd:integer ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path rp:polling_interval_ms .
-_:c14n7 rdf:first rdf:type ;
+_:c14n9 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n8 sh:datatype xsd:float ;
-	sh:defaultValue "30.0"^^xsd:float ;
-	sh:description "The seconds an HTTP client waits for the answer." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:minInclusive "0.001"^^xsd:double ;
-	sh:name "Read timeout" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 1 ;
-	sh:path rp:read_timeout_seconds .
-_:c14n9 sh:datatype xsd:integer ;
-	sh:defaultValue 10000 ;
-	sh:description "The most objects and list values one JSON-LD body may hold." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:minInclusive 1 ;
-	sh:name "Maximum document nodes" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 2 ;
-	sh:path rp:max_document_nodes .

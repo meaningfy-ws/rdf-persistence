@@ -41,7 +41,9 @@ def settings_from_env[M: BaseModel](
             return variables
 
     class _Read(BaseSettings):
-        model_config = SettingsConfigDict(env_prefix=prefix, env_nested_delimiter=NESTED_DELIMITER)
+        model_config = SettingsConfigDict(
+            env_prefix=prefix, env_nested_delimiter=NESTED_DELIMITER, hide_input_in_errors=True
+        )
 
         @classmethod
         def settings_customise_sources(
