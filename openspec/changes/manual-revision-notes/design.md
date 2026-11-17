@@ -246,6 +246,7 @@ lands one carries a `BREAKING CHANGE:` footer (before 1.0.0 it bumps the MINOR, 
 | `Accept`: an unparsable or empty `q` reads as 1 (it read as 0); a `q` above 1 reads as 1 (it outranked `q=1`) | a client sending such a `q` | 2.1, F-3 |
 | A language-tagged value is a plain string in JSON and a value object in JSON-LD (it lost its tag in both) | a JSON-LD client | 1.4 |
 | `REPRESENTATIONS` holds seven members | code that matches it exhaustively | 3.1 |
+| An `Accept` that refuses JSON, JSON-LD and Turtle but admits a wildcard or a range is served one of the four new forms (it was 406) | a client that relies on that 406 | 3.1 |
 
 ## Algorithm / approach
 
