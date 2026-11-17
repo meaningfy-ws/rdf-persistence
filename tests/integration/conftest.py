@@ -17,7 +17,8 @@ def pytest_configure(config: pytest.Config) -> None:
 def toolkit() -> ToolkitSettings:
     """The toolkit's settings, once per session: every adapter of the lane takes its group from here.
 
-    A test that needs another value replaces the group on a copy, never an ad-hoc mapping.
+    A test that needs another value builds the group with ``replaced()`` (validated, so a misspelt
+    option is an error), never ``model_copy(update=...)`` or an ad-hoc mapping.
     """
     return ToolkitSettings()
 

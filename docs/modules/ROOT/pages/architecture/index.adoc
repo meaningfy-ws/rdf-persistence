@@ -304,14 +304,16 @@ classes (`ReferenceCollection`, `MembershipRule`, `SlotEquality`; `Comment`, `Mo
 |session and unit of work, mapper, tenancy, access check, collaboration, workflows, sweep; the IRI
 policy and `Iris` (`services/iris.py`); the service records (generated from
 `model/technical/service/rp_service.yaml` into `rdf_persistence.services.generated.service`, loaded
-lazily); the SPARQL term bundles of the query templates (fields of `SparqlTerm`) and the IRI models
+lazily); the settings groups (generated from `model/technical/settings/rp_settings.yaml` into
+`rdf_persistence.services.generated.settings`, loaded lazily); the SPARQL term bundles of the query templates (fields of `SparqlTerm`) and the IRI models
 `IriTemplateVariables` and `IriParts` (plain strings, read by `services/iris.py`)
 (`model/technical/templates/rp_templates.yaml` into `rdf_persistence.services.generated.templates`;
 the bundles are built by the factories of `services/vocabulary.py`); the ports
 |`open_session`, `Session`, `Iris`, `DEFAULT_IRIS`, `IdSource`, `mint_aggregate_iri`; the service records
 (`ServiceSettings`, `IriPolicy`, `IdSpec`, `IdKind`, `TenantCreate`, `TenantSummary`, `LabelUpdate`,
 `GrantSet`, `Page`, `Problem`, `ProblemKind`, `VerifiedCaller`, `CallerAccess`, `Authorised`,
-`AccountSummary`, `Referrer`, `ReferrerList`, `MemberList`); `UnitOfWork`, `Mapper`, `generated_models`, `new_part`, `load_schema`,
+`AccountSummary`, `Referrer`, `ReferrerList`, `MemberList`); the settings groups (`ToolkitSettings`,
+`HttpSettings`, `JwksSettings`, `DirectorySettings`, `EventSettings`, `SseSettings`, `LimitSettings`); `UnitOfWork`, `Mapper`, `generated_models`, `new_part`, `load_schema`,
 `Tenancy`, `sweep`, `sweep_tenant`, `remove_with_files`, `AccessRules` (with `with_iris`), `load_role_definitions`, `load_caller_access`;
 `Collaboration` (opened with `kit.collaboration`), `Workflows`;
 the ports `Store`, `FileStore` (with `list_blobs`), `Identity`, `TokenVerifier`; `Session.named_file_keys`

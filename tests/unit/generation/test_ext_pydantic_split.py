@@ -10,6 +10,7 @@ import pytest
 from pydantic import ValidationError
 
 from rdf_persistence.domain.generated.rp_files import StoredFile
+from rdf_persistence.generation.exceptions import SchemaGenerationError
 from rdf_persistence.generation.extensions.pydantic_split import (
     TOOLKIT_PACKAGE,
     metamodel_module,
@@ -344,6 +345,17 @@ def test_a_multivalued_slot_with_ifabsent_defaults_to_the_list_of_its_names(tmp_
     assert first.names == ["RS256", "ES256"], "the default is the list, not the text"
     first.names.append("EdDSA")
     assert second.names == ["RS256", "ES256"], "each instance gets a list of its own"
+
+
+@pytest.mark.parametrize("ifabsent", ["int(3)", "RS256"])
+def test_a_multivalued_slot_whose_ifabsent_is_not_a_list_of_names_is_refused_naming_it(
+    tmp_path: Path, ifabsent: str
+) -> None:
+    """D-31/D-40: the work-around refuses what it cannot read as `string(a, b, ...)`, naming the slot."""
+    module = LIST_MODULE.replace("string(RS256, ES256)", ifabsent)
+    (tmp_path / "names.yaml").write_text(module, encoding="utf-8")
+    with pytest.raises(SchemaGenerationError, match="names is multivalued"):
+        render_modules(tmp_path / "names.yaml")
 
 
 _REPR_LINE = "    repr: SparqlTerm\n"

@@ -1166,7 +1166,7 @@ async def test_a_manifest_larger_than_its_cap_is_refused_whatever_the_budget(wor
 async def test_a_restore_takes_its_manifest_cap_from_its_limits_group(world):  # PD-7
     def padded(payload: bytes) -> bytes:
         manifest = TenantDump.model_validate_json(payload)
-        return manifest.model_copy(update={"label": "x" * 3_000}).model_dump_json().encode()
+        return manifest.replaced(label="x" * 3_000).model_dump_json().encode()
 
     data = edited(await dumped(world), MANIFEST, padded)  # under the default cap of 64 KiB
     reason = await refused(world, data, limits=LimitSettings(max_manifest_bytes=2048))

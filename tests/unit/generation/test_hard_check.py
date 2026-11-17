@@ -371,6 +371,21 @@ def test_default_instance_on_a_class_whose_required_slots_all_default_passes(
     assert [p for p in found if "] group:" in p] == [], f"the group has defaults: {found}"
 
 
+def test_default_instance_on_a_multivalued_slot_is_refused_naming_the_slot(tmp_path: Path) -> None:
+    """D-32 (3): a list of groups has no one default instance; the check names the slot `groups`."""
+    text = DEFAULT_INSTANCE_SCHEMA.format(name_required="false", name_default="")
+    text = text.replace("slots: [group, label]", "slots: [group, label, groups]")
+    text += (
+        "  groups:\n    title: Groups\n    description: Many groups.\n    range: Group\n"
+        "    multivalued: true\n    annotations:\n      default_instance: 'true'\n"
+    )
+    root = tmp_path / "groups.yaml"
+    root.write_text(text, encoding="utf-8")
+    found = [p for p in problems_of(root) if f"[{HardRule.DEFAULT_INSTANCE.value}] groups:" in p]
+    assert len(found) == 1, f"the multivalued slot `groups` is the one to name: {found}"
+    assert "multivalued" in found[0], f"the reason is not given in {found[0]}"
+
+
 def test_default_instance_over_a_class_declared_after_the_holder_is_refused(
     tmp_path: Path,
 ) -> None:

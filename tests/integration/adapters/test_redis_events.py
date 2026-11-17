@@ -30,7 +30,7 @@ class RedisPair:
 
     def __init__(self, url: str, toolkit: ToolkitSettings, **options: float) -> None:
         self.stream = stream = f"rp-events-{uuid.uuid4().hex[:8]}"
-        events = toolkit.events.model_copy(update={"stream": stream, **options})
+        events = toolkit.events.replaced(stream=stream, **options)
         self.a = RedisEventBus(url, deployment="lib", events=events)
         self.b = RedisEventBus(url, deployment="cat", events=events)
 
