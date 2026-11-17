@@ -395,6 +395,46 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
 - **D-9 (stage 1)** The tester ran before the full gates, so its two findings are fixed, and its
   tests sorted, in a fix pass before the PR. The review findings get the stage's one fix pass
   after the PR, as the stage loop sets.
+- **D-10 (stage 1, L2 W5 and L4+L5 W2, re-labelled Critical)** RISK-1 and RISK-5 were accepted on
+  the mitigation "the release notes list the old and new paths", but no task writes them, the
+  changelog is hand-written (`skip-changelog`), and only `7687f91` carries a `BREAKING CHANGE:`
+  footer. Without it the accepted risks lose their mitigation. Fix: a BREAKING entry under
+  `[Unreleased]` in `CHANGELOG.md` listing the three moves, carried by a commit whose footer names
+  the `iris` and `tenant_move` moves. No history rewrite.
+- **D-11 (stage 1, L2 W4, re-labelled Critical)** `tests/audit/scenario-map.csv` still maps 115
+  rows to the test files task 1.2 moved, and the stage's new tests have no rows; the next
+  `make refresh-map` would drop those mappings as vanished. The moves are this stage's, and the map
+  is what the traceability check reads. Fix: rewrite the moved paths, refresh, map the new ids.
+- **D-12 (stage 1, L2 W2 and W3, L3 W1, re-labelled Critical)** Pages the stage changed now
+  disagree with the code: `architecture/index.adoc`'s layer-map row (edited by task 1.3) lists
+  `Iris` and the service records under `domain`; `develop/index.adoc` and the Makefile's `mutation`
+  help still say only the domain is mutated. Every builder brief said to update the docs its task
+  changed; this is that item unmet. Fix: move the names to the `services` row and add
+  `domain/layout.py` to the `domain` row (task 4.3 still rewrites the page); reword the mutation
+  lines to `setup.cfg`.
+- **D-13 (stage 1, L2 W1, re-labelled Critical)** The `rp-generation` delta's scenario "the
+  schemas a consumer imports" has no test: a `glob` turned `rglob` in `metamodel_importmap` would
+  expose the technical schemas unnoticed. A signed scenario without a test fails the traceability
+  check. Fix: one unit test.
+
+Under the floor (not fixed in stage 1):
+
+- L1 S1, L4+L5 S2: `boundary.py:147` re-validates `kind`; the reviewers disagree on whether the
+  model holds the member or the string (the 1.1 builder saw a `str`). Harmless either way.
+- L3 S1: three docstrings (`services/iris.py:1`, `domain/layout.py:3`, `InvalidIri`) describe the
+  pre-split layout. Task 4.3's docs pass.
+- L4+L5 W1: nothing checks that `__init__.py`'s `TYPE_CHECKING` imports equal `_LAZY_MODULES`.
+- L4+L5 W3: the generator imports its own generated output (`rp_generation`, the service
+  package) at start, so adding a type it uses or moving a target needs a hand bootstrap. Noted in
+  the hand-over for stages 2 to 4; a follow-up documents the order.
+- L4+L5 W4: `services.iris` imports the private `_SEGMENT`/`_segment` from `domain.layout` (PD-2
+  kept them private on purpose; `thematic-structure` may rename them).
+- L4+L5 S1: the new contract's forbidden list and the `kind = "technical"` targets are two lists.
+- L4+L5 S3: no `__dir__` for the lazy names.
+- L2 S1, S2, S3, S5: a parametrized kind table, the target named in the domain CLI test,
+  `lint-imports` output naming both modules, assert messages.
+- L2 S4: TC-12 names `rdf_persistence.JwtClaims`, which was never top-level; the wire models are
+  adapters-only (PD-2).
 
 ## Open Questions
 
