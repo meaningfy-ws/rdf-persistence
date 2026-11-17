@@ -1,5 +1,7 @@
 """Spec rp-aggregate-store, SPARQL is never built by concatenating input (PD-3)."""
 
+import re
+
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
@@ -8,6 +10,7 @@ from rdflib import BNode, Dataset, Graph, Literal, URIRef
 from rdflib.namespace import XSD
 from rdflib.plugins.sparql import prepareQuery, prepareUpdate
 
+from rdf_persistence.domain.base import RpModel
 from rdf_persistence.domain.exceptions import SparqlError
 from rdf_persistence.domain.sparql import (
     SparqlTerm,
@@ -499,3 +502,68 @@ def test_fragment_terms_gives_a_sparql_term_and_refuses_a_name_given_twice():
     assert type(piece) is SparqlTerm, "a fragment is a term again"
     with pytest.raises(SparqlError, match="term given twice"):
         fragment_terms("$a", Pair(a=T1), a=T2)
+
+
+# -- the tester's invariants over term models (kept: one property each) ------------------------------
+
+
+class RawStr(str):
+    """A ``str`` subclass that is not a ``SparqlTerm``."""
+
+
+class Assigned(RpModel):
+    a: SparqlTerm
+
+
+def _assign_a_raw_string() -> object:
+    bundle = Assigned(a=T1)
+    bundle.a = "<x> } DROP ALL {"  # type: ignore[assignment]
+    return bundle
+
+
+@pytest.mark.parametrize(
+    "way_in",
+    [
+        pytest.param(lambda: Pair(a=RawStr("<x> } DROP ALL {")), id="a-str-subclass"),
+        pytest.param(lambda: Pair.model_validate_json('{"a": "<x>"}'), id="json-text"),
+        pytest.param(
+            lambda: Pair.model_validate(Pair(a=T1).model_dump(mode="json")), id="a-dumped-model"
+        ),
+        pytest.param(_assign_a_raw_string, id="assignment-on-the-toolkit-base"),
+    ],
+)
+def test_a_sparql_term_field_holds_a_sparql_term_and_nothing_else(way_in):
+    """Attacks the field type: no way in (subclass, JSON, a dump, assignment) turns text into a term."""
+    with pytest.raises(ValidationError):
+        way_in()
+
+
+@pytest.mark.parametrize("clashing", [["a"], ["a", "b"]])
+def test_every_name_in_both_the_model_and_the_extra_terms_is_named_as_given_twice(clashing):
+    """Attacks the clash check: the same term given twice is still a clash, and all clashes are named."""
+    more = {name: T1 for name in clashing}
+    with pytest.raises(SparqlError, match=re.escape(f"term given twice: {clashing!r}")):
+        fill_terms("$a $b", Pair(a=T1, b=T2), **more)
+
+
+class Loose(BaseModel):
+    a: SparqlTerm
+    n: str = "raw"
+    k: int = 3
+
+
+@pytest.mark.parametrize(
+    ("template", "bundle", "more"),
+    [
+        pytest.param("$a", Pair(a=T1).model_copy(update={"a": "<x>"}), {}, id="copied-raw-value"),
+        pytest.param("$a $n", Loose(a=T1), {}, id="a-string-field"),
+        pytest.param("$a $k", Loose(a=T1), {}, id="an-int-field"),
+        pytest.param("$a", Pair(a=T1, b=T2), {}, id="an-unused-term"),
+        pytest.param("$a $zzz", Pair(a=T1), {}, id="a-missing-term"),
+        pytest.param("$a $c", Pair(a=T1), {"c": "<x>"}, id="a-raw-value-in-more"),
+    ],
+)
+def test_every_refusal_of_fill_terms_is_a_sparql_error(template, bundle, more):
+    """Attacks the error type: no refusal of ``fill_terms`` escapes as a ``TypeError`` or a pydantic error."""
+    with pytest.raises(SparqlError):
+        fill_terms(template, bundle, **more)

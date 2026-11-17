@@ -16,6 +16,7 @@ import pytest
 from pydantic import ValidationError
 from rdflib import Literal, URIRef
 
+from rdf_persistence.domain.exceptions import SparqlError
 from rdf_persistence.domain.generated.rp_core import AggregateKey, RegistryEntry, RegistryKind
 from rdf_persistence.domain.sparql import (
     SparqlTerm,
@@ -254,3 +255,83 @@ def test_the_query_text_is_what_it_was_before_the_term_models():
 
     assert now.keys() == golden.keys()
     assert {name: text for name, text in now.items() if text != golden[name]} == {}
+
+
+# -- the tester's invariants over the factories and templates (kept: one property each) --------------
+
+HARMFUL_IRIS = [EX + "a>b", EX + "a b", EX + "a> } DROP ALL { <x", "", EX + 'a"b', EX + "a\nb"]
+SOME_VALUES = term(URIRef(EX + "v"))
+
+
+def _a_listing(registry: URIRef = REGISTRY, **changes: object) -> ListingTerms:
+    kwargs: dict[str, object] = {
+        "target": URIRef(EX + "T"),
+        "patterns": SOME_VALUES,
+        "hidden": SOME_VALUES,
+        "order": SOME_VALUES,
+        "limit": count(1),
+        "offset": count(0),
+    }
+    return listing_terms(registry, **(kwargs | changes))  # type: ignore[arg-type]
+
+
+FACTORIES_BY_THE_IRI_THEY_TAKE = {
+    "registry-of-registry_terms": lambda bad: registry_terms(URIRef(bad)),
+    "registry-of-key_held_terms": lambda bad: key_held_terms(
+        URIRef(bad), values=SOME_VALUES, excluded=[]
+    ),
+    "registry-of-key_branch_terms": lambda bad: key_branch_terms(
+        URIRef(bad), values=SOME_VALUES, excluded=[], index=count(0)
+    ),
+    "registry-of-listing_terms": lambda bad: _a_listing(URIRef(bad)),
+    "an-excluded-root": lambda bad: key_held_terms(
+        REGISTRY, values=SOME_VALUES, excluded=[URIRef(EX + "ok"), URIRef(bad)]
+    ),
+    "the-root-of-owner_terms": lambda bad: owner_terms(URIRef(bad)),
+    "the-stamps-of-stamp_guard_terms": lambda bad: stamp_guard_terms(
+        URIRef(bad), schema_id=URIRef(EX + "s"), from_version="1"
+    ),
+    "the-schema-of-stamp_guard_terms": lambda bad: stamp_guard_terms(
+        URIRef(EX + "st"), schema_id=URIRef(bad), from_version="1"
+    ),
+    "the-target-of-a-listing": lambda bad: _a_listing(target=URIRef(bad)),
+    "the-sort-of-a-listing": lambda bad: _a_listing(sort=URIRef(bad)),
+}
+
+
+@pytest.mark.parametrize("bad", HARMFUL_IRIS)
+@pytest.mark.parametrize(
+    "make", FACTORIES_BY_THE_IRI_THEY_TAKE.values(), ids=list(FACTORIES_BY_THE_IRI_THEY_TAKE)
+)
+def test_an_iri_that_could_change_the_querys_meaning_is_refused_before_a_model_exists(make, bad):
+    """Attacks the factories: an IRI that breaks out of its brackets is a ``SparqlError``, whichever field takes it."""
+    with pytest.raises(SparqlError):
+        make(bad)
+
+
+def test_no_stale_class_from_or_schema_placeholder_remains_in_a_migrated_template():
+    """Attacks the renames ``$class`` to ``$target``, ``$from`` to ``$from_version``, ``$schema`` to ``$schema_id``."""
+    migrated = {
+        "listing._MATCHING": listing._MATCHING,
+        "listing._LISTING": listing._LISTING,
+        "listing._COUNT": listing._COUNT,
+        "listing._PAGE_BY_IRI": listing._PAGE_BY_IRI,
+        "listing._PAGE_BY_SLOT": listing._PAGE_BY_SLOT,
+        "migrations._STEP": migrations._STEP,
+        "migrations._ROTATION": migrations._ROTATION,
+        "migrations._STAMP_MOVE": migrations._STAMP_MOVE,
+        "session.REPLACE": session.REPLACE,
+        "session.REMOVE": session.REMOVE,
+        "session._DROP_DEPENDENTS": session._DROP_DEPENDENTS,
+        "unique_keys.KEY_HELD": unique_keys.KEY_HELD,
+        "unique_keys._GUARD": unique_keys._GUARD,
+        "unique_keys._BRANCH": unique_keys._BRANCH,
+        "unique_keys._DIAGNOSIS": unique_keys._DIAGNOSIS,
+        "unique_keys._DUPLICATES": unique_keys._DUPLICATES,
+    }
+    stale = {"class", "from", "schema"}
+    leftovers = {
+        name: sorted(stale & set(Template(text.replace("%s", "")).get_identifiers()))
+        for name, text in migrated.items()
+    }
+    assert {name: found for name, found in leftovers.items() if found} == {}

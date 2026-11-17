@@ -4,8 +4,10 @@ title: RDF persistence templates module
 description: >-
   The bundles of rendered SPARQL terms that the toolkit's query templates share: the registry's
   fixed vocabulary, the unique-key guard, the owner patterns of a write, a listing and the stamp
-  guard of a migration. A field holds a `SparqlTerm`, never a plain string, so only the output of
-  `term()` reaches a query (technical-models DEC-7). Nothing here is served by the HTTP service.
+  guard of a migration. A field of a SPARQL term bundle holds a `SparqlTerm`, never a plain string,
+  so only the output of `term()` reaches a query (technical-models DEC-7). The IRI template
+  variables and the parts of a matched IRI are plain strings. Nothing here is served by the HTTP
+  service.
 prefixes:
   rp: https://meaningfy.ws/ns/rdf-persistence#
   linkml: https://w3id.org/linkml/

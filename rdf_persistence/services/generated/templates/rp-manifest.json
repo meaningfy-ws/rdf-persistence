@@ -147,7 +147,7 @@
     },
     {
       "path": "rdf_persistence/model/technical/templates/rp_templates.yaml",
-      "sha256": "e6f7beef74b2c36aa77ec4885cf3818ff54b3bbb2fe89217a3625a4540f26cac"
+      "sha256": "73682b8688da17ec7d1e0529d4f1a578e1d6e1817a26559146e2aa5c9c6d4206"
     },
     {
       "path": "rdf_persistence/services/schema.py",

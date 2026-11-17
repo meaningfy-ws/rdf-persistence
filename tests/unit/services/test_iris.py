@@ -1,6 +1,7 @@
 """IRI derivation and minting, and the names of PD-6a."""
 
 import re
+import string
 import uuid
 
 import pytest
@@ -13,7 +14,12 @@ from rdf_persistence.domain.layout import (
     system_database_name,
     tenant_name_prefix,
 )
-from rdf_persistence.services.generated.service.rp_service import ServiceSettings
+from rdf_persistence.services.generated.service.rp_service import (
+    IdKind,
+    IdSpec,
+    IriPolicy,
+    ServiceSettings,
+)
 from rdf_persistence.services.generated.templates.rp_templates import (
     IriParts,
     IriTemplateVariables,
@@ -304,12 +310,25 @@ def test_tc23_the_id_of_a_tenant_iri_is_the_id():
     assert Iris(_settings()).tenant_id_of(f"https://ex.org/t/{UUID_A}") == UUID_A
 
 
-@pytest.mark.parametrize("word", ["app", "books"])
+def _letter_tenants() -> Iris:
+    """An ``Iris`` whose tenant ids are five letters, so the id slot can spell a reserved word."""
+    policy = IriPolicy(
+        tenant_id=IdSpec(kind=IdKind.RANDOM, length=5, alphabet=string.ascii_lowercase)
+    )
+    settings = _settings().replaced(iri_policy=policy)
+    return Iris(settings, root_types=frozenset({"books"}))
+
+
+@pytest.mark.parametrize("word", ["books", "graph", "parts"])
 def test_tc23_a_reserved_word_in_the_place_of_the_id_is_refused(word):
-    """TC-23: a reserved word is no tenant id, as before."""
-    iris = Iris(_settings(), root_types=frozenset({"books"}))
+    """TC-23: a reserved word (a root type or a layout word) that fits the id spec is no tenant id."""
     with pytest.raises(InvalidIri):
-        iris.tenant_id_of(f"https://ex.org/t/{word}")
+        _letter_tenants().tenant_id_of(f"https://ex.org/t/{word}")
+
+
+def test_tc23_a_word_of_the_same_shape_that_is_not_reserved_is_the_id():
+    """TC-23: the refusal is the reserved word's, not the shape's."""
+    assert _letter_tenants().tenant_id_of("https://ex.org/t/shelf") == "shelf"
 
 
 def test_tc24_a_group_the_model_does_not_name_is_refused():

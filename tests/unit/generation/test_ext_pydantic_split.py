@@ -253,3 +253,27 @@ def test_a_type_with_a_repr_and_a_python_import_is_imported_and_used_as_the_fiel
         if isinstance(n, ast.AnnAssign) and ast.unparse(n.target) == "subject"
     )
     assert ast.unparse(field.annotation) == "SparqlTerm", "the field is typed by the type's repr"
+
+
+_REPR_LINE = "    repr: SparqlTerm\n"
+_IMPORT_LINES = "    annotations:\n      python_import: rdf_persistence.domain.sparql\n"
+
+
+@pytest.mark.parametrize(
+    "half",
+    [
+        pytest.param(_IMPORT_LINES, id="a-repr-without-a-python_import"),
+        pytest.param(_REPR_LINE, id="a-python_import-without-a-repr"),
+    ],
+)
+def test_a_type_with_only_one_of_repr_and_python_import_yields_no_broken_import(
+    tmp_path: Path, half: str
+) -> None:
+    """Attacks the error-matrix row "``repr`` with no ``python_import``" and its mirror: no ``import None``."""
+    assert half in TERM_MODULE, "the fixture still holds the half this case removes"
+    (tmp_path / "terms.yaml").write_text(TERM_MODULE.replace(half, ""), encoding="utf-8")
+    text = {f.name: f.text for f in render_modules(tmp_path / "terms.yaml")}["terms.py"]
+    compile(text, "terms.py", "exec")
+    modules = {str(n.module) for n in ast.walk(ast.parse(text)) if isinstance(n, ast.ImportFrom)}
+    assert "None" not in modules, "no import of the object None"
+    assert "rdf_persistence.domain.sparql" not in modules, "an import needs both halves"
