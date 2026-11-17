@@ -21,7 +21,7 @@ schema change the lead runs `make check-generated`.
 
 ## Stage 1: one log context, one logging style (PR 1)
 
-- [ ] 1.1 PD-1, PD-2, PD-3 (`log_extra`, `error_type`), PD-10 (helpers), PD-12: `model/technical/telemetry/rp_telemetry.yaml`
+- [x] 1.1 PD-1, PD-2, PD-3 (`log_extra`, `error_type`), PD-10 (helpers), PD-12: `model/technical/telemetry/rp_telemetry.yaml`
   with `LogContext` and its `[[tool.rp-generate]]` target in `pyproject.toml`; `make generate`; `services/telemetry.py` with
   `log_extra` and `error_type`; `opentelemetry-sdk` in the `test` group of `pyproject.toml` (the API's release in
   the lock); `tests/logs.py`. Layer: technical model, services. Tests in
@@ -37,7 +37,7 @@ schema change the lead runs `make check-generated`.
 | TC-06 | the two development aliases of PD-2 | equal the v1.45.0 table in the test (`messaging.system.name`, `messaging.destination.name`) |
 | TC-38 | `error_type(NotFound("n"))`; `error_type(ValueError())` | `"rdf_persistence.domain.exceptions.NotFound"`; `"builtins.ValueError"` |
 
-- [ ] 1.2 PD-6 (rows `iri_policy_guard.py` to `tenant_sweep.py`), PD-7: the 19 `extra=` sites of design Context, in `services/sweep.py`,
+- [x] 1.2 PD-6 (rows `iri_policy_guard.py` to `tenant_sweep.py`), PD-7: the 19 `extra=` sites of design Context, in `services/sweep.py`,
   `tenancy.py` (`_log_step`, the cleanup warning), `tenant_sweep.py` (`_log_removal`, the blob
   warning), `tenant_dump.py`, `file_removal.py`, `migration_runner.py` (`_failure` deleted, the
   `str(error)` messages gone), `iri_policy_guard.py` (constant message; the raised
@@ -54,7 +54,7 @@ schema change the lead runs `make check-generated`.
 | TC-09 | `guard_iri_policy` with a changed policy | one ERROR record, constant message, `rp.iri_policy.fields` a list naming the fields; `IriPolicyChanged` raised, its message naming them |
 | TC-10 | a misplaced tenant (`test_sweep.py:305`) | `rp.store.name` the recorded store, `rp.store.found_name` the other |
 
-- [ ] 1.3 PD-6 (rows `kit.py` to `session.py`, and `problems.py`), PD-7, PD-8: the interpolated
+- [x] 1.3 PD-6 (rows `kit.py` to `session.py`, and `problems.py`), PD-7, PD-8: the interpolated
   calls in `services/session.py`, `services/relay.py`, `services/messagebus.py` and
   `entrypoints/kit.py`; the `extra=` of `entrypoints/problems.py`. Tests moved:
   `test_session_activity.py`, `test_session_activity_adversarial.py`, `test_relay.py`,
@@ -72,7 +72,7 @@ schema change the lead runs `make check-generated`.
 | TC-13c | a route raising `StoredDataInvalid` (a mapped kind answered 500: the `problems.py` record; an unmapped `RuntimeError` is the server's to log, `manual-revision-notes` TC-33b) | one ERROR `internal error answered`, `error.type=rdf_persistence.domain.exceptions.StoredDataInvalid`, `rp.step=answer-internal-error`, `exc_info` set |
 | TC-13d | `kit.receive` of an event for a tenant this deployment lacks | one WARNING, `rp.activity.id`, `rp.tenant.id`, `error.type` ending `DatabaseGone` or `NotFound`; the tenant IRI in no message |
 
-- [ ] 1.4 PD-6 (adapter rows), PD-8: the adapters `fuseki.py`, `zitadel.py`, `s3.py`, `redis_events.py`
+- [x] 1.4 PD-6 (adapter rows), PD-8: the adapters `fuseki.py`, `zitadel.py`, `s3.py`, `redis_events.py`
   (`logger` renamed `log`). Tests moved: `test_fuseki_store.py:243`, `test_zitadel.py:388-389`,
   `tests/integration/adapters/test_redis_events.py:76-81`. Layer: adapters. Gate: `make
   test-changed check-quality`; the lead runs the Redis test in the container lane.
@@ -84,7 +84,7 @@ schema change the lead runs `make check-generated`.
 | TC-21 | S3 refuses with `AccessDenied` (a code the adapter does not map); then with `NoSuchBucket` | DEBUG record, `error.type=AccessDenied`; for `NoSuchBucket` no record (it is mapped before the log) |
 | TC-22 | a Redis message without a valid envelope | WARNING, `messaging.system.name=redis`, `messaging.destination.name` the stream |
 
-- [ ] 1.5 PD-9: `tests/unit/test_log_calls.py`. Gate: `make test-changed check-quality`.
+- [x] 1.5 PD-9: `tests/unit/test_log_calls.py`. Gate: `make test-changed check-quality`.
 
 | ID | Input | Expected |
 |---|---|---|
@@ -167,7 +167,7 @@ PR 2 before it merges.
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 ·
   [ ] 2.5 · [ ] 2.6 · reconcile · PR 2
 
 ## Verification
