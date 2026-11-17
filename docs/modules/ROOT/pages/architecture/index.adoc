@@ -289,7 +289,7 @@ _What may a consumer import?_
 |===
 |Layer (module) |Hand-written blocks |Generated models inside the layer |Exported at top level
 |`rdf_persistence.domain`
-|the fixed IRI layout (`domain/layout.py`: graph and skolem IRIs, database and resource names, which no policy changes), SPARQL terms (`domain/sparql.py`), the strict base model, the errors
+|the fixed IRI layout (`domain/layout.py`: graph and skolem IRIs, database and resource names, which no policy changes), SPARQL terms (`domain/sparql.py`), the SPARQL parser (`domain/sparql_parsing.py`: every rdflib SPARQL parse goes through it, under one lock), the strict base model, the errors
 |the metamodel's classes, shapes and context, generated from `model/rp.yaml` into `domain/generated/`; no technical model
 |`RpModel`; `AggregateRoot`, `Described`, `Tracked`,
 `Provenanced`, `Activity`, `Principal`, `RegistryEntry`, `StoredFile`, `RdfFormat`; `Policy`,

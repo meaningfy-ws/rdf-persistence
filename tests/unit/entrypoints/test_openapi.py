@@ -90,6 +90,14 @@ def test_the_events_route_answers_text_event_stream(document) -> None:  # TC-45
     )
 
 
+def test_the_events_route_documents_each_event_as_event_data_id_and_retry(document) -> None:
+    ok = operation(document, f"{TENANT}/rp-events", "get")["responses"]["200"]
+    event = schema_of(ok["content"]["text/event-stream"])
+    assert event["type"] == "object"
+    assert set(event["properties"]) == {"event", "data", "id", "retry"}
+    assert sorted(event["required"]) == ["data", "event"], "id and retry are optional"
+
+
 def test_the_document_is_openapi_3_1_and_valid(document) -> None:
     assert document["openapi"].startswith("3.1"), document["openapi"]
     validate(document)
