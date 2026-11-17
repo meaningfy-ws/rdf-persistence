@@ -36,7 +36,9 @@ export type RpAnnotation =
   /** Annotation of a `slot_usage` entry in a command class, `true` when the command carries the slot but the stored record does not; it is never required there. */
   | "payload"
   /** Annotation of a `unique_keys` entry on an aggregate root (or an ancestor of roots), `tenant` (see UniqueScope): the key holds across the aggregates of a tenant, not inside one aggregate. A key without it keeps its in-aggregate meaning. */
-  | "rp_unique_scope";
+  | "rp_unique_scope"
+  /** Permissible value annotation: the IANA media type of a serialisation. */
+  | "media_type";
 
 /** The kinds of schema module, the values of the module_kind annotation. */
 export type ModuleKind =

@@ -94,6 +94,8 @@ class RpAnnotation(str, Enum):
     "Annotation of a `slot_usage` entry in a command class, `true` when the command carries the slot but the stored record does not; it is never required there."
     RP_UNIQUE_SCOPE = "rp_unique_scope"
     "Annotation of a `unique_keys` entry on an aggregate root (or an ancestor of roots), `tenant` (see UniqueScope): the key holds across the aggregates of a tenant, not inside one aggregate. A key without it keeps its in-aggregate meaning."
+    MEDIA_TYPE = "media_type"
+    "Permissible value annotation: the IANA media type of a serialisation."
 
 
 class ModuleKind(str, Enum):

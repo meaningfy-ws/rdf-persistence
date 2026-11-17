@@ -155,7 +155,7 @@ Stage 1 closes with the lead's `make check-all` and `make test-containers`, the 
 | TC-44 | `grep -rnE 'format="(nt|turtle|xml|json|json-ld|nquads)"'` and the names `RDFLIB_`, `EVENT_STREAM` in `rdf_persistence/` (a test in `tests/unit/test_packaging.py`) | no match |
 | TC-45 | the OpenAPI document's events route | content type `text/event-stream`, as today |
 
-- [ ] 2.4 PD-11 (C-5, DEC-7): the `media_type` tag in `RpAnnotation`, the four annotations on
+- [x] 2.4 PD-11 (C-5, DEC-7): the `media_type` tag in `RpAnnotation`, the four annotations on
   `RdfFormat`, `make generate`; `vocabulary.media_types`; `loading._parse` reads it,
   `_RDFLIB_FORMATS` deleted. Read the lock diff: if the change is not `SAFE`, stop and ask the lead.
   `make refresh-snapshot` and read its diff. Layer: model, services. Tests in
@@ -246,7 +246,7 @@ section), in PR 3 before it merges.
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · PR 1 · [ ] 2.1 · [x] 2.2 · [ ] 2.3 ·
-  [ ] 2.4 · [ ] 2.5 · (tester) · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] reconcile · PR 3
+  [x] 2.4 · [ ] 2.5 · (tester) · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] reconcile · PR 3
 
 ## Verification
 

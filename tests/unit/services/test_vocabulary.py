@@ -1,11 +1,15 @@
 """The predicates the session writes are the ones the schema declares (PD-7, PD-8)."""
 
+import shutil
 from pathlib import Path
 
 import pytest
-from rdflib import URIRef
+import yaml
+from rdflib import URIRef, plugin
+from rdflib.parser import Parser
 
 from rdf_persistence.domain.generated.rp_core import RegistryEntry, RegistryKind
+from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.services import vocabulary
 from rdf_persistence.services.schema import SERVICE_SCHEMA, load_schema
@@ -89,3 +93,29 @@ def test_the_total_of_a_listing_is_the_predicate_of_the_page_slot_of_that_name()
     assert URIRef(service.expand_curie(service.get_slot("total").slot_uri)) == vocabulary.TOTAL, (
         "the listing total is the predicate of the page slot"
     )
+
+
+def test_each_serialisation_carries_the_media_type_the_schema_declares():  # TC-46
+    assert dict(vocabulary.media_types(RdfFormat)) == {
+        RdfFormat.TURTLE: "text/turtle",
+        RdfFormat.RDFXML: "application/rdf+xml",
+        RdfFormat.NTRIPLES: "application/n-triples",
+        RdfFormat.JSONLD: "application/ld+json",
+    }, "RdfFormat's media types differ from the schema's"
+
+
+@pytest.mark.parametrize("fmt", list(RdfFormat), ids=lambda f: f.value)
+def test_each_media_type_is_a_parser_rdflib_registers(fmt):  # TC-47
+    media_type = vocabulary.media_types(RdfFormat)[fmt]
+    assert plugin.get(media_type, Parser), f"rdflib registers no parser for {media_type}"
+
+
+def test_a_serialisation_without_a_media_type_is_refused_by_name(tmp_path):  # TC-48
+    folder = tmp_path / "model"
+    shutil.copytree(METAMODEL.parent, folder, ignore=shutil.ignore_patterns("migrations"))
+    path = folder / "rp_files.yaml"
+    schema = yaml.safe_load(path.read_text())
+    del schema["enums"]["RdfFormat"]["permissible_values"]["ntriples"]["annotations"]
+    path.write_text(yaml.safe_dump(schema))
+    with pytest.raises(ValueError, match="ntriples"):
+        vocabulary.media_types(RdfFormat, view=load_schema(folder / "rp.yaml"))

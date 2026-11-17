@@ -17,7 +17,7 @@ from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.iris import DEFAULT_IRIS
-from rdf_persistence.services.loading import _RDFLIB_FORMATS, NOT_INLINE, parse_graph
+from rdf_persistence.services.loading import NOT_INLINE, parse_graph
 from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import (  # noqa: F401  (no_network is a fixture)
     FakeStore,
@@ -132,7 +132,7 @@ async def test_an_aggregate_outside_the_tenant_is_refused_before_any_request(ses
 def rdflib_message(data: bytes, fmt: RdfFormat) -> str:
     """What rdflib itself says about ``data``."""
     with pytest.raises(Exception) as raised:
-        Graph().parse(io.BytesIO(data), format=_RDFLIB_FORMATS[fmt])
+        Graph().parse(io.BytesIO(data), format=v.media_types(RdfFormat)[fmt])
     return str(raised.value)
 
 

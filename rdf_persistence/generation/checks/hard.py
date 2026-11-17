@@ -66,6 +66,8 @@ SEGMENT_ANNOTATIONS = (
     RpAnnotation.RP_IRI_TYPE,
 )  # the ones a segment of a route or IRI
 PATTERNED_ANNOTATIONS = (*SEGMENT_ANNOTATIONS, RpAnnotation.WORKFLOW)
+# Read from the toolkit's own metamodel only (permissible values); `vocabulary.media_types` checks it at import.
+METAMODEL_ANNOTATIONS = (RpAnnotation.MEDIA_TYPE,)
 # Every annotation the toolkit reads, and the values it accepts (the enums of rp_core). rp_path takes
 # a pattern instead, checked on its own.
 ALLOWED_ANNOTATIONS = {

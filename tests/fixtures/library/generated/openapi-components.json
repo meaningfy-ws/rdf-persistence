@@ -1328,7 +1328,8 @@
         "bookkeeping",
         "toolkit_filled",
         "payload",
-        "rp_unique_scope"
+        "rp_unique_scope",
+        "media_type"
       ],
       "title": "RpAnnotation",
       "type": "string"

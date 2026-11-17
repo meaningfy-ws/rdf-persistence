@@ -327,6 +327,11 @@ enums:
           (see UniqueScope): the key holds across the aggregates of a tenant, not inside one aggregate.
           A key without it keeps its in-aggregate meaning.
         meaning: rp:AnnotationUniqueScope
+      media_type:
+        title: Media type
+        description: >-
+          Permissible value annotation: the IANA media type of a serialisation.
+        meaning: rp:AnnotationMediaType
   ModuleKind:
     title: Module kind
     description: The kinds of schema module, the values of the module_kind annotation.

@@ -16,7 +16,7 @@ from rdf_persistence.domain.generated.rp_core import RegistryKind, RpAnnotation
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.services.schema import PACKAGE_DIR, SERVICE_SCHEMA, load_schema
 from rdf_persistence.services.schema_structure import ACTIVITY as ACTIVITY_NAME
-from rdf_persistence.services.schema_structure import flag, is_bookkeeping
+from rdf_persistence.services.schema_structure import annotation_text, flag, is_bookkeeping
 
 METAMODEL = PACKAGE_DIR / "model" / "rp.yaml"
 TOOLKIT_MIGRATIONS = PACKAGE_DIR / "model" / "migrations"  # the toolkit's own chain (PD-13)
@@ -63,6 +63,23 @@ def meanings[E: Enum](members: type[E]) -> Mapping[E, URIRef]:
     return {
         member: URIRef(view.expand_curie(values[str(member.value)].meaning)) for member in members
     }
+
+
+def media_types[E: Enum](members: type[E], view: SchemaView | None = None) -> Mapping[E, str]:
+    """The media type of each member of a generated enum, as the metamodel (or ``view``) declares it.
+
+    Raises:
+        ValueError: A permissible value has no ``media_type`` annotation; the message names it.
+    """
+    view = view or metamodel()
+    values = view.get_enum(members.__name__).permissible_values
+    found: dict[E, str] = {}
+    for member in members:
+        text = annotation_text(values[str(member.value)], RpAnnotation.MEDIA_TYPE)
+        if text is None:
+            raise ValueError(f"{members.__name__}.{member.value} has no media_type annotation")
+        found[member] = text
+    return found
 
 
 VERSION = predicate("version")

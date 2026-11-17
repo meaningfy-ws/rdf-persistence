@@ -10,6 +10,7 @@ from rdf_persistence.generation import steps
 from rdf_persistence.generation.checks.application import ROWS
 from rdf_persistence.generation.checks.hard import (
     ALLOWED_ANNOTATIONS,
+    METAMODEL_ANNOTATIONS,
     PATTERNED_ANNOTATIONS,
     hard_problems,
     stored_schema_problems,
@@ -725,7 +726,7 @@ def test_a_value_outside_the_allowed_ones_is_refused_for_every_annotation_the_to
 
 
 def test_every_annotation_the_toolkit_reads_has_an_allowed_value_rule_or_a_pattern() -> None:
-    checked = set(ALLOWED_ANNOTATIONS) | set(PATTERNED_ANNOTATIONS)
+    checked = set(ALLOWED_ANNOTATIONS) | set(PATTERNED_ANNOTATIONS) | set(METAMODEL_ANNOTATIONS)
 
     assert checked == set(RpAnnotation), "an annotation has neither allowed values nor a pattern"
 

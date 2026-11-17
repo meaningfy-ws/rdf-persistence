@@ -15,13 +15,10 @@ from rdf_persistence.services.jsonld import (
     RemoteContextRefused,
     triples_of,
 )
+from rdf_persistence.services.vocabulary import media_types
 
-_RDFLIB_FORMATS = {
-    RdfFormat.TURTLE: "turtle",
-    RdfFormat.RDFXML: "xml",
-    RdfFormat.NTRIPLES: "nt",
-    RdfFormat.JSONLD: "json-ld",  # not used to load (PD-6); task 2.4 retires the table
-}
+# rdflib takes a media type as the name of its format; the schema declares them (PD-11).
+_MEDIA_TYPES = media_types(RdfFormat)
 
 NOT_INLINE = "a JSON-LD context must be inline: remote, file and relative contexts are not followed"
 ONE_GRAPH = "a loaded file holds one graph"
@@ -44,7 +41,7 @@ def _parse_jsonld(data: bytes) -> Graph:
 def _parse(data: bytes, rdf_format: RdfFormat) -> Graph:
     if rdf_format == RdfFormat.JSONLD:
         return _parse_jsonld(data)
-    rdflib_format = _RDFLIB_FORMATS[rdf_format]  # an unknown format is a bug, not an invalid graph
+    rdflib_format = _MEDIA_TYPES[rdf_format]  # an unknown format is a bug, not an invalid graph
     graph = Graph()
     try:
         graph.parse(io.BytesIO(data), format=rdflib_format)
