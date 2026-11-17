@@ -3,12 +3,9 @@
 import httpx
 import pytest
 
-from rdf_persistence.adapters._http import (
-    CONNECT_TIMEOUT_SECONDS,
-    READ_TIMEOUT_SECONDS,
-    HttpAdapter,
-)
+from rdf_persistence.adapters._http import HttpAdapter
 from rdf_persistence.domain.exceptions import PersistenceError
+from rdf_persistence.services.generated.settings.rp_settings import HttpSettings
 
 
 class ProbeUnavailableError(PersistenceError):
@@ -46,15 +43,25 @@ async def test_a_transport_error_becomes_the_adapters_unavailable_error() -> Non
             await probe.request("GET", "/ping")
 
 
-async def test_the_timeouts_are_explicit() -> None:
+async def test_the_timeouts_default_to_five_seconds_to_connect_and_thirty_to_read() -> None:
+    """TC-25 at the adapter: no group given, the client waits as the toolkit always did."""
     async with probe_answering(lambda _r: httpx.Response(200)) as probe:
         timeout = probe.client.timeout
-    assert timeout.connect == CONNECT_TIMEOUT_SECONDS, (
-        "the client's connect timeout is the named constant"
+    assert timeout.connect == 5.0, "connecting waits five seconds"
+    assert timeout.read == 30.0, "reading waits thirty seconds"
+
+
+async def test_the_timeouts_come_from_the_http_settings_given() -> None:
+    """TC-28 (the base of FusekiStore): the client's timeout is built from the group."""
+    probe = Probe(
+        base_url="http://probe.test",
+        http=HttpSettings(connect_timeout_seconds=2.5, read_timeout_seconds=7),
+        transport=httpx.MockTransport(lambda _r: httpx.Response(200)),
     )
-    assert timeout.read == READ_TIMEOUT_SECONDS, "the client's read timeout is the named constant"
-    assert CONNECT_TIMEOUT_SECONDS == 5.0, "connecting waits five seconds"
-    assert READ_TIMEOUT_SECONDS == 30.0, "reading waits thirty seconds"
+    async with probe:
+        timeout = probe.client.timeout
+    assert timeout.connect == 2.5, "the connect timeout is the group's"
+    assert timeout.read == 7.0, "the read timeout is the group's"
 
 
 async def test_leaving_the_context_closes_the_client() -> None:

@@ -2,13 +2,18 @@
 
 import json
 import logging
+import re
 from collections.abc import Callable
+from pathlib import Path
 
 import httpx
 import pytest
 
+from rdf_persistence.adapters import zitadel as zitadel_adapter
 from rdf_persistence.adapters.zitadel import ZitadelIdentity
 from rdf_persistence.domain.exceptions import IdentityUnavailable, NotFound
+from rdf_persistence.services.generated.settings.rp_settings import DirectorySettings
+from rdf_persistence.testkit import zitadel as zitadel_testkit
 from tests.logs import attributes, records_of
 
 ISSUER = "http://zitadel.test"
@@ -145,17 +150,28 @@ async def test_find_by_email_with_no_match_is_not_found():
 
 @pytest.mark.parametrize(
     ("state", "active"),
-    # One class: `state == ACTIVE_STATE`; INACTIVE stands for every non-active state.
+    # One class: `state is ACTIVE`; INACTIVE and LOCKED stand for every non-active state.
     [
         ("USER_STATE_ACTIVE", True),
         ("USER_STATE_INACTIVE", False),
+        ("USER_STATE_LOCKED", False),
     ],
 )
 async def test_only_an_active_user_is_an_active_account(state, active):
+    """TC-32: a state the enum names is read; ``active`` is true for the active one only."""
     client, _ = identity_answering({USERS: users(human(state=state)), GRANTS: grants()})
     assert (await client.find_by_email("ann@example.org")).active is active, (
         "an account is active only when its user is active"
     )
+
+
+async def test_a_state_outside_the_six_is_an_unreadable_answer():
+    """TC-32: ``USER_STATE_NEW_ONE`` is not a Zitadel v2 state; the answer is unreadable."""
+    client, _ = identity_answering(
+        {USERS: users(human(state="USER_STATE_NEW_ONE")), GRANTS: grants()}
+    )
+    with pytest.raises(IdentityUnavailable, match="unreadable"):
+        await client.find_by_email("ann@example.org")
 
 
 async def test_list_accounts_joins_each_account_with_its_roles_and_has_no_email_for_a_service_account():
@@ -184,6 +200,26 @@ async def test_list_accounts_reads_every_page():
     accounts = await client.list_accounts()
     assert len(accounts) == page + 1, "both pages"
     assert [recorder.body(i)["query"]["offset"] for i in (0, 1)] == [0, page], "the second page"
+
+
+async def test_the_page_size_is_the_directory_settings_page_size():
+    """TC-33: a page size of 2 over 5 users: 3 user requests (2, 2, 1), 5 accounts."""
+    everyone = [human(f"u{n}", f"u{n}@example.org") for n in range(5)]
+    pages = iter([users(*everyone[:2]), users(*everyone[2:4]), users(*everyone[4:])])
+    recorder = Recorder({USERS: lambda: next(pages), GRANTS: grants()})
+    client = ZitadelIdentity(
+        ISSUER,
+        "service-token",
+        ORG,
+        PROJECT,
+        directory=DirectorySettings(page_size=2),
+        transport=httpx.MockTransport(recorder),
+    )
+    accounts = await client.list_accounts()
+    user_requests = [i for i, call in enumerate(recorder.calls()) if call == "POST /v2/users"]
+    assert len(user_requests) == 3, "three requests for five users at two a page"
+    assert {recorder.body(i)["query"]["limit"] for i in user_requests} == {2}, "two a page"
+    assert len(accounts) == 5, "every user is an account"
 
 
 # --- changing ----------------------------------------------------------------
@@ -353,7 +389,7 @@ async def test_an_account_of_another_organisation_is_not_found_and_left_alone(me
 
 async def test_an_account_whose_owner_is_not_reported_is_not_found():
     client, _ = identity_answering(
-        {USER_1: answer('{"user":{"userId":"u1","state":"x","username":"a"}}')}
+        {USER_1: answer('{"user":{"userId":"u1","state":"USER_STATE_ACTIVE","username":"a"}}')}
     )
     with pytest.raises(NotFound):
         await client.disable("u1")
@@ -382,6 +418,18 @@ async def test_the_listing_of_an_account_ignores_the_grants_of_others():
     assert (await client.find_by_email("ann@example.org")).global_roles is None, (
         "the grants of other users are ignored"
     )
+
+
+# --- the slugs of the test fixtures are not the adapter's ---------------------
+
+
+@pytest.mark.parametrize("name", ["PROJECTS", "MACHINE_USERS", "OWN_ORGANISATION", "TOKEN_PATH"])
+def test_the_fixture_slugs_live_in_the_testkit_and_not_in_the_adapters(name):
+    """TC-34 (DEC-8): the management paths only the test fixtures use are not in ``adapters/``."""
+    adapters = Path(zitadel_adapter.__file__).parent
+    holders = [p.name for p in adapters.rglob("*.py") if re.search(rf"\b{name}\b", p.read_text())]
+    assert holders == [], f"{name} is still in {holders}"
+    assert hasattr(zitadel_testkit, name), f"{name} is not in the testkit"
 
 
 # --- what stays out of messages and logs ------------------------------------

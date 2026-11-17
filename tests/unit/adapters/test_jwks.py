@@ -9,13 +9,15 @@ import httpx
 import jwt
 import pytest
 
-from rdf_persistence.adapters.jwks import DISCOVERY_PATH, JWKS_TTL_SECONDS, JwksTokenVerifier
+from rdf_persistence.adapters.jwks import DISCOVERY_PATH, JwksTokenVerifier
 from rdf_persistence.domain.exceptions import IdentityUnavailable, InvalidToken
 from rdf_persistence.services.generated.service.rp_service import IriPolicy, ServiceSettings
+from rdf_persistence.services.generated.settings.rp_settings import JwksSettings
 from rdf_persistence.services.iris import Iris
 from rdf_persistence.testkit import TokenSigner, shared_key
 from rdf_persistence.testkit.tokens import ISSUER, new_key
 
+TTL_SECONDS = JwksSettings().ttl_seconds
 PAST_COOLDOWN = 11.0
 WITHIN_COOLDOWN = 1.0
 
@@ -82,12 +84,41 @@ async def test_an_explicit_jwks_uri_skips_discovery(
 async def test_the_cache_expires_after_the_ttl(signer: TokenSigner, clock: ManualClock) -> None:
     verifier = verifier_for(signer, clock)
     await verifier.verify(signer.issue())
-    clock.now += JWKS_TTL_SECONDS - 1
+    clock.now += TTL_SECONDS - 1
     await verifier.verify(signer.issue())
     assert signer.jwks_requests == 1, "still cached just before the TTL"
     clock.now += 2
     await verifier.verify(signer.issue())
     assert signer.jwks_requests == 2, "fetched again once the TTL has passed"
+
+
+async def test_the_cache_lifetime_is_the_jwks_settings_ttl(
+    signer: TokenSigner, clock: ManualClock
+) -> None:
+    """TC-30: a TTL of 1 second, the clock advanced 2 seconds: the keys are fetched again.
+
+    The cooldown is 1 second as well: it also spaces the refresh of stale keys (10 seconds by
+    default), so a TTL under it could not be seen to expire.
+    """
+    jwks = JwksSettings(ttl_seconds=1, unknown_kid_cooldown_seconds=1)
+    verifier = verifier_for(signer, clock, jwks=jwks)
+    await verifier.verify(signer.issue())
+    clock.now += 2
+    await verifier.verify(signer.issue())
+    assert signer.jwks_requests == 2, "the keys were fetched again after the group's TTL"
+
+
+async def test_the_refresh_cooldown_is_the_jwks_settings_cooldown(
+    signer: TokenSigner, clock: ManualClock
+) -> None:
+    """TC-30: the cooldown of the group, not a constant, spaces the refreshes of an unknown kid."""
+    verifier = verifier_for(signer, clock, jwks=JwksSettings(unknown_kid_cooldown_seconds=100))
+    await verifier.verify(signer.issue())
+    signer.rotate("k2")
+    clock.now += PAST_COOLDOWN
+    with pytest.raises(InvalidToken):
+        await verifier.verify(signer.issue(kid="k2"))
+    assert signer.jwks_requests == 1, "11 seconds is inside a cooldown of 100: no refresh"
 
 
 async def test_an_unknown_kid_triggers_one_refresh_then_is_accepted(
@@ -121,7 +152,7 @@ async def test_discovery_is_not_repeated_on_refresh(
 ) -> None:
     verifier = verifier_for(signer, clock)
     await verifier.verify(signer.issue())
-    clock.now += JWKS_TTL_SECONDS + 1
+    clock.now += TTL_SECONDS + 1
     await verifier.verify(signer.issue())
     assert signer.discovery_requests == 1, "the JWKS address found once is kept"
 
@@ -140,7 +171,7 @@ async def test_unreachable_provider_serves_cached_keys_until_the_ttl(
     verifier = verifier_for(signer, clock)
     await verifier.verify(signer.issue())
     signer.unreachable = True
-    clock.now += JWKS_TTL_SECONDS - 1
+    clock.now += TTL_SECONDS - 1
     await verifier.verify(signer.issue())
     clock.now += 2
     with pytest.raises(IdentityUnavailable):
@@ -251,7 +282,7 @@ async def test_requests_after_the_expiry_during_an_outage_make_one_provider_call
     verifier = verifier_over(provider, signer, clock)
     good = signer.issue()
     await verifier.verify(good)
-    clock.now += JWKS_TTL_SECONDS + 1
+    clock.now += TTL_SECONDS + 1
     signer.unreachable = True
     provider.stalled = True
     provider.calls = 0
@@ -271,7 +302,7 @@ async def test_stale_keys_inside_the_cooldown_are_unavailable_without_a_call(
     verifier = verifier_over(provider, signer, clock)
     good = signer.issue()
     await verifier.verify(good)
-    clock.now += JWKS_TTL_SECONDS + 1
+    clock.now += TTL_SECONDS + 1
     signer.unreachable = True
     provider.calls = 0
     for _ in range(3):
@@ -414,6 +445,16 @@ async def test_the_default_verifier_accepts_every_default_algorithm(
     assert caller.principal.endswith("/user-1"), f"a {algorithm} token was not accepted"
 
 
+@pytest.mark.parametrize("named", ["ML-DSA-44", "ML-DSA-65"])
+def test_an_algorithm_the_installed_pyjwt_does_not_implement_is_refused_at_construction(
+    named: str,
+) -> None:
+    """TC-60: the settings model accepts the name (PD-6); the verifier's start-up check refuses it."""
+    jwks = JwksSettings(allowed_algorithms=[named, "RS256"])
+    with pytest.raises(ValueError, match=named):
+        JwksTokenVerifier("https://idp.test", "aud", "roles", jwks=jwks)
+
+
 @pytest.mark.parametrize(
     ("algorithms", "named"),
     [
@@ -422,22 +463,24 @@ async def test_the_default_verifier_accepts_every_default_algorithm(
         (["HS256"], "HS256"),
         (["hs512"], "hs512"),
         ([], "empty"),
-        (["ML-DSA-65"], "ML-DSA-65"),
         (["RS256", "HS512"], "HS512"),
     ],
-    ids=["none", "NONE", "HS256", "hs512", "empty", "unknown", "mixed"],
+    ids=["none", "NONE", "HS256", "hs512", "empty", "mixed"],
 )
-def test_an_unusable_algorithm_list_is_refused_naming_the_entry(
+def test_a_group_that_got_past_the_schema_with_an_unusable_list_is_still_refused(
     algorithms: list[str], named: str
 ) -> None:
+    """Defence in depth (DEC-1): ``model_construct`` skips the schema's checks, the verifier's hold."""
+    jwks = JwksSettings.model_construct(allowed_algorithms=algorithms)
     with pytest.raises(ValueError, match=named):
-        JwksTokenVerifier("https://idp.test", "aud", "roles", algorithms=algorithms)
+        JwksTokenVerifier("https://idp.test", "aud", "roles", jwks=jwks)
 
 
 async def test_a_token_outside_the_instance_algorithms_is_refused_before_any_key_fetch(
     signer: TokenSigner, clock: ManualClock
 ) -> None:
-    verifier = verifier_for(signer, clock, algorithms=["ES256"])
+    """TC-31: A-3's test, through ``jwks=``."""
+    verifier = verifier_for(signer, clock, jwks=JwksSettings(allowed_algorithms=["ES256"]))
     with pytest.raises(InvalidToken, match="algorithm"):
         await verifier.verify(signer.issue())
     assert signer.jwks_requests == 0, "the key set was fetched for a refused algorithm"
@@ -445,8 +488,10 @@ async def test_a_token_outside_the_instance_algorithms_is_refused_before_any_key
 
 async def test_a_narrower_list_still_accepts_its_own_algorithm(clock: ManualClock) -> None:
     signer = TokenSigner(clock=clock, algorithm="ES256")
-    caller = await verifier_for(signer, clock, algorithms=("ES256",)).verify(signer.issue())
-    assert caller.principal, "an ES256 token under algorithms=['ES256'] was refused"
+    """TC-31: A-3's test, through ``jwks=``."""
+    jwks = JwksSettings(allowed_algorithms=["ES256"])
+    caller = await verifier_for(signer, clock, jwks=jwks).verify(signer.issue())
+    assert caller.principal, "an ES256 token under allowed_algorithms=['ES256'] was refused"
 
 
 CLOCK_NOW = 1000.0
@@ -486,16 +531,20 @@ async def test_the_default_leeway_lets_an_early_token_through_for_30_seconds(
 @pytest.mark.parametrize(
     "leeway", [-1, 301, math.inf, math.nan], ids=["negative", "above-300", "inf", "nan"]
 )
-def test_a_leeway_outside_zero_to_300_or_not_finite_is_refused(leeway: float) -> None:
-    with pytest.raises(ValueError, match="leeway"):
-        JwksTokenVerifier("https://idp.test", "aud", "roles", leeway_seconds=leeway)
+def test_a_leeway_outside_zero_to_300_or_not_finite_never_reaches_the_verifier(
+    leeway: float,
+) -> None:
+    """TC-31: A-4's bounds test; the schema (TC-57) holds the bounds, so the group is refused."""
+    with pytest.raises(ValueError, match="leeway_seconds"):
+        JwksSettings(leeway_seconds=leeway)
 
 
 async def test_a_zero_leeway_refuses_a_token_expiring_now(
     signer: TokenSigner, clock: ManualClock
 ) -> None:
+    """TC-31: A-4's test, through ``jwks=``."""
     clock.now = CLOCK_NOW
-    verifier = verifier_for(signer, clock, leeway_seconds=0)
+    verifier = verifier_for(signer, clock, jwks=JwksSettings(leeway_seconds=0))
     with pytest.raises(InvalidToken, match="expired"):
         await verifier.verify(signer.issue(expires_in=0))
 

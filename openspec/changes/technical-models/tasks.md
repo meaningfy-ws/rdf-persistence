@@ -135,7 +135,7 @@ Stage 2 closes like stage 1.
 | TC-57 | `JwksSettings(leeway_seconds=0)`, `(leeway_seconds=301)`, `(allowed_algorithms=[])` | valid; `ValidationError`; `ValidationError` |
 | TC-58 | a toy schema with `default_instance` on a slot ranging over `string` | `rp-generate` fails naming the slot |
 
-- [ ] 3.2 PD-7, PD-8 (C-2, C-3, C-4): `HttpAdapter`, `FusekiStore`, `JwksTokenVerifier`,
+- [x] 3.2 PD-7, PD-8 (C-2, C-3, C-4): `HttpAdapter`, `FusekiStore`, `JwksTokenVerifier`,
   `ZitadelIdentity`, `S3FileStore` take their groups; `_http.py`, `s3.py`, `jwks.py`, `zitadel.py`
   constants removed; `ZitadelUserState`; the four slugs in `testkit/zitadel.py`. Tests:
   `tests/unit/adapters/test_http.py`, `test_jwks.py`, `test_zitadel.py`, `test_s3_file_store.py`; the

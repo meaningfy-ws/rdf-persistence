@@ -66,6 +66,22 @@ class BadRequestMeans(str, Enum):
     "The project has no such role."
 
 
+class ZitadelUserState(str, Enum):
+    "The state of a user in the Zitadel v2 user API. The wire value is the permissible value itself."
+    USER_STATE_UNSPECIFIED = "USER_STATE_UNSPECIFIED"
+    "The user has no state."
+    USER_STATE_ACTIVE = "USER_STATE_ACTIVE"
+    "The user can sign in; the only state of an active account."
+    USER_STATE_INACTIVE = "USER_STATE_INACTIVE"
+    "The user was deactivated and cannot sign in until it is reactivated."
+    USER_STATE_DELETED = "USER_STATE_DELETED"
+    "The user was deleted."
+    USER_STATE_LOCKED = "USER_STATE_LOCKED"
+    "The user was locked, for example after too many failed sign-ins."
+    USER_STATE_INITIAL = "USER_STATE_INITIAL"
+    "The user was created and has not yet completed its first sign-in set-up."
+
+
 
 class ZitadelEmailQuery(ConfiguredBaseModel):
     "The search term that finds a user by email address."
@@ -192,7 +208,7 @@ class ZitadelUser(ConfiguredBaseModel):
     model_config = ConfigDict(extra="allow")
 
     userId: str = Field(default=..., title="Zitadel user id", description="The id of a user.")
-    state: str = Field(default=..., title="Zitadel state", description="The state of the account; the active one is `USER_STATE_ACTIVE`.")
+    state: ZitadelUserState = Field(default=..., title="Zitadel state", description="The state of the account; the active one is `USER_STATE_ACTIVE`. A state outside the enum makes the answer unreadable.")
     username: str = Field(default=..., title="Zitadel username", description="The name the account signs in with.")
     human: Optional[ZitadelHuman] = Field(default=None, title="Zitadel human", description="The person behind the account, if it is a person\u0027s.")
     details: Optional[ZitadelDetails] = Field(default=None, title="Zitadel details", description="Where the resource lives.")

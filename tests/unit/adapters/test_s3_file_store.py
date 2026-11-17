@@ -19,6 +19,7 @@ from rdf_persistence.domain.exceptions import (
     TenantGone,
 )
 from rdf_persistence.domain.generated.rp_files import BlobEntry
+from rdf_persistence.services.generated.settings.rp_settings import HttpSettings
 from rdf_persistence.testkit import no_network  # noqa: F401  (fixture)
 from tests.logs import attributes, records_of
 
@@ -249,10 +250,25 @@ async def test_a_bucket_name_boto_refuses_is_the_callers_error_not_an_outage(no_
         await files.put(bucket, KEY, b"x")
 
 
-def test_the_timeouts_are_five_seconds_to_connect_and_thirty_to_read():
+def test_the_timeouts_default_to_five_seconds_to_connect_and_thirty_to_read_with_three_attempts():
     config = S3FileStore("http://s3.test", "id", "secret", REGION)._client.meta.config
     assert config.connect_timeout == 5, "connecting waits five seconds"
     assert config.read_timeout == 30, "reading waits thirty seconds"
+    # boto3 turns ``max_attempts`` (retries after the first try) into a total one higher.
+    assert config.retries["total_max_attempts"] == 4, "three attempts, as it always was"
+
+
+def test_the_client_is_configured_from_the_http_settings_given():
+    """TC-29: the boto3 client's config has the group's timeouts and attempts."""
+    settings = HttpSettings(connect_timeout_seconds=2, read_timeout_seconds=9, max_attempts=5)
+    config = S3FileStore(
+        "http://s3.test", "id", "secret", REGION, http=settings
+    )._client.meta.config
+    assert config.connect_timeout == 2, "the connect timeout is the group's"
+    assert config.read_timeout == 9, "the read timeout is the group's"
+    assert config.retries["total_max_attempts"] == 6, (
+        "the attempts are the group's (5 and the first)"
+    )
 
 
 async def test_list_blobs_follows_every_page_and_keeps_the_modified_time(s3):

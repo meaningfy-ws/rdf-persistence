@@ -245,12 +245,14 @@ tests/unit/adapters/test_fuseki_store.py::test_list_datasets_returns_names_witho
 tests/unit/adapters/test_fuseki_store.py::test_put_graph_sends_turtle_to_the_graph_store_endpoint,capability,rp-aggregate-store,,,medium,covered code (adapters/fuseki.py is the store port's adapter; no requirement covers its HTTP mapping)
 tests/unit/adapters/test_fuseki_store.py::test_requests_carry_basic_auth,capability,rp-aggregate-store,,,medium,covered code (adapters/fuseki.py is the store port's adapter; no requirement covers its HTTP mapping)
 tests/unit/adapters/test_fuseki_store.py::test_select_posts_the_query_and_returns_rows,capability,rp-aggregate-store,,,medium,covered code (adapters/fuseki.py is the store port's adapter; no requirement covers its HTTP mapping)
+tests/unit/adapters/test_fuseki_store.py::test_the_store_waits_as_its_http_settings_say,requirement,rp-settings,Deployment values are generated settings with today's defaults,,medium,docstring TC-28 PD-7 (change technical-models)
 tests/unit/adapters/test_fuseki_store.py::test_the_store_closes_its_client,capability,rp-aggregate-store,,,medium,covered code (adapters/fuseki.py is the store port's adapter; no requirement covers its HTTP mapping)
 tests/unit/adapters/test_fuseki_store.py::test_update_posts_sparql_update,capability,rp-aggregate-store,,,medium,covered code (adapters/fuseki.py is the store port's adapter; no requirement covers its HTTP mapping)
 tests/unit/adapters/test_http.py::test_a_request_goes_through_the_given_transport,none,,,,none,"covered code adapters/_http.py; PD-28a is a design decision, no spec requirement"
 tests/unit/adapters/test_http.py::test_a_transport_error_becomes_the_adapters_unavailable_error,none,,,,none,"covered code adapters/_http.py; PD-28a is a design decision, no spec requirement"
 tests/unit/adapters/test_http.py::test_leaving_the_context_closes_the_client,none,,,,none,"covered code adapters/_http.py; PD-28a is a design decision, no spec requirement"
-tests/unit/adapters/test_http.py::test_the_timeouts_are_explicit,none,,,,none,"covered code adapters/_http.py; PD-28a is a design decision, no spec requirement"
+tests/unit/adapters/test_http.py::test_the_timeouts_default_to_five_seconds_to_connect_and_thirty_to_read,requirement,rp-settings,Deployment values are generated settings with today's defaults,,medium,docstring TC-25 PD-7 (change technical-models)
+tests/unit/adapters/test_http.py::test_the_timeouts_come_from_the_http_settings_given,requirement,rp-settings,Deployment values are generated settings with today's defaults,,medium,docstring TC-28 PD-7 (change technical-models)
 tests/unit/adapters/test_jwks.py::test_a_broken_discovery_document_is_unavailable,requirement,rp-identity,Every request carries a valid token,,medium,covered code
 tests/unit/adapters/test_jwks.py::test_a_burst_of_unknown_kids_refreshes_once,requirement,rp-identity,Every request carries a valid token,,high,"name,covered code (requirement: keys checked against the provider's published keys, cached)"
 tests/unit/adapters/test_jwks.py::test_a_discovery_document_naming_another_issuer_is_unavailable,requirement,rp-identity,Every request carries a valid token,,medium,covered code
@@ -271,6 +273,11 @@ tests/unit/adapters/test_jwks.py::test_keys_are_fetched_once_and_cached,requirem
 tests/unit/adapters/test_jwks.py::test_requests_after_the_expiry_during_an_outage_make_one_provider_call,requirement,rp-identity,Every request carries a valid token,,medium,covered code
 tests/unit/adapters/test_jwks.py::test_stale_keys_inside_the_cooldown_are_unavailable_without_a_call,requirement,rp-identity,Every request carries a valid token,,medium,covered code
 tests/unit/adapters/test_jwks.py::test_the_cache_expires_after_the_ttl,requirement,rp-identity,Every request carries a valid token,,high,"name,covered code (requirement: keys checked against the provider's published keys, cached)"
+tests/unit/adapters/test_jwks.py::test_the_cache_lifetime_is_the_jwks_settings_ttl,requirement,rp-settings,Deployment values are generated settings with today's defaults,,medium,docstring TC-30 PD-7 (change technical-models)
+tests/unit/adapters/test_jwks.py::test_the_refresh_cooldown_is_the_jwks_settings_cooldown,requirement,rp-settings,Deployment values are generated settings with today's defaults,,medium,docstring TC-30 PD-7 (change technical-models)
+tests/unit/adapters/test_jwks.py::test_an_algorithm_the_installed_pyjwt_does_not_implement_is_refused_at_construction,requirement,rp-settings,Deployment values are generated settings with today's defaults,,medium,docstring TC-60 PD-7 (change technical-models)
+tests/unit/adapters/test_jwks.py::test_a_group_that_got_past_the_schema_with_an_unusable_list_is_still_refused,requirement,rp-identity,Every request carries a valid token,,medium,docstring DEC-1; defence in depth behind TC-26 (change technical-models)
+tests/unit/adapters/test_jwks.py::test_a_leeway_outside_zero_to_300_or_not_finite_never_reaches_the_verifier,requirement,rp-settings,Deployment values are generated settings with today's defaults,,medium,docstring TC-31 / TC-57 PD-7 (change technical-models)
 tests/unit/adapters/test_jwks.py::test_the_default_principal_is_the_issuer_and_the_subject,requirement,rp-iri-policy,Principals are minted by the service's policy,,high,"name,covered code,spec id PD-2/PD-3a"
 tests/unit/adapters/test_jwks.py::test_the_verifier_exposes_the_iris_it_mints_with,requirement,rp-iri-policy,Principals are minted by the service's policy,,high,"name,covered code,spec id PD-2/PD-3a"
 tests/unit/adapters/test_jwks.py::test_unreachable_provider_serves_cached_keys_until_the_ttl,requirement,rp-identity,Every request carries a valid token,,high,"name,covered code (requirement: keys checked against the provider's published keys, cached)"
@@ -291,7 +298,8 @@ tests/unit/adapters/test_s3_file_store.py::test_get_returns_the_body_bytes,requi
 tests/unit/adapters/test_s3_file_store.py::test_list_blobs_follows_every_page_and_keeps_the_modified_time,capability,rp-file-store,,,medium,covered code
 tests/unit/adapters/test_s3_file_store.py::test_list_blobs_of_a_missing_bucket_is_tenant_gone,capability,rp-file-store,,,medium,covered code
 tests/unit/adapters/test_s3_file_store.py::test_list_blobs_of_an_empty_bucket_is_empty,capability,rp-file-store,,,medium,covered code
-tests/unit/adapters/test_s3_file_store.py::test_the_timeouts_are_five_seconds_to_connect_and_thirty_to_read,capability,rp-file-store,,,medium,covered code
+tests/unit/adapters/test_s3_file_store.py::test_the_timeouts_default_to_five_seconds_to_connect_and_thirty_to_read_with_three_attempts,requirement,rp-settings,Deployment values are generated settings with today's defaults,,medium,docstring TC-25 PD-7 (change technical-models)
+tests/unit/adapters/test_s3_file_store.py::test_the_client_is_configured_from_the_http_settings_given,requirement,rp-settings,Deployment values are generated settings with today's defaults,,medium,docstring TC-29 PD-7 (change technical-models)
 tests/unit/adapters/test_token_verifier.py::test_a_roles_claim_of_another_shape_gives_no_roles,capability,rp-identity,,,medium,covered code
 tests/unit/adapters/test_token_verifier.py::test_a_token_refused_by_pyjwt_chains_its_message_as_the_cause,requirement,rp-identity,Every request carries a valid token,,medium,covered code
 tests/unit/adapters/test_token_verifier.py::test_a_valid_token_gives_the_caller_with_the_principal_from_sub,requirement,rp-identity,Every request carries a valid token,,high,name; covered code (adapters/jwks.py); module docstring cites rp-identity
@@ -326,6 +334,9 @@ tests/unit/adapters/test_zitadel.py::test_granting_a_role_the_account_holds_chan
 tests/unit/adapters/test_zitadel.py::test_granting_a_role_the_project_lacks_is_not_found,requirement,rp-identity,Accounts are administered through the identity port,,high,"name,covered code"
 tests/unit/adapters/test_zitadel.py::test_list_accounts_joins_each_account_with_its_roles_and_has_no_email_for_a_service_account,requirement,rp-identity,Accounts are administered through the identity port,,high,"name,covered code"
 tests/unit/adapters/test_zitadel.py::test_list_accounts_reads_every_page,requirement,rp-identity,Accounts are administered through the identity port,,high,"name,covered code"
+tests/unit/adapters/test_zitadel.py::test_the_page_size_is_the_directory_settings_page_size,requirement,rp-settings,Deployment values are generated settings with today's defaults,,medium,docstring TC-33 PD-7 (change technical-models)
+tests/unit/adapters/test_zitadel.py::test_a_state_outside_the_six_is_an_unreadable_answer,requirement,rp-identity,Accounts are administered through the identity port,,medium,docstring TC-32 PD-8 (change technical-models)
+tests/unit/adapters/test_zitadel.py::test_the_fixture_slugs_live_in_the_testkit_and_not_in_the_adapters,none,,,,none,docstring TC-34 DEC-8 (change technical-models); a structure guard
 tests/unit/adapters/test_zitadel.py::test_only_an_active_user_is_an_active_account,requirement,rp-identity,Accounts are administered through the identity port,,medium,covered code
 tests/unit/adapters/test_zitadel.py::test_only_the_grants_of_the_account_count,requirement,rp-identity,Accounts are administered through the identity port,,medium,covered code
 tests/unit/adapters/test_zitadel.py::test_removing_a_role_the_account_lacks_changes_nothing,requirement,rp-identity,Accounts are administered through the identity port,,high,"name,covered code"

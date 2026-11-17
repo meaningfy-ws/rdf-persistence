@@ -21,6 +21,7 @@ from rdf_persistence.domain.exceptions import (
     StoreUnavailable,
 )
 from rdf_persistence.domain.media import ACCEPT, CONTENT_TYPE, N_QUADS, TURTLE
+from rdf_persistence.services.generated.settings.rp_settings import HttpSettings
 from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.telemetry import log_extra
 
@@ -90,8 +91,11 @@ class FusekiStore(HttpAdapter):
         password: str,
         *,
         transport: httpx.AsyncBaseTransport | None = None,
+        http: HttpSettings | None = None,
     ) -> None:
-        super().__init__(base_url=url, auth=httpx.BasicAuth(user, password), transport=transport)
+        super().__init__(
+            base_url=url, auth=httpx.BasicAuth(user, password), transport=transport, http=http
+        )
 
     async def _send(
         self,

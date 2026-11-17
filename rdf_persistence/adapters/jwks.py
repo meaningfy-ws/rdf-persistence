@@ -20,31 +20,13 @@ from rdf_persistence.adapters._http import HttpAdapter
 from rdf_persistence.adapters.generated.rp_wire import DiscoveryDocument, JwtClaims
 from rdf_persistence.domain.exceptions import IdentityUnavailable, InvalidToken
 from rdf_persistence.services.generated.service.rp_service import VerifiedCaller
+from rdf_persistence.services.generated.settings.rp_settings import HttpSettings, JwksSettings
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.tokens import EpochClock
 
-JWKS_TTL_SECONDS = 600.0
-# Keys are refreshed at most this often (stale or unknown kid alike), so neither an outage nor a burst of
-# forged kids can hammer the provider; inside it the verifier answers at once.
-UNKNOWN_KID_COOLDOWN_SECONDS = 10.0
-RS256 = "RS256"
-# Asymmetric only (DEC-1): `none` and the HS* family are refused at construction, even when listed.
-# The algorithms and the leeway are constructor parameters with these defaults; `technical-models`
-# moves them into the generated settings model with the other JWKS values (DEC-3).
-DEFAULT_ALGORITHMS = (
-    RS256,
-    "RS384",
-    "RS512",
-    "PS256",
-    "PS384",
-    "PS512",
-    "ES256",
-    "ES384",
-    "ES512",
-    "EdDSA",
-)
-DEFAULT_LEEWAY_SECONDS = 30.0
-MAX_LEEWAY_SECONDS = 300.0
+RS256 = "RS256"  # the testkit signs with it
+# Asymmetric only (DEC-1): `none` and the HS* family are refused at construction, even when listed
+# (the settings model refuses them too; this holds for a group built without its checks).
 UNSIGNED_ALGORITHM = "none"
 SYMMETRIC_PREFIX = "HS"
 HTTPS_PREFIX = "https://"
@@ -88,15 +70,18 @@ class JwksTokenVerifier(HttpAdapter):
         clock: EpochClock = time.time,
         allow_insecure_issuer: bool = False,
         iris: Iris = DEFAULT_IRIS,
-        algorithms: Collection[str] = DEFAULT_ALGORITHMS,
-        leeway_seconds: float = DEFAULT_LEEWAY_SECONDS,
+        jwks: JwksSettings | None = None,
+        http: HttpSettings | None = None,
     ) -> None:
         """Verify tokens of ``issuer``, which must be an https URL unless ``allow_insecure_issuer`` (test containers).
 
-        ``algorithms`` are the signature algorithms accepted; ``ValueError`` for an empty collection,
-        ``none``, an ``HS*`` name (any case) or a name PyJWT does not implement. ``leeway_seconds`` is the
-        clock skew allowed on ``exp`` and ``nbf``; ``ValueError`` unless finite and within 0 to 300.
+        ``jwks`` holds the signature algorithms accepted (``allowed_algorithms``), the clock skew allowed
+        on ``exp`` and ``nbf`` (``leeway_seconds``, within 0 to 300 by the settings model), and the key
+        cache's lifetime and refresh cooldown; ``ValueError`` for an algorithm list that is empty or holds
+        ``none``, an ``HS*`` name (any case) or a name PyJWT does not implement. ``http`` sets the client's
+        timeouts. Each defaults to a fresh default instance.
         """
+        jwks = jwks or JwksSettings()
         for name, value in (
             ("issuer", issuer),
             ("audience", audience),
@@ -106,13 +91,13 @@ class JwksTokenVerifier(HttpAdapter):
                 raise ValueError(f"the {name} must not be empty")
         if not allow_insecure_issuer and not issuer.startswith(HTTPS_PREFIX):
             raise ValueError("the issuer must be an https URL")
-        self._algorithms = frozenset(_checked_algorithms(algorithms))
-        if not math.isfinite(leeway_seconds) or not 0 <= leeway_seconds <= MAX_LEEWAY_SECONDS:
-            raise ValueError(
-                f"the leeway must be finite and within 0 to {MAX_LEEWAY_SECONDS:g} seconds, got {leeway_seconds}"
-            )
-        self._leeway = leeway_seconds
-        super().__init__(transport=transport)
+        self._algorithms = frozenset(_checked_algorithms(jwks.allowed_algorithms))
+        self._leeway = jwks.leeway_seconds
+        self._ttl = jwks.ttl_seconds
+        # Keys are refreshed at most this often (stale or unknown kid alike), so neither an outage nor a
+        # burst of forged kids can hammer the provider; inside it the verifier answers at once.
+        self._cooldown = jwks.unknown_kid_cooldown_seconds
+        super().__init__(transport=transport, http=http)
         self._issuer = issuer
         self._iris = iris
         self._audience = audience
@@ -229,13 +214,10 @@ class JwksTokenVerifier(HttpAdapter):
                 raise IdentityUnavailable("the issuer's keys are out of date and cannot be renewed")
 
     def _is_stale(self) -> bool:
-        return self._fetched_at is None or self._clock() - self._fetched_at >= JWKS_TTL_SECONDS
+        return self._fetched_at is None or self._clock() - self._fetched_at >= self._ttl
 
     def _cooled_down(self) -> bool:
-        return (
-            self._attempted_at is None
-            or self._clock() - self._attempted_at >= UNKNOWN_KID_COOLDOWN_SECONDS
-        )
+        return self._attempted_at is None or self._clock() - self._attempted_at >= self._cooldown
 
     async def _refresh(self) -> None:
         self._attempted_at = self._clock()
