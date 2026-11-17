@@ -47,10 +47,13 @@ def _call_reasons(call: ast.Call) -> list[str]:
         reasons.append(f"log call takes {len(call.args)} positional arguments, not exactly one")
     elif not _is_constant_message(call.args[0]):
         reasons.append("log message is not a string literal (no f-string, no % arguments)")
+    extras = [keyword for keyword in call.keywords if keyword.arg == "extra"]
+    if not extras:
+        reasons.append(f"log call has no extra={CONTEXT_FUNCTION}(...)")
     reasons.extend(
         f"extra= is not a {CONTEXT_FUNCTION}(...) call"
-        for keyword in call.keywords
-        if keyword.arg == "extra" and not _is_log_extra_call(keyword.value)
+        for keyword in extras
+        if not _is_log_extra_call(keyword.value)
     )
     return reasons
 
@@ -99,7 +102,7 @@ log = logging.getLogger(__name__)
 
 def run(name):
     log.info("dropped", extra=log_extra(LogContext(db_namespace=name)))
-    log.error("failed", exc_info=True)
+    log.error("failed", extra=log_extra(LogContext(step="run")), exc_info=True)
 """
 
 BAD_SOURCES = {
@@ -117,6 +120,10 @@ BAD_SOURCES = {
     ),
     "dict extra": (
         'import logging\nlog = logging.getLogger(__name__)\nlog.info("m", extra={"step": 1})\n',
+        3,
+    ),
+    "no extra": (
+        'import logging\nlog = logging.getLogger(__name__)\nlog.info("m")\n',
         3,
     ),
     "other logger name": ('import logging\nlogger = logging.getLogger("x")\n', 2),

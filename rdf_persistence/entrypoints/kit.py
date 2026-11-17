@@ -72,7 +72,7 @@ from rdf_persistence.services.schema_structure import (
     tenant_access_class,
 )
 from rdf_persistence.services.session import Session
-from rdf_persistence.services.store import Store, ToolkitStore
+from rdf_persistence.services.store import Store, ToolkitStore, TracedStore, system_name_of
 from rdf_persistence.services.telemetry import error_type, log_extra
 from rdf_persistence.services.tenancy import (
     DEFAULT_STORE,
@@ -86,6 +86,11 @@ from rdf_persistence.services.workflows import Workflows
 from rdf_persistence.services.write_guards import WriteGuards
 
 log = logging.getLogger(__name__)
+
+
+def toolkit_store(raw: Store) -> ToolkitStore:
+    """The store the kit's services use: ``raw`` traced under its system name, then guarded (DEC-6)."""
+    return ToolkitStore(TracedStore(raw, system_name_of(raw)))
 
 
 class ServiceKit:
@@ -147,11 +152,11 @@ class ServiceKit:
             chain_of(view, migrations),
         )
         self.listings = Listings(view)
-        self.store = ToolkitStore(store)
+        self.store = toolkit_store(store)
         # one wrapper per raw store, so Tenancy's identity check sees a store wired twice (PD-16)
         wrapped = {id(store): self.store}
         for other in stores.values():
-            wrapped.setdefault(id(other), ToolkitStore(other))
+            wrapped.setdefault(id(other), toolkit_store(other))
         self.files = files
         self.identity = identity
         self.verifier = verifier

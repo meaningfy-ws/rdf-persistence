@@ -4,12 +4,18 @@ Every method is async. SPARQL text arrives already built from ``domain.sparql``.
 a Fuseki database, named as in ``services.iris``.
 """
 
+from contextlib import AbstractContextManager
 from typing import Protocol
 
+from opentelemetry.trace import Span, SpanKind
 from rdflib import Graph, URIRef
 from rdflib.query import Result
 
 from rdf_persistence.domain.exceptions import BadQuery, SparqlError
+from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
+from rdf_persistence.services.telemetry import traced
+
+GENERIC_SYSTEM_NAME = "sparql"
 
 
 class Store(Protocol):
@@ -103,3 +109,61 @@ class ToolkitStore:
 
     async def list_datasets(self) -> list[str]:
         return await self._store.list_datasets()
+
+
+def system_name_of(store: object) -> str:
+    """The ``db.system.name`` of a store: its ``db_system_name`` attribute, else ``sparql``."""
+    return getattr(store, "db_system_name", GENERIC_SYSTEM_NAME)
+
+
+class TracedStore:
+    """A ``Store`` that runs each call of the port inside a CLIENT span (otel-observability DEC-6).
+
+    The span is named after the method and carries the system, the dataset and the operation; it
+    never carries the SPARQL, which can hold a tenant's data (DEC-6).
+    """
+
+    def __init__(self, store: Store, system_name: str) -> None:
+        self._store = store
+        self._system_name = system_name
+
+    def _span(self, method: str, dataset: str | None = None) -> AbstractContextManager[Span]:
+        context = LogContext(
+            step=method,
+            db_system_name=self._system_name,
+            db_namespace=dataset,
+            db_operation_name=method,
+        )
+        return traced(method, context, kind=SpanKind.CLIENT)
+
+    async def query(self, dataset: str, sparql: str) -> Result:
+        with self._span("query", dataset):
+            return await self._store.query(dataset, sparql)
+
+    async def update(self, dataset: str, sparql: str) -> None:
+        with self._span("update", dataset):
+            await self._store.update(dataset, sparql)
+
+    async def put_graph(self, dataset: str, graph_iri: URIRef, graph: Graph) -> None:
+        with self._span("put_graph", dataset):
+            await self._store.put_graph(dataset, graph_iri, graph)
+
+    async def export_quads(self, dataset: str) -> bytes:
+        with self._span("export_quads", dataset):
+            return await self._store.export_quads(dataset)
+
+    async def import_quads(self, dataset: str, nquads: bytes) -> None:
+        with self._span("import_quads", dataset):
+            await self._store.import_quads(dataset, nquads)
+
+    async def create_dataset(self, name: str) -> None:
+        with self._span("create_dataset", name):
+            await self._store.create_dataset(name)
+
+    async def drop_dataset(self, name: str) -> None:
+        with self._span("drop_dataset", name):
+            await self._store.drop_dataset(name)
+
+    async def list_datasets(self) -> list[str]:
+        with self._span("list_datasets"):
+            return await self._store.list_datasets()

@@ -120,8 +120,9 @@ Settled in the EPIC and cited: DEC-1 to DEC-11. New:
   | `http_response_status_code` | `http.response.status_code` | integer | stable |
   | `messaging_system_name` | `messaging.system.name` | string | development |
   | `messaging_destination_name` | `messaging.destination.name` | string | development |
+  | `exception_type` | `exception.type` | string | stable (added by D-10, on a span's `exception` event) |
 
-  28 slots. Every range is one OpenTelemetry attribute value type (string, int, bool, or a list of
+  29 slots (28 shaped, `exception_type` added by D-10). Every range is one OpenTelemetry attribute value type (string, int, bool, or a list of
   one). `cause` goes: the exception travels in `exc_info` (DEC-8). Each slot is written by at least
   one row of PD-6 or PD-5; a slot no site writes is not added (`messaging.message.id` is left out:
   the kit's `receive` never sees the broker's message id).
@@ -138,8 +139,10 @@ Settled in the EPIC and cited: DEC-1 to DEC-11. New:
     root from a services module); the API returns a proxy that follows a provider installed later.
   - `traced(name: str, context: LogContext, *, kind=SpanKind.INTERNAL, root: bool = False)`: a
     context manager over `tracer.start_as_current_span(name, kind=kind,
-    attributes=log_extra(context), context=Context() if root else None)`, whose own defaults record
-    the exception and set the ERROR status; `traced` adds `error.type` (`error_type`) and re-raises.
+    attributes=log_extra(context), context=Context() if root else None)`. *Corrected by D-10:* the
+    API's recording is off (`record_exception=False, set_status_on_exception=False`); on an
+    `Exception` `traced` sets status ERROR with no description, `error.type` (`error_type`) and one
+    `exception` event carrying only `exception.type`, then re-raises.
     `root=True` starts a new trace whatever span is current (PD-5, the relay round). A decorator
     form is not offered: each site builds its context from its arguments.
   - The module joins the `nothing-in-services-imports-the-bus` list in `.importlinter`.
@@ -241,8 +244,8 @@ Settled in the EPIC and cited: DEC-1 to DEC-11. New:
   Fuseki's 400 body stays at DEBUG, now as `rp.store.response_body`. Zitadel's status only, never
   its body (`test_zitadel.py:389`).
 - **PD-9 The guard.** `tests/unit/test_log_calls.py` walks the package's AST (generated code
-  excluded): every call `log.<level>(…)` has exactly one positional argument, a string literal; any
-  `extra=` is a call of `log_extra`; any module-level logger is `log = logging.getLogger(__name__)`.
+  excluded): every call `log.<level>(…)` has exactly one positional argument, a string literal; every call
+  passes `extra=` as a call of `log_extra`; any module-level logger is `log = logging.getLogger(__name__)`.
   Reuse: the stdlib `ast` module; no new tool.
 - **PD-10 Test capture.** `opentelemetry-sdk` (same release as the API in the lock) in the `test`
   group. `tests/conftest.py` gains a session fixture that installs one `TracerProvider` with a
@@ -338,8 +341,8 @@ new span, which is what it should show. No operation changes its result.
 - **RISK-3 Tenant data reaches a telemetry backend.** Likelihood low after PD-8, impact high (data
   leaves the tenant boundary). Mitigation: no query text, no bodies above DEBUG, `error_text` for
   validation errors, TC-11 and TC-18 with a secret marker in logs and spans. Residual: an
-  exception message a consumer's validator writes with data in it reaches `exc_info`; the how-to
-  says so.
+  exception message a consumer's validator writes with data in it reaches `exc_info`; FastAPI's
+  native telemetry logs exception messages by default (D-9); the how-to says both.
 - **RISK-4 `technical-models` changes shape.** Likelihood medium (it is shaped in parallel),
   impact low: only the schema path and package name move (PD-1). If it is delayed, this change
   waits; it is third in the order.
@@ -412,6 +415,67 @@ DEC-9, and PD-4's fallback `"sparql"`.
   `RedisEventBus` reads the envelope, and no warning is logged. The test, not the adapter, is
   wrong: it sends a bytes body with headers that are no valid envelope, so the adapter's own
   check refuses it.
+
+- **D-8 Stage 2 order around `technical-models` stage 3.** PR #150 (its stage 3, rebased on our
+  stage 1) changes the constructors of `RedisEventBus`, `Relay`, `MessageBus`, the kit and the HTTP
+  adapters, the classes of tasks 2.2–2.4. Task 2.1 (new module, dependencies, lint bans, test
+  fixtures) runs first on `develop` at `7381b03`; before 2.2 the branch is rebased on
+  `origin/develop` (with #150 if merged by then), so the span work is written against the settings
+  parameters. Then 2.2 ∥ 2.4 ∥ 2.6 (disjoint files), then 2.3 (TC-29 needs `TracedStore`), then 2.5.
+
+- **D-9 Two facts of the installed packages** (task 2.6). The SDK 1.45.2's
+  `opentelemetry.sdk._logs.LoggingHandler` warns that it is deprecated in favour of
+  `opentelemetry-instrumentation-logging`'s `LoggingHandler`; the how-to names the latter (the
+  rabbit-hole "the logging bridge's home moves" came true). FastAPI 0.162's native telemetry has
+  `logs` on by default, which records exception messages and stack traces: outside the toolkit's
+  guarantee, so RISK-3's residual gains it and the how-to recommends `"logs": False` where an
+  exception message can carry tenant data.
+
+- **D-10 No exception text in a span** (full review, L1-C1 Critical, with L2-W6 and L4/L5-W1).
+  `traced` used the API's defaults (`record_exception`, `set_status_on_exception`), which put
+  `str(exc)` and the chained traceback into an `exception` event and the status description: a
+  pydantic `ValidationError` quotes its input, and any exception message or chained cause that
+  quotes data reaches the span (rdflib's `BadSyntax` quotes Fuseki's answer in `str()`, though
+  as a `SyntaxError` its formatted traceback shows no detail in rdflib 7; its test stays as a
+  guard). That breaks DEC-6/DEC-8, the spec's SHALL and RISK-3.
+  Corrects PD-3: `traced` opens the span with both defaults off, catches `Exception` (as the API
+  does; a cancellation is no failure), sets status ERROR with no description, sets `error.type`,
+  and adds one `exception` event carrying only `exception.type`. TC-16 changes accordingly; TC-18
+  extends to events; two failure-path tests carry the secret marker (malformed Turtle answering a
+  `query`; a handler raising a `ValidationError` that quotes it). The how-to's §10 follows.
+- **D-11 The 500 record keeps no tenant text** (L1-W1, re-labelled Critical: the same RISK-3
+  leak, in a call this epic rewrote under DEC-8). `StoredDataInvalid` is raised `from` the decode
+  error over stored values, and its message can quote them; `exc_info` sent both to the log
+  backend at ERROR. The `answer-internal-error` record logs `error.type` and, where the error or
+  its cause is a `ValidationError`, `rp.error.detail=error_text(...)` and no `exc_info`; other
+  mapped 500s keep `exc_info`. TC-13c changes accordingly; a test with the secret marker in an
+  undecodable stored collection.
+- **D-12 "As built" narrowed** (L2-W1, L2-W2). The Fuseki spelling of "a commit's store call" is
+  covered by TC-26 and TC-27, not a container span; "no provider installed" is TC-14 (a span, not
+  a commit). The proposal says so.
+- **D-13 Owed to the docs stage** (doc agreement, L2-W4, L2-W5, L2-S1): `rp.sweep.system_created`
+  described wrongly in the how-to and the schema; `event-driven.adoc` omits `middlewares=`; the
+  store-span table omits `rp.step`; the how-to's §6 still says a span "records" an exception
+  without saying it records the type only (checker F2).
+
+**Stage 2, under the floor** (full review: L1 `findings=4`, L2 `12`, L3 `7`, L4+L5 `14`):
+
+- L1-S1 the testkit's TID251 exemption and TC-17 not importing the testkit; L1-S2 the
+  `relay-round-failed` record logs after the round span closed.
+- L2-W3 the scenario map lacks the new unit tests (`make refresh-map` already exits 1 on 51 older
+  ids); L2-W7 the gate report (now in the PR body); L2-S2 TC-34 says two databases, the application
+  database makes three; L2-S3 TC-23's wording; L2-S4 TC-25 lists the fake's methods; L2-S5
+  `testing.adoc` lacks the `spans` and `tests/logs.py` conventions.
+- L3-W1 telemetry slot IRIs reuse model IRIs (`rp:activityClass` with another meaning); L3-W2
+  `opentelemetry` not in `domain-pure`, the provider set-up calls not banned; L3-W3 = L4/L5-W5
+  `_sweep_tenant` positional bools; L3-W4 the generator change reaches consumer schemas with a
+  non-identifier alias (the PR body's BREAKING line names it); L3-S1 the `noqa: PLR0913`; L3-S2
+  the private FastStream type; L3-S3 `toolkit_store` in entrypoints.
+- L4/L5-W2 the `spans` provider records for the rest of the worker; W3 idle relay rounds dominate
+  span volume; W4 expected refusals (`Conflict`, `NotFound`, `BadQuery`) mark spans ERROR (a spec
+  decision, for the developer); W6 an S3 failure names no operation; S1–S8 overhead, duplicated
+  contexts, the IRI-policy reason, the commit span's activity, feature/unit overlap, stale step
+  messages, the guard's `GOOD` sample, the nesting of log calls.
 
 **Stage 1, under the floor** (L2+L3 pass, `findings=5 accepted=0`; W1 and S3 carried by D-6):
 

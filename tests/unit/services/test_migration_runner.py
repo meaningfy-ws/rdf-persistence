@@ -405,6 +405,46 @@ async def test_each_applied_migration_is_logged_at_info(world, lib_chain, caplog
     assert logged["rp.schema.id"] == LIB, "and the schema"
 
 
+def children_of(finished, parent, name: str) -> list:
+    return [
+        s
+        for s in finished
+        if s.name == name and s.parent and s.parent.span_id == parent.context.span_id
+    ]
+
+
+async def test_tc32_migrating_two_tenants_is_a_tree_of_spans_down_to_each_migration(
+    world, lib_chain, spans
+):
+    other = await second_tenant(world)
+    await put_stamp(world.store, other.database, LIB, "1")
+    await migrate_tenants(world.tenancy, world.store, [(LIB, lib_chain)])
+    finished = spans()
+    (run,) = [s for s in finished if s.name == "rp.migration.tenants"]
+    assert run.attributes["rp.step"] == "migrate-tenants", "the run's step"
+    databases = children_of(finished, run, "rp.migration.database")
+    assert {s.attributes["db.namespace"] for s in databases} == {world.database, other.database}, (
+        "one span per tenant database, under the run"
+    )
+    assert {s.attributes["rp.step"] for s in databases} == {"migrate-database"}, "their step"
+    for database in databases:
+        (applied,) = children_of(finished, database, "rp.migration.apply")
+        assert applied.attributes["rp.step"] == "migrate", "the apply step"
+        assert applied.attributes["db.namespace"] == database.attributes["db.namespace"], (
+            "the database of its parent"
+        )
+        assert applied.attributes["rp.schema.id"] == LIB, "the schema"
+        assert applied.attributes["rp.migration.name"] == f"1__2 of {LIB}", "the migration"
+
+
+async def test_the_shared_databases_are_migrated_under_one_span(world, lib_chain, spans):
+    await migrate_shared(world.tenancy, world.store, [(LIB, lib_chain)])
+    finished = spans()
+    (run,) = [s for s in finished if s.name == "rp.migration.shared"]
+    assert run.attributes["rp.step"] == "migrate-shared", "the run's step"
+    assert children_of(finished, run, "rp.migration.database"), "each database is inside it"
+
+
 async def test_a_stamp_that_stays_at_the_old_version_is_a_failure(world, lib_chain):
     async def put_back() -> None:
         world.store.after_update = None

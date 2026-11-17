@@ -22,11 +22,16 @@ the fixtures plugin (``--strict-markers`` is on, so an unregistered marker is an
 """
 
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 from hypothesis import HealthCheck, settings
+from opentelemetry import trace
+from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from rdf_persistence.testkit.markers import EVENTS, FILES, IDENTITY, STORE, register_markers
 
@@ -136,6 +141,23 @@ def pytest_collection_modifyitems(items: list) -> None:
 # ---------------------------------------------------------------------------
 # Put fixtures used across more than one test tree here. The container fixtures
 # come from the testkit plugin above.
+
+
+@pytest.fixture(scope="session")
+def _span_exporter() -> InMemorySpanExporter:
+    """The one exporter of the process: the global provider is set once, and xdist workers are processes."""
+    exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    trace.set_tracer_provider(provider)
+    return exporter
+
+
+@pytest.fixture
+def spans(_span_exporter: InMemorySpanExporter) -> Callable[[], tuple[ReadableSpan, ...]]:
+    """A callable over the spans finished since the test began; call it after the code under test."""
+    _span_exporter.clear()
+    return lambda: tuple(_span_exporter.get_finished_spans())
 
 
 def load_text_file(relative_path: str) -> str:

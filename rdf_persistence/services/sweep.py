@@ -24,7 +24,7 @@ from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.generated.service.rp_service import ServiceSettings
 from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.store import Store
-from rdf_persistence.services.telemetry import log_extra
+from rdf_persistence.services.telemetry import log_extra, traced
 from rdf_persistence.services.tenancy import Tenancy, store_name_in
 
 log = logging.getLogger(__name__)
@@ -42,6 +42,11 @@ async def sweep(
         StoreNotWired: Records name stores that are not wired (all named, sorted); nothing was changed.
         StoreUnavailable: A wired store cannot list its databases; nothing was changed.
     """
+    with traced("rp.sweep", LogContext(step="sweep")):
+        await _sweep(tenancy, files, settings)
+
+
+async def _sweep(tenancy: Tenancy, files: FileStore, settings: ServiceSettings) -> None:
     created = await tenancy.ensure_system_database()
     # one query for every record (PD-13), by tenant IRI in order
     found = {tenancy.tenant_of(record): record for record in await tenancy.access_records()}

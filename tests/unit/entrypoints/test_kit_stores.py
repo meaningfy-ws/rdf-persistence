@@ -72,6 +72,20 @@ async def test_tc31_store_of_a_tenant_is_the_toolkit_store_around_its_store(worl
     assert store is not world.service.kit.store, "not the default store"
 
 
+async def test_tc27_a_query_through_each_wired_store_is_a_span_of_its_dataset(world, spans) -> None:
+    kit = world.service.kit
+    record, _ = await kit.tenancy.get(world.tenant)
+    ask = "ASK { ?s ?p ?o }"
+    await kit.store.query(kit.system_database, ask)
+    await kit.tenancy.stores()[CLIENT_A].query(record.database_name, ask)
+    queries = [span for span in spans() if span.name == "query"]
+    assert {span.attributes["db.namespace"] for span in queries} == {
+        kit.system_database,
+        record.database_name,
+    }, "a span on each store, with that store's dataset"
+    assert {span.attributes["db.system.name"] for span in queries} == {"rdflib"}
+
+
 async def test_tc31_store_of_an_unknown_tenant_is_not_found(world) -> None:
     with pytest.raises(NotFound):
         await world.service.kit.store_of(

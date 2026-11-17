@@ -24,7 +24,7 @@ from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.session import utc_now
 from rdf_persistence.services.store import Store
-from rdf_persistence.services.telemetry import log_extra
+from rdf_persistence.services.telemetry import log_extra, traced
 from rdf_persistence.services.tenancy import Tenancy
 
 log = logging.getLogger(__name__)
@@ -83,6 +83,23 @@ async def sweep_tenant(
         DatabaseGone: The tenant database does not exist.
         TenantGone: The tenant bucket does not exist; nothing was removed.
     """
+    with traced("rp.tenant_sweep", LogContext(step="tenant-sweep", tenant_id=tenant)):
+        return await _sweep_tenant(
+            tenancy, store, files, iris, tenant, remove, remove_blobs, older_than, clock
+        )
+
+
+async def _sweep_tenant(
+    tenancy: Tenancy,
+    store: Store,
+    files: FileStore,
+    iris: Iris,
+    tenant: str,
+    remove: bool,
+    remove_blobs: bool,
+    older_than: timedelta,
+    clock,
+) -> TenantSweepReport:
     access, _ = await tenancy.get(tenant)
     if access.state != TenantState.ACTIVE:
         raise Conflict(f"{tenant} is {access.state}, not active")

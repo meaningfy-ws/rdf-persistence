@@ -197,6 +197,13 @@ async def test_a_dry_run_reports_the_orphans_and_changes_nothing(world):
     assert await world.snapshot() == before, "graphs, markers and blobs are as they were"
 
 
+async def test_tc33_a_tenant_sweep_is_one_span_naming_the_tenant(world, spans):
+    await world.sweep()
+    (run,) = [s for s in spans() if s.name == "rp.tenant_sweep"]
+    assert run.attributes["rp.step"] == "tenant-sweep", "the step"
+    assert run.attributes["rp.tenant.id"] == world.tenant, "the tenant"
+
+
 async def test_removing_loaded_graphs_leaves_the_blobs(world):
     report = await world.sweep(remove=True)
     assert not await world.holds(world.g2), "the orphan is gone"

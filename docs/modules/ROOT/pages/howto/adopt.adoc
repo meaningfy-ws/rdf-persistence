@@ -1568,6 +1568,10 @@ async with (
     ...                                    # serve app, for example with uvicorn
 ----
 
+To see traces and structured logs, install the OpenTelemetry SDK and call your telemetry set-up
+first in this composition root, before the stores are built; the toolkit installs none itself.
+See xref:howto/observability.adoc[See what the toolkit is doing].
+
 The verifier takes the issuer, the audience (the Zitadel project id) and the roles claim. It
 refuses an issuer that is not `https` unless you pass `allow_insecure_issuer=True`, which is for
 test containers only. In Zitadel, set each application to JWT access tokens: the verifier cannot

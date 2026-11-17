@@ -12,6 +12,7 @@ from rdf_persistence.domain.layout import system_database_name
 from rdf_persistence.services.iris import tenant_resource_name
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
+from rdf_persistence.services.store import ToolkitStore, TracedStore
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore, assert_isomorphic
@@ -58,6 +59,29 @@ async def test_a_database_and_a_bucket_that_no_record_names_are_dropped(
     await sweep(tenancy, store, files, SETTINGS)
     assert ORPHAN not in await store.list_datasets(), "database"
     assert await files.list_buckets(ORPHAN) == [], "bucket"
+
+
+async def test_tc33_the_sweep_is_one_span_with_the_orphan_drop_inside(files, spans):
+    fake = FakeStore()
+    traced_store = ToolkitStore(TracedStore(fake, "rdflib"))
+    tenancy = Tenancy(
+        traced_store,
+        files,
+        SETTINGS,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
+    )
+    await tenancy.ensure_system_database()
+    await tenancy.create("Ghent", library_slots(), CREATOR)
+    await fake.create_dataset(ORPHAN)
+    await sweep(tenancy, traced_store, files, SETTINGS)
+    finished = spans()
+    (run,) = [s for s in finished if s.name == "rp.sweep"]
+    assert run.attributes["rp.step"] == "sweep", "the sweep's step"
+    drops = [s for s in finished if s.name == "drop_dataset"]
+    assert [s.attributes["db.namespace"] for s in drops] == [ORPHAN], "the orphan was dropped"
+    assert drops[0].parent.span_id == run.context.span_id, "the drop is inside the sweep span"
 
 
 async def test_a_creation_that_stopped_before_the_record_leaves_only_the_kept_tenant_after_the_sweep(

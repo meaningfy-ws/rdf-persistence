@@ -35,7 +35,7 @@ from rdf_persistence.services.migrations import (
     versions,
 )
 from rdf_persistence.services.store import Store
-from rdf_persistence.services.telemetry import log_extra
+from rdf_persistence.services.telemetry import log_extra, traced
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.services.yaml_files import SHOWN, shown
 
@@ -52,8 +52,10 @@ async def migrate_database(
             move; the message names the database, the migration and the cause. What an earlier
             migration of the chain did stays (it was its own request).
     """
-    for schema_id, chain in chains:
-        await _migrate_schema(store, database, schema_id, chain, stamps_graph)
+    context = LogContext(step="migrate-database", db_namespace=database)
+    with traced("rp.migration.database", context):
+        for schema_id, chain in chains:
+            await _migrate_schema(store, database, schema_id, chain, stamps_graph)
 
 
 async def migrate_shared(tenancy: Tenancy, store: Store, chains: Sequence[SchemaChain]) -> None:
@@ -62,23 +64,24 @@ async def migrate_shared(tenancy: Tenancy, store: Store, chains: Sequence[Schema
     Raises:
         MigrationFailed: A migration failed; it is logged at ERROR (step ``migrate-shared``) first.
     """
-    for database in await _shared_databases(tenancy, store):
-        try:
-            await migrate_database(store, database, chains, tenancy.stamps_graph)
-        except MigrationFailed as error:
-            log.error(
-                "a shared database could not be migrated",
-                exc_info=error,
-                extra=log_extra(
-                    LogContext(
-                        step="migrate-shared",
-                        db_namespace=database,
-                        schema_id=error.schema,
-                        migration_name=error.migration,
-                    )
-                ),
-            )
-            raise
+    with traced("rp.migration.shared", LogContext(step="migrate-shared")):
+        for database in await _shared_databases(tenancy, store):
+            try:
+                await migrate_database(store, database, chains, tenancy.stamps_graph)
+            except MigrationFailed as error:
+                log.error(
+                    "a shared database could not be migrated",
+                    exc_info=error,
+                    extra=log_extra(
+                        LogContext(
+                            step="migrate-shared",
+                            db_namespace=database,
+                            schema_id=error.schema,
+                            migration_name=error.migration,
+                        )
+                    ),
+                )
+                raise
 
 
 async def migrate_tenants(
@@ -98,30 +101,31 @@ async def migrate_tenants(
     force. The next tenant runs after a failure.
     """
     failed: set[str] = set()
-    for tenant in await tenancy.tenants():
-        if tenant.state == TenantState.DELETING:
-            continue
-        # outside the try: StoreNotWired is not a failed migration
-        home = await tenancy.store_of(tenant.id)
-        try:
-            await migrate_database(
-                home, tenancy.database_of(tenant.id), chains, tenancy.stamps_graph
-            )
-        except MigrationFailed as error:
-            log.error(
-                "a tenant could not be migrated; set aside",
-                exc_info=error,
-                extra=log_extra(
-                    LogContext(
-                        step="migrate-tenant",
-                        tenant_id=tenant.id,
-                        schema_id=error.schema,
-                        migration_name=error.migration,
-                    )
-                ),
-            )
-            failed.add(tenant.id)
-    tenancy.set_aside(failed)
+    with traced("rp.migration.tenants", LogContext(step="migrate-tenants")):
+        for tenant in await tenancy.tenants():
+            if tenant.state == TenantState.DELETING:
+                continue
+            # outside the try: StoreNotWired is not a failed migration
+            home = await tenancy.store_of(tenant.id)
+            try:
+                await migrate_database(
+                    home, tenancy.database_of(tenant.id), chains, tenancy.stamps_graph
+                )
+            except MigrationFailed as error:
+                log.error(
+                    "a tenant could not be migrated; set aside",
+                    exc_info=error,
+                    extra=log_extra(
+                        LogContext(
+                            step="migrate-tenant",
+                            tenant_id=tenant.id,
+                            schema_id=error.schema,
+                            migration_name=error.migration,
+                        )
+                    ),
+                )
+                failed.add(tenant.id)
+        tenancy.set_aside(failed)
     return failed
 
 
@@ -242,24 +246,21 @@ async def _apply(
     stamps_graph: URIRef,
 ) -> str:
     """Send the request of ``migration`` and answer the stamp read back: ``to`` or a later version (PD-7, PD-23)."""
-    try:
-        await store.update(database, migration_request(migration, stamps_graph))
-    except PersistenceError as error:
-        raise _failed(database, schema_id, migration, error) from error
-    version = await _read_stamp(store, database, schema_id, stamps_graph, migration)
-    if problem := _not_forward(version, migration, versions(chain)):
-        raise _failed(database, schema_id, migration, f"after the request {problem}")
-    log.info(
-        "migrated a database",
-        extra=log_extra(
-            LogContext(
-                step="migrate",
-                db_namespace=database,
-                schema_id=schema_id,
-                migration_name=_name(schema_id, migration),
-            )
-        ),
+    context = LogContext(
+        step="migrate",
+        db_namespace=database,
+        schema_id=schema_id,
+        migration_name=_name(schema_id, migration),
     )
+    with traced("rp.migration.apply", context):
+        try:
+            await store.update(database, migration_request(migration, stamps_graph))
+        except PersistenceError as error:
+            raise _failed(database, schema_id, migration, error) from error
+        version = await _read_stamp(store, database, schema_id, stamps_graph, migration)
+        if problem := _not_forward(version, migration, versions(chain)):
+            raise _failed(database, schema_id, migration, f"after the request {problem}")
+        log.info("migrated a database", extra=log_extra(context))
     return cast(str, version)  # _not_forward answered a problem for None
 
 

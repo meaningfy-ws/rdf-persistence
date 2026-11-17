@@ -39,6 +39,9 @@
       "rp.event.origin": {
          "@id": "eventOrigin"
       },
+      "exception.type": {
+         "@id": "exceptionType"
+      },
       "rp.store.found_name": {
          "@id": "foundStoreName"
       },

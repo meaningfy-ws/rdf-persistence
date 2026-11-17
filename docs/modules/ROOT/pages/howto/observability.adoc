@@ -1,0 +1,591 @@
+= See what the toolkit is doing
+:description: How an application turns on traces and structured logs for rdf-persistence: install the OpenTelemetry SDK and an exporter, enable FastAPI, httpx and Redis telemetry and the logging bridge, read the spans and attributes the toolkit writes, migrate queries from the old log attributes, sample, and what never reaches telemetry.
+
+_How do I see requests, store calls and background work in my tracing backend? How do I find a
+tenant's log records? What do I change in my log queries after the upgrade?_
+
+The toolkit starts spans and writes log records, and configures nothing: it uses the
+OpenTelemetry API only, so without an SDK its spans are no-ops and its log records go to whatever
+handler your application set. This page shows what the application installs to make them visible,
+what the toolkit then emits, how the log attributes changed, and what stays out of telemetry. It
+describes rdf-persistence from 0.5.0. The toolkit targets OpenTelemetry semantic conventions
+v1.45.0 and the `opentelemetry-api` 1.45.x release; it declares `opentelemetry-api>=1.44,<2`.
+
+[#breaking]
+.Breaking for whoever reads the logs, from rdf-persistence 0.5.0
+****
+The attribute names and the message texts of the toolkit's log records changed. Queries,
+dashboards and alerts on the old names (`step`, `tenant`, `resource`, ...) or on message text that
+carried an identifier return nothing until they use the names in
+xref:#old-to-new[the old-to-new table]. There are no compatibility aliases.
+****
+
+[#install]
+== 1. Install the SDK and an exporter
+
+The toolkit depends on `opentelemetry-api` only. The application adds the SDK, an exporter and the
+instrumentation it wants, and lets `uv` resolve them together so the SDK matches the API's release
+line. FastStream's telemetry middleware (step 4) needs `opentelemetry-semantic-conventions`; the SDK
+brings it, so the list below adds nothing for it:
+
+[source,toml]
+----
+# pyproject.toml
+[project]
+dependencies = [
+    "rdf-persistence[events]",
+    "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp-proto-http",     # or the exporter of your backend
+    "opentelemetry-instrumentation-httpx",
+    "opentelemetry-instrumentation-logging",      # the logging handler, see step 5
+]
+----
+
+Then install the providers once, before the application is built. This is the complete function:
+it sets up traces and logs, sends both over OTLP, instruments `httpx` (step 3) and attaches the
+logging bridge (step 5). The module path (`library/entrypoints/telemetry.py`) and the service name
+(`library`) are placeholders for your own:
+
+[source,python]
+----
+# library/entrypoints/telemetry.py
+import logging
+
+from opentelemetry import trace
+from opentelemetry._logs import set_logger_provider
+from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+from opentelemetry.instrumentation.logging.handler import LoggingHandler
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+
+def install_telemetry() -> None:
+    resource = Resource.create({"service.name": "library"})
+
+    tracer_provider = TracerProvider(resource=resource)
+    tracer_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    trace.set_tracer_provider(tracer_provider)
+
+    logger_provider = LoggerProvider(resource=resource)
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter()))
+    set_logger_provider(logger_provider)
+
+    # httpx, step 3: before any store is built, so every client the adapters create is traced
+    HTTPXClientInstrumentor().instrument()
+
+    # the logging bridge, step 5
+    logging.getLogger().addHandler(LoggingHandler(level=logging.INFO, logger_provider=logger_provider))
+    logging.getLogger().setLevel(logging.INFO)
+----
+
+The exporters read their endpoint and headers from the standard `OTEL_EXPORTER_OTLP_*`
+environment variables. The toolkit never calls any of this: it installs no provider, exporter,
+handler or level, in the package or in the testkit. The end of step 4 shows where the call
+goes in the composition root.
+
+[#fastapi]
+== 2. Trace the HTTP requests
+
+FastAPI 0.162 has native telemetry. It is on by default, uses the global providers you installed
+in step 1, and opens one SERVER span per request. You build the `FastAPI` app, so you set it
+there; `install_service` never touches it. The three lines are alternatives, not a sequence; use one:
+
+[source,python]
+----
+from fastapi import FastAPI
+
+app = FastAPI()                                        # alternative 1: the defaults, tracing on, global providers
+app = FastAPI(telemetry={"tracing": True, "logs": False})                           # alternative 2: no FastAPI logs
+app = FastAPI(telemetry={"exclude": lambda scope: scope["path"] == "/health"})      # alternative 3: skip a path
+----
+
+`telemetry` takes a `TelemetryConfig` dictionary (`fastapi.telemetry.TelemetryConfig`); the keys
+are `tracer_provider`, `meter_provider`, `logger_provider`, `tracing`, `metrics`, `logs`,
+`operation_spans`, `auto_configure` and `exclude`, and an omitted key keeps its default. The toolkit
+adds no route spans of its own: its spans (step 6) are children of the request span.
+
+NOTE: FastAPI's `logs` option, on by default, records validation failures and unhandled exceptions
+with their exception messages and stack traces. That record is FastAPI's, not the toolkit's, and
+the guarantees of xref:#never[what never reaches telemetry] do not cover it. Set `"logs": False` if
+an exception message of your own can carry a tenant's data.
+
+[#httpx]
+== 3. Trace the calls to the stores
+
+The Fuseki and identity adapters (and the token-key fetch) talk over `httpx`; the S3 file store uses
+`boto3`, which this instrumentation does not cover. The toolkit does not instrument the client; the
+instrumentation package does. `install_telemetry()` of step 1 already calls it, before any store is
+built, so every client the adapters create is traced:
+
+[source,python]
+----
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+
+HTTPXClientInstrumentor().instrument()     # already in install_telemetry(), step 1
+----
+
+An HTTP CLIENT span then appears beneath the toolkit's own CLIENT span for the store call (step 6).
+
+[#redis]
+== 4. Trace the event broker
+
+`RedisEventBus` takes the broker's middlewares and hands them to its FastStream `RedisBroker`
+unchanged. Pass FastStream's telemetry middleware; the toolkit installs none:
+
+[source,python]
+----
+from faststream.redis.opentelemetry import RedisTelemetryMiddleware
+from rdf_persistence.adapters.redis_events import RedisEventBus
+
+bus = RedisEventBus(
+    "redis://redis:6379",
+    deployment="library",          # your deployment's name, as in the event-driven guide
+    middlewares=[RedisTelemetryMiddleware()],
+)
+----
+
+`RedisTelemetryMiddleware` takes optional `tracer_provider`, `meter_provider`, `meter` and
+`include_messages_counters` arguments and uses the global providers by default. It opens a
+PRODUCER span for each publish and adds a `traceparent` header beside the event envelope, so
+another deployment's CONSUMER span continues the trace; the envelope reads back unchanged. It needs
+`opentelemetry.semconv`, which the SDK brings. See
+xref:howto/event-driven.adoc#relay[Carry commits to other deployments and to browsers] for the rest
+of the bus.
+
+The pieces go into the composition root of xref:howto/adopt.adoc#serve[the adoption guide] in this
+order. The telemetry set-up comes first, because a provider installed after a store is built does
+not trace that store's clients:
+
+[source,python]
+----
+install_telemetry()                                   # step 1: providers, httpx, logging bridge
+app = FastAPI(telemetry={"tracing": True})            # step 2: you build the app
+bus = RedisEventBus(                                  # step 4: only if the service uses events
+    "redis://redis:6379",
+    deployment="library",
+    middlewares=[RedisTelemetryMiddleware()],
+)
+kit = install_service(                                # as the adoption guide shows it
+    app,
+    event_bus=bus,
+    # ... schema, stores, identity, verifier, settings, as in the adoption guide
+)
+----
+
+`install_service` mounts the toolkit's routes and wiring on the app and returns the *kit*, the
+toolkit's handle to the parts it set up (*wired* means connected to the app and to each other). `RedisEventBus` is the toolkit's event-broker adapter, and a
+*deployment* is one running instance of your service, named by a lowercase string that is unique on
+the broker (see xref:howto/event-driven.adoc#relay[Carry commits to other deployments and to
+browsers]). The application adds no dependency for steps 2 and 4: FastAPI is a toolkit dependency and
+FastStream comes with the `events` extra of step 1.
+
+[#logging-bridge]
+== 5. Send the log records with the logging bridge
+
+The toolkit logs through the standard `logging` module and nothing else. A *logging bridge* is a
+`logging.Handler` that turns each `LogRecord` into an OpenTelemetry log record, with the current
+trace and span ids, the `extra=` attributes as log attributes, and `exc_info` as `exception.*`.
+Attach one to the root logger (the last lines of `install_telemetry` above), or to the
+`rdf_persistence` logger to bridge the toolkit alone.
+
+The handler comes from `opentelemetry-instrumentation-logging`; the SDK's own `LoggingHandler` is
+deprecated. If the import fails after an upgrade, look in the release notes of that package and of
+`opentelemetry-sdk`: the import line of `install_telemetry` is the one to change.
+
+With the bridge on, the record the sweep writes when it drops an orphan database
+(`log.info("dropping an orphan database", extra=...)`) reaches the backend as a log record with the
+body `dropping an orphan database`, the attributes `rp.step`, `db.namespace` and `rp.store.name`,
+and the trace and span ids of the span that was current.
+
+[#spans]
+== 6. The spans the toolkit starts
+
+Span names are fixed: an identifier is an attribute, never part of a name, so a name stays low
+cardinality. An exception that leaves a span records it, sets the status ERROR and sets `error.type`
+to the exception's qualified class name.
+
+*Store spans.* `install_service` puts a traced wrapper around every store you give it: one CLIENT span per call of
+the `Store` port, named after the port method. They carry `db.system.name`, `db.operation.name`
+and, when the call names a dataset, `db.namespace`.
+
+|===
+|Span name |Port call |Attributes
+
+|`query`
+|`Store.query`
+|`db.system.name`, `db.namespace`, `db.operation.name`
+
+|`update`
+|`Store.update`
+|the same
+
+|`put_graph`
+|`Store.put_graph`
+|the same
+
+|`export_quads`, `import_quads`
+|the dataset export and import
+|the same
+
+|`create_dataset`, `drop_dataset`
+|a database created or dropped
+|the same
+
+|`list_datasets`
+|`Store.list_datasets`
+|`db.system.name`, `db.operation.name` (no namespace)
+|===
+
+`db.system.name` is `fuseki` for `FusekiStore`, `rdflib` for the testkit's fake store, and `sparql`
+for a store of your own. Name your product by setting a class attribute `db_system_name` on your
+store.
+
+*Internal spans.* INTERNAL spans named `rp.<area>.<action>`:
+
+|===
+|Span |Where |Attributes
+
+|`rp.session.commit`
+|a commit that sends a request (not an empty one)
+|`rp.step`, `db.namespace`
+
+|`rp.migration.shared`, `rp.migration.tenants`
+|the shared databases, and the tenants, migrated at start-up
+|`rp.step`
+
+|`rp.migration.database`
+|one database migrated
+|`rp.step`, `db.namespace`
+
+|`rp.migration.apply`
+|one migration applied
+|`rp.step`, `db.namespace`, `rp.schema.id`, `rp.migration.name`
+
+|`rp.sweep`
+|the start-up sweep
+|`rp.step`
+
+|`rp.tenant_sweep`
+|the sweep of one live tenant
+|`rp.step`, `rp.tenant.id`
+
+|`rp.relay.round`
+|one round of the relay; always the root of a new trace
+|`rp.step`
+
+|`rp.relay.database`
+|one tenant database in a round
+|`rp.step`, `rp.tenant.id`
+
+|`rp.bus.handle`
+|a command handler
+|`rp.step`, `rp.activity.class`, `rp.activity.id`
+
+|`rp.bus.observe`
+|one observer call
+|`rp.step`, `rp.observer.name`, `rp.activity.class`, `rp.activity.id`
+|===
+
+A request then reads as one trace: the FastAPI SERVER span, `rp.session.commit` beneath it, the
+store `update` span and its HTTP span beneath that, and `rp.bus.observe` per observer. The relay
+runs in a background task, so each `rp.relay.round` is its own trace, with the FastStream PRODUCER
+span of each publish inside it.
+
+A span the toolkit opens around a failure the toolkit swallows (a relay database that is skipped
+for this round, an observer that failed, a `NotFound` the sweep ignores) is ERROR; its parent stays
+as it was.
+
+[#attributes]
+== 7. The attributes
+
+One model, `LogContext`, gives the names to log records and to span attributes, so a trace and
+its logs correlate on the same keys. A name from the OpenTelemetry semantic conventions is used
+wherever the conventions have one; everything else is under `rp.*`. A record carries only the
+attributes that apply to it, and always `rp.step`.
+
+|===
+|Attribute |Type |Meaning |Status in v1.45.0
+
+|`rp.step`
+|string
+|What the code was doing, such as `drop-orphan-database`; on every record and span
+|`rp` (the toolkit's own name, not in the conventions)
+
+|`rp.tenant.id`
+|string
+|The tenant's id
+|`rp`
+
+|`rp.resource`
+|string
+|The resource, file or database object concerned
+|`rp`
+
+|`rp.store.name`
+|string
+|The name of the store a tenant is recorded on
+|`rp`
+
+|`rp.store.found_name`
+|string
+|The store a tenant was found on, when it differs
+|`rp`
+
+|`rp.schema.id`
+|string
+|The schema a migration belongs to
+|`rp`
+
+|`rp.migration.name`
+|string
+|The migration
+|`rp`
+
+|`rp.blob.count`
+|integer
+|Files in a dumped tenant
+|`rp`
+
+|`rp.restore.source_tenant.id`
+|string
+|The tenant a restore was made from
+|`rp`
+
+|`rp.iri_policy.fields`
+|string list
+|The fields of the IRI policy
+|`rp`
+
+|`rp.sweep.system_created`
+|boolean
+|Whether the swept tenants were created by the system
+|`rp`
+
+|`rp.sweep.resources`
+|string list
+|The resources the sweep names
+|`rp`
+
+|`rp.activity.id`
+|string
+|The activity's id
+|`rp`
+
+|`rp.activity.class`
+|string
+|The Python class name of the activity
+|`rp`
+
+|`rp.activity.class_iri`
+|string
+|The class IRI an incoming event carries
+|`rp`
+
+|`rp.event.origin`
+|string
+|The deployment that published an event
+|`rp`
+
+|`rp.observer.name`
+|string
+|The observer's name
+|`rp`
+
+|`rp.message.limit`
+|integer
+|The message-bus limit that was exceeded
+|`rp`
+
+|`rp.error.detail`
+|string
+|Names the fields at fault, never their values
+|`rp`
+
+|`rp.store.response_body`
+|string
+|The store's answer to a refused request; written at DEBUG only
+|`rp`
+
+|`db.system.name`
+|string
+|The store product (`fuseki`)
+|stable
+
+|`db.namespace`
+|string
+|The database (dataset) of a tenant or of the shared data
+|stable
+
+|`db.operation.name`
+|string
+|The port method
+|stable
+
+|`db.response.status_code`
+|string
+|The store's status code
+|stable
+
+|`error.type`
+|string
+|The exception's qualified class name, or the code a service answered with
+|stable
+
+|`http.response.status_code`
+|integer
+|The identity provider's status code
+|stable
+
+|`messaging.system.name`
+|string
+|`redis`
+|development
+
+|`messaging.destination.name`
+|string
+|The stream
+|development
+|===
+
+The `messaging.*` names are still in development in the conventions and may be renamed; a rename
+reaches you in a release of the toolkit marked BREAKING. A log record's message is a constant
+sentence with no identifier in it: group and count on the message, filter on the attributes.
+
+[#old-to-new]
+== 8. Migrate your log queries
+
+Messages are now constant, and the keys changed. Rewrite a query on an old key to the new name:
+
+|===
+|Old key |New attribute
+
+|`step`
+|`rp.step`
+
+|`tenant`
+|`rp.tenant.id`
+
+|`resource`
+|`rp.resource` (`db.namespace` for a dropped orphan database)
+
+|`database`
+|`db.namespace`
+
+|`schema`
+|`rp.schema.id`
+
+|`migration`
+|`rp.migration.name`
+
+|`cause`
+|the record's exception (`exception.*` through the bridge)
+
+|`fields`
+|`rp.iri_policy.fields`
+
+|`store`, `recorded_store`
+|`rp.store.name`
+
+|`found_store`
+|`rp.store.found_name`
+
+|`blobs`
+|`rp.blob.count`
+
+|`source`
+|`rp.restore.source_tenant.id`
+
+|`system_created`
+|`rp.sweep.system_created`
+
+|`resources`
+|`rp.sweep.resources`
+
+|`error.type` (on the 500 answer of the service)
+|unchanged: it keeps its name and its value, the exception's qualified class name
+|===
+
+A query that matched a tenant, an activity or a database in the message text now matches the
+attribute (`rp.tenant.id`, `rp.activity.id`, `db.namespace`) and never the text.
+
+A record of a failure carries the exception in `exc_info`, which the bridge sends as `exception.type`,
+`exception.message` and `exception.stacktrace`. Where the exception's text could carry a tenant's
+data, the record carries `error.type` and `rp.error.detail` instead, and no `exc_info` (step 10).
+
+One toolkit class changed with this: the field `FusekiDataset.ds_name` was renamed
+`fuseki_dataset_name`; the dotted wire name `ds.name` is unchanged. Code that reads the field by its
+Python name changes it.
+
+[#sampling]
+== 9. Keep the span volume down
+
+Every store call is a span. Listing many aggregates, or a busy service, makes many spans; with no
+sampling every one is exported, which costs bandwidth and backend storage, not behaviour. Sample in
+the SDK, not in the toolkit. Sample by trace, so a trace is kept or dropped whole, and let a child
+follow its parent:
+
+[source,python]
+----
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
+
+tracer_provider = TracerProvider(
+    resource=resource,
+    sampler=ParentBased(TraceIdRatioBased(0.1)),      # keep one trace in ten
+)
+----
+
+The same choice by environment, with no code: `OTEL_TRACES_SAMPLER=parentbased_traceidratio` and
+`OTEL_TRACES_SAMPLER_ARG=0.1`. A relay round is the root of its own trace, so the ratio applies to
+it directly, not to a request's trace. A sampler decides only which spans are exported; the
+toolkit's behaviour does not change.
+
+[#never]
+== 10. What never reaches telemetry
+
+Spans and log records leave the tenant boundary for a backend, so the toolkit keeps tenant data
+out of them:
+
+* *No query text.* A store span never carries `db.query.text`: the toolkit's SPARQL inlines literal
+  values, which are tenant data.
+* *No bodies above DEBUG.* The body of a store's refusal is `rp.store.response_body` at DEBUG
+  only; the identity provider's answer is never logged, only its status.
+* *No tenant values in validation errors.* A pydantic `ValidationError` quotes its input, so
+  where one comes from tenant data (an incoming event, a stored activity that cannot be decoded)
+  the record carries `error.type` and `rp.error.detail`, which names the fields at fault and never
+  a value, and no `exc_info`. The record of a 500 answer (`internal error answered`) follows the
+  same rule: where the error, or the error it was raised from, is a `ValidationError` over a
+  stored value, it drops the traceback.
+* *No tenant data in a span.* Span names are fixed and attributes are identifiers (a tenant id,
+  an activity id, a database name), never the data.
+* *No exception text in a span.* A span that an exception leaves is marked `ERROR` with no
+  description, carries `error.type`, and has one `exception` event whose only attribute is
+  `exception.type`. It never carries the exception's message or traceback, which can quote what a
+  store or a validator received.
+
+What the toolkit cannot guard: an exception that your own code raises, with data in its message,
+reaches the log records that keep `exc_info` (a mapped 500 whose cause is not a validation error,
+a failed observer or round) and so as `exception.message` and `exception.stacktrace`. This
+includes the text of an exception your own validator raises on a tenant write
+(xref:howto/adopt.adoc#validators[Enforce your own rules on tenant writes]). Write those messages
+without values, or filter `exception.*` in your collector. FastAPI's own `logs` option (step 2) is
+outside the toolkit the same way.
+
+[#verify]
+== 11. Check that it works
+
+. Start the application against a local collector (or swap `OTLPSpanExporter()` in step 1 for
+  `ConsoleSpanExporter()` from `opentelemetry.sdk.trace.export`, and `OTLPLogExporter()` for
+  `ConsoleLogRecordExporter()` from `opentelemetry.sdk._logs.export`), and commit one aggregate
+  through an HTTP request.
+. Look for one trace holding the request span, `rp.session.commit`, an `update` span with
+  `db.system.name` `fuseki`, and its HTTP span.
+. Look for a log record with a body that is a sentence and an `rp.step` attribute; on a record
+  written inside a span, the trace id equals the span's.
+. If nothing appears, check the order in step 4: `install_telemetry()` runs before the stores are
+  built, it calls the httpx instrumentation, and the root logger has the handler.
