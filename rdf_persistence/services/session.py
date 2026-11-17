@@ -1080,7 +1080,9 @@ class Session:
 
         Raises:
             InvalidIri: ``iri`` is not an aggregate IRI the policy mints for the tenant.
-            InvalidGraph: The data does not parse as ``rdf_format``; nothing is written.
+            InvalidGraph: The data does not parse as ``rdf_format``, or a JSON-LD file holds a named
+                graph, a relative or invalid IRI, a context that is not inline, or is not an object
+                or array (the message gives the reason); nothing is written.
             DatabaseGone: The tenant database does not exist.
         """
         self._graph(iri)

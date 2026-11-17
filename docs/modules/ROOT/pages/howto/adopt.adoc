@@ -1189,7 +1189,9 @@ parses the data in a worker thread and puts it into a new named graph, by defaul
 `{iri}/content/{uuid4}` (the loaded-graph template of the IRI policy; `Session` takes the policy
 as `iris=`). Before it puts the graph, it writes a *load marker*, one triple in the tenant's
 registry graph that records when the graph was loaded; the sweep uses it to leave young graphs alone.
-Data that does not parse raises `InvalidGraph`, and nothing is written. The graph belongs to the
+Data that does not parse raises `InvalidGraph`, and nothing is written; a JSON-LD file is also
+refused, with `InvalidGraph` and the reason, for a named graph, a relative or invalid IRI, a context
+that is not inline, or a document that is not a JSON object or array. The graph belongs to the
 aggregate once a commit names it (a graph another aggregate owns is refused with `InvalidIri`):
 
 [source,python]

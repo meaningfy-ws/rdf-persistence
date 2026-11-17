@@ -42,8 +42,12 @@ from rdf_persistence.services.artifacts import (
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.jsonld import (
     ABSOLUTE_IRIS,
+    INVALID_IRI,
     LOADER,
+    OBJECT_OR_ARRAY,
+    InvalidIriRefused,
     NamedGraphRefused,
+    NotADocumentRefused,
     RelativeIriRefused,
     RemoteContextRefused,
     dataset_of,
@@ -290,6 +294,10 @@ class Documents:
             raise InvalidBody(ONE_GRAPH) from error
         except RelativeIriRefused as error:
             raise InvalidBody(ABSOLUTE_IRIS) from error
+        except InvalidIriRefused as error:
+            raise InvalidBody(INVALID_IRI) from error
+        except NotADocumentRefused as error:
+            raise InvalidBody(OBJECT_OR_ARRAY) from error
         except Exception as error:  # pyld and the N-Quads parser raise their own types
             raise InvalidBody(f"the body is not valid JSON-LD: {str(error)[:200]}") from error
 

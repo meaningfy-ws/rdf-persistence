@@ -450,6 +450,15 @@ overrule any of them. D-1 to D-7 agreed by the developer, 2026-11-17.
   (a new check for a tag no consumer writes). (b) `test_loading.py`'s `rdflib_message` helper read
   `_RDFLIB_FORMATS`; it now reads `media_types(RdfFormat)`, so the table is deleted as PD-11 says.
   Neither test's assertions change.
+- **D-12 How F-4 finds what PyLD drops.** PyLD 3.3 has no option that reports dropped statements,
+  so `triples_of` walks `jsonld.expand`'s output (every `@id`, `@type` and property IRI) before
+  `to_rdf`. Expansion itself drops a property whose key holds a space, with its value, so a second
+  walk reads the document's own keys outside `@context` and refuses one with a colon and a
+  character `domain/sparql.FORBIDDEN_IRI_CHARS` forbids (a term named with both is refused too; a
+  contrived case, accepted). An undefined term (`"name": "x"` with no context) is still dropped:
+  that is JSON-LD's rule, rdflib's parser did the same, and bodies refuse unknown keys first. The
+  fixers sorted the tester's tests: kept those that found T-1, T-2, T-3, T-5, T-6 and those that
+  alone cover an error-matrix row or bound a cost; deleted the rest (listed in PR #143).
 
 ### Stage 1 review findings (L2, L3)
 

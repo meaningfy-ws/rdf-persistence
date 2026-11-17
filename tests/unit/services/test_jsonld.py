@@ -124,11 +124,76 @@ async def test_a_loaded_file_with_a_base_of_its_own_resolves_against_it():
     assert NO_BASE not in graph.serialize(format="nt"), "the placeholder base never leaks"
 
 
-async def test_a_body_with_a_relative_reference_is_refused(documents, book_class):
+@pytest.mark.parametrize("media_type", [JSON, JSON_LD], ids=["json", "json-ld"])
+async def test_a_body_with_a_relative_reference_is_refused(documents, book_class, media_type):
+    # TC-42c
     body = {**BOOK_JSON, "shelf": "shelves/1"}
+    if media_type == JSON_LD:
+        body = {"@context": documents.context, "type": "Book", **body}
     with pytest.raises(InvalidBody, match=ABSOLUTE):
         await documents.parse(
-            encoded(body), JSON, book_class, book_iri(1), creating=True, tenant=TENANT
+            encoded(body), media_type, book_class, book_iri(1), creating=True, tenant=TENANT
+        )
+
+
+NOT_VALID = "a JSON-LD document holds an IRI that is not valid"
+OBJECT_OR_ARRAY = "a JSON-LD document is an object or an array"
+UNREADABLE = {
+    "relative under a null base": {"@context": {"@base": None}, "@id": "a", TITLE: "Dune"},
+    "relative type": {"@id": "https://example.org/b", "@type": "rel"},
+    "space in a subject": {"@id": "https://ex.org/a b", TITLE: "Dune"},
+    "control character": {"@id": "https://ex.org/a\nb", TITLE: "Dune"},
+    "space in an object": {"@id": "https://ex.org/a", TITLE: {"@id": "https://ex.org/a b"}},
+    "space in a predicate": {"@id": "https://ex.org/a", "https://ex.org/p q": "x"},
+}
+
+
+@pytest.mark.parametrize("document", UNREADABLE.values(), ids=UNREADABLE.keys())
+def test_triples_of_refuses_an_iri_that_is_relative_or_not_valid_rather_than_drop_it(document):
+    with pytest.raises((one_path.RelativeIriRefused, one_path.InvalidIriRefused)):
+        triples_of(document)
+
+
+@pytest.mark.parametrize("document", [123, True, 1.5, None, "x", ""], ids=repr)
+def test_triples_of_refuses_a_document_that_is_not_an_object_or_an_array(document):
+    with pytest.raises(one_path.NotADocumentRefused):
+        triples_of(document)
+
+
+@pytest.mark.parametrize(
+    "document",
+    [UNREADABLE["space in a subject"], UNREADABLE["control character"]],
+    ids=["space", "control character"],
+)
+async def test_a_loaded_file_with_an_iri_that_is_not_valid_is_refused(document):
+    with pytest.raises(InvalidGraph) as raised:
+        await parse_graph(encoded_file(document), RdfFormat.JSONLD)
+    assert str(raised.value) == NOT_VALID, "the reason, not a shorter graph"
+
+
+async def test_a_loaded_file_with_a_null_base_and_a_relative_iri_is_refused():
+    with pytest.raises(InvalidGraph) as raised:
+        await parse_graph(encoded_file(UNREADABLE["relative under a null base"]), RdfFormat.JSONLD)
+    assert str(raised.value) == ABSOLUTE
+
+
+@pytest.mark.parametrize("data", [b"123", b"true", b"null"], ids=repr)
+async def test_a_loaded_file_that_is_not_an_object_or_an_array_is_refused(data):
+    with pytest.raises(InvalidGraph) as raised:
+        await parse_graph(data, RdfFormat.JSONLD)
+    assert str(raised.value) == OBJECT_OR_ARRAY
+
+
+async def test_a_body_with_an_iri_that_is_not_valid_is_refused(documents, book_class):
+    body = {
+        "@context": documents.context,
+        "type": "Book",
+        **BOOK_JSON,
+        "shelf": "https://ex.org/a b",
+    }
+    with pytest.raises(InvalidBody, match=NOT_VALID):
+        await documents.parse(
+            encoded(body), JSON_LD, book_class, book_iri(1), creating=True, tenant=TENANT
         )
 
 
