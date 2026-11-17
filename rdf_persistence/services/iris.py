@@ -1,4 +1,9 @@
-"""IRIs and resource names of the toolkit (PD-4, PD-6, PD-6a): the only place they are derived."""
+"""The IRI policy and ``Iris``, which derive the IRIs and resource names the policy shapes (PD-4, PD-6, PD-6a).
+
+The policy, its templates and ids, ``Iris``, ``DEFAULT_IRIS`` and the wrappers over it are here; what no
+policy changes (the layout of graph IRIs, skolem IRIs, database names) is in ``domain.layout``, which
+this module uses. The policy is a technical model, so none of this can be in the domain layer.
+"""
 
 import re
 import secrets

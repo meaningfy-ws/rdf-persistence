@@ -12,7 +12,9 @@ The examples use the toolkit's own toy library (`tests/toy.py`, `tests/fixtures/
 settings `base="https://example.org/library/"`, `prefix="lib"`, `tenant_segment="libraries"`,
 `creator_role="librarian"`; a tenant is a library; its aggregates are books (`rp_path: books`) and
 scans (`rp_path: scans`, a file aggregate). Every IRI below comes from the default
-IRI policy (`IriPolicy` in `model/technical/service/`); a consumer may set other templates.
+IRI policy (`IriPolicy`, generated from `model/technical/service/rp_service.yaml`, applied by `Iris` in
+`services/iris.py`; the layout no policy changes, such as the graph IRI of a root, is in
+`domain/layout.py`); a consumer may set other templates.
 
 == Terms
 
@@ -1138,7 +1140,7 @@ from the templates; a create body may not name an `id` or a part
 |422
 
 |*IRI policy: the templates themselves*, checked once when the service starts
-|`check_iri_policy`, `Iris`; see xref:howto/adopt.adoc#iri-policy[Configure the IRI policy]
+|`check_iri_policy`, `Iris` (both in `services/iris.py`); see xref:howto/adopt.adoc#iri-policy[Configure the IRI policy]
 |`{deployment}` without a slug, colliding graphs, an id with no length
 |start-up error
 

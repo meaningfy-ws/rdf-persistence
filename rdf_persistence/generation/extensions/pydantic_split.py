@@ -1,6 +1,6 @@
 """gen-pydantic in split mode: one module per schema module, metadata off, the toolkit's templates (PD-24).
 
-The stock generator lacks five things the toolkit needs, and this module adds them:
+The stock generator lacks ten things the toolkit needs, and this module adds them:
 
 * the metamodel's classes are imported from the toolkit's package, never regenerated: from
   ``rdf_persistence.domain.generated.<module>`` inside the toolkit's own runs and from the public
@@ -13,7 +13,14 @@ The stock generator lacks five things the toolkit needs, and this module adds th
 * a slot annotated ``secret: true`` (``GenerationAnnotation``) is declared ``repr=False``, so its value
   stays out of the repr of the class;
 * a slot annotated ``strict: true`` is declared ``strict=True``: pydantic then takes no coerced value
-  (``"123"`` or ``true`` for a number).
+  (``"123"`` or ``true`` for a number);
+* a LinkML type annotated ``python_import: <module>`` whose ``repr`` names a class (``SparqlTerm``)
+  generates ``from <module> import <repr>``, so a field ranging over the type has that class;
+* a slot annotated ``default_instance: 'true'`` is declared ``Field(default_factory=<Range>)``, so a group
+  of settings is never absent (the hard check refuses a slot whose range cannot be built with no argument);
+* the ``ifabsent: string(a, b, ...)`` of a multivalued slot is the default list ``['a', 'b']``; the
+  stock generator writes the one string ``"a, b"`` on a list field, and any other form is refused;
+* a slot whose alias is no Python name (``rp.step``) is named after the slot, and keeps the alias.
 """
 
 import copy

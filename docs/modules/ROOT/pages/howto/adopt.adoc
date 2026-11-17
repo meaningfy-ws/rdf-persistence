@@ -243,6 +243,8 @@ xref:howto/migrate.adoc[Change a schema that has stored data]). The other keys a
   `python = "src/library/domain/generated"`; `package` stays the import path.
 * `openapi = false` leaves out `openapi-components.json`. That is safe only if you never call
   `install_service` (step 12): it stops with `OSError` when the file is missing.
+* `kind` is `"domain"` or `"technical"`, and says what the entry generates; `rp-generate` then
+  checks it (<<technical-target,below>>). Leave it out and nothing is checked.
 
 `rp-generate` reads the `pyproject.toml` in the folder you run it from. It does not search upward:
 from another folder it exits with code 2, unless you pass `--project path/to/pyproject.toml`.
@@ -293,6 +295,46 @@ A file an earlier run wrote and this one does not, such as the module of a schem
 or renamed, is deleted by the next run, unless it was edited since: then the run keeps it and says
 `kept <file>: it changed since it was generated; delete it if it is stale`. Before you regenerate,
 `--check` reports the removed schema file as `stale input: models/<file>.yaml (removed)`.
+
+[#technical-target]
+*Keep technical models in a target of their own.* The toolkit keeps its own technical models (a
+request body, a setting, a wire shape) apart from the domain classes it stores, in a folder and a
+package of their own, so a reader tells them apart by the path
+(xref:architecture/generation.adoc#kinds[Two kinds of model]). You can do the same: write them in a
+schema annotated `module_kind: technical`, in a folder beside the domain schemas, and give it its own
+entry in an array of tables, with `kind` on each entry:
+
+[source,toml]
+----
+# pyproject.toml
+[[tool.rp-generate]]
+schema = "models/library.yaml"
+package = "library.domain.generated"
+migrations = "migrations"
+kind = "domain"
+
+[[tool.rp-generate]]
+schema = "technical/export.yaml"
+package = "library.technical.generated"
+openapi = false
+kind = "technical"
+----
+
+`rp-generate` generates both. The technical target needs no `migrations`, since it stores nothing.
+If a `kind` and its modules disagree, `rp-generate` exits 1 and names the entry's schema and the module
+(here the second entry says `kind = "domain"` by mistake):
+
+----
+technical/export.yaml: boundary check: [target_kind] export: is a technical module in a target of kind domain
+----
+
+The check reads the schemas of one target's folder, so a folder that holds both kinds of module,
+as step 3's `technical` module does beside the domain ones, takes no `kind`: leave the key out of
+that entry. Two limits. A technical target cannot import the classes of your domain target: that
+needs one generated package for each module, which the toolkit does not build yet, so a technical
+model that holds a domain value stays in the domain target's folder. And `openapi = false` suits
+a technical target no service serves; a request body that your routes use stays in a target with
+`openapi` on.
 
 == 5. Use the generated classes
 

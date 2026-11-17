@@ -257,10 +257,28 @@ xref:howto/observability.adoc[See what the toolkit is doing], with the span and 
 xref:howto/observability.adoc#old-to-new[the old-to-new names], and
 xref:howto/observability.adoc#never[what never reaches telemetry].
 
+*How do I change a timeout, a cache time or a limit of the toolkit, and read it from the environment?*::
+Build a `ToolkitSettings` at the composition root, set the groups you need
+(`ToolkitSettings(http=HttpSettings(read_timeout_seconds=60))`), give each adapter its group and pass the
+whole object as `install_service(..., toolkit=settings)`. Every value defaults to what the toolkit
+always used. With the `settings` extra, `settings_from_env(ToolkitSettings)` reads
+`RP_HTTP__READ_TIMEOUT_SECONDS` and the other variables of that form from the environment. The page also lists the replacement
+of every keyword and constant that no longer exists. See xref:howto/settings.adoc[Configure the toolkit's
+deployment values].
+
 == Developing the toolkit
 
+*How do I tell a technical model from a domain model?*::
+By its path. A domain model is the metamodel, `rdf_persistence/model/rp_*.yaml`, generated into
+`domain/generated/`. A technical model (a request body, a setting, a wire shape, a SPARQL term bundle, a
+testkit record) is a schema under `rdf_persistence/model/technical/<group>/`, generated into the
+`generated/` folder of the lowest layer whose code may import it, and the domain layer imports none of
+them. A target's `kind` key and an import-linter contract check it. See
+xref:architecture/generation.adoc#kinds[Two kinds of model].
+
 *How do I change a toolkit schema?*::
-Edit the schema under `rdf_persistence/model/` (or `rdf_persistence/model/technical/service/rp_service.yaml` and
+Edit the schema under `rdf_persistence/model/` (or a technical schema under
+`rdf_persistence/model/technical/<group>/`, or
 `rdf_persistence/generation/model/rp_generation.yaml`), run
 `make generate`, refresh the model-shape snapshot if a class changed, and commit the schema and the
 generated code together. See xref:develop/index.adoc#change-a-toolkit-schema[Change a toolkit

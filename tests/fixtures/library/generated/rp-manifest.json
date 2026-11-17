@@ -83,7 +83,7 @@
     },
     {
       "path": "rdf_persistence/generation/extensions/pydantic_split.py",
-      "sha256": "e577496723ad10d1e643031d86cf439125a7e25e89bacb0032958138b71ae6fc"
+      "sha256": "e2b16be3ab54717a04a2793a3cbe1935be0dd5b6d485c24564bc6aa5e879cf49"
     },
     {
       "path": "rdf_persistence/generation/extensions/pydantic_validators.py",
