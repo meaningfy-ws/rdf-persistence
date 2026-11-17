@@ -62,8 +62,9 @@ async def parse_graph(data: bytes, rdf_format: RdfFormat) -> Graph:
     """Parse ``data`` in a worker thread.
 
     Raises:
-        InvalidGraph: The data does not parse as ``rdf_format``, or a JSON-LD file holds a named
-            graph, a relative or invalid IRI, a context that is not inline, or is not an object or
-            array (the message gives the reason).
+        InvalidGraph: The data does not parse as ``rdf_format``, or a JSON-LD file declares a graph
+            of its own, holds a relative or invalid IRI, gives a ``@context`` that is not in the
+            document, or is not an object or array (the message is the reason; the adopt how-to
+            lists each).
     """
     return await anyio.to_thread.run_sync(_parse, data, rdf_format)

@@ -126,7 +126,7 @@ def etag_of(version: str) -> str:
 
 
 def _entries(value: str) -> list[str]:
-    """The members of an ``If-Match`` list: split on commas outside quotes, empty members skipped (RFC 9110 5.6.1)."""
+    """The members of an ``If-Match`` list or an ``Accept`` header: split on commas outside quotes, empty members skipped (RFC 9110 5.6.1)."""
     entries, current, quoted = [], "", False
     for char in value:
         if char == _SEPARATOR and not quoted:
