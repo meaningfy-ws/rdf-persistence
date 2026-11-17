@@ -13,7 +13,6 @@ from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import ValidationError
 from pyparsing import ParseBaseException
 from rdflib import Graph, Literal, URIRef
-from rdflib.plugins.sparql.parser import parseUpdate
 from rdflib.term import Node
 
 from rdf_persistence.domain.exceptions import InvalidMigration, SparqlError, StoredDataInvalid
@@ -27,7 +26,7 @@ from rdf_persistence.domain.sparql import (
     fragment_terms,
     term,
 )
-from rdf_persistence.domain.sparql_parsing import SPARQL_PARSER_LOCK
+from rdf_persistence.domain.sparql_parsing import parse_update
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import Migration, MigrationStep
 from rdf_persistence.services.generated.templates.rp_templates import StampGuardTerms
@@ -314,8 +313,7 @@ def _request_problem(migration: Migration) -> str | None:
     try:
         expected = len(_operations(migration, _CHECKED_STAMPS))
         request = migration_request(migration, _CHECKED_STAMPS)
-        with SPARQL_PARSER_LOCK:
-            found = len(parseUpdate(request).request)
+        found = len(parse_update(request).request)
     except SparqlError as error:
         return f"cannot build the request: {str(error)[:SHOWN]}"
     except (ParseBaseException, RecursionError) as error:

@@ -22,7 +22,6 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
 from linkml_runtime.utils.formatutils import camelcase
 from linkml_runtime.utils.schemaview import SchemaView
 from pyld import jsonld
-from pyshacl import validate
 from rdflib import RDF, SH, BNode, Dataset, Graph, Literal, URIRef
 from rdflib.term import Node
 
@@ -31,7 +30,6 @@ from rdf_persistence.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.domain.media import DATASET_REPRESENTATIONS, JSON, JSON_LD, RDF_XML
 from rdf_persistence.domain.sparql import FORBIDDEN_IRI_CHARS, Triple
-from rdf_persistence.domain.sparql_parsing import SPARQL_PARSER_LOCK
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.artifacts import (
     CONTEXT_FILE,
@@ -67,6 +65,7 @@ from rdf_persistence.services.schema_structure import (
     served_roots,
     tenant_root_class,
 )
+from rdf_persistence.services.shacl import validate_warm, warm_up
 
 NATIVE = {"useNativeTypes": True}
 NOT_INLINE = "a JSON-LD context must be inline: remote contexts are not followed"
@@ -103,6 +102,9 @@ class Documents:
             CONTEXT_KEY
         ]
         self.shapes = Graph().parse(folder / SHAPES_FILE)
+        warm_up(
+            self.shapes
+        )  # so that validation in worker threads needs no parser lock (services.shacl)
         self._class_of = {self._iri_of(c): c for c in view.all_classes().values()}
         self._slots = {
             name: {json_name(slot): slot for slot in view.class_induced_slots(name)}
@@ -448,10 +450,7 @@ class Documents:
     def _check(self, graph: Graph) -> tuple[bool, Graph, str]:
         shapes = Graph()
         shapes += self.shapes  # pyshacl adds to the graph it is given, and requests share this one
-        with SPARQL_PARSER_LOCK:  # pyshacl parses the SPARQL of the shapes, in a worker thread
-            conforms, report, text = validate(graph, shacl_graph=shapes, inference="none")
-        assert isinstance(report, Graph)
-        return bool(conforms), report, str(text)
+        return validate_warm(graph, shapes)  # the shapes were warmed up when this was built
 
     # -- the representations -------------------------------------------------------------------
 

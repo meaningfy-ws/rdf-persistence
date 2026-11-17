@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 ROUNDS = 5
+SUBPROCESS_TIMEOUT = 90  # seconds, below pytest's 120: a hung worker fails this test, not the run
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -22,7 +23,7 @@ def test_threads_that_parse_sparql_at_once_all_succeed(round_number: int):
         cwd=ROOT,
         capture_output=True,
         text=True,
-        timeout=300,
+        timeout=SUBPROCESS_TIMEOUT,
         check=False,
     )
     assert done.returncode == 0, done.stderr

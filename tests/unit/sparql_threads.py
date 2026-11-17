@@ -17,11 +17,12 @@ from types import SimpleNamespace
 
 from rdflib import RDF, Graph
 from rdflib.namespace import Namespace
-from rdflib.plugins.sparql import prepareQuery
 
 from rdf_persistence.domain.sparql import checked_group
+from rdf_persistence.domain.sparql_parsing import prepare_query
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.migration_runner import migrate_dataset
+from rdf_persistence.services.shacl import warm_up
 from rdf_persistence.testkit.fakes import FakeStore
 from tests.unit.services.migration_helpers import (
     ISBN,
@@ -39,10 +40,14 @@ EX = Namespace("urn:example:")
 _SPARQL_SHAPE = """
 PREFIX ex: <urn:example:>
 PREFIX sh: <http://www.w3.org/ns/shacl#>
-ex:Shape a sh:NodeShape ; sh:targetClass ex:Thing ; sh:sparql [
+ex:Shape a sh:NodeShape ; sh:targetClass ex:Thing ; sh:closed true ;
+    sh:ignoredProperties ( <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ) ;
+    sh:property [ sh:path ex:name ; sh:minCount 1 ] ;
+    sh:sparql [
     sh:message "no" ;
     sh:select "SELECT $this WHERE { $this <urn:example:never> ?x }" ] .
 """
+SHAPES = Graph().parse(data=_SPARQL_SHAPE, format="turtle")  # warmed up in main, as Documents does
 
 
 def _store() -> None:
@@ -61,10 +66,10 @@ def _checked_group() -> None:
 
 
 def _shapes() -> None:
-    shapes = Graph().parse(data=_SPARQL_SHAPE, format="turtle")
     thing = Graph()
-    thing.add((EX.a, RDF.type, EX.Thing))
-    Documents._check(SimpleNamespace(shapes=shapes), thing)  # type: ignore[arg-type]
+    for node in (EX.a, EX.b, EX.c):
+        thing.add((node, RDF.type, EX.Thing))
+    Documents._check(SimpleNamespace(shapes=SHAPES), thing)  # type: ignore[arg-type]
 
 
 def _migration() -> None:
@@ -79,6 +84,7 @@ def _migration() -> None:
 
 def main() -> int:
     jobs = [_store, _checked_group, _shapes, _migration]
+    warm_up(SHAPES)  # in the process before the threads, as building Documents does
     barrier = threading.Barrier(THREADS)
     failures: list[str] = []
 
@@ -96,7 +102,7 @@ def main() -> int:
     for thread in threads:
         thread.join()
     try:
-        prepareQuery("SELECT ?s WHERE { ?s ?p ?o } LIMIT 1")
+        prepare_query("SELECT ?s WHERE { ?s ?p ?o } LIMIT 1")
     except Exception as error:  # noqa: BLE001 -- any failure of the parse is the finding
         failures.append(f"a parse after the threads: {error!r}")
     for failure in sorted(set(failures)):
