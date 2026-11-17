@@ -1,7 +1,7 @@
 # rp-tenancy Specification
 
 ## Purpose
-TBD - created by archiving change toolkit-v1-foundation. Update Purpose after archive.
+Tenants as the unit of isolation: one database each on a wired store, a start-up sweep that finishes interrupted work, orphan removal, dump and restore into a new tenant, and application data kept outside any tenant.
 ## Requirements
 ### Requirement: Each tenant has its own database
 

@@ -1,7 +1,7 @@
 # rp-release Specification
 
 ## Purpose
-TBD - created by archiving change release-pipeline. Update Purpose after archive.
+How the toolkit is released: versions proposed from Conventional Commits and merged by a human, one version file matching the tag, and `main` holding the last release.
 ## Requirements
 ### Requirement: Releases are proposed from Conventional Commits and merged by a human
 

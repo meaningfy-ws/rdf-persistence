@@ -183,7 +183,7 @@ check-architecture: ## Check architecture constraints with import-linter
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Architecture checks passed$(END_BUILD_PRINT)"
 
 check-spec: ## Validate the OpenSpec spine (pinned CLI, strict)
-	@ npx -y @fission-ai/openspec@1.4.1 validate --all --strict
+	@ npx -y @fission-ai/openspec@1.13.2 validate --all --strict
 
 test: ## Run the unit and feature tests, with the coverage floor
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit and feature tests$(END_BUILD_PRINT)"

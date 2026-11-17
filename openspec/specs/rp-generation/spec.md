@@ -1,7 +1,7 @@
 # rp-generation Specification
 
 ## Purpose
-TBD - created by archiving change toolkit-v1-foundation. Update Purpose after archive.
+How every model artefact is generated from the LinkML schemas by `rp-generate`: the checks that stop a bad schema, where each artefact goes, reproducible and fresh output, and the separation of technical models from domain models.
 
 ## Requirements
 

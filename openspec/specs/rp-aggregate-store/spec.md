@@ -1,7 +1,7 @@
 # rp-aggregate-store Specification
 
 ## Purpose
-TBD - created by archiving change toolkit-v1-foundation. Update Purpose after archive.
+How aggregates are stored as RDF: one named graph per aggregate at a derived IRI, versioned and atomic commits through a unit of work, SPARQL never built from raw input, loaded graphs, unique keys across a tenant, and whole-database export and import.
 ## Requirements
 ### Requirement: One named graph per aggregate, at a derived IRI
 

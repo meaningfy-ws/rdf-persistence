@@ -1,7 +1,7 @@
 # rp-access Specification
 
 ## Purpose
-TBD - created by archiving change toolkit-v1-foundation. Update Purpose after archive.
+Who may do what: access decided per tenant and per aggregate, tenants without a grant kept hidden, commenting and tenant deletion as acts of their own, and application data decided by global roles.
 ## Requirements
 ### Requirement: Access is decided per tenant and per aggregate
 

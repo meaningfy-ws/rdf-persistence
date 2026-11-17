@@ -1,7 +1,7 @@
 # rp-service-api Specification
 
 ## Purpose
-TBD - created by archiving change toolkit-v1-foundation. Update Purpose after archive.
+The HTTP service a consumer installs: one generic router for every aggregate type, plain JSON with JSON-LD and RDF on request, versioned writes, filtered and paged listings, a published contract, and the hooks a consumer uses to enforce its own rules.
 ## Requirements
 ### Requirement: One generic router serves every aggregate type
 
