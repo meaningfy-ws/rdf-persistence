@@ -304,7 +304,8 @@ classes (`ReferenceCollection`, `MembershipRule`, `SlotEquality`; `Comment`, `Mo
 |session and unit of work, mapper, tenancy, access check, collaboration, workflows, sweep; the IRI
 policy and `Iris` (`services/iris.py`); the service records (generated from
 `model/technical/service/rp_service.yaml` into `rdf_persistence.services.generated.service`, loaded
-lazily); the ports
+lazily); the SPARQL term bundles of the query templates (`model/technical/templates/rp_templates.yaml`
+into `rdf_persistence.services.generated.templates`, built by the factories of `services/vocabulary.py`); the ports
 |`open_session`, `Session`, `Iris`, `DEFAULT_IRIS`, `IdSource`, `mint_aggregate_iri`; the service records
 (`ServiceSettings`, `IriPolicy`, `IdSpec`, `IdKind`, `TenantCreate`, `TenantSummary`, `LabelUpdate`,
 `GrantSet`, `Page`, `Problem`, `ProblemKind`, `VerifiedCaller`, `CallerAccess`, `Authorised`,

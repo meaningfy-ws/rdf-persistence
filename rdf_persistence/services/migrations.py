@@ -24,10 +24,12 @@ from rdf_persistence.domain.sparql import (
     checked_group,
     fill,
     fragment,
+    fragment_terms,
     term,
 )
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import Migration, MigrationStep
+from rdf_persistence.services.generated.templates.rp_templates import StampGuardTerms
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.yaml_files import (
     MOST_PROBLEMS,
@@ -43,7 +45,7 @@ _CHECKED_STAMPS = URIRef("urn:stamps")  # any graph IRI will do to check the sha
 
 # The one place a user's text meets the template: a pattern that checked_group has accepted.
 _STEP = (
-    "$delete $insert WHERE { GRAPH $stamps { $schema $p_stamp $from } "
+    "$delete $insert WHERE { GRAPH $stamps { $schema_id $p_stamp $from_version } "
     "GRAPH ?rp_graph { $where } FILTER (?rp_graph != $stamps) "
     "MINUS { GRAPH ?rp_registry { ?rp_graph $p_kind $loaded } } "  # not FILTER NOT EXISTS: rdflib walks every graph per row (PD-26)
     "FILTER NOT EXISTS { GRAPH ?rp_graph { ?rp_entry $p_kind ?rp_kind } } }"  # a registry graph (PD-21)
@@ -53,14 +55,14 @@ _CLAUSE = "$verb { GRAPH ?rp_graph { $pattern } }"
 _ROTATION = (
     "DELETE { GRAPH ?rp_graph { ?rp_graph $p_version ?rp_old } } "
     "INSERT { GRAPH ?rp_graph { ?rp_graph $p_version ?rp_new } } "
-    "WHERE { GRAPH $stamps { $schema $p_stamp $from } "
+    "WHERE { GRAPH $stamps { $schema_id $p_stamp $from_version } "
     "GRAPH ?rp_graph { ?rp_graph $p_version ?rp_old } FILTER (?rp_graph != $stamps) "
     "BIND (STRUUID() AS ?rp_new) }"
 )
 _STAMP_MOVE = (
-    "DELETE { GRAPH $stamps { $schema $p_stamp $from } } "
-    "INSERT { GRAPH $stamps { $schema $p_stamp $to } } "
-    "WHERE { GRAPH $stamps { $schema $p_stamp $from } }"
+    "DELETE { GRAPH $stamps { $schema_id $p_stamp $from_version } } "
+    "INSERT { GRAPH $stamps { $schema_id $p_stamp $to } } "
+    "WHERE { GRAPH $stamps { $schema_id $p_stamp $from_version } }"
 )
 
 
@@ -239,30 +241,27 @@ def migration_request(migration: Migration, stamps: URIRef) -> str:
 
 def _operations(migration: Migration, stamps: URIRef) -> list[SparqlTerm]:
     """The operations of the request, one each: the steps, the rotation if any, the stamp move."""
-    guard = {
-        "stamps": term(stamps),
-        "schema": term(URIRef(migration.schema_id)),
-        "p_stamp": term(v.DATA_SCHEMA_VERSION),
-        "from": term(Literal(migration.from_version)),
-    }
+    guard = v.stamp_guard_terms(
+        stamps, schema_id=URIRef(migration.schema_id), from_version=migration.from_version
+    )
     steps = migration.steps or []
     operations = [_step_operation(step, guard) for step in steps]
     if steps:
-        operations.append(fragment(_ROTATION, p_version=term(v.VERSION), **guard))
-    operations.append(fragment(_STAMP_MOVE, to=term(Literal(migration.to_version)), **guard))
+        operations.append(fragment_terms(_ROTATION, guard, p_version=term(v.VERSION)))
+    operations.append(fragment_terms(_STAMP_MOVE, guard, to=term(Literal(migration.to_version))))
     return operations
 
 
-def _step_operation(step: MigrationStep, guard: dict[str, SparqlTerm]) -> SparqlTerm:
+def _step_operation(step: MigrationStep, guard: StampGuardTerms) -> SparqlTerm:
     where, delete, insert = _checked_patterns(step)
-    return fragment(
+    return fragment_terms(
         _STEP,
+        guard,
         delete=_clause("DELETE", delete),
         insert=_clause("INSERT", insert),
         where=where,
         p_kind=term(v.REGISTRY_KIND),
         loaded=term(v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH]),
-        **guard,
     )
 
 

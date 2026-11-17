@@ -91,8 +91,8 @@ lint = [
 ]
 
 # This repo's own generation targets (PD-18): the metamodel, the generation module's data, the
-# service module, the wire models. Only the service module's classes are served, so only it has
-# OpenAPI components.
+# service module, the SPARQL term models, the wire models. Only the service module's classes are
+# served, so only it has OpenAPI components.
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/rp.yaml"
 package = "rdf_persistence.domain.generated"
@@ -112,6 +112,13 @@ kind = "technical"
 schema = "rdf_persistence/model/technical/service/rp_service.yaml"
 package = "rdf_persistence.services.generated.service"
 regenerate-command = "make generate"
+kind = "technical"
+
+[[tool.rp-generate]]
+schema = "rdf_persistence/model/technical/templates/rp_templates.yaml"
+package = "rdf_persistence.services.generated.templates"
+regenerate-command = "make generate"
+openapi = false
 kind = "technical"
 
 [[tool.rp-generate]]

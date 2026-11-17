@@ -15,17 +15,15 @@ from rdflib.namespace import XSD
 from rdflib.query import ResultRow
 
 from rdf_persistence.domain.exceptions import InvalidBody, KeyConflict
-from rdf_persistence.domain.generated.rp_core import AggregateKey, KeyDuplicate, RegistryKind
+from rdf_persistence.domain.generated.rp_core import AggregateKey, KeyDuplicate
 from rdf_persistence.domain.sparql import (
     SparqlTerm,
     Triple,
     count,
     fill,
-    fragment,
+    fragment_terms,
     join,
     match_patterns,
-    term,
-    term_list,
     union,
     value_patterns,
     value_variables,
@@ -109,40 +107,28 @@ def same_value(claims: Sequence[KeyClaim]) -> list[KeyClaim]:
     return [claim for claim in claims if len(roots[_identity(claim)]) > 1]
 
 
-def _held(
-    claim: KeyClaim, registry: URIRef, excluded: Iterable[URIRef], **extra: SparqlTerm
-) -> dict[str, SparqlTerm]:
-    """The terms of ``KEY_HELD`` for ``claim``; ``extra`` are those of the template around it."""
+def _values(claim: KeyClaim) -> SparqlTerm:
+    """The patterns that match a root holding the values of ``claim`` (``$values`` of ``KEY_HELD``)."""
     pairs = [*zip(map(URIRef, claim.key.key_predicates), claim.values, strict=True)]
-    values = match_patterns("key_root", [*pairs, (RDF.type, URIRef(claim.key.root_class))])
-    return _held_around(values, registry, excluded, **extra)
-
-
-def _held_around(
-    values: SparqlTerm, registry: URIRef, excluded: Iterable[URIRef], **extra: SparqlTerm
-) -> dict[str, SparqlTerm]:
-    """The terms of ``KEY_HELD`` around the ``values`` patterns."""
-    return {
-        "values": values,
-        "registry": term(registry),
-        "p_kind": term(v.REGISTRY_KIND),
-        "aggregate": term(v.REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
-        "p_owned_by": term(v.REGISTRY_OWNED_BY),
-        "excluded": term_list(excluded),
-        **extra,
-    }
+    return match_patterns("key_root", [*pairs, (RDF.type, URIRef(claim.key.root_class))])
 
 
 def guard(claim: KeyClaim, registry: URIRef, excluded: Iterable[URIRef]) -> SparqlTerm:
     """The pattern that holds while no aggregate but the ``excluded`` roots holds the claimed values."""
-    return fragment(_GUARD, **_held(claim, registry, excluded))
+    held = v.key_held_terms(registry, values=_values(claim), excluded=excluded)
+    return fragment_terms(_GUARD, held)
 
 
 def diagnosis(claims: Sequence[KeyClaim], registry: URIRef, excluded: Iterable[URIRef]) -> str:
     """One ``SELECT`` of the indexes (``?claim``) of the claims some aggregate holds now (PD-9)."""
     excluded = list(excluded)
     branches = (
-        fragment(_BRANCH, **_held(claim, registry, excluded, index=count(number)))
+        fragment_terms(
+            _BRANCH,
+            v.key_branch_terms(
+                registry, values=_values(claim), excluded=excluded, index=count(number)
+            ),
+        )
         for number, claim in enumerate(claims)
     )
     return fill(_DIAGNOSIS, branches=union(branches))
@@ -162,7 +148,7 @@ def duplicates_query(key: AggregateKey, registry: URIRef) -> str:
     return fill(
         _DUPLICATES,
         variables=value_variables(len(predicates)),
-        held=fragment(KEY_HELD, **_held_around(values, registry, [])),
+        held=fragment_terms(KEY_HELD, v.key_held_terms(registry, values=values, excluded=[])),
     )
 
 

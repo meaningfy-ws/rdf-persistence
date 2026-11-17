@@ -2,18 +2,29 @@
 
 Nothing here restates the schema: each predicate is the URI of a metamodel slot and each enum
 meaning is the ``meaning`` of a permissible value, read once through ``SchemaView`` and cached. The
-meanings are keyed by the generated enums, so no caller handles the values as free strings.
+meanings are keyed by the generated enums, so no caller handles the values as free strings. The
+factories at the end build the term bundles of the query templates (``generated.templates``), so the
+vocabulary IRIs a template uses are set in this one module (technical-models PD-5).
 """
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from enum import Enum
 from functools import cache
 
 from linkml_runtime.utils.schemaview import SchemaView
-from rdflib import URIRef
+from rdflib import Literal, URIRef
 
 from rdf_persistence.domain.generated.rp_core import RegistryKind, RpAnnotation
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
+from rdf_persistence.domain.sparql import SparqlTerm, term, term_list
+from rdf_persistence.services.generated.templates.rp_templates import (
+    KeyBranchTerms,
+    KeyHeldTerms,
+    ListingTerms,
+    OwnerTerms,
+    RegistryTerms,
+    StampGuardTerms,
+)
 from rdf_persistence.services.schema import PACKAGE_DIR, SERVICE_SCHEMA, load_schema
 from rdf_persistence.services.schema_structure import ACTIVITY as ACTIVITY_NAME
 from rdf_persistence.services.schema_structure import annotation_text, flag, is_bookkeeping
@@ -187,3 +198,91 @@ TOTAL = predicate("total", load_schema(SERVICE_SCHEMA))
 
 # The one statement of the policy record: the graph names itself, the object is the policy's JSON (PD-13).
 IRI_POLICY = predicate("iri_policy", load_schema(SERVICE_SCHEMA))
+
+
+# The term bundles of the query templates (technical-models PD-5): the fixed vocabulary is set here,
+# once; a factory takes the varying fields as keywords. None spreads ``model_dump()``, which would
+# turn each ``SparqlTerm`` into a ``str``.
+def registry_terms(registry: URIRef) -> RegistryTerms:
+    """The registry graph and the two predicates of its entries."""
+    return RegistryTerms(
+        registry=term(registry), p_kind=term(REGISTRY_KIND), p_owned_by=term(REGISTRY_OWNED_BY)
+    )
+
+
+def key_held_terms(
+    registry: URIRef, *, values: SparqlTerm, excluded: Iterable[URIRef]
+) -> KeyHeldTerms:
+    """The terms of the pattern that holds while another aggregate has the claimed ``values``."""
+    return KeyHeldTerms(
+        registry=term(registry),
+        p_kind=term(REGISTRY_KIND),
+        p_owned_by=term(REGISTRY_OWNED_BY),
+        aggregate=term(REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
+        values=values,
+        excluded=term_list(excluded),
+    )
+
+
+def key_branch_terms(
+    registry: URIRef, *, values: SparqlTerm, excluded: Iterable[URIRef], index: SparqlTerm
+) -> KeyBranchTerms:
+    """The terms of one branch of the diagnosis: ``key_held_terms`` and the claim's ``index``."""
+    return KeyBranchTerms(
+        registry=term(registry),
+        p_kind=term(REGISTRY_KIND),
+        p_owned_by=term(REGISTRY_OWNED_BY),
+        aggregate=term(REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
+        values=values,
+        excluded=term_list(excluded),
+        index=index,
+    )
+
+
+def owner_terms(root: URIRef) -> OwnerTerms:
+    """The terms of the operations that drop what ``root`` owns."""
+    return OwnerTerms(
+        root=term(root),
+        p_owned_by=term(REGISTRY_OWNED_BY),
+        p_kind=term(REGISTRY_KIND),
+        loaded=term(REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH]),
+    )
+
+
+def listing_terms(  # noqa: PLR0913 - one keyword per varying field of the listing
+    registry: URIRef,
+    *,
+    target: URIRef,
+    patterns: SparqlTerm,
+    hidden: SparqlTerm,
+    order: SparqlTerm,
+    limit: SparqlTerm,
+    offset: SparqlTerm,
+    sort: URIRef | None = None,
+) -> ListingTerms:
+    """The terms of the listing query; ``sort`` is the predicate it is ordered by, none for the IRI."""
+    return ListingTerms(
+        registry=term(registry),
+        p_kind=term(REGISTRY_KIND),
+        p_owned_by=term(REGISTRY_OWNED_BY),
+        aggregate=term(REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
+        target=term(target),
+        patterns=patterns,
+        hidden=hidden,
+        p_listed_in=term(LISTED_IN),
+        p_total=term(TOTAL),
+        p_sort=term(sort) if sort is not None else None,
+        order=order,
+        limit=limit,
+        offset=offset,
+    )
+
+
+def stamp_guard_terms(stamps: URIRef, *, schema_id: URIRef, from_version: str) -> StampGuardTerms:
+    """The terms that make a migration operation match only the stamp of ``from_version``."""
+    return StampGuardTerms(
+        stamps=term(stamps),
+        schema_id=term(schema_id),
+        p_stamp=term(DATA_SCHEMA_VERSION),
+        from_version=term(Literal(from_version)),
+    )

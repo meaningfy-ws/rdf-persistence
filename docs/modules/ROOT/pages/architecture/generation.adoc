@@ -278,6 +278,7 @@ is named in the model guard's allow-list (<<guarding>>).
 |===
 |Schema |Classes |Generated into
 |`rdf_persistence/model/technical/service/rp_service.yaml` |`ServiceSettings` (the settings of `install_service`), `VerifiedCaller` (what the token verifier returns), and the toolkit's request and response bodies: `TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`, `Problem` |`rdf_persistence/services/generated/service/`
+|`rdf_persistence/model/technical/templates/rp_templates.yaml` |The bundles of rendered SPARQL terms that the query templates share, each field a `SparqlTerm` (the type `sparql_term`, which its `python_import` annotation imports from `rdf_persistence.domain.sparql`): `RegistryTerms`, `KeyHeldTerms`, `KeyBranchTerms`, `OwnerTerms`, `ListingTerms`, `StampGuardTerms`. The factories that set the fixed terms are in `services/vocabulary.py`; `fill_terms` and `fragment_terms` take a bundle. No OpenAPI components (`openapi = false`) |`rdf_persistence/services/generated/templates/`
 |`rdf_persistence/generation/model/rp_generation.yaml` |The data of the toolchain and the testkit: `GenerationTarget`, `GenerationManifest`, `ConstraintCase`, `ClassShape` (see <<guarding>>); `GeneratedFile`, `CheckProblem`, `CliFlag`, the rule, frame, TypeScript and Mermaid view-models, `ContainerMarker` and the guard's `Violation` |`rdf_persistence/generation/generated/`
 |===
 
@@ -285,7 +286,7 @@ is named in the model guard's allow-list (<<guarding>>).
 `[tool.rp-generate]` table (or an array of tables, one per schema) with the keys `schema`,
 `package`, `python` (default: the package's path), `migrations` (the folder of the schema lock and the migration files; required when the schema defines roots of its own, and then the root schema has a quoted `version`), `typescript`, `diagrams`, `regenerate-command` (the command a failed freshness check tells you to run; default `rp-generate`) and `openapi` (default
 `true`; `false` skips step 5b for a schema no service serves, as for the toolkit's metamodel,
-generation and wire schemas); paths are relative to the `pyproject.toml`. The flags `--schema`, `--package`, `--python-out`, `--typescript-out` and
+generation, templates and wire schemas); paths are relative to the `pyproject.toml`. The flags `--schema`, `--package`, `--python-out`, `--typescript-out` and
 `--diagrams-out` override the keys of a single entry; with several entries a flag is an error. LinkML's
 `gen-project` writes everything under one directory, so `rp-generate` does the placing.
 

@@ -18,15 +18,14 @@ from pydantic import ValidationError
 from rdflib import Graph, Literal, URIRef
 
 from rdf_persistence.domain.exceptions import BadQuery
-from rdf_persistence.domain.generated.rp_core import DatabaseKind, RegistryKind
+from rdf_persistence.domain.generated.rp_core import DatabaseKind
 from rdf_persistence.domain.layout import root_of_graph
 from rdf_persistence.domain.sparql import (
     FORBIDDEN_IRI_CHARS,
     count,
-    fill,
+    fill_terms,
     match_patterns,
     order_by,
-    term,
     term_list,
 )
 from rdf_persistence.services import vocabulary as v
@@ -57,7 +56,7 @@ _SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:\S+")
 # not hidden from the caller. Used by the count and by the page, which differ in what they select.
 _MATCHING = """
   GRAPH $registry { ?graph $p_kind $aggregate ; $p_owned_by ?root }
-  GRAPH ?graph { ?root a $class . $patterns }
+  GRAPH ?graph { ?root a $target . $patterns }
   FILTER (?graph NOT IN ($hidden))
 """
 _COUNT = "SELECT (COUNT(DISTINCT ?root) AS ?total) WHERE { " + _MATCHING + " }"
@@ -72,7 +71,7 @@ _PAGE_BY_SLOT = (
     + " GROUP BY ?root ?graph ORDER BY $order LIMIT $limit OFFSET $offset"
 )
 _LISTING = """
-CONSTRUCT { ?s ?p ?o . ?s $p_listed_in ?graph . $class $p_total ?total } WHERE {
+CONSTRUCT { ?s ?p ?o . ?s $p_listed_in ?graph . $target $p_total ?total } WHERE {
   { %s }
   UNION
   { { %s } GRAPH ?graph { ?s ?p ?o } }
@@ -278,23 +277,17 @@ def listing_query(registry: URIRef, plan: ListPlan) -> str:
     descending = bool(plan.descending)
     page = _PAGE_BY_SLOT if by_slot else _PAGE_BY_IRI
     keys = (("key", descending), ("root", False)) if by_slot else (("root", descending),)
-    terms = {"p_sort": term(URIRef(plan.sort_by))} if plan.sort_by is not None else {}
-    return fill(
-        _LISTING % (_COUNT, page),
-        **terms,
-        registry=term(registry),
-        p_kind=term(v.REGISTRY_KIND),
-        p_owned_by=term(v.REGISTRY_OWNED_BY),
-        aggregate=term(v.REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
-        **{"class": term(URIRef(plan.target))},
+    terms = v.listing_terms(
+        registry,
+        target=URIRef(plan.target),
         patterns=match_patterns("root", condition_pairs(plan.conditions or [])),
         hidden=term_list(URIRef(graph) for graph in plan.hidden_graphs or []),
-        p_listed_in=term(v.LISTED_IN),
-        p_total=term(v.TOTAL),
         order=order_by(*keys),
         limit=count(plan.limit),
         offset=count(plan.offset),
+        sort=URIRef(plan.sort_by) if plan.sort_by is not None else None,
     )
+    return fill_terms(_LISTING % (_COUNT, page), terms)
 
 
 def total_of(answer: Graph, plan: ListPlan) -> int:
