@@ -339,7 +339,8 @@ adapters from the top level.
 *Technical models in the layers.* A model's kind shows in its path (xref:architecture/generation.adoc#kinds[Two kinds of model]):
 the metamodel is generated into `domain/generated/`, and each technical group into the `generated/`
 folder of the lowest layer whose code may import it, so the `layers` contract of import-linter orders
-every generated package without a line of its own. Four groups sit in `services/generated/`
+the `generated` packages of the three runtime layers without a line of its own. `testkit.generated`
+is outside that contract: the contract `runtime-without-extras` keeps it out of the runtime. Four groups sit in `services/generated/`
 (`service`, `settings`, `templates` and `telemetry`), the `wire` group in `adapters/generated/`
 and the `testkit` group in `testkit/generated/`. The domain layer imports none of them:
 the contract `domain-never-imports-technical-models` forbids `rdf_persistence.domain` from importing

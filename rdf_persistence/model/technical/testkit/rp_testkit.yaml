@@ -5,7 +5,8 @@ description: >-
   The records the testkit passes around: the reviewed shape of a class and of its slots, a guard
   violation, a pytest marker of the container tests, and the endpoints and results of the test
   containers (Fuseki, Garage, Zitadel). They are generated into the testkit's own package, so the
-  testkit never imports the generator's models. Nothing here is served by the HTTP service.
+  testkit's records do not come from the generator's models; `testkit/freshness.py` and
+  `testkit/conformance.py` still import those models, until `generator-package` F-1. Nothing here is served by the HTTP service.
 prefixes:
   rp: https://meaningfy.ws/ns/rdf-persistence#
   linkml: https://w3id.org/linkml/

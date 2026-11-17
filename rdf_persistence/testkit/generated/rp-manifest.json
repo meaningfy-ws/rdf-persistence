@@ -151,7 +151,7 @@
     },
     {
       "path": "rdf_persistence/model/technical/testkit/rp_testkit.yaml",
-      "sha256": "c38998d0c352f2da1f53605ae118902c1fcc2b1ce44bfda505ce1e5ce2774886"
+      "sha256": "c9c3035a21985774828e29221125ff271844c72a0d9a5dbcc8d2ada9d5f6fc08"
     },
     {
       "path": "rdf_persistence/services/schema.py",

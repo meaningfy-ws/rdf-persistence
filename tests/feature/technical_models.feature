@@ -23,7 +23,7 @@ Feature: Technical models are kept apart from the domain
     Given a consumer schema that imports "rdf_persistence/model/rp_core"
     When the schema is loaded
     Then it resolves as before
-    But a consumer schema that imports "rdf_persistence/model/rp_service" is refused
+    But a consumer schema that imports "rdf_persistence/model/technical/settings/rp_settings" is refused
 
   # spec: rp-generation / a domain module in a technical target
   Scenario: A technical target refuses a domain module

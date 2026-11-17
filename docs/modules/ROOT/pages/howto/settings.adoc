@@ -17,8 +17,8 @@ as of 2026-11-17 (the change `technical-models`).
 _What can I set?_
 
 `ToolkitSettings` holds one of each group; `ToolkitSettings()` holds the defaults below. Every
-duration is in seconds and at least 0.001 (a zero timeout or interval is refused); every count and size is
-at least 1; the leeway is 0 to 300. If you upgrade from a release that took a keyword for a value, read
+duration is in seconds, at least 0.001 and at most one year (31,536,000; a zero, infinite or larger value is
+refused); every count and size is at least 1; the leeway is 0 to 300; the JWKS cooldown is at least 1. If you upgrade from a release that took a keyword for a value, read
 <<removed,section 4>> first.
 
 [cols="1,2,1,3",options="header"]
@@ -32,7 +32,7 @@ at least 1; the leeway is 0 to 300. If you upgrade from a release that took a ke
 
 .4+|`jwks` (`JwksSettings`)
 |`ttl_seconds` |600.0 |How long the token verifier keeps the identity provider's keys
-|`unknown_kid_cooldown_seconds` |10.0 |The shortest time between two key refreshes
+|`unknown_kid_cooldown_seconds` |10.0 |The shortest time between two key refreshes. At least 1 second, and not above `ttl_seconds`: `JwksTokenVerifier` refuses a longer cooldown when you build it, because the verifier would refuse every token for the difference
 |`allowed_algorithms` |`RS256`, `RS384`, `RS512`, `PS256`, `PS384`, `PS512`, `ES256`, `ES384`, `ES512`, `EdDSA` |The JWS algorithms a token may be signed with. A list of at least one; `none` and every `HS*` name are refused, any other name is accepted here and the verifier checks it against the installed PyJWT when you build it
 |`leeway_seconds` |30.0 |The clock drift a token's expiry and not-before times may have
 
@@ -185,7 +185,7 @@ export RP_JWKS__ALLOWED_ALGORITHMS='["RS256", "ES256"]'    # a list is JSON
 A variable you do not set leaves the default. `prefix="MYAPP_"` changes the prefix. The function
 takes any generated settings model, so `settings_from_env(HttpSettings)` reads `RP_READ_TIMEOUT_SECONDS`.
 The values are validated by the model: `RP_HTTP__READ_TIMEOUT_SECONDS=0` or an `HS256` in the list
-raises a `ValidationError` naming the field, and nothing is built. A list that is not valid JSON
+raises a `ValidationError` naming the field, and nothing is built; the error does not repeat the value you set, so a secret in a variable stays out of logs. A list that is not valid JSON
 raises `pydantic_settings.SettingsError` naming the group instead. A typo in the slot, as in
 `RP_HTTP__READ_TIMEOUT_SECOND`, raises a `ValidationError` ("Extra inputs are not permitted"). A typo
 in the group, as in `RP_HTP__READ_TIMEOUT_SECONDS`, or any other variable with the prefix, as in

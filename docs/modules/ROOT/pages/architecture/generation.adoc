@@ -312,9 +312,11 @@ import-linter contract (`domain-never-imports-technical-models`) check it three 
 |`testkit` |`rp_testkit.yaml`: the records the library's testkit uses, `ClassShape`, `SlotShape` and `FieldFlags` (the model-shape snapshot), `ContainerMarker`, `Violation` (the guards), `MachineUser`, `ZitadelProject`, `ZitadelServer`, `ExecResult`, `FusekiServer` and `GarageServer` (the container fixtures and Zitadel provisioning). No OpenAPI components |`rdf_persistence/testkit/generated/` |the testkit, which sits outside the layers
 |===
 
-The testkit group is separate from `rp_generation.yaml` so that the library, testkit included, never
-imports the generator for a record: the runtime layers import neither (contract
-`runtime-without-extras`), and the testkit's own modules read `testkit.generated`. `rp_generation.yaml`
+The testkit group is separate from `rp_generation.yaml` so that the testkit's records do not come from
+the generator's models: the runtime layers import neither (contract `runtime-without-extras`), and the
+testkit's own modules read `testkit.generated`. Two testkit modules, `testkit/freshness.py` and
+`testkit/conformance.py`, still import the generator's models, until `generator-package` F-1 removes
+that. `rp_generation.yaml`
 (`rdf_persistence/generation/model/`, into `rdf_persistence/generation/generated/`) is the generator's
 own technical target, and holds what the toolchain uses: `GenerationTarget`, `GenerationManifest`,
 `GeneratedFile`, `CheckProblem`, `CliFlag`, the rule, frame, TypeScript and Mermaid view-models, and the
@@ -551,9 +553,11 @@ API envelopes, written as mixins. A root schema imports the modules. Domain modu
 technical ones (step 2). The metamodel's mixins (`AggregateRoot`, `StoredFile`) are usable in domain
 modules: they say how a class is persisted, not what it means.
 
-A technical module's class that holds another class, such as a page of terms, marks the slot
-`owned: true`; without it the boundary check reports the slot as a reference to a class that is
-neither a root nor a reference class.
+A technical module's class may hold another class, such as a page of terms, with a plain slot: a
+technical class is never stored, so it needs neither `owned: true` nor `Described`, and the root, owned
+and reference rules do not apply to the classes of a module annotated `module_kind: technical`. Two
+rules guard the boundary the other way: a technical module declares no root (`AggregateRoot` is
+refused there), and a module that is not annotated technical may not hold a technical class.
 
 [source,yaml]
 ----

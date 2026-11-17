@@ -525,7 +525,8 @@ def _both_read(run: Run, seconds: int) -> None:
 @when(parsers.parse('a JWKS settings group lists "{name}" among its allowed algorithms'))
 def _jwks_lists(run: Run, name: str) -> None:
     try:
-        JwksSettings(allowed_algorithms=[name, "RS256"])
+        jwks = JwksSettings(allowed_algorithms=[name, "RS256"])
+        run.built = [JwksTokenVerifier(ISSUER, "aud", "roles", transport=_transport(), jwks=jwks)]
     except ValidationError as error:
         run.error = error
 
@@ -537,6 +538,7 @@ def _settings_refused(run: Run) -> None:
 
 @then("no token verifier is built")
 def _no_verifier(run: Run) -> None:
+    assert isinstance(run.error, ValidationError), "the settings model refused the list"
     assert run.built == [], "the refusal comes before any verifier"
 
 
