@@ -502,7 +502,8 @@ async def test_a_comment_races_the_removal_of_its_target_and_loses(
     assert await comments_on(session, B1) == [], "the comment was not stored"
 
 
-@pytest.mark.slow  # 600 commits on the fake store
+@pytest.mark.slow  # 27 s alone, minutes on a hosted runner
+@pytest.mark.timeout(600)
 async def test_a_target_with_many_comments_is_removed_with_them_in_one_request(
     store, session, ada, books
 ):  # TC-63

@@ -81,12 +81,12 @@ _What does the runner do to my test, and what do I do about a test that breaks o
   `unit`, `feature` or `unit or feature` adds `and not quarantine`, so a quarantined test blocks
   nothing; nobody quarantines a test to hide a real failure. A skip that stands for a parameter
   combination that cannot happen is not a quarantine: remove the combination.
-* *Timeout.* `pytest.ini` sets `timeout = 120` (seconds, `thread` method, fixture set-up not
-  counted, so a container start is free). In the parallel lanes (`pytest -n auto`) a hung test is
-  killed with its worker, xdist replaces the worker, and the test fails by name. In a serial run
-  (`-n 0`, or plain `pytest`) there is no worker to replace: a thread timeout ends the whole
-  session, so run a test you suspect of hanging in a parallel lane, or under a smaller
-  `--timeout=<seconds>`.
+* *Timeout.* `pytest.ini` sets `timeout = 120` (seconds, `signal` method, fixture set-up not
+  counted, so a container start is free). In every run, parallel (`pytest -n auto`) or serial
+  (`-n 0`, or plain `pytest`), a hung test fails by name in its own process, the worker survives
+  and the next test runs. (The `thread` method killed the worker, and under `--dist loadgroup`
+  xdist never rescheduled its queued tests.) A test that legitimately takes longer carries
+  `@pytest.mark.timeout(<seconds>)`; use a smaller `--timeout=<seconds>` to hunt a hang.
 * *Random order.* `pytest-randomly` shuffles the order of tests and reseeds the random generators
   before every test, so a test that depends on another's leftovers fails soon. The seed is
   printed in the header of a run's output (`Using --randomly-seed=<n>`); replay a failing order

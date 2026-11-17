@@ -77,13 +77,16 @@ def test_the_slow_marker_is_registered_and_not_slow_deselects_it(pytester: pytes
     result.assert_outcomes(passed=1, deselected=1)
 
 
+def _ini() -> str:
+    return (TESTS_ROOT_DIR.parent / "pytest.ini").read_text(encoding="utf-8")
+
+
 def test_a_test_past_its_timeout_fails_naming_itself_and_the_next_test_runs(
     pytester: pytest.Pytester,
 ) -> None:
-    """Under the repo's pytest.ini (thread method), a hung test kills its xdist worker, which
-    reports the test as failed and is replaced; the next test runs."""
-    ini = (TESTS_ROOT_DIR.parent / "pytest.ini").read_text(encoding="utf-8")
-    pytester.makefile(".ini", pytest=ini)
+    """Under the repo's pytest.ini (signal method), a hung test fails in its worker and the next
+    test runs."""
+    pytester.makefile(".ini", pytest=_ini())
     pytester.makepyfile(
         test_x="import time\nimport pytest\n\n"
         "@pytest.mark.timeout(1)\ndef test_hangs():\n    time.sleep(30)\n\n"
@@ -96,13 +99,11 @@ def test_a_test_past_its_timeout_fails_naming_itself_and_the_next_test_runs(
     result.stdout.fnmatch_lines(["*FAILED*test_hangs*"])
 
 
-def test_a_serial_run_ends_the_session_naming_the_test_past_its_timeout(
+def test_a_serial_run_fails_the_test_past_its_timeout_naming_it_and_the_next_test_runs(
     pytester: pytest.Pytester,
 ) -> None:
-    """Without xdist the thread method cannot fail one test: it ends the whole session, and the
-    dumped stack names the hung test."""
-    ini = (TESTS_ROOT_DIR.parent / "pytest.ini").read_text(encoding="utf-8")
-    pytester.makefile(".ini", pytest=ini)
+    """Without xdist the signal method still fails only the hung test."""
+    pytester.makefile(".ini", pytest=_ini())
     pytester.makepyfile(
         test_x="import time\n\n"
         "def test_hangs():\n    time.sleep(30)\n\n"
@@ -111,12 +112,31 @@ def test_a_serial_run_ends_the_session_naming_the_test_past_its_timeout(
     result = pytester.runpytest_subprocess(
         "-p", "no:xdist", "--timeout=1", "-p", "no:randomly", "-p", "no:cacheprovider"
     )
-    output = result.stdout.str() + result.stderr.str()
-    assert result.ret != 0, f"the session must end non-zero: {output}"
-    assert "test_hangs" in output, f"the session must name the hung test: {output}"
-    assert "test_x.py::test_after" not in output, (
-        "the session ends at the hung test, so the next test never starts"
+    outcomes = result.parseoutcomes()
+    assert outcomes.get("failed") == 1, f"the hung test must fail once: {outcomes}"
+    assert outcomes.get("passed") == 1, f"the next test must still run: {outcomes}"
+    result.stdout.fnmatch_lines(["*FAILED*test_hangs*"])
+
+
+def test_a_test_past_its_timeout_does_not_replace_the_xdist_worker(
+    pytester: pytest.Pytester,
+) -> None:
+    """A crashed worker under `--dist loadgroup` never gets its queued tests back: the worker
+    must survive a timeout."""
+    pytester.makefile(".ini", pytest=_ini())
+    pytester.makepyfile(
+        test_x="import time\nimport pytest\n\n"
+        "@pytest.mark.timeout(1)\ndef test_hangs():\n    time.sleep(30)\n\n"
+        "def test_a():\n    pass\n\ndef test_b():\n    pass\n\ndef test_c():\n    pass\n"
     )
+    result = pytester.runpytest_subprocess(
+        "-n", "2", "--dist", "loadgroup", "-p", "no:randomly", "-p", "no:cacheprovider"
+    )
+    outcomes = result.parseoutcomes()
+    assert outcomes.get("failed") == 1, f"only the hung test fails: {outcomes}"
+    assert outcomes.get("passed") == 3, f"every other test ran: {outcomes}"
+    output = result.stdout.str() + result.stderr.str()
+    assert "replacing crashed worker" not in output, f"the worker was replaced: {output}"
 
 
 def test_the_hypothesis_profile_is_derandomized_under_ci(

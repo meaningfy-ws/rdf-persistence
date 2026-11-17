@@ -311,6 +311,7 @@ def test_a_migration_file_that_does_not_load_fails_the_run(bootstrapped: Toy) ->
     assert "Half done" in printed, "the step is named"
 
 
+@pytest.mark.slow  # 3.0 s alone: the `bootstrapped` toy
 def test_a_run_that_fails_earlier_writes_no_draft(bootstrapped: Toy) -> None:
     bootstrapped.edit(
         (

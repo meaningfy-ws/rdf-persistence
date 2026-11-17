@@ -770,3 +770,36 @@ results in the change's inputs/ folder; do not stop")
   55 s; mutation 58 s: 94 survived, 17 untested, the IDENTICAL set to the audit's (diff empty).
   Summed per-test time about equal (before 966 s, after 998 s): the wall-time gain is the tail and
   distribution, not cheaper tests. After report: tests/audit/report-2026-11-17-after.md.
+- FINAL gates on the final code (alone): all green; mutation set identical to the audit. After
+  report written; reconciliation, execution report and strategy review filled; rebased onto develop
+  (41 commits replayed; every commit id renewed -> reconciliation ids rewritten from a subject map);
+  check-all re-run on the exact commit: green (6,790, 95.60 %); both changes archived
+  (test-suite-grooming, align-project-setup) with deltas merged into openspec/specs.
+- PR #132 opened and merged at once (no required checks on develop: `gh pr merge --auto` merged
+  immediately; local gates were green). PR #133 recorded the PR number in the archived EPIC.
+- [BAD] CI on develop: the unit job was CANCELLED by the 30-min timeout this change added (it took
+  32 min before; reached 6,739/6,746 by minute 18 and was still finishing at minute 30). The lead's
+  own change broke CI; the owner's earlier "ignore GH runs" meant the slow hosted run was never
+  measured against the new limit. Fixed in PR #135 (unit job 60 min, spec amended), merged.
+  [SKILL epic-delivery / test-suite-care] a new CI time limit must be checked against the hosted
+  runner's real duration, not the local one (70 s local vs ~30 min hosted).
+- [ENV] a stale .git/config.lock (0 bytes, read-only) kept reappearing after sandboxed git calls,
+  blocking upstream-tracking writes; worked around with `--no-track` and push without -u.
+- Release-please opened #134 (0.5.0): it bumps VERSION, pyproject.toml, uv.lock and the manifest
+  together - the morning's VERSION mechanism verified end to end. NOT merged: a release is the
+  owner's decision.
+- Cleanup: all builder worktrees removed (temp/wt/lead kept for the CI watch); the main checkout,
+  held by another session on docs/manual-revision-notes, untouched.
+- CI on develop after #135 (unit job 60 min): CANCELLED again at 60 min. Root cause found in the
+  logs: test_collaboration_discussion.py::test_a_target_with_many_comments_is_removed_with_them_in_one_request
+  takes 27 s alone locally (no slow marker; task 1.10's sweep missed it) and >120 s on the hosted
+  runner; pytest-timeout's `thread` method kills the xdist worker ("node down", "replacing crashed
+  worker"), and under `--dist loadgroup` its 7 queued tests are never rescheduled -> the session
+  hangs. Both runs: 6,739 passed, 7 never run. Before the grooming (no timeout) the job took 32
+  min and passed. Two changes of this epic combined into a CI hang: the thread timeout (PD-9) and
+  loadgroup (PD-7). [BAD] none of the local gates could show it (20 cores, the test far under
+  120 s locally). Fix: timeout_method = signal (fails the test, keeps the worker), the test marked
+  slow with its own 600 s limit; a pytester test proves no worker is replaced.
+  [SKILL test-suite-care / project-setup] pytest-timeout under xdist must use `signal` (or the
+  `thread` method's worker crash must be tested with the dist mode in use); a CI timeout change
+  needs a hosted-runner run before merge.

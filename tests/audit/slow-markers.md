@@ -13,7 +13,7 @@ their marker.
 The "2026-11-16 audit" column is the figure of the first audit, where the test had one. Tests moved
 or renamed by task 4.1 are located by function name.
 
-## Marker added (17)
+## Marker added (19)
 
 | Test | Seconds alone | Action | 2026-11-16 audit |
 |---|---|---|---|
@@ -34,6 +34,8 @@ or renamed by task 4.1 are located by function name.
 | `tests/unit/entrypoints/test_service_written.py::test_a_session_adds_replaces_and_removes_a_shed_each_with_a_new_version` | 2.77 | add | none |
 | `tests/unit/services/test_session_activity_adversarial.py::test_a_huge_served_triple_list_commits_whole_or_not_at_all` | 2.74 | add | 2.54 |
 | `tests/unit/generation/test_boundary_check.py::test_the_toy_generates_a_frame_for_each_activity_class` | 2.08 | add | 4.04 |
+| `tests/unit/services/test_collaboration_discussion.py::test_a_target_with_many_comments_is_removed_with_them_in_one_request` | 26.8 | add | none |
+| `tests/unit/generation/test_lock_step.py::test_a_run_that_fails_earlier_writes_no_draft` | 3.01 | add | none |
 
 ## Marker removed (1)
 
