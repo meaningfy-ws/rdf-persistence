@@ -241,8 +241,8 @@ Settled in the EPIC and cited: DEC-1 to DEC-11. New:
   Fuseki's 400 body stays at DEBUG, now as `rp.store.response_body`. Zitadel's status only, never
   its body (`test_zitadel.py:389`).
 - **PD-9 The guard.** `tests/unit/test_log_calls.py` walks the package's AST (generated code
-  excluded): every call `log.<level>(…)` has exactly one positional argument, a string literal; any
-  `extra=` is a call of `log_extra`; any module-level logger is `log = logging.getLogger(__name__)`.
+  excluded): every call `log.<level>(…)` has exactly one positional argument, a string literal; every call
+  passes `extra=` as a call of `log_extra`; any module-level logger is `log = logging.getLogger(__name__)`.
   Reuse: the stdlib `ast` module; no new tool.
 - **PD-10 Test capture.** `opentelemetry-sdk` (same release as the API in the lock) in the `test`
   group. `tests/conftest.py` gains a session fixture that installs one `TracerProvider` with a

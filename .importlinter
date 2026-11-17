@@ -163,6 +163,7 @@ source_modules =
     rdf_persistence.services.tenant_dump
     rdf_persistence.services.tenant_move
     rdf_persistence.services.tenant_sweep
+    rdf_persistence.services.telemetry
     rdf_persistence.services.tokens
     rdf_persistence.services.transitions
     rdf_persistence.services.unique_keys

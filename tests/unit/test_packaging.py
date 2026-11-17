@@ -49,6 +49,26 @@ def test_a_consumers_type_checker_reads_our_annotations(tmp_path: Path) -> None:
     assert "[arg-type]" in done.stdout, f"the wrong argument type is reported: {done.stdout}"
 
 
+SDK_FREE_IMPORTS = (
+    "import sys\n"
+    "import rdf_persistence\n"
+    "import rdf_persistence.entrypoints.kit\n"
+    "import rdf_persistence.adapters.fuseki\n"
+    "print([name for name in sys.modules if name.startswith('opentelemetry.sdk')])\n"
+)
+
+
+def test_importing_the_package_loads_no_opentelemetry_sdk_module() -> None:  # TC-17
+    done = subprocess.run(
+        [sys.executable, "-I", "-c", SDK_FREE_IMPORTS],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    assert done.stdout.strip() == "[]", f"the SDK is the application's, not ours: {done.stdout}"
+
+
 SHORT_FORMAT = re.compile(r'format="(nt|turtle|xml|json|json-ld|nquads)"')
 RETIRED_NAMES = re.compile(r"RDFLIB_|EVENT_STREAM")
 

@@ -1,6 +1,9 @@
 """The log context and its helpers (otel-observability PD-1 to PD-3, PD-12)."""
 
 import logging
+import subprocess
+import sys
+import textwrap
 
 import pytest
 from opentelemetry.semconv.attributes import (
@@ -8,11 +11,12 @@ from opentelemetry.semconv.attributes import (
     error_attributes,
     http_attributes,
 )
+from opentelemetry.trace import SpanKind, StatusCode
 from pydantic import ValidationError
 
 from rdf_persistence.domain.exceptions import NotFound
 from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
-from rdf_persistence.services.telemetry import error_type, log_extra
+from rdf_persistence.services.telemetry import error_type, log_extra, traced
 from tests.logs import attributes, records_of
 
 STABLE_ALIASES = {
@@ -121,3 +125,72 @@ def test_a_development_alias_is_the_name_pinned_at_v1_45_0(slot):
 )
 def test_error_type_is_the_module_and_qualified_name(error, spelling):
     assert error_type(error) == spelling
+
+
+NO_PROVIDER = textwrap.dedent(
+    """
+    from opentelemetry import trace
+
+    from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
+    from rdf_persistence.services.telemetry import traced
+
+    with traced("rp.x", LogContext(step="x")):
+        assert not trace.get_current_span().is_recording()
+    """
+)
+
+
+def test_traced_runs_without_a_provider_and_records_nothing() -> None:  # TC-14
+    done = subprocess.run(
+        [sys.executable, "-I", "-c", NO_PROVIDER],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert done.returncode == 0, done.stderr
+
+
+def test_traced_finishes_one_internal_span_with_the_context_as_attributes(spans) -> None:  # TC-15
+    with traced("rp.x", LogContext(step="x", tenant_id="t")):
+        pass
+
+    (span,) = spans()
+    assert span.name == "rp.x"
+    assert span.kind is SpanKind.INTERNAL
+    assert dict(span.attributes) == {"rp.step": "x", "rp.tenant.id": "t"}
+    assert span.status.status_code is StatusCode.UNSET
+
+
+def test_traced_marks_the_span_failed_and_reraises_the_same_error(spans) -> None:  # TC-16
+    error = NotFound("n")
+
+    with pytest.raises(NotFound) as raised, traced("rp.x", LogContext(step="x")):
+        raise error
+
+    assert raised.value is error
+    (span,) = spans()
+    assert span.status.status_code is StatusCode.ERROR
+    assert [event.name for event in span.events] == ["exception"]
+    assert span.attributes["error.type"] == "rdf_persistence.domain.exceptions.NotFound"
+
+
+def test_traced_with_root_starts_a_new_trace_and_without_it_joins_the_current(spans) -> None:
+    with traced("rp.outer", LogContext(step="o")):
+        with traced("rp.child", LogContext(step="c")):
+            pass
+        with traced("rp.round", LogContext(step="r"), root=True):
+            pass
+
+    by_name = {span.name: span for span in spans()}
+    assert by_name["rp.child"].parent.span_id == by_name["rp.outer"].context.span_id
+    assert by_name["rp.round"].parent is None
+    assert by_name["rp.round"].context.trace_id != by_name["rp.outer"].context.trace_id
+
+
+def test_traced_takes_the_kind_it_is_given(spans) -> None:
+    with traced("rp.x", LogContext(step="x"), kind=SpanKind.CLIENT):
+        pass
+
+    (span,) = spans()
+    assert span.kind is SpanKind.CLIENT

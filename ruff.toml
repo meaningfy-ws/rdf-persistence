@@ -43,6 +43,7 @@ allow-magic-value-types = ["bytes"]
 [lint.flake8-tidy-imports.banned-api]
 "os.getenv".msg = "Read configuration through the typed config class (cosmic-python:PR-CONFIG-DECOUPLED)."
 "os.environ".msg = "Read configuration through the typed config class (cosmic-python:PR-CONFIG-DECOUPLED)."
+"opentelemetry.sdk".msg = "The package depends on the API only; the SDK is the application's (otel-observability PD-11)."
 
 [lint.per-file-ignores]
 "tests/**/*.py" = [

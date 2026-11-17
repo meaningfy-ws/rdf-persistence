@@ -43,6 +43,7 @@ dependencies = [
     "anyio==4.16.0",
     "pyyaml==6.0.3",  # latest on 2026-11-06 (PD-2); reads the role definitions
     "python-mimeparse==2.0.0",  # parses the Accept header (PD-5)
+    "opentelemetry-api>=1.44,<2",
 ]
 
 [project.scripts]

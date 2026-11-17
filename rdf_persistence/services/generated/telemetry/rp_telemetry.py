@@ -83,7 +83,7 @@ class LogContext(ConfiguredBaseModel):
     db_namespace: Optional[str] = Field(default=None, alias="db.namespace", title="Db namespace", description="The database name, an OpenTelemetry stable attribute.")
     db_operation_name: Optional[str] = Field(default=None, alias="db.operation.name", title="Db operation name", description="The database operation, an OpenTelemetry stable attribute.")
     db_response_status_code: Optional[str] = Field(default=None, alias="db.response.status_code", title="Db response status code", description="The status code a database answered with, an OpenTelemetry stable attribute.")
-    error_type: Optional[str] = Field(default=None, alias="error.type", title="Error type", description="The class of an error, as `module.QualifiedName`, an OpenTelemetry stable attribute.")
+    error_type: Optional[str] = Field(default=None, alias="error.type", title="Error type", description="The qualified class name of an exception, or the code a service answered with.")
     http_response_status_code: Optional[int] = Field(default=None, alias="http.response.status_code", title="Http response status code", description="The HTTP status of a response, an OpenTelemetry stable attribute.")
     messaging_system_name: Optional[str] = Field(default=None, alias="messaging.system.name", title="Messaging system name", description="The messaging system, an OpenTelemetry development attribute (v1.45.0).")
     messaging_destination_name: Optional[str] = Field(default=None, alias="messaging.destination.name", title="Messaging destination name", description="The messaging destination, an OpenTelemetry development attribute (v1.45.0).")

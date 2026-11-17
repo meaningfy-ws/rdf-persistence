@@ -170,7 +170,7 @@ slots:
   error_type:
     title: Error type
     description: >-
-      The class of an error, as `module.QualifiedName`, an OpenTelemetry stable attribute.
+      The qualified class name of an exception, or the code a service answered with.
     slot_uri: rp:errorType
     alias: error.type
   http_response_status_code:
