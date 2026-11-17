@@ -698,3 +698,13 @@ Under the floor (not fixed; for the hand-over note and later changes):
   the lead in the spine. Under the floor: checker S1 the F-9 test runs N-Quads only, not TriG; S2
   `SSE_EVENT_SCHEMA` has no `raises=FailureGroup`; S3 `XML_FORBIDDEN` leaves out U+FFFE, U+FFFF and
   lone surrogates (not probed: what rdflib's writer and the response do with one is unchecked).
+
+- **D-20 The rebase onto otel-observability** (P-0002). Before the merge, `develop` gained
+  otel-observability, which moved the verifier's options into the settings model:
+  `JwksTokenVerifier(..., jwks=JwksSettings(allowed_algorithms=[...], leeway_seconds=...))`, and the
+  mapper's limit into `LimitSettings(max_roots=)`. The rebase kept `develop`'s text for the mapper
+  (`howto/adopt.adoc`), took both test pins in `pyproject.toml` (`uv lock` unchanged). The full
+  gates on the rebased head failed two `token_algorithms.feature` scenarios that still passed
+  `algorithms=`; one fixer moves that step and the pages that name `algorithms=` and
+  `leeway_seconds=` (questions, ADR-004, `howto/adopt.adoc#verifier-options`) to `JwksSettings`.
+  ADR-004's decision stands; only where it is configured changed.
