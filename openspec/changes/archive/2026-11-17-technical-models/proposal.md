@@ -182,7 +182,8 @@ install_service(app, ..., settings=service_settings, toolkit=settings)
   `services/iris.py` (`Iris`, `DEFAULT_IRIS`, the policy, the templates, the wrappers);
   `domain/tenant_move.py` → `services/tenant_move.py` (DEC-3).
 - `rp_generation.yaml`: the slot `GenerationTarget.target_kind` (TOML key `kind`), a `TargetKind`
-  enum, aliases `schema` and `regenerate-command` on their slots, `BoundaryRule.target_kind`; the
+  enum, aliases `schema` and `regenerate-command` on their slots (`schema` and `kind` through the
+  opt-in annotation `field_name: slot`, D-52), `BoundaryRule.target_kind`; the
   ten records the library's testkit imports leave it for `rp_testkit.yaml` (`ClassShape`,
   `SlotShape`, `ContainerMarker`, `Violation`, `MachineUser`, `ZitadelProject`, `ZitadelServer`,
   `ExecResult`, `FusekiServer`, `GarageServer`) and the new `FieldFlags` joins them;
@@ -192,8 +193,11 @@ install_service(app, ..., settings=service_settings, toolkit=settings)
   `repr` names, defaults a slot annotated `default_instance` to a new instance of its class, gives
   a multivalued `ifabsent: string(a, b)` its list default (design D-31, a LinkML work-around), and
   names a field annotated `field_name: slot` after its slot with the alias apart (D-48, D-52), so `config.py` drops
-  `FIELD_OF_TOML_KEY`. The hard check refuses a `default_instance` it cannot honour (D-32); the
-  class rules (root, owned, reference) skip the classes of a technical module (D-49).
+  `FIELD_OF_TOML_KEY`. The hard check refuses a `default_instance` it cannot honour (D-32) and
+  reads the flag as YAML writes it (`true`, `'true'`, `'True'`; any other value refused, D-55). The
+  class rules (root, owned, reference) skip the classes of a technical module (D-49); in exchange a
+  module that is not technical may not hold a technical class, and a technical module may not
+  declare a root (D-55). The JSON-LD context names a `field_name: slot` slot by its slot name.
 - `domain/sparql.py`: `SparqlTerm`'s pydantic schema and `fill_terms`. `services/unique_keys.py`,
   `session.py`, `listing.py`, `migrations.py`: term models. `services/iris.py`: `IriTemplateVariables`,
   `IriParts`.
@@ -233,7 +237,15 @@ install_service(app, ..., settings=service_settings, toolkit=settings)
 - A consumer that imported `rdf_persistence.domain.generated.service`, `rdf_persistence.domain.iris`
   or `rdf_persistence.domain.tenant_move` directly must import from `rdf_persistence`.
 - A consumer's `[[tool.rp-generate]]` table is unchanged; `kind` is optional. A consumer's
-  technical module may hold nested classes and `default_instance` (D-49).
+  technical module may hold nested classes and `default_instance` (D-49). Two new refusals
+  (D-55): a module that is not technical, including one with no `module_kind`, may not hold a
+  technical class, and a technical module may not declare an aggregate root. A consumer schema that
+  did either stops generating, naming the module and the class.
+- Every settings duration is at most one year, so `inf`, `nan` and overflowing values are refused
+  when the settings are built; the JWKS unknown-key cooldown is at least 1 s and no longer than the
+  key-cache TTL, and `JwksTokenVerifier` refuses a longer one (D-55). Every default is unchanged;
+  this is **BREAKING** only for a deployment that sets such a value. `settings_from_env`'s errors
+  no longer repeat the value read.
 - A consumer that imported a testkit record (`ClassShape`, `FusekiServer`, ...) from
   `rdf_persistence.generation.generated.rp_generation` imports it from
   `rdf_persistence.testkit.generated.rp_testkit` (**BREAKING**, no shim).
@@ -251,4 +263,16 @@ Reconciled at the close of the change (P-0004).
 | 1 the split | #144 | DEC-1 to DEC-4, DEC-9 | Delivered as shaped: `service` moved into `services/generated/service/`, `wire` under `model/technical/`, `domain/iris.py` split into `domain/layout.py` and `services/iris.py`, `tenant_move.py` into `services/`, the `kind` check and the contract `domain-never-imports-technical-models`. The review re-labelled four findings Critical, fixed before the merge: the release notes for the moved paths (D-10), the scenario map (D-11), docs that disagreed with the code (D-12), an untested scenario (D-13). Delivery decisions D-1 to D-13 |
 | 2 templates | #145, #146 | DEC-7, D-1, D-2 | Delivered: `SparqlTerm`'s own pydantic schema, the `templates` group with the term bundles and `IriTemplateVariables`, `IriParts`. One field named `schema_id`, not as planned (D-19). The admin merge of #145 left `develop`'s manifests stale; #146 regenerated them, and every rebase now ends with `make generate` (D-27). Delivery decisions D-14 to D-27 |
 | 3 settings | #150 | DEC-5, DEC-6, DEC-8 | Delivered: six settings groups with today's defaults (every `*_seconds` a float, D-32), the constructors migrated, `settings_from_env` behind the `settings` extra, `ZitadelUserState`. Two external work-arounds (D-31 LinkML list defaults, D-34 pydantic-settings). Rebased onto `otel-observability` stage 1, which added the `telemetry` group (D-37). Two pages still described removed keywords; fixed on the developer's decision (D-43). Delivery decisions D-28 to D-43 |
-| 4 testkit, BDD, docs | this PR | D-4, PD-10, PD-11 | Delivered: the `testkit` target with PD-11's ten records and `FieldFlags`; the TOML keys as aliases, by extending our generator once LinkML's alias handling blocked the schema-only form (D-48, the developer's decision); the BDD feature; the docs and the new settings how-to. The spec gained "A slot can default to an instance of its class" (D-33, D-44); its test found that a consumer's technical module could not hold a nested class, fixed (D-49). Accepted by the developer without a demo. Delivery decisions D-44 onwards |
+| 4 testkit, BDD, docs | #155 | D-4, PD-10, PD-11 | Delivered: the `testkit` target with PD-11's ten records and `FieldFlags`; the BDD feature; the docs and the new settings how-to. PD-10's aliases were blocked by LinkML (linkml#4256, #4257); the developer chose to extend our generator (D-48), and as built the rule is opt-in, `field_name: slot`, because naming every field after its slot renamed 80 generated fields (D-52). The spec gained "A slot can default to an instance of its class" (D-33, D-44); its test found that a consumer's technical module could not hold a nested class, fixed (D-49). The full review's fix pass (D-55, D-56) bounded every duration and the JWKS cooldown, hid input in `settings_from_env`'s errors, closed D-49's two holes, read `default_instance` as YAML writes it, and brought the docs, the changelog and two BDD steps in line; the lead's rebase doubled the scenario map, repaired (D-54). The checker's one unmet item (two removed constants missing from the changelog) was fixed. Accepted by the developer without a demo (D-53). Delivery decisions D-44 to D-56 |
+
+### Divergences from the shape
+
+- **DEC-2** shaped five technical groups; there are six, as `otel-observability` added `telemetry`
+  by DEC-1's rule (D-37).
+- **PD-10** shaped the TOML keys as plain LinkML aliases; as built they need the opt-in
+  `field_name: slot` annotation (D-48, D-52).
+- **DEC-4** shaped only a `kind` check for consumers; as built a consumer's technical module may
+  also hold nested classes (D-49), and two refusals came with that (D-55).
+- **DEC-5** and the no-go "new deployment values or changed defaults": no default changed, but the
+  settings gained upper bounds and a higher cooldown floor that the shape did not name (D-55).
+- **D-2** shaped `fill_terms`' bundle field as planned in PD-5; one field is `schema_id` (D-19).
