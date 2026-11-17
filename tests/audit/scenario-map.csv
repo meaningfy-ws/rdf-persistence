@@ -893,6 +893,7 @@ tests/unit/entrypoints/test_openapi.py::test_the_service_has_no_route_for_commen
 tests/unit/entrypoints/test_openapi.py::test_the_tenant_listing_answers_a_page_of_tenant_summaries,requirement,rp-service-api,The contract is published,,high,name;spec id
 tests/unit/entrypoints/test_openapi.py::test_the_tenant_routes_answer_their_models,requirement,rp-service-api,The contract is published,,high,name;spec id
 tests/unit/entrypoints/test_openapi.py::test_the_events_route_answers_text_event_stream,requirement,rp-service-api,The contract is published,,medium,name; the document states the events route's media type
+tests/unit/entrypoints/test_openapi.py::test_the_events_route_documents_each_event_as_event_data_id_and_retry,requirement,rp-service-api,The contract is published,,medium,name; sibling of the TC-45 events-route test
 tests/unit/entrypoints/test_problems.py::test_a_fault_of_the_service_hides_its_text,capability,rp-service-api,,,medium,covered code
 tests/unit/entrypoints/test_problems.py::test_a_key_conflict_has_its_own_kind_and_a_version_conflict_keeps_its_own,requirement,rp-service-api,A key clash is a problem of its own type,,high,name;covered code;spec id
 tests/unit/entrypoints/test_problems.py::test_a_method_the_route_lacks_is_a_problem_that_keeps_the_allow_header,capability,rp-service-api,,,medium,covered code
@@ -1462,6 +1463,8 @@ tests/unit/generation/test_openapi_components.py::test_the_identifier_is_read_on
 tests/unit/generation/test_openapi_components.py::test_the_output_equals_the_committed_tree,requirement,rp-generation,LinkML is the single source of every model artefact,,medium,module docstring PD-24 (no lines: reads fixture or generated output)
 tests/unit/generation/test_openapi_components.py::test_the_output_is_reproducible,requirement,rp-generation,Generated output is reproducible,,high,name + covered code
 tests/unit/generation/test_openapi_components.py::test_the_references_point_into_the_components_of_an_openapi_document,requirement,rp-generation,LinkML is the single source of every model artefact,,medium,module docstring PD-24 (no lines: reads fixture or generated output)
+tests/unit/generation/test_openapi_components.py::test_a_class_with_its_own_type_slot_keeps_its_definition,requirement,rp-generation,LinkML is the single source of every model artefact,,medium,name; generated OpenAPI components
+tests/unit/generation/test_openapi_components.py::test_every_class_schema_lists_an_optional_type_property,requirement,rp-generation,LinkML is the single source of every model artefact,,medium,name; generated OpenAPI components
 tests/unit/generation/test_partial_import.py::test_no_class_of_a_module_the_schema_does_not_import_is_in_any_artefact,scenario,rp-metamodel,The metamodel ships as separate modules,an application imports only what it uses,high,module docstring names the scenario + name
 tests/unit/generation/test_partial_import.py::test_the_application_class_is_generated,scenario,rp-metamodel,The metamodel ships as separate modules,an application imports only what it uses,high,module docstring names the scenario + name
 tests/unit/generation/test_placement.py::test_a_flag_overrides_the_table,requirement,rp-generation,Each artefact goes to its declared place,,high,module docstring cites the requirement + covered code (cli/config)
@@ -3943,9 +3946,9 @@ tests/unit/adapters/test_jwks.py::test_an_unusable_key_is_skipped_beside_a_good_
 tests/unit/adapters/test_jwks.py::test_the_default_leeway_lets_an_early_token_through_for_30_seconds,scenario,rp-identity,The token verifier follows the provider's signing algorithm,a small clock skew,high,name; covered code (adapters/jwks)
 tests/unit/adapters/test_jwks.py::test_the_default_leeway_lets_an_expired_token_through_for_30_seconds,scenario,rp-identity,The token verifier follows the provider's signing algorithm,a small clock skew,high,name; covered code (adapters/jwks)
 tests/unit/adapters/test_jwks.py::test_the_default_verifier_accepts_every_default_algorithm,requirement,rp-identity,The token verifier follows the provider's signing algorithm,,high,name; covered code (adapters/jwks)
-tests/unit/adapters/test_jwks.py::test_a_jwks_whose_only_key_is_for_encryption_is_unavailable,requirement,rp-identity,Every request carries a valid token,,medium,name; covered code (JWK use/key_ops)
+tests/unit/adapters/test_jwks.py::test_a_jwks_whose_only_key_is_for_encryption_is_unavailable,scenario,rp-identity,Every request carries a valid token,a key set whose only key is for encryption,high,name; spec scenario
 tests/unit/adapters/test_jwks.py::test_a_key_for_signatures_or_without_use_is_used,requirement,rp-identity,Every request carries a valid token,,medium,name; covered code (JWK use/key_ops)
-tests/unit/adapters/test_jwks.py::test_a_key_not_meant_for_signatures_is_not_used_beside_the_signing_key,requirement,rp-identity,Every request carries a valid token,,medium,name; covered code (JWK use/key_ops)
+tests/unit/adapters/test_jwks.py::test_a_key_not_meant_for_signatures_is_not_used_beside_the_signing_key,scenario,rp-identity,Every request carries a valid token,a token whose key is published for encryption,medium,name; the 401 itself is checked at the verifier
 tests/unit/services/test_settings_bounds.py::test_a_duration_that_is_not_finite_or_over_a_year_is_refused,requirement,rp-settings,Deployment values are generated settings with today's defaults,,medium,docstring D-55 (change technical-models)
 tests/unit/services/test_settings_bounds.py::test_a_duration_of_exactly_a_year_is_accepted,requirement,rp-settings,Deployment values are generated settings with today's defaults,,medium,docstring D-55 (change technical-models)
 tests/unit/services/test_settings_bounds.py::test_the_event_bus_is_built_at_the_bound_and_never_reaches_overflow,requirement,rp-settings,Deployment values are generated settings with today's defaults,,medium,docstring D-55 (change technical-models)
@@ -4065,3 +4068,13 @@ tests/unit/test_log_calls.py::test_a_departure_from_the_style_is_reported_with_f
 tests/unit/test_log_calls.py::test_a_source_in_the_new_style_has_no_violation,requirement,rp-observability,Log records carry a constant message and conventional attributes,,high,name; spec id (TC-24)
 tests/unit/test_log_calls.py::test_every_log_call_in_the_package_is_in_the_style,requirement,rp-observability,Log records carry a constant message and conventional attributes,,high,name; spec id (TC-23)
 tests/unit/test_sparql_parser_threads.py::test_threads_that_parse_sparql_at_once_all_succeed,capability,rp-aggregate-store,,,low,docstring; protects the SPARQL parser the store calls rely on; no spec requirement
+tests/unit/domain/test_sparql_parsing.py::test_each_wrapper_holds_the_lock_while_rdflib_parses,capability,rp-aggregate-store,,,low,name; lock around rdflib's parser; no spec requirement
+tests/unit/domain/test_sparql_parsing.py::test_prepare_update_applies_the_prefixes_it_is_given,capability,rp-aggregate-store,,,medium,name; wrapper of rdflib's SPARQL parser
+tests/unit/services/test_shacl.py::test_a_validation_after_the_warm_up_does_not_take_the_lock,capability,rp-aggregate-store,,,low,name; lock around pyshacl validation; no spec requirement
+tests/unit/services/test_shacl.py::test_documents_warm_up_when_built_and_validate_without_the_lock,capability,rp-aggregate-store,,,low,name; lock around pyshacl validation; no spec requirement
+tests/unit/services/test_shacl.py::test_validate_locked_holds_the_lock_for_the_whole_validation,capability,rp-aggregate-store,,,low,name; lock around pyshacl validation; no spec requirement
+tests/unit/services/test_shacl.py::test_warm_up_runs_one_validation_under_the_lock,capability,rp-aggregate-store,,,low,name; lock around pyshacl validation; no spec requirement
+tests/unit/testkit/test_testkit_imports.py::test_no_library_testkit_module_imports_the_generator,capability,rp-testkit,,,medium,name; docstring generator-package PD-1
+tests/unit/testkit/test_testkit_imports.py::test_the_generation_schema_declares_the_conformance_cases_and_no_technical_record,capability,rp-generation,,,medium,name; generator-package
+tests/unit/testkit/test_testkit_imports.py::test_the_generation_schema_description_does_not_mention_the_testkit,capability,rp-generation,,,medium,name; generator-package
+tests/unit/testkit/test_testkit_imports.py::test_the_records_a_library_testkit_module_imports_live_in_the_testkit_models,capability,rp-testkit,,,medium,name; docstring generator-package PD-1
