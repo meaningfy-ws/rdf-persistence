@@ -170,7 +170,13 @@ class DocumentApi:
         media_type = accepted_media_type(request.headers.get(ACCEPT))
         data, body_type = await self._body(request)
         iri, read = await self._kit.aggregates.create(
-            tenant, Principal(id=caller.principal), self._cls, rp_path, data, body_type
+            tenant,
+            Principal(id=caller.principal),
+            self._cls,
+            rp_path,
+            data,
+            body_type,
+            represented_as=media_type,
         )
         location = f"{request.url.path.rstrip('/')}/{_last_segment(iri)}"
         return await self._response(read, media_type, status=HTTPStatus.CREATED, location=location)
@@ -196,7 +202,7 @@ class DocumentApi:
         )
         data, body_type = await self._body(request)
         read = await self._kit.aggregates.replace(
-            tenant, principal, self._cls, iri, data, body_type, expected
+            tenant, principal, self._cls, iri, data, body_type, expected, represented_as=media_type
         )
         return await self._response(read, media_type)
 

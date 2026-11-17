@@ -12,6 +12,7 @@ from rdflib import RDF, URIRef
 
 from rdf_persistence.domain.exceptions import InvalidBody, NotFound
 from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.domain.media import JSON
 from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
@@ -67,10 +68,15 @@ class Aggregates:
         rp_path: str,
         data: bytes,
         media_type: str,
+        represented_as: str = JSON,
     ) -> tuple[str, Stored]:
         """Store the body ``data`` as a new aggregate of ``cls`` served at ``rp_path``; answers its minted IRI and what was stored.
 
+        ``represented_as`` is the representation the caller will be answered in; a write the
+        aggregate has no such form for is refused before anything is stored.
+
         Raises:
+            NotAcceptable: The aggregate has no form in ``represented_as``; nothing was stored.
             InvalidBody: The body is not a valid ``cls`` (see ``Documents.parse`` and ``validate``), or,
                 with parts beside their root, names a part (PD-7).
         """
@@ -78,6 +84,7 @@ class Aggregates:
         triples, named = await self._triples(tenant, data, media_type, cls, iri, creating=True)
         if named:
             raise InvalidBody(f"a new {cls.name} cannot name its parts, found {min(named)}")
+        self._documents.require_form(triples, represented_as)
         async with self._tenancy.tenant_session(tenant, principal) as session:
             await session.add_graph(iri, triples)
             return iri, await session.get_graph(iri)
@@ -91,8 +98,12 @@ class Aggregates:
         data: bytes,
         media_type: str,
         if_version: str,
+        represented_as: str = JSON,
     ) -> Stored:
         """Replace the aggregate ``iri`` by the body ``data`` if it is still at ``if_version``; answers what was stored.
+
+        ``represented_as`` is the representation the caller will be answered in; a replacement the
+        aggregate has no such form for is refused before anything changes.
 
         What the service stored in the aggregate's ``internal`` slots stays: no body can set them.
 
@@ -105,6 +116,7 @@ class Aggregates:
             Conflict: Its version is not ``if_version``; nothing changed.
         """
         triples, named = await self._triples(tenant, data, media_type, cls, iri, creating=False)
+        self._documents.require_form(triples, represented_as)
         if iri == tenant:
             await self._tenancy.vet_root(tenant, triples, principal)
         async with self._tenancy.tenant_session(tenant, principal) as session:

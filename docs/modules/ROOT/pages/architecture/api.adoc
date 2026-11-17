@@ -249,8 +249,9 @@ one. JSON and JSON-LD are framed as before. The other five serialise the aggrega
 N-Quads and TriG name the aggregate's own graph, so a reader gets the triples together with the
 graph they came from. A listing stays JSON and JSON-LD: a page carries its total and paging, which
 no RDF serialisation holds, so any other type answers 406. RDF/XML cannot write a predicate that has
-no XML local name; an aggregate that holds one answers 406 naming the type, and the other six forms
-still work. The OpenAPI document lists each type as a string response.
+no XML local name, nor a value holding a character XML 1.0 forbids; an aggregate that holds one
+answers 406 naming the type, and the other six forms still work. On a create or a replace the 406
+comes before anything is written, so the client is never told a stored write failed. The OpenAPI document lists each type as a string response.
 
 *Bodies are strict* (PD-14b). A body larger than `max_body_bytes`, or holding more than 10 000
 objects and list values together (a list of strings counts each string), is refused with 413. A plain-JSON body may use only its class's slot names and the JSON-LD

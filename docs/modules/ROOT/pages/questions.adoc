@@ -429,10 +429,11 @@ and clients ask for the project audience and roles scopes. `roles_claim` must ma
 file bytes: you write it, checked through the kit.
 |A bucket per tenant always; the bytes route is yours
 
-|JSON-LD or Turtle
+|JSON-LD or an RDF serialisation
 |Plain JSON is the easiest for clients and is JSON-LD through the `Link` header. A JSON-LD body
-brings its own inline context (a remote one is refused). Turtle is for reading one aggregate only:
-no body and no listing takes it.
+brings its own inline context (a remote one is refused). The five RDF serialisations (Turtle,
+N-Triples, N-Quads, TriG, RDF/XML) are for one aggregate only: no body and no listing takes them
+(xref:architecture/api.adoc#representations[the seven types]).
 |Plain JSON
 
 |The `openapi` switch

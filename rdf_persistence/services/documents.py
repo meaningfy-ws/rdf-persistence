@@ -11,6 +11,7 @@ tracking) are bookkeeping, not content, and are left out.
 """
 
 import json
+import re
 from collections.abc import Iterable, Iterator
 from functools import cached_property
 from pathlib import Path
@@ -28,7 +29,7 @@ from rdflib.term import Node
 from rdf_persistence.domain.exceptions import InvalidBody, NotAcceptable, PayloadTooLarge
 from rdf_persistence.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.domain.media import DATASET_REPRESENTATIONS, JSON, JSON_LD
+from rdf_persistence.domain.media import DATASET_REPRESENTATIONS, JSON, JSON_LD, RDF_XML
 from rdf_persistence.domain.sparql import FORBIDDEN_IRI_CHARS, Triple
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.artifacts import (
@@ -73,6 +74,8 @@ MAX_MESSAGES = 5
 TYPE_KEYS = ("type", TYPE_KEY)
 VALUE_KEY = "@value"
 LANGUAGE_KEY = "@language"
+# What XML 1.0 forbids in text: rdflib's RDF/XML writer passes it through, and no XML parser reads it.
+XML_FORBIDDEN = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
 
 class Documents:
@@ -477,6 +480,22 @@ class Documents:
             return json.dumps(_without_languages(framed), ensure_ascii=False)
         return json.dumps(framed, ensure_ascii=False)
 
+    @staticmethod
+    def require_form(triples: Iterable[Triple], media_type: str) -> None:
+        """Raise unless the aggregate ``triples`` can be served as ``media_type``; a write calls it before it stores.
+
+        Only RDF/XML can fail (see ``render``): the others write any graph, so the check costs a
+        serialisation for RDF/XML alone.
+
+        Raises:
+            NotAcceptable: ``triples`` have no form in ``media_type``.
+        """
+        if media_type == RDF_XML:
+            graph = Graph()
+            for triple in triples:
+                graph.add(triple)
+            _serialised(graph, URIRef(""), media_type)
+
     def frame(self, graph: Graph, cls: ClassDefinition) -> dict:
         """The aggregate of class ``cls`` in ``graph``, framed with the generated frame and compacted with the generated context."""
         frame = {**self._frame_of(cls.name), CONTEXT_KEY: self.context}
@@ -493,6 +512,10 @@ def _serialised(shown: Graph, graph_iri: URIRef, media_type: str) -> str:
         named = dataset.graph(graph_iri)
         named += shown
         rdf = dataset
+    if media_type != RDF_XML:
+        return str(rdf.serialize(format=media_type))
+    if any(isinstance(o, Literal) and XML_FORBIDDEN.search(str(o)) for o in shown.objects()):
+        raise NotAcceptable(f"this aggregate has no {media_type} form: a value XML cannot hold")
     try:
         return str(rdf.serialize(format=media_type))
     except ValueError as refusal:  # rdflib's RDF/XML writer: "Can't split <predicate>"

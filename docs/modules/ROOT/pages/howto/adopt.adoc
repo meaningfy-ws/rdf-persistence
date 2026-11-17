@@ -1689,8 +1689,10 @@ matches, so the write answers 409. Some proxies turn a strong `ETag` weak when t
 nginx does it when it compresses a response with gzip. Behind such a proxy every client that echoes
 the tag gets 409 on every write, and no write succeeds. Either do not let the proxy compress the
 service's responses (in nginx, `gzip off;` for the service's location), or make it pass the `ETag`
-through unchanged. Test it: read an aggregate through the proxy, then `PUT` it with the `ETag` you
-were given, and expect 200.
+through unchanged (in nginx, a compressed response keeps a strong tag only when the location has
+`gzip off;`). Test it: read an aggregate through the proxy with `Accept-Encoding: gzip`, as a
+browser does (without it nginx does not compress, and the test passes behind the very proxy that
+breaks real clients), then `PUT` it with the `ETag` you were given, and expect 200.
 
 [#test-service]
 == 13. Test the service

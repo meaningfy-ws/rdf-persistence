@@ -201,7 +201,7 @@ and buckets, and the sweep inside a live tenant is the next building block (belo
 
 |Service kit
 |v1
-|FastAPI helpers and one *generic router* driven by the schema at run time (tenant-scoped: `/{tenant_segment}/{t}/{rp_path}` and `…/{id}`; IRIs minted on create): RFC 9457 problem responses, the aggregate version as `ETag` with `If-Match` required on updates and deletes (428 when missing, 409 on conflict), token validation and access check as dependencies, bodies validated with the generated shapes, listings with equality filters and paging, an OpenAPI document from a hook over the schema. Plain JSON with an `id` holding the IRI by default, JSON-LD and Turtle by content negotiation (O-2). See xref:architecture/api.adoc[API].
+|FastAPI helpers and one *generic router* driven by the schema at run time (tenant-scoped: `/{tenant_segment}/{t}/{rp_path}` and `…/{id}`; IRIs minted on create): RFC 9457 problem responses, the aggregate version as `ETag` with `If-Match` required on updates and deletes (428 when missing, 409 on conflict), token validation and access check as dependencies, bodies validated with the generated shapes, listings with equality filters and paging, an OpenAPI document from a hook over the schema. Plain JSON with an `id` holding the IRI by default, and six more media types by content negotiation: JSON-LD, Turtle, N-Triples, N-Quads, TriG and RDF/XML (O-2; xref:architecture/api.adoc#representations[Representations]). See xref:architecture/api.adoc[API].
 |N-9
 
 |Test kit

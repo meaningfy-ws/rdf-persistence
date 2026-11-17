@@ -37,7 +37,8 @@ representations:
 * A *listing* stays JSON and JSON-LD. A page carries its total and its paging, which no RDF
   serialisation holds. A listing asked for in another type answers 406.
 * RDF/XML cannot write a predicate that has no XML local name. An aggregate with such a
-  predicate answers 406 for RDF/XML, naming the type; the other six still work.
+  predicate, or a value with a character XML 1.0 forbids, answers 406 for RDF/XML, naming the
+  type; the other six still work. On a create or a replace the 406 comes before the write.
 
 == Consequences
 

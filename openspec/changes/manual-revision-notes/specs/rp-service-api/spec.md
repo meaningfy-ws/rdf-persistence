@@ -14,7 +14,8 @@ also return, by `Accept`, JSON-LD (`application/ld+json`), Turtle (`text/turtle`
 (`application/rdf+xml`); in N-Quads and TriG every triple SHALL be in the named graph the aggregate
 was read from. On a tie in `Accept` the order SHALL be JSON, JSON-LD, Turtle, N-Triples, N-Quads,
 TriG, RDF/XML. A listing SHALL be served as JSON or JSON-LD only. An aggregate that a serialisation
-cannot express SHALL be answered 406. Writes SHALL accept JSON and JSON-LD.
+cannot express SHALL be answered 406; on a create or a replace the 406 SHALL come before anything
+is written. Writes SHALL accept JSON and JSON-LD.
 
 #### Scenario: the same book three ways
 - **WHEN** a book is read with `Accept` set to `application/json`, `application/ld+json` and

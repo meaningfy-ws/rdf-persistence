@@ -391,7 +391,7 @@ is empty and writes the marker; then the triples and the version and tracking st
 |Read
 |`GET …/books/{id}` (`read` on the book)
 |`Session.get_graph`: one `CONSTRUCT` of `B/graph`, which holds the version and tracking too.
-Answered as framed JSON, JSON-LD or Turtle, without bookkeeping and `internal` values.
+Answered in one of seven media types (see xref:architecture/api.adoc#representations[Representations]), without bookkeeping and `internal` values.
 |Nothing.
 
 |List

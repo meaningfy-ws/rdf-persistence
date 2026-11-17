@@ -424,6 +424,45 @@ async def test_an_rdf_xml_predicate_without_a_local_name_is_not_acceptable(  # T
         await documents.render(odd, GRAPH, book_class, RDF_XML)
 
 
+@pytest.mark.parametrize("char", ["\x00", "\x08", "\x0b", "\x0c", "\x0e", "\x1f"])
+async def test_a_literal_xml_cannot_hold_is_not_acceptable_as_rdf_xml(  # F-8
+    documents, book_class, char
+) -> None:
+    odd = Graph()
+    odd.add((URIRef(BOOK), SKOS.prefLabel, Literal(f"a{char}b")))
+    with pytest.raises(NotAcceptable, match=re.escape(RDF_XML)):
+        await documents.render(odd, GRAPH, book_class, RDF_XML)
+    assert await documents.render(odd, GRAPH, book_class, TURTLE), "other forms can hold it"
+
+
+@pytest.mark.parametrize(
+    "media_type", [JSON, JSON_LD, TURTLE, N_TRIPLES, DATASET_REPRESENTATIONS[0]]
+)
+def test_a_form_check_passes_what_the_form_can_express(documents, media_type) -> None:
+    documents.require_form(Graph(), media_type)
+
+
+def test_a_form_check_refuses_a_graph_rdf_xml_cannot_express(documents) -> None:  # F-7
+    odd = Graph()
+    odd.add((URIRef(BOOK), URIRef("https://ex.org/p/"), Literal("x")))
+    with pytest.raises(NotAcceptable, match=re.escape(RDF_XML)):
+        documents.require_form(odd, RDF_XML)
+    documents.require_form(odd, TURTLE)
+
+
+@pytest.mark.parametrize("media_type", [TURTLE, N_TRIPLES, DATASET_REPRESENTATIONS[0]])
+async def test_a_defect_in_a_writer_other_than_rdf_xml_is_not_a_406(  # F-9
+    documents, book_class, media_type, monkeypatch
+) -> None:
+    def broken(self, *args, **kwargs):
+        raise ValueError("a defect of ours")
+
+    monkeypatch.setattr(Graph, "serialize", broken)
+    monkeypatch.setattr(Dataset, "serialize", broken)
+    with pytest.raises(ValueError, match="a defect of ours"):
+        await documents.render(Graph(), GRAPH, book_class, media_type)
+
+
 # --- language tags and literals through the JSON-LD path -------------------------------------------
 
 

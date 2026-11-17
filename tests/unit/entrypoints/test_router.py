@@ -27,6 +27,7 @@ from rdf_persistence.domain.media import (
     JSON,
     JSON_LD,
     N_QUADS,
+    RDF_XML,
     REPRESENTATIONS,
     TURTLE,
 )
@@ -837,6 +838,55 @@ async def test_a_representation_the_service_does_not_make_is_a_406_before_anythi
     assert len(scene.service.store.sent("update")) == writes, (
         "no book was created that the client cannot read"
     )
+
+
+# The shapes are closed, so a body cannot carry a predicate RDF/XML cannot name (the service tests
+# `require_form` on one); a literal XML 1.0 forbids is a valid body whose RDF/XML form cannot be written.
+UNWRITABLE_BOOK = {**DUNE_BODY, "label": "bad\u0001label"}
+
+
+async def test_a_create_as_rdf_xml_that_cannot_be_written_as_it_is_a_406_and_stores_nothing(
+    scene,
+) -> None:  # F-7
+    writes = len(scene.service.store.sent("update"))
+    response = await scene.http.post(
+        f"{scene.tenant}/books",
+        json=UNWRITABLE_BOOK,
+        headers=scene.headers("ada", Accept=RDF_XML),
+    )
+    assert (response.status_code, problem_of(response).type) == (
+        406,
+        f"{PROBLEMS}not-acceptable",
+    ), "406"
+    assert len(scene.service.store.sent("update")) == writes, "nothing was written"
+
+
+async def test_a_replace_as_rdf_xml_that_cannot_be_written_as_it_is_a_406_and_changes_nothing(
+    scene,
+) -> None:  # F-7
+    writes = len(scene.service.store.sent("update"))
+    response = await scene.http.put(
+        scene.book,
+        json=UNWRITABLE_BOOK,
+        headers=scene.headers("ada", Accept=RDF_XML, **{"If-Match": scene.book_etag}),
+    )
+    assert response.status_code == 406, response.text
+    assert len(scene.service.store.sent("update")) == writes, "nothing was written"
+    current = await scene.http.get(scene.book, headers=scene.headers("ada"))
+    assert current.headers["etag"] == scene.book_etag, "the version is unchanged"
+
+
+async def test_a_tenant_root_replace_as_rdf_xml_that_cannot_be_written_is_a_406(
+    scene,
+) -> None:  # F-7
+    writes = len(scene.service.store.sent("update"))
+    response = await scene.http.put(
+        scene.tenant,
+        json={"label": "Ghent", "description": "Books for \u0001all.", "city": "Ghent"},
+        headers=scene.headers("ada", Accept=RDF_XML, **{"If-Match": scene.root_etag}),
+    )
+    assert response.status_code == 406, response.text
+    assert len(scene.service.store.sent("update")) == writes, "nothing was written"
 
 
 # One case per class: produced but not accepted (turtle), an unknown type (text/plain stands for it).
