@@ -1,13 +1,20 @@
 """The store the toolkit's own SPARQL goes through: a refusal of the text is the service's fault."""
 
+import httpx
 import pytest
-from opentelemetry.trace import SpanKind
+from opentelemetry.trace import SpanKind, StatusCode
 from rdflib import Dataset, Graph, URIRef
 
 from rdf_persistence.adapters.fuseki import FusekiStore
-from rdf_persistence.domain.exceptions import BadQuery, DatabaseGone, SparqlError
+from rdf_persistence.domain.exceptions import (
+    BadQuery,
+    DatabaseGone,
+    SparqlError,
+    StoreUnavailable,
+)
 from rdf_persistence.services.store import ToolkitStore, TracedStore, system_name_of
 from rdf_persistence.testkit import FakeStore, assert_isomorphic
+from tests.spans import assert_no_text_in_spans
 
 DATASET = "d"
 GRAPH = URIRef("https://example.org/g")
@@ -130,12 +137,40 @@ async def test_tc18_no_span_holds_the_text_of_an_update(spans):
     )
     await traced_store.query(DATASET, f'ASK {{ ?s ?p "{SECRET}" }}')
     finished = spans()
-    assert finished, "the calls were traced"
     for span in finished:
         assert "db.query.text" not in span.attributes, "no query text attribute"
-        assert not any(SECRET in str(value) for value in span.attributes.values()), (
-            "no attribute holds the text"
-        )
+    assert_no_text_in_spans(finished, SECRET)
+
+
+class QuotingStore(FakeStore):
+    """A store whose failure is raised from a cause that quotes tenant text, as an adapter's can."""
+
+    async def query(self, dataset: str, sparql: str):
+        raise StoreUnavailable("unreadable") from ValueError(f"bad value {SECRET}")
+
+
+async def test_a_store_failure_chained_to_a_cause_quoting_tenant_text_leaves_it_out(spans):
+    traced_store = TracedStore(QuotingStore(), "rdflib")  # D-10
+    with pytest.raises(StoreUnavailable):
+        await traced_store.query(DATASET, "ASK { ?s ?p ?o }")
+    (span,) = spans()
+    assert span.status.status_code is StatusCode.ERROR
+    assert_no_text_in_spans([span], SECRET)
+
+
+async def test_a_store_failure_quoting_tenant_text_leaves_it_out_of_every_span(spans):  # D-10
+    turtle = f"<urn:a> <urn:b> {SECRET} .".encode()
+    transport = httpx.MockTransport(
+        lambda _: httpx.Response(200, content=turtle, headers={"content-type": "text/turtle"})
+    )
+    fuseki = FusekiStore("http://fuseki.test:3030", "u", "p", transport=transport)
+    traced_store = TracedStore(fuseki, "fuseki")
+    with pytest.raises(StoreUnavailable) as raised:
+        await traced_store.query(DATASET, "CONSTRUCT WHERE { ?s ?p ?o }")
+    assert SECRET in str(raised.value.__cause__), "the parser's error does quote the text"
+    (span,) = spans()
+    assert span.status.status_code is StatusCode.ERROR
+    assert_no_text_in_spans([span], SECRET)
 
 
 async def test_a_failure_of_the_store_passes_through_and_marks_the_span(spans):

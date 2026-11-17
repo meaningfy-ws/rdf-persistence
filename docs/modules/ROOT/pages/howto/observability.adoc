@@ -558,12 +558,19 @@ out of them:
 * *No tenant values in validation errors.* A pydantic `ValidationError` quotes its input, so
   where one comes from tenant data (an incoming event, a stored activity that cannot be decoded)
   the record carries `error.type` and `rp.error.detail`, which names the fields at fault and never
-  a value, and no `exc_info`.
+  a value, and no `exc_info`. The record of a 500 answer (`internal error answered`) follows the
+  same rule: where the error, or the error it was raised from, is a `ValidationError` over a
+  stored value, it drops the traceback.
 * *No tenant data in a span.* Span names are fixed and attributes are identifiers (a tenant id,
   an activity id, a database name), never the data.
+* *No exception text in a span.* A span that an exception leaves is marked `ERROR` with no
+  description, carries `error.type`, and has one `exception` event whose only attribute is
+  `exception.type`. It never carries the exception's message or traceback, which can quote what a
+  store or a validator received.
 
 What the toolkit cannot guard: an exception that your own code raises, with data in its message,
-reaches the log as `exc_info` and so as `exception.message` and `exception.stacktrace`. This
+reaches the log records that keep `exc_info` (a mapped 500 whose cause is not a validation error,
+a failed observer or round) and so as `exception.message` and `exception.stacktrace`. This
 includes the text of an exception your own validator raises on a tenant write
 (xref:howto/adopt.adoc#validators[Enforce your own rules on tenant writes]). Write those messages
 without values, or filter `exception.*` in your collector. FastAPI's own `logs` option (step 2) is

@@ -8,22 +8,22 @@ rp:LogContext a sh:NodeShape ;
 	rdfs:label "Log context" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n15 ;
-	sh:property _:c14n0 , _:c14n1 , _:c14n10 , _:c14n11 , _:c14n12 , _:c14n13 , _:c14n14 , _:c14n16 , _:c14n17 , _:c14n18 , _:c14n19 , _:c14n2 , _:c14n20 , _:c14n21 , _:c14n22 , _:c14n23 , _:c14n24 , _:c14n25 , _:c14n26 , _:c14n27 , _:c14n28 , _:c14n3 , _:c14n4 , _:c14n5 , _:c14n6 , _:c14n7 , _:c14n8 , _:c14n9 ;
+	sh:property _:c14n0 , _:c14n1 , _:c14n10 , _:c14n11 , _:c14n12 , _:c14n13 , _:c14n14 , _:c14n16 , _:c14n17 , _:c14n18 , _:c14n19 , _:c14n2 , _:c14n20 , _:c14n21 , _:c14n22 , _:c14n23 , _:c14n24 , _:c14n25 , _:c14n26 , _:c14n27 , _:c14n28 , _:c14n29 , _:c14n3 , _:c14n4 , _:c14n5 , _:c14n6 , _:c14n7 , _:c14n8 , _:c14n9 ;
 	sh:targetClass rp:LogContext .
-_:c14n0 sh:datatype xsd:string ;
-	sh:description "The messaging system, an OpenTelemetry development attribute (v1.45.0)." ;
-	sh:maxCount 1 ;
-	sh:name "Messaging system name" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 26 ;
-	sh:path rp:messagingSystemName .
-_:c14n1 sh:datatype xsd:integer ;
+_:c14n0 sh:datatype xsd:integer ;
 	sh:description "The number of blobs an operation removed or kept." ;
 	sh:maxCount 1 ;
 	sh:name "Blob count" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 7 ;
 	sh:path rp:blobCount .
+_:c14n1 sh:datatype xsd:string ;
+	sh:description "The database name, an OpenTelemetry stable attribute." ;
+	sh:maxCount 1 ;
+	sh:name "Db namespace" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 21 ;
+	sh:path rp:dbNamespace .
 _:c14n10 sh:datatype xsd:string ;
 	sh:description "The id of the schema a migration moves a tenant to." ;
 	sh:maxCount 1 ;
@@ -61,13 +61,6 @@ _:c14n14 sh:datatype xsd:string ;
 _:c14n15 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
 _:c14n16 sh:datatype xsd:string ;
-	sh:description "The messaging destination, an OpenTelemetry development attribute (v1.45.0)." ;
-	sh:maxCount 1 ;
-	sh:name "Messaging destination name" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 27 ;
-	sh:path rp:messagingDestinationName .
-_:c14n17 sh:datatype xsd:string ;
 	sh:description "The step of the operation a record or a span stands for, one constant per call site." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -75,84 +68,98 @@ _:c14n17 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:step .
-_:c14n18 sh:datatype xsd:integer ;
+_:c14n17 sh:datatype xsd:integer ;
 	sh:description "The limit on the messages of a commit." ;
 	sh:maxCount 1 ;
 	sh:name "Message limit" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 17 ;
 	sh:path rp:messageLimit .
+_:c14n18 sh:datatype xsd:string ;
+	sh:description "The messaging system, an OpenTelemetry development attribute (v1.45.0)." ;
+	sh:maxCount 1 ;
+	sh:name "Messaging system name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 27 ;
+	sh:path rp:messagingSystemName .
 _:c14n19 sh:datatype xsd:string ;
+	sh:description "The qualified class name of an exception, on the `exception` event of a span; the only attribute of that event, an OpenTelemetry stable attribute." ;
+	sh:maxCount 1 ;
+	sh:name "Exception type" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 25 ;
+	sh:path rp:exceptionType .
+_:c14n2 sh:datatype xsd:string ;
+	sh:description "The detail of a validation error, free of the data that failed it." ;
+	sh:maxCount 1 ;
+	sh:name "Error detail" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 18 ;
+	sh:path rp:errorDetail .
+_:c14n20 sh:datatype xsd:string ;
 	sh:description "The name of the migration step a record concerns." ;
 	sh:maxCount 1 ;
 	sh:name "Migration name" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 6 ;
 	sh:path rp:migrationName .
-_:c14n2 sh:datatype xsd:string ;
-	sh:description "The database name, an OpenTelemetry stable attribute." ;
-	sh:maxCount 1 ;
-	sh:name "Db namespace" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 21 ;
-	sh:path rp:dbNamespace .
-_:c14n20 sh:datatype xsd:string ;
+_:c14n21 sh:datatype xsd:string ;
 	sh:description "The name of the store where the tenant was found instead." ;
 	sh:maxCount 1 ;
 	sh:name "Found store name" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 4 ;
 	sh:path rp:foundStoreName .
-_:c14n21 sh:datatype xsd:string ;
+_:c14n22 sh:datatype xsd:string ;
 	sh:description "The database operation, an OpenTelemetry stable attribute." ;
 	sh:maxCount 1 ;
 	sh:name "Db operation name" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 22 ;
 	sh:path rp:dbOperationName .
-_:c14n22 sh:datatype xsd:integer ;
-	sh:description "The HTTP status of a response, an OpenTelemetry stable attribute." ;
-	sh:maxCount 1 ;
-	sh:name "Http response status code" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 25 ;
-	sh:path rp:httpResponseStatusCode .
 _:c14n23 sh:datatype xsd:string ;
+	sh:description "The messaging destination, an OpenTelemetry development attribute (v1.45.0)." ;
+	sh:maxCount 1 ;
+	sh:name "Messaging destination name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 28 ;
+	sh:path rp:messagingDestinationName .
+_:c14n24 sh:datatype xsd:string ;
 	sh:description "The status code a database answered with, an OpenTelemetry stable attribute." ;
 	sh:maxCount 1 ;
 	sh:name "Db response status code" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 23 ;
 	sh:path rp:dbResponseStatusCode .
-_:c14n24 sh:datatype xsd:string ;
+_:c14n25 sh:datatype xsd:string ;
 	sh:description "The id of the tenant the operation works on." ;
 	sh:maxCount 1 ;
 	sh:name "Tenant id" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:tenantId .
-_:c14n25 sh:datatype xsd:string ;
+_:c14n26 sh:datatype xsd:string ;
 	sh:description "The name of an observer of the message bus." ;
 	sh:maxCount 1 ;
 	sh:name "Observer name" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 16 ;
 	sh:path rp:observerName .
-_:c14n26 sh:datatype xsd:string ;
+_:c14n27 sh:datatype xsd:string ;
 	sh:description "The id of the activity a record concerns." ;
 	sh:maxCount 1 ;
 	sh:name "Activity id" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 12 ;
 	sh:path rp:activityId .
-_:c14n27 sh:datatype xsd:string ;
+_:c14n28 sh:datatype xsd:string ;
 	sh:description "The Python class name of the activity." ;
 	sh:maxCount 1 ;
 	sh:name "Activity class" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 13 ;
 	sh:path rp:activityClass .
-_:c14n28 sh:datatype xsd:string ;
+_:c14n29 sh:datatype xsd:string ;
 	sh:description "The class IRI an event envelope carries." ;
 	sh:maxCount 1 ;
 	sh:name "Activity class iri" ;
@@ -160,25 +167,25 @@ _:c14n28 sh:datatype xsd:string ;
 	sh:order 14 ;
 	sh:path rp:activityClassIri .
 _:c14n3 sh:datatype xsd:string ;
-	sh:description "The detail of a validation error, free of the data that failed it." ;
-	sh:maxCount 1 ;
-	sh:name "Error detail" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 18 ;
-	sh:path rp:errorDetail .
-_:c14n4 sh:datatype xsd:string ;
 	sh:description "The deployment that published an event." ;
 	sh:maxCount 1 ;
 	sh:name "Event origin" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 15 ;
 	sh:path rp:eventOrigin .
-_:c14n5 sh:datatype xsd:string ;
+_:c14n4 sh:datatype xsd:string ;
 	sh:description "The fields of the IRI policy that changed." ;
 	sh:name "Policy fields" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 9 ;
 	sh:path rp:policyFields .
+_:c14n5 sh:datatype xsd:integer ;
+	sh:description "The HTTP status of a response, an OpenTelemetry stable attribute." ;
+	sh:maxCount 1 ;
+	sh:name "Http response status code" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 26 ;
+	sh:path rp:httpResponseStatusCode .
 _:c14n6 sh:datatype xsd:string ;
 	sh:description "The body a store answered with; written at DEBUG only." ;
 	sh:maxCount 1 ;

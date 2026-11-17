@@ -21,6 +21,7 @@ from rdf_persistence.domain import exceptions as errors
 from rdf_persistence.domain.exceptions import PersistenceError
 from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.auth import BEARER_SCHEME
+from rdf_persistence.services.decoding import error_text
 from rdf_persistence.services.generated.service.rp_service import Problem, ProblemKind, ProblemSlug
 from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.telemetry import error_type, log_extra
@@ -201,12 +202,19 @@ def install_problem_handlers(app: FastAPI, base: str) -> None:
         kind = kind_of(error)
         assert kind is not None, "a handler is registered only for mapped errors"
         if kind.status == HTTPStatus.INTERNAL_SERVER_ERROR:
+            # A stored value can be quoted by the error or its cause (D-11): no traceback then.
+            refusal = next(
+                (e for e in (error, error.__cause__) if isinstance(e, ValidationError)), None
+            )
+            context = LogContext(
+                step="answer-internal-error",
+                error_type=error_type(error),
+                error_detail=None if refusal is None else error_text(refusal),
+            )
             log.error(
                 "internal error answered",
-                exc_info=error,
-                extra=log_extra(
-                    LogContext(step="answer-internal-error", error_type=error_type(error))
-                ),
+                exc_info=error if refusal is None else None,
+                extra=log_extra(context),
             )
         return problem_response(problem_for(base, kind, str(error)))
 

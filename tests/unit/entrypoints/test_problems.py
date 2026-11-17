@@ -6,7 +6,7 @@ import logging
 import httpx
 import pytest
 from fastapi import FastAPI, HTTPException
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from rdf_persistence import LabelUpdate, Problem, ProblemKind
 from rdf_persistence.domain import exceptions
@@ -17,6 +17,7 @@ from rdf_persistence.entrypoints.problems import (
     install_problem_handlers,
     kind_of,
 )
+from rdf_persistence.services.decoding import error_text
 from rdf_persistence.services.generated.service.rp_service import ProblemSlug
 from tests.logs import attributes
 from tests.toy_service import assert_problem
@@ -240,6 +241,38 @@ async def test_a_mapped_500_is_logged_once_at_error_with_its_type(error, caplog)
         "rp.step": "answer-internal-error",
         "error.type": f"{type(error).__module__}.{type(error).__qualname__}",
     }, "the step and the fully qualified class name, nothing else"  # TC-13c
+
+
+class Stored(BaseModel):
+    count: int
+
+
+async def test_a_500_from_stored_data_the_schema_refuses_logs_no_traceback_and_no_value(
+    caplog,
+) -> None:  # TC-13c, D-11
+    marker = "secret-tenant-text"
+    with pytest.raises(ValidationError) as refusal:
+        Stored(count=marker)  # type: ignore[arg-type]
+    cause = refusal.value
+    error = exceptions.StoredDataInvalid("the collection is invalid")
+    error.__cause__ = cause
+    assert marker in str(cause), "the validation error does quote the stored value"
+    caplog.set_level(logging.DEBUG, LOGGER)
+
+    response = await get(app_raising(error))
+
+    [record] = [r for r in caplog.records if r.name == LOGGER]
+    assert response.status_code == 500, "still a 500 problem"
+    assert not record.exc_info, "no traceback: its chain quotes the stored values"
+    assert not record.exc_text, "and no rendered one"
+    assert attributes(record) == {
+        "rp.step": "answer-internal-error",
+        "error.type": "rdf_persistence.domain.exceptions.StoredDataInvalid",
+        "rp.error.detail": error_text(cause),
+    }, "the type and the fault named without the value"
+    assert marker not in "".join(
+        [record.getMessage(), *map(str, attributes(record).values()), response.text]
+    ), "the marker is in no message, attribute or answer"
 
 
 async def test_an_unmapped_failure_is_left_to_the_server_to_log(caplog) -> None:  # TC-33b

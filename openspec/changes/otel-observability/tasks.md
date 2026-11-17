@@ -69,7 +69,7 @@ schema change the lead runs `make check-generated`.
 | TC-12 | an observer that raises; then a commit over the message limit through `kit.receive` | one ERROR `an observer failed` with `rp.observer.name`, `rp.activity.id`, `exc_info`; one ERROR for the limit, with `rp.message.limit`, and only one |
 | TC-13a | the relay: a publish that fails; a tenant database gone | WARNING with `rp.activity.id`, `rp.tenant.id`, `exc_info`; DEBUG with `rp.tenant.id`, `rp.step=relay-database-gone` |
 | TC-13b | a commit overtaken (`session.py:1509`); an `on_commit` hook that raises | WARNING with `rp.activity.id`; ERROR with `rp.activity.id` and `exc_info` |
-| TC-13c | a route raising `StoredDataInvalid` (a mapped kind answered 500: the `problems.py` record; an unmapped `RuntimeError` is the server's to log, `manual-revision-notes` TC-33b) | one ERROR `internal error answered`, `error.type=rdf_persistence.domain.exceptions.StoredDataInvalid`, `rp.step=answer-internal-error`, `exc_info` set |
+| TC-13c | a route raising a mapped kind answered 500 (the `problems.py` record; an unmapped `RuntimeError` is the server's to log, `manual-revision-notes` TC-33b): `StoredDataInvalid` with no `ValidationError` in its chain, and `StoredDataInvalid` raised from a `ValidationError` over a value holding `secret-tenant-text` (D-11) | one ERROR `internal error answered`, `rp.step=answer-internal-error`, `error.type` the qualified class name; the first keeps `exc_info`; the second has `rp.error.detail=error_text(...)`, no `exc_info`, and the marker in no message or attribute |
 | TC-13d | `kit.receive` of an event for a tenant this deployment lacks | one WARNING, `rp.activity.id`, `rp.tenant.id`, `error.type` ending `DatabaseGone` or `NotFound`; the tenant IRI in no message |
 
 - [x] 1.4 PD-6 (adapter rows), PD-8: the adapters `fuseki.py`, `zitadel.py`, `s3.py`, `redis_events.py`
@@ -106,7 +106,7 @@ fix pass, rebase on `develop`, PR 1 (BREAKING in its body, DEC-10), merge on gre
 |---|---|---|
 | TC-14 | in a subprocess with no provider set: `with traced("rp.x", LogContext(step="x"))` | runs; `trace.get_current_span().is_recording()` is false inside |
 | TC-15 | `with traced("rp.x", LogContext(step="x", tenant_id="t"))` under the fixture | one finished span `rp.x`, kind INTERNAL, attributes `{"rp.step": "x", "rp.tenant.id": "t"}`, status UNSET |
-| TC-16 | the block raises `NotFound("n")` | the same object re-raised; span status ERROR, one `exception` event, `error.type=rdf_persistence.domain.exceptions.NotFound` |
+| TC-16 | the block raises `NotFound("n")` | the same object re-raised; span status ERROR with no description, one `exception` event whose only attribute is `exception.type`, `error.type=rdf_persistence.domain.exceptions.NotFound`; a `CancelledError` leaves status UNSET and no `error.type` (D-10) |
 | TC-17 | subprocess: import `rdf_persistence`, `rdf_persistence.entrypoints.kit`, `rdf_persistence.adapters.fuseki` | no key of `sys.modules` starts with `opentelemetry.sdk` |
 
 - [x] 2.2 DEC-6, DEC-11, PD-4, PD-13: `TracedStore`, `system_name_of`, the kit's wrapping,
@@ -121,7 +121,7 @@ fix pass, rebase on `develop`, PR 1 (BREAKING in its body, DEC-10), merge on gre
 | TC-25 | each of the 8 port methods on `TracedStore(D, "rdflib")` | one CLIENT span named after the method; `db.system.name=rdflib`, `db.operation.name` the method, `db.namespace` the dataset (absent for `list_datasets`) |
 | TC-26 | `system_name_of` of a `FusekiStore`; of an object without the attribute | `fuseki`; `sparql` |
 | TC-27 | a kit wired to `D` and `client-a`; one query through each | spans on both, `db.namespace` each store's dataset; the same raw store under two names still raises `ValueError` (tenant-stores PD-16) |
-| TC-18 | an update whose SPARQL holds the literal `secret-tenant-text` | no attribute of any span contains it; no `db.query.text` |
+| TC-18 | an update whose SPARQL holds the literal `secret-tenant-text` | no attribute, event attribute or status description of any span contains it; no `db.query.text`; the same for a store failure chained to a cause quoting it, a `FusekiStore` parse of malformed Turtle holding it, and a `rp.bus.handle` span over a `ValidationError` quoting it (D-10) |
 | TC-28 | `RedisEventBus(..., middlewares=[RedisTelemetryMiddleware()])`; publish, then receive (container) | a PRODUCER and a CONSUMER span with one trace id; the envelope reads back unchanged |
 
 - [x] 2.3 PD-5: spans in `Transaction.commit`, `migrate_shared`, `migrate_tenants`,
