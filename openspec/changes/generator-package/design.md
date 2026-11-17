@@ -317,3 +317,14 @@ package name are leader's choices (DEC-2, DEC-5).
   `otel-observability` and `manual-revision-notes` are archived. RISK-8 did not occur: only
   `testkit/freshness.py` and `testkit/conformance.py` import `rdf_persistence.generation`; every
   other record is in `rdf_persistence.testkit.generated`, so task 1.1 moves nothing.
+- **D-6 Stage 1 is a small stage** (lead). About 100 added lines (one test file, one contract, a
+  description sentence), no production code: the one L2+L3 pass is the four-eyes pass and the full
+  gates with CI are the check, with no separate checker. The tester's probe (TC-06) was run by the
+  builder of task 1.2 and reverted.
+- Stage 1 review, under the floor (Warning and Suggestions, not fixed):
+  - W: `test_testkit_imports.py` skips relative imports; the import-linter contract still catches
+    them, and no testkit module uses one. Stage 2 rewrites the test for the new package.
+  - S: `architecture/generation.adoc` does not name the interim contract; stage 2 rewrites the
+    passage (task 2.5).
+  - S: the contract's comment says "configuration and records" while `freshness` also uses the
+    manifest logic; the name is fixed by task 1.2 and stage 2 replaces the contract.
