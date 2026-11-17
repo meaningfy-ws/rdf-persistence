@@ -172,12 +172,17 @@ GET /libraries/t1/books/b7   Accept: application/n-quads
   replaced by media types and `EventSourceResponse.media_type`.
 - `model/rp_files.yaml`, `model/rp_core.yaml`: `media_type` annotations on `RdfFormat`, a
   `media_type` tag in `RpAnnotation`; `services/vocabulary.py`: `media_types()`.
-- `domain/media.py`: `N_TRIPLES`, `TRIG`, `RDF_XML`, the longer `REPRESENTATIONS`;
-  `entrypoints/openapi.py`: the new media types documented.
-- `testkit/fakes.py`: `FakeStore` on pyoxigraph, its update splitter and `_plain_strings` deleted,
-  if DEC-8's gate passes.
-- `pyproject.toml`: `python-mimeparse` (runtime), `schemathesis` (test group), `pyoxigraph`
-  declared if DEC-8 holds.
+- `domain/media.py`: `N_TRIPLES`, `TRIG`, `RDF_XML`, `DATASET_REPRESENTATIONS`, the longer
+  `REPRESENTATIONS`; `entrypoints/openapi.py`: the new media types documented.
+  `entrypoints/router.py`: the context route documented as the JSON-LD it answers (found by the
+  contract test, design D-17).
+- `testkit/fakes.py`: unchanged. DEC-8's gate failed on three engine-bound tests, so `FakeStore`
+  stays on rdflib (design PD-17; the attempt is in `evidence/spike-pyoxigraph-fakestore.patch`).
+- `pyproject.toml`: `python-mimeparse` (runtime), `schemathesis` 4.33.4 (test group); `pyoxigraph`
+  not declared (PD-17).
+- `tests/unit/entrypoints/test_contract.py`: the contract test; the whole-document run is a strict
+  `xfail` until #148 (the component schemas omit `type`) is fixed in the generator (D-17).
+- `tests/feature/representations.feature`, `tests/feature/token_algorithms.feature`.
 - `services/mapper.py`: the corrected docstring (G-4).
 - Docs: `adr/` records ADR-001 to ADR-005 and their index; `architecture/api.adoc` representations;
   `howto/adopt.adoc` the verifier's parameters; `questions.adoc` entries. Stage 1 also corrected
@@ -200,8 +205,11 @@ None.
 
 ## Impact
 
-- Consumers: **BREAKING** in seven places, each listed in design.md "Breaking changes" and marked
-  by a `BREAKING CHANGE:` footer: `If-Match` is strict (a weak tag `W/"v"` is 409, an unquoted
+- Consumers: **BREAKING** in ten places, each listed in design.md "Breaking changes" and marked
+  by a `BREAKING CHANGE:` footer. As built, three more than shaped: a JSON-LD body or loaded file
+  with an IRI that is not valid, or that is a scalar, is refused (F-4); `Accept` reads an
+  unparsable or empty `q` as 1 and a `q` above 1 as 1 (F-3); an `Accept` that refuses the three old
+  forms but admits a wildcard is served one of the four new ones (3.1). As shaped: `If-Match` is strict (a weak tag `W/"v"` is 409, an unquoted
   value 428; both matched before); `expected_version` refuses `W/`, `*` and lists, which a
   consumer's own route may call; `jwks.ALLOWED_ALGORITHMS` and `jwks.ES256` are removed; a token
   expired by less than the leeway (30 s by default) is accepted (`leeway_seconds=0` restores the
@@ -210,9 +218,9 @@ None.
   still shows the string); `REPRESENTATIONS` holds seven members. Otherwise: a consumer that builds
   `JwksTokenVerifier` gets the wider algorithm default without changing code, and `If-Match: *`
   and lists, refused as stale today, now work.
-- Dependencies: `python-mimeparse` 2.0.x (pure Python, no dependencies) at run time; `schemathesis`
-  in tests; `pyoxigraph` declared at the locked 0.5.13 if DEC-8 holds (already installed through
-  linkml-runtime).
+- Dependencies: `python-mimeparse` 2.0.x (pure Python, no dependencies) at run time;
+  `schemathesis` 4.33.4 in tests (it resolved beside the pins, RISK-10 did not occur);
+  `pyoxigraph` not declared, as DEC-8's gate failed (PD-17).
 - Metamodel: one enum value added to `RpAnnotation` and four annotations on `RdfFormat`; the lock
   change is expected `SAFE` (checked in task 2.4).
 - The later changes: `technical-models` takes DEC-3's parameters into settings; `otel-observability`
@@ -225,5 +233,5 @@ Kept in step with each stage's PR (P-0004); the full reconciliation closes PR 3.
 | Stage | PR | As shaped | As built |
 |---|---|---|---|
 | 1 defects | #141 | DEC-1 to DEC-4, DEC-12; six breaking changes | Delivered as shaped. Seven breaking changes: DEC-2's leeway is breaking for a client that counts on an exact expiry (design D-5). A language-tagged value changes shape in JSON-LD only, not in JSON. A token header whose `alg` is not a string is refused with 401; it raised a 500 for one commit of the stage. `entrypoints/kit.py` needed no change. Three docs pages corrected beyond the shaped ones (What Changes). One CI-only test timeout, present on develop, quarantined (#142, design D-7). Delivery decisions D-1 to D-7 agreed by the developer, 2026-11-17 |
-| 2 reuse | — | DEC-5 to DEC-8 | — |
-| 3 representations, contract, decisions | — | DEC-9 to DEC-11 | — |
+| 2 reuse | #143 | DEC-5 to DEC-8 | DEC-5 to DEC-7 delivered. DEC-8 not: `FakeStore` stays on rdflib, as its gate failed three engine-bound tests with no test edited (PD-17); the pyoxigraph attempt is kept as evidence and its follow-up needs the developer (three test edits, oxigraph's `NOT IN ()` defect); #142 stays quarantined. The review found the Accept swap changed more than PD-5 accepted, and PyLD dropped statements without a word: both fixed before the merge (F-3, F-4), with two more breaking changes. The load pages name each JSON-LD refusal and its message (F-5, D-13). Delivery decisions D-8 to D-13; the developer granted the lead the merge on green CI until the EPIC ends (D-13) |
+| 3 representations, contract, decisions | this PR | DEC-9 to DEC-11 | DEC-9 to DEC-11 delivered: seven representations on the routes that answer one aggregate (a listing stays JSON and JSON-LD; RDF/XML is 406 for a predicate with no XML local name), the schemathesis contract test, ADR-001 to ADR-005. The contract test found two defects: the context route's media type, fixed; the generated component schemas omit `type`, issue #148, so the whole-document run is a strict `xfail` (D-17). The mapper docstring keeps three of its reasons; the re-check showed the others do not hold (PD-16, D-16). One more breaking change (Accept with a wildcard, 3.1). Delivery decisions D-14 to D-17 |

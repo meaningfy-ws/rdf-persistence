@@ -497,6 +497,15 @@ overrule any of them. D-1 to D-7 agreed by the developer, 2026-11-17.
   improvement suggestions" (`inputs/answers-2026-11-17.md`); the docstring keeps three reasons,
   the re-check showed the blank-node and language-tag reasons do not hold. `tests/audit/scenario-map.csv`
   names the renamed requirement by its old title in 38 rows; it follows the RENAMED delta at archive.
+- **D-17 The contract run's two findings** (task 3.2, PD-15). schemathesis 4.33.4 resolved beside
+  the pins (RISK-10 did not occur). (1) `GET /context.jsonld` answered JSON-LD but was documented
+  as JSON: a small route fix, made (`JsonLdResponse`, guarded by its own contract test). (2) A
+  plain JSON read carries `type`, which the generated object component schemas
+  (`additionalProperties: false`) do not list: every aggregate read fails the response-schema
+  check. The fix is in the component generator, not a small change in `openapi.py` or a route, so
+  per PD-15 it is issue #148; TC-63 is `xfail(strict=True)` naming #148, so the fix removes the
+  marker by failing. TC-64 (an undocumented 418 fails the run) shows the check is live. A probe
+  adding `type` made every operation pass, so these are the only two findings.
 
 ### Stage 1 review findings (L2, L3)
 

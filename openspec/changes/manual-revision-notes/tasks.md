@@ -209,7 +209,7 @@ Stage 2 closes like stage 1, then PR 2.
 | TC-61 | the OpenAPI document, a read operation's 200 | the seven media types |
 | TC-62 | `Accept: */*`, `text/*`, `application/*` | JSON, Turtle, JSON (unchanged) |
 
-- [ ] 3.2 PD-15 (B-5, DEC-10): schemathesis in the `test` group (`make lock`);
+- [x] 3.2 PD-15 (B-5, DEC-10): schemathesis in the `test` group (`make lock`);
   `tests/unit/entrypoints/test_contract.py`, marked `slow`. If `make lock` cannot resolve
   schemathesis beside the pins, stop and report (RISK-10). Fix each finding that is a small change
   in `openapi.py` or a route; list the rest as issues in the PR. Layer: tests, entrypoints. Gate:
@@ -220,7 +220,7 @@ Stage 2 closes like stage 1, then PR 2.
 | TC-63 | every operation of the toy service's `/openapi.json`, 25 derandomised examples each | no server error; every status and content type documented; every JSON body valid against its schema |
 | TC-64 | the toy service with a route made to answer an undocumented 418 (a fixture) | the contract test fails (the check is live) |
 
-- [ ] 3.3 PD-14, PD-16 (G-1 to G-4, Q-6, DEC-11): `adr/adr-001` to `adr-005` and the index,
+- [x] 3.3 PD-14, PD-16 (G-1 to G-4, Q-6, DEC-11): `adr/adr-001` to `adr-005` and the index,
   `nav.adoc`, `questions.adoc` (one question each, and the "as of" date), the pointer in
   `architecture/open-decisions.adoc`; `architecture/api.adoc` (the representations),
   `howto/adopt.adoc` (the verifier's `algorithms` and `leeway_seconds`, ADR-004; a reverse proxy
@@ -233,7 +233,7 @@ Stage 2 closes like stage 1, then PR 2.
 | TC-65 | `make check-docs` | every new page in the nav; no consumer term |
 | TC-66 | the re-check script on linkml-runtime 1.12.1 | each reason the docstring keeps is shown by the script's output, pasted into the PR |
 
-- [ ] 3.4 BDD: `tests/feature/representations.feature` (a book read in each RDF representation
+- [x] 3.4 BDD: `tests/feature/representations.feature` (a book read in each RDF representation
   describes the same triples; N-Quads names the book's graph; a listing refuses N-Quads) and
   `tests/feature/token_algorithms.feature` (the spec delta's rp-identity scenarios), steps in
   `tests/feature/test_representations.py` and `test_token_algorithms.py` on fakes. The spec's
@@ -246,7 +246,7 @@ section), in PR 3 before it merges.
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 ·
-  [x] 2.4 · [x] 2.5 (kept rdflib, PD-17) · (tester) · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] reconcile · PR 3
+  [x] 2.4 · [x] 2.5 (kept rdflib, PD-17) · (tester) · PR 2 · [x] 3.1 · [x] 3.2 (whole run xfail, #148) · [x] 3.3 · [x] 3.4 · [x] reconcile · PR 3
 
 ## Verification
 
