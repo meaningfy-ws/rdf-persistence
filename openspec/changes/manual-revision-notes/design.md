@@ -568,7 +568,12 @@ Under the floor (not fixed in this stage; the full review after stage 3 weighs t
 - L3 S2 `METAMODEL_ANNOTATIONS` is read only by its test; its comment overstates.
 - L3 S3 `test_documents.py` imports `dataset_of` from `documents`; `test_jsonld.py:124` uses
   `format="nt"`; TC-44's regex sees double quotes only.
-- L2 S3 `test_jsonld.py:61`'s name contradicts its document; the session-level "no graph is
-  created" rows for relative IRI and remote context; TC-40 does not assert `sent("query") == []`.
+- L2 S3 `test_jsonld.py:61`'s name contradicts its document; TC-40 does not assert
+  `sent("query") == []` (the session-level "no graph is created" rows are now covered by
+  `test_loading_formats_adversarial.py`, checker S5).
+- Checker S2 (the PR body's decision range and Accept bullet) fixed in the PR body.
+- Cold reader: the load section's older gaps (enum names of the four formats, the import of
+  `InvalidGraph`, the HTTP status, the type of `data` and of the return, "the sweep") are not this
+  change's; task 3.3 touches `howto/adopt.adoc` and may take them.
 - L2 S4 `test_hard_check.py:728`'s name and message do not mention the metamodel group.
 - L2 S5 TC-43's golden is one plain triple; richer samples would show where PyLD and rdflib differ.
