@@ -2,7 +2,7 @@
 
 ## Done
 Stage 2 (spans, the broker seam, BDD and the how-to, tasks 2.1–2.6) and the epic's full review
-with its fix pass, PR #PRNUM (merged by the watch-and-merge command after this note). Stage 1 was
+with its fix pass, PR #152 (merged by the watch-and-merge command after this note). Stage 1 was
 PR #149. All build tasks are ticked; `proposal.md` carries the "As built" reconciliation.
 
 ## Decided since the PLAN
