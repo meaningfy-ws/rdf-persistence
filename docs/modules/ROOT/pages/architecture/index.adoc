@@ -344,12 +344,11 @@ every generated package without a line of its own. Four groups sit in `services/
 and the `testkit` group in `testkit/generated/`. The domain layer imports none of them:
 the contract `domain-never-imports-technical-models` forbids `rdf_persistence.domain` from importing
 any of the three `generated` packages, directly or through a chain, so a failure names the rule that
-broke. Two hand-written modules used the service records, so `domain/iris.py` was split: the layout
-functions that no policy changes stay in `domain/layout.py`, and `Iris`, its policy, its templates and
-the functions over `DEFAULT_IRIS` are in `services/iris.py`, with `tenant_move.py`. Every name still
-imports from `rdf_persistence`; only a deep import of `rdf_persistence.domain.iris`,
-`rdf_persistence.domain.tenant_move` or `rdf_persistence.domain.generated.service` breaks
-(`CHANGELOG.md`).
+broke. Two hand-written modules used the service records, so they moved to the services layer: the
+layout functions that no policy changes stay in `domain/layout.py`, and `Iris`, its policy, its
+templates and the functions over `DEFAULT_IRIS` are in `services/iris.py`, with `tenant_move.py`.
+Every name still imports from `rdf_persistence`; only a deep import of one of the old module paths
+breaks, and `CHANGELOG.md` lists them with their new ones.
 
 == Layering and boundaries
 

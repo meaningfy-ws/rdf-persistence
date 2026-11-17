@@ -18,7 +18,8 @@ _What can I set?_
 
 `ToolkitSettings` holds one of each group; `ToolkitSettings()` holds the defaults below. Every
 duration is in seconds and at least 0.001 (a zero timeout or interval is refused); every count and size is
-at least 1; the leeway is 0 to 300.
+at least 1; the leeway is 0 to 300. If you upgrade from a release that took a keyword for a value, read
+<<removed,section 4>> first.
 
 [cols="1,2,1,3",options="header"]
 |===
@@ -60,7 +61,8 @@ at least 1; the leeway is 0 to 300.
 |`max_manifest_bytes` |65536 |The manifest of a tenant dump a restore reads
 |===
 
-`max_body_bytes` and `max_restore_bytes` are not here: they stay in `ServiceSettings`. The protocol
+`max_body_bytes` and `max_restore_bytes` are not here: they stay in `ServiceSettings`, the settings
+you give `install_service` (its arguments are in xref:architecture/api.adoc#serving[Serving it]). The protocol
 constants of the identity provider and the store (slugs, header names, paths) are not settings.
 
 [#composition-root]
@@ -68,7 +70,9 @@ constants of the identity provider and the store (slugs, header names, paths) ar
 
 _How do I change a value?_
 
-Build the settings once, where you build the adapters, and give each its group:
+Build the settings once, where you build the adapters, and give each its group. `fuseki_url`,
+`fuseki_user`, `issuer`, `roles_claim` and the other plain arguments below are your own values, as
+you already pass them to these constructors:
 
 [source,python]
 ----
@@ -109,9 +113,11 @@ its `sse`):
 
 [source,python]
 ----
+from rdf_persistence import install_service
+
 kit = install_service(
     app,
-    # ... the other keyword arguments of step 12 of "Build an application"
+    # ... the other keyword arguments of step 12 (see below)
     store=store,
     verifier=verifier,
     identity=identity,
@@ -119,6 +125,9 @@ kit = install_service(
     toolkit=settings,
 )
 ----
+
+The other keyword arguments are those of xref:howto/adopt.adoc#serve[step 12 of "Build an
+application"].
 
 An adapter you build yourself, and the Redis event bus you hand to `install_service`, take their group
 from you. Give them the same objects as the kit:
@@ -130,7 +139,7 @@ from you. Give them the same objects as the kit:
 |`JwksTokenVerifier` |`jwks=` and `http=`
 |`ZitadelIdentity` |`http=` and `directory=`
 |`RedisEventBus` (`rdf_persistence.adapters.redis_events`) |`events=`
-|`Mapper`, `MessageBus`, `bootstrap`, `Documents`, `tenant_dump.restore` |`limits=`
+|`Mapper`, `MessageBus`, `bootstrap` (a keyword of its own, beside the handler dependencies), `Documents`, `tenant_dump.restore` |`limits=`
 |`EventHub`, `Relay` |`events=`
 |`add_events_route` |`sse=`
 |`ServiceKit`, `install_service` |`toolkit=` (the whole `ToolkitSettings`)
@@ -163,7 +172,8 @@ from rdf_persistence import ToolkitSettings, settings_from_env
 settings = settings_from_env(ToolkitSettings)
 ----
 
-A variable is the prefix `RP_`, the group, a double underscore and the slot, in any case:
+A variable is the prefix `RP_`, the group, a double underscore and the slot; the case does not
+matter:
 
 [source,shell]
 ----
@@ -176,7 +186,11 @@ A variable you do not set leaves the default. `prefix="MYAPP_"` changes the pref
 takes any generated settings model, so `settings_from_env(HttpSettings)` reads `RP_READ_TIMEOUT_SECONDS`.
 The values are validated by the model: `RP_HTTP__READ_TIMEOUT_SECONDS=0` or an `HS256` in the list
 raises a `ValidationError` naming the field, and nothing is built. A list that is not valid JSON
-raises `pydantic_settings.SettingsError` naming the group instead. Without the extra the call raises
+raises `pydantic_settings.SettingsError` naming the group instead. A typo in the slot, as in
+`RP_HTTP__READ_TIMEOUT_SECOND`, raises a `ValidationError` ("Extra inputs are not permitted"). A typo
+in the group, as in `RP_HTP__READ_TIMEOUT_SECONDS`, or any other variable with the prefix, as in
+`RP_FOO`, is ignored without a message and the default stays: check a value you set with
+`print(settings.http)`. Without the extra the call raises
 `ImportError`, naming `rdf-persistence[settings]`. No dotenv file and no secrets directory is read;
 if you want one, read it yourself and build the settings from its values.
 
@@ -191,6 +205,19 @@ say one value. A constructor given an old keyword raises `TypeError`; an old con
 `ValueError` ("no handler or observer names the dependency limit"), unless a handler declares a
 dependency `limit`. The values are the defaults of the groups, so a call that passed the old default
 needs no replacement.
+
+The slots of the groups are numbers of seconds (`float`). Five old keywords took a `timedelta`:
+`retention`, `claim_idle`, `access_ttl`, `resume_window` and `max_lifetime`. Convert them; a
+`timedelta` is refused, and `retention=timedelta(days=7)` becomes:
+
+[source,python]
+----
+from datetime import timedelta
+
+EventSettings(retention_seconds=timedelta(days=7).total_seconds())
+----
+
+The other old duration keywords (`interval`, `publish_timeout`, `keep_alive`) were already seconds.
 
 [cols="3,3",options="header"]
 |===
@@ -217,7 +244,6 @@ needs no replacement.
 |`PROJECTS`, `MACHINE_USERS`, `OWN_ORGANISATION`, `TOKEN_PATH` (`rdf_persistence.adapters.zitadel`) |the same names in `rdf_persistence.testkit.zitadel`; only the testkit used them
 |===
 
-Two moves of module paths come with it, listed in the changelog: `rdf_persistence.domain.iris` and
-`rdf_persistence.domain.tenant_move` are in `rdf_persistence.services`, and
-`rdf_persistence.domain.generated.service` is `rdf_persistence.services.generated.service`. Every
-name still imports from `rdf_persistence`.
+Modules moved with it: the IRI and tenant-move modules, and the generated service records, left the
+domain layer for `rdf_persistence.services`. `CHANGELOG.md` lists each old path with its new one.
+Every name still imports from `rdf_persistence`, so only a deep import breaks.
