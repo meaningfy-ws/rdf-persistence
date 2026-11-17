@@ -210,7 +210,7 @@ accepted somewhere, a default that drifted, a group not passed on by the kit).
 | TC-50 | every module of `rdf_persistence/testkit/` but `freshness.py` and `conformance.py` (F-1) | none imports `rdf_persistence.generation.generated` (records come from `testkit.generated`) |
 | TC-51 | `rp_generation.yaml` | declares none of the ten moved classes nor their own slots, and still declares `ConstraintCase`, `ConstraintKind` and the slot `kind`; the TOML key `kind` still sets `target_kind`; `make check-generated` clean |
 
-- [ ] 4.2 BDD: `tests/feature/technical_models.feature` with the spec deltas' scenarios and steps
+- [x] 4.2 BDD: `tests/feature/technical_models.feature` with the spec deltas' scenarios and steps
   in `tests/feature/test_technical_models.py` (toy library, tmp copies). Gate:
   `make test-changed check-quality`.
 
