@@ -397,6 +397,28 @@ overrule any of them. D-1 to D-7 agreed by the developer, 2026-11-17.
   the issue linked; not a stage 1 defect. Candidate fix: task 2.5's pyoxigraph `FakeStore`, or
   `test-debt-paydown`.
 
+- **D-8 Stage 2 base and order.** PR #141 (stage 1) was still open when stage 2 started, so the
+  builders of 2.1 and 2.2 start from its head (`dea7058`); `change/manual-revision-notes-s2` was
+  moved onto `develop` (`cc1b283`) once #141 merged, and their tasks are applied there. Builders in parallel on disjoint files (R-0004): 2.1 (`negotiation.py`,
+  the lock) beside 2.2 (`services/jsonld.py`, `documents.py`, `loading.py`); then 2.4 beside 2.5
+  (2.5 after 2.1 for the lock); 2.3 last, since it removes what 2.2 and 2.4 leave. Review set as
+  D-1: L2 and L3, each its own reviewer, then one checker; tester after 2.5 (tasks.md).
+- **D-9 Impact of task 2.1 read as low.** GitNexus rates `_negotiate` CRITICAL: it sits on every
+  read and write route (11 processes). Its signature stays; the unchanged `ACCEPT` table (TC-35) is
+  the guard, and any edit to an existing test stops the task (PD-5). 2.2's `dataset_of` and 2.5's
+  `FakeStore` rate LOW (the latter a lower bound: 68 test files use it, the unchanged suite is its
+  gate, PD-13).
+
+- **D-10 One existing test changes in task 2.2.** `test_the_generic_put_cannot_set_a_state[accepted]`
+  (`tests/unit/entrypoints/test_workflow_routes_adversarial.py`) PUTs a plain JSON body whose
+  `workflow_status` is `"accepted"`, a relative IRI in an `@id`-typed slot. PyLD dropped that
+  triple and the route answered 403; PD-6's `RelativeIriRefused` now answers 422 `invalid-body`
+  (TC-42c, the Breaking changes row of 2.2). The test's point, a generic PUT cannot set a state,
+  still holds, so the `accepted` row expects 422 and the near-miss IRI row keeps its 403. TC-41 is
+  tested with a JSON-LD body: a plain JSON body cannot carry `@graph` (`_typed` refuses unknown
+  keys first). `services/jsonld.py` parses PyLD's output with the media type
+  `application/n-quads` (PD-10), not rdflib's name `nquads`.
+
 ### Stage 1 review findings (L2, L3)
 
 Accepted, re-labelled Critical (fixed in the one fix pass):
