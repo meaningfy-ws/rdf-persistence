@@ -108,6 +108,9 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-12. The new ones:
   (`text/turtle;q=abc`) reads as 1 (mimeparse), not 0 (ours). `_quality`, `_ranges`,
   `_specificity`, `_quality_of` and the constants `_EXACT`, `_TYPE_WILDCARD`, `_ANY` are deleted. The
   dependency is `python-mimeparse==2.0.0` (pinned like the others, PD-2 of the foundation).
+  *As built after F-3:* members are split outside quotes and read with `mimeparse.parse_mime_type`,
+  a member that is no media range is skipped, and `q` is read by a small `_quality` (empty also
+  reads as 1, negative as 0, above 1 as 1); scoring is still `quality_parsed`.
 - **PD-6 One JSON-LD path** (DEC-6, A-1). New `services/jsonld.py` holds `LOADER` (the refusing
   document loader, moved from `documents.py`), `dataset_of` (moved, now emitting `language` and
   datatype `rdf:langString` for a tagged literal) and `triples_of(document) -> Graph`:
@@ -459,6 +462,18 @@ overrule any of them. D-1 to D-7 agreed by the developer, 2026-11-17.
   that is JSON-LD's rule, rdflib's parser did the same, and bodies refuse unknown keys first. The
   fixers sorted the tester's tests: kept those that found T-1, T-2, T-3, T-5, T-6 and those that
   alone cover an error-matrix row or bound a cost; deleted the rest (listed in PR #143).
+- **D-13 The checker's unmet items, fixed before the merge** (developer, 2026-11-17). The checker
+  passed stage 2 with two items unmet: F-5's pages say a JSON-LD file is refused "with the reason"
+  but quote no message (checker W2), and the cold reader read "refused for a named graph" as
+  refusing the target graph; and the Accept changes of 2.1 and F-3 carry no `BREAKING CHANGE:`
+  footer (W1). One fixer: the load section of `howto/adopt.adoc` names each refusal (a graph of
+  its own declared in the document; a relative or invalid IRI, every IRI must be absolute as no
+  base is applied; a `@context` not given in the document, alone or in an array; a document that
+  is not an object or an array) with its exact `InvalidGraph` message in `str(error)`; the other
+  pages and docstrings say the same in one line and point to it; `_entries`' docstring names both
+  headers (S3); `architecture/api.adoc` row 9 adds the invalid IRI (S4). Its commit carries the
+  Accept footer, so no pushed commit is rewritten. One full-gates run, then CI. The developer also
+  granted the lead the merge on green CI until this EPIC ends.
 
 ### Stage 1 review findings (L2, L3)
 

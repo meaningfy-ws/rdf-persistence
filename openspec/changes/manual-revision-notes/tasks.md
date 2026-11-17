@@ -127,7 +127,7 @@ Stage 1 closes with the lead's `make check-all` and `make test-containers`, the 
 | TC-37 | `text/turtle;q=0.5, application/ld+json;q=0.5` | JSON-LD (first offered of the tie) |
 | TC-38 | `text`, `;q=1`, `a/b/c` | each `NotAcceptable` |
 | TC-38b | `text/turtle, */*` and `application/*, text/turtle` | JSON, both (a quality tie; `best_match` would give Turtle) |
-| TC-38c | `text/turtle;q=abc` | Turtle (mimeparse reads the bad `q` as 1; today 406), the one accepted change |
+| TC-38c | `text/turtle;q=abc` | Turtle (mimeparse reads the bad `q` as 1; today 406), an accepted change (F-3 adds an empty `q` and a `q` above 1) |
 
 - [x] 2.2 PD-6 (B-2, DEC-6): `services/jsonld.py` (`LOADER`, `dataset_of`, `triples_of`); bodies
   and loaded JSON-LD both through it; `_refers_outside` and its helpers deleted. Layer: services.
