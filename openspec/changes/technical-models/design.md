@@ -624,6 +624,33 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   change (`36f5b25..`, the four stages), plus the adversarial tester on stage 4's own diff (D-2)
   after the three tasks are merged, and a checker. Then the reconciliation of `proposal.md`
   (P-0004) in PR 4.
+- **D-48 (stage 4, task 4.1, the developer's decision 2026-11-17: PD-10)** LinkML 1.12.1
+  (external) refuses an `alias` in `slot_usage`, and its pydantic generator names a field after an
+  alias that is a Python identifier (`alias: schema` makes a field `schema`, `alias: kind` renames
+  `target_kind`). Task 4.1 made `regenerate-command` an alias and kept `schema` and `kind` in the
+  key map of `config.py`, with a strict xfail on TC-45. The developer chose to extend our generator
+  instead: `SplitPydanticGenerator` names every field after its slot and keeps the alias apart (as
+  it already does for a non-identifier alias), so `schema` and `kind` become slot aliases and the
+  key map goes, as PD-10 planned. The field names of every generated class with an identifier
+  alias are checked by `check-generated` and the suite. Both LinkML behaviours are reported
+  upstream.
+- **D-49 (stage 4, task 4.2's finding; Critical against `rp-generation`)** A consumer's
+  technical module cannot use a slot ranging over a class, so neither `default_instance` nor any
+  nested technical record: the boundary check refuses the reference (`[reference]`, asks for
+  `owned`) and the hard check then asks the owned class to include `Described`. The toolkit's own
+  schemas escape both only through the PD-23 exemption. A technical class is never stored, so the
+  root, owned and reference rules do not apply to the classes of a module annotated
+  `module_kind: technical`; the fix exempts them, as `_technical_classes` already does for
+  ownership. 4.2's `default_instance` scenarios then run through `rp-generate` end to end.
+- **D-50 (stage 4, task 4.1)** `TokenSigner.issue` builds `JwtClaims` with `model_construct`, not
+  validation: the testkit must make tokens that lack `sub` or `exp`, or carry a refused subject, for
+  the verifier to refuse. Accepted: the testkit is outside the layers and its purpose is that.
+- **D-51 (stage 4, T1 after the merge)** 4.3 ran `check-docs` and `check-quality`, not the suite:
+  `test_no_live_file_still_names_an_old_path` fails on the deep-import breaks that
+  `architecture/index.adoc` and `howto/settings.adoc` list by their old path. The pages point to
+  the changelog for the old paths instead (the guard's exemption, D-10). Fixed with the cold
+  reader's Criticals and Warnings on `howto/settings.adoc` and `howto/adopt.adoc` in one docs
+  fixer; the code fixer takes D-48 and D-49.
 
 Under the floor (not fixed in stage 3):
 
