@@ -384,3 +384,12 @@ DEC-9, and PD-4's fallback `"sparql"`.
 - **D-3 Review set.** MEDIUM, no `## Invariants` section: no adversarial tester (stage loop,
   Prepare). Per P-0005, stage 1 gets one L2+L3 pass and a checker; the full review (L1, L2, L3 as
   separate passes, L4+L5 as one) runs once, on stage 2, the end of the epic.
+- **D-4 A dotted alias names no field** (task 1.1; corrects PD-1's premise that the generator
+  "already renders" dotted aliases). linkml 1.12.1's `PydanticGenerator` names a field
+  `underscore(slot.alias or slot.name)`, so `alias: rp.step` gives `rp_step` (and `ds.name` gave
+  `rp_wire.py`'s `ds_name`). Extended in our generator (AGENTS.md principle 2):
+  `SplitPydanticGenerator.after_generate_slot` names the field after the slot when its alias is
+  not a Python identifier; the alias stays `Field(alias=…)`. Only `fuseki_dataset_name` changes
+  outside this change (`ds_name` → `fuseki_dataset_name`, one use in `adapters/fuseki.py`).
+  Camel-case wire aliases, valid identifiers, keep their present names. Rejected: the `rp_*`
+  names (every TC and call site would change), an opt-in annotation (a second way to name a field).
