@@ -78,7 +78,7 @@ from rdf_persistence.services.provenance import (
     first_class,
 )
 from rdf_persistence.services.store import Store
-from rdf_persistence.services.telemetry import log_extra
+from rdf_persistence.services.telemetry import log_extra, traced
 from rdf_persistence.services.unique_keys import (
     KeyClaim,
     claims_of,
@@ -1456,6 +1456,12 @@ class Transaction:
         """
         if not self._roots:
             return
+        context = LogContext(step="commit", db_namespace=self._session._database)
+        with traced("rp.session.commit", context):
+            await self._send_and_confirm()
+
+    async def _send_and_confirm(self) -> None:
+        """The body of ``commit``, inside its span."""
         session = self._session
         if clash := same_value(self._key_claims):
             raise key_conflict(clash, within_commit=True)
