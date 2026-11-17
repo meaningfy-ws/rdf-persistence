@@ -10,6 +10,12 @@
          "@type": "rp:SparqlTerm",
          "@id": "aggregate"
       },
+      "base": {
+         "@id": "base"
+      },
+      "deployment": {
+         "@id": "deployment"
+      },
       "excluded": {
          "@type": "rp:SparqlTerm",
          "@id": "excluded"
@@ -21,6 +27,9 @@
       "hidden": {
          "@type": "rp:SparqlTerm",
          "@id": "hidden"
+      },
+      "id": {
+         "@id": "id"
       },
       "index": {
          "@type": "rp:SparqlTerm",
@@ -78,6 +87,9 @@
          "@type": "rp:SparqlTerm",
          "@id": "root"
       },
+      "rp_path": {
+         "@id": "rp_path"
+      },
       "schema_id": {
          "@type": "rp:SparqlTerm",
          "@id": "schema_id"
@@ -90,12 +102,32 @@
          "@type": "rp:SparqlTerm",
          "@id": "target"
       },
+      "tenant": {
+         "@id": "tenant"
+      },
+      "tenant_id": {
+         "@id": "tenant_id"
+      },
+      "tenant_segment": {
+         "@id": "tenant_segment"
+      },
+      "type": "@type",
       "values": {
          "@type": "rp:SparqlTerm",
          "@id": "values"
       },
       "@version": 1.1,
-      "type": "@type",
+      "IriParts": {
+         "@id": "IriParts",
+         "@context": {
+            "root": {
+               "@id": "root"
+            }
+         }
+      },
+      "IriTemplateVariables": {
+         "@id": "IriTemplateVariables"
+      },
       "KeyBranchTerms": {
          "@id": "KeyBranchTerms"
       },

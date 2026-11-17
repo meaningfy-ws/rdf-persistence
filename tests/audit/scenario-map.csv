@@ -471,6 +471,11 @@ tests/unit/services/test_iris.py::test_tenant_name_needs_a_canonical_uuid,requir
 tests/unit/services/test_iris.py::test_tenant_name_needs_a_uuid_last_segment,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
 tests/unit/services/test_iris.py::test_tenant_name_starts_with_the_sweep_prefix_and_fits_a_bucket_name,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
 tests/unit/services/test_iris.py::test_the_tenant_of_an_access_record_is_the_iri_it_hangs_under,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
+tests/unit/services/test_iris.py::test_tc22_one_helper_gives_the_template_variables_to_both_sites,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,high,spec id (technical-models TC-22); covered code (services/iris)
+tests/unit/services/test_iris.py::test_tc22_a_deployment_is_kept_as_it_is,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,high,spec id (technical-models TC-22); covered code (services/iris)
+tests/unit/services/test_iris.py::test_tc23_the_id_of_a_tenant_iri_is_the_id,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,spec id (technical-models TC-23); covered code (services/iris)
+tests/unit/services/test_iris.py::test_tc23_a_reserved_word_in_the_place_of_the_id_is_refused,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,spec id (technical-models TC-23); covered code (services/iris)
+tests/unit/services/test_iris.py::test_tc24_a_group_the_model_does_not_name_is_refused,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,spec id (technical-models TC-24); covered code (services/iris)
 tests/unit/domain/test_layout.py::test_the_toolkit_principal_is_toolkit_under_the_base,capability,rp-iri-policy,,,medium,covered code
 tests/unit/services/test_iris_application.py::test_an_application_template_that_needs_a_deployment_slug_is_refused_without_one,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
 tests/unit/services/test_iris_application.py::test_tc15_default_policy_mints_under_the_application_iri,scenario,rp-iri-policy,The application space has its own IRI,the default application IRI,high,name (TC-15); covered code

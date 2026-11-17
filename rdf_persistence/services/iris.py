@@ -27,6 +27,10 @@ from rdf_persistence.services.generated.service.rp_service import (
     IriPolicy,
     ServiceSettings,
 )
+from rdf_persistence.services.generated.templates.rp_templates import (
+    IriParts,
+    IriTemplateVariables,
+)
 
 # The template placeholders and regex group names the matching code tests for.
 _OPEN_BRACE = "{"
@@ -173,6 +177,15 @@ def _canonical_spec(spec: IdSpec | None) -> IdSpec:
     return spec.replaced(alphabet=spec.alphabet or DEFAULT_ALPHABET)
 
 
+def iri_template_variables(settings: ServiceSettings) -> IriTemplateVariables:
+    """The settings' values the IRI templates write in: the base, the deployment (``""`` if none) and the tenant segment."""
+    return IriTemplateVariables(
+        base=settings.base,
+        deployment=settings.deployment or "",
+        tenant_segment=settings.tenant_segment,
+    )
+
+
 def effective_policy(policy: IriPolicy | None, settings: ServiceSettings) -> IriPolicy:
     """``policy`` with every unset part filled in, so two spellings of one policy are equal (PD-14b).
 
@@ -181,15 +194,11 @@ def effective_policy(policy: IriPolicy | None, settings: ServiceSettings) -> Iri
     result; the id specs and the alphabet are filled.
     """
     policy = policy or _DEFAULT_POLICY
-    fixed = {
-        "base": settings.base,
-        "deployment": settings.deployment or "",
-        "tenant_segment": settings.tenant_segment,
-    }
+    fixed = iri_template_variables(settings)
     update: dict[str, object] = {}
     for name in _TEMPLATE_SLOTS:
         template = str(getattr(policy, name) or getattr(_DEFAULT_POLICY, name))
-        for variable, value in fixed.items():
+        for variable, value in fixed.model_dump().items():
             template = template.replace(f"{{{variable}}}", value)
         update[name] = template
     update.update({name: _canonical_spec(getattr(policy, name)) for name in _ID_SPECS})
@@ -248,6 +257,11 @@ def _compile(template: str, fixed: dict[str, str], groups: dict[str, str]) -> re
             seen.add(name)
             parts.append(f"(?P<{name}>{groups[name]})")
     return re.compile("".join(parts), re.DOTALL)
+
+
+def _parts(found: re.Match[str]) -> IriParts:
+    """The named groups of a match, validated at once (the library boundary of ``re``; PD-5)."""
+    return IriParts.model_validate(found.groupdict())
 
 
 class Iris:
@@ -323,17 +337,13 @@ class Iris:
         return self._policy.object_id or _UUID4
 
     @cached_property
-    def _fixed(self) -> dict[str, str]:
-        return {
-            "base": self.settings.base,
-            "deployment": self.settings.deployment or "",
-            "tenant_segment": self.settings.tenant_segment,
-        }
+    def _fixed(self) -> IriTemplateVariables:
+        return iri_template_variables(self.settings)
 
     @cached_property
     def application(self) -> URIRef:
         """The IRI of the application: what holds data that belongs to no tenant (the ``application_template``)."""
-        return URIRef(self._template("application_template").format(**self._fixed))
+        return URIRef(self._template("application_template").format(**self._fixed.model_dump()))
 
     def _id_of(self, tenant: str) -> str:
         """The id ``{tenant_id}`` stands for in the IRIs of ``tenant``: ``app`` for the application."""
@@ -347,7 +357,7 @@ class Iris:
             *LAYOUT_WORDS,
             *self.root_types,
             *self.owned_types,
-            self._fixed["deployment"],
+            self._fixed.deployment,
             APPLICATION_ID,
         }
         for template in _templates(self._policy).values():
@@ -369,7 +379,7 @@ class Iris:
             "rp_path": _SEGMENT.pattern,
             "type": alternation,
         }
-        return _compile(template, self._fixed, groups)
+        return _compile(template, self._fixed.model_dump(), groups)
 
     @cached_property
     def _tenant_re(self) -> re.Pattern[str]:
@@ -443,7 +453,7 @@ class Iris:
             taken[iri] = name
             for pattern in (self._aggregate_re, self._loaded_re):
                 found = pattern.fullmatch(iri)
-                if found is not None and self._belongs(found, str(tenant)):
+                if found is not None and self._belongs(_parts(found), str(tenant)):
                     raise InvalidIri(
                         f"the {name} template mints an IRI that reads as an aggregate: {iri!r}"
                     )
@@ -515,7 +525,7 @@ class Iris:
     def _fill(self, template: str, **values: str) -> URIRef:
         if _TENANT_ID_PLACEHOLDER in template and _TENANT_ID_GROUP not in values:
             values[_TENANT_ID_GROUP] = self._id_of(values[_TENANT_GROUP])
-        return URIRef(template.format(**self._fixed, **values))
+        return URIRef(template.format(**self._fixed.model_dump(), **values))
 
     @staticmethod
     def _allow(template: str, cls_type: str, allowed: frozenset[str]) -> None:
@@ -607,7 +617,7 @@ class Iris:
         """The IRI of the person or service account a token's ``sub`` names; ``sub`` stays in one segment."""
         return URIRef(
             self._template("principal_template").format(
-                **self._fixed, issuer=issuer.rstrip("/"), sub=quote(sub, safe="")
+                **self._fixed.model_dump(), issuer=issuer.rstrip("/"), sub=quote(sub, safe="")
             )
         )
 
@@ -617,23 +627,21 @@ class Iris:
 
     # -- matching --
 
-    def _reads_reserved(self, groups: dict[str, str | None]) -> bool:
+    def _reads_reserved(self, parts: IriParts) -> bool:
         """True when a matched ``id`` is a reserved word, or a matched ``tenant_id`` is one other than ``app``."""
-        tenant_id = groups.get("tenant_id")
-        return groups.get("id") in self._reserved or (
-            tenant_id in self._reserved and tenant_id != APPLICATION_ID
+        return parts.id in self._reserved or (
+            parts.tenant_id in self._reserved and parts.tenant_id != APPLICATION_ID
         )
 
-    def _belongs(self, found: re.Match[str], tenant: str | None) -> bool:
+    def _belongs(self, parts: IriParts, tenant: str | None) -> bool:
         """True when the match reads no reserved word as an id, and its tenant is ``tenant`` (``None``: not checked)."""
-        groups = found.groupdict()
-        if self._reads_reserved(groups):
+        if self._reads_reserved(parts):
             return False
         if tenant is None:
             return True
-        if groups.get("tenant", tenant) != tenant:
+        if parts.tenant is not None and parts.tenant != tenant:
             return False
-        return _TENANT_ID_GROUP not in groups or groups[_TENANT_ID_GROUP] == self._id_of(tenant)
+        return parts.tenant_id is None or parts.tenant_id == self._id_of(tenant)
 
     def is_aggregate(self, tenant: str, iri: str) -> bool:
         """True for what the toolkit mints as an aggregate of ``tenant``, or its root or access record.
@@ -645,16 +653,19 @@ class Iris:
         if tenant != str(self.application) and iri in (tenant, str(self.access(tenant))):
             return True
         found = self._aggregate_re.fullmatch(iri)
-        return found is not None and self._belongs(found, tenant)
+        return found is not None and self._belongs(_parts(found), tenant)
 
     def is_loaded_graph(self, tenant: str | None, iri: str, root: str | None = None) -> bool:
         """True when ``iri`` is what the toolkit mints as a loaded graph of ``tenant`` (and of ``root``, when given)."""
         tenant = None if tenant is None else str(tenant)
         root = None if root is None else str(root)
         found = self._loaded_re.fullmatch(str(iri))
-        if found is None or not self._belongs(found, tenant):
+        if found is None:
             return False
-        named = found.groupdict().get("root")
+        parts = _parts(found)
+        if not self._belongs(parts, tenant):
+            return False
+        named = parts.root
         if root is not None and named is not None:
             return named == root
         return tenant is None or named is None or self.is_aggregate(tenant, named)
@@ -675,12 +686,12 @@ class Iris:
         found = self._access_re.fullmatch(str(access_record_iri))
         if found is None:
             raise InvalidIri(f"not an access record IRI: {access_record_iri!r}")
-        groups = found.groupdict()
+        parts = _parts(found)
         try:
             tenant = (
-                URIRef(groups[_TENANT_GROUP])
-                if _TENANT_GROUP in groups
-                else self.tenant(groups[_TENANT_ID_GROUP])
+                URIRef(parts.tenant)
+                if parts.tenant is not None
+                else self.tenant(str(parts.tenant_id))
             )
         except NotFound as error:  # a reserved word where the tenant id stands
             raise InvalidIri(f"not an access record IRI: {access_record_iri!r}") from error
