@@ -1,0 +1,362 @@
+> Derives from: EPIC `technical-models` ([proposal.md](proposal.md)), capabilities `rp-generation`,
+> `rp-package-boundaries`, `rp-settings` (new). Seeds: [inputs/seed.md](inputs/seed.md).
+> Type: Implementation. Depends on `manual-revision-notes` (A-3, A-4) being merged.
+
+## Context
+
+What the brief asked to check against the code (branch `docs/manual-revision-notes`, 48f80c6):
+
+| Claim | In the code | In this PLAN |
+|---|---|---|
+| Technical schemas are told apart from domain ones | Already, at schema level: `module_kind` (`rp_core.yaml:330`, `ModuleKind` domain/technical/access); `rp_service.yaml`, `rp_wire.yaml` and `rp_generation.yaml` say `technical`. The boundary check refuses a domain module importing a technical or access one (`generation/checks/boundary.py:_module_problems`). Not in the package tree: `rp_service` generates into `domain/generated/service/` | DEC-1, PD-1 |
+| Generated code goes to the layer that imports it (PD-18) | `[[tool.rp-generate]]` in `pyproject.toml` has four targets. `domain/iris.py` and `domain/tenant_move.py` import `rp_service` (`IriPolicy`, `IdSpec`, `ServiceSettings`); only `adapters/` and `testkit/` import `rp_wire` | PD-2 |
+| `pydantic_split` imports from beside the root or the metamodel only | `SplitPydanticGenerator.generate_module_import` raises otherwise; metamodel classes map to `TOOLKIT_PACKAGE` (`rdf_persistence.domain.generated`) in the toolkit's runs | Why DEC-4 stops at the check |
+| The guards need a `generated` segment | `testkit/guards.py`: `GENERATED = "generated"`, `SCANNED_LAYERS = ("domain", "services", "entrypoints")` | PD-1, PD-3 |
+| ~27 values at 15 sites (analysis §5.1) | Confirmed, with one correction: `max_roots` is a parameter of `UnitOfWork` (`mapper.py:306`), not of `Mapper`; `manual-revision-notes` A-2 (its PD-7) puts it on the `Mapper`, which every unit of work and the reference collections share. The message-bus limit is on `MessageBus.__init__` and `bootstrap` (`messagebus.py:109,266`); the SSE values are keyword defaults of `add_events_route` (`sse.py:52-61`) | PD-6 |
+| A term bundle can be a generated model of strings | No: pydantic 2.14.2 turns a `SparqlTerm` into a plain `str` in a `str` field, strict or not (checked in `.venv`). `fill` would then refuse it | DEC-7, PD-4 |
+| (attack, 2026-11-17) The move touches imports only | No: `services/components.py:16` builds the service folder's path from segments; the global slot `kind` exists in `rp_generation.yaml:738`; `containers/fixtures.py` imports three more records; `ToolkitSettings()` would hold `None` groups; the term bundles are spread together with per-call terms (`session.py:493`, `migrations.py:251-265`) | PD-1, PD-9, PD-11, PD-6, PD-4 |
+| `ZitadelUser.state` is a bare `str` | `rp_wire.yaml:631` `zitadel_state`, alias `state`; `zitadel.py:44,61,203,206` compare it | PD-8 |
+
+## Goals / Non-Goals
+
+**Goals:** a reader sees each model's kind in its path; the split is checked by the generator and
+by import-linter; settings are generated and passed in; the bare-key bundles of D-1, D-2, D-4 become
+models; behaviour and defaults do not change.
+
+**Non-Goals:** the EPIC's No-gos.
+
+## Decisions
+
+Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-9. The new ones:
+
+- **PD-1 Paths.** Schemas: `rdf_persistence/model/technical/{service,wire,settings,templates,testkit}/rp_<group>.yaml`,
+  each annotated `module_kind: technical`. Packages (DEC-1): `rdf_persistence/services/generated/__init__.py`
+  (empty) and `rdf_persistence/services/generated/{service,settings,templates}/`;
+  `rdf_persistence/adapters/generated/` for `wire`, unchanged; `rdf_persistence/testkit/generated/`
+  for `testkit` (DEC-2, PD-11). `services/schema.py::SERVICE_SCHEMA` points at the new schema path,
+  and `services/components.py::TOOLKIT_FOLDER` (`:16`, `PACKAGE_DIR / "domain" / "generated" / "service"`,
+  where the served OpenAPI's components are read) becomes
+  `PACKAGE_DIR / "services" / "generated" / "service"`; paths built from segments are found by `grep`
+  for `"service"` and `"adapters"` beside `"model"` or `"generated"`, not by an import search
+  (`tests/unit/services/test_iris_follow_schema.py:8` is one);
+  `metamodel_importmap()` still globs `model/*.yaml` only, so a consumer cannot import a technical
+  schema (unchanged).
+- **PD-2 Layers.** The `.importlinter` `layers` contract does not change
+  (`entrypoints | adapters > services > domain`): every generated technical package sits inside a
+  layer (DEC-1), so the contract already orders it. `services.generated.*` may import `domain` (a
+  request body carrying a domain value) and is imported by services, adapters and entrypoints;
+  `adapters.generated` (wire) is imported by adapters and the testkit only, as today, since no
+  service or entrypoint may import an adapters package. One new forbidden contract,
+  `domain-never-imports-technical-models`: source `rdf_persistence.domain`; forbidden
+  `rdf_persistence.services.generated`, `rdf_persistence.adapters.generated`,
+  `rdf_persistence.testkit.generated` (direct or indirect, import-linter's default). It repeats a
+  part of `layers` and `runtime-without-extras` on purpose: it names Q-2's rule, so a failure says
+  which rule broke, and `thematic-structure` replaces it with `layers-across-themes`.
+  `domain-pure` and `runtime-without-extras` are unchanged. `rp-package-boundaries` is updated.
+  **The `iris.py` split (DEC-3).** Two commits, so `git log --follow` tracks the larger half:
+  first `git mv domain/iris.py services/iris.py`; then `domain/layout.py` is cut from it with the
+  constants the layout needs (`_SEGMENT`, `_PREFIX`, `SYSTEM_SUFFIX`, `TENANT_INFIX`,
+  `APPLICATION_ID`, `APPLICATION_SUFFIX`, `TOOLKIT_SEGMENT`, `POLICY_SEGMENT`, `STAMPS_SEGMENT`,
+  `GENID`, `LOADED_GRAPH_TYPE`, `LAYOUT_WORDS`; the placeholder, alphabet and pattern constants of
+  `iris.py:34-40` and `:244-257` stay with the template machinery), `_segment`, `_prefix` and the
+  12 policy-free functions: `graph_iri`,
+  `root_of_graph`, `skolem_iri`, `is_skolem_of`, `toolkit_principal_iri`, `policy_record_iri`,
+  `stamps_graph_iri`, `is_inside_tenant`, `is_canonical_uuid`, `system_database_name`,
+  `application_database_name`, `tenant_name_prefix`. `domain/layout.py` imports nothing outside
+  `domain`. `services/iris.py` keeps `Iris`, `DEFAULT_IRIS`, `IdSource`, `draw_id`,
+  `effective_policy`, `policy_differences`, `check_iri_policy`, the template machinery
+  (`_compile`, `_TEMPLATE_SLOTS`, ...), the ten wrappers over `DEFAULT_IRIS` with their helper
+  `_default_iris` (`mint_tenant_iri`, `tenant_iri`, `aggregate_iri`, `mint_aggregate_iri`,
+  `is_aggregate_iri`, `is_aggregate_graph_iri`, `is_loaded_graph_of`, `mint_part_iri`,
+  `loaded_graph_iri`, `principal_iri`), and `tenant_resource_name` with `_resource_name`, which
+  `Iris` uses (`iris.py:706`): eleven top-level helpers. `services/iris.py` imports from
+  `domain.layout` what `Iris` reads (`_segment`, `_SEGMENT`, `APPLICATION_ID`, `LAYOUT_WORDS`,
+  `LOADED_GRAPH_TYPE`, `graph_iri`, ...), the two private names kept as they are (no ruff rule
+  refuses a private import; `thematic-structure` may rename them). `git mv
+  domain/tenant_move.py services/tenant_move.py`. `services.iris` and `services.tenant_move` join
+  the module list of the `.importlinter` contract `nothing-in-services-imports-the-bus` (its
+  comment: a new services module joins it). The importers are rewritten by one ast-grep rule
+  per name group: the library (`services/*`, `entrypoints/kit.py`, `entrypoints/service.py`,
+  `entrypoints/router.py`, `adapters/jwks.py`, `testkit/fakes.py`, `__init__.py`), the generator
+  (`generation/checks/hard.py` reads `LAYOUT_WORDS` from `domain.layout`) and the tests (94 files
+  import `domain.iris` or `domain.tenant_move` today). The tests of `Iris`, the policy and
+  `tenant_move` move with their modules to `tests/unit/services/` (`test_iris*.py`,
+  `test_iri_policy_*.py`, `test_tenant_move.py` of `tests/unit/domain/`; a name already taken
+  there, `test_iri_policy_adversarial.py`, arrives as `test_iri_policy_model_adversarial.py`); the
+  layout functions' tests go to `tests/unit/domain/test_layout.py`. This is `thematic-structure` PD-5's split in the
+  present layers; that change then moves the two files into the `iris` theme and retires the
+  wrappers. Rejected: keeping `Iris` in `domain` behind a layer line that pairs `domain` with technical models (first shaped
+  here; Q-2 forbids it, DEC-3).
+- **PD-3 The guards.** No guard change. `services/generated/` is skipped by the `generated`
+  segment as `domain/generated/` is (`testkit/guards.py`: `GENERATED`), and a hand-written model
+  anywhere else in `services/` is flagged as today (`SCANNED_LAYERS` holds `services`).
+- **PD-4 Term models (DEC-7).** `SparqlTerm.__get_pydantic_core_schema__` returns
+  `core_schema.is_instance_schema(cls)`: a raw `str` fails validation when the model is built.
+  `rp_templates.yaml` declares `types: sparql_term: {typeof: string, repr: SparqlTerm, uri: rp:SparqlTerm}`.
+  The stock generator already uses a type's `repr` as the Python range (`pydanticgen._get_pyrange`);
+  `SplitPydanticGenerator._get_imports` adds `from rdf_persistence.domain.sparql import SparqlTerm`
+  when a slot ranges over a type whose `repr` is `SparqlTerm`, read from a type annotation
+  `python_import: rdf_persistence.domain.sparql` (a new `GenerationAnnotation` value). A consumer
+  schema may use the annotation too. `domain/sparql.py` gains
+  `fill_terms(template: str, terms: BaseModel, **more: SparqlTerm) -> str`:
+  `fill(template, **{n: v for n, v in terms if v is not None}, **more)`, and `fragment_terms` the
+  same over `fragment`. Iterating the model yields its attribute values, so each stays a
+  `SparqlTerm`. `more` carries the terms a single call adds to a shared bundle (the migration
+  step's `delete`, `insert`, `where`; `_fill_marked`'s `graph`, `marker`): a bundle is the set of
+  terms several templates share, not every placeholder of one template. A name both in `terms` and
+  in `more` raises `SparqlError("term given twice: [...]")`.
+- **PD-5 The template models.** In `rp_templates.yaml`:
+  - `RegistryTerms` (mixin): `registry`, `p_kind`, `p_owned_by`, all `sparql_term`.
+  - `KeyHeldTerms` (`mixins: RegistryTerms`): `values`, `aggregate`, `excluded`; `KeyBranchTerms`
+    (`is_a: KeyHeldTerms`): `index`. Replace `_held`/`_held_around` (`unique_keys.py:120-132`).
+  - `OwnerTerms` (no `registry`, so not a `RegistryTerms`): `root`, `p_owned_by`, `p_kind`,
+    `loaded`. Replaces `session._owner_terms` (`:433-439`). Its two callers (`:493`, `:513`) pass it
+    to `_fill_marked(template, graph, registry, marker, owner, **more)`, which calls
+    `fill_terms(template, owner, graph=..., registry=..., marker=..., commit_marker=..., **more)`.
+  - `ListingTerms` (`mixins: RegistryTerms`): `aggregate`, `target`, `patterns`, `hidden`,
+    `p_listed_in`, `p_total`, `order`, `limit`, `offset`, optional `p_sort`. The template's
+    `$class` becomes `$target` (`listing.py:281-293`, no more `**{"class": ...}`).
+  - `StampGuardTerms`: `stamps`, `schema`, `p_stamp`, `from_version`; the templates' `$from`
+    becomes `$from_version` in `_STEP`, `_ROTATION` and `_STAMP_MOVE` (`migrations.py:45-63`), all
+    internal (no consumer file names a placeholder). Replaces the `guard` dict (`:242-247`); the
+    three operations add their own terms through `more`: `_STEP` `delete`, `insert`, `where`,
+    `p_kind`, `loaded` (`:258-266`); `_ROTATION` `p_version`; `_STAMP_MOVE` `to` (`:251-252`).
+  - `IriTemplateVariables`: `base`, `deployment`, `tenant_segment` (strings, `deployment` may be
+    empty). Replaces `effective_policy`'s `fixed` and `Iris._fixed`, in `services/iris.py` after
+    task 1.2 (line numbers below are today's `domain/iris.py`: `:274-278`, `:417-421`);
+    `str.format(**variables.model_dump())`. The fields are plain strings, so the dump is safe here
+    (unlike a term model), and `str.format` and `_compile(template, fixed, groups)` (`:325`) are the
+    library boundary that takes the mapping: the uses at `:282`, `:426`, `:440`, `:462`, `:608` and
+    `:700` read the model or its dump, merged with the call's own values as today.
+  - `IriParts`: `tenant`, `tenant_id`, `id`, `type`, `rp_path`, `root`, all optional. A match's
+    `groupdict()` (a library boundary) is validated at once into `IriParts`; the readers
+    (`iris.py:636-770`; `groupdict()` at `:719`, `:747`, `:768`) use attributes.
+  One hand-written factory per bundle builds the fixed vocabulary terms (for example
+  `registry_terms(registry)` in `services/vocabulary.py`), so the vocabulary IRIs stay in one place.
+- **PD-6 The settings (DEC-5).** `rp_settings.yaml`, every slot with `ifabsent` set to today's value:
+
+  | Class | Slot | Default | Replaces |
+  |---|---|---|---|
+  | `HttpSettings` | `connect_timeout_seconds` | 5.0 | `_http.py:17`, `s3.py:33` |
+  | | `read_timeout_seconds` | 30.0 | `_http.py:18`, `s3.py:33` |
+  | | `max_attempts` | 3 | `s3.py:33` (boto3 retries) |
+  | `JwksSettings` | `ttl_seconds` | 600.0 | `jwks.py:26` |
+  | | `unknown_kid_cooldown_seconds` | 10.0 | `jwks.py:29` |
+  | | `allowed_algorithms` (multivalued) | A-3's default list | A-3's constructor parameter |
+  | | `leeway_seconds` | 30.0 | A-4's constructor parameter |
+  | `DirectorySettings` | `page_size` | 100 | `zitadel.py:43` |
+  | `EventSettings` | `stream` | `rp-events` | `RedisEventBus(stream=)` |
+  | | `retention_seconds` | 604800 | `RedisEventBus(retention=)` |
+  | | `claim_idle_seconds` | 30.0 | `RedisEventBus(claim_idle=)` |
+  | | `polling_interval_ms` | 100 | `redis_events.py:27` |
+  | | `relay_interval_seconds` | 5.0 | `Relay(interval=)` |
+  | | `publish_timeout_seconds` | 10.0 | `Relay(publish_timeout=)` |
+  | | `hub_queue_size` | 1000 | `EventHub(max_queue=)` |
+  | `SseSettings` | `max_lifetime_seconds` | 300.0 | `sse.py:36` |
+  | | `access_ttl_seconds` | 1.0 | `sse.py:37` |
+  | | `keep_alive_seconds` | 15.0 | `sse.py:38` |
+  | | `resume_window_seconds` | 604800 | `sse.py:39` |
+  | `LimitSettings` | `max_messages` | 100 | `messagebus.py:109,266` |
+  | | `max_roots` | 500 | `mapper.py:291` (`DEFAULT_MAX_ROOTS`, the default of A-2's `Mapper(max_roots=)`) |
+  | | `max_document_nodes` | 10000 | `documents.py:59` |
+  | | `max_manifest_bytes` | 65536 | `tenant_dump.py:51` |
+  | `ToolkitSettings` | `http`, `jwks`, `directory`, `events`, `sse`, `limits` | each group's defaults | — |
+
+  Bounds. LinkML's `minimum_value` is inclusive and has no exclusive form, so every duration but
+  the leeway carries `minimum_value: 0.001` (a zero timeout or interval is refused); the leeway
+  carries `minimum_value: 0`, `maximum_value: 300` (A-4's range, `manual-revision-notes` PD-3);
+  every count and size `minimum_value: 1`. The algorithm list is `required`, `minimum_cardinality: 1`,
+  and each value matches `(?i)^(?!none$|hs)\S+$`: `none` and every `HS*` name, in any case, are
+  refused (as the verifier refuses them, `manual-revision-notes` PD-1), and **any
+  other JWS algorithm name is accepted by the schema**, so a post-quantum name (`ML-DSA-44`) needs
+  no schema change (`manual-revision-notes` DEC-1, the developer's Q-6). The generated validator
+  applies the pattern with Python's `re` (LinkML's pydantic generator writes one `field_validator`
+  per pattern, as `rp_service.py`'s `pattern_base` shows), so the look-ahead works. Whether the
+  installed PyJWT implements a name is checked at start-up, by the verifier's constructor
+  (`manual-revision-notes` PD-1 keeps that check), which fails fast naming the algorithm and the
+  installed PyJWT version. Rejected: a positive pattern listing today's names (it closes the list
+  that DEC-1 of `manual-revision-notes` keeps open; RISK-8). The target's `shapes.ttl` carries the
+  same `sh:pattern`, which SHACL's XPath regex cannot read (no look-ahead, no inline flag); accepted:
+  no shape validation runs over settings (the conformance suite covers the metamodel and the toy
+  library only), and the settings are never a request body.
+  `max_body_bytes` and `max_restore_bytes` stay in `ServiceSettings` (DEC-2).
+
+  Group defaults. `ifabsent` cannot name a class instance, and the stock generator gives an optional
+  inlined slot `default=None`, so `ToolkitSettings().http` would be `None`. A new
+  `GenerationAnnotation` value `default_instance` on a slot makes `SplitPydanticGenerator` emit
+  `Field(default_factory=<Range>)`; it is refused (generation check) on a slot whose range is not a
+  class or whose range has a required slot without `ifabsent`. The six group slots of
+  `ToolkitSettings` carry it, so `ToolkitSettings()` holds six default groups and
+  `settings_from_env` keeps the factory through `create_model`.
+- **PD-7 Wiring.** Each constructor takes the group it uses, defaulting to a fresh default
+  instance: `HttpAdapter(..., http: HttpSettings | None = None)` builds its `httpx.Timeout` from it;
+  `FusekiStore`, `ZitadelIdentity(..., http=, directory=)`, `JwksTokenVerifier(..., jwks=, http=)`,
+  `S3FileStore(..., http=)` (boto `Config(connect_timeout, read_timeout, retries={"max_attempts"})`),
+  `RedisEventBus(..., events=)`, `Relay(..., events=)`, `EventHub(events=)`,
+  `MessageBus(..., limits=)` and `bootstrap(..., limits=)`, `Mapper(..., limits=)`,
+  `Documents(..., limits=)`, `tenant_dump.restore(..., limits=)`, `add_events_route(..., sse=)`.
+  The roots limit is read where `manual-revision-notes` A-2 puts it (its PD-7): the `Mapper`,
+  which the kit builds (`entrypoints/kit.py:174`) and every unit of work and the reference
+  collections share; `UnitOfWork` reads `mapper.max_roots`, and the `max_roots=` keyword A-2 left
+  on it goes with the other per-value keywords. `DEFAULT_MAX_ROOTS` (`mapper.py:291`) is deleted:
+  after A-2 its only use is the `Mapper` default, which `LimitSettings` now gives.
+  `ServiceKit`/`install_service(..., toolkit: ToolkitSettings | None = None)` pass the kit-built
+  objects their groups. Durations become `timedelta(seconds=...)` inside the constructor. The old
+  keyword arguments and module constants go (DEC-5).
+- **PD-8 Wire (DEC-8).** `ZitadelUserState`: `USER_STATE_UNSPECIFIED`, `USER_STATE_ACTIVE`,
+  `USER_STATE_INACTIVE`, `USER_STATE_DELETED`, `USER_STATE_LOCKED`, `USER_STATE_INITIAL`, each with
+  a `meaning`. `zitadel_state` ranges over it. `PROJECTS`, `MACHINE_USERS`, `OWN_ORGANISATION`,
+  `TOKEN_PATH` move to `testkit/zitadel.py`; `PAGE_SIZE` goes (PD-6).
+- **PD-9 The `kind` check (DEC-4).** `rp_generation.yaml`: enum `TargetKind` (`domain`,
+  `technical`); optional slot `target_kind` (range `TargetKind`) on `GenerationTarget`, whose TOML
+  key is `kind`; the permissible value `target_kind` of the enum `BoundaryRule` (`:1157`). The slot
+  cannot be called `kind`: that global slot exists (`rp_generation.yaml:738`, range
+  `ConstraintKind`, used by `ConstraintCase`) and stays, since `ConstraintCase` stays with the
+  conformance suite (PD-11). In stage 1 the key is mapped by one more `FIELD_OF_TOML_KEY` entry
+  (`"kind": "target_kind"`); in stage 4 it becomes `slot_usage: target_kind: {alias: kind}` on
+  `GenerationTarget` with the other aliases (PD-10); an alias names a field, not a slot, so it
+  does not clash with the global slot. In `checks/boundary.py`, `target_kind_problems(view, folder, kind)`: for
+  `technical`, every own module annotated `module_kind: technical`; for `domain`, no own module
+  annotated `technical`. Run by `steps.py::_boundary_problems` with `run.target.target_kind`. All four toolkit technical targets
+  say `kind = "technical"`, the metamodel target `kind = "domain"`, the generator's own target
+  `kind = "technical"`.
+- **PD-10 Aliases (D-4).** `schema_file` gets `alias: schema`, `regenerate_command` gets
+  `alias: regenerate-command`; `config.py` validates rows by alias (`RpModel` has
+  `validate_by_name`), and `_problems` names the alias from the error's `loc`. `FIELD_OF_TOML_KEY`,
+  `TOML_KEY_OF_FIELD` and `_field` go. `RpModel` validates by name as well as by
+  alias, so a row that names a field whose alias differs (`schema_file`) is refused by one check
+  before validation, comparing the row's keys with the model's aliases, with today's error text.
+- **PD-11 Testkit records (D-4, DEC-2).** New target `model/technical/testkit/rp_testkit.yaml`
+  (`kind = "technical"`, `openapi = false`, package `rdf_persistence.testkit.generated`). This is
+  the **one** move of the testkit's records (`generator-package` stage 1 only cuts the imports
+  left, its PD-1). Every record that a testkit module which stays in the library (`guards`,
+  `markers`, `model_shape`, `shape_snapshot`, `zitadel`, `containers/fixtures`) imports from
+  `rp_generation` moves there, slots and enums with them, found by `grep` on 48f80c6: `ClassShape`,
+  `SlotShape` (`model_shape`, `shape_snapshot`), `ContainerMarker` (`markers`), `Violation`
+  (`guards`), `MachineUser`, `ZitadelProject`, `ZitadelServer` (`zitadel`, `containers/fixtures`),
+  and `ExecResult`, `FusekiServer`, `GarageServer` (`containers/fixtures.py:22-28`): ten. Their
+  slots go with them, among them `slots` (`:779`), `server` (`:1040`) and `machine_users`
+  (`:1053`), which only these classes use. `ConstraintCase` and `ConstraintKind` stay in
+  `rp_generation.yaml`, with the global slot `kind` (`:738`): their only user is
+  `testkit/conformance.py`, which `generator-package` (DEC-4) moves to the generator. `freshness.py`
+  and `conformance.py` keep importing `rp_generation` until F-1 (a No-go here). The generator's
+  modules that use a moved record import it from the testkit's package (generator → library, the
+  allowed direction). `GenerationTarget` stays in `rp_generation.yaml`. New: `FieldFlags`
+  (`required`, `multivalued`) for `model_shape.py:67`.
+  The three `model_copy(update=...)` sites A-6 left here use `RpModel.replaced()`
+  (`manual-revision-notes` PD-8), which validates: `testkit/conformance.py:51` (the case's
+  instance paths made absolute), `testkit/zitadel.py:235` (`machine_users`) and
+  `generation/pipeline.py:143` (`schema_file`, `step` on a `CheckProblem`).
+  `testkit/tokens.py:86-92` builds `JwtClaims` (wire) and dumps it by alias with
+  `exclude_none=True`; the `roles` claim and `extra` stay a merge at the PyJWT boundary.
+- **PD-12 From the environment (DEC-6).** `rdf_persistence/entrypoints/environment.py`:
+  `settings_from_env(model: type[M], *, prefix: str = "RP_", environ: Mapping[str, str] | None = None) -> M`.
+  It imports `pydantic_settings` inside the function; missing, it raises `ImportError` naming the
+  `settings` extra. It builds a `BaseSettings` subclass with `pydantic.create_model` over `model`'s
+  fields, `env_prefix=prefix`, `env_nested_delimiter="__"`, reads `environ` (default `os.environ`),
+  and returns `model.model_validate(read.model_dump())`. `pyproject.toml`:
+  `settings = ["pydantic-settings==2.16.2"]`. Exported from `rdf_persistence` lazily.
+
+## Algorithm / approach
+
+Worked example, the key guard of `unique_keys.py` after the change:
+
+```python
+# services/vocabulary.py: the fixed terms in one place
+def key_held_terms(registry: URIRef, *, values: SparqlTerm, excluded: Iterable[URIRef]) -> KeyHeldTerms:
+    return KeyHeldTerms(
+        registry=term(registry), p_kind=term(REGISTRY_KIND), p_owned_by=term(REGISTRY_OWNED_BY),
+        aggregate=term(REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
+        values=values, excluded=term_list(excluded),
+    )
+
+# services/unique_keys.py
+def guard(claim, registry, excluded) -> SparqlTerm:
+    return fragment_terms(_GUARD, key_held_terms(registry, values=_values(claim), excluded=excluded))
+```
+
+`fragment_terms` is `fragment` over a model, as `fill_terms` is `fill` (PD-4). A factory takes the
+varying fields as keywords; it never spreads `model_dump()`, which serialises `SparqlTerm` to
+`str`. `KeyBranchTerms` adds `index` the same way (`key_branch_terms(..., index=count(n))`).
+
+Worked example, settings from the environment:
+`RP_HTTP__READ_TIMEOUT_SECONDS=60 RP_JWKS__ALLOWED_ALGORITHMS='["RS256"]'` and
+`settings_from_env(ToolkitSettings)` give `http.read_timeout_seconds == 60.0`,
+`jwks.allowed_algorithms == ["RS256"]`, every other value its default.
+
+Idempotency: no stored data changes. Generation is reproducible (rp-generation); moving the
+schemas changes manifests and generated paths only. Settings are values, built once.
+
+### Anti-patterns
+
+| Don't | Do instead | Why |
+|---|---|---|
+| Put a settings or template class in `rp_service.yaml` | Its own group (DEC-2) | It would reach the served OpenAPI and the consumer's TypeScript |
+| Build a term bundle with `**some_model.model_dump()` | A factory that takes the extra fields | `model_dump` turns `SparqlTerm` into `str`; `fill` then refuses it |
+| Read `os.environ` in a constructor or at import | `settings_from_env` at the composition root | A library must not reach into the host (analysis §5.1) |
+| A per-value keyword beside the group parameter | The group only | Two spellings of one value (DEC-5) |
+| Move a protocol slug or IRI into settings | Leave it next to its use | P-0009, keep.md |
+| A hand-written shim at the old generated paths | Import from `rdf_persistence` | DEC-9; a shim in a `generated` folder is deleted by the next run |
+
+## Error matrix
+
+| Failure mode | How it is detected | Expected handling |
+|---|---|---|
+| A technical target holds a module not annotated `technical` | `target_kind_problems` | `rp-generate` fails, rule `target_kind`, naming target and module; nothing written |
+| A domain target holds a technical module | same | same |
+| A domain model, or a hand-written domain module, imports a technical one (toolkit) | `domain-never-imports-technical-models`, and the boundary check for a generated one | `make check-architecture` / `rp-generate` fails naming both |
+| A service or entrypoint imports a wire model | `layers` (as today: `adapters.generated` is in the adapters layer) | `make check-architecture` fails |
+| A hand-written model in `services/` outside `generated/` | model guard (PD-3, unchanged) | fails naming the class |
+| A layout function in `domain/layout.py` needs the policy | `domain-never-imports-technical-models` | it belongs in `services/iris.py`; move it (DEC-3) |
+| An algorithm name the installed PyJWT does not implement (`ML-DSA-44` on 2.15.1) | the verifier's constructor (`manual-revision-notes` PD-1) | `ValueError` at start-up naming the algorithm; the settings model accepted it (PD-6) |
+| A term given in the bundle and again in `more` | `fill_terms` | `SparqlError` "term given twice", before any query text exists |
+| `default_instance` on a slot whose range is a type, or a class with a required slot without default | the generation check of PD-6 | `rp-generate` fails naming the slot; nothing written |
+| The served OpenAPI's components after the move | `TOOLKIT_FOLDER` (PD-1) | TC-54; a stale path fails at start, never silently serves nothing |
+| A raw `str` reaches a term model | `SparqlTerm`'s schema | `ValidationError` at build, before any SPARQL text exists |
+| A schema uses `repr` with no `python_import` | the generated module fails to import | caught by `check-generated`'s mypy run; the extension's unit test covers the import |
+| `settings_from_env` without the extra | `ImportError` | message names `rdf-persistence[settings]` |
+| An environment value fails validation (`RP_HTTP__READ_TIMEOUT_SECONDS=-1`, `RP_JWKS__ALLOWED_ALGORITHMS='["HS256"]'`) | the generated model | `ValidationError` naming the field; nothing built |
+| Zitadel answers a state outside the six | `ZitadelUserState` validation | `IdentityUnavailable` ("unreadable"), as for any unreadable answer (RISK-2) |
+| A consumer passes a removed keyword (`stream=`, `limit=`) | `TypeError` at construction | Documented as BREAKING; the how-to shows the group |
+
+## Risks / Trade-offs
+
+- **RISK-1 A consumer imports a moved generated path.** Likelihood low (analysis §5.3: the known
+  consumer imports `rdf_persistence`, `.testkit`, `.domain.base`, `.adapters.fuseki`,
+  `.testkit.fakes`; the local checkout could not confirm it), impact: an `ImportError` at start-up.
+  Mitigation: the release notes list the old and new paths; every name stays top-level (DEC-9).
+- **RISK-2 Zitadel adds a user state.** Likelihood low, impact high: every account read answers
+  503. Mitigation: all six v2 states listed; an integration test reads a real Zitadel's users.
+  Accepted beyond that: an unknown answer is unreadable by design.
+- **RISK-3 The settings break every composition root at once.** Likelihood certain for a consumer
+  using the removed keywords, impact low (`TypeError` at start). Mitigation: defaults equal
+  today's, so most roots change nothing; the how-to shows each replacement.
+- **RISK-4 `pydantic_split` relies on `repr`.** A linkml upgrade could change `_get_pyrange`.
+  Likelihood low (pinned 1.12.1), impact: term models typed `str`, caught by the TC of task 2.1 and
+  by `fill` at run time. Mitigation: the test pins the behaviour.
+- **RISK-5 The `iris.py` split breaks a deep import or an open branch.** A consumer importing
+  `rdf_persistence.domain.iris` by path, or a branch editing `iris.py`, meets a moved file.
+  Likelihood low for consumers (analysis §5.3: the known consumer takes `Iris`, `DEFAULT_IRIS` and
+  `mint_aggregate_iri` from the top package), medium for branches; impact an `ImportError` at
+  start, or a rebase. Mitigation: every name stays top-level (DEC-9); the split is two commits,
+  rename first (PD-2), so a rebase follows the file; the release notes list old and new paths.
+- **RISK-6 This change conflicts with `manual-revision-notes` on `jwks.py`.** Mitigation: it starts
+  after that change merges, and task 3.2 moves A-3/A-4's parameters as they landed.
+
+- **RISK-7 `generator-package` relies on `model/technical/testkit/rp_testkit.yaml`** (its DEC-4,
+  PD-1, and its DEC-3: the library, testkit included, never imports the generator). Likelihood: a
+  drift if either change renames the group; impact: F-1 cannot cut the dependency. Mitigation: the
+  path and the record list are fixed here (PD-11, settled in the cross-change reconciliation of
+  2026-11-17), and TC-50 asserts that no testkit module but `freshness.py` and `conformance.py`
+  imports `generation.generated`.
+- **RISK-8 The algorithm setting closes the list to new names.** A positive pattern would make
+  ML-DSA (Q-6) need a schema change and a release. Avoided: the pattern refuses only `none` and
+  `HS*` (PD-6), and the verifier checks every other name against the installed PyJWT at start-up.
+  Residual, accepted: a family the pinned PyJWT lacks still needs a toolkit release that bumps the
+  pin (`manual-revision-notes` DEC-1, RISK-1); a misspelt name passes the settings model and fails
+  at start-up, with the name in the message (TC-60).
+
+## Open Questions
+
+- Whether `ServiceSettings` should join `rp_settings.yaml` (one settings home) once E-1 can import
+  across targets. Recommendation: yes, in `thematic-structure`.

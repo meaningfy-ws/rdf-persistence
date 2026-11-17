@@ -1,0 +1,358 @@
+> Derives from: EPIC `manual-revision-notes` ([proposal.md](proposal.md)), capabilities
+> `rp-identity`, `rp-service-api`, `rp-aggregate-store`. Seeds and answers in [inputs/](inputs/).
+> Type: Implementation.
+
+## Context
+
+Read against `develop` at 48f80c6. What the brief and the inputs claim, checked in the code:
+
+| Claim | In the code | In this PLAN |
+|---|---|---|
+| The allow-list is `RS256`, `ES256` (A-3) | `adapters/jwks.py:31-32`, checked on the header (`_header`) and in `jwt.decode(algorithms=[algorithm])` | PD-1 |
+| A wider allow-list is enough (A-3) | **Not quite.** PyJWT 2.15 binds a `PyJWK` to one algorithm and infers `RS256` for an RSA JWK without `alg` (`jwt/api_jwk.py`), then refuses a token whose `alg` differs (`api_jws.py` `_verify_signature`). PS256 on an RSA key without `alg` would still fail | PD-2 |
+| No clock leeway (A-4) | `_decode`: `claims.exp <= now`, `claims.nbf > now` against the injected clock | PD-3 |
+| `If-Match` strips `W/`, ignores `*` and lists (A-5) | `negotiation.py:131-140` `expected_version`; **five** callers in `router.py`: `DocumentApi.replace` (182, also reached by `TenantApi.replace_root`), `DocumentApi.remove` (192), `TenantApi.delete` (248), `set_grants` (260), `set_label` (271). `expected_version` is public: `howto/workflow.adoc:189` tells a consumer's own route to call it | PD-4 |
+| Unquoted and weak tags work today | `test_negotiation.py:94` asserts `"7f3a"`, `W/"7f3a"`, `7f3a` all give `7f3a`. Every other test sends the `ETag` it read (quoted, strong) | PD-4, Breaking changes |
+| `RS256` is only the verifier's | `testkit/tokens.py:16` and `testkit/zitadel.py:35` import `RS256` from `jwks.py` | PD-1 |
+| `PyJWKSet` refuses a set with a bad key | **No.** `PyJWKSet.__init__` skips an unusable key and raises only when none is usable | PD-2, TC-06 |
+| mimeparse ranks like our parser | **Not quite.** `best_match` sorts by (quality, fitness), so `text/turtle, */*` gives Turtle where we give JSON (a quality tie); it does not lower-case (`TEXT/Turtle` matches nothing); an unparsable `q` reads as 1, ours as 0. `parse_media_range` and `quality_parsed` give the quality alone | PD-5 |
+| A 500 is not logged (A-7) | Half true. A mapped kind with status 500 (`SparqlError`, `StoredDataInvalid`, `MessageLimitExceeded`) is answered by `toolkit_error` and logged by no one. Any other exception reaches `server_error`, which Starlette 1.10 registers in `ServerErrorMiddleware`; it re-raises after answering (`middleware/errors.py:183-186`), and the server logs it | PD-9 |
+| PyLD reports what it cannot read | **No.** JSON-LD to RDF drops a triple with a relative IRI without a word, and the loaded file has no base; rdflib kept the relative IRI | PD-6 |
+| A language tag survives framing harmlessly (A-1) | The library context gives string slots no `@type`, so a tagged value frames as `{"@value": "Dune", "@language": "en"}`; the plain JSON body would then break the published schema (`string`) | PD-6 |
+| `dataset_of` drops the language (A-1) | `services/documents.py:68-85`, literal branch emits `value` and `datatype` only | PD-6 |
+| Reference collections use `DEFAULT_MAX_ROOTS` (A-2) | `services/reference_collections.py:266-269`. The analysis says "the mapper's configured `max_roots`", but the `Mapper` has none: the limit is a keyword of `UnitOfWork` (`mapper.py:306-319`, private `_max_roots`), and `ReferenceCollections` holds a `Mapper` (`self._mapper`), no unit of work. The bus (`messagebus.py:73`) and the tenancy (`tenancy.py:278,701,731`) build units of work from the mapper without the keyword | PD-7 |
+| 8 `model_copy(update=...)` sites (A-6) | `provenance.py:168`, `transitions.py:194`, `transitions.py:237`, `visible_part.py:30`, `discussion.py:288`, `domain/iris.py:73`, `:263`, `:286`. Also outside the list: `mapper.py:168,171` (schema-keyed, generic by design, keep.md), `generation/pipeline.py:143`, `testkit/zitadel.py:235`, `testkit/conformance.py:51` (D-4, `technical-models`) | PD-8 |
+| Logged twice (A-7) | `messagebus.py:150` logs then raises; `kit.py:279` logs again. `entrypoints/problems.py` logs nothing for a 500 | PD-9 (DEC-12) |
+| JSON-LD parsed two ways (B-2) | `loading.py:26-62` rdflib plugin plus `_refers_outside`; `documents.py:302` PyLD then `Graph().parse(format="nt")`. Checked: rdflib drops the triples of a named `@graph` in a loaded file without a word | PD-6 |
+| rdflib takes media types as format names (B-3) | `rdflib/plugin.py` registers `text/turtle`, `application/n-triples`, `application/n-quads`, `application/trig`, `application/rdf+xml`, `application/ld+json` and the result parser `application/sparql-results+json` | PD-10 |
+| `RdfFormat` holds its media type only in text (C-5) | `model/rp_files.yaml:95-114`; read in `loading.py:14-19` and `session.py:1079` | PD-11 |
+| Which routes return named graphs (Q-5) | No HTTP route returns a whole dataset. A document read, create, replace and the tenant root answer one aggregate, which is one named graph (`render(stored, graph_iri, ...)`, `documents.py:445`). Listings answer a page (`accepted_listing_type`). The tenant dump is Python only (`kit.dump_tenant`) | PD-12 (DEC-9) |
+| Decisions have a home | `docs/modules/ROOT/pages/adr/index.adoc` is a placeholder that reserves the section for decisions that outlive their change; `architecture/open-decisions.adoc` holds D-1 to D-13 | PD-14 (DEC-11) |
+| `FakeStore` is rdflib with its own splitter (B-7) | `testkit/fakes.py:91-113` `_operations`, `:116` `_plain_strings`; 68 test files use `FakeStore`; the suite is `testkit/store_conformance.py` (`CASES`, `run_case`) | PD-13 (DEC-8) |
+| B-6 rdflib contrib clients | Already an input of `second-store` (`second-store/inputs/reuse-rdflib-contrib.md`) | not here |
+
+## Goals / Non-Goals
+
+**Goals:** the seven defects fixed with a failing test each; Accept parsing, JSON-LD loading and
+rdflib format names delegated to the libraries; `RdfFormat` carrying its media types; four more
+representations for one aggregate; a contract test; five recorded decisions; `FakeStore` on
+pyoxigraph if the gate passes.
+
+**Non-Goals:** the EPIC's No-gos. Also: renaming log attributes, a settings model, any change to
+the `Store` port or to a consumer's composition root beyond optional parameters.
+
+## How it succeeds, how it fails, how it is checked
+
+- **Succeeds** when every TC in tasks.md passes, the existing suite passes unchanged except the
+  tests this PLAN names as changing (TC tables say which), `make check-all` and
+  `make test-containers` are green, and `openspec validate manual-revision-notes --strict` passes.
+- **Fails** when a swap changes behaviour a consumer can see beyond what the spec deltas and
+  "Breaking changes" say (an
+  Accept header that picked JSON now picks something else; a JSON-LD body that parsed is now
+  refused). The existing negotiation, loading and documents tests are the guard: they run unchanged
+  before and after each swap, and a swap task that needs to edit one stops and records why.
+- **Checked** test first per task; the swaps by running the old tests against the new code before
+  deleting the old code.
+
+## Decisions
+
+Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-12. The new ones:
+
+- **PD-1 The allow-list** (DEC-1, DEC-3). `JwksTokenVerifier.__init__` gains
+  `algorithms: Collection[str] = DEFAULT_ALGORITHMS` and `leeway_seconds: float =
+  DEFAULT_LEEWAY_SECONDS`. `DEFAULT_ALGORITHMS` is the tuple of DEC-1 in `jwks.py`, replacing
+  `ALLOWED_ALGORITHMS` and `ES256`; `RS256` stays, the testkit imports it. `_header` stops being a
+  static method. The constructor raises `ValueError` naming the entry for:
+  an empty collection; `none` (any case); a name starting `HS` (any case); a name not in
+  `jwt.algorithms.get_default_algorithms()` (so `ML-DSA-65` today). The check on the header
+  (`_header`) and `jwt.decode(algorithms=[algorithm])` use the instance's set. `DEFAULT_ALGORITHMS`
+  and `DEFAULT_LEEWAY_SECONDS` stay module constants until `technical-models` (DEC-3); a comment says
+  so.
+- **PD-2 Keys bound to the token's algorithm.** The cache keeps the JWK mappings as fetched
+  (`dict[str, Mapping[str, object]]` keyed by `kid`; a library boundary, P-0007), validated once at
+  refresh by building a `jwt.PyJWK` of each. As `PyJWKSet` does today, a key that does not build,
+  or has no `kid`, is skipped, and a set with no usable key is `IdentityUnavailable`.
+  For a token: if the JWK names `alg` and it differs from the header's, `InvalidToken("the token's
+  algorithm does not match its key")`; otherwise `jwt.PyJWK(jwk, algorithm=header_alg)`, and a key
+  type that does not fit the algorithm (PyJWT's `InvalidKeyError`, `PyJWKError`) is
+  `InvalidToken`. Rejected: trusting PyJWT's inference (refuses RS384, PS* on RSA keys without
+  `alg`).
+- **PD-3 The leeway** (DEC-2): `claims.exp + leeway <= now` is expired; `claims.nbf - leeway > now`
+  is not yet valid; `leeway_seconds` must be finite and `0 <= leeway <= 300`, else `ValueError`.
+- **PD-4 `If-Match`** (DEC-4). `negotiation.py` gains, for the service's own routes,
+  `async matched_version(if_match: str | None, current: Callable[[], Awaitable[str]]) -> str`: the
+  one version the guarded write takes. It returns a string, so no new record (P-0007) is needed.
+  Rules: missing or blank is `PreconditionRequired`, as today. `*` alone matches any version.
+  Otherwise the header is split on commas outside quotes. A strong tag `"v"` names `v`; a weak
+  `W/"v"` names nothing. An entry that is neither raises
+  `PreconditionRequired("If-Match must be * or entity tags")`, a 428 the spec already uses. A single
+  strong tag returns at once, with no read. `*`, or more than one entry, awaits `current()` (a
+  callable the route passes) and returns it if `*` or it is named. Otherwise it raises
+  `Conflict("the version is not one If-Match names")` (409). A header with only weak tags is a
+  `Conflict`. Empty list members (`"v1", , "v3"`) are skipped, as RFC 9110 §5.6.1 allows. `current`
+  is, for `DocumentApi.replace` and `remove` (the tenant root included), the third member of
+  `kit.aggregates.read(tenant, principal, iri, cls)` (`Stored`); for `TenantApi.delete`,
+  `set_grants` and `set_label`, the second member of `kit.tenancy.get(tenant)` (the access record's
+  version, the one those routes compare today). `expected_version(if_match) -> str` stays public
+  for a consumer's own route (`howto/workflow.adoc:189`), now strict and with no read: a single
+  strong tag gives its version; a weak one is `Conflict`; `*`, a list or anything else is
+  `PreconditionRequired` naming `matched_version`. `matched_version` uses it for the one-tag case.
+- **PD-5 Accept** (DEC-5). `_negotiate(accept, offered, refusal)` becomes:
+  header `None` or blank → `*/*`; otherwise the header is lower-cased and each non-blank comma
+  member parsed with `mimeparse.parse_media_range`; each offered type is scored with
+  `mimeparse.quality_parsed(media_type, ranges)` (the quality of the most specific matching range,
+  0 when none matches); the highest quality wins, the first offered on a tie; a best quality of 0,
+  or `MimeTypeParseException`, → `NotAcceptable(refusal)`. Rejected: `mimeparse.best_match`, which
+  breaks a quality tie by specificity (`text/turtle, */*` would give Turtle, not JSON, against the
+  spec's tie order) and does not lower-case. One change is accepted: an unparsable `q`
+  (`text/turtle;q=abc`) reads as 1 (mimeparse), not 0 (ours). `_quality`, `_ranges`,
+  `_specificity`, `_quality_of` and the constants `_EXACT`, `_TYPE_WILDCARD`, `_ANY` are deleted. The
+  dependency is `python-mimeparse==2.0.0` (pinned like the others, PD-2 of the foundation).
+- **PD-6 One JSON-LD path** (DEC-6, A-1). New `services/jsonld.py` holds `LOADER` (the refusing
+  document loader, moved from `documents.py`), `dataset_of` (moved, now emitting `language` and
+  datatype `rdf:langString` for a tagged literal) and `triples_of(document) -> Graph`:
+  `jsonld.to_rdf(document, {"format": N_QUADS, "base": NO_BASE, **LOADER})`, parsed into an rdflib `Dataset` with
+  `format=N_QUADS`; a quad outside the default graph raises `NamedGraphRefused`; a loader refusal
+  raises `RemoteContextRefused`. Both are private `ValueError` subclasses of the module.
+  `documents._triples` maps them to `InvalidBody` (message `NOT_INLINE` as today, and
+  "a body describes one graph"); `loading._parse` maps them to `InvalidGraph` (its `NOT_INLINE`
+  text, and "a loaded file holds one graph"). Any other PyLD or parser error keeps today's mapping.
+  `_refers_outside`, `_inline`, `_refuse_outside_contexts` and `IMPORT_KEY` are deleted.
+  **Relative IRIs.** PyLD drops a triple with a relative IRI silently, so `triples_of` passes
+  `base: NO_BASE` (`"https://no-base.invalid/"`, a reserved TLD) and raises a third private error,
+  `RelativeIriRefused`, when any term starts with it: `InvalidBody` / `InvalidGraph` "a JSON-LD
+  document must use absolute IRIs". A document's own `@base` still applies.
+  **Language in plain JSON.** `render` for `JSON` (the context dropped) replaces each value object
+  `{"@value": v, "@language": l}` by `v`, so the body keeps the published `string` schema; JSON-LD
+  and every RDF type keep the tag. Plain JSON was lossy for tags before and stays so (RISK-11).
+- **PD-7 `max_roots`.** The limit moves to the object every unit of work and the reference
+  collections share, the `Mapper`: `Mapper(view, models, *, max_roots: int = DEFAULT_MAX_ROOTS)`
+  (`ValueError` under 1, the check `UnitOfWork.__init__` has today) with a read-only property
+  `max_roots`. `UnitOfWork(..., max_roots: int | None = None)` uses `mapper.max_roots` when it is
+  `None` and keeps its `ValueError` for an explicit value under 1 (the parameter stays third,
+  positional or keyword), so every existing call keeps working and the bus's and the tenancy's units of work
+  follow the mapper. `_require_room` and its message use `self._mapper.max_roots`; the docstring at
+  `reference_collections.py:216` names it. `technical-models` then replaces the keyword with its
+  `limits=` group on the `Mapper` and deletes `DEFAULT_MAX_ROOTS` (its PD-7). Rejected: a
+  `max_roots` parameter on `ReferenceCollections` (a second place to set one limit).
+- **PD-8 Rebuilding a model** (A-6). `RpModel.replaced(self, **changes: object) -> Self` in
+  `domain/base.py`: `type(self)(**({name: getattr(self, name) for name in self.model_fields_set}
+  | changes))` (one merged mapping: two `**` would raise `TypeError` for a name in both), so every
+  value is validated and `extra="forbid"` refuses a misspelt name with a
+  `ValidationError`. The eight sites call it; the `update=` dicts go. A concrete class known at the
+  site (`Transition` when no command is given) is built with its keyword arguments directly.
+- **PD-9 One log per error** (DEC-12). `messagebus._start` drops its `log.error`; the
+  `MessageLimitExceeded` it raises carries the class and id: the exception gains an optional
+  `command: str` (`"Replace urn:uuid:..."`), message `message limit {limit} reached by {command}`
+  (the existing `match="message limit 5 reached"` assertions still hold). `kit.py:279` keeps its one
+  ERROR log. In `install_problem_handlers`, `toolkit_error` logs once, at ERROR, each mapped error
+  whose kind's status is 500: message constant `"internal error answered"`, `exc_info=error`,
+  `extra={"error.type": f"{type(error).__module__}.{type(error).__qualname__}"}` (an OTel
+  semantic-convention name, P-0010, whose value is the fully qualified class name, as
+  `otel-observability` DEC-7 spells it, so the value does not change when that change lands).
+  `server_error` does **not** log: Starlette re-raises the exception after it answers and the
+  server logs it (Context), so a log there would be the double log A-7 removes.
+- **PD-10 Media types as format names** (B-3). `fuseki.py`: `RDFLIB_JSON` → `RESULTS_JSON`,
+  `RDFLIB_TURTLE` → `TURTLE`. `documents.py`: the `"nt"` and `"turtle"` literals go (PD-6, PD-12).
+  `loading.py`: `_RDFLIB_FORMATS` goes (PD-11). `negotiation.EVENT_STREAM` goes;
+  `openapi.py:351` uses `EventSourceResponse.media_type`. `tenant_dump.py:321` already does this.
+- **PD-11 `RdfFormat` media types** (DEC-7). `model/rp_core.yaml` `RpAnnotation` gains
+  `media_type` ("Permissible value annotation: the IANA media type of a serialisation",
+  `rp:AnnotationMediaType`). `model/rp_files.yaml` puts `annotations: {media_type: ...}` on each
+  value: `text/turtle`, `application/rdf+xml`, `application/n-triples`, `application/ld+json`.
+  `services/vocabulary.py` gains `media_types(members, view: SchemaView | None = None) ->
+  Mapping[E, str]`, beside `meanings` (`view` defaults to `metamodel()`; a test passes another),
+  read with `annotation_text` on each permissible value; a value without the annotation is a
+  `ValueError` naming it, raised at import because `loading.py` builds its map at module level. `loading._parse` parses with `media_types(RdfFormat)[rdf_format]`.
+  `make generate` regenerates; the lock change is expected `SAFE`, version unchanged (task 2.4 checks
+  it and stops if not).
+- **PD-12 The representations** (DEC-9). `domain/media.py` gains `N_TRIPLES =
+  "application/n-triples"`, `TRIG = "application/trig"`, `RDF_XML = "application/rdf+xml"`,
+  `DATASET_REPRESENTATIONS = (N_QUADS, TRIG)` and `REPRESENTATIONS = (JSON, JSON_LD, TURTLE,
+  N_TRIPLES, N_QUADS, TRIG, RDF_XML)`. `Documents.render`: JSON and JSON-LD by framing as today;
+  a dataset type serialises an rdflib `Dataset` holding `shown` in the graph `graph_iri`; any other
+  RDF type serialises `shown` as a graph; `format=media_type` throughout. A serialiser `ValueError`
+  (RDF/XML cannot write a predicate with no XML local name; rdflib's "Can't split") raises
+  `NotAcceptable("this aggregate has no {media_type} form")`. `openapi._document_media` documents
+  every member of `REPRESENTATIONS` after JSON as `string`; its `turtle=` flag becomes `rdf=`.
+  `accepted_listing_type` is unchanged.
+- **PD-13 `FakeStore` on pyoxigraph** (DEC-8). One `pyoxigraph.Store()` (in memory) per dataset
+  name. `query`: `store.query(sparql)`; SELECT and ASK results are serialised with
+  `QueryResultsFormat.JSON` and parsed by `Result.parse(format=RESULTS_JSON)`; CONSTRUCT and
+  DESCRIBE triples are serialised as N-Triples into an rdflib `Graph` in a `Result("CONSTRUCT")`
+  (the shape `fuseki._read_result` gives). `update`: `store.update(sparql)`, which applies a request
+  atomically; `SyntaxError` and pyoxigraph's evaluation errors → `BadQuery`. `put_graph`,
+  `export_quads`, `import_quads` through N-Triples or N-Quads text. `_operations`, `_SPARQL_TOKENS`,
+  `_PROLOGUE` and `_plain_strings` are deleted (oxigraph reads `"1"^^xsd:string` and `"1"` as one
+  term). Failure injection, `sent()` and `after_update` stay as they are. `pyproject.toml` declares
+  `pyoxigraph==0.5.13` in `[project] dependencies`: the fakes ship in the wheel and import it, and
+  linkml-runtime already installs it, so a consumer installs nothing new. Gate: every `CASES` entry and `make test-fast` green with **no test
+  edited**. If the gate fails, the task reverts the engine, keeps rdflib and adds a PD here naming
+  the failing tests and why.
+- **PD-14 The decision records** (DEC-11). `adr/adr-001-sparql-client.adoc` (G-1: own async httpx
+  client; supersedes the client clause of research DEC-4), `adr-002-jwks-cache.adoc` (G-2),
+  `adr-003-fastapi-not-connexion.adoc` (G-3), `adr-004-signing-algorithms.adoc` (Q-6 with DEC-1,
+  DEC-2), `adr-005-representations.adoc` (Q-5: DEC-9; narrows research DEC-27 and widens D-1). Each:
+  context, decision, status (*Accepted*, developer 2026-11-17, or *Accepted, leader's choice*),
+  consequences, the alternatives weighed, citing `inputs/analysis.md` §. The index lists them;
+  `nav.adoc` lists them under the existing ADR entry; `questions.adoc` gains one question per record.
+  `architecture/open-decisions.adoc` D-1 gets a one-line pointer to ADR-005.
+- **PD-15 Contract test** (DEC-10). `schemathesis==4.*` pinned to the latest release on the day of
+  the task, in the `test` group. `tests/unit/entrypoints/test_contract.py`, marked `slow`: the toy
+  service (`tests/toy_service.py`) with a tenant and a book made in a fixture; schemathesis loads
+  `/openapi.json` from the ASGI app, fills `{t}` and `{aggregate_id}` with the fixture's ids, sends a
+  librarian's bearer, and runs the checks `not_a_server_error`, `status_code_conformance`,
+  `content_type_conformance` and `response_schema_conformance` with `max_examples=25`, derandomised
+  (testing.adoc rule 8).
+- **PD-16 The mapper docstring** (G-4). Re-check against linkml-runtime 1.12.1 the four reasons
+  of analysis §4.3 item 3 with a throwaway script in `temp/`; the docstring states only the ones that
+  hold, and removes "they take linkml's own dataclass classes".
+
+## Breaking changes
+
+Found by the attack; the EPIC's Impact now lists them (it first said "no breaking change"). Each commit that
+lands one carries a `BREAKING CHANGE:` footer (before 1.0.0 it bumps the MINOR, `develop/index.adoc`).
+
+| Change | Who sees it | Task |
+|---|---|---|
+| `If-Match: W/"v"` is 409, an unquoted `v` is 428 (both matched before) | a client that echoes a weakened or unquoted tag | 1.3 |
+| `expected_version` refuses `W/`, `*` and lists | a consumer route that calls it (`howto/workflow.adoc`) | 1.3 |
+| `jwks.ALLOWED_ALGORITHMS` and `jwks.ES256` removed | code that imports them (none in the repo but the verifier) | 1.1 |
+| A loaded JSON-LD file that names a graph, or uses a relative IRI, is refused; so is a body with a relative IRI (its triple was dropped before) | a consumer loading such files or sending such bodies | 2.2 |
+| A language-tagged value is a plain string in JSON and a value object in JSON-LD (it lost its tag in both) | a JSON-LD client | 1.4 |
+| `REPRESENTATIONS` holds seven members | code that matches it exhaustively | 3.1 |
+
+## Algorithm / approach
+
+Worked examples (toy library, tenant `t1`, book `b7` at version `v3`):
+
+1. **A key rotation.** The provider's web key becomes ES384; its JWKS entry names `alg: ES384`. A
+   token with header `{"alg": "ES384", "kid": "k2"}`: `ES384` is in the default set; `k2` is unknown,
+   so one refresh fetches the set; the JWK names `ES384`, equal to the header; `PyJWK(jwk,
+   algorithm="ES384")` verifies. Before this change: 401.
+2. **An RSA key without `alg`, PS256 token.** Allowed; the JWK names none, so the key is bound to
+   `PS256` and verifies. With the JWK naming `RS256`: 401, "does not match its key".
+3. **A deployment that lists `HS512`.** `JwksTokenVerifier(..., algorithms=["RS256", "HS512"])`
+   raises `ValueError` naming `HS512`; the service never starts. `["ML-DSA-65"]` raises too, naming
+   it as unknown to PyJWT, until a toolkit release pins a PyJWT that ships it (DEC-1).
+4. **Skew.** Clock at 1000; `exp` 990: accepted (990 + 30 > 1000); `exp` 940: refused.
+5. **`If-Match`.** `"v3"`: write with `v3`, no read. `W/"v3"`: 409. `*`: read `v3`, write with
+   `v3`. `"v1", "v3"`: read `v3`, named, write with `v3`. `"v1", "v2"`: read `v3`, 409, nothing
+   written. `v3` (unquoted): 428.
+6. **Accept.** `application/n-quads` → N-Quads; `text/*` → Turtle (first `text/` offered);
+   `application/*` → JSON (first offered); `*/*` → JSON; `nonsense` → 406.
+7. **N-Quads read.** `render(stored, <…/b7/graph>, Book, N_QUADS)`: the bookkeeping triples about
+   the graph IRI and the internal slots are left out as today; the rest goes into a `Dataset` graph
+   `<…/b7/graph>` and is serialised; each line ends with `<…/b7/graph> .`. TriG holds the same
+   graph in one block.
+8. **A loaded JSON-LD file with a named graph.** `{"@id": "urn:g", "@graph": [...]}` → PyLD gives
+   quads in `<urn:g>` → `InvalidGraph("a loaded file holds one graph")`; nothing is sent to the
+   store. Before: the named triples were dropped silently.
+
+Idempotency: nothing here changes how writes are retried. `matched_version` reads before a guarded
+write; the write stays the one check, so a retry after a 409 is safe. The JWKS refresh keeps its
+single flight and cooldown.
+
+Order of work: the swaps run the *old* tests against the new code before the old code is deleted
+(B-1: `test_negotiation.py`; B-2: `test_loading.py` and `test_documents.py`; B-7: the suite).
+
+### Anti-patterns
+
+| Don't | Do instead | Why |
+|---|---|---|
+| Let a deployment's list re-admit `none` or HS* | Refuse at construction (PD-1) | One misconfiguration would hand out the signing secret |
+| Trust PyJWT's algorithm inference for a JWK without `alg` | Bind the key to the token's checked algorithm (PD-2) | Inference says RS256 for every RSA key |
+| Compare `If-Match` after stripping `W/` | Strong comparison; weak never matches (PD-4) | RFC 9110 §13.1.1 |
+| A second JSON-LD parser or remote-context guard | `services/jsonld.py` only (PD-6) | One behaviour, one guard |
+| Map media types to rdflib names (`"nt"`, `"turtle"`, `"xml"`) | Pass the media type (PD-10) | rdflib registers media types |
+| Restate `RdfFormat`'s media types in Python | `vocabulary.media_types` (PD-11) | LinkML is the single source |
+| `model_copy(update={"field": …})` | `model.replaced(field=…)` (PD-8) | `model_copy` skips validation |
+| Log and raise the same error | Raise; the place that handles it logs (PD-9) | Logged twice |
+| Edit a test to fit pyoxigraph | Record and keep rdflib (PD-13) | The suite is the gate |
+| Fix a schemathesis finding by loosening the check | Fix the contract or the code, or file it (DEC-10) | The check is the point |
+
+## Error matrix
+
+| Failure mode | How it is detected | Expected handling |
+|---|---|---|
+| A token signed with an algorithm outside the instance's set | `_header` | 401, `InvalidToken`, no key fetch |
+| A token whose `alg` differs from the JWK's `alg` | PD-2 | 401 |
+| A JWK whose key type does not fit the token's algorithm | `PyJWK(...)` raises | 401 |
+| A deployment lists `none`, HS*, an unknown name, or nothing | constructor | `ValueError`; the service does not build |
+| `leeway_seconds` negative, above 300 or not finite | constructor | `ValueError` |
+| `exp` past by less than the leeway | `_decode` | accepted |
+| `If-Match` missing, blank or malformed | `matched_version` | 428 |
+| `If-Match` with only weak tags, or naming no current version | `matched_version` | 409, nothing written |
+| `If-Match: *` on an aggregate that is gone | `current()` raises `NotFound` | 404 |
+| `If-Match: *` or a list from a caller who may delete or modify but not read the aggregate | `current()` reads in the caller's session | that read's answer (404 or 403); a single strong tag still works |
+| A JWKS with one unusable key beside good ones | refresh | the bad key is skipped; its `kid` is unknown (401); the others verify |
+| A JWKS with no usable key | refresh | `IdentityUnavailable` (503), as today |
+| A JSON-LD body or loaded file with a relative IRI and no `@base` | `RelativeIriRefused` (PD-6) | `InvalidBody` (400) / `InvalidGraph`; nothing written |
+| The aggregate changes between the version read and the write | guarded write | 409 |
+| A malformed `Accept` range | `MimeTypeParseException` | 406 |
+| RDF/XML cannot write a predicate | serialiser raises | 406 naming the type (PD-12) |
+| A JSON-LD body or loaded file with a remote, file or `@import` context | `LOADER` refuses | `InvalidBody` (400) / `InvalidGraph`; nothing fetched |
+| A JSON-LD body or loaded file that names a graph | `NamedGraphRefused` | `InvalidBody` / `InvalidGraph`; nothing written |
+| An `RdfFormat` value without `media_type` | `media_types` at import | `ValueError`; a toolkit bug, caught by TC |
+| `MessageLimitExceeded` in an observer | kit catch | one ERROR log, acked as today |
+| `MessageLimitExceeded` over HTTP, or another mapped kind with status 500 | `toolkit_error` | 500 problem, one ERROR log with `exc_info` |
+| An unmapped exception | `server_error`, then Starlette re-raises | 500 problem; the server's one ERROR log, none from the handler |
+| pyoxigraph fails the gate | conformance or fast suite | revert to rdflib, record in a PD (PD-13) |
+| A schemathesis finding | contract test | fixed in the change or an issue named in the PR |
+
+## Risks / Trade-offs
+
+- **RISK-1 The provider changes how it publishes keys** (outside the work: Zitadel releases).
+  Likelihood medium over a year, impact high (every request 401). Mitigation: the default covers
+  every algorithm Zitadel offers today, and PD-2 handles keys with and without `alg`; TC-03 to TC-06
+  pin both. A new family (ML-DSA) needs a PyJWT release, and since PyJWT is pinned exactly
+  (`pyjwt[crypto]==2.15.1`) also a toolkit release that bumps the pin, then a configuration change;
+  ADR-004 and DEC-1 say so (DEC-1 re-shaped 2026-11-17). `technical-models`' setting refuses only `none` and `HS*` by pattern and leaves
+  every other name to this constructor check (its PD-6, RISK-8), so the opening stays.
+- **RISK-2 A wider default admits a weak key.** RS256 with a 1024-bit key would verify. Likelihood
+  low (the provider generates the keys), impact medium. Accepted: key strength is the provider's;
+  PyJWT warns on short keys.
+- **RISK-3 Leeway extends a revoked token's life by 30 s.** Accepted: tokens live minutes; the
+  leeway is a parameter.
+- **RISK-4 mimeparse ranks a header differently from our parser.** Who is hurt: a client relying on
+  a tie or an odd header. Likelihood low. Mitigation: the existing `ACCEPT` table runs unchanged, plus
+  TC rows for ties and parameters; a difference stops the task (DEC-5's wrappers keep the refusal
+  messages).
+- **RISK-5 PyLD is stricter than rdflib's JSON-LD parser.** A file that loaded before may be
+  refused (a named graph, a relative IRI). PyLD alone would drop relative IRIs silently; PD-6's
+  `NO_BASE` check turns that into a refusal. Likelihood low, impact low (the consumer gets
+  `InvalidGraph` with the reason instead of lost triples). Accepted; the spec delta says it.
+- **RISK-6 pyoxigraph differs from rdflib in a way the suite does not cover**, so tests pass on the
+  fake and fail on Fuseki. Likelihood low: oxigraph is closer to Fuseki than rdflib is (RDF 1.1
+  literals, atomic updates). Mitigation: the container conformance run stays the authority.
+- **RISK-7 A client that matched JSON on `*/*` with a type order of its own** is unaffected: JSON
+  stays first. A client that sent `application/rdf+xml` and got 406 now gets RDF/XML. Accepted.
+- **RISK-8 Logging every 500** may add log volume under an outage (a store down answers 503, not
+  500, so the volume is bounded to real faults). Accepted.
+- **RISK-9 A proxy weakens the ETag** (outside the work: nginx turns a strong `ETag` weak when it
+  gzips a response). A client that echoes it then gets 409 on every write. Likelihood medium for a
+  deployment behind nginx with gzip on JSON; impact high (no write succeeds). Mitigation:
+  `howto/adopt.adoc` says the proxy must not compress the service's responses, or must pass the
+  `ETag` through unchanged; TC-21 pins the 409 so the behaviour is known. Weak matching is DEC-4's
+  call, raised with the developer (OQ-3).
+- **RISK-10 schemathesis does not resolve beside the pins** (pytest 9.0.3, hypothesis 6.170.14).
+  Likelihood low, impact low. Mitigation: task 3.2 stops at `make lock` and reports; the contract
+  test is then shaped again, not forced.
+- **RISK-11 Plain JSON drops a language tag** (PD-6): a client that reads JSON and writes it back
+  loses the tag. Accepted: JSON-LD keeps it; plain JSON follows the published schema.
+- **Trade-off:** `If-Match: *` and lists cost one read; a single strong tag, the common case,
+  costs nothing new.
+
+## Open Questions
+
+For the developer, one round (each with the leader's recommendation; the PLAN proceeds on the
+recommendation):
+
+- **OQ-1** Serve a listing page as N-Quads or TriG (each item in its graph, the paging in `Link`
+  and a total header)? Recommendation: not in this change; shape it with a dump or export route if a
+  consumer asks.
+- **OQ-2** Answer `If-Match` failures with 412, as RFC 9110 says, instead of 409? Recommendation:
+  keep 409 (DEC-4); revisit at the next major version.
+- **OQ-3** (from the attack) Match a weak tag after all, since a proxy may weaken the `ETag`
+  (RISK-9)? Recommendation: keep strong comparison (DEC-4) and document the proxy rule; a version
+  token is exact, so a weak match would hide nothing but the proxy's change.
