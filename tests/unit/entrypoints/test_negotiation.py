@@ -61,6 +61,31 @@ def test_a_client_that_refuses_every_representation_by_name_gets_nothing() -> No
         accepted_media_type(header)
 
 
+def test_a_media_range_with_parameters_other_than_q_still_matches() -> None:  # TC-36
+    header = 'application/ld+json;profile="http://www.w3.org/ns/json-ld#compacted"'
+    assert accepted_media_type(header) == JSON_LD, "the profile parameter does not hide the range"
+
+
+def test_equal_qualities_give_the_first_offered() -> None:  # TC-37
+    header = "text/turtle;q=0.5, application/ld+json;q=0.5"
+    assert accepted_media_type(header) == JSON_LD, "JSON-LD comes before Turtle in the offer"
+
+
+@pytest.mark.parametrize("header", ["text", ";q=1", "a/b/c"])
+def test_an_unparsable_range_is_not_acceptable(header) -> None:  # TC-38
+    with pytest.raises(NotAcceptable):
+        accepted_media_type(header)
+
+
+@pytest.mark.parametrize("header", ["text/turtle, */*", "application/*, text/turtle"])
+def test_a_quality_tie_goes_to_the_first_offered_not_the_most_specific(header) -> None:  # TC-38b
+    assert accepted_media_type(header) == JSON, f"Accept: {header!r} ties at q=1, JSON is first"
+
+
+def test_an_unreadable_quality_reads_as_one() -> None:  # TC-38c
+    assert accepted_media_type("text/turtle;q=abc") == TURTLE, "mimeparse reads a bad q as 1"
+
+
 CONTENT_TYPES = [
     ("application/json", JSON),
     ("application/json; charset=utf-8", JSON),

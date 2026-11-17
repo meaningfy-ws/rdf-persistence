@@ -2507,6 +2507,15 @@ wheels = [
 ]
 
 [[package]]
+name = "python-mimeparse"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/cd/85/c40f2e0b2128905f6c34894be01803c114f2b2efab0e8b4c3dca5e56b999/python_mimeparse-2.0.0.tar.gz", hash = "sha256:5b9a9dcf7aa82465e31bd667f5cb7000604811dce83554f1c8a43693a32cb303", size = 7162, upload-time = "2024-08-25T13:38:14.966Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/65/d9/1093a9d6d22d04d433003c96b9b1d46741b43fee5b11ece5098297737fce/python_mimeparse-2.0.0-py3-none-any.whl", hash = "sha256:574062a06f2e1d416535c8d3b83ccc6ebe95941e74e2c5939fc010a12e37cc09", size = 5576, upload-time = "2024-08-25T13:38:13.372Z" },
+]
+
+[[package]]
 name = "pywin32"
 version = "312"
 source = { registry = "https://pypi.org/simple" }
@@ -2622,6 +2631,7 @@ dependencies = [
     { name = "pyjwt", extra = ["crypto"] },
     { name = "pyld" },
     { name = "pyshacl" },
+    { name = "python-mimeparse" },
     { name = "pyyaml" },
     { name = "rdflib" },
 ]
@@ -2674,6 +2684,7 @@ requires-dist = [
     { name = "pyjwt", extras = ["crypto"], specifier = "==2.15.1" },
     { name = "pyld", specifier = "==3.3.0" },
     { name = "pyshacl", specifier = "==0.40.2" },
+    { name = "python-mimeparse", specifier = "==2.0.0" },
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "rdflib", specifier = "==7.6.0" },
     { name = "testcontainers", marker = "extra == 'testkit'", specifier = "==4.14.2" },

@@ -114,7 +114,7 @@ Stage 1 closes with the lead's `make check-all` and `make test-containers`, the 
 
 ## Stage 2: reuse (PR 2)
 
-- [ ] 2.1 PD-5 (B-1, DEC-5): `python-mimeparse==2.0.0` in `[project] dependencies` (`make lock`);
+- [x] 2.1 PD-5 (B-1, DEC-5): `python-mimeparse==2.0.0` in `[project] dependencies` (`make lock`);
   `_negotiate` over `mimeparse.parse_media_range` and `quality_parsed` (PD-5, not `best_match`);
   the old helpers deleted. Layer: entrypoints. Tests: the
   `ACCEPT` table and the other tests of `tests/unit/entrypoints/test_negotiation.py` run first
