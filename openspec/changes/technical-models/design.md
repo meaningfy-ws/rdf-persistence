@@ -553,6 +553,16 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   tasks name absolute worktree paths for Serena. Parallel merge (D-29): the three tasks were
   cherry-picked onto the stage branch; one conflict (`scenario-map.csv`, rows both appended)
   resolved by keeping both.
+- **D-37 (stage 3, rebase onto `otel-observability` stage 1, #149)** `develop` moved 15 commits
+  while stage 3 was built. Every conflict was additive: `pyproject.toml` keeps both the telemetry
+  and the settings targets; `pydantic_split.py` keeps #149's field-name fix and 3.1's list
+  defaults; the rest were import lines, unioned by a script that refused any other hunk; the
+  generated manifests took `develop`'s side and `make generate` rewrote them (P-0003). Two slips,
+  both the lead's: `test_hard_check.py` was committed with its markers inside the 3.1 commit
+  (`e0b40fc`; fixed by its own commit, the toolkit now having seven targets, since history cannot
+  be squashed here), and #149's new Redis test still built `RedisPair(redis)`, which 3.5 changed to
+  take the `toolkit` fixture (a semantic conflict, fixed in the test). Both were caught by the
+  stage's full gates before any push.
 
 Under the floor (not fixed in stage 2):
 
