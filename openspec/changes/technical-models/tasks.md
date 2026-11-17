@@ -167,7 +167,7 @@ Stage 2 closes like stage 1.
 | TC-38 | `EventHub(events=EventSettings(hub_queue_size=1))`, two activities unread | the existing overflow behaviour at the second |
 | TC-39 | `RedisEventBus(url, deployment="d", stream="x")` | `TypeError` (the keyword is gone) |
 
-- [ ] 3.4 PD-12 (B-8): `entrypoints/environment.py::settings_from_env`, the `settings` extra, the
+- [x] 3.4 PD-12 (B-8): `entrypoints/environment.py::settings_from_env`, the `settings` extra, the
   lazy export. Tests: `tests/unit/entrypoints/test_environment.py`, and
   `tests/unit/test_packaging.py` for the extra. Gate: `make test-changed check-quality`.
 

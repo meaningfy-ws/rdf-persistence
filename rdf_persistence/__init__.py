@@ -114,6 +114,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.adapters.jwks import JwksTokenVerifier
     from rdf_persistence.adapters.s3 import S3FileStore
     from rdf_persistence.adapters.zitadel import ZitadelIdentity, zitadel_roles_claim
+    from rdf_persistence.entrypoints.environment import settings_from_env
     from rdf_persistence.entrypoints.kit import ServiceKit
     from rdf_persistence.entrypoints.router import limited_body
     from rdf_persistence.entrypoints.service import install_service
@@ -148,6 +149,15 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
         TenantSummary,
         VerifiedCaller,
     )
+    from rdf_persistence.services.generated.settings.rp_settings import (
+        DirectorySettings,
+        EventSettings,
+        HttpSettings,
+        JwksSettings,
+        LimitSettings,
+        SseSettings,
+        ToolkitSettings,
+    )
     from rdf_persistence.services.identity import Identity
     from rdf_persistence.services.iris import DEFAULT_IRIS, IdSource, Iris, mint_aggregate_iri
     from rdf_persistence.services.listing import Listings
@@ -167,7 +177,21 @@ __version__ = version("rdf-persistence")
 _ADAPTERS, _SERVICES = "rdf_persistence.adapters", "rdf_persistence.services"
 _ENTRYPOINTS = "rdf_persistence.entrypoints"
 _SERVICE_MODELS = f"{_SERVICES}.generated.service.rp_service"
+_SETTINGS_MODELS = f"{_SERVICES}.generated.settings.rp_settings"
 _LAZY_MODULES = {
+    **dict.fromkeys(
+        (
+            "DirectorySettings",
+            "EventSettings",
+            "HttpSettings",
+            "JwksSettings",
+            "LimitSettings",
+            "SseSettings",
+            "ToolkitSettings",
+        ),
+        _SETTINGS_MODELS,
+    ),
+    "settings_from_env": f"{_ENTRYPOINTS}.environment",
     **dict.fromkeys(
         (
             "AccountSummary",
@@ -270,6 +294,8 @@ __all__ = [
     "DatabaseKind",
     "DeleteFile",
     "Described",
+    "DirectorySettings",
+    "EventSettings",
     "EventEnvelope",
     "EventBus",
     "FileStore",
@@ -280,6 +306,7 @@ __all__ = [
     "GrantSet",
     "GrantValidator",
     "GraphKind",
+    "HttpSettings",
     "IdKind",
     "IdSource",
     "IdSpec",
@@ -296,9 +323,11 @@ __all__ = [
     "Invalidation",
     "IriPolicy",
     "Iris",
+    "JwksSettings",
     "JwksTokenVerifier",
     "KeyDuplicate",
     "LabelUpdate",
+    "LimitSettings",
     "Listings",
     "Mapper",
     "MemberList",
@@ -343,6 +372,7 @@ __all__ = [
     "ServiceSettings",
     "Session",
     "SlotEquality",
+    "SseSettings",
     "Store",
     "StoreUnavailable",
     "StoredDataInvalid",
@@ -359,6 +389,7 @@ __all__ = [
     "TenantSweepReport",
     "TenantSummary",
     "TokenVerifier",
+    "ToolkitSettings",
     "Tracked",
     "Transition",
     "UnderWorkflow",
@@ -388,5 +419,6 @@ __all__ = [
     "sweep",
     "sweep_tenant",
     "remove_with_files",
+    "settings_from_env",
     "zitadel_roles_claim",
 ]

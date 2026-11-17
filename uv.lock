@@ -2670,6 +2670,9 @@ events = [
 generate = [
     { name = "linkml" },
 ]
+settings = [
+    { name = "pydantic-settings" },
+]
 testkit = [
     { name = "testcontainers" },
 ]
@@ -2709,6 +2712,7 @@ requires-dist = [
     { name = "linkml", marker = "extra == 'generate'", specifier = "==1.12.1" },
     { name = "linkml-runtime", specifier = "==1.12.1" },
     { name = "pydantic", specifier = "==2.14.2" },
+    { name = "pydantic-settings", marker = "extra == 'settings'", specifier = "==2.16.2" },
     { name = "pyjwt", extras = ["crypto"], specifier = "==2.15.1" },
     { name = "pyld", specifier = "==3.3.0" },
     { name = "pyshacl", specifier = "==0.40.2" },
@@ -2717,7 +2721,7 @@ requires-dist = [
     { name = "rdflib", specifier = "==7.6.0" },
     { name = "testcontainers", marker = "extra == 'testkit'", specifier = "==4.14.2" },
 ]
-provides-extras = ["generate", "testkit", "events"]
+provides-extras = ["generate", "testkit", "events", "settings"]
 
 [package.metadata.requires-dev]
 dev = [

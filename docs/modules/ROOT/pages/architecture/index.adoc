@@ -316,7 +316,7 @@ the bundles are built by the factories of `services/vocabulary.py`); the ports
 `Collaboration` (opened with `kit.collaboration`), `Workflows`;
 the ports `Store`, `FileStore` (with `list_blobs`), `Identity`, `TokenVerifier`; `Session.named_file_keys`
 |`rdf_persistence.adapters` |Fuseki, S3 and Zitadel adapters; JWKS token verification |`FusekiStore`, `S3FileStore`, `ZitadelIdentity`, `zitadel_roles_claim`, `JwksTokenVerifier`
-|`rdf_persistence.entrypoints` |service kit (generic router, FastAPI dependencies, problem handlers, ETags, OpenAPI hook, start-up) |`install_service` (with `migrations=`, the folder of the migration files, and `workflows=`, the paths of the workflow files), `ServiceKit` (with `collaboration(authorised)` and `workflows`), `limited_body`
+|`rdf_persistence.entrypoints` |service kit (generic router, FastAPI dependencies, problem handlers, ETags, OpenAPI hook, start-up) |`install_service` (with `migrations=`, the folder of the migration files, and `workflows=`, the paths of the workflow files), `ServiceKit` (with `collaboration(authorised)` and `workflows`), `limited_body`, `settings_from_env` (reads a settings model such as `ToolkitSettings` from `RP_` environment variables; needs the `settings` extra)
 |`rdf_persistence.testkit` |fakes, token signer, Zitadel provisioning, container fixtures, the
 waiting helpers (`wait_until`, `wait_until_async`), the three conformance suites, freshness plugin,
 guards, round-trip strategies |`rdf_persistence.testkit` (a second public module, for tests only)
