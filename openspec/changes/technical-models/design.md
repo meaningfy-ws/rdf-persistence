@@ -633,7 +633,8 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   it already does for a non-identifier alias), so `schema` and `kind` become slot aliases and the
   key map goes, as PD-10 planned. The field names of every generated class with an identifier
   alias are checked by `check-generated` and the suite. Both LinkML behaviours are reported
-  upstream.
+  upstream: linkml/linkml#4256 (a field named after an identifier alias) and #4257 (`alias` in
+  `slot_usage` refused by the `SchemaLoader` generators only).
 - **D-49 (stage 4, task 4.2's finding; Critical against `rp-generation`)** A consumer's
   technical module cannot use a slot ranging over a class, so neither `default_instance` nor any
   nested technical record: the boundary check refuses the reference (`[reference]`, asks for
@@ -664,8 +665,8 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
 - **D-53 (stage 4, the developer's instruction 2026-11-17)** Merge the fixes, skip the demo (the
   developer accepts the change), open PR 4, merge it as admin and close the change without asking.
   The review set of D-47 still runs, in parallel with the D-52 fixer; the checker covers the fix
-  pass. The two LinkML issues of D-48 are drafted, not filed: the permission check refused the
-  filing and the instruction did not name it.
+  pass. The two LinkML issues of D-48 were filed on the developer's later instruction
+  (linkml/linkml#4256, #4257).
 - **D-54 (stage 4, L2 W1, re-labelled Critical; the lead's slip)** The rebase onto #152 met a
   whole-file conflict in `tests/audit/scenario-map.csv` at task 4.1's commit, and the lead's union
   script kept both sides: every row twice (3,794 ids). Rebuilt by a row-wise three-way merge of the
