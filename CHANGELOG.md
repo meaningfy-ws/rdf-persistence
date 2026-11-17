@@ -37,8 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **BREAKING: the per-value keywords and constants the settings replace are removed**
-  (`technical-models`). A caller that passes an old keyword gets a `TypeError`; one that imports an
-  old constant gets an `ImportError`. Pass the group instead:
+  (`technical-models`). A caller that passes an old keyword gets a `TypeError` from every constructor, except `bootstrap`,
+  which takes dependencies by keyword: `bootstrap(limit=...)` raises `ValueError` ("no handler or
+  observer names the dependency limit"), or binds to a handler that declares a `limit` dependency.
+  One that imports an old constant gets an `ImportError`. Pass the group instead:
   - `JwksTokenVerifier(algorithms=, leeway_seconds=)` is now `jwks=JwksSettings(allowed_algorithms=,
     leeway_seconds=, ...)`;
   - `RedisEventBus(stream=, retention=, claim_idle=)` is now `events=EventSettings(stream=,

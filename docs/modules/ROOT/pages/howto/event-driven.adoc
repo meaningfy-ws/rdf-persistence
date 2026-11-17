@@ -367,9 +367,9 @@ Terms used below:
   reads the marked activities in order, publishes each to the event bus, replaces the mark by a
   "relayed" time, and offers the activity to the server-sent-events hub of <<sse>>.
 * *When a round runs.* A commit made in this process wakes the relay at once. Otherwise a round
-  runs every 5 seconds: that is the `interval` argument of the relay's constructor, and
-  `install_service` does not expose it. So a commit made in another process waits up to 5 seconds
-  to be relayed.
+  runs every 5 seconds by default: that is `EventSettings.relay_interval_seconds`, which you set with
+  `install_service(..., toolkit=ToolkitSettings(events=EventSettings(relay_interval_seconds=...)))`.
+  So a commit made in another process waits up to that interval to be relayed.
 * *At least once.* A mark is replaced only after the publish succeeded, so a crash between the two
   publishes the activity again at the next start. A failed publish stops that database for the
   round and is retried in the next, so no later activity of the database overtakes it.
