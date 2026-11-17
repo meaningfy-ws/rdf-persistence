@@ -46,6 +46,10 @@
           "format": "date-time",
           "type": "string"
         },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        },
         "was_associated_with": {
           "description": "A principal that carried out the activity.",
           "items": {
@@ -95,6 +99,10 @@
           "format": "date-time",
           "type": "string"
         },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        },
         "was_associated_with": {
           "description": "A principal that carried out the activity.",
           "items": {
@@ -129,6 +137,10 @@
         "root_class": {
           "description": "The IRI of the class of the aggregate roots the key governs; a root of a subclass is its own scope.",
           "format": "uri",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },
@@ -207,6 +219,10 @@
           "format": "uri",
           "type": "string"
         },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        },
         "used_resource": {
           "description": "The IRI of the aggregate the activity used.",
           "format": "uri",
@@ -231,7 +247,12 @@
     "BlobEntry": {
       "additionalProperties": false,
       "description": "One object in a tenant's bucket, as a listing of the bucket reports it.",
-      "properties": {},
+      "properties": {
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
       "title": "BlobEntry",
       "type": "object"
     },
@@ -290,6 +311,10 @@
           "format": "uri",
           "type": "string"
         },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        },
         "workflow_status": {
           "description": "The current state of the aggregate, the IRI of a state of its workflow.",
           "format": "uri",
@@ -331,6 +356,10 @@
         "number": {
           "description": "The position of a chapter in its book.",
           "type": "integer"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -391,6 +420,10 @@
           "description": "The IRI of the state an aggregate entered, on the comment a transition posted and on the transition's record. Defined here beside from_state_iri.",
           "format": "uri",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -415,6 +448,10 @@
         "started_at": {
           "description": "The time a transaction started.",
           "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },
@@ -469,6 +506,10 @@
           "format": "date-time",
           "type": "string"
         },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        },
         "used_resource": {
           "description": "The IRI of the aggregate the activity used.",
           "format": "uri",
@@ -506,6 +547,10 @@
         "label": {
           "description": "The preferred label of the object.",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -541,6 +586,10 @@
         },
         "entity_version": {
           "description": "The version token of the entity that was generated or invalidated.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },
@@ -602,6 +651,10 @@
           "description": "The IRI of the tenant, or of an aggregate's graph, the rule applies to.",
           "format": "uri",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -646,6 +699,10 @@
         "entity_version": {
           "description": "The version token of the entity that was generated or invalidated.",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -684,6 +741,10 @@
           "description": "The IRI of the class of the roots.",
           "format": "uri",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -715,6 +776,10 @@
         },
         "label": {
           "description": "The preferred label of the object.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },
@@ -761,6 +826,10 @@
         "state": {
           "$ref": "#/components/schemas/TenantState",
           "description": "Where the tenant is in its life."
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -781,6 +850,10 @@
             "$ref": "#/components/schemas/SlotEquality"
           },
           "type": "array"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "title": "MembershipRule",
@@ -835,6 +908,10 @@
         "text": {
           "description": "The text of a note.",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -857,6 +934,10 @@
         "loaded_at": {
           "description": "The time a graph was put to the store by a load.",
           "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },
@@ -924,6 +1005,10 @@
         "started_at_time": {
           "description": "The time the activity started.",
           "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         },
         "used_resource": {
@@ -1005,6 +1090,10 @@
           "format": "date-time",
           "type": "string"
         },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        },
         "used_resource": {
           "description": "The IRI of the aggregate the activity used.",
           "format": "uri",
@@ -1036,6 +1125,10 @@
           "format": "uri",
           "readOnly": true,
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -1061,6 +1154,10 @@
           "description": "The IRI of the tenant, or of an aggregate's graph, the rule applies to.",
           "format": "uri",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -1078,6 +1175,10 @@
         "generated_at_time": {
           "description": "The time this entity was generated.",
           "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         },
         "was_attributed_to": {
@@ -1132,6 +1233,10 @@
         "membership_rule": {
           "$ref": "#/components/schemas/MembershipRule",
           "description": "The rule that says which aggregates of the member class belong to the collection."
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -1156,6 +1261,10 @@
         "owned_by": {
           "description": "The IRI of the aggregate root that owns the graph.",
           "format": "uri",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },
@@ -1210,6 +1319,10 @@
           "format": "date-time",
           "type": "string"
         },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        },
         "was_associated_with": {
           "description": "A principal that carried out the activity.",
           "items": {
@@ -1259,6 +1372,10 @@
           "format": "date-time",
           "type": "string"
         },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        },
         "was_associated_with": {
           "description": "A principal that carried out the activity.",
           "items": {
@@ -1291,6 +1408,10 @@
         },
         "role": {
           "description": "The name of a role, matched against the application's role definitions.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },
@@ -1351,6 +1472,10 @@
           "description": "The IRI of the tenant, or of an aggregate's graph, the rule applies to.",
           "format": "uri",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -1398,6 +1523,10 @@
         "sha256": {
           "description": "The SHA-256 digest of the file, in lowercase hexadecimal.",
           "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         },
         "uploaded": {
@@ -1451,6 +1580,10 @@
         "membership_rule": {
           "$ref": "#/components/schemas/MembershipRule",
           "description": "The rule that says which aggregates of the member class belong to the collection."
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -1499,6 +1632,10 @@
           "format": "date-time",
           "type": "string"
         },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        },
         "used_resource": {
           "description": "The IRI of the aggregate the activity used.",
           "format": "uri",
@@ -1530,6 +1667,10 @@
         "equals_value": {
           "description": "The value the slot must equal, in the lexical form a listing filter would send.",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -1558,6 +1699,10 @@
         "sha256": {
           "description": "The SHA-256 digest of the file, in lowercase hexadecimal.",
           "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         },
         "uploaded": {
@@ -1590,6 +1735,10 @@
         },
         "label": {
           "description": "The preferred label of the object.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },
@@ -1636,6 +1785,10 @@
         "state": {
           "$ref": "#/components/schemas/TenantState",
           "description": "Where the tenant is in its life."
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -1653,6 +1806,10 @@
         "label": {
           "description": "The preferred label of the object.",
           "pattern": "^\\S(?:.{0,198}\\S)?$",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },
@@ -1713,6 +1870,10 @@
           "description": "The IRI of the tenant.",
           "format": "uri",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -1730,7 +1891,12 @@
     "Tracked": {
       "additionalProperties": false,
       "description": "A mixin for the tracking statements of a commit. The session writes them about the aggregate's graph IRI, never about the root entity.",
-      "properties": {},
+      "properties": {
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
       "title": "Tracked",
       "type": "object"
     },
@@ -1795,6 +1961,10 @@
           "format": "uri",
           "type": "string"
         },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        },
         "used_resource": {
           "description": "The IRI of the aggregate the activity used.",
           "format": "uri",
@@ -1820,6 +1990,10 @@
       "additionalProperties": false,
       "description": "A mixin for an aggregate root that follows a workflow, which its class names with the workflow annotation. It gives the root its current state; only a transition changes it.",
       "properties": {
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        },
         "workflow_status": {
           "description": "The current state of the aggregate, the IRI of a state of its workflow.",
           "format": "uri",
@@ -1849,6 +2023,10 @@
         },
         "initial_state": {
           "description": "The name of the state a new aggregate starts in, one of the states.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         },
         "workflow_name": {
@@ -1903,6 +2081,10 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [

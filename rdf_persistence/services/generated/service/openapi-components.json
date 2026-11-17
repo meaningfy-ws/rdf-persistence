@@ -24,6 +24,10 @@
           },
           "type": "array"
         },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        },
         "user_name": {
           "description": "The name the account signs in with.",
           "type": "string"
@@ -69,6 +73,10 @@
         "head_version": {
           "description": "The version token of the stored aggregate's graph.",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "title": "AggregateHead",
@@ -93,6 +101,10 @@
         "root_class": {
           "description": "The IRI of the class of the aggregate roots the key governs; a root of a subclass is its own scope.",
           "format": "uri",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },
@@ -146,6 +158,10 @@
           "description": "The user account the token identifies.",
           "format": "uri",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -182,6 +198,10 @@
           "description": "The IRI of the tenant.",
           "format": "uri",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -204,6 +224,10 @@
         "started_at": {
           "description": "The time a transaction started.",
           "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },
@@ -231,6 +255,10 @@
         "reference": {
           "description": "Whether the value is an IRI rather than a literal.",
           "type": "boolean"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         },
         "value": {
           "description": "The value of the statement, an IRI or the lexical form of a literal.",
@@ -271,6 +299,10 @@
         "label": {
           "description": "The preferred label of the object.",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -301,6 +333,10 @@
           "description": "The IRI of the tenant, or of the application, the activity happened in.",
           "format": "uri",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -318,6 +354,10 @@
       "properties": {
         "slot": {
           "description": "The name of the slot the filter is on.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         },
         "value": {
@@ -371,6 +411,10 @@
           "description": "The IRI of the tenant, or of an aggregate's graph, the rule applies to.",
           "format": "uri",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -397,6 +441,10 @@
             "$ref": "#/components/schemas/Prohibition"
           },
           "type": "array"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "title": "GrantSet",
@@ -437,6 +485,10 @@
           "maximum": 32,
           "minimum": 4,
           "type": "integer"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -506,6 +558,10 @@
           "description": "The template of a tenant IRI; ends in `{tenant_id}`.",
           "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant_segment|tenant_id)\\})*\\{tenant_id\\}$",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "title": "IriPolicy",
@@ -538,6 +594,10 @@
           "description": "The IRI of the class of the roots.",
           "format": "uri",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -556,6 +616,10 @@
         "label": {
           "description": "The preferred label of the object.",
           "pattern": "^\\S(?:.{0,198}\\S)?$",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },
@@ -608,6 +672,10 @@
           "description": "The IRI of the class of the aggregates listed.",
           "format": "uri",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -643,6 +711,10 @@
         "sort": {
           "description": "The slot a listing is ordered by, ascending, or descending when its name starts with a minus sign; absent, the listing is ordered by IRI.",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "title": "ListRequest",
@@ -664,6 +736,10 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -699,6 +775,10 @@
         "to_version": {
           "description": "The version of the schema that the data follows after the migration.",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -723,6 +803,10 @@
         },
         "title": {
           "description": "A short name for what a record describes.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         },
         "unresolved": {
@@ -776,6 +860,10 @@
           "description": "The number of objects in the whole listing.",
           "minimum": 0,
           "type": "integer"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -801,6 +889,10 @@
           "description": "The time a graph was put to the store by a load.",
           "format": "date-time",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -824,6 +916,10 @@
           "description": "The IRI that identifies the object.",
           "format": "uri",
           "readOnly": true,
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },
@@ -884,6 +980,10 @@
         "title": {
           "description": "A short, fixed summary of the kind of problem.",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -933,6 +1033,10 @@
           "description": "The IRI of the tenant, or of an aggregate's graph, the rule applies to.",
           "format": "uri",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -959,6 +1063,10 @@
         "referrer_slot": {
           "description": "The name of the slot that holds the reference; its IRI when the schema does not know the slot.",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -984,6 +1092,10 @@
             "$ref": "#/components/schemas/Referrer"
           },
           "type": "array"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -1008,6 +1120,10 @@
         "owned_by": {
           "description": "The IRI of the aggregate root that owns the graph.",
           "format": "uri",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },
@@ -1045,6 +1161,10 @@
         },
         "role": {
           "description": "The name of a role, matched against the application's role definitions.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },
@@ -1104,6 +1224,10 @@
         "target": {
           "description": "The IRI of the tenant, or of an aggregate's graph, the rule applies to.",
           "format": "uri",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },
@@ -1168,6 +1292,10 @@
           "description": "The path segment that names the tenant collection in the service's routes.",
           "pattern": "^[a-z][a-z0-9-]*$",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -1216,6 +1344,10 @@
         "state": {
           "$ref": "#/components/schemas/TenantState",
           "description": "Where the tenant is in its life."
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -1238,6 +1370,10 @@
         "root": {
           "$ref": "#/components/schemas/Any",
           "description": "The slots of the tenant's root object, as the application's schema defines them."
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -1289,6 +1425,10 @@
         "toolkit_version": {
           "description": "The version of the toolkit that wrote the dump.",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -1311,6 +1451,10 @@
         "label": {
           "description": "The preferred label of the object.",
           "pattern": "^\\S(?:.{0,198}\\S)?$",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },
@@ -1353,6 +1497,10 @@
         "state": {
           "$ref": "#/components/schemas/TenantState",
           "description": "Where the tenant is in its life."
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -1405,6 +1553,10 @@
           "description": "The IRI of the tenant.",
           "format": "uri",
           "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
         }
       },
       "required": [
@@ -1422,7 +1574,12 @@
     "Tracked": {
       "additionalProperties": false,
       "description": "A mixin for the tracking statements of a commit. The session writes them about the aggregate's graph IRI, never about the root entity.",
-      "properties": {},
+      "properties": {
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
       "title": "Tracked",
       "type": "object"
     },
@@ -1448,6 +1605,10 @@
         "principal": {
           "description": "The user account the token identifies.",
           "format": "uri",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
         }
       },

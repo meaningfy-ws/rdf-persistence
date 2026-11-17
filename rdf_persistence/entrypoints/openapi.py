@@ -138,6 +138,16 @@ def _media(schema: Schema, *types: str) -> dict[str, MediaType]:
     return {media_type: MediaType(schema=schema) for media_type in types}
 
 
+def _server_sent_event() -> Schema:
+    """One event of the stream as a client decodes it: ``event`` and ``data`` always, ``id`` on an activity (#153)."""
+    text = Schema(type="string")
+    return Schema(
+        type="object",
+        properties={"event": text, "data": text, "id": text, "retry": Schema(type="integer")},
+        required=["event", "data"],
+    )
+
+
 def _document_media(schema: Schema, *, rdf: bool = True) -> dict[str, MediaType]:
     """The representations of a document: JSON by the schema, JSON-LD as an object, the RDF serialisations as text."""
     media = {**_media(schema, JSON), **_media(Schema(type="object"), JSON_LD)}
@@ -348,7 +358,7 @@ class TenantOpenApi:
         stream = Response(
             description="The activities of the tenant, as server-sent events, until the client leaves",
             headers={LINK: Header(description="The JSON-LD context", schema=Schema(type="string"))},
-            content=_media(Schema(type="string"), EventSourceResponse.media_type),
+            content=_media(_server_sent_event(), EventSourceResponse.media_type),
         )
         resume = _parameter(
             LAST_EVENT_ID,

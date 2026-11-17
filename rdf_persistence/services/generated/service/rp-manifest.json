@@ -39,7 +39,7 @@
     },
     {
       "path": "rdf_persistence/generation/components.py",
-      "sha256": "2c2ec6a58c088d397acad832b849cdf0ffb2f37b480ee35619a06053c8a2bbd3"
+      "sha256": "2556ab63964a3decadcb9946a90f5a5a3ff21305a515a935f5b8160bcfc73049"
     },
     {
       "path": "rdf_persistence/generation/config.py",
@@ -189,7 +189,7 @@
     },
     {
       "path": "rdf_persistence/services/generated/service/openapi-components.json",
-      "sha256": "8a6b040f314498df6c1cb313debc5f4bc3cb559c472a406196ee4e96eb563cfc"
+      "sha256": "5ace1510070985a4bd8dc7d742d39c98b19e9fab5494c2bc0d8ffc681c9e028c"
     },
     {
       "path": "rdf_persistence/services/generated/service/rp_service.py",
