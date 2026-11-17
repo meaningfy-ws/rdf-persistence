@@ -599,6 +599,31 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   `TypeError`; `bootstrap(limit=)` raises `ValueError` (tester F-3). Fixed now: one fixer, one
   full-gates run. The checker's F-3 (a kept tester test repeats TC-25's property) is under the
   floor.
+- **D-44 (stage 4, Prepare, the developer's answers 2026-11-17)** D-33: yes. The `rp-generation`
+  delta gains the requirement "A slot can default to an instance of its class" with four
+  scenarios (a group defaults to its own defaults; a slot that cannot default to an instance; a
+  list default; a list default in another form), written by the lead; task 4.2 covers them and
+  remaps the stage 3 tests from `rp-settings` to it. D-31: yes, file it. The defect was already
+  reported upstream (linkml/linkml#4160, open, same reproduction), so the lead added a comment
+  instead of a duplicate: confirmed on linkml 1.12.1 with pydantic 2.14.2, and the case of a
+  default of several values, which #4160's option (b) would make inexpressible
+  (issuecomment-6960813182). The work-around of D-31 stays until #4160 is settled.
+- **D-45 (stage 4, Prepare)** GitNexus rated `ClassShape` and `FusekiServer` CRITICAL (30
+  direct, the importers of `generation/generated/rp_generation.py`, as D-14) and `read_targets`
+  HIGH (the conformance and freshness flows). Not taken to the developer: the move is RISK-7,
+  accepted at the PLAN gate; `read_targets`' messages are pinned by TC-46 and TC-47; the release
+  notes list the moved records' new path (as D-42).
+- **D-46 (stage 4, Prepare: parallel tasks, R-0004 and the developer's instruction)** Tasks 4.1,
+  4.2 and 4.3 run in parallel, each in its own worktree: 4.1 owns `rdf_persistence/` and the unit
+  tests of the moved records, and edits no docs page; 4.2 owns `tests/feature/technical_models.feature`
+  and its steps; 4.3 owns every docs page of its list and writes the `testkit` group from PD-11 as
+  planned (the checker compares it with 4.1 as built). All three append to
+  `tests/audit/scenario-map.csv`; the lead merges them and re-runs the task gate (T2).
+- **D-47 (stage 4, review set)** Stage 4 closes the change, so it takes the full review once, as
+  P-0005 and `tasks.md` say: L1, L2 and L3 as separate passes, L4 and L5 as one, over the whole
+  change (`36f5b25..`, the four stages), plus the adversarial tester on stage 4's own diff (D-2)
+  after the three tasks are merged, and a checker. Then the reconciliation of `proposal.md`
+  (P-0004) in PR 4.
 
 Under the floor (not fixed in stage 3):
 
